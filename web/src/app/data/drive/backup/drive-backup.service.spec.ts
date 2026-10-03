@@ -686,6 +686,83 @@ describe('DriveBackupService', () => {
     expect(named.server.allFiles().length).toBe(namedBefore);
   });
 
+  it('does not write or bin when a creating mark points at a folder that still holds a file', async () => {
+    const { server, writeCount } = world();
+    const a = await Rig.make(server);
+    const rootId = plantRoot(server);
+    const backups = server.putByHand({
+      name: 'Backups', mimeType: FOLDER_MIME, parents: [rootId], appProperties: { ...DRIVE_LAYOUT.backups.appProperties },
+    });
+    const nested = server.putByHand({
+      name: 'Doorprints-backup-2026-10-03-1200.dpx', mimeType: 'application/octet-stream', parents: [backups.id],
+      appProperties: { kind: 'backup', state: 'complete' },
+    }, new Uint8Array([4, 5, 6]));
+    const binned = server.putByHand({
+      name: 'note.txt', mimeType: 'text/plain', parents: [backups.id], appProperties: {},
+    }, new Uint8Array([7]));
+    server.trashByHand(binned.id);
+    const keysBytes = new TextEncoder().encode('{');
+    const keys = server.putByHand({
+      name: 'keys.json', mimeType: 'application/json', parents: [rootId], appProperties: { [DRIVE_LAYOUT.kind]: 'keys' },
+    }, keysBytes);
+    a.state.value = { ...a.state.value, rootId, creatingRootId: rootId };
+    const before = writeCount();
+    const marked = await a.service.connect();
+    expect(marked.kind === 'ERROR' && marked.problem.kind).toBe('FOLDER_EXISTS');
+    const created = await a.service.createFolder(true);
+    expect(created.connection.kind === 'ERROR' && created.connection.problem.kind).toBe('FOLDER_EXISTS');
+    expect(created.recoveryKey).toBeNull();
+    expect(writeCount()).toBe(before);
+    expect(server.contentOf(nested.id)).toEqual(new Uint8Array([4, 5, 6]));
+    expect(server.contentOf(keys.id)).toEqual(keysBytes);
+    expect(server.allFiles().find((f) => f.id === binned.id)?.trashed).toBe(true);
+    expect(server.allFiles().filter((f) => f.appProperties[DRIVE_LAYOUT.kind] === 'keys').length).toBe(1);
+
+    const bare = await Rig.make(new FakeDriveServer());
+    const bareRoot = plantRoot(bare.server);
+    const inner = bare.server.putByHand({
+      name: 'Backups', mimeType: FOLDER_MIME, parents: [bareRoot], appProperties: { ...DRIVE_LAYOUT.backups.appProperties },
+    });
+    const photo = bare.server.putByHand({
+      name: 'p.dpx', mimeType: 'application/octet-stream', parents: [inner.id], appProperties: {},
+    }, new Uint8Array([8]));
+    bare.state.value = { ...bare.state.value, rootId: bareRoot, creatingRootId: bareRoot };
+    const bareConnect = await bare.service.connect();
+    expect(bareConnect.kind === 'ERROR' && bareConnect.problem.kind).toBe('FOLDER_WITHOUT_KEYS');
+    const bareCreate = await bare.service.createFolder(true);
+    expect(bareCreate.connection.kind === 'ERROR' && bareCreate.connection.problem.kind).toBe('FOLDER_WITHOUT_KEYS');
+    expect(bareCreate.recoveryKey).toBeNull();
+    expect(bare.server.contentOf(photo.id)).toEqual(new Uint8Array([8]));
+    expect(bare.server.allFiles().filter((f) => f.appProperties[DRIVE_LAYOUT.kind] === 'keys').length).toBe(0);
+    expect(bare.server.allFiles().filter((f) => f.trashed).length).toBe(0);
+
+    const only = await Rig.make(new FakeDriveServer());
+    const onlyRoot = plantRoot(only.server);
+    const onlyBytes = new TextEncoder().encode('{');
+    const onlyKeys = only.server.putByHand({
+      name: 'keys.json', mimeType: 'application/json', parents: [onlyRoot], appProperties: { [DRIVE_LAYOUT.kind]: 'keys' },
+    }, onlyBytes);
+    only.state.value = { ...only.state.value, rootId: onlyRoot, creatingRootId: onlyRoot };
+    const onlyCreate = await only.service.createFolder(true);
+    expect(onlyCreate.connection.kind === 'ERROR' && onlyCreate.connection.problem.kind).toBe('FOLDER_EXISTS');
+    expect(only.server.contentOf(onlyKeys.id)).toEqual(onlyBytes);
+    expect(only.server.allFiles().filter((f) => f.trashed).length).toBe(0);
+    expect(only.server.allFiles().filter((f) => f.appProperties[DRIVE_LAYOUT.kind] === 'keys').length).toBe(1);
+  });
+
+  it('finishes an empty shell when the creating mark and a stale pin are both set', async () => {
+    const { server } = world();
+    const a = await Rig.make(server);
+    const rootId = plantRoot(server);
+    a.state.value = { ...a.state.value, rootId, creatingRootId: rootId };
+    a.trust.keys(rootId).value = { epoch: 1, revision: 1, keyId: new Uint8Array(32), bodyHash: new Uint8Array(32) };
+    const finished = await a.service.createFolder(true);
+    expect(finished.connection.kind).toBe('READY');
+    expect(finished.recoveryKey).not.toBeNull();
+    expect(server.allFiles().filter((f) => f.appProperties[DRIVE_LAYOUT.kind] === 'keys' && !f.trashed).length).toBe(1);
+    expect((await a.service.connect()).kind).toBe('READY');
+  });
+
   // ---- offline and the schedule ----
 
   it('loses nothing offline, and the schedule waits and then retries', async () => {

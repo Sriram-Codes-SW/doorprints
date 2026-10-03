@@ -128,15 +128,16 @@ export class DriveBackupService {
       if (root.id !== st.rootId) await this.state.save({ ...st, rootId: root.id, keysId: null, controlId: null, backupsId: null });
       const keys = await this.findKind(root.id, KIND_KEYS, root.id === st.rootId ? st.keysId : null);
       if (!keys) {
-        // This device's own unfinished create, or a shell with no files, starts again. Anything else stays put.
-        if (st.creatingRootId === root.id || (await this.folderIsEmptyShell(root.id))) return { kind: 'NO_FOLDER' };
+        // Only an empty shell starts again. A creating mark does not override a file that is still there.
+        if (await this.folderIsEmptyShell(root.id)) return { kind: 'NO_FOLDER' };
         return { kind: 'ERROR', problem: new DriveProblem('FOLDER_WITHOUT_KEYS') };
       }
       const bytes = await downloadVerified(this.drive, keys.id);
       const guard = new KeysGuard(this.p, this.trust.keys(root.id));
       if ((await guard.watermark()) == null) {
-        // Never adopted silently (docs/15 §9.3): this device's own unfinished create starts again, anything else is joined.
-        return st.creatingRootId === root.id ? { kind: 'NO_FOLDER' } : { kind: 'NEEDS_ENROLMENT', recoveryAvailable: this.recoveryHint(bytes) };
+        // Never adopted silently (docs/15 §9.3). A key list already in the folder is not wiped to start again.
+        if (st.creatingRootId === root.id) return { kind: 'ERROR', problem: new DriveProblem('FOLDER_EXISTS') };
+        return { kind: 'NEEDS_ENROLMENT', recoveryAvailable: this.recoveryHint(bytes) };
       }
       let opened: OpenedKeys;
       try {
@@ -155,9 +156,9 @@ export class DriveBackupService {
    * The first connect to a Drive with no Doorprints folder, or *Start again* after `FOLDER_GONE`: makes `Doorprints/`,
    * the key set, `doorprints.json` and `Backups/`, then pins this device to it. `withRecoveryKey` false is the
    * person's *Skip* after the warning. The recovery key comes back to be shown **once**; it is never stored. The pin is
-   * the last step, so a run that stops half way leaves nothing this device trusts, and the next run starts again.
-   * A folder left with no key list and no other file is that same unfinished create: this writes the key list into it.
-   * A folder that still holds any file is not replaced.
+   * the last step, so a run that stops before a key list is in the folder leaves nothing this device trusts.
+   * A folder with no key list and no other file is that unfinished create: this writes the key list into it.
+   * A folder that still holds any file, including a key list, is not replaced, and nothing in it is binned.
    *
    * Wraps folder creation in an exclusive Web Lock to prevent two tabs from creating duplicate root folders.
    * The second tab, after acquiring the lock, re-reads Drive state and finds the folder the first tab created.
@@ -196,25 +197,23 @@ export class DriveBackupService {
           if (!(await this.folderIsEmptyShell(root.id))) return { kind: 'ERROR', problem: new DriveProblem('FOLDER_WITHOUT_KEYS') };
           if (!(await this.releaseShellPins(root.id))) return { kind: 'ERROR', problem: new DriveProblem('FOLDER_WITHOUT_KEYS') };
         }
+        // The creating mark used to bin this device's own keys and write a new list. A file that is already
+        // there, including one this device uploaded, stays. Only an empty shell is written.
+        if (existing && !finishEmptyShell && !(await this.folderIsEmptyShell(root.id))) return this.refuseOccupied(root.id, st.keysId);
+        if (existing && !finishEmptyShell && (await new KeysGuard(this.p, this.trust.keys(root.id)).watermark()) != null) {
+          // Drop a pin from a key list that is gone before the guard below is built, and only while the shell is empty.
+          if (!(await this.folderIsEmptyShell(root.id)) || !(await this.releaseShellPins(root.id))) {
+            return this.refuseOccupied(root.id, st.keysId);
+          }
+        }
         await this.state.save({ ...st, rootId: root.id, creatingRootId: root.id, keysId: null, controlId: null, backupsId: null });
         const guard = new KeysGuard(this.p, this.trust.keys(root.id));
         if (!finishEmptyShell && (await guard.watermark()) != null) return { kind: 'ERROR', problem: new DriveProblem('FOLDER_EXISTS') };
-        if (!finishEmptyShell) {
-          // A key list that names another device is not this run's unfinished file. Leave it, and do not bin it.
-          if (await this.keyListOwnedBySomeoneElse(root.id)) return { kind: 'ERROR', problem: new DriveProblem('FOLDER_EXISTS') };
-          for (const f of await listAll(this.drive, { parentId: root.id })) {
-            const kind = f.appProperties[DRIVE_LAYOUT.kind];
-            if (kind === KIND_KEYS || kind === KIND_CONTROL) await this.trashQuietly(f.id);
-          }
-        }
         const now = this.clock();
         const key = withRecoveryKey ? RecoveryKey.generate(this.p) : null;
         const written = await this.keysFile.createFirstDevice({ publicKey: this.device.key.publicKey, name: this.device.name, platform: this.device.platform }, key, now);
-        if (finishEmptyShell) {
-          // Key generation takes long enough for another device to fill the shell. Do not write over that.
-          if (await this.keyListOwnedBySomeoneElse(root.id)) return { kind: 'ERROR', problem: new DriveProblem('FOLDER_EXISTS') };
-          if (!(await this.folderIsEmptyShell(root.id))) return { kind: 'ERROR', problem: new DriveProblem('FOLDER_WITHOUT_KEYS') };
-        }
+        // Key generation takes long enough for another device to put a file in the shell.
+        if (existing && !(await this.folderIsEmptyShell(root.id))) return this.refuseOccupied(root.id, null);
         const keysId = await this.uploadSmall(root.id, KEYS_NAME, KIND_KEYS, written.bytes);
         const control = await this.controlFile.create(written.opened, now);
         const controlId = await this.uploadSmall(root.id, CONTROL_NAME, KIND_CONTROL, control.bytes);
@@ -643,6 +642,15 @@ export class DriveBackupService {
   }
 
   /**
+   * A folder that is not an empty shell: a key list is `FOLDER_EXISTS` (it is not missing); any other file is
+   * `FOLDER_WITHOUT_KEYS`. Neither path bins or overwrites a file.
+   */
+  private async refuseOccupied(rootId: string, knownKeysId: string | null): Promise<DriveConnection> {
+    const keys = await this.findKind(rootId, KIND_KEYS, knownKeysId);
+    return { kind: 'ERROR', problem: new DriveProblem(keys ? 'FOLDER_EXISTS' : 'FOLDER_WITHOUT_KEYS') };
+  }
+
+  /**
    * No key list and no other file, including the bin and files inside subfolders. An incomplete listing is not empty.
    * More than a shallow empty tree is not empty either: this must not miss a backup.
    */
@@ -662,19 +670,6 @@ export class DriveBackupService {
       }
     }
     return true;
-  }
-
-  /** A readable key list that does not name this device. A partial or our own unfinished file is not one. */
-  private async keyListOwnedBySomeoneElse(rootId: string): Promise<boolean> {
-    const keys = await this.findKind(rootId, KIND_KEYS, null);
-    if (!keys) return false;
-    try {
-      const parsed = this.keysFile.parse(await downloadVerified(this.drive, keys.id));
-      const mine = hex(this.myKid);
-      return !parsed.body.devices.some((d) => hex(d.kid) === mine);
-    } catch {
-      return false;
-    }
   }
 
   /** Drop pins only after the folder has been proved empty, so `pinCreated` can start a new key set. */
