@@ -1281,6 +1281,7 @@ export const en = {
   'drivePasskey.registerButton': 'Set up a passkey',
   'drivePasskey.registeredDescription': 'A passkey is set up on this device.',
   'drivePasskey.unsupportedDescription': 'This browser cannot make the kind of passkey needed. Deleting everything from here is not available; you can still delete single backups.',
+  'drivePasskey.unsupportedNext': 'Set up a passkey appears after this computer has a fingerprint, face unlock, or screen lock. On Windows that is a Windows Hello PIN: Settings, Accounts, Sign-in options. Then reload this page.',
   'driveBackups.backUpNow': 'Back up now',
   'driveBackups.housesBackedUp': '{n} houses backed up at {time}',
   'driveBackups.backups': 'Backups',

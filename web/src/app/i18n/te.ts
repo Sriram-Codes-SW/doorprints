@@ -1320,6 +1320,8 @@ export const te: Dict = {
   'drivePasskey.registerButton': 'పాస్‌కీని సెట్ చేయండి',
   'drivePasskey.registeredDescription': 'ఈ సాధనం పై పాస్‌కీ సెట్ చేయబడింది.',
   'drivePasskey.unsupportedDescription': 'ఈ బ్రౌజర్ అవసరమైన పాస్‌కీ రకాన్ని చేయలేకపోయింది. ఇక్కడ నుండి ప్రతిదీ తొలగించడం అందుబాటులో లేదు; మీరు ఇప్పటికీ వ్యక్తిగత బ్యాకప్‌లను తొలగించవచ్చు.',
+  // 2026-10-03: what makes Set up a passkey appear. Under review (owner rule: hi/ta/te ship marked under review).
+  'drivePasskey.unsupportedNext': 'ఈ కంప్యూటర్‌లో ఫింగర్‌ప్రింట్, ముఖ అన్‌లాక్ లేదా స్క్రీన్ లాక్ ఉన్న తర్వాత పాస్‌కీని సెట్ చేయండి కనిపిస్తుంది. Windows లో అది Windows Hello PIN: Settings, Accounts, Sign-in options. ఆపై ఈ పేజీని మళ్లీ లోడ్ చేయండి.',
 
   // Google Drive sync component (S4b-BL-117) - Under review
   'driveSync.syncNow': 'ఇప్పుడు సమకాలీకరణ చేయండి',

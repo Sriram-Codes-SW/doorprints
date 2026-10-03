@@ -64,13 +64,17 @@ describe('DrivePasskeyComponent', () => {
 
   it('shows register button when status is none', async () => {
     const service = createFakeDriveService();
-    const { component, detect } = await render(service);
+    const { host, component, detect } = await render(service);
 
     await new Promise((resolve) => setTimeout(resolve, 50));
     detect();
 
+    const i18n = TestBed.inject(TranslationService);
     expect(component['status']()).toBe('none');
     expect(component['status']()).not.toBe('loading');
+    expect(host.textContent).toContain(i18n.t('drivePasskey.registerButton'));
+    expect(host.textContent).not.toContain(i18n.t('drivePasskey.unsupportedNext'));
+    expect(host.querySelector('button')).toBeTruthy();
   });
 
   it('shows success message when status is registered', async () => {
@@ -89,12 +93,16 @@ describe('DrivePasskeyComponent', () => {
     const service = createFakeDriveService({
       passkeyStatus: vi.fn(async () => 'unsupported' as const),
     });
-    const { component, detect } = await render(service);
+    const { host, component, detect } = await render(service);
 
     await new Promise((resolve) => setTimeout(resolve, 50));
     detect();
 
+    const i18n = TestBed.inject(TranslationService);
     expect(component['status']()).toBe('unsupported');
+    expect(host.textContent).toContain(i18n.t('drivePasskey.unsupportedDescription'));
+    expect(host.textContent).toContain(i18n.t('drivePasskey.unsupportedNext'));
+    expect(host.querySelector('button')).toBeNull();
   });
 
   it('calls registerPasskey when button is clicked', async () => {

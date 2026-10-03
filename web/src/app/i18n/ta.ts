@@ -1320,6 +1320,8 @@ export const ta: Dict = {
   'drivePasskey.registerButton': 'தவணை அமைக்கவும்',
   'drivePasskey.registeredDescription': 'இந்த சாதனத்தில் தவணை அமைக்கப்பட்டுள்ளது.',
   'drivePasskey.unsupportedDescription': 'இந்த உலாவி தேவைப்படும் தவணை வகையை உருவாக்க முடியாது. இங்கிருந்து எல்லாவற்றையும் நீக்க முடியாது; நீங்கள் இன்னும் தனிப்பு பேக்கப்களை நீக்க முடியும்.',
+  // 2026-10-03: what makes Set up a passkey appear. Under review (owner rule: hi/ta/te ship marked under review).
+  'drivePasskey.unsupportedNext': 'இந்தக் கணினியில் விரல் ரேகை, முகத் திறப்பு அல்லது திரை பூட்டு இருந்த பிறகு தவணை அமைக்கவும் தோன்றும். Windows இல் அது Windows Hello PIN: Settings, Accounts, Sign-in options. பிறகு இந்தப் பக்கத்தை மீண்டும் ஏற்றுங்கள்.',
 
   // Google Drive sync component (S4b-BL-117) - Under review
   'driveSync.syncNow': 'இப்போது ஒத்திசைக்கவும்',

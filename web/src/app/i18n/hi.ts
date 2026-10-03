@@ -1320,6 +1320,8 @@ export const hi: Dict = {
   'drivePasskey.registerButton': 'एक पासकी सेट अप करें',
   'drivePasskey.registeredDescription': 'इस डिवाइस पर एक पासकी सेट अप की गई है।',
   'drivePasskey.unsupportedDescription': 'यह ब्राउज़र उस तरह की पासकी नहीं बना सकता जो आवश्यक है। यहाँ से सब कुछ हटाना उपलब्ध नहीं है; आप अभी भी अलग-अलग बैकअप हटा सकते हैं।',
+  // 2026-10-03: what makes Set up a passkey appear. Under review (owner rule: hi/ta/te ship marked under review).
+  'drivePasskey.unsupportedNext': 'एक पासकी सेट अप करें तब दिखता है जब इस कंप्यूटर पर फ़िंगरप्रिंट, चेहरा अनलॉक या स्क्रीन लॉक हो। Windows पर वह Windows Hello PIN है: Settings, Accounts, Sign-in options। फिर इस पेज को दोबारा लोड करें।',
 
   // Google Drive sync component (S4b-BL-117) - Under review
   'driveSync.syncNow': 'अभी सिंक करें',
