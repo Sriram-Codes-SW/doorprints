@@ -19,6 +19,7 @@
 import { TestBed } from '@angular/core/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 import '../../i18n/all-dictionaries';
+import { sha256Of } from '../../data/crypto/crypto-provider';
 import { kidOf } from '../../data/crypto/folder-key';
 import { RecoveryKey } from '../../data/crypto/recovery-key';
 import { DriveBackupAdapter } from '../../data/drive/connect/backup-adapter';
@@ -215,11 +216,16 @@ describe('Drive connect card combinations', () => {
     const rig = await Rig.make(server);
     const folder = await rig.created();
     const keysBefore = server.contentOf(folder.keysId);
+    expect(keysBefore).not.toBeNull();
     const extra = server.putByHand({
       name: 'keep.txt', mimeType: 'text/plain', parents: [folder.rootId], appProperties: {},
     }, new Uint8Array([4, 5]));
     rig.trust.keys(folder.rootId).value = null;
-    rig.state.value = { ...rig.state.value, creatingRootId: folder.rootId };
+    rig.state.value = {
+      ...rig.state.value,
+      creatingRootId: folder.rootId,
+      creatingKeysHash: sha256Of(rig.p, keysBefore!),
+    };
     let creates = 0;
     const orig = rig.service.createFolder.bind(rig.service);
     rig.service.createFolder = async (withKey: boolean) => {

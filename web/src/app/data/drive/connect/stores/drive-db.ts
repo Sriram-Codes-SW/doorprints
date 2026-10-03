@@ -20,6 +20,7 @@ import type { KeysWatermark, KeysWatermarkStore } from '../../../crypto/keys-fil
 import type { DeletionStore, DeletedMarker, PendingDeletion } from '../../drive-deletion';
 import type { DriveSyncState, SyncStateStore } from '../../drive-sync-seams';
 import type { PhotoState, PhotoStateStore } from '../../drive-photo-seams';
+import { EMPTY_DEVICE_STATE, normalizeDeviceState } from '../../backup/drive-backup-seams';
 import type { DriveDeviceState, DriveStateStore } from '../../backup/drive-backup-seams';
 import type { KeyValueStore } from '../deletion-adapter';
 
@@ -145,21 +146,7 @@ class MemoryPhotoStateStore implements PhotoStateStore {
 }
 
 class MemoryDriveStateStore implements DriveStateStore {
-  private state: DriveDeviceState = {
-    deviceId: null,
-    rootId: null,
-    backupsId: null,
-    keysId: null,
-    controlId: null,
-    creatingRootId: null,
-    lastBackupId: null,
-    lastSuccessAt: null,
-    lastAttemptAt: null,
-    lastFailure: null,
-    lastVerifyAt: null,
-    newestSeenAt: null,
-    confirmedDrops: [],
-  };
+  private state: DriveDeviceState = { ...EMPTY_DEVICE_STATE, confirmedDrops: [] };
 
   async load(): Promise<DriveDeviceState> {
     return { ...this.state };
@@ -382,24 +369,7 @@ class IndexedDbDriveStateStore implements DriveStateStore {
       const store = tx.objectStore(STORE_NAMES.state);
       const req = store.get('device-state');
       req.onsuccess = () => {
-        const state = req.result?.value;
-        resolve(
-          state || {
-            deviceId: null,
-            rootId: null,
-            backupsId: null,
-            keysId: null,
-            controlId: null,
-            creatingRootId: null,
-            lastBackupId: null,
-            lastSuccessAt: null,
-            lastAttemptAt: null,
-            lastFailure: null,
-            lastVerifyAt: null,
-            newestSeenAt: null,
-            confirmedDrops: [],
-          }
-        );
+        resolve(normalizeDeviceState(req.result?.value as Partial<DriveDeviceState> | undefined));
       };
       req.onerror = () => reject(req.error);
     });

@@ -18,7 +18,8 @@
 
 import { describe, expect, it } from 'vitest';
 import { b64, equalBytes } from '../../crypto/bytes';
-import { WebCryptoProvider } from '../../crypto/crypto-provider';
+import { sha256Of, WebCryptoProvider } from '../../crypto/crypto-provider';
+import { KeysFile } from '../../crypto/keys-file';
 import { Dpx } from '../../crypto/dpx';
 import { kidOf } from '../../crypto/folder-key';
 import { RecoveryKey } from '../../crypto/recovery-key';
@@ -796,6 +797,70 @@ describe('DriveBackupService', () => {
     expect(finished.recoveryKey).not.toBeNull();
     expect(server.allFiles().filter((f) => f.appProperties[DRIVE_LAYOUT.kind] === 'keys' && !f.trashed).length).toBe(1);
     expect((await a.service.connect()).kind).toBe('READY');
+  });
+
+  it('pins an interrupted create only when the key list is still the bytes saved before upload', async () => {
+    const { server, writeCount } = world();
+    const a = await Rig.make(server);
+    let hashBeforeUpload = false;
+    const origUpload = a.drive.upload.bind(a.drive);
+    a.drive.upload = async (target, content) => {
+      const saved = a.state.value.creatingKeysHash;
+      if (saved && equalBytes(saved, sha256Of(p, content))) hashBeforeUpload = true;
+      return origUpload(target, content);
+    };
+    const folder = await a.created();
+    expect(hashBeforeUpload).toBe(true);
+    expect(a.state.value.creatingKeysHash).toBeNull();
+    const keysBefore = server.contentOf(folder.keysId);
+    expect(keysBefore).not.toBeNull();
+    const committed = sha256Of(p, keysBefore!);
+    const extra = server.putByHand({
+      name: 'keep.txt', mimeType: 'text/plain', parents: [folder.rootId], appProperties: {},
+    }, new Uint8Array([4, 5]));
+
+    a.trust.keys(folder.rootId).value = null;
+    a.state.value = { ...a.state.value, creatingRootId: folder.rootId, creatingKeysHash: committed };
+    const resumed = await a.service.connect();
+    expect(resumed.kind).toBe('READY');
+    expect(server.contentOf(folder.keysId)).toEqual(keysBefore);
+    expect(server.contentOf(extra.id)).toEqual(new Uint8Array([4, 5]));
+    expect(a.state.value.creatingKeysHash).toBeNull();
+    expect(await a.trust.keys(folder.rootId).load()).not.toBeNull();
+
+    const forged = await new KeysFile(p).createFirstDevice(
+      { publicKey: a.identity.key.publicKey, name: a.identity.name, platform: 'web' },
+      RecoveryKey.generate(p),
+      5_000,
+    );
+    server.editByHand(folder.keysId, forged.bytes);
+    a.trust.keys(folder.rootId).value = null;
+    a.state.value = { ...a.state.value, creatingRootId: folder.rootId, creatingKeysHash: committed };
+    const before = writeCount();
+    const swapped = await a.service.connect();
+    expect(swapped.kind === 'ERROR' && swapped.problem.kind).toBe('FOLDER_EXISTS');
+    expect(await a.trust.keys(folder.rootId).load()).toBeNull();
+    expect(server.contentOf(folder.keysId)).toEqual(forged.bytes);
+    expect(server.contentOf(extra.id)).toEqual(new Uint8Array([4, 5]));
+    expect(writeCount()).toBe(before);
+
+    a.state.value = { ...a.state.value, creatingKeysHash: null };
+    const missing = await a.service.connect();
+    expect(missing.kind === 'ERROR' && missing.problem.kind).toBe('FOLDER_EXISTS');
+    expect(await a.trust.keys(folder.rootId).load()).toBeNull();
+    expect(writeCount()).toBe(before);
+
+    server.editByHand(folder.keysId, keysBefore!);
+    a.state.value = { ...a.state.value, creatingRootId: folder.rootId, creatingKeysHash: committed };
+    const refused = await a.service.createFolder(true);
+    expect(refused.connection.kind === 'ERROR' && refused.connection.problem.kind).toBe('FOLDER_EXISTS');
+    expect(refused.recoveryKey).toBeNull();
+    expect(a.state.value.creatingKeysHash).toEqual(committed);
+    expect(server.contentOf(folder.keysId)).toEqual(keysBefore);
+    const afterRefuse = await a.service.connect();
+    expect(afterRefuse.kind).toBe('READY');
+    expect(server.contentOf(folder.keysId)).toEqual(keysBefore);
+    expect(server.contentOf(extra.id)).toEqual(new Uint8Array([4, 5]));
   });
 
   // ---- offline and the schedule ----
