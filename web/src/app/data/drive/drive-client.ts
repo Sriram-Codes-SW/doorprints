@@ -152,6 +152,15 @@ export interface DeleteReport {
   readonly deleted: readonly string[];
   readonly left: readonly string[];
   readonly error: DriveError | null;
+  /** Per file: which ones failed and why (S4b-BL-119); `error` is the first failure that stopped the run. */
+  readonly failed: readonly DeleteFailure[];
+}
+
+/** One file a deletion could not remove: the error kind and status only, never a name. */
+export interface DeleteFailure {
+  readonly fileId: string;
+  readonly kind: DriveErrorKind;
+  readonly httpStatus: number;
 }
 
 /** A folder of docs/15 §5.1, found by its `doorprints` app property. */
@@ -229,6 +238,17 @@ export class DriveError extends Error {
   /** Waiting and asking again can help. */
   get retryable(): boolean {
     return this.kind === 'RATE_LIMITED' || this.kind === 'SERVER' || this.kind === 'OFFLINE';
+  }
+}
+
+/** Why Google sign-in did not give a token: the popup was blocked or closed, the person said no, no network, or Google's script is not there. */
+export type SignInErrorKind = 'popup_blocked' | 'popup_closed' | 'denied' | 'offline' | 'unavailable';
+
+/** A failed Google sign-in (never carries a token). Its message is the kind. */
+export class SignInError extends Error {
+  constructor(readonly kind: SignInErrorKind) {
+    super(kind);
+    this.name = 'SignInError';
   }
 }
 

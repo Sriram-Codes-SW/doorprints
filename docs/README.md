@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.77 |
-| Date | 2026-10-02 |
+| Version | 0.87 |
+| Date | 2026-10-03 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -78,6 +78,16 @@
 | 0.75 | 2026-10-02 | Claude (Code), lead | **The owner decided the Drive design** (15 v0.5): 02 v0.52, 03 v0.61 (ADR-33), 06 v0.101, 10 v0.125, 13 v0.6, 14 v0.77 (N17: version 1, the final order). |
 | 0.76 | 2026-10-02 | Claude (Code), lead | S4b-BL-70, the `SyncBackend` seam (no behaviour change): 03 v0.62 (§4.2, §4.3, §10.1, §10.2), 06 v0.102 (TC-U-123), 10 v0.126, 14 v0.78. |
 | 0.77 | 2026-10-02 | Claude (Code), lead | S4b-BL-115, the Drive client and the fake Drive (both stacks, no screen): 06 v0.103 (TC-U-124), 10 v0.127, 15 v0.6 (§7.1), schemas README 1.22 (`drive-vectors.json`, §6.2). |
+| 0.78 | 2026-10-02 | Claude (Code), lead | S4b-BL-125, the encryption core (both stacks, no screen): 02 v0.53 (T-S13, T-T18, T-T19, T-D12, T-I37; RR-26, RR-27), 06 v0.104 (TC-U-125..TC-U-131), 10 v0.128 (S4b-BL-125 done, new S4b-BL-131), 13 v0.7 (I10, I11, I14, I16), 15 v0.7 (§9.9, §9.4), schemas README 1.23 (`hpke-vectors.json`, `dpx-vectors.json`, §6.3). |
+| 0.79 | 2026-10-02 | Claude (Code), lead | S4b-BL-125 after its independent review: 02 v0.54 (T-S13, T-T19, AB-16, RR-27; RR-28, RR-29), 06 v0.105 (TC-U-132), 10 v0.129 (S4b-BL-126 note, S4b-BL-132, S4b-BL-133), 13 v0.8 (I11), 15 v0.8 (§9.9, the pin and the recovery anchor), schemas README 1.24. |
+| 0.80 | 2026-10-02 | Cursor Agent, lead | Website Drive UI (draft PR #118): 06 v0.106 (TC-U-133), 07 v0.55 (`GOOGLE_OAUTH_WEB_CLIENT_ID`), 10 v0.130 (S4b-BL-117 website, S4b-BL-134), 14 v0.79 (N17), 15 v0.9. |
+| 0.81 | 2026-10-02 | Cursor Agent, lead | Website Drive follow-up (draft PR #118): 02 v0.55 (RR-30 CSP `connect-src https:`), 03 v0.63 (ADR-33 website L3 no delay), 07 v0.56, 10 v0.131 (S4b-BL-135), 14 v0.80, 15 v0.10. Session scratch `docs/ops/drive-batch-notes` removed. |
+| 0.82 | 2026-10-02 | Cursor Agent, lead | Website Drive security follow-up (draft PR #118): 06 v0.107 (TC-U-133 grant/operationId, tick re-check, `rp.id`), 10 v0.132, 15 v0.11. |
+| 0.83 | 2026-10-02 | Cursor Agent, lead | Website Drive quality follow-up (draft PR #118): 06 v0.109 (TC-U-133 translated errors, empty config, a11y states, changelog order, Blob identity), 10 v0.134, 15 v0.12. |
+| 0.84 | 2026-10-03 | Cursor Agent, lead | Website Drive version 1 follow-up (draft PR #118): 06 v0.110, 10 v0.135, 14 v0.81, 15 v0.13 (8-digit HPKE enrolment, revoke, disconnect-all, partial delete, two-minute sync). |
+| 0.87 | 2026-10-03 | Cursor Agent, lead | Website Drive enrolment check (draft PR #118): 06 v0.113 (TC-U-133: the 8-digit approve step is bound to the transcript just shown and to this browser's nonce and public key). |
+| 0.86 | 2026-10-03 | Cursor Agent, lead | Website Drive CI fix (draft PR #118): 06 v0.112 (TC-U-133: the deletion adapter's authorizer double has `proofFor`; the HMAC is the token proof). |
+| 0.85 | 2026-10-03 | Cursor Agent, lead | Website Drive version 1 closed (draft PR #118): 02 v0.56 (RR-28), 06 v0.111 (TC-U-133 QR, non-extractable keys, HMAC proof), 10 v0.136 (S4b-BL-132 done; S4b-BL-134 and S4b-BL-135 website), 14 v0.82 (N17), 15 v0.14. |
 | 0.65 | 2026-10-01 | Claude (Code), lead | The app lock emulator test retries every PIN entry (10 v0.116). |
 | 0.64 | 2026-10-01 | Claude (Code), lead | S4b-BL-110 (a) and (b) (branch `fix/a11y-stars-and-motion`): 05 v0.26 (§4.1 `--star` `#966000`, §4.4 `secondary`, 1.4.11 and 2.3.3), 06 v0.92 (TC-A-05, TC-U-117, TC-U-WEB-A11Y-1, TC-M-42), 10 v0.115 (S4b-BL-110 partly done, §13.38). |
 | 0.63 | 2026-10-01 | Claude (Code), Docs team | The guide's *Compare and plan* page, in four languages, names Not chosen as well as Rejected houses as left out of Compare and Plan visits, and how to bring one back (10 v0.113). |

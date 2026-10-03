@@ -18,7 +18,7 @@
 
 import { Injectable, InjectionToken, inject } from '@angular/core';
 import type { Observable } from 'rxjs';
-import { map } from 'rxjs';
+import { map, of } from 'rxjs';
 import { HouseApiService } from '../core/house-api.service';
 import type { HouseDto, PhotoChangeDto, RecordDto, VisitDto } from '../core/models';
 import type { PhotoMeta } from '../shared/photo-tags';
@@ -42,7 +42,7 @@ import type { MergeRule } from './sync-rules';
  *    its position and the loop asks for rows after the highest it has handled. The server's is its change-log counter;
  *    a backend without one gives a number that only grows within its own log (a time or a revision) and keeps whatever
  *    else it needs (Drive: the map of device id to file checksum) itself. A pushed row answered with no usable
- *    `syncVersion` says nothing about the remote being behind (`serverWasReset`).
+ *    `syncVersion` says nothing about the remote being behind (`pushShowsReset`).
  *  * **"Complete" means handled**: the loop moves a cursor only past rows it has handled, and a stopped download
  *    stores where it got to; a backend never lists a row it has only half written (Drive's `partial-` files).
  *  * **Photos**: deletes and metadata go on any network; on the web every photo moves today, and Drive's network
@@ -60,6 +60,17 @@ export interface SyncBackend {
    * is above 0; a failure is unknown (the loop treats it as false, and a real failure shows in the push).
    */
   isBehind(cursors: readonly number[]): Observable<boolean>;
+
+  /**
+   * True for a backend that keeps whole snapshots (Drive): its `push*` calls only note the row, and the rows are sent
+   * together in {@link commitPushes}. The loop then marks pushed rows clean (and forgets pushed photo deletions) **only
+   * after {@link commitPushes} returned**: the snapshot is complete and confirmed by read-back (docs/15 §1.4). The
+   * server's is false: each push is confirmed by its answer.
+   */
+  readonly stagesPushes?: boolean;
+
+  /** Sends what the pushes noted and takes in what the others changed (only when {@link stagesPushes}); failures are thrown. */
+  commitPushes?(): Observable<void>;
 
   /** Sends one changed house and answers with the row the remote keeps (last write wins there, or the one sent). */
   pushHouse(house: HouseDto): Observable<HouseDto>;
@@ -84,6 +95,19 @@ export interface SyncBackend {
   photoChangesSince(cursor: number): Observable<PhotoChangeDto[]>;
   /** One photo's bytes. */
   downloadPhoto(id: string): Observable<Blob>;
+
+  /**
+   * Like {@link downloadPhoto}, but null when this one photo cannot be had and will not be by trying again now (Drive: the
+   * file was altered, swapped, planted, written by a revoked device, or is gone). The loop skips it and goes on; the backend
+   * reports why. A failure that may pass (offline, rate limit) is still thrown. Absent: {@link downloadPhoto}.
+   */
+  downloadPhotoIfAvailable?(id: string): Observable<Blob | null>;
+
+  /**
+   * Whether photo bytes may move now (the network policy, S4b-BL-128, docs/15 §11). False: photos are not uploaded or
+   * downloaded this run (deletes and metadata still go); they wait and come again. Absent: always.
+   */
+  photosAllowed?(): boolean;
 }
 
 /**
@@ -100,6 +124,12 @@ export class ServerSyncBackend implements SyncBackend {
   /** `GET /api/stats`' `maxSyncVersion` below a stored cursor ({@link serverBehind}); an older server's none: false. */
   isBehind(cursors: readonly number[]): Observable<boolean> {
     return this.api.stats().pipe(map((stats) => serverBehind(stats?.maxSyncVersion, cursors)));
+  }
+
+  readonly stagesPushes = false;
+
+  commitPushes(): Observable<void> {
+    return of(undefined);
   }
 
   pushHouse(house: HouseDto): Observable<HouseDto> {

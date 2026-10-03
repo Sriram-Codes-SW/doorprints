@@ -37,6 +37,7 @@ const H2 = '22222222-2222-4222-8222-222222222222';
 const V1 = '33333333-3333-4333-8333-333333333333';
 const B1 = '55555555-5555-4555-8555-555555555555';
 const P1 = '77777777-7777-4777-8777-777777777777';
+const P2 = '88888888-8888-4888-8888-888888888888';
 const AT = '2026-09-21T10:00:00.000Z';
 
 function house(id: string, over: Partial<HouseDto> = {}): HouseDto {
@@ -47,6 +48,15 @@ function house(id: string, over: Partial<HouseDto> = {}): HouseDto {
 class FakeSyncBackend implements SyncBackend {
   readonly calls: string[] = [];
   mergeRule: MergeRule = serverMerge;
+  /** A snapshot backend (Drive): pushes are noted, `commitPushes` sends them (S4b-BL-118). */
+  stagesPushes = false;
+  commitFails = false;
+  commitPushes(): Observable<void> {
+    return defer(() => {
+      this.calls.push('commitPushes');
+      return this.commitFails ? throwError(() => new Error('no connection')) : of(undefined);
+    });
+  }
   behind: () => Observable<boolean> = () => of(false);
   houses: HouseDto[] = [];
   visits: VisitDto[] = [];
@@ -105,6 +115,17 @@ class FakeSyncBackend implements SyncBackend {
   downloadPhoto(id: string): Observable<Blob> {
     this.calls.push(`downloadPhoto ${id}`);
     return of(new Blob([new Uint8Array([0xff, 0xd8])], { type: 'image/jpeg' }));
+  }
+  /** Photos the backend cannot have (Drive: tampered, planted): null, the loop skips them (S4b-BL-128). */
+  unavailable = new Set<string>();
+  downloadPhotoIfAvailable(id: string): Observable<Blob | null> {
+    this.calls.push(`downloadPhoto ${id}`);
+    return this.unavailable.has(id) ? of(null) : of(new Blob([new Uint8Array([0xff, 0xd8])], { type: 'image/jpeg' }));
+  }
+  /** The network policy (S4b-BL-128): false holds photo bytes back. */
+  allowed = true;
+  photosAllowed(): boolean {
+    return this.allowed;
   }
 }
 
@@ -176,6 +197,27 @@ describe('SyncService through the SyncBackend seam', () => {
     expect((await store.cursors()).house).toBe(15);
   });
 
+  it('a snapshot backend: rows are marked clean only after its commit (S4b-BL-118)', async () => {
+    await store.saveHouse(house(H1, { label: 'Mine' }), Date.parse(AT));
+    await store.saveVisit({ id: V1, houseId: H1, lat: 1, lon: 2, arrivedAt: AT, source: 'MANUAL', deleted: false, syncVersion: 0 }, Date.parse(AT));
+    backend.stagesPushes = true;
+    backend.commitFails = true;
+    await sync.syncNow(true);
+    expect(sync.lastError()).not.toBeNull();
+    // Pushed, but the snapshot was not confirmed: nothing may be marked clean.
+    expect((await store.dirtyHouses()).map((h) => h.id)).toEqual([H1]);
+    expect((await store.dirtyVisits()).map((v) => v.id)).toEqual([V1]);
+
+    backend.commitFails = false;
+    backend.calls.length = 0;
+    await sync.syncNow(true);
+    expect(sync.lastError()).toBeNull();
+    expect(await store.dirtyHouses()).toEqual([]);
+    expect(await store.dirtyVisits()).toEqual([]);
+    expect(backend.calls.indexOf('commitPushes')).toBeGreaterThan(backend.calls.indexOf(`pushVisit ${V1}`));
+    expect(backend.calls.indexOf('commitPushes')).toBeLessThan(backend.calls.indexOf('housesSince 0'));
+  });
+
   it('does not ask whether the backend is behind before anything was pulled', async () => {
     await sync.syncNow(true);
     expect(backend.calls[0]).toBe('housesSince 0');
@@ -199,6 +241,23 @@ describe('SyncService through the SyncBackend seam', () => {
     expect(await pullOlderOverCleanLocal()).toBe('Newer here');
   });
 
+  it('shows the rule every local record, clean ones too (S4b-BL-130)', async () => {
+    // A clean record newer than the incoming one: the server's rule overwrites it, a last-write-wins rule keeps it.
+    const pullOlderRecord = async (): Promise<unknown> => {
+      await store.putRecordFromServer({ type: 'broker', id: B1, payload: { name: 'Newer here' }, updatedAt: '2026-09-22T00:00:00.000Z', deleted: false, syncVersion: 1 });
+      backend.records = [{ type: 'broker', id: B1, payload: { name: 'Older snapshot' }, updatedAt: AT, deleted: false, syncVersion: 2 }];
+      await sync.syncNow(true);
+      return (await store.allRecords()).find((r) => r.id === B1)?.payload;
+    };
+    expect(await pullOlderRecord()).toEqual({ name: 'Older snapshot' });
+    backend.mergeRule = (local, incoming) => !!local && millis(local.updatedAt) >= millis(incoming.updatedAt);
+    await store.putRecordFromServer({ type: 'broker', id: B1, payload: { name: 'Newer here' }, updatedAt: '2026-09-22T00:00:00.000Z', deleted: false, syncVersion: 3 });
+    backend.records = [{ type: 'broker', id: B1, payload: { name: 'Older snapshot' }, updatedAt: AT, deleted: false, syncVersion: 4 }];
+    await sync.syncNow(true);
+    expect((await store.allRecords()).find((r) => r.id === B1)?.payload).toEqual({ name: 'Newer here' });
+    expect(await store.dirtyRecords()).toEqual([]);
+  });
+
   it('sends everything again and pulls from 0 when the backend is behind', async () => {
     await store.putHouseFromServer({ ...house(H1), updatedAt: AT, syncVersion: 250 });
     await store.setSetting(SETTING_KEYS.houseCursor, '250');
@@ -211,7 +270,7 @@ describe('SyncService through the SyncBackend seam', () => {
       'recordsSince 0',
       'photoChangesSince 0',
     ]);
-    expect(sync.serverResetAt()).not.toBeNull();
+    expect(sync.remoteResetAt()).not.toBeNull();
   });
 
   it('treats a failed "is it behind" as unknown and carries on', async () => {
@@ -247,6 +306,41 @@ describe('SyncService through the SyncBackend seam', () => {
     expect(backend.calls).toContain(`downloadPhoto ${P1}`);
     expect((await store.getPhoto(P1))?.uploaded).toBe(true);
     expect((await store.cursors()).photo).toBe(9);
+  });
+
+  it('a photo the backend cannot have is skipped and the others still come (S4b-BL-128)', async () => {
+    await store.putHouseFromServer({ ...house(H1), updatedAt: AT, syncVersion: 1 });
+    backend.unavailable.add(P1);
+    backend.photos = [
+      { id: P1, houseId: H1, contentType: 'image/jpeg', sizeBytes: 2, deleted: false, syncVersion: 9 },
+      { id: P2, houseId: H1, contentType: 'image/jpeg', sizeBytes: 2, deleted: false, syncVersion: 10 },
+    ];
+    await sync.syncNow(true);
+    expect(sync.lastError()).toBeNull();
+    expect(await store.getPhoto(P1)).toBeUndefined();
+    expect((await store.getPhoto(P2))?.uploaded).toBe(true);
+    expect((await store.cursors()).photo).toBe(10);
+  });
+
+  it('photo bytes wait while the backend says photos are not allowed (S4b-BL-128)', async () => {
+    await store.putHouseFromServer({ ...house(H1), updatedAt: AT, syncVersion: 1 });
+    await store.putPhotoRecord({
+      id: P2, houseId: H1, blob: new Blob([new Uint8Array([9])], { type: 'image/jpeg' }), contentType: 'image/jpeg', sizeBytes: 1,
+      createdAt: AT, updatedAt: AT, deleted: false, syncVersion: 0, uploaded: false,
+    });
+    backend.allowed = false;
+    backend.photos = [{ id: P1, houseId: H1, contentType: 'image/jpeg', sizeBytes: 2, deleted: false, syncVersion: 9 }];
+    await sync.syncNow(true);
+    expect(sync.lastError()).toBeNull();
+    expect(backend.calls.filter((c) => c.startsWith('uploadPhoto') || c.includes('downloadPhoto'))).toEqual([]);
+    expect((await store.cursors()).photo).toBe(0);
+    // Wi-Fi: both go, and the held photo is not lost.
+    backend.allowed = true;
+    await sync.syncNow(true);
+    expect(backend.calls).toContain(`uploadPhoto ${P2}`);
+    expect(backend.calls).toContain(`downloadPhoto ${P1}`);
+    expect((await store.getPhoto(P1))?.uploaded).toBe(true);
+    expect((await store.getPhoto(P2))?.uploaded).toBe(true);
   });
 
   it('keeps keepLocalRecord as the server rule', () => {

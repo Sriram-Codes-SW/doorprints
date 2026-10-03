@@ -64,6 +64,15 @@ describe('translation dictionaries', () => {
         .map((key) => `${key}: en=${en[key as keyof typeof en]} | ${lang}=${dict[key]}`);
       expect(mismatches).toEqual([]);
     });
+
+    it('Drive strings use the language script except brand phrases', () => {
+      const brand = new Set(['driveBackups.import', 'driveBackups.importBackup']);
+      const indic = /[\u0900-\u097F\u0B80-\u0BFF\u0C00-\u0C7F]/;
+      const latinOnly = enKeys.filter(
+        (key) => key.startsWith('drive') && !brand.has(key) && !indic.test(dict[key]),
+      );
+      expect(latinOnly).toEqual([]);
+    });
   });
 });
 

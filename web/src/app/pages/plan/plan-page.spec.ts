@@ -109,6 +109,7 @@ vi.mock('maplibre-gl', () => ({
   GeoJSONSource: class {},
   GPUInitializationError: class extends Error {},
   setWorkerUrl: () => undefined,
+  addProtocol: () => undefined,
 }));
 
 /**

@@ -54,6 +54,8 @@ import { ComparePage } from './pages/compare/compare-page';
 import { ConnectPage } from './pages/connect/connect-page';
 import { CriteriaPage } from './pages/criteria/criteria-page';
 import { DataPage } from './pages/data/data-page';
+import { DriveConnectComponent } from './pages/data/drive-connect';
+import { DriveConnectService, type ConnectState } from './data/drive/connect/drive-connect.service';
 import { ImportBackupCard } from './pages/data/import-backup';
 import { OfflineAreasCard } from './pages/data/offline-areas';
 import { HouseDetailPage } from './pages/house-detail/house-detail-page';
@@ -251,6 +253,46 @@ const boom = () => throwError(() => new Error('boom'));
 const EMPTY = fakeApi({ houses: () => of([]), brokers: () => of([]), viewings: () => of([]), viewingRows: () => of([]), viewingsOf: () => of([]) });
 const BROKEN = fakeApi({ houses: boom, brokers: boom, viewings: boom, scoring: boom, questions: boom, questionRows: boom, criterionRows: boom, stats: boom });
 
+function driveCard(state: ConnectState, theme: 'light' | 'dark', after?: (c: DriveConnectComponent) => void): Case['render'] {
+  return async (lang) => {
+    TestBed.resetTestingModule();
+    document.documentElement.style.colorScheme = theme;
+    const svc = {
+      getState: () => state,
+      listBackups: async () => ({ ok: true, backups: [], missingNewer: false }),
+      autoBackupEnabled: () => false,
+      setAutoBackup: () => undefined,
+      runDueBackup: async () => ({ ran: false, reason: 'DISABLED' }),
+      syncNow: async () => ({ state: 'synced', lastSyncAt: Date.now(), skipped: [], needsConfirmation: false }),
+      photoSettings: async () => ({ uploadOnMobileData: false }),
+      pendingPhotoBytes: async () => 0,
+      passkeyStatus: async () => 'none',
+      confirmRecoveryKeySaved: () => undefined,
+      skipRecoveryKeyWithWarning: () => undefined,
+      disconnect: async () => undefined,
+      connect: async () => ({ state }),
+      createFolder: async () => ({ state, recoveryKey: 'AAAA-BBBB-CCCC-DDDD-EEEE-FFFF' }),
+      openWithRecoveryKey: async () => ({ state: 'Ready' }),
+      listedDevices: async () => [],
+      accountEmail: async () => null,
+    };
+    TestBed.configureTestingModule({
+      imports: [DriveConnectComponent],
+      providers: [
+        provideRouter([]),
+        { provide: DriveConnectService, useValue: svc },
+        { provide: Announcer, useValue: { announce: () => undefined } },
+        { provide: ConfirmService, useValue: { ask: async () => true, choose: async () => 'confirm' } },
+      ],
+    });
+    await TestBed.inject(TranslationService).setLang(lang);
+    const fixture = TestBed.createComponent(DriveConnectComponent);
+    after?.(fixture.componentInstance);
+    await settle(fixture as ComponentFixture<unknown>);
+    return { fixture: fixture as ComponentFixture<unknown>, page: false };
+  };
+}
+
 const CASES: Case[] = [
   { name: 'Map (empty)', render: async (lang) => {
     vi.spyOn(MapPage.prototype, 'ngAfterViewInit').mockImplementation(() => undefined);
@@ -269,6 +311,20 @@ const CASES: Case[] = [
   { name: 'Questions (error)', render: page(QuestionsPage, { api: BROKEN }) },
   { name: 'App shell', render: plain(App, false) },
   { name: 'Your data', render: plain(DataPage) },
+  { name: 'Drive card (disconnected, light)', render: driveCard('Disconnected', 'light') },
+  { name: 'Drive card (disconnected, dark)', render: driveCard('Disconnected', 'dark') },
+  { name: 'Drive card (recovery key, light)', render: driveCard('FirstConnectShowRecoveryKey', 'light', (c) => c['recoveryKey'].set('AAAA-BBBB-CCCC-DDDD-EEEE-FFFF')) },
+  { name: 'Drive card (recovery key, dark)', render: driveCard('FirstConnectShowRecoveryKey', 'dark', (c) => c['recoveryKey'].set('AAAA-BBBB-CCCC-DDDD-EEEE-FFFF')) },
+  { name: 'Drive card (ready, light)', render: driveCard('Ready', 'light') },
+  { name: 'Drive card (ready, dark)', render: driveCard('Ready', 'dark') },
+  { name: 'Drive card (unavailable, light)', render: driveCard('Unavailable', 'light') },
+  { name: 'Drive card (unavailable, dark)', render: driveCard('Unavailable', 'dark') },
+  { name: 'Drive card (connecting, light)', render: driveCard('Connecting', 'light') },
+  { name: 'Drive card (connecting, dark)', render: driveCard('Connecting', 'dark') },
+  { name: 'Drive card (needs enrolment, light)', render: driveCard('NeedsEnrolment', 'light') },
+  { name: 'Drive card (needs enrolment, dark)', render: driveCard('NeedsEnrolment', 'dark') },
+  { name: 'Drive card (error, light)', render: driveCard('Error', 'light', (c) => c['error'].set('driveConnect.failed')) },
+  { name: 'Drive card (error, dark)', render: driveCard('Error', 'dark', (c) => c['error'].set('driveConnect.failed')) },
   { name: 'Import a backup card', render: plain(ImportBackupCard, false) },
   { name: 'Offline maps card (areas saved)', render: offline(OfflineAreasCard, false) },
   { name: 'Offline maps dialog (open)', render: offline(OfflineSave, true) },
@@ -327,6 +383,15 @@ afterEach(() => {
 
 const fmt = (v: Violation[]) => v.map((x) => `[${x.rule}] ${x.message}`);
 
+describe('Drive a11y sweep coverage', () => {
+  it('includes Unavailable, Connecting, NeedsEnrolment and Error', () => {
+    const names = CASES.map((c) => c.name).join('\n').toLowerCase();
+    for (const state of ['unavailable', 'connecting', 'needs enrolment', 'error']) {
+      expect(names, state).toContain(`drive card (${state}`);
+    }
+  });
+});
+
 describe('accessibility sweep of the pages (TC-U-WEB-A11Y-3)', () => {
   for (const lang of ['en', 'hi', 'ta', 'te'] as const) {
     for (const c of CASES) {
@@ -340,7 +405,9 @@ describe('accessibility sweep of the pages (TC-U-WEB-A11Y-3)', () => {
           mouseOnly = watch.stop();
           const root = fixture.nativeElement as HTMLElement;
           found = audit(root, { page: isPage });
-          controls = root.querySelectorAll('button, a[href], input, select, textarea, dialog').length;
+          controls = root.querySelectorAll(
+            'button, a[href], input, select, textarea, dialog, [aria-labelledby], [role="status"]',
+          ).length;
         } catch (e) {
           watch.stop();
           throw e;

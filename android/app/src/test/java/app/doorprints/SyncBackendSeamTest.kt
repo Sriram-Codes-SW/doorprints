@@ -100,6 +100,15 @@ class SyncBackendSeamTest {
     /** An in-memory remote: records every call in order and answers with what a test set up. */
     private class FakeSyncBackend(override val mergeRule: MergeRule = SyncRules.serverMerge) : SyncBackend {
         val calls = mutableListOf<String>()
+
+        /** A snapshot backend (Drive): pushes are noted, [commitPushes] sends them (S4b-BL-118). */
+        override var stagesPushes = false
+        var commitFails = false
+        override suspend fun commitPushes() {
+            calls += "commitPushes"
+            if (commitFails) throw IOException("no connection")
+        }
+
         var behind = false
         var houses: List<HouseDto> = emptyList()
         var visits: List<VisitDto> = emptyList()
@@ -219,6 +228,31 @@ class SyncBackendSeamTest {
     }
 
     @Test
+    fun aSnapshotBackendMarksRowsCleanOnlyAfterItsCommit() = runBlocking {
+        db.houses().upsert(house(h1, at, dirty = true))
+        db.visits().upsert(VisitEntity(id = v1, houseId = h1, lat = 12.97, lon = 77.59, arrivedAt = at, updatedAt = at, dirty = true))
+        val backend = FakeSyncBackend().apply { stagesPushes = true; commitFails = true }
+        try {
+            repoWith(backend).sync(photosAllowed = true)
+            fail("the commit failed, the sync must too")
+        } catch (e: IOException) {
+            assertEquals("no connection", e.message)
+        }
+        // Pushed, but the snapshot was not confirmed: nothing may be marked clean.
+        assertEquals(listOf(h1), db.houses().dirty().map { it.id })
+        assertEquals(listOf(v1), db.visits().dirty().map { it.id })
+
+        backend.commitFails = false
+        backend.calls.clear()
+        val outcome = repoWith(backend).sync(photosAllowed = true)
+        assertEquals(SyncOutcome.Kind.OK, outcome.kind)
+        assertTrue(db.houses().dirty().isEmpty())
+        assertTrue(db.visits().dirty().isEmpty())
+        assertTrue(backend.calls.indexOf("commitPushes") > backend.calls.indexOf("pushVisit $v1"))
+        assertTrue(backend.calls.indexOf("commitPushes") < backend.calls.indexOf("housesSince 0"))
+    }
+
+    @Test
     fun aFirstSyncDoesNotAskWhetherTheRemoteIsBehind() = runBlocking {
         val backend = FakeSyncBackend()
         repoWith(backend).sync(photosAllowed = true)
@@ -255,7 +289,7 @@ class SyncBackendSeamTest {
         settings.savePhotoCursor(230)
         val backend = FakeSyncBackend().apply { behind = true }
         val outcome = repoWith(backend).sync(photosAllowed = true)
-        assertTrue(outcome.serverReset)
+        assertTrue(outcome.remoteReset)
         assertTrue(backend.calls.contains("pushHouse $h1"))
         assertEquals(
             listOf("housesSince 0", "visitsSince 0", "recordsSince 0", "photoChangesSince 0"),

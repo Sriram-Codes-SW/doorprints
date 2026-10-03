@@ -106,6 +106,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;600;700&family=Noto+Sans+Tamil:wght@400;600;700&family=Noto+Sans+Telugu:wght@400;600;700&display=swap">
+  <!--
+    Per-deployment Google API config: sets window.__DOORPRINTS__.googleClientId.
+    S4b-BL-117: CI populates web/public/config.js from env. If missing, loads default empty config.
+    Service worker does not cache this, so each load gets current config.
+  -->
+  <script src="config.js"></script>
 </head>
 <body>
   <!--
@@ -122,6 +128,7 @@
       <p>Available in English, हिन्दी, தமிழ் and తెలుగు.</p>
       <ul>
         <li><a href="about.html">About Doorprints, privacy and languages</a></li>
+        <li><a href="privacy.html">Privacy policy</a></li>
         <li><a href="https://sriram-codes-sw.github.io/doorprints/">User guide</a>
           (<a href="https://sriram-codes-sw.github.io/doorprints/hi/" hreflang="hi" lang="hi">हिन्दी</a>,
           <a href="https://sriram-codes-sw.github.io/doorprints/ta/" hreflang="ta" lang="ta">தமிழ்</a>,

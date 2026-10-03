@@ -1,0 +1,149 @@
+<!--
+  Copyright 2026 Sriram (Sriram-Codes-SW)
+
+  This file is part of Doorprints.
+
+  Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+  Public License as published by the Free Software Foundation, version 3 of the License.
+
+  Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+  warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+  details.
+
+  You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+  the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+
+  SPDX-License-Identifier: AGPL-3.0-only
+-->
+
+<div class="card">
+  <!-- Back up now section -->
+  <section class="section">
+    <h3>{{ 'driveBackups.backups' | t }}</h3>
+    <button
+      [disabled]="backupBusy()"
+      (click)="backupNow()"
+      class="btn btn-primary"
+      [attr.aria-busy]="backupBusy()"
+      [attr.aria-label]="'driveBackups.backUpNow' | t"
+    >
+      {{ 'driveBackups.backUpNow' | t }}
+    </button>
+
+    <!-- Backup result message -->
+    @if (backupMessage(); as msg) {
+      <div class="message message-success" role="status" aria-live="polite">
+        {{ msg.key | t: msg.params }}
+      </div>
+    }
+
+    <!-- Backup error -->
+    @if (backupError(); as err) {
+      <div class="message message-error" role="alert" aria-live="assertive">
+        {{ err | t }}
+      </div>
+    }
+
+    <!-- Shrink confirmation dialog -->
+    @if (shrinkBackupId()) {
+      <div class="shrink-confirmation" role="dialog" aria-labelledby="shrink-title" aria-live="polite">
+        <p id="shrink-title">{{ 'driveBackups.shrinkConfirmQuestion' | t }}</p>
+        <p class="shrink-note">{{ 'driveBackups.keepOlderBackupsNote' | t }}</p>
+        <button
+          [disabled]="backupBusy()"
+          (click)="cancelShrink()"
+          class="btn btn-secondary"
+          [attr.aria-label]="'driveBackups.keepOlderBackups' | t"
+        >
+          {{ 'driveBackups.keepOlderBackups' | t }}
+        </button>
+        <button
+          [disabled]="backupBusy()"
+          (click)="confirmShrink()"
+          class="btn btn-primary"
+          [attr.aria-label]="'driveBackups.confirmShrink' | t"
+        >
+          {{ 'driveBackups.confirmShrink' | t }}
+        </button>
+      </div>
+    }
+  </section>
+
+  <!-- Backups list section -->
+  <section class="section">
+    <!-- Loading state -->
+    @if (listState() === 'loading' && backups().length === 0) {
+      <div class="state-message loading" role="status" aria-live="polite">
+        {{ 'driveBackups.loadingState' | t }}
+      </div>
+    } @else if (listState() === 'error') {
+      <div class="state-message error" role="alert" aria-live="assertive">
+        @if (listError(); as err) {
+          {{ err | t }}
+        }
+        <button (click)="retryLoadBackups()" class="btn btn-sm btn-secondary">
+          {{ 'driveBackups.retry' | t }}
+        </button>
+      </div>
+    } @else if (backups().length === 0) {
+      <div class="state-message empty" role="status">
+        {{ 'driveBackups.emptyState' | t }}
+      </div>
+    } @else {
+      <table class="backups-table" role="grid" aria-label="{{ 'driveBackups.backups' | t }}">
+        <thead>
+          <tr>
+            <th scope="col">{{ 'driveBackups.date' | t }}</th>
+            <th scope="col">{{ 'driveBackups.time' | t }}</th>
+            <th scope="col">{{ 'driveBackups.houses' | t }}</th>
+            <th scope="col">{{ 'driveBackups.size' | t }}</th>
+            <th scope="col"></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (backup of backups(); track backup.id) {
+            <tr [attr.data-backup-id]="backup.id">
+              <td>{{ backup.createdAt | date: 'short' : undefined : i18n.lang() }}</td>
+              <td>{{ backup.createdAt | date: 'shortTime' : undefined : i18n.lang() }}</td>
+              <td>{{ backup.houses }}</td>
+              <td>{{ formatSize(backup.bytes) }}</td>
+              <td>
+                <button
+                  [disabled]="importBusy() !== null || backupBusy()"
+                  (click)="importBackup(backup.id)"
+                  class="btn btn-sm btn-secondary"
+                  [attr.aria-label]="'driveBackups.importBackup' | t"
+                  [attr.aria-busy]="importBusy() === backup.id"
+                >
+                  {{ 'driveBackups.import' | t }}
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </section>
+
+  <!-- Import error -->
+  @if (importError(); as err) {
+    <div class="message message-error" role="alert" aria-live="assertive">
+      {{ err | t }}
+    </div>
+  }
+
+  <!-- Auto backup section -->
+  <section class="section">
+    <label class="checkbox-label">
+      <input
+        type="checkbox"
+        [checked]="autoBackupEnabled()"
+        (change)="toggleAutoBackup($event)"
+        [disabled]="backupBusy()"
+        [attr.aria-label]="'driveBackups.autoBackup' | t"
+      />
+      <span>{{ 'driveBackups.autoBackup' | t }}</span>
+    </label>
+    <p class="help-text">{{ 'driveBackups.autoBackupHelp' | t }}</p>
+  </section>
+</div>

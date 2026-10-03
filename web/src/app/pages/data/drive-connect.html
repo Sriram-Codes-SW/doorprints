@@ -1,0 +1,106 @@
+<!--
+   Copyright 2026 Sriram (Sriram-Codes-SW)
+
+   This file is part of Doorprints.
+
+   Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+   Public License as published by the Free Software Foundation, version 3 of the License.
+
+   Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+   warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+   details.
+
+   You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+   the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+
+   SPDX-License-Identifier: AGPL-3.0-only
+-->
+
+<section class="card" aria-labelledby="drive-heading">
+  <h2 id="drive-heading">{{ 'driveConnect.heading' | t }}</h2>
+
+  @if (state() === 'Unavailable') {
+    <p>{{ 'driveConnect.unavailable' | t }}</p>
+  }
+
+  @if (state() === 'Disconnected') {
+    <p>{{ 'data.intro' | t }}</p>
+    <button type="button" class="btn btn-primary" (click)="onConnect()" [disabled]="busy()">
+      {{ 'driveConnect.connect' | t }}
+    </button>
+  }
+
+  @if (state() === 'Connecting') {
+    <p role="status">{{ 'driveConnect.connecting' | t }}</p>
+  }
+
+  @if (state() === 'FirstConnectShowRecoveryKey') {
+    <div class="card-section">
+      <h3>{{ 'driveConnect.firstConnect' | t }}</h3>
+      <p class="muted">{{ 'driveConnect.recoveryKeyNote' | t }}</p>
+      @if (recoveryKey(); as key) {
+        <div class="recovery-key-box">
+          <code>{{ key }}</code>
+          <button type="button" class="btn btn-sm" (click)="copyRecoveryKey(key)" [disabled]="busy()">
+            {{ keyCopied() ? ('driveConnect.recoveryKeyCopied' | t) : ('driveConnect.recoveryKeyCopy' | t) }}
+          </button>
+        </div>
+        <div class="warn-box">
+          <p>{{ 'driveConnect.recoveryKeyWarning' | t }}</p>
+        </div>
+        <label class="checkbox">
+          <input type="checkbox" [checked]="recoveryKeySaved()" (change)="toggleRecoverySaved()" />
+          <span>{{ 'driveConnect.confirmSavedRecoveryKey' | t }}</span>
+        </label>
+        <div class="actions">
+          <button
+            type="button"
+            class="btn btn-primary"
+            (click)="continueFromRecoveryKey()"
+            [disabled]="!recoveryKeySaved() || busy()"
+          >
+            {{ 'common.next' | t }}
+          </button>
+          <button type="button" class="btn" (click)="skipRecoveryKey()" [disabled]="busy()">
+            {{ 'common.skip' | t }}
+          </button>
+        </div>
+      }
+    </div>
+  }
+
+  @if (state() === 'NeedsRecoveryKey' || state() === 'NeedsEnrolment') {
+    <div class="card-section">
+      <h3>{{ 'driveConnect.needsEnrolmentHeading' | t }}</h3>
+      <p>{{ 'driveConnect.needsEnrolmentMessage' | t }}</p>
+      <app-drive-join (joined)="recoveryKey.set(null)" />
+      <app-drive-enrol />
+    </div>
+  }
+
+  @if (state() === 'Ready') {
+    <p role="status">{{ 'driveConnect.ready' | t }}</p>
+    <app-drive-backups (importFile)="onImportFromDrive($event)" />
+    <app-drive-sync />
+    <app-drive-passkey />
+    <app-drive-devices />
+    <app-drive-delete />
+    <div class="card-section">
+      <h3>{{ 'driveConnect.disconnect' | t }}</h3>
+      <button type="button" class="btn btn-danger" (click)="onDisconnect()" [disabled]="busy()">
+        {{ 'driveConnect.disconnect' | t }}
+      </button>
+    </div>
+  }
+
+  @if (state() === 'Error' || error()) {
+    <div class="error-box">
+      @if (error(); as err) {
+        <p>{{ err | t }}</p>
+      }
+      <button type="button" class="btn" (click)="onConnect()">
+        {{ 'common.retry' | t }}
+      </button>
+    </div>
+  }
+</section>

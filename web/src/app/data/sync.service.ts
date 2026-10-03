@@ -91,10 +91,10 @@ class SyncCancelled extends Error {}
 class SyncStopped extends Error {}
 /**
  * Thrown inside a push when the server's answer shows that its change log is behind this browser's cursors
- * ({@link serverWasReset}): the run resets and starts over as a full two-way sync (S4b-BL-20). A server that sends
+ * ({@link pushShowsReset}): the run resets and starts over as a full two-way sync (S4b-BL-20). A server that sends
  * its highest version in `GET /api/stats` is checked before the push instead ({@link serverBehind}).
  */
-class ServerReset extends Error {}
+class RemoteReset extends Error {}
 
 /**
  * Two-way sync between this browser's IndexedDB and the optional API-key server (S4-01).
@@ -167,7 +167,7 @@ export class SyncService {
    * When this browser last found its server reset (S4b-BL-20): the server's change log was behind the stored
    * cursors, so everything here was sent again and everything there fetched again. Your data says so; null otherwise.
    */
-  readonly serverResetAt = signal<string | null>(null);
+  readonly remoteResetAt = signal<string | null>(null);
   /** Mirrors `navigator.onLine`, so the Your data page can say "offline, N changes waiting" instead of an error. */
   readonly online = signal(typeof navigator === 'undefined' || navigator.onLine !== false);
 
@@ -195,7 +195,7 @@ export class SyncService {
           this.migration.set('unknown');
           this.lastError.set(null);
           this.lastErrorForced.set(false);
-          this.serverResetAt.set(null);
+          this.remoteResetAt.set(null);
         }
       });
     });
@@ -265,7 +265,7 @@ export class SyncService {
       this.lastSkipped.set(0);
       this.lastError.set(null);
       this.lastErrorForced.set(false);
-      this.serverResetAt.set(null);
+      this.remoteResetAt.set(null);
     }
     await this.store.setSetting(SETTING_KEYS.syncServer, current);
   }
@@ -398,7 +398,7 @@ export class SyncService {
   }
 
   /**
-   * Push, then pull. When a push shows that the server was reset ({@link ServerReset}), this browser is made to hold
+   * Push, then pull. When a push shows that the server was reset ({@link RemoteReset}), this browser is made to hold
    * nothing the server is assumed to have — every row dirty, every photo not uploaded, every cursor 0 — and the
    * pass starts again: a full re-push and a full re-pull (S4b-BL-20). With the cursors at 0 the check cannot fire
    * again in the same run (a version is never at or below 0), so it restarts once at most.
@@ -409,7 +409,7 @@ export class SyncService {
         const pushed = await this.push(gen);
         return { pushed, ...(await this.pull(gen)) };
       } catch (err: unknown) {
-        if (!(err instanceof ServerReset)) throw err;
+        if (!(err instanceof RemoteReset)) throw err;
       }
     }
     await this.resetForServer(gen);
@@ -422,7 +422,7 @@ export class SyncService {
    * {@link serverBehind}), asked at the start of every pass once something has been pulled: this sees a reset even
    * when this browser has nothing to push.
    * An older server without `maxSyncVersion`, or a failed request, is unknown (false); a real failure then shows in
-   * the push that follows, and the push answers are still checked ({@link serverWasReset}).
+   * the push that follows, and the push answers are still checked ({@link pushShowsReset}).
    */
   private async statsShowReset(gen: number): Promise<boolean> {
     const cursors = await this.store.cursors();
@@ -451,7 +451,7 @@ export class SyncService {
     this.live(gen);
     await this.store.resetCursors();
     this.live(gen);
-    this.serverResetAt.set(isoNow());
+    this.remoteResetAt.set(isoNow());
     // Heard on whatever page is open; Your data also shows it (data.serverReset), outside its live region.
     this.announcer.announce({ key: 'data.serverReset' });
   }
@@ -490,10 +490,39 @@ export class SyncService {
     if (gen !== this.generation) throw new SyncCancelled();
   }
 
+  /**
+   * Pushes local changes ({@link pushRows}). A backend that keeps whole snapshots (Drive, S4b-BL-118, `stagesPushes`)
+   * sends them together in `commitPushes`: the marks that say "sent" wait and run only once that returned (the file
+   * complete and read back), also when a later step failed, so what went is not sent again for nothing.
+   */
   private async push(gen: number): Promise<number> {
+    const afterCommit: Array<() => Promise<unknown>> = [];
+    const sent = async (mark: () => Promise<unknown>): Promise<void> => {
+      if (this.backend.stagesPushes) afterCommit.push(mark);
+      else await mark();
+    };
+    let failed = false;
+    try {
+      return await this.pushRows(gen, sent);
+    } catch (err) {
+      failed = true;
+      throw err;
+    } finally {
+      if (this.backend.stagesPushes && this.backend.commitPushes) {
+        try {
+          await firstValueFrom(this.backend.commitPushes());
+          for (const mark of afterCommit) await mark();
+        } catch (err) {
+          if (!failed) throw err;
+        }
+      }
+    }
+  }
+
+  private async pushRows(gen: number, sent: (mark: () => Promise<unknown>) => Promise<void>): Promise<number> {
     // The highest position this browser has reached in the server's change log. The server hands every accepted
     // write the next number of one sequence shared by houses, visits, photos and records, so an accepted push that
-    // comes back at or below it means the log went backwards: the server was reset (serverWasReset).
+    // comes back at or below it means the log went backwards: the server was reset (pushShowsReset).
     const cursors = await this.store.cursors();
     this.live(gen);
     const highest = Math.max(cursors.house, cursors.visit, cursors.photo, cursors.record);
@@ -522,37 +551,39 @@ export class SyncService {
     for (const house of houses) {
       const saved = await this.call(gen, () => this.backend.pushHouse(houseToDto(house)));
       this.live(gen);
-      if (serverWasReset(house.updatedAt, saved, highest)) throw new ServerReset();
-      await this.store.markHouseClean(house.id, house.updatedAt);
+      if (pushShowsReset(house.updatedAt, saved, highest)) throw new RemoteReset();
+      await sent(() => this.store.markHouseClean(house.id, house.updatedAt));
       this.live(gen);
       step();
     }
     for (const visit of visits) {
       const saved = await this.call(gen, () => this.backend.pushVisit(visitToDto(visit)));
       this.live(gen);
-      if (serverWasReset(visit.updatedAt, saved, highest)) throw new ServerReset();
-      await this.store.markVisitClean(visit.id, visit.updatedAt);
+      if (pushShowsReset(visit.updatedAt, saved, highest)) throw new RemoteReset();
+      await sent(() => this.store.markVisitClean(visit.id, visit.updatedAt));
       this.live(gen);
       step();
     }
     for (const record of records) {
       const saved = await this.call(gen, () => this.backend.pushRecord(recordToDto(record)));
       this.live(gen);
-      if (serverWasReset(record.updatedAt, saved, highest)) throw new ServerReset();
-      await this.store.markRecordClean(record.type, record.id, record.updatedAt);
+      if (pushShowsReset(record.updatedAt, saved, highest)) throw new RemoteReset();
+      await sent(() => this.store.markRecordClean(record.type, record.id, record.updatedAt));
       this.live(gen);
       step();
     }
     for (const photo of photoDeletes) {
       await this.call(gen, () => this.backend.deletePhoto(photo.id));
       this.live(gen);
-      await this.store.forgetPhoto(photo.id);
+      await sent(() => this.store.forgetPhoto(photo.id));
       this.live(gen);
       step();
     }
     for (const photo of photoUploads) {
       const bytes = photo.blob;
       if (!bytes) continue;
+      // The network policy (S4b-BL-128): photos wait for Wi-Fi unless the person allowed mobile data; they come again.
+      if (this.backend.photosAllowed && !this.backend.photosAllowed()) continue;
       await this.call(gen, () => this.backend.uploadPhoto(photo.houseId, bytes, photo.id));
       this.live(gen);
       // The stored row, not the one read before the upload: a meta edit made meanwhile stays.
@@ -568,9 +599,9 @@ export class SyncService {
       const saved = await this.call(gen, () => this.backend.pushPhotoMeta(photo.id, meta));
       this.live(gen);
       // The server keeps the newer meta and answers it: an older one of ours changes nothing there (last write wins).
-      await this.store.applyPhotoMetaFromServer(photo.id, photoMetaOf(saved ?? {}));
+      await sent(() => this.store.applyPhotoMetaFromServer(photo.id, photoMetaOf(saved ?? {})));
       this.live(gen);
-      await this.store.markPhotoMetaClean(photo.id, meta.metaUpdatedAt);
+      await sent(() => this.store.markPhotoMetaClean(photo.id, meta.metaUpdatedAt));
       this.live(gen);
       step();
     }
@@ -678,7 +709,7 @@ export class SyncService {
 
     // Records follow the visits' two decisions exactly; a row over the payload cap is untrusted and skipped.
     const records = new Map<string, RecordRecord>(
-      (await this.store.dirtyRecords()).map((r): [string, RecordRecord] => [recordKey(r), r]),
+      (await this.store.allRecords()).map((r): [string, RecordRecord] => [recordKey(r), r]),
     );
     this.live(gen);
     let recordCursor = cursors.record;
@@ -746,11 +777,19 @@ export class SyncService {
       const house = houses.get(change.houseId);
       if (!house || house.deleted) continue; // the house is gone or deleted here: nothing to attach the photo to
       const photoId = change.id;
+      if (this.backend.photosAllowed && !this.backend.photosAllowed()) {
+        // Waiting for Wi-Fi (S4b-BL-128): the phase ends here at the position reached, so the rest comes later.
+        photoCursor = cursorBefore;
+        break;
+      }
       let blob: Blob;
       try {
         // One request per photo: on a large first-run download this is what meets the server's rate limit, and
         // `call` waits out a short 429 and carries on instead of failing the whole pull.
-        blob = await this.call(gen, () => this.backend.downloadPhoto(photoId));
+        const got = await this.call(gen, () => this.backend.downloadPhotoIfAvailable ? this.backend.downloadPhotoIfAvailable(photoId) : this.backend.downloadPhoto(photoId));
+        // Null: this photo cannot be had (Drive: tampered, planted, a revoked writer); skipped, the backend reports it.
+        if (got === null) continue;
+        blob = got;
       } catch (err: unknown) {
         // Still refused (a long Retry-After, or the network went away): keep the position reached, so "Try again"
         // resumes at this photo rather than walking the whole photo list again. A cancelled run writes nothing.
@@ -868,7 +907,7 @@ export class SyncService {
  * ({@link serverBehind}), so a browser with nothing to send sees the reset too; with an older server the reset is
  * seen at the first push after it, the next time this browser has a change to send.
  */
-export function serverWasReset(
+export function pushShowsReset(
   sentUpdatedAt: string | null | undefined,
   answer: { syncVersion?: unknown; updatedAt?: string | null } | null | undefined,
   highestCursor: number,
