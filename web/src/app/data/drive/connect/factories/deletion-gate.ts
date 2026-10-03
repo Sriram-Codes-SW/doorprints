@@ -43,24 +43,53 @@ export class RealAuthorizationGate implements AuthorizationGate {
   }
 
   async isGenuine(token: AuthorizationToken): Promise<boolean> {
-    // Parse grant ID from proof
+    if (isHmacProof(token.proof)) {
+      if (token.level === 'L1') return false;
+      if (!(await this.webAuthorizer.verifyProof(token.operationId, token.issuedAtMs, token.proof))) return false;
+      const grantId = this.grantIdMatching(token.operationId, token.issuedAtMs);
+      if (grantId === null) return false;
+      return this.redeemIssued(grantId, token);
+    }
+    if (token.level !== 'L1') return false;
     const grantId = Number(token.proof);
     if (!Number.isInteger(grantId)) return false;
+    return this.redeemIssued(grantId, token);
+  }
 
+  async stillHolds(token: AuthorizationToken, action: DeletionAction): Promise<boolean> {
+    void action;
+    if (isHmacProof(token.proof)) {
+      if (!(await this.webAuthorizer.verifyProof(token.operationId, token.issuedAtMs, token.proof))) return false;
+      const grantId = this.grantIdMatching(token.operationId, token.issuedAtMs);
+      if (grantId === null) return false;
+      return this.fresh(this.issuedGrants.get(grantId)!, token.operationId);
+    }
+    const grantId = Number(token.proof);
+    if (!Number.isInteger(grantId)) return false;
     const grant = this.issuedGrants.get(grantId);
-    if (!grant) return false; // Grant never issued
+    if (!grant) return false;
+    return this.fresh(grant, token.operationId);
+  }
 
-    if (this.spent.has(grantId)) return false; // Grant already used
+  private grantIdMatching(operationId: string, issuedAtMs: number): number | null {
+    for (const [id, grant] of this.issuedGrants) {
+      if (grant.operationId === operationId && grant.issuedAtMs === issuedAtMs) return id;
+    }
+    return null;
+  }
 
-    // Check freshness
+  private fresh(grant: { operationId: string; issuedAtMs: number }, operationId: string): boolean {
     const age = this.clock() - grant.issuedAtMs;
     if (age < 0 || age > AUTHORIZATION_MAX_AGE_MS) return false;
+    return grant.operationId === operationId;
+  }
 
-    // Check operation binding
-    if (grant.operationId !== token.operationId) return false;
-
-    // The proof is still a grant id (HMAC-over-operationId is S4b-BL-135). Redeem looks up what WebAuthorizer
-    // issued after the PRF open, so a forged id registered in-page without that open fails.
+  /** Redeem the grant WebAuthorizer issued. A grant only registered in-page is NOT_ISSUED. */
+  private redeemIssued(grantId: number, token: AuthorizationToken): boolean {
+    const grant = this.issuedGrants.get(grantId);
+    if (!grant) return false;
+    if (this.spent.has(grantId)) return false;
+    if (!this.fresh(grant, token.operationId)) return false;
     const policyAction = toPolicyAction(grant.action);
     const stub: WebGrant = {
       id: grantId,
@@ -76,27 +105,11 @@ export class RealAuthorizationGate implements AuthorizationGate {
       grantedAtMs: grant.issuedAtMs,
     };
     if (this.webAuthorizer.redeem(stub, policyAction) !== 'VALID') return false;
-
-    // Mark as spent (one-use)
     this.spent.add(grantId);
     return true;
   }
+}
 
-  async stillHolds(token: AuthorizationToken, action: DeletionAction): Promise<boolean> {
-    // Check freshness and that the grant hasn't been revoked
-    const grantId = Number(token.proof);
-    if (!Number.isInteger(grantId)) return false;
-
-    const grant = this.issuedGrants.get(grantId);
-    if (!grant) return false;
-
-    // Check freshness window (60 seconds)
-    const age = this.clock() - grant.issuedAtMs;
-    if (age < 0 || age > AUTHORIZATION_MAX_AGE_MS) return false;
-
-    // Check operation binding
-    if (grant.operationId !== token.operationId) return false;
-
-    return true;
-  }
+function isHmacProof(proof: string): boolean {
+  return /^[0-9a-f]{64}$/.test(proof);
 }

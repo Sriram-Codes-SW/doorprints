@@ -107,11 +107,13 @@ describe('RealAuthorizationGate', () => {
     const auth = await webAuthorizer.authorize('DELETE_ALL_BACKUPS', web);
     if (auth.kind !== 'GRANTED') throw new Error(`not granted: ${JSON.stringify(auth)}`);
     gate.registerGrant(auth.grant.id, { type: 'allBackups' }, operationId, auth.grant.grantedAtMs);
+    const proof = await webAuthorizer.proofFor(operationId, auth.grant.grantedAtMs);
+    if (!proof) throw new Error('no deletion proof');
     return {
       level: 'L2',
       issuedAtMs: auth.grant.grantedAtMs,
       operationId,
-      proof: String(auth.grant.id),
+      proof,
     };
   }
 
@@ -135,6 +137,23 @@ describe('RealAuthorizationGate', () => {
 
     const genuine2 = await gate.isGenuine(token);
     expect(genuine2).toBe(false);
+  });
+
+  it('(b3) a forged 64-hex proof registered in-page cannot pass isGenuine', async () => {
+    gate.registerGrant(44, { type: 'allBackups' }, 'del-test0000000000000000000', clock());
+    const token: AuthorizationToken = {
+      level: 'L2',
+      issuedAtMs: clock(),
+      operationId: 'del-test0000000000000000000',
+      proof: 'ab'.repeat(32),
+    };
+    expect(await gate.isGenuine(token)).toBe(false);
+  });
+
+  it('(b4) an L2 token whose proof is only the grant id is rejected', async () => {
+    const token = await issuedL2('del-test0000000000000000000');
+    expect(await gate.isGenuine({ ...token, proof: '1' })).toBe(false);
+    expect(await gate.isGenuine(token)).toBe(true);
   });
 
   it('(b2) a grant id registered in-page without the PRF cannot pass isGenuine', async () => {

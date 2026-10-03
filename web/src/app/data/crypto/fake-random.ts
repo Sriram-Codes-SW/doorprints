@@ -60,6 +60,9 @@ export class FakeRandomProvider implements CryptoProvider {
   aesKey(raw: Uint8Array) {
     return this.real.aesKey(raw);
   }
+  adoptAes(key: CryptoKey) {
+    return this.real.adoptAes(key);
+  }
   aesGcmSeal(key: AesKey, nonce: Uint8Array, aad: Uint8Array, pt: Uint8Array) {
     return this.real.aesGcmSeal(key, nonce, aad, pt);
   }

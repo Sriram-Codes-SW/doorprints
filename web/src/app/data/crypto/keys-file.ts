@@ -19,8 +19,8 @@
 import { b64, concat, constantTimeEquals, equalBytes, unb64, utf8 } from './bytes';
 import { CanonicalJson, exactObj, int, isObj, MAX_SAFE, parseJson, str } from './canonical-json';
 import { CryptoError, sha256Of } from './crypto-provider';
-import type { CryptoProvider, P256PrivateKey } from './crypto-provider';
-import { chainWrapKey, FOLDER_KEY_SIZE, HPKE_INFO, keyId, kidOf, macKey, WrapAad } from './folder-key';
+import type { AesKey, CryptoProvider, P256PrivateKey } from './crypto-provider';
+import { aesFromBase, chainWrapKey, deriveFolderBits, FOLDER_KEY_SIZE, hmacFromBase, HPKE_INFO, importFolderBase, kidOf, WrapAad } from './folder-key';
 import type { FolderKeys } from './folder-key';
 import { Hpke } from './hpke';
 import type { RecoveryKey } from './recovery-key';
@@ -197,17 +197,34 @@ export function validName(name: string): boolean {
 /** Module-private: only this file can build an `OpenedKeys` or move a pin. */
 const TOKEN: unique symbol = Symbol('keys-file');
 
-/** An opened `keys.json` and the folder keys it chains to (Kotlin `OpenedKeys`); only `KeysFile` makes one. */
+/**
+ * An opened `keys.json` (Kotlin `OpenedKeys`); only `KeysFile` makes one.
+ * Each folder key is a non-extractable HKDF base (S4b-BL-132). A list this object just wrote still holds the raw
+ * key for the next wrap (add a device, a new epoch). A list opened from a wrap does not: `rawFolderKey` opens that
+ * wrap again, and the bytes are the caller's to overwrite.
+ */
 export class OpenedKeys implements FolderKeys {
-  private readonly keys = new Map<number, Uint8Array>();
+  private readonly held = new Map<number, CryptoKey>();
+  /** Set only for a list this object just wrote. An opened list leaves this null. */
+  private raw: Uint8Array | null;
+  private readonly reveal: (() => Promise<Uint8Array>) | null;
   private readonly p: CryptoProvider;
   readonly body: KeysBody;
 
-  constructor(token: typeof TOKEN, p: CryptoProvider, body: KeysBody, currentKey: Uint8Array) {
+  constructor(
+    token: typeof TOKEN,
+    p: CryptoProvider,
+    body: KeysBody,
+    base: CryptoKey,
+    raw: Uint8Array | null,
+    reveal: (() => Promise<Uint8Array>) | null,
+  ) {
     if (token !== TOKEN) throw new KeysError('INVALID_ENTRY', 'OpenedKeys is made by KeysFile only');
     this.p = p;
     this.body = body;
-    this.keys.set(body.epoch, currentKey.slice());
+    this.held.set(body.epoch, base);
+    this.raw = raw;
+    this.reveal = reveal;
   }
 
   get epoch(): number {
@@ -217,32 +234,89 @@ export class OpenedKeys implements FolderKeys {
     return this.body.revision;
   }
 
+  /** Whether this object still holds the raw folder key (a list it just wrote). An opened list does not. */
+  retainsRaw(): boolean {
+    return this.raw !== null;
+  }
+
+  /**
+   * The raw key of a list this object just wrote. An opened list has none: use `rawFolderKey`, which opens the wrap
+   * again.
+   */
   currentFolderKey(): Uint8Array {
-    return this.keys.get(this.body.epoch)!.slice();
+    if (!this.raw) throw new KeysError('INVALID_ENTRY', 'this folder key is held only as a non-extractable key');
+    return this.raw.slice();
+  }
+
+  /** A fresh copy of the current folder key. The caller overwrites it. Not retained on an opened list. */
+  async rawFolderKey(): Promise<Uint8Array> {
+    if (this.raw) return this.raw.slice();
+    if (!this.reveal) throw new KeysError('INVALID_ENTRY', 'no folder key');
+    return this.reveal();
+  }
+
+  async keyIdAt(epoch: number = this.body.epoch): Promise<Uint8Array> {
+    const base = await this.baseAt(epoch);
+    if (!base) throw new KeysError('CHAIN_BROKEN', `epoch ${epoch}`);
+    return deriveFolderBits(base, 'doorprints/dpx1/key-id');
+  }
+
+  async contentWrapAes(epoch: number = this.body.epoch): Promise<AesKey | null> {
+    const base = await this.baseAt(epoch);
+    return base ? aesFromBase(this.p, base, 'doorprints/dpx1/content-wrap') : null;
+  }
+
+  async hmacUnder(epoch: number, info: string, data: Uint8Array): Promise<Uint8Array> {
+    const base = await this.baseAt(epoch);
+    if (!base) throw new KeysError('CHAIN_BROKEN', `epoch ${epoch}`);
+    return hmacFromBase(base, info, data);
   }
 
   async folderKey(epoch: number): Promise<Uint8Array | null> {
     if (!Number.isInteger(epoch) || epoch < 1 || epoch > this.body.epoch) return null;
-    for (let e = this.body.epoch; e > epoch; e--) {
-      if (this.keys.has(e - 1)) continue;
-      const link = this.body.chain.find((c) => c.epoch === e);
-      if (!link) throw new KeysError('CHAIN_BROKEN', `no link for epoch ${e}`);
-      let prev: Uint8Array;
-      try {
-        prev = await this.p.aesGcmOpen(await chainWrapKey(this.p, this.keys.get(e)!), link.nonce, WrapAad.chain(e), link.ct);
-      } catch {
-        throw new KeysError('CHAIN_BROKEN', `link of epoch ${e}`);
-      }
-      if (prev.length !== FOLDER_KEY_SIZE) throw new KeysError('CHAIN_BROKEN', `link of epoch ${e}`);
-      this.keys.set(e - 1, prev);
-    }
-    return this.keys.get(epoch)!.slice();
+    if (epoch === this.body.epoch) return this.rawFolderKey();
+    await this.ensure(epoch);
+    return this.openLink(epoch + 1);
   }
 
-  /** Best-effort: overwrites the folder keys held by this object. */
+  /** Best-effort: drops the raw copy. The HKDF bases are not exportable, so there is nothing further to overwrite. */
   wipe(): void {
-    for (const k of this.keys.values()) k.fill(0);
-    this.keys.clear();
+    this.raw?.fill(0);
+    this.raw = null;
+    this.held.clear();
+  }
+
+  private async baseAt(epoch: number): Promise<CryptoKey | null> {
+    if (!Number.isInteger(epoch) || epoch < 1 || epoch > this.body.epoch) return null;
+    await this.ensure(epoch);
+    return this.held.get(epoch) ?? null;
+  }
+
+  private async ensure(epoch: number): Promise<void> {
+    for (let e = this.body.epoch; e > epoch; e--) {
+      if (this.held.has(e - 1)) continue;
+      const prev = await this.openLink(e);
+      if (prev.length !== FOLDER_KEY_SIZE) throw new KeysError('CHAIN_BROKEN', `link of epoch ${e}`);
+      try {
+        this.held.set(e - 1, await importFolderBase(prev));
+      } finally {
+        prev.fill(0);
+      }
+    }
+  }
+
+  private async openLink(epoch: number): Promise<Uint8Array> {
+    const parent = this.held.get(epoch);
+    const link = this.body.chain.find((c) => c.epoch === epoch);
+    if (!parent || !link) throw new KeysError('CHAIN_BROKEN', `no link for epoch ${epoch}`);
+    let prev: Uint8Array;
+    try {
+      prev = await this.p.aesGcmOpen(await aesFromBase(this.p, parent, 'doorprints/dpx1/chain-wrap'), link.nonce, WrapAad.chain(epoch), link.ct);
+    } catch {
+      throw new KeysError('CHAIN_BROKEN', `link of epoch ${epoch}`);
+    }
+    if (prev.length !== FOLDER_KEY_SIZE) throw new KeysError('CHAIN_BROKEN', `link of epoch ${epoch}`);
+    return prev;
   }
 }
 
@@ -318,9 +392,10 @@ export class KeysFile {
     if (!entry) throw new KeysError('NOT_ENROLLED', 'this device is not in the list');
     const folderKey = await this.unwrap(entry.wrap, device, body.epoch, kid);
     try {
-      await this.checkMac(body, mac, folderKey);
+      const base = await importFolderBase(folderKey);
+      await this.checkMacBase(body, mac, base);
       if (trusted && !constantTimeEquals(folderKey, trusted)) throw new KeysError('PIN_MISMATCH', 'not the folder key received at enrolment');
-      const opened = new OpenedKeys(TOKEN, this.p, body, folderKey);
+      const opened = new OpenedKeys(TOKEN, this.p, body, base, null, () => this.unwrap(entry.wrap, device, body.epoch, kid));
       await guard.accept(TOKEN, opened, trust);
       return opened;
     } finally {
@@ -346,8 +421,9 @@ export class KeysFile {
     if (!equalBytes(listed.publicKey, pair.publicKey)) throw new KeysError('RECOVERY_MISMATCH', 'another recovery key');
     const folderKey = await this.unwrap(listed.wrap, pair, body.epoch, listed.kid);
     try {
-      await this.checkMac(body, mac, folderKey);
-      const opened = new OpenedKeys(TOKEN, this.p, body, folderKey);
+      const base = await importFolderBase(folderKey);
+      await this.checkMacBase(body, mac, base);
+      const opened = new OpenedKeys(TOKEN, this.p, body, base, null, () => this.unwrap(listed.wrap, pair, body.epoch, listed.kid));
       let bottom: Uint8Array | null = null;
       try {
         bottom = await opened.folderKey(listed.anchorEpoch);
@@ -384,7 +460,7 @@ export class KeysFile {
     if (body.devices.some((d) => equalBytes(d.kid, kid)) || isRecovery(kid)) throw new KeysError('ALREADY_ENROLLED', 'already listed');
     if (!validName(device.name)) throw new KeysError('INVALID_ENTRY', 'device name');
     const revision = nextRevision(body);
-    const folderKey = opened.currentFolderKey();
+    const folderKey = await opened.rawFolderKey();
     try {
       const entry: DeviceEntry = {
         kid,
@@ -421,7 +497,7 @@ export class KeysFile {
     const revision = 1;
     const remaining = body.devices.filter((d) => !revokeKid || !equalBytes(d.kid, revokeKid));
     const epoch = body.epoch + 1;
-    const oldKey = opened.currentFolderKey();
+    const oldKey = await opened.rawFolderKey();
     const newKey = this.p.randomBytes(FOLDER_KEY_SIZE);
     try {
       const chainNonce = this.p.randomBytes(12);
@@ -472,24 +548,20 @@ export class KeysFile {
     return folderKey;
   }
 
-  private async checkMac(body: KeysBody, mac: Uint8Array, folderKey: Uint8Array): Promise<void> {
-    if (!constantTimeEquals(await this.mac(folderKey, body), mac)) throw new KeysError('MAC_INVALID', 'MAC');
+  private async checkMacBase(body: KeysBody, mac: Uint8Array, base: CryptoKey): Promise<void> {
+    if (!constantTimeEquals(await this.macBase(base, body), mac)) throw new KeysError('MAC_INVALID', 'MAC');
   }
 
-  private async mac(folderKey: Uint8Array, body: KeysBody): Promise<Uint8Array> {
-    const k = await macKey(this.p, folderKey);
-    try {
-      return await this.p.hmacSha256(k, concat(utf8(KEYS_FORMAT), new Uint8Array([0]), bodyJson(body)));
-    } finally {
-      k.fill(0);
-    }
+  private macBase(base: CryptoKey, body: KeysBody): Promise<Uint8Array> {
+    return hmacFromBase(base, 'doorprints/dpx1/dir', concat(utf8(KEYS_FORMAT), new Uint8Array([0]), bodyJson(body)));
   }
 
   private async write(body: KeysBody, folderKey: Uint8Array): Promise<WrittenKeys> {
     this.checkRules(body);
-    const bytes = encode(body, await this.mac(folderKey, body));
+    const base = await importFolderBase(folderKey);
+    const bytes = encode(body, await this.macBase(base, body));
     if (bytes.length > MAX_FILE) throw new KeysError('TOO_LARGE', `the list would be ${bytes.length} bytes`);
-    return { bytes, opened: new OpenedKeys(TOKEN, this.p, body, folderKey) };
+    return { bytes, opened: new OpenedKeys(TOKEN, this.p, body, base, folderKey.slice(), null) };
   }
 
   /** @internal Parses and checks the structure and every entry; the MAC is checked once the key is known. */
@@ -728,23 +800,19 @@ export class KeysGuard {
       if (next.revision === seen.revision && !equalBytes(next.bodyHash, seen.bodyHash)) throw new KeysError('FORK_DETECTED', `another list at revision ${next.revision}`);
       return;
     }
-    let pinned: Uint8Array | null = null;
+    let id: Uint8Array;
     try {
-      pinned = await opened.folderKey(seen.epoch);
+      id = await opened.keyIdAt(seen.epoch);
     } catch (e) {
-      if (!(e instanceof KeysError)) throw e;
+      if (e instanceof KeysError) throw new KeysError('PIN_MISMATCH', `the chain does not reach epoch ${seen.epoch}`);
+      throw e;
     }
-    if (!pinned) throw new KeysError('PIN_MISMATCH', `the chain does not reach epoch ${seen.epoch}`);
-    const id = await keyId(this.p, pinned);
-    pinned.fill(0);
     if (!constantTimeEquals(id, seen.keyId)) throw new KeysError('PIN_MISMATCH', 'the chain does not end at the pinned key');
   }
 }
 
 async function watermarkOf(p: CryptoProvider, opened: OpenedKeys): Promise<KeysWatermark> {
-  const key = opened.currentFolderKey();
-  const id = await keyId(p, key);
-  key.fill(0);
+  const id = await opened.keyIdAt();
   return { epoch: opened.epoch, revision: opened.revision, keyId: id, bodyHash: sha256Of(p, bodyJson(opened.body)) };
 }
 

@@ -150,11 +150,14 @@ export async function openWithPrf(
   p: CryptoProvider,
   prf: PrfAuthenticator,
   blob: SealedBlob,
+  /** Sees the PRF output before it is overwritten. Used to derive the deletion-proof key (S4b-BL-135). */
+  onPrf?: (output: Uint8Array) => Promise<void>,
 ): Promise<SealOpen> {
   if (blob.v !== 1) return { ok: false, reason: "FAILED" };
   const r = await prf.evaluate(blob.credentialId, prfInput(blob.salt));
   if (r.kind !== "OK") return { ok: false, reason: r.kind };
   try {
+    if (onPrf) await onPrf(r.output);
     const key = await sealKey(p, r.output, blob.salt);
     return {
       ok: true,

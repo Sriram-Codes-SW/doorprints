@@ -179,13 +179,9 @@ export class DrivePhotos implements PhotoRefs {
   }
 
   private async encrypt(photoId: string, plain: Uint8Array, sha: string, keys: OpenedKeys): Promise<Pending> {
-    const folderKey = keys.currentFolderKey();
-    let out;
-    try {
-      out = await this.dpx.encryptBytes(folderKey, keys.epoch, this.session.deviceKid, PHOTO, plain);
-    } finally {
-      folderKey.fill(0);
-    }
+    const wrap = await keys.contentWrapAes();
+    if (!wrap) throw new DriveError('BAD_REQUEST', 0, null, 'keys');
+    const out = await this.dpx.encryptBytesWithAes(wrap, keys.epoch, this.session.deviceKid, PHOTO, plain);
     if (hex(out.result.plaintextSha256) !== sha) throw new Error('plaintext hash');
     return { photoId, plainSha: sha, cipher: out.file, cipherSha: hex(out.result.ciphertextSha256), token: this.token(), session: null, uploaded: null };
   }

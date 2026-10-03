@@ -22,9 +22,46 @@
 
   @if (role() === 'choose') {
     <div class="actions">
-      <button type="button" class="btn btn-primary" (click)="becomeNewcomer()">{{ 'driveEnrol.newcomer' | t }}</button>
+      <button type="button" class="btn btn-primary" (click)="becomeQrNewcomer()">{{ 'driveEnrol.showQr' | t }}</button>
+      <button type="button" class="btn" (click)="becomeQrApprover()">{{ 'driveEnrol.scanQr' | t }}</button>
+      <button type="button" class="btn" (click)="becomeNewcomer()">{{ 'driveEnrol.newcomer' | t }}</button>
       <button type="button" class="btn" (click)="becomeApprover()">{{ 'driveEnrol.approver' | t }}</button>
     </div>
+  }
+
+  @if (role() === 'qr-new') {
+    <p>{{ 'driveEnrol.qrNewHelp' | t }}</p>
+    @if (qr(); as rows) {
+      <div class="qr" role="img" [attr.aria-label]="'driveEnrol.showQr' | t">
+        @for (row of rows; track $index) {
+          <div class="qr-row">
+            @for (cell of row; track $index) {
+              <span class="qr-cell" [class.on]="cell"></span>
+            }
+          </div>
+        }
+      </div>
+    }
+    <button type="button" class="btn" (click)="copyRequest()">
+      {{ copied() ? ('driveEnrol.copied' | t) : ('driveEnrol.copyLink' | t) }}
+    </button>
+    <label for="enrol-qr-reply">{{ 'driveEnrol.qrReplyLabel' | t }}</label>
+    <textarea id="enrol-qr-reply" class="mono" rows="4" [value]="replyText()" (input)="setReply($event)"></textarea>
+    <button type="button" class="btn btn-primary" (click)="joinFromQr()">{{ 'driveEnrol.joinNow' | t }}</button>
+  }
+
+  @if (role() === 'qr-old') {
+    <p>{{ 'driveEnrol.qrOldHelp' | t }}</p>
+    <label for="enrol-qr-paste">{{ 'driveEnrol.pasteOffer' | t }}</label>
+    <textarea id="enrol-qr-paste" class="mono" rows="4" [value]="requestText()" (input)="setRequest($event)"></textarea>
+    @if (camera()) {
+      <button type="button" class="btn" (click)="useCamera()">{{ 'driveEnrol.camera' | t }}</button>
+    }
+    <button type="button" class="btn btn-primary" (click)="approveQr()">{{ 'driveEnrol.approveQr' | t }}</button>
+    @if (replyText()) {
+      <label for="enrol-qr-out">{{ 'driveEnrol.qrReplyLabel' | t }}</label>
+      <textarea id="enrol-qr-out" class="mono" rows="4" [value]="replyText()" readonly></textarea>
+    }
   }
 
   @if (role() === 'newcomer') {
