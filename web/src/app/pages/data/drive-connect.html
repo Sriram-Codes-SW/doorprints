@@ -95,9 +95,7 @@
 
   @if (state() === 'Error' || error()) {
     <div class="error-box">
-      @if (error(); as err) {
-        <p>{{ err | t }}</p>
-      }
+      <p>{{ shownError() | t }}</p>
       <button type="button" class="btn" (click)="onConnect()">
         {{ 'common.retry' | t }}
       </button>
