@@ -70,6 +70,11 @@ export class DriveConnectComponent implements OnDestroy {
   protected readonly keyCopied = signal(false);
   protected readonly error = signal<TKey | null>(null);
 
+  /** The sentence in the error box: the specific problem when we have one, otherwise the generic line. */
+  protected shownError(): TKey {
+    return this.error() ?? 'driveConnect.failed';
+  }
+
   ngOnDestroy(): void {
     if (this.copyTimer !== undefined) clearTimeout(this.copyTimer);
   }
@@ -85,14 +90,24 @@ export class DriveConnectComponent implements OnDestroy {
     try {
       const result = await this.service.connect();
       if (result.state === 'Disconnected' && !result.error) {
+        // No folder yet: create one. A failure comes back on the result (the service is already Error) and must
+        // be copied here. Leaving the signal null shows only Try again, with no sentence.
         const created = await this.service.createFolder();
-        this.recoveryKey.set(created.recoveryKey || null);
-        this.recoveryKeySaved.set(false);
+        if (created.error) {
+          this.error.set(created.error);
+        } else if (created.recoveryKey) {
+          this.recoveryKey.set(created.recoveryKey);
+          this.recoveryKeySaved.set(false);
+        } else if (created.state === 'Error') {
+          this.error.set('driveConnect.failed');
+        }
       } else if (result.recoveryKey) {
         this.recoveryKey.set(result.recoveryKey);
         this.recoveryKeySaved.set(false);
       } else if (result.error) {
         this.error.set(result.error);
+      } else if (result.state === 'Error') {
+        this.error.set('driveConnect.failed');
       }
     } catch {
       this.error.set('driveConnect.failed');

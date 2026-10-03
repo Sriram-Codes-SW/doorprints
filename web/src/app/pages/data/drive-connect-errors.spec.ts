@@ -202,6 +202,35 @@ describe('DriveConnectService error states on the card (en and hi)', () => {
       shownIsTranslated(host, i18n, 'driveProblem.OFFLINE');
     });
 
+    it(`${lang}: folder creation after no folder shows that problem, not a blank Try again`, async () => {
+      const backup = stubBackup({
+        connect: async () => ({ kind: 'NO_FOLDER' }),
+        createFolder: async () => ({ connection: { kind: 'ERROR', problem: new DriveProblem('CRYPTO_UNAVAILABLE') }, recoveryKey: null }),
+      });
+      const { host, i18n, component, fixture } = await renderConnect(makeService('client', backup), lang);
+      await component.onConnect();
+      await flush();
+      fixture.detectChanges();
+      shownIsTranslated(host, i18n, 'driveProblem.CRYPTO_UNAVAILABLE');
+      const box = host.querySelector('.error-box');
+      expect(box?.querySelector('p')?.textContent).toContain(i18n.t('driveProblem.CRYPTO_UNAVAILABLE'));
+      expect(box?.textContent).toContain(i18n.t('common.retry'));
+    });
+
+    it(`${lang}: a thrown folder-creation error shows the generic sentence, never the throw text`, async () => {
+      const leak = 'secret stack from folder create';
+      const backup = stubBackup({
+        connect: async () => ({ kind: 'NO_FOLDER' }),
+        createFolder: async () => { throw new Error(leak); },
+      });
+      const { host, i18n, component, fixture } = await renderConnect(makeService('client', backup), lang);
+      await component.onConnect();
+      await flush();
+      fixture.detectChanges();
+      shownIsTranslated(host, i18n, 'driveConnect.failed', leak);
+      expect(host.querySelector('.error-box p')?.textContent).toContain(i18n.t('driveConnect.failed'));
+    });
+
     it(`${lang}: a mistyped recovery key shows the translated invalid-format copy`, async () => {
       const backup = stubBackup({
         connect: async () => ({ kind: 'NEEDS_ENROLMENT', recoveryAvailable: true }),
@@ -238,6 +267,20 @@ describe('DriveConnectService error states on the card (en and hi)', () => {
       shownIsTranslated(host, i18n, 'driveConnect.failed', leak);
     });
   }
+
+  it('a first folder with a recovery key is shown, not an error', async () => {
+    const key = 'AAAA-BBBB-CCCC-DDDD-EEEE-FFFF';
+    const backup = stubBackup({
+      connect: async () => ({ kind: 'NO_FOLDER' }),
+      createFolder: async () => ({ connection: { kind: 'READY', folder: FOLDER }, recoveryKey: { display: key } as never }),
+    });
+    const { host, component, fixture } = await renderConnect(makeService('client', backup));
+    await component.onConnect();
+    await flush();
+    fixture.detectChanges();
+    expect(host.textContent).toContain(key);
+    expect(host.querySelector('.error-box')).toBeNull();
+  });
 
   it('connect() READY remembers the folder so listBackups is not "not connected"', async () => {
     const backup = stubBackup({
