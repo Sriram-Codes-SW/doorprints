@@ -181,8 +181,14 @@ export class LocationMap implements AfterViewInit, OnDestroy {
     this.map = map;
     this.marker = marker;
 
-    this.resizeObserver = new ResizeObserver(() => map.resize());
-    this.resizeObserver.observe(container);
+    // jsdom has no ResizeObserver. createMlMap usually returns null there (no WebGL 2), so this line is never
+    // reached. The Plan page spec replaces maplibre-gl for the shared test chunk with a map that does construct,
+    // and the unit-test runner does not isolate files, so a later spec that opens this map throws — which spec
+    // depends on file order. A browser has ResizeObserver, and the map still follows its box there.
+    if (typeof ResizeObserver !== 'undefined') {
+      this.resizeObserver = new ResizeObserver(() => map.resize());
+      this.resizeObserver.observe(container);
+    }
   }
 
   protected retry(): void {
