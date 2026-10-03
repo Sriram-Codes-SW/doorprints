@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Design of Google sign-in for backup, automatic sync, deletion and sharing through each person's own Google Drive (N13 3b, D-28) |
-| Version | 0.21 |
+| Version | 0.22 |
 | Date | 2026-10-03 |
 | Author | Claude (Code), lead |
 | Status | **Decided by the owner on 2026-10-02** (§6, §6.1: "Let us implement it. After real world use, we can change as needed."); [03](03-design.md) ADR-33. Built so far: S4b-BL-70, S4b-BL-115, S4b-BL-125, S4b-BL-124 (the runbook incidents, [08](08-operations-runbook.md) IR-11..IR-13), and the **website** version 1 cards (draft PR #118): connect, backups, sync, photos on Wi-Fi, L1 on the site, L2/L3 only with a PRF-sealed passkey whose proof is an HMAC, 8-digit pairing and QR enrolment (paste, or the camera when the browser can scan), non-extractable folder keys, `config.js` from the repository variable `GOOGLE_OAUTH_WEB_CLIENT_ID`. Android and iPhone Drive UI is paused. Version 1 is §1.6; the tickets are S4b-BL-70, -73, -115..119, -121, -122, -124..128 and -130 ([10](10-sprint-log.md) §12.7), deferred S4b-BL-120 and -129; QR on the phones and the phones' HMAC proof stay open with S4b-BL-134 and S4b-BL-135; the order is §7 and [14](14-lead-backlog-and-handoff.md) N17 |
@@ -33,6 +33,7 @@
 | 0.19 | 2026-10-03 | Cursor Agent, lead | **Website Drive card, leftover sentences.** A rolled-back key list stays refused; the sentence and *Try again* agree that the same list is read again. A `keys.json` that does not parse, and this browser has no pin, is not treated as another device's backups. A browser that cannot encrypt is not offered *Try again* in that browser. An unknown failure inside `connect()` is a connect failure, not a backup that could not be prepared. No recovery key keeps the enrol card. When this browser's own upload is pinned after the page died before the recovery key was shown, the card says that once and does not store the key. |
 | 0.20 | 2026-10-03 | Cursor Agent, lead | **§10.4:** website passkey registration lists ES256 (−7) then RS256 (−257) and requires a discoverable credential. Windows Hello refuses a list that omits RS256 before it shows a prompt. A credential is kept only when its PRF output can seal the deletion secret. Cancelling leaves *Set up a passkey* and says the prompt was cancelled. Any other refusal shows a sentence and leaves that button, unless this browser has no platform authenticator. |
 | 0.21 | 2026-10-03 | Cursor Agent, lead | **§10.4:** the create ceremony evaluates the PRF (`prf.eval`), so a Windows Hello PIN can return the output in that same prompt. `prf.enabled` is not success and is not a reason to stop. A missing 32-byte output is not stored. The card then says the passkey did not return the PRF output needed to seal deletions, and leaves *Set up a passkey*. |
+| 0.22 | 2026-10-03 | Cursor Agent, lead | **§10.4:** the 32-byte result has to come from the credential just created, with the assertion's UV flag set. An empty or all-zero output, the salt, the label, or the client-side SHA-256 of the PRF input is not stored. An output from a passkey already stored in the browser is not success. |
 
 **The owner's words (2026-10-02).** "Google Sign-In is to make a secure backup and restore drive and if possible to
 make it shareable to others using the same app/website. The backup can be time synced or manual with possibility of
@@ -1058,7 +1059,11 @@ select_account), so it is not a check of who is at the keyboard and is not used 
   create evaluates the PRF (`extensions.prf.eval`), so a Windows Hello PIN can return the 32-byte output in that
   ceremony. `prf.enabled` is not that output: Windows Hello can report it false after the PIN and still return
   `results.first`, or return the output from one later assertion. A credential is kept only when a PRF evaluation
-  produces the output that seals the deletion secret. A missing output is not stored. Cancelling the prompt leaves
+  produces the output that seals the deletion secret. A missing output is not stored. An all-zero output, the salt
+  itself, the label's first 32 bytes, or the client-side SHA-256 of `"WebAuthn PRF"` ‖ 0x00 ‖ the eval input is public
+  and is not stored. The output has to be from the credential just created: a result from another passkey already
+  stored in this browser is not success. An assertion is accepted only when its user-verification flag is set
+  (`userVerification` stays `"required"`). Cancelling the prompt leaves
   *Set up a passkey* and says the prompt was cancelled. A missing PRF output leaves that button and says this passkey
   did not return the PRF output needed to seal deletions. That is not "no platform authenticator". Any other refusal
   shows a sentence and leaves that button, unless this browser has no platform authenticator, in which case it says

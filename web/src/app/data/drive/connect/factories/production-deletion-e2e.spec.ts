@@ -75,14 +75,21 @@ class FakeCredentialsContainer {
     hashData.set(this.prfSecret, credIdUint8.length + saltFirst.length);
     const hash = await crypto.subtle.digest('SHA-256', hashData);
     const prfOutput = new Uint8Array(hash).slice(0, 32);
+    const idString = btoa(String.fromCharCode(...credIdUint8))
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=/g, '');
+    const authenticatorData = new Uint8Array(37);
+    authenticatorData[32] = 0x05; // user present and user verified
     return {
-      id: 'assertion',
+      id: idString,
       type: 'public-key',
-      rawId: credIdUint8.buffer,
+      rawId: credIdUint8.slice().buffer,
+      response: { authenticatorData: authenticatorData.buffer },
       getClientExtensionResults: () => ({
         prf: { enabled: true, results: { first: prfOutput.buffer } },
       }),
-    } as PublicKeyCredential;
+    } as unknown as PublicKeyCredential;
   }
 }
 

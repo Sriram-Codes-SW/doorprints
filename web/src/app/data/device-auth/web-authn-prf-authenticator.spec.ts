@@ -32,6 +32,35 @@ if (typeof globalThis.PublicKeyCredential === "undefined") {
   };
 }
 
+/** SHA-256("WebAuthn PRF" ‖ 0x00 ‖ eval bytes): the client salt, not an authenticator PRF output. */
+async function publicClientSalt(evalFirst: Uint8Array): Promise<Uint8Array> {
+  const prefix = new TextEncoder().encode("WebAuthn PRF");
+  const material = new Uint8Array(prefix.length + 1 + evalFirst.length);
+  material.set(prefix, 0);
+  material[prefix.length] = 0;
+  material.set(evalFirst, prefix.length + 1);
+  return new Uint8Array(await crypto.subtle.digest("SHA-256", material));
+}
+
+function deletionAdapter(kv: InMemoryKeyValueStore) {
+  const cryptoProvider = new WebCryptoProvider();
+  const auth = new WebAuthnPrfAuthenticator(
+    (key) => kv.get(key),
+    (key, value) => kv.set(key, value),
+  );
+  return new DriveDeletionAdapterImpl(
+    {} as never,
+    {} as never,
+    {} as never,
+    "root",
+    null,
+    undefined,
+    cryptoProvider,
+    auth,
+    kv,
+  );
+}
+
 /** Fake credentials API for testing. */
 class FakeCredentialsContainer {
   private registeredCredentials: Map<string, Uint8Array> = new Map(); // Maps base64url ID to raw bytes
@@ -43,8 +72,16 @@ class FakeCredentialsContainer {
   createPrfEnabled = true;
   /** When true, create returns a 32-byte `results.first` derived the same way as get. */
   createReturnsPrf = false;
+  /** Replaces a derived create output: zeros, the raw salt, or the public WebAuthn client salt. */
+  createEcho: "zeros" | "raw-salt" | "public-salt" | null = null;
   /** When false, get returns no PRF output (the ceremony can still succeed). */
   getReturnsPrf = true;
+  /** When set, get returns a PRF output only for this credential id. */
+  getPrfOnlyFor: Uint8Array | null = null;
+  /** When set, the assertion's rawId is this value instead of the requested credential. */
+  getRawIdOverride: Uint8Array | null = null;
+  /** When false, the assertion's UV flag is clear. */
+  getUv = true;
   getCalls = 0;
 
   constructor(prfSecret: Uint8Array = utf8("fake-prf-secret")) {
@@ -89,7 +126,15 @@ class FakeCredentialsContainer {
     const saltFirst = extensionInput?.eval?.first
       ? new Uint8Array(extensionInput.eval.first as ArrayBuffer)
       : new Uint8Array(32);
-    const derived = this.createReturnsPrf ? await this.derive(credId, saltFirst) : null;
+    const derived = this.createEcho === "zeros"
+      ? new Uint8Array(32)
+      : this.createEcho === "raw-salt"
+        ? saltFirst.slice(-32)
+        : this.createEcho === "public-salt"
+          ? await publicClientSalt(saltFirst)
+          : this.createReturnsPrf
+            ? await this.derive(credId, saltFirst)
+            : null;
 
     const credential = {
       id: idString,
@@ -153,6 +198,10 @@ class FakeCredentialsContainer {
 
     const credIdBuffer = pubKeyOpts.allowCredentials[0].id;
     const credIdUint8 = new Uint8Array(credIdBuffer);
+    const prfAllowed =
+      !this.getPrfOnlyFor ||
+      (this.getPrfOnlyFor.length === credIdUint8.length &&
+        this.getPrfOnlyFor.every((b, i) => b === credIdUint8[i]));
     const idString = btoa(String.fromCharCode(...credIdUint8))
       .replace(/\+/g, "-")
       .replace(/\//g, "_")
@@ -163,15 +212,18 @@ class FakeCredentialsContainer {
     const saltFirst = extensionInput?.eval?.first
       ? new Uint8Array(extensionInput.eval.first)
       : new Uint8Array(32);
-    const prfOutput = this.getReturnsPrf ? await this.derive(credIdUint8, saltFirst) : null;
+    const prfOutput = this.getReturnsPrf && prfAllowed ? await this.derive(credIdUint8, saltFirst) : null;
+    const rawId = this.getRawIdOverride ? this.getRawIdOverride.slice().buffer : credIdUint8.slice().buffer;
+    const authenticatorData = new Uint8Array(37);
+    authenticatorData[32] = this.getUv ? 0x05 : 0x01;
 
     const assertion = {
       id: idString,
       type: "public-key",
-      rawId: credIdBuffer,
+      rawId,
       response: {
         clientDataJSON: new ArrayBuffer(0),
-        authenticatorData: new ArrayBuffer(0),
+        authenticatorData: authenticatorData.buffer,
         signature: new ArrayBuffer(0),
       },
       authenticatorAttachment: "platform",
@@ -412,6 +464,57 @@ describe("WebAuthnPrfAuthenticator", () => {
 
       expect(await adapter.registerPasskey()).toBe("no-prf");
       expect(fakeCredentials.getCalls).toBe(1);
+      expect(await kv.get("doorprints-webauthn-credential-id")).toBeUndefined();
+      expect(await kv.get(SEALED_BLOB_KEY)).toBeUndefined();
+    });
+
+    it("does not seal a new passkey with a PRF output from a passkey already stored", async () => {
+      const kv = new InMemoryKeyValueStore();
+      const oldId = crypto.getRandomValues(new Uint8Array(16));
+      await kv.set("doorprints-webauthn-credential-id", Array.from(oldId).join(","));
+      fakeCredentials.createReturnsPrf = false;
+      fakeCredentials.getReturnsPrf = true;
+      fakeCredentials.getPrfOnlyFor = oldId;
+
+      expect(await deletionAdapter(kv).registerPasskey()).toBe("no-prf");
+      const requested = new Uint8Array(
+        (fakeCredentials.recordedGetOptions!.publicKey as { allowCredentials: { id: BufferSource }[] })
+          .allowCredentials[0].id as ArrayBuffer,
+      );
+      expect(Array.from(requested)).not.toEqual(Array.from(oldId));
+      expect(await kv.get("doorprints-webauthn-credential-id")).toBe(Array.from(oldId).join(","));
+      expect(await kv.get(SEALED_BLOB_KEY)).toBeUndefined();
+    });
+
+    it.each(["zeros", "raw-salt", "public-salt"] as const)(
+      "does not store a create result that is %s",
+      async (echo) => {
+        const kv = new InMemoryKeyValueStore();
+        fakeCredentials.createEcho = echo;
+        fakeCredentials.getReturnsPrf = false;
+
+        expect(await deletionAdapter(kv).registerPasskey()).toBe("no-prf");
+        expect(await kv.get("doorprints-webauthn-credential-id")).toBeUndefined();
+        expect(await kv.get(SEALED_BLOB_KEY)).toBeUndefined();
+      },
+    );
+
+    it("does not store an assertion whose credential id is not the one just created", async () => {
+      const kv = new InMemoryKeyValueStore();
+      fakeCredentials.createReturnsPrf = false;
+      fakeCredentials.getRawIdOverride = crypto.getRandomValues(new Uint8Array(16));
+
+      expect(await deletionAdapter(kv).registerPasskey()).toBe("failed");
+      expect(await kv.get("doorprints-webauthn-credential-id")).toBeUndefined();
+      expect(await kv.get(SEALED_BLOB_KEY)).toBeUndefined();
+    });
+
+    it("does not store an assertion whose user verification flag is clear", async () => {
+      const kv = new InMemoryKeyValueStore();
+      fakeCredentials.createReturnsPrf = false;
+      fakeCredentials.getUv = false;
+
+      expect(await deletionAdapter(kv).registerPasskey()).toBe("failed");
       expect(await kv.get("doorprints-webauthn-credential-id")).toBeUndefined();
       expect(await kv.get(SEALED_BLOB_KEY)).toBeUndefined();
     });

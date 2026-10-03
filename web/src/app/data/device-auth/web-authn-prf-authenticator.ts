@@ -17,7 +17,7 @@
  */
 
 import type { PrfAuthenticator, PrfResult } from './prf-seal';
-import { prfInput } from './prf-seal';
+import { prfInput, prfOutputSeals } from './prf-seal';
 
 /** Decode a base64url string to Uint8Array. */
 function base64urlToBytes(base64url: string): Uint8Array {
@@ -79,18 +79,51 @@ function prfOutputOf(ext: unknown): Uint8Array | null {
   if (!isPrfExtensionOutput(ext)) return null;
   const first = ext.prf?.results?.first as BufferSource | undefined;
   if (!first) return null;
-  const bytes = first instanceof ArrayBuffer
-    ? new Uint8Array(first.slice(0))
-    : new Uint8Array(first.buffer.slice(first.byteOffset, first.byteOffset + first.byteLength));
-  return bytes.length === 32 ? bytes : null;
+  if (first instanceof ArrayBuffer) {
+    return first.byteLength === 32 ? new Uint8Array(first.slice(0)) : null;
+  }
+  if (!ArrayBuffer.isView(first) || first.byteLength !== 32) return null;
+  return new Uint8Array(first.buffer.slice(first.byteOffset, first.byteOffset + first.byteLength));
+}
+
+function rawIdBytes(credential: Credential): Uint8Array | null {
+  if (!('rawId' in credential) || credential.rawId == null) return null;
+  const raw = credential.rawId as BufferSource;
+  if (raw instanceof ArrayBuffer) return raw.byteLength > 0 ? new Uint8Array(raw.slice(0)) : null;
+  if (ArrayBuffer.isView(raw) && raw.byteLength > 0) {
+    return new Uint8Array(raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength));
+  }
+  return null;
 }
 
 function credentialIdBytes(credential: Credential): Uint8Array {
-  if ('rawId' in credential && credential.rawId instanceof ArrayBuffer) {
-    return new Uint8Array(credential.rawId.slice(0));
+  const fromRaw = rawIdBytes(credential);
+  const fromId =
+    'id' in credential && typeof credential.id === 'string' && credential.id.length > 0
+      ? base64urlToBytes(credential.id)
+      : null;
+  // rawId is authoritative. A string id that disagrees with it is not this credential.
+  if (fromRaw && fromId && !sameBytes(fromRaw, fromId)) {
+    throw new Error('Passkey credential id did not match rawId.');
   }
-  if ('id' in credential && typeof credential.id === 'string') return base64urlToBytes(credential.id);
+  if (fromRaw) return fromRaw;
+  if (fromId) return fromId;
   throw new Error('Passkey registration returned no credential id.');
+}
+
+/** UV flag in authenticatorData. Creation asks for it; an assertion must show it. There is no server to check. */
+function assertionUserVerified(credential: Credential): boolean {
+  if (!('response' in credential) || credential.response == null || typeof credential.response !== 'object') {
+    return false;
+  }
+  const data = (credential.response as { authenticatorData?: BufferSource }).authenticatorData;
+  if (!data) return false;
+  const flags = data instanceof ArrayBuffer
+    ? new Uint8Array(data)
+    : ArrayBuffer.isView(data)
+      ? new Uint8Array(data.buffer, data.byteOffset, data.byteLength)
+      : null;
+  return !!flags && flags.length >= 33 && (flags[32] & 0x04) !== 0;
 }
 
 function sameBytes(a: Uint8Array, b: Uint8Array): boolean {
@@ -182,17 +215,19 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
   async evaluate(
     credentialId: Uint8Array,
     salt: Uint8Array,
-    evalOptions?: { persist?: boolean },
+    evalOptions?: { persist?: boolean; useStoredCredential?: boolean },
   ): Promise<PrfResult> {
     const persist = evalOptions?.persist !== false;
+    // Opens keep using the stored passkey. A registration probe must pass false: otherwise an
+    // already stored id is asserted, and its PRF output would be sealed under the new credential.
+    const useStored = evalOptions?.useStoredCredential !== false;
     if (typeof navigator === 'undefined' || !navigator.credentials) {
       return { kind: 'NOT_SUPPORTED' };
     }
 
     try {
-      // Use the provided credential ID if available, otherwise try the stored one
       let targetId = credentialId;
-      if (this.credentialId && this.credentialId.length > 0) {
+      if (useStored && this.credentialId && this.credentialId.length > 0) {
         targetId = this.credentialId;
       }
 
@@ -223,6 +258,21 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
         return { kind: 'CANCELLED' };
       }
 
+      // userVerification: "required" is also checked on the response. A clear UV flag is not a PRF result.
+      if (!assertionUserVerified(assertion)) {
+        return { kind: 'FAILED' };
+      }
+
+      let assertedId: Uint8Array;
+      try {
+        assertedId = credentialIdBytes(assertion);
+      } catch {
+        return { kind: 'FAILED' };
+      }
+      if (!sameBytes(assertedId, targetId)) {
+        return { kind: 'FAILED' };
+      }
+
       // Extract PRF output from extension result
       if (!hasGetClientExtensionResults(assertion)) {
         return { kind: 'FAILED' };
@@ -239,7 +289,8 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
       }
 
       const prfOutput = prfOutputOf(extensionResults);
-      if (!prfOutput) {
+      if (!prfOutput || !(await prfOutputSeals(prfOutput, salt))) {
+        prfOutput?.fill(0);
         return { kind: 'NOT_SUPPORTED' };
       }
 
@@ -349,16 +400,29 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
       let output = hasGetClientExtensionResults(credential)
         ? prfOutputOf(credential.getClientExtensionResults())
         : null;
+      if (output && !(await prfOutputSeals(output, salt))) {
+        output.fill(0);
+        output = null;
+      }
       if (!output) {
-        const evaluated = await this.evaluate(credIdBuffer, salt, { persist: false });
+        // The assertion has to be for this new credential, not one already stored in the browser.
+        const evaluated = await this.evaluate(credIdBuffer, salt, {
+          persist: false,
+          useStoredCredential: false,
+        });
         if (evaluated.kind === 'CANCELLED') return null;
+        if (evaluated.kind === 'FAILED') {
+          throw new Error('Passkey assertion was not user-verified for this credential.');
+        }
         if (evaluated.kind !== 'OK') throw new PasskeyPrfMissingError();
         output = evaluated.output;
       }
+      const kept = output.slice();
+      output.fill(0);
       this.pending = {
         credentialId: credIdBuffer.slice(),
         salt: salt.slice(),
-        output: output.slice(),
+        output: kept,
       };
       return credIdBuffer;
     } catch (e) {
