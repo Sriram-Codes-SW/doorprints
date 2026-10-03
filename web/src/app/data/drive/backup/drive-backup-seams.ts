@@ -51,6 +51,12 @@ export interface DriveDeviceState {
   readonly controlId: string | null;
   /** This device is creating `rootId`'s key list and has not finished: a retry may start it again. */
   readonly creatingRootId: string | null;
+  /**
+   * SHA-256 of the `keys.json` bytes this device produced for `creatingRootId`, saved before the upload.
+   * A reload may pin that list only when Drive still has these exact bytes. A list that merely unwraps
+   * with this device's key is not that proof (docs/15 §9.9).
+   */
+  readonly creatingKeysHash: Uint8Array | null;
   /** This device's newest uploaded backup. */
   readonly lastBackupId: string | null;
   readonly lastSuccessAt: number | null;
@@ -70,6 +76,7 @@ export const EMPTY_DEVICE_STATE: DriveDeviceState = {
   keysId: null,
   controlId: null,
   creatingRootId: null,
+  creatingKeysHash: null,
   lastBackupId: null,
   lastSuccessAt: null,
   lastAttemptAt: null,
@@ -78,6 +85,17 @@ export const EMPTY_DEVICE_STATE: DriveDeviceState = {
   newestSeenAt: null,
   confirmedDrops: [],
 };
+
+/** A stored state, including one saved before `creatingKeysHash` existed. A hash that is not 32 bytes is dropped. */
+export function normalizeDeviceState(raw: Partial<DriveDeviceState> | null | undefined): DriveDeviceState {
+  const hash = raw?.creatingKeysHash;
+  return {
+    ...EMPTY_DEVICE_STATE,
+    ...(raw ?? {}),
+    creatingKeysHash: hash instanceof Uint8Array && hash.length === 32 ? new Uint8Array(hash) : null,
+    confirmedDrops: Array.isArray(raw?.confirmedDrops) ? [...raw.confirmedDrops] : [],
+  };
+}
 
 /** Where `DriveDeviceState` lives. One writer at a time (the tab lock). */
 export interface DriveStateStore {

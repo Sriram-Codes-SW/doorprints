@@ -73,7 +73,11 @@
   @if (phase() === 'passkey') {
     <div>
       <h4>{{ 'driveDelete.passkeyRequired' | t }}</h4>
-      <p>{{ 'driveDelete.usePhone' | t }}</p>
+      @if (passkeyFor() === 'disconnect') {
+        <p>{{ 'driveDevices.disconnectPasskey' | t }}</p>
+      } @else {
+        <p>{{ 'driveDelete.usePhone' | t }}</p>
+      }
       <button type="button" class="btn" (click)="cancel()" [disabled]="busy()">{{ 'common.cancel' | t }}</button>
     </div>
   }

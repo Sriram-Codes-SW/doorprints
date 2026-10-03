@@ -259,6 +259,7 @@ function driveCard(state: ConnectState, theme: 'light' | 'dark', after?: (c: Dri
     document.documentElement.style.colorScheme = theme;
     const svc = {
       getState: () => state,
+      enrolmentNotice: () => null,
       listBackups: async () => ({ ok: true, backups: [], missingNewer: false }),
       autoBackupEnabled: () => false,
       setAutoBackup: () => undefined,
