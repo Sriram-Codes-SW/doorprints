@@ -1205,6 +1205,8 @@ export const te: Dict = {
   'driveConnect.unavailable': 'ఈ బ్రౌజర్‌లో Google Drive కనెక్ట్ అందుబాటులో లేదు.',
   'driveConnect.connect': 'Google Drive కు కనెక్ట్ చేయండి',
   'driveConnect.connecting': 'సైన్ ఇన్ చేస్తున్నారు…',
+  // 2026-10-03: the connect is still running after sign-in. Under review (owner rule: hi/ta/te ship marked under review).
+  'driveConnect.connectionInProgress': 'కనెక్షన్ జరుగుతోంది.',
   'driveConnect.firstConnect': 'మీ రికవరీ కీని సేవ్ చేయండి',
   'driveConnect.recoveryKeyNote': 'కేవలం ఒకసారి చూపబడుతుంది. దీన్ని సురక్షితమైన చోట సేవ్ చేయండి (ఈమెయిల్, నోట్ అ్యాప్, లేదా ఇది ముద్రించండి).',
   'driveConnect.recoveryKeyCopy': 'రికవరీ కీని కాపీ చేయండి',

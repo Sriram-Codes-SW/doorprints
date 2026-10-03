@@ -363,6 +363,136 @@ describe('DriveConnectService error states on the card (en and hi)', () => {
     expect(host.querySelector('.error-box')).toBeNull();
   });
 
+  it('shows Connection in progress while a deleted folder is created, including after reload, and hides it when the key is on screen', async () => {
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const key = 'CCCC-DDDD-EEEE-FFFF-GGGG-HHHH';
+    const leak = 'Drive create 500 body';
+    const backup = stubBackup({
+      connect: async () => ({ kind: 'FOLDER_GONE' }),
+      createFolder: async () => {
+        await gate;
+        return { connection: { kind: 'READY', folder: FOLDER }, recoveryKey: { display: key } as never };
+      },
+    });
+    const service = makeService('client', backup);
+    // A fresh card is what a reload paints. Connect then finds the folder gone and creates another.
+    const { host, i18n, component, fixture } = await renderConnect(service);
+    const progress = i18n.t('driveConnect.connectionInProgress');
+    const gone = i18n.t('driveConnect.folderGone');
+    expect(progress).toBe('Connection in progress.');
+    expect(host.textContent ?? '').not.toContain(progress);
+    expect(host.querySelector('.connection-status')).toBeNull();
+
+    const click = (label: string) => {
+      const button = [...host.querySelectorAll('button')].find((b) => (b.textContent ?? '').includes(label));
+      expect(button, label).toBeTruthy();
+      (button as HTMLButtonElement).click();
+    };
+    click(i18n.t('driveConnect.connect'));
+    await flush();
+    fixture.detectChanges();
+
+    const text = host.textContent ?? '';
+    const status = host.querySelector('p.connection-status[role="status"]');
+    expect(status?.textContent?.trim()).toBe(progress);
+    expect(text).toContain(progress);
+    expect(text).not.toContain(gone);
+    expect(text).not.toContain(key);
+    expect(text).not.toContain(i18n.t('driveConnect.firstConnect'));
+    expect(host.querySelector('.recovery-key-box')).toBeNull();
+    expect(service.getState()).not.toBe('Connecting');
+    expect(service.getState()).not.toBe('FirstConnectShowRecoveryKey');
+    expect(component['busy']()).toBe(true);
+    const connectButton = [...host.querySelectorAll('button')].find((b) =>
+      (b.textContent ?? '').includes(i18n.t('driveConnect.connect')),
+    ) as HTMLButtonElement | undefined;
+    expect(connectButton?.disabled).toBe(true);
+    expect(text.toLowerCase()).not.toContain('restore');
+    expect(text).not.toMatch(/ya29\.|Bearer |access_token/);
+    expect(text).not.toContain(leak);
+
+    release();
+    await flush();
+    fixture.detectChanges();
+    const after = host.textContent ?? '';
+    expect(after).toContain(key);
+    expect(after).toContain(i18n.t('driveConnect.firstConnect'));
+    expect(after).not.toContain(progress);
+    expect(host.querySelector('p.connection-status')).toBeNull();
+    expect(host.querySelector('.error-box')).toBeNull();
+    expect(component['busy']()).toBe(false);
+    const next = [...host.querySelectorAll('button')].find((b) =>
+      (b.textContent ?? '').includes(i18n.t('common.next')),
+    ) as HTMLButtonElement;
+    expect(next.disabled).toBe(true);
+    const saved = host.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    saved.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    expect(next.disabled).toBe(false);
+  });
+
+  it('does not say the connection is in progress while disconnecting', async () => {
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const backup = stubBackup({
+      connect: async () => ({ kind: 'READY', folder: FOLDER }),
+    });
+    const service = makeService('client', backup);
+    const orig = service.disconnect.bind(service);
+    service.disconnect = async () => {
+      await gate;
+      return orig();
+    };
+    const { host, i18n, component, fixture } = await renderConnect(service);
+    await component.onConnect();
+    await flush();
+    fixture.detectChanges();
+    expect(service.getState()).toBe('Ready');
+    const pending = component.onDisconnect();
+    await flush();
+    fixture.detectChanges();
+    expect(component['busy']()).toBe(true);
+    expect(host.textContent ?? '').not.toContain(i18n.t('driveConnect.connectionInProgress'));
+    release();
+    await pending;
+    await flush();
+    fixture.detectChanges();
+    expect(component['busy']()).toBe(false);
+  });
+
+  it('a failed create after a deleted folder shows the error, not Connection in progress', async () => {
+    const leak = 'Drive create 500 body';
+    const backup = stubBackup({
+      connect: async () => ({ kind: 'FOLDER_GONE' }),
+      createFolder: async () => {
+        throw new Error(leak);
+      },
+    });
+    const { host, i18n, component, fixture } = await renderConnect(makeService('client', backup));
+    component['error'].set('driveConnect.folderGone');
+    fixture.detectChanges();
+    expect(host.textContent).toContain(i18n.t('driveConnect.folderGone'));
+    expect(host.textContent).not.toContain(i18n.t('driveConnect.connectionInProgress'));
+    const button = [...host.querySelectorAll('button')].find((b) =>
+      (b.textContent ?? '').includes(i18n.t('common.retry')),
+    );
+    expect(button).toBeTruthy();
+    button!.click();
+    await flush();
+    fixture.detectChanges();
+    const text = host.textContent ?? '';
+    expect(text).toContain(i18n.t('driveConnect.failed'));
+    expect(text).not.toContain(i18n.t('driveConnect.connectionInProgress'));
+    expect(text).not.toContain(leak);
+    expect(host.querySelector('.recovery-key-box')).toBeNull();
+    expect(component['busy']()).toBe(false);
+  });
+
   it('does not say the recovery key is on screen before createFolder returns one', async () => {
     let release: () => void = () => undefined;
     const gate = new Promise<void>((resolve) => {

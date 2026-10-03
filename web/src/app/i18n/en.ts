@@ -1222,6 +1222,7 @@ export const en = {
   'driveConnect.unavailable': 'Google Drive connect is not available on this browser.',
   'driveConnect.connect': 'Connect to Google Drive',
   'driveConnect.connecting': 'Signing in…',
+  'driveConnect.connectionInProgress': 'Connection in progress.',
   'driveConnect.firstConnect': 'Save your recovery key',
   'driveConnect.recoveryKeyNote': 'Only shown once. Save it in a safe place (email, Note app, or print it).',
   'driveConnect.recoveryKeyCopy': 'Copy recovery key',
