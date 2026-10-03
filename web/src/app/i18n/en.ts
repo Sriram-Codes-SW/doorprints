@@ -1283,6 +1283,7 @@ export const en = {
   'drivePasskey.unsupportedDescription': 'This browser cannot make the kind of passkey needed. Deleting everything from here is not available; you can still delete single backups.',
   'drivePasskey.registerCancelled': 'The prompt was cancelled.',
   'drivePasskey.registerFailed': 'The passkey could not be set up. Try again.',
+  'drivePasskey.registerNoPrf': 'This passkey did not return the PRF output needed to seal deletions.',
   'driveBackups.backUpNow': 'Back up now',
   'driveBackups.housesBackedUp': '{n} houses backed up at {time}',
   'driveBackups.backups': 'Backups',

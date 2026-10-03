@@ -257,6 +257,29 @@ describe('DrivePasskeyComponent', () => {
     expect(host.textContent).toContain('This browser cannot make the kind of passkey');
   });
 
+  it('stays on Set up a passkey and names the missing PRF output', async () => {
+    const service = createFakeDriveService({
+      registerPasskey: vi.fn(async () => 'no-prf' as const),
+      passkeyStatus: vi.fn(async () => 'none' as const),
+    });
+    const { host, component, detect } = await render(service);
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    detect();
+
+    await component.onRegisterPasskey();
+    detect();
+
+    expect(component['status']()).toBe('none');
+    expect(component['errorMessage']()).toBe('drivePasskey.registerNoPrf');
+    expect(host.querySelector('button')?.textContent).toContain('Set up a passkey');
+    expect(host.querySelector('.error-message')?.textContent).toContain(
+      'This passkey did not return the PRF output needed to seal deletions.',
+    );
+    expect(host.textContent).not.toContain('This browser cannot make the kind of passkey');
+    expect(host.textContent).not.toContain('Try again.');
+  });
+
   it('has aria-live region for error messages', async () => {
     const service = createFakeDriveService();
     const { host } = await render(service);

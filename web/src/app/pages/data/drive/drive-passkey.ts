@@ -99,6 +99,10 @@ export class DrivePasskeyComponent implements OnInit {
         if (this.status() !== 'registered') this.status.set('none');
       } else if (result === 'unsupported') {
         await this.applyUnsupported();
+      } else if (result === 'no-prf') {
+        // The PIN can succeed and still leave no PRF output. That is not "no platform authenticator".
+        this.errorMessage.set('drivePasskey.registerNoPrf');
+        if (this.status() !== 'registered') this.status.set('none');
       } else {
         this.errorMessage.set('drivePasskey.registerFailed');
         if (this.status() !== 'registered') this.status.set('none');
