@@ -17,7 +17,7 @@
  */
 
 import { Sha256 } from '../../export/sha256';
-import { ab, concat, constantTimeEquals } from './bytes';
+import { ab, concat, constantTimeEquals, unhex } from './bytes';
 import { isValidScalar } from './p256-scalar';
 
 /**
@@ -40,7 +40,10 @@ export interface CryptoProvider {
   /** Fails closed: `CryptoError('AUTH_FAILED')` and no plaintext for a wrong key, nonce, AAD or byte. */
   aesGcmOpen(key: AesKey, nonce: Uint8Array, aad: Uint8Array, sealed: Uint8Array): Promise<Uint8Array>;
   p256Generate(): Promise<P256PrivateKey>;
-  /** The key pair of a 32-byte scalar in [1, n − 1], its public key computed by the platform. */
+  /**
+   * The key pair of a 32-byte scalar in [1, n − 1]. Chromium reads the public key from a JWK export.
+   * Firefox imports the same key but will not export that JWK, so the public point comes from two ECDH operations.
+   */
   p256FromScalar(scalar: Uint8Array): Promise<P256PrivateKey>;
   /** An uncompressed SEC1 point (65 bytes), coordinates below p, on the curve; anything else `INVALID_KEY`. */
   p256ValidatePublic(encoded: Uint8Array): Uint8Array;
@@ -94,6 +97,79 @@ function mod(a: bigint): bigint {
   return r < 0n ? r + P : r;
 }
 
+function modPow(base: bigint, exp: bigint, m: bigint): bigint {
+  let result = 1n;
+  let b = mod(base);
+  let e = exp;
+  while (e > 0n) {
+    if (e & 1n) result = (result * b) % m;
+    b = (b * b) % m;
+    e >>= 1n;
+  }
+  return result;
+}
+
+/** Uncompressed generator, SEC 2 / FIPS 186-5. Public. */
+const G_POINT = unhex(
+  '046b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c2964fe342e2fe1a7f9b8ee7eb4a7c0f9e162bce33576b315ececbb6406837bf51f5',
+);
+const SCALAR_ONE = (() => {
+  const s = new Uint8Array(32);
+  s[31] = 1;
+  return s;
+})();
+/** n − 1. Public. */
+const SCALAR_NM1 = unhex('ffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632550');
+
+function sameBytes(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  let d = 0;
+  for (let i = 0; i < a.length; i++) d |= a[i] ^ b[i];
+  return d === 0;
+}
+
+function be32(n: bigint): Uint8Array {
+  const out = new Uint8Array(32);
+  let v = n;
+  for (let i = 31; i >= 0; i--) {
+    out[i] = Number(v & 0xffn);
+    v >>= 8n;
+  }
+  return out;
+}
+
+function uncompressed(x: bigint, y: bigint): Uint8Array {
+  const out = new Uint8Array(65);
+  out[0] = 4;
+  out.set(be32(x), 1);
+  out.set(be32(y), 33);
+  return out;
+}
+
+function toB64url(bytes: Uint8Array): string {
+  let s = '';
+  for (const b of bytes) s += String.fromCharCode(b);
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+function scalarPlusOne(scalar: Uint8Array): Uint8Array {
+  const out = new Uint8Array(scalar);
+  for (let i = 31; i >= 0; i--) {
+    const s = out[i] + 1;
+    out[i] = s & 0xff;
+    if (s < 256) break;
+  }
+  return out;
+}
+
+/** x(P + Q) for two distinct affine points with different x. Public values only. */
+function addX(x1: bigint, y1: bigint, x2: bigint, y2: bigint): bigint {
+  const dx = mod(x2 - x1);
+  const dy = mod(y2 - y1);
+  const lambda = mod(dy * modPow(dx, P - 2n, P));
+  return mod(lambda * lambda - x1 - x2);
+}
+
 /** RFC 5915 ECPrivateKey inside a PKCS #8 PrivateKeyInfo for P-256, without the optional public key. */
 const PKCS8_PREFIX = new Uint8Array([
   0x30, 0x41, 0x02, 0x01, 0x00, 0x30, 0x13, 0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01, 0x06, 0x08, 0x2a,
@@ -130,10 +206,14 @@ class WebP256Key implements P256PrivateKey {
  * The website's provider, on WebCrypto only. Keys are non-extractable `CryptoKey`s wherever the API allows:
  * AES and HMAC keys always; a generated P-256 private key always (its public half is exported raw, as WebCrypto
  * always allows). The one exception is `p256FromScalar`: WebCrypto has no call that gives the public key of a raw
- * scalar, so the scalar is imported once as an *extractable* PKCS #8 key (RFC 5915 without the public key; the
- * platform computes it) only to export its JWK `x` and `y`, then imported again, non-extractable, from a JWK with
- * `d`, `x`, `y`; the extractable key object is dropped at once. The scalar itself was already in memory (the
- * recovery key or HPKE's DeriveKeyPair made it), so this exposes nothing new.
+ * scalar. Chromium and Node import an extractable PKCS #8 key (RFC 5915 without the public key; the platform
+ * computes it) only to export its JWK `x` and `y`, then import again, non-extractable. Firefox 132 and later
+ * imports that PKCS #8 key and can run ECDH with it, but `exportKey('jwk')` fails (Mozilla bug 2000795). The
+ * public point is then x(d·G) and x((d+1)·G) from the platform's own ECDH, and the sign of y from one addition
+ * of those public points — the same method as Android — and the scalar is imported again as a non-extractable
+ * JWK that already carries `x` and `y`. A browser that cannot import the PKCS #8 key at all still fails closed.
+ * The scalar itself was already in memory (the recovery key or HPKE's DeriveKeyPair made it), so this exposes
+ * nothing new.
  */
 export class WebCryptoProvider implements CryptoProvider {
   private readonly subtle: SubtleCrypto;
@@ -204,19 +284,72 @@ export class WebCryptoProvider implements CryptoProvider {
 
   async p256FromScalar(scalar: Uint8Array): Promise<P256PrivateKey> {
     if (!isValidScalar(scalar)) throw new CryptoError('INVALID_KEY', 'scalar out of range');
-    let jwk: JsonWebKey;
+    let imported: CryptoKey;
     try {
-      const temp = await this.subtle.importKey('pkcs8', ab(concat(PKCS8_PREFIX, scalar)), EC, true, ['deriveBits']);
-      jwk = await this.subtle.exportKey('jwk', temp);
+      imported = await this.subtle.importKey('pkcs8', ab(concat(PKCS8_PREFIX, scalar)), EC, true, ['deriveBits']);
     } catch {
       throw new CryptoError('UNAVAILABLE', 'this browser cannot import a P-256 key without its public key');
     }
-    if (!jwk.x || !jwk.y || !jwk.d) throw new CryptoError('UNAVAILABLE', 'no public key from the platform');
-    const pub = this.p256ValidatePublic(concat(new Uint8Array([4]), fromB64url(jwk.x), fromB64url(jwk.y)));
-    const key = await this.subtle.importKey('jwk', { kty: 'EC', crv: 'P-256', d: jwk.d, x: jwk.x, y: jwk.y, ext: false }, EC, false, [
-      'deriveBits',
-    ]);
-    return new WebP256Key(key, pub);
+    try {
+      const jwk = await this.subtle.exportKey('jwk', imported);
+      if (jwk.x && jwk.y && jwk.d) return await this.importNonExtractable(jwk.d, jwk.x, jwk.y);
+    } catch (e) {
+      if (e instanceof CryptoError) throw e;
+      // Firefox imports the PKCS #8 key and can derive with it, but will not export x and y.
+    }
+    const pub = await this.publicFromAgreement(imported, scalar);
+    return this.importNonExtractable(toB64url(scalar), toB64url(pub.subarray(1, 33)), toB64url(pub.subarray(33, 65)));
+  }
+
+  /** A non-extractable ECDH key whose JWK already carries d, x and y. The public point is checked first. */
+  private async importNonExtractable(d: string, x: string, y: string): Promise<P256PrivateKey> {
+    const pub = this.p256ValidatePublic(concat(new Uint8Array([4]), fromB64url(x), fromB64url(y)));
+    try {
+      const key = await this.subtle.importKey('jwk', { kty: 'EC', crv: 'P-256', d, x, y, ext: false }, EC, false, ['deriveBits']);
+      return new WebP256Key(key, pub);
+    } catch (e) {
+      if (e instanceof CryptoError) throw e;
+      throw new CryptoError('INVALID_KEY', 'public key not determined');
+    }
+  }
+
+  /**
+   * x(d·G) from ECDH against the generator, and the sign of y from x((d+1)·G). Only public points enter the
+   * `bigint` arithmetic; both scalars are imported into WebCrypto and are not multiplied here.
+   */
+  private async publicFromAgreement(priv: CryptoKey, scalar: Uint8Array): Promise<Uint8Array> {
+    const x1 = toBig(await this.ecdhX(priv, G_POINT));
+    const rhs = mod(x1 * x1 * x1 - 3n * x1 + B);
+    const y0 = modPow(rhs, (P + 1n) >> 2n, P);
+    if (mod(y0 * y0) !== rhs) throw new CryptoError('INVALID_KEY', 'no square root');
+    const gx = toBig(G_POINT.subarray(1, 33));
+    const gy = toBig(G_POINT.subarray(33, 65));
+    let y: bigint;
+    if (x1 === gx) {
+      if (sameBytes(scalar, SCALAR_ONE)) y = gy;
+      else if (sameBytes(scalar, SCALAR_NM1)) y = mod(-gy);
+      else throw new CryptoError('INVALID_KEY', 'public key not determined');
+    } else {
+      const plus = scalarPlusOne(scalar);
+      try {
+        if (!isValidScalar(plus)) throw new CryptoError('INVALID_KEY', 'public key not determined');
+        let priv2: CryptoKey;
+        try {
+          priv2 = await this.subtle.importKey('pkcs8', ab(concat(PKCS8_PREFIX, plus)), EC, false, ['deriveBits']);
+        } catch {
+          throw new CryptoError('UNAVAILABLE', 'this browser cannot import a P-256 key without its public key');
+        }
+        const x2 = toBig(await this.ecdhX(priv2, G_POINT));
+        const withPlus = addX(x1, y0, gx, gy);
+        const withMinus = addX(x1, mod(-y0), gx, gy);
+        if (withPlus === x2 && withMinus !== x2) y = y0;
+        else if (withMinus === x2 && withPlus !== x2) y = mod(-y0);
+        else throw new CryptoError('INVALID_KEY', 'public key not determined');
+      } finally {
+        plus.fill(0);
+      }
+    }
+    return this.p256ValidatePublic(uncompressed(x1, y));
   }
 
   p256ValidatePublic(encoded: Uint8Array): Uint8Array {
@@ -231,11 +364,19 @@ export class WebCryptoProvider implements CryptoProvider {
 
   async p256Agree(privateKey: P256PrivateKey, peerPublic: Uint8Array): Promise<Uint8Array> {
     if (!(privateKey instanceof WebP256Key)) throw new CryptoError('INVALID_KEY', 'foreign key');
+    return this.ecdhX(privateKey.key, peerPublic);
+  }
+
+  /** The 32-byte x-coordinate of ECDH. The peer point is validated first. */
+  private async ecdhX(privateKey: CryptoKey, peerPublic: Uint8Array): Promise<Uint8Array> {
     const peer = this.p256ValidatePublic(peerPublic);
     try {
       const pk = await this.subtle.importKey('raw', ab(peer), EC, true, []);
-      return new Uint8Array(await this.subtle.deriveBits({ name: 'ECDH', public: pk }, privateKey.key, 256));
-    } catch {
+      const secret = new Uint8Array(await this.subtle.deriveBits({ name: 'ECDH', public: pk }, privateKey, 256));
+      if (secret.length !== 32) throw new CryptoError('INVALID_KEY', 'ECDH output length');
+      return secret;
+    } catch (e) {
+      if (e instanceof CryptoError) throw e;
       throw new CryptoError('INVALID_KEY', 'ECDH');
     }
   }
