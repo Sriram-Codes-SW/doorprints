@@ -63,6 +63,11 @@ export class DriveBackupAdapter {
     return this.backupService.connect();
   }
 
+  /** The card has said the recovery key was not shown. The key is not stored. */
+  clearRecoveryKeyUnshown(): Promise<void> {
+    return this.backupService.clearRecoveryKeyUnshown();
+  }
+
   /**
    * The first connect to a Drive with no Doorprints folder, or after `FOLDER_GONE`: creates `Doorprints/`, the
    * key set, `doorprints.json` and `Backups/`, then pins this device to it. The recovery key comes back to be shown

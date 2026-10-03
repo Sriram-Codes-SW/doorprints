@@ -93,6 +93,21 @@ export class DriveConnectComponent implements OnDestroy {
     return typeof notice === 'function' ? notice.call(this.service) : null;
   }
 
+  /** This connect pinned a list whose recovery key was never painted. */
+  protected recoveryKeyWasNotShown(): boolean {
+    const read = this.service?.recoveryKeyWasNotShown;
+    return typeof read === 'function' ? read.call(this.service) : false;
+  }
+
+  /** Try again re-runs connect in this browser. A browser that cannot encrypt will not succeed that way. */
+  protected showRetry(): boolean {
+    return this.error() !== 'driveProblem.CRYPTO_UNAVAILABLE';
+  }
+
+  protected acknowledgeRecoveryKeyUnshown(): void {
+    void this.service?.acknowledgeRecoveryKeyUnshown();
+  }
+
   ngOnDestroy(): void {
     if (this.copyTimer !== undefined) clearTimeout(this.copyTimer);
   }

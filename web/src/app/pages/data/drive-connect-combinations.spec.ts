@@ -159,6 +159,7 @@ describe('Drive connect card combinations', () => {
     click(host, i18n.t('driveConnect.connect'));
     text = await settle(fixture, host, (t) => t.includes(i18n.t('driveConnect.firstConnect')));
     expect(creates).toBe(1);
+    expect(text).not.toContain(i18n.t('driveConnect.recoveryKeyUnshown'));
     expect(host.querySelector('.recovery-key-box code')?.textContent?.length).toBeGreaterThan(10);
     expect(text.includes(intro) && text.includes(gone)).toBe(false);
     expect(host.querySelector('.error-box')).toBeNull();
@@ -240,10 +241,14 @@ describe('Drive connect card combinations', () => {
     const text = host.textContent ?? '';
     expect(creates).toBe(0);
     expect(text).toContain(i18n.t('driveConnect.ready'));
+    expect(text).toContain(i18n.t('driveConnect.recoveryKeyUnshown'));
+    expect(host.querySelector('app-drive-enrol')).toBeTruthy();
     expect(text).not.toContain(i18n.t('driveProblem.FOLDER_EXISTS'));
     expect(text).not.toContain(i18n.t('driveConnect.firstConnect'));
     expect(text).not.toContain(i18n.t('driveConnect.recoveryKeyNote'));
     expect(host.querySelector('.recovery-key-box')).toBeNull();
+    expect(rig.state.value.recoveryKeyUnshown).toBe(true);
+    expect('recoveryKey' in rig.state.value).toBe(false);
     expect(server.contentOf(folder.keysId)).toEqual(keysBefore);
     expect(server.contentOf(extra.id)).toEqual(new Uint8Array([4, 5]));
     expect(liveRoots(server)).toHaveLength(1);
@@ -325,5 +330,116 @@ describe('Drive connect card combinations', () => {
     expect(text).not.toContain(i18n.t('driveConnect.needsEnrolmentMessage'));
     expect(text).toContain(i18n.t('driveJoin.heading'));
     expect(host.querySelector('input#recovery-key-input')).toBeTruthy();
+  });
+
+  it('says the recovery key was not shown once, and a later connect does not repeat it', async () => {
+    const server = new FakeDriveServer();
+    const rig = await Rig.make(server);
+    const made = await rig.service.createFolder(true);
+    expect(made.recoveryKey).not.toBeNull();
+    const key = made.recoveryKey!.display;
+    const folder = (made.connection as { kind: 'READY'; folder: { rootId: string; keysId: string } }).folder;
+    const keysBefore = server.contentOf(folder.keysId);
+    rig.trust.keys(folder.rootId).value = null;
+    rig.state.value = {
+      ...rig.state.value,
+      creatingRootId: folder.rootId,
+      creatingKeysHash: sha256Of(rig.p, keysBefore!),
+    };
+    const service = serviceFor(rig);
+    const { host, component, fixture, i18n } = await render(service);
+    await component.onConnect();
+    const text = await settle(fixture, host, (t) => t.includes(i18n.t('driveConnect.recoveryKeyUnshown')));
+    expect(text).toContain(i18n.t('driveConnect.ready'));
+    expect(text).not.toContain(key);
+    expect(JSON.stringify(rig.state.value)).not.toContain(key);
+    expect(host.querySelector('.recovery-key-box')).toBeNull();
+    click(host, i18n.t('common.close'));
+    await flush();
+    fixture.detectChanges();
+    expect(host.textContent ?? '').not.toContain(i18n.t('driveConnect.recoveryKeyUnshown'));
+    expect(rig.state.value.recoveryKeyUnshown).toBe(false);
+    expect(server.contentOf(folder.keysId)).toEqual(keysBefore);
+
+    const reloaded = serviceFor(rig);
+    const second = await render(reloaded);
+    await second.component.onConnect();
+    const after = await settle(second.fixture, second.host, (t) => t.includes(i18n.t('driveConnect.ready')));
+    expect(after).toContain(i18n.t('driveConnect.ready'));
+    expect(after).not.toContain(i18n.t('driveConnect.recoveryKeyUnshown'));
+    expect(after).not.toContain(key);
+  });
+
+  it('a name-matched keys.json does not say another device has backups', async () => {
+    const server = new FakeDriveServer();
+    const rig = await Rig.make(server);
+    const rootId = plantRoot(server);
+    const body = new TextEncoder().encode('{');
+    const file = server.putByHand({
+      name: 'keys.json', mimeType: 'application/json', parents: [rootId], appProperties: {},
+    }, body);
+    rig.state.value = { ...rig.state.value, rootId };
+    const service = serviceFor(rig);
+    const { host, component, fixture, i18n } = await render(service);
+    await component.onConnect();
+    await flush();
+    fixture.detectChanges();
+    const text = host.textContent ?? '';
+    expect(text).toContain(i18n.t('driveProblem.KEYS_UNREADABLE'));
+    expect(text).not.toContain(i18n.t('driveConnect.needsEnrolmentMessage'));
+    expect(text).not.toContain(i18n.t('driveConnect.needsEnrolmentHeading'));
+    expect(host.querySelector('app-drive-join')).toBeNull();
+    expect(host.querySelector('app-drive-enrol')).toBeNull();
+    expect(server.contentOf(file.id)).toEqual(body);
+    expect(text.toLowerCase()).not.toContain('restore');
+  });
+
+  it('a folder with no recovery key keeps join and enrol after the recovery key is refused', async () => {
+    const server = new FakeDriveServer();
+    const a = await Rig.make(server, 'First');
+    const made = await a.service.createFolder(false);
+    expect(made.connection.kind).toBe('READY');
+    expect(made.recoveryKey).toBeNull();
+    const b = await Rig.make(server, 'Second');
+    const service = serviceFor(b);
+    const { host, component, fixture, i18n } = await render(service);
+    await component.onConnect();
+    await flush();
+    fixture.detectChanges();
+    expect(host.querySelector('app-drive-enrol')).toBeTruthy();
+    const input = host.querySelector<HTMLInputElement>('input#recovery-key-input');
+    expect(input).toBeTruthy();
+    input!.value = RecoveryKey.generate(b.p).display;
+    input!.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    host.querySelector<HTMLButtonElement>('app-drive-join button.btn-primary')!.click();
+    const text = await settle(
+      fixture,
+      host,
+      (t) => t.includes(i18n.t('driveProblem.NO_RECOVERY_KEY')) || t.includes(i18n.t('driveConnect.failed')),
+    );
+    expect(text).toContain(i18n.t('driveProblem.NO_RECOVERY_KEY'));
+    expect(text).not.toContain(i18n.t('driveConnect.failed'));
+    expect(host.querySelector('app-drive-enrol')).toBeTruthy();
+    expect(host.querySelector('input#recovery-key-input')).toBeTruthy();
+    expect(host.querySelector('app-drive-join')).toBeTruthy();
+  });
+
+  it('an unknown throw inside connect is a connect failure, not a backup sentence', async () => {
+    const server = new FakeDriveServer();
+    const rig = await Rig.make(server);
+    const leak = 'secret google body not-shown';
+    rig.drive.list = (() => Promise.reject(new Error(leak))) as typeof rig.drive.list;
+    const service = serviceFor(rig);
+    const { host, component, fixture, i18n } = await render(service);
+    await component.onConnect();
+    await flush();
+    fixture.detectChanges();
+    const text = host.textContent ?? '';
+    expect(text).toContain(i18n.t('driveProblem.CONNECT_FAILED'));
+    expect(text).not.toContain(i18n.t('driveProblem.SOURCE_FAILED'));
+    expect(text).not.toContain(leak);
+    expect(text).toContain(i18n.t('common.retry'));
+    expect(text.toLowerCase()).not.toContain('restore');
   });
 });

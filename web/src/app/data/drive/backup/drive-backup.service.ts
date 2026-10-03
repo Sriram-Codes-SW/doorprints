@@ -146,6 +146,13 @@ export class DriveBackupService {
           if (finished) return finished;
           return { kind: 'ERROR', problem: new DriveProblem('FOLDER_EXISTS') };
         }
+        // A file named keys.json is not a key list until it parses. Do not say another device's backups are here.
+        try {
+          this.keysFile.parse(bytes);
+        } catch (e) {
+          if (e instanceof KeysError) return { kind: 'ERROR', problem: DriveProblem.of(e) };
+          throw e;
+        }
         return { kind: 'NEEDS_ENROLMENT', recoveryAvailable: this.recoveryHint(bytes) };
       }
       let opened: OpenedKeys;
@@ -158,7 +165,7 @@ export class DriveBackupService {
         throw e;
       }
       return this.ready(root.id, keys.id, opened);
-    });
+    }, true);
   }
 
   /**
@@ -243,6 +250,7 @@ export class DriveBackupService {
           ...(await this.state.load()),
           rootId: root.id, keysId, controlId, backupsId: backups.id, creatingRootId: null, creatingKeysHash: null,
           deviceId: st.deviceId ?? this.newDeviceId(), newestSeenAt: null, lastBackupId: null,
+          recoveryKeyUnshown: false,
         });
         recovery = key;
         return { kind: 'READY', folder: { rootId: root.id, keysId, controlId, backupsId: backups.id, keys: written.opened, control: control.body } };
@@ -605,11 +613,17 @@ export class DriveBackupService {
       body = await this.controlFile.open(await downloadVerified(this.drive, controlMeta.id), opened, controlStore);
     }
     const backupsId = (st.rootId === rootId ? st.backupsId : null) ?? (await ensureFolder(this.drive, DRIVE_LAYOUT.backups, rootId, false))?.id ?? null;
+    const loaded = await this.state.load();
+    const recoveryKeyUnshown = loaded.recoveryKeyUnshown === true;
     await this.state.save({
-      ...(await this.state.load()),
+      ...loaded,
       rootId, keysId, controlId, backupsId, creatingRootId: null, creatingKeysHash: null, deviceId: st.deviceId ?? this.newDeviceId(),
     });
-    return { kind: 'READY', folder: { rootId, keysId, controlId, backupsId, keys: opened, control: body } };
+    return {
+      kind: 'READY',
+      folder: { rootId, keysId, controlId, backupsId, keys: opened, control: body },
+      ...(recoveryKeyUnshown ? { recoveryKeyUnshown: true } : {}),
+    };
   }
 
   private async locateKeys(): Promise<{ rootId: string; keys: DriveFile; bytes: Uint8Array } | null> {
@@ -720,7 +734,12 @@ export class DriveBackupService {
     }
     try {
       const opened = await this.keysFile.finishOwnCreate(bytes, this.device.key, guard, committed);
-      return await this.ready(rootId, keysId, opened);
+      const connected = await this.ready(rootId, keysId, opened);
+      if (connected.kind !== 'READY') return connected;
+      // The recovery key lived only in the call that died. Remember that it was not shown. Do not store the key.
+      const st = await this.state.load();
+      await this.state.save({ ...st, recoveryKeyUnshown: true });
+      return { ...connected, recoveryKeyUnshown: true };
     } catch (e) {
       if (!(e instanceof KeysError)) throw e;
       if (e.kind === 'NOT_ENROLLED' || e.kind === 'UNWRAP_FAILED') {
@@ -809,13 +828,25 @@ export class DriveBackupService {
     return hex(this.p.randomBytes(8));
   }
 
-  /** Runs `block`, turning every failure into an `ERROR` connection. */
-  private async connection(block: () => Promise<DriveConnection>): Promise<DriveConnection> {
+  /** Drops the "key was not shown" mark after the card has said it. Does not write the key, or anything in Drive. */
+  async clearRecoveryKeyUnshown(): Promise<void> {
+    const st = await this.state.load();
+    if (st.recoveryKeyUnshown !== true) return;
+    await this.state.save({ ...st, recoveryKeyUnshown: false });
+  }
+
+  /**
+   * Runs `block`, turning every failure into an `ERROR` connection.
+   * `connecting` is `connect()` itself: an unknown throw is a connect failure, not a backup that could not be prepared.
+   */
+  private async connection(block: () => Promise<DriveConnection>, connecting = false): Promise<DriveConnection> {
     try {
       return await block();
     } catch (e) {
       if (e instanceof FolderWithoutKeys) return { kind: 'ERROR', problem: new DriveProblem('FOLDER_WITHOUT_KEYS') };
-      return { kind: 'ERROR', problem: DriveProblem.of(e) };
+      const problem = DriveProblem.of(e);
+      if (connecting && problem.kind === 'SOURCE_FAILED') return { kind: 'ERROR', problem: new DriveProblem('CONNECT_FAILED') };
+      return { kind: 'ERROR', problem };
     }
   }
 }

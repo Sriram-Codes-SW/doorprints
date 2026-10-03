@@ -540,6 +540,35 @@ describe('DriveBackupService', () => {
     expect(c.kind === 'ERROR' && c.problem.keysKind).toBe('ROLLED_BACK');
     expect(writeCount()).toBe(before);
     expect(folder.keys.epoch).toBe(1);
+    const again = await a.service.connect();
+    expect(again.kind === 'ERROR' && again.problem.kind).toBe('KEYS_ROLLED_BACK');
+    expect(writeCount()).toBe(before);
+  });
+
+  it('does not treat a keys.json that is only a name match as a joinable folder', async () => {
+    const { server, writeCount } = world();
+    const a = await Rig.make(server);
+    const rootId = plantRoot(server);
+    const body = new TextEncoder().encode('{');
+    const file = server.putByHand({
+      name: 'keys.json', mimeType: 'application/json', parents: [rootId], appProperties: {},
+    }, body);
+    a.state.value = { ...a.state.value, rootId };
+    const before = writeCount();
+    const c = await a.service.connect();
+    expect(c.kind === 'ERROR' && c.problem.kind).toBe('KEYS_UNREADABLE');
+    expect(c.kind === 'ERROR' && c.problem.keysKind).toBe('MALFORMED');
+    expect(writeCount()).toBe(before);
+    expect(server.contentOf(file.id)).toEqual(body);
+    expect(server.allFiles().filter((f) => f.trashed).length).toBe(0);
+  });
+
+  it('words an unknown connect failure as a connect failure, not a backup that could not be prepared', async () => {
+    const { server } = world();
+    const a = await Rig.make(server);
+    a.drive.list = (() => Promise.reject(new Error('secret google body'))) as typeof a.drive.list;
+    const c = await a.service.connect();
+    expect(c.kind === 'ERROR' && c.problem.kind).toBe('CONNECT_FAILED');
   });
 
   it('refuses a rolled back control file and accepts only a newer one', async () => {
@@ -823,6 +852,9 @@ describe('DriveBackupService', () => {
     a.state.value = { ...a.state.value, creatingRootId: folder.rootId, creatingKeysHash: committed };
     const resumed = await a.service.connect();
     expect(resumed.kind).toBe('READY');
+    expect(resumed.kind === 'READY' && resumed.recoveryKeyUnshown).toBe(true);
+    expect(a.state.value.recoveryKeyUnshown).toBe(true);
+    expect('recoveryKey' in a.state.value).toBe(false);
     expect(server.contentOf(folder.keysId)).toEqual(keysBefore);
     expect(server.contentOf(extra.id)).toEqual(new Uint8Array([4, 5]));
     expect(a.state.value.creatingKeysHash).toBeNull();

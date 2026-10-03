@@ -142,7 +142,7 @@ describe('Drive problem keys', () => {
       OFFLINE: 1, UNAUTHORIZED: 1, QUOTA_EXCEEDED: 1, RATE_LIMITED: 1, SERVER: 1, DRIVE: 1, CORRUPT: 1,
       KEYS_ROLLED_BACK: 1, KEYS_UNTRUSTED: 1, KEYS_UNREADABLE: 1, WRONG_RECOVERY_KEY: 1, NO_RECOVERY_KEY: 1,
       DEVICE_REVOKED: 1, CONTROL_ROLLED_BACK: 1, CONTROL_INVALID: 1, FOLDER_WITHOUT_KEYS: 1, FOLDER_EXISTS: 1,
-      BACKUP_REFUSED: 1, BACKUP_GONE: 1, SOURCE_FAILED: 1, CRYPTO_UNAVAILABLE: 1,
+      BACKUP_REFUSED: 1, BACKUP_GONE: 1, SOURCE_FAILED: 1, CONNECT_FAILED: 1, CRYPTO_UNAVAILABLE: 1,
       SIGNIN_POPUP_BLOCKED: 1, SIGNIN_CLOSED: 1, SIGNIN_DENIED: 1, SIGNIN_UNAVAILABLE: 1,
     }) as DriveProblemKind[];
     for (const kind of kinds) {
@@ -228,7 +228,57 @@ describe('DriveConnectService error states on the card (en and hi)', () => {
       shownIsTranslated(host, i18n, 'driveProblem.CRYPTO_UNAVAILABLE');
       const box = host.querySelector('.error-box');
       expect(box?.querySelector('p')?.textContent).toContain(i18n.t('driveProblem.CRYPTO_UNAVAILABLE'));
-      expect(box?.textContent).toContain(i18n.t('common.retry'));
+      expect(box?.textContent).not.toContain(i18n.t('common.retry'));
+      expect(box?.querySelector('button')).toBeNull();
+    });
+
+    it(`${lang}: a rolled-back key list says Try again reads the same list`, async () => {
+      const backup = stubBackup({
+        connect: async () => ({ kind: 'ERROR', problem: new DriveProblem('KEYS_ROLLED_BACK') }),
+      });
+      const { host, i18n, component, fixture } = await renderConnect(makeService('client', backup), lang);
+      await component.onConnect();
+      await flush();
+      fixture.detectChanges();
+      const sentence = i18n.t('driveProblem.KEYS_ROLLED_BACK');
+      shownIsTranslated(host, i18n, 'driveProblem.KEYS_ROLLED_BACK');
+      expect(sentence).toContain(i18n.t('common.retry'));
+      expect(sentence.toLowerCase()).not.toContain('connect again');
+      expect(host.textContent).toContain(i18n.t('common.retry'));
+      expect(host.textContent?.toLowerCase()).not.toContain('restore');
+    });
+
+    it(`${lang}: no recovery key keeps the enrol card on the error box`, async () => {
+      const backup = stubBackup({
+        connect: async () => ({ kind: 'ERROR', problem: new DriveProblem('NO_RECOVERY_KEY') }),
+      });
+      const { host, i18n, component, fixture } = await renderConnect(makeService('client', backup), lang);
+      await component.onConnect();
+      await flush();
+      fixture.detectChanges();
+      shownIsTranslated(host, i18n, 'driveProblem.NO_RECOVERY_KEY');
+      expect(host.querySelector('.error-box app-drive-enrol')).toBeTruthy();
+      expect(host.textContent).toContain(i18n.t('driveEnrol.heading'));
+      const retry = [...host.querySelectorAll('button')].find((b) => (b.textContent ?? '').includes(i18n.t('common.retry')));
+      expect(retry).toBeTruthy();
+      retry!.click();
+      await flush();
+      fixture.detectChanges();
+      expect(host.querySelector('.error-box app-drive-enrol')).toBeTruthy();
+      expect(host.textContent).toContain(i18n.t('driveProblem.NO_RECOVERY_KEY'));
+    });
+
+    it(`${lang}: an unknown connect failure is not a backup sentence`, async () => {
+      const backup = stubBackup({
+        connect: async () => ({ kind: 'ERROR', problem: new DriveProblem('CONNECT_FAILED') }),
+      });
+      const { host, i18n, component, fixture } = await renderConnect(makeService('client', backup), lang);
+      await component.onConnect();
+      await flush();
+      fixture.detectChanges();
+      shownIsTranslated(host, i18n, 'driveProblem.CONNECT_FAILED');
+      expect(host.textContent).not.toContain(i18n.t('driveProblem.SOURCE_FAILED'));
+      expect(host.textContent).toContain(i18n.t('common.retry'));
     });
 
     it(`${lang}: a folder that still holds files says what to do, and never says Restore`, async () => {

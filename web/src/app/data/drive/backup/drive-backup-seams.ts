@@ -65,6 +65,11 @@ export interface DriveDeviceState {
   readonly lastVerifyAt: number | null;
   /** The newest authenticated `createdAt` this device has seen in the folder: a listing older than it lost a file. */
   readonly newestSeenAt: number | null;
+  /**
+   * This browser pinned a key list it had uploaded, and the recovery key was never on screen.
+   * A boolean only. The key itself is not stored.
+   */
+  readonly recoveryKeyUnshown?: boolean;
   /** Backups whose drop in houses the person confirmed here (the shrink guard). */
   readonly confirmedDrops: readonly string[];
 }
@@ -94,6 +99,7 @@ export function normalizeDeviceState(raw: Partial<DriveDeviceState> | null | und
     ...(raw ?? {}),
     creatingKeysHash: hash instanceof Uint8Array && hash.length === 32 ? new Uint8Array(hash) : null,
     confirmedDrops: Array.isArray(raw?.confirmedDrops) ? [...raw.confirmedDrops] : [],
+    recoveryKeyUnshown: raw?.recoveryKeyUnshown === true,
   };
 }
 

@@ -59,6 +59,8 @@ export type DriveProblemKind =
   | 'BACKUP_REFUSED'
   | 'BACKUP_GONE'
   | 'SOURCE_FAILED'
+  /** An unknown failure inside `connect()`, not a backup that could not be prepared. */
+  | 'CONNECT_FAILED'
   | 'CRYPTO_UNAVAILABLE'
   | 'SIGNIN_POPUP_BLOCKED'
   | 'SIGNIN_CLOSED'
@@ -172,6 +174,7 @@ const PROBLEM_MSG: Record<DriveProblemKind, TKey> = {
   BACKUP_REFUSED: 'driveProblem.BACKUP_REFUSED',
   BACKUP_GONE: 'driveBackups.error.backupNotFound',
   SOURCE_FAILED: 'driveProblem.SOURCE_FAILED',
+  CONNECT_FAILED: 'driveProblem.CONNECT_FAILED',
   CRYPTO_UNAVAILABLE: 'driveProblem.CRYPTO_UNAVAILABLE',
   SIGNIN_POPUP_BLOCKED: 'driveProblem.SIGNIN_POPUP_BLOCKED',
   SIGNIN_CLOSED: 'driveProblem.SIGNIN_CLOSED',
@@ -214,7 +217,7 @@ export type DriveConnection =
   | { readonly kind: 'FOLDER_GONE' }
   | { readonly kind: 'NEEDS_ENROLMENT'; readonly recoveryAvailable: boolean }
   | { readonly kind: 'NEEDS_RECOVERY_KEY'; readonly recoveryAvailable: boolean; readonly reason: KeysErrorKind }
-  | { readonly kind: 'READY'; readonly folder: ReadyFolder }
+  | { readonly kind: 'READY'; readonly folder: ReadyFolder; readonly recoveryKeyUnshown?: boolean }
   | { readonly kind: 'ERROR'; readonly problem: DriveProblem };
 
 /** `createFolder`'s result: `recoveryKey` is shown **once** by the caller and never stored. */

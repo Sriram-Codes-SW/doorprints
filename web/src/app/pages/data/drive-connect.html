@@ -87,6 +87,14 @@
 
   @if (state() === 'Ready') {
     <p role="status">{{ 'driveConnect.ready' | t }}</p>
+    @if (recoveryKeyWasNotShown()) {
+      <div class="warn-box">
+        <p role="status">{{ 'driveConnect.recoveryKeyUnshown' | t }}</p>
+        <button type="button" class="btn" (click)="acknowledgeRecoveryKeyUnshown()">
+          {{ 'common.close' | t }}
+        </button>
+      </div>
+    }
     <app-drive-backups (importFile)="onImportFromDrive($event)" />
     <app-drive-sync />
     <app-drive-passkey />
@@ -109,9 +117,14 @@
           {{ 'driveConnect.connect' | t }}
         </button>
       }
-      <button type="button" class="btn" (click)="onConnect()" [disabled]="busy()">
-        {{ 'common.retry' | t }}
-      </button>
+      @if (showRetry()) {
+        <button type="button" class="btn" (click)="onConnect()" [disabled]="busy()">
+          {{ 'common.retry' | t }}
+        </button>
+      }
+      @if (error() === 'driveProblem.NO_RECOVERY_KEY') {
+        <app-drive-enrol />
+      }
     </div>
   }
 </section>
