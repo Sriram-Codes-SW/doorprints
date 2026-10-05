@@ -327,12 +327,18 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
       return { kind: 'OK', output: prfOutput };
     } catch (e) {
       const error = e instanceof Error ? e : new Error(String(e));
-      this.assertionStage = `error:${error.name || 'unknown'}`;
+      // Extract error name from DOMException or Error object
+      const errorName = (
+        e !== null && typeof e === 'object' && 'name' in e && typeof e.name === 'string'
+          ? e.name
+          : error.name || 'unknown'
+      );
+      this.assertionStage = `error:${errorName}`;
       // Check for specific cancellation or unsupported errors
-      if (error.name === 'NotAllowedError') {
+      if (errorName === 'NotAllowedError') {
         return { kind: 'CANCELLED' };
       }
-      if (error.name === 'NotSupportedError' || error.message?.includes('PRF')) {
+      if (errorName === 'NotSupportedError' || error.message?.includes('PRF')) {
         return { kind: 'NOT_SUPPORTED' };
       }
       return { kind: 'FAILED' };

@@ -639,6 +639,26 @@ describe("WebAuthnPrfAuthenticator", () => {
       expect(auth.lastPrfDetails()).toContain("assertion: not-user-verified");
     });
 
+    it("rejects when assertion get throws NotSupportedError", async () => {
+      const kv = new InMemoryKeyValueStore();
+      const auth = new WebAuthnPrfAuthenticator(
+        (key) => kv.get(key),
+        (key, value) => kv.set(key, value),
+      );
+      fakeCredentials.createReturnsPrf = false;
+      // Mock get to throw NotSupportedError on assertion
+      const originalGet = fakeCredentials.get;
+      (fakeCredentials as any).get = async (options: any) => {
+        const error = new DOMException("PRF not supported", "NotSupportedError");
+        throw error;
+      };
+
+      const error = await auth.registerPasskey("Test User").catch((e) => e);
+      expect(error).toBeInstanceOf(PasskeyPrfMissingError);
+      expect(error.details).toContain("assertion: error:NotSupportedError");
+      expect(auth.lastPrfDetails()).toContain("assertion: error:NotSupportedError");
+    });
+
     it("uses userVerification 'required' in creation options", async () => {
       const store = createStore();
       const auth = new WebAuthnPrfAuthenticator(store.get, store.set);
