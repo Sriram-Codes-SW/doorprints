@@ -558,6 +558,38 @@ describe("WebAuthnPrfAuthenticator", () => {
       expect(auth.lastPrfDetails()).toContain("assertion: output-not-32-bytes");
     });
 
+    it("rejects when assertion returns a 32-byte all-zero output", async () => {
+      const kv = new InMemoryKeyValueStore();
+      const auth = new WebAuthnPrfAuthenticator(
+        (key) => kv.get(key),
+        (key, value) => kv.set(key, value),
+      );
+      fakeCredentials.createReturnsPrf = false;
+      fakeCredentials.getReturnsPrf = true;
+      // Mock get to return all-zero output instead of derived
+      const originalGet = fakeCredentials.get;
+      (fakeCredentials as any).get = async (options: any) => {
+        const assertion = await originalGet.call(fakeCredentials, options);
+        if (assertion && "getClientExtensionResults" in assertion) {
+          const originalGetExt = (assertion as any).getClientExtensionResults;
+          (assertion as any).getClientExtensionResults = () => {
+            const result = originalGetExt.call(assertion);
+            if (result?.prf?.results?.first) {
+              // Replace with all-zero buffer
+              result.prf.results.first = new ArrayBuffer(32);
+            }
+            return result;
+          };
+        }
+        return assertion;
+      };
+
+      const error = await auth.registerPasskey("Test User").catch((e) => e);
+      expect(error).toBeInstanceOf(PasskeyPrfMissingError);
+      expect(error.details).toContain("assertion: output-does-not-seal");
+      expect(auth.lastPrfDetails()).toContain("assertion: output-does-not-seal");
+    });
+
     it.each(["zeros", "raw-salt", "public-salt"] as const)(
       "does not store a create result that is %s",
       async (echo) => {
