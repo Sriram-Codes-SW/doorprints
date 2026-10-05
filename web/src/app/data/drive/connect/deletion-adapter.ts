@@ -81,6 +81,12 @@ export interface DriveDeletionAdapter {
    * details after 'no-prf'. null when there is nothing to say.
    */
   lastPasskeyDetails?(): Promise<string | null>;
+
+  /**
+   * Whether this browser supports the WebAuthn PRF extension.
+   * Returns true if supported, false if not supported, null if indeterminate (error or API unavailable).
+   */
+  prfCapability?(): Promise<boolean | null>;
 }
 
 export type DeletionPreflightResult =
@@ -313,6 +319,15 @@ export class DriveDeletionAdapterImpl implements DriveDeletionAdapter {
       return stored && sealedBlobFromJson(stored) ? 'registered' : 'none';
     } catch {
       return 'unsupported';
+    }
+  }
+
+  async prfCapability(): Promise<boolean | null> {
+    if (!this.prf) return null;
+    try {
+      return (await this.prf.prfCapability?.()) ?? null;
+    } catch {
+      return null;
     }
   }
 }
