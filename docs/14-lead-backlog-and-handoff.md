@@ -2,8 +2,8 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.84 |
-| Date | 2026-10-03 |
+| Version | 0.85 |
+| Date | 2026-10-05 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..135); this file lists the lead-level items and points to the rest. |
 
@@ -340,8 +340,8 @@ section is only today's state. Earlier versions of this file (git history) carry
   ("Boundary: Survey of India") and run TC-M-25 on the live site and a phone when P5 is built.
 - **GitHub contributor list** ([10](10-sprint-log.md) S4b-BL-53): `noreply` is listed because of 17 commits of
   2026-09-23 made as `noreply@users.noreply.github.com`. Decide whether it is worth a history rewrite (costly, see the
-  ticket); optionally add and verify `owner-email-removed` in GitHub's email settings so the 14
-  anonymous commits of 2026-09-22 count as yours.
+  ticket); the owner may claim the 14 anonymous commits of 2026-09-22 by verifying the owner's personal email
+  address in GitHub's email settings.
 - Storage audit on the live site (`web/README.md`, *Storage audit on the live site*).
 - Firebase Hosting: set releases to keep = 10.
 - Firebase Test Lab: the setup in [07](07-secure-build-and-deploy.md) §7.2 ([ops/firebase-test-lab-setup.md](ops/firebase-test-lab-setup.md)): two APIs, the service account `ftl-runner`, a Workload Identity pool and provider of its own (`github-test-lab`, a new pool; condition `android-emulator.yml` on `main`; the Hosting provider stays as it is), a results bucket (`doorprints-test-lab-results`, 30-day delete rule, Storage Object Admin for `ftl-runner` on it only) named in the variable `FTL_RESULTS_BUCKET`, and the secrets `FTL_WIF_PROVIDER` and `FTL_SA_EMAIL`, when you want the smoke tests on a Test Lab device too; until then that job is skipped. **Decision first:** the bucket needs a billing account on `doorprints` (Spark projects no longer get Cloud Storage; Always Free needs billing and is US-only), which the zero-cost rule excludes: leave Test Lab off, link billing with a ₹0 budget alert, or go back to Test Lab's default bucket (a workflow change, and Editor for `ftl-runner`).
