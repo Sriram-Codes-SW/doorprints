@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Test plan (functional, security, accessibility, i18n, AI) |
-| Version | 0.121 |
-| Date | 2026-10-03 |
+| Version | 0.122 |
+| Date | 2026-10-05 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -115,6 +115,7 @@
 | 0.108 | 2026-10-02 | Cursor Agent, lead | TC-U-133 also covers the website's one-tab Drive sync lock (`sync-adapter.spec.ts`: `doorprints-drive-sync` is held until the pass ends, so a second tab waits). |
 | 0.109 | 2026-10-02 | Cursor Agent, lead | **TC-U-133** gains: Drive card errors are translated sentences in en and hi, never a key or `String(err)` (`drive-connect-errors.spec.ts`); empty `GOOGLE_CONFIG` hides Connect on the real service (`drive-connect-configured.spec.ts`); a11y sweep Unavailable, Connecting, NeedsEnrolment, Error; Drive specs assert `TranslationService` strings; schemas README 1.6..1.24 order (`docs-changelog.spec.ts`); import emit is the same Blob. |
 | 0.121 | 2026-10-03 | Cursor Agent, lead | **TC-U-133**: a PRF output from a passkey already stored, an empty or public create result (zeros, the salt, the client salt), a mismatched assertion id, or a clear UV flag is not stored (`web-authn-prf-authenticator.spec.ts`). |
+| 0.122 | 2026-10-05 | Claude, lead | **TC-U-133**: the message when a passkey returns no PRF output changed to say it could not protect deletions and offer remedies (single backups still delete; update Windows and the browser; a security key or a phone/Mac passkey usually works); the setup records which step returned nothing (step name and flags only, never a value) and the card offers the details to copy (`drive-passkey.spec.ts`). |
 | 0.120 | 2026-10-03 | Cursor Agent, lead | **TC-U-133**: a Windows Hello create that returns a PRF output with `enabled` false seals and opens (`web-authn-prf-authenticator.spec.ts`). A PIN that returns no PRF output is `no-prf`, stores nothing, and the card says the passkey did not return the PRF output needed to seal deletions (`drive-passkey.spec.ts`). |
 | 0.119 | 2026-10-03 | Cursor Agent, lead | **TC-U-133**: passkey registration lists ES256 then RS256 and requires a discoverable credential (`web-authn-prf-authenticator.spec.ts`). Cancelling or failing *Set up a passkey* leaves the button and shows a sentence (`drive-passkey.spec.ts`). |
 | 0.118 | 2026-10-03 | Cursor Agent, lead | **TC-U-133**: a rolled-back key list stays refused and *Try again* reads the same list; a `keys.json` that is only a name match is not another device's backups; a browser that cannot encrypt has no *Try again*; an unknown `connect()` failure is not a backup sentence; no recovery key keeps the enrol card; an interrupted upload says once that the recovery key was not shown (`drive-connect-errors.spec.ts`, `drive-connect-combinations.spec.ts`, `drive-backup.service.spec.ts`). |

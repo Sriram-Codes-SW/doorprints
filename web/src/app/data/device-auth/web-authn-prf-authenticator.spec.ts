@@ -511,6 +511,21 @@ describe("WebAuthnPrfAuthenticator", () => {
       expect(auth.lastPrfDetails()).toBe("create: no-extension-results; assertion: prf-absent");
     });
 
+    it("rejects when create and assertion both return prf-present enabled=false", async () => {
+      const kv = new InMemoryKeyValueStore();
+      const auth = new WebAuthnPrfAuthenticator(
+        (key) => kv.get(key),
+        (key, value) => kv.set(key, value),
+      );
+      fakeCredentials.createPrfEnabled = false;
+      fakeCredentials.getReturnsPrf = false;
+
+      const error = await auth.registerPasskey("Test User").catch((e) => e);
+      expect(error).toBeInstanceOf(PasskeyPrfMissingError);
+      expect(error.details).toBe("create: prf-present enabled=false first=no; assertion: no-prf-results enabled=false");
+      expect(auth.lastPrfDetails()).toBe("create: prf-present enabled=false first=no; assertion: no-prf-results enabled=false");
+    });
+
     it.each(["zeros", "raw-salt", "public-salt"] as const)(
       "does not store a create result that is %s",
       async (echo) => {
