@@ -109,7 +109,8 @@
   <!--
     Per-deployment Google API config: sets window.__DOORPRINTS__.googleClientId.
     S4b-BL-117: CI populates web/public/config.js from env. If missing, loads default empty config.
-    Service worker does not cache this, so each load gets current config.
+    Service worker precaches this (web/scripts/sw-precache-core.mjs excludes only 404.html and sw.js),
+    cache-first for the life of a build, so changing the configured OAuth client id requires a redeploy.
   -->
   <script src="config.js"></script>
 </head>
