@@ -672,6 +672,39 @@ describe("WebAuthnPrfAuthenticator", () => {
       expect(auth.lastPrfDetails()).toBe("create: prf-present enabled=true first=yes; assertion: not-tried");
     });
 
+    it("does not leak PRF output or salt in lastPrfDetails", async () => {
+      const kv = new InMemoryKeyValueStore();
+      const auth = new WebAuthnPrfAuthenticator(
+        (key) => kv.get(key),
+        (key, value) => kv.set(key, value),
+      );
+      // Create a fake that returns 0xAB for all 32 bytes
+      const testSecret = new Uint8Array(32);
+      testSecret.fill(0xAB);
+      fakeCredentials = new FakeCredentialsContainer(testSecret);
+      // Restore the fake in the global
+      Object.defineProperty(globalThis, "navigator", {
+        value: {
+          ...originalNavigator,
+          credentials: fakeCredentials as any,
+        },
+        configurable: true,
+      });
+      fakeCredentials.createReturnsPrf = true;
+
+      const credId = await auth.registerPasskey("Test User");
+      const details = auth.lastPrfDetails();
+      expect(details).not.toBeNull();
+
+      // Convert 0xAB repeated 32 times to base64 to check if it's in the details
+      const hexAb = "ababababababababababababababababababababababababababababababababab";
+      expect(details).not.toMatch(/ab{8,}/i);
+
+      // Check base64 encoding of 0xAB repeated 32 times
+      const base64AB = btoa(String.fromCharCode(...testSecret));
+      expect(details).not.toContain(base64AB.substring(0, 8));
+    });
+
     it("uses userVerification 'required' in creation options", async () => {
       const store = createStore();
       const auth = new WebAuthnPrfAuthenticator(store.get, store.set);
