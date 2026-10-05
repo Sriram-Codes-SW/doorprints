@@ -494,4 +494,103 @@ describe('DriveConnectService', () => {
       expect(details).toBeNull();
     });
   });
+
+  describe('passkeyPrfCapability()', () => {
+    it('returns false when adapter prfCapability resolves false', async () => {
+      const mockAdapter = {
+        preflight: vi.fn(),
+        decide: vi.fn(),
+        authorize: vi.fn(),
+        authorizePolicy: vi.fn(),
+        execute: vi.fn(),
+        resume: vi.fn(),
+        confirmGate: vi.fn(),
+        registerPasskey: vi.fn(),
+        passkeyStatus: vi.fn(),
+        prfCapability: vi.fn(async () => false),
+      };
+      const service = new DriveConnectService(a.backup, a.sync, mockAdapter as any, { clientId: 'test' }, a.payload.source(), memoryPrefs());
+
+      const cap = await service.passkeyPrfCapability();
+      expect(cap).toBe(false);
+    });
+
+    it('returns true when adapter prfCapability resolves true', async () => {
+      const mockAdapter = {
+        preflight: vi.fn(),
+        decide: vi.fn(),
+        authorize: vi.fn(),
+        authorizePolicy: vi.fn(),
+        execute: vi.fn(),
+        resume: vi.fn(),
+        confirmGate: vi.fn(),
+        registerPasskey: vi.fn(),
+        passkeyStatus: vi.fn(),
+        prfCapability: vi.fn(async () => true),
+      };
+      const service = new DriveConnectService(a.backup, a.sync, mockAdapter as any, { clientId: 'test' }, a.payload.source(), memoryPrefs());
+
+      const cap = await service.passkeyPrfCapability();
+      expect(cap).toBe(true);
+    });
+
+    it('returns null when adapter prfCapability resolves null', async () => {
+      const mockAdapter = {
+        preflight: vi.fn(),
+        decide: vi.fn(),
+        authorize: vi.fn(),
+        authorizePolicy: vi.fn(),
+        execute: vi.fn(),
+        resume: vi.fn(),
+        confirmGate: vi.fn(),
+        registerPasskey: vi.fn(),
+        passkeyStatus: vi.fn(),
+        prfCapability: vi.fn(async () => null),
+      };
+      const service = new DriveConnectService(a.backup, a.sync, mockAdapter as any, { clientId: 'test' }, a.payload.source(), memoryPrefs());
+
+      const cap = await service.passkeyPrfCapability();
+      expect(cap).toBeNull();
+    });
+
+    it('returns null when adapter has no prfCapability method', async () => {
+      const mockAdapter = {
+        preflight: vi.fn(),
+        decide: vi.fn(),
+        authorize: vi.fn(),
+        authorizePolicy: vi.fn(),
+        execute: vi.fn(),
+        resume: vi.fn(),
+        confirmGate: vi.fn(),
+        registerPasskey: vi.fn(),
+        passkeyStatus: vi.fn(),
+        // no prfCapability method
+      };
+      const service = new DriveConnectService(a.backup, a.sync, mockAdapter as any, { clientId: 'test' }, a.payload.source(), memoryPrefs());
+
+      const cap = await service.passkeyPrfCapability();
+      expect(cap).toBeNull();
+    });
+
+    it('returns null when prfCapability rejects', async () => {
+      const mockAdapter = {
+        preflight: vi.fn(),
+        decide: vi.fn(),
+        authorize: vi.fn(),
+        authorizePolicy: vi.fn(),
+        execute: vi.fn(),
+        resume: vi.fn(),
+        confirmGate: vi.fn(),
+        registerPasskey: vi.fn(),
+        passkeyStatus: vi.fn(),
+        prfCapability: vi.fn(async () => {
+          throw new Error('Test error');
+        }),
+      };
+      const service = new DriveConnectService(a.backup, a.sync, mockAdapter as any, { clientId: 'test' }, a.payload.source(), memoryPrefs());
+
+      const cap = await service.passkeyPrfCapability();
+      expect(cap).toBeNull();
+    });
+  });
 });

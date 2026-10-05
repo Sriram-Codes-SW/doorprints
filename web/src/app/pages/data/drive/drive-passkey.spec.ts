@@ -391,6 +391,24 @@ describe('DrivePasskeyComponent', () => {
       expect(component['status']()).toBe('registered');
       expect(svc.passkeyPrfCapability).not.toHaveBeenCalled();
     });
+
+    it('keeps Set up button enabled and renders no error alert when heads-up is shown', async () => {
+      const service = createFakeDriveService({
+        passkeyStatus: vi.fn(async () => 'none' as const),
+        passkeyPrfCapability: vi.fn(async () => false),
+      });
+      const { host, detect } = await render(service);
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      detect();
+
+      const button = host.querySelector('button');
+      expect(button?.hasAttribute('disabled')).toBe(false);
+      expect(button?.textContent).toContain('Set up a passkey');
+
+      const errorMessage = host.querySelector('.error-message');
+      expect(errorMessage).toBeNull();
+    });
   });
 
   it('has aria-live region for error messages', async () => {
