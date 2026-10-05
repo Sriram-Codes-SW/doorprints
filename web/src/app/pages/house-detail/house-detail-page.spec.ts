@@ -567,3 +567,83 @@ describe('HouseDetailPage: finding the locality on the map', () => {
     expect(host.textContent).toContain(t({ key: 'house.placeNotFound', params: { place: 'Indiranagar' } }));
   });
 });
+
+/** S4b-BL-N13: listingHref validation for malicious URL schemes. */
+describe('HouseDetailPage: listingHref URL validation', () => {
+  it('accepts and returns valid https URLs unchanged', async () => {
+    const { fixture } = create({}, { lat: '12.9716', lon: '77.5946' }, {});
+    const page = fixture.componentInstance as unknown as { listingHref: (url: string | null | undefined) => string | null };
+    expect(page.listingHref('https://a.com/x')).toBe('https://a.com/x');
+  });
+
+  it('accepts and returns valid http URLs unchanged', async () => {
+    const { fixture } = create({}, { lat: '12.9716', lon: '77.5946' }, {});
+    const page = fixture.componentInstance as unknown as { listingHref: (url: string | null | undefined) => string | null };
+    expect(page.listingHref('HTTP://a.com')).toBe('HTTP://a.com');
+  });
+
+  it('converts bare domains to https URLs', async () => {
+    const { fixture } = create({}, { lat: '12.9716', lon: '77.5946' }, {});
+    const page = fixture.componentInstance as unknown as { listingHref: (url: string | null | undefined) => string | null };
+    expect(page.listingHref('example.com/x')).toBe('https://example.com/x');
+  });
+
+  it('blocks intent scheme URLs', async () => {
+    const { fixture } = create({}, { lat: '12.9716', lon: '77.5946' }, {});
+    const page = fixture.componentInstance as unknown as { listingHref: (url: string | null | undefined) => string | null };
+    expect(page.listingHref('intent://x#Intent;scheme=a;end')).toBeNull();
+  });
+
+  it('blocks javascript scheme URLs', async () => {
+    const { fixture } = create({}, { lat: '12.9716', lon: '77.5946' }, {});
+    const page = fixture.componentInstance as unknown as { listingHref: (url: string | null | undefined) => string | null };
+    expect(page.listingHref('javascript:alert(1)')).toBeNull();
+  });
+
+  it('blocks ms-word scheme URLs', async () => {
+    const { fixture } = create({}, { lat: '12.9716', lon: '77.5946' }, {});
+    const page = fixture.componentInstance as unknown as { listingHref: (url: string | null | undefined) => string | null };
+    expect(page.listingHref('ms-word:ofe|u|https://a')).toBeNull();
+  });
+
+  it('blocks data scheme URLs', async () => {
+    const { fixture } = create({}, { lat: '12.9716', lon: '77.5946' }, {});
+    const page = fixture.componentInstance as unknown as { listingHref: (url: string | null | undefined) => string | null };
+    expect(page.listingHref('data:text/html,x')).toBeNull();
+  });
+
+  it('trims whitespace from URLs', async () => {
+    const { fixture } = create({}, { lat: '12.9716', lon: '77.5946' }, {});
+    const page = fixture.componentInstance as unknown as { listingHref: (url: string | null | undefined) => string | null };
+    expect(page.listingHref('  https://a.com  ')).toBe('https://a.com');
+  });
+
+  it('does not show the Open listing link when listingUrl has a malicious scheme', async () => {
+    const { fixture } = create({}, { lat: '12.9716', lon: '77.5946' }, {});
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const host = fixture.nativeElement as HTMLElement;
+    const input = host.querySelector<HTMLInputElement>('#house-listing')!;
+    input.value = 'intent://x';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const link = host.querySelector('div.inline a.btn');
+    expect(link).toBeNull();
+  });
+
+  it('shows the Open listing link when listingUrl has a valid https scheme', async () => {
+    const { fixture } = create({}, { lat: '12.9716', lon: '77.5946' }, {});
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const host = fixture.nativeElement as HTMLElement;
+    const input = host.querySelector<HTMLInputElement>('#house-listing')!;
+    input.value = 'https://a.com';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const link = host.querySelector('div.inline a.btn');
+    expect(link).not.toBeNull();
+    expect(link?.getAttribute('href')).toBe('https://a.com');
+  });
+});

@@ -1613,9 +1613,14 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     return failures.some((f) => this.isStorageFull(f.reason));
   }
 
-  protected listingHref(url: string | null | undefined): string {
+  protected listingHref(url: string | null | undefined): string | null {
     const u = (url ?? '').trim();
-    return /^[a-z][a-z0-9+.-]*:/i.test(u) ? u : `https://${u}`;
+    // Match http:// or https://
+    if (/^https?:\/\//i.test(u)) return u;
+    // Block malicious schemes (javascript:, intent:, ms-word:, data:, file:, etc)
+    if (/^[a-z][a-z0-9+.-]*:/i.test(u)) return null;
+    // Bare domain without scheme: add https://
+    return `https://${u}`;
   }
 }
 
