@@ -430,4 +430,54 @@ describe('DriveConnectService', () => {
       expect(count()).toBe(1);
     });
   });
+
+  describe('passkey details', () => {
+    it('returns the adapter details when available', async () => {
+      // Mock the deletion adapter to return details
+      const mockDetails = 'test-prf-details';
+      const originalLastPasskeyDetails = a.deletion.lastPasskeyDetails;
+      a.deletion.lastPasskeyDetails = vi.fn(async () => mockDetails);
+
+      const details = await a.service.passkeyDetails();
+      expect(details).toBe(mockDetails);
+      expect(a.deletion.lastPasskeyDetails).toHaveBeenCalled();
+    });
+
+    it('returns null when adapter has no lastPasskeyDetails method', async () => {
+      // Create a deletion adapter without lastPasskeyDetails
+      const mockAdapter = {
+        preflight: vi.fn(),
+        decide: vi.fn(),
+        authorize: vi.fn(),
+        authorizePolicy: vi.fn(),
+        execute: vi.fn(),
+        resume: vi.fn(),
+        confirmGate: vi.fn(),
+        registerPasskey: vi.fn(),
+        passkeyStatus: vi.fn(),
+        // no lastPasskeyDetails method
+      };
+      const service = new DriveConnectService(a.backup, a.sync, mockAdapter as any, { clientId: 'test' }, a.payload.source(), memoryPrefs());
+
+      const details = await service.passkeyDetails();
+      expect(details).toBeNull();
+    });
+
+    it('returns null when lastPasskeyDetails rejects', async () => {
+      // Mock the deletion adapter to throw
+      a.deletion.lastPasskeyDetails = vi.fn(async () => {
+        throw new Error('Test error');
+      });
+
+      const details = await a.service.passkeyDetails();
+      expect(details).toBeNull();
+    });
+
+    it('returns null when lastPasskeyDetails returns null', async () => {
+      a.deletion.lastPasskeyDetails = vi.fn(async () => null);
+
+      const details = await a.service.passkeyDetails();
+      expect(details).toBeNull();
+    });
+  });
 });
