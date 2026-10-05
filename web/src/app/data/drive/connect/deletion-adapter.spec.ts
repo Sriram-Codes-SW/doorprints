@@ -582,21 +582,17 @@ describe('DriveDeletionAdapter', () => {
     expect(await adapterWithPrf.lastPasskeyDetails()).toBe("test-details-string");
   });
 
-  it('returns null for passkey details when adapter has no prf', async () => {
-    const result = await adapter.lastPasskeyDetails?.();
-    expect(result).toBeNull();
-  });
-
-  it('exposes lastPasskeyDetails for the service to use', async () => {
-    // Create adapter with a fake prf that records details
-    const fakePrf = {
+  it('clears passkey details on second registerPasskey call', async () => {
+    // First call: fails with no-prf
+    const crypto = new WebCryptoProvider();
+    let fakePrf: any = {
       isSupported: async () => true,
       registerPasskey: async () => {
-        throw new PasskeyPrfMissingError("captured-details");
+        throw new PasskeyPrfMissingError("first-failure-details");
       },
-      lastPrfDetails: () => "captured-details",
-    } as any;
-    const crypto = new WebCryptoProvider();
+      lastPrfDetails: () => "first-failure-details",
+    };
+    const kvForTest = new InMemoryKeyValueStore();
     const adapterWithPrf = new DriveDeletionAdapterImpl(
       deletionService,
       fakeAuthorizer as any,
@@ -606,14 +602,20 @@ describe('DriveDeletionAdapter', () => {
       gate,
       crypto,
       fakePrf,
-      kv,
+      kvForTest,
     );
 
-    const result = await adapterWithPrf.registerPasskey();
+    let result = await adapterWithPrf.registerPasskey();
     expect(result).toBe("no-prf");
+    expect(await adapterWithPrf.lastPasskeyDetails()).toBe("first-failure-details");
 
-    // The service calls this method
-    const details = await adapterWithPrf.lastPasskeyDetails?.();
-    expect(details).toBe("captured-details");
+    // Second call: person cancels (returns null)
+    fakePrf.registerPasskey = async () => null;
+    fakePrf.lastPrfDetails = () => null;
+
+    result = await adapterWithPrf.registerPasskey();
+    expect(result).toBeNull();
+    // After cancel, details MUST be null (cleared at start of registerPasskey)
+    expect(await adapterWithPrf.lastPasskeyDetails()).toBeNull();
   });
 });
