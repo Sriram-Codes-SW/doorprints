@@ -28,6 +28,8 @@ import {
 import { FakeAuthorizationGate } from './deletion-adapter.test-support';
 import type { WebGrant } from '../../device-auth/web-authorizer';
 import type { DeletionContext } from '../../device-auth/delete-policy';
+import { PasskeyPrfMissingError } from '../../device-auth/web-authn-prf-authenticator';
+import { WebCryptoProvider } from '../../crypto/crypto-provider';
 
 describe('DriveDeletionAdapter', () => {
   let server: FakeDriveServer;
@@ -551,5 +553,67 @@ describe('DriveDeletionAdapter', () => {
     gate.markStillValid('1');
     // The gate should now consider grant id 1 as genuine and still valid
     expect(gate).toBeDefined();
+  });
+
+  it('records passkey details when registerPasskey fails with no-prf', async () => {
+    // Create a fake PrfAuthenticator that throws PasskeyPrfMissingError
+    const fakePrf = {
+      isSupported: async () => true,
+      registerPasskey: async () => {
+        throw new PasskeyPrfMissingError("test-details-string");
+      },
+      lastPrfDetails: () => "test-details-string",
+    } as any;
+    const crypto = new WebCryptoProvider();
+    const adapterWithPrf = new DriveDeletionAdapterImpl(
+      deletionService,
+      fakeAuthorizer as any,
+      store,
+      rootId,
+      5,
+      gate,
+      crypto,
+      fakePrf,
+      kv,
+    );
+
+    const result = await adapterWithPrf.registerPasskey();
+    expect(result).toBe("no-prf");
+    expect(await adapterWithPrf.lastPasskeyDetails()).toBe("test-details-string");
+  });
+
+  it('returns null for passkey details when adapter has no prf', async () => {
+    const result = await adapter.lastPasskeyDetails?.();
+    expect(result).toBeNull();
+  });
+
+  it('exposes lastPasskeyDetails for the service to use', async () => {
+    // Create adapter with a fake prf that records details
+    const fakePrf = {
+      isSupported: async () => true,
+      registerPasskey: async () => {
+        throw new PasskeyPrfMissingError("captured-details");
+      },
+      lastPrfDetails: () => "captured-details",
+    } as any;
+    const crypto = new WebCryptoProvider();
+    const adapterWithPrf = new DriveDeletionAdapterImpl(
+      deletionService,
+      fakeAuthorizer as any,
+      store,
+      rootId,
+      5,
+      gate,
+      crypto,
+      fakePrf,
+      kv,
+    );
+
+    const result = await adapterWithPrf.registerPasskey();
+    expect(result).toBe("no-prf");
+
+    // The service calls this method
+    const details = await adapterWithPrf.lastPasskeyDetails?.();
+    expect(details).toBe("captured-details");
   });
 });
