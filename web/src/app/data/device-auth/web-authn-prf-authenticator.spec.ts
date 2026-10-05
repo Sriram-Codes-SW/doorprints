@@ -623,6 +623,22 @@ describe("WebAuthnPrfAuthenticator", () => {
       expect(await kv.get(SEALED_BLOB_KEY)).toBeUndefined();
     });
 
+    it("throws plain Error when assertion's UV flag is clear", async () => {
+      const kv = new InMemoryKeyValueStore();
+      const auth = new WebAuthnPrfAuthenticator(
+        (key) => kv.get(key),
+        (key, value) => kv.set(key, value),
+      );
+      fakeCredentials.createReturnsPrf = false;
+      fakeCredentials.getUv = false;
+
+      const error = await auth.registerPasskey("Test User").catch((e) => e);
+      expect(error).toBeInstanceOf(Error);
+      expect(error).not.toBeInstanceOf(PasskeyPrfMissingError);
+      expect(error.message).toBe("Passkey assertion was not user-verified for this credential.");
+      expect(auth.lastPrfDetails()).toContain("assertion: not-user-verified");
+    });
+
     it("uses userVerification 'required' in creation options", async () => {
       const store = createStore();
       const auth = new WebAuthnPrfAuthenticator(store.get, store.set);

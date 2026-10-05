@@ -443,10 +443,10 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
           useStoredCredential: false,
         });
         if (evaluated.kind === 'CANCELLED') return null;
+        this.lastDetails = `create: ${createNote}; assertion: ${this.assertionStage}`;
         if (evaluated.kind === 'FAILED') {
           throw new Error('Passkey assertion was not user-verified for this credential.');
         }
-        this.lastDetails = `create: ${createNote}; assertion: ${this.assertionStage}`;
         if (evaluated.kind !== 'OK') throw new PasskeyPrfMissingError(this.lastDetails);
         output = evaluated.output;
       }
