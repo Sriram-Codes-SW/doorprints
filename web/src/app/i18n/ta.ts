@@ -1327,6 +1327,8 @@ export const ta: Dict = {
   // Passkey without a PRF output: what works instead, and copyable details. Under review (owner rule: hi/ta/te ship marked under review).
   'drivePasskey.registerNoPrf': 'இந்த தவணையிலிருந்து நீக்கங்களைப் பாதுகாக்க Doorprints க்குத் தேவையான ரகசிய மதிப்பு (PRF வெளியீடு) கிடைக்கவில்லை.',
   'drivePasskey.noPrfHelp': 'இந்த உலாவியிலும் தவணையிலும் எல்லா காப்புப்பிரதிகளையோ Google Drive இல் உள்ள அனைத்தையோ நீக்க முடியாது. ஒரு காப்புப்பிரதியை நீக்குவது இன்னும் செயல்படும். Windows மற்றும் உலாவியை சமீபத்திய பதிப்புகளுக்குப் புதுப்பிப்பது உதவலாம். பாதுகாப்பு விசை, அல்லது Android தொலைபேசி, iPhone அல்லது Mac இல் உள்ள தவணை பொதுவாக வேலை செய்யும்.',
+  // 2026-10-05: Browser PRF capability check result - heads-up about PRF extension not supported. Under review
+  'drivePasskey.prfHeadsUp': 'இந்த உலாவி சாதனத்தில் அனைத்து காப்புப்பிரதிகளை நீக்க Doorprints க்குத் தேவையான தவணை அம்சத்தைப் பயன்படுத்த முடியாது என்று கூறுகிறது. நீங்கள் இன்னும் முயலலாம் அல்லது பாதுகாப்பு விசை அல்லது Android தொலைபேசி, iPhone அல்லது Mac இல் உள்ள தவணையைப் பயன்படுத்தலாம்.',
   'drivePasskey.detailsLabel': 'தொழில்நுட்ப விவரங்கள் (ரகசியங்கள் இல்லை)',
   'drivePasskey.copyDetails': 'விவரங்களை நகலெடு',
   'drivePasskey.detailsCopied': 'விவரங்கள் நகலெடுக்கப்பட்டன.',

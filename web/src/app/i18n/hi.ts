@@ -1327,6 +1327,8 @@ export const hi: Dict = {
   // Passkey without a PRF output: what works instead, and copyable details. Under review (owner rule: hi/ta/te ship marked under review).
   'drivePasskey.registerNoPrf': 'इस पासकी से डोरप्रिंट्स को वह गुप्त मान (PRF आउटपुट) नहीं मिला जो हटाने की सुरक्षा के लिए चाहिए।',
   'drivePasskey.noPrfHelp': 'इस ब्राउज़र और पासकी के साथ सभी बैकअप या Google Drive का सब कुछ हटाना उपलब्ध नहीं है। एक बैकअप हटाना अब भी काम करता है। Windows और ब्राउज़र को नवीनतम संस्करण पर अपडेट करने से मदद मिल सकती है। सिक्योरिटी की, या Android फ़ोन, iPhone या Mac पर रखी पासकी आमतौर पर काम करती है।',
+  // 2026-10-05: Browser PRF capability check result - heads-up about PRF extension not supported. Under review
+  'drivePasskey.prfHeadsUp': 'यह ब्राउज़र कहता है कि वह सभी बैकअप हटाने के लिए डोरप्रिंट्स को चाहिए पासकी सुविधा का उपयोग नहीं कर सकता। आप अभी भी कोशिश कर सकते हैं, या Android फ़ोन, iPhone या Mac पर सिक्योरिटी की या पासकी का उपयोग करें।',
   'drivePasskey.detailsLabel': 'तकनीकी विवरण (कोई गुप्त जानकारी नहीं)',
   'drivePasskey.copyDetails': 'विवरण कॉपी करें',
   'drivePasskey.detailsCopied': 'विवरण कॉपी हो गया।',

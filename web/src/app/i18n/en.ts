@@ -1285,6 +1285,7 @@ export const en = {
   'drivePasskey.registerFailed': 'The passkey could not be set up. Try again.',
   'drivePasskey.registerNoPrf': 'This passkey could not protect deletions: it did not return the secret value (PRF output) Doorprints needs.',
   'drivePasskey.noPrfHelp': 'Deleting all backups or everything from Google Drive is not available with this browser and passkey. Deleting a single backup still works. Updating Windows and your browser to their latest versions can help. A security key, or a passkey kept on an Android phone, an iPhone or a Mac, usually works.',
+  'drivePasskey.prfHeadsUp': 'This browser says it cannot use the passkey feature Doorprints needs for deleting all backups. You can still try, or use a security key or a passkey on an Android phone, iPhone or Mac.',
   'drivePasskey.detailsLabel': 'Technical details (no secrets)',
   'drivePasskey.copyDetails': 'Copy details',
   'drivePasskey.detailsCopied': 'Details copied.',

@@ -43,6 +43,8 @@ export class DrivePasskeyComponent implements OnInit {
   protected readonly status = signal<'none' | 'registered' | 'unsupported' | 'loading'>('loading');
   protected readonly busy = signal(false);
   protected readonly errorMessage = signal<TKey | null>(null);
+  /** True when the browser reports it cannot use the PRF extension (shown above help paragraph). */
+  protected readonly prfHeadsUp = signal(false);
 
   async ngOnInit(): Promise<void> {
     await this.loadStatus();
@@ -52,6 +54,14 @@ export class DrivePasskeyComponent implements OnInit {
     try {
       const result = await this.service.passkeyStatus();
       this.status.set(result || 'unsupported');
+      // Check PRF capability only when status is 'none' (not yet set up)
+      if (result === 'none') {
+        const capability = await this.service.passkeyPrfCapability();
+        if (capability === false) {
+          this.prfHeadsUp.set(true);
+          this.details.set('capability: extension:prf=false');
+        }
+      }
     } catch {
       this.errorMessage.set('driveConnect.failed');
       this.status.set('unsupported');
@@ -105,6 +115,7 @@ export class DrivePasskeyComponent implements OnInit {
     this.busy.set(true);
     this.errorMessage.set(null);
     this.noPrfHelp.set(false);
+    this.prfHeadsUp.set(false);
     this.details.set(null);
     this.detailsCopied.set(false);
 

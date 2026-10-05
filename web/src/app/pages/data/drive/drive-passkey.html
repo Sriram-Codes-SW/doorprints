@@ -58,6 +58,9 @@
       @if (errorMessage(); as error) {
         <p class="error-message">{{ error | t }}</p>
       }
+      @if (prfHeadsUp()) {
+        <p class="passkey-help">{{ 'drivePasskey.prfHeadsUp' | t }}</p>
+      }
       @if (noPrfHelp()) {
         <p class="passkey-help">{{ 'drivePasskey.noPrfHelp' | t }}</p>
         @if (details(); as detailsText) {
