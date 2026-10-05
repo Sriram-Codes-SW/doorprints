@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.96 |
-| Date | 2026-10-03 |
+| Version | 0.97 |
+| Date | 2026-10-05 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -87,6 +87,7 @@
 | 0.84 | 2026-10-03 | Cursor Agent, lead | Website Drive version 1 follow-up (draft PR #118): 06 v0.110, 10 v0.135, 14 v0.81, 15 v0.13 (8-digit HPKE enrolment, revoke, disconnect-all, partial delete, two-minute sync). |
 | 0.87 | 2026-10-03 | Cursor Agent, lead | Website Drive enrolment check (draft PR #118): 06 v0.113 (TC-U-133: the 8-digit approve step is bound to the transcript just shown and to this browser's nonce and public key). |
 | 0.96 | 2026-10-03 | Cursor Agent, lead | Website passkey setup: 06 v0.121 (TC-U-133), 15 v0.22. The PRF output has to be from the new credential and must not be empty or public. User verification stays required. |
+| 0.97 | 2026-10-05 | Claude, lead | Owner fixed the passkey message and issue recording (14 v0.85, 15 v0.23, 06 v0.122): when no PRF output is returned, the card says the passkey could not protect deletions and offers remedies; the setup records which step returned nothing for troubleshooting. PR #116 was closed without merging; PR #118 was merged on 2026-10-03. |
 | 0.95 | 2026-10-03 | Cursor Agent, lead | Website passkey setup after a Windows Hello PIN: 06 v0.120 (TC-U-133), 15 v0.21. The create ceremony evaluates the PRF. A missing output is not stored, and the card names it. |
 | 0.94 | 2026-10-03 | Cursor Agent, lead | Website passkey setup: 06 v0.119 (TC-U-133), 15 v0.20. Windows Hello needs RS256 beside ES256; a cancelled or failed setup stays on the button and shows a sentence. |
 | 0.93 | 2026-10-03 | Cursor Agent, lead | Website Drive card: 06 v0.118 (TC-U-133), 15 v0.19. Rolled-back keys, a name-only keys.json, a browser that cannot encrypt, an unknown connect failure, no recovery key, and a recovery key that was never shown. |

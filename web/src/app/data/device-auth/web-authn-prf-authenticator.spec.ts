@@ -526,6 +526,38 @@ describe("WebAuthnPrfAuthenticator", () => {
       expect(auth.lastPrfDetails()).toBe("create: prf-present enabled=false first=no; assertion: no-prf-results enabled=false");
     });
 
+    it("rejects when assertion returns a 16-byte output instead of 32", async () => {
+      const kv = new InMemoryKeyValueStore();
+      const auth = new WebAuthnPrfAuthenticator(
+        (key) => kv.get(key),
+        (key, value) => kv.set(key, value),
+      );
+      fakeCredentials.createReturnsPrf = false;
+      fakeCredentials.getReturnsPrf = true;
+      // Mock get to return 16-byte output instead of 32
+      const originalGet = fakeCredentials.get;
+      (fakeCredentials as any).get = async (options: any) => {
+        const assertion = await originalGet.call(fakeCredentials, options);
+        if (assertion && "getClientExtensionResults" in assertion) {
+          const originalGetExt = (assertion as any).getClientExtensionResults;
+          (assertion as any).getClientExtensionResults = () => {
+            const result = originalGetExt.call(assertion);
+            if (result?.prf?.results?.first) {
+              // Replace with 16-byte buffer
+              result.prf.results.first = new ArrayBuffer(16);
+            }
+            return result;
+          };
+        }
+        return assertion;
+      };
+
+      const error = await auth.registerPasskey("Test User").catch((e) => e);
+      expect(error).toBeInstanceOf(PasskeyPrfMissingError);
+      expect(error.details).toContain("assertion: output-not-32-bytes");
+      expect(auth.lastPrfDetails()).toContain("assertion: output-not-32-bytes");
+    });
+
     it.each(["zeros", "raw-salt", "public-salt"] as const)(
       "does not store a create result that is %s",
       async (echo) => {
