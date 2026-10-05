@@ -134,10 +134,22 @@ function sameBytes(a: Uint8Array, b: Uint8Array): boolean {
 
 /** The credential exists, but it did not return the PRF output the deletion seal needs. */
 export class PasskeyPrfMissingError extends Error {
-  constructor() {
+  constructor(
+    /** Which step returned no output (booleans and step names only, never a secret); for the card's copyable details. */
+    readonly details: string | null = null,
+  ) {
     super('This passkey did not return the PRF output needed to seal deletions.');
     this.name = 'PasskeyPrfMissingError';
   }
+}
+
+/** What a create ceremony's extension results hold about the PRF: step names and flags only, never a value. */
+function describeCreateResult(ext: unknown): string {
+  if (ext === null || typeof ext !== 'object') return 'no-extension-results';
+  if (!('prf' in ext)) return 'prf-absent';
+  const prf = (ext as PrfExtensionOutput).prf;
+  const enabled = prf?.enabled === undefined ? 'unset' : String(prf.enabled);
+  return `prf-present enabled=${enabled} first=${prf?.results?.first ? 'yes' : 'no'}`;
 }
 
 /** Hostname used as WebAuthn `rp.id`. IPs and an empty host map to `localhost`. */
@@ -173,6 +185,9 @@ function hasGetClientExtensionResults(
  */
 export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
   private credentialId: Uint8Array | null = null;
+  /** The step the last assertion ended at (a name, never a value): 'ok', 'no-prf-results enabled=false', ... */
+  private assertionStage = 'not-tried';
+  private lastDetails: string | null = null;
   /** Output from the registration ceremony, not stored until the sealed blob is kept. */
   private pending: { credentialId: Uint8Array; salt: Uint8Array; output: Uint8Array } | null = null;
 
@@ -225,6 +240,7 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
       return { kind: 'NOT_SUPPORTED' };
     }
 
+    this.assertionStage = 'started';
     try {
       let targetId = credentialId;
       if (useStored && this.credentialId && this.credentialId.length > 0) {
@@ -255,11 +271,13 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
       const assertion = await navigator.credentials.get(options);
 
       if (!assertion) {
+        this.assertionStage = 'no-assertion';
         return { kind: 'CANCELLED' };
       }
 
       // userVerification: "required" is also checked on the response. A clear UV flag is not a PRF result.
       if (!assertionUserVerified(assertion)) {
+        this.assertionStage = 'not-user-verified';
         return { kind: 'FAILED' };
       }
 
@@ -267,29 +285,35 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
       try {
         assertedId = credentialIdBytes(assertion);
       } catch {
+        this.assertionStage = 'bad-credential-id';
         return { kind: 'FAILED' };
       }
       if (!sameBytes(assertedId, targetId)) {
+        this.assertionStage = 'credential-id-mismatch';
         return { kind: 'FAILED' };
       }
 
       // Extract PRF output from extension result
       if (!hasGetClientExtensionResults(assertion)) {
+        this.assertionStage = 'no-extension-api';
         return { kind: 'FAILED' };
       }
 
       const extensionResults = assertion.getClientExtensionResults();
       if (!extensionResults || !isPrfExtensionOutput(extensionResults)) {
+        this.assertionStage = 'prf-absent';
         return { kind: 'NOT_SUPPORTED' };
       }
 
       const prfExt = extensionResults.prf;
       if (!prfExt || !prfExt.results || !prfExt.results.first) {
+        this.assertionStage = `no-prf-results enabled=${prfExt?.enabled === undefined ? 'unset' : String(prfExt.enabled)}`;
         return { kind: 'NOT_SUPPORTED' };
       }
 
       const prfOutput = prfOutputOf(extensionResults);
       if (!prfOutput || !(await prfOutputSeals(prfOutput, salt))) {
+        this.assertionStage = prfOutput ? 'output-does-not-seal' : 'output-not-32-bytes';
         prfOutput?.fill(0);
         return { kind: 'NOT_SUPPORTED' };
       }
@@ -299,9 +323,11 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
         await this.commitRegistration(targetId);
       }
 
+      this.assertionStage = 'ok';
       return { kind: 'OK', output: prfOutput };
     } catch (e) {
       const error = e instanceof Error ? e : new Error(String(e));
+      this.assertionStage = `error:${error.name || 'unknown'}`;
       // Check for specific cancellation or unsupported errors
       if (error.name === 'NotAllowedError') {
         return { kind: 'CANCELLED' };
@@ -311,6 +337,11 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
       }
       return { kind: 'FAILED' };
     }
+  }
+
+  /** Where the last passkey setup stopped, as step names and flags (never a value): for the card's copyable details. */
+  lastPrfDetails(): string | null {
+    return this.lastDetails;
   }
 
   consumeRegistrationPrf(credentialId: Uint8Array): { salt: Uint8Array; output: Uint8Array } | null {
@@ -397,9 +428,10 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
       const credIdBuffer = credentialIdBytes(credential);
       // `prf.enabled` is not the output the deletion flow opens. Windows Hello can leave it false
       // after a successful PIN and still return results.first from this eval, or from one assertion.
-      let output = hasGetClientExtensionResults(credential)
-        ? prfOutputOf(credential.getClientExtensionResults())
-        : null;
+      const createResults = hasGetClientExtensionResults(credential) ? credential.getClientExtensionResults() : null;
+      const createNote = describeCreateResult(createResults);
+      this.lastDetails = `create: ${createNote}; assertion: not-tried`;
+      let output = createResults ? prfOutputOf(createResults) : null;
       if (output && !(await prfOutputSeals(output, salt))) {
         output.fill(0);
         output = null;
@@ -414,7 +446,8 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
         if (evaluated.kind === 'FAILED') {
           throw new Error('Passkey assertion was not user-verified for this credential.');
         }
-        if (evaluated.kind !== 'OK') throw new PasskeyPrfMissingError();
+        this.lastDetails = `create: ${createNote}; assertion: ${this.assertionStage}`;
+        if (evaluated.kind !== 'OK') throw new PasskeyPrfMissingError(this.lastDetails);
         output = evaluated.output;
       }
       const kept = output.slice();

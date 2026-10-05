@@ -75,6 +75,12 @@ export interface DriveDeletionAdapter {
 
   /** Returns passkey status: 'none', 'registered', or 'unsupported'. */
   passkeyStatus(): Promise<'none' | 'registered' | 'unsupported'>;
+
+  /**
+   * Where the last passkey setup stopped, as step names and flags only (never a value), for the card's copyable
+   * details after 'no-prf'. null when there is nothing to say.
+   */
+  lastPasskeyDetails?(): Promise<string | null>;
 }
 
 export type DeletionPreflightResult =
@@ -153,6 +159,8 @@ export function confirmGateOf(decision: DeletionDecision): ConfirmGateState {
 export class DriveDeletionAdapterImpl implements DriveDeletionAdapter {
   /** Grant id → operationId registered at authorize; in-memory only (gone after a reload). */
   private readonly boundOp = new Map<number, string>();
+  /** Where the last passkey setup stopped (step names and flags, never a value). */
+  private passkeyDetails: string | null = null;
 
   constructor(
     private readonly deletionService: DriveDeletionService,
@@ -265,6 +273,7 @@ export class DriveDeletionAdapterImpl implements DriveDeletionAdapter {
 
   async registerPasskey(): Promise<'registered' | 'unsupported' | 'failed' | 'no-prf' | null> {
     if (!this.prf || !this.crypto || !this.kv) return 'unsupported';
+    this.passkeyDetails = null;
     try {
       if (!(await this.prf.isSupported())) return 'unsupported';
       const credentialId = await this.prf.registerPasskey('Doorprints');
@@ -276,14 +285,24 @@ export class DriveDeletionAdapterImpl implements DriveDeletionAdapter {
       secret.fill(0);
       // Cancel stays a cancel. A missing PRF output is not "this browser has no platform authenticator"
       // — that case already returned above — and it is not stored.
-      if (!('v' in sealed)) return sealed.reason === 'CANCELLED' ? null : sealed.reason === 'NOT_SUPPORTED' ? 'no-prf' : 'failed';
+      if (!('v' in sealed)) {
+        if (sealed.reason === 'NOT_SUPPORTED') this.passkeyDetails = this.prf.lastPrfDetails?.() ?? null;
+        return sealed.reason === 'CANCELLED' ? null : sealed.reason === 'NOT_SUPPORTED' ? 'no-prf' : 'failed';
+      }
       await this.kv.set(SEALED_BLOB_KEY, sealedBlobToJson(sealed));
       await this.prf.commitRegistration?.(credentialId);
       return 'registered';
     } catch (e) {
-      if (e instanceof PasskeyPrfMissingError) return 'no-prf';
+      if (e instanceof PasskeyPrfMissingError) {
+        this.passkeyDetails = e.details ?? this.prf.lastPrfDetails?.() ?? null;
+        return 'no-prf';
+      }
       return 'failed';
     }
+  }
+
+  async lastPasskeyDetails(): Promise<string | null> {
+    return this.passkeyDetails;
   }
 
   async passkeyStatus(): Promise<'none' | 'registered' | 'unsupported'> {

@@ -81,11 +81,32 @@ export class DrivePasskeyComponent implements OnInit {
     }
   }
 
+  /** True after a setup that returned no PRF output: the card then explains what works and offers the details. */
+  protected readonly noPrfHelp = signal(false);
+  /** Where that setup stopped (step names and flags only, never a value), to copy and send. */
+  protected readonly details = signal<string | null>(null);
+  protected readonly detailsCopied = signal(false);
+
+  async copyDetails(): Promise<void> {
+    const text = this.details();
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      this.detailsCopied.set(true);
+    } catch {
+      // The text stays on screen to select by hand.
+      this.detailsCopied.set(false);
+    }
+  }
+
   async onRegisterPasskey(): Promise<void> {
     if (this.busy()) return;
 
     this.busy.set(true);
     this.errorMessage.set(null);
+    this.noPrfHelp.set(false);
+    this.details.set(null);
+    this.detailsCopied.set(false);
 
     try {
       const result = await this.service.registerPasskey();
@@ -102,6 +123,8 @@ export class DrivePasskeyComponent implements OnInit {
       } else if (result === 'no-prf') {
         // The PIN can succeed and still leave no PRF output. That is not "no platform authenticator".
         this.errorMessage.set('drivePasskey.registerNoPrf');
+        this.noPrfHelp.set(true);
+        this.details.set(await this.service.passkeyDetails());
         if (this.status() !== 'registered') this.status.set('none');
       } else {
         this.errorMessage.set('drivePasskey.registerFailed');

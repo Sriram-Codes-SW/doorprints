@@ -1324,7 +1324,12 @@ export const te: Dict = {
   'drivePasskey.registerCancelled': 'ప్రాంప్ట్ రద్దు చేయబడింది.',
   'drivePasskey.registerFailed': 'పాస్‌కీ సెట్ చేయలేకపోయింది. మళ్లీ ప్రయత్నించండి.',
   // 2026-10-03: the passkey did not return a PRF output. Under review (owner rule: hi/ta/te ship marked under review).
-  'drivePasskey.registerNoPrf': 'ఈ పాస్‌కీ తొలగింపులను సీల్ చేయడానికి కావలసిన PRF అవుట్‌పుట్‌ను ఇవ్వలేదు.',
+  // Passkey without a PRF output: what works instead, and copyable details. Under review (owner rule: hi/ta/te ship marked under review).
+  'drivePasskey.registerNoPrf': 'ఈ పాస్‌కీ నుండి తొలగింపులను రక్షించడానికి Doorprints కు కావలసిన రహస్య విలువ (PRF అవుట్‌పుట్) రాలేదు.',
+  'drivePasskey.noPrfHelp': 'ఈ బ్రౌజర్ మరియు పాస్‌కీతో అన్ని బ్యాకప్‌లను లేదా Google Drive లోని ప్రతిదీ తొలగించడం అందుబాటులో లేదు. ఒక బ్యాకప్‌ను తొలగించడం ఇంకా పనిచేస్తుంది. Windows మరియు బ్రౌజర్‌ను తాజా వెర్షన్‌లకు అప్‌డేట్ చేయడం సహాయపడవచ్చు. సెక్యూరిటీ కీ, లేదా Android ఫోన్, iPhone లేదా Mac లో ఉంచిన పాస్‌కీ సాధారణంగా పనిచేస్తుంది.',
+  'drivePasskey.detailsLabel': 'సాంకేతిక వివరాలు (రహస్యాలు లేవు)',
+  'drivePasskey.copyDetails': 'వివరాలను కాపీ చేయండి',
+  'drivePasskey.detailsCopied': 'వివరాలు కాపీ అయ్యాయి.',
 
   // Google Drive sync component (S4b-BL-117) - Under review
   'driveSync.syncNow': 'ఇప్పుడు సమకాలీకరణ చేయండి',

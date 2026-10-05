@@ -48,6 +48,8 @@ export interface PrfAuthenticator {
    * before the PRF sees it. The PRF output is 32 bytes.
    */
   evaluate(credentialId: Uint8Array, salt: Uint8Array): Promise<PrfResult>;
+  /** Where the last passkey setup stopped (step names and flags, never a value); null when there is nothing to say. */
+  lastPrfDetails?(): string | null;
   /**
    * Makes a new passkey for this site. The credential id, or null when the person cancelled.
    * A credential that cannot produce a PRF output is refused (the promise rejects).

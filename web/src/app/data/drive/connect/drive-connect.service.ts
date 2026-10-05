@@ -563,6 +563,15 @@ export class DriveConnectService {
     return this.deletionAdapter.passkeyStatus();
   }
 
+  /** Where the last passkey setup stopped (step names and flags only, never a value), for the card's details. */
+  async passkeyDetails(): Promise<string | null> {
+    try {
+      return (await this.deletionAdapter.lastPasskeyDetails?.()) ?? null;
+    } catch {
+      return null;
+    }
+  }
+
   async registerPasskey(): Promise<'registered' | 'unsupported' | 'failed' | 'no-prf' | null> {
     return this.deletionAdapter.registerPasskey();
   }

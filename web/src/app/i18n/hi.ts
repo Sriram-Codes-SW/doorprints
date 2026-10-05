@@ -1324,7 +1324,12 @@ export const hi: Dict = {
   'drivePasskey.registerCancelled': 'संकेत रद्द कर दिया गया।',
   'drivePasskey.registerFailed': 'पासकी सेट नहीं हो सकी। फिर कोशिश करें।',
   // 2026-10-03: the passkey did not return a PRF output. Under review (owner rule: hi/ta/te ship marked under review).
-  'drivePasskey.registerNoPrf': 'इस पासकी ने विलोपन सील करने के लिए ज़रूरी PRF आउटपुट नहीं दिया।',
+  // Passkey without a PRF output: what works instead, and copyable details. Under review (owner rule: hi/ta/te ship marked under review).
+  'drivePasskey.registerNoPrf': 'इस पासकी से डोरप्रिंट्स को वह गुप्त मान (PRF आउटपुट) नहीं मिला जो हटाने की सुरक्षा के लिए चाहिए।',
+  'drivePasskey.noPrfHelp': 'इस ब्राउज़र और पासकी के साथ सभी बैकअप या Google Drive का सब कुछ हटाना उपलब्ध नहीं है। एक बैकअप हटाना अब भी काम करता है। Windows और ब्राउज़र को नवीनतम संस्करण पर अपडेट करने से मदद मिल सकती है। सिक्योरिटी की, या Android फ़ोन, iPhone या Mac पर रखी पासकी आमतौर पर काम करती है।',
+  'drivePasskey.detailsLabel': 'तकनीकी विवरण (कोई गुप्त जानकारी नहीं)',
+  'drivePasskey.copyDetails': 'विवरण कॉपी करें',
+  'drivePasskey.detailsCopied': 'विवरण कॉपी हो गया।',
 
   // Google Drive sync component (S4b-BL-117) - Under review
   'driveSync.syncNow': 'अभी सिंक करें',

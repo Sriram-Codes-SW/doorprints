@@ -189,6 +189,10 @@ export function createLazyDeletionAdapterProxy(getRuntime: () => Promise<DriveRu
       return (await getAdapter()).registerPasskey();
     },
 
+    async lastPasskeyDetails() {
+      return (await getAdapter()).lastPasskeyDetails?.() ?? null;
+    },
+
     async passkeyStatus() {
       return (await getAdapter()).passkeyStatus();
     },

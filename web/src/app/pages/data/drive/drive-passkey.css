@@ -35,3 +35,16 @@
   color: var(--color-success, #388e3c);
   margin: 0;
 }
+
+.passkey-help {
+  margin-top: 0.5rem;
+}
+
+.passkey-details-box {
+  margin-top: 0.5rem;
+}
+
+.passkey-details {
+  overflow-wrap: anywhere;
+  user-select: all;
+}
