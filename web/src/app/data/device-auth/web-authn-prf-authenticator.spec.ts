@@ -659,6 +659,19 @@ describe("WebAuthnPrfAuthenticator", () => {
       expect(auth.lastPrfDetails()).toContain("assertion: error:NotSupportedError");
     });
 
+    it("succeeds when create returns valid 32-byte PRF output", async () => {
+      const kv = new InMemoryKeyValueStore();
+      const auth = new WebAuthnPrfAuthenticator(
+        (key) => kv.get(key),
+        (key, value) => kv.set(key, value),
+      );
+      fakeCredentials.createReturnsPrf = true;
+
+      const credId = await auth.registerPasskey("Test User");
+      expect(credId).not.toBeNull();
+      expect(auth.lastPrfDetails()).toBe("create: prf-present enabled=true first=yes; assertion: not-tried");
+    });
+
     it("uses userVerification 'required' in creation options", async () => {
       const store = createStore();
       const auth = new WebAuthnPrfAuthenticator(store.get, store.set);
