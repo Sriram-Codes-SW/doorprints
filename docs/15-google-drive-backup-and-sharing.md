@@ -34,6 +34,7 @@
 | 0.20 | 2026-10-03 | Cursor Agent, lead | **§10.4:** website passkey registration lists ES256 (−7) then RS256 (−257) and requires a discoverable credential. Windows Hello refuses a list that omits RS256 before it shows a prompt. A credential is kept only when its PRF output can seal the deletion secret. Cancelling leaves *Set up a passkey* and says the prompt was cancelled. Any other refusal shows a sentence and leaves that button, unless this browser has no platform authenticator. |
 | 0.21 | 2026-10-03 | Cursor Agent, lead | **§10.4:** the create ceremony evaluates the PRF (`prf.eval`), so a Windows Hello PIN can return the output in that same prompt. `prf.enabled` is not success and is not a reason to stop. A missing 32-byte output is not stored. The card then says the passkey did not return the PRF output needed to seal deletions, and leaves *Set up a passkey*. |
 | 0.22 | 2026-10-03 | Cursor Agent, lead | **§10.4:** the 32-byte result has to come from the credential just created, with the assertion's UV flag set. An empty or all-zero output, the salt, the label, or the client-side SHA-256 of the PRF input is not stored. An output from a passkey already stored in the browser is not success. |
+| 0.23 | 2026-10-05 | Claude, lead | **§10.4:** when a passkey does not return a PRF output (found on Windows Hello after a PIN on some Windows/browser builds), the card now says the passkey could not protect deletions and offers what works instead (single backups still delete; update Windows and the browser; a security key or a phone/Mac passkey usually works), and the setup records which step returned nothing (step name and flags only, never a value) for troubleshooting. |
 
 **The owner's words (2026-10-02).** "Google Sign-In is to make a secure backup and restore drive and if possible to
 make it shareable to others using the same app/website. The backup can be time synced or manual with possibility of
@@ -1065,7 +1066,9 @@ select_account), so it is not a check of who is at the keyboard and is not used 
   stored in this browser is not success. An assertion is accepted only when its user-verification flag is set
   (`userVerification` stays `"required"`). Cancelling the prompt leaves
   *Set up a passkey* and says the prompt was cancelled. A missing PRF output leaves that button and says this passkey
-  did not return the PRF output needed to seal deletions. That is not "no platform authenticator". Any other refusal
+  could not protect deletions, and offers remedies (single backups still delete; update Windows and the browser; a
+  security key or a phone/Mac passkey usually works); the setup records which step returned nothing (step name and
+  flags only, never a value) and the card offers the details to copy. That is not "no platform authenticator". Any other refusal
   shows a sentence and leaves that button, unless this browser has no platform authenticator, in which case it says
   this browser cannot make the kind of passkey needed.
 - **Without it** (no passkey, or no PRF in this browser) the website does L1 only, and says: "To delete all backups,

@@ -74,8 +74,12 @@ class FakeCredentialsContainer {
   createReturnsPrf = false;
   /** Replaces a derived create output: zeros, the raw salt, or the public WebAuthn client salt. */
   createEcho: "zeros" | "raw-salt" | "public-salt" | null = null;
+  /** When true, create returns no PRF extension in results at all (getClientExtensionResults returns {}). */
+  createNoPrfExtension = false;
   /** When false, get returns no PRF output (the ceremony can still succeed). */
   getReturnsPrf = true;
+  /** When true, get returns no PRF extension in results at all (getClientExtensionResults returns {}). */
+  getNoPrfExtension = false;
   /** When set, get returns a PRF output only for this credential id. */
   getPrfOnlyFor: Uint8Array | null = null;
   /** When set, the assertion's rawId is this value instead of the requested credential. */
@@ -145,11 +149,14 @@ class FakeCredentialsContainer {
       },
       authenticatorAttachment: "platform",
       transports: ["internal"],
-      getClientExtensionResults: () => ({
-        prf: derived
-          ? { enabled: this.createPrfEnabled, results: { first: derived.buffer } }
-          : { enabled: this.createPrfEnabled },
-      }),
+      getClientExtensionResults: () =>
+        this.createNoPrfExtension
+          ? null
+          : {
+              prf: derived
+                ? { enabled: this.createPrfEnabled, results: { first: derived.buffer } }
+                : { enabled: this.createPrfEnabled },
+            },
       toJSON: () => ({
         id: idString,
         type: "public-key",
@@ -227,11 +234,14 @@ class FakeCredentialsContainer {
         signature: new ArrayBuffer(0),
       },
       authenticatorAttachment: "platform",
-      getClientExtensionResults: () => ({
-        prf: prfOutput
-          ? { enabled: true, results: { first: prfOutput.buffer } }
-          : { enabled: false },
-      }),
+      getClientExtensionResults: () =>
+        this.getNoPrfExtension
+          ? {}
+          : {
+              prf: prfOutput
+                ? { enabled: true, results: { first: prfOutput.buffer } }
+                : { enabled: false },
+            },
       toJSON: () => ({
         id: idString,
         type: "public-key",
@@ -484,6 +494,21 @@ describe("WebAuthnPrfAuthenticator", () => {
       expect(Array.from(requested)).not.toEqual(Array.from(oldId));
       expect(await kv.get("doorprints-webauthn-credential-id")).toBe(Array.from(oldId).join(","));
       expect(await kv.get(SEALED_BLOB_KEY)).toBeUndefined();
+    });
+
+    it("rejects when create returns no extension results and assertion returns no prf", async () => {
+      const kv = new InMemoryKeyValueStore();
+      const auth = new WebAuthnPrfAuthenticator(
+        (key) => kv.get(key),
+        (key, value) => kv.set(key, value),
+      );
+      fakeCredentials.createNoPrfExtension = true;
+      fakeCredentials.getNoPrfExtension = true;
+
+      const error = await auth.registerPasskey("Test User").catch((e) => e);
+      expect(error).toBeInstanceOf(PasskeyPrfMissingError);
+      expect(error.details).toBe("create: no-extension-results; assertion: prf-absent");
+      expect(auth.lastPrfDetails()).toBe("create: no-extension-results; assertion: prf-absent");
     });
 
     it.each(["zeros", "raw-salt", "public-salt"] as const)(
