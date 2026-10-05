@@ -63,6 +63,11 @@ export interface PrfAuthenticator {
   consumeRegistrationPrf?(credentialId: Uint8Array): RegistrationPrf | null;
   /** Remember the credential id once the sealed blob that uses its PRF output is stored. */
   commitRegistration?(credentialId: Uint8Array): Promise<void>;
+  /**
+   * Whether this browser supports the WebAuthn PRF extension.
+   * Returns true if supported, false if not supported, null if indeterminate (error or API unavailable).
+   */
+  prfCapability?(): Promise<boolean | null>;
 }
 
 export interface SealedBlob {
@@ -257,6 +262,8 @@ export class FakePrfAuthenticator implements PrfAuthenticator {
   supported = true;
   next: PrfResult["kind"] | null = null;
   asks = 0;
+  /** Capability to report when prfCapability is called. */
+  capability: boolean | null = null;
   constructor(
     private readonly p: CryptoProvider,
     private readonly secret: Uint8Array = utf8("fake-authenticator-secret"),
@@ -280,5 +287,8 @@ export class FakePrfAuthenticator implements PrfAuthenticator {
       kind: "OK",
       output: await this.p.hmacSha256(this.secret, concat(credentialId, salt)),
     };
+  }
+  async prfCapability(): Promise<boolean | null> {
+    return this.capability;
   }
 }

@@ -195,6 +195,7 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
     private readonly storageKey: (key: string) => Promise<string | undefined>,
     private readonly storageSet: (key: string, value: string) => Promise<void>,
     private readonly relyingPartyId: () => string = defaultRelyingPartyId,
+    private readonly getPublicKeyCredential: () => typeof PublicKeyCredential | undefined = () => typeof PublicKeyCredential !== 'undefined' ? PublicKeyCredential : undefined,
   ) {}
 
   /**
@@ -361,6 +362,29 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
     const idStr = Array.from(credentialId).join(',');
     await this.storageSet('doorprints-webauthn-credential-id', idStr);
     this.credentialId = credentialId.slice();
+  }
+
+  /**
+   * Checks if this browser supports the WebAuthn PRF extension.
+   * Returns true if the browser reports PRF is supported, false if not supported, null if indeterminate.
+   */
+  async prfCapability(): Promise<boolean | null> {
+    const PubKeyCredential = this.getPublicKeyCredential();
+    if (!PubKeyCredential || typeof PubKeyCredential.getClientCapabilities !== 'function') {
+      return null;
+    }
+    try {
+      const caps = await PubKeyCredential.getClientCapabilities();
+      if (caps === null || typeof caps !== 'object') {
+        return null;
+      }
+      const prfExt = (caps as Record<string, unknown>)['extension:prf'];
+      if (prfExt === true) return true;
+      if (prfExt === false) return false;
+      return null;
+    } catch {
+      return null;
+    }
   }
 
   /**

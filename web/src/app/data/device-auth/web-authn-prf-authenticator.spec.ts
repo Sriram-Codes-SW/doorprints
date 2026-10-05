@@ -970,4 +970,127 @@ describe("WebAuthnPrfAuthenticator", () => {
       expect(supported).toBe(true);
     });
   });
+
+  describe("prfCapability()", () => {
+    it("returns true when PublicKeyCredential.getClientCapabilities supports PRF", async () => {
+      const store = createStore();
+      const mockCapabilities = { "extension:prf": true, "extension:hmac-secret": false };
+      const mockGetClientCapabilities = () => Promise.resolve(mockCapabilities);
+
+      const auth = new WebAuthnPrfAuthenticator(
+        store.get,
+        store.set,
+        undefined,
+        () => ({ getClientCapabilities: mockGetClientCapabilities } as any),
+      );
+
+      const cap = await auth.prfCapability();
+      expect(cap).toBe(true);
+    });
+
+    it("returns false when PublicKeyCredential.getClientCapabilities does not support PRF", async () => {
+      const store = createStore();
+      const mockCapabilities = { "extension:prf": false, "extension:hmac-secret": true };
+      const mockGetClientCapabilities = () => Promise.resolve(mockCapabilities);
+
+      const auth = new WebAuthnPrfAuthenticator(
+        store.get,
+        store.set,
+        undefined,
+        () => ({ getClientCapabilities: mockGetClientCapabilities } as any),
+      );
+
+      const cap = await auth.prfCapability();
+      expect(cap).toBe(false);
+    });
+
+    it("returns null when extension:prf key is absent", async () => {
+      const store = createStore();
+      const mockCapabilities = { "extension:hmac-secret": true };
+      const mockGetClientCapabilities = () => Promise.resolve(mockCapabilities);
+
+      const auth = new WebAuthnPrfAuthenticator(
+        store.get,
+        store.set,
+        undefined,
+        () => ({ getClientCapabilities: mockGetClientCapabilities } as any),
+      );
+
+      const cap = await auth.prfCapability();
+      expect(cap).toBe(null);
+    });
+
+    it("returns null when getClientCapabilities is not a function", async () => {
+      const store = createStore();
+      const auth = new WebAuthnPrfAuthenticator(
+        store.get,
+        store.set,
+        undefined,
+        () => ({ } as any),
+      );
+
+      const cap = await auth.prfCapability();
+      expect(cap).toBe(null);
+    });
+
+    it("returns null when getClientCapabilities throws", async () => {
+      const store = createStore();
+      const mockGetClientCapabilities = () => {
+        throw new Error("Not available");
+      };
+
+      const auth = new WebAuthnPrfAuthenticator(
+        store.get,
+        store.set,
+        undefined,
+        () => ({ getClientCapabilities: mockGetClientCapabilities } as any),
+      );
+
+      const cap = await auth.prfCapability();
+      expect(cap).toBe(null);
+    });
+
+    it("returns null when getClientCapabilities returns null", async () => {
+      const store = createStore();
+      const mockGetClientCapabilities = () => Promise.resolve(null);
+
+      const auth = new WebAuthnPrfAuthenticator(
+        store.get,
+        store.set,
+        undefined,
+        () => ({ getClientCapabilities: mockGetClientCapabilities } as any),
+      );
+
+      const cap = await auth.prfCapability();
+      expect(cap).toBe(null);
+    });
+
+    it("returns null when getClientCapabilities returns non-object", async () => {
+      const store = createStore();
+      const mockGetClientCapabilities = () => Promise.resolve("not-an-object");
+
+      const auth = new WebAuthnPrfAuthenticator(
+        store.get,
+        store.set,
+        undefined,
+        () => ({ getClientCapabilities: mockGetClientCapabilities } as any),
+      );
+
+      const cap = await auth.prfCapability();
+      expect(cap).toBe(null);
+    });
+
+    it("returns null when PublicKeyCredential is undefined", async () => {
+      const store = createStore();
+      const auth = new WebAuthnPrfAuthenticator(
+        store.get,
+        store.set,
+        undefined,
+        () => undefined,
+      );
+
+      const cap = await auth.prfCapability();
+      expect(cap).toBe(null);
+    });
+  });
 });
