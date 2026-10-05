@@ -609,7 +609,9 @@ describe('the page shell and the stylesheet (TC-U-WEB-A11Y-7)', () => {
     expect(indexHtml).toMatch(/name="viewport"/);
     const viewport = new DOMParser().parseFromString(indexHtml, 'text/html').querySelector('meta[name="viewport"]')?.getAttribute('content') ?? '';
     expect(viewport).not.toMatch(/user-scalable\s*=\s*(no|0)|maximum-scale/);
-    for (const font of ['Noto+Sans+Devanagari', 'Noto+Sans+Tamil', 'Noto+Sans+Telugu']) expect(indexHtml).toContain(font);
+    // Self-hosted fonts: @font-face rules in styles.css, no external Google Fonts links (S4b-BL-73)
+    expect(indexHtml).not.toContain('fonts.googleapis.com');
+    expect(indexHtml).not.toContain('fonts.gstatic.com');
   });
 
   it('the font stack ends in the Indic fonts and Indic text gets more line height', () => {
