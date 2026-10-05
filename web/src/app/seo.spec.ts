@@ -351,4 +351,10 @@ describe('security headers for Google sign-in (S4b-BL-73)', () => {
     // Map tiles, address search and a self-hosted server need any https host.
     expect(csp).toMatch(/connect-src 'self' https: /);
   });
+
+  it('does not reference fonts.googleapis.com or fonts.gstatic.com (self-hosted Noto fonts, S4b-BL-73)', () => {
+    const csp = headers()['Content-Security-Policy'];
+    expect(csp).not.toContain('fonts.googleapis.com');
+    expect(csp).not.toContain('fonts.gstatic.com');
+  });
 });

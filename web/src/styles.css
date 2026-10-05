@@ -20,6 +20,32 @@
  * Doorprints design tokens and shared components.
  * Contrast ratios are listed in docs/05-ux-accessibility-i18n.md (section 4). Change a colour there too.
  */
+
+/* Self-hosted Noto Sans fonts for Indic scripts */
+@font-face {
+  font-family: 'Noto Sans Devanagari';
+  src: url('/fonts/noto-sans-devanagari.woff2') format('woff2');
+  font-weight: 400 700;
+  font-display: swap;
+  unicode-range: U+0900-097F, U+1CD0-1CF9, U+200C-200D, U+20A8, U+20B9, U+20F0, U+25CC, U+A830-A839, U+A8E0-A8FF, U+11B00-11B09;
+}
+
+@font-face {
+  font-family: 'Noto Sans Tamil';
+  src: url('/fonts/noto-sans-tamil.woff2') format('woff2');
+  font-weight: 400 700;
+  font-display: swap;
+  unicode-range: U+0964-0965, U+0B82-0BFA, U+200C-200D, U+20B9, U+25CC;
+}
+
+@font-face {
+  font-family: 'Noto Sans Telugu';
+  src: url('/fonts/noto-sans-telugu.woff2') format('woff2');
+  font-weight: 400 700;
+  font-display: swap;
+  unicode-range: U+0951-0952, U+0964-0965, U+0C00-0C7F, U+1CDA, U+1CF2, U+200C-200D, U+25CC;
+}
+
 :root {
   /* Brand and surfaces (light) */
   --primary: #1f6f5c; /* 6.02:1 on white */
