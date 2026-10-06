@@ -65,7 +65,8 @@ private class FakeActions : DriveActions {
         calls += "open:$text"
         return joinResult.also { state.value = it.state }
     }
-    override fun confirmRecoveryKeySaved() { calls += "confirmSaved"; state.value = ConnectState.READY }
+    var leavesKeyScreen = true
+    override fun confirmRecoveryKeySaved() { calls += "confirmSaved"; if (leavesKeyScreen) state.value = ConnectState.READY }
     override fun skipRecoveryKeyWithWarning() { calls += "skip"; state.value = ConnectState.READY }
     override suspend fun disconnect() { calls += "disconnect"; state.value = ConnectState.DISCONNECTED }
     override suspend fun disconnectAll(promptReason: String): Outcome<Unit> {
@@ -181,6 +182,24 @@ class DriveHolderTest {
         h.keyNext()
         runCurrent()
         a.state.value = ConnectState.FIRST_CONNECT_SHOW_RECOVERY_KEY
+        runCurrent()
+        assertNull(h.ui.value.connectKey)
+    }
+
+    @Test fun theKeyIsDroppedByNextEvenBeforeTheControllerMovesOn() = runTest {
+        val a = FakeActions().apply { leavesKeyScreen = false }
+        val h = connectToKeyScreen(a)
+        h.setKeySaved(true)
+        h.keyNext()
+        runCurrent()
+        assertNull(h.ui.value.connectKey)
+    }
+
+    @Test fun theKeyIsDroppedWhenTheStateLeavesTheKeyScreenByItself() = runTest {
+        val a = FakeActions()
+        val h = connectToKeyScreen(a)
+        assertNotNull(h.ui.value.connectKey)
+        a.state.value = ConnectState.DISCONNECTED
         runCurrent()
         assertNull(h.ui.value.connectKey)
     }

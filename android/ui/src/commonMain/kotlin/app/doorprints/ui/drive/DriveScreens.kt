@@ -105,6 +105,12 @@ private fun reasonText(reason: DriveReason): String = t(reasonKey(reason))
 @Composable
 fun DriveSettingsSection(holder: DriveHolder, scanner: QrScanner = NoQrScanner, host: DriveHost = DriveHost(), modifier: Modifier = Modifier) {
     val ui by holder.ui.collectAsState()
+    DriveSettingsContent(ui, holder, scanner, host, modifier)
+}
+
+/** The section for one [ui] state: [DriveSettingsSection] draws the holder's, a screenshot test draws any. */
+@Composable
+fun DriveSettingsContent(ui: DriveUiState, holder: DriveHolder, scanner: QrScanner = NoQrScanner, host: DriveHost = DriveHost(), modifier: Modifier = Modifier) {
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Heading(t("driveConnect.heading"), main = true)
         when (ui.card) {
