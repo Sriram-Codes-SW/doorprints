@@ -26,12 +26,15 @@
 //
 // Exit 1 and one line per offending spec. A spec that needs an exception adds the line
 //   // check-specs: allow-no-production-import (why)
-// near its top. No dependencies: plain Node, regex over the source text.
+// near its top; a spec whose tests assert inside callbacks it passes on adds
+//   // check-specs: allow-test-without-assertion (why)
+// No dependencies: plain Node, regex over the source text.
 import fs from 'node:fs';
 import path from 'node:path';
 
 const roots = process.argv.slice(2).length ? process.argv.slice(2) : ['web/src'];
 const ALLOW = 'check-specs: allow-no-production-import';
+const ALLOW_NO_ASSERTION = 'check-specs: allow-test-without-assertion';
 
 function* specs(dir) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -72,11 +75,50 @@ export function importsOf(source) {
   return found;
 }
 
+
+/** Words that count as asserting something: `expect(`, `assert`, a spec's own `shown(`/`check(` helpers are not known here, so a
+ *  test that only calls a local helper needs the exception marker or an `expect` of its own. */
+const ASSERTION = /\b(expect|assert|assertType|expectTypeOf|fail)\s*[.(]|\.should\b|\bthrows?\b/;
+
+/**
+ * The names of the tests (`it(`, `test(`) whose body holds no assertion at all: they pass whatever the code does.
+ * Bodies are found by matching braces after the arrow; strings and comments are not parsed, which is good enough
+ * for the specs of this repository (checked on all of them).
+ */
+export function testsWithoutAssertion(source) {
+  const found = [];
+  // A spec's own helper that asserts (`shown(...)`, `refuses(...)`): a call to it in a test counts as an assertion.
+  // A helper is a `function name(` or `const name = (...) =>` in the file whose first 700 characters assert.
+  const helpers = [];
+  for (const m of source.matchAll(/(?:\bfunction\s+(\w+)\s*[(<]|\bconst\s+(\w+)\s*=\s*(?:async\s*)?(?:function\b|\([^)]*\)\s*(?::[^=]+)?=>|\w+\s*=>))/g)) {
+    const name = m[1] || m[2];
+    if (ASSERTION.test(source.slice(m.index, m.index + 700))) helpers.push(name);
+  }
+  const helperCall = helpers.length ? new RegExp(`\\b(?:${helpers.join('|')})\\s*\\(`) : null;
+  const re = /\b(?:it|test)(?:\.(?:each|skip|only))?\s*\(\s*(['"`])((?:\\.|(?!\1).)*)\1[\s\S]*?=>\s*\{/g;
+  for (const m of source.matchAll(re)) {
+    let depth = 1;
+    let i = m.index + m[0].length;
+    const start = i;
+    while (i < source.length && depth > 0) {
+      const c = source[i++];
+      if (c === '{') depth++;
+      else if (c === '}') depth--;
+    }
+    const body = source.slice(start, i);
+    if (!ASSERTION.test(body) && !(helperCall && helperCall.test(body))) found.push(m[2]);
+  }
+  return found;
+}
+
 /** The problems with one spec's source, empty when fine. Pure, tested in tools/check-specs.test.mjs. */
 export function specProblems(source) {
   if (source.includes(ALLOW)) return [];
+  const problems = source.includes(ALLOW_NO_ASSERTION)
+    ? []
+    : testsWithoutAssertion(source).map((name) => `test "${name}" asserts nothing`);
   const imports = importsOf(source).filter((i) => !isTooling(i.from));
-  if (imports.length === 0) return ['imports no production module (the code under test must be imported, not re-implemented)'];
+  if (imports.length === 0) return [...problems, 'imports no production module (the code under test must be imported, not re-implemented)'];
   let body = source;
   for (const i of importsOf(source)) body = body.replace(i.whole, '');
   // Comments do not exercise anything; a '//' right after ':' is a URL, not a comment.
@@ -85,9 +127,9 @@ export function specProblems(source) {
   const names = imports.flatMap((i) => i.names);
   const used = names.filter((name) => new RegExp(`(?<![\\w$.])${escapeRegExp(name)}(?![\\w$])`).test(body));
   if (names.length > 0 && used.length === 0) {
-    return [`imports ${names.join(', ')} from production code but uses none of it`];
+    problems.push(`imports ${names.join(', ')} from production code but uses none of it`);
   }
-  return [];
+  return problems;
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
