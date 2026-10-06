@@ -80,6 +80,14 @@ class AndroidDriveTokenProvider(
         authorizer.clearToken(token)
     }
 
+    /** *Disconnect this device*: forget the token held in memory. Nothing is asked of Google; the grant there stays. */
+    suspend fun forget() {
+        lock.withLock {
+            token = null
+            expiresAtMs = 0L
+        }
+    }
+
     /** *Disconnect on all devices*: forget the token, then ask Google to withdraw the grant (a Google failure is swallowed). */
     suspend fun revokeAccess() {
         val old = lock.withLock {

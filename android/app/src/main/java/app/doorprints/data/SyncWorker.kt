@@ -21,6 +21,7 @@ package app.doorprints.data
 import android.content.Context
 import androidx.work.*
 import app.doorprints.DoorprintsApp
+import app.doorprints.drive.wiring.DriveBackupWorker
 import app.doorprints.shared.sync.SyncOutcome
 import kotlinx.coroutines.CancellationException
 import java.util.concurrent.TimeUnit
@@ -43,7 +44,12 @@ import java.util.concurrent.TimeUnit
 class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
-        val repo = (applicationContext as DoorprintsApp).container.repository
+        val container = (applicationContext as DoorprintsApp).container
+        // With Google Drive in use it replaces the server (docs/15 §1.3): one Drive pass, under the same lock and Wi-Fi rules.
+        if (container.drive.engaged) {
+            return DriveBackupWorker.result(container.drive.runInBackground(sync = true, backup = false), runAttemptCount)
+        }
+        val repo = container.repository
         val net = NetworkState.current(applicationContext)
         if (net.captivePortal) {
             repo.settings.saveSyncResult(SyncOutcome(SyncOutcome.Kind.CAPTIVE_PORTAL))

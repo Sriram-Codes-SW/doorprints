@@ -41,6 +41,7 @@ import androidx.core.content.FileProvider
 import androidx.work.WorkInfo
 import app.doorprints.data.AndroidRepository
 import app.doorprints.data.Repository
+import app.doorprints.drive.wiring.DriveSettingsSection
 import app.doorprints.export.AndroidExportServices
 import app.doorprints.export.AndroidImportServices
 import app.doorprints.export.AutoBackupWorker
@@ -189,6 +190,10 @@ private class AndroidSettingsServices(private val app: DoorprintsApp) : Settings
     override fun settingsVisible(visible: Boolean) {
         ScreenWatch.settingsScreen = visible
     }
+
+    /** Settings > Google Drive (docs/15 §2): the Drive screens behind the screen-lock rule ([DriveSettingsSection]). */
+    @Composable
+    override fun DriveSection() = DriveSettingsSection(app.container.drive)
 
     /** The installed version name ("0.1.0"), or null if the package manager cannot say. */
     override fun appVersion(): String? = runCatching {

@@ -113,6 +113,9 @@ object Notifications {
      */
     const val AREA_WAKEUP_ID = 11
 
+    /** "Google Drive backup is paused because this phone no longer has a screen lock" (docs/15 §10.3): one, replaced by a later one. */
+    const val DRIVE_LOCK_ID = 12
+
     /** The tag of area [areaId]'s wake-up notification, posted under [AREA_WAKEUP_ID]. */
     fun areaTag(areaId: String) = "area:$areaId"
 
