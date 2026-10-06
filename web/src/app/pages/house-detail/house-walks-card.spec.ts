@@ -34,7 +34,7 @@ import type { MapOverlay } from '../../shared/location-map';
 import { audit } from '../../shared/testing/a11y';
 import { settle } from '../../shared/testing/trace-fakes';
 import { DEFAULT_SCORING } from '../../shared/scoring';
-import { HALO_MS, HouseWalksCard, walkBounds } from './house-walks-card';
+import { HouseWalksCard, walkBounds } from './house-walks-card';
 import { HouseDetailPage } from './house-detail-page';
 
 const DEG = 1 / 111_194.9266;
@@ -157,7 +157,7 @@ describe('HouseWalksCard', () => {
       const r = await mount();
       r.host.querySelector<HTMLButtonElement>('li button')!.click();
       await settle(r.fixture);
-      await vi.advanceTimersByTimeAsync(HALO_MS - 100);
+      await vi.advanceTimersByTimeAsync(2_900);
       expect(r.overlays).toHaveLength(1);
       await vi.advanceTimersByTimeAsync(200);
       expect(r.overlays).toHaveLength(2);

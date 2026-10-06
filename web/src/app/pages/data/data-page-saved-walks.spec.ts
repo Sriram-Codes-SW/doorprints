@@ -23,7 +23,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { routes } from '../../app.routes';
 import { ConfirmService } from '../../core/confirm.service';
 import { Announcer } from '../../core/announcer.service';
-import { LocalStore } from '../../data/local-store.service';
 import { TraceStore } from '../../data/trace-store';
 import { TranslationService } from '../../i18n/translation.service';
 import type { Lang } from '../../i18n/languages';
@@ -115,14 +114,37 @@ describe('Your data: saved walks', () => {
     expect(text).not.toContain('trace.');
   });
 
-  it('Remove all Doorprints data from this browser empties the saved walks and the trace settings (LocalStore.clearEverything)', async () => {
-    const r = await open('en', 2);
+  it('Remove all Doorprints data from this browser empties the saved walks, the trace and the trace settings, and the page shows 0', async () => {
+    TestBed.configureTestingModule({ providers: [provideRouter(routes)] });
+    await TestBed.inject(TranslationService).setLang('en');
     const store = TestBed.inject(TraceStore);
+    for (let i = 0; i < 2; i++) {
+      const id = NOW - (i + 1) * 3_600_000;
+      for (let k = 0; k < 6; k++) await store.putPoint({ lat: k * 20 * DEG, lon: i, atMs: id + k * 10_000, walkId: id }, 10);
+      await store.saveWalk(id, 'house-1', NOW);
+    }
+    await store.putPoint({ lat: 0, lon: 9, atMs: NOW - 1000, walkId: NOW - 1000 }, 10);
     await store.setLook('OFF');
     await store.setAlertOn(true);
-    await TestBed.inject(LocalStore).clearEverything();
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/data');
+    for (let i = 0; i < 4; i++) {
+      await harness.fixture.whenStable();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      harness.detectChanges();
+    }
+    const host = harness.routeNativeElement as HTMLElement;
+    expect(host.querySelector('#saved-walks')!.textContent!.trim()).toBe('Saved walks: 2');
+    const confirm = TestBed.inject(ConfirmService);
+    vi.spyOn(confirm, 'ask').mockResolvedValue(true);
+    vi.spyOn(confirm, 'choose').mockResolvedValue('confirm');
+    await (harness.routeDebugElement!.componentInstance as { clearBrowser(): Promise<void> }).clearBrowser();
+    harness.detectChanges();
     expect(await store.savedCount()).toBe(0);
+    expect(await store.walkPoints(NOW - 1000)).toEqual([]);
     expect(await store.look()).toBe('CLEAR');
     expect(await store.alertOn()).toBe(false);
+    expect(host.querySelector('#saved-walks')!.textContent!.trim()).toBe('Saved walks: 0');
+    expect(host.querySelector('#delete-saved-walks')).toBeNull();
   });
 });

@@ -1,0 +1,47 @@
+{
+  "spec": "web/src/app/pages/map/place-check-state.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/pages/map/place-check-state.ts",
+      "find": "kind === 'here' ? this.recorder.liveWalkId() : 0",
+      "replace": "0",
+      "expect": "for here leaves out the walk now recording"
+    },
+    {
+      "file": "web/src/app/pages/map/place-check-state.ts",
+      "find": "    this.announcer.cancel({ key: 'trace.here.announce' });\n  }\n}",
+      "replace": "  }\n}",
+      "expect": "Close withdraws the answer"
+    },
+    {
+      "file": "web/src/app/pages/map/place-check-state.ts",
+      "find": "    this.traceView.check.set(null);\n    this.announcer.cancel",
+      "replace": "    this.announcer.cancel",
+      "expect": "Close withdraws the answer"
+    },
+    {
+      "file": "web/src/app/pages/map/place-check-state.ts",
+      "find": "      this.locateProblem.set('unavailable');\n      return;\n    }\n    this.cancelLocating();",
+      "replace": "      return;\n    }\n    this.cancelLocating();",
+      "expect": "with no Geolocation says so"
+    },
+    {
+      "file": "web/src/app/pages/map/place-check-state.ts",
+      "find": "hasSaved: walks.some((w) => w.source === 'SAVED')",
+      "replace": "hasSaved: true",
+      "expect": "says CLOSE between 25 and 50 m"
+    },
+    {
+      "file": "web/src/app/pages/map/place-check-state.ts",
+      "find": "const stretches = result.rows.filter((r) => r.walked).map",
+      "replace": "const stretches = result.rows.map",
+      "expect": "says CLOSE between 25 and 50 m"
+    },
+    {
+      "file": "web/src/app/pages/map/place-check-state.ts",
+      "find": "this.cancelLocate?.();\n    this.cancelLocate = null;\n    this.locating.set(false);\n  }\n\n  /** *Close*",
+      "replace": "this.cancelLocate = null;\n    this.locating.set(false);\n  }\n\n  /** *Close*",
+      "expect": "Cancel stops the watch"
+    }
+  ]
+}

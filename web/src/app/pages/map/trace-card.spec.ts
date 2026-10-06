@@ -31,7 +31,7 @@ import type { Lang } from '../../i18n/languages';
 import { TranslationService } from '../../i18n/translation.service';
 import { audit } from '../../shared/testing/a11y';
 import { FakeRecorder, FakeSound, flush, settle } from '../../shared/testing/trace-fakes';
-import { BANNER_MS, TraceCard } from './trace-card';
+import { TraceCard } from './trace-card';
 import { TraceView } from './trace-view';
 
 const DICTS = { en, hi, ta, te } as const;
@@ -188,7 +188,7 @@ describe('TraceCard', () => {
       recorder.alertRaised.update((n) => n + 1);
       await flush(r.fixture);
       expect(r.$('#trace-banner')!.textContent).toContain('You have walked this way before.');
-      await vi.advanceTimersByTimeAsync(BANNER_MS - 100);
+      await vi.advanceTimersByTimeAsync(9_900);
       await flush(r.fixture);
       expect(r.$('#trace-banner')).not.toBeNull();
       await vi.advanceTimersByTimeAsync(200);

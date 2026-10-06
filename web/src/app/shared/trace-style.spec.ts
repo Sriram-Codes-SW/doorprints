@@ -120,6 +120,15 @@ describe('trace style: the GeoJSON', () => {
     expect(repeat.geometry.type).toBe('LineString');
   });
 
+  it('draws the SHOWN stretches as repeats, not every repeated one (a walk draws only its own part)', () => {
+    const w = walk('t:1', [p(0, 0, 1), p(0, 0.001, 2), p(0, 0.002, 3)]);
+    const arc = walkSamples(w.points).arc;
+    const shown = { fromM: 0, toM: arc[3] };
+    const repeated = { fromM: arc[3], toM: arc[6] };
+    const fc = trackGeoJson([w], [{ repeated: [shown, repeated], shown: [shown] }]);
+    expect(fc.features.filter((f) => f.properties!['kind'] === 'repeat')).toHaveLength(1);
+  });
+
   it('draws a walk with no repeats as base only, and an empty list as an empty collection', () => {
     const w = walk('s:a', [p(0, 0, 1), p(0, 0.001, 2)]);
     expect(trackGeoJson([w], [{ repeated: [], shown: [] }]).features.map((f) => f.properties!['kind'])).toEqual(['base']);

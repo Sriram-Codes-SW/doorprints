@@ -115,10 +115,12 @@ describe('TraceView', () => {
   });
 
   it('prunes a trace older than 30 days at opening, and says nothing is drawn', async () => {
-    await seed(NOW - 40 * 86_400_000, 8);
+    const old = NOW - 40 * 86_400_000;
+    await seed(old, 8);
+    expect(await store.walkPoints(old)).toHaveLength(8);
     await view.open();
     expect(view.walkCount()).toBe(0);
-    expect(await store.traceWalks(NOW)).toEqual([]);
+    expect(await store.walkPoints(old)).toEqual([]);
   });
 
   it('does not run the detection again when the walks have not changed (cache by key and point count)', async () => {

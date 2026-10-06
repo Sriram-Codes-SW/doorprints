@@ -132,6 +132,7 @@ describe('TraceLayers', () => {
     const layers = make(m);
     layers.attach();
     layers.setCheck(checkGeoJson([[[1, 1], [1, 2]]]));
+    expect((m.sources.get(TRACK_CHECK_SOURCE)!.data as { features: unknown[] }).features).toHaveLength(1);
     layers.setCheck(null);
     expect(m.sources.get(TRACK_CHECK_SOURCE)!.data).toEqual({ type: 'FeatureCollection', features: [] });
   });

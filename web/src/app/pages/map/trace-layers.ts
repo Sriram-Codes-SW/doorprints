@@ -57,7 +57,7 @@ export class TraceLayers {
     private readonly beforeId = 'houses-circles',
   ) {}
 
-  /** Adds the sources and the layers the style does not have yet, then fills them. Call it on every `style.load`. */
+  /** Adds the sources (made with the walks and the check the person last had) and the layers the style does not have yet. Call it on every `style.load`. */
   attach(): void {
     const map = this.map;
     const before = map.getLayer(this.beforeId) ? this.beforeId : undefined;
@@ -68,8 +68,6 @@ export class TraceLayers {
     for (const spec of [trackLayerJson(), trackRepeatLayerJson(this.look), halo, stretch]) {
       if (!map.getLayer(spec.id)) map.addLayer(spec as never, before);
     }
-    this.push(TRACK_SOURCE, this.walks);
-    this.push(TRACK_CHECK_SOURCE, this.check);
   }
 
   setWalks(walks: LineCollection): void {

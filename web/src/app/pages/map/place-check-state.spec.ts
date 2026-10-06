@@ -112,6 +112,7 @@ describe('PlaceCheckState', () => {
       expect(close.stretches).toEqual([]);
       const none = await state.compute('house', { lat: 100 * DEG, lon: 300 * DEG });
       expect(none.summary!.status).toBe('NONE');
+      expect(state.text(none).headline).toBe('No walk of yours passed within 25 m of this house in the last 30 days.');
     });
 
     it('says IMPRECISE for a fix worse than 50 m and INVALID_PLACE for a place that is not a place', async () => {

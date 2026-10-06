@@ -177,7 +177,7 @@ export class HouseWalksCard {
     const halo = checkGeoJson(baseLines(saved.walk.points));
     this.overlay.emit({ walks, check: halo, fit: walkBounds(saved.walk) });
     this.haloTimer = setTimeout(() => {
-      if (!this.destroyed && this.shownId === row.id) this.overlay.emit({ walks, check: null, fit: null });
+      if (!this.destroyed) this.overlay.emit({ walks, check: null, fit: null });
     }, HALO_MS);
   }
 

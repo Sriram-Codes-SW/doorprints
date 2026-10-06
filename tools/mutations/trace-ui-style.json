@@ -1,0 +1,41 @@
+{
+  "spec": "web/src/app/shared/trace-style.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/shared/trace-style.ts",
+      "find": "export const TRACK_REPEAT_FACTOR_CLEAR = 1.8;",
+      "replace": "export const TRACK_REPEAT_FACTOR_CLEAR = 2;",
+      "expect": "pins the overlay widths"
+    },
+    {
+      "file": "web/src/app/shared/trace-style.ts",
+      "find": "return look === 'OFF' ? 'none' : 'visible';",
+      "replace": "return 'visible';",
+      "expect": "hides the overlay for Off only"
+    },
+    {
+      "file": "web/src/app/shared/trace-style.ts",
+      "find": "if (p.resumed === true && current.length > 0) {",
+      "replace": "if (false) {",
+      "expect": "cuts the base line at every resumed point"
+    },
+    {
+      "file": "web/src/app/shared/trace-style.ts",
+      "find": "'line-dasharray': [...TRACK_REPEAT_DASH],",
+      "replace": "'line-dasharray': [1, 0],",
+      "expect": "builds the repeat layer: dashed [3, 2]"
+    },
+    {
+      "file": "web/src/app/shared/trace-style.ts",
+      "find": "const shown = repeats[i]?.shown ?? [];",
+      "replace": "const shown = repeats[i]?.repeated ?? [];",
+      "expect": "draws the SHOWN stretches"
+    },
+    {
+      "file": "web/src/app/shared/trace-style.ts",
+      "find": "'line-color': '#FFFFFF', 'line-opacity': 0.95",
+      "replace": "'line-color': '#E65100', 'line-opacity': 0.95",
+      "expect": "has the halo (a wide white casing)"
+    }
+  ]
+}
