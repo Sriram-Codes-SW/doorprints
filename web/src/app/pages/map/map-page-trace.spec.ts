@@ -27,7 +27,7 @@ import { SyncService } from '../../data/sync.service';
 import { TranslationService } from '../../i18n/translation.service';
 import { scoringOf } from '../../shared/scoring';
 import { FakeRecorder, settle } from '../../shared/testing/trace-fakes';
-import { checkGeoJson } from '../../shared/trace-style';
+import { TRACK_REPEAT_DASH, checkGeoJson } from '../../shared/trace-style';
 import { MapPage } from './map-page';
 import { PlaceCheckState } from './place-check-state';
 import type { CheckAnswer } from './place-check-state';
@@ -105,7 +105,11 @@ describe('the Map page with the path trace', () => {
     await settle(fixture);
     const dashed = host.querySelector('.legend svg line[stroke-dasharray]')!;
     expect(dashed.getAttribute('stroke')).toBe('#E65100');
-    expect(dashed.getAttribute('stroke-dasharray')).toBe('3 2');
+    // The map's dash is [3, 2] in LINE WIDTHS: at the sample's width the pattern is the same ratio, not 3 px / 2 px.
+    const width = Number(dashed.getAttribute('stroke-width'));
+    expect(width).toBe(3);
+    expect(dashed.getAttribute('stroke-dasharray')).toBe('9 6');
+    expect(dashed.getAttribute('stroke-dasharray')!.split(' ').map((n) => Number(n) / width)).toEqual([...TRACK_REPEAT_DASH]);
     view.look.set('OFF');
     await settle(fixture);
     expect(host.querySelector('.legend')!.textContent).not.toContain('Walked more than once');
@@ -142,6 +146,33 @@ describe('the Map page with the path trace', () => {
     expect(layers.setLook).toHaveBeenLastCalledWith('SUBTLE');
     expect(layers.setWalks).toHaveBeenLastCalledWith(FAKE_WALKS);
     expect(layers.setCheck).toHaveBeenLastCalledWith(halo);
+  });
+
+  it('a look change sends only the look: the walks are not re-sent (setData re-tiles the source), and the check alone sends only the check', async () => {
+    const { fixture, view } = await render();
+    const layers = { setWalks: vi.fn(), setLook: vi.fn(), setCheck: vi.fn(), attach: vi.fn() };
+    const page = fixture.componentInstance as unknown as { traceLayers: unknown; mapReady: { set(v: boolean): void } };
+    page.traceLayers = layers;
+    page.mapReady.set(true);
+    await settle(fixture);
+    expect(layers.setWalks).toHaveBeenCalledTimes(1);
+    layers.setWalks.mockClear();
+    layers.setLook.mockClear();
+    layers.setCheck.mockClear();
+    view.look.set('SUBTLE');
+    await settle(fixture);
+    expect(layers.setLook).toHaveBeenCalledTimes(1);
+    expect(layers.setWalks).not.toHaveBeenCalled();
+    expect(layers.setCheck).not.toHaveBeenCalled();
+    view.check.set(checkGeoJson([[[1, 1], [1, 2]]]));
+    await settle(fixture);
+    expect(layers.setCheck).toHaveBeenCalledTimes(1);
+    expect(layers.setWalks).not.toHaveBeenCalled();
+    expect(layers.setLook).toHaveBeenCalledTimes(1);
+    view.walks.set(FAKE_WALKS);
+    await settle(fixture);
+    expect(layers.setWalks).toHaveBeenCalledTimes(1);
+    expect(layers.setLook).toHaveBeenCalledTimes(1);
   });
 
   it('does not feed the layers before the map is ready', async () => {

@@ -36,6 +36,18 @@
       "find": "    this.overlay.emit(null);\n    this.announcer.cancel",
       "replace": "    this.announcer.cancel",
       "expect": "Close withdraws the answer"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/house-check-card.ts",
+      "find": "if (this.answer() !== null) this.announcer.cancel({ key: 'trace.here.announce' });\n    });",
+      "replace": "});",
+      "expect": "withdraws its announcement when the page is left"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/house-check-card.ts",
+      "find": "if (this.answer() !== null) this.announcer.cancel",
+      "replace": "if (true) this.announcer.cancel",
+      "expect": "withdraws its announcement when the page is left"
     }
   ]
 }

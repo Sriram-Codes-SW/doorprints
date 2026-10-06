@@ -86,7 +86,7 @@ import { PlaceCheckMapView } from './place-check-map';
 import { PlaceCheckPanel } from './place-check-panel';
 import { PlaceCheckState } from './place-check-state';
 import type { PlaceKind } from '../../shared/trace-place-text';
-import { TRACK_COLOR, TRACK_REPEAT_COLOR, TRACK_REPEAT_DASH } from '../../shared/trace-style';
+import { TRACK_COLOR, TRACK_REPEAT_COLOR, legendDashArray } from '../../shared/trace-style';
 import type { GeoBounds } from '../../offline/offline-tiles';
 import { NO_COST_FILTER, activeCostFilters, costFilterMatches, type CostFilter } from '../../shared/cost-filter';
 import { listPeek } from './list-peek';
@@ -146,7 +146,9 @@ export class MapPage implements AfterViewInit, OnDestroy {
   protected readonly traceView = inject(TraceView);
   protected readonly trackColor = TRACK_COLOR;
   protected readonly repeatColor = TRACK_REPEAT_COLOR;
-  protected readonly repeatDash = TRACK_REPEAT_DASH.join(' ');
+  /** The legend samples are this many px wide; the repeat sample's dash is the map's dash scaled by it. */
+  protected readonly legendStrokePx = 3;
+  protected readonly repeatDash = legendDashArray(this.legendStrokePx);
   private traceLayers: TraceLayers | null = null;
   /** *Have I been here?* (docs/11 5.27.13): the answer, and the ring and the framing it gets on this map. */
   protected readonly placeCheck = inject(PlaceCheckState);
@@ -357,14 +359,18 @@ export class MapPage implements AfterViewInit, OnDestroy {
     });
     void this.traceView.open();
     // The walks, the look and the place check's halo go to the map layers whenever they change (and once the map is ready).
+    // One effect each: a look change is only paint and layout, and must not re-send (and so re-tile) the walks' GeoJSON.
     effect(() => {
-      const [walks, look, check] = [this.traceView.walks(), this.traceView.look(), this.traceView.check()];
-      if (!this.mapReady()) return;
-      untracked(() => {
-        this.traceLayers?.setWalks(walks);
-        this.traceLayers?.setLook(look);
-        this.traceLayers?.setCheck(check);
-      });
+      const walks = this.traceView.walks();
+      if (this.mapReady()) untracked(() => this.traceLayers?.setWalks(walks));
+    });
+    effect(() => {
+      const look = this.traceView.look();
+      if (this.mapReady()) untracked(() => this.traceLayers?.setLook(look));
+    });
+    effect(() => {
+      const check = this.traceView.check();
+      if (this.mapReady()) untracked(() => this.traceLayers?.setCheck(check));
     });
     // The ring and the framing of the place check follow its answer, and the app language for the ring's label.
     effect(() => {

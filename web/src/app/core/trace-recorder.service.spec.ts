@@ -503,6 +503,50 @@ describe('TraceRecorderService', () => {
       expect(service.alertRaised()).toBe(0);
     });
 
+    it('a legacy walk-id-0 row merged into the new walk does not make the live walk one of its own others (no self-alert)', async () => {
+      await store.setAlertOn(true);
+      await startWalk();
+      for (let i = 0; i < 25; i++) geo.fix(i * 20, T0 + i * 15_000, 10, false, 300); // walk 1: another street, 300 m east
+      await service.settled();
+      // A pre-upgrade row (walk id 0) 2 minutes before the first fix of the next walk merges into it: that walk's first point has id 0.
+      const later = T0 + 40 * MIN;
+      for (let i = 0; i <= 20; i++) await store.putPoint({ lat: i * 20 * DEG, lon: 0, atMs: later - 2 * MIN + i * 1000, walkId: 0 }, 10);
+      for (let i = 0; i < 25; i++) geo.fix(i * 20, later + i * 15_000);
+      await service.settled();
+      expect(service.liveWalkId()).toBe(later);
+      expect(service.alertRaised()).toBe(0); // walk 1 is elsewhere; the merged walk holds the live points themselves and is no "other"
+    });
+
+    it('switching the alert ON during a walk takes effect at once (the others are loaded then), not at the next walk', async () => {
+      await seedStreet();
+      await startWalk(); // the alert was off when the walk began
+      await service.setAlertOn(true);
+      await walkUp();
+      expect(service.alertRaised()).toBe(1);
+    });
+
+    it('switching the alert OFF during a walk stops it at once', async () => {
+      await seedStreet();
+      await store.setAlertOn(true);
+      await startWalk();
+      await service.setAlertOn(false);
+      await walkUp();
+      expect(service.alertRaised()).toBe(0);
+      expect(audio.tones).toBe(0);
+    });
+
+    it('switching it on with no walk recording changes nothing until a walk starts (which reads the setting)', async () => {
+      await seedStreet();
+      const all = vi.spyOn(store, 'allWalks');
+      await service.setAlertOn(true);
+      expect(service.state()).toBe('idle');
+      expect(all).not.toHaveBeenCalled(); // nothing is read while no walk records
+      await store.setAlertOn(true);
+      await startWalk();
+      await walkUp();
+      expect(service.alertRaised()).toBe(1);
+    });
+
     it('counts the saved walks too, whatever their age', async () => {
       const old = T0 - 90 * 86_400_000;
       for (let i = 0; i <= 20; i++) await store.putPoint({ lat: i * 20 * DEG, lon: 0, atMs: old + i * 15_000, walkId: old }, 10);

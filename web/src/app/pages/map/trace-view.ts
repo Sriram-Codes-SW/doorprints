@@ -212,6 +212,7 @@ export class TraceView {
   async setAlertOn(on: boolean): Promise<void> {
     this.alertOn.set(on);
     await this.store.setAlertOn(on);
+    await this.recorder.setAlertOn(on); // a walk now recording follows the switch at once
   }
   async setKeepAwake(on: boolean): Promise<void> {
     this.keepAwake.set(on);

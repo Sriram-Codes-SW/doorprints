@@ -50,6 +50,11 @@ export class FakeRecorder {
   settled() {
     return Promise.resolve();
   }
+  alertOn: boolean | null = null;
+  setAlertOn(on: boolean) {
+    this.alertOn = on;
+    return Promise.resolve();
+  }
   liveWalkId() {
     return this.live;
   }

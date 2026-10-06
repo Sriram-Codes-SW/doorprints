@@ -31,6 +31,7 @@ import { TRACE } from '../shared/trace-geo';
 import type { TracePoint, TraceWalk } from '../shared/trace-geo';
 import type { PlaceWalk } from '../shared/trace-place-check';
 import { splitWalks } from '../shared/trace-repeats';
+import { BatchGuardError } from './local-db';
 import type { LocalDb } from './local-db';
 import { LocalStore } from './local-store.service';
 import { SETTING_KEYS } from './records';
@@ -81,6 +82,11 @@ export interface WalkSummary {
 export interface AllWalks {
   readonly trace: TraceWalk[];
   readonly saved: { readonly row: SavedWalkRow; readonly walk: TraceWalk }[];
+}
+
+/** True when one of `points` carries the walk id `walkId` (the live walk's own points, whatever the first point's id). */
+export function holdsWalkId(points: readonly TracePoint[], walkId: number): boolean {
+  return points.some((p) => (p.walkId ?? 0) === walkId);
 }
 
 @Injectable({ providedIn: 'root' })
@@ -148,23 +154,30 @@ export class TraceStore {
   // ---- The walk to ask about ----
 
   /**
-   * The walk the *Save this walk?* sheet is for (docs/11 5.27.6): the newest walk id in the trace that is not the live
-   * walk's, is above the watermark `askedUpTo` and has at least {@link ASK_MIN_POINTS} points and {@link ASK_MIN_LENGTH_M}
-   * metres; null when there is none. Only the newest candidate counts: a shorter walk is just kept for 30 days, and an
-   * unanswered older walk is skipped. Computed from the rows, not stored, so a walk cut by a closed tab is asked about once.
+   * The walk the *Save this walk?* sheet is for (docs/11 5.27.6), as on the phones (`WalkStore.lastEndedWalk`): the walk ids
+   * in the trace that are not the live walk's and are above the watermark `askedUpTo`, newest first; the first with at least
+   * {@link ASK_MIN_POINTS} points and {@link ASK_MIN_LENGTH_M} metres. A short walk (a false start) is just kept for 30 days
+   * and never hides an older long one. Null when none qualifies. Computed from the rows, not stored, so a walk cut by a closed
+   * tab is asked about once.
    */
   async lastEndedWalk(liveWalkId: number, askedUpTo: number): Promise<WalkSummary | null> {
     const rows = await (await this.db()).getAll<TracePointRow>('trace_points');
-    let newest = 0;
-    for (const r of rows) if (r.walk !== 0 && r.walk !== liveWalkId && r.walk > askedUpTo && r.walk > newest) newest = r.walk;
-    if (newest === 0) return null;
-    const points = rows
-      .filter((r) => r.walk === newest)
-      .map(pointOfRow)
-      .sort((a, b) => a.atMs - b.atMs);
-    const lengthM = walkLengthM(points);
-    if (points.length < ASK_MIN_POINTS || lengthM < ASK_MIN_LENGTH_M) return null;
-    return summaryOf(newest, points, lengthM);
+    const byWalk = new Map<number, TracePointRow[]>();
+    for (const r of rows) {
+      if (r.walk === 0 || r.walk === liveWalkId || r.walk <= askedUpTo) continue;
+      const list = byWalk.get(r.walk);
+      if (list) list.push(r);
+      else byWalk.set(r.walk, [r]);
+    }
+    for (const id of [...byWalk.keys()].sort((a, b) => b - a)) {
+      const points = byWalk
+        .get(id)!
+        .map(pointOfRow)
+        .sort((a, b) => a.atMs - b.atMs);
+      const lengthM = walkLengthM(points);
+      if (points.length >= ASK_MIN_POINTS && lengthM >= ASK_MIN_LENGTH_M) return summaryOf(id, points, lengthM);
+    }
+    return null;
   }
 
   /** The summary of one walk id in the trace, or null when it has no points. */
@@ -185,14 +198,26 @@ export class TraceStore {
     const points = await this.walkPoints(walkId);
     if (points.length < 2) return { ok: false, reason: 'noWalk' };
     if (points.length > TRACE.maxWalkPoints) return { ok: false, reason: 'tooLong' };
-    if ((await db.count('saved_walks', 'houseId', houseId)) >= MAX_SAVED_WALKS_PER_HOUSE) return { ok: false, reason: 'houseFull' };
-    if ((await db.count('saved_walks')) >= MAX_SAVED_WALKS_PER_DEVICE) return { ok: false, reason: 'deviceFull' };
     const id = newId();
     const row: SavedWalkRow = { id, houseId, savedAt: nowMs, ...encodeWalk(points) };
-    await db.batch([
-      { op: 'put', store: 'saved_walks', value: row },
-      ...points.map((p) => ({ op: 'delete' as const, store: 'trace_points' as const, key: `${p.walkId ?? 0}-${p.atMs}` })),
-    ]);
+    try {
+      // The limits and the walk's still being in the trace are checked INSIDE the transaction that writes, so two tabs cannot
+      // both pass a count read before it (20 per house, 200 per device, a walk saved once).
+      await db.batch(
+        [
+          { op: 'put', store: 'saved_walks', value: row },
+          ...points.map((p) => ({ op: 'delete' as const, store: 'trace_points' as const, key: `${p.walkId ?? 0}-${p.atMs}` })),
+        ],
+        [
+          { store: 'trace_points', index: 'walk', value: walkId, min: points.length, reason: 'noWalk' },
+          { store: 'saved_walks', index: 'houseId', value: houseId, max: MAX_SAVED_WALKS_PER_HOUSE - 1, reason: 'houseFull' },
+          { store: 'saved_walks', max: MAX_SAVED_WALKS_PER_DEVICE - 1, reason: 'deviceFull' },
+        ],
+      );
+    } catch (err: unknown) {
+      if (err instanceof BatchGuardError) return { ok: false, reason: err.reason as 'noWalk' | 'houseFull' | 'deviceFull' };
+      throw err;
+    }
     return { ok: true, id };
   }
 
@@ -246,7 +271,9 @@ export class TraceStore {
 
   /**
    * The walks the place check compares with (docs/11 5.27.13): the 30-day trace and every saved walk, whether or not the trace
-   * is switched on. `leaveOutWalkId` is the walk now recording, left out only for the *here* source. The check itself drops a
+   * is switched on. `leaveOutWalkId` is the walk now recording, left out only for the *here* source: any trace walk holding
+   * a point of that id goes, not only one that starts with it (a legacy walk-id-0 row less than 30 minutes before the first
+   * walk after the upgrade merges into the live walk, whose first point then carries 0). The check itself drops a
    * trace walk whose id equals a saved walk's (a save cut between its writes).
    */
   async placeWalks(nowMs: number, leaveOutWalkId = 0): Promise<PlaceWalk[]> {
@@ -254,7 +281,7 @@ export class TraceStore {
     const walks: PlaceWalk[] = [];
     for (const w of trace) {
       const id = w.points[0].walkId ?? 0;
-      if (leaveOutWalkId !== 0 && id === leaveOutWalkId) continue;
+      if (leaveOutWalkId !== 0 && holdsWalkId(w.points, leaveOutWalkId)) continue;
       walks.push({ points: w.points, source: 'TRACE', walkId: id });
     }
     for (const s of saved) walks.push({ points: s.walk.points, source: 'SAVED', walkId: s.row.startedAt });

@@ -82,6 +82,34 @@ export type WriteOp =
   | { readonly op: 'put'; readonly store: StoreName; readonly value: unknown }
   | { readonly op: 'delete'; readonly store: StoreName; readonly key: StoreKey };
 
+/**
+ * A condition on a row count, checked INSIDE the transaction of a {@link LocalDb.batch} before its writes: the rows of
+ * `store` (those with `index` equal to `value`, or all) must number at least `min` and at most `max`. When it does not hold
+ * nothing is written and the batch rejects with a {@link BatchGuardError} carrying `reason`. It is how a limit is kept when
+ * two tabs act at once: a count read before the transaction could be stale by the time the writes land.
+ */
+export interface BatchGuard {
+  readonly store: StoreName;
+  readonly index?: string;
+  readonly value?: string | number;
+  readonly min?: number;
+  readonly max?: number;
+  readonly reason: string;
+}
+
+/** A {@link BatchGuard} did not hold: the batch changed nothing. */
+export class BatchGuardError extends Error {
+  constructor(readonly reason: string) {
+    super(`batch refused: ${reason}`);
+    this.name = 'BatchGuardError';
+  }
+}
+
+/** True when `n` is within the guard's bounds. */
+function guardHolds(guard: BatchGuard, n: number): boolean {
+  return (guard.min === undefined || n >= guard.min) && (guard.max === undefined || n <= guard.max);
+}
+
 export interface LocalDb {
   /** 'indexeddb' when the data is really being kept; 'memory' when it lives only for this page. */
   readonly kind: 'indexeddb' | 'memory';
@@ -100,9 +128,10 @@ export interface LocalDb {
   deleteAll(store: StoreName, keys: readonly StoreKey[]): Promise<void>;
   /**
    * Puts and deletes across stores in ONE transaction: every operation is applied or none is (a quota error, a closed
-   * tab). The path trace saves a walk with it (docs/03 section 6.2b row 3).
+   * tab). The path trace saves a walk with it (docs/03 section 6.2b row 3). With `guards`, their counts are read in the
+   * same transaction first (in order; the first that fails rejects with a {@link BatchGuardError} and nothing is written).
    */
-  batch(ops: readonly WriteOp[]): Promise<void>;
+  batch(ops: readonly WriteOp[], guards?: readonly BatchGuard[]): Promise<void>;
   /** Empties one store, or every store when no name is given. */
   clear(store?: StoreName): Promise<void>;
   close(): void;
@@ -187,9 +216,14 @@ export class MemoryDb implements LocalDb {
   }
 
   /** Synchronous inside, so no other call can see half of it; the operations are checked before any is applied. */
-  batch(ops: readonly WriteOp[]): Promise<void> {
+  batch(ops: readonly WriteOp[], guards: readonly BatchGuard[] = []): Promise<void> {
     for (const op of ops) {
       if (!STORE_NAMES.includes(op.store)) return Promise.reject(new Error(`unknown store ${op.store}`));
+    }
+    for (const guard of guards) {
+      const rows = [...this.map(guard.store).values()] as Record<string, unknown>[];
+      const n = guard.index === undefined ? rows.length : rows.filter((r) => r[guard.index!] === guard.value).length;
+      if (!guardHolds(guard, n)) return Promise.reject(new BatchGuardError(guard.reason));
     }
     for (const op of ops) {
       if (op.op === 'put') this.putNow(op.store, op.value);
@@ -254,17 +288,46 @@ class IdbDb implements LocalDb {
     return this.batch(keys.map((key) => ({ op: 'delete', store, key })));
   }
 
-  /** One `readwrite` transaction over every store the operations name: all of them are applied, or none. */
-  batch(ops: readonly WriteOp[]): Promise<void> {
+  /**
+   * One `readwrite` transaction over every store the operations (and guards) name: all of them are applied, or none. The
+   * guards' counts are requested first; the writes are issued from the last count's callback, still inside the transaction,
+   * so no other tab can change a count between the check and the writes.
+   */
+  batch(ops: readonly WriteOp[], guards: readonly BatchGuard[] = []): Promise<void> {
     if (ops.length === 0) return Promise.resolve();
     return new Promise<void>((resolve, reject) => {
       let tx: IDBTransaction;
-      try {
-        tx = this.db.transaction([...new Set(ops.map((o) => o.store))], 'readwrite');
+      const write = (): void => {
         for (const op of ops) {
           const os = tx.objectStore(op.store);
           if (op.op === 'put') os.put(op.value);
           else os.delete(idbKey(op.key));
+        }
+      };
+      try {
+        tx = this.db.transaction([...new Set([...ops.map((o) => o.store), ...guards.map((g) => g.store)])], 'readwrite');
+        if (guards.length === 0) write();
+        else {
+          const counts: number[] = [];
+          guards.forEach((guard, i) => {
+            const os = tx.objectStore(guard.store);
+            const request = guard.index === undefined ? os.count() : os.index(guard.index).count(guard.value);
+            request.onsuccess = () => {
+              counts[i] = request.result;
+              if (counts.filter((c) => c !== undefined).length < guards.length) return;
+              const failed = guards.find((g, k) => !guardHolds(g, counts[k]));
+              if (failed) {
+                reject(new BatchGuardError(failed.reason)); // no write was issued: the transaction ends empty
+              } else {
+                try {
+                  write();
+                } catch (err: unknown) {
+                  reject(asError(err, 'IndexedDB transaction failed'));
+                  tx.abort();
+                }
+              }
+            };
+          });
         }
       } catch (err: unknown) {
         reject(asError(err, 'IndexedDB transaction failed'));

@@ -17,7 +17,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { DB_VERSION, MemoryDb, STORE_INDEXES, STORE_KEY_PATH, STORE_NAMES, openLocalDb, upgradeLocalDb } from './local-db';
+import { BatchGuardError, DB_VERSION, MemoryDb, STORE_INDEXES, STORE_KEY_PATH, STORE_NAMES, openLocalDb, upgradeLocalDb } from './local-db';
 import type { UpgradeDb, UpgradeStore, UpgradeTx } from './local-db';
 import {
   MAX_RECORD_PAYLOAD_BYTES,
@@ -282,6 +282,27 @@ describe('MemoryDb: the path trace stores and the multi-store operations', () =>
     ).rejects.toThrow(/unknown store/);
     expect(await db.count('saved_walks')).toBe(0);
     expect(await db.count('trace_points')).toBe(1);
+  });
+
+  it('batch with guards checks the counts first and applies nothing when one fails (BatchGuardError with its reason)', async () => {
+    const db = new MemoryDb();
+    await db.putAll('saved_walks', [{ id: 's1', houseId: 'h1' }, { id: 's2', houseId: 'h1' }, { id: 's9', houseId: 'other' }]);
+    await db.put('trace_points', { id: 'a', walk: 1 });
+    const ops = [{ op: 'put' as const, store: 'saved_walks' as const, value: { id: 's3', houseId: 'h1' } }, { op: 'delete' as const, store: 'trace_points' as const, key: 'a' }];
+    const failure = await db.batch(ops, [{ store: 'saved_walks', index: 'houseId', value: 'h1', max: 1, reason: 'houseFull' }]).then(() => null, (e: unknown) => e);
+    expect(failure).toBeInstanceOf(BatchGuardError);
+    expect((failure as BatchGuardError).reason).toBe('houseFull');
+    expect(await db.count('saved_walks')).toBe(3);
+    expect(await db.count('trace_points')).toBe(1);
+    const missing = await db.batch(ops, [{ store: 'trace_points', index: 'walk', value: 1, min: 2, reason: 'gone' }]).then(() => null, (e: unknown) => e);
+    expect((missing as BatchGuardError).reason).toBe('gone');
+    await db.batch(ops, [
+      { store: 'saved_walks', index: 'houseId', value: 'h1', max: 2, reason: 'houseFull' }, // 2 of h1, not the 3 rows of the store
+      { store: 'saved_walks', max: 3, reason: 'deviceFull' },
+      { store: 'trace_points', index: 'walk', value: 1, min: 1, reason: 'gone' },
+    ]);
+    expect(await db.count('saved_walks')).toBe(4);
+    expect(await db.count('trace_points')).toBe(0);
   });
 
   it('clear() with no name empties the two new stores too (Remove all Doorprints data from this browser)', async () => {

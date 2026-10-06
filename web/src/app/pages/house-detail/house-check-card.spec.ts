@@ -173,6 +173,18 @@ describe('HouseCheckCard (Did I walk past this house?)', () => {
     expect(document.activeElement).toBe(r.$('#house-check-open'));
   });
 
+  it('withdraws its announcement when the page is left with an answer on show, and says nothing when there is none', async () => {
+    const r = await render();
+    const cancel = vi.spyOn(TestBed.inject(Announcer), 'cancel');
+    r.fixture.destroy();
+    expect(cancel).not.toHaveBeenCalled();
+    const s = await render();
+    const cancel2 = vi.spyOn(TestBed.inject(Announcer), 'cancel');
+    await s.click('#house-check-open');
+    s.fixture.destroy();
+    expect(cancel2).toHaveBeenCalledWith({ key: 'trace.here.announce' });
+  });
+
   it('forgets the answer when the house moves: it was about another spot', async () => {
     const r = await render();
     await r.click('#house-check-open');

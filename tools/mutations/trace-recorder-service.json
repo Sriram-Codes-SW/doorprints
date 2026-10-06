@@ -90,6 +90,24 @@
       "find": "    if (this.state() !== 'idle') this.state.set('idle');",
       "replace": "    this.state.set('recording');",
       "expect": "Finish walk stops the watch"
+    },
+    {
+      "file": "web/src/app/core/trace-recorder.service.ts",
+      "find": "    this.alertOn = on;\n    if (this.state() === 'idle') return Promise.resolve();",
+      "replace": "    if (this.state() === 'idle') return Promise.resolve();",
+      "expect": "switching the alert ON during a walk"
+    },
+    {
+      "file": "web/src/app/core/trace-recorder.service.ts",
+      "find": "(on ? this.loadOthers() : undefined)",
+      "replace": "undefined",
+      "expect": "switching the alert ON during a walk"
+    },
+    {
+      "file": "web/src/app/core/trace-recorder.service.ts",
+      "find": "if (this.state() === 'idle') return Promise.resolve();",
+      "replace": "",
+      "expect": "switching it on with no walk recording"
     }
   ]
 }
