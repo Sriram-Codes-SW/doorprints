@@ -26,7 +26,7 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 /** A scripted authenticator: answers [next] and counts the asks; [boom] throws. */
-class FakeDeviceAuth(var lockEnabled: Boolean = true, var next: AuthResult = AuthResult.SUCCESS, var boom: Throwable? = null) : DeviceAuth {
+open class FakeDeviceAuth(var lockEnabled: Boolean = true, var next: AuthResult = AuthResult.SUCCESS, var boom: Throwable? = null) : DeviceAuth {
     var asks = 0
     var lastLevel: DeleteLevel? = null
     override fun isDeviceLockEnabled() = lockEnabled

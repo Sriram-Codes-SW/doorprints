@@ -25,6 +25,7 @@ import app.doorprints.crypto.QR_PSK_LEN
 import app.doorprints.deviceauth.AuthResult
 import app.doorprints.deviceauth.DeleteLevel
 import app.doorprints.deviceauth.DeviceAuth
+import app.doorprints.drive.device.SoftwareOperationProver
 import app.doorprints.deviceauth.LockLostDetector
 import app.doorprints.deviceauth.LockState
 import app.doorprints.drive.DriveOp
@@ -100,13 +101,15 @@ class DriveAssemblyTest {
 
     private fun phone(name: String, dir: File = tmp.newFolder(name), configured: Boolean = true, plainSyncPass: Boolean = false, backend: FakeKeyBackend = FakeKeyBackend(), handBackFails: Int = 0): Phone {
         val phone = Phone(dir, backend)
-        val deviceAuth = object : DeviceAuth {
+        val plainAuth = object : DeviceAuth {
             override fun isDeviceLockEnabled() = phone.lock
             override suspend fun authenticate(reason: String, level: DeleteLevel): AuthResult {
                 phone.authAsked++
                 return phone.authResult
             }
         }
+        // The phone's own adapter over a scripted prompt: the proof of a pass is what the token carries (S4b-BL-135).
+        val deviceAuth = ProverDeviceAuth(SoftwareOperationProver(plainAuth, JvmCryptoProvider), plainAuth::isDeviceLockEnabled) { server.clock.now() }
         val deps = DriveDeps(
             dir = dir,
             crypto = JvmCryptoProvider,

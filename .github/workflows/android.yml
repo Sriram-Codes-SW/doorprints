@@ -253,6 +253,9 @@ jobs:
           HH_KEYSTORE_PASSWORD: ${{ secrets.HH_KEYSTORE_PASSWORD }}
           HH_KEY_ALIAS: ${{ secrets.HH_KEY_ALIAS }}
           HH_KEY_PASSWORD: ${{ secrets.HH_KEY_PASSWORD }}
+          # The Android OAuth client id for the browser sign-in fallback (docs/15 §2.4): a repository VARIABLE, not a secret
+          # (it is a public identifier). Empty when the variable is not set: the browser fallback then stays unavailable.
+          GOOGLE_ANDROID_CLIENT_ID: ${{ vars.GOOGLE_ANDROID_CLIENT_ID }}
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon --stacktrace assembleRelease

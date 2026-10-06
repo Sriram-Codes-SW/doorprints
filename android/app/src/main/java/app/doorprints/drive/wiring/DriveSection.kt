@@ -54,7 +54,6 @@ import app.doorprints.ui.drive.ControllerDriveActions
 import app.doorprints.ui.drive.DriveHost
 import app.doorprints.ui.drive.DriveSettings
 import app.doorprints.ui.drive.DriveViewModel
-import app.doorprints.ui.drive.NoQrScanner
 import kotlinx.coroutines.launch
 
 /**
@@ -64,8 +63,8 @@ import kotlinx.coroutines.launch
  * words show above the card (the person can still disconnect). Read again each time the screen resumes, so setting a lock
  * and coming back is enough.
  *
- * No QR scanner ships ([NoQrScanner]): docs/15 §9.5 names no camera library, so the screens offer the pasted `dp1.` text
- * and the 8-digit code (docs/ops/android-drive-wiring-notes.md).
+ * QR scanning is Google's code scanner ([AndroidQrScanner], no CAMERA permission); without Play services the Scan button is
+ * hidden and the screens offer the pasted `dp1.` text and the 8-digit code (docs/ops/android-drive-wiring-notes.md).
  */
 @Composable
 fun DriveSettingsSection(drive: DriveServices) {
@@ -133,7 +132,8 @@ private fun DriveCard(drive: DriveServices) {
         importError = error,
         clipboard = clipboard,
     )
-    DriveSettings(vm, scanner = NoQrScanner, host = host)
+    val scanner = remember(drive, context) { AndroidQrScanner(GmsQrScanBackend(drive.activities, context.applicationContext)) }
+    DriveSettings(vm, scanner = scanner, host = host)
 }
 
 /** The phone's own security settings (docs/15 §10.3: `ACTION_SECURITY_SETTINGS`); the page of all settings when that is missing. */

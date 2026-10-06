@@ -17,10 +17,11 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { hex } from './bytes';
+import { hex, unhex } from './bytes';
 import { WebCryptoProvider } from './crypto-provider';
 import { HPKE_INFO, WrapAad, kidOf } from './folder-key';
 import { Hpke } from './hpke';
+import vectorsJson from '../../../../../docs/schemas/qr-enrol-vectors.json';
 import { parseQrOffer, QR_PSK_ID, QR_PSK_LEN, qrOfferText } from './qr-enrol';
 
 const p = new WebCryptoProvider();
@@ -52,5 +53,41 @@ describe('enrolment QR payload and HPKE PSK', () => {
     await expect(hpke.openPsk(sealed.enc, recipient, HPKE_INFO, WrapAad.folderKey(1, kid), sealed.ciphertext, wrong, QR_PSK_ID)).rejects.toBeTruthy();
     const other = await p.p256Generate();
     await expect(hpke.openPsk(sealed.enc, other, HPKE_INFO, WrapAad.folderKey(1, kidOf(p, other.publicKey)), sealed.ciphertext, psk, QR_PSK_ID)).rejects.toBeTruthy();
+  });
+});
+
+/** The `dp1.` text against `docs/schemas/qr-enrol-vectors.json`, the same cases as Kotlin's `QrEnrolTest`. */
+describe('enrolment offer text against the shared vectors', () => {
+  const vectors = vectorsJson as unknown as {
+    valid: { name: string; publicKey: string; psk: string; text: string }[];
+    forms: { name: string; input: string; offer: string }[];
+    invalid: { name: string; input: string }[];
+  };
+
+  it('writes each valid offer to the exact text', () => {
+    for (const v of vectors.valid) expect(qrOfferText(unhex(v.publicKey), unhex(v.psk))).toBe(v.text);
+  });
+
+  it('reads each valid offer back to the exact bytes', () => {
+    for (const v of vectors.valid) {
+      const parsed = parseQrOffer(v.text);
+      expect(parsed, v.name).not.toBeNull();
+      expect(hex(parsed!.publicKey), v.name).toBe(v.publicKey);
+      expect(hex(parsed!.psk), v.name).toBe(v.psk);
+    }
+  });
+
+  it('finds the offer in every pasted form', () => {
+    for (const f of vectors.forms) {
+      const want = vectors.valid.find((v) => v.name === f.offer)!;
+      const parsed = parseQrOffer(f.input);
+      expect(parsed, f.name).not.toBeNull();
+      expect(hex(parsed!.publicKey), f.name).toBe(want.publicKey);
+      expect(hex(parsed!.psk), f.name).toBe(want.psk);
+    }
+  });
+
+  it('refuses every invalid input', () => {
+    for (const v of vectors.invalid) expect(parseQrOffer(v.input), v.name).toBeNull();
   });
 });

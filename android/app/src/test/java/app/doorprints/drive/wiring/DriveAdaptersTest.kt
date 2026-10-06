@@ -186,6 +186,40 @@ class DriveAdaptersTest {
     }
 
     @Test
+    fun theBoundOperationIsWhatTheProverSignsAndItsProofIsKeptOnce() = runBlocking {
+        val prover = Prover(ProofOutcome.Proved(7L, "1".repeat(64)))
+        val a = auth(prover)
+        a.bindNext("del-plan")
+        assertEquals(AuthResult.SUCCESS, a.authenticate("why", DeleteLevel.L2))
+        assertEquals("del-plan", prover.asked.single().first)
+        val p = a.takeProof()!!
+        assertEquals(7L, p.issuedAtMs)
+        assertEquals("1".repeat(64), p.proof)
+        assertEquals(null, a.takeProof())
+    }
+
+    @Test
+    fun bindingAgainOrARefusalDropsTheEarlierProof() = runBlocking {
+        val prover = Prover(ProofOutcome.Proved(7L, "1".repeat(64)))
+        val a = auth(prover)
+        a.authenticate("why", DeleteLevel.L2)
+        a.bindNext("other")
+        assertEquals(null, a.takeProof())
+        prover.next = ProofOutcome.Cancelled
+        assertEquals(AuthResult.CANCELLED, a.authenticate("why", DeleteLevel.L2))
+        assertEquals(null, a.takeProof())
+    }
+
+    @Test
+    fun aPassWhoseProofIsNotSixtyFourHexDigitsIsNoPass() = runBlocking {
+        for (bad in listOf("", "0".repeat(63), "G".repeat(64))) {
+            val a = auth(Prover(ProofOutcome.Proved(1L, bad)))
+            assertEquals(bad, AuthResult.FAILED, a.authenticate("why", DeleteLevel.L2))
+            assertEquals(null, a.takeProof())
+        }
+    }
+
+    @Test
     fun levelOneAsksNothingAndNeverPasses() = runBlocking {
         val prover = Prover(ProofOutcome.Proved(1L, "0".repeat(64)))
         assertEquals(AuthResult.FAILED, auth(prover).authenticate("why", DeleteLevel.L1))

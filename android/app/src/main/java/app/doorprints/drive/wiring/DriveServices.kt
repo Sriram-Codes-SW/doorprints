@@ -47,6 +47,7 @@ import app.doorprints.drive.connect.BackupSummary
 import app.doorprints.drive.connect.DriveConnectController
 import app.doorprints.drive.connect.DriveReason
 import app.doorprints.drive.connect.Outcome
+import app.doorprints.drive.connect.SyncInfo
 import app.doorprints.drive.device.AndroidDeviceKeys
 import app.doorprints.drive.device.DeviceLockDetectors
 import app.doorprints.drive.device.OperationProvers
@@ -194,7 +195,7 @@ class DriveServices(
     /**
      * One background run ([DriveBackgroundRunner]). Nothing is built, asked or touched when Drive is not in use.
      */
-    suspend fun runInBackground(sync: Boolean, backup: Boolean): RunOutcome {
+    suspend fun runInBackground(sync: Boolean, backup: Boolean, onSync: (SyncInfo) -> Unit = {}): RunOutcome {
         if (!engaged) return RunOutcome.Skipped(SkipReason.NOT_CONNECTED)
         val ops = ControllerBackgroundOps(
             controller = { controller },
@@ -203,7 +204,7 @@ class DriveServices(
             notifyLock = ::notifyLockPaused,
             standing = { DriveLockRules.standingPause(lockMemory.paused, keyguardSecure(), lockMemory.keyStoreFault) },
         )
-        return DriveBackgroundRunner(ops).run(sync, backup)
+        return DriveBackgroundRunner(ops, onSync).run(sync, backup)
     }
 
     /** Sets the periodic work to match "in use and automatic backup on" (also at every app start: WorkManager can lose it). */

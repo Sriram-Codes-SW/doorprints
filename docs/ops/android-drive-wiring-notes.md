@@ -71,11 +71,23 @@ quietly first; if Google needs a screen, that is a failure that waits for the pe
    notes describe (S4b-BL-135); `DeviceAuthorizationGate` itself is not in the graph (the `PhoneDeletionAuthorizer` is the
    service's gate). Wiring it needs `DriveDeletionService` and the controller to take one authorizer that carries the
    plan's operation id; not done here.
-5. **QR scanning:** docs/15 §9.5 names no camera library, so there is none: `NoQrScanner`, and the screens offer the
-   pasted `dp1.` text and the 8-digit code. The code is `PairingCode.pairingCode` over the offer's key and secret with a label:
-   a check of the pasted text, not a second factor. The offer carries no device name, so the approver lists a new phone as
-   "New phone" (the website's `dp1.` has none either). A camera needs a library (CameraX with ML Kit, or Google's code
-   scanner): an owner decision.
+5. **QR scanning (owner decision 2026-10-06):** Google's code scanner, `com.google.android.gms:play-services-code-scanner`
+   16.1.0 (the one new library). `AndroidQrScanner` (logic, JVM-tested) sits over the thin `QrScanBackend`; `GmsQrScanBackend`
+   is the only code that calls Google (QR codes only, auto zoom). Google's own screen scans, so the app adds **no CAMERA
+   permission**. The scanned text goes back to the screens exactly as pasted text does (the codec's 4096-character limit, the
+   `dp1.` check and the *not a Doorprints code* error apply; a longer text is replaced by a non-code word before parsing). Both
+   screens that take text (the connected phone reading the new device's QR; the new device reading the approver's reply)
+   get the same Scan button, shown only when `isAvailable`. Without Google Play services (the browser-fallback phones)
+   `isAvailable` is false, the button is hidden and the pasted text and the 8-digit code remain. The text is never logged and
+   `QrScanBackendResult.Text.toString` is redacted.
+   **Module download (for the owner):** the scanner module is not in the APK. On first use Play services downloads it
+   (a few MB, over the network, once). `moduleReady()` checks `ModuleInstall`; when it is missing it asks for the install and
+   the screen shows the existing "no camera" line for that tap; the next tap works once the download has finished.
+   The library also pulls Google's telemetry helper libraries (datatransport, firebase-encoders, ML Kit common); they ship
+   in the APK and Google may report scanner usage metrics through Play services. The code paste path needs none of this.
+   The offer carries no device name, so the approver lists a new phone as "New phone" (the website's `dp1.` has none either).
+   The code is `PairingCode.pairingCode` over the offer's key and secret with a label: a check of the pasted text, not a
+   second factor.
 6. **Replies** are the website's JSON (`wrapEnc`, `wrapCt`, `epoch`), so a phone and the website enrol each other.
 7. **Import a backup** from Drive writes the decrypted ZIP to `cache/imports/drive-*.zip` and opens the existing Import
    screen with that file (it copies it again; both are swept after six hours).
@@ -86,7 +98,7 @@ quietly first; if Google needs a screen, that is a failure that waits for the pe
 - `AndroidDriveTokenProvider.forget()` (memory only), for *Disconnect this device*.
 - `SettingsServices.DriveSection()` with an empty default, one call in `SettingsScreen` before the server section; `:ui` otherwise untouched, nothing under `iosMain`.
 - `Api.httpClient()`, `Notifications.DRIVE_LOCK_ID`, `SyncWorker` (Drive pass), `AppContainer` (database, route, flag, drive), `MainActivity` (registers the foreground Activity and the two result launchers).
-- `app/build.gradle.kts`: `InMemoryFakeDrive.kt` and `FakeDriveFaults.kt` of `:shared`'s commonTest are compiled into `:app`'s unit tests (plus a 14-line copy of the internal 401 helper, `drive/FakeDriveSupport.kt`).
+- `app/build.gradle.kts`: `InMemoryFakeDrive.kt` and `FakeDriveFaults.kt` of `:shared`'s commonTest are compiled into `:app`'s unit tests (the 401 helper `authorized` they use is public in `:shared`, so there is no copy of it).
 
 ## What needs a real phone (not verified here)
 
@@ -245,3 +257,38 @@ OAuth client of docs/15 §2.4 with "Enable custom URI scheme" on (the debug and 
 | Disconnect does not clear the flag | disconnectingAfterTheFolderWentHandsTheRowsBackAndClearsTheCard |
 | Start again does not clear the flag | startAgainClearsTheCardAndKeepsDriveInUse |
 | flag set after the state drops | aFolderFoundGoneKeepsDriveInUseAndShowsTheCardState |
+
+## S4b-BL-135 (Android half): one authorizer carries the HMAC proof
+
+Decisions 4 and the rows 15 and O8 above are superseded.
+
+| # | Change |
+|---|---|
+| H1 | `DriveDeps.deviceAuth` is an `OperationBoundAuth` (`ProverDeviceAuth` in the app); `DriveAssembly` builds `PhoneDeletionAuthorizer(gate, d.deviceAuth, d.clock)` as before, so the controller (`DeleteAuthorizer`) and `DriveDeletionService` (`AuthorizationGate`) still share the one object. |
+| H2 | The token's proof is the HMAC the prover signed for the plan's `operationId` at the pass, not the grant id; grants are keyed by operation id (a second authorisation of a plan replaces the first), at most `MAX_ISSUED` (4). |
+| H3 | `DeviceAuthorizationGate` and its duplicate result type are deleted (see the A2 notes); `OperationProof.kt` keeps the proof types. |
+| H4 | Tests that built a plain `DeviceAuth` for the assembly now wrap it in the phone's own `ProverDeviceAuth(SoftwareOperationProver(...))`, so the end-to-end tests run the proof path. |
+
+### Mutations of S4b-BL-135 (each applied by hand to the production file, the named test failed, file restored)
+
+| Mutation | Test that failed |
+|---|---|
+| proof not compared in `entryOf` | aFlippedProofCharacterIsRefused, aTokenForPlanAIsRefusedForPlanB |
+| plan's operation id not bound to the device check | theControllersOperationIdReachesTheDeviceCheckAndIsClearedAfter |
+| level not compared | aTokenForLevelTwoIsRefusedForLevelThree |
+| 60 s cap dropped | stillHoldsFollowsFreshnessAndTheLock |
+| token from the future allowed | aTokenOlderThanSixtySecondsOrFromTheFutureIsRefused |
+| no redeem (replay allowed) | aTokenIsGenuineOnceAndOnlyOnce |
+| lock not asked before each file | aLockRemovedBetweenTheGrantAndTheStartRefusesTheStartAndEndsIt, stillHoldsFollowsFreshnessAndTheLock |
+| pass with no proof accepted for L2/L3 | aCheckThatPassedWithoutSigningTheOperationIsRefusedForLevelTwoAndThree |
+| token time = grant time, not the pass | theTokenIsStampedAndAgedFromThePassNotFromTheGrantBeingRecorded |
+| second ask of a plan keeps the first grant | aTokenOfAnotherAskOfTheSamePlanIsRefusedAfterANewAsk |
+| bound operation not cleared after the ask | theControllersOperationIdReachesTheDeviceCheckAndIsClearedAfter |
+| denied reported as cancelled | cancelledDeniedAndNoLockAreThreeDifferentRefusals |
+| lookup by proof alone (another plan's name accepted) | aTokenForPlanAIsRefusedForPlanB |
+| level always L2 | aGrantBecomesATokenBoundToTheOperationAtTheGrantLevel, levelOneAsksNothingAndCarriesNoProof |
+| `ProverDeviceAuth` ignores the bound operation | L2 and L3 ask the prover with the plan's operation id and level; theBoundOperationIsWhatTheProverSignsAndItsProofIsKeptOnce |
+| `ProverDeviceAuth` accepts a proof that is not 64 hex | a proof that is not 64 lower-case hex digits is a failure and makes no token; aPassWhoseProofIsNotSixtyFourHexDigitsIsNoPass |
+| `ProverDeviceAuth` does not keep the proof | the token carries the proof the prover signed...; a token for plan A is refused for plan B (and 4 more) |
+| a taken proof stays | theBoundOperationIsWhatTheProverSignsAndItsProofIsKeptOnce |
+| timed out reported as locked out | theDeviceCheckResultsMapOneToOne |

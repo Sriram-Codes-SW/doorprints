@@ -39,6 +39,7 @@ import app.doorprints.data.SettingsStore
 import app.doorprints.deviceauth.AuthResult
 import app.doorprints.deviceauth.DeleteLevel
 import app.doorprints.deviceauth.DeviceAuth
+import app.doorprints.drive.device.SoftwareOperationProver
 import app.doorprints.deviceauth.LockLostDetector
 import app.doorprints.deviceauth.LockState
 import app.doorprints.drive.FakeDriveServer
@@ -119,10 +120,12 @@ class DriveSyncEndToEndTest {
         val controller get() = graph.controller
 
         init {
-            val deviceAuth = object : DeviceAuth {
+            val plainAuth = object : DeviceAuth {
                 override fun isDeviceLockEnabled() = true
                 override suspend fun authenticate(reason: String, level: DeleteLevel) = AuthResult.SUCCESS
             }
+            // The phone's own adapter over a scripted prompt: the proof of a pass is what the token carries (S4b-BL-135).
+            val deviceAuth = ProverDeviceAuth(SoftwareOperationProver(plainAuth, JvmCryptoProvider), plainAuth::isDeviceLockEnabled) { server.clock.now() }
             graph = DriveAssembly.assemble(
                 DriveDeps(
                     dir = dir,

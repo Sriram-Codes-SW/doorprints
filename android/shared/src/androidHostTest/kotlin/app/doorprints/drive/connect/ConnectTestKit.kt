@@ -21,6 +21,7 @@ package app.doorprints.drive.connect
 import app.doorprints.crypto.DevicePlatform
 import app.doorprints.crypto.RecoveryKey
 import app.doorprints.deviceauth.AuthPlatform
+import app.doorprints.deviceauth.AuthResult
 import app.doorprints.deviceauth.DriveGate
 import app.doorprints.deviceauth.FakeDeviceAuth
 import app.doorprints.deviceauth.FakeLock
@@ -123,7 +124,7 @@ class FakeEnrolment : DeviceEnrolment {
 class Phone(val server: FakeDriveServer, name: String, configured: Boolean = true, withSource: Boolean = true) {
     val rig = Rig(server, name)
     val p = rig.p
-    val deviceAuth = FakeDeviceAuth()
+    val deviceAuth = ProofingAuth { server.clock.now() }
     val lock = FakeLock()
     val gate = DriveGate(AuthPlatform.PHONE, deviceAuth, lock, RecordingActions()) { server.clock.now() }
     val authorizer = PhoneDeletionAuthorizer(gate, deviceAuth) { server.clock.now() }
@@ -183,3 +184,32 @@ fun freshRecoveryKey(p: app.doorprints.crypto.CryptoProvider): String = Recovery
 
 fun <T> Outcome<T>.ok(): T = (this as? Outcome.Ok)?.value ?: error("expected Ok but was $this")
 fun Outcome<*>.reason(): DriveReason = (this as? Outcome.Failed)?.reason ?: error("expected Failed but was $this")
+
+/**
+ * A scripted device check that also signs what it was bound to, as `ProverDeviceAuth` does on the phone: a pass leaves
+ * a distinct 64-hex proof (never the same twice) at the moment it passed; [signs] false is a check that passes without
+ * signing anything, which the authorizer must not accept for L2/L3.
+ */
+class ProofingAuth(var signs: Boolean = true, private val clock: () -> Long) : FakeDeviceAuth(), OperationBoundAuth {
+    var bound: String? = null
+    val boundHistory = mutableListOf<String?>()
+    var proofs = 0
+
+    /** When the pass is stamped, if not at the moment of the ask (a prompt that took its time). */
+    var passedAt: Long? = null
+    private var proved: OperationProofValue? = null
+
+    override fun bindNext(operationId: String?) {
+        bound = operationId
+        boundHistory += operationId
+        proved = null
+    }
+
+    override fun takeProof(): OperationProofValue? = proved.also { proved = null }
+
+    override suspend fun authenticate(reason: String, level: app.doorprints.deviceauth.DeleteLevel): AuthResult {
+        val result = super.authenticate(reason, level)
+        if (result == AuthResult.SUCCESS && signs) proved = OperationProofValue(passedAt ?: clock(), "%064x".format(++proofs))
+        return result
+    }
+}

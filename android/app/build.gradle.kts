@@ -132,6 +132,7 @@ android {
 
 // The Drive wiring's tests run the real services on the same in-memory Drive as :shared's tests (S4b-BL-117/-118): two
 // files of :shared's commonTest (the fake and its faults) are compiled into this module's unit tests; the rest of that folder is not.
+// The one thing the fake needs from :shared's production code is `authorized` (DriveRetry.kt), which is public for that.
 android.sourceSets.getByName("test").kotlin.directories.add("../shared/src/commonTest/kotlin/app/doorprints/drive")
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
     exclude { it.file.path.contains("/shared/src/commonTest/") && it.file.name !in setOf("InMemoryFakeDrive.kt", "FakeDriveFaults.kt") }
@@ -178,6 +179,8 @@ dependencies {
         exclude(group = "com.google.android.gms", module = "play-services-fido")
         exclude(group = "com.google.android.gms", module = "play-services-auth-api-phone")
     }
+    // QR scan of the enrolment offer: Google's code scanner screen (no CAMERA permission), behind QrScanBackend.
+    implementation(libs.play.services.code.scanner)
     implementation(libs.kotlinx.coroutines.play.services)
     // JSON in the export, import and Assistant code (the Room checklist converter moved to :shared in CMP-4 P4a).
     implementation(libs.kotlinx.serialization.json)
