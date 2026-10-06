@@ -22,9 +22,12 @@
     class="map-wrap"
     role="region"
     [attr.aria-label]="'map.regionLabel' | t"
-    aria-describedby="map-hint"
+    [attr.aria-describedby]="traceView.repeatCount() > 0 && traceView.look() !== 'OFF' ? 'map-hint trace-map-hint' : 'map-hint'"
   >
     <p id="map-hint" class="sr-only">{{ 'map.regionHint' | t }}</p>
+    @if (traceView.repeatCount() > 0 && traceView.look() !== 'OFF') {
+      <p id="trace-map-hint" class="sr-only">{{ 'trace.a11y.map' | t }}</p>
+    }
     <div #mapEl class="map"></div>
 
     @if (!mapUsable()) {
@@ -63,19 +66,25 @@
       </div>
     }
 
-    @if (addMode() && mapUsable()) {
+    @if (picking() && mapUsable()) {
       <div class="crosshair" aria-hidden="true"></div>
     }
 
-    @if (addMode() && mapUsable()) {
+    @if (picking() && mapUsable()) {
       <!-- From the share page: the listing has no position yet, so the pin comes first (never 0°, 0°). Not a live
            region: turning add mode on says the full hint through the app's announcer. On phones it sits at the top of
            the map, clear of the crosshair, of the actions at the bottom and of MapLibre's control column, and says the
            short version (map.addHintShort), so a Tamil or Telugu hint does not grow down onto the crosshair. The
            version not shown is display: none, so it is not part of Cancel adding's description either. -->
       <p id="add-hint" class="add-hint">
-        <span class="hint-full">{{ (sharedText() !== null ? 'map.pickShared' : 'map.addHint') | t }}</span>
-        <span class="hint-short">{{ 'map.addHintShort' | t }}</span>
+        @if (checkMode()) {
+          <!-- The check's own hint (docs/11 5.27.13): the same sentence on a phone and on a wide screen. -->
+          <span class="hint-full">{{ 'trace.here.pickHint' | t }}</span>
+          <span class="hint-short">{{ 'trace.here.pickHint' | t }}</span>
+        } @else {
+          <span class="hint-full">{{ (sharedText() !== null ? 'map.pickShared' : 'map.addHint') | t }}</span>
+          <span class="hint-short">{{ 'map.addHintShort' | t }}</span>
+        }
       </p>
     }
 
@@ -86,9 +95,9 @@
       reach, the primary action last (Android MapScreen: zoom, my location, then "Save here"). Its measured height
       lifts MapLibre's bottom-right controls above it.
     -->
-    <div #stack class="map-stack" [class.with-legend]="mapUsable() && !addMode()">
+    <div #stack class="map-stack" [class.with-legend]="mapUsable() && !picking()">
       <!-- Not needed while a pin is being placed, and it would crowd the hint and the crosshair. -->
-      @if (mapUsable() && !addMode()) {
+      @if (mapUsable() && !picking()) {
         <div class="legend" role="group" [attr.aria-label]="'map.legend' | t">
           @for (s of statuses; track s) {
             <span class="legend-item">
@@ -99,36 +108,68 @@
           <span class="legend-item">
             <i class="dot APPROX" aria-hidden="true"></i>{{ 'map.legendApprox' | t }}
           </span>
+          <!-- The walks (docs/11 5.27.1): shown while the trace is not empty, the same sample lines as the map. -->
+          @if (traceView.walkCount() > 0) {
+            <span class="legend-item">
+              <svg class="sample" viewBox="0 0 24 8" aria-hidden="true"><line x1="0" y1="4" x2="24" y2="4" [attr.stroke]="trackColor" stroke-width="3" stroke-linecap="round" /></svg>{{ 'trace.legend.once' | t }}
+            </span>
+            @if (traceView.look() !== 'OFF') {
+              <span class="legend-item">
+                <svg class="sample" viewBox="0 0 24 8" aria-hidden="true">
+                  <line x1="0" y1="4" x2="24" y2="4" [attr.stroke]="trackColor" stroke-width="3" />
+                  <line x1="0" y1="4" x2="24" y2="4" [attr.stroke]="repeatColor" stroke-width="3" [attr.stroke-dasharray]="repeatDash" />
+                </svg>{{ 'trace.legend.repeated' | t }}
+              </span>
+            }
+          }
         </div>
       }
       <div class="map-actions">
-        <!-- The label says the state ("Add house" / "Cancel adding"): no aria-pressed on top of it. -->
-        <button
-          id="add-toggle"
-          type="button"
-          class="btn"
-          [attr.aria-describedby]="addMode() && mapUsable() ? 'add-hint' : null"
-          (click)="toggleAddMode()"
-        >
-          <span class="icon" aria-hidden="true">{{ addMode() ? '✕' : '＋' }}</span>
-          {{ (addMode() ? 'map.addCancel' : 'map.add') | t }}
-        </button>
-        @if (addMode() && mapUsable()) {
-          <button id="place-here" type="button" class="btn btn-primary" (click)="placeAtCenter()">
-            <span class="icon" aria-hidden="true">⌖</span> {{ 'map.placeCenter' | t }}
+        @if (checkMode()) {
+          <!-- *A spot on the map* (docs/11 5.27.13): the crosshair, with Cancel and Check this spot. -->
+          <button id="check-cancel-pick" type="button" class="btn" aria-describedby="add-hint" (click)="cancelCheckPick()">
+            <span class="icon" aria-hidden="true">✕</span>
+            {{ 'trace.here.pickCancel' | t }}
           </button>
-        } @else if (items().length > 0 && mapUsable()) {
-          <button type="button" class="btn" [title]="'map.fitTitle' | t" (click)="fitAll()">{{ 'map.fit' | t }}</button>
-        }
-        @if (!addMode() && mapUsable()) {
-          <!-- Offline maps (S4b-BL-79): the box on screen, saved in this browser. -->
-          <app-offline-save [boundsOf]="currentBounds" />
+          <button id="check-this-spot" type="button" class="btn btn-primary" (click)="checkAtCenter()">
+            <span class="icon" aria-hidden="true">⌖</span> {{ 'trace.here.pickConfirm' | t }}
+          </button>
+        } @else {
+          <!-- The label says the state ("Add house" / "Cancel adding"): no aria-pressed on top of it. -->
+          <button
+            id="add-toggle"
+            type="button"
+            class="btn"
+            [attr.aria-describedby]="addMode() && mapUsable() ? 'add-hint' : null"
+            (click)="toggleAddMode()"
+          >
+            <span class="icon" aria-hidden="true">{{ addMode() ? '✕' : '＋' }}</span>
+            {{ (addMode() ? 'map.addCancel' : 'map.add') | t }}
+          </button>
+          @if (addMode() && mapUsable()) {
+            <button id="place-here" type="button" class="btn btn-primary" (click)="placeAtCenter()">
+              <span class="icon" aria-hidden="true">⌖</span> {{ 'map.placeCenter' | t }}
+            </button>
+          } @else if (items().length > 0 && mapUsable()) {
+            <button type="button" class="btn" [title]="'map.fitTitle' | t" (click)="fitAll()">{{ 'map.fit' | t }}</button>
+          }
+          @if (!addMode()) {
+            <!-- Offline maps (S4b-BL-79): the box on screen, saved in this browser. -->
+            @if (mapUsable()) {
+              <app-offline-save [boundsOf]="currentBounds" />
+            }
+            <!-- *Have I been here?* (docs/11 5.27.13): shown whether or not the trace is on. -->
+            <app-place-check [mapUsable]="mapUsable()" (pickSpot)="startCheckPick()" />
+          }
         }
       </div>
     </div>
   </section>
 
   <section #panel class="panel" aria-labelledby="houses-heading">
+    <app-place-check-panel [mapUsable]="mapUsable()" />
+    <app-trace-card />
+    <app-walk-end-sheet [houses]="houses()" />
     <div class="panel-head">
       <h1 id="houses-heading">{{ 'map.heading' | t }}</h1>
     </div>

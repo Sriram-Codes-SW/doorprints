@@ -33,10 +33,20 @@
 // type through a proxy) is reported under "transient" in results.json, not counted as a failure.
 // It adds and then deletes two "UI test" houses in a fresh browser profile; nothing leaves the browser (the mobile
 // pass adds one house per phone profile, which goes with the profile).
+// `--trace` runs ONLY the path trace scenario (docs/11 5.27.8 and 5.27.13, S4b-FR-15, S4b-FR-17, S4b-FR-24), after a merge
+// that deploys web/**: in a fresh browser profile with the geolocation permission and a place the test moves
+// (setGeolocation), it switches the trace on, presses Start a walk, walks 30 steps of 22 m, presses Finish walk and Keep for
+// 30 days, then asks Have I been here? > Where I am now on the street (the answer says "within" and today's weekday) and
+// 100 m off it (the "no walk passed" sentence), counts the requests of the click that are not the map's (there must be none),
+// checks that Close withdraws the sentence from the page's live region, and takes a screenshot of the answer on a 360x640
+// phone. Never run it against anything but the deploy under test; it writes nothing outside its own browser profile.
 const { chromium, devices } = require('playwright');
+const { walkSteps, eastOf, nonTileRequests, todayWeekday } = require('./trace-helpers');
 const fs = require('fs'), path = require('path');
-const BASE = (process.argv[2] || 'https://doorprints.web.app').replace(/\/$/, '');
-const OUT = process.argv[3] || path.join(__dirname, 'out');
+const ARGS = process.argv.slice(2).filter((a) => !a.startsWith('--'));
+const WANT_TRACE = process.argv.includes('--trace');
+const BASE = (ARGS[0] || 'https://doorprints.web.app').replace(/\/$/, '');
+const OUT = ARGS[1] || path.join(__dirname, 'out');
 fs.mkdirSync(path.join(OUT, 'shots'), { recursive: true });
 const AXE = fs.readFileSync(require.resolve('axe-core/axe.min.js'), 'utf8');
 const EN = fs.readFileSync(path.join(__dirname, '../../web/src/app/i18n/en.ts'), 'utf8');
@@ -54,9 +64,10 @@ const THEMES = ['light', 'dark'];
 const VIEWPORTS = { phone: { width: 390, height: 844 }, desktop: { width: 1280, height: 900 } };
 const IGNORE_CONSOLE = [/tiles\.openfreemap\.org.*(ERR_|40[34])/i, /favicon/i];
 
-async function newCtx(browser, { lang = 'en', theme = 'light', vp = 'desktop', mapView, bypassCSP = false } = {}) {
+async function newCtx(browser, { lang = 'en', theme = 'light', vp = 'desktop', mapView, bypassCSP = false, geolocation, viewport } = {}) {
   // bypassCSP only where axe is injected (the page matrix): the site's CSP rightly refuses inline scripts.
-  const ctx = await browser.newContext({ viewport: VIEWPORTS[vp], colorScheme: theme, serviceWorkers: 'allow', acceptDownloads: true, bypassCSP });
+  // geolocation: the place the browser reports (the path trace scenario moves it with ctx.setGeolocation); with it the permission is granted.
+  const ctx = await browser.newContext({ viewport: viewport || VIEWPORTS[vp], colorScheme: theme, serviceWorkers: 'allow', acceptDownloads: true, bypassCSP, ...(geolocation ? { geolocation, permissions: ['geolocation'] } : {}) });
   await ctx.addInitScript(([lang, mapView]) => {
     if (sessionStorage.getItem('__init')) return;
     sessionStorage.setItem('__init', '1');
@@ -542,6 +553,87 @@ async function mobile(browser) {
   }
 }
 
+/**
+ * The path trace and the place check, through the UI only (docs/11 5.27.8, 5.27.13): no IndexedDB seeding, so the test does not
+ * know the store's names. 30 steps of 22 m north along one street, with the geolocation moved by the test.
+ */
+async function trace(browser) {
+  const START = { latitude: 12.9716, longitude: 77.5946, accuracy: 10 };
+  const steps = walkSteps(START.latitude, START.longitude, 30, 22);
+  const street = steps[15];
+  const walkAndAsk = async (ctx, page, tag) => {
+    const errors = watch(page);
+    await gotoRetry(page, `${BASE}/`); await settle(page); await page.waitForTimeout(1500);
+    // The card is a <details>: open on a desktop, one line on a phone.
+    const details = page.locator('app-trace-card details');
+    if (!(await details.evaluate((d) => d.open))) await details.locator('summary').click();
+    // The trace is off by default, and nothing asks for the location until Start a walk.
+    check('trace', `${tag}: the trace switch is off by default and Start a walk is not offered yet`, !(await page.locator('#trace-on').isChecked()) && (await page.locator('#trace-start').count()) === 0);
+    await page.locator('#trace-on').check();
+    check('trace', `${tag}: Start a walk and its permission sentence appear`, await page.locator('#trace-start').isVisible() && /your browser will ask for your location/.test(await page.locator('#trace-explain').innerText()));
+    await page.locator('#trace-start').click();
+    await page.locator('#trace-finish').waitFor({ timeout: 10000 }).catch(() => {});
+    check('trace', `${tag}: recording shows Finish walk and the state`, await page.locator('#trace-finish').isVisible() && /Recording your walk/.test(await page.locator('app-trace-card').innerText()));
+    for (const step of steps) {
+      await ctx.setGeolocation({ ...step, accuracy: 10 });
+      await page.waitForTimeout(250);
+    }
+    await page.waitForTimeout(500);
+    const kept = /Points kept: (\d+)/.exec(await page.locator('app-trace-card').innerText());
+    check('trace', `${tag}: the points were kept (at least 25 of 30)`, !!kept && +kept[1] >= 25, kept && kept[0]);
+    await page.locator('#trace-finish').click();
+    await page.locator('dialog.walk-end[open]').waitFor({ timeout: 10000 }).catch(() => {});
+    const sheet = page.locator('dialog.walk-end');
+    check('trace', `${tag}: Save this walk? opens when the walk ends, with the title focused`, (await sheet.getAttribute('open')) !== null && (await page.evaluate(() => document.activeElement && document.activeElement.id)) === 'walk-end-title');
+    check('trace', `${tag}: Keep for 30 days is the primary answer`, /btn-primary/.test((await page.locator('#walk-end-keep').getAttribute('class')) || ''));
+    await page.locator('#walk-end-keep').click();
+    await page.waitForTimeout(500);
+    check('trace', `${tag}: the sheet closes on Keep for 30 days`, (await sheet.getAttribute('open')) === null);
+    check('trace', `${tag}: the legend shows Walked once while the trace is not empty`, /Walked once/.test(await page.locator('.legend').innerText()));
+    // The check: here, on the street.
+    const requests = [];
+    page.on('request', (r) => requests.push(r.url()));
+    await ctx.setGeolocation({ ...street, accuracy: 10 });
+    await page.locator('#place-check-open').click();
+    check('trace', `${tag}: the dialog says the permission sentence`, /It is used once, only on this page, and not kept/.test(await page.locator('#check-permission').innerText()));
+    requests.length = 0;
+    await page.locator('#check-here').click();
+    await page.locator('#check-headline').waitFor({ timeout: 20000 }).catch(() => {});
+    const onStreet = await page.locator('#check-headline').innerText().catch(() => '');
+    check('trace', `${tag}: on the street the answer says within, and today's weekday`, /You walked within \d+ m of here on/.test(onStreet) && onStreet.includes(todayWeekday()), onStreet);
+    check('trace', `${tag}: the answer has the title focused`, (await page.evaluate(() => document.activeElement && document.activeElement.id)) === 'check-title');
+    const leaked = nonTileRequests(requests, BASE);
+    check('trace', `${tag}: the click made no request but the map's`, leaked.length === 0, leaked.slice(0, 3).join(' ; '));
+    // 100 m off the street.
+    await ctx.setGeolocation({ ...eastOf(street, 100), accuracy: 10 });
+    requests.length = 0;
+    await page.locator('#check-again').click();
+    await page.waitForFunction(() => /No walk of yours passed/.test((document.querySelector('#check-headline') || {}).textContent || ''), null, { timeout: 20000 }).catch(() => {});
+    const off = await page.locator('#check-headline').innerText().catch(() => '');
+    check('trace', `${tag}: 100 m off the street the answer says no walk passed within 25 m`, /No walk of yours passed within 25 m of here/.test(off), off);
+    const leakedAgain = nonTileRequests(requests, BASE);
+    check('trace', `${tag}: Check again made no request but the map's`, leakedAgain.length === 0, leakedAgain.slice(0, 3).join(' ; '));
+    if (tag.includes('360')) await page.screenshot({ path: path.join(OUT, 'shots', 'trace_check_360x640.png') });
+    const live = () => page.evaluate(() => [...document.querySelectorAll('[aria-live]')].map((e) => e.textContent).join(' '));
+    await page.waitForTimeout(500);
+    check('trace', `${tag}: the answer was said through the page's live region`, /No walk of yours passed|You walked within/.test(await live()), await live());
+    await page.locator('#check-close').click();
+    await page.waitForTimeout(500);
+    check('trace', `${tag}: Close withdraws the sentence from the live region`, !/No walk of yours passed|You walked within/.test(await live()), await live());
+    check('trace', `${tag}: Close returns focus to Have I been here?`, (await page.evaluate(() => document.activeElement && document.activeElement.id)) === 'place-check-open');
+    check('trace', `${tag}: no result in the URL or in the history state`, !/walked|within|check/i.test(page.url()) && (await page.evaluate(() => JSON.stringify(history.state || {}))).indexOf('within') < 0);
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    check('trace', `${tag}: no horizontal scroll`, overflow <= 1, `${overflow}px`);
+    check('console', `${tag}: no errors`, errors.length === 0, errors.slice(0, 3).join(' ; '));
+  };
+  for (const [tag, viewport] of [['trace desktop', VIEWPORTS.desktop], ['trace 360x640', { width: 360, height: 640 }]]) {
+    const ctx = await newCtx(browser, { viewport, geolocation: START });
+    const page = await ctx.newPage();
+    try { await walkAndAsk(ctx, page, tag); } catch (e) { check('trace', `${tag} ran to the end`, false, e.stack); }
+    await ctx.close();
+  }
+}
+
 async function boundaries(browser) {
   const r = await (await browser.newContext()).request.get(`${BASE}/geo/in-boundaries.geojson`);
   const g = r.status() === 200 ? await r.json() : null;
@@ -568,8 +660,9 @@ async function boundaries(browser) {
   const only = (process.env.ONLY || '').split(',').filter(Boolean);
   // The four areas run side by side, each in its own browser contexts (about 12 minutes instead of 25-30 one after
   // another); SERIAL=1 runs them in turn, as before.
-  const areas = [['pages', pageMatrix], ['flows', flows], ['boundaries', boundaries], ['mobile', mobile]]
-    .filter(([name]) => !only.length || only.includes(name));
+  // `--trace` (or ONLY=trace) runs the path trace scenario alone; the default matrix does not include it.
+  const areas = [['pages', pageMatrix], ['flows', flows], ['boundaries', boundaries], ['mobile', mobile], ['trace', trace]]
+    .filter(([name]) => (only.length ? only.includes(name) : WANT_TRACE ? name === 'trace' : name !== 'trace'));
   const run = async ([name, fn]) => {
     try { await fn(browser); } catch (e) { check(name, `${name} ran to the end`, false, e.stack); }
   };

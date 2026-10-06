@@ -59,6 +59,9 @@ import type { PhotoSummary } from '../../core/local-data.service';
 import { MOVE_IN_TAG, photoTagKey } from '../../shared/photo-tags';
 import type { PhotoMeta } from '../../shared/photo-tags';
 import { HouseMoveInCard } from './house-move-in-card';
+import { HouseCheckCard } from './house-check-card';
+import { HouseWalksCard } from './house-walks-card';
+import { TraceStore } from '../../data/trace-store';
 import type { OpenedPhoto } from './house-move-in-card';
 import { PhotoMetaEditor } from './photo-meta-editor';
 import { QUESTION_CATEGORIES } from '../../shared/question';
@@ -89,6 +92,7 @@ import { LocalDataError } from '../../core/local-error';
 import { Announcer } from '../../core/announcer.service';
 import { resizeImage } from '../../core/image-resize';
 import { LatLon, LocationMap, round6 } from '../../shared/location-map';
+import type { MapOverlay } from '../../shared/location-map';
 import { AuthImage } from '../../shared/auth-image';
 import { Msg, TranslationService } from '../../i18n/translation.service';
 import { TitleOverride } from '../../i18n/i18n-title.strategy';
@@ -135,6 +139,8 @@ const DRAFT_SAVE_MS = 500;
     HouseAreaNotesCard,
     HouseDistancesCard,
     HouseMoveInCard,
+    HouseCheckCard,
+    HouseWalksCard,
     PhotoMetaEditor,
   ],
   templateUrl: './house-detail-page.html',
@@ -150,6 +156,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   private readonly location = inject(Location);
   private readonly announcer = inject(Announcer);
   private readonly confirm = inject(ConfirmService);
+  private readonly traces = inject(TraceStore);
   private readonly unsaved = inject(UnsavedChanges);
   private readonly pageTitle = inject(TitleOverride);
   private readonly injector = inject(Injector);
@@ -197,6 +204,8 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   });
   protected readonly brokerLine = (row: BrokerRow): string => brokerLine(row.broker);
   protected readonly isNew = signal(false);
+  /** Walks and the place check's halo drawn on this page's own map (docs/11 5.27.6, 5.27.13); never a navigation, never kept. */
+  protected readonly overlay = signal<MapOverlay | null>(null);
   protected readonly loading = signal(true);
   protected readonly saving = signal(false);
   protected readonly dirty = signal(false);
@@ -1441,6 +1450,12 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     }
   }
 
+  /** A saved walk (or null) for the page's own map; the map is brought into view so *Show on map* shows something. */
+  protected showOverlay(overlay: MapOverlay | null): void {
+    this.overlay.set(overlay);
+    if (overlay?.fit) document.querySelector('app-location-map')?.scrollIntoView({ block: 'nearest' });
+  }
+
   protected async deleteHouse(): Promise<void> {
     const d = this.draft();
     if (!d) return;
@@ -1459,7 +1474,14 @@ export class HouseDetailPage implements OnInit, OnDestroy {
       return;
     }
     const name = d.label || this.i18n.t('house.thisHouse');
-    const ok = await this.confirm.ask({ key: 'confirm.deleteHouse', params: { name } }, {
+    // The website has no undo: a house's saved walks are deleted with it, and the question says so when it has any.
+    let walks = 0;
+    try {
+      walks = await this.traces.savedCount(d.id);
+    } catch {
+      // Unreadable: the plain question; LocalStore.deleteHouse still deletes the walks.
+    }
+    const ok = await this.confirm.ask({ key: walks > 0 ? 'trace.houseDelete.confirm' : 'confirm.deleteHouse', params: { name } }, {
       confirmKey: 'house.delete',
       danger: true,
     });

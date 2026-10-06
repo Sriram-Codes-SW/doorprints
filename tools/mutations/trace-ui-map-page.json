@@ -1,0 +1,41 @@
+{
+  "spec": "web/src/app/pages/map/map-page-trace.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/pages/map/map-page.html",
+      "find": "@if (traceView.walkCount() > 0) {",
+      "replace": "@if (true) {",
+      "expect": "shows no walk legend while the trace is empty"
+    },
+    {
+      "file": "web/src/app/pages/map/map-page.html",
+      "find": "            @if (traceView.look() !== 'OFF') {\n              <span class=\"legend-item\">",
+      "replace": "            @if (true) {\n              <span class=\"legend-item\">",
+      "expect": "hides it with the look Off"
+    },
+    {
+      "file": "web/src/app/pages/map/map-page.ts",
+      "find": "    if (this.checkMode()) {\n      this.cancelCheckPick();",
+      "replace": "    if (false) {\n      this.cancelCheckPick();",
+      "expect": "Cancel checking and Esc leave the mode"
+    },
+    {
+      "file": "web/src/app/pages/map/map-page.ts",
+      "find": "    this.placeCheck.close();\n  }\n\n  /**\n   * Reads the houses",
+      "replace": "  }\n\n  /**\n   * Reads the houses",
+      "expect": "leaving the page withdraws the answer"
+    },
+    {
+      "file": "web/src/app/pages/map/map-page.ts",
+      "find": "if (c) void this.placeCheck.run('spot', { lat: c.lat, lon: c.lng });",
+      "replace": "if (c) void this.placeCheck.run('spot', { lat: c.lng, lon: c.lat });",
+      "expect": "asks the answer about the centre under the cross"
+    },
+    {
+      "file": "web/src/app/pages/map/map-page.ts",
+      "find": "      if (!this.mapReady()) return;\n      untracked(() => {\n        this.traceLayers?.setWalks(walks);",
+      "replace": "      untracked(() => {\n        this.traceLayers?.setWalks(walks);",
+      "expect": "does not feed the layers before the map is ready"
+    }
+  ]
+}

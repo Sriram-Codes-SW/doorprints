@@ -1,0 +1,23 @@
+{
+  "spec": "web/src/app/shared/location-map.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/shared/location-map.ts",
+      "find": "if (overlay?.fit) layers.fitTo(overlay.fit, 40);",
+      "replace": "",
+      "expect": "draws the walks and the halo and frames the box"
+    },
+    {
+      "file": "web/src/app/shared/location-map.ts",
+      "find": "    this.ring?.remove();\n    this.ring = null;\n    if (overlay?.ring",
+      "replace": "    this.ring = null;\n    if (overlay?.ring",
+      "expect": "replaces it on the next overlay"
+    },
+    {
+      "file": "web/src/app/shared/location-map.ts",
+      "find": "layers.setCheck(overlay?.check ?? null);",
+      "replace": "",
+      "expect": "clears the walks and the halo"
+    }
+  ]
+}
