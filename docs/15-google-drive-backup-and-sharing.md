@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Design of Google sign-in for backup, automatic sync, deletion and sharing through each person's own Google Drive (N13 3b, D-28) |
-| Version | 0.24 |
+| Version | 0.25 |
 | Date | 2026-10-06 |
 | Author | Claude (Code), lead |
 | Status | **Decided by the owner on 2026-10-02** (§6, §6.1: "Let us implement it. After real world use, we can change as needed."); [03](03-design.md) ADR-33. Built so far: S4b-BL-70, S4b-BL-115, S4b-BL-125, S4b-BL-124 (the runbook incidents, [08](08-operations-runbook.md) IR-11..IR-13), and the **website** version 1 cards (draft PR #118): connect, backups, sync, photos on Wi-Fi, L1 on the site, L2/L3 only with a PRF-sealed passkey whose proof is an HMAC, 8-digit pairing and QR enrolment (paste, or the camera when the browser can scan), non-extractable folder keys, `config.js` from the repository variable `GOOGLE_OAUTH_WEB_CLIENT_ID`. Android and iPhone Drive UI is paused. Version 1 is §1.6; the tickets are S4b-BL-70, -73, -115..119, -121, -122, -124..128 and -130 ([10](10-sprint-log.md) §12.7), deferred S4b-BL-120 and -129; QR on the phones and the phones' HMAC proof stay open with S4b-BL-134 and S4b-BL-135; the order is §7 and [14](14-lead-backlog-and-handoff.md) N17 |
@@ -36,6 +36,7 @@
 | 0.22 | 2026-10-03 | Cursor Agent, lead | **§10.4:** the 32-byte result has to come from the credential just created, with the assertion's UV flag set. An empty or all-zero output, the salt, the label, or the client-side SHA-256 of the PRF input is not stored. An output from a passkey already stored in the browser is not success. |
 | 0.23 | 2026-10-05 | Claude, lead | **§10.4:** when a passkey does not return a PRF output (found on Windows Hello after a PIN on some Windows/browser builds), the card now says the passkey could not protect deletions and offers what works instead (single backups still delete; update Windows and the browser; a security key or a phone/Mac passkey usually works), and the setup records which step returned nothing (step name and flags only, never a value) for troubleshooting. |
 | 0.24 | 2026-10-06 | Claude, lead | **§10.4a, owner decision of 2026-10-06 (supersedes §6.1 question 2's "L1 only without PRF"):** a website that has no PRF-sealed passkey authorises L2 and L3 by the **recovery key** typed for that operation (a real secret behind the check, not a check in the page). It is a **last resort**: used only when the computer can make passkeys but this browser returns no PRF output; a computer with no password or no Windows Hello is told how to set them up instead. The passkey stays the first choice. The header's version had stayed 0.22. |
+| 0.25 | 2026-10-06 | Claude, lead | **§10.4, §10.4a: the passkey is widened (owner, 2026-10-06, after Fable's advice):** registration no longer insists on the computer's own authenticator. The person's **phone** (the browser's QR / hybrid flow) or a **USB/NFC security key** can be the website's passkey, with the same PRF, discoverable-credential and user-verification rules; that is how a Linux desktop or a VM, or a Windows Hello that returns no PRF output, still gets L2/L3 at zero cost to the project. The page cannot tell "no lock set" from "no authenticator" (`isUserVerifyingPlatformAuthenticatorAvailable` is a platform-only probe), so the set-up help is the same for both and the recovery key is never offered there. §10.4's "without it" bullet now points to §10.4a. The recovery key is offered only after a passkey was tried and returned no PRF output (or the browser says `extension:prf` is false and a built-in authenticator is available), for a connected Drive. |
 
 **The owner's words (2026-10-02).** "Google Sign-In is to make a secure backup and restore drive and if possible to
 make it shareable to others using the same app/website. The backup can be time synced or manual with possibility of
@@ -1051,8 +1052,9 @@ A website cannot learn whether the computer has a lock and cannot call the opera
 Google's token flow cannot force a fresh password either (it offers only `prompt` = none, consent or
 select_account), so it is not a check of who is at the keyboard and is not used as one. The honest equivalent:
 
-- **A passkey for this browser with the PRF extension** (WebAuthn, platform authenticator, `userVerification:
-  "required"`: Windows Hello, Touch ID, the phone's screen lock), offered when Drive is connected on the website. The
+- **A passkey for this browser with the PRF extension** (WebAuthn, `userVerification: "required"`: the computer's own
+  Windows Hello or Touch ID, **the person's phone** through the browser's QR flow, or a **USB/NFC security key** with
+  its PIN; the registration sets no `authenticatorAttachment`, so the browser offers all three), offered when Drive is connected on the website. The
   website's device key is sealed with a key derived from the passkey's PRF output, so the key itself needs the
   person's verification (once per page load). **Only then are L2 and L3 offered on the website** (decided 2026-10-02,
   §6.1 question 2): a check made only in the page, without a key behind it, is skipped by anyone with the browser's
@@ -1072,7 +1074,7 @@ select_account), so it is not a check of who is at the keyboard and is not used 
   flags only, never a value) and the card offers the details to copy. That is not "no platform authenticator". Any other refusal
   shows a sentence and leaves that button, unless this browser has no platform authenticator, in which case it says
   this browser cannot make the kind of passkey needed.
-- **Without it** (no passkey, or no PRF in this browser) L2 and L3 use **the recovery key** (§10.4a). Without a connected,
+- **Without it** (no passkey, or no PRF in this browser) see §10.4a for the one case in which the recovery key may stand in. Without a connected,
   enrolled Drive there is nothing to delete and nothing to authorise. The authenticator app is not offered (deferred, §10.5).
 - **What is weaker, and what the person is told** when connecting on the website: "This browser cannot show Doorprints
   whether your computer is locked. Anyone who can use this browser profile can open your houses and your Drive backups
@@ -1118,26 +1120,30 @@ Doorprints keeps in Google Drive** and the other L2/L3 actions asks for the **re
    text contains the key. A new operation, and a *Try again* after a part-way stop, asks for the key again (no
    "remember it for the page").
 
-**Who may use it: a last resort, and never because Windows Hello or a password is simply not set up.** The passkey is
-the way (`userVerification: "required"`: a PIN, a fingerprint, a face, the computer's password). The recovery key is
-offered only when the passkey route has been **tried and cannot work on this browser although the computer can make
-passkeys**: a platform authenticator exists, and either the browser reports it cannot do the PRF extension
-(`getClientCapabilities()['extension:prf'] === false`) or a passkey was just made and returned no PRF output. It is
-also only for a browser that is **connected and enrolled** (Drive `READY`): the key is the one that opens the folder,
-so it cannot delete from a Drive this browser is not part of. A working passkey with PRF is always used instead; the
-page never asks for the key then.
+**Who may use it: a last resort, never because Windows Hello or a password is simply not set up.** The passkey is the
+way, and it can be the computer's own Windows Hello or Touch ID, the person's phone, or a security key. The recovery key
+is offered only after the passkey route has been **tried and cannot give a PRF output in this browser**:
 
-**The exception the owner named (2026-10-06): no password, no Windows Hello.** When the computer has no password, no
-Windows Hello (no PIN, fingerprint or face), no screen lock, so no platform authenticator can make a passkey
-(passkey status `unsupported`), the recovery key is **not** offered. The card instead says what is missing and how to fix
-it, so that a passkey can be made: Windows, *Settings, Accounts, Sign-in options, PIN (Windows Hello)*; a Mac, a login
-password (and Touch ID where there is one); Android, a screen lock; iPhone or iPad, a passcode. It says to come back
-and choose *Set up a passkey* after, and nothing else blocks or breaks on such a computer: connecting, backing up, and
-L1 deletion all work as before, and *Set up a passkey* simply reports that this computer cannot make one yet. (The phone
-remains the way to delete everything from a computer that cannot be set up.) The policy context's `webPrf` means "the
-website has a key-backed factor": true when a PRF passkey is registered, **or** when the fallback above is allowed
-(connected, a platform authenticator, and no PRF to be had). The shared delete-policy vectors and the phones' Kotlin
-twin are unchanged.
+- a passkey was just made in this page and returned no PRF output (`PasskeyPrfMissingError`; the card says so, §10.4),
+  or
+- the browser reports `getClientCapabilities()['extension:prf'] === false` **and** a built-in authenticator is
+  available (`isUserVerifyingPlatformAuthenticatorAvailable()`), so the computer could make passkeys and the browser
+  cannot do PRF. An unknown capability (`null`) is not enough on its own; a real failed registration is.
+
+It is also only for a browser that is **connected and enrolled** (Drive `READY`): the key is the one that opens the
+folder, so it cannot delete from a Drive this browser is not part of. A working passkey with PRF is always used
+instead; the page never asks for the key then. A computer with no authenticator at all is **not** offered the key (it
+can use a phone or a security key as the passkey, or the phone app).
+
+**The exception the owner named (2026-10-06): no password, no Windows Hello.** The page cannot tell "no lock set" from
+"no authenticator" (the platform probe is false for both, and for a Linux desktop). So when no built-in authenticator is
+reported, *Set up a passkey* stays available and the card says: turn on a lock so the computer can make a passkey
+(Windows, *Settings, Accounts, Sign-in options, PIN (Windows Hello)*; a Mac, a login password and Touch ID where there
+is one; Android, a screen lock; iPhone or iPad, a passcode), **or** choose your phone or a security key when the browser
+asks. The recovery key is not offered there, and nothing else breaks: connecting, backing up and L1 deletion work as
+before. The policy context's `webPrf` means "the website has a key-backed factor": true when a PRF passkey is
+registered, **or** when the fallback above is allowed. The shared delete-policy vectors and the phones' Kotlin twin are
+unchanged.
 
 **What it does not do.** *Disconnect Google Drive on all devices* (N18) is not widened by this: it keeps asking for
 what it asked for. L1 is unchanged. A page changed by an attacker can read what the person types, as it can read
@@ -1148,8 +1154,9 @@ same exposure as joining a browser with the key, and the owner accepted it.
 the PRF domain; a wrong key and an unparsable key grant nothing and change nothing in Drive (no device added, no pin
 moved); a right key grants, the proof verifies at the gate, a proof from another operation or a forged 64-hex proof is
 refused; the grant is used once; the key is not in storage, logs or errors; the card offers the key field when the
-passkey status is `none` with PRF reported absent (or a setup that returned no PRF), hides it when a working passkey
-exists, and on a computer with no platform authenticator (`unsupported`) it shows the set-up guidance and no key field.
+passkey status is `none` and a setup returned no PRF in this page (or PRF is reported absent with a built-in authenticator
+available), hides it when a working passkey exists, and shows the set-up guidance and no key field when no built-in
+authenticator is reported; registration sets no `authenticatorAttachment`.
 
 ### 10.5 An authenticator app as an option (owner addition, 2026-10-02; **deferred, not in v1**)
 
