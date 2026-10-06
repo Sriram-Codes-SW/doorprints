@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | The complete manual test list for Doorprints before real-system testing starts and before Android/iOS development continues: every check a person redoes on real devices, whether or not an automated suite or a review session already covered it |
-| Version | 0.4 |
+| Version | 0.5 |
 | Date | 2026-10-06 |
 | Author | Claude, senior reviewer |
 | Status | Draft |
@@ -16,6 +16,7 @@
 | 0.2 | 2026-10-06 | Claude | The review's should-fix items were fixed in the same pull request: the camera header (MT-32 step 5, MT-36), the passkey state kept across a reload (MT-28 step 7), the recovery-key wording (MT-19). |
 | 0.3 | 2026-10-06 | Claude | Section 14 follows what the branch decided after the review: the folder-gone card (*Start again* / *Disconnect*), *Delete this backup* on a row, the rows going back to the server on *Disconnect*, the approver naming the new device, the lock notice once; the not-built list (browser + PKCE sign-in, camera scan, the Android HMAC proof, the "New device enrolled" notice). |
 | 0.4 | 2026-10-06 | Claude (Code), lead | New section 15, **the path trace, version 2** (designed in [11](../11-feature-parity-and-export-spec.md) 5.27.0..5.27.11, not built yet): MT-75..MT-80 for TC-M-57..TC-M-60; run them when S4b-FR-13..S4b-FR-18 are merged. |
+| 0.5 | 2026-10-06 | Claude (Code), lead | Section 15 after the senior review of the design ([11](../11-feature-parity-and-export-spec.md) v0.57): MT-75 adds two lanes 30 m apart and the protanopia form-only check and names the new automated test; MT-77 the killed-app walk; MT-78 the Android phone-to-phone transfer (walks arrive) instead of "a new phone starts without saved walks"; MT-79 the 5-minute hidden pause with no line across it. |
 
 ## 1. How to use this list
 
@@ -664,8 +665,9 @@ Added 2026-10-06 with the design ([11](../11-feature-parity-and-export-spec.md) 
 #### MT-75 Repeats stand out: Clear, Subtle, Off, applied at once (TC-M-57)
 - **Area:** Android app, iPhone app, website. **Who:** owner. **Env:** E4, E5, E1.
 - **Steps:** (1) Settings > Hunt mode (website: Map page > *Trace my path*): turn the trace on; *How repeated paths look* shows *Clear* selected. (2) Walk the street, *Finish walk* (*Keep for 30 days*), walk it again: the second pass is thicker, dashed and orange over the purple line; the street that only crosses is not marked. (3) With the walk running, choose *Subtle*, then *Off*, then *Clear*: the map changes at once, without stopping Hunt mode or the walk. (4) Light and dark theme, zoom 12, 15, 18, over roads, India's boundary and the state lines. (5) Screenshot through a colour-vision simulator (protanopia, deuteranopia, tritanopia): the dash still shows the repeat. (6) The legend row shows *Walked once* and *Walked more than once*.
+- **Also:** walk two parallel lanes about 30 m apart: they must not light up as repeats (if they do, `TOLERANCE_M = 20`, 11 5.27.11 question 11); under a protanopia simulation the orange line and an amber or star marker are near-identical in colour and must be told apart by form.
 - **Expected:** the repeat is never marked by colour alone; *Off* draws it like any path; the choice survives a restart; the orange is none of the base map's or the markers' colours.
-- **Automated or reviewed by:** TC-U-147 (vectors), TC-U-149 (`TrackStyleTest.lookChangesOnlyTheOverlayLayer`, screenshots); reviewer ran it: no (planned).
+- **Automated or reviewed by:** TC-U-147 (vectors), TC-U-149 (`TrackStyleTest`, `MapScreenLookTest`, screenshots); reviewer ran it: no (planned).
 - Pass / Fail / Date: ____  by: ____
 
 #### MT-76 The alert rings once, from a pocket, and the system can mute it (TC-M-59)
@@ -684,14 +686,14 @@ Added 2026-10-06 with the design ([11](../11-feature-parity-and-export-spec.md) 
 
 #### MT-78 No walk in any copy, backup or sync (TC-M-58 step 6, PRV-028)
 - **Area:** all. **Who:** owner. **Env:** E4, E5, E1 (+ E8 for the server).
-- **Steps:** (1) With a trace and two saved walks, *Save a copy* (every format and the Full backup ZIP), *Share updates*, the Google Drive backup and sync (MT-54, MT-55) and, if used, the self-hosted server: open each file or, for the server, `GET /api/export`; search for a coordinate of the walks (the first digits of a latitude on the walk) in each. (2) On a phone, ask the assistant a question about a house with a saved walk: the prompt (logcat or the web request in DevTools) holds no coordinate of the walk. (3) Import the Full backup on a second phone: no saved walks, no trace.
-- **Expected:** none anywhere; a new phone starts without saved walks (the guide says so).
+- **Steps:** (1) With a trace and two saved walks, *Save a copy* (every format and the Full backup ZIP), *Share updates*, the Google Drive backup and sync (MT-54, MT-55) and, if used, the self-hosted server: open each file or, for the server, `GET /api/export`; search for a coordinate of the walks (the first digits of a latitude on the walk) in each. (2) On a phone, ask the assistant a question about a house with a saved walk: the prompt (logcat or the web request in DevTools) holds no coordinate of the walk. (3) Import the Full backup on a second phone: no saved walks, no trace. (4) **Android only:** transfer to another Android phone by cable or at setup: the saved walks and the trace arrive with the database (they are the phone's own copy; the hint under *Delete all saved walks* says so); delete them before the transfer to leave them behind.
+- **Expected:** none anywhere; a phone set up from a backup, a copy, Drive or the server starts without saved walks, and Android's own phone-to-phone transfer is the one exception (the guide says so).
 - **Automated or reviewed by:** TC-U-151, TC-U-152 (marker coordinates and the source tests); reviewer ran it: no (planned).
 - Pass / Fail / Date: ____  by: ____
 
 #### MT-79 A walk on the website: only while the page is open and visible (TC-M-60)
 - **Area:** Web UI. **Who:** anyone. **Env:** E4 browser, E5 Safari and the installed website, E1.
-- **Steps:** (1) Turn the trace on: no location prompt yet. *Start a walk*: the sentence about the permission, then the browser's prompt; deny it: the blocked message; allow it in the site settings and try again. (2) Walk 15 minutes with the page open: the line grows. (3) Lock the screen for two minutes, unlock: *Recording paused while this page was hidden.*, then it resumes; the page says plainly that the browser records only while the page is open and visible. (4) With *Keep the screen on while I walk* on: the screen stays on (iPhone Safari: where unsupported the setting says so). (5) *Finish walk*, save it to a house. (6) A second walk of the same street: the repeat style, the banner *You have walked this path before.* and a beep (after the *Start a walk* tap; none with the iPhone's silent switch on, the banner still shows). (7) *Remove all Doorprints data from this browser*: DevTools > Application > IndexedDB `doorprints`: `trace_points` and `saved_walks` are empty.
+- **Steps:** (1) Turn the trace on: no location prompt yet. *Start a walk*: the sentence about the permission, then the browser's prompt; deny it: the blocked message; allow it in the site settings and try again. (2) Walk 15 minutes with the page open: the line grows. (3) Lock the screen for two minutes, unlock: *Recording paused while this page was hidden.*, then it resumes; with the page hidden for more than 5 minutes no straight line is drawn across the gap; the page says plainly that the browser records only while the page is open and visible. (4) With *Keep the screen on while I walk* on: the screen stays on (iPhone Safari: where unsupported the setting says so). (5) *Finish walk*, save it to a house. (6) A second walk of the same street: the repeat style, the banner *You have walked this way before.* and a beep (after the *Start a walk* tap; none with the iPhone's silent switch on, the banner still shows). (7) *Remove all Doorprints data from this browser*: DevTools > Application > IndexedDB `doorprints`: `trace_points` and `saved_walks` are empty.
 - **Expected:** nothing asks for the location on load; nothing is recorded in the background; no walk in any file.
 - **Automated or reviewed by:** TC-U-152 (`TraceRecorderService`, `local-db.spec.ts`); reviewer ran it: no (planned).
 - Pass / Fail / Date: ____  by: ____
