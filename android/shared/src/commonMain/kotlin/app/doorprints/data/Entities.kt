@@ -163,7 +163,7 @@ data class RowVersion(val id: String, val updatedAt: Long)
  * thinned to about [app.doorprints.location.TrackRecorder] and deleted after 30 days (`Repository.pruneTrack`). Room
  * version 3 (`AppDatabase.MIGRATION_2_3`); the table name and columns are stored names.
  */
-@Entity(tableName = "track_points", indices = [Index("at")])
+@Entity(tableName = "track_points", indices = [Index("at"), Index("walkId")])
 data class TrackPointEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     /** When the fix was taken (epoch milliseconds, the fix's own time). */
@@ -172,6 +172,45 @@ data class TrackPointEntity(
     val lon: Double,
     /** The fix's reported accuracy in metres, for the map to know how rough the line is. */
     val accuracyM: Float,
+    /**
+     * The walk this point belongs to: the `at` of the walk's first kept point (docs/11 5.27.2). **0 is no id**: a row
+     * from before Room 11 is split by the 30-minute gap rule alone. Room version 11 (`MIGRATION_10_11`).
+     */
+    @ColumnInfo(defaultValue = "0") val walkId: Long = 0,
+)
+
+/**
+ * A saved walk (docs/11 5.27.6, docs/03 §6.2 *Room 11*): a walk the person linked to a house, moved out of
+ * `track_points` so the 30-day prune cannot touch it. **Local only, on purpose**: no `dirty`, `updatedAt` or `deleted`
+ * column, so nothing can be pushed; no export, backup or sync path reads this table (PRV-028, PRV-030, T-I30;
+ * `WalkPrivacySourceTest`). No foreign key (as visits and photos have none for `houseId`): a phone never hard-deletes a
+ * house, so the walks of a tombstoned house are hidden by the DAO's join and removed by
+ * [SavedWalkDao.sweepOfDeletedHouses].
+ */
+@Entity(tableName = "saved_walks", indices = [Index("houseId"), Index("startedAt")])
+class SavedWalkEntity(
+    @PrimaryKey val id: String,
+    val houseId: String,
+    /** The first point's time (epoch ms), also the walk id. */
+    val startedAt: Long,
+    val endedAt: Long,
+    val savedAt: Long,
+    /** At most `TraceConstants.MAX_WALK_POINTS`. */
+    val pointCount: Int,
+    /** Rounded metres, for lists. */
+    val lengthM: Int,
+    /** The `WalkCodec/1` bytes. */
+    val points: ByteArray,
+)
+
+/** A saved walk without its bytes, for the lists. Not a table: a Room query projection. */
+data class SavedWalkSummary(
+    val id: String,
+    val houseId: String,
+    val startedAt: Long,
+    val endedAt: Long,
+    val pointCount: Int,
+    val lengthM: Int,
 )
 
 /**

@@ -276,6 +276,68 @@ interface TrackDao {
 
     @Query("DELETE FROM track_points")
     suspend fun deleteAll()
+
+    /** The trace of the last days, read once, oldest first. */
+    @Query("SELECT * FROM track_points WHERE at >= :since ORDER BY at")
+    suspend fun since(since: Long): List<TrackPointEntity>
+
+    /** The points of one walk, oldest first. */
+    @Query("SELECT * FROM track_points WHERE walkId = :walkId ORDER BY at")
+    suspend fun ofWalk(walkId: Long): List<TrackPointEntity>
+
+    /** *Delete this walk* and the move into `saved_walks`: the walk's points go. */
+    @Query("DELETE FROM track_points WHERE walkId = :walkId")
+    suspend fun deleteWalk(walkId: Long)
+
+    /** The walk ids newer than the watermark, newest first, other than the live walk's (docs/11 5.27.6). */
+    @Query("SELECT DISTINCT walkId FROM track_points WHERE walkId > :askedUpTo AND walkId != :liveWalkId ORDER BY walkId DESC")
+    suspend fun walkIdsAbove(askedUpTo: Long, liveWalkId: Long): List<Long>
+}
+
+/**
+ * The `saved_walks` table (Room version 11): every read joins `houses` and skips a tombstone, so a deleted house's walks
+ * are hidden at once and come back with *Undo*; [sweepOfDeletedHouses] removes them when the delete is final.
+ */
+@Dao
+interface SavedWalkDao {
+    @Insert
+    suspend fun insert(walk: SavedWalkEntity)
+
+    /** Every saved walk of a live house with its bytes, newest first (the Map and the detection). */
+    @Query("SELECT w.* FROM saved_walks w JOIN houses h ON h.id = w.houseId WHERE h.deleted = 0 ORDER BY w.startedAt DESC")
+    suspend fun live(): List<SavedWalkEntity>
+
+    /** One house's saved walks without the bytes, newest first. */
+    @Query(
+        "SELECT w.id, w.houseId, w.startedAt, w.endedAt, w.pointCount, w.lengthM FROM saved_walks w " +
+            "JOIN houses h ON h.id = w.houseId WHERE h.deleted = 0 AND w.houseId = :houseId ORDER BY w.startedAt DESC",
+    )
+    fun observeForHouse(houseId: String): Flow<List<SavedWalkSummary>>
+
+    @Query("SELECT * FROM saved_walks WHERE id = :id")
+    suspend fun get(id: String): SavedWalkEntity?
+
+    /** The count shown in Settings: the walks of live houses. */
+    @Query("SELECT COUNT(*) FROM saved_walks w JOIN houses h ON h.id = w.houseId WHERE h.deleted = 0")
+    fun observeCount(): Flow<Int>
+
+    /** For the 20-a-house limit. */
+    @Query("SELECT COUNT(*) FROM saved_walks WHERE houseId = :houseId")
+    suspend fun countForHouse(houseId: String): Int
+
+    /** For the 200-a-device limit. */
+    @Query("SELECT COUNT(*) FROM saved_walks")
+    suspend fun count(): Int
+
+    @Query("DELETE FROM saved_walks WHERE id = :id")
+    suspend fun delete(id: String)
+
+    @Query("DELETE FROM saved_walks")
+    suspend fun deleteAll()
+
+    /** A saved walk never outlives its house: every walk whose house is a tombstone or missing goes. */
+    @Query("DELETE FROM saved_walks WHERE houseId NOT IN (SELECT id FROM houses WHERE deleted = 0)")
+    suspend fun sweepOfDeletedHouses(): Int
 }
 
 /**
@@ -337,8 +399,9 @@ interface RecordDao {
 @Database(
     entities = [
         HouseEntity::class, VisitEntity::class, PhotoEntity::class, TrackPointEntity::class, RecordEntity::class,
+        SavedWalkEntity::class,
     ],
-    version = 10,
+    version = 11,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -349,6 +412,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun photos(): PhotoDao
     abstract fun track(): TrackDao
     abstract fun records(): RecordDao
+    abstract fun savedWalks(): SavedWalkDao
 
     companion object {
         /**
@@ -470,9 +534,28 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v11 (S4b-FR-14, 2026-10-06): saved walks (docs/11 5.27.6, docs/03 §6.2). `track_points.walkId` (0 = no id, so
+         * the rows from before are split by the gap rule alone) with its index, and the local-only `saved_walks` table.
+         * The SQL is Room's own, from `11.json`.
+         */
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(connection: SQLiteConnection) {
+                connection.execSQL("ALTER TABLE track_points ADD COLUMN `walkId` INTEGER NOT NULL DEFAULT 0")
+                connection.execSQL("CREATE INDEX IF NOT EXISTS `index_track_points_walkId` ON `track_points` (`walkId`)")
+                connection.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `saved_walks` (`id` TEXT NOT NULL, `houseId` TEXT NOT NULL, " +
+                        "`startedAt` INTEGER NOT NULL, `endedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, " +
+                        "`pointCount` INTEGER NOT NULL, `lengthM` INTEGER NOT NULL, `points` BLOB NOT NULL, PRIMARY KEY(`id`))",
+                )
+                connection.execSQL("CREATE INDEX IF NOT EXISTS `index_saved_walks_houseId` ON `saved_walks` (`houseId`)")
+                connection.execSQL("CREATE INDEX IF NOT EXISTS `index_saved_walks_startedAt` ON `saved_walks` (`startedAt`)")
+            }
+        }
+
         val MIGRATIONS: Array<Migration> = arrayOf(
             MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8,
-            MIGRATION_8_9, MIGRATION_9_10,
+            MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11,
         )
     }
 }
