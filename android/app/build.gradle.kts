@@ -165,7 +165,11 @@ dependencies {
 
     implementation(libs.play.services.location)
     // Drive access token on Android (drive/auth, S4b-BL-117): AuthorizationClient, scope drive.file only.
-    implementation(libs.play.services.auth)
+    // Only the Authorization API (Drive token) is used: its SMS-retriever (auth-api-phone) and FIDO transitive libraries are not.
+    implementation(libs.play.services.auth) {
+        exclude(group = "com.google.android.gms", module = "play-services-fido")
+        exclude(group = "com.google.android.gms", module = "play-services-auth-api-phone")
+    }
     implementation(libs.kotlinx.coroutines.play.services)
     // JSON in the export, import and Assistant code (the Room checklist converter moved to :shared in CMP-4 P4a).
     implementation(libs.kotlinx.serialization.json)
