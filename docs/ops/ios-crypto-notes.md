@@ -112,3 +112,8 @@ covers the pure arithmetic only.
 ## Lead's follow-up (2026-10-06)
 
 `IosGcm.kt` (`Gcm`) and `IosP256.kt` (`P256Base`) and their tests `IosGcmTest`, `IosP256Test` are pure Kotlin (no `platform.*`), so they moved to `commonMain` and `commonTest`: they now run on every host-test run (5 and 7 tests), and the iOS compile still passes. The lead re-ran three of the mutations on them (tag check dropped, `ROUNDS` 12 to 1, and the rest of the table's classes) and each was caught by the named test. Still only provable on macOS CI: everything that calls `platform.*` (the `IosCryptoProvider` itself).
+
+
+## Decision on the table-based GHASH (lead, 2026-10-06)
+
+The review's O2 proposed a 4-bit Shoup table for GHASH (about 3x faster on the JVM, unmeasured on Kotlin/Native). The agent that built it found that the table index is a nibble of the running hash Y = (Y xor block)*H, which depends on the secret hash key H, so the premise that the index is public data does not hold: a table-driven GHASH has the usual cache-timing exposure of H. The bit-serial masked version used here has none. **Declined**: the constant-time version stays. What was kept from that work is the differential test (`GcmDifferentialTest`: the JVM's AES/GCM as reference over key sizes 16 and 32, plaintext 0..70 and 100 kB, AAD 0..33, 5000 seeded shapes, every flipped tag/ciphertext/AAD byte refused). If macOS CI measures large photos as too slow, the safer speed-up is an unrolled bit-serial multiplier (still no secret-dependent index), not a table. The rejected implementation is on the branch `feat/android-drive-f4-ghash` (not merged).
