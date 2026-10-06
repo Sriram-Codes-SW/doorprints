@@ -1398,4 +1398,9 @@
     <string name="drive_enrol_device_kind">यह डिवाइस है</string>
     <string name="drive_enrol_kind_phone">फ़ोन</string>
     <string name="drive_enrol_kind_computer">कंप्यूटर</string>
+    <!-- Path trace v2 (S4b-FR-15, 2026-10-06): the map's legend; hi, ta, te under review. -->
+    <string name="trace_legend_title">आपके रास्ते</string>
+    <string name="trace_legend_once">एक बार चले</string>
+    <string name="trace_legend_repeated">एक से ज़्यादा बार चले</string>
+    <string name="trace_a11y_map">जिन रास्तों पर आप एक से ज़्यादा बार चले, वे धारीदार (डैश वाले) हैं।</string>
 </resources>

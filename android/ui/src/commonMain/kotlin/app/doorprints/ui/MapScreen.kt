@@ -64,10 +64,15 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.doorprints.data.AppSettings
 import app.doorprints.data.HouseEntity
+import app.doorprints.shared.trace.RepeatLook
 import app.doorprints.location.HuntState
 import app.doorprints.ui.res.*
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import app.doorprints.shared.location.PlaceLookup
@@ -243,8 +248,12 @@ fun MapScreen(
     // null until Room answers, so the first framing knows "no houses" from "not loaded yet".
     val loadedHouses: List<HouseEntity>? by repo.houses.collectAsStateWithLifecycle(initialValue = null)
     val houses = loadedHouses.orEmpty()
-    // The path trace (docs/11 5.27): the last 30 days, drawn under the houses; empty while off.
-    val track by repo.trackPoints.collectAsStateWithLifecycle(initialValue = emptyList())
+    // The person's walks (docs/11 5.27.4): the last 30 days and the saved walks, drawn under the houses. Built off the
+    // main thread (the repeat detection) at each change of the stored walks; the look is separate, so it is live.
+    val track by produceState(TraceDrawing.EMPTY, repo) {
+        repo.walksChanged().collectLatest { value = withContext(Dispatchers.Default) { TraceDrawing.of(repo.walks()) } }
+    }
+    val repeatLook = repo.settings.settings.collectAsStateWithLifecycle(AppSettings()).value.repeatLook
     val hunt by mapServices.hunt.collectAsStateWithLifecycle()
     var map by remember { mutableStateOf<MapControl?>(null) }
     // Offline maps (docs/11 5.20): the dialog over the box the map shows, and the area whose outcome the snackbar
@@ -518,6 +527,7 @@ fun MapScreen(
     }
 
     val mapDescription = stringResource(Res.string.map_region_desc)
+    val traceDescription = stringResource(Res.string.trace_a11y_map)
     // The bottom controls' height as last measured, one per layout (0 until then; a larger font makes them taller),
     // so a rotation never sizes the band from the other layout's height. The snackbar is not in it (round 4). The
     // row's width too (round 5), to decide whether the snackbar fits beside it.
@@ -620,6 +630,8 @@ fun MapScreen(
         PlatformMap(
             houses = houses,
             track = track,
+            repeatLook = repeatLook,
+            check = null,
             labelSizeSp = markerLabelSizeSp(labelFontScale),
             showLocation = permissionGranted,
             attribution = MapAttribution(gutterPx, attributionBottomPx, shown = !snackbarAtStart),
@@ -662,7 +674,9 @@ fun MapScreen(
                 override fun onLongPress(lat: Double, lon: Double) = currentOnNewHouse(lat, lon)
             },
             // The canvas itself is not navigable with TalkBack; every house is also in the Houses tab (A11Y-B02).
-            modifier = Modifier.fillMaxSize().semantics { contentDescription = mapDescription },
+            modifier = Modifier.fillMaxSize().semantics {
+                contentDescription = if (!track.isEmpty && repeatLook != RepeatLook.OFF) "$mapDescription $traceDescription" else mapDescription
+            },
         )
 
         // The top band ends above the bottom controls and scrolls within that (see "Large text" and "Short map"). The
@@ -776,6 +790,10 @@ fun MapScreen(
                         }
                     }
                 }
+            }
+            // The trace's legend while there is a trace (docs/11 5.27.4): a card of its own, under the Hunt card.
+            if (mapUsable && !track.isEmpty) {
+                TraceLegend(repeatLook, Modifier.padding(top = 8.dp))
             }
             // No room for the legend at the bottom (round 7): the band's last item, full width under the Hunt card.
             if (legendAt == LegendPlace.IN_BAND) {

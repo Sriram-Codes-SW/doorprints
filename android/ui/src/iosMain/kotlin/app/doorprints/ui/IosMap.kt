@@ -48,6 +48,15 @@ interface IosMapView {
     /** Replaces the data of the path trace's source ([TRACK_SOURCE]) with [geoJson]; nothing before a style has loaded. */
     fun setTrack(geoJson: String)
 
+    /**
+     * The repeat overlay's width stops (`[zoom, width]` pairs, [TRACK_REPEAT_LAYER]) and whether it shows (docs/11
+     * 5.27.4): the person's look, applied live; nothing before a style has loaded.
+     */
+    fun setRepeatLook(widthStops: List<List<Double>>, visible: Boolean)
+
+    /** Replaces the data of the place check's source ([CHECK_SOURCE]) with [geoJson]; nothing before a style has loaded. */
+    fun setCheck(geoJson: String)
+
     /** The house names' text size ([HOUSE_LABELS_LAYER]), in points. */
     fun setLabelSize(size: Double)
 

@@ -1399,4 +1399,9 @@
     <string name="drive_enrol_device_kind">This device is a</string>
     <string name="drive_enrol_kind_phone">Phone</string>
     <string name="drive_enrol_kind_computer">Computer</string>
+    <!-- Path trace v2 (S4b-FR-15, 2026-10-06): the map's legend; hi, ta, te under review. -->
+    <string name="trace_legend_title">Your paths</string>
+    <string name="trace_legend_once">Walked once</string>
+    <string name="trace_legend_repeated">Walked more than once</string>
+    <string name="trace_a11y_map">Paths you walked more than once are dashed.</string>
 </resources>

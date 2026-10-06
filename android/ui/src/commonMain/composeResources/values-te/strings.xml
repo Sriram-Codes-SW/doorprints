@@ -1398,4 +1398,9 @@
     <string name="drive_enrol_device_kind">ఈ సాధనం</string>
     <string name="drive_enrol_kind_phone">ఫోన్</string>
     <string name="drive_enrol_kind_computer">కంప్యూటర్</string>
+    <!-- Path trace v2 (S4b-FR-15, 2026-10-06): the map's legend; hi, ta, te under review. -->
+    <string name="trace_legend_title">మీ దారులు</string>
+    <string name="trace_legend_once">ఒకసారి నడిచింది</string>
+    <string name="trace_legend_repeated">ఒకటి కంటే ఎక్కువసార్లు నడిచింది</string>
+    <string name="trace_a11y_map">ఒకటి కంటే ఎక్కువసార్లు నడిచిన దారులు విరామాలతో కూడిన గీతలుగా కనిపిస్తాయి.</string>
 </resources>

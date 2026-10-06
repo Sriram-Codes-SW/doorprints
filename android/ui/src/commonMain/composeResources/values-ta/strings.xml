@@ -1398,4 +1398,9 @@
     <string name="drive_enrol_device_kind">இந்த சாதனம்</string>
     <string name="drive_enrol_kind_phone">தொலைபேசி</string>
     <string name="drive_enrol_kind_computer">கணினி</string>
+    <!-- Path trace v2 (S4b-FR-15, 2026-10-06): the map's legend; hi, ta, te under review. -->
+    <string name="trace_legend_title">உங்கள் பாதைகள்</string>
+    <string name="trace_legend_once">ஒருமுறை நடந்தது</string>
+    <string name="trace_legend_repeated">ஒன்றுக்கு மேற்பட்ட முறை நடந்தது</string>
+    <string name="trace_a11y_map">ஒன்றுக்கு மேற்பட்ட முறை நடந்த பாதைகள் கோடுகோடாகக் காட்டப்படும்.</string>
 </resources>
