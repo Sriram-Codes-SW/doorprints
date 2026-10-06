@@ -137,13 +137,45 @@ describe('watchMapStyle (what the map panel is told when the style does not load
     }
   });
 
-  it('says nothing about an error after the style has loaded', () => {
+  it('says nothing about a tile error after the style has loaded', () => {
     const { map, fire } = fakeMap();
     const calls: unknown[][] = [];
     watchMapStyle(map, (ok, key) => calls.push([ok, key]));
     fire('style.load');
     calls.length = 0;
-    fire('error', workerError);
+    fire('error', tileError);
     expect(calls).toEqual([]);
+  });
+
+  it('keeps saying the worker failed when the style loads after the worker error', () => {
+    const { map, fire } = fakeMap();
+    const calls: unknown[][] = [];
+    watchMapStyle(map, (ok, key) => calls.push([ok, key]));
+    fire('error', workerError);
+    fire('style.load');
+    expect(calls).toEqual([
+      [false, 'map.workerFailed'],
+      [false, 'map.workerFailed'],
+    ]);
+  });
+
+  it('reports a worker error that arrives after the style has loaded', () => {
+    const { map, fire } = fakeMap();
+    const calls: unknown[][] = [];
+    watchMapStyle(map, (ok, key) => calls.push([ok, key]));
+    fire('style.load');
+    fire('error', workerError);
+    expect(calls).toEqual([
+      [true, undefined],
+      [false, 'map.workerFailed'],
+    ]);
+  });
+
+  it('still reports the map available when the style loads and nothing failed', () => {
+    const { map, fire } = fakeMap();
+    const calls: unknown[][] = [];
+    watchMapStyle(map, (ok, key) => calls.push([ok, key]));
+    fire('style.load');
+    expect(calls).toEqual([[true, undefined]]);
   });
 });

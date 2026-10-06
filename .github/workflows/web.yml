@@ -335,7 +335,7 @@ jobs:
             }
           }
           const workerContent = read('maplibre-gl-worker.mjs');
-          if (!workerContent.includes('from') || !new RegExp(`from\\s*["'].\/maplibre-gl-shared\\.mjs["']`).test(workerContent)) {
+          if (!workerContent.includes('from') || !new RegExp(`from\\s*["']\\.\/maplibre-gl-shared\\.mjs["']`).test(workerContent)) {
             errors.push(`maplibre-gl-worker.mjs does not import from "./maplibre-gl-shared.mjs"`);
           } else {
             console.log(`ok: maplibre-gl-worker.mjs imports "./maplibre-gl-shared.mjs"`);

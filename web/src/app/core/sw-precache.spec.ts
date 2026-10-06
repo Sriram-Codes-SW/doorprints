@@ -96,6 +96,13 @@ describe('service worker precache stamp', () => {
       expect(precacheList([...build, 'geo/in-boundaries.geojson'])).toContain('geo/in-boundaries.geojson');
     });
 
+    it('precaches the three self-hosted font files but not their licence note', () => {
+      const fonts = ['noto-sans-devanagari.woff2', 'noto-sans-tamil.woff2', 'noto-sans-telugu.woff2'].map((n) => `fonts/${n}`);
+      const list = precacheList([...build, ...fonts, 'fonts/README.txt']);
+      for (const font of fonts) expect(list).toContain(font);
+      expect(list).not.toContain('fonts/README.txt');
+    });
+
     it('does not depend on the order or the separator the file system reports', () => {
       const windows = [...build].reverse().map((p) => p.replaceAll('/', '\\'));
       expect(precacheList(windows)).toEqual(precacheList(build));

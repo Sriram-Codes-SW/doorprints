@@ -238,19 +238,20 @@ done
 
 # 6. MapLibre worker and shared file versions match (S4b-BL-55): both are copied from the same maplibre-gl package.
 #    Mismatched versions break every tile. Extract version from each file's header and verify they match.
-curl_https=""
-case "$base" in
-  https://*) curl_https="--proto =https" ;;
-esac
-worker_header=$(curl -sS $curl_https --max-time 20 -H 'Cache-Control: no-cache' -r 0-399 "${base}/maplibre-gl-worker.mjs" 2>/dev/null || true)
-shared_header=$(curl -sS $curl_https --max-time 20 -H 'Cache-Control: no-cache' -r 0-399 "${base}/maplibre-gl-shared.mjs" 2>/dev/null || true)
+# Section 5 already fetched both files (with its retries until the deadline) and left the bodies in ${work}; read the
+# banners from those, not from a second single try that a network blip could fail.
+worker_body="${work}/maplibre_gl_worker_mjs.b"
+shared_body="${work}/maplibre_gl_shared_mjs.b"
+worker_header=$(head -c 400 "$worker_body" 2>/dev/null || true)
+shared_header=$(head -c 400 "$shared_body" 2>/dev/null || true)
 worker_version=$(printf '%s' "$worker_header" | grep -oE 'maplibre-gl-js/blob/v[^/]+' | head -n 1 || true)
 shared_version=$(printf '%s' "$shared_header" | grep -oE 'maplibre-gl-js/blob/v[^/]+' | head -n 1 || true)
 echo "--- MapLibre versions: worker=${worker_version#maplibre-gl-js/blob/} shared=${shared_version#maplibre-gl-js/blob/}"
-if [ -z "$worker_version" ]; then
+# A file that did not arrive was reported in section 5; only a file that arrived can have a missing or odd banner.
+if [ -s "$worker_body" ] && [ -z "$worker_version" ]; then
   fail "maplibre-gl-worker.mjs: no version found in header"
 fi
-if [ -z "$shared_version" ]; then
+if [ -s "$shared_body" ] && [ -z "$shared_version" ]; then
   fail "maplibre-gl-shared.mjs: no version found in header"
 fi
 if [ -n "$worker_version" ] && [ -n "$shared_version" ] && [ "$worker_version" != "$shared_version" ]; then

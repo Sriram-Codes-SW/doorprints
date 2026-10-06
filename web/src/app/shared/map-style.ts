@@ -327,7 +327,8 @@ export function mapErrorMessageKey(error: unknown, online: boolean): 'map.worker
  *  * `onChange(false)` when the style has not loaded and either the request failed (`error` before `style.load`)
  *    or the browser says it is offline; the page then shows an overlay that explains it and offers the ways that
  *    work without a map (the list, "use my location", typed coordinates);
- *  * `onChange(true)` on every `style.load`;
+ *  * `onChange(true)` on every `style.load` (unless the map's worker failed to load: then `onChange(false,
+ *    'map.workerFailed')`, before or after the style);
  *  * on the window `online` event, while no style has loaded, the style is requested again with `diff: false`
  *    (a fresh `Style`, not a diff against the one that never loaded). The page adds its sources and layers on
  *    `style.load`, not on the one-off `load`, so they come back with it, and so do India's boundaries
@@ -340,18 +341,29 @@ export function watchMapStyle(
   onChange: (available: boolean, messageKey?: 'map.workerFailed' | 'map.offline') => void,
 ): MapStyleWatch {
   let loaded = false;
+  // A worker that failed to load is a separate event from the style loading (MapLibre parses the style JSON on the
+  // main thread and fires `style.load` without waiting for the worker), so it can arrive before or after
+  // `style.load`. Either way the map has no tiles, and the panel has to keep saying so.
+  let workerFailed = false;
   const reload = () => {
     if (loaded) return;
     map.setStyle(MAP_STYLE_URL, { diff: false });
   };
   map.on('style.load', () => {
     loaded = true;
-    onChange(true);
+    if (workerFailed) onChange(false, 'map.workerFailed');
+    else onChange(true);
   });
   map.on('error', (event: { error?: unknown }) => {
-    if (loaded) return;
     const online = typeof navigator === 'undefined' || navigator.onLine !== false;
-    onChange(false, mapErrorMessageKey(event?.error, online));
+    const key = mapErrorMessageKey(event?.error, online);
+    if (key === 'map.workerFailed') {
+      workerFailed = true;
+      onChange(false, key);
+      return;
+    }
+    if (loaded) return;
+    onChange(false, key);
   });
   const onOffline = () => {
     if (!loaded) onChange(false);

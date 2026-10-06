@@ -546,7 +546,7 @@ export const en = {
   'share.copyFailed': 'Could not copy. Select the text and copy it yourself.',
   'error.storageFull': 'This browser has no space left for Doorprints. Save a backup, then remove some photos.',
   'map.offline': 'The map needs an internet connection. Your houses are still in the list. To add one now, use your location or type the latitude and longitude.',
-  'map.workerFailed': 'The map could not start its helper. Reload the page; if it keeps failing, clear this site\'s data and try again.',
+  'map.workerFailed': 'The map could not start its helper. Reload the page. If it keeps failing, use Save a copy on Your data first, then clear this site\'s data and open Doorprints again.',
   'map.addAtMyLocation': 'Add at my location',
   'map.typeCoords': 'Type latitude and longitude',
   'map.onServerTitle': 'Your houses are on your server',

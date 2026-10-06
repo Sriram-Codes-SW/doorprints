@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.104 |
+| Version | 0.105 |
 | Date | 2026-10-06 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -12,6 +12,7 @@
 
 | Version | Date | Author | Change |
 |---|---|---|---|
+| 0.105 | 2026-10-06 | Claude | Final review fixes on PR #138: docs/10 v0.144, docs/06 v0.126. |
 | 0.104 | 2026-10-06 | Claude | User guide pictures for Your data and Google Drive, and the Drive card text fix: docs/10 v0.143. |
 | 0.103 | 2026-10-06 | Claude | User guide picture for the server setup page (S4b-BL-60 follow-up): docs/10 v0.142. |
 | 0.102 | 2026-10-06 | Claude | **S4b-BL-55 done**: docs/10 v0.141, docs/06 v0.125. |
