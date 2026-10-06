@@ -100,6 +100,7 @@ class DriveServices(
                 syncPass = { backend, photosAllowed ->
                     withContext(route.element(backend)) { repository.sync(photosAllowed) }
                 },
+                handBack = repository::resetForServer,
                 configured = hasPlayServices(app),
                 clock = System::currentTimeMillis,
                 utcOffsetMinutes = { TimeZone.getDefault().getOffset(System.currentTimeMillis()) / MS_PER_MINUTE },

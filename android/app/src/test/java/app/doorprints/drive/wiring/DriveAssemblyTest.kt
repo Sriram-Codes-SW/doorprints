@@ -93,10 +93,12 @@ class DriveAssemblyTest {
         var probes = mutableListOf<() -> Boolean>()
         var authAsked = 0
         var houses = 3
+        val handBacks = mutableListOf<Boolean>()
+        var handBackFailures = 0
         lateinit var graph: DriveGraph
     }
 
-    private fun phone(name: String, dir: File = tmp.newFolder(name), configured: Boolean = true, plainSyncPass: Boolean = false, backend: FakeKeyBackend = FakeKeyBackend()): Phone {
+    private fun phone(name: String, dir: File = tmp.newFolder(name), configured: Boolean = true, plainSyncPass: Boolean = false, backend: FakeKeyBackend = FakeKeyBackend(), handBackFails: Int = 0): Phone {
         val phone = Phone(dir, backend)
         val deviceAuth = object : DeviceAuth {
             override fun isDeviceLockEnabled() = phone.lock
@@ -149,6 +151,13 @@ class DriveAssemblyTest {
                 )
             },
             syncPass = if (plainSyncPass) null else { backend, photos -> phone.passes += backend to photos; backend.commitPushes() },
+            handBack = {
+                if (phone.handBackFailures < handBackFails) {
+                    phone.handBackFailures++
+                    throw java.io.IOException("database busy")
+                }
+                phone.handBacks += phone.graphEngaged()
+            },
             configured = configured,
             clock = { server.clock.now() },
             utcOffsetMinutes = { 330 },
@@ -159,6 +168,8 @@ class DriveAssemblyTest {
     }
 
     private val Phone.controller get() = graph.controller
+
+    private fun Phone.graphEngaged() = graph.prefs.engaged
 
     private fun Phone.connected(): Phone = also {
         runBlocking {
@@ -385,6 +396,35 @@ class DriveAssemblyTest {
     fun disconnectingThisDeviceEndsTheUse() = runBlocking {
         val a = phone("Pixel 8").connected()
         a.controller.disconnect()
+        assertFalse(a.graph.prefs.engaged)
+    }
+
+    @Test
+    fun disconnectingHandsTheRowsBackBeforeTheServerResumes() = runBlocking {
+        val a = phone("Pixel 8").connected()
+        assertTrue("nothing handed back while Drive is in use", a.handBacks.isEmpty())
+        a.controller.disconnect()
+        assertEquals("handed back once, while still engaged (the server resumes only after)", listOf(true), a.handBacks)
+        assertFalse(a.graph.prefs.engaged)
+    }
+
+    @Test
+    fun aFreshProcessAtDisconnectedHandsNothingBack() = runBlocking {
+        val a = phone("Pixel 8").connected()
+        val again = phone("Pixel 8", dir = a.dir, backend = a.backend)
+        assertEquals(ConnectState.DISCONNECTED, again.controller.state.value)
+        assertTrue(again.handBacks.isEmpty())
+        assertTrue(again.graph.prefs.engaged)
+    }
+
+    @Test
+    fun aFailedHandBackKeepsDriveInUseAndTriesAgainAtTheNextChange() = runBlocking {
+        val a = phone("Pixel 8", handBackFails = 1).connected()
+        a.controller.disconnect()
+        assertTrue("the server must not take over before the rows were handed back", a.graph.prefs.engaged)
+        a.controller.connect()
+        a.controller.disconnect()
+        assertEquals(1, a.handBacks.size)
         assertFalse(a.graph.prefs.engaged)
     }
 

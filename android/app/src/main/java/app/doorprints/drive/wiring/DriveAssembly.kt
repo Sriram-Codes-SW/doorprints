@@ -72,6 +72,13 @@ class DriveDeps(
      * the repository's loop (`CommonRepository.sync`), which applies the pulled rows; null for a plain commit that does not.
      */
     val syncPass: (suspend (backend: DriveSyncBackend, photosAllowed: Boolean) -> Unit)? = null,
+    /**
+     * Called when Drive stops being in use (Disconnect, or the folder gone), **before** the server takes over again: marks
+     * every row for upload to the server and resets its pull cursors (`CommonRepository.resetForServer`), because the rows
+     * that went only to Drive are marked clean and would never reach the server otherwise (review of PR 142, item 3).
+     * Throwing keeps Drive "in use"; the next change of state tries again.
+     */
+    val handBack: suspend () -> Unit = {},
     /** False when this build cannot sign in to Google (no Play services): the card says Drive is not available. */
     val configured: Boolean,
     val clock: () -> Long,
@@ -136,16 +143,27 @@ object DriveAssembly {
             rigs, d.network, prefs, d.clock, d.configured, d.backupSource, d.signIn,
             syncDriver = d.syncPass?.let { pass -> { backend -> pass(backend, controller.photosAllowed()) } },
         )
-        watchEngagement(controller, prefs, lockStore, gate, d.scope)
+        watchEngagement(controller, prefs, lockStore, gate, d.scope, d.handBack)
         return DriveGraph(controller, p, identity, gate, authorizer, backup, deletion, prefs, lockStore, detector)
     }
 
     /** Remembers that Drive is in use ([DriveEngagement]) and forgets the lock pause once the folder is open again with a lock. */
-    private fun watchEngagement(controller: DriveConnectController, prefs: FileDrivePrefs, lockStore: FileDriveLockStore, gate: DriveGate, scope: CoroutineScope) {
+    private fun watchEngagement(controller: DriveConnectController, prefs: FileDrivePrefs, lockStore: FileDriveLockStore, gate: DriveGate, scope: CoroutineScope, handBack: suspend () -> Unit) {
         scope.launch {
             var memory = Engagement(engaged = prefs.engaged)
             controller.state.collect { state ->
-                val next = DriveEngagement.next(memory, state)
+                var next = DriveEngagement.next(memory, state)
+                // Drive stops being the sync target (Disconnect, or the folder gone: the controller says DISCONNECTED): the rows
+                // that only went to Drive are sent to the server again first. A failure leaves Drive in use for the next try.
+                if (memory.engaged && !next.engaged) {
+                    try {
+                        handBack()
+                    } catch (e: kotlinx.coroutines.CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                        next = memory
+                    }
+                }
                 // docs/15 §1.3 "Defaults": automatic backup and sync is on once the person connects Drive (one switch),
                 // unless they have already chosen. The controller's own default is off.
                 if (next.engaged && !memory.engaged && prefs.get(DriveConnectController.KEY_AUTO_BACKUP) == null) controller.setAutoBackup(true)

@@ -105,6 +105,7 @@ class DriveSyncEndToEndTest {
     private inner class Node(val name: String, engagedFromStart: Boolean = true) {
         val db: AppDatabase = Room.databaseBuilder(context, AppDatabase::class.java, "e2e-$name.db").addMigrations(*AppDatabase.MIGRATIONS).build()
         val settings = SettingsStore(PreferenceDataStoreFactory.create(scope = scope) { File(context.filesDir, "e2e-$name.preferences_pb") }, MemorySecrets)
+        val dir: File = tmp.newFolder(name)
         val route = DriveSyncRoute()
         val backend = FakeKeyBackend()
         var engagedOverride: Boolean? = if (engagedFromStart) null else false
@@ -124,7 +125,7 @@ class DriveSyncEndToEndTest {
             }
             graph = DriveAssembly.assemble(
                 DriveDeps(
-                    dir = tmp.newFolder(name),
+                    dir = dir,
                     crypto = JvmCryptoProvider,
                     keyBackend = backend,
                     deviceName = name,
@@ -139,6 +140,7 @@ class DriveSyncEndToEndTest {
                         passes += photos
                         withContext(route.element(drive)) { repository.sync(photos) }
                     },
+                    handBack = { repository.resetForServer() },
                     configured = true,
                     clock = { server.clock.now() },
                     utcOffsetMinutes = { 330 },
@@ -241,6 +243,40 @@ class DriveSyncEndToEndTest {
         val outcome = a.repository.sync(true)
         assertEquals(SyncOutcome.Kind.NOT_CONFIGURED, outcome.kind)
         assertEquals(0, a.serverAsked)
+    }
+
+    /** The hand-back writes to Room on its own thread, so the flag flips a moment after the controller's call returns. */
+    private fun awaitDisengaged(node: Node) {
+        val until = System.nanoTime() + 10_000_000_000L
+        while (node.graph.prefs.engaged && System.nanoTime() < until) Thread.sleep(20)
+        assertFalse("Drive stopped being in use", node.graph.prefs.engaged)
+    }
+
+    @Test
+    fun rowsSentOnlyToDriveReachTheServerAfterDisconnect() = runBlocking {
+        val (a, _) = connectedPair()
+        a.house("h1", "Green View")
+        a.sync()
+        assertEquals("sent to Drive only: clean", false, a.dirty("h1"))
+        a.settings.saveCursors(5, 5, 5)
+        a.controller.disconnect()
+        awaitDisengaged(a)
+        assertEquals("the server must get it: marked for upload again", true, a.dirty("h1"))
+        assertEquals("the pull cursors start over", 0L, a.settings.cursors().house)
+    }
+
+    @Test
+    fun aDriveOnlyHouseIsNotLostWhenTheFolderIsGone() = runBlocking {
+        val (a, _) = connectedPair()
+        a.house("h1", "Green View")
+        a.sync()
+        assertEquals(false, a.dirty("h1"))
+        // The folder was deleted elsewhere: the controller drops to disconnected with FOLDER_GONE and Drive stops being in use.
+        val root = app.doorprints.drive.store.DriveFileStores(a.dir).driveState.load().rootId!!
+        server.deleteByHand(root)
+        a.controller.connect()
+        awaitDisengaged(a)
+        assertEquals(true, a.dirty("h1"))
     }
 
     @Test
