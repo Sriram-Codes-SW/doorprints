@@ -77,6 +77,10 @@ import {
 } from './map-list';
 import { ListReturn } from './list-return';
 import { OfflineSave } from './offline-save';
+import { TraceCard } from './trace-card';
+import { TraceLayers } from './trace-layers';
+import { TraceView } from './trace-view';
+import { TRACK_COLOR, TRACK_REPEAT_COLOR, TRACK_REPEAT_DASH } from '../../shared/trace-style';
 import type { GeoBounds } from '../../offline/offline-tiles';
 import { NO_COST_FILTER, activeCostFilters, costFilterMatches, type CostFilter } from '../../shared/cost-filter';
 import { listPeek } from './list-peek';
@@ -117,7 +121,7 @@ let fittedThisSession = false;
 
 @Component({
   selector: 'app-map-page',
-  imports: [RouterLink, TPipe, OfflineSave],
+  imports: [RouterLink, TPipe, OfflineSave, TraceCard],
   templateUrl: './map-page.html',
   styleUrl: './map-page.css',
   host: { '(document:keydown.escape)': 'onEscape()' },
@@ -131,6 +135,12 @@ export class MapPage implements AfterViewInit, OnDestroy {
   private readonly listReturn = inject(ListReturn);
   protected readonly sync = inject(SyncService);
   protected readonly i18n = inject(TranslationService);
+  /** The walks on the map (docs/11 5.27): the page only delegates to it and to {@link TraceLayers}. */
+  protected readonly traceView = inject(TraceView);
+  protected readonly trackColor = TRACK_COLOR;
+  protected readonly repeatColor = TRACK_REPEAT_COLOR;
+  protected readonly repeatDash = TRACK_REPEAT_DASH.join(' ');
+  private traceLayers: TraceLayers | null = null;
 
   protected readonly houses = signal<HouseDto[]>([]);
   /** The words of each broker (id to name, agency and fee terms), so a search also finds a house by its broker. */
@@ -331,6 +341,17 @@ export class MapPage implements AfterViewInit, OnDestroy {
       lastLang = lang;
       untracked(() => this.relocalize());
     });
+    void this.traceView.open();
+    // The walks, the look and the place check's halo go to the map layers whenever they change (and once the map is ready).
+    effect(() => {
+      const [walks, look, check] = [this.traceView.walks(), this.traceView.look(), this.traceView.check()];
+      if (!this.mapReady()) return;
+      untracked(() => {
+        this.traceLayers?.setWalks(walks);
+        this.traceLayers?.setLook(look);
+        this.traceLayers?.setCheck(check);
+      });
+    });
     // Add mode says "move the map so the cross is on the house": one finger must move the map then, not show "Use
     // two fingers" (see applyGestures).
     effect(() => {
@@ -381,6 +402,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
 
     // 'style.load', not the one-off 'load': after an offline start the style is requested again when the connection
     // returns (watchMapStyle), and a new style comes without our source and layer.
+    this.traceLayers = new TraceLayers(map);
     map.on('style.load', () => {
       if (!map.getSource(SOURCE_ID)) {
         map.addSource(SOURCE_ID, {
@@ -388,17 +410,16 @@ export class MapPage implements AfterViewInit, OnDestroy {
           data: { type: 'FeatureCollection', features: [] },
         } as unknown as Parameters<MlMap['addSource']>[1]);
       }
-      if (map.getLayer(LAYER_ID)) {
-        this.setMapData(this.items().map((i) => i.house));
-        this.mapReady.set(true);
-        return;
+      if (!map.getLayer(LAYER_ID)) {
+        map.addLayer({
+          id: LAYER_ID,
+          type: 'circle',
+          source: SOURCE_ID,
+          paint: HOUSE_PAINT,
+        } as unknown as Parameters<MlMap['addLayer']>[0]);
       }
-      map.addLayer({
-        id: LAYER_ID,
-        type: 'circle',
-        source: SOURCE_ID,
-        paint: HOUSE_PAINT,
-      } as unknown as Parameters<MlMap['addLayer']>[0]);
+      // The walks go under the houses (beforeId) and above India's boundary layers, so after the house layer exists.
+      this.traceLayers?.attach();
       // mapReady may already be true (a style reloaded after going online): push the houses in either case.
       this.setMapData(this.items().map((i) => i.house));
       this.mapReady.set(true);
@@ -447,6 +468,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
     this.popup?.remove();
     this.map?.remove();
     this.map = null;
+    this.traceLayers = null;
   }
 
   /**

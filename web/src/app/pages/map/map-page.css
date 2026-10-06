@@ -162,6 +162,12 @@
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
 }
 
+.sample {
+  width: 24px;
+  height: 8px;
+  flex: none;
+}
+
 .dot.NEW { background: #3c5a99; }
 .dot.SHORTLISTED { background: #1a7a43; width: 16px; height: 16px; border-width: 3px; }
 .dot.REJECTED { background: #b3261e; width: 9px; height: 9px; opacity: 0.75; }

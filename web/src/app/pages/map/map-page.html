@@ -22,9 +22,12 @@
     class="map-wrap"
     role="region"
     [attr.aria-label]="'map.regionLabel' | t"
-    aria-describedby="map-hint"
+    [attr.aria-describedby]="traceView.repeatCount() > 0 && traceView.look() !== 'OFF' ? 'map-hint trace-map-hint' : 'map-hint'"
   >
     <p id="map-hint" class="sr-only">{{ 'map.regionHint' | t }}</p>
+    @if (traceView.repeatCount() > 0 && traceView.look() !== 'OFF') {
+      <p id="trace-map-hint" class="sr-only">{{ 'trace.a11y.map' | t }}</p>
+    }
     <div #mapEl class="map"></div>
 
     @if (!mapUsable()) {
@@ -99,6 +102,20 @@
           <span class="legend-item">
             <i class="dot APPROX" aria-hidden="true"></i>{{ 'map.legendApprox' | t }}
           </span>
+          <!-- The walks (docs/11 5.27.1): shown while the trace is not empty, the same sample lines as the map. -->
+          @if (traceView.walkCount() > 0) {
+            <span class="legend-item">
+              <svg class="sample" viewBox="0 0 24 8" aria-hidden="true"><line x1="0" y1="4" x2="24" y2="4" [attr.stroke]="trackColor" stroke-width="3" stroke-linecap="round" /></svg>{{ 'trace.legend.once' | t }}
+            </span>
+            @if (traceView.look() !== 'OFF') {
+              <span class="legend-item">
+                <svg class="sample" viewBox="0 0 24 8" aria-hidden="true">
+                  <line x1="0" y1="4" x2="24" y2="4" [attr.stroke]="trackColor" stroke-width="3" />
+                  <line x1="0" y1="4" x2="24" y2="4" [attr.stroke]="repeatColor" stroke-width="3" [attr.stroke-dasharray]="repeatDash" />
+                </svg>{{ 'trace.legend.repeated' | t }}
+              </span>
+            }
+          }
         </div>
       }
       <div class="map-actions">
@@ -129,6 +146,7 @@
   </section>
 
   <section #panel class="panel" aria-labelledby="houses-heading">
+    <app-trace-card />
     <div class="panel-head">
       <h1 id="houses-heading">{{ 'map.heading' | t }}</h1>
     </div>
