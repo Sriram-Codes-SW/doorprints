@@ -18,7 +18,7 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { errorMsg, isQuotaError } from '../core/format';
-import { DB_NAME, DB_VERSION, STORE_INDEXES, STORE_KEY_PATH, STORE_NAMES, openLocalDb } from './local-db';
+import { BatchGuardError, DB_NAME, DB_VERSION, STORE_INDEXES, STORE_KEY_PATH, STORE_NAMES, openLocalDb } from './local-db';
 import type { OpenedDb } from './local-db';
 
 /**
@@ -90,6 +90,14 @@ class FakeTx {
       queueMicrotask(() => this.settle());
     });
     return request;
+  }
+
+  abort(): void {
+    if (this.aborted) return;
+    this.aborted = true;
+    this.staged = [];
+    this.error = new DOMException('The transaction was aborted.', 'AbortError');
+    this.onabort?.();
   }
 
   private settle(): void {
@@ -375,6 +383,42 @@ describe('the IndexedDB wrapper: several stores, one transaction', () => {
     expect(factory.db.log).toEqual([{ names: ['saved_walks', 'trace_points'], mode: 'readwrite' }]);
     expect(await db.count('trace_points')).toBe(0);
     expect(await db.get('saved_walks', 's1')).toEqual({ id: 's1', houseId: 'h1', points: [1, 2] });
+  });
+
+  it('checks the limits INSIDE the same transaction as the writes (counts first, then the batch), and applies them when they hold', async () => {
+    const { factory, db } = await withWalk();
+    await db.put('saved_walks', { id: 'old', houseId: 'h1' });
+    factory.db.log.length = 0;
+    await db.batch(
+      [
+        { op: 'put', store: 'saved_walks', value: { id: 's1', houseId: 'h1', points: [1, 2] } },
+        ...walkRows.map((r) => ({ op: 'delete' as const, store: 'trace_points' as const, key: r.id })),
+      ],
+      [
+        { store: 'saved_walks', index: 'houseId', value: 'h1', max: 1, reason: 'houseFull' },
+        { store: 'saved_walks', max: 1, reason: 'deviceFull' },
+        { store: 'trace_points', index: 'walk', value: 7, min: walkRows.length, reason: 'gone' },
+      ],
+    );
+    expect(factory.db.log).toEqual([{ names: ['saved_walks', 'trace_points'], mode: 'readwrite' }]);
+    expect(await db.count('trace_points')).toBe(0);
+    expect(await db.count('saved_walks')).toBe(2);
+  });
+
+  it('a failed limit aborts the transaction, applies NOTHING and rejects with the guard\'s reason (two tabs cannot both pass)', async () => {
+    const { db } = await withWalk();
+    await db.put('saved_walks', { id: 'old', houseId: 'h1' });
+    const ops = [
+      { op: 'put' as const, store: 'saved_walks' as const, value: { id: 's1', houseId: 'h1' } },
+      ...walkRows.map((r) => ({ op: 'delete' as const, store: 'trace_points' as const, key: r.id })),
+    ];
+    const full = await db.batch(ops, [{ store: 'saved_walks', index: 'houseId', value: 'h1', max: 0, reason: 'houseFull' }]).then(() => null, (e: unknown) => e);
+    expect(full).toBeInstanceOf(BatchGuardError);
+    expect((full as BatchGuardError).reason).toBe('houseFull');
+    const gone = await db.batch(ops, [{ store: 'trace_points', index: 'walk', value: 7, min: walkRows.length + 1, reason: 'gone' }]).then(() => null, (e: unknown) => e);
+    expect((gone as BatchGuardError).reason).toBe('gone');
+    expect(await db.count('trace_points')).toBe(3);
+    expect(await db.count('saved_walks')).toBe(1);
   });
 
   it('applies NOTHING when the transaction fails (the quota is hit writing the saved row): the trace stays as it was', async () => {

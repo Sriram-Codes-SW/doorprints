@@ -246,6 +246,37 @@ describe('TraceStore', () => {
       expect([MAX_SAVED_WALKS_PER_HOUSE, MAX_SAVED_WALKS_PER_DEVICE]).toEqual([20, 200]);
     });
 
+    it('two saves of the SAME walk to two houses (two tabs): exactly one wins, the other finds the walk gone', async () => {
+      await putWalk(walk(id0, 6));
+      const results = await Promise.all([store.saveWalk(id0, 'h1', NOW, () => 'w1'), store.saveWalk(id0, 'h2', NOW, () => 'w2')]);
+      expect(results.filter((r) => r.ok)).toHaveLength(1);
+      expect(results.filter((r) => !r.ok)).toEqual([{ ok: false, reason: 'noWalk' }]);
+      expect(await store.savedCount()).toBe(1);
+      expect(await traceRows()).toHaveLength(0);
+    });
+
+    it('two tabs saving two walks to a house that holds 19 cannot make it 21: the limit is checked inside the transaction', async () => {
+      const db = await local.database();
+      const row = (id: string, houseId: string): SavedWalkRow => ({ id, houseId, startedAt: 1, endedAt: 2, savedAt: 3, pointCount: 0, lengthM: 0, points: [] });
+      await db.putAll('saved_walks', Array.from({ length: MAX_SAVED_WALKS_PER_HOUSE - 1 }, (_, i) => row(`a${i}`, 'h')));
+      await putWalk([...walk(id0, 6), ...walk(id0 + DAY, 6)]);
+      const results = await Promise.all([store.saveWalk(id0, 'h', NOW, () => 'w1'), store.saveWalk(id0 + DAY, 'h', NOW, () => 'w2')]);
+      expect(results.map((r) => r.ok).sort()).toEqual([false, true]);
+      expect(results.find((r) => !r.ok)).toEqual({ ok: false, reason: 'houseFull' });
+      expect(await store.savedCount('h')).toBe(MAX_SAVED_WALKS_PER_HOUSE);
+      expect(await traceRows()).toHaveLength(6); // the refused walk stays in the trace
+    });
+
+    it('and the device limit of 200 the same way', async () => {
+      const db = await local.database();
+      const row = (id: string, houseId: string): SavedWalkRow => ({ id, houseId, startedAt: 1, endedAt: 2, savedAt: 3, pointCount: 0, lengthM: 0, points: [] });
+      await db.putAll('saved_walks', Array.from({ length: MAX_SAVED_WALKS_PER_DEVICE - 1 }, (_, i) => row(`a${i}`, `x${i}`)));
+      await putWalk([...walk(id0, 6), ...walk(id0 + DAY, 6)]);
+      const results = await Promise.all([store.saveWalk(id0, 'p', NOW, () => 'w1'), store.saveWalk(id0 + DAY, 'q', NOW, () => 'w2')]);
+      expect(results.find((r) => !r.ok)).toEqual({ ok: false, reason: 'deviceFull' });
+      expect(await store.savedCount()).toBe(MAX_SAVED_WALKS_PER_DEVICE);
+    });
+
     it('rejects, and the trace stays, when the transaction fails (the quota)', async () => {
       await putWalk(walk(id0, 6));
       const db = await local.database();

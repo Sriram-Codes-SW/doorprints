@@ -39,18 +39,6 @@
     },
     {
       "file": "web/src/app/data/trace-store.ts",
-      "find": "(await db.count('saved_walks', 'houseId', houseId)) >= MAX_SAVED_WALKS_PER_HOUSE",
-      "replace": "(await db.count('saved_walks', 'houseId', houseId)) > MAX_SAVED_WALKS_PER_HOUSE",
-      "expect": "refuses a 21st walk"
-    },
-    {
-      "file": "web/src/app/data/trace-store.ts",
-      "find": "(await db.count('saved_walks')) >= MAX_SAVED_WALKS_PER_DEVICE",
-      "replace": "(await db.count('saved_walks')) > MAX_SAVED_WALKS_PER_DEVICE",
-      "expect": "refuses a 21st walk"
-    },
-    {
-      "file": "web/src/app/data/trace-store.ts",
       "find": "      ...points.map((p) => ({ op: 'delete' as const, store: 'trace_points' as const, key: `${p.walkId ?? 0}-${p.atMs}` })),\n",
       "replace": "",
       "expect": "writes the saved row and removes the walk from the trace in ONE batch"
@@ -126,6 +114,30 @@
       "find": "return points.some((p) => (p.walkId ?? 0) === walkId);",
       "replace": "return (points[0].walkId ?? 0) === walkId;",
       "expect": "leaves out a walk that MERGED a legacy"
+    },
+    {
+      "file": "web/src/app/data/trace-store.ts",
+      "find": "max: MAX_SAVED_WALKS_PER_HOUSE - 1, reason: 'houseFull'",
+      "replace": "max: MAX_SAVED_WALKS_PER_HOUSE, reason: 'houseFull'",
+      "expect": "two tabs saving two walks to a house that holds 19"
+    },
+    {
+      "file": "web/src/app/data/trace-store.ts",
+      "find": "max: MAX_SAVED_WALKS_PER_DEVICE - 1, reason: 'deviceFull'",
+      "replace": "max: MAX_SAVED_WALKS_PER_DEVICE, reason: 'deviceFull'",
+      "expect": "and the device limit of 200 the same way"
+    },
+    {
+      "file": "web/src/app/data/trace-store.ts",
+      "find": "min: points.length, reason: 'noWalk'",
+      "replace": "min: 0, reason: 'noWalk'",
+      "expect": "two saves of the SAME walk"
+    },
+    {
+      "file": "web/src/app/data/trace-store.ts",
+      "find": "return { ok: false, reason: err.reason as 'noWalk' | 'houseFull' | 'deviceFull' };",
+      "replace": "return { ok: false, reason: 'noWalk' };",
+      "expect": "two tabs saving two walks to a house that holds 19"
     }
   ]
 }

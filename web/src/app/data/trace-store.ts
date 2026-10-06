@@ -31,6 +31,7 @@ import { TRACE } from '../shared/trace-geo';
 import type { TracePoint, TraceWalk } from '../shared/trace-geo';
 import type { PlaceWalk } from '../shared/trace-place-check';
 import { splitWalks } from '../shared/trace-repeats';
+import { BatchGuardError } from './local-db';
 import type { LocalDb } from './local-db';
 import { LocalStore } from './local-store.service';
 import { SETTING_KEYS } from './records';
@@ -197,14 +198,26 @@ export class TraceStore {
     const points = await this.walkPoints(walkId);
     if (points.length < 2) return { ok: false, reason: 'noWalk' };
     if (points.length > TRACE.maxWalkPoints) return { ok: false, reason: 'tooLong' };
-    if ((await db.count('saved_walks', 'houseId', houseId)) >= MAX_SAVED_WALKS_PER_HOUSE) return { ok: false, reason: 'houseFull' };
-    if ((await db.count('saved_walks')) >= MAX_SAVED_WALKS_PER_DEVICE) return { ok: false, reason: 'deviceFull' };
     const id = newId();
     const row: SavedWalkRow = { id, houseId, savedAt: nowMs, ...encodeWalk(points) };
-    await db.batch([
-      { op: 'put', store: 'saved_walks', value: row },
-      ...points.map((p) => ({ op: 'delete' as const, store: 'trace_points' as const, key: `${p.walkId ?? 0}-${p.atMs}` })),
-    ]);
+    try {
+      // The limits and the walk's still being in the trace are checked INSIDE the transaction that writes, so two tabs cannot
+      // both pass a count read before it (20 per house, 200 per device, a walk saved once).
+      await db.batch(
+        [
+          { op: 'put', store: 'saved_walks', value: row },
+          ...points.map((p) => ({ op: 'delete' as const, store: 'trace_points' as const, key: `${p.walkId ?? 0}-${p.atMs}` })),
+        ],
+        [
+          { store: 'trace_points', index: 'walk', value: walkId, min: points.length, reason: 'noWalk' },
+          { store: 'saved_walks', index: 'houseId', value: houseId, max: MAX_SAVED_WALKS_PER_HOUSE - 1, reason: 'houseFull' },
+          { store: 'saved_walks', max: MAX_SAVED_WALKS_PER_DEVICE - 1, reason: 'deviceFull' },
+        ],
+      );
+    } catch (err: unknown) {
+      if (err instanceof BatchGuardError) return { ok: false, reason: err.reason as 'noWalk' | 'houseFull' | 'deviceFull' };
+      throw err;
+    }
     return { ok: true, id };
   }
 
