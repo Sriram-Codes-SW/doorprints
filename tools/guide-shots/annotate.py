@@ -15,12 +15,14 @@
 #
 # SPDX-License-Identifier: AGPL-3.0-only
 
-"""Numbers the field (1) and the button (2) on tools/guide-shots/out/raw.png and shrinks it to a small palette PNG.
+"""Numbers the places shots.cjs recorded on each raw picture and shrinks it to a small palette PNG.
 
-    python3 tools/guide-shots/annotate.py [outDir] [target.png]
+    python3 tools/guide-shots/annotate.py [outDir] [imagesDir]
 
-Needs Pillow (a development machine's Python usually has it); the picture goes to guide/docs/images/web-connect-url.png.
+Needs Pillow; the pictures go to guide/docs/images/<name>.png. A number's badge sits on the top right corner of its
+box, clear of the label text; a box with room to its right (a button) gets it beside it.
 """
+import glob
 import json
 import os
 import sys
@@ -29,25 +31,24 @@ from PIL import Image, ImageDraw, ImageFont
 
 here = os.path.dirname(os.path.abspath(__file__))
 out = sys.argv[1] if len(sys.argv) > 1 else os.path.join(here, 'out')
-target = sys.argv[2] if len(sys.argv) > 2 else os.path.join(here, '..', '..', 'guide', 'docs', 'images', 'web-connect-url.png')
-ox, oy = 296, 196  # the clip's origin in the page, as in web-connect-url.cjs
-boxes = json.load(open(os.path.join(out, 'boxes.json')))
-im = Image.open(os.path.join(out, 'raw.png')).convert('RGB')
-draw = ImageDraw.Draw(im)
+images = sys.argv[2] if len(sys.argv) > 2 else os.path.join(here, '..', '..', 'guide', 'docs', 'images')
 gold, dark = (242, 184, 75), (31, 111, 92)
 font = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 20)
 
-
-def mark(box, number):
-    x0, y0 = box['x'] - ox - 4, box['y'] - oy - 4
-    x1, y1 = x0 + box['width'] + 8, y0 + box['height'] + 8
-    draw.rounded_rectangle([x0, y0, x1, y1], radius=8, outline=gold, width=4)
-    cx, cy = x1 - 4, y0 - 2  # the badge sits on the top right corner, clear of the label text
-    draw.ellipse([cx - 15, cy - 15, cx + 15, cy + 15], fill=gold, outline=dark, width=2)
-    draw.text((cx, cy), str(number), fill=(26, 26, 26), font=font, anchor='mm')
-
-
-mark(boxes['url'], 1)
-mark(boxes['btn'], 2)
-im.quantize(colors=64, method=Image.Quantize.MEDIANCUT).convert('P').save(target, optimize=True)
-print(f'{target}: {os.path.getsize(target)} bytes')
+for spec in sorted(glob.glob(os.path.join(out, '*.json'))):
+    name = os.path.basename(spec)[: -len('.json')]
+    data = json.load(open(spec))
+    ox, oy = data['clip']['x'], data['clip']['y']
+    im = Image.open(os.path.join(out, f'{name}.raw.png')).convert('RGB')
+    draw = ImageDraw.Draw(im)
+    for number, box in enumerate(data['marks'], start=1):
+        x0, y0 = box['x'] - ox - 4, box['y'] - oy - 4
+        x1, y1 = x0 + box['width'] + 8, y0 + box['height'] + 8
+        draw.rounded_rectangle([x0, y0, x1, y1], radius=8, outline=gold, width=4)
+        # The badge sits just right of a box that has room beside it (a button), else on its top right corner (a wide field).
+        cx, cy = (x1 + 20, (y0 + y1) / 2) if x1 + 40 < im.width else (x1 - 4, y0 - 2)
+        draw.ellipse([cx - 15, cy - 15, cx + 15, cy + 15], fill=gold, outline=dark, width=2)
+        draw.text((cx, cy), str(number), fill=(26, 26, 26), font=font, anchor='mm')
+    target = os.path.join(images, f'{name}.png')
+    im.quantize(colors=64, method=Image.Quantize.MEDIANCUT).convert('P').save(target, optimize=True)
+    print(f'{name}: {os.path.getsize(target)} bytes')

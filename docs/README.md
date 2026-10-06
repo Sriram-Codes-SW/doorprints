@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.103 |
+| Version | 0.104 |
 | Date | 2026-10-06 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -12,6 +12,7 @@
 
 | Version | Date | Author | Change |
 |---|---|---|---|
+| 0.104 | 2026-10-06 | Claude | User guide pictures for Your data and Google Drive, and the Drive card text fix: docs/10 v0.143. |
 | 0.103 | 2026-10-06 | Claude | User guide picture for the server setup page (S4b-BL-60 follow-up): docs/10 v0.142. |
 | 0.102 | 2026-10-06 | Claude | **S4b-BL-55 done**: docs/10 v0.141, docs/06 v0.125. |
 | 0.101 | 2026-10-06 | Claude | Guards against tests that cannot fail (`tools/check-specs.mjs`, `tools/mutate.mjs`): docs/14 v0.86. |

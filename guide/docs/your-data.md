@@ -52,6 +52,8 @@ changed it after you deleted it. She can also import your update on the website 
 **Import a backup** brings houses, visits and photos back from a **Full backup (ZIP)**, the server's backup file
 (`.json`, without photos) or an update someone shared with you. Every app can read a backup made by any other.
 
+![Your data on the website, the Import a backup card: the Choose a backup file button (1)](images/web-import-choose.png)
+
 1. On the website, open **Your data** and find **Import a backup**. On Android or iPhone, open **Settings**, then
    **Import a backup**.
 2. Choose **Choose a backup file**. (On a phone you can also open the file from another app, such as WhatsApp or
@@ -65,6 +67,8 @@ changed it after you deleted it. She can also import your update on the website 
       has, turn on **Also bring back … houses deleted on this phone** (or *in this browser*) to get them back.
     - **Add everything as new copies:** nothing on this phone is changed. Houses you already have will appear twice.
 5. Tap **Import**.
+
+![The preview after choosing a file: the choice between Merge with what I have and Add everything as new copies (1), What this would change with its counts, and the Import button (2). The file here is the sample backup](images/web-import-preview.png)
 
 The preview also counts the new and updated brokers. If a house's floor in the file is outside -5 to 200, the
 preview says so: that house comes in with its floor left blank.
