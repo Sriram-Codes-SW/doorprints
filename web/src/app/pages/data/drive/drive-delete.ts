@@ -104,6 +104,9 @@ export class DriveDeleteCard implements OnInit {
       }
       this.tickBoxRequired.set(info.tickBoxRequired);
       this.ticked.set(!info.tickBoxRequired);
+      // Read again now: a passkey may have been set up (or tried and returned no PRF output) since this card loaded.
+      this.passkeyStatus.set(await this.service.passkeyStatus());
+      this.recoveryOffered.set(await this.service.recoveryKeyOffered());
       const factor = await this.service.deleteFactor(this.currentAction);
       this.askRecoveryKey.set(factor === 'PASSKEY' && this.passkeyStatus() !== 'registered' && this.recoveryOffered());
       this.phase.set('confirm');
@@ -138,6 +141,7 @@ export class DriveDeleteCard implements OnInit {
   protected async confirmDelete(): Promise<void> {
     if (!this.currentAction || !this.currentPlan) return;
     if (this.tickBoxRequired() && !this.ticked()) return;
+    this.recoveryError.set(null);
     this.busy.set(true);
     try {
       const info = await this.service.deleteConfirmInfo(this.currentAction);

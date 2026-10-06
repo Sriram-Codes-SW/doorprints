@@ -965,6 +965,29 @@ describe('DriveBackupService', () => {
     }
   });
 
+  it('verifies against a newer list another device wrote, and leaves this browser\'s pin exactly where it was', async () => {
+    const { server } = world();
+    const a = await Rig.make(server);
+    const out = await a.service.createFolder(true);
+    const folder = await a.ready();
+    const pinBefore = await a.trust.keys(folder.rootId).load();
+    // Another browser joins with the recovery key: keys.json gets a newer revision that a's pin has not seen.
+    const b = await Rig.make(server, 'Tablet');
+    expect((await b.service.openWithRecoveryKey(out.recoveryKey!)).kind).toBe('READY');
+    const written = await a.trust.keys(folder.rootId).load();
+    expect(written).not.toBeNull();
+
+    expect(await a.service.verifyRecoveryKey(out.recoveryKey!)).toBe(true);
+
+    const pinAfter = await a.trust.keys(folder.rootId).load();
+    expect(pinBefore).not.toBeNull();
+    expect(pinAfter).not.toBeNull();
+    expect(pinAfter!.revision).toBe(pinBefore!.revision);
+    expect(equalBytes(pinAfter!.bodyHash, pinBefore!.bodyHash)).toBe(true);
+    // A wrong key against the same newer list is still refused.
+    expect(await a.service.verifyRecoveryKey(RecoveryKey.generate(p))).toBe(false);
+  });
+
   // ---- offline and the schedule ----
 
   it('loses nothing offline, and the schedule waits and then retries', async () => {

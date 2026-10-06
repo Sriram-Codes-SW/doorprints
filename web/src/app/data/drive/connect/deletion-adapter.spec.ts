@@ -909,4 +909,20 @@ describe('DriveDeletionAdapter', () => {
       expect(status).toBe('registered');
     });
   });
+
+  describe('authorizePolicy (approve, revoke, disconnect everywhere)', () => {
+    const websiteContext: DeletionContext = { platform: 'WEBSITE', deviceLock: false, webPrf: true, online: true, backupsLeft: 3 };
+
+    it('says use-the-phone when there is no sealed passkey, even though the policy let it through (the recovery key may be offered for a deletion)', async () => {
+      fakeAuthorizer.authorize = async () => ({ kind: 'DENIED', reason: 'NOT_SUPPORTED' });
+      const result = await adapter.authorizePolicy('DISCONNECT_ALL_DEVICES', websiteContext);
+      expect(result).toEqual({ kind: 'refused', reason: 'USE_PHONE' });
+    });
+
+    it('keeps the other denials as they were (a cancelled prompt is not use-the-phone)', async () => {
+      fakeAuthorizer.authorize = async () => ({ kind: 'DENIED', reason: 'CANCELLED' });
+      const result = await adapter.authorizePolicy('REVOKE_DEVICE', websiteContext);
+      expect(result).toEqual({ kind: 'refused', reason: 'AUTHORIZATION_DENIED' });
+    });
+  });
 });

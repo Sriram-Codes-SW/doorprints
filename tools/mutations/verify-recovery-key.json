@@ -3,15 +3,21 @@
   "mutations": [
     {
       "file": "web/src/app/data/drive/backup/drive-backup.service.ts",
-      "find": "    try {\n      await this.keysFile.openWithRecovery(located.bytes, recoveryKey, guard);\n      return true;\n    } catch {\n      return false;\n    }",
-      "replace": "    try {\n      await this.keysFile.openWithRecovery(located.bytes, recoveryKey, guard);\n      return true;\n    } catch {\n      return true;\n    }",
+      "find": "new KeysGuard(this.p, readOnly));\n      return true;\n    } catch {\n      return false;\n    }",
+      "replace": "new KeysGuard(this.p, readOnly));\n      return true;\n    } catch {\n      return true;\n    }",
       "expect": "verifies the recovery key without changing anything"
     },
     {
       "file": "web/src/app/data/drive/backup/drive-backup.service.ts",
-      "find": "    if (!located) return false;\n    const guard = new KeysGuard(this.p, this.trust.keys(located.rootId));\n    // Skip verification if no pin yet: a read-only check must not create the first pin.\n    if ((await guard.watermark()) === null) return false;",
-      "replace": "    if (!located) return false;\n    const guard = new KeysGuard(this.p, this.trust.keys(located.rootId));",
-      "expect": "returns false when there is no pin yet (not connected)"
+      "find": "    if ((await pinned.load()) === null) return false;",
+      "replace": "",
+      "expect": "returns false when there is no pin yet"
+    },
+    {
+      "file": "web/src/app/data/drive/backup/drive-backup.service.ts",
+      "find": "compareAndSet: async () => true };",
+      "replace": "compareAndSet: (expected, next) => pinned.compareAndSet(expected, next) };",
+      "expect": "leaves this browser's pin exactly where it was"
     }
   ]
 }

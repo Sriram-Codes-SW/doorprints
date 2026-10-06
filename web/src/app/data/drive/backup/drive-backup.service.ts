@@ -24,7 +24,7 @@ import { HPKE_INFO, WrapAad, kidOf } from '../../crypto/folder-key';
 import { QR_PSK_ID, QR_PSK_LEN } from '../../crypto/qr-enrol';
 import { Hpke } from '../../crypto/hpke';
 import { KeysError, KeysFile, KeysGuard } from '../../crypto/keys-file';
-import type { DevicePlatform, OpenedKeys } from '../../crypto/keys-file';
+import type { DevicePlatform, KeysWatermarkStore, OpenedKeys } from '../../crypto/keys-file';
 import { RecoveryKey } from '../../crypto/recovery-key';
 import { BACKUP_FORMATS_READ } from '../../../export/backup-export';
 import { DRIVE_LAYOUT, DriveError, FOLDER_MIME, MULTIPART_LIMIT } from '../drive-client';
@@ -645,11 +645,15 @@ export class DriveBackupService {
       throw e;
     }
     if (!located) return false;
-    const guard = new KeysGuard(this.p, this.trust.keys(located.rootId));
-    // Skip verification if no pin yet: a read-only check must not create the first pin.
-    if ((await guard.watermark()) === null) return false;
+    const pinned = this.trust.keys(located.rootId);
+    // A read-only check must not create the first pin, so without one there is nothing to check against.
+    if ((await pinned.load()) === null) return false;
+    // Nor may it move one: another device may have written a newer list since this browser pinned, and a normal open would
+    // advance the pin to it (a verified forward move). This guard reads the pin and verifies against it, and its
+    // compare-and-set pretends to succeed without writing, so the pin stays exactly as it was.
+    const readOnly: KeysWatermarkStore = { load: () => pinned.load(), compareAndSet: async () => true };
     try {
-      await this.keysFile.openWithRecovery(located.bytes, recoveryKey, guard);
+      await this.keysFile.openWithRecovery(located.bytes, recoveryKey, new KeysGuard(this.p, readOnly));
       return true;
     } catch {
       return false;

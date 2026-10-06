@@ -1,0 +1,17 @@
+{
+  "spec": "web/src/app/data/drive/connect/deletion-adapter.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/data/drive/connect/deletion-adapter.ts",
+      "find": "if (result.kind === 'DENIED' && result.reason === 'NOT_SUPPORTED') return { kind: 'refused', reason: 'USE_PHONE' };",
+      "replace": "",
+      "expect": "says use-the-phone when there is no sealed passkey"
+    },
+    {
+      "file": "web/src/app/data/drive/connect/deletion-adapter.ts",
+      "find": "if (result.kind === 'DENIED' && result.reason === 'NOT_SUPPORTED') return { kind: 'refused', reason: 'USE_PHONE' };",
+      "replace": "if (result.kind === 'DENIED') return { kind: 'refused', reason: 'USE_PHONE' };",
+      "expect": "keeps the other denials as they were"
+    }
+  ]
+}

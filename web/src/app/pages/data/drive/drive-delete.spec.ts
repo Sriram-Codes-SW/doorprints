@@ -194,6 +194,30 @@ describe('DriveDeleteCard', () => {
     expect(input?.getAttribute('autocomplete')).toBe('off');
   });
 
+  it('shows the recovery key input when a passkey returned no PRF output after this card loaded (it reads the state again)', async () => {
+    // At load nothing had gone wrong: the key is not offered. Then the person sets up a passkey, it returns no PRF output,
+    // and they delete again from the same card.
+    const offered = vi.fn().mockResolvedValueOnce(false).mockResolvedValue(true);
+    const svc = fakeService({ deleteFactor: vi.fn().mockResolvedValue('PASSKEY'), recoveryKeyOffered: offered });
+    const { component, fixture, host } = await render(svc);
+    await component['startDeletion']({ type: 'allBackups' });
+    fixture.detectChanges();
+    await component['proceedToConfirm']();
+    fixture.detectChanges();
+    expect(host.querySelector('input[id="drive-recovery-key"]')).toBeTruthy();
+  });
+
+  it('hides the recovery key input when a passkey was registered after this card loaded', async () => {
+    const status = vi.fn().mockResolvedValueOnce('none').mockResolvedValue('registered');
+    const svc = fakeService({ passkeyStatus: status, deleteFactor: vi.fn().mockResolvedValue('PASSKEY'), recoveryKeyOffered: vi.fn().mockResolvedValue(true) });
+    const { component, fixture, host } = await render(svc);
+    await component['startDeletion']({ type: 'allBackups' });
+    fixture.detectChanges();
+    await component['proceedToConfirm']();
+    fixture.detectChanges();
+    expect(host.querySelector('input[id="drive-recovery-key"]')).toBeNull();
+  });
+
   it('does not show recovery key input when passkey is registered', async () => {
     const svc = fakeService({
       passkeyStatus: vi.fn().mockResolvedValue('registered'),

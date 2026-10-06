@@ -236,6 +236,10 @@ export class DriveDeletionAdapterImpl implements DriveDeletionAdapter {
     if (result.kind === 'REFUSED') {
       return { kind: 'refused', reason: result.reason === 'USE_PHONE' ? 'USE_PHONE' : 'AUTHORIZATION_REFUSED' };
     }
+    // No sealed passkey here: whatever made the policy let this through (a PRF passkey, or the recovery key being offered for a
+    // deletion), approving, revoking and disconnecting every device still need the passkey, so they say what they said before:
+    // use the phone (docs/15 §10.4a).
+    if (result.kind === 'DENIED' && result.reason === 'NOT_SUPPORTED') return { kind: 'refused', reason: 'USE_PHONE' };
     return { kind: 'refused', reason: 'AUTHORIZATION_DENIED' };
   }
 
