@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Feature parity and offline-copy export specification |
-| Version | 0.57 |
+| Version | 0.58 |
 | Date | 2026-10-06 |
 | Author | Claude (Cowork) – Product/Architecture |
 | Status | Draft: product-owner decisions D-01, D-02, D-03, D-08, D-21 (AI access) and D-23..D-25 (Sprint 4b reminders, hunting areas, location permissions) and D-26 (India's boundaries on the map, 2026-09-24) applied; ready for Sprint 4 planning |
@@ -67,6 +67,7 @@
 | 0.55 | 2026-10-02 | Claude (Code), lead | D-28 and 5.28 item 4 marked as amended by [15](15-google-drive-backup-and-sharing.md) §2.2 (`drive.file` only, no `drive.appdata`) and §4.2 (sharing v1 as a read-only file per person). |
 | 0.56 | 2026-10-06 | Claude (Code), lead | **The path trace, version 2: design only** (owner request of 2026-10-06; S4b-FR-13..S4b-FR-18). New 5.27.0..5.27.11: repeats drawn thicker, in a second colour and dashed, with the person's choice of look (*Clear*, *Subtle*, *Off*); an optional sound alert; ending a walk and saving it linked to a house; the website's trace; the shared repeat-detection algorithm and its vector file `schemas/trace-repeat-vectors.json` (*proposed*); every string; twelve open questions with recommendations. 5.27 amended: saved walks and the website's trace stay local-only. |
 | 0.57 | 2026-10-06 | Claude (Code), lead | **Senior review of the path trace design applied** ([ops/path-trace-spec-review.md](ops/path-trace-spec-review.md)). Six corrections: the live look is a `PlatformMap` `repeatLook` parameter (Android `LineLayer.setProperties`, iPhone `setRepeatLook`, website `setPaintProperty`), not `JsonStyleOps` (5.27.4); the alert's `blocked` flag survives one bad fix (5.27.3, vector `alert-one-bad-fix-does-not-ring-again`); a walk id of 0 is no id (5.27.2, 5.27.3, vector `split-walk-id-zero-is-no-id`); `walkAskedUpTo` replaces `walkToAsk`, so a walk cut by process death is asked about (5.27.6); the vector tests run in `androidHostTest` with a small inline `commonTest` (5.27.10); Android's device-to-device transfer copies saved walks, said honestly (5.27.0, 5.27.7). Also: the walk just finished is left out of the alert's others (vectors `alert-not-for-the-walk-just-finished`, `alert-walk-finished-30-minutes-ago-counts`; owner may overrule, question 1), the website splits its line across a page hidden for more than 5 minutes (question 7 adopted; the `resumed` flag, vector `web-pause-makes-no-segment`), the parallel-lane field check and the `TOLERANCE_M = 20` fallback, the `NonCancellable` sweep, the search-rule sentence, luminance 0.10, `#E65100` confirmed (protanopia: told apart from the amber star by form only), the log rule, the shared-browser sentence, the T-I29 residual, one banner wording, vector hygiene (`overlap-60m-is-not-a-repeat` moved off the 80 m boundary), questions 13 and 14. New 5.27.12: Hunt mode on the website, proposed, not scheduled (S4b-FR-19..23). |
+| 0.58 | 2026-10-06 | Claude (Code), lead | **The path trace: an on-demand place check, *Have I been here?*** (owner request of 2026-10-06; S4b-FR-24; design only). New 5.27.13: the button (Map screen, house page, long press or crosshair), the exact semantics both stacks share (distance from the place to each walk's polyline on the local plane, `TOLERANCE_M` 25 m inclusive for *walked*, a second *close* band to 50 m, the 50 m accuracy gate, per-walk rows newest first with the time at the nearest point, no result from a fragment, no segment across a resumed point, the stored walks read whether or not the trace is on), the words and the `trace.here.*` strings, the map's matched-stretch halo and ring, accessibility, privacy (on demand, no network request, shown never stored or sent). 5.27.0 item 7, 5.27.2 constants (`NEAR_BAND_M`, `MAX_FIX_ACCURACY_M`, `CHECK_STRETCH_M`), 5.27.10 and open questions 15 to 17; the proposed website Hunt mode's requirements renumbered FR-109 and PRV-033. Vector file: new `placeChecks` section (21 cases). |
 | 0.52 | 2026-10-01 | Claude (Code), lead | 5.6: the **Basement** switch under Floor and the import's tolerant reading of a floor out of range, with a warning in the preview (S4b-BL-104 c, d); search finds the floor in the app's language too (S4b-BL-104 b). |
 | 0.51 | 2026-10-01 | Claude (Code), lead | **The finishing batch built** (on stacked branches, [10](10-sprint-log.md) §13.29..§13.40): built notes for 5.2 (copies in UTC, the iPhone's copies and imports, the website's import), 5.6 (the floor, moving rooms), 5.7 (photo tags), 5.8 (the iPhone's calendar file, the reminder follow-ups), 5.17 and 5.18 (the iPhone wake-up), 5.19 (the emulator test, Hunt alerts with the app lock), 5.20 (offline maps on the website), 5.21 (the cost filters), 5.24 (moving in, the statuses Taken and Not chosen), 5.25 (the duplicate-flat warning), 5.28 (deletions in an update file, `/3`) and 5.29 (the locality lookup). |
 
@@ -869,7 +870,10 @@ static purple line. The owner decided, on 2026-10-06:
    repeated paths look* has three levels, **Clear** (the default), **Subtle** and **Off** (5.27.4). The alert
    setting is independent of it.
 
-Everything below is the design; the code follows the tickets S4b-FR-13..S4b-FR-18 ([10](10-sprint-log.md) §15). The
+7. **A place check on demand** (owner, later the same day): a button *Have I been here?* compares a place (where she is, a house, a
+   spot on the map) with her walks and answers in words; never automatic, never stored or sent (5.27.13).
+
+Everything below is the design; the code follows the tickets S4b-FR-13..S4b-FR-18 (and S4b-FR-24 for item 7) ([10](10-sprint-log.md) §15). The
 sections 5.27.2 and 5.27.3 are the contract that the Kotlin and the TypeScript implementations share, held to each
 other by the vector file [`docs/schemas/trace-repeat-vectors.json`](schemas/trace-repeat-vectors.json) (status
 *proposed*: the first implementation must confirm every case, or this text is corrected in a documented change, never
@@ -921,9 +925,12 @@ design changes it, the change is named (*Amended*).
 | `REPEAT_MIN_WALKS` | 2 | A stretch is repeated when this walk **and at least one other different walk** cover it. A third walk changes nothing (open question 6). |
 | `MAX_WALK_POINTS` | 5 000 | A walk is saved only up to this many points (5.27.6). |
 | `MAX_DETECTION_POINTS` | 20 000 | The most points the detection reads: the newest walks first (by walk id), whole walks only. |
+| `NEAR_BAND_M` | 50 | **The place check only (5.27.13):** a walk 25 to 50 m from the place is reported as *close*, never as *walked*. 50 m is the accuracy gate. |
+| `MAX_FIX_ACCURACY_M` | 50 | **The place check only:** a *here* fix worse than this is refused (the Hunt gate, `HuntState.MAX_ACCURACY_M`). |
+| `CHECK_STRETCH_M` | 60 | **The place check only, drawing only (not in the vector file):** the highlighted stretch runs 60 m each side of the nearest point. |
 | `PAUSE_SPLIT_MS` | 300 000 (5 min) | **Website only, in the recorder, not in the detection:** a page hidden for longer than this marks the first point after it *resumed* (5.27.8). The vector file carries the flag, not this number. |
 
-`MAX_WALK_POINTS` and `MAX_DETECTION_POINTS` are also in the `constants` block of the vector file, so the drift test of TC-U-147 covers every constant of this table that the algorithm or its callers read.
+`MAX_WALK_POINTS`, `MAX_DETECTION_POINTS`, `NEAR_BAND_M` and `MAX_FIX_ACCURACY_M` are also in the `constants` block of the vector file, so the drift test of TC-U-147 covers every constant of this table that the algorithm or its callers read (`CHECK_STRETCH_M` only draws).
 
 #### 5.27.3 The repeat-detection algorithm (shared; the contract of the vector file)
 
@@ -1386,13 +1393,15 @@ they are; *Restore* is never a button.
 | `trace.settings.transferNote` | Android's phone-to-phone transfer also copies saved walks. To leave them behind, delete them before you transfer. (Android only.) |
 | `trace.settings.clearHint` | Clears the walks kept for 30 days. Saved walks stay until you delete them. |
 
+The strings of the on-demand place check (*Have I been here?*) are in 5.27.13, keys `trace.here.*`.
+
 The existing `settings_path_trace_hint` gains *Saved walks, if you save any, stay here too.* in the same change; its
 current text ("never in a backup, a copy or on the server, and gone after 30 days") is made true for both stores by
 5.27.6.
 
 #### 5.27.10 Tests and tickets
 
-Planned tests: [06](06-test-plan.md) TC-U-147..TC-U-152, TC-M-57..TC-M-60 and the manual entries MT-75..MT-80 of
+Planned tests: [06](06-test-plan.md) TC-U-147..TC-U-152, TC-M-57..TC-M-60 and the manual entries MT-75..MT-80 (and, for the place check of 5.27.13, TC-U-153, TC-U-154, TC-M-61 and MT-81) of
 [ops/manual-test-checklist.md](ops/manual-test-checklist.md). **Where the vector tests run:** `commonTest` has no file API, so
 `RepeatDetectorVectorsTest` is in `:shared` **`androidHostTest`** on the JVM and walks up from the working directory to
 `docs/schemas/trace-repeat-vectors.json`, as `DriveVectorsTest` does for the Drive vectors; a small `RepeatDetectorTest` in
@@ -1402,8 +1411,8 @@ does. The two engineers (Kotlin and TypeScript) do not read each other's code un
 requests name who wrote which. The new files (`trace/*.kt`, `trace-repeats.ts`, `trace-store.ts`,
 `trace-recorder.service.ts`) start with the licence notice: `python3 .github/scripts/licence-headers.py --fix` before the
 commit. Tickets: [10](10-sprint-log.md) §15, S4b-FR-13..S4b-FR-18.
-Requirements: [01](01-requirements.md) FR-102..FR-107 and PRV-030, PRV-031 (PRV-028 amended). The proposed website Hunt mode
-follow-up is 5.27.12 (S4b-FR-19..S4b-FR-23, not scheduled).
+Requirements: [01](01-requirements.md) FR-102..FR-107 and PRV-030, PRV-031 (PRV-028 amended); the place check: FR-108, PRV-032
+(5.27.13, S4b-FR-24). The proposed website Hunt mode follow-up is 5.27.12 (S4b-FR-19..S4b-FR-23, not scheduled; its requirements are FR-109 and PRV-033).
 
 #### 5.27.11 Open questions (each with the recommended answer; none is silently assumed)
 
@@ -1456,6 +1465,16 @@ follow-up is 5.27.12 (S4b-FR-19..S4b-FR-23, not scheduled).
     houses (question 3); a *Show saved walks* switch (5) or a third level (6); exporting one saved walk as GPX on request (against
     "phone only": park until asked); quiet hours for the alert; a *new area* cue (the inverse of the alert: not asked for).
 
+15. **The place check's second band and its weekday** (5.27.13). *Recommend: keep the 25 to 50 m* `CLOSE` *answer* (a house's saved spot is itself 10 to 30 m
+    off the door; *no* for a walk 30 m away would be wrong more often than *close*); the owner can drop it by deleting the `CLOSE` status and the four vectors that
+    use it (`pc-25-1-m-away-is-close-not-walked`, `pc-49-9-m-away-is-close`, `pc-30-m-past-the-end-is-close`, `pc-gap-between-two-walks-is-close-to-the-nearer`).
+    The dates carry a short weekday (the owner's example); the alternative is the existing medium date with no weekday and no new helper option.
+16. **The live walk is left out of *Here* only** (5.27.13). *Recommend: as written.* The alternative (also leave it out of a house or a spot) would hide that
+    she walked past this house earlier in the same walk.
+17. **A house with an approximate location** gets a note and no answer. *Recommend: as written;* the alternative (compare with the area's centre) would answer
+    with a distance that means nothing. Also decided, say if wrong: the check keeps **no history** of past checks, and there is **no sound, no notification and
+    no automatic check on arriving at a house** (that would be Hunt mode's job, and would be a background use the owner did not ask for).
+
 #### 5.27.12 Hunt mode on the website (proposed follow-up; status *proposed, not scheduled*)
 
 Owner question of 2026-10-06: can Hunt mode itself come to the website, accepting that it works only while the page is open and
@@ -1488,7 +1507,7 @@ vector file `docs/schemas/hunt-vectors.json` (near-house alert, stay detector, g
 website's `hunt-rules.ts` both run; alert state in memory only; fixes stored only as trace points (5.27.7); visits as ordinary
 rows; the location permission only at the switch's tap (PRV-031 extended); no Web Push, no server; the page stops Hunt mode
 after 30 minutes hidden and says so; accessibility as 5.27.8 (state in text, `role="alert"`, `aria-live="polite"`, a banner as
-the second cue after the sound). New requirements if the owner says yes: FR-108 and PRV-032; one new line in T-I30.
+the second cue after the sound). New requirements if the owner says yes: FR-109 and PRV-033 (FR-108 and PRV-032 are the place check, 5.27.13); one new line in T-I30.
 
 **Owner decisions needed first (recommendations):**
 
@@ -1499,6 +1518,189 @@ the second cue after the sound). New requirements if the owner says yes: FR-108 
    **not in v1**; the website has no street alert (S4b-FR-22 records the decision either way).*
 3. **A visit's source.** *Recommend: `VisitSource.AUTO` as on the phones, with the same accuracy gate,* rather than a new
    `AUTO_WEB` to tell a rougher laptop fix apart.
+
+#### 5.27.13 *Have I been here?*: an on-demand check of a place against the person's walks (owner request of 2026-10-06; design, not built)
+
+**The ask** (owner): *"Can we compare the location with the trace on click of a button so that the user has an option to check
+whether they visited it?"* The answer is a button, never a background job: the person picks a place, presses, and reads in plain
+words whether she walked there, when and how close. **Requirements:** [01](01-requirements.md) FR-108 and PRV-032. **Ticket:**
+S4b-FR-24 ([10](10-sprint-log.md) §15). **Tests:** TC-U-153, TC-U-154, TC-M-61, MT-81. **Threat:** [02](02-threat-model.md) T-I42.
+It reads what 5.27.2..5.27.7 already store; it adds **no store, no setting, no permission of its own and no network request**.
+
+**Which place** (the three sources; a *place* is one point, `(lat, lon)`):
+
+| Source | What the person does | Where the point comes from |
+|---|---|---|
+| **Here** | Map screen > **Have I been here?** > *Where I am now* | One fresh location fix, asked the usual way (below). |
+| **A house** | House page > **Did I walk past this house?** | The house's saved location. A house whose `LocationSource` is `APPROX` has no exact spot (it is an area): the button answers *This house has no exact spot yet, only an area. Place it on the map first, then check.* and compares nothing. A house with no location at all hides the button. |
+| **A spot on the map** | Phones: **long press** on empty map > *Did I walk here?* (the menu that already offers *Save house here*). All three (website included): Map screen > **Have I been here?** > *A spot on the map* enters the crosshair mode of the add-a-house flow (A11Y-B02: the accessible way, no long press needed), with *Check this spot* instead of *Place here*. | The map's centre under the crosshair, or the long-pressed point. A plain tap is not used: it selects houses. |
+
+**Where the buttons live.** The **Map screen** action: a button in the Map's action column next to the location button (phones,
+`:ui` common) and in the website's map toolbar, label *Have I been here?*, with a footprints icon, a 48 dp target and the same text
+as its content description. It is shown **whether or not the trace switch is on and whether or not Hunt mode runs**. **No new
+setting** (the check is a button, so it needs no switch; FR-103's *How repeated paths look* does not change it). The **house page**
+button sits in the location card, under the address, next to the *Saved walks* card (5.27.6). The long-press menu is a small
+popup of two rows. The result is a **bottom sheet** on the phones and a **panel** on the website (below).
+
+**Exact semantics** (the contract that Kotlin, `app.doorprints.shared.trace.PlaceCheck.check`, and TypeScript,
+`web/src/app/shared/trace-place-check.ts`, share, written from this text and held to the `placeChecks` section of
+[`docs/schemas/trace-repeat-vectors.json`](schemas/trace-repeat-vectors.json), status *proposed*, 21 cases). Pure function: no clock, no I/O.
+
+*Inputs.* `place` (lat, lon); `walks`: a list of walks, each already split (5.27.3 step 1; saved walks come back from
+their codec as walks) with `TracePoint(lat, lon, atMs, walkId, resumed)` and a `source` of `TRACE` or `SAVED`; `fixAccuracyM`: only
+for the *Here* source, the fix's reported accuracy, absent for the other two. **The walks are every walk stored**: the 30-day
+trace as the store returns it (`trackPoints` reads 30 days; the check never reads further back) **and every saved walk, whatever
+its age**, **whether or not the trace switch is on** (turning the trace off keeps what is stored, 5.27.6, and the check reads
+it). It does **not** apply `MAX_DETECTION_POINTS`: the check is one pass over the segments, with no pairwise cost.
+
+*Constants* (added to 5.27.2's table and to the vector file's `constants`): `TOLERANCE_M` = 25 (the same constant as the repeat
+corridor, inclusive); **`NEAR_BAND_M` = 50**; **`MAX_FIX_ACCURACY_M` = 50** (the Hunt gate, `HuntState.MAX_ACCURACY_M`).
+
+1. **Gate.** A place whose latitude or longitude is not finite or outside [-90, 90] / [-180, 180] gives `INVALID_PLACE` (a corrupt house location; the
+   words *This spot has no valid location.*). With `fixAccuracyM` given: if it is not finite, is negative, or **is greater than 50**
+   the answer is `IMPRECISE` and nothing is compared (*Location not precise enough. Try again outdoors.*); exactly 50 passes, as in Hunt mode.
+   The result carries `fuzzy = fixAccuracyM > TOLERANCE_M`: an accepted but loose fix, which adds the line *Your location is
+   only accurate to about {n} m, so this answer may be off.* The accuracy is **never added to the tolerance** (a loose fix does not
+   make "walked" easier; it only warns).
+2. **Distance, per walk.** For each walk, the distance from the place to the walk's polyline: the minimum over its segments of the
+   point-to-segment distance, the segment clamped at its ends (so each end has a round cap, as in step 4), on the same local flat
+   plane as step 2 centred on the place (`x = (lon - place.lon) * cos(rad(place.lat)) * K`, `y = (lat - place.lat) * K`).
+   **The walk's original segments, not its densified samples, and no segment into a resumed point** (a page-hidden pause draws and
+   matches nothing: the vectors `pc-the-middle-of-a-pause-is-not-walked` and `pc-after-the-pause-the-walk-counts-again`). **One
+   result per walk**, not per segment: a walk that goes up a street and comes back near the place gives one row, for its nearest
+   point (`pc-out-and-back-in-one-walk-is-one-row`). The row's time `atMs` is the **time at that nearest point**, interpolated along its
+   segment, `a.atMs + floor(t * (b.atMs - a.atMs) + 0.5)` for the clamped fraction `t` (a long walk passes a place at one moment, not
+   "on the day it began"). Ties on distance keep the first segment found.
+3. **No result from a fragment.** A walk with **fewer than two points, or no segment at all** (all its points but one resume) gives no row and is
+   **not counted as a walk** for the empty answer (`pc-a-fragment-of-one-point-is-no-walk`); a stray point is not a path.
+4. **Bands.** A row is kept when its distance is `<= NEAR_BAND_M`. Its **band** is `WALKED` when `<= TOLERANCE_M` (inclusive: **25.0 m
+   counts**) and `CLOSE` when above 25 and at most 50. Boundaries are inclusive; the vectors keep 0.01 m clear of them (hygiene), so the
+   inclusive 25.0 is pinned by a unit test that passes the computed distance itself as the tolerance, not by a vector.
+5. **Status**, in this order: `INVALID_PLACE`, `IMPRECISE`, `EMPTY` (no walk with at least one segment: the empty state),
+   `WALKED` (a row of band `WALKED`), `CLOSE` (rows, none `WALKED`), `NONE` (walks exist, no row).
+6. **Order.** Rows newest first by `atMs`; a tie by the later input index (the vector `pc-newest-first-even-when-the-older-walk-is-nearer`:
+   never by distance). `nearestM` is the smallest row distance, or none.
+
+**Why a second band (25 to 50 m, `CLOSE`) and not only a yes or no.** A *Did I walk past this house?* question compares **two noisy
+things**: the walk (kept fixes pass the gate at up to 50 m) and the house's saved spot (a tap on the map or a phone fix at the
+gate, often 10 to 30 m from the door; the app's own map pin is rarely on the exact door). A hard 25 m wall says *no* to a person who
+walked past the next gate. Reporting the 25 to 50 m walks separately, in different words (*No walk of yours passed within 25 m,
+but one came within 41 m*), is honest, never says *walked* for what might be the next lane (5.27.2 keeps lanes 30 to 60 m apart as
+different paths), and costs one comparison. 50 m is the accuracy gate: a walk farther than that is below what the readings can tell. The band
+changes no repeat result (the repeat algorithm does not read it). *Recommend: keep it* (open question 15 lets the owner drop it by
+deleting the `CLOSE` status and four vectors).
+
+**Getting *here*: one fix, with the usual permission flow.**
+- **Android and iPhone:** the call the Map's location button already uses (foreground only; no background permission, no new
+  manifest or `Info.plist` entry). The permission is asked the usual way (the rationale, then the system dialog) and **only when the person
+  presses the button**; refused: *Location is off for Doorprints. Allow it in your settings to check where you are.* The sheet opens at once with
+  *Finding your location...* and a *Cancel*; the first fix of 50 m or better is used; fixes worse than 50 m are ignored while waiting; **at 15
+  seconds** the best fix so far decides: worse than 50 m gives `IMPRECISE`, none gives *Could not get your location. Try again outdoors.*
+  While Hunt mode runs the engine is not asked and its last fix is **not** reused (a stale fix can mislead); the check asks for its own.
+- **Website:** `navigator.geolocation.getCurrentPosition` with `{ enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }`,
+  called from the button's click (a user gesture), with one sentence first the first time (*To check where you are, your browser
+  will ask for your location. It is used once, only on this page, and not kept.*). Denied: *Location is blocked for this site. Allow it in your browser's
+  site settings to check where you are.* No Geolocation: the existing *This browser cannot give your location.* **The website works from the current
+  location only while the page is open** (a browser gives a page a fix only while it is open and visible; there is nothing to
+  do in the background). *A house or a picked spot works with any stored trace, with or without location permission.* The
+  website's stored walks hold only what it recorded while a page was open (5.27.8), so its negative answer adds *On the website, only
+  walks recorded while this page was open are included.*
+- **The live walk.** For the *Here* source only, **the walk now recording is left out** (the person is standing on it: *you walked here today* would be
+  true and useless); every earlier walk, the one that just ended included, counts. For a house or a picked spot the live walk counts like
+  any other (the points kept so far).
+- The fix is used for this one answer and **never stored, never added to the trace, never logged, never sent**. The OS's own location service
+  may use the network to find the fix, as for any location button; Doorprints makes no request of its own.
+
+**How the answer reads** (the words are the keys below; `{place}` is *here*, *this house* or *this spot*):
+- **Dates.** The calendar day of each row's `atMs` **in the device's time zone at the moment of the check** (a walk at 23:50 in one zone and a
+  check made after a flight shows the day on the new clock: stated, accepted), through the app's existing date helpers
+  (phones: `formatDate(epochMillis, language, withTime = false)`, `:ui` `Format.kt`; website: `TranslationService.dateOnly`, which uses `Intl`: Angular
+  has no locale data for hi, ta and te, so no `date` pipe with a language, `tools/check-templates.mjs`) in the app language, with a
+  **short weekday added** (website `Intl.DateTimeFormat(locale, { weekday: 'short', day: 'numeric', month: 'short', year })`, the year only when it is not the
+  current year; phones' twin pattern of the same fields; the owner's example, *Tue 7 Oct*, is this). A pure-digit date is never used alone.
+- **Headline.** `WALKED`: *You walked within {distance} of {place} on {dates}.* The dates are the **distinct days** of the `WALKED` rows, newest first, **at most three**
+  joined by the language's list words (*A and B*, *A, B and C*), then *and {n} more* when there are more. `{distance}` is **the largest
+  distance among the walks on the listed days, rounded up to a whole metre, at least 1 m** ("within" is then true for every listed date).
+  `CLOSE`: *No walk of yours passed within 25 m of {place}, but one came within {distance} on {dates}.* (the `CLOSE` rows, the same rule). `NONE`:
+  *No walk of yours passed within 25 m of {place} in the last 30 days.*, or, when at least one saved walk exists, *... in the last 30 days or in your saved walks.*
+  `EMPTY`, `IMPRECISE`, `INVALID_PLACE` and the permission states have their own sentences. `CLOSE` and `NONE` add *This covers only the walks Doorprints recorded.*
+- **Rows**, under the headline, one per walk of the headline's band, newest first, **at most five** then *and {n} more walks*: *{date}, {distance} away*, with *, saved walk* for a saved walk.
+- **Actions:** *Show on map* (Map screen and house page: closes the sheet and shows the highlight below), *Check again* (for *Here*), *Close*.
+  **Nothing is remembered:** closing the sheet discards the result; it is held in memory only (no `rememberSaveable`, no saved state, no history of checks).
+
+**The map shows the matched stretch.** For each `WALKED` row the **matched stretch** is the part of that walk's polyline from 60 m before to 60 m after
+its nearest point, along the walk, **within one part** (never across a resumed point; shorter at a walk's end): `CHECK_STRETCH_M` = 60. It is drawn as a **halo**
+(the *Show on map* look of 5.27.6: a 2 px halo, here kept while the sheet is open, not 3 seconds), **not** with the repeat look (no orange, no dash: a
+check is not a repeat, and with *Off* the check still highlights), and a **ring** with a cross at the place (a form, not a colour: a marker is a filled dot, this is a hollow ring with
+a centre cross), plus the label *You are here*, *This house* or *This spot*. The cue is never colour alone: the halo is a casing wider than the
+line and the ring has a form no marker has. The map fits the view to the place and the stretches when they are not on screen. The stretches are a separate GeoJSON
+source `track-check` over the base line, cleared on close. *Screen readers:* the sheet is a live region: the headline and the rows are read as text on
+arrival (`role="status"`, `aria-live="polite"` on the website; TalkBack `liveRegion`, VoiceOver announcement), focus moves to the sheet's title, and the map highlight is
+decoration with the content description *The stretch of your walk near {place} is outlined on the map.* (the text answer is the whole answer). Hindi, Tamil and Telugu strings ship *under review*.
+
+**Cost.** The check runs off the main thread; it decodes one saved walk at a time and discards it (at most 200 walks of 5 000 points), and rejects a
+segment cheaply when it lies outside the place's box grown by `NEAR_BAND_M` before any trigonometry; the result must equal the plain loop (a random-city test, TC-U-153).
+It is not run when the sheet is closed, never repeatedly, and never in the background.
+
+**Privacy** ([01](01-requirements.md) PRV-032; [02](02-threat-model.md) T-I42, RR-31). The check is **on demand only**: no code path calls it except the button's handler (a source test, TC-U-154).
+It makes **no network request** (the tests run it with the network stubbed to throw; a house or a picked spot never needs location). The answer is
+**shown, never stored and never sent**: no log, breadcrumb or crash text holds a place, a distance, a date or a count; the check on a house does
+not leave the device (the house's location is read locally and no house is sent anywhere because of it); **the saved-walk rule is unchanged**
+(5.27.7: the store and the codecs are untouched, and the check adds no export, sync or AI path). The answer reveals location history to whoever holds the
+unlocked phone (or sees a screenshot of the sheet), exactly as the trace and the Saved walks card already do (T-I29, T-I30, RR-31); the app lock covers it.
+
+**Strings** (English; same rules as 5.27.9; the website key is `trace.here.<name>`):
+
+| Key | English |
+|---|---|
+| `trace.here.button` | Have I been here? |
+| `trace.here.buttonHouse` | Did I walk past this house? |
+| `trace.here.menuHere` | Where I am now |
+| `trace.here.menuSpot` | A spot on the map |
+| `trace.here.pressMenu` | Did I walk here? |
+| `trace.here.pickHint` | Move the map so the cross is on the spot, then press Check this spot. |
+| `trace.here.pickConfirm` | Check this spot |
+| `trace.here.title` | Have I been here? |
+| `trace.here.titleHouse` | Did I walk past this house? |
+| `trace.here.titleSpot` | Did I walk here? |
+| `trace.here.placeHere` | here |
+| `trace.here.placeHouse` | this house |
+| `trace.here.placeSpot` | this spot |
+| `trace.here.labelHere` | You are here |
+| `trace.here.labelHouse` | This house |
+| `trace.here.labelSpot` | This spot |
+| `trace.here.permissionExplain` | To check where you are, your browser will ask for your location. It is used once, only on this page, and not kept. |
+| `trace.here.locating` | Finding your location... |
+| `trace.here.walked` | You walked within {distance} of {place} on {dates}. |
+| `trace.here.close` | No walk of yours passed within 25 m of {place}, but one came within {distance} on {dates}. |
+| `trace.here.none` | No walk of yours passed within 25 m of {place} in the last 30 days. |
+| `trace.here.noneSaved` | No walk of yours passed within 25 m of {place} in the last 30 days or in your saved walks. |
+| `trace.here.onlyRecorded` | This covers only the walks Doorprints recorded. |
+| `trace.here.onlyRecordedWeb` | On the website, only walks recorded while this page was open are included. |
+| `trace.here.and2` | {a} and {b} |
+| `trace.here.and3` | {a}, {b} and {c} |
+| `trace.here.andMore` | {dates} and {n} more |
+| `trace.here.row` | {date}, {distance} away |
+| `trace.here.rowSaved` | {date}, {distance} away, saved walk |
+| `trace.here.rowsMore` | and {n} more walks |
+| `trace.here.empty` | There are no walks to compare yet. Turn on Trace my path in Settings, then walk with Hunt mode on. |
+| `trace.here.emptyWeb` | There are no walks to compare yet. Turn on Trace my path on the Map page and start a walk. |
+| `trace.here.imprecise` | Location not precise enough. Try again outdoors. |
+| `trace.here.fuzzy` | Your location is only accurate to about {n} m, so this answer may be off. |
+| `trace.here.denied` | Location is off for Doorprints. Allow it in your settings to check where you are. |
+| `trace.here.deniedWeb` | Location is blocked for this site. Allow it in your browser's site settings to check where you are. |
+| `trace.here.timeout` | Could not get your location. Try again outdoors. |
+| `trace.here.approxHouse` | This house has no exact spot yet, only an area. Place it on the map first, then check. |
+| `trace.here.invalid` | This spot has no valid location. |
+| `trace.here.privacy` | Shown only here. Nothing is saved or sent. |
+| `trace.here.again` | Check again |
+| `trace.here.a11y.stretch` | The stretch of your walk near {place} is outlined on the map. |
+
+The existing `trace.house.show` (*Show on map*), `trace.web.unavailable` and the common *Cancel* and *Close* are reused. No other string changes.
+
+**What changes elsewhere.** 5.27.2 gains the three constants; 5.27.9 points here for these keys; the website's walks and the
+phones' tables, the settings and the exports are **unchanged**; the guide page *Your paths* (S4b-FR-18) gains a paragraph; [05](05-ux-accessibility-i18n.md)
+gets the sheet and the ring when the ticket is built.
 
 ### 5.28 Sharing updates with someone you know (S4b-FR-3, design)
 
