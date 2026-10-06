@@ -735,4 +735,169 @@ describe('DriveDeletionAdapter', () => {
       expect(cap).toBe(null);
     });
   });
+
+  describe('builtInAuthenticator()', () => {
+    it('returns true when built-in authenticator is available', async () => {
+      const fakePrf = {
+        isSupported: async () => true,
+        builtInAuthenticatorAvailable: async () => true,
+      } as any;
+      const adapterWithPrf = new DriveDeletionAdapterImpl(
+        deletionService,
+        fakeAuthorizer as any,
+        store,
+        rootId,
+        5,
+        gate,
+        undefined,
+        fakePrf,
+      );
+
+      const result = await adapterWithPrf.builtInAuthenticator();
+      expect(result).toBe(true);
+    });
+
+    it('returns false when built-in authenticator is not available', async () => {
+      const fakePrf = {
+        isSupported: async () => true,
+        builtInAuthenticatorAvailable: async () => false,
+      } as any;
+      const adapterWithPrf = new DriveDeletionAdapterImpl(
+        deletionService,
+        fakeAuthorizer as any,
+        store,
+        rootId,
+        5,
+        gate,
+        undefined,
+        fakePrf,
+      );
+
+      const result = await adapterWithPrf.builtInAuthenticator();
+      expect(result).toBe(false);
+    });
+
+    it('returns null when built-in authenticator availability is indeterminate', async () => {
+      const fakePrf = {
+        isSupported: async () => true,
+        builtInAuthenticatorAvailable: async () => null,
+      } as any;
+      const adapterWithPrf = new DriveDeletionAdapterImpl(
+        deletionService,
+        fakeAuthorizer as any,
+        store,
+        rootId,
+        5,
+        gate,
+        undefined,
+        fakePrf,
+      );
+
+      const result = await adapterWithPrf.builtInAuthenticator();
+      expect(result).toBe(null);
+    });
+
+    it('returns null when PRF authenticator is missing', async () => {
+      const adapterNoPrf = new DriveDeletionAdapterImpl(
+        deletionService,
+        fakeAuthorizer as any,
+        store,
+        rootId,
+        5,
+        gate,
+      );
+
+      const result = await adapterNoPrf.builtInAuthenticator();
+      expect(result).toBe(null);
+    });
+
+    it('returns null when PRF authenticator throws', async () => {
+      const fakePrf = {
+        isSupported: async () => true,
+        builtInAuthenticatorAvailable: async () => {
+          throw new Error('Probe error');
+        },
+      } as any;
+      const adapterWithPrf = new DriveDeletionAdapterImpl(
+        deletionService,
+        fakeAuthorizer as any,
+        store,
+        rootId,
+        5,
+        gate,
+        undefined,
+        fakePrf,
+      );
+
+      const result = await adapterWithPrf.builtInAuthenticator();
+      expect(result).toBe(null);
+    });
+
+    it('returns null when PRF authenticator has no builtInAuthenticatorAvailable method', async () => {
+      const fakePrf = {
+        isSupported: async () => true,
+      } as any;
+      const adapterWithPrf = new DriveDeletionAdapterImpl(
+        deletionService,
+        fakeAuthorizer as any,
+        store,
+        rootId,
+        5,
+        gate,
+        undefined,
+        fakePrf,
+      );
+
+      const result = await adapterWithPrf.builtInAuthenticator();
+      expect(result).toBe(null);
+    });
+  });
+
+  describe('passkeyStatus() with widened passkey support', () => {
+    it('returns "none" when supported but no passkey is registered and built-in is false', async () => {
+      const fakePrf = {
+        isSupported: async () => true,
+        builtInAuthenticatorAvailable: async () => false,
+      } as any;
+      const kvForTest = new InMemoryKeyValueStore();
+      const adapterWithPrf = new DriveDeletionAdapterImpl(
+        deletionService,
+        fakeAuthorizer as any,
+        store,
+        rootId,
+        5,
+        gate,
+        undefined,
+        fakePrf,
+        kvForTest,
+      );
+
+      const status = await adapterWithPrf.passkeyStatus();
+      expect(status).toBe('none');
+    });
+
+    it('returns "registered" when passkey is stored', async () => {
+      const fakePrf = {
+        isSupported: async () => true,
+      } as any;
+      const kvForTest = new InMemoryKeyValueStore();
+      // Pre-populate with a sealed blob
+      await kvForTest.set('doorprints-deletion-sealed-blob', JSON.stringify({ v: 1, credentialId: 'abc', salt: 'def', nonce: 'ghi', ciphertext: 'jkl' }));
+
+      const adapterWithPrf = new DriveDeletionAdapterImpl(
+        deletionService,
+        fakeAuthorizer as any,
+        store,
+        rootId,
+        5,
+        gate,
+        undefined,
+        fakePrf,
+        kvForTest,
+      );
+
+      const status = await adapterWithPrf.passkeyStatus();
+      expect(status).toBe('registered');
+    });
+  });
 });

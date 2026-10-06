@@ -593,4 +593,103 @@ describe('DriveConnectService', () => {
       expect(cap).toBeNull();
     });
   });
+
+  describe('passkeyBuiltIn()', () => {
+    it('returns false when adapter builtInAuthenticator resolves false', async () => {
+      const mockAdapter = {
+        preflight: vi.fn(),
+        decide: vi.fn(),
+        authorize: vi.fn(),
+        authorizePolicy: vi.fn(),
+        execute: vi.fn(),
+        resume: vi.fn(),
+        confirmGate: vi.fn(),
+        registerPasskey: vi.fn(),
+        passkeyStatus: vi.fn(),
+        builtInAuthenticator: vi.fn(async () => false),
+      };
+      const service = new DriveConnectService(a.backup, a.sync, mockAdapter as any, { clientId: 'test' }, a.payload.source(), memoryPrefs());
+
+      const result = await service.passkeyBuiltIn();
+      expect(result).toBe(false);
+    });
+
+    it('returns true when adapter builtInAuthenticator resolves true', async () => {
+      const mockAdapter = {
+        preflight: vi.fn(),
+        decide: vi.fn(),
+        authorize: vi.fn(),
+        authorizePolicy: vi.fn(),
+        execute: vi.fn(),
+        resume: vi.fn(),
+        confirmGate: vi.fn(),
+        registerPasskey: vi.fn(),
+        passkeyStatus: vi.fn(),
+        builtInAuthenticator: vi.fn(async () => true),
+      };
+      const service = new DriveConnectService(a.backup, a.sync, mockAdapter as any, { clientId: 'test' }, a.payload.source(), memoryPrefs());
+
+      const result = await service.passkeyBuiltIn();
+      expect(result).toBe(true);
+    });
+
+    it('returns null when adapter builtInAuthenticator resolves null', async () => {
+      const mockAdapter = {
+        preflight: vi.fn(),
+        decide: vi.fn(),
+        authorize: vi.fn(),
+        authorizePolicy: vi.fn(),
+        execute: vi.fn(),
+        resume: vi.fn(),
+        confirmGate: vi.fn(),
+        registerPasskey: vi.fn(),
+        passkeyStatus: vi.fn(),
+        builtInAuthenticator: vi.fn(async () => null),
+      };
+      const service = new DriveConnectService(a.backup, a.sync, mockAdapter as any, { clientId: 'test' }, a.payload.source(), memoryPrefs());
+
+      const result = await service.passkeyBuiltIn();
+      expect(result).toBeNull();
+    });
+
+    it('returns null when adapter has no builtInAuthenticator method', async () => {
+      const mockAdapter = {
+        preflight: vi.fn(),
+        decide: vi.fn(),
+        authorize: vi.fn(),
+        authorizePolicy: vi.fn(),
+        execute: vi.fn(),
+        resume: vi.fn(),
+        confirmGate: vi.fn(),
+        registerPasskey: vi.fn(),
+        passkeyStatus: vi.fn(),
+        // no builtInAuthenticator method
+      };
+      const service = new DriveConnectService(a.backup, a.sync, mockAdapter as any, { clientId: 'test' }, a.payload.source(), memoryPrefs());
+
+      const result = await service.passkeyBuiltIn();
+      expect(result).toBeNull();
+    });
+
+    it('returns null when builtInAuthenticator rejects', async () => {
+      const mockAdapter = {
+        preflight: vi.fn(),
+        decide: vi.fn(),
+        authorize: vi.fn(),
+        authorizePolicy: vi.fn(),
+        execute: vi.fn(),
+        resume: vi.fn(),
+        confirmGate: vi.fn(),
+        registerPasskey: vi.fn(),
+        passkeyStatus: vi.fn(),
+        builtInAuthenticator: vi.fn(async () => {
+          throw new Error('Test error');
+        }),
+      };
+      const service = new DriveConnectService(a.backup, a.sync, mockAdapter as any, { clientId: 'test' }, a.payload.source(), memoryPrefs());
+
+      const result = await service.passkeyBuiltIn();
+      expect(result).toBeNull();
+    });
+  });
 });

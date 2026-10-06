@@ -381,7 +381,6 @@ describe("WebAuthnPrfAuthenticator", () => {
       const opts = fakeCredentials.recordedCreateOptions!.publicKey as {
         pubKeyCredParams?: { alg: number; type: string }[];
         authenticatorSelection?: {
-          authenticatorAttachment?: string;
           residentKey?: string;
           requireResidentKey?: boolean;
           userVerification?: string;
@@ -393,11 +392,12 @@ describe("WebAuthnPrfAuthenticator", () => {
         { alg: -257, type: "public-key" },
       ]);
       expect(opts.authenticatorSelection).toEqual({
-        authenticatorAttachment: "platform",
         residentKey: "required",
         requireResidentKey: true,
         userVerification: "required",
       });
+      // Registration sets no authenticatorAttachment key at all
+      expect("authenticatorAttachment" in (opts.authenticatorSelection || {})).toBe(false);
       const evalFirst = opts.extensions?.prf?.eval?.first;
       expect(evalFirst).toBeDefined();
       expect(new Uint8Array(evalFirst as ArrayBuffer).length).toBe(prfInput(new Uint8Array(32)).length);
@@ -1091,6 +1091,111 @@ describe("WebAuthnPrfAuthenticator", () => {
 
       const cap = await auth.prfCapability();
       expect(cap).toBe(null);
+    });
+  });
+
+  describe("builtInAuthenticatorAvailable()", () => {
+    it("returns true when built-in platform authenticator is available", async () => {
+      const store = createStore();
+      const mockIsAvailable = () => Promise.resolve(true);
+
+      const auth = new WebAuthnPrfAuthenticator(
+        store.get,
+        store.set,
+        undefined,
+        () => ({ isUserVerifyingPlatformAuthenticatorAvailable: mockIsAvailable } as any),
+      );
+
+      const result = await auth.builtInAuthenticatorAvailable();
+      expect(result).toBe(true);
+    });
+
+    it("returns false when built-in platform authenticator is not available", async () => {
+      const store = createStore();
+      const mockIsAvailable = () => Promise.resolve(false);
+
+      const auth = new WebAuthnPrfAuthenticator(
+        store.get,
+        store.set,
+        undefined,
+        () => ({ isUserVerifyingPlatformAuthenticatorAvailable: mockIsAvailable } as any),
+      );
+
+      const result = await auth.builtInAuthenticatorAvailable();
+      expect(result).toBe(false);
+    });
+
+    it("returns null when isUserVerifyingPlatformAuthenticatorAvailable is not a function", async () => {
+      const store = createStore();
+      const auth = new WebAuthnPrfAuthenticator(
+        store.get,
+        store.set,
+        undefined,
+        () => ({ } as any),
+      );
+
+      const result = await auth.builtInAuthenticatorAvailable();
+      expect(result).toBe(null);
+    });
+
+    it("returns null when isUserVerifyingPlatformAuthenticatorAvailable throws", async () => {
+      const store = createStore();
+      const mockIsAvailable = () => {
+        throw new Error("Probe not available");
+      };
+
+      const auth = new WebAuthnPrfAuthenticator(
+        store.get,
+        store.set,
+        undefined,
+        () => ({ isUserVerifyingPlatformAuthenticatorAvailable: mockIsAvailable } as any),
+      );
+
+      const result = await auth.builtInAuthenticatorAvailable();
+      expect(result).toBe(null);
+    });
+
+    it("returns null when PublicKeyCredential is undefined", async () => {
+      const store = createStore();
+      const auth = new WebAuthnPrfAuthenticator(
+        store.get,
+        store.set,
+        undefined,
+        () => undefined,
+      );
+
+      const result = await auth.builtInAuthenticatorAvailable();
+      expect(result).toBe(null);
+    });
+  });
+
+  describe("isSupported() with widened passkey support", () => {
+    it("returns true when the probe says false (built-in not available but passkeys still supported)", async () => {
+      const store = createStore();
+      const mockIsAvailable = () => Promise.resolve(false);
+
+      const auth = new WebAuthnPrfAuthenticator(
+        store.get,
+        store.set,
+        undefined,
+        () => ({ isUserVerifyingPlatformAuthenticatorAvailable: mockIsAvailable } as any),
+      );
+
+      const supported = await auth.isSupported();
+      expect(supported).toBe(true);
+    });
+
+    it("returns false when navigator.credentials is missing", async () => {
+      Object.defineProperty(globalThis, "navigator", {
+        value: { ...originalNavigator, credentials: undefined },
+        configurable: true,
+      });
+
+      const store = createStore();
+      const auth = new WebAuthnPrfAuthenticator(store.get, store.set);
+
+      const supported = await auth.isSupported();
+      expect(supported).toBe(false);
     });
   });
 });
