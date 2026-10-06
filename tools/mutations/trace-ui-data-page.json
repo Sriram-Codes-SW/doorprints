@@ -1,0 +1,17 @@
+{
+  "spec": "web/src/app/pages/data/data-page-saved-walks.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/pages/data/data-page.ts",
+      "find": "    if (!ok) return;\n    await this.traces.deleteAllSavedWalks();",
+      "replace": "    await this.traces.deleteAllSavedWalks();",
+      "expect": "asks with the count; Cancel deletes nothing"
+    },
+    {
+      "file": "web/src/app/pages/data/data-page.ts",
+      "find": "    this.savedWalks.set(0);\n    try {",
+      "replace": "    try {",
+      "expect": "empties the saved walks"
+    }
+  ]
+}

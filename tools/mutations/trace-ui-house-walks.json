@@ -1,0 +1,23 @@
+{
+  "spec": "web/src/app/pages/house-detail/house-walks-card.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/pages/house-detail/house-walks-card.ts",
+      "find": "export const HALO_MS = 3000;",
+      "replace": "export const HALO_MS = 30000;",
+      "expect": "keeps the halo for 3 seconds"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/house-walks-card.ts",
+      "find": "if (!ok) return;\n    await this.store.deleteSavedWalk(row.id);",
+      "replace": "await this.store.deleteSavedWalk(row.id);",
+      "expect": "asks first; Cancel changes nothing"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/house-walks-card.ts",
+      "find": "    clearTimeout(this.haloTimer);\n    this.shownId = row.id;",
+      "replace": "    this.shownId = row.id;",
+      "expect": "showing another walk before the halo ends replaces it"
+    }
+  ]
+}

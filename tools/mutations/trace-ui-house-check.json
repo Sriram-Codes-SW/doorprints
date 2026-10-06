@@ -1,0 +1,41 @@
+{
+  "spec": "web/src/app/pages/house-detail/house-check-card.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/pages/house-detail/house-check-card.ts",
+      "find": "h.locationSource === 'APPROX'",
+      "replace": "false",
+      "expect": "a house whose spot is only an area says so"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/house-check-card.ts",
+      "find": "if (this.busy()) return;",
+      "replace": "",
+      "expect": "is not run twice by a double press"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/house-check-card.ts",
+      "find": "if (this.placeKey !== '' && key !== this.placeKey && this.answer() !== null) this.close(false);",
+      "replace": "",
+      "expect": "forgets the answer when the house moves"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/house-check-card.ts",
+      "find": "if (answer.summary === null) return null;",
+      "replace": "",
+      "expect": "a house whose spot is only an area says so"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/house-check-card.ts",
+      "find": "protected readonly shown = () => !this.isNew() && this.locationSet();",
+      "replace": "protected readonly shown = () => this.locationSet();",
+      "expect": "is hidden for a house not saved yet"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/house-check-card.ts",
+      "find": "    this.overlay.emit(null);\n    this.announcer.cancel",
+      "replace": "    this.announcer.cancel",
+      "expect": "Close withdraws the answer"
+    }
+  ]
+}

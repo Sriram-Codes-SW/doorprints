@@ -242,6 +242,13 @@
     @if (usageText(); as usage) {
       <p class="muted small">{{ usage }}</p>
     }
+    <!-- Saved walks (docs/11 5.27.6): only the count and the delete; the walks themselves are on the Map and the house pages. -->
+    <p id="saved-walks" class="muted small">{{ 'trace.settings.saved' | t: { n: i18n.number(savedWalks()) } }}</p>
+    @if (savedWalks() > 0) {
+      <div class="actions">
+        <button type="button" id="delete-saved-walks" class="btn" (click)="deleteSavedWalks()">{{ 'trace.settings.deleteAll' | t }}</button>
+      </div>
+    }
     @if (storage.persisted() !== true) {
       @if (persistDenied()) {
         <!-- The refusal stays written here, not only said once. -->

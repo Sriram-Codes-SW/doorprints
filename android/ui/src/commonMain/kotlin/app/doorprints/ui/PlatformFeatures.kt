@@ -58,6 +58,11 @@ data class PlatformFeatures(
      * regions (since S4b-BL-96).
      */
     val areaWakeup: Boolean = true,
+    /**
+     * Android's own phone-to-phone transfer copies the whole database, saved walks included (docs/11 5.27.7), so
+     * Settings > Hunt mode says so; the iPhone keeps its data out of iCloud and computer backups, so it has no such note.
+     */
+    val deviceTransferNote: Boolean = true,
 ) {
     companion object {
         /**
@@ -71,6 +76,7 @@ data class PlatformFeatures(
             pdfCopies = false,
             weeklyBackup = false,
             inAppLanguage = false,
+            deviceTransferNote = false,
         )
     }
 }

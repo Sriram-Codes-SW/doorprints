@@ -22,7 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.ui.Modifier
 import app.doorprints.data.HouseEntity
-import app.doorprints.data.TrackPointEntity
+import app.doorprints.shared.trace.RepeatLook
 
 /** The map's camera, kept in saved state so the map comes back where the user left it. */
 data class CameraSpot(val lat: Double, val lon: Double, val zoom: Double, val bearing: Double)
@@ -114,8 +114,12 @@ data class MapAttribution(val startPx: Int, val bottomPx: Int, val shown: Boolea
 @Composable
 expect fun PlatformMap(
     houses: List<HouseEntity>,
-    /** The path trace's points, oldest first (docs/11 5.27); empty when off or none kept. */
-    track: List<TrackPointEntity>,
+    /** The walks' drawing (docs/11 5.27.4): built once per change of the stored walks; [TraceDrawing.EMPTY] when none. */
+    track: TraceDrawing,
+    /** How repeated paths look: a live property of the overlay layer, so a change needs no new [track] (5.27.4). */
+    repeatLook: RepeatLook,
+    /** The place check's matched stretches and ring (5.27.13), or null; held in memory only. */
+    check: CheckOverlay?,
     labelSizeSp: Float,
     showLocation: Boolean,
     attribution: MapAttribution,

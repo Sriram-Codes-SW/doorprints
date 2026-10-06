@@ -131,7 +131,7 @@ class HuntEngine(
         dropAlert()
         stationaryMode = null
         requestUpdates(stationary = false)
-        HuntState.update { it.copy(active = true, startedAt = now(), stopReason = null) }
+        HuntState.update { it.copy(active = true, startedAt = now(), stopReason = null, walkId = 0) }
     }
 
     /**
@@ -152,6 +152,7 @@ class HuntEngine(
     fun finishWalk() {
         track.finishWalk()
         dropAlert()
+        HuntState.update { it.copy(walkId = 0) }
     }
 
     /** The id of the walk being recorded now; 0 before its first kept point. */
@@ -201,6 +202,7 @@ class HuntEngine(
         if (accuracyM > HuntState.MAX_ACCURACY_M) return
         if (pathTrace && track.accept(lat, lon, time)) {
             val walkId = track.walkId
+            HuntState.update { it.copy(walkId = walkId) }
             scope.launch {
                 data.saveTrackPoint(TrackPointEntity(at = time, lat = lat, lon = lon, accuracyM = accuracyM, walkId = walkId))
             }

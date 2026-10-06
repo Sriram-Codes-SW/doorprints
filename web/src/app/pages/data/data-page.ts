@@ -40,6 +40,7 @@ import { ConfigService } from '../../core/config.service';
 import { ConfirmService } from '../../core/confirm.service';
 import { errorMsg } from '../../core/format';
 import { LocalStore } from '../../data/local-store.service';
+import { TraceStore } from '../../data/trace-store';
 import type { LengthUnit } from '../../shared/room-sizes';
 import { StorageService } from '../../data/storage.service';
 import { SyncService } from '../../data/sync.service';
@@ -113,6 +114,9 @@ const ICONS = {
 export class DataPage implements OnInit, OnDestroy {
   private readonly exporter = inject(ExportService);
   private readonly store = inject(LocalStore);
+  private readonly traces = inject(TraceStore);
+  /** How many saved walks this browser holds (docs/11 5.27.6): shown with *Delete all saved walks*. */
+  protected readonly savedWalks = signal(0);
   private readonly announcer = inject(Announcer);
   private readonly confirm = inject(ConfirmService);
   private readonly config = inject(ConfigService);
@@ -325,10 +329,34 @@ export class DataPage implements OnInit, OnDestroy {
       const format = safeFormat(saved);
       if (format) this.format.set(format);
     }
+    await this.refreshSavedWalks();
     await this.refreshCounts();
     await this.refreshPending();
     this.started.set(true);
     this.markStarted();
+  }
+
+  private async refreshSavedWalks(): Promise<void> {
+    try {
+      this.savedWalks.set(await this.traces.savedCount());
+    } catch {
+      this.savedWalks.set(0);
+    }
+  }
+
+  /** *Delete all saved walks*: asks with the count first; the 30-day trace is not touched. */
+  protected async deleteSavedWalks(): Promise<void> {
+    const n = this.savedWalks();
+    if (n === 0) return;
+    const ok = await this.confirm.ask(
+      { key: 'trace.settings.deleteAllConfirm', params: { n: this.i18n.number(n) } },
+      { confirmKey: 'trace.settings.deleteAll', danger: true },
+    );
+    if (!ok) return;
+    await this.traces.deleteAllSavedWalks();
+    await this.refreshSavedWalks();
+    this.announcer.announce({ key: 'trace.settings.deleted' });
+    afterNextRender(() => document.getElementById('storage-heading')?.focus(), { injector: this.injector });
   }
 
   /** The Photos choice only matters for a file that can carry photos (Android parity). */
@@ -695,6 +723,7 @@ export class DataPage implements OnInit, OnDestroy {
     clearMapView();
     await this.offlineMaps.removeAll();
     await this.store.clearEverything();
+    this.savedWalks.set(0);
     try {
       clearSessionLeftovers(tabSessionStorage());
     } catch {

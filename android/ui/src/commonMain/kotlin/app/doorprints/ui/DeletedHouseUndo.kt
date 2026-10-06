@@ -23,6 +23,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import app.doorprints.data.Repository
 import app.doorprints.ui.res.*
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.getString
@@ -45,17 +46,30 @@ suspend fun offerDeletedHouseUndo(
     snackbar: SnackbarHostState,
     deletedLabel: suspend () -> String?,
     restore: suspend () -> Unit,
+    /**
+     * The delete is final: the snackbar closed without *Undo*, or the screen was left (this coroutine cancelled). Runs
+     * under [NonCancellable], like [restore]; the Map and the house list sweep the house's saved walks here (docs/11
+     * 5.27.6). A missed run is caught by the next trigger (app start, Hunt start, sync end, import end).
+     */
+    onFinal: suspend () -> Unit = {},
 ) {
     val label = deletedLabel() ?: return
     val name = label.ifBlank { getString(Res.string.house_unnamed) }
-    val result = snackbar.showSnackbar(
-        message = getString(Res.string.house_deleted, name),
-        actionLabel = getString(Res.string.common_undo),
-        withDismissAction = true,
-        duration = SnackbarDuration.Long,
-    )
+    val result = try {
+        snackbar.showSnackbar(
+            message = getString(Res.string.house_deleted, name),
+            actionLabel = getString(Res.string.common_undo),
+            withDismissAction = true,
+            duration = SnackbarDuration.Long,
+        )
+    } catch (e: CancellationException) {
+        withContext(NonCancellable) { onFinal() }
+        throw e
+    }
     if (result == SnackbarResult.ActionPerformed) {
         withContext(NonCancellable) { restore() }
+    } else {
+        withContext(NonCancellable) { onFinal() }
     }
 }
 
@@ -69,4 +83,5 @@ suspend fun offerDeletedHouseUndo(repo: Repository, snackbar: SnackbarHostState,
         snackbar,
         deletedLabel = { repo.getHouse(houseId)?.takeIf { it.deleted }?.label },
         restore = { repo.getHouse(houseId)?.takeIf { it.deleted }?.let { repo.saveHouse(it.copy(deleted = false)) } },
+        onFinal = { repo.sweepWalksOfDeletedHouses() },
     )

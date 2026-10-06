@@ -640,7 +640,7 @@
     <string name="settings_app_lock_15m">15 నిమిషాలు</string>
     <!-- S4b-FR-2, the path trace (2026-09-29): under review. -->
     <string name="settings_path_trace">నా దారిని మ్యాప్‌లో చూపించు</string>
-    <string name="settings_path_trace_hint">హంట్ మోడ్ ఆన్‌లో ఉన్నప్పుడు మీరు నడిచిన చోట్లను ఉంచి మ్యాప్‌లో గీస్తుంది; ఏ వీధులు చూశారో తెలుస్తుంది. ఈ ఫోన్‌లో మాత్రమే ఉంటుంది: బ్యాకప్‌లో, కాపీలో, సర్వర్‌లో ఉండదు; 30 రోజుల తర్వాత పోతుంది.</string>
+    <string name="settings_path_trace_hint">హంట్ మోడ్ ఆన్‌లో ఉన్నప్పుడు మీరు నడిచిన చోట్లను ఉంచి మ్యాప్‌లో గీస్తుంది; ఏ వీధులు చూశారో తెలుస్తుంది. ఈ ఫోన్‌లో మాత్రమే ఉంటుంది: బ్యాకప్‌లో, కాపీలో, సర్వర్‌లో ఉండదు; 30 రోజుల తర్వాత పోతుంది. మీరు సేవ్ చేసే నడకలు కూడా ఇక్కడే ఉంటాయి.</string>
     <string name="settings_path_trace_clear">దారిని తొలగించు</string>
     <string name="settings_path_trace_cleared">దారి తొలగించబడింది.</string>
     <!-- S4b-BL-69, Hunt mode on iPhone (2026-09-29): under review. -->
@@ -1398,4 +1398,98 @@
     <string name="drive_enrol_device_kind">ఈ సాధనం</string>
     <string name="drive_enrol_kind_phone">ఫోన్</string>
     <string name="drive_enrol_kind_computer">కంప్యూటర్</string>
+    <!-- Path trace v2 (S4b-FR-15, 2026-10-06): the map's legend; hi, ta, te under review. -->
+    <string name="trace_legend_title">మీ దారులు</string>
+    <string name="trace_legend_once">ఒకసారి నడిచింది</string>
+    <string name="trace_legend_repeated">ఒకటి కంటే ఎక్కువసార్లు నడిచింది</string>
+    <string name="trace_a11y_map">ఒకటి కంటే ఎక్కువసార్లు నడిచిన దారులు విరామాలతో కూడిన గీతలుగా కనిపిస్తాయి.</string>
+    <!-- Path trace v2 (S4b-FR-15, S4b-FR-16, 2026-10-06): Settings > Hunt mode; hi, ta, te under review. -->
+    <string name="trace_repeat_look_title">మళ్లీ నడిచిన దారులు ఎలా కనిపించాలి</string>
+    <string name="trace_repeat_look_hint">ఒకటి కంటే ఎక్కువసార్లు నడిచిన దారులు మ్యాప్‌లో ప్రత్యేకంగా కనిపించవచ్చు. ఇది శబ్ద హెచ్చరికను మార్చదు.</string>
+    <string name="trace_repeat_look_clear">స్పష్టం</string>
+    <string name="trace_repeat_look_clear_desc">మందంగా, రెండో రంగులో విరామాలతో</string>
+    <string name="trace_repeat_look_subtle">సున్నితం</string>
+    <string name="trace_repeat_look_subtle_desc">సాధారణ మందం, రెండో రంగులో విరామాలతో</string>
+    <string name="trace_repeat_look_off">ఆఫ్</string>
+    <string name="trace_repeat_look_off_desc">మిగతా దారుల్లాగే గీస్తారు</string>
+    <string name="trace_alert_title">నేను ఒక దారిలో మళ్లీ నడిచినప్పుడు హెచ్చరించు</string>
+    <string name="trace_alert_hint">హంట్ మోడ్ ఆన్‌లో ఉన్నప్పుడు, మీరు ఇప్పటికే నడిచిన దారిలో మళ్లీ వెళ్తే ఒక చిన్న శబ్దం వస్తుంది. దీన్ని మీ ఫోన్ నోటిఫికేషన్ సెట్టింగ్‌లలో మ్యూట్ చేయవచ్చు. "నా దారిని మ్యాప్‌లో చూపించు" ఆన్‌లో ఉండాలి.</string>
+    <string name="trace_alert_needs_trace">ముందు "నా దారిని మ్యాప్‌లో చూపించు" ఆన్ చేయండి.</string>
+    <string name="trace_alert_permission_denied">Doorprints కు నోటిఫికేషన్‌లు ఆఫ్‌లో ఉన్నాయి, కాబట్టి శబ్దం రాదు. మీ ఫోన్ సెట్టింగ్‌లలో వాటిని అనుమతించండి.</string>
+    <string name="trace_alert_rationale">శబ్దం ఒక నోటిఫికేషన్ రూపంలో వస్తుంది, కాబట్టి దాన్ని పంపడానికి Doorprints కు మీ అనుమతి కావాలి.</string>
+    <string name="trace_settings_saved">సేవ్ చేసిన నడకలు: %1$d</string>
+    <string name="trace_settings_delete_all">సేవ్ చేసిన అన్ని నడకలను తొలగించు</string>
+    <string name="trace_settings_delete_all_confirm">సేవ్ చేసిన %1$d నడకలన్నింటినీ తొలగించాలా? దీన్ని వెనక్కి తీసుకోలేరు.</string>
+    <string name="trace_settings_transfer_note">Android ఫోన్-నుండి-ఫోన్ బదిలీ సేవ్ చేసిన నడకలను కూడా కాపీ చేస్తుంది. వాటిని వదిలేయాలంటే, బదిలీకి ముందు తొలగించండి. (Android మాత్రమే.)</string>
+    <string name="trace_settings_clear_hint">30 రోజులు ఉంచే నడకలను తొలగిస్తుంది. సేవ్ చేసిన నడకలు మీరు తొలగించే వరకు ఉంటాయి.</string>
+    <!-- Path trace v2 (S4b-FR-16): the Map's snackbar and the iPhone's notification; under review. -->
+    <string name="trace_alert_banner">మీరు ఈ దారిలో ఇంతకు ముందు నడిచారు.</string>
+    <string name="trace_alert_notif_text">ఈ దారి మునుపటి నడక నుండి మీ మ్యాప్‌లో ఉంది.</string>
+    <!-- Path trace v2 (S4b-FR-15, 2026-10-06): finish a walk, save it with a house, the house page's saved walks; hi, ta, te under review. -->
+    <string name="trace_unit_m">%1$d మీ</string>
+    <string name="trace_unit_km">%1$s కి.మీ</string>
+    <string name="trace_walk_finish">నడకను ముగించు</string>
+    <string name="trace_end_title">ఈ నడకను సేవ్ చేయాలా?</string>
+    <string name="trace_end_summary">%1$s నడక, %2$d నిమిషాల్లో</string>
+    <string name="trace_end_body">ఉంచుకోవడానికి దీన్ని ఒక ఇంటికి జోడించండి. లేకపోతే ఇది 30 రోజులు ఉండి, తర్వాత పోతుంది. ఇది ఈ ఫోన్‌లో మాత్రమే ఉంటుంది; బ్యాకప్‌లో లేదా కాపీలో ఉండదు.</string>
+    <string name="trace_end_save">ఇంటితో సేవ్ చేయి</string>
+    <string name="trace_end_keep">30 రోజులు ఉంచు</string>
+    <string name="trace_end_delete">ఈ నడకను తొలగించు</string>
+    <string name="trace_end_delete_confirm">ఈ నడకను తొలగించాలా? దీన్ని వెనక్కి తీసుకోలేరు.</string>
+    <string name="trace_pick_title">ఈ నడక ఏ ఇంటి వరకు?</string>
+    <string name="trace_pick_nearest">మీరు ఆగిన చోటుకు దగ్గరగా, %1$s దూరంలో</string>
+    <string name="trace_pick_near">మీ నడక నుండి %1$s</string>
+    <string name="trace_pick_search">మీ ఇళ్లను వెతకండి</string>
+    <string name="trace_pick_none">మీరు ఇంకా ఇళ్లను సేవ్ చేయలేదు. ముందు ఒక ఇంటిని చేర్చండి, లేదా నడకను 30 రోజులు ఉంచండి.</string>
+    <string name="trace_pick_confirm">నడకను సేవ్ చేయి</string>
+    <string name="trace_saved_snack">నడక %1$s తో సేవ్ అయింది.</string>
+    <string name="trace_kept_snack">నడక 30 రోజులు ఉంచబడింది.</string>
+    <string name="trace_deleted_snack">నడక తొలగించబడింది.</string>
+    <string name="trace_save_too_long">ఈ నడక సేవ్ చేయడానికి చాలా పొడవైనది (%1$d పాయింట్లకు పైగా). ఇది 30 రోజులు ఉంటుంది.</string>
+    <string name="trace_save_house_full">ఈ ఇంటికి ఇప్పటికే %1$d నడకలు సేవ్ అయ్యాయి. ముందు ఒకదాన్ని తొలగించండి.</string>
+    <string name="trace_save_all_full">మీకు %1$d సేవ్ చేసిన నడకలు ఉన్నాయి. ముందు ఒకదాన్ని తొలగించండి.</string>
+    <string name="trace_save_failed_walk">నడకను సేవ్ చేయడం సాధ్యం కాలేదు: అది ఇకపై ఈ ఫోన్‌లో లేదు.</string>
+    <string name="trace_save_failed_house">నడకను సేవ్ చేయడం సాధ్యం కాలేదు: ఆ ఇల్లు లేదు.</string>
+    <string name="trace_house_title">సేవ్ చేసిన నడకలు</string>
+    <string name="trace_house_row">%1$s, %2$s, %3$d నిమిషాలు</string>
+    <string name="trace_house_show">మ్యాప్‌లో చూపించు</string>
+    <string name="trace_house_delete">నడకను తొలగించు</string>
+    <string name="trace_house_delete_confirm">ఈ సేవ్ చేసిన నడకను తొలగించాలా?</string>
+    <string name="trace_house_empty">సేవ్ చేసిన నడకలు లేవు. నడకను ముగించినప్పుడు దాన్ని ఈ ఇంటికి జోడించవచ్చు.</string>
+    <string name="trace_house_local">సేవ్ చేసిన నడకలు ఈ ఫోన్‌లో మాత్రమే ఉంటాయి. అవి బ్యాకప్‌లో, కాపీలో, Google Drive లో లేదా సర్వర్‌లో ఉండవు.</string>
+    <string name="trace_house_delete_note">దాని సేవ్ చేసిన నడకలు కూడా తొలగించబడతాయి.</string>
+    <!-- Path trace v2 (S4b-FR-24, 2026-10-06): Have I been here? the on-demand place check; hi, ta, te under review. -->
+    <string name="trace_here_button">నేను ఇక్కడికి వచ్చానా?</string>
+    <string name="trace_here_button_house">నేను ఈ ఇంటి పక్కగా నడిచానా?</string>
+    <string name="trace_here_menu_here">నేను ఇప్పుడు ఉన్న చోటు</string>
+    <string name="trace_here_menu_spot">మ్యాప్‌లో ఒక చోటు</string>
+    <string name="trace_here_press_menu">నేను ఇక్కడ నడిచానా?</string>
+    <string name="trace_here_pick_hint">క్రాస్ ఆ చోటుపై ఉండేలా మ్యాప్‌ను కదిపి, "ఈ చోటును తనిఖీ చేయి" నొక్కండి.</string>
+    <string name="trace_here_pick_confirm">ఈ చోటును తనిఖీ చేయి</string>
+    <string name="trace_here_place_here">ఇక్కడ</string>
+    <string name="trace_here_place_house">ఈ ఇల్లు</string>
+    <string name="trace_here_place_spot">ఈ చోటు</string>
+    <string name="trace_here_label_here">మీరు ఇక్కడ ఉన్నారు</string>
+    <string name="trace_here_label_house">ఈ ఇల్లు</string>
+    <string name="trace_here_label_spot">ఈ చోటు</string>
+    <string name="trace_here_locating">మీ స్థానాన్ని వెతుకుతోంది…</string>
+    <string name="trace_here_walked">%3$s న %2$s నుండి %1$s లోపల నడిచారు.</string>
+    <string name="trace_here_close">%2$s నుండి %1$s లోపల మీ నడక ఏదీ వెళ్లలేదు, కానీ ఒకటి %4$s న %3$s వరకు వచ్చింది.</string>
+    <string name="trace_here_none">గత 30 రోజుల్లో %2$s నుండి %1$s లోపల మీ నడక ఏదీ వెళ్లలేదు.</string>
+    <string name="trace_here_none_saved">గత 30 రోజుల్లో లేదా మీ సేవ్ చేసిన నడకల్లో %2$s నుండి %1$s లోపల ఏ నడక వెళ్లలేదు.</string>
+    <string name="trace_here_only_recorded">ఇందులో Doorprints నమోదు చేసిన నడకలు మాత్రమే ఉంటాయి.</string>
+    <string name="trace_here_and_more">%1$s మరియు మరో %2$d</string>
+    <string name="trace_here_row">%1$s, %2$s దూరంలో</string>
+    <string name="trace_here_row_saved">%1$s, %2$s దూరంలో, సేవ్ చేసిన నడక</string>
+    <string name="trace_here_rows_more">మరో %1$d నడకలు</string>
+    <string name="trace_here_empty">పోల్చడానికి ఇంకా నడకలు లేవు. సెట్టింగ్‌లలో "నా దారిని మ్యాప్‌లో చూపించు" ఆన్ చేసి, హంట్ మోడ్‌తో నడవండి.</string>
+    <string name="trace_here_imprecise">స్థానం తగినంత కచ్చితంగా లేదు. బయట మళ్లీ ప్రయత్నించండి.</string>
+    <string name="trace_here_fuzzy">మీ స్థానం సుమారు %1$d మీ వరకే కచ్చితం, కాబట్టి ఈ సమాధానం తప్పు కావచ్చు.</string>
+    <string name="trace_here_denied">Doorprints కు లొకేషన్ ఆఫ్‌లో ఉంది. మీ స్థానం తనిఖీ చేయడానికి సెట్టింగ్‌లలో అనుమతించండి.</string>
+    <string name="trace_here_timeout">మీ స్థానం దొరకలేదు. బయట మళ్లీ ప్రయత్నించండి.</string>
+    <string name="trace_here_approx_house">ఈ ఇంటికి ఇంకా కచ్చితమైన చోటు లేదు, ప్రాంతం మాత్రమే. ముందు మ్యాప్‌లో పెట్టి, తర్వాత తనిఖీ చేయండి.</string>
+    <string name="trace_here_invalid">ఈ చోటుకు సరైన స్థానం లేదు.</string>
+    <string name="trace_here_privacy">ఇక్కడ మాత్రమే కనిపిస్తుంది. ఏదీ సేవ్ చేయబడదు, పంపబడదు.</string>
+    <string name="trace_here_again">మళ్లీ తనిఖీ చేయి</string>
+    <string name="trace_here_stretch_a11y">%1$s దగ్గర మీ నడక భాగం మ్యాప్‌లో గుర్తించబడింది.</string>
 </resources>

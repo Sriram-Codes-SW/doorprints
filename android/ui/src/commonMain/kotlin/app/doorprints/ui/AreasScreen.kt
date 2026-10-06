@@ -49,6 +49,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.doorprints.data.HouseEntity
+import app.doorprints.shared.trace.RepeatLook
 import app.doorprints.shared.model.Area
 import app.doorprints.shared.model.AreaNote
 import app.doorprints.shared.model.AreaNotes
@@ -566,7 +567,7 @@ private fun MapPointPicker(start: Pair<Double, Double>?, onDismiss: () -> Unit, 
         Surface(Modifier.fillMaxSize()) {
             Box(Modifier.fillMaxSize()) {
                 PlatformMap(
-                    houses = houses, track = emptyList(), labelSizeSp = markerLabelSizeSp(fontScale), showLocation = false,
+                    houses = houses, track = TraceDrawing.EMPTY, repeatLook = RepeatLook.CLEAR, check = null, labelSizeSp = markerLabelSizeSp(fontScale), showLocation = false,
                     attribution = MapAttribution(gutter, bottom, shown = true),
                     events = object : MapEvents {
                         override fun onReady(control: MapControl) {

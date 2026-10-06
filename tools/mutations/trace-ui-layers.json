@@ -1,0 +1,41 @@
+{
+  "spec": "web/src/app/pages/map/trace-layers.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/pages/map/trace-layers.ts",
+      "find": "const before = map.getLayer(this.beforeId) ? this.beforeId : undefined;",
+      "replace": "const before = undefined;",
+      "expect": "every one under the houses"
+    },
+    {
+      "file": "web/src/app/pages/map/trace-layers.ts",
+      "find": "if (!map.getLayer(spec.id)) map.addLayer(spec as never, before);",
+      "replace": "map.addLayer(spec as never, before);",
+      "expect": "is idempotent"
+    },
+    {
+      "file": "web/src/app/pages/map/trace-layers.ts",
+      "find": "duration: reducedMotion() ? 0 : 400",
+      "replace": "duration: 400",
+      "expect": "without animation when the person prefers reduced motion"
+    },
+    {
+      "file": "web/src/app/pages/map/trace-layers.ts",
+      "find": "map.addSource(TRACK_SOURCE, { type: 'geojson', data: this.walks as never });",
+      "replace": "map.addSource(TRACK_SOURCE, { type: 'geojson', data: EMPTY as never });",
+      "expect": "puts everything back when the style is replaced"
+    },
+    {
+      "file": "web/src/app/pages/map/trace-layers.ts",
+      "find": "this.map.setLayoutProperty(TRACK_REPEAT_LAYER, 'visibility', repeatVisibility(look));",
+      "replace": "",
+      "expect": "applies the look live"
+    },
+    {
+      "file": "web/src/app/pages/map/trace-layers.ts",
+      "find": "    this.check = check ?? EMPTY;\n    this.push(TRACK_CHECK_SOURCE, this.check);",
+      "replace": "    this.check = check ?? EMPTY;",
+      "expect": "clears the check with null"
+    }
+  ]
+}

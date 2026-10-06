@@ -160,6 +160,13 @@ interface LocationSource {
 
     /** True while precise location is allowed: a null [current] is then a real failure, not the user's choice. */
     fun hasPrecisePermission(): Boolean
+
+    /**
+     * One fix for *Have I been here?* (docs/11 5.27.13): the best over up to [maxWaitMs], ending at the first reading of
+     * [goodAccuracyM] or better ([bestOf]); a stale or last-known fix is never used. Null without precise location or when
+     * none came. The default is no fix: a platform that has none says "could not get your location".
+     */
+    suspend fun best(maxWaitMs: Long = 15_000, goodAccuracyM: Double = 50.0): PlaceFix? = null
 }
 
 /**
@@ -265,6 +272,12 @@ interface MapServices {
 
     /** The user turned Hunt mode off. */
     fun stopHunt()
+
+    /**
+     * *Finish walk* on the Hunt card (docs/11 5.27.6): the walk now recorded ends and the next kept point starts a new
+     * one; Hunt mode keeps running. Does nothing while Hunt mode is off.
+     */
+    fun finishWalk() {}
 
     /** Closes the "Hunt mode stopped because…" card. */
     fun clearHuntStopReason()

@@ -1,0 +1,53 @@
+{
+  "spec": "web/src/app/pages/map/trace-view.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/pages/map/trace-view.ts",
+      "find": "export const LIVE_REDRAW_MS = 5000;",
+      "replace": "export const LIVE_REDRAW_MS = 1;",
+      "expect": "redraws at most once every 5 seconds"
+    },
+    {
+      "file": "web/src/app/pages/map/trace-view.ts",
+      "find": "if (key === this.lastKey) return;",
+      "replace": "if (false) return;",
+      "expect": "does not run the detection again"
+    },
+    {
+      "file": "web/src/app/pages/map/trace-view.ts",
+      "find": "    this.recorder.start();\n    await this.findAsk(0);",
+      "replace": "    await Promise.resolve();\n    this.recorder.start();\n    await this.findAsk(0);",
+      "expect": "start calls the recorder at once"
+    },
+    {
+      "file": "web/src/app/pages/map/trace-view.ts",
+      "find": "if (!result.ok) return result;",
+      "replace": "if (false) return result;",
+      "expect": "a refused save changes nothing"
+    },
+    {
+      "file": "web/src/app/pages/map/trace-view.ts",
+      "find": "    await this.store.setAskedUpTo(walk.walkId);\n    this.ask.set(null);\n    this.announcer.announce({ key: 'trace.kept.snack' });",
+      "replace": "    this.ask.set(null);\n    this.announcer.announce({ key: 'trace.kept.snack' });",
+      "expect": "keeping for 30 days only moves the watermark"
+    },
+    {
+      "file": "web/src/app/pages/map/trace-view.ts",
+      "find": "await this.findAsk(this.recorder.liveWalkId());",
+      "replace": "await this.findAsk(0);",
+      "expect": "never the live one"
+    },
+    {
+      "file": "web/src/app/pages/map/trace-view.ts",
+      "find": "      await this.store.prune(Date.now());\n      await this.refresh();\n      await this.findAsk(this.recorder.liveWalkId());",
+      "replace": "      await this.refresh();\n      await this.findAsk(this.recorder.liveWalkId());",
+      "expect": "prunes a trace older than 30 days at opening"
+    },
+    {
+      "file": "web/src/app/pages/map/trace-view.ts",
+      "find": "if (this.recorder.state() === 'idle') return;",
+      "replace": "",
+      "expect": "does not redraw while idle"
+    }
+  ]
+}
