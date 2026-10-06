@@ -93,4 +93,11 @@
     <string name="notif_copy_open">प्रति खोलें</string>
     <string name="notif_copy_share">प्रति साझा करें</string>
     <string name="notif_task_stop">यह काम रोकें</string>
+    <!-- S4b-BL-127 (2026-10-06): the device lock notice of Settings > Google Drive: under review. -->
+    <string name="drive_lock_heading">गूगल ड्राइव को बैकअप करें</string>
+    <string name="drive_lock_needs">Google Drive बैकअप के लिए इस फ़ोन में स्क्रीन लॉक (PIN, पैटर्न, पासवर्ड, फ़िंगरप्रिंट या चेहरा) ज़रूरी है। फ़ोन की सेटिंग्स में लगाएँ, फिर यहाँ लौटें।</string>
+    <string name="drive_lock_paused">Google Drive बैकअप रुका है क्योंकि इस फ़ोन में अब स्क्रीन लॉक नहीं है। आपके मकान इस फ़ोन में सुरक्षित हैं। जारी रखने के लिए स्क्रीन लॉक लगाएँ।</string>
+    <string name="drive_lock_open_settings">सेटिंग्स खोलें</string>
+    <string name="drive_lock_notif_title">Google Drive बैकअप रुका</string>
+    <string name="drive_lock_key_lost">Google Drive बैकअप रुका है क्योंकि इस फ़ोन के की स्टोर से कुंजी खो गई है। आपके मकान इस फ़ोन में सुरक्षित हैं। जारी रखने के लिए Google Drive से फिर जुड़ें।</string>
 </resources>

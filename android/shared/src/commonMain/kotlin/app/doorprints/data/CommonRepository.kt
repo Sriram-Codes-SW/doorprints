@@ -1035,8 +1035,11 @@ open class CommonRepository(
      * Marks every house, visit and record for upload and every live photo for upload again, then resets the pull cursors
      * (S4b-BL-20). Rows first: a sync cut off in between finds the server behind again on its next run, instead of
      * leaving rows marked clean that the server does not have.
+     *
+     * Public for the hand-back from Google Drive (review of PR 142, item 3): rows that were sent only to Drive are marked
+     * clean, so when Drive stops being the sync target the app calls this to send everything to the server again.
      */
-    private suspend fun resetForServer() {
+    suspend fun resetForServer() {
         db.houses().markAllDirty()
         db.visits().markAllDirty()
         db.records().markAllDirty()

@@ -35,6 +35,9 @@ object Api {
     /** One pool and dispatcher for the whole app, created on first use. */
     private val http: HttpClient by lazy { AndroidApiHttp.create() }
 
+    /** The app-wide HTTP client, for Google Drive (`HttpDriveClient`): the same pool and the same no-redirect rule. */
+    fun httpClient(): HttpClient = http
+
     fun client(baseUrl: String, apiKey: String): ApiClient = ApiClient(
         baseUrl = baseUrl,
         apiKey = apiKey,

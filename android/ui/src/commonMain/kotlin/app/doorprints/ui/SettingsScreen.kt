@@ -441,6 +441,9 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
             OfflineMapsSection(services.offlineMaps)
         }
 
+        // Google Drive backup and sync (docs/15 §2): the platform's section, with its own divider; nothing where it has none.
+        features.DriveSection()
+
         HorizontalDivider()
         SectionHeading(stringResource(Res.string.settings_server))
         Text(stringResource(Res.string.settings_server_intro), style = MaterialTheme.typography.bodySmall)

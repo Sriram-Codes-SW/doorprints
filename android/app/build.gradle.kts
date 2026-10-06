@@ -56,6 +56,13 @@ android {
         versionName = "0.1.0"
         // Instrumented smoke tests on an emulator (android-emulator.yml) and in Firebase Test Lab. The test storage
         // service keeps their screenshots; AGP pulls them into build/outputs/connected_android_test_additional_output.
+        // The Android OAuth client id of the system-browser sign-in (docs/15 §2.4, a fallback for phones without Google Play
+        // services). An id is not a secret but it is the owner's, so none is in the repository: the owner puts
+        // GOOGLE_ANDROID_CLIENT_ID in ~/.gradle/gradle.properties (or -P, or the environment). Empty by default: a blank id
+        // makes the browser path unavailable and it opens nothing. Only the characters of a Google client id are kept.
+        val googleClientId = (providers.gradleProperty("GOOGLE_ANDROID_CLIENT_ID").orElse(providers.environmentVariable("GOOGLE_ANDROID_CLIENT_ID")).orNull ?: "")
+            .trim().takeIf { Regex("[A-Za-z0-9._-]+").matches(it) } ?: ""
+        buildConfigField("String", "GOOGLE_ANDROID_CLIENT_ID", "\"$googleClientId\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         testInstrumentationRunnerArguments["useTestStorageService"] = "true"
     }
@@ -90,6 +97,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     packaging {
@@ -120,6 +128,13 @@ android {
         // those.
         error += listOf("MissingTranslation", "ExtraTranslation")
     }
+}
+
+// The Drive wiring's tests run the real services on the same in-memory Drive as :shared's tests (S4b-BL-117/-118): two
+// files of :shared's commonTest (the fake and its faults) are compiled into this module's unit tests; the rest of that folder is not.
+android.sourceSets.getByName("test").kotlin.directories.add("../shared/src/commonTest/kotlin/app/doorprints/drive")
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+    exclude { it.file.path.contains("/shared/src/commonTest/") && it.file.name !in setOf("InMemoryFakeDrive.kt", "FakeDriveFaults.kt") }
 }
 
 // See the robolectricRuntime dependency below and the unit-test system properties after it.
@@ -157,6 +172,12 @@ dependencies {
     implementation(libs.androidx.exifinterface)
 
     implementation(libs.play.services.location)
+    // Drive access token on Android (drive/auth, S4b-BL-117): AuthorizationClient, scope drive.file only.
+    // Only the Authorization API (Drive token) is used: its SMS-retriever (auth-api-phone) and FIDO transitive libraries are not.
+    implementation(libs.play.services.auth) {
+        exclude(group = "com.google.android.gms", module = "play-services-fido")
+        exclude(group = "com.google.android.gms", module = "play-services-auth-api-phone")
+    }
     implementation(libs.kotlinx.coroutines.play.services)
     // JSON in the export, import and Assistant code (the Room checklist converter moved to :shared in CMP-4 P4a).
     implementation(libs.kotlinx.serialization.json)

@@ -94,4 +94,11 @@
     <string name="notif_copy_open">Open the copy</string>
     <string name="notif_copy_share">Share the copy</string>
     <string name="notif_task_stop">Stop this task</string>
+    <!-- S4b-BL-127 (2026-10-06): the device lock notice of Settings > Google Drive, docs/15 section 10.3. -->
+    <string name="drive_lock_heading">Back up to Google Drive</string>
+    <string name="drive_lock_needs">Google Drive backup needs a screen lock on this phone (a PIN, pattern, password, fingerprint or face). Set one in the phone\'s settings, then come back.</string>
+    <string name="drive_lock_paused">Google Drive backup is paused because this phone no longer has a screen lock. Your houses are safe on this phone. Set a screen lock to continue.</string>
+    <string name="drive_lock_open_settings">Open settings</string>
+    <string name="drive_lock_notif_title">Google Drive backup paused</string>
+    <string name="drive_lock_key_lost">Google Drive backup is paused because this phone\'s key store lost the key. Your houses are safe on this phone. Connect to Google Drive again to continue.</string>
 </resources>

@@ -93,4 +93,11 @@
     <string name="notif_copy_open">நகலைத் திற</string>
     <string name="notif_copy_share">நகலைப் பகிர்</string>
     <string name="notif_task_stop">இந்தப் பணியை நிறுத்து</string>
+    <!-- S4b-BL-127 (2026-10-06): the device lock notice of Settings > Google Drive: under review. -->
+    <string name="drive_lock_heading">Google Drive இல் பேக்கப் செய்யவும்</string>
+    <string name="drive_lock_needs">Google Drive காப்புப்பிரதிக்கு இந்த ஃபோனில் திரைப் பூட்டு (PIN, பேட்டர்ன், கடவுச்சொல், கைரேகை அல்லது முகம்) தேவை. ஃபோனின் அமைப்புகளில் அமைத்துவிட்டு, பிறகு திரும்பி வாருங்கள்.</string>
+    <string name="drive_lock_paused">இந்த ஃபோனில் இனி திரைப் பூட்டு இல்லாததால் Google Drive காப்புப்பிரதி இடைநிறுத்தப்பட்டுள்ளது. உங்கள் வீடுகள் இந்த ஃபோனில் பாதுகாப்பாக உள்ளன. தொடர திரைப் பூட்டை அமைக்கவும்.</string>
+    <string name="drive_lock_open_settings">அமைப்புகளைத் திறக்கவும்</string>
+    <string name="drive_lock_notif_title">Google Drive காப்புப்பிரதி இடைநிறுத்தப்பட்டது</string>
+    <string name="drive_lock_key_lost">இந்த ஃபோனின் கீ ஸ்டோர் விசையை இழந்ததால் Google Drive காப்புப்பிரதி இடைநிறுத்தப்பட்டுள்ளது. உங்கள் வீடுகள் இந்த ஃபோனில் பாதுகாப்பாக உள்ளன. தொடர Google Drive உடன் மீண்டும் இணையுங்கள்.</string>
 </resources>

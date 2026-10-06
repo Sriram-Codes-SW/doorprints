@@ -18,10 +18,16 @@
 
 package app.doorprints
 
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import app.doorprints.drive.auth.browser.DriveAuthorizers
+import app.doorprints.drive.wiring.ActivityHooks
+import app.doorprints.drive.wiring.DeferredActivityLauncher
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import app.doorprints.data.ConnectLink
@@ -40,6 +46,25 @@ class MainActivity : ComponentActivity() {
 
     private val deepLinks = MutableStateFlow<DeepLink?>(null)
 
+    /**
+     * Google Drive's two screens for a result (docs/15 §5.5, §10.2): Google's consent screen and, on Android 8 to 9, the
+     * keyguard's confirm screen. Registered here, before the Activity starts, and answered to the process's one launcher
+     * ([ActivityProvider.results]), which a new Activity after a rotation reaches as well.
+     */
+    private val driveConsent = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
+        activities.results.deliver(it.resultCode, it.data)
+    }
+    private val driveConfirm = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        activities.results.deliver(it.resultCode, it.data)
+    }
+    private val driveStarter = object : DeferredActivityLauncher.Starter {
+        override fun start(consent: PendingIntent) = driveConsent.launch(IntentSenderRequest.Builder(consent).build())
+        override fun start(intent: Intent) = driveConfirm.launch(intent)
+    }
+    /** Where the system browser's Google sign-in comes back to (the intent filter for `app.doorprints:/oauth2redirect`). */
+    private val browserRedirect get() = (applicationContext as DoorprintsApp).container.drive.browserRedirect
+    private val activities get() = (applicationContext as DoorprintsApp).container.activities
+
     override fun attachBaseContext(newBase: Context) {
         super.attachBaseContext(AppLocale.wrap(newBase))
     }
@@ -53,7 +78,8 @@ class MainActivity : ComponentActivity() {
         // (AppLocale.set recreates the activity), a dark-mode change or process death, getIntent() still holds the
         // notification's extras while NavController has already restored its back stack, so handling them again
         // pushed the house (or one more new-house form) on top of it on every recreation.
-        if (savedInstanceState == null) handle(intent)
+        // The Drive sign-in's redirect is the pending request's answer, not a deep link: nothing else is done with it.
+        if (savedInstanceState == null && !DriveAuthorizers.deliver(browserRedirect, intent)) handle(intent)
         setContent {
             // The common UI's seams (ADR-23 CMP-3, CMP-5): the platform's (screen reader, permissions) and the app's
             // (data, backup, language). The root and its graph are common code; the intent is read here and handed
@@ -70,11 +96,28 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        activities.register(this, ActivityHooks(driveStarter) { deepLinks.value = it })
+    }
+
+    override fun onStop() {
+        activities.unregister(this)
+        super.onStop()
+    }
+
+    override fun onDestroy() {
+        // Finished for good (not a rotation): a screen still waiting for its answer is closed as cancelled.
+        if (isFinishing) activities.results.cancelPending()
+        super.onDestroy()
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         // The new intent becomes getIntent(), so its extras are the ones handle() removes, and a later recreation
         // does not see the launcher intent's (or an older notification's) extras instead.
         setIntent(intent)
+        if (DriveAuthorizers.deliver(browserRedirect, intent)) return
         handle(intent)
     }
 
