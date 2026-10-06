@@ -124,6 +124,11 @@ jobs:
       # The FSF's "How to Use GNU Licenses": every source file carries the copyright and licence notice (docs/10 §12.6).
       - name: Every source file has the copyright and licence notice
         run: python3 .github/scripts/licence-headers.py --check
+      # SEC-030: third-party actions pinned to a commit SHA, every workflow with top-level permissions.
+      - name: Third-party actions are pinned to a commit SHA
+        run: |
+          python3 .github/scripts/check_action_pins_test.py
+          python3 .github/scripts/check-action-pins.py
       - name: Only allowlisted author and committer emails in the new commits
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
