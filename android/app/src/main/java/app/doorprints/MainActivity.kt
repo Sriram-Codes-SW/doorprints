@@ -25,6 +25,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import app.doorprints.drive.auth.browser.DriveAuthorizers
 import app.doorprints.drive.wiring.ActivityHooks
 import app.doorprints.drive.wiring.DeferredActivityLauncher
 import androidx.activity.compose.setContent
@@ -60,6 +61,8 @@ class MainActivity : ComponentActivity() {
         override fun start(consent: PendingIntent) = driveConsent.launch(IntentSenderRequest.Builder(consent).build())
         override fun start(intent: Intent) = driveConfirm.launch(intent)
     }
+    /** Where the system browser's Google sign-in comes back to (the intent filter for `app.doorprints:/oauth2redirect`). */
+    private val browserRedirect get() = (applicationContext as DoorprintsApp).container.drive.browserRedirect
     private val activities get() = (applicationContext as DoorprintsApp).container.activities
 
     override fun attachBaseContext(newBase: Context) {
@@ -75,7 +78,8 @@ class MainActivity : ComponentActivity() {
         // (AppLocale.set recreates the activity), a dark-mode change or process death, getIntent() still holds the
         // notification's extras while NavController has already restored its back stack, so handling them again
         // pushed the house (or one more new-house form) on top of it on every recreation.
-        if (savedInstanceState == null) handle(intent)
+        // The Drive sign-in's redirect is the pending request's answer, not a deep link: nothing else is done with it.
+        if (savedInstanceState == null && !DriveAuthorizers.deliver(browserRedirect, intent)) handle(intent)
         setContent {
             // The common UI's seams (ADR-23 CMP-3, CMP-5): the platform's (screen reader, permissions) and the app's
             // (data, backup, language). The root and its graph are common code; the intent is read here and handed
@@ -113,6 +117,7 @@ class MainActivity : ComponentActivity() {
         // The new intent becomes getIntent(), so its extras are the ones handle() removes, and a later recreation
         // does not see the launcher intent's (or an older notification's) extras instead.
         setIntent(intent)
+        if (DriveAuthorizers.deliver(browserRedirect, intent)) return
         handle(intent)
     }
 

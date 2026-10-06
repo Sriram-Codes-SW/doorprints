@@ -24,7 +24,7 @@ import android.net.Uri
 import app.doorprints.DoorprintsApp
 import app.doorprints.Notifications
 import app.doorprints.R
-import app.doorprints.hasPlayServices
+import app.doorprints.BuildConfig
 import app.doorprints.data.AndroidRepository
 import app.doorprints.data.AppDatabase
 import app.doorprints.data.Api
@@ -34,6 +34,15 @@ import app.doorprints.deviceauth.ConfirmCredentialLauncher
 import app.doorprints.drive.HttpDriveClient
 import app.doorprints.drive.auth.AndroidDriveTokenProvider
 import app.doorprints.drive.auth.PlayGoogleAuthorizer
+import app.doorprints.drive.auth.browser.ActivityBrowserLauncher
+import app.doorprints.drive.auth.browser.BrowserOAuthConfig
+import app.doorprints.drive.auth.browser.BrowserRedirect
+import app.doorprints.drive.auth.browser.DriveAuthorizers
+import app.doorprints.drive.auth.browser.HttpTokenEndpoint
+import app.doorprints.drive.auth.browser.SealedRefreshTokenStore
+import app.doorprints.drive.auth.browser.playServicesAvailable
+import app.doorprints.drive.device.FileBlobStore
+import app.doorprints.drive.device.KeystoreSecretWrapper
 import app.doorprints.drive.connect.BackupSummary
 import app.doorprints.drive.connect.DriveConnectController
 import app.doorprints.drive.connect.DriveReason
@@ -75,15 +84,39 @@ class DriveServices(
     /** Drive is in use on this phone (the folder was open and has not been disconnected): it replaces the server for sync. */
     val engaged: Boolean get() = light.engaged
 
+    /**
+     * The one place the system browser's Google sign-in comes back to (docs/15 §5.5): `MainActivity` gives it every new
+     * intent ([DriveAuthorizers.deliver]); the browser authorizer waits on it.
+     */
+    val browserRedirect = BrowserRedirect()
+
     val graph: DriveGraph by lazy { build() }
 
     val controller: DriveConnectController get() = graph.controller
 
     private fun build(): DriveGraph {
+        dir.mkdirs() // the sealed refresh token's file is written without making its folder
         val crypto = platformCryptoProvider()
-        val google = PlayGoogleAuthorizer(app)
-        val consent = ConsentBridge({ activities.launcher() }, google::fromActivityResult)
-        val tokens = AndroidDriveTokenProvider(google, { consent.resolverOrNull() })
+        // Play services is the default sign-in; the system browser with PKCE is the fallback for phones without it.
+        // The Play authorizer is built on first use only, so a phone without Play services never constructs it.
+        val play = lazy { PlayGoogleAuthorizer(app) }
+        val parts = DriveAuthorizers.assemble(
+            context = app,
+            config = BrowserOAuthConfig(clientId = { BuildConfig.GOOGLE_ANDROID_CLIENT_ID }),
+            redirect = browserRedirect,
+            launcher = ActivityBrowserLauncher { activities.current() ?: app },
+            endpoint = HttpTokenEndpoint(),
+            store = SealedRefreshTokenStore(
+                KeystoreSecretWrapper(REFRESH_WRAP_ALIAS),
+                FileBlobStore(File(dir, "refresh-token.bin")),
+            ),
+            play = { play.value },
+        )
+        val consent = ConsentBridge({ activities.launcher() }, { code, data -> play.value.fromActivityResult(code, data) })
+        val tokens = AndroidDriveTokenProvider(
+            parts.authorizer,
+            DriveAuthorizers.resolver({ activities.current() != null }, { consent.resolverOrNull() }),
+        )
         val keyguard = { app.getSystemService(KeyguardManager::class.java)?.isDeviceSecure == true }
         val credential = ConfirmCredentialLauncher { title -> confirmCredential(title) }
         val prompt = AndroidDeviceAuth({ activities.context() }, credential)
@@ -106,7 +139,7 @@ class DriveServices(
                     withContext(route.element(backend)) { repository.sync(photosAllowed) }
                 },
                 handBack = repository::resetForServer,
-                configured = hasPlayServices(app),
+                configured = DriveAuthorizers.configured(playServicesAvailable(app), BuildConfig.GOOGLE_ANDROID_CLIENT_ID),
                 clock = System::currentTimeMillis,
                 utcOffsetMinutes = { TimeZone.getDefault().getOffset(System.currentTimeMillis()) / MS_PER_MINUTE },
                 scope = app.appScope,
@@ -187,6 +220,7 @@ class DriveServices(
     companion object {
         const val DIR = "drive"
         const val PREFS_FILE = "prefs.json"
+        private const val REFRESH_WRAP_ALIAS = "doorprints_drive_refresh_wrap"
         private const val KEY_AUTO = DriveConnectController.KEY_AUTO_BACKUP
         private const val MS_PER_MINUTE = 60_000
     }

@@ -152,7 +152,7 @@ Fixes after the review of PR 142 (each mutation applied by hand, the named test 
 
 | Mutation | Test that failed |
 |---|---|
-| hand-back call dropped | aDriveOnlyHouseIsNotLostWhenTheFolderIsGone |
+| hand-back call dropped | aDriveOnlyHouseIsNotLostWhenTheFolderIsGoneAndThePersonDisconnects |
 | failed hand-back still disengages | aFailedHandBackKeepsDriveInUseAndTriesAgainAtTheNextChange |
 | fresh process forgets engagement (seenConnected guard dropped) | aFreshProcessStartingDisconnectedKeepsWhatWasRemembered |
 | READY not remembered | a key waiting for an unlock is probed every time, never remembered as ready |
@@ -173,3 +173,73 @@ Fixes after the review of PR 142 (each mutation applied by hand, the named test 
 | pin probe blocks on a coroutine again | theProbeIsNeverBuiltOnRunBlockingBecauseItRunsOnTheMainThread |
 | deletion grants never evicted | onlyTheNewestGrantsAreKeptSoTheMapDoesNotGrowForEver |
 | staging discard ignores the folder (canonical parent check dropped) | anythingElseIsLeftAlone |
+
+## Final wiring (W2): browser sign-in, sensitive clipboard, folder gone
+
+### 1. Browser PKCE fallback (`drive/auth/browser/DriveAuthorizers.kt`, `DriveServices`, `MainActivity`)
+
+- `DriveServices.browserRedirect` is the one `BrowserRedirect`. `MainActivity` hands every intent to `DriveAuthorizers.deliver(redirect, intent)`
+  from `onCreate` (a real start) and `onNewIntent`; when it returns true nothing else is done with the intent (and its data is emptied, so a
+  recreation cannot replay it). A stale or foreign `app.doorprints:/oauth2redirect` returns false and falls through to the deep-link code, which ignores it.
+- `DriveAuthorizers.assemble` builds `BrowserGoogleAuthorizer` (config from `BuildConfig.GOOGLE_ANDROID_CLIENT_ID`, `ActivityBrowserLauncher`,
+  `HttpTokenEndpoint`, `SealedRefreshTokenStore(KeystoreSecretWrapper("doorprints_drive_refresh_wrap"), FileBlobStore(noBackupFilesDir/drive/refresh-token.bin))`)
+  and picks with `chooseGoogleAuthorizer`. `PlayGoogleAuthorizer` is wrapped in `LazyGoogleAuthorizer`: it is constructed on first use only, so a phone
+  without Play services never constructs it (`Identity.getAuthorizationClient` is not called there).
+- The consent resolver given to the token provider is `BrowserAwareResolver(ConsentBridge-or-null)` **only while an Activity is on screen**; a worker gets
+  null, so the provider says `CONSENT_REQUIRED` and no browser opens by itself.
+- `DriveDeps.configured` is "Play services is there, or a client id was built in": a phone with neither shows "Drive is not available".
+- `FileBlobStore` does not make its folder; `DriveServices.build()` now makes `noBackupFilesDir/drive` first (otherwise the first refresh token write
+  failed silently and the next sign-in asked again).
+- Not wired: the optional Cancel -> `BrowserGoogleAuthorizer.cancel()` (the card has no Cancel while the browser is open; the 5-minute wait ends it as CANCELLED).
+
+### 2. Sensitive clipboard (`wiring/AndroidClipboardSeam.kt`)
+
+`AndroidClipboardSeam(context, sdk)`: `ClipData.newPlainText` plus, from API 33, a `PersistableBundle` on the description with
+`ClipDescription.EXTRA_IS_SENSITIVE = true`; `ClipboardManager.setPrimaryClip`. `DriveSection` passes it as `DriveHost(clipboard = ...)`.
+The level is a constructor seam because Robolectric has only the Android 15 image offline (the gradle cache holds no 13 or 11 image and a new
+dependency is out of scope): the tests pass 33 and 32 and check the flag present and absent.
+
+### 3. Folder gone (`DriveConnectController.folderGone`, `DriveEngagement`, `DriveSection`)
+
+- The controller is the only one that sees `DriveConnection.FolderGone` (it comes from `connect()`, which the card, the background runner's reconnect and
+  *Start again* all use), so the flag lives there: `DriveConnectController.folderGone: StateFlow<Boolean>` (a small edit in `:shared`). It is set **before**
+  the state drops to DISCONNECTED and cleared **after** the state moves on (*Start again*, any other connection result, *Disconnect*, *Delete everything*).
+- `DriveEngagement.next(now, state, folderGone)`: DISCONNECTED/UNAVAILABLE with the flag set keeps `engaged` TRUE (the server stays off for this phone);
+  without the flag it is the person's Disconnect and ends the use as before. A phone that has Drive on and finds the folder gone remembers that it has
+  seen the folder, so the Disconnect that follows in a fresh process is honoured too.
+- `DriveAssembly.watchEngagement` collects `combine(state, folderGone)`: a *Disconnect* pressed on the card while the folder is gone changes only the
+  flag (the state is already DISCONNECTED), and that is what ends the use and runs the hand-back to the server.
+- `DriveGraph.folderGone` is the controller's flow; `DriveSection` gives it to `ControllerDriveActions(controller, folderGone = ...)`.
+  (The brief said a `MutableStateFlow` in `DriveServices`; the flag has to be set inside the controller to be ordered against the state, so the graph exposes it.)
+- Limit: a sync or backup on an already open session that meets a deleted folder reports its own error (not FolderGone); the next connect finds it.
+
+### Owner: supplying the Google client id locally
+
+Add one line to **`~/.gradle/gradle.properties`** (never to the repository):
+
+```
+GOOGLE_ANDROID_CLIENT_ID=1234567890-abcdefgh.apps.googleusercontent.com
+```
+
+(or `-PGOOGLE_ANDROID_CLIENT_ID=...` on the command line, or the same environment variable). Rebuild (`./gradlew :app:assembleDebug`). Empty or missing means the
+browser sign-in is unavailable and opens nothing; an id with characters outside `A-Z a-z 0-9 . _ -` is treated as empty. The id is the one of the **Android**
+OAuth client of docs/15 §2.4 with "Enable custom URI scheme" on (the debug and release builds have their own client, so use the one for the build you install).
+
+### Mutations of W2 (each applied by hand to the production file, the named test failed, file restored)
+
+| Mutation | Test that failed |
+|---|---|
+| Play never chosen | playServicesIsTheSignInWhenItIsAvailableAndTheBrowserStaysClosed |
+| Play authorizer built eagerly | theBrowserIsTheSignInWithoutPlayServicesAndPlayIsNeverBuilt |
+| resolver given with no Activity | withNoActivityThereIsNoResolverSoNoBrowserOpensByItself |
+| card available without a client id | theDriveCardIsAvailableOnlyWithPlayServicesOrAClientId |
+| redirect intent not emptied | theRedirectIntentIsTakenOnceAndEmptied |
+| blank client id accepted | aBlankClientIdIsUnavailableAndOpensNothing |
+| clip flag always set | beforeAndroid13ItIsAPlainCopyWithoutTheFlag |
+| clip flag never set / set to false | onAndroid13TheClipIsMarkedSensitive |
+| folder gone disengages | aFolderFoundGoneKeepsDriveInUseAndShowsTheCardState |
+| fresh process forgets the folder was gone | aFreshProcessThatFindsTheFolderGoneStillHonoursTheDisconnectAfterIt |
+| assembly ignores the flag | disconnectingAfterAFreshProcessFoundTheFolderGoneIsStillTheirs |
+| Disconnect does not clear the flag | disconnectingAfterTheFolderWentHandsTheRowsBackAndClearsTheCard |
+| Start again does not clear the flag | startAgainClearsTheCardAndKeepsDriveInUse |
+| flag set after the state drops | aFolderFoundGoneKeepsDriveInUseAndShowsTheCardState |

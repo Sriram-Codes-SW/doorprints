@@ -47,6 +47,7 @@ import app.doorprints.drive.sync.LocalRows
 import app.doorprints.drive.sync.SyncDeviceIds
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 /** Everything the Drive object graph needs from the platform, as seams, so the JVM tests build the real graph over fakes. */
@@ -93,6 +94,8 @@ class DriveDeps(
 /** The assembled graph. [crypto] is the one provider every Drive piece got (see [DriveAssembly]). */
 class DriveGraph(
     val controller: DriveConnectController,
+    /** The folder was deleted elsewhere and the person has not answered ([DriveConnectController.folderGone]); the card asks. */
+    val folderGone: kotlinx.coroutines.flow.StateFlow<Boolean>,
     val crypto: CryptoProvider,
     val identity: KeystoreDeviceIdentity,
     val gate: DriveGate,
@@ -116,7 +119,7 @@ class DriveGraph(
  *   [DriveGate]: a grant made for the controller is the one the service redeems (one use, 60 s, bound to the operation).
  * - **A removed lock drops local keys only** ([DeviceLockActions] holds no Drive client) and pauses sync before each pass.
  * - **Sync pauses** while a deletion is half done, or while the lock check says so (docs/15 §3.3, §10.3).
- * - **Drive in use** is remembered across restarts ([DriveEngagement]), automatic backup starts on at the first connect,
+ * - **Drive in use** is remembered across restarts ([DriveEngagement]); only the person's *Disconnect* ends it, never a folder found gone, automatic backup starts on at the first connect,
  *   and the pause notice is cleared when the folder is open again with a lock.
  */
 object DriveAssembly {
@@ -147,16 +150,17 @@ object DriveAssembly {
             syncDriver = d.syncPass?.let { pass -> { backend -> pass(backend, controller.photosAllowed()) } },
         )
         watchEngagement(controller, prefs, lockStore, gate, d.scope, d.handBack)
-        return DriveGraph(controller, p, identity, gate, authorizer, backup, deletion, prefs, lockStore, detector)
+        return DriveGraph(controller, controller.folderGone, p, identity, gate, authorizer, backup, deletion, prefs, lockStore, detector)
     }
 
     /** Remembers that Drive is in use ([DriveEngagement]) and forgets the lock pause once the folder is open again with a lock. */
     private fun watchEngagement(controller: DriveConnectController, prefs: FileDrivePrefs, lockStore: FileDriveLockStore, gate: DriveGate, scope: CoroutineScope, handBack: suspend () -> Unit) {
         scope.launch {
             var memory = Engagement(engaged = prefs.engaged)
-            controller.state.collect { state ->
-                var next = DriveEngagement.next(memory, state)
-                // Drive stops being the sync target (Disconnect, or the folder gone: the controller says DISCONNECTED): the rows
+            // Both flows: a *Disconnect* pressed while the folder is gone leaves the state at DISCONNECTED and only clears the flag.
+            combine(controller.state, controller.folderGone, ::Pair).collect { (state, folderGone) ->
+                var next = DriveEngagement.next(memory, state, folderGone)
+                // Drive stops being the sync target (the person's Disconnect; a folder gone elsewhere keeps it in use): the rows
                 // that only went to Drive are sent to the server again first. A failure leaves Drive in use for the next try.
                 if (memory.engaged && !next.engaged) {
                     try {

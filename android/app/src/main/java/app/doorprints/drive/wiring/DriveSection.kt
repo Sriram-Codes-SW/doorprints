@@ -107,7 +107,7 @@ internal fun LockNoticeBlock(notice: LockNotice) {
 private fun DriveCard(drive: DriveServices) {
     val vm: DriveViewModel = viewModel {
         DriveViewModel(
-            ControllerDriveActions(drive.controller),
+            ControllerDriveActions(drive.controller, folderGone = drive.graph.folderGone),
             codec = Dp1EnrolmentCodec(drive.graph.crypto),
             deviceName = { Build.MODEL.orEmpty().ifBlank { "Android phone" } },
         )
@@ -115,6 +115,8 @@ private fun DriveCard(drive: DriveServices) {
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<DriveReason?>(null) }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val clipboard = remember(context) { AndroidClipboardSeam(context) }
     val host = DriveHost(
         onImportBackup = { backup ->
             if (!busy) {
@@ -129,6 +131,7 @@ private fun DriveCard(drive: DriveServices) {
         onSaveCopy = drive::openSaveCopy,
         importBusy = busy,
         importError = error,
+        clipboard = clipboard,
     )
     DriveSettings(vm, scanner = NoQrScanner, host = host)
 }
