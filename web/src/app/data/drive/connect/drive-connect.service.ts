@@ -516,6 +516,25 @@ export class DriveConnectService {
     }
   }
 
+  async deleteFactor(
+    action: DeletionAction,
+  ): Promise<'NONE' | 'PASSKEY' | null> {
+    try {
+      const context = await this.deletionContext();
+      const decision = this.deletionAdapter.decide(action, context);
+      if (decision.outcome === 'REFUSED') {
+        return null;
+      }
+      const factor = decision.requirements.factor;
+      if (factor === 'NONE' || factor === 'PASSKEY') {
+        return factor;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
   async authorizeDelete(
     action: DeletionAction,
     operationId: string,

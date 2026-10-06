@@ -1040,4 +1040,89 @@ describe('DriveConnectService', () => {
       expect(result).toBeNull();
     });
   });
+
+  describe('deleteFactor', () => {
+    it('returns PASSKEY when action requires passkey factor', async () => {
+      const mockAdapter = {
+        preflight: vi.fn(),
+        decide: vi.fn().mockReturnValue({
+          outcome: 'ALLOWED',
+          requirements: { factor: 'PASSKEY', tickBox: true, delaySeconds: 0 },
+        }),
+        authorize: vi.fn(),
+        authorizePolicy: vi.fn(),
+        execute: vi.fn(),
+        resume: vi.fn(),
+        confirmGate: vi.fn(),
+        registerPasskey: vi.fn(),
+        passkeyStatus: vi.fn(),
+      };
+      const service = new DriveConnectService(a.backup, a.sync, mockAdapter as any, { clientId: 'test' }, a.payload.source(), memoryPrefs());
+
+      const result = await service.deleteFactor({ type: 'allBackups' });
+      expect(result).toBe('PASSKEY');
+    });
+
+    it('returns NONE when action requires no special factor', async () => {
+      const mockAdapter = {
+        preflight: vi.fn(),
+        decide: vi.fn().mockReturnValue({
+          outcome: 'ALLOWED',
+          requirements: { factor: 'NONE', tickBox: false, delaySeconds: 0 },
+        }),
+        authorize: vi.fn(),
+        authorizePolicy: vi.fn(),
+        execute: vi.fn(),
+        resume: vi.fn(),
+        confirmGate: vi.fn(),
+        registerPasskey: vi.fn(),
+        passkeyStatus: vi.fn(),
+      };
+      const service = new DriveConnectService(a.backup, a.sync, mockAdapter as any, { clientId: 'test' }, a.payload.source(), memoryPrefs());
+
+      const result = await service.deleteFactor({ type: 'olderBackups' });
+      expect(result).toBe('NONE');
+    });
+
+    it('returns null when decision is REFUSED', async () => {
+      const mockAdapter = {
+        preflight: vi.fn(),
+        decide: vi.fn().mockReturnValue({
+          outcome: 'REFUSED',
+          reason: 'USE_PHONE',
+        }),
+        authorize: vi.fn(),
+        authorizePolicy: vi.fn(),
+        execute: vi.fn(),
+        resume: vi.fn(),
+        confirmGate: vi.fn(),
+        registerPasskey: vi.fn(),
+        passkeyStatus: vi.fn(),
+      };
+      const service = new DriveConnectService(a.backup, a.sync, mockAdapter as any, { clientId: 'test' }, a.payload.source(), memoryPrefs());
+
+      const result = await service.deleteFactor({ type: 'allBackups' });
+      expect(result).toBeNull();
+    });
+
+    it('returns null when decide throws an error', async () => {
+      const mockAdapter = {
+        preflight: vi.fn(),
+        decide: vi.fn().mockImplementation(() => {
+          throw new Error('Decide failed');
+        }),
+        authorize: vi.fn(),
+        authorizePolicy: vi.fn(),
+        execute: vi.fn(),
+        resume: vi.fn(),
+        confirmGate: vi.fn(),
+        registerPasskey: vi.fn(),
+        passkeyStatus: vi.fn(),
+      };
+      const service = new DriveConnectService(a.backup, a.sync, mockAdapter as any, { clientId: 'test' }, a.payload.source(), memoryPrefs());
+
+      const result = await service.deleteFactor({ type: 'allBackups' });
+      expect(result).toBeNull();
+    });
+  });
 });
