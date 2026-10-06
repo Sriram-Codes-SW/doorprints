@@ -231,7 +231,8 @@ class ScreensA11ySweepTest(private val lang: String) {
 
     @Test fun huntSettings() = sweep("hunt settings") {
         val settings by repo.settings.settings.collectAsState(AppSettings())
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        // Scrolls, as Settings does: the trace section grew with the look, the alert and the saved walks.
+        Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             HuntRemindersSection()
             PathTraceSection(settings)
         }

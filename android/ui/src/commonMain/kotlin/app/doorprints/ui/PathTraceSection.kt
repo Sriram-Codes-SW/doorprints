@@ -224,7 +224,7 @@ private fun LookRow(selected: Boolean, title: String, description: String, onSel
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         RadioButton(selected = selected, onClick = null)
-        Column(Modifier.padding(top = 12.dp)) {
+        Column(Modifier.weight(1f).padding(top = 12.dp)) {
             Text(title, style = MaterialTheme.typography.bodyLarge)
             Text(description, style = MaterialTheme.typography.bodySmall)
         }

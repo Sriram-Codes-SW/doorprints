@@ -108,6 +108,7 @@ import app.doorprints.ui.ProvideAppServices
 import app.doorprints.ui.SettingsScreen
 import app.doorprints.shared.model.Criterion
 import app.doorprints.shared.model.HouseStatus
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.StandardTestDispatcher
 import org.junit.After
@@ -283,7 +284,7 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
      */
     private fun shootForm(screen: String, only: Set<String>? = null, content: @Composable () -> Unit) {
         assumeTrue(lang == "en" || (lang == "hi" && !dark))
-        RuntimeEnvironment.setQualifiers("+h4800dp")
+        RuntimeEnvironment.setQualifiers("+h5200dp")
         val headings = mutableMapOf<String, String>()
         show {
             bands.forEach { (name, res) -> if (res != null) headings[name] = stringResource(res) }
@@ -291,7 +292,7 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
         }
         val scroll = compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange))
             .fetchSemanticsNodes().maxOf { it.config[SemanticsProperties.VerticalScrollAxisRange].maxValue() }
-        check(scroll == 0f) { "The house form scrolls by $scroll px in the shot: make the window taller (h4800dp)" }
+        check(scroll == 0f) { "The house form scrolls by $scroll px in the shot: make the window taller (h5200dp)" }
         val image = compose.onRoot().captureToImage().asAndroidBitmap()
         val density = RuntimeEnvironment.getApplication().resources.displayMetrics.density
         // The form ends at its lowest node (the Save button, then its 24 dp spacer), not at the bottom of the window.
@@ -386,6 +387,90 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) { PathTraceSection(settings) }
         }
     }
+    /**
+     * Path trace v2 (docs/11 5.27; S4b-FR-15, S4b-FR-24), English and the light theme only (the repository keeps few, small
+     * pictures): the Map's trace legend with both looks, *Save this walk?* and its house picker, the house page's *Saved
+     * walks*, and *Have I been here?* with a walked and an imprecise answer. The sheets are shown as content: a sheet's own
+     * window is not captured.
+     */
+    private fun englishLightOnly() = assumeTrue(lang == "en" && !dark)
+
+    private val shotWalk = (0..5).map { k ->
+        app.doorprints.shared.trace.TracePoint(12.969 + k * 0.00054, 77.5946, 1_760_000_000_000L + k * 60_000L, 1_760_000_000_000L)
+    }
+    private val shotHouses get() = runBlocking { ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository.houses.first() }
+
+    @Test fun traceLegend() {
+        englishLightOnly()
+        shoot("trace_legend") {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                app.doorprints.ui.TraceLegend(app.doorprints.shared.trace.RepeatLook.CLEAR)
+                app.doorprints.ui.TraceLegend(app.doorprints.shared.trace.RepeatLook.SUBTLE)
+            }
+        }
+    }
+
+    @Test fun walkEnd() {
+        englishLightOnly()
+        shoot("walk_end", "Save this walk?") {
+            app.doorprints.ui.WalkEndSheetContent(app.doorprints.ui.WalkSummary(1_760_000_000_000L, shotWalk), shotHouses, 30, null, {}, {}, {})
+        }
+    }
+
+    @Test fun walkEndPick() {
+        englishLightOnly()
+        shoot("walk_end_pick", "Which house was this walk to?") {
+            app.doorprints.ui.WalkEndSheetContent(
+                app.doorprints.ui.WalkSummary(1_760_000_000_000L, shotWalk), shotHouses, 30, null, {}, {}, {}, initiallyPicking = true,
+            )
+        }
+    }
+
+    @Test fun savedWalks() {
+        englishLightOnly()
+        val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
+        runBlocking {
+            listOf(1_760_000_000_000L, 1_759_000_000_000L).forEach { id ->
+                shotWalk.forEach { p -> repo.saveTrackPoint(TrackPointEntity(at = id + (p.atMs - 1_760_000_000_000L), lat = p.lat, lon = p.lon, accuracyM = 5f, walkId = id)) }
+                repo.saveWalk("a", id)
+            }
+        }
+        shoot("saved_walks", "Saved walks") {
+            Column(Modifier.padding(16.dp)) { app.doorprints.ui.SavedWalksCard("a") {} }
+        }
+    }
+
+    private fun checkAnswer(status: app.doorprints.shared.trace.PlaceCheckStatus, rows: List<app.doorprints.shared.trace.PlaceRow>, fuzzy: Boolean = false) =
+        app.doorprints.ui.PlaceCheckState.Answer(
+            app.doorprints.ui.PlaceKind.HOUSE, 12.97, 77.6,
+            app.doorprints.shared.trace.PlaceCheckResult(status, fuzzy, rows.minOfOrNull { it.distanceM }, rows),
+            listOf(app.doorprints.shared.trace.TraceWalk(shotWalk)),
+        )
+
+    @Test fun placeCheckWalked() {
+        englishLightOnly()
+        val rows = listOf(
+            app.doorprints.shared.trace.PlaceRow(0, 6.0, 1_760_000_100_000L, app.doorprints.shared.trace.PlaceBand.WALKED, app.doorprints.shared.trace.WalkSource.TRACE),
+            app.doorprints.shared.trace.PlaceRow(0, 18.0, 1_759_000_100_000L, app.doorprints.shared.trace.PlaceBand.WALKED, app.doorprints.shared.trace.WalkSource.SAVED),
+        )
+        shoot("place_check_walked", "Did I walk past this house?") {
+            app.doorprints.ui.PlaceCheckSheetContent(checkAnswer(app.doorprints.shared.trace.PlaceCheckStatus.WALKED, rows), {}, {}, {})
+        }
+    }
+
+    @Test fun placeCheckImprecise() {
+        englishLightOnly()
+        shoot("place_check_imprecise", "Location not precise enough.") {
+            app.doorprints.ui.PlaceCheckSheetContent(
+                app.doorprints.ui.PlaceCheckState.Answer(
+                    app.doorprints.ui.PlaceKind.HERE, 12.97, 77.6,
+                    app.doorprints.shared.trace.PlaceCheckResult(app.doorprints.shared.trace.PlaceCheckStatus.IMPRECISE, false, null, emptyList()), emptyList(), 70.0,
+                ),
+                {}, {}, {},
+            )
+        }
+    }
+
     /**
      * Offline maps (docs/11 5.20): Settings' section with one saved area and one still saving, and the *Save this area
      * for offline* dialog's body with its estimate and the mobile-data note, over a fake store (the real one is
