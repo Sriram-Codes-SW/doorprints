@@ -1,0 +1,29 @@
+[
+  {
+    "file": "web/src/app/data/device-auth/recovery-factor.ts",
+    "find": "false,\n    ['sign'],",
+    "description": "Test (d): make key extractable by changing false to true",
+    "named_test": "(d) the key is non-extractable and export fails"
+  },
+  {
+    "file": "web/src/app/data/device-auth/recovery-factor.ts",
+    "find": "key.bytes",
+    "replace": "new Uint8Array(16)",
+    "description": "Test (b): different recovery key gives different proof",
+    "named_test": "(b) a different recovery key gives a different proof"
+  },
+  {
+    "file": "web/src/app/data/device-auth/recovery-factor.ts",
+    "find": "'doorprints/deletion-proof/recovery/1'",
+    "replace": "'doorprints/deletion-proof/1'",
+    "description": "Test (e-alt): wrong info string breaks domain separation",
+    "named_test": "(e-alt) known-answer test: documented HKDF parameters produce expected results"
+  },
+  {
+    "file": "web/src/app/data/device-auth/recovery-factor.ts",
+    "find": "utf8('doorprints/deletion-proof/recovery')",
+    "replace": "utf8('doorprints/deletion-proof/1')",
+    "description": "Test (e-alt): wrong salt string breaks domain separation",
+    "named_test": "(e-alt) known-answer test: documented HKDF parameters produce expected results"
+  }
+]
