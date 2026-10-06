@@ -1,5 +1,7 @@
 # Android Drive enrolment, pairing and revocation: notes (S4b-BL-126, Kotlin)
 
+> Session record, kept as written (2026-10-06). The decisions are in [15](../15-google-drive-backup-and-sharing.md) §9.5 i (the phones' enrolment, no camera scan yet) and §9.10; where this note and 15 differ, 15 is right.
+
 Kotlin twin of the website's enrolment code. Everything is in `android/shared` common code (no `java.*`); tests run on
 the host (`:shared:testAndroidHostTest`) and the pure ones in `commonTest`.
 

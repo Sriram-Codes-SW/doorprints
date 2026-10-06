@@ -1,5 +1,7 @@
 # Android Drive, A2: device key, device lock, delete authorisation (S4b-BL-127, device-key part of S4b-BL-126)
 
+> Session record, kept as written (2026-10-06). The decisions are in [15](../15-google-drive-backup-and-sharing.md) §9.10 (the device key, the wrapped scalar on API 26-30, the lock) and §10.2 (the device check as built); where this note and 15 differ, 15 is right.
+
 Notes for the lead. Code: `android/app/src/main/java/app/doorprints/drive/device/`; tests: the same path under
 `android/app/src/test/java/`. Design: docs/15 §10.1-§10.3, §9.9.
 
@@ -25,8 +27,7 @@ Notes for the lead. Code: `android/app/src/main/java/app/doorprints/drive/device
    Keystore. minSdk is 26, so on API 26-30 the design cannot be met literally: there the scalar is wrapped under a
    non-exportable Keystore AES key and stored in `noBackupFilesDir`; it is unwrapped for one agreement (milliseconds) and
    overwritten. At rest and across a lock removal it is as strong as the Keystore (the AES key is invalidated with the lock);
-   in process memory during an agreement a rooted phone or a debugger could read it. docs/15 §9.9 does not describe this
-   fallback (it says the Keystore path is a later ticket), so **this is a new decision: confirm it or raise minSdk for Drive to 31**.
+   in process memory during an agreement a rooted phone or a debugger could read it. this is **the fallback docs/15 §9.2 already specifies** (RR-21; an earlier version of this note wrongly said the design did not describe it), with its own test row (§9.8, TC-I-44 planned). Decided by the review of 2026-10-06 as acceptable; it is recorded in 15 §9.10 as built.
 3. **Auth windows (§10.3).** Both device-key variants use `setUserAuthenticationRequired(true)` with a 6-hour window
    (`setUserAuthenticationParameters` on API 30+, the deprecated duration setter below). Android deletes or invalidates such keys
    when the lock is removed; making one without a lock fails, which is the same rule as "Drive can only be switched on with a lock".

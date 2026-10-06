@@ -1,5 +1,7 @@
 # The phones' Google Drive screens: notes for the lead and for translation review
 
+> Session record, kept as written (2026-10-06). The decisions are in [15](../15-google-drive-backup-and-sharing.md) §5.7 (the screens), §3.1, §3.4 and §9.5 i; where this note and 15 differ, 15 is right.
+
 S4b-BL-116 to -119 and -126, as the person sees them on a phone. Code: `android/ui/src/commonMain/kotlin/app/doorprints/ui/drive/`
 (package `app.doorprints.ui.drive`, common code for Android and iOS). Flows: `docs/15` sections 2 to 5, the device check in
 section 10. The reference is the website's `web/src/app/pages/data/drive/*`.

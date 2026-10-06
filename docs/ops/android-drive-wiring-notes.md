@@ -1,5 +1,7 @@
 # Android Drive, wiring: notes for the lead and for the owner's phone test
 
+> Session record, kept as written (2026-10-06). The decisions are in [15](../15-google-drive-backup-and-sharing.md) §1.3 (Drive replaces the server while in use), §7.2 (the object graph) and §10.2; where this note and 15 differ, 15 is right.
+
 S4b-BL-117, -118 and -127 as one working feature. The pieces (controller, token provider, stores, device key and lock,
 enrolment, the phones' screens) were built apart; this change puts them together in `:app`
 (`android/app/src/main/java/app/doorprints/drive/wiring/`), places the section in Settings and adds the background run.

@@ -1,5 +1,7 @@
 # The phones' Drive controller: API, states and strings
 
+> Session record, kept as written (2026-10-06). The decisions are in [15](../15-google-drive-backup-and-sharing.md) §3.4, §7.2 and §10.2 (the controller's rules; the phones have no recovery-key factor); where this note and 15 differ, 15 is right.
+
 Notes for the UI agent and the lead (S4b-BL-117, with -116, -118 and -119 as the screens see them). The code is
 `android/shared/src/commonMain/kotlin/app/doorprints/drive/connect/` (package `app.doorprints.drive.connect`); it is
 the Kotlin twin of the website's `web/src/app/data/drive/connect/` (`drive-connect.service.ts`, `delete-flow.ts` and the

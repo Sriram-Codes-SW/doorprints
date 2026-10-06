@@ -1,5 +1,7 @@
 # iPhone CryptoProvider: design notes (S4b-BL-131)
 
+> Session record, kept as written (2026-10-06). The decisions are in [15](../15-google-drive-backup-and-sharing.md) §9.10 (the iPhone provider and what only macOS CI proves); where this note and 15 differ, 15 is right.
+
 | Field | Value |
 |---|---|
 | Document | Design decision, evidence and CI proof list for the iPhone's `CryptoProvider` |
