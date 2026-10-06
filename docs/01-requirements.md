@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Requirements Specification |
-| Version | 0.44 |
+| Version | 0.45 |
 | Date | 2026-10-06 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -56,6 +56,7 @@
 | 0.42 | 2026-10-06 | Claude (Code), lead | **The path trace, version 2** (owner request of 2026-10-06; [11](11-feature-parity-and-export-spec.md) 5.27.0..5.27.11): new FR-102..FR-107 (repeat-aware trace, the person's choice of look, the sound alert, saved walks, the website's trace, the shared algorithm), new PRV-030 and PRV-031; PRV-028 amended (saved walks and the website's trace stay local only); RTM rows with the planned tests. |
 | 0.43 | 2026-10-06 | Claude (Code), lead | Senior review of the path trace design applied ([11](11-feature-parity-and-export-spec.md) v0.57): PRV-028 and PRV-030 state the Android phone-to-phone transfer honestly; FR-104, FR-105 and FR-106 gain the bad-fix, walk-just-finished, watermark and hidden-pause rules. |
 | 0.44 | 2026-10-06 | Claude (Code), lead | **An on-demand place check** (owner request of 2026-10-06; [11](11-feature-parity-and-export-spec.md) 5.27.13, S4b-FR-24): new FR-108 (*Have I been here?*) and PRV-032 (on demand, no network request, shown never stored or sent); RTM rows with the planned tests. |
+| 0.45 | 2026-10-06 | Claude (Code), lead | **Place-check review applied** ([ops/path-trace-check-review.md](ops/path-trace-check-review.md)): PRV-032 gains the website's back-stack and live-region rule (no result in a URL, `history.state` or storage; the live region cleared on close) and says no list-wide or automatic form of the check is planned (LATER, 11 question 18). |
 
 Related: [README](README.md) · [Threat model](02-threat-model.md) · [Design](03-design.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Test plan](06-test-plan.md) · [AI docs](ai/)
 
@@ -380,7 +381,7 @@ Location history and third-party contact details are the most sensitive data her
 | PRV-029 | **Sharing updates stays in the person's hands** ([11](11-feature-parity-and-export-spec.md) 5.28). The names updates are shared with, and when, stay on the phone: never synced, exported or in the file. The file holds only what the person chose (scope, photos, contact details with the copy's warning) and goes only where they send it, through an app of their choosing; Doorprints sends nothing itself. A received file is validated as any import before anything is written. | M | Done (Android, S4b-FR-3) |
 | PRV-030 | **A saved walk is the house's and goes with it.** A walk is linked to one house; it is hidden at once when the house is deleted and deleted when the delete is final (the Undo window closing, the next start, a sync or an import), on the phones, and with the house on the website; *Delete all my data* removes every walk; the house's delete confirmation says so. The Android phone-to-phone transfer copies saved walks with the database (PRV-028): the one place a walk leaves a phone, stated rather than hidden. | M | Plan (S4b-FR-14, -17) |
 | PRV-031 | **The website never records in the background and never without being asked.** The location permission is requested only when the person starts a walk; recording runs only while the page is visible; the page says that browsers do not track in the background; no walk point is sent anywhere. | M | Plan (S4b-FR-17) |
-| PRV-032 | **The place check is on demand and leaves nothing behind.** It runs only when the person presses the button; it makes no network request; the location fix it asks for (only for *where I am now*, with the usual permission flow, one fix) is used for that one answer and never stored, never added to the trace, never logged or sent; the answer is shown and then discarded (no history of checks); the check on a house does not leave the device; no log, breadcrumb or crash text holds a place, a distance, a date or a count; the saved-walk rule (PRV-028, PRV-030) is unchanged. | M | Plan (S4b-FR-24) |
+| PRV-032 | **The place check is on demand and leaves nothing behind.** It runs only when the person presses the button; it makes no network request; the location fix it asks for (only for *where I am now*, with the usual permission flow, one fix) is used for that one answer and never stored, never added to the trace, never logged or sent; the answer is shown and then discarded (no history of checks); the check on a house does not leave the device; no log, breadcrumb or crash text holds a place, a distance, a date or a count; on the website no result, place or distance is put in a URL, `history.state` or session or local storage, and the app's live region is cleared when the answer is closed; there is no list-wide or automatic form of the check (a *Walked past* filter or badge on the house list is not in S4b: owner decision of 2026-10-06, [11](11-feature-parity-and-export-spec.md) question 18); the saved-walk rule (PRV-028, PRV-030) is unchanged. | M | Plan (S4b-FR-24) |
 
 ## 10. AI requirements
 
