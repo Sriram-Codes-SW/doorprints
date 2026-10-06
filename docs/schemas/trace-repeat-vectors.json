@@ -1,6 +1,6 @@
 {
  "format": "doorprints-trace-repeat-vectors/1",
- "status": "proposed",
+ "status": "confirmed",
  "statusNote": "Written with the specification (docs/11 section 5.27.3), before any code. The first implementation (Kotlin and TypeScript) must run every case; if one fails, the specification or the case is corrected in a documented change to docs/11 and this file, never by editing an expected value to make a test pass. When both stacks pass every case, change status to \"confirmed\".",
  "constants": {
   "earthRadiusM": 6371000,
