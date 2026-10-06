@@ -304,6 +304,20 @@ export interface MapStyleWatch {
 }
 
 /**
+ * Determine the i18n message key for a map error.
+ * Distinguishes between worker load failures and offline/other errors.
+ * @param error - The error object from MapLibre
+ * @param online - Whether the browser reports being online
+ * @returns The i18n key for the error message
+ */
+export function mapErrorMessageKey(error: unknown, online: boolean): 'map.workerFailed' | 'map.offline' {
+  if (!online) return 'map.offline';
+  const msg = error instanceof Error ? error.message : String(error);
+  if (msg.includes('Worker failed to load')) return 'map.workerFailed';
+  return 'map.offline';
+}
+
+/**
  * Tells the page whether the map can actually be drawn, and brings it back when the connection returns.
  *
  * The style comes from tiles.openfreemap.org, which `sw.js` deliberately never caches (third-party tiles, their
@@ -313,7 +327,8 @@ export interface MapStyleWatch {
  *  * `onChange(false)` when the style has not loaded and either the request failed (`error` before `style.load`)
  *    or the browser says it is offline; the page then shows an overlay that explains it and offers the ways that
  *    work without a map (the list, "use my location", typed coordinates);
- *  * `onChange(true)` on every `style.load`;
+ *  * `onChange(true)` on every `style.load` (unless the map's worker failed to load: then `onChange(false,
+ *    'map.workerFailed')`, before or after the style);
  *  * on the window `online` event, while no style has loaded, the style is requested again with `diff: false`
  *    (a fresh `Style`, not a diff against the one that never loaded). The page adds its sources and layers on
  *    `style.load`, not on the one-off `load`, so they come back with it, and so do India's boundaries
@@ -321,18 +336,34 @@ export interface MapStyleWatch {
  *
  * Tile errors after the style has loaded are left to MapLibre: the pins still draw on the background.
  */
-export function watchMapStyle(map: MlMap, onChange: (available: boolean) => void): MapStyleWatch {
+export function watchMapStyle(
+  map: MlMap,
+  onChange: (available: boolean, messageKey?: 'map.workerFailed' | 'map.offline') => void,
+): MapStyleWatch {
   let loaded = false;
+  // A worker that failed to load is a separate event from the style loading (MapLibre parses the style JSON on the
+  // main thread and fires `style.load` without waiting for the worker), so it can arrive before or after
+  // `style.load`. Either way the map has no tiles, and the panel has to keep saying so.
+  let workerFailed = false;
   const reload = () => {
     if (loaded) return;
     map.setStyle(MAP_STYLE_URL, { diff: false });
   };
   map.on('style.load', () => {
     loaded = true;
-    onChange(true);
+    if (workerFailed) onChange(false, 'map.workerFailed');
+    else onChange(true);
   });
-  map.on('error', () => {
-    if (!loaded) onChange(false);
+  map.on('error', (event: { error?: unknown }) => {
+    const online = typeof navigator === 'undefined' || navigator.onLine !== false;
+    const key = mapErrorMessageKey(event?.error, online);
+    if (key === 'map.workerFailed') {
+      workerFailed = true;
+      onChange(false, key);
+      return;
+    }
+    if (loaded) return;
+    onChange(false, key);
   });
   const onOffline = () => {
     if (!loaded) onChange(false);

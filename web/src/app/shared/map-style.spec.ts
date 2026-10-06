@@ -16,8 +16,8 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { describe, expect, it } from 'vitest';
-import { ensureMapStyles, foldAttribution } from './map-style';
+import { describe, expect, it, vi } from 'vitest';
+import { ensureMapStyles, foldAttribution, mapErrorMessageKey, watchMapStyle } from './map-style';
 
 /** A map container with MapLibre's credits control in the given state, `width` px wide. */
 function mapRoot(width: number, classes: string): HTMLElement {
@@ -73,5 +73,109 @@ describe('ensureMapStyles (MapLibre CSS out of the render-blocking stylesheet)',
     expect(doc.documentElement.classList.contains('maplibre-css-loading')).toBe(true);
     links[0].dispatchEvent(new Event('load'));
     expect(doc.documentElement.classList.contains('maplibre-css-loading')).toBe(false);
+  });
+});
+
+describe('mapErrorMessageKey (distinguish worker failure from offline)', () => {
+  it('workerFailedOnline: worker error + online -> map.workerFailed', () => {
+    const error = new Error('Worker failed to load. Check that the worker URL is correct.');
+    expect(mapErrorMessageKey(error, true)).toBe('map.workerFailed');
+  });
+
+  it('workerFailedOffline: worker error + offline -> map.offline', () => {
+    const error = new Error('Worker failed to load. Check that the worker URL is correct.');
+    expect(mapErrorMessageKey(error, false)).toBe('map.offline');
+  });
+
+  it('tileErrorOnline: tile error + online -> map.offline (unchanged)', () => {
+    const error = new Error('Failed to load tile');
+    expect(mapErrorMessageKey(error, true)).toBe('map.offline');
+  });
+});
+
+/** A map that records its listeners, so a test can fire MapLibre's events at watchMapStyle. */
+function fakeMap() {
+  const handlers = new Map<string, (event?: unknown) => void>();
+  const map = {
+    on: (name: string, handler: (event?: unknown) => void) => handlers.set(name, handler),
+    setStyle: () => undefined,
+  };
+  return { map: map as unknown as Parameters<typeof watchMapStyle>[0], fire: (name: string, event?: unknown) => handlers.get(name)!(event) };
+}
+
+describe('watchMapStyle (what the map panel is told when the style does not load)', () => {
+  const workerError = { error: new Error('Worker failed to load. Check that the worker URL is correct.') };
+  const tileError = { error: new Error('Failed to fetch') };
+
+  it('reports a worker that failed to load, while online, as map.workerFailed', () => {
+    const { map, fire } = fakeMap();
+    const calls: unknown[][] = [];
+    watchMapStyle(map, (ok, key) => calls.push([ok, key]));
+    fire('error', workerError);
+    expect(calls).toEqual([[false, 'map.workerFailed']]);
+  });
+
+  it('reports any other error as the offline message, as before', () => {
+    const { map, fire } = fakeMap();
+    const calls: unknown[][] = [];
+    watchMapStyle(map, (ok, key) => calls.push([ok, key]));
+    fire('error', tileError);
+    expect(calls).toEqual([[false, 'map.offline']]);
+  });
+
+  it('keeps the offline message for a worker error while the browser is offline', () => {
+    const online = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    try {
+      const { map, fire } = fakeMap();
+      const calls: unknown[][] = [];
+      watchMapStyle(map, (ok, key) => calls.push([ok, key]));
+      calls.length = 0; // the call made at start because the browser is offline
+      fire('error', workerError);
+      expect(calls).toEqual([[false, 'map.offline']]);
+    } finally {
+      online.mockRestore();
+    }
+  });
+
+  it('says nothing about a tile error after the style has loaded', () => {
+    const { map, fire } = fakeMap();
+    const calls: unknown[][] = [];
+    watchMapStyle(map, (ok, key) => calls.push([ok, key]));
+    fire('style.load');
+    calls.length = 0;
+    fire('error', tileError);
+    expect(calls).toEqual([]);
+  });
+
+  it('keeps saying the worker failed when the style loads after the worker error', () => {
+    const { map, fire } = fakeMap();
+    const calls: unknown[][] = [];
+    watchMapStyle(map, (ok, key) => calls.push([ok, key]));
+    fire('error', workerError);
+    fire('style.load');
+    expect(calls).toEqual([
+      [false, 'map.workerFailed'],
+      [false, 'map.workerFailed'],
+    ]);
+  });
+
+  it('reports a worker error that arrives after the style has loaded', () => {
+    const { map, fire } = fakeMap();
+    const calls: unknown[][] = [];
+    watchMapStyle(map, (ok, key) => calls.push([ok, key]));
+    fire('style.load');
+    fire('error', workerError);
+    expect(calls).toEqual([
+      [true, undefined],
+      [false, 'map.workerFailed'],
+    ]);
+  });
+
+  it('still reports the map available when the style loads and nothing failed', () => {
+    const { map, fire } = fakeMap();
+    const calls: unknown[][] = [];
+    watchMapStyle(map, (ok, key) => calls.push([ok, key]));
+    fire('style.load');
+    expect(calls).toEqual([[true, undefined]]);
   });
 });

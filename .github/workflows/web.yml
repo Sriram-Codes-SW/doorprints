@@ -321,6 +321,48 @@ jobs:
             }
           }
 
+          // 7. MapLibre GL worker files (S4b-BL-54): the build copies maplibre-gl-worker.mjs and maplibre-gl-shared.mjs
+          //    from node_modules/maplibre-gl/dist via angular.json assets glob. If a release renames/splits them, the
+          //    build stays green and the deployed worker URL gets the "**" rewrite with index.html (a map with no tiles).
+          //    So: both files are present, non-empty, start with the license header, and the worker imports the shared file.
+          for (const file of ['maplibre-gl-worker.mjs', 'maplibre-gl-shared.mjs']) {
+            if (!required(file, `MapLibre GL ${file.replace('maplibre-gl-', '').replace('.mjs', '')}`)) {
+              continue; // required() already logged the error
+            }
+            const content = read(file);
+            if (!content.startsWith('/**')) {
+              errors.push(`${file} does not start with license header comment (/** ...)`);
+            }
+          }
+          const workerContent = read('maplibre-gl-worker.mjs');
+          if (!workerContent.includes('from') || !new RegExp(`from\\s*["']\\.\/maplibre-gl-shared\\.mjs["']`).test(workerContent)) {
+            errors.push(`maplibre-gl-worker.mjs does not import from "./maplibre-gl-shared.mjs"`);
+          } else {
+            console.log(`ok: maplibre-gl-worker.mjs imports "./maplibre-gl-shared.mjs"`);
+          }
+
+          // S4b-BL-55: Check that the worker and shared file use the same MapLibre version.
+          // Both files are copied from the same maplibre-gl package; mismatched versions break every tile.
+          // Version format: maplibre-gl-js/blob/v6.11.2/LICENSE.txt (extracted from header).
+          function extractMaplibreVersion(content) {
+            const match = content.match(/maplibre-gl-js\/blob\/v([\d.]+)\//);
+            return match ? match[1] : null;
+          }
+          const sharedContent = read('maplibre-gl-shared.mjs');
+          const workerVersion = extractMaplibreVersion(workerContent);
+          const sharedVersion = extractMaplibreVersion(sharedContent);
+          if (!workerVersion) {
+            errors.push(`maplibre-gl-worker.mjs has no version in header`);
+          }
+          if (!sharedVersion) {
+            errors.push(`maplibre-gl-shared.mjs has no version in header`);
+          }
+          if (workerVersion && sharedVersion && workerVersion !== sharedVersion) {
+            errors.push(`MapLibre version mismatch: worker v${workerVersion} vs shared v${sharedVersion}`);
+          } else if (workerVersion && sharedVersion) {
+            console.log(`ok: maplibre-gl-worker.mjs and maplibre-gl-shared.mjs both v${workerVersion}`);
+          }
+
           for (const w of warnings) console.log(`::warning title=PWA check::${w}`);
           for (const e of errors) console.log(`::error title=PWA check::${e}`);
           if (errors.length > 0) {

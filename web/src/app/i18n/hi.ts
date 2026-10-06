@@ -529,6 +529,7 @@ export const hi: Dict = {
   'share.copyFailed': 'कॉपी नहीं हो सका। टेक्स्ट चुनकर खुद कॉपी करें।',
   'error.storageFull': 'इस ब्राउज़र में Doorprints के लिए जगह नहीं बची है। पहले बैकअप सहेजें, फिर कुछ तस्वीरें हटाएँ।',
   'map.offline': 'नक्शे के लिए इंटरनेट कनेक्शन चाहिए। आपके मकान सूची में अब भी हैं। अभी नया मकान जोड़ने के लिए अपनी जगह का उपयोग करें या अक्षांश और देशांतर लिखें।',
+  'map.workerFailed': 'मैप अपना सहायक शुरू नहीं कर सका। पेज फिर से लोड करें। अगर यह बार-बार विफल हो, तो पहले आपका डेटा पेज में “एक प्रति सहेजें” से अपने मकान सहेज लें, फिर इस साइट का डेटा साफ़ करके Doorprints फिर खोलें।',
   'map.addAtMyLocation': 'मेरी जगह पर जोड़ें',
   'map.typeCoords': 'अक्षांश और देशांतर लिखें',
   'map.onServerTitle': 'आपके मकान आपके सर्वर पर हैं',
@@ -1202,6 +1203,7 @@ export const hi: Dict = {
   'imp.floorsLeftBlank': 'जिन मकानों की मंज़िल फ़ाइल में -5 से 200 के बाहर है; उनकी मंज़िल खाली छोड़ी जाएगी',
   // Google Drive on the website (S4b-BL-117, S4b-BL-73). Under review (owner rule: hi/ta/te ship marked under review).
   'driveConnect.heading': 'गूगल ड्राइव को बैकअप करें',
+  'driveConnect.intro': 'अपने ही Google Drive में एन्क्रिप्टेड बैकअप रखें। Doorprints का कोई खाता नहीं है; Google को केवल Doorprints की बनाई एन्क्रिप्टेड फ़ाइलें दिखती हैं।',
   'driveConnect.unavailable': 'इस ब्राउज़र पर गूगल ड्राइव कनेक्ट उपलब्ध नहीं है।',
   'driveConnect.connect': 'गूगल ड्राइव से कनेक्ट करें',
   'driveConnect.connecting': 'साइन इन किया जा रहा है…',

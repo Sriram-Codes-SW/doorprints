@@ -294,6 +294,10 @@ devices.
    the device in front of you, then choose **Approve**.
 4. Within a few seconds the app says it is connected.
 
+![The website's Connect page: the example address https://my-pc.tail1234.ts.net typed under API address (URL) (1), then the Get a code button (2)](images/web-connect-url.png)
+
+*The address in the picture is only an example. Use your own from step 7.*
+
 On the server computer itself, there is a shortcut for the website: on the owner page, choose **Make a QR code**, then
 **Open the website connected to this server**. The website asks once whether to connect, and connects.
 

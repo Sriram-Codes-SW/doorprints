@@ -10,6 +10,8 @@ Android and iPhone Drive work is paused. This page describes the **website**.
 
 ## Connect (website)
 
+![Your data on the website, the Back up to Google Drive card: the Connect to Google Drive button (1)](images/web-drive-connect.png)
+
 1. Open **Your data**.
 2. Under **Back up to Google Drive**, choose **Connect to Google Drive** and sign in with Google.
 3. Doorprints shows a **recovery key once**. Copy it and keep it somewhere safe. Tick **I have saved my recovery key

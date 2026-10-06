@@ -24,7 +24,7 @@
   }
 
   @if (state() === 'Disconnected' && !error()) {
-    <p>{{ 'data.intro' | t }}</p>
+    <p>{{ 'driveConnect.intro' | t }}</p>
     <button type="button" class="btn btn-primary" (click)="onConnect()" [disabled]="busy()">
       {{ 'driveConnect.connect' | t }}
     </button>

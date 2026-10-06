@@ -546,6 +546,7 @@ export const en = {
   'share.copyFailed': 'Could not copy. Select the text and copy it yourself.',
   'error.storageFull': 'This browser has no space left for Doorprints. Save a backup, then remove some photos.',
   'map.offline': 'The map needs an internet connection. Your houses are still in the list. To add one now, use your location or type the latitude and longitude.',
+  'map.workerFailed': 'The map could not start its helper. Reload the page. If it keeps failing, use Save a copy on Your data first, then clear this site\'s data and open Doorprints again.',
   'map.addAtMyLocation': 'Add at my location',
   'map.typeCoords': 'Type latitude and longitude',
   'map.onServerTitle': 'Your houses are on your server',
@@ -1219,6 +1220,7 @@ export const en = {
   'imp.floorsLeftBlank': 'Houses whose floor in the file is outside -5 to 200; their floor is left blank',
   // Google Drive connect page (S4b-BL-117, S4b-BL-73, docs/15 §9.4)
   'driveConnect.heading': 'Back up to Google Drive',
+  'driveConnect.intro': 'Keep encrypted backups in your own Google Drive. There is no Doorprints account; Google sees only encrypted files that Doorprints made.',
   'driveConnect.unavailable': 'Google Drive connect is not available on this browser.',
   'driveConnect.connect': 'Connect to Google Drive',
   'driveConnect.connecting': 'Signing in…',

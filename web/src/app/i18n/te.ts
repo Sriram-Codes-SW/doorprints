@@ -529,6 +529,7 @@ export const te: Dict = {
   'share.copyFailed': 'కాపీ చేయలేకపోయాం. టెక్స్ట్‌ను ఎంచుకుని మీరే కాపీ చేయండి.',
   'error.storageFull': 'ఈ బ్రౌజర్‌లో Doorprints కోసం స్థలం మిగలలేదు. ముందుగా బ్యాకప్ సేవ్ చేసి, తర్వాత కొన్ని ఫోటోలను తొలగించండి.',
   'map.offline': 'మ్యాప్‌కు ఇంటర్నెట్ కనెక్షన్ అవసరం. మీ ఇళ్లు జాబితాలో ఇంకా ఉన్నాయి. ఇప్పుడే ఇల్లు చేర్చడానికి మీ స్థానాన్ని వాడండి లేదా అక్షాంశం, రేఖాంశం టైప్ చేయండి.',
+  'map.workerFailed': 'మ్యాప్ తన సహాయక భాగాన్ని ప్రారంభించలేకపోయింది. పేజీని మళ్లీ లోడ్ చేయండి. అది మళ్లీ మళ్లీ విఫలమైతే, ముందు మీ డేటాలో “ఒక కాపీ సేవ్ చేయండి” తో మీ ఇళ్లను సేవ్ చేసుకుని, ఆ తర్వాత ఈ సైట్ డేటాను తొలగించి Doorprints ను మళ్లీ తెరవండి.',
   'map.addAtMyLocation': 'నా స్థానంలో చేర్చండి',
   'map.typeCoords': 'అక్షాంశం, రేఖాంశం టైప్ చేయండి',
   'map.onServerTitle': 'మీ ఇళ్లు మీ సర్వర్‌లో ఉన్నాయి',
@@ -1202,6 +1203,7 @@ export const te: Dict = {
   'imp.floorsLeftBlank': 'ఫైల్‌లో అంతస్తు -5 నుండి 200 పరిధి బయట ఉన్న ఇళ్లు; వాటి అంతస్తు ఖాళీగా వదిలివేయబడుతుంది',
   // Google Drive on the website (S4b-BL-117, S4b-BL-73). Under review (owner rule: hi/ta/te ship marked under review).
   'driveConnect.heading': 'Google Drive కి బ్యాకప్ చేయండి',
+  'driveConnect.intro': 'మీ స్వంత Google Drive లో ఎన్‌క్రిప్ట్ చేసిన బ్యాకప్‌లను ఉంచండి. Doorprints ఖాతా లేదు; Doorprints చేసిన ఎన్‌క్రిప్ట్ ఫైళ్లను మాత్రమే Google చూస్తుంది.',
   'driveConnect.unavailable': 'ఈ బ్రౌజర్‌లో Google Drive కనెక్ట్ అందుబాటులో లేదు.',
   'driveConnect.connect': 'Google Drive కు కనెక్ట్ చేయండి',
   'driveConnect.connecting': 'సైన్ ఇన్ చేస్తున్నారు…',

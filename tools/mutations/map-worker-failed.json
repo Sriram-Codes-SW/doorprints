@@ -1,0 +1,47 @@
+{
+  "spec": "web/src/app/shared/map-style.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/shared/map-style.ts",
+      "find": "if (!online) return 'map.offline';",
+      "replace": "",
+      "expect": "worker error while the browser is offline"
+    },
+    {
+      "file": "web/src/app/shared/map-style.ts",
+      "find": "if (msg.includes('Worker failed to load')) return 'map.workerFailed';",
+      "replace": "return 'map.workerFailed';",
+      "expect": "any other error as the offline message"
+    },
+    {
+      "file": "web/src/app/shared/map-style.ts",
+      "find": "const key = mapErrorMessageKey(event?.error, online);",
+      "replace": "const key = mapErrorMessageKey(undefined, online);",
+      "expect": "worker that failed to load, while online"
+    },
+    {
+      "file": "web/src/app/shared/map-style.ts",
+      "find": "    if (loaded) return;\n    onChange(false, key);",
+      "replace": "    onChange(false, key);",
+      "expect": "a tile error after the style has loaded"
+    },
+    {
+      "file": "web/src/app/shared/map-style.ts",
+      "find": "      workerFailed = true;\n",
+      "replace": "",
+      "expect": "keeps saying the worker failed when the style loads after"
+    },
+    {
+      "file": "web/src/app/shared/map-style.ts",
+      "find": "    if (workerFailed) onChange(false, 'map.workerFailed');\n    else onChange(true);",
+      "replace": "    onChange(true);",
+      "expect": "keeps saying the worker failed when the style loads after"
+    },
+    {
+      "file": "web/src/app/shared/map-style.ts",
+      "find": "    if (key === 'map.workerFailed') {\n      workerFailed = true;\n      onChange(false, key);\n      return;\n    }\n",
+      "replace": "",
+      "expect": "reports a worker error that arrives after the style has loaded"
+    }
+  ]
+}
