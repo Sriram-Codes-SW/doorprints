@@ -304,6 +304,20 @@ export interface MapStyleWatch {
 }
 
 /**
+ * Determine the i18n message key for a map error.
+ * Distinguishes between worker load failures and offline/other errors.
+ * @param error - The error object from MapLibre
+ * @param online - Whether the browser reports being online
+ * @returns The i18n key for the error message
+ */
+export function mapErrorMessageKey(error: unknown, online: boolean): 'map.workerFailed' | 'map.offline' {
+  if (!online) return 'map.offline';
+  const msg = error instanceof Error ? error.message : String(error);
+  if (msg.includes('Worker failed to load')) return 'map.workerFailed';
+  return 'map.offline';
+}
+
+/**
  * Tells the page whether the map can actually be drawn, and brings it back when the connection returns.
  *
  * The style comes from tiles.openfreemap.org, which `sw.js` deliberately never caches (third-party tiles, their

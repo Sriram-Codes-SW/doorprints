@@ -17,7 +17,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { ensureMapStyles, foldAttribution } from './map-style';
+import { ensureMapStyles, foldAttribution, mapErrorMessageKey } from './map-style';
 
 /** A map container with MapLibre's credits control in the given state, `width` px wide. */
 function mapRoot(width: number, classes: string): HTMLElement {
@@ -73,5 +73,22 @@ describe('ensureMapStyles (MapLibre CSS out of the render-blocking stylesheet)',
     expect(doc.documentElement.classList.contains('maplibre-css-loading')).toBe(true);
     links[0].dispatchEvent(new Event('load'));
     expect(doc.documentElement.classList.contains('maplibre-css-loading')).toBe(false);
+  });
+});
+
+describe('mapErrorMessageKey (distinguish worker failure from offline)', () => {
+  it('workerFailedOnline: worker error + online -> map.workerFailed', () => {
+    const error = new Error('Worker failed to load. Check that the worker URL is correct.');
+    expect(mapErrorMessageKey(error, true)).toBe('map.workerFailed');
+  });
+
+  it('workerFailedOffline: worker error + offline -> map.offline', () => {
+    const error = new Error('Worker failed to load. Check that the worker URL is correct.');
+    expect(mapErrorMessageKey(error, false)).toBe('map.offline');
+  });
+
+  it('tileErrorOnline: tile error + online -> map.offline (unchanged)', () => {
+    const error = new Error('Failed to load tile');
+    expect(mapErrorMessageKey(error, true)).toBe('map.offline');
   });
 });
