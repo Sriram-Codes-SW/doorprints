@@ -29,7 +29,7 @@ import { RecoveryKey } from '../../crypto/recovery-key';
 import { BACKUP_FORMATS_READ } from '../../../export/backup-export';
 import { DRIVE_LAYOUT, DriveError, FOLDER_MIME, MULTIPART_LIMIT } from '../drive-client';
 import type { DriveClient, DriveFile, UploadTarget } from '../drive-client';
-import { downloadVerified, ensureFolder, listAll, markComplete, uploadResumable } from '../drive-ops';
+import { downloadVerified, ensureFolder, markComplete, uploadResumable } from '../drive-ops';
 import { BackupLister } from './backup-listing';
 import { backupName, BACKUP_MIME, BACKUP_PARTIAL_PREFIX } from './backup-names';
 import { selectRetention } from './backup-retention';
@@ -44,13 +44,11 @@ import type { BackupSource, DeviceIdentity, DriveDeviceState, DriveStateStore, F
 import { DriveProblem } from './drive-backup-results';
 import type { BackupListing, BackupOutcome, CreateOutcome, DriveBackup, DriveConnection, ReadyFolder, TidyReport } from './drive-backup-results';
 import { DriveImportService } from './drive-import.service';
+import { CONTROL_NAME, FolderFiles, JSON_MIME, KEYS_NAME, KIND_CONTROL, KIND_KEYS } from './folder-files';
+export { CONTROL_NAME, JSON_MIME, KEYS_NAME, KIND_CONTROL, KIND_KEYS };
 import type { LockRunner } from './lock-runner';
 import { WebLockRunner } from './lock-runner';
 
-export const KIND_KEYS = 'keys';
-export const KIND_CONTROL = 'control';
-export const KEYS_NAME = 'keys.json';
-export const CONTROL_NAME = 'doorprints.json';
 
 /** The enrolled device listed the newcomer and wrapped the folder key for that public key alone. */
 export type ApproveDeviceOutcome =
@@ -68,7 +66,6 @@ export interface RevokeDeviceOutcome {
   readonly connection: DriveConnection;
   readonly recoveryKey: RecoveryKey | null;
 }
-export const JSON_MIME = 'application/json';
 /** A backup ZIP is at most 1 GiB of contents, plus its directory. */
 export const MAX_BACKUP_PLAINTEXT = 1024 * 1024 * 1024 + 64 * 1024 * 1024;
 /** A partial file that does not verify is put in the bin after a day (docs/15 §1.4 item 2). */
@@ -98,6 +95,7 @@ export class DriveBackupService {
   private readonly keysFile: KeysFile;
   private readonly controlFile: ControlFile;
   private readonly lister: BackupLister;
+  private readonly files: FolderFiles;
   private readonly myKid: Uint8Array;
   /** The import side, over the same Drive, crypto and scratch space. */
   readonly imports: DriveImportService;
@@ -117,6 +115,7 @@ export class DriveBackupService {
     this.keysFile = new KeysFile(p);
     this.controlFile = new ControlFile(p);
     this.lister = new BackupLister(drive, p);
+    this.files = new FolderFiles(drive);
     this.myKid = kidOf(p, device.key.publicKey);
     this.imports = new DriveImportService(drive, p, scratch);
   }
@@ -130,7 +129,7 @@ export class DriveBackupService {
       const root = await ensureFolder(this.drive, DRIVE_LAYOUT.root, null, false, st.rootId);
       if (!root) return st.rootId != null && st.creatingRootId == null ? { kind: 'FOLDER_GONE' } : { kind: 'NO_FOLDER' };
       if (root.id !== st.rootId) await this.state.save({ ...st, rootId: root.id, keysId: null, controlId: null, backupsId: null });
-      const keys = await this.findKind(root.id, KIND_KEYS, root.id === st.rootId ? st.keysId : null);
+      const keys = await this.files.findKind(root.id, KIND_KEYS, root.id === st.rootId ? st.keysId : null);
       if (!keys) {
         // Only an empty shell starts again. A creating mark does not override a file that is still there.
         if (await this.folderIsEmptyShell(root.id)) return { kind: 'NO_FOLDER' };
@@ -199,7 +198,7 @@ export class DriveBackupService {
         let finishEmptyShell = false;
         if (existing && st.creatingRootId !== existing.id) {
           const guard = new KeysGuard(this.p, this.trust.keys(existing.id));
-          const keys = await this.findKind(existing.id, KIND_KEYS, st.keysId);
+          const keys = await this.files.findKind(existing.id, KIND_KEYS, st.keysId);
           if ((await guard.watermark()) != null && keys) {
             // We're already pinned to this folder (created in this tab or another).
             const bytes = await downloadVerified(this.drive, keys.id);
@@ -240,9 +239,9 @@ export class DriveBackupService {
         // Saved before the upload, so a later reload can tell this list from one wrapped to the same public key.
         const creatingKeysHash = sha256Of(this.p, written.bytes);
         await this.state.save({ ...(await this.state.load()), creatingKeysHash });
-        const keysId = await this.uploadSmall(root.id, KEYS_NAME, KIND_KEYS, written.bytes);
+        const keysId = await this.files.uploadSmall(root.id, KEYS_NAME, KIND_KEYS, written.bytes);
         const control = await this.controlFile.create(written.opened, now);
-        const controlId = await this.uploadSmall(root.id, CONTROL_NAME, KIND_CONTROL, control.bytes);
+        const controlId = await this.files.uploadSmall(root.id, CONTROL_NAME, KIND_CONTROL, control.bytes);
         const backups = (await ensureFolder(this.drive, DRIVE_LAYOUT.backups, root.id, true))!;
         await this.controlFile.accept(control.body, this.trust.control(root.id));
         await guard.pinCreated(written);
@@ -273,7 +272,7 @@ export class DriveBackupService {
       if (!opened.body.devices.some((d) => hex(d.kid) === hex(this.myKid))) {
         const approver = opened.body.recovery!.kid;
         const written = await this.keysFile.addDevice(opened, approver, { publicKey: this.device.key.publicKey, name: this.device.name, platform: this.device.platform }, this.clock());
-        await this.writeKeys(keys.id, written.bytes);
+        await this.files.writeKeys(keys.id, written.bytes);
         await guard.acceptWritten(written);
         opened = written.opened;
       }
@@ -308,7 +307,7 @@ export class DriveBackupService {
         { publicKey, name, platform },
         this.clock(),
       );
-      await this.writeKeys(located.keys.id, written.bytes);
+      await this.files.writeKeys(located.keys.id, written.bytes);
       await guard.acceptWritten(written);
       const kid = kidOf(this.p, publicKey);
       const entry = written.opened.body.devices.find((d) => equalBytes(d.kid, kid));
@@ -407,7 +406,7 @@ export class DriveBackupService {
       const guard = new KeysGuard(this.p, this.trust.keys(located.rootId));
       const opened = await this.keysFile.open(located.bytes, this.device.key, guard);
       const written = await this.keysFile.newEpoch(opened, this.clock(), { revokeKid: kid, newRecovery: recovery });
-      await this.writeKeys(located.keys.id, written.bytes);
+      await this.files.writeKeys(located.keys.id, written.bytes);
       await guard.acceptWritten(written);
       return this.ready(located.rootId, located.keys.id, written.opened);
     });
@@ -597,7 +596,7 @@ export class DriveBackupService {
     const st = await this.state.load();
     const known = st.rootId === rootId ? st.controlId : null;
     const controlStore = this.trust.control(rootId);
-    const controlMeta = await this.findKind(rootId, KIND_CONTROL, known);
+    const controlMeta = await this.files.findKind(rootId, KIND_CONTROL, known);
     let controlId: string;
     let body: ControlBody;
     if (!controlMeta) {
@@ -605,7 +604,7 @@ export class DriveBackupService {
       const seen = await controlStore.load();
       const base: ControlBody = { revision: seen?.revision ?? 0, epoch: opened.epoch, createdAt: this.clock(), encryption: CONTROL_ENCRYPTION, backupsDeletedAt: seen?.backupsDeletedAt ?? null };
       const written = await this.controlFile.next(opened, base);
-      controlId = await this.uploadSmall(rootId, CONTROL_NAME, KIND_CONTROL, written.bytes);
+      controlId = await this.files.uploadSmall(rootId, CONTROL_NAME, KIND_CONTROL, written.bytes);
       await this.controlFile.accept(written.body, controlStore);
       body = written.body;
     } else {
@@ -630,7 +629,7 @@ export class DriveBackupService {
     const st = await this.state.load();
     const root = await ensureFolder(this.drive, DRIVE_LAYOUT.root, null, false, st.rootId);
     if (!root) return null;
-    const keys = await this.findKind(root.id, KIND_KEYS, root.id === st.rootId ? st.keysId : null);
+    const keys = await this.files.findKind(root.id, KIND_KEYS, root.id === st.rootId ? st.keysId : null);
     if (!keys) throw new FolderWithoutKeys();
     return { rootId: root.id, keys, bytes: await downloadVerified(this.drive, keys.id) };
   }
@@ -661,50 +660,12 @@ export class DriveBackupService {
   }
 
   /** A file of `kind` in the folder: the remembered id first (a listing may lag), else the oldest listed. */
-  private async findKind(rootId: string, kind: string, knownId: string | null): Promise<DriveFile | null> {
-    if (knownId != null) {
-      const known = await this.fileIfPresent(knownId);
-      if (known && this.isKindFile(known, rootId, kind)) return known;
-    }
-    const page = await this.drive.list({ parentId: rootId, appProperties: { [DRIVE_LAYOUT.kind]: kind } });
-    const listed = page.files.find((f) => f.mimeType !== FOLDER_MIME);
-    if (listed) return listed;
-    // An appProperties query can lag behind the parent listing (docs/15 §7.1). A name match is only used to
-    // refuse a folder, never to trust its bytes: the opener still checks the MAC.
-    const name = kind === KIND_KEYS ? KEYS_NAME : kind === KIND_CONTROL ? CONTROL_NAME : null;
-    if (name != null) {
-      for (const f of await listAll(this.drive, { parentId: rootId })) {
-        if (this.isKindFile(f, rootId, kind)) return f;
-      }
-    }
-    if (page.incompleteSearch) throw new DriveError('SERVER', 0, null, 'incompleteSearch');
-    return null;
-  }
-
-  private async fileIfPresent(fileId: string): Promise<DriveFile | null> {
-    try {
-      return await this.drive.getFile(fileId);
-    } catch (e) {
-      if (e instanceof DriveError && e.kind === 'NOT_FOUND') return null;
-      throw e;
-    }
-  }
-
-  /** The kind marker, or the canonical name. Empty `parents` still counts: some answers omit them. A file in another folder does not. */
-  private isKindFile(f: DriveFile, rootId: string, kind: string): boolean {
-    if (f.trashed || f.mimeType === FOLDER_MIME) return false;
-    const name = kind === KIND_KEYS ? KEYS_NAME : kind === KIND_CONTROL ? CONTROL_NAME : null;
-    const marked = f.appProperties[DRIVE_LAYOUT.kind] === kind || (name != null && f.name === name);
-    if (!marked) return false;
-    return f.parents.length === 0 || f.parents.includes(rootId);
-  }
-
   /**
    * A folder that is not an empty shell: a key list is `FOLDER_EXISTS` (it is not missing); any other file is
    * `FOLDER_WITHOUT_KEYS`. Neither path bins or overwrites a file.
    */
   private async refuseOccupied(rootId: string, knownKeysId: string | null): Promise<DriveConnection> {
-    const keys = await this.findKind(rootId, KIND_KEYS, knownKeysId);
+    const keys = await this.files.findKind(rootId, KIND_KEYS, knownKeysId);
     return { kind: 'ERROR', problem: new DriveProblem(keys ? 'FOLDER_EXISTS' : 'FOLDER_WITHOUT_KEYS') };
   }
 
@@ -720,7 +681,7 @@ export class DriveBackupService {
       const id = pending.pop()!;
       if (seenIds.has(id)) continue;
       seenIds.add(id);
-      for (const f of await this.listEveryChild(id)) {
+      for (const f of await this.files.listEveryChild(id)) {
         seen++;
         if (seen > 40) return false;
         if (f.mimeType !== FOLDER_MIME) return false;
@@ -809,36 +770,6 @@ export class DriveBackupService {
     const keysPin = await new KeysGuard(this.p, this.trust.keys(rootId)).watermark();
     const controlPin = await this.trust.control(rootId).load();
     return keysPin == null && controlPin == null;
-  }
-
-  private async listEveryChild(parentId: string): Promise<DriveFile[]> {
-    const out: DriveFile[] = [];
-    let token: string | null = null;
-    for (let i = 0; i < 20; i++) {
-      const page = await this.drive.list({ parentId, trashed: null }, token, 100);
-      if (page.incompleteSearch) throw new DriveError('SERVER', 0, null, 'incompleteSearch');
-      out.push(...page.files);
-      token = page.nextPageToken;
-      if (token == null) return out;
-    }
-    throw new DriveError('SERVER', 0, null, 'incompleteSearch');
-  }
-
-  /** Uploads a small file of `kind` into the folder and reads it back: Drive must hold exactly `bytes`. */
-  private async uploadSmall(rootId: string, name: string, kind: string, bytes: Uint8Array): Promise<string> {
-    const f = await this.drive.upload({ kind: 'new', file: { name, mimeType: JSON_MIME, parents: [rootId], appProperties: { [DRIVE_LAYOUT.kind]: kind } } }, bytes);
-    await this.readBack(f.id, bytes);
-    return f.id;
-  }
-
-  private async writeKeys(keysId: string, bytes: Uint8Array): Promise<void> {
-    await this.drive.upload({ kind: 'existing', fileId: keysId, mimeType: JSON_MIME }, bytes);
-    await this.readBack(keysId, bytes);
-  }
-
-  private async readBack(fileId: string, bytes: Uint8Array): Promise<void> {
-    const got = await downloadVerified(this.drive, fileId);
-    if (!equalBytes(got, bytes)) throw new DriveError('CORRUPT', 0, null, 'readBack');
   }
 
   private recoveryHint(bytes: Uint8Array): boolean {
