@@ -19,7 +19,7 @@
 // Tests for tools/check-specs.mjs: `node --test tools/*.test.mjs`
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { specProblems, importsOf } from './check-specs.mjs';
+import { specProblems, importsOf, escapeRegExp } from './check-specs.mjs';
 
 const real = `import { describe, expect, it } from 'vitest';
 import { maplibreWorkerProblems } from '../../../scripts/maplibre-worker-check.mjs';
@@ -74,4 +74,18 @@ it('y', () => {});`;
 test('importsOf reads default, named, aliased and namespace imports', () => {
   const found = importsOf(`import D, { a as b, type C } from './m'; import * as ns from '../n';`);
   assert.deepEqual(found.map((f) => f.names), [['D', 'b', 'C'], ['ns']]);
+});
+
+test('escapeRegExp escapes every metacharacter, backslash included, so the text matches literally', () => {
+  const text = 'a.b*c+d?e^f$g{h}i(j)k|l[m]n\\o';
+  assert.equal(new RegExp(`^${escapeRegExp(text)}$`).test(text), true);
+  assert.equal(new RegExp(`^${escapeRegExp('a\\b')}$`).test('a\\b'), true);
+  assert.equal(new RegExp(`^${escapeRegExp('a.c')}$`).test('abc'), false);
+});
+
+test('a name with a dollar sign is found as used', () => {
+  const src = `import { it } from 'vitest';
+import { $localize } from './localize';
+it('y', () => { $localize('x'); });`;
+  assert.deepEqual(specProblems(src), []);
 });

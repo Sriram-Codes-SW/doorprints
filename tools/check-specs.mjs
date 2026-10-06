@@ -47,6 +47,11 @@ function* specs(dir) {
 const isTooling = (from) =>
   !from.startsWith('.') || /(\.spec|\.mock|\.fake|\.testing|test-helpers?|-fakes?)(\.ts|\.mjs)?$/.test(from) || /\/testing\//.test(from);
 
+/** The text with every regular-expression metacharacter (backslash included) escaped, to match it literally. */
+export function escapeRegExp(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 /** The imported names and the module they come from, for every import statement of the source. */
 export function importsOf(source) {
   const found = [];
@@ -78,7 +83,7 @@ export function specProblems(source) {
   body = body.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`\\])\/\/.*$/gm, '$1');
   // A spec that ignores one of its imports is only untidy; one that uses none of them tests nothing it imports.
   const names = imports.flatMap((i) => i.names);
-  const used = names.filter((name) => new RegExp(`(?<![\\w$.])${name.replace(/\$/g, '\\$')}(?![\\w$])`).test(body));
+  const used = names.filter((name) => new RegExp(`(?<![\\w$.])${escapeRegExp(name)}(?![\\w$])`).test(body));
   if (names.length > 0 && used.length === 0) {
     return [`imports ${names.join(', ')} from production code but uses none of it`];
   }
