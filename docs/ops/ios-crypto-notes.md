@@ -107,3 +107,8 @@ covers the pure arithmetic only.
    Embedding one dpx vector in a common test is a cheap next step.
 5. A timing note: the `aesGcmAcrossLengthsMatchesNode` 4 kB case and the 1,000,000-byte SHA-256 show how slow GHASH is; if the
    simulator job's time grows noticeably, add the windowed multiplier.
+
+
+## Lead's follow-up (2026-10-06)
+
+`IosGcm.kt` (`Gcm`) and `IosP256.kt` (`P256Base`) and their tests `IosGcmTest`, `IosP256Test` are pure Kotlin (no `platform.*`), so they moved to `commonMain` and `commonTest`: they now run on every host-test run (5 and 7 tests), and the iOS compile still passes. The lead re-ran three of the mutations on them (tag check dropped, `ROUNDS` 12 to 1, and the rest of the table's classes) and each was caught by the named test. Still only provable on macOS CI: everything that calls `platform.*` (the `IosCryptoProvider` itself).
