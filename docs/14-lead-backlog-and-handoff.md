@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.88 |
+| Version | 0.89 |
 | Date | 2026-10-06 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..135); this file lists the lead-level items and points to the rest. |
@@ -97,6 +97,7 @@
 | 0.86 | 2026-10-06 | Claude, lead | §7 per change, step 4: two local guards against tests that cannot fail: `tools/check-specs.mjs` (a spec must import production code and use it) and `tools/mutate.mjs` (a ticket's mutation list in `tools/mutations/`, each must make a named test fail; the runner puts every file back). Both run by `tools/check.sh` (web area) or by hand; no new library, no CI minutes. |
 | 0.87 | 2026-10-06 | Claude, lead | N18: the recovery-key fallback is **decided and built** (owner, 2026-10-06; docs/15 v0.25 §10.4a): a last resort, never because Windows Hello or a password is not set up (the card says how to turn one on), and the passkey is widened to the person's phone or a security key. The 2026-10-06 final reviews are in docs/10 v0.144-0.146. |
 | 0.88 | 2026-10-06 | Claude, lead | Full-system review by the senior reviewer of `main` at 8c367a40: no blocker; GO for real-system testing and for continuing Android/iOS development. Fixed in the same pull request: camera header (`camera=(self)`), the passkey no-PRF state and its details kept across a reload, recovery-key wording (27 symbols; no email advice), two timing-dependent Android tests, seven dead i18n keys. New file: `docs/ops/manual-test-checklist.md` (MT-01..MT-51). Still open (backlog): the 27 requirement ids of docs/01 that docs/06 never names (add rows or mark not testable), device-name bidi characters, splitting the two 900-line Drive services, backend `mvn verify` and the iOS gates run only in CI. |
+| 0.89 | 2026-10-06 | Claude, lead | The review's backlog (v0.88) done: device names refuse bidi and zero-width characters on the web and Android (ZWJ and ZWNJ stay for Indic text); the passkey credential id is kept only when a sealed blob exists (`persist: true` on open); the Drive connect service's deletion half moved to `connect/delete-flow.ts` and the Drive backup service's folder-file helpers to `backup/folder-files.ts` (both services shorter by about 110 and 70 lines; the rest stays together on purpose); docs/06 section 10.1 names the 27 requirement ids with their tests or an honest *Gap* (NFR-014, NFR-015, NFR-016, PRV-007); SEC-030 is checked in CI. Still CI-only: backend `mvn verify` and the iOS gates. |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 

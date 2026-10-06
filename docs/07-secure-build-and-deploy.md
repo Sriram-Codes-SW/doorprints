@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Secure build, CI/CD and deployment guide |
-| Version | 0.59 |
+| Version | 0.60 |
 | Date | 2026-10-05 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -71,6 +71,7 @@
 | 0.57 | 2026-10-03 | Cursor Agent | gitleaks: the Drive website work was squash-merged as `cc5b5a3`, so the 2026-10-02 `.gitleaksignore` fingerprints do not match the copy on `main`. The 33 `generic-api-key` findings on that commit are listed by fingerprint as well (the type name `P256PrivateKey`, and known-answer hex/base64 in `docs/schemas/hpke-vectors.json` and `dpx-vectors.json`). The earlier fingerprints stay, for those commits only. No path allowlist. |
 | 0.58 | 2026-10-05 | Claude (Haiku) | §2.1 heading note: `Cross-Origin-Opener-Policy` sends `same-origin-allow-popups` (for Google sign-in) instead of `same-origin` as originally documented. |
 | 0.59 | 2026-10-06 | Claude | Full-system review (senior reviewer): the website's `Permissions-Policy` had `camera=()`, which blocks the QR camera scan on the live site; now `camera=(self)` (microphone, payment and usb stay off). |
+| 0.60 | 2026-10-06 | Claude | SEC-030 is enforced: the Security workflow's *Third-party actions are pinned to a commit SHA* step runs `.github/scripts/check-action-pins.py` (every third-party action pinned to a full SHA, `actions/*` and `github/*` may use a tag, every workflow has top-level `permissions`) and its unit test. |
 
 Related: [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Runbook](08-operations-runbook.md) · [AI docs](ai/)
 

@@ -231,7 +231,8 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
     salt: Uint8Array,
     evalOptions?: { persist?: boolean; useStoredCredential?: boolean },
   ): Promise<PrfResult> {
-    const persist = evalOptions?.persist !== false;
+    // Only an open (a sealed blob already exists) asks to keep the id; a seal that is still being made must not.
+    const persist = evalOptions?.persist === true;
     // Opens keep using the stored passkey. A registration probe must pass false: otherwise an
     // already stored id is asserted, and its PRF output would be sealed under the new credential.
     const useStored = evalOptions?.useStoredCredential !== false;
@@ -317,7 +318,7 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
         return { kind: 'NOT_SUPPORTED' };
       }
 
-      // A registration probe must not count as success: the sealed blob is what the deletion flow keeps.
+      // Kept only when the caller says a sealed blob already exists (opening): the blob is what the deletion flow keeps.
       if (persist && (!this.credentialId || this.credentialId.length === 0)) {
         await this.commitRegistration(targetId);
       }

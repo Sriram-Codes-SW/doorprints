@@ -177,12 +177,22 @@ export function bodyJson(b: KeysBody): Uint8Array {
   return j.bytes();
 }
 
-/** 1..64 UTF-16 units, no control characters, no unpaired surrogate (Kotlin `validNameOrNull`). */
+/**
+ * Characters that change how neighbouring text reads or hide themselves: bidi controls (U+061C, U+200E, U+200F,
+ * U+202A..202E, U+2066..2069), zero-width space and joiners-that-are-not-letters (U+200B, U+2060, U+FEFF), and the
+ * line and paragraph separators (U+2028, U+2029). U+200C and U+200D stay: Hindi, Tamil and Telugu text needs them.
+ * Same list as Kotlin `validNameOrNull`.
+ */
+function isHiddenOrBidi(c: number): boolean {
+  return c === 0x061c || c === 0x200b || c === 0x200e || c === 0x200f || (c >= 0x2028 && c <= 0x202e) || c === 0x2060 || (c >= 0x2066 && c <= 0x2069) || c === 0xfeff;
+}
+
+/** 1..64 UTF-16 units, no control, hidden or bidi characters, no unpaired surrogate (Kotlin `validNameOrNull`). */
 export function validName(name: string): boolean {
   if (name.length === 0 || name.length > 64) return false;
   for (let i = 0; i < name.length; i++) {
     const c = name.charCodeAt(i);
-    if (c < 0x20 || (c >= 0x7f && c <= 0x9f)) return false;
+    if (c < 0x20 || (c >= 0x7f && c <= 0x9f) || isHiddenOrBidi(c)) return false;
     if (c >= 0xd800 && c <= 0xdbff) {
       const n = i + 1 < name.length ? name.charCodeAt(i + 1) : 0;
       if (!(n >= 0xdc00 && n <= 0xdfff)) return false;

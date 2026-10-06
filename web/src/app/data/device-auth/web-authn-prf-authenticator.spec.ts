@@ -738,6 +738,26 @@ describe("WebAuthnPrfAuthenticator", () => {
       expect((result as { kind: "OK"; output: Uint8Array }).output).toHaveLength(32);
     });
 
+    it("keeps the credential id only when the caller says a sealed blob exists (persist: true)", async () => {
+      const key = "doorprints-webauthn-credential-id";
+      const prepare = async () => {
+        const store = createStore();
+        const auth = new WebAuthnPrfAuthenticator(store.get, store.set);
+        const credId = await auth.registerPasskey("Test User"); // registration alone stores nothing
+        const salt = new Uint8Array(32);
+        crypto.getRandomValues(salt);
+        return { store, auth, credId: credId!, salt };
+      };
+
+      const sealing = await prepare();
+      expect((await sealing.auth.evaluate(sealing.credId, sealing.salt)).kind).toBe("OK");
+      expect(await sealing.store.get(key)).toBeUndefined(); // a seal still being made leaves no id behind
+
+      const opening = await prepare();
+      expect((await opening.auth.evaluate(opening.credId, opening.salt, { persist: true })).kind).toBe("OK");
+      expect(await opening.store.get(key)).toBeDefined(); // an open re-keeps the id if the browser lost it
+    });
+
     it("returns NOT_SUPPORTED when navigator is undefined", async () => {
       Object.defineProperty(globalThis, "navigator", {
         value: undefined,

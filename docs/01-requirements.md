@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Requirements Specification |
-| Version | 0.40 |
+| Version | 0.41 |
 | Date | 2026-09-29 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -52,6 +52,7 @@
 | 0.38 | 2026-09-29 | Claude (Code), lead | PRV-001: Hunt mode on iPhone (S4b-BL-69) collects in the background through Core Location under *When in use*, with the indicator shown; never *Always*. |
 | 0.39 | 2026-09-30 | Claude (Code), lead | NFR-004: saved areas draw the map offline on both phones (S4b-FR-6, [11](11-feature-parity-and-export-spec.md) 5.20). |
 | 0.40 | 2026-09-30 | Claude (Code), lead | New PRV-029: sharing updates (S4b-FR-3) keeps the names on the phone; the file is what the person chose to send. |
+| 0.41 | 2026-10-06 | Claude | RTM row SEC-026..SEC-030: SEC-030 is checked in CI by `check-action-pins.py`; the 27 ids the full-system review found unnamed in 06 are listed with their tests in 06 section 10.1. |
 
 Related: [README](README.md) · [Threat model](02-threat-model.md) · [Design](03-design.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Test plan](06-test-plan.md) · [AI docs](ai/)
 
@@ -502,7 +503,7 @@ Design sections refer to [03-design.md](03-design.md). Tests refer to [06-test-p
 | SEC-021, SEC-022 | 03 §12 | `MainActivity`, `Notifications` | TC-S-06, TC-M-07 |
 | SEC-023 | 03 §9 | `application.yml` management | TC-I-02 |
 | SEC-024 | 07 | `backend/Dockerfile`, `backend/db/Dockerfile`, `docker-compose.yml` | TC-S-05, TC-S-14 |
-| SEC-026..SEC-030 | 03 §12, 07, 09 | `RequestSizeLimitFilter`, `SyncVersions`, `ApiClient` (`:shared`, no redirects, content-type check), `docker-compose.yml`, workflows | TC-I-12, TC-I-14, TC-S-13, TC-U-35, CI |
+| SEC-026..SEC-030 | 03 §12, 07, 09 | `RequestSizeLimitFilter`, `SyncVersions`, `ApiClient` (`:shared`, no redirects, content-type check), `docker-compose.yml`, workflows | TC-I-12, TC-I-14, TC-S-13, TC-U-35, CI (SEC-030: `check-action-pins.py`) |
 | SEC-041 | [schemas/README.md](schemas/README.md), 03 §16 | `shared/export/Backup.kt` (`BackupFormat`, `BackupValidation`), `app/export/BackupReader.kt`, `backend/backup/BackupController` | TC-U-28, TC-S-17, `BackupApiTest`, `BackupParityTest` |
 | SEC-042 | 03 §16.3 | `shared/export/HtmlWriter.kt`, `CsvWriter.kt`, `XlsxWriter.kt`, `MarkdownWriter.kt`; `web/src/app/export/*.ts` | TC-U-27, TC-S-16 |
 | SEC-044 | 03 §16.4 | `web/public/sw.js`, `web/src/app/pages/data/data-page.ts` (clear) | TC-S-19 |

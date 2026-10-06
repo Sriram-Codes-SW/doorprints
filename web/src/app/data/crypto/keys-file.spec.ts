@@ -24,7 +24,7 @@ import type { P256PrivateKey } from './crypto-provider';
 import { Dpx } from './dpx';
 import { chainWrapKey, deriveFolderBits, hmacFromBase, HPKE_INFO, importFolderBase, keyId, kidOf, macKey, WrapAad } from './folder-key';
 import { Hpke } from './hpke';
-import { bodyJson, KeysError, KeysFile, OpenedKeys } from './keys-file';
+import { bodyJson, KeysError, KeysFile, OpenedKeys, validName } from './keys-file';
 import type { KeysBody, KeysErrorKind, WrittenKeys } from './keys-file';
 import { KeysGuard, revokedEpochRule, sameWatermark } from './keys-guard';
 import type { KeysWatermark, KeysWatermarkStore } from './keys-guard';
@@ -105,6 +105,11 @@ describe('keys.json', () => {
     const w2 = await files.addDevice(w1.opened, kid(phone), nd(tablet, 'Tab'), t0 + 1);
     expect(hex(await (await files.openFirstPin(w2.bytes, tablet, fresh(), w1.opened.currentFolderKey())).rawFolderKey())).toBe(hex(w1.opened.currentFolderKey()));
     await expectKind('ALREADY_ENROLLED', () => files.addDevice(w2.opened, kid(phone), nd(tablet, 'again'), t0 + 2));
+    // Bidi and hidden characters could make one device's name read as another's (review of 2026-10-06).
+    for (const bad of ['a\u202Eb', 'a\u200Bb', 'a\u2066b', 'a\uFEFFb', 'a\u061Cb', 'a\u2028b', 'a\u200Eb']) {
+      await expectKind('INVALID_ENTRY', () => files.addDevice(w2.opened, kid(phone), nd(laptop, bad), t0 + 2));
+    }
+    expect(validName('क्\u200Dष')).toBe(true); // ZWJ stays: Indic conjuncts need it
     await expectKind('NOT_LISTED', () => files.addDevice(w2.opened, kid(laptop), nd(laptop, 'x'), t0 + 2));
     await expectKind('NEW_RECOVERY_REQUIRED', () => files.newEpoch(w2.opened, t0 + 100, { revokeKid: kid(tablet) }));
     await expectKind('NEW_RECOVERY_REQUIRED', () => files.newEpoch(w2.opened, t0 + 100, { revokeKid: kid(tablet), newRecovery: recovery }));
