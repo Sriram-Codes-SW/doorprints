@@ -477,6 +477,79 @@ class DriveAssemblyTest {
         assertFalse(a.graph.prefs.engaged)
     }
 
+    // ---- a folder deleted elsewhere is not a Disconnect (docs/15 §3.4) ----
+
+    private fun deleteTheFolderByHand() {
+        val root = server.allFiles().first { it.appProperties[app.doorprints.drive.DriveLayout.ROLE] == "root" }
+        server.deleteByHand(root.id)
+    }
+
+    @Test
+    fun aFolderFoundGoneKeepsDriveInUseAndShowsTheCardState() = runBlocking {
+        val a = phone("Pixel 8").connected()
+        deleteTheFolderByHand()
+        val r = a.controller.connect()
+        assertEquals(app.doorprints.drive.connect.DriveReason.FOLDER_GONE, r.error)
+        assertEquals(ConnectState.DISCONNECTED, a.controller.state.value)
+        assertTrue("the card asks Start again or Disconnect", a.graph.folderGone.value)
+        assertTrue("Drive stays in use: the server stays off until the person answers", a.graph.prefs.engaged)
+        assertTrue("nothing is handed back to the server yet", a.handBacks.isEmpty())
+    }
+
+    @Test
+    fun aFolderFoundGoneByAFreshProcessKeepsDriveInUseToo() = runBlocking {
+        val a = phone("Pixel 8").connected()
+        deleteTheFolderByHand()
+        val again = phone("Pixel 8", dir = a.dir, backend = a.backend)
+        again.controller.connect()
+        assertTrue(again.graph.folderGone.value)
+        assertTrue(again.graph.prefs.engaged)
+        assertTrue(again.handBacks.isEmpty())
+    }
+
+    @Test
+    fun disconnectingAfterTheFolderWentHandsTheRowsBackAndClearsTheCard() = runBlocking {
+        val a = phone("Pixel 8").connected()
+        deleteTheFolderByHand()
+        a.controller.connect()
+        a.controller.disconnect()
+        assertFalse(a.graph.folderGone.value)
+        assertFalse("only the person's Disconnect ends the use", a.graph.prefs.engaged)
+        assertEquals("handed back once, while still in use", listOf(true), a.handBacks)
+    }
+
+    @Test
+    fun disconnectingAfterAFreshProcessFoundTheFolderGoneIsStillTheirs() = runBlocking {
+        val a = phone("Pixel 8").connected()
+        deleteTheFolderByHand()
+        val again = phone("Pixel 8", dir = a.dir, backend = a.backend)
+        again.controller.connect()
+        again.controller.disconnect()
+        assertFalse(again.graph.prefs.engaged)
+        assertEquals(1, again.handBacks.size)
+    }
+
+    @Test
+    fun startAgainClearsTheCardAndKeepsDriveInUse() = runBlocking {
+        val a = phone("Pixel 8").connected()
+        deleteTheFolderByHand()
+        a.controller.connect()
+        val again = a.controller.createFolder()
+        assertEquals(ConnectState.FIRST_CONNECT_SHOW_RECOVERY_KEY, again.state)
+        assertFalse(a.graph.folderGone.value)
+        assertTrue(a.graph.prefs.engaged)
+        assertTrue("Start again hands nothing back", a.handBacks.isEmpty())
+    }
+
+    @Test
+    fun anOrdinaryDisconnectWithTheFolderThereStillEndsTheUse() = runBlocking {
+        val a = phone("Pixel 8").connected()
+        assertFalse(a.graph.folderGone.value)
+        a.controller.disconnect()
+        assertFalse(a.graph.prefs.engaged)
+        assertEquals(1, a.handBacks.size)
+    }
+
     @Test
     fun automaticBackupStartsOnAtTheFirstConnect() {
         val a = phone("Pixel 8").connected()

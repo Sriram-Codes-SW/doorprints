@@ -50,6 +50,23 @@ class DriveDecisionsTest {
     }
 
     @Test
+    fun aFolderGoneIsNeverADisconnect() {
+        val open = after(ConnectState.READY)
+        val gone = DriveEngagement.next(open, ConnectState.DISCONNECTED, folderGone = true)
+        assertTrue(gone.engaged)
+        // The person's answer (the flag cleared, the state still disconnected) is the Disconnect.
+        assertFalse(DriveEngagement.next(gone, ConnectState.DISCONNECTED, folderGone = false).engaged)
+    }
+
+    @Test
+    fun aFreshProcessThatFindsTheFolderGoneStillHonoursTheDisconnectAfterIt() {
+        val fresh = Engagement(engaged = true)
+        val gone = DriveEngagement.next(fresh, ConnectState.DISCONNECTED, folderGone = true)
+        assertTrue(gone.engaged)
+        assertFalse(DriveEngagement.next(gone, ConnectState.DISCONNECTED, folderGone = false).engaged)
+    }
+
+    @Test
     fun disconnectingAfterTheFolderWasOpenDisengagesDrive() {
         val m = after(ConnectState.READY, ConnectState.DISCONNECTED)
         assertFalse(m.engaged)

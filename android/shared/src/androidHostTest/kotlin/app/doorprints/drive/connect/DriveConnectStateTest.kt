@@ -33,6 +33,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -171,6 +172,31 @@ class DriveConnectStateTest {
         assertEquals(listOf("Galaxy"), devices.filter { it.self }.map { it.name })
         assertEquals("android", devices.first().platform)
         assertEquals(emptyList(), a.c.listedDevices().filter { it.self && it.name == "Galaxy" })
+    }
+
+    @Test
+    fun theFolderGoneFlagIsSetBeforeTheStateDropsAndClearedByStartAgainOrDisconnect() = runTest {
+        a.c.createFolder()
+        a.c.confirmRecoveryKeySaved()
+        assertFalse(a.c.folderGone.value)
+        val root = server.allFiles().first { it.appProperties[app.doorprints.drive.DriveLayout.ROLE] == "root" }
+        server.deleteByHand(root.id)
+        val seen = mutableListOf<Pair<ConnectState, Boolean>>()
+        val job = launch(kotlinx.coroutines.test.UnconfinedTestDispatcher(testScheduler)) {
+            kotlinx.coroutines.flow.combine(a.c.state, a.c.folderGone, ::Pair).collect { seen += it }
+        }
+        a.c.connect()
+        assertTrue(a.c.folderGone.value)
+        assertFalse(seen.contains(ConnectState.DISCONNECTED to false), "the drop to disconnected is never seen without the flag")
+        a.c.createFolder()
+        assertFalse(a.c.folderGone.value)
+        a.c.confirmRecoveryKeySaved()
+        server.deleteByHand(server.allFiles().first { it.appProperties[app.doorprints.drive.DriveLayout.ROLE] == "root" }.id)
+        a.c.connect()
+        assertTrue(a.c.folderGone.value)
+        a.c.disconnect()
+        assertFalse(a.c.folderGone.value)
+        job.cancel()
     }
 
     @Test

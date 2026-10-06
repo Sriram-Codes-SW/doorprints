@@ -31,14 +31,22 @@ data class Engagement(val engaged: Boolean = false, val seenConnected: Boolean =
 
 object DriveEngagement {
     /**
-     * [Engagement] after the controller moved to [state]. A folder that is open ([ConnectState.READY], or the recovery key
-     * on screen) engages Drive. Going back to disconnected or unavailable disengages it, but only after this process saw
-     * the folder open: a fresh process starts at [ConnectState.DISCONNECTED] before it has reconnected, which must not
-     * forget that the person had Drive on. Every other state (connecting, an error, a join form) changes nothing.
+     * [Engagement] after the controller moved to [state] with [folderGone] as it stands. A folder that is open
+     * ([ConnectState.READY], or the recovery key on screen) engages Drive. Going back to disconnected or unavailable
+     * disengages it **only for the person's own *Disconnect*** (and only after this process saw the folder open, or the
+     * folder gone: a fresh process starts at [ConnectState.DISCONNECTED] before it has reconnected, which must not forget
+     * that the person had Drive on). A folder found deleted elsewhere ([folderGone], docs/15 §3.4) is **not** a
+     * disconnect: Drive stays in use and the server stays off for this phone until the person answers *Start again* or
+     * *Disconnect*. Every other state (connecting, an error, a join form) changes nothing.
      */
-    fun next(now: Engagement, state: ConnectState): Engagement = when (state) {
+    fun next(now: Engagement, state: ConnectState, folderGone: Boolean = false): Engagement = when (state) {
         ConnectState.READY, ConnectState.FIRST_CONNECT_SHOW_RECOVERY_KEY -> Engagement(engaged = true, seenConnected = true)
-        ConnectState.DISCONNECTED, ConnectState.UNAVAILABLE -> if (now.seenConnected) Engagement() else now
+        ConnectState.DISCONNECTED, ConnectState.UNAVAILABLE -> when {
+            // The person has Drive on and the folder is gone: any later disconnect without the flag is theirs.
+            folderGone -> now.copy(seenConnected = now.seenConnected || now.engaged)
+            now.seenConnected -> Engagement()
+            else -> now
+        }
         else -> now
     }
 }

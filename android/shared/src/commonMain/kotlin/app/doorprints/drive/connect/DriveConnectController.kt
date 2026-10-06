@@ -118,6 +118,15 @@ class DriveConnectController(
     /** Where the screen stands. Never carries the recovery key. */
     val state: StateFlow<ConnectState> = _state.asStateFlow()
 
+    private val _folderGone = MutableStateFlow(false)
+
+    /**
+     * True while the last look found the Drive folder deleted elsewhere ([DriveConnection.FolderGone]) and the person has not
+     * answered (*Start again* or *Disconnect*). It is set **before** [state] drops to disconnected and cleared **after** the
+     * state moves on, so a watcher of both can tell this drop from a *Disconnect* (docs/15 §3.4).
+     */
+    val folderGone: StateFlow<Boolean> = _folderGone.asStateFlow()
+
     private val _notice = MutableStateFlow<DriveReason?>(null)
 
     /** [DriveReason.DEVICE_REVOKED] when this device was revoked (instead of the new-device sentence), else null. */
@@ -182,6 +191,7 @@ class DriveConnectController(
                 setReady(out.connection)
                 // The heading is only true once the key is in this result.
                 _state.value = ConnectState.FIRST_CONNECT_SHOW_RECOVERY_KEY
+                _folderGone.value = false
                 ConnectResult(ConnectState.FIRST_CONNECT_SHOW_RECOVERY_KEY, recoveryKey = key.display)
             } else {
                 handle(out.connection)
@@ -227,6 +237,7 @@ class DriveConnectController(
     suspend fun disconnect() {
         clearConnection()
         _state.value = ConnectState.DISCONNECTED
+        _folderGone.value = false
         try {
             signIn?.signOut()
         } catch (e: CancellationException) {
@@ -252,7 +263,7 @@ class DriveConnectController(
 
     private fun handle(connection: DriveConnection): ConnectResult {
         setReady(connection)
-        return when (connection) {
+        val result = when (connection) {
             is DriveConnection.Ready -> {
                 _notice.value = null
                 _state.value = ConnectState.READY
@@ -270,6 +281,7 @@ class DriveConnectController(
             }
             DriveConnection.FolderGone -> {
                 _notice.value = null
+                _folderGone.value = true
                 _state.value = ConnectState.DISCONNECTED
                 ConnectResult(ConnectState.DISCONNECTED, error = DriveReason.FOLDER_GONE)
             }
@@ -294,6 +306,9 @@ class DriveConnectController(
                 }
             }
         }
+        // Set before the state dropped (above), cleared only now that the state has moved on.
+        _folderGone.value = connection is DriveConnection.FolderGone
+        return result
     }
 
     private fun fail(e: Throwable): ConnectResult {
@@ -728,6 +743,7 @@ class DriveConnectController(
                 if (o.finished && o.marker?.level == DeletionLevel.L3) {
                     clearConnection()
                     _state.value = ConnectState.DISCONNECTED
+                    _folderGone.value = false
                 }
                 Outcome.Ok(DeleteRun(o.finished, o.report.left.size, o.total, o.stopped))
             }
