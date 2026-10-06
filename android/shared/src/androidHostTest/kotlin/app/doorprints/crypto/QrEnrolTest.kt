@@ -117,6 +117,14 @@ class QrEnrolTest {
     }
 
     @Test
+    fun theConstantsAreTheWebsitesConstants() {
+        assertEquals("dp1.", QR_PREFIX)
+        assertEquals(32, QR_PSK_LEN)
+        assertEquals(65, QR_PUBLIC_LEN)
+        assertEquals("doorprints/dpx1/qr-psk", String(QR_PSK_ID, Charsets.UTF_8))
+    }
+
+    @Test
     fun aPskShorterThan32BytesIsRefused() {
         val recipient = p.p256Generate()
         expectFailure { Hpke(p).sealPsk(recipient.publicKey, WrapAad.HPKE_INFO, ByteArray(0), ByteArray(32), ByteArray(16), QR_PSK_ID) }
