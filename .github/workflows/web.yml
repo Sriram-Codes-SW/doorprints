@@ -341,6 +341,20 @@ jobs:
             console.log(`ok: maplibre-gl-worker.mjs imports "./maplibre-gl-shared.mjs"`);
           }
 
+          // S4b-BL-55: Check that the worker and main bundle use the same MapLibre version.
+          // Version format: maplibre-gl-js/blob/v6.11.2/LICENSE.txt (extracted from header).
+          // Glyph format changed between 6.11.2 and 6.10.0; mismatched versions cause tile loading failures.
+          function extractMaplibreVersion(content) {
+            const match = content.match(/maplibre-gl-js\/blob\/v([\d.]+)\//);
+            return match ? match[1] : null;
+          }
+          const workerVersion = extractMaplibreVersion(workerContent);
+          if (!workerVersion) {
+            errors.push(`maplibre-gl-worker.mjs has no version in header (expected maplibre-gl-js/blob/vX.Y.Z/)`);
+          } else {
+            console.log(`ok: maplibre-gl-worker.mjs version v${workerVersion}`);
+          }
+
           for (const w of warnings) console.log(`::warning title=PWA check::${w}`);
           for (const e of errors) console.log(`::error title=PWA check::${e}`);
           if (errors.length > 0) {

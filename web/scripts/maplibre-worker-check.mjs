@@ -21,11 +21,23 @@ import fs from 'fs';
 import path from 'path';
 
 /**
- * Check that MapLibre GL worker files are present, non-empty, have license headers, and the worker imports the shared file.
+ * Extract MapLibre version from file content header.
+ * @param {string} content - File content
+ * @returns {string|null} - Version string like "6.11.2" or null if not found
+ */
+export function extractMaplibreVersion(content) {
+  const match = content.match(/maplibre-gl-js\/blob\/v([\d.]+)\//);
+  return match?.[1] || null;
+}
+
+/**
+ * Check that MapLibre GL worker files are present, non-empty, have license headers, the worker imports the shared file,
+ * and the worker and main bundle have the same MapLibre version.
  * @param {string} buildDir - Directory containing the built files
+ * @param {string} [mainBundleVersion] - Main bundle version (optional, for testing)
  * @returns {Object} - { errors: string[], warnings: string[] }
  */
-export function checkMaplibreWorkerFiles(buildDir) {
+export function checkMaplibreWorkerFiles(buildDir, mainBundleVersion = null) {
   const errors = [];
   const warnings = [];
 
@@ -80,6 +92,16 @@ export function checkMaplibreWorkerFiles(buildDir) {
     errors.push(`maplibre-gl-worker.mjs does not import from "./maplibre-gl-shared.mjs"`);
   } else {
     console.log(`ok: maplibre-gl-worker.mjs imports "./maplibre-gl-shared.mjs"`);
+  }
+
+  // Check MapLibre versions match (worker vs main bundle)
+  const workerVersion = extractMaplibreVersion(workerContent);
+  if (!workerVersion) {
+    errors.push(`maplibre-gl-worker.mjs has no version in header`);
+  } else if (mainBundleVersion && workerVersion !== mainBundleVersion) {
+    errors.push(`MapLibre version mismatch: worker v${workerVersion} vs main chunk v${mainBundleVersion}`);
+  } else {
+    console.log(`ok: maplibre-gl-worker.mjs version v${workerVersion}`);
   }
 
   return { errors, warnings };

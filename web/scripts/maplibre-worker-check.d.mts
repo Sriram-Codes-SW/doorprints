@@ -16,7 +16,9 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-export function checkMaplibreWorkerFiles(buildDir: string): {
+export function extractMaplibreVersion(content: string): string | null;
+
+export function checkMaplibreWorkerFiles(buildDir: string, mainBundleVersion?: string | null): {
   errors: string[];
   warnings: string[];
 };

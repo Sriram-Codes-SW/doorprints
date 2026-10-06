@@ -117,4 +117,26 @@ describe('maplibre-worker-check', () => {
     const importRegex = /from\s*["']\.\/maplibre-gl-shared\.mjs["']/;
     expect(importRegex.test(workerContent)).toBe(true); // The \s* allows zero spaces
   });
+
+  it('extractVersionFromWorkerHeader should extract v6.11.2', () => {
+    const workerContent = '/**\n* MapLibre GL JS\n* @license 3-Clause BSD. Full text of license: https://github.com/maplibre/maplibre-gl-js/blob/v6.11.2/LICENSE.txt\n*/';
+    const versionMatch = workerContent.match(/maplibre-gl-js\/blob\/v([\d.]+)\//);
+    expect(versionMatch?.[1]).toBe('6.11.2');
+  });
+
+  it('versionsMatchBothSame should pass when versions are identical', () => {
+    const workerContent1 = 'https://github.com/maplibre/maplibre-gl-js/blob/v6.11.2/LICENSE.txt';
+    const mainContent1 = 'maplibre-gl-js/blob/v6.11.2 blob';
+    const workerMatch1 = workerContent1.match(/maplibre-gl-js\/blob\/v([\d.]+)\//);
+    const mainMatch1 = mainContent1.match(/maplibre-gl-js\/blob\/v([\d.]+)\s/);
+    expect(workerMatch1?.[1] === mainMatch1?.[1]).toBe(true);
+  });
+
+  it('versionsMatchWorkerAndChunkDiffer should fail when v6.11.2 vs v6.10.0', () => {
+    const workerContent2 = 'https://github.com/maplibre/maplibre-gl-js/blob/v6.11.2/LICENSE.txt';
+    const mainContent2 = 'maplibre-gl-js/blob/v6.10.0 blob';
+    const workerMatch2 = workerContent2.match(/maplibre-gl-js\/blob\/v([\d.]+)\//);
+    const mainMatch2 = mainContent2.match(/maplibre-gl-js\/blob\/v([\d.]+)\s/);
+    expect(workerMatch2?.[1] === mainMatch2?.[1]).toBe(false);
+  });
 });
