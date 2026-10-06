@@ -29,7 +29,7 @@
 
     @if (!mapUsable()) {
       <!-- Offline (the map style is never cached), or no WebGL 2 at all: say why there is no map and what works
-           without one. With no WebGL 2 there is nothing to retry. -->
+           without one. With no WebGL 2, or a worker that did not load, there is nothing to retry: the page has to be reloaded. -->
       <div class="map-offline" role="status">
         <p>{{ (mapUnsupported() ? 'map.unavailable' : mapWorkerFailed() ? 'map.workerFailed' : 'map.offline') | t }}</p>
         <div class="offline-actions">
@@ -47,7 +47,7 @@
             }
             <button id="type-coords" type="button" class="btn" (click)="typeCoordinates()">{{ 'map.typeCoords' | t }}</button>
           }
-          @if (!mapUnsupported()) {
+          @if (!mapUnsupported() && !mapWorkerFailed()) {
             <button type="button" class="btn" (click)="retryMap()">{{ 'common.retry' | t }}</button>
           }
         </div>

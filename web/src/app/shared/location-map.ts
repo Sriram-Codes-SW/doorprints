@@ -54,7 +54,9 @@ export interface LatLon {
       <!-- Offline (the map style is never cached): point to what works without a map. -->
       <div class="offline" role="status">
         <p>{{ (workerFailed() ? 'map.workerFailed' : 'house.mapOffline') | t }}</p>
-        <button type="button" class="btn btn-sm" (click)="retry()">{{ 'common.retry' | t }}</button>
+        @if (!workerFailed()) {
+          <button type="button" class="btn btn-sm" (click)="retry()">{{ 'common.retry' | t }}</button>
+        }
       </div>
     }
   `,

@@ -180,3 +180,26 @@ describe('MapPage: the cost filters', () => {
     expect(clear.disabled).toBe(true);
   });
 });
+
+describe('MapPage: the panel shown when the map has no tiles', () => {
+  type Panel = { mapAvailable: { set(v: boolean): void }; mapWorkerFailed: { set(v: boolean): void } };
+  const retryButton = (host: HTMLElement) => [...host.querySelectorAll('.map-offline button')].find((b) => b.textContent?.trim() === 'Try again');
+
+  it('offers Try again while offline: the map can try again when the connection is back', async () => {
+    const host = await render({});
+    (lastFixture!.componentInstance as unknown as Panel).mapAvailable.set(false);
+    lastFixture!.detectChanges();
+    expect(host.querySelector('.map-offline')?.textContent).toContain('The map needs an internet connection');
+    expect(retryButton(host)).toBeTruthy();
+  });
+
+  it('says the map helper failed and offers no Try again, which could not bring it back', async () => {
+    const host = await render({});
+    const panel = lastFixture!.componentInstance as unknown as Panel;
+    panel.mapAvailable.set(false);
+    panel.mapWorkerFailed.set(true);
+    lastFixture!.detectChanges();
+    expect(host.querySelector('.map-offline')?.textContent).toContain('The map could not start its helper');
+    expect(retryButton(host)).toBeUndefined();
+  });
+});
