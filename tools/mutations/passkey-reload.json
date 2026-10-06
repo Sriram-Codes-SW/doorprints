@@ -1,0 +1,23 @@
+{
+  "spec": "web/src/app/data/drive/connect/drive-connect.service.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/data/drive/connect/drive-connect.service.ts",
+      "find": "return this.passkeyNoPrfMemory || this.recall(NO_PRF_KEY) === '1';",
+      "replace": "return this.passkeyNoPrfMemory;",
+      "expect": "a no-PRF setup is remembered by a new service"
+    },
+    {
+      "file": "web/src/app/data/drive/connect/drive-connect.service.ts",
+      "find": "      this.remember(NO_PRF_KEY, '0');",
+      "replace": "      this.remember(NO_PRF_KEY, '1');",
+      "expect": "a no-PRF setup is remembered by a new service"
+    },
+    {
+      "file": "web/src/app/data/drive/connect/drive-connect.service.ts",
+      "find": "        this.remember(PASSKEY_DETAILS_KEY, fresh);\n",
+      "replace": "",
+      "expect": "the details text is kept for a new service"
+    }
+  ]
+}

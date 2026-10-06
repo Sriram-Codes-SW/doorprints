@@ -98,6 +98,9 @@ export type DeleteRun =
  * S4b-BL-117, S4b-BL-73, docs/15 §9.4.
  */
 const AUTO_BACKUP_KEY = 'doorprints.drive.autoBackup';
+/** A passkey setup in this browser returned no PRF output, and its step list (no secrets): kept so a reload does not forget it. */
+const NO_PRF_KEY = 'doorprints.drive.passkeyNoPrf';
+const PASSKEY_DETAILS_KEY = 'doorprints.drive.passkeyDetails';
 
 /** The few per-device preferences of the Drive card (a plain on/off, nothing secret). */
 export interface DrivePrefs {
@@ -131,7 +134,7 @@ export class DriveConnectService {
   private lastBackupId: string | null = null;
   private memoryPref = false;
   /** Whether a passkey setup returned 'no-prf' (set true) or a successful registration (set false). */
-  private passkeyNoPrfSeen = false;
+  private passkeyNoPrfMemory = false;
 
   constructor(
     @Inject(DRIVE_BACKUP_ADAPTER) private readonly backupAdapter: DriveBackupAdapter,
@@ -624,20 +627,47 @@ export class DriveConnectService {
   /** Where the last passkey setup stopped (step names and flags only, never a value), for the card's details. */
   async passkeyDetails(): Promise<string | null> {
     try {
-      return (await this.deletionAdapter.lastPasskeyDetails?.()) ?? null;
+      const fresh = (await this.deletionAdapter.lastPasskeyDetails?.()) ?? null;
+      if (fresh !== null) {
+        this.remember(PASSKEY_DETAILS_KEY, fresh);
+        return fresh;
+      }
     } catch {
-      return null;
+      /* fall through to the saved text */
     }
+    return this.recall(PASSKEY_DETAILS_KEY) || null;
   }
 
   async registerPasskey(): Promise<'registered' | 'unsupported' | 'failed' | 'no-prf' | null> {
     const result = await this.deletionAdapter.registerPasskey();
     if (result === 'no-prf') {
-      this.passkeyNoPrfSeen = true;
+      this.passkeyNoPrfMemory = true;
+      this.remember(NO_PRF_KEY, '1');
     } else if (result === 'registered') {
-      this.passkeyNoPrfSeen = false;
+      this.passkeyNoPrfMemory = false;
+      this.remember(NO_PRF_KEY, '0');
     }
     return result;
+  }
+
+  private get passkeyNoPrfSeen(): boolean {
+    return this.passkeyNoPrfMemory || this.recall(NO_PRF_KEY) === '1';
+  }
+
+  private remember(key: string, value: string): void {
+    try {
+      this.prefs.setItem(key, value);
+    } catch {
+      /* private window: the in-memory flag still holds until the page closes */
+    }
+  }
+
+  private recall(key: string): string | null {
+    try {
+      return this.prefs.getItem(key);
+    } catch {
+      return null;
+    }
   }
 
   /** Whether this browser supports the WebAuthn PRF extension. */

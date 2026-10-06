@@ -779,6 +779,46 @@ describe('DriveConnectService', () => {
     });
   });
 
+  describe('passkey state survives a reload (review SF-2)', () => {
+    it('a no-PRF setup is remembered by a new service on the same browser, and a later success clears it', async () => {
+      const prefs = memoryPrefs();
+      const first = await createDevice(new FakeDriveServer());
+      const mk = (d: typeof first) =>
+        new DriveConnectService(d.backup, d.sync, d.deletion, { clientId: 'test-client-id' }, d.payload.source(), prefs);
+      const before = mk(first);
+      await before.createFolder();
+      before.confirmRecoveryKeySaved();
+      vi.spyOn(first.deletion, 'registerPasskey').mockResolvedValue('no-prf');
+      await before.registerPasskey();
+
+      const after = mk(first); // a reload: a new service, the same browser storage
+      vi.spyOn(after, 'passkeyStatus').mockResolvedValue('none');
+      vi.spyOn(after, 'passkeyPrfCapability').mockResolvedValue(true); // Chrome on Windows says PRF is there
+      vi.spyOn(after, 'passkeyBuiltIn').mockResolvedValue(true);
+      vi.spyOn(after as any, 'state').mockReturnValue('Ready');
+      expect(await after.recoveryKeyOffered()).toBe(true);
+
+      vi.spyOn(first.deletion, 'registerPasskey').mockResolvedValue('registered');
+      await after.registerPasskey();
+      const later = mk(first);
+      vi.spyOn(later, 'passkeyStatus').mockResolvedValue('none');
+      vi.spyOn(later, 'passkeyPrfCapability').mockResolvedValue(true);
+      vi.spyOn(later, 'passkeyBuiltIn').mockResolvedValue(true);
+      vi.spyOn(later as any, 'state').mockReturnValue('Ready');
+      expect(await later.recoveryKeyOffered()).toBe(false);
+    });
+
+    it('the details text is kept for a new service when the adapter has none any more', async () => {
+      const prefs = memoryPrefs();
+      const adapter = (text: string | null) =>
+        ({ passkeyStatus: vi.fn(), registerPasskey: vi.fn(), lastPasskeyDetails: vi.fn(async () => text) }) as any;
+      const mk = (text: string | null) =>
+        new DriveConnectService(a.backup, a.sync, adapter(text), { clientId: 'test' }, a.payload.source(), prefs);
+      expect(await mk('create: prf.enabled=false').passkeyDetails()).toBe('create: prf.enabled=false');
+      expect(await mk(null).passkeyDetails()).toBe('create: prf.enabled=false');
+    });
+  });
+
   describe('passkey details', () => {
     it('returns the adapter details string when lastPasskeyDetails resolves to a value', async () => {
       // Create a deletion adapter mock that returns specific details
