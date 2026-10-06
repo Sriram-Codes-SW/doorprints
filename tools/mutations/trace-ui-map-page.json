@@ -33,9 +33,27 @@
     },
     {
       "file": "web/src/app/pages/map/map-page.ts",
-      "find": "      if (!this.mapReady()) return;\n      untracked(() => {\n        this.traceLayers?.setWalks(walks);",
-      "replace": "      untracked(() => {\n        this.traceLayers?.setWalks(walks);",
+      "find": "if (this.mapReady()) untracked(() => this.traceLayers?.setLook(look));",
+      "replace": "untracked(() => this.traceLayers?.setLook(look));",
       "expect": "does not feed the layers before the map is ready"
+    },
+    {
+      "file": "web/src/app/pages/map/map-page.ts",
+      "find": "protected readonly repeatDash = legendDashArray(this.legendStrokePx);",
+      "replace": "protected readonly repeatDash = '3 2';",
+      "expect": "draws the repeat legend sample with the dash"
+    },
+    {
+      "file": "web/src/app/pages/map/map-page.ts",
+      "find": "const look = this.traceView.look();\n      if (this.mapReady()) untracked(() => this.traceLayers?.setLook(look));",
+      "replace": "const look = this.traceView.look();\n      const w = this.traceView.walks();\n      if (this.mapReady()) untracked(() => { this.traceLayers?.setLook(look); this.traceLayers?.setWalks(w); });",
+      "expect": "a look change sends only the look"
+    },
+    {
+      "file": "web/src/app/pages/map/map-page.ts",
+      "find": "const check = this.traceView.check();\n      if (this.mapReady()) untracked(() => this.traceLayers?.setCheck(check));",
+      "replace": "const check = this.traceView.check();\n      const w = this.traceView.walks();\n      if (this.mapReady()) untracked(() => { this.traceLayers?.setCheck(check); this.traceLayers?.setWalks(w); });",
+      "expect": "a look change sends only the look"
     }
   ]
 }

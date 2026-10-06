@@ -111,13 +111,13 @@
           <!-- The walks (docs/11 5.27.1): shown while the trace is not empty, the same sample lines as the map. -->
           @if (traceView.walkCount() > 0) {
             <span class="legend-item">
-              <svg class="sample" viewBox="0 0 24 8" aria-hidden="true"><line x1="0" y1="4" x2="24" y2="4" [attr.stroke]="trackColor" stroke-width="3" stroke-linecap="round" /></svg>{{ 'trace.legend.once' | t }}
+              <svg class="sample" viewBox="0 0 24 8" aria-hidden="true"><line x1="0" y1="4" x2="24" y2="4" [attr.stroke]="trackColor" [attr.stroke-width]="legendStrokePx" stroke-linecap="round" /></svg>{{ 'trace.legend.once' | t }}
             </span>
             @if (traceView.look() !== 'OFF') {
               <span class="legend-item">
                 <svg class="sample" viewBox="0 0 24 8" aria-hidden="true">
-                  <line x1="0" y1="4" x2="24" y2="4" [attr.stroke]="trackColor" stroke-width="3" />
-                  <line x1="0" y1="4" x2="24" y2="4" [attr.stroke]="repeatColor" stroke-width="3" [attr.stroke-dasharray]="repeatDash" />
+                  <line x1="0" y1="4" x2="24" y2="4" [attr.stroke]="trackColor" [attr.stroke-width]="legendStrokePx" />
+                  <line x1="0" y1="4" x2="24" y2="4" [attr.stroke]="repeatColor" [attr.stroke-width]="legendStrokePx" [attr.stroke-dasharray]="repeatDash" />
                 </svg>{{ 'trace.legend.repeated' | t }}
               </span>
             }
