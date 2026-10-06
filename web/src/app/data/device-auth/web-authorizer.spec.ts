@@ -44,10 +44,8 @@ describe('WebAuthorizer recovery key authorization', () => {
 
   beforeEach(async () => {
     crypto = new WebCryptoProvider();
-    clock = (() => {
-      let now = 1000;
-      return () => now++;
-    })();
+    let now = 1000;
+    clock = () => now;
 
     prf = new FakePrfAuthenticator(crypto);
     const sealed = await sealWithPrf(crypto, prf, utf8('credential-1'), crypto.randomBytes(32));
@@ -75,28 +73,30 @@ describe('WebAuthorizer recovery key authorization', () => {
   });
 
   it('right recovery key: GRANTED, proofFor returns a 64-hex that verifyProof accepts', async () => {
-    const result = await authorizer.authorizeWithRecoveryKey('DELETE_ONE_BACKUP', ctx, recoveryKey);
+    // Use DELETE_ALL_BACKUPS (L2) to require authentication
+    const result = await authorizer.authorizeWithRecoveryKey('DELETE_ALL_BACKUPS', ctx, recoveryKey);
 
     expect(result.kind).toBe('GRANTED');
     if (result.kind !== 'GRANTED') throw new Error('Expected GRANTED');
 
-    const operationId = 'DELETE_ONE_BACKUP';
-    const time = 2000;
+    const operationId = 'DELETE_ALL_BACKUPS';
+    const time = 1000; // Use the clock time
     const proof = await authorizer.proofFor(operationId, time);
 
     expect(proof).not.toBeNull();
+    if (!proof) throw new Error('Expected proof');
     expect(proof).toMatch(/^[0-9a-f]{64}$/);
 
-    const valid = await authorizer.verifyProof(operationId, time, proof!);
+    const valid = await authorizer.verifyProof(operationId, time, proof);
     expect(valid).toBe(true);
   });
 
   it('right recovery key: forged proof is rejected', async () => {
-    const result = await authorizer.authorizeWithRecoveryKey('DELETE_ONE_BACKUP', ctx, recoveryKey);
+    const result = await authorizer.authorizeWithRecoveryKey('DELETE_ALL_BACKUPS', ctx, recoveryKey);
     expect(result.kind).toBe('GRANTED');
 
-    const operationId = 'DELETE_ONE_BACKUP';
-    const time = 2000;
+    const operationId = 'DELETE_ALL_BACKUPS';
+    const time = 1000;
     const forgedProof = 'a'.repeat(64);
 
     const valid = await authorizer.verifyProof(operationId, time, forgedProof);
@@ -106,14 +106,15 @@ describe('WebAuthorizer recovery key authorization', () => {
   it('wrong recovery key: DENIED WRONG_KEY and proofFor stays null', async () => {
     const wrongKey = RecoveryKey.generate(crypto);
 
-    const result = await authorizer.authorizeWithRecoveryKey('DELETE_ONE_BACKUP', ctx, wrongKey);
+    // Use DELETE_ALL_BACKUPS (L2) to require authentication
+    const result = await authorizer.authorizeWithRecoveryKey('DELETE_ALL_BACKUPS', ctx, wrongKey);
 
     expect(result.kind).toBe('DENIED');
     if (result.kind !== 'DENIED') throw new Error('Expected DENIED');
     expect(result.reason).toBe('WRONG_KEY');
 
-    const operationId = 'DELETE_ONE_BACKUP';
-    const time = 2000;
+    const operationId = 'DELETE_ALL_BACKUPS';
+    const time = 1000;
     const proof = await authorizer.proofFor(operationId, time);
 
     expect(proof).toBeNull();
@@ -134,7 +135,8 @@ describe('WebAuthorizer recovery key authorization', () => {
       throwingRecovery,
     );
 
-    const result = await authorizerWithThrow.authorizeWithRecoveryKey('DELETE_ONE_BACKUP', ctx, recoveryKey);
+    // Use DELETE_ALL_BACKUPS (L2) to require authentication
+    const result = await authorizerWithThrow.authorizeWithRecoveryKey('DELETE_ALL_BACKUPS', ctx, recoveryKey);
 
     expect(result.kind).toBe('DENIED');
     if (result.kind !== 'DENIED') throw new Error('Expected DENIED');
@@ -150,7 +152,8 @@ describe('WebAuthorizer recovery key authorization', () => {
       undefined, // no recovery
     );
 
-    const result = await authorizerNoRecovery.authorizeWithRecoveryKey('DELETE_ONE_BACKUP', ctx, recoveryKey);
+    // Use DELETE_ALL_BACKUPS (L2) to require authentication
+    const result = await authorizerNoRecovery.authorizeWithRecoveryKey('DELETE_ALL_BACKUPS', ctx, recoveryKey);
 
     expect(result.kind).toBe('DENIED');
     if (result.kind !== 'DENIED') throw new Error('Expected DENIED');
@@ -182,18 +185,20 @@ describe('WebAuthorizer recovery key authorization', () => {
       trackedRecovery,
     );
 
-    const result = await authorizerTracked.authorizeWithRecoveryKey('DELETE_ONE_BACKUP', refusedCtx, recoveryKey);
+    // Use DELETE_ALL_BACKUPS (L2) which will be refused
+    const result = await authorizerTracked.authorizeWithRecoveryKey('DELETE_ALL_BACKUPS', refusedCtx, recoveryKey);
 
     expect(result.kind).toBe('REFUSED');
     expect(verifyCalled).toBe(false);
   });
 
   it('after forgetProof: recovery proof no longer verifies', async () => {
-    const result = await authorizer.authorizeWithRecoveryKey('DELETE_ONE_BACKUP', ctx, recoveryKey);
+    // Use DELETE_ALL_BACKUPS (L2) to require authentication
+    const result = await authorizer.authorizeWithRecoveryKey('DELETE_ALL_BACKUPS', ctx, recoveryKey);
     expect(result.kind).toBe('GRANTED');
 
-    const operationId = 'DELETE_ONE_BACKUP';
-    const time = 2000;
+    const operationId = 'DELETE_ALL_BACKUPS';
+    const time = 1000;
     const proof = await authorizer.proofFor(operationId, time);
     expect(proof).not.toBeNull();
 
@@ -204,19 +209,28 @@ describe('WebAuthorizer recovery key authorization', () => {
   });
 
   it('PRF proof is NOT cleared by forgetProof', async () => {
-    // First authorize with PRF
-    const prfResult = await authorizer.authorize('DELETE_ONE_BACKUP', ctx);
+    // Create a new authorizer with sealed blob but no recovery
+    const authorizerNoRecovery = new WebAuthorizer(
+      crypto,
+      prf,
+      () => sealedBlob,
+      clock,
+      undefined,
+    );
+
+    // First authorize with PRF - need L2 or L3 action to require authentication
+    const prfResult = await authorizerNoRecovery.authorize('DELETE_ALL_BACKUPS', ctx);
     expect(prfResult.kind).toBe('GRANTED');
 
-    const operationId = 'DELETE_ONE_BACKUP';
-    const time = 3000;
-    const prfProof = await authorizer.proofFor(operationId, time);
+    const operationId = 'DELETE_ALL_BACKUPS';
+    const time = 1000;
+    const prfProof = await authorizerNoRecovery.proofFor(operationId, time);
     expect(prfProof).not.toBeNull();
 
     // forgetProof should NOT clear the PRF proof
-    authorizer.forgetProof();
+    authorizerNoRecovery.forgetProof();
 
-    const proofAfter = await authorizer.proofFor(operationId, time);
+    const proofAfter = await authorizerNoRecovery.proofFor(operationId, time);
     expect(proofAfter).toBe(prfProof); // Still there because it's PRF-sourced
   });
 
