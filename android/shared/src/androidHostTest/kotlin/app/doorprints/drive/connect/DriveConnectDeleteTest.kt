@@ -266,4 +266,38 @@ class DriveConnectDeleteTest {
         assertFalse(a.c.executeDelete(plan, grant).ok().finished)
         assertEquals(DriveReason.DELETE_NOT_AUTHORIZED, a.c.executeDelete(plan, grant).reason())
     }
+
+    /** The authorizer the controller was given, counting how often it was told to forget what it issued. */
+    private class Spy(val inner: PhoneDeletionAuthorizer) : DeleteAuthorizer by inner {
+        var forgets = 0
+        override fun forget() {
+            forgets++
+            inner.forget()
+        }
+    }
+
+    private fun spied(spy: Spy) = DriveConnectController(
+        a.rig.service, a.rig.drive, a.p, a.rig.identity, a.rig.trust, a.enrolment, a.deletion, a.store, spy, a.rigs, a.network, a.prefs,
+        server.clock::now, true, a.payload.source(), a.signIn, a.driver,
+    )
+
+    @Test
+    fun whatTheDeviceCheckIssuedIsForgottenAfterEveryRunAndEveryPolicyAction() = runTest {
+        val spy = Spy(a.authorizer)
+        val c = spied(spy)
+        c.createFolder()
+        c.confirmRecoveryKeySaved()
+        c.backUpNow().ok()
+        server.clock.advance(2 * day)
+        c.backUpNow().ok()
+        val plan = c.deletePlan(DeletionAction.AllBackups).ok()
+        val grant = c.authorizeDelete(plan, "x").ok()
+        assertEquals(0, spy.forgets)
+        c.executeDelete(plan, grant)
+        assertEquals(1, spy.forgets)
+        c.resumeDelete(null)
+        assertEquals(2, spy.forgets, "a refused resume forgets too")
+        c.revokeListedDevice("0a", "x")
+        assertEquals(3, spy.forgets, "an L2 action that is not a delete forgets its check as well")
+    }
 }

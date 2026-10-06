@@ -177,6 +177,13 @@ class DriveConnectEnrolmentTest {
     }
 
     @Test
+    fun aRevokeThatYieldsNoNewRecoveryKeyIsNotReportedAsDone() = runTest {
+        val r = ready()
+        a.enrolment.revoke = EnrolmentRevoke(r, null)
+        assertEquals(DriveReason.FAILED, a.c.revokeListedDevice("0a", "x").reason())
+    }
+
+    @Test
     fun aKidThatIsNotHexNeverReachesTheEnrolment() = runTest {
         ready()
         assertEquals(DriveReason.FAILED, a.c.revokeListedDevice("zz-not-hex", "x").reason())

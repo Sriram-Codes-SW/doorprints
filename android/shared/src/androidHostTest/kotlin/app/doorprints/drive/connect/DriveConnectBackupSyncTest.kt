@@ -275,6 +275,31 @@ class DriveConnectBackupSyncTest {
     }
 
     @Test
+    fun aFileFromAnUnlistedDeviceIsSkippedAndReportedNotApplied() = runTest {
+        connected()
+        a.local.put(houseRow("h1", "one", server.clock.now(), a.kidHex), true)
+        assertEquals(SyncState.SYNCED, a.c.syncNow().state)
+        val real = server.allFiles().first { it.appProperties["kind"] == "sync" }
+        val folder = server.allFiles().first { it.appProperties[app.doorprints.drive.DriveLayout.ROLE] == "sync" }.id
+        server.putByHand(
+            app.doorprints.drive.NewFile(
+                "x.dpx", "application/octet-stream", listOf(folder),
+                mapOf(
+                    app.doorprints.drive.DriveLayout.KIND to "sync", app.doorprints.drive.DriveLayout.DEVICE to "f".repeat(32),
+                    app.doorprints.drive.DriveLayout.STATE to app.doorprints.drive.DriveLayout.STATE_COMPLETE, "seq" to "99",
+                ),
+            ),
+            server.contentOf(real.id),
+        )
+        server.clock.advance(1000)
+        val r = a.c.syncNow()
+        assertEquals(SyncState.SKIPPED_FILES, r.state)
+        assertEquals(listOf(app.doorprints.drive.sync.SkipReason.UNLISTED_DEVICE), r.skipped)
+        assertEquals(null, r.error)
+        assertEquals(r, a.c.syncStatus())
+    }
+
+    @Test
     fun aFailedPassIsTypedThenWaitsOutItsBackoff() = runTest {
         connected()
         a.local.put(houseRow("h1", "x", server.clock.now(), a.kidHex), true)
