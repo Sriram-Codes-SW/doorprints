@@ -132,7 +132,7 @@ class DriveSyncEndToEndTest {
                     drive = InMemoryFakeDrive(server),
                     signIn = null,
                     deviceAuth = deviceAuth,
-                    lock = { LockLostDetector { LockState.PRESENT } },
+                    lock = { _, _ -> LockLostDetector { LockState.PRESENT } },
                     network = NetworkState { NetworkConditions(online = true, metering = Metering.UNMETERED) },
                     localRows = { deviceId -> RoomSyncRows(db, deviceId) { null } },
                     backupSource = null,

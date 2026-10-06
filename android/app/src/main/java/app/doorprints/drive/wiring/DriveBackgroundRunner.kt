@@ -40,6 +40,12 @@ interface BackgroundOps {
     suspend fun sync(): SyncInfo
     suspend fun runDueBackup(): DueBackupResult
 
+    /**
+     * Drive is already paused for want of the lock (or a lost key) and nothing has changed: the reason to stay out, asked
+     * **before** anything is built or touched, so a paused phone costs one small file read per run. Null: look again.
+     */
+    fun standingPause(): SkipReason? = null
+
     /** The documented notice, once: "Google Drive backup is paused because this phone no longer has a screen lock...". */
     fun onLockPaused()
 }
@@ -50,6 +56,7 @@ class ControllerBackgroundOps(
     override val engaged: Boolean,
     private val lock: () -> RunDecision,
     private val notifyLock: () -> Unit,
+    private val standing: () -> SkipReason? = { null },
 ) : BackgroundOps {
     override val isReady: Boolean get() = controller().isReady
     override fun autoBackupEnabled() = controller().autoBackupEnabled()
@@ -57,6 +64,7 @@ class ControllerBackgroundOps(
     override suspend fun connect() = controller().connect()
     override suspend fun sync() = controller().syncNow()
     override suspend fun runDueBackup() = controller().runDueBackup()
+    override fun standingPause() = standing()
     override fun onLockPaused() = notifyLock()
 }
 
@@ -83,6 +91,8 @@ sealed interface RunOutcome {
  */
 class DriveBackgroundRunner(private val ops: BackgroundOps) {
     suspend fun run(sync: Boolean, backup: Boolean): RunOutcome {
+        // A pause that still stands says nothing again (the notice was shown when it began) and builds nothing.
+        if (ops.engaged) ops.standingPause()?.let { return RunOutcome.Skipped(it) }
         when (val d = guard()) {
             is WorkDecision.Skip -> return skipped(d)
             WorkDecision.Run -> Unit

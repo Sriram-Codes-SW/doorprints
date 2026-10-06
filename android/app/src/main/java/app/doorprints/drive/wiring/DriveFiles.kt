@@ -87,7 +87,12 @@ class FileDriveLockStore(file: File) : DriveLockStore {
     private val json = Json { ignoreUnknownKeys = true }
 
     @Serializable
-    private class Dto(val paused: Boolean = false, val needsReenrolment: Boolean = false, val keyDropped: Boolean = false)
+    private class Dto(
+        val paused: Boolean = false,
+        val needsReenrolment: Boolean = false,
+        val keyDropped: Boolean = false,
+        val keyStoreFault: Boolean = false,
+    )
 
     @Synchronized
     private fun read(): Dto = try {
@@ -107,15 +112,19 @@ class FileDriveLockStore(file: File) : DriveLockStore {
 
     override var paused: Boolean
         get() = read().paused
-        set(value) = write(read().let { Dto(value, it.needsReenrolment, it.keyDropped) })
+        set(value) = write(read().let { Dto(value, it.needsReenrolment, it.keyDropped, it.keyStoreFault) })
 
     override var needsReenrolment: Boolean
         get() = read().needsReenrolment
-        set(value) = write(read().let { Dto(it.paused, value, it.keyDropped) })
+        set(value) = write(read().let { Dto(it.paused, value, it.keyDropped, it.keyStoreFault) })
 
     override var keyDropped: Boolean
         get() = read().keyDropped
-        set(value) = write(read().let { Dto(it.paused, it.needsReenrolment, value) })
+        set(value) = write(read().let { Dto(it.paused, it.needsReenrolment, value, it.keyStoreFault) })
+
+    override var keyStoreFault: Boolean
+        get() = read().keyStoreFault
+        set(value) = write(read().let { Dto(it.paused, it.needsReenrolment, it.keyDropped, value) })
 }
 
 /**

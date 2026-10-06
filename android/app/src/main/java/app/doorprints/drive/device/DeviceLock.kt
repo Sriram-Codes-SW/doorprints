@@ -22,7 +22,7 @@ import android.content.Context
 import app.doorprints.deviceauth.AndroidLockLostDetector
 import app.doorprints.deviceauth.LockLossActions
 import app.doorprints.deviceauth.LockLostDetector
-import app.doorprints.deviceauth.RunDecision
+import app.doorprints.deviceauth.LockState
 
 /*
  * The device lock of Drive on Android (S4b-BL-127, docs/15 §10.3). The rules themselves are the shared `GateRules` and
@@ -44,11 +44,18 @@ interface DriveLockStore {
     /** The device key was dropped because Android invalidated it. */
     var keyDropped: Boolean
 
+    /**
+     * The key store lost or invalidated the key **while the phone still has its screen lock** (a vendor Keystore error, a
+     * wiped key store): the person is told "the key store lost the key; connect again", not "the lock was removed".
+     */
+    var keyStoreFault: Boolean
+
     /** The person re-enrolled: forget the pause. Only that action calls this. */
     fun clear() {
         paused = false
         needsReenrolment = false
         keyDropped = false
+        keyStoreFault = false
     }
 }
 
@@ -65,23 +72,22 @@ class DeviceLockActions(private val discardKey: () -> Unit, private val store: D
     }
 }
 
-/** The documented words (docs/15 §10.3). The four-language strings belong in resources (see the notes file). */
-object DriveLockNotice {
-    const val NEEDS_LOCK_EN =
-        "Google Drive backup needs a screen lock on this phone (a PIN, pattern, password, fingerprint or face). Set one in the phone's settings, then come back."
-    const val PAUSED_EN =
-        "Google Drive backup is paused because this phone no longer has a screen lock. Your houses are safe on this phone. Set a screen lock to continue."
-
-    /** The words for a run decision; null when the run may go on. */
-    fun forDecision(d: RunDecision): String? = when (d) {
-        RunDecision.Run -> null
-        RunDecision.PausedNoLock, RunDecision.PausedUnknown -> PAUSED_EN
-    }
-}
-
 object DeviceLockDetectors {
-    /** The keyguard (`isDeviceSecure`) and, when given, whether the lock-bound device key is still usable. */
-    fun forContext(context: () -> Context?, keyProbe: (() -> Boolean)?): LockLostDetector = AndroidLockLostDetector(context, keyProbe)
+    /**
+     * The keyguard (`isDeviceSecure`) and, when given, whether the lock-bound device key is still usable. A key that is not
+     * usable while the keyguard **is** secure is not a removed lock but a key store fault: it still answers "removed" (the
+     * key is gone either way) and calls [onKeyFault] first, so the words say what happened. The keyguard is asked before the
+     * probe, so a probe that ran and failed always means the lock was there.
+     */
+    fun forContext(context: () -> Context?, keyProbe: (() -> Boolean)?, onKeyFault: () -> Unit = {}): LockLostDetector {
+        if (keyProbe == null) return AndroidLockLostDetector(context, null)
+        return LockLostDetector {
+            var probeFailed = false
+            val state = AndroidLockLostDetector(context) { keyProbe().also { usable -> probeFailed = !usable } }.lockState()
+            if (state == LockState.REMOVED && probeFailed) onKeyFault()
+            state
+        }
+    }
 
     /**
      * True unless Android invalidated the key, or removed it while a folder is pinned to it (Android deletes lock-bound

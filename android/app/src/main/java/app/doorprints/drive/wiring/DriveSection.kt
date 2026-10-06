@@ -81,6 +81,13 @@ fun DriveSettingsSection(drive: DriveServices) {
     }
 }
 
+/** The words for a notice (the same ones in Settings and in the notification of a paused run). */
+internal fun LockNotice.messageRes(): Int = when (this) {
+    LockNotice.NEEDS_LOCK -> R.string.drive_lock_needs
+    LockNotice.KEY_LOST -> R.string.drive_lock_key_lost
+    LockNotice.PAUSED, LockNotice.NONE -> R.string.drive_lock_paused
+}
+
 @Composable
 internal fun LockNoticeBlock(notice: LockNotice) {
     val context = LocalContext.current
@@ -90,7 +97,7 @@ internal fun LockNoticeBlock(notice: LockNotice) {
             modifier = Modifier.semantics { heading() },
         )
     }
-    Text(stringResource(if (notice == LockNotice.NEEDS_LOCK) R.string.drive_lock_needs else R.string.drive_lock_paused))
+    Text(stringResource(notice.messageRes()))
     OutlinedButton(onClick = { openSecuritySettings(context) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
         Text(stringResource(R.string.drive_lock_open_settings))
     }

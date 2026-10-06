@@ -61,8 +61,11 @@ class DriveDeps(
     val signIn: DriveSignIn?,
     /** The device check (screen lock, fingerprint, face) and the keyguard test. */
     val deviceAuth: DeviceAuth,
-    /** The lock detector, built with the "is the device key still usable" probe the graph supplies. */
-    val lock: (keyUsable: () -> Boolean) -> LockLostDetector,
+    /**
+     * The lock detector, built with the "is the device key still usable" probe the graph supplies and the function it calls
+     * when that probe failed **with the screen lock still there** (a key store fault, which has its own words).
+     */
+    val lock: (keyUsable: () -> Boolean, onKeyFault: () -> Unit) -> LockLostDetector,
     val network: NetworkState,
     /** The phone's rows for Drive sync, given the id this device writes them under. */
     val localRows: (deviceId: () -> String) -> LocalRows,
@@ -122,8 +125,8 @@ object DriveAssembly {
         val stores = app.doorprints.drive.store.DriveFileStores(d.dir)
         val pins = FolderPinProbe({ stores.driveState.loadNow().rootId }, File(d.dir, TRUST_DIR))
         val identity = KeystoreDeviceIdentity(d.keyBackend, d.deviceName, DevicePlatform.ANDROID, folderPinned = pins::isPinned)
-        val lockStore = FileDriveLockStore(File(d.dir, "lock.json"))
-        val detector = d.lock(DeviceLockDetectors.keyUsable(identity))
+        val lockStore = FileDriveLockStore(File(d.dir, LOCK_FILE))
+        val detector = d.lock(DeviceLockDetectors.keyUsable(identity)) { lockStore.keyStoreFault = true }
         val gate = DriveGate(
             AuthPlatform.PHONE, d.deviceAuth, detector,
             DeviceLockActions(discardKey = identity::discard, store = lockStore), d.clock,
@@ -175,4 +178,5 @@ object DriveAssembly {
     }
 
     const val TRUST_DIR = "trust"
+    const val LOCK_FILE = "lock.json"
 }

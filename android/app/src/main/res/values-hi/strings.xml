@@ -99,4 +99,5 @@
     <string name="drive_lock_paused">Google Drive बैकअप रुका है क्योंकि इस फ़ोन में अब स्क्रीन लॉक नहीं है। आपके मकान इस फ़ोन में सुरक्षित हैं। जारी रखने के लिए स्क्रीन लॉक लगाएँ।</string>
     <string name="drive_lock_open_settings">सेटिंग्स खोलें</string>
     <string name="drive_lock_notif_title">Google Drive बैकअप रुका</string>
+    <string name="drive_lock_key_lost">Google Drive बैकअप रुका है क्योंकि इस फ़ोन के की स्टोर से कुंजी खो गई है। आपके मकान इस फ़ोन में सुरक्षित हैं। जारी रखने के लिए Google Drive से फिर जुड़ें।</string>
 </resources>

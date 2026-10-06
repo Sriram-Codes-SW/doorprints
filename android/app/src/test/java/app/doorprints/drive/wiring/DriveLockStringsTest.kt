@@ -24,9 +24,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 
-/** The five lock strings exist in all four languages and the three translations are marked under review (the resource files' rule). */
+/** The six lock strings exist in all four languages and the three translations are marked under review (the resource files' rule). */
 class DriveLockStringsTest {
-    private val keys = listOf("drive_lock_heading", "drive_lock_needs", "drive_lock_paused", "drive_lock_open_settings", "drive_lock_notif_title")
+    private val keys = listOf("drive_lock_heading", "drive_lock_needs", "drive_lock_paused", "drive_lock_open_settings", "drive_lock_notif_title", "drive_lock_key_lost")
 
     private fun file(folder: String) = File("src/main/res/$folder/strings.xml").also { assertTrue("missing ${it.path}", it.isFile) }
 
@@ -67,5 +67,18 @@ class DriveLockStringsTest {
             "Google Drive backup is paused because this phone no longer has a screen lock. Your houses are safe on this phone. Set a screen lock to continue.",
             value(english, "drive_lock_paused"),
         )
+    }
+
+    @Test
+    fun theKeyStoreSentenceIsItsOwnWordsAndNotTheLockRemovedOnes() {
+        val english = file("values").readText()
+        assertEquals(
+            "Google Drive backup is paused because this phone\\'s key store lost the key. Your houses are safe on this phone. Connect to Google Drive again to continue.",
+            value(english, "drive_lock_key_lost"),
+        )
+        for (folder in listOf("values", "values-hi", "values-ta", "values-te")) {
+            val text = file(folder).readText()
+            assertNotEquals("$folder: a vendor error must not read as a removed lock", value(text, "drive_lock_paused"), value(text, "drive_lock_key_lost"))
+        }
     }
 }

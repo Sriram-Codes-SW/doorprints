@@ -122,9 +122,19 @@ class DriveAssemblyTest {
                 override suspend fun revokeAccess() = Unit
             },
             deviceAuth = deviceAuth,
-            lock = { keyUsable ->
+            lock = { keyUsable, onKeyFault ->
                 phone.probes += keyUsable
-                LockLostDetector { if (!phone.lock || !keyUsable()) LockState.REMOVED else LockState.PRESENT }
+                // As DeviceLockDetectors.forContext: the keyguard first, a failed probe with the lock there is a key store fault.
+                LockLostDetector {
+                    when {
+                        !phone.lock -> LockState.REMOVED
+                        !keyUsable() -> {
+                            onKeyFault()
+                            LockState.REMOVED
+                        }
+                        else -> LockState.PRESENT
+                    }
+                }
             },
             network = NetworkState { phone.network },
             localRows = { _ ->
@@ -294,6 +304,36 @@ class DriveAssemblyTest {
         assertTrue(a.graph.lockStore.needsReenrolment)
         val writes = server.requests.drop(before).count { it.first in setOf(DriveOp.CREATE, DriveOp.UPLOAD, DriveOp.UPDATE, DriveOp.DELETE, DriveOp.TRASH) }
         assertEquals("no upload, download or delete", 0, writes)
+    }
+
+    @Test
+    fun aKeyTheKeyStoreLostWithTheLockStillThereIsItsOwnPause() = runBlocking {
+        val a = phone("Pixel 8").connected()
+        a.backend.state = DeviceKeyStatus.INVALIDATED
+        a.failUse()
+        val info = a.controller.syncNow()
+        assertEquals(SyncState.PAUSED, info.state)
+        assertTrue("paused as before", a.graph.lockStore.paused)
+        assertTrue("and told apart from a removed lock", a.graph.lockStore.keyStoreFault)
+    }
+
+    @Test
+    fun aRemovedLockIsNotAKeyStoreFault() = runBlocking {
+        val a = phone("Pixel 8").connected()
+        a.lock = false
+        a.backend.state = DeviceKeyStatus.INVALIDATED
+        a.controller.syncNow()
+        assertTrue(a.graph.lockStore.paused)
+        assertFalse("Android invalidates the key with the lock: that is the lock's words", a.graph.lockStore.keyStoreFault)
+    }
+
+    @Test
+    fun theKeyStoreFaultIsForgottenWithThePauseWhenTheFolderIsOpenAgain() = runBlocking {
+        val a = phone("Pixel 8").connected()
+        a.graph.lockStore.paused = true
+        a.graph.lockStore.keyStoreFault = true
+        assertEquals(ConnectState.READY, a.controller.connect().state)
+        assertFalse(a.graph.lockStore.keyStoreFault)
     }
 
     @Test

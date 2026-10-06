@@ -47,6 +47,7 @@ class MemoryLockStore : DriveLockStore {
     override var paused = false
     override var needsReenrolment = false
     override var keyDropped = false
+    override var keyStoreFault = false
 }
 
 class DeviceLockActionsTest {
@@ -100,24 +101,10 @@ class DeviceLockActionsTest {
         assertTrue(store.needsReenrolment)
     }
 
-    @Test fun `clearing is explicit and clears all three`() {
-        store.paused = true; store.needsReenrolment = true; store.keyDropped = true
+    @Test fun `clearing is explicit and clears all four`() {
+        store.paused = true; store.needsReenrolment = true; store.keyDropped = true; store.keyStoreFault = true
         store.clear()
-        assertFalse(store.paused || store.needsReenrolment || store.keyDropped)
-    }
-
-    @Test fun `the notice carries the documented words`() {
-        assertNull(DriveLockNotice.forDecision(RunDecision.Run))
-        assertEquals(DriveLockNotice.PAUSED_EN, DriveLockNotice.forDecision(RunDecision.PausedNoLock))
-        assertEquals(DriveLockNotice.PAUSED_EN, DriveLockNotice.forDecision(RunDecision.PausedUnknown))
-        assertEquals(
-            "Google Drive backup is paused because this phone no longer has a screen lock. Your houses are safe on this phone. Set a screen lock to continue.",
-            DriveLockNotice.PAUSED_EN,
-        )
-        assertEquals(
-            "Google Drive backup needs a screen lock on this phone (a PIN, pattern, password, fingerprint or face). Set one in the phone's settings, then come back.",
-            DriveLockNotice.NEEDS_LOCK_EN,
-        )
+        assertFalse(store.paused || store.needsReenrolment || store.keyDropped || store.keyStoreFault)
     }
 }
 
@@ -143,6 +130,32 @@ class KeyguardLockDetectorTest {
         keyguard.setIsDeviceSecure(true)
         keyUsable = false
         assertEquals(LockState.REMOVED, detector.lockState())
+    }
+
+    @Test fun `a key the key store lost while the lock is there is a key fault, not only a removed lock`() {
+        keyguard.setIsDeviceSecure(true)
+        keyUsable = false
+        var faults = 0
+        val d = DeviceLockDetectors.forContext({ context }, { keyUsable }) { faults++ }
+        assertEquals(LockState.REMOVED, d.lockState())
+        assertEquals(1, faults)
+    }
+
+    @Test fun `a removed keyguard is never a key fault, even with the key gone with it`() {
+        keyguard.setIsDeviceSecure(false)
+        keyUsable = false
+        var faults = 0
+        val d = DeviceLockDetectors.forContext({ context }, { keyUsable }) { faults++ }
+        assertEquals(LockState.REMOVED, d.lockState())
+        assertEquals(0, faults)
+    }
+
+    @Test fun `a lock and a usable key are not a fault`() {
+        keyguard.setIsDeviceSecure(true)
+        var faults = 0
+        val d = DeviceLockDetectors.forContext({ context }, { keyUsable }) { faults++ }
+        assertEquals(LockState.PRESENT, d.lockState())
+        assertEquals(0, faults)
     }
 
     @Test fun `no context cannot be read`() {

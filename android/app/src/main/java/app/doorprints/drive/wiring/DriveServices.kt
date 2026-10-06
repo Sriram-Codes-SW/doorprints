@@ -67,6 +67,11 @@ class DriveServices(
     private val dir = File(app.noBackupFilesDir, DIR)
     private val light = FileDrivePrefs(File(dir, PREFS_FILE))
 
+    /** The lock's memory of a pause, read without building the graph (the graph's own store is over the same file). */
+    private val lockMemory = FileDriveLockStore(File(dir, DriveAssembly.LOCK_FILE))
+
+    private fun keyguardSecure(): Boolean = app.getSystemService(KeyguardManager::class.java)?.isDeviceSecure == true
+
     /** Drive is in use on this phone (the folder was open and has not been disconnected): it replaces the server for sync. */
     val engaged: Boolean get() = light.engaged
 
@@ -93,7 +98,7 @@ class DriveServices(
                 drive = HttpDriveClient(Api.httpClient(), tokens),
                 signIn = TokenDriveSignIn(tokens, canConnect = keyguard),
                 deviceAuth = auth,
-                lock = { keyUsable -> DeviceLockDetectors.forContext({ app }, keyUsable) },
+                lock = { keyUsable, onKeyFault -> DeviceLockDetectors.forContext({ app }, keyUsable, onKeyFault) },
                 network = ConnectivityNetworkState(app),
                 localRows = { deviceId -> RoomSyncRows(db, deviceId) { id -> repository.photoFile(id).takeIf { it.isFile }?.length() } },
                 backupSource = AndroidDriveBackupSource(app, repository, repository::photoFile),
@@ -123,8 +128,7 @@ class DriveServices(
 
     /** What Settings says about the screen lock now. Read on every resume of the screen (the person may have set a lock meanwhile). */
     fun lockNotice(): LockNotice {
-        val present = app.getSystemService(KeyguardManager::class.java)?.isDeviceSecure == true
-        return DriveLockRules.notice(engaged, present)
+        return DriveLockRules.notice(engaged, keyguardSecure(), lockMemory.keyStoreFault)
     }
 
     /**
@@ -164,6 +168,7 @@ class DriveServices(
             engaged = true,
             lock = { graph.gate.beforeRun() },
             notifyLock = ::notifyLockPaused,
+            standing = { DriveLockRules.standingPause(lockMemory.paused, keyguardSecure(), lockMemory.keyStoreFault) },
         )
         return DriveBackgroundRunner(ops).run(sync, backup)
     }
@@ -178,7 +183,7 @@ class DriveServices(
         val localised = AppLocale.wrap(app)
         Notifications.result(
             localised, Notifications.DRIVE_LOCK_ID, localised.getString(R.string.drive_lock_notif_title),
-            localised.getString(R.string.drive_lock_paused), Notifications.openScreenIntent(localised, Notifications.SCREEN_SETTINGS),
+            localised.getString(DriveLockRules.pausedNotice(lockMemory.keyStoreFault && keyguardSecure()).messageRes()), Notifications.openScreenIntent(localised, Notifications.SCREEN_SETTINGS),
         )
     }
 

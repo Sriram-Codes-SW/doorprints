@@ -185,6 +185,31 @@ class DriveFilesTest {
     }
 
     @Test
+    fun theLockStoreKeepsTheKeyStoreFaultAcrossInstancesAndClearsIt() {
+        val file = File(tmp.newFolder("lock"), "lock.json")
+        val first = FileDriveLockStore(file)
+        first.paused = true
+        first.keyStoreFault = true
+        val second = FileDriveLockStore(file)
+        assertTrue(second.keyStoreFault)
+        assertTrue("setting one flag keeps the others", second.paused)
+        second.keyDropped = true
+        assertTrue(second.keyStoreFault)
+        second.clear()
+        assertFalse(FileDriveLockStore(file).keyStoreFault)
+        assertFalse(FileDriveLockStore(file).paused)
+    }
+
+    @Test
+    fun aLockFileFromBeforeTheKeyStoreFaultReadsAsNoFault() {
+        val file = File(tmp.newFolder("old"), "lock.json")
+        file.writeText("{\"paused\":true,\"needsReenrolment\":true,\"keyDropped\":false}")
+        val store = FileDriveLockStore(file)
+        assertTrue(store.paused)
+        assertFalse(store.keyStoreFault)
+    }
+
+    @Test
     fun theProbeIsNeverBuiltOnRunBlockingBecauseItRunsOnTheMainThread() {
         val source = File("src/main/java/app/doorprints/drive/wiring/DriveFiles.kt").readText()
         val probe = source.substring(source.indexOf("class FolderPinProbe"))

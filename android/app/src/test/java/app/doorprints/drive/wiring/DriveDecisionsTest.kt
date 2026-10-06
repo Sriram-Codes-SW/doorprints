@@ -157,6 +157,26 @@ class DriveDecisionsTest {
     }
 
     @Test
+    fun aKeyTheKeyStoreLostWithTheLockThereHasItsOwnNotice() {
+        assertEquals(LockNotice.KEY_LOST, DriveLockRules.notice(engaged = true, lockPresent = true, keyStoreFault = true))
+        assertEquals("a removed lock keeps the lock's words", LockNotice.PAUSED, DriveLockRules.notice(engaged = true, lockPresent = false, keyStoreFault = true))
+        assertEquals("Drive not in use: nothing to say", LockNotice.NONE, DriveLockRules.notice(engaged = false, lockPresent = true, keyStoreFault = true))
+        assertTrue(DriveLockRules.showsCard(LockNotice.KEY_LOST))
+        assertEquals(LockNotice.KEY_LOST, DriveLockRules.pausedNotice(true))
+        assertEquals(LockNotice.PAUSED, DriveLockRules.pausedNotice(false))
+        assertTrue(DriveWorkRules.isLockPause(SkipReason.KEY_LOST))
+        assertFalse(DriveWorkRules.isLockPause(SkipReason.AUTO_OFF))
+    }
+
+    @Test
+    fun aStandingPauseIsLeftAloneWhileTheLockIsStillGoneOrTheKeyStoreStillAtFault() {
+        assertEquals(null, DriveLockRules.standingPause(paused = false, lockPresent = false, keyStoreFault = true))
+        assertEquals(SkipReason.LOCK_REMOVED, DriveLockRules.standingPause(paused = true, lockPresent = false, keyStoreFault = false))
+        assertEquals(SkipReason.KEY_LOST, DriveLockRules.standingPause(paused = true, lockPresent = true, keyStoreFault = true))
+        assertEquals("the lock is back: look again", null, DriveLockRules.standingPause(paused = true, lockPresent = true, keyStoreFault = false))
+    }
+
+    @Test
     fun theCardIsHiddenOnlyWhenDriveCannotBeSwitchedOn() {
         assertTrue(DriveLockRules.showsCard(LockNotice.NONE))
         assertTrue(DriveLockRules.showsCard(LockNotice.PAUSED))
