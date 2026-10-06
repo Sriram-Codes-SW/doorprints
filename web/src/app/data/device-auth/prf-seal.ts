@@ -45,9 +45,10 @@ export interface PrfAuthenticator {
   isSupported(): Promise<boolean>;
   /**
    * One user-verified assertion for [credentialId]. [salt] is the blob salt; the authenticator applies the label
-   * before the PRF sees it. The PRF output is 32 bytes.
+   * before the PRF sees it. The PRF output is 32 bytes. [options].persist is true only when a sealed blob for this
+   * passkey already exists (opening it): the id is then kept if the browser lost it.
    */
-  evaluate(credentialId: Uint8Array, salt: Uint8Array): Promise<PrfResult>;
+  evaluate(credentialId: Uint8Array, salt: Uint8Array, options?: { persist?: boolean }): Promise<PrfResult>;
   /** Where the last passkey setup stopped (step names and flags, never a value); null when there is nothing to say. */
   lastPrfDetails?(): string | null;
   /**
@@ -235,7 +236,7 @@ export async function openWithPrf(
   onPrf?: (output: Uint8Array) => Promise<void>,
 ): Promise<SealOpen> {
   if (blob.v !== 1) return { ok: false, reason: "FAILED" };
-  const r = await prf.evaluate(blob.credentialId, blob.salt);
+  const r = await prf.evaluate(blob.credentialId, blob.salt, { persist: true });
   if (r.kind !== "OK") return { ok: false, reason: r.kind };
   try {
     if (onPrf) await onPrf(r.output);
