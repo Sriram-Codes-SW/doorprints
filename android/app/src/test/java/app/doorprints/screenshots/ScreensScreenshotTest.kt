@@ -432,7 +432,7 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
 
     @Test fun traceLegend() {
         englishLightOnly()
-        shoot("trace_legend") {
+        shoot("trace_legend", STATIC) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 app.doorprints.ui.TraceLegend(app.doorprints.shared.trace.RepeatLook.CLEAR)
                 app.doorprints.ui.TraceLegend(app.doorprints.shared.trace.RepeatLook.SUBTLE)
