@@ -91,6 +91,26 @@ class HuntEngineWalkTest {
         listOf(TracePoint(0.0, 0.0, clock - 86_400_000), TracePoint(1000 * m, 0.0, clock - 86_340_000)),
     )
 
+    // --- the walk the Map must leave alone ----------------------------------------------------------------
+
+    @Test
+    fun theStateNamesTheLiveWalkSoTheMapDoesNotAskAboutIt() = runTest {
+        val e = engine()
+        e.start()
+        advanceUntilIdle()
+        assertEquals(0L, HuntState.state.value.walkId, "no id before the first kept point")
+        e.onFix(12.97, 77.59, 5f, 1_000)
+        advanceUntilIdle()
+        assertEquals(1_000L, HuntState.state.value.walkId)
+        e.finishWalk()
+        assertEquals(0L, HuntState.state.value.walkId, "Finish walk: the next kept point starts a new walk")
+        e.onFix(12.9704, 77.59, 5f, 40_000)
+        advanceUntilIdle()
+        assertEquals(40_000L, HuntState.state.value.walkId)
+        e.stopped(null)
+        assertEquals(0L, HuntState.state.value.walkId)
+    }
+
     // --- the recorder -------------------------------------------------------------------------------------
 
     @Test

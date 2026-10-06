@@ -349,6 +349,8 @@ fun HouseEditScreen(
     /** A reminder's *Questions* action (S4b-BL-93b): the form opens scrolled to its questions, once. */
     showQuestions: Boolean = false,
     onQuestionsShown: () -> Unit = {},
+    /** *Show on map* of a saved walk (docs/11 5.27.6): the Map, which outlines the walk it was asked to show. */
+    onShowOnMap: () -> Unit = {},
 ) {
     val platform = LocalPlatformServices.current
     val services = LocalAppServices.current
@@ -1109,6 +1111,9 @@ fun HouseEditScreen(
                     }
                 }
 
+                // The house's saved walks (docs/11 5.27.6): only for a house that exists; they are the house's own.
+                if (!isNew) SavedWalksCard(id, onShowOnMap)
+
                 SectionHeading(stringResource(Res.string.house_checklist))
                 // The criteria that are not archived, in their order (slice 2); one set to Ignore says it is not counted.
                 // An archived criterion is hidden, and its score on the house stays as it is.
@@ -1491,7 +1496,13 @@ fun HouseEditScreen(
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
             title = { Text(stringResource(Res.string.house_delete_confirm_title)) },
-            text = { Text(stringResource(Res.string.house_delete_confirm_body)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(stringResource(Res.string.house_delete_confirm_body))
+                    // A saved walk is the house's: it goes with it (docs/11 5.27.6).
+                    Text(stringResource(Res.string.trace_house_delete_note))
+                }
+            },
             confirmButton = {
                 DangerButton(
                     text = stringResource(Res.string.common_delete),

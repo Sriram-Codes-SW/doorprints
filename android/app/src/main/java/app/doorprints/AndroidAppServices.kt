@@ -269,6 +269,8 @@ private class AndroidMapServices(private val app: DoorprintsApp) : MapServices {
         HuntService.stop(app)
     }
 
+    override fun finishWalk() = HuntService.finishWalk(app)
+
     override fun clearHuntStopReason() = HuntService.clearStopReason()
 
     /**

@@ -22,6 +22,7 @@ import app.doorprints.shared.trace.MatchedStretch
 import app.doorprints.shared.trace.PlaceBand
 import app.doorprints.shared.trace.PlaceCheckResult
 import app.doorprints.shared.trace.RepeatDetector
+import app.doorprints.shared.trace.TracePoint
 import app.doorprints.shared.trace.TraceWalk
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -78,13 +79,17 @@ const val CHECK_RING_STROKE_PX = 3.0
  * What the Map draws for an answer of *Have I been here?*: the place, its label ("You are here", "This house", "This
  * spot") and the matched stretch of each walk that [PlaceBand.WALKED] it. Held in memory only, never stored.
  */
-class CheckOverlay(val lat: Double, val lon: Double, val label: String, val stretches: List<List<Pair<Double, Double>>>) {
+class CheckOverlay(val lat: Double?, val lon: Double?, val label: String, val stretches: List<List<Pair<Double, Double>>>) {
     /** Every point of the overlay, for fitting the camera to it. */
-    val points: List<Pair<Double, Double>> get() = listOf(lat to lon) + stretches.flatten()
+    val points: List<Pair<Double, Double>>
+        get() = (if (lat != null && lon != null) listOf(lat to lon) else emptyList()) + stretches.flatten()
 
     val geoJson: String get() = checkGeoJson(this)
 
     companion object {
+        /** A walk on its own, outlined with no ring (*Show on map* from a house page, docs/11 5.27.6). */
+        fun ofWalk(points: List<TracePoint>): CheckOverlay = CheckOverlay(null, null, "", listOf(points.map { it.lat to it.lon }))
+
         fun of(lat: Double, lon: Double, label: String, result: PlaceCheckResult, walks: List<TraceWalk>): CheckOverlay =
             CheckOverlay(
                 lat, lon, label,
@@ -100,16 +105,18 @@ fun checkGeoJson(overlay: CheckOverlay?): String = buildJsonObject {
     put("type", "FeatureCollection")
     putJsonArray("features") {
         if (overlay != null) {
-            add(
-                buildJsonObject {
-                    put("type", "Feature")
-                    putJsonObject("properties") { put("kind", "place"); put("label", overlay.label) }
-                    putJsonObject("geometry") {
-                        put("type", "Point")
-                        putJsonArray("coordinates") { add(JsonPrimitive(overlay.lon)); add(JsonPrimitive(overlay.lat)) }
-                    }
-                },
-            )
+            if (overlay.lat != null && overlay.lon != null) {
+                add(
+                    buildJsonObject {
+                        put("type", "Feature")
+                        putJsonObject("properties") { put("kind", "place"); put("label", overlay.label) }
+                        putJsonObject("geometry") {
+                            put("type", "Point")
+                            putJsonArray("coordinates") { add(JsonPrimitive(overlay.lon)); add(JsonPrimitive(overlay.lat)) }
+                        }
+                    },
+                )
+            }
             overlay.stretches.forEach { line ->
                 add(
                     buildJsonObject {
@@ -127,6 +134,27 @@ fun checkGeoJson(overlay: CheckOverlay?): String = buildJsonObject {
         }
     }
 }.toString()
+
+/**
+ * A request for the Map to show an outline: a saved walk (*Show on map*, a 2 px halo for [seconds] seconds) or a place
+ * check's stretches. Made on another screen (the house page), taken by the Map once. Held in memory, never stored.
+ */
+class MapFocus(val overlay: CheckOverlay, val seconds: Int = 3)
+
+object ShowOnMap {
+    private val request = kotlinx.coroutines.flow.MutableStateFlow<MapFocus?>(null)
+
+    /** The outline waiting for the Map, or null. */
+    val pending: kotlinx.coroutines.flow.StateFlow<MapFocus?> get() = request
+
+    fun show(focus: MapFocus) {
+        request.value = focus
+    }
+
+    fun consume() {
+        request.value = null
+    }
+}
 
 fun checkSourceJson(): JsonObject = buildJsonObject {
     put("type", "geojson")

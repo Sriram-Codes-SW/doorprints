@@ -101,6 +101,8 @@ object IosAppContainer {
     fun start() {
         if (started) return
         started = true
+        // A saved walk never outlives its house: at start the walks of a tombstoned house go (docs/11 5.27.6).
+        appScope.launch { catchFailures { repository.sweepWalksOfDeletedHouses() } }
         // Whether the server has AI features on, once per process, as on Android (Root does not ask again).
         appScope.launch { catchFailures { repository.refreshAiStatus() } }
         appScope.launch {
@@ -286,6 +288,8 @@ private object IosMapServices : MapServices {
     override val hunt: StateFlow<HuntState.State> get() = HuntState.state
     override fun startHunt(): Boolean = IosHunt.start()
     override fun stopHunt() = IosHunt.stop()
+
+    override fun finishWalk() = IosHunt.finishWalk()
     override fun clearHuntStopReason() = IosHunt.clearStopReason()
     override fun notificationsReachUser(): Boolean = IosNotifications.canPost()
 

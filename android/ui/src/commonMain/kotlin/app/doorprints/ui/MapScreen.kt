@@ -65,6 +65,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.doorprints.data.AppSettings
+import app.doorprints.data.Repository
+import app.doorprints.data.SaveWalkResult
+import app.doorprints.shared.trace.TraceConstants
 import app.doorprints.data.HouseEntity
 import app.doorprints.shared.trace.RepeatLook
 import app.doorprints.location.HuntState
@@ -72,6 +75,7 @@ import app.doorprints.ui.res.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -253,8 +257,34 @@ fun MapScreen(
     val track by produceState(TraceDrawing.EMPTY, repo) {
         repo.walksChanged().collectLatest { value = withContext(Dispatchers.Default) { TraceDrawing.of(repo.walks()) } }
     }
-    val repeatLook = repo.settings.settings.collectAsStateWithLifecycle(AppSettings()).value.repeatLook
     val hunt by mapServices.hunt.collectAsStateWithLifecycle()
+    val repeatLook = repo.settings.settings.collectAsStateWithLifecycle(AppSettings()).value.repeatLook
+    // *Save this walk?* (docs/11 5.27.6): the walk to ask about, asked once, when a walk ends (*Finish walk*, Hunt mode
+    // stopped) and when the Map opens (Hunt mode stopped by itself, or the app was killed). Never the walk being recorded.
+    var askedWalk by remember { mutableStateOf<WalkSummary?>(null) }
+    var askRefusal by remember { mutableStateOf<String?>(null) }
+    val alertRadiusM = repo.settings.settings.collectAsStateWithLifecycle(AppSettings()).value.alertRadiusM
+    fun askAboutWalk() {
+        if (askedWalk != null) return
+        scope.launch { askedWalk = walkToAskAbout(repo, HuntState.state.value.walkId) }
+    }
+    LaunchedEffect(Unit) {
+        // The 30-day rule also runs when the Map opens (docs/11 5.27.6), then the walk a stop or a kill left unasked.
+        repo.pruneTrack(nowMillis() - Repository.TRACK_KEPT_MS)
+        askAboutWalk()
+    }
+    var huntWasActive by remember { mutableStateOf(hunt.active) }
+    LaunchedEffect(hunt.active) {
+        if (huntWasActive && !hunt.active) askAboutWalk()
+        huntWasActive = hunt.active
+    }
+    var finishRequests by remember { mutableIntStateOf(0) }
+    LaunchedEffect(finishRequests) {
+        if (finishRequests == 0) return@LaunchedEffect
+        // The service ends the walk a moment after the request: wait for the live walk id to go to 0, then ask.
+        withTimeoutOrNull(3_000) { HuntState.state.first { it.walkId == 0L } }
+        askAboutWalk()
+    }
     var map by remember { mutableStateOf<MapControl?>(null) }
     // Offline maps (docs/11 5.20): the dialog over the box the map shows, and the area whose outcome the snackbar
     // reports (saved with its size, or failed).
@@ -526,6 +556,21 @@ fun MapScreen(
         m.camera()?.let { camera = it }
     }
 
+    // *Show on map* of a saved walk or a place check (docs/11 5.27.6): fit the view to the outline, draw it for a while.
+    var focusOverlay by remember { mutableStateOf<CheckOverlay?>(null) }
+    val pendingFocus by ShowOnMap.pending.collectAsStateWithLifecycle()
+    LaunchedEffect(pendingFocus, map) {
+        val focus = pendingFocus ?: return@LaunchedEffect
+        val m = map ?: return@LaunchedEffect
+        ShowOnMap.consume()
+        framed = true
+        focusOverlay = focus.overlay
+        m.frame(focus.overlay.points, framePaddingPx, maxZoom = 18.0)
+        scope.launch {
+            delay(focus.seconds * 1_000L)
+            if (focusOverlay === focus.overlay) focusOverlay = null
+        }
+    }
     val mapDescription = stringResource(Res.string.map_region_desc)
     val traceDescription = stringResource(Res.string.trace_a11y_map)
     // The repeated-path alert (docs/11 5.27.5): the notification is the platform's; with the app in front the Map says it too.
@@ -568,6 +613,59 @@ fun MapScreen(
     // With TalkBack on, the location note can take focus (see "A refusal is said once"); otherwise it is no tab stop.
     val noteModifier = Modifier.bringIntoViewRequester(noteView).focusRequester(noteFocus)
         .then(if (platform.isScreenReaderOn()) Modifier.focusable() else Modifier)
+    val savedSnack = stringResource(Res.string.trace_saved_snack, "%1")
+    val keptSnack = stringResource(Res.string.trace_kept_snack)
+    val deletedSnack = stringResource(Res.string.trace_deleted_snack)
+    val tooLongText = stringResource(Res.string.trace_save_too_long, TraceConstants.MAX_WALK_POINTS)
+    val houseFullText = stringResource(Res.string.trace_save_house_full, TraceConstants.MAX_WALKS_PER_HOUSE)
+    val allFullText = stringResource(Res.string.trace_save_all_full, TraceConstants.MAX_SAVED_WALKS)
+    val failedWalkText = stringResource(Res.string.trace_save_failed_walk)
+    val failedHouseText = stringResource(Res.string.trace_save_failed_house)
+    val unnamedHouse = stringResource(Res.string.house_unnamed)
+    askedWalk?.let { walk ->
+        WalkEndSheet(
+            summary = walk,
+            houses = houses,
+            alertRadiusM = alertRadiusM,
+            refusal = askRefusal,
+            onKeep = {
+                scope.launch { WalkEndAnswers.keep(repo, walk.walkId); snackbar.showSnackbar(keptSnack) }
+                askedWalk = null; askRefusal = null
+            },
+            onDelete = {
+                scope.launch { WalkEndAnswers.delete(repo, walk.walkId); snackbar.showSnackbar(deletedSnack) }
+                askedWalk = null; askRefusal = null
+            },
+            onSave = { houseId ->
+                scope.launch {
+                    when (val answer = WalkEndAnswers.save(repo, walk.walkId, houseId)) {
+                        WalkAnswer.Done -> {
+                            val label = houses.firstOrNull { it.id == houseId }?.label?.ifBlank { null } ?: unnamedHouse
+                            askedWalk = null; askRefusal = null
+                            snackbar.showSnackbar(savedSnack.replace("%1", label))
+                        }
+                        is WalkAnswer.Refused -> {
+                            val text = when (answer.reason) {
+                                SaveWalkResult.TooLong -> tooLongText
+                                SaveWalkResult.HouseFull -> houseFullText
+                                SaveWalkResult.DeviceFull -> allFullText
+                                SaveWalkResult.NoSuchHouse -> failedHouseText
+                                else -> failedWalkText
+                            }
+                            if (answer.reason == SaveWalkResult.HouseFull || answer.reason == SaveWalkResult.DeviceFull ||
+                                answer.reason == SaveWalkResult.NoSuchHouse
+                            ) {
+                                askRefusal = text // the sheet stays: another house may take it
+                            } else {
+                                askedWalk = null; askRefusal = null
+                                snackbar.showSnackbar(text, withDismissAction = true)
+                            }
+                        }
+                    }
+                }
+            },
+        )
+    }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         // A short map (landscape, split-screen, a half-open foldable) lays the controls out in one row (MapRules).
         val controlsInRow = mapControlsInRow(maxHeight.value)
@@ -639,7 +737,7 @@ fun MapScreen(
             houses = houses,
             track = track,
             repeatLook = repeatLook,
-            check = null,
+            check = focusOverlay,
             labelSizeSp = markerLabelSizeSp(labelFontScale),
             showLocation = permissionGranted,
             attribution = MapAttribution(gutterPx, attributionBottomPx, shown = !snackbarAtStart),
@@ -718,6 +816,10 @@ fun MapScreen(
                     notificationsOff = hunt.active && !notificationsReach,
                     onAllowNotifications = allowNotifications,
                     onCloseStopReason = { mapServices.clearHuntStopReason() },
+                    onFinishWalk = {
+                        mapServices.finishWalk()
+                        finishRequests++
+                    },
                 )
             } else {
                 // No Hunt mode on this platform (iOS, CMP-8c): no card, only the location note when it applies, in a
@@ -1056,6 +1158,7 @@ private fun HuntCard(
     notificationsOff: Boolean,
     onAllowNotifications: () -> Unit,
     onCloseStopReason: () -> Unit,
+    onFinishWalk: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val now by produceState(nowMillis()) {
@@ -1119,6 +1222,12 @@ private fun HuntCard(
                                 Text(stringResource(Res.string.map_nearest, h.label, hunt.nearestDistanceM?.toInt() ?: 0))
                             }
                         }
+                        // *Finish walk* (docs/11 5.27.6): the walk ends, Hunt mode keeps running, the next kept point starts a new one.
+                        TextButton(
+                            onClick = onFinishWalk,
+                            contentPadding = PaddingValues(0.dp),
+                            modifier = Modifier.heightIn(min = 48.dp),
+                        ) { Text(stringResource(Res.string.trace_walk_finish)) }
                         // A weak or missing fix is a condition, not a failure: muted, never error red (round 5).
                         when {
                             stale -> Text(

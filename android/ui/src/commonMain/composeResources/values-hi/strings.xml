@@ -1425,4 +1425,37 @@
     <!-- Path trace v2 (S4b-FR-16): the Map's snackbar and the iPhone's notification; under review. -->
     <string name="trace_alert_banner">आप इस रास्ते पहले चल चुके हैं।</string>
     <string name="trace_alert_notif_text">यह रास्ता पहले की सैर से आपके नक़्शे पर है।</string>
+    <!-- Path trace v2 (S4b-FR-15, 2026-10-06): finish a walk, save it with a house, the house page's saved walks; hi, ta, te under review. -->
+    <string name="trace_unit_m">%1$d मी</string>
+    <string name="trace_unit_km">%1$s कि.मी.</string>
+    <string name="trace_walk_finish">सैर पूरी करें</string>
+    <string name="trace_end_title">इस सैर को सहेजें?</string>
+    <string name="trace_end_summary">%1$s की सैर, %2$d मिनट में</string>
+    <string name="trace_end_body">इसे रखने के लिए किसी मकान से जोड़ें। नहीं तो यह 30 दिन रहेगी, फिर मिट जाएगी। यह इसी फ़ोन पर रहती है, किसी बैकअप या कॉपी में नहीं जाती।</string>
+    <string name="trace_end_save">मकान के साथ सहेजें</string>
+    <string name="trace_end_keep">30 दिन रखें</string>
+    <string name="trace_end_delete">इस सैर को मिटाएँ</string>
+    <string name="trace_end_delete_confirm">इस सैर को मिटाएँ? इसे वापस नहीं किया जा सकता।</string>
+    <string name="trace_pick_title">यह सैर किस मकान तक थी?</string>
+    <string name="trace_pick_nearest">जहाँ आप रुके, उसके सबसे पास, %1$s दूर</string>
+    <string name="trace_pick_near">आपकी सैर से %1$s दूर</string>
+    <string name="trace_pick_search">अपने मकान खोजें</string>
+    <string name="trace_pick_none">आपका अभी कोई मकान सहेजा नहीं है। पहले मकान जोड़ें, या सैर को 30 दिन रखें।</string>
+    <string name="trace_pick_confirm">सैर सहेजें</string>
+    <string name="trace_saved_snack">सैर %1$s के साथ सहेजी गई।</string>
+    <string name="trace_kept_snack">सैर 30 दिन के लिए रखी गई।</string>
+    <string name="trace_deleted_snack">सैर मिटा दी गई।</string>
+    <string name="trace_save_too_long">यह सैर सहेजने के लिए बहुत लंबी है (%1$d से ज़्यादा बिंदु)। यह 30 दिन रहेगी।</string>
+    <string name="trace_save_house_full">इस मकान की %1$d सैर पहले से सहेजी हैं। पहले एक मिटाएँ।</string>
+    <string name="trace_save_all_full">आपकी %1$d सैर सहेजी हैं। पहले एक मिटाएँ।</string>
+    <string name="trace_save_failed_walk">सैर सहेजी नहीं जा सकी: वह अब इस फ़ोन पर नहीं है।</string>
+    <string name="trace_save_failed_house">सैर सहेजी नहीं जा सकी: वह मकान अब नहीं है।</string>
+    <string name="trace_house_title">सहेजी गई सैर</string>
+    <string name="trace_house_row">%1$s, %2$s, %3$d मिनट</string>
+    <string name="trace_house_show">नक़्शे पर दिखाएँ</string>
+    <string name="trace_house_delete">सैर मिटाएँ</string>
+    <string name="trace_house_delete_confirm">यह सहेजी गई सैर मिटाएँ?</string>
+    <string name="trace_house_empty">कोई सहेजी गई सैर नहीं। सैर पूरी करने पर आप उसे इस मकान से जोड़ सकते हैं।</string>
+    <string name="trace_house_local">सहेजी गई सैर सिर्फ़ इसी फ़ोन पर रहती हैं। वे किसी बैकअप, कॉपी, Google Drive या सर्वर में नहीं जातीं।</string>
+    <string name="trace_house_delete_note">इसकी सहेजी गई सैर भी मिटा दी जाती हैं।</string>
 </resources>

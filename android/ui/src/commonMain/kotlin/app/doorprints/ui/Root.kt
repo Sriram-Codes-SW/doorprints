@@ -642,6 +642,8 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                         onOpenViewings = { house -> if (resumed(entry)) nav.navigate(Routes.viewings(house)) },
                         // *Save a copy* after *Close this hunt* (slice 5).
                         onSaveCopy = { if (resumed(entry)) nav.navigate("export") },
+                        // A saved walk's *Show on map* (docs/11 5.27.6): the Map, which outlines it.
+                        onShowOnMap = { if (resumed(entry)) nav.openMapFresh() },
                         // "Save as a new house" after this one was removed elsewhere: continue on the copy.
                         onCreated = { id ->
                             if (resumed(entry)) {

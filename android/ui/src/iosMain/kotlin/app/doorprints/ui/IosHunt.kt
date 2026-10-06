@@ -160,6 +160,11 @@ internal object IosHunt : HuntEffects {
     /** Closes the "Hunt mode stopped because…" card on the Map. */
     fun clearStopReason() = HuntState.update { it.copy(stopReason = null) }
 
+    /** *Finish walk* (docs/11 5.27.6): the walk ends, Hunt mode keeps running; nothing while it is off. */
+    fun finishWalk() {
+        engine?.finishWalk()
+    }
+
     private fun stopFor(reason: HuntState.StopReason) {
         stopReason = reason
         end()

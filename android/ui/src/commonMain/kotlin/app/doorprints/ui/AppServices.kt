@@ -266,6 +266,12 @@ interface MapServices {
     /** The user turned Hunt mode off. */
     fun stopHunt()
 
+    /**
+     * *Finish walk* on the Hunt card (docs/11 5.27.6): the walk now recorded ends and the next kept point starts a new
+     * one; Hunt mode keeps running. Does nothing while Hunt mode is off.
+     */
+    fun finishWalk() {}
+
     /** Closes the "Hunt mode stopped because…" card. */
     fun clearHuntStopReason()
 

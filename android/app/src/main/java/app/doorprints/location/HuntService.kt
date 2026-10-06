@@ -101,6 +101,11 @@ class HuntService : LifecycleService(), HuntEffects {
             stopSelf()
             return START_NOT_STICKY
         }
+        if (intent?.action == ACTION_FINISH_WALK) {
+            // *Finish walk* from the Map (docs/11 5.27.6): the walk ends, Hunt mode goes on (already in the foreground).
+            if (HuntState.state.value.active) engine.finishWalk()
+            return START_STICKY
+        }
         val stopIntent = android.app.PendingIntent.getService(
             this, 0, Intent(this, HuntService::class.java).setAction(ACTION_STOP),
             android.app.PendingIntent.FLAG_IMMUTABLE,
@@ -247,6 +252,7 @@ class HuntService : LifecycleService(), HuntEffects {
 
     companion object {
         private const val ACTION_STOP = "stop"
+        private const val ACTION_FINISH_WALK = "finish-walk"
 
         fun hasLocationPermission(context: Context): Boolean =
             ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
@@ -271,6 +277,12 @@ class HuntService : LifecycleService(), HuntEffects {
 
         /** The user turned Hunt mode off: onDestroy runs with no stop reason. */
         fun stop(context: Context) = context.stopService(Intent(context, HuntService::class.java))
+
+        /** *Finish walk*: asks the running service to end the walk (nothing while Hunt mode is off). */
+        fun finishWalk(context: Context) {
+            if (!HuntState.state.value.active) return
+            runCatching { context.startService(Intent(context, HuntService::class.java).setAction(ACTION_FINISH_WALK)) }
+        }
 
         /** Closes the "Hunt mode stopped because…" card on the Map. */
         fun clearStopReason() = HuntState.update { it.copy(stopReason = null) }

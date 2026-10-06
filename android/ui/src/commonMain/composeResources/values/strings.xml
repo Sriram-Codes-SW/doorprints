@@ -1426,4 +1426,37 @@
     <!-- Path trace v2 (S4b-FR-16): the Map's snackbar and the iPhone's notification; under review. -->
     <string name="trace_alert_banner">You have walked this way before.</string>
     <string name="trace_alert_notif_text">This path is on your map from an earlier walk.</string>
+    <!-- Path trace v2 (S4b-FR-15, 2026-10-06): finish a walk, save it with a house, the house page's saved walks; hi, ta, te under review. -->
+    <string name="trace_unit_m">%1$d m</string>
+    <string name="trace_unit_km">%1$s km</string>
+    <string name="trace_walk_finish">Finish walk</string>
+    <string name="trace_end_title">Save this walk?</string>
+    <string name="trace_end_summary">Walk of %1$s in %2$d min</string>
+    <string name="trace_end_body">Link it to a house to keep it. Otherwise it stays for 30 days, then it goes. It stays on this phone and is never in a backup or a copy.</string>
+    <string name="trace_end_save">Save with a house</string>
+    <string name="trace_end_keep">Keep for 30 days</string>
+    <string name="trace_end_delete">Delete this walk</string>
+    <string name="trace_end_delete_confirm">Delete this walk? This cannot be undone.</string>
+    <string name="trace_pick_title">Which house was this walk to?</string>
+    <string name="trace_pick_nearest">Nearest to where you stopped, %1$s away</string>
+    <string name="trace_pick_near">%1$s from your walk</string>
+    <string name="trace_pick_search">Search your houses</string>
+    <string name="trace_pick_none">You have no saved houses yet. Add a house first, or keep the walk for 30 days.</string>
+    <string name="trace_pick_confirm">Save walk</string>
+    <string name="trace_saved_snack">Walk saved with %1$s.</string>
+    <string name="trace_kept_snack">Walk kept for 30 days.</string>
+    <string name="trace_deleted_snack">Walk deleted.</string>
+    <string name="trace_save_too_long">This walk is too long to save (more than %1$d points). It stays for 30 days.</string>
+    <string name="trace_save_house_full">This house already has %1$d saved walks. Delete one first.</string>
+    <string name="trace_save_all_full">You have %1$d saved walks. Delete one first.</string>
+    <string name="trace_save_failed_walk">Could not save the walk: it is no longer on this phone.</string>
+    <string name="trace_save_failed_house">Could not save the walk: that house is gone.</string>
+    <string name="trace_house_title">Saved walks</string>
+    <string name="trace_house_row">%1$s, %2$s, %3$d min</string>
+    <string name="trace_house_show">Show on map</string>
+    <string name="trace_house_delete">Delete walk</string>
+    <string name="trace_house_delete_confirm">Delete this saved walk?</string>
+    <string name="trace_house_empty">No saved walks. When you finish a walk, you can link it to this house.</string>
+    <string name="trace_house_local">Saved walks stay on this phone only. They are not in a backup, a copy, Google Drive or on a server.</string>
+    <string name="trace_house_delete_note">Its saved walks are deleted too.</string>
 </resources>

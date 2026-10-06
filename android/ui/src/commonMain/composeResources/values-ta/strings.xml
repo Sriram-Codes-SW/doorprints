@@ -1425,4 +1425,37 @@
     <!-- Path trace v2 (S4b-FR-16): the Map's snackbar and the iPhone's notification; under review. -->
     <string name="trace_alert_banner">நீங்கள் இந்த வழியில் முன்பு நடந்திருக்கிறீர்கள்.</string>
     <string name="trace_alert_notif_text">இந்தப் பாதை முந்தைய நடையிலிருந்து உங்கள் வரைபடத்தில் உள்ளது.</string>
+    <!-- Path trace v2 (S4b-FR-15, 2026-10-06): finish a walk, save it with a house, the house page's saved walks; hi, ta, te under review. -->
+    <string name="trace_unit_m">%1$d மீ</string>
+    <string name="trace_unit_km">%1$s கி.மீ</string>
+    <string name="trace_walk_finish">நடையை முடி</string>
+    <string name="trace_end_title">இந்த நடையைச் சேமிக்கவா?</string>
+    <string name="trace_end_summary">%1$s நடை, %2$d நிமிடத்தில்</string>
+    <string name="trace_end_body">வைத்திருக்க இதை ஒரு வீட்டுடன் இணைக்கவும். இல்லையெனில் 30 நாட்கள் இருக்கும், பிறகு நீங்கும். இது இந்தத் தொலைபேசியில் மட்டும் இருக்கும்; காப்புப் பிரதியிலோ நகலிலோ செல்லாது.</string>
+    <string name="trace_end_save">வீட்டுடன் சேமி</string>
+    <string name="trace_end_keep">30 நாட்கள் வை</string>
+    <string name="trace_end_delete">இந்த நடையை அழி</string>
+    <string name="trace_end_delete_confirm">இந்த நடையை அழிக்கவா? இதைத் திரும்பப் பெற முடியாது.</string>
+    <string name="trace_pick_title">இந்த நடை எந்த வீட்டுக்கு?</string>
+    <string name="trace_pick_nearest">நீங்கள் நின்ற இடத்துக்கு மிக அருகில், %1$s தொலைவில்</string>
+    <string name="trace_pick_near">உங்கள் நடையிலிருந்து %1$s</string>
+    <string name="trace_pick_search">உங்கள் வீடுகளைத் தேடுங்கள்</string>
+    <string name="trace_pick_none">இன்னும் சேமித்த வீடுகள் இல்லை. முதலில் ஒரு வீட்டைச் சேருங்கள், அல்லது நடையை 30 நாட்கள் வையுங்கள்.</string>
+    <string name="trace_pick_confirm">நடையைச் சேமி</string>
+    <string name="trace_saved_snack">நடை %1$s உடன் சேமிக்கப்பட்டது.</string>
+    <string name="trace_kept_snack">நடை 30 நாட்களுக்கு வைக்கப்பட்டது.</string>
+    <string name="trace_deleted_snack">நடை அழிக்கப்பட்டது.</string>
+    <string name="trace_save_too_long">இந்த நடை சேமிக்க மிக நீளமானது (%1$d புள்ளிகளுக்கு மேல்). இது 30 நாட்கள் இருக்கும்.</string>
+    <string name="trace_save_house_full">இந்த வீட்டுக்கு ஏற்கனவே %1$d நடைகள் சேமிக்கப்பட்டுள்ளன. முதலில் ஒன்றை அழியுங்கள்.</string>
+    <string name="trace_save_all_full">உங்களிடம் %1$d சேமித்த நடைகள் உள்ளன. முதலில் ஒன்றை அழியுங்கள்.</string>
+    <string name="trace_save_failed_walk">நடையைச் சேமிக்க முடியவில்லை: அது இனி இந்தத் தொலைபேசியில் இல்லை.</string>
+    <string name="trace_save_failed_house">நடையைச் சேமிக்க முடியவில்லை: அந்த வீடு இல்லை.</string>
+    <string name="trace_house_title">சேமித்த நடைகள்</string>
+    <string name="trace_house_row">%1$s, %2$s, %3$d நிமிடம்</string>
+    <string name="trace_house_show">வரைபடத்தில் காட்டு</string>
+    <string name="trace_house_delete">நடையை அழி</string>
+    <string name="trace_house_delete_confirm">இந்தச் சேமித்த நடையை அழிக்கவா?</string>
+    <string name="trace_house_empty">சேமித்த நடைகள் இல்லை. நடையை முடிக்கும்போது அதை இந்த வீட்டுடன் இணைக்கலாம்.</string>
+    <string name="trace_house_local">சேமித்த நடைகள் இந்தத் தொலைபேசியில் மட்டும் இருக்கும். அவை காப்புப் பிரதி, நகல், Google Drive அல்லது சேவையகத்தில் இல்லை.</string>
+    <string name="trace_house_delete_note">அதன் சேமித்த நடைகளும் அழிக்கப்படும்.</string>
 </resources>

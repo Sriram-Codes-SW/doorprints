@@ -143,8 +143,17 @@ open class DoorprintsApp : Application(), WorkConfiguration.Provider {
     }
 
     /** Platform services and start-up work; the data container above is all the screens need. */
+    /**
+     * A saved walk never outlives its house (docs/11 5.27.6): at app start every saved walk whose house is a tombstone or
+     * missing is deleted (the other triggers are the Undo snackbar closing, Hunt start, sync end and import end). Not
+     * cancelled by anything the screens do (the repository's sweep runs under NonCancellable).
+     */
+    @VisibleForTesting
+    internal fun sweepWalksAtStart(): Job = appScope.launch { runCatching { container.repository.sweepWalksOfDeletedHouses() } }
+
     protected open fun startServices() {
         MapLibre.getInstance(this)
+        sweepWalksAtStart()
         Notifications.createChannels(AppLocale.wrap(this))
         SyncWorker.schedulePeriodic(this)
         // Google Drive's regular run follows "in use and automatic backup on"; re-set at every start, as the weekly backup is.
