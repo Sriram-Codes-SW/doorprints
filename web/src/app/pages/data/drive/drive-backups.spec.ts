@@ -67,6 +67,7 @@ async function render(fakes: ReturnType<typeof fakeDriveService>) {
 
 afterEach(() => {
   TestBed.resetTestingModule();
+  localStorage.clear(); // setLang saves the language; it must not leak into other specs that expect English
 });
 
 describe('DriveBackupsCard', () => {
