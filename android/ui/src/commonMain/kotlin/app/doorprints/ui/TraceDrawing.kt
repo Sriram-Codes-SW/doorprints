@@ -49,8 +49,8 @@ class TraceDrawing private constructor(val geoJson: String, val isEmpty: Boolean
          * [RepeatDetector] shows as overlay pieces. The detection is the expensive part: call it off the main thread.
          */
         fun of(walks: List<TraceWalk>): TraceDrawing {
-            val lists = walks.map { it.points }.filter { it.size >= 2 }
-            if (lists.isEmpty()) return EMPTY
+            val lists = walks.map { it.points } // the detection skips a walk of fewer than two points, trackGeoJson draws none
+            if (lists.none { it.size >= 2 }) return EMPTY
             val repeats = RepeatDetector.detect(lists)
             val shown = lists.indices.flatMap { RepeatDetector.pieces(lists[it], repeats[it].shown) }
             return TraceDrawing(trackGeoJson(lists, shown), isEmpty = false)

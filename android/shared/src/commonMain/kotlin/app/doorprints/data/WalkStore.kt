@@ -116,7 +116,7 @@ class WalkStore(
     suspend fun lastEndedWalk(askedUpTo: Long, liveWalkId: Long): Long? {
         for (id in db.track().walkIdsAbove(askedUpTo, liveWalkId)) {
             val points = db.track().ofWalk(id).map { TracePoint(it.lat, it.lon, it.at, it.walkId) }
-            if (points.size >= TraceConstants.ASK_MIN_POINTS && lengthM(points) >= TraceConstants.ASK_MIN_LENGTH_M) return id
+            if (points.size >= TraceConstants.ASK_MIN_POINTS && rawLengthM(points) >= TraceConstants.ASK_MIN_LENGTH_M) return id
         }
         return null
     }
@@ -154,12 +154,15 @@ class WalkStore(
         withContext(NonCancellable + Dispatchers.IO) { runCatching { db.savedWalks().sweepOfDeletedHouses() } }
     }
 
-    private fun lengthM(points: List<TracePoint>): Int {
+    private fun lengthM(points: List<TracePoint>): Int = rawLengthM(points).roundToInt()
+
+    /** The unrounded length, as the website's `walkLengthM`: 99.6 m is not 100 m for the question. */
+    private fun rawLengthM(points: List<TracePoint>): Double {
         var total = 0.0
         for (i in 1 until points.size) {
             if (points[i].resumed) continue
             total += TraceGeo.segmentLengthM(points[i - 1].lat, points[i - 1].lon, points[i].lat, points[i].lon)
         }
-        return total.roundToInt()
+        return total
     }
 }

@@ -280,6 +280,35 @@ class WalkStoreTest {
         assertNull("through the repository the watermark is the setting", repo.lastEndedWalk(liveWalkId = 5_000))
     }
 
+    /** The latitude on the equator that is [metres] from 0 by `WalkStore`'s plane formula, as exactly as a double allows. */
+    private fun latAt(metres: Double): Double {
+        val k = 6_371_000.0 * Math.PI / 180.0
+        var lat = metres / k
+        while (lat * k < metres) lat = Math.nextUp(lat)
+        while (Math.nextDown(lat) * k >= metres) lat = Math.nextDown(lat)
+        return lat
+    }
+
+    /** [count] points: all but the last at the equator, the last [metres] north of it (a walk of exactly that length). */
+    private suspend fun walkOf(id: Long, count: Int, metres: Double) {
+        for (i in 0 until count) {
+            val lat = if (i == count - 1) latAt(metres) else 0.0
+            db.track().insert(TrackPointEntity(at = id + i * 20_000L, lat = lat, lon = 0.0, accuracyM = 8f, walkId = id))
+        }
+    }
+
+    @Test
+    fun theQuestionNeedsExactlyFivePointsAndExactly100MetresNotMore() = runBlocking {
+        walkOf(1_000, 5, 100.0)
+        assertEquals("5 points and 100.0 m qualify (>= on both)", 1_000L, store.lastEndedWalk(0, 0))
+        db.track().deleteWalk(1_000)
+        walkOf(1_000, 4, 5_000.0)
+        assertNull("4 points never do, however long", store.lastEndedWalk(0, 0))
+        db.track().deleteWalk(1_000)
+        walkOf(1_000, 5, 99.6)
+        assertNull("99.6 m is not 100 m (the length is not rounded up for the question, as on the website)", store.lastEndedWalk(0, 0))
+    }
+
     @Test
     fun theWalksAreTheTraceSplitAndEverySavedWalkWhateverItsAgeWithoutADoubleCount() = runBlocking {
         db.houses().upsert(house("h1"))

@@ -118,4 +118,32 @@ class TraceBoundaryTest {
         assertEquals(null, alert.onPoint(pt(130.0, 0.0, 700_000)))
         assertTrue(alert.onPoint(pt(250.0, 0.0, 710_000)) != null)
     }
+
+    @Test
+    fun aQueryTooWideForTheGridFallsBackToAFullScanAndStaysExact() {
+        // 3 km north of the query: a 4 km radius spans about 5 000 cells (more than MAX_CELLS), a 2 km one 1 400.
+        val far = listOf(listOf(pt(3000.0, 0.0, 0), pt(3100.0, 0.0, 1)))
+        val grid = SegmentIndex(far)
+        val plain = SegmentIndex(far, useGrid = false)
+        for (radius in listOf(2_000.0, 4_000.0, 25.0)) {
+            assertEquals(plain.anyWithin(0.0, 0.0, radius, -1), grid.anyWithin(0.0, 0.0, radius, -1), "radius $radius")
+        }
+        assertTrue(grid.anyWithin(0.0, 0.0, 4_000.0, -1), "found although no cell of the grid holds the query's own cell")
+        assertTrue(!grid.anyWithin(0.0, 0.0, 2_000.0, -1))
+        var seen = 0
+        grid.forEachWithin(0.0, 0.0, 4_000.0, -1) { _, _, _ -> seen++ }
+        assertEquals(1, seen, "the one segment, visited once")
+    }
+
+    @Test
+    fun whenTwoWalksTieOnTheirStartTheLaterInputWalkIsReadFirstAgainstTheBudget() {
+        // Two long walks start at the same instant and only one fits the 20 000-point budget beside the newer short walk.
+        val a = List(10_001) { pt(it * 0.1, 0.0, it.toLong()) }
+        val b = List(10_001) { pt(it * 0.1, 0.0, it.toLong()) }
+        val newer = listOf(pt(0.0, 0.0, 100_000), pt(100.0, 0.0, 120_000), pt(200.0, 0.0, 140_000))
+        val result = RepeatDetector.detect(listOf(a, b, newer))
+        assertTrue(result[1].repeated.isNotEmpty(), "the later input index (b) is read")
+        assertTrue(result[2].repeated.isNotEmpty())
+        assertTrue(result[0].repeated.isEmpty(), "a is past the budget: not compared")
+    }
 }
