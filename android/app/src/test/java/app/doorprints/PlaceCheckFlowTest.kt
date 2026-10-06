@@ -117,6 +117,41 @@ class PlaceCheckFlowTest {
         assertEquals(PlaceCheckStatus.NONE, runBlocking { withTimeout(5_000) { while ((c.state as? PlaceCheckState.Answer)?.result?.status != PlaceCheckStatus.NONE) delay(10); (c.state as PlaceCheckState.Answer).result.status } })
     }
 
+    @Test fun aSavedWalkFarAwayStillMakesTheNoneAnswerSayTheSavedWalksWereLookedAt() {
+        runBlocking {
+            repo.saveHouse(HouseEntity(id = "far", label = "Far", lat = 12.5, lon = 77.0, createdAt = 1, updatedAt = 1))
+            walk(t0 + 1_000_000)
+            assertTrue(repo.saveWalk("far", t0 + 1_000_000) is SaveWalkResult.Saved)
+        }
+        val c = controller({ null })
+        c.start(PlaceKind.SPOT, 12.0, 77.0)
+        val a = answer(c)
+        assertEquals(PlaceCheckStatus.NONE, a.result.status)
+        assertTrue("the saved walk was compared although it has no row", a.anySaved)
+        assertTrue("and, with no row, it is not kept", a.walks.isEmpty())
+    }
+
+    @Test fun eachRowPointsAtItsOwnWalkInTheKeptList() {
+        // Two walks pass the place; a third, far away, has no row and is not kept: the rows' indexes are the kept walks'.
+        walk(t0 + 1_000_000)
+        runBlocking {
+            (0..5).forEach { k ->
+                repo.saveTrackPoint(TrackPointEntity(at = t0 + 9_000_000 + k * 60_000L, lat = 12.97 + k * 60 * m, lon = 77.6 + 6 * m, accuracyM = 5f, walkId = t0 + 9_000_000))
+                repo.saveTrackPoint(TrackPointEntity(at = t0 + 5_000_000 + k * 60_000L, lat = 13.5 + k * 60 * m, lon = 77.6, accuracyM = 5f, walkId = t0 + 5_000_000))
+            }
+        }
+        val c = controller({ null })
+        c.start(PlaceKind.SPOT, 12.97 + 150 * m, 77.6)
+        val a = answer(c)
+        assertEquals(2, a.walks.size)
+        assertEquals(listOf(0, 1), a.result.rows.map { it.walkIndex }.sorted())
+        for (row in a.result.rows) {
+            val points = a.walks[row.walkIndex].points
+            assertTrue("row ${row.walkIndex} is the walk it was measured on", points.first().atMs <= row.atMs && row.atMs <= points.last().atMs)
+        }
+        assertEquals("newest first: the later walk is the first row", t0 + 9_000_000, a.walks[a.result.rows.first().walkIndex].points.first().walkId)
+    }
+
     @Test fun noWalksAtAllIsTheEmptyAnswer() {
         val c = controller({ null })
         c.start(PlaceKind.SPOT, 12.97, 77.6)

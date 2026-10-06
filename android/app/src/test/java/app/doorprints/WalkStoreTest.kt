@@ -49,6 +49,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.take
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -326,6 +328,42 @@ class WalkStoreTest {
         trace(live, 3)
         assertEquals(4, store.walksOtherThan(0, since).size)
         assertEquals("the live walk is left out of the alert's others", 3, store.walksOtherThan(live, since).size)
+    }
+
+    @Test
+    fun theSavedWalksOfThePlaceCheckAreReadAndDecodedOneAtATime() = runBlocking {
+        db.houses().upsert(house("h1"))
+        // The worst case in count: 200 saved walks (the device limit); the decode seam counts what is alive at once.
+        repeat(TraceConstants.MAX_SAVED_WALKS) { savedRow("s$it", "h1", 1_000L + it) }
+        var decoded = 0
+        val counting = WalkStore(db, { clock }, { "x" }, decode = { decoded++; WalkCodec.decode(it.points, it.startedAt, it.pointCount) })
+        var emitted = 0
+        var mostAtOnce = 0
+        counting.placeWalks(clock - THIRTY_DAYS).collect {
+            emitted++
+            mostAtOnce = maxOf(mostAtOnce, decoded - emitted + 1) // decoded but not yet handled by the collector, this one included
+        }
+        assertEquals(TraceConstants.MAX_SAVED_WALKS, emitted)
+        assertEquals(TraceConstants.MAX_SAVED_WALKS, decoded)
+        assertEquals("one saved walk is decoded at a time", 1, mostAtOnce)
+        decoded = 0
+        counting.placeWalks(clock - THIRTY_DAYS).take(3).toList()
+        assertEquals("a collector that stops early leaves the rest undecoded", 3, decoded)
+    }
+
+    @Test
+    fun thePlaceChecksWalksAreTheWalksInTheSameOrderWithoutADoubleCountOrAHiddenHouse() = runBlocking {
+        db.houses().upsert(house("h1")); db.houses().upsert(house("gone", deleted = true))
+        val since = clock - THIRTY_DAYS
+        trace(clock - 10_000_000, 4)                       // a trace walk
+        val cut = clock - 20_000_000
+        trace(cut, 3); savedRow("cut", "h1", cut)          // saved and still in the trace: counted once, as saved
+        savedRow("old", "h1", 5_000); savedRow("hidden", "gone", 6_000)
+        val streamed = store.placeWalks(since).toList()
+        val all = store.walks(since)
+        assertEquals(all.map { it.source }, streamed.map { it.source })
+        assertEquals(all.map { it.points }, streamed.map { it.points })
+        assertEquals(listOf(WalkSource.TRACE, WalkSource.SAVED, WalkSource.SAVED), streamed.map { it.source })
     }
 
     @Test

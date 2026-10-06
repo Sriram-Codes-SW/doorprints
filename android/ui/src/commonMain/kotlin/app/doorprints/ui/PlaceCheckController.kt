@@ -23,7 +23,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import app.doorprints.data.Repository
 import app.doorprints.shared.trace.PlaceBand
-import app.doorprints.shared.trace.PlaceCheck
+import app.doorprints.shared.trace.PlaceCheckRun
 import app.doorprints.shared.trace.PlaceCheckResult
 import app.doorprints.shared.trace.PlaceRow
 import app.doorprints.shared.trace.TraceConstants
@@ -61,13 +61,13 @@ sealed interface PlaceCheckState {
         val walks: List<TraceWalk>,
         /** The fix's reported accuracy, only for *Here*. */
         val accuracyM: Double? = null,
-    ) : PlaceCheckState {
-        val anySaved: Boolean get() = walks.any { it.source == WalkSource.SAVED }
-    }
+        /** Whether any saved walk was compared (not only those in [walks], which are the ones with a row). */
+        val anySaved: Boolean = walks.any { it.source == WalkSource.SAVED },
+    ) : PlaceCheckState
 }
 
 /**
- * Compares a place with the person's walks (docs/11 5.27.13). **This is the only caller of `PlaceCheck.check`**, and it is
+ * Compares a place with the person's walks (docs/11 5.27.13). **This is the only caller of `PlaceCheckRun`** (`PlaceCheck.check` is that class over a list), and it is
  * reached only from [PlaceCheckController.start], which the buttons' handlers call (a source test holds both): no timer, no
  * arrival trigger, no background. It reads the stored walks (the 30-day trace and every saved walk) and writes nothing; for
  * [PlaceKind.HERE] the walk being recorded ([liveWalkId]) is left out, for a house or a spot it counts. [accuracyM] is the
@@ -81,14 +81,21 @@ internal suspend fun runPlaceCheck(
     accuracyM: Double?,
     liveWalkId: Long,
 ): PlaceCheckState.Answer {
-    val all = withContext(Dispatchers.Default) { repo.walks() }
-    val walks = if (kind == PlaceKind.HERE && liveWalkId != 0L) {
-        all.filter { it.source == WalkSource.SAVED || it.points.none { p -> p.walkId == liveWalkId } }
-    } else {
-        all
+    // The walks are compared one at a time and let go (docs/11 5.27.13): only a walk with a row is kept, for the matched
+    // stretch and the map; the others are garbage as soon as they have been measured.
+    val run = PlaceCheckRun(lat, lon, accuracyM)
+    val kept = ArrayList<TraceWalk>()
+    var anySaved = false
+    withContext(Dispatchers.Default) {
+        repo.placeWalks().collect { walk ->
+            val isLive = kind == PlaceKind.HERE && liveWalkId != 0L && walk.source == WalkSource.TRACE &&
+                walk.points.any { it.walkId == liveWalkId }
+            if (isLive) return@collect
+            if (walk.source == WalkSource.SAVED) anySaved = true
+            if (run.add(walk, kept.size)) kept += walk
+        }
     }
-    val result = withContext(Dispatchers.Default) { PlaceCheck.check(lat, lon, walks, accuracyM) }
-    return PlaceCheckState.Answer(kind, lat, lon, result, walks, accuracyM)
+    return PlaceCheckState.Answer(kind, lat, lon, run.result(), kept, accuracyM, anySaved)
 }
 
 /**

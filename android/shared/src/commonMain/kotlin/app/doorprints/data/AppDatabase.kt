@@ -307,6 +307,10 @@ interface SavedWalkDao {
     @Query("SELECT w.* FROM saved_walks w JOIN houses h ON h.id = w.houseId WHERE h.deleted = 0 ORDER BY w.startedAt DESC")
     suspend fun live(): List<SavedWalkEntity>
 
+    /** [live] without the bytes (same order): the walks are then read one at a time with [get]. */
+    @Query("SELECT w.id, w.startedAt FROM saved_walks w JOIN houses h ON h.id = w.houseId WHERE h.deleted = 0 ORDER BY w.startedAt DESC")
+    suspend fun liveRefs(): List<SavedWalkRef>
+
     /** One house's saved walks without the bytes, newest first. */
     @Query(
         "SELECT w.id, w.houseId, w.startedAt, w.endedAt, w.pointCount, w.lengthM FROM saved_walks w " +

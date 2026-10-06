@@ -203,6 +203,9 @@ class SavedWalkEntity(
     val points: ByteArray,
 )
 
+/** A saved walk's id and start, no bytes: what the place check lists before it reads the walks one at a time. A Room projection. */
+data class SavedWalkRef(val id: String, val startedAt: Long)
+
 /** A saved walk without its bytes, for the lists. Not a table: a Room query projection. */
 data class SavedWalkSummary(
     val id: String,

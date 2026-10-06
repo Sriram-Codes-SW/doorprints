@@ -22,8 +22,10 @@ import app.doorprints.shared.trace.MatchedStretch
 import app.doorprints.shared.trace.PlaceBand
 import app.doorprints.shared.trace.PlaceCheckResult
 import app.doorprints.shared.trace.RepeatDetector
+import app.doorprints.shared.trace.TraceConstants
 import app.doorprints.shared.trace.TracePoint
 import app.doorprints.shared.trace.TraceWalk
+import kotlin.math.ceil
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -48,14 +50,50 @@ class TraceDrawing private constructor(val geoJson: String, val isEmpty: Boolean
          * The drawing of [walks] (the 30-day trace and the saved walks, whole): each walk's base line, and the stretches
          * [RepeatDetector] shows as overlay pieces. The detection is the expensive part: call it off the main thread.
          */
-        fun of(walks: List<TraceWalk>): TraceDrawing {
+        fun of(walks: List<TraceWalk>, drawBudget: Int = DRAW_POINT_BUDGET): TraceDrawing {
             val lists = walks.map { it.points } // the detection skips a walk of fewer than two points, trackGeoJson draws none
             if (lists.none { it.size >= 2 }) return EMPTY
+            // The detection reads the whole walks (its own 20 000-point limit); only the base lines are thinned.
             val repeats = RepeatDetector.detect(lists)
             val shown = lists.indices.flatMap { RepeatDetector.pieces(lists[it], repeats[it].shown) }
-            return TraceDrawing(trackGeoJson(lists, shown), isEmpty = false)
+            return TraceDrawing(trackGeoJson(thinForDrawing(lists, drawBudget), shown), isEmpty = false)
         }
     }
+}
+
+/**
+ * The most points the base lines are drawn with (the detection's own limit): above it, the older walks are drawn thinned.
+ * A person's usual set (a few weeks of walks, tens of saved walks) is far below it and is drawn whole.
+ */
+const val DRAW_POINT_BUDGET = TraceConstants.MAX_DETECTION_POINTS
+
+/**
+ * [walks] for **drawing only**, in the same order. Within [budget] points nothing changes (the same list). Above it the
+ * newest walks (by their last point) are kept whole up to half of [budget], and every older walk keeps its first and last
+ * point and every k-th between, k chosen so the whole fits [budget] (about; each thinned walk keeps two points at least).
+ * The repeat detection and the pieces of repeated stretches are made from the whole walks, never from this.
+ */
+fun thinForDrawing(walks: List<List<TracePoint>>, budget: Int = DRAW_POINT_BUDGET): List<List<TracePoint>> {
+    val total = walks.sumOf { it.size }
+    if (total <= budget) return walks
+    val newestFirst = walks.indices.sortedByDescending { walks[it].lastOrNull()?.atMs ?: Long.MIN_VALUE }
+    val whole = HashSet<Int>()
+    var kept = 0
+    for (i in newestFirst) {
+        if (kept + walks[i].size > budget / 2) break
+        whole.add(i); kept += walks[i].size
+    }
+    val restTotal = total - kept
+    val stride = maxOf(2, ceil(restTotal.toDouble() / maxOf(1, budget - kept)).toInt())
+    return walks.mapIndexed { i, w -> if (i in whole || w.size <= 2) w else strided(w, stride) }
+}
+
+/** The first point, every [stride]-th after it and the last. */
+private fun strided(points: List<TracePoint>, stride: Int): List<TracePoint> {
+    val out = ArrayList<TracePoint>(points.size / stride + 2)
+    for (i in points.indices step stride) out.add(points[i])
+    if (out.last() !== points.last()) out.add(points.last())
+    return out
 }
 
 /** The place check's source and layers (docs/11 5.27.13): the matched stretches and the ring at the place. */

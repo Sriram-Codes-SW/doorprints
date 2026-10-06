@@ -1020,7 +1020,7 @@ paths walked before for more than `BRIDGE_M` and come back.
 segments, or an R-tree) and a bounding-box test (each other walk's box grown by 25 m) are required, because a month of
 trace plus up to 200 saved walks is tens of thousands of segments, and results must equal the plain loops (the tests
 run both on the vectors and on a random city: the same stretches). At most `MAX_DETECTION_POINTS` points are read,
-newest walks first, whole walks only; walks over the limit are not compared (they are still drawn). The Map computes
+newest walks first, whole walks only; walks over the limit are not compared (they are still drawn; on the phones, when all the walks together exceed that many points, the older walks' base lines are drawn thinned, their ends and every k-th point kept, the newest whole, and the repeat pieces always come from the whole walks). The Map computes
 off the main thread, when the Map opens, when the walks change (a walk ends, a walk is saved or deleted) and, while
 a walk records, at most once every 5 seconds; it caches the result by the walks' ids and point counts. The alert
 needs only the samples near the newest point, so an implementation may look at the live walk's last `ALERT_MIN_RUN_M +
@@ -1556,7 +1556,7 @@ their codec as walks) with `TracePoint(lat, lon, atMs, walkId, resumed)` and a `
 for the *Here* source, the fix's reported accuracy, absent for the other two. **The walks are every walk stored**: the 30-day
 trace as the store returns it (`trackPoints` reads 30 days; the check never reads further back) **and every saved walk, whatever
 its age**, **whether or not the trace switch is on** (turning the trace off keeps what is stored, 5.27.6, and the check reads
-it). It does **not** apply `MAX_DETECTION_POINTS`: the check is one pass over the segments, with no pairwise cost.
+it). It does **not** apply `MAX_DETECTION_POINTS`: the check is one pass over the segments, with no pairwise cost, and on the phones it reads the saved walks one at a time (each is decoded, compared and let go; only a walk with a row is kept for the matched stretch).
 The website has no trace until S4b-FR-17's store exists, so on the website nothing of the check lands before FR-17; the `placeCheck`
 function itself needs only the shared plane and distance (`shared/trace-geo.ts`), which S4b-FR-13 writes first and both algorithms use.
 **A trace walk whose walk id equals a saved walk's id is left out** (a save that was cut between its two writes on the website); the store's

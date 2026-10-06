@@ -211,6 +211,8 @@ open class CommonRepository(
     override suspend fun walks(): List<TraceWalk> = walkStore.walks(now() - Repository.TRACK_KEPT_MS)
     override suspend fun walksOtherThan(liveWalkId: Long): List<List<TracePoint>> =
         walkStore.walksOtherThan(liveWalkId, now() - Repository.TRACK_KEPT_MS)
+    override fun placeWalks(): Flow<TraceWalk> = walkStore.placeWalks(now() - Repository.TRACK_KEPT_MS)
+
     override fun walksChanged(): Flow<Unit> = walkStore.changes()
     override suspend fun sweepWalksOfDeletedHouses() = walkStore.sweep()
 

@@ -45,9 +45,11 @@ class PlaceCheckPrivacySourceTest {
     private fun lines(file: String, needle: String) =
         mainSources.single { it.name == file }.readLines().count { needle in it }
 
-    @Test fun thereIsOneCallerOfPlaceCheckCheckAndItIsInTheController() {
-        assertEquals(listOf("PlaceCheckController.kt"), callSites("PlaceCheck.check("))
-        assertEquals(1, lines("PlaceCheckController.kt", "PlaceCheck.check("))
+    @Test fun thereIsOneCallerOfThePlaceCheckAndItIsInTheController() {
+        // PlaceCheck.check is PlaceCheckRun over a list: the app's one use of the run is the controller's.
+        assertEquals(emptyList<String>(), callSites("PlaceCheck.check("))
+        assertEquals(listOf("PlaceCheck.kt", "PlaceCheckController.kt"), callSites("PlaceCheckRun("))
+        assertEquals(1, lines("PlaceCheckController.kt", "PlaceCheckRun("))
     }
 
     @Test fun theControllersRunnerIsCalledOnlyByItsStartFunction() {

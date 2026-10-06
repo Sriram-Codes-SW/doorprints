@@ -139,4 +139,51 @@ class PlaceCheckTest {
         val twice = check(0.0, 0.0, listOf(same, same))
         assertEquals(listOf(1, 0), twice.rows.map { it.walkIndex }, "a tie in time: the later input index first")
     }
+
+    @Test
+    fun theRunOneWalkAtATimeGivesTheRowsOfTheListKeepingOnlyWalksWithARow() {
+        // A random city of 40 walks; ask about 25 places, keep only the walks with a row and renumber them.
+        val rnd = Lcg(7)
+        val walks = List(40) { w ->
+            val east = rnd.next() * 200.0
+            val north0 = rnd.next() * 300.0
+            TraceWalk(
+                List(6) { k -> pt(north0 + k * 40.0, east + rnd.next() * 6.0, w * 1_000_000L + k * 30_000L) },
+                if (w % 3 == 0) WalkSource.SAVED else WalkSource.TRACE,
+            )
+        }
+        var rowsSeen = 0
+        repeat(25) {
+            val north = rnd.next() * 400.0
+            val east = rnd.next() * 220.0
+            val all = PlaceCheck.check(north * M, east * M, walks, 12.0)
+            val run = PlaceCheckRun(north * M, east * M, 12.0)
+            val kept = ArrayList<TraceWalk>()
+            val originalIndex = ArrayList<Int>()
+            for ((i, w) in walks.withIndex()) if (run.add(w, kept.size)) { kept += w; originalIndex += i }
+            val streamed = run.result()
+            assertEquals(all.status, streamed.status)
+            assertEquals(all.fuzzy, streamed.fuzzy)
+            assertEquals(all.nearestM, streamed.nearestM)
+            assertEquals(all.rows.map { it.copy(walkIndex = 0) }, streamed.rows.map { it.copy(walkIndex = 0) })
+            assertEquals(all.rows.map { it.walkIndex }, streamed.rows.map { originalIndex[it.walkIndex] }, "the kept walks are the rows' walks, in the same order")
+            assertEquals(all.rows.size, kept.size)
+            rowsSeen += kept.size
+        }
+        assertTrue(rowsSeen > 20, "the city is dense enough that the check finds walks: $rowsSeen")
+    }
+
+    @Test
+    fun theRunsGateAndEmptyAnswersAreTheListsAnswers() {
+        assertEquals(PlaceCheckStatus.EMPTY, PlaceCheckRun(0.0, 0.0).result().status)
+        val bad = PlaceCheckRun(Double.NaN, 0.0)
+        assertEquals(false, bad.add(street, 0))
+        assertEquals(PlaceCheckStatus.INVALID_PLACE, bad.result().status)
+        val loose = PlaceCheckRun(0.0, 0.0, 50.1)
+        assertEquals(false, loose.add(street, 0))
+        assertEquals(PlaceCheckStatus.IMPRECISE, loose.result().status)
+        val fragment = PlaceCheckRun(0.0, 0.0)
+        assertEquals(false, fragment.add(TraceWalk(listOf(pt(0.0, 0.0, 0))), 0), "a fragment is no walk")
+        assertEquals(PlaceCheckStatus.EMPTY, fragment.result().status)
+    }
 }
