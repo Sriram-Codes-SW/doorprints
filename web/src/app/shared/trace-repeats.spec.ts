@@ -240,6 +240,16 @@ describe('RepeatAlert', () => {
     expect(rings[0]).toBeGreaterThan(5);
   });
 
+  it('hands over the length of the run it rang for (100 m or more), and 0 before any alert and after reset', () => {
+    const alert = new RepeatAlert();
+    expect(alert.lastRunM).toBe(0);
+    ringsAt(live(30), [walked], alert);
+    expect(alert.lastRunM).toBeGreaterThanOrEqual(TRACE.alertMinRunM);
+    expect(alert.lastRunM).toBeLessThan(TRACE.alertMinRunM + 40);
+    alert.reset();
+    expect(alert.lastRunM).toBe(0);
+  });
+
   it('never rings for the first point or for a path nobody walked', () => {
     expect(ringsAt(live(1), [walked])).toEqual([]);
     expect(ringsAt(live(30, 200), [walked])).toEqual([]);

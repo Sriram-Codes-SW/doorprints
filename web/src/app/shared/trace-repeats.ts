@@ -455,6 +455,7 @@ export function pieces(walk: TraceWalk, stretches: readonly Stretch[]): [number,
 export class RepeatAlert {
   private blocked = false;
   private lastAlertAt: number | null = null;
+  private ranM = 0;
   private othersKey: readonly TraceWalk[] | null = null;
   private othersFirstAt = NaN;
   private index: SegmentIndex | null = null;
@@ -462,9 +463,15 @@ export class RepeatAlert {
   private near: boolean[] = [];
   private seen: TracePoint[] = [];
 
+  /** The length in metres of the run behind the newest point at the last alert (what the alert hands to its listeners), 0 before one. */
+  get lastRunM(): number {
+    return this.ranM;
+  }
+
   reset(): void {
     this.blocked = false;
     this.lastAlertAt = null;
+    this.ranM = 0;
     this.othersKey = null;
     this.index = null;
     this.restart();
@@ -523,6 +530,7 @@ export class RepeatAlert {
     if (runM >= TRACE.alertMinRunM && !this.blocked && (this.lastAlertAt === null || point.atMs - this.lastAlertAt >= TRACE.alertCooldownMs)) {
       this.blocked = true;
       this.lastAlertAt = point.atMs;
+      this.ranM = runM;
       return true;
     }
     return false;
