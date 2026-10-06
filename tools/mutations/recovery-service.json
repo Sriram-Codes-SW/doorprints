@@ -1,0 +1,35 @@
+{
+  "spec": "web/src/app/data/drive/connect/drive-connect.service.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/data/drive/connect/drive-connect.service.ts",
+      "find": "    // passkeyNoPrfSeen -> true\n    if (this.passkeyNoPrfSeen) return true;",
+      "replace": "    // passkeyNoPrfSeen -> true\n    if (!this.passkeyNoPrfSeen) return true;",
+      "expect": "recoveryKeyOffered returns true when passkeyNoPrfSeen"
+    },
+    {
+      "file": "web/src/app/data/drive/connect/drive-connect.service.ts",
+      "find": "    if (prfCapability === false && builtIn === true) return true;",
+      "replace": "    if (prfCapability === true && builtIn === true) return true;",
+      "expect": "recoveryKeyOffered returns true when PRF capability is false and built-in authenticator is true"
+    },
+    {
+      "file": "web/src/app/data/drive/connect/drive-connect.service.ts",
+      "find": "    if (prfCapability === false && builtIn === true) return true;",
+      "replace": "    if (prfCapability === false && builtIn === false) return true;",
+      "expect": "recoveryKeyOffered returns false when built-in authenticator is false"
+    },
+    {
+      "file": "web/src/app/data/drive/connect/drive-connect.service.ts",
+      "find": "    } finally {\n      this.forgetDeleteProof();\n    }\n  }\n\n  async resumeDelete(grant: WebGrant | null): Promise<DeleteRun> {",
+      "replace": "    }\n  }\n\n  async resumeDelete(grant: WebGrant | null): Promise<DeleteRun> {",
+      "expect": "forgetDeleteProof is called after executeDelete"
+    },
+    {
+      "file": "web/src/app/data/drive/connect/drive-connect.service.ts",
+      "find": "      // Recovery key text provided: check if it's offered\n      if (!(await this.recoveryKeyOffered())) {\n        return { ok: false, reason: 'RECOVERY_KEY_NOT_OFFERED' };\n      }",
+      "replace": "      // Recovery key text provided: check if it's offered",
+      "expect": "authorizeDelete with text when not offered returns RECOVERY_KEY_NOT_OFFERED"
+    }
+  ]
+}
