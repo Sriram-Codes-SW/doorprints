@@ -62,7 +62,10 @@ export interface PlaceCheckResult {
 }
 
 export interface PlaceCheckOptions {
-  /** Overrides {@link TRACE.toleranceM} (the unit test that pins the inclusive bound passes the computed distance). */
+  /**
+   * TEST ONLY. Overrides {@link TRACE.toleranceM} for the *walked* bound (the unit test that pins the inclusive bound passes
+   * the computed distance); never read by the app, and it does not move the `fuzzy` flag (that uses the constant).
+   */
   readonly toleranceM?: number;
   /** Switches off the cheap box rejection (the random-city test compares the two). */
   readonly noBoxRejection?: boolean;
@@ -123,7 +126,9 @@ export function placeCheck(
   const fix = fixAccuracyM ?? null;
   if (fix !== null && (!Number.isFinite(fix) || fix < 0 || fix > TRACE.maxFixAccuracyM)) return RESULT('IMPRECISE');
   const tolerance = options.toleranceM ?? TRACE.toleranceM;
-  const fuzzy = fix !== null && fix > tolerance;
+  // `fuzzy` always compares with the walked constant (the phones do): `options.toleranceM` is a test-only override of the walked
+  // bound, never of the fix's quality.
+  const fuzzy = fix !== null && fix > TRACE.toleranceM;
 
   // 2-3. One row per walk with a segment, at its nearest point; a fragment is no walk.
   const band = TRACE.nearBandM;

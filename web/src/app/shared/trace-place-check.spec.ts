@@ -59,6 +59,11 @@ describe('placeCheck: the gate', () => {
     expect(placeCheck(place(30, 150), [trace(STREET)], 40).status).toBe('CLOSE');
   });
 
+  it('judges a loose fix against the walked tolerance constant (25 m), whatever the test-only toleranceM option says (S4b-FR-35, as on the phones)', () => {
+    expect(placeCheck(place(0, 150), [trace(STREET)], 30, { toleranceM: 100 }).fuzzy).toBe(true);
+    expect(placeCheck(place(0, 150), [trace(STREET)], 25, { toleranceM: 5 }).fuzzy).toBe(false);
+  });
+
   it('refuses a place off the globe or not finite, before the accuracy', () => {
     for (const bad of [{ lat: 91, lon: 0 }, { lat: 0, lon: -181 }, { lat: Number.NaN, lon: 0 }, { lat: 0, lon: Number.POSITIVE_INFINITY }]) {
       expect(placeCheck(bad, [trace(STREET)], 80).status).toBe('INVALID_PLACE');

@@ -18,6 +18,12 @@
       "find": "    clearTimeout(this.haloTimer);\n    this.shownId = row.id;",
       "replace": "    this.shownId = row.id;",
       "expect": "showing another walk before the halo ends replaces it"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/house-walks-card.ts",
+      "find": "return Math.max(1, Math.round((row.endedAt - row.startedAt) / 60_000));",
+      "replace": "return Math.round((row.endedAt - row.startedAt) / 60_000);",
+      "expect": "shows at least 1 minute"
     }
   ]
 }

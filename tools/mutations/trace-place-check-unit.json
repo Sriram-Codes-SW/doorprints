@@ -30,6 +30,12 @@
       "find": "  while (last + 1 < pts.length && pts[last + 1].resumed !== true) last++;",
       "replace": "  while (last + 1 < pts.length) last++;",
       "expect": "never runs across a resumed point"
+    },
+    {
+      "file": "web/src/app/shared/trace-place-check.ts",
+      "find": "const fuzzy = fix !== null && fix > TRACE.toleranceM;",
+      "replace": "const fuzzy = fix !== null && fix > tolerance;",
+      "expect": "judges a loose fix against the walked tolerance constant"
     }
   ]
 }

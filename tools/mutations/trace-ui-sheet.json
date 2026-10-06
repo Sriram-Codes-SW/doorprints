@@ -36,6 +36,18 @@
       "find": "const list = q === '' ? base : this.houses().filter((h) => searchText(h).includes(q));",
       "replace": "const list = base;",
       "expect": "searches all houses"
+    },
+    {
+      "file": "web/src/app/pages/map/walk-end-sheet.ts",
+      "find": "Math.max(1, Math.round((w.endedAt - w.startedAt) / 60_000))",
+      "replace": "Math.round((w.endedAt - w.startedAt) / 60_000)",
+      "expect": "says at least 1 minute"
+    },
+    {
+      "file": "web/src/app/pages/map/walk-end-sheet.ts",
+      "find": "Math.max(1, Math.round((w.endedAt - w.startedAt) / 60_000))",
+      "replace": "Math.max(1, Math.floor((w.endedAt - w.startedAt) / 60_000))",
+      "expect": "rounds the minutes to the nearest"
     }
   ]
 }

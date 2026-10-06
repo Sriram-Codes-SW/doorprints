@@ -63,7 +63,7 @@ describe('WalkEndSheet', () => {
     localStorage.clear();
   });
 
-  async function render(opts: { houses?: HouseDto[]; lang?: Lang; points?: number; ask?: boolean } = {}) {
+  async function render(opts: { houses?: HouseDto[]; lang?: Lang; points?: number; ask?: boolean; stepMs?: number } = {}) {
     TestBed.resetTestingModule();
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(NOW);
@@ -72,7 +72,7 @@ describe('WalkEndSheet', () => {
     await TestBed.inject(TranslationService).setLang(opts.lang ?? 'en');
     store = TestBed.inject(TraceStore);
     view = TestBed.inject(TraceView);
-    for (let i = 0; i < (opts.points ?? 8); i++) await store.putPoint({ lat: i * 20 * DEG, lon: 0, atMs: WALK_ID + i * 60_000, walkId: WALK_ID }, 10);
+    for (let i = 0; i < (opts.points ?? 8); i++) await store.putPoint({ lat: i * 20 * DEG, lon: 0, atMs: WALK_ID + i * (opts.stepMs ?? 60_000), walkId: WALK_ID }, 10);
     const fixture = TestBed.createComponent(WalkEndSheet);
     fixture.componentRef.setInput('houses', opts.houses ?? []);
     await settle(fixture);
@@ -104,6 +104,16 @@ describe('WalkEndSheet', () => {
     expect(document.activeElement).toBe(title);
     expect(r.$('#walk-end-summary')!.textContent!.trim()).toBe('Walk of 140 m in 7 min');
     expect(r.dialog().textContent).toContain('It stays in this browser and is never in a backup or a copy.');
+  });
+
+  it('says at least 1 minute for a walk that rounds to none (S4b-FR-35: minutes is max(1, rounded), as on the phones)', async () => {
+    const r = await render({ stepMs: 1_000 }); // 6 s in all
+    expect(r.$('#walk-end-summary')!.textContent!.trim()).toBe('Walk of 140 m in 1 min');
+  });
+
+  it('rounds the minutes to the nearest, not down', async () => {
+    const r = await render({ stepMs: 25_000 }); // 150 s: 2.5 min rounds to 3
+    expect(r.$('#walk-end-summary')!.textContent!.trim()).toBe('Walk of 140 m in 3 min');
   });
 
   it('has the three answers and Keep for 30 days is the primary one', async () => {
