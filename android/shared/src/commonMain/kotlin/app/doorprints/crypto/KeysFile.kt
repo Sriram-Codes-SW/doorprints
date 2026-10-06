@@ -657,13 +657,21 @@ class KeysFile(private val p: CryptoProvider) {
         const val MAX_DEVICES = 64
         const val MAX_REVOKED = 1024
 
-        /** 1..64 UTF-16 units, no control characters, no unpaired surrogate. */
+        /**
+         * Characters that change how neighbouring text reads or hide themselves: bidi controls (U+061C, U+200E, U+200F,
+         * U+202A..202E, U+2066..2069), zero-width space (U+200B, U+2060, U+FEFF) and the line and paragraph separators.
+         * U+200C and U+200D stay: Hindi, Tamil and Telugu text needs them. Same list as the web's `validName`.
+         */
+        private fun isHiddenOrBidi(c: Char): Boolean = c == '\u061C' || c == '\u200B' || c == '\u200E' || c == '\u200F' ||
+            c in '\u2028'..'\u202E' || c == '\u2060' || c in '\u2066'..'\u2069' || c == '\uFEFF'
+
+        /** 1..64 UTF-16 units, no control, hidden or bidi characters, no unpaired surrogate. */
         internal fun validNameOrNull(name: String): String? {
             if (name.isEmpty() || name.length > 64) return null
             var i = 0
             while (i < name.length) {
                 val c = name[i]
-                if (c < ' ' || c in '\u007F'..'\u009F') return null
+                if (c < ' ' || c in '\u007F'..'\u009F' || isHiddenOrBidi(c)) return null
                 if (c.isHighSurrogate()) {
                     if (i + 1 >= name.length || !name[i + 1].isLowSurrogate()) return null
                     i += 2

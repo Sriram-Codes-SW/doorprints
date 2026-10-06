@@ -138,6 +138,11 @@ class KeysFileTest {
         expect(KeysException.Kind.INVALID_ENTRY) { files.addDevice(w2.opened, kid(phone), nd(browser, ""), t0 + 2) }
         expect(KeysException.Kind.INVALID_ENTRY) { files.addDevice(w2.opened, kid(phone), nd(browser, "a\u0000b"), t0 + 2) }
         expect(KeysException.Kind.INVALID_ENTRY) { files.addDevice(w2.opened, kid(phone), nd(browser, "x".repeat(65)), t0 + 2) }
+        // Bidi and hidden characters could make one device's name read as another's; ZWJ/ZWNJ stay for Indic text.
+        for (bad in listOf("a\u202Eb", "a\u200Bb", "a\u2066b", "a\uFEFFb", "a\u061Cb", "a\u2028b", "a\u200Eb")) {
+            expect(KeysException.Kind.INVALID_ENTRY) { files.addDevice(w2.opened, kid(phone), nd(browser, bad), t0 + 2) }
+        }
+        assertEquals("क्\u200Dष", KeysFile.validNameOrNull("क्\u200Dष"))
         expect(KeysException.Kind.INVALID_ENTRY) { files.addDevice(w2.opened, kid(phone), KeysFile.NewDevice(ByteArray(65), "bad", DevicePlatform.WEB), t0 + 2) }
         val w3 = files.addDevice(w2.opened, w2.opened.body.recovery!!.kid, nd(browser, "Firefox", DevicePlatform.WEB), t0 + 3)
         files.open(w3.bytes, browser, pinnedTo(w1))
