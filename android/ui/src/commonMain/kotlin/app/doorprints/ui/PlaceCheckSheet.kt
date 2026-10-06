@@ -36,6 +36,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -123,7 +124,7 @@ fun PlaceCheckSheetContent(
     onAgain: () -> Unit,
     onClose: () -> Unit,
 ) {
-    val focus = FocusRequester()
+    val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
     val place = stringResource(placeWord(state.kind))
     val tolerance = distanceText(CHECK_TOLERANCE_M)
@@ -137,7 +138,7 @@ fun PlaceCheckSheetContent(
             modifier = Modifier.focusRequester(focus).focusable().semantics { heading() },
         )
         // The whole answer in one polite live region: read as text on arrival.
-        Column(Modifier.semantics { liveRegion = LiveRegionMode.Polite }, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }, verticalArrangement = Arrangement.spacedBy(8.dp)) {
             when (state) {
                 is PlaceCheckState.Locating -> Text(stringResource(Res.string.trace_here_locating), style = MaterialTheme.typography.bodyLarge)
                 is PlaceCheckState.Failed -> Text(

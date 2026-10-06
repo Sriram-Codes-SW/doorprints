@@ -167,7 +167,7 @@ fun WalkEndSheetContent(
 @Composable
 private fun RefusalNote(text: String?) {
     // Always composed, so the sentence is announced once when it appears.
-    Column(Modifier.semantics { liveRegion = LiveRegionMode.Polite }) {
+    Column(Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }) {
         if (text != null) Text(text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
     }
 }

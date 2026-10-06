@@ -244,12 +244,11 @@ internal object IosHunt : HuntEffects {
         }
 
     /**
-     * The repeated-path alert (docs/11 5.27.5): the default notification sound; no place, distance or count in it. The
-     * notification category and thread of the spec (\`repeat-path\`) are IosNotifications' to add; the Map's snackbar is
-     * shown beside it.
+     * The repeated-path alert (docs/11 5.27.5): the default notification sound; no place, distance or count in it, under the
+     * category and thread `repeat-path`; the Map's snackbar is shown beside it.
      */
     override fun alertRepeat(runM: Int) {
-        alert("repeat-path") {
+        alert("repeat-path", category = "repeat-path", thread = "repeat-path") {
             getString(Res.string.trace_alert_banner) to getString(Res.string.trace_alert_notif_text)
         }
         RepeatAlerts.signal()

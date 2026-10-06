@@ -21,6 +21,7 @@ package app.doorprints
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -39,6 +40,7 @@ import app.doorprints.ui.HouseEditScreen
 import app.doorprints.ui.MapScreen
 import app.doorprints.ui.PlaceCheckController
 import app.doorprints.ui.PlaceCheckState
+import app.doorprints.ui.PlaceCheckSheetContent
 import app.doorprints.ui.PlaceFailure
 import app.doorprints.ui.PlaceFix
 import app.doorprints.ui.PlaceKind
@@ -259,6 +261,15 @@ class PlaceCheckFlowTest {
         waitFor("No walk of yours passed within 25 m of this house, but one came within 40 m on ")
         assertTrue(compose.onAllNodesWithText("You walked within", substring = true).fetchSemanticsNodes().isEmpty())
         compose.onNodeWithText("This covers only the walks Doorprints recorded.").assertExists()
+    }
+
+    @Test fun theAnswersLiveRegionIsOneMergedNodeWithTheText() {
+        compose.setContent {
+            PlaceCheckSheetContent(PlaceCheckState.Locating(PlaceKind.HERE), onShowOnMap = {}, onAgain = {}, onClose = {})
+        }
+        val region = compose.onNode(androidx.compose.ui.test.SemanticsMatcher.keyIsDefined(androidx.compose.ui.semantics.SemanticsProperties.LiveRegion))
+        val text = region.fetchSemanticsNode().config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.Text).orEmpty().joinToString { it.text }
+        assertTrue("the live region itself carries the sentence (merged), so a screen reader announces it: '$text'", text.contains("Finding your location"))
     }
 
     @Test fun theMapHasTheButtonWhetherOrNotTheTraceIsOn() {
