@@ -41,11 +41,36 @@ class FileDrivePrefs(file: File) : DrivePrefs {
     private val serializer = MapSerializer(String.serializer(), String.serializer())
     private val json = Json { ignoreUnknownKeys = true }
 
+    /** What was parsed, with the file's stamp at the time: the next read of an unchanged file does not parse again. */
+    private class Memo(val modified: Long, val length: Long, val values: Map<String, String>)
+
+    private var memo: Memo? = null
+
+    /** How many times the file was parsed (the tests' proof that an unchanged file is read once). */
+    @Volatile
+    internal var parses = 0
+        private set
+
+    /** False until a value was ever written: a phone that never used Drive has no file (nothing to look at, nothing to schedule). */
+    fun exists(): Boolean = store.file.isFile
+
     @Synchronized
-    private fun read(): Map<String, String> = try {
-        store.readText()?.let { json.decodeFromString(serializer, it) } ?: emptyMap()
-    } catch (_: Exception) {
-        emptyMap()
+    private fun read(): Map<String, String> {
+        val modified = store.file.lastModified()
+        val length = store.file.length()
+        if (!store.file.isFile) {
+            memo = null
+            return emptyMap()
+        }
+        memo?.let { if (it.modified == modified && it.length == length) return it.values }
+        parses++
+        val values = try {
+            store.readText()?.let { json.decodeFromString(serializer, it) } ?: emptyMap()
+        } catch (_: Exception) {
+            emptyMap()
+        }
+        memo = Memo(modified, length, values)
+        return values
     }
 
     @Synchronized
@@ -59,6 +84,7 @@ class FileDrivePrefs(file: File) : DrivePrefs {
         val written = synchronized(this) {
             try {
                 store.writeText(json.encodeToString(serializer, read() + (key to value)))
+                memo = null
                 true
             } catch (_: IOException) {
                 // Dropped on purpose.

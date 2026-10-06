@@ -184,6 +184,83 @@ class DriveFilesTest {
         assertNull(stores.driveState.loadNow().rootId)
     }
 
+    // ---- the prefs file is parsed once while it is unchanged, and a phone that never used Drive has none ----
+
+    @Test
+    fun anUnchangedPrefsFileIsParsedOnceNoMatterHowOftenItIsAsked() {
+        val file = File(tmp.newFolder("p1"), "prefs.json")
+        val prefs = FileDrivePrefs(file)
+        prefs.put("a", "1")
+        repeat(20) { prefs.get("a"); prefs.get("b"); prefs.engaged }
+        assertEquals(1, prefs.parses)
+        assertEquals("1", prefs.get("a"))
+        assertNull(prefs.get("b"))
+    }
+
+    @Test
+    fun aWriteIsSeenByTheNextRead() {
+        val prefs = FileDrivePrefs(File(tmp.newFolder("p2"), "prefs.json"))
+        prefs.put("a", "1")
+        assertEquals("1", prefs.get("a"))
+        prefs.put("a", "2")
+        assertEquals("2", prefs.get("a"))
+        prefs.engaged = true
+        assertTrue(prefs.engaged)
+        prefs.engaged = false
+        assertFalse(prefs.engaged)
+    }
+
+    @Test
+    fun anotherInstanceOverTheSameFileSeesAChangeBecauseTheFileChanged() {
+        val file = File(tmp.newFolder("p3"), "prefs.json")
+        val reader = FileDrivePrefs(file)
+        val writer = FileDrivePrefs(file)
+        writer.put("a", "1")
+        assertEquals("1", reader.get("a"))
+        writer.put("b", "x")
+        assertEquals("x", reader.get("b"))
+        assertEquals("the file changed: parsed again", 2, reader.parses)
+    }
+
+    @Test
+    fun aMissingOrDamagedFileReadsAsNothingSetAndNoFileMeansNeverUsed() {
+        val dir = tmp.newFolder("p4")
+        val file = File(dir, "prefs.json")
+        val prefs = FileDrivePrefs(file)
+        assertFalse(prefs.exists())
+        assertNull(prefs.get("a"))
+        assertEquals(0, prefs.parses)
+        file.writeText("{broken")
+        assertTrue(prefs.exists())
+        assertNull(prefs.get("a"))
+        prefs.put("a", "1")
+        assertEquals("1", prefs.get("a"))
+    }
+
+    @Test
+    fun aPhoneThatNeverUsedDriveSchedulesNothingAtStart() {
+        val prefs = FileDrivePrefs(File(tmp.newFolder("w1"), "prefs.json"))
+        val calls = mutableListOf<Boolean>()
+        DriveWork.reschedule(prefs) { calls += it }
+        assertEquals("no cancel and no enqueue at every start", emptyList<Boolean>(), calls)
+    }
+
+    @Test
+    fun theWorkFollowsInUseAndAutomaticBackupOnce() {
+        val prefs = FileDrivePrefs(File(tmp.newFolder("w2"), "prefs.json"))
+        val calls = mutableListOf<Boolean>()
+        prefs.put("doorprints.drive.autoBackup", "1")
+        DriveWork.reschedule(prefs) { calls += it }
+        assertEquals("on but not in use: off", listOf(false), calls)
+        prefs.engaged = true
+        DriveWork.reschedule(prefs) { calls += it }
+        assertEquals(listOf(false, true), calls)
+        prefs.put("doorprints.drive.autoBackup", "0")
+        DriveWork.reschedule(prefs) { calls += it }
+        assertEquals(listOf(false, true, false), calls)
+        assertEquals("the file was read through the memo, not once per question", true, prefs.parses <= 4)
+    }
+
     @Test
     fun theLockStoreKeepsTheKeyStoreFaultAcrossInstancesAndClearsIt() {
         val file = File(tmp.newFolder("lock"), "lock.json")

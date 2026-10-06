@@ -174,10 +174,7 @@ class DriveServices(
     }
 
     /** Sets the periodic work to match "in use and automatic backup on" (also at every app start: WorkManager can lose it). */
-    fun rescheduleWork() {
-        val auto = light.get(DriveConnectController.KEY_AUTO_BACKUP) == "1"
-        DriveBackupWorker.schedule(app, DriveLockRules.shouldSchedule(engaged, auto))
-    }
+    fun rescheduleWork() = DriveWork.reschedule(light) { on -> DriveBackupWorker.schedule(app, on) }
 
     private fun notifyLockPaused() {
         val localised = AppLocale.wrap(app)
@@ -192,5 +189,18 @@ class DriveServices(
         const val PREFS_FILE = "prefs.json"
         private const val KEY_AUTO = DriveConnectController.KEY_AUTO_BACKUP
         private const val MS_PER_MINUTE = 60_000
+    }
+}
+
+/** Start-up scheduling of the periodic Drive run, apart from Android so a JVM test can pin it. */
+object DriveWork {
+    /**
+     * Sets the periodic work to "in use and automatic backup on" through [schedule] (WorkManager's cancel or enqueue). A phone
+     * whose prefs file does not exist never used Drive: nothing is read twice, cancelled or enqueued at every start.
+     */
+    fun reschedule(prefs: FileDrivePrefs, schedule: (on: Boolean) -> Unit) {
+        if (!prefs.exists()) return
+        val auto = prefs.get(DriveConnectController.KEY_AUTO_BACKUP) == "1"
+        schedule(DriveLockRules.shouldSchedule(prefs.engaged, auto))
     }
 }
