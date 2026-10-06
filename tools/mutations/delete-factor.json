@@ -1,0 +1,17 @@
+{
+  "spec": "web/src/app/data/drive/connect/drive-connect.service.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/data/drive/connect/drive-connect.service.ts",
+      "find": "      const factor = decision.requirements.factor;\n      if (factor === 'NONE' || factor === 'PASSKEY') {\n        return factor;\n      }\n      return null;",
+      "replace": "      const factor = decision.requirements.factor;\n      if (factor === 'NONE' || factor === 'PASSKEY') {\n        return 'NONE';\n      }\n      return null;",
+      "expect": "returns PASSKEY when action requires passkey factor"
+    },
+    {
+      "file": "web/src/app/data/drive/connect/drive-connect.service.ts",
+      "find": "      const factor = decision.requirements.factor;\n      if (factor === 'NONE' || factor === 'PASSKEY') {\n        return factor;\n      }\n      return null;",
+      "replace": "      const factor = decision.requirements.factor;\n      if (factor === 'NONE' || factor === 'PASSKEY') {\n        return null;\n      }\n      return null;",
+      "expect": "returns NONE when action requires no special factor"
+    }
+  ]
+}

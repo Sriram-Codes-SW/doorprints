@@ -68,6 +68,11 @@ export interface PrfAuthenticator {
    * Returns true if supported, false if not supported, null if indeterminate (error or API unavailable).
    */
   prfCapability?(): Promise<boolean | null>;
+  /**
+   * Whether a built-in platform authenticator is available.
+   * Returns true if available, false if not available, null if the check is unavailable or throws.
+   */
+  builtInAuthenticatorAvailable?(): Promise<boolean | null>;
 }
 
 export interface SealedBlob {
@@ -264,6 +269,8 @@ export class FakePrfAuthenticator implements PrfAuthenticator {
   asks = 0;
   /** Capability to report when prfCapability is called. */
   capability: boolean | null = null;
+  /** Built-in authenticator availability to report when builtInAuthenticatorAvailable is called. */
+  builtIn: boolean | null = true;
   constructor(
     private readonly p: CryptoProvider,
     private readonly secret: Uint8Array = utf8("fake-authenticator-secret"),
@@ -290,5 +297,8 @@ export class FakePrfAuthenticator implements PrfAuthenticator {
   }
   async prfCapability(): Promise<boolean | null> {
     return this.capability;
+  }
+  async builtInAuthenticatorAvailable(): Promise<boolean | null> {
+    return this.builtIn;
   }
 }

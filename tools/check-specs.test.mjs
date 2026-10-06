@@ -19,7 +19,10 @@
 // Tests for tools/check-specs.mjs: `node --test tools/*.test.mjs`
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { specProblems, importsOf, escapeRegExp } from './check-specs.mjs';
+import { specProblems, importsOf, escapeRegExp, testsWithoutAssertion } from './check-specs.mjs';
+
+// Fixtures about imports have no assertions of their own; this marker keeps the assertion rule out of those tests.
+const QUIET = '// check-specs: allow-test-without-assertion (fixture)\n';
 
 const real = `import { describe, expect, it } from 'vitest';
 import { maplibreWorkerProblems } from '../../../scripts/maplibre-worker-check.mjs';
@@ -36,14 +39,14 @@ it('y', () => { const v = 'a'.match(/a/)?.[0]; expect(v).toBe('a'); });`;
 });
 
 test('a spec that imports the function and never calls it is flagged', () => {
-  const unused = `import { describe, it, vi } from 'vitest';
+  const unused = `${QUIET}import { describe, it, vi } from 'vitest';
 import { checkMaplibreWorkerFiles } from '../../../scripts/maplibre-worker-check.mjs';
 describe('x', () => { it('y', () => { vi.fn(); }); });`;
   assert.match(specProblems(unused)[0], /uses none of it/);
 });
 
 test('a name that only appears in a comment or as a property does not count as used', () => {
-  const sneaky = `import { it } from 'vitest';
+  const sneaky = `${QUIET}import { it } from 'vitest';
 import { thing } from './thing';
 // thing is tested elsewhere
 it('y', () => { const o = { a: 1 }; void o.thing; });`;
@@ -51,14 +54,14 @@ it('y', () => { const o = { a: 1 }; void o.thing; });`;
 });
 
 test('one unused import next to a used one is only untidy, not flagged', () => {
-  const ok = `import { it } from 'vitest';
+  const ok = `${QUIET}import { it } from 'vitest';
 import { a, b } from './thing';
 it('y', () => { a(); });`;
   assert.deepEqual(specProblems(ok), []);
 });
 
 test('imports of test helpers and fakes do not count as production code', () => {
-  const onlyFakes = `import { it } from 'vitest';
+  const onlyFakes = `${QUIET}import { it } from 'vitest';
 import { FakeDrive } from './fake-drive.fake';
 it('y', () => { new FakeDrive(); });`;
   assert.match(specProblems(onlyFakes)[0], /imports no production module/);
@@ -84,8 +87,41 @@ test('escapeRegExp escapes every metacharacter, backslash included, so the text 
 });
 
 test('a name with a dollar sign is found as used', () => {
-  const src = `import { it } from 'vitest';
+  const src = `${QUIET}import { it } from 'vitest';
 import { $localize } from './localize';
 it('y', () => { $localize('x'); });`;
   assert.deepEqual(specProblems(src), []);
+});
+
+const HEAD = `import { it, expect } from 'vitest';\nimport { thing } from './thing';\n`;
+
+test('a test with no assertion at all is flagged by name', () => {
+  const src = HEAD + `it('does nothing useful', async () => {\n  const x = thing();\n  await x;\n});`;
+  assert.deepEqual(testsWithoutAssertion(src), ['does nothing useful']);
+  assert.match(specProblems(src)[0], /does nothing useful" asserts nothing/);
+});
+
+test('a test with an expect is fine, and so is one next to a hollow one only for itself', () => {
+  const src = HEAD + `it('ok', () => {\n  expect(thing()).toBe(1);\n});\nit('hollow', () => {\n  thing();\n});`;
+  assert.deepEqual(testsWithoutAssertion(src), ['hollow']);
+});
+
+test("a call to the spec's own asserting helper counts as an assertion", () => {
+  const src = HEAD + `function shown(text: string) { expect(text).toContain('x'); }\nit('uses the helper', () => {\n  shown(thing());\n});`;
+  assert.deepEqual(testsWithoutAssertion(src), []);
+});
+
+test("a helper that does not assert does not make a test count", () => {
+  const src = HEAD + `function render() { return thing(); }\nit('only renders', () => {\n  render();\n});`;
+  assert.deepEqual(testsWithoutAssertion(src), ['only renders']);
+});
+
+test('the explicit marker for assertions made inside callbacks is honoured', () => {
+  const src = `// check-specs: allow-test-without-assertion (callbacks)\n` + HEAD + `it('wrapper', () => {\n  thing();\n});`;
+  assert.deepEqual(specProblems(src), []);
+});
+
+test('nested braces in a test body do not end it early', () => {
+  const src = HEAD + `it('nested', () => {\n  const o = { a: { b: 1 } };\n  if (o) { thing(); }\n  expect(o.a.b).toBe(1);\n});`;
+  assert.deepEqual(testsWithoutAssertion(src), []);
 });

@@ -130,6 +130,8 @@ export class DriveConnectService {
   private lastSyncResult: SyncAdapterStatus | null = null;
   private lastBackupId: string | null = null;
   private memoryPref = false;
+  /** Whether a passkey setup returned 'no-prf' (set true) or a successful registration (set false). */
+  private passkeyNoPrfSeen = false;
 
   constructor(
     @Inject(DRIVE_BACKUP_ADAPTER) private readonly backupAdapter: DriveBackupAdapter,
@@ -514,16 +516,60 @@ export class DriveConnectService {
     }
   }
 
+  async deleteFactor(
+    action: DeletionAction,
+  ): Promise<'NONE' | 'PASSKEY' | null> {
+    try {
+      const context = await this.deletionContext();
+      const decision = this.deletionAdapter.decide(action, context);
+      if (decision.outcome === 'REFUSED') {
+        return null;
+      }
+      const factor = decision.requirements.factor;
+      if (factor === 'NONE' || factor === 'PASSKEY') {
+        return factor;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
   async authorizeDelete(
     action: DeletionAction,
     operationId: string,
+    recoveryKeyText?: string,
   ): Promise<
     | { readonly ok: true; readonly grant: WebGrant }
     | { readonly ok: false; readonly reason: string }
   > {
     try {
       const context = await this.deletionContext();
-      const result = await this.deletionAdapter.authorize(action, context, operationId);
+
+      // If no recovery key text given, use passkey path as today
+      if (!recoveryKeyText) {
+        const result = await this.deletionAdapter.authorize(action, context, operationId);
+        if (result.kind === 'refused') {
+          return { ok: false, reason: result.reason };
+        }
+        return { ok: true, grant: result.grant };
+      }
+
+      // Recovery key text provided: check if it's offered
+      if (!(await this.recoveryKeyOffered())) {
+        return { ok: false, reason: 'RECOVERY_KEY_NOT_OFFERED' };
+      }
+
+      // Parse recovery key
+      let recoveryKey: RecoveryKey;
+      try {
+        recoveryKey = RecoveryKeyClass.parse(recoveryKeyText);
+      } catch {
+        return { ok: false, reason: 'RECOVERY_KEY_INVALID' };
+      }
+
+      // Use adapter's recovery key path
+      const result = await this.deletionAdapter.authorizeWithRecoveryKey(action, context, operationId, recoveryKey);
       if (result.kind === 'refused') {
         return { ok: false, reason: result.reason };
       }
@@ -540,6 +586,8 @@ export class DriveConnectService {
       return { ok: false, reason: outcome.reason };
     } catch (err) {
       return { ok: false, reason: msgOfThrown(err) };
+    } finally {
+      this.forgetDeleteProof();
     }
   }
 
@@ -550,6 +598,16 @@ export class DriveConnectService {
       return { ok: false, reason: outcome.reason };
     } catch (err) {
       return { ok: false, reason: msgOfThrown(err) };
+    } finally {
+      this.forgetDeleteProof();
+    }
+  }
+
+  private forgetDeleteProof(): void {
+    try {
+      this.deletionAdapter.forgetProof?.();
+    } catch {
+      // Swallow errors
     }
   }
 
@@ -573,13 +631,28 @@ export class DriveConnectService {
   }
 
   async registerPasskey(): Promise<'registered' | 'unsupported' | 'failed' | 'no-prf' | null> {
-    return this.deletionAdapter.registerPasskey();
+    const result = await this.deletionAdapter.registerPasskey();
+    if (result === 'no-prf') {
+      this.passkeyNoPrfSeen = true;
+    } else if (result === 'registered') {
+      this.passkeyNoPrfSeen = false;
+    }
+    return result;
   }
 
   /** Whether this browser supports the WebAuthn PRF extension. */
   async passkeyPrfCapability(): Promise<boolean | null> {
     try {
       return (await this.deletionAdapter.prfCapability?.()) ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Whether a built-in platform authenticator is available. */
+  async passkeyBuiltIn(): Promise<boolean | null> {
+    try {
+      return (await this.deletionAdapter.builtInAuthenticator?.()) ?? null;
     } catch {
       return null;
     }
@@ -626,12 +699,35 @@ export class DriveConnectService {
     }
   }
 
+  /** Whether the recovery key is offered for this browser (docs/15 §10.4a). */
+  async recoveryKeyOffered(): Promise<boolean> {
+    // Drive must be connected and enrolled
+    if (this.state() !== 'Ready') return false;
+
+    const status = await this.passkeyStatus();
+    // Passkey registered -> false
+    if (status === 'registered') return false;
+    // passkeyNoPrfSeen -> true
+    if (this.passkeyNoPrfSeen) return true;
+
+    // Otherwise: PRF capability false AND built-in authenticator true
+    const prfCapability = await this.passkeyPrfCapability();
+    const builtIn = await this.passkeyBuiltIn();
+
+    // An unknown capability null is NOT enough; a real failed registration is needed.
+    // builtIn false or null is NOT enough.
+    if (prfCapability === false && builtIn === true) return true;
+
+    return false;
+  }
+
   private async deletionContext(): Promise<DeletionContext> {
     const status = await this.passkeyStatus();
+    const webPrf = status === 'registered' || (await this.recoveryKeyOffered());
     return {
       platform: 'WEBSITE',
       deviceLock: false,
-      webPrf: status === 'registered',
+      webPrf,
       online: typeof navigator !== 'undefined' ? navigator.onLine : true,
       backupsLeft: null,
     };

@@ -34,12 +34,50 @@ const { chromium } = require(path.join(__dirname, '..', 'live-ui', 'node_modules
 
 const ROOT = path.resolve(process.argv[2] || path.join(__dirname, '..', '..', 'web', 'dist', 'web', 'browser'));
 const OUT = path.resolve(process.argv[3] || path.join(__dirname, 'out'));
-const ONLY = process.argv.slice(4);
+const ONLY = [...(process.env.SHOTS || '').split(',').filter(Boolean), ...process.argv.slice(4)]; // SHOTS=name,name picks pictures
+// LANGS=en,hi,ta,te (default en): one set of pictures per language, named <name>.png for English and <name>-<lang>.png otherwise.
+const KNOWN_LANGS = ['en', 'hi', 'ta', 'te'];
+const LANGS = (process.env.LANGS || 'en').split(',');
+for (const lang of LANGS) if (!KNOWN_LANGS.includes(lang)) throw new Error(`LANGS: ${lang} is not one of ${KNOWN_LANGS.join(', ')}`);
+const I18N_DIR = path.join(__dirname, '..', '..', 'web', 'src', 'app', 'i18n');
+const LANG_KEY = 'doorprints.lang';
+
+/** The text the app shows for a key in a language, read from the dictionary file itself (so a shot finds its place by key, not by English words). */
+/** The text with every regular-expression metacharacter (backslash included) escaped, to match it literally. */
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function text(lang, key) {
+  const source = fs.readFileSync(path.join(I18N_DIR, `${lang}.ts`), 'utf8');
+  const m = source.match(new RegExp(`^\\s*'${escapeRegExp(key)}':\\s*'((?:[^'\\\\]|\\\\.)*)'`, 'm'));
+  if (!m) throw new Error(`no ${key} in ${lang}.ts`);
+  return m[1].replace(/\\'/g, "'");
+}
 const SAMPLE_BACKUP = path.join(__dirname, '..', '..', 'docs', 'schemas', 'backup-sample.json');
+const { execFileSync } = require('child_process');
+const WEB = path.join(__dirname, '..', '..', 'web');
+
+/** The page-side stand-ins for a connected Drive (a fake Drive behind fetch, a stub for Google's sign-in), bundled once. */
+let fakeGoogle = null;
+function fakeGoogleBundle() {
+  if (fakeGoogle === null) {
+    const out = path.join(OUT, 'fake-google.js');
+    execFileSync(path.join(WEB, 'node_modules', '.bin', 'esbuild'), [path.join(__dirname, 'fake-google', 'entry.ts'), '--bundle', '--format=iife', '--platform=browser', `--outfile=${out}`, '--log-level=error'], { stdio: 'inherit' });
+    fakeGoogle = fs.readFileSync(out, 'utf8');
+  }
+  return fakeGoogle;
+}
+
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.png': 'image/png', '.webmanifest': 'application/manifest+json' };
 const CONFIG_WITH_CLIENT_ID = "window.__DOORPRINTS__ = { googleClientId: 'screenshot-only.invalid', googleRedirectUri: '' };";
 
-/** What to point at is found by role and name (English), so a renamed label fails here, not silently. */
+/**
+ * What to point at is found by the app's own translated text (`t(key)` reads the dictionary of the language being shot), so
+ * a renamed label fails here, in every language, not silently. `top` is the element the picture starts at (a margin above it);
+ * it ends a margin below the last numbered place. A mark is a finder, or `{ find, badge }` to say where its number sits
+ * (`top-left`; the default is beside a button and on the top right corner of a wide field).
+ */
 const shots = [
   {
     name: 'web-connect-url',
@@ -47,37 +85,99 @@ const shots = [
     async stage(page) {
       await page.locator('input[type="url"]').first().fill('https://my-pc.tail1234.ts.net');
     },
-    clip: { x: 296, y: 196, width: 688, height: 408 },
-    marks: [(page) => page.locator('input[type="url"]').first(), (page) => page.getByRole('button', { name: /get a code/i })],
+    top: (page, t) => page.getByRole('heading', { name: t('connect.title') }),
+    marks: [(page) => page.locator('input[type="url"]').first(), (page, t) => page.getByRole('button', { name: t('connect.getCode') })],
   },
   {
     name: 'web-import-choose',
     route: '/data',
     async stage() {},
-    clip: { x: 296, y: 455, width: 688, height: 262 },
-    marks: [(page) => page.getByRole('button', { name: /choose a backup file/i })],
+    top: (page, t) => page.getByRole('heading', { name: t('imp.heading') }),
+    marks: [(page, t) => page.getByRole('button', { name: t('imp.pick') })],
   },
   {
     name: 'web-import-preview',
     route: '/data',
-    viewportHeight: 1700,
-    async stage(page) {
+    bottom: 12, // another button stands just below Import; do not show half of it
+    viewportHeight: 1900,
+    async stage(page, t) {
       await page.locator('input[type="file"][accept*=".json"]').setInputFiles(SAMPLE_BACKUP);
-      await page.getByRole('button', { name: /^import$/i }).waitFor();
+      await page.getByRole('button', { name: t('imp.go'), exact: true }).waitFor();
     },
-    // The choice of how to import (1) and the Import button (2); the clip runs from the file name down past the button.
-    marks: [(page) => page.getByText('Merge with what I have'), (page) => page.getByRole('button', { name: /^import$/i })],
-    clipFrom: (page) => page.getByText('Backup file', { exact: true }),
+    // The choice of how to import (1) and the Import button (2).
+    top: (page, t) => page.getByText(t('imp.fileLabel'), { exact: true }),
+    marks: [
+      (page, t) => page.getByText(t('imp.modeMerge'), { exact: true }),
+      // Cancel stands right beside Import, so its number sits on the button's top left corner.
+      { find: (page, t) => page.getByRole('button', { name: t('imp.go'), exact: true }), badge: 'top-left' },
+    ],
   },
   {
     name: 'web-drive-connect',
     route: '/data',
     config: CONFIG_WITH_CLIENT_ID,
     async stage() {},
-    clipTo: (page) => page.getByRole('heading', { name: /back up to google drive/i }),
-    marks: [(page) => page.getByRole('button', { name: /connect to google drive/i })],
+    top: (page, t) => page.getByRole('heading', { name: t('driveConnect.heading') }),
+    marks: [(page, t) => page.getByRole('button', { name: t('driveConnect.connect') })],
+  },
+  // The connected Google Drive card, with the repository's fake Drive behind it (fake-google/entry.ts): no account, nothing leaves the machine.
+  {
+    name: 'web-drive-recovery-key',
+    route: '/data',
+    drive: true,
+    viewportHeight: 3300,
+    async stage(page, t) {
+      await page.getByRole('button', { name: t('driveConnect.connect') }).click();
+      await page.getByRole('heading', { name: t('driveConnect.firstConnect') }).waitFor();
+    },
+    top: (page, t) => page.getByRole('heading', { name: t('driveConnect.firstConnect') }),
+    // The key (shown once) (1), the tick box (2) and Next (3).
+    marks: [
+      { find: (page) => page.locator('.recovery-key-box code'), badge: 'top-right' },
+      (page, t) => page.getByText(t('driveConnect.confirmSavedRecoveryKey'), { exact: true }),
+      { find: (page, t) => page.getByRole('button', { name: t('common.next'), exact: true }), badge: 'top-left' },
+    ],
+  },
+  {
+    name: 'web-drive-connected',
+    route: '/data',
+    drive: true,
+    viewportHeight: 3300,
+    async stage(page, t) {
+      await connectDrive(page, t);
+      await page.getByRole('button', { name: t('driveBackups.backUpNow') }).click();
+      await page.locator('table button', { hasText: t('driveBackups.import') }).first().waitFor();
+    },
+    top: (page, t) => page.getByRole('heading', { name: t('driveConnect.heading') }),
+    // Back up now (1) and a backup's Import a backup button (2).
+    marks: [(page, t) => page.getByRole('button', { name: t('driveBackups.backUpNow') }), (page, t) => page.locator('table button', { hasText: t('driveBackups.import') }).first()],
+  },
+  {
+    name: 'web-drive-delete',
+    route: '/data',
+    drive: true,
+    viewportHeight: 3300, // the card sits far down the page, which scrolls inside the viewport
+    async stage(page, t) {
+      await connectDrive(page, t);
+      await page.getByRole('heading', { name: t('driveDelete.heading') }).waitFor();
+    },
+    top: (page, t) => page.getByRole('heading', { name: t('driveDelete.heading') }),
+    // The three levels: older backups (1), all backups (2) and everything (3).
+    marks: [
+      { find: (page, t) => page.getByRole('button', { name: t('driveDelete.olderBackups'), exact: true }), badge: 'left' },
+      { find: (page, t) => page.getByRole('button', { name: t('driveDelete.allBackups'), exact: true }), badge: 'top-right' },
+      { find: (page, t) => page.getByRole('button', { name: t('driveDelete.everything'), exact: true }), badge: 'left' },
+    ],
   },
 ];
+
+/** Connects the fake Drive through the card: Connect, the recovery key ticked, Next. */
+async function connectDrive(page, t) {
+  await page.getByRole('button', { name: t('driveConnect.connect') }).click();
+  await page.getByText(t('driveConnect.confirmSavedRecoveryKey'), { exact: true }).click();
+  await page.getByRole('button', { name: t('common.next'), exact: true }).click();
+  await page.getByText(t('driveConnect.ready'), { exact: true }).waitFor();
+}
 
 fs.mkdirSync(OUT, { recursive: true });
 // The files the server may send are listed once, from the built site's own tree; a request is only a key into that
@@ -113,30 +213,34 @@ const server = http
   .listen(0, async () => {
     const port = server.address().port;
     const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined });
-    for (const shot of shots) {
-      if (ONLY.length && !ONLY.includes(shot.name)) continue;
-      configJs = shot.config || null;
-      const page = await browser.newPage({ viewport: { width: 1280, height: shot.viewportHeight || 900 } });
-      await page.goto(`http://localhost:${port}${shot.route}`, { waitUntil: 'networkidle' });
-      await shot.stage(page);
-      await page.waitForTimeout(300);
-      const marks = [];
-      for (const find of shot.marks) marks.push(await find(page).boundingBox());
-      let clip = shot.clip;
-      if (!clip && shot.clipTo) {
-        // From the card's top edge down to the last thing pointed at, with room around it.
-        const heading = await shot.clipTo(page).boundingBox();
+    for (const lang of LANGS) {
+      const t = (key) => text(lang, key);
+      const suffix = lang === 'en' ? '' : `-${lang}`;
+      for (const shot of shots) {
+        if (ONLY.length && !ONLY.includes(shot.name)) continue;
+        configJs = shot.config || (shot.drive ? CONFIG_WITH_CLIENT_ID : null);
+        const page = await browser.newPage({ viewport: { width: 1280, height: shot.viewportHeight || 900 } });
+        if (shot.drive) {
+          await page.addInitScript(fakeGoogleBundle());
+          await page.route('https://accounts.google.com/gsi/client', (route) => route.fulfill({ status: 200, contentType: 'text/javascript', body: '/* stand-in: fake-google/entry.ts defines google.accounts */' }));
+        }
+        await page.addInitScript(([key, value]) => localStorage.setItem(key, value), [LANG_KEY, lang]);
+        await page.goto(`http://localhost:${port}${shot.route}`, { waitUntil: 'networkidle' });
+        await shot.stage(page, t);
+        await page.waitForTimeout(300);
+        const marks = [];
+        for (const mark of shot.marks) {
+          const find = typeof mark === 'function' ? mark : mark.find;
+          const box = await find(page, t).boundingBox();
+          marks.push({ ...box, badge: typeof mark === 'function' ? undefined : mark.badge });
+        }
+        const first = await shot.top(page, t).boundingBox();
         const last = marks[marks.length - 1];
-        clip = { x: 296, y: Math.round(heading.y - 28), width: 688, height: Math.round(last.y + last.height - heading.y + 56) };
+        const clip = { x: 296, y: Math.max(0, Math.round(first.y - 14)), width: 688, height: Math.round(last.y + last.height - first.y + (shot.bottom ?? 42)) };
+        await page.screenshot({ path: path.join(OUT, `${shot.name}${suffix}.raw.png`), clip, fullPage: true });
+        fs.writeFileSync(path.join(OUT, `${shot.name}${suffix}.json`), JSON.stringify({ clip, marks }));
+        await page.close();
       }
-      if (!clip && shot.clipFrom) {
-        const first = await shot.clipFrom(page).boundingBox();
-        const last = marks[marks.length - 1];
-        clip = { x: 296, y: Math.round(first.y - 28), width: 688, height: Math.round(last.y + last.height - first.y + 30) };
-      }
-      await page.screenshot({ path: path.join(OUT, `${shot.name}.raw.png`), clip });
-      fs.writeFileSync(path.join(OUT, `${shot.name}.json`), JSON.stringify({ clip, marks }));
-      await page.close();
     }
     await browser.close();
     server.close();

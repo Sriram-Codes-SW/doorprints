@@ -52,6 +52,10 @@ export class DriveDeleteCard implements OnInit {
   protected readonly result = signal<string | null>(null);
   protected readonly left = signal(0);
   protected readonly total = signal(0);
+  protected readonly recoveryOffered = signal(false);
+  protected readonly askRecoveryKey = signal(false);
+  protected readonly recoveryKeyText = signal('');
+  protected readonly recoveryError = signal<TKey | null>(null);
 
   private currentAction: DeletionAction | null = null;
   private currentPlan: DeletionPlan | null = null;
@@ -61,6 +65,11 @@ export class DriveDeleteCard implements OnInit {
       this.passkeyStatus.set(await this.service.passkeyStatus());
     } catch {
       this.passkeyStatus.set('none');
+    }
+    try {
+      this.recoveryOffered.set(await this.service.recoveryKeyOffered());
+    } catch {
+      this.recoveryOffered.set(false);
     }
   }
 
@@ -95,6 +104,11 @@ export class DriveDeleteCard implements OnInit {
       }
       this.tickBoxRequired.set(info.tickBoxRequired);
       this.ticked.set(!info.tickBoxRequired);
+      // Read again now: a passkey may have been set up (or tried and returned no PRF output) since this card loaded.
+      this.passkeyStatus.set(await this.service.passkeyStatus());
+      this.recoveryOffered.set(await this.service.recoveryKeyOffered());
+      const factor = await this.service.deleteFactor(this.currentAction);
+      this.askRecoveryKey.set(factor === 'PASSKEY' && this.passkeyStatus() !== 'registered' && this.recoveryOffered());
       this.phase.set('confirm');
     } catch {
       this.error.set('driveConnect.failed');
@@ -127,17 +141,37 @@ export class DriveDeleteCard implements OnInit {
   protected async confirmDelete(): Promise<void> {
     if (!this.currentAction || !this.currentPlan) return;
     if (this.tickBoxRequired() && !this.ticked()) return;
+    this.recoveryError.set(null);
     this.busy.set(true);
     try {
       const info = await this.service.deleteConfirmInfo(this.currentAction);
       let grant = null;
       if (info.ok) {
-        const auth = await this.service.authorizeDelete(this.currentAction, this.currentPlan.operationId);
-        if (!auth.ok) {
-          this.showRefused(auth.reason);
-          return;
+        const text = this.recoveryKeyText();
+        this.recoveryKeyText.set('');
+        try {
+          const auth = this.askRecoveryKey()
+            ? await this.service.authorizeDelete(this.currentAction, this.currentPlan.operationId, text)
+            : await this.service.authorizeDelete(this.currentAction, this.currentPlan.operationId);
+          if (!auth.ok) {
+            if (auth.reason === 'RECOVERY_KEY_WRONG') {
+              this.recoveryError.set('driveDelete.recoveryWrong');
+              return;
+            } else if (auth.reason === 'RECOVERY_KEY_INVALID') {
+              this.recoveryError.set('driveDelete.recoveryInvalid');
+              return;
+            } else if (auth.reason === 'RECOVERY_KEY_NOT_OFFERED') {
+              this.recoveryError.set('driveDelete.recoveryNotOffered');
+              return;
+            }
+            this.showRefused(auth.reason);
+            return;
+          }
+          grant = auth.grant;
+        } catch {
+          this.recoveryKeyText.set('');
+          throw new Error('Authorization failed');
         }
-        grant = auth.grant;
       }
       if (this.tickBoxRequired() && !this.ticked()) {
         this.error.set('driveDelete.tickRequired');
@@ -164,16 +198,35 @@ export class DriveDeleteCard implements OnInit {
   protected async tryAgain(): Promise<void> {
     if (!this.currentAction || !this.currentPlan) return;
     this.busy.set(true);
-    this.error.set(null);
+    this.recoveryError.set(null);
     try {
-      const auth = await this.service.authorizeDelete(this.currentAction, this.currentPlan.operationId);
-      if (!auth.ok) {
-        this.showRefused(auth.reason);
-        return;
+      const text = this.recoveryKeyText();
+      this.recoveryKeyText.set('');
+      try {
+        const auth = this.askRecoveryKey()
+          ? await this.service.authorizeDelete(this.currentAction, this.currentPlan.operationId, text)
+          : await this.service.authorizeDelete(this.currentAction, this.currentPlan.operationId);
+        if (!auth.ok) {
+          if (auth.reason === 'RECOVERY_KEY_WRONG') {
+            this.recoveryError.set('driveDelete.recoveryWrong');
+            return;
+          } else if (auth.reason === 'RECOVERY_KEY_INVALID') {
+            this.recoveryError.set('driveDelete.recoveryInvalid');
+            return;
+          } else if (auth.reason === 'RECOVERY_KEY_NOT_OFFERED') {
+            this.recoveryError.set('driveDelete.recoveryNotOffered');
+            return;
+          }
+          this.showRefused(auth.reason);
+          return;
+        }
+        this.phase.set('running');
+        const result = await this.service.resumeDelete(auth.grant);
+        this.applyRun(result);
+      } catch {
+        this.recoveryKeyText.set('');
+        throw new Error('Authorization failed');
       }
-      this.phase.set('running');
-      const result = await this.service.resumeDelete(auth.grant);
-      this.applyRun(result);
     } catch {
       this.error.set('driveConnect.failed');
       this.phase.set('error');
@@ -187,6 +240,9 @@ export class DriveDeleteCard implements OnInit {
     this.ticked.set(false);
     this.error.set(null);
     this.result.set(null);
+    this.recoveryKeyText.set('');
+    this.recoveryError.set(null);
+    this.askRecoveryKey.set(false);
     this.currentAction = null;
     this.currentPlan = null;
   }

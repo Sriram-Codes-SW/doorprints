@@ -103,8 +103,8 @@
         <tbody>
           @for (backup of backups(); track backup.id) {
             <tr [attr.data-backup-id]="backup.id">
-              <td>{{ backup.createdAt | date: 'short' : undefined : i18n.lang() }}</td>
-              <td>{{ backup.createdAt | date: 'shortTime' : undefined : i18n.lang() }}</td>
+              <td>{{ i18n.dateOnly(backup.createdAt) }}</td>
+              <td>{{ i18n.timeOnly(backup.createdAt) }}</td>
               <td>{{ backup.houses }}</td>
               <td>{{ formatSize(backup.bytes) }}</td>
               <td>

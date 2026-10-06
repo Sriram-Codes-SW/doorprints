@@ -292,7 +292,7 @@ Docker Desktop अब **Containers** में **doorprints-main** को हर
    डिवाइस का ही है, फिर **Approve** चुनें।
 4. कुछ सेकंड में ऐप बताता है कि वह जुड़ गया है।
 
-![वेबसाइट का Connect पेज: API address (URL) में उदाहरण पता https://my-pc.tail1234.ts.net लिखा है (1), फिर Get a code बटन (2)](images/web-connect-url.png)
+![वेबसाइट का Connect पेज: API पता (URL) में उदाहरण पता https://my-pc.tail1234.ts.net लिखा है (1), फिर कोड लें बटन (2)](images/web-connect-url-hi.png)
 
 *चित्र में दिया पता केवल उदाहरण है। चरण 7 से अपना पता इस्तेमाल करें।*
 

@@ -216,6 +216,354 @@ describe('DriveConnectService', () => {
     });
   });
 
+  describe('recovery key (docs/15 §10.4a)', () => {
+    it('recoveryKeyOffered returns false when this browser is not connected, even if the browser cannot do PRF', async () => {
+      // No createFolder here: the Drive is not READY.
+      vi.spyOn(a.service, 'passkeyPrfCapability').mockResolvedValue(false);
+      vi.spyOn(a.service, 'passkeyBuiltIn').mockResolvedValue(true);
+      vi.spyOn(a.service, 'passkeyStatus').mockResolvedValue('none');
+      expect(await a.service.recoveryKeyOffered()).toBe(false);
+    });
+
+    it('recoveryKeyOffered returns false when a passkey is registered, even if the browser reports no PRF', async () => {
+      await a.service.createFolder();
+      a.service.confirmRecoveryKeySaved();
+      vi.spyOn(a.service, 'passkeyPrfCapability').mockResolvedValue(false);
+      vi.spyOn(a.service, 'passkeyBuiltIn').mockResolvedValue(true);
+      vi.spyOn(a.service, 'passkeyStatus').mockResolvedValue('registered');
+      expect(await a.service.recoveryKeyOffered()).toBe(false);
+    });
+
+    it('recoveryKeyOffered returns true when passkeyNoPrfSeen', async () => {
+      const created = await a.service.createFolder();
+      a.service.confirmRecoveryKeySaved();
+
+      // Simulate registerPasskey returning 'no-prf'
+      const mockRegister = vi.spyOn(a.deletion, 'registerPasskey').mockResolvedValue('no-prf');
+      await a.service.registerPasskey();
+
+      const offered = await a.service.recoveryKeyOffered();
+      expect(offered).toBe(true);
+
+      mockRegister.mockRestore();
+    });
+
+    it('recoveryKeyOffered returns true when PRF capability is false and built-in authenticator is true', async () => {
+      const created = await a.service.createFolder();
+      a.service.confirmRecoveryKeySaved();
+
+      const mockPrf = vi.spyOn(a.service, 'passkeyPrfCapability').mockResolvedValue(false);
+      const mockBuiltIn = vi.spyOn(a.service, 'passkeyBuiltIn').mockResolvedValue(true);
+      const mockStatus = vi.spyOn(a.service, 'passkeyStatus').mockResolvedValue('none');
+
+      const offered = await a.service.recoveryKeyOffered();
+      expect(offered).toBe(true);
+
+      mockPrf.mockRestore();
+      mockBuiltIn.mockRestore();
+      mockStatus.mockRestore();
+    });
+
+    it('recoveryKeyOffered returns false when PRF capability is null', async () => {
+      const created = await a.service.createFolder();
+      a.service.confirmRecoveryKeySaved();
+
+      const mockPrf = vi.spyOn(a.service, 'passkeyPrfCapability').mockResolvedValue(null);
+      const mockBuiltIn = vi.spyOn(a.service, 'passkeyBuiltIn').mockResolvedValue(true);
+      const mockStatus = vi.spyOn(a.service, 'passkeyStatus').mockResolvedValue('none');
+
+      const offered = await a.service.recoveryKeyOffered();
+      expect(offered).toBe(false);
+
+      mockPrf.mockRestore();
+      mockBuiltIn.mockRestore();
+      mockStatus.mockRestore();
+    });
+
+    it('recoveryKeyOffered returns false when built-in authenticator is false', async () => {
+      const created = await a.service.createFolder();
+      a.service.confirmRecoveryKeySaved();
+
+      const mockPrf = vi.spyOn(a.service, 'passkeyPrfCapability').mockResolvedValue(false);
+      const mockBuiltIn = vi.spyOn(a.service, 'passkeyBuiltIn').mockResolvedValue(false);
+      const mockStatus = vi.spyOn(a.service, 'passkeyStatus').mockResolvedValue('none');
+
+      const offered = await a.service.recoveryKeyOffered();
+      expect(offered).toBe(false);
+
+      mockPrf.mockRestore();
+      mockBuiltIn.mockRestore();
+      mockStatus.mockRestore();
+    });
+
+    it('recoveryKeyOffered returns false when built-in authenticator is null', async () => {
+      const created = await a.service.createFolder();
+      a.service.confirmRecoveryKeySaved();
+
+      const mockPrf = vi.spyOn(a.service, 'passkeyPrfCapability').mockResolvedValue(false);
+      const mockBuiltIn = vi.spyOn(a.service, 'passkeyBuiltIn').mockResolvedValue(null);
+      const mockStatus = vi.spyOn(a.service, 'passkeyStatus').mockResolvedValue('none');
+
+      const offered = await a.service.recoveryKeyOffered();
+      expect(offered).toBe(false);
+
+      mockPrf.mockRestore();
+      mockBuiltIn.mockRestore();
+      mockStatus.mockRestore();
+    });
+
+    it('recoveryKeyOffered returns false when PRF capability is true', async () => {
+      const created = await a.service.createFolder();
+      a.service.confirmRecoveryKeySaved();
+
+      const mockPrf = vi.spyOn(a.service, 'passkeyPrfCapability').mockResolvedValue(true);
+      const mockBuiltIn = vi.spyOn(a.service, 'passkeyBuiltIn').mockResolvedValue(true);
+      const mockStatus = vi.spyOn(a.service, 'passkeyStatus').mockResolvedValue('none');
+
+      const offered = await a.service.recoveryKeyOffered();
+      expect(offered).toBe(false);
+
+      mockPrf.mockRestore();
+      mockBuiltIn.mockRestore();
+      mockStatus.mockRestore();
+    });
+
+    it('recoveryKeyOffered returns false after a successful passkey registration', async () => {
+      const created = await a.service.createFolder();
+      a.service.confirmRecoveryKeySaved();
+
+      // First say it was 'no-prf'
+      let mockRegister = vi.spyOn(a.deletion, 'registerPasskey').mockResolvedValue('no-prf');
+      await a.service.registerPasskey();
+      let offered = await a.service.recoveryKeyOffered();
+      expect(offered).toBe(true);
+
+      // Then register successfully
+      mockRegister = vi.spyOn(a.deletion, 'registerPasskey').mockResolvedValue('registered');
+      mockRegister.mockRestore();
+      mockRegister = vi.spyOn(a.deletion, 'registerPasskey').mockResolvedValue('registered');
+      await a.service.registerPasskey();
+
+      offered = await a.service.recoveryKeyOffered();
+      expect(offered).toBe(false);
+
+      mockRegister.mockRestore();
+    });
+
+    it('deletionContext: the recovery key makes delete-everything possible on the website (webPrf true) when it is offered', async () => {
+      await a.service.createFolder();
+      a.service.confirmRecoveryKeySaved();
+      vi.spyOn(a.service, 'passkeyPrfCapability').mockResolvedValue(false);
+      vi.spyOn(a.service, 'passkeyBuiltIn').mockResolvedValue(true);
+      vi.spyOn(a.service, 'passkeyStatus').mockResolvedValue('none');
+      const info = await a.service.deleteConfirmInfo({ type: 'everything' });
+      expect(info.ok).toBe(true);
+    });
+
+    it('deletionContext: without a passkey and with the key not offered, delete-everything is refused on the website (webPrf false)', async () => {
+      await a.service.createFolder();
+      a.service.confirmRecoveryKeySaved();
+      vi.spyOn(a.service, 'passkeyPrfCapability').mockResolvedValue(true);
+      vi.spyOn(a.service, 'passkeyBuiltIn').mockResolvedValue(true);
+      vi.spyOn(a.service, 'passkeyStatus').mockResolvedValue('none');
+      const info = await a.service.deleteConfirmInfo({ type: 'everything' });
+      expect(info.ok).toBe(false);
+    });
+
+    it('deletionContext: a registered passkey makes delete-everything possible (webPrf true)', async () => {
+      await a.service.createFolder();
+      a.service.confirmRecoveryKeySaved();
+      vi.spyOn(a.service, 'passkeyStatus').mockResolvedValue('registered');
+      const info = await a.service.deleteConfirmInfo({ type: 'everything' });
+      expect(info.ok).toBe(true);
+    });
+
+    it('authorizeDelete without text uses passkey path', async () => {
+      const created = await a.service.createFolder();
+      a.service.confirmRecoveryKeySaved();
+
+      const mockAuthorize = vi.spyOn(a.deletion, 'authorize').mockResolvedValue({
+        kind: 'granted',
+        grant: { id: 1, grantedAtMs: Date.now(), requirements: { level: 'L1', factor: 'NONE' } },
+      });
+
+      const result = await a.service.authorizeDelete({ type: 'everything' }, 'test-op-id');
+
+      expect(mockAuthorize).toHaveBeenCalled();
+      mockAuthorize.mockRestore();
+    });
+
+    it('authorizeDelete with text when not offered returns RECOVERY_KEY_NOT_OFFERED', async () => {
+      const created = await a.service.createFolder();
+      a.service.confirmRecoveryKeySaved();
+
+      const mockStatus = vi.spyOn(a.service, 'passkeyStatus').mockResolvedValue('registered');
+
+      const result = await a.service.authorizeDelete({ type: 'everything' }, 'test-op-id', 'XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXX');
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.reason).toBe('RECOVERY_KEY_NOT_OFFERED');
+      }
+
+      mockStatus.mockRestore();
+    });
+
+    it('authorizeDelete with invalid text returns RECOVERY_KEY_INVALID', async () => {
+      const created = await a.service.createFolder();
+      a.service.confirmRecoveryKeySaved();
+
+      const mockPrf = vi.spyOn(a.service, 'passkeyPrfCapability').mockResolvedValue(false);
+      const mockBuiltIn = vi.spyOn(a.service, 'passkeyBuiltIn').mockResolvedValue(true);
+      const mockStatus = vi.spyOn(a.service, 'passkeyStatus').mockResolvedValue('none');
+
+      const result = await a.service.authorizeDelete({ type: 'everything' }, 'test-op-id', 'garbage-text');
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.reason).toBe('RECOVERY_KEY_INVALID');
+      }
+
+      mockPrf.mockRestore();
+      mockBuiltIn.mockRestore();
+      mockStatus.mockRestore();
+    });
+
+    it('authorizeDelete with valid recovery key calls adapter', async () => {
+      const created = await a.service.createFolder();
+      a.service.confirmRecoveryKeySaved();
+
+      const mockPrf = vi.spyOn(a.service, 'passkeyPrfCapability').mockResolvedValue(false);
+      const mockBuiltIn = vi.spyOn(a.service, 'passkeyBuiltIn').mockResolvedValue(true);
+      const mockStatus = vi.spyOn(a.service, 'passkeyStatus').mockResolvedValue('none');
+
+      const mockAuthorizeRecovery = vi.spyOn(a.deletion, 'authorizeWithRecoveryKey').mockResolvedValue({
+        kind: 'granted',
+        grant: { id: 1, grantedAtMs: Date.now(), requirements: { level: 'L2', factor: 'RECOVERY_KEY' } },
+      });
+
+      // Use a valid key from the recovery key that was shown at create
+      const keyText = created.recoveryKey!;
+      const result = await a.service.authorizeDelete({ type: 'everything' }, 'test-op-id', keyText);
+
+      expect(mockAuthorizeRecovery).toHaveBeenCalled();
+
+      mockPrf.mockRestore();
+      mockBuiltIn.mockRestore();
+      mockStatus.mockRestore();
+      mockAuthorizeRecovery.mockRestore();
+    });
+
+    it('authorizeDelete with recovery key WRONG_KEY passes through', async () => {
+      const created = await a.service.createFolder();
+      const validKeyText = created.recoveryKey!;
+      a.service.confirmRecoveryKeySaved();
+
+      const mockPrf = vi.spyOn(a.service, 'passkeyPrfCapability').mockResolvedValue(false);
+      const mockBuiltIn = vi.spyOn(a.service, 'passkeyBuiltIn').mockResolvedValue(true);
+      const mockStatus = vi.spyOn(a.service, 'passkeyStatus').mockResolvedValue('none');
+
+      const mockAuthorizeRecovery = vi.spyOn(a.deletion, 'authorizeWithRecoveryKey').mockResolvedValue({
+        kind: 'refused',
+        reason: 'RECOVERY_KEY_WRONG',
+      });
+
+      const result = await a.service.authorizeDelete({ type: 'everything' }, 'test-op-id', validKeyText);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.reason).toBe('RECOVERY_KEY_WRONG');
+      }
+
+      mockPrf.mockRestore();
+      mockBuiltIn.mockRestore();
+      mockStatus.mockRestore();
+      mockAuthorizeRecovery.mockRestore();
+    });
+
+    it('forgetDeleteProof is called after executeDelete', async () => {
+      const mockForget = vi.spyOn(a.deletion, 'forgetProof').mockReturnValue(undefined);
+      const mockExecute = vi.spyOn(a.deletion, 'execute').mockResolvedValue({
+        kind: 'ran',
+        finished: true,
+        total: 1,
+        report: { left: [] },
+      });
+
+      const result = await a.service.executeDelete(
+        {
+          action: { type: 'everything' },
+          operationId: 'test-id',
+          rootId: 'root',
+          level: 'L3',
+          items: [],
+          totals: {},
+          foreignKept: 0,
+          createdAtMs: Date.now(),
+        },
+        null,
+      );
+
+      expect(mockForget).toHaveBeenCalled();
+
+      mockForget.mockRestore();
+      mockExecute.mockRestore();
+    });
+
+    it('forgetDeleteProof is called after resumeDelete', async () => {
+      const mockForget = vi.spyOn(a.deletion, 'forgetProof').mockReturnValue(undefined);
+      const mockResume = vi.spyOn(a.deletion, 'resume').mockResolvedValue({
+        kind: 'ran',
+        finished: true,
+        total: 1,
+        report: { left: [] },
+      });
+
+      const result = await a.service.resumeDelete(null);
+
+      expect(mockForget).toHaveBeenCalled();
+
+      mockForget.mockRestore();
+      mockResume.mockRestore();
+    });
+
+    it('forgetDeleteProof is called on executeDelete error', async () => {
+      const mockForget = vi.spyOn(a.deletion, 'forgetProof').mockReturnValue(undefined);
+      const mockExecute = vi.spyOn(a.deletion, 'execute').mockRejectedValue(new Error('test error'));
+
+      const result = await a.service.executeDelete(
+        {
+          action: { type: 'everything' },
+          operationId: 'test-id',
+          rootId: 'root',
+          level: 'L3',
+          items: [],
+          totals: {},
+          foreignKept: 0,
+          createdAtMs: Date.now(),
+        },
+        null,
+      );
+
+      expect(mockForget).toHaveBeenCalled();
+
+      mockForget.mockRestore();
+      mockExecute.mockRestore();
+    });
+
+    it('forgetDeleteProof is called on resumeDelete error', async () => {
+      const mockForget = vi.spyOn(a.deletion, 'forgetProof').mockReturnValue(undefined);
+      const mockResume = vi.spyOn(a.deletion, 'resume').mockRejectedValue(new Error('test error'));
+
+      const result = await a.service.resumeDelete(null);
+
+      expect(mockForget).toHaveBeenCalled();
+
+      mockForget.mockRestore();
+      mockResume.mockRestore();
+    });
+  });
+
   describe('deletion operations', () => {
     it('deletePlan returns ok:false when preflight fails', async () => {
       const result = await a.service.deletePlan({ type: 'everything' });
@@ -591,6 +939,190 @@ describe('DriveConnectService', () => {
 
       const cap = await service.passkeyPrfCapability();
       expect(cap).toBeNull();
+    });
+  });
+
+  describe('passkeyBuiltIn()', () => {
+    it('returns false when adapter builtInAuthenticator resolves false', async () => {
+      const mockAdapter = {
+        preflight: vi.fn(),
+        decide: vi.fn(),
+        authorize: vi.fn(),
+        authorizePolicy: vi.fn(),
+        execute: vi.fn(),
+        resume: vi.fn(),
+        confirmGate: vi.fn(),
+        registerPasskey: vi.fn(),
+        passkeyStatus: vi.fn(),
+        builtInAuthenticator: vi.fn(async () => false),
+      };
+      const service = new DriveConnectService(a.backup, a.sync, mockAdapter as any, { clientId: 'test' }, a.payload.source(), memoryPrefs());
+
+      const result = await service.passkeyBuiltIn();
+      expect(result).toBe(false);
+    });
+
+    it('returns true when adapter builtInAuthenticator resolves true', async () => {
+      const mockAdapter = {
+        preflight: vi.fn(),
+        decide: vi.fn(),
+        authorize: vi.fn(),
+        authorizePolicy: vi.fn(),
+        execute: vi.fn(),
+        resume: vi.fn(),
+        confirmGate: vi.fn(),
+        registerPasskey: vi.fn(),
+        passkeyStatus: vi.fn(),
+        builtInAuthenticator: vi.fn(async () => true),
+      };
+      const service = new DriveConnectService(a.backup, a.sync, mockAdapter as any, { clientId: 'test' }, a.payload.source(), memoryPrefs());
+
+      const result = await service.passkeyBuiltIn();
+      expect(result).toBe(true);
+    });
+
+    it('returns null when adapter builtInAuthenticator resolves null', async () => {
+      const mockAdapter = {
+        preflight: vi.fn(),
+        decide: vi.fn(),
+        authorize: vi.fn(),
+        authorizePolicy: vi.fn(),
+        execute: vi.fn(),
+        resume: vi.fn(),
+        confirmGate: vi.fn(),
+        registerPasskey: vi.fn(),
+        passkeyStatus: vi.fn(),
+        builtInAuthenticator: vi.fn(async () => null),
+      };
+      const service = new DriveConnectService(a.backup, a.sync, mockAdapter as any, { clientId: 'test' }, a.payload.source(), memoryPrefs());
+
+      const result = await service.passkeyBuiltIn();
+      expect(result).toBeNull();
+    });
+
+    it('returns null when adapter has no builtInAuthenticator method', async () => {
+      const mockAdapter = {
+        preflight: vi.fn(),
+        decide: vi.fn(),
+        authorize: vi.fn(),
+        authorizePolicy: vi.fn(),
+        execute: vi.fn(),
+        resume: vi.fn(),
+        confirmGate: vi.fn(),
+        registerPasskey: vi.fn(),
+        passkeyStatus: vi.fn(),
+        // no builtInAuthenticator method
+      };
+      const service = new DriveConnectService(a.backup, a.sync, mockAdapter as any, { clientId: 'test' }, a.payload.source(), memoryPrefs());
+
+      const result = await service.passkeyBuiltIn();
+      expect(result).toBeNull();
+    });
+
+    it('returns null when builtInAuthenticator rejects', async () => {
+      const mockAdapter = {
+        preflight: vi.fn(),
+        decide: vi.fn(),
+        authorize: vi.fn(),
+        authorizePolicy: vi.fn(),
+        execute: vi.fn(),
+        resume: vi.fn(),
+        confirmGate: vi.fn(),
+        registerPasskey: vi.fn(),
+        passkeyStatus: vi.fn(),
+        builtInAuthenticator: vi.fn(async () => {
+          throw new Error('Test error');
+        }),
+      };
+      const service = new DriveConnectService(a.backup, a.sync, mockAdapter as any, { clientId: 'test' }, a.payload.source(), memoryPrefs());
+
+      const result = await service.passkeyBuiltIn();
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('deleteFactor', () => {
+    it('returns PASSKEY when action requires passkey factor', async () => {
+      const mockAdapter = {
+        preflight: vi.fn(),
+        decide: vi.fn().mockReturnValue({
+          outcome: 'ALLOWED',
+          requirements: { factor: 'PASSKEY', tickBox: true, delaySeconds: 0 },
+        }),
+        authorize: vi.fn(),
+        authorizePolicy: vi.fn(),
+        execute: vi.fn(),
+        resume: vi.fn(),
+        confirmGate: vi.fn(),
+        registerPasskey: vi.fn(),
+        passkeyStatus: vi.fn(),
+      };
+      const service = new DriveConnectService(a.backup, a.sync, mockAdapter as any, { clientId: 'test' }, a.payload.source(), memoryPrefs());
+
+      const result = await service.deleteFactor({ type: 'allBackups' });
+      expect(result).toBe('PASSKEY');
+    });
+
+    it('returns NONE when action requires no special factor', async () => {
+      const mockAdapter = {
+        preflight: vi.fn(),
+        decide: vi.fn().mockReturnValue({
+          outcome: 'ALLOWED',
+          requirements: { factor: 'NONE', tickBox: false, delaySeconds: 0 },
+        }),
+        authorize: vi.fn(),
+        authorizePolicy: vi.fn(),
+        execute: vi.fn(),
+        resume: vi.fn(),
+        confirmGate: vi.fn(),
+        registerPasskey: vi.fn(),
+        passkeyStatus: vi.fn(),
+      };
+      const service = new DriveConnectService(a.backup, a.sync, mockAdapter as any, { clientId: 'test' }, a.payload.source(), memoryPrefs());
+
+      const result = await service.deleteFactor({ type: 'olderBackups' });
+      expect(result).toBe('NONE');
+    });
+
+    it('returns null when decision is REFUSED', async () => {
+      const mockAdapter = {
+        preflight: vi.fn(),
+        decide: vi.fn().mockReturnValue({
+          outcome: 'REFUSED',
+          reason: 'USE_PHONE',
+        }),
+        authorize: vi.fn(),
+        authorizePolicy: vi.fn(),
+        execute: vi.fn(),
+        resume: vi.fn(),
+        confirmGate: vi.fn(),
+        registerPasskey: vi.fn(),
+        passkeyStatus: vi.fn(),
+      };
+      const service = new DriveConnectService(a.backup, a.sync, mockAdapter as any, { clientId: 'test' }, a.payload.source(), memoryPrefs());
+
+      const result = await service.deleteFactor({ type: 'allBackups' });
+      expect(result).toBeNull();
+    });
+
+    it('returns null when decide throws an error', async () => {
+      const mockAdapter = {
+        preflight: vi.fn(),
+        decide: vi.fn().mockImplementation(() => {
+          throw new Error('Decide failed');
+        }),
+        authorize: vi.fn(),
+        authorizePolicy: vi.fn(),
+        execute: vi.fn(),
+        resume: vi.fn(),
+        confirmGate: vi.fn(),
+        registerPasskey: vi.fn(),
+        passkeyStatus: vi.fn(),
+      };
+      const service = new DriveConnectService(a.backup, a.sync, mockAdapter as any, { clientId: 'test' }, a.payload.source(), memoryPrefs());
+
+      const result = await service.deleteFactor({ type: 'allBackups' });
+      expect(result).toBeNull();
     });
   });
 });

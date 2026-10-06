@@ -136,6 +136,12 @@ export function createLazyBackupAdapterProxy(getRuntime: () => Promise<DriveRunt
       return result;
     },
 
+    async verifyRecoveryKey(recoveryKey) {
+      const rt = await getRuntime();
+      const adapter = createBackupAdapter(rt);
+      return adapter.verifyRecoveryKey(recoveryKey);
+    },
+
     async backUpNow(folder, source) {
       const rt = await getRuntime();
       const adapter = createBackupAdapter(rt);

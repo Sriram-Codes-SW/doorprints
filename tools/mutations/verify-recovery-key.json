@@ -1,0 +1,23 @@
+{
+  "spec": "web/src/app/data/drive/backup/drive-backup.service.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/data/drive/backup/drive-backup.service.ts",
+      "find": "new KeysGuard(this.p, readOnly));\n      return true;\n    } catch {\n      return false;\n    }",
+      "replace": "new KeysGuard(this.p, readOnly));\n      return true;\n    } catch {\n      return true;\n    }",
+      "expect": "verifies the recovery key without changing anything"
+    },
+    {
+      "file": "web/src/app/data/drive/backup/drive-backup.service.ts",
+      "find": "    if ((await pinned.load()) === null) return false;",
+      "replace": "",
+      "expect": "returns false when there is no pin yet"
+    },
+    {
+      "file": "web/src/app/data/drive/backup/drive-backup.service.ts",
+      "find": "compareAndSet: async () => true };",
+      "replace": "compareAndSet: (expected, next) => pinned.compareAndSet(expected, next) };",
+      "expect": "leaves this browser's pin exactly where it was"
+    }
+  ]
+}

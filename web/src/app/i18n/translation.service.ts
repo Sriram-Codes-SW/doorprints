@@ -163,6 +163,28 @@ export class TranslationService {
     return fmt.format(d);
   }
 
+  /** The date alone of an epoch time, in the language's own style (Intl: no Angular locale data is needed or loaded). */
+  dateOnly(epochMs: number | null | undefined): string {
+    return this.formatOf('date', epochMs);
+  }
+
+  /** The time of day alone of an epoch time, in the language's own style. */
+  timeOnly(epochMs: number | null | undefined): string {
+    return this.formatOf('time', epochMs);
+  }
+
+  private formatOf(kind: 'date' | 'time', epochMs: number | null | undefined): string {
+    if (epochMs === null || epochMs === undefined || !Number.isFinite(epochMs)) return '–';
+    const locale = this.locale();
+    const key = `${kind}:${locale}`;
+    let fmt = this.dateFormats.get(key);
+    if (!fmt) {
+      fmt = new Intl.DateTimeFormat(locale, kind === 'date' ? { dateStyle: 'medium' } : { timeStyle: 'short' });
+      this.dateFormats.set(key, fmt);
+    }
+    return fmt.format(new Date(epochMs));
+  }
+
   duration(fromIso: string, toIso: string | null | undefined): string {
     if (!toIso) return '';
     const ms = new Date(toIso).getTime() - new Date(fromIso).getTime();

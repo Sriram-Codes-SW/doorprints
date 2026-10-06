@@ -91,6 +91,14 @@ export class DriveBackupAdapter {
   }
 
   /**
+   * Verify a recovery key against Drive's keys.json without changing anything: no device added, no pin made or moved,
+   * no session opened (docs/15 §10.4a). Returns true only for the correct key, when this browser is already connected.
+   */
+  async verifyRecoveryKey(recoveryKey: RecoveryKey): Promise<boolean> {
+    return this.backupService.verifyRecoveryKey(recoveryKey);
+  }
+
+  /**
    * One backup (*Back up to Google Drive now*, or the schedule's daily run): encrypts the ZIP, uploads `partial`,
    * checks Drive's checksum, marks `complete`, then tidies (heals unfinished uploads, bins stale partial files,
    * retention). Returns the backup (if done), a typed shrink hold (if `confirmShrink` is needed), or a problem.
@@ -238,6 +246,7 @@ export interface BackupAdapterInterface {
   connect(): Promise<DriveConnection>;
   createFolder(): Promise<CreateOutcome>;
   openWithRecoveryKey(recoveryKey: RecoveryKey): Promise<DriveConnection>;
+  verifyRecoveryKey(recoveryKey: RecoveryKey): Promise<boolean>;
   backUpNow(folder: ReadyFolder, source: BackupSource): Promise<BackupOutcome>;
   confirmShrink(backupId: string): Promise<void>;
   listBackups(folder: ReadyFolder): Promise<BackupListing>;

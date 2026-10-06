@@ -199,8 +199,10 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
   ) {}
 
   /**
-   * Checks if the browser and authenticator support WebAuthn with PRF.
-   * Returns false if: no WebAuthn support, no passkey registered, or feature-detect fails.
+   * Checks if the browser supports WebAuthn with PRF.
+   * Returns true when navigator.credentials and PublicKeyCredential both exist (also when a cached credential id exists).
+   * Returns false if: no WebAuthn support or the browser lacks required APIs.
+   * Does NOT call isUserVerifyingPlatformAuthenticatorAvailable anymore.
    */
   async isSupported(): Promise<boolean> {
     if (typeof navigator === 'undefined' || !navigator.credentials) {
@@ -214,13 +216,9 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
       return true;
     }
 
-    // Feature detect: try to find passkeys that support PRF
-    if (!PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable) {
-      return false;
-    }
-
-    const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-    return available;
+    // Check if PublicKeyCredential is available
+    const PubKeyCredential = this.getPublicKeyCredential();
+    return PubKeyCredential !== undefined;
   }
 
   /**
@@ -388,6 +386,22 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
   }
 
   /**
+   * Checks if a built-in platform authenticator is available.
+   * Returns true if available, false if not available, null if the check is unavailable or throws.
+   */
+  async builtInAuthenticatorAvailable(): Promise<boolean | null> {
+    const PubKeyCredential = this.getPublicKeyCredential();
+    if (!PubKeyCredential || typeof PubKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable !== 'function') {
+      return null;
+    }
+    try {
+      return await PubKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * Registers a new discoverable platform passkey and asks for a PRF output in that same ceremony.
    * Returns the credential ID, or null when the person cancelled the prompt.
    * The id is not stored here. A credential that never returns a 32-byte PRF output throws
@@ -420,7 +434,6 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
             { alg: -257, type: 'public-key' },
           ],
           authenticatorSelection: {
-            authenticatorAttachment: 'platform',
             // A passkey is a discoverable credential. Without this, the default is "discouraged".
             residentKey: 'required',
             requireResidentKey: true,
@@ -438,7 +451,6 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
           },
         } as PublicKeyCredentialCreationOptions & {
           authenticatorSelection?: {
-            authenticatorAttachment?: string;
             residentKey?: string;
             requireResidentKey?: boolean;
             userVerification?: string;

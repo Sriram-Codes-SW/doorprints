@@ -16,6 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+// check-specs: allow-test-without-assertion (the `both` helper runs each case's callback, which holds the expects)
 import { describe, expect, it } from 'vitest';
 import { sha256Hex } from '../../export/sha256';
 import { CHUNK_UNIT, DRIVE_LAYOUT, DriveError, DriveRetry, FOLDER_MIME } from './drive-client';

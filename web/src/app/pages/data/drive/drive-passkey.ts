@@ -45,6 +45,8 @@ export class DrivePasskeyComponent implements OnInit {
   protected readonly errorMessage = signal<TKey | null>(null);
   /** True when the browser reports it cannot use the PRF extension (shown above help paragraph). */
   protected readonly prfHeadsUp = signal(false);
+  /** True when status is 'none' and the browser has no built-in authenticator. */
+  protected readonly noBuiltIn = signal(false);
 
   async ngOnInit(): Promise<void> {
     await this.loadStatus();
@@ -60,6 +62,10 @@ export class DrivePasskeyComponent implements OnInit {
         if (capability === false) {
           this.prfHeadsUp.set(true);
           this.details.set('capability: extension:prf=false');
+        }
+        const builtIn = await this.service.passkeyBuiltIn();
+        if (builtIn === false) {
+          this.noBuiltIn.set(true);
         }
       }
     } catch {

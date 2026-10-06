@@ -51,7 +51,10 @@ async function render(fakes: ReturnType<typeof fakeDriveService>) {
     providers: [
       { provide: DriveConnectService, useValue: fakes },
       { provide: Announcer, useValue: { announce: vi.fn() } },
-      { provide: TranslationService, useValue: { t, dateTime: (s: string) => new Date(s).toLocaleString(), lang: () => 'en' } },
+      {
+        provide: TranslationService,
+        useValue: { t, dateTime: (s: string) => new Date(s).toLocaleString(), dateOnly: (ms: number) => new Date(ms).toLocaleDateString(), timeOnly: (ms: number) => new Date(ms).toLocaleTimeString(), lang: () => 'en' },
+      },
     ],
   });
   const fixture = TestBed.createComponent(DriveBackupsCard);
@@ -64,6 +67,7 @@ async function render(fakes: ReturnType<typeof fakeDriveService>) {
 
 afterEach(() => {
   TestBed.resetTestingModule();
+  localStorage.clear(); // setLang saves the language; it must not leak into other specs that expect English
 });
 
 describe('DriveBackupsCard', () => {
@@ -187,4 +191,37 @@ describe('DriveBackupsCard', () => {
     const empty = host.querySelector('.empty');
     expect(empty?.getAttribute('role')).toBe('status');
   });
+});
+
+describe('DriveBackupsCard in Hindi, Tamil and Telugu (found taking the guide pictures: the date pipe had no locale data)', () => {
+  const backups: BackupSummary[] = [{ id: 'b1', createdAt: new Date('2026-10-01T10:00:00Z').getTime(), houses: 5, bytes: 1024 * 512, name: 'b1' }];
+
+  for (const lang of ['hi', 'ta', 'te'] as const) {
+    it(`${lang}: a backup row shows its date, time, houses, size and the Import button`, async () => {
+      TestBed.resetTestingModule();
+      const fakes = fakeDriveService();
+      fakes.listBackups.mockResolvedValue({ ok: true, backups, missingNewer: false });
+      TestBed.configureTestingModule({
+        imports: [DriveBackupsCard],
+        providers: [
+          { provide: DriveConnectService, useValue: fakes },
+          { provide: Announcer, useValue: { announce: vi.fn() } },
+        ],
+      });
+      await TestBed.inject(TranslationService).setLang(lang); // the language is its own chunk; wait for it before rendering
+      const fixture = TestBed.createComponent(DriveBackupsCard);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      await flush();
+      fixture.detectChanges();
+
+      const cells = [...fixture.nativeElement.querySelectorAll('tbody tr td')].map((td) => (td as HTMLElement).textContent?.trim() ?? '');
+      expect(cells.length).toBe(5);
+      expect(cells[0]).not.toBe('');
+      expect(cells[1]).not.toBe('');
+      expect(cells[2]).toContain('5');
+      expect(cells[3]).toContain('512');
+      expect(fixture.nativeElement.querySelector('tbody tr button')).toBeTruthy();
+    });
+  }
 });

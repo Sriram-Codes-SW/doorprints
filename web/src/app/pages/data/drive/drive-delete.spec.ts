@@ -33,6 +33,8 @@ function fakeService(overrides: Record<string, unknown> = {}) {
     registerPasskey: vi.fn().mockResolvedValue('registered'),
     deletePlan: vi.fn().mockResolvedValue({ ok: true, plan: { operationId: 'op1' } }),
     deleteConfirmInfo: vi.fn().mockResolvedValue({ ok: true, tickBoxRequired: true, delayMs: 0 }),
+    deleteFactor: vi.fn().mockResolvedValue(null),
+    recoveryKeyOffered: vi.fn().mockResolvedValue(false),
     authorizeDelete: vi.fn().mockResolvedValue({ ok: true, grant: { id: 1, requirements: { level: 'L3' } } }),
     executeDelete: vi.fn().mockResolvedValue({ ok: true, finished: true, left: 0, total: 1 }),
     resumeDelete: vi.fn().mockResolvedValue({ ok: true, finished: true, left: 0, total: 1 }),
@@ -172,5 +174,235 @@ describe('DriveDeleteCard', () => {
     expect(svc.resumeDelete).toHaveBeenCalled();
     fixture.detectChanges();
     shown(host, i18n, 'driveDelete.done');
+  });
+
+  it('shows recovery key input when passkey is needed but not registered and recovery is offered', async () => {
+    const svc = fakeService({
+      deleteFactor: vi.fn().mockResolvedValue('PASSKEY'),
+      recoveryKeyOffered: vi.fn().mockResolvedValue(true),
+    });
+    const { component, fixture, host, i18n } = await render(svc);
+    await component['startDeletion']({ type: 'allBackups' });
+    fixture.detectChanges();
+    await component['proceedToConfirm']();
+    fixture.detectChanges();
+    const label = host.querySelector('label[for="drive-recovery-key"]');
+    expect(label?.textContent).toContain(i18n.t('driveDelete.recoveryLabel'));
+    const input = host.querySelector('input[id="drive-recovery-key"]') as HTMLInputElement;
+    expect(input).toBeTruthy();
+    expect(input?.type).toBe('password');
+    expect(input?.getAttribute('autocomplete')).toBe('off');
+  });
+
+  it('shows the recovery key input when a passkey returned no PRF output after this card loaded (it reads the state again)', async () => {
+    // At load nothing had gone wrong: the key is not offered. Then the person sets up a passkey, it returns no PRF output,
+    // and they delete again from the same card.
+    const offered = vi.fn().mockResolvedValueOnce(false).mockResolvedValue(true);
+    const svc = fakeService({ deleteFactor: vi.fn().mockResolvedValue('PASSKEY'), recoveryKeyOffered: offered });
+    const { component, fixture, host } = await render(svc);
+    await component['startDeletion']({ type: 'allBackups' });
+    fixture.detectChanges();
+    await component['proceedToConfirm']();
+    fixture.detectChanges();
+    expect(host.querySelector('input[id="drive-recovery-key"]')).toBeTruthy();
+  });
+
+  it('hides the recovery key input when a passkey was registered after this card loaded', async () => {
+    const status = vi.fn().mockResolvedValueOnce('none').mockResolvedValue('registered');
+    const svc = fakeService({ passkeyStatus: status, deleteFactor: vi.fn().mockResolvedValue('PASSKEY'), recoveryKeyOffered: vi.fn().mockResolvedValue(true) });
+    const { component, fixture, host } = await render(svc);
+    await component['startDeletion']({ type: 'allBackups' });
+    fixture.detectChanges();
+    await component['proceedToConfirm']();
+    fixture.detectChanges();
+    expect(host.querySelector('input[id="drive-recovery-key"]')).toBeNull();
+  });
+
+  it('does not show recovery key input when passkey is registered', async () => {
+    const svc = fakeService({
+      passkeyStatus: vi.fn().mockResolvedValue('registered'),
+      deleteFactor: vi.fn().mockResolvedValue('PASSKEY'),
+      recoveryKeyOffered: vi.fn().mockResolvedValue(true),
+    });
+    const { component, fixture, host } = await render(svc);
+    component['passkeyStatus'].set('registered');
+    await component['startDeletion']({ type: 'allBackups' });
+    fixture.detectChanges();
+    await component['proceedToConfirm']();
+    fixture.detectChanges();
+    const input = host.querySelector('input[id="drive-recovery-key"]');
+    expect(input).toBeNull();
+  });
+
+  it('does not show recovery key input when recovery is not offered', async () => {
+    const svc = fakeService({
+      deleteFactor: vi.fn().mockResolvedValue('PASSKEY'),
+      recoveryKeyOffered: vi.fn().mockResolvedValue(false),
+    });
+    const { component, fixture, host } = await render(svc);
+    await component['startDeletion']({ type: 'allBackups' });
+    fixture.detectChanges();
+    await component['proceedToConfirm']();
+    fixture.detectChanges();
+    const input = host.querySelector('input[id="drive-recovery-key"]');
+    expect(input).toBeNull();
+  });
+
+  it('does not show recovery key input for NONE factor', async () => {
+    const svc = fakeService({
+      deleteFactor: vi.fn().mockResolvedValue('NONE'),
+      recoveryKeyOffered: vi.fn().mockResolvedValue(true),
+    });
+    const { component, fixture, host } = await render(svc);
+    await component['startDeletion']({ type: 'olderBackups' });
+    fixture.detectChanges();
+    await component['proceedToConfirm']();
+    fixture.detectChanges();
+    const input = host.querySelector('input[id="drive-recovery-key"]');
+    expect(input).toBeNull();
+  });
+
+  it('calls authorizeDelete with recovery key text when typed and Delete is clicked', async () => {
+    const svc = fakeService({
+      deleteFactor: vi.fn().mockResolvedValue('PASSKEY'),
+      recoveryKeyOffered: vi.fn().mockResolvedValue(true),
+    });
+    const { component, fixture, svc: mockSvc } = await render(svc);
+    await component['startDeletion']({ type: 'allBackups' });
+    await component['proceedToConfirm']();
+    component['toggleTickBox']();
+    fixture.detectChanges();
+    const input = fixture.nativeElement.querySelector('input[id="drive-recovery-key"]') as HTMLInputElement;
+    input.value = 'test-recovery-key';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    await component['confirmDelete']();
+    fixture.detectChanges();
+    expect(mockSvc.authorizeDelete).toHaveBeenCalledWith(
+      { type: 'allBackups' },
+      'op1',
+      'test-recovery-key'
+    );
+  });
+
+  it('clears recovery key text after authorization attempt', async () => {
+    const svc = fakeService({
+      deleteFactor: vi.fn().mockResolvedValue('PASSKEY'),
+      recoveryKeyOffered: vi.fn().mockResolvedValue(true),
+    });
+    const { component, fixture, host } = await render(svc);
+    await component['startDeletion']({ type: 'allBackups' });
+    await component['proceedToConfirm']();
+    component['toggleTickBox']();
+    fixture.detectChanges();
+    const input = host.querySelector('input[id="drive-recovery-key"]') as HTMLInputElement;
+    input.value = 'test-key';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    await component['confirmDelete']();
+    fixture.detectChanges();
+    expect(component['recoveryKeyText']()).toBe('');
+    expect(host.textContent).not.toContain('test-key');
+  });
+
+  it('shows recoveryWrong error when authorizeDelete returns RECOVERY_KEY_WRONG', async () => {
+    const svc = fakeService({
+      deleteFactor: vi.fn().mockResolvedValue('PASSKEY'),
+      recoveryKeyOffered: vi.fn().mockResolvedValue(true),
+      authorizeDelete: vi.fn().mockResolvedValue({ ok: false, reason: 'RECOVERY_KEY_WRONG' }),
+    });
+    const { component, fixture, host, i18n } = await render(svc);
+    await component['startDeletion']({ type: 'allBackups' });
+    await component['proceedToConfirm']();
+    component['toggleTickBox']();
+    fixture.detectChanges();
+    component['recoveryKeyText'].set('wrong-key');
+    fixture.detectChanges();
+    await component['confirmDelete']();
+    fixture.detectChanges();
+    expect(component['phase']()).toBe('confirm');
+    expect(component['recoveryError']()).toBe('driveDelete.recoveryWrong');
+    const alert = host.querySelector('p[role="alert"]');
+    expect(alert?.textContent).toContain(i18n.t('driveDelete.recoveryWrong'));
+  });
+
+  it('shows recoveryInvalid error when authorizeDelete returns RECOVERY_KEY_INVALID', async () => {
+    const svc = fakeService({
+      deleteFactor: vi.fn().mockResolvedValue('PASSKEY'),
+      recoveryKeyOffered: vi.fn().mockResolvedValue(true),
+      authorizeDelete: vi.fn().mockResolvedValue({ ok: false, reason: 'RECOVERY_KEY_INVALID' }),
+    });
+    const { component, fixture, host, i18n } = await render(svc);
+    await component['startDeletion']({ type: 'allBackups' });
+    await component['proceedToConfirm']();
+    component['toggleTickBox']();
+    fixture.detectChanges();
+    component['recoveryKeyText'].set('invalid-key');
+    fixture.detectChanges();
+    await component['confirmDelete']();
+    fixture.detectChanges();
+    expect(component['phase']()).toBe('confirm');
+    expect(component['recoveryError']()).toBe('driveDelete.recoveryInvalid');
+    const alert = host.querySelector('p[role="alert"]');
+    expect(alert?.textContent).toContain(i18n.t('driveDelete.recoveryInvalid'));
+  });
+
+  it('stays in confirm phase with empty recovery key field and does not call Delete', async () => {
+    const svc = fakeService({
+      deleteFactor: vi.fn().mockResolvedValue('PASSKEY'),
+      recoveryKeyOffered: vi.fn().mockResolvedValue(true),
+    });
+    const { component, fixture, host } = await render(svc);
+    await component['startDeletion']({ type: 'allBackups' });
+    await component['proceedToConfirm']();
+    component['toggleTickBox']();
+    fixture.detectChanges();
+    const deleteBtn = Array.from(host.querySelectorAll('button')).find((b) => b.textContent?.includes('Delete for good'));
+    expect(deleteBtn?.disabled).toBe(true);
+  });
+
+  it('shows recovery key input again in partial phase and Try again passes new key', async () => {
+    const svc = fakeService({
+      deleteFactor: vi.fn().mockResolvedValue('PASSKEY'),
+      recoveryKeyOffered: vi.fn().mockResolvedValue(true),
+      executeDelete: vi.fn().mockResolvedValue({ ok: true, finished: false, left: 2, total: 5 }),
+      resumeDelete: vi.fn().mockResolvedValue({ ok: true, finished: true, left: 0, total: 5 }),
+    });
+    const { component, fixture, host } = await render(svc);
+    await component['startDeletion']({ type: 'allBackups' });
+    await component['proceedToConfirm']();
+    component['toggleTickBox']();
+    component['recoveryKeyText'].set('key1');
+    await component['confirmDelete']();
+    fixture.detectChanges();
+    expect(component['phase']()).toBe('partial');
+    const input = host.querySelector('input[id="drive-recovery-key"]') as HTMLInputElement;
+    expect(input).toBeTruthy();
+    expect(input?.value).toBe('');
+    input.value = 'key2';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    await component['tryAgain']();
+    fixture.detectChanges();
+    expect(svc.resumeDelete).toHaveBeenCalled();
+  });
+
+  it('cancel clears recovery key text and error', async () => {
+    const svc = fakeService({
+      deleteFactor: vi.fn().mockResolvedValue('PASSKEY'),
+      recoveryKeyOffered: vi.fn().mockResolvedValue(true),
+    });
+    const { component, fixture } = await render(svc);
+    await component['startDeletion']({ type: 'allBackups' });
+    await component['proceedToConfirm']();
+    component['recoveryKeyText'].set('some-key');
+    component['recoveryError'].set('driveDelete.recoveryWrong');
+    fixture.detectChanges();
+    component['cancel']();
+    fixture.detectChanges();
+    expect(component['recoveryKeyText']()).toBe('');
+    expect(component['recoveryError']()).toBeNull();
+    expect(component['askRecoveryKey']()).toBe(false);
+    expect(component['phase']()).toBe('menu');
   });
 });

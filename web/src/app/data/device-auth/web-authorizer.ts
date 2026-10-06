@@ -27,6 +27,8 @@ import type {
 import { checkProof, importProofKey, signProof } from "./deletion-proof";
 import { openWithPrf } from "./prf-seal";
 import type { PrfAuthenticator, SealedBlob } from "./prf-seal";
+import { recoveryProofKey } from "./recovery-factor";
+import type { RecoveryKey } from "../crypto/recovery-key";
 import type { CryptoProvider } from "../crypto/crypto-provider";
 
 export interface WebGrant {
@@ -58,6 +60,8 @@ export class WebAuthorizer {
   private readonly issued = new Map<number, WebGrant>();
   /** Non-extractable HMAC key from the latest PRF open. Gone when the page is. L1 does not use it. */
   private proofKey: CryptoKey | null = null;
+  /** The source of the current proofKey: 'prf' or 'recovery', or null if no key is loaded. */
+  private proofSource: 'prf' | 'recovery' | null = null;
 
   constructor(
     private readonly p: CryptoProvider,
@@ -65,6 +69,8 @@ export class WebAuthorizer {
     /** The passkey's sealed blob, read when asked (it may sit in storage, and the person may have just made it). */
     private readonly sealed: () => SealedBlob | null | Promise<SealedBlob | null>,
     private readonly clock: () => number,
+    /** Optional recovery key verification seam for authorizeWithRecoveryKey. */
+    private readonly recovery?: { verify(key: RecoveryKey): Promise<boolean> },
   ) {}
 
   async authorize(
@@ -82,6 +88,7 @@ export class WebAuthorizer {
     if (!blob) return { kind: "DENIED", reason: "NOT_SUPPORTED" };
     const r = await openWithPrf(this.p, this.prf, blob, async (output) => {
       this.proofKey = await importProofKey(output);
+      this.proofSource = 'prf';
     }).catch(() => ({
       ok: false as const,
       reason: "FAILED" as const,
@@ -89,6 +96,40 @@ export class WebAuthorizer {
     if (!r.ok) return { kind: "DENIED", reason: r.reason };
     r.plaintext.fill(0);
     return { kind: "GRANTED", grant: this.issue(action, req) };
+  }
+
+  async authorizeWithRecoveryKey(
+    action: DeletionAction,
+    ctx: DeletionContext,
+    key: RecoveryKey,
+  ): Promise<WebAuthorization> {
+    const d = decide(action, ctx);
+    if (d.outcome === "REFUSED") return { kind: "REFUSED", reason: d.reason };
+    const req = d.requirements;
+    if (req.factor === "NONE")
+      return { kind: "GRANTED", grant: this.issue(action, req) };
+    if (req.factor !== "PASSKEY")
+      return { kind: "DENIED", reason: "NOT_SUPPORTED" };
+    if (!this.recovery)
+      return { kind: "DENIED", reason: "NOT_SUPPORTED" };
+    let ok = false;
+    try {
+      ok = await this.recovery.verify(key);
+    } catch {
+      return { kind: "DENIED", reason: "FAILED" };
+    }
+    if (!ok) return { kind: "DENIED", reason: "WRONG_KEY" };
+    this.proofKey = await recoveryProofKey(key);
+    this.proofSource = 'recovery';
+    return { kind: "GRANTED", grant: this.issue(action, req) };
+  }
+
+  /** Forgets the recovery proof key, leaving PRF keys intact. */
+  forgetProof(): void {
+    if (this.proofSource === 'recovery') {
+      this.proofKey = null;
+      this.proofSource = null;
+    }
   }
 
   /** Hex HMAC of this operation, or null when this page has not opened the PRF. */

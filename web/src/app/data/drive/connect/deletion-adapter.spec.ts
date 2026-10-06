@@ -735,4 +735,194 @@ describe('DriveDeletionAdapter', () => {
       expect(cap).toBe(null);
     });
   });
+
+  describe('builtInAuthenticator()', () => {
+    it('returns true when built-in authenticator is available', async () => {
+      const fakePrf = {
+        isSupported: async () => true,
+        builtInAuthenticatorAvailable: async () => true,
+      } as any;
+      const adapterWithPrf = new DriveDeletionAdapterImpl(
+        deletionService,
+        fakeAuthorizer as any,
+        store,
+        rootId,
+        5,
+        gate,
+        undefined,
+        fakePrf,
+      );
+
+      const result = await adapterWithPrf.builtInAuthenticator();
+      expect(result).toBe(true);
+    });
+
+    it('returns false when built-in authenticator is not available', async () => {
+      const fakePrf = {
+        isSupported: async () => true,
+        builtInAuthenticatorAvailable: async () => false,
+      } as any;
+      const adapterWithPrf = new DriveDeletionAdapterImpl(
+        deletionService,
+        fakeAuthorizer as any,
+        store,
+        rootId,
+        5,
+        gate,
+        undefined,
+        fakePrf,
+      );
+
+      const result = await adapterWithPrf.builtInAuthenticator();
+      expect(result).toBe(false);
+    });
+
+    it('returns null when built-in authenticator availability is indeterminate', async () => {
+      const fakePrf = {
+        isSupported: async () => true,
+        builtInAuthenticatorAvailable: async () => null,
+      } as any;
+      const adapterWithPrf = new DriveDeletionAdapterImpl(
+        deletionService,
+        fakeAuthorizer as any,
+        store,
+        rootId,
+        5,
+        gate,
+        undefined,
+        fakePrf,
+      );
+
+      const result = await adapterWithPrf.builtInAuthenticator();
+      expect(result).toBe(null);
+    });
+
+    it('returns null when PRF authenticator is missing', async () => {
+      const adapterNoPrf = new DriveDeletionAdapterImpl(
+        deletionService,
+        fakeAuthorizer as any,
+        store,
+        rootId,
+        5,
+        gate,
+      );
+
+      const result = await adapterNoPrf.builtInAuthenticator();
+      expect(result).toBe(null);
+    });
+
+    it('returns null when PRF authenticator throws', async () => {
+      const fakePrf = {
+        isSupported: async () => true,
+        builtInAuthenticatorAvailable: async () => {
+          throw new Error('Probe error');
+        },
+      } as any;
+      const adapterWithPrf = new DriveDeletionAdapterImpl(
+        deletionService,
+        fakeAuthorizer as any,
+        store,
+        rootId,
+        5,
+        gate,
+        undefined,
+        fakePrf,
+      );
+
+      const result = await adapterWithPrf.builtInAuthenticator();
+      expect(result).toBe(null);
+    });
+
+    it('returns null when PRF authenticator has no builtInAuthenticatorAvailable method', async () => {
+      const fakePrf = {
+        isSupported: async () => true,
+      } as any;
+      const adapterWithPrf = new DriveDeletionAdapterImpl(
+        deletionService,
+        fakeAuthorizer as any,
+        store,
+        rootId,
+        5,
+        gate,
+        undefined,
+        fakePrf,
+      );
+
+      const result = await adapterWithPrf.builtInAuthenticator();
+      expect(result).toBe(null);
+    });
+  });
+
+  describe('passkeyStatus() with widened passkey support', () => {
+    it('returns "none" when supported but no passkey is registered and built-in is false', async () => {
+      const fakePrf = {
+        isSupported: async () => true,
+        builtInAuthenticatorAvailable: async () => false,
+      } as any;
+      const kvForTest = new InMemoryKeyValueStore();
+      const crypto = new WebCryptoProvider();
+      const adapterWithPrf = new DriveDeletionAdapterImpl(
+        deletionService,
+        fakeAuthorizer as any,
+        store,
+        rootId,
+        5,
+        gate,
+        crypto,
+        fakePrf,
+        kvForTest,
+      );
+
+      const status = await adapterWithPrf.passkeyStatus();
+      expect(status).toBe('none');
+    });
+
+    it('returns "registered" when passkey is stored', async () => {
+      const fakePrf = {
+        isSupported: async () => true,
+      } as any;
+      const kvForTest = new InMemoryKeyValueStore();
+      // Pre-populate with a sealed blob (use hex values that can be parsed)
+      const blobJson = JSON.stringify({
+        v: 1,
+        credentialId: '0102030405060708090a0b0c0d0e0f10',
+        salt: '1011121314151617181920212223242526272829',
+        nonce: '303132333435363738393a3b3c',
+        ciphertext: '3d3e3f404142434445464748494a4b4c4d4e4f'
+      });
+      await kvForTest.set('doorprints-deletion-sealed-blob', blobJson);
+
+      const crypto = new WebCryptoProvider();
+      const adapterWithPrf = new DriveDeletionAdapterImpl(
+        deletionService,
+        fakeAuthorizer as any,
+        store,
+        rootId,
+        5,
+        gate,
+        crypto,
+        fakePrf,
+        kvForTest,
+      );
+
+      const status = await adapterWithPrf.passkeyStatus();
+      expect(status).toBe('registered');
+    });
+  });
+
+  describe('authorizePolicy (approve, revoke, disconnect everywhere)', () => {
+    const websiteContext: DeletionContext = { platform: 'WEBSITE', deviceLock: false, webPrf: true, online: true, backupsLeft: 3 };
+
+    it('says use-the-phone when there is no sealed passkey, even though the policy let it through (the recovery key may be offered for a deletion)', async () => {
+      fakeAuthorizer.authorize = async () => ({ kind: 'DENIED', reason: 'NOT_SUPPORTED' });
+      const result = await adapter.authorizePolicy('DISCONNECT_ALL_DEVICES', websiteContext);
+      expect(result).toEqual({ kind: 'refused', reason: 'USE_PHONE' });
+    });
+
+    it('keeps the other denials as they were (a cancelled prompt is not use-the-phone)', async () => {
+      fakeAuthorizer.authorize = async () => ({ kind: 'DENIED', reason: 'CANCELLED' });
+      const result = await adapter.authorizePolicy('REVOKE_DEVICE', websiteContext);
+      expect(result).toEqual({ kind: 'refused', reason: 'AUTHORIZATION_DENIED' });
+    });
+  });
 });

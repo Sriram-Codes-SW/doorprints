@@ -1,0 +1,23 @@
+{
+  "spec": "web/src/app/pages/data/drive/drive-passkey.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/pages/data/drive/drive-passkey.ts",
+      "find": "        const builtIn = await this.service.passkeyBuiltIn();\n        if (builtIn === false) {\n          this.noBuiltIn.set(true);",
+      "replace": "        const builtIn = await this.service.passkeyBuiltIn();\n        if (builtIn !== true) {\n          this.noBuiltIn.set(true);",
+      "expect": "does not show help when builtIn is null"
+    },
+    {
+      "file": "web/src/app/pages/data/drive/drive-passkey.ts",
+      "find": "      // Check PRF capability only when status is 'none' (not yet set up)\n      if (result === 'none') {",
+      "replace": "      // Check PRF capability only when status is 'none' (not yet set up)\n      if (result === 'none' || result === 'registered') {",
+      "expect": "does not show help when status is registered"
+    },
+    {
+      "file": "web/src/app/pages/data/drive/drive-passkey.html",
+      "find": "        <button\n          type=\"button\"\n          class=\"btn btn-primary\"\n          (click)=\"onRegisterPasskey()\"\n          [disabled]=\"busy()\"",
+      "replace": "        <button\n          type=\"button\"\n          class=\"btn btn-primary\"\n          (click)=\"onRegisterPasskey()\"\n          [disabled]=\"busy() || noBuiltIn()\"",
+      "expect": "does not disable button when noBuiltIn is shown"
+    }
+  ]
+}

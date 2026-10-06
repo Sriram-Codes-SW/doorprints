@@ -27,6 +27,7 @@ import type { PrfAuthenticator } from '../../device-auth/prf-seal';
 import { SEALED_BLOB_KEY, sealWithPrf, sealedBlobFromJson, sealedBlobToJson } from '../../device-auth/prf-seal';
 import { PasskeyPrfMissingError } from '../../device-auth/web-authn-prf-authenticator';
 import type { CryptoProvider } from '../../crypto/crypto-provider';
+import type { RecoveryKey } from '../../crypto/recovery-key';
 
 /**
  * The web's deletion adapter (S4b-BL-73): bridges the DriveDeletionService with the UI layer, the deletion policy,
@@ -55,6 +56,15 @@ export interface DriveDeletionAdapter {
    * The same grant rules: without a PRF passkey the policy says use your phone.
    */
   authorizePolicy(action: PolicyDeletionAction, context: DeletionContext): Promise<AuthorizationResult>;
+
+  /**
+   * Issues a one-use 60-second grant for `action` using the recovery key instead of a passkey.
+   * Maps WRONG_KEY to 'RECOVERY_KEY_WRONG'. Like authorize, binds the grant and registers it with the gate.
+   */
+  authorizeWithRecoveryKey(action: DeletionAction, context: DeletionContext, operationId: string, key: RecoveryKey): Promise<AuthorizationResult>;
+
+  /** Forgets the recovery proof key, leaving PRF keys intact. */
+  forgetProof(): void;
 
   /** Executes the plan; requires a valid authorization token for L2/L3. */
   execute(plan: DeletionPlan, grant: WebGrant | null): Promise<DeletionOutcome>;
@@ -87,6 +97,12 @@ export interface DriveDeletionAdapter {
    * Returns true if supported, false if not supported, null if indeterminate (error or API unavailable).
    */
   prfCapability?(): Promise<boolean | null>;
+
+  /**
+   * Whether a built-in platform authenticator is available.
+   * Returns true if available, false if not available, null if the check is unavailable or throws.
+   */
+  builtInAuthenticator?(): Promise<boolean | null>;
 }
 
 export type DeletionPreflightResult =
@@ -220,7 +236,38 @@ export class DriveDeletionAdapterImpl implements DriveDeletionAdapter {
     if (result.kind === 'REFUSED') {
       return { kind: 'refused', reason: result.reason === 'USE_PHONE' ? 'USE_PHONE' : 'AUTHORIZATION_REFUSED' };
     }
+    // No sealed passkey here: whatever made the policy let this through (a PRF passkey, or the recovery key being offered for a
+    // deletion), approving, revoking and disconnecting every device still need the passkey, so they say what they said before:
+    // use the phone (docs/15 §10.4a).
+    if (result.kind === 'DENIED' && result.reason === 'NOT_SUPPORTED') return { kind: 'refused', reason: 'USE_PHONE' };
     return { kind: 'refused', reason: 'AUTHORIZATION_DENIED' };
+  }
+
+  async authorizeWithRecoveryKey(action: DeletionAction, context: DeletionContext, operationId: string, key: RecoveryKey): Promise<AuthorizationResult> {
+    const decision = this.decide(action, context);
+    if (decision.outcome === 'REFUSED') {
+      return { kind: 'refused', reason: decision.reason };
+    }
+
+    const policyAction = toPolicyAction(action);
+    const result = await this.webAuthorizer.authorizeWithRecoveryKey(policyAction, context, key);
+
+    if (result.kind === 'GRANTED' && result.grant) {
+      this.boundOp.set(result.grant.id, operationId);
+      this.gate?.registerGrant(result.grant.id, action, operationId, result.grant.grantedAtMs);
+      return { kind: 'granted', grant: result.grant };
+    }
+    if (result.kind === 'DENIED' && result.reason === 'WRONG_KEY') {
+      return { kind: 'refused', reason: 'RECOVERY_KEY_WRONG' };
+    }
+    if (result.kind === 'REFUSED') {
+      return { kind: 'refused', reason: 'AUTHORIZATION_REFUSED' };
+    }
+    return { kind: 'refused', reason: 'AUTHORIZATION_DENIED' };
+  }
+
+  forgetProof(): void {
+    this.webAuthorizer.forgetProof();
   }
 
   async execute(plan: DeletionPlan, grant: WebGrant | null): Promise<DeletionOutcome> {
@@ -326,6 +373,15 @@ export class DriveDeletionAdapterImpl implements DriveDeletionAdapter {
     if (!this.prf) return null;
     try {
       return (await this.prf.prfCapability?.()) ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  async builtInAuthenticator(): Promise<boolean | null> {
+    if (!this.prf) return null;
+    try {
+      return (await this.prf.builtInAuthenticatorAvailable?.()) ?? null;
     } catch {
       return null;
     }

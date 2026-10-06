@@ -365,4 +365,45 @@ describe('deletion factories', () => {
       expect(cap).toBe(true);
     });
   });
+
+  describe('Lazy proxy builtInAuthenticator forwarding', () => {
+    it('forwards builtInAuthenticator when false to underlying adapter', async () => {
+      const fakePrf = new FakePrfAuthenticator(crypto);
+      fakePrf.builtIn = false;
+
+      const adapter = createLazyDeletionAdapterProxy(
+        async () => mockRuntime,
+        { prf: fakePrf }
+      );
+
+      const result = await adapter.builtInAuthenticator?.();
+      expect(result).toBe(false);
+    });
+
+    it('forwards builtInAuthenticator when true to underlying adapter', async () => {
+      const fakePrf = new FakePrfAuthenticator(crypto);
+      fakePrf.builtIn = true;
+
+      const adapter = createLazyDeletionAdapterProxy(
+        async () => mockRuntime,
+        { prf: fakePrf }
+      );
+
+      const result = await adapter.builtInAuthenticator?.();
+      expect(result).toBe(true);
+    });
+
+    it('forwards builtInAuthenticator when null to underlying adapter', async () => {
+      const fakePrf = new FakePrfAuthenticator(crypto);
+      fakePrf.builtIn = null;
+
+      const adapter = createLazyDeletionAdapterProxy(
+        async () => mockRuntime,
+        { prf: fakePrf }
+      );
+
+      const result = await adapter.builtInAuthenticator?.();
+      expect(result).toBe(null);
+    });
+  });
 });
