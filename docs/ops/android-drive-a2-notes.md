@@ -1,6 +1,8 @@
 # Android Drive, A2: device key, device lock, delete authorisation (S4b-BL-127, device-key part of S4b-BL-126)
 
 > Session record, kept as written (2026-10-06). The decisions are in [15](../15-google-drive-backup-and-sharing.md) §9.10 (the device key, the wrapped scalar on API 26-30, the lock) and §10.2 (the device check as built); where this note and 15 differ, 15 is right.
+>
+> **Superseded in part (S4b-BL-135, Android half): see "Update: S4b-BL-135" at the end of this note.** The `DeviceAuthorizationGate.kt` row of the table below, decision 6 (the proof and the gate's grant) and the `TimedOut` result of decision 7 describe the state A2 left: the gate is deleted, `OperationProof.kt` keeps its types, and a timed-out prompt is a cancel at the `AuthResult` seam (S4b-BL-140).
 
 Notes for the lead. Code: `android/app/src/main/java/app/doorprints/drive/device/`; tests: the same path under
 `android/app/src/test/java/`. Design: docs/15 §10.1-§10.3, §9.9.
