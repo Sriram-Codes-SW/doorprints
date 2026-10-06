@@ -1,0 +1,35 @@
+{
+  "spec": "web/src/app/shared/trace-place-check.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/shared/trace-place-check.ts",
+      "find": "walked: best.distanceM <= tolerance,",
+      "replace": "walked: best.distanceM < tolerance,",
+      "expect": "counts exactly the tolerance as walked"
+    },
+    {
+      "file": "web/src/app/shared/trace-place-check.ts",
+      "find": "  for (const w of withoutSavedDuplicates(walks)) {",
+      "replace": "  for (const w of walks.keys()) {",
+      "expect": "leaves out a trace walk whose walk id equals"
+    },
+    {
+      "file": "web/src/app/shared/trace-place-check.ts",
+      "find": "const dLat = (band * 1.01) / K;",
+      "replace": "const dLat = 0;",
+      "expect": "gives the same rows with and without it"
+    },
+    {
+      "file": "web/src/app/shared/trace-place-check.ts",
+      "find": "    if (best === null || best.distanceM > band) continue;",
+      "replace": "    if (best === null) continue;",
+      "expect": "keeps a walk 50 m away in the close band"
+    },
+    {
+      "file": "web/src/app/shared/trace-place-check.ts",
+      "find": "  while (last + 1 < pts.length && pts[last + 1].resumed !== true) last++;",
+      "replace": "  while (last + 1 < pts.length) last++;",
+      "expect": "never runs across a resumed point"
+    }
+  ]
+}

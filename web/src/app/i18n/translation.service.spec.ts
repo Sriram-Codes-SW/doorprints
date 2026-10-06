@@ -202,6 +202,73 @@ describe('TranslationService', () => {
     });
   });
 
+  describe('dateWithWeekday() and metres() (the place check, docs/11 5.27.13: Intl, no date pipe)', () => {
+    const NOW = Date.UTC(2026, 9, 10, 12, 0, 0);
+    // 2026-10-06 23:50 UTC is Tue 6 Oct in UTC and Los Angeles, and already Wed 7 Oct in Kolkata.
+    const lateTuesday = Date.UTC(2026, 9, 6, 23, 50, 0);
+
+    it('is a dash for nothing', () => {
+      const service = serviceIn('en');
+      expect(service.dateWithWeekday(null)).toBe('–');
+      expect(service.dateWithWeekday(undefined)).toBe('–');
+      expect(service.dateWithWeekday(Number.NaN)).toBe('–');
+    });
+
+    it('writes a short weekday, the day and the month, and no year in the current year', () => {
+      const text = serviceIn('en').dateWithWeekday(lateTuesday, 'UTC', NOW);
+      expect(text).toMatch(/Tue/);
+      expect(text).toMatch(/6/);
+      expect(text).toMatch(/Oct/);
+      expect(text).not.toMatch(/2026/);
+    });
+
+    it('adds the year when it is not the current year', () => {
+      const text = serviceIn('en').dateWithWeekday(Date.UTC(2025, 11, 30, 12, 0, 0), 'UTC', NOW);
+      expect(text).toMatch(/2025/);
+      expect(text).toMatch(/Tue/);
+    });
+
+    it('uses the calendar day in the time zone it is given (a walk at 23:50 against two zones)', () => {
+      const service = serviceIn('en');
+      expect(service.dateWithWeekday(lateTuesday, 'UTC', NOW)).toMatch(/Tue/);
+      expect(service.dateWithWeekday(lateTuesday, 'America/Los_Angeles', NOW)).toMatch(/Tue/);
+      expect(service.dateWithWeekday(lateTuesday, 'Asia/Kolkata', NOW)).toMatch(/Wed/);
+      expect(service.dateWithWeekday(lateTuesday, 'Asia/Kolkata', NOW)).toMatch(/7/);
+    });
+
+    it('decides the current year in that zone too (New Year in Kolkata is still the old year in UTC)', () => {
+      const service = serviceIn('en');
+      const at = Date.UTC(2026, 0, 1, 1, 0, 0); // 1 Jan 2026 01:00 UTC, 06:30 in Kolkata
+      const newYearEveUtc = Date.UTC(2025, 11, 31, 20, 0, 0); // "now": 31 Dec in UTC, 1 Jan 2026 in Kolkata
+      expect(service.dateWithWeekday(at, 'Asia/Kolkata', newYearEveUtc)).not.toMatch(/2026/);
+      expect(service.dateWithWeekday(at, 'UTC', newYearEveUtc)).toMatch(/2026/);
+    });
+
+    for (const lang of ['en', 'hi', 'ta', 'te'] as const) {
+      it(`${lang}: the Intl text of that language with a short weekday`, () => {
+        const service = serviceIn(lang);
+        const expected = new Intl.DateTimeFormat(service.locale(), { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(lateTuesday));
+        expect(service.dateWithWeekday(lateTuesday, 'UTC', NOW)).toBe(expected);
+        expect(expected).not.toBe('');
+      });
+    }
+
+    it('differs between English and Tamil and Telugu and Hindi', () => {
+      const en = serviceIn('en').dateWithWeekday(lateTuesday, 'UTC', NOW);
+      for (const lang of ['hi', 'ta', 'te'] as const) expect(serviceIn(lang).dateWithWeekday(lateTuesday, 'UTC', NOW), lang).not.toBe(en);
+    });
+
+    it('writes a distance in whole metres with the unit written the language\'s own way', () => {
+      for (const lang of ['en', 'hi', 'ta', 'te'] as const) {
+        const service = serviceIn(lang);
+        const expected = new Intl.NumberFormat(service.locale(), { style: 'unit', unit: 'meter', maximumFractionDigits: 0 }).format(25);
+        expect(service.metres(25), lang).toBe(expected);
+      }
+      expect(serviceIn('en').metres(25)).toMatch(/25\s?m/);
+      expect(serviceIn('en').metres(1234)).toMatch(/1,234/);
+    });
+  });
+
   describe('dateTime() and duration()', () => {
     it('returns an en dash for missing or invalid dates', () => {
       const service = serviceIn('en');
