@@ -1,0 +1,143 @@
+{
+  "spec": "web/src/app/data/trace-store.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/data/trace-store.ts",
+      "find": "filter((r) => r.at < cutoff)",
+      "replace": "filter((r) => r.at <= cutoff)",
+      "expect": "prunes the points older than 30 days"
+    },
+    {
+      "file": "web/src/app/data/trace-store.ts",
+      "find": "r.walk <= askedUpTo",
+      "replace": "r.walk < askedUpTo",
+      "expect": "asks once"
+    },
+    {
+      "file": "web/src/app/data/trace-store.ts",
+      "find": "r.walk === liveWalkId || ",
+      "replace": "",
+      "expect": "leaves out the live walk"
+    },
+    {
+      "file": "web/src/app/data/trace-store.ts",
+      "find": "export const ASK_MIN_POINTS = 5;",
+      "replace": "export const ASK_MIN_POINTS = 4;",
+      "expect": "does not ask about a short walk"
+    },
+    {
+      "file": "web/src/app/data/trace-store.ts",
+      "find": "export const ASK_MIN_LENGTH_M = 100;",
+      "replace": "export const ASK_MIN_LENGTH_M = 50;",
+      "expect": "does not ask about a short walk"
+    },
+    {
+      "file": "web/src/app/data/trace-store.ts",
+      "find": "points.length > TRACE.maxWalkPoints",
+      "replace": "points.length >= TRACE.maxWalkPoints",
+      "expect": "refuses a walk of more than 5 000 points"
+    },
+    {
+      "file": "web/src/app/data/trace-store.ts",
+      "find": "      ...points.map((p) => ({ op: 'delete' as const, store: 'trace_points' as const, key: `${p.walkId ?? 0}-${p.atMs}` })),\n",
+      "replace": "",
+      "expect": "writes the saved row and removes the walk from the trace in ONE batch"
+    },
+    {
+      "file": "web/src/app/data/local-store.service.ts",
+      "find": "    await deleteSavedWalksOfHouse(db, id);\n",
+      "replace": "",
+      "expect": "deleting a house deletes its saved walks"
+    },
+    {
+      "file": "web/src/app/data/trace-store.ts",
+      "find": ": 'CLEAR';\n  }\n  async setLook",
+      "replace": ": 'OFF';\n  }\n  async setLook",
+      "expect": "starts with the trace off"
+    },
+    {
+      "file": "web/src/app/data/trace-store.ts",
+      "find": "if (walkId > (await this.askedUpTo()))",
+      "replace": "if (walkId >= 0)",
+      "expect": "never moves the watermark backwards"
+    },
+    {
+      "file": "web/src/app/data/trace-store.ts",
+      "find": "if (leaveOutWalkId !== 0 && holdsWalkId(w.points, leaveOutWalkId)) continue;",
+      "replace": "",
+      "expect": "leaves the live walk out of the place walks only when asked"
+    },
+    {
+      "file": "web/src/app/data/trace-store.ts",
+      "find": "return rows.sort((a, b) => b.startedAt - a.startedAt);",
+      "replace": "return rows.sort((a, b) => a.startedAt - b.startedAt);",
+      "expect": "lists the saved walks of a house newest first"
+    },
+    {
+      "file": "web/src/app/data/trace-store.ts",
+      "find": "    await db.deleteAll(\n      'trace_points',\n      old.map((r) => r.id),\n    );\n    return old.length;",
+      "replace": "    return old.length;",
+      "expect": "prunes the points older than 30 days"
+    },
+    {
+      "file": "web/src/app/data/trace-store.ts",
+      "find": "filter((r) => r.at >= sinceMs)",
+      "replace": "filter((r) => r.at > sinceMs - 1_000_000_000)",
+      "expect": "reads nothing older than 30 days"
+    },
+    {
+      "file": "web/src/app/data/trace-store.ts",
+      "find": "if (points.length < 2) return { ok: false, reason: 'noWalk' };",
+      "replace": "if (points.length < 1) return { ok: false, reason: 'noWalk' };",
+      "expect": "refuses a walk with no points or one point"
+    },
+    {
+      "file": "web/src/app/data/trace-store.ts",
+      "find": "[...byWalk.keys()].sort((a, b) => b - a)",
+      "replace": "[...byWalk.keys()].sort((a, b) => a - b)",
+      "expect": "takes the newest of several qualifying walks"
+    },
+    {
+      "file": "web/src/app/data/trace-store.ts",
+      "find": "if (points.length >= ASK_MIN_POINTS && lengthM >= ASK_MIN_LENGTH_M) return summaryOf(id, points, lengthM);",
+      "replace": "return summaryOf(id, points, lengthM);",
+      "expect": "does not hide a long older one"
+    },
+    {
+      "file": "web/src/app/data/trace-store.ts",
+      "find": "holdsWalkId(w.points, leaveOutWalkId)",
+      "replace": "id === leaveOutWalkId",
+      "expect": "leaves out a walk that MERGED a legacy"
+    },
+    {
+      "file": "web/src/app/data/trace-store.ts",
+      "find": "return points.some((p) => (p.walkId ?? 0) === walkId);",
+      "replace": "return (points[0].walkId ?? 0) === walkId;",
+      "expect": "leaves out a walk that MERGED a legacy"
+    },
+    {
+      "file": "web/src/app/data/trace-store.ts",
+      "find": "max: MAX_SAVED_WALKS_PER_HOUSE - 1, reason: 'houseFull'",
+      "replace": "max: MAX_SAVED_WALKS_PER_HOUSE, reason: 'houseFull'",
+      "expect": "two tabs saving two walks to a house that holds 19"
+    },
+    {
+      "file": "web/src/app/data/trace-store.ts",
+      "find": "max: MAX_SAVED_WALKS_PER_DEVICE - 1, reason: 'deviceFull'",
+      "replace": "max: MAX_SAVED_WALKS_PER_DEVICE, reason: 'deviceFull'",
+      "expect": "and the device limit of 200 the same way"
+    },
+    {
+      "file": "web/src/app/data/trace-store.ts",
+      "find": "min: points.length, reason: 'noWalk'",
+      "replace": "min: 0, reason: 'noWalk'",
+      "expect": "two saves of the SAME walk"
+    },
+    {
+      "file": "web/src/app/data/trace-store.ts",
+      "find": "return { ok: false, reason: err.reason as 'noWalk' | 'houseFull' | 'deviceFull' };",
+      "replace": "return { ok: false, reason: 'noWalk' };",
+      "expect": "two tabs saving two walks to a house that holds 19"
+    }
+  ]
+}

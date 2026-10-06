@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Feature parity and offline-copy export specification |
-| Version | 0.59 |
+| Version | 0.60 |
 | Date | 2026-10-06 |
 | Author | Claude (Cowork) – Product/Architecture |
 | Status | Draft: product-owner decisions D-01, D-02, D-03, D-08, D-21 (AI access) and D-23..D-25 (Sprint 4b reminders, hunting areas, location permissions) and D-26 (India's boundaries on the map, 2026-09-24) applied; ready for Sprint 4 planning |
@@ -69,6 +69,7 @@
 | 0.57 | 2026-10-06 | Claude (Code), lead | **Senior review of the path trace design applied** ([ops/path-trace-spec-review.md](ops/path-trace-spec-review.md)). Six corrections: the live look is a `PlatformMap` `repeatLook` parameter (Android `LineLayer.setProperties`, iPhone `setRepeatLook`, website `setPaintProperty`), not `JsonStyleOps` (5.27.4); the alert's `blocked` flag survives one bad fix (5.27.3, vector `alert-one-bad-fix-does-not-ring-again`); a walk id of 0 is no id (5.27.2, 5.27.3, vector `split-walk-id-zero-is-no-id`); `walkAskedUpTo` replaces `walkToAsk`, so a walk cut by process death is asked about (5.27.6); the vector tests run in `androidHostTest` with a small inline `commonTest` (5.27.10); Android's device-to-device transfer copies saved walks, said honestly (5.27.0, 5.27.7). Also: the walk just finished is left out of the alert's others (vectors `alert-not-for-the-walk-just-finished`, `alert-walk-finished-30-minutes-ago-counts`; owner may overrule, question 1), the website splits its line across a page hidden for more than 5 minutes (question 7 adopted; the `resumed` flag, vector `web-pause-makes-no-segment`), the parallel-lane field check and the `TOLERANCE_M = 20` fallback, the `NonCancellable` sweep, the search-rule sentence, luminance 0.10, `#E65100` confirmed (protanopia: told apart from the amber star by form only), the log rule, the shared-browser sentence, the T-I29 residual, one banner wording, vector hygiene (`overlap-60m-is-not-a-repeat` moved off the 80 m boundary), questions 13 and 14. New 5.27.12: Hunt mode on the website, proposed, not scheduled (S4b-FR-19..23). |
 | 0.58 | 2026-10-06 | Claude (Code), lead | **The path trace: an on-demand place check, *Have I been here?*** (owner request of 2026-10-06; S4b-FR-24; design only). New 5.27.13: the button (Map screen, house page, long press or crosshair), the exact semantics both stacks share (distance from the place to each walk's polyline on the local plane, `TOLERANCE_M` 25 m inclusive for *walked*, a second *close* band to 50 m, the 50 m accuracy gate, per-walk rows newest first with the time at the nearest point, no result from a fragment, no segment across a resumed point, the stored walks read whether or not the trace is on), the words and the `trace.here.*` strings, the map's matched-stretch halo and ring, accessibility, privacy (on demand, no network request, shown never stored or sent). 5.27.0 item 7, 5.27.2 constants (`NEAR_BAND_M`, `MAX_FIX_ACCURACY_M`, `CHECK_STRETCH_M`), 5.27.10 and open questions 15 to 17; the proposed website Hunt mode's requirements renumbered FR-109 and PRV-033. Vector file: new `placeChecks` section (21 cases). |
 | 0.59 | 2026-10-06 | Claude (Code), lead | **The place check: the senior review applied** ([ops/path-trace-check-review.md](ops/path-trace-check-review.md), owner: go with the recommendations). 5.27.13: the website's *Here* is `watchPosition` through `shared/locate-once.ts`, stopped at the first fix of 50 m or better or at 15 s with the best so far (MUST-1); `{tolerance}` in `close`, `none` and `noneSaved` (MUST-2); `trace.here.and2` and `and3` deleted (the dictionary's `list.*` is used) and `a11y.stretch` renamed `stretchA11y` (MUST-3); the permission sentence in the choice dialog every time, no flag (MUST-4); no result, place or distance in a URL, `history.state` or storage, the house page draws on its own `LocationMap` (MUST-5); the headline announced once and withdrawn on close with `Announcer.cancel` (MUST-6); the check without blocking the page on the website (SHOULD-1), no website check before FR-17 and `trace-geo.ts` first (SHOULD-2), a trace walk with a saved walk's id left out (SHOULD-3), `L² = 0` gives `t = 0` (SHOULD-4), the weekday by skeleton `EEEdMMM` on the phones and an optional time zone on the website helper (SHOULD-5), `fuzzy` semantics (SHOULD-6), the button hidden on `/houses/new` (SHOULD-7). Open questions 15 to 17 decided as recommended; new question 18 (a one-press *Mark the houses I walked past*): LATER, not in S4b. |
+| 0.60 | 2026-10-06 | Claude (Code), docs pass | **The path trace v2 and the place check moved from *planned* to *built*** (`feat/path-trace-v2`, PR #146, not yet merged; S4b-FR-13..FR-17 and FR-24 built, FR-18 the guide done). 5.27.0 and 5.27.13 no longer say *design, not built*; 5.27.10 names the real test classes (`TraceVectorsTest` replaces the planned two vector classes); the vector file is *confirmed*; the Room 11 and IndexedDB 3 rows say built. Owner device checks (TC-M-25 re-run, TC-M-57..61, MT-75..81) stay open and are not claimed. The review of the branch found six must-fix items (the Android Map redraw, the walk to ask about, the live walk's own points after the Room upgrade, the website's alert switch, `HuntService`'s Finish walk intent, the docs) and sixteen smaller ones: [10](10-sprint-log.md) S4b-FR-25..S4b-FR-37. |
 | 0.52 | 2026-10-01 | Claude (Code), lead | 5.6: the **Basement** switch under Floor and the import's tolerant reading of a floor out of range, with a warning in the preview (S4b-BL-104 c, d); search finds the floor in the app's language too (S4b-BL-104 b). |
 | 0.51 | 2026-10-01 | Claude (Code), lead | **The finishing batch built** (on stacked branches, [10](10-sprint-log.md) §13.29..§13.40): built notes for 5.2 (copies in UTC, the iPhone's copies and imports, the website's import), 5.6 (the floor, moving rooms), 5.7 (photo tags), 5.8 (the iPhone's calendar file, the reminder follow-ups), 5.17 and 5.18 (the iPhone wake-up), 5.19 (the emulator test, Hunt alerts with the app lock), 5.20 (offline maps on the website), 5.21 (the cost filters), 5.24 (moving in, the statuses Taken and Not chosen), 5.25 (the duplicate-flat warning), 5.28 (deletions in an update file, `/3`) and 5.29 (the locality lookup). |
 
@@ -845,11 +846,11 @@ stops recording and keeps what is there until it ages out or is cleared, so a da
 the week. The line's colour (`#8E24AA`) is none of the marker colours and none of the base map's own line colours
 (roads, India's boundary, the state lines), readable on the light tiles both themes show; TC-M-30 checks it on a
 device. Phone accuracy only, so the DST guidelines' 1 m threshold does not apply ([03](03-design.md) §11.1). The
-website has no Hunt mode; its trace, and saved walks, are designed in 5.27.0..5.27.11 (2026-10-06, not built). Tests: `HuntEngineTest` (the trace and the pruning), `TrackGeoJsonTest`,
+website has no Hunt mode; its trace, and saved walks, are designed in 5.27.0..5.27.11 and built on `feat/path-trace-v2` (2026-10-06, PR #146, not yet merged). Tests: `HuntEngineTest` (the trace and the pruning), `TrackStyleTest` (`trackGeoJson`, which replaced `TrackGeoJsonTest` on that branch),
 `JsonStyleOpsTest` (the layer under the houses on iOS), `AppDatabaseMigrationTest` (2 to 3), the `hunt_trace`
 screenshots ([06](06-test-plan.md) TC-U-94).
 
-#### 5.27.0 The path trace, version 2 (owner request of 2026-10-06; design, not built)
+#### 5.27.0 The path trace, version 2 (owner request of 2026-10-06; built on `feat/path-trace-v2`, PR #146, not yet merged)
 
 **The purpose** (owner): *help a person avoid the same path and see where she has travelled.* Today's trace is one
 static purple line. The owner decided, on 2026-10-06:
@@ -874,11 +875,10 @@ static purple line. The owner decided, on 2026-10-06:
 7. **A place check on demand** (owner, later the same day): a button *Have I been here?* compares a place (where she is, a house, a
    spot on the map) with her walks and answers in words; never automatic, never stored or sent (5.27.13).
 
-Everything below is the design; the code follows the tickets S4b-FR-13..S4b-FR-18 (and S4b-FR-24 for item 7) ([10](10-sprint-log.md) §15). The
+Everything below is the design, and the code now follows it: S4b-FR-13..S4b-FR-17 and S4b-FR-24 are built on `feat/path-trace-v2` (PR #146; S4b-FR-18, the guide, is done) ([10](10-sprint-log.md) §15). **What is built and what is not:** the shared algorithm, saved walks (Room 11, IndexedDB 3), the alert, the place check and every screen on Android, the iPhone (common code and the Swift `setRepeatLook`; compiled, not run on a Mac here) and the website. **Not built:** the website's Hunt mode (5.27.12, S4b-FR-19..23, not scheduled). **Not yet done on a device (owner):** TC-M-25 (re-run, the base map gained layers), TC-M-57..TC-M-61 and MT-75..MT-81; nothing below claims them. The review of the branch ([10](10-sprint-log.md) S4b-FR-25..S4b-FR-37) lists what was found and what is still being fixed. The
 sections 5.27.2 and 5.27.3 are the contract that the Kotlin and the TypeScript implementations share, held to each
 other by the vector file [`docs/schemas/trace-repeat-vectors.json`](schemas/trace-repeat-vectors.json) (status
-*proposed*: the first implementation must confirm every case, or this text is corrected in a documented change, never
-the vectors silently). What 5.27 above says of the build of 2026-09-29 stays true until the tickets land; where this
+*confirmed* on 2026-10-06: Kotlin and TypeScript both pass every case; a later change to an expected value is made only in a documented change to this text, never silently). What 5.27 above says of the build of 2026-09-29 stays true where this design does not amend it; where this
 design changes it, the change is named (*Amended*).
 
 #### 5.27.1 What the person sees, in one page
@@ -1005,8 +1005,7 @@ before the live walk's first point** (`live.first.atMs - other.last.atMs < WALK_
 the alert only; the Map's detection still marks the street (vectors `alert-not-for-the-walk-just-finished` and
 `alert-walk-finished-30-minutes-ago-counts`; open question 1). At each kept point `P` of the live walk (index 0 never
 alerts), build the live walk's samples up to `P` and the near flags and bridging of steps 3 to 5 against the others (the live
-walk is W). If `P` (the last sample) is not near: no alert, and `blocked` becomes false **only when the trailing series of
-non-near samples (ending at `P`, before bridging) is longer than `BRIDGE_M` along the walk**, that is, when bridging could no
+walk is W). If `P` (the last sample) is not near: no alert, and `blocked` becomes false **only when `arc(P) - arc(last near sample) > BRIDGE_M`** (that is, the arc length from the last near sample to `P` exceeds `BRIDGE_M`), which means bridging could no
 longer join `P` to the run behind it (or there is no run behind it, or a part boundary lies between). One or two off samples
 inside a run neither ring nor unblock (the vector `alert-one-bad-fix-does-not-ring-again`: one fix 40 m off the street, inside
 the 50 m gate, must not ring the same street again after the cooldown). Otherwise the **trailing run** is the series of near
@@ -1402,9 +1401,9 @@ current text ("never in a backup, a copy or on the server, and gone after 30 day
 
 #### 5.27.10 Tests and tickets
 
-Planned tests: [06](06-test-plan.md) TC-U-147..TC-U-152, TC-M-57..TC-M-60 and the manual entries MT-75..MT-80 (and, for the place check of 5.27.13, TC-U-153, TC-U-154, TC-M-61 and MT-81) of
-[ops/manual-test-checklist.md](ops/manual-test-checklist.md). **Where the vector tests run:** `commonTest` has no file API, so
-`RepeatDetectorVectorsTest` is in `:shared` **`androidHostTest`** on the JVM and walks up from the working directory to
+Tests, as built (the class names and files are in [06](06-test-plan.md) TC-U-147..TC-U-154): TC-U-147..TC-U-152, TC-M-57..TC-M-60 and the manual entries MT-75..MT-80 (and, for the place check of 5.27.13, TC-U-153, TC-U-154, TC-M-61 and MT-81) of
+[ops/manual-test-checklist.md](ops/manual-test-checklist.md); the TC-M and MT entries are owner device checks and are **still open**. **Where the vector tests run:** `commonTest` has no file API, so
+`TraceVectorsTest` (all 58 cases: split, repeats, alert and `placeChecks`; it replaced the planned `RepeatDetectorVectorsTest` and `PlaceCheckVectorsTest`) is in `:shared` **`androidHostTest`** on the JVM and walks up from the working directory to
 `docs/schemas/trace-repeat-vectors.json`, as `DriveVectorsTest` does for the Drive vectors; a small `RepeatDetectorTest` in
 `commonTest` with six inline cases (same street, junction, bridge, gap split, alert 100 m, cooldown) lets the iOS simulator
 job execute the common code too; the website's `trace-repeats-vectors.spec.ts` reads the file as `drive-vectors.spec.ts`
@@ -1525,7 +1524,7 @@ the second cue after the sound). New requirements if the owner says yes: FR-109 
 3. **A visit's source.** *Recommend: `VisitSource.AUTO` as on the phones, with the same accuracy gate,* rather than a new
    `AUTO_WEB` to tell a rougher laptop fix apart.
 
-#### 5.27.13 *Have I been here?*: an on-demand check of a place against the person's walks (owner request of 2026-10-06; design, not built)
+#### 5.27.13 *Have I been here?*: an on-demand check of a place against the person's walks (owner request of 2026-10-06; built on `feat/path-trace-v2`, PR #146, not yet merged)
 
 **The ask** (owner): *"Can we compare the location with the trace on click of a button so that the user has an option to check
 whether they visited it?"* The answer is a button, never a background job: the person picks a place, presses, and reads in plain
@@ -1550,7 +1549,7 @@ popup of two rows. The result is a **bottom sheet** on the phones and a **panel*
 
 **Exact semantics** (the contract that Kotlin, `app.doorprints.shared.trace.PlaceCheck.check`, and TypeScript,
 `web/src/app/shared/trace-place-check.ts`, share, written from this text and held to the `placeChecks` section of
-[`docs/schemas/trace-repeat-vectors.json`](schemas/trace-repeat-vectors.json), status *proposed*, 21 cases). Pure function: no clock, no I/O.
+[`docs/schemas/trace-repeat-vectors.json`](schemas/trace-repeat-vectors.json), status *confirmed*, 21 cases). Pure function: no clock, no I/O.
 
 *Inputs.* `place` (lat, lon); `walks`: a list of walks, each already split (5.27.3 step 1; saved walks come back from
 their codec as walks) with `TracePoint(lat, lon, atMs, walkId, resumed)` and a `source` of `TRACE` or `SAVED`; `fixAccuracyM`: only
@@ -2223,8 +2222,8 @@ erDiagram
 | Room | 4 | The 4b model of **5.30**, slice 0: one `records` table (`type`, `id`, `payload` JSON, `updatedAt`, `deleted`, `dirty`) for criteria, questions, viewings, hunting areas, places, area notes, brokers, photo metadata, the move-in record and preferences. `4.json`, `MIGRATION_3_4` tested | 4b |
 | Room | 5 | Slice 1: `houses.cost_*` (embedded), `rooms`/`answers` (JSON), `areaSqft`, `locationSource`, `brokerId`; the contacts migrated into brokers. `5.json`, `MIGRATION_4_5` tested | 4b |
 | Room | 6 | `photos.storage`, `driveFileId`, `driveMissing`, `thumbOnly`; bound account ID in encrypted settings | 5 |
-| Room | 11 (planned) | `saved_walks` (5.27.6, [03](03-design.md) §6.2): the walks the person saved, linked to a house; on the phone only, never in a backup. `track_points` gains `walkId`. `11.json`, `MIGRATION_10_11` tested | S4b-FR-14 |
-| IndexedDB | 3 (planned; `DB_VERSION` is 2 today) | `trace_points` and `saved_walks` stores (5.27.8), website only, never exported; `upgradeLocalDb` step `oldVersion < 3` | S4b-FR-17 |
+| Room | 11 (built on `feat/path-trace-v2`) | `saved_walks` (5.27.6, [03](03-design.md) §6.2): the walks the person saved, linked to a house; on the phone only, never in a backup. `track_points` gains `walkId`. `11.json`, `MIGRATION_10_11` tested | S4b-FR-14 |
+| IndexedDB | 3 (built on `feat/path-trace-v2`; `DB_VERSION` is 2 on `main`) | `trace_points` and `saved_walks` stores (5.27.8), website only, never exported; `upgradeLocalDb` step `oldVersion < 3` | S4b-FR-17 |
 | IndexedDB | 1 → 4 | Mirrors Room 2 (version 1, 4a), Room 4 and 5 (versions 2 and 3, 4b, with the upgrade path S4b-BL-71), Room 6 (version 4, 5); the hand-written wrapper of `local-db.ts`, no Dexie (4a decision) | 4a–5 |
 
 Definition of done for every 4b/5 story that adds data: the new fields appear in **all six export formats** and round-trip through the JSON backup.

@@ -39,6 +39,7 @@ class PlatformFeaturesTest {
                 weeklyBackup = true,
                 inAppLanguage = true,
                 areaWakeup = true,
+                deviceTransferNote = true,
             ),
             PlatformFeatures(),
         )
@@ -59,6 +60,8 @@ class PlatformFeaturesTest {
                 inAppLanguage = false,
                 // The area wake-up (slice 4b): region monitoring and "Always" on iPhone since S4b-BL-96.
                 areaWakeup = true,
+                // The iPhone's data is kept out of iCloud and computer backups (IosDataDirectory): no transfer note.
+                deviceTransferNote = false,
             ),
             PlatformFeatures.Ios,
         )

@@ -126,8 +126,17 @@ internal object IosNotifications {
      * Posts one alert at once under [id] (a second with the same id replaces the first, as Android's ids do), with
      * [userInfo] for the tap ([install]). Dropped by iOS when not allowed.
      */
-    fun post(id: String, title: String, body: String, userInfo: Map<Any?, *> = emptyMap<Any?, Any?>()) {
+    fun post(
+        id: String,
+        title: String,
+        body: String,
+        userInfo: Map<Any?, *> = emptyMap<Any?, Any?>(),
+        category: String? = null,
+        thread: String? = null,
+    ) {
         val content = UNMutableNotificationContent().apply {
+            category?.let { setCategoryIdentifier(it) }
+            thread?.let { setThreadIdentifier(it) }
             setTitle(title)
             setBody(body)
             setSound(UNNotificationSound.defaultSound)

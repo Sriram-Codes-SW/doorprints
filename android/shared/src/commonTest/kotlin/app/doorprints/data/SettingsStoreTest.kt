@@ -25,6 +25,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import app.doorprints.shared.sync.SyncOutcome
+import app.doorprints.shared.trace.RepeatLook
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
@@ -359,6 +360,39 @@ class SettingsStoreTest {
         store.saveAppLockAfter(0)
         assertEquals(0, store.current().appLockAfterSeconds)
         assertEquals(AppLockSetting(on = true, afterSeconds = 0), store.appLockSetting.first())
+    }
+
+    @Test
+    fun theRepeatLookIsClearAndTheAlertOffUntilChangedAndBothSurviveARestart() = runTest {
+        // docs/11 5.27.4, 5.27.5 (S4b-FR-14): per device, never exported.
+        assertEquals(RepeatLook.CLEAR, store.current().repeatLook)
+        assertFalse(store.current().repeatAlert)
+        store.saveRepeatLook(RepeatLook.SUBTLE)
+        store.saveRepeatAlert(true)
+        val reopened = SettingsStore(dataStore, secrets) { clock }
+        assertEquals(RepeatLook.SUBTLE, reopened.current().repeatLook)
+        assertTrue(reopened.current().repeatAlert)
+        store.saveRepeatLook(RepeatLook.OFF)
+        assertEquals(RepeatLook.OFF, store.current().repeatLook)
+        assertEquals("OFF", raw()["repeatLook"])
+    }
+
+    @Test
+    fun anUnknownRepeatLookReadsAsClear() = runTest {
+        dataStore.updateData { it.toMutablePreferences().apply { this[stringPreferencesKey("repeatLook")] = "LOUD" } }
+        assertEquals(RepeatLook.CLEAR, store.current().repeatLook)
+    }
+
+    @Test
+    fun theWalkWatermarkOnlyMovesForwardAndIsNeverPrinted() = runTest {
+        assertEquals(0L, store.current().walkAskedUpTo)
+        store.saveWalkAskedUpTo(1_760_000_123_456)
+        store.saveWalkAskedUpTo(1_750_000_000_000) // an older answer does not move it back
+        assertEquals(1_760_000_123_456, store.current().walkAskedUpTo)
+        val printed = store.current().toString()
+        assertFalse(printed.contains("walkAskedUpTo"), printed)
+        assertFalse(printed.contains("1760000123456"), printed)
+        assertTrue(printed.contains("repeatLook=CLEAR") && printed.contains("repeatAlert=false"), printed)
     }
 
     @Test

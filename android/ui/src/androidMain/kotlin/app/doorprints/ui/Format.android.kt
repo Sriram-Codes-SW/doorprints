@@ -35,6 +35,12 @@ internal actual fun formatDate(epochMillis: Long, language: String, withTime: Bo
     return formatter.withLocale(locale).withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(epochMillis))
 }
 
+internal actual fun formatDateWithWeekday(epochMillis: Long, language: String, withYear: Boolean): String {
+    val locale = Locale.Builder().setLanguage(language.ifEmpty { "en" }).setRegion("IN").build()
+    val pattern = android.text.format.DateFormat.getBestDateTimePattern(locale, if (withYear) "EEEdMMMy" else "EEEdMMM")
+    return java.text.SimpleDateFormat(pattern, locale).format(java.util.Date(epochMillis))
+}
+
 internal actual fun formatSixDecimals(value: Double): String = String.format(Locale.ROOT, "%.6f", value)
 
 internal actual fun utcOffsetMillis(epochMillis: Long): Int = java.util.TimeZone.getDefault().getOffset(epochMillis)

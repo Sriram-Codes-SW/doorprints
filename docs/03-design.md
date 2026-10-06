@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.67 |
+| Version | 0.68 |
 | Date | 2026-10-06 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -76,6 +76,7 @@
 | 0.65 | 2026-10-06 | Claude (Code), lead | Senior review of the path trace design applied ([11](11-feature-parity-and-export-spec.md) v0.57): `TracePoint.resumed` and the walk-id-0 rule in the shared API, the alert's exclusion and `blocked` rule noted, `walkAskedUpTo` replaces `walkToAsk` in the §7.2a sequence and the website's settings, the live look through a `PlatformMap` parameter (ADR-34), the Android transfer sentence. |
 | 0.66 | 2026-10-06 | Claude (Code), lead | **The on-demand place check** ([11](11-feature-parity-and-export-spec.md) 5.27.13, S4b-FR-24): `PlaceCheck` and `TraceConstants.NEAR_BAND_M` and `MAX_FIX_ACCURACY_M` in the shared API, the `placeChecks` section of the vector file, new §7.2b (the sequence). |
 | 0.67 | 2026-10-06 | Claude (Code), lead | **The website's trace and place check: the implementation plan** (senior review of 2026-10-06, [ops/path-trace-check-review.md](ops/path-trace-check-review.md); SHOULD-8): new §6.2b with the website's files (`shared/trace-geo.ts`, `trace-repeats.ts`, `trace-place-check.ts`, `trace-place-text.ts`, `data/trace-store.ts`, `core/trace-recorder.service.ts`, `shared/trace-style.ts`, `pages/map/trace-layers.ts`, `trace-card.ts`, `walk-end-sheet.ts`, `place-check.ts`, `place-check-panel.ts`, `pages/house-detail/house-check-card.ts`, `local-db.ts` version 3 with `deleteAll` and a two-store transaction, `locate-once.ts` options and `locateBest`, `tools/live-ui` `--trace`), 20 rows with order and risks, and the decisions it fixes; §7.2b notes the website's 15 s best-fix watch and the live-region withdrawal. |
+| 0.68 | 2026-10-06 | Claude (Code), docs pass | **The path trace v2 and the place check moved from *planned* to *built*** (`feat/path-trace-v2`, PR #146, not yet merged): Room 11 and `MIGRATION_10_11` (checked by `AppDatabaseMigrationTest`, `RoomSchemaTest`), §6.2b, §7.2a and §7.2b headings, the component table (`WalkStore` holds what the plan called `WalkSweeper`; `PlaceCheck` and `MatchedStretch` added). Known deviations from the design, found by review and tracked in [10](10-sprint-log.md) S4b-FR-25..S4b-FR-37: the Android Map redraw (7.2a's *at most once every 5 seconds*), the live walk's exclusion by its first point only and the website's once-per-walk alert switch were fixed in the review pass (S4b-FR-25, 27, 28). |
 | 0.58 | 2026-10-01 | Claude (Code), lead | §11.1: the Survey of India's reply of 2026-10-01 (no prior permission for its Administrative Boundary Database; no alteration or modification; acknowledgement; National Geospatial Policy 2022 guidelines) and what it means for ADR-22 ([ops/soi-boundary-data-request.md](ops/soi-boundary-data-request.md) v0.5, [10](10-sprint-log.md) S4b-BL-111). |
 | 0.57 | 2026-10-01 | Claude (Code), lead | The finishing batch ([10](10-sprint-log.md) §13.29..§13.39, on stacked branches): §6.1 `house.move_in` (V11), the photo's room, tags, caption and `meta_updated_at` (V12), `house.floor` (V13), the statuses TAKEN and NOT_CHOSEN; §8.1 the two statuses; §9 `PUT /api/photos/{id}/meta` and `/3` on `/api/import`; §11.2 the website's offline tiles; new **ADR-29** (deletions in an update file, `doorprints-backup/3`), **ADR-30** (offline tiles on the website through `addProtocol` over Cache Storage), **ADR-31** (search engines: one indexable page, `noindex` by default), **ADR-32** (accessibility rules and their automated checks); new **§17**, the smaller decisions of the batch (copies in UTC, seeded records stamped 2000-01-01, Hunt alerts `VISIBILITY_SECRET` with the app lock, the status colours, the locality lookup on the tap only, the iPhone's wake-up notification, import caps). |
 
@@ -255,9 +256,9 @@ flowchart TB
 | `AssistantScreen` | `:ui` commonMain (since CMP-5; a common `AssistantViewModel`) | Ask (answer without `[house:id]` markers, cited houses as cards) and Plan visits (stops in order with leg distance and time) |
 | `HuntEngine` | `:shared` `app.doorprints.location.HuntEngine` (since 2026-09-29) | Hunt mode's rules in common code, so the iPhone gets them from the same engine: a fix's meaning (the accuracy gate, the nearest house and the alert radius with its 30-minute repeat, the street alert through `StreetAlerts` with the platform's `StreetLookup` asked at most every 45 s or 80 m, the stay through `StayDetector` and its visit, the walking or staying fix rate, the low-battery stop). Reads `HuntData` (the part of `Repository` it needs) and a `BatteryReader`; asks the platform for the alerts and the fix rate through `HuntEffects`; keeps `HuntState`. Unit-tested with fakes in `commonTest` (`HuntEngineTest`, [06](06-test-plan.md) TC-U-92). |
 | `TrackRecorder`, `TrackDao` | `:shared` `location/HuntEngine.kt`, `data/AppDatabase.kt` (since 2026-09-29) | The path trace ([11](11-feature-parity-and-export-spec.md) 5.27): while `Settings.pathTrace` is on, the engine keeps a fix that passed the accuracy gate when it is the first, 20 m from the last kept or 5 minutes after it; `track_points` (id, at, lat, lon, accuracyM; index on `at`) is local only, pruned to 30 days at each Hunt start, cleared from Settings; the Map draws `Repository.trackPoints` through `trackGeoJson` (one line per walk, split at 30-minute gaps) into the `track` source and `track-line` layer that `prepareMapStyle` puts under the houses (Android builds the same layer in `PlatformMap.android.kt`) |
-| `RepeatDetector`, `WalkSplitter`, `RepeatAlert`, `WalkCodec`, `TraceConstants` (planned, S4b-FR-13) | `:shared` commonMain `app/doorprints/shared/trace/` (pure: no clock, no I/O, no `java.*`) | The repeat-detection contract of [11](11-feature-parity-and-export-spec.md) 5.27.3: `splitWalks`, `RepeatDetector.detect(walks)` giving each walk's `repeated` and `shown` stretches, `RepeatAlert.onPoint(live, others)` and the `WalkCodec` (delta, zigzag, varint) for saved walks. Its twin is the website's `shared/trace-repeats.ts`; both read `docs/schemas/trace-repeat-vectors.json` |
-| `SavedWalkEntity`, `SavedWalkDao`, `WalkSweeper` (planned, S4b-FR-14) | `:shared` `data/AppDatabase.kt`, `data/Entities.kt`, `data/CommonRepository.kt` | Saved walks (Room 11): save (a transaction that moves a walk out of `track_points`), list by house, delete, `sweepWalksOfDeletedHouses`, the limits; local only: neither table is in `localTablesChanged()` and no export, backup or sync file reads them |
-| `TraceStore`, `TraceRecorderService`, `trace-style.ts` (planned, S4b-FR-17) | web `data/trace-store.ts`, `core/trace-recorder.service.ts`, `shared/trace-style.ts` | The website's trace: IndexedDB stores `trace_points` and `saved_walks`; `watchPosition` while the page is visible, the same recorder rules, the repeat layer's widths, the beep and banner |
+| `RepeatDetector`, `WalkSplitter`, `RepeatAlert`, `WalkCodec`, `TraceConstants`, `PlaceCheck`, `MatchedStretch` (built, S4b-FR-13, S4b-FR-24) | `:shared` commonMain `app/doorprints/shared/trace/` (pure: no clock, no I/O, no `java.*`) | The repeat-detection contract of [11](11-feature-parity-and-export-spec.md) 5.27.3: `splitWalks`, `RepeatDetector.detect(walks)` giving each walk's `repeated` and `shown` stretches, `RepeatAlert.onPoint(live, others)` and the `WalkCodec` (delta, zigzag, varint) for saved walks. Its twin is the website's `shared/trace-repeats.ts`; both read `docs/schemas/trace-repeat-vectors.json` |
+| `SavedWalkEntity`, `SavedWalkDao`, `WalkStore` (built, S4b-FR-14; the planned `WalkSweeper` is part of `WalkStore`) | `:shared` `data/AppDatabase.kt`, `data/Entities.kt`, `data/CommonRepository.kt` | Saved walks (Room 11): save (a transaction that moves a walk out of `track_points`), list by house, delete, `sweepWalksOfDeletedHouses`, the limits; local only: neither table is in `localTablesChanged()` and no export, backup or sync file reads them |
+| `TraceStore`, `TraceRecorderService`, `trace-style.ts` (built, S4b-FR-17) | web `data/trace-store.ts`, `core/trace-recorder.service.ts`, `shared/trace-style.ts` | The website's trace: IndexedDB stores `trace_points` and `saved_walks`; `watchPosition` while the page is visible, the same recorder rules, the repeat layer's widths, the beep and banner |
 | `IosHunt`, `IosNotifications`, `IosGeocoder` | `:ui` iosMain `IosHunt.kt`, `IosNotifications.kt` (since S4b-BL-69, [10](10-sprint-log.md) §13.14) | The iPhone around `HuntEngine`: `CLLocationManager` (best accuracy, every fix, background updates under *When in use* with the indicator shown, the `location` background mode) thinned by `HuntFixThrottle` to the rate `HuntService` gets from the fused client; the battery from `UIDevice`; Apple's `CLGeocoder` for the street alerts and the new-house form's address; the alerts worded from the Compose resources and posted as local notifications (`UNUserNotificationCenter`, the delegate set at launch; a tap is a `DeepLink` checked as MainActivity checks its intent) |
 | `OfflineMapsServices`, `OfflineTiles` | `:ui` commonMain `OfflineMaps.kt`, `OfflineMapsUi.kt`; Android `AndroidOfflineMaps` (`:app`), iPhone `IosOfflineMapsServices` over `MapLibreOfflineMaps.swift` (since S4b-FR-6, 2026-09-30) | Offline maps ([11](11-feature-parity-and-export-spec.md) 5.20): the box on screen as one of MapLibre's offline packs (`OfflineManager` / `MLNOfflineStorage`, the map's own tile store, the Liberty style from zoom 0 to 14), its id and name in the pack's metadata; the tile count and size estimated in common code before the download, at most 2,000 tiles an area (§11.2); the phone's metered state for the Wi-Fi note; the areas with their progress as one state flow for the Map's snackbar and Settings' list |
 | `HuntService` | `location/HuntService.kt` (Android; iPhone: `IosHunt`) | The platform around `HuntEngine`: the foreground service (location type) and its notification, the fused location client (15 s walking, 60 s staying), the battery reading, `ReverseGeocoder`, and the alerts as notifications with their wording. Section 7.2, 7.3, 8.2 |
@@ -543,10 +544,9 @@ migration and a new `<version>.json`, never an edit to `2.json`. Since CMP-4 P4a
 ([06](06-test-plan.md) TC-U-63) writes a version-1 file and migrates it, with Room's `MigrationTestHelper` (validated
 against `2.json`) and through the app's own builder from a `househunt.db` (R-06 closed).
 
-#### Room 11 (planned, S4b-FR-14): saved walks
+#### Room 11 (built on `feat/path-trace-v2`, PR #146, not yet merged; S4b-FR-14): saved walks
 
-`MIGRATION_10_11` (the next free number at `main` `4dd94a3f`, where Room is **10**; the implementer reads
-`AppDatabase.kt` first and takes the next free one) and `11.json`, written with Room's own generator, never by hand:
+`MIGRATION_10_11` (built: Room was **10** on `main`) and `11.json`, written with Room's own generator, never by hand and validated by `AppDatabaseMigrationTest` and `RoomSchemaTest`:
 
 | Change | Detail |
 |---|---|
@@ -574,7 +574,7 @@ index `houseId`; value `{id, houseId, startedAt, endedAt, savedAt, pointCount, l
 `trace.look`, `trace.alert`, `trace.keepAwake`, `trace.askedUpTo`) go in the existing `settings` store. None is read by
 `LocalStore.allHouses`, `allVisits`, `allPhotos`, `allRecords` or any exporter; `db.clear()` empties them.
 
-#### The shared API and the vector file (planned, S4b-FR-13)
+#### The shared API and the vector file (built, S4b-FR-13; vectors *confirmed*)
 
 Kotlin (`app.doorprints.shared.trace`):
 
@@ -609,7 +609,7 @@ status **proposed** until both stacks pass every case; [schemas/README.md](schem
 indexes at which the alert rings, exactly). Kotlin reads it as `DriveVectorsTest` reads `drive-vectors.json`; the
 website's spec reads the same file. The status is changed to *confirmed* only by a change that shows both test runs.
 
-### 6.2b The website's trace and place check: files, order and risks (planned, S4b-FR-13, -15, -17, -24)
+### 6.2b The website's trace and place check: files, order and risks (built on `feat/path-trace-v2`, S4b-FR-13, -15, -17, -24; the plan below is kept as the record of the order)
 
 The implementation plan for the web twin of the path trace v2 and the place check, from the senior review of 2026-10-06
 ([ops/path-trace-check-review.md](ops/path-trace-check-review.md) section 4, a session record; the decisions are in
@@ -783,7 +783,7 @@ sequenceDiagram
     end
 ```
 
-### 7.2a The path trace: a point, a repeated path, the end of a walk (planned, S4b-FR-13, -14, -16)
+### 7.2a The path trace: a point, a repeated path, the end of a walk (built on `feat/path-trace-v2`, S4b-FR-13, -14, -16)
 
 ```mermaid
 sequenceDiagram
@@ -826,7 +826,7 @@ sequenceDiagram
 The repeat check and the Map's detection use the same functions with different inputs (one new point against the others,
 or every walk against the others). No location leaves the device at any step.
 
-### 7.2b The place check: *Have I been here?* (planned, S4b-FR-24)
+### 7.2b The place check: *Have I been here?* (built on `feat/path-trace-v2`, S4b-FR-24)
 
 ```mermaid
 sequenceDiagram

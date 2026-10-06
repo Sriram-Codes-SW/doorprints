@@ -19,9 +19,11 @@
 package app.doorprints.ui
 
 import app.doorprints.data.HouseEntity
-import app.doorprints.data.TrackPointEntity
+import app.doorprints.shared.trace.RepeatLook
+import app.doorprints.shared.trace.TracePoint
 import app.doorprints.shared.model.LocationSource
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -31,6 +33,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
+import kotlin.math.round
 
 /*
  * The map's style pieces that both platforms share (ADR-23 CMP-8c): the base style's address, the houses as GeoJSON,
@@ -46,9 +49,18 @@ import kotlinx.serialization.json.putJsonObject
  */
 const val MAP_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty"
 
-/** The path trace's GeoJSON source and its line layer (docs/11 5.27, S4b-FR-2), drawn under the houses. */
+/** The path trace's GeoJSON source and its line layers (docs/11 5.27, 5.27.4), drawn under the houses. */
 const val TRACK_SOURCE = "track"
+
+/** The base line: every walk whole, solid. */
 const val TRACK_LAYER = "track-line"
+
+/** The repeat overlay, above the base line and under the house layers (docs/11 5.27.4). */
+const val TRACK_REPEAT_LAYER = "track-repeat-line"
+
+/** The property `kind` of a feature of [TRACK_SOURCE]: the base line or a repeated stretch. */
+const val TRACK_KIND_BASE = "base"
+const val TRACK_KIND_REPEAT = "repeat"
 
 /**
  * The trace's colour and width: a purple no base-map line uses (roads are white, yellow or grey, India's boundary
@@ -57,21 +69,47 @@ const val TRACK_LAYER = "track-line"
  */
 const val TRACK_COLOR = "#8E24AA"
 
+/**
+ * The second colour of a repeated path (docs/11 5.27.4): a deep orange, 3.79:1 against white, 1.86:1 against the
+ * purple (so the dash, not the colour pair, carries the cue). If the colour-vision check (TC-M-57) fails, it changes
+ * here and in the web's `trace-style.ts`, nowhere else.
+ */
+const val TRACK_REPEAT_COLOR = "#E65100"
+
+/** The overlay's width is the base's times this, by the person's look (docs/11 5.27.4); the dash stays in both. */
+const val TRACK_REPEAT_FACTOR_CLEAR = 1.8
+const val TRACK_REPEAT_FACTOR_SUBTLE = 1.0
+
+/** The overlay's dash: three line widths of dash, two of gap, with butt caps (round ones would close the gaps). */
+val TRACK_REPEAT_DASH = listOf(3.0, 2.0)
+const val TRACK_REPEAT_OPACITY = 0.95
+
+/** The overlay fades in from zoom 10.5 to 11: at zoom 10 a dash of 1.5 px reads as dots. */
+const val TRACK_REPEAT_FADE_FROM = 10.5
+const val TRACK_REPEAT_FADE_TO = 11.0
+
 /** A gap longer than this between two points starts a new line (a new walk), so the map draws no leap between them. */
 const val TRACK_GAP_MS = 30 * 60_000L
 
 /**
- * The path trace as GeoJSON: one LineString per walk (the points split at [TRACK_GAP_MS] gaps; a lone point draws
- * nothing, MapLibre needs two). [points] oldest first, as `Repository.trackPoints` gives them.
+ * The path trace as GeoJSON (docs/11 5.27.4), one source: a LineString of `kind` `base` for every walk of [walks]
+ * (each whole, with its first and last time as `from` and `to`; a lone point draws nothing, MapLibre needs two), and a
+ * LineString of `kind` `repeat` for every piece of [shown] (the stretches walked in two or more different walks, as
+ * `[lat, lon]` pairs from `RepeatDetector.pieces`).
  */
-fun trackGeoJson(points: List<TrackPointEntity>): String = buildJsonObject {
+fun trackGeoJson(
+    walks: List<List<TracePoint>>,
+    shown: List<List<Pair<Double, Double>>> = emptyList(),
+): String = buildJsonObject {
     put("type", "FeatureCollection")
     putJsonArray("features") {
-        splitTrack(points).forEach { walk ->
+        walks.filter { it.size >= 2 }.forEach { walk ->
             add(
                 buildJsonObject {
                     put("type", "Feature")
-                    putJsonObject("properties") { put("from", walk.first().at); put("to", walk.last().at) }
+                    putJsonObject("properties") {
+                        put("kind", TRACK_KIND_BASE); put("from", walk.first().atMs); put("to", walk.last().atMs)
+                    }
                     putJsonObject("geometry") {
                         put("type", "LineString")
                         putJsonArray("coordinates") {
@@ -81,18 +119,22 @@ fun trackGeoJson(points: List<TrackPointEntity>): String = buildJsonObject {
                 },
             )
         }
+        shown.filter { it.size >= 2 }.forEach { piece ->
+            add(
+                buildJsonObject {
+                    put("type", "Feature")
+                    putJsonObject("properties") { put("kind", TRACK_KIND_REPEAT) }
+                    putJsonObject("geometry") {
+                        put("type", "LineString")
+                        putJsonArray("coordinates") {
+                            piece.forEach { (lat, lon) -> add(buildJsonArray { add(JsonPrimitive(lon)); add(JsonPrimitive(lat)) }) }
+                        }
+                    }
+                },
+            )
+        }
     }
 }.toString()
-
-/** The walks in [points]: runs of at least two points with no gap of [TRACK_GAP_MS] or more between neighbours. */
-fun splitTrack(points: List<TrackPointEntity>): List<List<TrackPointEntity>> {
-    val walks = mutableListOf<MutableList<TrackPointEntity>>()
-    points.forEach { p ->
-        val last = walks.lastOrNull()
-        if (last == null || p.at - last.last().at >= TRACK_GAP_MS) walks += mutableListOf(p) else last += p
-    }
-    return walks.filter { it.size >= 2 }
-}
 
 /** The trace's empty source for a style built as JSON (iOS); the view sets its data afterwards. */
 fun trackSourceJson(): JsonObject = buildJsonObject {
@@ -100,11 +142,22 @@ fun trackSourceJson(): JsonObject = buildJsonObject {
     put("data", Json.parseToJsonElement(trackGeoJson(emptyList())))
 }
 
-/** The trace's line layer, the same on both platforms (Android builds it from these values in `PlatformMap`). */
+private fun kindFilter(kind: String): JsonArray = buildJsonArray {
+    add("=="); add(buildJsonArray { add("get"); add("kind") }); add(kind)
+}
+
+/** A zoom interpolation over [stops], in the style's expression syntax. */
+private fun zoomInterpolation(stops: List<Pair<Double, Double>>): JsonArray = buildJsonArray {
+    add("interpolate"); add(buildJsonArray { add("linear") }); add(buildJsonArray { add("zoom") })
+    stops.forEach { (zoom, value) -> add(JsonPrimitive(zoom)); add(JsonPrimitive(value)) }
+}
+
+/** The trace's base line layer, the same on both platforms (Android builds it from these values in `PlatformMap`). */
 fun trackLayerJson(): JsonObject = buildJsonObject {
     put("id", TRACK_LAYER)
     put("type", "line")
     put("source", TRACK_SOURCE)
+    put("filter", kindFilter(TRACK_KIND_BASE))
     putJsonObject("layout") {
         put("line-cap", "round")
         put("line-join", "round")
@@ -112,18 +165,47 @@ fun trackLayerJson(): JsonObject = buildJsonObject {
     putJsonObject("paint") {
         put("line-color", TRACK_COLOR)
         put("line-opacity", 0.85)
-        put(
-            "line-width",
-            buildJsonArray {
-                add("interpolate"); add(buildJsonArray { add("linear") }); add(buildJsonArray { add("zoom") })
-                TRACK_WIDTHS.forEach { (zoom, width) -> add(JsonPrimitive(zoom)); add(JsonPrimitive(width)) }
-            },
-        )
+        put("line-width", zoomInterpolation(TRACK_WIDTHS.map { (zoom, width) -> zoom.toDouble() to width }))
     }
 }
 
 /** The trace's width by zoom, in px: thin at city zoom, a clear line at street zoom. */
 val TRACK_WIDTHS = listOf(10 to 1.5, 14 to 3.0, 18 to 5.0)
+
+/** The overlay's width factor for [look] (docs/11 5.27.4); *Off* draws no overlay, so its factor is the base's. */
+fun repeatFactor(look: RepeatLook): Double = when (look) {
+    RepeatLook.CLEAR -> TRACK_REPEAT_FACTOR_CLEAR
+    RepeatLook.SUBTLE, RepeatLook.OFF -> TRACK_REPEAT_FACTOR_SUBTLE
+}
+
+/** The overlay's width by zoom for [look]: the base's [TRACK_WIDTHS] times the factor, to two decimals (2.7, 5.4, 9.0). */
+fun repeatWidthStops(look: RepeatLook): List<Pair<Double, Double>> =
+    TRACK_WIDTHS.map { (zoom, width) -> zoom.toDouble() to round(width * repeatFactor(look) * 100.0) / 100.0 }
+
+/** [repeatWidthStops] as a style expression, the same on both platforms (Android sets it live on the layer). */
+fun repeatWidthExpressionJson(look: RepeatLook): JsonArray = zoomInterpolation(repeatWidthStops(look))
+
+/** The overlay's layer (docs/11 5.27.4): dashed, butt-capped, in the second colour, hidden for [RepeatLook.OFF]. */
+fun trackRepeatLayerJson(look: RepeatLook): JsonObject = buildJsonObject {
+    put("id", TRACK_REPEAT_LAYER)
+    put("type", "line")
+    put("source", TRACK_SOURCE)
+    put("filter", kindFilter(TRACK_KIND_REPEAT))
+    putJsonObject("layout") {
+        put("line-cap", "butt")
+        put("line-join", "round")
+        put("visibility", if (look == RepeatLook.OFF) "none" else "visible")
+    }
+    putJsonObject("paint") {
+        put("line-color", TRACK_REPEAT_COLOR)
+        put(
+            "line-opacity",
+            zoomInterpolation(listOf(TRACK_REPEAT_FADE_FROM to 0.0, TRACK_REPEAT_FADE_TO to TRACK_REPEAT_OPACITY)),
+        )
+        put("line-width", repeatWidthExpressionJson(look))
+        put("line-dasharray", buildJsonArray { TRACK_REPEAT_DASH.forEach { add(JsonPrimitive(it)) } })
+    }
+}
 
 /** The houses' GeoJSON source and the two layers drawn from it. */
 const val HOUSES_SOURCE = "houses"
@@ -320,6 +402,9 @@ fun prepareMapStyle(
     // The trace under the houses, so a dot is never hidden by the line.
     ops.putSource(TRACK_SOURCE, trackSourceJson())
     ops.addLayerOnTop(trackLayerJson())
+    ops.addLayerOnTop(trackRepeatLayerJson(RepeatLook.CLEAR))
+    ops.putSource(CHECK_SOURCE, checkSourceJson())
+    checkLayersJson().forEach(ops::addLayerOnTop)
     ops.putSource(HOUSES_SOURCE, housesSourceJson())
     houseLayersJson(labelSizeSp).forEach(ops::addLayerOnTop)
     val style = ops.toJson()

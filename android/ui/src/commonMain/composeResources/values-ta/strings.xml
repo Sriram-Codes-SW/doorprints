@@ -640,7 +640,7 @@
     <string name="settings_app_lock_15m">15 நிமிடங்கள்</string>
     <!-- S4b-FR-2, the path trace (2026-09-29): under review. -->
     <string name="settings_path_trace">என் பாதையை வரைபடத்தில் காட்டு</string>
-    <string name="settings_path_trace_hint">தேடல் பயன்முறை இயங்கும்போது நீங்கள் நடந்த இடங்களை வைத்து வரைபடத்தில் வரைகிறது; எந்தத் தெருக்களைப் பார்த்தீர்கள் என்று தெரியும். இந்தத் தொலைபேசியில் மட்டும் இருக்கும்: காப்புப் பிரதியிலோ, நகலிலோ, சேவையகத்திலோ இல்லை; 30 நாட்களுக்குப் பிறகு நீங்கும்.</string>
+    <string name="settings_path_trace_hint">தேடல் பயன்முறை இயங்கும்போது நீங்கள் நடந்த இடங்களை வைத்து வரைபடத்தில் வரைகிறது; எந்தத் தெருக்களைப் பார்த்தீர்கள் என்று தெரியும். இந்தத் தொலைபேசியில் மட்டும் இருக்கும்: காப்புப் பிரதியிலோ, நகலிலோ, சேவையகத்திலோ இல்லை; 30 நாட்களுக்குப் பிறகு நீங்கும். நீங்கள் சேமிக்கும் நடைகளும் இங்கேயே இருக்கும்.</string>
     <string name="settings_path_trace_clear">பாதையை அழி</string>
     <string name="settings_path_trace_cleared">பாதை அழிக்கப்பட்டது.</string>
     <!-- S4b-BL-69, Hunt mode on iPhone (2026-09-29): under review. -->
@@ -1398,4 +1398,98 @@
     <string name="drive_enrol_device_kind">இந்த சாதனம்</string>
     <string name="drive_enrol_kind_phone">தொலைபேசி</string>
     <string name="drive_enrol_kind_computer">கணினி</string>
+    <!-- Path trace v2 (S4b-FR-15, 2026-10-06): the map's legend; hi, ta, te under review. -->
+    <string name="trace_legend_title">உங்கள் பாதைகள்</string>
+    <string name="trace_legend_once">ஒருமுறை நடந்தது</string>
+    <string name="trace_legend_repeated">ஒன்றுக்கு மேற்பட்ட முறை நடந்தது</string>
+    <string name="trace_a11y_map">ஒன்றுக்கு மேற்பட்ட முறை நடந்த பாதைகள் கோடுகோடாகக் காட்டப்படும்.</string>
+    <!-- Path trace v2 (S4b-FR-15, S4b-FR-16, 2026-10-06): Settings > Hunt mode; hi, ta, te under review. -->
+    <string name="trace_repeat_look_title">மீண்டும் நடந்த பாதைகள் எப்படித் தெரியும்</string>
+    <string name="trace_repeat_look_hint">ஒன்றுக்கு மேற்பட்ட முறை நடந்த பாதைகள் வரைபடத்தில் தனித்துத் தெரியலாம். இது ஒலி எச்சரிக்கையை மாற்றாது.</string>
+    <string name="trace_repeat_look_clear">தெளிவு</string>
+    <string name="trace_repeat_look_clear_desc">தடிமனாக, இரண்டாவது நிறத்தில் கோடுகோடாக</string>
+    <string name="trace_repeat_look_subtle">மென்மை</string>
+    <string name="trace_repeat_look_subtle_desc">சாதாரண தடிமன், இரண்டாவது நிறத்தில் கோடுகோடாக</string>
+    <string name="trace_repeat_look_off">இல்லை</string>
+    <string name="trace_repeat_look_off_desc">மற்ற பாதைகளைப் போலவே வரையப்படும்</string>
+    <string name="trace_alert_title">நான் ஒரு பாதையில் மீண்டும் நடக்கும்போது எச்சரிக்கவும்</string>
+    <string name="trace_alert_hint">தேடல் பயன்முறை இயங்கும்போது, நீங்கள் ஏற்கனவே நடந்த பாதையில் மீண்டும் செல்லும்போது ஒரு சிறு ஒலி ஒலிக்கும். இதை உங்கள் தொலைபேசியின் அறிவிப்பு அமைப்புகளில் ஒலியடக்கலாம். "என் பாதையை வரைபடத்தில் காட்டு" இயக்கத்தில் இருக்க வேண்டும்.</string>
+    <string name="trace_alert_needs_trace">முதலில் "என் பாதையை வரைபடத்தில் காட்டு" என்பதை இயக்கவும்.</string>
+    <string name="trace_alert_permission_denied">Doorprints க்கு அறிவிப்புகள் அணைக்கப்பட்டுள்ளன, அதனால் ஒலி இல்லை. தொலைபேசி அமைப்புகளில் அவற்றை அனுமதியுங்கள்.</string>
+    <string name="trace_alert_rationale">ஒலி ஒரு அறிவிப்பாக வருகிறது, எனவே அனுப்ப Doorprints க்கு உங்கள் அனுமதி தேவை.</string>
+    <string name="trace_settings_saved">சேமித்த நடைகள்: %1$d</string>
+    <string name="trace_settings_delete_all">சேமித்த எல்லா நடைகளையும் அழி</string>
+    <string name="trace_settings_delete_all_confirm">சேமித்த %1$d நடைகளையும் அழிக்கவா? இதைத் திரும்பப் பெற முடியாது.</string>
+    <string name="trace_settings_transfer_note">Android இன் தொலைபேசி-தொலைபேசி பரிமாற்றம் சேமித்த நடைகளையும் நகலெடுக்கும். அவற்றை விட்டுச் செல்ல, பரிமாற்றத்துக்கு முன் அழியுங்கள். (Android மட்டும்.)</string>
+    <string name="trace_settings_clear_hint">30 நாட்கள் வைக்கப்படும் நடைகளை அழிக்கும். சேமித்த நடைகள் நீங்கள் அழிக்கும் வரை இருக்கும்.</string>
+    <!-- Path trace v2 (S4b-FR-16): the Map's snackbar and the iPhone's notification; under review. -->
+    <string name="trace_alert_banner">நீங்கள் இந்த வழியில் முன்பு நடந்திருக்கிறீர்கள்.</string>
+    <string name="trace_alert_notif_text">இந்தப் பாதை முந்தைய நடையிலிருந்து உங்கள் வரைபடத்தில் உள்ளது.</string>
+    <!-- Path trace v2 (S4b-FR-15, 2026-10-06): finish a walk, save it with a house, the house page's saved walks; hi, ta, te under review. -->
+    <string name="trace_unit_m">%1$d மீ</string>
+    <string name="trace_unit_km">%1$s கி.மீ</string>
+    <string name="trace_walk_finish">நடையை முடி</string>
+    <string name="trace_end_title">இந்த நடையைச் சேமிக்கவா?</string>
+    <string name="trace_end_summary">%1$s நடை, %2$d நிமிடத்தில்</string>
+    <string name="trace_end_body">வைத்திருக்க இதை ஒரு வீட்டுடன் இணைக்கவும். இல்லையெனில் 30 நாட்கள் இருக்கும், பிறகு நீங்கும். இது இந்தத் தொலைபேசியில் மட்டும் இருக்கும்; காப்புப் பிரதியிலோ நகலிலோ செல்லாது.</string>
+    <string name="trace_end_save">வீட்டுடன் சேமி</string>
+    <string name="trace_end_keep">30 நாட்கள் வை</string>
+    <string name="trace_end_delete">இந்த நடையை அழி</string>
+    <string name="trace_end_delete_confirm">இந்த நடையை அழிக்கவா? இதைத் திரும்பப் பெற முடியாது.</string>
+    <string name="trace_pick_title">இந்த நடை எந்த வீட்டுக்கு?</string>
+    <string name="trace_pick_nearest">நீங்கள் நின்ற இடத்துக்கு மிக அருகில், %1$s தொலைவில்</string>
+    <string name="trace_pick_near">உங்கள் நடையிலிருந்து %1$s</string>
+    <string name="trace_pick_search">உங்கள் வீடுகளைத் தேடுங்கள்</string>
+    <string name="trace_pick_none">இன்னும் சேமித்த வீடுகள் இல்லை. முதலில் ஒரு வீட்டைச் சேருங்கள், அல்லது நடையை 30 நாட்கள் வையுங்கள்.</string>
+    <string name="trace_pick_confirm">நடையைச் சேமி</string>
+    <string name="trace_saved_snack">நடை %1$s உடன் சேமிக்கப்பட்டது.</string>
+    <string name="trace_kept_snack">நடை 30 நாட்களுக்கு வைக்கப்பட்டது.</string>
+    <string name="trace_deleted_snack">நடை அழிக்கப்பட்டது.</string>
+    <string name="trace_save_too_long">இந்த நடை சேமிக்க மிக நீளமானது (%1$d புள்ளிகளுக்கு மேல்). இது 30 நாட்கள் இருக்கும்.</string>
+    <string name="trace_save_house_full">இந்த வீட்டுக்கு ஏற்கனவே %1$d நடைகள் சேமிக்கப்பட்டுள்ளன. முதலில் ஒன்றை அழியுங்கள்.</string>
+    <string name="trace_save_all_full">உங்களிடம் %1$d சேமித்த நடைகள் உள்ளன. முதலில் ஒன்றை அழியுங்கள்.</string>
+    <string name="trace_save_failed_walk">நடையைச் சேமிக்க முடியவில்லை: அது இனி இந்தத் தொலைபேசியில் இல்லை.</string>
+    <string name="trace_save_failed_house">நடையைச் சேமிக்க முடியவில்லை: அந்த வீடு இல்லை.</string>
+    <string name="trace_house_title">சேமித்த நடைகள்</string>
+    <string name="trace_house_row">%1$s, %2$s, %3$d நிமிடம்</string>
+    <string name="trace_house_show">வரைபடத்தில் காட்டு</string>
+    <string name="trace_house_delete">நடையை அழி</string>
+    <string name="trace_house_delete_confirm">இந்தச் சேமித்த நடையை அழிக்கவா?</string>
+    <string name="trace_house_empty">சேமித்த நடைகள் இல்லை. நடையை முடிக்கும்போது அதை இந்த வீட்டுடன் இணைக்கலாம்.</string>
+    <string name="trace_house_local">சேமித்த நடைகள் இந்தத் தொலைபேசியில் மட்டும் இருக்கும். அவை காப்புப் பிரதி, நகல், Google Drive அல்லது சேவையகத்தில் இல்லை.</string>
+    <string name="trace_house_delete_note">அதன் சேமித்த நடைகளும் அழிக்கப்படும்.</string>
+    <!-- Path trace v2 (S4b-FR-24, 2026-10-06): Have I been here? the on-demand place check; hi, ta, te under review. -->
+    <string name="trace_here_button">நான் இங்கே வந்திருக்கிறேனா?</string>
+    <string name="trace_here_button_house">இந்த வீட்டைக் கடந்து நடந்தேனா?</string>
+    <string name="trace_here_menu_here">நான் இப்போது இருக்கும் இடம்</string>
+    <string name="trace_here_menu_spot">வரைபடத்தில் ஓர் இடம்</string>
+    <string name="trace_here_press_menu">இங்கே நடந்தேனா?</string>
+    <string name="trace_here_pick_hint">வரைபடத்தை நகர்த்தி குறுக்கு அந்த இடத்தில் வரும்படி செய்து, "இந்த இடத்தைச் சோதி" அழுத்தவும்.</string>
+    <string name="trace_here_pick_confirm">இந்த இடத்தைச் சோதி</string>
+    <string name="trace_here_place_here">இங்கே</string>
+    <string name="trace_here_place_house">இந்த வீடு</string>
+    <string name="trace_here_place_spot">இந்த இடம்</string>
+    <string name="trace_here_label_here">நீங்கள் இங்கே</string>
+    <string name="trace_here_label_house">இந்த வீடு</string>
+    <string name="trace_here_label_spot">இந்த இடம்</string>
+    <string name="trace_here_locating">உங்கள் இருப்பிடத்தைத் தேடுகிறது…</string>
+    <string name="trace_here_walked">%3$s அன்று %2$s இடத்திலிருந்து %1$s க்குள் நடந்தீர்கள்.</string>
+    <string name="trace_here_close">%2$s இடத்திலிருந்து %1$s க்குள் உங்கள் நடை எதுவும் கடக்கவில்லை, ஆனால் ஒன்று %4$s அன்று %3$s வரை வந்தது.</string>
+    <string name="trace_here_none">கடந்த 30 நாட்களில் %2$s இடத்திலிருந்து %1$s க்குள் உங்கள் நடை எதுவும் கடக்கவில்லை.</string>
+    <string name="trace_here_none_saved">கடந்த 30 நாட்களிலோ சேமித்த நடைகளிலோ %2$s இடத்திலிருந்து %1$s க்குள் எந்த நடையும் கடக்கவில்லை.</string>
+    <string name="trace_here_only_recorded">இது Doorprints பதிவு செய்த நடைகளை மட்டுமே உள்ளடக்கும்.</string>
+    <string name="trace_here_and_more">%1$s மற்றும் மேலும் %2$d</string>
+    <string name="trace_here_row">%1$s, %2$s தொலைவில்</string>
+    <string name="trace_here_row_saved">%1$s, %2$s தொலைவில், சேமித்த நடை</string>
+    <string name="trace_here_rows_more">மேலும் %1$d நடைகள்</string>
+    <string name="trace_here_empty">ஒப்பிட இன்னும் நடைகள் இல்லை. அமைப்புகளில் "என் பாதையை வரைபடத்தில் காட்டு" இயக்கி, தேடல் பயன்முறையுடன் நடக்கவும்.</string>
+    <string name="trace_here_imprecise">இருப்பிடம் போதுமான துல்லியமாக இல்லை. வெளியில் மீண்டும் முயலவும்.</string>
+    <string name="trace_here_fuzzy">உங்கள் இருப்பிடம் சுமார் %1$d மீ துல்லியம் மட்டுமே, எனவே இந்த விடை தவறாக இருக்கலாம்.</string>
+    <string name="trace_here_denied">Doorprints க்கு இருப்பிடம் அணைக்கப்பட்டுள்ளது. உங்கள் இடத்தைச் சோதிக்க அமைப்புகளில் அனுமதிக்கவும்.</string>
+    <string name="trace_here_timeout">உங்கள் இருப்பிடத்தைப் பெற முடியவில்லை. வெளியில் மீண்டும் முயலவும்.</string>
+    <string name="trace_here_approx_house">இந்த வீட்டுக்கு இன்னும் துல்லியமான இடம் இல்லை, பகுதி மட்டுமே. முதலில் வரைபடத்தில் குறித்து, பிறகு சோதிக்கவும்.</string>
+    <string name="trace_here_invalid">இந்த இடத்துக்குச் சரியான இருப்பிடம் இல்லை.</string>
+    <string name="trace_here_privacy">இங்கே மட்டும் காட்டப்படும். எதுவும் சேமிக்கப்படாது, அனுப்பப்படாது.</string>
+    <string name="trace_here_again">மீண்டும் சோதி</string>
+    <string name="trace_here_stretch_a11y">%1$s அருகே உங்கள் நடையின் பகுதி வரைபடத்தில் வரையப்பட்டுள்ளது.</string>
 </resources>

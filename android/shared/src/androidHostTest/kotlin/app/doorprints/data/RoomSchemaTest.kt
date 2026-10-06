@@ -67,6 +67,8 @@ class RoomSchemaTest {
             9 to "680c57fd1f6c668e1169c9014a9b2a66",
             // v10 (S4b-BL-87, 2026-10-01): houses.floor.
             10 to "0365b6bdbbacce16395d044cf2c0100c",
+            // v11 (S4b-FR-14, 2026-10-06): saved_walks and track_points.walkId, the path trace's saved walks.
+            11 to "f79bbff581ad89370fefc1879b175615",
         )
         const val SCHEMA_DIR = "schemas/app.doorprints.data.AppDatabase"
     }

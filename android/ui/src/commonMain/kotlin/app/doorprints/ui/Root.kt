@@ -117,6 +117,8 @@ private val settingsTab = NavTab("settings", Res.string.nav_settings, Icons.Defa
 object Routes {
     /** The routes a notification may open; `:app`'s `Notifications.SCREEN_*` are these. */
     const val SETTINGS = "settings"
+    /** The Map tab, from the repeated-path alert's notification (docs/11 5.27.5). */
+    const val MAP = "map"
     const val EXPORT = "export"
     const val IMPORT = "import"
     /** *Share updates with…* (docs/11 5.28). */
@@ -155,7 +157,7 @@ object Routes {
         "viewing/${id ?: NEW_VIEWING}?" + listOfNotNull(houseId?.let { "houseId=$it" }, kind?.let { "kind=$it" }).joinToString("&")
 
     /** The screens a notification may open ([DeepLink.OpenScreen]); `:app`'s `Notifications.SCREENS`. */
-    val NOTIFICATION_SCREENS = setOf(EXPORT, IMPORT, SETTINGS)
+    val NOTIFICATION_SCREENS = setOf(EXPORT, IMPORT, SETTINGS, MAP)
 
     /** The destination patterns, for popUpTo and for recognising the entry on top. */
     const val HOUSE = "house/{id}"
@@ -341,8 +343,8 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                     nav.openMapFresh()
                 }
                 is DeepLink.OpenScreen -> when (d.route) {
-                    // Settings is a tab: its own stack, never pushed over a form with unsaved edits.
-                    Routes.SETTINGS -> nav.openTab(d.route)
+                    // Settings and the Map are tabs: their own stacks, never pushed over a form with unsaved edits.
+                    Routes.SETTINGS, Routes.MAP -> nav.openTab(d.route)
                     else -> {
                         // A new import makes the list's "Just imported" run stale (see importedRun above).
                         if (d.route == Routes.IMPORT) importedRun = null
@@ -640,6 +642,8 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                         onOpenViewings = { house -> if (resumed(entry)) nav.navigate(Routes.viewings(house)) },
                         // *Save a copy* after *Close this hunt* (slice 5).
                         onSaveCopy = { if (resumed(entry)) nav.navigate("export") },
+                        // A saved walk's *Show on map* (docs/11 5.27.6): the Map, which outlines it.
+                        onShowOnMap = { if (resumed(entry)) nav.openMapFresh() },
                         // "Save as a new house" after this one was removed elsewhere: continue on the copy.
                         onCreated = { id ->
                             if (resumed(entry)) {

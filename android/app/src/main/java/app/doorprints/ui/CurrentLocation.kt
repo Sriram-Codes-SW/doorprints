@@ -20,11 +20,17 @@ package app.doorprints.ui
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.os.Looper
 import android.os.SystemClock
 import app.doorprints.location.HuntState
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 
@@ -54,3 +60,27 @@ private suspend fun lookUpLocation(context: Context): Pair<Double, Double>? {
     val accuracy = if (last.hasAccuracy()) last.accuracy else null
     return if (lastFixUsable(ageMs, accuracy, HuntState.MAX_ACCURACY_M)) last.latitude to last.longitude else null
 }
+
+/**
+ * The best fix over up to [maxWaitMs] for *Have I been here?* (docs/11 5.27.13): Play services' updates every second,
+ * `bestOf` the stream; the first reading of [goodAccuracyM] or better ends it, and the updates are always removed. Never
+ * the last known location. Returns on the main thread.
+ */
+@SuppressLint("MissingPermission")
+suspend fun bestLocation(context: Context, maxWaitMs: Long, goodAccuracyM: Double): PlaceFix? =
+    withContext(Dispatchers.Main.immediate) {
+        if (!hasLocationPermission(context)) return@withContext null
+        val client = LocationServices.getFusedLocationProviderClient(context)
+        val fixes = callbackFlow {
+            val callback = object : LocationCallback() {
+                override fun onLocationResult(result: LocationResult) {
+                    val l = result.lastLocation ?: return
+                    if (l.hasAccuracy()) trySend(PlaceFix(l.latitude, l.longitude, l.accuracy.toDouble()))
+                }
+            }
+            val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 1_000L).setMinUpdateIntervalMillis(500L).build()
+            runCatching { client.requestLocationUpdates(request, callback, Looper.getMainLooper()) }.onFailure { close() }
+            awaitClose { client.removeLocationUpdates(callback) }
+        }
+        bestOf(fixes, maxWaitMs, goodAccuracyM)
+    }

@@ -365,6 +365,39 @@ class AppDatabaseMigrationTest {
         }
     }
 
+    /**
+     * `MIGRATION_10_11` (S4b-FR-14, TC-U-150): the chain from version 1 validates against `11.json`; a trace row from
+     * before survives with walk id 0 (no id) and `saved_walks` is empty and takes a row; the app's own builder opens it.
+     */
+    @Test
+    fun migration10To11KeepsTheTraceWithWalkIdZeroAndAddsSavedWalks() = runBlocking {
+        writeVersion1(helperFile)
+        helper.runMigrationsAndValidate(10, AppDatabase.MIGRATIONS.toList().take(9)).use { v10 ->
+            v10.execSQL("INSERT INTO track_points (at, lat, lon, accuracyM) VALUES (5, 12.5, 77.5, 8.0)")
+        }
+        val db = helper.runMigrationsAndValidate(11, listOf(AppDatabase.MIGRATION_10_11))
+        try {
+            assertEquals(listOf("5|12.5|77.5|0"), db.rows("SELECT at, lat, lon, walkId FROM track_points"))
+            assertEquals(listOf("0"), db.rows("SELECT COUNT(*) FROM saved_walks"))
+            db.execSQL(
+                "INSERT INTO saved_walks (id, houseId, startedAt, endedAt, savedAt, pointCount, lengthM, points) " +
+                    "VALUES ('w1', 'h1', 1, 2, 3, 2, 120, X'0102')",
+            )
+            assertEquals(listOf("w1|h1|120"), db.rows("SELECT id, houseId, lengthM FROM saved_walks"))
+        } finally {
+            db.close()
+        }
+        // The app's own builder (framework SQLite, every migration) opens the version-11 file the helper left.
+        val opened = AppDatabase.create(context.also { helperFile.copyTo(context.getDatabasePath(DatabaseFile.NAME), overwrite = true) })
+        try {
+            assertEquals(1, opened.savedWalks().count())
+            assertEquals(1, opened.track().since(0).size)
+            assertEquals(0L, opened.track().since(0).single().walkId)
+        } finally {
+            opened.close()
+        }
+    }
+
     @Test
     fun aVersion1HousehuntDatabaseMovesMigratesAndOpensWithItsRows() = runBlocking {
         val legacy = context.getDatabasePath(DatabaseFile.LEGACY_NAME)

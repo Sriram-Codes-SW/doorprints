@@ -1,0 +1,29 @@
+{
+  "spec": "web/src/app/data/trace-rows.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/data/trace-rows.ts",
+      "find": "const latE6 = Math.round(p.lat * 1e6);",
+      "replace": "const latE6 = Math.floor(p.lat * 1e6);",
+      "expect": "round-trips to 1e-6 degrees"
+    },
+    {
+      "file": "web/src/app/data/trace-rows.ts",
+      "find": "if (p.resumed === true && i > 0) resumed.push(i);",
+      "replace": "if (p.resumed === true && i > 0) resumed.push(i + 1);",
+      "expect": "keeps the resumed marks"
+    },
+    {
+      "file": "web/src/app/data/trace-rows.ts",
+      "find": "for (let i = 1; i < points.length; i++) if (points[i].resumed !== true) sum",
+      "replace": "for (let i = 1; i < points.length; i++) if (true) sum",
+      "expect": "measures the length without the segment into a resumed point"
+    },
+    {
+      "file": "web/src/app/data/trace-rows.ts",
+      "find": "const rows = await db.getAllByIndex<SavedWalkRow>('saved_walks', 'houseId', houseId);",
+      "replace": "const rows = await db.getAllByIndex<SavedWalkRow>('saved_walks', 'houseId', 'h1');",
+      "expect": "deletes the walks of one house only"
+    }
+  ]
+}

@@ -17,7 +17,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { DB_VERSION, MemoryDb, STORE_INDEXES, STORE_KEY_PATH, STORE_NAMES, openLocalDb, upgradeLocalDb } from './local-db';
+import { BatchGuardError, DB_VERSION, MemoryDb, STORE_INDEXES, STORE_KEY_PATH, STORE_NAMES, openLocalDb, upgradeLocalDb } from './local-db';
 import type { UpgradeDb, UpgradeStore, UpgradeTx } from './local-db';
 import {
   MAX_RECORD_PAYLOAD_BYTES,
@@ -150,15 +150,22 @@ describe('upgradeLocalDb', () => {
     settings: { keyPath: 'key', indexes: [] },
     records: { keyPath: ['type', 'id'], indexes: ['type'] },
   };
+  /** Version 3 (S4b-FR-17): the path trace's two stores beside the five of version 2. */
+  const VERSION_3 = {
+    ...VERSION_2,
+    trace_points: { keyPath: 'id', indexes: ['walk'] },
+    saved_walks: { keyPath: 'id', indexes: ['houseId'] },
+  };
 
-  it('is at version 2 (slice 0 of the Sprint 4b data model)', () => {
-    expect(DB_VERSION).toBe(2);
+  it('is at version 3 (the path trace, docs/11 5.27.8) and has seven stores, so clear() empties both new ones', () => {
+    expect(DB_VERSION).toBe(3);
+    expect([...STORE_NAMES]).toEqual(['houses', 'visits', 'photos', 'settings', 'records', 'trace_points', 'saved_walks']);
   });
 
   it('creates every store and index on a fresh install', () => {
     const db = new FakeDb();
     upgradeLocalDb(db, 0, db);
-    expect(db.shape()).toEqual(VERSION_2);
+    expect(db.shape()).toEqual(VERSION_3);
     // The wrapper's own tables of the stores agree with what the upgrade made.
     for (const name of STORE_NAMES) {
       expect(db.shape()[name].keyPath, name).toEqual(STORE_KEY_PATH[name]);
@@ -175,15 +182,39 @@ describe('upgradeLocalDb', () => {
     db.stores.get('photos')!.indexes.length = 0;
     db.stores.get('visits')!.indexes.length = 0;
 
+    // ...and the version-3 stores are not there yet either.
+    db.stores.delete('trace_points');
+    db.stores.delete('saved_walks');
+
     upgradeLocalDb(db, 1, db);
+    expect(db.shape()).toEqual(VERSION_3);
+  });
+
+  it('brings a version-2 database up by adding only the two path trace stores (one step per version)', () => {
+    const db = new FakeDb();
+    upgradeLocalDb(db, 0, db);
+    db.stores.delete('trace_points');
+    db.stores.delete('saved_walks');
+    db.keyPaths.delete('trace_points');
+    db.keyPaths.delete('saved_walks');
     expect(db.shape()).toEqual(VERSION_2);
+
+    const created: string[] = [];
+    const original = db.createObjectStore.bind(db);
+    db.createObjectStore = (name, options) => {
+      created.push(name);
+      return original(name, options);
+    };
+    upgradeLocalDb(db, 2, db);
+    expect(created).toEqual(['trace_points', 'saved_walks']); // the existing stores are untouched
+    expect(db.shape()).toEqual(VERSION_3);
   });
 
   it('does nothing for a database already at the current version', () => {
     const db = new FakeDb();
     upgradeLocalDb(db, 0, db);
     upgradeLocalDb(db, DB_VERSION, db);
-    expect(db.shape()).toEqual(VERSION_2);
+    expect(db.shape()).toEqual(VERSION_3);
   });
 
   it('indexes every store the way the wrapper expects: an index named after the property it is on', () => {
@@ -192,6 +223,103 @@ describe('upgradeLocalDb', () => {
     for (const [name, store] of db.stores) {
       for (const index of store.indexes) expect(index.keyPath, `${name}.${index.name}`).toBe(index.name);
     }
+  });
+});
+
+describe('MemoryDb: the path trace stores and the multi-store operations', () => {
+  it('reads trace points by the walk index with a number, and counts without reading', async () => {
+    const db = new MemoryDb();
+    await db.putAll('trace_points', [
+      { id: '5-5', walk: 5, at: 5 },
+      { id: '5-6', walk: 5, at: 6 },
+      { id: '9-9', walk: 9, at: 9 },
+    ]);
+    expect((await db.getAllByIndex<{ id: string }>('trace_points', 'walk', 5)).map((r) => r.id)).toEqual(['5-5', '5-6']);
+    expect(await db.count('trace_points')).toBe(3);
+    expect(await db.count('trace_points', 'walk', 9)).toBe(1);
+    expect(await db.count('saved_walks')).toBe(0);
+  });
+
+  it('lists the keys of a store, a compound key as its parts', async () => {
+    const db = new MemoryDb();
+    await db.putAll('saved_walks', [{ id: 'a', houseId: 'h' }, { id: 'b', houseId: 'h' }]);
+    await db.put('records', { type: 'broker', id: 'x', payload: {} });
+    expect(await db.keys('saved_walks')).toEqual(['a', 'b']);
+    expect(await db.keys('records')).toEqual([['broker', 'x']]);
+    expect(await db.keys('trace_points')).toEqual([]);
+  });
+
+  it('deleteAll removes the rows with those keys and skips a key that is not there', async () => {
+    const db = new MemoryDb();
+    await db.putAll('trace_points', [{ id: 'a', walk: 1 }, { id: 'b', walk: 1 }, { id: 'c', walk: 2 }]);
+    await db.deleteAll('trace_points', ['a', 'c', 'missing']);
+    expect((await db.getAll<{ id: string }>('trace_points')).map((r) => r.id)).toEqual(['b']);
+    await db.deleteAll('trace_points', []);
+    expect(await db.count('trace_points')).toBe(1);
+  });
+
+  it('batch writes and deletes across two stores together', async () => {
+    const db = new MemoryDb();
+    await db.putAll('trace_points', [{ id: '7-1', walk: 7 }, { id: '7-2', walk: 7 }]);
+    await db.batch([
+      { op: 'put', store: 'saved_walks', value: { id: 's1', houseId: 'h1' } },
+      { op: 'delete', store: 'trace_points', key: '7-1' },
+      { op: 'delete', store: 'trace_points', key: '7-2' },
+    ]);
+    expect(await db.count('trace_points')).toBe(0);
+    expect((await db.get<{ houseId: string }>('saved_walks', 's1'))?.houseId).toBe('h1');
+  });
+
+  it('batch applies nothing when one operation is invalid', async () => {
+    const db = new MemoryDb();
+    await db.put('trace_points', { id: 'a', walk: 1 });
+    await expect(
+      db.batch([
+        { op: 'put', store: 'saved_walks', value: { id: 's1', houseId: 'h1' } },
+        { op: 'delete', store: 'nope' as 'houses', key: 'x' },
+        { op: 'delete', store: 'trace_points', key: 'a' },
+      ]),
+    ).rejects.toThrow(/unknown store/);
+    expect(await db.count('saved_walks')).toBe(0);
+    expect(await db.count('trace_points')).toBe(1);
+  });
+
+  it('batch with guards checks the counts first and applies nothing when one fails (BatchGuardError with its reason)', async () => {
+    const db = new MemoryDb();
+    await db.putAll('saved_walks', [{ id: 's1', houseId: 'h1' }, { id: 's2', houseId: 'h1' }, { id: 's9', houseId: 'other' }]);
+    await db.put('trace_points', { id: 'a', walk: 1 });
+    const ops = [{ op: 'put' as const, store: 'saved_walks' as const, value: { id: 's3', houseId: 'h1' } }, { op: 'delete' as const, store: 'trace_points' as const, key: 'a' }];
+    const failure = await db.batch(ops, [{ store: 'saved_walks', index: 'houseId', value: 'h1', max: 1, reason: 'houseFull' }]).then(() => null, (e: unknown) => e);
+    expect(failure).toBeInstanceOf(BatchGuardError);
+    expect((failure as BatchGuardError).reason).toBe('houseFull');
+    expect(await db.count('saved_walks')).toBe(3);
+    expect(await db.count('trace_points')).toBe(1);
+    const missing = await db.batch(ops, [{ store: 'trace_points', index: 'walk', value: 1, min: 2, reason: 'gone' }]).then(() => null, (e: unknown) => e);
+    expect((missing as BatchGuardError).reason).toBe('gone');
+    await db.batch(ops, [
+      { store: 'saved_walks', index: 'houseId', value: 'h1', max: 2, reason: 'houseFull' }, // 2 of h1, not the 3 rows of the store
+      { store: 'saved_walks', max: 3, reason: 'deviceFull' },
+      { store: 'trace_points', index: 'walk', value: 1, min: 1, reason: 'gone' },
+    ]);
+    expect(await db.count('saved_walks')).toBe(4);
+    expect(await db.count('trace_points')).toBe(0);
+  });
+
+  it('clear() with no name empties the two new stores too (Remove all Doorprints data from this browser)', async () => {
+    const db = new MemoryDb();
+    await db.put('trace_points', { id: 'a', walk: 1 });
+    await db.put('saved_walks', { id: 's', houseId: 'h' });
+    await db.clear();
+    expect(await db.count('trace_points')).toBe(0);
+    expect(await db.count('saved_walks')).toBe(0);
+  });
+
+  it('copies a saved walk on write too', async () => {
+    const db = new MemoryDb();
+    const row = { id: 's', houseId: 'h', points: [1, 2, 3] };
+    await db.put('saved_walks', row);
+    row.houseId = 'other';
+    expect((await db.get<{ houseId: string }>('saved_walks', 's'))?.houseId).toBe('h');
   });
 });
 

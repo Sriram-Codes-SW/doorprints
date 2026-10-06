@@ -640,7 +640,7 @@
     <string name="settings_app_lock_15m">15 minutes</string>
     <!-- S4b-FR-2, the path trace (2026-09-29). -->
     <string name="settings_path_trace">Trace my path on the map</string>
-    <string name="settings_path_trace_hint">While hunt mode is on, keep where you walked and draw it on the map, so you can see which streets you have covered. Stays on this phone only: never in a backup, a copy or on the server, and gone after 30 days.</string>
+    <string name="settings_path_trace_hint">While hunt mode is on, keep where you walked and draw it on the map, so you can see which streets you have covered. Stays on this phone only: never in a backup, a copy or on the server, and gone after 30 days. Saved walks, if you save any, stay here too.</string>
     <string name="settings_path_trace_clear">Clear the path</string>
     <string name="settings_path_trace_cleared">The path is cleared.</string>
     <!-- S4b-BL-69, Hunt mode on iPhone (2026-09-29): the alerts' wording as Compose resources, the same text as the
@@ -1399,4 +1399,98 @@
     <string name="drive_enrol_device_kind">This device is a</string>
     <string name="drive_enrol_kind_phone">Phone</string>
     <string name="drive_enrol_kind_computer">Computer</string>
+    <!-- Path trace v2 (S4b-FR-15, 2026-10-06): the map's legend; hi, ta, te under review. -->
+    <string name="trace_legend_title">Your paths</string>
+    <string name="trace_legend_once">Walked once</string>
+    <string name="trace_legend_repeated">Walked more than once</string>
+    <string name="trace_a11y_map">Paths you walked more than once are dashed.</string>
+    <!-- Path trace v2 (S4b-FR-15, S4b-FR-16, 2026-10-06): Settings > Hunt mode; hi, ta, te under review. -->
+    <string name="trace_repeat_look_title">How repeated paths look</string>
+    <string name="trace_repeat_look_hint">Paths you have walked more than once can stand out on the map. This does not change the sound alert.</string>
+    <string name="trace_repeat_look_clear">Clear</string>
+    <string name="trace_repeat_look_clear_desc">Thicker and dashed in a second colour</string>
+    <string name="trace_repeat_look_subtle">Subtle</string>
+    <string name="trace_repeat_look_subtle_desc">Normal width, dashed in a second colour</string>
+    <string name="trace_repeat_look_off">Off</string>
+    <string name="trace_repeat_look_off_desc">Drawn like any other path</string>
+    <string name="trace_alert_title">Warn me when I walk a path again</string>
+    <string name="trace_alert_hint">While Hunt mode runs, play a short sound when you follow a path you have already walked. You can mute it in your phone's notification settings. Needs Trace my path.</string>
+    <string name="trace_alert_needs_trace">Turn on Trace my path first.</string>
+    <string name="trace_alert_permission_denied">Notifications are off for Doorprints, so there is no sound. Allow them in your phone's settings.</string>
+    <string name="trace_alert_rationale">The sound is a notification, so Doorprints needs your permission to send one.</string>
+    <string name="trace_settings_saved">Saved walks: %1$d</string>
+    <string name="trace_settings_delete_all">Delete all saved walks</string>
+    <string name="trace_settings_delete_all_confirm">Delete all %1$d saved walks? This cannot be undone.</string>
+    <string name="trace_settings_transfer_note">Android's phone-to-phone transfer also copies saved walks. To leave them behind, delete them before you transfer. (Android only.)</string>
+    <string name="trace_settings_clear_hint">Clears the walks kept for 30 days. Saved walks stay until you delete them.</string>
+    <!-- Path trace v2 (S4b-FR-16): the Map's snackbar and the iPhone's notification; under review. -->
+    <string name="trace_alert_banner">You have walked this way before.</string>
+    <string name="trace_alert_notif_text">This path is on your map from an earlier walk.</string>
+    <!-- Path trace v2 (S4b-FR-15, 2026-10-06): finish a walk, save it with a house, the house page's saved walks; hi, ta, te under review. -->
+    <string name="trace_unit_m">%1$d m</string>
+    <string name="trace_unit_km">%1$s km</string>
+    <string name="trace_walk_finish">Finish walk</string>
+    <string name="trace_end_title">Save this walk?</string>
+    <string name="trace_end_summary">Walk of %1$s in %2$d min</string>
+    <string name="trace_end_body">Link it to a house to keep it. Otherwise it stays for 30 days, then it goes. It stays on this phone and is never in a backup or a copy.</string>
+    <string name="trace_end_save">Save with a house</string>
+    <string name="trace_end_keep">Keep for 30 days</string>
+    <string name="trace_end_delete">Delete this walk</string>
+    <string name="trace_end_delete_confirm">Delete this walk? This cannot be undone.</string>
+    <string name="trace_pick_title">Which house was this walk to?</string>
+    <string name="trace_pick_nearest">Nearest to where you stopped, %1$s away</string>
+    <string name="trace_pick_near">%1$s from your walk</string>
+    <string name="trace_pick_search">Search your houses</string>
+    <string name="trace_pick_none">You have no saved houses yet. Add a house first, or keep the walk for 30 days.</string>
+    <string name="trace_pick_confirm">Save walk</string>
+    <string name="trace_saved_snack">Walk saved with %1$s.</string>
+    <string name="trace_kept_snack">Walk kept for 30 days.</string>
+    <string name="trace_deleted_snack">Walk deleted.</string>
+    <string name="trace_save_too_long">This walk is too long to save (more than %1$d points). It stays for 30 days.</string>
+    <string name="trace_save_house_full">This house already has %1$d saved walks. Delete one first.</string>
+    <string name="trace_save_all_full">You have %1$d saved walks. Delete one first.</string>
+    <string name="trace_save_failed_walk">Could not save the walk: it is no longer on this phone.</string>
+    <string name="trace_save_failed_house">Could not save the walk: that house is gone.</string>
+    <string name="trace_house_title">Saved walks</string>
+    <string name="trace_house_row">%1$s, %2$s, %3$d min</string>
+    <string name="trace_house_show">Show on map</string>
+    <string name="trace_house_delete">Delete walk</string>
+    <string name="trace_house_delete_confirm">Delete this saved walk?</string>
+    <string name="trace_house_empty">No saved walks. When you finish a walk, you can link it to this house.</string>
+    <string name="trace_house_local">Saved walks stay on this phone only. They are not in a backup, a copy, Google Drive or on a server.</string>
+    <string name="trace_house_delete_note">Its saved walks are deleted too.</string>
+    <!-- Path trace v2 (S4b-FR-24, 2026-10-06): Have I been here? the on-demand place check; hi, ta, te under review. -->
+    <string name="trace_here_button">Have I been here?</string>
+    <string name="trace_here_button_house">Did I walk past this house?</string>
+    <string name="trace_here_menu_here">Where I am now</string>
+    <string name="trace_here_menu_spot">A spot on the map</string>
+    <string name="trace_here_press_menu">Did I walk here?</string>
+    <string name="trace_here_pick_hint">Move the map so the cross is on the spot, then press Check this spot.</string>
+    <string name="trace_here_pick_confirm">Check this spot</string>
+    <string name="trace_here_place_here">here</string>
+    <string name="trace_here_place_house">this house</string>
+    <string name="trace_here_place_spot">this spot</string>
+    <string name="trace_here_label_here">You are here</string>
+    <string name="trace_here_label_house">This house</string>
+    <string name="trace_here_label_spot">This spot</string>
+    <string name="trace_here_locating">Finding your location...</string>
+    <string name="trace_here_walked">You walked within %1$s of %2$s on %3$s.</string>
+    <string name="trace_here_close">No walk of yours passed within %1$s of %2$s, but one came within %3$s on %4$s.</string>
+    <string name="trace_here_none">No walk of yours passed within %1$s of %2$s in the last 30 days.</string>
+    <string name="trace_here_none_saved">No walk of yours passed within %1$s of %2$s in the last 30 days or in your saved walks.</string>
+    <string name="trace_here_only_recorded">This covers only the walks Doorprints recorded.</string>
+    <string name="trace_here_and_more">%1$s and %2$d more</string>
+    <string name="trace_here_row">%1$s, %2$s away</string>
+    <string name="trace_here_row_saved">%1$s, %2$s away, saved walk</string>
+    <string name="trace_here_rows_more">and %1$d more walks</string>
+    <string name="trace_here_empty">There are no walks to compare yet. Turn on Trace my path in Settings, then walk with Hunt mode on.</string>
+    <string name="trace_here_imprecise">Location not precise enough. Try again outdoors.</string>
+    <string name="trace_here_fuzzy">Your location is only accurate to about %1$d m, so this answer may be off.</string>
+    <string name="trace_here_denied">Location is off for Doorprints. Allow it in your settings to check where you are.</string>
+    <string name="trace_here_timeout">Could not get your location. Try again outdoors.</string>
+    <string name="trace_here_approx_house">This house has no exact spot yet, only an area. Place it on the map first, then check.</string>
+    <string name="trace_here_invalid">This spot has no valid location.</string>
+    <string name="trace_here_privacy">Shown only here. Nothing is saved or sent.</string>
+    <string name="trace_here_again">Check again</string>
+    <string name="trace_here_stretch_a11y">The stretch of your walk near %1$s is outlined on the map.</string>
 </resources>

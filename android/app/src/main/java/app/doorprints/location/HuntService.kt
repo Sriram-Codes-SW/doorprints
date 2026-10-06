@@ -45,6 +45,7 @@ import app.doorprints.shared.model.HouseStatus
 import app.doorprints.shared.model.Scoring
 import app.doorprints.i18n.AppLocale
 import app.doorprints.ui.Formats
+import app.doorprints.ui.RepeatAlerts
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -98,6 +99,16 @@ class HuntService : LifecycleService(), HuntEffects {
             // The user's own Stop (the notification action): no reason to show.
             stopReason = null
             stopSelf()
+            return START_NOT_STICKY
+        }
+        if (intent?.action == ACTION_FINISH_WALK) {
+            // *Finish walk* from the Map (docs/11 5.27.6): the walk ends, Hunt mode goes on (already in the foreground).
+            if (HuntState.state.value.active) {
+                engine.finishWalk()
+                return START_STICKY
+            }
+            // Hunt mode is off (the service was stopping): this instance never went foreground, so it must not stay.
+            stopSelf(startId)
             return START_NOT_STICKY
         }
         val stopIntent = android.app.PendingIntent.getService(
@@ -196,6 +207,15 @@ class HuntService : LifecycleService(), HuntEffects {
     private suspend fun appLockOn(): Boolean =
         runCatching { repo.settings.appLockSetting.first().on }.getOrDefault(true)
 
+    override fun alertRepeat(runM: Int) {
+        // The notification holds no place, distance or count (docs/11 5.27.5); [runM] is not used or logged.
+        lifecycleScope.launch {
+            Notifications.alertRepeatPath(this@HuntService, hideOnLockScreen = appLockOn())
+            // With the app in front the Map also says it in a snackbar (it collects this).
+            RepeatAlerts.signal()
+        }
+    }
+
     override fun alertStreet(street: String, houses: Int, visits: Int, firstVisit: Long?) {
         val key = StreetAlerts.key(street)
         val text = firstVisit?.let {
@@ -237,6 +257,7 @@ class HuntService : LifecycleService(), HuntEffects {
 
     companion object {
         private const val ACTION_STOP = "stop"
+        internal const val ACTION_FINISH_WALK = "finish-walk"
 
         fun hasLocationPermission(context: Context): Boolean =
             ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
@@ -261,6 +282,12 @@ class HuntService : LifecycleService(), HuntEffects {
 
         /** The user turned Hunt mode off: onDestroy runs with no stop reason. */
         fun stop(context: Context) = context.stopService(Intent(context, HuntService::class.java))
+
+        /** *Finish walk*: asks the running service to end the walk (nothing while Hunt mode is off). */
+        fun finishWalk(context: Context) {
+            if (!HuntState.state.value.active) return
+            runCatching { context.startService(Intent(context, HuntService::class.java).setAction(ACTION_FINISH_WALK)) }
+        }
 
         /** Closes the "Hunt mode stopped because…" card on the Map. */
         fun clearStopReason() = HuntState.update { it.copy(stopReason = null) }

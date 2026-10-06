@@ -18,6 +18,7 @@
 
 package app.doorprints.data
 
+import app.doorprints.shared.trace.RepeatLook
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -90,6 +91,15 @@ data class AppSettings(
      * phone only, for 30 days. Off by default.
      */
     val pathTrace: Boolean = false,
+    /** *How repeated paths look* (docs/11 5.27.4): per device, a display choice, never exported. */
+    val repeatLook: RepeatLook = RepeatLook.CLEAR,
+    /** *Warn me when I walk a path again* (docs/11 5.27.5): off by default, per device. */
+    val repeatAlert: Boolean = false,
+    /**
+     * The newest walk id the *Save this walk?* sheet has handled (docs/11 5.27.6); 0 when none. A timestamp of where
+     * the person walked, so it is never in [toString] and never exported.
+     */
+    val walkAskedUpTo: Long = 0,
     /** The people updates are shared with (docs/11 5.28), on this phone only; never synced or exported. */
     val shareContacts: List<ShareContact> = emptyList(),
     /** How room sizes are shown and typed (slice 1c, `units.length`): on this phone only, never synced or backed up. */
@@ -115,7 +125,7 @@ data class AppSettings(
             "lastSyncOkAt=$lastSyncOkAt, autoBackup=$autoBackup, autoBackupFolder=$autoBackupFolder, " +
             "autoBackupKeep=$autoBackupKeep, lastAutoBackupAt=$lastAutoBackupAt, lastAutoBackupError=$lastAutoBackupError, " +
             "aiFeatures=$aiFeatures, aiProvider=$aiProvider, geminiKey=${if (geminiKey.isEmpty()) "none" else "set"}, " +
-            "appLock=$appLock, appLockAfterSeconds=$appLockAfterSeconds, pathTrace=$pathTrace, " +
+            "appLock=$appLock, appLockAfterSeconds=$appLockAfterSeconds, pathTrace=$pathTrace, repeatLook=$repeatLook, repeatAlert=$repeatAlert, " +
             "shareContacts=${shareContacts.size}, lengthUnit=$lengthUnit)"
 }
 
@@ -217,6 +227,10 @@ class SettingsStore(
         val appLockAfter = intPreferencesKey("appLockAfterSeconds")
         /** [AppSettings.pathTrace]. */
         val pathTrace = booleanPreferencesKey("pathTrace")
+        /** [AppSettings.repeatLook], by name; [AppSettings.repeatAlert]; [AppSettings.walkAskedUpTo]. Local only. */
+        val repeatLook = stringPreferencesKey("repeatLook")
+        val repeatAlert = booleanPreferencesKey("repeatAlert")
+        val walkAskedUpTo = longPreferencesKey("walkAskedUpTo")
         /** [AppSettings.shareContacts], as JSON. */
         val shareContacts = stringPreferencesKey("shareContacts")
         val brokersMigrated = booleanPreferencesKey("brokers.migrated")
@@ -264,6 +278,9 @@ class SettingsStore(
             appLock = p[Keys.appLock] ?: false,
             appLockAfterSeconds = AppLockTimes.valid(p[Keys.appLockAfter]),
             pathTrace = p[Keys.pathTrace] ?: false,
+            repeatLook = RepeatLook.entries.firstOrNull { it.name == p[Keys.repeatLook] } ?: RepeatLook.CLEAR,
+            repeatAlert = p[Keys.repeatAlert] ?: false,
+            walkAskedUpTo = p[Keys.walkAskedUpTo] ?: 0,
             shareContacts = ShareContact.decode(p[Keys.shareContacts]),
             lengthUnit = LengthUnit.fromWire(p[Keys.lengthUnit]),
         )
@@ -465,6 +482,15 @@ class SettingsStore(
     suspend fun saveAppLockAfter(seconds: Int) = dataStore.edit { it[Keys.appLockAfter] = AppLockTimes.valid(seconds) }
 
     suspend fun savePathTrace(on: Boolean) = dataStore.edit { it[Keys.pathTrace] = on }
+
+    suspend fun saveRepeatLook(look: RepeatLook) = dataStore.edit { it[Keys.repeatLook] = look.name }
+
+    suspend fun saveRepeatAlert(on: Boolean) = dataStore.edit { it[Keys.repeatAlert] = on }
+
+    /** The *Save this walk?* watermark (docs/11 5.27.6): only ever moves forward. */
+    suspend fun saveWalkAskedUpTo(walkId: Long) = dataStore.edit {
+        if (walkId > (it[Keys.walkAskedUpTo] ?: 0)) it[Keys.walkAskedUpTo] = walkId
+    }
 
     /** Adds a person to share updates with (docs/11 5.28); the name trimmed, a duplicate name not added twice. */
     suspend fun addShareContact(name: String): ShareContact? {

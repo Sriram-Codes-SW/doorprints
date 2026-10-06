@@ -1,0 +1,23 @@
+{
+  "spec": "web/src/app/shared/trace-ring.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/shared/trace-ring.ts",
+      "find": "el.style.cssText = 'width:28px;height:28px;position:relative;pointer-events:none;';",
+      "replace": "el.style.cssText = 'width:28px;height:28px;position:relative;';",
+      "expect": "lets every pointer and key through"
+    },
+    {
+      "file": "web/src/app/shared/trace-ring.ts",
+      "find": "text.textContent = label;",
+      "replace": "text.innerHTML = label;",
+      "expect": "puts the label in text, never in markup"
+    },
+    {
+      "file": "web/src/app/shared/trace-ring.ts",
+      "find": "circle.setAttribute('fill', 'none');",
+      "replace": "circle.setAttribute('fill', '#4A148C');",
+      "expect": "is a hollow ring with a centre cross"
+    }
+  ]
+}

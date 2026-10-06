@@ -1,0 +1,59 @@
+{
+  "spec": "web/src/app/shared/trace-sources.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/data/trace-store.ts",
+      "find": "export const TRACE_KEPT_DAYS = 30;",
+      "replace": "export const TRACE_KEPT_DAYS = 30; console.log(TRACE_KEPT_DAYS);",
+      "expect": "data/trace-store.ts refers to none of the banned names"
+    },
+    {
+      "file": "web/src/app/shared/trace-place-check.ts",
+      "find": "const RESULT = (status: PlaceStatus)",
+      "replace": "const KEEP = () => sessionStorage.getItem('a');\nconst RESULT = (status: PlaceStatus)",
+      "expect": "trace-place-check.ts refers to none of the banned names"
+    },
+    {
+      "file": "web/src/app/shared/trace-place-text.ts",
+      "find": "export type PlaceKind = 'here' | 'house' | 'spot';",
+      "replace": "export type PlaceKind = 'here' | 'house' | 'spot';\nconst LEAK = () => fetch('/x');",
+      "expect": "trace-place-text.ts refers to none of the banned names"
+    },
+    {
+      "file": "web/src/app/core/trace-recorder.service.ts",
+      "find": "export type RecorderState = 'idle' | 'recording' | 'paused';",
+      "replace": "export type RecorderState = 'idle' | 'recording' | 'paused';\nconst LEAK = () => navigator.sendBeacon('/x');",
+      "expect": "trace-recorder.service.ts refers to none of the banned names"
+    },
+    {
+      "file": "web/src/app/core/alert-sound.service.ts",
+      "find": "const VIBRATION = [200, 100, 200];",
+      "replace": "const VIBRATION = [200, 100, 200];\nconst LEAK = () => localStorage.setItem('a', 'b');",
+      "expect": "alert-sound.service.ts refers to none of the banned names"
+    },
+    {
+      "file": "web/src/app/export/export.service.ts",
+      "find": "export class ExportService {",
+      "replace": "export class ExportService {\n  private readonly walks = 'trace_points';",
+      "expect": "export/export.service.ts names no walk store"
+    },
+    {
+      "file": "web/src/app/data/drive/sync-file.ts",
+      "find": "export const SYNC_FORMAT = 'doorprints-sync/1';",
+      "replace": "export const SYNC_FORMAT = 'doorprints-sync/1';\nexport const WALKS = 'saved_walks';",
+      "expect": "data/drive/sync-file.ts names no walk store"
+    },
+    {
+      "file": "web/src/app/data/sync.service.ts",
+      "find": "@Injectable({ providedIn: 'root' })",
+      "replace": "// x\n@Injectable({ providedIn: 'root' })\nclass Leak { readonly a = 'TraceStore'; }\n@Injectable({ providedIn: 'root' })",
+      "expect": "data/sync.service.ts names no walk store"
+    },
+    {
+      "file": "web/src/app/shared/listing-text.ts",
+      "find": "export function listingUrlIn(text: string): string | null {",
+      "replace": "export const WALKS = 'trace-store';\nexport function listingUrlIn(text: string): string | null {",
+      "expect": "shared/listing-text.ts names no walk store"
+    }
+  ]
+}

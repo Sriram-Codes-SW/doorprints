@@ -50,6 +50,11 @@ object HuntState {
          * whole-app audit); null after the user stopped it.
          */
         val stopReason: StopReason? = null,
+        /**
+         * The walk being recorded now (the `at` of its first kept point; 0 before it, after *Finish walk* and when Hunt
+         * mode is off): the Map's *Save this walk?* question leaves this walk alone (docs/11 5.27.6). Never logged.
+         */
+        val walkId: Long = 0,
     )
 
     /** Why Hunt mode stopped without being asked to ([HuntEngine], the adapter). */

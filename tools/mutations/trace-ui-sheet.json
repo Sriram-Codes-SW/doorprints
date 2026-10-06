@@ -1,0 +1,41 @@
+{
+  "spec": "web/src/app/pages/map/walk-end-sheet.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/pages/map/walk-end-sheet.ts",
+      "find": "if (event.target === this.dialog().nativeElement) void this.keep();",
+      "replace": "if (true) void this.keep();",
+      "expect": "a tap inside the sheet is not a tap outside it"
+    },
+    {
+      "file": "web/src/app/pages/map/walk-end-sheet.ts",
+      "find": "if (this.walk()) void this.keep();",
+      "replace": "if (false) void this.keep();",
+      "expect": "a close by any other way is Keep for 30 days"
+    },
+    {
+      "file": "web/src/app/pages/map/walk-end-sheet.ts",
+      "find": "this.selected.set(this.choices().nearest?.house.id ?? null);",
+      "replace": "this.selected.set(null);",
+      "expect": "preselects the house nearest"
+    },
+    {
+      "file": "web/src/app/pages/map/walk-end-sheet.ts",
+      "find": "if (!result.ok) this.refusal.set(refusalMessage(result.reason));",
+      "replace": "",
+      "expect": "says why a refused save was refused"
+    },
+    {
+      "file": "web/src/app/pages/map/walk-end-sheet.ts",
+      "find": "if (ok) await this.view.answerDelete();",
+      "replace": "await this.view.answerDelete();",
+      "expect": "asks first; Cancel changes nothing"
+    },
+    {
+      "file": "web/src/app/pages/map/walk-end-sheet.ts",
+      "find": "const list = q === '' ? base : this.houses().filter((h) => searchText(h).includes(q));",
+      "replace": "const list = base;",
+      "expect": "searches all houses"
+    }
+  ]
+}

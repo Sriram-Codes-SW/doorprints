@@ -100,4 +100,9 @@
     <string name="drive_lock_open_settings">அமைப்புகளைத் திறக்கவும்</string>
     <string name="drive_lock_notif_title">Google Drive காப்புப்பிரதி இடைநிறுத்தப்பட்டது</string>
     <string name="drive_lock_key_lost">இந்த ஃபோனின் கீ ஸ்டோர் விசையை இழந்ததால் Google Drive காப்புப்பிரதி இடைநிறுத்தப்பட்டுள்ளது. உங்கள் வீடுகள் இந்த ஃபோனில் பாதுகாப்பாக உள்ளன. தொடர Google Drive உடன் மீண்டும் இணையுங்கள்.</string>
+    <!-- Path trace v2 (S4b-FR-16, 2026-10-06): the repeated-path alert; hi, ta, te under review. -->
+    <string name="notif_channel_repeat">மீண்டும் நடந்த பாதை</string>
+    <string name="notif_channel_repeat_desc">நீங்கள் ஏற்கனவே நடந்த பாதையில் நடக்கும்போது ஒரு சிறு ஒலி.</string>
+    <string name="notif_repeat_title">நீங்கள் இந்த வழியில் முன்பு நடந்திருக்கிறீர்கள்.</string>
+    <string name="notif_repeat_text">இந்தப் பாதை முந்தைய நடையிலிருந்து உங்கள் வரைபடத்தில் உள்ளது.</string>
 </resources>

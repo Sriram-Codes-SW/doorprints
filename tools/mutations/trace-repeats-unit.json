@@ -1,0 +1,59 @@
+{
+  "spec": "web/src/app/shared/trace-repeats.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/shared/trace-repeats.ts",
+      "find": " && samples.part[i - 1] === samples.part[e + 1] && samples.arc[e + 1]",
+      "replace": " && samples.arc[e + 1]",
+      "expect": "never bridges across a part boundary"
+    },
+    {
+      "file": "web/src/app/shared/trace-repeats.ts",
+      "find": "    } else if (p.resumed === true) {",
+      "replace": "    } else if (p.resumed === true && Date.now() < 0) {",
+      "expect": "starts a new part at a resumed point"
+    },
+    {
+      "file": "web/src/app/shared/trace-repeats.ts",
+      "find": "const margin = 1.1 * TRACE.toleranceM;",
+      "replace": "const margin = 0;",
+      "expect": "random city of 60 walks"
+    },
+    {
+      "file": "web/src/app/shared/trace-repeats.ts",
+      "find": "    if (total > maxPoints) break;",
+      "replace": "    if (total > maxPoints + 1000) break;",
+      "expect": "reads the newest walks first"
+    },
+    {
+      "file": "web/src/app/shared/trace-repeats.ts",
+      "find": "  const eps = 1e-6;",
+      "replace": "  const eps = 5;",
+      "expect": "cuts the stretch out of the walk"
+    },
+    {
+      "file": "web/src/app/shared/trace-repeats.ts",
+      "find": "nearestOnSegment(q, s.a, s.b).distanceM <= TRACE.toleranceM) return true;",
+      "replace": "nearestOnSegment(q, s.a, s.b).distanceM < TRACE.toleranceM - 1) return true;",
+      "expect": "puts a walk 24.5 m away on the same path"
+    },
+    {
+      "file": "web/src/app/shared/trace-repeats.ts",
+      "find": "const n = Math.max(1, Math.floor(length / TRACE.densifyM + 0.5));",
+      "replace": "const n = Math.max(1, Math.floor(length / TRACE.densifyM));",
+      "expect": "puts a sample every 10 m"
+    },
+    {
+      "file": "web/src/app/shared/trace-repeats.ts",
+      "find": "      this.currentArc += length;\n",
+      "replace": "",
+      "expect": "adds one point at a time"
+    },
+    {
+      "file": "web/src/app/shared/trace-repeats.ts",
+      "find": "    if (start >= 0) runs.push({ first: start, last: i - 1 });",
+      "replace": "    if (start >= 1) runs.push({ first: start, last: i - 1 });",
+      "expect": "a shared stretch of 80 m"
+    }
+  ]
+}

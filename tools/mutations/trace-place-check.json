@@ -1,0 +1,101 @@
+{
+  "spec": "web/src/app/shared/trace-place-check-vectors.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/shared/trace-geo.ts",
+      "find": "const c = Math.cos(q.lat * RAD) * K;",
+      "replace": "const c = K;",
+      "expect": "pc-latitude-13-east-west-offset-us"
+    },
+    {
+      "file": "web/src/app/shared/trace-geo.ts",
+      "find": "toleranceM: 25,",
+      "replace": "toleranceM: 35,",
+      "expect": "pc-25-1-m-away-is-close-not-walked"
+    },
+    {
+      "file": "web/src/app/shared/trace-geo.ts",
+      "find": "toleranceM: 25,",
+      "replace": "toleranceM: 20,",
+      "expect": "pc-24-9-m-away-is-walked"
+    },
+    {
+      "file": "web/src/app/shared/trace-geo.ts",
+      "find": "nearBandM: 50,",
+      "replace": "nearBandM: 60,",
+      "expect": "pc-50-1-m-away-is-none"
+    },
+    {
+      "file": "web/src/app/shared/trace-geo.ts",
+      "find": "nearBandM: 50,",
+      "replace": "nearBandM: 40,",
+      "expect": "pc-49-9-m-away-is-close"
+    },
+    {
+      "file": "web/src/app/shared/trace-geo.ts",
+      "find": "maxFixAccuracyM: 50,",
+      "replace": "maxFixAccuracyM: 30,",
+      "expect": "pc-accuracy-exactly-50-m-is-accept"
+    },
+    {
+      "file": "web/src/app/shared/trace-geo.ts",
+      "find": "maxFixAccuracyM: 50,",
+      "replace": "maxFixAccuracyM: 70,",
+      "expect": "pc-poor-accuracy-60-m-is-imprecise"
+    },
+    {
+      "file": "web/src/app/shared/trace-place-check.ts",
+      "find": "      if (b.resumed === true) continue; // no segment into a resumed point\n",
+      "replace": "",
+      "expect": "pc-the-middle-of-a-pause-is-not-wa"
+    },
+    {
+      "file": "web/src/app/shared/trace-geo.ts",
+      "find": "    if (t < 0) t = 0;\n    else if (t > 1) t = 1;\n",
+      "replace": "",
+      "expect": "pc-beyond-the-end-uses-the-round-c"
+    },
+    {
+      "file": "web/src/app/shared/trace-place-check.ts",
+      "find": "rows.sort((x, y) => y.atMs - x.atMs || y.walkIndex - x.walkIndex);",
+      "replace": "rows.sort((x, y) => x.distanceM - y.distanceM);",
+      "expect": "pc-newest-first-even-when-the-olde"
+    },
+    {
+      "file": "web/src/app/shared/trace-place-check.ts",
+      "find": "    if (!hasSegment) continue;",
+      "replace": "    if (walk.points.length === 0) continue;",
+      "expect": "pc-a-fragment-of-one-point-is-no-w"
+    },
+    {
+      "file": "web/src/app/shared/trace-place-check.ts",
+      "find": "atMs: interpolatedAtMs(a, b, best.t),",
+      "replace": "atMs: a.atMs,",
+      "expect": "pc-on-the-line-and-the-time-is-int"
+    },
+    {
+      "file": "web/src/app/shared/trace-place-check.ts",
+      "find": "fix > TRACE.maxFixAccuracyM",
+      "replace": "fix >= TRACE.maxFixAccuracyM",
+      "expect": "pc-accuracy-exactly-50-m-is-accept"
+    },
+    {
+      "file": "web/src/app/shared/trace-place-check.ts",
+      "find": "  if (!isValidLatLon(place.lat, place.lon)) return RESULT('INVALID_PLACE');\n",
+      "replace": "",
+      "expect": "pc-an-invalid-place-has-no-answer"
+    },
+    {
+      "file": "web/src/app/shared/trace-place-check.ts",
+      "find": "  const fuzzy = fix !== null && fix > tolerance;",
+      "replace": "  const fuzzy = false;",
+      "expect": "pc-accuracy-exactly-50-m-is-accept"
+    },
+    {
+      "file": "web/src/app/shared/trace-place-check.ts",
+      "find": "const status: PlaceStatus = rows.some((r) => r.walked) ? 'WALKED' : rows.length > 0 ? 'CLOSE' : 'NONE';",
+      "replace": "const status: PlaceStatus = rows.length > 0 ? 'WALKED' : 'NONE';",
+      "expect": "pc-25-1-m-away-is-close-not-walked"
+    }
+  ]
+}

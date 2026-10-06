@@ -19,6 +19,10 @@
 package app.doorprints.data
 
 import app.doorprints.shared.api.AskResponseDto
+import app.doorprints.shared.trace.TracePoint
+import app.doorprints.shared.trace.TraceWalk
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flowOf
 import app.doorprints.shared.api.HouseDraftDto
 import app.doorprints.shared.api.PairPolledDto
 import app.doorprints.shared.api.PairStartedDto
@@ -107,8 +111,53 @@ interface Repository {
     suspend fun saveTrackPoint(point: TrackPointEntity)
     /** Points older than [before] go (the retention limit; the engine calls it when Hunt mode starts). */
     suspend fun pruneTrack(before: Long)
-    /** *Clear the path* in Settings. */
+    /** *Clear the path* in Settings: the 30-day trace only (saved walks stay). */
     suspend fun clearTrack()
+
+    // Saved walks and the walks the Map, the alert and the place check read (docs/11 5.27.6, S4b-FR-14). Local only.
+    // Each has a default so a fake `Repository` of a test need not know them.
+
+    /** *Saved walks: n* in Settings: the saved walks of live houses. */
+    val savedWalkCount: Flow<Int> get() = flowOf(0)
+
+    /** The *Saved walks* card of a house: newest first, the walks of a deleted house hidden at once. */
+    fun savedWalksOf(houseId: String): Flow<List<SavedWalkSummary>> = flowOf(emptyList())
+
+    /**
+     * *Save with a house*: moves the walk [walkId] out of the 30-day trace into a saved walk of [houseId] in one
+     * transaction, or refuses (too long, 20 a house, 200 a device) and changes nothing.
+     */
+    suspend fun saveWalk(houseId: String, walkId: Long): SaveWalkResult = SaveWalkResult.NoSuchWalk
+
+    /** *Delete this walk* in the sheet: the walk's points leave the 30-day trace. */
+    suspend fun deleteTraceWalk(walkId: Long) {}
+
+    /** *Delete walk* on a house page. */
+    suspend fun deleteSavedWalk(id: String) {}
+
+    /** *Delete all saved walks*. */
+    suspend fun deleteAllSavedWalks() {}
+
+    /** One saved walk's points, for *Show on map*; null when it is gone or its bytes do not decode. */
+    suspend fun savedWalkPoints(id: String): List<TracePoint>? = null
+
+    /**
+     * The walk to ask *Save this walk?* about (docs/11 5.27.6): the newest walk id in the trace that is not
+     * [liveWalkId], is above `walkAskedUpTo` and has at least 5 points and 100 m; null when none.
+     */
+    suspend fun lastEndedWalk(liveWalkId: Long = 0): Long? = null
+
+    /** Every walk stored: the 30-day trace split into walks, and every saved walk of a live house (the check, the Map). */
+    suspend fun walks(): List<TraceWalk> = emptyList()
+
+    /** The walks the alert compares the live walk [liveWalkId] with: [walks] without the live one. */
+    suspend fun walksOtherThan(liveWalkId: Long): List<List<TracePoint>> = emptyList()
+
+    /** Emits at once and after each change to the trace, the saved walks or the houses (never part of `localRowsFlow`). */
+    fun walksChanged(): Flow<Unit> = emptyFlow()
+
+    /** Deletes every saved walk whose house is a tombstone or missing (when a delete is final; docs/11 5.27.6). */
+    suspend fun sweepWalksOfDeletedHouses() {}
 
     /** Deletes the photo's local file now; a photo the server has is queued for deletion on the next sync. */
     suspend fun deletePhoto(photo: PhotoEntity)
