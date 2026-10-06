@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.110 |
+| Version | 0.111 |
 | Date | 2026-10-06 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -12,6 +12,7 @@
 
 | Version | Date | Author | Change |
 |---|---|---|---|
+| 0.111 | 2026-10-06 | Claude | Full-system review fixes and the manual test checklist (`docs/ops/manual-test-checklist.md`): docs/07 v0.59, docs/14 v0.88. |
 | 0.110 | 2026-10-06 | Claude | Review fixes on PR #139: docs/10 v0.149, 06 v0.130, 15 v0.27. |
 | 0.109 | 2026-10-06 | Claude | The Hindi, Tamil and Telugu Drive backups table fixed; connected Drive pictures: docs/10 v0.148, docs/06 v0.129. |
 | 0.108 | 2026-10-06 | Claude | Guide pictures in hi, ta, te: docs/10 v0.147. |
@@ -153,6 +154,7 @@ Everything must run on free tiers. These documents follow a Secure Software Deve
 | 15 | [Google Drive backup and sharing](15-google-drive-backup-and-sharing.md) | Design, **decided by the owner on 2026-10-02** ([03](03-design.md) ADR-33; version 1 in §1.6): backup and *Import a backup* through the person's own Google Drive, automatic sync and what "no data loss" can honestly mean, deleting the data in Drive, encryption with device keys and a recovery key, device authentication, an authenticator app and the screen lock, photos on Wi-Fi or mobile data, sharing with someone who uses Doorprints, the `drive.file` scope and the owner's Google Cloud setup checklist, the phased plan (S4b-BL-115..130) | Lead |
 | – | [ops/firebase-hosting-setup.md](ops/firebase-hosting-setup.md) | Pointer named by `web.yml`'s skip notice: the Firebase Hosting owner guide and its status live in [07 §6.3](07-secure-build-and-deploy.md#63-web-firebase-hosting) | Docs team |
 | – | [ops/firebase-test-lab-setup.md](ops/firebase-test-lab-setup.md) | Pointer to the Firebase Test Lab owner guide and its status (the `android-emulator.yml` Test Lab job is skipped until it is done); the guide lives in [07 §7.2](07-secure-build-and-deploy.md#72-firebase-test-lab-owner-setup-keyless) | Docs team |
+| – | [ops/manual-test-checklist.md](ops/manual-test-checklist.md) | The manual test checklist (MT-01..MT-51): every test, standalone, for real devices and accounts, with what was automated or reviewed and a Pass / Fail / Date line |
 | – | [Shared schemas](schemas/) | `doorprints-backup/1`: the one backup format the server, Android and web all implement, plus the canonical `backup-sample.json`: the server and Android tests read it, and the web writer's golden copy is checked against it by the backend's `BackupParityTest` (S4-00, [03](03-design.md) ADR-20, [06](06-test-plan.md) TC-I-34). Section 0, "What an import is" (the approved definition, Sprint 4b S4b-00), is maintained by the Docs team | Backend (section 0: Docs team) |
 | – | [CHANGELOG](../CHANGELOG.md) (repo root) | Release notes in Keep a Changelog format: Unreleased + released versions | Docs team |
 | – | [SECURITY.md](../SECURITY.md) (repo root) | How to report a vulnerability privately | Owner |
