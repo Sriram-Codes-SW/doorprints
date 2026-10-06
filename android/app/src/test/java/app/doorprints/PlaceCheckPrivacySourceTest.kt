@@ -59,20 +59,91 @@ class PlaceCheckPrivacySourceTest {
         assertEquals("one declaration and the two calls of start()", 3, Regex("runPlaceCheck\\(").findAll(text).count())
     }
 
+    /** The head of a block: what stands before its `{` on the line, trimmed. */
+    private fun headOf(text: String, open: Int): String = text.substring(maxOf(0, open - 200), open).substringAfterLast('\n').trim()
+
+    /** The index of the `{` that encloses [at], skipping the blocks that closed before it; -1 at the top level. */
+    private fun enclosingOpen(text: String, at: Int): Int {
+        var depth = 0
+        var i = at - 1
+        while (i >= 0) {
+            when (text[i]) {
+                '}' -> depth++
+                '{' -> if (depth == 0) return i else depth--
+            }
+            i--
+        }
+        return -1
+    }
+
+    private val effectHead = Regex("""\b(LaunchedEffect|DisposableEffect|produceState|remember|snapshotFlow|derivedStateOf|SideEffect|rememberCoroutineScope)\b""")
+    private val onParamHead = Regex("""\bon[A-Z]\w*\s*=\s*$""")
+    private val funHead = Regex("""\bfun\s+(\w+)\s*\(""")
+    private val blockHead = Regex("""^(\}\s*)?(if|else|else if|for|while|when|try|catch|finally)\b|->\s*$|^else$""")
+
+    /** One effect that may call a button's function: the permission callback sets `grantedFor` only for a button's own tap. */
+    private val allowedEffects = setOf("LaunchedEffect(grantedFor)")
+
+    /**
+     * Why the call at [at] in [text] is not reached from a button, or null when it is: its enclosing lambda (climbing out
+     * of `if`/`else`/`when` blocks) must be an `on*` parameter (`onClick = {`), or a function whose every call is reached
+     * from a button in the same way. An effect, `produceState`, `remember` or any other lambda fails.
+     */
+    internal fun whyNotAButton(text: String, at: Int, seen: Set<String> = emptySet()): String? {
+        var open = enclosingOpen(text, at)
+        while (open >= 0) {
+            val head = headOf(text, open)
+            when {
+                onParamHead.containsMatchIn(head) -> return null
+                funHead.containsMatchIn(head) -> {
+                    val name = funHead.find(head)!!.groupValues[1]
+                    if (name in seen) return null
+                    val calls = Regex("""(?<![\w.])$name\(""").findAll(text).map { it.range.first }
+                        .filter { !funHead.containsMatchIn(text.substring(maxOf(0, it - 8), it + name.length + 1)) }.toList()
+                    if (calls.isEmpty()) return "function $name is never called from a button"
+                    return calls.firstNotNullOfOrNull { c -> whyNotAButton(text, c, seen + name)?.let { "via $name: $it" } }
+                }
+                effectHead.containsMatchIn(head) -> {
+                    val effect = effectHead.find(head)!!.value + head.substringAfter(effectHead.find(head)!!.value).substringBefore(")").let { "$it)" }
+                    return if (effect.replace(" ", "") in allowedEffects) null else "inside $effect"
+                }
+                blockHead.containsMatchIn(head) -> open = enclosingOpen(text, open)
+                else -> return "inside the lambda `$head`"
+            }
+        }
+        return "outside any lambda or function"
+    }
+
     @Test fun theControllersStartIsCalledOnlyFromTheButtonsOfTheMapAndTheHousePage() {
         val callers = mainSources.filter { Regex("placeCheck\\.start\\(").containsMatchIn(it.readText()) }.map { it.name }.sorted()
         assertEquals(listOf("HouseEditScreen.kt", "MapScreen.kt"), callers)
-        // Each call sits in a click handler (onClick, onHere, onCheck or the picker's onConfirm), never in an effect.
+        // Each call's enclosing lambda is an on* parameter (onClick, onHere, onCheck, onConfirm), or a function that only
+        // such lambdas call: never an effect, produceState or remember (S4b-FR-33).
         for (name in callers) {
-            val src = mainSources.single { it.name == name }.readLines()
-            src.forEachIndexed { i, line ->
-                if ("placeCheck.start(" in line) {
-                    val context = src.subList(maxOf(0, i - 6), i + 1).joinToString("\n")
-                    assertTrue("$name:${i + 1} is in a button handler", Regex("onClick|onHere|onCheck|onConfirm|checkHere").containsMatchIn(context))
-                    assertTrue("$name:${i + 1} is not in an effect", !Regex("LaunchedEffect|DisposableEffect|produceState|snapshotFlow").containsMatchIn(context))
-                }
+            val text = mainSources.single { it.name == name }.readText()
+            for (m in Regex("placeCheck\\.start\\(").findAll(text)) {
+                val line = text.substring(0, m.range.first).count { it == '\n' } + 1
+                assertEquals("$name:$line is called from a button", null, whyNotAButton(text, m.range.first))
             }
         }
+    }
+
+    @Test fun theCheckerRejectsAnEffectAProduceStateARememberAndAFunctionAnEffectCalls() {
+        fun problem(source: String): String? = whyNotAButton(source, source.indexOf("placeCheck.start("))
+        assertEquals(null, problem("Button(onClick = { placeCheck.start(HERE) })"))
+        assertEquals(null, problem("Row(\n    onConfirm = {\n        if (spot != null) placeCheck.start(SPOT)\n    },\n)"))
+        assertEquals(null, problem("fun checkHere() {\n placeCheck.start(HERE)\n}\nBox(onHere = { checkMenuOpen = false; checkHere() })"))
+        assertTrue(problem("LaunchedEffect(Unit) { placeCheck.start(HERE) }")!!.contains("LaunchedEffect"))
+        assertTrue(problem("LaunchedEffect(key) {\n if (a) {\n placeCheck.start(HERE)\n }\n}")!!.contains("LaunchedEffect"))
+        assertTrue(problem("val x by produceState(0) { placeCheck.start(HERE) }")!!.contains("produceState"))
+        assertTrue(problem("remember { placeCheck.start(HERE) }")!!.contains("remember"))
+        assertTrue(problem("DisposableEffect(a) { placeCheck.start(HERE); onDispose {} }")!!.contains("DisposableEffect"))
+        assertTrue(problem("scope.launch { placeCheck.start(HERE) }")!!.contains("launch"))
+        assertTrue(problem("fun checkHere() {\n placeCheck.start(HERE)\n}\nLaunchedEffect(Unit) { checkHere() }")!!.contains("checkHere"))
+        assertTrue(problem("fun checkHere() {\n placeCheck.start(HERE)\n}")!!.contains("never called"))
+        assertTrue(problem("placeCheck.start(HERE)")!!.contains("outside"))
+        // The one allowed effect: the permission callback's carry-on after a button's own tap.
+        assertEquals(null, problem("fun checkHere() {\n placeCheck.start(HERE)\n}\nLaunchedEffect(grantedFor) { checkHere() }"))
     }
 
     @Test fun theChecksFilesLogNothingRememberNothingAcrossARotationAndTouchNoNetworkOrStore() {
