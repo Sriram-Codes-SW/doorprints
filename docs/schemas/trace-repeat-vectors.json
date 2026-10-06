@@ -1,7 +1,7 @@
 {
  "format": "doorprints-trace-repeat-vectors/1",
  "status": "confirmed",
- "statusNote": "Written with the specification (docs/11 section 5.27.3), before any code. The first implementation (Kotlin and TypeScript) must run every case; if one fails, the specification or the case is corrected in a documented change to docs/11 and this file, never by editing an expected value to make a test pass. When both stacks pass every case, change status to \"confirmed\".",
+ "statusNote": "Written with the specification (docs/11 section 5.27.3), before any code. Both implementations (Kotlin TraceVectorsTest, TypeScript trace-repeats-vectors and trace-place-check-vectors specs) run every case and agree, so the status is confirmed. A later disagreement is corrected in a documented change to docs/11 and this file, never by editing an expected value to make a test pass.",
  "constants": {
   "earthRadiusM": 6371000,
   "densifyM": 10,
