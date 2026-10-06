@@ -148,6 +148,17 @@ class PhoneDeletionAuthorizerTest {
     }
 
     @Test
+    fun theTokenIsStampedAndAgedFromThePassNotFromTheGrantBeingRecorded() = runTest {
+        auth.passedAt = now - 20_000
+        val t = token()
+        assertEquals(now - 20_000, t.issuedAtMs)
+        now += 40_000
+        assertTrue(authorizer.stillHolds(t))
+        now += 1
+        assertFalse(authorizer.isGenuine(t), "61 s after the pass")
+    }
+
+    @Test
     fun theControllersOperationIdReachesTheDeviceCheckAndIsClearedAfter() = runTest {
         token("del-plan-a")
         assertEquals(listOf<String?>("del-plan-a", null), auth.boundHistory)
@@ -230,6 +241,7 @@ class PhoneDeletionAuthorizerTest {
         now -= 5_000
         assertEquals(Refusal.AUTHORIZATION_STALE, DeletionRules.authorizationProblem(future, DeletionLevel.L2, "op-2", now))
         assertFalse(authorizer.isGenuine(future))
+        assertFalse(authorizer.stillHolds(future))
     }
 
     @Test

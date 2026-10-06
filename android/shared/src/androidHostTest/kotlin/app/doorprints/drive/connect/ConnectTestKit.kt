@@ -194,6 +194,9 @@ class ProofingAuth(var signs: Boolean = true, private val clock: () -> Long) : F
     var bound: String? = null
     val boundHistory = mutableListOf<String?>()
     var proofs = 0
+
+    /** When the pass is stamped, if not at the moment of the ask (a prompt that took its time). */
+    var passedAt: Long? = null
     private var proved: OperationProofValue? = null
 
     override fun bindNext(operationId: String?) {
@@ -206,7 +209,7 @@ class ProofingAuth(var signs: Boolean = true, private val clock: () -> Long) : F
 
     override suspend fun authenticate(reason: String, level: app.doorprints.deviceauth.DeleteLevel): AuthResult {
         val result = super.authenticate(reason, level)
-        if (result == AuthResult.SUCCESS && signs) proved = OperationProofValue(clock(), "%064x".format(++proofs))
+        if (result == AuthResult.SUCCESS && signs) proved = OperationProofValue(passedAt ?: clock(), "%064x".format(++proofs))
         return result
     }
 }
