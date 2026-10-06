@@ -26,7 +26,9 @@ import androidx.arch.core.executor.TaskExecutor
 import java.util.concurrent.atomic.AtomicInteger
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
+import app.doorprints.ui.res.count_houses
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.isHeading
 import app.doorprints.ui.res.Res
@@ -34,7 +36,16 @@ import app.doorprints.ui.res.house_checklist
 import app.doorprints.ui.res.house_contact
 import app.doorprints.ui.res.house_cost
 import app.doorprints.ui.res.house_questions
+import app.doorprints.ui.res.common_try_again
+import app.doorprints.ui.res.compare_empty
+import app.doorprints.ui.res.houses_empty
+import app.doorprints.ui.res.settings_ai_use_own_key
+import app.doorprints.ui.res.settings_app_lock
+import app.doorprints.ui.res.settings_path_trace_clear
+import app.doorprints.shared.model.DefaultQuestions
 import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.getString
+import org.jetbrains.compose.resources.getPluralString
 import org.jetbrains.compose.resources.stringResource
 import android.os.LocaleList
 import android.os.Looper
@@ -186,7 +197,14 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
 
     private fun file(screen: String) = "src/test/screenshots/${screen}_${lang}_${if (dark) "dark" else "light"}.png"
 
-    private fun show(readyText: String? = null, content: @Composable () -> Unit) {
+    /**
+     * [readyText] is required at every call, so that a screen fed by Room or DataStore cannot be shot without saying what
+     * shows when its data is in (S4b-BL-138): a Room-backed screen draws only its heading (Compare) or nothing (the house
+     * list) until the first answer, and that frame is as stable as the final one, so [awaitStableFrame] alone accepted it
+     * when the answer was late (reproduced under load: `houses[ta-dark=true]`, `iosCompareEmpty[ta-dark=*]`). [STATIC]
+     * is the explicit "this screen shows no stored data, or its defaults are what the shot shows".
+     */
+    private fun show(readyText: String?, content: @Composable () -> Unit) {
         // Surface in the theme's background, as Root's Scaffold draws it around every screen.
         compose.setContent {
             // As MainActivity does: the screens read the platform's and the app's seams (ADR-23 CMP-3, CMP-5).
@@ -194,15 +212,27 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
                 DoorprintsTheme(dark = dark) { Surface(color = MaterialTheme.colorScheme.background) { content() } }
             }
         }
-        // A screen whose rows come from Room: wait for one of them, so a shot never captures the table before its rows (S4b-BL-100).
-        if (readyText != null) compose.waitUntil(10_000) { compose.onAllNodesWithText(readyText, substring = true).fetchSemanticsNodes().isNotEmpty() }
+        // Wait for the screen's own text, in Text or in a contentDescription (Export's counts are the latter), so a shot
+        // never captures the table before its rows (S4b-BL-100, S4b-BL-138). The wait pumps the effects dispatcher too:
+        // the screens' coroutines run on [effects], which only [settle] advances.
+        if (readyText != null) {
+            val ready = hasText(readyText, substring = true) or hasContentDescription(readyText, substring = true)
+            val deadline = System.nanoTime() + 20_000_000_000L
+            while (compose.onAllNodes(ready).fetchSemanticsNodes().isEmpty()) {
+                check(System.nanoTime() < deadline) { "'$readyText' did not show in 20 s" }
+                settle()
+            }
+        }
         awaitStableFrame()
     }
 
-    private fun shoot(screen: String, readyText: String? = null, content: @Composable () -> Unit) {
+    private fun shoot(screen: String, readyText: String?, content: @Composable () -> Unit) {
         show(readyText, content)
         compose.onRoot().captureRoboImage(file(screen))
     }
+
+    /** A string of the app in the shot's language (the default locale is set in [setUp]). */
+    private fun text(res: StringResource): String = runBlocking { getString(res) }
 
     /**
      * Room and DataStore answer on their own threads, which Compose's idling does not wait for (the Export screen's
@@ -281,11 +311,11 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
      * tall enough for the whole form (the test fails when the form scrolls), and the shots are English in both themes
      * and Hindi light only, to keep the image set small; [only] keeps the bands named (the iPhone's differ in one).
      */
-    private fun shootForm(screen: String, only: Set<String>? = null, content: @Composable () -> Unit) {
+    private fun shootForm(screen: String, readyText: String?, only: Set<String>? = null, content: @Composable () -> Unit) {
         assumeTrue(lang == "en" || (lang == "hi" && !dark))
         RuntimeEnvironment.setQualifiers("+h4800dp")
         val headings = mutableMapOf<String, String>()
-        show {
+        show(readyText) {
             bands.forEach { (name, res) -> if (res != null) headings[name] = stringResource(res) }
             content()
         }
@@ -322,7 +352,7 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
         "contact" to Res.string.house_contact,
     )
 
-    @Test fun houses() = shoot("houses") { HouseListScreen(onOpenHouse = {}) }
+    @Test fun houses() = shoot("houses", readyText = "Green View 2BHK") { HouseListScreen(onOpenHouse = {}) }
     @Test fun compare() = shoot("compare", readyText = "Green View 2BHK") {
         // As the root's Compare destination does (CMP-5): the houses (null until Room answers) and the visit counts.
         val repo = LocalAppServices.current.repository
@@ -331,7 +361,7 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
         CompareScreen(houses, counts, onOpenHouse = {})
     }
     /** The form of a saved house, in its bands (see [shootForm]). */
-    @Test fun houseEdit() = shootForm("house_edit") { HouseEditScreen(houseId = "a", newLat = null, newLon = null, visitId = null, onDone = {}) }
+    @Test fun houseEdit() = shootForm("house_edit", readyText = "Green View 2BHK") { HouseEditScreen(houseId = "a", newLat = null, newLon = null, visitId = null, onDone = {}) }
 
     /**
      * A new house's form as it opens, one screen high (its title and the top of the form; the rest is the edit form's,
@@ -339,9 +369,9 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
      */
     @Test fun houseNew() {
         assumeTrue(lang == "en" || (lang == "hi" && !dark))
-        shoot("house_new") { HouseEditScreen(houseId = null, newLat = 12.9716, newLon = 77.5946, visitId = null, onDone = {}) }
+        shoot("house_new", STATIC) { HouseEditScreen(houseId = null, newLat = 12.9716, newLon = 77.5946, visitId = null, onDone = {}) }
     }
-    @Test fun settings() = shoot("settings") { SettingsScreen() }
+    @Test fun settings() = shoot("settings", STATIC) { SettingsScreen() }
 
     /** Settings → AI features turned on with "Use my own Gemini key on this phone" chosen (docs/03 §13.1, ADR-26). */
     @Test fun settingsAiOwnKey() {
@@ -350,7 +380,7 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
             repo.setAiFeatures(true)
             repo.setAiProvider(AiProviderChoice.DEVICE)
         }
-        shoot("settings_ai_own_key") {
+        shoot("settings_ai_own_key", readyText = text(Res.string.settings_ai_use_own_key)) {
             val settings by repo.settings.settings.collectAsState(AppSettings())
             val off by repo.aiOff.collectAsState()
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) { AiSettingsSection(settings, off) }
@@ -365,7 +395,7 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
         shadowOf(context.getSystemService(KeyguardManager::class.java)).setIsDeviceSecure(true)
         val repo = context.container.repository
         runBlocking { repo.settings.saveAppLock(true) }
-        shoot("app_lock") {
+        shoot("app_lock", readyText = text(Res.string.settings_app_lock)) {
             val settings by repo.settings.settings.collectAsState(AppSettings())
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 AppLockSection(settings)
@@ -381,7 +411,7 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
             repo.settings.savePathTrace(true)
             repo.saveTrackPoint(TrackPointEntity(at = System.currentTimeMillis(), lat = 12.97, lon = 77.64, accuracyM = 8f))
         }
-        shoot("hunt_trace") {
+        shoot("hunt_trace", readyText = text(Res.string.settings_path_trace_clear)) {
             val settings by repo.settings.settings.collectAsState(AppSettings())
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) { PathTraceSection(settings) }
         }
@@ -391,7 +421,7 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
      * for offline* dialog's body with its estimate and the mobile-data note, over a fake store (the real one is
      * MapLibre's; a dialog window is not captured, so the body is shown as content).
      */
-    @Test fun offlineMaps() = shoot("offline_maps") {
+    @Test fun offlineMaps() = shoot("offline_maps", readyText = "Koramangala") {
         val fake = object : OfflineMapsServices {
             override val supported = true
             override val areas = MutableStateFlow(
@@ -420,7 +450,7 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
             repo.settings.markShared(priya.id, 1_759_900_000_000)
             repo.settings.addShareContact("Amma")
         }
-        shoot("share_updates") { ShareUpdatesScreen(onBack = {}) }
+        shoot("share_updates", readyText = "Priya") { ShareUpdatesScreen(onBack = {}) }
     }
     /**
      * Brokers (docs/11 5.25, slice 1b): Settings > Brokers with two brokers (one with a house, stars and an agency), and
@@ -438,7 +468,7 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
             repo.saveBroker(Broker(name = "Meena Iyer", agency = "Beach Road Realty"))
             id
         }
-        shoot("brokers") {
+        shoot("brokers", readyText = "Meena Iyer") {
             val brokers by repo.observeBrokers().collectAsState(initial = null)
             val houses by repo.brokerHouses(raviId).collectAsState(initial = emptyList())
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -459,7 +489,7 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
             HouseRoom("r1", "BEDROOM", "Master bedroom", 396, 366, 4, "Damp patch near the window", 0),
             HouseRoom("r2", "KITCHEN", null, 300, 244, null, null, 1),
         )
-        shoot("house_rooms") {
+        shoot("house_rooms", STATIC) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) { RoomsSection(rooms, LengthUnit.FT) {} }
         }
     }
@@ -476,7 +506,7 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
             repo.addCriterion("Pets allowed")
             repo.saveRatingShare(0.25)
         }
-        shoot("criteria") { CriteriaEditor() }
+        shoot("criteria", readyText = "Pets allowed") { CriteriaEditor() }
     }
     /**
      * Settings > Questions (docs/11 5.5, slice 3a): the bank seeded in the shot's language with the first defaults of
@@ -486,7 +516,7 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
         assumeTrue(lang == "en" || (lang == "hi" && !dark))
         val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
         runBlocking { repo.seedQuestions(lang) }
-        shoot("questions") { QuestionsEditor() }
+        shoot("questions", readyText = DefaultQuestions.ALL.first().question(lang).text) { QuestionsEditor() }
     }
     /**
      * Settings > Viewings (docs/11 5.8, slice 3b-1): an upcoming, a missed and a done viewing at a fixed clock, English
@@ -518,11 +548,11 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
             repo.saveAreaNote(AreaNote("n_11223344", areaId = "a_1f2e3d4c", text = "Water tanker every morning; the low streets flood in the monsoon."))
             repo.saveAreaNote(AreaNote("n_55667788", street = "MG Road", text = "Noisy after 9 pm: the bus depot is on the corner."))
         }
-        shoot("areas") { Column(Modifier.verticalScroll(rememberScrollState())) { AreasEditor(onOpenArea = {}) } }
+        shoot("areas", readyText = "Noisy after 9 pm") { Column(Modifier.verticalScroll(rememberScrollState())) { AreasEditor(onOpenArea = {}) } }
     }
-    @Test fun assistant() = shoot("assistant") { AssistantScreen(onOpenHouse = {}) }
-    @Test fun export() = shoot("export") { ExportScreen(onBack = {}) }
-    @Test fun import() = shoot("import") { ImportScreen(onBack = {}) }
+    @Test fun assistant() = shoot("assistant", readyText = text(Res.string.common_try_again)) { AssistantScreen(onOpenHouse = {}) }
+    @Test fun export() = shoot("export", readyText = countHouses(2)) { ExportScreen(onBack = {}) }
+    @Test fun import() = shoot("import", STATIC) { ImportScreen(onBack = {}) }
 
     /**
      * The screens that hide what the iPhone app does not have yet ([PlatformFeatures.Ios]), as the iOS shell provides
@@ -532,40 +562,46 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
      * photos without its Photos section; the empty list, Compare's empty state and the Assistant's "off" state as on
      * Android, pointing to the map. Android provides nothing, so the screens above are unchanged.
      */
-    private fun shootIos(screen: String, content: @Composable () -> Unit) = shoot("ios_$screen") {
+    private fun shootIos(screen: String, readyText: String?, content: @Composable () -> Unit) = shoot("ios_$screen", readyText) {
         CompositionLocalProvider(LocalPlatformFeatures provides PlatformFeatures.Ios, content = content)
     }
 
-    @Test fun iosMap() = shootIos("map") {
+    @Test fun iosMap() = shootIos("map", STATIC) {
         CompositionLocalProvider(LocalInspectionMode provides true) { MapScreen(onOpenHouse = {}, onNewHouse = { _, _ -> }) }
     }
-    @Test fun iosSettings() = shootIos("settings") { SettingsScreen() }
+    @Test fun iosSettings() = shootIos("settings", STATIC) { SettingsScreen() }
     @Test fun iosHousesEmpty() {
         val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
         runBlocking { listOf("a", "b").forEach { repo.deleteHouse(it) } }
-        shootIos("houses_empty") { HouseListScreen(onOpenHouse = {}) }
+        shootIos("houses_empty", readyText = text(Res.string.houses_empty)) { HouseListScreen(onOpenHouse = {}) }
     }
     // One house: fewer than Compare needs, so its empty state, without "Add a house on the map".
     @Test fun iosCompareEmpty() {
         val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
         runBlocking { repo.deleteHouse("b") }
-        shootIos("compare_empty") {
+        shootIos("compare_empty", readyText = text(Res.string.compare_empty)) {
             val houses by LocalAppServices.current.repository.houses.collectAsState(initial = null)
             val counts by LocalAppServices.current.repository.visitCounts.collectAsState(initial = emptyList())
             CompareScreen(houses, counts, onOpenHouse = {})
         }
     }
     // The Assistant with AI off (as in the Android shot): Try again, without "Go to the map".
-    @Test fun iosAssistant() = shootIos("assistant") { AssistantScreen(onOpenHouse = {}) }
+    @Test fun iosAssistant() = shootIos("assistant", readyText = text(Res.string.common_try_again)) { AssistantScreen(onOpenHouse = {}) }
     // The form's last band, from Contact to the end: the listing and Visits with no Photos section between them (the
     // house has no photos). The bands above it are the same as Android's.
-    @Test fun iosHouseEdit() = shootForm("ios_house_edit", only = setOf("contact")) {
+    @Test fun iosHouseEdit() = shootForm("ios_house_edit", readyText = "Green View 2BHK", only = setOf("contact")) {
         CompositionLocalProvider(LocalPlatformFeatures provides PlatformFeatures.Ios) {
             HouseEditScreen(houseId = "a", newLat = null, newLon = null, visitId = null, onDone = {})
         }
     }
 
+    /** Export's count of houses as it reads in the shot's language (two houses are saved in [setUp]). */
+    private fun countHouses(n: Int): String = runBlocking { getPluralString(Res.plurals.count_houses, n, n) }
+
     companion object {
+        /** No stored data on this screen (or its defaults are the shot): nothing to wait for but the stable frame. */
+        private val STATIC: String? = null
+
         @JvmStatic
         @ParameterizedRobolectricTestRunner.Parameters(name = "{0}-dark={1}")
         fun params(): List<Array<Any>> = listOf("en", "hi", "ta", "te").flatMap { l -> listOf(false, true).map { arrayOf<Any>(l, it) } }
