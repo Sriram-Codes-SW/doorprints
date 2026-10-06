@@ -32,10 +32,12 @@ import {
   baseLines,
   checkGeoJson,
   checkLayersJson,
+  MAX_DRAWN_POINTS,
   legendDashArray,
   repeatFactor,
   repeatVisibility,
   repeatWidthExpression,
+  thinLine,
   trackGeoJson,
   trackLayerJson,
   trackRepeatLayerJson,
@@ -169,5 +171,92 @@ describe('trace style: the place check layers', () => {
     expect(fc.features).toHaveLength(1);
     expect(fc.features[0].geometry.type).toBe('LineString');
     expect(checkGeoJson([])).toEqual({ type: 'FeatureCollection', features: [] });
+  });
+});
+
+describe('the drawing cap (S4b-FR-31): the points drawn are thinned, never the points the detection reads', () => {
+  const line = (n: number): [number, number][] => Array.from({ length: n }, (_, i) => [i, 0]);
+  /** A walk of `n` points 10 m apart going north, one id per walk. */
+  const north = (key: string, n: number, east = 0): TraceWalk => walk(key, Array.from({ length: n }, (_, i) => p(i * 1e-4, east, i * 10_000)));
+  const baseCount = (fc: ReturnType<typeof trackGeoJson>) => fc.features.filter((f) => f.properties['kind'] === 'base').reduce((n, f) => n + f.geometry.coordinates.length, 0);
+
+  it('thinLine keeps every stride-th point and always the first and the last, without a repeated last', () => {
+    expect(thinLine(line(10), 3).map((c) => c[0])).toEqual([0, 3, 6, 9]);
+    expect(thinLine(line(11), 3).map((c) => c[0])).toEqual([0, 3, 6, 9, 10]);
+    expect(thinLine(line(10), 1)).toEqual(line(10));
+    expect(thinLine(line(2), 5)).toEqual(line(2));
+    expect(thinLine(line(7), 100).map((c) => c[0])).toEqual([0, 6]);
+  });
+
+  it('draws every point up to the cap, exactly at the cap included', () => {
+    const w = north('a', 100);
+    expect(baseCount(trackGeoJson([w], [], 100))).toBe(100);
+    expect(baseCount(trackGeoJson([w], [], 101))).toBe(100);
+  });
+
+  it('one point over the cap thins by 2 and keeps the first and the last point of the line', () => {
+    const w = north('a', 101);
+    const fc = trackGeoJson([w], [], 100);
+    const coords = fc.features[0].geometry.coordinates;
+    expect(coords).toHaveLength(51); // indexes 0, 2, ..., 100: the last is already a multiple of the stride, so it is not added twice
+    expect(coords[0]).toEqual([0, 0]);
+    expect(coords[coords.length - 1]).toEqual([0, 100e-4]);
+  });
+
+  it('thins every walk by the same stride from the total, and never drops a walk or its ends', () => {
+    const walks = [north('a', 60, 0), north('b', 60, 1), north('c', 60, 2)];
+    const fc = trackGeoJson(walks, [], 90); // 180 points: stride 2
+    expect(fc.features.map((f) => f.properties['key'])).toEqual(['a', 'b', 'c']);
+    for (const [i, f] of fc.features.entries()) {
+      expect(f.geometry.coordinates).toHaveLength(31); // 0, 2, ..., 58 and the last, 59
+      expect(f.geometry.coordinates[0]).toEqual([i, 0]);
+      expect(f.geometry.coordinates[30]).toEqual([i, 59e-4]);
+    }
+  });
+
+  it('cuts at a resumed point as before, and each piece keeps its own first and last point', () => {
+    const pts = [...north('a', 50).points, ...north('a', 50).points.map((q, i) => p(q.lat + 1, 0, 1_000_000 + i * 10_000, i === 0))];
+    const fc = trackGeoJson([walk('a', pts)], [], 30);
+    expect(fc.features).toHaveLength(2);
+    expect(fc.features[0].geometry.coordinates[0]).toEqual([0, 0]);
+    expect(fc.features[0].geometry.coordinates.at(-1)).toEqual([0, 49e-4]);
+    expect(fc.features[1].geometry.coordinates[0]).toEqual([0, 1]);
+    expect(fc.features[1].geometry.coordinates.at(-1)).toEqual([0, 1 + 49e-4]);
+  });
+
+  it('thins a repeat stretch with the same stride, keeping its ends, and leaves the stretch the detection found alone', () => {
+    const w = north('a', 100);
+    const arc = walkSamples(w.points).arc;
+    const stretch = { fromM: arc[10], toM: arc[arc.length - 10] };
+    const repeats = [{ repeated: [stretch], shown: [stretch] }];
+    const whole = trackGeoJson([w], repeats, 1_000).features.find((f) => f.properties['kind'] === 'repeat')!;
+    const thin = trackGeoJson([w], repeats, 25).features.find((f) => f.properties['kind'] === 'repeat')!;
+    expect(thin.geometry.coordinates.length).toBeLessThan(whole.geometry.coordinates.length / 3);
+    expect(thin.geometry.coordinates[0]).toEqual(whole.geometry.coordinates[0]);
+    expect(thin.geometry.coordinates.at(-1)).toEqual(whole.geometry.coordinates.at(-1));
+    expect(repeats[0].shown[0]).toEqual({ fromM: arc[10], toM: arc[arc.length - 10] });
+  });
+
+  it('does not change the walks it is given', () => {
+    const w = north('a', 100);
+    const before = JSON.stringify(w);
+    trackGeoJson([w], [], 10);
+    expect(JSON.stringify(w)).toBe(before);
+  });
+
+  it('the worst case, 200 saved walks of 5000 points, is drawn within the cap plus the two ends of each line', () => {
+    const walks = Array.from({ length: 200 }, (_, k) => north(`s:${k}`, 5_000, k));
+    const fc = trackGeoJson(walks, []);
+    expect(fc.features).toHaveLength(200);
+    expect(baseCount(fc)).toBeLessThanOrEqual(MAX_DRAWN_POINTS + 2 * 200);
+    expect(baseCount(fc)).toBeGreaterThan(MAX_DRAWN_POINTS / 2);
+    for (const f of fc.features) {
+      expect(f.geometry.coordinates[0][1]).toBe(0);
+      expect(f.geometry.coordinates.at(-1)![1]).toBeCloseTo(4_999e-4, 9);
+    }
+  });
+
+  it('keeps the cap at 40 000 points: twice what the detection reads', () => {
+    expect(MAX_DRAWN_POINTS).toBe(40_000);
   });
 });

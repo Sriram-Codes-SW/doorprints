@@ -188,6 +188,28 @@ describe('detectRepeats', () => {
     expect(repeatedCount, 'the city must hold repeats, or the comparison proves nothing').toBeGreaterThan(10);
   });
 
+  it('finds a stretch along one very long segment (more than 400 grid cells: kept apart and always tried), as the plain loops do', () => {
+    // One segment of 3.4 km across the diagonal of the grid: its box is 24 x 24 cells, over the 400-cell limit.
+    const a = walk('long', [at(0, 0, 0), at(2400, 2400, 40 * 60_000)]);
+    const b = walk('b', Array.from({ length: 21 }, (_, i) => at(1000 + i * 15 + 3, 1000 + i * 15, DAY + i * 15_000)));
+    const indexed = detectRepeats([a, b]);
+    expect(indexed).toEqual(detectRepeats([a, b], { plain: true }));
+    expect(indexed[1].repeated).toHaveLength(1);
+    expect(indexed[0].repeated).toHaveLength(1);
+    expect(indexed[1].repeated[0].toM - indexed[1].repeated[0].fromM).toBeGreaterThan(280);
+  });
+
+  it('with two walks tied on their first point the later one is read first when the budget fits only one of them', () => {
+    const newest = walk('new', street(0, 200, 2 * DAY));
+    const tiedFirst = walk('tied-0', street(500, 200, DAY)); // nowhere near the street
+    const tiedSecond = walk('tied-1', street(2, 200, DAY)); // along the newest walk's street
+    const budget = newest.points.length + tiedSecond.points.length;
+    const res = detectRepeats([tiedFirst, tiedSecond, newest], { maxPoints: budget });
+    expect(res[0]).toEqual({ repeated: [], shown: [] }); // left out: the earlier index loses the tie
+    expect(res[1].repeated).toHaveLength(1);
+    expect(res[2].repeated).toHaveLength(1);
+  });
+
   it('reads the newest walks first and whole walks only, up to the point budget', () => {
     const a = walk('old', street(0, 200, 0));
     const b = walk('mid', street(3, 200, DAY));

@@ -62,7 +62,10 @@ export interface PlaceCheckResult {
 }
 
 export interface PlaceCheckOptions {
-  /** Overrides {@link TRACE.toleranceM} (the unit test that pins the inclusive bound passes the computed distance). */
+  /**
+   * TEST ONLY. Overrides {@link TRACE.toleranceM} for the *walked* bound (the unit test that pins the inclusive bound passes
+   * the computed distance); never read by the app, and it does not move the `fuzzy` flag (that uses the constant).
+   */
   readonly toleranceM?: number;
   /** Switches off the cheap box rejection (the random-city test compares the two). */
   readonly noBoxRejection?: boolean;
@@ -85,6 +88,32 @@ export function withoutSavedDuplicates(walks: readonly PlaceWalk[]): number[] {
   return keep;
 }
 
+/**
+ * The points of a walk that can matter to `placeCheck(place, ...)`: all of them when the walk's bounding box reaches the
+ * place's box (the near band grown by 1%, the same box the check rejects segments by), else just its first segment (two
+ * points), which keeps the walk counted as a walk (a walk with a segment makes the answer *no*, not *empty*) without
+ * keeping its points. The answer is exactly the same as with every point; the store uses it to let go of a saved walk
+ * that is nowhere near the place before it reads the next one (docs/11 5.27.13: one saved walk at a time).
+ */
+export function pointsThatCanMatter(points: readonly TracePoint[], place: { readonly lat: number; readonly lon: number }): readonly TracePoint[] {
+  let minLat = Infinity;
+  let maxLat = -Infinity;
+  let minLon = Infinity;
+  let maxLon = -Infinity;
+  for (const p of points) {
+    if (p.lat < minLat) minLat = p.lat;
+    if (p.lat > maxLat) maxLat = p.lat;
+    if (p.lon < minLon) minLon = p.lon;
+    if (p.lon > maxLon) maxLon = p.lon;
+  }
+  const dLat = (TRACE.nearBandM * 1.01) / K;
+  const dLon = (TRACE.nearBandM * 1.01) / (K * Math.max(Math.cos((place.lat * Math.PI) / 180), 1e-9));
+  const reaches = maxLat >= place.lat - dLat && minLat <= place.lat + dLat && maxLon >= place.lon - dLon && minLon <= place.lon + dLon;
+  if (reaches) return points;
+  const i = points.findIndex((p, at) => at > 0 && p.resumed !== true);
+  return i < 0 ? points.slice(0, 2) : [points[i - 1], points[i]];
+}
+
 /** The answer for `place`: `fixAccuracyM` is given only for the *here* source (one fresh location fix). */
 export function placeCheck(
   place: { readonly lat: number; readonly lon: number },
@@ -97,7 +126,9 @@ export function placeCheck(
   const fix = fixAccuracyM ?? null;
   if (fix !== null && (!Number.isFinite(fix) || fix < 0 || fix > TRACE.maxFixAccuracyM)) return RESULT('IMPRECISE');
   const tolerance = options.toleranceM ?? TRACE.toleranceM;
-  const fuzzy = fix !== null && fix > tolerance;
+  // `fuzzy` always compares with the walked constant (the phones do): `options.toleranceM` is a test-only override of the walked
+  // bound, never of the fix's quality.
+  const fuzzy = fix !== null && fix > TRACE.toleranceM;
 
   // 2-3. One row per walk with a segment, at its nearest point; a fragment is no walk.
   const band = TRACE.nearBandM;

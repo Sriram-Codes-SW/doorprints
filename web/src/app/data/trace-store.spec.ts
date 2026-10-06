@@ -215,6 +215,13 @@ describe('TraceStore', () => {
       expect(await traceRows()).toHaveLength(1);
     });
 
+    it('saves a walk of exactly 2 points and refuses 1 (S4b-FR-35: a walk needs at least 2 points, as on the phones)', async () => {
+      await putWalk([pt(0, id0, id0), pt(20, id0 + 15_000, id0)]);
+      expect((await store.saveWalk(id0, 'h1', NOW)).ok).toBe(true);
+      await putWalk([pt(0, id0 + DAY, id0 + DAY)]);
+      expect(await store.saveWalk(id0 + DAY, 'h1', NOW)).toEqual({ ok: false, reason: 'noWalk' });
+    });
+
     it('refuses a walk of more than 5 000 points (the limit is on the points, not the saving)', async () => {
       const db = await local.database();
       const rows: TracePointRow[] = Array.from({ length: TRACE.maxWalkPoints + 1 }, (_, i) => ({ id: `${id0}-${id0 + i * 1000}`, walk: id0, at: id0 + i * 1000, lat: 13, lon: 80, acc: 5 }));

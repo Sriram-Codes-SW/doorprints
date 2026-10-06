@@ -3,8 +3,8 @@
   "mutations": [
     {
       "file": "web/src/app/data/trace-store.ts",
-      "find": "filter((r) => r.at < cutoff)",
-      "replace": "filter((r) => r.at <= cutoff)",
+      "find": "const old = (await db.getAll<TracePointRow>('trace_points')).filter((r) => r.at < cutoff)",
+      "replace": "const old = (await db.getAll<TracePointRow>('trace_points')).filter((r) => r.at <= cutoff)",
       "expect": "prunes the points older than 30 days"
     },
     {
@@ -138,6 +138,12 @@
       "find": "return { ok: false, reason: err.reason as 'noWalk' | 'houseFull' | 'deviceFull' };",
       "replace": "return { ok: false, reason: 'noWalk' };",
       "expect": "two tabs saving two walks to a house that holds 19"
+    },
+    {
+      "file": "web/src/app/data/trace-store.ts",
+      "find": "if (points.length < 2) return { ok: false, reason: 'noWalk' };",
+      "replace": "if (points.length < 3) return { ok: false, reason: 'noWalk' };",
+      "expect": "saves a walk of exactly 2 points"
     }
   ]
 }
