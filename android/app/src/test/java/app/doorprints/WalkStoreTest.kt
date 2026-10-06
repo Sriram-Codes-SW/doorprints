@@ -119,6 +119,17 @@ class WalkStoreTest {
     )
 
     @Test
+    fun aWalkOfOnePointIsNotSaveableAndTwoPointsAre() = runBlocking {
+        db.houses().upsert(house("h1"))
+        trace(1000, 1)
+        assertTrue("one point is no walk (the website needs two as well)", store.saveWalk("h1", 1000) is SaveWalkResult.NoSuchWalk)
+        assertEquals("nothing changed", 1, db.track().ofWalk(1000).size)
+        assertEquals(0, db.savedWalks().count())
+        trace(2000, 2)
+        assertTrue(store.saveWalk("h1", 2000) is SaveWalkResult.Saved)
+    }
+
+    @Test
     fun savingMovesTheWalkIntoOneRowAndTheTraceKeepsNothingOfIt() = runBlocking {
         db.houses().upsert(house("h1"))
         trace(1000, 6); trace(900_000_000, 3) // another walk stays

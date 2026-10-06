@@ -83,7 +83,7 @@ class WalkStore(
         if (house == null || house.deleted) return@withImmediateTransaction SaveWalkResult.NoSuchHouse
         if (walkId == 0L) return@withImmediateTransaction SaveWalkResult.NoSuchWalk // 0 is no id: never a whole old trace
         val points = db.track().ofWalk(walkId)
-        if (points.isEmpty()) return@withImmediateTransaction SaveWalkResult.NoSuchWalk
+        if (points.size < 2) return@withImmediateTransaction SaveWalkResult.NoSuchWalk // one point is no walk (as the website)
         if (points.size > TraceConstants.MAX_WALK_POINTS) return@withImmediateTransaction SaveWalkResult.TooLong
         if (db.savedWalks().countForHouse(houseId) >= TraceConstants.MAX_WALKS_PER_HOUSE) {
             return@withImmediateTransaction SaveWalkResult.HouseFull
