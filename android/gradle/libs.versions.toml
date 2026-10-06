@@ -64,6 +64,9 @@ androidx-work = "2.12.0"
 androidx-datastore = "1.1.7"
 androidx-exifinterface = "1.4.2"
 play-services-location = "21.4.0"
+# Google Play services Authorization API (AuthorizationClient) for the Drive token on Android (docs/15 §5.5 fallback row,
+# S4b-BL-117). Scope drive.file only; Play services keeps and refreshes the grant, the app holds the token in memory.
+play-services-auth = "21.6.0"
 coil = "3.6.3"
 maplibre = "13.6.1"
 junit = "4.13.2"
@@ -121,6 +124,7 @@ androidx-datastore-preferences = { module = "androidx.datastore:datastore-prefer
 androidx-datastore-preferences-core = { module = "androidx.datastore:datastore-preferences-core", version.ref = "androidx-datastore" }
 androidx-exifinterface = { module = "androidx.exifinterface:exifinterface", version.ref = "androidx-exifinterface" }
 
+play-services-auth = { module = "com.google.android.gms:play-services-auth", version.ref = "play-services-auth" }
 play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "play-services-location" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-play-services = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-play-services", version.ref = "kotlinx-coroutines" }

@@ -157,6 +157,8 @@ dependencies {
     implementation(libs.androidx.exifinterface)
 
     implementation(libs.play.services.location)
+    // Drive access token on Android (drive/auth, S4b-BL-117): AuthorizationClient, scope drive.file only.
+    implementation(libs.play.services.auth)
     implementation(libs.kotlinx.coroutines.play.services)
     // JSON in the export, import and Assistant code (the Room checklist converter moved to :shared in CMP-4 P4a).
     implementation(libs.kotlinx.serialization.json)
