@@ -33,14 +33,14 @@
     },
     {
       "file": "web/src/app/pages/map/trace-view.ts",
-      "find": "await this.findAsk(this.recorder.liveWalkId());",
-      "replace": "await this.findAsk(0);",
+      "find": "await this.load({ prune: true, ask: this.recorder.liveWalkId() });",
+      "replace": "await this.load({ prune: true, ask: 0 });",
       "expect": "never the live one"
     },
     {
       "file": "web/src/app/pages/map/trace-view.ts",
-      "find": "      await this.store.prune(Date.now());\n      await this.refresh();\n      await this.findAsk(this.recorder.liveWalkId());",
-      "replace": "      await this.refresh();\n      await this.findAsk(this.recorder.liveWalkId());",
+      "find": "await this.load({ prune: true, ask: this.recorder.liveWalkId() });",
+      "replace": "await this.load({ ask: this.recorder.liveWalkId() });",
       "expect": "prunes a trace older than 30 days at opening"
     },
     {

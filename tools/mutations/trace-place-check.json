@@ -87,8 +87,8 @@
     },
     {
       "file": "web/src/app/shared/trace-place-check.ts",
-      "find": "  const fuzzy = fix !== null && fix > tolerance;",
-      "replace": "  const fuzzy = false;",
+      "find": "const fuzzy = fix !== null && fix > TRACE.toleranceM;",
+      "replace": "const fuzzy = false;",
       "expect": "pc-accuracy-exactly-50-m-is-accept"
     },
     {
