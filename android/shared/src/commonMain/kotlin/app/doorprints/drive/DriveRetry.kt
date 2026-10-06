@@ -94,9 +94,10 @@ class DriveRetry(
 
 /**
  * One request with a token from [tokens]: on a 401 the token is reported ([TokenProvider.onRejected]) and the request
- * made once more with the next one; a second 401 is thrown. Both clients use it, so they agree.
+ * made once more with the next one; a second 401 is thrown. Both clients use it, so they agree. Public (not `internal`) so
+ * the fake Drive, which `:app`'s tests compile from `:shared`'s commonTest, runs this rule and not a copy of it.
  */
-internal suspend fun <T> authorized(tokens: TokenProvider, block: suspend (token: String) -> T): T {
+suspend fun <T> authorized(tokens: TokenProvider, block: suspend (token: String) -> T): T {
     val first = tokens.accessToken()
     return try {
         block(first)

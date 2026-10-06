@@ -132,6 +132,7 @@ android {
 
 // The Drive wiring's tests run the real services on the same in-memory Drive as :shared's tests (S4b-BL-117/-118): two
 // files of :shared's commonTest (the fake and its faults) are compiled into this module's unit tests; the rest of that folder is not.
+// The one thing the fake needs from :shared's production code is `authorized` (DriveRetry.kt), which is public for that.
 android.sourceSets.getByName("test").kotlin.directories.add("../shared/src/commonTest/kotlin/app/doorprints/drive")
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
     exclude { it.file.path.contains("/shared/src/commonTest/") && it.file.name !in setOf("InMemoryFakeDrive.kt", "FakeDriveFaults.kt") }
