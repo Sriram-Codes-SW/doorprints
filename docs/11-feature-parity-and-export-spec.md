@@ -1005,8 +1005,7 @@ before the live walk's first point** (`live.first.atMs - other.last.atMs < WALK_
 the alert only; the Map's detection still marks the street (vectors `alert-not-for-the-walk-just-finished` and
 `alert-walk-finished-30-minutes-ago-counts`; open question 1). At each kept point `P` of the live walk (index 0 never
 alerts), build the live walk's samples up to `P` and the near flags and bridging of steps 3 to 5 against the others (the live
-walk is W). If `P` (the last sample) is not near: no alert, and `blocked` becomes false **only when the trailing series of
-non-near samples (ending at `P`, before bridging) is longer than `BRIDGE_M` along the walk**, that is, when bridging could no
+walk is W). If `P` (the last sample) is not near: no alert, and `blocked` becomes false **only when `arc(P) - arc(last near sample) > BRIDGE_M`** (that is, the arc length from the last near sample to `P` exceeds `BRIDGE_M`), which means bridging could no
 longer join `P` to the run behind it (or there is no run behind it, or a part boundary lies between). One or two off samples
 inside a run neither ring nor unblock (the vector `alert-one-bad-fix-does-not-ring-again`: one fix 40 m off the street, inside
 the 50 m gate, must not ring the same street again after the cooldown). Otherwise the **trailing run** is the series of near

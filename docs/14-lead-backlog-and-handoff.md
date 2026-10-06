@@ -103,6 +103,7 @@
 | 0.92 | 2026-10-06 | Claude, lead | N20 updated after the senior review of the path trace spec (GO with changes, all applied): 14 open questions, 37 vectors, tickets S4b-FR-13..18; the website's Hunt mode while a page is open is a PROPOSED follow-up (S4b-FR-19..23, [11](11-feature-parity-and-export-spec.md) 5.27.12), not scheduled, three owner decisions open. |
 | 0.93 | 2026-10-06 | Claude (Code), lead | N20 gains **S4b-FR-24**, the on-demand place check *Have I been here?* ([11](11-feature-parity-and-export-spec.md) 5.27.13, FR-108, PRV-032, T-I42, TC-U-153..154, TC-M-61, MT-81): order, owner questions 15 to 17. |
 | 0.94 | 2026-10-06 | Claude, lead | N20: the 'Have I been here?' check (FR-108, S4b-FR-24) is specified and reviewed; the website integration plan is docs/03 §6.2b; decided: the website's *Here* is a 15 s best-fix watch, the list-wide 'mark houses I walked past' is LATER (question 18), questions 15-17 as recommended. |
+| 0.95 | 2026-10-06 | Claude, lead | N20 user guide design phase complete: **S4b-FR-18** (guide and docs) language work done; *Your paths* page in `guide/docs` and `guide/i18n/{hi,ta,te}/` created in English (en), Hindi (hi), Tamil (ta), and Telugu (te, all marked *under review*); guide navigation updated; wording fix applied to docs/11 5.27.3 (alert unblock rule clarified as `arc(P) - arc(last near sample) > BRIDGE_M`); status notes to follow in docs/10 and docs/14. |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 
