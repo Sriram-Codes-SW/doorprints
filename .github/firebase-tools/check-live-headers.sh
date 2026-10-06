@@ -221,6 +221,21 @@ else
   fi
 fi
 
+# 5. MapLibre GL worker files (S4b-BL-54): deployed to /maplibre-gl-worker.mjs and /maplibre-gl-shared.mjs per
+#    angular.json assets output "/". The "**" rewrite would answer missing files with index.html and HTTP 200, so
+#    content-type proves the files themselves are served (not the app shell).
+for path in /maplibre-gl-worker.mjs /maplibre-gl-shared.mjs; do
+  name=$(printf '%s' "${path#/}" | tr -c '[:lower:]' '_')
+  status=$(fetch "$path" "$name")
+  ctype=$(header "${work}/${name}.h" content-type)
+  echo "--- ${base}${path} (HTTP ${status}): Content-Type: ${ctype:-(none)}"
+  if [ "$status" != "200" ]; then
+    fail "${path} answered HTTP ${status}, expected 200$(last_error "$name")"
+    continue
+  fi
+  printf '%s' "$ctype" | grep -qi 'javascript' || fail "${path}: Content-Type is '${ctype:-missing}', expected JavaScript (a missing file is answered with index.html)"
+done
+
 rm -rf "$work"
 if [ "$errors" -gt 0 ]; then
   echo "${errors} problem(s): ${base} does not serve what web/firebase.json promises (RR-11)."
