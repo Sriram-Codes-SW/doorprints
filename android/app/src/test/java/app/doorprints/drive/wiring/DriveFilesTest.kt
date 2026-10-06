@@ -120,7 +120,7 @@ class DriveFilesTest {
 
     private val watermark = KeysWatermark(1, 1L, ByteArray(16) { 1 }, ByteArray(32) { 2 })
 
-    private fun probe(stores: DriveFileStores, dir: File) = FolderPinProbe(stores.driveState, File(dir, "trust"))
+    private fun probe(stores: DriveFileStores, dir: File) = FolderPinProbe({ stores.driveState.loadNow().rootId }, File(dir, "trust"))
 
     @Test
     fun noFolderMeansNoPin() {
@@ -170,10 +170,127 @@ class DriveFilesTest {
     @Test
     fun aStateThatCannotBeReadIsTreatedAsPinnedNotAsFree() {
         val dir = tmp.newFolder("a")
-        val failing = object : app.doorprints.drive.backup.DriveStateStore {
-            override suspend fun load(): DriveDeviceState = throw java.io.IOException("disk")
-            override suspend fun save(state: DriveDeviceState) = Unit
-        }
-        assertTrue(FolderPinProbe(failing, File(dir, "trust")).isPinned())
+        assertTrue(FolderPinProbe({ throw java.io.IOException("disk") }, File(dir, "trust")).isPinned())
+    }
+
+    @Test
+    fun theStoredRootIsReadWithoutSuspending() = runBlocking {
+        val dir = tmp.newFolder("a")
+        val stores = DriveFileStores(dir)
+        stores.driveState.save(DriveDeviceState(rootId = "root1", deviceId = "d1"))
+        assertEquals(stores.driveState.load(), stores.driveState.loadNow())
+        // A damaged file reads as "nothing stored", as load() does.
+        java.io.File(dir, "drive-state.json").writeText("{not json")
+        assertNull(stores.driveState.loadNow().rootId)
+    }
+
+    // ---- the prefs file is parsed once while it is unchanged, and a phone that never used Drive has none ----
+
+    @Test
+    fun anUnchangedPrefsFileIsParsedOnceNoMatterHowOftenItIsAsked() {
+        val file = File(tmp.newFolder("p1"), "prefs.json")
+        val prefs = FileDrivePrefs(file)
+        prefs.put("a", "1")
+        repeat(20) { prefs.get("a"); prefs.get("b"); prefs.engaged }
+        assertEquals(1, prefs.parses)
+        assertEquals("1", prefs.get("a"))
+        assertNull(prefs.get("b"))
+    }
+
+    @Test
+    fun aWriteIsSeenByTheNextRead() {
+        val prefs = FileDrivePrefs(File(tmp.newFolder("p2"), "prefs.json"))
+        prefs.put("a", "1")
+        assertEquals("1", prefs.get("a"))
+        prefs.put("a", "2")
+        assertEquals("2", prefs.get("a"))
+        prefs.engaged = true
+        assertTrue(prefs.engaged)
+        prefs.engaged = false
+        assertFalse(prefs.engaged)
+    }
+
+    @Test
+    fun anotherInstanceOverTheSameFileSeesAChangeBecauseTheFileChanged() {
+        val file = File(tmp.newFolder("p3"), "prefs.json")
+        val reader = FileDrivePrefs(file)
+        val writer = FileDrivePrefs(file)
+        writer.put("a", "1")
+        assertEquals("1", reader.get("a"))
+        writer.put("b", "x")
+        assertEquals("x", reader.get("b"))
+        assertEquals("the file changed: parsed again", 2, reader.parses)
+    }
+
+    @Test
+    fun aMissingOrDamagedFileReadsAsNothingSetAndNoFileMeansNeverUsed() {
+        val dir = tmp.newFolder("p4")
+        val file = File(dir, "prefs.json")
+        val prefs = FileDrivePrefs(file)
+        assertFalse(prefs.exists())
+        assertNull(prefs.get("a"))
+        assertEquals(0, prefs.parses)
+        file.writeText("{broken")
+        assertTrue(prefs.exists())
+        assertNull(prefs.get("a"))
+        prefs.put("a", "1")
+        assertEquals("1", prefs.get("a"))
+    }
+
+    @Test
+    fun aPhoneThatNeverUsedDriveSchedulesNothingAtStart() {
+        val prefs = FileDrivePrefs(File(tmp.newFolder("w1"), "prefs.json"))
+        val calls = mutableListOf<Boolean>()
+        DriveWork.reschedule(prefs) { calls += it }
+        assertEquals("no cancel and no enqueue at every start", emptyList<Boolean>(), calls)
+    }
+
+    @Test
+    fun theWorkFollowsInUseAndAutomaticBackupOnce() {
+        val prefs = FileDrivePrefs(File(tmp.newFolder("w2"), "prefs.json"))
+        val calls = mutableListOf<Boolean>()
+        prefs.put("doorprints.drive.autoBackup", "1")
+        DriveWork.reschedule(prefs) { calls += it }
+        assertEquals("on but not in use: off", listOf(false), calls)
+        prefs.engaged = true
+        DriveWork.reschedule(prefs) { calls += it }
+        assertEquals(listOf(false, true), calls)
+        prefs.put("doorprints.drive.autoBackup", "0")
+        DriveWork.reschedule(prefs) { calls += it }
+        assertEquals(listOf(false, true, false), calls)
+        assertEquals("the file was read through the memo, not once per question", true, prefs.parses <= 4)
+    }
+
+    @Test
+    fun theLockStoreKeepsTheKeyStoreFaultAcrossInstancesAndClearsIt() {
+        val file = File(tmp.newFolder("lock"), "lock.json")
+        val first = FileDriveLockStore(file)
+        first.paused = true
+        first.keyStoreFault = true
+        val second = FileDriveLockStore(file)
+        assertTrue(second.keyStoreFault)
+        assertTrue("setting one flag keeps the others", second.paused)
+        second.keyDropped = true
+        assertTrue(second.keyStoreFault)
+        second.clear()
+        assertFalse(FileDriveLockStore(file).keyStoreFault)
+        assertFalse(FileDriveLockStore(file).paused)
+    }
+
+    @Test
+    fun aLockFileFromBeforeTheKeyStoreFaultReadsAsNoFault() {
+        val file = File(tmp.newFolder("old"), "lock.json")
+        file.writeText("{\"paused\":true,\"needsReenrolment\":true,\"keyDropped\":false}")
+        val store = FileDriveLockStore(file)
+        assertTrue(store.paused)
+        assertFalse(store.keyStoreFault)
+    }
+
+    @Test
+    fun theProbeIsNeverBuiltOnRunBlockingBecauseItRunsOnTheMainThread() {
+        val source = File("src/main/java/app/doorprints/drive/wiring/DriveFiles.kt").readText()
+        val probe = source.substring(source.indexOf("class FolderPinProbe"))
+        assertFalse("FolderPinProbe must not block a thread on a coroutine", probe.contains("runBlocking"))
+        assertFalse("nor import it", source.contains("import kotlinx.coroutines.runBlocking"))
     }
 }

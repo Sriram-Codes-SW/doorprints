@@ -68,6 +68,13 @@ class DriveBackgroundRunnerTest {
             return backupResult
         }
 
+        var standing: SkipReason? = null
+        var standingAsked = 0
+        override fun standingPause(): SkipReason? {
+            standingAsked++
+            return standing
+        }
+
         var notices = 0
         override fun onLockPaused() {
             notices++
@@ -108,6 +115,39 @@ class DriveBackgroundRunnerTest {
         // Nothing reached Drive: no connect, no sync, no backup (so nothing could be uploaded, downloaded or deleted).
         assertEquals(emptyList<String>(), ops.driveCalls())
         assertEquals(1, ops.notices)
+    }
+
+    @Test
+    fun aPauseThatStandsBuildsNothingAndSaysNothingAgain() {
+        val ops = Ops().apply { standing = SkipReason.LOCK_REMOVED }
+        repeat(3) { assertEquals(RunOutcome.Skipped(SkipReason.LOCK_REMOVED), run(ops)) }
+        // Not even the lock or the auto-backup switch was asked (each would build the whole Drive graph on the phone).
+        assertEquals(emptyList<String>(), ops.calls)
+        assertEquals(3, ops.standingAsked)
+        assertEquals("the notice was shown when the pause began", 0, ops.notices)
+    }
+
+    @Test
+    fun aKeyTheKeyStoreLostIsItsOwnSkip() {
+        val ops = Ops().apply { standing = SkipReason.KEY_LOST }
+        assertEquals(RunOutcome.Skipped(SkipReason.KEY_LOST), run(ops))
+        assertEquals(0, ops.notices)
+    }
+
+    @Test
+    fun withNoStandingPauseTheRunGoesOnAndTheLockIsAskedAsBefore() {
+        val ops = Ops()
+        assertEquals(RunOutcome.Success, run(ops))
+        assertEquals(listOf("lock", "sync", "lock", "backup"), ops.calls)
+        assertEquals(1, ops.standingAsked)
+    }
+
+    @Test
+    fun aPhoneThatNeverUsedDriveIsNotEvenAskedAboutAPause() {
+        val ops = Ops(engaged = false).apply { standing = SkipReason.LOCK_REMOVED }
+        assertEquals(RunOutcome.Skipped(SkipReason.NOT_CONNECTED), run(ops))
+        assertEquals(emptyList<String>(), ops.calls)
+        assertEquals(0, ops.standingAsked)
     }
 
     @Test

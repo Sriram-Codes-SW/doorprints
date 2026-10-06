@@ -99,4 +99,5 @@
     <string name="drive_lock_paused">இந்த ஃபோனில் இனி திரைப் பூட்டு இல்லாததால் Google Drive காப்புப்பிரதி இடைநிறுத்தப்பட்டுள்ளது. உங்கள் வீடுகள் இந்த ஃபோனில் பாதுகாப்பாக உள்ளன. தொடர திரைப் பூட்டை அமைக்கவும்.</string>
     <string name="drive_lock_open_settings">அமைப்புகளைத் திறக்கவும்</string>
     <string name="drive_lock_notif_title">Google Drive காப்புப்பிரதி இடைநிறுத்தப்பட்டது</string>
+    <string name="drive_lock_key_lost">இந்த ஃபோனின் கீ ஸ்டோர் விசையை இழந்ததால் Google Drive காப்புப்பிரதி இடைநிறுத்தப்பட்டுள்ளது. உங்கள் வீடுகள் இந்த ஃபோனில் பாதுகாப்பாக உள்ளன. தொடர Google Drive உடன் மீண்டும் இணையுங்கள்.</string>
 </resources>

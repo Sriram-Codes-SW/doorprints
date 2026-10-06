@@ -85,6 +85,37 @@ class RoomSyncRowsTest {
     }
 
     @Test
+    fun tombstonesAreReadInOneQueryEachNotOnePerRow() = runBlocking {
+        val statements = java.util.Collections.synchronizedList(mutableListOf<String>())
+        db.close()
+        context.deleteDatabase(DatabaseFile.NAME)
+        db = androidx.room.Room.databaseBuilder(context, AppDatabase::class.java, DatabaseFile.NAME)
+            .addMigrations(*AppDatabase.MIGRATIONS)
+            .setQueryCallback({ sql, _ -> statements += sql }, java.util.concurrent.Executors.newSingleThreadExecutor())
+            .build()
+        db.houses().upsert(house("live"))
+        repeat(25) { db.houses().upsert(house("gone$it", deleted = true, updatedAt = at + it)) }
+        repeat(25) { db.visits().upsert(VisitEntity(id = "v$it", houseId = "live", lat = 1.0, lon = 2.0, arrivedAt = at, updatedAt = at + it, deleted = true)) }
+        statements.clear()
+        val all = rows().all()
+        assertEquals(26, all.count { it.kind == SyncKind.HOUSES })
+        assertEquals(25, all.count { it.kind == SyncKind.VISITS })
+        Thread.sleep(200)
+        val selects = statements.filter { it.trimStart().startsWith("SELECT", ignoreCase = true) && !it.contains("room_table_modification_log") }
+        assertTrue("a fixed number of reads, not one per tombstone: $selects", selects.size <= 6)
+        assertTrue("no read of one house or visit by id", selects.none { it.contains("WHERE id = ?") })
+    }
+
+    @Test
+    fun aLiveVisitIsNotAlsoReadAsATombstone() = runBlocking {
+        db.houses().upsert(house("h1"))
+        db.visits().upsert(VisitEntity(id = "v1", houseId = "h1", lat = 1.0, lon = 2.0, arrivedAt = at, updatedAt = at))
+        db.visits().upsert(VisitEntity(id = "v2", houseId = "h1", lat = 1.0, lon = 2.0, arrivedAt = at, updatedAt = at, deleted = true))
+        val keys = rows().all().filter { it.kind == SyncKind.VISITS }.map { it.key }
+        assertEquals("each visit once", listOf("v1", "v2"), keys.sorted())
+    }
+
+    @Test
     fun visitsKeepTheirTombstonesToo() = runBlocking {
         db.houses().upsert(house("h1"))
         db.visits().upsert(VisitEntity(id = "v1", houseId = "h1", lat = 1.0, lon = 2.0, arrivedAt = at, updatedAt = at))

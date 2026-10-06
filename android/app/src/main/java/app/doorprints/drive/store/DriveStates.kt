@@ -45,9 +45,13 @@ import java.io.File
 class FileDriveStateStore(file: File) : DriveStateStore {
     private val state = file.atomic()
 
-    override suspend fun load(): DriveDeviceState = withContext(Dispatchers.IO) {
-        readState(state, DeviceDto.serializer(), { it.v }) { it.toState() } ?: DriveDeviceState()
-    }
+    override suspend fun load(): DriveDeviceState = withContext(Dispatchers.IO) { loadNow() }
+
+    /**
+     * [load] without suspending: one small file read. For the few callers that cannot suspend (the device key's "is a folder
+     * pinned" check, which runs inside a property getter); they must not wrap [load] in `runBlocking` instead.
+     */
+    fun loadNow(): DriveDeviceState = readState(state, DeviceDto.serializer(), { it.v }) { it.toState() } ?: DriveDeviceState()
 
     override suspend fun save(state: DriveDeviceState) = withContext(Dispatchers.IO) {
         writeState(this@FileDriveStateStore.state, DeviceDto.serializer(), DeviceDto.of(state))

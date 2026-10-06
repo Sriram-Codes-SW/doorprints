@@ -61,8 +61,11 @@ class DriveDeps(
     val signIn: DriveSignIn?,
     /** The device check (screen lock, fingerprint, face) and the keyguard test. */
     val deviceAuth: DeviceAuth,
-    /** The lock detector, built with the "is the device key still usable" probe the graph supplies. */
-    val lock: (keyUsable: () -> Boolean) -> LockLostDetector,
+    /**
+     * The lock detector, built with the "is the device key still usable" probe the graph supplies and the function it calls
+     * when that probe failed **with the screen lock still there** (a key store fault, which has its own words).
+     */
+    val lock: (keyUsable: () -> Boolean, onKeyFault: () -> Unit) -> LockLostDetector,
     val network: NetworkState,
     /** The phone's rows for Drive sync, given the id this device writes them under. */
     val localRows: (deviceId: () -> String) -> LocalRows,
@@ -72,6 +75,13 @@ class DriveDeps(
      * the repository's loop (`CommonRepository.sync`), which applies the pulled rows; null for a plain commit that does not.
      */
     val syncPass: (suspend (backend: DriveSyncBackend, photosAllowed: Boolean) -> Unit)? = null,
+    /**
+     * Called when Drive stops being in use (Disconnect, or the folder gone), **before** the server takes over again: marks
+     * every row for upload to the server and resets its pull cursors (`CommonRepository.resetForServer`), because the rows
+     * that went only to Drive are marked clean and would never reach the server otherwise (review of PR 142, item 3).
+     * Throwing keeps Drive "in use"; the next change of state tries again.
+     */
+    val handBack: suspend () -> Unit = {},
     /** False when this build cannot sign in to Google (no Play services): the card says Drive is not available. */
     val configured: Boolean,
     val clock: () -> Long,
@@ -113,13 +123,13 @@ object DriveAssembly {
     fun assemble(d: DriveDeps): DriveGraph {
         val p = DeviceKeyCryptoProvider(d.crypto)
         val stores = app.doorprints.drive.store.DriveFileStores(d.dir)
-        val pins = FolderPinProbe(stores.driveState, File(d.dir, TRUST_DIR))
+        val pins = FolderPinProbe({ stores.driveState.loadNow().rootId }, File(d.dir, TRUST_DIR))
         val identity = KeystoreDeviceIdentity(d.keyBackend, d.deviceName, DevicePlatform.ANDROID, folderPinned = pins::isPinned)
-        val lockStore = FileDriveLockStore(File(d.dir, "lock.json"))
-        val detector = d.lock(DeviceLockDetectors.keyUsable(identity))
+        val lockStore = FileDriveLockStore(File(d.dir, LOCK_FILE))
+        val detector = d.lock(DeviceLockDetectors.keyUsable(identity)) { lockStore.keyStoreFault = true }
         val gate = DriveGate(
             AuthPlatform.PHONE, d.deviceAuth, detector,
-            DeviceLockActions(discardKey = { d.keyBackend.discard() }, store = lockStore), d.clock,
+            DeviceLockActions(discardKey = identity::discard, store = lockStore), d.clock,
         )
         val authorizer = PhoneDeletionAuthorizer(gate, d.deviceAuth, d.clock)
         val backup = DriveBackupService(d.drive, p, identity, stores.driveState, stores.trust, d.clock, d.utcOffsetMinutes, d.scratch)
@@ -136,16 +146,27 @@ object DriveAssembly {
             rigs, d.network, prefs, d.clock, d.configured, d.backupSource, d.signIn,
             syncDriver = d.syncPass?.let { pass -> { backend -> pass(backend, controller.photosAllowed()) } },
         )
-        watchEngagement(controller, prefs, lockStore, gate, d.scope)
+        watchEngagement(controller, prefs, lockStore, gate, d.scope, d.handBack)
         return DriveGraph(controller, p, identity, gate, authorizer, backup, deletion, prefs, lockStore, detector)
     }
 
     /** Remembers that Drive is in use ([DriveEngagement]) and forgets the lock pause once the folder is open again with a lock. */
-    private fun watchEngagement(controller: DriveConnectController, prefs: FileDrivePrefs, lockStore: FileDriveLockStore, gate: DriveGate, scope: CoroutineScope) {
+    private fun watchEngagement(controller: DriveConnectController, prefs: FileDrivePrefs, lockStore: FileDriveLockStore, gate: DriveGate, scope: CoroutineScope, handBack: suspend () -> Unit) {
         scope.launch {
             var memory = Engagement(engaged = prefs.engaged)
             controller.state.collect { state ->
-                val next = DriveEngagement.next(memory, state)
+                var next = DriveEngagement.next(memory, state)
+                // Drive stops being the sync target (Disconnect, or the folder gone: the controller says DISCONNECTED): the rows
+                // that only went to Drive are sent to the server again first. A failure leaves Drive in use for the next try.
+                if (memory.engaged && !next.engaged) {
+                    try {
+                        handBack()
+                    } catch (e: kotlinx.coroutines.CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                        next = memory
+                    }
+                }
                 // docs/15 §1.3 "Defaults": automatic backup and sync is on once the person connects Drive (one switch),
                 // unless they have already chosen. The controller's own default is off.
                 if (next.engaged && !memory.engaged && prefs.get(DriveConnectController.KEY_AUTO_BACKUP) == null) controller.setAutoBackup(true)
@@ -157,4 +178,5 @@ object DriveAssembly {
     }
 
     const val TRUST_DIR = "trust"
+    const val LOCK_FILE = "lock.json"
 }

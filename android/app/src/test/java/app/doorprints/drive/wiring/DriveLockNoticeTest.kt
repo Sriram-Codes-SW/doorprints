@@ -68,6 +68,24 @@ class DriveLockNoticeTest {
     }
 
     @Test
+    fun aKeyTheKeyStoreLostIsToldApartFromARemovedLock() {
+        compose.setContent { LockNoticeBlock(LockNotice.KEY_LOST) }
+        compose.onNodeWithText(
+            "Google Drive backup is paused because this phone's key store lost the key. Your houses are safe on this phone. Connect to Google Drive again to continue.",
+        ).assertIsDisplayed()
+        compose.onNodeWithText("Open settings").assertIsDisplayed()
+        assertEquals(0, compose.onAllNodesWithText(str(R.string.drive_lock_paused)).fetchSemanticsNodes().size)
+    }
+
+    @Test
+    fun eachNoticeHasItsOwnWordsForTheScreenAndTheNotification() {
+        assertEquals(R.string.drive_lock_needs, LockNotice.NEEDS_LOCK.messageRes())
+        assertEquals(R.string.drive_lock_paused, LockNotice.PAUSED.messageRes())
+        assertEquals(R.string.drive_lock_key_lost, LockNotice.KEY_LOST.messageRes())
+        assertNotEquals(str(R.string.drive_lock_paused), str(R.string.drive_lock_key_lost))
+    }
+
+    @Test
     @Config(qualifiers = "hi")
     fun hindi() = inLanguage()
 
@@ -88,5 +106,25 @@ class DriveLockNoticeTest {
         compose.onNodeWithText(needs).assertIsDisplayed()
         compose.onNodeWithText(open).assertIsDisplayed()
         assertEquals(1, compose.onAllNodesWithText(str(R.string.drive_lock_heading)).fetchSemanticsNodes().size)
+        val lost = str(R.string.drive_lock_key_lost)
+        assertNotEquals("the key store words are translated", str(R.string.drive_lock_paused), lost)
+        assertTrue(lost.isNotBlank())
+    }
+
+    @Test
+    @Config(qualifiers = "ta")
+    fun tamilKeyLost() = keyLostShows()
+
+    @Test
+    @Config(qualifiers = "te")
+    fun teluguKeyLost() = keyLostShows()
+
+    @Test
+    @Config(qualifiers = "hi")
+    fun hindiKeyLost() = keyLostShows()
+
+    private fun keyLostShows() {
+        compose.setContent { LockNoticeBlock(LockNotice.KEY_LOST) }
+        compose.onNodeWithText(str(R.string.drive_lock_key_lost)).assertIsDisplayed()
     }
 }

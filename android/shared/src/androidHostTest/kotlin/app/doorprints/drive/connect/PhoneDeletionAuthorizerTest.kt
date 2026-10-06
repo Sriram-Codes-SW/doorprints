@@ -89,6 +89,25 @@ class PhoneDeletionAuthorizerTest {
     }
 
     @Test
+    fun onlyTheNewestGrantsAreKeptSoTheMapDoesNotGrowForEver() = runTest {
+        val tokens = (1..PhoneDeletionAuthorizer.MAX_ISSUED + 3).map { token("op-$it") }
+        // The oldest ones were pushed out: their tokens are no longer known, so never genuine.
+        for (old in tokens.take(3)) {
+            assertFalse(authorizer.isGenuine(old), "an evicted grant is not redeemable: ${old.operationId}")
+            assertFalse(authorizer.stillHolds(old))
+        }
+        for (recent in tokens.drop(3)) assertTrue(authorizer.stillHolds(recent), recent.operationId)
+        assertTrue(authorizer.isGenuine(tokens.last()))
+    }
+
+    @Test
+    fun aGrantWithinTheCapIsNotEvictedByOthers() = runTest {
+        val first = token("op-first")
+        repeat(PhoneDeletionAuthorizer.MAX_ISSUED - 1) { token("op-$it") }
+        assertTrue(authorizer.isGenuine(first), "MAX_ISSUED grants fit")
+    }
+
+    @Test
     fun stillHoldsFollowsFreshnessAndTheLock() = runTest {
         val t = token()
         assertTrue(authorizer.stillHolds(t))

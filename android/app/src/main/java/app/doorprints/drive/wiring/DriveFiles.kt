@@ -22,9 +22,7 @@ import app.doorprints.drive.connect.DrivePrefs
 import app.doorprints.drive.store.AtomicJsonFile
 import app.doorprints.drive.store.FileKeysWatermarkStore
 import app.doorprints.drive.store.folderFileName
-import app.doorprints.drive.backup.DriveStateStore
 import app.doorprints.drive.device.DriveLockStore
-import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
@@ -43,11 +41,36 @@ class FileDrivePrefs(file: File) : DrivePrefs {
     private val serializer = MapSerializer(String.serializer(), String.serializer())
     private val json = Json { ignoreUnknownKeys = true }
 
+    /** What was parsed, with the file's stamp at the time: the next read of an unchanged file does not parse again. */
+    private class Memo(val modified: Long, val length: Long, val values: Map<String, String>)
+
+    private var memo: Memo? = null
+
+    /** How many times the file was parsed (the tests' proof that an unchanged file is read once). */
+    @Volatile
+    internal var parses = 0
+        private set
+
+    /** False until a value was ever written: a phone that never used Drive has no file (nothing to look at, nothing to schedule). */
+    fun exists(): Boolean = store.file.isFile
+
     @Synchronized
-    private fun read(): Map<String, String> = try {
-        store.readText()?.let { json.decodeFromString(serializer, it) } ?: emptyMap()
-    } catch (_: Exception) {
-        emptyMap()
+    private fun read(): Map<String, String> {
+        val modified = store.file.lastModified()
+        val length = store.file.length()
+        if (!store.file.isFile) {
+            memo = null
+            return emptyMap()
+        }
+        memo?.let { if (it.modified == modified && it.length == length) return it.values }
+        parses++
+        val values = try {
+            store.readText()?.let { json.decodeFromString(serializer, it) } ?: emptyMap()
+        } catch (_: Exception) {
+            emptyMap()
+        }
+        memo = Memo(modified, length, values)
+        return values
     }
 
     @Synchronized
@@ -61,6 +84,7 @@ class FileDrivePrefs(file: File) : DrivePrefs {
         val written = synchronized(this) {
             try {
                 store.writeText(json.encodeToString(serializer, read() + (key to value)))
+                memo = null
                 true
             } catch (_: IOException) {
                 // Dropped on purpose.
@@ -89,7 +113,12 @@ class FileDriveLockStore(file: File) : DriveLockStore {
     private val json = Json { ignoreUnknownKeys = true }
 
     @Serializable
-    private class Dto(val paused: Boolean = false, val needsReenrolment: Boolean = false, val keyDropped: Boolean = false)
+    private class Dto(
+        val paused: Boolean = false,
+        val needsReenrolment: Boolean = false,
+        val keyDropped: Boolean = false,
+        val keyStoreFault: Boolean = false,
+    )
 
     @Synchronized
     private fun read(): Dto = try {
@@ -109,15 +138,19 @@ class FileDriveLockStore(file: File) : DriveLockStore {
 
     override var paused: Boolean
         get() = read().paused
-        set(value) = write(read().let { Dto(value, it.needsReenrolment, it.keyDropped) })
+        set(value) = write(read().let { Dto(value, it.needsReenrolment, it.keyDropped, it.keyStoreFault) })
 
     override var needsReenrolment: Boolean
         get() = read().needsReenrolment
-        set(value) = write(read().let { Dto(it.paused, value, it.keyDropped) })
+        set(value) = write(read().let { Dto(it.paused, value, it.keyDropped, it.keyStoreFault) })
 
     override var keyDropped: Boolean
         get() = read().keyDropped
-        set(value) = write(read().let { Dto(it.paused, it.needsReenrolment, value) })
+        set(value) = write(read().let { Dto(it.paused, it.needsReenrolment, value, it.keyStoreFault) })
+
+    override var keyStoreFault: Boolean
+        get() = read().keyStoreFault
+        set(value) = write(read().let { Dto(it.paused, it.needsReenrolment, it.keyDropped, value) })
 }
 
 /**
@@ -126,11 +159,12 @@ class FileDriveLockStore(file: File) : DriveLockStore {
  * to make a new key. A folder that was deleted and forgotten has no root id here, so it no longer pins the key.
  */
 class FolderPinProbe(
-    private val state: DriveStateStore,
+    /** The stored root id of the folder in use, read without suspending (it must never block a thread on a coroutine: this runs on the main thread). */
+    private val rootId: () -> String?,
     private val trustDir: File,
 ) {
     fun isPinned(): Boolean = try {
-        val root = runBlocking { state.load().rootId } ?: return false
+        val root = rootId() ?: return false
         pinFileOf(root)?.let { FileKeysWatermarkStore(it).load() != null } ?: false
     } catch (e: kotlinx.coroutines.CancellationException) {
         throw e

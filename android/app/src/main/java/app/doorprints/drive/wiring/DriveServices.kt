@@ -67,6 +67,11 @@ class DriveServices(
     private val dir = File(app.noBackupFilesDir, DIR)
     private val light = FileDrivePrefs(File(dir, PREFS_FILE))
 
+    /** The lock's memory of a pause, read without building the graph (the graph's own store is over the same file). */
+    private val lockMemory = FileDriveLockStore(File(dir, DriveAssembly.LOCK_FILE))
+
+    private fun keyguardSecure(): Boolean = app.getSystemService(KeyguardManager::class.java)?.isDeviceSecure == true
+
     /** Drive is in use on this phone (the folder was open and has not been disconnected): it replaces the server for sync. */
     val engaged: Boolean get() = light.engaged
 
@@ -93,13 +98,14 @@ class DriveServices(
                 drive = HttpDriveClient(Api.httpClient(), tokens),
                 signIn = TokenDriveSignIn(tokens, canConnect = keyguard),
                 deviceAuth = auth,
-                lock = { keyUsable -> DeviceLockDetectors.forContext({ app }, keyUsable) },
+                lock = { keyUsable, onKeyFault -> DeviceLockDetectors.forContext({ app }, keyUsable, onKeyFault) },
                 network = ConnectivityNetworkState(app),
                 localRows = { deviceId -> RoomSyncRows(db, deviceId) { id -> repository.photoFile(id).takeIf { it.isFile }?.length() } },
-                backupSource = AndroidDriveBackupSource(app, repository, repository::photoFile),
+                backupSource = AndroidDriveBackupSource.swept(app, repository, repository::photoFile),
                 syncPass = { backend, photosAllowed ->
                     withContext(route.element(backend)) { repository.sync(photosAllowed) }
                 },
+                handBack = repository::resetForServer,
                 configured = hasPlayServices(app),
                 clock = System::currentTimeMillis,
                 utcOffsetMinutes = { TimeZone.getDefault().getOffset(System.currentTimeMillis()) / MS_PER_MINUTE },
@@ -122,8 +128,7 @@ class DriveServices(
 
     /** What Settings says about the screen lock now. Read on every resume of the screen (the person may have set a lock meanwhile). */
     fun lockNotice(): LockNotice {
-        val present = app.getSystemService(KeyguardManager::class.java)?.isDeviceSecure == true
-        return DriveLockRules.notice(engaged, present)
+        return DriveLockRules.notice(engaged, keyguardSecure(), lockMemory.keyStoreFault)
     }
 
     /**
@@ -163,21 +168,19 @@ class DriveServices(
             engaged = true,
             lock = { graph.gate.beforeRun() },
             notifyLock = ::notifyLockPaused,
+            standing = { DriveLockRules.standingPause(lockMemory.paused, keyguardSecure(), lockMemory.keyStoreFault) },
         )
         return DriveBackgroundRunner(ops).run(sync, backup)
     }
 
     /** Sets the periodic work to match "in use and automatic backup on" (also at every app start: WorkManager can lose it). */
-    fun rescheduleWork() {
-        val auto = light.get(DriveConnectController.KEY_AUTO_BACKUP) == "1"
-        DriveBackupWorker.schedule(app, DriveLockRules.shouldSchedule(engaged, auto))
-    }
+    fun rescheduleWork() = DriveWork.reschedule(light) { on -> DriveBackupWorker.schedule(app, on) }
 
     private fun notifyLockPaused() {
         val localised = AppLocale.wrap(app)
         Notifications.result(
             localised, Notifications.DRIVE_LOCK_ID, localised.getString(R.string.drive_lock_notif_title),
-            localised.getString(R.string.drive_lock_paused), Notifications.openScreenIntent(localised, Notifications.SCREEN_SETTINGS),
+            localised.getString(DriveLockRules.pausedNotice(lockMemory.keyStoreFault && keyguardSecure()).messageRes()), Notifications.openScreenIntent(localised, Notifications.SCREEN_SETTINGS),
         )
     }
 
@@ -186,5 +189,18 @@ class DriveServices(
         const val PREFS_FILE = "prefs.json"
         private const val KEY_AUTO = DriveConnectController.KEY_AUTO_BACKUP
         private const val MS_PER_MINUTE = 60_000
+    }
+}
+
+/** Start-up scheduling of the periodic Drive run, apart from Android so a JVM test can pin it. */
+object DriveWork {
+    /**
+     * Sets the periodic work to "in use and automatic backup on" through [schedule] (WorkManager's cancel or enqueue). A phone
+     * whose prefs file does not exist never used Drive: nothing is read twice, cancelled or enqueued at every start.
+     */
+    fun reschedule(prefs: FileDrivePrefs, schedule: (on: Boolean) -> Unit) {
+        if (!prefs.exists()) return
+        val auto = prefs.get(DriveConnectController.KEY_AUTO_BACKUP) == "1"
+        schedule(DriveLockRules.shouldSchedule(prefs.engaged, auto))
     }
 }

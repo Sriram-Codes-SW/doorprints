@@ -99,4 +99,5 @@
     <string name="drive_lock_paused">ఈ ఫోన్‌లో ఇక స్క్రీన్ లాక్ లేనందున Google Drive బ్యాకప్ ఆగింది. మీ ఇళ్లు ఈ ఫోన్‌లో సురక్షితంగా ఉన్నాయి. కొనసాగడానికి స్క్రీన్ లాక్ పెట్టండి.</string>
     <string name="drive_lock_open_settings">సెట్టింగ్‌లను తెరవండి</string>
     <string name="drive_lock_notif_title">Google Drive బ్యాకప్ ఆగింది</string>
+    <string name="drive_lock_key_lost">ఈ ఫోన్ కీ స్టోర్ కీని కోల్పోయినందున Google Drive బ్యాకప్ ఆగింది. మీ ఇళ్లు ఈ ఫోన్‌లో సురక్షితంగా ఉన్నాయి. కొనసాగడానికి Google Drive కి మళ్లీ కనెక్ట్ అవ్వండి.</string>
 </resources>

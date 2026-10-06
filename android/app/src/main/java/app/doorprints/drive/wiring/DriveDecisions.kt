@@ -63,7 +63,7 @@ object DriveSyncChoice {
 }
 
 /** Why a background Drive run did not go. */
-enum class SkipReason { NOT_CONNECTED, AUTO_OFF, LOCK_REMOVED, LOCK_UNKNOWN }
+enum class SkipReason { NOT_CONNECTED, AUTO_OFF, LOCK_REMOVED, LOCK_UNKNOWN, KEY_LOST }
 
 sealed interface WorkDecision {
     data object Run : WorkDecision
@@ -87,7 +87,8 @@ object DriveWorkRules {
     }
 
     /** True for the skips that mean "paused for want of a screen lock": the documented notice is shown for them. */
-    fun isLockPause(reason: SkipReason): Boolean = reason == SkipReason.LOCK_REMOVED || reason == SkipReason.LOCK_UNKNOWN
+    fun isLockPause(reason: SkipReason): Boolean =
+        reason == SkipReason.LOCK_REMOVED || reason == SkipReason.LOCK_UNKNOWN || reason == SkipReason.KEY_LOST
 }
 
 /** What Settings says about the screen lock (docs/15 §10.3). */
@@ -100,13 +101,35 @@ enum class LockNotice {
 
     /** No lock and Drive is in use: it is paused; "Your houses are safe on this phone". The card stays so the person can disconnect. */
     PAUSED,
+
+    /**
+     * The lock is there but the phone's key store lost the device key (a vendor Keystore error, not a removed lock): Drive is
+     * paused and the person connects again. The card stays so they can.
+     */
+    KEY_LOST,
 }
 
 object DriveLockRules {
-    fun notice(engaged: Boolean, lockPresent: Boolean): LockNotice = when {
+    fun notice(engaged: Boolean, lockPresent: Boolean, keyStoreFault: Boolean = false): LockNotice = when {
+        lockPresent && engaged && keyStoreFault -> LockNotice.KEY_LOST
         lockPresent -> LockNotice.NONE
         engaged -> LockNotice.PAUSED
         else -> LockNotice.NEEDS_LOCK
+    }
+
+    /** What a paused run's notification says: the key store's own words when it lost the key, else the removed lock's. */
+    fun pausedNotice(keyStoreFault: Boolean): LockNotice = if (keyStoreFault) LockNotice.KEY_LOST else LockNotice.PAUSED
+
+    /**
+     * Why a run that is already paused stays out without building anything, or null when it must look again. A pause is the
+     * person's to lift (they connect again), but it is dropped by the live check once the lock is back, so a pause with the
+     * lock still gone, or with the key store still at fault, is left alone: no graph, no key store call, no second notice.
+     */
+    fun standingPause(paused: Boolean, lockPresent: Boolean, keyStoreFault: Boolean): SkipReason? = when {
+        !paused -> null
+        !lockPresent -> SkipReason.LOCK_REMOVED
+        keyStoreFault -> SkipReason.KEY_LOST
+        else -> null
     }
 
     /** True when the Drive card may be shown and used: with a lock, or to disconnect while paused. */

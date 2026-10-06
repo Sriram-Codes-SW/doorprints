@@ -31,7 +31,7 @@ import java.io.File
  * phone by Android's own backup. No secret is kept here: the device's private key is `DeviceIdentity`'s (Keystore).
  */
 class DriveFileStores(private val dir: File) {
-    val driveState: DriveStateStore = FileDriveStateStore(File(dir, "drive-state.json"))
+    val driveState: FileDriveStateStore = FileDriveStateStore(File(dir, "drive-state.json"))
     val sync: SyncStateStore = FileSyncStateStore(File(dir, "sync-state.json"))
     val photos: PhotoStateStore = FilePhotoStateStore(File(dir, "photo-state.json"))
     val trust: FolderTrustStores = FileFolderTrustStores(File(dir, "trust"))

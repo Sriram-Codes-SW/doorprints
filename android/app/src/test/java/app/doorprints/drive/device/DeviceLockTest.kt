@@ -22,6 +22,7 @@ import android.app.Application
 import android.app.KeyguardManager
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import app.doorprints.crypto.platformCryptoProvider
 import app.doorprints.deviceauth.AuthPlatform
 import app.doorprints.deviceauth.AuthResult
 import app.doorprints.deviceauth.ConnectDecision
@@ -34,6 +35,7 @@ import app.doorprints.deviceauth.RunDecision
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -45,6 +47,7 @@ class MemoryLockStore : DriveLockStore {
     override var paused = false
     override var needsReenrolment = false
     override var keyDropped = false
+    override var keyStoreFault = false
 }
 
 class DeviceLockActionsTest {
@@ -98,24 +101,10 @@ class DeviceLockActionsTest {
         assertTrue(store.needsReenrolment)
     }
 
-    @Test fun `clearing is explicit and clears all three`() {
-        store.paused = true; store.needsReenrolment = true; store.keyDropped = true
+    @Test fun `clearing is explicit and clears all four`() {
+        store.paused = true; store.needsReenrolment = true; store.keyDropped = true; store.keyStoreFault = true
         store.clear()
-        assertFalse(store.paused || store.needsReenrolment || store.keyDropped)
-    }
-
-    @Test fun `the notice carries the documented words`() {
-        assertNull(DriveLockNotice.forDecision(RunDecision.Run))
-        assertEquals(DriveLockNotice.PAUSED_EN, DriveLockNotice.forDecision(RunDecision.PausedNoLock))
-        assertEquals(DriveLockNotice.PAUSED_EN, DriveLockNotice.forDecision(RunDecision.PausedUnknown))
-        assertEquals(
-            "Google Drive backup is paused because this phone no longer has a screen lock. Your houses are safe on this phone. Set a screen lock to continue.",
-            DriveLockNotice.PAUSED_EN,
-        )
-        assertEquals(
-            "Google Drive backup needs a screen lock on this phone (a PIN, pattern, password, fingerprint or face). Set one in the phone's settings, then come back.",
-            DriveLockNotice.NEEDS_LOCK_EN,
-        )
+        assertFalse(store.paused || store.needsReenrolment || store.keyDropped || store.keyStoreFault)
     }
 }
 
@@ -143,6 +132,32 @@ class KeyguardLockDetectorTest {
         assertEquals(LockState.REMOVED, detector.lockState())
     }
 
+    @Test fun `a key the key store lost while the lock is there is a key fault, not only a removed lock`() {
+        keyguard.setIsDeviceSecure(true)
+        keyUsable = false
+        var faults = 0
+        val d = DeviceLockDetectors.forContext({ context }, { keyUsable }) { faults++ }
+        assertEquals(LockState.REMOVED, d.lockState())
+        assertEquals(1, faults)
+    }
+
+    @Test fun `a removed keyguard is never a key fault, even with the key gone with it`() {
+        keyguard.setIsDeviceSecure(false)
+        keyUsable = false
+        var faults = 0
+        val d = DeviceLockDetectors.forContext({ context }, { keyUsable }) { faults++ }
+        assertEquals(LockState.REMOVED, d.lockState())
+        assertEquals(0, faults)
+    }
+
+    @Test fun `a lock and a usable key are not a fault`() {
+        keyguard.setIsDeviceSecure(true)
+        var faults = 0
+        val d = DeviceLockDetectors.forContext({ context }, { keyUsable }) { faults++ }
+        assertEquals(LockState.PRESENT, d.lockState())
+        assertEquals(0, faults)
+    }
+
     @Test fun `no context cannot be read`() {
         assertEquals(LockState.UNKNOWN, DeviceLockDetectors.forContext({ null }, null).lockState())
     }
@@ -156,9 +171,15 @@ class KeyguardLockDetectorTest {
         backend.create()
         pinned = true
         assertTrue(probe())
+        fun failUse() {
+            val peer = platformCryptoProvider().p256Generate().publicKey
+            assertThrows(DeviceKeyException::class.java) { DeviceKeyCryptoProvider(platformCryptoProvider()).p256Agree(identity.key, peer) }
+        }
         backend.state = DeviceKeyStatus.NEEDS_UNLOCK
+        failUse()
         assertTrue("waiting for an unlock is not a lost lock", probe())
         backend.state = DeviceKeyStatus.INVALIDATED
+        failUse()
         assertFalse(probe())
         backend.state = DeviceKeyStatus.ABSENT
         assertFalse("removed with the lock while a folder is pinned", probe())

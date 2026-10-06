@@ -93,10 +93,12 @@ class DriveAssemblyTest {
         var probes = mutableListOf<() -> Boolean>()
         var authAsked = 0
         var houses = 3
+        val handBacks = mutableListOf<Boolean>()
+        var handBackFailures = 0
         lateinit var graph: DriveGraph
     }
 
-    private fun phone(name: String, dir: File = tmp.newFolder(name), configured: Boolean = true, plainSyncPass: Boolean = false, backend: FakeKeyBackend = FakeKeyBackend()): Phone {
+    private fun phone(name: String, dir: File = tmp.newFolder(name), configured: Boolean = true, plainSyncPass: Boolean = false, backend: FakeKeyBackend = FakeKeyBackend(), handBackFails: Int = 0): Phone {
         val phone = Phone(dir, backend)
         val deviceAuth = object : DeviceAuth {
             override fun isDeviceLockEnabled() = phone.lock
@@ -120,9 +122,19 @@ class DriveAssemblyTest {
                 override suspend fun revokeAccess() = Unit
             },
             deviceAuth = deviceAuth,
-            lock = { keyUsable ->
+            lock = { keyUsable, onKeyFault ->
                 phone.probes += keyUsable
-                LockLostDetector { if (!phone.lock || !keyUsable()) LockState.REMOVED else LockState.PRESENT }
+                // As DeviceLockDetectors.forContext: the keyguard first, a failed probe with the lock there is a key store fault.
+                LockLostDetector {
+                    when {
+                        !phone.lock -> LockState.REMOVED
+                        !keyUsable() -> {
+                            onKeyFault()
+                            LockState.REMOVED
+                        }
+                        else -> LockState.PRESENT
+                    }
+                }
             },
             network = NetworkState { phone.network },
             localRows = { _ ->
@@ -149,6 +161,13 @@ class DriveAssemblyTest {
                 )
             },
             syncPass = if (plainSyncPass) null else { backend, photos -> phone.passes += backend to photos; backend.commitPushes() },
+            handBack = {
+                if (phone.handBackFailures < handBackFails) {
+                    phone.handBackFailures++
+                    throw java.io.IOException("database busy")
+                }
+                phone.handBacks += phone.graphEngaged()
+            },
             configured = configured,
             clock = { server.clock.now() },
             utcOffsetMinutes = { 330 },
@@ -159,6 +178,14 @@ class DriveAssemblyTest {
     }
 
     private val Phone.controller get() = graph.controller
+
+    /** The next use of the key after the key store changed under us: it fails, which is what makes the app look at the key again. */
+    private fun Phone.failUse() {
+        val peer = JvmCryptoProvider.p256Generate().publicKey
+        assertThrows(DeviceKeyException::class.java) { graph.crypto.p256Agree(graph.identity.key, peer) }
+    }
+
+    private fun Phone.graphEngaged() = graph.prefs.engaged
 
     private fun Phone.connected(): Phone = also {
         runBlocking {
@@ -204,6 +231,7 @@ class DriveAssemblyTest {
         val a = phone("Pixel 8").connected()
         val creates = a.backend.creates
         a.backend.state = DeviceKeyStatus.ABSENT
+        a.failUse()
         val e = assertThrows(DeviceKeyException::class.java) { a.controller.devicePublicKey() }
         assertEquals(DeviceKeyException.Kind.LOST, e.kind)
         assertEquals("no new key under an existing folder", creates, a.backend.creates)
@@ -224,6 +252,7 @@ class DriveAssemblyTest {
         val stores = app.doorprints.drive.store.DriveFileStores(a.dir)
         stores.driveState.save(stores.driveState.load().copy(rootId = null))
         a.backend.state = DeviceKeyStatus.ABSENT
+        a.failUse()
         assertEquals(65, a.controller.devicePublicKey().size)
     }
 
@@ -259,6 +288,7 @@ class DriveAssemblyTest {
         val probe = a.probes.single()
         assertTrue(probe())
         a.backend.state = DeviceKeyStatus.INVALIDATED
+        a.failUse()
         assertFalse("the probe is the identity's own: an invalidated key means the lock is gone", probe())
     }
 
@@ -274,6 +304,36 @@ class DriveAssemblyTest {
         assertTrue(a.graph.lockStore.needsReenrolment)
         val writes = server.requests.drop(before).count { it.first in setOf(DriveOp.CREATE, DriveOp.UPLOAD, DriveOp.UPDATE, DriveOp.DELETE, DriveOp.TRASH) }
         assertEquals("no upload, download or delete", 0, writes)
+    }
+
+    @Test
+    fun aKeyTheKeyStoreLostWithTheLockStillThereIsItsOwnPause() = runBlocking {
+        val a = phone("Pixel 8").connected()
+        a.backend.state = DeviceKeyStatus.INVALIDATED
+        a.failUse()
+        val info = a.controller.syncNow()
+        assertEquals(SyncState.PAUSED, info.state)
+        assertTrue("paused as before", a.graph.lockStore.paused)
+        assertTrue("and told apart from a removed lock", a.graph.lockStore.keyStoreFault)
+    }
+
+    @Test
+    fun aRemovedLockIsNotAKeyStoreFault() = runBlocking {
+        val a = phone("Pixel 8").connected()
+        a.lock = false
+        a.backend.state = DeviceKeyStatus.INVALIDATED
+        a.controller.syncNow()
+        assertTrue(a.graph.lockStore.paused)
+        assertFalse("Android invalidates the key with the lock: that is the lock's words", a.graph.lockStore.keyStoreFault)
+    }
+
+    @Test
+    fun theKeyStoreFaultIsForgottenWithThePauseWhenTheFolderIsOpenAgain() = runBlocking {
+        val a = phone("Pixel 8").connected()
+        a.graph.lockStore.paused = true
+        a.graph.lockStore.keyStoreFault = true
+        assertEquals(ConnectState.READY, a.controller.connect().state)
+        assertFalse(a.graph.lockStore.keyStoreFault)
     }
 
     @Test
@@ -385,6 +445,35 @@ class DriveAssemblyTest {
     fun disconnectingThisDeviceEndsTheUse() = runBlocking {
         val a = phone("Pixel 8").connected()
         a.controller.disconnect()
+        assertFalse(a.graph.prefs.engaged)
+    }
+
+    @Test
+    fun disconnectingHandsTheRowsBackBeforeTheServerResumes() = runBlocking {
+        val a = phone("Pixel 8").connected()
+        assertTrue("nothing handed back while Drive is in use", a.handBacks.isEmpty())
+        a.controller.disconnect()
+        assertEquals("handed back once, while still engaged (the server resumes only after)", listOf(true), a.handBacks)
+        assertFalse(a.graph.prefs.engaged)
+    }
+
+    @Test
+    fun aFreshProcessAtDisconnectedHandsNothingBack() = runBlocking {
+        val a = phone("Pixel 8").connected()
+        val again = phone("Pixel 8", dir = a.dir, backend = a.backend)
+        assertEquals(ConnectState.DISCONNECTED, again.controller.state.value)
+        assertTrue(again.handBacks.isEmpty())
+        assertTrue(again.graph.prefs.engaged)
+    }
+
+    @Test
+    fun aFailedHandBackKeepsDriveInUseAndTriesAgainAtTheNextChange() = runBlocking {
+        val a = phone("Pixel 8", handBackFails = 1).connected()
+        a.controller.disconnect()
+        assertTrue("the server must not take over before the rows were handed back", a.graph.prefs.engaged)
+        a.controller.connect()
+        a.controller.disconnect()
+        assertEquals(1, a.handBacks.size)
         assertFalse(a.graph.prefs.engaged)
     }
 

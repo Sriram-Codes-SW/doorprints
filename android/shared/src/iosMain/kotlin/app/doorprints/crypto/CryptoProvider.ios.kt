@@ -206,8 +206,13 @@ internal object IosCryptoProvider : CryptoProvider {
     override fun p256FromScalar(scalar: ByteArray): P256PrivateKey {
         if (scalar.size != 32 || !P256Scalar.isValid(scalar)) throw CryptoException(CryptoException.Kind.INVALID_KEY, "scalar out of range")
         val pub = P256Base.publicKey(scalar)
-        val ref = importKey(Bytes.concat(pub, scalar), kSecAttrKeyClassPrivate)
-            ?: throw CryptoException(CryptoException.Kind.INVALID_KEY, "private key refused")
+        // The import wants public point and scalar in one buffer: that copy of d is wiped as soon as the platform has taken it.
+        val material = Bytes.concat(pub, scalar)
+        val ref = try {
+            importKey(material, kSecAttrKeyClassPrivate)
+        } finally {
+            material.fill(0)
+        } ?: throw CryptoException(CryptoException.Kind.INVALID_KEY, "private key refused")
         val box = SecKeyBox(ref)
         // The platform's view of the public key must be the one computed here, or the import did not mean the same d.
         val publicRef = SecKeyCopyPublicKey(ref) ?: throw CryptoException(CryptoException.Kind.INVALID_KEY, "no public key")

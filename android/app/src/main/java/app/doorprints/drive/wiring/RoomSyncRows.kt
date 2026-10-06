@@ -51,14 +51,9 @@ class RoomSyncRows(
         check(SyncFiles.isDeviceId(by)) { "this device's id is not a sync device id" }
         val rows = ArrayList<SyncRow>()
         for (house in db.houses().all()) rows.addIfValid { SyncRows.house(house.toDto(), by) }
-        for (id in db.houses().deletedIds()) db.houses().get(id)?.let { house -> rows.addIfValid { SyncRows.house(house.toDto(), by) } }
-        val liveVisits = db.visits().all()
-        val liveIds = liveVisits.mapTo(HashSet()) { it.id }
-        for (visit in liveVisits) rows.addIfValid { SyncRows.visit(visit.toDto(), by) }
-        for (version in db.visits().versions()) {
-            if (version.id in liveIds) continue
-            db.visits().get(version.id)?.let { visit -> rows.addIfValid { SyncRows.visit(visit.toDto(), by) } }
-        }
+        for (house in db.houses().deleted()) rows.addIfValid { SyncRows.house(house.toDto(), by) }
+        for (visit in db.visits().all()) rows.addIfValid { SyncRows.visit(visit.toDto(), by) }
+        for (visit in db.visits().deleted()) rows.addIfValid { SyncRows.visit(visit.toDto(), by) }
         for (record in db.records().all()) rows.addIfValid { SyncRows.record(record.toDto(), by) }
         for (photo in db.photos().all()) rows.addIfValid { SyncRows.photo(photoChange(photo), by) }
         return rows

@@ -91,15 +91,50 @@ class KeystoreDeviceIdentity(
 
     private var cached: KeystoreP256Key? = null
 
+    /**
+     * True once the key store answered [DeviceKeyStatus.READY] and nothing has failed since. A status check is a full ECDH in the
+     * key store (a call into the secure hardware), and a sync pass asks for the key and the lock several times, so READY is
+     * remembered and the key store is asked again only after a use of the key failed (the guarded backend below) or the key
+     * was discarded; any other answer (absent, invalidated, waiting for an unlock) is never remembered.
+     */
+    @Volatile
+    private var readyKnown = false
+
+    /** The backend the keys hand out: a failed use of the key drops the remembered READY and the cached key. */
+    private val guarded = object : DeviceKeyBackend by backend {
+        override fun agree(peerPublic: ByteArray): ByteArray = try {
+            backend.agree(peerPublic)
+        } catch (e: DeviceKeyException) {
+            forget()
+            throw e
+        }
+    }
+
+    @Synchronized
+    private fun forget() {
+        readyKnown = false
+        cached = null
+    }
+
     /** The state to show: unlike [key] this never creates or throws. */
-    fun status(): DeviceKeyStatus = backend.status()
+    fun status(): DeviceKeyStatus {
+        if (readyKnown) return DeviceKeyStatus.READY
+        return backend.status().also { readyKnown = it == DeviceKeyStatus.READY }
+    }
 
     /** True when a folder is pinned and the key it was enrolled with is gone: the "connect again" state. */
-    fun isLost(): Boolean = folderPinned() && backend.status().let { it == DeviceKeyStatus.ABSENT || it == DeviceKeyStatus.INVALIDATED }
+    fun isLost(): Boolean = folderPinned() && status().let { it == DeviceKeyStatus.ABSENT || it == DeviceKeyStatus.INVALIDATED }
+
+    /** Removes the key entry (a removed lock, a disconnect) and forgets what was remembered about it. */
+    @Synchronized
+    fun discard() {
+        forget()
+        backend.discard()
+    }
 
     @Synchronized
     fun ensure(): KeystoreP256Key {
-        val status = backend.status()
+        val status = status()
         cached?.let { if (status == DeviceKeyStatus.READY || status == DeviceKeyStatus.NEEDS_UNLOCK) return it }
         cached = null
         val pub = when (status) {
@@ -115,7 +150,7 @@ class KeystoreDeviceIdentity(
             }
         }
         require(pub.size == 65 && pub[0] == 0x04.toByte()) { "public key must be an uncompressed P-256 point" }
-        return KeystoreP256Key(pub.copyOf(), backend).also { cached = it }
+        return KeystoreP256Key(pub.copyOf(), guarded).also { cached = it }
     }
 
     override val key: P256PrivateKey get() = ensure()
