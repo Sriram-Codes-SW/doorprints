@@ -266,15 +266,21 @@ class DriveSyncEndToEndTest {
     }
 
     @Test
-    fun aDriveOnlyHouseIsNotLostWhenTheFolderIsGone() = runBlocking {
+    fun aDriveOnlyHouseIsNotLostWhenTheFolderIsGoneAndThePersonDisconnects() = runBlocking {
         val (a, _) = connectedPair()
         a.house("h1", "Green View")
         a.sync()
         assertEquals(false, a.dirty("h1"))
-        // The folder was deleted elsewhere: the controller drops to disconnected with FOLDER_GONE and Drive stops being in use.
+        // The folder was deleted elsewhere: the controller drops to disconnected with FOLDER_GONE, but Drive stays in use (the
+        // server stays off until the person answers) and nothing is handed back yet.
         val root = app.doorprints.drive.store.DriveFileStores(a.dir).driveState.load().rootId!!
         server.deleteByHand(root)
         a.controller.connect()
+        Thread.sleep(300)
+        assertTrue("a folder gone is not a Disconnect", a.graph.prefs.engaged)
+        assertEquals("still only in Drive", false, a.dirty("h1"))
+        // Their Disconnect ends the use and the rows go back to the server.
+        a.controller.disconnect()
         awaitDisengaged(a)
         assertEquals(true, a.dirty("h1"))
     }

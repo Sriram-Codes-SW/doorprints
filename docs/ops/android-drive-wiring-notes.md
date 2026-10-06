@@ -152,7 +152,7 @@ Fixes after the review of PR 142 (each mutation applied by hand, the named test 
 
 | Mutation | Test that failed |
 |---|---|
-| hand-back call dropped | aDriveOnlyHouseIsNotLostWhenTheFolderIsGone |
+| hand-back call dropped | aDriveOnlyHouseIsNotLostWhenTheFolderIsGoneAndThePersonDisconnects |
 | failed hand-back still disengages | aFailedHandBackKeepsDriveInUseAndTriesAgainAtTheNextChange |
 | fresh process forgets engagement (seenConnected guard dropped) | aFreshProcessStartingDisconnectedKeepsWhatWasRemembered |
 | READY not remembered | a key waiting for an unlock is probed every time, never remembered as ready |
