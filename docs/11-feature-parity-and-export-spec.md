@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Feature parity and offline-copy export specification |
-| Version | 0.55 |
-| Date | 2026-10-02 |
+| Version | 0.57 |
+| Date | 2026-10-06 |
 | Author | Claude (Cowork) – Product/Architecture |
 | Status | Draft: product-owner decisions D-01, D-02, D-03, D-08, D-21 (AI access) and D-23..D-25 (Sprint 4b reminders, hunting areas, location permissions) and D-26 (India's boundaries on the map, 2026-09-24) applied; ready for Sprint 4 planning |
 
@@ -65,6 +65,8 @@
 | 0.53 | 2026-10-01 | Claude (Code), lead | 5.24: the houses **in the running** (not Rejected, not Not chosen) are what Compare offers and a Plan visits, on the three stacks (S4b-BL-99 a); the website's copies label the move-in date *Move-in date* (S4b-BL-99 d). |
 | 0.54 | 2026-10-01 | Claude (Code), lead | 5.2 and 5.28: the installed website opens a Doorprints `.zip` from the system in *Import a backup* (`file_handlers`, Chromium on a computer; S4b-BL-108). |
 | 0.55 | 2026-10-02 | Claude (Code), lead | D-28 and 5.28 item 4 marked as amended by [15](15-google-drive-backup-and-sharing.md) §2.2 (`drive.file` only, no `drive.appdata`) and §4.2 (sharing v1 as a read-only file per person). |
+| 0.56 | 2026-10-06 | Claude (Code), lead | **The path trace, version 2: design only** (owner request of 2026-10-06; S4b-FR-13..S4b-FR-18). New 5.27.0..5.27.11: repeats drawn thicker, in a second colour and dashed, with the person's choice of look (*Clear*, *Subtle*, *Off*); an optional sound alert; ending a walk and saving it linked to a house; the website's trace; the shared repeat-detection algorithm and its vector file `schemas/trace-repeat-vectors.json` (*proposed*); every string; twelve open questions with recommendations. 5.27 amended: saved walks and the website's trace stay local-only. |
+| 0.57 | 2026-10-06 | Claude (Code), lead | **Senior review of the path trace design applied** ([ops/path-trace-spec-review.md](ops/path-trace-spec-review.md)). Six corrections: the live look is a `PlatformMap` `repeatLook` parameter (Android `LineLayer.setProperties`, iPhone `setRepeatLook`, website `setPaintProperty`), not `JsonStyleOps` (5.27.4); the alert's `blocked` flag survives one bad fix (5.27.3, vector `alert-one-bad-fix-does-not-ring-again`); a walk id of 0 is no id (5.27.2, 5.27.3, vector `split-walk-id-zero-is-no-id`); `walkAskedUpTo` replaces `walkToAsk`, so a walk cut by process death is asked about (5.27.6); the vector tests run in `androidHostTest` with a small inline `commonTest` (5.27.10); Android's device-to-device transfer copies saved walks, said honestly (5.27.0, 5.27.7). Also: the walk just finished is left out of the alert's others (vectors `alert-not-for-the-walk-just-finished`, `alert-walk-finished-30-minutes-ago-counts`; owner may overrule, question 1), the website splits its line across a page hidden for more than 5 minutes (question 7 adopted; the `resumed` flag, vector `web-pause-makes-no-segment`), the parallel-lane field check and the `TOLERANCE_M = 20` fallback, the `NonCancellable` sweep, the search-rule sentence, luminance 0.10, `#E65100` confirmed (protanopia: told apart from the amber star by form only), the log rule, the shared-browser sentence, the T-I29 residual, one banner wording, vector hygiene (`overlap-60m-is-not-a-repeat` moved off the 80 m boundary), questions 13 and 14. New 5.27.12: Hunt mode on the website, proposed, not scheduled (S4b-FR-19..23). |
 | 0.52 | 2026-10-01 | Claude (Code), lead | 5.6: the **Basement** switch under Floor and the import's tolerant reading of a floor out of range, with a warning in the preview (S4b-BL-104 c, d); search finds the floor in the app's language too (S4b-BL-104 b). |
 | 0.51 | 2026-10-01 | Claude (Code), lead | **The finishing batch built** (on stacked branches, [10](10-sprint-log.md) §13.29..§13.40): built notes for 5.2 (copies in UTC, the iPhone's copies and imports, the website's import), 5.6 (the floor, moving rooms), 5.7 (photo tags), 5.8 (the iPhone's calendar file, the reminder follow-ups), 5.17 and 5.18 (the iPhone wake-up), 5.19 (the emulator test, Hunt alerts with the app lock), 5.20 (offline maps on the website), 5.21 (the cost filters), 5.24 (moving in, the statuses Taken and Not chosen), 5.25 (the duplicate-flat warning), 5.28 (deletions in an update file, `/3`) and 5.29 (the locality lookup). |
 
@@ -841,9 +843,662 @@ stops recording and keeps what is there until it ages out or is cleared, so a da
 the week. The line's colour (`#8E24AA`) is none of the marker colours and none of the base map's own line colours
 (roads, India's boundary, the state lines), readable on the light tiles both themes show; TC-M-30 checks it on a
 device. Phone accuracy only, so the DST guidelines' 1 m threshold does not apply ([03](03-design.md) §11.1). The
-website has no Hunt mode and so no trace. Tests: `HuntEngineTest` (the trace and the pruning), `TrackGeoJsonTest`,
+website has no Hunt mode; its trace, and saved walks, are designed in 5.27.0..5.27.11 (2026-10-06, not built). Tests: `HuntEngineTest` (the trace and the pruning), `TrackGeoJsonTest`,
 `JsonStyleOpsTest` (the layer under the houses on iOS), `AppDatabaseMigrationTest` (2 to 3), the `hunt_trace`
 screenshots ([06](06-test-plan.md) TC-U-94).
+
+#### 5.27.0 The path trace, version 2 (owner request of 2026-10-06; design, not built)
+
+**The purpose** (owner): *help a person avoid the same path and see where she has travelled.* Today's trace is one
+static purple line. The owner decided, on 2026-10-06:
+
+1. **Repeats stand out.** Where the person walked the same path in two or more different walks, the line is drawn
+   thicker, in a second colour and dashed (5.27.4). Never colour alone.
+2. **A sound alert, optional, off by default,** when she takes a path she has walked before while Hunt mode runs
+   (5.27.5).
+3. **History.** The trace stays 30 days as today. When a walk ends (Hunt mode stops, or *Finish walk*) the person is
+   asked whether to **save it, linked to a house**; the default is to keep it 30 days and let it age out. A saved
+   walk is not pruned by the 30-day rule (5.27.6).
+4. **Privacy: "Phone only".** A saved walk stays on the phone or in the browser only, like today's trace: never in a
+   backup, a *Save a copy* file or readable copy, an update file, the Google Drive backup or sync, the sync with a
+   self-hosted server, or an AI request. A phone set up from a backup, a copy, Drive or the server starts without saved
+   walks; Android's own phone-to-phone transfer is the one exception and the text says so (5.27.7; PRV-028, T-I30).
+5. **The website gets the trace too**, with the browser's Geolocation API while the page is open, stored in
+   IndexedDB, under the same privacy rule (5.27.8).
+6. **The look is the person's choice** (owner, same day): a thicker line may look clumsy to some, so a setting *How
+   repeated paths look* has three levels, **Clear** (the default), **Subtle** and **Off** (5.27.4). The alert
+   setting is independent of it.
+
+Everything below is the design; the code follows the tickets S4b-FR-13..S4b-FR-18 ([10](10-sprint-log.md) §15). The
+sections 5.27.2 and 5.27.3 are the contract that the Kotlin and the TypeScript implementations share, held to each
+other by the vector file [`docs/schemas/trace-repeat-vectors.json`](schemas/trace-repeat-vectors.json) (status
+*proposed*: the first implementation must confirm every case, or this text is corrected in a documented change, never
+the vectors silently). What 5.27 above says of the build of 2026-09-29 stays true until the tickets land; where this
+design changes it, the change is named (*Amended*).
+
+#### 5.27.1 What the person sees, in one page
+
+- **Settings > Hunt mode** (phones) and the Map page's *Trace my path* card (website): the switch *Trace my path on the
+  map* (as today), then, under it, **How repeated paths look** (Clear, Subtle, Off), **Warn me when I walk a path again**
+  (off by default), **Saved walks: n** with *Delete all saved walks*, and *Clear the path* (as today; it clears the
+  30-day trace only). The website adds *Keep the screen on while I walk*.
+- **The Map:** each path walked once is a solid line; each stretch walked in two or more different walks is a dashed
+  line in the second colour, thicker with *Clear*. A small legend row (*Walked once* / *Walked more than once*) shows
+  both samples while the trace is not empty.
+- **Hunt card** (phones): a new button *Finish walk*. **Website Map page:** *Start a walk* and *Finish walk*.
+- **When a walk ends:** a bottom sheet *Save this walk?* with **Save with a house** (opens the house picker),
+  **Keep for 30 days** (the default, the highlighted button) and **Delete this walk**. Closing the sheet any other way
+  is *Keep for 30 days*.
+- **House page:** a card *Saved walks* (date, distance, minutes; *Show on map*, *Delete walk*).
+- **The alert:** a short system notification sound (phones) or a beep and a banner (website): *You have walked this way
+  before.*
+
+#### 5.27.2 Words and constants (both stacks use exactly these)
+
+| Word | Meaning |
+|---|---|
+| **Fix** | A location reading. Only fixes of 50 m accuracy or better are used (`HuntState.MAX_ACCURACY_M`; the website uses the same gate on `coords.accuracy`). |
+| **Point** | A *kept* fix: `TrackRecorder` keeps one at least 20 m from the last kept point or 5 minutes after it (the website the same). A point is `(lat, lon, atMs)`; stored points also carry the **walk id**, and the website's a **resumed** flag (the first point after the page was hidden for more than 5 minutes, step 3). |
+| **Walk** | A run of at least two points in time order with no gap of 30 minutes or more between neighbours, and one walk id. A walk ends when Hunt mode stops, when the person taps *Finish walk*, or at a gap of 30 minutes or more. Walks are **different walks** when they are not the same walk: points with different walk ids, or a gap of 30 minutes or more between them. |
+| **Walk id** | The `atMs` of the walk's first kept point (a `Long`). `TrackRecorder.reset()` (Hunt mode start) and *Finish walk* make the next kept point start a new walk id. **A walk id of 0 is no id**: rows written before this design, and the website's points before a walk id is known, carry 0 and are split by the gap rule alone; the id rule of step 1 applies only when both points have a non-zero id. The id is assigned at the first *kept* point, not at *Hunt start* or *Start a walk*: a walk that never gets a fix has no id and no row. |
+| **Segment** | The straight line between two consecutive points of one walk, except into a resumed point (step 3: there is none). |
+| **Sample** | A point on a walk's polyline used for matching: every original point, plus points that divide each segment into equal parts (below). |
+| **Corridor** | The set of places within `TOLERANCE_M` of another walk's polyline, including a round cap at that walk's ends. |
+| **Near** | A sample is near when its distance to some **other** walk's polyline is at most `TOLERANCE_M` (inclusive). |
+| **Run** | A maximal series of consecutive near samples of one walk, after bridging. |
+| **Repeated stretch** | A run whose length is at least `MIN_RUN_M`. |
+
+| Constant | Value | Why |
+|---|---|---|
+| `EARTH_RADIUS_M` | 6 371 000 | The same radius as `Geo.distanceM` (haversine), so a distance means the same everywhere. |
+| `WALK_GAP_MS` | 1 800 000 (30 min) | As today (`TRACK_GAP_MS`): a longer pause is a new walk. |
+| `DENSIFY_M` | 10 | Sample spacing. The 20 m thinning leaves points 20 m apart or more (hundreds of metres on a bike or a bus); matching points rather than segments would miss a street walked with points in different places. 10 m is half the thinning step and well under the tolerance. |
+| `TOLERANCE_M` | 25 | Two walks of one street differ by their GPS error. Fixes pass the gate at 50 m, but the usual urban error is 5 to 15 m, so two readings of one path are mostly 20 m apart or less; Indian lanes that run side by side are often 30 to 60 m apart. 25 m accepts the first and refuses the second **when the readings are exact**; with real noise (the reviewer's probe, 8 m error a side, 400 m of two lanes) lanes 40 m or more apart are refused, at 35 m a few trials light up, and at 30 m apart about half the trials mark about a sixth of the length. If the owner's field check (TC-M-57, two lanes about 30 m apart) shows them lit, the fallback is `TOLERANCE_M = 20` with the vectors regenerated from the reference and the constant changed here, in the vector file and in both stacks together. |
+| `BRIDGE_M` | 30 | A run may be broken by one bad fix (the gate lets 50 m through). A stretch of non-near samples between two near samples is filled when the two near samples are at most 30 m apart along the walk (at most two samples at 10 m). |
+| `MIN_RUN_M` | 80 | **A junction is not a repeat.** Two streets crossing at an angle θ stay within the corridor for about `2 x 25 / sin θ` metres: 50 m at 90 degrees, 58 m at 60, 71 m at 45. At 80 m only a crossing under about 38 degrees counts, and that is nearly the same street. |
+| `ALERT_MIN_RUN_M` | 100 | The alert needs a clearer repeat than the line: the person has followed the path for 100 m. |
+| `ALERT_COOLDOWN_MS` | 600 000 (10 min) | Between two alerts. |
+| `REPEAT_MIN_WALKS` | 2 | A stretch is repeated when this walk **and at least one other different walk** cover it. A third walk changes nothing (open question 6). |
+| `MAX_WALK_POINTS` | 5 000 | A walk is saved only up to this many points (5.27.6). |
+| `MAX_DETECTION_POINTS` | 20 000 | The most points the detection reads: the newest walks first (by walk id), whole walks only. |
+| `PAUSE_SPLIT_MS` | 300 000 (5 min) | **Website only, in the recorder, not in the detection:** a page hidden for longer than this marks the first point after it *resumed* (5.27.8). The vector file carries the flag, not this number. |
+
+`MAX_WALK_POINTS` and `MAX_DETECTION_POINTS` are also in the `constants` block of the vector file, so the drift test of TC-U-147 covers every constant of this table that the algorithm or its callers read.
+
+#### 5.27.3 The repeat-detection algorithm (shared; the contract of the vector file)
+
+Written once in `:shared` commonMain (`app.doorprints.shared.trace.RepeatDetector`) and once in TypeScript
+(`web/src/app/shared/trace-repeats.ts`), from this text, not one from the other. Pure functions: no clock, no I/O.
+Inputs are doubles; saved walks come back from their storage already rounded to 1e-6 degrees (about 0.11 m), which
+cannot change a result outside the 0.5 m the vectors allow.
+
+**Step 1, clean and split.** `splitWalks(points)`: drop a point whose latitude is not in [-90, 90] or longitude not in
+[-180, 180] or any number not finite; sort by `atMs`, **stable** (the input order breaks a tie: the vector `split-unsorted-and-duplicate-times` depends on it;
+Room's `ORDER BY at` does not order ties, so the rule holds for the in-memory list); drop a point whose `atMs` equals the one
+before it (the first stays); start a new walk when the gap to the previous point is `>= WALK_GAP_MS` (a gap of exactly
+1 800 000 splits, 1 799 999 does not) or when **both points carry a non-zero walk id** and the ids differ; keep walks of at
+least two points. **A walk id of 0 is no id** (rows from before this design, and the website's points before a walk id is
+known): with a 0 on either side the gap rule alone decides, so `[.., 5], [.., 0], [.., 6]` with 60 s gaps is one walk (the
+vector `split-walk-id-zero-is-no-id`; Kotlin's `TracePoint.walkId` defaults to 0 and the web's `walk` field means the same). (Stored walks need no splitting: they are already walks.)
+
+**Step 2, distance.** All distances are in metres on a local flat plane: for a point `q` and a point or segment around
+it, `x = (lon - q.lon) * cos(rad(q.lat)) * K`, `y = (lat - q.lat) * K`, `K = EARTH_RADIUS_M * pi / 180`. Between two
+points of a walk (segment length, arc length) the latitude used is the mean of the two. Why this and not a fixed
+grid of cells: a grid of 20 m cells would call two readings 21 m apart "different" when they straddle a cell edge and
+"the same" at 39 m when they sit in one cell; a distance has no edges, is exact to centimetres over a walk's size, and
+is the same arithmetic in both languages. (The index in step 5 may use a grid; the answer may not depend on it.)
+
+**Step 3, samples.** For each segment of length `L`: `n = max(1, floor(L / 10 + 0.5))` equal parts; the samples are the
+segment's start and the `n` points at `i / n` of the way (so the end is the next segment's start and appears once).
+Each sample has its arc length from the walk's first point (the sum of segment lengths so far plus `i/n` of `L`). A
+walk's first point is sample 0 at arc 0. A segment of length 0 (a stay: two points at one spot) gives one sample at the same
+arc, `n = 1`; that is harmless and an implementation must not "fix" it. **A resumed point** (the website's first point after
+a page hidden for more than `PAUSE_SPLIT_MS`; `TracePoint.resumed`, false on the phones) begins a new *part* of the same walk:
+there is **no segment** between it and the point before it, so no samples, no length and nothing near it on that stretch
+(the arc length does not grow across it), and the point itself is a sample like the walk's first, at the arc reached so far.
+A walk is still one walk for the "different walks" rule: a pause does not make a second walk, so a person who goes out, is
+paused and comes back along her own path is not a repeat. The vector `web-pause-makes-no-segment`.
+
+**Step 4, near flags.** For a walk W, the *others* are all walks in the input except W (never W itself, so a walk that
+goes up a street and comes back is one walk and no repeat: the owner's "two or more different walks"). Order does not
+matter: an earlier and a later walk are others to each other, and a stretch is repeated in both. A sample is near
+when its distance to some other walk's polyline (the point-to-segment distance, the segment clamped at its ends; the
+other walk's segments are its original ones between kept points, not its densified samples, and without any segment
+into a resumed point) is `<= TOLERANCE_M`.
+
+**Step 5, bridging.** Take the near flags. For each maximal series of non-near samples that has a near sample on both
+sides, if the arc length between those two near samples is `<= BRIDGE_M`, mark the series near. (One pass over the
+original flags; filled samples do not bridge further.) A non-near series at the start or the end of the walk is never
+filled, and **a bridge never crosses a part boundary** (a resumed point): the two near samples must be in one part.
+
+**Step 6, runs.** A run is a maximal series of consecutive near samples **of one part** (a resumed point ends a run). Its length is the arc length from its first
+sample to its last. A run of length `>= MIN_RUN_M` is a **repeated stretch**, reported as `[fromM, toM]` (arc lengths
+from the walk's first point). A run has round caps, so it can stick out up to 25 m past where the other walk ends: the
+corridor, not the exact overlap. The relation is not symmetric in length (the vectors `t-junction-shared-stem` and
+`overlap-90m-is-a-repeat` show it) and need not be.
+
+**Step 7, who draws it (`shown`).** Two walks over one street would draw two dashed lines out of step, which reads as
+a solid one. So each repeated stretch is drawn by one walk: a repeated sample of walk W is **left to a newer walk V**
+(newer: a later walk id, which for a walk is the `atMs` of its first point, never the input index; the later input index only on
+a tie: the vector `shown-newest-draws-whatever-the-input-order`) when V is within `TOLERANCE_M` of the sample **and** the point
+of V nearest to the sample lies inside one of V's own repeated stretches (a margin of 0.5 m). The samples that remain,
+as maximal series of at least two, are the **shown** stretches; they become the dashed overlay. Every walk is also
+drawn whole as the solid base line, so a stretch left to a newer walk still shows (under that walk's dashes).
+
+**Output.** `detect(walks)` returns a `List<WalkRepeats>`, one per walk in input order: `repeated: List<Stretch>` and
+`shown: List<Stretch>`, `Stretch(fromM, toM)`; plus a helper `pieces(walk, stretches)` that cuts the walk's samples
+at the stretch boundaries into polylines for GeoJSON (the stretch's samples, with the boundary samples shared so the
+overlay meets the base without a gap).
+
+**The alert's test, one point at a time (`RepeatAlert`).** State: `blocked` (false), `lastAlertAt` (none). **The others** for
+the alert are every other walk stored, saved walks included, **except a walk whose last point is less than `WALK_GAP_MS`
+before the live walk's first point** (`live.first.atMs - other.last.atMs < WALK_GAP_MS`; exactly 30 minutes counts): after
+*Finish walk* at a house, walking back the way one came is a different walk, but not one to warn about. The exclusion is for
+the alert only; the Map's detection still marks the street (vectors `alert-not-for-the-walk-just-finished` and
+`alert-walk-finished-30-minutes-ago-counts`; open question 1). At each kept point `P` of the live walk (index 0 never
+alerts), build the live walk's samples up to `P` and the near flags and bridging of steps 3 to 5 against the others (the live
+walk is W). If `P` (the last sample) is not near: no alert, and `blocked` becomes false **only when the trailing series of
+non-near samples (ending at `P`, before bridging) is longer than `BRIDGE_M` along the walk**, that is, when bridging could no
+longer join `P` to the run behind it (or there is no run behind it, or a part boundary lies between). One or two off samples
+inside a run neither ring nor unblock (the vector `alert-one-bad-fix-does-not-ring-again`: one fix 40 m off the street, inside
+the 50 m gate, must not ring the same street again after the cooldown). Otherwise the **trailing run** is the series of near
+samples (after bridging, within one part) that ends at `P`; its length is the arc length from its first sample to `P`. The
+alert rings when the trailing run is `>= ALERT_MIN_RUN_M`, `blocked` is false and (`lastAlertAt` is none or `P.atMs -
+lastAlertAt >= ALERT_COOLDOWN_MS`); then `blocked = true` and `lastAlertAt = P.atMs`. A run that qualifies while the cooldown
+still holds does not ring and stays eligible at the next point of the same run (the vector
+`alert-cooldown-suppresses-a-second-alert`). `blocked` keeps one run to one alert; a new alert needs the walk to leave the
+paths walked before for more than `BRIDGE_M` and come back.
+
+**Cost and limits.** Reading is per walk against the others; an index (a grid of 100 m cells over the others'
+segments, or an R-tree) and a bounding-box test (each other walk's box grown by 25 m) are required, because a month of
+trace plus up to 200 saved walks is tens of thousands of segments, and results must equal the plain loops (the tests
+run both on the vectors and on a random city: the same stretches). At most `MAX_DETECTION_POINTS` points are read,
+newest walks first, whole walks only; walks over the limit are not compared (they are still drawn). The Map computes
+off the main thread, when the Map opens, when the walks change (a walk ends, a walk is saved or deleted) and, while
+a walk records, at most once every 5 seconds; it caches the result by the walks' ids and point counts. The alert
+needs only the samples near the newest point, so an implementation may look at the live walk's last `ALERT_MIN_RUN_M +
+BRIDGE_M` metres plus one sample (130 m) instead of the whole walk, provided the window starts on a sample and gives the same
+flags for the last 100 m; the vectors and the random-city test must return the same alert indexes as the full definition
+(a window that cuts a non-near series can bridge it differently, and the unblock rule above needs the trailing non-near
+series as far back as `BRIDGE_M` too).
+
+**With *How repeated paths look* = Off the detection still runs** when the alert is on; with both off it may be
+skipped, because nothing shows its result. The look never changes a result (the vector file has no look field).
+
+#### 5.27.4 How repeats look
+
+**Layers** (one GeoJSON source `track`, features tagged by property `kind`): the **base** line (`kind = "base"`, layer
+`track-line`, as today: solid, round caps, `#8E24AA`, opacity 0.85, widths by zoom as today) for every walk whole; the
+**repeat** overlay (`kind = "repeat"`, layer `track-repeat-line`, drawn above the base and under the house layers)
+for every shown stretch. `trackGeoJson(walks, shown)` gets the second kind; `trackLayerJson()` stays; new
+`trackRepeatLayerJson(look)`. The `track` source stays one so offline packs and the India-boundary checks of
+TC-M-25 are unaffected.
+
+**The second colour: `#E65100`** (a deep orange; web and phones, the same on the light map in both themes, because the
+map's tiles stay light in both). Chosen against four constraints:
+- *Not a marker colour:* the markers are blue `#3C5A99`, green `#1A7A43`, red `#B3261E`, amber `#8A5A00`, grey `#5F6B66`
+  (and `#888888`). The nearest are red and amber; `#E65100` is lighter and more saturated than both, and a marker is a
+  filled dot with a white ring while a repeat is a line.
+- *Not a base-map line colour:* OpenFreeMap's roads are white, pale yellow and pale orange casings, state and country
+  lines are grey and India's boundary is dark grey; none is this saturated an orange. TC-M-25 and the new TC-M-57 check it.
+- *Apart from the purple `#8E24AA` for red-green colour-vision deficiency* (the common kind): purple is a blue-red mix
+  and reads as blue; the deep orange reads as yellow-brown, so the pair sits on the blue-yellow axis that protan and
+  deutan eyes keep. For tritan eyes (rare) the pair differs in luminance: relative luminance 0.10 (purple) against 0.23
+  (orange) on top of the dash, and the dash is the rule that does not depend on any of this.
+- *Visible on the light map:* contrast with white 3.79:1 (at least 3:1 for a graphic, WCAG 1.4.11); the purple has 7.04:1.
+  Orange on purple is 1.86:1, which is why the dash, not the colour pair, carries the cue.
+
+**Checked, 2026-10-06 (senior review, [ops/path-trace-spec-review.md](ops/path-trace-spec-review.md) 5): `#E65100` stays.**
+Machado, Oliveira and Fernandes (2009) at severity 1.0, CIEDE2000 between the orange and the purple: 48.5 for normal
+vision, 57.1 protanopia (olive against blue), 59.1 deuteranopia, 26.3 tritanopia (at least 20 is a different colour). One
+weakness, stated here so nobody is surprised: **under protanopia the orange line and the amber and star marker colours are
+near-identical in colour (CIEDE2000 4 to 7); they are told apart by form only** (a dot with a white ring against a dashed
+line) and by the purple base under the dashes. That is why *Off* is never the default and why the dash is non-negotiable.
+The device check of TC-M-57 (4) on a map screenshot stays as the confirmation; if it fails, the colour is changed in this
+section and in `TRACK_REPEAT_COLOR`, nowhere else.
+
+**Dash:** `line-dasharray [3, 2]` (units of the line's width: a dash of three widths, a gap of two), `line-cap: butt`
+(round caps would close the gaps), `line-join: round`; opacity 0.95. The gaps show the solid base line beneath, so the
+stretch reads as orange dashes on a purple line.
+
+**Widths by zoom (px).** The base keeps today's `TRACK_WIDTHS = 10 to 1.5, 14 to 3.0, 18 to 5.0` (linear between).
+The overlay's widths are the base's times the look's factor:
+
+| Look | Factor | Overlay at zoom 10 | 14 | 18 | Dash | Colour |
+|---|---|---|---|---|---|---|
+| **Clear** (default) | 1.8 | 2.7 | 5.4 | 9.0 | yes, `[3, 2]` | `#E65100` |
+| **Subtle** | 1.0 | 1.5 | 3.0 | 5.0 | yes, `[3, 2]` | `#E65100` |
+| **Off** | | no overlay layer shown; a repeated stretch is the base line like any other path | | | | |
+
+At zoom 10 the dash of 1.5 px is 4.5 px long and the gap 3 px: it reads as a dotted line, which is why the overlay
+fades in from zoom 11 (opacity 0 at zoom 10.5, 0.95 at 11) for both looks. Constants `TRACK_REPEAT_FACTOR_CLEAR = 1.8`
+and `..._SUBTLE = 1.0` are in the shared style code (`MapStyleJson.kt`, web `trace-style.ts`), and a test pins the
+table above.
+
+**Never colour alone** (WCAG 1.4.1): *Clear* and *Subtle* both keep the dash, which is the second cue; *Clear* adds
+width as a third. The legend row draws the same sample lines, and its text says *Walked more than once*. With *Off* the
+look is "colour and dash and width: none": the repeats are not marked, which is the person's explicit choice, and the
+Map says so once (the setting's hint). The Map's content description names the repeat style: *Paths you walked more
+than once are dashed.*
+
+**The setting:** `repeatLook` with the values `CLEAR` (default), `SUBTLE`, `OFF`; stored with the other trace settings
+(Android and iPhone: `AppSettings.repeatLook`, DataStore key `repeatLook`; website: settings-store key
+`trace.look`), **per device**, never synced, exported or backed up (a display choice, not data; 5.27.7). A radio group
+with a one-line description each, under the trace switch, shown (enabled) whether or not the trace is on.
+
+**Live:** the choice applies at once, with no restart of Hunt mode or of a walk, and the GeoJSON is not rebuilt.
+`PlatformMap` gains a parameter `repeatLook: RepeatLook`. **Android:** `LaunchedEffect(style, repeatLook)` finds the layer
+`style.getLayerAs<LineLayer>(TRACK_REPEAT_LAYER)` and calls `setProperties(lineWidth(repeatWidthExpression(look)),
+visibility(if OFF NONE else VISIBLE))`; the layer is added once, after `track-line`, from the same values as
+`trackRepeatLayerJson`. **iPhone:** a Swift method `setRepeatLook(widthStops: [[Double]], visible: Bool)` on the map wrapper,
+called from `PlatformMap.ios.kt` the way `setTrack` is. **Website:** `map.setPaintProperty('track-repeat-line', 'line-width',
+...)` and `setLayoutProperty(..., 'visibility', ...)`. (`JsonStyleOps` is not involved: it edits a style's JSON before the map
+loads it and has no live property setter; the trace is not built through it on Android either.) **Proof:** `TrackStyleTest`
+pins `trackRepeatLayerJson(look)` and `repeatWidthExpression(look)` (2.7/5.4/9.0 and 1.5/3.0/5.0, `visibility none` for OFF);
+`MapScreenLookTest` (`:ui` commonTest, a fake `PlatformMap` recording its parameters) shows that a settings change
+re-renders with the new `repeatLook` and the same `track` list instance; the Android layer call is covered by the Roborazzi
+screenshots `trace_look_{clear,subtle,off}` (4 languages x 2 themes for the settings card, English light and dark for the
+map); the website by `trace-style.spec.ts` with a fake map. **The alert does not depend on the look**: `HuntEngineTest.alertRingsWithLookOff` (and the
+web twin) run the engine with `OFF` and the alert on and assert the same alert indexes as with `CLEAR`.
+
+#### 5.27.5 The alert
+
+**Setting:** `repeatAlert`, **off by default**, per device (`AppSettings.repeatAlert`; website `trace.alert`). Label *Warn
+me when I walk a path again*; help (phones) *While Hunt mode runs, play a short sound when you follow a path you have
+already walked. You can mute it in your phone's notification settings. Needs Trace my path.* Enabled only while *Trace
+my path on the map* is on (otherwise disabled with *Turn on Trace my path first.*). Turning it on asks for the
+notification permission when it is not yet granted (Android 13 and later, iPhone) with the reason; if the person
+refuses, the switch goes back off and says so.
+
+**When it rings:** while Hunt mode runs (phones) or a walk records (website), the trace is on, and the algorithm's
+alert test (5.27.3, `RepeatAlert`) passes at a kept point: the live walk has followed paths of other walks for at
+least `ALERT_MIN_RUN_M` = 100 m. Only fixes that pass the 50 m gate and are kept points are tested, so the check costs
+nothing between points. At most one alert per run and one per 10 minutes (the cooldown), and one bad fix inside a run does
+not start a new run (5.27.3), so walking a long street rings once. **Not for the walk just finished:** a walk that ended
+less than 30 minutes before this one began (*Finish walk* at a house, then back the way she came) does not count for the
+alert, though the Map still marks it (5.27.3; open question 1). It is independent of the house and street alerts of Hunt mode (they have their own cooldowns).
+
+**Android.** `HuntEffects.alertRepeat(runM: Int)`; the platform posts a notification on a **dedicated channel**
+`repeat_path` (`Notifications.CHANNEL_REPEAT_PATH`), name *Repeated path*, importance `DEFAULT` (it makes the sound,
+no heads-up), default notification sound, no vibration, `setShowBadge(false)`; title *You have walked this way before*,
+text *This path is on your map from an earlier walk.*; tap opens the Map; auto-cancel; timeout 2 minutes; lock screen
+`VISIBILITY_PRIVATE` with a public version and `VISIBILITY_SECRET` when the app lock is on (S4b-BL-68), exactly as the
+Hunt alerts do ([03](03-design.md) §17); the public version is the existing *Doorprints alert* of `CHANNEL_ALERTS`, so no new
+string reaches the lock screen. No sound is played by Doorprints itself: the channel's sound is the phone's, so **the person mutes it, or
+changes its sound, in Android's own settings** (Settings > Apps > Doorprints > Notifications > Repeated path), and Do
+Not Disturb and the media/ring volume rules apply as for any notification. With the app in front the Map also shows
+the same sentence as a snackbar. **iPhone:** a local notification with `UNNotificationSound.default`, category
+`repeat-path`, thread `repeat-path`, `interruptionLevel .active`; muting is in Settings > Notifications > Doorprints,
+and the silent switch and Focus apply. **Pocket and a locked phone:** Hunt mode is a foreground service (Android) and
+background location under *When in use* (iPhone), so fixes keep coming and the notification sounds from a pocket or on
+a locked screen; this is the case the alert exists for. **Battery:** no new location request, no sensor, no network;
+the cost is the detection pass per kept point (milliseconds). **Permissions:** notifications only (already asked for
+Hunt mode's alerts); nothing new for location.
+
+**Website.** A banner on the Map page (`role="alert"`, text *You have walked this way before.* (the same sentence as the phones'
+notification title), a *Dismiss* button,
+auto-hidden after 10 s) and a short beep: two 0.15 s sine tones at 880 Hz, 0.1 s apart, volume 0.3, made with the Web
+Audio API (`AudioContext`). Browsers play audio only after the person has interacted with the page, so the
+`AudioContext` is created and resumed inside the click of **Start a walk**; if its state is not `running` when an alert
+comes (a browser that suspended it), only the banner shows and, where `navigator.vibrate` exists, a vibration of
+200-100-200 ms; the settings card says *Sound is off until you start a walk from this page. The note still appears.*
+while the context is not running. No Web Notification and no service-worker push (a page that is not open cannot
+track, so there is nothing to notify about). The website cannot ring with the screen off (5.27.8).
+
+**Unit test of the alert as an engine rule:** `HuntEngineTest` (phones) drives the engine with the vector file's alert
+cases and a fake `HuntEffects` and asserts `alertRepeat` is called at exactly `alertAtIndexes`; the web twin does it on
+`TraceRecorderService`.
+
+#### 5.27.6 Ending a walk, saving it, and what a saved walk is
+
+**When a walk ends.** (a) Hunt mode stops (the person, the engine's `stop(reason)`, low battery, permission lost), (b)
+*Finish walk* on the Hunt card or the website's Map page (Hunt mode keeps running; the next kept point begins a new
+walk id), (c) the website's page closes (below), or (d) **the process dies without a stop** (Android kills the service and
+`START_STICKY` restarts it, iOS terminates the app, the website's tab is closed): then `stopped()` never ran, and the next
+`reset()` gives the next walk a new id without a question for the old one. So the question is **computed, not stored**, from
+a watermark:
+
+**`walkAskedUpTo`** (a walk id, default 0; `AppSettings.walkAskedUpTo`, website `trace.askedUpTo`): the newest walk the *Save
+this walk?* sheet has handled. **The walk to ask about** is the newest walk id in `track_points` that is not the live walk's
+id, is greater than `walkAskedUpTo`, and has **at least 5 points and 100 m**; a shorter walk is just kept for 30 days
+without asking. It is looked for (a) at once after *Finish walk* or a stop from the Map, (b) when the Map opens, and (c) at
+Hunt start, before `reset()`, for the walk a restart cut. Any answer or dismissal sets `walkAskedUpTo` to that id, so each
+walk is asked once and an unanswered older walk is skipped (kept 30 days). `HuntData` gains `suspend fun lastEndedWalk():
+Long?` and `Settings.saveWalkAskedUpTo`; the engine writes no setting itself. `walkAskedUpTo` is a timestamp of a walk: it is
+never in `AppSettings.toString` (`repeatLook` and `repeatAlert` are a boolean and an enum and may print, like `pathTrace`).
+
+**The prompt.** The sheet *Save this walk?* shows the walk's distance and minutes and the sentence *Link it to a house
+to keep it. Otherwise it stays for 30 days, then it goes. It stays on this phone and is never in a backup or a copy.*
+Buttons: **Save with a house**, **Keep for 30 days** (primary: it is the default), **Delete this walk** (confirms:
+*Delete this walk? This cannot be undone.*). Dismissing the sheet (back, outside tap) is *Keep for 30 days*. It appears
+(a) at once when the person ended the walk with *Finish walk* or by stopping Hunt mode from the Map; (b) otherwise, when
+the Map next opens and a walk is to be asked about (Hunt mode stopped by itself, from the notification, was killed, or the
+app was closed); each walk is asked once, as the watermark above says.
+
+**The house picker** (*Which house was this walk to?*): a list of the person's live houses (not tombstones). The first
+row, **preselected when there is one**, is the house **nearest to where the walk stopped**: the smallest distance from
+the walk's last point to a house whose location is not approximate (`LocationSource.APPROX` excluded, as for Hunt
+mode's nearest house), shown only when that distance is `<= alertRadiusM` (Settings > Hunt mode's radius, default 30 m;
+the website has no such setting and uses 30 m). Under it, the houses within 150 m (`HuntEngine.NEAREST_SHOWN_M`) of any
+point of the walk, by their smallest distance, each with that distance; under that, a search box over all houses
+(the picker calls the same `HouseSearch.matches` as the list, `HouseListScreen.kt`; a saved walk is **not a house field**, so
+the search rule of S4b-FR-1 (search grows with the house values) does not apply and `searchText` does not change). *Save walk* is enabled once a house is chosen. With no houses the picker
+says *You have no saved houses yet. Add a house first, or keep the walk for 30 days.* A walk links to **one** house
+(open question 3).
+
+**Saving** moves the walk: in one transaction its points are encoded into a `saved_walks` row and its `track_points`
+rows (those with its walk id, or the run between its first and last time when old rows have walk id 0) are deleted, so
+nothing is stored twice and the 30-day prune cannot touch it. **Limits:** a walk of more than `MAX_WALK_POINTS` = 5 000
+points is refused (*This walk is too long to save (more than 5,000 points). It stays for 30 days.*), a house holds at
+most 20 saved walks (*This house already has 20 saved walks. Delete one first.*), the device at most 200 (the same with
+200). A refused save changes nothing and the walk stays in the 30-day trace. Size: 5 000 points is about 40 KB
+(5.27.7 and [03](03-design.md) §6.2), 200 walks at most about 8 MB; a day's walk is a few hundred points. Nobody reaches 5 000 points on foot (a 20 m step is
+250 points for 5 km), and the Map's base line draws a walk over the limit whole anyway; only the saving is refused.
+
+**Where a saved walk shows.** On the **house page**: the card *Saved walks* (newest first; each row *date, distance, minutes*;
+*Show on map* opens the Map fitted to the walk, *Delete walk* confirms). On the **Map**: saved walks are drawn with the
+trace (the same base line and the same repeat style); *Show on map* from a house page fits the view to that walk and
+briefly thickens it (a 2 px halo for 3 seconds, not read as a repeat). Saved walks older than 30 days are drawn too:
+they are the person's own history of where she walked. Repeat detection reads **all** walks, saved included, whether
+or not a walk is on screen. In Settings: *Saved walks: n* and *Delete all saved walks*.
+
+**Deleting.** *Delete walk* removes the row at once. *Delete all saved walks* confirms with the count. *Clear the path*
+removes only the 30-day trace (its hint says so). Turning the trace switch off keeps everything (as today).
+**The house is deleted:** a saved walk is the house's; on the phones, deleting a house leaves its tombstone (a delete is
+never a hard delete there), and its saved walks are **hidden from the Map, the house page and the detection at once**
+and **deleted when the delete is final**: when *Undo*'s snackbar (10 s, `offerDeletedHouseUndo`) closes without *Undo*,
+or at the next app start, Hunt start, sync end or import end, whichever comes first (`sweepWalksOfDeletedHouses`: every
+saved walk whose house is a tombstone or missing). The sweep after the snackbar's `Dismissed` runs under `NonCancellable`
+(like `restore()`): `offerDeletedHouseUndo`'s coroutine is cancelled when the screen is left, and a missed sweep is caught
+by the next trigger. The other places that tombstone houses are an import that deletes (`CommonRepository`, `deleteHouse(id)`
+inside the import) and `CopyUndo`; both end in "import end", and the test covers them by name. *Undo* inside the 10 s brings the house back **with** its walks
+(they were only hidden). The house form's delete confirmation says *Its saved walks are deleted too.* The website has no
+undo: `LocalStore.deleteHouse` deletes the house's saved walks in the same operation. A house tombstone that arrives by
+sync or import (a delete on another device) is swept the same way; **a saved walk never outlives its house**. *Delete all
+my data* (phones) and *Remove all Doorprints data from this browser* (website) remove saved walks and the trace.
+
+**The 30-day prune** (`pruneTrack`, at each Hunt start and now also at the Map's opening and at each walk's end)
+deletes `track_points` older than 30 days and never reads `saved_walks`. *Amended:* it used to run at Hunt start only.
+
+#### 5.27.7 Data and privacy (see [03](03-design.md) §6.2, §7.2a, ADR-34; [02](02-threat-model.md) T-I30)
+
+Two stores on each device, both **local only**: the 30-day trace (`track_points`; web `trace_points`), and the saved
+walks (`saved_walks`; web the same name). Neither is in: the JSON backup or the six readable copies, a *Save a copy*
+file or an update file (`ExportBundle.build`, `LocalRows`), the Google Drive backup or sync (`DriveBackupService`,
+`DriveSyncBackend`, the website's `drive-backup.service.ts`, `sync-file.ts`), the server sync (`ServerSyncBackend`, the
+website's `sync.service.ts`), the weekly backup (`AutoBackupWorker`), the shared-listing files, an AI request
+(`AiHouse`, `HouseDocuments`, the website's `core/ai/**`), a log or a crash report. **A phone set up from a backup, a copy, Drive or the server starts without saved walks**, and the
+guide says so. **Android's own phone-to-phone transfer (cable or Wi-Fi at setup) is the one exception: it copies the whole
+Doorprints database, walks included, because it is the phone's own copy and not a backup** (`data_extraction_rules.xml`:
+cloud backup excludes everything, device transfer includes the database on purpose so houses and photos move; Room tables
+cannot be excluded one by one, and nothing can tell a transfer from an upgrade at first start). The iPhone is clean:
+`IosDataDirectory` excludes the directory from iCloud and computer backups. What the person can do: before a cable transfer,
+*Clear the path* and *Delete all saved walks* (Settings > Hunt mode; a hint under the button says so on Android), or set the
+new phone up from a backup. A person who wants a walk to survive a phone change has no way to; that is the price of "phone
+only" (PRV-028; [02](02-threat-model.md) T-I30, RR-31). The settings `repeatLook`, `repeatAlert`, `walkAskedUpTo` and `trace.keepAwake` are local
+preferences like `pathTrace`: never exported. Whoever opens an unlocked phone sees the walks, and the recent-apps thumbnail or a screenshot of the Map with its
+dashes or of the house page with its walk rows shows where she walked (T-I29's residual; the app lock covers the first). The house picker never leaves the device. **No log line, breadcrumb or crash text holds a walk id, a point or a count**
+(`Log.` and `breadcrumb(` in the trace package; `HuntService` never logs fixes; `IosHunt`'s `breadcrumb()` logs stop reasons
+only); a source test greps for it (TC-U-151). The reference points one way: `saved_walks.houseId` names a house, a house
+never names a walk, so a house in a sync, a share or an AI request leaks no walk. A saved walk is location history linked to a house, so a
+**house page screenshot** or the readable copy of a house (which does not include it) must not mention walks: the
+copy writers do not read `saved_walks`, and the test of 5.27.7a asserts it.
+
+*5.27.7a What a test must assert* (TC-U-151 in [06](06-test-plan.md)): that no export or sync path reads the two
+stores, by (1) a backup and a copy of every format built from a database with walks have no coordinate of a walk (a
+unique marker coordinate is searched in the bytes, the ZIP entries inflated); (2) the invalidation tracker that feeds
+`localRowsFlow` (`db.localTablesChanged()`) does not list `track_points` or `saved_walks`; (3) the Drive backup payload
+and the sync file built from a world with walks contain neither; (4) a source test lists the DAO classes `TrackDao` and
+`SavedWalkDao` and fails when a file under `shared/export`, `drive`, `data/ServerSyncBackend.kt`, `shared/ai` or
+`app/.../export` refers to them; the website twin greps the store names `trace_points` and `saved_walks` in
+`web/src/app/export`, `web/src/app/data/drive`, `web/src/app/core/ai` and `sync*.ts`.
+
+#### 5.27.8 The website
+
+The website records a walk with the browser's **Geolocation API** (`navigator.geolocation.watchPosition`), **only
+while the page is open and visible**. Browsers do not track a page in the background: when the screen locks, the tab is
+hidden or the app is closed, the page gets no more fixes (a phone browser may keep a few). The page says so, in plain
+words, wherever a walk starts and while it records: *Your browser records only while this page is open and visible.
+Keep this page open while you walk.* and, when the page becomes hidden mid-walk, on return: *Recording paused while
+this page was hidden.* This is not Hunt mode: there are no house or street alerts on the website; the only alert is the
+repeated-path one.
+
+- **Start and finish.** The Map page's *Trace my path* card has the same switch as the phones (`trace.on`, off by
+  default); when on, the Map shows **Start a walk**. Pressing it (a user gesture) explains the permission in one
+  sentence (*To record your walk, your browser will ask for your location. It is used only on this page, while it is
+  open, and kept only in this browser.*) and then calls `watchPosition` with `{ enableHighAccuracy: true, maximumAge: 0,
+  timeout: 30000 }`; the browser asks for its own permission. The permission is never asked on page load. While a walk
+  records, the button reads **Finish walk**, with *Recording your walk*. Denied: *Location is blocked for this site.
+  Allow it in your browser's site settings to record a walk.* No Geolocation: *This browser cannot give your location.*
+  The page must be served over HTTPS (it is).
+- **Same constants.** The 50 m accuracy gate, the 20 m or 5 minutes thinning (`TraceRecorder.accept`, a TypeScript twin
+  of `TrackRecorder`, same tests), the 30-minute gap, the repeat algorithm and the alert are the ones of 5.27.2 and
+  5.27.3. Walk ids and `reset` follow *Start a walk* and *Finish walk*; a closed page ends the walk (the next *Start a
+  walk* is a new id, and the walk to ask about is found by the watermark of 5.27.6, so a closed tab is not forgotten). The id
+  is the `atMs` of the walk's first *kept* point (a walk that never gets a fix has no id and no row). **A page hidden for more
+  than 5 minutes** (`PAUSE_SPLIT_MS`; the screen locked, another tab) and visible again: the same walk continues, but the first
+  point after it is stored with `resumed = true`, so **no straight line is drawn or matched across the pause** (5.27.3 step 3:
+  a leap over a neighbourhood nobody walked would draw a path never walked and could create false repeats); a pause of 5
+  minutes or less keeps the line; a gap of 30 minutes or more is a new walk, as before (open question 7).
+- **Screen Wake Lock (optional).** *Keep the screen on while I walk* (`trace.keepAwake`, off by default, shown only where
+  `navigator.wakeLock` exists): requested at *Start a walk*, released at *Finish walk*, requested again when the page
+  becomes visible (the lock is released when it is hidden). Hint: *Uses more battery. Without it, the screen may lock
+  and recording stops.* iPhone Safari supports it from iOS 16.4 and a home-screen web app only from a later release;
+  where it fails the setting says *Your browser could not keep the screen on.* and nothing else changes.
+- **iPhone Safari and the installed website:** Geolocation works in the foreground only; a locked screen or another
+  app stops fixes; no background, no wake lock where unsupported. The beep needs the page's `AudioContext` started by the
+  *Start a walk* tap (the silent switch mutes web audio too).
+- **Storage.** IndexedDB, database `doorprints`, version 2 to 3 (`DB_VERSION = 3`, `upgradeLocalDb` step `oldVersion < 3`):
+  new object stores `trace_points` (key `id`, a string `"<walkId>-<atMs>"`, where the walk id is the first kept point's `atMs`; a row
+  carries `resumed` when true; index `walk`) and `saved_walks` (key `id`;
+  index `houseId`). `STORE_NAMES`, `STORE_KEY_PATH`, `STORE_INDEXES` and `MemoryDb` gain them; `db.clear()` already
+  empties every store, so *Remove all Doorprints data from this browser* clears them. Points are written one by one as
+  they are kept (a closed tab loses nothing but the last point). Walks are stored with the same quantisation as the
+  phones (microdegrees as integers, seconds from the walk's start), as plain arrays (no BLOB codec on the website).
+  Where IndexedDB is blocked (`MemoryDb`), a walk lives for the page only and the card says nothing is kept.
+  **A shared computer:** IndexedDB is per browser profile, and *Remove all Doorprints data from this browser* clears it; the
+  Map card says *Other people using this browser profile can see your walks.* The service worker caches the app shell and
+  hashed build files only; the tiles that go through `addProtocol` reveal where the map was looked at, not where she walked.
+- **Privacy rule:** exactly 5.27.7: not in the export (`export/backup-export.ts` and the other writers), not in the Drive
+  backup or sync (`drive-backup.service.ts`, `sync-file.ts`, `drive-sync-backend.ts`), not in the server sync
+  (`sync.service.ts`, `sync-backend.ts`), not in an AI request (`core/ai/**`); the only network use is the map's tiles, as
+  today.
+
+#### 5.27.9 Strings (English; hi, ta and te are translated by the lead and shipped *under review*)
+
+Key rule: a website key is `trace.<name>` in `i18n/en.ts`; the Android and iPhone resource is the same name with dots and
+capitals turned into underscores (`trace.repeatLook.title` is `trace_repeat_look_title`). `{n}`-style placeholders are
+the website's `{name}` and the phones' `%1$s` in the order given. Brand words: *Save a copy*, *Import a backup* stay as
+they are; *Restore* is never a button.
+
+| Key | English |
+|---|---|
+| `trace.repeatLook.title` | How repeated paths look |
+| `trace.repeatLook.hint` | Paths you have walked more than once can stand out on the map. This does not change the sound alert. |
+| `trace.repeatLook.clear` | Clear |
+| `trace.repeatLook.clearDesc` | Thicker and dashed in a second colour |
+| `trace.repeatLook.subtle` | Subtle |
+| `trace.repeatLook.subtleDesc` | Normal width, dashed in a second colour |
+| `trace.repeatLook.off` | Off |
+| `trace.repeatLook.offDesc` | Drawn like any other path |
+| `trace.alert.title` | Warn me when I walk a path again |
+| `trace.alert.hint` | While Hunt mode runs, play a short sound when you follow a path you have already walked. You can mute it in your phone's notification settings. Needs Trace my path. |
+| `trace.alert.hintWeb` | While a walk is recording, play a short beep and show a note when you follow a path you have already walked. Works only while this page is open. |
+| `trace.alert.needsTrace` | Turn on Trace my path first. |
+| `trace.alert.permissionDenied` | Notifications are off for Doorprints, so there is no sound. Allow them in your phone's settings. |
+| `trace.alert.channel` | Repeated path |
+| `trace.alert.channelDesc` | A short sound when you walk a path you have walked before. |
+| `trace.alert.notifTitle` | You have walked this way before. |
+| `trace.alert.notifText` | This path is on your map from an earlier walk. |
+| `trace.alert.notifPublic` | Doorprints alert (the existing public text of the Hunt alerts; the key is the Hunt alerts' own, no new string) |
+| `trace.alert.banner` | You have walked this way before. |
+| `trace.alert.dismiss` | Dismiss |
+| `trace.alert.soundOff` | Sound is off until you start a walk from this page. The note still appears. |
+| `trace.legend.title` | Your paths |
+| `trace.legend.once` | Walked once |
+| `trace.legend.repeated` | Walked more than once |
+| `trace.a11y.map` | Paths you walked more than once are dashed. |
+| `trace.walk.start` | Start a walk |
+| `trace.walk.finish` | Finish walk |
+| `trace.walk.recording` | Recording your walk |
+| `trace.walk.onlyOpen` | Your browser records only while this page is open and visible. Keep this page open while you walk. |
+| `trace.walk.paused` | Recording paused while this page was hidden. |
+| `trace.walk.keepAwake` | Keep the screen on while I walk |
+| `trace.walk.keepAwakeHint` | Uses more battery. Without it, the screen may lock and recording stops. |
+| `trace.walk.keepAwakeFailed` | Your browser could not keep the screen on. |
+| `trace.web.permissionExplain` | To record your walk, your browser will ask for your location. It is used only on this page, while it is open, and kept only in this browser. |
+| `trace.web.denied` | Location is blocked for this site. Allow it in your browser's site settings to record a walk. |
+| `trace.web.unavailable` | This browser cannot give your location. |
+| `trace.web.shared` | Other people using this browser profile can see your walks. |
+| `trace.end.title` | Save this walk? |
+| `trace.end.summary` | Walk of {distance} in {minutes} min |
+| `trace.end.body` | Link it to a house to keep it. Otherwise it stays for 30 days, then it goes. It stays on this phone and is never in a backup or a copy. |
+| `trace.end.bodyWeb` | Link it to a house to keep it. Otherwise it stays for 30 days, then it goes. It stays in this browser and is never in a backup or a copy. |
+| `trace.end.save` | Save with a house |
+| `trace.end.keep` | Keep for 30 days |
+| `trace.end.delete` | Delete this walk |
+| `trace.end.deleteConfirm` | Delete this walk? This cannot be undone. |
+| `trace.pick.title` | Which house was this walk to? |
+| `trace.pick.nearest` | Nearest to where you stopped, {distance} away |
+| `trace.pick.near` | {distance} from your walk |
+| `trace.pick.search` | Search your houses |
+| `trace.pick.none` | You have no saved houses yet. Add a house first, or keep the walk for 30 days. |
+| `trace.pick.confirm` | Save walk |
+| `trace.saved.snack` | Walk saved with {house}. |
+| `trace.kept.snack` | Walk kept for 30 days. |
+| `trace.deleted.snack` | Walk deleted. |
+| `trace.save.tooLong` | This walk is too long to save (more than {max} points). It stays for 30 days. |
+| `trace.save.houseFull` | This house already has {max} saved walks. Delete one first. |
+| `trace.save.allFull` | You have {max} saved walks. Delete one first. |
+| `trace.save.failed` | Could not save the walk: {reason} |
+| `trace.house.title` | Saved walks |
+| `trace.house.row` | {date}, {distance}, {minutes} min |
+| `trace.house.show` | Show on map |
+| `trace.house.delete` | Delete walk |
+| `trace.house.deleteConfirm` | Delete this saved walk? |
+| `trace.house.empty` | No saved walks. When you finish a walk, you can link it to this house. |
+| `trace.house.local` | Saved walks stay on this phone only. They are not in a backup, a copy, Google Drive or on a server. |
+| `trace.house.localWeb` | Saved walks stay in this browser only. They are not in a backup, a copy, Google Drive or on a server. |
+| `trace.houseDelete.note` | Its saved walks are deleted too. |
+| `trace.settings.saved` | Saved walks: {n} |
+| `trace.settings.deleteAll` | Delete all saved walks |
+| `trace.settings.deleteAllConfirm` | Delete all {n} saved walks? This cannot be undone. |
+| `trace.settings.transferNote` | Android's phone-to-phone transfer also copies saved walks. To leave them behind, delete them before you transfer. (Android only.) |
+| `trace.settings.clearHint` | Clears the walks kept for 30 days. Saved walks stay until you delete them. |
+
+The existing `settings_path_trace_hint` gains *Saved walks, if you save any, stay here too.* in the same change; its
+current text ("never in a backup, a copy or on the server, and gone after 30 days") is made true for both stores by
+5.27.6.
+
+#### 5.27.10 Tests and tickets
+
+Planned tests: [06](06-test-plan.md) TC-U-147..TC-U-152, TC-M-57..TC-M-60 and the manual entries MT-75..MT-80 of
+[ops/manual-test-checklist.md](ops/manual-test-checklist.md). **Where the vector tests run:** `commonTest` has no file API, so
+`RepeatDetectorVectorsTest` is in `:shared` **`androidHostTest`** on the JVM and walks up from the working directory to
+`docs/schemas/trace-repeat-vectors.json`, as `DriveVectorsTest` does for the Drive vectors; a small `RepeatDetectorTest` in
+`commonTest` with six inline cases (same street, junction, bridge, gap split, alert 100 m, cooldown) lets the iOS simulator
+job execute the common code too; the website's `trace-repeats-vectors.spec.ts` reads the file as `drive-vectors.spec.ts`
+does. The two engineers (Kotlin and TypeScript) do not read each other's code until both pass the vectors, and the pull
+requests name who wrote which. The new files (`trace/*.kt`, `trace-repeats.ts`, `trace-store.ts`,
+`trace-recorder.service.ts`) start with the licence notice: `python3 .github/scripts/licence-headers.py --fix` before the
+commit. Tickets: [10](10-sprint-log.md) §15, S4b-FR-13..S4b-FR-18.
+Requirements: [01](01-requirements.md) FR-102..FR-107 and PRV-030, PRV-031 (PRV-028 amended). The proposed website Hunt mode
+follow-up is 5.27.12 (S4b-FR-19..S4b-FR-23, not scheduled).
+
+#### 5.27.11 Open questions (each with the recommended answer; none is silently assumed)
+
+1. **Is an out-and-back inside one walk a repeat?** As written, no: "different walks" means separated by a 30-minute
+   gap, a stop or *Finish walk*, so retracing a street within one walk, which is normal when looking for a house
+   number, is not marked. *Recommend: keep as written* (the senior review agrees for the Map). The alternative (a repeat within one walk when the
+   person returns after more than N minutes) can be added later without changing the vectors. **For the alert the review
+   found a different case and the design applies its recommendation, the owner may overrule:** after *Finish walk* at a
+   house, walking back the way one came is a different walk, so the alert would ring on the way back. The alert therefore
+   leaves out a walk that ended less than 30 minutes before the live walk began (5.27.3, vectors
+   `alert-not-for-the-walk-just-finished` and `alert-walk-finished-30-minutes-ago-counts`); the Map still marks the street.
+   *Overrule = delete that exclusion sentence and the two vectors.*
+2. **A deleted house's saved walks: removed when the delete is final** (Undo window, next start, sync end), hidden
+   meanwhile. *Recommend: as written* (the sweep after the Undo snackbar runs under `NonCancellable`). The alternative, removing them at
+   the tap and losing them on Undo, is simpler but makes Undo lossy.
+3. **One house per walk.** A walk that visited three houses is saved once, for one. *Recommend: one in v1;* a later
+   "also link to..." can add rows pointing at the same points.
+4. **The second colour `#E65100`**: checked by simulation on 2026-10-06 (5.27.4: contrast 3.79:1; CIEDE2000 48.5 normal, 57.1
+   protanopia, 59.1 deuteranopia, 26.3 tritanopia; verdict pass). *Recommend: keep it;* TC-M-57 (4) stays as the device check,
+   and the colour changes in one place if it fails. Its one weakness (orange against the amber and star markers under
+   protanopia, told apart by form only) is stated in 5.27.4.
+5. **Saved walks always draw on the Map** (and take part in detection) whatever their age. A *Show saved walks* switch
+   would let the person tidy the map. *Recommend: no switch in v1;* add it if the map feels crowded, computing
+   detection on all walks and drawing only the chosen.
+6. **A third level for walked three times or more.** *Recommend: no;* two cues (dash, colour) are enough, a third
+   would need a third colour.
+7. **The website's walk when the tab is hidden.** On the website a hidden page is the normal case (the screen locks), and a
+   straight line across a neighbourhood draws a path never walked and can create false repeats. *Recommend (the senior
+   review's, adopted in 5.27.3 step 3 and 5.27.8): split the walk's line across a pause of more than 5 minutes* (the same walk
+   id, a `resumed` flag on the next point, no segment across it; the vector `web-pause-makes-no-segment`); on the phones a
+   gap of 29 minutes still draws a straight line, as today.
+8. **Web notifications for the alert** (Notification API with the page open but another tab in front). *Recommend: no
+   in v1:* a page in a background tab is throttled and gets no fixes either.
+9. **Where the website's settings live.** *Recommend: the Map page's *Trace my path* card* (the actions are there); *Your
+   data* gets only *Saved walks: n* and *Delete all saved walks*.
+10. **Prune at the Map's opening** (new) so a person who never starts Hunt mode again still sees 30 days at most.
+    *Recommend: yes, as written.* (`trackPoints` already reads only the last 30 days, so this is storage hygiene.)
+11. **`MIN_RUN_M` of 80 m and `TOLERANCE_M` of 25 m** are reasoned, not measured. *Recommend: ship, then check on the
+    owner's own walks (TC-M-57, which includes two parallel lanes about 30 m apart) and adjust the two constants together with
+    the vectors; the fallback is `TOLERANCE_M = 20`.* The review's simulations: two 400 m passes of one street with an error of
+    5 to 8 m a side are one stretch every time; at 12 m the dashes split into two stretches in 31 of 200 trials and at 15 m in 81
+    (a bad GPS day shows a dashed street in pieces: acceptable); two lanes 30 m apart light up about half the time at 8 m error.
+12. **Room version 11** is the next number at `main` `4dd94a3f` (confirmed by the review: `AppDatabase.version = 10`; IndexedDB 3);
+    another branch may take it first. *Recommend: the implementer reads `AppDatabase.kt` at the start and takes the next free
+    number, updating 03 and this section.*
+13. **A speed gate for the alert** (not while driving: no alert when the last two kept points imply more than 12 km/h) is cheap and
+    avoids a bus ride ringing through a known street. *Recommend: not in v1; ask the owner whether it is wanted.*
+14. **Later, not this batch** (backlog candidates, none scheduled): the houses passed listed on a saved walk's row; a *Streets not
+    walked* view (needs the road network, which the app has not offline: park); naming a walk or linking one walk to several
+    houses (question 3); a *Show saved walks* switch (5) or a third level (6); exporting one saved walk as GPX on request (against
+    "phone only": park until asked); quiet hours for the alert; a *new area* cue (the inverse of the alert: not asked for).
+
+#### 5.27.12 Hunt mode on the website (proposed follow-up; status *proposed, not scheduled*)
+
+Owner question of 2026-10-06: can Hunt mode itself come to the website, accepting that it works only while the page is open and
+visible? The senior review ([ops/path-trace-spec-review.md](ops/path-trace-spec-review.md) 9) answered it as below. **Nothing
+here is built or scheduled; the tickets S4b-FR-19..S4b-FR-23 ([10](10-sprint-log.md) §15) are written so the owner can say yes
+or no.** It would follow the website's trace (S4b-FR-17), which already builds every seam it needs (`TraceRecorderService` with
+`watchPosition`, visibility, wake lock, the beep and banner, the permission flow, the Map page card).
+
+What a browser can and cannot do: `watchPosition` delivers fixes only while the page is visible (Android Chrome throttles a hidden
+tab and stops when the screen locks; iOS Safari and a home-screen web app stop at once); there is no background geolocation and no
+geofencing API. Screen Wake Lock keeps the screen on where it exists. A notification can be *shown* from the open page but nothing
+can compute in the background to decide to show one. Web Audio needs a gesture; iOS mutes it with the silent switch.
+
+| Hunt mode behaviour | On the website, page open and visible | Verdict | What the person must be told |
+|---|---|---|---|
+| Fixes (15 s walking, 60 s staying) | `watchPosition`; the browser sets the rate; the engine's thinning applies | Works (rough on computers without GPS) | *Works only while this page is open and visible. A computer without GPS gives a rough location.* |
+| Accuracy gate 50 m, nearest-house card | `coords.accuracy`; the same rule | Works | |
+| Near-house alert | Same rule; banner (`role="alert"`) and beep; an optional notification while the page is open | Works while visible | *No alert when the screen is locked or another app is in front.* |
+| Street alert | Needs automatic reverse geocoding: Nominatim allows 1 request a second and the app calls it today only from a button press | **Defer** (owner decision 2) | *Street alerts are not on the website.* |
+| Stay to visit, *Are you at a house?* | `StayDetector` is pure; a visit is an ordinary row | Works while visible (a 4-minute stay with the screen locked is missed unless the wake lock is on) | *Keep the screen on, or the visit may not be noticed.* |
+| Battery stop at 15 % | Battery Status API is Chrome-only | Degraded | *Your browser does not tell the page the battery level.* |
+| Path trace, repeats, alert | 5.27.8 | Works while visible | As 5.27.8 |
+| Reminders with *Start Hunt mode* | The reminder can carry a link that starts it on a tap | Degraded: shown only while the website is open | *Reminders show only while the website is open.* |
+| Area wake-up (geofences), pocket or locked screen | No web geofencing, nothing runs | **Cannot** | *Area wake-up is a phone feature.* The sentence of 5.27.8. |
+| Ongoing notification with *Stop*, app lock | No foreground service; the page's own card with *Stop*; the website has no app lock | Replaced by the card | |
+
+**Recommended shape if built:** a *Hunt mode (while this page is open)* switch on the Map page's card, session only and never
+persisted (a reload starts it off), with the alert radius and minimum stay as local settings; the rules shared as a second
+vector file `docs/schemas/hunt-vectors.json` (near-house alert, stay detector, gate, thinning) that `HuntEngineTest` and the
+website's `hunt-rules.ts` both run; alert state in memory only; fixes stored only as trace points (5.27.7); visits as ordinary
+rows; the location permission only at the switch's tap (PRV-031 extended); no Web Push, no server; the page stops Hunt mode
+after 30 minutes hidden and says so; accessibility as 5.27.8 (state in text, `role="alert"`, `aria-live="polite"`, a banner as
+the second cue after the sound). New requirements if the owner says yes: FR-108 and PRV-032; one new line in T-I30.
+
+**Owner decisions needed first (recommendations):**
+
+1. **Build it at all?** The phone app does this in a pocket; the website cannot. *Recommend: yes, as a small follow-up after
+   S4b-FR-17, because the rules are already pure; the owner's call.*
+2. **Street alerts and Nominatim.** An automatic lookup every 45 s sends the person's coordinates to Nominatim all the time she
+   walks, which is against the project's data-minimisation stance and a new kind of use of a free public service. *Recommend:
+   **not in v1**; the website has no street alert (S4b-FR-22 records the decision either way).*
+3. **A visit's source.** *Recommend: `VisitSource.AUTO` as on the phones, with the same accuracy gate,* rather than a new
+   `AUTO_WEB` to tell a rougher laptop fix apart.
 
 ### 5.28 Sharing updates with someone you know (S4b-FR-3, design)
 
@@ -1341,6 +1996,8 @@ erDiagram
 | Room | 4 | The 4b model of **5.30**, slice 0: one `records` table (`type`, `id`, `payload` JSON, `updatedAt`, `deleted`, `dirty`) for criteria, questions, viewings, hunting areas, places, area notes, brokers, photo metadata, the move-in record and preferences. `4.json`, `MIGRATION_3_4` tested | 4b |
 | Room | 5 | Slice 1: `houses.cost_*` (embedded), `rooms`/`answers` (JSON), `areaSqft`, `locationSource`, `brokerId`; the contacts migrated into brokers. `5.json`, `MIGRATION_4_5` tested | 4b |
 | Room | 6 | `photos.storage`, `driveFileId`, `driveMissing`, `thumbOnly`; bound account ID in encrypted settings | 5 |
+| Room | 11 (planned) | `saved_walks` (5.27.6, [03](03-design.md) §6.2): the walks the person saved, linked to a house; on the phone only, never in a backup. `track_points` gains `walkId`. `11.json`, `MIGRATION_10_11` tested | S4b-FR-14 |
+| IndexedDB | 3 (planned; `DB_VERSION` is 2 today) | `trace_points` and `saved_walks` stores (5.27.8), website only, never exported; `upgradeLocalDb` step `oldVersion < 3` | S4b-FR-17 |
 | IndexedDB | 1 → 4 | Mirrors Room 2 (version 1, 4a), Room 4 and 5 (versions 2 and 3, 4b, with the upgrade path S4b-BL-71), Room 6 (version 4, 5); the hand-written wrapper of `local-db.ts`, no Dexie (4a decision) | 4a–5 |
 
 Definition of done for every 4b/5 story that adds data: the new fields appear in **all six export formats** and round-trip through the JSON backup.
