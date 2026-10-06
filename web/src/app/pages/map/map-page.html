@@ -168,7 +168,6 @@
 
   <section #panel class="panel" aria-labelledby="houses-heading">
     <app-place-check-panel [mapUsable]="mapUsable()" />
-    <app-trace-card />
     <app-walk-end-sheet [houses]="houses()" />
     <div class="panel-head">
       <h1 id="houses-heading">{{ 'map.heading' | t }}</h1>
@@ -183,6 +182,9 @@
         <div><dt>{{ 'map.stats.streets' | t }}</dt><dd>{{ i18n.number(s.streets) }}</dd></div>
       </dl>
     }
+
+    <!-- Below the counters: on a portrait phone "Your houses" and every counter stay above the bottom bar (owner rule 2026-09-24). -->
+    <app-trace-card />
 
     <div class="controls">
       <div class="field">

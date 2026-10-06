@@ -72,20 +72,20 @@ afterEach(() => {
 const FAKE_WALKS = { type: 'FeatureCollection' as const, features: [] };
 
 describe('the Map page with the path trace', () => {
-  it('puts the Trace my path card above the list heading', async () => {
+  it('puts the Trace my path card below the heading and the counters, so they stay above the bottom bar on a phone', async () => {
     const { host } = await render();
     const card = host.querySelector('app-trace-card')!;
     const head = host.querySelector('.panel-head')!;
-    expect(card.compareDocumentPosition(head) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const stats = host.querySelector('.stats');
+    expect(head.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    if (stats) expect(stats.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(card.textContent).toContain('Trace my path');
   });
 
-  it('has the Save this walk sheet, shut until a walk is to be asked about, after the card', async () => {
+  it('has the Save this walk sheet, shut until a walk is to be asked about, in the panel', async () => {
     const { host } = await render();
-    const card = host.querySelector('app-trace-card')!;
     const sheet = host.querySelector('app-walk-end-sheet')!;
     expect(sheet).not.toBeNull();
-    expect(card.compareDocumentPosition(sheet) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(sheet.querySelector('dialog')!.hasAttribute('open')).toBe(false);
   });
 
