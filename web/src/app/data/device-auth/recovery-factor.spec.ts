@@ -111,7 +111,7 @@ describe('recoveryProofKey', () => {
     // Also derive using crypto.subtle directly with documented parameters
     const base = await crypto.subtle.importKey('raw', ab(key.bytes), 'HKDF', false, ['deriveKey']);
     const directKey = await crypto.subtle.deriveKey(
-      { name: 'HKDF', hash: 'SHA-256', salt: utf8('doorprints/deletion-proof/recovery'), info: utf8('doorprints/deletion-proof/recovery/1') },
+      { name: 'HKDF', hash: 'SHA-256', salt: ab(utf8('doorprints/deletion-proof/recovery')), info: ab(utf8('doorprints/deletion-proof/recovery/1')) },
       base,
       { name: 'HMAC', hash: 'SHA-256', length: 256 },
       false,

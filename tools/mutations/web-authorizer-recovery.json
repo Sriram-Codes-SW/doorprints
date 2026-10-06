@@ -1,0 +1,35 @@
+{
+  "spec": "web/src/app/data/device-auth/web-authorizer.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/data/device-auth/web-authorizer.ts",
+      "find": "    if (!ok) return { kind: \"DENIED\", reason: \"WRONG_KEY\" };",
+      "replace": "",
+      "expect": "wrong recovery key: DENIED WRONG_KEY and proofFor stays null"
+    },
+    {
+      "file": "web/src/app/data/device-auth/web-authorizer.ts",
+      "find": "    this.proofKey = await recoveryProofKey(key);",
+      "replace": "",
+      "expect": "right recovery key: GRANTED, proofFor returns a 64-hex that verifyProof accepts"
+    },
+    {
+      "file": "web/src/app/data/device-auth/web-authorizer.ts",
+      "find": "  forgetProof(): void {\n    if (this.proofSource === 'recovery') {\n      this.proofKey = null;\n      this.proofSource = null;\n    }\n  }",
+      "replace": "  forgetProof(): void {\n    this.proofKey = null;\n    this.proofSource = null;\n  }",
+      "expect": "PRF proof is NOT cleared by forgetProof"
+    },
+    {
+      "file": "web/src/app/data/device-auth/web-authorizer.ts",
+      "find": "      this.proofSource = 'recovery';\n    return { kind: \"GRANTED\", grant: this.issue(action, req) };\n  }\n\n  /** Forgets the recovery proof key, leaving PRF keys intact. */\n  forgetProof(): void {\n    if (this.proofSource === 'recovery') {\n      this.proofKey = null;\n      this.proofSource = null;\n    }\n  }",
+      "replace": "      this.proofSource = 'recovery';\n    return { kind: \"GRANTED\", grant: this.issue(action, req) };\n  }\n\n  /** Forgets the recovery proof key, leaving PRF keys intact. */\n  forgetProof(): void {\n    // do nothing\n  }",
+      "expect": "after forgetProof: recovery proof no longer verifies"
+    },
+    {
+      "file": "web/src/app/data/device-auth/web-authorizer.ts",
+      "find": "    const d = decide(action, ctx);\n    if (d.outcome === \"REFUSED\") return { kind: \"REFUSED\", reason: d.reason };\n    const req = d.requirements;\n    if (req.factor === \"NONE\")\n      return { kind: \"GRANTED\", grant: this.issue(action, req) };\n    if (req.factor !== \"PASSKEY\")\n      return { kind: \"DENIED\", reason: \"NOT_SUPPORTED\" };\n    if (!this.recovery)\n      return { kind: \"DENIED\", reason: \"NOT_SUPPORTED\" };\n    let ok = false;\n    try {\n      ok = await this.recovery.verify(key);",
+      "replace": "    if (!this.recovery)\n      return { kind: \"DENIED\", reason: \"NOT_SUPPORTED\" };\n    let ok = false;\n    try {\n      ok = await this.recovery.verify(key);",
+      "expect": "context where decide refuses: REFUSED and verify NOT called"
+    }
+  ]
+}
