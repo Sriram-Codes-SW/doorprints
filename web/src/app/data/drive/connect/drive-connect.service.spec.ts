@@ -217,17 +217,21 @@ describe('DriveConnectService', () => {
   });
 
   describe('recovery key (docs/15 §10.4a)', () => {
-    it('recoveryKeyOffered returns false when not READY', async () => {
-      const offered = await a.service.recoveryKeyOffered();
-      expect(offered).toBe(false);
+    it('recoveryKeyOffered returns false when this browser is not connected, even if the browser cannot do PRF', async () => {
+      // No createFolder here: the Drive is not READY.
+      vi.spyOn(a.service, 'passkeyPrfCapability').mockResolvedValue(false);
+      vi.spyOn(a.service, 'passkeyBuiltIn').mockResolvedValue(true);
+      vi.spyOn(a.service, 'passkeyStatus').mockResolvedValue('none');
+      expect(await a.service.recoveryKeyOffered()).toBe(false);
     });
 
-    it('recoveryKeyOffered returns false when passkey is registered', async () => {
-      const created = await a.service.createFolder();
+    it('recoveryKeyOffered returns false when a passkey is registered, even if the browser reports no PRF', async () => {
+      await a.service.createFolder();
       a.service.confirmRecoveryKeySaved();
-
-      const offered = await a.service.recoveryKeyOffered();
-      expect(offered).toBe(false);
+      vi.spyOn(a.service, 'passkeyPrfCapability').mockResolvedValue(false);
+      vi.spyOn(a.service, 'passkeyBuiltIn').mockResolvedValue(true);
+      vi.spyOn(a.service, 'passkeyStatus').mockResolvedValue('registered');
+      expect(await a.service.recoveryKeyOffered()).toBe(false);
     });
 
     it('recoveryKeyOffered returns true when passkeyNoPrfSeen', async () => {
@@ -346,46 +350,32 @@ describe('DriveConnectService', () => {
       mockRegister.mockRestore();
     });
 
-    it('deletionContext has webPrf true when offered', async () => {
-      const created = await a.service.createFolder();
+    it('deletionContext: the recovery key makes delete-everything possible on the website (webPrf true) when it is offered', async () => {
+      await a.service.createFolder();
       a.service.confirmRecoveryKeySaved();
-
-      const mockPrf = vi.spyOn(a.service, 'passkeyPrfCapability').mockResolvedValue(false);
-      const mockBuiltIn = vi.spyOn(a.service, 'passkeyBuiltIn').mockResolvedValue(true);
-      const mockStatus = vi.spyOn(a.service, 'passkeyStatus').mockResolvedValue('none');
-
+      vi.spyOn(a.service, 'passkeyPrfCapability').mockResolvedValue(false);
+      vi.spyOn(a.service, 'passkeyBuiltIn').mockResolvedValue(true);
+      vi.spyOn(a.service, 'passkeyStatus').mockResolvedValue('none');
       const info = await a.service.deleteConfirmInfo({ type: 'everything' });
-
-      mockPrf.mockRestore();
-      mockBuiltIn.mockRestore();
-      mockStatus.mockRestore();
+      expect(info.ok).toBe(true);
     });
 
-    it('deletionContext has webPrf false for not-offered cases', async () => {
-      const created = await a.service.createFolder();
+    it('deletionContext: without a passkey and with the key not offered, delete-everything is refused on the website (webPrf false)', async () => {
+      await a.service.createFolder();
       a.service.confirmRecoveryKeySaved();
-
-      // Mock capabilities to return values that don't trigger recovery key offering
-      const mockStatus = vi.spyOn(a.service, 'passkeyStatus').mockResolvedValue('none');
-      const mockPrf = vi.spyOn(a.service, 'passkeyPrfCapability').mockResolvedValue(true);
-      const mockBuiltIn = vi.spyOn(a.service, 'passkeyBuiltIn').mockResolvedValue(true);
-
+      vi.spyOn(a.service, 'passkeyPrfCapability').mockResolvedValue(true);
+      vi.spyOn(a.service, 'passkeyBuiltIn').mockResolvedValue(true);
+      vi.spyOn(a.service, 'passkeyStatus').mockResolvedValue('none');
       const info = await a.service.deleteConfirmInfo({ type: 'everything' });
-
-      mockPrf.mockRestore();
-      mockBuiltIn.mockRestore();
-      mockStatus.mockRestore();
+      expect(info.ok).toBe(false);
     });
 
-    it('deletionContext has webPrf true when registered', async () => {
-      const created = await a.service.createFolder();
+    it('deletionContext: a registered passkey makes delete-everything possible (webPrf true)', async () => {
+      await a.service.createFolder();
       a.service.confirmRecoveryKeySaved();
-
-      const mockStatus = vi.spyOn(a.service, 'passkeyStatus').mockResolvedValue('registered');
-
+      vi.spyOn(a.service, 'passkeyStatus').mockResolvedValue('registered');
       const info = await a.service.deleteConfirmInfo({ type: 'everything' });
-
-      mockStatus.mockRestore();
+      expect(info.ok).toBe(true);
     });
 
     it('authorizeDelete without text uses passkey path', async () => {

@@ -30,6 +30,30 @@
       "find": "      // Recovery key text provided: check if it's offered\n      if (!(await this.recoveryKeyOffered())) {\n        return { ok: false, reason: 'RECOVERY_KEY_NOT_OFFERED' };\n      }",
       "replace": "      // Recovery key text provided: check if it's offered",
       "expect": "authorizeDelete with text when not offered returns RECOVERY_KEY_NOT_OFFERED"
+    },
+    {
+      "file": "web/src/app/data/drive/connect/drive-connect.service.ts",
+      "find": "    if (this.state() !== 'Ready') return false;\n\n    const status = await this.passkeyStatus();\n    // Passkey registered -> false\n    if (status === 'registered') return false;",
+      "replace": "    const status = await this.passkeyStatus();\n    // Passkey registered -> false\n    if (status === 'registered') return false;",
+      "expect": "not connected, even if the browser cannot do PRF"
+    },
+    {
+      "file": "web/src/app/data/drive/connect/drive-connect.service.ts",
+      "find": "    // Passkey registered -> false\n    if (status === 'registered') return false;",
+      "replace": "    void status;",
+      "expect": "a passkey is registered, even if the browser reports no PRF"
+    },
+    {
+      "file": "web/src/app/data/drive/connect/drive-connect.service.ts",
+      "find": "const webPrf = status === 'registered' || (await this.recoveryKeyOffered());",
+      "replace": "const webPrf = status === 'registered';",
+      "expect": "the recovery key makes delete-everything possible"
+    },
+    {
+      "file": "web/src/app/data/drive/connect/drive-connect.service.ts",
+      "find": "        return { ok: false, reason: 'RECOVERY_KEY_INVALID' };",
+      "replace": "        return { ok: false, reason: 'RECOVERY_KEY_NOT_OFFERED' };",
+      "expect": ""
     }
   ]
 }
