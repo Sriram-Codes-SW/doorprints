@@ -12,7 +12,9 @@
   "alertMinRunM": 100,
   "alertCooldownMs": 600000,
   "maxWalkPoints": 5000,
-  "maxDetectionPoints": 20000
+  "maxDetectionPoints": 20000,
+  "nearBandM": 50,
+  "maxFixAccuracyM": 50
  },
  "conventions": [
   "Points are [latitude, longitude, atMs] (atMs = epoch milliseconds); a fourth number, when present, is the walk id (0 is no id); a fifth, when present, is 1 for a point that resumes after the website's page was hidden for more than 5 minutes (docs/11 5.27.3 step 3: the line from the previous point is no segment).",
@@ -2704,6 +2706,1005 @@
     "alertAtIndexes": [
      5
     ]
+   }
+  }
+ ],
+ "placeCheckConventions": [
+  "Section 'placeChecks' (docs/11 5.27.13, S4b-FR-24): the on-demand 'Have I been here?' check. It sits beside 'cases' so that a reader of the repeat cases ignores it. Each case: 'place' [latitude, longitude]; 'walks' (already separate walks, points as above, a fifth number 1 = resumed); optional 'walkSources' (one of 'trace', 'saved' per walk, default 'trace'); optional 'fixAccuracyM' (only the 'here' source has one: the gate of 5.27.13).",
+  "expect.status is one of walked (a walk within toleranceM), close (none within toleranceM, one within nearBandM), none (walks exist, none within nearBandM), empty (no walk with at least one segment), imprecise (fixAccuracyM above maxFixAccuracyM, not finite or negative), invalidPlace. expect.fuzzy is true when a fix accuracy is given and is above toleranceM. expect.nearestM is the smallest distance of any row, or null. expect.walks lists one row per walk within nearBandM, ordered newest first by atMs (the interpolated time at the walk's nearest point, to within 1000 ms), ties by the later walk index: walkIndex, distanceM (to within 0.5 m), atMs, band (walked or close) and source. A walk with no segment (fewer than two points, or only points that resume) gives no row and does not count as a walk for 'empty'.",
+  "Same hygiene as the repeat cases: no case sits within 0.01 m of toleranceM or nearBandM (so the exact 25.0 and 50.0 are not vectors: the inclusive comparison is pinned by a unit test that passes the computed distance as the tolerance). Distances are to the other walks' original segments (no densifying), on the local plane of step 2, with no segment into a resumed point."
+ ],
+ "placeChecks": [
+  {
+   "id": "pc-on-the-line-and-the-time-is-interpolated",
+   "description": "A place exactly on a 300 m street, 150 m from its start: walked, 0 m away, at 90 s (half way along the second 60 s leg).",
+   "place": [
+    0.00134898,
+    0.0
+   ],
+   "walks": [
+    [
+     [
+      0.0,
+      0.0,
+      0
+     ],
+     [
+      0.00089932,
+      0.0,
+      60000
+     ],
+     [
+      0.00179864,
+      0.0,
+      120000
+     ],
+     [
+      0.00269796,
+      0.0,
+      180000
+     ]
+    ]
+   ],
+   "expect": {
+    "status": "walked",
+    "fuzzy": false,
+    "nearestM": 0.0,
+    "walks": [
+     {
+      "walkIndex": 0,
+      "distanceM": 0.0,
+      "atMs": 90000,
+      "band": "walked",
+      "source": "trace"
+     }
+    ]
+   }
+  },
+  {
+   "id": "pc-24-9-m-away-is-walked",
+   "description": "A place 24.9 m east of the street: inside the 25 m tolerance, walked.",
+   "place": [
+    0.00134898,
+    0.00022393
+   ],
+   "walks": [
+    [
+     [
+      0.0,
+      0.0,
+      0
+     ],
+     [
+      0.00089932,
+      0.0,
+      60000
+     ],
+     [
+      0.00179864,
+      0.0,
+      120000
+     ],
+     [
+      0.00269796,
+      0.0,
+      180000
+     ]
+    ]
+   ],
+   "expect": {
+    "status": "walked",
+    "fuzzy": false,
+    "nearestM": 24.9,
+    "walks": [
+     {
+      "walkIndex": 0,
+      "distanceM": 24.9,
+      "atMs": 90000,
+      "band": "walked",
+      "source": "trace"
+     }
+    ]
+   }
+  },
+  {
+   "id": "pc-25-1-m-away-is-close-not-walked",
+   "description": "A place 25.1 m east: outside the 25 m tolerance, inside the 50 m near band: status close, never walked. (25.0 itself is no vector: the hygiene rule keeps cases 0.01 m from a constant; the inclusive <= is pinned by the unit test that passes the computed distance as the tolerance.)",
+   "place": [
+    0.00134898,
+    0.00022573
+   ],
+   "walks": [
+    [
+     [
+      0.0,
+      0.0,
+      0
+     ],
+     [
+      0.00089932,
+      0.0,
+      60000
+     ],
+     [
+      0.00179864,
+      0.0,
+      120000
+     ],
+     [
+      0.00269796,
+      0.0,
+      180000
+     ]
+    ]
+   ],
+   "expect": {
+    "status": "close",
+    "fuzzy": false,
+    "nearestM": 25.1,
+    "walks": [
+     {
+      "walkIndex": 0,
+      "distanceM": 25.1,
+      "atMs": 90000,
+      "band": "close",
+      "source": "trace"
+     }
+    ]
+   }
+  },
+  {
+   "id": "pc-49-9-m-away-is-close",
+   "description": "A place 49.9 m east: the edge of the near band, close.",
+   "place": [
+    0.00134898,
+    0.00044876
+   ],
+   "walks": [
+    [
+     [
+      0.0,
+      0.0,
+      0
+     ],
+     [
+      0.00089932,
+      0.0,
+      60000
+     ],
+     [
+      0.00179864,
+      0.0,
+      120000
+     ],
+     [
+      0.00269796,
+      0.0,
+      180000
+     ]
+    ]
+   ],
+   "expect": {
+    "status": "close",
+    "fuzzy": false,
+    "nearestM": 49.9,
+    "walks": [
+     {
+      "walkIndex": 0,
+      "distanceM": 49.9,
+      "atMs": 90000,
+      "band": "close",
+      "source": "trace"
+     }
+    ]
+   }
+  },
+  {
+   "id": "pc-50-1-m-away-is-none",
+   "description": "A place 50.1 m east: beyond the near band, no walk passed (the walk exists: the status is none, not empty).",
+   "place": [
+    0.00134898,
+    0.00045056
+   ],
+   "walks": [
+    [
+     [
+      0.0,
+      0.0,
+      0
+     ],
+     [
+      0.00089932,
+      0.0,
+      60000
+     ],
+     [
+      0.00179864,
+      0.0,
+      120000
+     ],
+     [
+      0.00269796,
+      0.0,
+      180000
+     ]
+    ]
+   ],
+   "expect": {
+    "status": "none",
+    "fuzzy": false,
+    "nearestM": null,
+    "walks": []
+   }
+  },
+  {
+   "id": "pc-beyond-the-end-uses-the-round-cap",
+   "description": "A place 20 m past the last point of the street, on its line: the endpoint counts like any point of the polyline, 20 m, walked.",
+   "place": [
+    0.00287783,
+    0.0
+   ],
+   "walks": [
+    [
+     [
+      0.0,
+      0.0,
+      0
+     ],
+     [
+      0.00089932,
+      0.0,
+      60000
+     ],
+     [
+      0.00179864,
+      0.0,
+      120000
+     ],
+     [
+      0.00269796,
+      0.0,
+      180000
+     ]
+    ]
+   ],
+   "expect": {
+    "status": "walked",
+    "fuzzy": false,
+    "nearestM": 20.0,
+    "walks": [
+     {
+      "walkIndex": 0,
+      "distanceM": 20.0,
+      "atMs": 180000,
+      "band": "walked",
+      "source": "trace"
+     }
+    ]
+   }
+  },
+  {
+   "id": "pc-30-m-past-the-end-is-close",
+   "description": "A place 30 m past the last point: close.",
+   "place": [
+    0.00296776,
+    0.0
+   ],
+   "walks": [
+    [
+     [
+      0.0,
+      0.0,
+      0
+     ],
+     [
+      0.00089932,
+      0.0,
+      60000
+     ],
+     [
+      0.00179864,
+      0.0,
+      120000
+     ],
+     [
+      0.00269796,
+      0.0,
+      180000
+     ]
+    ]
+   ],
+   "expect": {
+    "status": "close",
+    "fuzzy": false,
+    "nearestM": 30.0,
+    "walks": [
+     {
+      "walkIndex": 0,
+      "distanceM": 30.0,
+      "atMs": 180000,
+      "band": "close",
+      "source": "trace"
+     }
+    ]
+   }
+  },
+  {
+   "id": "pc-gap-between-two-walks-is-close-to-the-nearer",
+   "description": "Two walks of one street that leave 100 m between them (0..100 m and 200..300 m). A place on the street at 160 m is 60 m from the first walk and 40 m from the second: close, one row, the second walk. Nobody walked the gap itself.",
+   "place": [
+    0.00143891,
+    0.0
+   ],
+   "walks": [
+    [
+     [
+      0.0,
+      0.0,
+      0
+     ],
+     [
+      0.00089932,
+      0.0,
+      60000
+     ]
+    ],
+    [
+     [
+      0.00179864,
+      0.0,
+      86400000
+     ],
+     [
+      0.00269796,
+      0.0,
+      86460000
+     ]
+    ]
+   ],
+   "expect": {
+    "status": "close",
+    "fuzzy": false,
+    "nearestM": 40.0,
+    "walks": [
+     {
+      "walkIndex": 1,
+      "distanceM": 40.0,
+      "atMs": 86400000,
+      "band": "close",
+      "source": "trace"
+     }
+    ]
+   }
+  },
+  {
+   "id": "pc-two-walks-are-listed-newest-first",
+   "description": "Two walks of one street, the older 20 m from the place and the newer 10 m: both walked: one row each, the newer (10 m) first. Two walks on one day are two rows, never merged.",
+   "place": [
+    0.00134898,
+    0.0
+   ],
+   "walks": [
+    [
+     [
+      0.0,
+      0.00017986,
+      0
+     ],
+     [
+      0.00089932,
+      0.00017986,
+      60000
+     ],
+     [
+      0.00179864,
+      0.00017986,
+      120000
+     ],
+     [
+      0.00269796,
+      0.00017986,
+      180000
+     ]
+    ],
+    [
+     [
+      0.0,
+      8.993e-05,
+      259200000
+     ],
+     [
+      0.00089932,
+      8.993e-05,
+      259260000
+     ],
+     [
+      0.00179864,
+      8.993e-05,
+      259320000
+     ],
+     [
+      0.00269796,
+      8.993e-05,
+      259380000
+     ]
+    ]
+   ],
+   "expect": {
+    "status": "walked",
+    "fuzzy": false,
+    "nearestM": 10.0,
+    "walks": [
+     {
+      "walkIndex": 1,
+      "distanceM": 10.0,
+      "atMs": 259290000,
+      "band": "walked",
+      "source": "trace"
+     },
+     {
+      "walkIndex": 0,
+      "distanceM": 20.0,
+      "atMs": 90000,
+      "band": "walked",
+      "source": "trace"
+     }
+    ]
+   }
+  },
+  {
+   "id": "pc-newest-first-even-when-the-older-walk-is-nearer",
+   "description": "The older walk is 3 m from the place, the newer 22 m: the newer is listed first; nearestM is the smaller (3 m).",
+   "place": [
+    0.00134898,
+    0.0
+   ],
+   "walks": [
+    [
+     [
+      0.0,
+      2.698e-05,
+      0
+     ],
+     [
+      0.00089932,
+      2.698e-05,
+      60000
+     ],
+     [
+      0.00179864,
+      2.698e-05,
+      120000
+     ],
+     [
+      0.00269796,
+      2.698e-05,
+      180000
+     ]
+    ],
+    [
+     [
+      0.0,
+      0.00019785,
+      259200000
+     ],
+     [
+      0.00089932,
+      0.00019785,
+      259260000
+     ],
+     [
+      0.00179864,
+      0.00019785,
+      259320000
+     ],
+     [
+      0.00269796,
+      0.00019785,
+      259380000
+     ]
+    ]
+   ],
+   "expect": {
+    "status": "walked",
+    "fuzzy": false,
+    "nearestM": 3.0,
+    "walks": [
+     {
+      "walkIndex": 1,
+      "distanceM": 22.0,
+      "atMs": 259290000,
+      "band": "walked",
+      "source": "trace"
+     },
+     {
+      "walkIndex": 0,
+      "distanceM": 3.0,
+      "atMs": 90000,
+      "band": "walked",
+      "source": "trace"
+     }
+    ]
+   }
+  },
+  {
+   "id": "pc-a-saved-walk-counts-whatever-its-age",
+   "description": "A saved walk from 100 days older than the other walk (older than the 30-day trace could hold) 8 m from the place, plus a 30-day walk 30 m away: the saved walk is walked and is listed with source saved, the trace walk is close.",
+   "place": [
+    0.00134898,
+    0.0
+   ],
+   "walks": [
+    [
+     [
+      0.0,
+      0.0002698,
+      8640000000
+     ],
+     [
+      0.00089932,
+      0.0002698,
+      8640060000
+     ],
+     [
+      0.00179864,
+      0.0002698,
+      8640120000
+     ],
+     [
+      0.00269796,
+      0.0002698,
+      8640180000
+     ]
+    ],
+    [
+     [
+      0.0,
+      7.195e-05,
+      0
+     ],
+     [
+      0.00089932,
+      7.195e-05,
+      60000
+     ],
+     [
+      0.00179864,
+      7.195e-05,
+      120000
+     ],
+     [
+      0.00269796,
+      7.195e-05,
+      180000
+     ]
+    ]
+   ],
+   "walkSources": [
+    "trace",
+    "saved"
+   ],
+   "expect": {
+    "status": "walked",
+    "fuzzy": false,
+    "nearestM": 8.0,
+    "walks": [
+     {
+      "walkIndex": 0,
+      "distanceM": 30.0,
+      "atMs": 8640090000,
+      "band": "close",
+      "source": "trace"
+     },
+     {
+      "walkIndex": 1,
+      "distanceM": 8.0,
+      "atMs": 90000,
+      "band": "walked",
+      "source": "saved"
+     }
+    ]
+   }
+  },
+  {
+   "id": "pc-no-walks-at-all-is-empty",
+   "description": "No walk stored at all: empty (the words of the empty state, not \"no walk passed\").",
+   "place": [
+    0.00134898,
+    0.0
+   ],
+   "walks": [],
+   "expect": {
+    "status": "empty",
+    "fuzzy": false,
+    "nearestM": null,
+    "walks": []
+   }
+  },
+  {
+   "id": "pc-a-fragment-of-one-point-is-no-walk",
+   "description": "The only stored walk has one point, at the place itself: no polyline, no result: empty.",
+   "place": [
+    0.00134898,
+    0.0
+   ],
+   "walks": [
+    [
+     [
+      0.00134898,
+      0.0,
+      0
+     ]
+    ]
+   ],
+   "expect": {
+    "status": "empty",
+    "fuzzy": false,
+    "nearestM": null,
+    "walks": []
+   }
+  },
+  {
+   "id": "pc-poor-accuracy-60-m-is-imprecise",
+   "description": "A fix whose accuracy is 60 m is refused by the gate whatever the walks say (the place is on the street).",
+   "place": [
+    0.00134898,
+    0.0
+   ],
+   "walks": [
+    [
+     [
+      0.0,
+      0.0,
+      0
+     ],
+     [
+      0.00089932,
+      0.0,
+      60000
+     ],
+     [
+      0.00179864,
+      0.0,
+      120000
+     ],
+     [
+      0.00269796,
+      0.0,
+      180000
+     ]
+    ]
+   ],
+   "fixAccuracyM": 60.0,
+   "expect": {
+    "status": "imprecise",
+    "fuzzy": false,
+    "nearestM": null,
+    "walks": []
+   }
+  },
+  {
+   "id": "pc-accuracy-exactly-50-m-is-accepted-and-fuzzy",
+   "description": "Accuracy 50 m passes the gate (50 m or better, as Hunt mode), and the result is flagged fuzzy because the accuracy is worse than the 25 m tolerance.",
+   "place": [
+    0.00134898,
+    0.0
+   ],
+   "walks": [
+    [
+     [
+      0.0,
+      0.0,
+      0
+     ],
+     [
+      0.00089932,
+      0.0,
+      60000
+     ],
+     [
+      0.00179864,
+      0.0,
+      120000
+     ],
+     [
+      0.00269796,
+      0.0,
+      180000
+     ]
+    ]
+   ],
+   "fixAccuracyM": 50.0,
+   "expect": {
+    "status": "walked",
+    "fuzzy": true,
+    "nearestM": 0.0,
+    "walks": [
+     {
+      "walkIndex": 0,
+      "distanceM": 0.0,
+      "atMs": 90000,
+      "band": "walked",
+      "source": "trace"
+     }
+    ]
+   }
+  },
+  {
+   "id": "pc-accuracy-10-m-is-not-fuzzy",
+   "description": "Accuracy 10 m: accepted, not fuzzy.",
+   "place": [
+    0.00134898,
+    0.0
+   ],
+   "walks": [
+    [
+     [
+      0.0,
+      0.0,
+      0
+     ],
+     [
+      0.00089932,
+      0.0,
+      60000
+     ],
+     [
+      0.00179864,
+      0.0,
+      120000
+     ],
+     [
+      0.00269796,
+      0.0,
+      180000
+     ]
+    ]
+   ],
+   "fixAccuracyM": 10.0,
+   "expect": {
+    "status": "walked",
+    "fuzzy": false,
+    "nearestM": 0.0,
+    "walks": [
+     {
+      "walkIndex": 0,
+      "distanceM": 0.0,
+      "atMs": 90000,
+      "band": "walked",
+      "source": "trace"
+     }
+    ]
+   }
+  },
+  {
+   "id": "pc-the-middle-of-a-pause-is-not-walked",
+   "description": "A walk with a resumed point (the website page was hidden): 0..100 m, a pause, 400..500 m. A place on the line at 250 m is 150 m from both ends: no segment crosses the pause, so none: the walk exists, status none.",
+   "place": [
+    0.0022483,
+    0.0
+   ],
+   "walks": [
+    [
+     [
+      0.0,
+      0.0,
+      0,
+      0,
+      0
+     ],
+     [
+      0.00089932,
+      0.0,
+      60000,
+      0,
+      0
+     ],
+     [
+      0.00359729,
+      0.0,
+      600000,
+      0,
+      1
+     ],
+     [
+      0.00449661,
+      0.0,
+      660000,
+      0,
+      0
+     ]
+    ]
+   ],
+   "expect": {
+    "status": "none",
+    "fuzzy": false,
+    "nearestM": null,
+    "walks": []
+   }
+  },
+  {
+   "id": "pc-after-the-pause-the-walk-counts-again",
+   "description": "The same walk: a place 10 m east of the line at 450 m is on the resumed part (its segment 400..500 m): walked, 10 m, time interpolated 30 s after the resume.",
+   "place": [
+    0.00404695,
+    8.993e-05
+   ],
+   "walks": [
+    [
+     [
+      0.0,
+      0.0,
+      0,
+      0,
+      0
+     ],
+     [
+      0.00089932,
+      0.0,
+      60000,
+      0,
+      0
+     ],
+     [
+      0.00359729,
+      0.0,
+      600000,
+      0,
+      1
+     ],
+     [
+      0.00449661,
+      0.0,
+      660000,
+      0,
+      0
+     ]
+    ]
+   ],
+   "expect": {
+    "status": "walked",
+    "fuzzy": false,
+    "nearestM": 10.0,
+    "walks": [
+     {
+      "walkIndex": 0,
+      "distanceM": 10.0,
+      "atMs": 630000,
+      "band": "walked",
+      "source": "trace"
+     }
+    ]
+   }
+  },
+  {
+   "id": "pc-out-and-back-in-one-walk-is-one-row",
+   "description": "One walk goes up the street and comes back 12 m to the east. A place 5 m east of the up leg, half way: both legs are near (5 m and 7 m): one row for the walk, the nearer leg (5 m).",
+   "place": [
+    0.00134898,
+    4.497e-05
+   ],
+   "walks": [
+    [
+     [
+      0.0,
+      0.0,
+      0
+     ],
+     [
+      0.00269796,
+      0.0,
+      180000
+     ],
+     [
+      0.00269796,
+      0.00010792,
+      240000
+     ],
+     [
+      0.0,
+      0.00010792,
+      420000
+     ]
+    ]
+   ],
+   "expect": {
+    "status": "walked",
+    "fuzzy": false,
+    "nearestM": 5.0,
+    "walks": [
+     {
+      "walkIndex": 0,
+      "distanceM": 5.0,
+      "atMs": 90000,
+      "band": "walked",
+      "source": "trace"
+     }
+    ]
+   }
+  },
+  {
+   "id": "pc-latitude-13-east-west-offset-uses-cos",
+   "description": "At latitude 13 a place 24.9 true metres east of a north-going street (longitude offset 24.9 / (K cos 13 deg)): walked. An implementation that drops cos(latitude) measures 25.6 m and says close.",
+   "place": [
+    13.00134898,
+    0.00022982
+   ],
+   "walks": [
+    [
+     [
+      13.0,
+      0.0,
+      0
+     ],
+     [
+      13.00089932,
+      0.0,
+      60000
+     ],
+     [
+      13.00179864,
+      0.0,
+      120000
+     ],
+     [
+      13.00269796,
+      0.0,
+      180000
+     ]
+    ]
+   ],
+   "expect": {
+    "status": "walked",
+    "fuzzy": false,
+    "nearestM": 24.9,
+    "walks": [
+     {
+      "walkIndex": 0,
+      "distanceM": 24.9,
+      "atMs": 90000,
+      "band": "walked",
+      "source": "trace"
+     }
+    ]
+   }
+  },
+  {
+   "id": "pc-an-invalid-place-has-no-answer",
+   "description": "A latitude of 91 (a corrupt house location): invalidPlace, whatever the walks.",
+   "place": [
+    91.0,
+    0.0
+   ],
+   "walks": [
+    [
+     [
+      0.0,
+      0.0,
+      0
+     ],
+     [
+      0.00089932,
+      0.0,
+      60000
+     ],
+     [
+      0.00179864,
+      0.0,
+      120000
+     ],
+     [
+      0.00269796,
+      0.0,
+      180000
+     ]
+    ]
+   ],
+   "expect": {
+    "status": "invalidPlace",
+    "fuzzy": false,
+    "nearestM": null,
+    "walks": []
    }
   }
  ]
