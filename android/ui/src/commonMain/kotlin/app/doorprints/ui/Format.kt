@@ -171,6 +171,31 @@ private fun incrementDigits(digits: String): String {
 internal expect fun formatDate(epochMillis: Long, language: String, withTime: Boolean): String
 
 /**
+ * The date with a short weekday for *Have I been here?* (docs/11 5.27.13), in [language] with region IN, in the device's
+ * time zone, by the locale's own pattern for the skeleton `EEEdMMM` (`EEEdMMMy` [withYear]): "Tue 7 Oct". Tamil and Telugu
+ * put the weekday where their pattern puts it. Android: `DateFormat.getBestDateTimePattern`; iOS: `NSDateFormatter`'s
+ * localized template.
+ */
+internal expect fun formatDateWithWeekday(epochMillis: Long, language: String, withYear: Boolean): String
+
+/** [formatDateWithWeekday] with the year only when [epochMillis] is not in the year of [nowMillis], both on the device's clock. */
+internal fun dateWithWeekday(epochMillis: Long, nowMillis: Long = nowMillis(), language: String = appLanguage()): String =
+    formatDateWithWeekday(epochMillis, language, withYear = localYear(epochMillis) != localYear(nowMillis))
+
+/** The calendar year of [epochMillis] in the device's time zone (the proleptic Gregorian civil-from-days rule). */
+internal fun localYear(epochMillis: Long): Int {
+    val days = (epochMillis + utcOffsetMillis(epochMillis)).floorDiv(86_400_000L)
+    val z = days + 719_468
+    val era = z.floorDiv(146_097L)
+    val doe = z - era * 146_097
+    val yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365
+    val doy = doe - (365 * yoe + yoe / 4 - yoe / 100)
+    val mp = (5 * doy + 2) / 153
+    val month = if (mp < 10) mp + 3 else mp - 9
+    return (yoe + era * 400 + if (month <= 2) 1 else 0).toInt()
+}
+
+/**
  * The device time zone's offset from UTC at [epochMillis], in ms (Android: `TimeZone.getDefault`; iOS:
  * `NSTimeZone.localTimeZone`): the viewing form turns the date picker's UTC day and the time picker's hour into the
  * instant the person means on their own clock ([LocalClock]).

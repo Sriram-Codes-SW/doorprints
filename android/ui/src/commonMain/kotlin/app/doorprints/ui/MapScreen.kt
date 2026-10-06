@@ -84,6 +84,9 @@ import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
+/** How long the outline of a place check's stretches stays after *Show on map* closed the sheet. */
+private const val CHECK_OUTLINE_SECONDS = 10
+
 /** How long *Save house here* and *My location* wait for a GPS fix before giving up. */
 private const val LOCATE_TIMEOUT_MS = 15_000L
 
@@ -91,7 +94,7 @@ private const val LOCATE_TIMEOUT_MS = 15_000L
 private const val STALE_FIX_MS = 120_000L
 
 /** What to do once the location permission has been granted. */
-private enum class AfterGrant { HUNT, SAVE_HERE, MY_LOCATION }
+private enum class AfterGrant { HUNT, SAVE_HERE, MY_LOCATION, CHECK_HERE }
 
 /**
  * The map. Common since CMP-7 (ADR-23; was `:app`'s `MapScreen`): this is the chrome (the Hunt card, the notes, the
@@ -261,6 +264,13 @@ fun MapScreen(
     val repeatLook = repo.settings.settings.collectAsStateWithLifecycle(AppSettings()).value.repeatLook
     // *Save this walk?* (docs/11 5.27.6): the walk to ask about, asked once, when a walk ends (*Finish walk*, Hunt mode
     // stopped) and when the Map opens (Hunt mode stopped by itself, or the app was killed). Never the walk being recorded.
+    // *Have I been here?* (docs/11 5.27.13): on demand only; the answer is held in memory and dropped when the sheet closes.
+    val placeCheck = remember(repo, services) {
+        PlaceCheckController(scope, repo, { services.location.best() }, { HuntState.state.value.walkId })
+    }
+    var checkMenuOpen by remember { mutableStateOf(false) }
+    var pickingSpot by remember { mutableStateOf(false) }
+    var longPressAt by remember { mutableStateOf<Pair<Double, Double>?>(null) }
     var askedWalk by remember { mutableStateOf<WalkSummary?>(null) }
     var askRefusal by remember { mutableStateOf<String?>(null) }
     val alertRadiusM = repo.settings.settings.collectAsStateWithLifecycle(AppSettings()).value.alertRadiusM
@@ -407,6 +417,7 @@ fun MapScreen(
         if (permissionGranted) {
             grantedFor = next
         } else {
+            if (next == AfterGrant.CHECK_HERE) placeCheck.denied(PlaceKind.HERE)
             // The Hunt card's note appears now (asked is set), with *Allow location*, *Turn on precise location* or,
             // after a second refusal, *Open settings*; its LiveMessage reads it, and the band scrolls to it.
             revealLocationNote(focus = false)
@@ -427,6 +438,7 @@ fun MapScreen(
                 requestLocation()
             }
             LocationStart.SHOW_NOTE -> {
+                if (next == AfterGrant.CHECK_HERE) placeCheck.denied(PlaceKind.HERE)
                 revealLocationNote(focus = true)
                 if (!platform.isScreenReaderOn()) answerRefusedTap()
             }
@@ -482,6 +494,10 @@ fun MapScreen(
         if (needsLocation(AfterGrant.SAVE_HERE)) return
         locate { (lat, lon) -> currentOnNewHouse(lat, lon) }
     }
+    fun checkHere() {
+        if (needsLocation(AfterGrant.CHECK_HERE)) return
+        placeCheck.start(PlaceKind.HERE)
+    }
     fun goToMe() {
         if (needsLocation(AfterGrant.MY_LOCATION)) return
         locate { (lat, lon) ->
@@ -500,6 +516,7 @@ fun MapScreen(
             AfterGrant.HUNT -> startHunt()
             AfterGrant.SAVE_HERE -> saveHere()
             AfterGrant.MY_LOCATION -> goToMe()
+            AfterGrant.CHECK_HERE -> checkHere()
         }
     }
     // A reminder's *Start Hunt mode* (docs/11 5.16, 5.18): the same path as the Hunt switch, location question first.
@@ -666,6 +683,46 @@ fun MapScreen(
             },
         )
     }
+    longPressAt?.let { (lat, lon) ->
+        LongPressMenu(
+            onSave = { longPressAt = null; currentOnNewHouse(lat, lon) },
+            onCheck = { longPressAt = null; placeCheck.start(PlaceKind.SPOT, lat, lon) },
+            onDismiss = { longPressAt = null },
+        )
+    }
+    val checkState = placeCheck.state
+    if (checkState != null) {
+        PlaceCheckSheet(
+            state = checkState,
+            onShowOnMap = { overlay ->
+                placeCheck.close()
+                // Closing discards the answer; the outline stays on the map a while longer, then goes.
+                ShowOnMap.show(MapFocus(overlay, seconds = CHECK_OUTLINE_SECONDS))
+            },
+            onAgain = { checkHere() },
+            onClose = { placeCheck.close() },
+        )
+    }
+    // The answer's stretches and ring on the map while the sheet is open; the view fits them when they are off screen.
+    val labelHere = stringResource(Res.string.trace_here_label_here)
+    val labelHouse = stringResource(Res.string.trace_here_label_house)
+    val labelSpot = stringResource(Res.string.trace_here_label_spot)
+    val checkOverlay = remember(checkState) {
+        (checkState as? PlaceCheckState.Answer)?.let {
+            val label = when (it.kind) { PlaceKind.HERE -> labelHere; PlaceKind.HOUSE -> labelHouse; PlaceKind.SPOT -> labelSpot }
+            CheckOverlay.of(it.lat, it.lon, label, it.result, it.walks)
+        }
+    }
+    LaunchedEffect(checkOverlay, map) {
+        val overlay = checkOverlay ?: return@LaunchedEffect
+        val m = map ?: return@LaunchedEffect
+        val bounds = m.visibleBounds()
+        val inView = bounds != null && overlay.points.all { (la, lo) -> la in bounds.south..bounds.north && lo in bounds.west..bounds.east }
+        if (!inView) {
+            framed = true
+            if (overlay.points.size > 1) m.frame(overlay.points, framePaddingPx, maxZoom = 18.0) else overlay.lat?.let { m.moveTo(it, overlay.lon!!, 17.0, animate = !noAnimations) }
+        }
+    }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         // A short map (landscape, split-screen, a half-open foldable) lays the controls out in one row (MapRules).
         val controlsInRow = mapControlsInRow(maxHeight.value)
@@ -737,7 +794,7 @@ fun MapScreen(
             houses = houses,
             track = track,
             repeatLook = repeatLook,
-            check = focusOverlay,
+            check = checkOverlay ?: focusOverlay,
             labelSizeSp = markerLabelSizeSp(labelFontScale),
             showLocation = permissionGranted,
             attribution = MapAttribution(gutterPx, attributionBottomPx, shown = !snackbarAtStart),
@@ -777,7 +834,10 @@ fun MapScreen(
 
                 override fun onHouseTap(id: String) = onOpenHouse(id)
 
-                override fun onLongPress(lat: Double, lon: Double) = currentOnNewHouse(lat, lon)
+                // A small menu: *Save house here* or *Did I walk here?* (docs/11 5.27.13).
+                override fun onLongPress(lat: Double, lon: Double) {
+                    longPressAt = lat to lon
+                }
             },
             // The canvas itself is not navigable with TalkBack; every house is also in the Houses tab (A11Y-B02).
             modifier = Modifier.fillMaxSize().semantics {
@@ -951,6 +1011,15 @@ fun MapScreen(
                 }
             }
         }
+        val checkButton: @Composable () -> Unit = {
+            CheckButton(
+                open = checkMenuOpen,
+                onOpen = { checkMenuOpen = true },
+                onDismiss = { checkMenuOpen = false },
+                onHere = { checkMenuOpen = false; checkHere() },
+                onSpot = { checkMenuOpen = false; pickingSpot = true },
+            )
+        }
         val saveAreaButton: @Composable () -> Unit = {
             // Offline maps (docs/11 5.20): the box on screen, kept on the phone; only where the phone has the store.
             if (offline.supported) {
@@ -1022,6 +1091,7 @@ fun MapScreen(
                 zoomInButton()
                 saveAreaButton()
                 myLocationButton()
+                checkButton()
                 saveHereButton()
             }
         } else {
@@ -1052,8 +1122,22 @@ fun MapScreen(
                 zoomOutButton()
                 saveAreaButton()
                 myLocationButton()
+                checkButton()
                 saveHereButton()
             }
+        }
+        // *Have I been here?* (docs/11 5.27.13): the cross and its card while a spot is picked.
+        if (pickingSpot) {
+            SpotCross(Modifier.align(Alignment.Center))
+            SpotPickerCard(
+                onConfirm = {
+                    val spot = map?.camera()
+                    pickingSpot = false
+                    if (spot != null) placeCheck.start(PlaceKind.SPOT, spot.lat, spot.lon)
+                },
+                onCancel = { pickingSpot = false },
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = controlsDp).padding(horizontal = 16.dp),
+            )
         }
         // The snackbar is not part of the controls' measured height (round 4): it is transient, so the band does not
         // grow and shrink each time one comes and goes. Beside the row when the map is wide enough (round 5; a phone
@@ -1426,3 +1510,4 @@ fun PlaceLookupCard(
         }
     }
 }
+

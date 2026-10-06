@@ -359,6 +359,20 @@ fun HouseEditScreen(
     val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
     val isNew = houseId == null
+    // *Did I walk past this house?* (docs/11 5.27.13): the answer lives here, in memory, until the sheet closes.
+    val placeCheck = remember(repo, scope) { PlaceCheckController(scope, repo, { null }, { 0L }) }
+    placeCheck.state?.let { st ->
+        PlaceCheckSheet(
+            state = st,
+            onShowOnMap = { overlay ->
+                placeCheck.close()
+                ShowOnMap.show(MapFocus(overlay, seconds = 10))
+                onShowOnMap()
+            },
+            onAgain = {},
+            onClose = { placeCheck.close() },
+        )
+    }
     val id = rememberSaveable { houseId ?: Uuid.random().toString() }
     val defaultLabel = stringResource(Res.string.house_default_label)
     val streetLabel = stringResource(Res.string.house_default_label_street)
@@ -1111,8 +1125,19 @@ fun HouseEditScreen(
                     }
                 }
 
-                // The house's saved walks (docs/11 5.27.6): only for a house that exists; they are the house's own.
-                if (!isNew) SavedWalksCard(id, onShowOnMap)
+                // *Did I walk past this house?* (docs/11 5.27.13): on demand, from the house's saved spot; an area-only house
+                // answers that it has no exact spot; a house not yet saved has no button. Then its saved walks (5.27.6).
+                if (!isNew) {
+                    OutlinedButton(
+                        onClick = { placeCheck.start(PlaceKind.HOUSE, d.lat, d.lon, approximate = d.locationSource == LocationSource.APPROX) },
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    ) {
+                        Icon(FootprintsIcon, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                        ButtonLabel(stringResource(Res.string.trace_here_button_house))
+                    }
+                    SavedWalksCard(id, onShowOnMap)
+                }
 
                 SectionHeading(stringResource(Res.string.house_checklist))
                 // The criteria that are not archived, in their order (slice 2); one set to Ignore says it is not counted.

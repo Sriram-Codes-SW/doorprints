@@ -70,6 +70,8 @@ import app.doorprints.ui.OfflineMapsServices
 import app.doorprints.ui.PhotoSources
 import app.doorprints.ui.PickedPhoto
 import app.doorprints.ui.SettingsServices
+import app.doorprints.ui.PlaceFix
+import app.doorprints.ui.bestLocation
 import app.doorprints.ui.currentLocation
 import app.doorprints.ui.findActivity
 import app.doorprints.ui.hasLocationPermission
@@ -95,6 +97,7 @@ class AndroidAppServices(private val app: DoorprintsApp, override val repository
     override val location: LocationSource = object : LocationSource {
         override suspend fun current(): Pair<Double, Double>? = currentLocation(app)
         override fun hasPrecisePermission(): Boolean = hasLocationPermission(app)
+        override suspend fun best(maxWaitMs: Long, goodAccuracyM: Double): PlaceFix? = bestLocation(app, maxWaitMs, goodAccuracyM)
     }
 
     /** The copy imports' undo, one per process as this class is (common since S4b-BL-106); records by [ImportUndo]. */
