@@ -68,3 +68,63 @@ describe('LocationMap: the panel shown when the map has no tiles', () => {
     expect(host.querySelector('.offline')).toBeNull();
   });
 });
+
+describe('LocationMap: the overlay (walks and the place check halo, docs/03 section 6.2b row 11)', () => {
+  const line = (x: number) => ({ type: 'Feature' as const, properties: { kind: 'base' }, geometry: { type: 'LineString' as const, coordinates: [[x, 1] as [number, number], [x, 2] as [number, number]] } });
+  const walks = { type: 'FeatureCollection' as const, features: [line(1)] };
+  const halo = { type: 'FeatureCollection' as const, features: [line(2)] };
+  const fakeLayers = () => ({ attach: vi.fn(), setWalks: vi.fn(), setCheck: vi.fn(), setLook: vi.fn(), fitTo: vi.fn() });
+
+  function withLayers() {
+    const r = render();
+    const layers = fakeLayers();
+    (r.fixture.componentInstance as unknown as { layers: unknown }).layers = layers;
+    return { ...r, layers };
+  }
+
+  it('draws nothing and fits nothing by default (the house form and the point picker are unchanged)', () => {
+    const { fixture, layers } = withLayers();
+    fixture.detectChanges();
+    fixture.componentRef.setInput('lat', 14);
+    fixture.detectChanges();
+    expect(layers.fitTo).not.toHaveBeenCalled();
+    expect(layers.setCheck).not.toHaveBeenCalledWith(expect.objectContaining({ features: [expect.anything()] }));
+  });
+
+  it('draws the walks and the halo and frames the box with 40 px padding when the overlay is set', () => {
+    const { fixture, layers } = withLayers();
+    fixture.componentRef.setInput('overlay', { walks, check: halo, fit: [[1, 1], [2, 2]] });
+    fixture.detectChanges();
+    expect(layers.setWalks).toHaveBeenLastCalledWith(walks);
+    expect(layers.setCheck).toHaveBeenLastCalledWith(halo);
+    expect(layers.fitTo).toHaveBeenLastCalledWith([[1, 1], [2, 2]], 40);
+  });
+
+  it('clears the walks and the halo when the overlay goes back to null, without framing again', () => {
+    const { fixture, layers } = withLayers();
+    fixture.componentRef.setInput('overlay', { walks, check: halo, fit: [[1, 1], [2, 2]] });
+    fixture.detectChanges();
+    layers.fitTo.mockClear();
+    fixture.componentRef.setInput('overlay', null);
+    fixture.detectChanges();
+    expect(layers.setWalks).toHaveBeenLastCalledWith({ type: 'FeatureCollection', features: [] });
+    expect(layers.setCheck).toHaveBeenLastCalledWith(null);
+    expect(layers.fitTo).not.toHaveBeenCalled();
+  });
+
+  it('does not frame an overlay that has no box', () => {
+    const { fixture, layers } = withLayers();
+    fixture.componentRef.setInput('overlay', { walks, check: null, fit: null });
+    fixture.detectChanges();
+    expect(layers.setWalks).toHaveBeenLastCalledWith(walks);
+    expect(layers.fitTo).not.toHaveBeenCalled();
+  });
+
+  it('is quiet when the map is not made (no WebGL): setting an overlay does nothing and throws nothing', () => {
+    const { fixture } = render();
+    expect(() => {
+      fixture.componentRef.setInput('overlay', { walks, check: halo, fit: [[1, 1], [2, 2]] });
+      fixture.detectChanges();
+    }).not.toThrow();
+  });
+});

@@ -80,6 +80,7 @@ import { OfflineSave } from './offline-save';
 import { TraceCard } from './trace-card';
 import { TraceLayers } from './trace-layers';
 import { TraceView } from './trace-view';
+import { WalkEndSheet } from './walk-end-sheet';
 import { TRACK_COLOR, TRACK_REPEAT_COLOR, TRACK_REPEAT_DASH } from '../../shared/trace-style';
 import type { GeoBounds } from '../../offline/offline-tiles';
 import { NO_COST_FILTER, activeCostFilters, costFilterMatches, type CostFilter } from '../../shared/cost-filter';
@@ -121,7 +122,7 @@ let fittedThisSession = false;
 
 @Component({
   selector: 'app-map-page',
-  imports: [RouterLink, TPipe, OfflineSave, TraceCard],
+  imports: [RouterLink, TPipe, OfflineSave, TraceCard, WalkEndSheet],
   templateUrl: './map-page.html',
   styleUrl: './map-page.css',
   host: { '(document:keydown.escape)': 'onEscape()' },

@@ -251,7 +251,9 @@ describe('TraceView', () => {
     await store.saveWalk(id, 'h', NOW);
     await seed(NOW - 300_000, 8);
     await view.open();
+    const announce = vi.spyOn(TestBed.inject(Announcer), 'announce');
     await view.deleteAllSaved();
+    expect(announce.mock.calls.map((c) => c[0].key)).toEqual(['trace.settings.deleted']);
     expect(view.savedCount()).toBe(0);
     expect(view.walkCount()).toBe(1);
   });

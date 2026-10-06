@@ -33,11 +33,24 @@ import { type IControl, Map as MlMap, Marker, NavigationControl } from 'maplibre
 import { TranslationService } from '../i18n/translation.service';
 import { TPipe } from '../i18n/t.pipe';
 import { createMlMap, localizeMap, relabelUnavailable, watchMapStyle } from './map-style';
+import { TraceLayers } from '../pages/map/trace-layers';
+import type { LineCollection } from './trace-style';
 import type { MapStyleWatch } from './map-style';
 
 export interface LatLon {
   lat: number;
   lon: number;
+}
+
+/**
+ * Something drawn on the map besides the house's marker (docs/03 section 6.2b row 11): walks and the place check's halo, as
+ * GeoJSON, and the box to frame (`[[west, south], [east, north]]`). Null draws nothing; the house form and the areas' point
+ * picker never set it.
+ */
+export interface MapOverlay {
+  readonly walks: LineCollection;
+  readonly check: LineCollection | null;
+  readonly fit: [[number, number], [number, number]] | null;
 }
 
 /**
@@ -107,6 +120,8 @@ export class LocationMap implements AfterViewInit, OnDestroy {
   readonly editable = input(true);
   readonly label = input<string | null>(null);
   readonly describedBy = input<string | null>(null);
+  /** Walks and a halo drawn over the map (the house page's *Saved walks* and *Did I walk past this house?*); null draws nothing. */
+  readonly overlay = input<MapOverlay | null>(null);
   readonly moved = output<LatLon>();
 
   private readonly i18n = inject(TranslationService);
@@ -116,6 +131,7 @@ export class LocationMap implements AfterViewInit, OnDestroy {
   private marker: Marker | null = null;
   private resizeObserver: ResizeObserver | null = null;
   private styleWatch: MapStyleWatch | null = null;
+  private layers: TraceLayers | null = null;
   /** False while the map style cannot load (offline); the overlay then points to the fields and "Use my location". */
   protected readonly available = signal(true);
   /** True when the map's worker failed to load while online: the message says to reload, not that we are offline. */
@@ -138,6 +154,11 @@ export class LocationMap implements AfterViewInit, OnDestroy {
     effect(() => {
       const draggable = this.editable();
       this.marker?.setDraggable(draggable);
+    });
+    // The overlay (walks, halo) follows its input; it is drawn once the map has a style.
+    effect(() => {
+      const overlay = this.overlay();
+      untracked(() => this.applyOverlay(overlay));
     });
     // A language switch relabels the zoom buttons and the marker, or the "map unavailable" sentence (A11Y-B03).
     let lastLang = this.i18n.lang();
@@ -187,6 +208,12 @@ export class LocationMap implements AfterViewInit, OnDestroy {
     });
     this.map = map;
     this.marker = marker;
+    // The walks' layers are added on EVERY style.load (a style replaced after an offline start comes without them).
+    this.layers = new TraceLayers(map);
+    map.on('style.load', () => {
+      this.layers?.attach();
+      this.applyOverlay(this.overlay());
+    });
 
     // jsdom has no ResizeObserver. createMlMap usually returns null there (no WebGL 2), so this line is never
     // reached. The Plan page spec replaces maplibre-gl for the shared test chunk with a map that does construct,
@@ -196,6 +223,15 @@ export class LocationMap implements AfterViewInit, OnDestroy {
       this.resizeObserver = new ResizeObserver(() => map.resize());
       this.resizeObserver.observe(container);
     }
+  }
+
+  /** Draws (or clears) the overlay and frames it. A map that is not made (jsdom, no WebGL) has no layers: nothing to do. */
+  private applyOverlay(overlay: MapOverlay | null): void {
+    const layers = this.layers;
+    if (!layers) return;
+    layers.setWalks(overlay?.walks ?? EMPTY_LINES);
+    layers.setCheck(overlay?.check ?? null);
+    if (overlay?.fit) layers.fitTo(overlay.fit, 40);
   }
 
   protected retry(): void {
@@ -209,8 +245,11 @@ export class LocationMap implements AfterViewInit, OnDestroy {
     this.map?.remove();
     this.map = null;
     this.marker = null;
+    this.layers = null;
   }
 }
+
+const EMPTY_LINES: LineCollection = { type: 'FeatureCollection', features: [] };
 
 export function round6(n: number): number {
   return Math.round(n * 1e6) / 1e6;

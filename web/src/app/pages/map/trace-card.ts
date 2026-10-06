@@ -176,6 +176,12 @@ const LOOK_KEYS: Record<RepeatLook, { label: TKey; desc: TKey }> = {
           <button type="button" class="btn btn-sm" id="trace-clear" aria-describedby="trace-clear-hint" (click)="clear()">{{ 'trace.card.clear' | t }}</button>
         </div>
         <p id="trace-clear-hint" class="muted small">{{ 'trace.settings.clearHint' | t }}</p>
+        <p id="trace-saved" class="small">{{ 'trace.settings.saved' | t: { n: i18n.number(view.savedCount()) } }}</p>
+        @if (view.savedCount() > 0) {
+          <div class="actions">
+            <button type="button" class="btn btn-sm" id="trace-delete-saved" (click)="deleteSaved()">{{ 'trace.settings.deleteAll' | t }}</button>
+          </div>
+        }
         <p class="muted small">{{ 'trace.web.shared' | t }}</p>
       </div>
     </details>
@@ -377,6 +383,15 @@ export class TraceCard {
 
   protected toggleAwake(event: Event): void {
     void this.view.setKeepAwake((event.target as HTMLInputElement).checked);
+  }
+
+  /** *Delete all saved walks*: asks with the count first; the 30-day trace stays. */
+  protected async deleteSaved(): Promise<void> {
+    const ok = await this.confirm.ask(
+      { key: 'trace.settings.deleteAllConfirm', params: { n: this.i18n.number(this.view.savedCount()) } },
+      { confirmKey: 'trace.settings.deleteAll', danger: true },
+    );
+    if (ok) await this.view.deleteAllSaved();
   }
 
   protected async clear(): Promise<void> {

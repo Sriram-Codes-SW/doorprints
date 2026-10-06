@@ -78,6 +78,15 @@ describe('the Map page with the path trace', () => {
     expect(card.textContent).toContain('Trace my path');
   });
 
+  it('has the Save this walk sheet, shut until a walk is to be asked about, after the card', async () => {
+    const { host } = await render();
+    const card = host.querySelector('app-trace-card')!;
+    const sheet = host.querySelector('app-walk-end-sheet')!;
+    expect(sheet).not.toBeNull();
+    expect(card.compareDocumentPosition(sheet) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(sheet.querySelector('dialog')!.hasAttribute('open')).toBe(false);
+  });
+
   it('shows no walk legend while the trace is empty, and Walked once / Walked more than once when there are walks', async () => {
     const { fixture, host, view } = await render();
     expect(host.querySelector('.legend')!.textContent).not.toContain('Walked once');

@@ -298,6 +298,30 @@ describe('TraceCard', () => {
     });
   });
 
+  describe('Saved walks', () => {
+    it('shows the count and no delete button when there are none', async () => {
+      const r = await render();
+      expect(r.$('#trace-saved')!.textContent!.trim()).toBe('Saved walks: 0');
+      expect(r.$('#trace-delete-saved')).toBeNull();
+    });
+
+    it('shows the count and Delete all saved walks; asks with the count; deletes only on a yes and keeps the trace', async () => {
+      const r = await render();
+      r.view.savedCount.set(4);
+      await settle(r.fixture);
+      expect(r.$('#trace-saved')!.textContent!.trim()).toBe('Saved walks: 4');
+      const del = vi.spyOn(r.view, 'deleteAllSaved').mockResolvedValue();
+      const ask = vi.spyOn(TestBed.inject(ConfirmService), 'ask').mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+      r.$<HTMLButtonElement>('#trace-delete-saved')!.click();
+      await settle(r.fixture);
+      expect(ask.mock.calls[0][0]).toEqual({ key: 'trace.settings.deleteAllConfirm', params: { n: '4' } });
+      expect(del).not.toHaveBeenCalled();
+      r.$<HTMLButtonElement>('#trace-delete-saved')!.click();
+      await settle(r.fixture);
+      expect(del).toHaveBeenCalledTimes(1);
+    });
+  });
+
   it('turning the trace off while a walk records ends the walk first', async () => {
     const r = await render({ traceOn: true });
     recorder.state.set('recording');

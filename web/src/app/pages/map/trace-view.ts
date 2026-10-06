@@ -229,5 +229,6 @@ export class TraceView {
   async deleteAllSaved(): Promise<void> {
     await this.store.deleteAllSavedWalks();
     await this.refresh();
+    this.announcer.announce({ key: 'trace.settings.deleted' });
   }
 }

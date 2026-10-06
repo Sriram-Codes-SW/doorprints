@@ -147,6 +147,7 @@
 
   <section #panel class="panel" aria-labelledby="houses-heading">
     <app-trace-card />
+    <app-walk-end-sheet [houses]="houses()" />
     <div class="panel-head">
       <h1 id="houses-heading">{{ 'map.heading' | t }}</h1>
     </div>

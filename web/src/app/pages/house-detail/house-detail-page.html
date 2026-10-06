@@ -740,6 +740,7 @@
           [color]="statusColor[d.status]"
           [label]="'house.mapLabel' | t"
           [describedBy]="locationSet() ? 'location-hint' : 'location-unset location-hint'"
+          [overlay]="overlay()"
           (moved)="onMoved($event)"
         />
         <p id="location-hint" class="muted small">{{ 'house.mapHint' | t }}</p>
@@ -851,6 +852,9 @@
         <p class="muted small">{{ 'house.lookupNote' | t }}</p>
         <span class="muted small attribution">{{ 'house.osm' | t }}</span>
       </section>
+
+      <!-- Saved walks (docs/11 5.27.6): the walks linked to this house; Show on map draws on the map above. -->
+      <app-house-walks-card [houseId]="d.id" [isNew]="isNew()" (overlay)="showOverlay($event)" />
 
       <!-- Checklist -->
       <section class="card" aria-labelledby="checklist-heading">
