@@ -203,5 +203,9 @@ export function createLazyDeletionAdapterProxy(getRuntime: () => Promise<DriveRu
     async prfCapability() {
       return (await getAdapter()).prfCapability?.() ?? null;
     },
+
+    async builtInAuthenticator() {
+      return (await getAdapter()).builtInAuthenticator?.() ?? null;
+    },
   };
 }

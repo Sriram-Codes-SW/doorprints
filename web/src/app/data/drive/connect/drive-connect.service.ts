@@ -585,6 +585,15 @@ export class DriveConnectService {
     }
   }
 
+  /** Whether a built-in platform authenticator is available. */
+  async passkeyBuiltIn(): Promise<boolean | null> {
+    try {
+      return (await this.deletionAdapter.builtInAuthenticator?.()) ?? null;
+    } catch {
+      return null;
+    }
+  }
+
   // ==================== Backward Compatibility ====================
 
   /** *Automatic backup and sync* (a per-device preference, kept in the browser; off until the person turns it on). */

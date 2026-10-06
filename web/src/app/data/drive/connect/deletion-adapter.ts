@@ -87,6 +87,12 @@ export interface DriveDeletionAdapter {
    * Returns true if supported, false if not supported, null if indeterminate (error or API unavailable).
    */
   prfCapability?(): Promise<boolean | null>;
+
+  /**
+   * Whether a built-in platform authenticator is available.
+   * Returns true if available, false if not available, null if the check is unavailable or throws.
+   */
+  builtInAuthenticator?(): Promise<boolean | null>;
 }
 
 export type DeletionPreflightResult =
@@ -326,6 +332,15 @@ export class DriveDeletionAdapterImpl implements DriveDeletionAdapter {
     if (!this.prf) return null;
     try {
       return (await this.prf.prfCapability?.()) ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  async builtInAuthenticator(): Promise<boolean | null> {
+    if (!this.prf) return null;
+    try {
+      return (await this.prf.builtInAuthenticatorAvailable?.()) ?? null;
     } catch {
       return null;
     }
