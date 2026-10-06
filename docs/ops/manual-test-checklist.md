@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | The complete manual test list for Doorprints before real-system testing starts and before Android/iOS development continues: every check a person redoes on real devices, whether or not an automated suite or a review session already covered it |
-| Version | 0.8 |
+| Version | 0.9 |
 | Date | 2026-10-06 |
 | Author | Claude, senior reviewer |
 | Status | Draft |
@@ -20,6 +20,7 @@
 | 0.6 | 2026-10-06 | Claude (Code), lead | New **MT-81** in section 15, *Have I been here?* (the on-demand place check, [11](../11-feature-parity-and-export-spec.md) 5.27.13, S4b-FR-24, TC-M-61); summary row 15.1. |
 | 0.7 | 2026-10-06 | Claude (Code), lead | MT-81 step (7) gains the website's Back-button and live-region checks (place-check review, [path-trace-check-review.md](path-trace-check-review.md)). |
 | 0.8 | 2026-10-06 | Claude (Code), lead | Section 14 after `feat/qr-scanner-and-backlog` (draft PR #145): new **MT-82..MT-85** (the Android scan with Google's code scanner, the first-use download of the scanner module, the iPhone scan, a phone without Play services hides Scan) for TC-M-62; MT-70 and its automated list now describe the Android HMAC proof (the grant id is no longer the proof, `DeviceAuthorizationGate` is gone); MT-65 gains the sync back-off; the not-built list drops the camera scan and the Android HMAC proof. |
+| 0.9 | 2026-10-06 | Claude (Code), docs pass | Section 15 (MT-75..MT-81): the features are built on `feat/path-trace-v2` (PR #146, not yet merged); every row stays *not run*: nobody has run them on a device. MT-81 and MT-80 also cover TalkBack and VoiceOver for the sheets and the Tamil and Telugu weekday patterns; the TC-M-25 re-run is owed ([06](../06-test-plan.md)). |
 
 ## 1. How to use this list
 
@@ -751,10 +752,10 @@ Added 2026-10-06 with the design ([11](../11-feature-parity-and-export-spec.md) 
 
 | Id | Title | Who | Env | Reviewer ran it | Result |
 |---|---|---|---|---|---|
-| MT-75 | Repeats: Clear, Subtle, Off, live | owner | E4/E5/E1 | no (planned) | |
-| MT-76 | The alert: once, from a pocket, muted by the system | owner | E4/E5 | no (planned) | |
-| MT-77 | Finish a walk, save to a house, Undo | owner | E4/E5/E1 | no (planned) | |
-| MT-78 | No walk in any copy, backup, sync or AI request | owner | all | no (planned) | |
-| MT-79 | A walk on the website: visible page only | anyone | E4/E5/E1 | no (planned) | |
-| MT-80 | hi, ta, te, large text, screen readers | owner, natives | E4/E5/E1 | no (planned) | |
-| MT-81 | Have I been here? (on-demand place check) | owner | E4/E5/E1 | no (planned) | |
+| MT-75 | Repeats: Clear, Subtle, Off, live | owner | E4/E5/E1 | no (built; not run on a device) | |
+| MT-76 | The alert: once, from a pocket, muted by the system | owner | E4/E5 | no (built; not run on a device) | |
+| MT-77 | Finish a walk, save to a house, Undo | owner | E4/E5/E1 | no (built; not run on a device) | |
+| MT-78 | No walk in any copy, backup, sync or AI request | owner | all | no (built; not run on a device) | |
+| MT-79 | A walk on the website: visible page only | anyone | E4/E5/E1 | no (built; not run on a device) | |
+| MT-80 | hi, ta, te, large text, screen readers | owner, natives | E4/E5/E1 | no (built; not run on a device) | |
+| MT-81 | Have I been here? (on-demand place check) | owner | E4/E5/E1 | no (built; not run on a device) | |

@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.118 |
+| Version | 0.119 |
 | Date | 2026-10-06 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -18,6 +18,7 @@
 | 0.116 | 2026-10-06 | Claude (Code), lead | **An on-demand place check, *Have I been here?*** (owner request of 2026-10-06; design only): 11 v0.58 (5.27.13, open questions 15 to 17), 01 v0.44 (FR-108, PRV-032), 02 v0.60 (T-I42, RR-31), 03 v0.66 (§7.2b, the shared API), 06 v0.135 (TC-U-153, TC-U-154, TC-M-61), 10 v0.153 (S4b-FR-24), 14 v0.93 (N20), `schemas/README.md` v1.27, `schemas/trace-repeat-vectors.json` (the new `placeChecks` section, 21 cases; 58 with the 37 repeat cases), `ops/manual-test-checklist.md` v0.6 (MT-81). |
 | 0.117 | 2026-10-06 | Claude (Code), lead | **The place-check review applied** (owner: go with the recommendations): the review is committed as [ops/path-trace-check-review.md](ops/path-trace-check-review.md) (session record); 11 v0.59, 01 v0.45, 02 v0.61, 03 v0.67 (new §6.2b, the website's files, order and risks), 06 v0.136, 10 v0.154, ops/manual-test-checklist v0.7. |
 | 0.118 | 2026-10-06 | Claude (Code), lead | **The phones' QR scan, the Android HMAC proof, the back-off and the screenshot wait, built** (draft PR #145): 15 v0.30 (§9.5 i, §10.2, §10.4), 06 v0.137 (TC-U-155..159, TC-M-62), 10 v0.155 (S4b-BL-136 and -135 built, -138 done, -139 O9..O11, new S4b-BL-140..142), 14 v0.95, `schemas/README.md` v1.28 and the new `schemas/qr-enrol-vectors.json` (the schemas folder is one index row), ops/manual-test-checklist v0.8 (MT-82..MT-85), two new session records ([ops/ios-qr-scanner-notes.md](ops/ios-qr-scanner-notes.md), [ops/screenshot-flake-notes.md](ops/screenshot-flake-notes.md)), the older Android Drive notes marked superseded where they were, and the CHANGELOG. |
+| 0.119 | 2026-10-06 | Claude (Code), docs pass | **The path trace v2 and the place check built** (`feat/path-trace-v2`, PR #146, not yet merged): 11 v0.60, 03 v0.68, 06 v0.138, 10 v0.156 (S4b-FR-13..17 and FR-24 built, FR-18 done; review follow-ups S4b-FR-25..37), 14 v0.96, 01 v0.46, 02 v0.62, 05 v0.30, schemas v1.29 (the vector file is *confirmed*), the manual checklist v0.9; new index row for [ops/path-trace-web-notes.md](ops/path-trace-web-notes.md). The guide page *Your paths* exists in four languages. |
 | 0.112 | 2026-10-06 | Claude | The review backlog: docs/01 v0.41, 06 v0.131 (section 10.1), 07 v0.60, 14 v0.89. |
 | 0.111 | 2026-10-06 | Claude | Full-system review fixes and the manual test checklist (`docs/ops/manual-test-checklist.md`): docs/07 v0.59, docs/14 v0.88. |
 | 0.110 | 2026-10-06 | Claude | Review fixes on PR #139: docs/10 v0.149, 06 v0.130, 15 v0.27. |
@@ -166,6 +167,7 @@ Everything must run on free tiers. These documents follow a Secure Software Deve
 | – | [ops/screenshot-flake-notes.md](ops/screenshot-flake-notes.md) | Session record: why a screenshot test failed once in a full run and the `readyText` fix (S4b-BL-138, S4b-BL-100); the rule is in [06](06-test-plan.md) TC-U-145 |
 | – | [ops/path-trace-spec-review.md](ops/path-trace-spec-review.md) | Session record: the senior review of the path trace v2 design (2026-10-06); the decisions are in [11](11-feature-parity-and-export-spec.md) 5.27 |
 | – | [ops/path-trace-check-review.md](ops/path-trace-check-review.md) | Session record: the senior review of the place check, *Have I been here?*, and the website integration plan (2026-10-06); the decisions are in [11](11-feature-parity-and-export-spec.md) 5.27.13 and [03](03-design.md) §6.2b |
+| – | [ops/path-trace-web-notes.md](ops/path-trace-web-notes.md) | Session record: the website's trace and place check logic, hand-over notes for the UI change (S4b-FR-17, S4b-FR-24); the UI is built since (PR #146) |
 | – | [Shared schemas](schemas/) | `doorprints-backup/1`: the one backup format the server, Android and web all implement, plus the canonical `backup-sample.json`: the server and Android tests read it, and the web writer's golden copy is checked against it by the backend's `BackupParityTest` (S4-00, [03](03-design.md) ADR-20, [06](06-test-plan.md) TC-I-34). Section 0, "What an import is" (the approved definition, Sprint 4b S4b-00), is maintained by the Docs team | Backend (section 0: Docs team) |
 | – | [CHANGELOG](../CHANGELOG.md) (repo root) | Release notes in Keep a Changelog format: Unreleased + released versions | Docs team |
 | – | [SECURITY.md](../SECURITY.md) (repo root) | How to report a vulnerability privately | Owner |
