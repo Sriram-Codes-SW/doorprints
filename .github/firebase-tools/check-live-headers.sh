@@ -236,6 +236,27 @@ for path in /maplibre-gl-worker.mjs /maplibre-gl-shared.mjs; do
   printf '%s' "$ctype" | grep -qi 'javascript' || fail "${path}: Content-Type is '${ctype:-missing}', expected JavaScript (a missing file is answered with index.html)"
 done
 
+# 6. MapLibre worker and shared file versions match (S4b-BL-55): both are copied from the same maplibre-gl package.
+#    Mismatched versions break every tile. Extract version from each file's header and verify they match.
+curl_https=""
+case "$base" in
+  https://*) curl_https="--proto =https" ;;
+esac
+worker_header=$(curl -sS $curl_https --max-time 20 -H 'Cache-Control: no-cache' -r 0-399 "${base}/maplibre-gl-worker.mjs" 2>/dev/null || true)
+shared_header=$(curl -sS $curl_https --max-time 20 -H 'Cache-Control: no-cache' -r 0-399 "${base}/maplibre-gl-shared.mjs" 2>/dev/null || true)
+worker_version=$(printf '%s' "$worker_header" | grep -oE 'maplibre-gl-js/blob/v[^/]+' | head -n 1 || true)
+shared_version=$(printf '%s' "$shared_header" | grep -oE 'maplibre-gl-js/blob/v[^/]+' | head -n 1 || true)
+echo "--- MapLibre versions: worker=${worker_version#maplibre-gl-js/blob/} shared=${shared_version#maplibre-gl-js/blob/}"
+if [ -z "$worker_version" ]; then
+  fail "maplibre-gl-worker.mjs: no version found in header"
+fi
+if [ -z "$shared_version" ]; then
+  fail "maplibre-gl-shared.mjs: no version found in header"
+fi
+if [ -n "$worker_version" ] && [ -n "$shared_version" ] && [ "$worker_version" != "$shared_version" ]; then
+  fail "MapLibre version mismatch: worker ${worker_version#maplibre-gl-js/blob/} vs shared ${shared_version#maplibre-gl-js/blob/}"
+fi
+
 rm -rf "$work"
 if [ "$errors" -gt 0 ]; then
   echo "${errors} problem(s): ${base} does not serve what web/firebase.json promises (RR-11)."
