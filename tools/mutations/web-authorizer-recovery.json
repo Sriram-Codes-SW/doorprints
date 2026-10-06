@@ -24,6 +24,18 @@
       "find": "    this.proofSource = 'recovery';\n    return { kind: \"GRANTED\", grant: this.issue(action, req) };\n  }\n\n  /** Forgets the recovery proof key, leaving PRF keys intact. */\n  forgetProof(): void {\n    if (this.proofSource === 'recovery') {\n      this.proofKey = null;\n      this.proofSource = null;\n    }\n  }",
       "replace": "    this.proofSource = 'recovery';\n    return { kind: \"GRANTED\", grant: this.issue(action, req) };\n  }\n\n  /** Forgets the recovery proof key, leaving PRF keys intact. */\n  forgetProof(): void {\n    // do nothing\n  }",
       "expect": "after forgetProof: recovery proof no longer verifies"
+    },
+    {
+      "file": "web/src/app/data/device-auth/web-authorizer.ts",
+      "find": "    } catch {\n      return { kind: \"DENIED\", reason: \"FAILED\" };\n    }\n    if (!ok)",
+      "replace": "    } catch {\n      ok = true;\n    }\n    if (!ok)",
+      "expect": "verify throws"
+    },
+    {
+      "file": "web/src/app/data/device-auth/web-authorizer.ts",
+      "find": "    const d = decide(action, ctx);\n    if (d.outcome === \"REFUSED\") return { kind: \"REFUSED\", reason: d.reason };\n    const req = d.requirements;\n    if (req.factor === \"NONE\")\n      return { kind: \"GRANTED\", grant: this.issue(action, req) };\n    if (req.factor !== \"PASSKEY\")\n      return { kind: \"DENIED\", reason: \"NOT_SUPPORTED\" };\n    if (!this.recovery)",
+      "replace": "    const d = decide(action, ctx);\n    const req = d.outcome === \"REFUSED\" ? ({ factor: \"PASSKEY\" } as never) : d.requirements;\n    if (!this.recovery)",
+      "expect": "context where decide refuses"
     }
   ]
 }
