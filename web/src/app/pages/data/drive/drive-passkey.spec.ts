@@ -22,7 +22,7 @@ import { DrivePasskeyComponent } from './drive-passkey';
 import { TranslationService } from '../../../i18n/translation.service';
 import { DriveConnectService } from '../../../data/drive/connect/drive-connect.service';
 
-type FakeDriveService = Pick<DriveConnectService, 'passkeyStatus' | 'registerPasskey' | 'passkeyDetails' | 'passkeyPrfCapability'>;
+type FakeDriveService = Pick<DriveConnectService, 'passkeyStatus' | 'registerPasskey' | 'passkeyDetails' | 'passkeyPrfCapability' | 'passkeyBuiltIn'>;
 
 function createFakeDriveService(overrides: Partial<FakeDriveService> = {}): FakeDriveService {
   return {
@@ -30,6 +30,7 @@ function createFakeDriveService(overrides: Partial<FakeDriveService> = {}): Fake
     registerPasskey: vi.fn(async () => 'registered' as const),
     passkeyDetails: vi.fn(async () => null),
     passkeyPrfCapability: vi.fn(async () => null),
+    passkeyBuiltIn: vi.fn(async () => null),
     ...overrides,
   };
 }
@@ -418,5 +419,100 @@ describe('DrivePasskeyComponent', () => {
     const errorRegion = host.querySelector('[aria-live="polite"]');
     expect(errorRegion).toBeTruthy();
     expect(errorRegion?.getAttribute('aria-atomic')).toBe('true');
+  });
+
+  describe('no built-in authenticator help', () => {
+    it('shows help when status is none and builtIn is false', async () => {
+      const service = createFakeDriveService({
+        passkeyStatus: vi.fn(async () => 'none' as const),
+        passkeyBuiltIn: vi.fn(async () => false),
+      });
+      const { host, component, detect } = await render(service);
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      detect();
+
+      expect(component['noBuiltIn']()).toBe(true);
+      const help = host.querySelector('.passkey-help')?.textContent ?? '';
+      expect(help).toContain('This computer reports no built-in lock for passkeys');
+      expect(host.querySelector('button')?.textContent).toContain('Set up a passkey');
+      expect(host.querySelector('button')?.hasAttribute('disabled')).toBe(false);
+    });
+
+    it('does not show help when builtIn is true', async () => {
+      const service = createFakeDriveService({
+        passkeyStatus: vi.fn(async () => 'none' as const),
+        passkeyBuiltIn: vi.fn(async () => true),
+      });
+      const { host, component, detect } = await render(service);
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      detect();
+
+      expect(component['noBuiltIn']()).toBe(false);
+      const helps = host.querySelectorAll('.passkey-help');
+      const noBuiltInHelp = Array.from(helps).find((h) => h.textContent?.includes('This computer reports no built-in lock'));
+      expect(noBuiltInHelp).toBeUndefined();
+    });
+
+    it('does not show help when builtIn is null', async () => {
+      const service = createFakeDriveService({
+        passkeyStatus: vi.fn(async () => 'none' as const),
+        passkeyBuiltIn: vi.fn(async () => null),
+      });
+      const { host, component, detect } = await render(service);
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      detect();
+
+      expect(component['noBuiltIn']()).toBe(false);
+      const helps = host.querySelectorAll('.passkey-help');
+      const noBuiltInHelp = Array.from(helps).find((h) => h.textContent?.includes('This computer reports no built-in lock'));
+      expect(noBuiltInHelp).toBeUndefined();
+    });
+
+    it('does not show help when status is registered', async () => {
+      const service = createFakeDriveService({
+        passkeyStatus: vi.fn(async () => 'registered' as const),
+        passkeyBuiltIn: vi.fn(async () => false),
+      });
+      const { host, component, detect } = await render(service);
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      detect();
+
+      expect(component['noBuiltIn']()).toBe(false);
+      const helps = host.querySelectorAll('.passkey-help');
+      const noBuiltInHelp = Array.from(helps).find((h) => h.textContent?.includes('This computer reports no built-in lock'));
+      expect(noBuiltInHelp).toBeUndefined();
+    });
+
+    it('does not disable button when noBuiltIn is shown', async () => {
+      const service = createFakeDriveService({
+        passkeyStatus: vi.fn(async () => 'none' as const),
+        passkeyBuiltIn: vi.fn(async () => false),
+      });
+      const { host, detect } = await render(service);
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      detect();
+
+      const button = host.querySelector('button');
+      expect(button?.hasAttribute('disabled')).toBe(false);
+      expect(button?.textContent).toContain('Set up a passkey');
+    });
+
+    it('does not render recovery key input when noBuiltIn is shown', async () => {
+      const service = createFakeDriveService({
+        passkeyStatus: vi.fn(async () => 'none' as const),
+        passkeyBuiltIn: vi.fn(async () => false),
+      });
+      const { host, detect } = await render(service);
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      detect();
+
+      expect(host.querySelector('input[type="password"]')).toBeNull();
+    });
   });
 });

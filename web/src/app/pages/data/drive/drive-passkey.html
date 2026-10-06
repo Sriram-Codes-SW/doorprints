@@ -39,6 +39,9 @@
             {{ 'drivePasskey.registerButton' | t }}
           }
         </button>
+        @if (noBuiltIn()) {
+          <p class="passkey-help">{{ 'drivePasskey.noBuiltInHelp' | t }}</p>
+        }
       }
 
       @case ('registered') {
