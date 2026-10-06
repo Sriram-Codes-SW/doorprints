@@ -9,13 +9,13 @@
     },
     {
       "file": "web/src/app/data/trace-store.ts",
-      "find": "r.walk > askedUpTo",
-      "replace": "r.walk >= askedUpTo",
+      "find": "r.walk <= askedUpTo",
+      "replace": "r.walk < askedUpTo",
       "expect": "asks once"
     },
     {
       "file": "web/src/app/data/trace-store.ts",
-      "find": "r.walk !== liveWalkId &&",
+      "find": "r.walk === liveWalkId || ",
       "replace": "",
       "expect": "leaves out the live walk"
     },
@@ -102,6 +102,18 @@
       "find": "if (points.length < 2) return { ok: false, reason: 'noWalk' };",
       "replace": "if (points.length < 1) return { ok: false, reason: 'noWalk' };",
       "expect": "refuses a walk with no points or one point"
+    },
+    {
+      "file": "web/src/app/data/trace-store.ts",
+      "find": "[...byWalk.keys()].sort((a, b) => b - a)",
+      "replace": "[...byWalk.keys()].sort((a, b) => a - b)",
+      "expect": "takes the newest of several qualifying walks"
+    },
+    {
+      "file": "web/src/app/data/trace-store.ts",
+      "find": "if (points.length >= ASK_MIN_POINTS && lengthM >= ASK_MIN_LENGTH_M) return summaryOf(id, points, lengthM);",
+      "replace": "return summaryOf(id, points, lengthM);",
+      "expect": "does not hide a long older one"
     }
   ]
 }

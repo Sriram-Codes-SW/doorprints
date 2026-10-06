@@ -133,8 +133,8 @@ describe('TraceStore', () => {
       expect((await store.lastEndedWalk(0, at))?.walkId).toBe(at + DAY);
     });
 
-    it('does not ask about a short walk (under 5 points or under 100 m) and does not fall back to an older one', async () => {
-      await putWalk([...walk(at, 6), ...walk(at + DAY, ASK_MIN_POINTS - 1)]);
+    it('does not ask about a short walk (under 5 points or under 100 m) when no longer walk is left', async () => {
+      await putWalk(walk(at + DAY, ASK_MIN_POINTS - 1));
       expect(await store.lastEndedWalk(0, 0)).toBeNull();
       expect(ASK_MIN_POINTS).toBe(5);
       await store.clearTrace();
@@ -142,6 +142,21 @@ describe('TraceStore', () => {
       await putWalk(short);
       expect(await store.lastEndedWalk(0, 0)).toBeNull();
       expect(ASK_MIN_LENGTH_M).toBe(100);
+    });
+
+    it('a short newer walk (a false start) does not hide a long older one: the newest QUALIFYING walk is asked about', async () => {
+      await putWalk([...walk(at, 6), ...walk(at + DAY, ASK_MIN_POINTS - 1)]);
+      expect((await store.lastEndedWalk(0, 0))?.walkId).toBe(at);
+      await store.clearTrace();
+      const shortLong = Array.from({ length: 6 }, (_, i) => pt(i * 15, at + DAY + i * 15_000, at + DAY)); // 5 points enough, 75 m too short
+      await putWalk([...walk(at, 6), ...shortLong]);
+      expect((await store.lastEndedWalk(0, 0))?.walkId).toBe(at);
+    });
+
+    it('takes the newest of several qualifying walks, skipping the live one and short ones in between', async () => {
+      await putWalk([...walk(at, 6), ...walk(at + DAY, 6), ...walk(at + 2 * DAY, 2), ...walk(at + 3 * DAY, 6)]);
+      expect((await store.lastEndedWalk(at + 3 * DAY, 0))?.walkId).toBe(at + DAY);
+      expect((await store.lastEndedWalk(at + 3 * DAY, at + DAY))).toBeNull();
     });
 
     it('measures the 100 m without the segment into a resumed point', async () => {

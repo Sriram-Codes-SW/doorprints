@@ -148,23 +148,30 @@ export class TraceStore {
   // ---- The walk to ask about ----
 
   /**
-   * The walk the *Save this walk?* sheet is for (docs/11 5.27.6): the newest walk id in the trace that is not the live
-   * walk's, is above the watermark `askedUpTo` and has at least {@link ASK_MIN_POINTS} points and {@link ASK_MIN_LENGTH_M}
-   * metres; null when there is none. Only the newest candidate counts: a shorter walk is just kept for 30 days, and an
-   * unanswered older walk is skipped. Computed from the rows, not stored, so a walk cut by a closed tab is asked about once.
+   * The walk the *Save this walk?* sheet is for (docs/11 5.27.6), as on the phones (`WalkStore.lastEndedWalk`): the walk ids
+   * in the trace that are not the live walk's and are above the watermark `askedUpTo`, newest first; the first with at least
+   * {@link ASK_MIN_POINTS} points and {@link ASK_MIN_LENGTH_M} metres. A short walk (a false start) is just kept for 30 days
+   * and never hides an older long one. Null when none qualifies. Computed from the rows, not stored, so a walk cut by a closed
+   * tab is asked about once.
    */
   async lastEndedWalk(liveWalkId: number, askedUpTo: number): Promise<WalkSummary | null> {
     const rows = await (await this.db()).getAll<TracePointRow>('trace_points');
-    let newest = 0;
-    for (const r of rows) if (r.walk !== 0 && r.walk !== liveWalkId && r.walk > askedUpTo && r.walk > newest) newest = r.walk;
-    if (newest === 0) return null;
-    const points = rows
-      .filter((r) => r.walk === newest)
-      .map(pointOfRow)
-      .sort((a, b) => a.atMs - b.atMs);
-    const lengthM = walkLengthM(points);
-    if (points.length < ASK_MIN_POINTS || lengthM < ASK_MIN_LENGTH_M) return null;
-    return summaryOf(newest, points, lengthM);
+    const byWalk = new Map<number, TracePointRow[]>();
+    for (const r of rows) {
+      if (r.walk === 0 || r.walk === liveWalkId || r.walk <= askedUpTo) continue;
+      const list = byWalk.get(r.walk);
+      if (list) list.push(r);
+      else byWalk.set(r.walk, [r]);
+    }
+    for (const id of [...byWalk.keys()].sort((a, b) => b - a)) {
+      const points = byWalk
+        .get(id)!
+        .map(pointOfRow)
+        .sort((a, b) => a.atMs - b.atMs);
+      const lengthM = walkLengthM(points);
+      if (points.length >= ASK_MIN_POINTS && lengthM >= ASK_MIN_LENGTH_M) return summaryOf(id, points, lengthM);
+    }
+    return null;
   }
 
   /** The summary of one walk id in the trace, or null when it has no points. */
