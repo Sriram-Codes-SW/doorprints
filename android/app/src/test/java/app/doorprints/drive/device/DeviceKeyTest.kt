@@ -37,7 +37,12 @@ class FakeKeyBackend : DeviceKeyBackend {
     private var key = p.p256Generate()
     var agrees = 0
 
-    override fun status() = state
+    var statusCalls = 0
+
+    override fun status(): DeviceKeyStatus {
+        statusCalls++
+        return state
+    }
     override fun create(): ByteArray {
         creates++
         key = p.p256Generate()
@@ -61,6 +66,54 @@ class DeviceKeyTest {
     private val backend = FakeKeyBackend()
     private var pinned = false
     private val identity = KeystoreDeviceIdentity(backend, "Pixel", folderPinned = { pinned })
+
+    /** What happens on a phone: the key store changes under us and the next *use* of the key fails (that is what drops the cached READY). */
+    private fun breakTo(state: DeviceKeyStatus) {
+        val mine = identity.key
+        backend.state = state
+        val peer = platformCryptoProvider().p256Generate().publicKey
+        assertThrows(DeviceKeyException::class.java) { DeviceKeyCryptoProvider(platformCryptoProvider()).p256Agree(mine, peer) }
+    }
+
+    @Test fun `many key accesses probe the key store once, and a failed use probes again`() {
+        backend.create()
+        identity.key
+        val after = backend.statusCalls
+        assertEquals("the first access probed once", 1, after)
+        repeat(10) {
+            identity.key
+            identity.status()
+            identity.isLost()
+        }
+        assertEquals("READY is remembered after the first success", after, backend.statusCalls)
+        pinned = true
+        breakTo(DeviceKeyStatus.INVALIDATED)
+        val probed = backend.statusCalls
+        assertEquals(DeviceKeyStatus.INVALIDATED, identity.status())
+        assertTrue("the failure made the next call probe", backend.statusCalls > probed)
+        assertTrue(identity.isLost())
+    }
+
+    @Test fun `a key waiting for an unlock is probed every time, never remembered as ready`() {
+        identity.key
+        breakTo(DeviceKeyStatus.NEEDS_UNLOCK)
+        val before = backend.statusCalls
+        identity.status(); identity.status()
+        assertEquals(before + 2, backend.statusCalls)
+        backend.state = DeviceKeyStatus.READY
+        assertEquals(DeviceKeyStatus.READY, identity.status())
+        val ready = backend.statusCalls
+        identity.status(); identity.status()
+        assertEquals("ready again: remembered again", ready, backend.statusCalls)
+    }
+
+    @Test fun `discarding the key forgets the remembered state`() {
+        identity.key
+        identity.status()
+        identity.discard()
+        assertEquals(1, backend.discards)
+        assertEquals(DeviceKeyStatus.ABSENT, identity.status())
+    }
 
     @Test fun `the key is made on first use, once, and the public key is a 65 byte point`() {
         assertEquals(0, backend.creates)
@@ -91,7 +144,7 @@ class DeviceKeyTest {
     @Test fun `an invalidated key with a pinned folder is lost and is never replaced`() {
         identity.key
         pinned = true
-        backend.state = DeviceKeyStatus.INVALIDATED
+        breakTo(DeviceKeyStatus.INVALIDATED)
         val creates = backend.creates
         val e = assertThrows(DeviceKeyException::class.java) { identity.key }
         assertEquals(DeviceKeyException.Kind.LOST, e.kind)
@@ -109,7 +162,7 @@ class DeviceKeyTest {
 
     @Test fun `with no folder an invalidated key is replaced`() {
         identity.key
-        backend.state = DeviceKeyStatus.INVALIDATED
+        breakTo(DeviceKeyStatus.INVALIDATED)
         val old = backend.publicKey()
         val fresh = identity.key.publicKey
         assertEquals(2, backend.creates)
@@ -121,7 +174,7 @@ class DeviceKeyTest {
     @Test fun `a key waiting for an unlock is used and never recreated`() {
         identity.key
         pinned = true
-        backend.state = DeviceKeyStatus.NEEDS_UNLOCK
+        breakTo(DeviceKeyStatus.NEEDS_UNLOCK)
         val creates = backend.creates
         assertEquals(65, identity.key.publicKey.size)
         assertEquals(creates, backend.creates)
@@ -133,7 +186,7 @@ class DeviceKeyTest {
     @Test fun `a lost key stays lost until the folder is released`() {
         identity.key
         pinned = true
-        backend.state = DeviceKeyStatus.INVALIDATED
+        breakTo(DeviceKeyStatus.INVALIDATED)
         assertThrows(DeviceKeyException::class.java) { identity.key }
         pinned = false
         assertEquals(65, identity.key.publicKey.size)

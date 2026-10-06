@@ -126,7 +126,7 @@ object DriveAssembly {
         val detector = d.lock(DeviceLockDetectors.keyUsable(identity))
         val gate = DriveGate(
             AuthPlatform.PHONE, d.deviceAuth, detector,
-            DeviceLockActions(discardKey = { d.keyBackend.discard() }, store = lockStore), d.clock,
+            DeviceLockActions(discardKey = identity::discard, store = lockStore), d.clock,
         )
         val authorizer = PhoneDeletionAuthorizer(gate, d.deviceAuth, d.clock)
         val backup = DriveBackupService(d.drive, p, identity, stores.driveState, stores.trust, d.clock, d.utcOffsetMinutes, d.scratch)

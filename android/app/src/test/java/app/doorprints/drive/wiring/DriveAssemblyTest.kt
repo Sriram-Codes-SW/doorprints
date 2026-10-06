@@ -169,6 +169,12 @@ class DriveAssemblyTest {
 
     private val Phone.controller get() = graph.controller
 
+    /** The next use of the key after the key store changed under us: it fails, which is what makes the app look at the key again. */
+    private fun Phone.failUse() {
+        val peer = JvmCryptoProvider.p256Generate().publicKey
+        assertThrows(DeviceKeyException::class.java) { graph.crypto.p256Agree(graph.identity.key, peer) }
+    }
+
     private fun Phone.graphEngaged() = graph.prefs.engaged
 
     private fun Phone.connected(): Phone = also {
@@ -215,6 +221,7 @@ class DriveAssemblyTest {
         val a = phone("Pixel 8").connected()
         val creates = a.backend.creates
         a.backend.state = DeviceKeyStatus.ABSENT
+        a.failUse()
         val e = assertThrows(DeviceKeyException::class.java) { a.controller.devicePublicKey() }
         assertEquals(DeviceKeyException.Kind.LOST, e.kind)
         assertEquals("no new key under an existing folder", creates, a.backend.creates)
@@ -235,6 +242,7 @@ class DriveAssemblyTest {
         val stores = app.doorprints.drive.store.DriveFileStores(a.dir)
         stores.driveState.save(stores.driveState.load().copy(rootId = null))
         a.backend.state = DeviceKeyStatus.ABSENT
+        a.failUse()
         assertEquals(65, a.controller.devicePublicKey().size)
     }
 
@@ -270,6 +278,7 @@ class DriveAssemblyTest {
         val probe = a.probes.single()
         assertTrue(probe())
         a.backend.state = DeviceKeyStatus.INVALIDATED
+        a.failUse()
         assertFalse("the probe is the identity's own: an invalidated key means the lock is gone", probe())
     }
 

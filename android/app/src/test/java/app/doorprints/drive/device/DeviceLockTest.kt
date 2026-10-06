@@ -22,6 +22,7 @@ import android.app.Application
 import android.app.KeyguardManager
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import app.doorprints.crypto.platformCryptoProvider
 import app.doorprints.deviceauth.AuthPlatform
 import app.doorprints.deviceauth.AuthResult
 import app.doorprints.deviceauth.ConnectDecision
@@ -34,6 +35,7 @@ import app.doorprints.deviceauth.RunDecision
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -156,9 +158,15 @@ class KeyguardLockDetectorTest {
         backend.create()
         pinned = true
         assertTrue(probe())
+        fun failUse() {
+            val peer = platformCryptoProvider().p256Generate().publicKey
+            assertThrows(DeviceKeyException::class.java) { DeviceKeyCryptoProvider(platformCryptoProvider()).p256Agree(identity.key, peer) }
+        }
         backend.state = DeviceKeyStatus.NEEDS_UNLOCK
+        failUse()
         assertTrue("waiting for an unlock is not a lost lock", probe())
         backend.state = DeviceKeyStatus.INVALIDATED
+        failUse()
         assertFalse(probe())
         backend.state = DeviceKeyStatus.ABSENT
         assertFalse("removed with the lock while a folder is pinned", probe())
