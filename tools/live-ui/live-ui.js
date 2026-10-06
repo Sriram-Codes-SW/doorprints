@@ -570,6 +570,8 @@ async function trace(browser) {
     // The trace is off by default, and nothing asks for the location until Start a walk.
     check('trace', `${tag}: the trace switch is off by default and Start a walk is not offered yet`, !(await page.locator('#trace-on').isChecked()) && (await page.locator('#trace-start').count()) === 0);
     await page.locator('#trace-on').check();
+    // Angular renders the card's next state a moment after the click: wait for it instead of reading it at once.
+    await page.locator('#trace-start').waitFor({ timeout: 5000 }).catch(() => {});
     check('trace', `${tag}: Start a walk and its permission sentence appear`, await page.locator('#trace-start').isVisible() && /your browser will ask for your location/.test(await page.locator('#trace-explain').innerText()));
     await page.locator('#trace-start').click();
     await page.locator('#trace-finish').waitFor({ timeout: 10000 }).catch(() => {});
