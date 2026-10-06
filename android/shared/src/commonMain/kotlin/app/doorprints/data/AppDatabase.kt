@@ -125,6 +125,10 @@ interface HouseDao {
     @Query("SELECT id FROM houses WHERE deleted = 1")
     suspend fun deletedIds(): List<String>
 
+    /** The tombstones themselves, in one query: the Drive sync writes them to the other devices (no `get` per id). */
+    @Query("SELECT * FROM houses WHERE deleted = 1")
+    suspend fun deleted(): List<HouseEntity>
+
     /**
      * The tombstones of [deletedIds] that have reached the server (pushed from here, or pulled from another device):
      * only those were purged there, so only their photos need fresh ids on a restore (Android review, round 13).
@@ -181,6 +185,10 @@ interface VisitDao {
     /** Tombstones included, see [HouseDao.versions]. */
     @Query("SELECT id, updatedAt FROM visits")
     suspend fun versions(): List<RowVersion>
+
+    /** The deleted visits themselves, in one query (the Drive sync writes the tombstones to the other devices). */
+    @Query("SELECT * FROM visits WHERE deleted = 1")
+    suspend fun deleted(): List<VisitEntity>
 
     /**
      * Live visits with no house, for the import (Android review, round 12): after a synced house delete the server
