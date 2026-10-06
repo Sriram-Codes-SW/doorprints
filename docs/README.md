@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.101 |
+| Version | 0.102 |
 | Date | 2026-10-06 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -12,6 +12,7 @@
 
 | Version | Date | Author | Change |
 |---|---|---|---|
+| 0.102 | 2026-10-06 | Claude | **S4b-BL-55 done**: docs/10 v0.141, docs/06 v0.125. |
 | 0.101 | 2026-10-06 | Claude | Guards against tests that cannot fail (`tools/check-specs.mjs`, `tools/mutate.mjs`): docs/14 v0.86. |
 | 0.100 | 2026-10-06 | Claude | **S4b-BL-54 done**: docs/10 v0.140, docs/06 v0.124. |
 | 0.1 | 2026-09-22 | Claude (Cowork) | First version. Index, phase map and update rules. |
