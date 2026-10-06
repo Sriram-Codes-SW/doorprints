@@ -46,7 +46,8 @@ class PhoneDeletionAuthorizer(
 ) : DeleteAuthorizer, AuthorizationGate {
     private class Issued(val grant: AuthGrant, val action: PolicyAction, val operationId: String)
 
-    private val issued = HashMap<Long, Issued>()
+    /** Insertion order, so the oldest goes first when [MAX_ISSUED] is reached (a person starts one deletion at a time). */
+    private val issued = LinkedHashMap<Long, Issued>()
 
     override fun isDeviceLockEnabled(): Boolean = try {
         auth.isDeviceLockEnabled()
@@ -81,6 +82,7 @@ class PhoneDeletionAuthorizer(
                     DeleteAuthorization.Granted(null)
                 } else {
                     issued[grant.id] = Issued(grant, action, operationId)
+                    while (issued.size > MAX_ISSUED) issued.remove(issued.keys.first())
                     DeleteAuthorization.Granted(
                         AuthorizationToken(levelOf(grant.requirements.level), grant.grantedAtMs, operationId, grant.id.toString()),
                     )
@@ -118,6 +120,9 @@ class PhoneDeletionAuthorizer(
     }
 
     companion object {
+        /** Grants kept at once, as `DeviceAuthorizationGate.MAX_GRANTS`; a forgotten or unused one no longer grows the map for ever. */
+        const val MAX_ISSUED = 4
+
         fun levelOf(level: DeleteLevel): DeletionLevel = when (level) {
             DeleteLevel.L1 -> DeletionLevel.L1
             DeleteLevel.L2 -> DeletionLevel.L2

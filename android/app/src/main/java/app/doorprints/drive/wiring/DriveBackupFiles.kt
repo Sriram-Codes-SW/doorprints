@@ -76,6 +76,15 @@ class AndroidDriveBackupSource(
     fun sweep() {
         dir.listFiles()?.forEach { it.delete() }
     }
+
+    companion object {
+        /**
+         * The source for the Drive graph, **swept once as it is made**: the graph is built once per process before any backup
+         * opens, so every file in the folder is a leftover of an earlier process (a plain ZIP of the person's houses).
+         */
+        fun swept(context: Context, repository: Repository, photoFile: (String) -> File, dir: File = File(context.cacheDir, "drive-backup")): AndroidDriveBackupSource =
+            AndroidDriveBackupSource(context, repository, photoFile, dir).also { it.sweep() }
+    }
 }
 
 /**
@@ -106,5 +115,26 @@ class DriveImportFile(dir: File) : StagingSink {
         }
         out = null
         file.delete()
+    }
+}
+
+/** Where the Drive import staging files live and which `file:` addresses are theirs. */
+object DriveImportStaging {
+    private const val PREFIX = "drive-"
+    private const val SUFFIX = ".zip"
+
+    /**
+     * Deletes [source] when it is a [DriveImportFile] in [dir] (a `file:` address of `drive-<id>.zip` directly in that folder)
+     * and returns true; any other address (a picked document, another app's file, another folder) is left alone. Called once
+     * the Import screen has **copied** the file: it holds the decrypted backup, so it must not wait for the six-hour sweep.
+     */
+    fun discardIfStaged(dir: File, source: android.net.Uri): Boolean {
+        if (source.scheme != "file") return false
+        val file = File(source.path ?: return false)
+        val name = file.name
+        if (!name.startsWith(PREFIX) || !name.endsWith(SUFFIX)) return false
+        val parent = file.absoluteFile.parentFile ?: return false
+        if (parent.canonicalFile != dir.canonicalFile || file.canonicalFile.parentFile != dir.canonicalFile) return false
+        return file.delete()
     }
 }

@@ -101,7 +101,7 @@ class DriveServices(
                 lock = { keyUsable, onKeyFault -> DeviceLockDetectors.forContext({ app }, keyUsable, onKeyFault) },
                 network = ConnectivityNetworkState(app),
                 localRows = { deviceId -> RoomSyncRows(db, deviceId) { id -> repository.photoFile(id).takeIf { it.isFile }?.length() } },
-                backupSource = AndroidDriveBackupSource(app, repository, repository::photoFile),
+                backupSource = AndroidDriveBackupSource.swept(app, repository, repository::photoFile),
                 syncPass = { backend, photosAllowed ->
                     withContext(route.element(backend)) { repository.sync(photosAllowed) }
                 },
