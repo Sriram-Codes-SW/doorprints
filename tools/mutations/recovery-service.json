@@ -20,14 +20,14 @@
       "expect": "recoveryKeyOffered returns false when built-in authenticator is false"
     },
     {
-      "file": "web/src/app/data/drive/connect/drive-connect.service.ts",
+      "file": "web/src/app/data/drive/connect/delete-flow.ts",
       "find": "    } finally {\n      this.forgetDeleteProof();\n    }\n  }\n\n  async resumeDelete(grant: WebGrant | null): Promise<DeleteRun> {",
       "replace": "    }\n  }\n\n  async resumeDelete(grant: WebGrant | null): Promise<DeleteRun> {",
       "expect": "forgetDeleteProof is called after executeDelete"
     },
     {
-      "file": "web/src/app/data/drive/connect/drive-connect.service.ts",
-      "find": "      // Recovery key text provided: check if it's offered\n      if (!(await this.recoveryKeyOffered())) {\n        return { ok: false, reason: 'RECOVERY_KEY_NOT_OFFERED' };\n      }",
+      "file": "web/src/app/data/drive/connect/delete-flow.ts",
+      "find": "      // Recovery key text provided: check if it's offered\n      if (!(await this.seams.recoveryKeyOffered())) {\n        return { ok: false, reason: 'RECOVERY_KEY_NOT_OFFERED' };\n      }",
       "replace": "      // Recovery key text provided: check if it's offered",
       "expect": "authorizeDelete with text when not offered returns RECOVERY_KEY_NOT_OFFERED"
     },
@@ -50,7 +50,7 @@
       "expect": "the recovery key makes delete-everything possible"
     },
     {
-      "file": "web/src/app/data/drive/connect/drive-connect.service.ts",
+      "file": "web/src/app/data/drive/connect/delete-flow.ts",
       "find": "        return { ok: false, reason: 'RECOVERY_KEY_INVALID' };",
       "replace": "        return { ok: false, reason: 'RECOVERY_KEY_NOT_OFFERED' };",
       "expect": ""

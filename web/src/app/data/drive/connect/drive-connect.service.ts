@@ -44,6 +44,7 @@ import type {
   KeyValueStore,
 } from './deletion-adapter';
 import { MemoryStagingSink } from './local/import-sink';
+import { DeleteFlow } from './delete-flow';
 
 export const DRIVE_BACKUP_ADAPTER = new InjectionToken<DriveBackupAdapter>('DRIVE_BACKUP_ADAPTER');
 export const DRIVE_SYNC_ADAPTER = new InjectionToken<DriveSyncAdapter>('DRIVE_SYNC_ADAPTER');
@@ -473,149 +474,38 @@ export class DriveConnectService {
     return this.syncAdapter.uploadPhotosNowOverMobile();
   }
 
-  // ==================== Deletion ====================
+  // ==================== Deletion (see delete-flow.ts) ====================
 
-  async deletePlan(
-    action: DeletionAction,
-  ): Promise<
-    | { readonly ok: true; readonly plan: DeletionPlan }
-    | { readonly ok: false; readonly reason: string }
-  > {
-    try {
-      const result = await this.deletionAdapter.preflight(action);
-      if (result.kind === 'refused') {
-        return { ok: false, reason: result.reason };
-      }
-      return { ok: true, plan: result.plan };
-    } catch (err) {
-      return { ok: false, reason: msgOfThrown(err) };
-    }
+  private deleteFlow?: DeleteFlow;
+  private get flow(): DeleteFlow {
+    return (this.deleteFlow ??= new DeleteFlow(this.deletionAdapter, {
+      context: () => this.deletionContext(),
+      recoveryKeyOffered: () => this.recoveryKeyOffered(),
+    }));
   }
 
-  async deleteConfirmInfo(
-    action: DeletionAction,
-  ): Promise<
-    | {
-        readonly ok: true;
-        readonly tickBoxRequired: boolean;
-        readonly delayMs: number;
-      }
-    | { readonly ok: false; readonly reason: string }
-  > {
-    try {
-      const context = await this.deletionContext();
-      const decision = this.deletionAdapter.decide(action, context);
-      if (decision.outcome === 'REFUSED') {
-        return { ok: false, reason: decision.reason };
-      }
-      const gate = this.deletionAdapter.confirmGate(action, context);
-      return {
-        ok: true,
-        tickBoxRequired: gate.tickBoxRequired,
-        delayMs: gate.delayMs,
-      };
-    } catch (err) {
-      return { ok: false, reason: msgOfThrown(err) };
-    }
+  deletePlan(action: DeletionAction) {
+    return this.flow.deletePlan(action);
   }
 
-  async deleteFactor(
-    action: DeletionAction,
-  ): Promise<'NONE' | 'PASSKEY' | null> {
-    try {
-      const context = await this.deletionContext();
-      const decision = this.deletionAdapter.decide(action, context);
-      if (decision.outcome === 'REFUSED') {
-        return null;
-      }
-      const factor = decision.requirements.factor;
-      if (factor === 'NONE' || factor === 'PASSKEY') {
-        return factor;
-      }
-      return null;
-    } catch {
-      return null;
-    }
+  deleteConfirmInfo(action: DeletionAction) {
+    return this.flow.deleteConfirmInfo(action);
   }
 
-  async authorizeDelete(
-    action: DeletionAction,
-    operationId: string,
-    recoveryKeyText?: string,
-  ): Promise<
-    | { readonly ok: true; readonly grant: WebGrant }
-    | { readonly ok: false; readonly reason: string }
-  > {
-    try {
-      const context = await this.deletionContext();
-
-      // If no recovery key text given, use passkey path as today
-      if (!recoveryKeyText) {
-        const result = await this.deletionAdapter.authorize(action, context, operationId);
-        if (result.kind === 'refused') {
-          return { ok: false, reason: result.reason };
-        }
-        return { ok: true, grant: result.grant };
-      }
-
-      // Recovery key text provided: check if it's offered
-      if (!(await this.recoveryKeyOffered())) {
-        return { ok: false, reason: 'RECOVERY_KEY_NOT_OFFERED' };
-      }
-
-      // Parse recovery key
-      let recoveryKey: RecoveryKey;
-      try {
-        recoveryKey = RecoveryKeyClass.parse(recoveryKeyText);
-      } catch {
-        return { ok: false, reason: 'RECOVERY_KEY_INVALID' };
-      }
-
-      // Use adapter's recovery key path
-      const result = await this.deletionAdapter.authorizeWithRecoveryKey(action, context, operationId, recoveryKey);
-      if (result.kind === 'refused') {
-        return { ok: false, reason: result.reason };
-      }
-      return { ok: true, grant: result.grant };
-    } catch (err) {
-      return { ok: false, reason: msgOfThrown(err) };
-    }
+  deleteFactor(action: DeletionAction) {
+    return this.flow.deleteFactor(action);
   }
 
-  async executeDelete(plan: DeletionPlan, grant: WebGrant | null): Promise<DeleteRun> {
-    try {
-      const outcome = await this.deletionAdapter.execute(plan, grant);
-      if (outcome.kind === 'ran') return this.ran(outcome);
-      return { ok: false, reason: outcome.reason };
-    } catch (err) {
-      return { ok: false, reason: msgOfThrown(err) };
-    } finally {
-      this.forgetDeleteProof();
-    }
+  authorizeDelete(action: DeletionAction, operationId: string, recoveryKeyText?: string) {
+    return this.flow.authorizeDelete(action, operationId, recoveryKeyText);
   }
 
-  async resumeDelete(grant: WebGrant | null): Promise<DeleteRun> {
-    try {
-      const outcome = await this.deletionAdapter.resume(grant);
-      if (outcome.kind === 'ran') return this.ran(outcome);
-      return { ok: false, reason: outcome.reason };
-    } catch (err) {
-      return { ok: false, reason: msgOfThrown(err) };
-    } finally {
-      this.forgetDeleteProof();
-    }
+  executeDelete(plan: DeletionPlan, grant: WebGrant | null): Promise<DeleteRun> {
+    return this.flow.executeDelete(plan, grant);
   }
 
-  private forgetDeleteProof(): void {
-    try {
-      this.deletionAdapter.forgetProof?.();
-    } catch {
-      // Swallow errors
-    }
-  }
-
-  private ran(outcome: { readonly finished: boolean; readonly total: number; readonly report: { readonly left: readonly string[] } }): DeleteRun {
-    return { ok: true, finished: outcome.finished, left: outcome.report.left.length, total: outcome.total };
+  resumeDelete(grant: WebGrant | null): Promise<DeleteRun> {
+    return this.flow.resumeDelete(grant);
   }
 
   // ==================== Passkey ====================
