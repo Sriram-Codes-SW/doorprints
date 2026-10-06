@@ -1113,8 +1113,10 @@ Doorprints keeps in Google Drive** and the other L2/L3 actions asks for the **re
    path, so a proof from one source is never accepted for the other). The proof of the grant is the same HMAC of
    `utf8(operationId) ‖ 0x00 ‖ u64be(issuedAtMs)` as §10.4, checked by the same gate.
 4. **The typed text and the derived key do not outlive the operation**: the field is cleared when the check ends, the
-   proof key is dropped when the grant is redeemed or the page leaves, nothing is written to storage, nothing is
-   logged, and no error text contains the key. A new operation asks for the key again (no "remember it for the page").
+   proof key is dropped when the operation ends (finished, stopped part-way, refused or cancelled; the gate still needs
+   it between the steps of one run) or the page leaves, nothing is written to storage, nothing is logged, and no error
+   text contains the key. A new operation, and a *Try again* after a part-way stop, asks for the key again (no
+   "remember it for the page").
 
 **Who may use it.** Only a browser that is **connected and enrolled** (Drive `READY`) can; the key is the same one
 that opens the folder, so it cannot be used to delete from a Drive this browser is not part of. **A passkey with PRF
