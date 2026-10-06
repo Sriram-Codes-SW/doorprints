@@ -24,7 +24,7 @@
  * signal: never in a URL, `history.state`, a storage or `ListReturn`; closing it withdraws the announcement.
  */
 
-import { Component, Injector, afterNextRender, effect, inject, input, output, signal, untracked } from '@angular/core';
+import { Component, DestroyRef, Injector, afterNextRender, effect, inject, input, output, signal, untracked } from '@angular/core';
 import { Announcer } from '../../core/announcer.service';
 import type { HouseDto } from '../../core/models';
 import { TPipe } from '../../i18n/t.pipe';
@@ -75,6 +75,10 @@ export class HouseCheckCard {
   private placeKey = '';
 
   constructor() {
+    // Leaving the page with an answer on show withdraws the polite announcement too, as Close does (and as the Map page does).
+    inject(DestroyRef).onDestroy(() => {
+      if (this.answer() !== null) this.announcer.cancel({ key: 'trace.here.announce' });
+    });
     // The spot moved (a drag, typed coordinates): the answer was about another place. It goes.
     effect(() => {
       const { lat, lon } = this.house();
