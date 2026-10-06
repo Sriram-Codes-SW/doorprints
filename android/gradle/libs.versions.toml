@@ -67,6 +67,9 @@ play-services-location = "21.4.0"
 # Google Play services Authorization API (AuthorizationClient) for the Drive token on Android (docs/15 §5.5 fallback row,
 # S4b-BL-117). Scope drive.file only; Play services keeps and refreshes the grant, the app holds the token in memory.
 play-services-auth = "21.6.0"
+# Google code scanner (QR scan of the Drive enrolment offer, owner decision 2026-10-06): Google's own screen scans, so the app
+# needs no CAMERA permission; the scanner module is fetched through Play services on first use.
+play-services-code-scanner = "16.1.0"
 coil = "3.6.3"
 maplibre = "13.6.1"
 junit = "4.13.2"
@@ -125,6 +128,7 @@ androidx-datastore-preferences-core = { module = "androidx.datastore:datastore-p
 androidx-exifinterface = { module = "androidx.exifinterface:exifinterface", version.ref = "androidx-exifinterface" }
 
 play-services-auth = { module = "com.google.android.gms:play-services-auth", version.ref = "play-services-auth" }
+play-services-code-scanner = { module = "com.google.android.gms:play-services-code-scanner", version.ref = "play-services-code-scanner" }
 play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "play-services-location" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-play-services = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-play-services", version.ref = "kotlinx-coroutines" }

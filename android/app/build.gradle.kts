@@ -178,6 +178,8 @@ dependencies {
         exclude(group = "com.google.android.gms", module = "play-services-fido")
         exclude(group = "com.google.android.gms", module = "play-services-auth-api-phone")
     }
+    // QR scan of the enrolment offer: Google's code scanner screen (no CAMERA permission), behind QrScanBackend.
+    implementation(libs.play.services.code.scanner)
     implementation(libs.kotlinx.coroutines.play.services)
     // JSON in the export, import and Assistant code (the Room checklist converter moved to :shared in CMP-4 P4a).
     implementation(libs.kotlinx.serialization.json)

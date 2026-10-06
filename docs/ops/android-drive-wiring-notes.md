@@ -71,11 +71,23 @@ quietly first; if Google needs a screen, that is a failure that waits for the pe
    notes describe (S4b-BL-135); `DeviceAuthorizationGate` itself is not in the graph (the `PhoneDeletionAuthorizer` is the
    service's gate). Wiring it needs `DriveDeletionService` and the controller to take one authorizer that carries the
    plan's operation id; not done here.
-5. **QR scanning:** docs/15 §9.5 names no camera library, so there is none: `NoQrScanner`, and the screens offer the
-   pasted `dp1.` text and the 8-digit code. The code is `PairingCode.pairingCode` over the offer's key and secret with a label:
-   a check of the pasted text, not a second factor. The offer carries no device name, so the approver lists a new phone as
-   "New phone" (the website's `dp1.` has none either). A camera needs a library (CameraX with ML Kit, or Google's code
-   scanner): an owner decision.
+5. **QR scanning (owner decision 2026-10-06):** Google's code scanner, `com.google.android.gms:play-services-code-scanner`
+   16.1.0 (the one new library). `AndroidQrScanner` (logic, JVM-tested) sits over the thin `QrScanBackend`; `GmsQrScanBackend`
+   is the only code that calls Google (QR codes only, auto zoom). Google's own screen scans, so the app adds **no CAMERA
+   permission**. The scanned text goes back to the screens exactly as pasted text does (the codec's 4096-character limit, the
+   `dp1.` check and the *not a Doorprints code* error apply; a longer text is replaced by a non-code word before parsing). Both
+   screens that take text (the connected phone reading the new device's QR; the new device reading the approver's reply)
+   get the same Scan button, shown only when `isAvailable`. Without Google Play services (the browser-fallback phones)
+   `isAvailable` is false, the button is hidden and the pasted text and the 8-digit code remain. The text is never logged and
+   `QrScanBackendResult.Text.toString` is redacted.
+   **Module download (for the owner):** the scanner module is not in the APK. On first use Play services downloads it
+   (a few MB, over the network, once). `moduleReady()` checks `ModuleInstall`; when it is missing it asks for the install and
+   the screen shows the existing "no camera" line for that tap; the next tap works once the download has finished.
+   The library also pulls Google's telemetry helper libraries (datatransport, firebase-encoders, ML Kit common); they ship
+   in the APK and Google may report scanner usage metrics through Play services. The code paste path needs none of this.
+   The offer carries no device name, so the approver lists a new phone as "New phone" (the website's `dp1.` has none either).
+   The code is `PairingCode.pairingCode` over the offer's key and secret with a label: a check of the pasted text, not a
+   second factor.
 6. **Replies** are the website's JSON (`wrapEnc`, `wrapCt`, `epoch`), so a phone and the website enrol each other.
 7. **Import a backup** from Drive writes the decrypted ZIP to `cache/imports/drive-*.zip` and opens the existing Import
    screen with that file (it copies it again; both are swept after six hours).
