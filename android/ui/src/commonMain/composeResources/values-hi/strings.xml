@@ -1391,4 +1391,11 @@
     <string name="drive_delete_reason_auth_locked_out">बहुत ज़्यादा ग़लत कोशिशें। थोड़ा रुकें, फिर कोशिश करें।</string>
     <string name="drive_delete_reason_auth_paused_no_lock">Google Drive रुका है: इस फ़ोन का स्क्रीन लॉक हटा दिया गया। आगे बढ़ने के लिए फिर लगाएँ।</string>
     <string name="drive_delete_reason_auth_paused_unknown">Google Drive रुका है: Doorprints यह नहीं जान पा रहा कि फ़ोन में स्क्रीन लॉक है या नहीं। फ़ोन की सेटिंग्स देखें।</string>
+    <!-- Review 1, 6, 9 (2026-10-06): the deleted-folder question and naming the new device. Under review. -->
+    <string name="drive_connect_folder_gone_ask">गूगल ड्राइव में आपका Doorprints डेटा हटा दिया गया था। इस डिवाइस का बैकअप फिर से ड्राइव में लें?</string>
+    <string name="drive_connect_start_again">फिर से शुरू करें</string>
+    <string name="drive_enrol_device_name">नए डिवाइस का नाम</string>
+    <string name="drive_enrol_device_kind">यह डिवाइस है</string>
+    <string name="drive_enrol_kind_phone">फ़ोन</string>
+    <string name="drive_enrol_kind_computer">कंप्यूटर</string>
 </resources>

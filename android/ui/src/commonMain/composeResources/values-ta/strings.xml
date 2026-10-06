@@ -1391,4 +1391,11 @@
     <string name="drive_delete_reason_auth_locked_out">பல தவறான முயற்சிகள். சிறிது நேரம் காத்திருந்து மீண்டும் முயலவும்.</string>
     <string name="drive_delete_reason_auth_paused_no_lock">Google Drive இடைநிறுத்தப்பட்டது: இந்த ஃபோனின் திரைப் பூட்டு நீக்கப்பட்டது. தொடர மீண்டும் அமைக்கவும்.</string>
     <string name="drive_delete_reason_auth_paused_unknown">Google Drive இடைநிறுத்தப்பட்டது: இந்த ஃபோனில் திரைப் பூட்டு உள்ளதா என Doorprints ஆல் அறிய முடியவில்லை. ஃபோனின் அமைப்புகளைச் சரிபார்க்கவும்.</string>
+    <!-- Review 1, 6, 9 (2026-10-06): the deleted-folder question and naming the new device. Under review. -->
+    <string name="drive_connect_folder_gone_ask">உங்கள் Google Drive-இல் உள்ள Doorprints தரவு நீக்கப்பட்டது. இந்த சாதனத்தை மீண்டும் Drive-இல் காப்புப்பிரதி எடுக்கவா?</string>
+    <string name="drive_connect_start_again">மீண்டும் தொடங்கவும்</string>
+    <string name="drive_enrol_device_name">புதிய சாதனத்தின் பெயர்</string>
+    <string name="drive_enrol_device_kind">இந்த சாதனம்</string>
+    <string name="drive_enrol_kind_phone">தொலைபேசி</string>
+    <string name="drive_enrol_kind_computer">கணினி</string>
 </resources>

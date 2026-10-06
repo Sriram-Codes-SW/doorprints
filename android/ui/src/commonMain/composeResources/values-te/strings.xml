@@ -1391,4 +1391,11 @@
     <string name="drive_delete_reason_auth_locked_out">చాలా తప్పు ప్రయత్నాలు. కొద్దిసేపు ఆగి మళ్లీ ప్రయత్నించండి.</string>
     <string name="drive_delete_reason_auth_paused_no_lock">Google Drive ఆగింది: ఈ ఫోన్ స్క్రీన్ లాక్ తీసివేయబడింది. కొనసాగడానికి మళ్లీ పెట్టండి.</string>
     <string name="drive_delete_reason_auth_paused_unknown">Google Drive ఆగింది: ఈ ఫోన్‌కు స్క్రీన్ లాక్ ఉందో లేదో Doorprints తెలుసుకోలేకపోతోంది. ఫోన్ సెట్టింగ్‌లను చూడండి.</string>
+    <!-- Review 1, 6, 9 (2026-10-06): the deleted-folder question and naming the new device. Under review. -->
+    <string name="drive_connect_folder_gone_ask">మీ Google Drive లోని Doorprints డేటా తొలగించబడింది. ఈ సాధనాన్ని మళ్లీ Drive కు బ్యాకప్ చేయాలా?</string>
+    <string name="drive_connect_start_again">మళ్లీ ప్రారంభించండి</string>
+    <string name="drive_enrol_device_name">కొత్త సాధనం పేరు</string>
+    <string name="drive_enrol_device_kind">ఈ సాధనం</string>
+    <string name="drive_enrol_kind_phone">ఫోన్</string>
+    <string name="drive_enrol_kind_computer">కంప్యూటర్</string>
 </resources>

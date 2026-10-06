@@ -23,7 +23,6 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.doorprints.crypto.DevicePlatform
-import app.doorprints.ui.nowMillis
 
 /**
  * The Google Drive screens' view model: [DriveHolder] on the view model's scope, so the section keeps its state (the
@@ -39,7 +38,7 @@ class DriveViewModel(
 ) : ViewModel() {
     var prompts: DrivePrompts = DrivePrompts("", "", "", "")
 
-    val holder = DriveHolder(actions, viewModelScope, { prompts }, codec, deviceName, platform, ::nowMillis)
+    val holder = DriveHolder(actions, viewModelScope, { prompts }, codec, deviceName, platform)  // the clock is the monotonic default
 }
 
 /** [DriveSettingsSection] over a [DriveViewModel]. */

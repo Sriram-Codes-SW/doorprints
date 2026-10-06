@@ -111,9 +111,17 @@ class DriveScreenStateTest {
         assertTrue(DriveControl.RETRY in controls(DriveCard.DISCONNECTED, DriveReason.SIGNIN_CLOSED))
     }
 
-    @Test fun aDeletedFolderOffersConnectAndAFolderWithoutAKeyOffersEnrolment() {
-        assertTrue(DriveControl.CONNECT_AGAIN in controls(DriveCard.DISCONNECTED, DriveReason.FOLDER_GONE))
-        assertFalse(DriveControl.CONNECT_AGAIN in controls(DriveCard.ERROR, DriveReason.SERVER))
+    @Test fun aDeletedFolderIsItsOwnCardWithStartAgainAndDisconnectAndNoConnect() {
+        assertEquals(DriveCard.FOLDER_GONE, driveCardOf(ConnectState.DISCONNECTED, null, DriveReason.FOLDER_GONE))
+        assertEquals(DriveCard.DISCONNECTED, driveCardOf(ConnectState.DISCONNECTED, null, DriveReason.SIGNIN_CLOSED))
+        assertEquals(DriveCard.READY, driveCardOf(ConnectState.READY, null, DriveReason.FOLDER_GONE))
+        assertEquals(listOf(DriveControl.START_AGAIN, DriveControl.DISCONNECT), connectControls(DriveCard.FOLDER_GONE, DriveReason.FOLDER_GONE, false, false).map { it.control })
+        assertTrue(controls(DriveCard.FOLDER_GONE, busy = true).values.none { it })
+        val all = controls(DriveCard.FOLDER_GONE, DriveReason.FOLDER_GONE).keys
+        assertFalse(DriveControl.CONNECT in all || DriveControl.RETRY in all, "Connect and Try again would only ask the same question again")
+    }
+
+    @Test fun aFolderWithoutAKeyOffersEnrolment() {
         assertTrue(DriveControl.ENROL in controls(DriveCard.ERROR, DriveReason.NO_RECOVERY_KEY))
         assertFalse(DriveControl.ENROL in controls(DriveCard.ERROR, DriveReason.SERVER))
     }
@@ -262,5 +270,40 @@ class DriveScreenStateTest {
         assertFalse(joinEnabled("   ", busy = false))
         assertFalse(joinEnabled("KEY", busy = true))
         assertTrue(joinEnabled("KEY", busy = false))
+    }
+
+    // ---- Delete this backup, the clipboard seam ----------------------------------------------------------------------------
+
+    @Test fun deleteThisBackupIsOnOnlyWhileNothingElseRuns() {
+        assertTrue(deleteBackupEnabled(busy = false, backupBusy = false, phase = DeletePhase.MENU))
+        assertFalse(deleteBackupEnabled(busy = true, backupBusy = false, phase = DeletePhase.MENU))
+        assertFalse(deleteBackupEnabled(busy = false, backupBusy = true, phase = DeletePhase.MENU))
+        assertFalse(deleteBackupEnabled(busy = false, backupBusy = false, phase = DeletePhase.CONFIRM))
+    }
+
+    @Test fun theDeleteOfOneBackupIsDrawnUnderTheBackupsListAndNoOtherDeleteIs() {
+        assertTrue(deleteFlowInBackups(DeleteChoice.ONE_BACKUP, DeletePhase.PLAN))
+        assertTrue(deleteFlowInBackups(DeleteChoice.ONE_BACKUP, DeletePhase.DONE))
+        assertFalse(deleteFlowInBackups(DeleteChoice.ONE_BACKUP, DeletePhase.MENU))
+        assertFalse(deleteFlowInBackups(DeleteChoice.EVERYTHING, DeletePhase.PLAN))
+        assertFalse(deleteFlowInBackups(null, DeletePhase.PLAN))
+    }
+
+    private class RecordingClipboard(val fail: Boolean = false) : ClipboardSeam {
+        val copied = mutableListOf<String>()
+        override fun copySensitive(text: String) {
+            if (fail) throw IllegalStateException("no clipboard")
+            copied += text
+        }
+    }
+
+    @Test fun theRecoveryKeyIsCopiedOnlyThroughTheSensitiveSeam() {
+        val seam = RecordingClipboard()
+        assertTrue(copyToClipboard(seam, "ABCD-EFGH"))
+        assertEquals(listOf("ABCD-EFGH"), seam.copied)
+    }
+
+    @Test fun aRefusedCopyIsReportedNotThrown() {
+        assertFalse(copyToClipboard(RecordingClipboard(fail = true), "ABCD-EFGH"))
     }
 }

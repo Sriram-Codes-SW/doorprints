@@ -99,6 +99,15 @@ data class DeleteUi(
     val error: DriveReason? = null,
 )
 
+/** What the approver calls a device that has no name yet. */
+const val DEFAULT_NEW_DEVICE_NAME = "New device"
+
+/** The longest name kept for a device (it is listed on every device). */
+const val MAX_DEVICE_NAME = 60
+
+/** The two choices of *This device is a*: a phone keeps the offer's own platform, a computer is the website. */
+enum class DeviceKind { PHONE, COMPUTER }
+
 /** The enrolment dialogs. */
 sealed interface EnrolUi {
     data object Idle : EnrolUi
@@ -109,8 +118,16 @@ sealed interface EnrolUi {
     /** The connected phone reads (scans or pastes) the new device's code. */
     data class ApproverInput(val error: DriveReason? = null, val cameraMissing: Boolean = false) : EnrolUi
 
-    /** The numbers are compared; approving asks for the device check. */
-    data class ApproverCheck(val offer: ApproverOffer, val error: DriveReason? = null) : EnrolUi
+    /**
+     * The numbers are compared; approving asks for the device check. The approver names the new device and says whether
+     * it is a phone or a computer: the offer cannot be trusted for either (a pasted offer from the website has no name).
+     */
+    data class ApproverCheck(
+        val offer: ApproverOffer,
+        val error: DriveReason? = null,
+        val name: String = DEFAULT_NEW_DEVICE_NAME,
+        val kind: DeviceKind = DeviceKind.PHONE,
+    ) : EnrolUi
 
     /** Approved: the reply to show to the new device (QR and text). */
     data class ApproverReply(val replyText: String) : EnrolUi
@@ -130,7 +147,7 @@ data class DriveUiState(
     val delete: DeleteUi = DeleteUi(),
     val enrol: EnrolUi = EnrolUi.Idle,
 ) {
-    val card: DriveCard get() = driveCardOf(connect, notice)
+    val card: DriveCard get() = driveCardOf(connect, notice, error)
 }
 
 /**
@@ -152,9 +169,18 @@ class DriveHolder(
     private val codec: EnrolmentCodec? = null,
     private val deviceName: () -> String = { "Android phone" },
     private val platform: DevicePlatform = DevicePlatform.ANDROID,
-    private val clock: () -> Long,
+    /** The delete countdown's clock: monotonic by default ([monotonicMillis]), never the wall clock. */
+    private val clock: () -> Long = ::monotonicMillis,
 ) {
-    private val _ui = MutableStateFlow(DriveUiState(connect = actions.state.value, notice = actions.enrolmentNotice.value))
+    private val _ui = MutableStateFlow(initial())
+
+    private fun initial() = DriveUiState(
+        connect = actions.state.value, notice = actions.enrolmentNotice.value,
+        error = if (actions.folderGone.value && actions.state.value == ConnectState.DISCONNECTED) DriveReason.FOLDER_GONE else null,
+    )
+
+    /** The clock the confirm step counts its countdown on. */
+    fun now(): Long = clock()
     val ui: StateFlow<DriveUiState> = _ui.asStateFlow()
 
     init {
@@ -166,6 +192,12 @@ class DriveHolder(
                 _ui.update { it.copy(connect = s, connectKey = if (s == ConnectState.FIRST_CONNECT_SHOW_RECOVERY_KEY) it.connectKey else null) }
                 if (s == ConnectState.READY && before != ConnectState.READY) loadReady()
                 if (s == ConnectState.DISCONNECTED || s == ConnectState.UNAVAILABLE) _ui.update { it.copy(delete = DeleteUi(), enrol = EnrolUi.Idle, devices = DevicesUi(), backups = BackupsUi(), sync = SyncUi()) }
+            }
+        }
+        // The folder was found gone while the screen is open: ask, do not create (docs/15 section 3.4).
+        scope.launch {
+            actions.folderGone.collect { gone ->
+                if (gone) _ui.update { if (it.connect == ConnectState.DISCONNECTED && !it.busy) it.copy(error = DriveReason.FOLDER_GONE) else it }
             }
         }
         scope.launch { actions.enrolmentNotice.collect { n -> _ui.update { it.copy(notice = n) } } }
@@ -187,13 +219,21 @@ class DriveHolder(
 
     /** *Connect to Google Drive*: sign in, then (with no folder yet) make one and show its recovery key once. */
     fun connect() {
-        if (_ui.value.busy || _ui.value.connect == ConnectState.CONNECTING) return
+        // After a deleted folder only *Start again* or *Disconnect* go on; Connect would only ask the same question again.
+        if (_ui.value.busy || _ui.value.connect == ConnectState.CONNECTING || _ui.value.card == DriveCard.FOLDER_GONE) return
         _ui.update { it.copy(busy = true, error = null) }
         launchOp {
             var result = actions.connect()
             if (result.state == ConnectState.DISCONNECTED && result.error == null) result = actions.createFolder()
             applyConnect(result)
         }
+    }
+
+    /** *Start again* on the deleted-folder card: the person's yes. Makes the new folder and shows its recovery key once. */
+    fun startAgain() {
+        if (_ui.value.busy || _ui.value.card != DriveCard.FOLDER_GONE) return
+        _ui.update { it.copy(busy = true) }
+        launchOp { applyConnect(actions.createFolder()) }
     }
 
     private fun applyConnect(result: ConnectResult) {
@@ -428,7 +468,21 @@ class DriveHolder(
     fun submitOffer(text: String) {
         val c = codec ?: return
         val offer = c.parseOffer(text)
-        _ui.update { it.copy(enrol = if (offer == null) EnrolUi.ApproverInput(error = DriveReason.ENROL_BAD_MESSAGE) else EnrolUi.ApproverCheck(offer)) }
+        _ui.update {
+            it.copy(enrol = if (offer == null) EnrolUi.ApproverInput(error = DriveReason.ENROL_BAD_MESSAGE)
+            else EnrolUi.ApproverCheck(offer, kind = if (offer.platform == DevicePlatform.WEB) DeviceKind.COMPUTER else DeviceKind.PHONE))
+        }
+    }
+
+    /** The approver's name for the new device (kept to [MAX_DEVICE_NAME] characters). */
+    fun setApproveName(text: String) = _ui.update {
+        val e = it.enrol as? EnrolUi.ApproverCheck ?: return@update it
+        it.copy(enrol = e.copy(name = text.take(MAX_DEVICE_NAME)))
+    }
+
+    fun setApproveKind(kind: DeviceKind) = _ui.update {
+        val e = it.enrol as? EnrolUi.ApproverCheck ?: return@update it
+        it.copy(enrol = e.copy(kind = kind))
     }
 
     /** *The numbers match*: the device check, then the wrap for exactly the new device's key. */
@@ -438,7 +492,12 @@ class DriveHolder(
         if (_ui.value.busy) return
         _ui.update { it.copy(busy = true) }
         launchOp {
-            when (val r = actions.approveJoinedDevicePsk(e.offer.publicKey, e.offer.deviceName, e.offer.platform, e.offer.psk, prompts().approve)) {
+            val name = e.name.trim().ifEmpty { DEFAULT_NEW_DEVICE_NAME }
+            val devicePlatform = when (e.kind) {
+                DeviceKind.COMPUTER -> DevicePlatform.WEB
+                DeviceKind.PHONE -> if (e.offer.platform == DevicePlatform.WEB) platform else e.offer.platform
+            }
+            when (val r = actions.approveJoinedDevicePsk(e.offer.publicKey, name, devicePlatform, e.offer.psk, prompts().approve)) {
                 is Outcome.Ok -> _ui.update { it.copy(busy = false, enrol = EnrolUi.ApproverReply(c.encodeReply(r.value)), devices = it.devices.copy(devices = actions.listedDevices())) }
                 is Outcome.Failed -> _ui.update { it.copy(busy = false, enrol = e.copy(error = r.reason)) }
             }

@@ -58,6 +58,9 @@ private class FakeActions : DriveActions {
     override val state = MutableStateFlow(ConnectState.DISCONNECTED)
     override val enrolmentNotice = MutableStateFlow<DriveReason?>(null)
     val calls = mutableListOf<String>()
+    override val folderGone = MutableStateFlow(false)
+    val deleteActions = mutableListOf<DeletionAction>()
+    val approved = mutableListOf<Triple<String, DevicePlatform, ByteArray>>()
 
     var connectResult = ConnectResult(ConnectState.DISCONNECTED)
     var createResult = ConnectResult(ConnectState.FIRST_CONNECT_SHOW_RECOVERY_KEY, recoveryKey = KEY)
@@ -109,7 +112,7 @@ private class FakeActions : DriveActions {
     override fun devicePublicKey() = byteArrayOf(1, 2, 3)
     override fun listedDevices() = devices
     override suspend fun approveJoinedDevicePsk(publicKey: ByteArray, name: String, platform: DevicePlatform, psk: ByteArray, promptReason: String): Outcome<EnrolmentWrap> {
-        calls += "approve:$name"; prompts += promptReason
+        calls += "approve:$name"; prompts += promptReason; approved += Triple(name, platform, publicKey)
         return approve
     }
     override suspend fun joinFromPsk(wrapEnc: String, wrapCt: String, epoch: Int, psk: ByteArray): ConnectResult {
@@ -120,8 +123,8 @@ private class FakeActions : DriveActions {
         calls += "revoke:$kidHex"; prompts += promptReason
         return revoke
     }
-    override suspend fun deletePlan(action: DeletionAction) = plan.also { calls += "plan" }
-    override suspend fun deleteConfirmInfo(action: DeletionAction) = confirmInfo.also { calls += "confirmInfo" }
+    override suspend fun deletePlan(action: DeletionAction) = plan.also { calls += "plan"; deleteActions += action }
+    override suspend fun deleteConfirmInfo(action: DeletionAction) = confirmInfo.also { calls += "confirmInfo"; deleteActions += action }
     override suspend fun runDelete(plan: DeletionPlan, promptReason: String): Outcome<DeleteRun> {
         calls += "runDelete"; prompts += promptReason
         return run
@@ -138,8 +141,11 @@ private class FakeActions : DriveActions {
 
 private class FakeCodec : EnrolmentCodec {
     override fun newOffer(publicKey: ByteArray, deviceName: String) = NewcomerOffer("dp1.OFFER", "12345678", byteArrayOf(9, 8))
-    override fun parseOffer(text: String) =
-        if (text == "dp1.OFFER") ApproverOffer(byteArrayOf(1), "New phone", DevicePlatform.ANDROID, byteArrayOf(9, 8), "12345678") else null
+    override fun parseOffer(text: String) = when (text) {
+        "dp1.OFFER" -> ApproverOffer(byteArrayOf(1), "New phone", DevicePlatform.ANDROID, byteArrayOf(9, 8), "12345678")
+        "dp1.WEB" -> ApproverOffer(byteArrayOf(2), "Browser", DevicePlatform.WEB, byteArrayOf(9, 8), "12345678")
+        else -> null
+    }
     override fun encodeReply(wrap: EnrolmentWrap) = "dp1r.${wrap.wrapEnc}.${wrap.epoch}"
     override fun parseReply(text: String, offer: NewcomerOffer) = if (text == "dp1r.enc.3") ReplyWrap("enc", "ct", 3) else null
 }
@@ -156,6 +162,94 @@ class DriveHolderTest {
         h.connect()
         runCurrent()
         return h
+    }
+
+    // ---- the folder was deleted (review 1) -------------------------------------------------------------------------------
+
+    private val folderGoneResult = ConnectResult(ConnectState.DISCONNECTED, error = DriveReason.FOLDER_GONE)
+
+    @Test fun connectAfterFolderGoneIsNotCalledAgainAndAgain() = runTest {
+        // The reported loop: Connect, "The folder was deleted", Connect again, ... and the folder was never made.
+        val a = FakeActions().apply { connectResult = folderGoneResult }
+        val h = holder(a)
+        h.connect(); runCurrent()
+        h.connect(); runCurrent()
+        assertEquals(listOf("connect"), a.calls, "a second Connect must not go round again, and must never create a folder")
+    }
+
+    @Test fun aDeletedFolderShowsTheQuestionCardAndCreatesNothing() = runTest {
+        val a = FakeActions().apply { connectResult = folderGoneResult }
+        val h = holder(a)
+        h.connect(); runCurrent()
+        assertEquals(DriveCard.FOLDER_GONE, h.ui.value.card)
+        assertFalse("createFolder" in a.calls, "never auto-create (docs/15 section 3.4)")
+        assertEquals(listOf(DriveControl.START_AGAIN, DriveControl.DISCONNECT), connectControls(h.ui.value.card, h.ui.value.error, false, false).map { it.control })
+    }
+
+    @Test fun startAgainMakesTheFolderAndShowsTheNewKeyOnce() = runTest {
+        val a = FakeActions().apply { connectResult = folderGoneResult }
+        val h = holder(a)
+        h.connect(); runCurrent()
+        h.startAgain(); runCurrent()
+        assertEquals(listOf("connect", "createFolder"), a.calls)
+        assertEquals(DriveCard.RECOVERY_KEY, h.ui.value.card)
+        assertEquals(KEY, h.ui.value.connectKey?.text)
+        assertNull(h.ui.value.error)
+    }
+
+    @Test fun startAgainOutsideTheDeletedFolderCardDoesNothing() = runTest {
+        val a = FakeActions()
+        val h = holder(a)
+        h.startAgain(); runCurrent()
+        assertTrue(a.calls.isEmpty(), "Start again is not a back door to creating a folder")
+    }
+
+    @Test fun startAgainWhileBusyIsIgnored() = runTest {
+        val a = FakeActions().apply { connectResult = folderGoneResult }
+        val h = holder(a)
+        h.connect(); runCurrent()
+        h.startAgain(); h.startAgain(); runCurrent()
+        assertEquals(1, a.calls.count { it == "createFolder" })
+    }
+
+    @Test fun disconnectOnTheDeletedFolderCardIsTheWayOut() = runTest {
+        val a = FakeActions().apply { connectResult = folderGoneResult }
+        val h = holder(a)
+        h.connect(); runCurrent()
+        h.disconnect(); runCurrent()
+        assertEquals(listOf("connect", "disconnect"), a.calls)
+        assertEquals(DriveCard.DISCONNECTED, h.ui.value.card)
+        assertNull(h.ui.value.error)
+    }
+
+    @Test fun aFailedStartAgainLeavesTheErrorCardNotTheQuestion() = runTest {
+        val a = FakeActions().apply { connectResult = folderGoneResult; createResult = ConnectResult(ConnectState.ERROR, error = DriveReason.SERVER) }
+        val h = holder(a)
+        h.connect(); runCurrent()
+        h.startAgain(); runCurrent()
+        assertEquals(DriveCard.ERROR, h.ui.value.card)
+        assertEquals(DriveReason.SERVER, h.ui.value.error)
+    }
+
+    @Test fun aFolderTheAppFoundGoneShowsTheQuestionWhenSettingsOpens() = runTest {
+        val a = FakeActions().apply { folderGone.value = true }
+        val h = holder(a)
+        assertEquals(DriveCard.FOLDER_GONE, h.ui.value.card)
+        assertTrue(a.calls.isEmpty(), "opening Settings makes no call and creates nothing")
+    }
+
+    @Test fun aFolderFoundGoneWhileTheScreenIsOpenShowsTheQuestion() = runTest {
+        val a = FakeActions()
+        val h = holder(a)
+        assertEquals(DriveCard.DISCONNECTED, h.ui.value.card)
+        a.folderGone.value = true; runCurrent()
+        assertEquals(DriveCard.FOLDER_GONE, h.ui.value.card)
+    }
+
+    @Test fun aFolderGoneSignalDoesNotCoverAConnectedPhone() = runTest {
+        val a = FakeActions().apply { state.value = ConnectState.READY; folderGone.value = true }
+        val h = holder(a)
+        assertEquals(DriveCard.READY, h.ui.value.card)
     }
 
     // ---- recovery key shown once ----------------------------------------------------------------------------------------
@@ -548,5 +642,139 @@ class DriveHolderTest {
         assertEquals(DriveCard.DISCONNECTED, h.ui.value.card)
         assertEquals(EnrolUi.Idle, h.ui.value.enrol)
         assertNull(h.ui.value.connectKey)
+    }
+
+    // ---- Delete this backup (review 6) ----------------------------------------------------------------------------------------
+
+    private fun TestScope.toBackupConfirm(a: FakeActions): DriveHolder {
+        val h = holder(a)
+        h.startDelete(DeleteChoice.ONE_BACKUP, "b1"); runCurrent()
+        h.proceedToConfirm(); runCurrent()
+        return h
+    }
+
+    @Test fun deleteThisBackupAsksForTheOneBackupsPlanAndConfirmInfo() = runTest {
+        val a = FakeActions().apply { state.value = ConnectState.READY; confirmInfo = Outcome.Ok(DeleteConfirmInfo(DeletionLevel.L1, DeleteFactor.NONE, false, 0)) }
+        val h = toBackupConfirm(a)
+        assertEquals(listOf<DeletionAction>(DeletionAction.OneBackup("b1"), DeletionAction.OneBackup("b1")), a.deleteActions)
+        assertEquals(DeleteChoice.ONE_BACKUP, h.ui.value.delete.choice)
+        assertEquals(DeletePhase.CONFIRM, h.ui.value.delete.phase)
+        assertTrue(deleteFlowInBackups(h.ui.value.delete.choice, h.ui.value.delete.phase))
+    }
+
+    @Test fun theLastBackupIsLevelTwoAndShowsTheDeviceCheckWordingAndRunsWithItsPrompt() = runTest {
+        val a = FakeActions().apply {
+            state.value = ConnectState.READY
+            confirmInfo = Outcome.Ok(DeleteConfirmInfo(DeletionLevel.L2, DeleteFactor.DEVICE_AUTH, true, 0))
+        }
+        val h = toBackupConfirm(a)
+        val info = h.ui.value.delete.info!!
+        assertTrue(deviceCheckWordingShown(info.level))
+        assertTrue(DeleteField.DEVICE_CHECK_NOTE in deleteConfirmFields(info))
+        h.confirmDelete(); runCurrent()
+        assertFalse("runDelete" in a.calls, "the tick box comes first")
+        h.toggleTick(); h.confirmDelete(); runCurrent()
+        assertEquals(listOf("P-DELETE"), a.prompts)
+        assertEquals(DeletePhase.DONE, h.ui.value.delete.phase)
+    }
+
+    @Test fun anotherBackupStillThereIsLevelOneWithoutTheDeviceCheckWording() = runTest {
+        val a = FakeActions().apply { state.value = ConnectState.READY; confirmInfo = Outcome.Ok(DeleteConfirmInfo(DeletionLevel.L1, DeleteFactor.NONE, false, 0)) }
+        val h = toBackupConfirm(a)
+        assertFalse(deviceCheckWordingShown(h.ui.value.delete.info!!.level))
+        h.confirmDelete(); runCurrent()
+        assertTrue("runDelete" in a.calls)
+    }
+
+    @Test fun deleteThisBackupNeedsABackupId() = runTest {
+        val a = FakeActions().apply { state.value = ConnectState.READY }
+        val h = holder(a)
+        h.startDelete(DeleteChoice.ONE_BACKUP, null); runCurrent()
+        assertTrue(a.calls.isEmpty())
+        assertEquals(DeletePhase.MENU, h.ui.value.delete.phase)
+    }
+
+    // ---- naming the new device (review 9) -------------------------------------------------------------------------------------
+
+    private fun TestScope.toApproverCheck(a: FakeActions, offer: String = "dp1.OFFER"): DriveHolder {
+        a.state.value = ConnectState.READY
+        val h = holder(a)
+        h.startApprove(); h.submitOffer(offer)
+        return h
+    }
+
+    @Test fun theApproverNamesTheNewDeviceAndItGoesToTheControllerWithTheDevicesKey() = runTest {
+        val a = FakeActions()
+        val h = toApproverCheck(a)
+        h.setApproveName("Amma's phone")
+        h.confirmCodesMatch(); runCurrent()
+        val (name, platform, key) = a.approved.single()
+        assertEquals("Amma's phone", name)
+        assertEquals(DevicePlatform.ANDROID, platform)
+        assertEquals(listOf<Byte>(1), key.toList())
+    }
+
+    @Test fun theNameDefaultsToNewDeviceWhenNothingOrBlanksAreTyped() = runTest {
+        val a = FakeActions()
+        val h = toApproverCheck(a)
+        assertEquals("New device", (h.ui.value.enrol as EnrolUi.ApproverCheck).name)
+        h.setApproveName("   ")
+        h.confirmCodesMatch(); runCurrent()
+        assertEquals("New device", a.approved.single().first)
+    }
+
+    @Test fun theNameIsTrimmedAndKeptShort() = runTest {
+        val a = FakeActions()
+        val h = toApproverCheck(a)
+        h.setApproveName("  " + "x".repeat(200))
+        assertEquals(MAX_DEVICE_NAME, (h.ui.value.enrol as EnrolUi.ApproverCheck).name.length)
+        h.setApproveName("  Laptop  ")
+        h.confirmCodesMatch(); runCurrent()
+        assertEquals("Laptop", a.approved.single().first)
+    }
+
+    @Test fun chooseComputerGivesTheWebPlatformAndPhoneKeepsThePhonesOwn() = runTest {
+        val a = FakeActions()
+        val h = toApproverCheck(a)
+        assertEquals(DeviceKind.PHONE, (h.ui.value.enrol as EnrolUi.ApproverCheck).kind)
+        h.setApproveKind(DeviceKind.COMPUTER)
+        h.confirmCodesMatch(); runCurrent()
+        assertEquals(DevicePlatform.WEB, a.approved.single().second)
+    }
+
+    @Test fun anOfferFromTheWebsiteStartsAsComputerAndAPhoneChoiceNeverStaysWeb() = runTest {
+        val a = FakeActions()
+        val h = toApproverCheck(a, "dp1.WEB")
+        assertEquals(DeviceKind.COMPUTER, (h.ui.value.enrol as EnrolUi.ApproverCheck).kind)
+        h.setApproveKind(DeviceKind.PHONE)
+        h.confirmCodesMatch(); runCurrent()
+        assertEquals(DevicePlatform.ANDROID, a.approved.single().second, "this holder's own platform, not WEB")
+    }
+
+    @Test fun nameAndKindAreIgnoredOutsideTheCodeCheck() = runTest {
+        val a = FakeActions().apply { state.value = ConnectState.READY }
+        val h = holder(a)
+        h.setApproveName("x"); h.setApproveKind(DeviceKind.COMPUTER)
+        assertEquals(EnrolUi.Idle, h.ui.value.enrol)
+    }
+
+    // ---- the countdown's clock (review 14) ------------------------------------------------------------------------------------
+
+    @Test fun theDefaultClockIsMonotonicNotTheWallClock() = runTest {
+        val h = DriveHolder(FakeActions(), backgroundScope, { prompts })
+        val first = h.now()
+        val second = h.now()
+        assertTrue(second >= first)
+        assertTrue(first < 10L * 365 * 24 * 3600 * 1000, "a monotonic reading counts from a start, not from 1970: $first")
+    }
+
+    @Test fun theCountdownFollowsTheClockTheHolderWasGiven() = runTest {
+        val a = FakeActions().apply { state.value = ConnectState.READY }
+        val h = holder(a)
+        now = 1_000_000_000_000
+        h.startDelete(DeleteChoice.EVERYTHING); runCurrent(); h.proceedToConfirm(); runCurrent()
+        assertEquals(5, h.countdownLeft(now))
+        assertEquals(1_000_000_000_000, h.ui.value.delete.confirmShownAtMs)
+        assertEquals(1_000_000_000_000, h.now())
     }
 }
