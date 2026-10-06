@@ -22,7 +22,14 @@ import android.app.Application
 import android.content.res.Configuration
 import androidx.annotation.VisibleForTesting
 import androidx.work.Configuration as WorkConfiguration
+import app.doorprints.data.Api
 import app.doorprints.data.AppDatabase
+import app.doorprints.data.ServerSyncBackend
+import app.doorprints.drive.wiring.ActivityProvider
+import app.doorprints.drive.wiring.DriveServices
+import app.doorprints.drive.wiring.DriveSyncChoice
+import app.doorprints.drive.wiring.DriveSyncRoute
+import app.doorprints.drive.wiring.FileDrivePrefs
 import app.doorprints.data.create
 import app.doorprints.data.AndroidRepository
 import app.doorprints.data.SettingsStore
@@ -40,12 +47,35 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
+import java.io.File
 import org.maplibre.android.MapLibre
 
 class AppContainer(app: DoorprintsApp) {
     // One settings DataStore per process (see data/SettingsStoreFactory.kt), as the old property delegate gave.
     val settings = SettingsStore.create(app)
-    val repository = AndroidRepository(app, AppDatabase.create(app), settings)
+    private val db = AppDatabase.create(app)
+
+    /** Carries the Drive backend into the repository's sync loop for one Drive pass (S4b-BL-70's seam, docs/15 §1.3). */
+    private val driveRoute = DriveSyncRoute()
+
+    /** The foreground Activity, for the device check and Google's consent screen (MainActivity registers itself). */
+    val activities = ActivityProvider()
+
+    /**
+     * Whether Drive is in use is read from one small file, without building Drive: while it is, Drive replaces the server
+     * for sync (both would share the rows' clean marks and cursors); otherwise the server is chosen exactly as before.
+     */
+    private val driveFlag = FileDrivePrefs(File(File(app.noBackupFilesDir, DriveServices.DIR), DriveServices.PREFS_FILE))
+
+    val repository = AndroidRepository(
+        app, db, settings,
+        syncBackendFor = DriveSyncChoice.backendFor({ driveFlag.engaged }, driveRoute) { s ->
+            if (s.serverConfigured) ServerSyncBackend(Api.client(s.serverUrl, s.apiKey)) else null
+        },
+    )
+
+    /** Google Drive backup and sync (docs/15); the graph is built when first used. */
+    val drive = DriveServices(app, repository, db, driveRoute, activities)
 
     /** The viewing reminders' alarms (docs/11 5.8, slice 3b-2). */
     val reminders = ViewingReminderScheduler(app, repository)
@@ -117,6 +147,8 @@ open class DoorprintsApp : Application(), WorkConfiguration.Provider {
         MapLibre.getInstance(this)
         Notifications.createChannels(AppLocale.wrap(this))
         SyncWorker.schedulePeriodic(this)
+        // Google Drive's regular run follows "in use and automatic backup on"; re-set at every start, as the weekly backup is.
+        container.drive.rescheduleWork()
         // v0.1 kept the API key in plaintext; encrypt it with the Keystore key (threat model F-03).
         appScope.launch { runCatching { container.settings.migrateLegacyKey() } }
         // Whether the server has AI features on, once per process (UX review, whole-app audit): Root used to ask on
