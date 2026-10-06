@@ -101,7 +101,7 @@ final class MapLibreMapView: NSObject, IosMapView, MLNMapViewDelegate, UIGesture
             guard pair.count == 2 else { return nil }
             return (NSNumber(value: pair[0].doubleValue), NSNumber(value: pair[1].doubleValue))
         })
-        layer.lineWidth = NSExpression(forMGLInterpolating: NSExpression.zoomLevelVariable, curveType: .linear, parameters: nil, stops: NSExpression(forConstantValue: stops))
+        layer.lineWidth = NSExpression(forMLNInterpolating: NSExpression.zoomLevelVariable, curveType: .linear, parameters: nil, stops: NSExpression(forConstantValue: stops))
         layer.isVisible = visible
     }
 
