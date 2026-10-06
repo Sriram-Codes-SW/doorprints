@@ -275,3 +275,24 @@ phone-only driveDelete.reason.AUTH_PAUSED_NO_LOCK
 phone-only driveDelete.reason.AUTH_PAUSED_UNKNOWN
 ```
 <!-- keys:end -->
+
+## Phone-only sentences to review (hi, ta, te are drafts)
+
+The 67 `phone-only` keys above are written for the phones (the website says "browser", or has no such sentence): the device check
+wording (`driveDelete.deviceCheck*`, `driveDelete.reason.*` for the device check and the deletion refusals, `driveDevices.prompt*`),
+"no screen lock pauses Drive" (`driveDevices.noLock`, `driveSync.paused`, `driveDelete.reason.NO_DEVICE_LOCK`,
+`AUTH_PAUSED_NO_LOCK`, `AUTH_PAUSED_UNKNOWN`), the plan lines (`driveDelete.plan.*`), the QR and 8-digit enrolment steps
+(`driveEnrol.*`, `driveDevices.scanQr/showQr/codeInstead`), the phone versions of the problems that name a browser
+(`driveProblem.OFFLINE/SOURCE_FAILED/CONNECT_FAILED/CRYPTO_UNAVAILABLE/SIGNIN_UNAVAILABLE`), `drivePhotos.uploading/pausedOffline/done`
+and the sync lines `driveSync.offline/paused/notRun/needsConfirmation`. The English is final; the Hindi, Tamil and Telugu were
+drafted by the session and have had no native review. `driveSync.needsConfirmation` and `driveDevices.revokeConfirm` carry
+positional placeholders: check the word order reads right.
+
+## Tests and screenshots
+
+- `DriveScreenStateTest` (28) and `DriveHolderTest` (35) in `ui/src/commonTest`, `DriveStringsTest` (8) in `ui/src/androidHostTest`.
+- `DriveScreenshotTest` in `app/src/test/java/app/doorprints/screenshots`: 5 states (disconnected, recovery key, join with QR, connected,
+  delete-everything confirm), English light and dark and Hindi light, 15 images in `app/src/test/screenshots/drive_*.png` (24 to 150 KB;
+  the tall states are the largest).
+- Not covered: a screen reader pass on a device, 200 % text and the real camera and clipboard (all need a device or emulator), and the
+  iOS compile of `:ui` (`compileKotlinIosSimulatorArm64`; the common metadata compile passes).
