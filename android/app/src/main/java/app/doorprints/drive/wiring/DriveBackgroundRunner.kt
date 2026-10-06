@@ -89,7 +89,7 @@ sealed interface RunOutcome {
  * screen lock, and asks the lock again before **each** step. A missing lock stops the run with the documented notice and
  * touches nothing in Drive: no upload, download or delete (the lock check drops local keys only).
  */
-class DriveBackgroundRunner(private val ops: BackgroundOps) {
+class DriveBackgroundRunner(private val ops: BackgroundOps, private val onSync: (SyncInfo) -> Unit = {}) {
     suspend fun run(sync: Boolean, backup: Boolean): RunOutcome {
         // A pause that still stands says nothing again (the notice was shown when it began) and builds nothing.
         if (ops.engaged) ops.standingPause()?.let { return RunOutcome.Skipped(it) }
@@ -103,7 +103,9 @@ class DriveBackgroundRunner(private val ops: BackgroundOps) {
         }
         var result: RunOutcome = RunOutcome.Success
         if (sync) {
-            result = worse(result, syncOutcome(ops.sync()))
+            val info = ops.sync()
+            onSync(info)
+            result = worse(result, syncOutcome(info))
             // The lock is asked again before the next step: it may have gone while the sync ran.
             (guard() as? WorkDecision.Skip)?.let { return skipped(it) }
         }

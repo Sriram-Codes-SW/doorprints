@@ -18,6 +18,7 @@
 
 package app.doorprints.drive.connect
 
+import app.doorprints.crypto.constantTimeEquals
 import app.doorprints.deviceauth.AuthResult
 import app.doorprints.deviceauth.AuthGrant
 import app.doorprints.deviceauth.Authorization
@@ -31,23 +32,46 @@ import app.doorprints.deviceauth.RunDecision
 import app.doorprints.drive.delete.AuthorizationGate
 import app.doorprints.drive.delete.AuthorizationToken
 import app.doorprints.drive.delete.DeletionLevel
+import app.doorprints.drive.delete.DeletionRules
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import app.doorprints.deviceauth.DeletionAction as PolicyAction
 
+/** What the device check signed: the moment the person passed and the HMAC of the operation at that moment (docs/15 §10.2). */
+class OperationProofValue(val issuedAtMs: Long, val proof: String) {
+    override fun toString(): String = "OperationProofValue(issuedAtMs=$issuedAtMs)"
+}
+
 /**
- * The phones' authorisation: [DriveGate] asks for the device check, and this class turns its grant into the
- * [AuthorizationToken] the deletion service wants and, as the [AuthorizationGate], checks it again when the run starts
- * (one use, 60 seconds, bound to the operation) and before every file. The Kotlin twin of the web's
- * `RealAuthorizationGate`; the proof is the grant id (the phone's HMAC under the device lock is S4b-BL-135).
+ * A [DeviceAuth] that can be told which operation the next check is for and hands back what it signed. [DriveGate]
+ * only knows `authenticate(reason, level)`; this is how the plan's operation id reaches the Keystore HMAC and the proof
+ * comes back out, without a second prompt. The phone's is `ProverDeviceAuth`.
+ */
+interface OperationBoundAuth : DeviceAuth {
+    /** The next [authenticate] is for [operationId] (null: not for a plan). Clears any proof left from before. */
+    fun bindNext(operationId: String?)
+
+    /** The proof of the last check that passed, once; null when none passed since [bindNext]. */
+    fun takeProof(): OperationProofValue?
+}
+
+/**
+ * The phones' authorisation: [DriveGate] decides and asks for the device check, bound to the plan's operation id; this
+ * class turns its grant plus the check's HMAC proof into the [AuthorizationToken] the deletion service wants and, as
+ * the [AuthorizationGate], checks it again when the run starts (one use, 60 seconds, bound to the operation, the level and
+ * the proof) and before every file (the lock still there). The Kotlin twin of the web's `RealAuthorizationGate`. The
+ * proof is the secret only a real pass produced (S4b-BL-135); L1 carries none.
  */
 class PhoneDeletionAuthorizer(
     private val gate: DriveGate,
-    private val auth: DeviceAuth,
+    private val auth: OperationBoundAuth,
     private val clock: () -> Long,
 ) : DeleteAuthorizer, AuthorizationGate {
-    private class Issued(val grant: AuthGrant, val action: PolicyAction, val operationId: String)
+    private class Issued(val grant: AuthGrant, val action: PolicyAction, val token: AuthorizationToken)
 
-    /** Insertion order, so the oldest goes first when [MAX_ISSUED] is reached (a person starts one deletion at a time). */
-    private val issued = LinkedHashMap<Long, Issued>()
+    /** By operation id (a second authorisation of a plan replaces the first). Oldest goes first at [MAX_ISSUED]. */
+    private val issued = LinkedHashMap<String, Issued>()
+    private val asking = Mutex()
 
     override fun isDeviceLockEnabled(): Boolean = try {
         auth.isDeviceLockEnabled()
@@ -55,8 +79,18 @@ class PhoneDeletionAuthorizer(
         false
     }
 
-    override suspend fun authorize(action: PolicyAction, ctx: DeletionContext, operationId: String?, promptReason: String): DeleteAuthorization =
-        when (val a = gate.authorize(action, ctx, promptReason)) {
+    override suspend fun authorize(action: PolicyAction, ctx: DeletionContext, operationId: String?, promptReason: String): DeleteAuthorization {
+        // One ask at a time: the bound operation and the proof taken back belong to the same prompt.
+        val (a, proved) = asking.withLock {
+            auth.bindNext(operationId)
+            try {
+                val result = gate.authorize(action, ctx, promptReason)
+                result to if (result is Authorization.Granted) auth.takeProof() else null
+            } finally {
+                auth.bindNext(null)
+            }
+        }
+        return when (a) {
             is Authorization.Refused -> DeleteAuthorization.Refused(
                 when (a.reason) {
                     RefusalReason.NO_DEVICE_LOCK -> DriveReason.NO_DEVICE_LOCK
@@ -78,17 +112,22 @@ class PhoneDeletionAuthorizer(
             )
             is Authorization.Granted -> {
                 val grant = a.grant
-                if (operationId == null) {
-                    DeleteAuthorization.Granted(null)
-                } else {
-                    issued[grant.id] = Issued(grant, action, operationId)
-                    while (issued.size > MAX_ISSUED) issued.remove(issued.keys.first())
-                    DeleteAuthorization.Granted(
-                        AuthorizationToken(levelOf(grant.requirements.level), grant.grantedAtMs, operationId, grant.id.toString()),
-                    )
+                val level = levelOf(grant.requirements.level)
+                when {
+                    operationId == null -> DeleteAuthorization.Granted(null)
+                    // A check that passed without signing the operation is no check: fail closed.
+                    level != DeletionLevel.L1 && proved == null -> DeleteAuthorization.Refused(DriveReason.AUTH_FAILED)
+                    else -> {
+                        val token = AuthorizationToken(level, proved?.issuedAtMs ?: grant.grantedAtMs, operationId, proved?.proof.orEmpty())
+                        issued.remove(operationId)
+                        issued[operationId] = Issued(grant, action, token)
+                        while (issued.size > MAX_ISSUED) issued.remove(issued.keys.first())
+                        DeleteAuthorization.Granted(token)
+                    }
                 }
             }
         }
+    }
 
     override fun forget() {
         issued.clear()
@@ -96,27 +135,28 @@ class PhoneDeletionAuthorizer(
 
     override suspend fun isGenuine(token: AuthorizationToken): Boolean {
         val entry = entryOf(token) ?: return false
-        if (!fresh(entry, token)) return false
+        if (!fresh(token)) return false
         return gate.redeem(entry.grant, entry.action) == Redeemed.OK
     }
 
     override suspend fun stillHolds(token: AuthorizationToken): Boolean {
         val entry = entryOf(token) ?: return false
-        if (!fresh(entry, token)) return false
+        if (!fresh(token)) return false
         return gate.beforeRun() == RunDecision.Run
     }
 
+    /** The grant this token was issued for: same operation, level, time and proof (compared in constant time). */
     private fun entryOf(token: AuthorizationToken): Issued? {
-        val entry = issued[token.proof.toLongOrNull() ?: return null] ?: return null
-        if (entry.operationId != token.operationId) return null
-        if (entry.grant.grantedAtMs != token.issuedAtMs) return null
-        if (levelOf(entry.grant.requirements.level) != token.level) return null
+        val entry = issued[token.operationId] ?: return null
+        val own = entry.token
+        if (own.level != token.level || own.issuedAtMs != token.issuedAtMs) return null
+        if (!constantTimeEquals(own.proof.encodeToByteArray(), token.proof.encodeToByteArray())) return null
         return entry
     }
 
-    private fun fresh(entry: Issued, token: AuthorizationToken): Boolean {
-        val age = clock() - entry.grant.grantedAtMs
-        return age >= 0 && age <= app.doorprints.drive.delete.DeletionRules.AUTHORIZATION_MAX_AGE_MS && token.operationId == entry.operationId
+    private fun fresh(token: AuthorizationToken): Boolean {
+        val age = clock() - token.issuedAtMs
+        return age >= 0 && age <= DeletionRules.AUTHORIZATION_MAX_AGE_MS
     }
 
     companion object {

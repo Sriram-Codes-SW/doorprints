@@ -22,7 +22,6 @@ import app.doorprints.crypto.CryptoProvider
 import app.doorprints.crypto.DevicePlatform
 import app.doorprints.crypto.kidOf
 import app.doorprints.deviceauth.AuthPlatform
-import app.doorprints.deviceauth.DeviceAuth
 import app.doorprints.deviceauth.DriveGate
 import app.doorprints.deviceauth.LockLostDetector
 import app.doorprints.deviceauth.RunDecision
@@ -34,6 +33,7 @@ import app.doorprints.drive.backup.ScratchSpace
 import app.doorprints.drive.connect.DefaultSyncRigFactory
 import app.doorprints.drive.connect.DriveConnectController
 import app.doorprints.drive.connect.DriveSignIn
+import app.doorprints.drive.connect.OperationBoundAuth
 import app.doorprints.drive.connect.PhoneDeletionAuthorizer
 import app.doorprints.drive.delete.DriveDeletionService
 import app.doorprints.drive.device.DeviceKeyBackend
@@ -61,7 +61,7 @@ class DriveDeps(
     val drive: DriveClient,
     val signIn: DriveSignIn?,
     /** The device check (screen lock, fingerprint, face) and the keyguard test. */
-    val deviceAuth: DeviceAuth,
+    val deviceAuth: OperationBoundAuth,
     /**
      * The lock detector, built with the "is the device key still usable" probe the graph supplies and the function it calls
      * when that probe failed **with the screen lock still there** (a key store fault, which has its own words).

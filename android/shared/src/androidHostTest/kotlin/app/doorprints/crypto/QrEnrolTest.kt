@@ -18,6 +18,9 @@
 
 package app.doorprints.crypto
 
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -146,5 +149,48 @@ class QrEnrolTest {
             fail("expected a failure")
         } catch (_: CryptoException) {
         }
+    }
+
+    // The shared vectors (docs/schemas/qr-enrol-vectors.json); the website runs the same file in qr-enrol.spec.ts.
+    private val shared = Vectors.load("qr-enrol-vectors.json")
+
+    private fun JsonObject.rows(key: String) = getValue(key).jsonArray.map { it.jsonObject }
+
+    @Test
+    fun writesEachSharedValidOfferToTheExactText() {
+        val valid = shared.rows("valid")
+        assertTrue(valid.isNotEmpty())
+        for (v in valid) assertEquals(v.s("name"), v.s("text"), qrOfferText(v.h("publicKey"), v.h("psk")))
+    }
+
+    @Test
+    fun readsEachSharedValidOfferToTheExactBytes() {
+        for (v in shared.rows("valid")) {
+            val parsed = parseQrOffer(v.s("text"))
+            assertNotNull(v.s("name"), parsed)
+            assertEquals(v.s("name"), v.s("publicKey"), parsed!!.publicKey.hex())
+            assertEquals(v.s("name"), v.s("psk"), parsed.psk.hex())
+        }
+    }
+
+    @Test
+    fun findsTheOfferInEverySharedPastedForm() {
+        val valid = shared.rows("valid").associateBy { it.s("name") }
+        val forms = shared.rows("forms")
+        assertTrue(forms.isNotEmpty())
+        for (f in forms) {
+            val want = valid.getValue(f.s("offer"))
+            val parsed = parseQrOffer(f.s("input"))
+            assertNotNull(f.s("name"), parsed)
+            assertEquals(f.s("name"), want.s("publicKey"), parsed!!.publicKey.hex())
+            assertEquals(f.s("name"), want.s("psk"), parsed.psk.hex())
+        }
+    }
+
+    @Test
+    fun refusesEverySharedInvalidInput() {
+        val invalid = shared.rows("invalid")
+        assertTrue(invalid.size >= 20)
+        for (v in invalid) assertNull(v.s("name"), parseQrOffer(v.s("input")))
     }
 }

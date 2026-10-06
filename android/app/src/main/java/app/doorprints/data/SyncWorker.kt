@@ -22,6 +22,7 @@ import android.content.Context
 import androidx.work.*
 import app.doorprints.DoorprintsApp
 import app.doorprints.drive.wiring.DriveBackupWorker
+import app.doorprints.drive.wiring.DriveCadenceGate
 import app.doorprints.shared.sync.SyncOutcome
 import kotlinx.coroutines.CancellationException
 import java.util.concurrent.TimeUnit
@@ -47,7 +48,11 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         val container = (applicationContext as DoorprintsApp).container
         // With Google Drive in use it replaces the server (docs/15 §1.3): one Drive pass, under the same lock and Wi-Fi rules.
         if (container.drive.engaged) {
-            return DriveBackupWorker.result(container.drive.runInBackground(sync = true, backup = false), runAttemptCount)
+            // The regular wake backs off while nothing moves (DriveCadence); a change, the app in front and the triggers of §1.3 do not wait.
+            val cadence = DriveCadenceGate.of(applicationContext)
+            if (inputData.getBoolean(PERIODIC, false) && !cadence.due(System.currentTimeMillis())) return Result.success()
+            val outcome = container.drive.runInBackground(sync = true, backup = false) { cadence.record(it, System.currentTimeMillis()) }
+            return DriveBackupWorker.result(outcome, runAttemptCount)
         }
         val repo = container.repository
         val net = NetworkState.current(applicationContext)
@@ -79,10 +84,13 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
 
     companion object {
         private const val MAX_ATTEMPTS = 5
+        private const val PERIODIC = "periodic"
         private val online = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
         private val unmetered = Constraints.Builder().setRequiredNetworkType(NetworkType.UNMETERED).build()
 
         fun syncSoon(context: Context) {
+            // A local change ends the Drive cadence's back-off (a no-op unless the cadence ever backed off).
+            DriveCadenceGate.of(context).reset()
             val work = OneTimeWorkRequestBuilder<SyncWorker>()
                 .setConstraints(online)
                 .setInitialDelay(3, TimeUnit.SECONDS)
@@ -102,11 +110,12 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
 
         fun schedulePeriodic(context: Context) {
             val work = PeriodicWorkRequestBuilder<SyncWorker>(30, TimeUnit.MINUTES)
+                .setInputData(workDataOf(PERIODIC to true))
                 .setConstraints(online)
                 .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 60, TimeUnit.SECONDS)
                 .build()
             WorkManager.getInstance(context)
-                .enqueueUniquePeriodicWork("sync-periodic", ExistingPeriodicWorkPolicy.KEEP, work)
+                .enqueueUniquePeriodicWork("sync-periodic", ExistingPeriodicWorkPolicy.UPDATE, work)
         }
     }
 }

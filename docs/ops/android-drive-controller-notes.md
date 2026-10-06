@@ -40,7 +40,7 @@ Wiring, for the lead:
 - `DriveDeletionService(drive, gate = phoneAuthorizer, store, isOnline, now)` and the controller share one
   `PhoneDeletionAuthorizer(DriveGate(AuthPlatform.PHONE, deviceAuth, lockDetector, lossActions, clock), deviceAuth, clock)`.
   It is both the `AuthorizationGate` (one use, 60 seconds, bound to the operation, lock still present before each file)
-  and the `DeleteAuthorizer`; the proof is the grant id until S4b-BL-135.
+  and the `DeleteAuthorizer`; the proof is the grant id until S4b-BL-135 (superseded: on Android the proof is now the device check's HMAC, see the S4b-BL-135 section of [android-drive-wiring-notes.md](android-drive-wiring-notes.md)).
 - `syncRigs = DefaultSyncRigFactory(drive, p, syncStateStore, photoStateStore, localRows, clock, photoConfig, paused)`;
   `paused = { deletionStore.pending() != null }` pauses sync while a delete is half done (docs/15 §3.3).
 - `syncDriver`: pass `{ backend -> repository.sync(photosAllowed = controller.photosAllowed()) }` when the repository's

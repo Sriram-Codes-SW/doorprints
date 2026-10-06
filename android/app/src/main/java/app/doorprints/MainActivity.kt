@@ -28,6 +28,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import app.doorprints.drive.auth.browser.DriveAuthorizers
 import app.doorprints.drive.wiring.ActivityHooks
 import app.doorprints.drive.wiring.DeferredActivityLauncher
+import app.doorprints.drive.wiring.DriveCadenceGate
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import app.doorprints.data.ConnectLink
@@ -98,6 +99,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
+        // The app in front ends the Drive sync's back-off (DriveCadence).
+        DriveCadenceGate.of(this).reset()
         activities.register(this, ActivityHooks(driveStarter) { deepLinks.value = it })
     }
 

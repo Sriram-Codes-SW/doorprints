@@ -31,8 +31,8 @@ import app.doorprints.DoorprintsApp
 import java.util.concurrent.TimeUnit
 
 /**
- * The regular Drive run in the background (docs/15 §1.3): every 6 hours with a network and the battery not low, a sync pass
- * and the daily backup if one is due. It does what [DriveBackgroundRunner] decides: nothing unless Drive is connected,
+ * The regular Drive run in the background (docs/15 §1.3): every 6 hours with a network and the battery not low, the daily
+ * backup if one is due (the sync is [app.doorprints.data.SyncWorker]'s, every 30 minutes with a back-off). It does what [DriveBackgroundRunner] decides: nothing unless Drive is connected,
  * automatic backup is on and the phone still has its screen lock (asked again before every step); without the lock it
  * posts the documented notice and touches nothing in Drive. Photos follow the Wi-Fi-only rule (the controller's photo gate
  * reads `ConnectivityManager`). Unique periodic work, set and cancelled by [DriveServices.rescheduleWork].
@@ -40,7 +40,8 @@ import java.util.concurrent.TimeUnit
 class DriveBackupWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
         val drive = (applicationContext as DoorprintsApp).container.drive
-        return result(drive.runInBackground(sync = true, backup = true), runAttemptCount)
+        // Backup only: the regular sync is SyncWorker's (it runs while Drive is in use), so this run adds no second pass.
+        return result(drive.runInBackground(sync = false, backup = true), runAttemptCount)
     }
 
     companion object {

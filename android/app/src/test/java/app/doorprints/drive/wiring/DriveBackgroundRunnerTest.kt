@@ -95,6 +95,32 @@ class DriveBackgroundRunnerTest {
     }
 
     @Test
+    fun theSyncResultIsHandedToTheCallerOnce() {
+        val ops = Ops()
+        ops.syncResult = SyncInfo(SyncState.SYNCED, 1L, changed = true)
+        val seen = mutableListOf<SyncInfo>()
+        runBlocking { DriveBackgroundRunner(ops) { seen += it }.run(sync = true, backup = true) }
+        assertEquals(listOf(ops.syncResult), seen)
+    }
+
+    @Test
+    fun aBackupOnlyRunNeverSyncsAndHandsNothingBack() {
+        val ops = Ops()
+        val seen = mutableListOf<SyncInfo>()
+        assertEquals(RunOutcome.Success, runBlocking { DriveBackgroundRunner(ops) { seen += it }.run(sync = false, backup = true) })
+        assertEquals(listOf("backup"), ops.driveCalls())
+        assertTrue(seen.isEmpty())
+    }
+
+    @Test
+    fun theDueBackupStillRunsWhenTheSyncFoundNothingNew() {
+        val ops = Ops()
+        ops.syncResult = SyncInfo(SyncState.SYNCED, 1L, changed = false)
+        assertEquals(RunOutcome.Success, run(ops))
+        assertEquals(listOf("sync", "backup"), ops.driveCalls())
+    }
+
+    @Test
     fun notConnectedDoesNothing() {
         val ops = Ops(engaged = false)
         assertEquals(RunOutcome.Skipped(SkipReason.NOT_CONNECTED), run(ops))
