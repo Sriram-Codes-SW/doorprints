@@ -257,3 +257,38 @@ OAuth client of docs/15 §2.4 with "Enable custom URI scheme" on (the debug and 
 | Disconnect does not clear the flag | disconnectingAfterTheFolderWentHandsTheRowsBackAndClearsTheCard |
 | Start again does not clear the flag | startAgainClearsTheCardAndKeepsDriveInUse |
 | flag set after the state drops | aFolderFoundGoneKeepsDriveInUseAndShowsTheCardState |
+
+## S4b-BL-135 (Android half): one authorizer carries the HMAC proof
+
+Decisions 4 and the rows 15 and O8 above are superseded.
+
+| # | Change |
+|---|---|
+| H1 | `DriveDeps.deviceAuth` is an `OperationBoundAuth` (`ProverDeviceAuth` in the app); `DriveAssembly` builds `PhoneDeletionAuthorizer(gate, d.deviceAuth, d.clock)` as before, so the controller (`DeleteAuthorizer`) and `DriveDeletionService` (`AuthorizationGate`) still share the one object. |
+| H2 | The token's proof is the HMAC the prover signed for the plan's `operationId` at the pass, not the grant id; grants are keyed by operation id (a second authorisation of a plan replaces the first), at most `MAX_ISSUED` (4). |
+| H3 | `DeviceAuthorizationGate` and its duplicate result type are deleted (see the A2 notes); `OperationProof.kt` keeps the proof types. |
+| H4 | Tests that built a plain `DeviceAuth` for the assembly now wrap it in the phone's own `ProverDeviceAuth(SoftwareOperationProver(...))`, so the end-to-end tests run the proof path. |
+
+### Mutations of S4b-BL-135 (each applied by hand to the production file, the named test failed, file restored)
+
+| Mutation | Test that failed |
+|---|---|
+| proof not compared in `entryOf` | aFlippedProofCharacterIsRefused, aTokenForPlanAIsRefusedForPlanB |
+| plan's operation id not bound to the device check | theControllersOperationIdReachesTheDeviceCheckAndIsClearedAfter |
+| level not compared | aTokenForLevelTwoIsRefusedForLevelThree |
+| 60 s cap dropped | stillHoldsFollowsFreshnessAndTheLock |
+| token from the future allowed | aTokenOlderThanSixtySecondsOrFromTheFutureIsRefused |
+| no redeem (replay allowed) | aTokenIsGenuineOnceAndOnlyOnce |
+| lock not asked before each file | aLockRemovedBetweenTheGrantAndTheStartRefusesTheStartAndEndsIt, stillHoldsFollowsFreshnessAndTheLock |
+| pass with no proof accepted for L2/L3 | aCheckThatPassedWithoutSigningTheOperationIsRefusedForLevelTwoAndThree |
+| token time = grant time, not the pass | theTokenIsStampedAndAgedFromThePassNotFromTheGrantBeingRecorded |
+| second ask of a plan keeps the first grant | aTokenOfAnotherAskOfTheSamePlanIsRefusedAfterANewAsk |
+| bound operation not cleared after the ask | theControllersOperationIdReachesTheDeviceCheckAndIsClearedAfter |
+| denied reported as cancelled | cancelledDeniedAndNoLockAreThreeDifferentRefusals |
+| lookup by proof alone (another plan's name accepted) | aTokenForPlanAIsRefusedForPlanB |
+| level always L2 | aGrantBecomesATokenBoundToTheOperationAtTheGrantLevel, levelOneAsksNothingAndCarriesNoProof |
+| `ProverDeviceAuth` ignores the bound operation | L2 and L3 ask the prover with the plan's operation id and level; theBoundOperationIsWhatTheProverSignsAndItsProofIsKeptOnce |
+| `ProverDeviceAuth` accepts a proof that is not 64 hex | a proof that is not 64 lower-case hex digits is a failure and makes no token; aPassWhoseProofIsNotSixtyFourHexDigitsIsNoPass |
+| `ProverDeviceAuth` does not keep the proof | the token carries the proof the prover signed...; a token for plan A is refused for plan B (and 4 more) |
+| a taken proof stays | theBoundOperationIsWhatTheProverSignsAndItsProofIsKeptOnce |
+| timed out reported as locked out | theDeviceCheckResultsMapOneToOne |

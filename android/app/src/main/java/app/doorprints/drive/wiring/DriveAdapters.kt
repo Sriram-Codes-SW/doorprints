@@ -26,7 +26,6 @@ import android.net.NetworkCapabilities
 import app.doorprints.crypto.DevicePlatform
 import app.doorprints.deviceauth.AuthResult
 import app.doorprints.deviceauth.DeleteLevel
-import app.doorprints.deviceauth.DeviceAuth
 import app.doorprints.drive.auth.AndroidDriveTokenProvider
 import app.doorprints.drive.auth.AuthorizerResult
 import app.doorprints.drive.auth.ConsentResolver
@@ -40,8 +39,11 @@ import app.doorprints.drive.connect.DeviceEnrolment
 import app.doorprints.drive.connect.DriveSignIn
 import app.doorprints.drive.connect.EnrolmentApproval
 import app.doorprints.drive.connect.EnrolmentRevoke
+import app.doorprints.drive.connect.OperationBoundAuth
+import app.doorprints.drive.connect.OperationProofValue
 import app.doorprints.drive.connect.SignInResult
 import app.doorprints.drive.delete.DeletionLevel
+import app.doorprints.drive.device.OperationProof
 import app.doorprints.drive.device.OperationProver
 import app.doorprints.drive.device.ProofOutcome
 import app.doorprints.drive.photo.NetworkConditions
@@ -117,18 +119,30 @@ class BackupDeviceEnrolment(private val service: DriveBackupService) : DeviceEnr
 
 /**
  * The phone's device check for the gate (`DriveGate`): asks through the [OperationProver] (a Keystore HMAC key behind
- * BiometricPrompt on Android 11+, so the check is bound to the hardware; the plain prompt below) and says only whether
- * the person passed. The proof it makes is thrown away: the gate's own grant is what the deletion service checks.
- * [lockEnabled] is the keyguard (`isDeviceSecure`), asked without any Activity.
+ * BiometricPrompt on Android 11+, so the check is bound to the hardware; the plain prompt below) for the operation the
+ * authorizer bound ([bindNext]; else a one-off label) and **keeps the proof** the prover signed for
+ * `PhoneDeletionAuthorizer` to put in the token (S4b-BL-135). [lockEnabled] is the keyguard (`isDeviceSecure`), asked
+ * without any Activity.
  */
 class ProverDeviceAuth(
     private val prover: OperationProver,
     private val lockEnabled: () -> Boolean,
     private val clock: () -> Long,
-) : DeviceAuth {
+) : OperationBoundAuth {
     private var asked = 0L
+    private var bound: String? = null
+    private var proved: OperationProofValue? = null
 
     override fun isDeviceLockEnabled(): Boolean = lockEnabled()
+
+    override fun bindNext(operationId: String?) {
+        synchronized(this) {
+            bound = operationId
+            proved = null
+        }
+    }
+
+    override fun takeProof(): OperationProofValue? = synchronized(this) { proved.also { proved = null } }
 
     override suspend fun authenticate(reason: String, level: DeleteLevel): AuthResult {
         val asLevel = when (level) {
@@ -137,8 +151,17 @@ class ProverDeviceAuth(
             // Level 1 asks nothing; a call here is a bug, and a bug must not pass.
             DeleteLevel.L1 -> return AuthResult.FAILED
         }
-        val operation = synchronized(this) { "$OPERATION_PREFIX${asLevel.name}/${++asked}" }
-        return resultOf(prover.prove(operation, asLevel, reason, clock))
+        val operation = synchronized(this) {
+            proved = null
+            bound ?: "$OPERATION_PREFIX${asLevel.name}/${++asked}"
+        }
+        val outcome = prover.prove(operation, asLevel, reason, clock)
+        if (outcome is ProofOutcome.Proved) {
+            // A pass whose proof is not 64 hex digits is no pass.
+            if (!OperationProof.isProof(outcome.proof)) return AuthResult.FAILED
+            synchronized(this) { proved = OperationProofValue(outcome.issuedAtMs, outcome.proof) }
+        }
+        return resultOf(outcome)
     }
 
     companion object {
