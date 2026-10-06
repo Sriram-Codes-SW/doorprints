@@ -29,6 +29,7 @@
 import { Injectable, inject } from '@angular/core';
 import { TRACE } from '../shared/trace-geo';
 import type { TracePoint, TraceWalk } from '../shared/trace-geo';
+import { pointsThatCanMatter } from '../shared/trace-place-check';
 import type { PlaceWalk } from '../shared/trace-place-check';
 import { splitWalks } from '../shared/trace-repeats';
 import { BatchGuardError } from './local-db';
@@ -82,6 +83,23 @@ export interface WalkSummary {
 export interface AllWalks {
   readonly trace: TraceWalk[];
   readonly saved: { readonly row: SavedWalkRow; readonly walk: TraceWalk }[];
+}
+
+/** {@link AllWalks} plus the walk the *Save this walk?* sheet is for (null when not asked for or none qualifies). */
+export interface TraceSnapshot extends AllWalks {
+  readonly ask: WalkSummary | null;
+}
+
+/** What one {@link TraceStore.snapshot} does besides reading. */
+export interface SnapshotOptions {
+  /** Delete the trace points older than 30 days (best effort: a failure is housekeeping and changes nothing returned). */
+  readonly prune?: boolean;
+  /** The live walk's id (never asked about); with `askedUpTo` it switches the walk to ask about on. */
+  readonly liveWalkId?: number;
+  /** The watermark; leave it out to skip the walk to ask about. */
+  readonly askedUpTo?: number;
+  /** False to leave the saved walks unread (the place check reads them itself, one at a time). Default true. */
+  readonly savedWalks?: boolean;
 }
 
 /** True when one of `points` carries the walk id `walkId` (the live walk's own points, whatever the first point's id). */
@@ -161,23 +179,7 @@ export class TraceStore {
    * tab is asked about once.
    */
   async lastEndedWalk(liveWalkId: number, askedUpTo: number): Promise<WalkSummary | null> {
-    const rows = await (await this.db()).getAll<TracePointRow>('trace_points');
-    const byWalk = new Map<number, TracePointRow[]>();
-    for (const r of rows) {
-      if (r.walk === 0 || r.walk === liveWalkId || r.walk <= askedUpTo) continue;
-      const list = byWalk.get(r.walk);
-      if (list) list.push(r);
-      else byWalk.set(r.walk, [r]);
-    }
-    for (const id of [...byWalk.keys()].sort((a, b) => b - a)) {
-      const points = byWalk
-        .get(id)!
-        .map(pointOfRow)
-        .sort((a, b) => a.atMs - b.atMs);
-      const lengthM = walkLengthM(points);
-      if (points.length >= ASK_MIN_POINTS && lengthM >= ASK_MIN_LENGTH_M) return summaryOf(id, points, lengthM);
-    }
-    return null;
+    return askOf(await (await this.db()).getAll<TracePointRow>('trace_points'), liveWalkId, askedUpTo);
   }
 
   /** The summary of one walk id in the trace, or null when it has no points. */
@@ -263,10 +265,34 @@ export class TraceStore {
 
   /** What the Map draws and the detection reads: the 30-day trace and every saved walk, whatever its age. */
   async allWalks(nowMs: number): Promise<AllWalks> {
-    const trace = await this.traceWalks(nowMs);
+    return this.snapshot(nowMs);
+  }
+
+  /**
+   * Everything the Map's opening or a redraw needs from one read of each store (S4b-FR-31): `trace_points` is read once and
+   * the prune, the drawn walks and the walk to ask about all come from those rows (three reads before); the saved walks are
+   * read one at a time by key. `prune` deletes the points older than 30 days (best effort); `askedUpTo` switches the walk to
+   * ask about on (`liveWalkId` is never asked about).
+   */
+  async snapshot(nowMs: number, options: SnapshotOptions = {}): Promise<TraceSnapshot> {
+    const db = await this.db();
+    const cutoff = nowMs - TRACE_KEPT_MS;
+    const all = await db.getAll<TracePointRow>('trace_points');
+    const rows = all.filter((r) => r.at >= cutoff);
+    if (options.prune === true && rows.length < all.length) {
+      try {
+        await db.deleteAll(
+          'trace_points',
+          all.filter((r) => r.at < cutoff).map((r) => r.id),
+        );
+      } catch {
+        // Housekeeping: the old points are left for the next time and are not returned either way.
+      }
+    }
     const saved: { row: SavedWalkRow; walk: TraceWalk }[] = [];
-    await this.forEachSavedWalk((row, walk) => saved.push({ row, walk }));
-    return { trace, saved };
+    if (options.savedWalks !== false) await this.forEachSavedWalk((row, walk) => saved.push({ row, walk }));
+    const ask = options.askedUpTo === undefined ? null : askOf(rows, options.liveWalkId ?? 0, options.askedUpTo);
+    return { trace: walksOf(rows.map(pointOfRow)), saved, ask };
   }
 
   /**
@@ -275,16 +301,22 @@ export class TraceStore {
    * a point of that id goes, not only one that starts with it (a legacy walk-id-0 row less than 30 minutes before the first
    * walk after the upgrade merges into the live walk, whose first point then carries 0). The check itself drops a
    * trace walk whose id equals a saved walk's (a save cut between its writes).
+   *
+   * With `near` (the place being checked) the saved walks are read one at a time and each is reduced at once to the points
+   * that can matter ({@link pointsThatCanMatter}: all of them when the walk reaches the place's band, one segment when it
+   * does not), so 200 saved walks of 5 000 points are never held together; the answer is the same.
    */
-  async placeWalks(nowMs: number, leaveOutWalkId = 0): Promise<PlaceWalk[]> {
-    const { trace, saved } = await this.allWalks(nowMs);
+  async placeWalks(nowMs: number, leaveOutWalkId = 0, near?: { readonly lat: number; readonly lon: number }): Promise<PlaceWalk[]> {
+    const { trace } = await this.snapshot(nowMs, { savedWalks: false });
     const walks: PlaceWalk[] = [];
     for (const w of trace) {
       const id = w.points[0].walkId ?? 0;
       if (leaveOutWalkId !== 0 && holdsWalkId(w.points, leaveOutWalkId)) continue;
       walks.push({ points: w.points, source: 'TRACE', walkId: id });
     }
-    for (const s of saved) walks.push({ points: s.walk.points, source: 'SAVED', walkId: s.row.startedAt });
+    await this.forEachSavedWalk((row, walk) =>
+      walks.push({ points: near ? pointsThatCanMatter(walk.points, near) : walk.points, source: 'SAVED', walkId: row.startedAt }),
+    );
     return walks;
   }
 
@@ -333,6 +365,26 @@ export class TraceStore {
 /** The walks of a flat list of trace points: split by walk id and the gap rule, keyed `t:<walkId>`. */
 export function walksOf(points: readonly TracePoint[]): TraceWalk[] {
   return splitWalks(points).map((walkPoints) => ({ key: `t:${walkPoints[0].walkId ?? 0}`, points: walkPoints }));
+}
+
+/** The walk to ask about among `rows` (see {@link TraceStore.lastEndedWalk}). */
+function askOf(rows: readonly TracePointRow[], liveWalkId: number, askedUpTo: number): WalkSummary | null {
+  const byWalk = new Map<number, TracePointRow[]>();
+  for (const r of rows) {
+    if (r.walk === 0 || r.walk === liveWalkId || r.walk <= askedUpTo) continue;
+    const list = byWalk.get(r.walk);
+    if (list) list.push(r);
+    else byWalk.set(r.walk, [r]);
+  }
+  for (const id of [...byWalk.keys()].sort((a, b) => b - a)) {
+    const points = byWalk
+      .get(id)!
+      .map(pointOfRow)
+      .sort((a, b) => a.atMs - b.atMs);
+    const lengthM = walkLengthM(points);
+    if (points.length >= ASK_MIN_POINTS && lengthM >= ASK_MIN_LENGTH_M) return summaryOf(id, points, lengthM);
+  }
+  return null;
 }
 
 function summaryOf(walkId: number, points: readonly TracePoint[], lengthM: number): WalkSummary {

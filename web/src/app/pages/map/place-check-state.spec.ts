@@ -94,6 +94,14 @@ describe('PlaceCheckState', () => {
       expect(state.text(a).headline).toContain('You walked within 10 m of this house on');
     });
 
+    it('hands the place to the store so a saved walk far from it is let go of at once (one saved walk at a time)', async () => {
+      await seedWalk();
+      const read = vi.spyOn(store, 'placeWalks');
+      const place = { lat: 100 * DEG, lon: 9.5 * DEG };
+      await state.compute('house', place);
+      expect(read).toHaveBeenCalledWith(NOW, 0, place);
+    });
+
     it('draws the matched stretch only along the walk, 60 m each side of the nearest point', async () => {
       await seedWalk();
       const a = await state.compute('house', { lat: 100 * DEG, lon: 9.5 * DEG });

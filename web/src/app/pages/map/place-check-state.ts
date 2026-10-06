@@ -102,7 +102,7 @@ export class PlaceCheckState {
    * a house or a picked spot counts every walk. Called only from a button's handler.
    */
   async compute(kind: PlaceKind, place: { lat: number; lon: number }, fixAccuracyM?: number | null): Promise<CheckAnswer> {
-    const walks = await this.store.placeWalks(Date.now(), kind === 'here' ? this.recorder.liveWalkId() : 0);
+    const walks = await this.store.placeWalks(Date.now(), kind === 'here' ? this.recorder.liveWalkId() : 0, place);
     const result = placeCheck(place, walks, kind === 'here' ? fixAccuracyM : undefined);
     const summary = placeCheckSummary(result, { hasSaved: walks.some((w) => w.source === 'SAVED'), fixAccuracyM: kind === 'here' ? fixAccuracyM : null });
     const stretches = result.rows.filter((r) => r.walked).map((r) => matchedStretch(walks[r.walkIndex], r));
