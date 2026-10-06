@@ -245,19 +245,41 @@ export class TraceRecorderService implements OnDestroy {
     this.onAlert?.(runM);
   }
 
+  /**
+   * The *Warn me when I walk a path again* switch, applied at once to a walk now recording (as on Android), not only at the
+   * next walk: turning it on loads the other walks, turning it off drops the alert's state. With no walk recording the next
+   * *Start a walk* reads the stored setting.
+   */
+  setAlertOn(on: boolean): Promise<void> {
+    this.alertOn = on;
+    if (this.state() === 'idle') return Promise.resolve();
+    this.alert.reset();
+    this.ready = this.ready.then(() => (on ? this.loadOthers() : undefined));
+    if (!on) this.others = [];
+    return this.ready;
+  }
+
   /** Reads what a walk needs once: the settings, and the other walks for the alert (never the live one). */
   private async loadContext(): Promise<void> {
     try {
       this.alertOn = await this.store.alertOn();
       this.keepAwake = await this.store.keepAwake();
       this.keptInBrowser.set(await this.store.persistent());
-      this.others = [];
-      if (this.alertOn) {
-        const { trace, saved } = await this.store.allWalks(Date.now());
-        const live = this.recorder.liveWalkId;
-        this.others = [...trace.filter((w) => !holdsWalkId(w.points, live)), ...saved.map((s) => s.walk)];
-      }
+      await this.loadOthers();
       if (this.keepAwake) await this.requestWakeLock();
+    } catch {
+      this.others = [];
+    }
+  }
+
+  /** The other walks for the alert: the trace and the saved walks, never any walk holding the live walk's points. */
+  private async loadOthers(): Promise<void> {
+    this.others = [];
+    if (!this.alertOn) return;
+    try {
+      const { trace, saved } = await this.store.allWalks(Date.now());
+      const live = this.recorder.liveWalkId;
+      this.others = [...trace.filter((w) => !holdsWalkId(w.points, live)), ...saved.map((s) => s.walk)];
     } catch {
       this.others = [];
     }

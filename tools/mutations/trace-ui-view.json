@@ -48,6 +48,12 @@
       "find": "if (this.recorder.state() === 'idle') return;",
       "replace": "",
       "expect": "does not redraw while idle"
+    },
+    {
+      "file": "web/src/app/pages/map/trace-view.ts",
+      "find": "    await this.recorder.setAlertOn(on); // a walk now recording follows the switch at once",
+      "replace": "",
+      "expect": "turning the alert on or off also tells the recorder"
     }
   ]
 }

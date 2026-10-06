@@ -39,6 +39,11 @@ class FakeRecorder {
   starts = 0;
   finishes = 0;
   ended = 0;
+  alertOn: boolean | null = null;
+  setAlertOn(on: boolean) {
+    this.alertOn = on;
+    return Promise.resolve();
+  }
   start() {
     this.starts++;
     this.state.set('recording');
@@ -233,6 +238,14 @@ describe('TraceView', () => {
     expect(await store.traceOn()).toBe(true);
     expect(await store.alertOn()).toBe(true);
     expect(await store.keepAwake()).toBe(true);
+  });
+
+  it('turning the alert on or off also tells the recorder, so a walk now recording follows it at once', async () => {
+    await view.setAlertOn(true);
+    expect(recorder.alertOn).toBe(true);
+    expect(await store.alertOn()).toBe(true);
+    await view.setAlertOn(false);
+    expect(recorder.alertOn).toBe(false);
   });
 
   it('clearing the path empties the 30-day trace and keeps the saved walks', async () => {
