@@ -56,7 +56,7 @@ sealed interface SaveWalkResult {
 /**
  * The saved walks and the walks read from the two stores (docs/11 5.27.6, docs/03 §6.2 *Room 11*). **Local only**:
  * nothing here, and no table it reads, is part of an export, a backup or a sync (`WalkPrivacySourceTest`); it logs
- * nothing (no walk id, point or count in any `Log.` or `breadcrumb(`).
+ * nothing (no walk id, point or count in any log line or breadcrumb).
  */
 @OptIn(ExperimentalUuidApi::class)
 class WalkStore(
