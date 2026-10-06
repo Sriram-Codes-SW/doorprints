@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.99 |
-| Date | 2026-10-05 |
+| Version | 0.100 |
+| Date | 2026-10-06 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -12,6 +12,7 @@
 
 | Version | Date | Author | Change |
 |---|---|---|---|
+| 0.100 | 2026-10-06 | Claude | **S4b-BL-54 done**: docs/10 v0.140, docs/06 v0.124. |
 | 0.1 | 2026-09-22 | Claude (Cowork) | First version. Index, phase map and update rules. |
 | 0.2 | 2026-09-22 | Claude (Cowork) | Added 09 (OSI layer analysis) and the CI-backed update workflow; documents 01–08 moved to v0.2 after wave 2. |
 | 0.3 | 2026-09-22 | Claude (Cowork) | Added 10 (sprint log) and the root [CHANGELOG](../CHANGELOG.md); story and candidate id prefixes; update rule for the changelog and sprint log. Sprint 2 versions: 01 v0.3, 02 v0.4, 03 v0.3, 06 v0.4, 07 v0.4, 08 v0.3, 09 v0.2 (row 5.5 and OSI-B04: dual API keys done). |
