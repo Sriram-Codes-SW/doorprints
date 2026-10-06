@@ -77,7 +77,10 @@ class MapScreenLookTest {
     @Test
     fun theDrawingTakesNoLook() {
         val drawing = root.resolve("ui/src/commonMain/kotlin/app/doorprints/ui/TraceDrawing.kt").readText()
-        assertTrue("of() has the walks as its only parameter", "fun of(walks: List<TraceWalk>): TraceDrawing {" in drawing)
+        assertTrue(
+            "of() takes the walks and a point budget, no look",
+            "fun of(walks: List<TraceWalk>, drawBudget: Int = DRAW_POINT_BUDGET): TraceDrawing {" in drawing,
+        )
         assertFalse("RepeatLook" in drawing.substringBefore("/** The place check's source and layers"))
     }
 }
