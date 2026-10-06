@@ -93,4 +93,10 @@
     <string name="notif_copy_open">కాపీని తెరవండి</string>
     <string name="notif_copy_share">కాపీని షేర్ చేయండి</string>
     <string name="notif_task_stop">ఈ పనిని ఆపండి</string>
+    <!-- S4b-BL-127 (2026-10-06): the device lock notice of Settings > Google Drive: under review. -->
+    <string name="drive_lock_heading">Google Drive కి బ్యాకప్ చేయండి</string>
+    <string name="drive_lock_needs">Google Drive బ్యాకప్‌కు ఈ ఫోన్‌లో స్క్రీన్ లాక్ (PIN, ప్యాటర్న్, పాస్‌వర్డ్, వేలిముద్ర లేదా ముఖం) అవసరం. ఫోన్ సెట్టింగ్‌లలో పెట్టి, తర్వాత తిరిగి రండి.</string>
+    <string name="drive_lock_paused">ఈ ఫోన్‌లో ఇక స్క్రీన్ లాక్ లేనందున Google Drive బ్యాకప్ ఆగింది. మీ ఇళ్లు ఈ ఫోన్‌లో సురక్షితంగా ఉన్నాయి. కొనసాగడానికి స్క్రీన్ లాక్ పెట్టండి.</string>
+    <string name="drive_lock_open_settings">సెట్టింగ్‌లను తెరవండి</string>
+    <string name="drive_lock_notif_title">Google Drive బ్యాకప్ ఆగింది</string>
 </resources>

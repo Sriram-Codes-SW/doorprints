@@ -237,6 +237,14 @@ interface SettingsServices {
 
     /** The installed version name ("0.1.0"), or null. */
     fun appVersion(): String?
+
+    /**
+     * Settings > Google Drive (docs/15 §2): the platform's section, which draws its own divider, or nothing where the
+     * platform has none yet (the default).
+     */
+    @Composable
+    fun DriveSection() {
+    }
 }
 
 /**
