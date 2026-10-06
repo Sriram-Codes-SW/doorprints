@@ -161,6 +161,16 @@ export function baseLines(points: readonly TracePoint[]): [number, number][][] {
   return lines.filter((l) => l.length >= 2);
 }
 
+/** At most this many points are DRAWN (the detection reads at most `TRACE.maxDetectionPoints`; this is its twice, a few MB of GeoJSON). */
+export const MAX_DRAWN_POINTS = 40_000;
+
+/** Every `stride`-th point of a line and always its last (the first is index 0): thinning for the drawing only. */
+export function thinLine<T>(coordinates: readonly T[], stride: number): readonly T[] {
+  if (stride <= 1 || coordinates.length <= 2) return coordinates;
+  const last = coordinates.length - 1;
+  return coordinates.filter((_, i) => i % stride === 0 || i === last);
+}
+
 const line = (coordinates: [number, number][], properties: Record<string, string>): LineFeature => ({
   type: 'Feature',
   properties,
@@ -169,14 +179,20 @@ const line = (coordinates: [number, number][], properties: Record<string, string
 
 /**
  * Every walk whole (`kind` base) and every shown stretch of it (`kind` repeat). `repeats[i]` belongs to `walks[i]`; a walk
- * without an entry (left out of the detection) is drawn whole with no overlay.
+ * without an entry (left out of the detection) is drawn whole with no overlay. Whole means every walk and both ends of every
+ * line: when the walks hold more than `maxDrawn` points together, every line (and stretch) is thinned by the same stride, the
+ * first and the last point kept (the walks, the stretches and the detection are never touched, only what is drawn).
  */
-export function trackGeoJson(walks: readonly TraceWalk[], repeats: readonly WalkRepeats[]): LineCollection {
+export function trackGeoJson(walks: readonly TraceWalk[], repeats: readonly WalkRepeats[], maxDrawn: number = MAX_DRAWN_POINTS): LineCollection {
+  const bases = walks.map((w) => baseLines(w.points));
+  let total = 0;
+  for (const lines of bases) for (const l of lines) total += l.length;
+  const stride = total > maxDrawn ? Math.ceil(total / maxDrawn) : 1;
   const features: LineFeature[] = [];
   walks.forEach((w, i) => {
-    for (const coordinates of baseLines(w.points)) features.push(line(coordinates, { kind: 'base', key: w.key }));
+    for (const coordinates of bases[i]) features.push(line([...thinLine(coordinates, stride)], { kind: 'base', key: w.key }));
     const shown = repeats[i]?.shown ?? [];
-    if (shown.length > 0) for (const coordinates of pieces(w, shown)) features.push(line(coordinates, { kind: 'repeat', key: w.key }));
+    if (shown.length > 0) for (const coordinates of pieces(w, shown)) features.push(line([...thinLine(coordinates, stride)], { kind: 'repeat', key: w.key }));
   });
   return { type: 'FeatureCollection', features };
 }

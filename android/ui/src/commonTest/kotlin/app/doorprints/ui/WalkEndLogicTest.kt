@@ -46,6 +46,15 @@ class WalkEndLogicTest {
         assertEquals(3, s.minutes)
     }
 
+    @Test fun aWalkUnderAMinuteIsOneMinuteNeverZeroAndHalfAMinuteRoundsUp() {
+        fun minutes(seconds: Long) = WalkSummary(7, listOf(TracePoint(12.97, 77.6, 0L, 1L), TracePoint(12.971, 77.6, seconds * 1000, 1L))).minutes
+        assertEquals(1, minutes(20), "a 20 s walk is 1 min (the website's Math.max(1, ...))")
+        assertEquals(1, minutes(0))
+        assertEquals(1, minutes(89))
+        assertEquals(2, minutes(90), "90 s is 1.5 min: rounded up")
+        assertEquals(5, minutes(300))
+    }
+
     @Test fun theNearestToWhereTheWalkStoppedIsPreselectedWithinTheAlertRadius() {
         val points = walk(listOf(0.0, 100.0, 200.0, 300.0))
         val houses = listOf(house("a", 310.0), house("b", 120.0), house("far", 900.0))

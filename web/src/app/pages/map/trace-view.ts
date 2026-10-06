@@ -92,9 +92,7 @@ export class TraceView {
       this.alertOn.set(alert);
       this.keepAwake.set(awake);
       this.kept.set(kept);
-      await this.store.prune(Date.now());
-      await this.refresh();
-      await this.findAsk(this.recorder.liveWalkId());
+      await this.load({ prune: true, ask: this.recorder.liveWalkId() });
     } catch {
       this.loadError.set(true);
     }
@@ -103,20 +101,31 @@ export class TraceView {
   /** Reads the walks and draws them. The repeat detection is skipped when no walk changed. */
   async refresh(): Promise<void> {
     try {
-      const { trace, saved } = await this.store.allWalks(Date.now());
-      const list: TraceWalk[] = [...trace, ...saved.map((s) => s.walk)];
-      this.savedCount.set(saved.length);
-      this.loadError.set(false);
-      const key = list.map((w) => `${w.key}:${w.points.length}`).join('|');
-      if (key === this.lastKey) return;
-      this.lastKey = key;
-      const repeats = detectRepeats(list);
-      this.walks.set(trackGeoJson(list, repeats));
-      this.walkCount.set(list.length);
-      this.repeatCount.set(repeats.reduce((n, r) => n + r.shown.length, 0));
+      await this.load({});
     } catch {
       this.loadError.set(true);
     }
+  }
+
+  /**
+   * One read of each store (S4b-FR-31): draws the walks and, with `ask` (the live walk's id), sets the walk the sheet is for;
+   * with `prune`, the points older than 30 days go from the same rows.
+   */
+  private async load(options: { prune?: boolean; ask?: number }): Promise<void> {
+    // A watermark that cannot be read asks about nothing (never about every walk again).
+    const askedUpTo = options.ask === undefined ? undefined : await this.store.askedUpTo().catch(() => undefined);
+    const { trace, saved, ask } = await this.store.snapshot(Date.now(), { prune: options.prune, liveWalkId: options.ask, askedUpTo });
+    if (options.ask !== undefined) this.ask.set(ask);
+    const list: TraceWalk[] = [...trace, ...saved.map((s) => s.walk)];
+    this.savedCount.set(saved.length);
+    this.loadError.set(false);
+    const key = list.map((w) => `${w.key}:${w.points.length}`).join('|');
+    if (key === this.lastKey) return;
+    this.lastKey = key;
+    const repeats = detectRepeats(list);
+    this.walks.set(trackGeoJson(list, repeats));
+    this.walkCount.set(list.length);
+    this.repeatCount.set(repeats.reduce((n, r) => n + r.shown.length, 0));
   }
 
   private liveTick(): void {
@@ -149,12 +158,11 @@ export class TraceView {
     this.recorder.finish();
     await this.recorder.settled();
     try {
-      await this.store.prune(Date.now());
+      await this.load({ prune: true, ask: 0 });
     } catch {
-      // Pruning is housekeeping; a failure must not hide the sheet.
+      this.loadError.set(true);
+      this.ask.set(null);
     }
-    await this.refresh();
-    await this.findAsk(0);
   }
 
   private async findAsk(liveWalkId: number): Promise<void> {

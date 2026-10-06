@@ -51,8 +51,8 @@ describe('HouseWalksCard', () => {
   let store: TraceStore;
 
   /** A walk of `n` points 20 m apart, one minute apart, saved to `house`. */
-  async function saveWalk(startedAt: number, n = 6, house = HOUSE): Promise<string> {
-    for (let i = 0; i < n; i++) await store.putPoint({ lat: i * 20 * DEG, lon: 0, atMs: startedAt + i * 60_000, walkId: startedAt }, 10);
+  async function saveWalk(startedAt: number, n = 6, house = HOUSE, stepMs = 60_000): Promise<string> {
+    for (let i = 0; i < n; i++) await store.putPoint({ lat: i * 20 * DEG, lon: 0, atMs: startedAt + i * stepMs, walkId: startedAt }, 10);
     const r = await store.saveWalk(startedAt, house, NOW);
     if (!r.ok) throw new Error('not saved');
     return r.id;
@@ -106,6 +106,13 @@ describe('HouseWalksCard', () => {
     expect(texts[1]).toMatch(/100 m, 5 min$/);
     expect(texts[0]).toContain('5 Oct');
     expect(texts[1]).toContain('1 Oct');
+  });
+
+  it('shows at least 1 minute for a walk that lasted seconds (S4b-FR-35: max(1, rounded), as on the phones)', async () => {
+    const { mount } = await render();
+    await saveWalk(Date.UTC(2026, 9, 1, 9, 0), 6, HOUSE, 1_000);
+    const r = await mount();
+    expect(r.rows()[0].querySelector('.row-text')!.textContent!.replace(/\s+/g, ' ').trim()).toMatch(/100 m, 1 min$/);
   });
 
   it('each row has Show on map and Delete walk, described by the row so a screen reader knows which walk', async () => {

@@ -22,6 +22,7 @@ import app.doorprints.shared.api.AskResponseDto
 import app.doorprints.shared.trace.TracePoint
 import app.doorprints.shared.trace.TraceWalk
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import app.doorprints.shared.api.HouseDraftDto
 import app.doorprints.shared.api.PairPolledDto
@@ -149,6 +150,12 @@ interface Repository {
 
     /** Every walk stored: the 30-day trace split into walks, and every saved walk of a live house (the check, the Map). */
     suspend fun walks(): List<TraceWalk> = emptyList()
+
+    /**
+     * [walks], one at a time (the place check, docs/11 5.27.13): a saved walk is read and decoded when the collector asks for
+     * it, so the saved walks are never all in memory together. The default wraps [walks].
+     */
+    fun placeWalks(): Flow<TraceWalk> = flow { for (w in walks()) emit(w) }
 
     /** The walks the alert compares the live walk [liveWalkId] with: [walks] without the live one. */
     suspend fun walksOtherThan(liveWalkId: Long): List<List<TracePoint>> = emptyList()

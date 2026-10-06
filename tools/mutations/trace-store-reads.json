@@ -1,0 +1,77 @@
+{
+  "spec": "web/src/app/data/trace-store-reads.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/data/trace-store.ts",
+      "find": "if (options.prune === true && rows.length < all.length) {",
+      "replace": "if (rows.length < all.length) {",
+      "expect": "does not prune or ask unless told to"
+    },
+    {
+      "file": "web/src/app/data/trace-store.ts",
+      "find": "const rows = all.filter((r) => r.at >= cutoff);",
+      "replace": "const rows = all.filter((r) => r.at > cutoff);",
+      "expect": "keeps a point exactly 30 days old"
+    },
+    {
+      "file": "web/src/app/data/trace-store.ts",
+      "find": "const rows = all.filter((r) => r.at >= cutoff);",
+      "replace": "const rows = all;",
+      "expect": "does not prune or ask unless told to"
+    },
+    {
+      "file": "web/src/app/data/trace-store.ts",
+      "find": "if (options.savedWalks !== false) await",
+      "replace": "if (true) await",
+      "expect": "reads 200 saved walks as 200 key reads"
+    },
+    {
+      "file": "web/src/app/data/trace-store.ts",
+      "find": "askOf(rows, options.liveWalkId ?? 0, options.askedUpTo)",
+      "replace": "null",
+      "expect": "reads trace_points once for the prune"
+    },
+    {
+      "file": "web/src/app/data/trace-store.ts",
+      "find": "near ? pointsThatCanMatter(walk.points, near) : walk.points",
+      "replace": "walk.points",
+      "expect": "cannot reach the place is kept as one segment only"
+    },
+    {
+      "file": "web/src/app/data/trace-store.ts",
+      "find": "if (r.walk === 0 || r.walk === liveWalkId || r.walk <= askedUpTo) continue;",
+      "replace": "if (r.walk === 0 || r.walk <= askedUpTo) continue;",
+      "expect": "never takes the live walk"
+    },
+    {
+      "file": "web/src/app/shared/trace-place-check.ts",
+      "find": "if (reaches) return points;",
+      "replace": "if (!reaches) return points;",
+      "expect": "cannot reach the place is kept as one segment only"
+    },
+    {
+      "file": "web/src/app/shared/trace-place-check.ts",
+      "find": "(TRACE.nearBandM * 1.01) / K;",
+      "replace": "(TRACE.nearBandM * 0.5) / K;",
+      "expect": "answers exactly as with every point kept"
+    },
+    {
+      "file": "web/src/app/shared/trace-place-check.ts",
+      "find": "return i < 0 ? points.slice(0, 2) : [points[i - 1], points[i]];",
+      "replace": "return i < 0 ? points.slice(0, 2) : [points[i]];",
+      "expect": "still counts as a walk"
+    },
+    {
+      "file": "web/src/app/shared/trace-place-check.ts",
+      "find": "at > 0 && p.resumed !== true",
+      "replace": "at > 0",
+      "expect": "the segment kept of a far walk is its first real one"
+    },
+    {
+      "file": "web/src/app/data/trace-store.ts",
+      "find": "all.filter((r) => r.at < cutoff).map((r) => r.id)",
+      "replace": "all.filter((r) => r.at <= cutoff).map((r) => r.id)",
+      "expect": "keeps a point exactly 30 days old"
+    }
+  ]
+}

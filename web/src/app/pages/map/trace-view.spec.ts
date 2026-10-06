@@ -175,6 +175,56 @@ describe('TraceView', () => {
     expect(view.walkCount()).toBe(1);
   });
 
+  describe('reads of the stores (S4b-FR-31)', () => {
+    const traceReads = async () => {
+      const db = await TestBed.inject(LocalStore).database();
+      const getAll = vi.spyOn(db, 'getAll');
+      return () => getAll.mock.calls.filter((c) => c[0] === 'trace_points').length;
+    };
+
+    it('opening the Map reads the trace store once for the prune, the drawing and the walk to ask about', async () => {
+      await seed(NOW - 40 * 86_400_000, 6);
+      await seed(NOW - 600_000, 8);
+      const reads = await traceReads();
+      await view.open();
+      expect(reads()).toBe(1);
+      expect(view.ask()?.walkId).toBe(NOW - 600_000);
+      expect(view.walkCount()).toBe(1);
+    });
+
+    it('Finish walk reads it once for the prune, the redraw and the walk to ask about', async () => {
+      await seed(NOW - 40 * 86_400_000, 6);
+      await view.open();
+      recorder.live = NOW - 300_000;
+      await seed(recorder.live, 8);
+      const reads = await traceReads();
+      await view.finishWalk();
+      expect(reads()).toBe(1);
+      expect(view.ask()?.walkId).toBe(NOW - 300_000);
+      expect(await store.walkPoints(NOW - 40 * 86_400_000)).toEqual([]);
+    });
+
+    it('a redraw reads it once and a redraw when nothing changed does not run the detection or draw again', async () => {
+      await seed(NOW - 600_000, 8);
+      await view.open();
+      const reads = await traceReads();
+      const drawn = view.walks();
+      await view.refresh();
+      expect(reads()).toBe(1);
+      expect(view.walks()).toBe(drawn);
+    });
+
+    it('a failing prune does not hide the walk to ask about', async () => {
+      await seed(NOW - 40 * 86_400_000, 6);
+      await seed(NOW - 600_000, 8);
+      const db = await TestBed.inject(LocalStore).database();
+      vi.spyOn(db, 'deleteAll').mockRejectedValue(new Error('quota'));
+      await view.open();
+      expect(view.loadError()).toBe(false);
+      expect(view.ask()?.walkId).toBe(NOW - 600_000);
+    });
+  });
+
   it('keeping for 30 days only moves the watermark; the walk stays in the trace', async () => {
     const id = NOW - 600_000;
     await seed(id, 8);

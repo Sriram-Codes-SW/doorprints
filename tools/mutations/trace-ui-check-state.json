@@ -42,6 +42,12 @@
       "find": "this.cancelLocate?.();\n    this.cancelLocate = null;\n    this.locating.set(false);\n  }\n\n  /** *Close*",
       "replace": "this.cancelLocate = null;\n    this.locating.set(false);\n  }\n\n  /** *Close*",
       "expect": "Cancel stops the watch"
+    },
+    {
+      "file": "web/src/app/pages/map/place-check-state.ts",
+      "find": "this.recorder.liveWalkId() : 0, place);",
+      "replace": "this.recorder.liveWalkId() : 0);",
+      "expect": "hands the place to the store"
     }
   ]
 }

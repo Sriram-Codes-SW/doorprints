@@ -34,7 +34,6 @@ class RepeatAlert(others: List<List<TracePoint>>) {
     private var index: SegmentIndex? = null
     private val builder = SampleBuilder()
     private var near = BooleanArray(64)
-    private var count = 0
     private var blocked = false
     private var lastAlertAt: Long? = null
 
@@ -56,7 +55,6 @@ class RepeatAlert(others: List<List<TracePoint>>) {
         for (i in builder.lastAddedFrom until s.size) {
             near[i] = idx.anyWithin(s.lat[i], s.lon[i], TraceConstants.TOLERANCE_M, -1)
         }
-        count++
         val last = s.size - 1
         if (!near[last]) {
             // Unblock only when bridging could no longer join this sample to the run behind it.
@@ -65,7 +63,6 @@ class RepeatAlert(others: List<List<TracePoint>>) {
             if (n < 0 || s.part[n] != s.part[last] || s.arc[last] - s.arc[n] > TraceConstants.BRIDGE_M) blocked = false
             return null
         }
-        if (count == 1) return null // index 0 never alerts
         // The trailing run: near samples (after bridging, within one part) ending at the last sample.
         var start = last
         while (true) {

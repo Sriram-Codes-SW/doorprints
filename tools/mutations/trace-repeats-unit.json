@@ -54,6 +54,18 @@
       "find": "    if (start >= 0) runs.push({ first: start, last: i - 1 });",
       "replace": "    if (start >= 1) runs.push({ first: start, last: i - 1 });",
       "expect": "a shared stretch of 80 m"
+    },
+    {
+      "file": "web/src/app/shared/trace-repeats.ts",
+      "find": "      this.long.push(id);\n      return;",
+      "replace": "      return;",
+      "expect": "more than 400 grid cells"
+    },
+    {
+      "file": "web/src/app/shared/trace-repeats.ts",
+      "find": "walks[a].points[0].atMs || b - a);",
+      "replace": "walks[a].points[0].atMs || a - b);",
+      "expect": "the later one is read first when the budget fits only one"
     }
   ]
 }

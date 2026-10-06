@@ -29,6 +29,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
@@ -65,6 +66,8 @@ class WalkStore(
     private val db: AppDatabase,
     private val now: () -> Long,
     private val newId: () -> String = { Uuid.random().toString() },
+    /** Decodes a saved walk's bytes; a seam so a test can count how many are decoded at once. */
+    private val decode: (SavedWalkEntity) -> List<TracePoint>? = { WalkCodec.decode(it.points, it.startedAt, it.pointCount) },
 ) {
     /**
      * Emits at once and after each committed change to the trace or the saved walks, **not** the houses (a sync or a house
@@ -110,13 +113,13 @@ class WalkStore(
     suspend fun deleteAllSavedWalks() = db.savedWalks().deleteAll()
 
     suspend fun savedWalkPoints(id: String): List<TracePoint>? =
-        db.savedWalks().get(id)?.let { WalkCodec.decode(it.points, it.startedAt, it.pointCount) }
+        db.savedWalks().get(id)?.let(decode)
 
     /** The newest walk id above [askedUpTo], not [liveWalkId], with at least 5 points and 100 m (docs/11 5.27.6). */
     suspend fun lastEndedWalk(askedUpTo: Long, liveWalkId: Long): Long? {
         for (id in db.track().walkIdsAbove(askedUpTo, liveWalkId)) {
             val points = db.track().ofWalk(id).map { TracePoint(it.lat, it.lon, it.at, it.walkId) }
-            if (points.size >= TraceConstants.ASK_MIN_POINTS && lengthM(points) >= TraceConstants.ASK_MIN_LENGTH_M) return id
+            if (points.size >= TraceConstants.ASK_MIN_POINTS && rawLengthM(points) >= TraceConstants.ASK_MIN_LENGTH_M) return id
         }
         return null
     }
@@ -133,20 +136,37 @@ class WalkStore(
     suspend fun walksOtherThan(liveWalkId: Long, sinceMs: Long): List<List<TracePoint>> =
         walksOtherThanWithSource(liveWalkId, sinceMs).map { it.first }
 
-    private suspend fun walksOtherThanWithSource(liveWalkId: Long, sinceMs: Long): List<Pair<List<TracePoint>, WalkSource>> {
-        val saved = db.savedWalks().live()
-        val savedIds = saved.mapTo(HashSet()) { it.startedAt }
-        val trace = splitWalks(db.track().since(sinceMs).map { TracePoint(it.lat, it.lon, it.at, it.walkId) })
+    /** The 30-day trace split into walks, without the live walk [liveWalkId] and without a walk saved under the same id. */
+    private suspend fun traceWalks(liveWalkId: Long, sinceMs: Long, savedStarts: Set<Long>): List<List<TracePoint>> =
+        splitWalks(db.track().since(sinceMs).map { TracePoint(it.lat, it.lon, it.at, it.walkId) })
             .filter { w ->
                 val id = w.first().walkId
                 // Legacy rows (id 0) less than 30 minutes before the live walk merge into it, so the live id may be on
                 // a later point than the first: any walk holding a point of the live walk is the live walk.
-                (liveWalkId == 0L || w.none { it.walkId == liveWalkId }) && (id == 0L || id !in savedIds)
+                (liveWalkId == 0L || w.none { it.walkId == liveWalkId }) && (id == 0L || id !in savedStarts)
             }
+
+    private suspend fun walksOtherThanWithSource(liveWalkId: Long, sinceMs: Long): List<Pair<List<TracePoint>, WalkSource>> {
+        val saved = db.savedWalks().live()
+        val trace = traceWalks(liveWalkId, sinceMs, saved.mapTo(HashSet()) { it.startedAt })
         val out = ArrayList<Pair<List<TracePoint>, WalkSource>>(trace.size + saved.size)
         trace.mapTo(out) { it to WalkSource.TRACE }
-        for (w in saved) WalkCodec.decode(w.points, w.startedAt, w.pointCount)?.let { out.add(it to WalkSource.SAVED) }
+        for (w in saved) decode(w)?.let { out.add(it to WalkSource.SAVED) }
         return out
+    }
+
+    /**
+     * The walks of [walks], one at a time, in the same order: the 30-day trace walks (they are small), then each saved
+     * walk of a live house newest first, **read and decoded only when the collector asks for it** (docs/11 5.27.13: the
+     * place check compares a walk and lets it go, so 200 saved walks are never in memory together).
+     */
+    fun placeWalks(sinceMs: Long): Flow<TraceWalk> = flow {
+        val refs = db.savedWalks().liveRefs()
+        for (w in traceWalks(0, sinceMs, refs.mapTo(HashSet()) { it.startedAt })) emit(TraceWalk(w, WalkSource.TRACE))
+        for (ref in refs) {
+            val row = db.savedWalks().get(ref.id) ?: continue // deleted since the list was read
+            decode(row)?.let { emit(TraceWalk(it, WalkSource.SAVED)) }
+        }
     }
 
     /** Every saved walk whose house is a tombstone or missing goes; not cancelled by a screen closing. */
@@ -154,12 +174,15 @@ class WalkStore(
         withContext(NonCancellable + Dispatchers.IO) { runCatching { db.savedWalks().sweepOfDeletedHouses() } }
     }
 
-    private fun lengthM(points: List<TracePoint>): Int {
+    private fun lengthM(points: List<TracePoint>): Int = rawLengthM(points).roundToInt()
+
+    /** The unrounded length, as the website's `walkLengthM`: 99.6 m is not 100 m for the question. */
+    private fun rawLengthM(points: List<TracePoint>): Double {
         var total = 0.0
         for (i in 1 until points.size) {
             if (points[i].resumed) continue
             total += TraceGeo.segmentLengthM(points[i - 1].lat, points[i - 1].lon, points[i].lat, points[i].lon)
         }
-        return total.roundToInt()
+        return total
     }
 }
