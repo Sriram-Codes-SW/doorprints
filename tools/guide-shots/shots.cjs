@@ -36,14 +36,21 @@ const ROOT = path.resolve(process.argv[2] || path.join(__dirname, '..', '..', 'w
 const OUT = path.resolve(process.argv[3] || path.join(__dirname, 'out'));
 const ONLY = [...(process.env.SHOTS || '').split(',').filter(Boolean), ...process.argv.slice(4)]; // SHOTS=name,name picks pictures
 // LANGS=en,hi,ta,te (default en): one set of pictures per language, named <name>.png for English and <name>-<lang>.png otherwise.
+const KNOWN_LANGS = ['en', 'hi', 'ta', 'te'];
 const LANGS = (process.env.LANGS || 'en').split(',');
+for (const lang of LANGS) if (!KNOWN_LANGS.includes(lang)) throw new Error(`LANGS: ${lang} is not one of ${KNOWN_LANGS.join(', ')}`);
 const I18N_DIR = path.join(__dirname, '..', '..', 'web', 'src', 'app', 'i18n');
 const LANG_KEY = 'doorprints.lang';
 
 /** The text the app shows for a key in a language, read from the dictionary file itself (so a shot finds its place by key, not by English words). */
+/** The text with every regular-expression metacharacter (backslash included) escaped, to match it literally. */
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function text(lang, key) {
   const source = fs.readFileSync(path.join(I18N_DIR, `${lang}.ts`), 'utf8');
-  const m = source.match(new RegExp(`^\\s*'${key.replace(/\./g, '\\.')}':\\s*'((?:[^'\\\\]|\\\\.)*)'`, 'm'));
+  const m = source.match(new RegExp(`^\\s*'${escapeRegExp(key)}':\\s*'((?:[^'\\\\]|\\\\.)*)'`, 'm'));
   if (!m) throw new Error(`no ${key} in ${lang}.ts`);
   return m[1].replace(/\\'/g, "'");
 }
