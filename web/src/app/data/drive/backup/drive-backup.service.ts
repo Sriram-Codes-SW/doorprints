@@ -635,6 +635,21 @@ export class DriveBackupService {
     return { rootId: root.id, keys, bytes: await downloadVerified(this.drive, keys.id) };
   }
 
+  /** Verify a recovery key against Drive's keys.json without changing anything (docs/15 §10.4a). */
+  async verifyRecoveryKey(recoveryKey: RecoveryKey): Promise<boolean> {
+    const located = await this.locateKeys();
+    if (!located) return false;
+    const guard = new KeysGuard(this.p, this.trust.keys(located.rootId));
+    // Skip verification if no pin yet: a read-only check must not create the first pin.
+    if ((await guard.watermark()) === null) return false;
+    try {
+      await this.keysFile.openWithRecovery(located.bytes, recoveryKey, guard);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   /** A file of `kind` in the folder: the remembered id first (a listing may lag), else the oldest listed. */
   private async findKind(rootId: string, kind: string, knownId: string | null): Promise<DriveFile | null> {
     if (knownId != null) {

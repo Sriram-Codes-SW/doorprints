@@ -27,11 +27,14 @@ import { SEALED_BLOB_KEY, sealedBlobFromJson } from '../../../device-auth/prf-se
 import type { DriveRuntime } from './runtime';
 import type { DeletionAction } from '../../drive-deletion-rules';
 import type { DeletionContext } from '../../../device-auth/delete-policy';
+import type { RecoveryKey } from '../../../crypto/recovery-key';
 
 /** What the lazy proxy may be given instead of the browser's own (tests pass a scripted passkey and a clock). */
 export interface DeletionFactoryDeps {
   readonly prf?: PrfAuthenticator;
   readonly clock?: () => number;
+  /** Optional recovery verification seam for authorizeWithRecoveryKey (passed from the backup factory). */
+  readonly recovery?: { verify(key: RecoveryKey): Promise<boolean> };
 }
 
 const REFUSING: DriveDeletionAdapter = {
@@ -46,6 +49,12 @@ const REFUSING: DriveDeletionAdapter = {
   },
   async authorizePolicy() {
     return { kind: 'refused', reason: 'Not connected' };
+  },
+  async authorizeWithRecoveryKey() {
+    return { kind: 'refused', reason: 'Not connected' };
+  },
+  forgetProof() {
+    // No-op when not connected
   },
   async execute() {
     return { kind: 'refused', reason: 'OFFLINE', error: null };
@@ -116,7 +125,13 @@ export function createDeletionAdapter(
     }
   };
 
-  const webAuthorizer = new WebAuthorizer(rt.crypto, authenticator, sealedBlob, clockFn);
+  const webAuthorizer = new WebAuthorizer(
+    rt.crypto,
+    authenticator,
+    sealedBlob,
+    clockFn,
+    prfAuthenticator ? undefined : deps.recovery,
+  );
   const authorizationGate = new RealAuthorizationGate(webAuthorizer, clockFn);
 
   const deletionService = new DriveDeletionService({
@@ -174,6 +189,14 @@ export function createLazyDeletionAdapterProxy(getRuntime: () => Promise<DriveRu
 
     async authorizePolicy(action: PolicyDeletionAction, context: DeletionContext): Promise<AuthorizationResult> {
       return (await getAdapter()).authorizePolicy(action, context);
+    },
+
+    async authorizeWithRecoveryKey(action: DeletionAction, context: DeletionContext, operationId: string, key: RecoveryKey): Promise<AuthorizationResult> {
+      return (await getAdapter()).authorizeWithRecoveryKey(action, context, operationId, key);
+    },
+
+    forgetProof(): void {
+      (getAdapter() as Promise<DriveDeletionAdapter>).then(a => a.forgetProof());
     },
 
     async execute(plan, grant) {
