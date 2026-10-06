@@ -20,10 +20,19 @@ package app.doorprints.drive.backup
 
 import app.doorprints.crypto.Bytes
 import app.doorprints.crypto.CryptoProvider
+import app.doorprints.crypto.DevicePlatform
 import app.doorprints.crypto.Dpx
+import app.doorprints.crypto.Hpke
 import app.doorprints.crypto.KeysException
 import app.doorprints.crypto.KeysFile
 import app.doorprints.crypto.KeysGuard
+import app.doorprints.crypto.KeysWatermark
+import app.doorprints.crypto.KeysWatermarkStore
+import app.doorprints.crypto.QR_PSK_ID
+import app.doorprints.crypto.QR_PSK_LEN
+import app.doorprints.crypto.WrapAad
+import app.doorprints.crypto.openPsk
+import app.doorprints.crypto.sealPsk
 import app.doorprints.crypto.OpenedKeys
 import app.doorprints.crypto.RecoveryKey
 import app.doorprints.crypto.kidOf
@@ -171,6 +180,143 @@ class DriveBackupService(
             opened = written.opened
         }
         ready(rootId, keys.id, opened)
+    }
+
+    // ---- Enrolment, pairing and revocation (S4b-BL-126; docs/15 §9.5; web twin: `drive-backup.service.ts`) -----------
+
+    /** This device's public key, the one a pairing request or a QR code must carry (not a key made up on the screen). */
+    fun devicePublicKey(): ByteArray = device.key.publicKey
+
+    /** This device's key id, so a screen can mark its own row. */
+    fun deviceKid(): ByteArray = myKid.copyOf()
+
+    /**
+     * After the 8-digit codes match (docs/15 §9.5 i): re-read `keys.json`, list the new device, and return the wrap of
+     * the current folder key made for exactly that public key. The newcomer opens that wrap (it came over the pairing
+     * messages, not from a file they chose in Drive) and pins with it. A QR enrolment uses [approveDevicePsk]. Call it
+     * only for a transcript this device has just shown: the approver's screen has displayed the code and the person
+     * said it matches.
+     */
+    suspend fun approveDevice(publicKey: ByteArray, name: String, platform: DevicePlatform): ApproveDeviceOutcome = try {
+        val (rootId, keys, bytes) = locateKeys() ?: return ApproveDeviceOutcome.Error(DriveProblem(DriveProblem.Kind.FOLDER_WITHOUT_KEYS))
+        val guard = KeysGuard(p, trust.keys(rootId))
+        val opened = keysFile.open(bytes, device.key, guard)
+        val written = keysFile.addDevice(opened, myKid, KeysFile.NewDevice(publicKey, name, platform), clock())
+        writeKeys(keys.id, written.bytes)
+        guard.acceptWritten(written)
+        val entry = written.opened.body.device(kidOf(p, publicKey))
+        if (entry == null) {
+            ApproveDeviceOutcome.Error(DriveProblem(DriveProblem.Kind.KEYS_UNREADABLE))
+        } else {
+            when (val connection = ready(rootId, keys.id, written.opened)) {
+                is DriveConnection.Ready -> ApproveDeviceOutcome.Approved(connection, entry.wrap.enc.copyOf(), entry.wrap.ct.copyOf(), written.opened.epoch)
+                is DriveConnection.Error -> ApproveDeviceOutcome.Error(connection.problem)
+                else -> ApproveDeviceOutcome.Error(DriveProblem(DriveProblem.Kind.DRIVE))
+            }
+        }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: FolderWithoutKeys) {
+        ApproveDeviceOutcome.Error(DriveProblem(DriveProblem.Kind.FOLDER_WITHOUT_KEYS))
+    } catch (e: Exception) {
+        ApproveDeviceOutcome.Error(DriveProblem.of(e))
+    }
+
+    /**
+     * After the connected device has seen `pk_new ‖ s` (the QR or the pasted code): list the device as [approveDevice]
+     * does, then return a second wrap of the same folder key in HPKE PSK mode. The newcomer accepts only that wrap.
+     * The base-mode wrap stays in `keys.json` and is not handed back. A [psk] that is not 32 bytes writes nothing.
+     */
+    suspend fun approveDevicePsk(publicKey: ByteArray, name: String, platform: DevicePlatform, psk: ByteArray): ApproveDeviceOutcome {
+        if (psk.size != QR_PSK_LEN) return ApproveDeviceOutcome.Error(DriveProblem(DriveProblem.Kind.KEYS_UNREADABLE))
+        val approved = approveDevice(publicKey, name, platform)
+        if (approved !is ApproveDeviceOutcome.Approved) return approved
+        val kid = kidOf(p, publicKey)
+        val folderKey = approved.connection.folder.keys.currentFolderKey()
+        return try {
+            val sealed = Hpke(p).sealPsk(publicKey, WrapAad.HPKE_INFO, WrapAad.folderKey(approved.epoch, kid), folderKey, psk, QR_PSK_ID)
+            ApproveDeviceOutcome.Approved(approved.connection, sealed.enc, sealed.ciphertext, approved.epoch)
+        } catch (e: Exception) {
+            ApproveDeviceOutcome.Error(DriveProblem.of(e))
+        } finally {
+            folderKey.fill(0)
+        }
+    }
+
+    /**
+     * The newcomer's first pin from the wrap the enrolled device handed over after the codes matched. The wrap is
+     * opened here; the folder key is never taken from a Drive download alone.
+     */
+    suspend fun joinFromWrap(enc: ByteArray, ct: ByteArray, epoch: Int): DriveConnection {
+        if (epoch < 1) return DriveConnection.Error(DriveProblem(DriveProblem.Kind.KEYS_UNREADABLE))
+        val folderKey = try {
+            Hpke(p).open(enc, device.key, WrapAad.HPKE_INFO, WrapAad.folderKey(epoch, myKid), ct)
+        } catch (e: Exception) {
+            return DriveConnection.Error(DriveProblem.of(e))
+        }
+        return try {
+            openWithFolderKey(folderKey)
+        } finally {
+            folderKey.fill(0)
+        }
+    }
+
+    /** The newcomer's first pin from the PSK wrap. A wrong PSK, or a wrap made for another public key, does not open. */
+    suspend fun joinFromPsk(enc: ByteArray, ct: ByteArray, epoch: Int, psk: ByteArray): DriveConnection {
+        if (psk.size != QR_PSK_LEN || epoch < 1) return DriveConnection.Error(DriveProblem(DriveProblem.Kind.KEYS_UNREADABLE))
+        val folderKey = try {
+            Hpke(p).openPsk(enc, device.key, WrapAad.HPKE_INFO, WrapAad.folderKey(epoch, myKid), ct, psk, QR_PSK_ID)
+        } catch (e: Exception) {
+            return DriveConnection.Error(DriveProblem.of(e))
+        }
+        return try {
+            openWithFolderKey(folderKey)
+        } finally {
+            folderKey.fill(0)
+        }
+    }
+
+    /**
+     * Revoke one listed device (docs/15 §9.5 iv): a new epoch and a new recovery key, shown once and never stored.
+     * Does not revoke Google's grant. A keys error is reported; it does not revoke, re-key or wipe by itself.
+     */
+    suspend fun revokeDevice(kid: ByteArray): RevokeDeviceOutcome {
+        val recovery = RecoveryKey.generate(p)
+        val connection = connection {
+            val (rootId, keys, bytes) = locateKeys() ?: return@connection DriveConnection.NoFolder
+            val guard = KeysGuard(p, trust.keys(rootId))
+            val opened = keysFile.open(bytes, device.key, guard)
+            val written = keysFile.newEpoch(opened, clock(), revokeKid = kid, newRecovery = recovery)
+            writeKeys(keys.id, written.bytes)
+            guard.acceptWritten(written)
+            ready(rootId, keys.id, written.opened)
+        }
+        return RevokeDeviceOutcome(connection, recovery.takeIf { connection is DriveConnection.Ready })
+    }
+
+    /**
+     * Checks a typed recovery key against Drive's `keys.json` without changing anything (docs/15 §10.4a). Without a pin
+     * there is nothing to check against (a read-only check never makes the first pin), so it is false. It reads the
+     * pin and verifies against it but never moves it, even when another device wrote a newer list since.
+     */
+    suspend fun verifyRecoveryKey(recoveryKey: RecoveryKey): Boolean {
+        val located = try {
+            locateKeys()
+        } catch (_: FolderWithoutKeys) {
+            return false
+        } ?: return false
+        val pinned = trust.keys(located.first)
+        if (pinned.load() == null) return false
+        val readOnly = object : KeysWatermarkStore {
+            override fun load() = pinned.load()
+            override fun compareAndSet(expected: KeysWatermark?, next: KeysWatermark) = true
+        }
+        return try {
+            keysFile.openWithRecovery(located.third, recoveryKey, KeysGuard(p, readOnly))
+            true
+        } catch (_: Exception) {
+            false
+        }
     }
 
     /**
@@ -458,3 +604,12 @@ class DriveBackupService(
         const val MAX_CONFIRMED = 32
     }
 }
+
+/** The enrolled device listed the newcomer and wrapped the folder key for that public key alone (web: `ApproveDeviceOutcome`). */
+sealed interface ApproveDeviceOutcome {
+    class Approved(val connection: DriveConnection.Ready, val wrapEnc: ByteArray, val wrapCt: ByteArray, val epoch: Int) : ApproveDeviceOutcome
+    data class Error(val problem: DriveProblem) : ApproveDeviceOutcome
+}
+
+/** A revoke that finished: the new recovery key is shown once and is not stored (web: `RevokeDeviceOutcome`). */
+class RevokeDeviceOutcome(val connection: DriveConnection, val recoveryKey: RecoveryKey?)
