@@ -24,6 +24,7 @@ import { openLocalDb } from './local-db';
 import type { LocalDb, OpenedDb, StorageProblem } from './local-db';
 import { BROKER_TYPE, MAX_BROKER_NAME, MAX_BROKER_PHONE, brokerFromPayload, brokerToPayload, phoneKey, samePhone } from '../shared/broker';
 import type { Broker, BrokerRow } from '../shared/broker';
+import { deleteSavedWalksOfHouse } from './trace-rows';
 import { SETTING_KEYS, houseFromDto, isoNow, millis, photoMetaOf, recordFromDto, visitFromDto, withPhotoMeta } from './records';
 import {
   BUILT_IN_KEYS,
@@ -266,7 +267,17 @@ export class LocalStore {
     if (!existing) return;
     await db.put('houses', { ...existing, deleted: true, dirty: true, updatedAt: isoNow(now) });
     for (const photo of await this.photosOf(id)) await this.deletePhoto(photo.id, now);
+    // A saved walk is the house's and never outlives it; the website has no undo (docs/11 5.27.6, PRV-030).
+    await deleteSavedWalksOfHouse(db, id);
     this.touch();
+  }
+
+  /**
+   * The opened database, for the stores that live beside the records and are never synced or exported (the path trace,
+   * `data/trace-store.ts`). Not for the pages.
+   */
+  database(): Promise<LocalDb> {
+    return this.db();
   }
 
   /** Applies a row that came from the server (sync or import). The caller has already applied the LWW rule. */
