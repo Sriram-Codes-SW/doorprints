@@ -25,7 +25,7 @@ import type { HouseDto } from '../core/models';
 import { LocalStore } from './local-store.service';
 import { SETTING_KEYS } from './records';
 import type { SavedWalkRow, TracePointRow } from './trace-rows';
-import { ASK_MIN_LENGTH_M, ASK_MIN_POINTS, MAX_SAVED_WALKS_PER_DEVICE, MAX_SAVED_WALKS_PER_HOUSE, TRACE_KEPT_MS, TraceStore, walksOf } from './trace-store';
+import { ASK_MIN_LENGTH_M, ASK_MIN_POINTS, MAX_SAVED_WALKS_PER_DEVICE, MAX_SAVED_WALKS_PER_HOUSE, TRACE_KEPT_MS, TraceStore, holdsWalkId, walksOf } from './trace-store';
 
 const DEG = 1 / 111_194.9266;
 const DAY = 86_400_000;
@@ -276,6 +276,18 @@ describe('TraceStore', () => {
       await putWalk([...walk(id0, 6), ...walk(id0 + DAY, 6)]);
       expect((await store.placeWalks(NOW)).length).toBe(2);
       expect((await store.placeWalks(NOW, id0 + DAY)).map((w) => w.walkId)).toEqual([id0]);
+    });
+
+    it('leaves out a walk that MERGED a legacy walk-id-0 row into the live walk (its first point carries 0)', async () => {
+      // Rows from before the upgrade (id 0) less than 30 min before the first walk after it merge into that walk.
+      const legacy = Array.from({ length: 3 }, (_, i) => pt(i * 20, id0 - 5 * 60_000 + i * 15_000, 0));
+      await putWalk([...legacy, ...walk(id0, 6)]);
+      const all = await store.placeWalks(NOW);
+      expect(all).toHaveLength(1);
+      expect(all[0].walkId).toBe(0); // the merge: one walk whose first point has id 0
+      expect(await store.placeWalks(NOW, id0)).toEqual([]); // the live walk's own points are never "elsewhere"
+      expect(holdsWalkId(walk(id0, 2), id0)).toBe(true);
+      expect(holdsWalkId(legacy, id0)).toBe(false);
     });
   });
 

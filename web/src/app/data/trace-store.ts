@@ -83,6 +83,11 @@ export interface AllWalks {
   readonly saved: { readonly row: SavedWalkRow; readonly walk: TraceWalk }[];
 }
 
+/** True when one of `points` carries the walk id `walkId` (the live walk's own points, whatever the first point's id). */
+export function holdsWalkId(points: readonly TracePoint[], walkId: number): boolean {
+  return points.some((p) => (p.walkId ?? 0) === walkId);
+}
+
 @Injectable({ providedIn: 'root' })
 export class TraceStore {
   private readonly store = inject(LocalStore);
@@ -253,7 +258,9 @@ export class TraceStore {
 
   /**
    * The walks the place check compares with (docs/11 5.27.13): the 30-day trace and every saved walk, whether or not the trace
-   * is switched on. `leaveOutWalkId` is the walk now recording, left out only for the *here* source. The check itself drops a
+   * is switched on. `leaveOutWalkId` is the walk now recording, left out only for the *here* source: any trace walk holding
+   * a point of that id goes, not only one that starts with it (a legacy walk-id-0 row less than 30 minutes before the first
+   * walk after the upgrade merges into the live walk, whose first point then carries 0). The check itself drops a
    * trace walk whose id equals a saved walk's (a save cut between its writes).
    */
   async placeWalks(nowMs: number, leaveOutWalkId = 0): Promise<PlaceWalk[]> {
@@ -261,7 +268,7 @@ export class TraceStore {
     const walks: PlaceWalk[] = [];
     for (const w of trace) {
       const id = w.points[0].walkId ?? 0;
-      if (leaveOutWalkId !== 0 && id === leaveOutWalkId) continue;
+      if (leaveOutWalkId !== 0 && holdsWalkId(w.points, leaveOutWalkId)) continue;
       walks.push({ points: w.points, source: 'TRACE', walkId: id });
     }
     for (const s of saved) walks.push({ points: s.walk.points, source: 'SAVED', walkId: s.row.startedAt });

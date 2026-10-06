@@ -38,7 +38,7 @@
 
 import { DOCUMENT } from '@angular/common';
 import { Injectable, InjectionToken, OnDestroy, inject, signal } from '@angular/core';
-import { TraceStore } from '../data/trace-store';
+import { TraceStore, holdsWalkId } from '../data/trace-store';
 import { TRACE } from '../shared/trace-geo';
 import type { TracePoint, TraceWalk } from '../shared/trace-geo';
 import { TraceRecorder } from '../shared/trace-recorder';
@@ -255,7 +255,7 @@ export class TraceRecorderService implements OnDestroy {
       if (this.alertOn) {
         const { trace, saved } = await this.store.allWalks(Date.now());
         const live = this.recorder.liveWalkId;
-        this.others = [...trace.filter((w) => (w.points[0].walkId ?? 0) !== live), ...saved.map((s) => s.walk)];
+        this.others = [...trace.filter((w) => !holdsWalkId(w.points, live)), ...saved.map((s) => s.walk)];
       }
       if (this.keepAwake) await this.requestWakeLock();
     } catch {

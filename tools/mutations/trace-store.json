@@ -75,7 +75,7 @@
     },
     {
       "file": "web/src/app/data/trace-store.ts",
-      "find": "      if (leaveOutWalkId !== 0 && id === leaveOutWalkId) continue;\n",
+      "find": "if (leaveOutWalkId !== 0 && holdsWalkId(w.points, leaveOutWalkId)) continue;",
       "replace": "",
       "expect": "leaves the live walk out of the place walks only when asked"
     },
@@ -114,6 +114,18 @@
       "find": "if (points.length >= ASK_MIN_POINTS && lengthM >= ASK_MIN_LENGTH_M) return summaryOf(id, points, lengthM);",
       "replace": "return summaryOf(id, points, lengthM);",
       "expect": "does not hide a long older one"
+    },
+    {
+      "file": "web/src/app/data/trace-store.ts",
+      "find": "holdsWalkId(w.points, leaveOutWalkId)",
+      "replace": "id === leaveOutWalkId",
+      "expect": "leaves out a walk that MERGED a legacy"
+    },
+    {
+      "file": "web/src/app/data/trace-store.ts",
+      "find": "return points.some((p) => (p.walkId ?? 0) === walkId);",
+      "replace": "return (points[0].walkId ?? 0) === walkId;",
+      "expect": "leaves out a walk that MERGED a legacy"
     }
   ]
 }
