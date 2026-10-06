@@ -1329,6 +1329,7 @@ export const te: Dict = {
   // Passkey without a PRF output: what works instead, and copyable details. Under review (owner rule: hi/ta/te ship marked under review).
   'drivePasskey.registerNoPrf': 'ఈ పాస్‌కీ నుండి తొలగింపులను రక్షించడానికి Doorprints కు కావలసిన రహస్య విలువ (PRF అవుట్‌పుట్) రాలేదు.',
   'drivePasskey.noPrfHelp': 'ఈ బ్రౌజర్ మరియు పాస్‌కీతో అన్ని బ్యాకప్‌లను లేదా Google Drive లోని ప్రతిదీ తొలగించడం అందుబాటులో లేదు. ఒక బ్యాకప్‌ను తొలగించడం ఇంకా పనిచేస్తుంది. Windows మరియు బ్రౌజర్‌ను తాజా వెర్షన్‌లకు అప్‌డేట్ చేయడం సహాయపడవచ్చు. సెక్యూరిటీ కీ, లేదా Android ఫోన్, iPhone లేదా Mac లో ఉంచిన పాస్‌కీ సాధారణంగా పనిచేస్తుంది.',
+  'drivePasskey.noBuiltInHelp': 'ఈ కంప్యూటర్‌లో పాస్‌కీ కోసం అంతర్నిర్మిత లాక్ లేదని కనిపిస్తోంది. ఒకదాన్ని ఆన్ చేయండి: Windows లో Settings, Accounts, Sign-in options లో PIN (Windows Hello) పెట్టండి; Mac లో లాగిన్ పాస్‌వర్డ్ (ఉంటే Touch ID కూడా); Android లో స్క్రీన్ లాక్; iPhone లేదా iPad లో పాస్‌కోడ్. లేదా బ్రౌజర్ అడిగినప్పుడు మీ ఫోన్‌ను లేదా సెక్యూరిటీ కీని ఎంచుకోండి.',
   // 2026-10-05: Browser PRF capability check result - heads-up about PRF extension not supported. Under review
   'drivePasskey.prfHeadsUp': 'ఈ బ్రౌజర్ అన్ని బ్యాకప్‌లను తొలగించడానికి Doorprints కు కావలసిన పాస్‌కీ ఫీచర్‌ను ఉపయోగించలేనని చెప్పుతుంది. మీరు ఇంకా ప్రయత్నించవచ్చు, లేదా సెక్యూరిటీ కీ లేదా Android ఫోన్, iPhone లేదా Mac లో ఉంచిన పాస్‌కీని ఉపయోగించండి.',
   'drivePasskey.detailsLabel': 'సాంకేతిక వివరాలు (రహస్యాలు లేవు)',
@@ -1371,6 +1372,11 @@ export const te: Dict = {
   'driveDelete.setupPasskey': 'పాస్‌కీని సెటప్ చేయండి',
   'driveDelete.deleting': 'తొలగిస్తున్నారు…',
   'driveDelete.usePhone': 'ఈ బ్రౌజర్ ఈ తొలగింపును పూర్తి చేయలేదు. ఈ పరికరంపై పాస్‌కీ సెట్ చేయండి, లేదా Doorprints ఇప్పటికే ఉన్న ఫోన్ నుండి తొలగించండి.',
+  'driveDelete.recoveryLabel': 'రికవరీ కీ',
+  'driveDelete.recoveryHelp': 'చివరి మార్గం. ఈ బ్రౌజర్ తొలగింపులను రక్షించడానికి పాస్‌కీని ఉపయోగించలేకపోయింది, కాబట్టి ఈ ఒక్క తొలగింపుకే మీ రికవరీ కీని టైప్ చేయండి. Doorprints దాన్ని మీ Google Drive తో సరిచూస్తుంది, దాచుకోదు.',
+  'driveDelete.recoveryWrong': 'ఈ రికవరీ కీ ఈ Google Drive ని తెరవదు. సరిచూసి మళ్లీ ప్రయత్నించండి.',
+  'driveDelete.recoveryInvalid': 'ఇది రికవరీ కీలా కనిపించడం లేదు. దానిలో 27 అక్షరాలు, అంకెలు ఉంటాయి, నాలుగేసి చొప్పున సమూహాలుగా. సరిచూసి మళ్లీ ప్రయత్నించండి.',
+  'driveDelete.recoveryNotOffered': 'ఇక్కడ రికవరీ కీని ఉపయోగించలేరు. పాస్‌కీని సెటప్ చేయండి, లేదా ఇప్పటికే Doorprints ఉన్న ఫోన్ నుండి తొలగించండి.',
   'driveDelete.done': 'తొలగించబడింది.',
   'driveEnrol.heading': 'మరో బ్రౌజర్‌ను నమోదు చేయండి',
   'driveEnrol.qrDeferred': 'కొత్త బ్రౌజర్ QR కోడ్ చూపించగలదు. కనెక్ట్ అయిన బ్రౌజర్ దాన్ని స్కాన్ చేస్తుంది, లేదా కోడ్‌ను అతికించవచ్చు. కెమెరా లేకపోతే 8 అంకెల కోడ్ కూడా పని చేస్తుంది. ఈ పేజీలో రికవరీ కీతో కూడా చేరవచ్చు.',

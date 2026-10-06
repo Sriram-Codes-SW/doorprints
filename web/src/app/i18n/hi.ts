@@ -1329,6 +1329,7 @@ export const hi: Dict = {
   // Passkey without a PRF output: what works instead, and copyable details. Under review (owner rule: hi/ta/te ship marked under review).
   'drivePasskey.registerNoPrf': 'इस पासकी से डोरप्रिंट्स को वह गुप्त मान (PRF आउटपुट) नहीं मिला जो हटाने की सुरक्षा के लिए चाहिए।',
   'drivePasskey.noPrfHelp': 'इस ब्राउज़र और पासकी के साथ सभी बैकअप या Google Drive का सब कुछ हटाना उपलब्ध नहीं है। एक बैकअप हटाना अब भी काम करता है। Windows और ब्राउज़र को नवीनतम संस्करण पर अपडेट करने से मदद मिल सकती है। सिक्योरिटी की, या Android फ़ोन, iPhone या Mac पर रखी पासकी आमतौर पर काम करती है।',
+  'drivePasskey.noBuiltInHelp': 'इस कंप्यूटर में पासकी के लिए कोई बिल्ट-इन लॉक नहीं मिला। एक चालू करें: Windows में Settings, Accounts, Sign-in options में PIN (Windows Hello) रखें; Mac में लॉगिन पासवर्ड (और Touch ID, अगर है) रखें; Android में स्क्रीन लॉक; iPhone या iPad में पासकोड। या ब्राउज़र पूछे तो अपना फ़ोन या सिक्योरिटी की चुनें।',
   // 2026-10-05: Browser PRF capability check result - heads-up about PRF extension not supported. Under review
   'drivePasskey.prfHeadsUp': 'यह ब्राउज़र कहता है कि वह सभी बैकअप हटाने के लिए डोरप्रिंट्स को चाहिए पासकी सुविधा का उपयोग नहीं कर सकता। आप अभी भी कोशिश कर सकते हैं, या Android फ़ोन, iPhone या Mac पर सिक्योरिटी की या पासकी का उपयोग करें।',
   'drivePasskey.detailsLabel': 'तकनीकी विवरण (कोई गुप्त जानकारी नहीं)',
@@ -1371,6 +1372,11 @@ export const hi: Dict = {
   'driveDelete.setupPasskey': 'एक पासकी सेट अप करें',
   'driveDelete.deleting': 'हटाया जा रहा है…',
   'driveDelete.usePhone': 'यह ब्राउज़र यह हटाना पूरा नहीं कर सकता। इस डिवाइस पर पासकी सेट करें, या उस फ़ोन से हटाएँ जिस पर Doorprints पहले से है।',
+  'driveDelete.recoveryLabel': 'रिकवरी कुंजी',
+  'driveDelete.recoveryHelp': 'अंतिम उपाय। यह ब्राउज़र हटाने को सुरक्षित करने के लिए पासकी इस्तेमाल नहीं कर सका, इसलिए इसी बार हटाने के लिए अपनी रिकवरी कुंजी लिखें। Doorprints इसे आपके Google Drive से मिलाकर जाँचता है और रखता नहीं।',
+  'driveDelete.recoveryWrong': 'यह रिकवरी कुंजी इस Google Drive को नहीं खोलती। उसे जाँचकर फिर कोशिश करें।',
+  'driveDelete.recoveryInvalid': 'यह रिकवरी कुंजी जैसी नहीं दिखती। उसमें 27 अक्षर और अंक होते हैं, चार-चार के समूहों में। जाँचकर फिर कोशिश करें।',
+  'driveDelete.recoveryNotOffered': 'यहाँ रिकवरी कुंजी इस्तेमाल नहीं हो सकती। पासकी सेट करें, या ऐसे फ़ोन से हटाएँ जिसमें Doorprints पहले से है।',
   'driveDelete.done': 'हटा दिया गया।',
   'driveEnrol.heading': 'दूसरा ब्राउज़र नामांकित करें',
   'driveEnrol.qrDeferred': 'नया ब्राउज़र एक QR कोड दिखा सकता है। जुड़ा ब्राउज़र उसे स्कैन करता है, या आप कोड चिपकाते हैं। कैमरा न हो तो 8 अंकों का कोड भी चलता है। इस पृष्ठ पर रिकवरी कुंजी से भी जुड़ सकते हैं।',
