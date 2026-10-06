@@ -27,6 +27,8 @@ and keeps a copy of your houses) is optional.
   It is not in the Play Store yet.
 - **iPhone app:** it is new and still being tested. It is not in the App Store.
 
+How the website differs on a phone and on a computer: [Phone or computer](phone-or-computer.md).
+
 What each one can do ("offline" means without internet; "AI" means the computer reads your notes and answers you):
 
 | What you can do | Website | Android app | iPhone app (early) |

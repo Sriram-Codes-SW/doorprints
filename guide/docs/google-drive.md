@@ -29,7 +29,8 @@ the same eight digits). A new browser can also show a QR code; the connected bro
 ## Delete
 
 - **Delete older backups** (L1) does not need a passkey.
-- **Delete all backups** and **Delete everything Doorprints keeps in Google Drive** (L2/L3) need a
+- **Delete all backups** and **Delete everything Doorprints keeps in Google Drive** (L2/L3) need a **passkey** on this browser: the computer's own Windows Hello or Touch ID, **your phone** (the browser shows a QR code to scan), or a **security key**. If the computer has no lock or Windows Hello yet, turn one on (Windows: Settings, Accounts, Sign-in options, PIN; Mac: a login password; Android: a screen lock; iPhone: a passcode), or choose your phone when the browser asks.
+- **Last resort: the recovery key.** If a passkey was tried and this browser gave no secret value (PRF), Doorprints asks for your **recovery key** for that one deletion. It checks the key against your Drive and does not keep it. It is not offered just because Windows Hello is not set up, and never when a passkey works.
   **passkey** on this browser (fingerprint, face or screen lock). Without one, Doorprints asks you to use a phone.
 - There is a confirmation tick box. The website does not wait a countdown.
 
