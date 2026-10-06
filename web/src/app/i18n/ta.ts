@@ -1203,6 +1203,7 @@ export const ta: Dict = {
   'imp.floorsLeftBlank': 'கோப்பில் தளம் -5 முதல் 200 வரம்பிற்கு வெளியே உள்ள வீடுகள்; அவற்றின் தளம் காலியாக விடப்படும்',
   // Google Drive on the website (S4b-BL-117, S4b-BL-73). Under review (owner rule: hi/ta/te ship marked under review).
   'driveConnect.heading': 'Google Drive இல் பேக்கப் செய்யவும்',
+  'driveConnect.intro': 'உங்கள் சொந்த Google Drive-இல் குறியாக்கம் செய்யப்பட்ட காப்புப்பிரதிகளை வைத்திருங்கள். Doorprints கணக்கு எதுவும் இல்லை; Doorprints உருவாக்கிய குறியாக்கப்பட்ட கோப்புகளை மட்டுமே Google பார்க்கும்.',
   'driveConnect.unavailable': 'இந்த உலாவியில் Google Drive இணைக்க கிடைக்கவில்லை.',
   'driveConnect.connect': 'Google Drive இல் இணைக்கவும்',
   'driveConnect.connecting': 'கையொப்பமிடப்படுகிறது…',

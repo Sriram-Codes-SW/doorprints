@@ -1220,6 +1220,7 @@ export const en = {
   'imp.floorsLeftBlank': 'Houses whose floor in the file is outside -5 to 200; their floor is left blank',
   // Google Drive connect page (S4b-BL-117, S4b-BL-73, docs/15 §9.4)
   'driveConnect.heading': 'Back up to Google Drive',
+  'driveConnect.intro': 'Keep encrypted backups in your own Google Drive. There is no Doorprints account; Google sees only encrypted files that Doorprints made.',
   'driveConnect.unavailable': 'Google Drive connect is not available on this browser.',
   'driveConnect.connect': 'Connect to Google Drive',
   'driveConnect.connecting': 'Signing in…',

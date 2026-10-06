@@ -1203,6 +1203,7 @@ export const hi: Dict = {
   'imp.floorsLeftBlank': 'जिन मकानों की मंज़िल फ़ाइल में -5 से 200 के बाहर है; उनकी मंज़िल खाली छोड़ी जाएगी',
   // Google Drive on the website (S4b-BL-117, S4b-BL-73). Under review (owner rule: hi/ta/te ship marked under review).
   'driveConnect.heading': 'गूगल ड्राइव को बैकअप करें',
+  'driveConnect.intro': 'अपने ही Google Drive में एन्क्रिप्टेड बैकअप रखें। Doorprints का कोई खाता नहीं है; Google को केवल Doorprints की बनाई एन्क्रिप्टेड फ़ाइलें दिखती हैं।',
   'driveConnect.unavailable': 'इस ब्राउज़र पर गूगल ड्राइव कनेक्ट उपलब्ध नहीं है।',
   'driveConnect.connect': 'गूगल ड्राइव से कनेक्ट करें',
   'driveConnect.connecting': 'साइन इन किया जा रहा है…',

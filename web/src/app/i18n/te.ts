@@ -1203,6 +1203,7 @@ export const te: Dict = {
   'imp.floorsLeftBlank': 'ఫైల్‌లో అంతస్తు -5 నుండి 200 పరిధి బయట ఉన్న ఇళ్లు; వాటి అంతస్తు ఖాళీగా వదిలివేయబడుతుంది',
   // Google Drive on the website (S4b-BL-117, S4b-BL-73). Under review (owner rule: hi/ta/te ship marked under review).
   'driveConnect.heading': 'Google Drive కి బ్యాకప్ చేయండి',
+  'driveConnect.intro': 'మీ స్వంత Google Drive లో ఎన్‌క్రిప్ట్ చేసిన బ్యాకప్‌లను ఉంచండి. Doorprints ఖాతా లేదు; Doorprints చేసిన ఎన్‌క్రిప్ట్ ఫైళ్లను మాత్రమే Google చూస్తుంది.',
   'driveConnect.unavailable': 'ఈ బ్రౌజర్‌లో Google Drive కనెక్ట్ అందుబాటులో లేదు.',
   'driveConnect.connect': 'Google Drive కు కనెక్ట్ చేయండి',
   'driveConnect.connecting': 'సైన్ ఇన్ చేస్తున్నారు…',

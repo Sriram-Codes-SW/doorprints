@@ -119,6 +119,12 @@ describe('DriveConnectComponent', () => {
     shown(host, i18n, 'driveConnect.connect');
   });
 
+  it('explains Google Drive when disconnected, not the Your data page (found taking the guide pictures)', async () => {
+    const { host, i18n } = await render(fakeService('Disconnected'));
+    shown(host, i18n, 'driveConnect.intro');
+    expect(host.textContent ?? '').not.toContain(i18n.t('data.intro'));
+  });
+
   it('does not claim the recovery key is on screen when it is gone', async () => {
     const { host, i18n } = await render(fakeService('FirstConnectShowRecoveryKey'));
     const text = host.textContent ?? '';
