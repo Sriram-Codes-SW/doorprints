@@ -115,6 +115,7 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Added
 
+- **Google Drive on Android phones** (not yet released; tested on the JVM only, **real-phone testing pending**: [checklist](docs/ops/manual-test-checklist.md) §14, [Drive design](docs/15-google-drive-backup-and-sharing.md) §9.10): connect (Google Play services by default; a browser sign-in for phones without Play services is being built), a recovery key shown once, backups with *Import a backup* and *Delete this backup*, sync (Drive replaces the server while it is in use), photos on Wi-Fi by default, devices, deletion with the phone's own screen-lock check, and enrolment of a new device by a pasted code (no camera scan yet). The iPhone gets its encryption provider; its Drive screens are not wired yet.
 - **The manual test checklist** (`docs/ops/manual-test-checklist.md`, MT-01..MT-51): every test for real devices, accounts and browsers, with what was automated or reviewed, from the full-system review.
 - **Connected Google Drive pictures in the guide** (the recovery key shown once, the connected card with a backup, the deletion levels), in all four languages. `tools/guide-shots/` uses the repository's fake Drive and a stub for Google's sign-in, so no account is involved.
 - **Guide pictures in Hindi, Tamil and Telugu**: the website pictures of the server setup, *Your data* and *Back up to Google Drive* pages in each language (alt text in the app's own words, under review). `tools/guide-shots/` makes them with `LANGS=en,hi,ta,te`.

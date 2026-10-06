@@ -1,5 +1,7 @@
 # Android Drive, A1: token provider and persisted stores (S4b-BL-117, Android half)
 
+> Session record, kept as written (2026-10-06). The decisions are in [15](../15-google-drive-backup-and-sharing.md) §5.5 (tokens), §9.10 (stores and pin files); where this note and 15 differ, 15 is right.
+
 What was built, for the lead. All in `:app` (`android/app/src/main/java/app/doorprints/drive/{auth,store}`); `:shared` is untouched.
 
 ## Token provider (`drive/auth`)
