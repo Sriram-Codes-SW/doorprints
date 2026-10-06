@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Test plan (functional, security, accessibility, i18n, AI) |
-| Version | 0.130 |
+| Version | 0.131 |
 | Date | 2026-10-06 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -12,7 +12,8 @@
 
 | Version | Date | Author | Change |
 |---|---|---|---|
-| 0.130 | 2026-10-06 | Claude | TC-U-135 after Fable's review: the read-only key check with a newer list, the card reading the state again, use-the-phone for the device actions. |
+| 0.131 | 2026-10-06 | Claude | New section 10.1: the 27 requirement ids the review found without a mention here, each with its test or an honest *Gap* (NFR-014, NFR-015, NFR-016, PRV-007); SEC-030 is now checked in CI. |
+| 0.130 | 2026-10-06 | Claude | TC-U-135 after the senior reviewer's review: the read-only key check with a newer list, the card reading the state again, use-the-phone for the device actions. |
 | 0.129 | 2026-10-06 | Claude | TC-U-137: dates in hi, ta and te (the Drive backups table). |
 | 0.128 | 2026-10-06 | Claude | **The recovery key as the website's last-resort second factor, and a wider passkey** ([15](15-google-drive-backup-and-sharing.md) v0.25, §10.4a): TC-U-135 (the recovery check, the authorizer, the deletion adapter, the service rules and the card) and TC-U-136 (registration without an authenticator attachment; isSupported no longer depends on the built-in probe). TC-M-56 (manual, the owner's real machines). |
 | 0.127 | 2026-10-06 | Claude | TC-U-134: with the worker failed, the Map page and the house location map offer no Try again (it could not revive the worker); offline keeps it. Tests in `map-page.spec.ts` and the new `location-map.spec.ts`. |
@@ -406,6 +407,36 @@ The full mapping is the RTM in [01 section 12](01-requirements.md#12-requirement
 | TC-AI-10: the golden set is green on **one** provider only | First real scorecard ([10](10-sprint-log.md) §5.3, run 35720654442 on `6a348cc`, AI Studio): all 13 cases ran, 12/13 passed, `citationPrecision` 0.86 < 0.90 (E-03); E-01 and E-02 confirmed fixed. **E-03 is closed** by run **35758157317** (`provider=vertex`, commit `19006bc`, golden set v0.5): **13/13 cases and every metric pass**, 198 s, two provider `503`s absorbed by the bounded retry ([10](10-sprint-log.md) §10.2). What is still untested: the **AI Studio** path has not been re-run since golden set v0.5, so the two providers do not have a common green baseline; and the golden-set fixtures hold no contact data, so no run tests contact redaction against a provider (TC-AI-15 covers it without a model) | Re-run `ai-evals.yml` with `provider=aistudio` on golden set v0.5; Vertex trial **credit check** and [ai/vertex-setup.md](ai/vertex-setup.md) step 9 ([10](10-sprint-log.md) C-24, §11.3 item 6); Sprint 4 candidate C-21 (fixture with a contact plus a `mustNotContain` check) |
 | Vertex AI provider (v0.10): no real call yet | The Vertex contract-test bodies (TC-AI-16) are built from the SDK source and Google's reference, not captured live; model availability in `asia-south1` and whether the trial credit pays for Vertex AI are unverified | Owner runs [ai/vertex-setup.md](ai/vertex-setup.md) steps 8 to 10, then TC-AI-10 with `provider=vertex`; replace the test bodies with the captured ones if anything differs ([10](10-sprint-log.md) C-24) |
 | Spend cap trip (AI-017) | No test: the provider's response when the AI-015 spend cap blocks the service is unknown, and today it would be a generic `503` with `retryable: true` (or `AI_QUOTA_EXHAUSTED` if Google reports HTTP 429), so clients would suggest retrying | Capture or document the response, map it to a "cloud AI paused" problem that is not retried, add a contract test next to TC-AI-16's quota cases ([01](01-requirements.md) AI-017) |
+
+### 10.1 Requirements the RTM traces in prose (review of 2026-10-06)
+
+The full-system review found 27 requirement ids that [docs/06](06-test-plan.md) never named. The RTM row each one sits in already says how it is checked; this table puts the id next to its test so a search for the id finds it. A *Gap* is a requirement with no test today; it is stated, not hidden.
+
+| Requirement | Verified by | Status |
+|---|---|---|
+| FR-018 (Hunt card) | TC-F-02 (RTM row FR-018) | Manual field test |
+| FR-033 (notification deep links) | TC-F-04, TC-S-12 (deep-link fuzz) | Manual and fuzz |
+| FR-090, FR-091, FR-092, FR-093, FR-096 (what an import accepts, contains, never changes; validation; add as copies) | TC-U-42, TC-U-28, TC-S-17, TC-I-33, TC-I-34 (RTM row FR-089..FR-097; Android and server); the web's add-as-copies is planned with S4b-00 | Android and server automated; web planned |
+| FR-100 (the server's owner page) | TC-I-39, TC-I-40, TC-S-28 (`DevicePairingIntegrationTest`, `OwnerGeminiKeyIntegrationTest`); the page in a real browser on a real server: [manual checklist](ops/manual-test-checklist.md) MT-47 | Server automated; page manual |
+| NFR-011 (runs with Docker and Postgres) | CI: the container image job and the backend job on PostGIS | Automated |
+| NFR-013 (automated tests and CI) | The workflows themselves (`.github/workflows/*`, [07](07-secure-build-and-deploy.md)) | Automated |
+| NFR-014 (zero running cost) | Owner rule in CLAUDE.md and [01](01-requirements.md) section 11; reviewed at each change | **Gap**: a rule, not a test |
+| NFR-015 (one-handed, outdoor use) | Design review ([05](05-ux-accessibility-i18n.md)) and the owner's real-device use | **Gap**: a judgement of use |
+| NFR-016 (sync within one minute) | Nothing measures it today | **Gap**: time it the first time a server runs for real |
+| NFR-018 (mobile data use) | TC-F-10 (photos only on Wi-Fi); `server.compression` by review | Manual and review |
+| NFR-024 (local-first, offline) | TC-M-15 (install and use offline), TC-S-19 (the offline cache holds no API data) | Manual and automated |
+| NFR-026 (installable web app) | TC-M-15, TC-M-19 and the CI check *PWA files in the build* | Manual and automated |
+| PRV-003 (no raw GPS tracks) | TC-F-07, TC-S-07 (RTM row PRV-001..003) | Manual and CI script |
+| PRV-006 (retention: purge by age) | Planned; no test until built | Planned |
+| PRV-007 (third parties disclosed in the app) | Review of the Settings and AI screens; the web's privacy page is backlog | **Gap**: review only |
+| PRV-010 (data residency in India) | Review of the provider setup (RTM: Review) | Review |
+| PRV-011 (no personal data in logs; encrypted backups) | SEC-016's tests below; backup encryption by review ([08](08-operations-runbook.md), TC-O-01) | Part automated |
+| PRV-018 (an exported file leaves our control; the app says so) | TC-U-27 (RTM row PRV-012, PRV-018) | Automated |
+| PRV-023 (on-device AI sends nothing off the phone) | Planned (Sprint 5); TC-U-34 and TC-S-21 when accepted | Planned |
+| SEC-016 (logs hold no keys, coordinates, notes or phone numbers) | TC-S-04, TC-U-16, TC-U-35 and the review of `ApiExceptionHandler` | Part automated |
+| SEC-019 (database TLS and a non-superuser role) | Review of the database setup ([07](07-secure-build-and-deploy.md) section 6) | Review |
+| SEC-029 (compose binds to 127.0.0.1; refuses to start without `APP_API_KEY`) | `docker-compose.yml` (`${APP_API_KEY:?...}`) by review and the CI container job | Review and CI |
+| SEC-030 (actions pinned; read-only permissions) | `.github/scripts/check-action-pins.py` with `check_action_pins_test.py`, run by the Security workflow's *Third-party actions are pinned to a commit SHA* step | Automated since 2026-10-06 |
 
 ## 11. Entry and exit criteria
 

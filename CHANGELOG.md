@@ -964,6 +964,7 @@ The finishing batch of 2026-10-01 (built on stacked branches, not yet merged or 
 
 ### Fixed
 
+- **Review backlog**: device names refuse bidi and zero-width characters (web and Android, same list; Indic ZWJ/ZWNJ allowed); a passkey id is kept only when a sealed blob exists; third-party GitHub Actions pinning is now checked in CI (SEC-030); the Drive connect service's deletion code moved to its own file.
 - **Full-system review fixes**: the website's `Permissions-Policy` no longer blocks the camera for the QR scan (`camera=(self)`); a passkey setup that returned no PRF output, and its details, are remembered across a reload; the recovery-key help says 27 letters and digits and no longer suggests email; two timing-dependent Android tests wait for their content; seven unused translation keys removed.
 
 - **The Google Drive backups table was empty in Hindi, Tamil and Telugu** (its dates used Angular's date pipe, which has no locale data for them); dates now come from the browser's own formatting like everywhere else, and a check stops the pipe coming back. The table's *Import a backup* button is now in each language (found taking the guide pictures).
