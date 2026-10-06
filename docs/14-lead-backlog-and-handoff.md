@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.87 |
+| Version | 0.88 |
 | Date | 2026-10-06 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..135); this file lists the lead-level items and points to the rest. |
@@ -94,8 +94,9 @@
 | 0.83 | 2026-10-03 | Cursor Agent, lead | N17: S4b-BL-124 done. The Drive incidents are [08](08-operations-runbook.md) IR-11, IR-12 and IR-13. The guide pages were already on `main`; hi/ta/te stay *under review*. |
 | 0.84 | 2026-10-03 | Cursor Agent, lead | §1 and N18: after a Windows Hello PIN the live card said “This passkey did not return the PRF output needed to seal deletions.” Recorded only. Do not fix it until the owner asks. |
 | 0.85 | 2026-10-05 | Claude, lead | N18: owner asked on 2026-10-05 to fix the message and record which step returned nothing. The card now says the passkey could not protect deletions and offers what works instead (single backups still delete; update Windows and the browser; a security key or a phone/Mac passkey usually works). The setup records which step stopped (step name and flags only, never a value), and the card offers the details to copy. The cause on the owner's machine is not yet known (ask the owner to paste the details string from the card). The recovery-key fallback (typing the recovery key as L2/L3 factor when PRF is unavailable) is an open owner decision. |
-| 0.87 | 2026-10-06 | Claude, lead | N18: the recovery-key fallback is **decided and built** (owner, 2026-10-06; docs/15 v0.25 §10.4a): a last resort, never because Windows Hello or a password is not set up (the card says how to turn one on), and the passkey is widened to the person's phone or a security key. The 2026-10-06 final reviews are in docs/10 v0.144-0.146. |
 | 0.86 | 2026-10-06 | Claude, lead | §7 per change, step 4: two local guards against tests that cannot fail: `tools/check-specs.mjs` (a spec must import production code and use it) and `tools/mutate.mjs` (a ticket's mutation list in `tools/mutations/`, each must make a named test fail; the runner puts every file back). Both run by `tools/check.sh` (web area) or by hand; no new library, no CI minutes. |
+| 0.87 | 2026-10-06 | Claude, lead | N18: the recovery-key fallback is **decided and built** (owner, 2026-10-06; docs/15 v0.25 §10.4a): a last resort, never because Windows Hello or a password is not set up (the card says how to turn one on), and the passkey is widened to the person's phone or a security key. The 2026-10-06 final reviews are in docs/10 v0.144-0.146. |
+| 0.88 | 2026-10-06 | Claude, lead | Full-system review by the senior reviewer of `main` at 8c367a40: no blocker; GO for real-system testing and for continuing Android/iOS development. Fixed in the same pull request: camera header (`camera=(self)`), the passkey no-PRF state and its details kept across a reload, recovery-key wording (27 symbols; no email advice), two timing-dependent Android tests, seven dead i18n keys. New file: `docs/ops/manual-test-checklist.md` (MT-01..MT-51). Still open (backlog): the 27 requirement ids of docs/01 that docs/06 never names (add rows or mark not testable), device-name bidi characters, splitting the two 900-line Drive services, backend `mvn verify` and the iOS gates run only in CI. |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 

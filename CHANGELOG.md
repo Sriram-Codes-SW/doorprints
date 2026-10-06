@@ -115,6 +115,7 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Added
 
+- **The manual test checklist** (`docs/ops/manual-test-checklist.md`, MT-01..MT-51): every test for real devices, accounts and browsers, with what was automated or reviewed, from the full-system review.
 - **Connected Google Drive pictures in the guide** (the recovery key shown once, the connected card with a backup, the deletion levels), in all four languages. `tools/guide-shots/` uses the repository's fake Drive and a stub for Google's sign-in, so no account is involved.
 - **Guide pictures in Hindi, Tamil and Telugu**: the website pictures of the server setup, *Your data* and *Back up to Google Drive* pages in each language (alt text in the app's own words, under review). `tools/guide-shots/` makes them with `LANGS=en,hi,ta,te`.
 - **The recovery key as the website's last resort for deleting everything, and a wider passkey** (N18, [Drive design](docs/15-google-drive-backup-and-sharing.md) §10.4a): when a passkey was tried and returned no PRF output, *Delete all backups* and the like ask for the recovery key for that one deletion (checked against the Drive, never kept); a computer with no lock or Windows Hello is told how to set one up instead; the passkey can now be the computer's own, your phone (QR) or a security key. en, hi, ta, te (hi/ta/te under review).
@@ -962,6 +963,8 @@ The finishing batch of 2026-10-01 (built on stacked branches, not yet merged or 
   threshold).
 
 ### Fixed
+
+- **Full-system review fixes**: the website's `Permissions-Policy` no longer blocks the camera for the QR scan (`camera=(self)`); a passkey setup that returned no PRF output, and its details, are remembered across a reload; the recovery-key help says 27 letters and digits and no longer suggests email; two timing-dependent Android tests wait for their content; seven unused translation keys removed.
 
 - **The Google Drive backups table was empty in Hindi, Tamil and Telugu** (its dates used Angular's date pipe, which has no locale data for them); dates now come from the browser's own formatting like everywhere else, and a check stops the pipe coming back. The table's *Import a backup* button is now in each language (found taking the guide pictures).
 - **The Google Drive card said what the Your data page says**: when not connected it showed "Everything you save stays in this browser..." instead of what the Drive backup is. It now explains the Drive backup (en, hi, ta, te; hi/ta/te under review), with a test (found taking the guide pictures).

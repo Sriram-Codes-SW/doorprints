@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Secure build, CI/CD and deployment guide |
-| Version | 0.58 |
+| Version | 0.59 |
 | Date | 2026-10-05 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -70,6 +70,7 @@
 | 0.56 | 2026-10-02 | Cursor Agent, lead | §6.3: CSP `connect-src https:` kept after the Drive review (Z1 + Google Drive API hosts + tiles/geocode + the user-typed server). [02](02-threat-model.md) RR-30. |
 | 0.57 | 2026-10-03 | Cursor Agent | gitleaks: the Drive website work was squash-merged as `cc5b5a3`, so the 2026-10-02 `.gitleaksignore` fingerprints do not match the copy on `main`. The 33 `generic-api-key` findings on that commit are listed by fingerprint as well (the type name `P256PrivateKey`, and known-answer hex/base64 in `docs/schemas/hpke-vectors.json` and `dpx-vectors.json`). The earlier fingerprints stay, for those commits only. No path allowlist. |
 | 0.58 | 2026-10-05 | Claude (Haiku) | §2.1 heading note: `Cross-Origin-Opener-Policy` sends `same-origin-allow-popups` (for Google sign-in) instead of `same-origin` as originally documented. |
+| 0.59 | 2026-10-06 | Claude | Full-system review (senior reviewer): the website's `Permissions-Policy` had `camera=()`, which blocks the QR camera scan on the live site; now `camera=(self)` (microphone, payment and usb stay off). |
 
 Related: [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Runbook](08-operations-runbook.md) · [AI docs](ai/)
 
@@ -718,7 +719,7 @@ rules in CI before any credential exists):
 2. **Headers** (F-10 fixed): one rule for `**` — it matches the **request path**, so it covers every file and every
    deep link — sends the CSP (with `frame-ancestors 'none'`), HSTS, `X-Content-Type-Options: nosniff`,
    `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin` (Nominatim needs a referrer),
-   `Permissions-Policy`, `Cross-Origin-Opener-Policy: same-origin-allow-popups` (for Google sign-in) and `Cache-Control: no-cache`; a second rule gives
+   `Permissions-Policy` (`geolocation=(self), camera=(self), microphone=(), payment=(), usb=()`; the camera is allowed for this origin only, because the *Use the camera* QR scan on the Drive enrolment card needs it), `Cross-Origin-Opener-Policy: same-origin-allow-popups` (for Google sign-in) and `Cache-Control: no-cache`; a second rule gives
    `/manifest.webmanifest` its `Content-Type`. **No two rules set the same header**, because Firebase does not
    document which value wins when rules overlap. The CSP has one source, this rule: the build copies it into
    `index.html` as a `<meta>` (minus `frame-ancestors`) and fails if it is missing, set twice or set by another rule

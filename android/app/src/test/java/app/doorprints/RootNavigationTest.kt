@@ -277,6 +277,7 @@ class RootNavigationTest {
     fun settingsViewingsPlansANewViewingAndTheFormsBackReturnsToTheHistory() {
         start(DeepLink.OpenScreen(Routes.SETTINGS))
         openSettingsViewings()
+        waitFor(NO_VIEWINGS) // the empty state arrives after the intro (async), so wait for it
         compose.onNodeWithText(NO_VIEWINGS).assertExists()
         compose.onNodeWithText("Plan a viewing").performClick()
         compose.waitForIdle()
@@ -287,6 +288,7 @@ class RootNavigationTest {
         compose.onNodeWithContentDescription("Back").performClick()
         compose.waitForIdle()
         waitFor(VIEWINGS_INTRO)
+        waitFor(NO_VIEWINGS)
         compose.onNodeWithText(NO_VIEWINGS).assertExists()
     }
 
