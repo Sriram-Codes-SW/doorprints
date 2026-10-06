@@ -18,7 +18,4 @@
 
 export function extractMaplibreVersion(content: string): string | null;
 
-export function checkMaplibreWorkerFiles(buildDir: string): {
-  errors: string[];
-  warnings: string[];
-};
+export function maplibreWorkerProblems(files: { worker: string | null; shared: string | null }): string[];

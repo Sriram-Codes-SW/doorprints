@@ -17,71 +17,74 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { extractMaplibreVersion, maplibreWorkerProblems } from '../../../scripts/maplibre-worker-check.mjs';
 
 /**
- * Tests for MapLibre worker file version checking.
- * Tests verify that checkMaplibreWorkerFiles validates:
- * 1. Worker and shared file versions match (both 6.11.2)
- * 2. Mismatched versions produce error with both versions (6.11.2 vs 6.10.0)
- * 3. Missing versions produce specific errors for each file
- *
- * These tests verify the version extraction and comparison logic using string patterns
- * that match the actual file content. Full integration tests with real files run via:
- * npx node web/scripts/maplibre-worker-check.mjs <build-dir>
+ * S4b-BL-54 and S4b-BL-55: what the pwa-files job checks about MapLibre's two worker files, tested through the real
+ * function (the job runs the same rules inline because it has no checkout).
  */
-describe('maplibre-worker-check', () => {
-  it('versionsBothSame: extract and compare identical versions', () => {
-    const licenseHeader = '/**\n * Copyright 2026 Sriram\n * MapLibre GL JS\n';
-    const versionLine = ' * @license https://github.com/maplibre/maplibre-gl-js/blob/v6.11.2/LICENSE.txt\n';
-    const workerContent = licenseHeader + versionLine + ' */\nimport{D as e}from"./maplibre-gl-shared.mjs";';
-    const sharedContent = licenseHeader + versionLine + ' */\nexport const foo=1;';
+const banner = (v: string) => `/**\n* MapLibre GL JS\n* @license 3-Clause BSD https://github.com/maplibre/maplibre-gl-js/blob/v${v}/LICENSE.txt\n*/\n`;
+const worker = (v: string) => banner(v) + 'import{D as e}from"./maplibre-gl-shared.mjs";e();';
+const shared = (v: string) => banner(v) + 'export const D=1;';
 
-    const workerVersion = workerContent.match(/maplibre-gl-js\/blob\/v([\d.]+)\//)?.[1];
-    const sharedVersion = sharedContent.match(/maplibre-gl-js\/blob\/v([\d.]+)\//)?.[1];
-
-    expect(workerVersion).toBe('6.11.2');
-    expect(sharedVersion).toBe('6.11.2');
-    expect(workerVersion === sharedVersion).toBe(true);
+describe('maplibreWorkerProblems', () => {
+  it('finds nothing wrong with a matching pair', () => {
+    expect(maplibreWorkerProblems({ worker: worker('6.11.2'), shared: shared('6.11.2') })).toEqual([]);
   });
 
-  it('versionsMismatch: extract and compare different versions', () => {
-    const licenseHeader = '/**\n * Copyright 2026 Sriram\n * MapLibre GL JS\n';
-    const workerContent = licenseHeader + ' * @license https://github.com/maplibre/maplibre-gl-js/blob/v6.11.2/LICENSE.txt\n */';
-    const sharedContent = licenseHeader + ' * @license https://github.com/maplibre/maplibre-gl-js/blob/v6.10.0/LICENSE.txt\n */';
-
-    const workerVersion = workerContent.match(/maplibre-gl-js\/blob\/v([\d.]+)\//)?.[1];
-    const sharedVersion = sharedContent.match(/maplibre-gl-js\/blob\/v([\d.]+)\//)?.[1];
-
-    expect(workerVersion).toBe('6.11.2');
-    expect(sharedVersion).toBe('6.10.0');
-    expect(workerVersion === sharedVersion).toBe(false);
-    // Mismatch error should contain both versions
-    const mismatchError = `MapLibre version mismatch: worker v${workerVersion} vs shared v${sharedVersion}`;
-    expect(mismatchError).toContain('6.11.2');
-    expect(mismatchError).toContain('6.10.0');
+  it('names a missing worker file', () => {
+    expect(maplibreWorkerProblems({ worker: null, shared: shared('6.11.2') })).toEqual([
+      'missing maplibre-gl-worker.mjs (required by angular.json assets glob)',
+    ]);
   });
 
-  it('sharedNoVersion: detect missing version in shared file', () => {
-    const licenseHeader = '/**\n * Copyright 2026 Sriram\n * MapLibre GL JS\n';
-    const sharedContent = licenseHeader + ' * @license (no version pattern)\n */\nexport const foo=1;';
-
-    const sharedVersion = sharedContent.match(/maplibre-gl-js\/blob\/v([\d.]+)\//)?.[1];
-
-    expect(sharedVersion).toBeUndefined();
-    const noVersionError = 'maplibre-gl-shared.mjs has no version in header';
-    expect(noVersionError).toContain('maplibre-gl-shared.mjs');
-    expect(noVersionError).toContain('no version');
+  it('names a missing shared file', () => {
+    const problems = maplibreWorkerProblems({ worker: worker('6.11.2'), shared: null });
+    expect(problems).toContain('missing maplibre-gl-shared.mjs (required by angular.json assets glob)');
   });
 
-  it('workerNoVersion: detect missing version in worker file', () => {
-    const licenseHeader = '/**\n * Copyright 2026 Sriram\n * MapLibre GL JS\n';
-    const workerContent = licenseHeader + ' * @license (no version pattern)\n */\nimport{D as e}from"./maplibre-gl-shared.mjs";';
+  it('names an empty file', () => {
+    expect(maplibreWorkerProblems({ worker: worker('6.11.2'), shared: '' })).toEqual(['maplibre-gl-shared.mjs is empty']);
+  });
 
-    const workerVersion = workerContent.match(/maplibre-gl-js\/blob\/v([\d.]+)\//)?.[1];
+  it('names a file without the licence banner', () => {
+    const problems = maplibreWorkerProblems({ worker: 'import{D as e}from"./maplibre-gl-shared.mjs";', shared: shared('6.11.2') });
+    expect(problems).toContain('maplibre-gl-worker.mjs does not start with license header comment (/** ...)');
+  });
 
-    expect(workerVersion).toBeUndefined();
-    const noVersionError = 'maplibre-gl-worker.mjs has no version in header';
-    expect(noVersionError).toContain('maplibre-gl-worker.mjs');
-    expect(noVersionError).toContain('no version');
+  it('names a worker that no longer imports the shared file', () => {
+    const w = banner('6.11.2') + 'import{D as e}from"./other.mjs";';
+    expect(maplibreWorkerProblems({ worker: w, shared: shared('6.11.2') })).toEqual([
+      'maplibre-gl-worker.mjs does not import from "./maplibre-gl-shared.mjs"',
+    ]);
+  });
+
+  it('accepts the import with spaces and single quotes', () => {
+    const w = banner('6.11.2') + "import { D as e } from './maplibre-gl-shared.mjs';";
+    expect(maplibreWorkerProblems({ worker: w, shared: shared('6.11.2') })).toEqual([]);
+  });
+
+  it('names both versions when worker and shared differ', () => {
+    const problems = maplibreWorkerProblems({ worker: worker('6.11.2'), shared: shared('6.10.0') });
+    expect(problems).toEqual(['MapLibre version mismatch: worker v6.11.2 vs shared v6.10.0']);
+  });
+
+  it('names a shared file whose banner has no version', () => {
+    const s = '/**\n* MapLibre GL JS\n*/\nexport const D=1;';
+    expect(maplibreWorkerProblems({ worker: worker('6.11.2'), shared: s })).toEqual(['maplibre-gl-shared.mjs has no version in header']);
+  });
+
+  it('names a worker whose banner has no version', () => {
+    const w = '/**\n* MapLibre GL JS\n*/\nimport{D as e}from"./maplibre-gl-shared.mjs";';
+    expect(maplibreWorkerProblems({ worker: w, shared: shared('6.11.2') })).toEqual(['maplibre-gl-worker.mjs has no version in header']);
+  });
+});
+
+describe('extractMaplibreVersion', () => {
+  it('reads the version from the banner', () => {
+    expect(extractMaplibreVersion(banner('6.11.2'))).toBe('6.11.2');
+  });
+  it('is null without a banner', () => {
+    expect(extractMaplibreVersion('export const D=1;')).toBeNull();
   });
 });
