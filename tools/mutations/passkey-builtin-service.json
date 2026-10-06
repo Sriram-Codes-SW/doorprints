@@ -1,0 +1,11 @@
+{
+  "spec": "web/src/app/data/drive/connect/drive-connect.service.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/data/drive/connect/drive-connect.service.ts",
+      "find": "  async passkeyBuiltIn(): Promise<boolean | null> {\n    try {\n      return (await this.deletionAdapter.builtInAuthenticator?.()) ?? null;\n    } catch {\n      return null;\n    }\n  }",
+      "replace": "  async passkeyBuiltIn(): Promise<boolean | null> {\n    try {\n      return null;\n    } catch {\n      return null;\n    }\n  }",
+      "expect": "returns false when adapter builtInAuthenticator resolves false"
+    }
+  ]
+}
