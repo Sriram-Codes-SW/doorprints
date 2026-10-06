@@ -222,4 +222,30 @@ describe('RealAuthorizationGate', () => {
     holds = await gate.stillHolds(fresh, { type: 'allBackups' });
     expect(holds).toBe(true);
   });
+
+  it('a 64-hex proof that was not signed with the passkey key is rejected even though a grant was registered', async () => {
+    const token = await issuedL2('op-hmac');
+    const forged = { ...token, proof: 'a'.repeat(64) };
+
+    expect(forged.proof).not.toBe(token.proof);
+    expect(await gate.isGenuine(forged)).toBe(false);
+    expect(await gate.stillHolds(forged, { type: 'allBackups' })).toBe(false);
+    expect(await gate.isGenuine(token)).toBe(true);
+  });
+
+  it('a proof signed for a different operationId or issuedAtMs is rejected', async () => {
+    const token = await issuedL2('op-correct');
+
+    // Proof signed for a different operationId
+    const wrongOpProof = await webAuthorizer.proofFor('other-op', token.issuedAtMs);
+    if (!wrongOpProof) throw new Error('no proof for other-op');
+    const wrongOp = { ...token, proof: wrongOpProof };
+    expect(await gate.isGenuine(wrongOp)).toBe(false);
+
+    // Proof for the right operation but different issuedAtMs
+    const wrongTimeProof = await webAuthorizer.proofFor(token.operationId, token.issuedAtMs + 1);
+    if (!wrongTimeProof) throw new Error('no proof for different time');
+    const wrongTime = { ...token, proof: wrongTimeProof, issuedAtMs: token.issuedAtMs + 1 };
+    expect(await gate.isGenuine(wrongTime)).toBe(false);
+  });
 });

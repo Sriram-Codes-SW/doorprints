@@ -311,4 +311,20 @@ describe('service worker precache stamp', () => {
       expect(() => stampManifestId(manifest, 'doorprints')).toThrow(/bad base path/);
     });
   });
+
+  /**
+   * Self-hosted Noto Sans fonts for Indic scripts (S4b-BL-73): fonts come from web/public/fonts/,
+   * not from Google's CDN. CSP must not contain fonts.googleapis.com or fonts.gstatic.com.
+   */
+  describe('self-hosted Noto Sans fonts', () => {
+    it('CSP does not contain fonts.googleapis.com', () => {
+      const csp = cspFromFirebaseConfig(JSON.stringify(firebaseJson));
+      expect(csp).not.toContain('fonts.googleapis.com');
+    });
+
+    it('CSP does not contain fonts.gstatic.com', () => {
+      const csp = cspFromFirebaseConfig(JSON.stringify(firebaseJson));
+      expect(csp).not.toContain('fonts.gstatic.com');
+    });
+  });
 });

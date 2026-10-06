@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.96 |
-| Date | 2026-10-03 |
+| Version | 0.99 |
+| Date | 2026-10-05 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -87,6 +87,7 @@
 | 0.84 | 2026-10-03 | Cursor Agent, lead | Website Drive version 1 follow-up (draft PR #118): 06 v0.110, 10 v0.135, 14 v0.81, 15 v0.13 (8-digit HPKE enrolment, revoke, disconnect-all, partial delete, two-minute sync). |
 | 0.87 | 2026-10-03 | Cursor Agent, lead | Website Drive enrolment check (draft PR #118): 06 v0.113 (TC-U-133: the 8-digit approve step is bound to the transcript just shown and to this browser's nonce and public key). |
 | 0.96 | 2026-10-03 | Cursor Agent, lead | Website passkey setup: 06 v0.121 (TC-U-133), 15 v0.22. The PRF output has to be from the new credential and must not be empty or public. User verification stays required. |
+| 0.97 | 2026-10-05 | Claude, lead | Owner fixed the passkey message and issue recording (14 v0.85, 15 v0.23, 06 v0.122): when no PRF output is returned, the card says the passkey could not protect deletions and offers remedies; the setup records which step returned nothing for troubleshooting. PR #116 was closed without merging; PR #118 was merged on 2026-10-03. |
 | 0.95 | 2026-10-03 | Cursor Agent, lead | Website passkey setup after a Windows Hello PIN: 06 v0.120 (TC-U-133), 15 v0.21. The create ceremony evaluates the PRF. A missing output is not stored, and the card names it. |
 | 0.94 | 2026-10-03 | Cursor Agent, lead | Website passkey setup: 06 v0.119 (TC-U-133), 15 v0.20. Windows Hello needs RS256 beside ES256; a cancelled or failed setup stays on the button and shows a sentence. |
 | 0.93 | 2026-10-03 | Cursor Agent, lead | Website Drive card: 06 v0.118 (TC-U-133), 15 v0.19. Rolled-back keys, a name-only keys.json, a browser that cannot encrypt, an unknown connect failure, no recovery key, and a recovery key that was never shown. |
@@ -106,6 +107,8 @@
 | 0.59 | 2026-10-01 | Claude (Code), lead | S4b-BL-104 (c) and (d) (branch `fix/floor-input-and-import`): 06 v0.89 (TC-U-113, TC-M-44), 10 v0.110 (S4b-BL-104 done in code), 11 v0.52 (5.6: the Basement switch, the import's floor note), schemas README v1.21 (a new import vector). |
 | 0.58 | 2026-10-01 | Claude (Code), lead | S4b-BL-104 (a) and (b) (branch `fix/floor-rooms-followups`): 06 v0.88 (TC-U-113), 10 v0.109 (S4b-BL-104 partly done). |
 | 0.57 | 2026-10-01 | Claude (Code), lead | **The finishing batch** (slice 5 to Wave E, on stacked branches, not merged; branch `docs/finish-batch-notes`): 03 v0.57 (§6.1, §8.1, §9, §11.2, ADR-29..32, new §17), 06 v0.87 (TC-U-109..118, TC-U-WEB-A11Y-1..10, TC-I-43, TC-M-36..44), 10 v0.103 (§13.29..§13.40; S4b-BL-99..110), 11 v0.51 (built notes), 12 v0.7, 14 v0.67 (§1, N15, §6, §7), [schemas/README.md](schemas/README.md) 1.20 (slice 5), the CHANGELOG and the user guide in four languages. |
+| 0.98 | 2026-10-05 | Claude (Haiku 4.5) | **Step 1 of handoff task: remove owner's personal email from the repository.** Removed from `.github/workflows/security.yml` allowlist (and the comment), `docs/06-test-plan.md` TC-S-26 row, `docs/10-sprint-log.md` S4b-BL-53 row, `docs/14-lead-backlog-and-handoff.md` handoff notes; replaced with generic text "the owner's personal email address (deliberately not written in the repository)". Versions: **06 v0.123**, **10 v0.138**, **14 v0.85**. |
+| 0.99 | 2026-10-05 | Claude (Haiku 4.5) | **Step 2 of handoff task: self-host Noto Sans fonts.** Noto Sans Devanagari (119 KB), Tamil (50 KB), and Telugu (122 KB) downloaded from Google Fonts and self-hosted in `web/public/fonts/` with OFL licence note in README.txt. Added @font-face rules to `web/src/styles.css`, removed Google Fonts links from `web/src/index.html`, updated CSP in `web/firebase.json` to remove fonts.googleapis.com and fonts.gstatic.com references. Added tests in `sw-precache.spec.ts` and `seo.spec.ts` to verify CSP no longer references external font hosts. Updated **10 v0.139** S4b-BL-73 row to reflect completion. |
 
 ---
 

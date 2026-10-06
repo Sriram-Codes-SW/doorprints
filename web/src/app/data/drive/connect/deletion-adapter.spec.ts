@@ -28,6 +28,8 @@ import {
 import { FakeAuthorizationGate } from './deletion-adapter.test-support';
 import type { WebGrant } from '../../device-auth/web-authorizer';
 import type { DeletionContext } from '../../device-auth/delete-policy';
+import { PasskeyPrfMissingError } from '../../device-auth/web-authn-prf-authenticator';
+import { WebCryptoProvider } from '../../crypto/crypto-provider';
 
 describe('DriveDeletionAdapter', () => {
   let server: FakeDriveServer;
@@ -551,5 +553,186 @@ describe('DriveDeletionAdapter', () => {
     gate.markStillValid('1');
     // The gate should now consider grant id 1 as genuine and still valid
     expect(gate).toBeDefined();
+  });
+
+  it('records passkey details when registerPasskey fails with no-prf', async () => {
+    // Create a fake PrfAuthenticator that throws PasskeyPrfMissingError
+    const fakePrf = {
+      isSupported: async () => true,
+      registerPasskey: async () => {
+        throw new PasskeyPrfMissingError("test-details-string");
+      },
+      lastPrfDetails: () => "test-details-string",
+    } as any;
+    const crypto = new WebCryptoProvider();
+    const adapterWithPrf = new DriveDeletionAdapterImpl(
+      deletionService,
+      fakeAuthorizer as any,
+      store,
+      rootId,
+      5,
+      gate,
+      crypto,
+      fakePrf,
+      kv,
+    );
+
+    const result = await adapterWithPrf.registerPasskey();
+    expect(result).toBe("no-prf");
+    expect(await adapterWithPrf.lastPasskeyDetails()).toBe("test-details-string");
+  });
+
+  it('clears passkey details on second registerPasskey call', async () => {
+    // First call: fails with no-prf
+    const crypto = new WebCryptoProvider();
+    let fakePrf: any = {
+      isSupported: async () => true,
+      registerPasskey: async () => {
+        throw new PasskeyPrfMissingError("first-failure-details");
+      },
+      lastPrfDetails: () => "first-failure-details",
+    };
+    const kvForTest = new InMemoryKeyValueStore();
+    const adapterWithPrf = new DriveDeletionAdapterImpl(
+      deletionService,
+      fakeAuthorizer as any,
+      store,
+      rootId,
+      5,
+      gate,
+      crypto,
+      fakePrf,
+      kvForTest,
+    );
+
+    let result = await adapterWithPrf.registerPasskey();
+    expect(result).toBe("no-prf");
+    expect(await adapterWithPrf.lastPasskeyDetails()).toBe("first-failure-details");
+
+    // Second call: person cancels (returns null)
+    fakePrf.registerPasskey = async () => null;
+    fakePrf.lastPrfDetails = () => null;
+
+    result = await adapterWithPrf.registerPasskey();
+    expect(result).toBeNull();
+    // After cancel, details MUST be null (cleared at start of registerPasskey)
+    expect(await adapterWithPrf.lastPasskeyDetails()).toBeNull();
+  });
+
+  describe('prfCapability()', () => {
+    it('returns true when PRF authenticator supports PRF extension', async () => {
+      const fakePrf = {
+        isSupported: async () => true,
+        prfCapability: async () => true,
+      } as any;
+      const adapterWithPrf = new DriveDeletionAdapterImpl(
+        deletionService,
+        fakeAuthorizer as any,
+        store,
+        rootId,
+        5,
+        gate,
+        undefined,
+        fakePrf,
+      );
+
+      const cap = await adapterWithPrf.prfCapability();
+      expect(cap).toBe(true);
+    });
+
+    it('returns false when PRF authenticator does not support PRF extension', async () => {
+      const fakePrf = {
+        isSupported: async () => true,
+        prfCapability: async () => false,
+      } as any;
+      const adapterWithPrf = new DriveDeletionAdapterImpl(
+        deletionService,
+        fakeAuthorizer as any,
+        store,
+        rootId,
+        5,
+        gate,
+        undefined,
+        fakePrf,
+      );
+
+      const cap = await adapterWithPrf.prfCapability();
+      expect(cap).toBe(false);
+    });
+
+    it('returns null when PRF authenticator capability is indeterminate', async () => {
+      const fakePrf = {
+        isSupported: async () => true,
+        prfCapability: async () => null,
+      } as any;
+      const adapterWithPrf = new DriveDeletionAdapterImpl(
+        deletionService,
+        fakeAuthorizer as any,
+        store,
+        rootId,
+        5,
+        gate,
+        undefined,
+        fakePrf,
+      );
+
+      const cap = await adapterWithPrf.prfCapability();
+      expect(cap).toBe(null);
+    });
+
+    it('returns null when PRF authenticator is missing', async () => {
+      const adapterNoPrf = new DriveDeletionAdapterImpl(
+        deletionService,
+        fakeAuthorizer as any,
+        store,
+        rootId,
+        5,
+        gate,
+      );
+
+      const cap = await adapterNoPrf.prfCapability();
+      expect(cap).toBe(null);
+    });
+
+    it('returns null when PRF authenticator throws', async () => {
+      const fakePrf = {
+        isSupported: async () => true,
+        prfCapability: async () => {
+          throw new Error('API error');
+        },
+      } as any;
+      const adapterWithPrf = new DriveDeletionAdapterImpl(
+        deletionService,
+        fakeAuthorizer as any,
+        store,
+        rootId,
+        5,
+        gate,
+        undefined,
+        fakePrf,
+      );
+
+      const cap = await adapterWithPrf.prfCapability();
+      expect(cap).toBe(null);
+    });
+
+    it('returns null when PRF authenticator has no prfCapability method', async () => {
+      const fakePrf = {
+        isSupported: async () => true,
+      } as any;
+      const adapterWithPrf = new DriveDeletionAdapterImpl(
+        deletionService,
+        fakeAuthorizer as any,
+        store,
+        rootId,
+        5,
+        gate,
+        undefined,
+        fakePrf,
+      );
+
+      const cap = await adapterWithPrf.prfCapability();
+      expect(cap).toBe(null);
+    });
   });
 });

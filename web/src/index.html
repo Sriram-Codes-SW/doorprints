@@ -100,16 +100,10 @@
   <meta name="apple-mobile-web-app-title" content="Doorprints">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <!--
-    Fallback fonts for Hindi, Tamil and Telugu when the device has none. Google Fonts serves them split by
-    unicode-range, so a browser only downloads a script's font when that script appears on the page.
-  -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;600;700&family=Noto+Sans+Tamil:wght@400;600;700&family=Noto+Sans+Telugu:wght@400;600;700&display=swap">
-  <!--
     Per-deployment Google API config: sets window.__DOORPRINTS__.googleClientId.
     S4b-BL-117: CI populates web/public/config.js from env. If missing, loads default empty config.
-    Service worker does not cache this, so each load gets current config.
+    Service worker precaches this (web/scripts/sw-precache-core.mjs excludes only 404.html and sw.js),
+    cache-first for the life of a build, so changing the configured OAuth client id requires a redeploy.
   -->
   <script src="config.js"></script>
 </head>

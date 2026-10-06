@@ -1,85 +1,85 @@
 # Reviewed 2026-09-22: throwaway test API keys in the initial commit (not real secrets).
 # Tests now generate a random key at runtime. See docs/07-secure-build-and-deploy.md.
-4b034d3b993eca0104c99e42e66fa5c35506fc53:backend/src/test/java/com/househunt/ApiIntegrationTest.java:generic-api-key:34
-4b034d3b993eca0104c99e42e66fa5c35506fc53:backend/src/test/java/com/househunt/ApiIntegrationTest.java:generic-api-key:44
+1dd154e783d757293be479d9cf4b69577189534b:backend/src/test/java/com/househunt/ApiIntegrationTest.java:generic-api-key:34
+1dd154e783d757293be479d9cf4b69577189534b:backend/src/test/java/com/househunt/ApiIntegrationTest.java:generic-api-key:44
 # Reviewed 2026-09-29: a made-up key in an iOS simulator test (CMP-8a, KeychainSettingsTest's KEY_2, never a real
 # key); the test now uses "test-key-one" and "test-key-two". docs/07-secure-build-and-deploy.md.
-353d05c7c36a98cc80198ddd07a212e4cd28c687:android/shared/src/iosTest/kotlin/app/doorprints/data/KeychainSettingsTest.kt:generic-api-key:325
+be73cb2d7b873af883505985795489bb4e186044:android/shared/src/iosTest/kotlin/app/doorprints/data/KeychainSettingsTest.kt:generic-api-key:325
 # Reviewed 2026-10-02: generic-api-key matched the type name after `key:` / `privateKey:` in Drive seams and stores.
 # Not a credential. These commits are not ancestors of main (the work was squash-merged); they stay listed so a
 # scan that still sees them ignores only these lines. docs/07-secure-build-and-deploy.md.
-0dd6000fb02a5bf9d31211f721aba173e1239e1f:web/src/app/data/drive/backup/backup-test-rig.ts:generic-api-key:143
-0dd6000fb02a5bf9d31211f721aba173e1239e1f:web/src/app/data/drive/backup/drive-backup-seams.ts:generic-api-key:36
-2b0e53ace45e0b444068e9a92c32b5276e8c1f44:android/shared/src/androidHostTest/kotlin/app/doorprints/drive/backup/BackupTestRig.kt:generic-api-key:74
-42c3402bbb661b6c975f25213324a65f3d8baaf1:android/app/src/main/java/app/doorprints/drive/AndroidDriveServices.kt:generic-api-key:81
-6ebfa24b7020e8178525b585e46df936e12f4578:android/shared/src/commonMain/kotlin/app/doorprints/drive/backup/DriveBackupSeams.kt:generic-api-key:37
-749a0f66beb61a269b19140625ef5146f88dec20:web/src/app/data/drive/connect/stores/device-key-store.ts:generic-api-key:22
-85d31170262a853dedefdf98b51889a934124aa9:web/src/app/data/drive/connect/factories/runtime.ts:generic-api-key:40
+274e306cab6b9f6bd7e0741d1569ed58d8ef02ca:web/src/app/data/drive/backup/backup-test-rig.ts:generic-api-key:143
+274e306cab6b9f6bd7e0741d1569ed58d8ef02ca:web/src/app/data/drive/backup/drive-backup-seams.ts:generic-api-key:36
+9b89644eb9583074a59822c8ba544790a16a3c52:android/shared/src/androidHostTest/kotlin/app/doorprints/drive/backup/BackupTestRig.kt:generic-api-key:74
+f93854eac27308dd31602218cb9bf9a47fee6f54:android/app/src/main/java/app/doorprints/drive/AndroidDriveServices.kt:generic-api-key:81
+261d0f79d0d9fa23464c32246b910d4b29888f03:android/shared/src/commonMain/kotlin/app/doorprints/drive/backup/DriveBackupSeams.kt:generic-api-key:37
+1c1567d77fb6e5c2470a2f09b0904b4dd52671c3:web/src/app/data/drive/connect/stores/device-key-store.ts:generic-api-key:22
+c0d80bd17b7755e1ccb9c1ba2feb1306125c03c2:web/src/app/data/drive/connect/factories/runtime.ts:generic-api-key:40
 # Reviewed 2026-10-02: known-answer vectors in docs/schemas (RFC HPKE/GCM hex, and DPX regression base64 folder/content
 # keys). Not live credentials. Same commits as above: not on main, kept for those commits only.
-eb807821e2dc4bebf61d6e566bea5b9b8fa53ceb:docs/schemas/dpx-vectors.json:generic-api-key:101
-eb807821e2dc4bebf61d6e566bea5b9b8fa53ceb:docs/schemas/dpx-vectors.json:generic-api-key:112
-eb807821e2dc4bebf61d6e566bea5b9b8fa53ceb:docs/schemas/dpx-vectors.json:generic-api-key:116
-eb807821e2dc4bebf61d6e566bea5b9b8fa53ceb:docs/schemas/dpx-vectors.json:generic-api-key:127
-eb807821e2dc4bebf61d6e566bea5b9b8fa53ceb:docs/schemas/dpx-vectors.json:generic-api-key:131
-eb807821e2dc4bebf61d6e566bea5b9b8fa53ceb:docs/schemas/dpx-vectors.json:generic-api-key:142
-eb807821e2dc4bebf61d6e566bea5b9b8fa53ceb:docs/schemas/dpx-vectors.json:generic-api-key:146
-eb807821e2dc4bebf61d6e566bea5b9b8fa53ceb:docs/schemas/dpx-vectors.json:generic-api-key:156
-eb807821e2dc4bebf61d6e566bea5b9b8fa53ceb:docs/schemas/dpx-vectors.json:generic-api-key:160
-eb807821e2dc4bebf61d6e566bea5b9b8fa53ceb:docs/schemas/dpx-vectors.json:generic-api-key:170
-eb807821e2dc4bebf61d6e566bea5b9b8fa53ceb:docs/schemas/dpx-vectors.json:generic-api-key:174
-eb807821e2dc4bebf61d6e566bea5b9b8fa53ceb:docs/schemas/dpx-vectors.json:generic-api-key:184
-eb807821e2dc4bebf61d6e566bea5b9b8fa53ceb:docs/schemas/dpx-vectors.json:generic-api-key:188
-eb807821e2dc4bebf61d6e566bea5b9b8fa53ceb:docs/schemas/dpx-vectors.json:generic-api-key:97
-eb807821e2dc4bebf61d6e566bea5b9b8fa53ceb:docs/schemas/hpke-vectors.json:generic-api-key:126
-eb807821e2dc4bebf61d6e566bea5b9b8fa53ceb:docs/schemas/hpke-vectors.json:generic-api-key:129
-eb807821e2dc4bebf61d6e566bea5b9b8fa53ceb:docs/schemas/hpke-vectors.json:generic-api-key:182
-eb807821e2dc4bebf61d6e566bea5b9b8fa53ceb:docs/schemas/hpke-vectors.json:generic-api-key:183
-eb807821e2dc4bebf61d6e566bea5b9b8fa53ceb:docs/schemas/hpke-vectors.json:generic-api-key:185
-eb807821e2dc4bebf61d6e566bea5b9b8fa53ceb:docs/schemas/hpke-vectors.json:generic-api-key:213
-eb807821e2dc4bebf61d6e566bea5b9b8fa53ceb:docs/schemas/hpke-vectors.json:generic-api-key:214
-eb807821e2dc4bebf61d6e566bea5b9b8fa53ceb:docs/schemas/hpke-vectors.json:generic-api-key:216
-eb807821e2dc4bebf61d6e566bea5b9b8fa53ceb:docs/schemas/hpke-vectors.json:generic-api-key:238
-eb807821e2dc4bebf61d6e566bea5b9b8fa53ceb:docs/schemas/hpke-vectors.json:generic-api-key:239
-eb807821e2dc4bebf61d6e566bea5b9b8fa53ceb:docs/schemas/hpke-vectors.json:generic-api-key:241
-eb807821e2dc4bebf61d6e566bea5b9b8fa53ceb:docs/schemas/hpke-vectors.json:generic-api-key:60
-eb807821e2dc4bebf61d6e566bea5b9b8fa53ceb:docs/schemas/hpke-vectors.json:generic-api-key:69
+75aa79010307a74ac6974e9f89a8727190a6cdc7:docs/schemas/dpx-vectors.json:generic-api-key:101
+75aa79010307a74ac6974e9f89a8727190a6cdc7:docs/schemas/dpx-vectors.json:generic-api-key:112
+75aa79010307a74ac6974e9f89a8727190a6cdc7:docs/schemas/dpx-vectors.json:generic-api-key:116
+75aa79010307a74ac6974e9f89a8727190a6cdc7:docs/schemas/dpx-vectors.json:generic-api-key:127
+75aa79010307a74ac6974e9f89a8727190a6cdc7:docs/schemas/dpx-vectors.json:generic-api-key:131
+75aa79010307a74ac6974e9f89a8727190a6cdc7:docs/schemas/dpx-vectors.json:generic-api-key:142
+75aa79010307a74ac6974e9f89a8727190a6cdc7:docs/schemas/dpx-vectors.json:generic-api-key:146
+75aa79010307a74ac6974e9f89a8727190a6cdc7:docs/schemas/dpx-vectors.json:generic-api-key:156
+75aa79010307a74ac6974e9f89a8727190a6cdc7:docs/schemas/dpx-vectors.json:generic-api-key:160
+75aa79010307a74ac6974e9f89a8727190a6cdc7:docs/schemas/dpx-vectors.json:generic-api-key:170
+75aa79010307a74ac6974e9f89a8727190a6cdc7:docs/schemas/dpx-vectors.json:generic-api-key:174
+75aa79010307a74ac6974e9f89a8727190a6cdc7:docs/schemas/dpx-vectors.json:generic-api-key:184
+75aa79010307a74ac6974e9f89a8727190a6cdc7:docs/schemas/dpx-vectors.json:generic-api-key:188
+75aa79010307a74ac6974e9f89a8727190a6cdc7:docs/schemas/dpx-vectors.json:generic-api-key:97
+75aa79010307a74ac6974e9f89a8727190a6cdc7:docs/schemas/hpke-vectors.json:generic-api-key:126
+75aa79010307a74ac6974e9f89a8727190a6cdc7:docs/schemas/hpke-vectors.json:generic-api-key:129
+75aa79010307a74ac6974e9f89a8727190a6cdc7:docs/schemas/hpke-vectors.json:generic-api-key:182
+75aa79010307a74ac6974e9f89a8727190a6cdc7:docs/schemas/hpke-vectors.json:generic-api-key:183
+75aa79010307a74ac6974e9f89a8727190a6cdc7:docs/schemas/hpke-vectors.json:generic-api-key:185
+75aa79010307a74ac6974e9f89a8727190a6cdc7:docs/schemas/hpke-vectors.json:generic-api-key:213
+75aa79010307a74ac6974e9f89a8727190a6cdc7:docs/schemas/hpke-vectors.json:generic-api-key:214
+75aa79010307a74ac6974e9f89a8727190a6cdc7:docs/schemas/hpke-vectors.json:generic-api-key:216
+75aa79010307a74ac6974e9f89a8727190a6cdc7:docs/schemas/hpke-vectors.json:generic-api-key:238
+75aa79010307a74ac6974e9f89a8727190a6cdc7:docs/schemas/hpke-vectors.json:generic-api-key:239
+75aa79010307a74ac6974e9f89a8727190a6cdc7:docs/schemas/hpke-vectors.json:generic-api-key:241
+75aa79010307a74ac6974e9f89a8727190a6cdc7:docs/schemas/hpke-vectors.json:generic-api-key:60
+75aa79010307a74ac6974e9f89a8727190a6cdc7:docs/schemas/hpke-vectors.json:generic-api-key:69
 # Reviewed 2026-10-03: the same findings on the squash commit cc5b5a3 (the only copy on main). A fingerprint names
 # the commit, so the lines above do not cover this commit. Six are the type name P256PrivateKey after `key:` /
 # `privateKey:` (a type, or a key generated at runtime). Thirteen are known-answer hex in hpke-vectors.json
 # (published AES-GCM and RFC 9180, plus regression shared_secret / key / exporter_secret). Fourteen are regression
 # base64 in dpx-vectors.json (folder key is bytes 0..31; content keys are the file's fake-random stream).
 # Not live credentials. No path allowlist: a real key on another line or a later commit still fails.
-cc5b5a3256bb6406f557f6fc12b4e1b6aff51c99:android/shared/src/androidHostTest/kotlin/app/doorprints/drive/backup/BackupTestRig.kt:generic-api-key:74
-cc5b5a3256bb6406f557f6fc12b4e1b6aff51c99:android/shared/src/commonMain/kotlin/app/doorprints/drive/backup/DriveBackupSeams.kt:generic-api-key:37
-cc5b5a3256bb6406f557f6fc12b4e1b6aff51c99:docs/schemas/dpx-vectors.json:generic-api-key:101
-cc5b5a3256bb6406f557f6fc12b4e1b6aff51c99:docs/schemas/dpx-vectors.json:generic-api-key:112
-cc5b5a3256bb6406f557f6fc12b4e1b6aff51c99:docs/schemas/dpx-vectors.json:generic-api-key:116
-cc5b5a3256bb6406f557f6fc12b4e1b6aff51c99:docs/schemas/dpx-vectors.json:generic-api-key:127
-cc5b5a3256bb6406f557f6fc12b4e1b6aff51c99:docs/schemas/dpx-vectors.json:generic-api-key:131
-cc5b5a3256bb6406f557f6fc12b4e1b6aff51c99:docs/schemas/dpx-vectors.json:generic-api-key:142
-cc5b5a3256bb6406f557f6fc12b4e1b6aff51c99:docs/schemas/dpx-vectors.json:generic-api-key:146
-cc5b5a3256bb6406f557f6fc12b4e1b6aff51c99:docs/schemas/dpx-vectors.json:generic-api-key:156
-cc5b5a3256bb6406f557f6fc12b4e1b6aff51c99:docs/schemas/dpx-vectors.json:generic-api-key:160
-cc5b5a3256bb6406f557f6fc12b4e1b6aff51c99:docs/schemas/dpx-vectors.json:generic-api-key:170
-cc5b5a3256bb6406f557f6fc12b4e1b6aff51c99:docs/schemas/dpx-vectors.json:generic-api-key:174
-cc5b5a3256bb6406f557f6fc12b4e1b6aff51c99:docs/schemas/dpx-vectors.json:generic-api-key:184
-cc5b5a3256bb6406f557f6fc12b4e1b6aff51c99:docs/schemas/dpx-vectors.json:generic-api-key:188
-cc5b5a3256bb6406f557f6fc12b4e1b6aff51c99:docs/schemas/dpx-vectors.json:generic-api-key:97
-cc5b5a3256bb6406f557f6fc12b4e1b6aff51c99:docs/schemas/hpke-vectors.json:generic-api-key:126
-cc5b5a3256bb6406f557f6fc12b4e1b6aff51c99:docs/schemas/hpke-vectors.json:generic-api-key:129
-cc5b5a3256bb6406f557f6fc12b4e1b6aff51c99:docs/schemas/hpke-vectors.json:generic-api-key:182
-cc5b5a3256bb6406f557f6fc12b4e1b6aff51c99:docs/schemas/hpke-vectors.json:generic-api-key:183
-cc5b5a3256bb6406f557f6fc12b4e1b6aff51c99:docs/schemas/hpke-vectors.json:generic-api-key:185
-cc5b5a3256bb6406f557f6fc12b4e1b6aff51c99:docs/schemas/hpke-vectors.json:generic-api-key:213
-cc5b5a3256bb6406f557f6fc12b4e1b6aff51c99:docs/schemas/hpke-vectors.json:generic-api-key:214
-cc5b5a3256bb6406f557f6fc12b4e1b6aff51c99:docs/schemas/hpke-vectors.json:generic-api-key:216
-cc5b5a3256bb6406f557f6fc12b4e1b6aff51c99:docs/schemas/hpke-vectors.json:generic-api-key:238
-cc5b5a3256bb6406f557f6fc12b4e1b6aff51c99:docs/schemas/hpke-vectors.json:generic-api-key:239
-cc5b5a3256bb6406f557f6fc12b4e1b6aff51c99:docs/schemas/hpke-vectors.json:generic-api-key:241
-cc5b5a3256bb6406f557f6fc12b4e1b6aff51c99:docs/schemas/hpke-vectors.json:generic-api-key:60
-cc5b5a3256bb6406f557f6fc12b4e1b6aff51c99:docs/schemas/hpke-vectors.json:generic-api-key:69
-cc5b5a3256bb6406f557f6fc12b4e1b6aff51c99:web/src/app/data/drive/backup/backup-test-rig.ts:generic-api-key:143
-cc5b5a3256bb6406f557f6fc12b4e1b6aff51c99:web/src/app/data/drive/backup/drive-backup-seams.ts:generic-api-key:36
-cc5b5a3256bb6406f557f6fc12b4e1b6aff51c99:web/src/app/data/drive/connect/factories/runtime.ts:generic-api-key:52
-cc5b5a3256bb6406f557f6fc12b4e1b6aff51c99:web/src/app/data/drive/connect/stores/device-key-store.ts:generic-api-key:29
+aabe9a8f79e77975c6874bd3f642f919f4f985c1:android/shared/src/androidHostTest/kotlin/app/doorprints/drive/backup/BackupTestRig.kt:generic-api-key:74
+aabe9a8f79e77975c6874bd3f642f919f4f985c1:android/shared/src/commonMain/kotlin/app/doorprints/drive/backup/DriveBackupSeams.kt:generic-api-key:37
+aabe9a8f79e77975c6874bd3f642f919f4f985c1:docs/schemas/dpx-vectors.json:generic-api-key:101
+aabe9a8f79e77975c6874bd3f642f919f4f985c1:docs/schemas/dpx-vectors.json:generic-api-key:112
+aabe9a8f79e77975c6874bd3f642f919f4f985c1:docs/schemas/dpx-vectors.json:generic-api-key:116
+aabe9a8f79e77975c6874bd3f642f919f4f985c1:docs/schemas/dpx-vectors.json:generic-api-key:127
+aabe9a8f79e77975c6874bd3f642f919f4f985c1:docs/schemas/dpx-vectors.json:generic-api-key:131
+aabe9a8f79e77975c6874bd3f642f919f4f985c1:docs/schemas/dpx-vectors.json:generic-api-key:142
+aabe9a8f79e77975c6874bd3f642f919f4f985c1:docs/schemas/dpx-vectors.json:generic-api-key:146
+aabe9a8f79e77975c6874bd3f642f919f4f985c1:docs/schemas/dpx-vectors.json:generic-api-key:156
+aabe9a8f79e77975c6874bd3f642f919f4f985c1:docs/schemas/dpx-vectors.json:generic-api-key:160
+aabe9a8f79e77975c6874bd3f642f919f4f985c1:docs/schemas/dpx-vectors.json:generic-api-key:170
+aabe9a8f79e77975c6874bd3f642f919f4f985c1:docs/schemas/dpx-vectors.json:generic-api-key:174
+aabe9a8f79e77975c6874bd3f642f919f4f985c1:docs/schemas/dpx-vectors.json:generic-api-key:184
+aabe9a8f79e77975c6874bd3f642f919f4f985c1:docs/schemas/dpx-vectors.json:generic-api-key:188
+aabe9a8f79e77975c6874bd3f642f919f4f985c1:docs/schemas/dpx-vectors.json:generic-api-key:97
+aabe9a8f79e77975c6874bd3f642f919f4f985c1:docs/schemas/hpke-vectors.json:generic-api-key:126
+aabe9a8f79e77975c6874bd3f642f919f4f985c1:docs/schemas/hpke-vectors.json:generic-api-key:129
+aabe9a8f79e77975c6874bd3f642f919f4f985c1:docs/schemas/hpke-vectors.json:generic-api-key:182
+aabe9a8f79e77975c6874bd3f642f919f4f985c1:docs/schemas/hpke-vectors.json:generic-api-key:183
+aabe9a8f79e77975c6874bd3f642f919f4f985c1:docs/schemas/hpke-vectors.json:generic-api-key:185
+aabe9a8f79e77975c6874bd3f642f919f4f985c1:docs/schemas/hpke-vectors.json:generic-api-key:213
+aabe9a8f79e77975c6874bd3f642f919f4f985c1:docs/schemas/hpke-vectors.json:generic-api-key:214
+aabe9a8f79e77975c6874bd3f642f919f4f985c1:docs/schemas/hpke-vectors.json:generic-api-key:216
+aabe9a8f79e77975c6874bd3f642f919f4f985c1:docs/schemas/hpke-vectors.json:generic-api-key:238
+aabe9a8f79e77975c6874bd3f642f919f4f985c1:docs/schemas/hpke-vectors.json:generic-api-key:239
+aabe9a8f79e77975c6874bd3f642f919f4f985c1:docs/schemas/hpke-vectors.json:generic-api-key:241
+aabe9a8f79e77975c6874bd3f642f919f4f985c1:docs/schemas/hpke-vectors.json:generic-api-key:60
+aabe9a8f79e77975c6874bd3f642f919f4f985c1:docs/schemas/hpke-vectors.json:generic-api-key:69
+aabe9a8f79e77975c6874bd3f642f919f4f985c1:web/src/app/data/drive/backup/backup-test-rig.ts:generic-api-key:143
+aabe9a8f79e77975c6874bd3f642f919f4f985c1:web/src/app/data/drive/backup/drive-backup-seams.ts:generic-api-key:36
+aabe9a8f79e77975c6874bd3f642f919f4f985c1:web/src/app/data/drive/connect/factories/runtime.ts:generic-api-key:52
+aabe9a8f79e77975c6874bd3f642f919f4f985c1:web/src/app/data/drive/connect/stores/device-key-store.ts:generic-api-key:29

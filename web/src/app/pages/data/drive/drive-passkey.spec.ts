@@ -22,12 +22,14 @@ import { DrivePasskeyComponent } from './drive-passkey';
 import { TranslationService } from '../../../i18n/translation.service';
 import { DriveConnectService } from '../../../data/drive/connect/drive-connect.service';
 
-type FakeDriveService = Pick<DriveConnectService, 'passkeyStatus' | 'registerPasskey'>;
+type FakeDriveService = Pick<DriveConnectService, 'passkeyStatus' | 'registerPasskey' | 'passkeyDetails' | 'passkeyPrfCapability'>;
 
 function createFakeDriveService(overrides: Partial<FakeDriveService> = {}): FakeDriveService {
   return {
     passkeyStatus: vi.fn(async () => 'none' as const),
     registerPasskey: vi.fn(async () => 'registered' as const),
+    passkeyDetails: vi.fn(async () => null),
+    passkeyPrfCapability: vi.fn(async () => null),
     ...overrides,
   };
 }
@@ -257,27 +259,156 @@ describe('DrivePasskeyComponent', () => {
     expect(host.textContent).toContain('This browser cannot make the kind of passkey');
   });
 
-  it('stays on Set up a passkey and names the missing PRF output', async () => {
-    const service = createFakeDriveService({
-      registerPasskey: vi.fn(async () => 'no-prf' as const),
-      passkeyStatus: vi.fn(async () => 'none' as const),
+  describe('a passkey that returns no PRF output', () => {
+    const DETAILS = 'create: prf-present enabled=false first=no; assertion: no-prf-results enabled=false';
+
+    async function noPrf(details: string | null = DETAILS) {
+      const service = createFakeDriveService({
+        registerPasskey: vi.fn(async () => 'no-prf' as const),
+        passkeyStatus: vi.fn(async () => 'none' as const),
+        passkeyDetails: vi.fn(async () => details),
+      });
+      const view = await render(service);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      view.detect();
+      await view.component.onRegisterPasskey();
+      view.detect();
+      return { ...view, service };
+    }
+
+    it('stays on Set up a passkey, says it could not protect deletions and what works instead', async () => {
+      const { host, component } = await noPrf();
+      expect(component['status']()).toBe('none');
+      expect(component['errorMessage']()).toBe('drivePasskey.registerNoPrf');
+      expect(host.querySelector('button')?.textContent).toContain('Set up a passkey');
+      expect(host.querySelector('.error-message')?.textContent).toContain('could not protect deletions');
+      const help = host.querySelector('.passkey-help')?.textContent ?? '';
+      expect(help).toContain('Deleting a single backup still works');
+      expect(help).toContain('security key');
+      expect(host.textContent).not.toContain('This browser cannot make the kind of passkey');
+      expect(host.textContent).not.toContain('Try again.');
     });
-    const { host, component, detect } = await render(service);
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    detect();
+    it('offers the technical details (step names and flags) and copies them', async () => {
+      const writeText = vi.fn(async () => undefined);
+      Object.defineProperty(globalThis.navigator, 'clipboard', { value: { writeText }, configurable: true });
+      const { host, detect, service } = await noPrf();
+      expect(service.passkeyDetails).toHaveBeenCalledTimes(1);
+      expect(host.querySelector('details summary')?.textContent).toContain('Technical details');
+      expect(host.querySelector('.passkey-details')?.textContent).toBe(DETAILS);
+      const copy = [...host.querySelectorAll('details button')].find((b) => b.textContent?.includes('Copy details')) as HTMLButtonElement;
+      copy.click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      detect();
+      expect(writeText).toHaveBeenCalledWith(DETAILS);
+      expect(host.textContent).toContain('Details copied.');
+    });
 
-    await component.onRegisterPasskey();
-    detect();
+    it('shows no details box when the authenticator reported none, but still the help', async () => {
+      const { host } = await noPrf(null);
+      expect(host.querySelector('.passkey-help')).toBeTruthy();
+      expect(host.querySelector('details')).toBeNull();
+    });
 
-    expect(component['status']()).toBe('none');
-    expect(component['errorMessage']()).toBe('drivePasskey.registerNoPrf');
-    expect(host.querySelector('button')?.textContent).toContain('Set up a passkey');
-    expect(host.querySelector('.error-message')?.textContent).toContain(
-      'This passkey did not return the PRF output needed to seal deletions.',
-    );
-    expect(host.textContent).not.toContain('This browser cannot make the kind of passkey');
-    expect(host.textContent).not.toContain('Try again.');
+    it('clears the help and the details when the next attempt succeeds', async () => {
+      const results: Array<'no-prf' | 'registered'> = ['no-prf', 'registered'];
+      const service = createFakeDriveService({
+        registerPasskey: vi.fn(async () => results.shift()!),
+        passkeyStatus: vi.fn(async () => 'none' as const),
+        passkeyDetails: vi.fn(async () => DETAILS),
+      });
+      const { host, component, detect } = await render(service);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      detect();
+      await component.onRegisterPasskey();
+      detect();
+      expect(host.querySelector('.passkey-help')).toBeTruthy();
+      await component.onRegisterPasskey();
+      detect();
+      expect(host.querySelector('.passkey-help')).toBeNull();
+      expect(host.querySelector('details')).toBeNull();
+    });
+  });
+
+  describe('PRF capability heads-up', () => {
+    it('shows heads-up when capability is false', async () => {
+      const service = createFakeDriveService({
+        passkeyStatus: vi.fn(async () => 'none' as const),
+        passkeyPrfCapability: vi.fn(async () => false),
+      });
+      const { host, component, detect } = await render(service);
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      detect();
+
+      expect(component['prfHeadsUp']()).toBe(true);
+      const headsUp = host.querySelector('.passkey-help')?.textContent ?? '';
+      expect(headsUp).toContain('This browser says it cannot use the passkey feature');
+      expect(host.querySelector('button')?.textContent).toContain('Set up a passkey');
+      expect(host.querySelector('button')?.hasAttribute('disabled')).toBe(false);
+    });
+
+    it('does not show heads-up when capability is true', async () => {
+      const service = createFakeDriveService({
+        passkeyStatus: vi.fn(async () => 'none' as const),
+        passkeyPrfCapability: vi.fn(async () => true),
+      });
+      const { host, component, detect } = await render(service);
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      detect();
+
+      expect(component['prfHeadsUp']()).toBe(false);
+      const headsUp = host.querySelector('.passkey-help')?.textContent ?? '';
+      expect(headsUp).not.toContain('This browser says it cannot use the passkey feature');
+    });
+
+    it('does not show heads-up when capability is null', async () => {
+      const service = createFakeDriveService({
+        passkeyStatus: vi.fn(async () => 'none' as const),
+        passkeyPrfCapability: vi.fn(async () => null),
+      });
+      const { host, component, detect } = await render(service);
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      detect();
+
+      expect(component['prfHeadsUp']()).toBe(false);
+      const headsUp = host.querySelector('.passkey-help')?.textContent ?? '';
+      expect(headsUp).not.toContain('This browser says it cannot use the passkey feature');
+    });
+
+    it('does not check capability when status is registered', async () => {
+      const service = createFakeDriveService({
+        passkeyStatus: vi.fn(async () => 'registered' as const),
+        passkeyPrfCapability: vi.fn(async () => false),
+      });
+      const { component, service: svc, detect } = await render(service);
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      detect();
+
+      expect(component['status']()).toBe('registered');
+      expect(svc.passkeyPrfCapability).not.toHaveBeenCalled();
+    });
+
+    it('keeps Set up button enabled and renders no error alert when heads-up is shown', async () => {
+      const service = createFakeDriveService({
+        passkeyStatus: vi.fn(async () => 'none' as const),
+        passkeyPrfCapability: vi.fn(async () => false),
+      });
+      const { host, detect } = await render(service);
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      detect();
+
+      const button = host.querySelector('button');
+      expect(button?.hasAttribute('disabled')).toBe(false);
+      expect(button?.textContent).toContain('Set up a passkey');
+
+      const errorMessage = host.querySelector('.error-message');
+      expect(errorMessage).toBeNull();
+    });
   });
 
   it('has aria-live region for error messages', async () => {

@@ -58,6 +58,22 @@
       @if (errorMessage(); as error) {
         <p class="error-message">{{ error | t }}</p>
       }
+      @if (prfHeadsUp()) {
+        <p class="passkey-help">{{ 'drivePasskey.prfHeadsUp' | t }}</p>
+      }
+      @if (noPrfHelp()) {
+        <p class="passkey-help">{{ 'drivePasskey.noPrfHelp' | t }}</p>
+        @if (details(); as detailsText) {
+          <details class="passkey-details-box">
+            <summary>{{ 'drivePasskey.detailsLabel' | t }}</summary>
+            <p><code class="passkey-details">{{ detailsText }}</code></p>
+            <button type="button" class="btn btn-sm" (click)="copyDetails()">{{ 'drivePasskey.copyDetails' | t }}</button>
+            @if (detailsCopied()) {
+              <span role="status">{{ 'drivePasskey.detailsCopied' | t }}</span>
+            }
+          </details>
+        }
+      }
     </div>
   </div>
 </div>

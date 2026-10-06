@@ -337,4 +337,32 @@ describe('deletion factories', () => {
       expect(gate).toBeDefined();
     });
   });
+
+  describe('Lazy proxy prfCapability forwarding', () => {
+    it('forwards prfCapability when false to underlying adapter', async () => {
+      const fakePrf = new FakePrfAuthenticator(crypto);
+      fakePrf.capability = false;
+
+      const adapter = createLazyDeletionAdapterProxy(
+        async () => mockRuntime,
+        { prf: fakePrf }
+      );
+
+      const cap = await adapter.prfCapability?.();
+      expect(cap).toBe(false);
+    });
+
+    it('forwards prfCapability when true to underlying adapter', async () => {
+      const fakePrf = new FakePrfAuthenticator(crypto);
+      fakePrf.capability = true;
+
+      const adapter = createLazyDeletionAdapterProxy(
+        async () => mockRuntime,
+        { prf: fakePrf }
+      );
+
+      const cap = await adapter.prfCapability?.();
+      expect(cap).toBe(true);
+    });
+  });
 });

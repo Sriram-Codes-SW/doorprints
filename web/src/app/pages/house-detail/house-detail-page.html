@@ -340,10 +340,10 @@
           <label for="house-listing">{{ 'house.listingUrl' | t }}</label>
           <div class="inline">
             <input id="house-listing" type="url" inputmode="url" [(ngModel)]="d.listingUrl" maxlength="1000" placeholder="https://…" />
-            @if (d.listingUrl) {
+            @if (d.listingUrl && listingHref(d.listingUrl); as href) {
               <a
                 class="btn"
-                [href]="listingHref(d.listingUrl)"
+                [href]="href"
                 target="_blank"
                 rel="noopener noreferrer"
                 [attr.aria-label]="'house.openListingAria' | t"

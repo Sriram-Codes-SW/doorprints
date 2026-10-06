@@ -74,8 +74,12 @@ class FakeCredentialsContainer {
   createReturnsPrf = false;
   /** Replaces a derived create output: zeros, the raw salt, or the public WebAuthn client salt. */
   createEcho: "zeros" | "raw-salt" | "public-salt" | null = null;
+  /** When true, create returns no PRF extension in results at all (getClientExtensionResults returns {}). */
+  createNoPrfExtension = false;
   /** When false, get returns no PRF output (the ceremony can still succeed). */
   getReturnsPrf = true;
+  /** When true, get returns no PRF extension in results at all (getClientExtensionResults returns {}). */
+  getNoPrfExtension = false;
   /** When set, get returns a PRF output only for this credential id. */
   getPrfOnlyFor: Uint8Array | null = null;
   /** When set, the assertion's rawId is this value instead of the requested credential. */
@@ -145,11 +149,14 @@ class FakeCredentialsContainer {
       },
       authenticatorAttachment: "platform",
       transports: ["internal"],
-      getClientExtensionResults: () => ({
-        prf: derived
-          ? { enabled: this.createPrfEnabled, results: { first: derived.buffer } }
-          : { enabled: this.createPrfEnabled },
-      }),
+      getClientExtensionResults: () =>
+        this.createNoPrfExtension
+          ? null
+          : {
+              prf: derived
+                ? { enabled: this.createPrfEnabled, results: { first: derived.buffer } }
+                : { enabled: this.createPrfEnabled },
+            },
       toJSON: () => ({
         id: idString,
         type: "public-key",
@@ -227,11 +234,14 @@ class FakeCredentialsContainer {
         signature: new ArrayBuffer(0),
       },
       authenticatorAttachment: "platform",
-      getClientExtensionResults: () => ({
-        prf: prfOutput
-          ? { enabled: true, results: { first: prfOutput.buffer } }
-          : { enabled: false },
-      }),
+      getClientExtensionResults: () =>
+        this.getNoPrfExtension
+          ? {}
+          : {
+              prf: prfOutput
+                ? { enabled: true, results: { first: prfOutput.buffer } }
+                : { enabled: false },
+            },
       toJSON: () => ({
         id: idString,
         type: "public-key",
@@ -486,6 +496,100 @@ describe("WebAuthnPrfAuthenticator", () => {
       expect(await kv.get(SEALED_BLOB_KEY)).toBeUndefined();
     });
 
+    it("rejects when create returns no extension results and assertion returns no prf", async () => {
+      const kv = new InMemoryKeyValueStore();
+      const auth = new WebAuthnPrfAuthenticator(
+        (key) => kv.get(key),
+        (key, value) => kv.set(key, value),
+      );
+      fakeCredentials.createNoPrfExtension = true;
+      fakeCredentials.getNoPrfExtension = true;
+
+      const error = await auth.registerPasskey("Test User").catch((e) => e);
+      expect(error).toBeInstanceOf(PasskeyPrfMissingError);
+      expect(error.details).toBe("create: no-extension-results; assertion: prf-absent");
+      expect(auth.lastPrfDetails()).toBe("create: no-extension-results; assertion: prf-absent");
+    });
+
+    it("rejects when create and assertion both return prf-present enabled=false", async () => {
+      const kv = new InMemoryKeyValueStore();
+      const auth = new WebAuthnPrfAuthenticator(
+        (key) => kv.get(key),
+        (key, value) => kv.set(key, value),
+      );
+      fakeCredentials.createPrfEnabled = false;
+      fakeCredentials.getReturnsPrf = false;
+
+      const error = await auth.registerPasskey("Test User").catch((e) => e);
+      expect(error).toBeInstanceOf(PasskeyPrfMissingError);
+      expect(error.details).toBe("create: prf-present enabled=false first=no; assertion: no-prf-results enabled=false");
+      expect(auth.lastPrfDetails()).toBe("create: prf-present enabled=false first=no; assertion: no-prf-results enabled=false");
+    });
+
+    it("rejects when assertion returns a 16-byte output instead of 32", async () => {
+      const kv = new InMemoryKeyValueStore();
+      const auth = new WebAuthnPrfAuthenticator(
+        (key) => kv.get(key),
+        (key, value) => kv.set(key, value),
+      );
+      fakeCredentials.createReturnsPrf = false;
+      fakeCredentials.getReturnsPrf = true;
+      // Mock get to return 16-byte output instead of 32
+      const originalGet = fakeCredentials.get;
+      (fakeCredentials as any).get = async (options: any) => {
+        const assertion = await originalGet.call(fakeCredentials, options);
+        if (assertion && "getClientExtensionResults" in assertion) {
+          const originalGetExt = (assertion as any).getClientExtensionResults;
+          (assertion as any).getClientExtensionResults = () => {
+            const result = originalGetExt.call(assertion);
+            if (result?.prf?.results?.first) {
+              // Replace with 16-byte buffer
+              result.prf.results.first = new ArrayBuffer(16);
+            }
+            return result;
+          };
+        }
+        return assertion;
+      };
+
+      const error = await auth.registerPasskey("Test User").catch((e) => e);
+      expect(error).toBeInstanceOf(PasskeyPrfMissingError);
+      expect(error.details).toContain("assertion: output-not-32-bytes");
+      expect(auth.lastPrfDetails()).toContain("assertion: output-not-32-bytes");
+    });
+
+    it("rejects when assertion returns a 32-byte all-zero output", async () => {
+      const kv = new InMemoryKeyValueStore();
+      const auth = new WebAuthnPrfAuthenticator(
+        (key) => kv.get(key),
+        (key, value) => kv.set(key, value),
+      );
+      fakeCredentials.createReturnsPrf = false;
+      fakeCredentials.getReturnsPrf = true;
+      // Mock get to return all-zero output instead of derived
+      const originalGet = fakeCredentials.get;
+      (fakeCredentials as any).get = async (options: any) => {
+        const assertion = await originalGet.call(fakeCredentials, options);
+        if (assertion && "getClientExtensionResults" in assertion) {
+          const originalGetExt = (assertion as any).getClientExtensionResults;
+          (assertion as any).getClientExtensionResults = () => {
+            const result = originalGetExt.call(assertion);
+            if (result?.prf?.results?.first) {
+              // Replace with all-zero buffer
+              result.prf.results.first = new ArrayBuffer(32);
+            }
+            return result;
+          };
+        }
+        return assertion;
+      };
+
+      const error = await auth.registerPasskey("Test User").catch((e) => e);
+      expect(error).toBeInstanceOf(PasskeyPrfMissingError);
+      expect(error.details).toContain("assertion: output-does-not-seal");
+      expect(auth.lastPrfDetails()).toContain("assertion: output-does-not-seal");
+    });
+
     it.each(["zeros", "raw-salt", "public-salt"] as const)(
       "does not store a create result that is %s",
       async (echo) => {
@@ -517,6 +621,88 @@ describe("WebAuthnPrfAuthenticator", () => {
       expect(await deletionAdapter(kv).registerPasskey()).toBe("failed");
       expect(await kv.get("doorprints-webauthn-credential-id")).toBeUndefined();
       expect(await kv.get(SEALED_BLOB_KEY)).toBeUndefined();
+    });
+
+    it("throws plain Error when assertion's UV flag is clear", async () => {
+      const kv = new InMemoryKeyValueStore();
+      const auth = new WebAuthnPrfAuthenticator(
+        (key) => kv.get(key),
+        (key, value) => kv.set(key, value),
+      );
+      fakeCredentials.createReturnsPrf = false;
+      fakeCredentials.getUv = false;
+
+      const error = await auth.registerPasskey("Test User").catch((e) => e);
+      expect(error).toBeInstanceOf(Error);
+      expect(error).not.toBeInstanceOf(PasskeyPrfMissingError);
+      expect(error.message).toBe("Passkey assertion was not user-verified for this credential.");
+      expect(auth.lastPrfDetails()).toContain("assertion: not-user-verified");
+    });
+
+    it("rejects when assertion get throws NotSupportedError", async () => {
+      const kv = new InMemoryKeyValueStore();
+      const auth = new WebAuthnPrfAuthenticator(
+        (key) => kv.get(key),
+        (key, value) => kv.set(key, value),
+      );
+      fakeCredentials.createReturnsPrf = false;
+      // Mock get to throw NotSupportedError on assertion
+      const originalGet = fakeCredentials.get;
+      (fakeCredentials as any).get = async (options: any) => {
+        const error = new DOMException("PRF not supported", "NotSupportedError");
+        throw error;
+      };
+
+      const error = await auth.registerPasskey("Test User").catch((e) => e);
+      expect(error).toBeInstanceOf(PasskeyPrfMissingError);
+      expect(error.details).toContain("assertion: error:NotSupportedError");
+      expect(auth.lastPrfDetails()).toContain("assertion: error:NotSupportedError");
+    });
+
+    it("succeeds when create returns valid 32-byte PRF output", async () => {
+      const kv = new InMemoryKeyValueStore();
+      const auth = new WebAuthnPrfAuthenticator(
+        (key) => kv.get(key),
+        (key, value) => kv.set(key, value),
+      );
+      fakeCredentials.createReturnsPrf = true;
+
+      const credId = await auth.registerPasskey("Test User");
+      expect(credId).not.toBeNull();
+      expect(auth.lastPrfDetails()).toBe("create: prf-present enabled=true first=yes; assertion: not-tried");
+    });
+
+    it("does not leak PRF output or salt in lastPrfDetails", async () => {
+      const kv = new InMemoryKeyValueStore();
+      const auth = new WebAuthnPrfAuthenticator(
+        (key) => kv.get(key),
+        (key, value) => kv.set(key, value),
+      );
+      // Create a fake that returns 0xAB for all 32 bytes
+      const testSecret = new Uint8Array(32);
+      testSecret.fill(0xAB);
+      fakeCredentials = new FakeCredentialsContainer(testSecret);
+      // Restore the fake in the global
+      Object.defineProperty(globalThis, "navigator", {
+        value: {
+          ...originalNavigator,
+          credentials: fakeCredentials as any,
+        },
+        configurable: true,
+      });
+      fakeCredentials.createReturnsPrf = true;
+
+      const credId = await auth.registerPasskey("Test User");
+      const details = auth.lastPrfDetails();
+      expect(details).not.toBeNull();
+
+      // Convert 0xAB repeated 32 times to base64 to check if it's in the details
+      const hexAb = "ababababababababababababababababababababababababababababababababab";
+      expect(details).not.toMatch(/ab{8,}/i);
+
+      // Check base64 encoding of 0xAB repeated 32 times
+      const base64AB = btoa(String.fromCharCode(...testSecret));
+      expect(details).not.toContain(base64AB.substring(0, 8));
     });
 
     it("uses userVerification 'required' in creation options", async () => {
@@ -782,6 +968,129 @@ describe("WebAuthnPrfAuthenticator", () => {
       const supported = await auth.isSupported();
 
       expect(supported).toBe(true);
+    });
+  });
+
+  describe("prfCapability()", () => {
+    it("returns true when PublicKeyCredential.getClientCapabilities supports PRF", async () => {
+      const store = createStore();
+      const mockCapabilities = { "extension:prf": true, "extension:hmac-secret": false };
+      const mockGetClientCapabilities = () => Promise.resolve(mockCapabilities);
+
+      const auth = new WebAuthnPrfAuthenticator(
+        store.get,
+        store.set,
+        undefined,
+        () => ({ getClientCapabilities: mockGetClientCapabilities } as any),
+      );
+
+      const cap = await auth.prfCapability();
+      expect(cap).toBe(true);
+    });
+
+    it("returns false when PublicKeyCredential.getClientCapabilities does not support PRF", async () => {
+      const store = createStore();
+      const mockCapabilities = { "extension:prf": false, "extension:hmac-secret": true };
+      const mockGetClientCapabilities = () => Promise.resolve(mockCapabilities);
+
+      const auth = new WebAuthnPrfAuthenticator(
+        store.get,
+        store.set,
+        undefined,
+        () => ({ getClientCapabilities: mockGetClientCapabilities } as any),
+      );
+
+      const cap = await auth.prfCapability();
+      expect(cap).toBe(false);
+    });
+
+    it("returns null when extension:prf key is absent", async () => {
+      const store = createStore();
+      const mockCapabilities = { "extension:hmac-secret": true };
+      const mockGetClientCapabilities = () => Promise.resolve(mockCapabilities);
+
+      const auth = new WebAuthnPrfAuthenticator(
+        store.get,
+        store.set,
+        undefined,
+        () => ({ getClientCapabilities: mockGetClientCapabilities } as any),
+      );
+
+      const cap = await auth.prfCapability();
+      expect(cap).toBe(null);
+    });
+
+    it("returns null when getClientCapabilities is not a function", async () => {
+      const store = createStore();
+      const auth = new WebAuthnPrfAuthenticator(
+        store.get,
+        store.set,
+        undefined,
+        () => ({ } as any),
+      );
+
+      const cap = await auth.prfCapability();
+      expect(cap).toBe(null);
+    });
+
+    it("returns null when getClientCapabilities throws", async () => {
+      const store = createStore();
+      const mockGetClientCapabilities = () => {
+        throw new Error("Not available");
+      };
+
+      const auth = new WebAuthnPrfAuthenticator(
+        store.get,
+        store.set,
+        undefined,
+        () => ({ getClientCapabilities: mockGetClientCapabilities } as any),
+      );
+
+      const cap = await auth.prfCapability();
+      expect(cap).toBe(null);
+    });
+
+    it("returns null when getClientCapabilities returns null", async () => {
+      const store = createStore();
+      const mockGetClientCapabilities = () => Promise.resolve(null);
+
+      const auth = new WebAuthnPrfAuthenticator(
+        store.get,
+        store.set,
+        undefined,
+        () => ({ getClientCapabilities: mockGetClientCapabilities } as any),
+      );
+
+      const cap = await auth.prfCapability();
+      expect(cap).toBe(null);
+    });
+
+    it("returns null when getClientCapabilities returns non-object", async () => {
+      const store = createStore();
+      const mockGetClientCapabilities = () => Promise.resolve("not-an-object");
+
+      const auth = new WebAuthnPrfAuthenticator(
+        store.get,
+        store.set,
+        undefined,
+        () => ({ getClientCapabilities: mockGetClientCapabilities } as any),
+      );
+
+      const cap = await auth.prfCapability();
+      expect(cap).toBe(null);
+    });
+
+    it("returns null when PublicKeyCredential is undefined", async () => {
+      const store = createStore();
+      const auth = new WebAuthnPrfAuthenticator(
+        store.get,
+        store.set,
+        undefined,
+        () => undefined,
+      );
+
+      const cap = await auth.prfCapability();
+      expect(cap).toBe(null);
     });
   });
 });

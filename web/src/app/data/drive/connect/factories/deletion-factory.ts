@@ -62,6 +62,9 @@ const REFUSING: DriveDeletionAdapter = {
   async passkeyStatus() {
     return 'unsupported';
   },
+  async prfCapability() {
+    return null;
+  },
 };
 
 /**
@@ -189,8 +192,16 @@ export function createLazyDeletionAdapterProxy(getRuntime: () => Promise<DriveRu
       return (await getAdapter()).registerPasskey();
     },
 
+    async lastPasskeyDetails() {
+      return (await getAdapter()).lastPasskeyDetails?.() ?? null;
+    },
+
     async passkeyStatus() {
       return (await getAdapter()).passkeyStatus();
+    },
+
+    async prfCapability() {
+      return (await getAdapter()).prfCapability?.() ?? null;
     },
   };
 }
