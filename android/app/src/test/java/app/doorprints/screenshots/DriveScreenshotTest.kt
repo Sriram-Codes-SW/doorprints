@@ -1,3 +1,21 @@
+/*
+ * Copyright 2026 Sriram (Sriram-Codes-SW)
+ *
+ * This file is part of Doorprints.
+ *
+ * Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+ * Public License as published by the Free Software Foundation, version 3 of the License.
+ *
+ * Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+ * the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
 package app.doorprints.screenshots
 
 import android.graphics.Bitmap
@@ -133,6 +151,12 @@ class DriveScreenshotTest(private val lang: String, private val dark: Boolean) {
         BackupSummary("b1", 1_759_900_000_000, 12, 2_621_440, "b1"),
     )
 
+    /** The tall states only in English light, to keep the image set small (the small ones run in all three variants). */
+    private fun onlyEnglishLight(block: () -> Unit) {
+        org.junit.Assume.assumeTrue(lang == "en" && !dark)
+        block()
+    }
+
     @Test fun driveDisconnected() = shoot("drive_disconnected", DriveUiState())
 
     @Test fun driveRecoveryKey() = shoot(
@@ -140,15 +164,15 @@ class DriveScreenshotTest(private val lang: String, private val dark: Boolean) {
         DriveUiState(connect = ConnectState.FIRST_CONNECT_SHOW_RECOVERY_KEY, connectKey = ShownKey(sampleKey), keySaved = false),
     )
 
-    @Test fun driveJoinWithQr() = shoot(
+    @Test fun driveJoinWithQr() = onlyEnglishLight { shoot(
         "drive_join_qr",
         DriveUiState(
             connect = ConnectState.NEEDS_ENROLMENT,
             enrol = EnrolUi.Newcomer(NewcomerOffer("dp1.QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVowMTIzNDU2Nzg5YWJjZGVmZ2hpamtsbW5vcA", "48271936", byteArrayOf(1))),
         ),
-    )
+    ) }
 
-    @Test fun driveConnected() = shoot(
+    @Test fun driveConnected() = onlyEnglishLight { shoot(
         "drive_ready",
         DriveUiState(
             connect = ConnectState.READY,
@@ -159,9 +183,9 @@ class DriveScreenshotTest(private val lang: String, private val dark: Boolean) {
                 account = "person@example.org",
             ),
         ),
-    )
+    ) }
 
-    @Test fun driveDeleteEverythingConfirm() = shoot(
+    @Test fun driveDeleteEverythingConfirm() = onlyEnglishLight { shoot(
         "drive_delete_confirm",
         DriveUiState(
             connect = ConnectState.READY,
@@ -172,7 +196,7 @@ class DriveScreenshotTest(private val lang: String, private val dark: Boolean) {
                 confirmShownAtMs = Long.MAX_VALUE / 2,
             ),
         ),
-    )
+    ) }
 
     companion object {
         @JvmStatic
