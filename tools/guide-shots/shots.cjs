@@ -62,6 +62,18 @@ const shots = [
 ];
 
 fs.mkdirSync(OUT, { recursive: true });
+// The files the server may send are listed once, from the built site's own tree; a request is only a key into that
+// list, never part of a path (so a crafted URL cannot reach anything else).
+function listFiles(dir, prefix = '') {
+  const found = new Map();
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (entry.isDirectory()) {
+      for (const [url, file] of listFiles(path.join(dir, entry.name), `${prefix}/${entry.name}`)) found.set(url, file);
+    } else found.set(`${prefix}/${entry.name}`, path.join(dir, entry.name));
+  }
+  return found;
+}
+const files = listFiles(ROOT);
 let configJs = null;
 const server = http
   .createServer((req, res) => {
@@ -70,8 +82,13 @@ const server = http
       res.writeHead(200, { 'content-type': 'text/javascript' });
       return res.end(configJs);
     }
-    let file = path.join(ROOT, decodeURIComponent(url));
-    if (!file.startsWith(ROOT) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) file = path.join(ROOT, 'index.html');
+    let decoded = '';
+    try {
+      decoded = decodeURIComponent(url);
+    } catch {
+      /* a malformed escape is just an unknown path: the app shell answers */
+    }
+    const file = files.get(decoded) || files.get('/index.html');
     res.writeHead(200, { 'content-type': types[path.extname(file)] || 'application/octet-stream' });
     fs.createReadStream(file).pipe(res);
   })
