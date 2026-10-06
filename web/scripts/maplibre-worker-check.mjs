@@ -32,12 +32,11 @@ export function extractMaplibreVersion(content) {
 
 /**
  * Check that MapLibre GL worker files are present, non-empty, have license headers, the worker imports the shared file,
- * and the worker and main bundle have the same MapLibre version.
+ * and the worker and shared file have the same MapLibre version.
  * @param {string} buildDir - Directory containing the built files
- * @param {string} [mainBundleVersion] - Main bundle version (optional, for testing)
  * @returns {Object} - { errors: string[], warnings: string[] }
  */
-export function checkMaplibreWorkerFiles(buildDir, mainBundleVersion = null) {
+export function checkMaplibreWorkerFiles(buildDir) {
   const errors = [];
   const warnings = [];
 
@@ -94,14 +93,23 @@ export function checkMaplibreWorkerFiles(buildDir, mainBundleVersion = null) {
     console.log(`ok: maplibre-gl-worker.mjs imports "./maplibre-gl-shared.mjs"`);
   }
 
-  // Check MapLibre versions match (worker vs main bundle)
+  // Check MapLibre versions match (worker vs shared file)
+  // Both files are copied from the same maplibre-gl package; mismatched versions break every tile.
   const workerVersion = extractMaplibreVersion(workerContent);
+  const sharedVersion = extractMaplibreVersion(sharedContent);
+
   if (!workerVersion) {
     errors.push(`maplibre-gl-worker.mjs has no version in header`);
-  } else if (mainBundleVersion && workerVersion !== mainBundleVersion) {
-    errors.push(`MapLibre version mismatch: worker v${workerVersion} vs main chunk v${mainBundleVersion}`);
-  } else {
-    console.log(`ok: maplibre-gl-worker.mjs version v${workerVersion}`);
+  }
+
+  if (!sharedVersion) {
+    errors.push(`maplibre-gl-shared.mjs has no version in header`);
+  }
+
+  if (workerVersion && sharedVersion && workerVersion !== sharedVersion) {
+    errors.push(`MapLibre version mismatch: worker v${workerVersion} vs shared v${sharedVersion}`);
+  } else if (workerVersion && sharedVersion) {
+    console.log(`ok: maplibre-gl-worker.mjs and maplibre-gl-shared.mjs both v${workerVersion}`);
   }
 
   return { errors, warnings };
