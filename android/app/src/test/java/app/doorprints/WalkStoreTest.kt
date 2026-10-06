@@ -289,6 +289,43 @@ class WalkStoreTest {
     }
 
     @Test
+    fun legacyRowsMergedIntoTheLiveWalkDoNotMakeItAnOtherOfItself() = runBlocking {
+        val since = clock - THIRTY_DAYS
+        val live = clock - 1_000_000
+        // Rows from before the walk ids (id 0), ten minutes before the live walk's first point: the splitter merges them
+        // into the live walk, whose first point then has id 0 (docs/11 5.27.3: 0 is no id).
+        for (i in 0 until 3) db.track().insert(TrackPointEntity(at = live - 600_000 + i * 20_000L, lat = 12.9 + i * 0.0002, lon = 77.5, accuracyM = 8f, walkId = 0))
+        trace(live, 3, startLat = 12.9006)
+        assertEquals("without a live id the merged walk is one walk", 1, store.walksOtherThan(0, since).size)
+        assertEquals("the walk holding the live walk's points is not an other, whichever point is first", 0, store.walksOtherThan(live, since).size)
+        // A really older walk stays an other.
+        trace(live - 5_000_000, 3, startLat = 12.95)
+        assertEquals(1, store.walksOtherThan(live, since).size)
+    }
+
+    @Test
+    fun walksChangedEmitsOnTheTraceAndTheSavedWalksButNotOnAHouseChange() = runBlocking {
+        db.houses().upsert(house("h1"))
+        var emissions = 0
+        val job = scope.launch { store.changes().collect { emissions++ } }
+        kotlinx.coroutines.delay(500)
+        val first = emissions
+        assertTrue("the first emission comes at once", first >= 1)
+        db.houses().upsert(house("h2"))
+        db.houses().upsert(house("h1", deleted = true))
+        kotlinx.coroutines.delay(600)
+        assertEquals("a house change does not wake the walks (docs/11 5.27.3 cost)", first, emissions)
+        trace(1_000, 3)
+        kotlinx.coroutines.delay(600)
+        assertTrue("a kept point does", emissions > first)
+        val afterTrace = emissions
+        savedRow("x", "h1")
+        kotlinx.coroutines.delay(600)
+        assertTrue("a saved walk row does (the sweep of a deleted house deletes one)", emissions > afterTrace)
+        job.cancel()
+    }
+
+    @Test
     fun walksChangedEmitsOnTheTraceAndTheSavedWalksButLocalTablesDoNot() = runBlocking {
         db.houses().upsert(house("h1"))
         val local = mutableListOf<Set<String>>()

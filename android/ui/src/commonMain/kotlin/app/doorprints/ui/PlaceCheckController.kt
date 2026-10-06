@@ -83,7 +83,7 @@ internal suspend fun runPlaceCheck(
 ): PlaceCheckState.Answer {
     val all = withContext(Dispatchers.Default) { repo.walks() }
     val walks = if (kind == PlaceKind.HERE && liveWalkId != 0L) {
-        all.filter { it.source == WalkSource.SAVED || it.points.firstOrNull()?.walkId != liveWalkId }
+        all.filter { it.source == WalkSource.SAVED || it.points.none { p -> p.walkId == liveWalkId } }
     } else {
         all
     }

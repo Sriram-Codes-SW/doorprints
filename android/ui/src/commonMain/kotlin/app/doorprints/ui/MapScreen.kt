@@ -257,8 +257,11 @@ fun MapScreen(
     val houses = loadedHouses.orEmpty()
     // The person's walks (docs/11 5.27.4): the last 30 days and the saved walks, drawn under the houses. Built off the
     // main thread (the repeat detection) at each change of the stored walks; the look is separate, so it is live.
+    // At most one redraw every 5 s while a walk records (docs/11 5.27.3), and an unchanged set of walks (same ids and
+    // point counts) is not detected again; houses changes do not wake it.
     val track by produceState(TraceDrawing.EMPTY, repo) {
-        repo.walksChanged().collectLatest { value = withContext(Dispatchers.Default) { TraceDrawing.of(repo.walks()) } }
+        val cache = TraceDrawingCache()
+        repo.walksChanged().throttleRedraw().collectLatest { value = withContext(Dispatchers.Default) { cache.of(repo.walks()) } }
     }
     val hunt by mapServices.hunt.collectAsStateWithLifecycle()
     val repeatLook = repo.settings.settings.collectAsStateWithLifecycle(AppSettings()).value.repeatLook

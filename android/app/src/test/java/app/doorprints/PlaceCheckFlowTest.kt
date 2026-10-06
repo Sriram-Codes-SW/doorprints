@@ -181,6 +181,20 @@ class PlaceCheckFlowTest {
         assertEquals(PlaceCheckStatus.WALKED, answer(spot).result.status)
     }
 
+    @Test fun legacyRowsMergedIntoTheLiveWalkAreLeftOutForHereToo() {
+        val live = t0 + 1_000_000
+        // Rows from before the walk ids (id 0) ten minutes before the live walk merge into it: its first point has id 0.
+        runBlocking {
+            (0..2).forEach { k ->
+                repo.saveTrackPoint(TrackPointEntity(at = live - 600_000 + k * 60_000L, lat = 12.97 + 150 * m, lon = 77.6, accuracyM = 5f, walkId = 0))
+            }
+        }
+        walk(live)
+        val here = controller({ PlaceFix(12.97 + 150 * m, 77.6, 5.0) }, live = live)
+        here.start(PlaceKind.HERE)
+        assertEquals("the merged walk is the live one's own points", PlaceCheckStatus.EMPTY, answer(here).result.status)
+    }
+
     @Test fun aSavedWalkOfAnyAgeCountsAndIsTaggedSaved() {
         val old = 1_700_000_000_000L // far outside the 30 days
         walk(old)

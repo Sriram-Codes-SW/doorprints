@@ -66,8 +66,12 @@ class WalkStore(
     private val now: () -> Long,
     private val newId: () -> String = { Uuid.random().toString() },
 ) {
-    /** Emits at once and after each committed change to the trace, the saved walks or the houses. Not `localTablesChanged`. */
-    fun changes(): Flow<Unit> = db.invalidationTracker.createFlow("track_points", "saved_walks", "houses").map { }
+    /**
+     * Emits at once and after each committed change to the trace or the saved walks, **not** the houses (a sync or a house
+     * edit changes no walk; a deleted house's walks go with the sweep, which deletes `saved_walks` rows and so wakes this).
+     * Not `localTablesChanged`.
+     */
+    fun changes(): Flow<Unit> = db.invalidationTracker.createFlow("track_points", "saved_walks").map { }
 
     fun savedWalkCount(): Flow<Int> = db.savedWalks().observeCount()
 
@@ -135,7 +139,9 @@ class WalkStore(
         val trace = splitWalks(db.track().since(sinceMs).map { TracePoint(it.lat, it.lon, it.at, it.walkId) })
             .filter { w ->
                 val id = w.first().walkId
-                (liveWalkId == 0L || id != liveWalkId) && (id == 0L || id !in savedIds)
+                // Legacy rows (id 0) less than 30 minutes before the live walk merge into it, so the live id may be on
+                // a later point than the first: any walk holding a point of the live walk is the live walk.
+                (liveWalkId == 0L || w.none { it.walkId == liveWalkId }) && (id == 0L || id !in savedIds)
             }
         val out = ArrayList<Pair<List<TracePoint>, WalkSource>>(trace.size + saved.size)
         trace.mapTo(out) { it to WalkSource.TRACE }
