@@ -17,7 +17,7 @@
  */
 
 import { TestBed } from '@angular/core/testing';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import '../../i18n/all-dictionaries';
 import { DriveConnectComponent } from './drive-connect';
 import {
@@ -90,6 +90,8 @@ async function renderWithConfig(clientId: string) {
   };
 }
 
+// A language another spec chose (the screens are checked in all four) must not decide the words asserted here.
+beforeEach(() => localStorage.clear());
 afterEach(() => TestBed.resetTestingModule());
 
 describe('DriveConnectService isConfigured from GOOGLE_CONFIG (real service)', () => {
