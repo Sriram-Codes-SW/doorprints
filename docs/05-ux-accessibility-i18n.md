@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | 05 UX, accessibility and i18n |
-| Version | 0.28 |
-| Date | 2026-10-03 |
+| Version | 0.29 |
+| Date | 2026-10-06 |
 | Author | Claude (Cowork) – Design team |
 | Status | Draft |
 | Scope | Web app (`web/`) and Android app (`android/`), both implemented |
@@ -41,6 +41,7 @@
 | 0.26 | 2026-10-01 | Claude (Code), lead | §4.1, §4.4 and §7: the light `--star` is `#966000` (was `#A86A00`, 4.44:1 on white), at least 4.5:1 on every surface a star sits on, web and phones alike (S4b-BL-110); 2.3.3 notes that Compose follows *Remove animations* on Android and *Reduce Motion* on iPhone through its frame clock. |
 | 0.27 | 2026-10-03 | Cursor Agent | §5.2: the phone map legend's floor is the row when a label is wider than the row. Tamil "Not chosen" at 200% text on a 360px phone had scrolled the page sideways by 33px; that label wraps inside the legend. |
 | 0.28 | 2026-10-03 | Cursor Agent | §5.2: on a phone the map's two-finger hint stays off the legend. It is hidden until a one-finger pan is blocked, and then the sentence sits above the legend, in either theme. |
+| 0.29 | 2026-10-06 | Claude (Code), lead | **The path trace, version 2 (design, planned)** ([11](11-feature-parity-and-export-spec.md) 5.27.1, 5.27.4, 5.27.6): §5.1 and §5.2 gain the legend row *Your paths* and the *Save this walk?* sheet with its house picker; §7 row 1.1.1 gains the map's content description *Paths you walked more than once are dashed.* and row 1.4.1 the repeat cue (dash + width + legend, never colour alone; under protanopia the orange line and the amber star marker differ by form only). Nothing is built yet. |
 
 ---
 
@@ -281,6 +282,8 @@ added or changed. Files are under `android/app/src/main/java/app/doorprints/ui/`
 | Map legend | Map | `MapLegend`: ● New / ★ Shortlisted / ✕ Rejected, dots sized and ringed like the markers (the web's `.dot`); TalkBack hears "Legend" (`map_legend`) and each name. Its place follows its **measured** width: beside or above *Save house here*, at the start of the landscape row, or as the last item of the top band (a 360 dp phone at 200 % in Tamil); one line or one item per line, never a mix; hidden while the map loads or failed | `MapScreen.kt`, `MapRules.kt`; items 31, 32 (b) |
 | House form states | House form | Unsaved-changes dialog ("Leave without saving?" / "Discard this new house?", *Keep editing* / *Discard* / *Save*); photo delete with a 10 s *Undo* snackbar (the web confirms instead: a deliberate difference); not-found state ("This house is no longer on this phone.", *Back to your houses*); "removed while open" error card; *Clear rating*; "This house was changed on another device." with *Show their version* / *Keep mine*; *Save and add photos*; a photo viewer; Location after Street / Locality with Latitude / Longitude fields; delete a visit; *Save as a new house*; *Undo* after deleting a house; at most 640 dp wide (`ContentMaxWidth`) | `HouseEditScreen.kt`; items 26 (c), 27 (d), 28 (c) |
 | Compare empty state | Compare | With fewer than two houses that can be compared: a glyph, "Add at least two houses to compare." (`compare_empty`), "Rejected houses are left out." and one filled action, **Add a house on the map** (`common_add_on_map`). The selection survives leaving and rotation, and the limit is said ("You can compare up to 4. Untick one to pick another.", `compare_max`) | `CompareScreen.kt`; item 27 (d) |
+| Map legend, *Your paths* (planned, S4b-FR-15) | Map | While the trace is not empty, a second legend block under the markers' legend: a solid purple sample *Walked once* and a dashed orange sample *Walked more than once* (the same widths and dash as the lines, 11 5.27.4); the text carries the meaning, the colour does not (WCAG 1.4.1); *Off* shows no second row | `MapLegend`, `trace.legend.*` |
+| *Save this walk?* sheet and house picker (planned, S4b-FR-15) | Map (after *Finish walk*, a stop, or at the Map's opening for a walk the app was killed in) | A bottom sheet with the walk's distance and minutes, the sentence about staying on this phone, and three buttons: *Save with a house* (opens *Which house was this walk to?*: the nearest house preselected when within the alert radius, the houses within 150 m with their distance, a search box that reuses the list's `HouseSearch.matches`), *Keep for 30 days* (the primary, the default: closing the sheet any other way is this) and *Delete this walk* (a danger confirmation: *Delete this walk? This cannot be undone.*). The sheet is a modal with focus kept inside, a title announced on open, buttons at least 48 dp, the result announced as a snackbar (*Walk saved with {house}.*); all four languages (hi, ta, te *under review*) | `trace.end.*`, `trace.pick.*` |
 
 **Retry: one rule on both clients.** The coordinator's final review found that the web's Ask, Plan and Connect pages
 cleared their alert when a retry started, so the content below jumped. In the final Sprint 4a round (working tree,
@@ -316,6 +319,7 @@ browser). Fixed in the same change (`web/README.md` row *Phone display fixes*); 
 | Long words at 200 % text | `overflow-wrap` on the body and, up to 600 px, `anywhere` on buttons, chips, options and checkbox labels; grids use `minmax(0, 1fr)`. The map legend's floor is `min(100%, 10rem)` and its labels use `anywhere`, because `min-content` is the longest word and had let Tamil "Not chosen" scroll the page 33px at 360px and 200% text. No page scrolls sideways |
 | Skip link | Hidden by its own height (`translateY(-110%)`) until focused; a fixed offset let a wrapped Tamil label show |
 | Header and toolbar | The app header is 48 px on phones (was 56); the house page's toolbar title takes up to two lines before its ellipsis (320 px cut "New house"), its actions at most 60 % of the bar |
+| *Trace my path* card, the walk sheet and the legend (planned, S4b-FR-17) | The card, *Start a walk* / *Finish walk*, the *Save this walk?* sheet and the *Your paths* legend are the same components as the phone's, on the Map page. The card states *Your browser records only while this page is open and visible.* and, after the page was hidden, *Recording paused while this page was hidden.* in a live region; the repeat alert is a banner with `role="alert"` and a *Dismiss* button, and a beep only as the second cue (WCAG 1.4.1 for sound). *Other people using this browser profile can see your walks.* sits on the card. | `trace.walk.*`, `trace.alert.*`, `trace.web.*` |
 
 Checked by `tools/live-ui`'s mobile pass ([06](06-test-plan.md) TC-M-26) on emulated phones, 320-384 px, landscape,
 130 % and 200 % text, four languages, both themes. Known limit: on the smallest setups (Tamil at 130 % on 384 x 615,
@@ -356,14 +360,14 @@ Status: **Met** (implemented and checked by code review), **Partial** (known gap
 
 | SC | Name | Level | Web status | Web implementation | Android plan |
 |---|---|---|---|---|---|
-| 1.1.1 | Non-text content | A | Met | Photos: generated alt ("Photo 2 of …"). Icons `aria-hidden` with text next to them. Score badge `role="img"` with label. Brand image `alt=""`. | `contentDescription` on every icon button, image and marker; decorative images `contentDescription = null`. |
+| 1.1.1 | Non-text content | A | Met | Photos: generated alt ("Photo 2 of …"). Icons `aria-hidden` with text next to them. Score badge `role="img"` with label. Brand image `alt=""`. | `contentDescription` on every icon button, image and marker; decorative images `contentDescription = null`. The map's description (both apps, planned with the path trace, [11](11-feature-parity-and-export-spec.md) 5.27.4) adds *Paths you walked more than once are dashed.* |
 | 1.2.1–1.2.5 | Time-based media | A/AA | N/A | No audio or video. | N/A |
 | 1.3.1 | Info and relationships | A | Met | Landmarks, headings, `<fieldset>`/`<legend>` for status, rating and each checklist item, `<label for>`, `<dl>` stats, table `scope`/`caption`, lists. | `Modifier.semantics { heading() }`, `selectableGroup()` for radio rows, `Role.RadioButton`, merged list items. |
 | 1.3.2 | Meaningful sequence | A | Met | DOM order matches visual order; map before list on phones and desktop. | Traversal order follows layout; `traversalIndex` only if needed. |
 | 1.3.3 | Sensory characteristics | A | Met | Instructions name controls ("Place here"), not shapes or positions only. | Same strings. |
 | 1.3.4 | Orientation | AA | Met | No orientation lock. | No `screenOrientation` lock in the manifest. |
 | 1.3.5 | Identify input purpose | AA | Met | `autocomplete="url"` on API URL; other fields describe third parties (contact), so `autocomplete="off"`. | `KeyboardOptions(keyboardType=Uri/Phone)`; autofill hints on URL. |
-| 1.4.1 | Use of colour | A | Met | Status = icon + text (+ marker size); best cell ✓ + "(best)"; selected chip ✓ + bold border; stars ★/☆ shapes; links underlined. | Status chip with icon + text; marker size, ring and opacity + legend (`MapLegend`, the web's encoding: shortlisted largest with a 3 dp ring, rejected smallest at 75 %; `MapRulesTest.markersTellStatusBySizeNotOnlyColour`). The legend's place follows its measured width, and MapLibre's attribution "i" is lifted above it, so the OpenStreetMap credit stays visible and tappable; MapLibre's logo is off, as on the web. |
+| 1.4.1 | Use of colour | A | Met | Status = icon + text (+ marker size); a repeated path: dash + width + legend (planned, 11 5.27.4); best cell ✓ + "(best)"; selected chip ✓ + bold border; stars ★/☆ shapes; links underlined. | Status chip with icon + text; marker size, ring and opacity + legend; a path walked more than once: dash + width + legend, never colour alone (planned, 11 5.27.4; under protanopia the orange line and the amber star marker differ by form only) (`MapLegend`, the web's encoding: shortlisted largest with a 3 dp ring, rejected smallest at 75 %; `MapRulesTest.markersTellStatusBySizeNotOnlyColour`). The legend's place follows its measured width, and MapLibre's attribution "i" is lifted above it, so the OpenStreetMap credit stays visible and tappable; MapLibre's logo is off, as on the web. |
 | 1.4.2 | Audio control | A | N/A | No audio. | N/A (Hunt mode notification uses system sound settings). |
 | 1.4.3 | Contrast (minimum) | AA | Met | Section 4: all text ≥ 4.5:1 in both themes (status green and header states fixed). | Same palette in `Color.kt`; check with Accessibility Scanner. |
 | 1.4.4 | Resize text | AA | Verify | rem type scale, no `maximum-scale`, header and toolbars wrap. | `sp` units everywhere, test at 200 % font scale. |
