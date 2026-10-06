@@ -1,0 +1,9 @@
+{
+  "spec": "web/src/app/shared/map-style.spec.ts",
+  "mutations": [
+    { "file": "web/src/app/shared/map-style.ts", "find": "if (!online) return 'map.offline';", "replace": "", "expect": "worker error while the browser is offline" },
+    { "file": "web/src/app/shared/map-style.ts", "find": "if (msg.includes('Worker failed to load')) return 'map.workerFailed';", "replace": "return 'map.workerFailed';", "expect": "any other error as the offline message" },
+    { "file": "web/src/app/shared/map-style.ts", "find": "onChange(false, mapErrorMessageKey(event?.error, online));", "replace": "onChange(false);", "expect": "worker that failed to load" },
+    { "file": "web/src/app/shared/map-style.ts", "find": "    if (loaded) return;\n    const online", "replace": "    const online", "expect": "after the style has loaded" }
+  ]
+}

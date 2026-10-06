@@ -31,7 +31,7 @@
       <!-- Offline (the map style is never cached), or no WebGL 2 at all: say why there is no map and what works
            without one. With no WebGL 2 there is nothing to retry. -->
       <div class="map-offline" role="status">
-        <p>{{ (mapUnsupported() ? 'map.unavailable' : 'map.offline') | t }}</p>
+        <p>{{ (mapUnsupported() ? 'map.unavailable' : mapWorkerFailed() ? 'map.workerFailed' : 'map.offline') | t }}</p>
         <div class="offline-actions">
           @if (addMode()) {
             @if (canLocate) {

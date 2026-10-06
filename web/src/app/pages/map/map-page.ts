@@ -170,6 +170,8 @@ export class MapPage implements AfterViewInit, OnDestroy {
    * the map and offers what works without one: the list, "Add at my location" and typed coordinates.
    */
   protected readonly mapAvailable = signal(true);
+  /** True when the map's worker failed to load while online: the message says to reload, not that we are offline. */
+  protected readonly mapWorkerFailed = signal(false);
   /**
    * True when this browser cannot draw a map at all (MapLibre 6 needs WebGL 2; `createMlMap` returned null). Treated
    * like being offline, except that trying again cannot help: the same two ways to add a house are offered, with the
@@ -361,7 +363,10 @@ export class MapPage implements AfterViewInit, OnDestroy {
       this.mapUnsupported.set(true);
       return;
     }
-    this.styleWatch = watchMapStyle(map, (available) => this.mapAvailable.set(available));
+    this.styleWatch = watchMapStyle(map, (available, key) => {
+      this.mapAvailable.set(available);
+      this.mapWorkerFailed.set(!available && key === 'map.workerFailed');
+    });
     this.cooperative = map.cooperativeGestures.isEnabled();
     if (this.addMode()) map.getCanvas().style.cursor = 'crosshair';
     // Remembered so a new house opened without a position starts here, and so Back from a house returns to it.

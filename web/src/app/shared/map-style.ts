@@ -335,7 +335,10 @@ export function mapErrorMessageKey(error: unknown, online: boolean): 'map.worker
  *
  * Tile errors after the style has loaded are left to MapLibre: the pins still draw on the background.
  */
-export function watchMapStyle(map: MlMap, onChange: (available: boolean) => void): MapStyleWatch {
+export function watchMapStyle(
+  map: MlMap,
+  onChange: (available: boolean, messageKey?: 'map.workerFailed' | 'map.offline') => void,
+): MapStyleWatch {
   let loaded = false;
   const reload = () => {
     if (loaded) return;
@@ -345,8 +348,10 @@ export function watchMapStyle(map: MlMap, onChange: (available: boolean) => void
     loaded = true;
     onChange(true);
   });
-  map.on('error', () => {
-    if (!loaded) onChange(false);
+  map.on('error', (event: { error?: unknown }) => {
+    if (loaded) return;
+    const online = typeof navigator === 'undefined' || navigator.onLine !== false;
+    onChange(false, mapErrorMessageKey(event?.error, online));
   });
   const onOffline = () => {
     if (!loaded) onChange(false);

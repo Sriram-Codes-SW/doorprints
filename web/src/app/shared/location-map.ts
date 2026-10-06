@@ -53,7 +53,7 @@ export interface LatLon {
     @if (!available()) {
       <!-- Offline (the map style is never cached): point to what works without a map. -->
       <div class="offline" role="status">
-        <p>{{ 'house.mapOffline' | t }}</p>
+        <p>{{ (workerFailed() ? 'map.workerFailed' : 'house.mapOffline') | t }}</p>
         <button type="button" class="btn btn-sm" (click)="retry()">{{ 'common.retry' | t }}</button>
       </div>
     }
@@ -116,6 +116,8 @@ export class LocationMap implements AfterViewInit, OnDestroy {
   private styleWatch: MapStyleWatch | null = null;
   /** False while the map style cannot load (offline); the overlay then points to the fields and "Use my location". */
   protected readonly available = signal(true);
+  /** True when the map's worker failed to load while online: the message says to reload, not that we are offline. */
+  protected readonly workerFailed = signal(false);
 
   constructor() {
     // Keep the marker in sync when the position changes from outside (loading, saving, typed coordinates).
@@ -158,7 +160,10 @@ export class LocationMap implements AfterViewInit, OnDestroy {
     const center: [number, number] = [this.lon(), this.lat()];
     const map = createMlMap(this.i18n, { container, center, zoom: this.zoom() });
     if (!map) return;
-    this.styleWatch = watchMapStyle(map, (ok) => this.available.set(ok));
+    this.styleWatch = watchMapStyle(map, (ok, key) => {
+      this.available.set(ok);
+      this.workerFailed.set(!ok && key === 'map.workerFailed');
+    });
     this.controls = [new NavigationControl({ showCompass: false })];
     for (const control of this.controls) map.addControl(control, 'top-right');
     const marker = new Marker({ color: this.color(), draggable: this.editable() }).setLngLat(center).addTo(map);
