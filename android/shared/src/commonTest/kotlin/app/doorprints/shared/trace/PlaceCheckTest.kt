@@ -47,6 +47,17 @@ class PlaceCheckTest {
     }
 
     @Test
+    fun theFuzzyFlagUsesTheToleranceTheWalkedTestUses() {
+        fun fuzzy(accuracy: Double, tolerance: Double) =
+            PlaceCheck.check(150.0 * M, 0.0, listOf(street), accuracy, boxRejection = true, toleranceM = tolerance).fuzzy
+        assertEquals(true, fuzzy(30.0, 25.0), "looser than the 25 m tolerance")
+        assertEquals(false, fuzzy(30.0, 40.0), "an overridden tolerance (tests only) moves both the band and the flag")
+        assertEquals(false, fuzzy(40.0, 40.0), "an accuracy equal to the tolerance is not looser")
+        assertEquals(true, fuzzy(40.5, 40.0))
+        assertEquals(false, PlaceCheck.check(150.0 * M, 0.0, listOf(street), 25.0).fuzzy, "25 m is not looser than 25 m")
+    }
+
+    @Test
     fun exactlyTheToleranceCountsAsWalkedBecauseTheComparisonIsInclusive() {
         val lat = 150.0 * M
         val lon = 30.0 * M

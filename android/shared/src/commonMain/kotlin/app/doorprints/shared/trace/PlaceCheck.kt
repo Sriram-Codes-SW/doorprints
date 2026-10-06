@@ -70,7 +70,7 @@ object PlaceCheck {
         if (fixAccuracyM != null &&
             (!fixAccuracyM.isFinite() || fixAccuracyM < 0 || fixAccuracyM > TraceConstants.MAX_FIX_ACCURACY_M)
         ) return PlaceCheckResult(PlaceCheckStatus.IMPRECISE, false, null, emptyList())
-        val fuzzy = fixAccuracyM != null && fixAccuracyM > TraceConstants.TOLERANCE_M
+        val fuzzy = fixAccuracyM != null && fixAccuracyM > toleranceM // the tolerance the walked test uses (an override exists in tests only)
 
         // The place's box grown by the near band, in degrees: a segment wholly outside it cannot be within 50 m.
         val c = cos(TraceGeo.rad(placeLat))

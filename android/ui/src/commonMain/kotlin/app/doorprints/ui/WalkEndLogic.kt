@@ -37,7 +37,8 @@ import kotlin.math.roundToInt
  */
 class WalkSummary(val walkId: Long, val points: List<TracePoint>) {
     val distanceM: Int = lengthM(points)
-    val minutes: Int = ((points.last().atMs - points.first().atMs) / 60_000.0).roundToInt()
+    /** Whole minutes, at least 1 (a 20 s walk is "1 min", never "0 min"), as the website. */
+    val minutes: Int = maxOf(1, ((points.last().atMs - points.first().atMs) / 60_000.0).roundToInt())
 
     companion object {
         fun lengthM(points: List<TracePoint>): Int {

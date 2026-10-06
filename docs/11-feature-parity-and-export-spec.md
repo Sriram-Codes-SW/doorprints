@@ -1198,7 +1198,7 @@ rows (those with its walk id, or the run between its first and last time when ol
 nothing is stored twice and the 30-day prune cannot touch it. **Limits:** a walk of more than `MAX_WALK_POINTS` = 5 000
 points is refused (*This walk is too long to save (more than 5,000 points). It stays for 30 days.*), a house holds at
 most 20 saved walks (*This house already has 20 saved walks. Delete one first.*), the device at most 200 (the same with
-200). A refused save changes nothing and the walk stays in the 30-day trace. Size: 5 000 points is about 40 KB
+200). A walk needs at least 2 points to be saved (one point is no walk, on both stacks), the minutes the sheet and the house card show are whole minutes and at least 1 (`max(1, round)`, a 20 s walk is *1 min*), and the walk to ask about compares the unrounded length with 100 m (99.6 m is not 100 m). A refused save changes nothing and the walk stays in the 30-day trace. Size: 5 000 points is about 40 KB
 (5.27.7 and [03](03-design.md) §6.2), 200 walks at most about 8 MB; a day's walk is a few hundred points. Nobody reaches 5 000 points on foot (a 20 m step is
 250 points for 5 km), and the Map's base line draws a walk over the limit whole anyway; only the saving is refused.
 
@@ -1571,7 +1571,7 @@ corridor, inclusive); **`NEAR_BAND_M` = 50**; **`MAX_FIX_ACCURACY_M` = 50** (the
    the answer is `IMPRECISE` and nothing is compared (*Location not precise enough. Try again outdoors.*); exactly 50 passes, as in Hunt mode.
    The result carries `fuzzy = fixAccuracyM > TOLERANCE_M` for every status but `IMPRECISE` and `INVALID_PLACE` (the sheet shows the line only with a `WALKED`, `CLOSE` or `NONE` answer): an accepted but loose fix, which adds the line *Your location is
    only accurate to about {n} m, so this answer may be off.* The accuracy is **never added to the tolerance** (a loose fix does not
-   make "walked" easier; it only warns).
+   make "walked" easier; it only warns). `fuzzy` uses the same tolerance constant the *walked* test uses; the tolerance can be overridden in unit tests only (it is not a setting), and then both follow it.
 2. **Distance, per walk.** For each walk, the distance from the place to the walk's polyline: the minimum over its segments of the
    point-to-segment distance, the segment clamped at its ends (a segment of length 0, a stay, takes `t = 0`; so each end has a round cap, as in step 4), on the same local flat
    plane as step 2 centred on the place (`x = (lon - place.lon) * cos(rad(place.lat)) * K`, `y = (lat - place.lat) * K`).
