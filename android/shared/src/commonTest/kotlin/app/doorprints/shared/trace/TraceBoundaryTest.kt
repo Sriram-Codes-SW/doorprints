@@ -76,16 +76,6 @@ class TraceBoundaryTest {
         assertEquals(emptyList(), RepeatDetector.repeatedRuns(s3, near3), "40 m and 40 m in two parts are no 80 m run")
     }
 
-    /** A latitude whose segment from 0 is exactly [metres] long on the plane (the products of doubles need a nudge). */
-    private fun latOfExactly(metres: Double): Double {
-        var lat = metres / TraceGeo.K
-        repeat(64) { if (TraceGeo.segmentLengthM(0.0, 0.0, lat, 0.0) < metres) lat = lat.nextUp() else lat = lat.nextDown() }
-        for (c in listOf(lat, lat.nextUp(), lat.nextDown(), lat.nextUp().nextUp(), lat.nextDown().nextDown())) {
-            if (TraceGeo.segmentLengthM(0.0, 0.0, c, 0.0) == metres) return c
-        }
-        error("no latitude for exactly $metres m")
-    }
-
     @Test
     fun theAlertRingsAtExactly100MetresAndNotAtJustUnder() {
         val other = listOf(TracePoint(0.0, 0.0, -86_400_000), TracePoint(1000.0 * M, 0.0, -86_340_000))

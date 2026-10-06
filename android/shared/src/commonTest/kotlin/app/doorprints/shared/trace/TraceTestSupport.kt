@@ -18,6 +18,9 @@
 
 package app.doorprints.shared.trace
 
+import kotlin.math.nextDown
+import kotlin.math.nextUp
+
 /** One metre in degrees on the equator (and of latitude anywhere), the figure of the vector file's conventions. */
 internal const val M = 0.000008993216
 
@@ -43,4 +46,14 @@ internal class Lcg(private var s: Long) {
         s = (s * 6364136223846793005L + 1442695040888963407L)
         return ((s ushr 11) and 0x1fffffffffffffL).toDouble() / 9007199254740992.0
     }
+}
+
+/** A latitude whose segment from 0 is exactly [metres] long on the plane (the products of doubles need a nudge). */
+internal fun latOfExactly(metres: Double): Double {
+    var lat = metres / TraceGeo.K
+    repeat(64) { if (TraceGeo.segmentLengthM(0.0, 0.0, lat, 0.0) < metres) lat = lat.nextUp() else lat = lat.nextDown() }
+    for (c in listOf(lat, lat.nextUp(), lat.nextDown(), lat.nextUp().nextUp(), lat.nextDown().nextDown())) {
+        if (TraceGeo.segmentLengthM(0.0, 0.0, c, 0.0) == metres) return c
+    }
+    error("no latitude for exactly $metres m")
 }

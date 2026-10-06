@@ -117,4 +117,15 @@ class PlaceCheckTest {
         }
         assertTrue(nonEmpty > 20, "the random city must answer rows to prove anything ($nonEmpty)")
     }
+
+    @Test
+    fun aWalkExactlyOnTheNearBandIsStillARowAndATieInTimeListsTheLaterWalkFirst() {
+        val fifty = latOfExactly(50.0)
+        val start = TraceWalk(listOf(TracePoint(0.0, 0.0, 0), TracePoint(300.0 * M, 0.0, 1000)))
+        val r = PlaceCheck.check(-fifty, 0.0, listOf(start))
+        assertEquals(PlaceCheckStatus.CLOSE, r.status, "exactly 50.0 m is inside the band: ${r.rows}")
+        val same = TraceWalk(listOf(pt(0.0, 3.0, 0), pt(300.0, 3.0, 60_000)))
+        val twice = check(0.0, 0.0, listOf(same, same))
+        assertEquals(listOf(1, 0), twice.rows.map { it.walkIndex }, "a tie in time: the later input index first")
+    }
 }
