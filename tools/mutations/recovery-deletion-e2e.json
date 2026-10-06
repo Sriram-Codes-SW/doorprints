@@ -9,15 +9,15 @@
     },
     {
       "file": "web/src/app/data/drive/connect/deletion-adapter.ts",
-      "find": "      this.gate?.registerGrant(result.grant.id, action, operationId, result.grant.grantedAtMs);",
-      "replace": "",
+      "find": "authorizeWithRecoveryKey(policyAction, context, key);\n\n    if (result.kind === 'GRANTED' && result.grant) {\n      this.boundOp.set(result.grant.id, operationId);\n      this.gate?.registerGrant(result.grant.id, action, operationId, result.grant.grantedAtMs);",
+      "replace": "authorizeWithRecoveryKey(policyAction, context, key);\n\n    if (result.kind === 'GRANTED' && result.grant) {\n      this.boundOp.set(result.grant.id, operationId);",
       "expect": "right key authorizes and deletes all backups"
     },
     {
       "file": "web/src/app/data/drive/connect/deletion-adapter.ts",
       "find": "  forgetProof(): void {\n    this.webAuthorizer.forgetProof();\n  }",
       "replace": "  forgetProof(): void {\n  }",
-      "expect": "after forgetProof, old grant cannot be reused"
+      "expect": "a grant that was never used can no longer delete"
     },
     {
       "file": "web/src/app/data/drive/connect/factories/deletion-factory.ts",

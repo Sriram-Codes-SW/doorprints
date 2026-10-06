@@ -145,6 +145,7 @@ describe('recovery key deletion on real connected folder', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     Object.defineProperty(globalThis, 'navigator', {
       value: originalNavigator,
       configurable: true,
@@ -182,8 +183,11 @@ describe('recovery key deletion on real connected folder', () => {
     // Set up the session so deletion adapter can use it
     updateSessionFromReady(rt, folder);
 
-    // Add 2 backups to the Drive
+    // Add 2 backups to the Drive on two different days: retention keeps one backup a day, so a second one the same day
+    // would prune the first (only Date is faked; Web Crypto is not affected).
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-10-05T03:00:00Z') });
     for (let i = 1; i <= 2; i++) {
+      vi.setSystemTime(new Date(`2026-10-0${4 + i}T03:00:00Z`));
       const payload = Payload.of(1000, 5, i);
       const backup = await backupAdapter.backUpNow(folder, payload.source());
       if (backup.kind !== 'done') throw new Error(`backup ${i} failed: ${backup.problem.kind}`);
@@ -307,12 +311,11 @@ describe('recovery key deletion on real connected folder', () => {
     expect(backupsAfter.length).toBe(2);
   });
 
-  it('after forgetProof, old grant cannot be reused', async () => {
+  it('after forgetProof, a grant that was never used can no longer delete', async () => {
     const { rt, folder, recoveryKey, kv, backupAdapter } = await runtimeWithConnectedFolder();
     const recovery = { verify: (key: RecoveryKey) => backupAdapter.verifyRecoveryKey(key) };
     const adapter = createDeletionAdapter(rt, kv, undefined, undefined, recovery);
 
-    // First authorization and execution
     const preflight = await adapter.preflight({ type: 'allBackups' });
     expect(preflight.kind).toBe('ready');
     if (preflight.kind !== 'ready') throw new Error('preflight');
@@ -326,28 +329,19 @@ describe('recovery key deletion on real connected folder', () => {
     expect(auth.kind).toBe('granted');
     if (auth.kind !== 'granted') throw new Error('authorize');
 
-    const first = await adapter.execute(preflight.plan, auth.grant);
-    expect(first.kind).toBe('ran');
+    // The operation ends (the person cancelled, or the page moved on) before the grant was used: the proof key goes.
+    adapter.forgetProof();
+    const outcome = await adapter.execute(preflight.plan, auth.grant);
+    expect(outcome.kind).toBe('refused');
 
-    // Verify all backups are deleted
     const backupsFolder = (await rt.drive.list({ parentId: folder.rootId })).files.find(
       (f) => f.appProperties[DRIVE_LAYOUT.role] === 'backups',
     );
     if (!backupsFolder) throw new Error('no backups folder');
-    const afterFirst = (await rt.drive.list({ parentId: backupsFolder.id })).files.filter(
+    const left = (await rt.drive.list({ parentId: backupsFolder.id })).files.filter(
       (f) => f.appProperties[DRIVE_LAYOUT.kind] === 'backup' && !f.trashed,
     );
-    expect(afterFirst.length).toBe(0);
-
-    // Forget proof and try to use the old grant
-    adapter.forgetProof();
-
-    const preflight2 = await adapter.preflight({ type: 'allBackups' });
-    expect(preflight2.kind).toBe('ready');
-    if (preflight2.kind !== 'ready') throw new Error('preflight2');
-
-    const outcome = await adapter.execute(preflight2.plan, auth.grant);
-    expect(outcome.kind).toBe('refused');
+    expect(left.length).toBe(2);
   });
 
   it('policy that refuses never calls recovery verification', async () => {
