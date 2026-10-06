@@ -860,6 +860,7 @@ describe('DriveDeletionAdapter', () => {
         builtInAuthenticatorAvailable: async () => false,
       } as any;
       const kvForTest = new InMemoryKeyValueStore();
+      const crypto = new WebCryptoProvider();
       const adapterWithPrf = new DriveDeletionAdapterImpl(
         deletionService,
         fakeAuthorizer as any,
@@ -867,7 +868,7 @@ describe('DriveDeletionAdapter', () => {
         rootId,
         5,
         gate,
-        undefined,
+        crypto,
         fakePrf,
         kvForTest,
       );
@@ -881,9 +882,17 @@ describe('DriveDeletionAdapter', () => {
         isSupported: async () => true,
       } as any;
       const kvForTest = new InMemoryKeyValueStore();
-      // Pre-populate with a sealed blob
-      await kvForTest.set('doorprints-deletion-sealed-blob', JSON.stringify({ v: 1, credentialId: 'abc', salt: 'def', nonce: 'ghi', ciphertext: 'jkl' }));
+      // Pre-populate with a sealed blob (use hex values that can be parsed)
+      const blobJson = JSON.stringify({
+        v: 1,
+        credentialId: '0102030405060708090a0b0c0d0e0f10',
+        salt: '1011121314151617181920212223242526272829',
+        nonce: '303132333435363738393a3b3c',
+        ciphertext: '3d3e3f404142434445464748494a4b4c4d4e4f'
+      });
+      await kvForTest.set('doorprints-deletion-sealed-blob', blobJson);
 
+      const crypto = new WebCryptoProvider();
       const adapterWithPrf = new DriveDeletionAdapterImpl(
         deletionService,
         fakeAuthorizer as any,
@@ -891,7 +900,7 @@ describe('DriveDeletionAdapter', () => {
         rootId,
         5,
         gate,
-        undefined,
+        crypto,
         fakePrf,
         kvForTest,
       );
