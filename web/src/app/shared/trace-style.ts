@@ -40,6 +40,13 @@ export const TRACK_COLOR = '#8E24AA';
 export const TRACK_REPEAT_COLOR = '#E65100';
 /** Dash of three widths, gap of two: the cue that does not depend on colour. */
 export const TRACK_REPEAT_DASH: readonly number[] = [3, 2];
+/**
+ * The legend sample's dash in px for a line `widthPx` wide: the map's dash is in line-width units, so the sample must be the
+ * same ratio at the sample's own width (an SVG `stroke-dasharray` is in user units). Dash 3, gap 2 at 3 px is "9 6".
+ */
+export function legendDashArray(widthPx: number): string {
+  return TRACK_REPEAT_DASH.map((d) => d * widthPx).join(' ');
+}
 /** The base widths by zoom (px), linear between. */
 export const TRACK_WIDTHS: readonly (readonly [number, number])[] = [
   [10, 1.5],

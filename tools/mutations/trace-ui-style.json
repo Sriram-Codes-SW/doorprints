@@ -36,6 +36,12 @@
       "find": "'line-color': '#FFFFFF', 'line-opacity': 0.95",
       "replace": "'line-color': '#E65100', 'line-opacity': 0.95",
       "expect": "has the halo (a wide white casing)"
+    },
+    {
+      "file": "web/src/app/shared/trace-style.ts",
+      "find": "TRACK_REPEAT_DASH.map((d) => d * widthPx).join(' ')",
+      "replace": "TRACK_REPEAT_DASH.join(' ')",
+      "expect": "scales the legend dash by the sample width"
     }
   ]
 }

@@ -32,6 +32,7 @@ import {
   baseLines,
   checkGeoJson,
   checkLayersJson,
+  legendDashArray,
   repeatFactor,
   repeatVisibility,
   repeatWidthExpression,
@@ -48,6 +49,12 @@ describe('trace style: the widths and colours of docs/11 5.27.4', () => {
     expect(TRACK_REPEAT_COLOR).toBe('#E65100');
     expect(TRACK_COLOR).toBe('#8E24AA');
     expect(TRACK_REPEAT_DASH).toEqual([3, 2]);
+  });
+
+  it('scales the legend dash by the sample width: the map\'s [3, 2] line widths at 3 px is "9 6" and at 1 px "3 2"', () => {
+    expect(legendDashArray(3)).toBe('9 6');
+    expect(legendDashArray(1)).toBe('3 2');
+    expect(legendDashArray(2.5)).toBe('7.5 5');
   });
 
   it('pins the overlay widths: Clear 2.7 / 5.4 / 9.0 and Subtle 1.5 / 3.0 / 5.0 at zoom 10 / 14 / 18', () => {
