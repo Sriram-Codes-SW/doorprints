@@ -1,0 +1,47 @@
+{
+  "spec": "web/src/app/data/local-db-idb.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/data/local-db.ts",
+      "find": "tx = this.db.transaction([...new Set(ops.map((o) => o.store))], 'readwrite');",
+      "replace": "tx = this.db.transaction([ops[0].store], 'readwrite');",
+      "expect": "saves a walk in ONE readwrite transaction"
+    },
+    {
+      "file": "web/src/app/data/local-db.ts",
+      "find": "  return err !== null && typeof err === 'object' ? (err as Error) : new Error(fallback);",
+      "replace": "  return new Error(fallback);",
+      "expect": "closes its connection on versionchange"
+    },
+    {
+      "file": "web/src/app/data/local-db.ts",
+      "find": "        db.close();\n        onVersionChange?.();",
+      "replace": "        onVersionChange?.();",
+      "expect": "closes its connection on versionchange"
+    },
+    {
+      "file": "web/src/app/data/local-db.ts",
+      "find": "    request.onblocked = () => fallback('blocked');",
+      "replace": "    request.onblocked = null;",
+      "expect": "falls back to memory when an older tab holds"
+    },
+    {
+      "file": "web/src/app/data/local-db.ts",
+      "find": "    request.onerror = () => fallback('blocked');",
+      "replace": "    request.onerror = () => fallback('unavailable');",
+      "expect": "falls back to memory with the \"blocked\" reason"
+    },
+    {
+      "file": "web/src/app/data/local-db.ts",
+      "find": "(s) => (index === undefined ? s.count() : s.index(index).count(value))",
+      "replace": "(s) => s.count()",
+      "expect": "putAll is one transaction too, and counts by index"
+    },
+    {
+      "file": "web/src/app/data/local-db.ts",
+      "find": "    if (ops.length === 0) return Promise.resolve();\n    return new Promise<void>((resolve, reject) => {\n      let tx",
+      "replace": "    return new Promise<void>((resolve, reject) => {\n      let tx",
+      "expect": "deleteAll is one transaction for the keys"
+    }
+  ]
+}

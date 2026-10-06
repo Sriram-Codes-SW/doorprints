@@ -139,6 +139,17 @@ export const SETTING_KEYS = {
   questionsSeeded: 'questions.seeded',
   /** Remind me about viewings (slice 3b-2; default on, stored as '0' when off; local only, not synced). */
   viewingsRemind: 'viewings.remind',
+  /**
+   * The path trace (docs/11 5.27, S4b-FR-17), all local to this browser and never exported, synced or backed up (PRV-028):
+   * the switch (off by default), how repeated paths look (CLEAR, SUBTLE or OFF; CLEAR by default), the repeated-path alert
+   * (off by default), keeping the screen on while a walk records (off by default), and the newest walk the *Save this
+   * walk?* question has handled (a walk id, 0 by default).
+   */
+  traceOn: 'trace.on',
+  traceLook: 'trace.look',
+  traceAlert: 'trace.alert',
+  traceKeepAwake: 'trace.keepAwake',
+  traceAskedUpTo: 'trace.askedUpTo',
 } as const;
 
 /** Epoch milliseconds of an ISO-8601 instant; 0 when it is missing or unparseable. Mirrors IsoTime.parseMillis. */

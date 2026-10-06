@@ -1,0 +1,59 @@
+{
+  "spec": "web/src/app/shared/trace-recorder.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/shared/trace-recorder.ts",
+      "find": "fix.accuracyM > TRACE.maxFixAccuracyM",
+      "replace": "fix.accuracyM >= TRACE.maxFixAccuracyM",
+      "expect": "refuses a fix worse than 50 m"
+    },
+    {
+      "file": "web/src/app/shared/trace-recorder.ts",
+      "find": "if (fix.atMs <= last.atMs) return null;",
+      "replace": "if (fix.atMs < last.atMs) return null;",
+      "expect": "refuses a fix off the globe or not finite"
+    },
+    {
+      "file": "web/src/app/shared/trace-geo.ts",
+      "find": "thinDistanceM: 20,",
+      "replace": "thinDistanceM: 30,",
+      "expect": "keeps the first fix, then one 20 m or more away"
+    },
+    {
+      "file": "web/src/app/shared/trace-recorder.ts",
+      "find": "fix.atMs - last.atMs < this.minGapMs",
+      "replace": "fix.atMs - last.atMs <= this.minGapMs",
+      "expect": "keeps a stay once every 5 minutes"
+    },
+    {
+      "file": "web/src/app/shared/trace-geo.ts",
+      "find": "thinGapMs: 300_000,",
+      "replace": "thinGapMs: 600_000,",
+      "expect": "keeps a stay once every 5 minutes"
+    },
+    {
+      "file": "web/src/app/shared/trace-recorder.ts",
+      "find": "fix.atMs - last.atMs >= TRACE.walkGapMs;",
+      "replace": "fix.atMs - last.atMs > TRACE.walkGapMs;",
+      "expect": "starts a new walk at a gap of 30 minutes or more"
+    },
+    {
+      "file": "web/src/app/shared/trace-recorder.ts",
+      "find": "    this.resumeNext = false;\n    this.last = {",
+      "replace": "    this.last = {",
+      "expect": "marks only the first kept point after markResumed()"
+    },
+    {
+      "file": "web/src/app/shared/trace-recorder.ts",
+      "find": " || !isValidLatLon(fix.lat, fix.lon)) return null;",
+      "replace": ") return null;",
+      "expect": "refuses a fix off the globe or not finite"
+    },
+    {
+      "file": "web/src/app/shared/trace-recorder.ts",
+      "find": "    if (!Number.isFinite(fix.accuracyM) || fix.accuracyM < 0 ||",
+      "replace": "    if (!Number.isFinite(fix.accuracyM) ||",
+      "expect": "refuses a fix worse than 50 m"
+    }
+  ]
+}

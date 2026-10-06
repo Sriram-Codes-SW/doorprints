@@ -168,6 +168,31 @@ export class TranslationService {
     return this.formatOf('date', epochMs);
   }
 
+  /**
+   * The calendar day of an epoch time with a short weekday (*Tue 7 Oct*), in the language's own style (Intl, as
+   * {@link dateOnly}: Angular has no locale data for hi, ta and te). The day is the one in `timeZone` (the device's
+   * when absent), and the year is added only when it is not the current year there (`nowMs` is for the unit test).
+   * docs/11 5.27.13, the place check's dates.
+   */
+  dateWithWeekday(epochMs: number | null | undefined, timeZone?: string, nowMs: number = Date.now()): string {
+    if (epochMs === null || epochMs === undefined || !Number.isFinite(epochMs)) return '–';
+    const locale = this.locale();
+    const year = (ms: number) => new Intl.DateTimeFormat('en-US', { year: 'numeric', timeZone }).format(new Date(ms));
+    const withYear = year(epochMs) !== year(nowMs);
+    const key = `weekday:${locale}:${timeZone ?? ''}:${withYear}`;
+    let fmt = this.dateFormats.get(key);
+    if (!fmt) {
+      fmt = new Intl.DateTimeFormat(locale, { weekday: 'short', day: 'numeric', month: 'short', ...(withYear ? { year: 'numeric' } : {}), timeZone });
+      this.dateFormats.set(key, fmt);
+    }
+    return fmt.format(new Date(epochMs));
+  }
+
+  /** A distance in whole metres with the unit written the language's own way (Intl unit formatting, as {@link size}). */
+  metres(n: number): string {
+    return this.numberFormat('unit-meter', { style: 'unit', unit: 'meter', maximumFractionDigits: 0 }).format(n);
+  }
+
   /** The time of day alone of an epoch time, in the language's own style. */
   timeOnly(epochMs: number | null | undefined): string {
     return this.formatOf('time', epochMs);

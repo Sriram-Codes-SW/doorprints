@@ -1,0 +1,137 @@
+{
+  "spec": "web/src/app/shared/trace-repeats-vectors.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/shared/trace-geo.ts",
+      "find": "toleranceM: 25,",
+      "replace": "toleranceM: 35,",
+      "expect": "parallel-30m-apart"
+    },
+    {
+      "file": "web/src/app/shared/trace-geo.ts",
+      "find": "toleranceM: 25,",
+      "replace": "toleranceM: 15,",
+      "expect": "parallel-20m-apart"
+    },
+    {
+      "file": "web/src/app/shared/trace-geo.ts",
+      "find": "minRunM: 80,",
+      "replace": "minRunM: 40,",
+      "expect": "overlap-60m-is-not-a-repeat"
+    },
+    {
+      "file": "web/src/app/shared/trace-geo.ts",
+      "find": "minRunM: 80,",
+      "replace": "minRunM: 30,",
+      "expect": "junction-crossing"
+    },
+    {
+      "file": "web/src/app/shared/trace-geo.ts",
+      "find": "bridgeM: 30,",
+      "replace": "bridgeM: 0,",
+      "expect": "short-detour-is-bridged"
+    },
+    {
+      "file": "web/src/app/shared/trace-geo.ts",
+      "find": "alertMinRunM: 100,",
+      "replace": "alertMinRunM: 50,",
+      "expect": "alert-needs-100m-not-60m"
+    },
+    {
+      "file": "web/src/app/shared/trace-geo.ts",
+      "find": "densifyM: 10,",
+      "replace": "densifyM: 1000,",
+      "expect": "t-junction-shared-stem"
+    },
+    {
+      "file": "web/src/app/shared/trace-geo.ts",
+      "find": "const dx = (b.lon - a.lon) * Math.cos(((a.lat + b.lat) / 2) * RAD) * K;",
+      "replace": "const dx = (b.lon - a.lon) * K;",
+      "expect": "latitude-13-east-west-street"
+    },
+    {
+      "file": "web/src/app/shared/trace-repeats.ts",
+      "find": "      if (p.atMs - previous.atMs >= TRACE.walkGapMs ||",
+      "replace": "      if (p.atMs - previous.atMs > TRACE.walkGapMs ||",
+      "expect": "split-gap-of-exactly-30-minutes-splits"
+    },
+    {
+      "file": "web/src/app/shared/trace-repeats.ts",
+      "find": "(idA !== 0 && idB !== 0 && idA !== idB)",
+      "replace": "idA !== idB",
+      "expect": "split-walk-id-zero-is-no-id"
+    },
+    {
+      "file": "web/src/app/shared/trace-repeats.ts",
+      "find": "      if (p.atMs === previous.atMs) continue;\n",
+      "replace": "",
+      "expect": "split-unsorted-and-duplicate-times"
+    },
+    {
+      "file": "web/src/app/shared/trace-repeats.ts",
+      "find": "  order.sort((a, b) => points[a].atMs - points[b].atMs || a - b);",
+      "replace": "  order.sort(() => 0);",
+      "expect": "split-unsorted-and-duplicate-times"
+    },
+    {
+      "file": "web/src/app/shared/trace-repeats.ts",
+      "find": "  return walks.filter((w) => w.length >= 2);",
+      "replace": "  return walks;",
+      "expect": "split-lone-point-between-walks"
+    },
+    {
+      "file": "web/src/app/shared/trace-repeats.ts",
+      "find": "      if (s.walk === skipWalk || !this.inBox(s.walk, lat, lon)) continue;\n      if (nearestOnSegment(q, s.a, s.b).distanceM <= TRACE.toleranceM) return true;",
+      "replace": "      if (!this.inBox(s.walk, lat, lon)) continue;\n      if (nearestOnSegment(q, s.a, s.b).distanceM <= TRACE.toleranceM) return true;",
+      "expect": "out-and-back-in-one-walk-is-not-a-re"
+    },
+    {
+      "file": "web/src/app/shared/trace-repeats.ts",
+      "find": "if (!newer(hit.walk, w)) continue;",
+      "replace": "if (!newer(hit.walk, w) || true) continue;",
+      "expect": "same-street-two-walks"
+    },
+    {
+      "file": "web/src/app/shared/trace-repeats.ts",
+      "find": "const newer = (v: number, w: number) => idOf(v) > idOf(w) || (idOf(v) === idOf(w) && v > w);",
+      "replace": "const newer = (v: number, w: number) => v > w;",
+      "expect": "shown-newest-draws-whatever-the-input"
+    },
+    {
+      "file": "web/src/app/shared/trace-repeats.ts",
+      "find": "        if (i === 0 || p.resumed === true) continue;",
+      "replace": "        if (i === 0) continue;",
+      "expect": "web-pause-makes-no-segment"
+    },
+    {
+      "file": "web/src/app/shared/trace-repeats.ts",
+      "find": "if (behind < 0 || s.part[behind] !== s.part[last] || s.arc[last] - s.arc[behind] > TRACE.bridgeM) this.blocked = false;",
+      "replace": "this.blocked = false;",
+      "expect": "alert-one-bad-fix-does-not-ring-again"
+    },
+    {
+      "file": "web/src/app/shared/trace-repeats.ts",
+      "find": " && !(first.atMs - o.points[o.points.length - 1].atMs < TRACE.walkGapMs));",
+      "replace": ");",
+      "expect": "alert-not-for-the-walk-just-finished"
+    },
+    {
+      "file": "web/src/app/shared/trace-repeats.ts",
+      "find": "o.points[o.points.length - 1].atMs < TRACE.walkGapMs",
+      "replace": "o.points[o.points.length - 1].atMs <= TRACE.walkGapMs",
+      "expect": "alert-walk-finished-30-minutes-ago-c"
+    },
+    {
+      "file": "web/src/app/shared/trace-repeats.ts",
+      "find": "(this.lastAlertAt === null || point.atMs - this.lastAlertAt >= TRACE.alertCooldownMs)",
+      "replace": "true",
+      "expect": "alert-cooldown-suppresses-a-second"
+    },
+    {
+      "file": "web/src/app/shared/trace-repeats.ts",
+      "find": "&& !this.blocked &&",
+      "replace": "&&",
+      "expect": "alert-one-bad-fix-does-not-ring-again"
+    }
+  ]
+}
