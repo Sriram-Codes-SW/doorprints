@@ -35,7 +35,9 @@ import app.doorprints.drive.connect.SyncInfo
 import app.doorprints.drive.delete.DeletionAction
 import app.doorprints.drive.delete.DeletionPlan
 import app.doorprints.drive.photo.PhotoNetworkStatus
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 /**
  * The part of [DriveConnectController] the screens use, as an interface: the screens' state holder ([DriveHolder]) is
@@ -49,6 +51,13 @@ import kotlinx.coroutines.flow.StateFlow
 interface DriveActions {
     val state: StateFlow<ConnectState>
     val enrolmentNotice: StateFlow<DriveReason?>
+
+    /**
+     * True while the app knows the Drive folder was deleted elsewhere and the person has not answered (docs/15 section
+     * 3.4): the card then asks *Start again* or *Disconnect*. The app keeps Drive engaged until the person answers, and
+     * never creates a folder by itself. Default: never.
+     */
+    val folderGone: StateFlow<Boolean> get() = NoFolderGone
 
     suspend fun connect(): ConnectResult
     suspend fun createFolder(): ConnectResult
@@ -89,8 +98,14 @@ interface DriveActions {
     suspend fun resumeDelete(promptReason: String): Outcome<DeleteRun>
 }
 
+/** The [DriveActions.folderGone] of an app that has nothing to say about it. */
+val NoFolderGone: StateFlow<Boolean> = MutableStateFlow(false).asStateFlow()
+
 /** [DriveActions] over the one shared controller (both phones). */
-class ControllerDriveActions(private val c: DriveConnectController) : DriveActions {
+class ControllerDriveActions(
+    private val c: DriveConnectController,
+    override val folderGone: StateFlow<Boolean> = NoFolderGone,
+) : DriveActions {
     override val state get() = c.state
     override val enrolmentNotice get() = c.enrolmentNotice
 
@@ -166,6 +181,16 @@ sealed interface QrScan {
 object NoQrScanner : QrScanner {
     override val isAvailable = false
     override suspend fun scan(): QrScan = QrScan.NoCamera
+}
+
+/**
+ * Copying a secret (the recovery key, an enrolment message) to the clipboard. The app marks the clip sensitive so the
+ * system does not show it in the clipboard preview or keep it in the history (Android 13 and later:
+ * `ClipDescription.EXTRA_IS_SENSITIVE`; iOS: a local-only, expiring pasteboard item). :ui is common code, so the screens
+ * only call this; without an implementation a plain copy is made.
+ */
+interface ClipboardSeam {
+    fun copySensitive(text: String)
 }
 
 /**

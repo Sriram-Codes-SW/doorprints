@@ -1392,4 +1392,11 @@
     <string name="drive_delete_reason_auth_locked_out">Too many wrong tries. Wait a little, then try again.</string>
     <string name="drive_delete_reason_auth_paused_no_lock">Google Drive is paused: this phone's screen lock was removed. Set one again to go on.</string>
     <string name="drive_delete_reason_auth_paused_unknown">Google Drive is paused: Doorprints cannot tell whether this phone has a screen lock. Check the phone's settings.</string>
+    <!-- Review 1, 6, 9 (2026-10-06): the deleted-folder question and naming the new device. -->
+    <string name="drive_connect_folder_gone_ask">Your Doorprints data in Google Drive was deleted. Back up this device to Drive again?</string>
+    <string name="drive_connect_start_again">Start again</string>
+    <string name="drive_enrol_device_name">Name of the new device</string>
+    <string name="drive_enrol_device_kind">This device is a</string>
+    <string name="drive_enrol_kind_phone">Phone</string>
+    <string name="drive_enrol_kind_computer">Computer</string>
 </resources>

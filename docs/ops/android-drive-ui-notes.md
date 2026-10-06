@@ -37,14 +37,15 @@ DriveSettings(vm, scanner = cameraScanner /* or NoQrScanner */, host = DriveHost
 ## What the person sees, by state
 
 - **Disconnected**: the intro and *Connect to Google Drive*. A failed or closed sign-in shows its reason and *Try again* (not for "this
-  phone cannot encrypt"); a deleted folder offers *Connect*. No folder yet: the holder makes one at once and shows the recovery key.
+  phone cannot encrypt"); No folder yet: the holder makes one at once and shows the recovery key.
+- **Folder deleted** (`DriveCard.FOLDER_GONE`, docs/15 section 3.4): "Your Doorprints data in Google Drive was deleted. Back up this device to Drive again?" with *Start again* (makes a new folder, shows its recovery key once) and *Disconnect*. Nothing is ever created by itself, and *Connect* is not offered (it would only ask again). The app keeps Drive engaged until the person answers: `DriveActions.folderGone` (a `StateFlow<Boolean>` the wiring sets when sync or backup finds the folder gone; default never) shows the same card when Settings opens.
 - **Recovery key (once)**: the key in monospace, read letter by letter, *Copy recovery key*, the warning, the tick *I have saved my
   recovery key*, *Next* (only ticked) and *Skip*. The key lives in `DriveUiState.connectKey` only until the screen is left.
 - **Join / enrol**: a recovery-key field (the only one on a phone), *Join this folder*, then *Enrol this phone* (*Show a QR code*, the
   8-digit code, scan or paste the reply). A revoked phone gets the revoked sentence and the recovery-key field only.
-- **Connected**: *Backups* (last backup, *Back up now*, the shrink question, the list with *Import a backup* per row, *Automatic backup*),
+- **Connected**: *Backups* (last backup, *Back up now*, the shrink question, the list with *Import a backup* and *Delete this backup* per row (the delete's plan, tick box, countdown and device check show under the list; the last complete backup is level 2 and shows the device-check wording), *Automatic backup*),
   *Sync* (status line, *Sync now*, the shrink guard, *Upload photos only on Wi-Fi* with the one-off *Upload photos now over mobile
-  data*), *Devices* (account, list with *Revoke*, the new recovery key once, *Disconnect on all devices*), *Enrol another device*,
+  data*), *Devices* (account, list with *Revoke*, the new recovery key once, *Disconnect on all devices*), *Enrol another device* (the approver names the new device, default "New device", and picks Phone or Computer; both go to the keys file),
   *Delete data in Google Drive* (older, all, everything; plan counts and bytes; tick box; 5 second countdown for everything; device
   check; *Try again* only after a partial run), *Disconnect this device*.
 - Never on a phone: a passkey, a recovery-key field in any delete, revoke or disconnect step (docs/15 section 10.4a).
@@ -207,6 +208,12 @@ web drive.common.retry common.retry
 web drive.common.close common.close
 web drive.common.loading common.loading
 phone-only driveConnect.noBackupSource
+phone-only driveConnect.folderGoneAsk
+phone-only driveConnect.startAgain
+phone-only driveEnrol.deviceName
+phone-only driveEnrol.deviceKind
+phone-only driveEnrol.kindPhone
+phone-only driveEnrol.kindComputer
 phone-only driveProblem.OFFLINE
 phone-only driveProblem.SOURCE_FAILED
 phone-only driveProblem.CONNECT_FAILED
@@ -296,3 +303,11 @@ positional placeholders: check the word order reads right.
   the tall states are the largest).
 - Not covered: a screen reader pass on a device, 200 % text and the real camera and clipboard (all need a device or emulator), and the
   iOS compile of `:ui` (`compileKotlinIosSimulatorArm64`; the common metadata compile passes).
+
+## Clipboard and clock seams (review of PR #142, items 10 and 14)
+
+- `ClipboardSeam.copySensitive(text)` (in `DriveActions.kt`): the screens copy the recovery key and the enrolment messages only through it
+  (`DriveHost.clipboard`). Without one, a plain Compose copy is made. The Android implementation sets `ClipDescription.EXTRA_IS_SENSITIVE`
+  on the `ClipData` (Android 13 and later); an iOS one should use a local-only, expiring pasteboard item.
+- The delete countdown reads `DriveHolder.now()`, a monotonic clock (`monotonicMillis()`, `kotlin.time.TimeSource.Monotonic`), never the
+  wall clock: changing the phone's time cannot shorten it.

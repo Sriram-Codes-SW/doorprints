@@ -51,6 +51,12 @@ import app.doorprints.ui.res.drive_connect_deleting
 import app.doorprints.ui.res.drive_connect_not_configured
 import app.doorprints.ui.res.drive_connect_folder_gone
 import app.doorprints.ui.res.drive_connect_failed
+import app.doorprints.ui.res.drive_connect_folder_gone_ask
+import app.doorprints.ui.res.drive_connect_start_again
+import app.doorprints.ui.res.drive_enrol_device_name
+import app.doorprints.ui.res.drive_enrol_device_kind
+import app.doorprints.ui.res.drive_enrol_kind_phone
+import app.doorprints.ui.res.drive_enrol_kind_computer
 import app.doorprints.ui.res.drive_join_heading
 import app.doorprints.ui.res.drive_join_description
 import app.doorprints.ui.res.drive_join_label
@@ -269,6 +275,12 @@ internal val DRIVE_STRINGS: Map<String, StringResource> = mapOf(
     "driveConnect.notConfigured" to Res.string.drive_connect_not_configured,
     "driveConnect.folderGone" to Res.string.drive_connect_folder_gone,
     "driveConnect.failed" to Res.string.drive_connect_failed,
+    "driveConnect.folderGoneAsk" to Res.string.drive_connect_folder_gone_ask,
+    "driveConnect.startAgain" to Res.string.drive_connect_start_again,
+    "driveEnrol.deviceName" to Res.string.drive_enrol_device_name,
+    "driveEnrol.deviceKind" to Res.string.drive_enrol_device_kind,
+    "driveEnrol.kindPhone" to Res.string.drive_enrol_kind_phone,
+    "driveEnrol.kindComputer" to Res.string.drive_enrol_kind_computer,
     "driveJoin.heading" to Res.string.drive_join_heading,
     "driveJoin.description" to Res.string.drive_join_description,
     "driveJoin.label" to Res.string.drive_join_label,

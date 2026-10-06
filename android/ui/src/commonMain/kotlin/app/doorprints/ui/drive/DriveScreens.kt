@@ -28,6 +28,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
@@ -38,6 +40,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -74,7 +77,6 @@ import app.doorprints.ui.LiveMessage
 import app.doorprints.ui.SwitchRow
 import app.doorprints.ui.WarnNote
 import app.doorprints.ui.dateText
-import app.doorprints.ui.nowMillis
 import app.doorprints.ui.spellCode
 import app.doorprints.ui.res.Res
 import app.doorprints.ui.res.common_cancel
@@ -105,7 +107,20 @@ class DriveHost(
     val importBusy: Boolean = false,
     /** The message of that hand-off when it failed (a dictionary key from the import, shown under the list). */
     val importError: DriveReason? = null,
+    /** Copies a secret to the clipboard marked sensitive (Android 13+: `EXTRA_IS_SENSITIVE`). Null: a plain copy. */
+    val clipboard: ClipboardSeam? = null,
 )
+
+/** The host's sensitive-copy seam, or a plain copy through Compose's clipboard where the app gave none. */
+@Composable
+private fun rememberClipboard(host: DriveHost): ClipboardSeam {
+    val plain = LocalClipboardManager.current
+    return host.clipboard ?: remember(plain) {
+        object : ClipboardSeam {
+            override fun copySensitive(text: String) = plain.setText(AnnotatedString(text))
+        }
+    }
+}
 
 @Composable
 internal fun t(key: String, vararg args: Any): String {
@@ -129,17 +144,19 @@ fun DriveSettingsSection(holder: DriveHolder, scanner: QrScanner = NoQrScanner, 
 /** The section for one [ui] state: [DriveSettingsSection] draws the holder's, a screenshot test draws any. */
 @Composable
 fun DriveSettingsContent(ui: DriveUiState, holder: DriveHolder, scanner: QrScanner = NoQrScanner, host: DriveHost = DriveHost(), modifier: Modifier = Modifier) {
+    val clipboard = rememberClipboard(host)
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Heading(t("driveConnect.heading"), main = true)
         when (ui.card) {
             DriveCard.UNAVAILABLE -> Text(t("driveConnect.unavailable"))
             DriveCard.DISCONNECTED -> DisconnectedCard(ui, holder)
             DriveCard.CONNECTING -> LiveMessage { Text(t("driveConnect.connecting")) }
-            DriveCard.RECOVERY_KEY -> RecoveryKeyCard(ui, holder)
-            DriveCard.JOIN -> JoinCard(ui, holder, scanner, revoked = false)
-            DriveCard.REVOKED -> JoinCard(ui, holder, scanner, revoked = true)
-            DriveCard.READY -> ReadyCard(ui, holder, scanner, host)
+            DriveCard.RECOVERY_KEY -> RecoveryKeyCard(ui, holder, clipboard)
+            DriveCard.JOIN -> JoinCard(ui, holder, scanner, clipboard, revoked = false)
+            DriveCard.REVOKED -> JoinCard(ui, holder, scanner, clipboard, revoked = true)
+            DriveCard.READY -> ReadyCard(ui, holder, scanner, host, clipboard)
             DriveCard.ERROR -> ErrorBox(ui.error, ui, holder)
+            DriveCard.FOLDER_GONE -> FolderGoneCard(ui, holder)
         }
     }
 }
@@ -219,7 +236,7 @@ fun QrCodeView(text: String, description: String, modifier: Modifier = Modifier)
 private fun ControlsFor(ui: DriveUiState, holder: DriveHolder, error: DriveReason?) {
     for (spec in connectControls(ui.card, error, ui.keySaved, ui.busy)) {
         when (spec.control) {
-            DriveControl.CONNECT, DriveControl.CONNECT_AGAIN -> DriveButton(t("driveConnect.connect"), holder::connect, spec.enabled, primary = true)
+            DriveControl.CONNECT -> DriveButton(t("driveConnect.connect"), holder::connect, spec.enabled, primary = true)
             DriveControl.RETRY -> DriveButton(t("drive.common.retry"), holder::connect, spec.enabled)
             else -> Unit
         }
@@ -236,6 +253,19 @@ private fun DisconnectedCard(ui: DriveUiState, holder: DriveHolder) {
     }
 }
 
+/** The folder was deleted: ask (docs/15 section 3.4). Nothing is created until *Start again*; *Disconnect* leaves Drive. */
+@Composable
+private fun FolderGoneCard(ui: DriveUiState, holder: DriveHolder) {
+    LiveMessage(assertive = true) { Text(t("driveConnect.folderGoneAsk")) }
+    for (spec in connectControls(ui.card, ui.error, ui.keySaved, ui.busy)) {
+        when (spec.control) {
+            DriveControl.START_AGAIN -> DriveButton(t("driveConnect.startAgain"), holder::startAgain, spec.enabled, primary = true)
+            DriveControl.DISCONNECT -> DriveButton(t("driveConnect.disconnect"), holder::disconnect, spec.enabled)
+            else -> Unit
+        }
+    }
+}
+
 @Composable
 private fun ErrorBox(error: DriveReason?, ui: DriveUiState, holder: DriveHolder) {
     LiveMessage(assertive = true) {
@@ -245,9 +275,8 @@ private fun ErrorBox(error: DriveReason?, ui: DriveUiState, holder: DriveHolder)
 }
 
 @Composable
-private fun RecoveryKeyCard(ui: DriveUiState, holder: DriveHolder) {
+private fun RecoveryKeyCard(ui: DriveUiState, holder: DriveHolder, clipboard: ClipboardSeam) {
     val key = ui.connectKey
-    val clipboard = LocalClipboardManager.current
     var copied by remember { mutableStateOf<Boolean?>(null) }
     Heading(t("driveConnect.firstConnect"))
     Text(t("driveConnect.recoveryKeyNote"), color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -256,14 +285,7 @@ private fun RecoveryKeyCard(ui: DriveUiState, holder: DriveHolder) {
         val enabled = connectControls(ui.card, null, ui.keySaved, ui.busy).first { it.control == DriveControl.COPY_KEY }.enabled
         DriveButton(
             if (copied == true) t("driveConnect.recoveryKeyCopied") else t("driveConnect.recoveryKeyCopy"),
-            onClick = {
-                copied = try {
-                    clipboard.setText(AnnotatedString(key.text))
-                    true
-                } catch (_: Exception) {
-                    false
-                }
-            },
+            onClick = { copied = copyToClipboard(clipboard, key.text) },
             enabled = enabled,
         )
         LiveMessage { if (copied == false) Text(t("driveConnect.copyFailed"), color = MaterialTheme.colorScheme.error) }
@@ -280,7 +302,7 @@ private fun RecoveryKeyCard(ui: DriveUiState, holder: DriveHolder) {
 }
 
 @Composable
-private fun JoinCard(ui: DriveUiState, holder: DriveHolder, scanner: QrScanner, revoked: Boolean) {
+private fun JoinCard(ui: DriveUiState, holder: DriveHolder, scanner: QrScanner, clipboard: ClipboardSeam, revoked: Boolean) {
     // The typed key lives only here, and is cleared the moment it is sent (the holder never keeps it).
     var typed by remember { mutableStateOf("") }
     if (revoked) {
@@ -314,7 +336,7 @@ private fun JoinCard(ui: DriveUiState, holder: DriveHolder, scanner: QrScanner, 
     )
     if (!revoked) {
         Text(t("driveJoin.lostKeyMessage"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-        EnrolCard(ui, holder, scanner, newDevice = true)
+        EnrolCard(ui, holder, scanner, clipboard, newDevice = true)
     }
     val disconnectLabel = t("driveJoin.disconnectAriaLabel")
     TextButton(
@@ -326,9 +348,8 @@ private fun JoinCard(ui: DriveUiState, holder: DriveHolder, scanner: QrScanner, 
 // ---- Enrolment ----------------------------------------------------------------------------------------------------------------------
 
 @Composable
-private fun EnrolCard(ui: DriveUiState, holder: DriveHolder, scanner: QrScanner, newDevice: Boolean) {
+private fun EnrolCard(ui: DriveUiState, holder: DriveHolder, scanner: QrScanner, clipboard: ClipboardSeam, newDevice: Boolean) {
     val scope = rememberCoroutineScope()
-    val clipboard = LocalClipboardManager.current
     var pasted by remember { mutableStateOf("") }
     var copied by remember { mutableStateOf(false) }
     Heading(t(if (newDevice) "driveEnrol.headingJoin" else "driveEnrol.headingApprove"))
@@ -344,14 +365,7 @@ private fun EnrolCard(ui: DriveUiState, holder: DriveHolder, scanner: QrScanner,
             Text(t("driveEnrol.newHelp"))
             QrCodeView(e.offer.qrText, t("driveEnrol.qrDescription"))
             CodeLine(e.offer.code)
-            DriveButton(if (copied) t("driveEnrol.copied") else t("driveEnrol.copyCode"), {
-                copied = try {
-                    clipboard.setText(AnnotatedString(e.offer.qrText))
-                    true
-                } catch (_: Exception) {
-                    false
-                }
-            })
+            DriveButton(if (copied) t("driveEnrol.copied") else t("driveEnrol.copyCode"), { copied = copyToClipboard(clipboard, e.offer.qrText) })
             ScanOrPaste(t("driveEnrol.pasteReply"), pasted, { pasted = it }, scanner, e.cameraMissing, scope, holder, ui.busy) { text ->
                 holder.submitReply(text)
             }
@@ -371,6 +385,24 @@ private fun EnrolCard(ui: DriveUiState, holder: DriveHolder, scanner: QrScanner,
         is EnrolUi.ApproverCheck -> {
             CodeLine(e.offer.code)
             Text(t("driveEnrol.confirmMatch"))
+            OutlinedTextField(
+                value = e.name, onValueChange = holder::setApproveName, label = { Text(t("driveEnrol.deviceName")) },
+                singleLine = true, enabled = !ui.busy, modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(autoCorrectEnabled = false),
+            )
+            Text(t("driveEnrol.deviceKind"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Column(Modifier.selectableGroup()) {
+                for (kind in DeviceKind.entries) {
+                    Row(
+                        Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                            .selectable(selected = e.kind == kind, enabled = !ui.busy, role = Role.RadioButton, onClick = { holder.setApproveKind(kind) }),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(selected = e.kind == kind, onClick = null, enabled = !ui.busy)
+                        Text(t(if (kind == DeviceKind.PHONE) "driveEnrol.kindPhone" else "driveEnrol.kindComputer"), Modifier.padding(start = 12.dp))
+                    }
+                }
+            }
             Text(t("driveDevices.deviceCheckNote"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             ErrorLine(e.error)
             DriveButton(t("driveDevices.codesMatch"), holder::confirmCodesMatch, enabled = !ui.busy, primary = true)
@@ -379,14 +411,7 @@ private fun EnrolCard(ui: DriveUiState, holder: DriveHolder, scanner: QrScanner,
         is EnrolUi.ApproverReply -> {
             LiveMessage { Text(t("driveEnrol.done")) }
             QrCodeView(e.replyText, t("driveEnrol.qrDescription"))
-            DriveButton(if (copied) t("driveEnrol.copied") else t("driveEnrol.copyCode"), {
-                copied = try {
-                    clipboard.setText(AnnotatedString(e.replyText))
-                    true
-                } catch (_: Exception) {
-                    false
-                }
-            })
+            DriveButton(if (copied) t("driveEnrol.copied") else t("driveEnrol.copyCode"), { copied = copyToClipboard(clipboard, e.replyText) })
             DriveButton(t("drive.common.close"), holder::closeEnrol, primary = true)
         }
     }
@@ -439,7 +464,7 @@ private fun ScanOrPaste(
 // ---- Ready: backups, sync, devices, deleting, disconnect ------------------------------------------------------------------------------
 
 @Composable
-private fun ReadyCard(ui: DriveUiState, holder: DriveHolder, scanner: QrScanner, host: DriveHost) {
+private fun ReadyCard(ui: DriveUiState, holder: DriveHolder, scanner: QrScanner, host: DriveHost, clipboard: ClipboardSeam) {
     LiveMessage { Text(t("driveConnect.ready")) }
     BackupsCard(ui, holder, host)
     HorizontalDivider()
@@ -447,9 +472,9 @@ private fun ReadyCard(ui: DriveUiState, holder: DriveHolder, scanner: QrScanner,
     HorizontalDivider()
     DevicesCard(ui, holder)
     HorizontalDivider()
-    EnrolCard(ui, holder, scanner, newDevice = false)
+    EnrolCard(ui, holder, scanner, clipboard, newDevice = false)
     HorizontalDivider()
-    DeleteCard(ui, holder, host, oneBackupId = null)
+    DeleteCard(ui, holder, host)
     HorizontalDivider()
     Heading(t("driveConnect.disconnect"))
     Text(t("driveDevices.threeDisconnect"), style = MaterialTheme.typography.bodySmall)
@@ -483,9 +508,15 @@ private fun BackupsCard(ui: DriveUiState, holder: DriveHolder, host: DriveHost) 
         }
         ListState.EMPTY -> LiveMessage { Text(t("driveBackups.emptyState")) }
         ListState.LIST -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            for (backup in b.list) BackupRow(backup, enabled = importEnabled(host.importBusy, b.busy), onImport = { host.onImportBackup(backup) })
+            for (backup in b.list) BackupRow(
+                backup, enabled = importEnabled(host.importBusy, b.busy), onImport = { host.onImportBackup(backup) },
+                deleteEnabled = deleteBackupEnabled(ui.busy, b.busy, ui.delete.phase),
+                onDelete = { holder.startDelete(DeleteChoice.ONE_BACKUP, backup.id) },
+            )
         }
     }
+    // The delete of one backup shows here, under the list the person tapped in (not at the bottom of the screen).
+    if (deleteFlowInBackups(ui.delete.choice, ui.delete.phase)) DeleteFlow(ui, holder, host)
     host.importError?.let { ErrorLine(it) }
     SwitchRow(
         text = t("driveBackups.autoBackup"), hint = null, checked = b.auto, enabled = !b.busy, horizontalPadding = 0.dp,
@@ -494,19 +525,24 @@ private fun BackupsCard(ui: DriveUiState, holder: DriveHolder, host: DriveHost) 
 }
 
 @Composable
-private fun BackupRow(backup: BackupSummary, enabled: Boolean, onImport: () -> Unit) {
+private fun BackupRow(backup: BackupSummary, enabled: Boolean, onImport: () -> Unit, deleteEnabled: Boolean, onDelete: () -> Unit) {
     val whenText = backup.createdAt.dateText()
     val size = backup.bytes?.let { sizeText(it) } ?: t("driveBackups.sizeUnknown")
     val importLabel = t("driveBackups.import") + ", " + whenText
-    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Column(Modifier.weight(1f)) {
-            Text(whenText)
-            Text("${t("driveBackups.houses")}: ${backup.houses} · $size", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    val deleteLabel = t("driveDelete.oneBackup") + ", " + whenText
+    Column(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(whenText)
+        Text("${t("driveBackups.houses")}: ${backup.houses} · $size", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(
+                onClick = onImport, enabled = enabled,
+                modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = importLabel },
+            ) { ButtonLabel(t("driveBackups.import")) }
+            OutlinedButton(
+                onClick = onDelete, enabled = deleteEnabled,
+                modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = deleteLabel },
+            ) { ButtonLabel(t("driveDelete.oneBackup")) }
         }
-        OutlinedButton(
-            onClick = onImport, enabled = enabled,
-            modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = importLabel },
-        ) { ButtonLabel(t("driveBackups.import")) }
     }
 }
 
@@ -597,13 +633,24 @@ private fun DeviceRow(device: ListedDevice, enabled: Boolean, onRevoke: () -> Un
 // ---- Deleting ------------------------------------------------------------------------------------------------------------------------------
 
 @Composable
-private fun DeleteCard(ui: DriveUiState, holder: DriveHolder, host: DriveHost, oneBackupId: String?) {
-    val d = ui.delete
+private fun DeleteCard(ui: DriveUiState, holder: DriveHolder, host: DriveHost) {
     Heading(t("driveDelete.heading"))
-    when (d.phase) {
-        DeletePhase.MENU -> for (choice in deleteMenu(oneBackupId)) {
-            DriveButton(t(deleteChoiceKey(choice)), { holder.startDelete(choice, oneBackupId) }, enabled = !ui.busy, danger = choice == DeleteChoice.EVERYTHING)
+    // One backup's delete is drawn under the backups list; the menu stays here meanwhile.
+    if (ui.delete.phase == DeletePhase.MENU || deleteFlowInBackups(ui.delete.choice, ui.delete.phase)) {
+        for (choice in deleteMenu(null)) {
+            DriveButton(t(deleteChoiceKey(choice)), { holder.startDelete(choice) }, enabled = !ui.busy && ui.delete.phase == DeletePhase.MENU, danger = choice == DeleteChoice.EVERYTHING)
         }
+    } else {
+        DeleteFlow(ui, holder, host)
+    }
+}
+
+/** The steps of a delete after the choice: plan, confirm, run, partial, done. */
+@Composable
+private fun DeleteFlow(ui: DriveUiState, holder: DriveHolder, host: DriveHost) {
+    val d = ui.delete
+    when (d.phase) {
+        DeletePhase.MENU -> Unit
         DeletePhase.PLAN -> {
             Heading(t("driveDelete.planHeading"))
             d.plan?.let { PlanLines(it) }
@@ -655,12 +702,12 @@ private fun PlanLines(plan: app.doorprints.drive.delete.DeletionPlan) {
 private fun ConfirmStep(ui: DriveUiState, holder: DriveHolder, host: DriveHost) {
     val d = ui.delete
     val info = d.info ?: return
-    var now by remember(d.confirmShownAtMs) { mutableLongStateOf(nowMillis()) }
+    var now by remember(d.confirmShownAtMs) { mutableLongStateOf(holder.now()) }
     val fields = deleteConfirmFields(info)
     LaunchedEffect(d.confirmShownAtMs, info.delayMs) {
         while (countdownSecondsLeft(info.delayMs, now - d.confirmShownAtMs) > 0) {
             delay(250)
-            now = nowMillis()
+            now = holder.now()
         }
     }
     Heading(t("driveDelete.confirmHeading"))

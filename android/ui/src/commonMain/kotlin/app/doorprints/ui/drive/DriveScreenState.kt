@@ -52,11 +52,18 @@ enum class DriveCard {
     REVOKED,
     READY,
     ERROR,
+
+    /**
+     * The Doorprints folder was deleted in Drive (docs/15 section 3.4): ask, never re-create it quietly. *Start again*
+     * makes a new folder and shows its recovery key; *Disconnect* is the only other way out.
+     */
+    FOLDER_GONE,
 }
 
-fun driveCardOf(state: ConnectState, notice: DriveReason?): DriveCard = when (state) {
+/** [error] is the reason the last connect gave: a deleted folder is a card of its own, not a Connect button that goes round again. */
+fun driveCardOf(state: ConnectState, notice: DriveReason?, error: DriveReason? = null): DriveCard = when (state) {
     ConnectState.UNAVAILABLE -> DriveCard.UNAVAILABLE
-    ConnectState.DISCONNECTED -> DriveCard.DISCONNECTED
+    ConnectState.DISCONNECTED -> if (error == DriveReason.FOLDER_GONE) DriveCard.FOLDER_GONE else DriveCard.DISCONNECTED
     ConnectState.CONNECTING -> DriveCard.CONNECTING
     ConnectState.FIRST_CONNECT_SHOW_RECOVERY_KEY -> DriveCard.RECOVERY_KEY
     ConnectState.NEEDS_ENROLMENT, ConnectState.NEEDS_RECOVERY_KEY ->
@@ -69,8 +76,8 @@ fun driveCardOf(state: ConnectState, notice: DriveReason?): DriveCard = when (st
 enum class DriveControl {
     CONNECT,
 
-    /** After *The folder was deleted*: connect again (the website's one extra button). */
-    CONNECT_AGAIN,
+    /** On the deleted-folder card: *Start again* makes a new folder (the person's choice, never automatic). */
+    START_AGAIN,
     RETRY,
     COPY_KEY,
     KEY_NEXT,
@@ -99,17 +106,30 @@ fun connectControls(card: DriveCard, error: DriveReason?, keySaved: Boolean, bus
     DriveCard.REVOKED -> listOf(ControlSpec(DriveControl.JOIN_WITH_KEY, !busy), ControlSpec(DriveControl.DISCONNECT, !busy))
     DriveCard.READY -> listOf(ControlSpec(DriveControl.DISCONNECT, !busy))
     DriveCard.ERROR -> errorControls(error, busy)
+    DriveCard.FOLDER_GONE -> listOf(ControlSpec(DriveControl.START_AGAIN, !busy), ControlSpec(DriveControl.DISCONNECT, !busy))
 }
 
-/** The website's error box: Connect after a deleted folder, *Try again* except where it cannot help (no encryption), enrol for a folder without a key. */
+/** The website's error box: *Try again* except where it cannot help (no encryption), enrol for a folder without a key. */
 private fun errorControls(error: DriveReason?, busy: Boolean): List<ControlSpec> = buildList {
-    if (error == DriveReason.FOLDER_GONE) add(ControlSpec(DriveControl.CONNECT_AGAIN, !busy))
     if (retryOffered(error)) add(ControlSpec(DriveControl.RETRY, !busy))
     if (error == DriveReason.NO_RECOVERY_KEY) add(ControlSpec(DriveControl.ENROL, !busy))
 }
 
 /** `showRetry()` of the website's drive-connect.ts: every error but "this device cannot encrypt". */
 fun retryOffered(error: DriveReason?): Boolean = error != DriveReason.CRYPTO_UNAVAILABLE
+
+/**
+ * Copies [text] (a recovery key or an enrolment message) through the platform's sensitive-copy seam. False when the
+ * system refused (the screen then says the copy failed); a cancellation is never swallowed.
+ */
+fun copyToClipboard(clipboard: ClipboardSeam, text: String): Boolean = try {
+    clipboard.copySensitive(text)
+    true
+} catch (e: kotlinx.coroutines.CancellationException) {
+    throw e
+} catch (_: Exception) {
+    false
+}
 
 /** The recovery key is drawn only on the key screen, and only while there is one: it is never kept for a later screen. */
 fun recoveryKeyVisible(card: DriveCard, key: Any?): Boolean = card == DriveCard.RECOVERY_KEY && key != null
@@ -243,6 +263,15 @@ fun sizeText(bytes: Long): String {
 
 /** *Try again* exists only after a delete that stopped with files left (the website's partial step). */
 fun deleteTryAgainOffered(phase: DeletePhase): Boolean = phase == DeletePhase.PARTIAL
+
+/**
+ * A backup's own *Delete this backup* is offered while nothing else is running; its plan, tick box, countdown and device
+ * check then show under the list, where the person tapped (not at the bottom of the screen).
+ */
+fun deleteBackupEnabled(busy: Boolean, backupBusy: Boolean, phase: DeletePhase): Boolean = !busy && !backupBusy && phase == DeletePhase.MENU
+
+/** Whether the delete flow of one backup is drawn in the backups card (else the delete card draws its own flow). */
+fun deleteFlowInBackups(choice: DeleteChoice?, phase: DeletePhase): Boolean = choice == DeleteChoice.ONE_BACKUP && phase != DeletePhase.MENU
 
 /** The device check's own heading and sentence show for the two stronger levels. */
 fun deviceCheckWordingShown(level: DeletionLevel): Boolean = level == DeletionLevel.L2 || level == DeletionLevel.L3
