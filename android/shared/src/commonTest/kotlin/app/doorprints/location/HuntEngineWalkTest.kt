@@ -18,10 +18,12 @@
 
 package app.doorprints.location
 
+import app.doorprints.data.AppSettings
 import app.doorprints.data.HouseEntity
 import app.doorprints.data.Repository
 import app.doorprints.data.TrackPointEntity
 import app.doorprints.data.VisitEntity
+import app.doorprints.shared.trace.RepeatLook
 import app.doorprints.shared.trace.TraceConstants
 import app.doorprints.shared.trace.TracePoint
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -177,6 +179,20 @@ class HuntEngineWalkTest {
         assertEquals(1, effects.repeats.size, "one run, one alert: ${effects.repeats}")
         assertTrue(effects.repeats.single() in 100..130)
         assertEquals(listOf(clock), data.othersAskedFor, "the others are loaded once per walk, without the live walk")
+        e.stopped(null)
+    }
+
+    @Test
+    fun alertRingsWithLookOff() = runTest(StandardTestDispatcher()) {
+        // The engine reads the settings only through toHuntTracking: the look is not among them (docs/11 5.27.4).
+        val withOff = AppSettings(pathTrace = true, repeatAlert = true, repeatLook = RepeatLook.OFF)
+        assertEquals(AppSettings(pathTrace = true, repeatAlert = true, repeatLook = RepeatLook.CLEAR).toHuntTracking(), withOff.toHuntTracking())
+        data.tracking.value = withOff.toHuntTracking()
+        data.others = yesterdaysStreet()
+        val e = engine(); e.start(); advanceUntilIdle()
+        for ((lat, lon, t) in street(0.0, 14, 24.0, 4.0, clock)) e.onFix(lat, lon, 10f, t)
+        advanceUntilIdle()
+        assertEquals(1, effects.repeats.size, "the alert rings although the paths are not drawn differently: ${effects.repeats}")
         e.stopped(null)
     }
 

@@ -18,6 +18,7 @@
 
 package app.doorprints.location
 
+import app.doorprints.data.AppSettings
 import app.doorprints.data.HouseEntity
 import app.doorprints.data.Repository
 import app.doorprints.data.TrackPointEntity
@@ -390,7 +391,7 @@ interface HuntData {
         fun of(repo: Repository): HuntData = object : HuntData {
             override val houses: Flow<List<HouseEntity>> get() = repo.houses
             override val tracking: Flow<HuntTracking> =
-                repo.settings.settings.map { HuntTracking(it.alertRadiusM, it.minStayMinutes, it.pathTrace, it.repeatAlert) }
+                repo.settings.settings.map { it.toHuntTracking() }
             override suspend fun streetInfo(street: String) = repo.streetInfo(street)
             override suspend fun saveVisit(visit: VisitEntity) = repo.saveVisit(visit)
             override suspend fun getVisit(id: String) = repo.getVisit(id)
@@ -402,6 +403,12 @@ interface HuntData {
         }
     }
 }
+
+/**
+ * What the engine reads of the settings. **Not** [AppSettings.repeatLook]: *How repeated paths look* is a display choice,
+ * and the alert rings with the look Off (docs/11 5.27.4; `HuntEngineWalkTest.alertRingsWithLookOff`).
+ */
+fun AppSettings.toHuntTracking() = HuntTracking(alertRadiusM, minStayMinutes, pathTrace, repeatAlert)
 
 /** The Hunt mode settings (Settings > Hunt mode): the alert radius, the minimum stay, and *Trace my path*. */
 data class HuntTracking(
