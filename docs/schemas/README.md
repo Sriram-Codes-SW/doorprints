@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | `doorprints-backup/1` — the one backup format for server, Android and web |
-| Version | 1.25 |
+| Version | 1.26 |
 | Date | 2026-10-06 |
 | Author | Claude (Cowork) – Backend team |
 | Status | Pinned by story S4-00 (Sprint 4a). Changing anything here changes all three implementations at once. |
@@ -32,6 +32,7 @@
 | 1.23 | 2026-10-02 | Claude (Code), lead | **`hpke-vectors.json` and `dpx-vectors.json`** (formats `doorprints-hpke-vectors/1` and `doorprints-dpx-vectors/1`, new §6.3, S4b-BL-125): the crypto primitives' and HPKE's known answers (official ones named by source, regression ones marked), and the parity vectors of the recovery key, the `dpx/1` envelope and a `keys.json` life. Not part of the backup format. |
 | 1.24 | 2026-10-02 | Claude (Code), lead | `dpx-vectors.json`'s `keys` regenerated after the review of S4b-BL-125: the recovery entry carries its anchor (`anchorEpoch`, `anchor`); every other vector is unchanged; checked again by the independent decoder, which now also opens the anchor. |
 | 1.25 | 2026-10-06 | Claude (Code), lead | **`trace-repeat-vectors.json`** (format `doorprints-trace-repeat-vectors/1`, status *proposed*, new §6.4, S4b-FR-13): the cases that Kotlin and the website's TypeScript must both pass for the path trace's repeat detection and alert ([11](../11-feature-parity-and-export-spec.md) 5.27.3). Not part of the backup format: walks are never in a backup (PRV-028). |
+| 1.26 | 2026-10-06 | Claude (Code), lead | **`trace-repeat-vectors.json` after the senior review** ([11](../11-feature-parity-and-export-spec.md) v0.57): 37 cases (six added: `split-walk-id-zero-is-no-id`, `shown-newest-draws-whatever-the-input-order`, `web-pause-makes-no-segment`, `alert-one-bad-fix-does-not-ring-again`, `alert-not-for-the-walk-just-finished`, `alert-walk-finished-30-minutes-ago-counts`); points may carry a fifth number (resumed after a pause); `constants` gain `maxWalkPoints` and `maxDetectionPoints`; `overlap-60m-is-not-a-repeat` moved off the 80 m boundary; the convention's metre-to-degree figure corrected to 0.000008993216; the Kotlin test is in `androidHostTest` (with an inline `commonTest`); section 6.4 states the hygiene rule. |
 | 1.5 | 2026-09-23 | Claude (Cowork), Docs team | **Device note under section 6 rule 6** (Android handover item 19, `android/shared/README.md` §9; it was addressed to Backend, and the Docs team, which owns `docs/**`, applied it so that it lands before the first deploy; [10](../10-sprint-log.md) §11.5 row 19). Rule 6 describes the server import. The note records where the Android device import goes further when it writes a house over a tombstone that has reached the server: it relinks the visits the purge unlinked and re-adds the photos from the backup's bytes under fresh ids, so a device import says the photos **come back**. It also records the one exception (a tombstone not yet pushed was never purged) and that the web importer (S4b-00a) follows the same rule. Nothing else in this file changed; the server's behaviour and wording are unchanged. |
 | 1.4 | 2026-09-23 | Claude (Cowork), Docs team | **New section 0, "What an import is"** (Docs team; nothing else in this file changed): the import product definition the owner approved on 2026-09-23 for Sprint 4b story S4b-00 — what an import is, the only two accepted files, what a backup can contain, what an import never contains or changes, the behaviour (with pointers to sections 6 and 7 here), and what is out of scope. Requirements [01](../01-requirements.md) FR-089..FR-097; vocabulary [12](../12-brand-and-naming.md) section G. Sections 1–9 are unchanged and remain the Backend team's. |
 | 1.3 | 2026-09-22 | Claude (Cowork) – Backend team | **Three review items closed, and the handover table brought up to date.** (1) **`checklist` is the one lenient always-present field** (sections 3.1 and 4.4). Section 4.4 said an omitted always-present field is refused, while the server's `BackupHouse` and the Android reader both read a missing checklist as `{}` — so an import could clear a house's scores in silence. The format now says what the readers do (absent or `null` → no scores), because "no scores" is a true statement about a house where a defaulted `0, 0` is not; and the server no longer does it silently: `BackupHouse` keeps the `null` (its compact-constructor default is gone), and when a written row has no checklist but the server's copy has scores, the report names the house and the number of scores cleared, in the preview too. Server test `BackupApiTest.aMissingChecklistReadsAsNoScoresAndTheReportSaysWhatItClears`. The Android reader still refuses an explicit `null` there — new ticket **S4-00/g**. (2) **One `data.json` cap: 16 MiB** (section 7, closing [10](../10-sprint-log.md) §11.3 row 7). It was 64 MiB here and in `BackupFormat`, 16 MiB in `:shared` and the web mirror, and 8 MiB effective on the server. 16 MiB is what [01](../01-requirements.md) SEC-041, [02](../02-threat-model.md) T-T8, `:shared` and the web mirror already say, so the server moved: `BackupFormat.MAX_DATA_JSON_BYTES` is 16 MiB and `app.limits.max-import-bytes` defaults to it (`AppProperties`, `application.yml`, `docker-compose.yml`), so any backup a device accepts restores to a server. New backend test `BackupParityTest` pins all six copies, reading the two client constants as source text, and also checks that the web byte golden is still an exact copy of `backup-sample.json`. (3) New ticket **S4-00/f** (AI): `GoldenSetEvalTest` writes to the shared test database without `@ResourceLock("database")`. Section 9 gains a *State* column: S4-00/a and /b are done in the working tree (Android `CanonicalSampleTest` and a grouping `BackupData.of`; the web golden regenerated and byte-identical), so the "known divergence" of section 5 is closed and S4-00/e is reworded — the client coverage it asked Docs to stop claiming now exists. New ticket **S4-00/h** (Docs) carries the cap change into 01/02/10, and S4-00/d gains the extra paths the new test reads. |
@@ -118,7 +119,7 @@ One format, three implementations, no converters:
 | Shared import vectors | [`import-vectors.json`](import-vectors.json) (section 6.1): Kotlin `ImportVectorsTest` and `BackupReaderParityTest`, web `backup-import.spec.ts` |
 | Shared Drive vectors | [`drive-vectors.json`](drive-vectors.json) (section 6.2): Kotlin `DriveVectorsTest`, web `drive-vectors.spec.ts` |
 | Encryption vectors | [`hpke-vectors.json`](hpke-vectors.json) and [`dpx-vectors.json`](dpx-vectors.json) (section 6.3): Kotlin `PrimitivesTest`, `HpkeVectorsTest`, `CryptoVectorsTest`, web `hpke-vectors.spec.ts`, `crypto-vectors.spec.ts` |
-| Path-trace repeat vectors | [`trace-repeat-vectors.json`](trace-repeat-vectors.json) (section 6.4, **proposed**): Kotlin `RepeatDetectorVectorsTest`, web `trace-repeats-vectors.spec.ts` (planned) |
+| Path-trace repeat vectors | [`trace-repeat-vectors.json`](trace-repeat-vectors.json) (section 6.4, **proposed**): Kotlin `RepeatDetectorVectorsTest` (`androidHostTest`, as the Drive vectors; a small inline `RepeatDetectorTest` in `commonTest` for the iOS simulator), web `trace-repeats-vectors.spec.ts` (planned) |
 
 A backup written on a phone must import in a browser and on a server, and the other way round. **Nothing below may
 be renamed, reordered or given a new meaning on one side only.** A new field is added to all three at once, always
@@ -531,17 +532,24 @@ update file or a sync (PRV-028, [02](../02-threat-model.md) T-I30). [`trace-repe
 (format `doorprints-trace-repeat-vectors/1`, S4b-FR-13) pins the algorithm of
 [11](../11-feature-parity-and-export-spec.md) 5.27.3 so that the phones (`:shared`, Kotlin) and the website (TypeScript), written
 separately from that text, give the same answers. It has `constants` (a test compares each with the code's constant, so a
-drift fails), `conventions` and 31 `cases` of three kinds: `split` (a flat list of `[lat, lon, atMs]` or
-`[lat, lon, atMs, walkId]` and the walks it makes, by input index: a gap of exactly 30 minutes, the walk id, unsorted
-and repeated times, a lone point), `repeats` (walks, or a flat trace to split first, and for each walk its `repeated`
+drift fails), `conventions` and 37 `cases` of three kinds: `split` (a flat list of `[lat, lon, atMs]`, `[lat, lon, atMs, walkId]` or, on the
+website, `[lat, lon, atMs, walkId, resumed]` and the walks it makes, by input index: a gap of exactly 30 minutes, the walk id,
+a walk id of 0 that is no id, unsorted and repeated times, a lone point), `repeats` (walks, or a flat trace to split first, and for each walk its `repeated`
 stretches and the part it `shown`, as arc-length metres to 0.5 m: the same street twice, walked back, a junction crossing,
 a T-junction, parallel streets 100, 30 and 20 m apart, GPS jitter, an out-and-back in one walk, a second pass 10 minutes
 later, a gap that splits a walk, overlaps of 60 and 90 m, a short and a long detour, three walks, a stay, an east-west
-street at latitude 12.97, a one-point walk, an invalid latitude, an empty trace) and `alert` (the live walk's kept points
+street at latitude 12.97, a one-point walk, an invalid latitude, an empty trace, the newest of three walks drawing whatever the input order, a pause with the page hidden) and `alert` (the live walk's kept points
 and the other walks, and the indexes at which the alert rings: after 100 m, the cooldown, 60 m is not enough, never for
-the walk itself, a parallel street). Most cases sit on the equator so the arithmetic is done by hand; the expected values
+the walk itself, a parallel street, one bad fix that must not ring again, the walk just finished at 29 minutes 59.999 seconds and at exactly 30). Most cases sit on the equator so the arithmetic is done by hand; the expected values
 were produced by a throwaway reference implementation of the text (Python, not committed) and each was checked by hand
-against the geometry it names.
+against the geometry it names; since the senior review of 2026-10-06 an independent reference written from the text alone
+(also Python, not committed) runs all 37 cases and agrees on every one.
+
+**Hygiene.** No case may sit within 0.01 m of `TOLERANCE_M`, `BRIDGE_M`, `MIN_RUN_M` or `ALERT_MIN_RUN_M`, or within 0.01 of a
+densify step boundary (`L / 10 + 0.5` integral), because `cos`, `floor` and the constant `K` differ by an ulp between the JVM
+and V8; a new case is checked by running the reference with each of those constants moved by 0.02 and requiring the same
+results. The `constants` block carries every number of 5.27.2 that the algorithm or its callers read (also `maxWalkPoints` and
+`maxDetectionPoints`), so the drift test covers them.
 
 **Status `proposed`.** The vectors were written with the specification, before any code. The first implementation must run
 every case. If one fails, either the code or the text is wrong: the text and the vector are corrected **in a documented
