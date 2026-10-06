@@ -83,3 +83,9 @@ aabe9a8f79e77975c6874bd3f642f919f4f985c1:web/src/app/data/drive/backup/backup-te
 aabe9a8f79e77975c6874bd3f642f919f4f985c1:web/src/app/data/drive/backup/drive-backup-seams.ts:generic-api-key:36
 aabe9a8f79e77975c6874bd3f642f919f4f985c1:web/src/app/data/drive/connect/factories/runtime.ts:generic-api-key:52
 aabe9a8f79e77975c6874bd3f642f919f4f985c1:web/src/app/data/drive/connect/stores/device-key-store.ts:generic-api-key:29
+# Reviewed 2026-10-06: the phones' Drive work (PR #142). Two are made-up sample recovery keys in tests and screenshot
+# fixtures (never real); two are Kotlin code (`override val key ... = p.p256Generate()` / `get() = ensure()`), not secrets.
+85ed4997bdc84bb2cb25d0d55a3255598b855049:android/app/src/test/java/app/doorprints/drive/wiring/WiringRig.kt:generic-api-key:38
+3fb4eedf8af62b97585f864de97b83a590b91e9b:android/app/src/test/java/app/doorprints/screenshots/DriveScreenshotTest.kt:generic-api-key:130
+9b0029f73aa46bbfb42eec5b8fecadcaffca807c:android/ui/src/commonTest/kotlin/app/doorprints/ui/drive/DriveHolderTest.kt:generic-api-key:36
+03d765e192614fd8cfc0af9728887b5c2d911880:android/app/src/main/java/app/doorprints/drive/device/DeviceKey.kt:generic-api-key:121
