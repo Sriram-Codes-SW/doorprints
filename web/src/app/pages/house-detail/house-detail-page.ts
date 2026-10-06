@@ -59,6 +59,7 @@ import type { PhotoSummary } from '../../core/local-data.service';
 import { MOVE_IN_TAG, photoTagKey } from '../../shared/photo-tags';
 import type { PhotoMeta } from '../../shared/photo-tags';
 import { HouseMoveInCard } from './house-move-in-card';
+import { HouseCheckCard } from './house-check-card';
 import { HouseWalksCard } from './house-walks-card';
 import { TraceStore } from '../../data/trace-store';
 import type { OpenedPhoto } from './house-move-in-card';
@@ -138,6 +139,7 @@ const DRAFT_SAVE_MS = 500;
     HouseAreaNotesCard,
     HouseDistancesCard,
     HouseMoveInCard,
+    HouseCheckCard,
     HouseWalksCard,
     PhotoMetaEditor,
   ],

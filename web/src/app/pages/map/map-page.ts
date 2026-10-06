@@ -81,6 +81,11 @@ import { TraceCard } from './trace-card';
 import { TraceLayers } from './trace-layers';
 import { TraceView } from './trace-view';
 import { WalkEndSheet } from './walk-end-sheet';
+import { PlaceCheck } from './place-check';
+import { PlaceCheckMapView } from './place-check-map';
+import { PlaceCheckPanel } from './place-check-panel';
+import { PlaceCheckState } from './place-check-state';
+import type { PlaceKind } from '../../shared/trace-place-text';
 import { TRACK_COLOR, TRACK_REPEAT_COLOR, TRACK_REPEAT_DASH } from '../../shared/trace-style';
 import type { GeoBounds } from '../../offline/offline-tiles';
 import { NO_COST_FILTER, activeCostFilters, costFilterMatches, type CostFilter } from '../../shared/cost-filter';
@@ -103,6 +108,7 @@ function rankedOf(item: ListItem) {
   return { id: item.house.id, result: item.result, price: item.house.price, updatedAt: timeOf(item.house) };
 }
 
+const RING_LABEL: Record<PlaceKind, TKey> = { here: 'trace.here.labelHere', house: 'trace.here.labelHouse', spot: 'trace.here.labelSpot' };
 const SOURCE_ID = 'houses';
 const LAYER_ID = 'houses-circles';
 /** Typing pause before the search goes into the URL and the new count is announced. */
@@ -122,7 +128,7 @@ let fittedThisSession = false;
 
 @Component({
   selector: 'app-map-page',
-  imports: [RouterLink, TPipe, OfflineSave, TraceCard, WalkEndSheet],
+  imports: [RouterLink, TPipe, OfflineSave, TraceCard, WalkEndSheet, PlaceCheck, PlaceCheckPanel],
   templateUrl: './map-page.html',
   styleUrl: './map-page.css',
   host: { '(document:keydown.escape)': 'onEscape()' },
@@ -142,6 +148,11 @@ export class MapPage implements AfterViewInit, OnDestroy {
   protected readonly repeatColor = TRACK_REPEAT_COLOR;
   protected readonly repeatDash = TRACK_REPEAT_DASH.join(' ');
   private traceLayers: TraceLayers | null = null;
+  /** *Have I been here?* (docs/11 5.27.13): the answer, and the ring and the framing it gets on this map. */
+  protected readonly placeCheck = inject(PlaceCheckState);
+  private placeView: PlaceCheckMapView | null = null;
+  /** The crosshair mode of *A spot on the map* (the same crosshair as add mode, with *Check this spot*). */
+  protected readonly checkMode = signal(false);
 
   protected readonly houses = signal<HouseDto[]>([]);
   /** The words of each broker (id to name, agency and fee terms), so a search also finds a house by its broker. */
@@ -176,6 +187,8 @@ export class MapPage implements AfterViewInit, OnDestroy {
     { key: 'perSqFt', labelKey: 'cost.perSqFt' },
   ];
   protected readonly addMode = signal(false);
+  /** Either crosshair mode is on: add a house, or check a spot. */
+  protected readonly picking = computed(() => this.addMode() || this.checkMode());
   /**
    * False while the map style could not be loaded (offline: the tiles are never cached). The page then says so over
    * the map and offers what works without one: the list, "Add at my location" and typed coordinates.
@@ -353,10 +366,21 @@ export class MapPage implements AfterViewInit, OnDestroy {
         this.traceLayers?.setCheck(check);
       });
     });
+    // The ring and the framing of the place check follow its answer, and the app language for the ring's label.
+    effect(() => {
+      const answer = this.placeCheck.answer();
+      this.i18n.lang();
+      if (!this.mapReady()) return;
+      untracked(() => this.placeView?.sync(answer, answer ? this.i18n.t(RING_LABEL[answer.kind]) : ''));
+    });
+    effect(() => {
+      const request = this.placeCheck.showRequest();
+      if (request && this.mapReady()) untracked(() => this.placeView?.fit(request.bounds));
+    });
     // Add mode says "move the map so the cross is on the house": one finger must move the map then, not show "Use
     // two fingers" (see applyGestures).
     effect(() => {
-      const adding = this.addMode();
+      const adding = this.picking();
       if (!this.mapReady()) return;
       untracked(() => this.applyGestures(adding));
     });
@@ -404,6 +428,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
     // 'style.load', not the one-off 'load': after an offline start the style is requested again when the connection
     // returns (watchMapStyle), and a new style comes without our source and layer.
     this.traceLayers = new TraceLayers(map);
+    this.placeView = new PlaceCheckMapView(map, this.traceLayers, () => this.mapPadding());
     map.on('style.load', () => {
       if (!map.getSource(SOURCE_ID)) {
         map.addSource(SOURCE_ID, {
@@ -469,7 +494,11 @@ export class MapPage implements AfterViewInit, OnDestroy {
     this.popup?.remove();
     this.map?.remove();
     this.map = null;
+    this.placeView?.dispose();
+    this.placeView = null;
     this.traceLayers = null;
+    // The answer is shown only here: leaving the page withdraws it (and the announcement, and any wait for a fix).
+    this.placeCheck.close();
   }
 
   /**
@@ -542,6 +571,11 @@ export class MapPage implements AfterViewInit, OnDestroy {
    */
   protected onEscape(): void {
     this.dismissPopup();
+    if (this.checkMode()) {
+      this.cancelCheckPick();
+      afterNextRender(() => document.getElementById('place-check-open')?.focus(), { injector: this.injector });
+      return;
+    }
     if (!this.addMode()) return;
     const active = typeof document === 'undefined' ? null : document.activeElement;
     const fromPlaceHere = active !== null && active.id === 'place-here';
@@ -592,6 +626,28 @@ export class MapPage implements AfterViewInit, OnDestroy {
   protected onSort(event: Event): void {
     this.sort.set((event.target as HTMLSelectElement).value as SortKey);
     this.writeQuery();
+  }
+
+  /** *A spot on the map*: the crosshair mode, with *Check this spot* in place of *Place here*. */
+  protected startCheckPick(): void {
+    this.addMode.set(false);
+    this.checkMode.set(true);
+    this.placeCheck.close();
+    if (this.map) this.map.getCanvas().style.cursor = 'crosshair';
+    this.announcer.announce({ key: 'trace.here.pickHint' });
+    afterNextRender(() => document.getElementById('check-this-spot')?.focus(), { injector: this.injector });
+  }
+
+  protected cancelCheckPick(): void {
+    this.checkMode.set(false);
+    if (this.map) this.map.getCanvas().style.cursor = '';
+  }
+
+  /** *Check this spot*: the map's centre under the cross is the place. Nothing goes in the URL. */
+  protected checkAtCenter(): void {
+    const c = this.map?.getCenter();
+    this.cancelCheckPick();
+    if (c) void this.placeCheck.run('spot', { lat: c.lat, lon: c.lng });
   }
 
   /** Keyboard alternative to clicking the map: places the new house under the centre cross. */
@@ -776,16 +832,22 @@ export class MapPage implements AfterViewInit, OnDestroy {
     if (!map || houses.length === 0) return;
     const bounds = new LngLatBounds();
     for (const h of houses) bounds.extend([h.lon, h.lat]);
-    // On a phone the bottom row (legend, actions) and MapLibre's control column are drawn over the map: keep the
-    // houses out from under them. The row is measured the same way watchStack() measures it for --map-stack-h.
-    const container = map.getContainer();
-    const padding = fitPadding(
+    const padding = this.mapPadding();
+    map.fitBounds(bounds, { padding, maxZoom: 16, duration: 0 });
+  }
+
+  /**
+   * On a phone the bottom row (legend, actions) and MapLibre's control column are drawn over the map: a framed box is kept
+   * out from under them. The row is measured the same way watchStack() measures it for --map-stack-h.
+   */
+  private mapPadding() {
+    const container = this.map!.getContainer();
+    return fitPadding(
       this.wantedControlPosition() === 'bottom-right',
       this.stack().nativeElement.getBoundingClientRect().height,
       container.clientWidth,
       container.clientHeight,
     );
-    map.fitBounds(bounds, { padding, maxZoom: 16, duration: 0 });
   }
 
   /**

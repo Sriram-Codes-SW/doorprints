@@ -35,6 +35,7 @@ import { TPipe } from '../i18n/t.pipe';
 import { createMlMap, localizeMap, relabelUnavailable, watchMapStyle } from './map-style';
 import { TraceLayers } from '../pages/map/trace-layers';
 import type { LineCollection } from './trace-style';
+import { ringElement } from './trace-ring';
 import type { MapStyleWatch } from './map-style';
 
 export interface LatLon {
@@ -51,6 +52,8 @@ export interface MapOverlay {
   readonly walks: LineCollection;
   readonly check: LineCollection | null;
   readonly fit: [[number, number], [number, number]] | null;
+  /** The ring with a cross at the place of a check, with its label (*This house*): a form, not a colour. */
+  readonly ring?: { readonly lat: number; readonly lon: number; readonly label: string } | null;
 }
 
 /**
@@ -132,6 +135,7 @@ export class LocationMap implements AfterViewInit, OnDestroy {
   private resizeObserver: ResizeObserver | null = null;
   private styleWatch: MapStyleWatch | null = null;
   private layers: TraceLayers | null = null;
+  private ring: { remove(): unknown } | null = null;
   /** False while the map style cannot load (offline); the overlay then points to the fields and "Use my location". */
   protected readonly available = signal(true);
   /** True when the map's worker failed to load while online: the message says to reload, not that we are offline. */
@@ -229,9 +233,17 @@ export class LocationMap implements AfterViewInit, OnDestroy {
   private applyOverlay(overlay: MapOverlay | null): void {
     const layers = this.layers;
     if (!layers) return;
+    this.ring?.remove();
+    this.ring = null;
+    if (overlay?.ring && this.map) this.ring = this.addRing(this.map, overlay.ring);
     layers.setWalks(overlay?.walks ?? EMPTY_LINES);
     layers.setCheck(overlay?.check ?? null);
     if (overlay?.fit) layers.fitTo(overlay.fit, 40);
+  }
+
+  /** The ring of a check at its place, as a DOM marker that lets every pointer through. */
+  protected addRing(map: MlMap, ring: { lat: number; lon: number; label: string }): { remove(): unknown } {
+    return new Marker({ element: ringElement(ring.label), anchor: 'center' }).setLngLat([ring.lon, ring.lat]).addTo(map);
   }
 
   protected retry(): void {
@@ -241,6 +253,7 @@ export class LocationMap implements AfterViewInit, OnDestroy {
   ngOnDestroy(): void {
     this.styleWatch?.dispose();
     this.resizeObserver?.disconnect();
+    this.ring?.remove();
     this.marker?.remove();
     this.map?.remove();
     this.map = null;

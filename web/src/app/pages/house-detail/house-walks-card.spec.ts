@@ -291,10 +291,11 @@ describe('the house page and its saved walks', () => {
     sessionStorage.clear();
   });
 
-  it('puts the Saved walks card after the location card and before the checklist', async () => {
+  it('puts Did I walk past this house? and then the Saved walks card after the location card, before the checklist', async () => {
     const { host } = await open();
     const order = [...host.querySelectorAll('section.card[aria-labelledby]')].map((s) => s.getAttribute('aria-labelledby'));
-    expect(order.indexOf('walks-heading')).toBe(order.indexOf('location-heading') + 1);
+    expect(order.indexOf('house-check-heading')).toBe(order.indexOf('location-heading') + 1);
+    expect(order.indexOf('walks-heading')).toBe(order.indexOf('house-check-heading') + 1);
     expect(order.indexOf('checklist-heading')).toBe(order.indexOf('walks-heading') + 1);
   });
 

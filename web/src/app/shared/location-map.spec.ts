@@ -127,4 +127,37 @@ describe('LocationMap: the overlay (walks and the place check halo, docs/03 sect
       fixture.detectChanges();
     }).not.toThrow();
   });
+
+  it('puts the ring of a check at its place with its label, replaces it on the next overlay and removes it with the overlay', () => {
+    const { fixture } = withLayers();
+    const page = fixture.componentInstance as unknown as { map: unknown; addRing(map: unknown, ring: unknown): unknown };
+    page.map = { remove: () => undefined };
+    const removed: string[] = [];
+    const add = vi.spyOn(page, 'addRing').mockImplementation((_map, ring) => {
+      const label = (ring as { label: string }).label;
+      return { remove: () => removed.push(label) };
+    });
+    const ring = { lat: 13, lon: 80, label: 'This house' };
+    fixture.componentRef.setInput('overlay', { walks, check: halo, fit: null, ring });
+    fixture.detectChanges();
+    expect(add).toHaveBeenCalledWith(page.map, ring);
+    fixture.componentRef.setInput('overlay', { walks, check: halo, fit: null, ring: { ...ring, label: 'यह मकान' } });
+    fixture.detectChanges();
+    expect(removed).toEqual(['This house']);
+    expect(add).toHaveBeenCalledTimes(2);
+    fixture.componentRef.setInput('overlay', null);
+    fixture.detectChanges();
+    expect(removed).toEqual(['This house', 'यह मकान']);
+    expect(add).toHaveBeenCalledTimes(2);
+  });
+
+  it('draws no ring for an overlay without one', () => {
+    const { fixture } = withLayers();
+    const page = fixture.componentInstance as unknown as { map: unknown; addRing(map: unknown, ring: unknown): unknown };
+    page.map = { remove: () => undefined };
+    const add = vi.spyOn(page, 'addRing');
+    fixture.componentRef.setInput('overlay', { walks, check: halo, fit: null });
+    fixture.detectChanges();
+    expect(add).not.toHaveBeenCalled();
+  });
 });

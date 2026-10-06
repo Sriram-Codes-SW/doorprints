@@ -853,6 +853,9 @@
         <span class="muted small attribution">{{ 'house.osm' | t }}</span>
       </section>
 
+      <!-- Did I walk past this house? (docs/11 5.27.13): one button; the answer in place and on the map above. Hidden for a new house. -->
+      <app-house-check-card [house]="d" [isNew]="isNew()" [locationSet]="locationSet()" (overlay)="showOverlay($event)" />
+
       <!-- Saved walks (docs/11 5.27.6): the walks linked to this house; Show on map draws on the map above. -->
       <app-house-walks-card [houseId]="d.id" [isNew]="isNew()" (overlay)="showOverlay($event)" />
 
