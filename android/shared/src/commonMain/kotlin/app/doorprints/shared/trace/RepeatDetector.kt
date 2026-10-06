@@ -96,7 +96,7 @@ object RepeatDetector {
     }
 
     /** Step 6: the maximal runs of near samples of one part, kept when their length is at least the minimum. */
-    private fun repeatedRuns(s: Samples, near: BooleanArray): List<IntRange> {
+    internal fun repeatedRuns(s: Samples, near: BooleanArray): List<IntRange> {
         val out = ArrayList<IntRange>()
         var i = 0
         while (i < s.size) {
