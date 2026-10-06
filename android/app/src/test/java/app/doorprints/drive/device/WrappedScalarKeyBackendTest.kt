@@ -111,6 +111,15 @@ class WrappedScalarKeyBackendTest {
         assertEquals(DeviceKeyException.Kind.LOST, e.kind)
     }
 
+    @Test fun `a stored public point that is not the wrapped scalar's is refused even when it authenticates`() {
+        wrapper.ensureKey()
+        val scalar = p.randomBytes(32)
+        val other = p.p256Generate().publicKey
+        blob.bytes = other + wrapper.wrap(scalar, other)
+        val e = assertThrows(DeviceKeyException::class.java) { backend.agree(p.p256Generate().publicKey) }
+        assertEquals(DeviceKeyException.Kind.LOST, e.kind)
+    }
+
     @Test fun `a wrapping key that is gone while the blob remains is invalidated`() {
         backend.create()
         wrapper.state = DeviceKeyStatus.INVALIDATED

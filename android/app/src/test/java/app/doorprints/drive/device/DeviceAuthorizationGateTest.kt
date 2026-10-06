@@ -214,6 +214,14 @@ class DeviceAuthorizationGateTest {
         assertTrue("the run that started keeps going", gate.stillHolds(token))
     }
 
+    @Test fun `a lock removed between the grant and the start refuses the start`() = runBlocking {
+        val token = granted(gate.authorize(plan(DeletionLevel.L2), "x"))
+        lock.state = LockState.REMOVED
+        assertFalse(gate.isGenuine(token))
+        lock.state = LockState.PRESENT
+        assertTrue("the refusal did not spend the grant", gate.isGenuine(token))
+    }
+
     @Test fun `a grant is not usable for a run before it started`() = runBlocking {
         val token = granted(gate.authorize(plan(DeletionLevel.L2), "x"))
         assertFalse("not started: nothing to continue", gate.stillHolds(token))
