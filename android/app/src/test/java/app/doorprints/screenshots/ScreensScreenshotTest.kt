@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.isHeading
 import app.doorprints.ui.res.Res
 import app.doorprints.ui.res.house_checklist
@@ -185,7 +186,7 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
 
     private fun file(screen: String) = "src/test/screenshots/${screen}_${lang}_${if (dark) "dark" else "light"}.png"
 
-    private fun show(content: @Composable () -> Unit) {
+    private fun show(readyText: String? = null, content: @Composable () -> Unit) {
         // Surface in the theme's background, as Root's Scaffold draws it around every screen.
         compose.setContent {
             // As MainActivity does: the screens read the platform's and the app's seams (ADR-23 CMP-3, CMP-5).
@@ -193,11 +194,13 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
                 DoorprintsTheme(dark = dark) { Surface(color = MaterialTheme.colorScheme.background) { content() } }
             }
         }
+        // A screen whose rows come from Room: wait for one of them, so a shot never captures the table before its rows (S4b-BL-100).
+        if (readyText != null) compose.waitUntil(10_000) { compose.onAllNodesWithText(readyText, substring = true).fetchSemanticsNodes().isNotEmpty() }
         awaitStableFrame()
     }
 
-    private fun shoot(screen: String, content: @Composable () -> Unit) {
-        show(content)
+    private fun shoot(screen: String, readyText: String? = null, content: @Composable () -> Unit) {
+        show(readyText, content)
         compose.onRoot().captureRoboImage(file(screen))
     }
 
@@ -320,7 +323,7 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
     )
 
     @Test fun houses() = shoot("houses") { HouseListScreen(onOpenHouse = {}) }
-    @Test fun compare() = shoot("compare") {
+    @Test fun compare() = shoot("compare", readyText = "Green View 2BHK") {
         // As the root's Compare destination does (CMP-5): the houses (null until Room answers) and the visit counts.
         val repo = LocalAppServices.current.repository
         val houses by repo.houses.collectAsState(initial = null)
@@ -498,7 +501,7 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
             repo.saveViewing(Viewing("v_00000002", "b", now - 20 * 3_600_000L))
             repo.saveViewing(Viewing("v_00000003", "a", now - 72 * 3_600_000L, status = "DONE", visitId = "x"))
         }
-        shoot("viewings") {
+        shoot("viewings", readyText = "Ask for the water bill.") {
             Column(Modifier.verticalScroll(rememberScrollState())) { ViewingsHistory(null, onOpenViewing = {}, onPlan = { _, _ -> }, nowMs = now) }
         }
     }
