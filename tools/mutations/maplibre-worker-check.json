@@ -1,0 +1,9 @@
+{
+  "spec": "web/src/app/data/maplibre-worker-check.spec.ts",
+  "mutations": [
+    { "file": "web/scripts/maplibre-worker-check.mjs", "find": "workerVersion !== sharedVersion", "replace": "false", "expect": "names both versions when worker and shared differ" },
+    { "file": "web/scripts/maplibre-worker-check.mjs", "find": "else if (text.length === 0)", "replace": "else if (false)", "expect": "names an empty file" },
+    { "file": "web/scripts/maplibre-worker-check.mjs", "find": "if (worker && !/from", "replace": "if (false && !/from", "expect": "no longer imports the shared file" },
+    { "file": "web/scripts/maplibre-worker-check.mjs", "find": "if (shared && !sharedVersion)", "replace": "if (false)", "expect": "banner has no version" }
+  ]
+}
