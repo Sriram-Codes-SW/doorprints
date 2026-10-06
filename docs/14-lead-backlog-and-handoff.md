@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.93 |
+| Version | 0.94 |
 | Date | 2026-10-06 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..139); this file lists the lead-level items and points to the rest. |
@@ -102,6 +102,7 @@
 | 0.91 | 2026-10-06 | Claude (Code), lead | §2: new **N20**, the path trace version 2 ([11](11-feature-parity-and-export-spec.md) 5.27.0..5.27.11; S4b-FR-13..S4b-FR-18, [10](10-sprint-log.md) §15); design only, on `feat/path-trace-t0-spec`. |
 | 0.92 | 2026-10-06 | Claude, lead | N20 updated after the senior review of the path trace spec (GO with changes, all applied): 14 open questions, 37 vectors, tickets S4b-FR-13..18; the website's Hunt mode while a page is open is a PROPOSED follow-up (S4b-FR-19..23, [11](11-feature-parity-and-export-spec.md) 5.27.12), not scheduled, three owner decisions open. |
 | 0.93 | 2026-10-06 | Claude (Code), lead | N20 gains **S4b-FR-24**, the on-demand place check *Have I been here?* ([11](11-feature-parity-and-export-spec.md) 5.27.13, FR-108, PRV-032, T-I42, TC-U-153..154, TC-M-61, MT-81): order, owner questions 15 to 17. |
+| 0.94 | 2026-10-06 | Claude, lead | N20: the 'Have I been here?' check (FR-108, S4b-FR-24) is specified and reviewed; the website integration plan is docs/03 §6.2b; decided: the website's *Here* is a 15 s best-fix watch, the list-wide 'mark houses I walked past' is LATER (question 18), questions 15-17 as recommended. |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 
