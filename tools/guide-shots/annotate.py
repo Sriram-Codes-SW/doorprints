@@ -19,7 +19,7 @@
 
     python3 tools/guide-shots/annotate.py [outDir] [imagesDir]
 
-Needs Pillow; the pictures go to guide/docs/images/<name>.png. A number's badge sits on the top right corner of its
+Needs Pillow; the pictures go to guide/docs/images/<name>.png. A mark may say `badge: 'top-left'`. A number's badge sits on the top right corner of its
 box, clear of the label text; a box with room to its right (a button) gets it beside it.
 """
 import glob
@@ -46,7 +46,10 @@ for spec in sorted(glob.glob(os.path.join(out, '*.json'))):
         x1, y1 = x0 + box['width'] + 8, y0 + box['height'] + 8
         draw.rounded_rectangle([x0, y0, x1, y1], radius=8, outline=gold, width=4)
         # The badge sits just right of a box that has room beside it (a button), else on its top right corner (a wide field).
-        cx, cy = (x1 + 20, (y0 + y1) / 2) if x1 + 40 < im.width else (x1 - 4, y0 - 2)
+        if box.get('badge') == 'top-left':
+            cx, cy = x0 + 6, y0 - 2
+        else:
+            cx, cy = (x1 + 20, (y0 + y1) / 2) if x1 + 40 < im.width else (x1 - 4, y0 - 2)
         draw.ellipse([cx - 15, cy - 15, cx + 15, cy + 15], fill=gold, outline=dark, width=2)
         draw.text((cx, cy), str(number), fill=(26, 26, 26), font=font, anchor='mm')
     target = os.path.join(images, f'{name}.png')

@@ -115,6 +115,7 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Added
 
+- **Guide pictures in Hindi, Tamil and Telugu**: the website pictures of the server setup, *Your data* and *Back up to Google Drive* pages in each language (alt text in the app's own words, under review). `tools/guide-shots/` makes them with `LANGS=en,hi,ta,te`.
 - **The recovery key as the website's last resort for deleting everything, and a wider passkey** (N18, [Drive design](docs/15-google-drive-backup-and-sharing.md) §10.4a): when a passkey was tried and returned no PRF output, *Delete all backups* and the like ask for the recovery key for that one deletion (checked against the Drive, never kept); a computer with no lock or Windows Hello is told how to set one up instead; the passkey can now be the computer's own, your phone (QR) or a security key. en, hi, ta, te (hi/ta/te under review).
 - **A guide page, *Phone or computer***: what the website does differently on a phone and on a computer (layout, map gestures, installing, files, printing, the camera, passkeys), in all four languages (hi/ta/te under review).
 - **Guide pictures for Your data and Back up to Google Drive**: the Import a backup card, the preview with its merge choice, and the Google Drive card, numbered, with alt text in all four guide languages (hi/ta/te under review). `tools/guide-shots/` makes every website picture from the built site, no network.

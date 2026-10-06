@@ -8,7 +8,7 @@ Android மற்றும் iPhone Drive பணி நிறுத்தப்
 
 ## இணைக்கவும் (இணையதளம்) {#connect-website}
 
-![வலைத்தளத்தில் உங்கள் தரவு, Back up to Google Drive அட்டை: Connect to Google Drive பொத்தான் (1)](images/web-drive-connect.png)
+![வலைத்தளத்தில் உங்கள் தரவு, Back up to Google Drive அட்டை: Google Drive இல் இணைக்கவும் பொத்தான் (1)](images/web-drive-connect-ta.png)
 
 1. **உங்கள் தரவு** திறக்கவும்.
 2. **Google Drive இல் பேக்கப் செய்யவும்** கீழ் **Google Drive இல் இணைக்கவும்** தேர்ந்தெடுத்து Google இல் உள்நுழையவும்.

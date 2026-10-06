@@ -10,7 +10,7 @@ Android और iPhone का Drive काम रुका हुआ है। �
 
 ## कनेक्ट करें (वेबसाइट) {#connect-website}
 
-![वेबसाइट पर आपका डेटा, Back up to Google Drive कार्ड: Connect to Google Drive बटन (1)](images/web-drive-connect.png)
+![वेबसाइट पर आपका डेटा, Back up to Google Drive कार्ड: गूगल ड्राइव से कनेक्ट करें बटन (1)](images/web-drive-connect-hi.png)
 
 1. **आपका डेटा** खोलें।
 2. **गूगल ड्राइव को बैकअप करें** के नीचे **गूगल ड्राइव से कनेक्ट करें** चुनें और गूगल से साइन इन करें।

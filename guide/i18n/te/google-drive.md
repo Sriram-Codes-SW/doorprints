@@ -8,7 +8,7 @@ Android మరియు iPhone Drive పని నిలిపివేయబడ
 
 ## కనెక్ట్ చేయండి (వెబ్‌సైట్) {#connect-website}
 
-![వెబ్‌సైట్‌లో మీ డేటా, Back up to Google Drive కార్డ్: Connect to Google Drive బటన్ (1)](images/web-drive-connect.png)
+![వెబ్‌సైట్‌లో మీ డేటా, Back up to Google Drive కార్డ్: Google Drive కు కనెక్ట్ చేయండి బటన్ (1)](images/web-drive-connect-te.png)
 
 1. **మీ డేటా** తెరవండి.
 2. **Google Drive కు బ్యాకప్** కింద **Google Drive కు కనెక్ట్ చేయండి** ఎంచుకుని Google తో సైన్ ఇన్ చేయండి.
