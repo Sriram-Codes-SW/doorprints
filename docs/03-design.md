@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.65 |
+| Version | 0.66 |
 | Date | 2026-10-06 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -74,6 +74,7 @@
 | 0.63 | 2026-10-02 | Cursor Agent, lead | ADR-33: phones keep the 5-second L3 delay of the shared policy vectors; the website uses a tick box and no countdown (owner; [15](15-google-drive-backup-and-sharing.md) §10.4). |
 | 0.64 | 2026-10-06 | Claude (Code), lead | **The path trace, version 2: design** ([11](11-feature-parity-and-export-spec.md) 5.27.0..5.27.11, S4b-FR-13..S4b-FR-18; new **ADR-34**): §4.2.1 the new classes (`RepeatDetector`, `RepeatAlert`, `WalkCodec`, `SavedWalkDao`, the website's `TraceStore` and `TraceRecorderService`); §6.2 Room 11 (`saved_walks`, `track_points.walkId`, `MIGRATION_10_11`) and the website's IndexedDB 3; new §7.2a (the repeat check, the alert and the end of a walk); the shared Kotlin and TypeScript API and the vector-file contract. |
 | 0.65 | 2026-10-06 | Claude (Code), lead | Senior review of the path trace design applied ([11](11-feature-parity-and-export-spec.md) v0.57): `TracePoint.resumed` and the walk-id-0 rule in the shared API, the alert's exclusion and `blocked` rule noted, `walkAskedUpTo` replaces `walkToAsk` in the §7.2a sequence and the website's settings, the live look through a `PlatformMap` parameter (ADR-34), the Android transfer sentence. |
+| 0.66 | 2026-10-06 | Claude (Code), lead | **The on-demand place check** ([11](11-feature-parity-and-export-spec.md) 5.27.13, S4b-FR-24): `PlaceCheck` and `TraceConstants.NEAR_BAND_M` and `MAX_FIX_ACCURACY_M` in the shared API, the `placeChecks` section of the vector file, new §7.2b (the sequence). |
 | 0.58 | 2026-10-01 | Claude (Code), lead | §11.1: the Survey of India's reply of 2026-10-01 (no prior permission for its Administrative Boundary Database; no alteration or modification; acknowledgement; National Geospatial Policy 2022 guidelines) and what it means for ADR-22 ([ops/soi-boundary-data-request.md](ops/soi-boundary-data-request.md) v0.5, [10](10-sprint-log.md) S4b-BL-111). |
 | 0.57 | 2026-10-01 | Claude (Code), lead | The finishing batch ([10](10-sprint-log.md) §13.29..§13.39, on stacked branches): §6.1 `house.move_in` (V11), the photo's room, tags, caption and `meta_updated_at` (V12), `house.floor` (V13), the statuses TAKEN and NOT_CHOSEN; §8.1 the two statuses; §9 `PUT /api/photos/{id}/meta` and `/3` on `/api/import`; §11.2 the website's offline tiles; new **ADR-29** (deletions in an update file, `doorprints-backup/3`), **ADR-30** (offline tiles on the website through `addProtocol` over Cache Storage), **ADR-31** (search engines: one indexable page, `noindex` by default), **ADR-32** (accessibility rules and their automated checks); new **§17**, the smaller decisions of the batch (copies in UTC, seeded records stamped 2000-01-01, Hunt alerts `VISIBILITY_SECRET` with the app lock, the status colours, the locality lookup on the tap only, the iPhone's wake-up notification, import caps). |
 
@@ -586,6 +587,11 @@ object TraceConstants { const val TOLERANCE_M = 25.0; const val DENSIFY_M = 10.0
     const val MIN_RUN_M = 80.0; const val WALK_GAP_MS = 1_800_000L; const val ALERT_MIN_RUN_M = 100.0
     const val ALERT_COOLDOWN_MS = 600_000L; const val MAX_WALK_POINTS = 5_000; const val MAX_DETECTION_POINTS = 20_000 }
 fun splitWalks(points: List<TracePoint>): List<List<TracePoint>>
+// 5.27.13 (S4b-FR-24): the on-demand place check; NEAR_BAND_M = 50.0 and MAX_FIX_ACCURACY_M = 50.0 join TraceConstants
+enum class PlaceStatus { WALKED, CLOSE, NONE, EMPTY, IMPRECISE, INVALID_PLACE }
+data class PlaceRow(val walkIndex: Int, val distanceM: Double, val atMs: Long, val walked: Boolean, val saved: Boolean)
+data class PlaceCheckResult(val status: PlaceStatus, val fuzzy: Boolean, val nearestM: Double?, val rows: List<PlaceRow>)   // rows: newest first
+object PlaceCheck { fun check(lat: Double, lon: Double, walks: List<TraceWalk>, fixAccuracyM: Double? = null): PlaceCheckResult }   // pure; the vectors' placeChecks
 class RepeatDetector { fun detect(walks: List<TraceWalk>): List<WalkRepeats> }      // one result per walk, input order
 class RepeatAlert { fun onPoint(live: List<TracePoint>, others: List<TraceWalk>): Boolean; fun reset() }   // leaves out the others that ended < WALK_GAP_MS before live began; blocked survives one bad fix
 ```
@@ -596,7 +602,7 @@ TypeScript (`web/src/app/shared/trace-repeats.ts`): the same names in camel case
 
 [`docs/schemas/trace-repeat-vectors.json`](schemas/trace-repeat-vectors.json) (format `doorprints-trace-repeat-vectors/1`,
 status **proposed** until both stacks pass every case; [schemas/README.md](schemas/README.md) section 6.4): `constants`
-(read and compared with the code's constants: a drift fails the test), `conventions`, and `cases` of three kinds,
+(read and compared with the code's constants: a drift fails the test), `conventions`, and `cases` of three kinds (and, beside them, `placeChecks` with `placeCheckConventions`: the on-demand place check, [11](11-feature-parity-and-export-spec.md) 5.27.13),
 `split` (flat points, the expected walks by input index), `repeats` (walks or a flat trace; the expected `repeated` and
 `shown` stretches by arc length, to 0.5 m) and `alert` (the live walk's kept points and the other walks; the expected
 indexes at which the alert rings, exactly). Kotlin reads it as `DriveVectorsTest` reads `drive-vectors.json`; the
@@ -726,6 +732,31 @@ sequenceDiagram
 
 The repeat check and the Map's detection use the same functions with different inputs (one new point against the others,
 or every walk against the others). No location leaves the device at any step.
+
+### 7.2b The place check: *Have I been here?* (planned, S4b-FR-24)
+
+```mermaid
+sequenceDiagram
+    actor P as Person
+    participant UI as Map / house page / long press
+    participant L as Location (one fix, only for "here")
+    participant TD as TrackDao + SavedWalkDao (read only)
+    participant PC as PlaceCheck.check (pure)
+    P->>UI: presses Have I been here? / Did I walk past this house? / Did I walk here?
+    alt here
+        UI->>L: permission flow, one fresh fix (15 s, 50 m gate)
+        L-->>UI: lat, lon, accuracy (never stored, never in the trace)
+    else a house or a picked spot
+        UI->>UI: the house's saved location or the crosshair point (no location permission)
+    end
+    UI->>TD: read the 30-day trace and every saved walk (off the main thread, one saved walk decoded at a time)
+    UI->>PC: place, walks, accuracy (only for here)
+    PC-->>UI: status, rows newest first, nearest distance
+    UI-->>P: the sheet (text first, live region) and the halo and ring on the map; closing discards everything
+```
+
+The only caller is the button's handler: no timer, no arrival trigger, no background. Nothing in this path writes (`TrackDao` and `SavedWalkDao`
+are read only), makes a network request or logs a place, distance or date. The stores, the exports, the sync and the AI paths are unchanged (PRV-032).
 
 ### 7.3 Stay detection and "Are you at a house?" prompt
 
