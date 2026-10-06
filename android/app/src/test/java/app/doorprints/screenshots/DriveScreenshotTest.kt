@@ -113,10 +113,12 @@ class DriveScreenshotTest(private val lang: String, private val dark: Boolean) {
     private val holder: DriveHolder by lazy {
         val state = MutableStateFlow(ConnectState.DISCONNECTED)
         val notice = MutableStateFlow<DriveReason?>(null)
+        val folderGone = MutableStateFlow(false)
         val actions = Proxy.newProxyInstance(DriveActions::class.java.classLoader, arrayOf(DriveActions::class.java)) { _, method, _ ->
             when (method.name) {
                 "getState" -> state
                 "getEnrolmentNotice" -> notice
+                "getFolderGone" -> folderGone
                 else -> null
             }
         } as DriveActions

@@ -238,6 +238,12 @@ class DriveHolderTest {
         assertTrue(a.calls.isEmpty(), "opening Settings makes no call and creates nothing")
     }
 
+    @Test fun theQuestionIsThereFromTheFirstFrameNotAfterACollector() = runTest {
+        val a = FakeActions().apply { folderGone.value = true }
+        val h = DriveHolder(a, backgroundScope, { prompts }, FakeCodec(), { "My phone" }, DevicePlatform.ANDROID) { now }
+        assertEquals(DriveCard.FOLDER_GONE, h.ui.value.card, "no flash of the Connect card")
+    }
+
     @Test fun aFolderFoundGoneWhileTheScreenIsOpenShowsTheQuestion() = runTest {
         val a = FakeActions()
         val h = holder(a)
