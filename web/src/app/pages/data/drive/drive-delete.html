@@ -69,12 +69,30 @@
           <span>{{ 'driveDelete.confirmCheckbox' | t }}</span>
         </label>
       }
+      @if (askRecoveryKey()) {
+        <label for="drive-recovery-key">{{ 'driveDelete.recoveryLabel' | t }}</label>
+        <p class="muted" id="drive-recovery-help">{{ 'driveDelete.recoveryHelp' | t }}</p>
+        <input
+          id="drive-recovery-key"
+          type="password"
+          autocomplete="off"
+          autocapitalize="off"
+          spellcheck="false"
+          inputmode="text"
+          aria-describedby="drive-recovery-help"
+          [value]="recoveryKeyText()"
+          (input)="recoveryKeyText.set($any($event.target).value)"
+        />
+        @if (recoveryError(); as e) {
+          <p class="error" role="alert">{{ e | t }}</p>
+        }
+      }
       <div class="actions">
         <button
           type="button"
           class="btn btn-danger"
           (click)="confirmDelete()"
-          [disabled]="busy() || (tickBoxRequired() && !ticked())"
+          [disabled]="busy() || (tickBoxRequired() && !ticked()) || (askRecoveryKey() && recoveryKeyText().trim() === '')"
         >
           {{ (tickBoxRequired() ? 'driveDelete.deleteForGood' : 'common.delete') | t }}
         </button>
@@ -103,8 +121,26 @@
   @if (phase() === 'partial') {
     <div>
       <p role="alert">{{ 'driveDelete.left' | t: { left: left(), total: total() } }}</p>
+      @if (askRecoveryKey()) {
+        <label for="drive-recovery-key">{{ 'driveDelete.recoveryLabel' | t }}</label>
+        <p class="muted" id="drive-recovery-help">{{ 'driveDelete.recoveryHelp' | t }}</p>
+        <input
+          id="drive-recovery-key"
+          type="password"
+          autocomplete="off"
+          autocapitalize="off"
+          spellcheck="false"
+          inputmode="text"
+          aria-describedby="drive-recovery-help"
+          [value]="recoveryKeyText()"
+          (input)="recoveryKeyText.set($any($event.target).value)"
+        />
+        @if (recoveryError(); as e) {
+          <p class="error" role="alert">{{ e | t }}</p>
+        }
+      }
       <div class="actions">
-        <button type="button" class="btn btn-primary" (click)="tryAgain()" [disabled]="busy()">
+        <button type="button" class="btn btn-primary" (click)="tryAgain()" [disabled]="busy() || (askRecoveryKey() && recoveryKeyText().trim() === '')">
           {{ 'driveDelete.tryAgain' | t }}
         </button>
         <button type="button" class="btn" (click)="cancel()" [disabled]="busy()">{{ 'common.cancel' | t }}</button>
