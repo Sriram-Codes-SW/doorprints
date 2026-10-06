@@ -77,7 +77,7 @@ class WalkPrivacySourceTest {
 
     @Test
     fun theDriveSyncRowsReadFourDaosAndNoneIsAWalkTable() {
-        val text = code(android("$appMain/drive/wiring/RoomSyncRows.kt"))
+        val text = code(android("$shared/drive/wiring/RoomSyncRows.kt"))
         val daos = Regex("db\\.(\\w+)\\(\\)").findAll(text).map { it.groupValues[1] }.toSet()
         assertEquals(setOf("houses", "visits", "records", "photos"), daos)
     }

@@ -18,6 +18,7 @@
 
 package app.doorprints.drive.wiring
 
+import app.doorprints.ui.drive.Dp1EnrolmentCodec
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent

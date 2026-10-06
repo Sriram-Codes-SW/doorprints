@@ -32,7 +32,7 @@ import app.doorprints.crypto.platformCryptoProvider
 import app.doorprints.deviceauth.AndroidDeviceAuth
 import app.doorprints.deviceauth.ConfirmCredentialLauncher
 import app.doorprints.drive.HttpDriveClient
-import app.doorprints.drive.auth.AndroidDriveTokenProvider
+import app.doorprints.drive.auth.DriveTokenProvider
 import app.doorprints.drive.auth.PlayGoogleAuthorizer
 import app.doorprints.drive.auth.browser.ActivityBrowserLauncher
 import app.doorprints.drive.auth.browser.BrowserOAuthConfig
@@ -50,6 +50,8 @@ import app.doorprints.drive.connect.Outcome
 import app.doorprints.drive.connect.SyncInfo
 import app.doorprints.drive.device.AndroidDeviceKeys
 import app.doorprints.drive.device.DeviceLockDetectors
+import app.doorprints.drive.device.forContext
+import app.doorprints.drive.device.forContext
 import app.doorprints.drive.device.OperationProvers
 import app.doorprints.i18n.AppLocale
 import app.doorprints.ui.DeepLink
@@ -114,7 +116,7 @@ class DriveServices(
             play = { play.value },
         )
         val consent = ConsentBridge({ activities.launcher() }, { code, data -> play.value.fromActivityResult(code, data) })
-        val tokens = AndroidDriveTokenProvider(
+        val tokens = DriveTokenProvider(
             parts.authorizer,
             DriveAuthorizers.resolver({ activities.current() != null }, { consent.resolverOrNull() }),
         )
@@ -125,7 +127,7 @@ class DriveServices(
         val auth = ProverDeviceAuth(prover, keyguard, System::currentTimeMillis)
         val graph = DriveAssembly.assemble(
             DriveDeps(
-                dir = dir,
+                dir = dir.path,
                 crypto = crypto,
                 keyBackend = AndroidDeviceKeys.backend(app, crypto),
                 deviceName = android.os.Build.MODEL.orEmpty().ifBlank { "Android phone" },

@@ -18,6 +18,7 @@
 
 package app.doorprints.drive.wiring
 
+import app.doorprints.ui.drive.Dp1EnrolmentCodec
 import app.doorprints.ui.drive.QrScan
 import app.doorprints.ui.drive.QrScanner
 import java.util.concurrent.atomic.AtomicBoolean

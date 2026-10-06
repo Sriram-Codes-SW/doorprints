@@ -46,7 +46,7 @@ class AndroidRepository(
     db: AppDatabase,
     settings: SettingsStore,
     /** Where sync goes (S4b-BL-70); null for the default, the configured server over [apiFor]. A test's fake backend. */
-    syncBackendFor: ((AppSettings) -> SyncBackend?)? = null,
+    syncBackendFor: (suspend (AppSettings) -> SyncBackend?)? = null,
     /** The API client for a server address and key: the app-wide HTTP stack ([Api.client]); a test's fake engine. */
     apiFor: (serverUrl: String, apiKey: String) -> ApiClient = Api::client,
 ) : CommonRepository(

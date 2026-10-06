@@ -18,6 +18,7 @@
 
 package app.doorprints.drive.wiring
 
+import app.doorprints.ui.drive.Dp1EnrolmentCodec
 import app.doorprints.crypto.DevicePlatform
 import app.doorprints.crypto.JvmCryptoProvider
 import app.doorprints.crypto.QR_PREFIX

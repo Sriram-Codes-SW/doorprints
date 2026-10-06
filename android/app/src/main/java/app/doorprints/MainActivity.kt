@@ -29,6 +29,7 @@ import app.doorprints.drive.auth.browser.DriveAuthorizers
 import app.doorprints.drive.wiring.ActivityHooks
 import app.doorprints.drive.wiring.DeferredActivityLauncher
 import app.doorprints.drive.wiring.DriveCadenceGate
+import app.doorprints.drive.wiring.of
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import app.doorprints.data.ConnectLink

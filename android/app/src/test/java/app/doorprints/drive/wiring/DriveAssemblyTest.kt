@@ -111,7 +111,7 @@ class DriveAssemblyTest {
         // The phone's own adapter over a scripted prompt: the proof of a pass is what the token carries (S4b-BL-135).
         val deviceAuth = ProverDeviceAuth(SoftwareOperationProver(plainAuth, JvmCryptoProvider), plainAuth::isDeviceLockEnabled) { server.clock.now() }
         val deps = DriveDeps(
-            dir = dir,
+            dir = dir.path,
             crypto = JvmCryptoProvider,
             keyBackend = backend,
             deviceName = name,

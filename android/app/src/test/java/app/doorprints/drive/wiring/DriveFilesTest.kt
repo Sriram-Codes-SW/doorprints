@@ -288,7 +288,7 @@ class DriveFilesTest {
 
     @Test
     fun theProbeIsNeverBuiltOnRunBlockingBecauseItRunsOnTheMainThread() {
-        val source = File("src/main/java/app/doorprints/drive/wiring/DriveFiles.kt").readText()
+        val source = File("../shared/src/commonMain/kotlin/app/doorprints/drive/wiring/DriveFiles.kt").readText()
         val probe = source.substring(source.indexOf("class FolderPinProbe"))
         assertFalse("FolderPinProbe must not block a thread on a coroutine", probe.contains("runBlocking"))
         assertFalse("nor import it", source.contains("import kotlinx.coroutines.runBlocking"))
