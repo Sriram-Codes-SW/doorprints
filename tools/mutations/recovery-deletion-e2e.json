@@ -1,29 +1,29 @@
 {
-  "spec": "web/src/app/data/drive/connect/factories/production-deletion-e2e.spec.ts",
+  "spec": "web/src/app/data/drive/connect/factories/recovery-deletion-e2e.spec.ts",
   "mutations": [
-    {
-      "file": "web/src/app/data/drive/connect/factories/deletion-factory.ts",
-      "find": "      { verify: (key) => backup.verifyRecoveryKey(key) },",
-      "replace": "      { verify: async () => true },",
-      "expect": "(wrong-key e2e test) make the seam always verify"
-    },
     {
       "file": "web/src/app/data/drive/connect/deletion-adapter.ts",
       "find": "    if (result.kind === 'DENIED' && result.reason === 'WRONG_KEY') {\n      return { kind: 'refused', reason: 'RECOVERY_KEY_WRONG' };\n    }",
       "replace": "    if (result.kind === 'DENIED' && result.reason === 'WRONG_KEY') {\n      return { kind: 'refused', reason: 'AUTHORIZATION_DENIED' };\n    }",
-      "expect": "(mapping test) map WRONG_KEY to AUTHORIZATION_DENIED instead"
+      "expect": "wrong key is refused, nothing deleted, forged grant fails"
     },
     {
       "file": "web/src/app/data/drive/connect/deletion-adapter.ts",
       "find": "      this.gate?.registerGrant(result.grant.id, action, operationId, result.grant.grantedAtMs);",
       "replace": "",
-      "expect": "(e2e 'deletes' test) drop the gate registerGrant call"
+      "expect": "right key authorizes and deletes all backups"
     },
     {
       "file": "web/src/app/data/drive/connect/deletion-adapter.ts",
       "find": "  forgetProof(): void {\n    this.webAuthorizer.forgetProof();\n  }",
       "replace": "  forgetProof(): void {\n  }",
-      "expect": "(forget test) make forgetProof a no-op"
+      "expect": "after forgetProof, old grant cannot be reused"
+    },
+    {
+      "file": "web/src/app/data/drive/connect/factories/deletion-factory.ts",
+      "find": "    recovery,",
+      "replace": "    { verify: async () => true },",
+      "expect": "wrong key is refused, nothing deleted, forged grant fails"
     }
   ]
 }
