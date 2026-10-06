@@ -77,6 +77,9 @@
 	<!-- A plain launch screen (the system background); Compose draws the first frame. -->
 	<key>UILaunchScreen</key>
 	<dict/>
+	<!-- The enrolment QR scanner (S4b-BL-136): AVFoundation, asked only when the person taps Scan a QR code. -->
+	<key>NSCameraUsageDescription</key>
+	<string>Doorprints uses the camera to scan a Doorprints enrolment code from your other device. Nothing is stored or sent.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Doorprints uses Face ID to unlock the app when the app lock is on.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>

@@ -32,5 +32,9 @@
    Keep Info.plist's English value the same. */
 "NSLocationAlwaysAndWhenInUseUsageDescription" = "Doorprints uses your location to place the houses you save, to plan visits from where you are and, while Hunt mode is on, to tell you when you pass a house you have saved. With Wake me in my hunting areas on, iOS also tells Doorprints when you arrive in one of your areas, so it can offer Hunt mode. Doorprints keeps no location history.";
 
+/* S4b-BL-136: shown when Doorprints first asks for the camera, to scan a Doorprints enrolment code (the iPhone's QR scanner,
+   QrScanSession and IosQrScanner in android/ui). Keep Info.plist's English value the same. */
+"NSCameraUsageDescription" = "Doorprints uses the camera to scan a Doorprints enrolment code from your other device. Nothing is stored or sent.";
+
 /* S4b-BL-81: the name of the backup document type (Info.plist CFBundleDocumentTypes). */
 "Doorprints backup" = "Doorprints backup";
