@@ -528,6 +528,14 @@ fun MapScreen(
 
     val mapDescription = stringResource(Res.string.map_region_desc)
     val traceDescription = stringResource(Res.string.trace_a11y_map)
+    // The repeated-path alert (docs/11 5.27.5): the notification is the platform's; with the app in front the Map says it too.
+    val repeatAlertText = stringResource(Res.string.trace_alert_banner)
+    LaunchedEffect(Unit) {
+        RepeatAlerts.events.collect {
+            snackbar.currentSnackbarData?.dismiss()
+            scope.launch { snackbar.showSnackbar(repeatAlertText, withDismissAction = true) }
+        }
+    }
     // The bottom controls' height as last measured, one per layout (0 until then; a larger font makes them taller),
     // so a rotation never sizes the band from the other layout's height. The snackbar is not in it (round 4). The
     // row's width too (round 5), to decide whether the snackbar fits beside it.

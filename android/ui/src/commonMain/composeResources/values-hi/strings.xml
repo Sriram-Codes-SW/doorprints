@@ -640,7 +640,7 @@
     <string name="settings_app_lock_15m">15 मिनट</string>
     <!-- S4b-FR-2, the path trace (2026-09-29): under review. -->
     <string name="settings_path_trace">नक़्शे पर मेरा रास्ता दिखाएँ</string>
-    <string name="settings_path_trace_hint">हंट मोड चालू रहते आप जहाँ चले, उसे रखें और नक़्शे पर बनाएँ, ताकि दिखे कि कौन-सी गलियाँ हो चुकीं। सिर्फ़ इसी फ़ोन पर रहता है: न बैकअप में, न कॉपी में, न सर्वर पर; 30 दिन बाद मिट जाता है।</string>
+    <string name="settings_path_trace_hint">हंट मोड चालू रहते आप जहाँ चले, उसे रखें और नक़्शे पर बनाएँ, ताकि दिखे कि कौन-सी गलियाँ हो चुकीं। सिर्फ़ इसी फ़ोन पर रहता है: न बैकअप में, न कॉपी में, न सर्वर पर; 30 दिन बाद मिट जाता है। सहेजी गई सैर, अगर आप कोई सहेजें, वे भी यहीं रहती हैं।</string>
     <string name="settings_path_trace_clear">रास्ता मिटाएँ</string>
     <string name="settings_path_trace_cleared">रास्ता मिटा दिया गया।</string>
     <!-- S4b-BL-69, Hunt mode on iPhone (2026-09-29): under review. -->
@@ -1403,4 +1403,26 @@
     <string name="trace_legend_once">एक बार चले</string>
     <string name="trace_legend_repeated">एक से ज़्यादा बार चले</string>
     <string name="trace_a11y_map">जिन रास्तों पर आप एक से ज़्यादा बार चले, वे धारीदार (डैश वाले) हैं।</string>
+    <!-- Path trace v2 (S4b-FR-15, S4b-FR-16, 2026-10-06): Settings > Hunt mode; hi, ta, te under review. -->
+    <string name="trace_repeat_look_title">दोहराए रास्ते कैसे दिखें</string>
+    <string name="trace_repeat_look_hint">जिन रास्तों पर आप एक से ज़्यादा बार चले, वे नक़्शे पर अलग दिख सकते हैं। इससे आवाज़ वाली चेतावनी नहीं बदलती।</string>
+    <string name="trace_repeat_look_clear">स्पष्ट</string>
+    <string name="trace_repeat_look_clear_desc">मोटा और दूसरे रंग में धारीदार</string>
+    <string name="trace_repeat_look_subtle">हल्का</string>
+    <string name="trace_repeat_look_subtle_desc">सामान्य मोटाई, दूसरे रंग में धारीदार</string>
+    <string name="trace_repeat_look_off">बंद</string>
+    <string name="trace_repeat_look_off_desc">किसी भी दूसरे रास्ते जैसा</string>
+    <string name="trace_alert_title">जब मैं कोई रास्ता दोबारा चलूँ, तब चेताएँ</string>
+    <string name="trace_alert_hint">हंट मोड चालू रहते, जब आप पहले चले हुए रास्ते पर चलें तो एक छोटी आवाज़ बजे। इसे फ़ोन की नोटिफ़िकेशन सेटिंग में म्यूट कर सकते हैं। इसके लिए "नक़्शे पर मेरा रास्ता दिखाएँ" चालू होना चाहिए।</string>
+    <string name="trace_alert_needs_trace">पहले "नक़्शे पर मेरा रास्ता दिखाएँ" चालू करें।</string>
+    <string name="trace_alert_permission_denied">Doorprints के लिए नोटिफ़िकेशन बंद हैं, इसलिए आवाज़ नहीं आएगी। फ़ोन की सेटिंग में इन्हें चालू करें।</string>
+    <string name="trace_alert_rationale">आवाज़ एक नोटिफ़िकेशन है, इसलिए Doorprints को भेजने के लिए आपकी अनुमति चाहिए।</string>
+    <string name="trace_settings_saved">सहेजी गई सैर: %1$d</string>
+    <string name="trace_settings_delete_all">सभी सहेजी गई सैर मिटाएँ</string>
+    <string name="trace_settings_delete_all_confirm">सभी %1$d सहेजी गई सैर मिटाएँ? इसे वापस नहीं किया जा सकता।</string>
+    <string name="trace_settings_transfer_note">Android का फ़ोन-से-फ़ोन ट्रांसफ़र सहेजी गई सैर भी कॉपी करता है। इन्हें पीछे छोड़ना हो तो ट्रांसफ़र से पहले मिटा दें। (केवल Android।)</string>
+    <string name="trace_settings_clear_hint">30 दिन रखी गई सैर मिटाता है। सहेजी गई सैर आपके मिटाने तक रहती हैं।</string>
+    <!-- Path trace v2 (S4b-FR-16): the Map's snackbar and the iPhone's notification; under review. -->
+    <string name="trace_alert_banner">आप इस रास्ते पहले चल चुके हैं।</string>
+    <string name="trace_alert_notif_text">यह रास्ता पहले की सैर से आपके नक़्शे पर है।</string>
 </resources>

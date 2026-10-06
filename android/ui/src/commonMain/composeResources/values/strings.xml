@@ -640,7 +640,7 @@
     <string name="settings_app_lock_15m">15 minutes</string>
     <!-- S4b-FR-2, the path trace (2026-09-29). -->
     <string name="settings_path_trace">Trace my path on the map</string>
-    <string name="settings_path_trace_hint">While hunt mode is on, keep where you walked and draw it on the map, so you can see which streets you have covered. Stays on this phone only: never in a backup, a copy or on the server, and gone after 30 days.</string>
+    <string name="settings_path_trace_hint">While hunt mode is on, keep where you walked and draw it on the map, so you can see which streets you have covered. Stays on this phone only: never in a backup, a copy or on the server, and gone after 30 days. Saved walks, if you save any, stay here too.</string>
     <string name="settings_path_trace_clear">Clear the path</string>
     <string name="settings_path_trace_cleared">The path is cleared.</string>
     <!-- S4b-BL-69, Hunt mode on iPhone (2026-09-29): the alerts' wording as Compose resources, the same text as the
@@ -1404,4 +1404,26 @@
     <string name="trace_legend_once">Walked once</string>
     <string name="trace_legend_repeated">Walked more than once</string>
     <string name="trace_a11y_map">Paths you walked more than once are dashed.</string>
+    <!-- Path trace v2 (S4b-FR-15, S4b-FR-16, 2026-10-06): Settings > Hunt mode; hi, ta, te under review. -->
+    <string name="trace_repeat_look_title">How repeated paths look</string>
+    <string name="trace_repeat_look_hint">Paths you have walked more than once can stand out on the map. This does not change the sound alert.</string>
+    <string name="trace_repeat_look_clear">Clear</string>
+    <string name="trace_repeat_look_clear_desc">Thicker and dashed in a second colour</string>
+    <string name="trace_repeat_look_subtle">Subtle</string>
+    <string name="trace_repeat_look_subtle_desc">Normal width, dashed in a second colour</string>
+    <string name="trace_repeat_look_off">Off</string>
+    <string name="trace_repeat_look_off_desc">Drawn like any other path</string>
+    <string name="trace_alert_title">Warn me when I walk a path again</string>
+    <string name="trace_alert_hint">While Hunt mode runs, play a short sound when you follow a path you have already walked. You can mute it in your phone's notification settings. Needs Trace my path.</string>
+    <string name="trace_alert_needs_trace">Turn on Trace my path first.</string>
+    <string name="trace_alert_permission_denied">Notifications are off for Doorprints, so there is no sound. Allow them in your phone's settings.</string>
+    <string name="trace_alert_rationale">The sound is a notification, so Doorprints needs your permission to send one.</string>
+    <string name="trace_settings_saved">Saved walks: %1$d</string>
+    <string name="trace_settings_delete_all">Delete all saved walks</string>
+    <string name="trace_settings_delete_all_confirm">Delete all %1$d saved walks? This cannot be undone.</string>
+    <string name="trace_settings_transfer_note">Android's phone-to-phone transfer also copies saved walks. To leave them behind, delete them before you transfer. (Android only.)</string>
+    <string name="trace_settings_clear_hint">Clears the walks kept for 30 days. Saved walks stay until you delete them.</string>
+    <!-- Path trace v2 (S4b-FR-16): the Map's snackbar and the iPhone's notification; under review. -->
+    <string name="trace_alert_banner">You have walked this way before.</string>
+    <string name="trace_alert_notif_text">This path is on your map from an earlier walk.</string>
 </resources>

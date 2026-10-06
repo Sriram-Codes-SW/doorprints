@@ -86,7 +86,8 @@ class JsonStyleOpsTest {
                 "boundary_3", IndiaViewRules.STATE_OVERLAY_LAYER,
                 "boundary_2", IndiaViewRules.WORLD_LAYER, IndiaViewRules.CLAIM_LAYER,
                 "boundary_disputed", "label_other", "label_state", "label_city",
-                TRACK_LAYER, HOUSE_DOTS_LAYER, HOUSE_LABELS_LAYER,
+                TRACK_LAYER, TRACK_REPEAT_LAYER, CHECK_HALO_LAYER, CHECK_RING_LAYER, CHECK_CROSS_LAYER, CHECK_LABEL_LAYER,
+                HOUSE_DOTS_LAYER, HOUSE_LABELS_LAYER,
             ),
             ids(prepare().style),
         )
@@ -103,6 +104,20 @@ class JsonStyleOpsTest {
         assertEquals("line", line["type"]!!.jsonPrimitive.content)
         assertEquals(TRACK_SOURCE, line["source"]!!.jsonPrimitive.content)
         assertEquals(TRACK_COLOR, line["paint"]!!.jsonObject["line-color"]!!.jsonPrimitive.content)
+    }
+
+    /** The repeat overlay and the place check's layers (docs/11 5.27.4, 5.27.13) are in the iPhone's style, over the base line. */
+    @Test
+    fun theRepeatOverlayAndTheCheckLayersAreInTheStyleFromEmptySources() {
+        val style = prepare().style
+        val repeat = layer(style, TRACK_REPEAT_LAYER)
+        assertEquals(TRACK_SOURCE, repeat["source"]!!.jsonPrimitive.content)
+        assertEquals(TRACK_REPEAT_COLOR, repeat["paint"]!!.jsonObject["line-color"]!!.jsonPrimitive.content)
+        val check = style["sources"]!!.jsonObject[CHECK_SOURCE]!!.jsonObject
+        assertTrue(check["data"]!!.jsonObject["features"]!!.jsonArray.isEmpty())
+        for (id in listOf(CHECK_HALO_LAYER, CHECK_RING_LAYER, CHECK_CROSS_LAYER, CHECK_LABEL_LAYER)) {
+            assertEquals(CHECK_SOURCE, layer(style, id)["source"]!!.jsonPrimitive.content)
+        }
     }
 
     @Test

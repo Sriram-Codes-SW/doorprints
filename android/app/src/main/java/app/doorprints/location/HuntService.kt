@@ -45,6 +45,7 @@ import app.doorprints.shared.model.HouseStatus
 import app.doorprints.shared.model.Scoring
 import app.doorprints.i18n.AppLocale
 import app.doorprints.ui.Formats
+import app.doorprints.ui.RepeatAlerts
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -195,6 +196,15 @@ class HuntService : LifecycleService(), HuntEffects {
     /** Whether the app lock is on (S4b-BL-68): its alerts then name nothing on a locked screen. Unreadable: on. */
     private suspend fun appLockOn(): Boolean =
         runCatching { repo.settings.appLockSetting.first().on }.getOrDefault(true)
+
+    override fun alertRepeat(runM: Int) {
+        // The notification holds no place, distance or count (docs/11 5.27.5); [runM] is not used or logged.
+        lifecycleScope.launch {
+            Notifications.alertRepeatPath(this@HuntService, hideOnLockScreen = appLockOn())
+            // With the app in front the Map also says it in a snackbar (it collects this).
+            RepeatAlerts.signal()
+        }
+    }
 
     override fun alertStreet(street: String, houses: Int, visits: Int, firstVisit: Long?) {
         val key = StreetAlerts.key(street)

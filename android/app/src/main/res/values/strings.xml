@@ -101,4 +101,9 @@
     <string name="drive_lock_open_settings">Open settings</string>
     <string name="drive_lock_notif_title">Google Drive backup paused</string>
     <string name="drive_lock_key_lost">Google Drive backup is paused because this phone\'s key store lost the key. Your houses are safe on this phone. Connect to Google Drive again to continue.</string>
+    <!-- Path trace v2 (S4b-FR-16, 2026-10-06): the repeated-path alert; hi, ta, te under review. -->
+    <string name="notif_channel_repeat">Repeated path</string>
+    <string name="notif_channel_repeat_desc">A short sound when you walk a path you have walked before.</string>
+    <string name="notif_repeat_title">You have walked this way before.</string>
+    <string name="notif_repeat_text">This path is on your map from an earlier walk.</string>
 </resources>

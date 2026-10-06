@@ -640,7 +640,7 @@
     <string name="settings_app_lock_15m">15 நிமிடங்கள்</string>
     <!-- S4b-FR-2, the path trace (2026-09-29): under review. -->
     <string name="settings_path_trace">என் பாதையை வரைபடத்தில் காட்டு</string>
-    <string name="settings_path_trace_hint">தேடல் பயன்முறை இயங்கும்போது நீங்கள் நடந்த இடங்களை வைத்து வரைபடத்தில் வரைகிறது; எந்தத் தெருக்களைப் பார்த்தீர்கள் என்று தெரியும். இந்தத் தொலைபேசியில் மட்டும் இருக்கும்: காப்புப் பிரதியிலோ, நகலிலோ, சேவையகத்திலோ இல்லை; 30 நாட்களுக்குப் பிறகு நீங்கும்.</string>
+    <string name="settings_path_trace_hint">தேடல் பயன்முறை இயங்கும்போது நீங்கள் நடந்த இடங்களை வைத்து வரைபடத்தில் வரைகிறது; எந்தத் தெருக்களைப் பார்த்தீர்கள் என்று தெரியும். இந்தத் தொலைபேசியில் மட்டும் இருக்கும்: காப்புப் பிரதியிலோ, நகலிலோ, சேவையகத்திலோ இல்லை; 30 நாட்களுக்குப் பிறகு நீங்கும். நீங்கள் சேமிக்கும் நடைகளும் இங்கேயே இருக்கும்.</string>
     <string name="settings_path_trace_clear">பாதையை அழி</string>
     <string name="settings_path_trace_cleared">பாதை அழிக்கப்பட்டது.</string>
     <!-- S4b-BL-69, Hunt mode on iPhone (2026-09-29): under review. -->
@@ -1403,4 +1403,26 @@
     <string name="trace_legend_once">ஒருமுறை நடந்தது</string>
     <string name="trace_legend_repeated">ஒன்றுக்கு மேற்பட்ட முறை நடந்தது</string>
     <string name="trace_a11y_map">ஒன்றுக்கு மேற்பட்ட முறை நடந்த பாதைகள் கோடுகோடாகக் காட்டப்படும்.</string>
+    <!-- Path trace v2 (S4b-FR-15, S4b-FR-16, 2026-10-06): Settings > Hunt mode; hi, ta, te under review. -->
+    <string name="trace_repeat_look_title">மீண்டும் நடந்த பாதைகள் எப்படித் தெரியும்</string>
+    <string name="trace_repeat_look_hint">ஒன்றுக்கு மேற்பட்ட முறை நடந்த பாதைகள் வரைபடத்தில் தனித்துத் தெரியலாம். இது ஒலி எச்சரிக்கையை மாற்றாது.</string>
+    <string name="trace_repeat_look_clear">தெளிவு</string>
+    <string name="trace_repeat_look_clear_desc">தடிமனாக, இரண்டாவது நிறத்தில் கோடுகோடாக</string>
+    <string name="trace_repeat_look_subtle">மென்மை</string>
+    <string name="trace_repeat_look_subtle_desc">சாதாரண தடிமன், இரண்டாவது நிறத்தில் கோடுகோடாக</string>
+    <string name="trace_repeat_look_off">இல்லை</string>
+    <string name="trace_repeat_look_off_desc">மற்ற பாதைகளைப் போலவே வரையப்படும்</string>
+    <string name="trace_alert_title">நான் ஒரு பாதையில் மீண்டும் நடக்கும்போது எச்சரிக்கவும்</string>
+    <string name="trace_alert_hint">தேடல் பயன்முறை இயங்கும்போது, நீங்கள் ஏற்கனவே நடந்த பாதையில் மீண்டும் செல்லும்போது ஒரு சிறு ஒலி ஒலிக்கும். இதை உங்கள் தொலைபேசியின் அறிவிப்பு அமைப்புகளில் ஒலியடக்கலாம். "என் பாதையை வரைபடத்தில் காட்டு" இயக்கத்தில் இருக்க வேண்டும்.</string>
+    <string name="trace_alert_needs_trace">முதலில் "என் பாதையை வரைபடத்தில் காட்டு" என்பதை இயக்கவும்.</string>
+    <string name="trace_alert_permission_denied">Doorprints க்கு அறிவிப்புகள் அணைக்கப்பட்டுள்ளன, அதனால் ஒலி இல்லை. தொலைபேசி அமைப்புகளில் அவற்றை அனுமதியுங்கள்.</string>
+    <string name="trace_alert_rationale">ஒலி ஒரு அறிவிப்பாக வருகிறது, எனவே அனுப்ப Doorprints க்கு உங்கள் அனுமதி தேவை.</string>
+    <string name="trace_settings_saved">சேமித்த நடைகள்: %1$d</string>
+    <string name="trace_settings_delete_all">சேமித்த எல்லா நடைகளையும் அழி</string>
+    <string name="trace_settings_delete_all_confirm">சேமித்த %1$d நடைகளையும் அழிக்கவா? இதைத் திரும்பப் பெற முடியாது.</string>
+    <string name="trace_settings_transfer_note">Android இன் தொலைபேசி-தொலைபேசி பரிமாற்றம் சேமித்த நடைகளையும் நகலெடுக்கும். அவற்றை விட்டுச் செல்ல, பரிமாற்றத்துக்கு முன் அழியுங்கள். (Android மட்டும்.)</string>
+    <string name="trace_settings_clear_hint">30 நாட்கள் வைக்கப்படும் நடைகளை அழிக்கும். சேமித்த நடைகள் நீங்கள் அழிக்கும் வரை இருக்கும்.</string>
+    <!-- Path trace v2 (S4b-FR-16): the Map's snackbar and the iPhone's notification; under review. -->
+    <string name="trace_alert_banner">நீங்கள் இந்த வழியில் முன்பு நடந்திருக்கிறீர்கள்.</string>
+    <string name="trace_alert_notif_text">இந்தப் பாதை முந்தைய நடையிலிருந்து உங்கள் வரைபடத்தில் உள்ளது.</string>
 </resources>

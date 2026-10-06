@@ -42,6 +42,8 @@ import app.doorprints.ui.res.notif_street_text_since
 import app.doorprints.ui.res.notif_street_title
 import app.doorprints.ui.res.notif_visited_before
 import app.doorprints.ui.res.price_per_month
+import app.doorprints.ui.res.trace_alert_banner
+import app.doorprints.ui.res.trace_alert_notif_text
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.useContents
 import kotlinx.coroutines.CoroutineScope
@@ -236,6 +238,18 @@ internal object IosHunt : HuntEffects {
             getString(Res.string.notif_street_title, street) to text
         }
 
+    /**
+     * The repeated-path alert (docs/11 5.27.5): the default notification sound; no place, distance or count in it. The
+     * notification category and thread of the spec (\`repeat-path\`) are IosNotifications' to add; the Map's snackbar is
+     * shown beside it.
+     */
+    override fun alertRepeat(runM: Int) {
+        alert("repeat-path") {
+            getString(Res.string.trace_alert_banner) to getString(Res.string.trace_alert_notif_text)
+        }
+        RepeatAlerts.signal()
+    }
+
     override fun alertStay(visitId: String, lat: Double, lon: Double) = alert(
         stayAlertId(visitId),
         mapOf<Any?, Any?>(KEY_NEW_LAT to lat.toString(), KEY_NEW_LON to lon.toString(), KEY_VISIT_ID to visitId),
@@ -245,10 +259,16 @@ internal object IosHunt : HuntEffects {
     fun stayAlertId(visitId: String): String = "stay:$visitId"
 
     /** Words the alert from the resources (suspending) and posts it; [words] gives the title and the body. */
-    private fun alert(id: String, userInfo: Map<Any?, *> = emptyMap<Any?, Any?>(), words: suspend () -> Pair<String, String>) {
+    private fun alert(
+        id: String,
+        userInfo: Map<Any?, *> = emptyMap<Any?, Any?>(),
+        category: String? = null,
+        thread: String? = null,
+        words: suspend () -> Pair<String, String>,
+    ) {
         alerts.launch {
             val (title, body) = words()
-            IosNotifications.post(id, title, body, userInfo)
+            IosNotifications.post(id, title, body, userInfo, category, thread)
         }
     }
 

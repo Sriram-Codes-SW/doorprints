@@ -100,4 +100,9 @@
     <string name="drive_lock_open_settings">సెట్టింగ్‌లను తెరవండి</string>
     <string name="drive_lock_notif_title">Google Drive బ్యాకప్ ఆగింది</string>
     <string name="drive_lock_key_lost">ఈ ఫోన్ కీ స్టోర్ కీని కోల్పోయినందున Google Drive బ్యాకప్ ఆగింది. మీ ఇళ్లు ఈ ఫోన్‌లో సురక్షితంగా ఉన్నాయి. కొనసాగడానికి Google Drive కి మళ్లీ కనెక్ట్ అవ్వండి.</string>
+    <!-- Path trace v2 (S4b-FR-16, 2026-10-06): the repeated-path alert; hi, ta, te under review. -->
+    <string name="notif_channel_repeat">మళ్లీ నడిచిన దారి</string>
+    <string name="notif_channel_repeat_desc">మీరు ఇంతకు ముందు నడిచిన దారిలో నడిచినప్పుడు ఒక చిన్న శబ్దం.</string>
+    <string name="notif_repeat_title">మీరు ఈ దారిలో ఇంతకు ముందు నడిచారు.</string>
+    <string name="notif_repeat_text">ఈ దారి మునుపటి నడక నుండి మీ మ్యాప్‌లో ఉంది.</string>
 </resources>

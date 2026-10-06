@@ -48,6 +48,11 @@ object Notifications {
     const val CHANNEL_HUNT_REMINDERS = "hunt_reminders"
     /** The area wake-up (docs/11 5.17, slice 4b): default importance, private on the lock screen, no DND bypass. */
     const val CHANNEL_AREA_WAKEUP = "area_wakeup"
+    /**
+     * The repeated-path alert (docs/11 5.27.5): default importance (the phone's own notification sound, no heads-up), no
+     * vibration, no badge, private on a lock screen; the person mutes it, or changes its sound, in Android's settings.
+     */
+    const val CHANNEL_REPEAT_PATH = "repeat_path"
     // Every fixed notification id the app uses lives here, so two features cannot pick the same number. (The
     // per-house, per-street and per-visit alerts use hash codes and cannot be reserved; they are rare and
     // short-lived.)
@@ -116,6 +121,9 @@ object Notifications {
     /** "Google Drive backup is paused because this phone no longer has a screen lock" (docs/15 §10.3): one, replaced by a later one. */
     const val DRIVE_LOCK_ID = 12
 
+    /** "You have walked this way before" (docs/11 5.27.5): one at a time, a second replaces the first. */
+    const val REPEAT_PATH_ID = 13
+
     /** The tag of area [areaId]'s wake-up notification, posted under [AREA_WAKEUP_ID]. */
     fun areaTag(areaId: String) = "area:$areaId"
 
@@ -138,7 +146,8 @@ object Notifications {
     const val SCREEN_EXPORT = Routes.EXPORT
     const val SCREEN_IMPORT = Routes.IMPORT
     const val SCREEN_SETTINGS = Routes.SETTINGS
-    val SCREENS = setOf(SCREEN_EXPORT, SCREEN_IMPORT, SCREEN_SETTINGS)
+    const val SCREEN_MAP = Routes.MAP
+    val SCREENS = setOf(SCREEN_EXPORT, SCREEN_IMPORT, SCREEN_SETTINGS, SCREEN_MAP)
     const val EXTRA_NEW_LAT = "newLat"
     const val EXTRA_NEW_LON = "newLon"
     const val EXTRA_VISIT_ID = "visitId"
@@ -193,6 +202,16 @@ object Notifications {
                 // The area's name says where the person is: "Doorprints reminder" on a locked screen; DND as set.
                 lockscreenVisibility = Notification.VISIBILITY_PRIVATE
                 setBypassDnd(false)
+            }
+        )
+        nm.createNotificationChannel(
+            NotificationChannel(CHANNEL_REPEAT_PATH, context.getString(R.string.notif_channel_repeat), NotificationManager.IMPORTANCE_DEFAULT).apply {
+                description = context.getString(R.string.notif_channel_repeat_desc)
+                // The phone's default notification sound (the importance gives it); no vibration, no badge (5.27.5).
+                enableVibration(false)
+                setShowBadge(false)
+                // Where she walked is private: a locked screen shows the public version (F-14).
+                lockscreenVisibility = Notification.VISIBILITY_PRIVATE
             }
         )
         nm.createNotificationChannel(
@@ -504,4 +523,43 @@ object Notifications {
         } catch (_: SecurityException) {
         }
     }
+
+    /**
+     * The repeated-path alert (docs/11 5.27.5): *You have walked this way before* on [CHANNEL_REPEAT_PATH], a tap opens the
+     * Map, auto-cancelled and gone after two minutes. Private on a locked screen with the public version of the Hunt
+     * alerts ("Doorprints alert", so no new string reaches the lock screen); [hideOnLockScreen] (the app lock is on,
+     * S4b-BL-68) makes it secret. It holds no place, distance or count. Dropped quietly when notifications are not allowed.
+     */
+    fun repeatPath(context: Context, hideOnLockScreen: Boolean): Notification {
+        val publicVersion = NotificationCompat.Builder(context, CHANNEL_ALERTS)
+            .setSmallIcon(SMALL_ICON)
+            .setContentTitle(context.getString(R.string.notif_public))
+            .build()
+        return NotificationCompat.Builder(context, CHANNEL_REPEAT_PATH)
+            .setSmallIcon(SMALL_ICON)
+            .setContentTitle(context.getString(R.string.notif_repeat_title))
+            .setContentText(context.getString(R.string.notif_repeat_text))
+            .setCategory(NotificationCompat.CATEGORY_STATUS)
+            .setAutoCancel(true)
+            .setTimeoutAfter(REPEAT_PATH_TIMEOUT_MS)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setVisibility(if (hideOnLockScreen) NotificationCompat.VISIBILITY_SECRET else NotificationCompat.VISIBILITY_PRIVATE)
+            .setPublicVersion(publicVersion)
+            .setContentIntent(openScreenIntent(context, SCREEN_MAP))
+            .build()
+    }
+
+    /** Posts [repeatPath]; false when notifications are not allowed or the post failed. */
+    fun alertRepeatPath(context: Context, hideOnLockScreen: Boolean): Boolean {
+        if (!canPost(context)) return false
+        return try {
+            NotificationManagerCompat.from(context).notify(REPEAT_PATH_ID, repeatPath(context, hideOnLockScreen))
+            true
+        } catch (_: SecurityException) {
+            false
+        }
+    }
+
+    /** The alert goes by itself after two minutes (docs/11 5.27.5). */
+    const val REPEAT_PATH_TIMEOUT_MS = 120_000L
 }

@@ -640,7 +640,7 @@
     <string name="settings_app_lock_15m">15 నిమిషాలు</string>
     <!-- S4b-FR-2, the path trace (2026-09-29): under review. -->
     <string name="settings_path_trace">నా దారిని మ్యాప్‌లో చూపించు</string>
-    <string name="settings_path_trace_hint">హంట్ మోడ్ ఆన్‌లో ఉన్నప్పుడు మీరు నడిచిన చోట్లను ఉంచి మ్యాప్‌లో గీస్తుంది; ఏ వీధులు చూశారో తెలుస్తుంది. ఈ ఫోన్‌లో మాత్రమే ఉంటుంది: బ్యాకప్‌లో, కాపీలో, సర్వర్‌లో ఉండదు; 30 రోజుల తర్వాత పోతుంది.</string>
+    <string name="settings_path_trace_hint">హంట్ మోడ్ ఆన్‌లో ఉన్నప్పుడు మీరు నడిచిన చోట్లను ఉంచి మ్యాప్‌లో గీస్తుంది; ఏ వీధులు చూశారో తెలుస్తుంది. ఈ ఫోన్‌లో మాత్రమే ఉంటుంది: బ్యాకప్‌లో, కాపీలో, సర్వర్‌లో ఉండదు; 30 రోజుల తర్వాత పోతుంది. మీరు సేవ్ చేసే నడకలు కూడా ఇక్కడే ఉంటాయి.</string>
     <string name="settings_path_trace_clear">దారిని తొలగించు</string>
     <string name="settings_path_trace_cleared">దారి తొలగించబడింది.</string>
     <!-- S4b-BL-69, Hunt mode on iPhone (2026-09-29): under review. -->
@@ -1403,4 +1403,26 @@
     <string name="trace_legend_once">ఒకసారి నడిచింది</string>
     <string name="trace_legend_repeated">ఒకటి కంటే ఎక్కువసార్లు నడిచింది</string>
     <string name="trace_a11y_map">ఒకటి కంటే ఎక్కువసార్లు నడిచిన దారులు విరామాలతో కూడిన గీతలుగా కనిపిస్తాయి.</string>
+    <!-- Path trace v2 (S4b-FR-15, S4b-FR-16, 2026-10-06): Settings > Hunt mode; hi, ta, te under review. -->
+    <string name="trace_repeat_look_title">మళ్లీ నడిచిన దారులు ఎలా కనిపించాలి</string>
+    <string name="trace_repeat_look_hint">ఒకటి కంటే ఎక్కువసార్లు నడిచిన దారులు మ్యాప్‌లో ప్రత్యేకంగా కనిపించవచ్చు. ఇది శబ్ద హెచ్చరికను మార్చదు.</string>
+    <string name="trace_repeat_look_clear">స్పష్టం</string>
+    <string name="trace_repeat_look_clear_desc">మందంగా, రెండో రంగులో విరామాలతో</string>
+    <string name="trace_repeat_look_subtle">సున్నితం</string>
+    <string name="trace_repeat_look_subtle_desc">సాధారణ మందం, రెండో రంగులో విరామాలతో</string>
+    <string name="trace_repeat_look_off">ఆఫ్</string>
+    <string name="trace_repeat_look_off_desc">మిగతా దారుల్లాగే గీస్తారు</string>
+    <string name="trace_alert_title">నేను ఒక దారిలో మళ్లీ నడిచినప్పుడు హెచ్చరించు</string>
+    <string name="trace_alert_hint">హంట్ మోడ్ ఆన్‌లో ఉన్నప్పుడు, మీరు ఇప్పటికే నడిచిన దారిలో మళ్లీ వెళ్తే ఒక చిన్న శబ్దం వస్తుంది. దీన్ని మీ ఫోన్ నోటిఫికేషన్ సెట్టింగ్‌లలో మ్యూట్ చేయవచ్చు. "నా దారిని మ్యాప్‌లో చూపించు" ఆన్‌లో ఉండాలి.</string>
+    <string name="trace_alert_needs_trace">ముందు "నా దారిని మ్యాప్‌లో చూపించు" ఆన్ చేయండి.</string>
+    <string name="trace_alert_permission_denied">Doorprints కు నోటిఫికేషన్‌లు ఆఫ్‌లో ఉన్నాయి, కాబట్టి శబ్దం రాదు. మీ ఫోన్ సెట్టింగ్‌లలో వాటిని అనుమతించండి.</string>
+    <string name="trace_alert_rationale">శబ్దం ఒక నోటిఫికేషన్ రూపంలో వస్తుంది, కాబట్టి దాన్ని పంపడానికి Doorprints కు మీ అనుమతి కావాలి.</string>
+    <string name="trace_settings_saved">సేవ్ చేసిన నడకలు: %1$d</string>
+    <string name="trace_settings_delete_all">సేవ్ చేసిన అన్ని నడకలను తొలగించు</string>
+    <string name="trace_settings_delete_all_confirm">సేవ్ చేసిన %1$d నడకలన్నింటినీ తొలగించాలా? దీన్ని వెనక్కి తీసుకోలేరు.</string>
+    <string name="trace_settings_transfer_note">Android ఫోన్-నుండి-ఫోన్ బదిలీ సేవ్ చేసిన నడకలను కూడా కాపీ చేస్తుంది. వాటిని వదిలేయాలంటే, బదిలీకి ముందు తొలగించండి. (Android మాత్రమే.)</string>
+    <string name="trace_settings_clear_hint">30 రోజులు ఉంచే నడకలను తొలగిస్తుంది. సేవ్ చేసిన నడకలు మీరు తొలగించే వరకు ఉంటాయి.</string>
+    <!-- Path trace v2 (S4b-FR-16): the Map's snackbar and the iPhone's notification; under review. -->
+    <string name="trace_alert_banner">మీరు ఈ దారిలో ఇంతకు ముందు నడిచారు.</string>
+    <string name="trace_alert_notif_text">ఈ దారి మునుపటి నడక నుండి మీ మ్యాప్‌లో ఉంది.</string>
 </resources>
