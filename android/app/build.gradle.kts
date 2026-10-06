@@ -56,6 +56,13 @@ android {
         versionName = "0.1.0"
         // Instrumented smoke tests on an emulator (android-emulator.yml) and in Firebase Test Lab. The test storage
         // service keeps their screenshots; AGP pulls them into build/outputs/connected_android_test_additional_output.
+        // The Android OAuth client id of the system-browser sign-in (docs/15 §2.4, a fallback for phones without Google Play
+        // services). An id is not a secret but it is the owner's, so none is in the repository: the owner puts
+        // GOOGLE_ANDROID_CLIENT_ID in ~/.gradle/gradle.properties (or -P, or the environment). Empty by default: a blank id
+        // makes the browser path unavailable and it opens nothing. Only the characters of a Google client id are kept.
+        val googleClientId = (providers.gradleProperty("GOOGLE_ANDROID_CLIENT_ID").orElse(providers.environmentVariable("GOOGLE_ANDROID_CLIENT_ID")).orNull ?: "")
+            .trim().takeIf { Regex("[A-Za-z0-9._-]+").matches(it) } ?: ""
+        buildConfigField("String", "GOOGLE_ANDROID_CLIENT_ID", "\"$googleClientId\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         testInstrumentationRunnerArguments["useTestStorageService"] = "true"
     }
@@ -90,6 +97,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     packaging {
