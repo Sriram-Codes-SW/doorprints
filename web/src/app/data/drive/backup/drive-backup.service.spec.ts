@@ -895,6 +895,76 @@ describe('DriveBackupService', () => {
     expect(server.contentOf(extra.id)).toEqual(new Uint8Array([4, 5]));
   });
 
+  // ---- recovery key verification (docs/15 §10.4a) ----
+
+  it('verifies the recovery key without changing anything', async () => {
+    const { server, writeCount } = world();
+    const a = await Rig.make(server);
+    const out = await a.service.createFolder(true);
+    if (out.connection.kind !== 'READY') throw new Error('expected READY');
+    if (!out.recoveryKey) throw new Error('expected recovery key');
+    const folder = out.connection.folder;
+    const keysBefore = server.contentOf(folder.keysId)!;
+    const before = writeCount();
+
+    // Right key returns true
+    expect(await a.service.verifyRecoveryKey(out.recoveryKey)).toBe(true);
+    expect(writeCount()).toBe(before); // No writes
+    expect(equalBytes(server.contentOf(folder.keysId)!, keysBefore)).toBe(true); // Bytes unchanged
+
+    // Wrong key returns false
+    expect(await a.service.verifyRecoveryKey(RecoveryKey.generate(p))).toBe(false);
+    expect(writeCount()).toBe(before);
+    expect(equalBytes(server.contentOf(folder.keysId)!, keysBefore)).toBe(true);
+  });
+
+  it('returns false when there is no pin yet (not connected)', async () => {
+    const { server } = world();
+    const a = await Rig.make(server);
+    const out = await a.service.createFolder(true);
+    // Create a second device that has not yet connected
+    const b = await Rig.make(server, 'Tablet');
+    // The second device cannot verify because it has no pin
+    expect(await b.service.verifyRecoveryKey(out.recoveryKey!)).toBe(false);
+  });
+
+  it('returns false when the folder is missing', async () => {
+    const { server } = world();
+    const a = await Rig.make(server);
+    const out = await a.service.createFolder(true);
+    if (!out.recoveryKey) throw new Error('expected recovery key');
+    const rootId = a.state.value.rootId;
+    if (!rootId) throw new Error('expected rootId');
+    // Delete the folder
+    for (const f of server.allFiles()) {
+      if (f.id !== rootId && (f.parents || []).includes(rootId)) {
+        server.trashByHand(f.id);
+      }
+    }
+    // Verify returns false
+    expect(await a.service.verifyRecoveryKey(out.recoveryKey)).toBe(false);
+  });
+
+  it('preserves the pin after verification', async () => {
+    const { server } = world();
+    const a = await Rig.make(server);
+    const out = await a.service.createFolder(true);
+    const folder = await a.ready();
+    const pinBefore = await a.trust.keys(folder.rootId).load();
+
+    await a.service.verifyRecoveryKey(out.recoveryKey!);
+
+    const pinAfter = await a.trust.keys(folder.rootId).load();
+    expect(pinBefore).not.toBeNull();
+    expect(pinAfter).not.toBeNull();
+    if (pinBefore && pinAfter) {
+      expect(pinBefore.epoch).toBe(pinAfter.epoch);
+      expect(pinBefore.revision).toBe(pinAfter.revision);
+      expect(equalBytes(pinBefore.keyId, pinAfter.keyId)).toBe(true);
+      expect(equalBytes(pinBefore.bodyHash, pinAfter.bodyHash)).toBe(true);
+    }
+  });
+
   // ---- offline and the schedule ----
 
   it('loses nothing offline, and the schedule waits and then retries', async () => {

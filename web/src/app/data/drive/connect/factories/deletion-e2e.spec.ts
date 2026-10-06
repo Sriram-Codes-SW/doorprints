@@ -107,6 +107,12 @@ async function createTestDeletionAdapterWithSealedBlob(
       async authorizePolicy() {
         return { kind: 'refused', reason: 'Not connected' };
       },
+      async authorizeWithRecoveryKey() {
+        return { kind: 'refused', reason: 'Not connected' };
+      },
+      forgetProof() {
+        // No-op
+      },
       async execute() {
         return { kind: 'refused', reason: 'OFFLINE', error: null };
       },

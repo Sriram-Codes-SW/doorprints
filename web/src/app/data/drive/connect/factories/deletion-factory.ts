@@ -92,6 +92,7 @@ export function createDeletionAdapter(
   keyValueStore?: KeyValueStore,
   prfAuthenticator?: PrfAuthenticator,
   clock?: () => number,
+  recovery?: { verify(key: RecoveryKey): Promise<boolean> },
 ): DriveDeletionAdapter {
   const clockFn = clock || (() => Date.now());
   const kv = keyValueStore ?? rt.kv;
@@ -130,7 +131,7 @@ export function createDeletionAdapter(
     authenticator,
     sealedBlob,
     clockFn,
-    prfAuthenticator ? undefined : deps.recovery,
+    recovery,
   );
   const authorizationGate = new RealAuthorizationGate(webAuthorizer, clockFn);
 
@@ -168,7 +169,7 @@ export function createLazyDeletionAdapterProxy(getRuntime: () => Promise<DriveRu
   const getAdapter = async (): Promise<DriveDeletionAdapter> => {
     const rt = await getRuntime();
     if (!current || current.session !== (rt.session ?? null)) {
-      current = { session: rt.session ?? null, adapter: createDeletionAdapter(rt, undefined, deps.prf, deps.clock) };
+      current = { session: rt.session ?? null, adapter: createDeletionAdapter(rt, undefined, deps.prf, deps.clock, deps.recovery) };
     }
     return current.adapter;
   };

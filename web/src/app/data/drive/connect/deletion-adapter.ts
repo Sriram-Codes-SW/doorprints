@@ -253,8 +253,11 @@ export class DriveDeletionAdapterImpl implements DriveDeletionAdapter {
       this.gate?.registerGrant(result.grant.id, action, operationId, result.grant.grantedAtMs);
       return { kind: 'granted', grant: result.grant };
     }
+    if (result.kind === 'DENIED' && result.reason === 'WRONG_KEY') {
+      return { kind: 'refused', reason: 'RECOVERY_KEY_WRONG' };
+    }
     if (result.kind === 'REFUSED') {
-      return { kind: 'refused', reason: result.reason === 'WRONG_KEY' ? 'RECOVERY_KEY_WRONG' : 'AUTHORIZATION_REFUSED' };
+      return { kind: 'refused', reason: 'AUTHORIZATION_REFUSED' };
     }
     return { kind: 'refused', reason: 'AUTHORIZATION_DENIED' };
   }

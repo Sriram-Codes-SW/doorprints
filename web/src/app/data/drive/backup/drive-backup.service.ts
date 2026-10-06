@@ -637,7 +637,13 @@ export class DriveBackupService {
 
   /** Verify a recovery key against Drive's keys.json without changing anything (docs/15 §10.4a). */
   async verifyRecoveryKey(recoveryKey: RecoveryKey): Promise<boolean> {
-    const located = await this.locateKeys();
+    let located;
+    try {
+      located = await this.locateKeys();
+    } catch (e) {
+      if (e instanceof FolderWithoutKeys) return false;
+      throw e;
+    }
     if (!located) return false;
     const guard = new KeysGuard(this.p, this.trust.keys(located.rootId));
     // Skip verification if no pin yet: a read-only check must not create the first pin.
