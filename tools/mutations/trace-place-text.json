@@ -59,7 +59,7 @@
       "file": "web/src/app/shared/trace-place-text.ts",
       "find": "    if (web) notes.push(i18n.t('trace.here.onlyRecordedWeb'));",
       "replace": "    notes.push(i18n.t('trace.here.onlyRecordedWeb'));",
-      "expect": "answers the other states"
+      "expect": "writes the close headline with the tolerance"
     },
     {
       "file": "web/src/app/shared/trace-place-text.ts",
