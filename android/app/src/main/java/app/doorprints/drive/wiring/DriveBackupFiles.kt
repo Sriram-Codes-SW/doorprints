@@ -133,8 +133,7 @@ object DriveImportStaging {
         val file = File(source.path ?: return false)
         val name = file.name
         if (!name.startsWith(PREFIX) || !name.endsWith(SUFFIX)) return false
-        val parent = file.absoluteFile.parentFile ?: return false
-        if (parent.canonicalFile != dir.canonicalFile || file.canonicalFile.parentFile != dir.canonicalFile) return false
+        if (file.canonicalFile.parentFile != dir.canonicalFile) return false
         return file.delete()
     }
 }

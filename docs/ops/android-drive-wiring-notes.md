@@ -41,6 +41,25 @@ A missing lock stops the run, posts the documented notice once (`drive_lock_noti
 reaches nothing in Drive. Photos follow the controller's gate (Wi-Fi only by default). A restarted process reconnects
 quietly first; if Google needs a screen, that is a failure that waits for the person.
 
+## Fixes after the review of PR 142 (as built)
+
+| Review item | What is built |
+|---|---|
+| 3 hand-back | When Drive stops being in use (*Disconnect*, or the controller dropping to disconnected after the folder went), `DriveAssembly` calls `DriveDeps.handBack` (`CommonRepository.resetForServer`, now public) **before** the flag flips: every row is marked for upload and the pull cursors restart, so rows that went only to Drive reach the server. If it throws, Drive stays in use and the next state change tries again. A fresh process starting at "disconnected" hands nothing back (it has not seen the folder open). |
+| 4 lock pause | The pause notice is shown when a run first finds the lock gone. While `lock.json` says paused and the keyguard is still insecure (or the key store is still at fault), `DriveServices.runInBackground` ends the run at once through `DriveLockRules.standingPause`: the Drive graph is not built, the key store is not asked, nothing is posted again. Cleared by the folder opening again with a lock (`lockStore.clear()`), as before. If the lock comes back without re-enrolment the run looks again. |
+| 7 key store cost | `KeystoreDeviceIdentity` remembers READY after the first success and asks the key store again only after a use of the key failed (or after `discard`). A key waiting for an unlock, absent or invalidated is never remembered. Consequence: a key the vendor invalidates behind our back is noticed at its next use (the ECDH fails, the cache drops, the next check sees it), not at the next check. The lock check still reads the keyguard first. |
+| 8 main thread | `FolderPinProbe` reads the stored root id with `FileDriveStateStore.loadNow()` (one small file read); no `runBlocking`. |
+| 11 iOS | `p256FromScalar` wipes the `pub ‖ d` buffer after `importKey`. Compile-checked only (`:shared:compileKotlinIosSimulatorArm64`); not run on a device. |
+| 12 key store fault | A key probe that fails **while the keyguard is secure** is not a removed lock: `DeviceLockDetectors.forContext(..., onKeyFault)` calls `DriveLockStore.keyStoreFault`; Settings shows `LockNotice.KEY_LOST` and a paused run's notification says `drive_lock_key_lost` ("the phone's key store lost the key; connect again", English, hi, ta, te under review). The gate's behaviour is unchanged (the dead key is dropped, re-enrolment asked). |
+| 15 | `PhoneDeletionAuthorizer` keeps at most `MAX_ISSUED` (4) grants, oldest first, as `DeviceAuthorizationGate.MAX_GRANTS`. |
+| 16 | `AndroidDriveBackupSource.swept(...)` (used by `DriveServices.build()`) removes the temp ZIPs of an earlier process once, as the source is made. |
+| 17 | `Imports.stage` deletes the decrypted `cache/imports/drive-*.zip` as soon as the Import screen has copied it (`DriveImportStaging.discardIfStaged`: only a `file:` address of that name directly in the staging folder). A cancelled copy keeps it for the six-hour sweep. |
+| 18 | The English constants of `DriveLockNotice` are deleted; `strings.xml` is the only source. |
+| O4 | `play-services-auth` without `play-services-fido` and `play-services-auth-api-phone` (`releaseRuntimeClasspath`, `gms` lines: 24 before, 16 after). |
+| O6 | `DriveWork.reschedule` returns at start when `prefs.json` does not exist (a phone that never used Drive: no WorkManager cancel/enqueue); `FileDrivePrefs` parses its file once while the file's modification time and length are unchanged. |
+| O7 | `HouseDao.deleted()` and `VisitDao.deleted()`: the tombstones in one query each (was one query per tombstone). Same rows. |
+| O8 | `DriveLockNotice` is gone. `SoftwareOperationProver` keeps its HMAC: the kept `DeviceAuthorizationGate` (S4b-BL-135) requires a 64-hex proof bound to a key, and `ProverDeviceAuth` discarding it is the "as built" state of §5 of the review; remove it together with S4b-BL-135. |
+
 ## Decisions to confirm
 
 1. **Drive replaces the server** while in use (above).
@@ -128,3 +147,29 @@ applied by hand to the production file, the named test class run, a named test f
 | a second screen does not close the first | aSecondScreenClosesTheFirstAsCancelled |
 | no Activity answered as cancelled | withNoActivityTheConsentIsUnavailableNotRefused |
 | worker retries a failure that needs the person | aFailureThatNeedsThePersonDoesNotRetry |
+
+Fixes after the review of PR 142 (each mutation applied by hand, the named test failed, file restored):
+
+| Mutation | Test that failed |
+|---|---|
+| hand-back call dropped | aDriveOnlyHouseIsNotLostWhenTheFolderIsGone |
+| failed hand-back still disengages | aFailedHandBackKeepsDriveInUseAndTriesAgainAtTheNextChange |
+| fresh process forgets engagement (seenConnected guard dropped) | aFreshProcessStartingDisconnectedKeepsWhatWasRemembered |
+| READY not remembered | a key waiting for an unlock is probed every time, never remembered as ready |
+| failed use does not drop the remembered READY | aKeyTheKeyStoreLostWithTheLockStillThereIsItsOwnPause |
+| any status remembered (waiting for unlock too) | a key waiting for an unlock is used and never recreated |
+| standing pause check removed from the runner | aPauseThatStandsBuildsNothingAndSaysNothingAgain |
+| standing pause ignores a gone lock | aStandingPauseIsLeftAloneWhileTheLockIsStillGoneOrTheKeyStoreStillAtFault |
+| key fault never reported | a key the key store lost while the lock is there is a key fault, not only a removed lock |
+| every removal reported as key fault | a removed keyguard is never a key fault, even with the key gone with it |
+| notice ignores the key store fault | aKeyTheKeyStoreLostWithTheLockThereHasItsOwnNotice |
+| key-lost screen shows the removed-lock words | tamilKeyLost |
+| notification always says removed lock | aKeyTheKeyStoreLostWithTheLockThereHasItsOwnNotice |
+| sweep not run when the source is made | theBackupSourceSweepsEarlierLeftoversWhenItIsMade |
+| decrypted import file kept after the copy | theImportScreensCopyIsMadeAndThenTheDecryptedFileIsGone |
+| tombstones read one by one again | tombstonesAreReadInOneQueryEachNotOnePerRow |
+| prefs memo ignored | theWorkFollowsInUseAndAutomaticBackupOnce |
+| start-up schedules even when Drive was never used | aPhoneThatNeverUsedDriveSchedulesNothingAtStart |
+| pin probe blocks on a coroutine again | theProbeIsNeverBuiltOnRunBlockingBecauseItRunsOnTheMainThread |
+| deletion grants never evicted | onlyTheNewestGrantsAreKeptSoTheMapDoesNotGrowForEver |
+| staging discard ignores the folder (canonical parent check dropped) | anythingElseIsLeftAlone |
