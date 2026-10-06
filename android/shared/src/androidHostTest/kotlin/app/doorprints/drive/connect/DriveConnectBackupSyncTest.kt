@@ -253,6 +253,23 @@ class DriveConnectBackupSyncTest {
     }
 
     @Test
+    fun aPassSaysWhetherAnythingMovedSoTheCadenceCanBackOff() = runTest {
+        val key = connected()!!
+        a.local.put(houseRow("h1", "Lake View", server.clock.now(), a.kidHex), true)
+        assertTrue(a.c.syncNow().changed, "a pass that wrote")
+        b.c.connect()
+        b.c.openWithRecoveryKey(key)
+        server.clock.advance(1000)
+        assertTrue(b.c.syncNow().changed, "a pass that took a row")
+        server.clock.advance(1000)
+        assertFalse(b.c.syncNow().changed, "nothing new on either side")
+        b.local.put(houseRow("h2", "Hill Top", server.clock.now(), b.kidHex), true)
+        assertTrue(b.c.syncNow().changed, "a pass that wrote")
+        server.clock.advance(1000)
+        assertTrue(a.c.syncNow().changed, "a pass that only took the other phone's row")
+    }
+
+    @Test
     fun theShrinkGuardAsksThenAppliesOnConfirmation() = runTest {
         val key = connected()!!
         for (i in 1..12) a.local.put(houseRow("h$i", "house $i", server.clock.now(), a.kidHex), true)

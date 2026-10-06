@@ -496,7 +496,7 @@ class DriveConnectController(
             SyncInfo(SyncState.NEEDS_CONFIRMATION, clock(), result.report.skipped.map { it.reason }, housesToDelete = result.housesToDelete, liveHouses = result.liveHouses)
         is SyncPassResult.Done -> {
             val skipped = result.report.skipped.map { it.reason }
-            SyncInfo(if (skipped.isEmpty()) SyncState.SYNCED else SyncState.SKIPPED_FILES, clock(), skipped)
+            SyncInfo(if (skipped.isEmpty()) SyncState.SYNCED else SyncState.SKIPPED_FILES, clock(), skipped, changed = result.report.wrote || result.report.take.isNotEmpty())
         }
     }
 

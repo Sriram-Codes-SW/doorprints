@@ -200,6 +200,8 @@ data class SyncInfo(
     val error: DriveReason? = null,
     val housesToDelete: Int? = null,
     val liveHouses: Int? = null,
+    /** A finished pass wrote this device's file or took rows from another device's: something moved (the periodic cadence's reset). */
+    val changed: Boolean = false,
 ) {
     val needsConfirmation: Boolean get() = state == SyncState.NEEDS_CONFIRMATION
 }
