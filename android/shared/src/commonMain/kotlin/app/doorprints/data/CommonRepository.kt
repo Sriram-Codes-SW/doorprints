@@ -94,6 +94,8 @@ import app.doorprints.shared.records.RecordType
 import app.doorprints.shared.records.decode
 import app.doorprints.shared.sync.SyncOutcome
 import app.doorprints.shared.sync.SyncRules
+import app.doorprints.shared.trace.TracePoint
+import app.doorprints.shared.trace.TraceWalk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.NonCancellable
@@ -192,6 +194,25 @@ open class CommonRepository(
     override suspend fun pruneTrack(before: Long) = db.track().deleteBefore(before)
 
     override suspend fun clearTrack() = db.track().deleteAll()
+
+    // Saved walks and the walks the Map, the alert and the place check read (docs/11 5.27.6). Local only: the walk
+    // tables are in no export, backup or sync, and `localTablesChanged` does not list them.
+    private val walkStore = WalkStore(db, ::now)
+
+    override val savedWalkCount: Flow<Int> get() = walkStore.savedWalkCount()
+    override fun savedWalksOf(houseId: String): Flow<List<SavedWalkSummary>> = walkStore.savedWalksOf(houseId)
+    override suspend fun saveWalk(houseId: String, walkId: Long): SaveWalkResult = walkStore.saveWalk(houseId, walkId)
+    override suspend fun deleteTraceWalk(walkId: Long) = walkStore.deleteTraceWalk(walkId)
+    override suspend fun deleteSavedWalk(id: String) = walkStore.deleteSavedWalk(id)
+    override suspend fun deleteAllSavedWalks() = walkStore.deleteAllSavedWalks()
+    override suspend fun savedWalkPoints(id: String): List<TracePoint>? = walkStore.savedWalkPoints(id)
+    override suspend fun lastEndedWalk(liveWalkId: Long): Long? =
+        walkStore.lastEndedWalk(settings.current().walkAskedUpTo, liveWalkId)
+    override suspend fun walks(): List<TraceWalk> = walkStore.walks(now() - Repository.TRACK_KEPT_MS)
+    override suspend fun walksOtherThan(liveWalkId: Long): List<List<TracePoint>> =
+        walkStore.walksOtherThan(liveWalkId, now() - Repository.TRACK_KEPT_MS)
+    override fun walksChanged(): Flow<Unit> = walkStore.changes()
+    override suspend fun sweepWalksOfDeletedHouses() = walkStore.sweep()
 
     override fun house(id: String): Flow<HouseEntity?> = flow {
         migrateContactsToBrokers()
@@ -922,7 +943,14 @@ open class CommonRepository(
      * everything again and is pulled from 0, and the outcome says so ([SyncOutcome.remoteReset]). Throws on failure;
      * see [SyncOutcome.fromError].
      */
-    override suspend fun sync(photosAllowed: Boolean): SyncOutcome = withContext(Dispatchers.IO) {
+    override suspend fun sync(photosAllowed: Boolean): SyncOutcome =
+        try {
+            syncPass(photosAllowed)
+        } finally {
+            sweepWalksOfDeletedHouses() // sync end: a house tombstone that arrived deletes its saved walks (docs/11 5.27.6)
+        }
+
+    private suspend fun syncPass(photosAllowed: Boolean): SyncOutcome = withContext(Dispatchers.IO) {
         val s = settings.current()
         val backend = syncBackendFor(s) ?: return@withContext SyncOutcome(SyncOutcome.Kind.NOT_CONFIGURED)
         val merge = backend.mergeRule
@@ -1301,6 +1329,17 @@ open class CommonRepository(
         actions: ImportActions,
         onProgress: (done: Int, total: Int) -> Unit,
         photoBytes: suspend (entry: String) -> ByteArray?,
+    ): ImportResult =
+        try {
+            applyImportPass(actions, onProgress, photoBytes)
+        } finally {
+            sweepWalksOfDeletedHouses() // import end: an import that deletes a house takes its saved walks with it
+        }
+
+    private suspend fun applyImportPass(
+        actions: ImportActions,
+        onProgress: (done: Int, total: Int) -> Unit,
+        photoBytes: suspend (entry: String) -> ByteArray?,
     ): ImportResult = withContext(Dispatchers.IO) {
         if (actions.mode == ImportMode.COPY) return@withContext applyCopy(actions, onProgress, photoBytes)
         val total = actions.houses.size + actions.visits.size + actions.photos.size + actions.brokers.size +
@@ -1642,6 +1681,18 @@ open class CommonRepository(
      * the house).
      */
     override suspend fun undoCopyImport(
+        houses: Map<String, Long>,
+        visits: Map<String, Long>,
+        photos: Collection<String>,
+        records: Map<String, Long>,
+    ): UndoResult =
+        try {
+            undoCopyImportPass(houses, visits, photos, records)
+        } finally {
+            sweepWalksOfDeletedHouses() // CopyUndo: the copy's houses are tombstoned, so their walks go
+        }
+
+    private suspend fun undoCopyImportPass(
         houses: Map<String, Long>,
         visits: Map<String, Long>,
         photos: Collection<String>,
