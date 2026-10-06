@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | `doorprints-backup/1` — the one backup format for server, Android and web |
-| Version | 1.24 |
-| Date | 2026-10-02 |
+| Version | 1.25 |
+| Date | 2026-10-06 |
 | Author | Claude (Cowork) – Backend team |
 | Status | Pinned by story S4-00 (Sprint 4a). Changing anything here changes all three implementations at once. |
 
@@ -31,6 +31,7 @@
 | 1.22 | 2026-10-02 | Claude (Code), lead | **`drive-vectors.json`** (format `doorprints-drive-vectors/1`, new §6.2, S4b-BL-115): Drive v3's `q` strings, the requests and answers of seven exchanges, the error mapping and the backoff rule, the same for Kotlin's `HttpDriveClient` and the website's `FetchDriveClient`; not part of the backup format. |
 | 1.23 | 2026-10-02 | Claude (Code), lead | **`hpke-vectors.json` and `dpx-vectors.json`** (formats `doorprints-hpke-vectors/1` and `doorprints-dpx-vectors/1`, new §6.3, S4b-BL-125): the crypto primitives' and HPKE's known answers (official ones named by source, regression ones marked), and the parity vectors of the recovery key, the `dpx/1` envelope and a `keys.json` life. Not part of the backup format. |
 | 1.24 | 2026-10-02 | Claude (Code), lead | `dpx-vectors.json`'s `keys` regenerated after the review of S4b-BL-125: the recovery entry carries its anchor (`anchorEpoch`, `anchor`); every other vector is unchanged; checked again by the independent decoder, which now also opens the anchor. |
+| 1.25 | 2026-10-06 | Claude (Code), lead | **`trace-repeat-vectors.json`** (format `doorprints-trace-repeat-vectors/1`, status *proposed*, new §6.4, S4b-FR-13): the cases that Kotlin and the website's TypeScript must both pass for the path trace's repeat detection and alert ([11](../11-feature-parity-and-export-spec.md) 5.27.3). Not part of the backup format: walks are never in a backup (PRV-028). |
 | 1.5 | 2026-09-23 | Claude (Cowork), Docs team | **Device note under section 6 rule 6** (Android handover item 19, `android/shared/README.md` §9; it was addressed to Backend, and the Docs team, which owns `docs/**`, applied it so that it lands before the first deploy; [10](../10-sprint-log.md) §11.5 row 19). Rule 6 describes the server import. The note records where the Android device import goes further when it writes a house over a tombstone that has reached the server: it relinks the visits the purge unlinked and re-adds the photos from the backup's bytes under fresh ids, so a device import says the photos **come back**. It also records the one exception (a tombstone not yet pushed was never purged) and that the web importer (S4b-00a) follows the same rule. Nothing else in this file changed; the server's behaviour and wording are unchanged. |
 | 1.4 | 2026-09-23 | Claude (Cowork), Docs team | **New section 0, "What an import is"** (Docs team; nothing else in this file changed): the import product definition the owner approved on 2026-09-23 for Sprint 4b story S4b-00 — what an import is, the only two accepted files, what a backup can contain, what an import never contains or changes, the behaviour (with pointers to sections 6 and 7 here), and what is out of scope. Requirements [01](../01-requirements.md) FR-089..FR-097; vocabulary [12](../12-brand-and-naming.md) section G. Sections 1–9 are unchanged and remain the Backend team's. |
 | 1.3 | 2026-09-22 | Claude (Cowork) – Backend team | **Three review items closed, and the handover table brought up to date.** (1) **`checklist` is the one lenient always-present field** (sections 3.1 and 4.4). Section 4.4 said an omitted always-present field is refused, while the server's `BackupHouse` and the Android reader both read a missing checklist as `{}` — so an import could clear a house's scores in silence. The format now says what the readers do (absent or `null` → no scores), because "no scores" is a true statement about a house where a defaulted `0, 0` is not; and the server no longer does it silently: `BackupHouse` keeps the `null` (its compact-constructor default is gone), and when a written row has no checklist but the server's copy has scores, the report names the house and the number of scores cleared, in the preview too. Server test `BackupApiTest.aMissingChecklistReadsAsNoScoresAndTheReportSaysWhatItClears`. The Android reader still refuses an explicit `null` there — new ticket **S4-00/g**. (2) **One `data.json` cap: 16 MiB** (section 7, closing [10](../10-sprint-log.md) §11.3 row 7). It was 64 MiB here and in `BackupFormat`, 16 MiB in `:shared` and the web mirror, and 8 MiB effective on the server. 16 MiB is what [01](../01-requirements.md) SEC-041, [02](../02-threat-model.md) T-T8, `:shared` and the web mirror already say, so the server moved: `BackupFormat.MAX_DATA_JSON_BYTES` is 16 MiB and `app.limits.max-import-bytes` defaults to it (`AppProperties`, `application.yml`, `docker-compose.yml`), so any backup a device accepts restores to a server. New backend test `BackupParityTest` pins all six copies, reading the two client constants as source text, and also checks that the web byte golden is still an exact copy of `backup-sample.json`. (3) New ticket **S4-00/f** (AI): `GoldenSetEvalTest` writes to the shared test database without `@ResourceLock("database")`. Section 9 gains a *State* column: S4-00/a and /b are done in the working tree (Android `CanonicalSampleTest` and a grouping `BackupData.of`; the web golden regenerated and byte-identical), so the "known divergence" of section 5 is closed and S4-00/e is reworded — the client coverage it asked Docs to stop claiming now exists. New ticket **S4-00/h** (Docs) carries the cap change into 01/02/10, and S4-00/d gains the extra paths the new test reads. |
@@ -117,6 +118,7 @@ One format, three implementations, no converters:
 | Shared import vectors | [`import-vectors.json`](import-vectors.json) (section 6.1): Kotlin `ImportVectorsTest` and `BackupReaderParityTest`, web `backup-import.spec.ts` |
 | Shared Drive vectors | [`drive-vectors.json`](drive-vectors.json) (section 6.2): Kotlin `DriveVectorsTest`, web `drive-vectors.spec.ts` |
 | Encryption vectors | [`hpke-vectors.json`](hpke-vectors.json) and [`dpx-vectors.json`](dpx-vectors.json) (section 6.3): Kotlin `PrimitivesTest`, `HpkeVectorsTest`, `CryptoVectorsTest`, web `hpke-vectors.spec.ts`, `crypto-vectors.spec.ts` |
+| Path-trace repeat vectors | [`trace-repeat-vectors.json`](trace-repeat-vectors.json) (section 6.4, **proposed**): Kotlin `RepeatDetectorVectorsTest`, web `trace-repeats-vectors.spec.ts` (planned) |
 
 A backup written on a phone must import in a browser and on a server, and the other way round. **Nothing below may
 be renamed, reordered or given a new meaning on one side only.** A new field is added to all three at once, always
@@ -521,6 +523,31 @@ Not part of the backup format; the Drive encryption of [15](../15-google-drive-b
   by `CryptoVectorsTest` with `DPX_VECTORS_OUT` set, checked by an independent decoder (python `cryptography`: every
   wrap, MAC, chain link, recovery anchor, chunk and the canonical JSON), run by `CryptoVectorsTest` and `crypto-vectors.spec.ts`.
   Regenerate only for a deliberate format change, which is a new format number (§1.1).
+
+### 6.4 The path-trace repeat vectors (proposed)
+
+Not part of the backup format, and the opposite of it: a walk is location history and is **never** in a backup, a copy, an
+update file or a sync (PRV-028, [02](../02-threat-model.md) T-I30). [`trace-repeat-vectors.json`](trace-repeat-vectors.json)
+(format `doorprints-trace-repeat-vectors/1`, S4b-FR-13) pins the algorithm of
+[11](../11-feature-parity-and-export-spec.md) 5.27.3 so that the phones (`:shared`, Kotlin) and the website (TypeScript), written
+separately from that text, give the same answers. It has `constants` (a test compares each with the code's constant, so a
+drift fails), `conventions` and 31 `cases` of three kinds: `split` (a flat list of `[lat, lon, atMs]` or
+`[lat, lon, atMs, walkId]` and the walks it makes, by input index: a gap of exactly 30 minutes, the walk id, unsorted
+and repeated times, a lone point), `repeats` (walks, or a flat trace to split first, and for each walk its `repeated`
+stretches and the part it `shown`, as arc-length metres to 0.5 m: the same street twice, walked back, a junction crossing,
+a T-junction, parallel streets 100, 30 and 20 m apart, GPS jitter, an out-and-back in one walk, a second pass 10 minutes
+later, a gap that splits a walk, overlaps of 60 and 90 m, a short and a long detour, three walks, a stay, an east-west
+street at latitude 12.97, a one-point walk, an invalid latitude, an empty trace) and `alert` (the live walk's kept points
+and the other walks, and the indexes at which the alert rings: after 100 m, the cooldown, 60 m is not enough, never for
+the walk itself, a parallel street). Most cases sit on the equator so the arithmetic is done by hand; the expected values
+were produced by a throwaway reference implementation of the text (Python, not committed) and each was checked by hand
+against the geometry it names.
+
+**Status `proposed`.** The vectors were written with the specification, before any code. The first implementation must run
+every case. If one fails, either the code or the text is wrong: the text and the vector are corrected **in a documented
+change to [11](../11-feature-parity-and-export-spec.md) 5.27.3 and this file**, never by editing an expected value to make a
+test pass. When both stacks pass every case the status becomes `confirmed`, in the same change that shows both runs. The
+look setting (*Clear*, *Subtle*, *Off*) does not change detection and so appears nowhere in the file.
 
 ## 7. Limits
 

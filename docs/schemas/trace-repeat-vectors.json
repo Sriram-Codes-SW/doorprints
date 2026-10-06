@@ -1,0 +1,1954 @@
+{
+ "format": "doorprints-trace-repeat-vectors/1",
+ "status": "proposed",
+ "statusNote": "Written with the specification (docs/11 section 5.27.3), before any code. The first implementation (Kotlin and TypeScript) must run every case; if one fails, the specification or the case is corrected in a documented change to docs/11 and this file, never by editing an expected value to make a test pass. When both stacks pass every case, change status to \"confirmed\".",
+ "constants": {
+  "earthRadiusM": 6371000,
+  "densifyM": 10,
+  "toleranceM": 25,
+  "bridgeM": 30,
+  "minRunM": 80,
+  "walkGapMs": 1800000,
+  "alertMinRunM": 100,
+  "alertCooldownMs": 600000
+ },
+ "conventions": [
+  "Points are [latitude, longitude, atMs] (atMs = epoch milliseconds); a fourth number, when present, is the walk id.",
+  "Most cases sit on the equator at longitude 0 so that 1 m = 0.000008983153 degrees in both directions and the arithmetic can be done by hand; 'latitude-13-east-west-street' checks the cos(latitude) term. Coordinates have at most 8 decimals.",
+  "kind 'repeats': 'walks' are already separate walks; 'points' is one flat trace to split first. expect.repeated[i] lists walk i's repeated stretches as arc-length metres from the walk's first point, measured along the walk's own polyline, to within 0.5 m. A stretch runs from the first to the last sample of a run of near samples (a multiple of the 10 m sample spacing for the 100 m legs used here).",
+  "kind 'split': expect.walks lists, for each walk of at least two points, the indexes into 'points' of the points it keeps.",
+  "kind 'alert': 'live' is the kept points of the walk in progress, evaluated one point at a time in order; 'others' are the other walks. expect.alertAtIndexes are the indexes into 'live' at which the alert rings.",
+  "expect.shown[i] is the part of walk i's repeated stretches that walk i draws as the second-colour dashes: a repeated sample is left to a NEWER walk (later first point; the later index on a tie) when that walk is within 25 m of it and the nearest point of that walk lies in one of that walk's own repeated stretches (within 0.5 m), so two walks over one street draw one dashed line, not two out of step. A stretch of a single sample (no length) is not drawn.",
+  "The look setting ('How repeated paths look': Clear, Subtle, Off) never changes any expected value here: it only changes how a repeated stretch is drawn."
+ ],
+ "cases": [
+  {
+   "id": "same-street-two-walks",
+   "kind": "repeats",
+   "description": "The same 300 m street walked on two days, the second walk 5 m to the east: both walks are repeated along the whole street.",
+   "walks": [
+    [
+     [
+      0.0,
+      0.0,
+      0
+     ],
+     [
+      0.00089932,
+      0.0,
+      60000
+     ],
+     [
+      0.00179864,
+      0.0,
+      120000
+     ],
+     [
+      0.00269796,
+      0.0,
+      180000
+     ]
+    ],
+    [
+     [
+      0.0,
+      4.497e-05,
+      86400000
+     ],
+     [
+      0.00089932,
+      4.497e-05,
+      86460000
+     ],
+     [
+      0.00179864,
+      4.497e-05,
+      86520000
+     ],
+     [
+      0.00269796,
+      4.497e-05,
+      86580000
+     ]
+    ]
+   ],
+   "expect": {
+    "repeated": [
+     [
+      {
+       "fromM": 0.0,
+       "toM": 300.0
+      }
+     ],
+     [
+      {
+       "fromM": 0.0,
+       "toM": 300.0
+      }
+     ]
+    ],
+    "shown": [
+     [],
+     [
+      {
+       "fromM": 0.0,
+       "toM": 300.0
+      }
+     ]
+    ]
+   }
+  },
+  {
+   "id": "same-street-walked-back",
+   "kind": "repeats",
+   "description": "One street walked north, then south in another walk the next day: direction does not matter.",
+   "walks": [
+    [
+     [
+      0.0,
+      0.0,
+      0
+     ],
+     [
+      0.00089932,
+      0.0,
+      60000
+     ],
+     [
+      0.00179864,
+      0.0,
+      120000
+     ],
+     [
+      0.00269796,
+      0.0,
+      180000
+     ]
+    ],
+    [
+     [
+      0.00269796,
+      0.0,
+      86400000
+     ],
+     [
+      0.00179864,
+      0.0,
+      86460000
+     ],
+     [
+      0.00089932,
+      0.0,
+      86520000
+     ],
+     [
+      0.0,
+      0.0,
+      86580000
+     ]
+    ]
+   ],
+   "expect": {
+    "repeated": [
+     [
+      {
+       "fromM": 0.0,
+       "toM": 300.0
+      }
+     ],
+     [
+      {
+       "fromM": 0.0,
+       "toM": 300.0
+      }
+     ]
+    ],
+    "shown": [
+     [],
+     [
+      {
+       "fromM": 0.0,
+       "toM": 300.0
+      }
+     ]
+    ]
+   }
+  },
+  {
+   "id": "junction-crossing",
+   "kind": "repeats",
+   "description": "Two straight streets cross at a right angle: each walk is within 25 m of the other for only 40 m (five samples), under the 80 m minimum, so neither is a repeat.",
+   "walks": [
+    [
+     [
+      0.0,
+      -0.00179864,
+      0
+     ],
+     [
+      0.0,
+      0.0,
+      600000
+     ],
+     [
+      0.0,
+      0.00179864,
+      1200000
+     ]
+    ],
+    [
+     [
+      -0.00179864,
+      0.0,
+      86400000
+     ],
+     [
+      0.0,
+      0.0,
+      87000000
+     ],
+     [
+      0.00179864,
+      0.0,
+      87600000
+     ]
+    ]
+   ],
+   "expect": {
+    "repeated": [
+     [],
+     []
+    ],
+    "shown": [
+     [],
+     []
+    ]
+   }
+  },
+  {
+   "id": "t-junction-shared-stem",
+   "kind": "repeats",
+   "description": "Walk 0 goes up a street; walk 1 comes along a side street and turns onto the same street. The shared stretch is repeated, plus the 20 m the corridor reaches back along the side street (walk 1) and down the street (walk 0).",
+   "walks": [
+    [
+     [
+      0.0,
+      0.0,
+      0
+     ],
+     [
+      0.00089932,
+      0.0,
+      60000
+     ],
+     [
+      0.00179864,
+      0.0,
+      120000
+     ],
+     [
+      0.00269796,
+      0.0,
+      180000
+     ]
+    ],
+    [
+     [
+      0.00134898,
+      0.00179864,
+      86400000
+     ],
+     [
+      0.00134898,
+      0.0,
+      86460000
+     ],
+     [
+      0.00269796,
+      0.0,
+      86520000
+     ]
+    ]
+   ],
+   "expect": {
+    "repeated": [
+     [
+      {
+       "fromM": 130.0,
+       "toM": 300.0
+      }
+     ],
+     [
+      {
+       "fromM": 180.0,
+       "toM": 350.0
+      }
+     ]
+    ],
+    "shown": [
+     [],
+     [
+      {
+       "fromM": 180.0,
+       "toM": 350.0
+      }
+     ]
+    ]
+   }
+  },
+  {
+   "id": "parallel-100m-apart",
+   "kind": "repeats",
+   "description": "Two parallel streets 100 m apart: not the same path.",
+   "walks": [
+    [
+     [
+      0.0,
+      0.0,
+      0
+     ],
+     [
+      0.00089932,
+      0.0,
+      60000
+     ],
+     [
+      0.00179864,
+      0.0,
+      120000
+     ],
+     [
+      0.00269796,
+      0.0,
+      180000
+     ]
+    ],
+    [
+     [
+      0.0,
+      0.00089932,
+      86400000
+     ],
+     [
+      0.00089932,
+      0.00089932,
+      86460000
+     ],
+     [
+      0.00179864,
+      0.00089932,
+      86520000
+     ],
+     [
+      0.00269796,
+      0.00089932,
+      86580000
+     ]
+    ]
+   ],
+   "expect": {
+    "repeated": [
+     [],
+     []
+    ],
+    "shown": [
+     [],
+     []
+    ]
+   }
+  },
+  {
+   "id": "parallel-30m-apart",
+   "kind": "repeats",
+   "description": "Two walks 30 m apart (more than the 25 m tolerance): not repeated.",
+   "walks": [
+    [
+     [
+      0.0,
+      0.0,
+      0
+     ],
+     [
+      0.00089932,
+      0.0,
+      60000
+     ],
+     [
+      0.00179864,
+      0.0,
+      120000
+     ],
+     [
+      0.00269796,
+      0.0,
+      180000
+     ]
+    ],
+    [
+     [
+      0.0,
+      0.0002698,
+      86400000
+     ],
+     [
+      0.00089932,
+      0.0002698,
+      86460000
+     ],
+     [
+      0.00179864,
+      0.0002698,
+      86520000
+     ],
+     [
+      0.00269796,
+      0.0002698,
+      86580000
+     ]
+    ]
+   ],
+   "expect": {
+    "repeated": [
+     [],
+     []
+    ],
+    "shown": [
+     [],
+     []
+    ]
+   }
+  },
+  {
+   "id": "parallel-20m-apart",
+   "kind": "repeats",
+   "description": "Two walks 20 m apart (inside the 25 m tolerance): repeated.",
+   "walks": [
+    [
+     [
+      0.0,
+      0.0,
+      0
+     ],
+     [
+      0.00089932,
+      0.0,
+      60000
+     ],
+     [
+      0.00179864,
+      0.0,
+      120000
+     ],
+     [
+      0.00269796,
+      0.0,
+      180000
+     ]
+    ],
+    [
+     [
+      0.0,
+      0.00017986,
+      86400000
+     ],
+     [
+      0.00089932,
+      0.00017986,
+      86460000
+     ],
+     [
+      0.00179864,
+      0.00017986,
+      86520000
+     ],
+     [
+      0.00269796,
+      0.00017986,
+      86580000
+     ]
+    ]
+   ],
+   "expect": {
+    "repeated": [
+     [
+      {
+       "fromM": 0.0,
+       "toM": 300.0
+      }
+     ],
+     [
+      {
+       "fromM": 0.0,
+       "toM": 300.0
+      }
+     ]
+    ],
+    "shown": [
+     [],
+     [
+      {
+       "fromM": 0.0,
+       "toM": 300.0
+      }
+     ]
+    ]
+   }
+  },
+  {
+   "id": "gps-jitter-within-tolerance",
+   "kind": "repeats",
+   "description": "The second walk zigzags 10 m either side of the street (GPS noise inside the 50 m accuracy gate): the same path. Its own length is 305.9 m because the zigzag is longer than the street.",
+   "walks": [
+    [
+     [
+      0.0,
+      0.0,
+      0
+     ],
+     [
+      0.00089932,
+      0.0,
+      60000
+     ],
+     [
+      0.00179864,
+      0.0,
+      120000
+     ],
+     [
+      0.00269796,
+      0.0,
+      180000
+     ]
+    ],
+    [
+     [
+      0.0,
+      8.993e-05,
+      86400000
+     ],
+     [
+      0.00089932,
+      -8.993e-05,
+      86460000
+     ],
+     [
+      0.00179864,
+      8.993e-05,
+      86520000
+     ],
+     [
+      0.00269796,
+      -8.993e-05,
+      86580000
+     ]
+    ]
+   ],
+   "expect": {
+    "repeated": [
+     [
+      {
+       "fromM": 0.0,
+       "toM": 300.0
+      }
+     ],
+     [
+      {
+       "fromM": 0.0,
+       "toM": 305.9
+      }
+     ]
+    ],
+    "shown": [
+     [],
+     [
+      {
+       "fromM": 0.0,
+       "toM": 305.9
+      }
+     ]
+    ]
+   }
+  },
+  {
+   "id": "out-and-back-in-one-walk-is-not-a-repeat",
+   "kind": "repeats",
+   "description": "One walk goes 200 m up a street and comes back; the points are 5 minutes apart, so the gaps are under 30 minutes: one walk, so nothing is repeated.",
+   "points": [
+    [
+     0.0,
+     0.0,
+     0
+    ],
+    [
+     0.00089932,
+     0.0,
+     300000
+    ],
+    [
+     0.00179864,
+     0.0,
+     600000
+    ],
+    [
+     0.00089932,
+     0.0,
+     900000
+    ],
+    [
+     0.0,
+     0.0,
+     1200000
+    ]
+   ],
+   "expect": {
+    "walkCount": 1,
+    "repeated": [
+     []
+    ],
+    "shown": [
+     []
+    ]
+   }
+  },
+  {
+   "id": "second-pass-10-minutes-later-is-the-same-walk",
+   "kind": "repeats",
+   "description": "A first pass up a street, then the same street again starting 10 minutes after the last point (a jump back to the start): the gap is under 30 minutes, so it is one walk and nothing is repeated.",
+   "points": [
+    [
+     0.0,
+     0.0,
+     0
+    ],
+    [
+     0.00089932,
+     0.0,
+     60000
+    ],
+    [
+     0.00179864,
+     0.0,
+     120000
+    ],
+    [
+     0.0,
+     0.0,
+     720000
+    ],
+    [
+     0.00089932,
+     0.0,
+     780000
+    ],
+    [
+     0.00179864,
+     0.0,
+     840000
+    ]
+   ],
+   "expect": {
+    "walkCount": 1,
+    "repeated": [
+     []
+    ],
+    "shown": [
+     []
+    ]
+   }
+  },
+  {
+   "id": "gap-splits-walk-into-two",
+   "kind": "repeats",
+   "description": "The same out-and-back, but the way back starts 40 minutes after the way out ended: a gap of 30 minutes or more makes two walks, and the way back repeats the way out.",
+   "points": [
+    [
+     0.0,
+     0.0,
+     0
+    ],
+    [
+     0.00089932,
+     0.0,
+     60000
+    ],
+    [
+     0.00179864,
+     0.0,
+     120000
+    ],
+    [
+     0.00179864,
+     0.0,
+     2520000
+    ],
+    [
+     0.00089932,
+     0.0,
+     2580000
+    ],
+    [
+     0.0,
+     0.0,
+     2640000
+    ]
+   ],
+   "expect": {
+    "walkCount": 2,
+    "repeated": [
+     [
+      {
+       "fromM": 0.0,
+       "toM": 200.0
+      }
+     ],
+     [
+      {
+       "fromM": 0.0,
+       "toM": 200.0
+      }
+     ]
+    ],
+    "shown": [
+     [],
+     [
+      {
+       "fromM": 0.0,
+       "toM": 200.0
+      }
+     ]
+    ]
+   }
+  },
+  {
+   "id": "overlap-60m-is-not-a-repeat",
+   "kind": "repeats",
+   "description": "Walk 1 shares the street with walk 0 for 40 m and turns off east: walk 0 is near walk 1 for 60 m (the 40 m plus the 20 m the corridor reaches past the turn), under the 80 m minimum.",
+   "walks": [
+    [
+     [
+      0.0,
+      0.0,
+      0
+     ],
+     [
+      0.00089932,
+      0.0,
+      60000
+     ],
+     [
+      0.00179864,
+      0.0,
+      120000
+     ],
+     [
+      0.00269796,
+      0.0,
+      180000
+     ]
+    ],
+    [
+     [
+      -0.00089932,
+      0.0,
+      86400000
+     ],
+     [
+      0.00035973,
+      0.0,
+      86460000
+     ],
+     [
+      0.00035973,
+      0.00179864,
+      86520000
+     ]
+    ]
+   ],
+   "expect": {
+    "repeated": [
+     [],
+     []
+    ],
+    "shown": [
+     [],
+     []
+    ]
+   }
+  },
+  {
+   "id": "overlap-90m-is-a-repeat",
+   "kind": "repeats",
+   "description": "As the case before, but walk 1 turns off 70 m up: walk 0 is near it for 90 m, so walk 0 is repeated for [0, 90]; walk 1 is near walk 0 from 20 m before the street's start (its samples south of y=0 count within 25 m) to 20 m past its own turn: [80, 190].",
+   "walks": [
+    [
+     [
+      0.0,
+      0.0,
+      0
+     ],
+     [
+      0.00089932,
+      0.0,
+      60000
+     ],
+     [
+      0.00179864,
+      0.0,
+      120000
+     ],
+     [
+      0.00269796,
+      0.0,
+      180000
+     ]
+    ],
+    [
+     [
+      -0.00089932,
+      0.0,
+      86400000
+     ],
+     [
+      0.00062953,
+      0.0,
+      86460000
+     ],
+     [
+      0.00062953,
+      0.00179864,
+      86520000
+     ]
+    ]
+   ],
+   "expect": {
+    "repeated": [
+     [
+      {
+       "fromM": 0.0,
+       "toM": 90.0
+      }
+     ],
+     [
+      {
+       "fromM": 80.0,
+       "toM": 190.0
+      }
+     ]
+    ],
+    "shown": [
+     [],
+     [
+      {
+       "fromM": 80.0,
+       "toM": 190.0
+      }
+     ]
+    ]
+   }
+  },
+  {
+   "id": "short-detour-is-bridged",
+   "kind": "repeats",
+   "description": "Walk 1 follows the street but bulges 30 m east for a few metres (one sample beyond 25 m): the single sample off the corridor lies between near samples 20 m apart, so it is bridged (30 m rule) and walk 1 is one repeated stretch.",
+   "walks": [
+    [
+     [
+      0.0,
+      0.0,
+      0
+     ],
+     [
+      0.00359729,
+      0.0,
+      60000
+     ]
+    ],
+    [
+     [
+      0.0,
+      0.0,
+      86400000
+     ],
+     [
+      0.00179864,
+      0.0,
+      86460000
+     ],
+     [
+      0.00184361,
+      0.0002698,
+      86520000
+     ],
+     [
+      0.00188858,
+      0.0,
+      86580000
+     ],
+     [
+      0.00359729,
+      0.0,
+      86640000
+     ]
+    ]
+   ],
+   "expect": {
+    "repeated": [
+     [
+      {
+       "fromM": 0.0,
+       "toM": 400.0
+      }
+     ],
+     [
+      {
+       "fromM": 0.0,
+       "toM": 450.8
+      }
+     ]
+    ],
+    "shown": [
+     [],
+     [
+      {
+       "fromM": 0.0,
+       "toM": 450.8
+      }
+     ]
+    ]
+   }
+  },
+  {
+   "id": "long-detour-splits-the-repeat",
+   "kind": "repeats",
+   "description": "Walk 1 leaves the street by 60 m for about 60 m (seven samples off the corridor): too long to bridge, so walk 1 has two repeated stretches. Walk 0 stays within 25 m of walk 1's polyline all the way (the detour's chords pass within 25 m of its samples), so walk 0 has one.",
+   "walks": [
+    [
+     [
+      0.0,
+      0.0,
+      0
+     ],
+     [
+      0.00359729,
+      0.0,
+      60000
+     ]
+    ],
+    [
+     [
+      0.0,
+      0.0,
+      86400000
+     ],
+     [
+      0.00170871,
+      0.0,
+      86460000
+     ],
+     [
+      0.00179864,
+      0.00053959,
+      86520000
+     ],
+     [
+      0.00188858,
+      0.0,
+      86580000
+     ],
+     [
+      0.00359729,
+      0.0,
+      86640000
+     ]
+    ]
+   ],
+   "expect": {
+    "repeated": [
+     [
+      {
+       "fromM": 0.0,
+       "toM": 400.0
+      }
+     ],
+     [
+      {
+       "fromM": 0.0,
+       "toM": 210.3
+      },
+      {
+       "fromM": 291.4,
+       "toM": 501.7
+      }
+     ]
+    ],
+    "shown": [
+     [],
+     [
+      {
+       "fromM": 0.0,
+       "toM": 210.3
+      },
+      {
+       "fromM": 291.4,
+       "toM": 501.7
+      }
+     ]
+    ]
+   }
+  },
+  {
+   "id": "three-walks-one-street",
+   "kind": "repeats",
+   "description": "Walks 0 and 1 use the same street, walk 2 is elsewhere: 0 and 1 are repeated, 2 is not.",
+   "walks": [
+    [
+     [
+      0.0,
+      0.0,
+      0
+     ],
+     [
+      0.00089932,
+      0.0,
+      60000
+     ],
+     [
+      0.00179864,
+      0.0,
+      120000
+     ],
+     [
+      0.00269796,
+      0.0,
+      180000
+     ]
+    ],
+    [
+     [
+      0.0,
+      0.0,
+      86400000
+     ],
+     [
+      0.00089932,
+      0.0,
+      86460000
+     ],
+     [
+      0.00179864,
+      0.0,
+      86520000
+     ],
+     [
+      0.00269796,
+      0.0,
+      86580000
+     ]
+    ],
+    [
+     [
+      0.0,
+      0.00449661,
+      172800000
+     ],
+     [
+      0.00089932,
+      0.00449661,
+      172860000
+     ],
+     [
+      0.00179864,
+      0.00449661,
+      172920000
+     ],
+     [
+      0.00269796,
+      0.00449661,
+      172980000
+     ]
+    ]
+   ],
+   "expect": {
+    "repeated": [
+     [
+      {
+       "fromM": 0.0,
+       "toM": 300.0
+      }
+     ],
+     [
+      {
+       "fromM": 0.0,
+       "toM": 300.0
+      }
+     ],
+     []
+    ],
+    "shown": [
+     [],
+     [
+      {
+       "fromM": 0.0,
+       "toM": 300.0
+      }
+     ],
+     []
+    ]
+   }
+  },
+  {
+   "id": "a-stay-is-not-a-repeat",
+   "kind": "repeats",
+   "description": "Walk 0 is a stay: three points at the same spot, 5 minutes apart (no length at all). Walk 1 passes through the spot: neither is repeated.",
+   "walks": [
+    [
+     [
+      0.0,
+      0.0,
+      0
+     ],
+     [
+      0.0,
+      0.0,
+      300000
+     ],
+     [
+      0.0,
+      0.0,
+      600000
+     ]
+    ],
+    [
+     [
+      -0.00089932,
+      0.0,
+      86400000
+     ],
+     [
+      0.00089932,
+      0.0,
+      86460000
+     ]
+    ]
+   ],
+   "expect": {
+    "repeated": [
+     [],
+     []
+    ],
+    "shown": [
+     [],
+     []
+    ]
+   }
+  },
+  {
+   "id": "latitude-13-east-west-street",
+   "kind": "repeats",
+   "description": "An east-west street at latitude 12.9716 walked twice, the second walk 15 m to the north: the metres use cos(latitude), so a degree of longitude is about 108 km here, and the walks are repeated along the whole street.",
+   "walks": [
+    [
+     [
+      12.9716,
+      77.5946,
+      0
+     ],
+     [
+      12.9716,
+      77.59598431,
+      60000
+     ],
+     [
+      12.9716,
+      77.59736862,
+      120000
+     ]
+    ],
+    [
+     [
+      12.9717349,
+      77.5946,
+      86400000
+     ],
+     [
+      12.9717349,
+      77.59598431,
+      86460000
+     ],
+     [
+      12.9717349,
+      77.59736862,
+      86520000
+     ]
+    ]
+   ],
+   "expect": {
+    "repeated": [
+     [
+      {
+       "fromM": 0.0,
+       "toM": 300.0
+      }
+     ],
+     [
+      {
+       "fromM": 0.0,
+       "toM": 300.0
+      }
+     ]
+    ],
+    "shown": [
+     [],
+     [
+      {
+       "fromM": 0.0,
+       "toM": 300.0
+      }
+     ]
+    ]
+   }
+  },
+  {
+   "id": "a-walk-of-one-point-has-no-path",
+   "kind": "repeats",
+   "description": "A trace holds a lone point (a walk needs two): no walk, nothing to repeat.",
+   "points": [
+    [
+     0.0,
+     0.0,
+     0
+    ]
+   ],
+   "expect": {
+    "walkCount": 0,
+    "repeated": [],
+    "shown": []
+   }
+  },
+  {
+   "id": "invalid-point-is-dropped",
+   "kind": "repeats",
+   "description": "One point of a walk has a latitude of 123 degrees: it is dropped before anything else, and the other four points are one walk.",
+   "points": [
+    [
+     0.0,
+     0.0,
+     0
+    ],
+    [
+     0.00089932,
+     0.0,
+     60000
+    ],
+    [
+     123.0,
+     0.0,
+     90000
+    ],
+    [
+     0.00179864,
+     0.0,
+     120000
+    ],
+    [
+     0.00269796,
+     0.0,
+     180000
+    ]
+   ],
+   "expect": {
+    "walkCount": 1,
+    "repeated": [
+     []
+    ],
+    "shown": [
+     []
+    ]
+   }
+  },
+  {
+   "id": "empty-trace",
+   "kind": "repeats",
+   "description": "No points at all: no walks.",
+   "points": [],
+   "expect": {
+    "walkCount": 0,
+    "repeated": [],
+    "shown": []
+   }
+  },
+  {
+   "id": "split-gap-of-exactly-30-minutes-splits",
+   "kind": "split",
+   "description": "A gap of exactly 1,800,000 ms starts a new walk (the rule is `>=`).",
+   "points": [
+    [
+     0.0,
+     0.0,
+     0
+    ],
+    [
+     0.00089932,
+     0.0,
+     60000
+    ],
+    [
+     0.00179932,
+     0.0,
+     1860000
+    ],
+    [
+     0.00269932,
+     0.0,
+     1920000
+    ]
+   ],
+   "expect": {
+    "walks": [
+     [
+      0,
+      1
+     ],
+     [
+      2,
+      3
+     ]
+    ]
+   }
+  },
+  {
+   "id": "split-gap-just-under-30-minutes-joins",
+   "kind": "split",
+   "description": "A gap of 1,799,999 ms stays one walk.",
+   "points": [
+    [
+     0.0,
+     0.0,
+     0
+    ],
+    [
+     0.00089932,
+     0.0,
+     60000
+    ],
+    [
+     0.00179932,
+     0.0,
+     1859999
+    ]
+   ],
+   "expect": {
+    "walks": [
+     [
+      0,
+      1,
+      2
+     ]
+    ]
+   }
+  },
+  {
+   "id": "split-a-new-walk-id-splits-within-30-minutes",
+   "kind": "split",
+   "description": "Points may carry a fourth number, the walk id Hunt mode gives them (a stop or *Finish walk* starts a new id): a change of id splits even when the gap is short.",
+   "points": [
+    [
+     0.0,
+     0.0,
+     0,
+     1
+    ],
+    [
+     0.0009,
+     0.0,
+     60000,
+     1
+    ],
+    [
+     0.0018,
+     0.0,
+     120000,
+     2
+    ],
+    [
+     0.0027,
+     0.0,
+     180000,
+     2
+    ]
+   ],
+   "expect": {
+    "walks": [
+     [
+      0,
+      1
+     ],
+     [
+      2,
+      3
+     ]
+    ]
+   }
+  },
+  {
+   "id": "split-unsorted-and-duplicate-times",
+   "kind": "split",
+   "description": "Points are sorted by time first and a repeated time is dropped (the first stays).",
+   "points": [
+    [
+     0.0009,
+     0.0,
+     60000
+    ],
+    [
+     0.0,
+     0.0,
+     0
+    ],
+    [
+     0.0018,
+     0.0,
+     60000
+    ],
+    [
+     0.0027,
+     0.0,
+     120000
+    ]
+   ],
+   "expect": {
+    "walks": [
+     [
+      1,
+      0,
+      3
+     ]
+    ]
+   }
+  },
+  {
+   "id": "split-lone-point-between-walks-is-dropped",
+   "kind": "split",
+   "description": "A single point between two long gaps is not a walk.",
+   "points": [
+    [
+     0.0,
+     0.0,
+     0
+    ],
+    [
+     0.0009,
+     0.0,
+     60000
+    ],
+    [
+     0.0018,
+     0.0,
+     5000000
+    ],
+    [
+     0.0027,
+     0.0,
+     9000000
+    ],
+    [
+     0.0036,
+     0.0,
+     9060000
+    ]
+   ],
+   "expect": {
+    "walks": [
+     [
+      0,
+      1
+     ],
+     [
+      3,
+      4
+     ]
+    ]
+   }
+  },
+  {
+   "id": "alert-after-100m-on-a-walked-street",
+   "kind": "alert",
+   "description": "Another walk used the street yesterday. The live walk comes up the same street with a kept point every 24 m (samples every 12 m): its samples are near from 16 m before the street's start, the run reaches 108 m at index 8 (92 m up), which is the first time it is 100 m or more, and the alert rings there once, though the run goes on to the street's end.",
+   "live": [
+    [
+     -0.00089932,
+     0.0,
+     0
+    ],
+    [
+     -0.00068348,
+     0.0,
+     18000
+    ],
+    [
+     -0.00046765,
+     0.0,
+     36000
+    ],
+    [
+     -0.00025181,
+     0.0,
+     54000
+    ],
+    [
+     -3.597e-05,
+     0.0,
+     72000
+    ],
+    [
+     0.00017986,
+     0.0,
+     90000
+    ],
+    [
+     0.0003957,
+     0.0,
+     108000
+    ],
+    [
+     0.00061154,
+     0.0,
+     126000
+    ],
+    [
+     0.00082738,
+     0.0,
+     144000
+    ],
+    [
+     0.00104321,
+     0.0,
+     162000
+    ],
+    [
+     0.00125905,
+     0.0,
+     180000
+    ],
+    [
+     0.00147489,
+     0.0,
+     198000
+    ],
+    [
+     0.00169072,
+     0.0,
+     216000
+    ],
+    [
+     0.00190656,
+     0.0,
+     234000
+    ],
+    [
+     0.0021224,
+     0.0,
+     252000
+    ],
+    [
+     0.00233824,
+     0.0,
+     270000
+    ],
+    [
+     0.00255407,
+     0.0,
+     288000
+    ],
+    [
+     0.00276991,
+     0.0,
+     306000
+    ],
+    [
+     0.00298575,
+     0.0,
+     324000
+    ],
+    [
+     0.00320158,
+     0.0,
+     342000
+    ],
+    [
+     0.00341742,
+     0.0,
+     360000
+    ]
+   ],
+   "others": [
+    [
+     [
+      0.0,
+      0.0,
+      -86400000
+     ],
+     [
+      0.00359729,
+      0.0,
+      -86340000
+     ]
+    ]
+   ],
+   "expect": {
+    "alertAtIndexes": [
+     8
+    ]
+   }
+  },
+  {
+   "id": "alert-cooldown-suppresses-a-second-alert",
+   "kind": "alert",
+   "description": "The live walk alerts on one street (index 8, at 144 s), turns off east and reaches a second walked street. Its run there is 100 m or more from index 16 (600 s), which is 456 s after the first alert and inside the 10-minute cooldown, so nothing rings; index 17 (700 s, 556 s after) is still inside it; the alert rings at index 18 (800 s, 656 s after), the first point 600 s or more after the first alert while the walk is still on that street.",
+   "live": [
+    [
+     -0.00089932,
+     0.0,
+     0
+    ],
+    [
+     -0.00068348,
+     0.0,
+     18000
+    ],
+    [
+     -0.00046765,
+     0.0,
+     36000
+    ],
+    [
+     -0.00025181,
+     0.0,
+     54000
+    ],
+    [
+     -3.597e-05,
+     0.0,
+     72000
+    ],
+    [
+     0.00017986,
+     0.0,
+     90000
+    ],
+    [
+     0.0003957,
+     0.0,
+     108000
+    ],
+    [
+     0.00061154,
+     0.0,
+     126000
+    ],
+    [
+     0.00082738,
+     0.0,
+     144000
+    ],
+    [
+     0.00104321,
+     0.0,
+     162000
+    ],
+    [
+     0.00179864,
+     0.0,
+     240000
+    ],
+    [
+     0.00179864,
+     0.00089932,
+     300000
+    ],
+    [
+     0.00179864,
+     0.00179864,
+     360000
+    ],
+    [
+     0.00179864,
+     0.00269796,
+     420000
+    ],
+    [
+     0.00179864,
+     0.00359729,
+     480000
+    ],
+    [
+     0.00179864,
+     0.00449661,
+     540000
+    ],
+    [
+     0.00269796,
+     0.00449661,
+     600000
+    ],
+    [
+     0.00314763,
+     0.00449661,
+     700000
+    ],
+    [
+     0.00359729,
+     0.00449661,
+     800000
+    ]
+   ],
+   "others": [
+    [
+     [
+      0.0,
+      0.0,
+      -86400000
+     ],
+     [
+      0.00359729,
+      0.0,
+      -86340000
+     ]
+    ],
+    [
+     [
+      0.0,
+      0.00449661,
+      -86400000
+     ],
+     [
+      0.00359729,
+      0.00449661,
+      -86340000
+     ]
+    ]
+   ],
+   "expect": {
+    "alertAtIndexes": [
+     8,
+     18
+    ]
+   }
+  },
+  {
+   "id": "alert-needs-100m-not-60m",
+   "kind": "alert",
+   "description": "The live walk shares only part of a walked street and turns away: its longest near run is 80 m (from 20 m before the street's start to 40 m up it, plus the 20 m the corridor reaches along the turn), under 100 m: no alert.",
+   "live": [
+    [
+     -0.00089932,
+     0.0,
+     0
+    ],
+    [
+     -0.00071946,
+     0.0,
+     18000
+    ],
+    [
+     -0.00053959,
+     0.0,
+     36000
+    ],
+    [
+     -0.00035973,
+     0.0,
+     54000
+    ],
+    [
+     -0.00017986,
+     0.0,
+     72000
+    ],
+    [
+     0.0,
+     0.0,
+     90000
+    ],
+    [
+     0.00017986,
+     0.0,
+     108000
+    ],
+    [
+     0.00035973,
+     0.0,
+     126000
+    ],
+    [
+     0.00035973,
+     0.00053959,
+     144000
+    ],
+    [
+     0.00035973,
+     0.00107919,
+     162000
+    ],
+    [
+     0.00035973,
+     0.00161878,
+     180000
+    ]
+   ],
+   "others": [
+    [
+     [
+      0.0,
+      0.0,
+      -86400000
+     ],
+     [
+      0.00359729,
+      0.0,
+      -86340000
+     ]
+    ]
+   ],
+   "expect": {
+    "alertAtIndexes": []
+   }
+  },
+  {
+   "id": "alert-never-for-the-walk-itself",
+   "kind": "alert",
+   "description": "The live walk goes up a street and back down it, and no other walk exists: no alert (a walk is never compared with itself).",
+   "live": [
+    [
+     0.0,
+     0.0,
+     0
+    ],
+    [
+     0.00089932,
+     0.0,
+     60000
+    ],
+    [
+     0.00179864,
+     0.0,
+     120000
+    ],
+    [
+     0.00089932,
+     0.0,
+     180000
+    ],
+    [
+     0.0,
+     0.0,
+     240000
+    ]
+   ],
+   "others": [],
+   "expect": {
+    "alertAtIndexes": []
+   }
+  },
+  {
+   "id": "alert-not-for-a-parallel-street-100m-away",
+   "kind": "alert",
+   "description": "The live walk follows a street 100 m from a walked one: no alert.",
+   "live": [
+    [
+     -0.00089932,
+     0.00089932,
+     0
+    ],
+    [
+     -0.00071946,
+     0.00089932,
+     18000
+    ],
+    [
+     -0.00053959,
+     0.00089932,
+     36000
+    ],
+    [
+     -0.00035973,
+     0.00089932,
+     54000
+    ],
+    [
+     -0.00017986,
+     0.00089932,
+     72000
+    ],
+    [
+     0.0,
+     0.00089932,
+     90000
+    ],
+    [
+     0.00017986,
+     0.00089932,
+     108000
+    ],
+    [
+     0.00035973,
+     0.00089932,
+     126000
+    ],
+    [
+     0.00053959,
+     0.00089932,
+     144000
+    ],
+    [
+     0.00071946,
+     0.00089932,
+     162000
+    ],
+    [
+     0.00089932,
+     0.00089932,
+     180000
+    ],
+    [
+     0.00107919,
+     0.00089932,
+     198000
+    ],
+    [
+     0.00125905,
+     0.00089932,
+     216000
+    ],
+    [
+     0.00143891,
+     0.00089932,
+     234000
+    ],
+    [
+     0.00161878,
+     0.00089932,
+     252000
+    ]
+   ],
+   "others": [
+    [
+     [
+      0.0,
+      0.0,
+      -86400000
+     ],
+     [
+      0.00359729,
+      0.0,
+      -86340000
+     ]
+    ]
+   ],
+   "expect": {
+    "alertAtIndexes": []
+   }
+  }
+ ]
+}

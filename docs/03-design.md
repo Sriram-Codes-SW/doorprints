@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.63 |
-| Date | 2026-10-02 |
+| Version | 0.64 |
+| Date | 2026-10-06 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -72,6 +72,7 @@
 | 0.61 | 2026-10-02 | Claude (Code), lead | New **ADR-33**: Google Drive backup, sync and deletion with client-side encryption, decided by the owner on 2026-10-02 ([15](15-google-drive-backup-and-sharing.md)). (0.60 is taken by the Survey of India branch.) |
 | 0.62 | 2026-10-02 | Claude (Code), lead | **The `SyncBackend` seam** (S4b-BL-70, [15](15-google-drive-backup-and-sharing.md) §7 phase 1; branch `refactor/sync-backend-seam`): §4.2, §4.3, §10.1 and §10.2 say where sync lives now. `CommonRepository.sync` and the web's `SyncService` keep the loop and reach the remote only through `SyncBackend`; today's server calls moved unchanged into `ServerSyncBackend`; the backend supplies the merge rule (`MergeRule`, the server's `SyncRules.serverMerge` / `serverMerge`, which is `keepLocal`). No behaviour change. |
 | 0.63 | 2026-10-02 | Cursor Agent, lead | ADR-33: phones keep the 5-second L3 delay of the shared policy vectors; the website uses a tick box and no countdown (owner; [15](15-google-drive-backup-and-sharing.md) §10.4). |
+| 0.64 | 2026-10-06 | Claude (Code), lead | **The path trace, version 2: design** ([11](11-feature-parity-and-export-spec.md) 5.27.0..5.27.11, S4b-FR-13..S4b-FR-18; new **ADR-34**): §4.2.1 the new classes (`RepeatDetector`, `RepeatAlert`, `WalkCodec`, `SavedWalkDao`, the website's `TraceStore` and `TraceRecorderService`); §6.2 Room 11 (`saved_walks`, `track_points.walkId`, `MIGRATION_10_11`) and the website's IndexedDB 3; new §7.2a (the repeat check, the alert and the end of a walk); the shared Kotlin and TypeScript API and the vector-file contract. |
 | 0.58 | 2026-10-01 | Claude (Code), lead | §11.1: the Survey of India's reply of 2026-10-01 (no prior permission for its Administrative Boundary Database; no alteration or modification; acknowledgement; National Geospatial Policy 2022 guidelines) and what it means for ADR-22 ([ops/soi-boundary-data-request.md](ops/soi-boundary-data-request.md) v0.5, [10](10-sprint-log.md) S4b-BL-111). |
 | 0.57 | 2026-10-01 | Claude (Code), lead | The finishing batch ([10](10-sprint-log.md) §13.29..§13.39, on stacked branches): §6.1 `house.move_in` (V11), the photo's room, tags, caption and `meta_updated_at` (V12), `house.floor` (V13), the statuses TAKEN and NOT_CHOSEN; §8.1 the two statuses; §9 `PUT /api/photos/{id}/meta` and `/3` on `/api/import`; §11.2 the website's offline tiles; new **ADR-29** (deletions in an update file, `doorprints-backup/3`), **ADR-30** (offline tiles on the website through `addProtocol` over Cache Storage), **ADR-31** (search engines: one indexable page, `noindex` by default), **ADR-32** (accessibility rules and their automated checks); new **§17**, the smaller decisions of the batch (copies in UTC, seeded records stamped 2000-01-01, Hunt alerts `VISIBILITY_SECRET` with the app lock, the status colours, the locality lookup on the tap only, the iPhone's wake-up notification, import caps). |
 
@@ -251,6 +252,9 @@ flowchart TB
 | `AssistantScreen` | `:ui` commonMain (since CMP-5; a common `AssistantViewModel`) | Ask (answer without `[house:id]` markers, cited houses as cards) and Plan visits (stops in order with leg distance and time) |
 | `HuntEngine` | `:shared` `app.doorprints.location.HuntEngine` (since 2026-09-29) | Hunt mode's rules in common code, so the iPhone gets them from the same engine: a fix's meaning (the accuracy gate, the nearest house and the alert radius with its 30-minute repeat, the street alert through `StreetAlerts` with the platform's `StreetLookup` asked at most every 45 s or 80 m, the stay through `StayDetector` and its visit, the walking or staying fix rate, the low-battery stop). Reads `HuntData` (the part of `Repository` it needs) and a `BatteryReader`; asks the platform for the alerts and the fix rate through `HuntEffects`; keeps `HuntState`. Unit-tested with fakes in `commonTest` (`HuntEngineTest`, [06](06-test-plan.md) TC-U-92). |
 | `TrackRecorder`, `TrackDao` | `:shared` `location/HuntEngine.kt`, `data/AppDatabase.kt` (since 2026-09-29) | The path trace ([11](11-feature-parity-and-export-spec.md) 5.27): while `Settings.pathTrace` is on, the engine keeps a fix that passed the accuracy gate when it is the first, 20 m from the last kept or 5 minutes after it; `track_points` (id, at, lat, lon, accuracyM; index on `at`) is local only, pruned to 30 days at each Hunt start, cleared from Settings; the Map draws `Repository.trackPoints` through `trackGeoJson` (one line per walk, split at 30-minute gaps) into the `track` source and `track-line` layer that `prepareMapStyle` puts under the houses (Android builds the same layer in `PlatformMap.android.kt`) |
+| `RepeatDetector`, `WalkSplitter`, `RepeatAlert`, `WalkCodec`, `TraceConstants` (planned, S4b-FR-13) | `:shared` commonMain `app/doorprints/shared/trace/` (pure: no clock, no I/O, no `java.*`) | The repeat-detection contract of [11](11-feature-parity-and-export-spec.md) 5.27.3: `splitWalks`, `RepeatDetector.detect(walks)` giving each walk's `repeated` and `shown` stretches, `RepeatAlert.onPoint(live, others)` and the `WalkCodec` (delta, zigzag, varint) for saved walks. Its twin is the website's `shared/trace-repeats.ts`; both read `docs/schemas/trace-repeat-vectors.json` |
+| `SavedWalkEntity`, `SavedWalkDao`, `WalkSweeper` (planned, S4b-FR-14) | `:shared` `data/AppDatabase.kt`, `data/Entities.kt`, `data/CommonRepository.kt` | Saved walks (Room 11): save (a transaction that moves a walk out of `track_points`), list by house, delete, `sweepWalksOfDeletedHouses`, the limits; local only: neither table is in `localTablesChanged()` and no export, backup or sync file reads them |
+| `TraceStore`, `TraceRecorderService`, `trace-style.ts` (planned, S4b-FR-17) | web `data/trace-store.ts`, `core/trace-recorder.service.ts`, `shared/trace-style.ts` | The website's trace: IndexedDB stores `trace_points` and `saved_walks`; `watchPosition` while the page is visible, the same recorder rules, the repeat layer's widths, the beep and banner |
 | `IosHunt`, `IosNotifications`, `IosGeocoder` | `:ui` iosMain `IosHunt.kt`, `IosNotifications.kt` (since S4b-BL-69, [10](10-sprint-log.md) §13.14) | The iPhone around `HuntEngine`: `CLLocationManager` (best accuracy, every fix, background updates under *When in use* with the indicator shown, the `location` background mode) thinned by `HuntFixThrottle` to the rate `HuntService` gets from the fused client; the battery from `UIDevice`; Apple's `CLGeocoder` for the street alerts and the new-house form's address; the alerts worded from the Compose resources and posted as local notifications (`UNUserNotificationCenter`, the delegate set at launch; a tap is a `DeepLink` checked as MainActivity checks its intent) |
 | `OfflineMapsServices`, `OfflineTiles` | `:ui` commonMain `OfflineMaps.kt`, `OfflineMapsUi.kt`; Android `AndroidOfflineMaps` (`:app`), iPhone `IosOfflineMapsServices` over `MapLibreOfflineMaps.swift` (since S4b-FR-6, 2026-09-30) | Offline maps ([11](11-feature-parity-and-export-spec.md) 5.20): the box on screen as one of MapLibre's offline packs (`OfflineManager` / `MLNOfflineStorage`, the map's own tile store, the Liberty style from zoom 0 to 14), its id and name in the pack's metadata; the tile count and size estimated in common code before the download, at most 2,000 tiles an area (§11.2); the phone's metered state for the Wi-Fi note; the areas with their progress as one state flow for the Map's snackbar and Settings' list |
 | `HuntService` | `location/HuntService.kt` (Android; iPhone: `IosHunt`) | The platform around `HuntEngine`: the foreground service (location type) and its notification, the fused location client (15 s walking, 60 s staying), the battery reading, `ReverseGeocoder`, and the alerts as notifications with their wording. Section 7.2, 7.3, 8.2 |
@@ -536,6 +540,66 @@ migration and a new `<version>.json`, never an edit to `2.json`. Since CMP-4 P4a
 ([06](06-test-plan.md) TC-U-63) writes a version-1 file and migrates it, with Room's `MigrationTestHelper` (validated
 against `2.json`) and through the app's own builder from a `househunt.db` (R-06 closed).
 
+#### Room 11 (planned, S4b-FR-14): saved walks
+
+`MIGRATION_10_11` (the next free number at `main` `4dd94a3f`, where Room is **10**; the implementer reads
+`AppDatabase.kt` first and takes the next free one) and `11.json`, written with Room's own generator, never by hand:
+
+| Change | Detail |
+|---|---|
+| `track_points.walkId` | `INTEGER NOT NULL DEFAULT 0`, index `walkId`: the walk id of [11](11-feature-parity-and-export-spec.md) 5.27.2 (the `at` of the walk's first kept point); 0 for rows from before, split by the gap rule alone |
+| `saved_walks` (new) | `id` TEXT primary key (a random UUID); `houseId` TEXT NOT NULL; `startedAt` INTEGER NOT NULL (the first point's time, epoch ms, also the walk id); `endedAt` INTEGER NOT NULL; `savedAt` INTEGER NOT NULL; `pointCount` INTEGER NOT NULL (at most 5 000); `lengthM` INTEGER NOT NULL (rounded metres, for the lists); `points` BLOB NOT NULL (the `WalkCodec/1` bytes below) |
+| Indexes | `saved_walks(houseId)` (the house page, the 20-a-house limit), `saved_walks(startedAt)` (newest first) |
+| Foreign key | **None**, as `visits` and `photos` have none for `houseId`. A phone never hard-deletes a house (a delete is a tombstone, `houses.deleted`), so `ON DELETE CASCADE` would never fire; the walks of a tombstoned house are removed by `WalkSweeper.sweepWalksOfDeletedHouses` (a saved walk whose house is a tombstone or missing), run when the Undo snackbar of `offerDeletedHouseUndo` closes without *Undo*, at app start, at Hunt start and after a sync or an import, and a test proves each trigger. Until then the DAO queries that feed the Map, the house page and the detection join `houses` and skip tombstones, so a deleted house's walks are hidden at once and come back with *Undo* |
+| Not in | `Repository.LocalRows`, `ExportBundle`, `localTablesChanged()`, `localVersions()`, the dirty queries, any sync or backup: the tables have **no `dirty`, `updatedAt` or `deleted` column on purpose**, so nothing can be pushed |
+
+`WalkCodec/1` (`:shared`; the website keeps the same numbers as a plain array, `points: number[]`, no varint): byte 0 is
+the version `1`; then, for each point in time order, the **zigzag varints** of `dLatE6` and `dLonE6` (the change in
+`round(lat * 1e6)` and `round(lon * 1e6)` from the previous point; the first point's change is from 0) and the varint of
+`dtSeconds` (whole seconds since the previous point, 0 for the first, whose time is `startedAt`). Accuracy is not
+kept. A decoded walk has latitudes and longitudes rounded to 1e-6 degrees (about 0.11 m) and times rounded to the
+second. Delta coding is **needed**, not decoration: plain JSON of a 5 000-point walk is about 150 KB and 200 such
+walks 30 MB; the codec takes a typical point (two changes under 300 and a gap of 18 s) to 5 bytes, so 5 000 points
+are about 25 KB (at most about 40 KB) and 200 walks at most 8 MB. `WalkCodecTest`: round trip to the quantisation, a
+point exactly on a boundary of the varint (127, 128, 16 383, 16 384), negative changes, 5 000 points under 40 KB,
+and a truncated blob read as a failure, not a short walk.
+
+**The website** ([11](11-feature-parity-and-export-spec.md) 5.27.8): IndexedDB `doorprints` **version 3** (it is 2 on `main`;
+`DB_VERSION`, with a step `oldVersion < 3` in `upgradeLocalDb`, pinned in `local-db.spec.ts`): store `trace_points` (key
+`id` = `"<walkId>-<atMs>"`, index `walk`; value `{id, walk, at, lat, lon, acc}`) and store `saved_walks` (key `id`,
+index `houseId`; value `{id, houseId, startedAt, endedAt, savedAt, pointCount, lengthM, points}`). Settings (`trace.on`,
+`trace.look`, `trace.alert`, `trace.keepAwake`, `trace.toAsk`) go in the existing `settings` store. None is read by
+`LocalStore.allHouses`, `allVisits`, `allPhotos`, `allRecords` or any exporter; `db.clear()` empties them.
+
+#### The shared API and the vector file (planned, S4b-FR-13)
+
+Kotlin (`app.doorprints.shared.trace`):
+
+```kotlin
+data class TracePoint(val lat: Double, val lon: Double, val atMs: Long, val walkId: Long = 0)
+data class TraceWalk(val key: String, val points: List<TracePoint>)          // key: "t:<walkId>" or "s:<savedId>"
+data class Stretch(val fromM: Double, val toM: Double)
+data class WalkRepeats(val repeated: List<Stretch>, val shown: List<Stretch>)
+object TraceConstants { const val TOLERANCE_M = 25.0; const val DENSIFY_M = 10.0; const val BRIDGE_M = 30.0
+    const val MIN_RUN_M = 80.0; const val WALK_GAP_MS = 1_800_000L; const val ALERT_MIN_RUN_M = 100.0
+    const val ALERT_COOLDOWN_MS = 600_000L; const val MAX_WALK_POINTS = 5_000; const val MAX_DETECTION_POINTS = 20_000 }
+fun splitWalks(points: List<TracePoint>): List<List<TracePoint>>
+class RepeatDetector { fun detect(walks: List<TraceWalk>): List<WalkRepeats> }      // one result per walk, input order
+class RepeatAlert { fun onPoint(live: List<TracePoint>, others: List<TraceWalk>): Boolean; fun reset() }
+```
+
+TypeScript (`web/src/app/shared/trace-repeats.ts`): the same names in camel case (`splitWalks`, `detectRepeats`,
+`RepeatAlert`, `TRACE`, the constants object). Both implementations are written from
+[11](11-feature-parity-and-export-spec.md) 5.27.3, **not one from the other**, and the files may share no code.
+
+[`docs/schemas/trace-repeat-vectors.json`](schemas/trace-repeat-vectors.json) (format `doorprints-trace-repeat-vectors/1`,
+status **proposed** until both stacks pass every case; [schemas/README.md](schemas/README.md) section 6.4): `constants`
+(read and compared with the code's constants: a drift fails the test), `conventions`, and `cases` of three kinds,
+`split` (flat points, the expected walks by input index), `repeats` (walks or a flat trace; the expected `repeated` and
+`shown` stretches by arc length, to 0.5 m) and `alert` (the live walk's kept points and the other walks; the expected
+indexes at which the alert rings, exactly). Kotlin reads it as `DriveVectorsTest` reads `drive-vectors.json`; the
+website's spec reads the same file. The status is changed to *confirmed* only by a change that shows both test runs.
+
 ### 6.3 Derived values
 
 | Value | Formula | Implemented in |
@@ -617,6 +681,48 @@ sequenceDiagram
         end
     end
 ```
+
+### 7.2a The path trace: a point, a repeated path, the end of a walk (planned, S4b-FR-13, -14, -16)
+
+```mermaid
+sequenceDiagram
+    participant HE as HuntEngine
+    participant TR as TrackRecorder
+    participant TD as TrackDao and SavedWalkDao
+    participant RD as RepeatDetector and RepeatAlert
+    participant EF as HuntEffects
+    participant UI as Map and sheet
+    actor U as User
+    HE->>TR: accept(fix after the 50 m gate)
+    alt kept (20 m or 5 min)
+        TR-->>HE: point with the walk id
+        HE->>TD: saveTrackPoint (30-day trace)
+        opt trace on and alert on
+            HE->>RD: onPoint(live walk, other walks)
+            alt trailing run 100 m or more, not blocked, 10 min since the last
+                RD-->>HE: ring
+                HE->>EF: alertRepeat(runM)
+                EF-->>U: notification sound (phone) or beep and banner (website)
+            end
+        end
+    end
+    U->>UI: Finish walk (or Hunt mode stops)
+    UI->>HE: endWalk
+    HE->>TD: set walkToAsk if 5 points and 100 m
+    UI-->>U: Save this walk?
+    alt Save with a house
+        U->>UI: choose a house (nearest suggested)
+        UI->>TD: one transaction: encode points into saved_walks, delete them from track_points
+    else Keep for 30 days or dismiss
+        UI->>TD: nothing; the 30-day prune will remove it
+    else Delete this walk
+        UI->>TD: delete the walk's track_points
+    end
+    Note over UI,RD: The Map reads trace and saved walks, RepeatDetector.detect off the main thread, and draws the base line and the repeat overlay (the look sets the overlay's width and visibility live)
+```
+
+The repeat check and the Map's detection use the same functions with different inputs (one new point against the others,
+or every walk against the others). No location leaves the device at any step.
 
 ### 7.3 Stay detection and "Are you at a house?" prompt
 
@@ -1211,6 +1317,7 @@ sync (D-28) then reuses on-device AI (D-27).
 | ADR-31 | **Search engines see one page: the landing page (and `about.html`); every other route says `noindex`** (lead, 2026-10-01, Wave E; owner request for an SEO pass) | Prerendering every route; per-language addresses; a `Disallow` list in `robots.txt` | Every route other than the landing page shows the visitor's own local data, so it has nothing for a search result and must never be indexed: the title strategy writes `robots: noindex, nofollow` and removes the canonical link unless the route's data says `index: true` (only `''`). `robots.txt` disallows nothing, because a crawler that may not fetch a page cannot read its `noindex`. `index.html` carries a static landing block, Open Graph and Twitter cards, JSON-LD `SoftwareApplication` and an `x-default` hreflang; per-language `hreflang` needs one address per language, which the app does not have (S4b-BL-102). |
 | ADR-32 | **Accessibility rules are checked by tests on both apps, and fixed in code before release** (lead, 2026-10-01, Wave D; owner, 2026-09-30) | Manual checks only; a new accessibility-test library | The website's helper `shared/testing/a11y.ts` (roles, names, labels inside names, focus, targets) runs over 44 pages in four languages and about 55 colour pairs; Android's `A11yAudit` and `ScreensA11ySweepTest` over 34 screens, `ContrastTest` over the theme. Rules the batch fixed in code: an accessible name contains the visible label; a validation error blocks the save, says why and takes the focus (the floor); a status is never told by colour alone, and its colours meet 4.5:1 in both themes (Taken, Not chosen, the switch's unchecked thumb at 4.48:1 on its track, a control's 3:1 against the page); a notification action names what it does. Android's `enableAccessibilityChecks` is not used because it needs a new test dependency (S4b-BL-110). Screen readers, 200 % text on a device and forced colours stay manual (TC-M-41, TC-M-42). |
 | ADR-33 | **Backup, sync and deletion through each person's own Google Drive, encrypted on the device** (owner, 2026-10-02: "Let us implement it. After real world use, we can change as needed"; design [15](15-google-drive-backup-and-sharing.md), decisions §6 and §6.1). Amends D-28's `drive.appdata` ([11](11-feature-parity-and-export-spec.md)) | `drive.appdata` (hidden, not shareable, lost with the project); the full `drive` scope (restricted: a paid yearly assessment); a hosted server (ruled out, D-28); one shared sync file (no lock in Drive) or a file per record (too many calls); a passphrase (typed often, forgotten, total loss); RSA-OAEP or X25519 (platform gaps); `SyncRules.keepLocal` for the merge | **No hosted server**: each device talks to Google with client OAuth (the website's token model, PKCE on the iPhone, the browser with PKCE on Android unless the spike S4b-BL-122 shows it fails). **One scope, `drive.file`**, a visible `Doorprints` folder. **One sync file per device plus dated backups** (7 daily, 4 weekly, 6 monthly; a shrink guard; `state=complete` marks a finished backup). **Every file encrypted on the device**: random content keys under a chained folder key per epoch, wrapped by **HPKE** (RFC 9180, DHKEM(P-256, HKDF-SHA256), AES-256-GCM) for each enrolled device's non-extractable key and for a **recovery key pair** derived from a 128-bit recovery key saved at the first connect (skippable only after a warning); `keys.json` MACed with a revision counter against rollback; new devices join by QR code (HPKE PSK mode), a commit-then-reveal code, or the recovery key; revoking starts a new epoch. **Merge: last-write-wins on `updatedAt`** with ties by device id and tombstones kept for ever (`sync/1`, S4b-BL-130). **Deletion levels**: L1 a dialog; L2 and L3 also the phone's own authentication (operation-bound on Android 11+); a screen lock required on the phones; the website L1, and L2/L3 only with a PRF-sealed passkey. On the phones L3 also has the 5-second delay of the shared policy vectors; on the website the owner chose a tick box and no countdown ([15](15-google-drive-backup-and-sharing.md) §10.4). Photos on Wi-Fi only by default with a switch and a one-off. Deferred: sharing (S4b-BL-120), the authenticator app (S4b-BL-129), *Lock old backups again*, a monthly mobile-data limit. Costs: encrypted backups open only in Doorprints (the website with the recovery key included); a person without a recovery key who loses every device loses the backups; the checks inside the app cannot bind someone holding the Google account ([02](02-threat-model.md) §10, RR-25) |
+| ADR-34 | **The path trace, version 2: one shared repeat algorithm held by a vector file, saved walks as local-only rows, the website records only while visible** (owner, 2026-10-06: repeats thicker, second colour, dashed; an optional sound; save a walk to a house; "Phone only"; the website too; the person chooses how repeats look; [11](11-feature-parity-and-export-spec.md) 5.27.0..5.27.11) | Detection on a server (ruled out: location history must not leave the device); a fixed grid of 20 m cells (two readings 21 m apart in different cells are "different", 39 m apart in one cell are "the same"); matching points only, without densified samples (misses a street walked with points in other places); a SQL foreign key with `ON DELETE CASCADE` (houses are tombstoned, never hard-deleted, so it would never fire); saved walks in the backup (the owner chose phone only); a hosted web push or a background tab for the website's alert (a hidden page gets no fixes); Doorprints playing its own sound on Android (the system channel lets the person mute it); one colour and width for all (the owner wants emphasis, and the person must be able to turn it down) | **Distances on a local flat plane (`cos(latitude)`), 10 m samples, a 25 m corridor, an 80 m minimum run, a 30 m bridge, two different walks**: reasoned from the 50 m accuracy gate and the 20 m / 5 min thinning (11 5.27.2). **Written twice, from the text, and held to `trace-repeat-vectors.json`** (*proposed* until both stacks pass). **Saved walks are in their own table with no `dirty`, `updatedAt` or `deleted` column**, so no sync can pick them up; **no SQL FK**, a sweeper removes the walks of a deleted house when the delete is final. **The overlay is a second layer over the solid base line**, drawn by the newest of the walks over a stretch, so the dash is one line; *Clear* is 1.8 x the base width, *Subtle* 1.0 x, *Off* hides the layer, and the look is applied live to the style, not by rebuilding data. **The alert is a notification on its own channel** (phones) so the system mutes it; on the website a beep started by the person's tap and a banner. **Cost:** a second colour (`#E65100`) to keep apart from the markers and the base map (TC-M-25, TC-M-57), a detection pass off the main thread, and a migration (Room 11, IndexedDB 3). |
 
 ## 15. Design risks and open items
 

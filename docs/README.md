@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.113 |
+| Version | 0.114 |
 | Date | 2026-10-06 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -13,6 +13,7 @@
 | Version | Date | Author | Change |
 |---|---|---|---|
 | 0.113 | 2026-10-06 | Claude | Android Drive built (PR #142): docs/15 v0.29 (§9.10, §7.2, §5.5 both sign-in paths), 06 v0.132 (TC-U-138..146), 10 v0.150 (S4b-BL-136..139), 14 v0.90 (N19), the ops notes marked as session records, `docs/ops/manual-test-checklist.md` v0.3. |
+| 0.114 | 2026-10-06 | Claude (Code), lead | **The path trace, version 2: design only** (owner request of 2026-10-06): 11 v0.56 (5.27.0..5.27.11, twelve open questions), 01 v0.42 (FR-102..FR-107, PRV-030, PRV-031, PRV-028 amended), 02 v0.58 (T-I30, RR-31), 03 v0.64 (Room 11, IndexedDB 3, §7.2a, ADR-34), 06 v0.133 (TC-U-147..152, TC-M-57..60), 10 v0.151 (S4b-FR-13..18), 14 v0.91 (N20), `schemas/README.md` v1.25 and the new `schemas/trace-repeat-vectors.json` (*proposed*), `ops/manual-test-checklist.md` v0.4 (MT-75..MT-80). |
 | 0.112 | 2026-10-06 | Claude | The review backlog: docs/01 v0.41, 06 v0.131 (section 10.1), 07 v0.60, 14 v0.89. |
 | 0.111 | 2026-10-06 | Claude | Full-system review fixes and the manual test checklist (`docs/ops/manual-test-checklist.md`): docs/07 v0.59, docs/14 v0.88. |
 | 0.110 | 2026-10-06 | Claude | Review fixes on PR #139: docs/10 v0.149, 06 v0.130, 15 v0.27. |
