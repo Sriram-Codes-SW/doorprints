@@ -120,7 +120,7 @@ class DriveFilesTest {
 
     private val watermark = KeysWatermark(1, 1L, ByteArray(16) { 1 }, ByteArray(32) { 2 })
 
-    private fun probe(stores: DriveFileStores, dir: File) = FolderPinProbe(stores.driveState, File(dir, "trust"))
+    private fun probe(stores: DriveFileStores, dir: File) = FolderPinProbe({ stores.driveState.loadNow().rootId }, File(dir, "trust"))
 
     @Test
     fun noFolderMeansNoPin() {
@@ -170,10 +170,25 @@ class DriveFilesTest {
     @Test
     fun aStateThatCannotBeReadIsTreatedAsPinnedNotAsFree() {
         val dir = tmp.newFolder("a")
-        val failing = object : app.doorprints.drive.backup.DriveStateStore {
-            override suspend fun load(): DriveDeviceState = throw java.io.IOException("disk")
-            override suspend fun save(state: DriveDeviceState) = Unit
-        }
-        assertTrue(FolderPinProbe(failing, File(dir, "trust")).isPinned())
+        assertTrue(FolderPinProbe({ throw java.io.IOException("disk") }, File(dir, "trust")).isPinned())
+    }
+
+    @Test
+    fun theStoredRootIsReadWithoutSuspending() = runBlocking {
+        val dir = tmp.newFolder("a")
+        val stores = DriveFileStores(dir)
+        stores.driveState.save(DriveDeviceState(rootId = "root1", deviceId = "d1"))
+        assertEquals(stores.driveState.load(), stores.driveState.loadNow())
+        // A damaged file reads as "nothing stored", as load() does.
+        java.io.File(dir, "drive-state.json").writeText("{not json")
+        assertNull(stores.driveState.loadNow().rootId)
+    }
+
+    @Test
+    fun theProbeIsNeverBuiltOnRunBlockingBecauseItRunsOnTheMainThread() {
+        val source = File("src/main/java/app/doorprints/drive/wiring/DriveFiles.kt").readText()
+        val probe = source.substring(source.indexOf("class FolderPinProbe"))
+        assertFalse("FolderPinProbe must not block a thread on a coroutine", probe.contains("runBlocking"))
+        assertFalse("nor import it", source.contains("import kotlinx.coroutines.runBlocking"))
     }
 }

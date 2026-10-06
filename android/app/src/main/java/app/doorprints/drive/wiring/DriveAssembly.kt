@@ -120,7 +120,7 @@ object DriveAssembly {
     fun assemble(d: DriveDeps): DriveGraph {
         val p = DeviceKeyCryptoProvider(d.crypto)
         val stores = app.doorprints.drive.store.DriveFileStores(d.dir)
-        val pins = FolderPinProbe(stores.driveState, File(d.dir, TRUST_DIR))
+        val pins = FolderPinProbe({ stores.driveState.loadNow().rootId }, File(d.dir, TRUST_DIR))
         val identity = KeystoreDeviceIdentity(d.keyBackend, d.deviceName, DevicePlatform.ANDROID, folderPinned = pins::isPinned)
         val lockStore = FileDriveLockStore(File(d.dir, "lock.json"))
         val detector = d.lock(DeviceLockDetectors.keyUsable(identity))

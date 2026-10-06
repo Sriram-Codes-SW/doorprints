@@ -22,9 +22,7 @@ import app.doorprints.drive.connect.DrivePrefs
 import app.doorprints.drive.store.AtomicJsonFile
 import app.doorprints.drive.store.FileKeysWatermarkStore
 import app.doorprints.drive.store.folderFileName
-import app.doorprints.drive.backup.DriveStateStore
 import app.doorprints.drive.device.DriveLockStore
-import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
@@ -126,11 +124,12 @@ class FileDriveLockStore(file: File) : DriveLockStore {
  * to make a new key. A folder that was deleted and forgotten has no root id here, so it no longer pins the key.
  */
 class FolderPinProbe(
-    private val state: DriveStateStore,
+    /** The stored root id of the folder in use, read without suspending (it must never block a thread on a coroutine: this runs on the main thread). */
+    private val rootId: () -> String?,
     private val trustDir: File,
 ) {
     fun isPinned(): Boolean = try {
-        val root = runBlocking { state.load().rootId } ?: return false
+        val root = rootId() ?: return false
         pinFileOf(root)?.let { FileKeysWatermarkStore(it).load() != null } ?: false
     } catch (e: kotlinx.coroutines.CancellationException) {
         throw e
