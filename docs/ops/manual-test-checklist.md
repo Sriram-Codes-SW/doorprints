@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | The complete manual test list for Doorprints before real-system testing starts and before Android/iOS development continues: every check a person redoes on real devices, whether or not an automated suite or a review session already covered it |
-| Version | 0.5 |
+| Version | 0.6 |
 | Date | 2026-10-06 |
 | Author | Claude, senior reviewer |
 | Status | Draft |
@@ -17,6 +17,7 @@
 | 0.3 | 2026-10-06 | Claude | Section 14 follows what the branch decided after the review: the folder-gone card (*Start again* / *Disconnect*), *Delete this backup* on a row, the rows going back to the server on *Disconnect*, the approver naming the new device, the lock notice once; the not-built list (browser + PKCE sign-in, camera scan, the Android HMAC proof, the "New device enrolled" notice). |
 | 0.4 | 2026-10-06 | Claude (Code), lead | New section 15, **the path trace, version 2** (designed in [11](../11-feature-parity-and-export-spec.md) 5.27.0..5.27.11, not built yet): MT-75..MT-80 for TC-M-57..TC-M-60; run them when S4b-FR-13..S4b-FR-18 are merged. |
 | 0.5 | 2026-10-06 | Claude (Code), lead | Section 15 after the senior review of the design ([11](../11-feature-parity-and-export-spec.md) v0.57): MT-75 adds two lanes 30 m apart and the protanopia form-only check and names the new automated test; MT-77 the killed-app walk; MT-78 the Android phone-to-phone transfer (walks arrive) instead of "a new phone starts without saved walks"; MT-79 the 5-minute hidden pause with no line across it. |
+| 0.6 | 2026-10-06 | Claude (Code), lead | New **MT-81** in section 15, *Have I been here?* (the on-demand place check, [11](../11-feature-parity-and-export-spec.md) 5.27.13, S4b-FR-24, TC-M-61); summary row 15.1. |
 
 ## 1. How to use this list
 
@@ -705,6 +706,13 @@ Added 2026-10-06 with the design ([11](../11-feature-parity-and-export-spec.md) 
 - **Automated or reviewed by:** TC-U-149 screenshots in four languages and two themes, the web a11y sweep; reviewer ran it: no (planned).
 - Pass / Fail / Date: ____  by: ____
 
+#### MT-81 *Have I been here?* compares a place with your walks, on demand, and keeps nothing (TC-M-61)
+- **Area:** Android app, iPhone app, website. **Who:** owner. **Env:** E4, E5, E1.
+- **Steps:** (1) Have two walks of one street on different days and one saved walk (MT-75, MT-77). Stand on the street, Map > *Have I been here?* > *Where I am now*: the location permission is asked **now** and not earlier; *Finding your location...*; the sentence names the days, newest first, and a distance (*You walked within 12 m of here on ...*); the map shows a halo on the matched stretch and a hollow ring with a cross at the place; TalkBack or VoiceOver reads the sentence on arrival. (2) Walk 100 m away and check again: *No walk of yours passed within 25 m of here in the last 30 days or in your saved walks.* (3) Indoors, or with Precise location off: *Location not precise enough. Try again outdoors.* (4) A house you passed: *Did I walk past this house?* answers with the walks; a house you never passed: the none sentence; a house with an approximate location: *This house has no exact spot yet...*; a spot 35 m from a walk (long press on the map, or *A spot on the map* with the crosshair and *Check this spot*): *No walk of yours passed within 25 m ... but one came within 35 m*. (5) Turn *Trace my path* off: the check still reads what is stored; *Clear the path* and *Delete all saved walks*: the empty words. (6) Airplane mode: a house and a spot still answer; on the website the browser's network panel shows **no request** when the button is pressed. (7) Close the sheet and reopen the app: no result is kept and there is no list of past checks; a *Save a copy* made afterwards has no coordinate of a walk. (8) Website: from the current location only while the page is open; the denied message in the browser's site settings. (9) hi, ta, te (under review), 200 % text, both themes.
+- **Expected:** it never runs by itself; the answer is words first; *close* is never worded as *walked*; nothing is stored, logged or sent.
+- **Automated or reviewed by:** TC-U-153 (the vectors), TC-U-154 (gate, words, privacy source tests, screenshots); reviewer ran it: no (planned).
+- Pass / Fail / Date: ____  by: ____
+
 ### 15.1 Summary rows (add to §13 when the owner starts the run)
 
 | Id | Title | Who | Env | Reviewer ran it | Result |
@@ -715,3 +723,4 @@ Added 2026-10-06 with the design ([11](../11-feature-parity-and-export-spec.md) 
 | MT-78 | No walk in any copy, backup, sync or AI request | owner | all | no (planned) | |
 | MT-79 | A walk on the website: visible page only | anyone | E4/E5/E1 | no (planned) | |
 | MT-80 | hi, ta, te, large text, screen readers | owner, natives | E4/E5/E1 | no (planned) | |
+| MT-81 | Have I been here? (on-demand place check) | owner | E4/E5/E1 | no (planned) | |
