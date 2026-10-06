@@ -25,6 +25,8 @@ import app.doorprints.shared.trace.TraceWalk
 import app.doorprints.shared.trace.WalkCodec
 import app.doorprints.shared.trace.WalkSource
 import app.doorprints.shared.trace.splitWalks
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -143,7 +145,7 @@ class WalkStore(
 
     /** Every saved walk whose house is a tombstone or missing goes; not cancelled by a screen closing. */
     suspend fun sweep() {
-        withContext(NonCancellable) { runCatching { db.savedWalks().sweepOfDeletedHouses() } }
+        withContext(NonCancellable + Dispatchers.IO) { runCatching { db.savedWalks().sweepOfDeletedHouses() } }
     }
 
     private fun lengthM(points: List<TracePoint>): Int {

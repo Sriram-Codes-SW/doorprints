@@ -255,7 +255,7 @@ class WalkStoreTest {
     @Test
     fun theWalkToAskAboutIsTheNewestEndedWalkOverTheWatermarkWithFivePointsAnd100Metres() = runBlocking {
         trace(1_000, 6)                       // 5 steps of about 22 m: 111 m: qualifies
-        trace(2_000, 4)                       // too few points
+        trace(2_000, 4, step = 0.001)         // 333 m but too few points
         trace(3_000, 6, step = 0.00002)       // 6 points but about 11 m: too short
         trace(4_000, 6)                       // qualifies, newer
         trace(5_000, 8)                       // the live walk
