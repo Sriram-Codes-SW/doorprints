@@ -122,6 +122,13 @@ android {
     }
 }
 
+// The Drive wiring's tests run the real services on the same in-memory Drive as :shared's tests (S4b-BL-117/-118): two
+// files of :shared's commonTest (the fake and its faults) are compiled into this module's unit tests; the rest of that folder is not.
+android.sourceSets.getByName("test").kotlin.directories.add("../shared/src/commonTest/kotlin/app/doorprints/drive")
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+    exclude { it.file.path.contains("/shared/src/commonTest/") && it.file.name !in setOf("InMemoryFakeDrive.kt", "FakeDriveFaults.kt") }
+}
+
 // See the robolectricRuntime dependency below and the unit-test system properties after it.
 val robolectricRuntime = configurations.create("robolectricRuntime") { isTransitive = false }
 
