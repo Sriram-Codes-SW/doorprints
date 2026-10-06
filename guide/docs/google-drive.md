@@ -16,9 +16,14 @@ Android and iPhone Drive work is paused. This page describes the **website**.
 2. Under **Back up to Google Drive**, choose **Connect to Google Drive** and sign in with Google.
 3. Doorprints shows a **recovery key once**. Copy it and keep it somewhere safe. Tick **I have saved my recovery key
    in a safe place**, then continue. You can skip after a warning; without the key a new browser cannot join later.
+
+![The recovery key shown once: the key (1), the tick box to confirm it is saved (2) and Next (3). The key in the picture comes from a practice Drive and opens nothing](images/web-drive-recovery-key.png)
+
 4. **Back up now** writes an encrypted Full backup to Drive. **Import a backup** on a row hands the file to the
    *Import a backup* card on the same page; nothing is written until you confirm there.
 5. **Automatic backup** makes a backup about once a day while Doorprints is open in this browser.
+
+![The connected Google Drive card: Back up now (1) and a backup in the list with its Import a backup button (2)](images/web-drive-connected.png)
 
 ## Another browser
 
@@ -31,8 +36,9 @@ the same eight digits). A new browser can also show a QR code; the connected bro
 - **Delete older backups** (L1) does not need a passkey.
 - **Delete all backups** and **Delete everything Doorprints keeps in Google Drive** (L2/L3) need a **passkey** on this browser: the computer's own Windows Hello or Touch ID, **your phone** (the browser shows a QR code to scan), or a **security key**. If the computer has no lock or Windows Hello yet, turn one on (Windows: Settings, Accounts, Sign-in options, PIN; Mac: a login password; Android: a screen lock; iPhone: a passcode), or choose your phone when the browser asks.
 - **Last resort: the recovery key.** If a passkey was tried and this browser gave no secret value (PRF), Doorprints asks for your **recovery key** for that one deletion. It checks the key against your Drive and does not keep it. It is not offered just because Windows Hello is not set up, and never when a passkey works.
-  **passkey** on this browser (fingerprint, face or screen lock). Without one, Doorprints asks you to use a phone.
 - There is a confirmation tick box. The website does not wait a countdown.
+
+![The deletion levels: Delete older backups (1), Delete all backups (2) and Delete everything Doorprints keeps in Google Drive (3)](images/web-drive-delete.png)
 
 ## Privacy
 

@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.108 |
+| Version | 0.109 |
 | Date | 2026-10-06 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -12,6 +12,7 @@
 
 | Version | Date | Author | Change |
 |---|---|---|---|
+| 0.109 | 2026-10-06 | Claude | The Hindi, Tamil and Telugu Drive backups table fixed; connected Drive pictures: docs/10 v0.148, docs/06 v0.129. |
 | 0.108 | 2026-10-06 | Claude | Guide pictures in hi, ta, te: docs/10 v0.147. |
 | 0.107 | 2026-10-06 | Claude | The recovery key as a last-resort factor, the wider passkey and the guide page *Phone or computer*: docs/06 v0.128, 10 v0.146, 14 v0.87, 15 v0.25. |
 | 0.106 | 2026-10-06 | Claude | The final review's nits: docs/10 v0.145, docs/06 v0.127. |

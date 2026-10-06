@@ -34,7 +34,7 @@ const { chromium } = require(path.join(__dirname, '..', 'live-ui', 'node_modules
 
 const ROOT = path.resolve(process.argv[2] || path.join(__dirname, '..', '..', 'web', 'dist', 'web', 'browser'));
 const OUT = path.resolve(process.argv[3] || path.join(__dirname, 'out'));
-const ONLY = process.argv.slice(4);
+const ONLY = [...(process.env.SHOTS || '').split(',').filter(Boolean), ...process.argv.slice(4)]; // SHOTS=name,name picks pictures
 // LANGS=en,hi,ta,te (default en): one set of pictures per language, named <name>.png for English and <name>-<lang>.png otherwise.
 const LANGS = (process.env.LANGS || 'en').split(',');
 const I18N_DIR = path.join(__dirname, '..', '..', 'web', 'src', 'app', 'i18n');
@@ -48,6 +48,20 @@ function text(lang, key) {
   return m[1].replace(/\\'/g, "'");
 }
 const SAMPLE_BACKUP = path.join(__dirname, '..', '..', 'docs', 'schemas', 'backup-sample.json');
+const { execFileSync } = require('child_process');
+const WEB = path.join(__dirname, '..', '..', 'web');
+
+/** The page-side stand-ins for a connected Drive (a fake Drive behind fetch, a stub for Google's sign-in), bundled once. */
+let fakeGoogle = null;
+function fakeGoogleBundle() {
+  if (fakeGoogle === null) {
+    const out = path.join(OUT, 'fake-google.js');
+    execFileSync(path.join(WEB, 'node_modules', '.bin', 'esbuild'), [path.join(__dirname, 'fake-google', 'entry.ts'), '--bundle', '--format=iife', '--platform=browser', `--outfile=${out}`, '--log-level=error'], { stdio: 'inherit' });
+    fakeGoogle = fs.readFileSync(out, 'utf8');
+  }
+  return fakeGoogle;
+}
+
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.png': 'image/png', '.webmanifest': 'application/manifest+json' };
 const CONFIG_WITH_CLIENT_ID = "window.__DOORPRINTS__ = { googleClientId: 'screenshot-only.invalid', googleRedirectUri: '' };";
 
@@ -99,7 +113,64 @@ const shots = [
     top: (page, t) => page.getByRole('heading', { name: t('driveConnect.heading') }),
     marks: [(page, t) => page.getByRole('button', { name: t('driveConnect.connect') })],
   },
+  // The connected Google Drive card, with the repository's fake Drive behind it (fake-google/entry.ts): no account, nothing leaves the machine.
+  {
+    name: 'web-drive-recovery-key',
+    route: '/data',
+    drive: true,
+    viewportHeight: 3300,
+    async stage(page, t) {
+      await page.getByRole('button', { name: t('driveConnect.connect') }).click();
+      await page.getByRole('heading', { name: t('driveConnect.firstConnect') }).waitFor();
+    },
+    top: (page, t) => page.getByRole('heading', { name: t('driveConnect.firstConnect') }),
+    // The key (shown once) (1), the tick box (2) and Next (3).
+    marks: [
+      { find: (page) => page.locator('.recovery-key-box code'), badge: 'top-right' },
+      (page, t) => page.getByText(t('driveConnect.confirmSavedRecoveryKey'), { exact: true }),
+      { find: (page, t) => page.getByRole('button', { name: t('common.next'), exact: true }), badge: 'top-left' },
+    ],
+  },
+  {
+    name: 'web-drive-connected',
+    route: '/data',
+    drive: true,
+    viewportHeight: 3300,
+    async stage(page, t) {
+      await connectDrive(page, t);
+      await page.getByRole('button', { name: t('driveBackups.backUpNow') }).click();
+      await page.locator('table button', { hasText: t('driveBackups.import') }).first().waitFor();
+    },
+    top: (page, t) => page.getByRole('heading', { name: t('driveConnect.heading') }),
+    // Back up now (1) and a backup's Import a backup button (2).
+    marks: [(page, t) => page.getByRole('button', { name: t('driveBackups.backUpNow') }), (page, t) => page.locator('table button', { hasText: t('driveBackups.import') }).first()],
+  },
+  {
+    name: 'web-drive-delete',
+    route: '/data',
+    drive: true,
+    viewportHeight: 3300, // the card sits far down the page, which scrolls inside the viewport
+    async stage(page, t) {
+      await connectDrive(page, t);
+      await page.getByRole('heading', { name: t('driveDelete.heading') }).waitFor();
+    },
+    top: (page, t) => page.getByRole('heading', { name: t('driveDelete.heading') }),
+    // The three levels: older backups (1), all backups (2) and everything (3).
+    marks: [
+      { find: (page, t) => page.getByRole('button', { name: t('driveDelete.olderBackups'), exact: true }), badge: 'left' },
+      { find: (page, t) => page.getByRole('button', { name: t('driveDelete.allBackups'), exact: true }), badge: 'top-right' },
+      { find: (page, t) => page.getByRole('button', { name: t('driveDelete.everything'), exact: true }), badge: 'left' },
+    ],
+  },
 ];
+
+/** Connects the fake Drive through the card: Connect, the recovery key ticked, Next. */
+async function connectDrive(page, t) {
+  await page.getByRole('button', { name: t('driveConnect.connect') }).click();
+  await page.getByText(t('driveConnect.confirmSavedRecoveryKey'), { exact: true }).click();
+  await page.getByRole('button', { name: t('common.next'), exact: true }).click();
+  await page.getByText(t('driveConnect.ready'), { exact: true }).waitFor();
+}
 
 fs.mkdirSync(OUT, { recursive: true });
 // The files the server may send are listed once, from the built site's own tree; a request is only a key into that
@@ -140,8 +211,12 @@ const server = http
       const suffix = lang === 'en' ? '' : `-${lang}`;
       for (const shot of shots) {
         if (ONLY.length && !ONLY.includes(shot.name)) continue;
-        configJs = shot.config || null;
+        configJs = shot.config || (shot.drive ? CONFIG_WITH_CLIENT_ID : null);
         const page = await browser.newPage({ viewport: { width: 1280, height: shot.viewportHeight || 900 } });
+        if (shot.drive) {
+          await page.addInitScript(fakeGoogleBundle());
+          await page.route('https://accounts.google.com/gsi/client', (route) => route.fulfill({ status: 200, contentType: 'text/javascript', body: '/* stand-in: fake-google/entry.ts defines google.accounts */' }));
+        }
         await page.addInitScript(([key, value]) => localStorage.setItem(key, value), [LANG_KEY, lang]);
         await page.goto(`http://localhost:${port}${shot.route}`, { waitUntil: 'networkidle' });
         await shot.stage(page, t);
@@ -155,7 +230,7 @@ const server = http
         const first = await shot.top(page, t).boundingBox();
         const last = marks[marks.length - 1];
         const clip = { x: 296, y: Math.max(0, Math.round(first.y - 14)), width: 688, height: Math.round(last.y + last.height - first.y + (shot.bottom ?? 42)) };
-        await page.screenshot({ path: path.join(OUT, `${shot.name}${suffix}.raw.png`), clip });
+        await page.screenshot({ path: path.join(OUT, `${shot.name}${suffix}.raw.png`), clip, fullPage: true });
         fs.writeFileSync(path.join(OUT, `${shot.name}${suffix}.json`), JSON.stringify({ clip, marks }));
         await page.close();
       }

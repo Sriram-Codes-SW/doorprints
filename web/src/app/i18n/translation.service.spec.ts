@@ -177,6 +177,31 @@ describe('TranslationService', () => {
     });
   });
 
+  describe('dateOnly() and timeOnly() (no Angular locale data: the Drive backups table used the date pipe, which throws for hi, ta and te)', () => {
+    const at = Date.UTC(2026, 9, 1, 10, 0, 0);
+
+    it('are dashes for nothing', () => {
+      const service = serviceIn('en');
+      expect(service.dateOnly(null)).toBe('–');
+      expect(service.timeOnly(undefined)).toBe('–');
+      expect(service.dateOnly(Number.NaN)).toBe('–');
+    });
+
+    for (const lang of ['en', 'hi', 'ta', 'te'] as const) {
+      it(`${lang}: a date and a time that are the Intl text of that language`, () => {
+        const service = serviceIn(lang);
+        const locale = service.locale();
+        expect(service.dateOnly(at)).toBe(new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(at)));
+        expect(service.timeOnly(at)).toBe(new Intl.DateTimeFormat(locale, { timeStyle: 'short' }).format(new Date(at)));
+        expect(service.dateOnly(at)).not.toBe('–');
+      });
+    }
+
+    it('differ between English and Hindi', () => {
+      expect(serviceIn('hi').dateOnly(at)).not.toBe(serviceIn('en').dateOnly(at));
+    });
+  });
+
   describe('dateTime() and duration()', () => {
     it('returns an en dash for missing or invalid dates', () => {
       const service = serviceIn('en');
