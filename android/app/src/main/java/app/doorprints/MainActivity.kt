@@ -18,10 +18,15 @@
 
 package app.doorprints
 
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import app.doorprints.drive.wiring.ActivityHooks
+import app.doorprints.drive.wiring.DeferredActivityLauncher
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import app.doorprints.data.ConnectLink
@@ -39,6 +44,23 @@ import java.util.UUID
 class MainActivity : ComponentActivity() {
 
     private val deepLinks = MutableStateFlow<DeepLink?>(null)
+
+    /**
+     * Google Drive's two screens for a result (docs/15 §5.5, §10.2): Google's consent screen and, on Android 8 to 9, the
+     * keyguard's confirm screen. Registered here, before the Activity starts, and answered to the process's one launcher
+     * ([ActivityProvider.results]), which a new Activity after a rotation reaches as well.
+     */
+    private val driveConsent = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
+        activities.results.deliver(it.resultCode, it.data)
+    }
+    private val driveConfirm = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        activities.results.deliver(it.resultCode, it.data)
+    }
+    private val driveStarter = object : DeferredActivityLauncher.Starter {
+        override fun start(consent: PendingIntent) = driveConsent.launch(IntentSenderRequest.Builder(consent).build())
+        override fun start(intent: Intent) = driveConfirm.launch(intent)
+    }
+    private val activities get() = (applicationContext as DoorprintsApp).container.activities
 
     override fun attachBaseContext(newBase: Context) {
         super.attachBaseContext(AppLocale.wrap(newBase))
@@ -68,6 +90,22 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        activities.register(this, ActivityHooks(driveStarter) { deepLinks.value = it })
+    }
+
+    override fun onStop() {
+        activities.unregister(this)
+        super.onStop()
+    }
+
+    override fun onDestroy() {
+        // Finished for good (not a rotation): a screen still waiting for its answer is closed as cancelled.
+        if (isFinishing) activities.results.cancelPending()
+        super.onDestroy()
     }
 
     override fun onNewIntent(intent: Intent) {
