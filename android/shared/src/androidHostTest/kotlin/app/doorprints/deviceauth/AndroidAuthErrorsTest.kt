@@ -30,7 +30,7 @@ class AndroidAuthErrorsTest {
         assertEquals(AuthResult.CANCELLED, m.map(BiometricPrompt.BIOMETRIC_ERROR_USER_CANCELED))
         assertEquals(AuthResult.CANCELLED, m.map(BiometricPrompt.BIOMETRIC_ERROR_CANCELED))
         assertEquals(AuthResult.CANCELLED, m.map(AndroidAuthErrors.ERROR_NEGATIVE_BUTTON))
-        assertEquals(AuthResult.CANCELLED, m.map(BiometricPrompt.BIOMETRIC_ERROR_TIMEOUT))
+        assertEquals(AuthResult.TIMED_OUT, m.map(BiometricPrompt.BIOMETRIC_ERROR_TIMEOUT))
         assertEquals(AuthResult.LOCKED_OUT, m.map(BiometricPrompt.BIOMETRIC_ERROR_LOCKOUT))
         assertEquals(AuthResult.LOCKED_OUT, m.map(BiometricPrompt.BIOMETRIC_ERROR_LOCKOUT_PERMANENT))
         assertEquals(AuthResult.LOCK_NOT_SET, m.map(BiometricPrompt.BIOMETRIC_ERROR_NO_DEVICE_CREDENTIAL))

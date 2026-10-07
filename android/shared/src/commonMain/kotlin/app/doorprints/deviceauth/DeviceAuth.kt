@@ -22,8 +22,15 @@ package app.doorprints.deviceauth
 enum class AuthResult {
     SUCCESS,
 
-    /** The person dismissed the prompt, or it timed out. */
+    /** The person dismissed the prompt. */
     CANCELLED,
+
+    /**
+     * The prompt ran out of time with no answer (Android's `BIOMETRIC_ERROR_TIMEOUT`). Told apart from [CANCELLED] so the
+     * screen can say "timed out" and not "cancelled" (S4b-BL-140). The iPhone's `LAContext` and the website's passkey
+     * prompt do not report a timeout apart from a cancel, so they never return this.
+     */
+    TIMED_OUT,
 
     /** The phone has no screen lock. */
     LOCK_NOT_SET,

@@ -48,6 +48,8 @@ class IosDeviceAuth : DeviceAuth {
                 val result = if (passed) {
                     AuthResult.SUCCESS
                 } else {
+                    // LocalAuthentication has no timeout error: a prompt left alone is not ended by the system, and
+                    // LAErrorSystemCancel (another app in front, the phone locked) is a cancel, so TIMED_OUT is never returned here (S4b-BL-140).
                     when (error?.code) {
                         LAErrorUserCancel, LAErrorSystemCancel, LAErrorAppCancel -> AuthResult.CANCELLED
                         LAErrorBiometryLockout -> AuthResult.LOCKED_OUT

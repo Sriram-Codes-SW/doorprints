@@ -1354,6 +1354,7 @@
     <string name="drive_enrol_approve">Approve this device</string>
     <string name="drive_enrol_scan">Scan</string>
     <string name="drive_enrol_camera_missing">Could not open the camera. Paste the code instead.</string>
+    <string name="drive_enrol_camera_denied">Camera access is off for Doorprints. Allow the camera in Settings, or paste the code instead.</string>
     <string name="drive_enrol_qr_description">QR code for enrolling a device</string>
     <string name="drive_enrol_done">Approved. Show this reply to the new device.</string>
     <string name="drive_sync_offline">Offline. Google Drive syncs again when this phone is online.</string>
@@ -1386,6 +1387,7 @@
     <string name="drive_delete_reason_nothing_pending">No deletion is waiting to be finished.</string>
     <string name="drive_delete_reason_no_device_lock">This phone has no screen lock. Set one in the phone's settings; until then deleting stays off and Google Drive sync is paused.</string>
     <string name="drive_delete_reason_auth_cancelled">The device check was cancelled. Nothing was deleted.</string>
+    <string name="drive_delete_reason_auth_timed_out">The device check timed out. Nothing was deleted. Try again.</string>
     <string name="drive_delete_reason_auth_failed">The device check did not match. Try again.</string>
     <string name="drive_delete_reason_auth_lock_not_set">Set a screen lock on this phone first, then try again.</string>
     <string name="drive_delete_reason_auth_not_available">The device check is not available on this phone.</string>

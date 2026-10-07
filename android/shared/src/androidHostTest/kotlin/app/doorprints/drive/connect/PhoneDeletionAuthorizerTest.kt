@@ -261,11 +261,12 @@ class PhoneDeletionAuthorizerTest {
 
     @Test
     fun cancelledDeniedAndNoLockAreThreeDifferentRefusals() = runTest {
-        val seen = listOf(AuthResult.CANCELLED, AuthResult.LOCKED_OUT, AuthResult.LOCK_NOT_SET, AuthResult.NOT_AVAILABLE, AuthResult.FAILED).map { r ->
+        val seen = listOf(AuthResult.CANCELLED, AuthResult.LOCKED_OUT, AuthResult.LOCK_NOT_SET, AuthResult.NOT_AVAILABLE, AuthResult.FAILED, AuthResult.TIMED_OUT).map { r ->
             auth.next = r
             (authorizer.authorize(PolicyAction.DELETE_ALL_BACKUPS, ctx, "op-1", "r") as DeleteAuthorization.Refused).reason
         }
-        assertEquals(5, seen.toSet().size)
+        assertEquals(6, seen.toSet().size)
+        assertEquals(DriveReason.AUTH_TIMED_OUT, seen.last())
         assertEquals(listOf(DriveReason.AUTH_CANCELLED, DriveReason.AUTH_LOCKED_OUT, DriveReason.AUTH_LOCK_NOT_SET), seen.take(3))
         auth.next = AuthResult.SUCCESS
         assertNull(auth.takeProof(), "a refusal leaves no proof behind")

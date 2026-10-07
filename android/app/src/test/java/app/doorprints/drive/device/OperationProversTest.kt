@@ -113,6 +113,7 @@ class SoftwareOperationProverTest {
     @Test fun `each platform answer is its own outcome`() {
         val expected = mapOf(
             AuthResult.CANCELLED to ProofOutcome.Cancelled,
+            AuthResult.TIMED_OUT to ProofOutcome.TimedOut,
             AuthResult.LOCKED_OUT to ProofOutcome.Denied,
             AuthResult.LOCK_NOT_SET to ProofOutcome.NoLock,
             AuthResult.NOT_AVAILABLE to ProofOutcome.Unavailable,

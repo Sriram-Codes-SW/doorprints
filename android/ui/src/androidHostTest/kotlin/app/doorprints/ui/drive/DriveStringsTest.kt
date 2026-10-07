@@ -138,6 +138,17 @@ class DriveStringsTest {
         }
     }
 
+    @Test fun aTimedOutDeviceCheckIsToldApartFromACancelInEveryLanguage() {
+        assertEquals("driveDelete.reason.AUTH_TIMED_OUT", DriveReason.AUTH_TIMED_OUT.key)
+        for (lang in languages.keys) {
+            val res = resources(lang)
+            val cancelled = res.getValue(driveResName(DriveReason.AUTH_CANCELLED.key))
+            val timedOut = res.getValue(driveResName(DriveReason.AUTH_TIMED_OUT.key))
+            assertTrue(timedOut.isNotBlank() && timedOut != cancelled, "AUTH_TIMED_OUT reads like AUTH_CANCELLED in $lang")
+        }
+        assertTrue("timed out" in resources("en").getValue("drive_delete_reason_auth_timed_out"))
+    }
+
     @Test fun theBrandWordsAreExact() {
         val en = resources("en")
         assertEquals("Import a backup", en["drive_connect_import_from_drive"])

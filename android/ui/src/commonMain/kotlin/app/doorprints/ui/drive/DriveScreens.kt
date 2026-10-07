@@ -82,6 +82,7 @@ import app.doorprints.ui.res.Res
 import app.doorprints.ui.res.common_cancel
 import app.doorprints.ui.res.common_delete
 import app.doorprints.ui.res.drive_connect_failed
+import app.doorprints.ui.res.perm_open_settings
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.StringResource
@@ -109,6 +110,8 @@ class DriveHost(
     val importError: DriveReason? = null,
     /** Copies a secret to the clipboard marked sensitive (Android 13+: `EXTRA_IS_SENSITIVE`). Null: a plain copy. */
     val clipboard: ClipboardSeam? = null,
+    /** Opens this app's page in the system Settings (the refused camera's button, S4b-BL-141). Null: no button. */
+    val onOpenAppSettings: (() -> Unit)? = null,
 )
 
 /** The host's sensitive-copy seam, or a plain copy through Compose's clipboard where the app gave none. */
@@ -152,8 +155,8 @@ fun DriveSettingsContent(ui: DriveUiState, holder: DriveHolder, scanner: QrScann
             DriveCard.DISCONNECTED -> DisconnectedCard(ui, holder)
             DriveCard.CONNECTING -> LiveMessage { Text(t("driveConnect.connecting")) }
             DriveCard.RECOVERY_KEY -> RecoveryKeyCard(ui, holder, clipboard)
-            DriveCard.JOIN -> JoinCard(ui, holder, scanner, clipboard, revoked = false)
-            DriveCard.REVOKED -> JoinCard(ui, holder, scanner, clipboard, revoked = true)
+            DriveCard.JOIN -> JoinCard(ui, holder, scanner, host, clipboard, revoked = false)
+            DriveCard.REVOKED -> JoinCard(ui, holder, scanner, host, clipboard, revoked = true)
             DriveCard.READY -> ReadyCard(ui, holder, scanner, host, clipboard)
             DriveCard.ERROR -> ErrorBox(ui.error, ui, holder)
             DriveCard.FOLDER_GONE -> FolderGoneCard(ui, holder)
@@ -302,7 +305,7 @@ private fun RecoveryKeyCard(ui: DriveUiState, holder: DriveHolder, clipboard: Cl
 }
 
 @Composable
-private fun JoinCard(ui: DriveUiState, holder: DriveHolder, scanner: QrScanner, clipboard: ClipboardSeam, revoked: Boolean) {
+private fun JoinCard(ui: DriveUiState, holder: DriveHolder, scanner: QrScanner, host: DriveHost, clipboard: ClipboardSeam, revoked: Boolean) {
     // The typed key lives only here, and is cleared the moment it is sent (the holder never keeps it).
     var typed by remember { mutableStateOf("") }
     if (revoked) {
@@ -336,7 +339,7 @@ private fun JoinCard(ui: DriveUiState, holder: DriveHolder, scanner: QrScanner, 
     )
     if (!revoked) {
         Text(t("driveJoin.lostKeyMessage"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-        EnrolCard(ui, holder, scanner, clipboard, newDevice = true)
+        EnrolCard(ui, holder, scanner, host, clipboard, newDevice = true)
     }
     val disconnectLabel = t("driveJoin.disconnectAriaLabel")
     TextButton(
@@ -348,7 +351,7 @@ private fun JoinCard(ui: DriveUiState, holder: DriveHolder, scanner: QrScanner, 
 // ---- Enrolment ----------------------------------------------------------------------------------------------------------------------
 
 @Composable
-private fun EnrolCard(ui: DriveUiState, holder: DriveHolder, scanner: QrScanner, clipboard: ClipboardSeam, newDevice: Boolean) {
+private fun EnrolCard(ui: DriveUiState, holder: DriveHolder, scanner: QrScanner, host: DriveHost, clipboard: ClipboardSeam, newDevice: Boolean) {
     val scope = rememberCoroutineScope()
     var pasted by remember { mutableStateOf("") }
     var copied by remember { mutableStateOf(false) }
@@ -366,7 +369,7 @@ private fun EnrolCard(ui: DriveUiState, holder: DriveHolder, scanner: QrScanner,
             QrCodeView(e.offer.qrText, t("driveEnrol.qrDescription"))
             CodeLine(e.offer.code)
             DriveButton(if (copied) t("driveEnrol.copied") else t("driveEnrol.copyCode"), { copied = copyToClipboard(clipboard, e.offer.qrText) })
-            ScanOrPaste(t("driveEnrol.pasteReply"), pasted, { pasted = it }, scanner, e.cameraMissing, scope, holder, ui.busy) { text ->
+            ScanOrPaste(t("driveEnrol.pasteReply"), pasted, { pasted = it }, scanner, e.cameraMissing, e.cameraDenied, host, scope, holder, ui.busy) { text ->
                 holder.submitReply(text)
             }
             ErrorLine(e.error)
@@ -375,7 +378,7 @@ private fun EnrolCard(ui: DriveUiState, holder: DriveHolder, scanner: QrScanner,
         }
         is EnrolUi.ApproverInput -> {
             Text(t("driveEnrol.approveHelp"))
-            ScanOrPaste(t("driveEnrol.pasteOffer"), pasted, { pasted = it }, scanner, e.cameraMissing, scope, holder, ui.busy) { text ->
+            ScanOrPaste(t("driveEnrol.pasteOffer"), pasted, { pasted = it }, scanner, e.cameraMissing, e.cameraDenied, host, scope, holder, ui.busy) { text ->
                 holder.submitOffer(text)
             }
             ErrorLine(e.error)
@@ -436,6 +439,8 @@ private fun ScanOrPaste(
     onValue: (String) -> Unit,
     scanner: QrScanner,
     cameraMissing: Boolean,
+    cameraDenied: Boolean,
+    host: DriveHost,
     scope: kotlinx.coroutines.CoroutineScope,
     holder: DriveHolder,
     busy: Boolean,
@@ -447,12 +452,18 @@ private fun ScanOrPaste(
                 when (val r = scanner.scan()) {
                     is QrScan.Scanned -> onText(r.text)
                     QrScan.NoCamera -> holder.scannerMissing()
+                    QrScan.Denied -> holder.scannerDenied()
                     QrScan.Cancelled -> Unit
                 }
             }
         }, enabled = !busy)
     }
-    LiveMessage { if (cameraMissing) Text(t("driveEnrol.cameraMissing"), color = MaterialTheme.colorScheme.error) }
+    LiveMessage {
+        if (cameraMissing) Text(t("driveEnrol.cameraMissing"), color = MaterialTheme.colorScheme.error)
+        if (cameraDenied) Text(t("driveEnrol.cameraDenied"), color = MaterialTheme.colorScheme.error)
+    }
+    val openSettings = host.onOpenAppSettings
+    if (cameraDenied && openSettings != null) DriveButton(stringResource(Res.string.perm_open_settings), openSettings)
     OutlinedTextField(
         value = value, onValueChange = onValue, label = { Text(label) }, enabled = !busy, minLines = 2, maxLines = 4,
         textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
@@ -472,7 +483,7 @@ private fun ReadyCard(ui: DriveUiState, holder: DriveHolder, scanner: QrScanner,
     HorizontalDivider()
     DevicesCard(ui, holder)
     HorizontalDivider()
-    EnrolCard(ui, holder, scanner, clipboard, newDevice = false)
+    EnrolCard(ui, holder, scanner, host, clipboard, newDevice = false)
     HorizontalDivider()
     DeleteCard(ui, holder, host)
     HorizontalDivider()

@@ -146,7 +146,7 @@ class DriveConnectDeleteTest {
         val cases = mapOf(
             AuthResult.CANCELLED to DriveReason.AUTH_CANCELLED, AuthResult.FAILED to DriveReason.AUTH_FAILED,
             AuthResult.LOCKED_OUT to DriveReason.AUTH_LOCKED_OUT, AuthResult.LOCK_NOT_SET to DriveReason.AUTH_LOCK_NOT_SET,
-            AuthResult.NOT_AVAILABLE to DriveReason.AUTH_NOT_AVAILABLE,
+            AuthResult.NOT_AVAILABLE to DriveReason.AUTH_NOT_AVAILABLE, AuthResult.TIMED_OUT to DriveReason.AUTH_TIMED_OUT,
         )
         for ((result, reason) in cases) {
             a.deviceAuth.next = result

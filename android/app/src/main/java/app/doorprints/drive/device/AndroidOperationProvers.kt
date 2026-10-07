@@ -83,6 +83,7 @@ class SoftwareOperationProver(private val auth: DeviceAuth, private val p: Crypt
                 ProofOutcome.Proved(issued, OperationProof.hex(p.hmacSha256(key, OperationProof.message(operationId, issued))))
             }
             AuthResult.CANCELLED -> ProofOutcome.Cancelled
+            AuthResult.TIMED_OUT -> ProofOutcome.TimedOut
             AuthResult.LOCKED_OUT -> ProofOutcome.Denied
             AuthResult.LOCK_NOT_SET -> ProofOutcome.NoLock
             AuthResult.NOT_AVAILABLE -> ProofOutcome.Unavailable

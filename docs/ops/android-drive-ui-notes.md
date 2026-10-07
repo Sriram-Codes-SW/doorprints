@@ -244,6 +244,7 @@ phone-only driveEnrol.replyLabel
 phone-only driveEnrol.approve
 phone-only driveEnrol.scan
 phone-only driveEnrol.cameraMissing
+phone-only driveEnrol.cameraDenied
 phone-only driveEnrol.qrDescription
 phone-only driveEnrol.done
 phone-only driveSync.offline
@@ -276,6 +277,7 @@ phone-only driveDelete.reason.OTHER_DELETION_PENDING
 phone-only driveDelete.reason.NOTHING_PENDING
 phone-only driveDelete.reason.NO_DEVICE_LOCK
 phone-only driveDelete.reason.AUTH_CANCELLED
+phone-only driveDelete.reason.AUTH_TIMED_OUT
 phone-only driveDelete.reason.AUTH_FAILED
 phone-only driveDelete.reason.AUTH_LOCK_NOT_SET
 phone-only driveDelete.reason.AUTH_NOT_AVAILABLE

@@ -155,7 +155,8 @@ class ProverDeviceAuth(
         fun resultOf(outcome: ProofOutcome): AuthResult = when (outcome) {
             is ProofOutcome.Proved -> AuthResult.SUCCESS
             ProofOutcome.Denied -> AuthResult.LOCKED_OUT
-            ProofOutcome.Cancelled, ProofOutcome.TimedOut -> AuthResult.CANCELLED
+            ProofOutcome.Cancelled -> AuthResult.CANCELLED
+            ProofOutcome.TimedOut -> AuthResult.TIMED_OUT
             ProofOutcome.NoLock -> AuthResult.LOCK_NOT_SET
             ProofOutcome.Unavailable -> AuthResult.NOT_AVAILABLE
             ProofOutcome.Failed -> AuthResult.FAILED

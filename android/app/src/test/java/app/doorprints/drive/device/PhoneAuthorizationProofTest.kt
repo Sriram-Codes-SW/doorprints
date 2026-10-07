@@ -138,20 +138,20 @@ class PhoneAuthorizationProofTest {
 
     // ---- distinct outcomes ----
 
-    @Test fun `cancelled and denied and no lock are different refusals, and a timed out prompt is a cancel`() = runBlocking {
+    @Test fun `cancelled, timed out, denied and no lock are different refusals`() = runBlocking {
         val cases = mapOf(
             ProofOutcome.Cancelled to DriveReason.AUTH_CANCELLED,
             ProofOutcome.Denied to DriveReason.AUTH_LOCKED_OUT,
             ProofOutcome.NoLock to DriveReason.AUTH_LOCK_NOT_SET,
             ProofOutcome.Unavailable to DriveReason.AUTH_NOT_AVAILABLE,
             ProofOutcome.Failed to DriveReason.AUTH_FAILED,
-            ProofOutcome.TimedOut to DriveReason.AUTH_CANCELLED,
+            ProofOutcome.TimedOut to DriveReason.AUTH_TIMED_OUT,
         )
         for ((outcome, reason) in cases) {
             prover.script = { _, _, _ -> outcome }
             assertEquals(outcome.toString(), reason, refusal(ask(plan(DeletionLevel.L2))))
         }
-        assertEquals(5, cases.values.toSet().size)
+        assertEquals(6, cases.values.toSet().size)
     }
 
     @Test fun `a prover that throws is a failure and cancellation still propagates`() {

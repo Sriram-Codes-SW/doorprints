@@ -88,7 +88,8 @@ class QrScanSession(
         get() = when (val s = state) {
             is State.Result -> QrScan.Scanned(s.text)
             State.Cancelled -> QrScan.Cancelled
-            State.Denied, State.Restricted, State.Unavailable, State.Failed -> QrScan.NoCamera
+            State.Denied -> QrScan.Denied
+            State.Restricted, State.Unavailable, State.Failed -> QrScan.NoCamera
             else -> null
         }
 
