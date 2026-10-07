@@ -56,10 +56,11 @@ public class AiStatusController {
                               @Value("${spring.ai.openai.chat.model:}") String openAiChatModel,
                               @Value("${spring.ai.google.genai.chat.model:}") String vertexChatModel,
                               @Value("${app.ai.embedding.model:}") String embeddingModel,
+                              @Value("${app.ai.key-required:}") String keyRequired,
                               GeminiKey geminiKey, ServerSettings settings) {
         this.geminiKey = geminiKey;
         this.settings = settings;
-        this.needsKey = keyNeeded(provider, baseUrl);
+        this.needsKey = keyNeeded(provider, baseUrl, keyRequired);
         // The provider itself is not exposed (the response shape is shared with the web and Android apps).
         var chatModel = AiProperties.VERTEX.equals(AiProperties.normalizeProvider(provider)) ? vertexChatModel
                 : openAiChatModel;
@@ -68,13 +69,15 @@ public class AiStatusController {
 
     /**
      * Whether AI reads as off while no key is set. Vertex AI uses the server's Google Cloud credentials, so never. For
-     * AI Studio the chat base URL decides: only the Gemini API host needs a key; an Ollama or other OpenAI-compatible
-     * endpoint of the self-hoster's own does not (a key, if set, is still sent). A blank or unreadable URL is read as
-     * the default, the Gemini API. The URL is the server's own setting ({@code AI_BASE_URL}), never a request value
-     * (T-I44).
+     * AI Studio the owner's explicit {@code app.ai.key-required} ({@code AI_KEY_REQUIRED}: {@code true} or
+     * {@code false}) wins, for example {@code true} for a proxy in front of Gemini on another host; unset, the chat
+     * base URL decides: only the Gemini API host needs a key, and an Ollama or other OpenAI-compatible endpoint of the
+     * self-hoster's own does not (a key, if set, is still sent). A blank or unreadable URL is read as the default, the
+     * Gemini API. Both settings are the server's own ({@code AI_BASE_URL}), never a request value (T-I44).
      */
-    static boolean keyNeeded(String provider, String baseUrl) {
+    static boolean keyNeeded(String provider, String baseUrl, String keyRequired) {
         if (AiProperties.VERTEX.equals(AiProperties.normalizeProvider(provider))) return false;
+        if (keyRequired != null && !keyRequired.isBlank()) return Boolean.parseBoolean(keyRequired.strip());
         return GEMINI_HOST.equals(hostOf(baseUrl));
     }
 

@@ -40,7 +40,7 @@ class AiStatusControllerTest {
         when(geminiKey.current()).thenReturn(key);
         var settings = mock(ServerSettings.class);
         when(settings.aiPaused()).thenReturn(paused);
-        return new AiStatusController(true, false, provider, baseUrl, "chat-model", "vertex-model", "embed-model",
+        return new AiStatusController(true, false, provider, baseUrl, "chat-model", "vertex-model", "embed-model", "",
                 geminiKey, settings);
     }
 
@@ -50,8 +50,8 @@ class AiStatusControllerTest {
 
     @Test
     void geminiHostNeedsAKey() {
-        assertThat(AiStatusController.keyNeeded("aistudio", GEMINI)).isTrue();
-        assertThat(AiStatusController.keyNeeded("aistudio", "HTTPS://GenerativeLanguage.GoogleAPIs.com/v1beta/openai/"))
+        assertThat(AiStatusController.keyNeeded("aistudio", GEMINI, "")).isTrue();
+        assertThat(AiStatusController.keyNeeded("aistudio", "HTTPS://GenerativeLanguage.GoogleAPIs.com/v1beta/openai/", ""))
                 .isTrue();
         assertThat(on(controller("aistudio", GEMINI, Optional.empty(), false))).isFalse();
         assertThat(on(controller("aistudio", GEMINI, Optional.of("k"), false))).isTrue();
@@ -59,10 +59,10 @@ class AiStatusControllerTest {
 
     @Test
     void aBlankOrUnreadableUrlIsTheDefaultGeminiSoAKeyIsStillNeeded() {
-        assertThat(AiStatusController.keyNeeded("aistudio", "")).isTrue();
-        assertThat(AiStatusController.keyNeeded("aistudio", null)).isTrue();
-        assertThat(AiStatusController.keyNeeded("aistudio", "not a url")).isTrue();
-        assertThat(AiStatusController.keyNeeded("aistudio", "/v1")).isTrue();
+        assertThat(AiStatusController.keyNeeded("aistudio", "", "")).isTrue();
+        assertThat(AiStatusController.keyNeeded("aistudio", null, "")).isTrue();
+        assertThat(AiStatusController.keyNeeded("aistudio", "not a url", "")).isTrue();
+        assertThat(AiStatusController.keyNeeded("aistudio", "/v1", "")).isTrue();
     }
 
     @Test
@@ -70,15 +70,26 @@ class AiStatusControllerTest {
         for (var url : new String[] {"http://localhost:11434/v1", "http://host.docker.internal:11434/v1",
                 "http://192.168.1.5:1234/v1", "https://api.openai.com/v1/",
                 "https://generativelanguage.googleapis.com.evil.example/v1", "https://evil.example/generativelanguage.googleapis.com"}) {
-            assertThat(AiStatusController.keyNeeded("aistudio", url)).as(url).isFalse();
+            assertThat(AiStatusController.keyNeeded("aistudio", url, "")).as(url).isFalse();
             assertThat(on(controller("aistudio", url, Optional.empty(), false))).as(url).isTrue();
         }
     }
 
     @Test
     void vertexNeverNeedsAKeyWhateverTheUrl() {
-        assertThat(AiStatusController.keyNeeded("vertex", GEMINI)).isFalse();
+        assertThat(AiStatusController.keyNeeded("vertex", GEMINI, "")).isFalse();
         assertThat(on(controller("vertex", GEMINI, Optional.empty(), false))).isTrue();
+    }
+
+    @Test
+    void anExplicitSettingWinsOverTheHost() {
+        // A proxy in front of Gemini on another host, or an Ollama that sits behind a key: the owner says so.
+        assertThat(AiStatusController.keyNeeded("aistudio", "https://proxy.example/v1beta/openai/", "true")).isTrue();
+        assertThat(AiStatusController.keyNeeded("aistudio", "http://localhost:11434/v1", " TRUE ")).isTrue();
+        assertThat(AiStatusController.keyNeeded("aistudio", GEMINI, "false")).isFalse();
+        // Blank means unset: the host decides again. Vertex ignores the setting.
+        assertThat(AiStatusController.keyNeeded("aistudio", GEMINI, "  ")).isTrue();
+        assertThat(AiStatusController.keyNeeded("vertex", GEMINI, "true")).isFalse();
     }
 
     @Test
