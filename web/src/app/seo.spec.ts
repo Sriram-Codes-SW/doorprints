@@ -350,6 +350,8 @@ describe('security headers for Google sign-in (S4b-BL-73)', () => {
     expect(csp).toContain('frame-src \'self\' blob: https://accounts.google.com/gsi/;');
     // Map tiles, address search and a self-hosted server need any https host.
     expect(csp).toMatch(/connect-src 'self' https: /);
+    // A model on the person's own machine (S4b-BL-151): the three loopback names, no other http origin.
+    expect(csp).toContain('http://localhost:* http://127.0.0.1:* http://[::1]:*');
   });
 
   it('does not reference fonts.googleapis.com or fonts.gstatic.com (self-hosted Noto fonts, S4b-BL-73)', () => {

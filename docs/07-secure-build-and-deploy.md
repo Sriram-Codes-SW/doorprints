@@ -797,7 +797,7 @@ The dev compose file **defaults to `http://localhost:4200` only**. To use the li
 app only as a failed request, indistinguishable from an unreachable server. The site is served over HTTPS, so that
 server also needs an `https://` address: the Connect page warns that on an HTTPS page the browser blocks an `http://`
 API address (some browsers exempt `http://localhost`, others do not — the CSP allows `http://localhost:*` and
-`http://127.0.0.1:*` for a server on the user's own machine, and Chrome asks the user's permission for it; the Caddy
+`http://127.0.0.1:*` and `http://[::1]:*` for a server on the user's own machine, and Chrome asks the user's permission for it; the Caddy
 setup in 6.2 gives a real `https://` address). Whether the compose default should list `https://doorprints.web.app`
 too is a lead decision ([10](10-sprint-log.md) §11.3 item 9): now that the address is fixed, it could.
 
