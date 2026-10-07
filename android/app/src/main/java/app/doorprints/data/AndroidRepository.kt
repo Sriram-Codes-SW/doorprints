@@ -56,6 +56,8 @@ class AndroidRepository(
     apiFor = apiFor,
     geminiFor = Api::gemini,
     syncBackendFor = syncBackendFor,
+    openAiFor = Api::openAi,
+    emulatorHostAllowed = true,
 ) {
     fun photoDir() = File(photoDirPath().toString())
 

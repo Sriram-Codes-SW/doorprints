@@ -36,6 +36,8 @@ class ApiException(
         AUTH, CAPTIVE_PORTAL, RATE_LIMITED, NOT_FOUND, CONFLICT, CLIENT, SERVER, AI_UNAVAILABLE,
         /** Google did not accept the person's own Gemini key (on-device AI, docs/03 §13.1). */
         AI_KEY_REJECTED,
+        /** An OpenAI-compatible provider does not know the model the person typed (HTTP 404; docs/03 §13.2). */
+        AI_MODEL_NOT_FOUND,
     }
 
     companion object {

@@ -1,0 +1,110 @@
+{
+  "spec": "android/shared/src/commonTest/kotlin/app/doorprints/shared/ai/AiProviderVectorsTest.kt",
+  "gradle": [
+    ":shared:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.shared.ai.AiProviderVectorsTest",
+    "--tests",
+    "app.doorprints.shared.ai.OpenAiCompatClientTest",
+    "--tests",
+    "app.doorprints.data.AiProviderSettingsTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/SchemaDialect.kt",
+      "find": "JsonArray(listOf(type, JsonPrimitive(\"null\")))",
+      "replace": "JsonArray(listOf(type))",
+      "expect": "schemaDialectMatchesTheVectors"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/SchemaDialect.kt",
+      "find": "put(\"additionalProperties\", false)",
+      "replace": "",
+      "expect": "schemaDialectMatchesTheVectors"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/SchemaDialect.kt",
+      "find": "names.forEach { add(JsonPrimitive(it)) }",
+      "replace": "",
+      "expect": "theStrictSchemaListsEveryPropertyAndForbidsTheRest"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OpenAiCompatClient.kt",
+      "find": "put(\"strict\", true)",
+      "replace": "put(\"strict\", false)",
+      "expect": "openaiRequestMatchesTheVectorsForEveryTier"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OpenAiCompatClient.kt",
+      "find": "header(\"Authorization\", \"Bearer $apiKey\")",
+      "replace": "header(\"Authorization\", \"Basic $apiKey\")",
+      "expect": "theKeyGoesInABearerHeaderOnlyWhenThereIsOne"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OpenAiCompatClient.kt",
+      "find": "put(\"type\", \"json_schema\")",
+      "replace": "put(\"type\", \"json_object\")",
+      "expect": "openaiRequestMatchesTheVectorsForEveryTier"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OpenAiCompatClient.kt",
+      "find": "jsonArray?.firstOrNull()?.jsonObject",
+      "replace": "jsonArray?.getOrNull(1)?.jsonObject",
+      "expect": "openaiContentMatchesTheVectors"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OpenAiCompatClient.kt",
+      "find": "return unfenced(content.content)",
+      "replace": "return content.content",
+      "expect": "openaiContentMatchesTheVectors"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OpenAiCompatClient.kt",
+      "find": "401, 403 -> ApiException(ApiException.Kind.AI_KEY_REJECTED, status)",
+      "replace": "401, 403 -> ApiException(ApiException.Kind.AI_UNAVAILABLE, status)",
+      "expect": "providerErrorsMatchTheVectors"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OpenAiCompatClient.kt",
+      "find": "retryAfterSeconds = retryAfter?.trim()?.toLongOrNull()",
+      "replace": "retryAfterSeconds = 60",
+      "expect": "providerErrorsMatchTheVectors"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OpenAiCompatClient.kt",
+      "find": "if (status == 400 && tier < 3",
+      "replace": "if (status in 400..499 && tier < 3",
+      "expect": "onlyAFourHundredMovesDownATierNotAnotherClientErrorWithTheSameWords"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OpenAiCompatClient.kt",
+      "find": "                tier = current\n",
+      "replace": "                tier = 1\n",
+      "expect": "aServerThatLacksJsonSchemaFallsDownTheLadderToTheTierItAcceptsAndKeepsIt"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AiProviderConfig.kt",
+      "find": "entries.firstOrNull { it.wire == value } ?: GEMINI",
+      "replace": "entries.firstOrNull { it.wire == value } ?: OPENAI_COMPATIBLE",
+      "expect": "aDeviceFromBeforeTheChoiceWithAKeyReadsAsGeminiAndNothingIsRewritten"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/BaseUrlValidator.kt",
+      "find": "scheme == \"https\" || host in LOCAL_HOSTS",
+      "replace": "true || host in LOCAL_HOSTS",
+      "expect": "baseUrlMatchesTheVectors"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/Settings.kt",
+      "find": "geminiKey=${if (geminiKey.isEmpty()) \"none\" else \"set\"}, aiKind",
+      "replace": "geminiKey=$geminiKey, aiKind",
+      "expect": "theSettingsPrintNoKeyNoAddressAndNoModel"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AiProviderConfig.kt",
+      "find": "\"AiProviderConfig(kind=${kind.wire}, model=",
+      "replace": "\"AiProviderConfig(kind=${kind.wire}, baseUrl=$baseUrl, model=",
+      "expect": "theConfigsToStringNeverPrintsTheAddressOrAKey"
+    }
+  ]
+}

@@ -26,7 +26,12 @@ import app.doorprints.data.Repository.UndoResult
 import app.doorprints.export.CopyUndo
 import app.doorprints.shared.ai.AiHouse
 import app.doorprints.shared.ai.AiVisit
+import app.doorprints.shared.ai.AiKind
+import app.doorprints.shared.ai.AiProviderConfig
+import app.doorprints.shared.ai.BaseUrlCheck
+import app.doorprints.shared.ai.BaseUrlValidator
 import app.doorprints.shared.ai.GeminiClient
+import app.doorprints.shared.ai.JsonChatModel
 import app.doorprints.shared.ai.OnDeviceAi
 import app.doorprints.shared.api.ApiClient
 import app.doorprints.shared.api.AskResponseDto
@@ -149,6 +154,10 @@ open class CommonRepository(
     /** Gemini with the person's own key, for on-device AI (docs/03 §13.1); null where a platform has none (tests). */
     private val geminiFor: ((apiKey: String) -> GeminiClient)? = null,
     syncBackendFor: (suspend (AppSettings) -> SyncBackend?)? = null,
+    /** An OpenAI-compatible endpoint with the person's own key, for on-device AI (docs/03 §13.2); null where a platform has none. */
+    private val openAiFor: ((baseUrl: String, model: String, apiKey: String) -> JsonChatModel)? = null,
+    /** True on Android only: the emulator's name for its computer, `10.0.2.2`, may be an http base URL ([BaseUrlValidator]). */
+    private val emulatorHostAllowed: Boolean = false,
 ) : Repository {
     private val syncBackendFor: suspend (AppSettings) -> SyncBackend? = syncBackendFor
         ?: { s -> if (s.serverConfigured) ServerSyncBackend(apiFor(s.serverUrl, s.apiKey)) else null }
@@ -841,8 +850,20 @@ open class CommonRepository(
     }
 
     /** On-device AI with the person's own key (docs/03 §13.1): chosen, and a key saved. */
-    private fun usesOwnKey(s: AppSettings) =
-        s.aiProvider == AiProviderChoice.DEVICE && s.geminiKey.isNotBlank() && geminiFor != null
+    private fun usesOwnKey(s: AppSettings) = s.aiProvider == AiProviderChoice.DEVICE && when (s.aiProviderConfig.kind) {
+        AiKind.GEMINI -> s.geminiKey.isNotBlank() && geminiFor != null
+        // The key is optional here (a model on the person's own computer needs none).
+        AiKind.OPENAI_COMPATIBLE -> openAiFor != null && s.aiProviderConfig.model.isNotBlank() &&
+            BaseUrlValidator.check(s.aiProviderConfig.baseUrl, emulatorHostAllowed) is BaseUrlCheck.Valid
+        AiKind.ANTHROPIC -> false
+    }
+
+    /** The model for the saved choice, or null when nothing here can build it. */
+    private fun chatModel(config: AiProviderConfig, key: String): JsonChatModel? = when (config.kind) {
+        AiKind.GEMINI -> geminiFor?.invoke(key)
+        AiKind.OPENAI_COMPATIBLE -> openAiFor?.invoke(config.baseUrl, config.model, key)
+        AiKind.ANTHROPIC -> null
+    }
 
     private fun publishAi(s: AppSettings): Boolean {
         // With the person's own key nothing depends on a server: only this phone's switch counts.
@@ -867,12 +888,33 @@ open class CommonRepository(
         publishAi(settings.current())
     }
 
-    override suspend fun testGeminiKey(key: String): Result<Unit> = withContext(Dispatchers.IO) {
-        val client = geminiFor?.invoke(key.trim()) ?: return@withContext Result.failure(IllegalStateException("no Gemini"))
+    override suspend fun testGeminiKey(key: String): Result<Unit> = testAiProvider(AiProviderConfig.GEMINI, key)
+
+    override suspend fun saveAiProviderConfig(config: AiProviderConfig, key: String) {
+        val checked = checkedConfig(config)
+        settings.saveAiProviderConfig(checked, key)
+        publishAi(settings.current())
+    }
+
+    override suspend fun testAiProvider(config: AiProviderConfig, key: String): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
-            client.generateJson("Reply with {\"ok\": true}.", "ping", OnDeviceAi.PING_SCHEMA, 0.0)
-            Unit
+            val client = chatModel(checkedConfig(config), key.trim()) ?: throw IllegalStateException("no provider")
+            client.ping()
         }
+    }
+
+    /** [config] with its base URL normalised, or an [IllegalArgumentException] saying what is wrong with it. */
+    private fun checkedConfig(config: AiProviderConfig): AiProviderConfig = when (config.kind) {
+        AiKind.GEMINI -> AiProviderConfig.GEMINI
+        AiKind.OPENAI_COMPATIBLE -> {
+            val url = when (val check = BaseUrlValidator.check(config.baseUrl, emulatorHostAllowed)) {
+                is BaseUrlCheck.Valid -> check.normalised
+                is BaseUrlCheck.Invalid -> throw IllegalArgumentException(check.reason.wire)
+            }
+            require(config.model.isNotBlank()) { "model" }
+            config.copy(baseUrl = url, model = config.model.trim())
+        }
+        AiKind.ANTHROPIC -> throw IllegalArgumentException("kind")
     }
 
     /** The saved houses and their visits as on-device AI reads them, most recently changed first. */
@@ -899,13 +941,14 @@ open class CommonRepository(
     }
 
     /** On-device AI for the saved key, or null when AI goes through the server. One per key, so its rate limit holds. */
-    private var onDevice: Pair<String, OnDeviceAi>? = null
+    private var onDevice: Pair<Pair<AiProviderConfig, String>, OnDeviceAi>? = null
 
     private suspend fun ownKeyAi(): OnDeviceAi? {
         val s = settings.current()
         if (!usesOwnKey(s)) return null
-        onDevice?.let { (key, ai) -> if (key == s.geminiKey) return ai }
-        return OnDeviceAi(geminiFor!!.invoke(s.geminiKey), ::aiHouses).also { onDevice = s.geminiKey to it }
+        val key = s.aiProviderConfig to s.geminiKey
+        onDevice?.let { (saved, ai) -> if (saved == key) return ai }
+        return OnDeviceAi(chatModel(s.aiProviderConfig, s.geminiKey)!!, ::aiHouses).also { onDevice = key to it }
     }
 
     private suspend fun <T> withApi(block: suspend (ApiClient) -> T): T = withContext(Dispatchers.IO) {

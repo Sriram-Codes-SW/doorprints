@@ -52,7 +52,7 @@ class GeminiClient(
     private val baseUrl: String = BASE_URL,
     /** Null turns the limit off (tests, whose virtual clock would end it at once). */
     private val timeoutMs: Long? = 60_000,
-) {
+) : JsonChatModel {
     companion object {
         const val MODEL = "gemini-3.5-flash"
         const val BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
@@ -61,7 +61,7 @@ class GeminiClient(
     }
 
     /** The model's JSON answer as text, for [schema] (an OpenAPI-style object schema). */
-    suspend fun generateJson(system: String, user: String, schema: JsonObject, temperature: Double): String {
+    override suspend fun generateJson(system: String, user: String, schema: JsonObject, temperature: Double): String {
         val body = buildJsonObject {
             put("systemInstruction", buildJsonObject { put("parts", buildJsonArray { add(buildJsonObject { put("text", system) }) }) })
             put("contents", buildJsonArray {
@@ -91,6 +91,11 @@ class GeminiClient(
             .getOrNull() ?: throw ApiException(ApiException.Kind.AI_UNAVAILABLE, 502)
         val parts = candidate["content"]?.jsonObject?.get("parts")?.jsonArray ?: throw ApiException(ApiException.Kind.AI_UNAVAILABLE, 502)
         return parts.joinToString("") { it.jsonObject["text"]?.jsonPrimitive?.contentOrNull ?: "" }
+    }
+
+    /** *Test*: one tiny call that proves Google accepts the key. */
+    override suspend fun ping() {
+        generateJson("Reply with {\"ok\": true}.", "ping", OnDeviceAi.PING_SCHEMA, 0.0)
     }
 
     private fun failure(status: Int, body: String): ApiException = when {

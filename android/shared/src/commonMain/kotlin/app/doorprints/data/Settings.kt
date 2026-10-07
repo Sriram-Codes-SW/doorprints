@@ -18,6 +18,8 @@
 
 package app.doorprints.data
 
+import app.doorprints.shared.ai.AiKind
+import app.doorprints.shared.ai.AiProviderConfig
 import app.doorprints.shared.trace.RepeatLook
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
@@ -80,6 +82,12 @@ data class AppSettings(
     /** The person's own Gemini key, decrypted in memory only; kept like [apiKey] by its own [SecretStore]. */
     val geminiKey: String = "",
     /**
+     * Which AI answers on this device (docs/03 §13.2, ADR-35) and where: plain settings beside the key, never secret,
+     * never exported, never in [toString] (the address can name a computer in the house). A device from before
+     * ADR-35 has no kind saved and reads as Gemini.
+     */
+    val aiProviderConfig: AiProviderConfig = AiProviderConfig.GEMINI,
+    /**
      * The app lock (docs/11 5.19, S4b-FR-5): the phone's own screen lock (PIN, pattern, fingerprint or face) is asked
      * when the app opens and when it comes back after [appLockAfterSeconds] in the background. Off by default.
      */
@@ -124,7 +132,7 @@ data class AppSettings(
             "lastSyncAt=$lastSyncAt, lastSync=$lastSync, syncFailures=$syncFailures, syncFailingSince=$syncFailingSince, " +
             "lastSyncOkAt=$lastSyncOkAt, autoBackup=$autoBackup, autoBackupFolder=$autoBackupFolder, " +
             "autoBackupKeep=$autoBackupKeep, lastAutoBackupAt=$lastAutoBackupAt, lastAutoBackupError=$lastAutoBackupError, " +
-            "aiFeatures=$aiFeatures, aiProvider=$aiProvider, geminiKey=${if (geminiKey.isEmpty()) "none" else "set"}, " +
+            "aiFeatures=$aiFeatures, aiProvider=$aiProvider, geminiKey=${if (geminiKey.isEmpty()) "none" else "set"}, aiKind=${aiProviderConfig.kind.wire}, " +
             "appLock=$appLock, appLockAfterSeconds=$appLockAfterSeconds, pathTrace=$pathTrace, repeatLook=$repeatLook, repeatAlert=$repeatAlert, " +
             "shareContacts=${shareContacts.size}, lengthUnit=$lengthUnit)"
 }
@@ -242,6 +250,10 @@ class SettingsStore(
         val aiFeatures = booleanPreferencesKey("aiFeatures")
         /** [AppSettings.aiProvider], by name. */
         val aiProvider = stringPreferencesKey("aiProvider")
+        /** [AppSettings.aiProviderConfig]: the kind (wire name), the base URL and the model; not secrets, never exported. */
+        val aiKind = stringPreferencesKey("aiKind")
+        val aiBaseUrl = stringPreferencesKey("aiBaseUrl")
+        val aiModel = stringPreferencesKey("aiModel")
         /** [AppSettings.appLock] and [AppSettings.appLockAfterSeconds]. */
         val appLock = booleanPreferencesKey("appLock")
         val appLockAfter = intPreferencesKey("appLockAfterSeconds")
@@ -297,6 +309,11 @@ class SettingsStore(
             aiFeatures = p[Keys.aiFeatures] ?: false,
             aiProvider = AiProviderChoice.entries.firstOrNull { it.name == p[Keys.aiProvider] } ?: AiProviderChoice.SERVER,
             geminiKey = geminiSecrets?.get(p) ?: "",
+            aiProviderConfig = AiProviderConfig(
+                kind = AiKind.fromWire(p[Keys.aiKind]),
+                baseUrl = p[Keys.aiBaseUrl] ?: "",
+                model = p[Keys.aiModel] ?: "",
+            ),
             appLock = p[Keys.appLock] ?: false,
             appLockAfterSeconds = AppLockTimes.valid(p[Keys.appLockAfter]),
             pathTrace = p[Keys.pathTrace] ?: false,
@@ -566,23 +583,36 @@ class SettingsStore(
 
     suspend fun saveAiProvider(choice: AiProviderChoice) = dataStore.edit { it[Keys.aiProvider] = choice.name }
 
-    /** Saves the person's own Gemini key ([key] trimmed, not blank) and chooses on-device AI. */
-    suspend fun saveGeminiKey(key: String) {
-        val store = checkNotNull(geminiSecrets) { "No place for a Gemini key on this platform" }
+    /** Saves the person's own Gemini key ([key] trimmed, not blank) and chooses on-device AI with Gemini. */
+    suspend fun saveGeminiKey(key: String) = saveAiProviderConfig(AiProviderConfig.GEMINI, key)
+
+    /**
+     * Saves the person's AI choice (docs/03 §13.2): [config] and [key] (trimmed; blank for a model on the person's own
+     * computer, which clears the slot), and chooses on-device AI. Gemini keeps no base URL or model.
+     */
+    suspend fun saveAiProviderConfig(config: AiProviderConfig, key: String) {
+        val store = checkNotNull(geminiSecrets) { "No place for an AI key on this platform" }
+        val gemini = config.kind == AiKind.GEMINI
         store.editing {
             dataStore.edit {
-                store.put(it, key.trim())
+                if (key.isBlank()) store.clear(it) else store.put(it, key.trim())
+                it[Keys.aiKind] = config.kind.wire
+                it[Keys.aiBaseUrl] = if (gemini) "" else config.baseUrl.trim()
+                it[Keys.aiModel] = if (gemini) "" else config.model.trim()
                 it[Keys.aiProvider] = AiProviderChoice.DEVICE.name
             }
         }
     }
 
-    /** Forgets the Gemini key; AI goes back to the server. */
+    /** Forgets the AI key and the kind, address and model with it; AI goes back to the server. */
     suspend fun removeGeminiKey() {
         val store = geminiSecrets ?: return
         store.editing {
             dataStore.edit {
                 store.clear(it)
+                it.remove(Keys.aiKind)
+                it.remove(Keys.aiBaseUrl)
+                it.remove(Keys.aiModel)
                 it[Keys.aiProvider] = AiProviderChoice.SERVER.name
             }
         }
