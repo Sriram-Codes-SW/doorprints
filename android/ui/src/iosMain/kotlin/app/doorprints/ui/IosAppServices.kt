@@ -102,6 +102,7 @@ object IosAppContainer {
             syncSoon = { syncRequests.trySend(Unit) },
             apiFor = { url, key -> ApiClient(url, key, http) },
             geminiFor = { key -> app.doorprints.shared.ai.GeminiClient(http, key) },
+            openAiFor = { url, model, key -> app.doorprints.shared.ai.OpenAiCompatClient(http, url, model, key) },
             // While Drive is in use it replaces the server for sync (docs/15 §1.3): the Drive pass finds its own backend
             // through the route, the server's is chosen exactly as before when Drive is not in use.
             syncBackendFor = DriveSyncChoice.backendFor({ driveFlag.engaged }, driveRoute) { s ->

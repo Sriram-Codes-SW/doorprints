@@ -18,6 +18,7 @@
 
 package app.doorprints.data
 
+import app.doorprints.shared.ai.AiProviderConfig
 import app.doorprints.shared.api.AskResponseDto
 import app.doorprints.shared.trace.TracePoint
 import app.doorprints.shared.trace.TraceWalk
@@ -427,6 +428,18 @@ interface Repository {
 
     /** Whether Google accepts [key]: one tiny request, nothing saved. */
     suspend fun testGeminiKey(key: String): Result<Unit>
+
+    /**
+     * Saves the person's AI choice for this device (docs/03 §13.2, ADR-35) and answers AI requests with it: [config]
+     * (the address and the model are for an OpenAI-compatible endpoint; Gemini keeps neither) and [key] (blank for a
+     * model on the person's own computer). Fails with an [IllegalArgumentException] naming the problem (a
+     * [app.doorprints.shared.ai.BaseUrlReason] wire name, or `model`, or `kind`) and saves nothing. [removeGeminiKey]
+     * clears the choice again.
+     */
+    suspend fun saveAiProviderConfig(config: AiProviderConfig, key: String)
+
+    /** Whether the provider answers with [config] and [key]: one tiny request, nothing saved (docs/03 §13.2, *Test*). */
+    suspend fun testAiProvider(config: AiProviderConfig, key: String): Result<Unit>
 
     // Pairing (docs/03 §12.1, ADR-25): the app gets a device key of its own, with no key typed.
 
