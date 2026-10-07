@@ -57,6 +57,8 @@ interface Fakes {
   search?: (place: string, language: string) => Observable<unknown>;
   extractListing?: () => Observable<HouseDraft>;
   aiEnabled?: boolean;
+  /** The host of the person's own AI: with it, the page names it where the text goes. */
+  ownHost?: string;
   brokers?: () => Observable<BrokerRow[]>;
   scoring?: () => Observable<Scoring>;
 }
@@ -99,7 +101,7 @@ function create(
       { provide: GeocodeService, useValue: { reverse: fakes.reverse ?? (() => of({})), search: fakes.search ?? (() => of(null)) } },
       {
         provide: AiService,
-        useValue: { enabled: signal(fakes.aiEnabled ?? false), usesOwnKey: signal(false), extractListing: fakes.extractListing ?? (() => of()) },
+        useValue: { enabled: signal(fakes.aiEnabled ?? false), usesOwnKey: signal(fakes.ownHost !== undefined), ownHost: signal(fakes.ownHost ?? ''), extractListing: fakes.extractListing ?? (() => of()) },
       },
     ],
   });
@@ -359,6 +361,20 @@ describe('HouseDetailPage: a failure card kept while the next run goes', () => {
     lookups[1].complete();
     await fixture.whenStable();
     expect(card!.isConnected).toBe(false);
+  });
+
+  it('names the host the listing text goes to when the person\'s own AI answers, and says "the AI provider set up on your server" otherwise', async () => {
+    const own = create({}, { lat: '12.9716', lon: '77.5946' }, { aiEnabled: true, ownHost: 'api.groq.com' });
+    await own.fixture.whenStable();
+    const hint = (own.fixture.nativeElement as HTMLElement).querySelector('#listing-fill-hint')!.textContent;
+    expect(hint).toContain('straight to api.groq.com with your own key');
+    own.fixture.destroy();
+    TestBed.resetTestingModule();
+    const server = create({}, { lat: '12.9716', lon: '77.5946' }, { aiEnabled: true });
+    await server.fixture.whenStable();
+    const serverHint = (server.fixture.nativeElement as HTMLElement).querySelector('#listing-fill-hint')!.textContent;
+    expect(serverHint).toContain('the AI provider set up on your server');
+    expect(serverHint).not.toContain('straight to');
   });
 
   it('keeps "Could not read the listing" while reading again, and removes it when the listing is read', async () => {

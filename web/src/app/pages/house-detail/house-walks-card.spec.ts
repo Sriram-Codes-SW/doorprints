@@ -276,7 +276,7 @@ describe('the house page and its saved walks', () => {
         { provide: LocalDataService, useValue: api },
         { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ id: HOUSE }), queryParamMap: convertToParamMap({}) } } },
         { provide: GeocodeService, useValue: { reverse: () => of({}) } },
-        { provide: AiService, useValue: { enabled: signal(false), usesOwnKey: signal(false), extractListing: () => of() } },
+        { provide: AiService, useValue: { enabled: signal(false), usesOwnKey: signal(false), ownHost: signal(''), extractListing: () => of() } },
       ],
     });
     await TestBed.inject(TranslationService).setLang('en');

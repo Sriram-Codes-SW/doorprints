@@ -149,6 +149,8 @@ function fakeAi(on: boolean) {
     geminiKeyHint: signal(''),
     hasGeminiKey: signal(false),
     usesOwnKey: signal(false),
+    ownHost: signal(''),
+    aiConfig: signal({ kind: 'gemini', baseUrl: '', model: '' }),
     offReason: signal(on ? null : 'optOut'),
     refresh: () => undefined,
   };
@@ -294,6 +296,22 @@ function driveCard(state: ConnectState, theme: 'light' | 'dark', after?: (c: Dri
   };
 }
 
+/** The Connect page's AI card with another service chosen and *Save* pressed on an empty form (every field error shown). */
+function connectService(service: string, theme: 'light' | 'dark'): Case['render'] {
+  return async (lang) => {
+    document.documentElement.style.colorScheme = theme;
+    const rendered = await page(ConnectPage)(lang);
+    const root = rendered.fixture.nativeElement as HTMLElement;
+    const select = root.querySelector<HTMLSelectElement>('#ai-service')!;
+    select.value = service;
+    select.dispatchEvent(new Event('change'));
+    await settle(rendered.fixture);
+    root.querySelector<HTMLButtonElement>('#ai-save')!.click();
+    await settle(rendered.fixture);
+    return rendered;
+  };
+}
+
 const CASES: Case[] = [
   { name: 'Map (empty)', render: async (lang) => {
     vi.spyOn(MapPage.prototype, 'ngAfterViewInit').mockImplementation(() => undefined);
@@ -348,6 +366,10 @@ const CASES: Case[] = [
   { name: 'Viewing form', render: page(ViewingPage, { query: { houseId: 'h1' } }) },
   { name: 'Connect (assistant on)', render: page(ConnectPage) },
   { name: 'Connect (assistant off)', render: page(ConnectPage, { extra: [{ provide: AiService, useValue: fakeAi(false) }] }) },
+  { name: 'Connect (Custom service, errors, light)', render: connectService('custom', 'light') },
+  { name: 'Connect (Custom service, errors, dark)', render: connectService('custom', 'dark') },
+  { name: 'Connect (Ollama, errors, light)', render: connectService('ollama', 'light') },
+  { name: 'Connect (Ollama, errors, dark)', render: connectService('ollama', 'dark') },
   { name: 'Ask', render: page(AskPage) },
   { name: 'House detail (existing)', render: page(HouseDetailPage, { params: { id: 'h1' } }) },
   { name: 'House detail (new)', render: page(HouseDetailPage, { query: { lat: '12.9', lon: '77.6' } }) },

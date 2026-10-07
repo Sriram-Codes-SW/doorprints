@@ -79,7 +79,7 @@
         </div>
       </details>
 
-      <p id="ask-disclosure" class="muted small">{{ (ai.usesOwnKey() ? 'ai.disclosureOwnKey' : 'ai.disclosure') | t }}</p>
+      <p id="ask-disclosure" class="muted small">{{ (ai.usesOwnKey() ? 'ai.disclosureOwnKeyHost' : 'ai.disclosure') | t: { host: ai.ownHost() } }}</p>
       <div class="actions">
         <!-- aria-disabled, not disabled: focus stays on the button while the answer is prepared. -->
         <button

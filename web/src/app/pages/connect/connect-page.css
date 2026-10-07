@@ -108,3 +108,8 @@
   font-weight: 700;
   overflow-wrap: anywhere;
 }
+
+/* AI service (S4b-BL-151): a preset's base URL is shown but only Custom can change it. */
+.ai-compat input[readonly] {
+  cursor: default;
+}

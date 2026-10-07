@@ -17,8 +17,8 @@ Light and dark themes follow your device's setting on all three.
 - The map pictures come from OpenFreeMap. On the website, **Fill address from map** and **Find "<area>" on the map**
   ask OpenStreetMap's address service, only when you tap them. On the phones, street and place names come from the
   phone's built-in address finder (Google's on Android, Apple's on iPhone).
-- The AI features send your question and the matching house notes to Google Gemini: through your server, or, with
-  your own Gemini key, straight from your phone or browser. The contact names and phone numbers saved with a house are
+- The AI features send your question and the matching house notes to the AI provider you chose (its name is shown where
+  you set it): through your server, or, with your own key, straight from your phone or browser. The contact names and phone numbers saved with a house are
   left out.
 - Hunt mode's location stays on your phone.
 - India's boundaries on the map are shown as the Government of India depicts them.
@@ -53,7 +53,9 @@ shared computer, use **Remove all data** on **Your data** when you are done.
 ## AI without a server
 
 You can use **Ask**, **Plan** and **Fill in from listing text** without running a server. Your phone or browser then
-asks Google Gemini itself, with a key of your own. It is free on Google's free tier.
+asks an AI service itself, with a key of your own. On the phones that is Google Gemini, which is free on Google's free
+tier. On the website you can also choose OpenAI, OpenRouter, Groq, or a model on your own computer (Ollama or
+LM Studio), or any other service that speaks the same chat language.
 
 ### On Android and iPhone
 
@@ -69,14 +71,28 @@ forgets it. If you also connect a server, you choose which one answers: **Use my
 
 ### On the website
 
-1. Make a key in [Google AI Studio](https://aistudio.google.com/apikey), as in step 1 above.
+1. Make a key with the service you want to use. For Gemini, use [Google AI Studio](https://aistudio.google.com/apikey),
+   as in step 1 above. A model on your own computer needs no key.
 2. Open **Your data**, then **Connect** (on a computer, **Connect** is in the menu at the top).
 3. Under **AI features**, turn on **Use AI features in this browser**.
-4. Choose **Use my own Gemini key in this browser** (with no server, it is already chosen), paste the key and select
-   **Save key**. Doorprints checks the key with Google first.
+4. Choose **Use my own AI on this browser** (with no server, it is already chosen), then pick your service under
+   **AI service**.
+5. For **Gemini**, paste the key and select **Save key**; Doorprints checks the key with Google first. For any other
+   service, the **Base URL** is filled in (only **Custom** lets you change it: it must start with `https://`, or be on
+   this computer, such as `http://localhost`). Type the **Model** exactly as the service lists it (for example
+   `gpt-4o-mini`), paste the **API key** and select **Save**. Then select **Test**: Doorprints says which host accepted
+   the key, or what is wrong (the key was refused, the model is unknown, you reached the limit, or the host could not
+   be reached).
 
-The key stays in this browser and goes only to Google. It is forgotten when you close the tab, unless you tick
-**Remember on this device**; leave that off on a shared computer. **Remove all data** on **Your data** also removes it.
+The key stays in this browser and goes only to the service you chose: the address is written under the form, and again
+above every question you send. It is forgotten when you close the tab, unless you tick **Remember on this device**;
+leave that off on a shared computer. **Remove key** forgets the key and your choice of service; **Remove all data** on
+**Your data** also removes them.
+
+!!! note "Ollama and LM Studio on your own computer"
+    The browser only lets this website talk to a program on your computer if that program allows it. For Ollama,
+    start it with `OLLAMA_ORIGINS=https://doorprints.web.app` set; in LM Studio, allow `https://doorprints.web.app`
+    in its server's CORS setting. Otherwise **Test** says it could not reach `localhost`.
 
 On the website, **Your data** also has a **Privacy page** link (`privacy.html`) and **Back up to Google Drive**.
 See [Back up to Google Drive](google-drive.md).
