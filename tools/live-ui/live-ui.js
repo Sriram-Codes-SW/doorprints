@@ -651,8 +651,10 @@ async function tour(browser) {
     await page.locator('#tour-offer-start').click();
     let covered = 0; let overflow = 0; let seen = 0; const bad = [];
     for (let i = 0; i < 40; i++) {
+      // A step's page may be lazy-loading (a few seconds on a cold CDN), and the tour finishes by removing the title.
+      if (i > 0) await page.waitForTimeout(400);
       if (i > 0 && (await page.locator('#tour-title').count()) === 0) break;
-      await page.locator('#tour-title').waitFor({ timeout: 4000 });
+      await page.locator('#tour-title').waitFor({ timeout: 10000 });
       await page.waitForTimeout(900); // the page and its target settle
       const g = await page.evaluate(() => {
         const c = document.querySelector('[role="dialog"]').getBoundingClientRect(); const s = document.querySelector('.spot')?.getBoundingClientRect();
