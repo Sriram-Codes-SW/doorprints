@@ -1,6 +1,10 @@
 {
   "spec": "android/ui/src/commonTest/kotlin/app/doorprints/ui/TourTest.kt",
-  "gradle": [":ui:testAndroidHostTest", "--tests", "app.doorprints.ui.TourTest"],
+  "gradle": [
+    ":ui:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.ui.TourTest"
+  ],
   "mutations": [
     {
       "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/TourSession.kt",
@@ -156,7 +160,7 @@
       "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/TourLayout.kt",
       "find": "val useAbove = need > below && above > below",
       "replace": "val useAbove = need < below && above > below",
-      "expect": "theCardGoesBelowTheHighlightWhenItFitsThere"
+      "expect": "theCardGoesAboveWhenItDoesNotFitBelowAndAboveHasMoreRoom"
     },
     {
       "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/TourLayout.kt",
