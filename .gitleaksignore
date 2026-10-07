@@ -96,3 +96,8 @@ c899116d0bd3265a847df6cd14c8b531825cbb60:android/shared/src/androidHostTest/kotl
 # Reviewed 2026-10-07: the website AI provider core's migration test (S4b-BL-148). 'AIzaTestKey1234' is a made-up
 # placeholder the test stores to prove an existing own-Gemini-key device still reads as Gemini; it is not a real key.
 1b0dfde0b1f3ff0453974dee7a80b579dc3ab9c5:web/src/app/core/ai/ai-provider.spec.ts:generic-api-key:321
+# Reviewed 2026-10-07: the phones' AI settings test (S4b-BL-150). 'AIzaOwnKeyForTests1234' is a made-up placeholder the
+# test types into the key field and checks was saved and tested; it is not a real key.
+93e0f8602b93dfb1514f97dde34e3c882b77e418:android/app/src/test/java/app/doorprints/AiSettingsSectionTest.kt:generic-api-key:351
+93e0f8602b93dfb1514f97dde34e3c882b77e418:android/app/src/test/java/app/doorprints/AiSettingsSectionTest.kt:generic-api-key:358
+93e0f8602b93dfb1514f97dde34e3c882b77e418:android/app/src/test/java/app/doorprints/AiSettingsSectionTest.kt:generic-api-key:363
