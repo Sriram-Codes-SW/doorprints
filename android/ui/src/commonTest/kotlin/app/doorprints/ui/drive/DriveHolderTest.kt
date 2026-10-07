@@ -53,6 +53,9 @@ import kotlin.test.assertTrue
 
 private const val KEY = "ABCD-EFGH-JKLM-NPQR-STUV-WXYZ-234"
 
+/** An [Error] subclass of the kind a phone can throw (a missing class), in common code. */
+private class BoomError(message: String) : Error(message)
+
 /** A [DriveActions] that records what it was asked and answers from fields. */
 private class FakeActions : DriveActions {
     override val state = MutableStateFlow(ConnectState.DISCONNECTED)
@@ -361,13 +364,13 @@ class DriveHolderTest {
 
     @Test fun anErrorThrownByAnActionBecomesTheGenericFailureWithAClassCode() = runTest {
         val a = object : DriveActions by FakeActions() {
-            override suspend fun connect(): ConnectResult = throw NoClassDefFoundError("Lsecret;")
+            override suspend fun connect(): ConnectResult = throw BoomError("Lsecret;")
         }
         val h = DriveHolder(a, backgroundScope, { DrivePrompts("a", "b", "c", "d") }).also { runCurrent() }
         h.connect()
         runCurrent()
         assertEquals(DriveReason.FAILED, h.ui.value.error)
-        assertEquals("screen/java.lang.NoClassDefFoundError", h.ui.value.errorCode)
+        assertTrue(h.ui.value.errorCode.orEmpty().let { it.startsWith("screen/") && it.endsWith("BoomError") }, h.ui.value.errorCode)
         assertFalse(h.ui.value.toString().contains("secret"))
     }
 
