@@ -1544,8 +1544,8 @@ names and phones are still removed before anything leaves the device (`ContactRe
 
 **The website's two limits.** The browser's mixed-content rule treats `http://localhost`, `http://127.0.0.1` and
 `http://[::1]` as secure, so a local model works from the https site, but the page's CSP `connect-src` must name them (it
-names `https:`, `http://localhost:*` and `http://127.0.0.1:*`; `http://[::1]:*` is not named, so a `[::1]` base URL passes
-the rules and the browser blocks it; S4b-BL-151 left the CSP as it is), and the local server must allow the site's origin (Ollama:
+names `https:`, `http://localhost:*` and `http://127.0.0.1:*`; `http://[::1]:*` cannot be named: a CSP source expression has no form for an IPv6 literal and Chrome logs it as invalid, so
+the website refuses a `[::1]` base URL itself, with the same reason as another http host, and says to use `localhost`; the phones accept it), and the local server must allow the site's origin (Ollama:
 `OLLAMA_ORIGINS`); the Settings text says so in one line. On Android, cleartext is allowed only for `localhost` and
 `10.0.2.2` in the network security config (S4b-BL-150), never globally; on iOS, App Transport Security's local-networking
 exception covers loopback only.
