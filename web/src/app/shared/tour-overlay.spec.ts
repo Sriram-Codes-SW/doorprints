@@ -48,6 +48,11 @@ async function setup() {
   return { fixture, el, settle, tour: TestBed.inject(TourService) };
 }
 
+/** Moves the running tour to the step with this id. */
+function goTo(tour: TourService, id: string): void {
+  while (tour.step()?.id !== id) tour.next();
+}
+
 describe('TourOverlay', () => {
   it('offers the tour on a first visit and "Not now" is remembered', async () => {
     const { el, settle } = await setup();
@@ -60,13 +65,14 @@ describe('TourOverlay', () => {
 
   it('starts from the offer: a labelled dialog with the step, what to try, and focus on its heading', async () => {
     const { el, settle } = await setup();
+    const tour = TestBed.inject(TourService);
     el.querySelector<HTMLButtonElement>('#tour-offer-start')!.click();
     await settle();
     const dialog = el.querySelector('[role="dialog"]')!;
     expect(dialog.getAttribute('aria-labelledby')).toBe('tour-title');
     expect(el.querySelector('#tour-title')?.textContent).toContain(en['tour.welcome.title']);
     expect(el.textContent).toContain(en['tour.tryIt']);
-    expect(el.textContent).toContain('Step 1 of 12');
+    expect(el.textContent).toContain(`Step 1 of ${tour.steps.length}`);
     expect(document.activeElement?.id).toBe('tour-title');
     expect(el.querySelector('#tour-back')).toBeNull();
     expect(el.querySelector('.offer')).toBeNull();
@@ -81,7 +87,7 @@ describe('TourOverlay', () => {
     document.body.appendChild(target);
     const { el, settle, tour } = await setup();
     tour.start();
-    tour.next(); // the "add" step
+    goTo(tour, 'add');
     await settle(150);
     const spot = el.querySelector<HTMLElement>('.spot');
     expect(spot).not.toBeNull();
@@ -94,7 +100,7 @@ describe('TourOverlay', () => {
   it('shows a step without the highlight when its target is not on the page', async () => {
     const { el, settle, tour } = await setup();
     tour.start();
-    tour.next();
+    goTo(tour, 'add');
     await settle(50);
     expect(el.querySelector('.spot')).toBeNull();
     expect(el.querySelector('.card')?.classList.contains('middle')).toBe(true);
@@ -107,11 +113,11 @@ describe('TourOverlay', () => {
     await settle();
     el.querySelector<HTMLButtonElement>('#tour-next')!.click();
     await settle();
-    expect(el.querySelector('#tour-title')?.textContent).toContain(en['tour.add.title']);
+    expect(el.querySelector('#tour-title')?.textContent).toContain(en['tour.language.title']);
     el.querySelector<HTMLButtonElement>('#tour-back')!.click();
     await settle();
     expect(el.querySelector('#tour-title')?.textContent).toContain(en['tour.welcome.title']);
-    for (let i = 0; i < 11; i++) tour.next();
+    for (let i = 0; i < tour.steps.length - 1; i++) tour.next();
     await settle();
     expect(el.querySelector('#tour-next')?.textContent).toContain(en['tour.finish']);
     el.querySelector<HTMLElement>('[role="dialog"]')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));

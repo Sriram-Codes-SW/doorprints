@@ -88,7 +88,7 @@ describe('TourService', () => {
     const { tour, router } = make();
     await router.navigateByUrl('/');
     tour.start();
-    for (let i = 0; i < 5; i++) tour.next();
+    for (let i = 0; i < TOUR_STEPS.findIndex((s) => s.id === 'compare'); i++) tour.next();
     expect(tour.step()?.id).toBe('compare');
     await new Promise((r) => setTimeout(r, 0));
     expect(router.url).toBe('/compare');

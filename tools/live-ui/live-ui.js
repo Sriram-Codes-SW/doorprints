@@ -637,7 +637,7 @@ async function trace(browser) {
 }
 
 /**
- * The guided tour (S4b-FR-38), at 360 px: the first-visit offer, the twelve steps, the card never covering what it
+ * The guided tour (S4b-FR-38), at 360 px: the first-visit offer, the steps, the card never covering what it
  * points at, no horizontal scroll, one offer only, and the replay from Your data.
  */
 async function tour(browser) {
@@ -650,7 +650,8 @@ async function tour(browser) {
     check('tour', 'the offer shows on the first visit', await page.locator('#tour-offer-start').isVisible());
     await page.locator('#tour-offer-start').click();
     let covered = 0; let overflow = 0; let seen = 0; const bad = [];
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 40; i++) {
+      if (i > 0 && (await page.locator('#tour-title').count()) === 0) break;
       await page.locator('#tour-title').waitFor({ timeout: 4000 });
       await page.waitForTimeout(900); // the page and its target settle
       const g = await page.evaluate(() => {
@@ -660,7 +661,7 @@ async function tour(browser) {
       seen++; if (g.overlap || !g.onScreen) { covered++; bad.push(`${i + 1}:${JSON.stringify(g)}`); } if (g.wide > 1) overflow++;
       await page.locator('#tour-next').click();
     }
-    check('tour', 'all twelve steps showed', seen === 12);
+    check('tour', 'every step showed (at least 15) and the last one finished the tour', seen >= 15 && seen <= 30, `${seen} steps`);
     check('tour', 'the card never covers its highlight and stays on screen', covered === 0, `${covered} step(s): ${bad.join(' ')}`);
     check('tour', 'no horizontal scroll in any step', overflow === 0, `${overflow} step(s)`);
     await page.waitForTimeout(300);
