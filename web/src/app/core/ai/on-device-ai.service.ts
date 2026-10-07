@@ -27,10 +27,14 @@ import {
   AgentPlan, AiHouse, AskFilterValues, I_DONT_KNOW, ModelAnswer, PlanCandidate, RawListing, askPrompt, assemblePlan,
   candidateLines, citations, extractionPrompt, nonce, planPrompt, sanitizeDraft, selectForAsk, selectForPlan,
 } from './ai-core';
+import type { JsonChatModel } from './json-chat-model';
+
+/** `modelNotFound` and `unreachable` come from an OpenAI-compatible provider (docs/03 §13.2); Gemini never raises them. */
+export type OnDeviceAiErrorKind = 'rateLimited' | 'keyRejected' | 'unavailable' | 'modelNotFound' | 'unreachable';
 
 /** Why an on-device AI request failed, in the words the screens use (see `aiErrorMsg`). */
 export class OnDeviceAiError extends Error {
-  constructor(readonly kind: 'rateLimited' | 'keyRejected' | 'unavailable', readonly retryAfter = 60) {
+  constructor(readonly kind: OnDeviceAiErrorKind, readonly retryAfter = 60) {
     super(kind);
   }
 }
@@ -93,7 +97,50 @@ interface GeminiResponse {
 }
 
 /**
- * AI with the person's own Gemini key, in this browser (docs/03 §13.1, ADR-26): the same three calls as the server's
+ * The `gemini` kind (ADR-26), unchanged: Google's `generateContent` with the person's key in `x-goog-api-key`, never in
+ * a URL. A [JsonChatModel] for the key it is made with.
+ */
+export class GeminiChatModel implements JsonChatModel {
+  constructor(private readonly http: HttpClient, private readonly key: string) {}
+
+  async generateJson(system: string, user: string, schema: object, temperature: number): Promise<string> {
+    const body = {
+      systemInstruction: { parts: [{ text: system }] },
+      contents: [{ role: 'user', parts: [{ text: user }] }],
+      generationConfig: { temperature, maxOutputTokens: 2048, responseMimeType: 'application/json', responseSchema: schema },
+    };
+    let res: GeminiResponse;
+    try {
+      res = await firstValueFrom(this.http.post<GeminiResponse>(GEMINI_URL, body, { headers: { 'x-goog-api-key': this.key } }));
+    } catch (e) {
+      if (e instanceof HttpErrorResponse) {
+        const text = JSON.stringify(e.error ?? '');
+        if (e.status === 429) throw new OnDeviceAiError('rateLimited');
+        if (e.status === 403 || (e.status === 400 && (text.includes('API_KEY_INVALID') || text.includes('API key not valid')))) {
+          throw new OnDeviceAiError('keyRejected');
+        }
+        if (e.status === 0) throw e; // offline: the usual "cannot reach" words
+      }
+      throw new OnDeviceAiError('unavailable');
+    }
+    const parts = res?.candidates?.[0]?.content?.parts;
+    if (!parts) throw new OnDeviceAiError('unavailable');
+    return parts.map((p) => p.text ?? '').join('');
+  }
+
+  async ping(): Promise<void> {
+    await this.generateJson('Reply with {"ok": true}.', 'ping', PING_SCHEMA, 0);
+  }
+}
+
+/**
+ * Who answers an on-device call: a Gemini key (the string, as before ADR-35) or any [JsonChatModel] the caller made
+ * from the person's settings (`AiService`).
+ */
+export type ModelRef = string | JsonChatModel;
+
+/**
+ * AI with the person's own provider, in this browser (docs/03 §13.1 and §13.2, ADR-26, ADR-35; a Gemini key as a string): the same three calls as the server's
  * AI endpoints, the same prompts, limits and checks (ai-core.ts), and Gemini called directly. The key goes only to
  * Google, in the `x-goog-api-key` header, never in a URL; prompts and answers are not logged. At most 10 requests a
  * minute, as the server allows.
@@ -115,30 +162,9 @@ export class OnDeviceAiService {
     this.recent.push(t);
   }
 
-  /** The model's JSON answer as text. */
-  private async generate(key: string, system: string, user: string, schema: object, temperature: number): Promise<string> {
-    const body = {
-      systemInstruction: { parts: [{ text: system }] },
-      contents: [{ role: 'user', parts: [{ text: user }] }],
-      generationConfig: { temperature, maxOutputTokens: 2048, responseMimeType: 'application/json', responseSchema: schema },
-    };
-    let res: GeminiResponse;
-    try {
-      res = await firstValueFrom(this.http.post<GeminiResponse>(GEMINI_URL, body, { headers: { 'x-goog-api-key': key } }));
-    } catch (e) {
-      if (e instanceof HttpErrorResponse) {
-        const text = JSON.stringify(e.error ?? '');
-        if (e.status === 429) throw new OnDeviceAiError('rateLimited');
-        if (e.status === 403 || (e.status === 400 && (text.includes('API_KEY_INVALID') || text.includes('API key not valid')))) {
-          throw new OnDeviceAiError('keyRejected');
-        }
-        if (e.status === 0) throw e; // offline: the usual "cannot reach" words
-      }
-      throw new OnDeviceAiError('unavailable');
-    }
-    const parts = res?.candidates?.[0]?.content?.parts;
-    if (!parts) throw new OnDeviceAiError('unavailable');
-    return parts.map((p) => p.text ?? '').join('');
+  /** The model for a call: a string is a Gemini key. */
+  private model(via: ModelRef): JsonChatModel {
+    return typeof via === 'string' ? new GeminiChatModel(this.http, via) : via;
   }
 
   private parse<T>(text: string): T | null {
@@ -179,26 +205,26 @@ export class OnDeviceAiService {
     }));
   }
 
-  async extractListing(key: string, text: string): Promise<HouseDraft> {
+  async extractListing(via: ModelRef, text: string): Promise<HouseDraft> {
     if (!text.trim() || text.length > MAX_INPUT_CHARS) throw new Error('listing text is empty or too long');
     this.admit();
     const p = extractionPrompt(text, nonce());
-    return sanitizeDraft(this.parse<RawListing>(await this.generate(key, p.system, p.user, LISTING_SCHEMA, 0)), text);
+    return sanitizeDraft(this.parse<RawListing>(await this.model(via).generateJson(p.system, p.user, LISTING_SCHEMA, 0)), text);
   }
 
-  async ask(key: string, question: string, filters?: AskFilterValues): Promise<AskResponse> {
+  async ask(via: ModelRef, question: string, filters?: AskFilterValues): Promise<AskResponse> {
     if (!question.trim() || question.length > MAX_QUESTION_CHARS) throw new Error('question is empty or too long');
     const docs = selectForAsk(await this.houses(), question, filters);
     if (!docs.length) return { answer: I_DONT_KNOW, citations: [], grounded: false, retrieved: 0 };
     this.admit();
     const p = askPrompt(question, docs, nonce());
-    const answer = this.parse<ModelAnswer>(await this.generate(key, p.system, p.user, ANSWER_SCHEMA, 0.1));
+    const answer = this.parse<ModelAnswer>(await this.model(via).generateJson(p.system, p.user, ANSWER_SCHEMA, 0.1));
     if (!answer?.answer?.trim()) return { answer: I_DONT_KNOW, citations: [], grounded: false, retrieved: docs.length };
     const cited = citations(answer, docs, question);
     return { answer: answer.answer.trim(), citations: cited, grounded: cited.length > 0, retrieved: docs.length };
   }
 
-  async planVisits(key: string, request: PlanRequest): Promise<PlanResponse> {
+  async planVisits(via: ModelRef, request: PlanRequest): Promise<PlanResponse> {
     if (!request.question.trim() || request.question.length > MAX_QUESTION_CHARS) throw new Error('question is empty or too long');
     const maxStops = Math.max(1, Math.min(request.maxStops ?? MAX_STOPS, MAX_STOPS));
     const candidates = selectForPlan(await this.houses(), request.startLat, request.startLon);
@@ -207,12 +233,12 @@ export class OnDeviceAiService {
     this.admit();
     const p = planPrompt(request.question, request.startLat, request.startLon, maxStops, candidateLines(candidates), nonce());
     // As on the server: an unusable answer falls back to the candidates by distance; a failed request is reported.
-    const plan = this.parse<AgentPlan>(await this.generate(key, p.system, p.user, PLAN_SCHEMA, 0.2));
+    const plan = this.parse<AgentPlan>(await this.model(via).generateJson(p.system, p.user, PLAN_SCHEMA, 0.2));
     return assemblePlan(plan, seen, request.startLat, request.startLon, maxStops);
   }
 
-  /** Whether Google accepts [key]: one tiny request, nothing saved. */
-  async test(key: string): Promise<void> {
-    await this.generate(key, 'Reply with {"ok": true}.', 'ping', PING_SCHEMA, 0);
+  /** Whether the provider accepts [via] (a Gemini key, or a model): one tiny request, nothing saved. */
+  async test(via: ModelRef): Promise<void> {
+    await this.model(via).ping();
   }
 }
