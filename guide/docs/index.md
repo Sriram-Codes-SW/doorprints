@@ -20,6 +20,14 @@ of moving in.
 You need no account. Your houses stay on your phone or in your browser. A server of your own (a computer that stays on
 and keeps a copy of your houses) is optional.
 
+## Take the tour (website)
+
+The first time you open the website, a card offers **Take the tour**: short steps over the real screens. Each step
+highlights one thing and says what to try, such as **Add house**, **Trace my path**, **Compare** or **Save a copy**.
+You can use the highlighted control right there, then choose **Next**. **Skip tour** (or the Escape key) leaves at any
+point. To see it again, open **Your data** and choose **Take the tour** in the Help card. The Android and iPhone apps have
+their own tour: see [The screen at a glance](screen-at-a-glance.md).
+
 ## Website, Android or iPhone?
 
 - **Website:** open **https://doorprints.web.app** in any up-to-date browser, on a computer or a phone.

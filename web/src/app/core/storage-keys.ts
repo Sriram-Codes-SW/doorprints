@@ -117,3 +117,9 @@ export function migrateLegacyStorage(): void {
     }
   }
 }
+
+/**
+ * Whether the person has finished or skipped the guided tour (localStorage: 'done' or 'skipped'). Absent means the
+ * tour is still to be offered, once, on the Map. A preference, kept by "Remove all data" like the language.
+ */
+export const TOUR_KEY = `${STORAGE_PREFIX}tour`;
