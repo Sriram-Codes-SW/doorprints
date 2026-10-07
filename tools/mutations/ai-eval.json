@@ -1,0 +1,19 @@
+{
+  "spec": "web/src/app/core/ai/ai-eval.spec.ts",
+  "mutations": [
+    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "if (key === '') return { status: 'skip'", "replace": "if (false) return { status: 'skip'", "expect": "skips with the words" },
+    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "validateWebBaseUrl(baseUrl);", "replace": "validateWebBaseUrl(baseUrl.replace('http:', 'https:'));", "expect": "fails loudly on a bad setting" },
+    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "baseUrl = check.normalised;", "replace": "baseUrl = baseUrl;", "expect": "runs an OpenAI-compatible provider" },
+    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "baseUrl = '';", "replace": "baseUrl = baseUrl + '';", "expect": "runs Gemini without" },
+    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "e['contactPhone'] === null && !blank(d.contactPhone)", "replace": "false && !blank(d.contactPhone)", "expect": "counts an invented value" },
+    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "norm(d.notes ?? '').includes(norm(m))) out.push(`notes contain", "replace": "norm(d.notes ?? '').includes('zzz')) out.push(`notes contain", "expect": "fails an injection guard" },
+    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "if (r.grounded !== grounded)", "replace": "if (false)", "expect": "checks an answer" },
+    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "for (const id of list(e['mustNotCite'])) if (cited.includes(id))", "replace": "for (const id of list(e['mustNotCite'])) if (false)", "expect": "checks an answer" },
+    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "ids.indexOf(id) !== i", "replace": "false", "expect": "checks a plan" },
+    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "if (!list(e['stopsSubsetOf']).includes(id))", "replace": "if (false)", "expect": "checks a plan" },
+    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "if (stopped) lines.push", "replace": "if (false) lines.push", "expect": "says where a run stopped" },
+    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "(key === '' ? s : s.split(key).join('***'))", "replace": "s", "expect": "never prints the key" },
+    { "file": "web/src/app/core/ai/ai-eval.ts", "find": ".map((f) => hide(f)).map((f) => (f.length > MAX_REASON ? `${f.slice(0, MAX_REASON)}...` : f))", "replace": ".map((f) => (f.length > MAX_REASON ? `${f.slice(0, MAX_REASON)}...` : f)).map((f) => hide(f))", "expect": "across the 200-character cut" },
+    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "slice(0, MAX_REASONS)", "replace": "slice(0, MAX_REASONS + 1)", "expect": "shortens a long reason" }
+  ]
+}

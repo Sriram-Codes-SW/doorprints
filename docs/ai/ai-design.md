@@ -26,6 +26,7 @@
 | v0.22   | 2026-09-29 | Claude (Code), lead           | 8: `ai-evals.yml` gains input `suites` and the job *On-device AI, real key*: one real Extract, Ask and Plan through the phones' and the website's own-key AI (ADR-26), with `AI_API_KEY` (docs/06 TC-U-88). |
 | v0.23   | 2026-10-01 | Claude (Code), lead           | 6: the Plan prompt on the phones and the website skips NOT_CHOSEN as well as REJECTED unless asked, as the server's did since slice 5, and the fallback route leaves out the same two statuses; new parity vector `inTheRunning` (S4b-BL-99 a). |
 | v0.24   | 2026-10-07 | Claude (Code), lead           | 2 and 14: **running with Ollama needs no key** (S4b-BL-149, [10](../10-sprint-log.md)). `AiStatusController` reports AI off for lack of a key only when the chat base URL (`AI_BASE_URL`, the server's own setting, never a request value) has the host `generativelanguage.googleapis.com`; any other host (Ollama, LM Studio, another OpenAI-compatible endpoint) is on without `AI_API_KEY`, and a key that is set is still sent. A blank or unreadable URL counts as the Gemini default. An explicit `AI_KEY_REQUIRED` (`app.ai.key-required`, `true` or `false`) overrides the host rule, for example `true` for a proxy in front of Gemini on another host. Vertex and the owner's pause are unchanged. TC-U-171. |
+| v0.25   | 2026-10-07 | Claude (Code), lead           | 8.1: **the optional own-provider evals** (S4b-BL-153): `ai-evals.yml` gains the suite `own-provider` and the inputs `ai_kind`, `ai_base_url`, `ai_model`; the golden set runs through the website's own TypeScript adapters against a real provider with the repository secret `AI_EVAL_API_KEY`, and says `skipped: no key` without it. How to set the secret is in 8.1. Reported, not gating; not yet run on a real provider. |
 
 Status: implemented in `backend/` (package `app.doorprints.server.ai`), **off by default**. Not yet compiled in this
 sandbox (no Maven Central access) — CI compiles and runs the tests. Provider: AI Studio by default, Vertex AI with
@@ -673,6 +674,28 @@ Android HTTP stack) and `on-device-ai.live.spec.ts` (web, Vitest with fetch) eac
 call to Gemini with `AI_API_KEY` (whatever `provider` says) and read every request body as sent: no saved contact name
 or phone number leaves the device. Both skip themselves without `DOORPRINTS_LIVE_GEMINI_KEY`, so the Android and Web
 workflows never call Google; the job fails if either was skipped. Six requests per run.
+
+**Own provider, optional (suite `own-provider`, since v0.25, S4b-BL-153):** the same golden set (35 synthetic cases)
+through the website's own adapters (`OpenAiCompatibleChatModel`, `AnthropicChatModel`, Gemini) and `OnDeviceAiService`
+against the provider the owner picks, so the three-tier ladder, the strict schema and the forced tool are measured on a
+real model (docs/06 TC-AI-23). `web/src/app/core/ai/ai-provider.live.spec.ts` (Vitest, `fetch`) runs it; `ai-eval.ts`
+holds the checks and the summary and `ai-eval.spec.ts` tests them without a network. The checks are the per-case rules
+of 8.2; the micro-averaged metrics of 8.3 (citation precision and recall) and their thresholds are **not** ported, they
+stay in the server's `EvalScorer`. It is reported, not gating, until a run has been read and found sound. Only the
+manual trigger reaches it.
+
+*Setting it up (owner, once, only if wanted; no value goes in the repository):* in GitHub, Settings > Secrets and
+variables > Actions > New repository secret, name `AI_EVAL_API_KEY`, value a key from a provider with a free tier
+(never a paid or production key, [01](../01-requirements.md) PRV-022). Optionally, on the Variables tab,
+`AI_EVAL_BASE_URL` and `AI_EVAL_MODEL` (the run inputs `ai_base_url` and `ai_model` override them). Then Actions >
+**AI evals** > Run workflow with `suites` = `own-provider` and `ai_kind` = `openai-compatible`, `anthropic` or
+`gemini` (Gemini uses the app's own model and address: the model and base URL are ignored). `delay_ms` paces the
+provider's rate limit (the app's own 10-a-minute limit is lifted for this run). Without the secret the job prints
+`skipped: no key`, succeeds and installs nothing. The run stops early on a rejected key, an unknown model or an
+unreachable provider (a local Ollama cannot be reached from a hosted runner); it fails only on a wrong setting or when
+no case got an answer. The summary names the kind, host and model, never the key. Locally, from `web/`:
+`DOORPRINTS_EVAL_KEY=… AI_EVAL_KIND=… AI_EVAL_BASE_URL=… AI_EVAL_MODEL=… npx ng test --watch=false --include
+src/app/core/ai/ai-provider.live.spec.ts`.
 
 Run it: Actions → **AI evals** → Run workflow (inputs: suites, provider, case types, delay, optional chat and embedding
 model), or locally against an empty PostGIS + pgvector database, in `backend/`:
