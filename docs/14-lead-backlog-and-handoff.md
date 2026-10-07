@@ -4,7 +4,7 @@
 |---|---|
 | Version | 0.100 |
 | Version | 0.101 |
-| Version | 0.104 |
+| Version | 0.105 |
 | Date | 2026-10-07 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..153); this file lists the lead-level items and points to the rest. |
@@ -115,6 +115,7 @@
 | 0.102 | 2026-10-07 | Claude (Code), lead | **S4b-BL-147 built (step B of S4b-FR-40):** the shared Kotlin core of the provider of choice on branch `feat/shared-ai-provider-kotlin` (stacked on `docs/adr-27-user-chosen-ai`, no pull request yet): `JsonChatModel`, `OpenAiCompatClient`, `SchemaDialect`, `BaseUrlValidator`, the settings and the repository wiring, with the mutation list `tools/mutations/ai-provider-kotlin.json` ([10](10-sprint-log.md) v0.160). No screens. Next: C (-148), G (-149), then D (-150, the phone screens, which call `Repository.saveAiProviderConfig` and `testAiProvider`). |
 | 0.103 | 2026-10-07 | Claude (Code), lead | **S4b-BL-151 (PR E) built on `feat/web-ai-provider-settings`**, made from `main` after PR #162 (no pull request yet; [10](10-sprint-log.md) v0.161): the Connect page's AI service picker and fields, *Save*, *Test*, *Remove key*, the host in the disclosure on the four screens that send text, the new error words, strings in four languages (hi, ta, te under review), `privacy.html`, the guide, the tour step. Specs `connect-ai-provider.spec.ts` and `ai-disclosure.spec.ts`; mutation lists `tools/mutations/ai-settings-web*.json`. Not yet run: the live UI test after the deploy (TC-M-26) and TC-M-64 with real providers. |
 | 0.104 | 2026-10-07 | Claude (Code), lead | **S4b-BL-150 (PR D) built on `feat/app-ai-provider-settings`**, made from `main` after PR #163 (no pull request yet; [10](10-sprint-log.md) v0.164): the phones' AI service picker and fields, *Save*, *Test*, *Remove key*, the host in the disclosure and in the failure words, strings in four languages (hi, ta, te under review), the guide. Specs `AiProviderFormTest`, `AiSettingsSectionTest`; mutation list `tools/mutations/ai-settings-phone.json`. It edits the same guide paragraphs as PR E (#164: `settings-and-privacy.md` in four languages), so the second to merge resolves a small conflict there. |
+| 0.105 | 2026-10-07 | Claude (Code), lead | **S4b-BL-154 and S4b-BL-155 built** on `fix/ai-request-helper-bl-154-155` (draft pull request): one request helper for the two AI adapters, Gemini's network failure worded as the OpenAI-compatible one, and the redirect rule tested ([10](10-sprint-log.md) v0.165, [06](06-test-plan.md) TC-U-168). |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 

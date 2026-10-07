@@ -20,13 +20,6 @@ package app.doorprints.shared.ai
 
 import app.doorprints.shared.api.ApiException
 import io.ktor.client.HttpClient
-import io.ktor.client.request.header
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
-import io.ktor.client.statement.bodyAsText
-import io.ktor.http.ContentType
-import io.ktor.http.contentType
-import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonArray
@@ -42,7 +35,8 @@ import kotlinx.serialization.json.put
  * `generateContent` API with a system instruction, one user message and a JSON response schema. The key goes only in
  * the `x-goog-api-key` header (never in the URL) and only to Google. Failures are [ApiException]s the screens already
  * word: 429 is [ApiException.Kind.RATE_LIMITED] ("out of free quota"), a refused key
- * [ApiException.Kind.AI_KEY_REJECTED], anything else from Google or a timeout [ApiException.Kind.AI_UNAVAILABLE].
+ * [ApiException.Kind.AI_KEY_REJECTED], anything else from Google, a timeout or no connection (code 0, as for the OpenAI-compatible adapter; [postAiJson])
+ * [ApiException.Kind.AI_UNAVAILABLE].
  * Neither prompts nor answers are logged.
  */
 class GeminiClient(
@@ -77,15 +71,9 @@ class GeminiClient(
                 put("responseSchema", schema)
             })
         }
-        suspend fun send() = http.post("$baseUrl/models/$model:generateContent") {
-            header("x-goog-api-key", apiKey)
-            contentType(ContentType.Application.Json)
-            setBody(body.toString())
-        }
-        val response = if (timeoutMs == null) send() else withTimeoutOrNull(timeoutMs) { send() }
-            ?: throw ApiException(ApiException.Kind.AI_UNAVAILABLE, 504)
-        val status = response.status.value
-        val text = response.bodyAsText()
+        val response = postAiJson(http, "$baseUrl/models/$model:generateContent", mapOf("x-goog-api-key" to apiKey), body, timeoutMs)
+        val status = response.status
+        val text = response.body
         if (status !in 200..299) throw failure(status, text)
         val candidate = runCatching { json.parseToJsonElement(text).jsonObject["candidates"]?.jsonArray?.firstOrNull()?.jsonObject }
             .getOrNull() ?: throw ApiException(ApiException.Kind.AI_UNAVAILABLE, 502)

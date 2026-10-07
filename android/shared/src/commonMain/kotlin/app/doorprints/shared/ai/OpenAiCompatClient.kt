@@ -20,15 +20,6 @@ package app.doorprints.shared.ai
 
 import app.doorprints.shared.api.ApiException
 import io.ktor.client.HttpClient
-import io.ktor.client.request.header
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
-import io.ktor.client.statement.HttpResponse
-import io.ktor.client.statement.bodyAsText
-import io.ktor.http.ContentType
-import io.ktor.http.contentType
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -65,13 +56,12 @@ class OpenAiCompatClient(
         while (true) {
             val body = requestBody(SchemaDialect.nameOf(schema), current, model, system, user, temperature, schema)
             val response = post(body)
-            val status = response.status.value
-            val text = response.bodyAsText()
+            val status = response.status
             if (status in 200..299) {
                 tier = current
-                return contentOf(text)
+                return contentOf(response.body)
             }
-            when (val step = next(current, status, text, response.headers["Retry-After"])) {
+            when (val step = next(current, status, response.body, response.retryAfter)) {
                 is Step.Down -> current = step.tier
                 is Step.Fail -> throw step.error
             }
@@ -82,36 +72,22 @@ class OpenAiCompatClient(
     override suspend fun ping() {
         val body = requestBody("ping", 3, model, "Reply with {\"ok\": true}.", "ping", 0.0, schema = null, maxTokens = 5)
         val response = post(body)
-        val status = response.status.value
-        val text = response.bodyAsText()
-        if (status !in 200..299) throw failure(status, response.headers["Retry-After"])
-        contentOf(text)
+        val status = response.status
+        if (status !in 200..299) throw failure(status, response.retryAfter)
+        contentOf(response.body)
     }
 
-    private suspend fun post(body: JsonObject): HttpResponse {
-        suspend fun send() = http.post("$baseUrl/chat/completions") {
-            if (apiKey.isNotBlank()) header("Authorization", "Bearer $apiKey")
-            contentType(ContentType.Application.Json)
-            setBody(body.toString())
-        }
-        return try {
-            if (timeoutMs == null) send() else withTimeoutOrNull(timeoutMs) { send() }
-                ?: throw ApiException(ApiException.Kind.AI_UNAVAILABLE, 504)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: ApiException) {
-            throw e
-        } catch (e: Exception) {
-            // The network: no connection, no such host, a refused connection, TLS. Code 0 is "could not reach".
-            throw ApiException(ApiException.Kind.AI_UNAVAILABLE, UNREACHABLE)
-        }
-    }
+    private suspend fun post(body: JsonObject): AiReply = postAiJson(
+        http, "$baseUrl/chat/completions",
+        if (apiKey.isBlank()) emptyMap() else mapOf("Authorization" to "Bearer $apiKey"),
+        body, timeoutMs,
+    )
 
     companion object {
         const val MAX_TOKENS = 2048
 
         /** The code of an [ApiException.Kind.AI_UNAVAILABLE] for a call that never got an answer. */
-        const val UNREACHABLE = 0
+        const val UNREACHABLE = app.doorprints.shared.ai.UNREACHABLE
 
         /** The words in a 400 body (lower case) that send the call down a tier, by the tier that was refused. */
         private val TRIGGERS = mapOf(
