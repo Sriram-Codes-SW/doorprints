@@ -636,6 +636,50 @@ async function trace(browser) {
   }
 }
 
+/**
+ * The guided tour (S4b-FR-38), at 360 px: the first-visit offer, the steps, the card never covering what it
+ * points at, no horizontal scroll, one offer only, and the replay from Your data.
+ */
+async function tour(browser) {
+  const ctx = await newCtx(browser, { viewport: { width: 360, height: 740 } });
+  const page = await ctx.newPage();
+  const errors = watch(page);
+  try {
+    await gotoRetry(page, `${BASE}/`); await settle(page);
+    await page.locator('#tour-offer-start').waitFor({ timeout: 8000 }).catch(() => {});
+    check('tour', 'the offer shows on the first visit', await page.locator('#tour-offer-start').isVisible());
+    await page.locator('#tour-offer-start').click();
+    let covered = 0; let overflow = 0; let seen = 0; const bad = [];
+    for (let i = 0; i < 40; i++) {
+      if (i > 0 && (await page.locator('#tour-title').count()) === 0) break;
+      await page.locator('#tour-title').waitFor({ timeout: 4000 });
+      await page.waitForTimeout(900); // the page and its target settle
+      const g = await page.evaluate(() => {
+        const c = document.querySelector('[role="dialog"]').getBoundingClientRect(); const s = document.querySelector('.spot')?.getBoundingClientRect();
+        return { c: [c.top | 0, c.bottom | 0], s: s ? [s.top | 0, s.bottom | 0] : null, nav: document.querySelector('nav.nav').getBoundingClientRect().top | 0, overlap: !!s && c.top < s.bottom && c.bottom > s.top, wide: document.documentElement.scrollWidth - document.documentElement.clientWidth, onScreen: c.top >= 0 && c.bottom <= innerHeight };
+      });
+      seen++; if (g.overlap || !g.onScreen) { covered++; bad.push(`${i + 1}:${JSON.stringify(g)}`); } if (g.wide > 1) overflow++;
+      await page.locator('#tour-next').click();
+    }
+    check('tour', 'every step showed (at least 15) and the last one finished the tour', seen >= 15 && seen <= 30, `${seen} steps`);
+    check('tour', 'the card never covers its highlight and stays on screen', covered === 0, `${covered} step(s): ${bad.join(' ')}`);
+    check('tour', 'no horizontal scroll in any step', overflow === 0, `${overflow} step(s)`);
+    await page.waitForTimeout(300);
+    check('tour', 'Finish closes the tour', (await page.locator('#tour-title').count()) === 0);
+    await gotoRetry(page, `${BASE}/`); await settle(page); await page.waitForTimeout(1000);
+    check('tour', 'the offer does not come back after the tour', (await page.locator('#tour-offer-start').count()) === 0);
+    await gotoRetry(page, `${BASE}/data`); await settle(page);
+    await page.locator('#tour-replay').click();
+    await page.locator('#tour-title').waitFor({ timeout: 4000 });
+    check('tour', 'Take the tour on Your data starts it again', /Welcome/.test(await page.locator('#tour-title').innerText()));
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(300);
+    check('tour', 'Escape leaves the tour', (await page.locator('#tour-title').count()) === 0);
+    check('console', 'tour: no errors', errors.length === 0, errors.slice(0, 3).join(' ; '));
+  } catch (e) { check('tour', 'the tour scenario ran to the end', false, e.stack); }
+  await ctx.close();
+}
+
 async function boundaries(browser) {
   const r = await (await browser.newContext()).request.get(`${BASE}/geo/in-boundaries.geojson`);
   const g = r.status() === 200 ? await r.json() : null;
@@ -663,7 +707,7 @@ async function boundaries(browser) {
   // The four areas run side by side, each in its own browser contexts (about 12 minutes instead of 25-30 one after
   // another); SERIAL=1 runs them in turn, as before.
   // `--trace` (or ONLY=trace) runs the path trace scenario alone; the default matrix does not include it.
-  const areas = [['pages', pageMatrix], ['flows', flows], ['boundaries', boundaries], ['mobile', mobile], ['trace', trace]]
+  const areas = [['pages', pageMatrix], ['flows', flows], ['boundaries', boundaries], ['mobile', mobile], ['tour', tour], ['trace', trace]]
     .filter(([name]) => (only.length ? only.includes(name) : WANT_TRACE ? name === 'trace' : name !== 'trace'));
   const run = async ([name, fn]) => {
     try { await fn(browser); } catch (e) { check(name, `${name} ran to the end`, false, e.stack); }

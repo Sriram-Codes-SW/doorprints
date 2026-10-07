@@ -31,6 +31,7 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
+import { TourService } from '../../core/tour.service';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { Announcer } from '../../core/announcer.service';
@@ -122,6 +123,7 @@ export class DataPage implements OnInit, OnDestroy {
   private readonly config = inject(ConfigService);
   private readonly ai = inject(AiService);
   private readonly aiSession = inject(AiSessionState);
+  protected readonly tour = inject(TourService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly injector = inject(Injector);
