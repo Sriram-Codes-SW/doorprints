@@ -1485,7 +1485,9 @@ Requirements: [01](01-requirements.md) FR-102..FR-107 and PRV-030, PRV-031 (PRV-
 Owner question of 2026-10-06: can Hunt mode itself come to the website, accepting that it works only while the page is open and
 visible? The senior review ([ops/path-trace-spec-review.md](ops/path-trace-spec-review.md) 9) answered it as below. **Nothing
 here is built or scheduled; the tickets S4b-FR-19..S4b-FR-23 ([10](10-sprint-log.md) §15) are written so the owner can say yes
-or no.** It would follow the website's trace (S4b-FR-17), which already builds every seam it needs (`TraceRecorderService` with
+or no.** **Owner decision of 2026-10-07: keep it** (it is not dropped); it stays *proposed, not scheduled* until the owner asks for it to be
+built, and the two other open decisions (whether to allow automatic Nominatim street lookups, recommended no; where a web visit
+comes from) are asked when it is scheduled. It would follow the website's trace (S4b-FR-17), which already builds every seam it needs (`TraceRecorderService` with
 `watchPosition`, visibility, wake lock, the beep and banner, the permission flow, the Map page card).
 
 What a browser can and cannot do: `watchPosition` delivers fixes only while the page is visible (Android Chrome throttles a hidden
