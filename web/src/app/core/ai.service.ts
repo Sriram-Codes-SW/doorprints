@@ -22,7 +22,9 @@ import { Observable, defer } from 'rxjs';
 import type { Msg } from '../i18n/translation.service';
 import { ConfigService } from './config.service';
 import { AI_OPT_IN_KEY, AI_PROVIDER_KEY, GEMINI_KEY_KEY } from './storage-keys';
-import { OnDeviceAiError, OnDeviceAiService } from './ai/on-device-ai.service';
+import { type AiProviderConfig, clearAiConfig, isUsable, readAiConfig, saveAiConfig } from './ai/ai-provider-config';
+import { OpenAiCompatibleChatModel } from './ai/openai-compat';
+import { type ModelRef, OnDeviceAiError, OnDeviceAiService } from './ai/on-device-ai.service';
 import { errorMsg } from './format';
 import type { HouseStatus, PriceType } from './models';
 
@@ -44,7 +46,7 @@ export interface AiStatus {
  */
 export type AiOffReason = 'noServer' | 'server' | 'device' | 'optIn' | 'noKey';
 
-/** Who answers AI requests (docs/03 §13.1, ADR-26): the connected server, or Gemini from this browser with the person's own key. */
+/** Who answers AI requests (docs/03 §13.1, ADR-26): the connected server, or the person's own AI from this browser (Gemini, or any OpenAI-compatible endpoint: §13.2, ADR-35). */
 export type AiProvider = 'server' | 'device';
 
 /** A suggestion only; nothing is saved until the user saves the form. */
@@ -141,8 +143,16 @@ export class AiService {
   /** The saved Gemini key's last four characters, or '' (the key itself is never shown again). */
   readonly geminiKeyHint = computed(() => (this.geminiKeyState().length >= 8 ? this.geminiKeyState().slice(-4) : ''));
   readonly hasGeminiKey = computed(() => this.geminiKeyState() !== '');
-  /** On-device AI with the person's own key: chosen, or no server to choose, and a key saved. */
-  readonly usesOwnKey = computed(() => (this.providerState() === 'device' || !this.config.configured()) && this.hasGeminiKey());
+  private readonly aiConfigState = signal<AiProviderConfig>(readAiConfig());
+  /** The person's own AI: its kind, base URL and model (docs/03 §13.2). Device-only; the key keeps the Gemini key's slot. */
+  readonly aiConfig = this.aiConfigState.asReadonly();
+  /**
+   * On-device AI with the person's own provider: chosen, or no server to choose, and what it needs saved (a Gemini key,
+   * or for an OpenAI-compatible one a valid base URL and a model; its key is optional).
+   */
+  readonly usesOwnKey = computed(
+    () => (this.providerState() === 'device' || !this.config.configured()) && isUsable(this.aiConfigState(), this.hasGeminiKey()),
+  );
   readonly offReason = computed<AiOffReason | null>(() => {
     if (this.usesOwnKey()) return this.optInState() ? null : 'optIn';
     if (this.providerState() === 'device' || !this.config.configured()) {
@@ -199,8 +209,18 @@ export class AiService {
     this.setProvider('device');
   }
 
-  /** Forgets the Gemini key; AI goes back to the server, if one is connected. */
+  /**
+   * Saves the choice of provider (kind, base URL, model; localStorage, never in a backup or sent to the server). The key
+   * is saved apart, as before ({@link saveGeminiKey}, with an empty key for a local server).
+   */
+  setAiConfig(config: AiProviderConfig): void {
+    this.aiConfigState.set(saveAiConfig(config));
+  }
+
+  /** Forgets the own key and the provider choice; AI goes back to the server, if one is connected. */
   removeGeminiKey(): void {
+    clearAiConfig();
+    this.aiConfigState.set(readAiConfig());
     this.geminiKeyState.set('');
     for (const s of [() => localStorage, () => sessionStorage]) {
       try {
@@ -222,6 +242,18 @@ export class AiService {
     return this.onDevice.test(key.trim());
   }
 
+  /** *Test* for any kind: one tiny request with [config] and [key] as typed, nothing saved. Rejects with an [OnDeviceAiError]. */
+  testProvider(config: AiProviderConfig, key: string): Promise<void> {
+    return this.onDevice.test(this.modelFor(config, key.trim()));
+  }
+
+  /** Who answers a call for [config]: a Gemini key (the native adapter) or an OpenAI-compatible model. */
+  private modelFor(config: AiProviderConfig, key: string): ModelRef {
+    if (config.kind === 'gemini') return key;
+    if (config.kind === 'openai-compatible') return new OpenAiCompatibleChatModel({ baseUrl: config.baseUrl, model: config.model }, key);
+    throw new OnDeviceAiError('unavailable'); // anthropic: reserved, no adapter yet
+  }
+
   /** Re-reads the status (after connecting or disconnecting). */
   refresh(): void {
     if (!this.config.configured()) {
@@ -234,19 +266,23 @@ export class AiService {
     });
   }
 
+  private ownModel(): ModelRef {
+    return this.modelFor(this.aiConfigState(), this.geminiKeyState());
+  }
+
   // The same three calls, answered by the server or in this browser (ADR-26): the pages do not know which.
   extractListing(text: string): Observable<HouseDraft> {
-    if (this.usesOwnKey()) return defer(() => this.onDevice.extractListing(this.geminiKeyState(), text));
+    if (this.usesOwnKey()) return defer(() => this.onDevice.extractListing(this.ownModel(), text));
     return this.http.post<HouseDraft>('/api/ai/extract-listing', { text });
   }
 
   ask(question: string, filters?: AskFilters): Observable<AskResponse> {
-    if (this.usesOwnKey()) return defer(() => this.onDevice.ask(this.geminiKeyState(), question, filters));
+    if (this.usesOwnKey()) return defer(() => this.onDevice.ask(this.ownModel(), question, filters));
     return this.http.post<AskResponse>('/api/ai/ask', filters ? { question, filters } : { question });
   }
 
   planVisits(request: PlanRequest): Observable<PlanResponse> {
-    if (this.usesOwnKey()) return defer(() => this.onDevice.planVisits(this.geminiKeyState(), request));
+    if (this.usesOwnKey()) return defer(() => this.onDevice.planVisits(this.ownModel(), request));
     return this.http.post<PlanResponse>('/api/ai/plan-visits', request);
   }
 }
@@ -254,6 +290,7 @@ export class AiService {
 /** Translated message for AI failures: 429 with Retry-After, 503 provider down/quota, else the generic mapping. */
 export function aiErrorMsg(err: unknown): Msg {
   if (err instanceof OnDeviceAiError) {
+    // `modelNotFound` and `unreachable` (OpenAI-compatible providers) get their own words with the settings screen (ADR-35); until then they read as "provider down".
     if (err.kind === 'rateLimited') return { key: 'ai.rateLimited', params: { s: err.retryAfter } };
     if (err.kind === 'keyRejected') return { key: 'ai.keyRejected' };
     return { key: 'ai.providerDown' };

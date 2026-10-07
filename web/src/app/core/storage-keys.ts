@@ -45,6 +45,19 @@ export const AI_PROVIDER_KEY = `${STORAGE_PREFIX}ai-provider`;
 export const GEMINI_KEY_KEY = `${STORAGE_PREFIX}gemini-key`;
 
 /**
+ * Which AI the person's own device uses, 'gemini' or 'openai-compatible' (localStorage; docs/03 §13.2, ADR-35). Absent
+ * means 'gemini' (the read-time migration of ADR-26 users). Not a secret, and never in a backup, copy, sync or share
+ * file; "Remove all data" and *Remove key* delete it. See core/ai/ai-provider-config.ts.
+ */
+export const AI_KIND_KEY = `${STORAGE_PREFIX}ai-kind`;
+
+/** The OpenAI-compatible base URL the person typed, normalised (localStorage; same rules as {@link AI_KIND_KEY}). */
+export const AI_BASE_URL_KEY = `${STORAGE_PREFIX}ai-base-url`;
+
+/** The model name the person typed for an OpenAI-compatible provider (localStorage; same rules as {@link AI_KIND_KEY}). */
+export const AI_MODEL_KEY = `${STORAGE_PREFIX}ai-model`;
+
+/**
  * The map areas saved for offline use (localStorage, JSON; S4b-BL-79): a name, a box and the files' addresses. The
  * tiles themselves are in Cache Storage (`offline/offline-protocol.ts`). The name and place are the person's, so
  * "Remove all data" sweeps this key with the others and deletes the cache beside it.
