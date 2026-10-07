@@ -37,6 +37,7 @@ import { AiService } from './core/ai.service';
 import { ConfirmDialog } from './shared/confirm-dialog';
 import { AppBanners } from './shared/app-banners';
 import { ReminderBanners } from './shared/reminder-banners';
+import { TourOverlay } from './shared/tour-overlay';
 import { ViewingReminderService } from './core/viewing-reminder.service';
 import { LaunchFilesService } from './core/launch-files.service';
 import { PwaService } from './core/pwa.service';
@@ -65,7 +66,7 @@ const NAV_ICONS = {
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, TPipe, ConfirmDialog, AppBanners, ReminderBanners],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, TPipe, ConfirmDialog, AppBanners, ReminderBanners, TourOverlay],
   template: `
     <a class="skip-link" href="#main" (click)="skipToMain($event)">{{ 'app.skip' | t }}</a>
     <header class="topbar">
@@ -167,6 +168,7 @@ const NAV_ICONS = {
       <router-outlet />
     </main>
     <app-confirm-dialog />
+    <app-tour />
     <div class="sr-only" role="status" aria-live="polite" aria-atomic="true">
       @if (announcer.message(); as m) {
         {{ m.key | t: m.params }}

@@ -1,0 +1,35 @@
+{
+  "spec": "web/src/app/core/tour.service.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/core/tour.service.ts",
+      "find": "if (i >= this.steps.length - 1) this.finish('done');",
+      "replace": "if (i >= this.steps.length - 1) this.finish('skipped');",
+      "expect": "walks forward and back, never before the first step, and finishes after the last"
+    },
+    {
+      "file": "web/src/app/core/tour.service.ts",
+      "find": "return !this.ended() && !this.active() && url.split(/[?#]/)[0] === OFFER_ROUTE;",
+      "replace": "return !this.active() && url.split(/[?#]/)[0] === OFFER_ROUTE;",
+      "expect": "is not offered while it runs, and not again once skipped"
+    },
+    {
+      "file": "web/src/app/core/tour.service.ts",
+      "find": "return !this.ended() && !this.active() && url.split(/[?#]/)[0] === OFFER_ROUTE;",
+      "replace": "return !this.ended() && !this.active();",
+      "expect": "offers the tour on the Map to someone who has not seen it, and nowhere else"
+    },
+    {
+      "file": "web/src/app/core/tour.service.ts",
+      "find": "if (i !== null && i > 0) this.go(i - 1);",
+      "replace": "if (i !== null) this.go(i - 1);",
+      "expect": "walks forward and back, never before the first step, and finishes after the last"
+    },
+    {
+      "file": "web/src/app/core/tour.service.ts",
+      "find": "if (this.router.url.split(/[?#]/)[0] !== route) void this.router.navigateByUrl(route);",
+      "replace": "",
+      "expect": "moves to the route of each step"
+    }
+  ]
+}
