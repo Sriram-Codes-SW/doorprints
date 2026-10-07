@@ -89,3 +89,7 @@ aabe9a8f79e77975c6874bd3f642f919f4f985c1:web/src/app/data/drive/connect/stores/d
 3fb4eedf8af62b97585f864de97b83a590b91e9b:android/app/src/test/java/app/doorprints/screenshots/DriveScreenshotTest.kt:generic-api-key:130
 9b0029f73aa46bbfb42eec5b8fecadcaffca807c:android/ui/src/commonTest/kotlin/app/doorprints/ui/drive/DriveHolderTest.kt:generic-api-key:36
 03d765e192614fd8cfc0af9728887b5c2d911880:android/app/src/main/java/app/doorprints/drive/device/DeviceKey.kt:generic-api-key:121
+# Reviewed 2026-10-07: the Drive diagnostic code's privacy test (S4b-BL-146). Two made-up hostile exception messages
+# ("cause-secret keys.json id=...", a list of fake secret words) that the test feeds in to prove none can reach the code.
+c899116d0bd3265a847df6cd14c8b531825cbb60:android/shared/src/androidHostTest/kotlin/app/doorprints/drive/DriveCodeTest.kt:generic-api-key:41
+c899116d0bd3265a847df6cd14c8b531825cbb60:android/shared/src/androidHostTest/kotlin/app/doorprints/drive/DriveCodeTest.kt:generic-api-key:53
