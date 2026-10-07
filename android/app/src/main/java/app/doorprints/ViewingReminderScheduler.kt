@@ -249,14 +249,17 @@ class ViewingReminderScheduler(
 internal val receiverScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
 internal fun BroadcastReceiver.runAsync(block: suspend () -> Unit) {
-    val pending = goAsync()
+    // The system always hands a real PendingResult to onReceive; a unit test that calls onReceive itself gets null. A
+    // null one used to throw from the `finally` below, on a background thread, and a later test saw that as an
+    // uncaught exception before it started.
+    val pending: BroadcastReceiver.PendingResult? = goAsync()
     receiverScope.launch {
         try {
             block()
         } catch (_: Exception) {
             // Nothing to tell anyone from a broadcast; the next start reschedules.
         } finally {
-            pending.finish()
+            pending?.finish()
         }
     }
 }
