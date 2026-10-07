@@ -1,0 +1,107 @@
+{
+  "spec": "web/src/app/core/ai/ai-provider.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/core/ai/schema-dialect.ts",
+      "find": "out[key] = [value, 'null'];",
+      "replace": "out[key] = [value];",
+      "expect": "nullable becomes a type that also allows null"
+    },
+    {
+      "file": "web/src/app/core/ai/schema-dialect.ts",
+      "find": "out['additionalProperties'] = false;",
+      "replace": "void 0;",
+      "expect": "every object forbids extra properties"
+    },
+    {
+      "file": "web/src/app/core/ai/schema-dialect.ts",
+      "find": "out['required'] = Object.keys(isNode(node['properties']) ? node['properties'] : {});",
+      "replace": "out['required'] = [];",
+      "expect": "every object forbids extra properties and requires all"
+    },
+    {
+      "file": "web/src/app/core/ai/openai-compat.ts",
+      "find": "json_schema: { name, strict: true, schema: strict }",
+      "replace": "json_schema: { name, strict: false, schema: strict }",
+      "expect": "only tier 1 is strict"
+    },
+    {
+      "file": "web/src/app/core/ai/openai-compat.ts",
+      "find": "`Bearer ${",
+      "replace": "`Basic ${",
+      "expect": "posts to the absolute base URL"
+    },
+    {
+      "file": "web/src/app/core/ai/openai-compat.ts",
+      "find": "{ type: 'json_schema', json_schema:",
+      "replace": "{ type: 'json_object', json_schema:",
+      "expect": "openaiRequest vectors"
+    },
+    {
+      "file": "web/src/app/core/ai/openai-compat.ts",
+      "find": "?.choices?.[0]?.message?.content",
+      "replace": "?.choices?.[1]?.message?.content",
+      "expect": "reads the first choice only"
+    },
+    {
+      "file": "web/src/app/core/ai/openai-compat.ts",
+      "find": "return m ? m[1].trim() : trimmed;",
+      "replace": "return trimmed;",
+      "expect": "openaiContent vectors"
+    },
+    {
+      "file": "web/src/app/core/ai/openai-compat.ts",
+      "find": "if (status === 401 || status === 403) return { action: 'error', kind: 'keyRejected' };",
+      "replace": "if (status === 401 || status === 403) return { action: 'error', kind: 'unavailable' };",
+      "expect": "401 and 403 mean the key was not accepted"
+    },
+    {
+      "file": "web/src/app/core/ai/openai-compat.ts",
+      "find": "retryAfterSeconds: retryAfterSeconds(retryAfter) }",
+      "replace": "retryAfterSeconds: 60 }",
+      "expect": "429 carries the seconds"
+    },
+    {
+      "file": "web/src/app/core/ai/openai-compat.ts",
+      "find": "if (status === 400 && tier < 3) {",
+      "replace": "if (status >= 400 && status < 500 && tier < 3) {",
+      "expect": "does not move down on any 4xx but a 400"
+    },
+    {
+      "file": "web/src/app/core/ai/openai-compat.ts",
+      "find": "winningTier.set(cacheKey, tier);",
+      "replace": "void tier;",
+      "expect": "caches the winning tier"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-provider-config.ts",
+      "find": ") : 'gemini',",
+      "replace": ") : 'openai-compatible',",
+      "expect": "migration: a saved own Gemini key"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-provider-config.ts",
+      "find": "!LOCAL_HOSTS.includes(host) &&",
+      "replace": "!(LOCAL_HOSTS.includes(host) || host.includes('')) &&",
+      "expect": "baseUrl vectors"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-provider-config.ts",
+      "find": "!(android && host === EMULATOR_HOST)",
+      "replace": "!(host === EMULATOR_HOST)",
+      "expect": "the website never accepts 10.0.2.2"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-provider-config.ts",
+      "find": "for (const key of [AI_KIND_KEY, AI_BASE_URL_KEY, AI_MODEL_KEY]) {",
+      "replace": "for (const key of [AI_KIND_KEY, AI_MODEL_KEY]) {",
+      "expect": "removing the key removes the three settings"
+    },
+    {
+      "file": "web/src/app/pages/data/session-leftovers.ts",
+      "find": "[LANG_KEY, API_CONFIG_KEY];",
+      "replace": "[LANG_KEY, API_CONFIG_KEY, 'doorprints.ai-base-url'];",
+      "expect": "\"Remove all data\" sweeps the three settings"
+    }
+  ]
+}
