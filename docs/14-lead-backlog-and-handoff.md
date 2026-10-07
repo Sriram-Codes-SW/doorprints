@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.99 |
+| Version | 0.100 |
 | Date | 2026-10-07 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..153); this file lists the lead-level items and points to the rest. |
@@ -109,6 +109,7 @@
 | 0.98 | 2026-10-07 | Claude, lead | **The guided tour on Android and iPhone built on `feat/app-guided-tour`** (no pull request yet; [10](10-sprint-log.md) S4b-FR-39): the phones' version of the website's S4b-FR-38 tour, in common Compose code, with its mutation gates (`tools/mutations/app-tour*.json`; `tools/mutate.mjs` now also runs Gradle tests). §1 gets one line. |
 | 0.99 | 2026-10-07 | Claude (Code), lead | **Planned: the AI provider of the person's choice on the device** (S4b-FR-40; [03](03-design.md) §13.2, ADR-35; [10](10-sprint-log.md) S4b-BL-147..153): docs and test vectors first (branch `docs/adr-27-user-chosen-ai`, no pull request opened yet), then B Kotlin core, C TypeScript core, G server key check, then D phone settings, E website settings, then F Anthropic, H optional evals. |
 | 0.100 | 2026-10-07 | Claude (Code), lead | **S4b-BL-148 (PR C) built on `feat/web-ai-provider-core`**, made from the design branch `docs/adr-27-user-chosen-ai` (no pull request yet; [10](10-sprint-log.md) v0.160): the website's `JsonChatModel`, the OpenAI-compatible adapter, the converter, the base-URL rules, the settings and their migration, in `web/src/app/core/ai/`; specs drive the five vector sections; mutation list `tools/mutations/ai-provider-web.json`. No screens; PR E does the settings. |
+| 0.101 | 2026-10-07 | Claude (Code), lead | **S4b-BL-149 built on `feat/server-ai-key-only-for-gemini` (no pull request yet)** ([10](10-sprint-log.md) v0.160, [03](03-design.md) §13.2, [ai/ai-design.md](ai/ai-design.md) v0.24): the key is needed only when `AI_BASE_URL` has the host `generativelanguage.googleapis.com`; nothing from a request reaches the provider's URL (T-I44, TC-U-171). Step G of S4b-FR-40 is done; B and C are next. |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 

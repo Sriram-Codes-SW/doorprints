@@ -25,6 +25,7 @@
 | v0.21   | 2026-09-29 | Claude (Code), lead           | 8, 8.1: golden set **v0.6**, the prompt-injection set grown from 3 to 25 cases for the release security gate (TC-AI-04, S4b-SEC-1), two fixture houses with payloads in their notes (one with contact data, so contact redaction is now exercised end to end), and the guard keys `draftMustNotContain` and `summaryMustNotContain`. Thresholds unchanged. Not yet run against a model: the next manual AI evals run is the first on v0.6. |
 | v0.22   | 2026-09-29 | Claude (Code), lead           | 8: `ai-evals.yml` gains input `suites` and the job *On-device AI, real key*: one real Extract, Ask and Plan through the phones' and the website's own-key AI (ADR-26), with `AI_API_KEY` (docs/06 TC-U-88). |
 | v0.23   | 2026-10-01 | Claude (Code), lead           | 6: the Plan prompt on the phones and the website skips NOT_CHOSEN as well as REJECTED unless asked, as the server's did since slice 5, and the fallback route leaves out the same two statuses; new parity vector `inTheRunning` (S4b-BL-99 a). |
+| v0.24   | 2026-10-07 | Claude (Code), lead           | 2 and 14: **running with Ollama needs no key** (S4b-BL-149, [10](../10-sprint-log.md)). `AiStatusController` reports AI off for lack of a key only when the chat base URL (`AI_BASE_URL`, the server's own setting, never a request value) has the host `generativelanguage.googleapis.com`; any other host (Ollama, LM Studio, another OpenAI-compatible endpoint) is on without `AI_API_KEY`, and a key that is set is still sent. A blank or unreadable URL counts as the Gemini default. An explicit `AI_KEY_REQUIRED` (`app.ai.key-required`, `true` or `false`) overrides the host rule, for example `true` for a proxy in front of Gemini on another host. Vertex and the owner's pause are unchanged. TC-U-171. |
 
 Status: implemented in `backend/` (package `app.doorprints.server.ai`), **off by default**. Not yet compiled in this
 sandbox (no Maven Central access) — CI compiles and runs the tests. Provider: AI Studio by default, Vertex AI with
@@ -98,7 +99,7 @@ including `AI_EMBEDDING_PROVIDER=openai`.
 | | Default (Gemini free tier) | Alternative (Ollama, local) |
 |---|---|---|
 | `AI_BASE_URL` | `https://generativelanguage.googleapis.com/v1beta/openai/` | `http://localhost:11434/v1` (from Docker: `http://host.docker.internal:11434/v1`, as in the `docker-compose.yml` example) |
-| `AI_API_KEY` | free key from Google AI Studio | any non-empty value, e.g. `ollama` |
+| `AI_API_KEY` | free key from Google AI Studio | none needed (v0.24); a key you set is still sent |
 | `AI_CHAT_MODEL` | `gemini-3.5-flash` (or `gemini-3.5-flash-lite` for more requests/day) | e.g. `qwen3:8b`, `llama3.1:8b` (must support tools) |
 | `AI_EMBEDDING_PROVIDER` | `google-genai` (native Gemini API, same `AI_API_KEY`) | `openai` (uses `AI_BASE_URL`) |
 | `AI_EMBEDDING_MODEL` | `gemini-embedding-2` | `nomic-embed-text` (natively 768-d) |
@@ -972,7 +973,7 @@ agent and MCP result; search cannot confirm a guessed name or phone).
 | `APP_AI_ENABLED` | `false` | Master switch for `/api/ai/**` and indexing |
 | `APP_MCP_ENABLED` | `false` | Enables `/mcp` |
 | `AI_BASE_URL` | `https://generativelanguage.googleapis.com/v1beta/openai/` | OpenAI-compatible endpoint |
-| `AI_API_KEY` | – | Gemini key (or `ollama`) |
+| `AI_API_KEY` | – | Gemini key; not needed for another endpoint such as Ollama |
 | `AI_CHAT_MODEL` | `gemini-3.5-flash` | Chat model |
 | `AI_EMBEDDING_PROVIDER` | `google-genai` | `google-genai` = native Gemini API (3.1); `openai` = OpenAI-compatible `AI_BASE_URL` (Ollama etc.) |
 | `AI_EMBEDDING_MODEL` | `gemini-embedding-2` | Embedding model (both providers) |
