@@ -1540,11 +1540,11 @@
     <string name="tour_find_body">नाम, सड़क, इलाक़े और नोट से खोजें, स्थिति या खर्च से छाँटें और सूची को क्रम दें।</string>
     <string name="tour_find_action">खोज बॉक्स में किसी सड़क या इलाक़े के कुछ अक्षर लिखें।</string>
     <string name="tour_house_title">मकान का विवरण भरें</string>
-    <string name="tour_house_body">मकान में आप उसके कमरे और माप, किराया या क़ीमत, अपनी रेटिंग और देखने के सवालों के जवाब रखते हैं।</string>
+    <string name="tour_house_body">मकान में आप उसके कमरे और माप, किराया या क़ीमत, अपनी रेटिंग, देखने के सवालों के जवाब, और उसकी तस्वीरें (जहाँ फ़ोन में सुविधा हो, कैमरे से या गैलरी से) और घर में शिफ़्ट होना की चेकलिस्ट रखते हैं।</string>
     <string name="tour_house_action">सूची में किसी मकान को खोलें, देखें, फिर यहाँ लौट आएँ।</string>
     <string name="tour_compare_title">मकानों की तुलना करें</string>
-    <string name="tour_compare_body">दो या तीन मकानों को खर्च, आकार, ज़रूरी शर्तों और आपकी रेटिंग के साथ अगल-बगल रखें।</string>
-    <string name="tour_compare_action">तालिका के नीचे मकान चुनें में दो या तीन मकानों पर निशान लगाएँ।</string>
+    <string name="tour_compare_body">चार तक मकानों को खर्च, आकार, ज़रूरी शर्तों और आपकी रेटिंग के साथ अगल-बगल रखें।</string>
+    <string name="tour_compare_action">तालिका के नीचे मकान चुनें में दो से चार मकानों पर निशान लगाएँ।</string>
     <string name="tour_assistant_title">सहायक से पूछें</string>
     <string name="tour_assistant_body">यह तय करने में मदद करता है कि कौन-से मकान देखें और आपके सहेजे मकानों के सवालों के जवाब देता है। यह तब दिखता है जब आपके सर्वर पर AI सुविधाएँ चालू हैं और आपने उन्हें सेटिंग्स में चालू किया है।</string>
     <string name="tour_assistant_action">सहायक टैब खोलें और अपने मकानों के बारे में कोई सवाल पूछें।</string>
@@ -1555,7 +1555,7 @@
     <string name="tour_save_body">सब कुछ की एक प्रति फ़ाइल में सहेजें, या पढ़ने योग्य प्रतियाँ जो किसी भी स्प्रेडशीट में खुलें।</string>
     <string name="tour_save_action">एक प्रति सहेजें दबाएँ, चुनें कि क्या शामिल करना है, फिर सहेजें।</string>
     <string name="tour_import_title">बैकअप आयात करें</string>
-    <string name="tour_import_body">सहेजी हुई प्रति वापस लाएँ, या किसी और फ़ोन की सहेजी फ़ाइल से मकान जोड़ें। आयात को मकान टैब से पूर्ववत किया जा सकता है।</string>
+    <string name="tour_import_body">सहेजी हुई प्रति वापस लाएँ, या किसी और फ़ोन की सहेजी फ़ाइल से मकान जोड़ें। आयात को मकान टैब से पूर्ववत किया जा सकता है। जहाँ फ़ोन में सुविधा हो (अभी Android), किसी दूसरे ऐप से साझा की गई लिस्टिंग Doorprints में साझा की गई लिस्टिंग जोड़ें के रूप में आती है।</string>
     <string name="tour_import_action">जब फ़ाइल हो तब बैकअप आयात करें दबाकर उसे चुनें।</string>
     <string name="tour_share_title">अपडेट साझा करें…</string>
     <string name="tour_share_body">पिछली बार से जो बदला है उसकी छोटी फ़ाइल किसी को भेजें, किसी भी ऐप से, जैसे WhatsApp या ईमेल।</string>
@@ -1572,6 +1572,9 @@
     <string name="tour_server_title">आपका अपना सर्वर</string>
     <string name="tour_server_body">आपका अपना चलाया सर्वर आपके मकानों की प्रति रखता है और एक से ज़्यादा डिवाइस सिंक करता है। यह वैकल्पिक है; जब तक आप कोई जोड़ें नहीं, कुछ कहीं नहीं भेजा जाता।</string>
     <string name="tour_server_action">सर्वर न चलाते हों तो इसे छोड़ दें। इसे यहाँ कोड या API कुंजी से जोड़ा जाता है।</string>
+    <string name="tour_ai_title">AI सुविधाएँ</string>
+    <string name="tour_ai_body">सहायक और AI मदद के काम करने के लिए सेटिंग्स में AI सुविधाएँ के नीचे उन्हें चालू करें। आप जो पूछते हैं वह Google Gemini को जाता है, आपके सर्वर से या इस फ़ोन से सीधे आपकी अपनी Gemini कुंजी से। चालू करने तक वे बंद रहती हैं।</string>
+    <string name="tour_ai_action">सेटिंग्स खोलें, AI सुविधाएँ ढूँढें और चालू करने से पहले पढ़ें कि क्या भेजा जाता है। यह वैकल्पिक है।</string>
     <string name="tour_brokers_title">ब्रोकर</string>
     <string name="tour_brokers_body">जिन ब्रोकरों और मालिकों से आप मिले, उन्होंने क्या बताया और कौन-से मकान दिखाए, यह रखें।</string>
     <string name="tour_brokers_action">सूची देखने के लिए ब्रोकर दबाएँ, या बाद में किसी मकान से जोड़ें।</string>
@@ -1591,6 +1594,6 @@
     <string name="tour_help_body">उपयोगकर्ता गाइड में हर सुविधा के लिए तस्वीरें और हर चरण आपकी भाषा में हैं। आप यहीं से यह टूर फिर देख सकते हैं।</string>
     <string name="tour_help_action">गाइड खोलने के लिए सहायता दबाएँ, या इसे फिर देखने के लिए टूर देखें दबाएँ।</string>
     <string name="tour_done_title">आप तैयार हैं</string>
-    <string name="tour_done_body">यह Doorprints का हर हिस्सा था। अपने देखे पहले मकान से शुरू करें।</string>
+    <string name="tour_done_body">यह Doorprints के मुख्य हिस्से थे। अपने देखे पहले मकान से शुरू करें।</string>
     <string name="tour_done_action">समाप्त करें दबाएँ, फिर ऐप खुला रखकर मकान देखने जाएँ।</string>
 </resources>

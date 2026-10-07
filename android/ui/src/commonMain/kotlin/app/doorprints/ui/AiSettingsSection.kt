@@ -91,6 +91,7 @@ fun AiSettingsSection(settings: AppSettings, aiOff: AiOff?) {
         hint = stringResource(Res.string.settings_ai_hint),
         checked = settings.aiFeatures,
         horizontalPadding = 0.dp,
+        modifier = Modifier.tourTarget(TourTargets.SETTINGS_AI),
         onChange = { on -> scope.launch { repo.setAiFeatures(on) } },
     )
     if (!settings.aiFeatures) return

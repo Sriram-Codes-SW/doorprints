@@ -46,6 +46,7 @@ object TourTargets {
     const val SETTINGS_TRACE = "settings.trace"
     const val SETTINGS_DRIVE = "settings.drive"
     const val SETTINGS_SERVER = "settings.server"
+    const val SETTINGS_AI = "settings.ai"
     const val SETTINGS_BROKERS = "settings.brokers"
     const val SETTINGS_CRITERIA = "settings.criteria"
     const val SETTINGS_VIEWINGS = "settings.viewings"
@@ -117,6 +118,7 @@ object TourSteps {
         TourStep("trace", SETTINGS, listOf(TourTargets.SETTINGS_TRACE), Res.string.tour_trace_title, Res.string.tour_trace_body, Res.string.tour_trace_action, setOf(TourNeed.HUNT)),
         TourStep("drive", SETTINGS, listOf(TourTargets.SETTINGS_DRIVE), Res.string.tour_drive_title, Res.string.tour_drive_body, Res.string.tour_drive_action, setOf(TourNeed.GOOGLE_DRIVE)),
         TourStep("server", SETTINGS, listOf(TourTargets.SETTINGS_SERVER), Res.string.tour_server_title, Res.string.tour_server_body, Res.string.tour_server_action),
+        TourStep("ai", SETTINGS, listOf(TourTargets.SETTINGS_AI), Res.string.tour_ai_title, Res.string.tour_ai_body, Res.string.tour_ai_action),
         TourStep("brokers", SETTINGS, listOf(TourTargets.SETTINGS_BROKERS), Res.string.tour_brokers_title, Res.string.tour_brokers_body, Res.string.tour_brokers_action),
         TourStep("criteria", SETTINGS, listOf(TourTargets.SETTINGS_CRITERIA), Res.string.tour_criteria_title, Res.string.tour_criteria_body, Res.string.tour_criteria_action),
         TourStep("viewings", SETTINGS, listOf(TourTargets.SETTINGS_VIEWINGS), Res.string.tour_viewings_title, Res.string.tour_viewings_body, Res.string.tour_viewings_action),

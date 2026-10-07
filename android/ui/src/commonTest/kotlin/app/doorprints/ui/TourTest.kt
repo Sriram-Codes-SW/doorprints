@@ -45,7 +45,7 @@ class TourTest {
         assertEquals(
             listOf(
                 "welcome", "add", "hunt", "check", "offline", "find", "house", "compare", "assistant", "language", "save", "import",
-                "share", "backup", "trace", "drive", "server", "brokers", "criteria", "viewings", "areas", "lock", "help", "done",
+                "share", "backup", "trace", "drive", "server", "ai", "brokers", "criteria", "viewings", "areas", "lock", "help", "done",
             ),
             ids(android),
         )
@@ -70,6 +70,7 @@ class TourTest {
         fun without(features: PlatformFeatures, assistant: Boolean = true, offline: Boolean = true) =
             ids(TourContext(features, assistant, offline))
         assertFalse("assistant" in without(PlatformFeatures(), assistant = false))
+        assertTrue("ai" in without(PlatformFeatures(), assistant = false), "AI features are always shown, so a person without AI learns where it is")
         assertFalse("offline" in without(PlatformFeatures(), offline = false))
         assertFalse("offline" in without(PlatformFeatures(map = false)))
         assertEquals(setOf("hunt", "trace"), ids(android).toSet() - without(PlatformFeatures(huntMode = false)).toSet())
@@ -95,7 +96,7 @@ class TourTest {
                 "welcome" to "map", "add" to "map", "hunt" to "map", "check" to "map", "offline" to "map", "find" to "houses",
                 "house" to "houses", "compare" to "compare", "assistant" to "map", "language" to "settings", "save" to "settings",
                 "import" to "settings", "share" to "settings", "backup" to "settings", "trace" to "settings", "drive" to "settings",
-                "server" to "settings", "brokers" to "settings", "criteria" to "settings", "viewings" to "settings",
+                "server" to "settings", "ai" to "settings", "brokers" to "settings", "criteria" to "settings", "viewings" to "settings",
                 "areas" to "settings", "lock" to "settings", "help" to "settings", "done" to "map",
             ),
             TourSteps.forPhone(android).associate { it.id to it.route },
@@ -112,7 +113,7 @@ class TourTest {
                 "assistant" to listOf("nav.assistant"), "language" to listOf("settings.language"),
                 "save" to listOf("settings.export"), "import" to listOf("settings.import"), "share" to listOf("settings.share"),
                 "backup" to listOf("settings.backup"), "trace" to listOf("settings.trace"), "drive" to listOf("settings.drive"),
-                "server" to listOf("settings.server"), "brokers" to listOf("settings.brokers"),
+                "server" to listOf("settings.server"), "ai" to listOf("settings.ai"), "brokers" to listOf("settings.brokers"),
                 "criteria" to listOf("settings.criteria"), "viewings" to listOf("settings.viewings"),
                 "areas" to listOf("settings.areas"), "lock" to listOf("settings.lock"), "help" to listOf("settings.help"),
             ),

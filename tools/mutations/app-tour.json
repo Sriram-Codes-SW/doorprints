@@ -215,6 +215,24 @@
       "find": "ids.firstOrNull { it in boxes }",
       "replace": "ids.lastOrNull { it in boxes }",
       "expect": "aStepHighlightsTheFirstOfItsTargetsThatIsOnScreen"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/TourSteps.kt",
+      "find": "TourStep(\"ai\", SETTINGS,",
+      "replace": "TourStep(\"ai\", MAP,",
+      "expect": "eachStepIsOnTheTabOfTheScreenItPointsAt"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/TourSteps.kt",
+      "find": "listOf(TourTargets.SETTINGS_AI)",
+      "replace": "listOf(TourTargets.SETTINGS_SERVER)",
+      "expect": "eachStepPointsAtItsOwnControl"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/TourSteps.kt",
+      "find": "Res.string.tour_ai_action)",
+      "replace": "Res.string.tour_ai_action, setOf(TourNeed.ASSISTANT))",
+      "expect": "aStepWhoseFeatureIsOffIsLeftOut"
     }
   ]
 }

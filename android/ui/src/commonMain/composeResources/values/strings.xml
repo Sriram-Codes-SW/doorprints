@@ -1540,11 +1540,11 @@
     <string name="tour_find_body">Search by name, street, locality and notes, filter by status or cost, and sort the list.</string>
     <string name="tour_find_action">Type a few letters of a street or a locality in the search box.</string>
     <string name="tour_house_title">Fill in the house</string>
-    <string name="tour_house_body">On a house you keep its rooms and sizes, rent or price, your rating and the answers to your viewing questions.</string>
+    <string name="tour_house_body">On a house you keep its rooms and sizes, rent or price, your rating, the answers to your viewing questions, and its photos (taken with the camera or picked from the gallery, where the phone can) and a Moving in checklist.</string>
     <string name="tour_house_action">Tap a house in the list to open it, look around, then come back here.</string>
     <string name="tour_compare_title">Compare houses</string>
-    <string name="tour_compare_body">Put two or three houses side by side, with cost, size, must-haves and your ratings.</string>
-    <string name="tour_compare_action">Under the table, tick two or three houses in Choose houses.</string>
+    <string name="tour_compare_body">Put up to four houses side by side, with cost, size, must-haves and your ratings.</string>
+    <string name="tour_compare_action">Under the table, tick two to four houses in Choose houses.</string>
     <string name="tour_assistant_title">Ask the Assistant</string>
     <string name="tour_assistant_body">It plans which houses to visit and answers questions about your saved houses. It shows when your server has AI features on and you have switched them on in Settings.</string>
     <string name="tour_assistant_action">Open the Assistant tab and ask a question about your houses.</string>
@@ -1555,7 +1555,7 @@
     <string name="tour_save_body">Save a copy of everything as a file you keep, or as readable copies you can open in any spreadsheet.</string>
     <string name="tour_save_action">Tap Save a copy, choose what to include, then save.</string>
     <string name="tour_import_title">Import a backup</string>
-    <string name="tour_import_body">Bring back a copy you saved, or add the houses from a file another phone saved. You can undo an import from the Houses tab.</string>
+    <string name="tour_import_body">Bring back a copy you saved, or add the houses from a file another phone saved. You can undo an import from the Houses tab. Where the phone supports it (Android today), a listing you share from another app lands in Doorprints as Add a shared listing.</string>
     <string name="tour_import_action">Tap Import a backup and pick a file when you have one.</string>
     <string name="tour_share_title">Share updates with…</string>
     <string name="tour_share_body">Send someone a small file of what changed since last time, through any app, such as WhatsApp or email.</string>
@@ -1572,6 +1572,9 @@
     <string name="tour_server_title">Your own server</string>
     <string name="tour_server_body">A server you run yourself keeps a copy of your houses and syncs more than one device. It is optional; nothing is sent anywhere until you connect one.</string>
     <string name="tour_server_action">Skip this unless you run a server. You connect it here, by code or by API key.</string>
+    <string name="tour_ai_title">AI features</string>
+    <string name="tour_ai_body">Switch on AI features in Settings, under AI features, so the Assistant and AI help can work. They send what you ask to Google Gemini, through your server or straight from this phone with your own Gemini key. They are off until you turn them on.</string>
+    <string name="tour_ai_action">Open Settings, find AI features and read what is sent before you switch it on. It is optional.</string>
     <string name="tour_brokers_title">Brokers</string>
     <string name="tour_brokers_body">Keep the brokers and owners you meet, what they told you, and which houses they showed.</string>
     <string name="tour_brokers_action">Tap Brokers to see the list, or add one later from a house.</string>
@@ -1591,6 +1594,6 @@
     <string name="tour_help_body">The user guide has pictures and every step for each feature, in your language. You can take this tour again from here.</string>
     <string name="tour_help_action">Tap Help to open the user guide, or Take the tour to see this again.</string>
     <string name="tour_done_title">You are ready</string>
-    <string name="tour_done_body">That is every part of Doorprints. Start with the first house you visit.</string>
+    <string name="tour_done_body">Those are the main parts of Doorprints. Start with the first house you visit.</string>
     <string name="tour_done_action">Tap Finish, then go and see a house with the app open.</string>
 </resources>
