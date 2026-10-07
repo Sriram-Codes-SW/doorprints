@@ -24,6 +24,9 @@ import { RISK_DISMISSED_KEY } from '../data/storage.service';
 import { ConfigService } from './config.service';
 import { INSTALL_DISMISSED_KEY } from './pwa.service';
 import {
+  AI_BASE_URL_KEY,
+  AI_KIND_KEY,
+  AI_MODEL_KEY,
   API_CONFIG_KEY,
   currentKeyFor,
   LANG_KEY,
@@ -53,7 +56,7 @@ function fakeStorage(entries: Record<string, string>, failWrites = false) {
 
 describe('storage keys from before the rename to Doorprints', () => {
   it('gives every key this app writes the doorprints. prefix', () => {
-    const keys = [LANG_KEY, API_CONFIG_KEY, DRAFT_PREFIX, SHARE_TEXT_KEY, MAP_VIEW_KEY];
+    const keys = [LANG_KEY, API_CONFIG_KEY, DRAFT_PREFIX, SHARE_TEXT_KEY, MAP_VIEW_KEY, AI_KIND_KEY, AI_BASE_URL_KEY, AI_MODEL_KEY];
     for (const key of [...keys, INSTALL_DISMISSED_KEY, RISK_DISMISSED_KEY]) {
       expect(key.startsWith(STORAGE_PREFIX)).toBe(true);
     }
