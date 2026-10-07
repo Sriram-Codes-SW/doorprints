@@ -631,6 +631,7 @@
     <string name="settings_ai_service_groq">Groq</string>
     <string name="settings_ai_service_ollama">Ollama (இந்தச் சாதனத்தில்)</string>
     <string name="settings_ai_service_lmstudio">LM Studio (இந்தச் சாதனத்தில்)</string>
+    <string name="settings_ai_service_anthropic">Anthropic</string>
     <string name="settings_ai_service_custom">தனிப்பயன் (OpenAI-இணக்கமானது)</string>
     <string name="settings_ai_base_url">அடிப்படை URL</string>
     <string name="settings_ai_base_url_hint">https ஐப் பயன்படுத்தவும், அல்லது இந்தச் சாதனத்திலேயே இயக்கவும்.</string>

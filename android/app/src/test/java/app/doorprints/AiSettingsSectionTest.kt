@@ -192,6 +192,7 @@ class AiSettingsSectionTest {
             "Groq" to "https://api.groq.com/openai/v1",
             "Ollama (on this device)" to "http://localhost:11434/v1",
             "LM Studio (on this device)" to "http://localhost:1234/v1",
+            "Anthropic" to "https://api.anthropic.com",
             "Custom (OpenAI-compatible)" to "",
         ).forEach { (name, url) ->
             choose(name)
@@ -204,6 +205,8 @@ class AiSettingsSectionTest {
         show()
         choose("OpenAI")
         compose.onNode(field("Base URL")).assert(!hasSetTextAction())
+        choose("Anthropic")
+        compose.onNode(field("Base URL")).assert(!hasSetTextAction())
         choose("Custom (OpenAI-compatible)")
         compose.onNode(field("Base URL")).assert(hasSetTextAction())
     }
@@ -212,6 +215,8 @@ class AiSettingsSectionTest {
         show()
         choose("OpenAI")
         waitFor("sent from this phone straight to api.openai.com with your own key")
+        choose("Anthropic")
+        waitFor("sent from this phone straight to api.anthropic.com with your own key")
         choose("Ollama (on this device)")
         waitFor("straight to localhost with your own key")
         choose("Custom (OpenAI-compatible)")
@@ -285,6 +290,34 @@ class AiSettingsSectionTest {
         waitFor("Saved on this phone")
         assertEquals("", valueOf("API key"))
         waitFor("A key ending in 1234 is saved")
+    }
+
+    @Test fun anthropicNeedsAModelAndAKeyAndSavesKindAnthropicWithItsAddress() {
+        show()
+        choose("Anthropic")
+        press("Save")
+        inLiveRegion("Enter the model name first.")
+        inLiveRegion("Paste your API key first.")
+        assertEquals(AiProviderConfig.GEMINI, settings().aiProviderConfig)
+        type("Model", "my-model")
+        type("API key", "test-key-not-real")
+        press("Save")
+        waitSettings { it.aiProviderConfig.kind == AiKind.ANTHROPIC }
+        val s = settings()
+        assertEquals(AiProviderConfig(AiKind.ANTHROPIC, "https://api.anthropic.com", "my-model"), s.aiProviderConfig)
+        assertEquals("test-key-not-real", s.geminiKey)
+        waitFor("A key ending in real is saved")
+    }
+
+    @Test fun aKeySavedForAnthropicIsNotOfferedToAnotherService() {
+        runBlocking { store.saveAiProviderConfig(AiProviderConfig(AiKind.ANTHROPIC, "https://api.anthropic.com", "my-model"), "test-key-not-real") }
+        show()
+        waitFor("A key ending in real is saved")
+        choose("OpenAI")
+        gone("A key ending in")
+        type("Model", "gpt-4o-mini")
+        press("Save")
+        inLiveRegion("Paste your API key first.")
     }
 
     @Test fun aSuccessfulTestSaysWhichHostAcceptedTheKeyOrAnsweredWithoutOne() {

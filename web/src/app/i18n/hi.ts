@@ -1628,6 +1628,7 @@ export const hi: Dict = {
   'connect.aiService.groq': 'Groq',
   'connect.aiService.ollama': 'Ollama (इसी डिवाइस पर)',
   'connect.aiService.lmstudio': 'LM Studio (इसी डिवाइस पर)',
+  'connect.aiService.anthropic': 'Anthropic',
   'connect.aiService.custom': 'कस्टम (OpenAI-संगत)',
   'connect.aiBaseUrl': 'बेस URL',
   'connect.aiBaseUrlHint': 'https इस्तेमाल करें, या इसे इसी डिवाइस पर चलाएँ।',

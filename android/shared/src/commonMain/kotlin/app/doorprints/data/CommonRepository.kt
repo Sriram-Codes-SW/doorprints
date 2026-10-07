@@ -28,6 +28,7 @@ import app.doorprints.shared.ai.AiHouse
 import app.doorprints.shared.ai.AiVisit
 import app.doorprints.shared.ai.AiKind
 import app.doorprints.shared.ai.AiProviderConfig
+import app.doorprints.shared.ai.AnthropicClient
 import app.doorprints.shared.ai.BaseUrlCheck
 import app.doorprints.shared.ai.BaseUrlValidator
 import app.doorprints.shared.ai.GeminiClient
@@ -156,6 +157,8 @@ open class CommonRepository(
     syncBackendFor: (suspend (AppSettings) -> SyncBackend?)? = null,
     /** An OpenAI-compatible endpoint with the person's own key, for on-device AI (docs/03 §13.2); null where a platform has none. */
     private val openAiFor: ((baseUrl: String, model: String, apiKey: String) -> JsonChatModel)? = null,
+    /** Anthropic with the person's own key, for on-device AI (docs/03 §13.2); null where a platform has none. */
+    private val anthropicFor: ((baseUrl: String, model: String, apiKey: String) -> JsonChatModel)? = null,
     /** True on Android only: the emulator's name for its computer, `10.0.2.2`, may be an http base URL ([BaseUrlValidator]). */
     private val emulatorHostAllowed: Boolean = false,
 ) : Repository {
@@ -855,14 +858,16 @@ open class CommonRepository(
         // The key is optional here (a model on the person's own computer needs none).
         AiKind.OPENAI_COMPATIBLE -> openAiFor != null && s.aiProviderConfig.model.isNotBlank() &&
             BaseUrlValidator.check(s.aiProviderConfig.baseUrl, emulatorHostAllowed) is BaseUrlCheck.Valid
-        AiKind.ANTHROPIC -> false
+        // Anthropic has no keyless form: the key is required.
+        AiKind.ANTHROPIC -> anthropicFor != null && s.geminiKey.isNotBlank() && s.aiProviderConfig.model.isNotBlank() &&
+            BaseUrlValidator.check(s.aiProviderConfig.baseUrl, emulatorHostAllowed) is BaseUrlCheck.Valid
     }
 
     /** The model for the saved choice, or null when nothing here can build it. */
     private fun chatModel(config: AiProviderConfig, key: String): JsonChatModel? = when (config.kind) {
         AiKind.GEMINI -> geminiFor?.invoke(key)
         AiKind.OPENAI_COMPATIBLE -> openAiFor?.invoke(config.baseUrl, config.model, key)
-        AiKind.ANTHROPIC -> null
+        AiKind.ANTHROPIC -> anthropicFor?.invoke(config.baseUrl, config.model, key)
     }
 
     private fun publishAi(s: AppSettings): Boolean {
@@ -892,6 +897,7 @@ open class CommonRepository(
 
     override suspend fun saveAiProviderConfig(config: AiProviderConfig, key: String) {
         val checked = checkedConfig(config)
+        require(checked.kind != AiKind.ANTHROPIC || key.isNotBlank()) { "key" }
         settings.saveAiProviderConfig(checked, key)
         publishAi(settings.current())
     }
@@ -906,15 +912,16 @@ open class CommonRepository(
     /** [config] with its base URL normalised, or an [IllegalArgumentException] saying what is wrong with it. */
     private fun checkedConfig(config: AiProviderConfig): AiProviderConfig = when (config.kind) {
         AiKind.GEMINI -> AiProviderConfig.GEMINI
-        AiKind.OPENAI_COMPATIBLE -> {
-            val url = when (val check = BaseUrlValidator.check(config.baseUrl, emulatorHostAllowed)) {
+        AiKind.OPENAI_COMPATIBLE, AiKind.ANTHROPIC -> {
+            // Anthropic has one address; a config saved without one means that.
+            val address = if (config.kind == AiKind.ANTHROPIC && config.baseUrl.isBlank()) AnthropicClient.BASE_URL else config.baseUrl
+            val url = when (val check = BaseUrlValidator.check(address, emulatorHostAllowed)) {
                 is BaseUrlCheck.Valid -> check.normalised
                 is BaseUrlCheck.Invalid -> throw IllegalArgumentException(check.reason.wire)
             }
             require(config.model.isNotBlank()) { "model" }
             config.copy(baseUrl = url, model = config.model.trim())
         }
-        AiKind.ANTHROPIC -> throw IllegalArgumentException("kind")
     }
 
     /** The saved houses and their visits as on-device AI reads them, most recently changed first. */

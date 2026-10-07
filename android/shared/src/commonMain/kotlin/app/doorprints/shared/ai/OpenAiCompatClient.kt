@@ -108,12 +108,7 @@ class OpenAiCompatClient(
             return Step.Fail(failure(status, retryAfter))
         }
 
-        internal fun failure(status: Int, retryAfter: String?): ApiException = when (status) {
-            401, 403 -> ApiException(ApiException.Kind.AI_KEY_REJECTED, status)
-            404 -> ApiException(ApiException.Kind.AI_MODEL_NOT_FOUND, status)
-            429 -> ApiException(ApiException.Kind.RATE_LIMITED, status, retryAfterSeconds = retryAfter?.trim()?.toLongOrNull())
-            else -> ApiException(ApiException.Kind.AI_UNAVAILABLE, status)
-        }
+        internal fun failure(status: Int, retryAfter: String?): ApiException = aiFailure(status, retryAfter)
 
         /**
          * The request body for [tier] (docs/03 §13.2): 1 asks for the strict schema, 2 for a JSON object with the schema

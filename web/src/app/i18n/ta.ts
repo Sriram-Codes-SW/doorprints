@@ -1628,6 +1628,7 @@ export const ta: Dict = {
   'connect.aiService.groq': 'Groq',
   'connect.aiService.ollama': 'Ollama (இந்தச் சாதனத்தில்)',
   'connect.aiService.lmstudio': 'LM Studio (இந்தச் சாதனத்தில்)',
+  'connect.aiService.anthropic': 'Anthropic',
   'connect.aiService.custom': 'தனிப்பயன் (OpenAI-இணக்கமானது)',
   'connect.aiBaseUrl': 'அடிப்படை URL',
   'connect.aiBaseUrlHint': 'https ஐப் பயன்படுத்தவும், அல்லது இந்தச் சாதனத்திலேயே இயக்கவும்.',

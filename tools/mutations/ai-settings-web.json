@@ -39,8 +39,8 @@
     },
     {
       "file": "web/src/app/core/ai/ai-provider-config.ts",
-      "find": "    return check.valid ? check.host : '';\n  }\n  return '';",
-      "replace": "    return GEMINI_HOST;\n  }\n  return '';",
+      "find": "  return check.valid ? check.host : '';\n}\n\n/**\n * Whether `config` can answer",
+      "replace": "  return GEMINI_HOST;\n}\n\n/**\n * Whether `config` can answer",
       "expect": "Save keeps the three settings"
     },
     {
@@ -114,6 +114,30 @@
       "find": "(service() === 'ollama' ? 'connect.aiLocalCorsHint' : 'connect.aiLocalCorsHintOther')",
       "replace": "'connect.aiLocalCorsHintOther'",
       "expect": "show the CORS hint with OLLAMA_ORIGINS"
+    },
+    {
+      "file": "web/src/app/pages/connect/connect-page.ts",
+      "find": "return id === 'anthropic' ? ANTHROPIC_BASE_URL :",
+      "replace": "return id === 'anthropic' ? '' :",
+      "expect": "Anthropic prefills its own address read-only"
+    },
+    {
+      "file": "web/src/app/pages/connect/connect-page.ts",
+      "find": "(this.service() === 'anthropic' ? 'anthropic' : 'openai-compatible')",
+      "replace": "'openai-compatible'",
+      "expect": "Save keeps kind anthropic"
+    },
+    {
+      "file": "web/src/app/pages/connect/connect-page.ts",
+      "find": "if (config.kind === 'anthropic') return 'anthropic';",
+      "replace": "if (config.kind === 'anthropic') return 'custom';",
+      "expect": "Save keeps kind anthropic"
+    },
+    {
+      "file": "web/src/app/pages/connect/connect-page.ts",
+      "find": "return saved.kind === this.kind() && check.valid",
+      "replace": "return saved.kind !== 'gemini' && check.valid",
+      "expect": "Save keeps kind anthropic"
     }
   ]
 }

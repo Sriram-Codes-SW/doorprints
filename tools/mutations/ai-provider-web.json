@@ -50,13 +50,13 @@
       "expect": "openaiContent vectors"
     },
     {
-      "file": "web/src/app/core/ai/openai-compat.ts",
+      "file": "web/src/app/core/ai/ai-request.ts",
       "find": "if (status === 401 || status === 403) return { action: 'error', kind: 'keyRejected' };",
       "replace": "if (status === 401 || status === 403) return { action: 'error', kind: 'unavailable' };",
       "expect": "401 and 403 mean the key was not accepted"
     },
     {
-      "file": "web/src/app/core/ai/openai-compat.ts",
+      "file": "web/src/app/core/ai/ai-request.ts",
       "find": "retryAfterSeconds: retryAfterSeconds(retryAfter) }",
       "replace": "retryAfterSeconds: 60 }",
       "expect": "429 carries the seconds"

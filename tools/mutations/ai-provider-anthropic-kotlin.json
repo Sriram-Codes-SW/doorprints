@@ -1,0 +1,112 @@
+{
+  "spec": "android/shared/src/commonTest/kotlin/app/doorprints/shared/ai/AnthropicClientTest.kt",
+  "gradle": [
+    ":shared:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.shared.ai.AnthropicClientTest",
+    "--tests",
+    "app.doorprints.shared.ai.AiProviderVectorsTest",
+    "--tests",
+    "app.doorprints.shared.ai.AiClientTransportTest",
+    "--tests",
+    "app.doorprints.data.AiProviderRepositoryTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AnthropicClient.kt",
+      "find": "mapOf(\"x-api-key\" to key,",
+      "replace": "mapOf(\"x-key\" to key,",
+      "expect": "theRequestGoesToV1MessagesWithTheKeyAndVersionHeaders"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AnthropicClient.kt",
+      "find": "\"anthropic-version\" to VERSION)",
+      "replace": "\"anthropic-version\" to \"2024-01-01\")",
+      "expect": "theRequestGoesToV1MessagesWithTheKeyAndVersionHeaders"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AnthropicClient.kt",
+      "find": "\"anthropic-version\" to VERSION)",
+      "replace": "\"anthropic-version\" to VERSION, \"anthropic-dangerous-direct-browser-access\" to \"true\")",
+      "expect": "theRequestGoesToV1MessagesWithTheKeyAndVersionHeaders"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AnthropicClient.kt",
+      "find": "\"$baseUrl/v1/messages\"",
+      "replace": "\"$baseUrl/messages\"",
+      "expect": "theRequestGoesToV1MessagesWithTheKeyAndVersionHeaders"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AnthropicClient.kt",
+      "find": "put(\"tool_choice\", buildJsonObject { put(\"type\", \"tool\");",
+      "replace": "put(\"tool_choice\", buildJsonObject { put(\"type\", \"auto\");",
+      "expect": "theAnswerIsForcedThroughOneToolNamedForTheCall"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AnthropicClient.kt",
+      "find": "put(\"input_schema\", SchemaDialect.strict(schema))",
+      "replace": "put(\"input_schema\", schema)",
+      "expect": "theAnswerIsForcedThroughOneToolNamedForTheCall"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AnthropicClient.kt",
+      "find": "\"tool_use\" }",
+      "replace": "\"text\" }",
+      "expect": "theAnswerIsTheToolCallsInputNotTheTextAroundIt"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AnthropicClient.kt",
+      "find": "if (key.isEmpty()) throw ApiException(ApiException.Kind.AI_KEY_REJECTED, 401)",
+      "replace": "if (false) throw ApiException(ApiException.Kind.AI_KEY_REJECTED, 401)",
+      "expect": "aKeyIsRequiredAndWithoutOneNothingIsSent"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AnthropicClient.kt",
+      "find": "== \"max_tokens\") throw unavailable()",
+      "replace": "== \"max_tokens_\") throw unavailable()",
+      "expect": "anAnswerCutOffByTheTokenLimitIsUnavailableEvenWithAToolCall"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AnthropicClient.kt",
+      "find": "schema = null, maxTokens = 5)",
+      "replace": "schema = null, maxTokens = 50)",
+      "expect": "pingSendsFiveTokensNoToolAndAcceptsAnAnswerCutOffAtTheLimit"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AnthropicClient.kt",
+      "find": "if (message(body)[\"content\"] !is JsonArray) throw unavailable()",
+      "replace": "if (false) throw unavailable()",
+      "expect": "anthropicContentMatchesTheVectors"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AnthropicClient.kt",
+      "find": "put(\"temperature\", temperature)\n            put(\"system\", system)",
+      "replace": "put(\"system\", system)\n            put(\"temperature\", temperature)",
+      "expect": "anthropicRequestMatchesTheVectorsForEveryCall"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AiRequest.kt",
+      "find": "401, 403 -> ApiException(ApiException.Kind.AI_KEY_REJECTED, status)",
+      "replace": "403 -> ApiException(ApiException.Kind.AI_KEY_REJECTED, status)",
+      "expect": "theStatusesTheScreensWordAreMappedForAGenerateAndAPing"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt",
+      "find": "require(checked.kind != AiKind.ANTHROPIC || key.isNotBlank()) { \"key\" }",
+      "replace": "require(true) { \"key\" }",
+      "expect": "anAnthropicChoiceNeedsAKeyAndAnHttpsAddressAndNothingIsSavedWithoutThem"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt",
+      "find": "AiKind.ANTHROPIC -> anthropicFor?.invoke(config.baseUrl, config.model, key)",
+      "replace": "AiKind.ANTHROPIC -> null",
+      "expect": "testingAnAnthropicChoiceSendsOnePingToItAndSavesNothing"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt",
+      "find": "val address = if (config.kind == AiKind.ANTHROPIC && config.baseUrl.isBlank()) AnthropicClient.BASE_URL else config.baseUrl",
+      "replace": "val address = config.baseUrl",
+      "expect": "anAnthropicChoiceWithNoSavedAddressUsesAnthropicsOwn"
+    }
+  ]
+}

@@ -20,6 +20,7 @@ package app.doorprints.data
 
 import android.util.Log
 import app.doorprints.shared.ai.GeminiClient
+import app.doorprints.shared.ai.AnthropicClient
 import app.doorprints.shared.ai.OpenAiCompatClient
 import app.doorprints.shared.api.AndroidApiHttp
 import app.doorprints.shared.api.ApiClient
@@ -52,4 +53,7 @@ object Api {
 
     /** An OpenAI-compatible endpoint with the person's own key (docs/03 §13.2), on the same pool. Nothing is logged. */
     fun openAi(baseUrl: String, model: String, apiKey: String): OpenAiCompatClient = OpenAiCompatClient(http, baseUrl, model, apiKey)
+
+    /** Anthropic with the person's own key (docs/03 §13.2), on the same pool. Nothing is logged. */
+    fun anthropic(baseUrl: String, model: String, apiKey: String): AnthropicClient = AnthropicClient(http, model, apiKey, baseUrl)
 }

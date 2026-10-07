@@ -28,6 +28,7 @@ import { AiService } from '../ai.service';
 import { ConfigService } from '../config.service';
 import { AI_BASE_URL_KEY, AI_KIND_KEY, AI_MODEL_KEY, AI_OPT_IN_KEY, AI_PROVIDER_KEY, GEMINI_KEY_KEY, LANG_KEY, STORAGE_PREFIX } from '../storage-keys';
 import { AI_PRESETS, readAiConfig, saveAiConfig, validateBaseUrl, validateWebBaseUrl } from './ai-provider-config';
+import { AnthropicChatModel } from './anthropic';
 import type { JsonChatModel } from './json-chat-model';
 import {
   OpenAiCompatibleChatModel, answerText, classifyError, openAiBody, resetTierCache, type Tier,
@@ -154,8 +155,11 @@ describe('openaiContent vectors', () => {
 
 describe('providerErrors vectors', () => {
   it('providerErrors vectors: the next tier or the kind of error for every status and body', () => {
-    expect(vectors.providerErrors).toHaveLength(22);
-    for (const c of vectors.providerErrors as { tier: number; status: number; body: string; retryAfter?: string; expected: Record<string, unknown> }[]) {
+    // The rows without a `provider` are this adapter's; the Anthropic rows are anthropic.spec.ts's.
+    const rows = (vectors.providerErrors as { provider?: string; tier: number; status: number; body: string; retryAfter?: string; expected: Record<string, unknown> }[])
+      .filter((c) => c.provider === undefined);
+    expect(rows).toHaveLength(22);
+    for (const c of rows) {
       const got = classifyError(c.tier as Tier, c.status, c.body, c.retryAfter ?? null) as unknown as Record<string, unknown>;
       const label = `tier ${c.tier} status ${c.status} ${c.body}`;
       expect(got['action'], label).toBe(c.expected['action']);
@@ -400,7 +404,23 @@ describe('AiService with the person\'s own provider', () => {
     expect(onDevice.test.mock.calls[0][0]).toBeInstanceOf(OpenAiCompatibleChatModel);
   });
 
-  it('is not ready without a valid base URL and a model, and has no adapter for the reserved kind', () => {
+  it('answers with Anthropic when it is chosen and a model and a key are saved, and builds its adapter for a test', async () => {
+    const onDevice = { ask: vi.fn(async (..._a: unknown[]) => ASK), test: vi.fn(async (..._a: unknown[]) => undefined) };
+    const ai = create(onDevice);
+    ai.setOptIn(true);
+    ai.setProvider('device');
+    ai.setAiConfig({ kind: 'anthropic', baseUrl: 'https://api.anthropic.com', model: 'my-model' });
+    expect(ai.usesOwnKey(), 'no key yet').toBe(false);
+    ai.saveGeminiKey('test-key-not-real', false);
+    expect(ai.usesOwnKey()).toBe(true);
+    expect(ai.ownHost()).toBe('api.anthropic.com');
+    await new Promise<void>((resolve) => ai.ask('Quiet?').subscribe(() => resolve()));
+    expect(onDevice.ask.mock.calls[0][0]).toBeInstanceOf(AnthropicChatModel);
+    await ai.testProvider(ai.aiConfig(), 'test-key-not-real');
+    expect(onDevice.test.mock.calls[0][0]).toBeInstanceOf(AnthropicChatModel);
+  });
+
+  it('is not ready without a valid base URL and a model', () => {
     const ai = create({});
     ai.setProvider('device');
     ai.setAiConfig({ kind: 'openai-compatible', baseUrl: 'http://192.168.1.2/v1', model: 'm' });
@@ -408,7 +428,9 @@ describe('AiService with the person\'s own provider', () => {
     ai.setAiConfig({ kind: 'openai-compatible', baseUrl: 'https://api.example.com/v1', model: ' ' });
     expect(ai.usesOwnKey()).toBe(false);
     ai.saveGeminiKey('AIzaTestKey1234', false);
-    ai.setAiConfig({ kind: 'anthropic', baseUrl: '', model: 'm' });
+    ai.setAiConfig({ kind: 'anthropic', baseUrl: 'http://example.com', model: 'm' });
+    expect(ai.usesOwnKey()).toBe(false);
+    ai.setAiConfig({ kind: 'anthropic', baseUrl: '', model: ' ' });
     expect(ai.usesOwnKey()).toBe(false);
     ai.setAiConfig({ kind: 'gemini', baseUrl: '', model: '' });
     expect(ai.usesOwnKey()).toBe(true);

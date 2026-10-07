@@ -17,9 +17,10 @@
  */
 
 import type { JsonChatModel } from './json-chat-model';
-import { ANSWER_SCHEMA, LISTING_SCHEMA, OnDeviceAiError, type OnDeviceAiErrorKind, PLAN_SCHEMA } from './on-device-ai.service';
+import { ANSWER_SCHEMA, LISTING_SCHEMA, OnDeviceAiError, PLAN_SCHEMA } from './on-device-ai.service';
 import { validateWebBaseUrl } from './ai-provider-config';
 import { schemaTrailer, toStrictSchema } from './schema-dialect';
+import { type ErrorAction, type FetchLike, classifyStatus, failure, postAiJson } from './ai-request';
 
 /**
  * The `openai-compatible` kind (docs/03 §13.2, ADR-35): `POST {baseUrl}/chat/completions`, the chat API that OpenAI,
@@ -33,7 +34,6 @@ export type Tier = 1 | 2 | 3;
 
 export const MAX_TOKENS = 2048;
 export const PING_MAX_TOKENS = 5;
-export const REQUEST_TIMEOUT_MS = 60_000;
 const PING_SYSTEM = 'Reply with {"ok": true}.';
 
 /** The body of one request (the `openaiRequest` vectors). `strict` is null for the ping, which asks for no format. */
@@ -73,34 +73,19 @@ export function schemaName(schema: object): string {
   return 'response';
 }
 
-/** What a failed response means (the `providerErrors` vectors): the next tier of the ladder, or an error. */
-export type ErrorAction =
-  | { action: 'nextTier'; tier: Tier }
-  | { action: 'error'; kind: OnDeviceAiErrorKind; retryAfterSeconds?: number | null };
-
 const TIER_1_WORDS = ['response_format', 'json_schema', 'strict', 'unsupported', 'not supported'];
 const TIER_2_WORDS = ['response_format', 'json_object'];
 
-/** `Retry-After` in whole seconds, or null when absent or not a number. */
-export function retryAfterSeconds(header: string | null | undefined): number | null {
-  const n = Number.parseInt((header ?? '').trim(), 10);
-  return Number.isFinite(n) && n >= 0 ? n : null;
-}
-
 /**
- * Status 0 is the network (the request never got an answer). The ladder moves down only on a 400 whose body
- * (case-insensitive) holds a trigger word of that tier; any other 400, and any 400 at tier 3, is `unavailable`.
+ * The ladder moves down only on a 400 whose body (case-insensitive) holds a trigger word of that tier; any other 400, and
+ * any 400 at tier 3, is `unavailable`; every other status is {@link classifyStatus}'s.
  */
 export function classifyError(tier: Tier, status: number, body: string, retryAfter: string | null = null): ErrorAction {
-  if (status === 0) return { action: 'error', kind: 'unreachable' };
-  if (status === 401 || status === 403) return { action: 'error', kind: 'keyRejected' };
-  if (status === 404) return { action: 'error', kind: 'modelNotFound' };
-  if (status === 429) return { action: 'error', kind: 'rateLimited', retryAfterSeconds: retryAfterSeconds(retryAfter) };
   if (status === 400 && tier < 3) {
     const text = body.toLowerCase();
     if ((tier === 1 ? TIER_1_WORDS : TIER_2_WORDS).some((w) => text.includes(w))) return { action: 'nextTier', tier: (tier + 1) as Tier };
   }
-  return { action: 'error', kind: 'unavailable' };
+  return classifyStatus(status, retryAfter);
 }
 
 /** The model's text: surrounding whitespace and one Markdown code fence removed. */
@@ -130,20 +115,10 @@ export function resetTierCache(): void {
   winningTier.clear();
 }
 
-/** The error to throw for a verdict that is not the next tier (that one is `unavailable`, which cannot happen at tier 3). */
-function failure(verdict: ErrorAction): OnDeviceAiError {
-  if (verdict.action === 'nextTier') return new OnDeviceAiError('unavailable');
-  return verdict.kind === 'rateLimited' && verdict.retryAfterSeconds != null
-    ? new OnDeviceAiError('rateLimited', verdict.retryAfterSeconds)
-    : new OnDeviceAiError(verdict.kind);
-}
-
 export interface OpenAiCompatibleSettings {
   baseUrl: string;
   model: string;
 }
-
-type FetchLike = (input: string, init: RequestInit) => Promise<Response>;
 
 /** A [JsonChatModel] for one saved configuration; `apiKey` may be empty for a local server. */
 export class OpenAiCompatibleChatModel implements JsonChatModel {
@@ -190,25 +165,9 @@ export class OpenAiCompatibleChatModel implements JsonChatModel {
     if (answerText(res.body) === null) throw new OnDeviceAiError('unavailable');
   }
 
-  /** One POST. Status 0 is a network failure; redirects are not followed; 60 s at most. */
-  private async post(baseUrl: string, body: object): Promise<{ status: number; body: string; retryAfter: string | null }> {
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (this.apiKey.trim() !== '') headers['Authorization'] = `Bearer ${this.apiKey.trim()}`;
-    try {
-      const res = await this.fetchImpl(`${baseUrl}/chat/completions`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(body),
-        redirect: 'error',
-        credentials: 'omit',
-        cache: 'no-store',
-        referrerPolicy: 'no-referrer',
-        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-      });
-      return { status: res.status, body: await res.text(), retryAfter: res.headers.get('Retry-After') };
-    } catch (e) {
-      if (e instanceof DOMException && (e.name === 'TimeoutError' || e.name === 'AbortError')) throw new OnDeviceAiError('unavailable');
-      return { status: 0, body: '', retryAfter: null };
-    }
+  /** One POST: the key only in an `Authorization` header, and only when there is one. */
+  private post(baseUrl: string, body: object): ReturnType<typeof postAiJson> {
+    const headers: Record<string, string> = this.apiKey.trim() !== '' ? { Authorization: `Bearer ${this.apiKey.trim()}` } : {};
+    return postAiJson(this.fetchImpl, `${baseUrl}/chat/completions`, headers, body);
   }
 }

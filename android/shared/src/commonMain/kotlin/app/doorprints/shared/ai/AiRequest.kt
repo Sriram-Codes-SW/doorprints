@@ -68,3 +68,15 @@ internal const val UNREACHABLE = 0
 
 /** The code of an [ApiException.Kind.AI_UNAVAILABLE] for a call whose answer did not finish in time. */
 internal const val TIMED_OUT = 504
+
+/**
+ * What a provider's HTTP status means, the same for every adapter (docs/03 §13.2): 401 and 403 a refused key, 404 an
+ * unknown model, 429 a rate limit with the seconds of `Retry-After` when it gave a number, anything else (a 400, a 5xx,
+ * Anthropic's 529 overloaded, a 3xx) unavailable with that status.
+ */
+internal fun aiFailure(status: Int, retryAfter: String?): ApiException = when (status) {
+    401, 403 -> ApiException(ApiException.Kind.AI_KEY_REJECTED, status)
+    404 -> ApiException(ApiException.Kind.AI_MODEL_NOT_FOUND, status)
+    429 -> ApiException(ApiException.Kind.RATE_LIMITED, status, retryAfterSeconds = retryAfter?.trim()?.toLongOrNull())
+    else -> ApiException(ApiException.Kind.AI_UNAVAILABLE, status)
+}

@@ -29,9 +29,9 @@ import app.doorprints.shared.ai.BaseUrlValidator
 import app.doorprints.shared.api.ApiException
 
 /**
- * The AI services the person can choose on this phone (S4b-BL-150, docs/03 §13.2, ADR-35): Gemini and the
- * OpenAI-compatible presets. [modelExample] is a placeholder only (the person always types the model) and [keyPage]
- * is where a hosted service hands out keys.
+ * The AI services the person can choose on this phone (S4b-BL-150, S4b-BL-152, docs/03 §13.2, ADR-35): Gemini, the
+ * OpenAI-compatible presets and Anthropic. [modelExample] is a placeholder only (the person always types the model; none
+ * is given for Anthropic, whose names change) and [keyPage] is where a hosted service hands out keys.
  */
 enum class AiService(val preset: AiPreset?, val modelExample: String = "", val keyPage: String = "") {
     GEMINI(null),
@@ -40,7 +40,16 @@ enum class AiService(val preset: AiPreset?, val modelExample: String = "", val k
     GROQ(AiPreset.GROQ, "llama-3.3-70b-versatile", "https://console.groq.com/keys"),
     OLLAMA(AiPreset.OLLAMA, "llama3.1"),
     LM_STUDIO(AiPreset.LM_STUDIO, "qwen2.5-7b-instruct"),
+    ANTHROPIC(AiPreset.ANTHROPIC, keyPage = "https://console.anthropic.com/settings/keys"),
     CUSTOM(AiPreset.CUSTOM),
+    ;
+
+    /** The kind of adapter that answers for this service. */
+    val kind: AiKind get() = when (this) {
+        GEMINI -> AiKind.GEMINI
+        ANTHROPIC -> AiKind.ANTHROPIC
+        else -> AiKind.OPENAI_COMPATIBLE
+    }
 }
 
 /** The three fields a problem can be in, in the order the first one is focused. */
@@ -94,14 +103,14 @@ data class AiProviderForm(
         if (isGemini) return saved.kind == AiKind.GEMINI && hasKey
         val mine = check() as? BaseUrlCheck.Valid ?: return false
         val theirs = BaseUrlValidator.check(saved.baseUrl, emulatorHost) as? BaseUrlCheck.Valid ?: return false
-        return saved.kind == AiKind.OPENAI_COMPATIBLE && mine.normalised == theirs.normalised
+        return saved.kind == service.kind && mine.normalised == theirs.normalised
     }
 
     fun keySavedHere(saved: AiProviderConfig, hasKey: Boolean): Boolean = hasKey && savedHere(saved, hasKey)
 
     /** The service list's choice: the preset's address, or the saved address and model when the choice returns to them. */
     fun choose(next: AiService, saved: AiProviderConfig): AiProviderForm {
-        val keep = saved.kind == AiKind.OPENAI_COMPATIBLE && serviceOf(saved, emulatorHost) == next
+        val keep = saved.kind != AiKind.GEMINI && serviceOf(saved, emulatorHost) == next
         return copy(
             service = next,
             baseUrl = if (keep) saved.baseUrl else next.preset?.baseUrl.orEmpty(),
@@ -110,7 +119,7 @@ data class AiProviderForm(
         )
     }
 
-    /** What is wrong with an OpenAI-compatible form, or the config it stands for. A missing key is not one when one is saved here. */
+    /** What is wrong with a form other than Gemini's, or the config it stands for. A missing key is not one when one is saved here. */
     fun validate(saved: AiProviderConfig, hasKey: Boolean): AiFormCheck {
         val url = check()
         val trimmed = model.trim()
@@ -118,7 +127,7 @@ data class AiProviderForm(
         val reason = (url as? BaseUrlCheck.Invalid)?.reason
         val ok = reason == null && trimmed.isNotEmpty() && !keyMissing
         return AiFormCheck(
-            config = if (ok) AiProviderConfig(AiKind.OPENAI_COMPATIBLE, baseUrl, trimmed) else null,
+            config = if (ok) AiProviderConfig(service.kind, baseUrl, trimmed) else null,
             urlReason = reason,
             modelMissing = trimmed.isEmpty(),
             keyMissing = keyMissing,
@@ -142,7 +151,7 @@ data class AiProviderForm(
 
         /** The form as Settings opens it for the [saved] settings. */
         fun initial(saved: AiProviderConfig, emulatorHost: Boolean): AiProviderForm {
-            val compat = saved.kind == AiKind.OPENAI_COMPATIBLE
+            val compat = saved.kind != AiKind.GEMINI
             return AiProviderForm(
                 service = serviceOf(saved, emulatorHost),
                 baseUrl = if (compat) saved.baseUrl else "",
@@ -151,18 +160,24 @@ data class AiProviderForm(
             )
         }
 
-        /** The list's choice for saved settings: Gemini, the preset whose address was saved, or *Custom*. */
+        /** The list's choice for saved settings: Gemini, Anthropic, the preset whose address was saved, or *Custom*. */
         fun serviceOf(config: AiProviderConfig, emulatorHost: Boolean): AiService {
-            if (config.kind != AiKind.OPENAI_COMPATIBLE) return AiService.GEMINI
+            if (config.kind == AiKind.GEMINI) return AiService.GEMINI
+            if (config.kind == AiKind.ANTHROPIC) return AiService.ANTHROPIC
             val check = BaseUrlValidator.check(config.baseUrl, emulatorHost) as? BaseUrlCheck.Valid ?: return AiService.CUSTOM
-            return AiService.entries.firstOrNull { it != AiService.CUSTOM && it.preset?.baseUrl == check.normalised } ?: AiService.CUSTOM
+            return AiService.entries.firstOrNull { it.kind == AiKind.OPENAI_COMPATIBLE && it != AiService.CUSTOM && it.preset?.baseUrl == check.normalised }
+                ?: AiService.CUSTOM
         }
 
-        /** Whether saved settings can answer: a Gemini key, or for an OpenAI-compatible service a model and a valid address (the key is optional). */
+        /**
+         * Whether saved settings can answer: a Gemini key; for an OpenAI-compatible service a model and a valid address (the
+         * key is optional); for Anthropic a model, a valid address and a key.
+         */
         fun usable(config: AiProviderConfig, key: String, emulatorHost: Boolean): Boolean = when (config.kind) {
             AiKind.GEMINI -> key.isNotBlank()
             AiKind.OPENAI_COMPATIBLE -> config.model.isNotBlank() && BaseUrlValidator.check(config.baseUrl, emulatorHost) is BaseUrlCheck.Valid
-            AiKind.ANTHROPIC -> false
+            AiKind.ANTHROPIC ->
+                key.isNotBlank() && config.model.isNotBlank() && BaseUrlValidator.check(config.baseUrl, emulatorHost) is BaseUrlCheck.Valid
         }
 
         /**
@@ -174,9 +189,8 @@ data class AiProviderForm(
             if (!own) return null
             return when (settings.aiProviderConfig.kind) {
                 AiKind.GEMINI -> GEMINI_HOST
-                AiKind.OPENAI_COMPATIBLE ->
+                AiKind.OPENAI_COMPATIBLE, AiKind.ANTHROPIC ->
                     (BaseUrlValidator.check(settings.aiProviderConfig.baseUrl, emulatorHost) as? BaseUrlCheck.Valid)?.host.orEmpty()
-                AiKind.ANTHROPIC -> ""
             }
         }
     }

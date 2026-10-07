@@ -35,8 +35,8 @@
     },
     {
       "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/AiProviderForm.kt",
-      "find": "return saved.kind == AiKind.OPENAI_COMPATIBLE && mine.normalised == theirs.normalised",
-      "replace": "return saved.kind == AiKind.OPENAI_COMPATIBLE",
+      "find": "return saved.kind == service.kind && mine.normalised == theirs.normalised",
+      "replace": "return saved.kind == service.kind",
       "expect": "aSavedKey"
     },
     {
@@ -92,6 +92,42 @@
       "find": "                        repo.saveGeminiKey(key)",
       "replace": "                        Unit",
       "expect": "geminiTestsTheKeyBeforeSavingIt"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/AiProviderForm.kt",
+      "find": "ANTHROPIC -> AiKind.ANTHROPIC",
+      "replace": "ANTHROPIC -> AiKind.OPENAI_COMPATIBLE",
+      "expect": "anAnthropicFormStandsForAnAnthropicConfigAndNeedsAModelAndAKey"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/AiProviderForm.kt",
+      "find": "return saved.kind == service.kind && mine.normalised == theirs.normalised",
+      "replace": "return mine.normalised == theirs.normalised",
+      "expect": "aKeySavedForAnthropicIsNotOfferedToAnOpenAiCompatibleServiceAtTheSameAddress"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/AiProviderForm.kt",
+      "find": "key.isNotBlank() && config.model.isNotBlank() && BaseUrlValidator",
+      "replace": "config.model.isNotBlank() && BaseUrlValidator",
+      "expect": "whatTheSavedSettingsCanAnswerWith"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/AiProviderForm.kt",
+      "find": "if (config.kind == AiKind.ANTHROPIC) return AiService.ANTHROPIC",
+      "replace": "if (config.kind == AiKind.ANTHROPIC) return AiService.CUSTOM",
+      "expect": "theChoiceBeginsFromTheSavedSettings"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AiProviderConfig.kt",
+      "find": "AiPreset(\"anthropic\", \"https://api.anthropic.com\", keyOptional = false)",
+      "replace": "AiPreset(\"anthropic\", \"https://api.anthropic.com\", keyOptional = true)",
+      "expect": "localServicesNeedNoKeyHostedOnesDo"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AiProviderConfig.kt",
+      "find": "AiPreset(\"anthropic\", \"https://api.anthropic.com\", keyOptional = false)",
+      "replace": "AiPreset(\"anthropic\", \"https://api.anthropic.com/v1\", keyOptional = false)",
+      "expect": "eachServicePrefillsItsPresetAddressAndNothingElse"
     }
   ]
 }

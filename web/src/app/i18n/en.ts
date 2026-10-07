@@ -1633,6 +1633,7 @@ export const en = {
   'connect.aiService.groq': 'Groq',
   'connect.aiService.ollama': 'Ollama (on this device)',
   'connect.aiService.lmstudio': 'LM Studio (on this device)',
+  'connect.aiService.anthropic': 'Anthropic',
   'connect.aiService.custom': 'Custom (OpenAI-compatible)',
   'connect.aiBaseUrl': 'Base URL',
   'connect.aiBaseUrlHint': 'Use https, or run it on this device.',

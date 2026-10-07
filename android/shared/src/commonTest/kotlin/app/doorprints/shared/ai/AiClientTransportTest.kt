@@ -36,8 +36,8 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 /**
- * What both AI adapters do with the network itself (docs/03 §13, ADR-35; TC-U-168), through their public methods and a
- * fake engine: a failed connection, an answer whose body never finishes, and a redirect. The two adapters must word
+ * What every AI adapter does with the network itself (docs/03 §13, ADR-35; TC-U-168), through their public methods and a
+ * fake engine: a failed connection, an answer whose body never finishes, and a redirect. The adapters must word
  * each of them the same way, so the screens do (AssistantScreen).
  */
 class AiClientTransportTest {
@@ -50,14 +50,17 @@ class AiClientTransportTest {
     private fun gemini(engine: MockEngine, timeoutMs: Long? = null) =
         GeminiClient(ApiHttp.client(engine), "AIza-secret-key", timeoutMs = timeoutMs)
 
-    /** Both adapters, built on [engine], by name for the failure message. */
+    private fun anthropic(engine: MockEngine, timeoutMs: Long? = null) =
+        AnthropicClient(ApiHttp.client(engine), "test-model", "test-key-not-real", timeoutMs = timeoutMs)
+
+    /** The three adapters, built on [engine], by name for the failure message. */
     private fun both(engine: MockEngine, timeoutMs: Long? = null): Map<String, JsonChatModel> =
-        mapOf("openai" to openAi(engine, timeoutMs), "gemini" to gemini(engine, timeoutMs))
+        mapOf("openai" to openAi(engine, timeoutMs), "gemini" to gemini(engine, timeoutMs), "anthropic" to anthropic(engine, timeoutMs))
 
     private suspend fun JsonChatModel.ask() = generateJson("system", "user", OnDeviceAi.ANSWER_SCHEMA, 0.1)
 
     @Test
-    fun aCallThatCannotConnectIsUnavailableWithCodeZeroInBothAdapters() = runTest {
+    fun aCallThatCannotConnectIsUnavailableWithCodeZeroInEveryAdapter() = runTest {
         val engine = MockEngine { throw IOException("connection refused") }
         for ((name, model) in both(engine)) {
             val e = assertFailsWith<ApiException>(name) { model.ask() }
@@ -68,7 +71,7 @@ class AiClientTransportTest {
     }
 
     @Test
-    fun anAnswerWhoseBodyNeverFinishesTimesOutAs504InBothAdapters() = runTest {
+    fun anAnswerWhoseBodyNeverFinishesTimesOutAs504InEveryAdapter() = runTest {
         // Headers arrive at once; the body channel is never written or closed.
         val engine = MockEngine {
             respond(ByteChannel(), HttpStatusCode.OK, Headers.build { append(HttpHeaders.ContentType, "application/json") })
@@ -88,6 +91,7 @@ class AiClientTransportTest {
             requestedHosts += request.url.host
             request.headers["Authorization"]?.let { keyHeaders += "${request.url.host} $it" }
             request.headers["x-goog-api-key"]?.let { keyHeaders += "${request.url.host} $it" }
+            request.headers["x-api-key"]?.let { keyHeaders += "${request.url.host} $it" }
             respond("", HttpStatusCode.Found, Headers.build { append(HttpHeaders.Location, "https://$elsewhere/steal") })
         }
         for ((name, model) in both(engine)) {
@@ -96,7 +100,8 @@ class AiClientTransportTest {
             assertEquals(302, e.code, name)
         }
         // One request per adapter, each to its own host, and none to the Location.
-        assertEquals(listOf("api.example.com", geminiHost), requestedHosts)
+        assertEquals(listOf("api.example.com", geminiHost, "api.anthropic.com"), requestedHosts)
+        assertTrue(keyHeaders.any { it.startsWith("api.anthropic.com ") }, "the Anthropic key header was not seen")
         assertTrue(keyHeaders.none { elsewhere in it }, "the key was sent to $elsewhere")
     }
 

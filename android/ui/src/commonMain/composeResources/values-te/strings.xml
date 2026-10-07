@@ -631,6 +631,7 @@
     <string name="settings_ai_service_groq">Groq</string>
     <string name="settings_ai_service_ollama">Ollama (ఈ పరికరంలో)</string>
     <string name="settings_ai_service_lmstudio">LM Studio (ఈ పరికరంలో)</string>
+    <string name="settings_ai_service_anthropic">Anthropic</string>
     <string name="settings_ai_service_custom">కస్టమ్ (OpenAI-అనుకూలమైనది)</string>
     <string name="settings_ai_base_url">బేస్ URL</string>
     <string name="settings_ai_base_url_hint">https వాడండి, లేదా దీన్ని ఈ పరికరంలోనే నడపండి.</string>

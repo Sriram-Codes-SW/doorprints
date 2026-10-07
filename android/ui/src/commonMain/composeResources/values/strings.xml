@@ -631,6 +631,7 @@
     <string name="settings_ai_service_groq">Groq</string>
     <string name="settings_ai_service_ollama">Ollama (on this device)</string>
     <string name="settings_ai_service_lmstudio">LM Studio (on this device)</string>
+    <string name="settings_ai_service_anthropic">Anthropic</string>
     <string name="settings_ai_service_custom">Custom (OpenAI-compatible)</string>
     <string name="settings_ai_base_url">Base URL</string>
     <string name="settings_ai_base_url_hint">Use https, or run it on this device.</string>

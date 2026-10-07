@@ -26,6 +26,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.room.Room
 import app.doorprints.shared.ai.AiKind
 import app.doorprints.shared.ai.AiProviderConfig
+import app.doorprints.shared.ai.AnthropicClient
 import app.doorprints.shared.ai.GeminiClient
 import app.doorprints.shared.ai.OpenAiCompatClient
 import app.doorprints.shared.api.ApiHttp
@@ -67,6 +68,7 @@ class AiProviderRepositoryTest {
     private val db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).allowMainThreadQueries().build()
     private val geminiCalls = mutableListOf<String>()
     private val openAiCalls = mutableListOf<Pair<String, String?>>()
+    private val anthropicCalls = mutableListOf<Pair<String, String?>>()
 
     private class MemorySecrets(name: String) : SecretStore {
         private val key = stringPreferencesKey(name)
@@ -89,6 +91,14 @@ class AiProviderRepositoryTest {
         respond("""{"choices":[{"message":{"role":"assistant","content":"{\"label\":\"From OpenAI\"}"}}]}""", HttpStatusCode.OK, json)
     }
 
+    private val anthropicEngine = MockEngine { request ->
+        anthropicCalls += request.url.toString() to request.headers["x-api-key"]
+        respond(
+            """{"stop_reason":"tool_use","content":[{"type":"tool_use","id":"t1","name":"listing","input":{"label":"From Anthropic"}}]}""",
+            HttpStatusCode.OK, json,
+        )
+    }
+
     private val settings = SettingsStore(
         PreferenceDataStoreFactory.create(scope = scope) { File(tmp.root, "ai.preferences_pb") },
         MemorySecrets("serverKey"), geminiSecrets = MemorySecrets("aiKey"),
@@ -101,10 +111,12 @@ class AiProviderRepositoryTest {
         apiFor = { _, _ -> error("no server in this test") },
         geminiFor = { key -> GeminiClient(ApiHttp.client(geminiEngine), key, timeoutMs = null) },
         openAiFor = { url, model, key -> OpenAiCompatClient(ApiHttp.client(openAiEngine), url, model, key, timeoutMs = null) },
+        anthropicFor = { url, model, key -> AnthropicClient(ApiHttp.client(anthropicEngine), model, key, url, timeoutMs = null) },
         emulatorHostAllowed = emulator,
     )
 
     private val local = AiProviderConfig(AiKind.OPENAI_COMPATIBLE, "http://localhost:11434/v1/", "llama3.2")
+    private val anthropic = AiProviderConfig(AiKind.ANTHROPIC, "https://api.anthropic.com", "test-model")
 
     @After
     fun close() {
@@ -136,6 +148,45 @@ class AiProviderRepositoryTest {
     }
 
     @Test
+    fun anAnthropicChoiceBuildsTheAnthropicClientWithTheSavedModelAndKey() = runBlocking {
+        val repo = repository()
+        repo.saveAiProviderConfig(anthropic, "test-key-not-real")
+        assertEquals(anthropic, settings.current().aiProviderConfig)
+        assertEquals("From Anthropic", repo.extractListing("2BHK in Indiranagar").label)
+        assertEquals(listOf<Pair<String, String?>>("https://api.anthropic.com/v1/messages" to "test-key-not-real"), anthropicCalls)
+        assertTrue(geminiCalls.isEmpty() && openAiCalls.isEmpty())
+    }
+
+    @Test
+    fun anAnthropicChoiceWithNoSavedAddressUsesAnthropicsOwn() = runBlocking {
+        val repo = repository()
+        repo.saveAiProviderConfig(anthropic.copy(baseUrl = ""), "test-key-not-real")
+        assertEquals("https://api.anthropic.com", settings.current().aiProviderConfig.baseUrl)
+    }
+
+    @Test
+    fun anAnthropicChoiceNeedsAKeyAndAnHttpsAddressAndNothingIsSavedWithoutThem() = runBlocking {
+        val repo = repository()
+        assertEquals("key", runCatching { repo.saveAiProviderConfig(anthropic, " ") }.exceptionOrNull()?.message)
+        assertEquals(
+            "insecureHost",
+            runCatching { repo.saveAiProviderConfig(anthropic.copy(baseUrl = "http://example.com"), "test-key-not-real") }.exceptionOrNull()?.message,
+        )
+        assertEquals(AiProviderConfig.GEMINI, settings.current().aiProviderConfig)
+    }
+
+    @Test
+    fun testingAnAnthropicChoiceSendsOnePingToItAndSavesNothing() = runBlocking {
+        val repo = repository()
+        assertTrue(repo.testAiProvider(anthropic, "test-key-not-real").isSuccess)
+        assertEquals(1, anthropicCalls.size)
+        assertEquals(AiProviderConfig.GEMINI, settings.current().aiProviderConfig)
+        // No key, no request.
+        assertTrue(repo.testAiProvider(anthropic, "").isFailure)
+        assertEquals(1, anthropicCalls.size)
+    }
+
+    @Test
     fun aBadAddressOrAnEmptyModelIsRefusedAndNothingIsSaved() = runBlocking {
         val repo = repository()
         val reasons = mapOf(
@@ -147,7 +198,7 @@ class AiProviderRepositoryTest {
             assertEquals(url, reason, e?.message)
         }
         assertEquals("model", runCatching { repo.saveAiProviderConfig(local.copy(model = " "), "k") }.exceptionOrNull()?.message)
-        assertEquals("kind", runCatching { repo.saveAiProviderConfig(AiProviderConfig(AiKind.ANTHROPIC), "k") }.exceptionOrNull()?.message)
+        assertEquals("model", runCatching { repo.saveAiProviderConfig(AiProviderConfig(AiKind.ANTHROPIC, anthropic.baseUrl), "k") }.exceptionOrNull()?.message)
         assertEquals(AiProviderConfig.GEMINI, settings.current().aiProviderConfig)
         assertEquals("", settings.current().geminiKey)
     }

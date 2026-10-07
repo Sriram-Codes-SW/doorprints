@@ -631,6 +631,7 @@
     <string name="settings_ai_service_groq">Groq</string>
     <string name="settings_ai_service_ollama">Ollama (इसी डिवाइस पर)</string>
     <string name="settings_ai_service_lmstudio">LM Studio (इसी डिवाइस पर)</string>
+    <string name="settings_ai_service_anthropic">Anthropic</string>
     <string name="settings_ai_service_custom">कस्टम (OpenAI-संगत)</string>
     <string name="settings_ai_base_url">बेस URL</string>
     <string name="settings_ai_base_url_hint">https इस्तेमाल करें, या इसे इसी डिवाइस पर चलाएँ।</string>
