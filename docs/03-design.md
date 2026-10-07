@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.68 |
-| Date | 2026-10-06 |
+| Version | 0.69 |
+| Date | 2026-10-07 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -77,6 +77,7 @@
 | 0.66 | 2026-10-06 | Claude (Code), lead | **The on-demand place check** ([11](11-feature-parity-and-export-spec.md) 5.27.13, S4b-FR-24): `PlaceCheck` and `TraceConstants.NEAR_BAND_M` and `MAX_FIX_ACCURACY_M` in the shared API, the `placeChecks` section of the vector file, new §7.2b (the sequence). |
 | 0.67 | 2026-10-06 | Claude (Code), lead | **The website's trace and place check: the implementation plan** (senior review of 2026-10-06, [ops/path-trace-check-review.md](ops/path-trace-check-review.md); SHOULD-8): new §6.2b with the website's files (`shared/trace-geo.ts`, `trace-repeats.ts`, `trace-place-check.ts`, `trace-place-text.ts`, `data/trace-store.ts`, `core/trace-recorder.service.ts`, `shared/trace-style.ts`, `pages/map/trace-layers.ts`, `trace-card.ts`, `walk-end-sheet.ts`, `place-check.ts`, `place-check-panel.ts`, `pages/house-detail/house-check-card.ts`, `local-db.ts` version 3 with `deleteAll` and a two-store transaction, `locate-once.ts` options and `locateBest`, `tools/live-ui` `--trace`), 20 rows with order and risks, and the decisions it fixes; §7.2b notes the website's 15 s best-fix watch and the live-region withdrawal. |
 | 0.68 | 2026-10-06 | Claude (Code), docs pass | **The path trace v2 and the place check moved from *planned* to *built*** (`feat/path-trace-v2`, PR #146, not yet merged): Room 11 and `MIGRATION_10_11` (checked by `AppDatabaseMigrationTest`, `RoomSchemaTest`), §6.2b, §7.2a and §7.2b headings, the component table (`WalkStore` holds what the plan called `WalkSweeper`; `PlaceCheck` and `MatchedStretch` added). Known deviations from the design, found by review and tracked in [10](10-sprint-log.md) S4b-FR-25..S4b-FR-37: the Android Map redraw (7.2a's *at most once every 5 seconds*), the live walk's exclusion by its first point only and the website's once-per-walk alert switch were fixed in the review pass (S4b-FR-25, 27, 28). |
+| 0.69 | 2026-10-07 | Claude (Code), docs pass | **ADR-35 and §13.2: on the person's own device the AI provider is the person's choice** (owner question and approved design, 2026-10-07; planned, nothing built; [11](11-feature-parity-and-export-spec.md) D-31, [02](02-threat-model.md) T-I43 and T-I44, [06](06-test-plan.md) TC-U-168..TC-U-172, TC-M-64, TC-AI-23, [10](10-sprint-log.md) S4b-FR-40 and S4b-BL-147..153). One interface, `JsonChatModel`, three kinds (`gemini`, `openai-compatible`, `anthropic`); the base-URL rules, the request, the three-tier fallback ladder, the schema converter, the errors, the settings and their migration, and the privacy rules. The shared test vectors gain the sections `schemaDialect`, `openaiRequest`, `openaiContent`, `providerErrors` and `baseUrl` (`docs/ai/evals/parity-vectors.json`). |
 | 0.58 | 2026-10-01 | Claude (Code), lead | §11.1: the Survey of India's reply of 2026-10-01 (no prior permission for its Administrative Boundary Database; no alteration or modification; acknowledgement; National Geospatial Policy 2022 guidelines) and what it means for ADR-22 ([ops/soi-boundary-data-request.md](ops/soi-boundary-data-request.md) v0.5, [10](10-sprint-log.md) S4b-BL-111). |
 | 0.57 | 2026-10-01 | Claude (Code), lead | The finishing batch ([10](10-sprint-log.md) §13.29..§13.39, on stacked branches): §6.1 `house.move_in` (V11), the photo's room, tags, caption and `meta_updated_at` (V12), `house.floor` (V13), the statuses TAKEN and NOT_CHOSEN; §8.1 the two statuses; §9 `PUT /api/photos/{id}/meta` and `/3` on `/api/import`; §11.2 the website's offline tiles; new **ADR-29** (deletions in an update file, `doorprints-backup/3`), **ADR-30** (offline tiles on the website through `addProtocol` over Cache Storage), **ADR-31** (search engines: one indexable page, `noindex` by default), **ADR-32** (accessibility rules and their automated checks); new **§17**, the smaller decisions of the batch (copies in UTC, seeded records stamped 2000-01-01, Hunt alerts `VISIBILITY_SECRET` with the app lock, the status colours, the locality lookup on the tap only, the iPhone's wake-up notification, import caps). |
 
@@ -1409,7 +1410,152 @@ already allows `https:` in `connect-src`.
 
 **Order of work:** this record; the common core in `:shared` with the test vectors; the on-device provider and the
 Settings choice on Android and iPhone; the same on the website (TypeScript, same vectors). Google sign-in with Drive
-sync (D-28) then reuses on-device AI (D-27).
+sync (D-28) then reuses on-device AI (D-27). §13.2 (ADR-35) widens the on-device provider beyond Gemini.
+
+### 13.2 A provider of the person's choice: any AI the person has, on their own device (ADR-35)
+
+**Context.** ADR-26 (§13.1) gave the person two providers: the server, or their own Gemini key on the device. The
+second is Gemini only. Owner question, 2026-10-07: on the person's own device (the website, Android, iPhone), can they
+use any AI they already have, not only Gemini? Most people who run an AI of their own have an OpenAI-style key
+(OpenAI, OpenRouter, Groq), a model on their own computer (Ollama, LM Studio), or an Anthropic key. The owner approved
+the design below the same day. *Status: planned; nothing in this section is built yet* (tickets S4b-FR-40,
+S4b-BL-147..153, [10](10-sprint-log.md)); the shared test vectors are written first (see "Test vectors").
+
+**The contract.** One interface, in common Kotlin (`:shared`) and in TypeScript (`web/src/app/core/ai`):
+
+```
+JsonChatModel.generateJson(system: String, user: String, schema: <Gemini-dialect schema>, temperature: Double): String
+JsonChatModel.ping()
+```
+
+`generateJson` returns the model's JSON answer as text (the caller parses it, as `OnDeviceAi` and `OnDeviceAiService` do
+today). The three prompts, `PromptSafety`, `DraftSanitizer`, `ContactRedactor`, `HouseDocuments`, the citation checks and
+`RouteOptimizer` stay as §13.1 describes them and are **not touched**: the prompts stay shared, so the existing parity
+vectors stay valid. The schemas stay in the Gemini dialect (the `responseSchema` records of §13.1); each adapter turns
+them into what its provider wants. `ping()` is *Test* in Settings: one real call that validates the key *and* the model.
+
+**Three kinds.**
+
+| Kind | What it is | Settings the person fills in | Built in |
+|---|---|---|---|
+| `gemini` | The existing native adapter (`GeminiClient`, `OnDeviceAiService`'s call), **unchanged**: same URL, header, schema and errors | the key | exists (ADR-26) |
+| `openai-compatible` | `POST {baseUrl}/chat/completions`, the de-facto chat API that OpenAI, OpenRouter, Groq, Ollama, LM Studio and many others speak | base URL, model, key (optional for a local server) | S4b-BL-147 (Kotlin), -148 (TypeScript) |
+| `anthropic` | Anthropic's Messages API | key, model | later: S4b-BL-152 |
+
+**Presets** (they fill the base URL; the model is typed by the person, never guessed): OpenAI `https://api.openai.com/v1`;
+OpenRouter `https://openrouter.ai/api/v1`; Groq `https://api.groq.com/openai/v1`; Ollama `http://localhost:11434/v1` (key
+optional); LM Studio `http://localhost:1234/v1` (key optional); *Custom* (any base URL). Gemini through its own
+OpenAI-compatible endpoint is not a preset: *Gemini* is its own kind.
+
+**Device-only (privacy and SSRF).** The person's choice lives on the device and is used only by the on-device provider.
+**The server never calls a base URL a person set**: the server's provider stays the self-hoster's own setting
+(`AI_PROVIDER`, [08](08-operations-runbook.md)); no endpoint, header or sync file carries a base URL, a model name or a
+kind to it. That removes a whole class of server-side request forgery (T-I44). The only server change is small and
+separate (S4b-BL-149): `AiStatusController` reports `needsKey` only when the configured base URL's host is
+`generativelanguage.googleapis.com`, so a self-hoster who points the server at another endpoint is not asked for a Google
+key.
+
+**Base URL rules** (one validator per platform, held to one table in `parity-vectors.json`, section `baseUrl`). The input
+is trimmed. In this order, the first failing rule gives the reason:
+
+| # | Rule | Reason |
+|---|---|---|
+| 1 | Not empty | `empty` |
+| 2 | Absolute: starts with a scheme and `://` (`^[A-Za-z][A-Za-z0-9+.-]*://`) and parses | `notAnUrl` |
+| 3 | The scheme is `http` or `https` | `scheme` |
+| 4 | No user name or password (`userinfo`) | `userinfo` |
+| 5 | No query (no `?`) | `query` |
+| 6 | No fragment (no `#`) | `fragment` |
+| 7 | The path does not end in `/chat/completions` (the person pasted the endpoint, not the base) | `endpoint` |
+| 8 | `https:` is allowed for any host. `http:` only for `localhost`, `127.0.0.1` and `[::1]`, and, **on Android only** (the emulator's name for its computer), `10.0.2.2`. Any other `http:` host, a private LAN address included, is refused | `insecureHost` |
+
+The *normalised* base URL has the scheme and host in lower case, the port and the path as written, and no trailing
+slash; `host` (for the disclosure) is the lower-case host without port, an IPv6 address in brackets. The hint for
+`insecureHost` is *"Use https, or run it on this device."* (en; hi, ta and te marked *under review*). A person who wants
+a model on another computer in the house puts an https proxy in front of it or runs it on the same device.
+
+**The request** (`openai-compatible`). `POST {baseUrl}/chat/completions`, `Content-Type: application/json`, and
+`Authorization: Bearer <key>` only when a key is set (never in a URL, a query or a log), with the body
+
+```
+{ "model": <model>, "temperature": <t>, "max_tokens": 2048,
+  "messages": [ {"role":"system","content":<system>}, {"role":"user","content":<user>} ],
+  "response_format": { "type":"json_schema",
+                       "json_schema": { "name":"listing"|"answer"|"plan", "strict": true, "schema": <strict schema> } } }
+```
+
+The answer is `choices[0].message.content`; surrounding whitespace and a Markdown code fence (```` ``` ```` or
+```` ```json ````) are removed, then the caller parses the JSON. No `choices`, or a `content` that is not text (a refusal,
+a tool call), is *unavailable*. Redirects are not followed; the timeout is 60 s as for Gemini. Prompts and answers are
+never logged. The exact bodies are the `openaiRequest` vectors.
+
+**The fallback ladder.** Not every server honours `json_schema` (Ollama's older builds, many proxies). The adapter tries
+three tiers and **caches the winning tier per configuration (base URL + model) for the session**; a changed
+configuration starts again at tier 1.
+
+| Tier | `response_format` | System prompt |
+|---|---|---|
+| 1 | `json_schema` with `strict: true` | the shared prompt unchanged |
+| 2 | `{"type":"json_object"}` | the shared prompt + a trailer |
+| 3 | none | the shared prompt + a trailer |
+
+The trailer is the system prompt, a blank line (`\n\n`), then `Reply with only a JSON object of this shape: ` and the
+strict schema as compact JSON. The ladder moves down only on HTTP 400: from tier 1 when the body (case-insensitive)
+mentions `response_format`, `json_schema`, `strict`, `unsupported` or `not supported`; from tier 2 when it mentions
+`response_format` or `json_object`. Any other 400, and any 400 at tier 3, is *unavailable*. Section `providerErrors`.
+
+**Errors** (the same on every platform; a new kind, *model not found*, is added next to the existing ones):
+
+| Status | Kind | Words (en) |
+|---|---|---|
+| 401, 403 | `keyRejected` | "The provider did not accept your key." |
+| 404 | `modelNotFound` (new; `ApiException.Kind.AI_MODEL_NOT_FOUND`) | "The provider does not know this model. Check its name." |
+| 429 | `rateLimited`, with `Retry-After` seconds when given | as today |
+| network failure (status 0) | `unreachable` | "Could not reach {host}." |
+| anything else | `unavailable` | as today |
+
+**The schema converter** (Gemini dialect to strict JSON Schema; section `schemaDialect`, built from the three real schemas
+of `on-device-ai.service.ts`). For every node: remove `nullable` and, where it was true, emit `type: [T, "null"]`; keep
+`description` and `items` (converted in turn); for every `object`, add `additionalProperties: false` and set `required` to
+**all** the property names (listing: all 12; answer: `answer`, `citedHouseIds`; plan: `summary`, `stops`, and `houseId` and
+`reason` in the items). Key order is the input's, with `required` then `additionalProperties` last. The schema is the same
+in every tier (only tier 1 marks it `strict`); in tiers 2 and 3 it goes into the trailer.
+
+**Test (ping).** One chat call with `max_tokens` 5 asking the model to reply `{"ok": true}` (the same words as the Gemini
+ping), no `response_format`. A good answer means the URL, the key and the model all work. The key is saved only after it
+passes (as for Gemini).
+
+**Storage and migration.** The key keeps its slot (Android `geminiKeyEnc`, iOS `gemini_key`, the website's
+`GEMINI_KEY_KEY`) and is encrypted as before. Beside the existing `aiProvider` (server or this device) the settings gain
+three plain settings, not secrets: `aiKind` (`gemini` | `openai-compatible` | `anthropic`), `aiBaseUrl` and `aiModel`
+(DataStore keys on the phones, `localStorage` on the website; no Room or IndexedDB schema change). **Migration:** a
+device with `aiProvider = DEVICE` and a saved key and no `aiKind` reads as `aiKind = gemini` (a read-time default, nothing
+is rewritten); anyone on the server stays on the server. **None of it is ever in an export, *Save a copy*, a Drive
+backup, a sync file or a share file**: a test per platform asserts that the backup JSON contains none of `baseUrl`,
+`apiKey` and `gemini` (TC-U-170). *Clear everything* removes the key and the three settings.
+
+**Disclosure.** The *AI features* note and the Ask, Plan and *Fill in from listing text* disclosures name the host:
+*"The text is sent from this browser straight to {host} with your own key, together with the matching house notes."*
+(en; "this phone" on a phone; the Gemini kind keeps its words). `{host}` is the normalised base URL's host. The person
+is told, as for Gemini, that the provider's own terms apply to what is sent (T-I20 is about exactly that), and contact
+names and phones are still removed before anything leaves the device (`ContactRedactor`, T-I7).
+
+**The website's two limits.** The browser's mixed-content rule treats `http://localhost`, `http://127.0.0.1` and
+`http://[::1]` as secure, so a local model works from the https site, but the page's CSP `connect-src` must name them (it
+allows `https:` only today; S4b-BL-151), and the local server must allow the site's origin (Ollama:
+`OLLAMA_ORIGINS`); the Settings text says so in one line. On Android, cleartext is allowed only for `localhost` and
+`10.0.2.2` in the network security config (S4b-BL-150), never globally; on iOS, App Transport Security's local-networking
+exception covers loopback only.
+
+**Test vectors** (`docs/ai/evals/parity-vectors.json`, copied to the Kotlin common tests and the website by
+`.github/scripts/parity-vectors-kotlin.py`; the backend's `ParityVectorsTest` reads the same file and leaves sections it does not compute as they are):
+`schemaDialect` (3 cases: Gemini dialect, strict output, trailer text), `openaiRequest` (8: request bodies per tier and
+the ping), `openaiContent` (9: the answer text, fences, missing choices), `providerErrors` (22: status, body and
+`Retry-After` to a kind or the next tier) and `baseUrl` (34: the rules above, with the Android-only flag). The
+Anthropic adapter adds its own section in its own change.
+
+**What does not change.** `gemini` behaves exactly as ADR-26; the server's AI; Ask's word ranking, Plan's single
+structured call and the local limit of 10 requests a minute; the prompts; every screen outside *AI features*.
 
 ## 14. Architecture decision records
 
@@ -1445,6 +1591,7 @@ sync (D-28) then reuses on-device AI (D-27).
 | ADR-32 | **Accessibility rules are checked by tests on both apps, and fixed in code before release** (lead, 2026-10-01, Wave D; owner, 2026-09-30) | Manual checks only; a new accessibility-test library | The website's helper `shared/testing/a11y.ts` (roles, names, labels inside names, focus, targets) runs over 44 pages in four languages and about 55 colour pairs; Android's `A11yAudit` and `ScreensA11ySweepTest` over 34 screens, `ContrastTest` over the theme. Rules the batch fixed in code: an accessible name contains the visible label; a validation error blocks the save, says why and takes the focus (the floor); a status is never told by colour alone, and its colours meet 4.5:1 in both themes (Taken, Not chosen, the switch's unchecked thumb at 4.48:1 on its track, a control's 3:1 against the page); a notification action names what it does. Android's `enableAccessibilityChecks` is not used because it needs a new test dependency (S4b-BL-110). Screen readers, 200 % text on a device and forced colours stay manual (TC-M-41, TC-M-42). |
 | ADR-33 | **Backup, sync and deletion through each person's own Google Drive, encrypted on the device** (owner, 2026-10-02: "Let us implement it. After real world use, we can change as needed"; design [15](15-google-drive-backup-and-sharing.md), decisions §6 and §6.1). Amends D-28's `drive.appdata` ([11](11-feature-parity-and-export-spec.md)) | `drive.appdata` (hidden, not shareable, lost with the project); the full `drive` scope (restricted: a paid yearly assessment); a hosted server (ruled out, D-28); one shared sync file (no lock in Drive) or a file per record (too many calls); a passphrase (typed often, forgotten, total loss); RSA-OAEP or X25519 (platform gaps); `SyncRules.keepLocal` for the merge | **No hosted server**: each device talks to Google with client OAuth (the website's token model, PKCE on the iPhone, the browser with PKCE on Android unless the spike S4b-BL-122 shows it fails). **One scope, `drive.file`**, a visible `Doorprints` folder. **One sync file per device plus dated backups** (7 daily, 4 weekly, 6 monthly; a shrink guard; `state=complete` marks a finished backup). **Every file encrypted on the device**: random content keys under a chained folder key per epoch, wrapped by **HPKE** (RFC 9180, DHKEM(P-256, HKDF-SHA256), AES-256-GCM) for each enrolled device's non-extractable key and for a **recovery key pair** derived from a 128-bit recovery key saved at the first connect (skippable only after a warning); `keys.json` MACed with a revision counter against rollback; new devices join by QR code (HPKE PSK mode), a commit-then-reveal code, or the recovery key; revoking starts a new epoch. **Merge: last-write-wins on `updatedAt`** with ties by device id and tombstones kept for ever (`sync/1`, S4b-BL-130). **Deletion levels**: L1 a dialog; L2 and L3 also the phone's own authentication (operation-bound on Android 11+); a screen lock required on the phones; the website L1, and L2/L3 only with a PRF-sealed passkey. On the phones L3 also has the 5-second delay of the shared policy vectors; on the website the owner chose a tick box and no countdown ([15](15-google-drive-backup-and-sharing.md) §10.4). Photos on Wi-Fi only by default with a switch and a one-off. Deferred: sharing (S4b-BL-120), the authenticator app (S4b-BL-129), *Lock old backups again*, a monthly mobile-data limit. Costs: encrypted backups open only in Doorprints (the website with the recovery key included); a person without a recovery key who loses every device loses the backups; the checks inside the app cannot bind someone holding the Google account ([02](02-threat-model.md) §10, RR-25) |
 | ADR-34 | **The path trace, version 2: one shared repeat algorithm held by a vector file, saved walks as local-only rows, the website records only while visible** (owner, 2026-10-06: repeats thicker, second colour, dashed; an optional sound; save a walk to a house; "Phone only"; the website too; the person chooses how repeats look; [11](11-feature-parity-and-export-spec.md) 5.27.0..5.27.11) | Detection on a server (ruled out: location history must not leave the device); a fixed grid of 20 m cells (two readings 21 m apart in different cells are "different", 39 m apart in one cell are "the same"); matching points only, without densified samples (misses a street walked with points in other places); a SQL foreign key with `ON DELETE CASCADE` (houses are tombstoned, never hard-deleted, so it would never fire); saved walks in the backup (the owner chose phone only); a hosted web push or a background tab for the website's alert (a hidden page gets no fixes); Doorprints playing its own sound on Android (the system channel lets the person mute it); one colour and width for all (the owner wants emphasis, and the person must be able to turn it down) | **Distances on a local flat plane (`cos(latitude)`), 10 m samples, a 25 m corridor, an 80 m minimum run, a 30 m bridge, two different walks**: reasoned from the 50 m accuracy gate and the 20 m / 5 min thinning (11 5.27.2). **Written twice, from the text, and held to `trace-repeat-vectors.json`** (*proposed* until both stacks pass). **Saved walks are in their own table with no `dirty`, `updatedAt` or `deleted` column**, so no sync can pick them up; **no SQL FK**, a sweeper removes the walks of a deleted house when the delete is final. **The overlay is a second layer over the solid base line**, drawn by the newest of the walks over a stretch, so the dash is one line; *Clear* is 1.8 x the base width, *Subtle* 1.0 x, *Off* hides the layer, and the look is applied live to the running style through a `PlatformMap` `repeatLook` parameter (Android `LineLayer.setProperties`, iPhone `setRepeatLook`, website `setPaintProperty`; not through `JsonStyleOps`, which edits style JSON before load), not by rebuilding data. **The question after a walk is a watermark** (`walkAskedUpTo`), computed from `track_points`, so a walk cut by a process kill is still asked about once. **The Android phone-to-phone transfer copies the database, saved walks included** (`data_extraction_rules.xml`), and the documents say so. **The alert is a notification on its own channel** (phones) so the system mutes it; on the website a beep started by the person's tap and a banner. **Cost:** a second colour (`#E65100`) to keep apart from the markers and the base map (TC-M-25, TC-M-57), a detection pass off the main thread, and a migration (Room 11, IndexedDB 3). |
+| ADR-35 | **On the person's own device, the AI provider is the person's choice: Gemini, any OpenAI-compatible endpoint, or Anthropic; device-only** (owner, 2026-10-07; §13.2) | **A server passthrough** (the server calls the person's endpoint: ruled out, it makes the server an open proxy and an SSRF target, T-I44, and a server with no AI of its own would carry the person's key); **Gemini through its own OpenAI-compatible endpoint** (one adapter, but it hides the native one that works today and leaves out every other AI); **on-device models** (too large and weaker, as in ADR-26) | One interface, `JsonChatModel`, so the screens, the prompts and the safety code stay as they are; the person's choice never leaves the device (D-31). A de-facto standard, `/chat/completions`, covers OpenAI, OpenRouter, Groq, Ollama and LM Studio with one adapter; a three-tier ladder (`json_schema`, `json_object`, plain) keeps servers that lack structured output working. Costs: three adapters (Gemini, OpenAI-compatible, later Anthropic) in TypeScript and in Kotlin, held together by parity vectors; the strings in four languages (hi, ta, te under review); the privacy text, which now names the host; a new error (*model not found*); a local `http` endpoint is a new exposure (T-I43), limited to this device. |
 
 ## 15. Design risks and open items
 

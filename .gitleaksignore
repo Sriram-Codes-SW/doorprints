@@ -93,3 +93,6 @@ aabe9a8f79e77975c6874bd3f642f919f4f985c1:web/src/app/data/drive/connect/stores/d
 # ("cause-secret keys.json id=...", a list of fake secret words) that the test feeds in to prove none can reach the code.
 c899116d0bd3265a847df6cd14c8b531825cbb60:android/shared/src/androidHostTest/kotlin/app/doorprints/drive/DriveCodeTest.kt:generic-api-key:41
 c899116d0bd3265a847df6cd14c8b531825cbb60:android/shared/src/androidHostTest/kotlin/app/doorprints/drive/DriveCodeTest.kt:generic-api-key:53
+# Reviewed 2026-10-07: the website AI provider core's migration test (S4b-BL-148). 'AIzaTestKey1234' is a made-up
+# placeholder the test stores to prove an existing own-Gemini-key device still reads as Gemini; it is not a real key.
+1b0dfde0b1f3ff0453974dee7a80b579dc3ab9c5:web/src/app/core/ai/ai-provider.spec.ts:generic-api-key:321

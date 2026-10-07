@@ -605,6 +605,965 @@ internal const val PARITY_VECTORS_JSON: String = """{
   }, {
     "status" : "NOT_CHOSEN",
     "expected" : false
+  } ],
+  "schemaDialect" : [ {
+    "name" : "listing",
+    "gemini" : {
+      "type" : "object",
+      "properties" : {
+        "label" : {
+          "type" : "string",
+          "description" : "Short human label, e.g. '2BHK near Indiranagar metro'",
+          "nullable" : true
+        },
+        "address" : {
+          "type" : "string",
+          "description" : "Full postal address as written in the listing",
+          "nullable" : true
+        },
+        "street" : {
+          "type" : "string",
+          "description" : "Street / road name only",
+          "nullable" : true
+        },
+        "locality" : {
+          "type" : "string",
+          "description" : "Locality / neighbourhood / area",
+          "nullable" : true
+        },
+        "price" : {
+          "type" : "string",
+          "description" : "Monthly rent or sale price in rupees exactly as written, e.g. '25,000' or '1.2 Cr'",
+          "nullable" : true
+        },
+        "priceType" : {
+          "type" : "string",
+          "description" : "RENT or SALE",
+          "nullable" : true
+        },
+        "bedrooms" : {
+          "type" : "string",
+          "description" : "Number of bedrooms, e.g. '2' for 2BHK",
+          "nullable" : true
+        },
+        "contactName" : {
+          "type" : "string",
+          "description" : "Contact person name",
+          "nullable" : true
+        },
+        "contactPhone" : {
+          "type" : "string",
+          "description" : "Contact phone number exactly as written",
+          "nullable" : true
+        },
+        "listingUrl" : {
+          "type" : "string",
+          "description" : "Listing URL if one is present in the text",
+          "nullable" : true
+        },
+        "notes" : {
+          "type" : "string",
+          "description" : "Other useful facts (deposit, floor, furnishing, availability) in one short paragraph",
+          "nullable" : true
+        },
+        "amenities" : {
+          "type" : "array",
+          "description" : "Amenities such as parking, lift, power backup, gym",
+          "items" : {
+            "type" : "string"
+          }
+        }
+      }
+    },
+    "strict" : {
+      "type" : "object",
+      "properties" : {
+        "label" : {
+          "type" : [ "string", "null" ],
+          "description" : "Short human label, e.g. '2BHK near Indiranagar metro'"
+        },
+        "address" : {
+          "type" : [ "string", "null" ],
+          "description" : "Full postal address as written in the listing"
+        },
+        "street" : {
+          "type" : [ "string", "null" ],
+          "description" : "Street / road name only"
+        },
+        "locality" : {
+          "type" : [ "string", "null" ],
+          "description" : "Locality / neighbourhood / area"
+        },
+        "price" : {
+          "type" : [ "string", "null" ],
+          "description" : "Monthly rent or sale price in rupees exactly as written, e.g. '25,000' or '1.2 Cr'"
+        },
+        "priceType" : {
+          "type" : [ "string", "null" ],
+          "description" : "RENT or SALE"
+        },
+        "bedrooms" : {
+          "type" : [ "string", "null" ],
+          "description" : "Number of bedrooms, e.g. '2' for 2BHK"
+        },
+        "contactName" : {
+          "type" : [ "string", "null" ],
+          "description" : "Contact person name"
+        },
+        "contactPhone" : {
+          "type" : [ "string", "null" ],
+          "description" : "Contact phone number exactly as written"
+        },
+        "listingUrl" : {
+          "type" : [ "string", "null" ],
+          "description" : "Listing URL if one is present in the text"
+        },
+        "notes" : {
+          "type" : [ "string", "null" ],
+          "description" : "Other useful facts (deposit, floor, furnishing, availability) in one short paragraph"
+        },
+        "amenities" : {
+          "type" : "array",
+          "description" : "Amenities such as parking, lift, power backup, gym",
+          "items" : {
+            "type" : "string"
+          }
+        }
+      },
+      "required" : [ "label", "address", "street", "locality", "price", "priceType", "bedrooms", "contactName", "contactPhone", "listingUrl", "notes", "amenities" ],
+      "additionalProperties" : false
+    },
+    "trailer" : "Reply with only a JSON object of this shape: {\"type\":\"object\",\"properties\":{\"label\":{\"type\":[\"string\",\"null\"],\"description\":\"Short human label, e.g. '2BHK near Indiranagar metro'\"},\"address\":{\"type\":[\"string\",\"null\"],\"description\":\"Full postal address as written in the listing\"},\"street\":{\"type\":[\"string\",\"null\"],\"description\":\"Street / road name only\"},\"locality\":{\"type\":[\"string\",\"null\"],\"description\":\"Locality / neighbourhood / area\"},\"price\":{\"type\":[\"string\",\"null\"],\"description\":\"Monthly rent or sale price in rupees exactly as written, e.g. '25,000' or '1.2 Cr'\"},\"priceType\":{\"type\":[\"string\",\"null\"],\"description\":\"RENT or SALE\"},\"bedrooms\":{\"type\":[\"string\",\"null\"],\"description\":\"Number of bedrooms, e.g. '2' for 2BHK\"},\"contactName\":{\"type\":[\"string\",\"null\"],\"description\":\"Contact person name\"},\"contactPhone\":{\"type\":[\"string\",\"null\"],\"description\":\"Contact phone number exactly as written\"},\"listingUrl\":{\"type\":[\"string\",\"null\"],\"description\":\"Listing URL if one is present in the text\"},\"notes\":{\"type\":[\"string\",\"null\"],\"description\":\"Other useful facts (deposit, floor, furnishing, availability) in one short paragraph\"},\"amenities\":{\"type\":\"array\",\"description\":\"Amenities such as parking, lift, power backup, gym\",\"items\":{\"type\":\"string\"}}},\"required\":[\"label\",\"address\",\"street\",\"locality\",\"price\",\"priceType\",\"bedrooms\",\"contactName\",\"contactPhone\",\"listingUrl\",\"notes\",\"amenities\"],\"additionalProperties\":false}"
+  }, {
+    "name" : "answer",
+    "gemini" : {
+      "type" : "object",
+      "properties" : {
+        "answer" : {
+          "type" : "string",
+          "description" : "The answer, in 1-6 sentences, citing houses inline as [house:<id>]"
+        },
+        "citedHouseIds" : {
+          "type" : "array",
+          "description" : "Ids of the houses cited inline as [house:<id>] in the answer, copied exactly from the context",
+          "items" : {
+            "type" : "string"
+          }
+        }
+      },
+      "required" : [ "answer" ]
+    },
+    "strict" : {
+      "type" : "object",
+      "properties" : {
+        "answer" : {
+          "type" : "string",
+          "description" : "The answer, in 1-6 sentences, citing houses inline as [house:<id>]"
+        },
+        "citedHouseIds" : {
+          "type" : "array",
+          "description" : "Ids of the houses cited inline as [house:<id>] in the answer, copied exactly from the context",
+          "items" : {
+            "type" : "string"
+          }
+        }
+      },
+      "required" : [ "answer", "citedHouseIds" ],
+      "additionalProperties" : false
+    },
+    "trailer" : "Reply with only a JSON object of this shape: {\"type\":\"object\",\"properties\":{\"answer\":{\"type\":\"string\",\"description\":\"The answer, in 1-6 sentences, citing houses inline as [house:<id>]\"},\"citedHouseIds\":{\"type\":\"array\",\"description\":\"Ids of the houses cited inline as [house:<id>] in the answer, copied exactly from the context\",\"items\":{\"type\":\"string\"}}},\"required\":[\"answer\",\"citedHouseIds\"],\"additionalProperties\":false}"
+  }, {
+    "name" : "plan",
+    "gemini" : {
+      "type" : "object",
+      "properties" : {
+        "summary" : {
+          "type" : "string",
+          "description" : "2-4 sentences explaining the plan"
+        },
+        "stops" : {
+          "type" : "array",
+          "description" : "Houses to visit, in visiting order",
+          "items" : {
+            "type" : "object",
+            "properties" : {
+              "houseId" : {
+                "type" : "string",
+                "description" : "House id exactly as returned by a tool"
+              },
+              "reason" : {
+                "type" : "string",
+                "description" : "Why this house is in the plan, one sentence"
+              }
+            }
+          }
+        }
+      }
+    },
+    "strict" : {
+      "type" : "object",
+      "properties" : {
+        "summary" : {
+          "type" : "string",
+          "description" : "2-4 sentences explaining the plan"
+        },
+        "stops" : {
+          "type" : "array",
+          "description" : "Houses to visit, in visiting order",
+          "items" : {
+            "type" : "object",
+            "properties" : {
+              "houseId" : {
+                "type" : "string",
+                "description" : "House id exactly as returned by a tool"
+              },
+              "reason" : {
+                "type" : "string",
+                "description" : "Why this house is in the plan, one sentence"
+              }
+            },
+            "required" : [ "houseId", "reason" ],
+            "additionalProperties" : false
+          }
+        }
+      },
+      "required" : [ "summary", "stops" ],
+      "additionalProperties" : false
+    },
+    "trailer" : "Reply with only a JSON object of this shape: {\"type\":\"object\",\"properties\":{\"summary\":{\"type\":\"string\",\"description\":\"2-4 sentences explaining the plan\"},\"stops\":{\"type\":\"array\",\"description\":\"Houses to visit, in visiting order\",\"items\":{\"type\":\"object\",\"properties\":{\"houseId\":{\"type\":\"string\",\"description\":\"House id exactly as returned by a tool\"},\"reason\":{\"type\":\"string\",\"description\":\"Why this house is in the plan, one sentence\"}},\"required\":[\"houseId\",\"reason\"],\"additionalProperties\":false}}},\"required\":[\"summary\",\"stops\"],\"additionalProperties\":false}"
+  } ],
+  "openaiRequest" : [ {
+    "call" : "listing",
+    "tier" : 1,
+    "model" : "test-model",
+    "system" : "You extract house listings.",
+    "user" : "Two bedroom flat in Indiranagar, rent 25,000.",
+    "temperature" : 0,
+    "expected" : {
+      "model" : "test-model",
+      "temperature" : 0,
+      "max_tokens" : 2048,
+      "messages" : [ {
+        "role" : "system",
+        "content" : "You extract house listings."
+      }, {
+        "role" : "user",
+        "content" : "Two bedroom flat in Indiranagar, rent 25,000."
+      } ],
+      "response_format" : {
+        "type" : "json_schema",
+        "json_schema" : {
+          "name" : "listing",
+          "strict" : true,
+          "schema" : {
+            "type" : "object",
+            "properties" : {
+              "label" : {
+                "type" : [ "string", "null" ],
+                "description" : "Short human label, e.g. '2BHK near Indiranagar metro'"
+              },
+              "address" : {
+                "type" : [ "string", "null" ],
+                "description" : "Full postal address as written in the listing"
+              },
+              "street" : {
+                "type" : [ "string", "null" ],
+                "description" : "Street / road name only"
+              },
+              "locality" : {
+                "type" : [ "string", "null" ],
+                "description" : "Locality / neighbourhood / area"
+              },
+              "price" : {
+                "type" : [ "string", "null" ],
+                "description" : "Monthly rent or sale price in rupees exactly as written, e.g. '25,000' or '1.2 Cr'"
+              },
+              "priceType" : {
+                "type" : [ "string", "null" ],
+                "description" : "RENT or SALE"
+              },
+              "bedrooms" : {
+                "type" : [ "string", "null" ],
+                "description" : "Number of bedrooms, e.g. '2' for 2BHK"
+              },
+              "contactName" : {
+                "type" : [ "string", "null" ],
+                "description" : "Contact person name"
+              },
+              "contactPhone" : {
+                "type" : [ "string", "null" ],
+                "description" : "Contact phone number exactly as written"
+              },
+              "listingUrl" : {
+                "type" : [ "string", "null" ],
+                "description" : "Listing URL if one is present in the text"
+              },
+              "notes" : {
+                "type" : [ "string", "null" ],
+                "description" : "Other useful facts (deposit, floor, furnishing, availability) in one short paragraph"
+              },
+              "amenities" : {
+                "type" : "array",
+                "description" : "Amenities such as parking, lift, power backup, gym",
+                "items" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "required" : [ "label", "address", "street", "locality", "price", "priceType", "bedrooms", "contactName", "contactPhone", "listingUrl", "notes", "amenities" ],
+            "additionalProperties" : false
+          }
+        }
+      }
+    }
+  }, {
+    "call" : "listing",
+    "tier" : 2,
+    "model" : "test-model",
+    "system" : "You extract house listings.",
+    "user" : "Two bedroom flat in Indiranagar, rent 25,000.",
+    "temperature" : 0,
+    "expected" : {
+      "model" : "test-model",
+      "temperature" : 0,
+      "max_tokens" : 2048,
+      "messages" : [ {
+        "role" : "system",
+        "content" : "You extract house listings.\n\nReply with only a JSON object of this shape: {\"type\":\"object\",\"properties\":{\"label\":{\"type\":[\"string\",\"null\"],\"description\":\"Short human label, e.g. '2BHK near Indiranagar metro'\"},\"address\":{\"type\":[\"string\",\"null\"],\"description\":\"Full postal address as written in the listing\"},\"street\":{\"type\":[\"string\",\"null\"],\"description\":\"Street / road name only\"},\"locality\":{\"type\":[\"string\",\"null\"],\"description\":\"Locality / neighbourhood / area\"},\"price\":{\"type\":[\"string\",\"null\"],\"description\":\"Monthly rent or sale price in rupees exactly as written, e.g. '25,000' or '1.2 Cr'\"},\"priceType\":{\"type\":[\"string\",\"null\"],\"description\":\"RENT or SALE\"},\"bedrooms\":{\"type\":[\"string\",\"null\"],\"description\":\"Number of bedrooms, e.g. '2' for 2BHK\"},\"contactName\":{\"type\":[\"string\",\"null\"],\"description\":\"Contact person name\"},\"contactPhone\":{\"type\":[\"string\",\"null\"],\"description\":\"Contact phone number exactly as written\"},\"listingUrl\":{\"type\":[\"string\",\"null\"],\"description\":\"Listing URL if one is present in the text\"},\"notes\":{\"type\":[\"string\",\"null\"],\"description\":\"Other useful facts (deposit, floor, furnishing, availability) in one short paragraph\"},\"amenities\":{\"type\":\"array\",\"description\":\"Amenities such as parking, lift, power backup, gym\",\"items\":{\"type\":\"string\"}}},\"required\":[\"label\",\"address\",\"street\",\"locality\",\"price\",\"priceType\",\"bedrooms\",\"contactName\",\"contactPhone\",\"listingUrl\",\"notes\",\"amenities\"],\"additionalProperties\":false}"
+      }, {
+        "role" : "user",
+        "content" : "Two bedroom flat in Indiranagar, rent 25,000."
+      } ],
+      "response_format" : {
+        "type" : "json_object"
+      }
+    }
+  }, {
+    "call" : "listing",
+    "tier" : 3,
+    "model" : "test-model",
+    "system" : "You extract house listings.",
+    "user" : "Two bedroom flat in Indiranagar, rent 25,000.",
+    "temperature" : 0,
+    "expected" : {
+      "model" : "test-model",
+      "temperature" : 0,
+      "max_tokens" : 2048,
+      "messages" : [ {
+        "role" : "system",
+        "content" : "You extract house listings.\n\nReply with only a JSON object of this shape: {\"type\":\"object\",\"properties\":{\"label\":{\"type\":[\"string\",\"null\"],\"description\":\"Short human label, e.g. '2BHK near Indiranagar metro'\"},\"address\":{\"type\":[\"string\",\"null\"],\"description\":\"Full postal address as written in the listing\"},\"street\":{\"type\":[\"string\",\"null\"],\"description\":\"Street / road name only\"},\"locality\":{\"type\":[\"string\",\"null\"],\"description\":\"Locality / neighbourhood / area\"},\"price\":{\"type\":[\"string\",\"null\"],\"description\":\"Monthly rent or sale price in rupees exactly as written, e.g. '25,000' or '1.2 Cr'\"},\"priceType\":{\"type\":[\"string\",\"null\"],\"description\":\"RENT or SALE\"},\"bedrooms\":{\"type\":[\"string\",\"null\"],\"description\":\"Number of bedrooms, e.g. '2' for 2BHK\"},\"contactName\":{\"type\":[\"string\",\"null\"],\"description\":\"Contact person name\"},\"contactPhone\":{\"type\":[\"string\",\"null\"],\"description\":\"Contact phone number exactly as written\"},\"listingUrl\":{\"type\":[\"string\",\"null\"],\"description\":\"Listing URL if one is present in the text\"},\"notes\":{\"type\":[\"string\",\"null\"],\"description\":\"Other useful facts (deposit, floor, furnishing, availability) in one short paragraph\"},\"amenities\":{\"type\":\"array\",\"description\":\"Amenities such as parking, lift, power backup, gym\",\"items\":{\"type\":\"string\"}}},\"required\":[\"label\",\"address\",\"street\",\"locality\",\"price\",\"priceType\",\"bedrooms\",\"contactName\",\"contactPhone\",\"listingUrl\",\"notes\",\"amenities\"],\"additionalProperties\":false}"
+      }, {
+        "role" : "user",
+        "content" : "Two bedroom flat in Indiranagar, rent 25,000."
+      } ]
+    }
+  }, {
+    "call" : "answer",
+    "tier" : 1,
+    "model" : "test-model",
+    "system" : "You answer questions about saved houses.",
+    "user" : "Which house has parking?",
+    "temperature" : 0.1,
+    "expected" : {
+      "model" : "test-model",
+      "temperature" : 0.1,
+      "max_tokens" : 2048,
+      "messages" : [ {
+        "role" : "system",
+        "content" : "You answer questions about saved houses."
+      }, {
+        "role" : "user",
+        "content" : "Which house has parking?"
+      } ],
+      "response_format" : {
+        "type" : "json_schema",
+        "json_schema" : {
+          "name" : "answer",
+          "strict" : true,
+          "schema" : {
+            "type" : "object",
+            "properties" : {
+              "answer" : {
+                "type" : "string",
+                "description" : "The answer, in 1-6 sentences, citing houses inline as [house:<id>]"
+              },
+              "citedHouseIds" : {
+                "type" : "array",
+                "description" : "Ids of the houses cited inline as [house:<id>] in the answer, copied exactly from the context",
+                "items" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "required" : [ "answer", "citedHouseIds" ],
+            "additionalProperties" : false
+          }
+        }
+      }
+    }
+  }, {
+    "call" : "answer",
+    "tier" : 3,
+    "model" : "test-model",
+    "system" : "You answer questions about saved houses.",
+    "user" : "Which house has parking?",
+    "temperature" : 0.1,
+    "expected" : {
+      "model" : "test-model",
+      "temperature" : 0.1,
+      "max_tokens" : 2048,
+      "messages" : [ {
+        "role" : "system",
+        "content" : "You answer questions about saved houses.\n\nReply with only a JSON object of this shape: {\"type\":\"object\",\"properties\":{\"answer\":{\"type\":\"string\",\"description\":\"The answer, in 1-6 sentences, citing houses inline as [house:<id>]\"},\"citedHouseIds\":{\"type\":\"array\",\"description\":\"Ids of the houses cited inline as [house:<id>] in the answer, copied exactly from the context\",\"items\":{\"type\":\"string\"}}},\"required\":[\"answer\",\"citedHouseIds\"],\"additionalProperties\":false}"
+      }, {
+        "role" : "user",
+        "content" : "Which house has parking?"
+      } ]
+    }
+  }, {
+    "call" : "plan",
+    "tier" : 1,
+    "model" : "test-model",
+    "system" : "You plan house visits.",
+    "user" : "Plan a Saturday morning near Koramangala.",
+    "temperature" : 0.2,
+    "expected" : {
+      "model" : "test-model",
+      "temperature" : 0.2,
+      "max_tokens" : 2048,
+      "messages" : [ {
+        "role" : "system",
+        "content" : "You plan house visits."
+      }, {
+        "role" : "user",
+        "content" : "Plan a Saturday morning near Koramangala."
+      } ],
+      "response_format" : {
+        "type" : "json_schema",
+        "json_schema" : {
+          "name" : "plan",
+          "strict" : true,
+          "schema" : {
+            "type" : "object",
+            "properties" : {
+              "summary" : {
+                "type" : "string",
+                "description" : "2-4 sentences explaining the plan"
+              },
+              "stops" : {
+                "type" : "array",
+                "description" : "Houses to visit, in visiting order",
+                "items" : {
+                  "type" : "object",
+                  "properties" : {
+                    "houseId" : {
+                      "type" : "string",
+                      "description" : "House id exactly as returned by a tool"
+                    },
+                    "reason" : {
+                      "type" : "string",
+                      "description" : "Why this house is in the plan, one sentence"
+                    }
+                  },
+                  "required" : [ "houseId", "reason" ],
+                  "additionalProperties" : false
+                }
+              }
+            },
+            "required" : [ "summary", "stops" ],
+            "additionalProperties" : false
+          }
+        }
+      }
+    }
+  }, {
+    "call" : "plan",
+    "tier" : 2,
+    "model" : "test-model",
+    "system" : "You plan house visits.",
+    "user" : "Plan a Saturday morning near Koramangala.",
+    "temperature" : 0.2,
+    "expected" : {
+      "model" : "test-model",
+      "temperature" : 0.2,
+      "max_tokens" : 2048,
+      "messages" : [ {
+        "role" : "system",
+        "content" : "You plan house visits.\n\nReply with only a JSON object of this shape: {\"type\":\"object\",\"properties\":{\"summary\":{\"type\":\"string\",\"description\":\"2-4 sentences explaining the plan\"},\"stops\":{\"type\":\"array\",\"description\":\"Houses to visit, in visiting order\",\"items\":{\"type\":\"object\",\"properties\":{\"houseId\":{\"type\":\"string\",\"description\":\"House id exactly as returned by a tool\"},\"reason\":{\"type\":\"string\",\"description\":\"Why this house is in the plan, one sentence\"}},\"required\":[\"houseId\",\"reason\"],\"additionalProperties\":false}}},\"required\":[\"summary\",\"stops\"],\"additionalProperties\":false}"
+      }, {
+        "role" : "user",
+        "content" : "Plan a Saturday morning near Koramangala."
+      } ],
+      "response_format" : {
+        "type" : "json_object"
+      }
+    }
+  }, {
+    "call" : "ping",
+    "tier" : 3,
+    "model" : "test-model",
+    "system" : "Reply with {\"ok\": true}.",
+    "user" : "ping",
+    "temperature" : 0,
+    "expected" : {
+      "model" : "test-model",
+      "temperature" : 0,
+      "max_tokens" : 5,
+      "messages" : [ {
+        "role" : "system",
+        "content" : "Reply with {\"ok\": true}."
+      }, {
+        "role" : "user",
+        "content" : "ping"
+      } ]
+    }
+  } ],
+  "openaiContent" : [ {
+    "response" : "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"{\\\"answer\\\":\\\"Yes\\\",\\\"citedHouseIds\\\":[]}\"}}]}",
+    "expected" : {
+      "text" : "{\"answer\":\"Yes\",\"citedHouseIds\":[]}"
+    }
+  }, {
+    "response" : "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"```json\\n{\\\"answer\\\":\\\"Yes\\\",\\\"citedHouseIds\\\":[]}\\n```\"}}]}",
+    "expected" : {
+      "text" : "{\"answer\":\"Yes\",\"citedHouseIds\":[]}"
+    }
+  }, {
+    "response" : "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"```\\n{\\\"ok\\\":true}\\n```\"}}]}",
+    "expected" : {
+      "text" : "{\"ok\":true}"
+    }
+  }, {
+    "response" : "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"  \\n{\\\"ok\\\":true}\\n \"}}]}",
+    "expected" : {
+      "text" : "{\"ok\":true}"
+    }
+  }, {
+    "response" : "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"Sure! {\\\"ok\\\":true}\"}}]}",
+    "expected" : {
+      "text" : "Sure! {\"ok\":true}"
+    }
+  }, {
+    "response" : "{\"choices\":[]}",
+    "expected" : {
+      "error" : "unavailable"
+    }
+  }, {
+    "response" : "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":null,\"refusal\":\"I cannot help with that.\"}}]}",
+    "expected" : {
+      "error" : "unavailable"
+    }
+  }, {
+    "response" : "{\"error\":{\"message\":\"x\"}}",
+    "expected" : {
+      "error" : "unavailable"
+    }
+  }, {
+    "response" : "not json at all",
+    "expected" : {
+      "error" : "unavailable"
+    }
+  } ],
+  "providerErrors" : [ {
+    "tier" : 1,
+    "status" : 0,
+    "body" : "",
+    "expected" : {
+      "action" : "error",
+      "kind" : "unreachable"
+    }
+  }, {
+    "tier" : 1,
+    "status" : 401,
+    "body" : "{\"error\":{\"message\":\"Incorrect API key provided\"}}",
+    "expected" : {
+      "action" : "error",
+      "kind" : "keyRejected"
+    }
+  }, {
+    "tier" : 1,
+    "status" : 403,
+    "body" : "{\"error\":{\"message\":\"Permission denied\"}}",
+    "expected" : {
+      "action" : "error",
+      "kind" : "keyRejected"
+    }
+  }, {
+    "tier" : 3,
+    "status" : 401,
+    "body" : "{\"error\":\"unauthorized\"}",
+    "expected" : {
+      "action" : "error",
+      "kind" : "keyRejected"
+    }
+  }, {
+    "tier" : 1,
+    "status" : 404,
+    "body" : "{\"error\":{\"message\":\"The model `nope` does not exist\",\"code\":\"model_not_found\"}}",
+    "expected" : {
+      "action" : "error",
+      "kind" : "modelNotFound"
+    }
+  }, {
+    "tier" : 2,
+    "status" : 404,
+    "body" : "{\"error\":\"model 'nope' not found, try pulling it first\"}",
+    "expected" : {
+      "action" : "error",
+      "kind" : "modelNotFound"
+    }
+  }, {
+    "tier" : 1,
+    "status" : 429,
+    "body" : "{\"error\":{\"message\":\"Rate limit reached\"}}",
+    "retryAfter" : "20",
+    "expected" : {
+      "action" : "error",
+      "kind" : "rateLimited",
+      "retryAfterSeconds" : 20
+    }
+  }, {
+    "tier" : 1,
+    "status" : 429,
+    "body" : "{\"error\":{\"message\":\"You exceeded your current quota\"}}",
+    "expected" : {
+      "action" : "error",
+      "kind" : "rateLimited",
+      "retryAfterSeconds" : null
+    }
+  }, {
+    "tier" : 1,
+    "status" : 400,
+    "body" : "{\"error\":{\"message\":\"Invalid parameter: response_format of type json_schema is not supported with this model\"}}",
+    "expected" : {
+      "action" : "nextTier",
+      "tier" : 2
+    }
+  }, {
+    "tier" : 1,
+    "status" : 400,
+    "body" : "{\"error\":{\"message\":\"'strict' is not permitted\"}}",
+    "expected" : {
+      "action" : "nextTier",
+      "tier" : 2
+    }
+  }, {
+    "tier" : 1,
+    "status" : 400,
+    "body" : "{\"error\":\"This model does not support structured output: unsupported\"}",
+    "expected" : {
+      "action" : "nextTier",
+      "tier" : 2
+    }
+  }, {
+    "tier" : 1,
+    "status" : 400,
+    "body" : "{\"error\":{\"message\":\"Invalid request: JSON_SCHEMA not available\"}}",
+    "expected" : {
+      "action" : "nextTier",
+      "tier" : 2
+    }
+  }, {
+    "tier" : 1,
+    "status" : 400,
+    "body" : "{\"error\":{\"message\":\"max_tokens is too large\"}}",
+    "expected" : {
+      "action" : "error",
+      "kind" : "unavailable"
+    }
+  }, {
+    "tier" : 1,
+    "status" : 400,
+    "body" : "{\"error\":{\"message\":\"response_format.type must be json_object or text\"}}",
+    "expected" : {
+      "action" : "nextTier",
+      "tier" : 2
+    }
+  }, {
+    "tier" : 2,
+    "status" : 400,
+    "body" : "{\"error\":{\"message\":\"response_format json_object is not available\"}}",
+    "expected" : {
+      "action" : "nextTier",
+      "tier" : 3
+    }
+  }, {
+    "tier" : 2,
+    "status" : 400,
+    "body" : "{\"error\":{\"message\":\"Invalid parameter: response_format\"}}",
+    "expected" : {
+      "action" : "nextTier",
+      "tier" : 3
+    }
+  }, {
+    "tier" : 2,
+    "status" : 400,
+    "body" : "{\"error\":{\"message\":\"unsupported value for strict\"}}",
+    "expected" : {
+      "action" : "error",
+      "kind" : "unavailable"
+    }
+  }, {
+    "tier" : 2,
+    "status" : 400,
+    "body" : "{\"error\":{\"message\":\"max_tokens is too large\"}}",
+    "expected" : {
+      "action" : "error",
+      "kind" : "unavailable"
+    }
+  }, {
+    "tier" : 3,
+    "status" : 400,
+    "body" : "{\"error\":{\"message\":\"response_format is not supported\"}}",
+    "expected" : {
+      "action" : "error",
+      "kind" : "unavailable"
+    }
+  }, {
+    "tier" : 1,
+    "status" : 500,
+    "body" : "{\"error\":{\"message\":\"The server had an error\"}}",
+    "expected" : {
+      "action" : "error",
+      "kind" : "unavailable"
+    }
+  }, {
+    "tier" : 1,
+    "status" : 503,
+    "body" : "",
+    "expected" : {
+      "action" : "error",
+      "kind" : "unavailable"
+    }
+  }, {
+    "tier" : 1,
+    "status" : 502,
+    "body" : "",
+    "expected" : {
+      "action" : "error",
+      "kind" : "unavailable"
+    }
+  } ],
+  "baseUrl" : [ {
+    "input" : "https://api.openai.com/v1",
+    "expected" : {
+      "valid" : true,
+      "normalised" : "https://api.openai.com/v1",
+      "host" : "api.openai.com"
+    }
+  }, {
+    "input" : "https://api.openai.com/v1/",
+    "expected" : {
+      "valid" : true,
+      "normalised" : "https://api.openai.com/v1",
+      "host" : "api.openai.com"
+    }
+  }, {
+    "input" : "  https://openrouter.ai/api/v1  ",
+    "expected" : {
+      "valid" : true,
+      "normalised" : "https://openrouter.ai/api/v1",
+      "host" : "openrouter.ai"
+    }
+  }, {
+    "input" : "HTTPS://API.OpenAI.com/v1/",
+    "expected" : {
+      "valid" : true,
+      "normalised" : "https://api.openai.com/v1",
+      "host" : "api.openai.com"
+    }
+  }, {
+    "input" : "https://api.groq.com/openai/v1",
+    "expected" : {
+      "valid" : true,
+      "normalised" : "https://api.groq.com/openai/v1",
+      "host" : "api.groq.com"
+    }
+  }, {
+    "input" : "https://example.com",
+    "expected" : {
+      "valid" : true,
+      "normalised" : "https://example.com",
+      "host" : "example.com"
+    }
+  }, {
+    "input" : "https://example.com/",
+    "expected" : {
+      "valid" : true,
+      "normalised" : "https://example.com",
+      "host" : "example.com"
+    }
+  }, {
+    "input" : "https://example.com:8443/v1",
+    "expected" : {
+      "valid" : true,
+      "normalised" : "https://example.com:8443/v1",
+      "host" : "example.com"
+    }
+  }, {
+    "input" : "http://localhost:11434/v1",
+    "expected" : {
+      "valid" : true,
+      "normalised" : "http://localhost:11434/v1",
+      "host" : "localhost"
+    }
+  }, {
+    "input" : "http://localhost:1234/v1",
+    "expected" : {
+      "valid" : true,
+      "normalised" : "http://localhost:1234/v1",
+      "host" : "localhost"
+    }
+  }, {
+    "input" : "http://localhost",
+    "expected" : {
+      "valid" : true,
+      "normalised" : "http://localhost",
+      "host" : "localhost"
+    }
+  }, {
+    "input" : "http://127.0.0.1:11434/v1",
+    "expected" : {
+      "valid" : true,
+      "normalised" : "http://127.0.0.1:11434/v1",
+      "host" : "127.0.0.1"
+    }
+  }, {
+    "input" : "http://[::1]:11434/v1",
+    "expected" : {
+      "valid" : true,
+      "normalised" : "http://[::1]:11434/v1",
+      "host" : "[::1]"
+    }
+  }, {
+    "input" : "http://10.0.2.2:11434/v1",
+    "expected" : {
+      "valid" : false,
+      "reason" : "insecureHost"
+    }
+  }, {
+    "input" : "http://10.0.2.2:11434/v1",
+    "android" : true,
+    "expected" : {
+      "valid" : true,
+      "normalised" : "http://10.0.2.2:11434/v1",
+      "host" : "10.0.2.2"
+    }
+  }, {
+    "input" : "https://10.0.2.2/v1",
+    "expected" : {
+      "valid" : true,
+      "normalised" : "https://10.0.2.2/v1",
+      "host" : "10.0.2.2"
+    }
+  }, {
+    "input" : "http://192.168.1.20:11434/v1",
+    "expected" : {
+      "valid" : false,
+      "reason" : "insecureHost"
+    }
+  }, {
+    "input" : "http://10.0.0.5/v1",
+    "expected" : {
+      "valid" : false,
+      "reason" : "insecureHost"
+    }
+  }, {
+    "input" : "http://example.com/v1",
+    "expected" : {
+      "valid" : false,
+      "reason" : "insecureHost"
+    }
+  }, {
+    "input" : "http://localhost.evil.com/v1",
+    "expected" : {
+      "valid" : false,
+      "reason" : "insecureHost"
+    }
+  }, {
+    "input" : "http://127.0.0.1.nip.io/v1",
+    "expected" : {
+      "valid" : false,
+      "reason" : "insecureHost"
+    }
+  }, {
+    "input" : "https://user:pass@example.com/v1",
+    "expected" : {
+      "valid" : false,
+      "reason" : "userinfo"
+    }
+  }, {
+    "input" : "https://user@example.com/v1",
+    "expected" : {
+      "valid" : false,
+      "reason" : "userinfo"
+    }
+  }, {
+    "input" : "https://example.com/v1?key=abc",
+    "expected" : {
+      "valid" : false,
+      "reason" : "query"
+    }
+  }, {
+    "input" : "https://example.com/v1#frag",
+    "expected" : {
+      "valid" : false,
+      "reason" : "fragment"
+    }
+  }, {
+    "input" : "https://example.com/v1/chat/completions",
+    "expected" : {
+      "valid" : false,
+      "reason" : "endpoint"
+    }
+  }, {
+    "input" : "https://example.com/v1/chat/completions/",
+    "expected" : {
+      "valid" : false,
+      "reason" : "endpoint"
+    }
+  }, {
+    "input" : "ftp://example.com/v1",
+    "expected" : {
+      "valid" : false,
+      "reason" : "scheme"
+    }
+  }, {
+    "input" : "file:///etc/passwd",
+    "expected" : {
+      "valid" : false,
+      "reason" : "scheme"
+    }
+  }, {
+    "input" : "api.openai.com/v1",
+    "expected" : {
+      "valid" : false,
+      "reason" : "notAnUrl"
+    }
+  }, {
+    "input" : "/v1",
+    "expected" : {
+      "valid" : false,
+      "reason" : "notAnUrl"
+    }
+  }, {
+    "input" : "not a url",
+    "expected" : {
+      "valid" : false,
+      "reason" : "notAnUrl"
+    }
+  }, {
+    "input" : "",
+    "expected" : {
+      "valid" : false,
+      "reason" : "empty"
+    }
+  }, {
+    "input" : "   ",
+    "expected" : {
+      "valid" : false,
+      "reason" : "empty"
+    }
   } ]
 }
 """
