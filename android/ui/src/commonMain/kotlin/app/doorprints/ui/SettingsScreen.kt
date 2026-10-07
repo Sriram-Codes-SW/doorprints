@@ -345,6 +345,11 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
+                        Text(
+                            stringResource(Res.string.settings_auto_backup_lost_phone),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                         var keep by remember(settings.autoBackupKeep) {
                             mutableFloatStateOf(settings.autoBackupKeep.toFloat())
                         }
