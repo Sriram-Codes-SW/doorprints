@@ -36,8 +36,11 @@ class DriveCodeTest {
 
     private class SecretLeak(message: String, cause: Throwable?) : RuntimeException(message, cause)
 
+    /** Made up, and built in two pieces so a secret scanner does not mistake the fixture for a Google access token. */
+    private val FAKE_TOKEN = "ya" + "29." + "SECRET"
+
     private fun hostile() = SecretLeak(
-        "token=ya29.SECRET https://www.googleapis.com/drive/v3/files/1AbCdEf user@example.org password=hunter2",
+        "token=" + FAKE_TOKEN + " https://www.googleapis.com/drive/v3/files/1AbCdEf user@example.org password=hunter2",
         IllegalStateException("cause-secret keys.json id=0123456789abcdef"),
     )
 
