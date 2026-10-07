@@ -54,7 +54,6 @@ import app.doorprints.drive.sync.DriveSyncBackend
 import app.doorprints.drive.sync.LocalRows
 import app.doorprints.shared.api.PhotoChangeDto
 import app.doorprints.shared.sync.SyncRow
-import app.doorprints.ui.drive.NewcomerOffer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -590,7 +589,4 @@ class DriveAssemblyTest {
         assertNotNull(a.controller.lastBackup())
         assertNull((a.controller.syncStatus()).error)
     }
-
-    @Suppress("unused")
-    private fun unusedOffer(o: NewcomerOffer) = o
 }

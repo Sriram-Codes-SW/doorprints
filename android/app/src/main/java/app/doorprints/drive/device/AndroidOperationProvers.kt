@@ -28,8 +28,6 @@ import android.security.keystore.KeyPermanentlyInvalidatedException
 import android.security.keystore.KeyProperties
 import androidx.annotation.RequiresApi
 import app.doorprints.crypto.CryptoProvider
-import app.doorprints.deviceauth.AuthResult
-import app.doorprints.deviceauth.DeleteLevel
 import app.doorprints.deviceauth.DeviceAuth
 import app.doorprints.drive.delete.DeletionLevel
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -62,33 +60,6 @@ object PromptErrors {
         BiometricPrompt.BIOMETRIC_ERROR_HW_NOT_PRESENT, BiometricPrompt.BIOMETRIC_ERROR_HW_UNAVAILABLE,
         BiometricPrompt.BIOMETRIC_ERROR_NO_BIOMETRICS -> ProofOutcome.Unavailable
         else -> ProofOutcome.Failed
-    }
-}
-
-/** Android 10 and below: the pass result of [auth] and an in-process HMAC key. Pure over the two seams, so JVM-tested. */
-class SoftwareOperationProver(private val auth: DeviceAuth, private val p: CryptoProvider) : OperationProver {
-    private val key: ByteArray by lazy { p.randomBytes(32) }
-
-    override suspend fun prove(operationId: String, level: DeletionLevel, reason: String, now: () -> Long): ProofOutcome {
-        val result = try {
-            auth.authenticate(reason, if (level == DeletionLevel.L3) DeleteLevel.L3 else DeleteLevel.L2)
-        } catch (e: kotlinx.coroutines.CancellationException) {
-            throw e
-        } catch (_: Exception) {
-            return ProofOutcome.Failed
-        }
-        return when (result) {
-            AuthResult.SUCCESS -> {
-                val issued = now()
-                ProofOutcome.Proved(issued, OperationProof.hex(p.hmacSha256(key, OperationProof.message(operationId, issued))))
-            }
-            AuthResult.CANCELLED -> ProofOutcome.Cancelled
-            AuthResult.TIMED_OUT -> ProofOutcome.TimedOut
-            AuthResult.LOCKED_OUT -> ProofOutcome.Denied
-            AuthResult.LOCK_NOT_SET -> ProofOutcome.NoLock
-            AuthResult.NOT_AVAILABLE -> ProofOutcome.Unavailable
-            AuthResult.FAILED -> ProofOutcome.Failed
-        }
     }
 }
 
