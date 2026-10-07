@@ -1353,6 +1353,8 @@
     <string name="drive_enrol_approve">இந்த சாதனத்தை அனுமதிக்கவும்</string>
     <string name="drive_enrol_scan">ஸ்கேன் செய்யவும்</string>
     <string name="drive_enrol_camera_missing">கேமராவைத் திறக்க முடியவில்லை. அதற்குப் பதிலாகக் குறியீட்டை ஒட்டவும்.</string>
+    <!-- S4b-BL-141 (2026-10-07): under review. -->
+    <string name="drive_enrol_camera_denied">Doorprints-க்குக் கேமரா அனுமதி இல்லை. அமைப்புகளில் கேமராவை அனுமதிக்கவும், அல்லது அதற்குப் பதிலாகக் குறியீட்டை ஒட்டவும்.</string>
     <string name="drive_enrol_qr_description">சாதனத்தைச் சேர்க்கும் QR குறியீடு</string>
     <string name="drive_enrol_done">அனுமதிக்கப்பட்டது. இந்த பதிலைப் புதிய சாதனத்திற்குக் காட்டவும்.</string>
     <string name="drive_sync_offline">ஆஃப்லைன். இந்த ஃபோன் ஆன்லைனுக்கு வந்ததும் Google Drive மீண்டும் ஒத்திசைக்கும்.</string>

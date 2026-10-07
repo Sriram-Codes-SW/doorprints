@@ -66,7 +66,7 @@ class QrScanSessionTest {
         val camera = FakeCamera(permission = CameraPermission.Denied)
         val s = session(camera).apply { begin() }
         assertEquals(QrScanSession.State.Denied, s.state)
-        assertEquals(QrScan.NoCamera, s.outcome)
+        assertEquals(QrScan.Denied, s.outcome, "a refused camera is told apart: the screen offers Settings (S4b-BL-141)")
         assertEquals(0, camera.prompts)
         assertEquals(0, camera.starts)
     }
@@ -76,6 +76,7 @@ class QrScanSessionTest {
         val camera = FakeCamera(permission = CameraPermission.Restricted)
         val s = session(camera).apply { begin() }
         assertEquals(QrScanSession.State.Restricted, s.state)
+        assertEquals(QrScan.NoCamera, s.outcome, "parental controls cannot be lifted in the app's Settings: no Settings button")
         assertEquals(0, camera.prompts)
         assertFalse(QrScanSession.isAvailable(true, CameraPermission.Restricted))
         assertTrue(QrScanSession.isAvailable(true, CameraPermission.Denied))
@@ -101,6 +102,7 @@ class QrScanSessionTest {
         val s = session(camera).apply { begin() }
         camera.person(false)
         assertEquals(QrScanSession.State.Denied, s.state)
+        assertEquals(QrScan.Denied, s.outcome)
         assertEquals(0, camera.starts)
     }
 

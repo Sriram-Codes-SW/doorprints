@@ -118,6 +118,7 @@ private fun IosDriveCard(drive: IosDriveServices) {
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<DriveReason?>(null) }
     val scope = rememberCoroutineScope()
+    val platform = LocalPlatformServices.current
     val host = DriveHost(
         onImportBackup = { backup ->
             if (!busy) {
@@ -133,6 +134,8 @@ private fun IosDriveCard(drive: IosDriveServices) {
         importBusy = busy,
         importError = error,
         clipboard = remember { IosClipboardSeam() },
+        // A refused camera: the scanner's Denied answer offers this app's page in Settings (S4b-BL-141).
+        onOpenAppSettings = platform::openAppSettings,
     )
     val cancel = stringResource(Res.string.common_cancel)
     val hint = stringResource(Res.string.qr_scan_hint)

@@ -113,10 +113,10 @@ sealed interface EnrolUi {
     data object Idle : EnrolUi
 
     /** This phone shows its QR code and the 8-digit code, and waits for the reply. */
-    data class Newcomer(val offer: NewcomerOffer, val error: DriveReason? = null, val cameraMissing: Boolean = false) : EnrolUi
+    data class Newcomer(val offer: NewcomerOffer, val error: DriveReason? = null, val cameraMissing: Boolean = false, val cameraDenied: Boolean = false) : EnrolUi
 
     /** The connected phone reads (scans or pastes) the new device's code. */
-    data class ApproverInput(val error: DriveReason? = null, val cameraMissing: Boolean = false) : EnrolUi
+    data class ApproverInput(val error: DriveReason? = null, val cameraMissing: Boolean = false, val cameraDenied: Boolean = false) : EnrolUi
 
     /**
      * The numbers are compared; approving asks for the device check. The approver names the new device and says whether
@@ -506,8 +506,17 @@ class DriveHolder(
 
     fun scannerMissing() = _ui.update {
         it.copy(enrol = when (val e = it.enrol) {
-            is EnrolUi.Newcomer -> e.copy(cameraMissing = true)
-            is EnrolUi.ApproverInput -> e.copy(cameraMissing = true)
+            is EnrolUi.Newcomer -> e.copy(cameraMissing = true, cameraDenied = false)
+            is EnrolUi.ApproverInput -> e.copy(cameraMissing = true, cameraDenied = false)
+            else -> e
+        })
+    }
+
+    /** The camera was refused (S4b-BL-141): the step says "allow the camera in Settings" and offers the button. */
+    fun scannerDenied() = _ui.update {
+        it.copy(enrol = when (val e = it.enrol) {
+            is EnrolUi.Newcomer -> e.copy(cameraDenied = true, cameraMissing = false)
+            is EnrolUi.ApproverInput -> e.copy(cameraDenied = true, cameraMissing = false)
             else -> e
         })
     }

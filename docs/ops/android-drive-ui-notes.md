@@ -244,6 +244,7 @@ phone-only driveEnrol.replyLabel
 phone-only driveEnrol.approve
 phone-only driveEnrol.scan
 phone-only driveEnrol.cameraMissing
+phone-only driveEnrol.cameraDenied
 phone-only driveEnrol.qrDescription
 phone-only driveEnrol.done
 phone-only driveSync.offline

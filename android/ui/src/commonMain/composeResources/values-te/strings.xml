@@ -1353,6 +1353,8 @@
     <string name="drive_enrol_approve">ఈ పరికరాన్ని ఆమోదించండి</string>
     <string name="drive_enrol_scan">స్కాన్ చేయండి</string>
     <string name="drive_enrol_camera_missing">కెమెరా తెరవలేకపోయాం. బదులుగా కోడ్‌ను అతికించండి.</string>
+    <!-- S4b-BL-141 (2026-10-07): under review. -->
+    <string name="drive_enrol_camera_denied">Doorprints కు కెమెరా అనుమతి లేదు. సెట్టింగ్‌లలో కెమెరాను అనుమతించండి, లేదా బదులుగా కోడ్‌ను అతికించండి.</string>
     <string name="drive_enrol_qr_description">పరికరాన్ని చేర్చడానికి QR కోడ్</string>
     <string name="drive_enrol_done">ఆమోదించబడింది. ఈ సమాధానాన్ని కొత్త పరికరానికి చూపండి.</string>
     <string name="drive_sync_offline">ఆఫ్‌లైన్. ఈ ఫోన్ ఆన్‌లైన్‌లోకి వచ్చాక Google Drive మళ్లీ సింక్ అవుతుంది.</string>

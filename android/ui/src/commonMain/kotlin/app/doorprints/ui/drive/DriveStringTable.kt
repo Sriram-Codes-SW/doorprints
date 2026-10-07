@@ -199,6 +199,7 @@ import app.doorprints.ui.res.drive_enrol_paste_reply
 import app.doorprints.ui.res.drive_enrol_reply_label
 import app.doorprints.ui.res.drive_enrol_approve
 import app.doorprints.ui.res.drive_enrol_scan
+import app.doorprints.ui.res.drive_enrol_camera_denied
 import app.doorprints.ui.res.drive_enrol_camera_missing
 import app.doorprints.ui.res.drive_enrol_qr_description
 import app.doorprints.ui.res.drive_enrol_done
@@ -424,6 +425,7 @@ internal val DRIVE_STRINGS: Map<String, StringResource> = mapOf(
     "driveEnrol.approve" to Res.string.drive_enrol_approve,
     "driveEnrol.scan" to Res.string.drive_enrol_scan,
     "driveEnrol.cameraMissing" to Res.string.drive_enrol_camera_missing,
+    "driveEnrol.cameraDenied" to Res.string.drive_enrol_camera_denied,
     "driveEnrol.qrDescription" to Res.string.drive_enrol_qr_description,
     "driveEnrol.done" to Res.string.drive_enrol_done,
     "driveSync.offline" to Res.string.drive_sync_offline,

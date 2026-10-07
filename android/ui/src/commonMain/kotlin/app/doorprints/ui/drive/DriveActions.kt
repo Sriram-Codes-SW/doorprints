@@ -175,6 +175,9 @@ sealed interface QrScan {
     data class Scanned(val text: String) : QrScan
     data object Cancelled : QrScan
     data object NoCamera : QrScan
+
+    /** The person (or the system) refused the camera for this app: the screen says so and offers the app's Settings (S4b-BL-141). */
+    data object Denied : QrScan
 }
 
 /** No camera: the screens offer paste only. */

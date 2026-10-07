@@ -1354,6 +1354,7 @@
     <string name="drive_enrol_approve">Approve this device</string>
     <string name="drive_enrol_scan">Scan</string>
     <string name="drive_enrol_camera_missing">Could not open the camera. Paste the code instead.</string>
+    <string name="drive_enrol_camera_denied">Camera access is off for Doorprints. Allow the camera in Settings, or paste the code instead.</string>
     <string name="drive_enrol_qr_description">QR code for enrolling a device</string>
     <string name="drive_enrol_done">Approved. Show this reply to the new device.</string>
     <string name="drive_sync_offline">Offline. Google Drive syncs again when this phone is online.</string>

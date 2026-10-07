@@ -640,6 +640,23 @@ class DriveHolderTest {
         assertTrue((h.ui.value.enrol as EnrolUi.ApproverInput).cameraMissing)
     }
 
+    @Test fun aRefusedCameraIsSaidOnTheEnrolmentStepAndIsNotTheMissingCameraLine() = runTest {
+        val a = FakeActions().apply { state.value = ConnectState.READY }
+        val h = holder(a)
+        h.startApprove(); h.scannerDenied()
+        val e = h.ui.value.enrol as EnrolUi.ApproverInput
+        assertTrue(e.cameraDenied)
+        assertFalse(e.cameraMissing)
+        h.scannerMissing()
+        val m = h.ui.value.enrol as EnrolUi.ApproverInput
+        assertTrue(m.cameraMissing)
+        assertFalse(m.cameraDenied, "one note at a time")
+        h.scannerDenied()
+        val d = h.ui.value.enrol as EnrolUi.ApproverInput
+        assertTrue(d.cameraDenied)
+        assertFalse(d.cameraMissing, "one note at a time, both ways")
+    }
+
     @Test fun disconnectClearsEverything() = runTest {
         val a = FakeActions().apply { state.value = ConnectState.READY }
         val h = holder(a)

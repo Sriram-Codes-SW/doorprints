@@ -1353,6 +1353,8 @@
     <string name="drive_enrol_approve">इस डिवाइस को मंज़ूरी दें</string>
     <string name="drive_enrol_scan">स्कैन करें</string>
     <string name="drive_enrol_camera_missing">कैमरा नहीं खुल सका। इसके बजाय कोड चिपकाएँ।</string>
+    <!-- S4b-BL-141 (2026-10-07): under review. -->
+    <string name="drive_enrol_camera_denied">Doorprints के लिए कैमरा बंद है। सेटिंग में कैमरे की अनुमति दें, या इसके बजाय कोड चिपकाएँ।</string>
     <string name="drive_enrol_qr_description">डिवाइस जोड़ने के लिए QR कोड</string>
     <string name="drive_enrol_done">मंज़ूर हुआ। यह जवाब नए डिवाइस को दिखाएँ।</string>
     <string name="drive_sync_offline">ऑफ़लाइन। फ़ोन ऑनलाइन होने पर Google Drive फिर सिंक होगा।</string>
