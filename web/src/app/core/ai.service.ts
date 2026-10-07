@@ -22,7 +22,7 @@ import { Observable, defer } from 'rxjs';
 import type { Msg } from '../i18n/translation.service';
 import { ConfigService } from './config.service';
 import { AI_OPT_IN_KEY, AI_PROVIDER_KEY, GEMINI_KEY_KEY } from './storage-keys';
-import { type AiProviderConfig, clearAiConfig, isUsable, readAiConfig, saveAiConfig } from './ai/ai-provider-config';
+import { type AiProviderConfig, aiHostOf, clearAiConfig, isLocalHost, isUsable, readAiConfig, saveAiConfig } from './ai/ai-provider-config';
 import { OpenAiCompatibleChatModel } from './ai/openai-compat';
 import { type ModelRef, OnDeviceAiError, OnDeviceAiService } from './ai/on-device-ai.service';
 import { errorMsg } from './format';
@@ -146,6 +146,8 @@ export class AiService {
   private readonly aiConfigState = signal<AiProviderConfig>(readAiConfig());
   /** The person's own AI: its kind, base URL and model (docs/03 §13.2). Device-only; the key keeps the Gemini key's slot. */
   readonly aiConfig = this.aiConfigState.asReadonly();
+  /** The host the person's own AI call goes to (shown in every disclosure), '' while none is set. */
+  readonly ownHost = computed(() => aiHostOf(this.aiConfigState()));
   /**
    * On-device AI with the person's own provider: chosen, or no server to choose, and what it needs saved (a Gemini key,
    * or for an OpenAI-compatible one a valid base URL and a model; its key is optional).
@@ -202,7 +204,9 @@ export class AiService {
     this.geminiKeyState.set(clean);
     try {
       (remember ? sessionStorage : localStorage).removeItem(GEMINI_KEY_KEY);
-      (remember ? localStorage : sessionStorage).setItem(GEMINI_KEY_KEY, clean);
+      // An empty key (a local AI server, or a key that must not follow a changed service) leaves nothing stored.
+      if (clean === '') (remember ? localStorage : sessionStorage).removeItem(GEMINI_KEY_KEY);
+      else (remember ? localStorage : sessionStorage).setItem(GEMINI_KEY_KEY, clean);
     } catch {
       // Storage unavailable: the key holds for this page only.
     }
@@ -287,12 +291,17 @@ export class AiService {
   }
 }
 
-/** Translated message for AI failures: 429 with Retry-After, 503 provider down/quota, else the generic mapping. */
-export function aiErrorMsg(err: unknown): Msg {
+/**
+ * Translated message for AI failures: 429 with Retry-After, 503 provider down/quota, else the generic mapping. [host] is
+ * the own AI's host when the caller knows it (the Connect page tests what is typed); otherwise the saved provider's.
+ */
+export function aiErrorMsg(err: unknown, host?: string): Msg {
   if (err instanceof OnDeviceAiError) {
-    // `modelNotFound` and `unreachable` (OpenAI-compatible providers) get their own words with the settings screen (ADR-35); until then they read as "provider down".
+    const where = host ?? savedCompatHost();
     if (err.kind === 'rateLimited') return { key: 'ai.rateLimited', params: { s: err.retryAfter } };
-    if (err.kind === 'keyRejected') return { key: 'ai.keyRejected' };
+    if (err.kind === 'keyRejected') return where ? { key: 'ai.keyRejectedHost', params: { host: where } } : { key: 'ai.keyRejected' };
+    if (err.kind === 'modelNotFound') return { key: 'ai.modelNotFound' };
+    if (err.kind === 'unreachable' && where) return { key: isLocalHost(where) ? 'ai.unreachableLocal' : 'ai.unreachable', params: { host: where } };
     return { key: 'ai.providerDown' };
   }
   if (err instanceof HttpErrorResponse) {
@@ -309,6 +318,12 @@ export function aiErrorMsg(err: unknown): Msg {
     if (err.status === 404) return { key: 'ai.disabled' };
   }
   return errorMsg(err);
+}
+
+/** The saved host when the own AI is an OpenAI-compatible one; '' for Gemini (its words name Google). */
+function savedCompatHost(): string {
+  const config = readAiConfig();
+  return config.kind === 'openai-compatible' ? aiHostOf(config) : '';
 }
 
 /** The words for an {@link AiOffReason}. */

@@ -702,6 +702,54 @@ async function boundaries(browser) {
   await ctx.close();
 }
 
+/**
+ * The Connect page's AI card on a 360 px phone (S4b-BL-151): for the services Gemini, OpenAI, Ollama and Custom, no
+ * sideways scroll, every field has a visible label, the key field is masked, nothing runs off the screen, and a base URL
+ * that breaks a rule shows its error. Nothing is sent to any AI service and no key is typed.
+ */
+async function aiCard(browser) {
+  const ctx = await newCtx(browser, { viewport: { width: 360, height: 740 } });
+  const page = await ctx.newPage();
+  const errors = watch(page);
+  try {
+    await gotoRetry(page, `${BASE}/connect`); await settle(page);
+    await page.locator('#ai-features').check();
+    await page.locator('#ai-service').waitFor({ timeout: 8000 });
+    for (const service of ['gemini', 'openai', 'ollama', 'custom']) {
+      await page.locator('#ai-service').selectOption(service);
+      await page.locator(service === 'gemini' ? '#gemini-key' : '#ai-base-url').waitFor({ timeout: 5000 });
+      const g = await page.evaluate(() => {
+        const card = document.querySelector('#ai');
+        const fields = [...card.querySelectorAll('input:not([type=radio]):not([type=checkbox]), select')];
+        const unlabelled = fields.filter((f) => {
+          const l = card.querySelector(`label[for="${f.id}"]`);
+          const r = l?.getBoundingClientRect();
+          return !l || !l.textContent.trim() || !r || r.width === 0 || r.height === 0;
+        }).map((f) => f.id);
+        const off = [...card.querySelectorAll('input, select, button, a')]
+          .filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && (r.right > window.innerWidth + 1 || r.left < -1); })
+          .map((e) => e.id || e.textContent.trim().slice(0, 20));
+        const key = card.querySelector('#ai-key, #gemini-key');
+        return { page: document.scrollingElement.scrollWidth - window.innerWidth, card: card.scrollWidth - card.clientWidth, unlabelled, off, keyType: key?.type };
+      });
+      check('ai', `360px ${service}: no horizontal scroll`, g.page <= 1 && g.card <= 1, `page ${g.page}px, card ${g.card}px`);
+      check('ai', `360px ${service}: every field has a visible label`, g.unlabelled.length === 0, g.unlabelled.join(','));
+      check('ai', `360px ${service}: nothing runs off the screen`, g.off.length === 0, g.off.join(','));
+      check('ai', `360px ${service}: the key field is masked`, g.keyType === 'password', String(g.keyType));
+    }
+    await page.locator('#ai-base-url').fill('http://192.168.1.5:8080/v1');
+    await page.locator('#ai-save').click();
+    const err = page.locator('#ai-base-url-error');
+    await err.waitFor({ timeout: 4000 }).catch(() => {});
+    check('ai', '360px custom: a base URL that breaks a rule shows its error', (await err.count()) === 1 && /localhost/.test(await err.innerText()));
+    check('ai', '360px custom: the error does not widen the page', await page.evaluate(() => document.scrollingElement.scrollWidth - window.innerWidth <= 1));
+    await page.locator('#ai').scrollIntoViewIfNeeded();
+    await page.screenshot({ path: path.join(OUT, 'shots', 'ai_card_360.png') });
+    check('console', 'ai card: no errors', errors.length === 0, errors.slice(0, 3).join(' ; '));
+  } catch (e) { check('ai', 'the AI card scenario ran to the end', false, e.stack); }
+  await ctx.close();
+}
+
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined, args: ['--enable-unsafe-swiftshader', '--use-angle=swiftshader', '--ignore-gpu-blocklist'] });
   const t0 = Date.now();
@@ -709,7 +757,7 @@ async function boundaries(browser) {
   // The four areas run side by side, each in its own browser contexts (about 12 minutes instead of 25-30 one after
   // another); SERIAL=1 runs them in turn, as before.
   // `--trace` (or ONLY=trace) runs the path trace scenario alone; the default matrix does not include it.
-  const areas = [['pages', pageMatrix], ['flows', flows], ['boundaries', boundaries], ['mobile', mobile], ['tour', tour], ['trace', trace]]
+  const areas = [['pages', pageMatrix], ['flows', flows], ['boundaries', boundaries], ['mobile', mobile], ['tour', tour], ['ai', aiCard], ['trace', trace]]
     .filter(([name]) => (only.length ? only.includes(name) : WANT_TRACE ? name === 'trace' : name !== 'trace'));
   const run = async ([name, fn]) => {
     try { await fn(browser); } catch (e) { check(name, `${name} ran to the end`, false, e.stack); }

@@ -83,7 +83,7 @@ async function open(rooms: HouseRoom[] | null, unit: 'FT' | 'M' = 'FT', extra: P
       { provide: LocalStore, useValue: { lengthUnit: () => Promise.resolve(unit) } },
       { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ id: house.id }), queryParamMap: convertToParamMap({}) } } },
       { provide: GeocodeService, useValue: { reverse: () => of({}) } },
-      { provide: AiService, useValue: { enabled: signal(false), usesOwnKey: signal(false), extractListing: () => of() } },
+      { provide: AiService, useValue: { enabled: signal(false), usesOwnKey: signal(false), ownHost: signal(''), extractListing: () => of() } },
     ],
   });
   TestBed.inject(TranslationService).setLang('en');

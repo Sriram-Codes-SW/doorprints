@@ -84,7 +84,7 @@ async function open(answers: HouseAnswer[] | null, over: Partial<HouseDto> = {},
       { provide: LocalStore, useValue: { lengthUnit: () => Promise.resolve('FT') } },
       { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ id: house.id }), queryParamMap: convertToParamMap({}) } } },
       { provide: GeocodeService, useValue: { reverse: () => of({}) } },
-      { provide: AiService, useValue: { enabled: signal(false), usesOwnKey: signal(false), extractListing: () => of() } },
+      { provide: AiService, useValue: { enabled: signal(false), usesOwnKey: signal(false), ownHost: signal(''), extractListing: () => of() } },
     ],
   });
   await TestBed.inject(TranslationService).setLang('en');

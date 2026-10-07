@@ -1,0 +1,11 @@
+{
+  "spec": "web/src/app/pages/house-detail/house-detail-page.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/pages/house-detail/house-detail-page.html",
+      "find": "{ host: ai.ownHost() }",
+      "replace": "{ host: 'generativelanguage.googleapis.com' }",
+      "expect": "names the host the listing text goes to"
+    }
+  ]
+}

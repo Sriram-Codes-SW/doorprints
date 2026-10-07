@@ -302,68 +302,193 @@
         </div>
       </fieldset>
       @if (ownKey()) {
-        <form class="gemini" (ngSubmit)="saveGeminiKey()" novalidate>
-          <div class="field">
-            <label for="gemini-key">{{ 'connect.geminiKey' | t }}</label>
-            <div class="inline">
-              <input
-                id="gemini-key"
-                [type]="showGeminiKey() ? 'text' : 'password'"
-                name="geminiKey"
-                [(ngModel)]="geminiKey"
-                (ngModelChange)="geminiResult.set(null)"
-                autocomplete="off"
-                spellcheck="false"
-                aria-describedby="gemini-key-hint"
-              />
-              <button
-                type="button"
-                class="btn"
-                aria-controls="gemini-key"
-                [attr.aria-label]="(showGeminiKey() ? 'connect.hideKeyAria' : 'connect.showKeyAria') | t"
-                (click)="showGeminiKey.set(!showGeminiKey())"
-              >
-                {{ (showGeminiKey() ? 'connect.hide' : 'connect.show') | t }}
-              </button>
-            </div>
-            <p id="gemini-key-hint" class="muted small">
-              @if (ai.geminiKeyHint(); as last4) {
-                {{ 'connect.geminiKeySaved' | t: { last4: last4 } }}
-              } @else {
-                {{ 'connect.geminiKeyHint' | t }}
-              }
-              <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">{{ 'connect.geminiGetKey' | t }}</a>
-            </p>
-          </div>
-          <div class="field checkbox">
-            <input id="gemini-remember" type="checkbox" name="geminiRemember" [(ngModel)]="rememberGemini" aria-describedby="gemini-remember-hint" />
-            <label for="gemini-remember">{{ 'connect.remember' | t }}</label>
-            <p id="gemini-remember-hint" class="muted small">{{ 'connect.rememberHint' | t }}</p>
-          </div>
-          <div role="alert">
-            @if (geminiResult(); as card) {
-              @for (c of [card]; track c.run) {
-                @if (c.value.ok) {
-                  <div class="success">{{ 'connect.geminiOk' | t }}</div>
+        <div class="field ai-service">
+          <label for="ai-service">{{ 'connect.aiService' | t }}</label>
+          <select id="ai-service" name="aiService" (change)="chooseService($event)">
+            @for (s of services; track s) {
+              <option [value]="s" [selected]="s === service()">{{ serviceLabel[s] | t }}</option>
+            }
+          </select>
+        </div>
+        @if (isGemini()) {
+          <form class="gemini" (ngSubmit)="saveGeminiKey()" novalidate>
+            <div class="field">
+              <label for="gemini-key">{{ 'connect.geminiKey' | t }}</label>
+              <div class="inline">
+                <input
+                  id="gemini-key"
+                  [type]="showGeminiKey() ? 'text' : 'password'"
+                  name="geminiKey"
+                  [(ngModel)]="geminiKey"
+                  (ngModelChange)="geminiResult.set(null)"
+                  autocomplete="off"
+                  spellcheck="false"
+                  aria-describedby="gemini-key-hint"
+                />
+                <button
+                  type="button"
+                  class="btn"
+                  aria-controls="gemini-key"
+                  [attr.aria-label]="(showGeminiKey() ? 'connect.hideKeyAria' : 'connect.showKeyAria') | t"
+                  (click)="showGeminiKey.set(!showGeminiKey())"
+                >
+                  {{ (showGeminiKey() ? 'connect.hide' : 'connect.show') | t }}
+                </button>
+              </div>
+              <p id="gemini-key-hint" class="muted small">
+                @if (keySavedHere() && ai.geminiKeyHint(); as last4) {
+                  {{ 'connect.geminiKeySaved' | t: { last4: last4 } }}
                 } @else {
-                  <div class="error">{{ c.value.msg!.key | t: c.value.msg!.params }}</div>
+                  {{ 'connect.geminiKeyHint' | t }}
+                }
+                <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">{{ 'connect.geminiGetKey' | t }}</a>
+              </p>
+            </div>
+            <div class="field checkbox">
+              <input id="gemini-remember" type="checkbox" name="geminiRemember" [(ngModel)]="rememberGemini" aria-describedby="gemini-remember-hint" />
+              <label for="gemini-remember">{{ 'connect.remember' | t }}</label>
+              <p id="gemini-remember-hint" class="muted small">{{ 'connect.rememberHint' | t }}</p>
+            </div>
+            <div role="alert">
+              @if (geminiResult(); as card) {
+                @for (c of [card]; track c.run) {
+                  <div [class]="c.value.ok ? 'success' : 'error'">{{ c.value.msg!.key | t: c.value.msg!.params }}</div>
                 }
               }
-            }
-          </div>
-          <div class="gemini-actions">
-            <button id="gemini-save" type="submit" class="btn btn-primary" [attr.aria-disabled]="geminiBusy() ? 'true' : null">
-              {{ (geminiBusy() ? 'connect.testing' : 'connect.geminiSave') | t }}
-            </button>
-            @if (ai.hasGeminiKey()) {
-              <button type="button" class="btn" [attr.aria-disabled]="geminiBusy() ? 'true' : null" (click)="testSavedGeminiKey()">
-                {{ 'connect.geminiTest' | t }}
+            </div>
+            <div class="gemini-actions">
+              <button id="gemini-save" type="submit" class="btn btn-primary" [attr.aria-disabled]="geminiBusy() ? 'true' : null">
+                {{ (geminiBusy() ? 'connect.testing' : 'connect.geminiSave') | t }}
               </button>
-              <button type="button" class="btn btn-danger" (click)="removeGeminiKey()">{{ 'connect.geminiRemove' | t }}</button>
-            }
-          </div>
-          <p class="muted small">{{ 'connect.geminiFreeTier' | t }}</p>
-        </form>
+              @if (keySavedHere()) {
+                <button type="button" class="btn" [attr.aria-disabled]="geminiBusy() ? 'true' : null" (click)="testSavedGeminiKey()">
+                  {{ 'connect.geminiTest' | t }}
+                </button>
+                <button type="button" class="btn btn-danger" (click)="removeAi()">{{ 'connect.geminiRemove' | t }}</button>
+              }
+            </div>
+            <p class="muted small">{{ 'connect.geminiFreeTier' | t }}</p>
+          </form>
+        } @else {
+          <form class="ai-compat" (ngSubmit)="saveAi()" novalidate>
+            <div class="field">
+              <label for="ai-base-url">{{ 'connect.aiBaseUrl' | t }}</label>
+              <input
+                id="ai-base-url"
+                name="aiBaseUrl"
+                type="text"
+                inputmode="url"
+                autocapitalize="none"
+                autocomplete="off"
+                spellcheck="false"
+                [value]="aiBaseUrl()"
+                [readOnly]="!urlEditable()"
+                (input)="typedUrl($any($event.target).value)"
+                [attr.aria-invalid]="urlReason() ? 'true' : null"
+                [attr.aria-describedby]="
+                  (urlReason() ? 'ai-base-url-error ' : '') + 'ai-base-url-hint' + (isLocal() ? ' ai-cors-hint' : '')
+                "
+              />
+              <p id="ai-base-url-hint" class="muted small">{{ 'connect.aiBaseUrlHint' | t }}</p>
+              @if (isLocal()) {
+                <p id="ai-cors-hint" class="muted small">
+                  {{ (service() === 'ollama' ? 'connect.aiLocalCorsHint' : 'connect.aiLocalCorsHintOther') | t: { setting: 'OLLAMA_ORIGINS=https://doorprints.web.app' } }}
+                </p>
+              }
+              <div aria-live="polite">
+                @if (urlErrorKey(); as errorKey) {
+                  <p id="ai-base-url-error" class="field-error">{{ errorKey | t }}</p>
+                }
+              </div>
+            </div>
+            <div class="field">
+              <label for="ai-model">{{ 'connect.aiModel' | t }}</label>
+              <input
+                id="ai-model"
+                name="aiModel"
+                type="text"
+                autocapitalize="none"
+                autocomplete="off"
+                spellcheck="false"
+                [value]="aiModel()"
+                [placeholder]="modelExample()"
+                (input)="typedModel($any($event.target).value)"
+                [attr.aria-invalid]="modelMissing() ? 'true' : null"
+                [attr.aria-describedby]="(modelMissing() ? 'ai-model-error ' : '') + 'ai-model-hint'"
+              />
+              <p id="ai-model-hint" class="muted small">{{ 'connect.aiModelHint' | t }}</p>
+              <div aria-live="polite">
+                @if (modelMissing()) {
+                  <p id="ai-model-error" class="field-error">{{ 'connect.aiModelRequired' | t }}</p>
+                }
+              </div>
+            </div>
+            <div class="field">
+              <label for="ai-key">{{ 'connect.aiKey' | t }}</label>
+              <div class="inline">
+                <input
+                  id="ai-key"
+                  [type]="showAiKey() ? 'text' : 'password'"
+                  name="aiKey"
+                  [(ngModel)]="aiKey"
+                  (ngModelChange)="typedKey()"
+                  autocomplete="off"
+                  spellcheck="false"
+                  [attr.aria-invalid]="aiKeyMissing() ? 'true' : null"
+                  [attr.aria-describedby]="(aiKeyMissing() ? 'ai-key-error ' : '') + 'ai-key-hint'"
+                />
+                <button
+                  type="button"
+                  class="btn"
+                  aria-controls="ai-key"
+                  [attr.aria-label]="(showAiKey() ? 'connect.hideKeyAria' : 'connect.showKeyAria') | t"
+                  (click)="showAiKey.set(!showAiKey())"
+                >
+                  {{ (showAiKey() ? 'connect.hide' : 'connect.show') | t }}
+                </button>
+              </div>
+              <p id="ai-key-hint" class="muted small">
+                @if (keySavedHere() && ai.geminiKeyHint(); as last4) {
+                  {{ 'connect.geminiKeySaved' | t: { last4: last4 } }}
+                } @else {
+                  {{ (keyOptional() ? 'connect.aiKeyOptional' : 'connect.aiKeyHint') | t }}
+                }
+                @if (getKeyUrl(); as href) {
+                  <a [href]="href" target="_blank" rel="noopener noreferrer">{{ 'connect.aiGetKey' | t }}</a>
+                }
+              </p>
+              <div aria-live="polite">
+                @if (aiKeyMissing()) {
+                  <p id="ai-key-error" class="field-error">{{ 'connect.aiKeyRequired' | t }}</p>
+                }
+              </div>
+            </div>
+            <div class="field checkbox">
+              <input id="ai-remember" type="checkbox" name="aiRemember" [(ngModel)]="rememberGemini" aria-describedby="ai-remember-hint" />
+              <label for="ai-remember">{{ 'connect.remember' | t }}</label>
+              <p id="ai-remember-hint" class="muted small">{{ 'connect.rememberHint' | t }}</p>
+            </div>
+            <div role="alert">
+              @if (geminiResult(); as card) {
+                @for (c of [card]; track c.run) {
+                  <div [class]="c.value.ok ? 'success' : 'error'">{{ c.value.msg!.key | t: c.value.msg!.params }}</div>
+                }
+              }
+            </div>
+            <div class="gemini-actions">
+              <button id="ai-save" type="submit" class="btn btn-primary">{{ 'connect.aiSave' | t }}</button>
+              <button id="ai-test" type="button" class="btn" [attr.aria-disabled]="geminiBusy() ? 'true' : null" (click)="testAi()">
+                {{ (geminiBusy() ? 'connect.testing' : 'connect.aiTest') | t }}
+              </button>
+              @if (savedHere()) {
+                <button id="ai-remove" type="button" class="btn btn-danger" (click)="removeAi()">{{ 'connect.geminiRemove' | t }}</button>
+              }
+            </div>
+          </form>
+        }
+        @if (shownHost(); as host) {
+          <p id="ai-disclosure" class="muted small">{{ 'ai.disclosureOwnKeyHost' | t: { host: host } }}</p>
+        }
       }
       @if (ai.offReason(); as reason) {
         <p class="muted small">{{ aiOffMsg(reason).key | t: aiOffMsg(reason).params }}</p>

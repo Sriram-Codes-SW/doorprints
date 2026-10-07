@@ -79,14 +79,28 @@ forgets the key and your choice of service. If you also connect a server, you ch
 
 ### On the website
 
-1. Make a key in [Google AI Studio](https://aistudio.google.com/apikey), as in step 1 above.
+1. Make a key with the service you want to use. For Gemini, use [Google AI Studio](https://aistudio.google.com/apikey),
+   as in step 1 above. A model on your own computer needs no key.
 2. Open **Your data**, then **Connect** (on a computer, **Connect** is in the menu at the top).
 3. Under **AI features**, turn on **Use AI features in this browser**.
-4. Choose **Use my own Gemini key in this browser** (with no server, it is already chosen), paste the key and select
-   **Save key**. Doorprints checks the key with Google first.
+4. Choose **Use my own AI on this browser** (with no server, it is already chosen), then pick your service under
+   **AI service**.
+5. For **Gemini**, paste the key and select **Save key**; Doorprints checks the key with Google first. For any other
+   service, the **Base URL** is filled in (only **Custom** lets you change it: it must start with `https://`, or be on
+   this computer, such as `http://localhost`). Type the **Model** exactly as the service lists it (for example
+   `gpt-4o-mini`), paste the **API key** and select **Save**. Then select **Test**: Doorprints says which host accepted
+   the key, or what is wrong (the key was refused, the model is unknown, you reached the limit, or the host could not
+   be reached).
 
-The key stays in this browser and goes only to Google. It is forgotten when you close the tab, unless you tick
-**Remember on this device**; leave that off on a shared computer. **Remove all data** on **Your data** also removes it.
+The key stays in this browser and goes only to the service you chose: the address is written under the form, and again
+above every question you send. It is forgotten when you close the tab, unless you tick **Remember on this device**;
+leave that off on a shared computer. **Remove key** forgets the key and your choice of service; **Remove all data** on
+**Your data** also removes them.
+
+!!! note "Ollama and LM Studio on your own computer"
+    The browser only lets this website talk to a program on your computer if that program allows it. For Ollama,
+    start it with `OLLAMA_ORIGINS=https://doorprints.web.app` set; in LM Studio, allow `https://doorprints.web.app`
+    in its server's CORS setting. Otherwise **Test** says it could not reach `localhost`.
 
 On the website, **Your data** also has a **Privacy page** link (`privacy.html`) and **Back up to Google Drive**.
 See [Back up to Google Drive](google-drive.md).

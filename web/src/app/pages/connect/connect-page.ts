@@ -28,8 +28,12 @@ import { StatsDto } from '../../core/models';
 import { errorMsg } from '../../core/format';
 import { Announcer } from '../../core/announcer.service';
 import { Msg } from '../../i18n/translation.service';
+import type { TKey } from '../../i18n/en';
 import { ConfirmService } from '../../core/confirm.service';
 import { AiService, aiErrorMsg, aiOffMsg } from '../../core/ai.service';
+import {
+  AI_PRESETS, type AiPreset, type AiProviderConfig, type BaseUrlReason, GEMINI_HOST, isLocalHost, validateBaseUrl,
+} from '../../core/ai/ai-provider-config';
 import {
   ConnectLink,
   PairingPolled,
@@ -304,13 +308,155 @@ export class ConnectPage {
     afterNextRender(() => document.getElementById('connect-title')?.focus(), { injector: this.injector });
   }
 
-  /** Own key chosen, or no server to choose (then the own key is the only way). */
+  /** Own AI chosen, or no server to choose (then the own AI is the only way). */
   protected readonly ownKey = computed(() => this.ai.provider() === 'device' || !this.config.configured());
   protected geminiKey = '';
   protected rememberGemini = this.config.configured() ? this.config.remembered() : false;
   protected readonly showGeminiKey = signal(false);
+  /** Busy and result of *Save* and *Test*, for Gemini and for the OpenAI-compatible services alike. */
   protected readonly geminiBusy = signal(false);
   protected readonly geminiResult = signal<RunResult<{ ok: boolean; msg?: Msg }> | null>(null);
+
+  // The AI service of the person's choice (docs/03 §13.2, ADR-35): Gemini keeps its own fields; every other service
+  // shares the base URL, model and key fields below.
+  protected readonly services: readonly ServiceId[] = ['gemini', ...AI_PRESETS.map((p) => p.id)];
+  protected readonly serviceLabel = SERVICE_LABEL;
+  protected readonly service = signal<ServiceId>(serviceOf(this.ai.aiConfig()));
+  protected readonly aiBaseUrl = signal(this.ai.aiConfig().kind === 'openai-compatible' ? this.ai.aiConfig().baseUrl : '');
+  protected readonly aiModel = signal(this.ai.aiConfig().kind === 'openai-compatible' ? this.ai.aiConfig().model : '');
+  protected aiKey = '';
+  protected readonly showAiKey = signal(false);
+  protected readonly urlReason = signal<BaseUrlReason | null>(null);
+  protected readonly modelMissing = signal(false);
+  protected readonly aiKeyMissing = signal(false);
+  protected readonly isGemini = computed(() => this.service() === 'gemini');
+  protected readonly preset = computed<AiPreset | undefined>(() => AI_PRESETS.find((p) => p.id === this.service()));
+  protected readonly urlEditable = computed(() => this.service() === 'custom');
+  private readonly urlCheck = computed(() => validateBaseUrl(this.aiBaseUrl()));
+  /** The host the text and key would go to with what is on the screen. */
+  protected readonly shownHost = computed(() => {
+    if (this.isGemini()) return GEMINI_HOST;
+    const check = this.urlCheck();
+    return check.valid ? check.host : '';
+  });
+  protected readonly isLocal = computed(() => isLocalHost(this.shownHost()));
+  /** A local service usually needs no key. */
+  protected readonly keyOptional = computed(() => (this.preset()?.keyOptional ?? false) || this.isLocal());
+  protected readonly modelExample = computed(() => MODEL_EXAMPLE[this.service()] ?? '');
+  protected readonly getKeyUrl = computed(() => KEY_PAGE[this.service()] ?? '');
+  /** The saved settings (and key) are the ones on the screen: a saved key is never sent to another service. */
+  protected readonly savedHere = computed(() => {
+    const saved = this.ai.aiConfig();
+    if (this.isGemini()) return saved.kind === 'gemini' && this.ai.hasGeminiKey();
+    const check = this.urlCheck();
+    const savedCheck = validateBaseUrl(saved.baseUrl);
+    return saved.kind === 'openai-compatible' && check.valid && savedCheck.valid && savedCheck.normalised === check.normalised;
+  });
+  protected readonly keySavedHere = computed(() => this.savedHere() && this.ai.hasGeminiKey());
+  protected readonly urlErrorKey = computed<TKey | null>(() => {
+    const reason = this.urlReason();
+    return reason === null ? null : URL_REASON[reason];
+  });
+
+  /** The service select: prefills the base URL from the preset and clears what belonged to the last one. */
+  protected chooseService(event: Event): void {
+    const id = (event.target as HTMLSelectElement).value as ServiceId;
+    const saved = this.ai.aiConfig();
+    const url = AI_PRESETS.find((p) => p.id === id)?.baseUrl ?? '';
+    const keep = saved.kind === 'openai-compatible' && serviceOf(saved) === id;
+    this.service.set(id);
+    this.aiBaseUrl.set(keep ? saved.baseUrl : url);
+    this.aiModel.set(keep ? saved.model : '');
+    this.aiKey = '';
+    this.geminiKey = '';
+    this.clearAiErrors();
+    this.geminiResult.set(null);
+  }
+
+  private clearAiErrors(): void {
+    this.urlReason.set(null);
+    this.modelMissing.set(false);
+    this.aiKeyMissing.set(false);
+  }
+
+  protected typedUrl(value: string): void {
+    this.aiBaseUrl.set(value);
+    this.urlReason.set(null);
+    this.geminiResult.set(null);
+  }
+
+  protected typedModel(value: string): void {
+    this.aiModel.set(value);
+    this.modelMissing.set(false);
+    this.geminiResult.set(null);
+  }
+
+  protected typedKey(): void {
+    this.aiKeyMissing.set(false);
+    this.geminiResult.set(null);
+  }
+
+  /** What the form says, or null (each missing piece is then shown as a field error, and the first one is focused). */
+  private readCompat(): AiProviderConfig | null {
+    const check = this.urlCheck();
+    const model = this.aiModel().trim();
+    const keyMissing = this.aiKey.trim() === '' && !this.keyOptional() && !this.keySavedHere();
+    this.urlReason.set(check.valid ? null : check.reason);
+    this.modelMissing.set(model === '');
+    this.aiKeyMissing.set(keyMissing);
+    const first = !check.valid ? 'ai-base-url' : model === '' ? 'ai-model' : keyMissing ? 'ai-key' : null;
+    if (first !== null) {
+      afterNextRender(() => document.getElementById(first)?.focus(), { injector: this.injector });
+      return null;
+    }
+    return { kind: 'openai-compatible', baseUrl: this.aiBaseUrl(), model };
+  }
+
+  /** *Save* for an OpenAI-compatible service: the three settings and, if typed, the key; a saved key never follows a changed service. */
+  protected saveAi(): void {
+    if (this.geminiBusy()) return;
+    const config = this.readCompat();
+    if (config === null) return;
+    const typed = this.aiKey.trim();
+    const keep = this.keySavedHere();
+    this.ai.setAiConfig(config);
+    if (typed !== '' || !keep) this.ai.saveGeminiKey(typed, this.rememberGemini);
+    else this.ai.setProvider('device');
+    this.aiKey = '';
+    this.geminiResult.set(runResult({ ok: true, msg: { key: 'connect.aiSaved' } }));
+  }
+
+  /** *Test* for an OpenAI-compatible service: one tiny request with what is typed (or the saved key), nothing saved. */
+  protected async testAi(): Promise<void> {
+    if (this.geminiBusy()) return;
+    const config = this.readCompat();
+    if (config === null) return;
+    const host = this.shownHost();
+    const typed = this.aiKey.trim();
+    const key = typed !== '' ? typed : this.keySavedHere() ? this.ai.geminiKeyForTest() : '';
+    this.geminiBusy.set(true);
+    try {
+      await this.ai.testProvider(config, key);
+      this.geminiResult.set(runResult({ ok: true, msg: { key: key === '' ? 'connect.aiTestOkLocal' : 'connect.aiTestOk', params: { host } } }));
+    } catch (e) {
+      this.geminiResult.set(runResult({ ok: false, msg: aiErrorMsg(e, host) }));
+    } finally {
+      this.geminiBusy.set(false);
+    }
+  }
+
+  /** *Remove key*: the key and the three settings go; AI goes back to the server, if one is connected. */
+  protected removeAi(): void {
+    this.ai.removeGeminiKey();
+    this.aiBaseUrl.set(this.preset()?.baseUrl ?? '');
+    this.aiModel.set('');
+    this.aiKey = '';
+    this.geminiKey = '';
+    this.clearAiErrors();
+    this.geminiResult.set(null);
+    this.announcer.announce({ key: this.isGemini() ? 'connect.geminiRemoved' : 'connect.aiKeyRemoved' });
+    afterNextRender(() => document.getElementById(this.isGemini() ? 'gemini-key' : 'ai-key')?.focus(), { injector: this.injector });
+  }
 
   /** *Save key*: asks Google first, so a mistyped key is not saved; then this browser answers AI with it. */
   protected async saveGeminiKey(): Promise<void> {
@@ -324,11 +470,12 @@ export class ConnectPage {
     this.geminiBusy.set(true);
     try {
       await this.ai.testGeminiKey(key);
+      this.ai.setAiConfig({ kind: 'gemini', baseUrl: '', model: '' });
       this.ai.saveGeminiKey(key, this.rememberGemini);
       this.geminiKey = '';
-      this.geminiResult.set(runResult({ ok: true }));
+      this.geminiResult.set(runResult({ ok: true, msg: { key: 'connect.geminiOk' } }));
     } catch (e) {
-      this.geminiResult.set(runResult({ ok: false, msg: aiErrorMsg(e) }));
+      this.geminiResult.set(runResult({ ok: false, msg: aiErrorMsg(e, '') }));
     } finally {
       this.geminiBusy.set(false);
     }
@@ -339,19 +486,12 @@ export class ConnectPage {
     this.geminiBusy.set(true);
     try {
       await this.ai.testGeminiKey(this.ai.geminiKeyForTest());
-      this.geminiResult.set(runResult({ ok: true }));
+      this.geminiResult.set(runResult({ ok: true, msg: { key: 'connect.geminiOk' } }));
     } catch (e) {
-      this.geminiResult.set(runResult({ ok: false, msg: aiErrorMsg(e) }));
+      this.geminiResult.set(runResult({ ok: false, msg: aiErrorMsg(e, '') }));
     } finally {
       this.geminiBusy.set(false);
     }
-  }
-
-  protected removeGeminiKey(): void {
-    this.ai.removeGeminiKey();
-    this.geminiResult.set(null);
-    this.announcer.announce({ key: 'connect.geminiRemoved' });
-    afterNextRender(() => document.getElementById('gemini-key')?.focus(), { injector: this.injector });
   }
 
   protected setAiFeatures(event: Event): void {
@@ -472,4 +612,50 @@ export function pairingErrorMsg(err: unknown): Msg {
     }
   }
   return { key: 'connect.failed', params: { reason: errorMsg(err) } };
+}
+
+type ServiceId = 'gemini' | AiPreset['id'];
+
+const SERVICE_LABEL: Readonly<Record<ServiceId, TKey>> = {
+  gemini: 'connect.aiService.gemini',
+  openai: 'connect.aiService.openai',
+  openrouter: 'connect.aiService.openrouter',
+  groq: 'connect.aiService.groq',
+  ollama: 'connect.aiService.ollama',
+  lmstudio: 'connect.aiService.lmstudio',
+  custom: 'connect.aiService.custom',
+};
+
+const URL_REASON: Readonly<Record<BaseUrlReason, TKey>> = {
+  empty: 'connect.aiBaseUrlInvalid.empty',
+  notAnUrl: 'connect.aiBaseUrlInvalid.notAnUrl',
+  scheme: 'connect.aiBaseUrlInvalid.scheme',
+  userinfo: 'connect.aiBaseUrlInvalid.userinfo',
+  query: 'connect.aiBaseUrlInvalid.query',
+  fragment: 'connect.aiBaseUrlInvalid.fragment',
+  endpoint: 'connect.aiBaseUrlInvalid.endpoint',
+  insecureHost: 'connect.aiBaseUrlInvalid.insecureHost',
+};
+
+/** Example model names, shown as placeholders only: the person always types the model (docs/03 §13.2). */
+const MODEL_EXAMPLE: Partial<Record<ServiceId, string>> = {
+  openai: 'gpt-4o-mini',
+  openrouter: 'openai/gpt-4o-mini',
+  groq: 'llama-3.3-70b-versatile',
+  ollama: 'llama3.1',
+  lmstudio: 'qwen2.5-7b-instruct',
+};
+
+/** Where each hosted service hands out keys. */
+const KEY_PAGE: Partial<Record<ServiceId, string>> = {
+  openai: 'https://platform.openai.com/api-keys',
+  openrouter: 'https://openrouter.ai/keys',
+  groq: 'https://console.groq.com/keys',
+};
+
+/** The select's choice for the saved settings: Gemini, the preset whose base URL was saved, or Custom. */
+function serviceOf(config: AiProviderConfig): ServiceId {
+  if (config.kind !== 'openai-compatible') return 'gemini';
+  const check = validateBaseUrl(config.baseUrl);
+  return AI_PRESETS.find((p) => p.id !== 'custom' && check.valid && p.baseUrl === check.normalised)?.id ?? 'custom';
 }

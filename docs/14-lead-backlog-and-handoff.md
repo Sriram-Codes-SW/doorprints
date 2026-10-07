@@ -2,6 +2,8 @@
 
 | Field | Value |
 |---|---|
+| Version | 0.100 |
+| Version | 0.101 |
 | Version | 0.104 |
 | Date | 2026-10-07 |
 | Owner | Sriram (product owner); lead: Claude |
@@ -111,6 +113,7 @@
 | 0.100 | 2026-10-07 | Claude (Code), lead | **S4b-BL-148 (PR C) built on `feat/web-ai-provider-core`**, made from the design branch `docs/adr-27-user-chosen-ai` (no pull request yet; [10](10-sprint-log.md) v0.160): the website's `JsonChatModel`, the OpenAI-compatible adapter, the converter, the base-URL rules, the settings and their migration, in `web/src/app/core/ai/`; specs drive the five vector sections; mutation list `tools/mutations/ai-provider-web.json`. No screens; PR E does the settings. |
 | 0.101 | 2026-10-07 | Claude (Code), lead | **S4b-BL-149 built on `feat/server-ai-key-only-for-gemini` (no pull request yet)** ([10](10-sprint-log.md) v0.160, [03](03-design.md) §13.2, [ai/ai-design.md](ai/ai-design.md) v0.24): the key is needed only when `AI_BASE_URL` has the host `generativelanguage.googleapis.com`; nothing from a request reaches the provider's URL (T-I44, TC-U-171). Step G of S4b-FR-40 is done; B and C are next. |
 | 0.102 | 2026-10-07 | Claude (Code), lead | **S4b-BL-147 built (step B of S4b-FR-40):** the shared Kotlin core of the provider of choice on branch `feat/shared-ai-provider-kotlin` (stacked on `docs/adr-27-user-chosen-ai`, no pull request yet): `JsonChatModel`, `OpenAiCompatClient`, `SchemaDialect`, `BaseUrlValidator`, the settings and the repository wiring, with the mutation list `tools/mutations/ai-provider-kotlin.json` ([10](10-sprint-log.md) v0.160). No screens. Next: C (-148), G (-149), then D (-150, the phone screens, which call `Repository.saveAiProviderConfig` and `testAiProvider`). |
+| 0.103 | 2026-10-07 | Claude (Code), lead | **S4b-BL-151 (PR E) built on `feat/web-ai-provider-settings`**, made from `main` after PR #162 (no pull request yet; [10](10-sprint-log.md) v0.161): the Connect page's AI service picker and fields, *Save*, *Test*, *Remove key*, the host in the disclosure on the four screens that send text, the new error words, strings in four languages (hi, ta, te under review), `privacy.html`, the guide, the tour step. Specs `connect-ai-provider.spec.ts` and `ai-disclosure.spec.ts`; mutation lists `tools/mutations/ai-settings-web*.json`. Not yet run: the live UI test after the deploy (TC-M-26) and TC-M-64 with real providers. |
 | 0.104 | 2026-10-07 | Claude (Code), lead | **S4b-BL-150 (PR D) built on `feat/app-ai-provider-settings`**, made from `main` after PR #163 (no pull request yet; [10](10-sprint-log.md) v0.164): the phones' AI service picker and fields, *Save*, *Test*, *Remove key*, the host in the disclosure and in the failure words, strings in four languages (hi, ta, te under review), the guide. Specs `AiProviderFormTest`, `AiSettingsSectionTest`; mutation list `tools/mutations/ai-settings-phone.json`. It edits the same guide paragraphs as PR E (#164: `settings-and-privacy.md` in four languages), so the second to merge resolves a small conflict there. |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
