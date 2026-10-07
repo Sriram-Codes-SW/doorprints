@@ -55,3 +55,13 @@ another app opens in Doorprints). It cannot add photos yet. To see the houses yo
 backup from them or connect your own server in **Settings**.
 
 <img src="images/iphone-map.png" width="260" alt="The iPhone app's Map: India with city names, the zoom and My location buttons, Save house here, the legend (New, Shortlisted, Rejected) and the four tabs">
+
+## Take the tour (Android and iPhone) {#take-the-tour-on-the-phone}
+
+The first time you open the **Map**, a card offers **Take the tour**: a short walk through every part of the app, one step
+at a time, over the real screens. Each step dims the screen, leaves one control bright (such as **Save house here**,
+**Hunt mode**, **Have I been here?**, the search box, **Compare**, **Criteria**, **Save a copy** or **Help**) and says what
+it is for and what to try. You can use the bright control right away, then choose **Next**. **Back** goes to the step
+before, and **Skip tour** (or the phone's Back) leaves at any point. Steps for things your phone does not have, such as
+the weekly backup on an iPhone, are left out. To see the tour again, open **Settings**, go to **About** and choose
+**Take the tour**, just under **Help**.

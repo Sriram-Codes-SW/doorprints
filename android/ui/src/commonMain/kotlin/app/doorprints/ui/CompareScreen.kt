@@ -162,7 +162,7 @@ fun CompareScreen(
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
         Text(stringResource(Res.string.compare_title), style = MaterialTheme.typography.headlineSmall,
-            modifier = Modifier.semantics { heading() })
+            modifier = Modifier.tourTarget(TourTargets.COMPARE_TITLE).semantics { heading() })
         when {
             // Room has not answered yet: the heading only.
             loaded == null -> Unit
@@ -234,7 +234,7 @@ private fun ComparePicker(
         val pickerTitle = stringResource(Res.string.compare_choose, chosen.size, MAX_COMPARED)
         val stateText = stringResource(if (pickerOpen) Res.string.common_expanded else Res.string.common_collapsed)
         Row(
-            Modifier.fillMaxWidth().heightIn(min = 48.dp)
+            Modifier.fillMaxWidth().heightIn(min = 48.dp).tourTarget(TourTargets.COMPARE_PICKER)
                 .clickable(role = Role.Button) { onPickerOpen(!pickerOpen) }
                 .semantics { stateDescription = stateText },
             verticalAlignment = Alignment.CenterVertically,

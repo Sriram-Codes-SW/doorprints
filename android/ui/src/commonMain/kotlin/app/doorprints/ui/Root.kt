@@ -18,7 +18,9 @@
 
 package app.doorprints.ui
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
@@ -45,6 +47,8 @@ import androidx.savedstate.read
 import app.doorprints.shared.listing.ListingText
 import app.doorprints.data.ConnectLink
 import app.doorprints.data.HouseEntity
+import app.doorprints.data.TourEnd
+import kotlinx.coroutines.launch
 import app.doorprints.shared.model.Broker
 import app.doorprints.shared.model.ViewingKind
 import app.doorprints.shared.model.Scoring
@@ -185,6 +189,9 @@ private fun NavController.openTab(route: String, home: String) {
     }
 }
 
+/** How the guided tour ended before, once read: null inside means it has not (the first-run offer is then made). */
+private data class StoredTour(val end: TourEnd?)
+
 /**
  * The start destination: the Map, or the Houses tab where the platform has no map yet (iOS, CMP-8b;
  * [PlatformFeatures.map]). The Map tab stays in the bar either way, with its note.
@@ -218,6 +225,30 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
         // The Assistant tab stays while the user is on it, even if the status turns off meanwhile: otherwise the bar,
         // which is drawn only on a tab, vanished and left the screen with no navigation (whole-app audit).
         val tabs = baseTabs + (if (aiEnabled || current == "assistant") listOf(assistantTab) else emptyList()) + settingsTab
+
+        // The guided tour (S4b-FR-39): its steps, the boxes of what it points at, and whether it was offered before.
+        val tourSession = remember { TourSession() }
+        val tourRegistry = remember { TourRegistry() }
+        val tourStored by remember(repo) { repo.settings.tourEnd().map { StoredTour(it) } }
+            .collectAsStateWithLifecycle(initialValue = null)
+        var tourEndedHere by rememberSaveable { mutableStateOf(false) }
+        val tourMemory = TourMemory.of(tourStored != null, tourStored?.end, tourEndedHere)
+        val tourContext = TourContext(features, assistant = aiEnabled, offlineMaps = services.offlineMaps.supported)
+        // However it ends, it is not offered again; the write is the application's, so leaving the screen cannot cancel it.
+        fun endTour(end: TourEnd) {
+            tourEndedHere = true
+            services.appScope.launch { runCatching { repo.settings.setTourEnd(end) } }
+        }
+        // Each step moves the app to its tab, fresh (a tab's saved sub-screen would hide the step's target).
+        LaunchedEffect(tourSession.step?.id) {
+            val route = tourSession.step?.route ?: return@LaunchedEffect
+            if (nav.currentBackStackEntry?.destination?.route != route) {
+                nav.navigate(route) {
+                    popUpTo(home)
+                    launchSingleTop = true
+                }
+            }
+        }
 
         // The viewing reminders are set again on every resume (docs/11 5.16): an "Alarms & reminders" grant, a clock
         // change or an edit made while the app was away is picked up.
@@ -393,319 +424,337 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
             val platform = LocalPlatformServices.current
             ConnectLinkDialog(link, repo, remember { platform.deviceName() }, onDone = { pendingConnect = null })
         }
-        Scaffold(
-            snackbarHost = { SnackbarHost(rootSnackbar) },
-            bottomBar = {
-                if (tabs.any { it.route == current }) {
-                    NavigationBar {
-                        tabs.forEach { tab ->
-                            NavigationBarItem(
-                                selected = current == tab.route,
-                                onClick = { nav.openTab(tab.route) },
-                                // The visible label names the item for TalkBack; the icon is decorative. One line,
-                                // ellipsised: at 200 % in Tamil and Telugu a label broke mid-word or ran into the
-                                // icon; TalkBack still reads it whole (README section 8, device check 21 (f)).
-                                icon = { Icon(tab.icon, contentDescription = null) },
-                                label = { Text(stringResource(tab.label), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                                // The pill is secondaryContainer = --primary-soft (Theme.kt, round 19); M3's active
-                                // label is `secondary`, which here is the amber --star. Teal, as the web's phone bar.
-                                colors = NavigationBarItemDefaults.colors(
-                                    selectedTextColor = MaterialTheme.colorScheme.primary,
-                                ),
+        CompositionLocalProvider(LocalTourRegistry provides tourRegistry) {
+            Box(Modifier.fillMaxSize()) {
+                Scaffold(
+                    snackbarHost = { SnackbarHost(rootSnackbar) },
+                    bottomBar = {
+                        if (tabs.any { it.route == current }) {
+                            NavigationBar(Modifier.tourTarget(TourTargets.NAV_BAR)) {
+                                tabs.forEach { tab ->
+                                    NavigationBarItem(
+                                        selected = current == tab.route,
+                                        onClick = { nav.openTab(tab.route) },
+                                        modifier = if (tab.route == assistantTab.route) Modifier.tourTarget(TourTargets.NAV_ASSISTANT) else Modifier,
+                                        // The visible label names the item for TalkBack; the icon is decorative. One line,
+                                        // ellipsised: at 200 % in Tamil and Telugu a label broke mid-word or ran into the
+                                        // icon; TalkBack still reads it whole (README section 8, device check 21 (f)).
+                                        icon = { Icon(tab.icon, contentDescription = null) },
+                                        label = { Text(stringResource(tab.label), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                        // The pill is secondaryContainer = --primary-soft (Theme.kt, round 19); M3's active
+                                        // label is `secondary`, which here is the amber --star. Teal, as the web's phone bar.
+                                        colors = NavigationBarItemDefaults.colors(
+                                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                                        ),
+                                    )
+                                }
+                            }
+                        }
+                    },
+                ) { padding ->
+                    // consumeWindowInsets: the padding already covers the system bars, so a screen's own Scaffold, TopAppBar or
+                    // bottom bar (Export's action area) must not add them a second time.
+                    NavHost(nav, startDestination = home, modifier = Modifier.padding(padding).consumeWindowInsets(padding)) {
+                        composable("map") { entry ->
+                            // A shared listing waiting for its place: the tip says so, and the form takes the text.
+                            val listingPending = pendingListing != null
+                            val deleted by entry.savedStateHandle.getStateFlow<String?>(DELETED_HOUSE_KEY, null)
+                                .collectAsStateWithLifecycle()
+                            MapScreen(
+                                // Only from the resumed map, like every other exit (round 21): a second tap during the
+                                // transition, or a slow GPS fix landing after the user left, is dropped.
+                                onOpenHouse = { if (resumed(entry)) nav.navigate(Routes.house(it)) },
+                                onNewHouse = { lat, lon -> if (resumed(entry)) nav.navigate(Routes.newHouse(lat, lon)) },
+                                onOpenHouses = { if (resumed(entry)) nav.openTab("houses") },
+                                showAddTip = mapAddTip,
+                                onAddTipShown = { mapAddTip = false },
+                                addTipForListing = listingPending,
+                                listingPlace = remember(pendingListing) { pendingListing?.let { ListingText.parse(it).locality } },
+                                huntRequest = huntRequested,
+                                onStartHuntHandled = { huntRequested = false },
+                                huntOffer = huntOffered,
+                                onHuntOfferHandled = { huntOffered = false },
+                                deletedHouse = deleted,
+                                onDeletedShown = { entry.savedStateHandle[DELETED_HOUSE_KEY] = null },
+                            )
+                        }
+                        composable("houses") { entry ->
+                            val deleted by entry.savedStateHandle.getStateFlow<String?>(DELETED_HOUSE_KEY, null)
+                                .collectAsStateWithLifecycle()
+                            HouseListScreen(
+                                onOpenHouse = { if (resumed(entry)) nav.navigate(Routes.house(it)) },
+                                onOpenSettings = { if (resumed(entry)) nav.openTab("settings") },
+                                deletedHouse = deleted,
+                                onDeletedShown = { entry.savedStateHandle[DELETED_HOUSE_KEY] = null },
+                                onOpenImport = {
+                                    importedRun = null
+                                    nav.navigate("import")
+                                },
+                                importedRun = importedRun,
+                                importedOpen = importedOpen,
+                                // The first-run hero's "Add a house on the map": the same route as Export's empty state,
+                                // plus the one-shot flag that makes the map say how to add a house.
+                                onOpenMap = openMapWithTip,
+                            )
+                        }
+                        composable("compare") { entry ->
+                            // null until the database answers, so the empty state does not flash on the way in (CMP-4 P4c's
+                            // CompareScreen in :app's CompareTab.kt, collected here since CMP-5).
+                            val loaded: List<HouseEntity>? by repo.houses.collectAsStateWithLifecycle(initialValue = null)
+                            val counts by repo.visitCounts.collectAsStateWithLifecycle(emptyList())
+                            val brokers: Map<String, Broker> by remember(repo) { repo.observeBrokers().map { it.toMap() } }
+                                .collectAsStateWithLifecycle(emptyMap())
+                            val lengthUnit by remember(repo) { repo.settings.lengthUnit }.collectAsStateWithLifecycle(LengthUnit.FT)
+                            val scoring by remember(repo) { repo.observeScoring() }.collectAsStateWithLifecycle(Scoring.DEFAULT)
+                            val places by remember(repo) { repo.observePlaces() }.collectAsStateWithLifecycle(emptyList())
+                            CompareScreen(
+                                loaded = loaded,
+                                counts = counts,
+                                brokers = brokers,
+                                lengthUnit = lengthUnit,
+                                scoring = scoring,
+                                places = places,
+                                onOpenHouse = { if (resumed(entry)) nav.navigate(Routes.house(it)) },
+                                onOpenMap = openMapWithTip,
+                            )
+                        }
+                        composable("assistant") { entry ->
+                            AssistantScreen(
+                                onOpenHouse = { if (resumed(entry)) nav.navigate(Routes.house(it)) },
+                                onOpenMap = { nav.openTab("map") },
+                            )
+                        }
+                        composable("settings") {
+                            SettingsScreen(
+                                onOpenExport = { nav.navigate("export") },
+                                onOpenImport = {
+                                    importedRun = null
+                                    nav.navigate("import")
+                                },
+                                onOpenShare = { nav.navigate(Routes.SHARE) },
+                                onOpenBrokers = { nav.navigate(Routes.BROKERS) },
+                                onOpenCriteria = { nav.navigate(Routes.CRITERIA) },
+                                onOpenQuestions = { nav.navigate(Routes.QUESTIONS) },
+                                onOpenViewings = { nav.navigate(Routes.viewings()) },
+                                onOpenAreas = { nav.navigate(Routes.AREAS) },
+                                onOpenPlaces = { nav.navigate(Routes.PLACES) },
+                                onTakeTour = { tourSession.start(TourSteps.forPhone(tourContext)) },
+                            )
+                        }
+                        // My areas and My places (docs/11 slice 4a): sub-screens of Settings with a back arrow, like Brokers.
+                        composable(Routes.AREAS) { entry ->
+                            AreasScreen(
+                                onBack = dropUnlessResumed { nav.popBackStack() },
+                                onOpenArea = { if (resumed(entry)) nav.navigate(Routes.area(it)) },
+                                onTurnOnWakeup = { if (resumed(entry)) nav.navigate(Routes.AREA_WAKEUP) },
+                            )
+                        }
+                        composable(Routes.AREA_WAKEUP) { entry ->
+                            // Not dropUnlessResumed: the permission answer can arrive while the entry is only started.
+                            AreaWakeupRationaleScreen(onDone = { if (nav.currentBackStackEntry == entry) nav.popBackStack() })
+                        }
+                        composable(Routes.AREA, arguments = listOf(navArgument("id") { type = NavType.StringType })) { entry ->
+                            AreaFormScreen(
+                                areaId = entry.arguments?.read { getStringOrNull("id") }?.takeIf { it != Routes.NEW_RECORD },
+                                onDone = dropUnlessResumed { nav.popBackStack() },
+                            )
+                        }
+                        composable(Routes.PLACES) { entry ->
+                            PlacesScreen(
+                                onBack = dropUnlessResumed { nav.popBackStack() },
+                                onOpenPlace = { if (resumed(entry)) nav.navigate(Routes.place(it)) },
+                            )
+                        }
+                        composable(Routes.PLACE, arguments = listOf(navArgument("id") { type = NavType.StringType })) { entry ->
+                            PlaceFormScreen(
+                                placeId = entry.arguments?.read { getStringOrNull("id") }?.takeIf { it != Routes.NEW_RECORD },
+                                onDone = dropUnlessResumed { nav.popBackStack() },
+                            )
+                        }
+                        // Viewings (docs/11 5.8, slice 3b-1): the history (all, or one house's) and the form, sub-screens with a back arrow.
+                        composable(
+                            Routes.VIEWINGS,
+                            arguments = listOf(navArgument("houseId") { type = NavType.StringType; nullable = true; defaultValue = null }),
+                        ) { entry ->
+                            ViewingsScreen(
+                                houseId = entry.arguments?.read { getStringOrNull("houseId") },
+                                onBack = dropUnlessResumed { nav.popBackStack() },
+                                onOpenViewing = { if (resumed(entry)) nav.navigate(Routes.viewing(it)) },
+                                onPlan = { house, kind -> if (resumed(entry)) nav.navigate(Routes.viewing(null, house, kind.name)) },
+                            )
+                        }
+                        composable(
+                            Routes.VIEWING,
+                            arguments = listOf(
+                                navArgument("id") { type = NavType.StringType },
+                                navArgument("houseId") { type = NavType.StringType; nullable = true; defaultValue = null },
+                                navArgument("kind") { type = NavType.StringType; nullable = true; defaultValue = null },
+                            ),
+                        ) { entry ->
+                            val args = entry.arguments
+                            ViewingFormScreen(
+                                viewingId = args?.read { getStringOrNull("id") }?.takeIf { it != Routes.NEW_VIEWING },
+                                houseId = args?.read { getStringOrNull("houseId") },
+                                kind = ViewingKind.fromWire(args?.read { getStringOrNull("kind") }),
+                                onDone = dropUnlessResumed { nav.popBackStack() },
+                            )
+                        }
+                        // Criteria (docs/11 5.4, slice 2): a sub-screen of Settings with its own back arrow, like Brokers.
+                        // Questions (docs/11 5.5, slice 3a): the bank of viewing questions, a sub-screen of Settings like Criteria.
+                        composable(Routes.QUESTIONS) {
+                            QuestionsScreen(onBack = dropUnlessResumed { nav.popBackStack() })
+                        }
+                        composable(Routes.CRITERIA) {
+                            CriteriaScreen(onBack = dropUnlessResumed { nav.popBackStack() })
+                        }
+                        // Brokers (docs/11 5.25, slice 1b): a sub-screen of Settings with its own back arrow, like Share updates.
+                        composable(Routes.BROKERS) { entry ->
+                            BrokersScreen(
+                                onBack = dropUnlessResumed { nav.popBackStack() },
+                                onOpenBroker = { if (resumed(entry)) nav.navigate(Routes.broker(it)) },
+                            )
+                        }
+                        composable(
+                            Routes.BROKER,
+                            arguments = listOf(navArgument("id") { type = NavType.StringType }),
+                        ) { entry ->
+                            val id = entry.arguments?.read { getStringOrNull("id") }?.takeIf { it != Routes.NEW_BROKER }
+                            BrokerScreen(
+                                brokerId = id,
+                                onBack = dropUnlessResumed { nav.popBackStack() },
+                                onOpenHouse = { if (resumed(entry)) nav.navigate(Routes.house(it)) },
+                            )
+                        }
+                        composable(Routes.SHARE) {
+                            ShareUpdatesScreen(onBack = dropUnlessResumed { nav.popBackStack() })
+                        }
+                        // Offline copy (Sprint 4a). Both are full screens with their own back arrow rather than tabs:
+                        // they are a task the user finishes and leaves, not a place to come back to.
+                        // The empty export screen's "Map" and a finished import's "See your houses" go to a tab. The
+                        // Settings stack they came from is popped, not saved: a later tap on the Settings tab should open
+                        // Settings, not restore this sub-screen.
+                        // Every "leave this screen" below is dropUnlessResumed (UX review, round 21): a second tap, or a save
+                        // that finishes during the exit transition, finds the entry no longer RESUMED and is ignored, so the
+                        // back stack is never popped twice (from the Map, that emptied the NavHost: a blank screen, no bar).
+                        composable("export") {
+                            ExportScreen(
+                                onBack = dropUnlessResumed { nav.popBackStack() },
+                                // The same "Add a house on the map" button, so the same tip on arrival.
+                                onOpenMap = openMapWithTip,
+                            )
+                        }
+                        composable("import") {
+                            ImportScreen(
+                                onBack = dropUnlessResumed { nav.popBackStack() },
+                                // A file another app opened in Doorprints (DeepLink.ImportFile), picked once.
+                                initialFile = pendingImportFile,
+                                onInitialFileConsumed = { pendingImportFile = null },
+                                onOpenHouses = { run ->
+                                    importedRun = run
+                                    importedOpen++
+                                    nav.navigate("houses") {
+                                        popUpTo(home)
+                                        launchSingleTop = true
+                                    }
+                                },
+                            )
+                        }
+                        composable(
+                            Routes.HOUSE,
+                            arguments = listOf(navArgument("id") { type = NavType.StringType }),
+                        ) { entry ->
+                            val justSaved by entry.savedStateHandle.getStateFlow(JUST_SAVED_KEY, false)
+                                .collectAsStateWithLifecycle()
+                            val houseId = entry.arguments?.read { getStringOrNull("id") }
+                            HouseEditScreen(
+                                houseId = houseId,
+                                newLat = null, newLon = null, visitId = null,
+                                showQuestions = houseId != null && questionsFor == houseId,
+                                onQuestionsShown = { questionsFor = null },
+                                onDone = dropUnlessResumed { nav.popBackStack() },
+                                // The house's Viewings card (slice 3b-1): plan one here, or see this house's history.
+                                onPlanViewing = { house, kind -> if (resumed(entry)) nav.navigate(Routes.viewing(null, house, kind.name)) },
+                                onOpenViewings = { house -> if (resumed(entry)) nav.navigate(Routes.viewings(house)) },
+                                // *Save a copy* after *Close this hunt* (slice 5).
+                                onSaveCopy = { if (resumed(entry)) nav.navigate("export") },
+                                // A saved walk's *Show on map* (docs/11 5.27.6): the Map, which outlines it.
+                                onShowOnMap = { if (resumed(entry)) nav.openMapFresh() },
+                                // "Save as a new house" after this one was removed elsewhere: continue on the copy.
+                                onCreated = { id ->
+                                    if (resumed(entry)) {
+                                        nav.navigate(Routes.house(id)) { popUpTo(Routes.HOUSE) { inclusive = true } }
+                                        nav.currentBackStackEntry?.savedStateHandle?.set(JUST_SAVED_KEY, true)
+                                    }
+                                },
+                                // Back to the Map or the list, which offers "Deleted Green Villa" with Undo.
+                                onDeleted = { id ->
+                                    if (resumed(entry)) {
+                                        nav.previousBackStackEntry?.savedStateHandle?.set(DELETED_HOUSE_KEY, id)
+                                        nav.popBackStack()
+                                    }
+                                },
+                                showSaved = justSaved,
+                                onSavedShown = { entry.savedStateHandle[JUST_SAVED_KEY] = false },
+                                // "This house is no longer on this phone" (round 21): to the Houses tab, whichever tab the
+                                // stale link was opened from, as Import's "See your houses" does.
+                                onOpenHouses = dropUnlessResumed {
+                                    nav.navigate("houses") {
+                                        popUpTo(home)
+                                        launchSingleTop = true
+                                    }
+                                },
+                            )
+                        }
+                        composable(
+                            Routes.NEW_HOUSE,
+                            arguments = listOf(
+                                navArgument("lat") { type = NavType.StringType },
+                                navArgument("lon") { type = NavType.StringType },
+                                navArgument("visitId") { type = NavType.StringType; nullable = true; defaultValue = null },
+                            ),
+                        ) { entry ->
+                            val args = entry.arguments
+                            val onDone = dropUnlessResumed { nav.popBackStack() }
+                            HouseEditScreen(
+                                houseId = null,
+                                newLat = args?.read { getStringOrNull("lat") }?.toDoubleOrNull(),
+                                newLon = args?.read { getStringOrNull("lon") }?.toDoubleOrNull(),
+                                visitId = args?.read { getStringOrNull("visitId") },
+                                // A shared listing (docs/11 5.29), parsed into the fresh form once.
+                                listingText = pendingListing,
+                                onListingConsumed = { pendingListing = null },
+                                onDone = onDone,
+                                // A new house has no stale link and cannot be deleted from its form: both just close it, as
+                                // HouseEditScreen's defaults do.
+                                onOpenHouses = onDone,
+                                // The first save continues on the house as an existing one, so photos can be added at once
+                                // (whole-app audit; the web's New house → Create → house page). The form is replaced, so Back
+                                // goes to where it was opened from.
+                                onCreated = { id ->
+                                    if (resumed(entry)) {
+                                        nav.navigate(Routes.house(id)) { popUpTo(Routes.NEW_HOUSE) { inclusive = true } }
+                                        nav.currentBackStackEntry?.savedStateHandle?.set(JUST_SAVED_KEY, true)
+                                    }
+                                },
+                                onDeleted = { onDone() },
+                                showSaved = false,
+                                onSavedShown = {},
                             )
                         }
                     }
                 }
-            },
-        ) { padding ->
-            // consumeWindowInsets: the padding already covers the system bars, so a screen's own Scaffold, TopAppBar or
-            // bottom bar (Export's action area) must not add them a second time.
-            NavHost(nav, startDestination = home, modifier = Modifier.padding(padding).consumeWindowInsets(padding)) {
-                composable("map") { entry ->
-                    // A shared listing waiting for its place: the tip says so, and the form takes the text.
-                    val listingPending = pendingListing != null
-                    val deleted by entry.savedStateHandle.getStateFlow<String?>(DELETED_HOUSE_KEY, null)
-                        .collectAsStateWithLifecycle()
-                    MapScreen(
-                        // Only from the resumed map, like every other exit (round 21): a second tap during the
-                        // transition, or a slow GPS fix landing after the user left, is dropped.
-                        onOpenHouse = { if (resumed(entry)) nav.navigate(Routes.house(it)) },
-                        onNewHouse = { lat, lon -> if (resumed(entry)) nav.navigate(Routes.newHouse(lat, lon)) },
-                        onOpenHouses = { if (resumed(entry)) nav.openTab("houses") },
-                        showAddTip = mapAddTip,
-                        onAddTipShown = { mapAddTip = false },
-                        addTipForListing = listingPending,
-                        listingPlace = remember(pendingListing) { pendingListing?.let { ListingText.parse(it).locality } },
-                        huntRequest = huntRequested,
-                        onStartHuntHandled = { huntRequested = false },
-                        huntOffer = huntOffered,
-                        onHuntOfferHandled = { huntOffered = false },
-                        deletedHouse = deleted,
-                        onDeletedShown = { entry.savedStateHandle[DELETED_HOUSE_KEY] = null },
-                    )
-                }
-                composable("houses") { entry ->
-                    val deleted by entry.savedStateHandle.getStateFlow<String?>(DELETED_HOUSE_KEY, null)
-                        .collectAsStateWithLifecycle()
-                    HouseListScreen(
-                        onOpenHouse = { if (resumed(entry)) nav.navigate(Routes.house(it)) },
-                        onOpenSettings = { if (resumed(entry)) nav.openTab("settings") },
-                        deletedHouse = deleted,
-                        onDeletedShown = { entry.savedStateHandle[DELETED_HOUSE_KEY] = null },
-                        onOpenImport = {
-                            importedRun = null
-                            nav.navigate("import")
-                        },
-                        importedRun = importedRun,
-                        importedOpen = importedOpen,
-                        // The first-run hero's "Add a house on the map": the same route as Export's empty state,
-                        // plus the one-shot flag that makes the map say how to add a house.
-                        onOpenMap = openMapWithTip,
-                    )
-                }
-                composable("compare") { entry ->
-                    // null until the database answers, so the empty state does not flash on the way in (CMP-4 P4c's
-                    // CompareScreen in :app's CompareTab.kt, collected here since CMP-5).
-                    val loaded: List<HouseEntity>? by repo.houses.collectAsStateWithLifecycle(initialValue = null)
-                    val counts by repo.visitCounts.collectAsStateWithLifecycle(emptyList())
-                    val brokers: Map<String, Broker> by remember(repo) { repo.observeBrokers().map { it.toMap() } }
-                        .collectAsStateWithLifecycle(emptyMap())
-                    val lengthUnit by remember(repo) { repo.settings.lengthUnit }.collectAsStateWithLifecycle(LengthUnit.FT)
-                    val scoring by remember(repo) { repo.observeScoring() }.collectAsStateWithLifecycle(Scoring.DEFAULT)
-                    val places by remember(repo) { repo.observePlaces() }.collectAsStateWithLifecycle(emptyList())
-                    CompareScreen(
-                        loaded = loaded,
-                        counts = counts,
-                        brokers = brokers,
-                        lengthUnit = lengthUnit,
-                        scoring = scoring,
-                        places = places,
-                        onOpenHouse = { if (resumed(entry)) nav.navigate(Routes.house(it)) },
-                        onOpenMap = openMapWithTip,
-                    )
-                }
-                composable("assistant") { entry ->
-                    AssistantScreen(
-                        onOpenHouse = { if (resumed(entry)) nav.navigate(Routes.house(it)) },
-                        onOpenMap = { nav.openTab("map") },
-                    )
-                }
-                composable("settings") {
-                    SettingsScreen(
-                        onOpenExport = { nav.navigate("export") },
-                        onOpenImport = {
-                            importedRun = null
-                            nav.navigate("import")
-                        },
-                        onOpenShare = { nav.navigate(Routes.SHARE) },
-                        onOpenBrokers = { nav.navigate(Routes.BROKERS) },
-                        onOpenCriteria = { nav.navigate(Routes.CRITERIA) },
-                        onOpenQuestions = { nav.navigate(Routes.QUESTIONS) },
-                        onOpenViewings = { nav.navigate(Routes.viewings()) },
-                        onOpenAreas = { nav.navigate(Routes.AREAS) },
-                        onOpenPlaces = { nav.navigate(Routes.PLACES) },
-                    )
-                }
-                // My areas and My places (docs/11 slice 4a): sub-screens of Settings with a back arrow, like Brokers.
-                composable(Routes.AREAS) { entry ->
-                    AreasScreen(
-                        onBack = dropUnlessResumed { nav.popBackStack() },
-                        onOpenArea = { if (resumed(entry)) nav.navigate(Routes.area(it)) },
-                        onTurnOnWakeup = { if (resumed(entry)) nav.navigate(Routes.AREA_WAKEUP) },
-                    )
-                }
-                composable(Routes.AREA_WAKEUP) { entry ->
-                    // Not dropUnlessResumed: the permission answer can arrive while the entry is only started.
-                    AreaWakeupRationaleScreen(onDone = { if (nav.currentBackStackEntry == entry) nav.popBackStack() })
-                }
-                composable(Routes.AREA, arguments = listOf(navArgument("id") { type = NavType.StringType })) { entry ->
-                    AreaFormScreen(
-                        areaId = entry.arguments?.read { getStringOrNull("id") }?.takeIf { it != Routes.NEW_RECORD },
-                        onDone = dropUnlessResumed { nav.popBackStack() },
-                    )
-                }
-                composable(Routes.PLACES) { entry ->
-                    PlacesScreen(
-                        onBack = dropUnlessResumed { nav.popBackStack() },
-                        onOpenPlace = { if (resumed(entry)) nav.navigate(Routes.place(it)) },
-                    )
-                }
-                composable(Routes.PLACE, arguments = listOf(navArgument("id") { type = NavType.StringType })) { entry ->
-                    PlaceFormScreen(
-                        placeId = entry.arguments?.read { getStringOrNull("id") }?.takeIf { it != Routes.NEW_RECORD },
-                        onDone = dropUnlessResumed { nav.popBackStack() },
-                    )
-                }
-                // Viewings (docs/11 5.8, slice 3b-1): the history (all, or one house's) and the form, sub-screens with a back arrow.
-                composable(
-                    Routes.VIEWINGS,
-                    arguments = listOf(navArgument("houseId") { type = NavType.StringType; nullable = true; defaultValue = null }),
-                ) { entry ->
-                    ViewingsScreen(
-                        houseId = entry.arguments?.read { getStringOrNull("houseId") },
-                        onBack = dropUnlessResumed { nav.popBackStack() },
-                        onOpenViewing = { if (resumed(entry)) nav.navigate(Routes.viewing(it)) },
-                        onPlan = { house, kind -> if (resumed(entry)) nav.navigate(Routes.viewing(null, house, kind.name)) },
-                    )
-                }
-                composable(
-                    Routes.VIEWING,
-                    arguments = listOf(
-                        navArgument("id") { type = NavType.StringType },
-                        navArgument("houseId") { type = NavType.StringType; nullable = true; defaultValue = null },
-                        navArgument("kind") { type = NavType.StringType; nullable = true; defaultValue = null },
-                    ),
-                ) { entry ->
-                    val args = entry.arguments
-                    ViewingFormScreen(
-                        viewingId = args?.read { getStringOrNull("id") }?.takeIf { it != Routes.NEW_VIEWING },
-                        houseId = args?.read { getStringOrNull("houseId") },
-                        kind = ViewingKind.fromWire(args?.read { getStringOrNull("kind") }),
-                        onDone = dropUnlessResumed { nav.popBackStack() },
-                    )
-                }
-                // Criteria (docs/11 5.4, slice 2): a sub-screen of Settings with its own back arrow, like Brokers.
-                // Questions (docs/11 5.5, slice 3a): the bank of viewing questions, a sub-screen of Settings like Criteria.
-                composable(Routes.QUESTIONS) {
-                    QuestionsScreen(onBack = dropUnlessResumed { nav.popBackStack() })
-                }
-                composable(Routes.CRITERIA) {
-                    CriteriaScreen(onBack = dropUnlessResumed { nav.popBackStack() })
-                }
-                // Brokers (docs/11 5.25, slice 1b): a sub-screen of Settings with its own back arrow, like Share updates.
-                composable(Routes.BROKERS) { entry ->
-                    BrokersScreen(
-                        onBack = dropUnlessResumed { nav.popBackStack() },
-                        onOpenBroker = { if (resumed(entry)) nav.navigate(Routes.broker(it)) },
-                    )
-                }
-                composable(
-                    Routes.BROKER,
-                    arguments = listOf(navArgument("id") { type = NavType.StringType }),
-                ) { entry ->
-                    val id = entry.arguments?.read { getStringOrNull("id") }?.takeIf { it != Routes.NEW_BROKER }
-                    BrokerScreen(
-                        brokerId = id,
-                        onBack = dropUnlessResumed { nav.popBackStack() },
-                        onOpenHouse = { if (resumed(entry)) nav.navigate(Routes.house(it)) },
-                    )
-                }
-                composable(Routes.SHARE) {
-                    ShareUpdatesScreen(onBack = dropUnlessResumed { nav.popBackStack() })
-                }
-                // Offline copy (Sprint 4a). Both are full screens with their own back arrow rather than tabs:
-                // they are a task the user finishes and leaves, not a place to come back to.
-                // The empty export screen's "Map" and a finished import's "See your houses" go to a tab. The
-                // Settings stack they came from is popped, not saved: a later tap on the Settings tab should open
-                // Settings, not restore this sub-screen.
-                // Every "leave this screen" below is dropUnlessResumed (UX review, round 21): a second tap, or a save
-                // that finishes during the exit transition, finds the entry no longer RESUMED and is ignored, so the
-                // back stack is never popped twice (from the Map, that emptied the NavHost: a blank screen, no bar).
-                composable("export") {
-                    ExportScreen(
-                        onBack = dropUnlessResumed { nav.popBackStack() },
-                        // The same "Add a house on the map" button, so the same tip on arrival.
-                        onOpenMap = openMapWithTip,
-                    )
-                }
-                composable("import") {
-                    ImportScreen(
-                        onBack = dropUnlessResumed { nav.popBackStack() },
-                        // A file another app opened in Doorprints (DeepLink.ImportFile), picked once.
-                        initialFile = pendingImportFile,
-                        onInitialFileConsumed = { pendingImportFile = null },
-                        onOpenHouses = { run ->
-                            importedRun = run
-                            importedOpen++
-                            nav.navigate("houses") {
-                                popUpTo(home)
-                                launchSingleTop = true
-                            }
-                        },
-                    )
-                }
-                composable(
-                    Routes.HOUSE,
-                    arguments = listOf(navArgument("id") { type = NavType.StringType }),
-                ) { entry ->
-                    val justSaved by entry.savedStateHandle.getStateFlow(JUST_SAVED_KEY, false)
-                        .collectAsStateWithLifecycle()
-                    val houseId = entry.arguments?.read { getStringOrNull("id") }
-                    HouseEditScreen(
-                        houseId = houseId,
-                        newLat = null, newLon = null, visitId = null,
-                        showQuestions = houseId != null && questionsFor == houseId,
-                        onQuestionsShown = { questionsFor = null },
-                        onDone = dropUnlessResumed { nav.popBackStack() },
-                        // The house's Viewings card (slice 3b-1): plan one here, or see this house's history.
-                        onPlanViewing = { house, kind -> if (resumed(entry)) nav.navigate(Routes.viewing(null, house, kind.name)) },
-                        onOpenViewings = { house -> if (resumed(entry)) nav.navigate(Routes.viewings(house)) },
-                        // *Save a copy* after *Close this hunt* (slice 5).
-                        onSaveCopy = { if (resumed(entry)) nav.navigate("export") },
-                        // A saved walk's *Show on map* (docs/11 5.27.6): the Map, which outlines it.
-                        onShowOnMap = { if (resumed(entry)) nav.openMapFresh() },
-                        // "Save as a new house" after this one was removed elsewhere: continue on the copy.
-                        onCreated = { id ->
-                            if (resumed(entry)) {
-                                nav.navigate(Routes.house(id)) { popUpTo(Routes.HOUSE) { inclusive = true } }
-                                nav.currentBackStackEntry?.savedStateHandle?.set(JUST_SAVED_KEY, true)
-                            }
-                        },
-                        // Back to the Map or the list, which offers "Deleted Green Villa" with Undo.
-                        onDeleted = { id ->
-                            if (resumed(entry)) {
-                                nav.previousBackStackEntry?.savedStateHandle?.set(DELETED_HOUSE_KEY, id)
-                                nav.popBackStack()
-                            }
-                        },
-                        showSaved = justSaved,
-                        onSavedShown = { entry.savedStateHandle[JUST_SAVED_KEY] = false },
-                        // "This house is no longer on this phone" (round 21): to the Houses tab, whichever tab the
-                        // stale link was opened from, as Import's "See your houses" does.
-                        onOpenHouses = dropUnlessResumed {
-                            nav.navigate("houses") {
-                                popUpTo(home)
-                                launchSingleTop = true
-                            }
-                        },
-                    )
-                }
-                composable(
-                    Routes.NEW_HOUSE,
-                    arguments = listOf(
-                        navArgument("lat") { type = NavType.StringType },
-                        navArgument("lon") { type = NavType.StringType },
-                        navArgument("visitId") { type = NavType.StringType; nullable = true; defaultValue = null },
-                    ),
-                ) { entry ->
-                    val args = entry.arguments
-                    val onDone = dropUnlessResumed { nav.popBackStack() }
-                    HouseEditScreen(
-                        houseId = null,
-                        newLat = args?.read { getStringOrNull("lat") }?.toDoubleOrNull(),
-                        newLon = args?.read { getStringOrNull("lon") }?.toDoubleOrNull(),
-                        visitId = args?.read { getStringOrNull("visitId") },
-                        // A shared listing (docs/11 5.29), parsed into the fresh form once.
-                        listingText = pendingListing,
-                        onListingConsumed = { pendingListing = null },
-                        onDone = onDone,
-                        // A new house has no stale link and cannot be deleted from its form: both just close it, as
-                        // HouseEditScreen's defaults do.
-                        onOpenHouses = onDone,
-                        // The first save continues on the house as an existing one, so photos can be added at once
-                        // (whole-app audit; the web's New house → Create → house page). The form is replaced, so Back
-                        // goes to where it was opened from.
-                        onCreated = { id ->
-                            if (resumed(entry)) {
-                                nav.navigate(Routes.house(id)) { popUpTo(Routes.NEW_HOUSE) { inclusive = true } }
-                                nav.currentBackStackEntry?.savedStateHandle?.set(JUST_SAVED_KEY, true)
-                            }
-                        },
-                        onDeleted = { onDone() },
-                        showSaved = false,
-                        onSavedShown = {},
-                    )
-                }
+                // The first-run offer and the tour, over everything (S4b-FR-39). Not modal: only its card takes touches.
+                TourOverlay(
+                    session = tourSession,
+                    registry = tourRegistry,
+                    offer = TourOffer.show(tourMemory, tourSession.active, current, home),
+                    currentRoute = current,
+                    onStart = { tourSession.start(TourSteps.forPhone(tourContext)) },
+                    onDecline = { endTour(tourSession.skip()) },
+                    onNext = { tourSession.next()?.let(::endTour) },
+                    onBack = tourSession::back,
+                    onSkip = { endTour(tourSession.skip()) },
+                )
             }
         }
     }

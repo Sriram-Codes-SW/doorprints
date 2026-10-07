@@ -170,6 +170,26 @@ object AppLockTimes {
     fun valid(seconds: Int?): Int = seconds?.takeIf { it in CHOICES } ?: DEFAULT
 }
 
+/**
+ * How the guided tour ended (S4b-FR-39): finished to its last step, or left early. Either way it is not offered again by
+ * itself; *Take the tour* in Settings starts it again. [wire] is what is stored, the same words as the website's
+ * `doorprints.tour` (`done`, `skipped`).
+ */
+enum class TourEnd(val wire: String) {
+    DONE("done"),
+    SKIPPED("skipped"),
+    ;
+
+    companion object {
+        /** Null when no tour has ended here; any other stored text counts as seen (the website treats any value so). */
+        fun fromWire(value: String?): TourEnd? = when (value) {
+            null -> null
+            DONE.wire -> DONE
+            else -> SKIPPED
+        }
+    }
+}
+
 /** Who answers AI requests: the connected server, or Gemini directly with the person's own key (ADR-26). */
 enum class AiProviderChoice { SERVER, DEVICE }
 
@@ -249,6 +269,8 @@ class SettingsStore(
         val areaWakeup = booleanPreferencesKey("areas.wakeup")
         /** The one-time "Area wake-up is off because…" card of My areas (slice 4b), set when the permission is lost. */
         val areaWakeupOffNotice = booleanPreferencesKey("areas.wakeupOffNotice")
+        /** How the guided tour ended, `done` or `skipped` ([TourEnd.wire]): this device's own choice, never exported, synced or backed up. */
+        val tour = stringPreferencesKey("tour")
     }
 
     /** When area [id] last notified (or was dismissed), a key per area (slice 4b): `areas.lastNotified.<id>`. */
@@ -358,6 +380,18 @@ class SettingsStore(
         }
         return wasOn
     }
+
+    /**
+     * How the guided tour ended on this device, or null when it has not (the one-time offer on the Map or the list is then
+     * shown). Reads no secret; a file that cannot be read counts as seen, so the offer never repeats over a failed write.
+     */
+    fun tourEnd(): Flow<TourEnd?> = dataStore.data
+        .map { p -> TourEnd.fromWire(p[Keys.tour]) }
+        .catch { emit(TourEnd.SKIPPED) }
+        .distinctUntilChanged()
+
+    /** Remembers how the tour ended; the offer does not come again. */
+    suspend fun setTourEnd(end: TourEnd) = dataStore.edit { it[Keys.tour] = end.wire }
 
     /** Whether My areas still has to say once why the wake-up switched itself off. */
     fun areaWakeupOffNotice(): Flow<Boolean> = dataStore.data

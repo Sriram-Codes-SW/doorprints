@@ -421,6 +421,26 @@ class SettingsStoreTest {
     }
 
     @Test
+    fun theTourIsUnseenUntilItEndsAndThenRemembersHowItEnded() = runTest {
+        assertNull(store.tourEnd().first(), "a fresh install has not seen the tour")
+        store.setTourEnd(TourEnd.SKIPPED)
+        assertEquals(TourEnd.SKIPPED, store.tourEnd().first())
+        assertEquals("skipped", raw()["tour"], "the stored words are the website's")
+        store.setTourEnd(TourEnd.DONE)
+        assertEquals(TourEnd.DONE, store.tourEnd().first())
+        assertEquals("done", raw()["tour"])
+        assertEquals(AppSettings(), store.current(), "the tour is not one of the app settings, so no export or sync carries it")
+    }
+
+    @Test
+    fun aStoredTourWordIsReadTheWayTheWebsiteReadsIt() {
+        assertNull(TourEnd.fromWire(null))
+        assertEquals(TourEnd.DONE, TourEnd.fromWire("done"))
+        assertEquals(TourEnd.SKIPPED, TourEnd.fromWire("skipped"))
+        assertEquals(TourEnd.SKIPPED, TourEnd.fromWire("anything else"), "any stored value counts as seen")
+    }
+
+    @Test
     fun theSettingsPrintNeitherKey() = runTest {
         val gemini = FakeSecrets("gemini")
         val withGemini = SettingsStore(dataStore, secrets, gemini) { clock }

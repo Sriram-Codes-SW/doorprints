@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.97 |
+| Version | 0.98 |
 | Date | 2026-10-07 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..142); this file lists the lead-level items and points to the rest. |
@@ -106,6 +106,7 @@
 | 0.95 | 2026-10-06 | Claude (Code), lead | **The phones' QR scan, the Android HMAC proof and the backlog items built on `feat/qr-scanner-and-backlog` (draft PR #145; [10](10-sprint-log.md) v0.155, [15](15-google-drive-backup-and-sharing.md) v0.30, [06](06-test-plan.md) v0.137).** §1: the Android Drive bullet and the website bullet's "phones stay open" updated. N19: (3) is decided and built (Google's code scanner on Android, an iPhone scanner not yet wired), (4) is half done (the Android HMAC proof built, the browser fallback still open), the real-device checks MT-82..MT-85 added. New tickets S4b-BL-140..142; S4b-BL-138 done (screenshot flake), S4b-BL-139's O9 and O11 done and O10 in part. |
 | 0.96 | 2026-10-06 | Claude (Code), lead | N20 built on `feat/path-trace-v2`: the shared repeat detection, alert, place check and saved walks (Room 11), the website's twin (IndexedDB v3), the phone and website screens and the *Your paths* guide in four languages; all 58 shared vectors agree in Kotlin and TypeScript; owner device checks (TC-M-25, TC-M-61, MT-75..81) still open. The alert's unblock rule is `arc(newest point) - arc(last near sample) > BRIDGE_M`. Docs pass of the same day: 11 v0.60, 03 v0.68, 06 v0.138, 10 v0.156, 01, 02, 05, schemas v1.29 (vectors *confirmed*) and the checklist moved from *planned* to *built*; the review of the branch is tickets S4b-FR-25..S4b-FR-37 ([10](10-sprint-log.md) §15). |
 | 0.97 | 2026-10-07 | Claude (Code), lead | **The iPhone's Google Drive wiring built on `feat/ios-drive`** ([10](10-sprint-log.md) v0.157, [15](15-google-drive-backup-and-sharing.md) v0.31 §9.11, [06](06-test-plan.md) v0.139). §1: the iPhone Drive bullet (compiled and logic-tested; no iPhone, no Google round trip; the owner's two build settings). N17: the iPhone's Drive is built; follow-ups S4b-BL-143 (background refresh), -144 (the newcomer's platform in the offer), -145 (a notice for a removed passcode); decisions for the lead in the branch report. |
+| 0.98 | 2026-10-07 | Claude, lead | **The guided tour on Android and iPhone built on `feat/app-guided-tour`** (no pull request yet; [10](10-sprint-log.md) S4b-FR-39): the phones' version of the website's S4b-FR-38 tour, in common Compose code, with its mutation gates (`tools/mutations/app-tour*.json`; `tools/mutate.mjs` now also runs Gradle tests). §1 gets one line. |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 
@@ -127,6 +128,7 @@ section is only today's state. Earlier versions of this file (git history) carry
   gaps are S4b-BL-99..110 ([10](10-sprint-log.md) §12.7). Next: N15.
 
 - **The path trace v2 and *Have I been here?* (N20, PR #146, branch `feat/path-trace-v2`, not yet merged):** built on Android, the iPhone (common code; the Swift part compiled, not run) and the website: repeated paths drawn dashed and orange with three looks, an optional alert, *Finish walk* and saved walks (Room 11, IndexedDB 3, in no export, backup, sync, Drive or AI path), the website's recorder, and the on-demand place check, all in four languages (hi, ta, te *under review*) with a *Your paths* guide page. One algorithm in Kotlin and TypeScript, 58 shared vectors, *confirmed*. Open: the review's must-fix items (S4b-FR-25..S4b-FR-30, in progress), the backlog (S4b-FR-31..S4b-FR-36) and the owner's device checks (S4b-FR-37: TC-M-25 re-run, TC-M-57..TC-M-61, MT-75..MT-81); nothing is claimed run on a device.
+- **The guided tour on the phones (S4b-FR-39, branch `feat/app-guided-tour`, no pull request yet):** a one-time *Take the tour* offer on the first visit to the Map, then a card per feature over the real screens with a spotlight that takes no touch, *Skip tour*, *Back*, *Next*, replay from Settings > About beside *Help*, in four languages (hi, ta, te *under review*); common code in `:ui` (`Tour*.kt`), the choice kept as `tour` in the settings store; its rules have named mutation gates. Not checked on a device: TalkBack and VoiceOver, the iPhone (compiled only), a real Map under the scrim.
 - **Live:** https://doorprints.web.app, deployed from `main` by `web.yml` (Firebase Hosting, Workload Identity
   Federation, main only). The user guide is built by `pages.yml` (GitHub Pages).
 - **Website Google Drive (N17, PR #118, merged 2026-10-03 as cc5b5a3):** connect, recovery key shown once, backups, sync, L1 deletion and
