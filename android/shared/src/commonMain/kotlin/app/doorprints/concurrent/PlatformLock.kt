@@ -21,10 +21,14 @@ package app.doorprints.concurrent
 /**
  * A re-entrant mutual-exclusion lock for the few short, non-suspending critical sections of the Drive wiring (the
  * redirect's one pending request, the device key's cache, the state files' read-modify-write). Common code cannot use
- * `synchronized` (it is a JVM word that Kotlin/Native ignores), so each platform gives the real thing: Android
- * `ReentrantLock`, the iPhone `NSRecursiveLock`. Never held across a suspension point or a callback into other code.
+ * `synchronized` (it is a JVM word that Kotlin/Native ignores), so each platform gives the real thing ([PlatformLock]
+ * below): Android `ReentrantLock`, the iPhone `NSRecursiveLock`. Never held across a suspension point or a callback into
+ * other code.
  */
-expect class PlatformLock() {
+interface PlatformLock {
     /** Runs [block] holding the lock; released on any exit, an exception included. */
     fun <T> withLock(block: () -> T): T
 }
+
+/** A new lock of the platform's kind. */
+expect fun PlatformLock(): PlatformLock

@@ -20,10 +20,10 @@ package app.doorprints.concurrent
 
 import platform.Foundation.NSRecursiveLock
 
-actual class PlatformLock actual constructor() {
+private class RecursivePlatformLock : PlatformLock {
     private val lock = NSRecursiveLock()
 
-    actual fun <T> withLock(block: () -> T): T {
+    override fun <T> withLock(block: () -> T): T {
         lock.lock()
         try {
             return block()
@@ -32,3 +32,5 @@ actual class PlatformLock actual constructor() {
         }
     }
 }
+
+actual fun PlatformLock(): PlatformLock = RecursivePlatformLock()
