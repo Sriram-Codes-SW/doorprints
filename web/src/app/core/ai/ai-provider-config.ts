@@ -107,6 +107,16 @@ export function validateBaseUrl(input: string, android = false): BaseUrlCheck {
   return { valid: true, normalised: `${scheme}://${host}${parts[2] ?? ''}${path}`, host };
 }
 
+/**
+ * {@link validateBaseUrl} for the website: the same rules, except that `[::1]` is refused. The page's CSP `connect-src` can
+ * name `localhost` and `127.0.0.1` but has no source expression for an IPv6 literal (Chrome logs "invalid source" for
+ * `http://[::1]:*`), so a `[::1]` address would be blocked by the browser; the person is told to use `localhost`.
+ */
+export function validateWebBaseUrl(input: string): BaseUrlCheck {
+  const check = validateBaseUrl(input);
+  return check.valid && check.host === '[::1]' && check.normalised.startsWith('http://') ? { valid: false, reason: 'insecureHost' } : check;
+}
+
 /** Whether `host` (as `validateBaseUrl` returns it) is this device itself: a local AI server, which usually needs no key and a CORS setting. */
 export function isLocalHost(host: string): boolean {
   return LOCAL_HOSTS.includes(host);
@@ -119,7 +129,7 @@ export const GEMINI_HOST = 'generativelanguage.googleapis.com';
 export function aiHostOf(config: AiProviderConfig): string {
   if (config.kind === 'gemini') return GEMINI_HOST;
   if (config.kind === 'openai-compatible') {
-    const check = validateBaseUrl(config.baseUrl);
+    const check = validateWebBaseUrl(config.baseUrl);
     return check.valid ? check.host : '';
   }
   return '';
@@ -128,7 +138,7 @@ export function aiHostOf(config: AiProviderConfig): string {
 /** Whether `config` can answer: a Gemini key is checked elsewhere; an OpenAI-compatible one needs a valid URL and a model. */
 export function isUsable(config: AiProviderConfig, hasGeminiKey: boolean): boolean {
   if (config.kind === 'gemini') return hasGeminiKey;
-  if (config.kind === 'openai-compatible') return config.model.trim() !== '' && validateBaseUrl(config.baseUrl).valid;
+  if (config.kind === 'openai-compatible') return config.model.trim() !== '' && validateWebBaseUrl(config.baseUrl).valid;
   return false; // anthropic: reserved, no adapter yet
 }
 
@@ -155,7 +165,7 @@ export function readAiConfig(): AiProviderConfig {
 
 /** Saves the choice in localStorage (a preference, not a secret); the base URL is saved normalised when it is valid. */
 export function saveAiConfig(config: AiProviderConfig): AiProviderConfig {
-  const check = validateBaseUrl(config.baseUrl);
+  const check = validateWebBaseUrl(config.baseUrl);
   const saved: AiProviderConfig = {
     kind: config.kind,
     baseUrl: check.valid ? check.normalised : config.baseUrl.trim(),

@@ -395,7 +395,7 @@ when the policy is missing, is set twice, or is set by any rule other than `**`:
 - `style-src 'unsafe-inline'`: Angular injects component styles as `<style>` elements at runtime.
 - `connect-src https:`: the user chooses the API address at runtime, so any HTTPS origin is allowed. The map tiles
   (OpenFreeMap) and Nominatim are HTTPS too.
-- `connect-src http://localhost:* http://127.0.0.1:* http://[::1]:*`: a Doorprints server on the user's **own** machine. This is
+- `connect-src http://localhost:* http://127.0.0.1:*`: a Doorprints server on the user's **own** machine. This is
   also the default server address (`http://localhost:8080`, the docker-compose setup) and the local API during
   development. It opens only the user's own loopback interface, `https:` is already wider, and `script-src 'self'`
   leaves no injected script to use it. Two browser behaviours to expect:

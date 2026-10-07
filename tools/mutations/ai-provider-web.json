@@ -102,6 +102,12 @@
       "find": "[LANG_KEY, API_CONFIG_KEY];",
       "replace": "[LANG_KEY, API_CONFIG_KEY, 'doorprints.ai-base-url'];",
       "expect": "\"Remove all data\" sweeps the three settings"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-provider-config.ts",
+      "find": "check.valid && check.host === '[::1]' && check.normalised.startsWith('http://') ?",
+      "replace": "false ?",
+      "expect": "refuses http://[::1] as an insecure host"
     }
   ]
 }

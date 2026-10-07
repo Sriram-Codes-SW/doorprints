@@ -18,7 +18,7 @@
 
 import type { JsonChatModel } from './json-chat-model';
 import { ANSWER_SCHEMA, LISTING_SCHEMA, OnDeviceAiError, type OnDeviceAiErrorKind, PLAN_SCHEMA } from './on-device-ai.service';
-import { validateBaseUrl } from './ai-provider-config';
+import { validateWebBaseUrl } from './ai-provider-config';
 import { schemaTrailer, toStrictSchema } from './schema-dialect';
 
 /**
@@ -154,7 +154,7 @@ export class OpenAiCompatibleChatModel implements JsonChatModel {
   ) {}
 
   async generateJson(system: string, user: string, schema: object, temperature: number): Promise<string> {
-    const check = validateBaseUrl(this.settings.baseUrl);
+    const check = validateWebBaseUrl(this.settings.baseUrl);
     if (!check.valid) throw new OnDeviceAiError('unavailable');
     const strict = toStrictSchema(schema);
     const name = schemaName(schema);
@@ -180,7 +180,7 @@ export class OpenAiCompatibleChatModel implements JsonChatModel {
 
   /** One call with `max_tokens` 5 and no `response_format`; a text answer means the URL, the key and the model work. */
   async ping(): Promise<void> {
-    const check = validateBaseUrl(this.settings.baseUrl);
+    const check = validateWebBaseUrl(this.settings.baseUrl);
     if (!check.valid) throw new OnDeviceAiError('unavailable');
     const body = openAiBody(3, this.settings.model, 'ping', PING_SYSTEM, 'ping', 0, null, PING_MAX_TOKENS);
     const res = await this.post(check.normalised, body);
