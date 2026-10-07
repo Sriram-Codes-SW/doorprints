@@ -107,6 +107,24 @@ export function validateBaseUrl(input: string, android = false): BaseUrlCheck {
   return { valid: true, normalised: `${scheme}://${host}${parts[2] ?? ''}${path}`, host };
 }
 
+/** Whether `host` (as `validateBaseUrl` returns it) is this device itself: a local AI server, which usually needs no key and a CORS setting. */
+export function isLocalHost(host: string): boolean {
+  return LOCAL_HOSTS.includes(host);
+}
+
+/** The host Google's Gemini API is called on (`GEMINI_URL`), named to the person before anything is sent. */
+export const GEMINI_HOST = 'generativelanguage.googleapis.com';
+
+/** The host the person's text and key go to for `config`: Gemini's, or the saved base URL's; '' when there is none (yet). */
+export function aiHostOf(config: AiProviderConfig): string {
+  if (config.kind === 'gemini') return GEMINI_HOST;
+  if (config.kind === 'openai-compatible') {
+    const check = validateBaseUrl(config.baseUrl);
+    return check.valid ? check.host : '';
+  }
+  return '';
+}
+
 /** Whether `config` can answer: a Gemini key is checked elsewhere; an OpenAI-compatible one needs a valid URL and a model. */
 export function isUsable(config: AiProviderConfig, hasGeminiKey: boolean): boolean {
   if (config.kind === 'gemini') return hasGeminiKey;

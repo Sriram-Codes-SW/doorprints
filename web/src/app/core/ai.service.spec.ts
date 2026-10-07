@@ -22,7 +22,7 @@ import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AiService, aiErrorMsg, aiOffMsg } from './ai.service';
 import { ConfigService } from './config.service';
-import { AI_OPT_IN_KEY, AI_PROVIDER_KEY, GEMINI_KEY_KEY } from './storage-keys';
+import { AI_BASE_URL_KEY, AI_KIND_KEY, AI_MODEL_KEY, AI_OPT_IN_KEY, AI_PROVIDER_KEY, GEMINI_KEY_KEY } from './storage-keys';
 import { OnDeviceAiError, OnDeviceAiService } from './ai/on-device-ai.service';
 import { firstValueFrom } from 'rxjs';
 
@@ -148,6 +148,40 @@ describe('AiService', () => {
     expect(ai.enabled()).toBe(false);
     expect(ai.offReason()).toBe('noKey');
     expect(aiOffMsg('noKey').key).toBe('ai.noKey');
+  });
+
+  it('names the host the own AI is called on: Gemini\'s, or the saved base URL\'s, and none while there is none', () => {
+    const ai = create(false);
+    expect(ai.ownHost()).toBe('generativelanguage.googleapis.com');
+    ai.setAiConfig({ kind: 'openai-compatible', baseUrl: 'https://API.Groq.com:443/openai/v1/', model: 'llama3.1' });
+    expect(ai.ownHost()).toBe('api.groq.com');
+    ai.setAiConfig({ kind: 'openai-compatible', baseUrl: 'http://localhost:11434/v1', model: 'llama3.1' });
+    expect(ai.ownHost()).toBe('localhost');
+    ai.setAiConfig({ kind: 'openai-compatible', baseUrl: 'nonsense', model: 'm' });
+    expect(ai.ownHost()).toBe('');
+    ai.removeGeminiKey();
+    expect(ai.ownHost()).toBe('generativelanguage.googleapis.com');
+  });
+
+  it('an empty key leaves nothing stored, so a key never follows a changed service', () => {
+    const ai = create(false);
+    ai.saveGeminiKey('fake-key-1234', false);
+    ai.saveGeminiKey('', false);
+    expect(sessionStorage.getItem(GEMINI_KEY_KEY)).toBeNull();
+    expect(ai.hasGeminiKey()).toBe(false);
+    expect(localStorage.getItem(AI_PROVIDER_KEY)).toBe('device');
+  });
+
+  it('has words for the own AI service\'s failures, naming the host from the saved settings', () => {
+    localStorage.setItem(AI_KIND_KEY, 'openai-compatible');
+    localStorage.setItem(AI_BASE_URL_KEY, 'https://api.openai.com/v1');
+    localStorage.setItem(AI_MODEL_KEY, 'gpt-4o-mini');
+    expect(aiErrorMsg(new OnDeviceAiError('keyRejected'))).toEqual({ key: 'ai.keyRejectedHost', params: { host: 'api.openai.com' } });
+    expect(aiErrorMsg(new OnDeviceAiError('modelNotFound')).key).toBe('ai.modelNotFound');
+    expect(aiErrorMsg(new OnDeviceAiError('unreachable'))).toEqual({ key: 'ai.unreachable', params: { host: 'api.openai.com' } });
+    expect(aiErrorMsg(new OnDeviceAiError('unreachable'), 'localhost')).toEqual({ key: 'ai.unreachableLocal', params: { host: 'localhost' } });
+    expect(aiErrorMsg(new OnDeviceAiError('unreachable'), '127.0.0.1').key).toBe('ai.unreachableLocal');
+    expect(aiErrorMsg(new OnDeviceAiError('keyRejected'), '').key).toBe('ai.keyRejected');
   });
 
   it('has words for the own key\'s failures', () => {

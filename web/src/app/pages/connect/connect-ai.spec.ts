@@ -87,7 +87,7 @@ describe('ConnectPage AI card', () => {
     expect(el<HTMLInputElement>('#ai-provider-server')!.disabled).toBe(true);
     expect(el<HTMLInputElement>('#ai-provider-device')!.checked).toBe(true);
     expect(text()).toContain('Connect a server above to use this.');
-    expect(text()).toContain('Paste your Gemini API key below');
+    expect(text()).toContain('Save your AI service settings and key below');
     expect(el<HTMLAnchorElement>('#ai a[href="https://aistudio.google.com/apikey"]')?.rel).toContain('noopener');
 
     el<HTMLButtonElement>('#gemini-save')!.click();

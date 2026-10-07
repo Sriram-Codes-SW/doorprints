@@ -145,7 +145,7 @@ describe('PlanPage', () => {
       imports: [PlanPage],
       providers: [
         provideRouter([]),
-        { provide: AiService, useValue: { enabled: signal(true), usesOwnKey: signal(false), planVisits } },
+        { provide: AiService, useValue: { enabled: signal(true), usesOwnKey: signal(false), ownHost: signal(''), planVisits } },
         // No stored map view and no houses: the start stays unset until the user sets it.
         { provide: LocalDataService, useValue: { houses: () => of([]) } },
       ],

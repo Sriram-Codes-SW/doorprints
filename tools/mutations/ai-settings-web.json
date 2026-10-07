@@ -1,0 +1,119 @@
+{
+  "spec": "web/src/app/pages/connect/connect-ai-provider.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/pages/connect/connect-page.ts",
+      "find": "this.aiBaseUrl.set(keep ? saved.baseUrl : url);",
+      "replace": "this.aiBaseUrl.set(keep ? saved.baseUrl : AI_PRESETS[0].baseUrl);",
+      "expect": "each preset prefills its own base URL"
+    },
+    {
+      "file": "web/src/app/pages/connect/connect-page.ts",
+      "find": "protected readonly urlEditable = computed(() => this.service() === 'custom');",
+      "replace": "protected readonly urlEditable = computed(() => this.service() !== 'gemini');",
+      "expect": "only Custom can be edited"
+    },
+    {
+      "file": "web/src/app/pages/connect/connect-page.html",
+      "find": "@if (urlErrorKey(); as errorKey) {",
+      "replace": "@if (false && urlErrorKey(); as errorKey) {",
+      "expect": "shown as a field error in a polite live region"
+    },
+    {
+      "file": "web/src/app/pages/connect/connect-page.html",
+      "find": "<div aria-live=\"polite\">\n                @if (urlErrorKey()",
+      "replace": "<div>\n                @if (urlErrorKey()",
+      "expect": "shown as a field error in a polite live region"
+    },
+    {
+      "file": "web/src/app/pages/connect/connect-page.ts",
+      "find": "const keyMissing = this.aiKey.trim() === '' && !this.keyOptional() && !this.keySavedHere();",
+      "replace": "const keyMissing = this.aiKey.trim() === '' && false && !this.keySavedHere();",
+      "expect": "asks for the model, and for a key"
+    },
+    {
+      "file": "web/src/app/pages/connect/connect-page.ts",
+      "find": "    this.ai.setAiConfig(config);\n    if (typed",
+      "replace": "    if (typed",
+      "expect": "Save keeps the three settings"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-provider-config.ts",
+      "find": "    return check.valid ? check.host : '';\n  }\n  return '';",
+      "replace": "    return GEMINI_HOST;\n  }\n  return '';",
+      "expect": "Save keeps the three settings"
+    },
+    {
+      "file": "web/src/app/pages/connect/connect-page.ts",
+      "find": "savedCheck.valid && savedCheck.normalised === check.normalised;",
+      "replace": "savedCheck.valid && true;",
+      "expect": "another service never inherits it"
+    },
+    {
+      "file": "web/src/app/core/ai.service.ts",
+      "find": "if (clean === '') (remember",
+      "replace": "if (false) (remember",
+      "expect": "asks for the model, and for a key"
+    },
+    {
+      "file": "web/src/app/pages/connect/connect-page.ts",
+      "find": "      this.ai.setAiConfig({ kind: 'gemini', baseUrl: '', model: '' });\n",
+      "replace": "",
+      "expect": "Gemini keeps today's fields"
+    },
+    {
+      "file": "web/src/app/pages/connect/connect-page.ts",
+      "find": "return check.valid ? check.host : '';\n  });\n  protected readonly isLocal",
+      "replace": "return GEMINI_HOST;\n  });\n  protected readonly isLocal",
+      "expect": "names the host the text goes to"
+    },
+    {
+      "file": "web/src/app/pages/connect/connect-page.ts",
+      "find": "'connect.aiTestOk', params: { host } }",
+      "replace": "'connect.aiTestOk', params: { host: GEMINI_HOST } }",
+      "expect": "Test names the host that accepted the key"
+    },
+    {
+      "file": "web/src/app/core/ai.service.ts",
+      "find": "if (err.kind === 'modelNotFound') return { key: 'ai.modelNotFound' };\n",
+      "replace": "",
+      "expect": "Test names the failure"
+    },
+    {
+      "file": "web/src/app/core/ai.service.ts",
+      "find": "where ? { key: 'ai.keyRejectedHost', params: { host: where } } : { key: 'ai.keyRejected' }",
+      "replace": "{ key: 'ai.keyRejected' }",
+      "expect": "Test names the failure"
+    },
+    {
+      "file": "web/src/app/core/ai.service.ts",
+      "find": "isLocalHost(where) ? 'ai.unreachableLocal' : 'ai.unreachable'",
+      "replace": "'ai.unreachable'",
+      "expect": "a local service that cannot be reached"
+    },
+    {
+      "file": "web/src/app/pages/connect/connect-page.html",
+      "find": "ai-remember-hint\" class=\"muted small\">{{ 'connect.rememberHint' | t }}</p>\n            </div>\n            <div role=\"alert\">",
+      "replace": "ai-remember-hint\" class=\"muted small\">{{ 'connect.rememberHint' | t }}</p>\n            </div>\n            <div>",
+      "expect": "the result is in a live region"
+    },
+    {
+      "file": "web/src/app/pages/connect/connect-page.ts",
+      "find": "    this.ai.removeGeminiKey();\n    this.aiBaseUrl.set(",
+      "replace": "    this.aiBaseUrl.set(",
+      "expect": "Remove key forgets the key"
+    },
+    {
+      "file": "web/src/app/pages/connect/connect-page.html",
+      "find": "[type]=\"showAiKey() ? 'text' : 'password'\"",
+      "replace": "[type]=\"'text'\"",
+      "expect": "masks the key"
+    },
+    {
+      "file": "web/src/app/pages/connect/connect-page.html",
+      "find": "(service() === 'ollama' ? 'connect.aiLocalCorsHint' : 'connect.aiLocalCorsHintOther')",
+      "replace": "'connect.aiLocalCorsHintOther'",
+      "expect": "show the CORS hint with OLLAMA_ORIGINS"
+    }
+  ]
+}
