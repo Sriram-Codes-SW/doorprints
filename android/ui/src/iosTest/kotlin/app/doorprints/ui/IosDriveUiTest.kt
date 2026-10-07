@@ -54,6 +54,10 @@ class IosDriveUiTest {
 
     @Test
     fun aCopiedSecretIsOnThePasteboardForThePersonToPaste() {
+        // A headless simulator test host may have no working pasteboard (the Keychain test skips the same way): if a plain
+        // string does not even read back, there is nothing to assert about the seam on this host.
+        UIPasteboard.generalPasteboard.string = "probe"
+        if (UIPasteboard.generalPasteboard.string != "probe") return
         IosClipboardSeam().copySensitive("abcd-efgh-ijkl")
         assertEquals("abcd-efgh-ijkl", UIPasteboard.generalPasteboard.string)
         UIPasteboard.generalPasteboard.string = ""
