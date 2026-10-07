@@ -1528,7 +1528,7 @@
     <string name="tour_add_body">Save house here puts a pin where you are standing. To add a house somewhere else, press and hold the map there.</string>
     <string name="tour_add_action">Tap Save house here when you are at a house, or press and hold the map where it is.</string>
     <string name="tour_hunt_title">Hunt mode</string>
-    <string name="tour_hunt_body">Switch it on while you are out looking. Doorprints tells you when you pass a house you have seen, and when you stay somewhere it can save a visit.</string>
+    <string name="tour_hunt_body">Switch it on while you are out looking. Doorprints tells you when you pass a house you have seen, and when you stay somewhere it can save a visit. Its alert distance and minimum stay are in Settings, under Hunt mode.</string>
     <string name="tour_hunt_action">Switch on Hunt mode when you start walking. It asks for your location only when you switch it on.</string>
     <string name="tour_check_title">Have I been here?</string>
     <string name="tour_check_body">Checks whether you have walked a place before, from the paths kept on this phone. The answer never leaves the phone.</string>
@@ -1555,7 +1555,7 @@
     <string name="tour_save_body">Save a copy of everything as a file you keep, or as readable copies you can open in any spreadsheet.</string>
     <string name="tour_save_action">Tap Save a copy, choose what to include, then save.</string>
     <string name="tour_import_title">Import a backup</string>
-    <string name="tour_import_body">Bring back a copy you saved, or add the houses from a file another phone saved. You can undo an import from the Houses tab. Where the phone supports it (Android today), a listing you share from another app lands in Doorprints as Add a shared listing.</string>
+    <string name="tour_import_body">Bring back a copy you saved, or add the houses from a file another phone saved. You can undo an import from the Houses tab. Where the phone supports it (Android today), a listing you share from another app opens Doorprints on the map, which asks where the house is.</string>
     <string name="tour_import_action">Tap Import a backup and pick a file when you have one.</string>
     <string name="tour_share_title">Share updates with…</string>
     <string name="tour_share_body">Send someone a small file of what changed since last time, through any app, such as WhatsApp or email.</string>
@@ -1574,7 +1574,7 @@
     <string name="tour_server_action">Skip this unless you run a server. You connect it here, by code or by API key.</string>
     <string name="tour_ai_title">AI features</string>
     <string name="tour_ai_body">Switch on AI features in Settings, under AI features, so the Assistant and AI help can work. They send what you ask to Google Gemini, through your server or straight from this phone with your own Gemini key. They are off until you turn them on.</string>
-    <string name="tour_ai_action">Open Settings, find AI features and read what is sent before you switch it on. It is optional.</string>
+    <string name="tour_ai_action">Read what is sent, then switch on AI features if you want them. It is optional.</string>
     <string name="tour_brokers_title">Brokers</string>
     <string name="tour_brokers_body">Keep the brokers and owners you meet, what they told you, and which houses they showed.</string>
     <string name="tour_brokers_action">Tap Brokers to see the list, or add one later from a house.</string>
