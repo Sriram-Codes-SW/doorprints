@@ -24,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import app.doorprints.data.CommonRepository
 import app.doorprints.data.toBundle
+import app.doorprints.drive.ios.IosDriveFolders
 import app.doorprints.export.ArchiveImports
 import app.doorprints.export.ExportProblem
 import app.doorprints.export.ImportCheck
@@ -456,8 +457,9 @@ internal class IosImportServices(
         }
         return when (outcome) {
             CopyOutcome.OK -> {
-                // A file another app opened here arrives in Documents/Inbox; the staged copy is all that is needed.
-                if (isInbox(url)) IosCopyFolders.remove(url.path)
+                // A file another app opened here arrives in Documents/Inbox, a backup taken from Google Drive in the Drive staging
+                // folder (a decrypted ZIP: it must not wait for a sweep); the staged copy is all that is needed.
+                if (isInbox(url) || IosDriveFolders.isStagedImport(url.path)) IosCopyFolders.remove(url.path)
                 ImportStaging.Staged(staged)
             }
             CopyOutcome.CANCELLED -> {

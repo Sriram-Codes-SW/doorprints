@@ -20,7 +20,21 @@
 				<string>doorprints</string>
 			</array>
 		</dict>
+		<!-- Google's sign-in for Drive (S4b-BL-117, docs/15 §5.5): the iOS client's reversed id, the redirect of
+		     ASWebAuthenticationSession. The build setting is empty (and the scheme a placeholder) until the owner's
+		     Config/Drive.local.xcconfig sets it; nothing is committed. -->
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>app.doorprints.google-signin</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>$(GOOGLE_IOS_URL_SCHEME)</string>
+			</array>
+		</dict>
 	</array>
+	<!-- The iOS OAuth client id for Google Drive, from the GOOGLE_IOS_CLIENT_ID build setting (empty: Drive is "not available"). -->
+	<key>GoogleIOSClientId</key>
+	<string>$(GOOGLE_IOS_CLIENT_ID)</string>
 	<!-- Import a backup from another app (S4b-BL-81, docs/11 5.28): "Open in Doorprints" for a backup or update ZIP, or
 	     the bare data.json of a server's export. Alternate: Doorprints is not the app for every ZIP. Not in place: iOS
 	     hands over a copy in Documents/Inbox, which the Import screen stages and then deletes. -->

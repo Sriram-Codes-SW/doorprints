@@ -18,6 +18,10 @@
 
 package app.doorprints.drive.ios
 
+import app.doorprints.drive.keychain.ItemProtection
+import app.doorprints.drive.keychain.KeychainItems
+import app.doorprints.drive.keychain.KeychainResult
+
 import kotlinx.cinterop.ByteVar
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.alloc
@@ -60,51 +64,15 @@ import platform.Security.kSecMatchLimitOne
 import platform.Security.kSecReturnData
 import platform.Security.kSecUseAuthenticationContext
 import platform.Security.kSecValueData
-import platform.darwin.OSStatus
-
-/** What a Keychain read found: the Security framework's [status] and, on `errSecSuccess`, the item's [data]. */
-internal class KeychainResult(val status: OSStatus, val data: ByteArray?) {
-    override fun toString() = "KeychainResult(status=$status)"
-}
-
-/** How an item is protected (docs/15 §5.5, §10.3). Both kinds are this device only, never in iCloud Keychain or a backup. */
-internal enum class ItemProtection {
-    /**
-     * `kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly`: readable while the phone is unlocked; iOS **deletes** the item when
-     * the passcode is removed (the refresh token's place, so a removed lock means connecting again).
-     */
-    WHEN_UNLOCKED_WITH_PASSCODE,
-
-    /**
-     * The same class plus `kSecAccessControlUserPresence`: every read asks the person (Face ID, Touch ID or the passcode)
-     * through the system's own prompt, so the deletion proof's key cannot be used without them (docs/15 §10.2).
-     */
-    USER_PRESENCE_EACH_READ,
-}
-
-/** The few Keychain calls the Drive wiring makes, on generic-password items of one service; fakes stand in for tests. */
-internal interface DriveKeychainItems {
-    /** The item's data. [prompt] (the reason the system shows) only matters for a [ItemProtection.USER_PRESENCE_EACH_READ] item. */
-    fun read(account: String, prompt: String? = null): KeychainResult
-
-    /** Updates the item or adds it (never delete-then-add, which could leave nothing); `errSecSuccess` when it is there. */
-    fun write(account: String, data: ByteArray, protection: ItemProtection): OSStatus
-
-    /** Adds the item only when there is none: `errSecSuccess` also when it was already there (its data is not touched). */
-    fun addIfAbsent(account: String, data: ByteArray, protection: ItemProtection): OSStatus
-
-    /** Removes the item; `errSecSuccess` also when there was none. */
-    fun delete(account: String): OSStatus
-}
 
 /**
- * [DriveKeychainItems] on the Security framework: generic passwords of service `app.doorprints.drive`. Compiled for
+ * [KeychainItems] on the Security framework: generic passwords of service `app.doorprints.drive`. Compiled for
  * the simulator and the device; the calls need a signed app with Keychain access, which a unit-test host does not have
  * (`errSecMissingEntitlement`), so a real round trip is a device check (docs/ops/manual-test-checklist.md). No call logs
  * anything: statuses are returned, data never leaves the result.
  */
 @OptIn(ExperimentalForeignApi::class)
-internal object SecurityDriveKeychain : DriveKeychainItems {
+object SecurityDriveKeychain : KeychainItems {
     private const val SERVICE = "app.doorprints.drive"
 
     override fun read(account: String, prompt: String?): KeychainResult {
@@ -131,24 +99,24 @@ internal object SecurityDriveKeychain : DriveKeychainItems {
         }
     }
 
-    override fun write(account: String, data: ByteArray, protection: ItemProtection): OSStatus {
+    override fun write(account: String, data: ByteArray, protection: ItemProtection): Int {
         val updated = withQuery(account, emptyList()) { query ->
             withDictionary(listOf(kSecValueData to CFBridgingRetain(data.toNSData())), release = 1) { changes -> SecItemUpdate(query, changes) }
         }
         return if (updated == errSecItemNotFound) add(account, data, protection) else updated
     }
 
-    override fun addIfAbsent(account: String, data: ByteArray, protection: ItemProtection): OSStatus {
+    override fun addIfAbsent(account: String, data: ByteArray, protection: ItemProtection): Int {
         val status = add(account, data, protection)
         return if (status == errSecDuplicateItem) errSecSuccess else status
     }
 
-    override fun delete(account: String): OSStatus {
+    override fun delete(account: String): Int {
         val status = withQuery(account, emptyList()) { query -> SecItemDelete(query) }
         return if (status == errSecItemNotFound) errSecSuccess else status
     }
 
-    private fun add(account: String, data: ByteArray, protection: ItemProtection): OSStatus {
+    private fun add(account: String, data: ByteArray, protection: ItemProtection): Int {
         val control = if (protection == ItemProtection.USER_PRESENCE_EACH_READ) {
             SecAccessControlCreateWithFlags(
                 null, kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly, kSecAccessControlUserPresence, null,
@@ -201,5 +169,5 @@ internal object SecurityDriveKeychain : DriveKeychainItems {
     }
 
     /** `errSecParam`: the access control could not be made (no passcode set on the phone). */
-    private const val ACCESS_CONTROL_REFUSED: OSStatus = -50
+    private const val ACCESS_CONTROL_REFUSED: Int = -50
 }

@@ -23,6 +23,7 @@ import app.doorprints.crypto.IosCryptoProvider
 import app.doorprints.drive.device.DeviceKeyBackend
 import app.doorprints.drive.device.DeviceKeyException
 import app.doorprints.drive.device.DeviceKeyStatus
+import app.doorprints.drive.keychain.KeychainStatus
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.alloc
 import kotlinx.cinterop.memScoped
@@ -85,7 +86,7 @@ import platform.CoreFoundation.kCFTypeDictionaryValueCallBacks
  * Nothing is logged; an error carries the Security status, never key material.
  */
 @OptIn(ExperimentalForeignApi::class)
-internal class SecureEnclaveDeviceKey(
+class SecureEnclaveDeviceKey(
     private val tag: String = DEFAULT_TAG,
     private val secureEnclave: Boolean = !runsInSimulator(),
 ) : DeviceKeyBackend {
@@ -231,15 +232,7 @@ internal class SecureEnclaveDeviceKey(
         /** The Simulator sets this variable for every app it runs; a device never does. */
         fun runsInSimulator(): Boolean = NSProcessInfo.processInfo.environment["SIMULATOR_DEVICE_NAME"] != null
 
-        /**
-         * What a Security status means for the key. Only the key store's own word loses a key (the item is gone); a locked
-         * phone, a refusal or any other failure waits (`NEEDS_UNLOCK`) and never recreates, as Android's classification.
-         */
-        fun kindOf(status: Int): DeviceKeyException.Kind = when (status) {
-            errSecItemNotFound -> DeviceKeyException.Kind.LOST
-            errSecInteractionNotAllowed -> DeviceKeyException.Kind.NEEDS_UNLOCK
-            else -> DeviceKeyException.Kind.NEEDS_UNLOCK
-        }
+        fun kindOf(status: Int): DeviceKeyException.Kind = KeychainStatus.deviceKeyKind(status)
 
         fun exceptionFor(status: Int, what: String): DeviceKeyException =
             DeviceKeyException(kindOf(status), "$what (status $status)")

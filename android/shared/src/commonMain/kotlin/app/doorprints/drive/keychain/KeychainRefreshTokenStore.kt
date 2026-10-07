@@ -16,13 +16,10 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-package app.doorprints.drive.ios
+package app.doorprints.drive.keychain
 
 import app.doorprints.drive.auth.browser.RefreshTokenStore
 import app.doorprints.drive.device.DeviceKeyException
-import platform.Security.errSecInteractionNotAllowed
-import platform.Security.errSecItemNotFound
-import platform.Security.errSecSuccess
 
 /**
  * The iPhone's sealed refresh token (docs/15 §5.5): a Keychain item, `kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly`
@@ -32,24 +29,24 @@ import platform.Security.errSecSuccess
  * [DeviceKeyException.Kind.LOST]: the sign-in then asks for consent again, which is all a lost token costs. The token is
  * never logged and never in an exception message.
  */
-internal class KeychainRefreshTokenStore(
-    private val keychain: DriveKeychainItems = SecurityDriveKeychain,
+class KeychainRefreshTokenStore(
+    private val keychain: KeychainItems,
     private val account: String = ACCOUNT,
 ) : RefreshTokenStore {
 
     override fun read(): String? {
         val result = keychain.read(account)
         return when (result.status) {
-            errSecSuccess -> result.data?.decodeToString()?.takeIf { it.isNotBlank() }
-            errSecItemNotFound -> null
-            errSecInteractionNotAllowed -> throw DeviceKeyException(DeviceKeyException.Kind.NEEDS_UNLOCK, "the Keychain is locked (status ${result.status})")
+            KeychainStatus.SUCCESS -> result.data?.decodeToString()?.takeIf { it.isNotBlank() }
+            KeychainStatus.ITEM_NOT_FOUND -> null
+            KeychainStatus.INTERACTION_NOT_ALLOWED -> throw DeviceKeyException(DeviceKeyException.Kind.NEEDS_UNLOCK, "the Keychain is locked (status ${result.status})")
             else -> throw DeviceKeyException(DeviceKeyException.Kind.LOST, "the refresh token could not be read (status ${result.status})")
         }
     }
 
     override fun write(token: String) {
         val status = keychain.write(account, token.encodeToByteArray(), ItemProtection.WHEN_UNLOCKED_WITH_PASSCODE)
-        if (status != errSecSuccess) throw IllegalStateException("the refresh token was not kept (status $status)")
+        if (status != KeychainStatus.SUCCESS) throw IllegalStateException("the refresh token was not kept (status $status)")
     }
 
     override fun clear() {

@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-package app.doorprints.drive.ios
+package app.doorprints.drive.keychain
 
 import app.doorprints.crypto.CryptoProvider
 import app.doorprints.drive.device.ProtectedSecret
@@ -24,12 +24,6 @@ import app.doorprints.drive.device.SecretOpen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.withContext
-import platform.Security.errSecAuthFailed
-import platform.Security.errSecInteractionNotAllowed
-import platform.Security.errSecItemNotFound
-import platform.Security.errSecNotAvailable
-import platform.Security.errSecSuccess
-import platform.Security.errSecUserCanceled
 
 /**
  * The deletion proof's secret on the iPhone (docs/15 §10.2, S4b-BL-135): 32 random bytes in a Keychain item whose access
@@ -45,10 +39,10 @@ import platform.Security.errSecUserCanceled
  *
  * Compiled here, not run: it needs a signed app on an iPhone with a passcode (docs/ops/manual-test-checklist.md).
  */
-internal class KeychainProtectedSecret(
+class KeychainProtectedSecret(
     private val crypto: CryptoProvider,
     private val lockPresent: () -> Boolean,
-    private val keychain: DriveKeychainItems = SecurityDriveKeychain,
+    private val keychain: KeychainItems,
     private val account: String = ACCOUNT,
 ) : ProtectedSecret {
 
@@ -58,16 +52,16 @@ internal class KeychainProtectedSecret(
     internal fun openNow(reason: String): SecretOpen {
         if (!lockPresent()) return SecretOpen.NoLock
         val made = keychain.addIfAbsent(account, crypto.randomBytes(KEY_BYTES), ItemProtection.USER_PRESENCE_EACH_READ)
-        if (made != errSecSuccess) return outcomeOf(made)
+        if (made != KeychainStatus.SUCCESS) return outcomeOf(made)
         var read = keychain.read(account, reason)
-        if (read.status == errSecItemNotFound) {
+        if (read.status == KeychainStatus.ITEM_NOT_FOUND) {
             // The item went with the passcode between the add and the read, or an older one was removed: make a new one once.
             keychain.delete(account)
             val again = keychain.addIfAbsent(account, crypto.randomBytes(KEY_BYTES), ItemProtection.USER_PRESENCE_EACH_READ)
-            if (again != errSecSuccess) return outcomeOf(again)
+            if (again != KeychainStatus.SUCCESS) return outcomeOf(again)
             read = keychain.read(account, reason)
         }
-        if (read.status != errSecSuccess) return outcomeOf(read.status)
+        if (read.status != KeychainStatus.SUCCESS) return outcomeOf(read.status)
         val data = read.data
         if (data == null || data.size != KEY_BYTES) {
             data?.fill(0)
@@ -80,18 +74,14 @@ internal class KeychainProtectedSecret(
         const val ACCOUNT = "delete-proof-key"
         private const val KEY_BYTES = 32
 
-        /** `errSecParam`, which the keychain wrapper gives when the access control could not be made (no passcode). */
-        private const val ERR_PARAM = -50
 
-        /** `errSecMissingEntitlement`: a build with no Keychain access (an unsigned test host). */
-        private const val ERR_MISSING_ENTITLEMENT = -34018
 
         /** What a Security status means for the person at the prompt. Anything not named is [SecretOpen.Failed]. */
         fun outcomeOf(status: Int): SecretOpen = when (status) {
-            errSecUserCanceled -> SecretOpen.Cancelled
-            errSecAuthFailed -> SecretOpen.Denied
-            errSecNotAvailable, ERR_PARAM -> SecretOpen.NoLock
-            errSecInteractionNotAllowed, ERR_MISSING_ENTITLEMENT -> SecretOpen.Unavailable
+            KeychainStatus.USER_CANCELED -> SecretOpen.Cancelled
+            KeychainStatus.AUTH_FAILED -> SecretOpen.Denied
+            KeychainStatus.NOT_AVAILABLE, KeychainStatus.PARAM -> SecretOpen.NoLock
+            KeychainStatus.INTERACTION_NOT_ALLOWED, KeychainStatus.MISSING_ENTITLEMENT -> SecretOpen.Unavailable
             else -> SecretOpen.Failed
         }
     }

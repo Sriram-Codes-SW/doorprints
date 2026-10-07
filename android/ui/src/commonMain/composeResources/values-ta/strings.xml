@@ -1492,4 +1492,14 @@
     <string name="trace_here_privacy">இங்கே மட்டும் காட்டப்படும். எதுவும் சேமிக்கப்படாது, அனுப்பப்படாது.</string>
     <string name="trace_here_again">மீண்டும் சோதி</string>
     <string name="trace_here_stretch_a11y">%1$s அருகே உங்கள் நடையின் பகுதி வரைபடத்தில் வரையப்பட்டுள்ளது.</string>
+
+    <!-- S4b-BL-117, S4b-BL-142 (2026-10-07): under review (the iPhone's passcode notices and the QR scanner's words). -->
+    <string name="lock_notice_ios_heading">Google Drive இல் பேக்கப் செய்யவும்</string>
+    <string name="lock_notice_ios_needs">Google Drive காப்புப்பிரதிக்கு இந்த iPhone-இல் கடவுக்குறியீடு தேவை. அமைப்புகள் செயலியில் Face ID &amp; கடவுக்குறியீடு என்பதில் அமைத்துவிட்டு, பிறகு திரும்பி வாருங்கள்.</string>
+    <string name="lock_notice_ios_paused">இந்த iPhone-இல் இனி கடவுக்குறியீடு இல்லாததால் Google Drive காப்புப்பிரதி இடைநிறுத்தப்பட்டுள்ளது. உங்கள் வீடுகள் இந்த iPhone-இல் பாதுகாப்பாக உள்ளன. தொடர கடவுக்குறியீட்டை அமைக்கவும்.</string>
+    <string name="lock_notice_ios_key_lost">இந்த iPhone-இன் பாதுகாப்பான விசை இழக்கப்பட்டதால் Google Drive காப்புப்பிரதி இடைநிறுத்தப்பட்டுள்ளது. உங்கள் வீடுகள் இந்த iPhone-இல் பாதுகாப்பாக உள்ளன. தொடர Google Drive உடன் மீண்டும் இணையுங்கள்.</string>
+    <string name="qr_scan_hint">கேமராவை மற்ற சாதனத்தில் உள்ள Doorprints குறியீட்டை நோக்கிப் பிடிக்கவும்.</string>
+    <string name="qr_scan_not_doorprints">இது Doorprints குறியீடு அல்ல.</string>
+    <string name="qr_scan_too_long">இந்தக் குறியீடு Doorprints குறியீடாக இருக்க மிகவும் நீளமானது.</string>
+    <string name="qr_scan_viewfinder">கேமரா காட்சி</string>
 </resources>

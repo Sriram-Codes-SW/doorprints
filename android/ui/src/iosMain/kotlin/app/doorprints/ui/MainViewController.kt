@@ -66,6 +66,22 @@ fun MainViewController(): UIViewController {
 /** The deep links of this process; main thread only. */
 private val iosDeepLinks = MutableStateFlow<DeepLink?>(null)
 
+/** Opens [link] as a tapped alert or a connect link would (the Drive screens' hand-offs). Main thread. */
+internal fun openDeepLink(link: DeepLink) {
+    iosDeepLinks.value = link
+}
+
+/**
+ * Hands the file at [path] (a decrypted backup from Google Drive) to the Import screen, as a file another app opened in
+ * Doorprints is handed to it: the screen copies it into its own staging and, for a file of the Drive staging folder, deletes
+ * the original ([IosImportServices]). True when the hand-over was made.
+ */
+internal fun openImportFile(path: String): Boolean {
+    val url = platform.Foundation.NSURL.fileURLWithPath(path).absoluteString ?: return false
+    iosDeepLinks.value = DeepLink.ImportFile(url)
+    return true
+}
+
 /**
  * Hunt mode's alerts as notifications (S4b-BL-69): sets the notification centre's delegate, so a tapped alert opens
  * its house or the new-house form. The Swift app calls it from its `init`, before the app finishes launching, as iOS

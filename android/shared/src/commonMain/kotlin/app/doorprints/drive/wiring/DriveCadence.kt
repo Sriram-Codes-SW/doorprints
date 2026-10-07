@@ -19,7 +19,11 @@
 package app.doorprints.drive.wiring
 
 import app.doorprints.drive.connect.SyncInfo
+import app.doorprints.drive.store.StateFile
 import app.doorprints.drive.connect.SyncState
+import kotlinx.io.IOException
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 
 /** How far the periodic Drive sync has backed off, and when its last good pass ended. */
 data class CadenceState(val level: Int = 0, val lastPassAt: Long = 0L)
@@ -84,4 +88,30 @@ class DriveCadenceGate(private val store: CadenceStore) {
     }
 
     companion object
+}
+
+/**
+ * The cadence kept in one small state file (the iPhone's; Android keeps it in private preferences): the back-off level and
+ * the time of the last pass. A missing or damaged file is level 0 with no pass yet, so the next wake runs; a write that
+ * fails is dropped (the cadence only saves a few passes, it is never worth an error).
+ */
+class FileCadenceStore(private val file: StateFile) : CadenceStore {
+    @Serializable
+    private class Dto(val level: Int = 0, val lastPassAt: Long = 0L)
+
+    private val json = Json { ignoreUnknownKeys = true }
+
+    override fun load(): CadenceState = try {
+        file.readText()?.let { json.decodeFromString(Dto.serializer(), it) }?.let { CadenceState(it.level.coerceAtLeast(0), it.lastPassAt) } ?: CadenceState()
+    } catch (_: Exception) {
+        CadenceState()
+    }
+
+    override fun save(state: CadenceState) {
+        try {
+            file.writeText(json.encodeToString(Dto.serializer(), Dto(state.level, state.lastPassAt)))
+        } catch (_: IOException) {
+            // Dropped: the next pass writes it again.
+        }
+    }
 }
