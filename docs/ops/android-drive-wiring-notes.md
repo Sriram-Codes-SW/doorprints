@@ -98,7 +98,7 @@ quietly first; if Google needs a screen, that is a failure that waits for the pe
 - `AndroidDriveTokenProvider.forget()` (memory only), for *Disconnect this device*.
 - `SettingsServices.DriveSection()` with an empty default, one call in `SettingsScreen` before the server section; `:ui` otherwise untouched, nothing under `iosMain`.
 - `Api.httpClient()`, `Notifications.DRIVE_LOCK_ID`, `SyncWorker` (Drive pass), `AppContainer` (database, route, flag, drive), `MainActivity` (registers the foreground Activity and the two result launchers).
-- `app/build.gradle.kts`: `InMemoryFakeDrive.kt` and `FakeDriveFaults.kt` of `:shared`'s commonTest are compiled into `:app`'s unit tests (the 401 helper `authorized` they use is public in `:shared`, so there is no copy of it).
+- `app/build.gradle.kts`: nothing for the fake any more; the tests that need the in-memory Drive (`DriveAssemblyTest`, `DriveSyncEndToEndTest`, the enrolment adapter tests) run in `:shared`'s host tests (S4b-BL-139 O10).
 
 ## What needs a real phone (not verified here)
 

@@ -24,15 +24,11 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.room.Room
-import androidx.test.core.app.ApplicationProvider
-import androidx.work.Configuration
-import androidx.work.testing.SynchronousExecutor
-import androidx.work.testing.WorkManagerTestInitHelper
 import app.doorprints.crypto.DevicePlatform
 import app.doorprints.crypto.JvmCryptoProvider
 import app.doorprints.crypto.QR_PSK_LEN
-import app.doorprints.data.AndroidRepository
 import app.doorprints.data.AppDatabase
+import app.doorprints.data.CommonRepository
 import app.doorprints.data.HouseEntity
 import app.doorprints.data.SecretStore
 import app.doorprints.data.SettingsStore
@@ -64,12 +60,12 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
-import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import java.io.File
 
@@ -85,7 +81,7 @@ class DriveSyncEndToEndTest {
     @get:Rule
     val tmp = TemporaryFolder()
 
-    private val context: Application = ApplicationProvider.getApplicationContext()
+    private val context: Application = RuntimeEnvironment.getApplication()
     private val server = FakeDriveServer()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val at = 1_760_000_000_000
@@ -113,8 +109,12 @@ class DriveSyncEndToEndTest {
         var serverAsked = 0
         val passes = mutableListOf<Boolean>()
         lateinit var graph: DriveGraph
-        val repository = AndroidRepository(
-            context, db, settings,
+        // :app's AndroidRepository is this common repository plus the photo files and WorkManager (not used by a sync pass).
+        val repository = CommonRepository(
+            db, settings,
+            photoDir = File(context.filesDir, "photos").path,
+            syncSoon = {},
+            apiFor = { _, _ -> error("the server's API client is never built: the chooser answers null") },
             syncBackendFor = DriveSyncChoice.backendFor({ engagedOverride ?: graph.prefs.engaged }, route) { serverAsked++; null },
         )
         val controller get() = graph.controller
@@ -162,11 +162,6 @@ class DriveSyncEndToEndTest {
         fun dirty(id: String): Boolean? = runBlocking { db.houses().get(id)?.dirty }
 
         fun sync() = runBlocking { controller.syncNow() }
-    }
-
-    @Before
-    fun setUp() {
-        WorkManagerTestInitHelper.initializeTestWorkManager(context, Configuration.Builder().setExecutor(SynchronousExecutor()).build())
     }
 
     @After
