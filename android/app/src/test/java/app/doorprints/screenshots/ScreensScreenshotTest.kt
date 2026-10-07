@@ -40,6 +40,15 @@ import app.doorprints.ui.res.common_try_again
 import app.doorprints.ui.res.compare_empty
 import app.doorprints.ui.res.houses_empty
 import app.doorprints.ui.res.settings_ai_use_own_key
+import app.doorprints.ui.res.settings_ai_service
+import app.doorprints.ui.res.settings_ai_service_openai
+import app.doorprints.ui.res.settings_ai_service_custom
+import app.doorprints.ui.res.settings_ai_save
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.performClick
 import app.doorprints.ui.res.settings_app_lock
 import app.doorprints.ui.res.settings_path_trace_clear
 import app.doorprints.shared.model.DefaultQuestions
@@ -374,17 +383,48 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
     }
     @Test fun settings() = shoot("settings", STATIC) { SettingsScreen() }
 
-    /** Settings → AI features turned on with "Use my own Gemini key on this phone" chosen (docs/03 §13.1, ADR-26). */
-    @Test fun settingsAiOwnKey() {
+    /**
+     * Settings > AI features with the person's own AI chosen (S4b-BL-150, docs/03 §13.2): the section only, cropped to
+     * its own node to keep the image small. [steps] pick the service and press what the shot needs. Only the two shots
+     * the ticket lists are taken (English light with OpenAI; Tamil dark with the errors Save finds), not all eight.
+     */
+    private fun shootAi(screen: String, steps: () -> Unit) {
+        // Tall enough for the whole section, with the errors and the host sentence under the fields.
+        RuntimeEnvironment.setQualifiers("+h1700dp")
         val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
         runBlocking {
             repo.setAiFeatures(true)
             repo.setAiProvider(AiProviderChoice.DEVICE)
         }
-        shoot("settings_ai_own_key", readyText = text(Res.string.settings_ai_use_own_key)) {
+        show(readyText = text(Res.string.settings_ai_use_own_key)) {
             val settings by repo.settings.settings.collectAsState(AppSettings())
             val off by repo.aiOff.collectAsState()
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) { AiSettingsSection(settings, off) }
+            Column(Modifier.padding(16.dp).testTag("ai-shot"), verticalArrangement = Arrangement.spacedBy(12.dp)) { AiSettingsSection(settings, off) }
+        }
+        steps()
+        awaitStableFrame()
+        compose.onNodeWithTag("ai-shot").captureRoboImage(file(screen))
+    }
+
+    private fun pickService(service: StringResource) {
+        compose.onNodeWithContentDescription(text(Res.string.settings_ai_service)).performClick()
+        compose.onNodeWithText(text(service)).performClick()
+        settle()
+    }
+
+    /** OpenAI chosen: its address filled in, the model and key still to type, the host named below. */
+    @Test fun settingsAiOpenAi() {
+        assumeTrue(lang == "en" && !dark)
+        shootAi("settings_ai_openai") { pickService(Res.string.settings_ai_service_openai) }
+    }
+
+    /** Custom chosen and Save pressed with nothing typed: the three errors, in Tamil, dark. */
+    @Test fun settingsAiErrors() {
+        assumeTrue(lang == "ta" && dark)
+        shootAi("settings_ai_errors") {
+            pickService(Res.string.settings_ai_service_custom)
+            compose.onNodeWithText(text(Res.string.settings_ai_save)).performClick()
+            settle()
         }
     }
     /**

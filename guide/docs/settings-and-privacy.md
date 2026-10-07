@@ -53,21 +53,29 @@ shared computer, use **Remove all data** on **Your data** when you are done.
 ## AI without a server
 
 You can use **Ask**, **Plan** and **Fill in from listing text** without running a server. Your phone or browser then
-asks an AI service itself, with a key of your own. On the phones that is Google Gemini, which is free on Google's free
-tier. On the website you can also choose OpenAI, OpenRouter, Groq, or a model on your own computer (Ollama or
-LM Studio), or any other service that speaks the same chat language.
+asks an AI service itself, with a key of your own. You choose the service: Google Gemini (free on Google's free tier),
+OpenAI, OpenRouter, Groq, a model on your own computer (Ollama or LM Studio), or any other service that speaks the same
+chat language.
 
 ### On Android and iPhone
 
-1. Make a key: open [Google AI Studio](https://aistudio.google.com/apikey), sign in with a Google account and choose
+1. Make a key with the service you want to use (a model on your own computer needs none). For Gemini, open
+   [Google AI Studio](https://aistudio.google.com/apikey), sign in with a Google account and choose
    **Create API key**. Make one just for Doorprints, so you can delete it there at any time.
 2. In Doorprints, open **Settings** and find **AI features**.
-3. Turn on **Use AI features on this phone**. Read what it says is sent to Google.
-4. Choose **Use my own Gemini key on this phone**, paste the key and tap **Save key**. Doorprints checks the key with
-   Google first, then says **Google accepted this key**.
+3. Turn on **Use AI features on this phone**. Read what it says is sent to an AI service.
+4. Choose **Use my own AI on this phone**, then pick your service under **AI service**.
+5. For **Gemini**, paste the key and tap **Save key**; Doorprints checks the key with Google first, then says **Google
+   accepted this key**. For any other service the **Base URL** is filled in (only **Custom** lets you change it: it must
+   start with `https://`, or be on this device, such as `http://localhost`; the Android emulator may also use
+   `http://10.0.2.2`). Type the **Model** exactly as the service lists it (for example `gpt-4o-mini`), paste the
+   **API key** and tap **Save**. Then tap **Test**: Doorprints says which host accepted the key, or what is wrong (the
+   key was refused, the model is unknown, you reached the limit, or the host could not be reached).
 
-The key stays on your phone, locked (encrypted), and goes only to Google. **Test key** checks it again; **Remove key**
-forgets it. If you also connect a server, you choose which one answers: **Use my server** or your own key.
+The key stays on your phone, locked (encrypted), and goes only to the service you chose: the address is written under
+the form, and again above every question you send. **Test** (**Test key** for Gemini) checks it again; **Remove key**
+forgets the key and your choice of service. If you also connect a server, you choose which one answers:
+**Use my server** or your own AI.
 
 ### On the website
 

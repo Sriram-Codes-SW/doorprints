@@ -19,6 +19,8 @@
 package app.doorprints
 
 import android.Manifest
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.app.AlarmManager
 import android.app.Notification
 import android.app.NotificationManager
@@ -47,6 +49,9 @@ import org.junit.runner.RunWith
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowAlarmManager
+import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 /**
  * The viewing reminders on Android (docs/11 5.8, slice 3b-2; the alarm rules of 5.16 *Scheduling*, TC-U-38) on the
@@ -323,6 +328,32 @@ class ViewingRemindersTest {
             assertTrue("timed out", System.currentTimeMillis() < end)
             shadowOf(Looper.getMainLooper()).idle()
             Thread.sleep(10)
+        }
+    }
+
+    /**
+     * A receiver whose `goAsync()` gives no PendingResult (a unit test that calls `onReceive` itself) must still run its
+     * work and finish without an exception on the background thread: it used to throw from the `finally`, and a later
+     * Compose test failed with "uncaught exceptions before the test started" depending on the order the tests ran in.
+     */
+    @Test
+    fun aReceiverWithoutAPendingResultRunsItsWorkAndThrowsNothing() {
+        val errors = CopyOnWriteArrayList<Throwable>()
+        val previous = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { _, e -> errors += e }
+        try {
+            val done = CountDownLatch(1)
+            val receiver = object : BroadcastReceiver() {
+                override fun onReceive(context: Context, intent: Intent) {
+                    runAsync { done.countDown() }
+                }
+            }
+            receiver.onReceive(ApplicationProvider.getApplicationContext(), Intent())
+            assertTrue(done.await(5, TimeUnit.SECONDS))
+            Thread.sleep(300) // the `finally` runs just after the work
+            assertTrue(errors.toString(), errors.isEmpty())
+        } finally {
+            Thread.setDefaultUncaughtExceptionHandler(previous)
         }
     }
 }

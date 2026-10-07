@@ -70,6 +70,12 @@ data class PlatformFeatures(
      * has no wiring at all.
      */
     val googleDrive: Boolean = true,
+    /**
+     * The Android emulator's name for its computer, `10.0.2.2`, may be an AI service's address over plain `http`
+     * (S4b-BL-150, the one place `BaseUrlValidator`'s Android flag is true; the repository's `emulatorHostAllowed` is the
+     * same switch). The iPhone has no such address.
+     */
+    val emulatorHost: Boolean = true,
 ) {
     companion object {
         /**
@@ -85,6 +91,7 @@ data class PlatformFeatures(
             weeklyBackup = false,
             inAppLanguage = false,
             deviceTransferNote = false,
+            emulatorHost = false,
         )
     }
 }

@@ -2,8 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
   The Doorprints iOS app's Info.plist (CMP-8b), written by hand; project.yml points INFOPLIST_FILE here and turns
-  Xcode's generated plist off. The $(...) values are build settings from project.yml. No NSAppTransportSecurity
-  exceptions: ATS refuses plain http:// to a domain name; a server on a LAN IP address or a .local name is not covered
+  Xcode's generated plist off. The $(...) values are build settings from project.yml. The only
+  NSAppTransportSecurity exception is NSAllowsLocalNetworking (S4b-BL-150, a local AI model). ATS refuses plain http:// to a domain name; a server on a LAN IP address or a .local name is not covered
   by ATS, so it connects without TLS, as on Android, and iOS first asks for local network access (the purpose string
   below). The purpose strings are localised in <lang>.lproj/InfoPlist.strings.
 -->
@@ -91,6 +91,13 @@
 	<!-- A plain launch screen (the system background); Compose draws the first frame. -->
 	<key>UILaunchScreen</key>
 	<dict/>
+	<!-- A model on this device (Ollama, LM Studio) over http://localhost, as the AI settings allow (S4b-BL-150): ATS's
+	     local-networking exception only, so every other http:// address stays refused. Not run on a device here. -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 	<!-- The enrolment QR scanner (S4b-BL-136): AVFoundation, asked only when the person taps Scan a QR code. -->
 	<key>NSCameraUsageDescription</key>
 	<string>Doorprints uses the camera to scan a Doorprints enrolment code from your other device. Nothing is stored or sent.</string>
