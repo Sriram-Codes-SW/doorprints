@@ -33,12 +33,12 @@ import kotlin.time.TimeSource
 
 /**
  * AI with the person's own Gemini key, on this device (docs/03 §13.1, ADR-26): the same three calls as the server's
- * `/api/ai` endpoints, the same prompts, limits and checks (the common core in this package), and Gemini called directly
- * ([GeminiClient]). [houses] reads the saved houses when Ask or Plan needs them. At most [RATE_LIMIT] requests a
+ * `/api/ai` endpoints, the same prompts, limits and checks (the common core in this package), and the model called directly
+ * ([GeminiClient] or [OpenAiCompatClient], docs/03 §13.2). [houses] reads the saved houses when Ask or Plan needs them. At most [RATE_LIMIT] requests a
  * minute, as the server allows.
  */
 class OnDeviceAi(
-    private val gemini: GeminiClient,
+    private val gemini: JsonChatModel,
     private val houses: suspend () -> List<AiHouse>,
     private val clock: TimeSource = TimeSource.Monotonic,
 ) {
