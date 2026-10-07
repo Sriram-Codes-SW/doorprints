@@ -1,0 +1,97 @@
+{
+  "spec": "android/ui/src/commonTest/kotlin/app/doorprints/ui/AiProviderFormTest.kt and android/app/src/test/java/app/doorprints/AiSettingsSectionTest.kt",
+  "gradle": [
+    ":ui:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.ui.AiProviderFormTest",
+    ":app:testDebugUnitTest",
+    "--tests",
+    "app.doorprints.AiSettingsSectionTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AiProviderConfig.kt",
+      "find": "AiPreset(\"openrouter\", \"https://openrouter.ai/api/v1\"",
+      "replace": "AiPreset(\"openrouter\", \"https://openrouter.ai/v1\"",
+      "expect": "eachServicePrefills"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/AiSettingsSection.kt",
+      "find": "        FieldError(urlError)",
+      "replace": "        FieldError(null)",
+      "expect": "anAddressThatIsNotHttpsIsRefusedWithItsReasonAndTheHintAndIsReadOut"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/AiSettingsSection.kt",
+      "find": "LiveMessage(assertive = result?.first == ResultTone.ERROR) {",
+      "replace": "LiveMessage(assertive = false) {",
+      "expect": "eachFailureOfATestIsNamedAndAnnouncedAtOnce"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/AiSettingsSection.kt",
+      "find": "                    repo.removeGeminiKey()",
+      "replace": "                    Unit",
+      "expect": "removeKeyClearsTheKey"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/AiProviderForm.kt",
+      "find": "return saved.kind == AiKind.OPENAI_COMPATIBLE && mine.normalised == theirs.normalised",
+      "replace": "return saved.kind == AiKind.OPENAI_COMPATIBLE",
+      "expect": "aSavedKey"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/AiProviderForm.kt",
+      "find": "keySavedHere(saved, savedKey.isNotBlank()) -> savedKey",
+      "replace": "savedKey.isNotBlank() -> savedKey",
+      "expect": "aSavedKey"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/AiSettingsSection.kt",
+      "find": "            stringResource(Res.string.ai_disclosure_own_key_host, host),\n            style",
+      "replace": "            stringResource(Res.string.ai_disclosure_own_key_host, AiProviderForm.GEMINI_HOST),\n            style",
+      "expect": "theDisclosureNamesTheHostOfWhatIsOnTheScreen"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/AiSettingsSection.kt",
+      "find": "host.isNotEmpty() -> Text(stringResource(Res.string.ai_disclosure_own_key_host, host)",
+      "replace": "host.isNotEmpty() -> Text(stringResource(Res.string.ai_disclosure_own_key_host, AiProviderForm.GEMINI_HOST)",
+      "expect": "theDisclosureOnTheScreens"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/BaseUrlValidator.kt",
+      "find": "(android && host == EMULATOR_HOST)",
+      "replace": "(false && host == EMULATOR_HOST)",
+      "expect": "Emulator"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/PlatformFeatures.kt",
+      "find": "val emulatorHost: Boolean = true,",
+      "replace": "val emulatorHost: Boolean = false,",
+      "expect": "Emulator"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/AiSettingsSection.kt",
+      "find": "readOnly = !form.urlEditable,",
+      "replace": "readOnly = true,",
+      "expect": "onlyCustomLetsTheAddressBeTyped"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/AiSettingsSection.kt",
+      "find": "val failed = runCatching { repo.saveAiProviderConfig(config, key) }.exceptionOrNull()",
+      "replace": "val failed = runCatching { key }.exceptionOrNull()",
+      "expect": "savePersists"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/AiProviderForm.kt",
+      "find": "|| isLocalHost(host)",
+      "replace": "|| false",
+      "expect": "NoKey"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/AiSettingsSection.kt",
+      "find": "                        repo.saveGeminiKey(key)",
+      "replace": "                        Unit",
+      "expect": "geminiTestsTheKeyBeforeSavingIt"
+    }
+  ]
+}

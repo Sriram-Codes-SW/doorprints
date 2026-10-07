@@ -369,7 +369,7 @@ fun AssistantScreen(onOpenHouse: (String) -> Unit, onOpenMap: () -> Unit = {}) {
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Text(stringResource(Res.string.ai_disclosure), style = MaterialTheme.typography.bodySmall,
+                    AiDisclosure(style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     if (tab == 0) AskPane(vm, onOpenHouse) else PlanPane(vm, onOpenHouse)
                 }
@@ -645,23 +645,37 @@ private fun Modifier.semanticsHeading(): Modifier = this.then(
 
 /**
  * Returns a function that turns an AI call failure into a translated message (read in composition): the Assistant's
- * and the house form's *Paste a listing*. [formatPositional] fills the counts as `String.format` did (CMP-5).
+ * and the house form's *Paste a listing*. [host] is the person's own OpenAI-compatible service, when there is one: the
+ * words for a rejected key and an unreachable service name it (S4b-BL-150). [formatPositional] fills the counts as
+ * `String.format` did (CMP-5).
  */
 @Composable
-fun aiErrorText(): (Throwable) -> String {
+fun aiErrorText(host: String = ownAiHost()): (Throwable) -> String {
+    val text = aiFailureText()
+    return { e -> text(AiFailure.of(e, host)) }
+}
+
+/** The words for each [AiFailure] (read in composition). */
+@Composable
+fun aiFailureText(): (AiFailure) -> String {
     val rate = stringResource(Res.string.ai_rate_limited)
     val down = stringResource(Res.string.ai_provider_down)
     val offline = stringResource(Res.string.ai_offline)
     val generic = stringResource(Res.string.ai_error)
     val keyRejected = stringResource(Res.string.ai_key_rejected)
-    return { e ->
-        when {
-            e is ApiException && e.kind == ApiException.Kind.AI_KEY_REJECTED -> keyRejected
-            e is ApiException && e.kind == ApiException.Kind.RATE_LIMITED ->
-                formatPositional(rate, e.retryAfterSeconds ?: 60L)
-            e is ApiException && e.kind == ApiException.Kind.AI_UNAVAILABLE -> down
-            e is ApiException -> formatPositional(generic, e.code)
-            else -> offline
+    val keyRejectedHost = stringResource(Res.string.ai_key_rejected_host)
+    val modelNotFound = stringResource(Res.string.ai_model_not_found)
+    val unreachable = stringResource(Res.string.ai_unreachable)
+    val unreachableLocal = stringResource(Res.string.ai_unreachable_local)
+    return { f ->
+        when (f) {
+            is AiFailure.KeyRejected -> if (f.host.isEmpty()) keyRejected else formatPositional(keyRejectedHost, f.host)
+            AiFailure.ModelNotFound -> modelNotFound
+            is AiFailure.RateLimited -> formatPositional(rate, f.seconds)
+            is AiFailure.Unreachable -> formatPositional(if (f.local) unreachableLocal else unreachable, f.host)
+            AiFailure.Down -> down
+            is AiFailure.Other -> formatPositional(generic, f.code)
+            AiFailure.Offline -> offline
         }
     }
 }

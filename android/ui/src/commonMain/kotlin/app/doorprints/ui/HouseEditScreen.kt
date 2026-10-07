@@ -2034,7 +2034,7 @@ private fun PasteListingDialog(onDismiss: () -> Unit, onDraft: (HouseDraftDto, L
                     label = { Text(stringResource(Res.string.house_paste_field)) },
                     minLines = 4, maxLines = 8, modifier = Modifier.fillMaxWidth(),
                 )
-                Text(stringResource(Res.string.ai_disclosure), style = MaterialTheme.typography.bodySmall,
+                AiDisclosure(style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 LiveMessage(assertive = error != null && !busy) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

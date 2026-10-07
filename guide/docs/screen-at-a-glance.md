@@ -33,7 +33,7 @@ and **Your data**. **Connect** is inside **Your data**.
 4. **Save house here** saves a house at the spot where you are standing. You can also press and hold the map anywhere.
 5. The colour key: **New**, **Shortlisted**, **Rejected**, **Taken**, **Not chosen**.
 6. Map credits (who made the map).
-7. The tabs: **Map**, **Houses**, **Compare** and **Settings**. An **Assistant** tab shows once you turn on AI features, through your server or with your own Gemini key.
+7. The tabs: **Map**, **Houses**, **Compare** and **Settings**. An **Assistant** tab shows once you turn on AI features, through your server or with your own key for the AI provider you chose.
 
 This picture was taken by an automatic test on a pretend phone on a computer. That pretend phone does not show place
 names. On a real phone, the map has place names and shows your houses as coloured pins, like the website's map.

@@ -65,6 +65,8 @@ class PlatformFeaturesTest {
                 deviceTransferNote = false,
                 // Google Drive since S4b-BL-117: the iPhone's wiring (it says "not available" in a build with no Google client).
                 googleDrive = true,
+                // No emulator on the iPhone: 10.0.2.2 stays refused as an AI address (S4b-BL-150).
+                emulatorHost = false,
             ),
             PlatformFeatures.Ios,
         )

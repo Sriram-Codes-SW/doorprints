@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.100 |
+| Version | 0.104 |
 | Date | 2026-10-07 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..153); this file lists the lead-level items and points to the rest. |
@@ -111,6 +111,7 @@
 | 0.100 | 2026-10-07 | Claude (Code), lead | **S4b-BL-148 (PR C) built on `feat/web-ai-provider-core`**, made from the design branch `docs/adr-27-user-chosen-ai` (no pull request yet; [10](10-sprint-log.md) v0.160): the website's `JsonChatModel`, the OpenAI-compatible adapter, the converter, the base-URL rules, the settings and their migration, in `web/src/app/core/ai/`; specs drive the five vector sections; mutation list `tools/mutations/ai-provider-web.json`. No screens; PR E does the settings. |
 | 0.101 | 2026-10-07 | Claude (Code), lead | **S4b-BL-149 built on `feat/server-ai-key-only-for-gemini` (no pull request yet)** ([10](10-sprint-log.md) v0.160, [03](03-design.md) §13.2, [ai/ai-design.md](ai/ai-design.md) v0.24): the key is needed only when `AI_BASE_URL` has the host `generativelanguage.googleapis.com`; nothing from a request reaches the provider's URL (T-I44, TC-U-171). Step G of S4b-FR-40 is done; B and C are next. |
 | 0.102 | 2026-10-07 | Claude (Code), lead | **S4b-BL-147 built (step B of S4b-FR-40):** the shared Kotlin core of the provider of choice on branch `feat/shared-ai-provider-kotlin` (stacked on `docs/adr-27-user-chosen-ai`, no pull request yet): `JsonChatModel`, `OpenAiCompatClient`, `SchemaDialect`, `BaseUrlValidator`, the settings and the repository wiring, with the mutation list `tools/mutations/ai-provider-kotlin.json` ([10](10-sprint-log.md) v0.160). No screens. Next: C (-148), G (-149), then D (-150, the phone screens, which call `Repository.saveAiProviderConfig` and `testAiProvider`). |
+| 0.104 | 2026-10-07 | Claude (Code), lead | **S4b-BL-150 (PR D) built on `feat/app-ai-provider-settings`**, made from `main` after PR #163 (no pull request yet; [10](10-sprint-log.md) v0.164): the phones' AI service picker and fields, *Save*, *Test*, *Remove key*, the host in the disclosure and in the failure words, strings in four languages (hi, ta, te under review), the guide. Specs `AiProviderFormTest`, `AiSettingsSectionTest`; mutation list `tools/mutations/ai-settings-phone.json`. It edits the same guide paragraphs as PR E (#164: `settings-and-privacy.md` in four languages), so the second to merge resolves a small conflict there. |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 
