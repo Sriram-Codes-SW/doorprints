@@ -27,7 +27,7 @@ import { clearLocalLeftovers } from '../../pages/data/session-leftovers';
 import { AiService } from '../ai.service';
 import { ConfigService } from '../config.service';
 import { AI_BASE_URL_KEY, AI_KIND_KEY, AI_MODEL_KEY, AI_OPT_IN_KEY, AI_PROVIDER_KEY, GEMINI_KEY_KEY, LANG_KEY, STORAGE_PREFIX } from '../storage-keys';
-import { AI_PRESETS, readAiConfig, saveAiConfig, validateBaseUrl } from './ai-provider-config';
+import { AI_PRESETS, readAiConfig, saveAiConfig, validateBaseUrl, validateWebBaseUrl } from './ai-provider-config';
 import type { JsonChatModel } from './json-chat-model';
 import {
   OpenAiCompatibleChatModel, answerText, classifyError, openAiBody, resetTierCache, type Tier,
@@ -434,5 +434,16 @@ describe('OnDeviceAiService depends on the interface only', () => {
     expect(res.citations.map((c) => c.houseId)).toEqual(['h1']);
     expect(generateJson).toHaveBeenCalledOnce();
     expect(generateJson.mock.calls[0] as unknown[]).toEqual([expect.any(String), expect.any(String), ANSWER_SCHEMA, 0.1]);
+  });
+});
+
+describe('validateWebBaseUrl (the website refuses [::1]: its CSP cannot name an IPv6 literal)', () => {
+  it('refuses http://[::1] as an insecure host, and leaves every other answer as the shared rules give it', () => {
+    expect(validateWebBaseUrl('http://[::1]:11434/v1')).toEqual({ valid: false, reason: 'insecureHost' });
+    expect(validateBaseUrl('http://[::1]:11434/v1').valid).toBe(true);
+    expect(validateWebBaseUrl('http://localhost:11434/v1')).toEqual(validateBaseUrl('http://localhost:11434/v1'));
+    expect(validateWebBaseUrl('http://127.0.0.1:1234/v1').valid).toBe(true);
+    expect(validateWebBaseUrl('https://api.openai.com/v1')).toEqual(validateBaseUrl('https://api.openai.com/v1'));
+    expect(validateWebBaseUrl('https://[::1]/v1').valid).toBe(true); // https: the CSP allows any https origin
   });
 });

@@ -32,7 +32,7 @@ import type { TKey } from '../../i18n/en';
 import { ConfirmService } from '../../core/confirm.service';
 import { AiService, aiErrorMsg, aiOffMsg } from '../../core/ai.service';
 import {
-  AI_PRESETS, type AiPreset, type AiProviderConfig, type BaseUrlReason, GEMINI_HOST, isLocalHost, validateBaseUrl,
+  AI_PRESETS, type AiPreset, type AiProviderConfig, type BaseUrlReason, GEMINI_HOST, isLocalHost, validateWebBaseUrl,
 } from '../../core/ai/ai-provider-config';
 import {
   ConnectLink,
@@ -332,7 +332,7 @@ export class ConnectPage {
   protected readonly isGemini = computed(() => this.service() === 'gemini');
   protected readonly preset = computed<AiPreset | undefined>(() => AI_PRESETS.find((p) => p.id === this.service()));
   protected readonly urlEditable = computed(() => this.service() === 'custom');
-  private readonly urlCheck = computed(() => validateBaseUrl(this.aiBaseUrl()));
+  private readonly urlCheck = computed(() => validateWebBaseUrl(this.aiBaseUrl()));
   /** The host the text and key would go to with what is on the screen. */
   protected readonly shownHost = computed(() => {
     if (this.isGemini()) return GEMINI_HOST;
@@ -349,7 +349,7 @@ export class ConnectPage {
     const saved = this.ai.aiConfig();
     if (this.isGemini()) return saved.kind === 'gemini' && this.ai.hasGeminiKey();
     const check = this.urlCheck();
-    const savedCheck = validateBaseUrl(saved.baseUrl);
+    const savedCheck = validateWebBaseUrl(saved.baseUrl);
     return saved.kind === 'openai-compatible' && check.valid && savedCheck.valid && savedCheck.normalised === check.normalised;
   });
   protected readonly keySavedHere = computed(() => this.savedHere() && this.ai.hasGeminiKey());
@@ -656,6 +656,6 @@ const KEY_PAGE: Partial<Record<ServiceId, string>> = {
 /** The select's choice for the saved settings: Gemini, the preset whose base URL was saved, or Custom. */
 function serviceOf(config: AiProviderConfig): ServiceId {
   if (config.kind !== 'openai-compatible') return 'gemini';
-  const check = validateBaseUrl(config.baseUrl);
+  const check = validateWebBaseUrl(config.baseUrl);
   return AI_PRESETS.find((p) => p.id !== 'custom' && check.valid && p.baseUrl === check.normalised)?.id ?? 'custom';
 }
