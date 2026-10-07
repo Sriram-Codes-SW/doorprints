@@ -87,7 +87,8 @@ public class AiDefaultsEnvironmentPostProcessor implements EnvironmentPostProces
             defaults.put("spring.ai.model.chat", "openai");
             // No key in the settings file: the owner may set one on the owner page (docs/03 §12.1). Spring AI needs a
             // non-empty value to build its client; GeminiKeyInterceptor replaces it on every request, and without any
-            // key AI reads as off (AiStatusController), so the placeholder is never sent as a real key.
+            // key AI reads as off on the Gemini API (AiStatusController), so the placeholder is never sent to Google; another
+            // endpoint (Ollama) needs no key and receives it as a meaningless bearer value.
             if (env.getProperty("spring.ai.openai.api-key", "").isBlank()) {
                 forced.put("spring.ai.openai.api-key", app.doorprints.server.secrets.GeminiKey.PLACEHOLDER);
             }
