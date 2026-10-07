@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.108 |
+| Version | 0.109 |
 | Date | 2026-10-07 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..153); this file lists the lead-level items and points to the rest. |
@@ -117,6 +117,7 @@
 | 0.106 | 2026-10-07 | Claude (Code), lead | **S4b-BL-152 built (step F of S4b-FR-40)** on `feat/ai-anthropic-adapter-bl-152` (draft pull request; [10](10-sprint-log.md) v0.166): the Anthropic adapter on the website and the phones, enabled in both pickers. §7 gets the working rules of this session (tests first in slices, re-run once after a retarget, 2-3 builders, failing screenshots only, never weaken a gate). |
 | 0.107 | 2026-10-07 | Claude (Code), lead | **S4b-BL-153 built (step H of S4b-FR-40)** on `ci/ai-evals-optional-bl-153` (draft pull request; [10](10-sprint-log.md) v0.167, [06](06-test-plan.md) TC-AI-23, [ai/ai-design.md](ai/ai-design.md) v0.25): an optional suite `own-provider` in `ai-evals.yml`; the owner may set the repository secret `AI_EVAL_API_KEY` (how: ai-design 8.1), and without it the job says `skipped: no key`. S4b-FR-40 is now fully built; what is left is the owner's real-provider runs (TC-M-64, this suite). |
 | 0.108 | 2026-10-07 | Claude (Code), lead | §7 per change, step 4: `node tools/check-docs-versions.mjs` (one `Version` header row per document, equal to the highest change-log version; change-log versions unique and the latest in order); S4b-BL-156 ([10](10-sprint-log.md) v0.168). This file's header had three rows after hand merges; now one. |
+| 0.109 | 2026-10-07 | Claude (Code), lead | §7: the floor guard `node tools/check-floor.mjs` (S4b-BL-157; [10](10-sprint-log.md) v0.169) checks the rule "never weaken a gate"; the `Gate-loosening:` escape and what the guard cannot see. |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 
@@ -468,6 +469,13 @@ suite runs in a cloud session; CI is the second check, never the first:
    **Version rows** (S4b-BL-156): `node tools/check-docs-versions.mjs` fails a document with two `| Version |` header rows, a header
    that is not its highest change-log version, a repeated change-log version, or the latest rows out of order. When two pull
    requests bump the same document, merge `main`, keep one header row, give your row the next free version, then re-run it.
+   **Floor guard** (S4b-BL-157): `node tools/check-floor.mjs` (in `tools/check.sh` and `security.yml`) fails a branch that loosens a
+   gate against `origin/main`: a new skip or focus in a test file, a deleted test file or fewer test cases in one, a new
+   suppression or empty catch, a mutation entry removed from `tools/mutations/*.json` without one added, a raised budget in
+   `angular.json`. It prints `file:line: reason`; exit 2 means it could not run (no `origin/main`; fetch it with
+   `--no-tags origin main:refs/remotes/origin/main`), which is a failure, not a pass. If a loosening is truly needed, put a line
+   `Gate-loosening: <why>` in the last commit message (the reason must say why) and repeat it in the pull request body; the
+   findings then print as warnings. It cannot see a weaker test body or mutation, a test moved to another file, or an untracked file.
 5. Commit as `Claude <noreply@anthropic.com>` with the trailers `Co-Authored-By: Claude <noreply@anthropic.com>` and
    the session link; push; open the PR with What / Tests / Docs sections in plain words; subscribe to its activity and
    **enable auto-merge (squash) on it at once** (the ruleset requires every check, so it merges by itself the moment the

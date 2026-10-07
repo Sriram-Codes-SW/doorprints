@@ -130,6 +130,19 @@ jobs:
         run: |
           node --test tools/check-docs-versions.test.mjs
           node tools/check-docs-versions.mjs
+      # S4b-BL-157: the floor guard. A change must not loosen a gate: a new test skip or focus, a deleted test or spec, a new
+      # suppression or empty catch, a removed mutation entry, a raised bundle budget. Exit 2 = it could not run (no
+      # origin/main), which fails the step too; a skipped guard is never a pass. The allow line `Gate-loosening: <why>` is read
+      # from the pull request's head commit (this checkout is the merge commit, whose message says nothing).
+      - name: The floor is not lowered (no skipped test, suppression or relaxed budget)
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # fetch-depth 0 above brings origin/main; the fallback is for a shallower checkout
+          { git rev-parse --verify -q origin/main >/dev/null || git fetch --no-tags origin main:refs/remotes/origin/main; }
+          if [ -n "$HEAD_SHA" ]; then FLOOR_GUARD_ALLOW="$(git log -1 --format=%B "$HEAD_SHA")"; export FLOOR_GUARD_ALLOW; fi
+          node --test tools/check-floor.test.mjs
+          node tools/check-floor.mjs
       # SEC-030: third-party actions pinned to a commit SHA, every workflow with top-level permissions.
       - name: Third-party actions are pinned to a commit SHA
         run: |

@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.120 |
+| Version | 0.121 |
 | Date | 2026-10-06 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -20,6 +20,7 @@
 | 0.118 | 2026-10-06 | Claude (Code), lead | **The phones' QR scan, the Android HMAC proof, the back-off and the screenshot wait, built** (draft PR #145): 15 v0.30 (§9.5 i, §10.2, §10.4), 06 v0.137 (TC-U-155..159, TC-M-62), 10 v0.155 (S4b-BL-136 and -135 built, -138 done, -139 O9..O11, new S4b-BL-140..142), 14 v0.95, `schemas/README.md` v1.28 and the new `schemas/qr-enrol-vectors.json` (the schemas folder is one index row), ops/manual-test-checklist v0.8 (MT-82..MT-85), two new session records ([ops/ios-qr-scanner-notes.md](ops/ios-qr-scanner-notes.md), [ops/screenshot-flake-notes.md](ops/screenshot-flake-notes.md)), the older Android Drive notes marked superseded where they were, and the CHANGELOG. |
 | 0.119 | 2026-10-06 | Claude (Code), docs pass | **The path trace v2 and the place check built** (`feat/path-trace-v2`, PR #146, not yet merged): 11 v0.60, 03 v0.68, 06 v0.138, 10 v0.156 (S4b-FR-13..17 and FR-24 built, FR-18 done; review follow-ups S4b-FR-25..37), 14 v0.96, 01 v0.46, 02 v0.62, 05 v0.30, schemas v1.29 (the vector file is *confirmed*), the manual checklist v0.9; new index row for [ops/path-trace-web-notes.md](ops/path-trace-web-notes.md). The guide page *Your paths* exists in four languages. |
 | 0.120 | 2026-10-07 | Claude (Code) | The document-version guard `tools/check-docs-versions.mjs` (S4b-BL-156): docs/14 v0.108, docs/10 v0.168, docs/06 v0.148. |
+| 0.121 | 2026-10-07 | Claude (Code) | The floor guard `tools/check-floor.mjs` (S4b-BL-157): docs/14 v0.109, docs/10 v0.169, docs/06 v0.149. |
 | 0.112 | 2026-10-06 | Claude | The review backlog: docs/01 v0.41, 06 v0.131 (section 10.1), 07 v0.60, 14 v0.89. |
 | 0.111 | 2026-10-06 | Claude | Full-system review fixes and the manual test checklist (`docs/ops/manual-test-checklist.md`): docs/07 v0.59, docs/14 v0.88. |
 | 0.110 | 2026-10-06 | Claude | Review fixes on PR #139: docs/10 v0.149, 06 v0.130, 15 v0.27. |
