@@ -1327,6 +1327,8 @@
     <string name="drive_connect_no_backup_source">Doorprints अभी इस फ़ोन पर बैकअप तैयार नहीं कर सका।</string>
     <string name="drive_problem_offline">यह फ़ोन ऑफ़लाइन है। ऑनलाइन होने पर फिर कोशिश करें।</string>
     <string name="drive_problem_source_failed">यह फ़ोन बैकअप तैयार नहीं कर सका।</string>
+    <!-- S4b-BL-146 (2026-10-07): under review. The code itself (step/ClassName) is never translated. -->
+    <string name="drive_problem_code">कोड: %1$s</string>
     <string name="drive_problem_connect_failed">यह फ़ोन Google Drive से नहीं जुड़ सका। फिर कोशिश करें।</string>
     <string name="drive_problem_crypto_unavailable">यह फ़ोन एन्क्रिप्ट नहीं कर सकता, इसलिए यहाँ Google Drive बैकअप उपलब्ध नहीं है।</string>
     <string name="drive_problem_signin_unavailable">इस फ़ोन पर Google साइन-इन उपलब्ध नहीं है।</string>

@@ -225,6 +225,35 @@ class DriveConnectBackupSyncTest {
         assertEquals(DueBackupResult.NotRan(BackupSchedule.Reason.WAIT_RETRY), a.c.runDueBackup())
     }
 
+    @Test
+    fun anUnexpectedFailureOfTheBackupCarriesItsStepAndClassOnly() = runTest {
+        connected()
+        val c = a.controller(customSource = app.doorprints.drive.backup.BackupSource { throw java.io.FileNotFoundException("/data/user/0/app/secret.zip") })
+        c.connect()
+        val r = c.backUpNow() as Outcome.Failed
+        assertEquals(DriveReason.SOURCE_FAILED, r.reason)
+        assertEquals("backup/java.io.FileNotFoundException", r.code)
+        assertFalse(r.toString().contains("secret"))
+    }
+
+    @Test
+    fun anUnexpectedFailureOfASyncPassCarriesItsStepAndClassOnly() = runTest {
+        connected()
+        val c = a.controller(customDriver = { throw NoClassDefFoundError("Lsecret/Thing;") })
+        c.connect()
+        val r = c.syncNow()
+        assertEquals(SyncState.ERROR, r.state)
+        assertEquals(DriveReason.FAILED, r.error)
+        assertEquals("sync/java.lang.NoClassDefFoundError", r.code)
+    }
+
+    @Test
+    fun aTypedSyncFailureHasNoCode() = runTest {
+        connected()
+        server.faults.always(DriveFault.Server(), DriveOp.LIST)
+        assertNull(a.c.syncNow().code)
+    }
+
     // ---- sync ----
 
     @Test

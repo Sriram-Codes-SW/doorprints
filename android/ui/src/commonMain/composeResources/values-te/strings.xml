@@ -1327,6 +1327,8 @@
     <string name="drive_connect_no_backup_source">Doorprints ఇప్పుడు ఈ ఫోన్‌లో బ్యాకప్ సిద్ధం చేయలేకపోయింది.</string>
     <string name="drive_problem_offline">ఈ ఫోన్ ఆఫ్‌లైన్‌లో ఉంది. ఆన్‌లైన్‌లోకి వచ్చాక మళ్లీ ప్రయత్నించండి.</string>
     <string name="drive_problem_source_failed">ఈ ఫోన్ బ్యాకప్ సిద్ధం చేయలేకపోయింది.</string>
+    <!-- S4b-BL-146 (2026-10-07): under review. The code itself (step/ClassName) is never translated. -->
+    <string name="drive_problem_code">కోడ్: %1$s</string>
     <string name="drive_problem_connect_failed">ఈ ఫోన్ Google Driveకి కనెక్ట్ కాలేకపోయింది. మళ్లీ ప్రయత్నించండి.</string>
     <string name="drive_problem_crypto_unavailable">ఈ ఫోన్ ఎన్‌క్రిప్ట్ చేయలేదు, కాబట్టి ఇక్కడ Google Drive బ్యాకప్ అందుబాటులో లేదు.</string>
     <string name="drive_problem_signin_unavailable">ఈ ఫోన్‌లో Google సైన్-ఇన్ అందుబాటులో లేదు.</string>

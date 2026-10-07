@@ -218,6 +218,7 @@ phone-only driveEnrol.kindPhone
 phone-only driveEnrol.kindComputer
 phone-only driveProblem.OFFLINE
 phone-only driveProblem.SOURCE_FAILED
+phone-only driveProblem.CODE
 phone-only driveProblem.CONNECT_FAILED
 phone-only driveProblem.CRYPTO_UNAVAILABLE
 phone-only driveProblem.SIGNIN_UNAVAILABLE

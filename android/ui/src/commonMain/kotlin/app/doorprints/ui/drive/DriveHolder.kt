@@ -23,6 +23,7 @@ import app.doorprints.drive.connect.BackupSummary
 import app.doorprints.drive.connect.ConnectResult
 import app.doorprints.drive.connect.ConnectState
 import app.doorprints.drive.connect.DeleteConfirmInfo
+import app.doorprints.drive.DriveCode
 import app.doorprints.drive.connect.DriveReason
 import app.doorprints.drive.connect.ListedDevice
 import app.doorprints.drive.connect.Outcome
@@ -59,6 +60,8 @@ data class BackupsUi(
     val lastBackupAt: Long? = null,
     val lastBackupHouses: Int? = null,
     val error: DriveReason? = null,
+    /** The [app.doorprints.drive.DriveCode] of an unexpected failure of [error] (class name and step, never a message). */
+    val errorCode: String? = null,
     val shrinkHoldId: String? = null,
     val auto: Boolean = false,
     val noSource: Boolean = false,
@@ -138,6 +141,8 @@ data class DriveUiState(
     val connect: ConnectState = ConnectState.DISCONNECTED,
     val notice: DriveReason? = null,
     val error: DriveReason? = null,
+    /** The [app.doorprints.drive.DriveCode] of an unexpected failure of [error]; shown small and selectable under it. */
+    val errorCode: String? = null,
     val busy: Boolean = false,
     val connectKey: ShownKey? = null,
     val keySaved: Boolean = false,
@@ -209,8 +214,8 @@ class DriveHolder(
                 block()
             } catch (e: CancellationException) {
                 throw e
-            } catch (_: Exception) {
-                _ui.update { it.copy(busy = false, error = DriveReason.FAILED) }
+            } catch (e: Throwable) {
+                _ui.update { it.copy(busy = false, error = DriveReason.FAILED, errorCode = DriveCode.of("screen", e)) }
             }
         }
     }
@@ -221,7 +226,7 @@ class DriveHolder(
     fun connect() {
         // After a deleted folder only *Start again* or *Disconnect* go on; Connect would only ask the same question again.
         if (_ui.value.busy || _ui.value.connect == ConnectState.CONNECTING || _ui.value.card == DriveCard.FOLDER_GONE) return
-        _ui.update { it.copy(busy = true, error = null) }
+        _ui.update { it.copy(busy = true, error = null, errorCode = null) }
         launchOp {
             var result = actions.connect()
             if (result.state == ConnectState.DISCONNECTED && result.error == null) result = actions.createFolder()
@@ -232,14 +237,14 @@ class DriveHolder(
     /** *Start again* on the deleted-folder card: the person's yes. Makes the new folder and shows its recovery key once. */
     fun startAgain() {
         if (_ui.value.busy || _ui.value.card != DriveCard.FOLDER_GONE) return
-        _ui.update { it.copy(busy = true) }
+        _ui.update { it.copy(busy = true, errorCode = null) }
         launchOp { applyConnect(actions.createFolder()) }
     }
 
     private fun applyConnect(result: ConnectResult) {
         _ui.update {
             it.copy(
-                busy = false, connect = result.state, error = result.error,
+                busy = false, connect = result.state, error = result.error, errorCode = result.code,
                 connectKey = result.recoveryKey?.let(::ShownKey), keySaved = false,
             )
         }
@@ -265,7 +270,7 @@ class DriveHolder(
     /** *Join this folder* with the typed recovery key. [typed] is cleared by the screen at once; it is not kept here. */
     fun join(typed: String) {
         if (!joinEnabled(typed, _ui.value.busy)) return
-        _ui.update { it.copy(busy = true, error = null) }
+        _ui.update { it.copy(busy = true, error = null, errorCode = null) }
         launchOp { applyConnect(actions.openWithRecoveryKey(typed)) }
     }
 
@@ -320,7 +325,7 @@ class DriveHolder(
 
     fun backUpNow() {
         if (_ui.value.backups.busy) return
-        _ui.update { it.copy(backups = it.backups.copy(busy = true, error = null, noSource = false)) }
+        _ui.update { it.copy(backups = it.backups.copy(busy = true, error = null, errorCode = null, noSource = false)) }
         launchOp {
             when (val r = actions.backUpNow()) {
                 is Outcome.Ok -> {
@@ -332,7 +337,7 @@ class DriveHolder(
                     }
                     loadBackups()
                 }
-                is Outcome.Failed -> _ui.update { it.copy(backups = it.backups.copy(busy = false, error = r.reason)) }
+                is Outcome.Failed -> _ui.update { it.copy(backups = it.backups.copy(busy = false, error = r.reason, errorCode = r.code)) }
             }
         }
     }

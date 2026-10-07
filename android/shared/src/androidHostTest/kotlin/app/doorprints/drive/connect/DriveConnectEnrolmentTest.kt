@@ -30,6 +30,7 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /** Approve, join and revoke: the controller's routing to [DeviceEnrolment] (the web's `approveJoinedDevice*`, `joinFrom*`, `revokeListedDevice`). */
@@ -147,7 +148,9 @@ class DriveConnectEnrolmentTest {
             server.clock::now, true, null, b.signIn, null,
         )
         val r = c.joinFromWrap(Bytes.b64(byteArrayOf(1)), Bytes.b64(byteArrayOf(2)), 1)
-        assertEquals(ConnectResult(ConnectState.ERROR, error = DriveReason.FAILED), r)
+        // The generic failure now also carries its code (step and class name); the message stays out of it.
+        assertEquals(ConnectResult(ConnectState.ERROR, error = DriveReason.FAILED, code = "join/java.lang.IllegalStateException"), r)
+        assertFalse(r.toString().contains("secret"))
     }
 
     @Test

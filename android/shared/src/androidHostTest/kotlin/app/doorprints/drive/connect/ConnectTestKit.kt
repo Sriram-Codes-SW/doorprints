@@ -121,8 +121,11 @@ class FakeEnrolment : DeviceEnrolment {
 }
 
 /** One phone: a real backup service over the shared fake Drive, the real deletion service and phone gate, fakes at the edges. */
-class Phone(val server: FakeDriveServer, name: String, configured: Boolean = true, withSource: Boolean = true) {
-    val rig = Rig(server, name)
+class Phone(
+    val server: FakeDriveServer, name: String, configured: Boolean = true, withSource: Boolean = true,
+    crypto: app.doorprints.crypto.CryptoProvider = app.doorprints.crypto.JvmCryptoProvider,
+) {
+    val rig = Rig(server, name, crypto)
     val p = rig.p
     val deviceAuth = ProofingAuth { server.clock.now() }
     val lock = FakeLock()
@@ -164,9 +167,14 @@ class Phone(val server: FakeDriveServer, name: String, configured: Boolean = tru
         local.dirty.clear()
     }
 
-    fun controller(signedIn: DriveSignIn? = signIn, source: Boolean = true, configured: Boolean = true, driver: Boolean = true) = DriveConnectController(
+    fun controller(
+        signedIn: DriveSignIn? = signIn, source: Boolean = true, configured: Boolean = true, driver: Boolean = true,
+        customSource: app.doorprints.drive.backup.BackupSource? = null,
+        customDriver: (suspend (app.doorprints.drive.sync.DriveSyncBackend) -> Unit)? = null,
+    ) = DriveConnectController(
         rig.service, rig.drive, p, rig.identity as DeviceIdentity, rig.trust, enrolment, deletion, store, authorizer, rigs, network, prefs,
-        server.clock::now, configured, if (source) payload.source() else null, signedIn, if (driver) this.driver else null,
+        server.clock::now, configured, customSource ?: if (source) payload.source() else null, signedIn,
+        customDriver ?: if (driver) this.driver else null,
     )
 
     val c: DriveConnectController = controller()

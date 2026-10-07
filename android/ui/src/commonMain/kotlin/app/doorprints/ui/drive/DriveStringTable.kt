@@ -174,6 +174,7 @@ import app.doorprints.ui.res.drive_common_loading
 import app.doorprints.ui.res.drive_connect_no_backup_source
 import app.doorprints.ui.res.drive_problem_offline
 import app.doorprints.ui.res.drive_problem_source_failed
+import app.doorprints.ui.res.drive_problem_code
 import app.doorprints.ui.res.drive_problem_connect_failed
 import app.doorprints.ui.res.drive_problem_crypto_unavailable
 import app.doorprints.ui.res.drive_problem_signin_unavailable
@@ -400,6 +401,7 @@ internal val DRIVE_STRINGS: Map<String, StringResource> = mapOf(
     "driveConnect.noBackupSource" to Res.string.drive_connect_no_backup_source,
     "driveProblem.OFFLINE" to Res.string.drive_problem_offline,
     "driveProblem.SOURCE_FAILED" to Res.string.drive_problem_source_failed,
+    "driveProblem.CODE" to Res.string.drive_problem_code,
     "driveProblem.CONNECT_FAILED" to Res.string.drive_problem_connect_failed,
     "driveProblem.CRYPTO_UNAVAILABLE" to Res.string.drive_problem_crypto_unavailable,
     "driveProblem.SIGNIN_UNAVAILABLE" to Res.string.drive_problem_signin_unavailable,

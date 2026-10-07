@@ -147,10 +147,7 @@ enum class DriveReason(val key: String) {
         /** The screen key of anything thrown: a typed failure maps, anything else is [FAILED] (never the message). */
         fun of(e: Throwable): DriveReason = of(DriveProblem.of(e).kind).let {
             // DriveProblem.of turns an unknown throwable into SOURCE_FAILED; outside a backup run that is the generic failure.
-            if (e is app.doorprints.drive.DriveException || e is app.doorprints.crypto.KeysException ||
-                e is app.doorprints.crypto.CryptoException || e is app.doorprints.drive.backup.ControlException ||
-                e is app.doorprints.crypto.DpxException
-            ) it else FAILED
+            if (DriveProblem.isTyped(e)) it else FAILED
         }
     }
 }
@@ -158,16 +155,18 @@ enum class DriveReason(val key: String) {
 /** A result that is a value or a typed reason. */
 sealed interface Outcome<out T> {
     data class Ok<T>(val value: T) : Outcome<T>
-    data class Failed(val reason: DriveReason) : Outcome<Nothing>
+    /** [code] is the [app.doorprints.drive.DriveCode] of an unexpected failure (only with [DriveReason.SOURCE_FAILED] or [DriveReason.FAILED]). */
+    data class Failed(val reason: DriveReason, val code: String? = null) : Outcome<Nothing>
 }
 
 val <T> Outcome<T>.isOk: Boolean get() = this is Outcome.Ok
 
 /** What [DriveConnectController.connect] and its relatives return. The recovery key is here once and nowhere else. */
-class ConnectResult(val state: ConnectState, val recoveryKey: String? = null, val error: DriveReason? = null) {
-    override fun toString() = "ConnectResult($state, error=$error, recoveryKey=${if (recoveryKey == null) "none" else "<shown once>"})"
-    override fun equals(other: Any?) = other is ConnectResult && other.state == state && other.recoveryKey == recoveryKey && other.error == error
-    override fun hashCode() = 31 * (31 * state.hashCode() + (recoveryKey?.hashCode() ?: 0)) + (error?.hashCode() ?: 0)
+class ConnectResult(val state: ConnectState, val recoveryKey: String? = null, val error: DriveReason? = null, val code: String? = null) {
+    override fun toString() = "ConnectResult($state, error=$error, code=$code, recoveryKey=${if (recoveryKey == null) "none" else "<shown once>"})"
+    override fun equals(other: Any?) =
+        other is ConnectResult && other.state == state && other.recoveryKey == recoveryKey && other.error == error && other.code == code
+    override fun hashCode() = 31 * (31 * (31 * state.hashCode() + (recoveryKey?.hashCode() ?: 0)) + (error?.hashCode() ?: 0)) + (code?.hashCode() ?: 0)
 }
 
 data class BackupSummary(val id: String, val createdAt: Long, val houses: Int, val bytes: Long?, val name: String)
@@ -203,6 +202,8 @@ data class SyncInfo(
     val liveHouses: Int? = null,
     /** A finished pass wrote this device's file or took rows from another device's: something moved (the periodic cadence's reset). */
     val changed: Boolean = false,
+    /** The [app.doorprints.drive.DriveCode] of an unexpected failure of the pass (with [error] [DriveReason.FAILED]); else null. */
+    val code: String? = null,
 ) {
     val needsConfirmation: Boolean get() = state == SyncState.NEEDS_CONFIRMATION
 }
