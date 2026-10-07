@@ -266,7 +266,7 @@ internal object IosCryptoProvider : CryptoProvider {
     // ---- Core Foundation helpers ----
 
     /** A `SecKey` of the given class from its X9.63 bytes, or null when the platform refuses; the caller releases it. */
-    private fun importKey(x963: ByteArray, keyClass: CFTypeRef?): SecKeyRef? {
+    internal fun importKey(x963: ByteArray, keyClass: CFTypeRef?): SecKeyRef? {
         val data = x963.usePinned { CFDataCreate(null, it.addressOf(0).reinterpret<UByteVar>(), x963.size.convert()) }
             ?: throw CryptoException(CryptoException.Kind.UNAVAILABLE, "CFDataCreate failed")
         try {
@@ -280,7 +280,7 @@ internal object IosCryptoProvider : CryptoProvider {
         }
     }
 
-    private fun externalRepresentation(key: SecKeyRef): ByteArray {
+    internal fun externalRepresentation(key: SecKeyRef): ByteArray {
         val data = SecKeyCopyExternalRepresentation(key, null) ?: throw CryptoException(CryptoException.Kind.UNAVAILABLE, "no external representation")
         try {
             return bytesOf(data)
@@ -289,14 +289,14 @@ internal object IosCryptoProvider : CryptoProvider {
         }
     }
 
-    private fun bytesOf(data: CFDataRef): ByteArray {
+    internal fun bytesOf(data: CFDataRef): ByteArray {
         val length = CFDataGetLength(data).toInt()
         if (length == 0) return ByteArray(0)
         val pointer: CPointer<UByteVar> = CFDataGetBytePtr(data) ?: throw CryptoException(CryptoException.Kind.UNAVAILABLE, "empty CFData")
         return pointer.reinterpret<ByteVar>().readBytes(length)
     }
 
-    private fun number(value: Int): CFTypeRef? = memScoped {
+    internal fun number(value: Int): CFTypeRef? = memScoped {
         val v = alloc<kotlinx.cinterop.IntVar>()
         v.value = value
         CFNumberCreate(null, kCFNumberIntType, v.ptr)
@@ -306,7 +306,7 @@ internal object IosCryptoProvider : CryptoProvider {
      * A temporary CF dictionary of [entries] for [block]. The key-size value is a `CFNumber` this file created, so it
      * is released here; every other key and value is a framework constant.
      */
-    private fun <T> withDictionary(
+    internal fun <T> withDictionary(
         vararg entries: Pair<CFTypeRef?, CFTypeRef?>,
         block: (CFMutableDictionaryRef?) -> T,
     ): T {

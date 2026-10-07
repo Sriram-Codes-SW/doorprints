@@ -134,7 +134,8 @@ import kotlin.uuid.Uuid
  * - [syncSoon]: asks for a sync shortly (Android: `SyncWorker.syncSoon`, a WorkManager job).
  * - [apiFor]: the API client for a server address and key (Android: the app-wide HTTP stack; a test's fake engine).
  * - `syncBackendFor`: where [sync] goes for the current settings, or null when nothing is set up (S4b-BL-70); left
- *   out, the configured server ([ServerSyncBackend] over [apiFor]); a test's fake.
+ *   out, the configured server ([ServerSyncBackend] over [apiFor]); a test's fake. It suspends so the Drive route can read
+ *   the running pass's backend from the coroutine context (`DriveSyncRoute`, common code for both phones).
  *
  * A platform subclass adds what has no common form yet: on Android, adding a photo from a `Uri` (`AndroidRepository`).
  */
@@ -147,9 +148,9 @@ open class CommonRepository(
     private val apiFor: (serverUrl: String, apiKey: String) -> ApiClient,
     /** Gemini with the person's own key, for on-device AI (docs/03 §13.1); null where a platform has none (tests). */
     private val geminiFor: ((apiKey: String) -> GeminiClient)? = null,
-    syncBackendFor: ((AppSettings) -> SyncBackend?)? = null,
+    syncBackendFor: (suspend (AppSettings) -> SyncBackend?)? = null,
 ) : Repository {
-    private val syncBackendFor: (AppSettings) -> SyncBackend? = syncBackendFor
+    private val syncBackendFor: suspend (AppSettings) -> SyncBackend? = syncBackendFor
         ?: { s -> if (s.serverConfigured) ServerSyncBackend(apiFor(s.serverUrl, s.apiKey)) else null }
 
     protected val fs: FileSystem = SystemFileSystem

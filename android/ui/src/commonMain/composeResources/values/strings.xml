@@ -1493,4 +1493,15 @@
     <string name="trace_here_privacy">Shown only here. Nothing is saved or sent.</string>
     <string name="trace_here_again">Check again</string>
     <string name="trace_here_stretch_a11y">The stretch of your walk near %1$s is outlined on the map.</string>
+
+    <!-- S4b-BL-117, S4b-BL-142, Google Drive on iPhone (2026-10-07): the passcode notices of Settings > Google Drive (the
+         iPhone has a passcode, not a screen lock, and no link to its settings) and the words of the QR scanner screen. -->
+    <string name="lock_notice_ios_heading">Back up to Google Drive</string>
+    <string name="lock_notice_ios_needs">Google Drive backup needs a passcode on this iPhone. Set one in the Settings app, under Face ID &amp; Passcode, then come back.</string>
+    <string name="lock_notice_ios_paused">Google Drive backup is paused because this iPhone no longer has a passcode. Your houses are safe on this iPhone. Set a passcode to continue.</string>
+    <string name="lock_notice_ios_key_lost">Google Drive backup is paused because this iPhone lost its secure key. Your houses are safe on this iPhone. Connect to Google Drive again to continue.</string>
+    <string name="qr_scan_hint">Point the camera at the Doorprints code on the other device.</string>
+    <string name="qr_scan_not_doorprints">That is not a Doorprints code.</string>
+    <string name="qr_scan_too_long">That code is too long to be a Doorprints code.</string>
+    <string name="qr_scan_viewfinder">Camera view</string>
 </resources>

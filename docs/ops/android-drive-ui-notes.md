@@ -29,7 +29,7 @@ DriveSettings(vm, scanner = cameraScanner /* or NoQrScanner */, host = DriveHost
   staging file; set `importBusy` while it works and `importError` (a `DriveReason`) when it refuses.
 - `DriveHost.onSaveCopy`: navigate to the Export screen (*Save a copy*).
 - `QrScanner`: a camera seam (CameraX and ML Kit on Android, AVFoundation on iOS). `scan()` returns the text of the first code read
-  (`QrScan.Scanned`), `Cancelled`, or `NoCamera`. No camera code is in `:ui`; with `NoQrScanner` the screens offer paste only. (Since S4b-BL-136 Android passes `AndroidQrScanner`, Google's code scanner with no CAMERA permission, and the iPhone has `iosQrScanner()` in `:ui` iosMain, not yet wired to a Drive screen: [android-drive-wiring-notes.md](android-drive-wiring-notes.md) item 5, [ios-qr-scanner-notes.md](ios-qr-scanner-notes.md).)
+  (`QrScan.Scanned`), `Cancelled`, or `NoCamera`. No camera code is in `:ui`; with `NoQrScanner` the screens offer paste only. (Since S4b-BL-136 Android passes `AndroidQrScanner`, Google's code scanner with no CAMERA permission, and the iPhone has `iosQrScanner()` in `:ui` iosMain, wired into the iPhone's Drive screen since `feat/ios-drive` (docs/15 §9.11): [android-drive-wiring-notes.md](android-drive-wiring-notes.md) item 5, [ios-qr-scanner-notes.md](ios-qr-scanner-notes.md).)
 - `EnrolmentCodec`: the `dp1.` offer and reply text, built from the enrolment branch (`feat/android-drive-e-enrolment`): `newOffer`
   (QR text, the 8-digit code, the PSK), `parseOffer`, `encodeReply`, `parseReply`. Without a codec the enrolment buttons do nothing.
   The 8-digit code must be the same on both phones (it is `PairingCode.pairingCode` there).

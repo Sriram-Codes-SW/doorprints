@@ -1492,4 +1492,14 @@
     <string name="trace_here_privacy">सिर्फ़ यहीं दिखता है। कुछ सहेजा या भेजा नहीं जाता।</string>
     <string name="trace_here_again">फिर जाँचें</string>
     <string name="trace_here_stretch_a11y">%1$s के पास आपकी सैर का हिस्सा नक़्शे पर रेखांकित है।</string>
+
+    <!-- S4b-BL-117, S4b-BL-142 (2026-10-07): under review (the iPhone's passcode notices and the QR scanner's words). -->
+    <string name="lock_notice_ios_heading">Google Drive पर बैकअप</string>
+    <string name="lock_notice_ios_needs">Google Drive बैकअप के लिए इस iPhone में पासकोड ज़रूरी है। सेटिंग्स ऐप में Face ID और पासकोड के अंदर लगाएँ, फिर यहाँ लौटें।</string>
+    <string name="lock_notice_ios_paused">Google Drive बैकअप रुका है क्योंकि इस iPhone में अब पासकोड नहीं है। आपके मकान इस iPhone में सुरक्षित हैं। जारी रखने के लिए पासकोड लगाएँ।</string>
+    <string name="lock_notice_ios_key_lost">Google Drive बैकअप रुका है क्योंकि इस iPhone की सुरक्षित कुंजी खो गई है। आपके मकान इस iPhone में सुरक्षित हैं। जारी रखने के लिए Google Drive से फिर जुड़ें।</string>
+    <string name="qr_scan_hint">कैमरे को दूसरे डिवाइस पर दिख रहे Doorprints कोड की ओर रखें।</string>
+    <string name="qr_scan_not_doorprints">यह Doorprints कोड नहीं है।</string>
+    <string name="qr_scan_too_long">यह कोड Doorprints कोड होने के लिए बहुत लंबा है।</string>
+    <string name="qr_scan_viewfinder">कैमरा व्यू</string>
 </resources>

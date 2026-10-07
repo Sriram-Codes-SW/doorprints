@@ -24,7 +24,7 @@ import app.doorprints.crypto.QR_PSK_LEN
 import app.doorprints.deviceauth.AuthResult
 import app.doorprints.deviceauth.DeleteLevel
 import app.doorprints.drive.FakeDriveServer
-import app.doorprints.drive.auth.AndroidDriveTokenProvider
+import app.doorprints.drive.auth.DriveTokenProvider
 import app.doorprints.drive.auth.AuthorizerResult
 import app.doorprints.drive.auth.DRIVE_FILE_SCOPE
 import app.doorprints.drive.auth.GoogleAuthorizer
@@ -76,7 +76,7 @@ class DriveAdaptersTest {
     private fun granted(token: String = "tok") = AuthorizerResult.Granted(token, setOf(DRIVE_FILE_SCOPE))
 
     private fun signIn(google: Google, canConnect: () -> Boolean = { true }) =
-        TokenDriveSignIn(AndroidDriveTokenProvider(google, { null }), canConnect)
+        TokenDriveSignIn(DriveTokenProvider(google, { null }), canConnect)
 
     @Test
     fun aGrantSignsIn() = runBlocking {

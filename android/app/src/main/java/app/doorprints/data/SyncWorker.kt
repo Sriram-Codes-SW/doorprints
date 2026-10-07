@@ -23,6 +23,7 @@ import androidx.work.*
 import app.doorprints.DoorprintsApp
 import app.doorprints.drive.wiring.DriveBackupWorker
 import app.doorprints.drive.wiring.DriveCadenceGate
+import app.doorprints.drive.wiring.of
 import app.doorprints.shared.sync.SyncOutcome
 import kotlinx.coroutines.CancellationException
 import java.util.concurrent.TimeUnit

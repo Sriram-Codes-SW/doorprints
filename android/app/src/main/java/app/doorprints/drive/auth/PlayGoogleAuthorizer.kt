@@ -39,7 +39,7 @@ class PlayPendingConsent(val intent: PendingIntent) : PendingConsent
 
 /**
  * [GoogleAuthorizer] over Google's `AuthorizationClient` (play-services-auth; docs/15 §5.5, the Play services row).
- * A thin adapter with no decisions (those are [AndroidDriveTokenProvider]'s, tested on a fake): it only maps Google's
+ * A thin adapter with no decisions (those are [DriveTokenProvider]'s, tested on a fake): it only maps Google's
  * types. The real calls need a device with Google Play services, so they are checked by the lead's emulator run
  * (S4b-BL-122), not by a unit test. Nothing here logs or stores a token.
  */

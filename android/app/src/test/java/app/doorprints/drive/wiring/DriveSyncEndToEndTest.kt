@@ -128,7 +128,7 @@ class DriveSyncEndToEndTest {
             val deviceAuth = ProverDeviceAuth(SoftwareOperationProver(plainAuth, JvmCryptoProvider), plainAuth::isDeviceLockEnabled) { server.clock.now() }
             graph = DriveAssembly.assemble(
                 DriveDeps(
-                    dir = dir,
+                    dir = dir.path,
                     crypto = JvmCryptoProvider,
                     keyBackend = backend,
                     deviceName = name,
