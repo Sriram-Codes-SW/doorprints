@@ -1387,6 +1387,8 @@
     <string name="drive_delete_reason_nothing_pending">முடிக்க வேண்டிய நீக்கம் எதுவும் இல்லை.</string>
     <string name="drive_delete_reason_no_device_lock">இந்த ஃபோனில் திரைப் பூட்டு இல்லை. ஃபோனின் அமைப்புகளில் அமைக்கவும்; அதுவரை நீக்குவது முடக்கப்பட்டு Google Drive ஒத்திசைவு இடைநிறுத்தப்படும்.</string>
     <string name="drive_delete_reason_auth_cancelled">சாதனச் சோதனை ரத்து செய்யப்பட்டது. எதுவும் நீக்கப்படவில்லை.</string>
+    <!-- S4b-BL-140 (2026-10-07): under review. -->
+    <string name="drive_delete_reason_auth_timed_out">சாதனச் சோதனைக்கான நேரம் முடிந்தது. எதுவும் நீக்கப்படவில்லை. மீண்டும் முயலவும்.</string>
     <string name="drive_delete_reason_auth_failed">சாதனச் சோதனை பொருந்தவில்லை. மீண்டும் முயலவும்.</string>
     <string name="drive_delete_reason_auth_lock_not_set">முதலில் இந்த ஃபோனில் திரைப் பூட்டை அமைத்து, பிறகு முயலவும்.</string>
     <string name="drive_delete_reason_auth_not_available">இந்த ஃபோனில் சாதனச் சோதனை கிடைக்கவில்லை.</string>

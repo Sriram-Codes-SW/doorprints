@@ -101,6 +101,7 @@ class PhoneDeletionAuthorizer(
             is Authorization.Denied -> DeleteAuthorization.Refused(
                 when (a.result) {
                     AuthResult.CANCELLED -> DriveReason.AUTH_CANCELLED
+                    AuthResult.TIMED_OUT -> DriveReason.AUTH_TIMED_OUT
                     AuthResult.LOCK_NOT_SET -> DriveReason.AUTH_LOCK_NOT_SET
                     AuthResult.NOT_AVAILABLE -> DriveReason.AUTH_NOT_AVAILABLE
                     AuthResult.LOCKED_OUT -> DriveReason.AUTH_LOCKED_OUT

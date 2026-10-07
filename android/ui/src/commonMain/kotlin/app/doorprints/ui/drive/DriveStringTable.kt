@@ -233,6 +233,7 @@ import app.doorprints.ui.res.drive_delete_reason_other_deletion_pending
 import app.doorprints.ui.res.drive_delete_reason_nothing_pending
 import app.doorprints.ui.res.drive_delete_reason_no_device_lock
 import app.doorprints.ui.res.drive_delete_reason_auth_cancelled
+import app.doorprints.ui.res.drive_delete_reason_auth_timed_out
 import app.doorprints.ui.res.drive_delete_reason_auth_failed
 import app.doorprints.ui.res.drive_delete_reason_auth_lock_not_set
 import app.doorprints.ui.res.drive_delete_reason_auth_not_available
@@ -458,6 +459,7 @@ internal val DRIVE_STRINGS: Map<String, StringResource> = mapOf(
     "driveDelete.reason.NOTHING_PENDING" to Res.string.drive_delete_reason_nothing_pending,
     "driveDelete.reason.NO_DEVICE_LOCK" to Res.string.drive_delete_reason_no_device_lock,
     "driveDelete.reason.AUTH_CANCELLED" to Res.string.drive_delete_reason_auth_cancelled,
+    "driveDelete.reason.AUTH_TIMED_OUT" to Res.string.drive_delete_reason_auth_timed_out,
     "driveDelete.reason.AUTH_FAILED" to Res.string.drive_delete_reason_auth_failed,
     "driveDelete.reason.AUTH_LOCK_NOT_SET" to Res.string.drive_delete_reason_auth_lock_not_set,
     "driveDelete.reason.AUTH_NOT_AVAILABLE" to Res.string.drive_delete_reason_auth_not_available,

@@ -166,7 +166,7 @@ class DriveAdaptersTest {
             ProofOutcome.Proved(1L, "0".repeat(64)) to AuthResult.SUCCESS,
             ProofOutcome.Denied to AuthResult.LOCKED_OUT,
             ProofOutcome.Cancelled to AuthResult.CANCELLED,
-            ProofOutcome.TimedOut to AuthResult.CANCELLED,
+            ProofOutcome.TimedOut to AuthResult.TIMED_OUT,
             ProofOutcome.NoLock to AuthResult.LOCK_NOT_SET,
             ProofOutcome.Unavailable to AuthResult.NOT_AVAILABLE,
             ProofOutcome.Failed to AuthResult.FAILED,

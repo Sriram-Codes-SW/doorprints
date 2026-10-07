@@ -1387,6 +1387,8 @@
     <string name="drive_delete_reason_nothing_pending">कोई मिटाना पूरा होने की प्रतीक्षा में नहीं है।</string>
     <string name="drive_delete_reason_no_device_lock">इस फ़ोन में स्क्रीन लॉक नहीं है। फ़ोन की सेटिंग्स में लगाएँ; तब तक मिटाना बंद है और Google Drive सिंक रुका है।</string>
     <string name="drive_delete_reason_auth_cancelled">डिवाइस जाँच रद्द हुई। कुछ नहीं मिटा।</string>
+    <!-- S4b-BL-140 (2026-10-07): under review. -->
+    <string name="drive_delete_reason_auth_timed_out">डिवाइस जाँच का समय समाप्त हो गया। कुछ नहीं मिटा। फिर कोशिश करें।</string>
     <string name="drive_delete_reason_auth_failed">डिवाइस जाँच मेल नहीं खाई। फिर कोशिश करें।</string>
     <string name="drive_delete_reason_auth_lock_not_set">पहले इस फ़ोन पर स्क्रीन लॉक लगाएँ, फिर कोशिश करें।</string>
     <string name="drive_delete_reason_auth_not_available">इस फ़ोन पर डिवाइस जाँच उपलब्ध नहीं है।</string>

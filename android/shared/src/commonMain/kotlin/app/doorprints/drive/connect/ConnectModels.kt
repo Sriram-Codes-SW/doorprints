@@ -109,6 +109,7 @@ enum class DriveReason(val key: String) {
     // The device check (screen lock, fingerprint, face) that guards the level 2 and 3 actions.
     NO_DEVICE_LOCK("driveDelete.reason.NO_DEVICE_LOCK"),
     AUTH_CANCELLED("driveDelete.reason.AUTH_CANCELLED"),
+    AUTH_TIMED_OUT("driveDelete.reason.AUTH_TIMED_OUT"),
     AUTH_FAILED("driveDelete.reason.AUTH_FAILED"),
     AUTH_LOCK_NOT_SET("driveDelete.reason.AUTH_LOCK_NOT_SET"),
     AUTH_NOT_AVAILABLE("driveDelete.reason.AUTH_NOT_AVAILABLE"),

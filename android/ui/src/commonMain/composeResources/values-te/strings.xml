@@ -1387,6 +1387,8 @@
     <string name="drive_delete_reason_nothing_pending">పూర్తి చేయాల్సిన తొలగింపు ఏదీ లేదు.</string>
     <string name="drive_delete_reason_no_device_lock">ఈ ఫోన్‌కు స్క్రీన్ లాక్ లేదు. ఫోన్ సెట్టింగ్‌లలో పెట్టండి; అప్పటివరకు తొలగింపు ఆఫ్‌లో ఉంటుంది, Google Drive సింక్ ఆగి ఉంటుంది.</string>
     <string name="drive_delete_reason_auth_cancelled">పరికర తనిఖీ రద్దు అయింది. ఏదీ తొలగించబడలేదు.</string>
+    <!-- S4b-BL-140 (2026-10-07): under review. -->
+    <string name="drive_delete_reason_auth_timed_out">పరికర తనిఖీ సమయం ముగిసింది. ఏదీ తొలగించబడలేదు. మళ్లీ ప్రయత్నించండి.</string>
     <string name="drive_delete_reason_auth_failed">పరికర తనిఖీ సరిపోలేదు. మళ్లీ ప్రయత్నించండి.</string>
     <string name="drive_delete_reason_auth_lock_not_set">ముందుగా ఈ ఫోన్‌లో స్క్రీన్ లాక్ పెట్టి, తర్వాత ప్రయత్నించండి.</string>
     <string name="drive_delete_reason_auth_not_available">ఈ ఫోన్‌లో పరికర తనిఖీ అందుబాటులో లేదు.</string>

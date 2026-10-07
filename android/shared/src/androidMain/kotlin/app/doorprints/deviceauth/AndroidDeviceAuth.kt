@@ -99,7 +99,8 @@ object AndroidAuthErrors {
 
     fun map(code: Int): AuthResult = when (code) {
         BiometricPrompt.BIOMETRIC_ERROR_CANCELED, BiometricPrompt.BIOMETRIC_ERROR_USER_CANCELED,
-        ERROR_NEGATIVE_BUTTON, BiometricPrompt.BIOMETRIC_ERROR_TIMEOUT -> AuthResult.CANCELLED
+        ERROR_NEGATIVE_BUTTON -> AuthResult.CANCELLED
+        BiometricPrompt.BIOMETRIC_ERROR_TIMEOUT -> AuthResult.TIMED_OUT
         BiometricPrompt.BIOMETRIC_ERROR_LOCKOUT, BiometricPrompt.BIOMETRIC_ERROR_LOCKOUT_PERMANENT -> AuthResult.LOCKED_OUT
         BiometricPrompt.BIOMETRIC_ERROR_NO_DEVICE_CREDENTIAL -> AuthResult.LOCK_NOT_SET
         BiometricPrompt.BIOMETRIC_ERROR_HW_NOT_PRESENT, BiometricPrompt.BIOMETRIC_ERROR_HW_UNAVAILABLE,
