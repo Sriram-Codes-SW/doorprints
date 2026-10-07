@@ -212,7 +212,7 @@
     <string name="settings_import">बैकअप आयात करें</string>
     <string name="settings_import_hint">Doorprints बैकअप (ZIP, या सर्वर की .json) को ऐप में फिर पढ़ें</string>
     <string name="settings_auto_backup">हर हफ़्ते अपने आप बैकअप</string>
-    <string name="settings_auto_backup_hint">हफ़्ते में एक बैकअप, चार्ज होते समय, आपके चुने फ़ोल्डर में</string>
+    <string name="settings_auto_backup_hint">हफ़्ते में एक सादी बैकअप फ़ाइल, चार्ज होते समय, आपके चुने फ़ोल्डर में। यह Google Drive बैकअप से अलग है, जो रोज़ अपने एन्क्रिप्टेड बैकअप रखता है।</string>
     <string name="settings_auto_backup_folder">फ़ोल्डर चुनें</string>
     <string name="settings_auto_backup_folder_change">फ़ोल्डर बदलें</string>
     <string name="settings_auto_backup_last">आख़िरी बैकअप: %1$s</string>
@@ -292,6 +292,7 @@
     <string name="import_copy_shown">कॉपी के रूप में जोड़ने से क्या बदलेगा, वह दिखाया जा रहा है। ‘आयात करें’ दबाने तक कुछ भी आयात नहीं होगा।</string>
     <string name="import_see_houses">अपने मकान देखें</string>
     <string name="settings_auto_backup_folder_is">यहाँ सहेजा जाता है: %1$s</string>
+    <string name="settings_auto_backup_lost_phone">अगर फ़ोन खो जाए तो इसी फ़ोन का फ़ोल्डर काम नहीं आएगा। SD कार्ड या क्लाउड ऐप का फ़ोल्डर चुनें, या फ़ाइल को कभी-कभी कहीं और कॉपी करें।</string>
     <string name="settings_auto_backup_now">अभी बैकअप लें</string>
     <string name="settings_auto_backup_never">अभी कोई बैकअप नहीं: पहला बैकअप अगली बार फ़ोन चार्ज होने पर बनेगा।</string>
     <plurals name="count_houses">
@@ -1561,7 +1562,7 @@
     <string name="tour_share_body">पिछली बार से जो बदला है उसकी छोटी फ़ाइल किसी को भेजें, किसी भी ऐप से, जैसे WhatsApp या ईमेल।</string>
     <string name="tour_share_action">अपडेट साझा करें… दबाएँ, व्यक्ति जोड़ें, फिर चुनें कि क्या भेजना है।</string>
     <string name="tour_backup_title">हर हफ़्ते अपने आप बैकअप</string>
-    <string name="tour_backup_body">हर हफ़्ते आपके चुने फ़ोल्डर में एक प्रति सहेजता है और पिछली कुछ रखता है, ताकि फ़ोन खोने पर मकान न खोएँ।</string>
+    <string name="tour_backup_body">हर हफ़्ते, चार्ज होते समय, आपके चुने फ़ोल्डर में एक बैकअप फ़ाइल सहेजता है और पिछली कुछ रखता है। Google Drive बैकअप अलग है। इसी फ़ोन का फ़ोल्डर फ़ोन के साथ खो जाता है, इसलिए बचाए रखने के लिए SD कार्ड या क्लाउड ऐप का फ़ोल्डर चुनें।</string>
     <string name="tour_backup_action">इसे चालू करें, फिर फ़ोल्डर चुनें।</string>
     <string name="tour_trace_title">याद रखें कि आप कहाँ चले</string>
     <string name="tour_trace_body">नक़्शे पर मेरा रास्ता दिखाएँ हंट मोड चलने तक आपकी सैर 30 दिन इसी फ़ोन पर रखता है। 100 मीटर या अधिक की सैर के बाद आप उसे किसी मकान के साथ सहेज सकते हैं।</string>
@@ -1576,13 +1577,13 @@
     <string name="tour_ai_body">सहायक और AI मदद के काम करने के लिए सेटिंग्स में AI सुविधाएँ के नीचे उन्हें चालू करें। आप जो पूछते हैं वह Google Gemini को जाता है, आपके सर्वर से या इस फ़ोन से सीधे आपकी अपनी Gemini कुंजी से। चालू करने तक वे बंद रहती हैं।</string>
     <string name="tour_ai_action">पढ़ें कि क्या भेजा जाता है, फिर चाहें तो AI सुविधाएँ चालू करें। यह वैकल्पिक है।</string>
     <string name="tour_brokers_title">ब्रोकर</string>
-    <string name="tour_brokers_body">जिन ब्रोकरों और मालिकों से आप मिले, उन्होंने क्या बताया और कौन-से मकान दिखाए, यह रखें।</string>
-    <string name="tour_brokers_action">सूची देखने के लिए ब्रोकर दबाएँ, या बाद में किसी मकान से जोड़ें।</string>
+    <string name="tour_brokers_body">मकान दिखाने वाले लोग: उनका फ़ोन, एजेंसी और फ़ीस, और जो मकान उन्होंने दिखाए। जब आप किसी मकान को उसके फ़ोन नंबर के साथ सहेजते हैं तो दलाल यहाँ आ जाता है।</string>
+    <string name="tour_brokers_action">सूची देखने के लिए ब्रोकर दबाएँ। फ़ोन नंबर वाले मकान सहेजने पर यह अपने आप भरती जाती है।</string>
     <string name="tour_criteria_title">बताएँ कि आपके लिए क्या मायने रखता है</string>
     <string name="tour_criteria_body">रोशनी, शोर या पानी जैसे आपके अपने मापदंड हर मकान की आपकी रेटिंग बनते हैं और सूची को क्रम देते हैं। ठीक नीचे सवाल वे सवाल हैं जो आप मकान देखते समय पूछते हैं।</string>
     <string name="tour_criteria_action">मापदंड दबाएँ और अपने लिए ज़रूरी एक मापदंड जोड़ें।</string>
     <string name="tour_viewings_title">मकान देखने की योजना बनाएँ</string>
-    <string name="tour_viewings_body">किसी मकान को देखने की योजना बनाएँ, याद दिलाने वाला अलर्ट पाएँ और देखे हुए मकानों का इतिहास रखें। हंट मोड किसी विज़िट से पहले शुरू करने की पेशकश कर सकता है।</string>
+    <string name="tour_viewings_body">किसी मकान को देखने की योजना बनाएँ, याद दिलाने वाला अलर्ट पाएँ, और देखे जा चुके मकानों का इतिहास रखें। हर विज़िट के लिए आप हंट मोड से कह सकते हैं कि शुरू होने से पहले वह शुरू करने का सुझाव दे।</string>
     <string name="tour_viewings_action">उन्हें देखने के लिए मकान देखना दबाएँ, या किसी मकान से योजना बनाएँ।</string>
     <string name="tour_areas_title">मेरे इलाक़े और मेरी जगहें</string>
     <string name="tour_areas_body">जिन इलाक़ों में आप खोज रहे हैं उन्हें नोट के साथ चिह्नित करें, और काम या स्कूल जैसी ज़रूरी जगहें भी। जहाँ यह उपलब्ध है, किसी इलाक़े में पहुँचने पर फ़ोन आपको हंट मोड शुरू करने की याद दिला सकता है।</string>

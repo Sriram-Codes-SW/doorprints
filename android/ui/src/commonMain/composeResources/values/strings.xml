@@ -212,7 +212,7 @@
     <string name="settings_import">Import a backup</string>
     <string name="settings_import_hint">Read a Doorprints backup (ZIP, or .json from the server) back into the app</string>
     <string name="settings_auto_backup">Weekly automatic backup</string>
-    <string name="settings_auto_backup_hint">One backup a week while charging, to a folder you choose</string>
+    <string name="settings_auto_backup_hint">One plain backup file a week while charging, in a folder you choose. Separate from Google Drive, which keeps its own encrypted daily backups.</string>
     <string name="settings_auto_backup_folder">Choose the folder</string>
     <string name="settings_auto_backup_folder_change">Change the folder</string>
     <string name="settings_auto_backup_last">Last backup: %1$s</string>
@@ -292,6 +292,7 @@
     <string name="import_copy_shown">Showing what adding copies would change. Nothing is imported until you tap ‘Import’.</string>
     <string name="import_see_houses">See your houses</string>
     <string name="settings_auto_backup_folder_is">Saved to: %1$s</string>
+    <string name="settings_auto_backup_lost_phone">A folder on this phone will not help if the phone is lost. Choose a folder on an SD card or in a cloud app, or copy the file somewhere else now and then.</string>
     <string name="settings_auto_backup_now">Back up now</string>
     <string name="settings_auto_backup_never">No backup yet: the first one runs the next time the phone is charging.</string>
     <plurals name="count_houses">
@@ -1561,7 +1562,7 @@
     <string name="tour_share_body">Send someone a small file of what changed since last time, through any app, such as WhatsApp or email.</string>
     <string name="tour_share_action">Tap Share updates with…, add the person, then choose what to send.</string>
     <string name="tour_backup_title">Weekly automatic backup</string>
-    <string name="tour_backup_body">Saves a copy to a folder you choose every week, and keeps the last few, so a lost phone does not lose your houses.</string>
+    <string name="tour_backup_body">Saves one backup file a week, while the phone is charging, to a folder you choose, and keeps the last few. Google Drive backup is separate. A folder on this phone is lost with the phone, so pick one on an SD card or in a cloud app if you want it to survive.</string>
     <string name="tour_backup_action">Switch it on, then choose the folder.</string>
     <string name="tour_trace_title">Remember where you walked</string>
     <string name="tour_trace_body">Trace my path on the map keeps your walks on this phone for 30 days while Hunt mode runs. After a walk of 100 metres or more you can save it to a house.</string>
@@ -1576,13 +1577,13 @@
     <string name="tour_ai_body">Switch on AI features in Settings, under AI features, so the Assistant and AI help can work. They send what you ask to Google Gemini, through your server or straight from this phone with your own Gemini key. They are off until you turn them on.</string>
     <string name="tour_ai_action">Read what is sent, then switch on AI features if you want them. It is optional.</string>
     <string name="tour_brokers_title">Brokers</string>
-    <string name="tour_brokers_body">Keep the brokers and owners you meet, what they told you, and which houses they showed.</string>
-    <string name="tour_brokers_action">Tap Brokers to see the list, or add one later from a house.</string>
+    <string name="tour_brokers_body">The people who show you houses: their phone, agency and fees, and the houses they showed you. A broker appears here when you save a house with their phone number.</string>
+    <string name="tour_brokers_action">Tap Brokers to see the list. It fills in as you save houses with a phone number.</string>
     <string name="tour_criteria_title">Say what matters to you</string>
     <string name="tour_criteria_body">Your own criteria, such as light, noise or water, become your rating for each house and rank the list. Questions, just below, is the bank of questions you ask at a viewing.</string>
     <string name="tour_criteria_action">Tap Criteria and add one that matters to you.</string>
     <string name="tour_viewings_title">Plan your viewings</string>
-    <string name="tour_viewings_body">Plan a viewing for a house, get a reminder, and keep the history of the ones you have done. Hunt mode can offer to start before one.</string>
+    <string name="tour_viewings_body">Plan a viewing for a house, get a reminder, and keep the history of the ones you have done. For each viewing you can ask Hunt mode to offer to start before it.</string>
     <string name="tour_viewings_action">Tap Viewings to see them, or plan one from a house.</string>
     <string name="tour_areas_title">My areas and My places</string>
     <string name="tour_areas_body">Mark the areas you are hunting in, with notes, and the places that matter, such as work or school. Where it is available, the phone can remind you to start Hunt mode when you arrive in an area.</string>

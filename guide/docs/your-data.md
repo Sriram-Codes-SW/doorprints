@@ -22,7 +22,7 @@ Always make one before you change phones or clear your browser.
 
 **On iPhone:** open **Settings**, then **Save a copy**, and save it to Files or share it. Every format but the PDF.
 
-**Weekly automatic backup** (Android) saves a backup once a week while the phone is charging. It goes to a folder you choose.
+**Weekly automatic backup** (Android) saves one plain backup file a week, while the phone is charging, to a folder you choose, and keeps the last four. It is not encrypted. It is separate from [Google Drive backups](google-drive.md), which keep their own encrypted daily copies. A folder on the phone is lost with the phone, so choose a folder on an SD card or in a cloud app, or copy the file somewhere else now and then.
 
 - **Web page (HTML)**, **PDF**, CSV tables, **Excel** and **Markdown** are *readable copies*. They are good for
   reading, printing and sharing with family. In the tables (CSV and Excel) each house is a row, with its costs, the

@@ -212,7 +212,7 @@
     <string name="settings_import">బ్యాకప్ దిగుమతి చేయండి</string>
     <string name="settings_import_hint">Doorprints బ్యాకప్‌ను (ZIP, లేదా సర్వర్ .json) తిరిగి యాప్‌లోకి చదవండి</string>
     <string name="settings_auto_backup">వారానికొకసారి ఆటోమేటిక్ బ్యాకప్</string>
-    <string name="settings_auto_backup_hint">వారానికి ఒక బ్యాకప్, ఛార్జ్ అవుతున్నప్పుడు, మీరు ఎంచుకున్న ఫోల్డర్‌లోకి</string>
+    <string name="settings_auto_backup_hint">వారానికి ఒక సాధారణ బ్యాకప్ ఫైల్, ఛార్జ్ అవుతున్నప్పుడు, మీరు ఎంచుకున్న ఫోల్డర్‌లో. ఇది Google Drive బ్యాకప్ నుండి వేరు; అది రోజూ తన ఎన్‌క్రిప్ట్ చేసిన బ్యాకప్‌లను ఉంచుతుంది.</string>
     <string name="settings_auto_backup_folder">ఫోల్డర్ ఎంచుకోండి</string>
     <string name="settings_auto_backup_folder_change">ఫోల్డర్ మార్చండి</string>
     <string name="settings_auto_backup_last">చివరి బ్యాకప్: %1$s</string>
@@ -292,6 +292,7 @@
     <string name="import_copy_shown">కాపీలుగా జోడిస్తే ఏమి మారుతుందో చూపిస్తున్నాం. ‘దిగుమతి చేయండి’ నొక్కే వరకు ఏదీ దిగుమతి కాదు.</string>
     <string name="import_see_houses">మీ ఇళ్లు చూడండి</string>
     <string name="settings_auto_backup_folder_is">సేవ్ అయ్యే చోటు: %1$s</string>
+    <string name="settings_auto_backup_lost_phone">ఫోన్ పోతే ఈ ఫోన్‌లోని ఫోల్డర్ ఉపయోగపడదు. SD కార్డ్ లేదా క్లౌడ్ యాప్‌లోని ఫోల్డర్‌ను ఎంచుకోండి, లేదా ఫైల్‌ను అప్పుడప్పుడు మరెక్కడైనా కాపీ చేయండి.</string>
     <string name="settings_auto_backup_now">ఇప్పుడే బ్యాకప్ చేయండి</string>
     <string name="settings_auto_backup_never">ఇంకా బ్యాకప్ లేదు: తదుపరి సారి ఫోన్ ఛార్జ్ అవుతున్నప్పుడు మొదటిది జరుగుతుంది.</string>
     <plurals name="count_houses">
@@ -1561,7 +1562,7 @@
     <string name="tour_share_body">చివరిసారి నుండి మారిన వాటి చిన్న ఫైల్‌ను, WhatsApp లేదా ఈమెయిల్ వంటి ఏ యాప్ ద్వారానైనా ఒకరికి పంపండి.</string>
     <string name="tour_share_action">అప్‌డేట్‌లు పంచుకోండి… నొక్కి, వ్యక్తిని చేర్చి, ఏమి పంపాలో ఎంచుకోండి.</string>
     <string name="tour_backup_title">వారానికొకసారి ఆటోమేటిక్ బ్యాకప్</string>
-    <string name="tour_backup_body">మీరు ఎంచుకున్న ఫోల్డర్‌లో ప్రతి వారం ఒక కాపీ సేవ్ చేసి, చివరి కొన్నింటిని ఉంచుతుంది; ఫోన్ పోయినా ఇళ్లు పోవు.</string>
+    <string name="tour_backup_body">ప్రతి వారం, ఛార్జ్ అవుతున్నప్పుడు, మీరు ఎంచుకున్న ఫోల్డర్‌లో ఒక బ్యాకప్ ఫైల్‌ను సేవ్ చేసి, చివరి కొన్నింటిని ఉంచుతుంది. Google Drive బ్యాకప్ వేరు. ఈ ఫోన్‌లోని ఫోల్డర్ ఫోన్‌తో పాటే పోతుంది, కాబట్టి మిగిలి ఉండాలంటే SD కార్డ్ లేదా క్లౌడ్ యాప్‌లోని ఫోల్డర్‌ను ఎంచుకోండి.</string>
     <string name="tour_backup_action">దీన్ని ఆన్ చేసి, ఫోల్డర్‌ను ఎంచుకోండి.</string>
     <string name="tour_trace_title">మీరు నడిచిన చోటును గుర్తుంచుకోండి</string>
     <string name="tour_trace_body">మ్యాప్‌లో నా దారిని చూపించు, హంట్ మోడ్ నడుస్తున్నప్పుడు మీ నడకను 30 రోజులు ఈ ఫోన్‌లో ఉంచుతుంది. 100 మీటర్లు లేదా ఎక్కువ నడక తర్వాత దాన్ని ఒక ఇంటికి సేవ్ చేయవచ్చు.</string>
@@ -1576,13 +1577,13 @@
     <string name="tour_ai_body">సహాయకుడు మరియు AI సహాయం పనిచేయడానికి సెట్టింగ్‌లలో AI ఫీచర్లు కింద వాటిని ఆన్ చేయండి. మీరు అడిగేది Google Gemini కి వెళ్తుంది, మీ సర్వర్ ద్వారా లేదా ఈ ఫోన్ నుండి మీ సొంత Gemini కీ తో నేరుగా. ఆన్ చేసే వరకు అవి ఆఫ్‌లో ఉంటాయి.</string>
     <string name="tour_ai_action">ఏమి పంపబడుతుందో చదివి, కావాలంటే AI ఫీచర్లను ఆన్ చేయండి. ఇది ఐచ్ఛికం.</string>
     <string name="tour_brokers_title">బ్రోకర్లు</string>
-    <string name="tour_brokers_body">మీరు కలిసిన బ్రోకర్లు, యజమానులు, వారు చెప్పినవి, చూపించిన ఇళ్లను ఉంచుకోండి.</string>
-    <string name="tour_brokers_action">జాబితా చూడటానికి బ్రోకర్లు నొక్కండి, లేదా తర్వాత ఒక ఇంటి నుండి చేర్చండి.</string>
+    <string name="tour_brokers_body">ఇళ్లు చూపించే వ్యక్తులు: వారి ఫోన్, ఏజెన్సీ, ఫీజులు, వారు చూపించిన ఇళ్లు. మీరు ఇంటిని వారి ఫోన్ నంబర్‌తో సేవ్ చేసినప్పుడు బ్రోకర్ ఇక్కడ కనిపిస్తారు.</string>
+    <string name="tour_brokers_action">జాబితా చూడటానికి బ్రోకర్లు నొక్కండి. ఫోన్ నంబర్‌తో ఇళ్లను సేవ్ చేస్తున్న కొద్దీ ఇది దానంతట అదే నిండుతుంది.</string>
     <string name="tour_criteria_title">మీకు ఏది ముఖ్యమో చెప్పండి</string>
     <string name="tour_criteria_body">వెలుతురు, శబ్దం, నీరు వంటి మీ సొంత ప్రమాణాలు ప్రతి ఇంటికి మీ రేటింగ్ అయి జాబితాను క్రమపరుస్తాయి. కింద ఉన్న ప్రశ్నలు అనేది ఇల్లు చూసేటప్పుడు మీరు అడిగే ప్రశ్నల సమాహారం.</string>
     <string name="tour_criteria_action">ప్రమాణాలు నొక్కి, మీకు ముఖ్యమైన ఒకదాన్ని చేర్చండి.</string>
     <string name="tour_viewings_title">ఇళ్లు చూసే ప్లాన్ చేయండి</string>
-    <string name="tour_viewings_body">ఒక ఇంటిని చూడటానికి ప్లాన్ చేయండి, రిమైండర్ పొందండి, చూసిన వాటి చరిత్రను ఉంచుకోండి. ఒక సందర్శనకు ముందు హంట్ మోడ్ మొదలుపెట్టమని సూచించగలదు.</string>
+    <string name="tour_viewings_body">ఒక ఇంటికి సందర్శనను ప్లాన్ చేయండి, రిమైండర్ పొందండి, పూర్తి చేసిన సందర్శనల చరిత్ర ఉంచుకోండి. ప్రతి సందర్శనకు అది మొదలయ్యే ముందు హంట్ మోడ్ మొదలుపెట్టమని సూచించేలా కోరవచ్చు.</string>
     <string name="tour_viewings_action">వాటిని చూడటానికి ఇంటి పరిశీలన నొక్కండి, లేదా ఒక ఇంటి నుండి ప్లాన్ చేయండి.</string>
     <string name="tour_areas_title">నా ప్రాంతాలు, నా స్థలాలు</string>
     <string name="tour_areas_body">మీరు వెతుకుతున్న ప్రాంతాలను గమనికలతో, పని లేదా పాఠశాల వంటి ముఖ్యమైన స్థలాలను గుర్తించండి. ఈ సదుపాయం ఉన్న చోట, ఒక ప్రాంతానికి చేరగానే హంట్ మోడ్ మొదలుపెట్టమని ఫోన్ గుర్తుచేయగలదు.</string>
