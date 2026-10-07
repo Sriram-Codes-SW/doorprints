@@ -53,6 +53,28 @@ Hidden on iOS, not shown disabled (owner decision of 2026-09-29, `docs/10` §13.
 copy*, *Import a backup* and the weekly backup. Hindi, Tamil and Telugu strings, the purpose strings included
 (`<lang>.lproj/InfoPlist.strings`), ship marked *under review*.
 
+## Google Drive (S4b-BL-117; docs/15 §9.11)
+
+Settings > Google Drive on the iPhone is the common Drive screens over the same graph Android uses. **It says "not
+available" until your iOS client id is set**; no client id is in the repository. To try it on your own build:
+
+1. Make the *iOS* OAuth client of your Google Cloud project for bundle id `app.doorprints` (docs/15 §2.4).
+2. Create the git-ignored `ios/Config/Drive.local.xcconfig` with two lines (`Config/Drive.xcconfig` explains them):
+
+   ```
+   GOOGLE_IOS_CLIENT_ID = <number>-<random>.apps.googleusercontent.com
+   GOOGLE_IOS_URL_SCHEME = com.googleusercontent.apps.<number>-<random>
+   ```
+
+3. `xcodegen generate` again and build with your own team to an iPhone with a **passcode** (the Simulator has no Secure
+   Enclave and no passcode by default; there the device key is a software Keychain key so the screens can be seen, but
+   Google's sign-in and Face ID need the phone). The first becomes Info.plist's `GoogleIOSClientId`, the second the
+   registered redirect scheme.
+
+The sign-in, the Secure Enclave key and the Keychain items are signed-app features: an ad-hoc signed Simulator build
+has Keychain access, an unsigned test binary does not (the real-Keychain test skips there). The phone checks are
+MT-86..MT-92 in `docs/ops/manual-test-checklist.md`.
+
 ## Offline maps (S4b-FR-6)
 
 `MapLibreOfflineMaps.swift` implements the Kotlin interface `IosOfflineMaps` (IosMap.kt) over `MLNOfflineStorage`:
