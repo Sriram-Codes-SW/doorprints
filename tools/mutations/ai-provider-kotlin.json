@@ -61,13 +61,13 @@
       "expect": "openaiContentMatchesTheVectors"
     },
     {
-      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OpenAiCompatClient.kt",
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AiRequest.kt",
       "find": "401, 403 -> ApiException(ApiException.Kind.AI_KEY_REJECTED, status)",
       "replace": "401, 403 -> ApiException(ApiException.Kind.AI_UNAVAILABLE, status)",
       "expect": "providerErrorsMatchTheVectors"
     },
     {
-      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OpenAiCompatClient.kt",
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AiRequest.kt",
       "find": "retryAfterSeconds = retryAfter?.trim()?.toLongOrNull()",
       "replace": "retryAfterSeconds = 60",
       "expect": "providerErrorsMatchTheVectors"
@@ -112,13 +112,13 @@
       "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AiRequest.kt",
       "find": "(if (timeoutMs == null) exchange() else withTimeoutOrNull(timeoutMs) { exchange() })",
       "replace": "exchange()",
-      "expect": "anAnswerWhoseBodyNeverFinishesTimesOutAs504InBothAdapters"
+      "expect": "anAnswerWhoseBodyNeverFinishesTimesOutAs504InEveryAdapter"
     },
     {
       "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AiRequest.kt",
       "find": "throw ApiException(ApiException.Kind.AI_UNAVAILABLE, UNREACHABLE)",
       "replace": "throw e",
-      "expect": "aCallThatCannotConnectIsUnavailableWithCodeZeroInBothAdapters"
+      "expect": "aCallThatCannotConnectIsUnavailableWithCodeZeroInEveryAdapter"
     },
     {
       "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/api/ApiClient.kt",

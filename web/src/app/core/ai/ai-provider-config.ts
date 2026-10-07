@@ -24,7 +24,7 @@ import { AI_BASE_URL_KEY, AI_KIND_KEY, AI_MODEL_KEY } from '../storage-keys';
  * reaches the server, a backup, a copy, a sync file or a share file (T-I43, T-I44, TC-U-170).
  */
 
-/** `anthropic` is reserved (S4b-BL-152): it can be stored but has no adapter yet. */
+/** `anthropic` is Anthropic's Messages API (`anthropic.ts`): a key and a model; its address is its own. */
 export type AiKind = 'gemini' | 'openai-compatible' | 'anthropic';
 
 export const AI_KINDS: readonly AiKind[] = ['gemini', 'openai-compatible', 'anthropic'];
@@ -52,6 +52,9 @@ export const AI_PRESETS: readonly AiPreset[] = [
   { id: 'lmstudio', baseUrl: 'http://localhost:1234/v1', keyOptional: true },
   { id: 'custom', baseUrl: '', keyOptional: false },
 ];
+
+/** Anthropic's address, the one the `anthropic` kind uses (the person picks it from the list, never types it). */
+export const ANTHROPIC_BASE_URL = 'https://api.anthropic.com';
 
 /** The first rule a base URL breaks, in the order of docs/03 §13.2. */
 export type BaseUrlReason =
@@ -128,18 +131,18 @@ export const GEMINI_HOST = 'generativelanguage.googleapis.com';
 /** The host the person's text and key go to for `config`: Gemini's, or the saved base URL's; '' when there is none (yet). */
 export function aiHostOf(config: AiProviderConfig): string {
   if (config.kind === 'gemini') return GEMINI_HOST;
-  if (config.kind === 'openai-compatible') {
-    const check = validateWebBaseUrl(config.baseUrl);
-    return check.valid ? check.host : '';
-  }
-  return '';
+  const check = validateWebBaseUrl(config.kind === 'anthropic' ? config.baseUrl.trim() || ANTHROPIC_BASE_URL : config.baseUrl);
+  return check.valid ? check.host : '';
 }
 
-/** Whether `config` can answer: a Gemini key is checked elsewhere; an OpenAI-compatible one needs a valid URL and a model. */
-export function isUsable(config: AiProviderConfig, hasGeminiKey: boolean): boolean {
-  if (config.kind === 'gemini') return hasGeminiKey;
+/**
+ * Whether `config` can answer: Gemini needs its key (`hasKey`); an OpenAI-compatible one a valid URL and a model (its key is
+ * optional); Anthropic a model, a valid address (its own when none is saved) and the key.
+ */
+export function isUsable(config: AiProviderConfig, hasKey: boolean): boolean {
+  if (config.kind === 'gemini') return hasKey;
   if (config.kind === 'openai-compatible') return config.model.trim() !== '' && validateWebBaseUrl(config.baseUrl).valid;
-  return false; // anthropic: reserved, no adapter yet
+  return hasKey && config.model.trim() !== '' && validateWebBaseUrl(config.baseUrl.trim() || ANTHROPIC_BASE_URL).valid;
 }
 
 function read(key: string): string {

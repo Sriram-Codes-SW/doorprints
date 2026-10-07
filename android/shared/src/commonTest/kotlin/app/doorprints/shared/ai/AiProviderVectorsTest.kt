@@ -42,13 +42,18 @@ import kotlin.test.assertTrue
 
 /**
  * The AI provider's shared test vectors (docs/03 §13.2, ADR-35; `docs/ai/evals/parity-vectors.json`, sections
- * `schemaDialect`, `openaiRequest`, `openaiContent`, `providerErrors` and `baseUrl`; TC-U-168) run through the Kotlin
+ * `schemaDialect`, `openaiRequest`, `openaiContent`, `providerErrors` and `baseUrl`; TC-U-168; `anthropicRequest`, `anthropicContent` and the Anthropic
+ * rows of `providerErrors`: TC-U-172) run through the Kotlin
  * code. The website runs the same file through its TypeScript code. Common code, so the iPhone's simulator runs them too.
  */
 class AiProviderVectorsTest {
     private val root = Json.parseToJsonElement(PARITY_VECTORS_JSON).jsonObject
 
     private fun cases(section: String) = root.getValue(section).jsonArray.map { it.jsonObject }
+
+    /** The `providerErrors` rows of one provider; a row without `provider` is the OpenAI-compatible adapter's. */
+    private fun errorCases(provider: String) =
+        cases("providerErrors").filter { (it["provider"]?.jsonPrimitive?.content ?: "openai") == provider }
 
     /** JSON equality where `0` and `0.0` are the same number (the vectors come from JavaScript). */
     private fun same(a: JsonElement?, b: JsonElement?): Boolean = when {
@@ -138,8 +143,8 @@ class AiProviderVectorsTest {
 
     @Test
     fun providerErrorsMatchTheVectors() {
-        val all = cases("providerErrors")
-        assertTrue(all.size >= 20)
+        val all = errorCases("openai")
+        assertEquals(22, all.size)
         for (case in all) {
             val tier = case.getValue("tier").jsonPrimitive.int
             val status = case.getValue("status").jsonPrimitive.int
@@ -158,6 +163,68 @@ class AiProviderVectorsTest {
                         assertEquals(if (seconds is JsonNull) null else seconds.jsonPrimitive.longOrNull, e.retryAfterSeconds, label)
                     }
                 }
+            }
+        }
+    }
+
+    @Test
+    fun anthropicRequestMatchesTheVectorsForEveryCall() {
+        val all = cases("anthropicRequest")
+        assertEquals(listOf("listing", "answer", "plan", "ping"), all.map { it.getValue("call").jsonPrimitive.content })
+        for (case in all) {
+            val call = case.getValue("call").jsonPrimitive.content
+            val expected = case.getValue("expected").jsonObject
+            val body = AnthropicClient.requestBody(
+                name = call, model = case.getValue("model").jsonPrimitive.content,
+                system = case.getValue("system").jsonPrimitive.content, user = case.getValue("user").jsonPrimitive.content,
+                temperature = case.getValue("temperature").jsonPrimitive.doubleOrNull!!, schema = schemaFor(call),
+                maxTokens = expected.getValue("max_tokens").jsonPrimitive.int,
+            )
+            assertTrue(same(expected, body), "$call:\nexpected $expected\nwas      $body")
+        }
+    }
+
+    @Test
+    fun anthropicContentMatchesTheVectors() {
+        val all = cases("anthropicContent")
+        assertTrue(all.size >= 16)
+        for (case in all) {
+            val call = case.getValue("call").jsonPrimitive.content
+            val response = case.getValue("response").jsonPrimitive.content
+            val expected = case.getValue("expected").jsonObject
+            val error = expected["error"]?.jsonPrimitive?.content
+            if (error == null) {
+                if (call == "ping") AnthropicClient.pingAnswered(response)
+                else assertEquals(expected.getValue("text").jsonPrimitive.content, AnthropicClient.contentOf(response), response)
+            } else {
+                assertEquals("unavailable", error)
+                val e = assertFailsWith<ApiException>(response) {
+                    if (call == "ping") AnthropicClient.pingAnswered(response) else AnthropicClient.contentOf(response)
+                }
+                assertEquals(ApiException.Kind.AI_UNAVAILABLE, e.kind, response)
+            }
+        }
+    }
+
+    @Test
+    fun anthropicErrorsMatchTheVectors() {
+        val all = errorCases("anthropic")
+        assertEquals(12, all.size)
+        for (case in all) {
+            val status = case.getValue("status").jsonPrimitive.int
+            val retryAfter = case["retryAfter"]?.jsonPrimitive?.contentOrNull
+            val expected = case.getValue("expected").jsonObject
+            val label = "HTTP $status, $retryAfter"
+            // Status 0 is a call that never got an answer; postAiJson words it (AiClientTransportTest), not the status map.
+            if (status == 0) {
+                assertEquals("unreachable", expected.getValue("kind").jsonPrimitive.content)
+                continue
+            }
+            val e = AnthropicClient.failure(status, retryAfter)
+            assertEquals(expected.getValue("kind").jsonPrimitive.content, kindOf(e), label)
+            val seconds = expected["retryAfterSeconds"]
+            if (seconds != null) {
+                assertEquals(if (seconds is JsonNull) null else seconds.jsonPrimitive.longOrNull, e.retryAfterSeconds, label)
             }
         }
     }
@@ -218,12 +285,11 @@ class AiProviderVectorsTest {
     }
 
     @Test
-    fun aSavedKindThatIsNotKnownReadsAsGeminiAndAnthropicIsReservedNotBuilt() {
+    fun aSavedKindThatIsNotKnownReadsAsGeminiAndAnthropicIsKnown() {
         assertEquals(AiKind.GEMINI, AiKind.fromWire(null))
         assertEquals(AiKind.GEMINI, AiKind.fromWire("something"))
         assertEquals(AiKind.OPENAI_COMPATIBLE, AiKind.fromWire("openai-compatible"))
         assertEquals(AiKind.ANTHROPIC, AiKind.fromWire("anthropic"))
-        assertFalse(AiProviderConfig(AiKind.ANTHROPIC).implemented)
-        assertTrue(AiProviderConfig(AiKind.OPENAI_COMPATIBLE).implemented)
+        assertEquals("anthropic", AiKind.ANTHROPIC.wire)
     }
 }

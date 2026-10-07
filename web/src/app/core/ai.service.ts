@@ -23,6 +23,7 @@ import type { Msg } from '../i18n/translation.service';
 import { ConfigService } from './config.service';
 import { AI_OPT_IN_KEY, AI_PROVIDER_KEY, GEMINI_KEY_KEY } from './storage-keys';
 import { type AiProviderConfig, aiHostOf, clearAiConfig, isLocalHost, isUsable, readAiConfig, saveAiConfig } from './ai/ai-provider-config';
+import { AnthropicChatModel } from './ai/anthropic';
 import { OpenAiCompatibleChatModel } from './ai/openai-compat';
 import { type ModelRef, OnDeviceAiError, OnDeviceAiService } from './ai/on-device-ai.service';
 import { errorMsg } from './format';
@@ -150,7 +151,7 @@ export class AiService {
   readonly ownHost = computed(() => aiHostOf(this.aiConfigState()));
   /**
    * On-device AI with the person's own provider: chosen, or no server to choose, and what it needs saved (a Gemini key,
-   * or for an OpenAI-compatible one a valid base URL and a model; its key is optional).
+   * or for an OpenAI-compatible one a valid base URL and a model, its key optional; for Anthropic a model and a key).
    */
   readonly usesOwnKey = computed(
     () => (this.providerState() === 'device' || !this.config.configured()) && isUsable(this.aiConfigState(), this.hasGeminiKey()),
@@ -251,11 +252,11 @@ export class AiService {
     return this.onDevice.test(this.modelFor(config, key.trim()));
   }
 
-  /** Who answers a call for [config]: a Gemini key (the native adapter) or an OpenAI-compatible model. */
+  /** Who answers a call for [config]: a Gemini key (the native adapter), an OpenAI-compatible model or Anthropic. */
   private modelFor(config: AiProviderConfig, key: string): ModelRef {
     if (config.kind === 'gemini') return key;
     if (config.kind === 'openai-compatible') return new OpenAiCompatibleChatModel({ baseUrl: config.baseUrl, model: config.model }, key);
-    throw new OnDeviceAiError('unavailable'); // anthropic: reserved, no adapter yet
+    return new AnthropicChatModel({ baseUrl: config.baseUrl, model: config.model }, key);
   }
 
   /** Re-reads the status (after connecting or disconnecting). */
@@ -320,10 +321,10 @@ export function aiErrorMsg(err: unknown, host?: string): Msg {
   return errorMsg(err);
 }
 
-/** The saved host when the own AI is an OpenAI-compatible one; '' for Gemini (its words name Google). */
+/** The saved host when the own AI is an OpenAI-compatible one or Anthropic; '' for Gemini (its words name Google). */
 function savedCompatHost(): string {
   const config = readAiConfig();
-  return config.kind === 'openai-compatible' ? aiHostOf(config) : '';
+  return config.kind === 'gemini' ? '' : aiHostOf(config);
 }
 
 /** The words for an {@link AiOffReason}. */

@@ -1,0 +1,95 @@
+{
+  "spec": "web/src/app/core/ai/anthropic.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/core/ai/anthropic.ts",
+      "find": "'x-api-key': key,",
+      "replace": "'x-key': key,",
+      "expect": "posts to {base}/v1/messages with the key and version headers and the browser header"
+    },
+    {
+      "file": "web/src/app/core/ai/anthropic.ts",
+      "find": "'anthropic-version': ANTHROPIC_VERSION,",
+      "replace": "'anthropic-version': '2024-01-01',",
+      "expect": "posts to {base}/v1/messages with the key and version headers and the browser header"
+    },
+    {
+      "file": "web/src/app/core/ai/anthropic.ts",
+      "find": "      'anthropic-dangerous-direct-browser-access': 'true',\n",
+      "replace": "",
+      "expect": "posts to {base}/v1/messages with the key and version headers and the browser header"
+    },
+    {
+      "file": "web/src/app/core/ai/anthropic.ts",
+      "find": "`${check.normalised}/v1/messages`",
+      "replace": "`${check.normalised}/messages`",
+      "expect": "posts to {base}/v1/messages with the key and version headers and the browser header"
+    },
+    {
+      "file": "web/src/app/core/ai/anthropic.ts",
+      "find": "body['tool_choice'] = { type: 'tool', name };",
+      "replace": "body['tool_choice'] = { type: 'auto', name };",
+      "expect": "forces the answer through one tool named for the call"
+    },
+    {
+      "file": "web/src/app/core/ai/anthropic.ts",
+      "find": "toStrictSchema(schema));",
+      "replace": "schema);",
+      "expect": "forces the answer through one tool named for the call"
+    },
+    {
+      "file": "web/src/app/core/ai/anthropic.ts",
+      "find": "(b) => b?.type === 'tool_use'",
+      "replace": "(b) => b?.type === 'text'",
+      "expect": "returns the tool call's input, not the text around it"
+    },
+    {
+      "file": "web/src/app/core/ai/anthropic.ts",
+      "find": "if (key === '') throw new OnDeviceAiError('keyRejected');",
+      "replace": "",
+      "expect": "needs a key"
+    },
+    {
+      "file": "web/src/app/core/ai/anthropic.ts",
+      "find": "message['stop_reason'] === 'max_tokens' ||",
+      "replace": "false ||",
+      "expect": "an answer cut off by the token limit is unavailable"
+    },
+    {
+      "file": "web/src/app/core/ai/anthropic.ts",
+      "find": "export const PING_MAX_TOKENS = 5;",
+      "replace": "export const PING_MAX_TOKENS = 50;",
+      "expect": "sends 5 tokens and no tool"
+    },
+    {
+      "file": "web/src/app/core/ai/anthropic.ts",
+      "find": "this.settings.baseUrl.trim() || ANTHROPIC_BASE_URL",
+      "replace": "this.settings.baseUrl.trim()",
+      "expect": "uses the address it is given"
+    },
+    {
+      "file": "web/src/app/core/ai/anthropic.ts",
+      "find": "body['tools'] = [{ name, description: TOOL_DESCRIPTION, input_schema: strict }];",
+      "replace": "body['tools'] = [{ name, description: TOOL_DESCRIPTION, input_schema: strict, strict: true }];",
+      "expect": "anthropicRequest vectors"
+    },
+    {
+      "file": "web/src/app/core/ai/anthropic.ts",
+      "find": "return Array.isArray(parseMessage(responseBody)?.['content']);",
+      "replace": "return true;",
+      "expect": "anthropicContent vectors"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-request.ts",
+      "find": "if (status === 401 || status === 403) return { action: 'error', kind: 'keyRejected' };",
+      "replace": "if (status === 403) return { action: 'error', kind: 'keyRejected' };",
+      "expect": "words each status for a generate and for a ping"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-request.ts",
+      "find": "if (status === 404) return { action: 'error', kind: 'modelNotFound' };",
+      "replace": "if (status === 404) return { action: 'error', kind: 'unavailable' };",
+      "expect": "words each status for a generate and for a ping"
+    }
+  ]
+}

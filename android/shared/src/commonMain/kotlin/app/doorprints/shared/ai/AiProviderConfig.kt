@@ -23,7 +23,7 @@ enum class AiKind(val wire: String) {
     GEMINI("gemini"),
     OPENAI_COMPATIBLE("openai-compatible"),
 
-    /** Reserved (S4b-BL-152): named so a saved value round-trips, but nothing is built for it yet. */
+    /** Anthropic's Messages API ([AnthropicClient]): key and model. */
     ANTHROPIC("anthropic");
 
     companion object {
@@ -42,9 +42,6 @@ data class AiProviderConfig(
     val baseUrl: String = "",
     val model: String = "",
 ) {
-    /** Whether this kind has an adapter today. */
-    val implemented: Boolean get() = kind != AiKind.ANTHROPIC
-
     override fun toString(): String =
         "AiProviderConfig(kind=${kind.wire}, model=${if (model.isEmpty()) "none" else "set"})"
 
@@ -62,6 +59,9 @@ data class AiPreset(val id: String, val baseUrl: String, val keyOptional: Boolea
         val OLLAMA = AiPreset("ollama", "http://localhost:11434/v1", keyOptional = true)
         val LM_STUDIO = AiPreset("lmstudio", "http://localhost:1234/v1", keyOptional = true)
         val CUSTOM = AiPreset("custom", "", keyOptional = false)
+
+        /** Anthropic's address, the one its kind uses (its own preset: the person picks it from the list, never types it). */
+        val ANTHROPIC = AiPreset("anthropic", "https://api.anthropic.com", keyOptional = false)
 
         val ALL: List<AiPreset> = listOf(OPENAI, OPENROUTER, GROQ, OLLAMA, LM_STUDIO, CUSTOM)
     }

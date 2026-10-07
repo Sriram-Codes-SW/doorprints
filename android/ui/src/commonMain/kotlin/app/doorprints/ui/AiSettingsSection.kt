@@ -86,7 +86,7 @@ const val AI_STUDIO_KEYS_URL = "https://aistudio.google.com/apikey"
 /**
  * Settings → *AI features* (docs/03 §12.1, §13.1, §13.2, ADR-26, ADR-35): this phone's switch, off until turned on; then
  * who answers, **Use my server** (when one is connected) or **Use my own AI on this phone**. For the own AI: the **AI
- * service** (Gemini, as before, or an OpenAI-compatible one: OpenAI, OpenRouter, Groq, Ollama, LM Studio, Custom), its
+ * service** (Gemini, as before, Anthropic, or an OpenAI-compatible one: OpenAI, OpenRouter, Groq, Ollama, LM Studio, Custom), its
  * **Base URL** (shown by the presets, typed for Custom), **Model**, **API key** (optional for a service on this device),
  * *Save*, *Test* and *Remove key*, and the sentence that names the host the text goes to. The key is kept like the
  * server key (Android Keystore, iOS Keychain) and only ever sent to the service it was saved for; the field starts
@@ -375,6 +375,7 @@ private fun serviceLabel(service: AiService): StringResource = when (service) {
     AiService.GROQ -> Res.string.settings_ai_service_groq
     AiService.OLLAMA -> Res.string.settings_ai_service_ollama
     AiService.LM_STUDIO -> Res.string.settings_ai_service_lmstudio
+    AiService.ANTHROPIC -> Res.string.settings_ai_service_anthropic
     AiService.CUSTOM -> Res.string.settings_ai_service_custom
 }
 
@@ -482,13 +483,13 @@ fun AiDisclosure(style: TextStyle, color: Color, modifier: Modifier = Modifier) 
 }
 
 /**
- * The host of the person's own OpenAI-compatible service, for the words of a failure that names it; empty with Gemini
+ * The host of the person's own OpenAI-compatible or Anthropic service, for the words of a failure that names it; empty with Gemini
  * (those words name Google) or when the server answers.
  */
 @Composable
 fun ownAiHost(): String {
     val settings = LocalAppServices.current.repository.settings.settings.collectAsState(null).value ?: return ""
-    if (settings.aiProviderConfig.kind != AiKind.OPENAI_COMPATIBLE) return ""
+    if (settings.aiProviderConfig.kind == AiKind.GEMINI) return ""
     return AiProviderForm.disclosureHost(settings, LocalPlatformFeatures.current.emulatorHost).orEmpty()
 }
 

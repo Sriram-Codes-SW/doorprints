@@ -54,7 +54,7 @@ shared computer, use **Remove all data** on **Your data** when you are done.
 
 You can use **Ask**, **Plan** and **Fill in from listing text** without running a server. Your phone or browser then
 asks an AI service itself, with a key of your own. You choose the service: Google Gemini (free on Google's free tier),
-OpenAI, OpenRouter, Groq, a model on your own computer (Ollama or LM Studio), or any other service that speaks the same
+OpenAI, OpenRouter, Groq, Anthropic, a model on your own computer (Ollama or LM Studio), or any other service that speaks the same
 chat language.
 
 ### On Android and iPhone
@@ -70,7 +70,7 @@ chat language.
    start with `https://`, or be on this device, such as `http://localhost`; the Android emulator may also use
    `http://10.0.2.2`). Type the **Model** exactly as the service lists it (for example `gpt-4o-mini`), paste the
    **API key** and tap **Save**. Then tap **Test**: Doorprints says which host accepted the key, or what is wrong (the
-   key was refused, the model is unknown, you reached the limit, or the host could not be reached).
+   key was refused, the model is unknown, you reached the limit, or the host could not be reached). **Anthropic** works like the others, with its address filled in and fixed; it always needs a key, made in the [Anthropic Console](https://console.anthropic.com/settings/keys).
 
 The key stays on your phone, locked (encrypted), and goes only to the service you chose: the address is written under
 the form, and again above every question you send. **Test** (**Test key** for Gemini) checks it again; **Remove key**
@@ -90,7 +90,7 @@ forgets the key and your choice of service. If you also connect a server, you ch
    this computer, such as `http://localhost`). Type the **Model** exactly as the service lists it (for example
    `gpt-4o-mini`), paste the **API key** and select **Save**. Then select **Test**: Doorprints says which host accepted
    the key, or what is wrong (the key was refused, the model is unknown, you reached the limit, or the host could not
-   be reached).
+   be reached). **Anthropic** works like the others, with its address filled in and fixed; it always needs a key, made in the [Anthropic Console](https://console.anthropic.com/settings/keys).
 
 The key stays in this browser and goes only to the service you chose: the address is written under the form, and again
 above every question you send. It is forgotten when you close the tab, unless you tick **Remember on this device**;

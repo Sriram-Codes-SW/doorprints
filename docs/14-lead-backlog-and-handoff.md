@@ -4,7 +4,7 @@
 |---|---|
 | Version | 0.100 |
 | Version | 0.101 |
-| Version | 0.105 |
+| Version | 0.106 |
 | Date | 2026-10-07 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..153); this file lists the lead-level items and points to the rest. |
@@ -116,6 +116,7 @@
 | 0.103 | 2026-10-07 | Claude (Code), lead | **S4b-BL-151 (PR E) built on `feat/web-ai-provider-settings`**, made from `main` after PR #162 (no pull request yet; [10](10-sprint-log.md) v0.161): the Connect page's AI service picker and fields, *Save*, *Test*, *Remove key*, the host in the disclosure on the four screens that send text, the new error words, strings in four languages (hi, ta, te under review), `privacy.html`, the guide, the tour step. Specs `connect-ai-provider.spec.ts` and `ai-disclosure.spec.ts`; mutation lists `tools/mutations/ai-settings-web*.json`. Not yet run: the live UI test after the deploy (TC-M-26) and TC-M-64 with real providers. |
 | 0.104 | 2026-10-07 | Claude (Code), lead | **S4b-BL-150 (PR D) built on `feat/app-ai-provider-settings`**, made from `main` after PR #163 (no pull request yet; [10](10-sprint-log.md) v0.164): the phones' AI service picker and fields, *Save*, *Test*, *Remove key*, the host in the disclosure and in the failure words, strings in four languages (hi, ta, te under review), the guide. Specs `AiProviderFormTest`, `AiSettingsSectionTest`; mutation list `tools/mutations/ai-settings-phone.json`. It edits the same guide paragraphs as PR E (#164: `settings-and-privacy.md` in four languages), so the second to merge resolves a small conflict there. |
 | 0.105 | 2026-10-07 | Claude (Code), lead | **S4b-BL-154 and S4b-BL-155 built** on `fix/ai-request-helper-bl-154-155` (draft pull request): one request helper for the two AI adapters, Gemini's network failure worded as the OpenAI-compatible one, and the redirect rule tested ([10](10-sprint-log.md) v0.165, [06](06-test-plan.md) TC-U-168). |
+| 0.106 | 2026-10-07 | Claude (Code), lead | **S4b-BL-152 built (step F of S4b-FR-40)** on `feat/ai-anthropic-adapter-bl-152` (draft pull request; [10](10-sprint-log.md) v0.166): the Anthropic adapter on the website and the phones, enabled in both pickers. §7 gets the working rules of this session (tests first in slices, re-run once after a retarget, 2-3 builders, failing screenshots only, never weaken a gate). |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 
@@ -138,7 +139,7 @@ section is only today's state. Earlier versions of this file (git history) carry
 
 - **The path trace v2 and *Have I been here?* (N20, PR #146, branch `feat/path-trace-v2`, not yet merged):** built on Android, the iPhone (common code; the Swift part compiled, not run) and the website: repeated paths drawn dashed and orange with three looks, an optional alert, *Finish walk* and saved walks (Room 11, IndexedDB 3, in no export, backup, sync, Drive or AI path), the website's recorder, and the on-demand place check, all in four languages (hi, ta, te *under review*) with a *Your paths* guide page. One algorithm in Kotlin and TypeScript, 58 shared vectors, *confirmed*. Open: the review's must-fix items (S4b-FR-25..S4b-FR-30, in progress), the backlog (S4b-FR-31..S4b-FR-36) and the owner's device checks (S4b-FR-37: TC-M-25 re-run, TC-M-57..TC-M-61, MT-75..MT-81); nothing is claimed run on a device.
 - **The guided tour on the phones (S4b-FR-39, branch `feat/app-guided-tour`, no pull request yet):** a one-time *Take the tour* offer on the first visit to the Map, then a card per feature over the real screens with a spotlight that takes no touch, *Skip tour*, *Back*, *Next*, replay from Settings > About beside *Help*, in four languages (hi, ta, te *under review*); common code in `:ui` (`Tour*.kt`), the choice kept as `tour` in the settings store; its rules have named mutation gates. Not checked on a device: TalkBack and VoiceOver, the iPhone (compiled only), a real Map under the scrim.
-- **The AI provider of the person's choice on the device (S4b-FR-40, planned; step A, docs and test vectors, on branch `docs/adr-27-user-chosen-ai`, no pull request yet; step B, the Kotlin core S4b-BL-147, is built on `feat/shared-ai-provider-kotlin`, stacked on it):** [03](03-design.md) §13.2 and ADR-35, D-31 ([11](11-feature-parity-and-export-spec.md)), AI-018, T-I43, T-I44, TC-U-168..172, TC-M-64, TC-AI-23; the vectors `schemaDialect`, `openaiRequest`, `openaiContent`, `providerErrors` and `baseUrl` are in `docs/ai/evals/parity-vectors.json` (and its two copies). **Step A has no production code; step B is the Kotlin core, no screens.** Next, in dependency order ([10](10-sprint-log.md) S4b-FR-40): B (S4b-BL-147, Kotlin core), C (-148, TypeScript core) and G (-149, server key check), then D (-150, phones) and E (-151, website), then F (-152, Anthropic), then H (-153, optional evals).
+- **The AI provider of the person's choice on the device (S4b-FR-40, planned; step A, docs and test vectors, on branch `docs/adr-27-user-chosen-ai`, no pull request yet; step B, the Kotlin core S4b-BL-147, is built on `feat/shared-ai-provider-kotlin`, stacked on it):** [03](03-design.md) §13.2 and ADR-35, D-31 ([11](11-feature-parity-and-export-spec.md)), AI-018, T-I43, T-I44, TC-U-168..172, TC-M-64, TC-AI-23; the vectors `schemaDialect`, `openaiRequest`, `openaiContent`, `providerErrors` and `baseUrl` are in `docs/ai/evals/parity-vectors.json` (and its two copies). **Step A has no production code; step B is the Kotlin core, no screens.** Next, in dependency order ([10](10-sprint-log.md) S4b-FR-40): B (S4b-BL-147, Kotlin core), C (-148, TypeScript core) and G (-149, server key check), then D (-150, phones) and E (-151, website), then F (-152, Anthropic: built on `feat/ai-anthropic-adapter-bl-152`, draft pull request), then H (-153, optional evals).
 - **Live:** https://doorprints.web.app, deployed from `main` by `web.yml` (Firebase Hosting, Workload Identity
   Federation, main only). The user guide is built by `pages.yml` (GitHub Pages).
 - **Website Google Drive (N17, PR #118, merged 2026-10-03 as cc5b5a3):** connect, recovery key shown once, backups, sync, L1 deletion and
@@ -555,6 +556,14 @@ to branches or PRs or main")**
   iOS jobs queue while other checks run, and do not re-run a job that is only waiting.
 - **A test that fails once in a full run** and passes alone is a leak between tests, not a flake to re-run:
   ticket it (S4b-BL-100).
+
+**Working rules of 2026-10-07 (S4b-BL-152)**
+
+- **Tests first, in slices:** write the seams under test down first (public interfaces: an adapter through a fake engine or `fetch`, a screen through its UI test), then per slice one failing test, the minimal code, green (red before green); expected values come from the spec or the vectors, never recomputed with the code under test; finish with a self-review of the diff, the spec first, then the standards.
+- **After retargeting a stacked pull request to `main`**, re-run its cancelled checks once, then merge; do not re-run a check that is only waiting.
+- **At most 2-3 builders in parallel** (rate limits).
+- **Screenshots:** look at the failing image or its diff image only, not every full-size PNG.
+- **Never weaken a gate to make a change pass** (a skip, ignore or suppression, a removed test or mutation, a lowered budget); if one is truly needed, say so in the pull request.
 
 **Efficiency: done and still open (2026-09-29, #54 and #57)**
 

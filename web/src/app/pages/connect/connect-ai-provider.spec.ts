@@ -24,6 +24,7 @@ import { Subject } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AiService } from '../../core/ai.service';
 import { AI_PRESETS, GEMINI_HOST } from '../../core/ai/ai-provider-config';
+import { AnthropicChatModel } from '../../core/ai/anthropic';
 import { OpenAiCompatibleChatModel } from '../../core/ai/openai-compat';
 import { OnDeviceAiError, OnDeviceAiService } from '../../core/ai/on-device-ai.service';
 import { HouseApiService } from '../../core/house-api.service';
@@ -32,7 +33,7 @@ import { TranslationService } from '../../i18n/translation.service';
 import { ConnectPage } from './connect-page';
 
 /**
- * The Connect page's *AI service* picker (S4b-BL-151, docs/03 §13.2, ADR-35): presets prefill the base URL, the checks
+ * The Connect page's *AI service* picker (S4b-BL-151, S4b-BL-152, docs/03 §13.2, ADR-35): presets prefill the base URL, the checks
  * name the field that is wrong, *Save* keeps the settings in this browser, *Test* names the host and the failure, and
  * *Remove key* forgets everything. The network is a fake `OnDeviceAiService.test`.
  */
@@ -111,11 +112,12 @@ describe('ConnectPage AI service', () => {
     key: sessionStorage.getItem(GEMINI_KEY_KEY),
   });
 
-  it('offers Gemini first and then every preset, and not Anthropic', () => {
+  it('offers Gemini first, then every preset with Anthropic before Custom', () => {
     const options = [...host.querySelectorAll<HTMLOptionElement>('#ai-service option')];
-    expect(options.map((o) => o.value)).toEqual(['gemini', ...AI_PRESETS.map((p) => p.id)]);
+    expect(options.map((o) => o.value)).toEqual(['gemini', 'openai', 'openrouter', 'groq', 'ollama', 'lmstudio', 'anthropic', 'custom']);
+    expect(options.map((o) => o.value).filter((v) => v !== 'gemini' && v !== 'anthropic')).toEqual(AI_PRESETS.map((p) => p.id));
     expect(options.map((o) => o.textContent?.trim())).toEqual([
-      'Google Gemini', 'OpenAI', 'OpenRouter', 'Groq', 'Ollama (on this device)', 'LM Studio (on this device)', 'Custom (OpenAI-compatible)',
+      'Google Gemini', 'OpenAI', 'OpenRouter', 'Groq', 'Ollama (on this device)', 'LM Studio (on this device)', 'Anthropic', 'Custom (OpenAI-compatible)',
     ]);
     expect(el<HTMLSelectElement>('#ai-service')!.value).toBe('gemini');
     expect(el('#gemini-key')).not.toBeNull();
@@ -133,6 +135,22 @@ describe('ConnectPage AI service', () => {
     await choose('custom');
     await type('#ai-base-url', 'https://llm.example.org/v1');
     expect(el<HTMLInputElement>('#ai-base-url')!.value).toBe('https://llm.example.org/v1');
+  });
+
+  it('Anthropic prefills its own address read-only, asks for a model and a key, and offers its key page', async () => {
+    await choose('anthropic');
+    const url = el<HTMLInputElement>('#ai-base-url')!;
+    expect([url.value, url.readOnly]).toEqual(['https://api.anthropic.com', true]);
+    expect(el<HTMLInputElement>('#ai-model')!.placeholder).toBe('');
+    expect(el('#ai-cors-hint')).toBeNull();
+    expect(text()).not.toContain('usually needs no key');
+    expect(el<HTMLAnchorElement>('#ai a[href="https://console.anthropic.com/settings/keys"]')?.rel).toContain('noopener');
+    await click('#ai-save');
+    expect(el('#ai-model-error')).not.toBeNull();
+    expect(el('#ai-key-error')!.textContent).toContain('Paste your API key first.');
+    expect(stored().kind).toBeNull();
+    await click('#ai-test');
+    expect(test).not.toHaveBeenCalled();
   });
 
   it('shows the sample model only as a placeholder, never as a value', async () => {
@@ -227,6 +245,41 @@ describe('ConnectPage AI service', () => {
     expect(el('#ai-remove')).not.toBeNull();
     expect(test).not.toHaveBeenCalled();
     expect(ai().ownHost()).toBe('api.groq.com');
+  });
+
+  it('Save keeps kind anthropic with its address, the model and the key, and chooses this device', async () => {
+    const setAiConfig = vi.spyOn(ai(), 'setAiConfig');
+    await choose('anthropic');
+    await type('#ai-model', ' my-model ');
+    await type('#ai-key', 'test-key-not-real');
+    await click('#ai-save');
+    expect(setAiConfig).toHaveBeenCalledWith({ kind: 'anthropic', baseUrl: 'https://api.anthropic.com', model: 'my-model' });
+    expect(stored()).toEqual({ kind: 'anthropic', baseUrl: 'https://api.anthropic.com', model: 'my-model', key: 'test-key-not-real' });
+    expect(localStorage.getItem(AI_PROVIDER_KEY)).toBe('device');
+    expect(text()).toContain('A key ending in real is saved in this browser.');
+    expect(ai().ownHost()).toBe('api.anthropic.com');
+    expect(ai().usesOwnKey()).toBe(true);
+    // The key belongs to Anthropic: OpenAI does not offer it, and Anthropic offers it again.
+    await choose('openai');
+    expect(text()).not.toContain('real is saved');
+    expect(el('#ai-remove')).toBeNull();
+    // Nor to a custom OpenAI-compatible service at Anthropic's own address: another protocol.
+    await choose('custom');
+    await type('#ai-base-url', 'https://api.anthropic.com');
+    expect(text()).not.toContain('real is saved');
+    await choose('anthropic');
+    expect(text()).toContain('A key ending in real is saved in this browser.');
+    expect(el<HTMLInputElement>('#ai-model')!.value).toBe('my-model');
+  });
+
+  it('Test with Anthropic uses its adapter, names api.anthropic.com and saves nothing', async () => {
+    await choose('anthropic');
+    await type('#ai-model', 'my-model');
+    await type('#ai-key', 'test-key-not-real');
+    await click('#ai-test');
+    expect(test.mock.calls[0][0]).toBeInstanceOf(AnthropicChatModel);
+    expect(el('[role="alert"] .success')!.textContent).toContain('api.anthropic.com accepted this key.');
+    expect(stored()).toEqual({ kind: null, baseUrl: null, model: null, key: null });
   });
 
   it('saving again with no new key keeps the saved key; another service never inherits it', async () => {
@@ -374,6 +427,8 @@ describe('ConnectPage AI service', () => {
     expect(el('#ai-disclosure')!.textContent).toContain(`straight to ${GEMINI_HOST} with your own key`);
     await choose('groq');
     expect(el('#ai-disclosure')!.textContent).toContain('straight to api.groq.com with your own key');
+    await choose('anthropic');
+    expect(el('#ai-disclosure')!.textContent).toContain('straight to api.anthropic.com with your own key');
     await choose('custom');
     await type('#ai-base-url', 'https://LLM.Example.org:8443/v1');
     expect(el('#ai-disclosure')!.textContent).toContain('straight to llm.example.org with your own key');

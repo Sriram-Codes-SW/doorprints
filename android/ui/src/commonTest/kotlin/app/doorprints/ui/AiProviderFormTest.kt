@@ -39,6 +39,7 @@ import kotlin.test.assertTrue
 class AiProviderFormTest {
     private val gemini = AiProviderConfig.GEMINI
     private fun compat(url: String, model: String = "m") = AiProviderConfig(AiKind.OPENAI_COMPATIBLE, url, model)
+    private fun anthropic(model: String = "m", url: String = "https://api.anthropic.com") = AiProviderConfig(AiKind.ANTHROPIC, url, model)
     private fun form(service: AiService, saved: AiProviderConfig = gemini, emulator: Boolean = false) =
         AiProviderForm.initial(saved, emulator).choose(service, saved)
 
@@ -48,6 +49,7 @@ class AiProviderFormTest {
         assertEquals("https://api.groq.com/openai/v1", form(AiService.GROQ).baseUrl)
         assertEquals("http://localhost:11434/v1", form(AiService.OLLAMA).baseUrl)
         assertEquals("http://localhost:1234/v1", form(AiService.LM_STUDIO).baseUrl)
+        assertEquals("https://api.anthropic.com", form(AiService.ANTHROPIC).baseUrl)
         assertEquals("", form(AiService.CUSTOM).baseUrl)
         assertEquals("", form(AiService.GEMINI).baseUrl)
         AiService.entries.forEach { assertEquals("", form(it).model, "the model is typed, never guessed: $it") }
@@ -59,7 +61,10 @@ class AiProviderFormTest {
 
     @Test fun theChoiceBeginsFromTheSavedSettings() {
         assertEquals(AiService.GEMINI, AiProviderForm.initial(gemini, false).service)
-        assertEquals(AiService.GEMINI, AiProviderForm.initial(AiProviderConfig(AiKind.ANTHROPIC), false).service)
+        val claude = AiProviderForm.initial(anthropic("typed-by-me"), false)
+        assertEquals(AiService.ANTHROPIC, claude.service)
+        assertEquals("typed-by-me", claude.model)
+        assertEquals("https://api.anthropic.com", claude.baseUrl)
         val groq = AiProviderForm.initial(compat("https://api.groq.com/openai/v1", "llama"), false)
         assertEquals(AiService.GROQ, groq.service)
         assertEquals("llama", groq.model)
@@ -78,6 +83,14 @@ class AiProviderFormTest {
         assertEquals("mine", back.model)
     }
 
+    @Test fun returningToAnthropicBringsBackItsModelAndOtherServicesDoNotInheritIt() {
+        val saved = anthropic("mine")
+        val away = AiProviderForm.initial(saved, false).choose(AiService.OPENAI, saved)
+        assertEquals("", away.model)
+        assertEquals("mine", away.choose(AiService.ANTHROPIC, saved).model)
+        assertEquals("", AiProviderForm.initial(compat("https://api.openai.com/v1", "gpt"), false).choose(AiService.ANTHROPIC, compat("https://api.openai.com/v1", "gpt")).model)
+    }
+
     @Test fun choosingAServiceClearsTheTypedKey() {
         val typed = form(AiService.OPENAI).copy(key = "sk-typed")
         assertEquals("", typed.choose(AiService.GROQ, gemini).key)
@@ -88,6 +101,7 @@ class AiProviderFormTest {
         assertEquals("api.openai.com", form(AiService.OPENAI).host)
         assertEquals("localhost", form(AiService.OLLAMA).host)
         assertEquals("", form(AiService.CUSTOM).host)
+        assertEquals("api.anthropic.com", form(AiService.ANTHROPIC).host)
         assertEquals("llm.example.org", form(AiService.CUSTOM).copy(baseUrl = "HTTPS://LLM.Example.org:8443/v1/").host)
     }
 
@@ -95,6 +109,7 @@ class AiProviderFormTest {
         assertTrue(form(AiService.OLLAMA).keyOptional)
         assertTrue(form(AiService.LM_STUDIO).keyOptional)
         assertFalse(form(AiService.OPENAI).keyOptional)
+        assertFalse(form(AiService.ANTHROPIC).keyOptional, "Anthropic has no keyless form")
         assertFalse(form(AiService.CUSTOM).keyOptional)
         assertTrue(form(AiService.CUSTOM).copy(baseUrl = "http://localhost:8080/v1").keyOptional, "a custom address on this device")
         assertFalse(form(AiService.CUSTOM).copy(baseUrl = "https://example.com/v1").keyOptional)
@@ -146,6 +161,20 @@ class AiProviderFormTest {
         assertTrue(openai.validate(saved, hasKey = false).keyMissing)
     }
 
+    @Test fun anAnthropicFormStandsForAnAnthropicConfigAndNeedsAModelAndAKey() {
+        val claude = form(AiService.ANTHROPIC)
+        assertFalse(claude.urlEditable)
+        val empty = claude.validate(gemini, false)
+        assertTrue(empty.modelMissing && empty.keyMissing)
+        assertEquals(AiField.MODEL, empty.first)
+        assertNull(empty.config)
+        val typed = claude.copy(model = " my-model ", key = "test-key-not-real").validate(gemini, false)
+        assertEquals(anthropic("my-model"), typed.config)
+        // A key saved for Anthropic counts; one saved for another service does not.
+        assertNull(claude.copy(model = "m").validate(anthropic(), hasKey = true).first)
+        assertEquals(AiField.KEY, claude.copy(model = "m").validate(compat("https://api.openai.com/v1"), hasKey = true).first)
+    }
+
     @Test fun theFirstProblemIsTheOneToFocus() {
         val all = form(AiService.CUSTOM).validate(gemini, false)
         assertEquals(AiField.BASE_URL, all.first)
@@ -162,10 +191,21 @@ class AiProviderFormTest {
         assertFalse(form(AiService.GROQ, saved).savedHere(saved, true))
         assertFalse(form(AiService.GEMINI, saved).savedHere(saved, true))
         assertFalse(form(AiService.CUSTOM, saved).savedHere(saved, true), "another address")
+        assertFalse(form(AiService.ANTHROPIC, saved).savedHere(saved, true))
+        assertTrue(form(AiService.ANTHROPIC, anthropic()).savedHere(anthropic(), true))
+        assertFalse(form(AiService.OPENAI, anthropic()).savedHere(anthropic(), true))
+        assertFalse(form(AiService.GEMINI, anthropic()).savedHere(anthropic(), true))
         val typed = form(AiService.OPENAI, saved).copy(baseUrl = "https://API.openai.com/v1/")
         assertTrue(typed.savedHere(saved, true), "the same address once normalised")
         assertTrue(form(AiService.GEMINI).savedHere(gemini, true))
         assertFalse(form(AiService.GEMINI).savedHere(gemini, false))
+    }
+
+    @Test fun aKeySavedForAnthropicIsNotOfferedToAnOpenAiCompatibleServiceAtTheSameAddress() {
+        val saved = anthropic()
+        val custom = form(AiService.CUSTOM, saved).copy(baseUrl = "https://api.anthropic.com")
+        assertFalse(custom.savedHere(saved, true))
+        assertEquals("", custom.keyForCall(saved, "test-key-not-real"))
     }
 
     @Test fun aSavedKeyIsOnlyHandedToACallForTheSameService() {
@@ -175,6 +215,9 @@ class AiProviderFormTest {
         assertEquals("sk-typed", openai.copy(key = " sk-typed ").keyForCall(saved, "sk-saved"))
         assertEquals("", form(AiService.GROQ, saved).keyForCall(saved, "sk-saved"), "never sent to another service")
         assertEquals("", form(AiService.GEMINI, saved).keyForCall(saved, "sk-saved"))
+        assertEquals("", form(AiService.ANTHROPIC, saved).keyForCall(saved, "sk-saved"), "an OpenAI key never goes to Anthropic")
+        assertEquals("", form(AiService.OPENAI, anthropic()).keyForCall(anthropic(), "test-key-not-real"), "an Anthropic key never goes to OpenAI")
+        assertEquals("test-key-not-real", form(AiService.ANTHROPIC, anthropic()).keyForCall(anthropic(), "test-key-not-real"))
         assertEquals("", form(AiService.CUSTOM, saved).copy(baseUrl = "https://evil.example/v1").keyForCall(saved, "sk-saved"))
     }
 
@@ -185,7 +228,10 @@ class AiProviderFormTest {
         assertFalse(AiProviderForm.usable(compat("http://localhost:11434/v1", " "), "", false))
         assertFalse(AiProviderForm.usable(compat("http://192.168.1.2/v1", "m"), "k", false))
         assertTrue(AiProviderForm.usable(compat("http://10.0.2.2:11434/v1", "m"), "", true))
-        assertFalse(AiProviderForm.usable(AiProviderConfig(AiKind.ANTHROPIC), "k", false))
+        assertTrue(AiProviderForm.usable(anthropic(), "test-key-not-real", false))
+        assertFalse(AiProviderForm.usable(anthropic(), "", false), "Anthropic needs a key")
+        assertFalse(AiProviderForm.usable(anthropic(model = " "), "k", false))
+        assertFalse(AiProviderForm.usable(anthropic(url = "http://example.com"), "k", false))
     }
 
     @Test fun theDisclosureHostIsTheSavedServicesAndNothingWhenTheServerAnswers() {
@@ -194,6 +240,7 @@ class AiProviderFormTest {
         assertEquals("generativelanguage.googleapis.com", host(own))
         val groq = own.copy(aiProviderConfig = compat("https://api.groq.com/openai/v1"))
         assertEquals("api.groq.com", host(groq))
+        assertEquals("api.anthropic.com", host(own.copy(aiProviderConfig = anthropic())))
         assertEquals("10.0.2.2", host(own.copy(aiProviderConfig = compat("http://10.0.2.2:11434/v1")), emulator = true))
         assertNull(host(AppSettings(serverUrl = "https://s.example", apiKey = "serverkey1234", aiProvider = AiProviderChoice.SERVER)))
         assertEquals("api.groq.com", host(groq.copy(aiProvider = AiProviderChoice.SERVER, serverUrl = "")), "no server, so own AI")

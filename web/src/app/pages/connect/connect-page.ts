@@ -32,7 +32,7 @@ import type { TKey } from '../../i18n/en';
 import { ConfirmService } from '../../core/confirm.service';
 import { AiService, aiErrorMsg, aiOffMsg } from '../../core/ai.service';
 import {
-  AI_PRESETS, type AiPreset, type AiProviderConfig, type BaseUrlReason, GEMINI_HOST, isLocalHost, validateWebBaseUrl,
+  AI_PRESETS, ANTHROPIC_BASE_URL, type AiPreset, type AiProviderConfig, type BaseUrlReason, GEMINI_HOST, isLocalHost, validateWebBaseUrl,
 } from '../../core/ai/ai-provider-config';
 import {
   ConnectLink,
@@ -319,17 +319,21 @@ export class ConnectPage {
 
   // The AI service of the person's choice (docs/03 §13.2, ADR-35): Gemini keeps its own fields; every other service
   // shares the base URL, model and key fields below.
-  protected readonly services: readonly ServiceId[] = ['gemini', ...AI_PRESETS.map((p) => p.id)];
+  protected readonly services: readonly ServiceId[] = [
+    'gemini', ...AI_PRESETS.map((p) => p.id).filter((id) => id !== 'custom'), 'anthropic', 'custom',
+  ];
   protected readonly serviceLabel = SERVICE_LABEL;
   protected readonly service = signal<ServiceId>(serviceOf(this.ai.aiConfig()));
-  protected readonly aiBaseUrl = signal(this.ai.aiConfig().kind === 'openai-compatible' ? this.ai.aiConfig().baseUrl : '');
-  protected readonly aiModel = signal(this.ai.aiConfig().kind === 'openai-compatible' ? this.ai.aiConfig().model : '');
+  protected readonly aiBaseUrl = signal(this.ai.aiConfig().kind !== 'gemini' ? this.ai.aiConfig().baseUrl : '');
+  protected readonly aiModel = signal(this.ai.aiConfig().kind !== 'gemini' ? this.ai.aiConfig().model : '');
   protected aiKey = '';
   protected readonly showAiKey = signal(false);
   protected readonly urlReason = signal<BaseUrlReason | null>(null);
   protected readonly modelMissing = signal(false);
   protected readonly aiKeyMissing = signal(false);
   protected readonly isGemini = computed(() => this.service() === 'gemini');
+  /** The kind of adapter that answers for the chosen service. */
+  private readonly kind = computed<'openai-compatible' | 'anthropic'>(() => (this.service() === 'anthropic' ? 'anthropic' : 'openai-compatible'));
   protected readonly preset = computed<AiPreset | undefined>(() => AI_PRESETS.find((p) => p.id === this.service()));
   protected readonly urlEditable = computed(() => this.service() === 'custom');
   private readonly urlCheck = computed(() => validateWebBaseUrl(this.aiBaseUrl()));
@@ -350,7 +354,7 @@ export class ConnectPage {
     if (this.isGemini()) return saved.kind === 'gemini' && this.ai.hasGeminiKey();
     const check = this.urlCheck();
     const savedCheck = validateWebBaseUrl(saved.baseUrl);
-    return saved.kind === 'openai-compatible' && check.valid && savedCheck.valid && savedCheck.normalised === check.normalised;
+    return saved.kind === this.kind() && check.valid && savedCheck.valid && savedCheck.normalised === check.normalised;
   });
   protected readonly keySavedHere = computed(() => this.savedHere() && this.ai.hasGeminiKey());
   protected readonly urlErrorKey = computed<TKey | null>(() => {
@@ -362,8 +366,8 @@ export class ConnectPage {
   protected chooseService(event: Event): void {
     const id = (event.target as HTMLSelectElement).value as ServiceId;
     const saved = this.ai.aiConfig();
-    const url = AI_PRESETS.find((p) => p.id === id)?.baseUrl ?? '';
-    const keep = saved.kind === 'openai-compatible' && serviceOf(saved) === id;
+    const url = presetUrl(id);
+    const keep = saved.kind !== 'gemini' && serviceOf(saved) === id;
     this.service.set(id);
     this.aiBaseUrl.set(keep ? saved.baseUrl : url);
     this.aiModel.set(keep ? saved.model : '');
@@ -409,7 +413,7 @@ export class ConnectPage {
       afterNextRender(() => document.getElementById(first)?.focus(), { injector: this.injector });
       return null;
     }
-    return { kind: 'openai-compatible', baseUrl: this.aiBaseUrl(), model };
+    return { kind: this.kind(), baseUrl: this.aiBaseUrl(), model };
   }
 
   /** *Save* for an OpenAI-compatible service: the three settings and, if typed, the key; a saved key never follows a changed service. */
@@ -448,7 +452,7 @@ export class ConnectPage {
   /** *Remove key*: the key and the three settings go; AI goes back to the server, if one is connected. */
   protected removeAi(): void {
     this.ai.removeGeminiKey();
-    this.aiBaseUrl.set(this.preset()?.baseUrl ?? '');
+    this.aiBaseUrl.set(presetUrl(this.service()));
     this.aiModel.set('');
     this.aiKey = '';
     this.geminiKey = '';
@@ -614,7 +618,7 @@ export function pairingErrorMsg(err: unknown): Msg {
   return { key: 'connect.failed', params: { reason: errorMsg(err) } };
 }
 
-type ServiceId = 'gemini' | AiPreset['id'];
+type ServiceId = 'gemini' | 'anthropic' | AiPreset['id'];
 
 const SERVICE_LABEL: Readonly<Record<ServiceId, TKey>> = {
   gemini: 'connect.aiService.gemini',
@@ -623,6 +627,7 @@ const SERVICE_LABEL: Readonly<Record<ServiceId, TKey>> = {
   groq: 'connect.aiService.groq',
   ollama: 'connect.aiService.ollama',
   lmstudio: 'connect.aiService.lmstudio',
+  anthropic: 'connect.aiService.anthropic',
   custom: 'connect.aiService.custom',
 };
 
@@ -651,11 +656,18 @@ const KEY_PAGE: Partial<Record<ServiceId, string>> = {
   openai: 'https://platform.openai.com/api-keys',
   openrouter: 'https://openrouter.ai/keys',
   groq: 'https://console.groq.com/keys',
+  anthropic: 'https://console.anthropic.com/settings/keys',
 };
 
-/** The select's choice for the saved settings: Gemini, the preset whose base URL was saved, or Custom. */
+/** The base URL a service prefills: its preset's, Anthropic's own, or none (Gemini, Custom). */
+function presetUrl(id: ServiceId): string {
+  return id === 'anthropic' ? ANTHROPIC_BASE_URL : (AI_PRESETS.find((p) => p.id === id)?.baseUrl ?? '');
+}
+
+/** The select's choice for the saved settings: Gemini, Anthropic, the preset whose base URL was saved, or Custom. */
 function serviceOf(config: AiProviderConfig): ServiceId {
-  if (config.kind !== 'openai-compatible') return 'gemini';
+  if (config.kind === 'gemini') return 'gemini';
+  if (config.kind === 'anthropic') return 'anthropic';
   const check = validateWebBaseUrl(config.baseUrl);
   return AI_PRESETS.find((p) => p.id !== 'custom' && check.valid && p.baseUrl === check.normalised)?.id ?? 'custom';
 }
