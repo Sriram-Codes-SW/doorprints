@@ -33,7 +33,7 @@
 # The Android Gradle checks are one Gradle invocation (Gradle parallelises the modules itself); the iOS klib compile
 # needs the Kotlin/Native toolchain and runs as its own Gradle build after the Android one (a second Gradle build in
 # the same project directory would contend for the lock), so "android" and "ios" are one sequence; web, the guide and
-# the licence headers run beside it.
+# the licence headers and the document-version check (always) run beside it.
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -52,7 +52,7 @@ areas_for() {
   grep -qE '^(guide/|android/app/src/test/screenshots/|\.github/workflows/pages\.yml$)' <<<"$changed" && areas="$areas guide"
   grep -qE '^(backend/|docs/ai/evals/|docs/schemas/|docker-compose\.yml$|web/src/app/export/backup-export\.ts$|web/src/app/export/golden/|android/shared/src/commonMain/kotlin/app/doorprints/shared/export/Backup\.kt$|\.github/workflows/backend\.yml$)' \
     <<<"$changed" && echo "Backend inputs changed: run cd backend && mvn -B -ntp verify (needs PostGIS, see backend.yml); not run here." >&2
-  [ "$areas" = "licence" ] && [ -n "$changed" ] && echo "No android, iOS, web or guide input changed: licence headers only." >&2
+  [ "$areas" = "licence" ] && [ -n "$changed" ] && echo "No android, iOS, web or guide input changed: licence headers and document versions only." >&2
   echo "$areas"
 }
 
@@ -91,6 +91,8 @@ gradle_seq() {
 }
 
 has licence && start licence python3 "$ROOT/.github/scripts/licence-headers.py" --check
+# Always, like the licence headers: the documents' version rows (S4b-BL-156); pure Node, about a tenth of a second.
+has licence && start docs-versions bash -c "cd '$ROOT' && node --test tools/check-docs-versions.test.mjs && node tools/check-docs-versions.mjs"
 if has android || has ios; then start gradle gradle_seq; fi
 has web && start web bash -c "cd '$ROOT' && node tools/check-specs.mjs && node tools/check-templates.mjs && node --test tools/*.test.mjs && cd web && npx ng test --watch=false && CI=true npm run test:ci && npm run build"
 # --strict fails on errors; a WARNING line once passed locally and failed CI (docs/14 §7), so it fails here too.
