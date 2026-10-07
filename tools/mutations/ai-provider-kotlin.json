@@ -7,6 +7,8 @@
     "--tests",
     "app.doorprints.shared.ai.OpenAiCompatClientTest",
     "--tests",
+    "app.doorprints.shared.ai.AiClientTransportTest",
+    "--tests",
     "app.doorprints.data.AiProviderSettingsTest"
   ],
   "mutations": [
@@ -36,8 +38,8 @@
     },
     {
       "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OpenAiCompatClient.kt",
-      "find": "header(\"Authorization\", \"Bearer $apiKey\")",
-      "replace": "header(\"Authorization\", \"Basic $apiKey\")",
+      "find": "mapOf(\"Authorization\" to \"Bearer $apiKey\")",
+      "replace": "mapOf(\"Authorization\" to \"Basic $apiKey\")",
       "expect": "theKeyGoesInABearerHeaderOnlyWhenThereIsOne"
     },
     {
@@ -105,6 +107,24 @@
       "find": "\"AiProviderConfig(kind=${kind.wire}, model=",
       "replace": "\"AiProviderConfig(kind=${kind.wire}, baseUrl=$baseUrl, model=",
       "expect": "theConfigsToStringNeverPrintsTheAddressOrAKey"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AiRequest.kt",
+      "find": "(if (timeoutMs == null) exchange() else withTimeoutOrNull(timeoutMs) { exchange() })",
+      "replace": "exchange()",
+      "expect": "anAnswerWhoseBodyNeverFinishesTimesOutAs504InBothAdapters"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AiRequest.kt",
+      "find": "throw ApiException(ApiException.Kind.AI_UNAVAILABLE, UNREACHABLE)",
+      "replace": "throw e",
+      "expect": "aCallThatCannotConnectIsUnavailableWithCodeZeroInBothAdapters"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/api/ApiClient.kt",
+      "find": "followRedirects = false",
+      "replace": "followRedirects = true",
+      "expect": "theSharedClientFollowsNoRedirectOnAnyMethodAndReturnsTheStatusInsteadOfThrowing"
     }
   ]
 }
