@@ -40,6 +40,10 @@ public class AiStatusController {
                            boolean offForDevice) {
     }
 
+    /** The Gemini API's host: the only chat endpoint that needs a key for the status to say AI is on (S4b-BL-149). */
+    static final String GEMINI_HOST = "generativelanguage.googleapis.com";
+    private static final String GEMINI_OPENAI_BASE_URL = "https://" + GEMINI_HOST + "/v1beta/openai/";
+
     private final AiStatus status;
     private final boolean needsKey;
     private final GeminiKey geminiKey;
@@ -48,24 +52,50 @@ public class AiStatusController {
     public AiStatusController(@Value("${app.ai.enabled:false}") boolean enabled,
                               @Value("${app.mcp.enabled:false}") boolean mcpEnabled,
                               @Value("${app.ai.provider:aistudio}") String provider,
+                              @Value("${spring.ai.openai.base-url:" + GEMINI_OPENAI_BASE_URL + "}") String baseUrl,
                               @Value("${spring.ai.openai.chat.model:}") String openAiChatModel,
                               @Value("${spring.ai.google.genai.chat.model:}") String vertexChatModel,
                               @Value("${app.ai.embedding.model:}") String embeddingModel,
+                              @Value("${app.ai.key-required:}") String keyRequired,
                               GeminiKey geminiKey, ServerSettings settings) {
         this.geminiKey = geminiKey;
         this.settings = settings;
-        // Only AI Studio (the default) runs on a Gemini key; Vertex AI uses the server's Google Cloud credentials.
-        this.needsKey = !AiProperties.VERTEX.equals(AiProperties.normalizeProvider(provider));
+        this.needsKey = keyNeeded(provider, baseUrl, keyRequired);
         // The provider itself is not exposed (the response shape is shared with the web and Android apps).
         var chatModel = AiProperties.VERTEX.equals(AiProperties.normalizeProvider(provider)) ? vertexChatModel
                 : openAiChatModel;
         this.status = new AiStatus(enabled, mcpEnabled, enabled ? chatModel : null, enabled ? embeddingModel : null, false);
     }
 
+    /**
+     * Whether AI reads as off while no key is set. Vertex AI uses the server's Google Cloud credentials, so never. For
+     * AI Studio the owner's explicit {@code app.ai.key-required} ({@code AI_KEY_REQUIRED}: {@code true} or
+     * {@code false}) wins, for example {@code true} for a proxy in front of Gemini on another host; unset, the chat
+     * base URL decides: only the Gemini API host needs a key, and an Ollama or other OpenAI-compatible endpoint of the
+     * self-hoster's own does not (a key, if set, is still sent). A blank or unreadable URL is read as the default, the
+     * Gemini API. Both settings are the server's own ({@code AI_BASE_URL}), never a request value (T-I44).
+     */
+    static boolean keyNeeded(String provider, String baseUrl, String keyRequired) {
+        if (AiProperties.VERTEX.equals(AiProperties.normalizeProvider(provider))) return false;
+        if (keyRequired != null && !keyRequired.isBlank()) return Boolean.parseBoolean(keyRequired.strip());
+        return GEMINI_HOST.equals(hostOf(baseUrl));
+    }
+
+    /** The lower-case host of the URL; the Gemini host for a blank or unreadable one (so a key stays required). */
+    private static String hostOf(String baseUrl) {
+        if (baseUrl == null || baseUrl.isBlank()) return GEMINI_HOST;
+        try {
+            var host = java.net.URI.create(baseUrl.strip()).getHost();
+            return host == null ? GEMINI_HOST : host.toLowerCase(java.util.Locale.ROOT);
+        } catch (IllegalArgumentException e) {
+            return GEMINI_HOST;
+        }
+    }
+
     @GetMapping("/api/ai/status")
     public AiStatus status(HttpServletRequest request) {
         if (!status.enabled()) return status;
-        // No Gemini key yet, or the owner paused AI for the whole server (owner page, docs/03 §12.1): off for everyone.
+        // No key yet where the endpoint needs one (the Gemini API), or the owner paused AI for the whole server (owner page, docs/03 §12.1): off for everyone.
         if ((needsKey && geminiKey.current().isEmpty()) || settings.aiPaused()) {
             return new AiStatus(false, status.mcpEnabled(), null, null, false);
         }
