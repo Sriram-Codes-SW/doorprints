@@ -117,6 +117,8 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
     onOpenShare: () -> Unit = {}, onOpenBrokers: () -> Unit = {}, onOpenCriteria: () -> Unit = {},
     onOpenQuestions: () -> Unit = {}, onOpenViewings: () -> Unit = {},
     onOpenAreas: () -> Unit = {}, onOpenPlaces: () -> Unit = {},
+    /** *Take the tour* in About (S4b-FR-39): starts the guided tour again. */
+    onTakeTour: () -> Unit = {},
 ) {
     val services = LocalAppServices.current
     val repo = services.repository
@@ -169,7 +171,7 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
         Text(stringResource(Res.string.settings_title), style = MaterialTheme.typography.headlineSmall,
             modifier = Modifier.semantics { heading() })
 
-        SectionHeading(stringResource(Res.string.settings_language))
+        SectionHeading(stringResource(Res.string.settings_language), Modifier.tourTarget(TourTargets.SETTINGS_LANGUAGE))
         // Where a platform has no in-app choice (iOS: PlatformFeatures.inAppLanguage), the language follows the one
         // chosen for Doorprints in the phone's settings, and the button opens them. The flag is fixed per process, so
         // the calls below never change order between compositions.
@@ -230,12 +232,17 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
                 // Without the PDF where the platform makes none (the iPhone, PlatformFeatures.pdfCopies).
                 stringResource(if (platformFeatures.pdfCopies) Res.string.settings_export_hint else Res.string.settings_export_hint_no_pdf),
                 onOpenExport,
+                Modifier.tourTarget(TourTargets.SETTINGS_EXPORT),
             )
             NavRow(
                 stringResource(Res.string.settings_import), stringResource(Res.string.settings_import_hint), onOpenImport,
+                Modifier.tourTarget(TourTargets.SETTINGS_IMPORT),
             )
             // Sharing updates with someone (docs/11 5.28, S4b-FR-3): a file of what changed, through any app.
-            NavRow(stringResource(Res.string.settings_share), stringResource(Res.string.settings_share_hint), onOpenShare)
+            NavRow(
+                stringResource(Res.string.settings_share), stringResource(Res.string.settings_share_hint), onOpenShare,
+                Modifier.tourTarget(TourTargets.SETTINGS_SHARE),
+            )
         }
 
         if (platformFeatures.weeklyBackup) {
@@ -282,6 +289,7 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
                 hint = stringResource(Res.string.settings_auto_backup_hint),
                 checked = settings.autoBackup,
                 horizontalPadding = 0.dp,
+                modifier = Modifier.tourTarget(TourTargets.SETTINGS_BACKUP),
                 onChange = { wanted ->
                     if (wanted && settings.autoBackupFolder.isBlank()) {
                         enableAfterPick = true
@@ -442,10 +450,15 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
         }
 
         // Google Drive backup and sync (docs/15 §2): the platform's section, with its own divider; nothing where it has none.
-        if (platformFeatures.googleDrive) features.DriveSection()
+        if (platformFeatures.googleDrive) {
+            // A long section: the tour highlights its top part (TourLayout.SPOT_FRACTION).
+            Column(Modifier.tourTarget(TourTargets.SETTINGS_DRIVE), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                features.DriveSection()
+            }
+        }
 
         HorizontalDivider()
-        SectionHeading(stringResource(Res.string.settings_server))
+        SectionHeading(stringResource(Res.string.settings_server), Modifier.tourTarget(TourTargets.SETTINGS_SERVER))
         Text(stringResource(Res.string.settings_server_intro), style = MaterialTheme.typography.bodySmall)
         OutlinedTextField(
             url, {
@@ -706,21 +719,33 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
 
         // The brokers you have met (docs/11 5.25, slice 1b), on every platform: it opens the list and each broker's page.
         HorizontalDivider()
-        NavRow(stringResource(Res.string.settings_brokers), stringResource(Res.string.settings_brokers_hint), onOpenBrokers)
+        NavRow(
+            stringResource(Res.string.settings_brokers), stringResource(Res.string.settings_brokers_hint), onOpenBrokers,
+            Modifier.tourTarget(TourTargets.SETTINGS_BROKERS),
+        )
         // What counts in a house's score (docs/11 5.4, slice 2): weights, must-haves, your own criteria, the rating share.
         HorizontalDivider()
-        NavRow(stringResource(Res.string.settings_criteria), stringResource(Res.string.settings_criteria_hint), onOpenCriteria)
+        NavRow(
+            stringResource(Res.string.settings_criteria), stringResource(Res.string.settings_criteria_hint), onOpenCriteria,
+            Modifier.tourTarget(TourTargets.SETTINGS_CRITERIA),
+        )
         // The questions you ask at a viewing (docs/11 5.5, slice 3a): the bank the house form's *Questions to ask* draws on.
         HorizontalDivider()
         NavRow(stringResource(Res.string.settings_questions), stringResource(Res.string.settings_questions_hint), onOpenQuestions)
         // The viewings planned and done (docs/11 5.8, slice 3b-1): the history, its filters and search, the form.
         HorizontalDivider()
-        NavRow(stringResource(Res.string.settings_viewings), stringResource(Res.string.settings_viewings_hint), onOpenViewings)
+        NavRow(
+            stringResource(Res.string.settings_viewings), stringResource(Res.string.settings_viewings_hint), onOpenViewings,
+            Modifier.tourTarget(TourTargets.SETTINGS_VIEWINGS),
+        )
         // Their reminders (slice 3b-2): the switch, and the on-time alarms note and button while they are not allowed.
         ViewingRemindersSection()
         // Hunting areas with their notes, and the places that matter (docs/11 slice 4a).
         HorizontalDivider()
-        NavRow(stringResource(Res.string.settings_areas), stringResource(Res.string.settings_areas_hint), onOpenAreas)
+        NavRow(
+            stringResource(Res.string.settings_areas), stringResource(Res.string.settings_areas_hint), onOpenAreas,
+            Modifier.tourTarget(TourTargets.SETTINGS_AREAS),
+        )
         HorizontalDivider()
         NavRow(stringResource(Res.string.settings_places), stringResource(Res.string.settings_places_hint), onOpenPlaces)
 
@@ -739,7 +764,7 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
             style = MaterialTheme.typography.bodySmall,
         )
         // The app lock (docs/11 5.19): the phone's own screen lock when Doorprints opens.
-        AppLockSection(settings)
+        AppLockSection(settings, modifier = Modifier.tourTarget(TourTargets.SETTINGS_LOCK))
 
         HorizontalDivider()
         SectionHeading(stringResource(Res.string.settings_about))
@@ -749,7 +774,11 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
         val version = remember { features.appVersion() }
         if (version != null) Text(stringResource(Res.string.settings_version, version), style = MaterialTheme.typography.bodySmall)
         // The user guide in the app's language (S4b-BL-60).
-        HelpLink(openUrl = platform::openUrl)
+        // Help, with *Take the tour* beside it (S4b-FR-39): the guided tour again, any time.
+        Column(Modifier.tourTarget(TourTargets.SETTINGS_HELP), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            HelpLink(openUrl = platform::openUrl)
+            TourReplay(onTakeTour)
+        }
         LegalNoticeBlock(openUrl = platform::openUrl)
     }
 }
@@ -840,9 +869,9 @@ private fun AutoBackupStatus(settings: AppSettings, backingUp: Boolean, features
  * One 56 dp target with a button role, so TalkBack reads title and hint together as one item.
  */
 @Composable
-private fun NavRow(title: String, hint: String, onClick: () -> Unit) {
+private fun NavRow(title: String, hint: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Row(
-        Modifier.fillMaxWidth().heightIn(min = 56.dp)
+        modifier.fillMaxWidth().heightIn(min = 56.dp)
             .clickable(role = Role.Button, onClick = onClick)
             .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,

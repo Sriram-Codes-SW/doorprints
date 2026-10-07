@@ -883,6 +883,7 @@ fun MapScreen(
                         mapServices.finishWalk()
                         finishRequests++
                     },
+                    modifier = Modifier.tourTarget(TourTargets.MAP_HUNT),
                 )
             } else {
                 // No Hunt mode on this platform (iOS, CMP-8c): no card, only the location note when it applies, in a
@@ -1021,6 +1022,7 @@ fun MapScreen(
                 onDismiss = { checkMenuOpen = false },
                 onHere = { checkMenuOpen = false; checkHere() },
                 onSpot = { checkMenuOpen = false; pickingSpot = true },
+                modifier = Modifier.tourTarget(TourTargets.MAP_CHECK),
             )
         }
         val saveAreaButton: @Composable () -> Unit = {
@@ -1028,7 +1030,7 @@ fun MapScreen(
             if (offline.supported) {
                 SmallFloatingActionButton(
                     onClick = { map?.visibleBounds()?.let { saveAreaBounds = it } },
-                    modifier = Modifier.size(48.dp),
+                    modifier = Modifier.size(48.dp).tourTarget(TourTargets.MAP_OFFLINE),
                 ) { Icon(DownloadIcon, contentDescription = stringResource(Res.string.map_save_area)) }
             }
         }
@@ -1046,6 +1048,7 @@ fun MapScreen(
                 },
                 text = { Text(saveHereLabel) },
                 modifier = Modifier
+                    .tourTarget(TourTargets.MAP_SAVE)
                     .onSizeChanged {
                         fabWidthPx = it.width
                         fabHeightPx = it.height

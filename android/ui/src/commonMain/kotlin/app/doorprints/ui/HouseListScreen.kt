@@ -662,7 +662,7 @@ private fun HouseList(
                         }
                     }
                 },
-                modifier = Modifier.fillMaxWidth().focusRequester(searchFocus),
+                modifier = Modifier.fillMaxWidth().tourTarget(TourTargets.HOUSES_SEARCH).focusRequester(searchFocus),
             )
         }
         // The copies of the last copy import (rounds 16 and 18): a filter of its own, applied on top of the status
@@ -780,7 +780,9 @@ private fun HouseList(
             }
         } else {
             items(shown, key = { it.id }) { h ->
-                HouseCard(h, h.scoreResult(scoring), visitsByHouse[h.id]?.visits ?: 0, Modifier.animateItem()) { onOpenHouse(h.id) }
+                // The first row is where the tour points at "open a house".
+                val row = if (h.id == shown.first().id) Modifier.animateItem().tourTarget(TourTargets.HOUSES_FIRST) else Modifier.animateItem()
+                HouseCard(h, h.scoreResult(scoring), visitsByHouse[h.id]?.visits ?: 0, row) { onOpenHouse(h.id) }
             }
         }
     }

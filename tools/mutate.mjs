@@ -28,6 +28,12 @@
 // `find` must occur exactly once in `file`; `expect` is a substring of the failing test's name. The spec is run with
 // `npx ng test --watch=false --include=<spec>` in web/. Exit 1 when any mutation survives (no failing test, or none
 // with the expected name). Plain Node, no dependencies.
+//
+// Android and iPhone code (S4b-FR-39): a list with a "gradle" array runs `./gradlew <those arguments>` in android/
+// instead (for example [":ui:testAndroidHostTest", "--tests", "app.doorprints.ui.TourTest"]) and reads Gradle's
+// `<class> > <test> FAILED` lines; `spec` is then only the test file's name for the log. Extra Gradle arguments (such as
+// --offline) come from the environment variable MUTATE_GRADLE_ARGS. A mutation that no longer compiles fails no test, so
+// it counts as survived: write mutations that compile.
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -38,6 +44,12 @@ const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
 export function failingTests(output) {
   const clean = output.replace(/\x1b\[[0-9;]*m/g, '');
   return [...clean.matchAll(/^\s*FAIL\s+\S+\s+(.+)$/gm)].map((m) => m[1].trim());
+}
+
+/** Names of the failing tests in Gradle's output (`app.x.TourTest > theNameOfTheTest FAILED`, `[host]` suffixes kept). */
+export function gradleFailingTests(output) {
+  const clean = output.replace(/\x1b\[[0-9;]*m/g, '');
+  return [...clean.matchAll(/^(\S+) > (.+?) FAILED\s*$/gm)].map((m) => `${m[1]} > ${m[2].trim()}`);
 }
 
 /** The mutated text, or an error string when `find` does not occur exactly once. */
@@ -57,6 +69,16 @@ export function verdict(failures, expect) {
   return { killed: true, why: `killed by: ${failures.find((f) => !expect || f.includes(expect))}` };
 }
 
+function runGradle(gradle) {
+  const extra = (process.env.MUTATE_GRADLE_ARGS || '').split(/\s+/).filter(Boolean);
+  const r = spawnSync('./gradlew', [...gradle, '--continue', ...extra], {
+    cwd: path.join(ROOT, 'android'),
+    encoding: 'utf8',
+    maxBuffer: 256 * 1024 * 1024,
+  });
+  return { output: (r.stdout || '') + (r.stderr || ''), status: r.status };
+}
+
 function runSpec(spec) {
   const r = spawnSync('npx', ['ng', 'test', '--watch=false', `--include=**/${path.basename(spec)}`], {
     cwd: path.join(ROOT, 'web'),
@@ -72,8 +94,16 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     console.error('Usage: node tools/mutate.mjs tools/mutations/<name>.json');
     process.exit(2);
   }
-  const { spec, mutations } = JSON.parse(fs.readFileSync(listFile, 'utf8'));
-  const base = failingTests(runSpec(spec));
+  const { spec, mutations, gradle } = JSON.parse(fs.readFileSync(listFile, 'utf8'));
+  // One way to run the spec and read its failures, whichever stack it is on.
+  const failures = () => {
+    if (!gradle) return failingTests(runSpec(spec));
+    const run = runGradle(gradle);
+    const found = gradleFailingTests(run.output);
+    // A build that fails without a failing test (a mutation that does not compile) is not a kill.
+    return found.length === 0 && run.status !== 0 ? ['BUILD FAILED without a failing test'] : found;
+  };
+  const base = failures();
   if (base.length > 0) {
     console.log(`The spec already fails without a mutation: ${base.join('; ')}`);
     process.exit(1);
@@ -90,7 +120,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     }
     try {
       fs.writeFileSync(file, mutated.text);
-      const v = verdict(failingTests(runSpec(spec)), m.expect);
+      const v = verdict(failures(), m.expect);
       console.log(`${v.killed ? 'ok  ' : 'FAIL'} ${m.file}: ${m.find} -> ${m.replace}  [${v.why}]`);
       if (!v.killed) survived++;
     } finally {

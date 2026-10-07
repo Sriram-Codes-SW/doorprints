@@ -19,7 +19,21 @@
 // Tests for tools/mutate.mjs: `node --test tools/*.test.mjs`
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { applyMutation, failingTests, verdict } from './mutate.mjs';
+import { applyMutation, failingTests, gradleFailingTests, verdict } from './mutate.mjs';
+
+test('gradleFailingTests reads Gradle FAILED lines and nothing else', () => {
+  const out = [
+    'app.doorprints.ui.TourTest > walksForwardAndBack[host] FAILED',
+    '    kotlin.AssertionError at TourTest.kt:1',
+    'app.doorprints.ui.TourTest > theOfferComesOnce FAILED',
+    '> Task :ui:testAndroidHostTest FAILED',
+    '2 tests completed, 2 failed',
+  ].join('\n');
+  assert.deepEqual(gradleFailingTests(out), [
+    'app.doorprints.ui.TourTest > walksForwardAndBack[host]',
+    'app.doorprints.ui.TourTest > theOfferComesOnce',
+  ]);
+});
 
 test('applyMutation changes the one occurrence', () => {
   assert.deepEqual(applyMutation('if (a !== b) x();', { find: 'a !== b', replace: 'false' }), { text: 'if (false) x();' });

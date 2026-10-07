@@ -66,7 +66,7 @@ import org.jetbrains.compose.resources.stringResource
  * phone the switch is off and says to set one (read again on every return, after the phone's settings).
  */
 @Composable
-fun AppLockSection(settings: AppSettings, gate: AppLockGate = processAppLock) {
+fun AppLockSection(settings: AppSettings, gate: AppLockGate = processAppLock, modifier: Modifier = Modifier) {
     val platform = LocalPlatformServices.current
     val repo = LocalAppServices.current.repository
     val scope = rememberCoroutineScope()
@@ -95,6 +95,7 @@ fun AppLockSection(settings: AppSettings, gate: AppLockGate = processAppLock) {
         // off by itself in that case, see AppLockHost).
         enabled = wanted == null && (hasScreenLock || settings.appLock),
         horizontalPadding = 0.dp,
+        modifier = modifier,
         warning = if (!hasScreenLock) stringResource(Res.string.settings_app_lock_no_screen_lock) else null,
         onChange = { on ->
             notChanged = false

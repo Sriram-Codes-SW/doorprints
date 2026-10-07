@@ -38,6 +38,8 @@ import app.doorprints.ui.res.settings_help
 import app.doorprints.ui.res.settings_help_desc
 import app.doorprints.ui.res.settings_help_hint
 import app.doorprints.ui.res.settings_link_failed
+import app.doorprints.ui.res.tour_replay
+import app.doorprints.ui.res.tour_replay_hint
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -75,4 +77,14 @@ fun HelpLink(openUrl: (String) -> Boolean, language: String = uiLanguage()) {
             modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
         )
     }
+}
+
+/**
+ * *Take the tour* beside *Help* in Settings > About (S4b-FR-39): a line on what the tour is and the button that starts the
+ * guided tour again, whether or not it was seen. The first run offers it once on the Map or the Houses tab.
+ */
+@Composable
+fun TourReplay(onTakeTour: () -> Unit) {
+    Text(stringResource(Res.string.tour_replay_hint), style = MaterialTheme.typography.bodySmall)
+    TextButton(onClick = onTakeTour, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(Res.string.tour_replay)) }
 }

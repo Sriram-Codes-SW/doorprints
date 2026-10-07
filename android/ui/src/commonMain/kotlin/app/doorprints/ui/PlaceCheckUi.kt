@@ -78,11 +78,14 @@ internal val FootprintsIcon: ImageVector by lazy {
  * (whether or not the trace is on or Hunt mode runs); it opens a two-row menu, *Where I am now* and *A spot on the map*.
  */
 @Composable
-fun CheckButton(open: Boolean, onOpen: () -> Unit, onDismiss: () -> Unit, onHere: () -> Unit, onSpot: () -> Unit) {
+fun CheckButton(
+    open: Boolean, onOpen: () -> Unit, onDismiss: () -> Unit, onHere: () -> Unit, onSpot: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val label = stringResource(Res.string.trace_here_button)
     SmallFloatingActionButton(
         onClick = onOpen,
-        modifier = Modifier.size(48.dp).semantics { contentDescription = label },
+        modifier = modifier.size(48.dp).semantics { contentDescription = label },
     ) {
         Icon(FootprintsIcon, contentDescription = null)
         DropdownMenu(expanded = open, onDismissRequest = onDismiss) {

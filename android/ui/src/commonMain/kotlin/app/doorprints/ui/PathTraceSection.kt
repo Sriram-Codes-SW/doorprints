@@ -107,6 +107,7 @@ fun PathTraceSection(settings: AppSettings) {
         hint = stringResource(Res.string.settings_path_trace_hint),
         checked = settings.pathTrace,
         horizontalPadding = 0.dp,
+        modifier = Modifier.tourTarget(TourTargets.SETTINGS_TRACE),
         onChange = { on -> scope.launch { repo.settings.savePathTrace(on) } },
     )
 

@@ -1,0 +1,216 @@
+{
+  "spec": "android/ui/src/commonTest/kotlin/app/doorprints/ui/TourTest.kt",
+  "gradle": [":ui:testAndroidHostTest", "--tests", "app.doorprints.ui.TourTest"],
+  "mutations": [
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/TourSession.kt",
+      "find": "if (i >= steps.size - 1) {",
+      "replace": "if (i > steps.size - 1) {",
+      "expect": "walksForwardAndBackNeverBeforeTheFirstStepAndFinishesAfterTheLast"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/TourSession.kt",
+      "find": "return TourEnd.DONE",
+      "replace": "return TourEnd.SKIPPED",
+      "expect": "walksForwardAndBackNeverBeforeTheFirstStepAndFinishesAfterTheLast"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/TourSession.kt",
+      "find": "if (i > 0) index = i - 1",
+      "replace": "index = i - 1",
+      "expect": "walksForwardAndBackNeverBeforeTheFirstStepAndFinishesAfterTheLast"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/TourSession.kt",
+      "find": "return TourEnd.SKIPPED",
+      "replace": "return TourEnd.DONE",
+      "expect": "skippingEndsItAtAnyStepAsSkippedAndSaysSo"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/TourSession.kt",
+      "find": "if (steps.isEmpty()) return",
+      "replace": "",
+      "expect": "aTourThatIsNotRunningIgnoresNextAndBackAndAnEmptyTourDoesNotStart"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/TourSession.kt",
+      "find": "val i = index ?: return null",
+      "replace": "val i = index ?: 0",
+      "expect": "aTourThatIsNotRunningIgnoresNextAndBackAndAnEmptyTourDoesNotStart"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/TourSession.kt",
+      "find": "        index = 0\n",
+      "replace": "",
+      "expect": "startingAgainBeginsAtTheFirstStep"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/TourSession.kt",
+      "find": "memory == TourMemory.UNSEEN && !active && route == home",
+      "replace": "memory != TourMemory.SEEN && !active && route == home",
+      "expect": "theOfferComesOnceOnTheHomeTabToSomeoneWhoHasNotSeenTheTour"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/TourSession.kt",
+      "find": "memory == TourMemory.UNSEEN && !active && route == home",
+      "replace": "memory == TourMemory.UNSEEN && route == home",
+      "expect": "theOfferComesOnceOnTheHomeTabToSomeoneWhoHasNotSeenTheTour"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/TourSession.kt",
+      "find": "memory == TourMemory.UNSEEN && !active && route == home",
+      "replace": "memory == TourMemory.UNSEEN && !active",
+      "expect": "theOfferComesOnceOnTheHomeTabToSomeoneWhoHasNotSeenTheTour"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/TourSession.kt",
+      "find": "endedHere -> SEEN",
+      "replace": "endedHere -> UNSEEN",
+      "expect": "theRememberedChoiceIsReadAsSeenAsSoonAsTheTourEndsHere"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/TourSession.kt",
+      "find": "!loaded -> LOADING",
+      "replace": "!loaded -> UNSEEN",
+      "expect": "theRememberedChoiceIsReadAsSeenAsSoonAsTheTourEndsHere"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/TourSession.kt",
+      "find": "stored != null -> SEEN",
+      "replace": "stored != null -> UNSEEN",
+      "expect": "theRememberedChoiceIsReadAsSeenAsSoonAsTheTourEndsHere"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/TourSteps.kt",
+      "find": "ALL.filter { step -> step.needs.all(context::has) }",
+      "replace": "ALL.filter { step -> step.needs.any(context::has) }",
+      "expect": "androidShowsEveryFeatureInTheOrderOfAHouseHunt"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/TourSteps.kt",
+      "find": "TourNeed.HUNT -> features.huntMode",
+      "replace": "TourNeed.HUNT -> features.map",
+      "expect": "aStepWhoseFeatureIsOffIsLeftOut"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/TourSteps.kt",
+      "find": "TourNeed.OFFLINE_MAPS -> features.map && offlineMaps",
+      "replace": "TourNeed.OFFLINE_MAPS -> offlineMaps",
+      "expect": "aStepWhoseFeatureIsOffIsLeftOut"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/TourSteps.kt",
+      "find": "TourNeed.WEEKLY_BACKUP -> features.weeklyBackup",
+      "replace": "TourNeed.WEEKLY_BACKUP -> true",
+      "expect": "theIphoneLeavesOutOnlyWhatItDoesNotHave"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/TourSteps.kt",
+      "find": "val home: String get() = if (features.map) \"map\" else \"houses\"",
+      "replace": "val home: String get() = \"map\"",
+      "expect": "aPhoneWithoutAMapHasNoMapStepsAndStartsOnTheHouses"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/TourSteps.kt",
+      "find": "step.copy(route = context.home)",
+      "replace": "step",
+      "expect": "eachStepIsOnTheTabOfTheScreenItPointsAt"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/TourSteps.kt",
+      "find": "TourStep(\"find\", HOUSES,",
+      "replace": "TourStep(\"find\", MAP,",
+      "expect": "eachStepIsOnTheTabOfTheScreenItPointsAt"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/TourSteps.kt",
+      "find": "listOf(TourTargets.SETTINGS_EXPORT)",
+      "replace": "listOf(TourTargets.SETTINGS_IMPORT)",
+      "expect": "eachStepPointsAtItsOwnControl"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/TourLayout.kt",
+      "find": "if (seen.height < padded.height * VISIBLE_FRACTION) return null",
+      "replace": "",
+      "expect": "aControlMostlyScrolledAwayIsNotHighlighted"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/TourLayout.kt",
+      "find": "const val SPOT_FRACTION = 0.35f",
+      "replace": "const val SPOT_FRACTION = 1f",
+      "expect": "aLongSectionIsHighlightedByItsTopPartSoTheCardKeepsRoom"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/TourLayout.kt",
+      "find": "screen.height - 2f * (minCard + gap)",
+      "replace": "screen.height",
+      "expect": "theHighlightLeavesTheCardAtLeastItsMinimumOnTheRoomierSide"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/TourLayout.kt",
+      "find": "val useAbove = need > below && above > below",
+      "replace": "val useAbove = need > below",
+      "expect": "theCardStaysBelowWhenAboveHasLessRoomEvenIfItDoesNotFit"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/TourLayout.kt",
+      "find": "val useAbove = need > below && above > below",
+      "replace": "val useAbove = need < below && above > below",
+      "expect": "theCardGoesBelowTheHighlightWhenItFitsThere"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/TourLayout.kt",
+      "find": "maxOf(spot.bottom, area.top) - clear)",
+      "replace": "maxOf(spot.bottom, area.top))",
+      "expect": "theCardGoesBelowTheHighlightWhenItFitsThere"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/TourLayout.kt",
+      "find": "area.top - gap - clear)",
+      "replace": "area.top - gap)",
+      "expect": "theCardGoesAboveWhenItDoesNotFitBelowAndAboveHasMoreRoom"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/TourLayout.kt",
+      "find": "minOf(spot.top, area.bottom)",
+      "replace": "spot.top",
+      "expect": "aHighlightInTheBottomBarSendsTheCardAboveItAndNotOverTheBar"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/TourLayout.kt",
+      "find": "TourSide.BELOW -> area.bottom - gap - height",
+      "replace": "TourSide.BELOW -> area.bottom - height",
+      "expect": "theCardGoesBelowTheHighlightWhenItFitsThere"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/TourLayout.kt",
+      "find": "(area.height - height) / 2f",
+      "replace": "(area.height - height)",
+      "expect": "withNoHighlightTheCardIsCentredOrForTheOfferAtTheBottom"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/TourLayout.kt",
+      "find": "if (bottom) TourSide.BELOW else TourSide.CENTRE",
+      "replace": "TourSide.CENTRE",
+      "expect": "withNoHighlightTheCardIsCentredOrForTheOfferAtTheBottom"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/TourRegistry.kt",
+      "find": "if (boxes[id] != box) boxes[id] = box",
+      "replace": "if (id !in boxes) boxes[id] = box",
+      "expect": "theRegistryHoldsWhereTargetsAreAndDropsThemWhenTheyLeave"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/TourRegistry.kt",
+      "find": "        boxes.remove(id)\n",
+      "replace": "",
+      "expect": "theRegistryHoldsWhereTargetsAreAndDropsThemWhenTheyLeave"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/TourRegistry.kt",
+      "find": "ids.firstOrNull { it in boxes }",
+      "replace": "ids.lastOrNull { it in boxes }",
+      "expect": "aStepHighlightsTheFirstOfItsTargetsThatIsOnScreen"
+    }
+  ]
+}
