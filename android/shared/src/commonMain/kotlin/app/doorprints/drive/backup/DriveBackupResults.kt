@@ -24,6 +24,7 @@ import app.doorprints.crypto.DpxException
 import app.doorprints.crypto.KeysException
 import app.doorprints.crypto.OpenedKeys
 import app.doorprints.crypto.RecoveryKey
+import app.doorprints.drive.DriveCode
 import app.doorprints.drive.DriveException
 
 /*
@@ -38,6 +39,11 @@ data class DriveProblem(
     val keysKind: KeysException.Kind? = null,
     val controlKind: ControlException.Kind? = null,
     val dpxKind: DpxException.Kind? = null,
+    /**
+     * [DriveCode] of an exception nobody expected (only with [Kind.SOURCE_FAILED]): the step and the class name, never a
+     * message. Null for every typed failure.
+     */
+    val code: String? = null,
 ) {
     enum class Kind {
         /** No network (or a captive portal). Tried again at the next trigger. */
@@ -117,6 +123,16 @@ data class DriveProblem(
         }
 
     companion object {
+        /** True for the exceptions Doorprints throws on purpose; anything else is a surprise (and gets a [DriveCode]). */
+        fun isTyped(e: Throwable): Boolean =
+            e is DriveException || e is KeysException || e is ControlException || e is DpxException || e is CryptoException
+
+        /** The [DriveCode] of [e] at [step], or null when [e] is a typed failure the screen already explains. */
+        fun codeOf(e: Throwable, step: String): String? = if (isTyped(e)) null else DriveCode.of(step, e)
+
+        /** [of] with the step the failure happened in: an unexpected exception carries its [DriveCode]. */
+        fun of(e: Throwable, step: String): DriveProblem = of(e).let { if (it.kind == Kind.SOURCE_FAILED) it.copy(code = codeOf(e, step)) else it }
+
         fun of(e: Throwable): DriveProblem = when (e) {
             is DriveException -> DriveProblem(
                 when (e.kind) {

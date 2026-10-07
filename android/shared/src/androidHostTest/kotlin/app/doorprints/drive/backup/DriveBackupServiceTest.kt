@@ -672,4 +672,133 @@ class DriveBackupServiceTest {
         assertEquals(DriveProblem.Kind.SOURCE_FAILED, a.service.failed(folder, wrongFormat).kind)
         assertEquals(before, writeCount())
     }
+
+    /** A provider whose P-256 key derivation throws [boom] (what a phone's platform may do and the JVM never does). */
+    private class BrokenProvider(private val inner: app.doorprints.crypto.CryptoProvider, private val boom: () -> Throwable) :
+        app.doorprints.crypto.CryptoProvider by inner {
+        override fun p256FromScalar(scalar: ByteArray): app.doorprints.crypto.P256PrivateKey = throw boom()
+    }
+
+    private var madeKey: RecoveryKey? = null
+
+    private suspend fun joinWith(boom: () -> Throwable): DriveConnection.Error {
+        val key = madeKey ?: a.service.createFolder(withRecoveryKey = true).recoveryKey!!.also { madeKey = it }
+        val b = Rig(server, "Phone", BrokenProvider(p, boom))
+        return b.service.openWithRecoveryKey(key) as DriveConnection.Error
+    }
+
+    @Test
+    fun anUnexpectedExceptionOnTheJoinPathCarriesItsClassNameAndStepNeverItsMessage() = runTest {
+        val e = joinWith { java.security.ProviderException("Keystore says secret-token-123 at https://x.example/y") }
+        assertEquals(DriveProblem.Kind.SOURCE_FAILED, e.problem.kind)
+        assertEquals("join-recover/java.security.ProviderException", e.problem.code)
+        assertFalse(e.toString().contains("secret-token-123"))
+    }
+
+    @Test
+    fun anErrorSubclassOnTheJoinPathBecomesAScreenWithACodeInsteadOfEscaping() = runTest {
+        assertEquals("join-recover/java.lang.NoClassDefFoundError", joinWith { NoClassDefFoundError("Lorg/conscrypt/Missing;") }.problem.code)
+        assertEquals("join-recover/java.lang.ExceptionInInitializerError", joinWith { ExceptionInInitializerError("boom") }.problem.code)
+        assertEquals("join-recover/java.lang.OutOfMemoryError", joinWith { OutOfMemoryError("heap") }.problem.code)
+    }
+
+    @Test
+    fun aCancellationOnTheJoinPathStillPropagates() = runTest {
+        val out = a.service.createFolder(withRecoveryKey = true)
+        val b = Rig(server, "Phone", BrokenProvider(p) { kotlinx.coroutines.CancellationException("stop") })
+        try {
+            b.service.openWithRecoveryKey(out.recoveryKey!!)
+            fail("expected the cancellation to propagate")
+        } catch (_: kotlinx.coroutines.CancellationException) {
+        }
+    }
+
+    @Test
+    fun aTypedFailureOnTheJoinPathHasNoCode() = runTest {
+        val out = a.service.createFolder(withRecoveryKey = true)
+        val b = Rig(server, "Tablet")
+        val wrong = b.service.openWithRecoveryKey(RecoveryKey.generate(p)) as DriveConnection.Error
+        assertNull(wrong.problem.code)
+        server.faults.always(DriveFault.Offline)
+        val offline = b.service.openWithRecoveryKey(out.recoveryKey!!) as DriveConnection.Error
+        assertEquals(DriveProblem.Kind.OFFLINE, offline.problem.kind)
+        assertNull(offline.problem.code)
+    }
+
+    @Test
+    fun theConnectAndCreateStepsNameThemselves() = runTest {
+        val rig = Rig(server, "Phone")
+        val drive = object : app.doorprints.drive.DriveClient by rig.drive {
+            override suspend fun list(query: app.doorprints.drive.DriveQuery, pageToken: String?, pageSize: Int): app.doorprints.drive.DrivePage =
+                throw IllegalArgumentException("Drive said secret-id-42")
+        }
+        val service = DriveBackupService(drive, p, rig.identity, rig.state, rig.trust, { server.clock.now() }, { 330 })
+        val c = service.connect() as DriveConnection.Error
+        assertEquals("connect/java.lang.IllegalArgumentException", c.problem.code)
+        val created = service.createFolder(withRecoveryKey = true)
+        assertEquals("create/java.lang.IllegalArgumentException", (created.connection as DriveConnection.Error).problem.code)
+        assertNull(created.recoveryKey)
+    }
+
+    @Test
+    fun theJoinNamesTheStepWhereItFailed() = runTest {
+        val out = a.service.createFolder(withRecoveryKey = true)
+        val key = out.recoveryKey!!
+        // locate: the folder lookup throws.
+        val rig = Rig(server, "Phone")
+        val locating = object : app.doorprints.drive.DriveClient by rig.drive {
+            override suspend fun list(query: app.doorprints.drive.DriveQuery, pageToken: String?, pageSize: Int): app.doorprints.drive.DrivePage =
+                throw UnsupportedOperationException("x")
+        }
+        val s1 = DriveBackupService(locating, p, rig.identity, rig.state, rig.trust, { server.clock.now() }, { 330 })
+        assertEquals("join-locate/java.lang.UnsupportedOperationException", (s1.openWithRecoveryKey(key) as DriveConnection.Error).problem.code)
+        // add: wrapping the folder key for this device needs a fresh key pair, which the provider refuses.
+        var refuse = false
+        val adding = Rig(server, "Phone2", object : app.doorprints.crypto.CryptoProvider by p {
+            override fun p256Generate(): app.doorprints.crypto.P256PrivateKey =
+                if (refuse) throw java.security.ProviderException("x") else p.p256Generate()
+        })
+        refuse = true
+        assertEquals("join-add/java.security.ProviderException", (adding.service.openWithRecoveryKey(key) as DriveConnection.Error).problem.code)
+        // write: the keys.json update throws.
+        val rig3 = Rig(server, "Phone3")
+        val writing = object : app.doorprints.drive.DriveClient by rig3.drive {
+            override suspend fun upload(target: app.doorprints.drive.UploadTarget, content: ByteArray): app.doorprints.drive.DriveFile =
+                throw IllegalStateException("x")
+        }
+        val s3 = DriveBackupService(writing, p, rig3.identity, rig3.state, rig3.trust, { server.clock.now() }, { 330 })
+        assertEquals("join-write/java.lang.IllegalStateException", (s3.openWithRecoveryKey(key) as DriveConnection.Error).problem.code)
+    }
+
+    @Test
+    fun aPhoneWhoseDeviceKeyIsNotMadeYetCanJoinWithTheRecoveryKey() = runTest {
+        // The app's wiring (DriveAssembly): the device key is made on first use, and once the folder is pinned a missing key
+        // is "lost", never remade. The join pins the folder, so the key must exist before the pin is made.
+        val key = a.service.createFolder(withRecoveryKey = true).recoveryKey!!
+        val backend = app.doorprints.drive.device.FakeKeyBackend()
+        val state = MemoryStateStore()
+        val trust = MemoryTrust()
+        val identity = app.doorprints.drive.device.KeystoreDeviceIdentity(backend, "Phone", app.doorprints.crypto.DevicePlatform.ANDROID) {
+            state.value.rootId?.let { trust.keys(it).load() != null } ?: false
+        }
+        val service = DriveBackupService(
+            app.doorprints.drive.InMemoryFakeDrive(server), app.doorprints.drive.device.DeviceKeyCryptoProvider(p), identity, state, trust,
+            { server.clock.now() }, { 330 },
+        )
+        assertEquals(DriveConnection.Kind.NEEDS_ENROLMENT, service.connect().kind)
+        assertEquals(0, backend.creates)
+        val joined = service.openWithRecoveryKey(key)
+        assertEquals((joined as? DriveConnection.Error)?.problem?.code, DriveConnection.Kind.READY, joined.kind)
+        assertEquals(1, backend.creates)
+        assertNotNull((joined as DriveConnection.Ready).folder.keys.body.device(app.doorprints.crypto.kidOf(p, identity.key.publicKey)))
+    }
+
+    @Test
+    fun aSourceThatFailsToOpenNamesTheBackupStep() = runTest {
+        val folder = ready()
+        val failing = BackupSource { throw java.io.FileNotFoundException("/data/user/0/app/files/secret.zip") }
+        val outcome = a.service.backUp(folder, failing) as BackupOutcome.Failed
+        assertEquals(DriveProblem.Kind.SOURCE_FAILED, outcome.problem.kind)
+        assertEquals("backup/java.io.FileNotFoundException", outcome.problem.code)
+    }
 }

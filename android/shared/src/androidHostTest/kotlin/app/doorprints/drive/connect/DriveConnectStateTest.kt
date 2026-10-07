@@ -257,6 +257,47 @@ class DriveConnectStateTest {
         assertFalse(r.toString().contains("secret"))
     }
 
+    private class BrokenScalar(private val inner: app.doorprints.crypto.CryptoProvider, private val boom: () -> Throwable) :
+        app.doorprints.crypto.CryptoProvider by inner {
+        override fun p256FromScalar(scalar: ByteArray): app.doorprints.crypto.P256PrivateKey = throw boom()
+    }
+
+    @Test
+    fun anUnexpectedFailureOfTheRecoveryKeyJoinShowsACodeNotAMessage() = runTest {
+        val key = a.c.createFolder().recoveryKey!!
+        val phone = Phone(server, "Phone", crypto = BrokenScalar(app.doorprints.crypto.JvmCryptoProvider) { NoClassDefFoundError("Lorg/conscrypt/Secret;") })
+        val r = phone.c.openWithRecoveryKey(key)
+        assertEquals(ConnectState.ERROR, r.state)
+        assertEquals(DriveReason.SOURCE_FAILED, r.error)
+        assertEquals("join-recover/java.lang.NoClassDefFoundError", r.code)
+        assertFalse(r.toString().contains("Secret"))
+    }
+
+    @Test
+    fun anErrorSubclassOnTheConnectPathIsAScreenWithACodeNotACrash() = runTest {
+        val boom = object : app.doorprints.drive.connect.DriveSignIn {
+            override suspend fun signIn(): SignInResult = throw ExceptionInInitializerError("token=secret-123")
+            override suspend fun signOut() = Unit
+            override suspend fun revokeAccess() = Unit
+        }
+        val c = a.controller(boom)
+        val r = c.connect()
+        assertEquals(ConnectState.ERROR, r.state)
+        assertEquals(DriveReason.FAILED, r.error)
+        assertEquals("connect/java.lang.ExceptionInInitializerError", r.code)
+        assertEquals(ConnectState.ERROR, c.state.value)
+        assertFalse(r.toString().contains("secret"))
+    }
+
+    @Test
+    fun aTypedFailureAndASuccessCarryNoCode() = runTest {
+        server.faults.always(DriveFault.Offline)
+        assertNull(a.c.connect().code)
+        server.faults.clear()
+        assertNull(a.c.connect().code)
+        assertNull(a.c.createFolder().code)
+    }
+
     @Test
     fun signInClosedGoesBackWhereItWasAndDeniedIsAnError() = runTest {
         a.signIn.next = SignInResult.CANCELLED

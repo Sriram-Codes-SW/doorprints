@@ -306,4 +306,19 @@ class DriveScreenStateTest {
     @Test fun aRefusedCopyIsReportedNotThrown() {
         assertFalse(copyToClipboard(RecordingClipboard(fail = true), "ABCD-EFGH"))
     }
+
+    @Test fun theCodeLineShowsOnlyForAnUnexpectedFailureWithACode() {
+        assertTrue(errorCodeVisible(DriveReason.SOURCE_FAILED, "join-recover/java.lang.IllegalStateException"))
+        assertTrue(errorCodeVisible(DriveReason.FAILED, "connect/java.lang.Error"))
+        assertFalse(errorCodeVisible(DriveReason.SOURCE_FAILED, null))
+        assertFalse(errorCodeVisible(null, "x/y"))
+        for (r in DriveReason.entries.filter { it != DriveReason.SOURCE_FAILED && it != DriveReason.FAILED }) assertFalse(errorCodeVisible(r, "x/y"), r.name)
+    }
+
+    @Test fun theSyncLineCarriesTheCodeOnlyForTheGenericFailure() {
+        val t = { n: Long -> "T$n" }
+        assertEquals("sync/java.lang.Error", syncLine(SyncInfo(SyncState.ERROR, null, error = DriveReason.FAILED, code = "sync/java.lang.Error"), t).code)
+        assertEquals(null, syncLine(SyncInfo(SyncState.ERROR, null, error = DriveReason.SERVER, code = "sync/java.lang.Error"), t).code)
+        assertEquals(null, syncLine(SyncInfo(SyncState.SYNCED, 9), t).code)
+    }
 }

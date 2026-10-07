@@ -37,6 +37,7 @@ import app.doorprints.crypto.OpenedKeys
 import app.doorprints.crypto.RecoveryKey
 import app.doorprints.crypto.kidOf
 import app.doorprints.drive.DriveClient
+import app.doorprints.drive.DriveCode
 import app.doorprints.drive.DriveException
 import app.doorprints.drive.DriveFile
 import app.doorprints.drive.DriveLayout
@@ -93,7 +94,7 @@ class DriveBackupService(
     // ---- Where the folder stands ----------------------------------------------------------------------------------
 
     /** Reads where the folder stands for this device. Writes nothing in Drive (a missing control file excepted, below). */
-    suspend fun connect(): DriveConnection = connection {
+    suspend fun connect(): DriveConnection = connection("connect") {
         val st = state.load()
         val root = drive.ensureFolder(DriveLayout.ROOT, null, create = false, knownId = st.rootId)
             ?: return@connection if (st.rootId != null && st.creatingRootId == null) DriveConnection.FolderGone else DriveConnection.NoFolder
@@ -128,7 +129,7 @@ class DriveBackupService(
      */
     suspend fun createFolder(withRecoveryKey: Boolean): CreateOutcome {
         var recovery: RecoveryKey? = null
-        val connection = connection {
+        val connection = connection("create") {
             val st = state.load()
             val existing = drive.ensureFolder(DriveLayout.ROOT, null, create = false, knownId = st.rootId)
             if (existing != null && st.creatingRootId != existing.id) {
@@ -168,17 +169,26 @@ class DriveBackupService(
      * (or checks the one there is), then this device lists itself in `keys.json` (approved by the recovery key, so its
      * backups are accepted by the others; docs/15 §9.9 `RevokedEpochRule`) unless it is listed already.
      */
-    suspend fun openWithRecoveryKey(recoveryKey: RecoveryKey): DriveConnection = connection {
+    suspend fun openWithRecoveryKey(recoveryKey: RecoveryKey): DriveConnection = connection("join-locate") {
+        // The step names move on as the join does, so a DriveCode says where an unexpected failure was (S4b-BL-146).
         val (rootId, keys, bytes) = locateKeys() ?: return@connection DriveConnection.NoFolder
         val guard = KeysGuard(p, trust.keys(rootId))
+        // This device's key is made on first use, and once the folder is pinned a missing key counts as lost (never remade,
+        // `KeystoreDeviceIdentity`): so make it now, before the recovery anchor pins the folder (S4b-BL-146).
+        step = "join-key"
+        device.key.publicKey
+        step = "join-recover"
         var opened = keysFile.openWithRecovery(bytes, recoveryKey, guard)
         if (opened.body.device(myKid) == null) {
+            step = "join-add"
             val approver = opened.body.recovery!!.kid
             val written = keysFile.addDevice(opened, approver, KeysFile.NewDevice(device.key.publicKey, device.name, device.platform), clock())
+            step = "join-write"
             writeKeys(keys.id, written.bytes)
             guard.acceptWritten(written)
             opened = written.opened
         }
+        step = "join-ready"
         ready(rootId, keys.id, opened)
     }
 
@@ -218,8 +228,8 @@ class DriveBackupService(
         throw e
     } catch (_: FolderWithoutKeys) {
         ApproveDeviceOutcome.Error(DriveProblem(DriveProblem.Kind.FOLDER_WITHOUT_KEYS))
-    } catch (e: Exception) {
-        ApproveDeviceOutcome.Error(DriveProblem.of(e))
+    } catch (e: Throwable) {
+        ApproveDeviceOutcome.Error(DriveProblem.of(e, "approve"))
     }
 
     /**
@@ -236,8 +246,8 @@ class DriveBackupService(
         return try {
             val sealed = Hpke(p).sealPsk(publicKey, WrapAad.HPKE_INFO, WrapAad.folderKey(approved.epoch, kid), folderKey, psk, QR_PSK_ID)
             ApproveDeviceOutcome.Approved(approved.connection, sealed.enc, sealed.ciphertext, approved.epoch)
-        } catch (e: Exception) {
-            ApproveDeviceOutcome.Error(DriveProblem.of(e))
+        } catch (e: Throwable) {
+            ApproveDeviceOutcome.Error(DriveProblem.of(e, "approve"))
         } finally {
             folderKey.fill(0)
         }
@@ -251,8 +261,8 @@ class DriveBackupService(
         if (epoch < 1) return DriveConnection.Error(DriveProblem(DriveProblem.Kind.KEYS_UNREADABLE))
         val folderKey = try {
             Hpke(p).open(enc, device.key, WrapAad.HPKE_INFO, WrapAad.folderKey(epoch, myKid), ct)
-        } catch (e: Exception) {
-            return DriveConnection.Error(DriveProblem.of(e))
+        } catch (e: Throwable) {
+            return DriveConnection.Error(DriveProblem.of(e, "join"))
         }
         return try {
             openWithFolderKey(folderKey)
@@ -266,8 +276,8 @@ class DriveBackupService(
         if (psk.size != QR_PSK_LEN || epoch < 1) return DriveConnection.Error(DriveProblem(DriveProblem.Kind.KEYS_UNREADABLE))
         val folderKey = try {
             Hpke(p).openPsk(enc, device.key, WrapAad.HPKE_INFO, WrapAad.folderKey(epoch, myKid), ct, psk, QR_PSK_ID)
-        } catch (e: Exception) {
-            return DriveConnection.Error(DriveProblem.of(e))
+        } catch (e: Throwable) {
+            return DriveConnection.Error(DriveProblem.of(e, "join"))
         }
         return try {
             openWithFolderKey(folderKey)
@@ -282,7 +292,7 @@ class DriveBackupService(
      */
     suspend fun revokeDevice(kid: ByteArray): RevokeDeviceOutcome {
         val recovery = RecoveryKey.generate(p)
-        val connection = connection {
+        val connection = connection("revoke") {
             val (rootId, keys, bytes) = locateKeys() ?: return@connection DriveConnection.NoFolder
             val guard = KeysGuard(p, trust.keys(rootId))
             val opened = keysFile.open(bytes, device.key, guard)
@@ -323,7 +333,7 @@ class DriveBackupService(
      * The first pin from a folder key received over an authenticated channel (S4b-BL-126's QR enrolment: the approver
      * already listed this device; HPKE PSK mode). Never call it with a key read from Drive.
      */
-    suspend fun openWithFolderKey(trustedFolderKey: ByteArray): DriveConnection = connection {
+    suspend fun openWithFolderKey(trustedFolderKey: ByteArray): DriveConnection = connection("open") {
         val (rootId, keys, bytes) = locateKeys() ?: return@connection DriveConnection.NoFolder
         val opened = keysFile.openFirstPin(bytes, device.key, KeysGuard(p, trust.keys(rootId)), trustedFolderKey)
         ready(rootId, keys.id, opened)
@@ -348,8 +358,8 @@ class DriveBackupService(
                 source.open()
             } catch (e: CancellationException) {
                 throw e
-            } catch (_: Exception) {
-                return failed(DriveProblem(DriveProblem.Kind.SOURCE_FAILED))
+            } catch (e: Exception) {
+                return failed(DriveProblem(DriveProblem.Kind.SOURCE_FAILED, code = DriveCode.of(STEP_BACKUP, e)))
             }
             if (!BackupFormat.accepts(payload.format)) {
                 payload.close()
@@ -391,8 +401,8 @@ class DriveBackupService(
             }
         } catch (e: CancellationException) {
             throw e
-        } catch (e: Exception) {
-            return failed(DriveProblem.of(e))
+        } catch (e: Throwable) {
+            return failed(DriveProblem.of(e, STEP_BACKUP))
         }
         st = state.load().copy(
             backupsId = backupsId, lastBackupId = done.id, lastSuccessAt = now, lastFailure = null,
@@ -428,7 +438,7 @@ class DriveBackupService(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            return DriveProblem.of(e)
+            return DriveProblem.of(e, STEP_BACKUP)
         } ?: return null
         val sink = object : StagingSink {
             override fun write(buffer: ByteArray, offset: Int, length: Int) = Unit
@@ -489,7 +499,7 @@ class DriveBackupService(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            DriveProblem.of(e)
+            DriveProblem.of(e, STEP_BACKUP)
         }
         return TidyReport(trashed, completed, hold, problem) to missing
     }
@@ -577,18 +587,26 @@ class DriveBackupService(
 
     private class FolderWithoutKeys : Exception()
 
-    /** Runs [block], turning every failure (but a cancellation) into [DriveConnection.Error]. */
-    private suspend fun connection(block: suspend () -> DriveConnection): DriveConnection = try {
-        block()
-    } catch (e: CancellationException) {
-        throw e
-    } catch (_: FolderWithoutKeys) {
-        DriveConnection.Error(DriveProblem(DriveProblem.Kind.FOLDER_WITHOUT_KEYS))
-    } catch (e: Exception) {
-        DriveConnection.Error(DriveProblem.of(e))
+    /** Runs [block], turning every failure (but a cancellation) into [DriveConnection.Error]; an unexpected one carries its [DriveCode] for [step]. */
+    private suspend fun connection(first: String, block: suspend Steps.() -> DriveConnection): DriveConnection {
+        val steps = Steps(first)
+        return try {
+            steps.block()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: FolderWithoutKeys) {
+            DriveConnection.Error(DriveProblem(DriveProblem.Kind.FOLDER_WITHOUT_KEYS))
+        } catch (e: Throwable) {
+            // An Error too (a missing class, a failed static initialiser, no memory): the screen shows a code, it never hangs.
+            DriveConnection.Error(DriveProblem.of(e, steps.step))
+        }
     }
 
+    /** The step an unexpected failure is reported under: [connection] starts it, the block moves it on. */
+    private class Steps(var step: String)
+
     companion object {
+        private const val STEP_BACKUP = "backup"
         const val KIND_KEYS = "keys"
         const val KIND_CONTROL = "control"
         const val KEYS_NAME = "keys.json"

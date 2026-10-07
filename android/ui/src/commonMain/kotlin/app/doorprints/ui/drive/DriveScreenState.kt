@@ -147,6 +147,13 @@ fun joinEnabled(typed: String, busy: Boolean): Boolean = !busy && typed.isNotBla
 fun logLine(card: DriveCard, hasKey: Boolean, error: DriveReason?): String =
     "drive card=$card key=${if (hasKey) "<shown once>" else "none"} error=${error?.name ?: "none"}"
 
+/**
+ * Whether the small *Code: ...* line is shown under an error: only for the two reasons an unexpected failure ends in
+ * ([DriveReason.SOURCE_FAILED] and [DriveReason.FAILED]) and only when there is a code. A typed reason is already explained.
+ */
+fun errorCodeVisible(reason: DriveReason?, code: String?): Boolean =
+    code != null && (reason == DriveReason.SOURCE_FAILED || reason == DriveReason.FAILED)
+
 /** The text a screen shows for a reason: the dictionary key (the website's name where it has one). */
 fun reasonKey(reason: DriveReason): String = reason.key
 
@@ -163,7 +170,7 @@ fun shrinkQuestionVisible(shrinkHoldBackupId: String?): Boolean = shrinkHoldBack
 // ---- Sync and photos -----------------------------------------------------------------------------------------------
 
 /** The status line of sync: a dictionary key and its arguments. */
-data class SyncLine(val key: String, val args: List<Any> = emptyList(), val isError: Boolean = false)
+data class SyncLine(val key: String, val args: List<Any> = emptyList(), val isError: Boolean = false, val code: String? = null)
 
 fun syncLine(info: SyncInfo, formatTime: (Long) -> String): SyncLine = when (info.state) {
     SyncState.NOT_RUN -> SyncLine("driveSync.notRun")
@@ -173,7 +180,7 @@ fun syncLine(info: SyncInfo, formatTime: (Long) -> String): SyncLine = when (inf
     SyncState.OFFLINE -> SyncLine("driveSync.offline")
     SyncState.NEEDS_CONFIRMATION -> SyncLine("driveSync.needsConfirmation", listOf(info.housesToDelete ?: 0, info.liveHouses ?: 0))
     SyncState.SKIPPED_FILES -> SyncLine("driveSync.skippedFiles", listOf(info.skipped.size))
-    SyncState.ERROR -> info.error?.let { SyncLine(reasonKey(it), isError = true) } ?: SyncLine("driveSync.error", isError = true)
+    SyncState.ERROR -> info.error?.let { SyncLine(reasonKey(it), isError = true, code = info.code.takeIf { errorCodeVisible(info.error, info.code) }) } ?: SyncLine("driveSync.error", isError = true)
 }
 
 /** The shrink guard of sync: two buttons, only while the controller says *needs confirmation*. */

@@ -1328,6 +1328,8 @@
     <string name="drive_connect_no_backup_source">Doorprints could not prepare a backup on this phone right now.</string>
     <string name="drive_problem_offline">This phone is offline. Try again when it is online.</string>
     <string name="drive_problem_source_failed">This phone could not prepare the backup.</string>
+    <!-- S4b-BL-146 (2026-10-07): the diagnostic code of an unexpected failure: step/ClassName, never a message. -->
+    <string name="drive_problem_code">Code: %1$s</string>
     <string name="drive_problem_connect_failed">This phone could not connect to Google Drive. Try again.</string>
     <string name="drive_problem_crypto_unavailable">This phone cannot encrypt, so Google Drive backup is not available here.</string>
     <string name="drive_problem_signin_unavailable">Google sign-in is not available on this phone.</string>

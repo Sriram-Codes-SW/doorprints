@@ -974,6 +974,8 @@ The finishing batch of 2026-10-01 (built on stacked branches, not yet merged or 
 
 ### Fixed
 
+- **Google Drive on the phones: a failure nobody expected shows a code, and joining with the recovery key works on a phone with no device key yet** (S4b-BL-146). The error line gains small selectable *Code: step/ClassName* (the step and the exception's class name only; four languages, hi, ta, te under review); the join made the folder trusted before this phone's key existed and then failed as "could not prepare the backup"; the key is now made first. Not run on a phone.
+
 - **A flaky screenshot test** (S4b-BL-138, S4b-BL-100; test code only): a screen fed by the database could be photographed while it still showed its loading frame, so `iosCompareEmpty` (Tamil) and the Tamil and Telugu house lists failed now and then under load. Every screenshot now waits for text that is on screen only once its data is in ([notes](docs/ops/screenshot-flake-notes.md)).
 - **Review backlog**: device names refuse bidi and zero-width characters (web and Android, same list; Indic ZWJ/ZWNJ allowed); a passkey id is kept only when a sealed blob exists; third-party GitHub Actions pinning is now checked in CI (SEC-030); the Drive connect service's deletion code moved to its own file.
 - **Full-system review fixes**: the website's `Permissions-Policy` no longer blocks the camera for the QR scan (`camera=(self)`); a passkey setup that returned no PRF output, and its details, are remembered across a reload; the recovery-key help says 27 letters and digits and no longer suggests email; two timing-dependent Android tests wait for their content; seven unused translation keys removed.

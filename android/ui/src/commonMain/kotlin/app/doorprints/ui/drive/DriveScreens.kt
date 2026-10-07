@@ -32,6 +32,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -200,9 +201,23 @@ private fun CheckRow(text: String, checked: Boolean, enabled: Boolean = true, on
 }
 
 @Composable
-private fun ErrorLine(reason: DriveReason?) {
+private fun ErrorLine(reason: DriveReason?, code: String? = null) {
     LiveMessage(assertive = true) {
         if (reason != null) Text(reasonText(reason), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+    }
+    CodeLine(reason, code)
+}
+
+/**
+ * *Code: step/ClassName* under the error of an unexpected failure (S4b-BL-146): small, selectable so the person can copy it
+ * and send it. Only the step and the exception's class name; never a message. The code itself is not translated.
+ */
+@Composable
+private fun CodeLine(reason: DriveReason?, code: String?) {
+    if (code != null && errorCodeVisible(reason, code)) {
+        SelectionContainer {
+            Text(t("driveProblem.CODE", code), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }
 
@@ -274,6 +289,7 @@ private fun ErrorBox(error: DriveReason?, ui: DriveUiState, holder: DriveHolder)
     LiveMessage(assertive = true) {
         Text(reasonText(error ?: DriveReason.FAILED), color = MaterialTheme.colorScheme.error)
     }
+    CodeLine(error ?: DriveReason.FAILED, ui.errorCode)
     ControlsFor(ui, holder, error)
 }
 
@@ -327,7 +343,7 @@ private fun JoinCard(ui: DriveUiState, holder: DriveHolder, scanner: QrScanner, 
             modifier = Modifier.fillMaxWidth(),
         )
     }
-    ErrorLine(ui.error)
+    ErrorLine(ui.error, ui.errorCode)
     DriveButton(
         if (ui.busy) t("drive.common.loading") else t("driveJoin.joinButton"),
         onClick = {
@@ -503,6 +519,7 @@ private fun BackupsCard(ui: DriveUiState, holder: DriveHolder, host: DriveHost) 
     )
     DriveButton(t("driveBackups.backUpNow"), holder::backUpNow, enabled = backUpNowEnabled(b.busy), primary = true)
     LiveMessage(assertive = true) { b.error?.let { Text(reasonText(it), color = MaterialTheme.colorScheme.error) } }
+    CodeLine(b.error, b.errorCode)
     if (shrinkQuestionVisible(b.shrinkHoldId)) {
         Heading(t("driveBackups.shrinkHeading"))
         Text(t("driveBackups.shrinkBody"))
@@ -570,6 +587,7 @@ private fun SyncCard(ui: DriveUiState, holder: DriveHolder) {
             color = if (line.isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
         )
     }
+    CodeLine(s.info.error, line.code)
     DriveButton(t("driveSync.syncNow"), { holder.syncNow() }, enabled = syncNowEnabled(s.busy), primary = true)
     if (syncConfirmVisible(s.info) && !s.confirmDismissed) {
         Heading(t("driveSync.shrinkConfirm"))

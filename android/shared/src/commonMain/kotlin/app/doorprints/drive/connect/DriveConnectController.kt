@@ -38,6 +38,7 @@ import app.doorprints.drive.backup.DeviceIdentity
 import app.doorprints.drive.backup.DriveBackup
 import app.doorprints.drive.backup.DriveBackupService
 import app.doorprints.drive.backup.DriveConnection
+import app.doorprints.drive.backup.DriveProblem
 import app.doorprints.drive.backup.BackupOutcome
 import app.doorprints.drive.backup.FolderTrustStores
 import app.doorprints.drive.backup.ImportDownload
@@ -170,8 +171,8 @@ class DriveConnectController(
         } catch (e: CancellationException) {
             _state.value = before
             throw e
-        } catch (e: Exception) {
-            return fail(e)
+        } catch (e: Throwable) {
+            return fail(e, STEP_CONNECT)
         }
     }
 
@@ -199,8 +200,8 @@ class DriveConnectController(
         }
     } catch (e: CancellationException) {
         throw e
-    } catch (e: Exception) {
-        fail(e)
+    } catch (e: Throwable) {
+        fail(e, STEP_CREATE)
     }
 
     /** Join by the typed key. A key that does not read (typo, check character) is refused here, before Drive is asked. */
@@ -216,8 +217,8 @@ class DriveConnectController(
             ops.withLock { handle(backup.openWithRecoveryKey(key)) }
         } catch (e: CancellationException) {
             throw e
-        } catch (e: Exception) {
-            fail(e)
+        } catch (e: Throwable) {
+            fail(e, STEP_JOIN)
         }
     }
 
@@ -302,7 +303,7 @@ class DriveConnectController(
                 } else {
                     _notice.value = null
                     _state.value = ConnectState.ERROR
-                    ConnectResult(ConnectState.ERROR, error = reason)
+                    ConnectResult(ConnectState.ERROR, error = reason, code = connection.problem.code)
                 }
             }
         }
@@ -311,9 +312,9 @@ class DriveConnectController(
         return result
     }
 
-    private fun fail(e: Throwable): ConnectResult {
+    private fun fail(e: Throwable, step: String): ConnectResult {
         _state.value = ConnectState.ERROR
-        return ConnectResult(ConnectState.ERROR, error = DriveReason.of(e))
+        return ConnectResult(ConnectState.ERROR, error = DriveReason.of(e), code = DriveProblem.codeOf(e, step))
     }
 
     private fun setReady(connection: DriveConnection) {
@@ -380,13 +381,13 @@ class DriveConnectController(
         val source = backupSource ?: return Outcome.Failed(DriveReason.NO_BACKUP_SOURCE)
         return try {
             when (val out = backup.backUp(folder, source)) {
-                is BackupOutcome.Failed -> Outcome.Failed(DriveReason.of(out.problem.kind))
+                is BackupOutcome.Failed -> Outcome.Failed(DriveReason.of(out.problem.kind), out.problem.code)
                 is BackupOutcome.Done -> Outcome.Ok(BackUpDone(summaryOf(out.backup), out.tidy.hold?.backupId, out.missingNewer))
             }
         } catch (e: CancellationException) {
             throw e
-        } catch (e: Exception) {
-            Outcome.Failed(DriveReason.of(e))
+        } catch (e: Throwable) {
+            Outcome.Failed(DriveReason.of(e), DriveProblem.codeOf(e, STEP_BACKUP))
         }
     }
 
@@ -480,8 +481,8 @@ class DriveConnectController(
                 }
             } catch (e: DriveSyncNotYet) {
                 SyncInfo(SyncState.ERROR, lastSync?.lastSyncAt, error = DriveReason.FAILED)
-            } catch (e: Exception) {
-                SyncInfo(SyncState.ERROR, lastSync?.lastSyncAt, error = DriveReason.of(e))
+            } catch (e: Throwable) {
+                SyncInfo(SyncState.ERROR, lastSync?.lastSyncAt, error = DriveReason.of(e), code = DriveProblem.codeOf(e, STEP_SYNC))
             }
             lastSync = info
             info
@@ -615,8 +616,8 @@ class DriveConnectController(
         ops.withLock { handle(block()) }
     } catch (e: CancellationException) {
         throw e
-    } catch (e: Exception) {
-        fail(e)
+    } catch (e: Throwable) {
+        fail(e, STEP_JOIN)
     }
 
     /**
@@ -851,6 +852,12 @@ class DriveConnectController(
 
     companion object {
         const val KEY_AUTO_BACKUP = "doorprints.drive.autoBackup"
+        // The step of a DriveCode: where an unexpected failure happened (S4b-BL-146).
+        private const val STEP_CONNECT = "connect"
+        private const val STEP_CREATE = "create"
+        private const val STEP_JOIN = "join"
+        private const val STEP_BACKUP = "backup"
+        private const val STEP_SYNC = "sync"
         const val KEY_PHOTOS_MOBILE = "doorprints.drive.photosOnMobile"
     }
 }

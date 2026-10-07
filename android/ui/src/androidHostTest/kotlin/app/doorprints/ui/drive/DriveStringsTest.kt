@@ -149,6 +149,15 @@ class DriveStringsTest {
         assertTrue("timed out" in resources("en").getValue("drive_delete_reason_auth_timed_out"))
     }
 
+    @Test fun theCodeLineIsTranslatedAroundTheUntranslatedCode() {
+        for (lang in languages.keys) {
+            val text = resources(lang).getValue("drive_problem_code")
+            assertEquals(1, Regex("""%1[$]s""").findAll(text).count(), lang)
+            assertTrue(text.trim().endsWith("%1\$s"), "$lang: the code is the last thing on the line")
+        }
+        assertEquals("Code: %1\$s", resources("en").getValue("drive_problem_code"))
+    }
+
     @Test fun theBrandWordsAreExact() {
         val en = resources("en")
         assertEquals("Import a backup", en["drive_connect_import_from_drive"])
