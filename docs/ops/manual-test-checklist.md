@@ -715,7 +715,7 @@ Gaps found in the review and **fixed on the branch afterwards** (the tests below
 | MT-55 | Sync two phones + website | owner | E4 x2/E1 | JVM only | |
 | MT-56 | Enrol a phone by `dp1.` paste + 8-digit check | owner | E4 x2 | JVM + probes + mutations | |
 | MT-57 | Website enrols a phone and the reverse | owner | E4 + E1 | JVM only | |
-| MT-58 | Join with the recovery key | owner | E4 | JVM only | |
+| MT-58 | Join with the recovery key | owner | E4 | JVM only | Owner 2026-10-07: join works on an Android phone (phone-made and computer-made folder); wrong key and typo not reported |
 | MT-59 | Revoke; new recovery key once | owner | E4 x2 | JVM + probe | |
 | MT-60 | Deletion L1 | owner | E4 | JVM only | |
 | MT-61 | Deletion L2 with the device check | owner | E4 | JVM + probes + mutations | |

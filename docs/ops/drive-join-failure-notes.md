@@ -74,7 +74,14 @@ can break the first Drive call: the sealed refresh token and Keystore alias (sus
 after clearing data (it is then used with no blob or pin: `READY`, or `NEEDS_UNLOCK` until the unlock window), and the
 pin, which clearing data removes. Suspect 1 applies to any join where the key is made for the first time.
 
-## To confirm on the phone
+## Outcome (owner, 2026-10-07)
+
+Confirmed on a real Android phone with the release APK built from `main` at `e564ecae`: joining with the recovery key works, for a
+folder made on the phone and for one made on the computer. So suspect 1 (the device key made after the pin) was the cause, and a
+folder made by the website's OAuth client is visible and writable from the phone's client (one Google Cloud project, `drive.file`): this
+answers the cross-client part of the open spike S4b-BL-122 for Android (the iPhone's custom-scheme redirect is still open).
+
+## To confirm on the phone (kept for a future failure)
 
 Join again with the build that has the code and send the *Code: ...* line. `join-key/...DeviceKeyException` or
 `join-locate/...SignInException` means suspect 2 or 3; `join-recover/...InvalidKeySpecException` means 4; no error means 1
