@@ -61,19 +61,25 @@
 #   provider `github-web-deploy` inside the Firebase project, whose attribute condition accepts only web.yml on
 #   main (push or workflow_dispatch); a token from this workflow is refused there. Reason: this job runs Maven and
 #   test code while OIDC tokens can be obtained (see above), so it must not be able to replace the public website.
+# 2026-10-07 (S4b-BL-153, optional): the suite `own-provider` (job below) runs the same golden set through the website's own
+#   TypeScript adapters (web/src/app/core/ai/, ADR-35) against the provider the owner picks in the inputs ai_kind,
+#   ai_base_url and ai_model (or the repository variables AI_EVAL_BASE_URL and AI_EVAL_MODEL), with the repository secret
+#   AI_EVAL_API_KEY. The owner may never set the secret: the job then prints "skipped: no key" and succeeds without
+#   installing anything. No model name or key is in the repository. Free providers and synthetic data only (PRV-022).
 name: AI evals
 
 on:
   workflow_dispatch:
     inputs:
       suites:
-        description: What to run. golden-set = the server's eval (below); on-device = one real Extract, Ask and Plan through the phones' and the website's own-key AI (needs AI_API_KEY whatever the provider)
+        description: What to run. golden-set = the server's eval (below); on-device = one real Extract, Ask and Plan through the phones' and the website's own-key AI (needs AI_API_KEY whatever the provider); own-provider = the golden set through the website's adapters and the provider chosen below (optional; needs AI_EVAL_API_KEY, else "skipped - no key")
         type: choice
         default: golden-set,on-device
         options:
           - golden-set,on-device
           - golden-set
           - on-device
+          - own-provider
       types:
         description: Case types to run
         type: choice
@@ -101,6 +107,22 @@ on:
         default: ""
       embedding_model:
         description: Embedding model override, e.g. gemini-embedding-001 (empty = default gemini-embedding-2; must give 768 dims)
+        type: string
+        default: ""
+      ai_kind:
+        description: "own-provider only: the kind of provider (docs/03 ADR-35). Its key is the repository secret AI_EVAL_API_KEY"
+        type: choice
+        default: openai-compatible
+        options:
+          - openai-compatible
+          - anthropic
+          - gemini
+      ai_base_url:
+        description: "own-provider only: base URL of an OpenAI-compatible provider, e.g. https://api.groq.com/openai/v1 (empty = repository variable AI_EVAL_BASE_URL; not used for gemini)"
+        type: string
+        default: ""
+      ai_model:
+        description: "own-provider only: model name (empty = repository variable AI_EVAL_MODEL; not used for gemini)"
         type: string
         default: ""
 
@@ -366,3 +388,69 @@ jobs:
           path: android/shared/build/test-results/testAndroidHostTest/TEST-app.doorprints.shared.ai.OnDeviceAiLiveTest.xml
           if-no-files-found: ignore
           retention-days: 7
+
+  # The golden set through the website's adapters and a provider of the owner's choice (S4b-BL-153; docs/06 TC-AI-23;
+  # docs/ai/ai-design.md 8.4). Optional: without the secret AI_EVAL_API_KEY it says "skipped: no key", installs nothing
+  # and succeeds. Runs ai-provider.live.spec.ts (Vitest) with the key in the environment of that one step; npm ci runs
+  # before, without it. Only the manual trigger reaches it (this file has no pull_request or push trigger). Read-only
+  # token, no id-token. Reported, not gating: the summary lists what passed; the job fails only when the setting is
+  # wrong or no case got an answer.
+  own-provider:
+    name: Golden set through the chosen provider (website adapters, optional)
+    if: inputs.suites == 'own-provider'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - name: Skip cleanly without a key
+        id: key
+        env:
+          AI_EVAL_API_KEY: ${{ secrets.AI_EVAL_API_KEY }}
+        run: |
+          if [ -z "$AI_EVAL_API_KEY" ]; then
+            echo "skipped: no key" | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v7
+        if: steps.key.outputs.run == 'true'
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        if: steps.key.outputs.run == 'true'
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install the website's packages (no key in this step)
+        if: steps.key.outputs.run == 'true'
+        working-directory: web
+        run: npm ci --no-audit --no-fund
+
+      - name: Run the golden set
+        if: steps.key.outputs.run == 'true'
+        working-directory: web
+        env:
+          DOORPRINTS_EVAL_KEY: ${{ secrets.AI_EVAL_API_KEY }}
+          AI_EVAL_KIND: ${{ inputs.ai_kind }}
+          AI_EVAL_BASE_URL: ${{ inputs.ai_base_url || vars.AI_EVAL_BASE_URL }}
+          AI_EVAL_MODEL: ${{ inputs.ai_model || vars.AI_EVAL_MODEL }}
+          AI_EVAL_TYPES: ${{ inputs.types }}
+          AI_EVAL_DELAY_MS: ${{ inputs.delay_ms }}
+        run: |
+          export DOORPRINTS_EVAL_SUMMARY="$RUNNER_TEMP/ai-eval-summary.md"
+          npx ng test --watch=false --include src/app/core/ai/ai-provider.live.spec.ts
+
+      - name: Publish the summary
+        if: always() && steps.key.outputs.run == 'true'
+        run: |
+          if [ -f "$RUNNER_TEMP/ai-eval-summary.md" ]; then
+            cat "$RUNNER_TEMP/ai-eval-summary.md" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No summary was written: the setting was refused or the run failed before the first case (see the log)." >> "$GITHUB_STEP_SUMMARY"
+          fi
