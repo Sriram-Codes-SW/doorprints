@@ -124,6 +124,12 @@ jobs:
       # The FSF's "How to Use GNU Licenses": every source file carries the copyright and licence notice (docs/10 §12.6).
       - name: Every source file has the copyright and licence notice
         run: python3 .github/scripts/licence-headers.py --check
+      # S4b-BL-156: one `| Version |` header row per document, equal to the top change-log row; change-log versions unique
+      # and the latest in order. Parallel pull requests used to collide there and a hand merge kept every side's row.
+      - name: Document versions are consistent (one header row, change log in step)
+        run: |
+          node --test tools/check-docs-versions.test.mjs
+          node tools/check-docs-versions.mjs
       # SEC-030: third-party actions pinned to a commit SHA, every workflow with top-level permissions.
       - name: Third-party actions are pinned to a commit SHA
         run: |
