@@ -136,6 +136,8 @@ internal class IosDriveServices(
     val controller: DriveConnectController get() = graph.controller
 
     private fun build(): DriveGraph {
+        // Google's sheet is offered only with the app in front: the watching starts with the graph, not only with the triggers.
+        IosForeground.install()
         val crypto = platformCryptoProvider()
         val redirect = BrowserRedirect(client?.redirectUri ?: BrowserRedirect.DEFAULT_REDIRECT_URI)
         val authorizer = BrowserGoogleAuthorizer(

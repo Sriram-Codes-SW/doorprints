@@ -125,6 +125,8 @@ object IosAppContainer {
     fun start() {
         if (started) return
         started = true
+        // Whether the app is in front, for the Drive passes and Google's sheet (cheap; nothing else in Drive starts yet).
+        IosForeground.install()
         // A saved walk never outlives its house: at start the walks of a tombstoned house go (docs/11 5.27.6).
         appScope.launch { catchFailures { repository.sweepWalksOfDeletedHouses() } }
         // Whether the server has AI features on, once per process, as on Android (Root does not ask again).

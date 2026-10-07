@@ -21,10 +21,13 @@ package app.doorprints.ui
 import kotlinx.cinterop.ExperimentalForeignApi
 import platform.Foundation.NSNotificationCenter
 import platform.Foundation.NSOperationQueue
+import platform.Foundation.NSThread
 import platform.UIKit.UIApplication
 import platform.UIKit.UIApplicationDidBecomeActiveNotification
 import platform.UIKit.UIApplicationState
 import platform.UIKit.UIApplicationWillResignActiveNotification
+import platform.darwin.dispatch_async
+import platform.darwin.dispatch_get_main_queue
 import kotlin.concurrent.Volatile
 
 /**
@@ -42,8 +45,12 @@ internal object IosForeground {
     private var installed = false
     private val onActive = mutableListOf<() -> Unit>()
 
-    /** Starts watching, once. Main thread. */
+    /** Starts watching, once. Any thread: the watching itself is set up on the main thread. */
     fun install() {
+        if (!NSThread.isMainThread) {
+            dispatch_async(dispatch_get_main_queue()) { install() }
+            return
+        }
         if (installed) return
         installed = true
         active = UIApplication.sharedApplication.applicationState == UIApplicationState.UIApplicationStateActive

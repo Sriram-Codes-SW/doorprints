@@ -104,6 +104,8 @@ class KtorTokenEndpointTest {
         assertEquals(TokenResult.ServerError, blocking { endpoint.refresh("cid", "r") })
         body = """{"refresh_token":"r"}"""
         assertEquals(TokenResult.ServerError, blocking { endpoint.refresh("cid", "r") }, "an answer with no access token is no answer")
+        body = """{"access_token":"  ","refresh_token":"r"}"""
+        assertEquals(TokenResult.ServerError, blocking { endpoint.refresh("cid", "r") }, "a blank access token is no token")
     }
 
     @Test

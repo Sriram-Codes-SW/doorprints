@@ -50,7 +50,7 @@ class GoogleIosClientTest {
     @Test
     fun anythingThatIsNotAClientIdIsNoClient() {
         for (raw in listOf(
-            null, "", "   ", "\$(GOOGLE_IOS_CLIENT_ID)", "1-a.apps.example.com", ".apps.googleusercontent.com", "-a.apps.googleusercontent.com",
+            null, "", "   ", "abc", "1-a", "\$(GOOGLE_IOS_CLIENT_ID)", "1-a.apps.example.com", ".apps.googleusercontent.com", "-a.apps.googleusercontent.com",
             "a b.apps.googleusercontent.com", "a:b.apps.googleusercontent.com", "a/b.apps.googleusercontent.com", "a.b.apps.googleusercontent.com",
             "a".repeat(129) + ".apps.googleusercontent.com", "1-a.apps.googleusercontent.com.evil",
         )) {
