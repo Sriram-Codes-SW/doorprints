@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Operations runbook |
-| Version | 0.22 |
+| Version | 0.23 |
 | Date | 2026-10-03 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -34,6 +34,7 @@
 | 0.20 | 2026-09-29 | Claude (Code), lead | New §5.1a: devices and the owner page (first sign-in, a lost phone, AI per device, signing other browsers out) ([03](03-design.md) §12.1, ADR-25). |
 | 0.21 | 2026-09-29 | Claude (Code), lead | §5.1a: the Gemini key on the owner page (encrypted, no restart, *Remove key*, pausing AI) and what an owner-key rotation does to it. |
 | 0.22 | 2026-10-03 | Cursor Agent, lead | S4b-BL-124: §7 IR-11 (the Google project stopped or a client deleted), IR-12 (a leaked Picker key) and IR-13 (a person who lost access to their Google account), from [15](15-google-drive-backup-and-sharing.md). |
+| 0.23 | 2026-10-07 | Claude (Code), lead | §3 `AI_API_KEY`: no key is needed for an `AI_BASE_URL` other than the Gemini API (S4b-BL-149). |
 
 Related: [Build and deploy](07-secure-build-and-deploy.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Google Drive design](15-google-drive-backup-and-sharing.md)
 
@@ -55,7 +56,7 @@ AI is off by default (AI-001); none of these variables is needed then. Full list
 | Variable | Default | When to change it |
 |---|---|---|
 | `AI_PROVIDER` | `aistudio` | `aistudio`: Gemini API with `AI_API_KEY` (the rows below). `vertex`: Google Cloud Vertex AI with Application Default Credentials; needs `GCP_PROJECT_ID`, and `AI_API_KEY` / `AI_EMBEDDING_*` URLs and keys are ignored. Other values stop startup. Owner setup: [ai/vertex-setup.md](ai/vertex-setup.md); switch back at any time with `AI_PROVIDER=aistudio` (step 13). |
-| `AI_API_KEY` | – | Gemini API key from Google AI Studio; for Ollama any non-empty value (for example `ollama`). Used for chat and, by default, for embeddings. Secret. Only used with `AI_PROVIDER=aistudio`. **With real data use a key on a billing-enabled (paid) project or Vertex AI** ([ai/vertex-setup.md](ai/vertex-setup.md)); a free-tier key is for synthetic evals only, because the free tier may use prompts to improve Google products ([01](01-requirements.md) PRV-022, [02](02-threat-model.md) T-I20). |
+| `AI_API_KEY` | – | Gemini API key from Google AI Studio; for Ollama or another OpenAI-compatible endpoint (an `AI_BASE_URL` whose host is not `generativelanguage.googleapis.com`) none: AI reads as on without it, and a key you set is still sent (S4b-BL-149). Used for chat and, by default, for embeddings. Secret. Only used with `AI_PROVIDER=aistudio`. **With real data use a key on a billing-enabled (paid) project or Vertex AI** ([ai/vertex-setup.md](ai/vertex-setup.md)); a free-tier key is for synthetic evals only, because the free tier may use prompts to improve Google products ([01](01-requirements.md) PRV-022, [02](02-threat-model.md) T-I20). |
 | `AI_EMBEDDING_PROVIDER` | `google-genai` | `google-genai`: embeddings from the native Gemini API (`models/{model}:batchEmbedContents`). **Ollama (or any other OpenAI-compatible server) needs `AI_EMBEDDING_PROVIDER=openai`**, which sends embeddings to `AI_BASE_URL` like chat. Any other value stops startup with a message naming the variable. |
 | `AI_EMBEDDING_API_KEY` | `AI_API_KEY` | Only for `google-genai`, and only if embeddings should use a different Gemini key than chat. Secret. |
 | `AI_EMBEDDING_BASE_URL` | `https://generativelanguage.googleapis.com/v1beta` | Only for `google-genai`; leave the default. |
