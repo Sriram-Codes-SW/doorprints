@@ -44,6 +44,10 @@ public class HouseSearchService {
         this.houses = houses;
     }
 
+    /**
+     * Optional filters for {@link #search}; a null field does not filter. Prices are in rupees; the text is matched
+     * case-insensitively.
+     */
     public record Criteria(String text, HouseStatus status, String priceType, Long minPrice, Long maxPrice,
                            Integer minBedrooms, Integer maxBedrooms, Integer minRating, Integer limit) {
     }
@@ -63,6 +67,11 @@ public class HouseSearchService {
         }
     }
 
+    /**
+     * Finds saved houses that match every given filter, in the order the house list returns them.
+     * The result is capped: the limit defaults to 20 and is clamped to 1..{@link #MAX_RESULTS}. Summaries are
+     * redacted, see {@link HouseSummary#of}.
+     */
     public List<HouseSummary> search(Criteria c) {
         int limit = c == null || c.limit() == null ? 20 : Math.clamp(c.limit(), 1, MAX_RESULTS);
         return houses.list(null).stream()
@@ -72,6 +81,10 @@ public class HouseSearchService {
                 .toList();
     }
 
+    /**
+     * Houses within the radius of a point; the radius is clamped to 1..5000 m.
+     * @throws IllegalArgumentException if the latitude or longitude is out of range
+     */
     public List<HouseSummary> nearby(double lat, double lon, double radiusMeters) {
         if (lat < -90 || lat > 90 || lon < -180 || lon > 180) throw new IllegalArgumentException("invalid coordinates");
         return houses.nearby(lat, lon, Math.clamp(radiusMeters, 1, 5000)).stream().map(HouseSummary::of).toList();
@@ -81,6 +94,10 @@ public class HouseSearchService {
         return houses.get(id);
     }
 
+    /**
+     * True when a live house passes every non-null filter. A null price, bedroom count or rating never satisfies a
+     * bound on it. The text filter looks only at the redacted label, address, street, locality and notes.
+     */
     static boolean matches(HouseDto h, Criteria c) {
         if (h.deleted()) return false;
         if (c == null) return true;

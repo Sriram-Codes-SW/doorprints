@@ -26,6 +26,10 @@ import org.springframework.data.repository.query.Param;
 import java.time.Instant;
 import java.util.List;
 
+/**
+ * Queries on records: the sync change feed, per-type listings for backup and the cap, and the purge of old
+ * tombstones.
+ */
 public interface RecordRepository extends JpaRepository<Record, RecordKey> {
 
     /** The change feed of every kind: everything after a cursor, tombstones included, oldest change first. */
@@ -40,6 +44,9 @@ public interface RecordRepository extends JpaRepository<Record, RecordKey> {
     /** Live rows of one kind, for the per-type cap. */
     long countByKeyTypeAndDeletedFalse(String type);
 
+    /**
+     * Permanently removes tombstones last updated before the cut-off; returns how many.
+     */
     @Modifying
     @Query("delete from Record r where r.deleted = true and r.updatedAt < :before")
     int purgeTombstonesBefore(@Param("before") Instant before);

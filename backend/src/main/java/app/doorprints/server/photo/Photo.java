@@ -25,6 +25,10 @@ import org.hibernate.type.SqlTypes;
 import java.time.Instant;
 import java.util.UUID;
 
+/**
+ * Database row of one house photo: the sanitised image bytes, the person's room, tags and caption, and the sync
+ * fields. A deleted photo stays as a tombstone with no bytes so other devices can drop their copy.
+ */
 @Entity
 @Table(name = "photo")
 public class Photo {

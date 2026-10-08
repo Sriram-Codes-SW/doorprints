@@ -99,6 +99,15 @@ public class RecordController {
         return records.stream().map(r -> RecordDto.from(r, json)).toList();
     }
 
+    /**
+     * Creates or updates one record (idempotent by type and id).
+     * The sync lock is taken before the row is read, so the last-write-wins check and the write are one step; a
+     * client stamp older than the stored one changes nothing and the stored record is returned. A tombstone stores an
+     * empty payload. A new live record is refused with 409 once its type holds {@link #MAX_LIVE_ROWS_PER_TYPE}. The
+     * payload is stored as sent, compacted, without being interpreted.
+     * @throws IllegalArgumentException if the path and body disagree, or the payload is not a JSON object within
+     * {@link #MAX_PAYLOAD_BYTES}
+     */
     @PutMapping("/{type}/{id}")
     @Transactional
     public RecordDto upsert(@PathVariable @Pattern(regexp = RecordDto.TYPE_PATTERN) String type,
@@ -132,6 +141,11 @@ public class RecordController {
         return RecordDto.from(saved, json);
     }
 
+    /**
+     * Turns a record into a tombstone (empty payload, new sync version) so other devices learn of the deletion;
+     * deleting twice is fine.
+     * @throws NotFoundException if the record never existed
+     */
     @DeleteMapping("/{type}/{id}")
     @Transactional
     public ResponseEntity<Void> delete(@PathVariable @Pattern(regexp = RecordDto.TYPE_PATTERN) String type,

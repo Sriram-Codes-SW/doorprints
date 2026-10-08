@@ -52,6 +52,10 @@ public class AiRateLimitFilter extends OncePerRequestFilter {
         this.mcpLimiter = mcpLimiter;
     }
 
+    /**
+     * Limits only {@code /api/ai/**} (except the status call, which costs no model quota) and {@code /mcp}; CORS
+     * preflights are never counted.
+     */
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         // ApiKeyFilter has already rejected non-canonical paths, so plain prefix checks are safe here.
@@ -61,6 +65,10 @@ public class AiRateLimitFilter extends OncePerRequestFilter {
         return !limited || "OPTIONS".equals(request.getMethod());
     }
 
+    /**
+     * Answers 429 with a Retry-After header when the caller's bucket is empty, otherwise passes the request on.
+     * {@code /mcp} uses its own limiter.
+     */
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
@@ -77,6 +85,10 @@ public class AiRateLimitFilter extends OncePerRequestFilter {
         chain.doFilter(request, response);
     }
 
+    /**
+     * Identifies the caller without keeping the secret: a prefix of the SHA-256 of the presented key, or the remote
+     * address for a request without one.
+     */
     static String bucketKey(HttpServletRequest request) {
         var key = ApiKeyFilter.presentedKey(request);
         if (key == null) return "ip:" + request.getRemoteAddr();

@@ -37,9 +37,18 @@ public final class AskPrompts {
     private AskPrompts() {
     }
 
+    /**
+     * The system and user messages for one question.
+     */
     public record Built(String system, String user) {
     }
 
+    /**
+     * Builds the question-answering prompt: the retrieved records go between tags carrying the per-call nonce, each
+     * headed by its id. The system text limits the model to those records, fixes the refusal sentence, and asks for
+     * inline {@code [house:<id>]} citations. Record text and question are neutralised so they cannot close the tags
+     * ({@link PromptSafety}).
+     */
     public static Built build(String question, List<Document> docs, String nonce) {
         var tag = "houses-" + nonce;
         var system = """
@@ -104,6 +113,9 @@ public final class AskPrompts {
         return s.length() <= max ? s : s.substring(0, max - 1) + "…";
     }
 
+    /**
+     * Lower-case words longer than two characters, for the snippet overlap score.
+     */
     private static Set<String> words(String s) {
         var out = new HashSet<String>();
         if (s == null) return out;

@@ -56,11 +56,19 @@ public class OwnerFilter extends OncePerRequestFilter {
         this.auth = auth;
     }
 
+    /**
+     * Applies only under the owner API path.
+     */
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         return !RequestPaths.isUnder(RequestPaths.path(request), API);
     }
 
+    /**
+     * Applies the three checks of the class comment in order and answers 405 for any method but GET and POST, 403 for
+     * a call that is not from the page, and 401 without an open session. Sign-in is the one call that needs no
+     * session.
+     */
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
@@ -88,6 +96,10 @@ public class OwnerFilter extends OncePerRequestFilter {
         chain.doFilter(request, response);
     }
 
+    /**
+     * True for a call from the page's own origin: by {@code Sec-Fetch-Site} when the browser sends it, else by
+     * comparing {@code Origin} (a call with neither is allowed, as a non-browser client).
+     */
     static boolean sameOrigin(HttpServletRequest request) {
         var site = request.getHeader("Sec-Fetch-Site");
         if (site != null) return "same-origin".equals(site);
@@ -117,6 +129,9 @@ public class OwnerFilter extends OncePerRequestFilter {
         return null;
     }
 
+    /**
+     * Writes a small problem+json error body with fixed text.
+     */
     private static void write(HttpServletResponse response, int status, String detail) throws IOException {
         response.setStatus(status);
         response.setContentType("application/problem+json");

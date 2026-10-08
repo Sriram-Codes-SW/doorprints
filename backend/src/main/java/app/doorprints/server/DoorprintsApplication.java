@@ -22,6 +22,11 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 
+/**
+ * Entry point of the optional self-hosted Doorprints server: the sync API for the Android and web apps, backup import
+ * and export, device pairing and the owner page, and the opt-in AI features. Packages: house, visit, photo and record
+ * (data and sync), backup, privacy, device, secrets, config and ai.
+ */
 @SpringBootApplication
 @ConfigurationPropertiesScan
 public class DoorprintsApplication {

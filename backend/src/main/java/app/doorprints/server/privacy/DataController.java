@@ -66,6 +66,10 @@ public class DataController {
                 .body(backups.export());
     }
 
+    /**
+     * Erases everything the server holds, but only when the confirmation header carries the exact phrase; otherwise
+     * 428 and nothing is touched.
+     */
     @DeleteMapping("/data")
     public ResponseEntity<?> deleteAll(@RequestHeader(name = CONFIRM_HEADER, required = false) String confirm) {
         if (!CONFIRM_VALUE.equals(confirm)) {

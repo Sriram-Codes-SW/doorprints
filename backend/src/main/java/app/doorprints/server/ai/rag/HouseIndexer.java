@@ -118,6 +118,12 @@ public class HouseIndexer {
                         .filter(Objects::nonNull).toList());
     }
 
+    /**
+     * Keeps the search index in step after a house is saved or deleted. Runs asynchronously once the change has
+     * committed, so a slow or failing embedding call never delays or fails the save; failures are logged as at most
+     * one summary warning per five minutes and not thrown. With indexing on change switched off, a deleted house
+     * still leaves the index at once.
+     */
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void onHouseChanged(HouseChangedEvent event) {
@@ -145,6 +151,10 @@ public class HouseIndexer {
         asyncFailures.tick();
     }
 
+    /**
+     * Embeds one house and replaces its document in the vector store, or removes the document when the house is
+     * missing or deleted.
+     */
     public void index(UUID houseId) {
         var house = houses.findById(houseId).orElse(null);
         if (house == null || house.isDeleted()) {

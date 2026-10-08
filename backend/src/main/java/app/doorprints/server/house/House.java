@@ -27,6 +27,11 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * Database row of one saved house: where it is, what it costs, the person's rating, notes and contact details, and
+ * the sync fields. Cost, rooms, answers and move-in details are kept as JSON text and read through their own types. A
+ * deleted house stays as a tombstone for sync with its content blanked ({@link #purgeContent}).
+ */
 @Entity
 @Table(name = "house")
 public class House {

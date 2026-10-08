@@ -64,21 +64,35 @@ public class AiController {
         this.planner = planner;
     }
 
+    /**
+     * Turns pasted listing text into a draft house for the user to review; nothing is saved here.
+     */
     @PostMapping("/extract-listing")
     public HouseDraft extractListing(@Valid @RequestBody ExtractRequest body) {
         return extraction.extract(body.text());
     }
 
+    /**
+     * Answers a question about the user's own houses, with citations.
+     */
     @PostMapping("/ask")
     public AskResponse ask(@Valid @RequestBody AskRequest body) {
         return rag.ask(body.question(), body.filters());
     }
 
+    /**
+     * Plans an ordered visit route over the user's saved houses from a start point.
+     */
     @PostMapping("/plan-visits")
     public PlanResponse planVisits(@Valid @RequestBody PlanRequest body) {
         return planner.plan(body);
     }
 
+    /**
+     * Rebuilds the search index for every live house and returns how many were indexed; used after a missed update or
+     * a changed embedding model.
+     * @throws AiUnavailableException if re-indexing fails
+     */
     @PostMapping("/reindex")
     public Map<String, Integer> reindex() {
         try {

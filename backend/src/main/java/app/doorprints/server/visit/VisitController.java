@@ -31,6 +31,11 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Sync endpoints for visits, the record of when the person was at a place (and usually which house). Apps push each
+ * visit with PUT and pull changes with a version cursor; conflicts are settled by last write wins on {@code
+ * updatedAt}, as for houses.
+ */
 @RestController
 @RequestMapping("/api/visits")
 public class VisitController {
@@ -48,6 +53,10 @@ public class VisitController {
         this.events = events;
     }
 
+    /**
+     * Visits for the apps. With {@code since} it returns everything changed after that sync version, tombstones
+     * included (the sync cursor); otherwise the live visits, optionally for one house, newest first.
+     */
     @GetMapping
     @Transactional(readOnly = true)
     public List<VisitDto> list(@RequestParam(required = false) Long since,
@@ -59,6 +68,15 @@ public class VisitController {
         return visits.stream().map(VisitDto::from).toList();
     }
 
+    /**
+     * Creates or updates a visit from an app (idempotent by id).
+     * The sync lock is taken before the row is read, so the last-write-wins check and the write are one step. An
+     * older {@code updatedAt} than the stored one changes nothing and the stored visit is returned. A deleted visit
+     * has its place wiped. The house the visit now belongs to, and the one it left, are announced so their search
+     * entries are rebuilt.
+     * @throws IllegalArgumentException if {@code leftAt} is before {@code arrivedAt}, or a time is outside the
+     * accepted range
+     */
     @PutMapping("/{id}")
     @Transactional
     public VisitDto upsert(@PathVariable UUID id, @Valid @RequestBody VisitDto dto) {
@@ -94,6 +112,11 @@ public class VisitController {
         return VisitDto.from(saved);
     }
 
+    /**
+     * Soft-deletes a visit: it stays as a tombstone so other devices learn of the deletion, but where the person was
+     * is wiped.
+     * @throws NotFoundException if the visit never existed
+     */
     @DeleteMapping("/{id}")
     @Transactional
     public ResponseEntity<Void> delete(@PathVariable UUID id) {

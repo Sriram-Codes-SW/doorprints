@@ -90,6 +90,9 @@ final class AreaLines {
         static final All NONE = new All(List.of(), List.of(), List.of());
     }
 
+    /**
+     * The record's JSON payload, or null when it cannot be parsed (such records are skipped).
+     */
     private static JsonNode read(Record r, ObjectMapper json) {
         try {
             return json.readTree(r.getPayload());
@@ -98,6 +101,9 @@ final class AreaLines {
         }
     }
 
+    /**
+     * A numeric coordinate within +-limit, or null when absent, not a number or out of range.
+     */
     private static Double coordinate(JsonNode p, String key, double limit) {
         var node = p.path(key);
         if (!node.isNumber()) return null;

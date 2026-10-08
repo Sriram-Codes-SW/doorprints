@@ -48,6 +48,13 @@ public final class DraftSanitizer {
     private DraftSanitizer() {
     }
 
+    /**
+     * Turns the model's raw listing into a safe {@link HouseDraft} the user can review before saving. Each field is
+     * cleaned on its own; anything unreadable or unverifiable is dropped and a warning is added instead of failing
+     * the whole draft. A missing label is generated from bedrooms and place. A null result yields an "Untitled
+     * listing" draft with a warning.
+     * @param sourceText the listing the model read, used to confirm phone numbers and URLs
+     */
     public static HouseDraft sanitize(RawListing raw, String sourceText) {
         var warnings = new ArrayList<String>();
         if (raw == null) {
@@ -93,6 +100,10 @@ public final class DraftSanitizer {
         return s;
     }
 
+    /**
+     * Maps the model's wording (rental, lease, buy, resale, ...) to RENT or SALE; anything else is dropped with a
+     * warning.
+     */
     static String priceType(String value, List<String> warnings) {
         if (value == null || value.isBlank()) return null;
         var v = value.strip().toUpperCase(Locale.ROOT);
@@ -132,6 +143,9 @@ public final class DraftSanitizer {
         }
     }
 
+    /**
+     * Reads the first number in the text; studio and 1RK mean 0. Counts above {@link #BEDROOMS_MAX} are dropped.
+     */
     static Integer bedrooms(String value, List<String> warnings) {
         if (value == null || value.isBlank()) return null;
         var lower = value.toLowerCase(Locale.ROOT);
@@ -199,6 +213,9 @@ public final class DraftSanitizer {
         return v;
     }
 
+    /**
+     * Cleans each entry, lower-cases and de-duplicates them, and keeps at most {@link #AMENITIES_MAX}.
+     */
     static List<String> amenities(List<String> values, List<String> warnings) {
         if (values == null) return List.of();
         var out = new LinkedHashSet<String>();
@@ -213,6 +230,10 @@ public final class DraftSanitizer {
         return List.copyOf(out);
     }
 
+    /**
+     * Fallback label such as "2BHK in Indiranagar", "Studio" or "House", from the bedrooms and the locality (or else
+     * street).
+     */
     static String defaultLabel(Integer bedrooms, String locality, String street) {
         var where = locality != null ? locality : street;
         var what = bedrooms == null ? "House" : bedrooms == 0 ? "Studio" : bedrooms + "BHK";

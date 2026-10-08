@@ -23,6 +23,9 @@ import app.doorprints.server.visit.VisitRepository;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * Summary counts of the hunt, and the highest sync version, which lets an app notice a server that was reset.
+ */
 @RestController
 public class StatsController {
 
@@ -45,6 +48,10 @@ public class StatsController {
         this.versions = versions;
     }
 
+    /**
+     * Counts of live houses, shortlisted and rejected ones, visits and distinct streets, plus the highest sync
+     * version.
+     */
     @GetMapping("/api/stats")
     public Stats stats() {
         return new Stats(

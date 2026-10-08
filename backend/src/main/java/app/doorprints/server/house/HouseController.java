@@ -30,6 +30,9 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * HTTP endpoints for houses, the main record the apps sync; the rules live in {@link HouseService}.
+ */
 @RestController
 @RequestMapping("/api/houses")
 public class HouseController {
@@ -46,16 +49,25 @@ public class HouseController {
         return service.list(since);
     }
 
+    /**
+     * One house, deleted ones included (as a tombstone).
+     */
     @GetMapping("/{id}")
     public HouseDto get(@PathVariable UUID id) {
         return service.get(id);
     }
 
+    /**
+     * Creates or updates a house; an older edit than the stored one is ignored and the stored house is returned.
+     */
     @PutMapping("/{id}")
     public HouseDto upsert(@PathVariable UUID id, @Valid @RequestBody HouseDto body) {
         return service.upsert(id, body);
     }
 
+    /**
+     * Deletes a house and purges its private content.
+     */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         service.delete(id);
@@ -70,6 +82,9 @@ public class HouseController {
         return service.nearby(lat, lon, Math.min(radius, 5000));
     }
 
+    /**
+     * Live houses on the named street.
+     */
     @GetMapping("/street")
     public List<HouseDto> onStreet(@RequestParam @NotBlank @Size(max = 200) String name) {
         return service.onStreet(name);

@@ -48,6 +48,11 @@ public class AiConfiguration {
     /** {@code asia-south1}, {@code us-central1}, {@code global}, {@code us}, {@code eu}. */
     private static final Pattern LOCATION = Pattern.compile("[a-z][a-z0-9-]{1,40}");
 
+    /**
+     * Fails startup with a message naming the setting when the provider or embedding provider is not one the app
+     * supports, so a typo is caught at boot rather than on the first AI call. A missing Gemini key is not an error:
+     * AI then reads as off until the owner sets one.
+     */
     public AiConfiguration(Environment env, AiProperties props) {
         if (props.vertexProvider()) {
             validateVertex(props.vertex());
@@ -68,6 +73,11 @@ public class AiConfiguration {
         }
     }
 
+    /**
+     * Checks the Vertex settings are well formed (project id, locations, optional http(s) endpoint) before any Google
+     * client is built.
+     * @throws IllegalStateException with the setting name and an example value
+     */
     public static void validateVertex(AiProperties.Vertex v) {
         if (!PROJECT_ID.matcher(v.projectId()).matches()) {
             throw new IllegalStateException("AI_PROVIDER=vertex needs GCP_PROJECT_ID (app.ai.vertex.project-id): the "
