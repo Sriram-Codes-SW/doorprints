@@ -48,8 +48,19 @@ object PlaceLookup {
      */
     fun query(locality: String?, address: String? = null): String? {
         val name = (locality?.takeIf { it.isNotBlank() } ?: address?.takeIf { it.isNotBlank() } ?: return null)
-            .replace(Regex("\\s+"), " ").trim().take(MAX_QUERY)
+            .replace(Regex("\\s+"), " ").trim().let { cutOnCharacters(it, MAX_QUERY) }
         return if (name.contains("india", ignoreCase = true)) name else "$name, India"
+    }
+
+    /** [text] cut to [max] characters (code points), never inside a surrogate pair: half an emoji would reach the geocoder as a lone surrogate. */
+    private fun cutOnCharacters(text: String, max: Int): String {
+        var chars = 0
+        var i = 0
+        while (i < text.length && chars < max) {
+            i += if (text[i].isHighSurrogate() && i + 1 < text.length && text[i + 1].isLowSurrogate()) 2 else 1
+            chars++
+        }
+        return text.substring(0, i).trim()
     }
 
     /** The first of [candidates] (latitude, longitude) inside [INDIA], or null; "no location" (0, 0) is never one. */

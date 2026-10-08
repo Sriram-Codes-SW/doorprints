@@ -1,0 +1,403 @@
+{
+  "format": "doorprints-india-place-vectors/1",
+  "note": "Towns and places across India with whether they lie inside the held areas, the polygon of web/public/geo/in-held-areas.geojson (and its byte-identical Android copy) inside which the app leaves the Pakistani and Chinese admin lines out of the map (docs/03 ADR-22, S4b-BL-12). heldBy names the administration whose lines are left out; a place without it is in India as the Government of India depicts it, and its admin lines are drawn. Coordinates are the public locations of the towns; Uri, Poonch, Kargil, Dras and Turtuk lie 4 to 9 km from the polygon of the held areas. Read by web india-boundaries.spec.ts (the style filter, with MapLibre's own evaluator) and Android IndiaBoundaryDataTest (the polygon), so both apps decide every place alike. The boundary data itself is not changed by this file.",
+  "places": [
+    {
+      "name": "Gilgit",
+      "area": "Gilgit-Baltistan",
+      "zone": "hills",
+      "lat": 35.92,
+      "lon": 74.31,
+      "heldBy": "Pakistan"
+    },
+    {
+      "name": "Skardu",
+      "area": "Gilgit-Baltistan",
+      "zone": "hills",
+      "lat": 35.3,
+      "lon": 75.63,
+      "heldBy": "Pakistan"
+    },
+    {
+      "name": "Hunza",
+      "area": "Gilgit-Baltistan",
+      "zone": "hills",
+      "lat": 36.32,
+      "lon": 74.65,
+      "heldBy": "Pakistan"
+    },
+    {
+      "name": "Astore",
+      "area": "Gilgit-Baltistan",
+      "zone": "hills",
+      "lat": 35.33,
+      "lon": 74.86,
+      "heldBy": "Pakistan"
+    },
+    {
+      "name": "Chilas",
+      "area": "Gilgit-Baltistan",
+      "zone": "hills",
+      "lat": 35.42,
+      "lon": 74.1,
+      "heldBy": "Pakistan"
+    },
+    {
+      "name": "Muzaffarabad",
+      "area": "Pakistan-held Kashmir",
+      "zone": "hills",
+      "lat": 34.37,
+      "lon": 73.47,
+      "heldBy": "Pakistan"
+    },
+    {
+      "name": "Mirpur",
+      "area": "Pakistan-held Kashmir",
+      "zone": "hills",
+      "lat": 33.15,
+      "lon": 73.75,
+      "heldBy": "Pakistan"
+    },
+    {
+      "name": "Kotli",
+      "area": "Pakistan-held Kashmir",
+      "zone": "hills",
+      "lat": 33.52,
+      "lon": 73.9,
+      "heldBy": "Pakistan"
+    },
+    {
+      "name": "Bagh",
+      "area": "Pakistan-held Kashmir",
+      "zone": "hills",
+      "lat": 33.98,
+      "lon": 73.78,
+      "heldBy": "Pakistan"
+    },
+    {
+      "name": "Rawalakot",
+      "area": "Pakistan-held Kashmir",
+      "zone": "hills",
+      "lat": 33.86,
+      "lon": 73.76,
+      "heldBy": "Pakistan"
+    },
+    {
+      "name": "Shaksgam",
+      "area": "Shaksgam valley",
+      "zone": "hills",
+      "lat": 36.1,
+      "lon": 76.5,
+      "heldBy": "China"
+    },
+    {
+      "name": "Aksai Chin",
+      "area": "Aksai Chin",
+      "zone": "hills",
+      "lat": 35.0,
+      "lon": 79.3,
+      "heldBy": "China"
+    },
+    {
+      "name": "Srinagar",
+      "area": "Jammu and Kashmir",
+      "zone": "hills",
+      "lat": 34.08,
+      "lon": 74.8
+    },
+    {
+      "name": "Jammu",
+      "area": "Jammu and Kashmir",
+      "zone": "hills",
+      "lat": 32.73,
+      "lon": 74.86
+    },
+    {
+      "name": "Uri",
+      "area": "Jammu and Kashmir",
+      "zone": "hills",
+      "lat": 34.08,
+      "lon": 74.03
+    },
+    {
+      "name": "Poonch",
+      "area": "Jammu and Kashmir",
+      "zone": "hills",
+      "lat": 33.77,
+      "lon": 74.09
+    },
+    {
+      "name": "Rajouri",
+      "area": "Jammu and Kashmir",
+      "zone": "hills",
+      "lat": 33.38,
+      "lon": 74.31
+    },
+    {
+      "name": "Baramulla",
+      "area": "Jammu and Kashmir",
+      "zone": "hills",
+      "lat": 34.2,
+      "lon": 74.34
+    },
+    {
+      "name": "Kupwara",
+      "area": "Jammu and Kashmir",
+      "zone": "hills",
+      "lat": 34.53,
+      "lon": 74.26
+    },
+    {
+      "name": "Anantnag",
+      "area": "Jammu and Kashmir",
+      "zone": "hills",
+      "lat": 33.73,
+      "lon": 75.15
+    },
+    {
+      "name": "Kathua",
+      "area": "Jammu and Kashmir",
+      "zone": "hills",
+      "lat": 32.37,
+      "lon": 75.52
+    },
+    {
+      "name": "Leh",
+      "area": "Ladakh",
+      "zone": "hills",
+      "lat": 34.16,
+      "lon": 77.58
+    },
+    {
+      "name": "Kargil",
+      "area": "Ladakh",
+      "zone": "hills",
+      "lat": 34.56,
+      "lon": 76.13
+    },
+    {
+      "name": "Dras",
+      "area": "Ladakh",
+      "zone": "hills",
+      "lat": 34.43,
+      "lon": 75.75
+    },
+    {
+      "name": "Turtuk",
+      "area": "Ladakh",
+      "zone": "hills",
+      "lat": 34.85,
+      "lon": 76.83
+    },
+    {
+      "name": "Diskit (Nubra)",
+      "area": "Ladakh",
+      "zone": "hills",
+      "lat": 34.54,
+      "lon": 77.56
+    },
+    {
+      "name": "Hanle",
+      "area": "Ladakh",
+      "zone": "hills",
+      "lat": 32.78,
+      "lon": 78.97
+    },
+    {
+      "name": "Pangong (Lukung)",
+      "area": "Ladakh",
+      "zone": "hills",
+      "lat": 33.98,
+      "lon": 78.18
+    },
+    {
+      "name": "Nyoma",
+      "area": "Ladakh",
+      "zone": "hills",
+      "lat": 33.2,
+      "lon": 78.65
+    },
+    {
+      "name": "Padum (Zanskar)",
+      "area": "Ladakh",
+      "zone": "hills",
+      "lat": 33.46,
+      "lon": 76.89
+    },
+    {
+      "name": "Demchok",
+      "area": "Ladakh",
+      "zone": "hills",
+      "lat": 32.7,
+      "lon": 79.46
+    },
+    {
+      "name": "Siachen base camp",
+      "area": "Ladakh",
+      "zone": "hills",
+      "lat": 35.42,
+      "lon": 77.1
+    },
+    {
+      "name": "Itanagar",
+      "area": "Arunachal Pradesh",
+      "zone": "north-east",
+      "lat": 27.08,
+      "lon": 93.61
+    },
+    {
+      "name": "Tawang",
+      "area": "Arunachal Pradesh",
+      "zone": "north-east",
+      "lat": 27.59,
+      "lon": 91.86
+    },
+    {
+      "name": "Anini",
+      "area": "Arunachal Pradesh",
+      "zone": "north-east",
+      "lat": 28.8,
+      "lon": 95.9
+    },
+    {
+      "name": "Tezu",
+      "area": "Arunachal Pradesh",
+      "zone": "north-east",
+      "lat": 27.93,
+      "lon": 96.16
+    },
+    {
+      "name": "Gangtok",
+      "area": "Sikkim",
+      "zone": "north-east",
+      "lat": 27.33,
+      "lon": 88.61
+    },
+    {
+      "name": "Lachen",
+      "area": "Sikkim",
+      "zone": "north-east",
+      "lat": 27.72,
+      "lon": 88.54
+    },
+    {
+      "name": "Guwahati",
+      "area": "Assam",
+      "zone": "north-east",
+      "lat": 26.14,
+      "lon": 91.74
+    },
+    {
+      "name": "Kohima",
+      "area": "Nagaland",
+      "zone": "north-east",
+      "lat": 25.67,
+      "lon": 94.11
+    },
+    {
+      "name": "Imphal",
+      "area": "Manipur",
+      "zone": "north-east",
+      "lat": 24.82,
+      "lon": 93.94
+    },
+    {
+      "name": "Port Blair",
+      "area": "Andaman and Nicobar Islands",
+      "zone": "coast",
+      "lat": 11.62,
+      "lon": 92.73
+    },
+    {
+      "name": "Indira Point",
+      "area": "Andaman and Nicobar Islands",
+      "zone": "coast",
+      "lat": 6.75,
+      "lon": 93.84
+    },
+    {
+      "name": "Kavaratti",
+      "area": "Lakshadweep",
+      "zone": "coast",
+      "lat": 10.56,
+      "lon": 72.64
+    },
+    {
+      "name": "Kanyakumari",
+      "area": "Tamil Nadu",
+      "zone": "coast",
+      "lat": 8.09,
+      "lon": 77.54
+    },
+    {
+      "name": "Kochi",
+      "area": "Kerala",
+      "zone": "coast",
+      "lat": 9.93,
+      "lon": 76.27
+    },
+    {
+      "name": "Chennai",
+      "area": "Tamil Nadu",
+      "zone": "coast",
+      "lat": 13.08,
+      "lon": 80.27
+    },
+    {
+      "name": "Bhuj (Kutch)",
+      "area": "Gujarat",
+      "zone": "west",
+      "lat": 23.25,
+      "lon": 69.67
+    },
+    {
+      "name": "Guhar Moti (Kutch)",
+      "area": "Gujarat",
+      "zone": "west",
+      "lat": 23.72,
+      "lon": 68.12
+    },
+    {
+      "name": "Jaisalmer",
+      "area": "Rajasthan",
+      "zone": "north",
+      "lat": 26.92,
+      "lon": 70.91
+    },
+    {
+      "name": "Amritsar",
+      "area": "Punjab",
+      "zone": "north",
+      "lat": 31.63,
+      "lon": 74.87
+    },
+    {
+      "name": "Shimla",
+      "area": "Himachal Pradesh",
+      "zone": "hills",
+      "lat": 31.1,
+      "lon": 77.17
+    },
+    {
+      "name": "Delhi",
+      "area": "Delhi",
+      "zone": "north",
+      "lat": 28.61,
+      "lon": 77.21
+    },
+    {
+      "name": "Mumbai",
+      "area": "Maharashtra",
+      "zone": "west",
+      "lat": 19.08,
+      "lon": 72.88
+    },
+    {
+      "name": "Kolkata",
+      "area": "West Bengal",
+      "zone": "east",
+      "lat": 22.57,
+      "lon": 88.36
+    }
+  ]
+}

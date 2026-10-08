@@ -1,6 +1,6 @@
 {
   "format": "doorprints-listing-fixtures/1",
-  "note": "Share-sheet texts as the portals' apps and browsers hand them to Doorprints (docs/11 5.29). Hand-written samples in the portals' shapes, not copies of real listings; the phone numbers and links are made up. Both parsers (android/shared ListingText.kt, web listing-text.ts) must read every case the same way: ListingFixturesTest and listing-text.spec.ts.",
+  "note": "Share-sheet texts as the portals' apps and browsers hand them to Doorprints (docs/11 5.29). Hand-written samples in the portals' shapes, from many cities (S4b-BL-174: the north-east, the hills, the coasts, capitals-only forwards, 2.5 BHK, landlines), not copies of real listings; the phone numbers and links are made up. Both parsers (android/shared ListingText.kt, web listing-text.ts) must read every case the same way: ListingFixturesTest and listing-text.spec.ts.",
   "cases": [
     {
       "name": "MagicBricks rent, WhatsApp share",
@@ -105,6 +105,306 @@
         "listingUrl": null,
         "portal": null,
         "notesStart": "1800 sq ft, Semi-furnished"
+      }
+    },
+    {
+      "name": "Housing.com Guwahati duplex, 1.5 Cr with a bar and sqft",
+      "text": "3 BHK Duplex for Sale in Beltola, Guwahati\n1.5 Cr | 2200 sqft | Ready to move\nhttps://housing.com/in/buy/guwahati/beltola-3-bhk-duplex-spid-77",
+      "expect": {
+        "label": "3 BHK Duplex for Sale in Beltola, Guwahati",
+        "price": 15000000,
+        "priceType": "SALE",
+        "bedrooms": 3,
+        "locality": "Beltola",
+        "contactPhone": null,
+        "listingUrl": "https://housing.com/in/buy/guwahati/beltola-3-bhk-duplex-spid-77",
+        "portal": "Housing.com",
+        "notesStart": "2200 sq ft"
+      }
+    },
+    {
+      "name": "99acres Dehradun, 2.5 BHK is 2 bedrooms (the half is a study)",
+      "text": "2.5 BHK Flat for Rent in Rajpur Road, Dehradun\n₹ 14,500 per month · 1100 sq ft\nContact: Negi 97600 12345\nhttps://www.99acres.com/2-5-bhk-flat-for-rent-in-rajpur-road-dehradun-spid-X91",
+      "expect": {
+        "label": "2.5 BHK Flat for Rent in Rajpur Road, Dehradun",
+        "price": 14500,
+        "priceType": "RENT",
+        "bedrooms": 2,
+        "locality": "Rajpur Road",
+        "contactPhone": "97600 12345",
+        "listingUrl": "https://www.99acres.com/2-5-bhk-flat-for-rent-in-rajpur-road-dehradun-spid-X91",
+        "portal": "99acres",
+        "notesStart": "1100 sq ft"
+      }
+    },
+    {
+      "name": "MagicBricks Shimla, 95 L",
+      "text": "3 BHK House for Sale in Sanjauli, Shimla\n₹ 95 L | 1900 sq ft | Garden\nhttps://www.magicbricks.com/propertyDetails/3-BHK-House-Sanjauli-Shimla&id=88?utm_source=share",
+      "expect": {
+        "label": "3 BHK House for Sale in Sanjauli, Shimla",
+        "price": 9500000,
+        "priceType": "SALE",
+        "bedrooms": 3,
+        "locality": "Sanjauli",
+        "contactPhone": null,
+        "listingUrl": "https://www.magicbricks.com/propertyDetails/3-BHK-House-Sanjauli-Shimla&id=88",
+        "portal": "MagicBricks",
+        "notesStart": "1900 sq ft"
+      }
+    },
+    {
+      "name": "NoBroker Kolkata, Rs 30,000/- and a 033 landline",
+      "text": "2 BHK Flat for Rent in Salt Lake Sector III, Kolkata\nRs 30,000/- per month · 1050 sq ft · Semi-furnished\nPhone: 033 2359 0101\nhttps://www.nobroker.in/property/kol-55",
+      "expect": {
+        "label": "2 BHK Flat for Rent in Salt Lake Sector III, Kolkata",
+        "price": 30000,
+        "priceType": "RENT",
+        "bedrooms": 2,
+        "locality": "Salt Lake Sector III",
+        "contactPhone": "033 2359 0101",
+        "listingUrl": "https://www.nobroker.in/property/kol-55",
+        "portal": "NoBroker",
+        "notesStart": "1050 sq ft, Semi-furnished"
+      }
+    },
+    {
+      "name": "WhatsApp forward, Pune, Rs. 85 lakhs, no link",
+      "text": "2 BHK flat for sale in Baner, Pune. Rs. 85 lakhs negotiable. 780 sq ft carpet. Call Pravin 98900 55555",
+      "expect": {
+        "label": "2 BHK flat for sale in Baner, Pune. Rs. 85 lakhs negotiable. 780 sq ft carpet. Call Pravin 98900 55555",
+        "price": 8500000,
+        "priceType": "SALE",
+        "bedrooms": 2,
+        "locality": "Baner",
+        "contactPhone": "98900 55555",
+        "listingUrl": null,
+        "portal": null,
+        "notesStart": "780 sq ft"
+      }
+    },
+    {
+      "name": "WhatsApp forward, Chennai, deposit of 10 months",
+      "text": "2 BHK flat for rent near Adyar, Chennai. Rent Rs 28,000. Deposit 10 months. Call 98840 55555.",
+      "expect": {
+        "label": "2 BHK flat for rent near Adyar, Chennai. Rent Rs 28,000. Deposit 10 months. Call 98840 55555.",
+        "price": 28000,
+        "priceType": "RENT",
+        "bedrooms": 2,
+        "locality": "Adyar",
+        "contactPhone": "98840 55555",
+        "listingUrl": null,
+        "portal": null,
+        "notesStart": null
+      }
+    },
+    {
+      "name": "MagicBricks Jaipur, no name before the number",
+      "text": "3 BHK Builder Floor for Rent in Malviya Nagar, Jaipur\n₹ 25,000 per month · 1350 sq ft\nContact: 98290 00000\nhttps://www.magicbricks.com/propertyDetails/3-BHK-Builder-Floor-Malviya-Nagar-Jaipur&id=71",
+      "expect": {
+        "label": "3 BHK Builder Floor for Rent in Malviya Nagar, Jaipur",
+        "price": 25000,
+        "priceType": "RENT",
+        "bedrooms": 3,
+        "locality": "Malviya Nagar",
+        "contactPhone": "98290 00000",
+        "listingUrl": "https://www.magicbricks.com/propertyDetails/3-BHK-Builder-Floor-Malviya-Nagar-Jaipur&id=71",
+        "portal": "MagicBricks",
+        "notesStart": "1350 sq ft"
+      }
+    },
+    {
+      "name": "Square Yards Lucknow, 1.2 Lakh a month",
+      "text": "4 BHK Independent House for Rent in Gomti Nagar, Lucknow\n1.2 Lakh per month · 2400 sq ft\nhttps://www.squareyards.com/rent/4-bhk-independent-house-gomti-nagar-lucknow-401",
+      "expect": {
+        "label": "4 BHK Independent House for Rent in Gomti Nagar, Lucknow",
+        "price": 120000,
+        "priceType": "RENT",
+        "bedrooms": 4,
+        "locality": "Gomti Nagar",
+        "contactPhone": null,
+        "listingUrl": "https://www.squareyards.com/rent/4-bhk-independent-house-gomti-nagar-lucknow-401",
+        "portal": "Square Yards",
+        "notesStart": "2400 sq ft"
+      }
+    },
+    {
+      "name": "Chandigarh kothi, marla is not a bedroom",
+      "text": "10 Marla Kothi (3 BHK) for Rent in Sector 21, Chandigarh\n₹ 55,000/month\nCall 98760 55555",
+      "expect": {
+        "label": "10 Marla Kothi (3 BHK) for Rent in Sector 21, Chandigarh",
+        "price": 55000,
+        "priceType": "RENT",
+        "bedrooms": 3,
+        "locality": "Sector 21",
+        "contactPhone": "98760 55555",
+        "listingUrl": null,
+        "portal": null,
+        "notesStart": null
+      }
+    },
+    {
+      "name": "Goa studio, +91 and an amenity line",
+      "text": "Studio apartment for rent in Candolim, Goa\n₹18,000 per month · AC · wifi\nWhatsApp +91 98220 00000",
+      "expect": {
+        "label": "Studio apartment for rent in Candolim, Goa",
+        "price": 18000,
+        "priceType": "RENT",
+        "bedrooms": 0,
+        "locality": "Candolim",
+        "contactPhone": "+91 98220 00000",
+        "listingUrl": null,
+        "portal": null,
+        "notesStart": null
+      }
+    },
+    {
+      "name": "Kochi, furnished, Rs 22,000",
+      "text": "2 BHK Flat for Rent in Kakkanad, Kochi\nRs 22,000 per month · Fully furnished\nContact: Jose 94470 12345",
+      "expect": {
+        "label": "2 BHK Flat for Rent in Kakkanad, Kochi",
+        "price": 22000,
+        "priceType": "RENT",
+        "bedrooms": 2,
+        "locality": "Kakkanad",
+        "contactPhone": "94470 12345",
+        "listingUrl": null,
+        "portal": null,
+        "notesStart": "Fully furnished"
+      }
+    },
+    {
+      "name": "WhatsApp forward, Ahmedabad, 45k",
+      "text": "3 BHK Flat for Rent in Satellite, Ahmedabad. 45k per month, 1650 sq ft. Call Hiren bhai 98250 12345",
+      "expect": {
+        "label": "3 BHK Flat for Rent in Satellite, Ahmedabad. 45k per month, 1650 sq ft. Call Hiren bhai 98250 12345",
+        "price": 45000,
+        "priceType": "RENT",
+        "bedrooms": 3,
+        "locality": "Satellite",
+        "contactPhone": "98250 12345",
+        "listingUrl": null,
+        "portal": null,
+        "notesStart": "1650 sq ft"
+      }
+    },
+    {
+      "name": "MagicBricks Delhi, 2.8 Cr and an 011 landline",
+      "text": "3 BHK Builder Floor for Sale in Saket, New Delhi\n₹ 2.8 Cr · 1800 sq ft\nContact: Mehra 011-4155 0101",
+      "expect": {
+        "label": "3 BHK Builder Floor for Sale in Saket, New Delhi",
+        "price": 28000000,
+        "priceType": "SALE",
+        "bedrooms": 3,
+        "locality": "Saket",
+        "contactPhone": "011-4155 0101",
+        "listingUrl": null,
+        "portal": null,
+        "notesStart": "1800 sq ft"
+      }
+    },
+    {
+      "name": "Gurugram sector locality",
+      "text": "3 BHK Flat for Rent in Sector 56, Gurugram\n₹ 65,000 per month · 2000 sq ft · Semi-furnished\nCall 99100 12345",
+      "expect": {
+        "label": "3 BHK Flat for Rent in Sector 56, Gurugram",
+        "price": 65000,
+        "priceType": "RENT",
+        "bedrooms": 3,
+        "locality": "Sector 56",
+        "contactPhone": "99100 12345",
+        "listingUrl": null,
+        "portal": null,
+        "notesStart": "2000 sq ft, Semi-furnished"
+      }
+    },
+    {
+      "name": "WhatsApp forward in capitals, Mumbai",
+      "text": "1 BHK FLAT FOR RENT IN BANDRA WEST, MUMBAI. RS 85,000/- PM. 520 SQ FT. CALL 98200 12345",
+      "expect": {
+        "label": "1 BHK FLAT FOR RENT IN BANDRA WEST, MUMBAI. RS 85,000/- PM. 520 SQ FT. CALL 98200 12345",
+        "price": 85000,
+        "priceType": "RENT",
+        "bedrooms": 1,
+        "locality": "BANDRA WEST",
+        "contactPhone": "98200 12345",
+        "listingUrl": null,
+        "portal": null,
+        "notesStart": "520 sq ft"
+      }
+    },
+    {
+      "name": "Hinglish forward, Hyderabad, mahina",
+      "text": "Flat for rent in Gachibowli, Hyderabad, 2BHK, 38k mahina, 1250 sqft. Call Srinivas garu 98480 12345",
+      "expect": {
+        "label": "Flat for rent in Gachibowli, Hyderabad, 2BHK, 38k mahina, 1250 sqft. Call Srinivas garu 98480 12345",
+        "price": 38000,
+        "priceType": "RENT",
+        "bedrooms": 2,
+        "locality": "Gachibowli",
+        "contactPhone": "98480 12345",
+        "listingUrl": null,
+        "portal": null,
+        "notesStart": "1250 sq ft"
+      }
+    },
+    {
+      "name": "Bhubaneswar, Patia",
+      "text": "2 BHK Flat for Rent in Patia, Bhubaneswar\n₹ 16,000 per month · 1000 sq ft\nContact: 98530 55555",
+      "expect": {
+        "label": "2 BHK Flat for Rent in Patia, Bhubaneswar",
+        "price": 16000,
+        "priceType": "RENT",
+        "bedrooms": 2,
+        "locality": "Patia",
+        "contactPhone": "98530 55555",
+        "listingUrl": null,
+        "portal": null,
+        "notesStart": "1000 sq ft"
+      }
+    },
+    {
+      "name": "Indian grouping with no unit, Bengaluru",
+      "text": "3 BHK Apartment for Sale in Whitefield, Bengaluru\n₹ 1,25,00,000 · 1650 sq ft",
+      "expect": {
+        "label": "3 BHK Apartment for Sale in Whitefield, Bengaluru",
+        "price": 12500000,
+        "priceType": "SALE",
+        "bedrooms": 3,
+        "locality": "Whitefield",
+        "contactPhone": null,
+        "listingUrl": null,
+        "portal": null,
+        "notesStart": "1650 sq ft"
+      }
+    },
+    {
+      "name": "Port Blair, Andaman",
+      "text": "2 BHK House for Rent in Haddo, Port Blair\n₹ 20,000 per month",
+      "expect": {
+        "label": "2 BHK House for Rent in Haddo, Port Blair",
+        "price": 20000,
+        "priceType": "RENT",
+        "bedrooms": 2,
+        "locality": "Haddo",
+        "contactPhone": null,
+        "listingUrl": null,
+        "portal": null,
+        "notesStart": null
+      }
+    },
+    {
+      "name": "Srinagar",
+      "text": "3 BHK House for Sale in Rajbagh, Srinagar\n₹ 1.1 Cr · 2100 sq ft",
+      "expect": {
+        "label": "3 BHK House for Sale in Rajbagh, Srinagar",
+        "price": 11000000,
+        "priceType": "SALE",
+        "bedrooms": 3,
+        "locality": "Rajbagh",
+        "contactPhone": null,
+        "listingUrl": null,
+        "portal": null,
+        "notesStart": "2100 sq ft"
       }
     }
   ]

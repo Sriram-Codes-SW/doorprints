@@ -1,0 +1,19 @@
+{
+  "spec": "backend/src/test/java/app/doorprints/server/ai/eval/EvalScorerTest.java",
+  "maven": ["-Dtest=EvalScorerTest"],
+  "mutations": [
+    {"file": "backend/src/test/java/app/doorprints/server/ai/eval/EvalScorer.java", "find": "(lowerIsBetter ? value < best : value > best)", "replace": "(value > best)", "expect": "theRegionSpreadIsTheBestRegionMinusTheWorstPerMetric"},
+    {"file": "backend/src/test/java/app/doorprints/server/ai/eval/EvalScorer.java", "find": "(lowerIsBetter ? value >= worst : value <= worst)", "replace": "(value <= worst)", "expect": "theRegionSpreadIsTheBestRegionMinusTheWorstPerMetric"},
+    {"file": "backend/src/test/java/app/doorprints/server/ai/eval/EvalScorer.java", "find": "(lowerIsBetter ? value >= worst : value <= worst)", "replace": "(lowerIsBetter ? value > worst : value < worst)", "expect": "aSingleMeasuredRegionHasNoSpreadAndEqualRegionsHaveZero"},
+    {"file": "backend/src/test/java/app/doorprints/server/ai/eval/EvalScorer.java", "find": "Math.abs(best - worst)", "replace": "(best + worst)", "expect": "theRegionSpreadIsTheBestRegionMinusTheWorstPerMetric"},
+    {"file": "backend/src/test/java/app/doorprints/server/ai/eval/EvalScorer.java", "find": "measured < 2 ?", "replace": "measured < 1 ?", "expect": "aSingleMeasuredRegionHasNoSpreadAndEqualRegionsHaveZero"},
+    {"file": "backend/src/test/java/app/doorprints/server/ai/eval/EvalScorer.java", "find": "Set.of(\"extractionHallucinationRate\")", "replace": "Set.of()", "expect": "theRegionSpreadIsTheBestRegionMinusTheWorstPerMetric"},
+    {"file": "backend/src/test/java/app/doorprints/server/ai/eval/EvalScorer.java", "find": "new java.util.TreeMap<String, List<CaseResult>>()", "replace": "new java.util.LinkedHashMap<String, List<CaseResult>>()", "expect": "everyMetricIsAlsoComputedPerRegionFromThatRegionsCasesOnly"},
+    {"file": "backend/src/test/java/app/doorprints/server/ai/eval/EvalScorer.java", "find": "this.region = region == null || region.isBlank() ? UNASSIGNED : region.strip();", "replace": "this.region = region == null ? \"\" : region;", "expect": "aCaseWithoutARegionIsCountedUnderUnassigned"},
+    {"file": "backend/src/test/java/app/doorprints/server/ai/eval/EvalScorer.java", "find": "testCase.get(\"region\") == null ? null : str(testCase.get(\"region\")));", "replace": "null);", "expect": "everyMetricIsAlsoComputedPerRegionFromThatRegionsCasesOnly"},
+    {"file": "backend/src/test/java/app/doorprints/server/ai/eval/EvalScorer.java", "find": "        if (results.isEmpty()) return;\n        var byRegion", "replace": "        var byRegion", "expect": "aRunWithNoCasesHasNoRegionSection"},
+    {"file": "backend/src/test/java/app/doorprints/server/ai/eval/EvalScorer.java", "find": "fmt(m.value()) + \" (\" + m.numerator() + \"/\" + m.denominator() + \")\"", "replace": "fmt(m.value()) + \" (\" + m.denominator() + \"/\" + m.numerator() + \")\"", "expect": "theReportShowsEveryRegionAndTheSpreadLineWithoutChangingTheVerdict"},
+    {"file": "backend/src/test/java/app/doorprints/server/ai/eval/EvalScorer.java", "find": "s.metric() + \" \" + fmt(s.spread()) + \" (\" + s.bestRegion()", "replace": "s.metric() + \" \" + fmt(s.spread()) + \" (\" + s.worstRegion()", "expect": "theReportShowsEveryRegionAndTheSpreadLineWithoutChangingTheVerdict"},
+    {"file": "backend/src/test/java/app/doorprints/server/ai/eval/EvalScorer.java", "find": ".append(\" | \").append(cell(r.region)).append(\" | \")", "replace": ".append(\" | \").append(\"-\").append(\" | \")", "expect": "theReportShowsEveryRegionAndTheSpreadLineWithoutChangingTheVerdict"}
+  ]
+}

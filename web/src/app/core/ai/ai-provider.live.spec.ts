@@ -46,7 +46,7 @@ describe.skipIf(setup.status === 'skip')('Golden set through the chosen provider
     if (setup.status !== 'run') throw new Error(setup.line);
     const at = (c: unknown) => c as never;
     const now = '2026-09-20T10:00:00Z';
-    const houses = golden.fixtureHouses.map((h) => ({ ...h, deleted: false, updatedAt: now }));
+    const houses = golden.fixtureHouses.map(({ city: _city, region: _region, ...h }) => ({ ...h, deleted: false, updatedAt: now })); // the golden set's own tags are not house fields
     const visits = golden.fixtureVisits.map((v) => ({ ...v, deleted: false, updatedAt: now }));
     TestBed.configureTestingModule({
       providers: [

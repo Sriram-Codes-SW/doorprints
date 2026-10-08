@@ -118,6 +118,202 @@ class EvalScorerTest {
         }
     }
 
+    /** The zones a house or a case can carry (golden set v0.7); a case about houses in two zones is "cross-region". */
+    private static final Set<String> ZONES = Set.of("north", "south", "east", "west", "north-east", "hills", "coast");
+    private static final String CROSS_REGION = "cross-region";
+
+    /**
+     * Where each fixture city is, as a lat/lon box written down here by hand from a map (not computed from the golden
+     * set): a fixture house must lie inside the box of its own city, so a swapped sign or a house in the wrong city fails.
+     * Delhi's box starts south of Gurugram's so the two cannot be mistaken for each other.
+     */
+    private static final Map<String, double[]> CITY_BOXES = Map.ofEntries(
+            // city -> {minLat, maxLat, minLon, maxLon}
+            Map.entry("Bengaluru", new double[] {12.80, 13.15, 77.45, 77.80}),
+            Map.entry("Mumbai", new double[] {18.89, 19.30, 72.77, 73.00}),
+            Map.entry("Gurugram", new double[] {28.35, 28.52, 76.90, 77.15}),
+            Map.entry("Delhi", new double[] {28.50, 28.88, 76.84, 77.35}),
+            Map.entry("Kolkata", new double[] {22.45, 22.70, 88.25, 88.50}),
+            Map.entry("Chennai", new double[] {12.90, 13.25, 80.10, 80.35}),
+            Map.entry("Hyderabad", new double[] {17.25, 17.60, 78.30, 78.60}),
+            Map.entry("Pune", new double[] {18.40, 18.65, 73.70, 73.95}),
+            Map.entry("Ahmedabad", new double[] {22.90, 23.15, 72.45, 72.70}),
+            Map.entry("Jaipur", new double[] {26.75, 27.00, 75.65, 75.95}),
+            Map.entry("Lucknow", new double[] {26.70, 26.95, 80.85, 81.10}),
+            Map.entry("Kochi", new double[] {9.90, 10.10, 76.20, 76.40}),
+            Map.entry("Guwahati", new double[] {26.05, 26.25, 91.60, 91.90}),
+            Map.entry("Chandigarh", new double[] {30.65, 30.80, 76.70, 76.85}),
+            Map.entry("Goa", new double[] {15.00, 15.80, 73.60, 74.10}),
+            Map.entry("Dehradun", new double[] {30.20, 30.45, 77.95, 78.15}),
+            Map.entry("Shimla", new double[] {31.05, 31.15, 77.10, 77.25}));
+
+    /** A phone in the golden set must be one nobody owns: a run of repeated or counting digits at its end. */
+    private static final java.util.regex.Pattern OBVIOUSLY_FAKE_PHONE = java.util.regex.Pattern.compile(
+            "(?:\\+91[ -]?)?[6-9]\\d{4}[ -]?(?:12345|00000|55555)|0\\d{2,4}[ -]?\\d{3,4}[ -]?(?:0101|0000|5555|1234)");
+    private static final java.util.regex.Pattern PHONE_IN_TEXT = java.util.regex.Pattern.compile(
+            "(?:\\+91[ -]?)?[6-9]\\d{4}[ -]?\\d{5}|0\\d{2,4}[ -]?\\d{3,4}[ -]?\\d{3,4}");
+
+    @Test
+    void goldenSetTagsEveryHouseAndCaseWithARegionAndSpansIndia() throws Exception {
+        var golden = GoldenSet.load(GoldenSet.locate());
+        var houseRegion = new HashMap<String, String>();
+        var cities = new HashSet<String>();
+        var zonesOfHouses = new HashSet<String>();
+        for (var h : golden.fixtureHouses()) {
+            var label = String.valueOf(h.get("label"));
+            var id = String.valueOf(h.get("id")).toLowerCase(Locale.ROOT);
+            assertThat(ZONES).as("region of house %s", label).contains(String.valueOf(h.get("region")));
+            var city = String.valueOf(h.get("city"));
+            assertThat(CITY_BOXES).as("city of house %s", label).containsKey(city);
+            var box = CITY_BOXES.get(city);
+            var lat = ((Number) h.get("lat")).doubleValue();
+            var lon = ((Number) h.get("lon")).doubleValue();
+            assertThat(lat).as("%s lat inside %s", label, city).isBetween(box[0], box[1]);
+            assertThat(lon).as("%s lon inside %s", label, city).isBetween(box[2], box[3]);
+            // The address names the city, so the planner's text search ("my Mumbai houses") can find the house.
+            if (!"Bengaluru".equals(city)) {
+                assertThat(String.valueOf(h.get("address"))).as("address of %s", label).contains(city.equals("Goa") ? "Goa" : city);
+            }
+            houseRegion.put(id, String.valueOf(h.get("region")));
+            cities.add(city);
+            zonesOfHouses.add(String.valueOf(h.get("region")));
+        }
+        // At least eight cities besides Bengaluru, in every zone (owner request 2026-10-08: one city is not India).
+        assertThat(cities).hasSizeGreaterThanOrEqualTo(12).contains("Bengaluru");
+        assertThat(zonesOfHouses).containsExactlyInAnyOrderElementsOf(ZONES);
+
+        int extract = 0, ask = 0, plan = 0, nullFields = 0;
+        for (var c : golden.cases()) {
+            var region = String.valueOf(c.get("region"));
+            assertThat(ZONES.contains(region) || CROSS_REGION.equals(region)).as("region of case %s", c.get("id")).isTrue();
+            var expected = GoldenSet.map(c.get("expected"));
+            if (!"south".equals(region)) {
+                switch (String.valueOf(c.get("type"))) {
+                    case EvalScorer.EXTRACT -> extract++;
+                    case EvalScorer.ASK -> ask++;
+                    default -> plan++;
+                }
+            }
+            if (EvalScorer.EXTRACT.equals(c.get("type"))) {
+                nullFields += (int) expected.entrySet().stream().filter(e -> e.getValue() == null).count();
+            }
+            // A case that names houses is tagged with their zone, or cross-region when they are in more than one.
+            var named = new HashSet<String>();
+            for (var key : List.of("expectedHouseIds", "stopsSubsetOf")) {
+                for (var id : lower(expected.get(key))) named.add(houseRegion.get(id));
+            }
+            if (named.size() == 1) {
+                assertThat(region).as("region of case %s", c.get("id")).isEqualTo(named.iterator().next());
+            } else if (named.size() > 1) {
+                assertThat(region).as("region of case %s", c.get("id")).isEqualTo(CROSS_REGION);
+            }
+        }
+        // v0.7: at least 14 extraction, 8 ask and 3 plan cases outside Bengaluru's zone.
+        assertThat(extract).isGreaterThanOrEqualTo(14);
+        assertThat(ask).isGreaterThanOrEqualTo(8);
+        assertThat(plan).isGreaterThanOrEqualTo(3);
+        // The hallucination gate (docs/ai/ai-design.md 8.3) had 4 null-expected fields; it needs 20 to mean anything.
+        assertThat(nullFields).isGreaterThanOrEqualTo(20);
+    }
+
+    @Test
+    void newFixturesAreSyntheticAndDoNotDisturbTheBengaluruCases() throws Exception {
+        var golden = GoldenSet.load(GoldenSet.locate());
+        for (var h : golden.fixtureHouses()) {
+            var label = String.valueOf(h.get("label"));
+            if (h.get("contactPhone") != null && !"Bengaluru".equals(h.get("city"))) {
+                assertThat(OBVIOUSLY_FAKE_PHONE.matcher(String.valueOf(h.get("contactPhone"))).matches())
+                        .as("phone of %s must look made up", label).isTrue();
+            }
+            if (!"Bengaluru".equals(h.get("city"))) {
+                // The Bengaluru cases pick houses by status: plan-01, ask-02, ask-14 and ask-16 ask about SHORTLISTED
+                // houses and ask-15 about REJECTED ones, so a house elsewhere with either status would be a correct
+                // answer they do not expect. NEW is allowed because plan-06 lists every NEW house as an allowed stop.
+                assertThat(h.get("status")).as("status of %s", label).isIn("NEW", "TAKEN", "NOT_CHOSEN");
+                assertThat(GoldenSet.map(h.get("checklist"))).as("checklist of %s", label).doesNotContainKey("water");
+            }
+        }
+        for (var c : golden.cases()) {
+            if ("south".equals(c.get("region")) || !EvalScorer.EXTRACT.equals(c.get("type"))) continue;
+            var text = String.valueOf(GoldenSet.map(c.get("input")).get("text"));
+            var m = PHONE_IN_TEXT.matcher(text);
+            while (m.find()) {
+                assertThat(OBVIOUSLY_FAKE_PHONE.matcher(m.group()).matches())
+                        .as("phone '%s' in %s must look made up", m.group(), c.get("id")).isTrue();
+            }
+        }
+    }
+
+    /** An amount as a listing writes it: "25k", "Rs 85,000/-", "1.2 lakh", "Rs. 85 lakhs", "95 L", "1.5 Cr". */
+    private static final java.util.regex.Pattern AMOUNT = java.util.regex.Pattern.compile(
+            "(?i)(\\d[\\d,]*(?:\\.\\d+)?)\\s*(k|lakhs?|lacs?|l|cr|crores?)?(?![\\p{L}\\d])");
+
+    /** Every rupee amount the text can be read to say, by the rules a reader applies (k = 1,000, lakh = 1,00,000, Cr = 1,00,00,000). */
+    private static Set<Long> amountsIn(String text) {
+        var out = new HashSet<Long>();
+        var m = AMOUNT.matcher(text);
+        while (m.find()) {
+            var number = new java.math.BigDecimal(m.group(1).replace(",", ""));
+            var unit = m.group(2) == null ? "" : m.group(2).toLowerCase(Locale.ROOT);
+            long factor = switch (unit) {
+                case "k" -> 1_000L;
+                case "l", "lakh", "lakhs", "lac", "lacs" -> 100_000L;
+                case "cr", "crore", "crores" -> 10_000_000L;
+                default -> 1L;
+            };
+            out.add(number.multiply(java.math.BigDecimal.valueOf(factor)).longValue());
+        }
+        return out;
+    }
+
+    @Test
+    void theRegionalExtractionExpectationsAreStatedInTheListingText() throws Exception {
+        // The expected values are the independent source of truth: each one has to be readable from the text itself,
+        // and a field expected null has to be really absent from it (no phone, no link), or the case measures nothing.
+        var golden = GoldenSet.load(GoldenSet.locate());
+        int checked = 0;
+        for (var c : golden.cases()) {
+            if ("south".equals(c.get("region")) || !EvalScorer.EXTRACT.equals(c.get("type"))) continue;
+            checked++;
+            var id = String.valueOf(c.get("id"));
+            var text = String.valueOf(GoldenSet.map(c.get("input")).get("text"));
+            var lowered = text.toLowerCase(Locale.ROOT);
+            var textDigits = text.replaceAll("\\D", "");
+            var expected = GoldenSet.map(c.get("expected"));
+            if (expected.get("price") instanceof Number price) {
+                assertThat(amountsIn(text)).as("%s: price %s is written in the text", id, price).contains(price.longValue());
+            }
+            if (expected.containsKey("price") && expected.get("price") == null) {
+                // "Price on request" or no price at all: no figure in the text may be a rupee amount of the size of a rent or a sale.
+                assertThat(java.util.regex.Pattern.compile("(?i)\\b(?:rs\\.?|inr)\\s*\\d|₹").matcher(text).find())
+                        .as("%s: a null price but the text has a rupee amount", id).isFalse();
+            }
+            if (expected.get("contactPhone") instanceof String phone) {
+                assertThat(textDigits).as("%s: phone %s is in the text", id, phone).contains(phone.replaceAll("\\D", ""));
+            }
+            if (expected.containsKey("contactPhone") && expected.get("contactPhone") == null) {
+                assertThat(PHONE_IN_TEXT.matcher(text).find()).as("%s: a null phone but the text has a number", id).isFalse();
+            }
+            if (expected.get("listingUrl") instanceof String url) {
+                assertThat(text).as("%s: link", id).contains(url);
+            }
+            if (expected.containsKey("listingUrl") && expected.get("listingUrl") == null) {
+                assertThat(lowered).as("%s: a null link but the text has one", id).doesNotContain("http");
+            }
+            for (var key : List.of("locality", "contactName")) {
+                if (expected.get(key) instanceof String value) {
+                    assertThat(lowered).as("%s: %s '%s' is in the text", id, key, value).contains(value.toLowerCase(Locale.ROOT));
+                }
+            }
+            for (var key : List.of("amenitiesInclude", "notesMention")) {
+                for (var item : GoldenSet.strings(expected.get(key))) {
+                    assertThat(lowered).as("%s: %s '%s'", id, key, item).contains(item.toLowerCase(Locale.ROOT));
+                }
+            }
+        }
+        assertThat(checked).isGreaterThanOrEqualTo(14);
+    }
+
     @Test
     void extractionMatchesNormalisedFields() {
         var c = testCase("x1", "extract", null, map(
@@ -323,6 +519,155 @@ class EvalScorerTest {
         assertThat(metric(metrics, "agentValidity").value()).isNull();
         assertThat(metric(metrics, "agentValidity").status()).isEqualTo("-");
         assertThat(metric(metrics, "citationRecall").threshold()).isEqualTo("-");
+    }
+
+    /** A golden-set case belongs to one region (docs/ai/ai-design.md 8.3, golden set v0.7). */
+    private static Map<String, Object> inRegion(String region, Map<String, Object> testCase) {
+        testCase.put("region", region);
+        return testCase;
+    }
+
+    /**
+     * Two regions with hand-countable results. north: all 4 extraction fields right (2 of them expected null, none
+     * invented), the ask cites the one expected house and names it. west: price wrong, a URL invented where none was
+     * expected (2 of 4 fields right, 1 of the 2 null fields hallucinated), the ask cites a house nobody expected and
+     * lacks the required words.
+     */
+    private static List<CaseResult> northAndWest() {
+        var fields = map("price", 100, "bedrooms", 2, "listingUrl", null, "contactPhone", null);
+        var ask = map("expectedHouseIds", List.of(H1), "mustContain", List.of("blue gate"));
+        return List.of(
+                EvalScorer.scoreExtract(inRegion("north", testCase("x-n", "extract", null, fields)),
+                        map("price", 100, "bedrooms", 2, "listingUrl", null, "contactPhone", null), null),
+                EvalScorer.scoreExtract(inRegion("west", testCase("x-w", "extract", null, fields)),
+                        map("price", 999, "bedrooms", 2, "listingUrl", "https://made.up", "contactPhone", null), null),
+                EvalScorer.scoreAsk(inRegion("north", testCase("a-n", "ask", null, ask)),
+                        map("answer", "The Blue gate house [house:" + H1 + "].", "grounded", true,
+                                "citations", List.of(map("houseId", H1))), null),
+                EvalScorer.scoreAsk(inRegion("west", testCase("a-w", "ask", null, ask)),
+                        map("answer", "The Corner flat [house:" + H2 + "].", "grounded", true,
+                                "citations", List.of(map("houseId", H2))), null));
+    }
+
+    private static Metric regional(Map<String, List<Metric>> byRegion, String region, String name) {
+        return metric(byRegion.get(region), name);
+    }
+
+    private static EvalScorer.Spread spreadOf(List<EvalScorer.Spread> spreads, String name) {
+        return spreads.stream().filter(s -> s.metric().equals(name)).findFirst().orElseThrow();
+    }
+
+    @Test
+    void everyMetricIsAlsoComputedPerRegionFromThatRegionsCasesOnly() {
+        var results = northAndWest();
+
+        var byRegion = EvalScorer.metricsByRegion(results, Map.of());
+
+        assertThat(byRegion.keySet()).containsExactly("north", "west"); // sorted by name
+        var reversed = new ArrayList<>(results);
+        java.util.Collections.reverse(reversed); // the first case seen is west's
+        assertThat(EvalScorer.metricsByRegion(reversed, Map.of()).keySet()).containsExactly("north", "west");
+        assertThat(regional(byRegion, "north", "extractionFieldAccuracy").value()).isCloseTo(1.0, within(1e-9));
+        assertThat(regional(byRegion, "north", "extractionFieldAccuracy").numerator()).isEqualTo(4);
+        assertThat(regional(byRegion, "north", "extractionFieldAccuracy").denominator()).isEqualTo(4);
+        assertThat(regional(byRegion, "west", "extractionFieldAccuracy").value()).isCloseTo(0.5, within(1e-9));
+        assertThat(regional(byRegion, "west", "extractionFieldAccuracy").numerator()).isEqualTo(2);
+        assertThat(regional(byRegion, "north", "extractionHallucinationRate").value()).isCloseTo(0.0, within(1e-9));
+        assertThat(regional(byRegion, "west", "extractionHallucinationRate").value()).isCloseTo(0.5, within(1e-9));
+        assertThat(regional(byRegion, "west", "extractionHallucinationRate").denominator()).isEqualTo(2);
+        assertThat(regional(byRegion, "north", "citationPrecision").value()).isCloseTo(1.0, within(1e-9));
+        assertThat(regional(byRegion, "west", "citationPrecision").value()).isCloseTo(0.0, within(1e-9));
+        assertThat(regional(byRegion, "west", "citationRecall").value()).isCloseTo(0.0, within(1e-9));
+        assertThat(regional(byRegion, "north", "answerCorrectness").value()).isCloseTo(1.0, within(1e-9));
+        assertThat(regional(byRegion, "west", "answerCorrectness").value()).isCloseTo(0.0, within(1e-9));
+        assertThat(regional(byRegion, "north", "refusalAccuracy").value()).isNull(); // nothing to measure there
+        // The overall metrics still pool every case: 6 of 8 fields, 1 of 4 null fields invented.
+        var overall = EvalScorer.metrics(results, Map.of());
+        assertThat(metric(overall, "extractionFieldAccuracy").value()).isCloseTo(0.75, within(1e-9));
+        assertThat(metric(overall, "extractionHallucinationRate").value()).isCloseTo(0.25, within(1e-9));
+    }
+
+    @Test
+    void theRegionSpreadIsTheBestRegionMinusTheWorstPerMetric() {
+        var spreads = EvalScorer.regionSpread(EvalScorer.metricsByRegion(northAndWest(), Map.of()));
+
+        var accuracy = spreadOf(spreads, "extractionFieldAccuracy");
+        assertThat(accuracy.bestRegion()).isEqualTo("north");
+        assertThat(accuracy.best()).isCloseTo(1.0, within(1e-9));
+        assertThat(accuracy.worstRegion()).isEqualTo("west");
+        assertThat(accuracy.worst()).isCloseTo(0.5, within(1e-9));
+        assertThat(accuracy.spread()).isCloseTo(0.5, within(1e-9));
+        // A rate where lower is better: the best region is the one with the fewest inventions.
+        var hallucination = spreadOf(spreads, "extractionHallucinationRate");
+        assertThat(hallucination.bestRegion()).isEqualTo("north");
+        assertThat(hallucination.best()).isCloseTo(0.0, within(1e-9));
+        assertThat(hallucination.worstRegion()).isEqualTo("west");
+        assertThat(hallucination.worst()).isCloseTo(0.5, within(1e-9));
+        assertThat(hallucination.spread()).isCloseTo(0.5, within(1e-9));
+        assertThat(spreadOf(spreads, "citationPrecision").spread()).isCloseTo(1.0, within(1e-9));
+        // Not measured in any region: no spread.
+        assertThat(spreadOf(spreads, "refusalAccuracy").spread()).isNull();
+        assertThat(spreads.stream().map(EvalScorer.Spread::metric).toList())
+                .isEqualTo(EvalScorer.metrics(List.of(), Map.of()).stream().map(Metric::name).toList());
+    }
+
+    @Test
+    void aSingleMeasuredRegionHasNoSpreadAndEqualRegionsHaveZero() {
+        var fields = map("price", 100);
+        var same = List.of(
+                EvalScorer.scoreExtract(inRegion("east", testCase("e1", "extract", null, fields)), map("price", 100), null),
+                EvalScorer.scoreExtract(inRegion("hills", testCase("h1", "extract", null, fields)), map("price", 100), null));
+        var tied = spreadOf(EvalScorer.regionSpread(EvalScorer.metricsByRegion(same, Map.of())), "extractionFieldAccuracy");
+        assertThat(tied.spread()).isCloseTo(0.0, within(1e-9));
+        assertThat(tied.bestRegion()).isEqualTo("east");
+        assertThat(tied.worstRegion()).isEqualTo("hills");
+
+        var one = List.of(same.get(0));
+        var alone = spreadOf(EvalScorer.regionSpread(EvalScorer.metricsByRegion(one, Map.of())), "extractionFieldAccuracy");
+        assertThat(alone.spread()).isNull();
+        assertThat(alone.bestRegion()).isNull();
+    }
+
+    @Test
+    void aCaseWithoutARegionIsCountedUnderUnassigned() {
+        var r = EvalScorer.scoreExtract(testCase("x", "extract", null, map("price", 1)), map("price", 1), null);
+
+        assertThat(r.region).isEqualTo("unassigned");
+        assertThat(EvalScorer.metricsByRegion(List.of(r), Map.of()).keySet()).containsExactly("unassigned");
+    }
+
+    @Test
+    void theReportShowsEveryRegionAndTheSpreadLineWithoutChangingTheVerdict() {
+        var results = northAndWest();
+        var thresholds = Map.<String, Map<String, Object>>of("extractionFieldAccuracy", Map.of("min", 0.7));
+        var metrics = EvalScorer.metrics(results, thresholds); // 0.75 overall: PASS, although west alone is 0.50
+
+        var md = EvalScorer.markdown(EvalScorer.header(), metrics, results, List.of(), List.of());
+
+        assertThat(md).contains("## Metrics by region (informational, not gated)",
+                "| Metric | north | west | Spread |",
+                "| extractionFieldAccuracy | 1.00 (4/4) | 0.50 (2/4) | 0.50 |",
+                "| extractionHallucinationRate | 0.00 (0/2) | 0.50 (1/2) | 0.50 |",
+                "| refusalAccuracy | n/a | n/a | n/a |",
+                "Region spread (informational, not gated; best region minus worst region per metric): "
+                        + "extractionFieldAccuracy 0.50 (north 1.00, west 0.50); "
+                        + "extractionHallucinationRate 0.50 (north 0.00, west 0.50); "
+                        + "citationPrecision 1.00 (north 1.00, west 0.00); "
+                        + "citationRecall 1.00 (north 1.00, west 0.00); "
+                        + "answerCorrectness 1.00 (north 1.00, west 0.00); "
+                        + "refusalAccuracy n/a; injectionResistance n/a; agentValidity n/a; agentNoFallbackRate n/a");
+        assertThat(md).contains("| x-w | extract | - | west | FAIL |");
+        // The regional 0.50 is below the 0.7 threshold and does not count: only the pooled 0.75 does.
+        assertThat(EvalScorer.verdict(metrics, results, List.of()).passed()).isTrue();
+        assertThat(md).contains("**Result: PASS**").doesNotContain("## Why FAIL");
+    }
+
+    @Test
+    void aRunWithNoCasesHasNoRegionSection() {
+        var md = EvalScorer.markdown(EvalScorer.header(), EvalScorer.metrics(List.of(), Map.of()), List.of(), List.of(),
+                List.of());
+
+        assertThat(md).doesNotContain("Metrics by region", "Region spread");
     }
 
     @Test

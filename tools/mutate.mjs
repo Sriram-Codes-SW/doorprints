@@ -29,6 +29,10 @@
 // `npx ng test --watch=false --include=<spec>` in web/. Exit 1 when any mutation survives (no failing test, or none
 // with the expected name). Plain Node, no dependencies.
 //
+// Server code: a list with a "maven" array runs `mvn -B -ntp -q <those arguments> test` in backend/ instead (for example
+// ["-Dtest=EvalScorerTest"]) and reads Surefire's `<class>.<method> ... <<< FAILURE!` lines. Extra Maven arguments (such
+// as -o for offline, or a JAVA_HOME on the PATH) come from the environment variable MUTATE_MAVEN_ARGS.
+//
 // Android and iPhone code (S4b-FR-39): a list with a "gradle" array runs `./gradlew <those arguments>` in android/
 // instead (for example [":ui:testAndroidHostTest", "--tests", "app.doorprints.ui.TourTest"]) and reads Gradle's
 // `<class> > <test> FAILED` lines; `spec` is then only the test file's name for the log. Extra Gradle arguments (such as
@@ -50,6 +54,13 @@ export function failingTests(output) {
 export function gradleFailingTests(output) {
   const clean = output.replace(/\x1b\[[0-9;]*m/g, '');
   return [...clean.matchAll(/^(\S+) > (.+?) FAILED\s*$/gm)].map((m) => `${m[1]} > ${m[2].trim()}`);
+}
+
+/** Names of the failing tests in Surefire's output (`app.x.FooTest.method -- Time elapsed: 0.1 s <<< FAILURE!`, or `<<< ERROR!`). */
+export function mavenFailingTests(output) {
+  const clean = output.replace(/\x1b\[[0-9;]*m/g, '');
+  const names = [...clean.matchAll(/^\[ERROR\] (\S+)\.([^.\s]+) -- Time elapsed: [^<]*<<< (?:FAILURE|ERROR)!\s*$/gm)].map((m) => `${m[1]} > ${m[2]}`);
+  return [...new Set(names)];
 }
 
 /** The mutated text, or an error string when `find` does not occur exactly once. */
@@ -79,6 +90,16 @@ function runGradle(gradle) {
   return { output: (r.stdout || '') + (r.stderr || ''), status: r.status };
 }
 
+function runMaven(args) {
+  const extra = (process.env.MUTATE_MAVEN_ARGS || '').split(/\s+/).filter(Boolean);
+  const r = spawnSync('mvn', ['-B', '-ntp', '-q', '-Dsurefire.failIfNoSpecifiedTests=false', ...extra, ...args, 'test'], {
+    cwd: path.join(ROOT, 'backend'),
+    encoding: 'utf8',
+    maxBuffer: 256 * 1024 * 1024,
+  });
+  return { output: (r.stdout || '') + (r.stderr || ''), status: r.status };
+}
+
 function runSpec(spec) {
   const r = spawnSync('npx', ['ng', 'test', '--watch=false', `--include=**/${path.basename(spec)}`], {
     cwd: path.join(ROOT, 'web'),
@@ -94,9 +115,15 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     console.error('Usage: node tools/mutate.mjs tools/mutations/<name>.json');
     process.exit(2);
   }
-  const { spec, mutations, gradle } = JSON.parse(fs.readFileSync(listFile, 'utf8'));
+  const { spec, mutations, gradle, maven } = JSON.parse(fs.readFileSync(listFile, 'utf8'));
   // One way to run the spec and read its failures, whichever stack it is on.
   const failures = () => {
+    if (maven) {
+      const run = runMaven(maven);
+      const found = mavenFailingTests(run.output);
+      // A mutation that does not compile fails the build without a failing test: that is not a kill.
+      return found.length === 0 && run.status !== 0 ? ['BUILD FAILED without a failing test'] : found;
+    }
     if (!gradle) return failingTests(runSpec(spec));
     const run = runGradle(gradle);
     const found = gradleFailingTests(run.output);

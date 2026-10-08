@@ -65,6 +65,21 @@ class DraftSanitizerTest {
         assertThat(w).hasSize(2);
     }
 
+    /**
+     * KNOWN GAP S4b-BL-174b (docs/10 S4b-BL-174): a price or a bedroom count the model copies in the digits of an Indian
+     * script ("২৫,০০০" is 25,000 in Bengali) is dropped with a warning, because the regular expressions read 0-9 only.
+     * The user loses a field to retype; nothing wrong is saved. The wanted answers are 25000 and 2; when the gap is
+     * closed (in the three sanitisers together, with a shared vector) this test turns into the assertion of those.
+     */
+    @Test
+    void aPriceOrBedroomCountInNativeDigitsIsDroppedWithAWarningUntilTheGapIsClosed() {
+        var w = new ArrayList<String>();
+        assertThat(DraftSanitizer.price("\u09E8\u09EB,\u09E6\u09E6\u09E6", w)).isNull();
+        assertThat(DraftSanitizer.bedrooms("\u09E8 BHK", w)).isNull();
+        assertThat(w).containsExactly("price: could not read '\u09E8\u09EB,\u09E6\u09E6\u09E6', dropped",
+                "bedrooms: could not read '\u09E8 BHK', dropped");
+    }
+
     @Test
     void dropsHallucinatedPhoneAndUrl() {
         var d = DraftSanitizer.sanitize(raw("x", "28000", "RENT", "2", "+91 99999 00000",

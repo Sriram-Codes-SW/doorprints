@@ -449,6 +449,413 @@ internal val PARITY_VECTORS_JSON: String = listOf(
     "phone" : null,
     "input" : "Mail aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@example.com now",
     "expected" : "Mail [email] now"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "Call +91 98200 12345 now",
+    "expected" : "Call [phone] now"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "Call 098200 12345 now",
+    "expected" : "Call [phone] now"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "Call 98200-12345",
+    "expected" : "Call [phone]"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "Call 98200.12345.",
+    "expected" : "Call [phone]."
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "Call 98200 12345 / 98200 12346",
+    "expected" : "Call [phone] / [phone]"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "Call 9820012345",
+    "expected" : "Call [phone]"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "Call +91-98200-12345",
+    "expected" : "Call [phone]"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "Call +91 (98200) 12345",
+    "expected" : "Call [phone]"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "Call 91 98200 12345",
+    "expected" : "Call [phone]"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "Call 0091 98200 12345",
+    "expected" : "Call 0091 [phone]"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "Office 011-4155 0101",
+    "expected" : "Office [phone]"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "Office 022 2655 0101",
+    "expected" : "Office [phone]"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "Office 033 2359 0101",
+    "expected" : "Office [phone]"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "Office 040-2354 0000",
+    "expected" : "Office [phone]"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "Office 044 2434 5555",
+    "expected" : "Office [phone]"
+  }, {
+    "method" : "generic",
+    "name" : null,
+""",
+    """    "phone" : null,
+    "input" : "Office 0484 235 1234",
+    "expected" : "Office [phone]"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "Office 0361 245 5555",
+    "expected" : "Office [phone]"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "Office 0172-270 0000",
+    "expected" : "Office [phone]"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "Office 0135 274 1234",
+    "expected" : "Office [phone]"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "Office 0177-265 1234",
+    "expected" : "Office [phone]"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "Office 01141550101",
+    "expected" : "Office [phone]"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "Office (022) 2655 0101",
+    "expected" : "Office [phone]"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "Office (080) 23456789",
+    "expected" : "Office [phone]"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "Office +91-22-2655 0101",
+    "expected" : "Office [phone]"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "Office 079-2630 1234 / 079-2630 1235",
+    "expected" : "Office [phone] / [phone]"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "Bandra West, Mumbai 400050, flat 1203",
+    "expected" : "Bandra West, Mumbai 400050, flat 1203"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "Rent Rs 85,000/-, deposit Rs 5,10,000",
+    "expected" : "Rent Rs 85,000/-, deposit Rs 5,10,000"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "Price Rs 12,34,567 only",
+    "expected" : "Price Rs 12,34,567 only"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "Plot 4/12, Sector 56, Gurugram 122011",
+    "expected" : "Plot 4/12, Sector 56, Gurugram 122011"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "1.2 lakh per month, 1800 sq ft, 3rd floor",
+    "expected" : "1.2 lakh per month, 1800 sq ft, 3rd floor"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "Visit on 08-10-2026 at 5 pm",
+    "expected" : "Visit on 08-10-2026 at 5 pm"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "Pincode 682030, Kochi",
+    "expected" : "Pincode 682030, Kochi"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "Rent 28000 deposit 280000",
+    "expected" : "Rent 28000 deposit 280000"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "هاتف ٩٨٢٠٠ ١٢٣٤٥",
+    "expected" : "هاتف [phone]",
+    "note" : "Arabic-Indic digits"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "فون ۹۸۲۰۰ ۱۲۳۴۵",
+    "expected" : "فون [phone]",
+    "note" : "Extended Arabic-Indic digits"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "फोन ९८२०० १२३४५",
+    "expected" : "फोन [phone]",
+    "note" : "Devanagari digits"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "ফোন ৯৮২০০ ১২৩৪৫",
+    "expected" : "ফোন [phone]",
+    "note" : "Bengali digits"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "ਫ਼ੋਨ ੯੮੨੦੦ ੧੨੩੪੫",
+    "expected" : "ਫ਼ੋਨ [phone]",
+    "note" : "Gurmukhi digits"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "ફોન ૯૮૨૦૦ ૧૨૩૪૫",
+    "expected" : "ફોન [phone]",
+    "note" : "Gujarati digits"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "ଫୋନ ୯୮୨୦୦ ୧୨୩୪୫",
+    "expected" : "ଫୋନ [phone]",
+    "note" : "Odia digits"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "தொலைபேசி ௯௮௨௦௦ ௧௨௩௪௫",
+    "expected" : "தொலைபேசி [phone]",
+    "note" : "Tamil digits"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "ఫోన్ ౯౮౨౦౦ ౧౨౩౪౫",
+    "expected" : "ఫోన్ [phone]",
+    "note" : "Telugu digits"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "ಫೋನ್ ೯೮೨೦೦ ೧೨೩೪೫",
+    "expected" : "ಫೋನ್ [phone]",
+    "note" : "Kannada digits"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "ഫോൺ ൯൮൨൦൦ ൧൨൩൪൫",
+    "expected" : "ഫോൺ [phone]",
+    "note" : "Malayalam digits"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "ऑफिस ०११-४१५५ ०१०१",
+    "expected" : "ऑफिस [phone]",
+    "note" : "Devanagari digits, a Delhi landline"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "+91 ९८२०० 12345",
+    "expected" : "[phone]",
+    "note" : "Latin and Devanagari digits in one number"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "किराया ८५,००० रुपये, फ्लैट १२०३",
+    "expected" : "किराया ८५,००० रुपये, फ्लैट १२०३",
+    "note" : "a price and a door number in Devanagari digits are not a phone"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "ফ্ল্যাট ১২০৩, পিন ৭০০০৩৩",
+    "expected" : "ফ্ল্যাট ১২০৩, পিন ৭০০০৩৩",
+    "note" : "a door number and a PIN code in Bengali digits are not a phone"
+  }, {
+    "method" : "freeText",
+    "name" : "Pravin Kulkarni",
+    "phone" : "98900 55555",
+    "input" : "फोन ९८९०० ५५५५५",
+    "expected" : "फोन [phone]",
+    "note" : "the saved number written in Devanagari digits"
+  }, {
+    "method" : "place",
+    "name" : null,
+    "phone" : null,
+    "input" : "Plot 4, ফোন ৯৮২০০ ১২৩৪৫",
+    "expected" : "Plot 4, ফোন [phone]",
+    "note" : "a place field with a phone in Bengali digits"
+  }, {
+    "method" : "freeText",
+    "name" : "Hiren Patel",
+    "phone" : "+91 98250 12345",
+    "input" : "Hiren bhai 98250-12345 / 079-2630 1234",
+    "expected" : "[contact] bhai [phone] / [phone]"
+  }, {
+    "method" : "freeText",
+    "name" : "Pravin Kulkarni",
+    "phone" : "98900 55555",
+    "input" : "प्रवीण जी: Pravin Kulkarni 9890055555",
+    "expected" : "प्रवीण जी: [contact] [phone]"
+  }, {
+    "method" : "freeText",
+    "name" : null,
+    "phone" : "080 2345 6789",
+    "input" : "call 080-2345-6789 or +91 80 2345 6789",
+    "expected" : "call [phone] or +91 [phone]"
+  }, {
+    "method" : "freeText",
+    "name" : null,
+    "phone" : "080 2345 6789",
+    "input" : "reach the office on 2345 6789",
+    "expected" : "reach the office on 2345 6789",
+    "knownGap" : "S4b-BL-174a",
+    "wanted" : "reach the office on [phone]"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "फोन ९८२०० १२३४५, mail anil@example.com",
+    "expected" : "फोन [phone], mail [email]",
+    "note" : "a phone in Devanagari digits beside an email address"
+  }, {
+    "method" : "freeText",
+    "name" : "Anil Verma",
+    "phone" : null,
+    "input" : "९८२०० १२३४५,anil@example.com",
+    "expected" : "[phone],[email]",
+    "note" : "Devanagari digits then an address, no space between"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "९८२००१२३४५@example.com",
+    "expected" : "[phone]@example.com",
+    "note" : "the number goes before the email rule runs, as for 9820012345@example.com below"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "9820012345@example.com",
+    "expected" : "[phone]@example.com",
+    "note" : "the Latin-digit twin of the case above"
+  }, {
+    "method" : "freeText",
+    "name" : "Pravin Kulkarni",
+    "phone" : "98900 55555",
+    "input" : "९८९०० ५५५५५ pravin@example.com",
+    "expected" : "[phone] [email]",
+    "note" : "the saved number in Devanagari digits, then an address that holds a name part"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "Office (022) 2655 0101,ravi@b.in",
+    "expected" : "Office [phone],[email]",
+    "note" : "a parenthesised STD code beside an email address"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "Call (0484) 235 1234 or office1234567890@x.in",
+    "expected" : "Call [phone] or [email]",
+    "note" : "ten digits inside an email local part are not a phone"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "Mail रमेश९८२००१२३४५@example.com now",
+    "expected" : "Mail [email] now",
+    "note" : "native digits inside an email local part go with the address"
+  }, {
+    "method" : "freeText",
+    "name" : null,
+    "phone" : "1234 5678",
+    "input" : "Call १२३४ ५६७८ now",
+    "expected" : "Call [phone] now",
+    "note" : "a saved 8-digit number written in Devanagari digits: only the saved-number rule can see it, the phone-like rule needs 10"
   } ],
   "sanitize" : [ {
     "raw" : {
@@ -517,8 +924,7 @@ internal val PARITY_VECTORS_JSON: String = listOf(
       "label" : "House",
       "address" : null,
       "street" : null,
-""",
-    """      "locality" : null,
+      "locality" : null,
       "price" : 8500000,
       "priceType" : "RENT",
       "bedrooms" : null,
@@ -628,12 +1034,385 @@ internal val PARITY_VECTORS_JSON: String = listOf(
       "price" : null,
       "priceType" : null,
       "bedrooms" : null,
-      "contactName" : null,
+""",
+    """      "contactName" : null,
       "contactPhone" : null,
       "listingUrl" : null,
       "notes" : null,
       "amenities" : [ ],
       "warnings" : [ "Model returned nothing usable" ]
+    }
+  }, {
+    "raw" : {
+      "label" : "1BHK furnished flat, Bandra West",
+      "locality" : "Bandra West",
+      "price" : "Rs 85,000/-",
+      "priceType" : "RENT",
+      "bedrooms" : "1 BHK",
+      "contactName" : "Amit",
+      "contactPhone" : "98200 12345",
+      "listingUrl" : null,
+      "notes" : "Deposit 6 months. Carpet 520 sq ft. Bachelors not allowed.",
+      "amenities" : [ "Furnished" ]
+    },
+    "source" : "FOR RENT: 1 BHK FULLY FURNISHED FLAT AT BANDRA WEST NEAR LINKING ROAD. RENT Rs 85,000/- PER MONTH. DEPOSIT 6 MONTHS. 520 SQ FT CARPET. BACHELORS NOT ALLOWED. CALL NOW 98200 12345 - AMIT",
+    "expected" : {
+      "label" : "1BHK furnished flat, Bandra West",
+      "address" : null,
+      "street" : null,
+      "locality" : "Bandra West",
+      "price" : 85000,
+      "priceType" : "RENT",
+      "bedrooms" : 1,
+      "contactName" : "Amit",
+      "contactPhone" : "98200 12345",
+      "listingUrl" : null,
+      "notes" : "Deposit 6 months. Carpet 520 sq ft. Bachelors not allowed.",
+      "amenities" : [ "furnished" ],
+      "warnings" : [ ]
+    }
+  }, {
+    "raw" : {
+      "locality" : "Sector 56",
+      "price" : "65k",
+      "priceType" : "rent",
+      "bedrooms" : "3BHK",
+      "contactPhone" : "+91 99100 12345"
+    },
+    "source" : "Gurgaon Sector 56 mein 3BHK flat kiraye pe hai. Rent 65k mahina, deposit 2 mahine ka. Phone 99100 12345.",
+    "expected" : {
+      "label" : "3BHK in Sector 56",
+      "address" : null,
+      "street" : null,
+      "locality" : "Sector 56",
+      "price" : 65000,
+      "priceType" : "RENT",
+      "bedrooms" : 3,
+      "contactName" : null,
+      "contactPhone" : "+91 99100 12345",
+      "listingUrl" : null,
+      "notes" : null,
+      "amenities" : [ ],
+      "warnings" : [ "label: generated because the model returned none" ]
+    }
+  }, {
+    "raw" : {
+      "label" : "4BHK kothi, Gomti Nagar",
+      "price" : "1.2 lakh/month",
+      "priceType" : "RENTAL",
+      "bedrooms" : "4"
+    },
+    "source" : "4BHK independent kothi for rent at Gomti Nagar, Lucknow. Rent 1.2 lakh/month. DM for details.",
+    "expected" : {
+      "label" : "4BHK kothi, Gomti Nagar",
+      "address" : null,
+      "street" : null,
+      "locality" : null,
+      "price" : 120000,
+      "priceType" : "RENT",
+      "bedrooms" : 4,
+      "contactName" : null,
+      "contactPhone" : null,
+      "listingUrl" : null,
+      "notes" : null,
+      "amenities" : [ ],
+      "warnings" : [ ]
+    }
+  }, {
+    "raw" : {
+      "label" : "2BHK in Baner",
+      "price" : "Rs. 85 lakhs",
+      "priceType" : "resale",
+      "bedrooms" : "2 BHK",
+      "contactPhone" : "98900 55555"
+    },
+    "source" : "Baner, Pune - 2 BHK flat for sale. Rs. 85 lakhs (negotiable). Sampark: Pravin 98900 55555.",
+    "expected" : {
+      "label" : "2BHK in Baner",
+      "address" : null,
+      "street" : null,
+      "locality" : null,
+      "price" : 8500000,
+      "priceType" : "SALE",
+      "bedrooms" : 2,
+      "contactName" : null,
+      "contactPhone" : "98900 55555",
+      "listingUrl" : null,
+      "notes" : null,
+      "amenities" : [ ],
+      "warnings" : [ ]
+    }
+  }, {
+    "raw" : {
+      "label" : "3BHK house, Sanjauli",
+      "price" : "₹ 95 L",
+      "priceType" : "SALE",
+      "bedrooms" : "3BHK"
+    },
+    "source" : "FOR SALE: 3BHK house with garden, Sanjauli, Shimla. Asking ₹ 95 L. Owner not sharing phone.",
+    "expected" : {
+      "label" : "3BHK house, Sanjauli",
+      "address" : null,
+      "street" : null,
+      "locality" : null,
+      "price" : 9500000,
+      "priceType" : "SALE",
+      "bedrooms" : 3,
+      "contactName" : null,
+      "contactPhone" : null,
+      "listingUrl" : null,
+      "notes" : null,
+      "amenities" : [ ],
+      "warnings" : [ ]
+    }
+  }, {
+    "raw" : {
+      "label" : "Beltola duplex",
+      "price" : "1.5 Cr fixed",
+      "priceType" : "SALE",
+      "bedrooms" : "3",
+      "listingUrl" : "https://example.com/ghy/beltola-duplex"
+    },
+    "source" : "FOR SALE: 3BHK duplex, Beltola, Guwahati. Price 1.5 Cr fixed. Details: https://example.com/ghy/beltola-duplex",
+    "expected" : {
+      "label" : "Beltola duplex",
+      "address" : null,
+      "street" : null,
+      "locality" : null,
+      "price" : 15000000,
+      "priceType" : "SALE",
+      "bedrooms" : 3,
+      "contactName" : null,
+      "contactPhone" : null,
+      "listingUrl" : "https://example.com/ghy/beltola-duplex",
+      "notes" : null,
+      "amenities" : [ ],
+      "warnings" : [ ]
+    }
+  }, {
+    "raw" : {
+      "label" : "Salt Lake 4BHK",
+      "price" : "₹1,25,000",
+      "priceType" : "RENT",
+      "bedrooms" : "4 BHK"
+    },
+    "source" : "Salt Lake flat to let, ₹1,25,000 per month for a big 4BHK.",
+    "expected" : {
+      "label" : "Salt Lake 4BHK",
+      "address" : null,
+      "street" : null,
+      "locality" : null,
+      "price" : 125000,
+      "priceType" : "RENT",
+      "bedrooms" : 4,
+      "contactName" : null,
+      "contactPhone" : null,
+      "listingUrl" : null,
+      "notes" : null,
+      "amenities" : [ ],
+      "warnings" : [ ]
+    }
+  }, {
+    "raw" : {
+      "label" : "Banjara Hills villa",
+      "price" : "Rs 12,34,567",
+      "priceType" : "SALE"
+    },
+    "source" : "Villa at Banjara Hills for Rs 12,34,567 only.",
+    "expected" : {
+      "label" : "Banjara Hills villa",
+      "address" : null,
+      "street" : null,
+      "locality" : null,
+      "price" : 1234567,
+      "priceType" : "SALE",
+      "bedrooms" : null,
+      "contactName" : null,
+      "contactPhone" : null,
+      "listingUrl" : null,
+      "notes" : null,
+      "amenities" : [ ],
+      "warnings" : [ ]
+    }
+  }, {
+    "raw" : {
+      "label" : "Banjara Hills villa",
+      "price" : "Rs 4.5 Cr",
+      "priceType" : "SALE",
+      "contactPhone" : "90000 12345"
+    },
+    "source" : "Banjara Hills villa, Rs 4.5 Cr, call 90000 12345",
+    "expected" : {
+      "label" : "Banjara Hills villa",
+      "address" : null,
+      "street" : null,
+      "locality" : null,
+      "price" : 45000000,
+      "priceType" : "SALE",
+      "bedrooms" : null,
+      "contactName" : null,
+      "contactPhone" : "90000 12345",
+      "listingUrl" : null,
+      "notes" : null,
+      "amenities" : [ ],
+      "warnings" : [ ]
+    }
+  }, {
+    "raw" : {
+      "label" : "Ballygunge 2BHK",
+      "price" : "Price on request",
+      "priceType" : "SALE",
+      "bedrooms" : "2BHK",
+      "contactName" : "Banerjee",
+      "contactPhone" : "033 2464 5555"
+    },
+    "source" : "Ballygunge Phari 2BHK for sale, 1100 sq ft. Price on request, call for the rate. Mr. Banerjee 033-2464 5555.",
+    "expected" : {
+      "label" : "Ballygunge 2BHK",
+      "address" : null,
+      "street" : null,
+      "locality" : null,
+      "price" : null,
+      "priceType" : "SALE",
+      "bedrooms" : 2,
+      "contactName" : "Banerjee",
+      "contactPhone" : "033 2464 5555",
+      "listingUrl" : null,
+      "notes" : null,
+      "amenities" : [ ],
+      "warnings" : [ "price: could not read 'Price on request', dropped" ]
+    }
+  }, {
+    "raw" : {
+      "label" : "Salt Lake flat",
+      "contactName" : "Dipankar Dutta",
+      "contactPhone" : "033 2359 0101"
+    },
+    "source" : "Dipankar Dutta - 033-2359-0101",
+    "expected" : {
+      "label" : "Salt Lake flat",
+      "address" : null,
+      "street" : null,
+      "locality" : null,
+      "price" : null,
+      "priceType" : null,
+      "bedrooms" : null,
+      "contactName" : "Dipankar Dutta",
+      "contactPhone" : "033 2359 0101",
+      "listingUrl" : null,
+      "notes" : null,
+      "amenities" : [ ],
+      "warnings" : [ ]
+    }
+  }, {
+    "raw" : {
+      "label" : "Powai 2BHK",
+      "contactPhone" : "+91 98200 12345"
+    },
+    "source" : "Powai 2BHK in Hiranandani. Message me. 98200 12346",
+    "expected" : {
+      "label" : "Powai 2BHK",
+      "address" : null,
+      "street" : null,
+      "locality" : null,
+      "price" : null,
+      "priceType" : null,
+      "bedrooms" : null,
+      "contactName" : null,
+      "contactPhone" : null,
+      "listingUrl" : null,
+      "notes" : null,
+      "amenities" : [ ],
+      "warnings" : [ "contactPhone: not found in the listing text, dropped" ]
+    }
+  }, {
+    "raw" : {
+      "locality" : "Rajpur Road",
+      "bedrooms" : "2.5 BHK"
+    },
+    "source" : "Rajpur Road, Dehradun: 2.5 BHK flat for rent.",
+    "expected" : {
+      "label" : "2BHK in Rajpur Road",
+      "address" : null,
+      "street" : null,
+      "locality" : "Rajpur Road",
+      "price" : null,
+      "priceType" : null,
+      "bedrooms" : 2,
+      "contactName" : null,
+      "contactPhone" : null,
+      "listingUrl" : null,
+      "notes" : null,
+      "amenities" : [ ],
+      "warnings" : [ "label: generated because the model returned none" ]
+    }
+  }, {
+    "raw" : {
+      "locality" : "Velachery",
+      "price" : "₹9,500",
+      "bedrooms" : "1RK"
+    },
+    "source" : "Velachery 1RK ₹9,500 only.",
+    "expected" : {
+      "label" : "Studio in Velachery",
+      "address" : null,
+      "street" : null,
+      "locality" : "Velachery",
+      "price" : 9500,
+      "priceType" : null,
+      "bedrooms" : 0,
+      "contactName" : null,
+      "contactPhone" : null,
+      "listingUrl" : null,
+      "notes" : null,
+      "amenities" : [ ],
+      "warnings" : [ "label: generated because the model returned none" ]
+    }
+  }, {
+    "raw" : {
+      "locality" : "Candolim",
+      "bedrooms" : "4+1 BHK"
+    },
+    "source" : "4+1 BHK villa for sale in Candolim",
+    "expected" : {
+      "label" : "4BHK in Candolim",
+      "address" : null,
+      "street" : null,
+      "locality" : "Candolim",
+      "price" : null,
+      "priceType" : null,
+      "bedrooms" : 4,
+      "contactName" : null,
+      "contactPhone" : null,
+      "listingUrl" : null,
+      "notes" : null,
+      "amenities" : [ ],
+      "warnings" : [ "label: generated because the model returned none" ]
+    }
+  }, {
+    "raw" : {
+      "label" : "Jaipur 2BHK",
+      "locality" : "मालवीय नगर (Malviya Nagar)",
+      "price" : "22,000",
+      "priceType" : "RENT",
+      "notes" : "सिक्योरिटी 2 महीने",
+      "amenities" : [ "Lift", "LIFT", "lift ", "लिफ्ट" ]
+    },
+    "source" : "Jaipur flat. किराया ₹22,000 प्रति माह.",
+    "expected" : {
+      "label" : "Jaipur 2BHK",
+      "address" : null,
+      "street" : null,
+      "locality" : "मालवीय नगर (Malviya Nagar)",
+      "price" : 22000,
+      "priceType" : "RENT",
+      "bedrooms" : null,
+      "contactName" : null,
+      "contactPhone" : null,
+      "listingUrl" : null,
+      "notes" : "सिक्योरिटी 2 महीने",
+      "amenities" : [ "lift", "लिफ्ट" ],
+      "warnings" : [ ]
     }
   } ],
   "snippet" : [ {
@@ -761,7 +1540,8 @@ internal val PARITY_VECTORS_JSON: String = listOf(
           "description" : "Contact person name",
           "nullable" : true
         },
-        "contactPhone" : {
+""",
+    """        "contactPhone" : {
           "type" : "string",
           "description" : "Contact phone number exactly as written",
           "nullable" : true
@@ -909,8 +1689,7 @@ internal val PARITY_VECTORS_JSON: String = listOf(
           }
         }
       }
-""",
-    """    },
+    },
     "strict" : {
       "type" : "object",
       "properties" : {
@@ -1062,7 +1841,8 @@ internal val PARITY_VECTORS_JSON: String = listOf(
       "max_tokens" : 2048,
       "messages" : [ {
         "role" : "system",
-        "content" : "You extract house listings.\n\nReply with only a JSON object of this shape: {\"type\":\"object\",\"properties\":{\"label\":{\"type\":[\"string\",\"null\"],\"description\":\"Short human label, e.g. '2BHK near Indiranagar metro'\"},\"address\":{\"type\":[\"string\",\"null\"],\"description\":\"Full postal address as written in the listing\"},\"street\":{\"type\":[\"string\",\"null\"],\"description\":\"Street / road name only\"},\"locality\":{\"type\":[\"string\",\"null\"],\"description\":\"Locality / neighbourhood / area\"},\"price\":{\"type\":[\"string\",\"null\"],\"description\":\"Monthly rent or sale price in rupees exactly as written, e.g. '25,000' or '1.2 Cr'\"},\"priceType\":{\"type\":[\"string\",\"null\"],\"description\":\"RENT or SALE\"},\"bedrooms\":{\"type\":[\"string\",\"null\"],\"description\":\"Number of bedrooms, e.g. '2' for 2BHK\"},\"contactName\":{\"type\":[\"string\",\"null\"],\"description\":\"Contact person name\"},\"contactPhone\":{\"type\":[\"string\",\"null\"],\"description\":\"Contact phone number exactly as written\"},\"listingUrl\":{\"type\":[\"string\",\"null\"],\"description\":\"Listing URL if one is present in the text\"},\"notes\":{\"type\":[\"string\",\"null\"],\"description\":\"Other useful facts (deposit, floor, furnishing, availability) in one short paragraph\"},\"amenities\":{\"type\":\"array\",\"description\":\"Amenities such as parking, lift, power backup, gym\",\"items\":{\"type\":\"string\"}}},\"required\":[\"label\",\"address\",\"street\",\"locality\",\"price\",\"priceType\",\"bedrooms\",\"contactName\",\"contactPhone\",\"listingUrl\",\"notes\",\"amenities\"],\"additionalProperties\":false}"
+""",
+    """        "content" : "You extract house listings.\n\nReply with only a JSON object of this shape: {\"type\":\"object\",\"properties\":{\"label\":{\"type\":[\"string\",\"null\"],\"description\":\"Short human label, e.g. '2BHK near Indiranagar metro'\"},\"address\":{\"type\":[\"string\",\"null\"],\"description\":\"Full postal address as written in the listing\"},\"street\":{\"type\":[\"string\",\"null\"],\"description\":\"Street / road name only\"},\"locality\":{\"type\":[\"string\",\"null\"],\"description\":\"Locality / neighbourhood / area\"},\"price\":{\"type\":[\"string\",\"null\"],\"description\":\"Monthly rent or sale price in rupees exactly as written, e.g. '25,000' or '1.2 Cr'\"},\"priceType\":{\"type\":[\"string\",\"null\"],\"description\":\"RENT or SALE\"},\"bedrooms\":{\"type\":[\"string\",\"null\"],\"description\":\"Number of bedrooms, e.g. '2' for 2BHK\"},\"contactName\":{\"type\":[\"string\",\"null\"],\"description\":\"Contact person name\"},\"contactPhone\":{\"type\":[\"string\",\"null\"],\"description\":\"Contact phone number exactly as written\"},\"listingUrl\":{\"type\":[\"string\",\"null\"],\"description\":\"Listing URL if one is present in the text\"},\"notes\":{\"type\":[\"string\",\"null\"],\"description\":\"Other useful facts (deposit, floor, furnishing, availability) in one short paragraph\"},\"amenities\":{\"type\":\"array\",\"description\":\"Amenities such as parking, lift, power backup, gym\",\"items\":{\"type\":\"string\"}}},\"required\":[\"label\",\"address\",\"street\",\"locality\",\"price\",\"priceType\",\"bedrooms\",\"contactName\",\"contactPhone\",\"listingUrl\",\"notes\",\"amenities\"],\"additionalProperties\":false}"
       }, {
         "role" : "user",
         "content" : "Two bedroom flat in Indiranagar, rent 25,000."
@@ -1230,8 +2010,7 @@ internal val PARITY_VECTORS_JSON: String = listOf(
     }
   } ],
   "openaiContent" : [ {
-""",
-    """    "response" : "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"{\\\"answer\\\":\\\"Yes\\\",\\\"citedHouseIds\\\":[]}\"}}]}",
+    "response" : "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"{\\\"answer\\\":\\\"Yes\\\",\\\"citedHouseIds\\\":[]}\"}}]}",
     "expected" : {
       "text" : "{\"answer\":\"Yes\",\"citedHouseIds\":[]}"
     }
@@ -1505,7 +2284,8 @@ internal val PARITY_VECTORS_JSON: String = listOf(
       "action" : "error",
       "kind" : "rateLimited",
       "retryAfterSeconds" : null
-    }
+""",
+    """    }
   }, {
     "provider" : "anthropic",
     "status" : 429,
@@ -1811,8 +2591,7 @@ internal val PARITY_VECTORS_JSON: String = listOf(
               "type" : [ "string", "null" ],
               "description" : "Street / road name only"
             },
-""",
-    """            "locality" : {
+            "locality" : {
               "type" : [ "string", "null" ],
               "description" : "Locality / neighbourhood / area"
             },
@@ -2003,7 +2782,8 @@ internal val PARITY_VECTORS_JSON: String = listOf(
     "response" : "{\"id\":\"msg_test\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"test-model\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_test\",\"name\":\"answer\",\"input\":{\"answer\":\"Yes\",\"citedHouseIds\":[]}}],\"stop_reason\":\"end_turn\"}",
     "expected" : {
       "text" : "{\"answer\":\"Yes\",\"citedHouseIds\":[]}"
-    }
+""",
+    """    }
   }, {
     "call" : "generate",
     "response" : "{\"id\":\"msg_test\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"test-model\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_test\",\"name\":\"answer\",\"input\":{\"answer\":\"Yes, bal\"}}],\"stop_reason\":\"max_tokens\"}",
@@ -2070,6 +2850,267 @@ internal val PARITY_VECTORS_JSON: String = listOf(
     "expected" : {
       "error" : "unavailable"
     }
+  } ],
+  "routes" : [ {
+    "name" : "Mumbai, one afternoon: Bandra station, Bandra West, Powai, Andheri East",
+    "start" : [ 19.0544, 72.8402 ],
+    "points" : [ [ "bandra", 19.0596, 72.8295 ], [ "powai", 19.1176, 72.906 ], [ "andheri", 19.1136, 72.8697 ] ],
+    "nearestNeighbour" : [ {
+      "id" : "bandra",
+      "meters" : 1265,
+      "walkMinutes" : 21
+    }, {
+      "id" : "andheri",
+      "meters" : 7342,
+      "walkMinutes" : 120
+    }, {
+      "id" : "powai",
+      "meters" : 3840,
+      "walkMinutes" : 63
+    } ],
+    "inOrder" : [ {
+      "id" : "bandra",
+      "meters" : 1265,
+      "walkMinutes" : 21
+    }, {
+      "id" : "powai",
+      "meters" : 10306,
+      "walkMinutes" : 168
+    }, {
+      "id" : "andheri",
+      "meters" : 3840,
+      "walkMinutes" : 63
+    } ]
+  }, {
+    "name" : "Chennai to Guwahati: 2,600 km is one leg, and the estimate does not pretend to be a walk",
+    "start" : [ 13.0827, 80.2707 ],
+    "points" : [ [ "adyar", 13.0012, 80.2565 ], [ "beltola", 26.125, 91.8 ], [ "velachery", 13.0067, 80.2206 ] ],
+    "nearestNeighbour" : [ {
+      "id" : "adyar",
+      "meters" : 9192,
+      "walkMinutes" : 150
+    }, {
+      "id" : "velachery",
+      "meters" : 3937,
+      "walkMinutes" : 64
+    }, {
+      "id" : "beltola",
+      "meters" : 1894792,
+      "walkMinutes" : 30791
+    } ],
+    "inOrder" : [ {
+      "id" : "adyar",
+      "meters" : 9192,
+      "walkMinutes" : 150
+    }, {
+      "id" : "beltola",
+      "meters" : 1892885,
+      "walkMinutes" : 30760
+    }, {
+      "id" : "velachery",
+      "meters" : 1894792,
+      "walkMinutes" : 30791
+    } ]
+  }, {
+    "name" : "India extremes from Kanyakumari: Lakshadweep, Port Blair, Srinagar, Kutch, Arunachal, Indira Point",
+    "start" : [ 8.0883, 77.5385 ],
+    "points" : [ [ "kavaratti", 10.5626, 72.6369 ], [ "port-blair", 11.6234, 92.7265 ], [ "srinagar", 34.0837, 74.7973 ], [ "guhar-moti", 23.72, 68.12 ], [ "kibithu", 28.2, 97.0 ], [ "indira-point", 6.7456, 93.8403 ] ],
+    "nearestNeighbour" : [ {
+      "id" : "kavaratti",
+      "meters" : 604074,
+      "walkMinutes" : 9817
+    }, {
+      "id" : "guhar-moti",
+      "meters" : 1539323,
+      "walkMinutes" : 25015
+    }, {
+      "id" : "srinagar",
+      "meters" : 1322193,
+      "walkMinutes" : 21486
+    }, {
+      "id" : "kibithu",
+      "meters" : 2206731,
+      "walkMinutes" : 35860
+    }, {
+      "id" : "port-blair",
+      "meters" : 1896096,
+      "walkMinutes" : 30812
+    }, {
+      "id" : "indira-point",
+      "meters" : 555988,
+      "walkMinutes" : 9035
+    } ],
+    "inOrder" : [ {
+      "id" : "kavaratti",
+      "meters" : 604074,
+      "walkMinutes" : 9817
+    }, {
+      "id" : "port-blair",
+      "meters" : 2194844,
+      "walkMinutes" : 35667
+    }, {
+      "id" : "srinagar",
+      "meters" : 3088928,
+      "walkMinutes" : 50196
+    }, {
+      "id" : "guhar-moti",
+      "meters" : 1322193,
+      "walkMinutes" : 21486
+    }, {
+      "id" : "kibithu",
+      "meters" : 2922813,
+      "walkMinutes" : 47496
+    }, {
+      "id" : "indira-point",
+      "meters" : 2408693,
+      "walkMinutes" : 39142
+    } ]
+  }, {
+    "name" : "Hills: Dehradun, Mussoorie, Rishikesh, Haridwar",
+    "start" : [ 30.3243, 78.0415 ],
+    "points" : [ [ "mussoorie", 30.4598, 78.0664 ], [ "rishikesh", 30.0869, 78.2676 ], [ "haridwar", 29.9457, 78.1642 ] ],
+    "nearestNeighbour" : [ {
+      "id" : "mussoorie",
+      "meters" : 15255,
+      "walkMinutes" : 248
+    }, {
+      "id" : "rishikesh",
+      "meters" : 45745,
+      "walkMinutes" : 744
+    }, {
+      "id" : "haridwar",
+      "meters" : 18591,
+      "walkMinutes" : 303
+    } ],
+    "inOrder" : [ {
+      "id" : "mussoorie",
+      "meters" : 15255,
+      "walkMinutes" : 248
+    }, {
+      "id" : "rishikesh",
+      "meters" : 45745,
+      "walkMinutes" : 744
+    }, {
+      "id" : "haridwar",
+      "meters" : 18591,
+      "walkMinutes" : 303
+    } ]
+  }, {
+    "name" : "Two flats in one tower (same coordinates): the first in the list is first",
+    "start" : [ 31.1048, 77.1734 ],
+    "points" : [ [ "sanjauli-a", 31.101, 77.202 ], [ "sanjauli-b", 31.101, 77.202 ], [ "chotta-shimla", 31.094, 77.185 ] ],
+    "nearestNeighbour" : [ {
+      "id" : "chotta-shimla",
+      "meters" : 1632,
+      "walkMinutes" : 27
+    }, {
+      "id" : "sanjauli-a",
+      "meters" : 1796,
+      "walkMinutes" : 30
+    }, {
+      "id" : "sanjauli-b",
+      "meters" : 0,
+      "walkMinutes" : 0
+    } ],
+    "inOrder" : [ {
+      "id" : "sanjauli-a",
+      "meters" : 2756,
+      "walkMinutes" : 45
+    }, {
+      "id" : "sanjauli-b",
+      "meters" : 0,
+      "walkMinutes" : 0
+    }, {
+      "id" : "chotta-shimla",
+      "meters" : 1796,
+      "walkMinutes" : 30
+    } ]
+  }, {
+    "name" : "One house",
+    "start" : [ 22.5867, 88.4171 ],
+    "points" : [ [ "ballygunge", 22.529, 88.365 ] ],
+    "nearestNeighbour" : [ {
+      "id" : "ballygunge",
+      "meters" : 8354,
+      "walkMinutes" : 136
+    } ],
+    "inOrder" : [ {
+      "id" : "ballygunge",
+      "meters" : 8354,
+      "walkMinutes" : 136
+    } ]
+  }, {
+    "name" : "No houses",
+    "start" : [ 12.9716, 77.5946 ],
+    "points" : [ ],
+    "nearestNeighbour" : [ ],
+    "inOrder" : [ ]
+  }, {
+    "name" : "Start on the house: 0 m, 0 minutes",
+    "start" : [ 26.85, 81.0 ],
+    "points" : [ [ "gomti-nagar", 26.85, 81.0 ] ],
+    "nearestNeighbour" : [ {
+      "id" : "gomti-nagar",
+      "meters" : 0,
+      "walkMinutes" : 0
+    } ],
+    "inOrder" : [ {
+      "id" : "gomti-nagar",
+      "meters" : 0,
+      "walkMinutes" : 0
+    } ]
+  } ],
+  "rupees" : [ {
+    "amount" : 0,
+    "expected" : "₹0"
+  }, {
+    "amount" : 999,
+    "expected" : "₹999"
+  }, {
+    "amount" : 1000,
+    "expected" : "₹1,000"
+  }, {
+    "amount" : 9500,
+    "expected" : "₹9,500"
+  }, {
+    "amount" : 22000,
+    "expected" : "₹22,000"
+  }, {
+    "amount" : 28000,
+    "expected" : "₹28,000"
+  }, {
+    "amount" : 85000,
+    "expected" : "₹85,000"
+  }, {
+    "amount" : 99999,
+    "expected" : "₹99,999"
+  }, {
+    "amount" : 100000,
+    "expected" : "₹1,00,000"
+  }, {
+    "amount" : 120000,
+    "expected" : "₹1,20,000"
+  }, {
+    "amount" : 1234567,
+    "expected" : "₹12,34,567"
+  }, {
+    "amount" : 8500000,
+    "expected" : "₹85,00,000"
+  }, {
+    "amount" : 12500000,
+    "expected" : "₹1,25,00,000"
+  }, {
+    "amount" : 28000000,
+    "expected" : "₹2,80,00,000"
+  }, {
+    "amount" : 45000000,
+    "expected" : "₹4,50,00,000"
+  }, {
+    "amount" : 100000000,
+    "expected" : "₹10,00,00,000"
+  }, {
+    "amount" : 1234567890,
+    "expected" : "₹1,23,45,67,890"
   } ],
   "answerText" : [ {
     "context" : "",

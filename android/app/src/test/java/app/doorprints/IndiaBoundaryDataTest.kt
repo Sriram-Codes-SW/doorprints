@@ -102,6 +102,28 @@ class IndiaBoundaryDataTest {
         ).forEach { (name, p) -> assertFalse(name, inside(p, rings)) }
     }
 
+    /**
+     * S4b-BL-174: the table of places across India that the web spec reads too (docs/schemas/india-place-vectors.json):
+     * the held areas hold exactly the places the table says Pakistan or China holds, and every Indian place, from
+     * Kanyakumari to Ladakh, Arunachal Pradesh, Sikkim, the islands and Kutch, is outside.
+     */
+    @Test
+    fun everyPlaceOfTheSharedTableIsInsideTheHeldAreasOnlyWhenTheTableSaysSo() {
+        val geometry = IndiaViewRules.heldAreasGeometry(locate(HELD_APP_COPY).readText(Charsets.UTF_8))
+        val rings = Json.parseToJsonElement(geometry!!).jsonObject.getValue("coordinates").jsonArray.map { ring ->
+            ring.jsonArray.map { p -> p.jsonArray.let { it[0].jsonPrimitive.double to it[1].jsonPrimitive.double } }
+        }
+        val places = Json.parseToJsonElement(locate("docs/schemas/india-place-vectors.json").readText(Charsets.UTF_8))
+            .jsonObject.getValue("places").jsonArray.map { it.jsonObject }
+        assertEquals(55, places.size)
+        assertEquals(12, places.count { "heldBy" in it })
+        for (p in places) {
+            val name = p.getValue("name").jsonPrimitive.content
+            val at = p.getValue("lon").jsonPrimitive.double to p.getValue("lat").jsonPrimitive.double
+            assertEquals(name, "heldBy" in p, inside(at, rings))
+        }
+    }
+
     /** Ray casting in longitude and latitude (the renderers work in Mercator; for whole towns the answer is the same). */
     private fun inside(p: Pair<Double, Double>, rings: List<List<Pair<Double, Double>>>): Boolean {
         var odd = false

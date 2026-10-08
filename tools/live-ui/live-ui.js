@@ -32,7 +32,10 @@
 // matrix takes about 12-15 minutes. A network fault that a second fetch clears (a 502, a stylesheet with the wrong
 // type through a proxy) is reported under "transient" in results.json, not counted as a failure.
 // It adds and then deletes two "UI test" houses in a fresh browser profile; nothing leaves the browser (the mobile
-// pass adds one house per phone profile, which goes with the profile).
+// pass adds one house per phone profile, which goes with the profile). The houses are in different places: REGIONS
+// below rotates the city, the address, the locality and the coordinates of every house the run adds (by viewport, by
+// phone and language, by page-matrix pass), so one run covers eight cities in seven zones of India (S4b-BL-174); the
+// checks stay the same for all of them, plus one that the saved house shows its own locality.
 // `--trace` runs ONLY the path trace scenario (docs/11 5.27.8 and 5.27.13, S4b-FR-15, S4b-FR-17, S4b-FR-24), after a merge
 // that deploys web/**: in a fresh browser profile with the geolocation permission and a place the test moves
 // (setGeolocation), it switches the trace on, presses Start a walk, walks 30 steps of 22 m, presses Finish walk and Keep for
@@ -61,6 +64,24 @@ const check = (area, name, ok, detail = '') => {
 const ROUTES = ['/', '/compare', '/data', '/connect', '/ask', '/plan', '/share', '/houses/new?lat=12.9716&lon=77.5946', '/does-not-exist'];
 const LANGS = ['en', 'hi', 'ta', 'te'];
 const THEMES = ['light', 'dark'];
+/**
+ * Where the test houses are (S4b-BL-174): eight cities in seven zones, public localities, invented streets' worth of
+ * address. The first is the place every run used before, so index 0 keeps its old behaviour. A caller picks by its own
+ * index (viewport, phone and language, pass), never by a shared counter, because the areas run side by side.
+ */
+const REGIONS = [
+  { zone: 'south', city: 'Bengaluru', locality: 'Indiranagar', address: '12th Main, Indiranagar, Bengaluru', lat: 12.9716, lon: 77.5946 },
+  { zone: 'west', city: 'Mumbai', locality: 'Bandra West', address: 'Hill Road, Bandra West, Mumbai', lat: 19.0596, lon: 72.8295 },
+  { zone: 'north', city: 'Gurugram', locality: 'Sector 56', address: 'Golf Course Extension Road, Sector 56, Gurugram', lat: 28.422, lon: 77.1 },
+  { zone: 'east', city: 'Kolkata', locality: 'Salt Lake', address: 'Sector III, Salt Lake City, Kolkata', lat: 22.5867, lon: 88.4171 },
+  { zone: 'coast', city: 'Kochi', locality: 'Kakkanad', address: 'Seaport Airport Road, Kakkanad, Kochi', lat: 10.0159, lon: 76.3419 },
+  { zone: 'north-east', city: 'Guwahati', locality: 'Beltola', address: 'Beltola Road, Beltola, Guwahati', lat: 26.125, lon: 91.8 },
+  { zone: 'hills', city: 'Shimla', locality: 'Sanjauli', address: 'Sanjauli Chowk, Sanjauli, Shimla', lat: 31.101, lon: 77.202 },
+  { zone: 'south', city: 'Hyderabad', locality: 'Gachibowli', address: 'Nanakramguda Road, Gachibowli, Hyderabad', lat: 17.4401, lon: 78.3489 },
+];
+const regionAt = (i) => REGIONS[i % REGIONS.length];
+/** The form's address of a region: the page for a new house at its coordinates. */
+const newHouseUrl = (r) => `/houses/new?lat=${r.lat}&lon=${r.lon}`;
 const VIEWPORTS = { phone: { width: 390, height: 844 }, desktop: { width: 1280, height: 900 } };
 const IGNORE_CONSOLE = [/tiles\.openfreemap\.org.*(ERR_|40[34])/i, /favicon/i];
 
@@ -222,11 +243,15 @@ async function settle(page) {
 }
 
 async function pageMatrix(browser) {
+  let pass = 0;
   for (const vp of Object.keys(VIEWPORTS)) for (const theme of THEMES) for (const lang of LANGS) {
     const ctx = await newCtx(browser, { lang, theme, vp, bypassCSP: true });
     const page = await ctx.newPage();
     const errors = watch(page);
-    for (const route of ROUTES) {
+    const place = regionAt(pass++);
+    for (const listed of ROUTES) {
+      // The "new house" form opens at this pass's place; every other route is as listed.
+      const route = listed === ROUTES[7] ? newHouseUrl(place) : listed;
       const tag = `${route} ${lang} ${theme} ${vp}`;
       await page.waitForTimeout(300);
       errors.reset();
@@ -275,9 +300,15 @@ async function flows(browser) {
     const page = await ctx.newPage();
     const errors = watch(page);
     const name = `UI test ${vp} ${Date.now()}`;
-    const addHouse = async (label, lat, lon) => {
-      await gotoRetry(page, `${BASE}/houses/new?lat=${lat}&lon=${lon}`); await settle(page);
+    // Two places per viewport: the phone's are regions 0 and 1, the desktop's 2 and 3 (REGIONS).
+    const vpIndex = Object.keys(VIEWPORTS).indexOf(vp);
+    const placeB = regionAt(2 * vpIndex + 1);
+    const placeA = regionAt(2 * vpIndex);
+    const addHouse = async (label, place) => {
+      await gotoRetry(page, `${BASE}${newHouseUrl(place)}`); await settle(page);
       await page.locator('#house-name').fill(label);
+      await page.locator('#house-address').fill(place.address);
+      await page.locator('#house-locality').fill(place.locality);
       await page.locator('#house-price').fill('25000');
       await page.locator('#house-bhk').fill('2');
       await page.locator('#house-notes').fill('Created by the live UI test.');
@@ -285,8 +316,8 @@ async function flows(browser) {
       await page.waitForURL(/\/houses\/(?!new)[^/?]+/, { timeout: 15000 }).catch(() => {});
       return (/\/houses\/([^/?]+)/.exec(page.url()) || [])[1];
     };
-    const id2 = await addHouse(`${name} B`, 12.975, 77.60);
-    const id = await addHouse(name, 12.9716, 77.5946);
+    const id2 = await addHouse(`${name} B`, placeB);
+    const id = await addHouse(name, placeA);
     check('flow', `${vp}: add two houses`, !!id && id !== 'new' && !!id2 && id2 !== 'new', page.url());
     // Edit and save
     await page.locator('#house-notes').fill('Edited by the live UI test.');
@@ -294,6 +325,8 @@ async function flows(browser) {
     await page.waitForTimeout(1500);
     await page.reload(); await settle(page);
     check('flow', `${vp}: edit persists after reload`, (await page.locator('#house-notes').inputValue()) === 'Edited by the live UI test.');
+    // The one place-specific check: the saved house shows the locality it was given, whichever city that is.
+    check('flow', `${vp}: the saved house shows its locality (${placeA.city}, ${placeA.zone})`, (await page.locator('#house-locality').inputValue()) === placeA.locality);
     // In the list and on Compare
     await gotoRetry(page, `${BASE}/`); await settle(page);
     check('flow', `${vp}: both houses in the list`, (await page.getByText(name, { exact: true }).count()) > 0 && (await page.getByText(`${name} B`).count()) > 0);
@@ -463,7 +496,9 @@ function mobileAudit() {
 }
 
 async function mobile(browser) {
+  let combo = 0; // phone, language and theme, in order: picks this profile's place (REGIONS)
   for (const phone of PHONES) for (const lang of phone.langs) for (const theme of phone.themes && lang === 'en' ? phone.themes : ['light']) {
+    const place = regionAt(combo++);
     const { defaultBrowserType, ...profile } = devices[phone.device];
     const viewport = phone.viewport || profile.viewport;
     const ctx = await browser.newContext({ ...profile, viewport, screen: viewport, colorScheme: theme, serviceWorkers: 'block' });
@@ -485,8 +520,10 @@ async function mobile(browser) {
     // One house is added after the routes, so its page is checked too (it goes with this profile). Not before: the Map
     // page's first visit would fit to it at street level, and the labels check looks at the country view.
     const addHouse = async () => {
-      await gotoRetry(page, `${BASE}/houses/new?lat=12.9716&lon=77.5946`); await settle(page);
-      await page.locator('#house-name').fill('Mobile check: a house with a fairly long name, Indiranagar 2nd Stage');
+      await gotoRetry(page, `${BASE}${newHouseUrl(place)}`); await settle(page);
+      await page.locator('#house-name').fill(`Mobile check: a house with a fairly long name, ${place.locality} 2nd Stage`);
+      await page.locator('#house-address').fill(place.address);
+      await page.locator('#house-locality').fill(place.locality);
       await page.locator('.toolbar .btn-primary').first().click();
       await page.waitForURL(/\/houses\/(?!new)[^/?]+/, { timeout: 15000 }).catch(() => {});
       const id = (/\/houses\/(?!new)([^/?]+)/.exec(page.url()) || [])[1];
@@ -503,6 +540,7 @@ async function mobile(browser) {
       if (route === '/') await page.waitForTimeout(CREDITS_FOLD_MS + 1500);
       const found = await page.evaluate(mobileAudit);
       check('mobile', `${tag}: layout`, found.length === 0, found.join(' ; '));
+      if (listed === 'HOUSE') check('mobile', `${tag0}: the saved house shows its locality (${place.city}, ${place.zone})`, (await page.locator('#house-locality').inputValue().catch(() => '')) === place.locality);
       if (route === '/' && viewport.width <= 640) {
         const open = await page.evaluate(() => { const a = document.querySelector('.map-wrap .maplibregl-ctrl-attrib'); return a ? a.classList.contains('maplibregl-compact-show') : null; });
         check('mobile', `${tag}: map credits folded after ${CREDITS_FOLD_MS / 1000} s`, open !== true, String(open));

@@ -8,14 +8,14 @@
   "mutations": [
     {
       "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/ContactRedactor.kt",
-      "find": "EMAIL_LIKE.replace(PHONE_LIKE.replace(out, PHONE), EMAIL)",
-      "replace": "PHONE_LIKE.replace(out, PHONE)",
+      "find": "EMAIL_LIKE.replace(replaceInDigits(PHONE_LIKE, out), EMAIL)",
+      "replace": "replaceInDigits(PHONE_LIKE, out)",
       "expect": "emailAddressesAreRemovedWholeBeforeTheNameParts"
     },
     {
       "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/ContactRedactor.kt",
-      "find": "EMAIL_LIKE.replace(PHONE_LIKE.replace(text, PHONE), EMAIL)",
-      "replace": "PHONE_LIKE.replace(text, PHONE)",
+      "find": "EMAIL_LIKE.replace(replaceInDigits(PHONE_LIKE, text), EMAIL)",
+      "replace": "replaceInDigits(PHONE_LIKE, text)",
       "expect": "emailAddressesAreRemovedWholeBeforeTheNameParts"
     },
     {

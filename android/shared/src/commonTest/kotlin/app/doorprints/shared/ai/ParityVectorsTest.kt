@@ -37,6 +37,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
 
 /**
  * On-device AI treats text exactly as the server does (docs/03 §13.1, ADR-26): the shared vectors in
@@ -69,7 +70,18 @@ class ParityVectorsTest {
             }
             assertEquals(str(o["expected"]), actual, "${o["method"]} $name / $phone: $input")
         }
-        assertEquals(71, cases.size)
+        assertEquals(134, cases.size)
+    }
+
+    /**
+     * S4b-BL-174: a known gap is written down, not hidden. `expected` is what the ports do today (the test above checks
+     * it); `wanted` is what they should do. Closing the gap means copying `wanted` over `expected` and dropping both keys.
+     */
+    @Test
+    fun theKnownGapsOfContactRemovalNameTheirBacklogRow() {
+        val gaps = root.getValue("redact").jsonArray.map { it.jsonObject }.filter { "knownGap" in it }
+        assertEquals(listOf("S4b-BL-174a"), gaps.map { str(it["knownGap"]) })
+        for (g in gaps) assertNotEquals(str(g["expected"]), str(g["wanted"]))
     }
 
     @Test
@@ -84,6 +96,7 @@ class ParityVectorsTest {
 
     @Test
     fun listingChecksMatchTheServer() {
+        assertEquals(24, root.getValue("sanitize").jsonArray.size)
         for (c in root.getValue("sanitize").jsonArray) {
             val o = c.jsonObject
             val raw = o["raw"].takeUnless { it is JsonNull }?.let { json.decodeFromJsonElement<RawListing>(it) }
@@ -107,17 +120,29 @@ class ParityVectorsTest {
 
     @Test
     fun walkingRoutesMatchTheServer() {
-        val route = root.getValue("route").jsonObject
+        checkRoute(root.getValue("route").jsonObject)
+    }
+
+    /** S4b-BL-174: the routes across India; their expected legs come from an independent haversine, not from any port. */
+    @Test
+    fun walkingRoutesAcrossIndiaMatchTheirIndependentlyComputedLegs() {
+        val routes = root.getValue("routes").jsonArray
+        assertEquals(8, routes.size)
+        for (r in routes) checkRoute(r.jsonObject)
+    }
+
+    private fun checkRoute(route: JsonObject) {
         val start = route.getValue("start").jsonArray
         val points = route.getValue("points").jsonArray.map {
             val p = it.jsonArray
             RouteOptimizer.Point(str(p[0])!!, p[1].jsonPrimitive.double, p[2].jsonPrimitive.double)
         }
+        val name = str(route["name"]) ?: "route"
         fun check(key: String, legs: List<RouteOptimizer.Leg>) {
             val expected = route.getValue(key).jsonArray.map { it.jsonObject }
-            assertEquals(expected.map { str(it["id"]) }, legs.map { it.to.id }, key)
-            assertEquals(expected.map { it.getValue("meters").jsonPrimitive.long }, legs.map { RouteOptimizer.roundHalfUp(it.meters) }, key)
-            assertEquals(expected.map { it.getValue("walkMinutes").jsonPrimitive.long.toInt() }, legs.map { it.walkMinutes }, key)
+            assertEquals(expected.map { str(it["id"]) }, legs.map { it.to.id }, "$name $key")
+            assertEquals(expected.map { it.getValue("meters").jsonPrimitive.long }, legs.map { RouteOptimizer.roundHalfUp(it.meters) }, "$name $key")
+            assertEquals(expected.map { it.getValue("walkMinutes").jsonPrimitive.long.toInt() }, legs.map { it.walkMinutes }, "$name $key")
         }
         val lat = start[0].jsonPrimitive.double
         val lon = start[1].jsonPrimitive.double

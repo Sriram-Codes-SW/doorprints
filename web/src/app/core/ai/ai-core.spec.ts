@@ -32,7 +32,7 @@ import { inTheRunning } from '../../shared/house-status';
  */
 describe('AI core parity with the server', () => {
   it('removes contacts as the server does', () => {
-    expect(vectors.redact).toHaveLength(71);
+    expect(vectors.redact).toHaveLength(134);
     for (const c of vectors.redact) {
       const r = new Redactor(c.name, c.phone);
       const actual = c.method === 'place' ? r.place(c.input)
@@ -41,6 +41,14 @@ describe('AI core parity with the server', () => {
             : redactGeneric(c.input);
       expect(actual, `${c.method} ${c.name} / ${c.phone}: ${c.input}`).toBe((c as { expected: string }).expected);
     }
+  });
+
+  it('documents each known gap of the contact removal and says which backlog row closes it (S4b-BL-174)', () => {
+    const gaps = (vectors.redact as { knownGap?: string; wanted?: string; expected: string }[]).filter((c) => c.knownGap);
+    expect(gaps.map((c) => c.knownGap)).toEqual(['S4b-BL-174a']);
+    // `expected` is what the ports do today (the loop above checks it); `wanted` is what they should do. Fixing the gap
+    // means copying `wanted` over `expected` and dropping the two keys, so they may never already be equal.
+    for (const c of gaps) expect(c.wanted).not.toBe(c.expected);
   });
 
   it('removes an email address whole, before the name parts', () => {
@@ -79,6 +87,7 @@ describe('AI core parity with the server', () => {
   });
 
   it('checks listings as the server does', () => {
+    expect(vectors.sanitize).toHaveLength(24);
     for (const c of vectors.sanitize) {
       // Slice 1a: the draft carries `areaSqft` (the no-AI parser fills it); the sanitiser leaves it null, and the
       // vectors predate the field, so it is compared only once a vector says what the server writes there.
@@ -94,13 +103,23 @@ describe('AI core parity with the server', () => {
     for (const c of vectors.inlineIds as { input: string; expected: string[] }[]) expect(inlineIds(c.input)).toEqual(c.expected);
   });
 
-  it('walks routes as the server does', () => {
-    const r = vectors.route as { start: number[]; points: [string, number, number][]; nearestNeighbour: { id: string; meters: number; walkMinutes: number }[]; inOrder: { id: string; meters: number; walkMinutes: number }[] };
+  type Route = { name?: string; start: number[]; points: [string, number, number][]; nearestNeighbour: { id: string; meters: number; walkMinutes: number }[]; inOrder: { id: string; meters: number; walkMinutes: number }[] };
+  const walks = (r: Route) => {
     const points = r.points.map(([id, lat, lon]) => ({ id, lat, lon }));
     const shape = (legs: { to: { id: string }; meters: number; walkMinutes: number }[]) =>
       legs.map((l) => ({ id: l.to.id, meters: roundHalfUp(l.meters), walkMinutes: l.walkMinutes }));
-    expect(shape(nearestNeighbour(r.start[0], r.start[1], points))).toEqual(r.nearestNeighbour);
-    expect(shape(legsInOrder(r.start[0], r.start[1], points))).toEqual(r.inOrder);
+    expect(shape(nearestNeighbour(r.start[0], r.start[1], points)), r.name).toEqual(r.nearestNeighbour);
+    expect(shape(legsInOrder(r.start[0], r.start[1], points)), r.name).toEqual(r.inOrder);
+  };
+
+  it('walks routes as the server does', () => {
+    walks(vectors.route as Route);
+  });
+
+  it('walks the routes across India as the server does (S4b-BL-174: expected values from an independent haversine)', () => {
+    const routes = vectors.routes as Route[];
+    expect(routes).toHaveLength(8);
+    for (const r of routes) walks(r);
   });
 
   it('cleans a model answer as the server does: links and images lose their address, a foreign address goes (S4b-BL-178)', () => {

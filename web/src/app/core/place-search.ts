@@ -32,7 +32,7 @@ export interface FoundPlace {
   label: string | null;
 }
 
-/** The longest name sent: a locality, or at most an address line. */
+/** The longest name sent, in characters: a locality, or at most an address line. */
 export const MAX_QUERY = 200;
 
 /**
@@ -40,7 +40,9 @@ export const MAX_QUERY = 200;
  * `null` for a blank name: nothing is sent.
  */
 export function searchParams(place: string, language: string): Record<string, string> | null {
-  const q = place.replace(/\s+/g, ' ').trim().slice(0, MAX_QUERY);
+  // Cut on whole characters: a slice by UTF-16 unit can leave half an emoji (a forwarded address has them), which makes the
+  // request's encoding throw.
+  const q = Array.from(place.replace(/\s+/g, ' ').trim()).slice(0, MAX_QUERY).join('').trim();
   if (q === '') return null;
   return { q, format: 'jsonv2', limit: '1', countrycodes: 'in', 'accept-language': language };
 }
