@@ -23,6 +23,7 @@ import app.doorprints.server.common.NotFoundException;
 import app.doorprints.server.house.HouseChangedEvent;
 import app.doorprints.server.sync.ClientClock;
 import app.doorprints.server.sync.SyncVersions;
+import app.doorprints.server.sync.Upsert;
 import jakarta.validation.Valid;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.ResponseEntity;
@@ -30,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -72,7 +74,8 @@ public class VisitController {
     /**
      * Creates or updates a visit from an app (idempotent by id).
      * The sync lock is taken before the row is read, so the last-write-wins check and the write are one step. An
-     * older {@code updatedAt} than the stored one changes nothing and the stored visit is returned. A deleted visit
+     * older {@code updatedAt} than the stored one changes nothing and the stored visit is returned; so does the same
+     * one with the same content (a retried PUT takes no sync version, {@link Upsert}). A deleted visit
      * has its place wiped. The house the visit now belongs to, and the one it left, are announced so their search
      * entries are rebuilt.
      * @throws IllegalArgumentException if {@code leftAt} is before {@code arrivedAt}, or a time is outside the
@@ -88,10 +91,13 @@ public class VisitController {
         if (dto.leftAt() != null && dto.leftAt().isBefore(dto.arrivedAt())) {
             throw new BadRequestException("leftAt must not be before arrivedAt");
         }
-        var visit = repo.findById(id).orElseGet(() -> new Visit(id));
-        if (visit.getUpdatedAt() != null && visit.getUpdatedAt().isAfter(incomingUpdatedAt)) {
-            return VisitDto.from(visit);
+        var stored = repo.findById(id).orElse(null);
+        var decision = Upsert.decide(stored == null ? null : stored.getUpdatedAt(), incomingUpdatedAt,
+                () -> sameContent(stored, dto));
+        if (decision == Upsert.Decision.KEEP_STORED || decision == Upsert.Decision.UNCHANGED) {
+            return VisitDto.from(stored);
         }
+        var visit = stored == null ? new Visit(id) : stored;
         var previousHouseId = visit.getHouseId();
         visit.setHouseId(dto.houseId());
         visit.setLat(dto.lat());
@@ -111,6 +117,22 @@ public class VisitController {
             events.publishEvent(new HouseChangedEvent(previousHouseId));
         }
         return VisitDto.from(saved);
+    }
+
+    /**
+     * True when the pushed visit would change nothing that is stored (the tie rule, {@link Upsert}); two tombstones
+     * are the same, because a delete keeps no place.
+     */
+    private static boolean sameContent(Visit stored, VisitDto dto) {
+        if (dto.deleted() && stored.isDeleted()) return true;
+        return dto.deleted() == stored.isDeleted()
+                && Objects.equals(dto.houseId(), stored.getHouseId())
+                && dto.lat() == stored.getLat()
+                && dto.lon() == stored.getLon()
+                && Objects.equals(dto.street(), stored.getStreet())
+                && Objects.equals(dto.arrivedAt(), stored.getArrivedAt())
+                && Objects.equals(dto.leftAt(), stored.getLeftAt())
+                && (dto.source() == null ? VisitSource.MANUAL : dto.source()) == stored.getSource();
     }
 
     /**

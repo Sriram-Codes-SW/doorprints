@@ -24,6 +24,7 @@ import app.doorprints.server.common.NotFoundException;
 import app.doorprints.server.house.HouseChangedEvent;
 import app.doorprints.server.sync.ClientClock;
 import app.doorprints.server.sync.SyncVersions;
+import app.doorprints.server.sync.Upsert;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Pattern;
@@ -103,7 +104,8 @@ public class RecordController {
     /**
      * Creates or updates one record (idempotent by type and id).
      * The sync lock is taken before the row is read, so the last-write-wins check and the write are one step; a
-     * client stamp older than the stored one changes nothing and the stored record is returned. A tombstone stores an
+     * client stamp older than the stored one changes nothing and the stored record is returned; so does the same
+     * stamp with the same content (a retried PUT takes no sync version, {@link Upsert}). A tombstone stores an
      * empty payload. A new live record is refused with 409 once its type holds {@link #MAX_LIVE_ROWS_PER_TYPE}. The
      * payload is stored as sent, compacted, without being interpreted.
      * @throws IllegalArgumentException if the path and body disagree, or the payload is not a JSON object within
@@ -123,10 +125,13 @@ public class RecordController {
         // returns, byte for byte: a client compares the two (SyncRules.pushShowsReset) and must never see a difference.
         var incomingUpdatedAt = clock.accept(dto.updatedAt(), "updatedAt").truncatedTo(ChronoUnit.MICROS);
         var key = new RecordKey(type, id);
-        var record = repo.findById(key).orElseGet(() -> new Record(key));
-        if (record.getUpdatedAt() != null && record.getUpdatedAt().isAfter(incomingUpdatedAt)) {
-            return RecordDto.from(record, json);
+        var stored = repo.findById(key).orElse(null);
+        var decision = Upsert.decide(stored == null ? null : stored.getUpdatedAt(), incomingUpdatedAt,
+                () -> stored.isDeleted() == dto.deleted() && stored.getPayload().equals(payload));
+        if (decision == Upsert.Decision.KEEP_STORED || decision == Upsert.Decision.UNCHANGED) {
+            return RecordDto.from(stored, json);
         }
+        var record = stored == null ? new Record(key) : stored;
         var becomesLive = !dto.deleted() && (record.getUpdatedAt() == null || record.isDeleted());
         if (becomesLive && repo.countByKeyTypeAndDeletedFalse(type) >= MAX_LIVE_ROWS_PER_TYPE) {
             throw new ConflictException("Record limit reached: at most " + MAX_LIVE_ROWS_PER_TYPE + " " + type

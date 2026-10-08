@@ -22,6 +22,7 @@ import app.doorprints.server.common.NotFoundException;
 import app.doorprints.server.photo.PhotoRepository;
 import app.doorprints.server.sync.ClientClock;
 import app.doorprints.server.sync.SyncVersions;
+import app.doorprints.server.sync.Upsert;
 import app.doorprints.server.visit.VisitRepository;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -79,20 +80,26 @@ public class HouseService {
 
     /**
      * Create or update. Conflicts are resolved "last write wins" on the client's updatedAt (clamped by
-     * {@link ClientClock}): an older edit arriving late (e.g. from an offline phone) doesn't overwrite a newer one.
+     * {@link ClientClock}): an older edit arriving late (e.g. from an offline phone) doesn't overwrite a newer one,
+     * and the same stamp with the same content (a retried PUT) writes nothing and takes no sync version
+     * ({@link Upsert}, docs/03 section 10.1).
      * A body with {@code deleted: true} is a delete (the Android app deletes this way) and purges the content.
      */
     @Transactional
     public HouseDto upsert(UUID id, HouseDto dto) {
         versions.lock(); // before reading, so the last-write-wins check and the write are atomic
         var incomingUpdatedAt = clock.accept(dto.updatedAt(), "updatedAt");
-        var house = repo.findById(id).orElse(null);
-        boolean created = house == null;
+        var stored = repo.findById(id).orElse(null);
+        var decision = Upsert.decide(stored == null ? null : stored.getUpdatedAt(), incomingUpdatedAt,
+                () -> sameContent(stored, dto));
+        if (decision == Upsert.Decision.KEEP_STORED || decision == Upsert.Decision.UNCHANGED) {
+            return HouseDto.from(stored);
+        }
+        boolean created = decision == Upsert.Decision.CREATE;
+        var house = stored;
         if (created) {
             house = new House(id);
             house.setCreatedAt(clock.accept(dto.createdAt(), "createdAt"));
-        } else if (house.getUpdatedAt().isAfter(incomingUpdatedAt)) {
-            return HouseDto.from(house);
         }
         boolean wasDeleted = !created && house.isDeleted();
         dto.applyTo(house);
@@ -103,6 +110,22 @@ public class HouseService {
         var saved = repo.save(house);
         events.publishEvent(new HouseChangedEvent(id));
         return HouseDto.from(saved);
+    }
+
+    /**
+     * True when applying {@code dto} to {@code stored} would change nothing a client can see (the tie rule,
+     * {@link Upsert}): the dto is applied to a scratch house that carries the stored row's server-managed fields, and
+     * the two are compared as the DTOs a client would get. Two tombstones are the same whatever the dto still carries,
+     * because a delete keeps no content.
+     */
+    private static boolean sameContent(House stored, HouseDto dto) {
+        if (dto.deleted() && stored.isDeleted()) return true;
+        var scratch = new House(stored.getId());
+        scratch.setCreatedAt(stored.getCreatedAt());
+        scratch.setUpdatedAt(stored.getUpdatedAt());
+        scratch.setSyncVersion(stored.getSyncVersion());
+        dto.applyTo(scratch);
+        return HouseDto.from(scratch).equals(HouseDto.from(stored));
     }
 
     /**
