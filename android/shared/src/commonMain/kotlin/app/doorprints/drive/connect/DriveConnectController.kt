@@ -147,6 +147,7 @@ class DriveConnectController(
     /** The newest Drive connection's folder is open (also while the recovery key is on screen). */
     val isReady: Boolean get() = ready != null
 
+    /** Whether the person has passed the recovery-key screen (saved or skipped) in this session. */
     fun hasShownRecoveryKey(): Boolean = recoveryKeyShown
 
     // ==================== Connect ====================
@@ -176,6 +177,7 @@ class DriveConnectController(
         }
     }
 
+    /** Reads where the folder stands again; the same as [connect]. */
     suspend fun refresh(): ConnectResult = connect()
 
     /**
@@ -357,6 +359,7 @@ class DriveConnectController(
 
     // ==================== Backups ====================
 
+    /** The checked backups of the open folder, newest first; [DriveReason.NOT_CONNECTED] before the folder is open. */
     suspend fun listBackups(): Outcome<BackupList> {
         val folder = ready ?: return Outcome.Failed(DriveReason.NOT_CONNECTED)
         return try {
@@ -369,11 +372,13 @@ class DriveConnectController(
         }
     }
 
+    /** The newest backup, or [DriveReason.NO_BACKUPS]. */
     suspend fun lastBackup(): Outcome<BackupSummary> = when (val l = listBackups()) {
         is Outcome.Failed -> l
         is Outcome.Ok -> l.value.backups.firstOrNull()?.let { Outcome.Ok(it) } ?: Outcome.Failed(DriveReason.NO_BACKUPS)
     }
 
+    /** *Back up now*: one backup run, serialised with every other Drive operation of this controller. */
     suspend fun backUpNow(): Outcome<BackUpDone> = ops.withLock { backUpLocked() }
 
     private suspend fun backUpLocked(): Outcome<BackUpDone> {
@@ -442,12 +447,14 @@ class DriveConnectController(
         }
     }
 
+    /** Whether *Automatic backup* is on: the stored choice, else the in-memory one when storage fails. */
     fun autoBackupEnabled(): Boolean = when (recall(KEY_AUTO_BACKUP)) {
         "1" -> true
         "0" -> false
         else -> memoryAutoBackup
     }
 
+    /** Turns *Automatic backup* on or off; kept in memory too, so it holds when the preference store fails. */
     fun setAutoBackup(enabled: Boolean) {
         memoryAutoBackup = enabled
         remember(KEY_AUTO_BACKUP, if (enabled) "1" else "0")
@@ -507,6 +514,7 @@ class DriveConnectController(
     /** The photo setting: false = Wi-Fi only (the default). */
     fun photoSettings(): PhotoSettings = photoSettings
 
+    /** Sets the photo network rule and stores it; [wifiOnly] false lets photos use mobile data. */
     fun setPhotosWifiOnly(wifiOnly: Boolean) {
         photoSettings = PhotoSettings.fromWifiOnly(wifiOnly)
         remember(KEY_PHOTOS_MOBILE, if (photoSettings.uploadOnMobileData) "1" else "0")
@@ -518,6 +526,7 @@ class DriveConnectController(
     /** Whether photo bytes may travel now (pass it as `photosAllowed` to the repository's sync). */
     fun photosAllowed(): Boolean = photoGate.photosAllowed()
 
+    /** The photo upload status for the settings card, given the number of photos still waiting. */
     fun photoStatus(pendingPhotos: Int): PhotoNetworkStatus = photoGate.status(pendingPhotos)
 
     /** Bytes of live photos known here and not yet in Drive; 0 before connect; null when the store fails. */
@@ -553,6 +562,7 @@ class DriveConnectController(
     /** This device's public key, for the QR code and the 8-digit request. */
     fun devicePublicKey(): ByteArray = identity.key.publicKey.copyOf()
 
+    /** The devices of the opened folder, this one flagged; empty before the folder is open. */
     fun listedDevices(): List<ListedDevice> {
         val folder = ready ?: return emptyList()
         val mine = Bytes.hex(kidOf(p, identity.key.publicKey))

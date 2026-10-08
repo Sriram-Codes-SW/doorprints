@@ -36,6 +36,10 @@ data class AskFilters(
 object OnDeviceSelection {
     const val MAX_HOUSES = 40
 
+    /**
+      * The documents to send for [question]: the houses that pass [filters], all of them up to [MAX_HOUSES], else the
+      * best matching ones.
+     */
     fun forAsk(houses: List<AiHouse>, question: String, filters: AskFilters? = null): List<AskDocument> {
         val kept = houses.filter { matches(it, filters) }
         val chosen = if (kept.size <= MAX_HOUSES) kept else {

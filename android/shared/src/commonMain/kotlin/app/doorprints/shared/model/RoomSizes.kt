@@ -31,6 +31,7 @@ object RoomSizes {
     const val CM_PER_INCH = 2.54
     const val SQ_CM_PER_SQ_FT = 929.0304
 
+    /** A length as whole feet and the inches left over (0 to 11). */
     data class FeetInches(val feet: Int, val inches: Int)
 
     /** The nearest whole inch, as feet and the inches left: 396 cm is 13 ft 0 in. */

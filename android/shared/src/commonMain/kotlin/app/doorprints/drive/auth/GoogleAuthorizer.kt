@@ -48,6 +48,7 @@ sealed interface AuthorizerResult {
     /** Google could not answer. */
     data class Failed(val kind: FailureKind) : AuthorizerResult
 
+    /** Why Google could not answer: no network, or the authorization service is missing or failing. */
     enum class FailureKind { OFFLINE, UNAVAILABLE }
 }
 
@@ -68,5 +69,6 @@ interface GoogleAuthorizer {
  * answered. The provider asks only when somebody is there to see it; a background worker has no resolver.
  */
 fun interface ConsentResolver {
+    /** Shows [consent] and returns what the person decided; runs only while the app is on screen. */
     suspend fun resolve(consent: PendingConsent): AuthorizerResult
 }

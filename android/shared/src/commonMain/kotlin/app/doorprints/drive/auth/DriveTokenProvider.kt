@@ -51,6 +51,13 @@ class DriveTokenProvider(
     private var token: String? = null
     private var expiresAtMs = 0L
 
+    /**
+      * The token for the next Drive request: the cached one while it is younger than [TOKEN_LIFETIME_MS], else a fresh
+      * one
+      * from the authorizer (through the consent screen when Google asks and a resolver is on screen). Calls are
+      * serialised.
+     * Throws [SignInException] when no usable token can be had.
+     */
     override suspend fun accessToken(): String = lock.withLock {
         token?.let { if (nowMs() < expiresAtMs) return it }
         token = null
@@ -75,6 +82,7 @@ class DriveTokenProvider(
         fresh
     }
 
+    /** Drive refused [token]: drop it here and at the authorizer so the next request gets a new one. */
     override suspend fun onRejected(token: String) {
         lock.withLock {
             if (this.token == token) this.token = null

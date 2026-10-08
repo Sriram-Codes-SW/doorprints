@@ -92,6 +92,12 @@ object DeletionRules {
 
     private val oldestFirst = compareBy<BackupRef>({ it.createdAt }, { it.id })
 
+    /**
+      * Which of [backups] [action] removes (oldest first) and the level that needs. *Delete this backup* is L2 when it
+      * is the
+     * last complete one; *older backups* keeps the newest complete backup and everything newer; *all backups* and
+     * *everything* take every backup. A null id list means the named backup is not there.
+     */
     fun selectBackups(action: DeletionAction, backups: List<BackupRef>): BackupSelection {
         val sorted = backups.sortedWith(oldestFirst)
         return when (action) {

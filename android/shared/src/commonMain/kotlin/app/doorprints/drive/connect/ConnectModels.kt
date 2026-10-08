@@ -159,6 +159,7 @@ sealed interface Outcome<out T> {
     data class Failed(val reason: DriveReason, val code: String? = null) : Outcome<Nothing>
 }
 
+/** Whether this [Outcome] holds a value rather than a failure reason. */
 val <T> Outcome<T>.isOk: Boolean get() = this is Outcome.Ok
 
 /** What [DriveConnectController.connect] and its relatives return. The recovery key is here once and nowhere else. */
@@ -169,8 +170,10 @@ class ConnectResult(val state: ConnectState, val recoveryKey: String? = null, va
     override fun hashCode() = 31 * (31 * (31 * state.hashCode() + (recoveryKey?.hashCode() ?: 0)) + (error?.hashCode() ?: 0)) + (code?.hashCode() ?: 0)
 }
 
+/** One backup as the list shows it; the name is Drive's, for the person's eyes only. */
 data class BackupSummary(val id: String, val createdAt: Long, val houses: Int, val bytes: Long?, val name: String)
 
+/** The listing screen's data; [missingNewer] warns that the newest backup this device saw is no longer in Drive. */
 data class BackupList(val backups: List<BackupSummary>, val missingNewer: Boolean)
 
 /** [shrinkHoldBackupId] is set when retention held its pruning: ask the person, then [DriveConnectController.confirmShrink]. */
@@ -179,14 +182,18 @@ data class BackUpDone(val backup: BackupSummary, val shrinkHoldBackupId: String?
 /** A backup that was downloaded, opened and proven, and is now in the caller's staging sink (hand it to the import preview). */
 data class ImportedBackup(val backup: BackupSummary, val format: String, val plaintextSize: Long)
 
+/** What one scheduled check of [DriveConnectController.runDueBackup] did. */
 sealed interface DueBackupResult {
+    /** A backup was due and was made; [reason] is why the schedule chose to run. */
     data class Ran(val reason: BackupSchedule.Reason) : DueBackupResult
 
     /** Nothing to do now: [reason] is `NOT_READY`, `DISABLED`, `NOT_DUE`, `WAIT_RETRY`, ... */
     data class NotRan(val reason: BackupSchedule.Reason) : DueBackupResult
+    /** A backup was due but failed. */
     data class Failed(val reason: DriveReason) : DueBackupResult
 }
 
+/** Where the last sync pass ended, in the words the status line needs. */
 enum class SyncState { NOT_RUN, SYNCED, WAITING, PAUSED, OFFLINE, NEEDS_CONFIRMATION, SKIPPED_FILES, ERROR }
 
 /**
@@ -214,6 +221,10 @@ data class ListedDevice(val kidHex: String, val name: String, val platform: Stri
 /** The factor a delete asks of the person. On the phones it is never a passkey and never the recovery key. */
 enum class DeleteFactor { NONE, DEVICE_AUTH }
 
+/**
+ * What the delete confirmation screen must ask: the [level], the [factor], whether a tick box is required, and how long
+ * the confirm button stays disabled ([delayMs]).
+ */
 data class DeleteConfirmInfo(val level: DeletionLevel, val factor: DeleteFactor, val tickBoxRequired: Boolean, val delayMs: Long)
 
 /** A delete that ran: [finished] false means [left] of [total] files are still in Drive ([stopped] says why). */

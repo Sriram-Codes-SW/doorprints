@@ -625,7 +625,12 @@ class DriveBackupService(
 
 /** The enrolled device listed the newcomer and wrapped the folder key for that public key alone (web: `ApproveDeviceOutcome`). */
 sealed interface ApproveDeviceOutcome {
+    /**
+      * The newcomer's folder key wrapped to its public key ([wrapEnc], [wrapCt]) under [epoch]; [connection] is this
+      * device's open folder.
+     */
     class Approved(val connection: DriveConnection.Ready, val wrapEnc: ByteArray, val wrapCt: ByteArray, val epoch: Int) : ApproveDeviceOutcome
+    /** Nothing was approved; [problem] says why. */
     data class Error(val problem: DriveProblem) : ApproveDeviceOutcome
 }
 

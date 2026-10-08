@@ -66,13 +66,17 @@ data class DriveDeviceState(
 
 /** Where [DriveDeviceState] lives. One writer at a time (the platform's single backup worker or tab lock). */
 interface DriveStateStore {
+    /** The saved state, or an empty one on first use. */
     suspend fun load(): DriveDeviceState
+    /** Replaces the saved state with [state]. */
     suspend fun save(state: DriveDeviceState)
 }
 
 /** The two watermarks of one folder ([rootId]), each with an atomic compare-and-set, sealed on the device. */
 interface FolderTrustStores {
+    /** The `keys.json` watermark store of the folder [rootId]. */
     fun keys(rootId: String): KeysWatermarkStore
+    /** The `doorprints.json` watermark store of the folder [rootId]. */
     fun control(rootId: String): ControlWatermarkStore
 }
 
@@ -85,6 +89,7 @@ class BackupPayload(val source: ByteSource, val format: String, val houses: Int,
 
 /** Makes a [BackupPayload] for one run. */
 fun interface BackupSource {
+    /** Writes this run's backup ZIP and returns where to read it; the caller closes the payload. */
     suspend fun open(): BackupPayload
 }
 
@@ -95,11 +100,13 @@ interface Scratch : ByteSink {
     /** Reads up to [length] bytes at [position] into [buffer]; the count, or -1 at the end. */
     fun read(position: Long, buffer: ByteArray, offset: Int, length: Int): Int
 
+    /** Wipes the contents and removes the file; the owner calls it when the run is over. */
     fun delete()
 }
 
 /** Makes [Scratch] files (Android and the iPhone: the app's cache directory; tests and small backups: memory). */
 fun interface ScratchSpace {
+    /** A fresh, empty scratch file. */
     fun create(): Scratch
 }
 
@@ -147,6 +154,7 @@ internal fun Scratch.source(): ByteSource {
 /** The whole of a [Scratch] (for a multipart upload, at most 5 MB). */
 internal fun Scratch.readAll(): ByteArray = readRange(0, size.toInt())
 
+/** Reads [length] bytes at [position]; shorter only when the file ends first. */
 internal fun Scratch.readRange(position: Long, length: Int): ByteArray {
     val out = ByteArray(length)
     var done = 0
@@ -164,5 +172,6 @@ internal fun Scratch.readRange(position: Long, length: Int): ByteArray {
  * unconfirmed and must not reach the import (docs/15 §9.9, decrypt's streaming note).
  */
 interface StagingSink : ByteSink {
+    /** Throws away what was written so far; nothing of a refused download may reach the import. */
     fun discard()
 }

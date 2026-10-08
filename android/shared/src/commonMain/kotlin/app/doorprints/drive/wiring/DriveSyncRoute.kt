@@ -36,7 +36,11 @@ class DriveSyncRoute {
     /** One key per route, as the thread-local was one per route: another route's pass is not this route's. */
     private val key = object : CoroutineContext.Key<Carrier> {}
 
+    /**
+     * A context element that makes [backend] the one [current] answers with, inside the coroutines that run with it.
+     */
     fun element(backend: SyncBackend): CoroutineContext = Carrier(backend, key)
 
+    /** The backend of the Drive pass this coroutine runs in, or null outside one. */
     suspend fun current(): SyncBackend? = coroutineContext[key]?.backend
 }

@@ -37,6 +37,10 @@ import kotlinx.serialization.json.jsonPrimitive
 
 /** What Google's token endpoint answered. No token appears in a `toString`. */
 sealed interface TokenResult {
+    /**
+      * A successful answer: the short-lived [accessToken], a [refreshToken] when Google issued one, and the [scopes]
+      * really granted.
+     */
     class Tokens(val accessToken: String, val refreshToken: String?, val scopes: Set<String>) : TokenResult {
         override fun toString() = "Tokens(scopes=$scopes)"
     }
@@ -50,9 +54,11 @@ sealed interface TokenResult {
 
 /** Google's token and revocation endpoints, for a native client: PKCE, no client secret (docs/15 §2.4). A network failure is an [IOException] (`kotlinx.io`, which is `java.io.IOException` on Android). */
 interface TokenEndpoint {
+    /** Trades the authorisation [code] (with its PKCE [verifier]) for tokens. */
     @Throws(IOException::class, CancellationException::class)
     suspend fun exchangeCode(clientId: String, redirectUri: String, code: String, verifier: String): TokenResult
 
+    /** Asks for a new access token with [refreshToken]; `invalid_grant` comes back as [TokenResult.Rejected]. */
     @Throws(IOException::class, CancellationException::class)
     suspend fun refresh(clientId: String, refreshToken: String): TokenResult
 
@@ -66,6 +72,7 @@ interface TokenEndpoint {
  * [TokenResult.ServerError]; a 4xx with an `error` is [TokenResult.Rejected]; a 2xx needs an `access_token`.
  */
 object TokenAnswers {
+    /** Maps one HTTP answer ([status], [body]) to a [TokenResult]; never throws on a malformed body. */
     fun parse(status: Int, body: String): TokenResult {
         if (status >= 500) return TokenResult.ServerError
         val json: JsonObject = try {

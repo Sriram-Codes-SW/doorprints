@@ -143,6 +143,7 @@ class OnDeviceAi(
         recent.addLast(now)
     }
 
+    /** Reads [text] into a checked draft. Refuses a blank or over-long text; counts towards the rate limit. */
     suspend fun extractListing(text: String): HouseDraftDto {
         require(text.isNotBlank()) { "text is empty" }
         require(text.length <= MAX_INPUT_CHARS) { "text is longer than $MAX_INPUT_CHARS characters" }
@@ -152,6 +153,11 @@ class OnDeviceAi(
         return DraftSanitizer.sanitize(raw, text)
     }
 
+    /**
+      * Answers [question] from the saved houses with citations. With no house to send it answers with the refusal
+      * sentence
+     * and makes no model call. The answer is checked by [AskChecks]; an unusable one becomes the refusal.
+     */
     suspend fun ask(question: String, filters: AskFilters? = null): AskResponseDto {
         require(question.isNotBlank()) { "question is empty" }
         require(question.length <= MAX_QUESTION_CHARS) { "question is longer than $MAX_QUESTION_CHARS characters" }
@@ -165,6 +171,11 @@ class OnDeviceAi(
         return AskResponseDto(answer.answer!!.trim(), citations, citations.isNotEmpty(), docs.size)
     }
 
+    /**
+      * A walking plan from the request's start point over the nearest saved houses. A model that answers unusably falls
+      * back to
+     * the nearest-neighbour order ([PlanChecks]); a request that fails outright is thrown, since nothing was planned.
+     */
     suspend fun planVisits(request: PlanRequest): PlanResponseDto {
         require(request.question.isNotBlank()) { "question is empty" }
         require(request.question.length <= MAX_QUESTION_CHARS) { "question is longer than $MAX_QUESTION_CHARS characters" }

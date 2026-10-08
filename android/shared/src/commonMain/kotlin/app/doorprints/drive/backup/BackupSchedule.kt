@@ -56,6 +56,10 @@ object BackupSchedule {
         BLOCKED,
     }
 
+    /**
+     * Everything [decide] looks at: the clock, the switches and the bookkeeping of the last run. Times are epoch
+     * milliseconds; null means it never happened.
+     */
     data class Input(
         val now: Long,
         /** *Automatic backup and sync* is on. */
@@ -74,6 +78,7 @@ object BackupSchedule {
         val lastVerifyAt: Long? = null,
     )
 
+    /** Why [decide] answered as it did ([Decision.reason]). */
     enum class Reason {
         NOT_READY, MANUAL, DISABLED, NEEDS_CONNECT, BLOCKED, WAIT_QUOTA, WAIT_RETRY, FIRST, CLOCK_CHANGED, DAILY, NOT_DUE,
     }
@@ -84,6 +89,13 @@ object BackupSchedule {
      */
     data class Decision(val backup: Boolean, val reason: Reason, val nextAt: Long?, val verify: Boolean)
 
+    /**
+      * The one rule of the schedule, checked in order: not ready (nothing runs), a manual request (always runs),
+      * switched
+     * off, the last failure (a refused grant or a blocked folder stops it, quota and retryable failures wait), then the
+     * first backup, a clock that moved back, or 24 hours since the last success. [Decision.verify] is worked out
+     * separately from whether a backup is due.
+     */
     fun decide(input: Input): Decision {
         val now = input.now
         val verify = input.ready && input.lastSuccessAt != null && input.lastFailure == null &&

@@ -32,6 +32,7 @@ class ApiException(
     val code: Int = 0,
     val retryAfterSeconds: Long? = null,
 ) : IOException("HTTP $code ($kind)") {
+    /** What went wrong, in the groups the screens word; [kindFor] maps a status to one. */
     enum class Kind {
         AUTH, CAPTIVE_PORTAL, RATE_LIMITED, NOT_FOUND, CONFLICT, CLIENT, SERVER, AI_UNAVAILABLE,
         /** Google did not accept the person's own Gemini key (on-device AI, docs/03 §13.1). */

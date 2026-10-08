@@ -60,6 +60,11 @@ object BackupRetention {
     private const val DAY_MS = 86_400_000L
     private const val MINUTE_MS = 60_000L
 
+    /**
+     * Decides which of [entries] to keep and which to prune; [confirmedDrops] are the backups whose drop in houses the
+     * person confirmed on this device. [daily], [weekly] and [monthly] are the bucket counts and default to the product
+     * values. Nothing is pruned while a [ShrinkHold] is set.
+     */
     fun select(
         entries: List<RetentionEntry>,
         utcOffsetMinutes: Int,

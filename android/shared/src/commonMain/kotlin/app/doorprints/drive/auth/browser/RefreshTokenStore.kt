@@ -28,8 +28,11 @@ import kotlin.concurrent.Volatile
  * unreadable for good; `NEEDS_UNLOCK`: wait).
  */
 interface RefreshTokenStore {
+    /** The stored refresh token, or null when none is kept. */
     fun read(): String?
+    /** Replaces the stored token with [token]. */
     fun write(token: String)
+    /** Forgets the token (sign-out, revocation, or a rejected grant). */
     fun clear()
 }
 

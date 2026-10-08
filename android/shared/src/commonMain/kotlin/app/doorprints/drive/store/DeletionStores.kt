@@ -38,6 +38,7 @@ import kotlinx.serialization.Serializable
 
 /** What a finished "delete everything" must forget on this device: the folder ids (docs/15 §3.4). */
 fun interface FolderForgetter {
+    /** Forgets the folder this device was bound to; safe to repeat. */
     suspend fun forgetFolder()
 }
 
@@ -89,6 +90,10 @@ class FileDeletionStore(
         readState(markerFile, MarkerDto.serializer(), { it.v }) { DeletedMarker(DeletionLevel.valueOf(it.level), it.atMs, it.action) }
     }
 
+    /**
+      * Writes the marker first and forgets the folder second, so an interruption between the two is finished by calling
+      * this again.
+     */
     override suspend fun recordFinished(marker: DeletedMarker, forgetFolder: Boolean) {
         withContext(Dispatchers.IO) {
             writeState(markerFile, MarkerDto.serializer(), MarkerDto(STATE_VERSION, marker.level.name, marker.atMs, marker.action))

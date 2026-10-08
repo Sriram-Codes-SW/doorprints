@@ -70,6 +70,12 @@ object DraftSanitizer {
     /** Absolute http(s) with a host and no spaces: what Java's `URI.create` accepts for these links. */
     private val HTTP_URL = Regex("^(?:https?)://[^\\s/?#]+(?:[/?#]\\S*)?$", RegexOption.IGNORE_CASE)
 
+    /**
+      * The checked draft for the model's [raw] listing and the [sourceText] it was read from. A null [raw] gives a
+      * draft with
+      * only a placeholder label and a warning. Never throws on model output; every dropped or changed value adds a
+      * warning.
+     */
     fun sanitize(raw: RawListing?, sourceText: String?): HouseDraftDto {
         val warnings = mutableListOf<String>()
         if (raw == null) return HouseDraftDto(label = "Untitled listing", warnings = listOf("Model returned nothing usable"))
@@ -113,6 +119,7 @@ object DraftSanitizer {
         return s
     }
 
+    /** RENT or SALE from the usual words for them; anything else is dropped with a warning. */
     fun priceType(value: String?, warnings: MutableList<String>): String? {
         if (value.isNullOrBlank()) return null
         return when (value.trim().uppercase()) {
@@ -166,6 +173,10 @@ object DraftSanitizer {
         return rupees
     }
 
+    /**
+      * A studio or 1RK is 0, else the first whole number; more than [BEDROOMS_MAX] or no number is dropped with a
+      * warning.
+     */
     fun bedrooms(value: String?, warnings: MutableList<String>): Int? {
         if (value.isNullOrBlank()) return null
         val lower = value.lowercase()
@@ -230,6 +241,7 @@ object DraftSanitizer {
         return v
     }
 
+    /** Cleaned, lower-cased, without repeats, at most [AMENITIES_MAX]; a longer list is cut with a warning. */
     fun amenities(values: List<String>?, warnings: MutableList<String>): List<String> {
         if (values == null) return emptyList()
         val out = LinkedHashSet<String>()
@@ -243,6 +255,7 @@ object DraftSanitizer {
         return out.toList()
     }
 
+    /** A label made from the bedrooms and the locality (or street), used when the model gave none. */
     fun defaultLabel(bedrooms: Int?, locality: String?, street: String?): String {
         val where = locality ?: street
         val what = when (bedrooms) {

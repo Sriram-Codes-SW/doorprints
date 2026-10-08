@@ -59,11 +59,13 @@ interface DriveLockStore {
 
 /** What a removed lock does on the phone: forget the dead key, remember the pause. Idempotent. */
 class DeviceLockActions(private val discardKey: () -> Unit, private val store: DriveLockStore) : LockLossActions {
+    /** Discards the device key and remembers that it was dropped. */
     override fun dropLocalKeys() {
         discardKey()
         store.keyDropped = true
     }
 
+    /** Pauses Drive on this phone until it connects and enrols again. */
     override fun requireReenrolment() {
         store.needsReenrolment = true
         store.paused = true

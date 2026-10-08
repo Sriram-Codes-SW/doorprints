@@ -51,6 +51,13 @@ object BackupNames {
  */
 internal class BackupLister(private val drive: DriveClient, private val p: CryptoProvider) {
 
+    /**
+      * The checked backups of the open folder, newest first. Drive's listing is eventually consistent, so [knownIds]
+      * (the
+      * files this device wrote) are asked for by id and added when they are there. Without a `Backups/` folder the
+      * listing
+     * is empty. [newestSeenAt] only feeds [BackupListing.missingNewer].
+     */
     suspend fun list(folder: ReadyFolder, backupsId: String?, knownIds: List<String>, newestSeenAt: Long?): BackupListing {
         if (backupsId == null) return BackupListing(emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), false)
         val files = drive.listAll(DriveQuery(parentId = backupsId, appProperties = mapOf(DriveLayout.KIND to BackupMeta.KIND_BACKUP))).toMutableList()
@@ -67,6 +74,12 @@ internal class BackupLister(private val drive: DriveClient, private val p: Crypt
         return classify(files, folder.keys, folder.control.backupsDeletedAt, newestSeenAt)
     }
 
+    /**
+      * Sorts [files] into backups, unfinished backups, duplicates, junk and ignored files, oldest first so that the
+      * earliest
+     * copy of identical bytes wins. Pure: it reads no network, so a file is judged only by its authenticated metadata,
+     * Drive's checksum and [keys]; a file that fails a check is never listed as a backup.
+     */
     fun classify(files: List<DriveFile>, keys: OpenedKeys, deletedAt: Long?, newestSeenAt: Long?): BackupListing {
         val complete = mutableListOf<DriveBackup>()
         val partialValid = mutableListOf<DriveBackup>()

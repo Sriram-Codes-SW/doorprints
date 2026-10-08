@@ -20,6 +20,7 @@ package app.doorprints.drive.auth
 
 /** Why the Drive token could not be had (web: `SignInError`). Never carries a token; the message is the kind. */
 class SignInException(val kind: Kind) : Exception(kind.name) {
+    /** The reasons a sign-in ends without a token; each maps to one message the UI can show. */
     enum class Kind {
         /** Nothing was granted, or the person unticked the Drive permission (granular consent): fail closed. */
         DENIED,

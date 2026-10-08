@@ -49,6 +49,7 @@ enum class DeviceKeyStatus {
 
 /** The platform's key store for the one device key. Implementations never reveal a private key to the caller. */
 interface DeviceKeyBackend {
+    /** The key's state, without using it. */
     fun status(): DeviceKeyStatus
 
     /** Makes the key (the caller has checked [status] is not [DeviceKeyStatus.READY]); returns the 65-byte public point. */
@@ -67,6 +68,10 @@ interface DeviceKeyBackend {
 
 /** Why the device key could not be used. Never carries key bytes. */
 class DeviceKeyException(val kind: Kind, message: String, cause: Throwable? = null) : Exception("device key ${kind.name}: $message", cause) {
+    /**
+      * Why the device key could not be used: LOST needs the person to connect again, NEEDS_UNLOCK passes after an
+      * unlock.
+     */
     enum class Kind {
         /**
          * The key is gone or invalidated while a folder is pinned to it. The person must connect again and enrol (docs/15
@@ -134,6 +139,11 @@ class KeystoreDeviceIdentity(
         backend.discard()
     }
 
+    /**
+      * The device key, made on first use. A key that is missing or invalidated is made again only while no folder is
+      * pinned;
+     * with a pinned folder this throws [DeviceKeyException] LOST. Using the key later may still need an unlock.
+     */
     fun ensure(): KeystoreP256Key = lock.withLock { ensureLocked() }
 
     private fun ensureLocked(): KeystoreP256Key {
@@ -171,6 +181,10 @@ class KeystoreP256Key internal constructor(private val pub: ByteArray, internal 
  * the Drive services on Android: `JvmCryptoProvider.p256Agree` refuses a key it did not make.
  */
 class DeviceKeyCryptoProvider(private val delegate: CryptoProvider) : CryptoProvider by delegate {
+    /**
+      * ECDH for a key store key runs inside the key store; any other key goes to [delegate]. The peer point is
+      * validated first.
+     */
     override fun p256Agree(privateKey: P256PrivateKey, peerPublic: ByteArray): ByteArray {
         if (privateKey !is KeystoreP256Key) return delegate.p256Agree(privateKey, peerPublic)
         val peer = delegate.p256ValidatePublic(peerPublic)

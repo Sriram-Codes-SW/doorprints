@@ -51,6 +51,10 @@ import kotlinx.serialization.serializer
  * the platform engine (Android: AndroidApiHttp in androidMain); this only sets what must hold on every platform.
  */
 object ApiHttp {
+    /**
+      * The shared [HttpClient]: no redirects and no exception for a status, so [ApiClient] decides what every answer
+      * means.
+     */
     fun client(engine: HttpClientEngine): HttpClient = HttpClient(engine) {
         // No redirects: a redirect would send the API key to another host, and captive portals answer with one.
         followRedirects = false
@@ -96,6 +100,11 @@ class ApiClient(
     /** The parts of a response the client looks at; the body is read completely before the call returns. */
     private class Exchange(val status: Int, val contentType: String?, val retryAfter: String?, val body: ByteArray)
 
+    /**
+      * One API call with retries, the overall time limit and the answer checks: a non-2xx status is an [ApiException],
+      * and a
+     * 2xx whose content type is not the expected one is a captive portal. Returns the whole body.
+     */
     private suspend fun call(
         method: HttpMethod,
         path: String,
@@ -130,6 +139,11 @@ class ApiClient(
         return exchange.body
     }
 
+    /**
+     * Repeats an idempotent exchange on a network error or a retriable status ([RetryPolicy]), waiting the server's
+      * `Retry-After` when it is short enough, else the backoff. A longer `Retry-After` returns the answer so the caller
+      * can retry later.
+     */
     private suspend fun exchangeWithRetry(
         method: HttpMethod,
         url: String,
@@ -183,14 +197,20 @@ class ApiClient(
         return json.decodeFromString(serializer<T>(), call(method, path, body = jsonBody(payload)).decodeToString())
     }
 
+    /** The server's counts, including the highest sync version it has handed out. */
     suspend fun stats(): StatsDto = get("/api/stats")
 
+    /** The houses the server changed after sync version [version], tombstones included. */
     suspend fun housesSince(version: Long): List<HouseDto> = get("/api/houses?since=$version")
+    /** Sends [h]; the answer is the server's row with its sync version. */
     suspend fun putHouse(h: HouseDto): HouseDto = send(HttpMethod.Put, "/api/houses/${h.id}", h)
 
+    /** The visits the server changed after sync version [version], tombstones included. */
     suspend fun visitsSince(version: Long): List<VisitDto> = get("/api/visits?since=$version")
+    /** Sends [v]; the answer is the server's row with its sync version. */
     suspend fun putVisit(v: VisitDto): VisitDto = send(HttpMethod.Put, "/api/visits/${v.id}", v)
 
+    /** The photo rows (new photos, deletions and metadata changes) after sync version [version]. */
     suspend fun photoChangesSince(version: Long): List<PhotoChangeDto> = get("/api/photos?since=$version")
 
     /**
@@ -202,6 +222,7 @@ class ApiClient(
 
     /** The record envelope (docs/11 5.30): one endpoint pair for every record type, the same cursor rule as houses. */
     suspend fun recordsSince(version: Long): List<RecordDto> = get("/api/records?since=$version")
+    /** Sends [r]; the answer is the server's row with its sync version. */
     suspend fun putRecord(r: RecordDto): RecordDto = send(HttpMethod.Put, "/api/records/${r.type}/${r.id}", r)
 
     /**
@@ -240,6 +261,7 @@ class ApiClient(
         )
     }
 
+    /** The JPEG bytes of a photo; an answer that is not an image is a captive portal. */
     suspend fun downloadPhoto(photoId: String): ByteArray =
         call(HttpMethod.Get, "/api/photos/$photoId", Expect.IMAGE)
 
@@ -252,19 +274,27 @@ class ApiClient(
         }
     }
 
+    /** Whether the server's AI is on, and for this device. */
     suspend fun aiStatus(): AiStatusDto = get("/api/ai/status")
 
     // Pairing (docs/03 §12.1): made with no key. Not retried (POST): a lost answer to start or redeem is not repeated.
+    /**
+     * Starts pairing this device: the server answers with a code to type on the owner page and a token to poll with.
+     */
     suspend fun pairStart(deviceName: String): PairStartedDto =
         send(HttpMethod.Post, "/api/pair/start", PairStartRequest(deviceName))
+    /** Asks whether the owner approved the pairing; the device key arrives once, with `approved`. */
     suspend fun pairPoll(pollToken: String): PairPolledDto =
         send(HttpMethod.Post, "/api/pair/poll", PairPollRequest(pollToken))
     /** 410 ([ApiException.code]) when the invite was already used or has expired. */
     suspend fun pairRedeem(invite: String, deviceName: String): DeviceKeyDto =
         send(HttpMethod.Post, "/api/pair/redeem", PairRedeemRequest(invite, deviceName))
+    /** The server's AI reads [text] into a draft; nothing is saved. */
     suspend fun extractListing(text: String): HouseDraftDto =
         send(HttpMethod.Post, "/api/ai/extract-listing", ExtractListingRequest(text))
+    /** The server's AI answers [question] from the saved houses, with citations. */
     suspend fun ask(question: String): AskResponseDto = send(HttpMethod.Post, "/api/ai/ask", AskRequest(question))
+    /** The server's AI plans a walking route over the saved houses. */
     suspend fun planVisits(request: PlanRequest): PlanResponseDto =
         send(HttpMethod.Post, "/api/ai/plan-visits", request)
 

@@ -30,6 +30,10 @@ object RepeatDetector {
      */
     fun detect(walks: List<List<TracePoint>>): List<WalkRepeats> = detect(walks, useIndex = true)
 
+    /**
+      * The detection with a switch for the segment index; the index only speeds the search, so both settings give the
+      * same answer.
+     */
     internal fun detect(walks: List<List<TracePoint>>, useIndex: Boolean): List<WalkRepeats> {
         val empty = WalkRepeats(emptyList(), emptyList())
         val result = MutableList(walks.size) { empty }
@@ -66,6 +70,7 @@ object RepeatDetector {
 
     private fun walkKey(points: List<TracePoint>): Long = points.first().atMs
 
+    /** The densified samples of one walk (see [SampleBuilder]). */
     internal fun buildSamples(points: List<TracePoint>): Samples {
         val b = SampleBuilder()
         for (p in points) b.add(p.lat, p.lon, p.resumed)

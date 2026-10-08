@@ -24,9 +24,11 @@ enum class BaseUrlReason(val wire: String) {
     FRAGMENT("fragment"), ENDPOINT("endpoint"), INSECURE_HOST("insecureHost"),
 }
 
+/** The verdict on an address typed by the person: usable, or refused for one named reason. */
 sealed interface BaseUrlCheck {
     /** [normalised] has the scheme and host in lower case and no trailing slash; [host] is for the disclosure. */
     data class Valid(val normalised: String, val host: String) : BaseUrlCheck
+    /** Refused; [reason] is the first rule the address broke. */
     data class Invalid(val reason: BaseUrlReason) : BaseUrlCheck
 }
 

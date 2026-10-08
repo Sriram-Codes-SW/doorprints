@@ -82,6 +82,7 @@ class DrivePhotos(
     /** What was skipped since the last [drainSkipped]. */
     val skipped: List<SkippedPhoto> get() = skips.toList()
 
+    /** Returns what was skipped since the last call and forgets it. */
     fun drainSkipped(): List<SkippedPhoto> = skips.toList().also { skips.clear() }
 
     /** An encrypted photo on its way: kept so a retry resumes the same session with the same bytes. */
@@ -99,8 +100,14 @@ class DrivePhotos(
 
     private class NeedFreshKeys : Exception()
 
+    /** The photo-to-file references this device knows. */
     override suspend fun refs(): Map<String, PhotoRef> = store.load().refs
 
+    /**
+      * Adds references read from other devices' authenticated rows. A known reference is replaced only when it was
+      * marked bad
+     * and the new one points at another file.
+     */
     override suspend fun learn(found: Map<String, PhotoRef>) {
         if (found.isEmpty()) return
         val st = store.load()

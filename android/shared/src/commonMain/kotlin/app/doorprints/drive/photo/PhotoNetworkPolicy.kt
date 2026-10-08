@@ -46,6 +46,7 @@ data class NetworkConditions(
 
 /** Where the policy gets the network from: Android `ConnectivityManager`, iOS `NWPathMonitor`, the website's `navigator.connection`. */
 fun interface NetworkState {
+    /** The network as it is at this moment. */
     fun current(): NetworkConditions
 }
 
@@ -75,8 +76,12 @@ enum class PhotoAllowReason {
 /** What the status line says about photos: *Waiting for Wi-Fi*, *Uploading*, *Paused (offline)*, *Done*. */
 enum class PhotoNetworkStatus { WAITING_FOR_WIFI, UPLOADING, PAUSED_OFFLINE, DONE }
 
+/** Whether photo bytes may move now ([allowed]) and why. */
 data class PhotoNetworkDecision(val allowed: Boolean, val reason: PhotoAllowReason)
 
+/**
+ * The rule for when photo bytes may use the network; a pure function of the network, the setting and the one-off grant.
+ */
 object PhotoNetworkPolicy {
     /** How long a one-off grant lasts (30 minutes). */
     const val ONE_OFF_TTL_MS: Long = 30L * 60_000
@@ -128,10 +133,12 @@ class PhotoUploadGate(
     /** *Upload photos now over mobile data*: valid for [PhotoNetworkPolicy.ONE_OFF_TTL_MS]. */
     fun grantOneOff(): OneOffGrant = OneOffGrant(clock()).also { grant = it }
 
+    /** Drops the one-off grant. */
     fun clearGrant() {
         grant = null
     }
 
+    /** The policy's answer for this moment; an expired grant is dropped first. */
     fun decision(): PhotoNetworkDecision {
         val now = clock()
         if (grant?.isActive(now) == false) grant = null
@@ -141,5 +148,6 @@ class PhotoUploadGate(
     /** The `photosAllowed` of `Repository.sync`. */
     fun photosAllowed(): Boolean = decision().allowed
 
+    /** The status line for [pending] photos waiting to move. */
     fun status(pending: Int): PhotoNetworkStatus = PhotoNetworkPolicy.status(decision(), pending)
 }
