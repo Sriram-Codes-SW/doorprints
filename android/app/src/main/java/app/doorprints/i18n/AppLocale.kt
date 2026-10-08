@@ -54,6 +54,9 @@ object AppLocale {
     /** A change older than this is not announced (the app was closed before it came back). */
     private const val ANNOUNCE_WITHIN_MS = 30_000L
 
+    /**
+     * The language the person chose for Doorprints (a code from [SUPPORTED]), or null to follow the system language.
+     */
     fun current(context: Context): String? {
         if (Build.VERSION.SDK_INT >= 33) {
             val locales = context.getSystemService(LocaleManager::class.java)?.applicationLocales
@@ -62,6 +65,10 @@ object AppLocale {
         return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY, null)
     }
 
+    /**
+     * Saves the language chosen in Settings (null for the system default; any code outside [SUPPORTED] counts as
+     * null) and recreates the activity so the screens show it.
+     */
     fun set(activity: Activity, language: String?) {
         val tag = language?.takeIf { it in SUPPORTED }
         // Written before the recreate, read once by Root after it (UX review, whole-app audit): "Language changed to

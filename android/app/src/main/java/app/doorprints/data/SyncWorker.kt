@@ -89,6 +89,10 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         private val online = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
         private val unmetered = Constraints.Builder().setRequiredNetworkType(NetworkType.UNMETERED).build()
 
+        /**
+         * Queues one sync three seconds from now, once the phone is online (a burst of edits becomes one run, as the
+         * work is replaced). Called after a local change.
+         */
         fun syncSoon(context: Context) {
             // A local change ends the Drive cadence's back-off (a no-op unless the cadence ever backed off).
             DriveCadenceGate.of(context).reset()
@@ -109,6 +113,10 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
             WorkManager.getInstance(context).enqueueUniqueWork("sync-photos-wifi", ExistingWorkPolicy.KEEP, work)
         }
 
+        /**
+         * Registers the 30-minute background sync, online only. Called at every app start; UPDATE keeps one job and
+         * applies any change to its settings.
+         */
         fun schedulePeriodic(context: Context) {
             val work = PeriodicWorkRequestBuilder<SyncWorker>(30, TimeUnit.MINUTES)
                 .setInputData(workDataOf(PERIODIC to true))

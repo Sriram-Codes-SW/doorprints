@@ -33,8 +33,10 @@ class Zip(stream: OutputStream, private val entryTimeMillis: Long) : AutoCloseab
 
     private val zip = ZipOutputStream(stream)
 
+    /** Adds a UTF-8 text entry at [path]. */
     fun text(path: String, content: String) = bytes(path, content.toByteArray(Charsets.UTF_8))
 
+    /** Adds an entry at [path] holding [content]. */
     fun bytes(path: String, content: ByteArray) {
         zip.putNextEntry(entry(path))
         zip.write(content)
@@ -50,6 +52,7 @@ class Zip(stream: OutputStream, private val entryTimeMillis: Long) : AutoCloseab
 
     private fun entry(path: String) = ZipEntry(path).apply { time = entryTimeMillis }
 
+    /** Writes the ZIP's central directory without closing the underlying stream. */
     fun finish() = zip.finish()
 
     override fun close() = zip.close()

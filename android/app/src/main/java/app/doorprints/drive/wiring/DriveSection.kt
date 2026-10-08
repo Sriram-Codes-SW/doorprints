@@ -88,6 +88,7 @@ internal fun LockNotice.messageRes(): Int = when (this) {
     LockNotice.PAUSED, LockNotice.NONE -> R.string.drive_lock_paused
 }
 
+/** The notice's heading (when Drive cannot be switched on) and words, with *Open settings* to set a screen lock. */
 @Composable
 internal fun LockNoticeBlock(notice: LockNotice) {
     val context = LocalContext.current

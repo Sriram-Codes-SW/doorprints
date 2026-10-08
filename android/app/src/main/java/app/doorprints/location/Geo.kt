@@ -49,6 +49,11 @@ class ReverseGeocoder(context: Context) {
         if (Geocoder.isPresent()) Geocoder(context, Locale.getDefault()) else null
     }.getOrNull()
 
+    /**
+     * The street, locality and address line of the house at [lat], [lon] for the new-house form, or null (no
+     * geocoder, no answer in time, a position out of range). Needs the network on most phones; the position is sent
+     * to the phone's geocoder service.
+     */
     suspend fun lookup(lat: Double, lon: Double): Place? {
         val g = geocoder ?: return null
         if (lat !in -90.0..90.0 || lon !in -180.0..180.0) return null // getFromLocation throws on these

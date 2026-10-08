@@ -40,6 +40,10 @@ object Api {
     /** The app-wide HTTP client, for Google Drive (`HttpDriveClient`): the same pool and the same no-redirect rule. */
     fun httpClient(): HttpClient = http
 
+    /**
+     * An [ApiClient] for the person's own Doorprints server at [baseUrl], sending [apiKey]; the sync loop and
+     * Settings' *Save and test* use it.
+     */
     fun client(baseUrl: String, apiKey: String): ApiClient = ApiClient(
         baseUrl = baseUrl,
         apiKey = apiKey,

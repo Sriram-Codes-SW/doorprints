@@ -34,6 +34,9 @@ import app.doorprints.shared.export.ExportOptions
  */
 object ExportBuilder {
 
+    /**
+     * Reads the local rows once and returns the [ExportBundle] that [options] select, ready for [Exporters.write].
+     */
     suspend fun bundle(repository: Repository, options: ExportOptions): ExportBundle =
         build(repository.localRows(), options)
 

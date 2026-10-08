@@ -50,6 +50,10 @@ import kotlinx.coroutines.launch
 import java.io.File
 import org.maplibre.android.MapLibre
 
+/**
+ * The app's long-lived objects (settings, repository, Drive, reminders, area wake-up, the common screens' services), built
+ * once per process so every Activity, worker and receiver shares one database and one settings store.
+ */
 class AppContainer(app: DoorprintsApp) {
     // One settings DataStore per process (see data/SettingsStoreFactory.kt), as the old property delegate gave.
     val settings = SettingsStore.create(app)
@@ -89,6 +93,10 @@ class AppContainer(app: DoorprintsApp) {
 
 // open for the screenshot tests' app (ScreenshotTestApp), which skips startServices(): no MapLibre (native code) and
 // no WorkManager or notification set-up on the JVM.
+/**
+ * The process entry point: builds the [AppContainer], applies the chosen language and starts the background work (sync,
+ * reminders, backups) when the system creates the process, whether for the launcher, a receiver or a worker.
+ */
 open class DoorprintsApp : Application(), WorkConfiguration.Provider {
     lateinit var container: AppContainer
         private set
@@ -142,7 +150,6 @@ open class DoorprintsApp : Application(), WorkConfiguration.Provider {
         appScope.launch { container.areaWakeup.watch() }
     }
 
-    /** Platform services and start-up work; the data container above is all the screens need. */
     /**
      * A saved walk never outlives its house (docs/11 5.27.6): at app start every saved walk whose house is a tombstone or
      * missing is deleted (the other triggers are the Undo snackbar closing, Hunt start, sync end and import end). Not
@@ -151,6 +158,11 @@ open class DoorprintsApp : Application(), WorkConfiguration.Provider {
     @VisibleForTesting
     internal fun sweepWalksAtStart(): Job = appScope.launch { runCatching { container.repository.sweepWalksOfDeletedHouses() } }
 
+    /**
+     * Platform services and start-up work that the screens do not need to wait for: map library, saved-walk sweep,
+     * notification channels, the periodic sync and Drive jobs, the weekly backup, and the reminder and area watchers.
+     * Everything that can fail is wrapped so a start-up problem never stops the app opening.
+     */
     protected open fun startServices() {
         MapLibre.getInstance(this)
         sweepWalksAtStart()

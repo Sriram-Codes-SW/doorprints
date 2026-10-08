@@ -69,6 +69,7 @@ internal object KeystoreErrors {
         return null
     }
 
+    /** Wraps a framework failure as a [DeviceKeyException] of the kind [classify] finds. */
     fun toException(what: String, e: Exception): DeviceKeyException =
         // An unknown failure waits (NEEDS_UNLOCK) instead of declaring the key lost: only the key store's own word loses a key.
         DeviceKeyException(classify(e) ?: DeviceKeyException.Kind.NEEDS_UNLOCK, what, e)
@@ -233,6 +234,7 @@ class FileBlobStore(private val file: File) : BlobStore {
 
 /** The right backend for this phone: the Keystore's own ECDH from API 31, a Keystore-wrapped scalar below. */
 object AndroidDeviceKeys {
+    /** The device-key backend for [sdk]; [provider] is the crypto the wrapped-scalar backend uses below API 31. */
     fun backend(context: Context, provider: CryptoProvider, sdk: Int = Build.VERSION.SDK_INT): DeviceKeyBackend =
         if (sdk >= 31) {
             KeystoreAgreeBackend()

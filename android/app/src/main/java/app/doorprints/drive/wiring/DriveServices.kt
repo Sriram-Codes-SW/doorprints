@@ -93,8 +93,13 @@ class DriveServices(
      */
     val browserRedirect = BrowserRedirect()
 
+    /**
+     * The Drive object graph, built the first time a screen or worker needs it (so a phone that never uses Drive
+     * never builds it).
+     */
     val graph: DriveGraph by lazy { build() }
 
+    /** The controller both phones' Drive screens use: it routes to the Drive core, which enforces the trust rules. */
     val controller: DriveConnectController get() = graph.controller
 
     private fun build(): DriveGraph {

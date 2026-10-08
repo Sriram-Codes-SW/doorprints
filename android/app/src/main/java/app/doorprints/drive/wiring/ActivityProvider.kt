@@ -39,6 +39,7 @@ class ActivityProvider {
     /** The one launcher of the process: it outlives the Activity so an answer can reach a new one after a rotation. */
     val results = DeferredActivityLauncher()
 
+    /** Makes [activity] the foreground one (its [hooks] replace the previous Activity's), called from onStart. */
     @Synchronized
     fun register(activity: Activity, hooks: ActivityHooks? = null) {
         ref = WeakReference(activity)
@@ -69,6 +70,7 @@ class ActivityProvider {
         return true
     }
 
+    /** The foreground Activity, or null in the background or once it is finishing or destroyed. */
     @Synchronized
     fun current(): Activity? = ref?.get()?.takeIf { !it.isFinishing && !it.isDestroyed }
 

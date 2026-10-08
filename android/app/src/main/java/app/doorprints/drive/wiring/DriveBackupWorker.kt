@@ -45,6 +45,7 @@ class DriveBackupWorker(context: Context, params: WorkerParameters) : CoroutineW
     }
 
     companion object {
+        /** The unique periodic work's name, so a re-schedule replaces the one job. */
         const val WORK_NAME = "drive-backup"
         private const val PERIOD_HOURS = 6L
         private const val MAX_ATTEMPTS = 5
