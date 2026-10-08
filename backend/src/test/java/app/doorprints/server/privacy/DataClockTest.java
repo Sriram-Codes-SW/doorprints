@@ -34,8 +34,10 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * The export file name and the purge cut-off come from the injected clock (S4b-BL-166).
@@ -62,8 +64,10 @@ class DataClockTest {
         var visits = mock(VisitRepository.class);
         var houses = mock(HouseRepository.class);
         var records = mock(RecordRepository.class);
+        var props = mock(AppProperties.class, RETURNS_DEEP_STUBS);
+        when(props.privacy().tombstoneRetentionDays()).thenReturn(90);
         var service = new DataService(houses, visits, photos, records, mock(SyncVersions.class),
-                new AppProperties(null, null, null, null, null, null, null, null, null),
+                props,
                 Clock.fixed(instant, ZoneOffset.UTC));
 
         service.purgeTombstones();

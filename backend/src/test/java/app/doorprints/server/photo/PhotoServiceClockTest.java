@@ -37,6 +37,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -54,7 +55,14 @@ class PhotoServiceClockTest {
     private final SyncVersions versions = mock(SyncVersions.class);
     private final PhotoService service = new PhotoService(photos, houses, versions,
             new ClientClock(Clock.fixed(FIXED, ZoneOffset.UTC), 300, 365),
-            new AppProperties(null, null, null, null, null, null, null, null, null));
+            props());
+
+    /** Only the photo cap is read; a mock keeps the test from breaking each time the properties gain a section. */
+    private static AppProperties props() {
+        var props = mock(AppProperties.class, RETURNS_DEEP_STUBS);
+        when(props.limits().maxPhotosPerHouse()).thenReturn(20);
+        return props;
+    }
 
     private static byte[] png() throws Exception {
         var out = new ByteArrayOutputStream();
