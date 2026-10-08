@@ -20,7 +20,7 @@ import { describe, expect, it } from 'vitest';
 import vectors from './parity-vectors.json';
 import {
   AiHouse, CONTACT, FALLBACK_SUMMARY, I_DONT_KNOW, Redactor, askPrompt, assemblePlan, candidateLines, citations,
-  cleanAnswer, extractionPrompt, houseText, inlineIds, legsInOrder, nearestNeighbour, nonce, redactGeneric, roundHalfUp,
+  cleanAnswer, countListingLinks, cutListing, extractionPrompt, houseText, inlineIds, legsInOrder, nearestNeighbour, nonce, redactGeneric, roundHalfUp,
   planPrompt, sanitizeDraft, scrubStoredText, selectForAsk, selectForPlan, snippet, wrap, type RawListing, type PlanCandidate,
 } from './ai-core';
 import { inTheRunning } from '../../shared/house-status';
@@ -87,7 +87,7 @@ describe('AI core parity with the server', () => {
   });
 
   it('checks listings as the server does', () => {
-    expect(vectors.sanitize).toHaveLength(24);
+    expect(vectors.sanitize).toHaveLength(31);
     for (const c of vectors.sanitize) {
       // Slice 1a: the draft carries `areaSqft` (the no-AI parser fills it); the sanitiser leaves it null, and the
       // vectors predate the field, so it is compared only once a vector says what the server writes there.
@@ -96,6 +96,33 @@ describe('AI core parity with the server', () => {
       expect(areaSqft).toBeNull();
       expect('areaSqft' in expected ? { ...draft, areaSqft } : draft, JSON.stringify(c.raw)).toEqual(expected);
     }
+  });
+
+  it('counts the different http(s) links of the pasted text as the server does (S4b-BL-182)', () => {
+    const cases = vectors.listingLinks as { name: string; text: string; expected: number }[];
+    expect(cases).toHaveLength(17);
+    for (const c of cases) expect(countListingLinks(c.text), c.name).toBe(c.expected);
+  });
+
+  it('cuts the pasted text at the limit and counts what was left out (S4b-BL-182)', () => {
+    const cases = vectors.listingCut as { name: string; text: string; cap: number; kept: string; leftOut: number }[];
+    expect(cases).toHaveLength(9);
+    for (const c of cases) expect(cutListing(c.text, c.cap), c.name).toEqual({ text: c.kept, leftOut: c.leftOut });
+  });
+
+  it('counts links in time linear in the text: a long run of schemes and of address characters (S4b-BL-182)', () => {
+    expect(countListingLinks('http:// '.repeat(50_000))).toBe(0);
+    expect(countListingLinks('https://a' + 'a'.repeat(200_000) + ' https://b' + '.'.repeat(200_000))).toBe(2);
+    expect(countListingLinks(('https://x.example/' + 'p'.repeat(30) + ' ').repeat(5_000))).toBe(1);
+  });
+
+  it('warns about several links only when the draft has a link, and counts the pasted text, not the draft (S4b-BL-182)', () => {
+    const two = 'Flat https://a.example/1 or https://b.example/2';
+    const warn = 'listingUrl: the text has 2 links, check this is the right one';
+    expect(sanitizeDraft({ label: 'Flat', listingUrl: 'https://a.example/1' }, two).warnings).toEqual([warn]);
+    expect(sanitizeDraft({ label: 'Flat', listingUrl: null }, two).warnings).toEqual([]);
+    expect(sanitizeDraft({ label: 'Flat', listingUrl: 'https://a.example/1', notes: 'https://c.example/3 https://d.example/4' }, 'Flat https://a.example/1').warnings).toEqual([]);
+    expect(sanitizeDraft(null, two).warnings).toEqual(['Model returned nothing usable']);
   });
 
   it('picks snippets and citation markers as the server does', () => {

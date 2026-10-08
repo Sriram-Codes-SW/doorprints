@@ -88,6 +88,10 @@ class ParityVectorsTest {
             var raw = o.get("raw").isNull() ? null : JSON.treeToValue(o.get("raw"), RawListing.class);
             o.set("expected", JSON.valueToTree(DraftSanitizer.sanitize(raw, o.get("source").asText())));
         }
+        for (var c : (ArrayNode) out.get("listingLinks")) {
+            var o = (ObjectNode) c;
+            o.put("expected", DraftSanitizer.linkCount(o.get("text").asText()));
+        }
         for (var c : (ArrayNode) out.get("snippet")) {
             var o = (ObjectNode) c;
             o.put("expected", AskPrompts.snippet(o.get("doc").asText(), o.get("question").asText(), 240));

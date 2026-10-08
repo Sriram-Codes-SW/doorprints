@@ -1636,4 +1636,6 @@
     <string name="tour_done_title">आप तैयार हैं</string>
     <string name="tour_done_body">यह Doorprints के मुख्य हिस्से थे। अपने देखे पहले मकान से शुरू करें।</string>
     <string name="tour_done_action">समाप्त करें दबाएँ, फिर ऐप खुला रखकर मकान देखने जाएँ।</string>
+    <!-- S4b-BL-182 (2026-10-08): the paste box says how much of a long listing is left out. Under review. -->
+    <string name="house_paste_cut">केवल पहले %1$s अक्षर पढ़े जाते हैं। अंत में छूटे अक्षर: %2$s।</string>
 </resources>
