@@ -32,8 +32,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Who may use the owner page (docs/03 §12.1): one-time <b>setup links</b>, written to the server's log at every start
- * or made from a signed-in browser (*Add another browser*), and the <b>owner sessions</b> they are exchanged for. Both
+ * Who may use the owner page (docs/03 §12.1): one-time <b>setup links</b>, written to the server's log at a start while no browser is
+ * signed in (S4b-BL-171) or made from a signed-in browser (*Add another browser*), and the <b>owner sessions</b> they are exchanged for. Both
  * are 32 random bytes kept as SHA-256 hashes.
  */
 @Component
@@ -115,6 +115,18 @@ public class OwnerAuth {
             }
         });
         return hit.map(Hit::id);
+    }
+
+    /**
+     * Whether any browser is signed in now: an owner session that is neither signed out nor past its 30 idle days.
+     * The same rule as {@link #sessions()}, so "no browser is listed on the owner page" and "the log offers a setup
+     * link" always agree (ADR-25, S4b-BL-171).
+     */
+    public boolean hasOpenSession() {
+        return jdbc.sql("""
+                        SELECT EXISTS (SELECT 1 FROM owner_token
+                        WHERE kind = 'session' AND revoked_at IS NULL AND expires_at > :now)""")
+                .param("now", Timestamp.from(clock.instant())).query(Boolean.class).single();
     }
 
     /** The open sessions (signed-in browsers), most recently used first. */
