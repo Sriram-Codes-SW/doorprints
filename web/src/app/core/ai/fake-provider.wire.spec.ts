@@ -210,8 +210,10 @@ describe.skipIf(!hasNode)('Adapters over a real socket against the fake provider
     /** Google's address is a constant; send it to the fake server and keep the rest of the request. */
     const toFake = () => {
       const real = globalThis.fetch.bind(globalThis);
-      vi.stubGlobal('fetch', (input: string, init?: RequestInit) =>
-        real(input.startsWith('https://generativelanguage.googleapis.com') ? api + input.slice('https://generativelanguage.googleapis.com'.length) : input, init));
+      vi.stubGlobal('fetch', (input: string, init?: RequestInit) => {
+        const url = new URL(input); // the host is compared as a parsed host, not as a text prefix
+        return real(url.hostname === 'generativelanguage.googleapis.com' ? api + url.pathname + url.search : input, init);
+      });
       TestBed.configureTestingModule({ providers: [provideHttpClient(withFetch())] });
       return new GeminiChatModel(TestBed.inject(HttpClient), 'gk-test');
     };
