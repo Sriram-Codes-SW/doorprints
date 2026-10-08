@@ -26,7 +26,8 @@
 #
 # The key: DOORPRINTS_KEY or APP_API_KEY in the environment, else APP_API_KEY from ./.env. To also test pairing, set
 # OWNER_SETUP to the part after "#setup=" of the link under "Doorprints owner page" in `docker compose logs api`
-# (the link works once: this uses it up, restart the server for a new one).
+# (the link works once: this uses it up, restart the server for a new one; the log holds a link only while no browser
+# is signed in to the owner page, so on a server that has one, skip OWNER_SETUP or use a new server).
 set -u
 BASE="${1:-http://localhost:8080}"; BASE="${BASE%/}"
 HERE="$(cd "$(dirname "$0")/.." && pwd)"

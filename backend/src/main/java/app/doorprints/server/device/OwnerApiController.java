@@ -203,7 +203,7 @@ public class OwnerApiController {
         var opened = auth.exchange(body.setup(), userAgent);
         if (opened.isEmpty()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("status", 401,
-                    "detail", "This link was already used or has expired. Restart the server for a new one."));
+                    "detail", "This link was already used or has expired. If no browser is signed in, restart the server for a new one; otherwise choose \"Add another browser\" in a signed-in browser."));
         }
         response.addHeader("Set-Cookie", COOKIE + "=" + opened.get().token() + "; Path=/owner; HttpOnly; SameSite=Strict"
                 + "; Max-Age=" + OwnerAuth.SESSION_IDLE.toSeconds() + (request.isSecure() ? "; Secure" : ""));
