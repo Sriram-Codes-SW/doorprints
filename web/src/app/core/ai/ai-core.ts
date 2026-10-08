@@ -1061,6 +1061,7 @@ Rules:
 - priceType: RENT or SALE.
 - bedrooms: the number of bedrooms (2BHK -> "2", 1RK/studio -> "0").
 - label: at most 8 words, e.g. "2BHK near Indiranagar metro".
+- locality: the neighbourhood or area, never the city alone (the city goes in address). If only a road is named, use the road as the locality too.
 - notes: one short paragraph of other useful facts (deposit, maintenance, floor, furnishing, facing, availability, tenant preferences). No marketing fluff.
 - amenities: short lowercase nouns, e.g. "parking", "lift", "power backup".
 `;

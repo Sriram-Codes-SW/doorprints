@@ -54,8 +54,8 @@ export const LISTING_SCHEMA = {
   properties: {
     label: str("Short human label, e.g. '2BHK near Indiranagar metro'"),
     address: str('Full postal address as written in the listing'),
-    street: str('Street / road name only'),
-    locality: str('Locality / neighbourhood / area'),
+    street: str("Street / road name only, e.g. 'MG Road'; null when no road is named"),
+    locality: str("Locality / neighbourhood / area inside the city, e.g. 'Indiranagar', 'Sector 56'; never the city or district alone. When the listing names only a road, repeat the road here"),
     price: str("Monthly rent or sale price in rupees exactly as written, e.g. '25,000' or '1.2 Cr'"),
     priceType: str('RENT or SALE'),
     bedrooms: str("Number of bedrooms, e.g. '2' for 2BHK"),

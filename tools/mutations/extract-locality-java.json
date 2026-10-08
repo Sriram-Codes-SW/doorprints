@@ -1,0 +1,18 @@
+{
+  "spec": "ExtractionPromptsTest, RawListingSchemaTest",
+  "maven": [
+      "-Dtest=ExtractionPromptsTest,RawListingSchemaTest"
+  ],
+  "mutations": [
+    {"file": "backend/src/main/java/app/doorprints/server/ai/extract/ExtractionPrompts.java", "find": "- locality: the neighbourhood or area, never the city alone (the city goes in address). If only a \\\n                road is named, use the road as the locality too.\n                ", "replace": "", "expect": "localityIsTheAreaNotTheCity"},
+    {"file": "backend/src/main/java/app/doorprints/server/ai/extract/ExtractionPrompts.java", "find": "never the city alone (the city goes in address)", "replace": "the city (the city goes in address)", "expect": "localityIsTheAreaNotTheCity"},
+    {"file": "backend/src/main/java/app/doorprints/server/ai/extract/ExtractionPrompts.java", "find": "(the city goes in address). If only a", "replace": ". If only a", "expect": "localityIsTheAreaNotTheCity"},
+    {"file": "backend/src/main/java/app/doorprints/server/ai/extract/ExtractionPrompts.java", "find": "road is named, use the road as the locality too.", "replace": "road is named.", "expect": "localityIsTheAreaNotTheCity"},
+    {"file": "backend/src/main/java/app/doorprints/server/ai/extract/ExtractionPrompts.java", "find": "- locality: the neighbourhood or area", "replace": "- locality: the neighbourhood, area or city", "expect": "localityIsTheAreaNotTheCity"},
+    {"file": "backend/src/main/java/app/doorprints/server/ai/extract/RawListing.java", "find": "Street / road name only, e.g. 'MG Road'; null when no road is named", "replace": "Street / road name only", "expect": "everyFieldDescriptionIsTheOneInTheSharedVectors"},
+    {"file": "backend/src/main/java/app/doorprints/server/ai/extract/RawListing.java", "find": "Locality / neighbourhood / area inside the city, e.g. 'Indiranagar', 'Sector 56'; never the city or district alone. When the listing names only a road, repeat the road here", "replace": "Locality / neighbourhood / area", "expect": "everyFieldDescriptionIsTheOneInTheSharedVectors"},
+    {"file": "backend/src/main/java/app/doorprints/server/ai/extract/RawListing.java", "find": "; never the city or district alone", "replace": "", "expect": "everyFieldDescriptionIsTheOneInTheSharedVectors"},
+    {"file": "backend/src/main/java/app/doorprints/server/ai/extract/RawListing.java", "find": ". When the listing names only a road, repeat the road here", "replace": "", "expect": "everyFieldDescriptionIsTheOneInTheSharedVectors"},
+    {"file": "backend/src/main/java/app/doorprints/server/ai/extract/RawListing.java", "find": ", e.g. 'MG Road'; null when no road is named", "replace": "", "expect": "everyFieldDescriptionIsTheOneInTheSharedVectors"}
+  ]
+}

@@ -361,6 +361,14 @@ class AiCoreTest {
     }
 
     @Test
+    fun extractionPromptSaysLocalityIsTheAreaNotTheCity() {
+        val system = AiPrompts.extraction("Rajpur Road, Dehradun: 2.5 BHK", "abc123").system
+        assertTrue(system.contains("- locality: the neighbourhood or area, never the city alone (the city goes in address). If only a road is named, use the road as the locality too."))
+        assertTrue(system.indexOf("- label:") < system.indexOf("- locality:"))
+        assertTrue(system.indexOf("- locality:") < system.indexOf("- notes:"))
+    }
+
+    @Test
     fun untrustedTextCannotCloseItsBlock() {
         val nonce = PromptSafety.nonce()
         assertTrue(Regex("^[0-9a-f]{6}$").matches(nonce))
