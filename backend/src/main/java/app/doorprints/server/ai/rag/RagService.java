@@ -18,6 +18,7 @@
 
 package app.doorprints.server.ai.rag;
 
+import app.doorprints.server.ai.AnswerText;
 import app.doorprints.server.ai.ContactRedactor;
 import app.doorprints.server.ai.PromptSafety;
 import app.doorprints.server.ai.config.AiProperties;
@@ -126,8 +127,19 @@ public class RagService {
         if (answer == null || answer.answer() == null || answer.answer().isBlank()) {
             return new AskResponse(AskPrompts.I_DONT_KNOW, List.of(), false, docs.size());
         }
-        var citations = citations(answer, docs, question);
-        return new AskResponse(answer.answer().strip(), citations, !citations.isEmpty(), docs.size());
+        return answered(answer, docs, question);
+    }
+
+    /**
+     * The response for an answer the model returned: the text cleaned by {@link AnswerText#clean} against the retrieved
+     * (already redacted) records, then the citations of that text. Pure, unit-tested.
+     */
+    static AskResponse answered(ModelAnswer answer, List<Document> docs, String question) {
+        var records = new StringBuilder();
+        for (var d : docs) records.append(d.getText()).append('\n');
+        var text = AnswerText.clean(answer.answer().strip(), records.toString());
+        var citations = citations(new ModelAnswer(text, answer.citedHouseIds()), docs, question);
+        return new AskResponse(text, citations, !citations.isEmpty(), docs.size());
     }
 
     /** Current contact name/phone per retrieved house id (houses deleted meanwhile are simply absent). */

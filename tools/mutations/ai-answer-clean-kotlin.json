@@ -1,0 +1,128 @@
+{
+  "spec": "ParityVectorsTest, AnswerTextTest, OnDeviceAiTest",
+  "gradle": [
+    ":shared:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.shared.ai.ParityVectorsTest",
+    "--tests",
+    "app.doorprints.shared.ai.AnswerTextTest",
+    "--tests",
+    "app.doorprints.shared.ai.OnDeviceAiTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AnswerText.kt",
+      "find": "\"!?\\\\[((?:[^\\\\[\\\\]\\\\n]|\\\\[[^\\\\[\\\\]\\\\n]*\\\\]){0,500})\\\\]\\\\([ \\\\t\\\\r\\\\n]{0,3}[^() \\\\t\\\\r\\\\n]{0,2000}\" +",
+      "replace": "\"\\\\[((?:[^\\\\[\\\\]\\\\n]|\\\\[[^\\\\[\\\\]\\\\n]*\\\\]){0,500})\\\\]\\\\([ \\\\t\\\\r\\\\n]{0,3}[^() \\\\t\\\\r\\\\n]{0,2000}\" +",
+      "expect": "answerTextIsCleanedAsTheServerDoes"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AnswerText.kt",
+      "find": "{ it.groupValues[1] }",
+      "replace": "{ \"\" }",
+      "expect": "answerTextIsCleanedAsTheServerDoes"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AnswerText.kt",
+      "find": "(?:[^\\\\[\\\\]\\\\n]|\\\\[[^\\\\[\\\\]\\\\n]*\\\\]){0,500}",
+      "replace": "(?:[^\\\\[\\\\]\\\\n]){0,500}",
+      "expect": "answerTextIsCleanedAsTheServerDoes"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AnswerText.kt",
+      "find": "(?:[^\\\\[\\\\]\\\\n]|\\\\[[^\\\\[\\\\]\\\\n]*\\\\]){0,500}",
+      "replace": "(?:[^\\\\[\\\\]\\\\n]|\\\\[[^\\\\[\\\\]\\\\n]*\\\\])*",
+      "expect": "hostileLongInputIsScannedInLinearTime"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AnswerText.kt",
+      "find": "(?:[ \\\\t\\\\r\\\\n]+\\\"[^\\\"\\\\n]{0,200}\\\")?",
+      "replace": "",
+      "expect": "answerTextIsCleanedAsTheServerDoes"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AnswerText.kt",
+      "find": "private const val URL_TAIL = \".,;:!?\"",
+      "replace": "private const val URL_TAIL = \"\"",
+      "expect": "answerTextIsCleanedAsTheServerDoes"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AnswerText.kt",
+      "find": "if (m.value.substring(0, end).lowercase() in known) m.value else LINK_REMOVED + m.value.substring(end)",
+      "replace": "LINK_REMOVED + m.value.substring(end)",
+      "expect": "answerTextIsCleanedAsTheServerDoes"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AnswerText.kt",
+      "find": "if (m.value.substring(0, end).lowercase() in known) m.value else LINK_REMOVED + m.value.substring(end)",
+      "replace": "if (m.value.substring(0, end) in known) m.value else LINK_REMOVED + m.value.substring(end)",
+      "expect": "answerTextIsCleanedAsTheServerDoes"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AnswerText.kt",
+      "find": "if (m.value.substring(0, end).lowercase() in known) m.value else LINK_REMOVED + m.value.substring(end)",
+      "replace": "if (context.lowercase().contains(m.value.substring(0, end).lowercase())) m.value else LINK_REMOVED + m.value.substring(end)",
+      "expect": "answerTextIsCleanedAsTheServerDoes"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AnswerText.kt",
+      "find": "if (m.value.substring(0, end).lowercase() in known) m.value else LINK_REMOVED + m.value.substring(end)",
+      "replace": "if (m.value.substring(0, end).lowercase() in known) m.value else LINK_REMOVED",
+      "expect": "answerTextIsCleanedAsTheServerDoes"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AnswerText.kt",
+      "find": "known += m.value.substring(0, keep(m.value)).lowercase()",
+      "replace": "known += m.value.substring(0, keep(m.value))",
+      "expect": "answerTextIsCleanedAsTheServerDoes"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AnswerText.kt",
+      "find": ", RegexOption.IGNORE_CASE)",
+      "replace": ")",
+      "expect": "answerTextIsCleanedAsTheServerDoes"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AnswerText.kt",
+      "find": "https?://[A-Za-z0-9",
+      "replace": "http://[A-Za-z0-9",
+      "expect": "answerTextIsCleanedAsTheServerDoes"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AnswerText.kt",
+      "find": "[A-Za-z0-9\\\\-._~:/?#@!\\$&*+,;=%]+",
+      "replace": "[^ \\\\t\\\\r\\\\n]+",
+      "expect": "answerTextIsCleanedAsTheServerDoes"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/PlanChecks.kt",
+      "find": "var summary = plan?.summary?.trim()?.let { AnswerText.clean(it, context) }",
+      "replace": "var summary = plan?.summary?.trim()",
+      "expect": "aPlanSummaryAndReasonsLoseLinks"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/PlanChecks.kt",
+      "find": "reasons += AnswerText.clean(stop.reason?.trim() ?: \"\", context)",
+      "replace": "reasons += stop.reason?.trim() ?: \"\"",
+      "expect": "aPlanSummaryAndReasonsLoseLinks"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/PlanChecks.kt",
+      "find": "val context = seen.values.joinToString(\"\\n\") { \"${it.label}\\n${it.locality.orEmpty()}\\n${it.street.orEmpty()}\" }",
+      "replace": "val context = \"\"",
+      "expect": "aPlanSummaryAndReasonsLoseLinks"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OnDeviceAi.kt",
+      "find": "val text = AnswerText.clean(answer!!.answer!!.trim(), docs.joinToString(\"\\n\") { it.text })",
+      "replace": "val text = answer!!.answer!!.trim()",
+      "expect": "askRemovesALinkOrImage"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OnDeviceAi.kt",
+      "find": "AnswerText.clean(answer!!.answer!!.trim(), docs.joinToString(\"\\n\") { it.text })",
+      "replace": "AnswerText.clean(answer!!.answer!!.trim(), \"\")",
+      "expect": "askRemovesALinkOrImage"
+    }
+  ]
+}

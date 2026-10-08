@@ -25,7 +25,7 @@ import type { Viewing } from '../../shared/viewing';
 import type { AskResponse, HouseDraft, PlanRequest, PlanResponse } from '../ai.service';
 import {
   AgentPlan, AiHouse, AskFilterValues, I_DONT_KNOW, ModelAnswer, PlanCandidate, RawListing, askPrompt, assemblePlan,
-  candidateLines, citations, extractionPrompt, nonce, planPrompt, sanitizeDraft, selectForAsk, selectForPlan,
+  candidateLines, citations, cleanAnswer, extractionPrompt, nonce, planPrompt, sanitizeDraft, selectForAsk, selectForPlan,
 } from './ai-core';
 import type { JsonChatModel } from './json-chat-model';
 
@@ -233,8 +233,9 @@ export class OnDeviceAiService {
     const p = askPrompt(question, docs, nonce());
     const answer = this.parse<ModelAnswer>(await this.model(via).generateJson(p.system, p.user, ANSWER_SCHEMA, 0.1));
     if (!answer?.answer?.trim()) return { answer: I_DONT_KNOW, citations: [], grounded: false, retrieved: docs.length };
-    const cited = citations(answer, docs, question);
-    return { answer: answer.answer.trim(), citations: cited, grounded: cited.length > 0, retrieved: docs.length };
+    const text = cleanAnswer(answer.answer.trim(), docs.map((d) => d.text).join('\n'));
+    const cited = citations({ ...answer, answer: text }, docs, question);
+    return { answer: text, citations: cited, grounded: cited.length > 0, retrieved: docs.length };
   }
 
   /**

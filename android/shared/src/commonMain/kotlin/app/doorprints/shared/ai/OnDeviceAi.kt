@@ -167,8 +167,9 @@ class OnDeviceAi(
         val prompt = AiPrompts.ask(question, docs.map { it.id to it.text }, PromptSafety.nonce())
         val answer = parse<ModelAnswer>(gemini.generateJson(prompt.system, prompt.user, ANSWER_SCHEMA, 0.1))
         if (answer?.answer.isNullOrBlank()) return AskResponseDto(AiPrompts.I_DONT_KNOW, emptyList(), false, docs.size)
-        val citations = AskChecks.citations(answer!!, docs, question)
-        return AskResponseDto(answer.answer!!.trim(), citations, citations.isNotEmpty(), docs.size)
+        val text = AnswerText.clean(answer!!.answer!!.trim(), docs.joinToString("\n") { it.text })
+        val citations = AskChecks.citations(answer.copy(answer = text), docs, question)
+        return AskResponseDto(text, citations, citations.isNotEmpty(), docs.size)
     }
 
     /**
