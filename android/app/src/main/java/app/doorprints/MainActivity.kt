@@ -156,14 +156,14 @@ class MainActivity : ComponentActivity() {
         if (intent.action == Intent.ACTION_VIEW) {
             ConnectLink.parse(intent.dataString)?.let { return DeepLink.Connect(it) }
             // A backup or update file opened in Doorprints (docs/11 5.28): a document another app holds. The Import
-            // screen validates it as any picked file; only a content or file reference is taken, never a link.
-            return intent.data?.takeIf { it.scheme == "content" || it.scheme == "file" }?.let { DeepLink.ImportFile(it.toString()) }
+            // screen validates it as any picked file; only a content reference is taken, never a link or a file path.
+            return ImportLink.of(intent.data)
         }
         if (intent.action == Intent.ACTION_SEND) {
             @Suppress("DEPRECATION")
             val stream = intent.getParcelableExtra<android.net.Uri>(Intent.EXTRA_STREAM)
             if (stream != null) {
-                return stream.takeIf { it.scheme == "content" || it.scheme == "file" }?.let { DeepLink.ImportFile(it.toString()) }
+                return ImportLink.of(stream)
             }
             // A listing shared as text (docs/11 5.29, *Add a shared listing*): untrusted text, capped (SEC-043),
             // parsed on the device; the subject line, when the sender gives one, goes first as the listing's title.

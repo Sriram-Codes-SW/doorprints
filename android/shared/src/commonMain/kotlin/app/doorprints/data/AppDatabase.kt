@@ -105,6 +105,10 @@ interface HouseDao {
     @Query("SELECT * FROM houses WHERE id = :id")
     suspend fun get(id: String): HouseEntity?
 
+    /** The stored houses with these ids, tombstones included, in one query; at most `CommonRepository.PULL_READ_CHUNK` ids (SQLite's variable limit). */
+    @Query("SELECT * FROM houses WHERE id IN (:ids)")
+    suspend fun getMany(ids: List<String>): List<HouseEntity>
+
     @Upsert
     suspend fun upsert(house: HouseEntity)
 
@@ -169,6 +173,10 @@ interface VisitDao {
 
     @Query("SELECT * FROM visits WHERE id = :id")
     suspend fun get(id: String): VisitEntity?
+
+    /** The stored visits with these ids, tombstones included, in one query (see [HouseDao.getMany]). */
+    @Query("SELECT * FROM visits WHERE id IN (:ids)")
+    suspend fun getMany(ids: List<String>): List<VisitEntity>
 
     @Upsert
     suspend fun upsert(visit: VisitEntity)
@@ -243,6 +251,10 @@ interface PhotoDao {
 
     @Query("SELECT * FROM photos WHERE id = :id")
     suspend fun get(id: String): PhotoEntity?
+
+    /** The stored photo rows with these ids, deleted ones included, in one query (see [HouseDao.getMany]). */
+    @Query("SELECT * FROM photos WHERE id IN (:ids)")
+    suspend fun getMany(ids: List<String>): List<PhotoEntity>
 
     @Query("DELETE FROM photos WHERE id = :id")
     suspend fun delete(id: String)
@@ -377,6 +389,10 @@ interface RecordDao {
     /** Tombstones included: the sync's last-write-wins needs a deleted row's `updatedAt` too. */
     @Query("SELECT * FROM records WHERE type = :type AND id = :id")
     suspend fun get(type: String, id: String): RecordEntity?
+
+    /** The stored records of one [type] with these ids, tombstones included, in one query (see [HouseDao.getMany]). */
+    @Query("SELECT * FROM records WHERE type = :type AND id IN (:ids)")
+    suspend fun getMany(type: String, ids: List<String>): List<RecordEntity>
 
     @Upsert
     suspend fun upsert(record: RecordEntity)

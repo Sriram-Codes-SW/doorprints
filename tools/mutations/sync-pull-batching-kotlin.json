@@ -1,0 +1,42 @@
+{
+  "spec": "android/shared/src/androidHostTest/kotlin/app/doorprints/data/SyncPullBatchingTest.kt",
+  "gradle": [":shared:testAndroidHostTest", "--tests", "app.doorprints.data.SyncPullBatchingTest"],
+  "mutations": [
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt",
+      "find": "internal const val PULL_READ_CHUNK = 500",
+      "replace": "internal const val PULL_READ_CHUNK = 1",
+      "expect": "aThousandAndOnePulledRowsCostTwoMoreQueriesPerKindThanOneRowAndNeverOnePerRow"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt",
+      "find": "keys.distinct().chunked(PULL_READ_CHUNK).flatMap { read(it) }",
+      "replace": "keys.distinct().chunked(PULL_READ_CHUNK).flatMap { read(it.drop(1)) }",
+      "expect": "mergesExactlyAsBefore"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt",
+      "find": "keys.distinct().chunked(PULL_READ_CHUNK).flatMap { read(it) }",
+      "replace": "keys.distinct().chunked(PULL_READ_CHUNK + 1).flatMap { read(it) }",
+      "expect": "splitsAtTheChunkEdge"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt",
+      "find": "keys.distinct().chunked(PULL_READ_CHUNK).flatMap { read(it) }",
+      "replace": "keys.chunked(PULL_READ_CHUNK).flatMap { read(it) }.distinct().take(1)",
+      "expect": "mergesExactlyAsBefore"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt",
+      "find": "val house = photoHouses[change.houseId]",
+      "replace": "val house: HouseEntity? = null",
+      "expect": "photosATombstoneForgetsALocalPhoto"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt",
+      "find": "val local = if (photoSeen.add(change.id)) localPhotos[change.id] else db.photos().get(change.id)",
+      "replace": "val local = if (photoSeen.add(change.id)) null else db.photos().get(change.id)",
+      "expect": "photosATombstoneForgetsALocalPhoto"
+    }
+  ]
+}

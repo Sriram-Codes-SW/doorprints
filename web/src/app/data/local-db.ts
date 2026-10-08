@@ -125,6 +125,11 @@ export interface LocalDb {
   readonly kind: 'indexeddb' | 'memory';
   get<T>(store: StoreName, key: StoreKey): Promise<T | undefined>;
   getAll<T>(store: StoreName): Promise<T[]>;
+  /**
+   * The rows stored under these keys, in one read (one transaction), without reading the rest of the store; a key with
+   * no row adds nothing, and the rows come in no promised order (S4b-BL-167: the sync pull reads a page's locals).
+   */
+  getMany<T>(store: StoreName, keys: readonly StoreKey[]): Promise<T[]>;
   /** The rows whose `index` property equals `value`, without reading the rest of the store (S4b-BL-66). */
   getAllByIndex<T>(store: StoreName, index: string, value: string | number): Promise<T[]>;
   /** The keys of a store's rows, without reading the rows (a saved walk is read one at a time by key). */
@@ -182,6 +187,16 @@ export class MemoryDb implements LocalDb {
 
   getAll<T>(store: StoreName): Promise<T[]> {
     return Promise.resolve([...this.map(store).values()] as T[]);
+  }
+
+  getMany<T>(store: StoreName, keys: readonly StoreKey[]): Promise<T[]> {
+    const map = this.map(store);
+    const found: T[] = [];
+    for (const key of keys) {
+      const row = map.get(memoryKey(key));
+      if (row !== undefined) found.push(row as T);
+    }
+    return Promise.resolve(found);
   }
 
   getAllByIndex<T>(store: StoreName, index: string, value: string | number): Promise<T[]> {
@@ -274,6 +289,30 @@ class IdbDb implements LocalDb {
 
   getAll<T>(store: StoreName): Promise<T[]> {
     return this.run(store, 'readonly', (s) => s.getAll() as IDBRequest<T[]>);
+  }
+
+  getMany<T>(store: StoreName, keys: readonly StoreKey[]): Promise<T[]> {
+    if (keys.length === 0) return Promise.resolve([]);
+    return new Promise<T[]>((resolve, reject) => {
+      let tx: IDBTransaction;
+      const found: T[] = [];
+      try {
+        tx = this.db.transaction(store, 'readonly');
+        const os = tx.objectStore(store);
+        for (const key of keys) {
+          const request = os.get(idbKey(key)) as IDBRequest<T | undefined>;
+          request.onsuccess = () => {
+            if (request.result !== undefined) found.push(request.result);
+          };
+        }
+      } catch (err: unknown) {
+        reject(asError(err, 'IndexedDB request failed'));
+        return;
+      }
+      tx.oncomplete = () => resolve(found);
+      tx.onerror = () => reject(tx.error ?? new Error('IndexedDB request failed'));
+      tx.onabort = () => reject(tx.error ?? new Error('IndexedDB transaction aborted'));
+    });
   }
 
   getAllByIndex<T>(store: StoreName, index: string, value: string | number): Promise<T[]> {
