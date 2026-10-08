@@ -2,10 +2,10 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.114 |
+| Version | 0.115 |
 | Date | 2026-10-08 |
 | Owner | Sriram (product owner); lead: Claude |
-| Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..173); this file lists the lead-level items and points to the rest. |
+| Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..183); this file lists the lead-level items and points to the rest. |
 
 ## Change log
 
@@ -122,7 +122,8 @@
 | 0.111 | 2026-10-08 | Claude (Code), lead | The independent review of `main` (2026-10-08) is recorded: S4b-BL-161..173 in [10](10-sprint-log.md) §12.7 (v0.173), with S4b-BL-161 (the pairing flood) to be done before any public server and S4b-BL-168 and -171 waiting for the owner. Team-level ticket range in the header is now S4b-BL-1..173. |
 | 0.112 | 2026-10-08 | Claude (Code), lead | S4b-BL-175 (keyless provider checks; [10](10-sprint-log.md) v0.175): `tools/fake-ai-provider` (a fake OpenAI-style, Anthropic and Gemini server, its tests and a Chromium CORS check) and the manual AI evals suite `local-model`; §7 points at them. Three findings are in §12.7 as S4b-BL-175-F1..F3. |
 | 0.113 | 2026-10-08 | Claude (Code), lead | **S4b-BL-179 and S4b-BL-180 built on `fix/redact-emails-pin-common-name-words`** ([10](10-sprint-log.md) v0.175): the redaction layer removes email addresses (`[email]`) on the server and on the device, and the ordinary-word name parts that stay replaced are pinned by vectors (owner decisions of 2026-10-08). Mutation lists `tools/mutations/ai-redactor-email-*.json`. |
-| 0.114 | 2026-10-08 | Claude (Code) | **S4b-BL-171 built on `fix/owner-setup-link-first-run-only`** ([10](10-sprint-log.md) v0.177), pull request PR_NUM: the server writes the owner page's setup link to its log only at a start while no browser is signed in; the owner page's hi, ta and te sign-in hints still say "restart the server for a new link" (follow-up). |
+| 0.114 | 2026-10-08 | Claude (Code), lead | S4b-BL-183 ([10](10-sprint-log.md) v0.176): the guide's search (Material reads the box on key-up only; `search-input.js`; `tools/guide-search-check/`), a §7 pitfall. Team-level ticket range in the header is now S4b-BL-1..183. |
+| 0.115 | 2026-10-08 | Claude (Code) | **S4b-BL-171 built on `fix/owner-setup-link-first-run-only`** ([10](10-sprint-log.md) v0.178), pull request PR_NUM: the server writes the owner page's setup link to its log only at a start while no browser is signed in; the owner page's hi, ta and te sign-in hints still say "restart the server for a new link" (follow-up). |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 
@@ -528,6 +529,7 @@ to branches or PRs or main")**
   (`scripts/sw-precache.mjs`) writes the precache list into `sw.js`. Check a new lazy chunk or asset is in it.
 - **Guide:** `mkdocs build --strict` output must be read for `WARNING` lines (an anchor warning once passed locally and
   failed CI); renaming a heading breaks `#anchor` links in other pages.
+- **Guide search (S4b-BL-183):** Material reads the search box on `keyup` and focus only, so a test that fills it with `fill()` or `pressSequentially` of Indic text (input events, no key-up) sees the last word missing: end the text with a key press, or use `tools/guide-search-check/check.mjs` (`--typing`). Do not set the search plugin's `lang` to `ta` or `te`: Material's worker never loads `wordcut.js` for them and the whole search dies. `site-check.mjs` (CI, `tools/check.sh guide`) checks the build; after a guide or Material change, run `check.mjs` by hand (docs/06 TC-M-65), and against the live site after a deploy.
 - **Live UI test (`tools/live-ui`):** about 15 minutes with the areas in parallel; give it 20-30 before any time limit.
   Network faults (a 502 from this session's proxy, often with a `text/plain` body: that was the "stylesheet as
   text/plain" of 2026-09-28/-29) are fetched again, reported under `transient` in `out/results.json` and not counted; a

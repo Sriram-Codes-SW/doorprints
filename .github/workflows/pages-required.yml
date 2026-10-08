@@ -24,6 +24,7 @@ on:
     paths-ignore:
       - "guide/**"
       - "android/app/src/test/screenshots/**"
+      - "tools/guide-search-check/**"
       - ".github/workflows/pages.yml"
 
 permissions: {}
