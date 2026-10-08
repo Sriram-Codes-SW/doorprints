@@ -27,3 +27,6 @@ tools/guide-shots/out/
 
 # Per-deploy site configuration: CI overwrites web/public/config.js from env (googleClientId, googleRedirectUri)
 # Default config.js is tracked; CI updates it at build/deploy time
+
+# Agent sessions on a fresh clone create their git worktrees here
+.claude/worktrees/

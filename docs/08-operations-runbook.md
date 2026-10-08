@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Operations runbook |
-| Version | 0.23 |
-| Date | 2026-10-03 |
+| Version | 0.24 |
+| Date | 2026-10-08 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -35,6 +35,7 @@
 | 0.21 | 2026-09-29 | Claude (Code), lead | §5.1a: the Gemini key on the owner page (encrypted, no restart, *Remove key*, pausing AI) and what an owner-key rotation does to it. |
 | 0.22 | 2026-10-03 | Cursor Agent, lead | S4b-BL-124: §7 IR-11 (the Google project stopped or a client deleted), IR-12 (a leaked Picker key) and IR-13 (a person who lost access to their Google account), from [15](15-google-drive-backup-and-sharing.md). |
 | 0.23 | 2026-10-07 | Claude (Code), lead | §3 `AI_API_KEY`: no key is needed for an `AI_BASE_URL` other than the Gemini API (S4b-BL-149). |
+| 0.24 | 2026-10-08 | Claude (Code), lead | New **§1.2**: the three per-address rate limits behind a reverse proxy outside Tomcat's internal ranges (one shared bucket; widen `server.tomcat.remoteip.internal-proxies`, do not switch to `framework`); §6.2: what `DataService.deleteAll` leaves alone (device keys, owner sessions, pairing requests, the server secret and settings). From an independent review, 2026-10-08. |
 
 Related: [Build and deploy](07-secure-build-and-deploy.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Google Drive design](15-google-drive-backup-and-sharing.md)
 
@@ -72,6 +73,10 @@ AI is off by default (AI-001); none of these variables is needed then. Full list
 After changing the embedding provider or model, or `AI_PROVIDER`, run `POST /api/ai/reindex` so every house is embedded with the new model on the new endpoint (both providers use the same model, so this is a precaution when only `AI_PROVIDER` changed).
 
 **Once after deploying the contact-redaction fix** (Sprint 3, C-13, [02](02-threat-model.md) F-30): run `POST /api/ai/reindex` until it returns 200, **after the final version of the fix is deployed** ([ai/ai-design.md](ai/ai-design.md) v0.10 §9.1; a reindex run on an earlier build of the fix must be repeated). Vectors indexed before it may still hold the contact name (before ai-design v0.7), a first name in the label (v0.7), a "C/o <owner>" address (v0.8 and older) or an initials-style "C/o K Ramesh" address (v0.9 and older) in pgvector (the database, not the provider); the Ask path already scrubs them before any prompt or citation, and the reindex replaces them with redacted text. The dev `docker-compose.yml` passes all these settings from the shell or a `.env` file ([07 §7](07-secure-build-and-deploy.md), column *Dev compose*).
+
+### 1.2 Behind a reverse proxy: whose address the rate limits see
+
+The three per-address limiters (the general limit, 600 requests a minute with a burst of 300; wrong or missing API keys, 10 a minute; pairing and owner sign-in, 40 a minute) key on the request's remote address (`getRemoteAddr()`). `server.forward-headers-strategy: native` (`application.yml`, env `FORWARD_HEADERS_STRATEGY`) lets Tomcat take the client address from `X-Forwarded-For`, but only from a proxy it counts as internal (its default private ranges). Behind a proxy outside them (a CDN, a tunnel, a proxy on a public address) every client shares the proxy's address and therefore one bucket: one client's burst throttles everybody, and the ten wrong keys a minute are counted across all clients together (a correct key is never throttled by that one). The limiter also drops all its buckets once it holds more than 10,000 keys, which forgets the limits. For such a proxy keep `native` and widen Tomcat's list to exactly the proxy's addresses with `server.tomcat.remoteip.internal-proxies` (a regular expression; as an environment variable `SERVER_TOMCAT_REMOTEIP_INTERNAL_PROXIES`). Do not trust a whole network you do not run, and do not switch to `framework`: that strategy takes the forwarded headers from any sender, so a client that reaches the server directly could invent its own address, and the property above does not apply to it.
 
 ## 2. Monitoring
 
@@ -250,6 +255,8 @@ its photos as missing from the file. A full export for migration is the encrypte
 | Purge tombstones | Automatic, daily at 03:30 (`DataService.purgeTombstones`, `TOMBSTONE_RETENTION_DAYS`, default 90). A device that has not synced for longer than that keeps its local copy of rows deleted elsewhere. |
 | Old visits (retention, PRV-006) | `delete from visit where arrived_at < now() - interval '6 months';` (devices keep their copies until the app's data is cleared) |
 | Everything (end of hunt) | 1) Export if wanted. 2) `curl -X DELETE -H "X-API-Key: $KEY" -H "X-Confirm-Delete: DELETE-ALL-MY-DATA" "$API/api/data"` (hard-deletes houses, visits, photos and AI index rows; 428 without the exact header), or delete the DB project. 3) Delete the API service. 4) Delete the backup artifacts / R2 objects. 5) Android: Settings → Apps → Doorprints → Storage → Clear storage, then uninstall. A test build from before the rename (app name "House Hunt", `com.househunt.app`) is a separate app with its own local copy: clear and uninstall it too. 6) Web: Connect → Disconnect, and clear site data. 7) If AI was used: delete the embeddings (same DB) and check the LLM provider's retention/deletion options. |
+
+`DataService.deleteAll` (the "delete all my data" call) removes the person's data only (houses, checklists, visits, photos, records and AI index rows); it leaves the device keys, owner sessions, pairing requests and the server secret and settings alone, because they are the owner's server configuration, not the person's data. To end every device's access, revoke the devices in the owner page (section 5.1a) or rotate the secrets (section 5).
 
 Third-party contact data (landlord/agent phone numbers) is removed with the house. If a third party asks you to delete their details, use the "one house" or field-level update (set `contact_name`/`contact_phone` to null through the app so it syncs).
 
