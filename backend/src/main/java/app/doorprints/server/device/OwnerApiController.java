@@ -130,8 +130,8 @@ public class OwnerApiController {
     private final boolean aiEnabled;
     private final String aiProvider;
     /** Wrong codes typed on the owner page, per session: 5 a minute. */
-    private final app.doorprints.server.ai.web.TokenBucketRateLimiter wrongCodes =
-            new app.doorprints.server.ai.web.TokenBucketRateLimiter(5, 5);
+    private final app.doorprints.server.common.TokenBucketRateLimiter wrongCodes =
+            new app.doorprints.server.common.TokenBucketRateLimiter(5, 5);
 
     /**
      * Takes the stores the page manages and whether AI is enabled and with which provider.

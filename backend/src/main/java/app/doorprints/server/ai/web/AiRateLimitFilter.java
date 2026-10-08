@@ -18,6 +18,7 @@
 
 package app.doorprints.server.ai.web;
 
+import app.doorprints.server.common.TokenBucketRateLimiter;
 import app.doorprints.server.config.ApiKeyFilter;
 import app.doorprints.server.config.RequestPaths;
 import jakarta.servlet.FilterChain;

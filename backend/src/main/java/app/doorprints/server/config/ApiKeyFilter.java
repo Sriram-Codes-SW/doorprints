@@ -19,7 +19,7 @@
 package app.doorprints.server.config;
 
 import app.doorprints.server.common.Problems;
-import app.doorprints.server.ai.web.TokenBucketRateLimiter;
+import app.doorprints.server.common.TokenBucketRateLimiter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -79,29 +79,14 @@ public class ApiKeyFilter extends OncePerRequestFilter {
     /** Device keys (ADR-25): the device a presented value belongs to, if it is an active device key. */
     private final Function<String, Optional<DeviceKeyStore.Caller>> devices;
 
-    public ApiKeyFilter(String apiKey) {
-        this(apiKey, null, new TokenBucketRateLimiter(10, 10));
-    }
-
-    /** @param failures bucket per client address for wrong or missing keys */
-    public ApiKeyFilter(String apiKey, TokenBucketRateLimiter failures) {
-        this(apiKey, null, failures);
-    }
-
     /**
      * @param apiKey   the current key ({@code APP_API_KEY}), required
      * @param nextKey  optional second key ({@code APP_API_KEY_NEXT}); blank or {@code null} means none. While it is
      *                 set, both keys are accepted, so clients can be moved to the new key without downtime (SEC-017)
      * @param failures bucket per client address for wrong or missing keys
+     * @param devices  looks a presented value up among the device keys (docs/03 §12.1); the owner key is checked
+     *                 first, in constant time, as before
      * @throws IllegalStateException if a key is missing or shorter than {@link #MIN_KEY_LENGTH}
-     */
-    public ApiKeyFilter(String apiKey, String nextKey, TokenBucketRateLimiter failures) {
-        this(apiKey, nextKey, failures, key -> Optional.empty());
-    }
-
-    /**
-     * @param devices looks a presented value up among the device keys (docs/03 §12.1); the owner key is checked
-     *                first, in constant time, as before
      */
     public ApiKeyFilter(String apiKey, String nextKey, TokenBucketRateLimiter failures,
                         Function<String, Optional<DeviceKeyStore.Caller>> devices) {

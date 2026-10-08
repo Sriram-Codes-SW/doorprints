@@ -48,19 +48,19 @@ class AiExceptionHandlerTest {
 
     @Test
     void chat404PointsToGcpLocation() {
-        var h = hint(new AiExceptionHandler(vertex("asia-south1", null)), new ClientException(404, "Not Found", "x"));
+        var h = hint(AiExceptionHandlers.of(vertex("asia-south1", null)), new ClientException(404, "Not Found", "x"));
         assertThat((String) h).contains("chat model").contains("asia-south1").contains("GCP_LOCATION=global");
     }
 
     @Test
     void chat404OnGlobalSuggestsUsCentral1() {
-        var h = hint(new AiExceptionHandler(vertex("global", null)), new ClientException(404, "Not Found", "x"));
+        var h = hint(AiExceptionHandlers.of(vertex("global", null)), new ClientException(404, "Not Found", "x"));
         assertThat((String) h).contains("GCP_LOCATION=us-central1");
     }
 
     @Test
     void embedding404PointsToEmbeddingLocation() {
-        var h = hint(new AiExceptionHandler(vertex("asia-south1", "us-central1")),
+        var h = hint(AiExceptionHandlers.of(vertex("asia-south1", "us-central1")),
                 new GeminiEmbeddingException("HTTP 404 (NOT_FOUND)", 404, "NOT_FOUND"));
         assertThat((String) h).contains("embedding model").contains("location us-central1")
                 .contains("AI_VERTEX_EMBEDDING_LOCATION=global").doesNotContain("GCP_LOCATION=");
@@ -68,18 +68,18 @@ class AiExceptionHandlerTest {
 
     @Test
     void chat401PointsToCredentials() {
-        var h = hint(new AiExceptionHandler(vertex("asia-south1", null)), new ClientException(401, "Unauthorized", "x"));
+        var h = hint(AiExceptionHandlers.of(vertex("asia-south1", null)), new ClientException(401, "Unauthorized", "x"));
         assertThat((String) h).contains("application-default login");
     }
 
     @Test
     void noHintForQuotaOtherStatusesAiStudioOrNoSettings() {
-        var vertex = new AiExceptionHandler(vertex("asia-south1", null));
+        var vertex = AiExceptionHandlers.of(vertex("asia-south1", null));
         assertThat(hint(vertex, new ClientException(429, "Too Many Requests", "x"))).isNull();
         assertThat(hint(vertex, new ClientException(400, "Bad Request", "x"))).isNull();
-        assertThat(hint(new AiExceptionHandler(AiProperties.defaults()), new ClientException(404, "Not Found", "x")))
+        assertThat(hint(AiExceptionHandlers.of(AiProperties.defaults()), new ClientException(404, "Not Found", "x")))
                 .isNull();
-        assertThat(hint(new AiExceptionHandler(), new ClientException(404, "Not Found", "x"))).isNull();
+        assertThat(hint(AiExceptionHandlers.of(null), new ClientException(404, "Not Found", "x"))).isNull();
     }
 
     /**
@@ -95,7 +95,7 @@ class AiExceptionHandlerTest {
         lines.start();
         logger.addAppender(lines);
         try {
-            var handler = new AiExceptionHandler();
+            var handler = AiExceptionHandlers.of(null);
             handler.aiUnavailable(new AiUnavailableException("Answering failed",
                     new ClientException(503, "UNAVAILABLE", marker)));
             handler.aiUnavailable(new AiUnavailableException("Search failed", new IllegalStateException(marker)));

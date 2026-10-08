@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Operations runbook |
-| Version | 0.26 |
+| Version | 0.27 |
 | Date | 2026-10-08 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -38,6 +38,7 @@
 | 0.24 | 2026-10-08 | Claude (Code), lead | New **§1.2**: the three per-address rate limits behind a reverse proxy outside Tomcat's internal ranges (one shared bucket; widen `server.tomcat.remoteip.internal-proxies`, do not switch to `framework`); §6.2: what `DataService.deleteAll` leaves alone (device keys, owner sessions, pairing requests, the server secret and settings). From an independent review, 2026-10-08. |
 | 0.25 | 2026-10-08 | Claude (Code) | §5.1a: the owner page's setup link is written to the log only while no browser is signed in; afterwards use *Add another browser* (S4b-BL-171). |
 | 0.26 | 2026-10-08 | Claude (Code) | §5.1a: the recovery when the only signed-in browser is lost while its session is still open (`OWNER_SETUP_LINK_IN_LOG=true`, restart, read the log, sign in, switch it off; S4b-BL-188), and the caps on open pairing requests (50 in all, 5 per client address, 429 over them; S4b-BL-161). |
+| 0.27 | 2026-10-09 | Claude (Code) | §5.1a: the pairing caps are the settings `PAIRING_MAX_OPEN` and `PAIRING_MAX_PER_SOURCE` (defaults unchanged; S4b-BL-191). |
 
 Related: [Build and deploy](07-secure-build-and-deploy.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Google Drive design](15-google-drive-backup-and-sharing.md)
 
@@ -205,7 +206,7 @@ the **owner page**, `https://<server>/owner`.
   says the setting is on), open the link within the hour, and **then remove the line (or set it to `false`) and restart
   again**. While it is on, every start writes a live link, and a log is read by more people and tools than you. Default
   off (`app.owner.setup-link-in-log`; S4b-BL-188, [03](03-design.md) §12.1).
-- **Pairing requests are capped** (S4b-BL-161): at most 50 open at once and 5 per client address; another is refused with
+- **Pairing requests are capped** (S4b-BL-161): at most 50 open at once and 5 per client address (`PAIRING_MAX_OPEN`, `PAIRING_MAX_PER_SOURCE`; leave them unset, they exist for the API scan); another is refused with
   429 until one expires (10 minutes) or is answered, and the open ones are never pushed out. Behind a proxy that hides
   client addresses (§1.2) all clients share one source and one allowance of 5.
 - **A lost or sold phone:** owner page → *Devices* → *Revoke*. Its key stops working at once; the other devices are

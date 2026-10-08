@@ -106,7 +106,19 @@ public class HouseIndexer {
                 .filter(Objects::nonNull).collect(Collectors.groupingBy(ViewingLine::houseId));
     }
 
-    /** The live areas, places and area notes (slice 4a): three queries of small types, read once per index run. */
+    /** The live viewings of one house: the database picks them, so a save never reads another house's (S4b-BL-162). */
+    private List<ViewingLine> viewingsOf(UUID houseId) {
+        if (records == null) return List.of();
+        return records.findLiveViewingsOfHouse(houseId.toString()).stream().map(r -> ViewingLine.from(r, json))
+                .filter(Objects::nonNull).toList();
+    }
+
+    /**
+     * The live areas, places and area notes (slice 4a): three queries of small types (at most 200 notes), read once
+     * per index run. A save still reads them whole: a distance needs every place and a note reaches a house by an
+     * area's geometry or the street, which the document rules decide, so only the viewings (up to 5,000) are cut
+     * down to the house (S4b-BL-162).
+     */
     private AreaLines.All areaData() {
         if (records == null) return AreaLines.All.NONE;
         return new AreaLines.All(
@@ -162,7 +174,7 @@ public class HouseIndexer {
             return;
         }
         vectorStore.add(List.of(HouseDocuments.toDocument(HouseDto.from(house), visitsOf(houseId),
-                viewingsByHouse().getOrDefault(houseId.toString(), List.of()), areaData())));
+                viewingsOf(houseId), areaData())));
     }
 
     /**
