@@ -119,8 +119,9 @@ public final class ContactRedactor {
 
     /**
      * Removes one house's saved contact name and phone, and anything phone-like, from text before it leaves the
-     * server for a model or an MCP client. Built once per house by {@link #forHouse} or {@link #forContact}; {@link
-     * #place} and {@link #freeText} differ only in how much of the name they remove.
+     * server for a model or an MCP client. Built once per house by {@link ContactRedactor#forHouse} or
+     * {@link ContactRedactor#forContact}; {@link #place} and {@link #freeText} differ only in how much of the name they
+     * remove.
      */
     public static final class Redactor {
         /** A saved phone with fewer digits is not matched in text (8 = a landline without its STD code). */
