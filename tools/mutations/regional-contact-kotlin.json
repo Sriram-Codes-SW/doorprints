@@ -1,0 +1,12 @@
+{
+  "spec": "ParityVectorsTest.kt",
+  "gradle": [":shared:testAndroidHostTest", "--tests", "app.doorprints.shared.ai.ParityVectorsTest"],
+  "mutations": [
+    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/ContactRedactor.kt", "find": "0x0B66, 0x0BE6, 0x0C66, 0x0CE6", "replace": "0x0B66, 0x0BE6, 0x0CE6", "expect": "contactRemovalMatchesTheServer"},
+    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/ContactRedactor.kt", "find": "if (c.code >= 0x0660) DIGIT_ZEROS.firstOrNull", "replace": "if (c.code >= 0x0670) DIGIT_ZEROS.firstOrNull", "expect": "contactRemovalMatchesTheServer"},
+    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/ContactRedactor.kt", "find": "c.code in it..it + 9", "replace": "c.code in it..it + 8", "expect": "contactRemovalMatchesTheServer"},
+    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/ContactRedactor.kt", "find": "\"|\\\\(?0\\\\d{2,4}\\\\)?[ \\\\-]?\\\\d{3,4}", "replace": "\"|0\\\\d{2,4}[ \\\\-]?\\\\d{3,4}", "expect": "contactRemovalMatchesTheServer"},
+    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/ContactRedactor.kt", "find": "out.append(s, last, m.range.first).append(PHONE)", "replace": "out.append(PHONE)", "expect": "contactRemovalMatchesTheServer"},
+    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/ContactRedactor.kt", "find": "val matches = regex.findAll(asciiDigits(s)).toList()", "replace": "val matches = regex.findAll(s).toList()", "expect": "contactRemovalMatchesTheServer"}
+  ]
+}

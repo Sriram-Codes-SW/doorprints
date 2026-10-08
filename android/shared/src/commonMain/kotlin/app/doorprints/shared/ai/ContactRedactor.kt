@@ -43,10 +43,37 @@ object ContactRedactor {
         "(?<![\\p{L}\\p{M}\\p{N}+])(?:" +
             "\\+\\d(?:[ .()\\-]{0,2}\\d){6,14}" + // +<cc> ... (7-15 digits)
             "|(?:(?:\\+?91|0)[ \\-]?)?[6-9](?:[ .\\-]?\\d){9}" + // Indian mobile
-            "|0\\d{2,4}[ \\-]?\\d{3,4}[ \\-]?\\d{3,4}" + // STD code + landline
+            "|\\(?0\\d{2,4}\\)?[ \\-]?\\d{3,4}[ \\-]?\\d{3,4}" + // STD code (also "(022)") + landline
             "|\\d{10,15}" + // long digit run
             ")(?!$WORD)",
     )
+
+    /** The zero of each script whose ten digits follow it: Arabic-Indic, Urdu, Devanagari, Bengali, Gurmukhi, Gujarati, Odia, Tamil, Telugu, Kannada, Malayalam. */
+    private val DIGIT_ZEROS = intArrayOf(0x0660, 0x06F0, 0x0966, 0x09E6, 0x0A66, 0x0AE6, 0x0B66, 0x0BE6, 0x0C66, 0x0CE6, 0x0D66)
+
+    /** [s] with those scripts' digits written as 0-9, one character for one character (every digit is in the BMP). */
+    internal fun asciiDigits(s: String): String {
+        val out = StringBuilder(s.length)
+        for (c in s) {
+            val zero = if (c.code >= 0x0660) DIGIT_ZEROS.firstOrNull { c.code in it..it + 9 } else null
+            out.append(if (zero == null) c else '0' + (c.code - zero))
+        }
+        return out.toString()
+    }
+
+    /** [s] with every match of [regex] replaced by [PHONE]; the matching reads native digits as 0-9, the rest of [s] is kept. */
+    private fun replaceInDigits(regex: Regex, s: String): String {
+        val matches = regex.findAll(asciiDigits(s)).toList()
+        if (matches.isEmpty()) return s
+        val out = StringBuilder()
+        var last = 0
+        for (m in matches) {
+            out.append(s, last, m.range.first).append(PHONE)
+            last = m.range.last + 1
+        }
+        return out.append(s, last, s.length).toString()
+    }
+
     private val HONORIFICS = setOf(
         "mr", "mrs", "ms", "miss", "dr", "sri", "shri", "smt", "kumari", "sir", "madam", "uncle", "aunty", "auntie",
         "anna", "akka", "ji", "garu", "owner", "broker", "agent", "landlord", "the", "and",
@@ -64,7 +91,7 @@ object ContactRedactor {
     }
 
     /** Only the generic phone-number rule, for text with no known contact. */
-    fun redactPhones(text: String?): String? = if (text.isNullOrEmpty()) text else PHONE_LIKE.replace(text, PHONE)
+    fun redactPhones(text: String?): String? = if (text.isNullOrEmpty()) text else replaceInDigits(PHONE_LIKE, text)
 
     /** Redacts one house's contact name and phone from text; made with [forContact]. */
     class Redactor internal constructor(contactName: String?, contactPhone: String?) {
@@ -114,8 +141,8 @@ object ContactRedactor {
         }
 
         private fun phones(s: String): String {
-            val out = savedPhone?.replace(s, PHONE) ?: s
-            return PHONE_LIKE.replace(out, PHONE)
+            val out = savedPhone?.let { replaceInDigits(it, s) } ?: s
+            return replaceInDigits(PHONE_LIKE, out)
         }
 
         private companion object {

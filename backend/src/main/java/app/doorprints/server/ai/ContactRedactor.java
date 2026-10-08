@@ -59,8 +59,10 @@ import java.util.regex.Pattern;
  *       has 8 or more digits;</li>
  *   <li>anything else that looks like a phone number: {@code +<country code>...}, Indian mobiles
  *       ({@code [6-9]} + 9 digits, optional {@code +91}/{@code 0} prefix and separators), STD-code landlines
- *       ({@code 080-2345 6789}) and any run of 10-15 digits. Dates ({@code 2026-09-22}) and prices
- *       ({@code 2500000}, {@code 1,20,00,000}) are left alone.</li>
+ *       ({@code 080-2345 6789}, {@code (022) 2655 0101}) and any run of 10-15 digits. Dates ({@code 2026-09-22}) and
+ *       prices ({@code 2500000}, {@code 1,20,00,000}) are left alone. Digits of the Indian scripts and of Arabic and
+ *       Urdu ({@code ९८२०० १२३४५}) are read as 0-9, so a number written in them goes too (S4b-BL-174); the text
+ *       around it is returned as it was typed.</li>
  * </ul>
  * Name matching is case-insensitive and on word boundaries (Indic scripts included), so "Rameshwaram" is kept.
  * Placeholders are {@value #CONTACT} and {@value #PHONE}. This is best effort for free text (a name spelled
@@ -79,14 +81,49 @@ public final class ContactRedactor {
             "(?<![\\p{L}\\p{M}\\p{N}+])(?:"
                     + "\\+\\d(?:[ .()\\-]{0,2}\\d){6,14}"                  // +<cc> ... (7-15 digits)
                     + "|(?:(?:\\+?91|0)[ \\-]?)?[6-9](?:[ .\\-]?\\d){9}"  // Indian mobile
-                    + "|0\\d{2,4}[ \\-]?\\d{3,4}[ \\-]?\\d{3,4}"          // STD code + landline
+                    + "|\\(?0\\d{2,4}\\)?[ \\-]?\\d{3,4}[ \\-]?\\d{3,4}"   // STD code (also "(022)") + landline
                     + "|\\d{10,15}"                                     // long digit run
                     + ")(?!" + WORD + ")");
     private static final Set<String> HONORIFICS = Set.of("mr", "mrs", "ms", "miss", "dr", "sri", "shri", "smt",
             "kumari", "sir", "madam", "uncle", "aunty", "auntie", "anna", "akka", "ji", "garu", "owner", "broker",
             "agent", "landlord", "the", "and");
 
+    /** The zero of each script whose ten digits follow it: Arabic-Indic, Urdu, Devanagari, Bengali, Gurmukhi, Gujarati, Odia, Tamil, Telugu, Kannada, Malayalam. */
+    private static final int[] DIGIT_ZEROS = {0x0660, 0x06F0, 0x0966, 0x09E6, 0x0A66, 0x0AE6, 0x0B66, 0x0BE6, 0x0C66, 0x0CE6, 0x0D66};
+
     private ContactRedactor() {
+    }
+
+    /** {@code s} with those scripts' digits written as 0-9, one character for one character (every digit is in the BMP). */
+    static String asciiDigits(String s) {
+        var out = new StringBuilder(s.length());
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            char mapped = c;
+            if (c >= 0x0660) {
+                for (int zero : DIGIT_ZEROS) {
+                    if (c >= zero && c <= zero + 9) {
+                        mapped = (char) ('0' + (c - zero));
+                        break;
+                    }
+                }
+            }
+            out.append(mapped);
+        }
+        return out.toString();
+    }
+
+    /** {@code s} with every match of {@code p} replaced by {@link #PHONE}; the matching reads native digits as 0-9, the rest of {@code s} is kept. */
+    private static String replaceInDigits(Pattern p, String s) {
+        var m = p.matcher(asciiDigits(s));
+        if (!m.find()) return s;
+        var out = new StringBuilder();
+        int last = 0;
+        do {
+            out.append(s, last, m.start()).append(PHONE);
+            last = m.end();
+        } while (m.find());
+        return out.append(s, last, s.length()).toString();
     }
 
     /** A redactor for one house's free text, knowing that house's contact name and phone. */
@@ -114,7 +151,7 @@ public final class ContactRedactor {
     /** Only the generic phone-number rule, for text with no known contact. */
     public static String redactPhones(String text) {
         if (text == null || text.isEmpty()) return text;
-        return PHONE_LIKE.matcher(text).replaceAll(PHONE);
+        return replaceInDigits(PHONE_LIKE, text);
     }
 
     /**
@@ -201,8 +238,8 @@ public final class ContactRedactor {
         }
 
         private String phones(String s) {
-            var out = savedPhone == null ? s : savedPhone.matcher(s).replaceAll(PHONE);
-            return PHONE_LIKE.matcher(out).replaceAll(PHONE);
+            var out = savedPhone == null ? s : replaceInDigits(savedPhone, s);
+            return replaceInDigits(PHONE_LIKE, out);
         }
 
         /** {@code regex} on word boundaries (Indic scripts included), case-insensitive. */
