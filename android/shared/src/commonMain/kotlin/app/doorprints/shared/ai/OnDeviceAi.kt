@@ -61,8 +61,8 @@ class OnDeviceAi(
             putJsonObject("properties") {
                 put("label", str("Short human label, e.g. '2BHK near Indiranagar metro'"))
                 put("address", str("Full postal address as written in the listing"))
-                put("street", str("Street / road name only"))
-                put("locality", str("Locality / neighbourhood / area"))
+                put("street", str("Street / road name only, e.g. 'MG Road'; null when no road is named"))
+                put("locality", str("Locality / neighbourhood / area inside the city, e.g. 'Indiranagar', 'Sector 56'; never the city or district alone. When the listing names only a road, repeat the road here"))
                 put("price", str("Monthly rent or sale price in rupees exactly as written, e.g. '25,000' or '1.2 Cr'"))
                 put("priceType", str("RENT or SALE"))
                 put("bedrooms", str("Number of bedrooms, e.g. '2' for 2BHK"))

@@ -439,6 +439,13 @@ describe('AI core (what the vectors do not cover)', () => {
     expect(extractionPrompt('x', 'abc123').system.endsWith('"power backup".\n')).toBe(true);
   });
 
+  it('tells the model that locality is the area, never the city alone (S4b-BL-187)', () => {
+    const system = extractionPrompt('Rajpur Road, Dehradun: 2.5 BHK', 'abc123').system;
+    expect(system).toContain('- locality: the neighbourhood or area, never the city alone (the city goes in address). If only a road is named, use the road as the locality too.');
+    expect(system.indexOf('- label:')).toBeLessThan(system.indexOf('- locality:'));
+    expect(system.indexOf('- locality:')).toBeLessThan(system.indexOf('- notes:'));
+  });
+
   it('cleans an answer in linear time, whatever the brackets and addresses look like (S4b-BL-178)', () => {
     const hostile = ['[', '![', '[a](', '](', 'http://', '[x](http://'].map((u) => u.repeat(200_000));
     hostile.push('['.repeat(30_000) + '[x]'.repeat(30_000), `[${'a'.repeat(200_000)}`, `http://${'a'.repeat(1_000_000)}`, `[a](${'('.repeat(100_000)}`);
