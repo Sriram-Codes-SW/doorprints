@@ -824,6 +824,13 @@
     "input" : "Mail रमेश९८२००१२३४५@example.com now",
     "expected" : "Mail [email] now",
     "note" : "native digits inside an email local part go with the address"
+  }, {
+    "method" : "freeText",
+    "name" : null,
+    "phone" : "1234 5678",
+    "input" : "Call १२३४ ५६७८ now",
+    "expected" : "Call [phone] now",
+    "note" : "a saved 8-digit number written in Devanagari digits: only the saved-number rule can see it, the phone-like rule needs 10"
   } ],
   "sanitize" : [ {
     "raw" : {

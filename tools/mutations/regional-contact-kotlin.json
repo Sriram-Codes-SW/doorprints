@@ -7,6 +7,9 @@
     {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/ContactRedactor.kt", "find": "c.code in it..it + 9", "replace": "c.code in it..it + 8", "expect": "contactRemovalMatchesTheServer"},
     {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/ContactRedactor.kt", "find": "\"|\\\\(?0\\\\d{2,4}\\\\)?[ \\\\-]?\\\\d{3,4}", "replace": "\"|0\\\\d{2,4}[ \\\\-]?\\\\d{3,4}", "expect": "contactRemovalMatchesTheServer"},
     {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/ContactRedactor.kt", "find": "out.append(s, last, m.range.first).append(PHONE)", "replace": "out.append(PHONE)", "expect": "contactRemovalMatchesTheServer"},
-    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/ContactRedactor.kt", "find": "val matches = regex.findAll(asciiDigits(s)).toList()", "replace": "val matches = regex.findAll(s).toList()", "expect": "contactRemovalMatchesTheServer"}
+    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/ContactRedactor.kt", "find": "val matches = regex.findAll(asciiDigits(s)).toList()", "replace": "val matches = regex.findAll(s).toList()", "expect": "contactRemovalMatchesTheServer"},
+    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/ContactRedactor.kt", "find": "EMAIL_LIKE.replace(replaceInDigits(PHONE_LIKE, text), EMAIL)", "replace": "EMAIL_LIKE.replace(PHONE_LIKE.replace(text, PHONE), EMAIL)", "expect": "contactRemovalMatchesTheServer"},
+    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/ContactRedactor.kt", "find": "EMAIL_LIKE.replace(replaceInDigits(PHONE_LIKE, out), EMAIL)", "replace": "EMAIL_LIKE.replace(PHONE_LIKE.replace(out, PHONE), EMAIL)", "expect": "contactRemovalMatchesTheServer"},
+    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/ContactRedactor.kt", "find": "savedPhone?.let { replaceInDigits(it, s) } ?: s", "replace": "savedPhone?.replace(s, PHONE) ?: s", "expect": "contactRemovalMatchesTheServer"}
   ]
 }

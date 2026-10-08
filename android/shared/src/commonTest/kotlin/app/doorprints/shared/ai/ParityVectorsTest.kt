@@ -70,7 +70,7 @@ class ParityVectorsTest {
             }
             assertEquals(str(o["expected"]), actual, "${o["method"]} $name / $phone: $input")
         }
-        assertEquals(133, cases.size)
+        assertEquals(134, cases.size)
     }
 
     /**

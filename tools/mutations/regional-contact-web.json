@@ -9,7 +9,8 @@
     {"file": "web/src/app/core/ai/ai-core.ts", "find": "out += s.slice(last, at) + PHONE;", "replace": "out += PHONE;", "expect": "removes contacts as the server does"},
     {"file": "web/src/app/core/ai/ai-core.ts", "find": "last = at + m[0].length;", "replace": "last = at;", "expect": "removes contacts as the server does"},
     {"file": "web/src/app/core/ai/ai-core.ts", "find": "const at = m.index ?? 0;", "replace": "const at = 1;", "expect": "removes contacts as the server does"},
-    {"file": "web/src/app/core/ai/ai-core.ts", "find": "return replaceInDigits(PHONE_LIKE, out);", "replace": "return out.replace(PHONE_LIKE, PHONE);", "expect": "removes contacts as the server does"},
-    {"file": "web/src/app/core/ai/ai-core.ts", "find": "return text ? replaceInDigits(PHONE_LIKE, text) : text;", "replace": "return text ? text.replace(PHONE_LIKE, PHONE) : text;", "expect": "removes contacts as the server does"}
+    {"file": "web/src/app/core/ai/ai-core.ts", "find": "return replaceInDigits(PHONE_LIKE, out).replace(EMAIL_LIKE, EMAIL);", "replace": "return out.replace(PHONE_LIKE, PHONE).replace(EMAIL_LIKE, EMAIL);", "expect": "removes contacts as the server does"},
+    {"file": "web/src/app/core/ai/ai-core.ts", "find": "this.savedPhone ? replaceInDigits(this.savedPhone, s) : s", "replace": "this.savedPhone ? s.replace(this.savedPhone, PHONE) : s", "expect": "removes contacts as the server does"},
+    {"file": "web/src/app/core/ai/ai-core.ts", "find": "return text ? replaceInDigits(PHONE_LIKE, text).replace(EMAIL_LIKE, EMAIL) : text;", "replace": "return text ? text.replace(PHONE_LIKE, PHONE).replace(EMAIL_LIKE, EMAIL) : text;", "expect": "removes contacts as the server does"}
   ]
 }

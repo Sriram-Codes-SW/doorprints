@@ -3,14 +3,14 @@
   "mutations": [
     {
       "file": "web/src/app/core/ai/ai-core.ts",
-      "find": "return out.replace(PHONE_LIKE, PHONE).replace(EMAIL_LIKE, EMAIL);",
-      "replace": "return out.replace(PHONE_LIKE, PHONE);",
+      "find": "return replaceInDigits(PHONE_LIKE, out).replace(EMAIL_LIKE, EMAIL);",
+      "replace": "return replaceInDigits(PHONE_LIKE, out);",
       "expect": "removes an email address whole, before the name parts"
     },
     {
       "file": "web/src/app/core/ai/ai-core.ts",
-      "find": "return text ? text.replace(PHONE_LIKE, PHONE).replace(EMAIL_LIKE, EMAIL) : text;",
-      "replace": "return text ? text.replace(PHONE_LIKE, PHONE) : text;",
+      "find": "return text ? replaceInDigits(PHONE_LIKE, text).replace(EMAIL_LIKE, EMAIL) : text;",
+      "replace": "return text ? replaceInDigits(PHONE_LIKE, text) : text;",
       "expect": "removes an email address whole, before the name parts"
     },
     {

@@ -32,7 +32,7 @@ import { inTheRunning } from '../../shared/house-status';
  */
 describe('AI core parity with the server', () => {
   it('removes contacts as the server does', () => {
-    expect(vectors.redact).toHaveLength(133);
+    expect(vectors.redact).toHaveLength(134);
     for (const c of vectors.redact) {
       const r = new Redactor(c.name, c.phone);
       const actual = c.method === 'place' ? r.place(c.input)

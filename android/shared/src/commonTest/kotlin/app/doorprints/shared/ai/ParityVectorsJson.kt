@@ -849,6 +849,13 @@ internal val PARITY_VECTORS_JSON: String = listOf(
     "input" : "Mail रमेश९८२००१२३४५@example.com now",
     "expected" : "Mail [email] now",
     "note" : "native digits inside an email local part go with the address"
+  }, {
+    "method" : "freeText",
+    "name" : null,
+    "phone" : "1234 5678",
+    "input" : "Call १२३४ ५६७८ now",
+    "expected" : "Call [phone] now",
+    "note" : "a saved 8-digit number written in Devanagari digits: only the saved-number rule can see it, the phone-like rule needs 10"
   } ],
   "sanitize" : [ {
     "raw" : {
@@ -1027,7 +1034,8 @@ internal val PARITY_VECTORS_JSON: String = listOf(
       "price" : null,
       "priceType" : null,
       "bedrooms" : null,
-      "contactName" : null,
+""",
+    """      "contactName" : null,
       "contactPhone" : null,
       "listingUrl" : null,
       "notes" : null,
@@ -1038,8 +1046,7 @@ internal val PARITY_VECTORS_JSON: String = listOf(
     "raw" : {
       "label" : "1BHK furnished flat, Bandra West",
       "locality" : "Bandra West",
-""",
-    """      "price" : "Rs 85,000/-",
+      "price" : "Rs 85,000/-",
       "priceType" : "RENT",
       "bedrooms" : "1 BHK",
       "contactName" : "Amit",
@@ -1533,7 +1540,8 @@ internal val PARITY_VECTORS_JSON: String = listOf(
           "description" : "Contact person name",
           "nullable" : true
         },
-        "contactPhone" : {
+""",
+    """        "contactPhone" : {
           "type" : "string",
           "description" : "Contact phone number exactly as written",
           "nullable" : true
@@ -1542,8 +1550,7 @@ internal val PARITY_VECTORS_JSON: String = listOf(
           "type" : "string",
           "description" : "Listing URL if one is present in the text",
           "nullable" : true
-""",
-    """        },
+        },
         "notes" : {
           "type" : "string",
           "description" : "Other useful facts (deposit, floor, furnishing, availability) in one short paragraph",
