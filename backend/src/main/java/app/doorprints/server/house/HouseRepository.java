@@ -27,10 +27,17 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Queries on houses: the sync change feed, live listings, the spatial search with PostGIS, counts for the stats call,
+ * and the purge of old tombstones.
+ */
 public interface HouseRepository extends JpaRepository<House, UUID> {
 
     List<House> findByDeletedFalseOrderByUpdatedAtDesc();
 
+    /**
+     * Every house changed after a sync version, tombstones included, oldest change first.
+     */
     List<House> findBySyncVersionGreaterThanOrderBySyncVersion(long syncVersion);
 
     /** Ids of deleted houses (tombstones), without loading the rows: the reindex removes their documents. */
@@ -41,6 +48,9 @@ public interface HouseRepository extends JpaRepository<House, UUID> {
     @Query(value = "select * from house where not deleted and lower(street) = lower(:street)", nativeQuery = true)
     List<House> findLiveOnStreet(@Param("street") String street);
 
+    /**
+     * Permanently removes tombstones last updated before the cut-off; returns how many.
+     */
     @Modifying
     @Query("delete from House h where h.deleted = true and h.updatedAt < :before")
     int purgeTombstonesBefore(@Param("before") Instant before);
@@ -59,6 +69,9 @@ public interface HouseRepository extends JpaRepository<House, UUID> {
 
     @Query(value = "select count(distinct lower(street)) from house where not deleted and street is not null",
             nativeQuery = true)
+    /**
+     * Number of different streets among live houses, ignoring case.
+     */
     long countDistinctStreets();
 
     long countByDeletedFalse();

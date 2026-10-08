@@ -62,6 +62,9 @@ public class ServerSecrets {
     private static final int TAG_BITS = 128;
     private static final SecureRandom RANDOM = new SecureRandom();
 
+    /**
+     * What may be shown about a stored secret: its last four characters and when it was set.
+     */
     public record Stored(String last4, java.time.Instant updatedAt) {
     }
 
@@ -70,6 +73,10 @@ public class ServerSecrets {
     /** Keys that may open a secret, the one used for writing first. */
     private final List<SecretKeySpec> keys;
 
+    /**
+     * Derives the encryption keys: the next owner key first (while a rotation is in progress), then the current one.
+     * Writes use the first, reads try each in turn.
+     */
     public ServerSecrets(JdbcClient jdbc, Clock clock, AppProperties props) {
         this.jdbc = jdbc;
         this.clock = clock;
@@ -95,6 +102,10 @@ public class ServerSecrets {
         }
     }
 
+    /**
+     * Encrypts a value with a fresh random nonce and binds it to the secret's name. The result is the nonce followed
+     * by the ciphertext and tag.
+     */
     static byte[] seal(SecretKeySpec key, String name, String value) {
         try {
             var nonce = new byte[NONCE];
@@ -123,6 +134,10 @@ public class ServerSecrets {
         }
     }
 
+    /**
+     * Stores or replaces a secret, encrypted under the newest key, together with its last four characters for
+     * display.
+     */
     public void put(String name, String value) {
         jdbc.sql("""
                         INSERT INTO server_secret (name, ciphertext, last4, updated_at) VALUES (:name, :c, :last4, :now)
@@ -132,6 +147,10 @@ public class ServerSecrets {
                 .param("now", Timestamp.from(clock.instant())).update();
     }
 
+    /**
+     * The decrypted secret, or empty when it is not set or no configured key opens it (logged as a warning, never the
+     * value).
+     */
     public Optional<String> get(String name) {
         var stored = jdbc.sql("SELECT ciphertext FROM server_secret WHERE name = :name").param("name", name)
                 .query(byte[].class).optional();
@@ -152,6 +171,9 @@ public class ServerSecrets {
                 .optional();
     }
 
+    /**
+     * Deletes a secret; true if there was one.
+     */
     public boolean remove(String name) {
         return jdbc.sql("DELETE FROM server_secret WHERE name = :name").param("name", name).update() == 1;
     }

@@ -45,6 +45,9 @@ public class ServerSettings {
                 .query(String.class).optional();
     }
 
+    /**
+     * Stores or replaces a setting; the AI-paused switch is also updated in memory at once.
+     */
     public void put(String name, String value) {
         jdbc.sql("""
                         INSERT INTO server_setting (name, value, updated_at) VALUES (:name, :value, :now)

@@ -75,6 +75,15 @@ public class RagService {
         this.houses = houses;
     }
 
+    /**
+     * Answers a question about the user's own houses from retrieved records only (retrieve, then generate).
+     * The question is embedded and the closest house documents are fetched, optionally narrowed by structured
+     * filters; contact names and numbers are scrubbed from them ({@link #redacted}) before the chat model sees them.
+     * With nothing retrieved the fixed "I don't know" answer is returned without calling the model. Citations are
+     * validated by {@link #citations}.
+     * @throws IllegalArgumentException if the question is blank or longer than the configured limit
+     * @throws AiUnavailableException if retrieval or the model call fails
+     */
     public AskResponse ask(String question, AskFilters filters) {
         if (question == null || question.isBlank()) throw new IllegalArgumentException("question must not be blank");
         if (question.length() > props.maxQuestionChars()) {
@@ -235,6 +244,10 @@ public class RagService {
         return List.copyOf(out);
     }
 
+    /**
+     * Lower-cases an id the model listed and strips a leading {@code [house:} or {@code house:} and a trailing
+     * bracket, so a loosely formatted id still matches.
+     */
     private static String normalizeId(String id) {
         if (id == null) return "";
         var s = id.strip().toLowerCase(Locale.ROOT);

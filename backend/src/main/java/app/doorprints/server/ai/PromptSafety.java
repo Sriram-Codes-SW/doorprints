@@ -39,6 +39,10 @@ public final class PromptSafety {
     private PromptSafety() {
     }
 
+    /**
+     * A fresh random 6-hex-digit tag suffix for one prompt, from a secure random source, so text inside a block
+     * cannot guess the closing tag.
+     */
     public static String nonce() {
         var bytes = new byte[3];
         RANDOM.nextBytes(bytes);

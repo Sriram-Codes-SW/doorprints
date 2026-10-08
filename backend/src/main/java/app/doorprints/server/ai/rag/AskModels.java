@@ -46,9 +46,15 @@ public final class AskModels {
             @Min(1) @Max(5) Integer minRating) {
     }
 
+    /**
+     * Body of the ask call: the question and optional filters.
+     */
     public record AskRequest(@NotBlank @Size(max = 4000) String question, @Valid AskFilters filters) {
     }
 
+    /**
+     * A cited house with the line of its record that shares most words with the question.
+     */
     public record Citation(UUID houseId, String label, String snippet) {
     }
 

@@ -165,6 +165,13 @@ public class ApiKeyFilter extends OncePerRequestFilter {
         return read && (path.equals("/owner") || path.equals("/owner/owner.js") || path.equals("/owner/owner.css"));
     }
 
+    /**
+     * The gate for every API call. In order: a non-canonical path is refused with 400; a public path passes; the
+     * owner key (current or next, compared in constant time) passes; a device key passes and the device is attached
+     * to the request as {@link #DEVICE_ATTRIBUTE}; anything else is a failed attempt, answered 401, or 429 once the
+     * client address has used up its failure allowance.
+     * Failures are logged with a salted hash of the address, never the presented key.
+     */
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
@@ -203,6 +210,9 @@ public class ApiKeyFilter extends OncePerRequestFilter {
         write(response, HttpServletResponse.SC_UNAUTHORIZED, "Missing or wrong X-API-Key");
     }
 
+    /**
+     * Writes a small problem+json error body. Callers pass fixed text, never request data.
+     */
     private static void write(HttpServletResponse response, int status, String detail) throws IOException {
         response.setStatus(status);
         response.setContentType("application/problem+json");

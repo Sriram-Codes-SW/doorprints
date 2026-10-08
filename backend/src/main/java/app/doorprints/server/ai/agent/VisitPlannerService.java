@@ -67,6 +67,10 @@ public class VisitPlannerService {
     private final AiProperties props;
     private final ToolCallingManager boundedToolManager;
 
+    /**
+     * Builds the tool-calling manager once. It throws when a run exceeds the configured total or per-tool call
+     * budget, so one request cannot loop on the provider.
+     */
     public VisitPlannerService(ChatClient chat, HouseQueries queries, AiProperties props,
                                ObjectProvider<ObservationRegistry> observations) {
         this.chat = chat;
@@ -80,6 +84,10 @@ public class VisitPlannerService {
                 .build();
     }
 
+    /**
+     * The fixed instructions for the planner, with the start point and stop cap filled in. House text is declared to
+     * be data, not instructions.
+     */
     static String systemPrompt(double lat, double lon, int maxStops) {
         return String.format(java.util.Locale.ROOT, """
                 You plan house visits for one person who is house hunting. Start point: lat %.6f, lon %.6f.
@@ -95,6 +103,15 @@ public class VisitPlannerService {
                 """, lat, lon, maxStops);
     }
 
+    /**
+     * Answers a visit-planning request: the model searches the user's saved houses through {@link VisitPlannerTools},
+     * picks and orders stops, and the result is checked and priced in {@link #assemble}.
+     * The question is wrapped with a per-call nonce ({@link PromptSafety}). If the model fails after it already found
+     * houses (budget used up, unreadable output) the plan degrades to a nearest-neighbour route over those houses; if
+     * it found none the call fails.
+     * @throws AiUnavailableException if the model fails before any house was found
+     * @throws IllegalArgumentException if the question is longer than the configured limit
+     */
     public PlanResponse plan(PlanRequest request) {
         if (request.question().length() > props.maxQuestionChars()) {
             throw new IllegalArgumentException("question is longer than " + props.maxQuestionChars() + " characters");

@@ -78,7 +78,7 @@ import java.util.UUID;
  *   <li><b>Brokers are records.</b> The {@code brokers} list of a {@code /2} file is merged into the {@code record}
  *       table as type {@code broker} (payload: name, phone, agency, feeTerms, notes, rating), by id, last write wins
  *       on {@code updatedAt}, like a house; a house's {@code brokerId} is kept as given, even when no such broker
- *       exists yet. The export writes the list, and the format id {@code /2}, only while a live broker, question, viewing, criterion or preference exists or a live house has rooms or answers.</li>
+ *       exists yet. The export writes the list, and the format id {@code /2}, only when the copy holds something {@code /1} has no place for (see {@link BackupFormat#ID_WITH_BROKERS}).</li>
  *   <li><b>Photos are metadata only.</b> The JSON carries no image bytes, so photo rows are reported and skipped;
  *       the bytes are uploaded with {@code POST /api/houses/{id}/photos}.</li>
  *   <li><b>A missing checklist is read as no scores</b>, not refused — the one lenient always-present field
@@ -313,6 +313,12 @@ public class BackupService {
         return Outcome.UPDATED;
     }
 
+    /**
+     * Merges one house row by id, last write wins on {@code updatedAt}: a row that is not newer changes nothing. A
+     * newer row replaces every field of the house, including {@code createdAt}, and makes a deleted house live again;
+     * the report then notes what a delete cannot give back (photo bytes) and any checklist scores the file clears.
+     * The house is queued for re-indexing, in a dry run too.
+     */
     private Outcome mergeHouse(BackupHouse row, boolean dryRun, List<String> problems, Set<UUID> changedHouses) {
         var inFile = clock.accept(Instant.ofEpochMilli(row.updatedAt()), "houses.updatedAt");
         var existing = houses.findById(row.id()).orElse(null);
@@ -417,6 +423,10 @@ public class BackupService {
         return outcome;
     }
 
+    /**
+     * Merges one checklist criterion as a {@code criterion} record by key. A custom key that becomes live counts
+     * against the apps' limit of {@link BackupCriterion#MAX}; the built-in keys never do.
+     */
     private Outcome mergeCriterion(BackupCriterion row, boolean dryRun, long[] liveCount, List<String> problems) {
         var inFile = clock.accept(Instant.ofEpochMilli(row.updatedAt()), "criteria.updatedAt");
         var key = new RecordKey(BackupCriterion.TYPE, row.key());
@@ -451,6 +461,9 @@ public class BackupService {
         return outcome;
     }
 
+    /**
+     * Merges one preference as a {@code preference} record by key, within the per-type record limit.
+     */
     private Outcome mergePreference(BackupPreference row, boolean dryRun, long[] liveCount, List<String> problems) {
         var inFile = clock.accept(Instant.ofEpochMilli(row.updatedAt()), "preferences.updatedAt");
         var key = new RecordKey(BackupPreference.TYPE, row.key());
@@ -576,6 +589,9 @@ public class BackupService {
         }
     }
 
+    /**
+     * Merges one hunting area as an {@code area} record.
+     */
     private Outcome mergeArea(BackupArea row, boolean dryRun, long[] liveCount, List<String> problems) {
         return mergeRecord(BackupArea.TYPE, "area", "areas", row.id(), row.updatedAt(), dryRun, liveCount, problems, () -> {
             var payload = json.createObjectNode();
@@ -588,6 +604,9 @@ public class BackupService {
         });
     }
 
+    /**
+     * Merges one saved place as a {@code place} record.
+     */
     private Outcome mergePlace(BackupPlace row, boolean dryRun, long[] liveCount, List<String> problems) {
         return mergeRecord(BackupPlace.TYPE, "place", "places", row.id(), row.updatedAt(), dryRun, liveCount, problems, () -> {
             var payload = json.createObjectNode();
@@ -598,6 +617,9 @@ public class BackupService {
         });
     }
 
+    /**
+     * Merges one area note as an {@code areanote} record, keyed to an area or to a street.
+     */
     private Outcome mergeAreaNote(BackupAreaNote row, boolean dryRun, long[] liveCount, List<String> problems) {
         return mergeRecord(BackupAreaNote.TYPE, "area note", "area notes", row.id(), row.updatedAt(), dryRun, liveCount,
                 problems, () -> {
@@ -639,6 +661,10 @@ public class BackupService {
         return outcome;
     }
 
+    /**
+     * Merges one visit by id, last write wins. The house it lands on, and the one it left if it moved, are queued for
+     * re-indexing. The caller has already checked the house exists.
+     */
     private Outcome mergeVisit(BackupVisit row, boolean dryRun, Set<UUID> changedHouses) {
         var inFile = clock.accept(Instant.ofEpochMilli(row.updatedAt()), "visits.updatedAt");
         var existing = visits.findById(row.id()).orElse(null);
@@ -702,6 +728,10 @@ public class BackupService {
         }
     }
 
+    /**
+     * Adds a problem for each house row that is missing, repeats an id, or has a value out of range: required fields,
+     * lengths, coordinates, price, rating, floor, cost, rooms, answers, move-in, checklist and times.
+     */
     private void validateHouses(List<BackupHouse> rows, List<String> problems) {
         var seen = new HashSet<UUID>();
         for (int i = 0; i < rows.size(); i++) {
@@ -767,6 +797,10 @@ public class BackupService {
         }
     }
 
+    /**
+     * Adds a problem for each visit row with a missing or repeated id, bad coordinates, a missing source or time, or
+     * a departure before the arrival.
+     */
     private void validateVisits(List<BackupVisit> rows, List<String> problems) {
         var seen = new HashSet<UUID>();
         for (int i = 0; i < rows.size(); i++) {
@@ -788,6 +822,10 @@ public class BackupService {
         }
     }
 
+    /**
+     * Adds a problem for each photo row with a missing or repeated id, no house, a bad time or edit, or a file name
+     * that is not a plain name (no path separators or {@code ..}, so it can never point outside a backup folder).
+     */
     private void validatePhotos(List<BackupPhoto> rows, List<String> problems) {
         var seen = new HashSet<UUID>();
         for (int i = 0; i < rows.size(); i++) {
@@ -815,6 +853,10 @@ public class BackupService {
         }
     }
 
+    /**
+     * Adds a problem for each broker row with a missing, invalid or repeated record id, no name, too-long text or a
+     * rating outside 1..5.
+     */
     private void validateBrokers(List<BackupBroker> rows, List<String> problems) {
         var seen = new HashSet<String>();
         for (int i = 0; i < rows.size(); i++) {
@@ -843,6 +885,10 @@ public class BackupService {
         }
     }
 
+    /**
+     * Adds a problem for each criterion row: key shape and uniqueness, weight and minimum score ranges, a label on a
+     * built-in key, and the cap of 40 criteria.
+     */
     private void validateCriteria(List<BackupCriterion> rows, List<String> problems) {
         var seen = new HashSet<String>();
         var builtInKeys = BackupCriterion.BUILT_IN_KEYS;
@@ -886,6 +932,9 @@ public class BackupService {
         require(rows.size() <= 40, "criteria: at most 40 criteria allowed, found " + rows.size(), problems);
     }
 
+    /**
+     * Adds a problem for each preference row with a bad or repeated key, a missing or too-long value, or a bad time.
+     */
     private void validatePreferences(List<BackupPreference> rows, List<String> problems) {
         var seen = new HashSet<String>();
         for (int i = 0; i < rows.size(); i++) {
@@ -989,11 +1038,17 @@ public class BackupService {
         }
     }
 
+    /**
+     * Requires a non-blank name within the length limit.
+     */
     private void requireName(String at, String name, int max, List<String> problems) {
         require(name != null && !name.isBlank(), at + ".name is required", problems);
         maxLength(at + ".name", name, max, problems);
     }
 
+    /**
+     * Adds a problem for each area row: id, name, coordinates, radius and time, and the cap on the number of areas.
+     */
     private void validateAreas(List<BackupArea> rows, List<String> problems) {
         var seen = new HashSet<String>();
         for (int i = 0; i < rows.size(); i++) {
@@ -1015,6 +1070,9 @@ public class BackupService {
                 "areas: at most " + BackupArea.MAX + " areas allowed, found " + rows.size(), problems);
     }
 
+    /**
+     * Adds a problem for each place row: id, name, coordinates and time, and the cap on the number of places.
+     */
     private void validatePlaces(List<BackupPlace> rows, List<String> problems) {
         var seen = new HashSet<String>();
         for (int i = 0; i < rows.size(); i++) {
@@ -1058,6 +1116,9 @@ public class BackupService {
                 "areaNotes: at most " + BackupAreaNote.MAX + " notes allowed, found " + rows.size(), problems);
     }
 
+    /**
+     * Requires a present house, visit or photo id that does not repeat within the file.
+     */
     private void requireId(String at, UUID id, Set<UUID> seen, List<String> problems) {
         if (id == null) {
             problems.add(at + ".id is required");
@@ -1108,10 +1169,16 @@ public class BackupService {
         }
     }
 
+    /**
+     * Adds a problem when a present text is longer than the limit.
+     */
     private void maxLength(String at, String value, int max, List<String> problems) {
         require(value == null || value.length() <= max, at + " is longer than " + max + " characters", problems);
     }
 
+    /**
+     * Adds the problem line when the condition is false.
+     */
     private void require(boolean ok, String problem, List<String> problems) {
         if (!ok) problems.add(problem);
     }

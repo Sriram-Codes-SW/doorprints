@@ -54,6 +54,10 @@ public class BackupController {
         this.maxRows = props.limits().maxImportRows();
     }
 
+    /**
+     * Applies or previews an import. Answers 413 when the file has more rows than the configured limit, before any
+     * validation; a bad file is a 400 from the service.
+     */
     @PostMapping("/import")
     public ResponseEntity<?> importBackup(@RequestBody BackupData body,
                                           @RequestParam(name = "dryRun", defaultValue = "false") boolean dryRun) {

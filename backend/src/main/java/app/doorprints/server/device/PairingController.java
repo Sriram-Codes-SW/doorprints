@@ -37,12 +37,21 @@ import java.util.Map;
 @RestController
 public class PairingController {
 
+    /**
+     * Body of the start call: the name the device shows the owner.
+     */
     public record StartRequest(@Size(max = 200) String deviceName) {
     }
 
+    /**
+     * Body of the poll call.
+     */
     public record PollRequest(@NotBlank @Size(max = 100) String pollToken) {
     }
 
+    /**
+     * Body of the redeem call: the invite and a device name.
+     */
     public record RedeemRequest(@NotBlank @Size(max = 100) String invite, @Size(max = 200) String deviceName) {
     }
 
@@ -50,6 +59,9 @@ public class PairingController {
     public record PollResponse(String status, String deviceKey) {
     }
 
+    /**
+     * The device key, shown to the device only this once.
+     */
     public record KeyResponse(String deviceKey) {
     }
 
@@ -59,17 +71,26 @@ public class PairingController {
         this.pairing = pairing;
     }
 
+    /**
+     * A device asks to connect by code; the owner approves it on the owner page.
+     */
     @PostMapping("/api/pair/start")
     public PairingService.Started start(@Valid @RequestBody StartRequest body) {
         return pairing.start(body.deviceName());
     }
 
+    /**
+     * The device checks whether the owner approved; the device key comes with the first approved answer only.
+     */
     @PostMapping("/api/pair/poll")
     public PollResponse poll(@Valid @RequestBody PollRequest body) {
         var polled = pairing.poll(body.pollToken());
         return new PollResponse(polled.status().name().toLowerCase(Locale.ROOT), polled.deviceKey());
     }
 
+    /**
+     * The device connects with a one-time invite; 410 when the invite was used or has expired.
+     */
     @PostMapping("/api/pair/redeem")
     public ResponseEntity<?> redeem(@Valid @RequestBody RedeemRequest body) {
         return pairing.redeem(body.invite(), body.deviceName())

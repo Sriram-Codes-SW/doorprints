@@ -29,6 +29,9 @@ import java.util.function.LongSupplier;
  */
 public class TokenBucketRateLimiter {
 
+    /**
+     * The verdict for one request; when refused, the whole seconds to wait for a token (at least 1).
+     */
     public record Decision(boolean allowed, long retryAfterSeconds) {
     }
 
@@ -51,6 +54,12 @@ public class TokenBucketRateLimiter {
         this.nanoClock = nanoClock;
     }
 
+    /**
+     * Takes one token from the key's bucket, refilling it for the time since the last call. A new key starts with a
+     * full bucket. Past 10,000 distinct keys all buckets are dropped, which bounds memory against key spraying at the
+     * price of forgetting limits.
+     * Thread-safe: each bucket is locked while it is updated.
+     */
     public Decision tryAcquire(String key) {
         if (buckets.size() > MAX_KEYS) buckets.clear(); // crude memory guard against key spraying
         var bucket = buckets.computeIfAbsent(key, k -> new Bucket(capacity, nanoClock.getAsLong()));
@@ -67,6 +76,9 @@ public class TokenBucketRateLimiter {
         }
     }
 
+    /**
+     * Mutable state of one key: the (fractional) tokens left and when they were last topped up.
+     */
     private static final class Bucket {
         double tokens;
         long lastRefill;

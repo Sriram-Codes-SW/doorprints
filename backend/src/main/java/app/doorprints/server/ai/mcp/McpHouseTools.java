@@ -75,6 +75,10 @@ public class McpHouseTools {
     @Tool(name = "askDoorprints", description = """
             Ask a natural-language question about the saved houses (e.g. 'which shortlisted 2BHKs had good water \
             pressure?'). Answers only from the user's own records and cites house ids.""")
+    /**
+     * Tool: answers a question from the user's saved houses with citations. When AI is off on this server it returns
+     * an explanatory answer with no citations, so the client falls back to the search tools instead of failing.
+     */
     public AskResponse askDoorprints(@ToolParam(description = "The question") String question) {
         var service = rag.getIfAvailable();
         if (service == null) {

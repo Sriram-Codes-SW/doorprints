@@ -33,6 +33,10 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+/**
+ * The house rules shared by the HTTP API and the AI tools: listing, the last-write-wins upsert, deletion that purges
+ * private content, and the nearby search.
+ */
 @Service
 public class HouseService {
 
@@ -53,6 +57,9 @@ public class HouseService {
         this.events = events;
     }
 
+    /**
+     * Live houses, newest edit first; with a sync version, every house changed after it, deletions included.
+     */
     @Transactional(readOnly = true)
     public List<HouseDto> list(Long since) {
         var houses = since == null
@@ -61,6 +68,10 @@ public class HouseService {
         return houses.stream().map(HouseDto::from).toList();
     }
 
+    /**
+     * One house.
+     * @throws NotFoundException if it does not exist
+     */
     @Transactional(readOnly = true)
     public HouseDto get(UUID id) {
         return HouseDto.from(find(id));
@@ -94,6 +105,11 @@ public class HouseService {
         return HouseDto.from(saved);
     }
 
+    /**
+     * Deletes a house: its content is blanked, its photos are tombstoned and its visits unlinked, and the search
+     * index is told. Deleting twice is fine.
+     * @throws NotFoundException if it never existed
+     */
     @Transactional
     public void delete(UUID id) {
         versions.lock();
@@ -115,6 +131,9 @@ public class HouseService {
         visits.unlinkHouse(house.getId(), now, version);
     }
 
+    /**
+     * Live houses within the radius in metres of a point, nearest first (at most 50), each with its distance.
+     */
     @Transactional(readOnly = true)
     public List<HouseDto> nearby(double lat, double lon, double radius) {
         var rows = repo.findNearby(lat, lon, radius);
@@ -126,11 +145,18 @@ public class HouseService {
                 .toList();
     }
 
+    /**
+     * Live houses on a street, matched ignoring case.
+     */
     @Transactional(readOnly = true)
     public List<HouseDto> onStreet(String street) {
         return repo.findLiveOnStreet(street.trim()).stream().map(HouseDto::from).toList();
     }
 
+    /**
+     * The house row, deleted or not.
+     * @throws NotFoundException if there is none
+     */
     House find(UUID id) {
         return repo.findById(id).orElseThrow(() -> new NotFoundException("House " + id + " not found"));
     }

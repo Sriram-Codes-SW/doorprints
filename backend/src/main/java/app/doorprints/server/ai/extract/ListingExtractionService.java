@@ -40,6 +40,13 @@ public class ListingExtractionService {
         this.props = props;
     }
 
+    /**
+     * Reads a pasted listing (a message, an ad, page text) into a draft house for the user to confirm.
+     * The text goes to the model with temperature 0; this service does not store it. The structured answer is then
+     * validated by {@link DraftSanitizer} against the same text.
+     * @throws IllegalArgumentException if the text is blank or longer than the configured limit
+     * @throws AiUnavailableException if the model call fails
+     */
     public HouseDraft extract(String text) {
         if (text == null || text.isBlank()) throw new IllegalArgumentException("text must not be blank");
         if (text.length() > props.maxInputChars()) {

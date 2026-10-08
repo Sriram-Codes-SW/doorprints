@@ -120,10 +120,17 @@ public record HouseDto(
     /** GPS = <i>Use my location</i>; MAP = a tap or the crosshair; APPROX = the person says the spot is approximate. */
     public static final String LOCATION_SOURCES = "GPS|MAP|APPROX";
 
+    /**
+     * The house as sent to clients, without a distance.
+     */
     public static HouseDto from(House h) {
         return from(h, null);
     }
 
+    /**
+     * The house as sent to clients; the distance is set only by the nearby search. The stored JSON parts are parsed
+     * into their types.
+     */
     public static HouseDto from(House h, Double distanceMeters) {
         return new HouseDto(h.getId(), h.getLabel(), h.getAddress(), h.getStreet(), h.getLocality(),
                 h.getLat(), h.getLon(), h.getStatus(), h.getPrice(), h.getPriceType(), h.getBedrooms(),
@@ -148,6 +155,10 @@ public record HouseDto(
         return HouseAnswer.idsAreUnique(answers);
     }
 
+    /**
+     * Copies the writable fields of this request onto the row; a missing status becomes NEW. The id, timestamps and
+     * sync version are set by the service.
+     */
     void applyTo(House h) {
         h.setLabel(label);
         h.setAddress(address);

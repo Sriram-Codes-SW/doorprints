@@ -44,6 +44,10 @@ import java.util.UUID;
 @Component
 public class HouseQueries {
 
+    /**
+     * One past visit as the model sees it: arrival, departure and the minutes between them (null while the visit is
+     * still open).
+     */
     public record VisitInfo(Instant arrivedAt, Instant leftAt, Long minutes, String source) {
     }
 
@@ -81,22 +85,40 @@ public class HouseQueries {
         this.visits = visits;
     }
 
+    /**
+     * Lets the model filter the saved houses by text status and price type; both are parsed here, then the search
+     * runs on the user's live houses.
+     * Unknown status or price type values raise IllegalArgumentException, whose message names the allowed values so
+     * the model can retry.
+     */
     public List<HouseSummary> searchHouses(String text, String status, String priceType, Long maxPrice,
                                            Integer minBedrooms, Integer minRating, Integer limit) {
         return search.search(new Criteria(text, parseStatus(status), parsePriceType(priceType), null, maxPrice,
                 minBedrooms, null, minRating, limit));
     }
 
+    /**
+     * Saved houses around a point; the radius defaults to 1000 m when the model leaves it out.
+     */
     public List<HouseSummary> nearbyHouses(double lat, double lon, Double radiusMeters) {
         return search.nearby(lat, lon, radiusMeters == null ? 1000 : radiusMeters);
     }
 
+    /**
+     * One house with contact names and phone numbers removed from every free-text field (F-30), safe to hand to the
+     * model.
+     * @throws NotFoundException if the house has been deleted
+     */
     public HouseDetails houseDetails(String houseId) {
         var h = search.details(parseId(houseId));
         if (h.deleted()) throw new NotFoundException("House " + houseId + " not found");
         return HouseDetails.of(h);
     }
 
+    /**
+     * The last 20 visits to a house, newest first, so the model can say how long the user stayed. Deleted visits are
+     * left out.
+     */
     public List<VisitInfo> visitHistory(String houseId) {
         return visits.findByDeletedFalseAndHouseIdOrderByArrivedAtDesc(parseId(houseId)).stream()
                 .limit(20)
@@ -106,6 +128,9 @@ public class HouseQueries {
                 .toList();
     }
 
+    /**
+     * Reads a house id given as text by the model. The error message tells the model where valid ids come from.
+     */
     static UUID parseId(String id) {
         try {
             return UUID.fromString(id == null ? "" : id.strip());
@@ -114,6 +139,9 @@ public class HouseQueries {
         }
     }
 
+    /**
+     * Case-insensitive status name; null or blank means no filter.
+     */
     static HouseStatus parseStatus(String s) {
         if (s == null || s.isBlank()) return null;
         try {
@@ -123,6 +151,9 @@ public class HouseQueries {
         }
     }
 
+    /**
+     * Normalises RENT or SALE to upper case; null or blank means no filter.
+     */
     static String parsePriceType(String s) {
         if (s == null || s.isBlank()) return null;
         var v = s.strip().toUpperCase(Locale.ROOT);

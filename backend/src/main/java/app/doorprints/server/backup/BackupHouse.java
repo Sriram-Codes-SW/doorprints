@@ -31,7 +31,7 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * One house in the shared backup format ({@code doorprints-backup/1}, and {@code /2} when the copy holds brokers or rooms).
+ * One house in the shared backup format ({@code doorprints-backup/1}, and {@code /2} when the copy holds anything {@code /1} has no place for, see {@link BackupFormat#ID_WITH_BROKERS}).
  *
  * <p><b>Null semantics (NFR-025).</b> A field that has no value is <em>left out</em> of the JSON; a reader must
  * treat "absent" and "null" as the same thing, which is what the Kotlin writer's {@code explicitNulls = false} and

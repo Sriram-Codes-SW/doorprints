@@ -36,6 +36,10 @@ public final class PlanModels {
     private PlanModels() {
     }
 
+    /**
+     * Body of the plan-visits call: the user's request in words, where they start, and an optional cap on stops
+     * (1..25; the server's own cap still applies).
+     */
     public record PlanRequest(
             @NotBlank @Size(max = 4000) String question,
             @NotNull @DecimalMin("-90") @DecimalMax("90") Double startLat,
@@ -43,6 +47,10 @@ public final class PlanModels {
             @Min(1) @Max(25) Integer maxStops) {
     }
 
+    /**
+     * One stop of the answer: its place in the order, the house, why it was chosen, and the walk from the previous
+     * stop (or the start point).
+     */
     public record PlannedStop(int order, UUID houseId, String label, double lat, double lon, String reason,
                               long legMeters, int walkMinutes) {
     }
@@ -61,6 +69,9 @@ public final class PlanModels {
             @JsonPropertyDescription("Houses to visit, in visiting order") List<AgentStop> stops) {
     }
 
+    /**
+     * One stop as the model proposes it. The house id is checked against the tool results before it is trusted.
+     */
     public record AgentStop(
             @JsonPropertyDescription("House id exactly as returned by a tool") String houseId,
             @JsonPropertyDescription("Why this house is in the plan, one sentence") String reason) {

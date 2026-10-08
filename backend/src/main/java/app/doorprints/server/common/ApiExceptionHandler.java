@@ -45,6 +45,9 @@ public class ApiExceptionHandler {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.getMessage());
     }
 
+    /**
+     * Validation failure of a request body: 400 listing each field and its message.
+     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ProblemDetail invalid(MethodArgumentNotValidException e) {
         var detail = e.getBindingResult().getFieldErrors().stream()
@@ -53,6 +56,9 @@ public class ApiExceptionHandler {
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, detail);
     }
 
+    /**
+     * Validation failure of a path or query parameter: 400 naming the parameter and its message.
+     */
     @ExceptionHandler(HandlerMethodValidationException.class)
     public ProblemDetail invalidParams(HandlerMethodValidationException e) {
         var detail = e.getParameterValidationResults().stream()

@@ -31,6 +31,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * HTTP endpoints for house photos: list, upload, fetch bytes, edit metadata, delete, and the metadata change feed
+ * that offline clients sync from.
+ */
 @RestController
 @RequestMapping("/api")
 public class PhotoController {
@@ -64,6 +68,10 @@ public class PhotoController {
         return Map.of("id", service.upload(houseId, id, file.getBytes()));
     }
 
+    /**
+     * The photo bytes. They may be cached privately for 30 days: a photo's bytes never change, and a deleted photo
+     * answers 404.
+     */
     @GetMapping("/photos/{id}")
     public ResponseEntity<byte[]> get(@PathVariable UUID id) {
         var photo = service.getLive(id);
@@ -83,6 +91,9 @@ public class PhotoController {
         return service.updateMeta(id, body);
     }
 
+    /**
+     * Deletes a photo (a tombstone remains for sync). Deleting twice is fine.
+     */
     @DeleteMapping("/photos/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         service.delete(id);

@@ -33,6 +33,10 @@ public final class AiUsageLogger {
     private AiUsageLogger() {
     }
 
+    /**
+     * Logs the feature name, model, token counts and duration of one model call; the counts read "null" or "unknown"
+     * when the provider does not report them.
+     */
     public static void log(String feature, ChatResponse response, long startedNanos) {
         long millis = (System.nanoTime() - startedNanos) / 1_000_000;
         if (response == null || response.getMetadata() == null) {
