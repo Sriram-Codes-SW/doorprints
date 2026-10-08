@@ -110,7 +110,7 @@ on:
         type: string
         default: ""
       ai_kind:
-        description: "own-provider only: the kind of provider (docs/03 ADR-35). Its key is the repository secret AI_EVAL_API_KEY"
+        description: "own-provider only: the kind of provider (docs/03 ADR-35). Its key is the repository secret AI_EVAL_API_KEY (the gemini kind falls back to AI_API_KEY)"
         type: choice
         default: openai-compatible
         options:
@@ -406,7 +406,8 @@ jobs:
       - name: Skip cleanly without a key
         id: key
         env:
-          AI_EVAL_API_KEY: ${{ secrets.AI_EVAL_API_KEY }}
+          # The Gemini kind reuses the repository secret AI_API_KEY the other suites already use.
+          AI_EVAL_API_KEY: ${{ secrets.AI_EVAL_API_KEY || (inputs.ai_kind == 'gemini' && secrets.AI_API_KEY) || '' }}
         run: |
           if [ -z "$AI_EVAL_API_KEY" ]; then
             echo "skipped: no key" | tee -a "$GITHUB_STEP_SUMMARY"
@@ -436,7 +437,7 @@ jobs:
         if: steps.key.outputs.run == 'true'
         working-directory: web
         env:
-          DOORPRINTS_EVAL_KEY: ${{ secrets.AI_EVAL_API_KEY }}
+          DOORPRINTS_EVAL_KEY: ${{ secrets.AI_EVAL_API_KEY || (inputs.ai_kind == 'gemini' && secrets.AI_API_KEY) || '' }}
           AI_EVAL_KIND: ${{ inputs.ai_kind }}
           AI_EVAL_BASE_URL: ${{ inputs.ai_base_url || vars.AI_EVAL_BASE_URL }}
           AI_EVAL_MODEL: ${{ inputs.ai_model || vars.AI_EVAL_MODEL }}

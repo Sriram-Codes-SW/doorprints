@@ -51,6 +51,16 @@ describe.skipIf(!KEY)('OnDeviceAiService against Gemini (real key)', () => {
         updatedAt: '2026-09-21T10:00:00Z', deleted: false,
       },
     ];
+    // Typed on purpose: the service reads these six methods of the store; a method it starts to use that is missing here
+    // (the live run once failed on `viewings`, added after this test was written) fails the build, not the manual run.
+    const store: Pick<LocalStore, 'allHouses' | 'allVisits' | 'viewings' | 'areas' | 'places' | 'areaNoteRows'> = {
+      allHouses: async () => houses as unknown as Awaited<ReturnType<LocalStore['allHouses']>>,
+      allVisits: async () => [],
+      viewings: async () => [],
+      areas: async () => [],
+      places: async () => [],
+      areaNoteRows: async () => [],
+    };
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(
@@ -62,7 +72,7 @@ describe.skipIf(!KEY)('OnDeviceAiService against Gemini (real key)', () => {
             },
           ]),
         ),
-        { provide: LocalStore, useValue: { allHouses: async () => houses, allVisits: async () => [] } },
+        { provide: LocalStore, useValue: store },
       ],
     });
     const ai = TestBed.inject(OnDeviceAiService);

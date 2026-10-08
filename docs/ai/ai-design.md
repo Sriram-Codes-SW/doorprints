@@ -27,6 +27,7 @@
 | v0.23   | 2026-10-01 | Claude (Code), lead           | 6: the Plan prompt on the phones and the website skips NOT_CHOSEN as well as REJECTED unless asked, as the server's did since slice 5, and the fallback route leaves out the same two statuses; new parity vector `inTheRunning` (S4b-BL-99 a). |
 | v0.24   | 2026-10-07 | Claude (Code), lead           | 2 and 14: **running with Ollama needs no key** (S4b-BL-149, [10](../10-sprint-log.md)). `AiStatusController` reports AI off for lack of a key only when the chat base URL (`AI_BASE_URL`, the server's own setting, never a request value) has the host `generativelanguage.googleapis.com`; any other host (Ollama, LM Studio, another OpenAI-compatible endpoint) is on without `AI_API_KEY`, and a key that is set is still sent. A blank or unreadable URL counts as the Gemini default. An explicit `AI_KEY_REQUIRED` (`app.ai.key-required`, `true` or `false`) overrides the host rule, for example `true` for a proxy in front of Gemini on another host. Vertex and the owner's pause are unchanged. TC-U-171. |
 | v0.25   | 2026-10-07 | Claude (Code), lead           | 8.1: **the optional own-provider evals** (S4b-BL-153): `ai-evals.yml` gains the suite `own-provider` and the inputs `ai_kind`, `ai_base_url`, `ai_model`; the golden set runs through the website's own TypeScript adapters against a real provider with the repository secret `AI_EVAL_API_KEY`, and says `skipped: no key` without it. How to set the secret is in 8.1. Reported, not gating; not yet run on a real provider. |
+| v0.26   | 2026-10-08 | Claude (Code), lead           | 8.1: the `own-provider` suite with `ai_kind` gemini falls back to the repository secret `AI_API_KEY` (the one the other suites use) when `AI_EVAL_API_KEY` is not set, so the owner's existing Gemini key runs it without a second secret. Other kinds still need `AI_EVAL_API_KEY`. |
 
 Status: implemented in `backend/` (package `app.doorprints.server.ai`), **off by default**. Not yet compiled in this
 sandbox (no Maven Central access) — CI compiles and runs the tests. Provider: AI Studio by default, Vertex AI with
@@ -685,7 +686,7 @@ stay in the server's `EvalScorer`. It is reported, not gating, until a run has b
 manual trigger reaches it.
 
 *Setting it up (owner, once, only if wanted; no value goes in the repository):* in GitHub, Settings > Secrets and
-variables > Actions > New repository secret, name `AI_EVAL_API_KEY`, value a key from a provider with a free tier
+variables > Actions > New repository secret, name `AI_EVAL_API_KEY` (not needed for `ai_kind` gemini: that kind uses the existing `AI_API_KEY`), value a key from a provider with a free tier
 (never a paid or production key, [01](../01-requirements.md) PRV-022). Optionally, on the Variables tab,
 `AI_EVAL_BASE_URL` and `AI_EVAL_MODEL` (the run inputs `ai_base_url` and `ai_model` override them). Then Actions >
 **AI evals** > Run workflow with `suites` = `own-provider` and `ai_kind` = `openai-compatible`, `anthropic` or
