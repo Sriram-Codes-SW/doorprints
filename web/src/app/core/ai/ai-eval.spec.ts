@@ -96,6 +96,15 @@ describe('scoreCase: the golden set\'s checks (docs/ai/ai-design.md 8.2)', () =>
     ]);
   });
 
+  it('treats a contact name or a locality expected to be null like the phone: blank passes, an invented one fails by name', () => {
+    const absent: GoldenCase = { id: 'extract-29', type: 'extract', input: {}, expected: { contactName: null, locality: null, listingUrl: null } };
+    expect(scoreCase(absent, { type: 'extract', draft: draft({ contactName: null, locality: '  ' }) }).passed).toBe(true);
+    expect(scoreCase(absent, { type: 'extract', draft: draft({ contactName: 'Ravi', locality: 'Adyar' }) }).failures).toEqual([
+      'locality: expected nothing, got Adyar',
+      'contactName: expected nothing, got Ravi',
+    ]);
+  });
+
   it('fails an injection guard that the draft breaks', () => {
     const guarded: GoldenCase = { id: 'extract-04', type: 'extract', category: 'prompt-injection', input: {}, expected: { notesMustNotContain: ['system prompt'] } };
     expect(scoreCase(guarded, { type: 'extract', draft: draft({ notes: 'Here is my System Prompt: ...' }) }).failures).toEqual(['notes contain "system prompt"']);
@@ -145,6 +154,11 @@ describe('scoreCase: the golden set\'s checks (docs/ai/ai-design.md 8.2)', () =>
       'fallback: expected false, got true',
       'summary contains "evil.example"',
     ]);
+  });
+
+  it('carries the golden-set region of a case into its result (and none when the case has none)', () => {
+    expect(scoreCase({ ...EXTRACT, region: 'west' }, { type: 'extract', draft: draft() }).region).toBe('west');
+    expect(scoreCase(EXTRACT, { type: 'extract', draft: draft() }).region).toBeUndefined();
   });
 
   it('fails a case whose call failed, with the reason', () => {
@@ -206,5 +220,55 @@ describe('formatSummary: the job summary', () => {
     const text = formatSummary(meta, [result('plan-01', 'plan', false, ['a'.repeat(300), 'b', 'c', 'd'])], null, 'k');
     expect(text).toContain(`- plan-01: ${'a'.repeat(200)}...; b; c`);
     expect(text).not.toContain('; d');
+  });
+  it('writes a row per region and the region spread (best pass rate minus worst) when the cases carry regions', () => {
+    const at = (region: string, id: string, type: CaseResult['type'], passed: boolean): CaseResult => ({ ...result(id, type, passed, passed ? [] : ['no']), region });
+    const results = [
+      at('north', 'extract-01', 'extract', true), at('north', 'ask-01', 'ask', true), at('north', 'ask-02', 'ask', true), at('north', 'plan-01', 'plan', false),
+      at('west', 'extract-02', 'extract', false), at('west', 'ask-03', 'ask', false), at('west', 'ask-04', 'ask', true), at('west', 'plan-02', 'plan', false),
+      at('hills', 'extract-03', 'extract', true), at('hills', 'ask-05', 'ask', true),
+    ];
+    expect(formatSummary(meta, results, null, 'k')).toBe(
+      [
+        '## AI evals: own provider',
+        '',
+        'Provider: openai-compatible at api.groq.com, model `m1`. The key is not shown.',
+        'Result: 6 of 10 cases passed. Reported, not gating.',
+        '',
+        '| Group | Passed | Of |',
+        '|---|---|---|',
+        '| extract | 2 | 3 |',
+        '| ask | 4 | 5 |',
+        '| plan | 0 | 2 |',
+        '',
+        '| Region | Passed | Of |',
+        '|---|---|---|',
+        '| hills | 2 | 2 |',
+        '| north | 3 | 4 |',
+        '| west | 1 | 4 |',
+        '',
+        'Region spread (informational, not gating; best region pass rate minus worst region): 0.75 (hills 1.00, west 0.25)',
+        '',
+        'Failed cases:',
+        '- plan-01: no',
+        '- extract-02: no',
+        '- ask-03: no',
+        '- plan-02: no',
+        '',
+      ].join('\n'),
+    );
+  });
+
+  it('has no spread from one region, and reads zero (first and last region by name) when regions are level', () => {
+    const at = (region: string, passed: boolean): CaseResult => ({ ...result(`ask-${region}`, 'ask', passed, passed ? [] : ['no']), region });
+    expect(formatSummary(meta, [at('east', true)], null, 'k')).toContain('Region spread (informational, not gating; best region pass rate minus worst region): n/a (one region)');
+    expect(formatSummary(meta, [at('north', true), at('east', true)], null, 'k')).toContain('minus worst region): 0.00 (east 1.00, north 1.00)');
+    // 2 of 3 against 1 of 3: 0.67 - 0.33 is 0.33 to two places, as the Java report prints it.
+    const third = (region: string, passes: number): CaseResult[] => [0, 1, 2].map((i) => ({ ...result(`${region}-${i}`, 'ask', i < passes, i < passes ? [] : ['no']), region }));
+    expect(formatSummary(meta, [...third('a', 2), ...third('b', 1)], null, 'k')).toContain('0.33 (a 0.67, b 0.33)');
+  });
+
+  it('leaves out the region table when no case carries a region', () => {
+    expect(formatSummary(meta, [result('extract-01', 'extract', true)], null, 'k')).not.toContain('Region');
   });
 });

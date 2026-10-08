@@ -14,6 +14,16 @@
     { "file": "web/src/app/core/ai/ai-eval.ts", "find": "if (stopped) lines.push", "replace": "if (false) lines.push", "expect": "says where a run stopped" },
     { "file": "web/src/app/core/ai/ai-eval.ts", "find": "(key === '' ? s : s.split(key).join('***'))", "replace": "s", "expect": "never prints the key" },
     { "file": "web/src/app/core/ai/ai-eval.ts", "find": ".map((f) => hide(f)).map((f) => (f.length > MAX_REASON ? `${f.slice(0, MAX_REASON)}...` : f))", "replace": ".map((f) => (f.length > MAX_REASON ? `${f.slice(0, MAX_REASON)}...` : f)).map((f) => hide(f))", "expect": "across the 200-character cut" },
-    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "slice(0, MAX_REASONS)", "replace": "slice(0, MAX_REASONS + 1)", "expect": "shortens a long reason" }
+    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "slice(0, MAX_REASONS)", "replace": "slice(0, MAX_REASONS + 1)", "expect": "shortens a long reason" },
+    {"file": "web/src/app/core/ai/ai-eval.ts", "find": "rate(b) > rate(a) ? b : a", "replace": "rate(b) < rate(a) ? b : a", "expect": "writes a row per region"},
+    {"file": "web/src/app/core/ai/ai-eval.ts", "find": "rate(b) <= rate(a) ? b : a", "replace": "rate(b) < rate(a) ? b : a", "expect": "reads zero (first and last region by name)"},
+    {"file": "web/src/app/core/ai/ai-eval.ts", "find": ".filter((r): r is string => !!r))].sort()", "replace": ".filter((r): r is string => !!r))]", "expect": "writes a row per region"},
+    {"file": "web/src/app/core/ai/ai-eval.ts", "find": "(rate(best) - rate(worst)).toFixed(2)", "replace": "(rate(best) + rate(worst)).toFixed(2)", "expect": "writes a row per region"},
+    {"file": "web/src/app/core/ai/ai-eval.ts", "find": "rows.length < 2\n", "replace": "rows.length < 1\n", "expect": "has no spread from one region"},
+    {"file": "web/src/app/core/ai/ai-eval.ts", "find": "if (names.length === 0) return [];", "replace": "if (false) return [];", "expect": "leaves out the region table"},
+    {"file": "web/src/app/core/ai/ai-eval.ts", "find": "category: c.category, region: c.region, passed", "replace": "category: c.category, region: undefined, passed", "expect": "carries the golden-set region"},
+    {"file": "web/src/app/core/ai/ai-eval.ts", "find": "if (e[field] === null) {", "replace": "if (false) {", "expect": "treats a contact name or a locality expected to be null"},
+    {"file": "web/src/app/core/ai/ai-eval.ts", "find": "if (!blank(d[field])) out.push(`${field}: expected nothing", "replace": "if (false) out.push(`${field}: expected nothing", "expect": "treats a contact name or a locality expected to be null"},
+    {"file": "web/src/app/core/ai/ai-eval.ts", "find": "lines.push(...regionLines(results));", "replace": "lines.push();", "expect": "writes a row per region"}
   ]
 }

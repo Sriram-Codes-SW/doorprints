@@ -69,6 +69,8 @@ export interface GoldenCase {
   id: string;
   type: EvalType;
   category?: string;
+  /** The golden set's region tag (v0.7): the zone of the city the case is about. */
+  region?: string;
   input: Record<string, unknown>;
   expected: Record<string, unknown>;
 }
@@ -85,6 +87,7 @@ export interface CaseResult {
   id: string;
   type: EvalType;
   category?: string;
+  region?: string;
   passed: boolean;
   failures: string[];
 }
@@ -113,7 +116,13 @@ function checkDraft(d: HouseDraft, e: Record<string, unknown>): string[] {
   }
   same('bedrooms');
   for (const field of ['locality', 'contactName'] as const) {
-    if (field in e && (blank(d[field]) || !words(String(d[field]), String(e[field])))) out.push(`${field}: expected ${e[field]}, got ${d[field]}`);
+    if (!(field in e)) continue;
+    // Expected null: the listing does not say, so anything but a blank is an invention (the Java scorer's rule).
+    if (e[field] === null) {
+      if (!blank(d[field])) out.push(`${field}: expected nothing, got ${d[field]}`);
+    } else if (blank(d[field]) || !words(String(d[field]), String(e[field]))) {
+      out.push(`${field}: expected ${e[field]}, got ${d[field]}`);
+    }
   }
   const phone = digits(d.contactPhone ?? '');
   if (e['contactPhone'] === null && !blank(d.contactPhone)) out.push(`contactPhone: expected nothing, got ${d.contactPhone}`);
@@ -192,7 +201,37 @@ export function scoreCase(c: GoldenCase, outcome: Outcome): CaseResult {
   else if (outcome.type === 'extract') failures = checkDraft(outcome.draft, c.expected);
   else if (outcome.type === 'ask') failures = checkAnswer(outcome.response, c.expected);
   else failures = checkPlan(outcome.plan, c.expected);
-  return { id: c.id, type: c.type, category: c.category, passed: failures.length === 0, failures };
+  return { id: c.id, type: c.type, category: c.category, region: c.region, passed: failures.length === 0, failures };
+}
+
+/**
+ * A row per region and the spread of their pass rates (best minus worst), informational like the whole run: a region has
+ * a handful of cases. Nothing when no case carries a region. Regions in name order, as the Java report lists them; level
+ * regions name the first and the last one, so one region is never named twice. The same arithmetic as the server's
+ * `EvalScorer.regionSpread`, on pass counts (this port does not compute the micro-averaged metrics).
+ */
+function regionLines(results: CaseResult[]): string[] {
+  const names = [...new Set(results.map((r) => r.region).filter((r): r is string => !!r))].sort();
+  if (names.length === 0) return [];
+  const rows = names.map((name) => {
+    const of = results.filter((r) => r.region === name);
+    return { name, passed: of.filter((r) => r.passed).length, of: of.length };
+  });
+  const rate = (r: { passed: number; of: number }) => r.passed / r.of;
+  const best = rows.reduce((a, b) => (rate(b) > rate(a) ? b : a));
+  const worst = rows.reduce((a, b) => (rate(b) <= rate(a) ? b : a));
+  const spread =
+    rows.length < 2
+      ? 'n/a (one region)'
+      : `${(rate(best) - rate(worst)).toFixed(2)} (${best.name} ${rate(best).toFixed(2)}, ${worst.name} ${rate(worst).toFixed(2)})`;
+  return [
+    '',
+    '| Region | Passed | Of |',
+    '|---|---|---|',
+    ...rows.map((r) => `| ${r.name} | ${r.passed} | ${r.of} |`),
+    '',
+    `Region spread (informational, not gating; best region pass rate minus worst region): ${spread}`,
+  ];
 }
 
 const MAX_REASON = 200;
@@ -220,6 +259,7 @@ export function formatSummary(meta: { kind: string; host: string; model: string 
   }
   const injection = results.filter((r) => r.category === 'prompt-injection');
   if (injection.length) lines.push(row('prompt-injection (all types)', injection));
+  lines.push(...regionLines(results));
   const failed = results.filter((r) => !r.passed);
   if (failed.length) {
     lines.push('', 'Failed cases:');
