@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Secure build, CI/CD and deployment guide |
-| Version | 0.64 |
+| Version | 0.65 |
 | Date | 2026-10-05 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -76,6 +76,7 @@
 | 0.62 | 2026-10-08 | Claude (Code), lead | `ai-evals.yml` suite `own-provider`: `ai_kind` gemini falls back to the existing secret `AI_API_KEY` when `AI_EVAL_API_KEY` is not set (the owner's Gemini key needs no second secret); the secrets table says so. |
 | 0.63 | 2026-10-08 | Claude (Code), lead | `ai-evals.yml` (S4b-BL-175): the manual suite `local-model` and the input `local_model`. Ollama is downloaded from the official GitHub release, pinned by version (`OLLAMA_VERSION` v0.40.1) and by sha256 (`OLLAMA_SHA256`, also compared with the release's own `sha256sum.txt`), unpacked only after the check; no `curl` piped to a shell, no new secret, no new permission. SEC-030 covers Actions; this pin is the same discipline for a downloaded binary, moved by hand (Dependabot does not see it). `web.yml` and `android.yml` gain the path `tools/fake-ai-provider/**`; `security.yml` runs the fake server's own tests. |
 | 0.64 | 2026-10-08 | Claude (Code) | **`pages.yml`** (S4b-BL-183): a step after the build runs `tools/guide-search-check/site-check.mjs` on the built site (Node from the runner image, as `security.yml`'s guards); the path filters (and `pages-required.yml`'s mirror) gain `tools/guide-search-check/**`; new workflow-table row. [06](06-test-plan.md) TC-U-175. |
+| 0.65 | 2026-10-08 | Claude (Code), lead | `ai-evals.yml` (S4b-BL-184): the `gemini` kind of the `own-provider` suite reads the repository secret `AI_API_KEY` first and `AI_EVAL_API_KEY` second, so a key set for another provider is never sent to Google when both secrets exist; the other kinds read `AI_EVAL_API_KEY` only. A run of `own-provider` or `local-model` that ends early because the provider cannot be used now FAILS (it was green with 0 of 2 cases on 2026-10-08), after writing its summary. |
 
 Related: [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Runbook](08-operations-runbook.md) · [AI docs](ai/)
 
