@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 import type { AskResponse, HouseDraft, PlanResponse } from '../ai.service';
-import { AI_KINDS, type AiKind, validateWebBaseUrl } from './ai-provider-config';
+import { AI_KINDS, type AiKind, isLocalHost, validateWebBaseUrl } from './ai-provider-config';
 
 /**
  * The optional provider evals (S4b-BL-153, docs/03 ADR-35, docs/06 TC-AI-23): the golden set (docs/ai/evals/golden-set.json)
@@ -36,12 +36,23 @@ export type EvalSetup =
   | { status: 'run'; kind: AiKind; baseUrl: string; model: string; key: string; delayMs: number; types: EvalType[] };
 
 /**
+ * Whether the setting names an OpenAI-compatible server on this machine (`localhost`, `127.0.0.1`): the one place a key is
+ * not needed (Ollama ignores it), used by the manual workflow's `local-model` suite (S4b-BL-175).
+ */
+function isKeylessLocal(env: Record<string, string | undefined>): boolean {
+  if ((env['AI_EVAL_KIND'] ?? '').trim() !== 'openai-compatible') return false;
+  const check = validateWebBaseUrl((env['AI_EVAL_BASE_URL'] ?? '').trim());
+  return check.valid && isLocalHost(check.host);
+}
+
+/**
  * Whether and how the evals run. No key means `skipped: no key` and nothing else is looked at, so a repository without the
- * secret gets a green, honest job; a key with a wrong setting is `invalid` (a red job, nothing is sent).
+ * secret gets a green, honest job (except for a server on this machine, which needs no key); a key with a wrong setting is
+ * `invalid` (a red job, nothing is sent).
  */
 export function evalSetup(env: Record<string, string | undefined>): EvalSetup {
   const key = (env['DOORPRINTS_EVAL_KEY'] ?? '').trim();
-  if (key === '') return { status: 'skip', line: 'skipped: no key' };
+  if (key === '' && !isKeylessLocal(env)) return { status: 'skip', line: 'skipped: no key' };
   const invalid = (line: string): EvalSetup => ({ status: 'invalid', line });
   const kind = (env['AI_EVAL_KIND'] ?? '').trim();
   if (!AI_KINDS.includes(kind as AiKind)) return invalid('kind must be gemini, openai-compatible or anthropic');
