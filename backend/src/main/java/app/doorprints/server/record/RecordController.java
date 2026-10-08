@@ -18,6 +18,7 @@
 
 package app.doorprints.server.record;
 
+import app.doorprints.server.common.BadRequestException;
 import app.doorprints.server.common.ConflictException;
 import app.doorprints.server.common.NotFoundException;
 import app.doorprints.server.house.HouseChangedEvent;
@@ -114,7 +115,7 @@ public class RecordController {
                             @PathVariable @Pattern(regexp = RecordDto.ID_PATTERN) String id,
                             @Valid @RequestBody RecordDto dto) {
         if (!type.equals(dto.type()) || !id.equals(dto.id())) {
-            throw new IllegalArgumentException("type and id in the path and in the body must agree");
+            throw new BadRequestException("type and id in the path and in the body must agree");
         }
         var payload = dto.deleted() ? EMPTY : compact(dto.payload());
         versions.lock(); // before reading: last-write-wins check and write are atomic (F-09)
@@ -165,10 +166,10 @@ public class RecordController {
 
     /** The payload as stored: a JSON object, compact, within the size cap; anything else is a 400. */
     private static String compact(JsonNode payload) {
-        if (payload == null || !payload.isObject()) throw new IllegalArgumentException("payload must be a JSON object");
+        if (payload == null || !payload.isObject()) throw new BadRequestException("payload must be a JSON object");
         var text = payload.toString();
         if (text.getBytes(StandardCharsets.UTF_8).length > MAX_PAYLOAD_BYTES) {
-            throw new IllegalArgumentException("payload too large (max " + MAX_PAYLOAD_BYTES + " bytes)");
+            throw new BadRequestException("payload too large (max " + MAX_PAYLOAD_BYTES + " bytes)");
         }
         return text;
     }

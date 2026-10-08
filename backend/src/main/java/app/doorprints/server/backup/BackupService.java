@@ -20,6 +20,7 @@ package app.doorprints.server.backup;
 
 import app.doorprints.server.backup.ImportReport.Outcome;
 import app.doorprints.server.backup.ImportReport.Tally;
+import app.doorprints.server.common.BadRequestException;
 import app.doorprints.server.house.House;
 import app.doorprints.server.house.HouseChangedEvent;
 import app.doorprints.server.house.HouseAnswer;
@@ -41,6 +42,7 @@ import app.doorprints.server.sync.ClientClock;
 import app.doorprints.server.sync.SyncVersions;
 import app.doorprints.server.visit.Visit;
 import app.doorprints.server.visit.VisitRepository;
+import jakarta.persistence.EntityManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
@@ -51,6 +53,7 @@ import tools.jackson.databind.ObjectMapper;
 import java.time.DateTimeException;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -122,6 +125,12 @@ public class BackupService {
      */
     static final int MAX_INDEX_EVENTS = 50;
 
+    /**
+     * Rows read, merged and flushed together (see {@link #inChunks}). With {@code hibernate.jdbc.batch_size} at 100 a
+     * chunk goes to the database in batches, and the context never holds more than a chunk.
+     */
+    static final int FLUSH_EVERY = 500;
+
     private final HouseRepository houses;
     private final VisitRepository visits;
     private final PhotoRepository photos;
@@ -131,10 +140,12 @@ public class BackupService {
     private final RecordRepository records;
     private final ObjectMapper json;
     private final PhotoService photoService;
+    private final EntityManager em;
 
     public BackupService(HouseRepository houses, VisitRepository visits, PhotoRepository photos,
                          SyncVersions versions, ClientClock clock, ApplicationEventPublisher events,
-                         RecordRepository records, ObjectMapper json, PhotoService photoService) {
+                         RecordRepository records, ObjectMapper json, PhotoService photoService,
+                         EntityManager em) {
         this.houses = houses;
         this.visits = visits;
         this.photos = photos;
@@ -144,6 +155,7 @@ public class BackupService {
         this.records = records;
         this.json = json;
         this.photoService = photoService;
+        this.em = em;
     }
 
     /** Everything live on the server, in the format's fixed order. Photo bytes are fetched separately. */
@@ -184,22 +196,32 @@ public class BackupService {
         var changedHouses = new LinkedHashSet<UUID>();
         if (!dryRun) versions.lock(); // one writer at a time, and versions become visible in order (F-09)
 
-        for (var row : data.houses()) houseTally.count(mergeHouse(row, dryRun, rowProblems, changedHouses));
+        // Houses and visits are read a chunk at a time (one query for the chunk's ids, not one per row). A file
+        // never repeats an id (validate), so an id the chunk query did not find is a row to create.
+        inChunks(data.houses(), dryRun, chunk -> {
+            var here = byId(houses.findAllById(ids(chunk, BackupHouse::id)), House::getId);
+            for (var row : chunk) houseTally.count(mergeHouse(row, here.get(row.id()), dryRun, rowProblems, changedHouses));
+        });
 
         // A visit's house must exist (foreign key): either it is in this file or the server already has the row.
         var housesInFile = new HashSet<UUID>();
         for (var row : data.houses()) housesInFile.add(row.id());
-        for (var row : data.visits()) {
-            var houseId = row.houseId();
-            if (houseId != null && !housesInFile.contains(houseId) && !houses.existsById(houseId)) {
-                rowProblems.add("visit " + row.id() + ": house " + houseId + " is not in the file or on this server");
-                visitTally.count(Outcome.SKIPPED);
-                continue;
+        inChunks(data.visits(), dryRun, chunk -> {
+            var here = byId(visits.findAllById(ids(chunk, BackupVisit::id)), Visit::getId);
+            for (var row : chunk) {
+                var houseId = row.houseId();
+                if (houseId != null && !housesInFile.contains(houseId) && !houses.existsById(houseId)) {
+                    rowProblems.add("visit " + row.id() + ": house " + houseId + " is not in the file or on this server");
+                    visitTally.count(Outcome.SKIPPED);
+                    continue;
+                }
+                visitTally.count(mergeVisit(row, here.get(row.id()), dryRun, changedHouses));
             }
-            visitTally.count(mergeVisit(row, dryRun, changedHouses));
-        }
+        });
 
-        for (var row : data.photos()) photoTally.count(mergePhotoMeta(row, dryRun));
+        inChunks(data.photos(), dryRun, chunk -> {
+            for (var row : chunk) photoTally.count(mergePhotoMeta(row, dryRun));
+        });
         if (!data.photos().isEmpty()) {
             fileNotes.add(data.photos().size() + " photo row(s) carry no image bytes in a JSON backup; upload them "
                     + "with POST /api/houses/{id}/photos");
@@ -207,41 +229,41 @@ public class BackupService {
 
         // Brokers are independent of the houses (a house's brokerId is not checked against them), so they merge last.
         var liveBrokers = new long[]{records.countByKeyTypeAndDeletedFalse(BackupBroker.TYPE)};
-        for (var row : data.brokers()) brokerTally.count(mergeBroker(row, dryRun, liveBrokers, rowProblems));
+        eachRow(data.brokers(), dryRun, row -> brokerTally.count(mergeBroker(row, dryRun, liveBrokers, rowProblems)));
 
         // Criteria and preferences (slice 2) merge after brokers.
         // Counted as the apps count them (S4b-BL-90b): the ten built-ins always, plus the live custom ones.
         var liveCriteria = new long[]{BackupCriterion.BUILT_IN_KEYS.size() + records.findByKeyTypeAndDeletedFalse(
                 BackupCriterion.TYPE).stream().filter(r -> !BackupCriterion.BUILT_IN_KEYS.contains(r.getKey().id())).count()};
         var criterionTally = new Tally();
-        for (var row : data.criteria()) criterionTally.count(mergeCriterion(row, dryRun, liveCriteria, rowProblems));
+        eachRow(data.criteria(), dryRun, row -> criterionTally.count(mergeCriterion(row, dryRun, liveCriteria, rowProblems)));
 
         var livePreferences = new long[]{records.countByKeyTypeAndDeletedFalse(BackupPreference.TYPE)};
         var preferenceTally = new Tally();
-        for (var row : data.preferences()) preferenceTally.count(mergePreference(row, dryRun, livePreferences, rowProblems));
+        eachRow(data.preferences(), dryRun,
+                row -> preferenceTally.count(mergePreference(row, dryRun, livePreferences, rowProblems)));
 
         // Viewing questions (slice 3a) merge last.
         var liveQuestions = new long[]{records.countByKeyTypeAndDeletedFalse(BackupQuestion.TYPE)};
         var questionTally = new Tally();
-        for (var row : data.questions()) questionTally.count(mergeQuestion(row, dryRun, liveQuestions, rowProblems));
+        eachRow(data.questions(), dryRun, row -> questionTally.count(mergeQuestion(row, dryRun, liveQuestions, rowProblems)));
 
         // Viewings (slice 3b-1) merge after the questions; a viewing's house is not checked (it may be gone).
         var liveViewings = new long[]{records.countByKeyTypeAndDeletedFalse(BackupViewing.TYPE)};
         var viewingTally = new Tally();
-        for (var row : data.viewings()) {
-            viewingTally.count(mergeViewing(row, dryRun, liveViewings, rowProblems, changedHouses));
-        }
+        eachRow(data.viewings(), dryRun,
+                row -> viewingTally.count(mergeViewing(row, dryRun, liveViewings, rowProblems, changedHouses)));
 
         // Areas, places and area notes (slice 4a) merge after the viewings; the apps hold the small caps, the server the record cap.
         var areaTally = new Tally();
         var areaLive = new long[]{records.countByKeyTypeAndDeletedFalse(BackupArea.TYPE)};
-        for (var row : data.areas()) areaTally.count(mergeArea(row, dryRun, areaLive, rowProblems));
+        eachRow(data.areas(), dryRun, row -> areaTally.count(mergeArea(row, dryRun, areaLive, rowProblems)));
         var placeTally = new Tally();
         var placeLive = new long[]{records.countByKeyTypeAndDeletedFalse(BackupPlace.TYPE)};
-        for (var row : data.places()) placeTally.count(mergePlace(row, dryRun, placeLive, rowProblems));
+        eachRow(data.places(), dryRun, row -> placeTally.count(mergePlace(row, dryRun, placeLive, rowProblems)));
         var noteTally = new Tally();
         var noteLive = new long[]{records.countByKeyTypeAndDeletedFalse(BackupAreaNote.TYPE)};
-        for (var row : data.areaNotes()) noteTally.count(mergeAreaNote(row, dryRun, noteLive, rowProblems));
+        eachRow(data.areaNotes(), dryRun, row -> noteTally.count(mergeAreaNote(row, dryRun, noteLive, rowProblems)));
 
         publishChanges(changedHouses, fileNotes, dryRun);
 
@@ -256,6 +278,49 @@ public class BackupService {
                     report.houses(), report.visits());
         }
         return report;
+    }
+
+    /**
+     * Runs {@code merge} over {@code rows} {@value #FLUSH_EVERY} at a time. After each chunk the writes are sent to the
+     * database and the persistence context is emptied, so a 20 000-row file neither keeps every row it read and wrote
+     * in memory nor makes each flush look through all of them. A dry run wrote nothing: it only empties the context.
+     *
+     * <p>Safe because nothing outlives a chunk but ids and counts: {@code merge} gets the chunk, reads what it needs
+     * (a row it merges is never used after its own call) and the sets the import keeps hold UUIDs, not entities.
+     * The houses and visits are read together with one query per chunk, inside {@code merge}.
+     */
+    private <T> void inChunks(List<T> rows, boolean dryRun, java.util.function.Consumer<List<T>> merge) {
+        for (int from = 0; from < rows.size(); from += FLUSH_EVERY) {
+            merge.accept(rows.subList(from, Math.min(rows.size(), from + FLUSH_EVERY)));
+            if (!dryRun) em.flush();
+            em.clear();
+        }
+    }
+
+    /** {@link #inChunks} for rows that are read one by one. */
+    private <T> void eachRow(List<T> rows, boolean dryRun, java.util.function.Consumer<T> merge) {
+        inChunks(rows, dryRun, chunk -> chunk.forEach(merge));
+    }
+
+    /**
+     * Stores a row the merge built. A new one is persisted as it is, without the read {@code save} would make first to
+     * learn whether it exists (the merge has just looked, under the writer lock); a row that was read is managed and
+     * is written at the next flush, with only its changed columns.
+     */
+    private void persistIfNew(Object existing, Object entity) {
+        if (existing == null) em.persist(entity);
+    }
+
+    private static <T> List<UUID> ids(List<T> rows, java.util.function.Function<T, UUID> id) {
+        var out = new ArrayList<UUID>(rows.size());
+        for (var row : rows) out.add(id.apply(row));
+        return out;
+    }
+
+    private static <E> Map<UUID, E> byId(List<E> found, java.util.function.Function<E, UUID> id) {
+        var out = new HashMap<UUID, E>(found.size() * 2);
+        for (var e : found) out.put(id.apply(e), e);
+        return out;
     }
 
     /**
@@ -314,14 +379,15 @@ public class BackupService {
     }
 
     /**
-     * Merges one house row by id, last write wins on {@code updatedAt}: a row that is not newer changes nothing. A
+     * Merges one house row by id ({@code existing}: the server's row with that id, or null), last write wins on
+     * {@code updatedAt}: a row that is not newer changes nothing. A
      * newer row replaces every field of the house, including {@code createdAt}, and makes a deleted house live again;
      * the report then notes what a delete cannot give back (photo bytes) and any checklist scores the file clears.
      * The house is queued for re-indexing, in a dry run too.
      */
-    private Outcome mergeHouse(BackupHouse row, boolean dryRun, List<String> problems, Set<UUID> changedHouses) {
+    private Outcome mergeHouse(BackupHouse row, House existing, boolean dryRun, List<String> problems,
+                               Set<UUID> changedHouses) {
         var inFile = clock.accept(Instant.ofEpochMilli(row.updatedAt()), "houses.updatedAt");
-        var existing = houses.findById(row.id()).orElse(null);
         var outcome = ImportReport.decide(existing == null ? null : existing.getUpdatedAt(), inFile);
         if (outcome == Outcome.KEPT_NEWER || outcome == Outcome.UNCHANGED) return outcome;
 
@@ -380,7 +446,7 @@ public class BackupService {
         house.setDeleted(false);
         house.setUpdatedAt(inFile);
         house.setSyncVersion(versions.next());
-        houses.save(house);
+        persistIfNew(existing, house);
         return outcome;
     }
 
@@ -419,7 +485,7 @@ public class BackupService {
         record.setDeleted(false);
         record.setUpdatedAt(inFile.truncatedTo(java.time.temporal.ChronoUnit.MICROS));
         record.setSyncVersion(versions.next());
-        records.save(record);
+        persistIfNew(existing, record);
         return outcome;
     }
 
@@ -457,7 +523,7 @@ public class BackupService {
         record.setDeleted(false);
         record.setUpdatedAt(inFile.truncatedTo(java.time.temporal.ChronoUnit.MICROS));
         record.setSyncVersion(versions.next());
-        records.save(record);
+        persistIfNew(existing, record);
         return outcome;
     }
 
@@ -488,7 +554,7 @@ public class BackupService {
         record.setDeleted(false);
         record.setUpdatedAt(inFile.truncatedTo(java.time.temporal.ChronoUnit.MICROS));
         record.setSyncVersion(versions.next());
-        records.save(record);
+        persistIfNew(existing, record);
         return outcome;
     }
 
@@ -523,7 +589,7 @@ public class BackupService {
         record.setDeleted(false);
         record.setUpdatedAt(inFile.truncatedTo(java.time.temporal.ChronoUnit.MICROS));
         record.setSyncVersion(versions.next());
-        records.save(record);
+        persistIfNew(existing, record);
         return outcome;
     }
 
@@ -575,7 +641,7 @@ public class BackupService {
         record.setDeleted(false);
         record.setUpdatedAt(inFile.truncatedTo(java.time.temporal.ChronoUnit.MICROS));
         record.setSyncVersion(versions.next());
-        records.save(record);
+        persistIfNew(existing, record);
         return outcome;
     }
 
@@ -657,17 +723,16 @@ public class BackupService {
         record.setDeleted(false);
         record.setUpdatedAt(inFile.truncatedTo(java.time.temporal.ChronoUnit.MICROS));
         record.setSyncVersion(versions.next());
-        records.save(record);
+        persistIfNew(existing, record);
         return outcome;
     }
 
     /**
-     * Merges one visit by id, last write wins. The house it lands on, and the one it left if it moved, are queued for
+     * Merges one visit by id ({@code existing}: the server's row with that id, or null), last write wins. The house it lands on, and the one it left if it moved, are queued for
      * re-indexing. The caller has already checked the house exists.
      */
-    private Outcome mergeVisit(BackupVisit row, boolean dryRun, Set<UUID> changedHouses) {
+    private Outcome mergeVisit(BackupVisit row, Visit existing, boolean dryRun, Set<UUID> changedHouses) {
         var inFile = clock.accept(Instant.ofEpochMilli(row.updatedAt()), "visits.updatedAt");
-        var existing = visits.findById(row.id()).orElse(null);
         var outcome = ImportReport.decide(existing == null ? null : existing.getUpdatedAt(), inFile);
         if (outcome == Outcome.KEPT_NEWER || outcome == Outcome.UNCHANGED) return outcome;
 
@@ -690,7 +755,7 @@ public class BackupService {
         visit.setDeleted(false);
         visit.setUpdatedAt(inFile);
         visit.setSyncVersion(versions.next());
-        visits.save(visit);
+        persistIfNew(existing, visit);
         return outcome;
     }
 
@@ -706,10 +771,10 @@ public class BackupService {
             // caller's text reads to a scanner as an injection (the ZAP API scan raised "SQL Injection" on this
             // very message, S4b-BL-89), and the app knows the format it wrote.
             if (BackupFormat.isNewer(data.format())) {
-                throw new IllegalArgumentException("This backup is newer than this server reads"
+                throw new BadRequestException("This backup is newer than this server reads"
                         + " (up to doorprints-backup/" + BackupFormat.MAX_VERSION + "): update the app");
             }
-            throw new IllegalArgumentException("Not a " + BackupFormat.ID + " backup");
+            throw new BadRequestException("Not a " + BackupFormat.ID + " backup");
         }
         var problems = new ArrayList<String>();
         validateHouses(data.houses(), problems);
@@ -724,7 +789,7 @@ public class BackupService {
         validatePlaces(data.places(), problems);
         validateAreaNotes(data.areaNotes(), problems);
         if (!problems.isEmpty()) {
-            throw new IllegalArgumentException("Invalid backup: " + String.join("; ", capped(problems, "and %d more")));
+            throw new BadRequestException("Invalid backup: " + String.join("; ", capped(problems, "and %d more")));
         }
     }
 

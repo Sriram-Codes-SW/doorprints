@@ -18,6 +18,7 @@
 
 package app.doorprints.server.sync;
 
+import app.doorprints.server.common.BadRequestException;
 import app.doorprints.server.config.AppProperties;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -80,7 +81,7 @@ public class ClientClock {
 
     private void check(Instant t, String field, Instant now) {
         if (t.isBefore(EARLIEST) || t.isAfter(now.plus(maxFuture))) {
-            throw new IllegalArgumentException(field + " is out of range (check the device clock): " + t);
+            throw new BadRequestException(field + " is out of range (check the device clock): " + t);
         }
     }
 }

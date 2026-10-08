@@ -18,6 +18,7 @@
 
 package app.doorprints.server.photo;
 
+import app.doorprints.server.common.BadRequestException;
 import java.io.ByteArrayOutputStream;
 import java.util.Set;
 
@@ -191,6 +192,6 @@ public final class ImageSanitizer {
     }
 
     private static IllegalArgumentException invalid() {
-        return new IllegalArgumentException("Only well-formed JPEG, PNG or WebP images are allowed");
+        return new BadRequestException("Only well-formed JPEG, PNG or WebP images are allowed");
     }
 }

@@ -27,6 +27,7 @@ import app.doorprints.server.ai.rag.AskModels.Citation;
 import app.doorprints.server.ai.rag.AskModels.ModelAnswer;
 import app.doorprints.server.ai.web.AiUnavailableException;
 import app.doorprints.server.ai.web.AiUsageLogger;
+import app.doorprints.server.common.BadRequestException;
 import app.doorprints.server.house.House;
 import app.doorprints.server.house.HouseRepository;
 import org.slf4j.Logger;
@@ -85,9 +86,9 @@ public class RagService {
      * @throws AiUnavailableException if retrieval or the model call fails
      */
     public AskResponse ask(String question, AskFilters filters) {
-        if (question == null || question.isBlank()) throw new IllegalArgumentException("question must not be blank");
+        if (question == null || question.isBlank()) throw new BadRequestException("question must not be blank");
         if (question.length() > props.maxQuestionChars()) {
-            throw new IllegalArgumentException("question is longer than " + props.maxQuestionChars() + " characters");
+            throw new BadRequestException("question is longer than " + props.maxQuestionChars() + " characters");
         }
         List<Document> docs;
         long started = System.nanoTime();

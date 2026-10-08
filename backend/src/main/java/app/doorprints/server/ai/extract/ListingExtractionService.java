@@ -22,6 +22,7 @@ import app.doorprints.server.ai.PromptSafety;
 import app.doorprints.server.ai.config.AiProperties;
 import app.doorprints.server.ai.web.AiUnavailableException;
 import app.doorprints.server.ai.web.AiUsageLogger;
+import app.doorprints.server.common.BadRequestException;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBooleanProperty;
@@ -48,9 +49,9 @@ public class ListingExtractionService {
      * @throws AiUnavailableException if the model call fails
      */
     public HouseDraft extract(String text) {
-        if (text == null || text.isBlank()) throw new IllegalArgumentException("text must not be blank");
+        if (text == null || text.isBlank()) throw new BadRequestException("text must not be blank");
         if (text.length() > props.maxInputChars()) {
-            throw new IllegalArgumentException("text is longer than " + props.maxInputChars() + " characters");
+            throw new BadRequestException("text is longer than " + props.maxInputChars() + " characters");
         }
         var prompt = ExtractionPrompts.build(text, PromptSafety.nonce());
         long started = System.nanoTime();

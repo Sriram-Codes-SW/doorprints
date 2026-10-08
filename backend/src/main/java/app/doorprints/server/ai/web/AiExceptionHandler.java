@@ -68,13 +68,15 @@ public class AiExceptionHandler {
      */
     @ExceptionHandler(AiUnavailableException.class)
     public ResponseEntity<ProblemDetail> aiUnavailable(AiUnavailableException e) {
-        // Log the cause class and message only: provider errors can echo parts of the prompt.
+        // Log the kind of failure only: the cause's class and the provider's HTTP status. Never the cause's message
+        // (nor a stack trace, which carries it): provider errors can echo parts of the prompt, which holds the
+        // person's notes (SEC-016, PRV-011).
         var cause = e.getCause();
         boolean quota = ProviderErrors.isQuotaExhausted(e);
         String hint = quota ? null : vertexSetupHint(e);
-        log.warn("{}{} ({}: {}){}", e.getMessage(), quota ? " [provider quota exhausted]" : "",
-                cause == null ? "-" : cause.getClass().getSimpleName(),
-                cause == null ? "-" : abbreviate(cause.getMessage()),
+        var status = ProviderErrors.httpFailure(e).map(f -> " HTTP " + f.status()).orElse("");
+        log.warn("{}{} ({}{}){}", e.getMessage(), quota ? " [provider quota exhausted]" : "",
+                cause == null ? "-" : cause.getClass().getSimpleName(), status,
                 hint == null ? "" : " [setup: " + hint + "]");
         var problem = ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, quota
                 ? e.getMessage() + ". The AI provider's quota or rate limit is exhausted; try again later."
@@ -118,10 +120,5 @@ public class AiExceptionHandler {
                     + "setup (docs/ai/vertex-setup.md).";
             default -> null;
         };
-    }
-
-    private static String abbreviate(String s) {
-        if (s == null) return "-";
-        return s.length() <= 200 ? s : s.substring(0, 200) + "…";
     }
 }

@@ -35,6 +35,13 @@ spring:
       # A house's checklist is an eager element collection: without batching, loading N houses (sync pull, backup
       # export, the AI reindex) runs one extra select per house. With it, one per 100 houses.
       hibernate.default_batch_fetch_size: 100
+      # Writes go to the database in groups of 100 statements (one round trip), sorted by table so that rows of
+      # different kinds do not break a group. All entities use ids the application assigns (UUIDs, record keys), so
+      # nothing has to be inserted early to learn an id, which is what would defeat batching. A 20 000-row import
+      # (BackupService) is one transaction with a flush every FLUSH_EVERY rows (S4b-BL-159).
+      hibernate.jdbc.batch_size: 100
+      hibernate.order_inserts: true
+      hibernate.order_updates: true
   jackson:
     deserialization:
       # Jackson 3 (Boot 4) fails on a missing primitive record component by default. Sync clients omit
