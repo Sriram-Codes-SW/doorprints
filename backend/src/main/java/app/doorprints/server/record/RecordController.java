@@ -127,7 +127,7 @@ public class RecordController {
         var key = new RecordKey(type, id);
         var stored = repo.findById(key).orElse(null);
         var decision = Upsert.decide(stored == null ? null : stored.getUpdatedAt(), incomingUpdatedAt,
-                () -> stored.isDeleted() == dto.deleted() && stored.getPayload().equals(payload));
+                () -> stored.isDeleted() == dto.deleted() && PayloadCompare.same(json, stored.getPayload(), payload));
         if (decision == Upsert.Decision.KEEP_STORED || decision == Upsert.Decision.UNCHANGED) {
             return RecordDto.from(stored, json);
         }

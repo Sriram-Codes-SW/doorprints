@@ -30,6 +30,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -85,7 +86,7 @@ public class VisitController {
     @Transactional
     public VisitDto upsert(@PathVariable UUID id, @Valid @RequestBody VisitDto dto) {
         versions.lock(); // before reading: last-write-wins check and write are atomic (F-09)
-        var incomingUpdatedAt = clock.accept(dto.updatedAt(), "updatedAt");
+        var incomingUpdatedAt = clock.accept(dto.updatedAt(), "updatedAt").truncatedTo(ChronoUnit.MICROS);
         clock.validate(dto.arrivedAt(), "arrivedAt");
         clock.validate(dto.leftAt(), "leftAt");
         if (dto.leftAt() != null && dto.leftAt().isBefore(dto.arrivedAt())) {

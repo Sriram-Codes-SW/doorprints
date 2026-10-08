@@ -28,6 +28,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -88,7 +89,7 @@ public class HouseService {
     @Transactional
     public HouseDto upsert(UUID id, HouseDto dto) {
         versions.lock(); // before reading, so the last-write-wins check and the write are atomic
-        var incomingUpdatedAt = clock.accept(dto.updatedAt(), "updatedAt");
+        var incomingUpdatedAt = clock.accept(dto.updatedAt(), "updatedAt").truncatedTo(ChronoUnit.MICROS);
         var stored = repo.findById(id).orElse(null);
         var decision = Upsert.decide(stored == null ? null : stored.getUpdatedAt(), incomingUpdatedAt,
                 () -> sameContent(stored, dto));
@@ -99,7 +100,7 @@ public class HouseService {
         var house = stored;
         if (created) {
             house = new House(id);
-            house.setCreatedAt(clock.accept(dto.createdAt(), "createdAt"));
+            house.setCreatedAt(clock.accept(dto.createdAt(), "createdAt").truncatedTo(ChronoUnit.MICROS));
         }
         boolean wasDeleted = !created && house.isDeleted();
         dto.applyTo(house);
