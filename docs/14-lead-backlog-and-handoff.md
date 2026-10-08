@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.113 |
+| Version | 0.114 |
 | Date | 2026-10-08 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..183); this file lists the lead-level items and points to the rest. |
@@ -121,7 +121,8 @@
 | 0.110 | 2026-10-08 | Claude (Code), lead | The comment pass (S4b-BL-158; [10](10-sprint-log.md) v0.170) is done: important functions and types carry a doc comment (what it achieves, what it does). New code follows the same rule: a public or non-obvious function gets a short doc comment in the language's standard form, and a change that moves code moves its comment with it. |
 | 0.111 | 2026-10-08 | Claude (Code), lead | The independent review of `main` (2026-10-08) is recorded: S4b-BL-161..173 in [10](10-sprint-log.md) §12.7 (v0.173), with S4b-BL-161 (the pairing flood) to be done before any public server and S4b-BL-168 and -171 waiting for the owner. Team-level ticket range in the header is now S4b-BL-1..173. |
 | 0.112 | 2026-10-08 | Claude (Code), lead | S4b-BL-175 (keyless provider checks; [10](10-sprint-log.md) v0.175): `tools/fake-ai-provider` (a fake OpenAI-style, Anthropic and Gemini server, its tests and a Chromium CORS check) and the manual AI evals suite `local-model`; §7 points at them. Three findings are in §12.7 as S4b-BL-175-F1..F3. |
-| 0.113 | 2026-10-08 | Claude (Code), lead | S4b-BL-183 ([10](10-sprint-log.md) v0.176): the guide's search (Material reads the box on key-up only; `search-input.js`; `tools/guide-search-check/`), a §7 pitfall. Team-level ticket range in the header is now S4b-BL-1..183. |
+| 0.113 | 2026-10-08 | Claude (Code), lead | **S4b-BL-179 and S4b-BL-180 built on `fix/redact-emails-pin-common-name-words`** ([10](10-sprint-log.md) v0.175): the redaction layer removes email addresses (`[email]`) on the server and on the device, and the ordinary-word name parts that stay replaced are pinned by vectors (owner decisions of 2026-10-08). Mutation lists `tools/mutations/ai-redactor-email-*.json`. |
+| 0.114 | 2026-10-08 | Claude (Code), lead | S4b-BL-183 ([10](10-sprint-log.md) v0.176): the guide's search (Material reads the box on key-up only; `search-input.js`; `tools/guide-search-check/`), a §7 pitfall. Team-level ticket range in the header is now S4b-BL-1..183. |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 

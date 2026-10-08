@@ -129,7 +129,7 @@ class ContactRedactorTest {
             "22-09-2026 at 5 pm", "Flat 1203, tower 9"})
     void datesPricesAndAddressesAreLeftAlone(String text) {
         assertThat(ContactRedactor.forContact(null, null).freeText(text)).isEqualTo(text);
-        assertThat(ContactRedactor.redactPhones(text)).isEqualTo(text);
+        assertThat(ContactRedactor.redactGeneric(text)).isEqualTo(text);
     }
 
     @Test
@@ -165,5 +165,53 @@ class ContactRedactorTest {
         assertThat(none.freeText("nothing to hide")).isEqualTo("nothing to hide");
         assertThat(ContactRedactor.forHouse(null).place("x")).isEqualTo("x");
         assertThat(ContactRedactor.scrubStoredText(null, null, null)).isNull();
+    }
+
+    // S4b-BL-179: email addresses go whole, before the name rules; the shared vectors pin the same cases.
+    @Test
+    void emailAddressesAreRemovedWholeInEveryFieldAndBeforeTheNameParts() {
+        var suresh = ContactRedactor.forContact("Suresh Rao", null);
+        assertThat(suresh.freeText("Mail suresh.rao@gmail.com or sureshrao1983@yahoo.co.in, insta @suresh_rao, https://wa.me/919886055555"))
+                .isEqualTo("Mail [email] or [email], insta @[contact], https://wa.me/[phone]");
+        var anil = ContactRedactor.forContact("Anil Verma", null);
+        assertThat(anil.freeText("Portal https://portal.example/contact?email=suresh.rao@gmail.com&ref=1"))
+                .isEqualTo("Portal https://portal.example/contact?email=[email]&ref=1");
+        assertThat(anil.freeText("Call 98450 12345 or mail anil@example.com")).isEqualTo("Call [phone] or mail [email]");
+        assertThat(anil.freeText("98450 12345,anil@example.com")).isEqualTo("[phone],[email]");
+        assertThat(anil.freeText("Mail me at sam@example.com.")).isEqualTo("Mail me at [email].");
+        assertThat(anil.place("Shop 4, mail owner@example.org")).isEqualTo("Shop 4, mail [email]");
+        assertThat(ContactRedactor.scrubStoredText("Contact: Suresh Rao\nmail suresh@gmail.com ok", "Suresh Rao", null))
+                .isEqualTo("mail [email] ok");
+        assertThat(ContactRedactor.redactGeneric("Write to a.b@c.in or 98450 12345, see https://example.com/l/123"))
+                .isEqualTo("Write to [email] or [phone], see https://example.com/l/123");
+        assertThat(ContactRedactor.redactGeneric("Mail ravi+flat3@example.co.in now")).isEqualTo("Mail [email] now");
+        assertThat(ContactRedactor.redactGeneric("Mail " + "a".repeat(70) + "@example.com now")).isEqualTo("Mail [email] now");
+    }
+
+    @Test
+    void anAtSignThatIsNotAnEmailAddressIsKept() {
+        var text = "Rent 28k @ month, ask x@y or a@b.";
+        assertThat(ContactRedactor.forContact(null, null).freeText(text)).isEqualTo(text);
+        assertThat(ContactRedactor.redactGeneric(text)).isEqualTo(text);
+    }
+
+    // S4b-BL-180: a name part that is also an ordinary word is replaced wherever it appears (owner decision: a leaked
+    // name cannot be recalled, a damaged description can be rephrased). Place fields keep single parts.
+    @Test
+    void aNamePartThatIsAnOrdinaryWordIsReplacedInFreeTextOnPurpose() {
+        assertThat(ContactRedactor.forContact("Rose Bush", null)
+                .freeText("Rose garden at the back, a bush hedge, Rose said keys with Rosemary"))
+                .isEqualTo("[contact] garden at the back, a [contact] hedge, [contact] said keys with Rosemary");
+        assertThat(ContactRedactor.forContact("Will Mark", null)
+                .freeText("Owner will mark the parking spot; Will Mark called"))
+                .isEqualTo("Owner [contact] the parking spot; [contact] called");
+        assertThat(ContactRedactor.forContact("Gold", null).freeText("Gold coloured gate")).isEqualTo("[contact] coloured gate");
+        assertThat(ContactRedactor.forContact("Ram", null).freeText("Ram Nagar, Sri Ram Temple road, ramp access"))
+                .isEqualTo("[contact] Nagar, Sri [contact] Temple road, ramp access");
+        assertThat(ContactRedactor.forContact("Rose Bush", null).place("Rose Bush Lane, Rosewood Park"))
+                .isEqualTo("[contact] Lane, Rosewood Park");
+        // An initial is not a name part: "K block" and "K R Puram" survive for saved "K. Ramesh".
+        assertThat(ContactRedactor.forContact("K. Ramesh", null).freeText("K block near K R Puram"))
+                .isEqualTo("K block near K R Puram");
     }
 }
