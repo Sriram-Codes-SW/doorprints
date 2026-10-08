@@ -73,6 +73,16 @@ class ParityVectorsTest {
     }
 
     @Test
+    fun answerTextIsCleanedAsTheServerDoes() {
+        val cases = root.getValue("answerText").jsonArray
+        for (c in cases) {
+            val o = c.jsonObject
+            assertEquals(str(o["expected"]), AnswerText.clean(str(o["input"])!!, str(o["context"])!!), str(o["input"])!!.take(80))
+        }
+        assertEquals(23, cases.size)
+    }
+
+    @Test
     fun listingChecksMatchTheServer() {
         for (c in root.getValue("sanitize").jsonArray) {
             val o = c.jsonObject

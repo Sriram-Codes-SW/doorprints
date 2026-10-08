@@ -18,6 +18,7 @@
 
 package app.doorprints.server.ai.agent;
 
+import app.doorprints.server.ai.AnswerText;
 import app.doorprints.server.ai.PromptSafety;
 import app.doorprints.server.ai.agent.HouseSearchService.HouseSummary;
 import app.doorprints.server.ai.agent.PlanModels.AgentPlan;
@@ -149,6 +150,12 @@ public class VisitPlannerService {
     /** Validates the model's plan against what the tools returned; pure, unit-tested. */
     static PlanResponse assemble(AgentPlan plan, Map<UUID, HouseSummary> seen, List<String> calls,
                                  double startLat, double startLon, int maxStops) {
+        // What the model was given about the houses (labels, localities, streets), for AnswerText.clean.
+        var known = new StringBuilder();
+        for (var h : seen.values()) {
+            known.append(h.label()).append('\n').append(h.locality()).append('\n').append(h.street()).append('\n');
+        }
+        var context = known.toString();
         var chosen = new ArrayList<HouseSummary>();
         var reasons = new ArrayList<String>();
         var used = new HashSet<UUID>();
@@ -164,11 +171,11 @@ public class VisitPlannerService {
                 var h = seen.get(id);
                 if (h == null || !used.add(id)) continue; // hallucinated or duplicate
                 chosen.add(h);
-                reasons.add(stop.reason() == null ? "" : stop.reason().strip());
+                reasons.add(stop.reason() == null ? "" : AnswerText.clean(stop.reason().strip(), context));
             }
         }
         boolean fallback = false;
-        String summary = plan == null || plan.summary() == null ? null : plan.summary().strip();
+        String summary = plan == null || plan.summary() == null ? null : AnswerText.clean(plan.summary().strip(), context);
         List<RouteOptimizer.Leg> legs;
         if (plan == null || (chosen.isEmpty() && !seen.isEmpty() && (plan.stops() != null && !plan.stops().isEmpty()))) {
             // No usable plan: nearest-neighbour over the houses in the running that the agent found.

@@ -77,6 +77,10 @@ class ParityVectorsTest {
             };
             o.put("expected", result);
         }
+        for (var c : (ArrayNode) out.get("answerText")) {
+            var o = (ObjectNode) c;
+            o.put("expected", AnswerText.clean(o.get("input").asText(), o.get("context").asText()));
+        }
         for (var c : (ArrayNode) out.get("sanitize")) {
             var o = (ObjectNode) c;
             var raw = o.get("raw").isNull() ? null : JSON.treeToValue(o.get("raw"), RawListing.class);
