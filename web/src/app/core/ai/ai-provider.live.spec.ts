@@ -100,6 +100,10 @@ describe.skipIf(setup.status === 'skip')('Golden set through the chosen provider
     console.log(text);
     const file = proc?.env?.['DOORPRINTS_EVAL_SUMMARY'];
     if (file && proc?.getBuiltinModule) proc.getBuiltinModule('node:fs').writeFileSync(file, text);
+    // The summary above is written either way. A run that ended early because the provider could not be used (key
+    // rejected, model not found, unreachable or too slow for the 60 s request limit) is not a quality result: it fails,
+    // so a green run never hides "0 of 2 cases" (the first keyless run of 2026-10-08 was green with 0 of 2).
+    expect(stopped, `the run stopped early: ${stopped}`).toBeNull();
     expect(answered, 'no case got an answer from the provider').toBeGreaterThan(0);
   });
 });

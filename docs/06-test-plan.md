@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Test plan (functional, security, accessibility, i18n, AI) |
-| Version | 0.160 |
+| Version | 0.161 |
 | Date | 2026-10-08 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -170,6 +170,7 @@
 | 0.89 | 2026-10-01 | Claude (Code), lead | TC-U-113 gains S4b-BL-104 (c) and (d): the Basement switch under Floor (`HouseFormRulesTest`, `house-rooms.spec.ts`) and the import preview's warning on a floor out of range (`BackupFloorTest`, `ImportPreviewGroupsTest`, `import-backup.spec.ts`, the import vectors); TC-M-44 gains the switch on a phone whose keypad has no minus. |
 | 0.88 | 2026-10-01 | Claude (Code), lead | TC-U-113 gains S4b-BL-104 (a) and (b): the Rooms column of the website's houses table (`exporters.spec.ts`, golden `houses.csv`) and the floor found in the app's language (`map-list.spec.ts`, `HouseSearchTest`). |
 | 0.87 | 2026-10-01 | Claude (Code), lead | The finishing batch ([10](10-sprint-log.md) §13.29..§13.39): new TC-U-109 (slice 5), TC-U-110 (the iPhone wake-up), TC-U-111 (the iPhone's copies, imports and `.ics`), TC-U-112 (the follow-ups), TC-U-113 (Wave B1), TC-U-114 (Wave B2), TC-U-115 (offline maps on the website, one MapLibre chunk), TC-U-116 (the Help link), TC-U-117 (accessibility on Android), TC-U-WEB-A11Y-1..10 (the website's accessibility checks), TC-U-118 (SEO), TC-I-43 (the app lock on an emulator, not yet run); TC-U-56 records S4b-BL-77; TC-M-35 gains its iPhone part; new manual TC-M-36 (offline maps on the website with the boundary re-check and TC-M-26's map pass), TC-M-37 (reminders and the Hunt offer on the phones), TC-M-38 (copies, imports and the calendar file on iPhone), TC-M-39 (the server page, the owner's part), TC-M-40 (search results and link previews), TC-M-41 (screen readers), TC-M-42 (text size, layout, keyboard, forced colours, reduced motion, Indic fonts), TC-M-43 (the native reading), TC-M-44 (slice 5 and Wave B on a device). |
+| 0.161 | 2026-10-08 | Claude (Code), lead | TC-AI-23 and TC-AI-25 (S4b-BL-184): `ai-provider.live.spec.ts` fails, after writing the summary, when the run stopped early (key rejected, model not found, provider unreachable or too slow for the 60 s request limit); the gemini key order is stated. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Design](03-design.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
