@@ -291,6 +291,17 @@ export interface AiCost {
 
 export const NOTES_MAX = 3000;
 
+/**
+ * The first `max` UTF-16 units of `s`, or one fewer when the cut would fall between the two halves of a character
+ * outside the Basic Multilingual Plane (an emoji): a half character would reach the model, or break the JSON, as U+FFFD.
+ */
+export function clipUnits(s: string, max: number): string {
+  if (s.length <= max) return s;
+  const high = s.charCodeAt(max - 1);
+  const low = s.charCodeAt(max);
+  return high >= 0xd800 && high <= 0xdbff && low >= 0xdc00 && low <= 0xdfff ? s.slice(0, max - 1) : s.slice(0, max);
+}
+
 function utcDate(ms: number): string {
   return new Date(ms).toISOString().slice(0, 10);
 }
@@ -361,7 +372,7 @@ export function houseText(h: AiHouse): string {
   line('Visits', visitSummary(h.visits));
   if (h.notes && h.notes.trim()) {
     const notes = h.notes.trim();
-    line('Notes', r.freeText(notes.length > NOTES_MAX ? notes.slice(0, NOTES_MAX) + ' …' : notes));
+    line('Notes', r.freeText(notes.length > NOTES_MAX ? clipUnits(notes, NOTES_MAX) + ' …' : notes));
   }
   return lines.join('\n');
 }

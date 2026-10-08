@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.120 |
+| Version | 0.121 |
 | Date | 2026-10-08 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..183); this file lists the lead-level items and points to the rest. |
@@ -129,6 +129,7 @@
 | 0.118 | 2026-10-08 | Claude (Code), lead | S4b-BL-174 ([10](10-sprint-log.md) v0.181): the tests are no longer one city. §7 working rule *Not one city*; the golden set has regions ([ai/ai-design.md](ai/ai-design.md) 8.3a). |
 | 0.119 | 2026-10-08 | Claude (Code), lead | S4b-BL-184 ([10](10-sprint-log.md) v0.182): the evals workflow reads the Gemini key first for the gemini kind; a run that stopped early fails after its summary. |
 | 0.120 | 2026-10-08 | Claude (Code), lead | S4b-BL-182 ([10](10-sprint-log.md) v0.183): Extract warns when the pasted listing holds several links (`listingUrl: the text has N links, check this is the right one`, three stacks, shared vectors) and the paste boxes say how many characters of a long text are left out (website, Android, iPhone); mutation lists `extract-*.json`. |
+| 0.121 | 2026-10-08 | Claude (Code), lead | S4b-BL-181 ([10](10-sprint-log.md) v0.184): the AI limits are pinned by tests and mutation lists on the website, the phones and the server; an emoji at a notes cut, a start point off Earth on the device, and `nearby` with NaN are fixed. |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 

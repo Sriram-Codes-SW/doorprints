@@ -180,6 +180,8 @@ class OnDeviceAi(
     suspend fun planVisits(request: PlanRequest): PlanResponseDto {
         require(request.question.isNotBlank()) { "question is empty" }
         require(request.question.length <= MAX_QUESTION_CHARS) { "question is longer than $MAX_QUESTION_CHARS characters" }
+        // The server's PlanRequest bounds (docs/ai/ai-design.md 9); a NaN is outside both ranges.
+        require(request.startLat in -90.0..90.0 && request.startLon in -180.0..180.0) { "the start point is not on Earth" }
         val maxStops = minOf(request.maxStops ?: MAX_STOPS, MAX_STOPS).coerceAtLeast(1)
         val candidates = OnDeviceSelection.forPlan(houses(), request.startLat, request.startLon)
         val seen = LinkedHashMap<String, PlanCandidate>().apply { candidates.forEach { put(it.id, it) } }
