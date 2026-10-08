@@ -43,6 +43,9 @@ on:
       # either file alone can turn this workflow red.
       - "docs/ai/evals/parity-vectors.json"
       - "web/src/app/core/ai/parity-vectors.json"
+      # The fake AI provider server (S4b-BL-175). Load-bearing: FakeProviderWireTest (:shared:testAndroidHostTest) starts it
+      # as a Node subprocess, so editing it alone can turn this workflow red.
+      - "tools/fake-ai-provider/**"
       - ".github/workflows/android.yml"
   pull_request:
     paths:
@@ -51,6 +54,7 @@ on:
       - "web/public/geo/**"
       - "docs/ai/evals/parity-vectors.json"
       - "web/src/app/core/ai/parity-vectors.json"
+      - "tools/fake-ai-provider/**"
       - ".github/workflows/android.yml"
   workflow_dispatch:
 
