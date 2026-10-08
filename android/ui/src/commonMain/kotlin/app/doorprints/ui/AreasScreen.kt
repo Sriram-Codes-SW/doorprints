@@ -179,6 +179,7 @@ private sealed interface NoteFilter {
     data class OfStreet(val key: String) : NoteFilter
 }
 
+/** The filter as the string kept in saved state: empty for all, "a:" and an area id, or "s:" and a street key. */
 private fun NoteFilter.save(): String = when (this) {
     NoteFilter.All -> ""
     is NoteFilter.OfArea -> "a:$id"
@@ -326,6 +327,11 @@ fun AreaFormScreen(areaId: String?, onDone: () -> Unit) {
     }
 }
 
+/**
+ * The form behind [AreaFormScreen] once the area is known: name, point, radius and *Wake me here* are saved state;
+ * *Save* needs a name and a valid point, and a refused save at the cap of areas shows the cap message. Delete is
+ * confirmed first.
+ */
 @Composable
 private fun AreaForm(areaId: String?, found: Area?, liveCount: Int, onDone: () -> Unit) {
     val repo = LocalAppServices.current.repository
@@ -401,6 +407,7 @@ private fun AreaForm(areaId: String?, found: Area?, liveCount: Int, onDone: () -
     }
 }
 
+/** The name field of an area or a place: capped at [max] characters, with an error while it is empty. */
 @Composable
 private fun NameField(name: String, max: Int, onName: (String) -> Unit) {
     val missing = name.isBlank()
@@ -412,6 +419,7 @@ private fun NameField(name: String, max: Int, onName: (String) -> Unit) {
     )
 }
 
+/** The delete confirmation of an area or a place: [onConfirm] runs after the dialog closes. */
 @Composable
 private fun ConfirmDelete(title: String, body: String, onDismiss: () -> Unit, onConfirm: () -> Unit) {
     AlertDialog(
@@ -619,6 +627,10 @@ fun PlacesScreen(onBack: () -> Unit, onOpenPlace: (String) -> Unit) {
     SubScreen(stringResource(Res.string.places_title), onBack) { PlacesList(onOpenPlace) }
 }
 
+/**
+ * The list of my places with *Add place* (off at the cap, with the cap text under it), the empty state, and a row per
+ * place that opens its form.
+ */
 @Composable
 fun PlacesList(onOpenPlace: (String) -> Unit) {
     val repo = LocalAppServices.current.repository
@@ -658,6 +670,10 @@ fun PlaceFormScreen(placeId: String?, onDone: () -> Unit) {
     }
 }
 
+/**
+ * The form behind [PlaceFormScreen] once the place is known: name and point, *Save* (needs a name and a valid point; a
+ * refused save at the cap shows the cap message) and *Delete place* after a confirmation.
+ */
 @Composable
 private fun PlaceForm(placeId: String?, found: Place?, liveCount: Int, onDone: () -> Unit) {
     val repo = LocalAppServices.current.repository

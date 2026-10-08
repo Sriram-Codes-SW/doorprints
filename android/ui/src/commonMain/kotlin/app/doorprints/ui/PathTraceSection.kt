@@ -202,12 +202,14 @@ fun PathTraceSection(settings: AppSettings) {
     }
 }
 
+/** The title of a repeated-path look in Settings. */
 internal fun lookTitle(look: RepeatLook): StringResource = when (look) {
     RepeatLook.CLEAR -> Res.string.trace_repeat_look_clear
     RepeatLook.SUBTLE -> Res.string.trace_repeat_look_subtle
     RepeatLook.OFF -> Res.string.trace_repeat_look_off
 }
 
+/** The one-line description of a repeated-path look in Settings. */
 internal fun lookDescription(look: RepeatLook): StringResource = when (look) {
     RepeatLook.CLEAR -> Res.string.trace_repeat_look_clear_desc
     RepeatLook.SUBTLE -> Res.string.trace_repeat_look_subtle_desc

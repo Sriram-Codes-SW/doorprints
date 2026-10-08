@@ -87,6 +87,7 @@ enum class DriveControl {
     DISCONNECT,
 }
 
+/** One button of the connect card and whether it is on. */
 data class ControlSpec(val control: DriveControl, val enabled: Boolean)
 
 /**
@@ -162,6 +163,7 @@ fun reasonKey(reason: DriveReason): String = reason.key
 /** Whether a row's *Import a backup* is on: nothing else is running (the website disables it while any backup or import runs). */
 fun importEnabled(importBusy: Boolean, backupBusy: Boolean): Boolean = !importBusy && !backupBusy
 
+/** *Back up now* is off while a backup runs. */
 fun backUpNowEnabled(backupBusy: Boolean): Boolean = !backupBusy
 
 /** The shrink question (a much smaller backup) has two buttons, both off while busy; the older backups are kept until the person confirms. */
@@ -172,6 +174,10 @@ fun shrinkQuestionVisible(shrinkHoldBackupId: String?): Boolean = shrinkHoldBack
 /** The status line of sync: a dictionary key and its arguments. */
 data class SyncLine(val key: String, val args: List<Any> = emptyList(), val isError: Boolean = false, val code: String? = null)
 
+/**
+ * The sync status line for [info]: the dictionary key and arguments of its sentence, and the error code only when it
+ * may be shown. [formatTime] turns the last sync time into the person's date text.
+ */
 fun syncLine(info: SyncInfo, formatTime: (Long) -> String): SyncLine = when (info.state) {
     SyncState.NOT_RUN -> SyncLine("driveSync.notRun")
     SyncState.SYNCED -> info.lastSyncAt?.let { SyncLine("driveSync.syncedAt", listOf(formatTime(it))) } ?: SyncLine("driveSync.synced")
@@ -208,6 +214,7 @@ fun revokeOffered(device: ListedDevice): Boolean = !device.self
 
 // ---- Deleting ------------------------------------------------------------------------------------------------------
 
+/** What the person can delete from Drive, as offered by [deleteMenu]. */
 enum class DeleteChoice { OLDER_BACKUPS, ALL_BACKUPS, EVERYTHING, ONE_BACKUP }
 
 /** The menu: older, all, everything, and *Delete this backup* only when a backup is chosen (the website's order). */
@@ -225,6 +232,7 @@ fun deleteChoiceKey(choice: DeleteChoice): String = when (choice) {
     DeleteChoice.ONE_BACKUP -> "driveDelete.oneBackup"
 }
 
+/** The steps of a delete in order; PARTIAL is a run that stopped with files left, ERROR a failure before it ran. */
 enum class DeletePhase { MENU, PLAN, CONFIRM, RUNNING, PARTIAL, DONE, ERROR }
 
 /** What the confirm step shows besides the buttons. */
@@ -292,6 +300,7 @@ sealed interface DeleteResultLine {
     data class Left(val left: Int, val total: Int) : DeleteResultLine
 }
 
+/** The line after a run: done when it [finished], otherwise how many of [total] files are [left] in Drive. */
 fun deleteResultLine(finished: Boolean, left: Int, total: Int): DeleteResultLine =
     if (finished) DeleteResultLine.Done else DeleteResultLine.Left(left, total)
 
@@ -309,6 +318,7 @@ enum class PlanKind(val key: String) {
 /** "12345678" as "1234 5678" for the eye; a screen reader gets the digits one by one ([codeSpoken]). */
 fun codeGrouped(code: String): String = code.chunked(4).joinToString(" ")
 
+/** The 8-digit code with its digits apart, so a screen reader says them one by one. */
 fun codeSpoken(code: String): String = code.filter { !it.isWhitespace() }.toList().joinToString(" ")
 
 // ---- Strings by key ------------------------------------------------------------------------------------------------

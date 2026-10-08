@@ -130,18 +130,25 @@ class AssistantViewModel(
     private var askJob: Job? = null
     private var planJob: Job? = null
 
+    /** Remembers the tab on screen (0 Ask, otherwise Plan visits) in the saved state. */
     fun selectTab(index: Int) {
         saved[KEY_TAB] = index
     }
 
+    /** Sets the Ask question, cut to the longest allowed. */
     fun editAsk(text: String) {
         askQuestion = text.take(MAX_QUESTION)
     }
 
+    /** Sets the Plan visits question, cut to the longest allowed. */
     fun editPlan(text: String) {
         planQuestion = text.take(MAX_QUESTION)
     }
 
+    /**
+     * Asks the Ask tab's question of the saved houses. Ignored when empty or already running. The answer is kept in the
+     * saved state; a failure is kept as the pane's error, and cancelling clears it.
+     */
     fun ask() {
         val question = askQuestion.trim()
         if (question.isEmpty() || _askBusy.value) return
@@ -163,6 +170,11 @@ class AssistantViewModel(
         }
     }
 
+    /**
+     * Plans visits for the Plan visits tab's question from where the phone is now. No location fix within the time
+     * limit is a [NoLocationException] (with whether precise location was allowed). Otherwise as [ask]: the route is
+     * kept in the saved state, a failure becomes the pane's error.
+     */
     fun plan() {
         val question = planQuestion.trim()
         if (question.isEmpty() || _planBusy.value) return
@@ -405,6 +417,11 @@ private fun rememberResultFocus(resultKey: Any?): FocusRequester {
     return focus
 }
 
+/**
+ * The Ask tab: a question about the saved houses, one button that is *Ask* or *Cancel* while the request runs, and the
+ * states below it: the failure card, the progress row, or the answer with its sources (each opens the house). An answer
+ * not grounded in the houses says so.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AskPane(vm: AssistantViewModel, onOpenHouse: (String) -> Unit) {
@@ -487,6 +504,11 @@ private fun AskPane(vm: AssistantViewModel, onOpenHouse: (String) -> Unit) {
     }
 }
 
+/**
+ * The Plan visits tab: a question about a route, which needs a precise location (the permission steps run first).
+ * States: the failure card (a missing location says why), the progress row, or the plan with its stops in order, each
+ * with its leg and opening its house.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PlanPane(vm: AssistantViewModel, onOpenHouse: (String) -> Unit) {

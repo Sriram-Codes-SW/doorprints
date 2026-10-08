@@ -46,6 +46,9 @@ enum class TourMemory {
 
 /** The one-time offer: on the first visit to the tour's home tab, and never again once the tour has ended. */
 object TourOffer {
+    /**
+     * Whether to offer the tour now: it was never seen or ended, none is running, and the person is on the home tab.
+     */
     fun show(memory: TourMemory, active: Boolean, route: String?, home: String): Boolean =
         memory == TourMemory.UNSEEN && !active && route == home
 }

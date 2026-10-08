@@ -82,9 +82,14 @@ object OfflineTiles {
     /** The estimated download for [tiles] tiles, in bytes. */
     fun estimateBytes(tiles: Long): Long = tiles * AVERAGE_TILE_BYTES
 
+    /** The tile column of [lon] on a grid of [n] tiles across, kept on the grid. */
     private fun tileX(lon: Double, n: Double): Long =
         floor((lon.coerceIn(-180.0, 180.0) + 180.0) / 360.0 * n).toLong().coerceIn(0, (n - 1).toLong())
 
+    /**
+     * The tile row of [lat] on a grid of [n] tiles across (Web Mercator, so latitudes beyond its edge are clamped),
+     * kept on the grid.
+     */
     private fun tileY(lat: Double, n: Double): Long {
         val rad = lat.coerceIn(-MAX_LAT, MAX_LAT) * PI / 180.0
         val y = (1.0 - ln(tan(rad) + 1.0 / kotlin.math.cos(rad)) / PI) / 2.0 * n
@@ -115,6 +120,7 @@ data class OfflineArea(
     val bytes: Long,
 )
 
+/** Where a saved area is: still downloading, ready to use offline, or failed. */
 enum class OfflineAreaState { SAVING, READY, FAILED }
 
 /**

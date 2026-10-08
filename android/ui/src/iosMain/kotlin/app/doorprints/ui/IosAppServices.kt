@@ -316,6 +316,7 @@ private class IosHouseFormServices(private val repository: CommonRepository) : H
     override fun photoModel(photoId: String): Any = repository.photoFileOf(photoId).toString()
 }
 
+/** The photo sources of an iPhone build that has no camera or gallery yet: both buttons do nothing. */
 private object NoPhotoSources : PhotoSources {
     override fun takePhoto() = Unit
     override fun pickFromGallery() = Unit

@@ -123,15 +123,22 @@ sealed interface WalkAnswer {
  * ([SaveWalkResult.TooLong]: it stays 30 days) .
  */
 object WalkEndAnswers {
+    /** *Keep for 30 days*: the walk stays in the trace and is not asked about again. */
     suspend fun keep(repo: Repository, walkId: Long) {
         repo.settings.saveWalkAskedUpTo(walkId)
     }
 
+    /** *Delete walk*: removes the walk and does not ask about it again. */
     suspend fun delete(repo: Repository, walkId: Long) {
         repo.deleteTraceWalk(walkId)
         repo.settings.saveWalkAskedUpTo(walkId)
     }
 
+    /**
+     * *Save walk* to the chosen house. A walk that cannot be saved ([SaveWalkResult.TooLong], no such walk) stays in
+     * the 30-day trace and is not asked about again; any other refusal (a house or the device is full, no such house)
+     * keeps the sheet open on the picker.
+     */
     suspend fun save(repo: Repository, walkId: Long, houseId: String): WalkAnswer {
         val result = repo.saveWalk(houseId, walkId)
         return when (result) {

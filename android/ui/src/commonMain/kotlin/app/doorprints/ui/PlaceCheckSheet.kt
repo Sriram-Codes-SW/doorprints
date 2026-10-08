@@ -176,6 +176,7 @@ fun PlaceCheckSheetContent(
     }
 }
 
+/** The label the map shows at the checked place: Here, the house or the spot. */
 @Composable
 private fun placeLabel(kind: PlaceKind): String = stringResource(
     when (kind) {
@@ -185,6 +186,10 @@ private fun placeLabel(kind: PlaceKind): String = stringResource(
     },
 )
 
+/**
+ * The sentence of a place check by status: walked or close (headline, up to five rows with their distances, then the
+ * notes), none within the tolerance, no walks to compare yet, location too imprecise, or an invalid place.
+ */
 @Composable
 private fun AnswerText(state: PlaceCheckState.Answer, place: String, tolerance: String) {
     val r = state.result
@@ -225,6 +230,7 @@ private fun AnswerText(state: PlaceCheckState.Answer, place: String, tolerance: 
     }
 }
 
+/** The small notes under an answer: a loose location fix in whole metres, and that only recorded walks were checked. */
 @Composable
 private fun Notes(fuzzy: Boolean, accuracyM: Double?, onlyRecorded: Boolean) {
     if (fuzzy && accuracyM != null) {

@@ -78,6 +78,7 @@ import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
+/** One file format on the Export screen with its label and one-line hint. */
 private data class FormatChoice(val format: ExportFormat, val label: StringResource, val hint: StringResource)
 
 private val formatChoices = listOf(

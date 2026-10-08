@@ -45,6 +45,7 @@ class TraceDrawingCache(private val build: (List<TraceWalk>) -> TraceDrawing = T
     private var key: String? = null
     private var drawing: TraceDrawing = TraceDrawing.EMPTY
 
+    /** The drawing for [walks]: built again only when their key changed, otherwise the last one. */
     fun of(walks: List<TraceWalk>): TraceDrawing {
         val k = keyOf(walks)
         if (k != key) {

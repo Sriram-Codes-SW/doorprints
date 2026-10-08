@@ -179,6 +179,7 @@ fun checkGeoJson(overlay: CheckOverlay?): String = buildJsonObject {
  */
 class MapFocus(val overlay: CheckOverlay, val seconds: Int = 3)
 
+/** The hand-off from another screen to the Map for an outline to show: one pending request, taken once. */
 object ShowOnMap {
     private val request = kotlinx.coroutines.flow.MutableStateFlow<MapFocus?>(null)
 
@@ -194,11 +195,16 @@ object ShowOnMap {
     }
 }
 
+/**
+ * The GeoJSON source of the check outline in a Map style, with nothing in it yet; the outline is put in later with
+ * [checkGeoJson].
+ */
 fun checkSourceJson(): JsonObject = buildJsonObject {
     put("type", "geojson")
     put("data", Json.parseToJsonElement(checkGeoJson(null)))
 }
 
+/** A filter for features whose `kind` property is [kind]. */
 private fun kindIs(kind: String): JsonArray = buildJsonArray {
     add("=="); add(buildJsonArray { add("get"); add("kind") }); add(kind)
 }

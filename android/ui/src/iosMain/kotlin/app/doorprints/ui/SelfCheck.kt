@@ -143,6 +143,10 @@ private sealed interface Result {
     class Skip(val reason: String) : Result
 }
 
+/**
+ * Runs every check in order, each printing its own line, then prints the overall result: PASS when none failed (a skip
+ * is not a failure), otherwise FAIL.
+ */
 private suspend fun runSelfCheck() {
     val results = listOf(
         check("resources") {

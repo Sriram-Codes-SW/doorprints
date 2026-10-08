@@ -152,6 +152,7 @@ internal object IosNotifications {
         center.removePendingNotificationRequestsWithIdentifiers(listOf(id))
     }
 
+    /** Shows notifications while the app is in front and passes a tap on to [onTap]. */
     private class Delegate : NSObject(), UNUserNotificationCenterDelegateProtocol {
         /** In the foreground too: a banner with sound, kept in the list, as Android's heads-up alerts. */
         override fun userNotificationCenter(

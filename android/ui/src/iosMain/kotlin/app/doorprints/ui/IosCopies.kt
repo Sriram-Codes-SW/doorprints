@@ -141,6 +141,7 @@ internal object IosCopyFolders {
         }
     }
 
+    /** Deletes the file or folder at [path]; nothing for null or empty. */
     fun remove(path: String?) {
         if (path.isNullOrEmpty()) return
         NSFileManager.defaultManager.removeItemAtPath(path, error = null)
@@ -330,6 +331,12 @@ internal class IosExportServices(
         if (current.id == id) state.value = listOf(change(current))
     }
 
+    /**
+     * Runs one export from the start of the run to its end: checks the target is in a copy folder, writes the file
+     * under extra background time, and for *Save a copy* hands it to the Files sheet. Stopping, running out of
+     * background time or backing out of Files removes the partial file and ends as cancelled; a write error ends as
+     * failed with a problem (no space, cannot write, unknown).
+     */
     private suspend fun export(id: String, format: ExportFormat, target: String, options: ExportOptions) {
         val run = currentCoroutineContext()[Job]
         val saving = IosCopyFolders.isIn(IosCopyFolders.save, target)
@@ -444,6 +451,11 @@ internal class IosImportServices(
         return withContext(Dispatchers.Default) { stage(url) }
     }
 
+    /**
+     * Copies the picked file into the imports folder under the security scope the picker gave, through a file
+     * coordinator. Too large or unreadable files are refused and nothing stays behind; a file another app opened here,
+     * or a backup staged from Google Drive, is removed once the staged copy exists.
+     */
     private suspend fun stage(url: NSURL): ImportStaging {
         IosCopyFolders.sweep(IosCopyFolders.imports, STALE_MS)
         // No extension: what it is, a ZIP or a bare data.json, is told by its first bytes.
@@ -510,6 +522,11 @@ internal class IosImportServices(
         if (current.id == id) state.value = listOf(change(current))
     }
 
+    /**
+     * Runs one import from the start of the run to its end: checks the staged file is still there, applies it under
+     * extra background time and removes it. A stopped run keeps the staged file so the screen can offer it again; any
+     * other failure to write ends as failed.
+     */
     private suspend fun import(id: String, request: ImportRequest) {
         val run = currentCoroutineContext()[Job]
         val path = request.stagedPath
@@ -603,6 +620,10 @@ internal class IosImportServices(
         outcome
     }
 
+    /**
+     * Copies [from] to [to] in 64 KiB chunks, stopping when [active] says so, and refuses a file over
+     * [BackupFormat.MAX_UNCOMPRESSED_BYTES]. A read or write error is a storage problem, never "too large".
+     */
     private fun copy(from: String, to: String, active: () -> Boolean): CopyOutcome {
         val source = try {
             PosixFileSource(from)

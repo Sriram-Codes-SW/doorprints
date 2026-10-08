@@ -31,6 +31,7 @@ object RepeatAlerts {
 
     val events: SharedFlow<Unit> get() = flow
 
+    /** Tells the Map that a repeated-path alert was just posted; dropped when the Map is not listening. */
     fun signal() {
         flow.tryEmit(Unit)
     }
