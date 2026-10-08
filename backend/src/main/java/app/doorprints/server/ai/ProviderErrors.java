@@ -90,6 +90,10 @@ public final class ProviderErrors {
         return Optional.empty();
     }
 
+    /**
+     * True when the failure means the provider's quota is used up (HTTP 429 or the RESOURCE_EXHAUSTED reason),
+     * whichever client raised it.
+     */
     private static boolean quota(Throwable t) {
         return switch (t) {
             case ReindexFailedException r -> r.quotaExhausted();

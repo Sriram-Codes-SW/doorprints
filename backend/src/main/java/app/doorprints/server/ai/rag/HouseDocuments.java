@@ -322,6 +322,10 @@ public final class HouseDocuments {
         return n + (n == 1 ? " month" : " months");
     }
 
+    /**
+     * One-line visit history for a house document: count, date of the latest visit and total minutes where departures
+     * are known; "not visited yet" when there are none.
+     */
     static String visitSummary(List<VisitDto> visits) {
         if (visits == null || visits.isEmpty()) return "not visited yet";
         var last = visits.stream().map(VisitDto::arrivedAt).max(java.util.Comparator.naturalOrder()).orElseThrow();

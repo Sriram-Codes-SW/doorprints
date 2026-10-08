@@ -40,6 +40,10 @@ public final class GoogleAccessTokenSource implements AccessTokenSource {
 
     private final GoogleCredentials credentials;
 
+    /**
+     * Wraps already-scoped credentials.
+     * @throws IllegalArgumentException if they are null
+     */
     public GoogleAccessTokenSource(GoogleCredentials credentials) {
         if (credentials == null) throw new IllegalArgumentException("credentials must not be null");
         this.credentials = credentials;
@@ -67,6 +71,10 @@ public final class GoogleAccessTokenSource implements AccessTokenSource {
         return credentials;
     }
 
+    /**
+     * A valid OAuth access token, refreshed first if it has expired.
+     * @throws VertexAuthException if the token cannot be obtained; the message holds no token
+     */
     @Override
     public String accessToken() {
         try {

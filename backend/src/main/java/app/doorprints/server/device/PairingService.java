@@ -84,6 +84,12 @@ public class PairingService {
         return cleaned.length() > MAX_NAME_LENGTH ? cleaned.substring(0, MAX_NAME_LENGTH) : cleaned;
     }
 
+    /**
+     * Opens a pairing request for a device and returns the code to show the owner and the token the device polls
+     * with. Only the poll token's hash is stored. At most {@link #MAX_PENDING} requests stay open: the oldest are
+     * deleted first, so repeated starts cannot fill the table. The user code is drawn again until no open request
+     * uses it.
+     */
     @Transactional
     public Started start(String deviceName) {
         var now = clock.instant();
@@ -107,9 +113,15 @@ public class PairingService {
         return new Started(Secrets.displayCode(code), poll, CODE_LIFETIME.toSeconds(), POLL_INTERVAL_SECONDS);
     }
 
+    /**
+     * A pairing request row as read back.
+     */
     private record Row(UUID id, String status, String deviceName, Instant createdAt, Instant expiresAt) {
     }
 
+    /**
+     * The open, unexpired request with this user code.
+     */
     private Optional<Row> findPendingRow(String code, Instant now) {
         return jdbc.sql("""
                         SELECT id, status, device_name, created_at, expires_at FROM pairing_request
@@ -134,10 +146,16 @@ public class PairingService {
         return decide(typedCode, "approved");
     }
 
+    /**
+     * The owner refuses the open request with this code. False if there is none.
+     */
     public boolean deny(String typedCode) {
         return decide(typedCode, "denied");
     }
 
+    /**
+     * Sets the status of the open request with this code; only a pending, unexpired one can be decided, once.
+     */
     private boolean decide(String typedCode, String status) {
         var code = Secrets.normalizeCode(typedCode);
         if (code == null) return false;

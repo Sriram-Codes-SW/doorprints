@@ -35,6 +35,9 @@ import java.util.Set;
  */
 public final class ImageSanitizer {
 
+    /**
+     * The detected content type and the bytes with metadata removed.
+     */
     public record Result(String contentType, byte[] data) {
     }
 
@@ -55,6 +58,10 @@ public final class ImageSanitizer {
         throw invalid();
     }
 
+    /**
+     * Walks the JPEG segments, copies the ones that are kept, and stops after the first end-of-image marker so
+     * anything appended to the file (such as a motion-photo payload) is dropped.
+     */
     static byte[] jpeg(byte[] in) {
         var out = new ByteArrayOutputStream(in.length);
         out.write(0xFF);
@@ -101,6 +108,9 @@ public final class ImageSanitizer {
         return -1;
     }
 
+    /**
+     * Walks the PNG chunks and copies all but the metadata chunks, ending at IEND.
+     */
     static byte[] png(byte[] in) {
         var out = new ByteArrayOutputStream(in.length);
         out.write(in, 0, 8);
@@ -117,6 +127,10 @@ public final class ImageSanitizer {
         throw invalid();
     }
 
+    /**
+     * Walks the WebP RIFF chunks and copies all but EXIF and XMP, clears the matching flags in the VP8X header and
+     * rewrites the RIFF size.
+     */
     static byte[] webp(byte[] in) {
         long riffSize = le32(in, 4);
         if (riffSize < 4 || riffSize + 8 > in.length) throw invalid();

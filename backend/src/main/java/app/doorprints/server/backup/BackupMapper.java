@@ -58,9 +58,8 @@ import tools.jackson.databind.ObjectMapper;
  *   <li>rows whose house is not in the export (a visit unlinked by a house delete) come last, in the same order.
  *       The device writers walk visits through their house and so have nothing to put here.</li>
  *   <li>checklist keys alphabetically ({@link TreeMap});</li>
- *   <li>brokers by {@code updatedAt}, then {@code id}; the format id is {@code /2} only when the copy has a broker, a
- *       room, a criterion, a preference, a question or a house with answers.</li>
- *   <li>questions by {@code updatedAt}, then {@code id}; viewings the same, and a live viewing makes the copy {@code /2}.</li>
+ *   <li>brokers, questions, viewings and the other record lists by {@code updatedAt}, then {@code id}; the format id
+ *       is {@code /2} when the copy holds anything listed at {@link BackupFormat#ID_WITH_BROKERS}.</li>
  * </ul>
  *
  * <p>Tombstones are never exported; callers pass live rows only.
@@ -168,7 +167,7 @@ final class BackupMapper {
         var backupHouses = liveHouses.stream().map(BackupMapper::house).toList();
         var backupPhotos = groupByHouse(livePhotos, PhotoDto::houseId, PHOTO_ORDER, houseOrder).stream()
                 .map(BackupMapper::photo).toList();
-        // The lowest number that holds the copy: /2 once there is a broker, a room, a criterion, a preference, a question, a viewing, or a house with answers, a move-in, a floor or the status TAKEN or NOT_CHOSEN, or a photo with a room, tags, a caption or an edit time; else /1.
+        // The lowest number that holds the copy: /2 once there is a broker, a room, a criterion, a preference, a question, a viewing, an area, a place, an area note, or a house with answers, a move-in, a floor or the status TAKEN or NOT_CHOSEN, or a photo with a room, tags, a caption or an edit time; else /1.
         var needsV2 = !brokers.isEmpty() || backupHouses.stream().anyMatch(h -> h.rooms() != null)
                 || !criteria.isEmpty() || !preferences.isEmpty() || !questions.isEmpty() || !viewings.isEmpty()
                 || !areas.isEmpty() || !places.isEmpty() || !areaNotes.isEmpty()
@@ -355,6 +354,10 @@ final class BackupMapper {
                 enabled.isBoolean() && !enabled.asBoolean() ? false : null, r.getUpdatedAt().toEpochMilli());
     }
 
+    /**
+     * A place record as a backup row. A payload without a usable name or point is left out, so the export always
+     * imports again.
+     */
     private static BackupPlace place(Record r, ObjectMapper json) {
         JsonNode p = payload(r, json);
         if (p == null) return null;
@@ -380,6 +383,9 @@ final class BackupMapper {
         return new BackupAreaNote(r.getKey().id(), areaId, street, text, r.getUpdatedAt().toEpochMilli());
     }
 
+    /**
+     * The record's JSON payload, or null when it cannot be parsed (such records are left out of the export).
+     */
     private static JsonNode payload(Record r, ObjectMapper json) {
         try {
             return json.readTree(r.getPayload());
@@ -398,6 +404,9 @@ final class BackupMapper {
         return value == null || value.isBlank() ? null : value;
     }
 
+    /**
+     * A numeric coordinate within +-limit, or null when absent, not a number or out of range.
+     */
     private static Double coordinate(JsonNode payload, String key, double limit) {
         var node = payload.path(key);
         if (!node.isNumber()) return null;
@@ -437,6 +446,9 @@ final class BackupMapper {
         return out;
     }
 
+    /**
+     * The house as a backup row: the stored JSON parts parsed, the checklist sorted, times in epoch milliseconds.
+     */
     private static BackupHouse house(House h) {
         return new BackupHouse(h.getId(), h.getLabel(), h.getAddress(), h.getStreet(), h.getLocality(),
                 h.getLat(), h.getLon(), h.getStatus(), h.getPrice(), h.getPriceType(), h.getBedrooms(),
@@ -451,6 +463,9 @@ final class BackupMapper {
                 millis(v.getArrivedAt()), millis(v.getLeftAt()), v.getSource(), millis(v.getUpdatedAt()));
     }
 
+    /**
+     * The photo's metadata as a backup row; the room, tags, caption and edit time are written only when set.
+     */
     private static BackupPhoto photo(PhotoDto p) {
         // The meta keys are written only when set, so a photo nobody described is the row it always was.
         return new BackupPhoto(p.id(), p.houseId(), BackupFormat.photoFileName(p.id()), millis(p.createdAt()),

@@ -45,6 +45,11 @@ import java.time.Duration;
 public class GeminiEmbeddingConfiguration {
 
 
+    /**
+     * Builds the Gemini embedding model with a read timeout, no redirects (the key header must not follow one) and a
+     * key supplier. A separate {@code AI_EMBEDDING_API_KEY} wins if set; otherwise the key in use for AI is read on
+     * every request.
+     */
     @Bean
     public EmbeddingModel geminiEmbeddingModel(AiProperties props, Environment env, GeminiKey geminiKey) {
         var e = props.embedding();

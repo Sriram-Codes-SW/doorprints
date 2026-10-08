@@ -49,6 +49,10 @@ public class AiStatusController {
     private final GeminiKey geminiKey;
     private final ServerSettings settings;
 
+    /**
+     * Reads the AI switches once. The status never names the provider; it carries the chat and embedding model only
+     * while AI is on.
+     */
     public AiStatusController(@Value("${app.ai.enabled:false}") boolean enabled,
                               @Value("${app.mcp.enabled:false}") boolean mcpEnabled,
                               @Value("${app.ai.provider:aistudio}") String provider,
@@ -92,6 +96,11 @@ public class AiStatusController {
         }
     }
 
+    /**
+     * What AI features this caller may use right now. It reads as off when the server has AI disabled, when a key is
+     * needed and none is set, or when the owner paused AI; for a device the owner switched off, it reads as off with
+     * {@code offForDevice} set so the app can say why.
+     */
     @GetMapping("/api/ai/status")
     public AiStatus status(HttpServletRequest request) {
         if (!status.enabled()) return status;

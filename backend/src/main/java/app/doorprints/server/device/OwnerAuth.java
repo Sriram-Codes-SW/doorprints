@@ -44,6 +44,9 @@ public class OwnerAuth {
     /** Last use is written at most this often. */
     static final Duration TOUCH_EVERY = Duration.ofMinutes(5);
 
+    /**
+     * An open browser session as the owner page lists it.
+     */
     public record Session(UUID id, String label, Instant createdAt, Instant lastUsedAt) {
     }
 

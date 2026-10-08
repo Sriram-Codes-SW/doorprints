@@ -47,6 +47,10 @@ public class PairingRateLimitFilter extends OncePerRequestFilter {
         return !RequestPaths.isUnder(path, "/api/pair") && !path.equals("/owner/api/session");
     }
 
+    /**
+     * Answers 429 with Retry-After when the client address has used up its pairing allowance; preflights are not
+     * counted.
+     */
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {

@@ -48,12 +48,18 @@ public class WebConfig {
 
     private final AppProperties props;
 
+    /**
+     * Fails startup if the API key settings are missing or too short, before any filter is built.
+     */
     public WebConfig(AppProperties props) {
         // Fail fast with a clear message (F-01): APP_API_KEY >= 32 chars, APP_API_KEY_NEXT empty or >= 32 chars.
         ApiKeyFilter.validateKeys(props.apiKey(), props.apiKeyNext());
         this.props = props;
     }
 
+    /**
+     * First in the chain (order -100), so errors written by later filters carry the headers too.
+     */
     @Bean
     public FilterRegistrationBean<SecurityHeadersFilter> securityHeadersFilter() {
         var bean = new FilterRegistrationBean<>(new SecurityHeadersFilter());
@@ -61,6 +67,9 @@ public class WebConfig {
         return bean;
     }
 
+    /**
+     * JSON body cap from {@code app.limits}; the backup import path gets the larger import cap.
+     */
     @Bean
     public FilterRegistrationBean<RequestSizeLimitFilter> requestSizeLimitFilter() {
         var limits = props.limits();
@@ -70,6 +79,10 @@ public class WebConfig {
         return bean;
     }
 
+    /**
+     * CORS for {@code /api/**} only, for the configured origins (none when unset). Retry-After and Content-
+     * Disposition are exposed so the web app can read rate-limit waits and download names.
+     */
     @Bean
     public FilterRegistrationBean<CorsFilter> corsFilter() {
         var cors = new CorsConfiguration();
@@ -85,6 +98,9 @@ public class WebConfig {
         return bean;
     }
 
+    /**
+     * The general per-address flood limit, ahead of the key check.
+     */
     @Bean
     public FilterRegistrationBean<ApiRateLimitFilter> apiRateLimitFilter() {
         var rl = props.rateLimit();
@@ -94,6 +110,9 @@ public class WebConfig {
         return bean;
     }
 
+    /**
+     * The key check, with its own bucket for failed attempts and device keys looked up in the device store.
+     */
     @Bean
     public FilterRegistrationBean<ApiKeyFilter> apiKeyFilter(DeviceKeyStore devices) {
         var rl = props.rateLimit();

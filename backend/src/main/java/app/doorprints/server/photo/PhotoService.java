@@ -31,6 +31,11 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Photo storage rules: per-house limit, retry-safe upload, tombstoned delete, and last-write-wins edits of the
+ * person's room, tags and caption. Every write takes the sync lock first (see {@link SyncVersions}) and gives the
+ * photo a new sync version.
+ */
 @Service
 public class PhotoService {
 
@@ -72,6 +77,10 @@ public class PhotoService {
         return photoId;
     }
 
+    /**
+     * The photo with its bytes.
+     * @throws NotFoundException if it does not exist or is deleted
+     */
     @Transactional(readOnly = true)
     public Photo getLive(UUID id) {
         return photos.findById(id).filter(p -> !p.isDeleted())
@@ -125,11 +134,17 @@ public class PhotoService {
         return photos.findMetadataById(id);
     }
 
+    /**
+     * Ids of a house's live photos, oldest first.
+     */
     @Transactional(readOnly = true)
     public List<UUID> liveIds(UUID houseId) {
         return photos.findIdsByHouseId(houseId);
     }
 
+    /**
+     * Metadata of photos changed after a sync version, deletions included, without the image bytes.
+     */
     @Transactional(readOnly = true)
     public List<PhotoDto> changesSince(long since) {
         return photos.findChangesSince(since);

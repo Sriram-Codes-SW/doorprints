@@ -61,6 +61,11 @@ public class AiDefaultsEnvironmentPostProcessor implements EnvironmentPostProces
     /** Spring AI's selector value for the Google GenAI models ({@code SpringAIModels.GOOGLE_GEN_AI}). */
     static final String SPRING_AI_GOOGLE_GENAI = "google-genai";
 
+    /**
+     * Computes the Spring AI switches from {@code app.ai.enabled}, {@code app.ai.provider}, the embedding provider
+     * and {@code app.mcp.enabled}, and adds them as two property sources: forced values first (they win over
+     * everything) and defaults last. Image, audio and moderation models are always forced off.
+     */
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment env, SpringApplication application) {
         boolean ai = env.getProperty("app.ai.enabled", Boolean.class, false);

@@ -30,6 +30,9 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class AiWebConfig {
 
+    /**
+     * Builds the AI and MCP limiters from the configured rates and registers the filter at order 3.
+     */
     @Bean
     public FilterRegistrationBean<AiRateLimitFilter> aiRateLimitFilter(AiProperties props) {
         var rl = props.rateLimit();

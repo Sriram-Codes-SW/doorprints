@@ -56,19 +56,34 @@ public class OwnerApiController {
 
     static final String COOKIE = "dp_owner";
 
+    /**
+     * Body of the sign-in call.
+     */
     public record SetupRequest(@NotBlank @Size(max = 100) String setup) {
     }
 
+    /**
+     * A user code typed by the owner.
+     */
     public record CodeRequest(@NotBlank @Size(max = 20) String code) {
     }
 
+    /**
+     * The owner's per-device AI switch.
+     */
     public record AiRequest(@NotNull Boolean allowed) {
     }
 
+    /**
+     * Everything the owner page lists: devices, signed-in browsers and which of them this is.
+     */
     public record Overview(List<DeviceKeyStore.Device> devices, List<OwnerAuth.Session> sessions,
                            UUID currentSession) {
     }
 
+    /**
+     * The device waiting behind a typed code.
+     */
     public record Found(String deviceName, Instant createdAt, Instant expiresAt) {
     }
 
@@ -76,12 +91,21 @@ public class OwnerApiController {
     public record InviteView(String qr, String appLink, String webLink, Instant expiresAt) {
     }
 
+    /**
+     * A one-time link and when it stops working.
+     */
     public record LinkView(String link, Instant expiresAt) {
     }
 
+    /**
+     * A Gemini key typed by the owner.
+     */
     public record KeyRequest(@NotBlank @Size(min = 20, max = 200) String key) {
     }
 
+    /**
+     * The owner's switch to pause AI for the whole server.
+     */
     public record PausedRequest(@NotNull Boolean paused) {
     }
 
@@ -107,6 +131,9 @@ public class OwnerApiController {
     private final app.doorprints.server.ai.web.TokenBucketRateLimiter wrongCodes =
             new app.doorprints.server.ai.web.TokenBucketRateLimiter(5, 5);
 
+    /**
+     * Takes the stores the page manages and whether AI is enabled and with which provider.
+     */
     public OwnerApiController(OwnerAuth auth, DeviceKeyStore devices, PairingService pairing, AppProperties props,
                               GeminiKey geminiKey, ServerSecrets secrets, ServerSettings settings,
                               @Value("${app.ai.enabled:false}") boolean aiEnabled,
@@ -122,6 +149,9 @@ public class OwnerApiController {
         this.aiProvider = AiProperties.normalizeProvider(aiProvider);
     }
 
+    /**
+     * Where AI stands on this server, without ever returning the key.
+     */
     @GetMapping("/owner/api/ai")
     public AiView ai() {
         var stored = secrets.describe(GeminiKey.SECRET);
@@ -142,6 +172,9 @@ public class OwnerApiController {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * Deletes the key set on the owner page.
+     */
     @PostMapping("/owner/api/ai/key/remove")
     public ResponseEntity<Void> removeGeminiKey() {
         geminiKey.remove();
@@ -155,6 +188,9 @@ public class OwnerApiController {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * The session id that {@link OwnerFilter} put in the request.
+     */
     private static UUID session(HttpServletRequest request) {
         return (UUID) request.getAttribute(OwnerFilter.SESSION_ATTRIBUTE);
     }
@@ -174,16 +210,25 @@ public class OwnerApiController {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * The devices and browser sessions for the owner page.
+     */
     @GetMapping("/owner/api/overview")
     public Overview overview(HttpServletRequest request) {
         return new Overview(devices.list(), auth.sessions(), session(request));
     }
 
+    /**
+     * Revokes a device key at once; 404 if there is no such active device.
+     */
     @PostMapping("/owner/api/devices/{id}/revoke")
     public ResponseEntity<Void> revokeDevice(@PathVariable UUID id) {
         return devices.revoke(id) ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
     }
 
+    /**
+     * Turns AI on or off for one device.
+     */
     @PostMapping("/owner/api/devices/{id}/ai")
     public ResponseEntity<Void> deviceAi(@PathVariable UUID id, @Valid @RequestBody AiRequest body) {
         return devices.setAiAllowed(id, body.allowed()) ? ResponseEntity.noContent().build()
@@ -201,16 +246,26 @@ public class OwnerApiController {
         return wrongCode(request);
     }
 
+    /**
+     * The owner approves the device waiting behind this code. A wrong code counts against the per-session limit.
+     */
     @PostMapping("/owner/api/pairings/approve")
     public ResponseEntity<?> approve(@Valid @RequestBody CodeRequest body, HttpServletRequest request) {
         return pairing.approve(body.code()) ? ResponseEntity.noContent().build() : wrongCode(request);
     }
 
+    /**
+     * The owner refuses the device waiting behind this code. A wrong code counts against the per-session limit.
+     */
     @PostMapping("/owner/api/pairings/deny")
     public ResponseEntity<?> deny(@Valid @RequestBody CodeRequest body, HttpServletRequest request) {
         return pairing.deny(body.code()) ? ResponseEntity.noContent().build() : wrongCode(request);
     }
 
+    /**
+     * The answer for a code that matches no waiting device: 404, or 429 once the session has typed too many wrong
+     * ones, which stops guessing of the 8-symbol code.
+     */
     private ResponseEntity<?> wrongCode(HttpServletRequest request) {
         var decision = wrongCodes.tryAcquire("owner:" + session(request));
         if (!decision.allowed()) {
@@ -240,16 +295,25 @@ public class OwnerApiController {
                 Instant.now().plus(OwnerAuth.SETUP_LIFETIME));
     }
 
+    /**
+     * Signs one browser out; 404 if it is not an open session.
+     */
     @PostMapping("/owner/api/sessions/{id}/revoke")
     public ResponseEntity<Void> revokeSession(@PathVariable UUID id) {
         return auth.revoke(id) ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
     }
 
+    /**
+     * Signs out every other browser and cancels unused setup links; returns how many were closed.
+     */
     @PostMapping("/owner/api/sessions/revoke-others")
     public Map<String, Integer> revokeOthers(HttpServletRequest request) {
         return Map.of("closed", auth.revokeAllBut(session(request)));
     }
 
+    /**
+     * Ends this browser's session and clears its cookie.
+     */
     @PostMapping("/owner/api/sign-out")
     public ResponseEntity<Void> signOut(HttpServletRequest request, HttpServletResponse response) {
         auth.revoke(session(request));

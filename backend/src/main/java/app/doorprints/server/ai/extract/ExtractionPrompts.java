@@ -26,9 +26,17 @@ public final class ExtractionPrompts {
     private ExtractionPrompts() {
     }
 
+    /**
+     * The system and user messages for one extraction call.
+     */
     public record Built(String system, String user) {
     }
 
+    /**
+     * Builds the extraction prompt. The listing is placed between tags carrying the per-call nonce ({@link
+     * PromptSafety}), and the system text tells the model to treat it as data, to return null for what is not stated,
+     * and never to guess contact details.
+     */
     public static Built build(String listingText, String nonce) {
         var tag = "listing-" + nonce;
         var system = """

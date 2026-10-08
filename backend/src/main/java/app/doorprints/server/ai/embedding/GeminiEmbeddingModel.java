@@ -118,6 +118,9 @@ public class GeminiEmbeddingModel implements EmbeddingModel {
         this(builder, baseUrl, fixedKey(apiKey), model, dimensions, taskType, maxRetries, backoff, sleeper);
     }
 
+    /**
+     * Wraps a key given at construction (tests, one-off use) as a supplier; a blank key is rejected up front.
+     */
     private static Supplier<String> fixedKey(String apiKey) {
         if (apiKey == null || apiKey.isBlank()) {
             throw new IllegalArgumentException("Gemini embedding API key is empty");
@@ -158,6 +161,11 @@ public class GeminiEmbeddingModel implements EmbeddingModel {
         this.sleeper = sleeper;
     }
 
+    /**
+     * Embeds the texts, at most {@link #MAX_BATCH} per HTTP call, and returns the vectors in input order.
+     * @throws IllegalArgumentException if there is no text or a text is blank
+     * @throws GeminiEmbeddingException if the provider fails or returns a vector of the wrong size
+     */
     @Override
     public EmbeddingResponse call(EmbeddingRequest request) {
         var texts = request.getInstructions();
@@ -193,6 +201,10 @@ public class GeminiEmbeddingModel implements EmbeddingModel {
         return model;
     }
 
+    /**
+     * Embeds one batch and checks the answer: one vector per text, each of the configured size, then L2-normalised so
+     * the stored vectors compare by cosine distance.
+     */
     private List<float[]> embedChunk(List<String> texts) {
         var requests = new ArrayList<EmbedRequest>(texts.size());
         for (var text : texts) {
@@ -219,6 +231,12 @@ public class GeminiEmbeddingModel implements EmbeddingModel {
         return out;
     }
 
+    /**
+     * Sends one batch with the key read at call time, so a key changed on the owner page applies at once. Retries
+     * 429, 5xx and I/O errors up to {@code maxRetries} times, waiting the longer of the backoff and the server's
+     * hint; a hint over {@link #MAX_RETRY_WAIT} fails at once. Messages carry the HTTP status and Google error reason
+     * only, never the body or the key.
+     */
     private BatchResponse post(BatchRequest body) {
         var key = apiKey.get();
         if (key == null || key.isBlank()) {
@@ -334,6 +352,9 @@ public class GeminiEmbeddingModel implements EmbeddingModel {
         return v;
     }
 
+    /**
+     * Waits between attempts; on interrupt it restores the flag and fails the call.
+     */
     private static void sleep(Duration d) {
         if (d.isZero()) return;
         try {

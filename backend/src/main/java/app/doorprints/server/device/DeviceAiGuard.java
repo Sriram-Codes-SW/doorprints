@@ -46,6 +46,9 @@ public class DeviceAiGuard extends OncePerRequestFilter {
         this.paused = paused;
     }
 
+    /**
+     * Applies only to the AI and MCP paths, except the status call and CORS preflights.
+     */
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         var path = RequestPaths.path(request);
@@ -54,6 +57,10 @@ public class DeviceAiGuard extends OncePerRequestFilter {
         return !ai || RequestPaths.isPreflight(request);
     }
 
+    /**
+     * Refuses AI calls with 403 while AI is paused for the server, and for a device whose AI switch is off; everyone
+     * else passes.
+     */
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
