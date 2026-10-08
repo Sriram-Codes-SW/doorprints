@@ -18,6 +18,7 @@
 
 package app.doorprints.server.config;
 
+import app.doorprints.server.common.Problems;
 import app.doorprints.server.ai.web.TokenBucketRateLimiter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -35,6 +36,7 @@ import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 
@@ -178,7 +180,7 @@ public class ApiKeyFilter extends OncePerRequestFilter {
         var path = RequestPaths.path(request);
         if (!RequestPaths.isCanonical(path)) {
             log.warn("auth.reject reason=non-canonical-path client={} path={}", clientTag(request), RequestPaths.forLog(path));
-            write(response, HttpServletResponse.SC_BAD_REQUEST, "Malformed request path");
+            Problems.write(response, HttpServletResponse.SC_BAD_REQUEST, "Malformed request path");
             return;
         }
         if (isPublic(request, path)) {
@@ -201,23 +203,13 @@ public class ApiKeyFilter extends OncePerRequestFilter {
         if (!decision.allowed()) {
             log.warn("auth.throttled client={} path={} retryAfter={}s", client, RequestPaths.forLog(path),
                     decision.retryAfterSeconds());
-            response.setHeader("Retry-After", Long.toString(decision.retryAfterSeconds()));
-            write(response, 429, "Too many failed attempts, retry in " + decision.retryAfterSeconds() + "s");
+            Problems.write(response, 429, "Too many failed attempts, retry in " + decision.retryAfterSeconds() + "s",
+                    Map.of("Retry-After", Long.toString(decision.retryAfterSeconds())));
             return;
         }
         log.warn("auth.fail reason={} client={} method={} path={}", given == null ? "missing-key" : "wrong-key",
                 client, request.getMethod(), RequestPaths.forLog(path));
-        write(response, HttpServletResponse.SC_UNAUTHORIZED, "Missing or wrong X-API-Key");
-    }
-
-    /**
-     * Writes a small problem+json error body. Callers pass fixed text, never request data.
-     */
-    private static void write(HttpServletResponse response, int status, String detail) throws IOException {
-        response.setStatus(status);
-        response.setContentType("application/problem+json");
-        response.setCharacterEncoding("UTF-8");
-        response.getWriter().write("{\"status\":" + status + ",\"detail\":\"" + detail + "\"}");
+        Problems.write(response, HttpServletResponse.SC_UNAUTHORIZED, "Missing or wrong X-API-Key");
     }
 
     /** The key the caller presented: X-API-Key, or else an {@code Authorization: Bearer} token. */
