@@ -53,6 +53,32 @@ class DraftSanitizerTest {
     }
 
     @Test
+    void warnsWhenTheTextHasSeveralLinksAndTheDraftHasOne() {
+        var text = "Flat in Thane West: https://a.example/p/1 and the broker's https://b.example/p/2";
+        var raw = new RawListing("Flat", null, null, null, null, null, null, null, null, "https://a.example/p/1", null, List.of());
+        assertThat(DraftSanitizer.sanitize(raw, text).warnings())
+                .containsExactly("listingUrl: the text has 2 links, check this is the right one");
+        var none = new RawListing("Flat", null, null, null, null, null, null, null, null, null, null, List.of());
+        assertThat(DraftSanitizer.sanitize(none, text).warnings()).isEmpty();
+        assertThat(DraftSanitizer.sanitize(raw, "Flat in Thane West: https://a.example/p/1 https://a.example/p/1").warnings())
+                .isEmpty();
+    }
+
+    @Test
+    void countsThePastedTextNotTheLinksTheModelWroteInTheNotes() {
+        var raw = new RawListing("Flat", null, null, null, null, null, null, null, null, "https://a.example/k/1",
+                "Also https://b.example/2 https://c.example/3", List.of());
+        assertThat(DraftSanitizer.sanitize(raw, "Salt Lake flat https://a.example/k/1 only").warnings()).isEmpty();
+    }
+
+    @Test
+    void countsLinksInLinearTime() {
+        assertThat(DraftSanitizer.linkCount("http:// ".repeat(50_000))).isZero();
+        assertThat(DraftSanitizer.linkCount("https://a" + "a".repeat(200_000) + " https://b" + ".".repeat(200_000))).isEqualTo(2);
+        assertThat(DraftSanitizer.linkCount(("https://x.example/" + "p".repeat(30) + " ").repeat(5_000))).isEqualTo(1);
+    }
+
+    @Test
     void parsesIndianPriceUnits() {
         var w = new ArrayList<String>();
         assertThat(DraftSanitizer.price("₹ 25k", w)).isEqualTo(25_000L);

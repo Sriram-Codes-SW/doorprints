@@ -117,10 +117,15 @@
             id="listing-text"
             rows="5"
             [(ngModel)]="listingText"
-            [attr.maxlength]="listingMax"
             [placeholder]="'listingFill.placeholder' | t"
-            aria-describedby="listing-fill-hint"
+            aria-describedby="listing-fill-hint listing-cut-slot"
           ></textarea>
+          <!-- The slot is there before the hint, so a screen reader announces it when a long paste fills it (S4b-BL-182). -->
+          <div id="listing-cut-slot" class="field-hint" aria-live="polite">
+            @if (listingCut().leftOut > 0) {
+              <span id="listing-cut-hint">{{ 'listingFill.cut' | t: { max: listingMax, n: listingCut().leftOut } }}</span>
+            }
+          </div>
           <span id="listing-fill-hint" class="field-hint">{{ 'listingFill.hint' | t }} {{ (ai.usesOwnKey() ? 'ai.disclosureOwnKeyHost' : 'ai.disclosure') | t: { host: ai.ownHost() } }}</span>
         </div>
         <button

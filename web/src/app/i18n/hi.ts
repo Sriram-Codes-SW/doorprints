@@ -1660,4 +1660,6 @@ export const hi: Dict = {
   'ai.modelNotFound': 'AI सेवा इस मॉडल को नहीं जानती। मॉडल का नाम कनेक्शन पेज पर AI सुविधाएँ के नीचे जाँचें।',
   'ai.unreachable': '{host} तक नहीं पहुँचा जा सका। पता और अपना कनेक्शन जाँचें।',
   'ai.unreachableLocal': '{host} तक नहीं पहुँचा जा सका। जाँचें कि वह चल रहा है और इस साइट को अनुमति देता है (CORS); वरना ब्राउज़र उसे रोक देता है।',
+  // S4b-BL-182 (2026-10-08): the paste box says how much of a long listing is left out. Under review (owner rule: hi/ta/te ship marked under review).
+  'listingFill.cut': 'केवल पहले {max} अक्षर पढ़े जाते हैं। अंत में छूटे अक्षर: {n}।',
 };

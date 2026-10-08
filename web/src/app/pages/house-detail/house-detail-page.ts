@@ -98,6 +98,7 @@ import { Msg, TranslationService } from '../../i18n/translation.service';
 import { TitleOverride } from '../../i18n/i18n-title.strategy';
 import { ConfirmService } from '../../core/confirm.service';
 import { AI_MAX_LISTING_CHARS, AiService, HouseDraft, aiErrorMsg } from '../../core/ai.service';
+import { cutListing } from '../../core/ai/ai-core';
 import { TPipe } from '../../i18n/t.pipe';
 import { UnsavedChanges } from '../../core/unsaved-changes.service';
 import { COUNTRY_VIEW, loadStartPoint, locationErrorKey, parseCoordinate } from '../../shared/map-center';
@@ -181,6 +182,20 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   /** The listing box starts open when the house came from a shared listing (the text is already in it). */
   protected listingOpen = false;
   protected readonly listingMax = AI_MAX_LISTING_CHARS;
+  private cutFor = '';
+  private cutOfText = cutListing('', AI_MAX_LISTING_CHARS);
+
+  /**
+   * The pasted text as Extract reads it: trimmed and cut at {@link listingMax}; `leftOut` feeds the hint under the field
+   * (S4b-BL-182). Kept for the last text, so the page's checks do not cut it again.
+   */
+  protected listingCut(): { text: string; leftOut: number } {
+    if (this.cutFor !== this.listingText) {
+      this.cutFor = this.listingText;
+      this.cutOfText = cutListing(this.listingText, this.listingMax);
+    }
+    return this.cutOfText;
+  }
   protected readonly filling = signal(false);
   protected readonly fillWarnings = signal<string[]>([]);
   /** Typed values the fill kept, with what the listing says instead ("Kept your Name; the listing says …"). */
@@ -452,9 +467,11 @@ export class HouseDetailPage implements OnInit, OnDestroy {
       // an owner's or broker's phone number, and a query parameter would put it in the URL bar and in browser
       // history, which is exactly the shared-computer case docs/11 §5.10 is about. Read now, synchronously: the
       // navigation is only "current" during this call.
-      const shared = String(sharedFromNavigation(this.router) ?? '').slice(0, AI_MAX_LISTING_CHARS);
+      const sharedAll = String(sharedFromNavigation(this.router) ?? '');
+      const shared = sharedAll.slice(0, AI_MAX_LISTING_CHARS);
       if (shared) {
-        this.listingText = shared;
+        // The box gets all of it, so the hint says how much Extract leaves out; the notes keep the first part, as before.
+        this.listingText = sharedAll;
         this.listingOpen = true;
       }
       if (hasPosition) {
@@ -775,7 +792,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
    * the map location and presses Add (docs/ai AI-004 human confirmation).
    */
   protected fillFromListing(): void {
-    const text = this.listingText.trim();
+    const text = this.listingCut().text;
     if (!text || this.filling()) return;
     this.filling.set(true);
     // The last failure stays, drawn as being updated, until this read ends and replaces or removes it (S4b-BL-2).

@@ -1,0 +1,15 @@
+{
+  "spec": "PasteListingTextTest",
+  "gradle": [
+    ":app:testDebugUnitTest",
+    "--tests",
+    "app.doorprints.PasteListingTextTest"
+  ],
+  "mutations": [
+    {"file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/PasteListingText.kt", "find": "if (leftOut > 0) {", "replace": "if (leftOut >= 0) {", "expect": "saysNothingAtTheLimit"},
+    {"file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/PasteListingText.kt", "find": "val leftOut = ListingCut.of(text).leftOut", "replace": "val leftOut = ListingCut.of(text).leftOut + 1", "expect": "saysHowManyCharactersAtTheEndAreLeftOut"},
+    {"file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/PasteListingText.kt", "find": "Formats.indianGrouping(leftOut.toString()),", "replace": "leftOut.toString(),", "expect": "groupsALargeCount"},
+    {"file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/PasteListingText.kt", "find": "Formats.indianGrouping(OnDeviceAi.MAX_INPUT_CHARS.toString()),", "replace": "(OnDeviceAi.MAX_INPUT_CHARS + 1).toString(),", "expect": "saysHowManyCharactersAtTheEndAreLeftOut"},
+    {"file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/PasteListingText.kt", "find": "        LiveMessage {\n            if (leftOut > 0) {", "replace": "        Column {\n            if (leftOut > 0) {", "expect": "theLineIsInsideThePoliteLiveRegion"}
+  ]
+}
