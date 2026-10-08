@@ -117,6 +117,10 @@ export function isOffline(): boolean {
   return typeof navigator !== 'undefined' && navigator.onLine === false;
 }
 
+/**
+ * A `tel:` link for a phone number, keeping only digits and `+`, so no other character of a saved number can reach the
+ * link.
+ */
 export function telHref(phone: string | null | undefined): string {
   return 'tel:' + (phone ?? '').replace(/[^0-9+]/g, '');
 }

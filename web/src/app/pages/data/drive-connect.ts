@@ -104,6 +104,7 @@ export class DriveConnectComponent implements OnDestroy {
     return this.error() !== 'driveProblem.CRYPTO_UNAVAILABLE';
   }
 
+  /** The person accepts that the recovery key of this connection was never shown. */
   protected acknowledgeRecoveryKeyUnshown(): void {
     void this.service?.acknowledgeRecoveryKeyUnshown();
   }
@@ -116,6 +117,10 @@ export class DriveConnectComponent implements OnDestroy {
     this.importFile.emit(file);
   }
 
+  /**
+   * Signs in to Google Drive and connects. When there is no Doorprints folder yet, or the remembered one is gone, a new
+   * folder is created; the recovery key of a new folder is shown once and any problem is shown as its sentence.
+   */
   async onConnect(): Promise<void> {
     if (!this.service) return;
     this.busy.set(true);
@@ -155,6 +160,7 @@ export class DriveConnectComponent implements OnDestroy {
     }
   }
 
+  /** Copies the recovery key to the clipboard for a moment; if refused, the page says so. */
   async copyRecoveryKey(key: string): Promise<void> {
     try {
       await navigator.clipboard.writeText(key);
@@ -173,6 +179,7 @@ export class DriveConnectComponent implements OnDestroy {
     this.recoveryKeySaved.set(!this.recoveryKeySaved());
   }
 
+  /** Continues after the person confirms the key is saved, and drops it from the page. */
   continueFromRecoveryKey(): void {
     if (!this.service) return;
     this.service.confirmRecoveryKeySaved();
@@ -180,6 +187,7 @@ export class DriveConnectComponent implements OnDestroy {
     this.recoveryKeySaved.set(false);
   }
 
+  /** Continues without saving the key, only after a confirmed warning. */
   async skipRecoveryKey(): Promise<void> {
     if (!this.service) return;
     const ok = await this.confirm.ask(
@@ -192,6 +200,7 @@ export class DriveConnectComponent implements OnDestroy {
     this.recoveryKeySaved.set(false);
   }
 
+  /** Disconnects this browser from Drive after asking. */
   async onDisconnect(): Promise<void> {
     if (!this.service) return;
     const ok = await this.confirm.ask(

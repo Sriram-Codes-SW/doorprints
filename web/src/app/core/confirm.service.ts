@@ -23,6 +23,7 @@ import type { TKey } from '../i18n/en';
 /** What the user chose: the main action, the optional alternative ("Sync first", "Save first"), or Cancel/Esc. */
 export type ConfirmAnswer = 'confirm' | 'alt' | 'cancel';
 
+/** What the dialog shows: the message and the labels of its buttons. */
 export interface ConfirmRequest {
   readonly message: Msg;
   /** Label of the confirming button (default "OK"-like per context). */

@@ -55,6 +55,10 @@ export function walkBounds(walk: TraceWalk): [[number, number], [number, number]
   ];
 }
 
+/**
+ * The *Saved walks* card of a house: lists the walks linked to it with *Show on map* (an overlay on the page's map) and
+ * *Delete walk*.
+ */
 @Component({
   selector: 'app-house-walks-card',
   imports: [TPipe],

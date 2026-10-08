@@ -136,6 +136,7 @@ export class SampleBuilder implements Samples {
     return this.currentArc;
   }
 
+  /** Adds a sample and its arc length and part. */
   private push(lat: number, lon: number): void {
     this.lat.push(lat);
     this.lon.push(lon);
@@ -231,6 +232,10 @@ export class SegmentIndex {
     };
   }
 
+  /**
+   * Files a segment under every grid cell its box (grown by the tolerance) touches; a segment spanning too many cells
+   * is kept apart and always tried.
+   */
   private register(id: number): void {
     const s = this.segments[id];
     const box = this.grown(s.a, s.b);
@@ -252,6 +257,10 @@ export class SegmentIndex {
     }
   }
 
+  /**
+   * The segments that can be near a position: those in its grid cell plus the long ones, or all of them without the
+   * index.
+   */
   private candidates(lat: number, lon: number): Iterable<number> {
     if (this.plain) return this.segments.keys();
     const list = this.cells.get(`${Math.floor(lat / this.cellLat)},${Math.floor(lon / this.cellLon)}`);
@@ -259,6 +268,7 @@ export class SegmentIndex {
     return this.long.length === 0 ? list : [...list, ...this.long];
   }
 
+  /** A cheap test that a position is within the tolerance of the walk's bounding box. */
   private inBox(walk: number, lat: number, lon: number): boolean {
     if (this.plain) return true;
     const b = this.walkBox[walk];
@@ -326,6 +336,7 @@ interface Run {
   readonly last: number;
 }
 
+/** Groups consecutive near samples into runs, never joining samples of different parts. */
 function runsOf(near: readonly boolean[], part: readonly number[]): Run[] {
   const runs: Run[] = [];
   let start = -1;
@@ -340,6 +351,7 @@ function runsOf(near: readonly boolean[], part: readonly number[]): Run[] {
 
 // ---- The detection (steps 4 to 7) ----
 
+/** Options for {@link detectRepeats}, for tests. */
 export interface DetectOptions {
   /** True to use the plain loops instead of the index (the tests compare the two). */
   readonly plain?: boolean;
@@ -468,6 +480,7 @@ export class RepeatAlert {
     return this.ranM;
   }
 
+  /** Forgets everything: a new walk starts, with no alert blocked and no cooldown. */
   reset(): void {
     this.blocked = false;
     this.lastAlertAt = null;
@@ -477,6 +490,7 @@ export class RepeatAlert {
     this.restart();
   }
 
+  /** Starts the live walk's samples again from nothing, when the walk is not an extension of the one seen. */
   private restart(): void {
     this.builder = new SampleBuilder();
     this.near = [];

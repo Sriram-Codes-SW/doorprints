@@ -39,7 +39,9 @@ export const DEFAULT_REMIND_MIN = 60;
 /** How long after its end a PLANNED viewing counts as missed, and how far from a visit's arrival it may be linked. */
 export const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
 
+/** First viewing, second viewing, or follow-up. */
 export type ViewingKind = 'FIRST' | 'SECOND' | 'FOLLOW_UP';
+/** Planned, done or cancelled. A planned viewing long past reads as missed. */
 export type ViewingStatus = 'PLANNED' | 'DONE' | 'CANCELLED';
 
 export const VIEWING_KINDS: readonly ViewingKind[] = ['FIRST', 'SECOND', 'FOLLOW_UP'];
@@ -50,6 +52,10 @@ export const REMIND_OPTIONS: readonly number[] = [0, 15, 30, 60, 120, 1440];
 /** A viewing's own id: `v_` and 8 lowercase hex characters. */
 const APP_ID_PATTERN = /^v_[0-9a-f]{8}$/;
 
+/**
+ * A planned or past visit to a house at a set time: when, how long, which kind, its status, when to remind, and with
+ * whom. `withWhom` is contact data and is kept out of calendar files, AI text and copies made without contact details.
+ */
 export interface Viewing {
   id: string;
   /** A house id; the house may be gone (the history then says "a house that is gone"). */
@@ -97,14 +103,17 @@ export function isViewingId(id: string): boolean {
   return RECORD_ID_PATTERN.test(id) && id !== '.' && id !== '..';
 }
 
+/** The kind from a stored value; anything unknown reads as FIRST. */
 export function viewingKind(value: unknown): ViewingKind {
   return VIEWING_KINDS.includes(value as ViewingKind) ? (value as ViewingKind) : 'FIRST';
 }
 
+/** The status from a stored value; anything unknown reads as PLANNED. */
 export function viewingStatus(value: unknown): ViewingStatus {
   return VIEWING_STATUSES.includes(value as ViewingStatus) ? (value as ViewingStatus) : 'PLANNED';
 }
 
+/** The value if it is non-blank text within `max` characters, else undefined. */
 function optionalText(value: unknown, max: number): string | undefined {
   return typeof value === 'string' && value.trim() !== '' && value.length <= max ? value : undefined;
 }
@@ -238,6 +247,9 @@ export interface ViewingGroups {
   cancelled: Viewing[];
 }
 
+/**
+ * Splits the viewings into the timeline groups: upcoming (soonest first), missed, done and cancelled (newest first).
+ */
 export function groupViewings(list: readonly Viewing[], nowMs: number): ViewingGroups {
   const asc = sortViewings(list);
   const newestFirst = [...asc].reverse();
@@ -257,6 +269,7 @@ export interface ViewingFilter {
   status?: ViewingStatus | '';
 }
 
+/** Keeps the viewings in the date range and of the kind and status chosen. */
 export function filterViewings(list: readonly Viewing[], f: ViewingFilter): Viewing[] {
   return list.filter(
     (v) =>

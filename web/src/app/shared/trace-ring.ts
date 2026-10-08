@@ -25,6 +25,10 @@
 
 const NS = 'http://www.w3.org/2000/svg';
 
+/**
+ * The DOM element for the ring marker, labelled for screen readers; the colours are fixed because the map tiles are
+ * light in both themes.
+ */
 export function ringElement(label: string): HTMLElement {
   const el = document.createElement('div');
   el.setAttribute('role', 'img');

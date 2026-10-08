@@ -127,6 +127,7 @@ export class ImportBackupCard {
     });
   }
 
+  /** The options the person chose, as the import rules read them. */
   private flags(): Omit<ImportFlags, 'applyDeletions'> {
     return { mode: this.mode(), restoreDeleted: this.restore(), skipUpdates: this.keepMine() };
   }
@@ -169,6 +170,7 @@ export class ImportBackupCard {
     this.fileInput()?.nativeElement.click();
   }
 
+  /** Checks the file chosen in the file picker. */
   protected async picked(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
@@ -226,6 +228,7 @@ export class ImportBackupCard {
     return this.undo !== null && this.undoState() === 'none';
   }
 
+  /** Removes what a copy import added and reports how many were removed and how many were kept. */
   async undoCopy(): Promise<void> {
     if (!this.undo || this.undoState() !== 'none') return;
     this.undoState.set('running');
@@ -245,6 +248,7 @@ export class ImportBackupCard {
     this.reset();
   }
 
+  /** Returns the card to its start and forgets the file, the preview and any undo. */
   private reset(): void {
     this.phase.set('idle');
     this.problem.set(null);
@@ -260,6 +264,7 @@ export class ImportBackupCard {
     this.undone.set(null);
   }
 
+  /** The sentence for why a file was refused. */
   protected problemKey(p: BackupProblem): TKey {
     return `imp.problem.${p}` as TKey;
   }

@@ -90,6 +90,7 @@ export function relabelUnavailable(container: HTMLElement | null | undefined, i1
   if (p) p.textContent = i18n.t('map.unavailable');
 }
 
+/** Sets the text of the first element matching the selector, if any. */
 function setText(root: HTMLElement, selector: string, text: string): void {
   const el = root.querySelector<HTMLElement>(selector);
   if (el) el.textContent = text;
@@ -145,6 +146,7 @@ function configureOfflineMaps(): void {
   addProtocol(ASSET_SCHEME, protocolHandler(false, deps) as AddProtocolAction);
 }
 
+/** Points MapLibre at the same-origin worker file, once. */
 function configureWorker(): void {
   if (workerConfigured) return;
   setWorkerUrl(new URL('maplibre-gl-worker.mjs', document.baseURI).href);

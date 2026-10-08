@@ -62,6 +62,7 @@ export function anthropicBody(
   return body;
 }
 
+/** The response body as an object, or null when it is not JSON or not an object. */
 function parseMessage(responseBody: string): Record<string, unknown> | null {
   try {
     const parsed: unknown = JSON.parse(responseBody);
@@ -88,6 +89,7 @@ export function anthropicPingAnswered(responseBody: string): boolean {
   return Array.isArray(parseMessage(responseBody)?.['content']);
 }
 
+/** The saved base URL (empty means Anthropic's own) and model. */
 export interface AnthropicSettings {
   baseUrl: string;
   model: string;
@@ -101,6 +103,10 @@ export class AnthropicChatModel implements JsonChatModel {
     private readonly fetchImpl: FetchLike = (input, init) => fetch(input, init),
   ) {}
 
+  /**
+   * Asks for JSON by forcing a tool call whose input schema is the call's schema; the tool input is the answer. A
+   * failed status is mapped to an {@link OnDeviceAiError}, and so is an answer without a usable tool call.
+   */
   async generateJson(system: string, user: string, schema: object, temperature: number): Promise<string> {
     const body = anthropicBody(schemaName(schema), this.settings.model, system, user, temperature, toStrictSchema(schema));
     const res = await this.post(body);

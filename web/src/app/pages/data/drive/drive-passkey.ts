@@ -48,10 +48,15 @@ export class DrivePasskeyComponent implements OnInit {
   /** True when status is 'none' and the browser has no built-in authenticator. */
   protected readonly noBuiltIn = signal(false);
 
+  /** Reads the passkey status. */
   async ngOnInit(): Promise<void> {
     await this.loadStatus();
   }
 
+  /**
+   * Reads whether a passkey is set up. When none is, also whether the browser can give the PRF output and has a
+   * built-in authenticator, to explain what to expect.
+   */
   private async loadStatus(): Promise<void> {
     try {
       const result = await this.service.passkeyStatus();
@@ -103,6 +108,7 @@ export class DrivePasskeyComponent implements OnInit {
   protected readonly details = signal<string | null>(null);
   protected readonly detailsCopied = signal(false);
 
+  /** Copies the setup details (step names and flags, no values) to send for help. */
   async copyDetails(): Promise<void> {
     const text = this.details();
     if (!text) return;
@@ -115,6 +121,10 @@ export class DrivePasskeyComponent implements OnInit {
     }
   }
 
+  /**
+   * Sets up a passkey on this device and shows how it ended: registered, dismissed by the person, no PRF output (with
+   * help and copyable details), unsupported, or failed.
+   */
   async onRegisterPasskey(): Promise<void> {
     if (this.busy()) return;
 

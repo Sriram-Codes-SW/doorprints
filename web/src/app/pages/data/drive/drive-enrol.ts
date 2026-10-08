@@ -77,6 +77,10 @@ export class DriveEnrolCard {
   /** Pairing fields of the reveal whose 8-digit code is on screen. Approval uses this transcript, not a later paste. */
   private compared: PairingFields | null = null;
 
+  /**
+   * The new browser starts the 8-digit join: it makes a random nonce and a commitment to its public key and nonce,
+   * which the connected browser pastes.
+   */
   protected async becomeNewcomer(): Promise<void> {
     this.error.set(null);
     this.joined.set(false);
@@ -88,6 +92,10 @@ export class DriveEnrolCard {
     this.role.set('newcomer');
   }
 
+  /**
+   * The new browser starts the QR join: it makes a random 32-byte secret and shows it with its public key as a QR code,
+   * to be scanned by the connected browser.
+   */
   protected async becomeQrNewcomer(): Promise<void> {
     this.error.set(null);
     this.joined.set(false);
@@ -100,6 +108,7 @@ export class DriveEnrolCard {
     this.role.set('qr-new');
   }
 
+  /** The connected browser takes the QR role. */
   protected becomeQrApprover(): void {
     this.error.set(null);
     this.approved.set(false);
@@ -107,6 +116,10 @@ export class DriveEnrolCard {
     this.role.set('qr-old');
   }
 
+  /**
+   * The connected browser reads the QR offer, approves the new device and produces the reply that holds the wrap that
+   * lets it open the folder.
+   */
   protected async approveQr(): Promise<void> {
     this.error.set(null);
     this.approved.set(false);
@@ -124,6 +137,7 @@ export class DriveEnrolCard {
     this.approved.set(true);
   }
 
+  /** The new browser opens the pasted reply with its secret. The secret is wiped from memory once it has joined. */
   protected async joinFromQr(): Promise<void> {
     this.error.set(null);
     if (!this.psk) {
@@ -145,6 +159,10 @@ export class DriveEnrolCard {
     this.error.set(this.i18n.t(result.error ?? 'driveEnrol.badMessage'));
   }
 
+  /**
+   * Reads a QR offer from the camera with the browser's barcode detector (where it has one). Only a valid offer is
+   * accepted, and the camera is stopped afterwards.
+   */
   protected async useCamera(): Promise<void> {
     this.error.set(null);
     const Detector = barcodeDetector();
@@ -178,6 +196,7 @@ export class DriveEnrolCard {
     }
   }
 
+  /** The connected browser takes the 8-digit approver role. */
   protected becomeApprover(): void {
     this.error.set(null);
     this.approved.set(false);
@@ -206,6 +225,7 @@ export class DriveEnrolCard {
     }
   }
 
+  /** The connected browser answers the pasted request with its own public key and a fresh nonce. */
   protected async approvePasted(): Promise<void> {
     this.error.set(null);
     this.code.set(null);
@@ -227,6 +247,10 @@ export class DriveEnrolCard {
     this.replyText.set(JSON.stringify(reply.message));
   }
 
+  /**
+   * The new browser opens its commitment (it reveals its nonce) and shows the 8-digit code both browsers must show the
+   * same.
+   */
   protected revealCode(): void {
     this.error.set(null);
     if (!this.nNew) {
@@ -250,6 +274,10 @@ export class DriveEnrolCard {
     this.replyText.set(JSON.stringify(out.message));
   }
 
+  /**
+   * The connected browser checks the revealed message and shows its 8-digit code, and remembers exactly which fields it
+   * showed it for.
+   */
   protected showApproverCode(): void {
     this.error.set(null);
     this.compared = null;
@@ -336,6 +364,7 @@ export class DriveEnrolCard {
     this.error.set(this.i18n.t(result.error ?? 'driveEnrol.badMessage'));
   }
 
+  /** This browser's device public key; null (with an error shown) if it cannot be made. */
   private async publicKey(): Promise<Uint8Array | null> {
     try {
       return await this.service.devicePublicKey();
@@ -345,6 +374,10 @@ export class DriveEnrolCard {
     }
   }
 
+  /**
+   * The translation key for a refusal: a ready-made `drive...` key is kept, a passkey requirement gets its own
+   * sentence, anything else is a bad message.
+   */
   private reasonKey(reason: string): TKey {
     if (reason === 'USE_PHONE') return 'driveEnrol.passkeyNeeded';
     if (reason.startsWith('drive')) return reason as TKey;
@@ -359,10 +392,12 @@ interface BarcodeDetectorCtor {
   new (options: { formats: string[] }): { detect(source: HTMLVideoElement): Promise<BarcodeHit[]> };
 }
 
+/** The browser's `BarcodeDetector`, or undefined where there is none. */
 function barcodeDetector(): BarcodeDetectorCtor | undefined {
   return (globalThis as { BarcodeDetector?: BarcodeDetectorCtor }).BarcodeDetector;
 }
 
+/** Reads pasted JSON as a pairing message; null for anything that is not an object. */
 function parseMessage(text: string): PairingMessage | null {
   try {
     const msg = JSON.parse(text) as PairingMessage;
@@ -380,6 +415,7 @@ interface PairingFields {
   commit: string;
 }
 
+/** The five fields that make up the transcript behind the 8-digit code, or null if any is missing. */
 function pairingFields(msg: PairingMessage): PairingFields | null {
   if (!msg.pkNew || !msg.nNew || !msg.nApprover || !msg.pkApprover || !msg.commit) return null;
   return {
@@ -391,6 +427,7 @@ function pairingFields(msg: PairingMessage): PairingFields | null {
   };
 }
 
+/** Whether two transcripts are identical field by field. */
 function samePairingFields(a: PairingFields, b: PairingFields): boolean {
   return a.pkNew === b.pkNew && a.nNew === b.nNew && a.nApprover === b.nApprover && a.pkApprover === b.pkApprover && a.commit === b.commit;
 }

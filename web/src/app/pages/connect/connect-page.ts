@@ -47,6 +47,15 @@ import { TPipe } from '../../i18n/t.pipe';
 import { RunResult, runResult } from '../../shared/run-result';
 import { focusIfLost } from '../../shared/focus';
 
+/**
+ * Connects this browser to the optional self-hosted server and sets up the person's own AI. The server can be joined by
+ * a code the owner types on the owner page, by a connect link or invite, or by pasting an API key; the page can also
+ * test and save the connection, and disconnect.
+ *
+ * The same page holds the *AI features* switch and the provider settings (Gemini key, an OpenAI-compatible or Anthropic
+ * service), whose keys stay in this browser. The server connection is saved only after a check succeeds or the person
+ * chooses *Save anyway*.
+ */
 @Component({
   selector: 'app-connect-page',
   imports: [FormsModule, TPipe],
@@ -101,6 +110,10 @@ export class ConnectPage {
   protected readonly keyMode = signal(ConnectPage.usesTypedKey(this.config.config()?.apiKey));
   protected readonly aiOffMsg = aiOffMsg;
 
+  /**
+   * True for a saved key that was typed in rather than issued by pairing (those start with `dpk_`), so the typed-key
+   * section opens for it.
+   */
   private static usesTypedKey(key: string | undefined): boolean {
     return !!key && !key.startsWith('dpk_');
   }
@@ -241,6 +254,10 @@ export class ConnectPage {
       });
   }
 
+  /**
+   * Acts on one poll answer: an approved code saves the device key, a denied or expired one ends the pairing, anything
+   * else polls again.
+   */
   private onPolled(baseUrl: string, started: PairingStarted, deadline: number, polled: PairingPolled): void {
     if (polled.status === 'approved' && polled.deviceKey) {
       this.pairing.set(null);
@@ -255,6 +272,7 @@ export class ConnectPage {
     }
   }
 
+  /** Stops showing the code and shows why the pairing ended. */
   private endPairing(reason: Msg): void {
     this.pairing.set(null);
     this.pairError.set(runResult(reason));
@@ -269,6 +287,7 @@ export class ConnectPage {
     afterNextRender(() => document.getElementById('connect-get-code')?.focus(), { injector: this.injector });
   }
 
+  /** Cancels a pairing request in flight. The code expires on the server by itself. */
   private stopPairing(): void {
     this.pairRequest?.unsubscribe();
     this.pairRequest = null;
@@ -485,6 +504,7 @@ export class ConnectPage {
     }
   }
 
+  /** Tests the saved Gemini key with one tiny request; the key itself is never shown on the page. */
   protected async testSavedGeminiKey(): Promise<void> {
     if (this.geminiBusy()) return;
     this.geminiBusy.set(true);
@@ -498,6 +518,7 @@ export class ConnectPage {
     }
   }
 
+  /** The *AI features* switch of this browser; nothing AI is offered until it is on. */
   protected setAiFeatures(event: Event): void {
     const on = (event.target as HTMLInputElement).checked;
     this.ai.setOptIn(on);
@@ -519,6 +540,10 @@ export class ConnectPage {
     this.check(true);
   }
 
+  /**
+   * Tests the typed address and key against the server. With `thenSave` a working connection is saved at once; a
+   * failure offers *Save anyway*. What is saved is what was tested.
+   */
   private check(thenSave: boolean): void {
     // The earlier result or failure (and its "Save anyway") stays in place while this check runs; its end replaces it.
     // What is saved on success is what was tested, captured here (onEdit() also drops the check, see there).
@@ -568,12 +593,16 @@ export class ConnectPage {
     this.commit({ baseUrl: this.baseUrl, apiKey: this.apiKey });
   }
 
+  /** Saves the connection (where `remember` says), refreshes the AI status and goes to the map. */
   private commit(values: ApiConfig): void {
     this.config.save(values, this.remember);
     this.ai.refresh();
     void this.router.navigate(['/']);
   }
 
+  /**
+   * After asking, forgets the connection and the kept AI answers, resets the form and moves focus to the page heading.
+   */
   protected async disconnect(): Promise<void> {
     const ok = await this.confirm.ask({ key: 'confirm.disconnect' }, { confirmKey: 'connect.disconnect', danger: true });
     if (!ok) return;

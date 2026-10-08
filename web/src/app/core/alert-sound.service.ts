@@ -64,6 +64,10 @@ export const VIBRATE = new InjectionToken<((pattern: number[]) => unknown) | nul
   factory: () => (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function' ? (p: number[]) => navigator.vibrate(p) : null),
 });
 
+/**
+ * Plays the walk alert (beep and vibration) so a person on a recorded walk notices it without looking at the screen.
+ * {@link prepare} must run in a user gesture; {@link running} tells the settings card whether sound will play.
+ */
 @Injectable({ providedIn: 'root' })
 export class AlertSound {
   private readonly factory = inject(AUDIO_CONTEXT_FACTORY);

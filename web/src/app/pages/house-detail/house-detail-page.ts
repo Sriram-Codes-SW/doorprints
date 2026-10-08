@@ -127,6 +127,16 @@ interface PhotoFailure {
 /** How long typing pauses before the unsaved draft is written to sessionStorage. */
 const DRAFT_SAVE_MS = 500;
 
+/**
+ * The page to view, add or edit one house (`/houses/:id` and `/houses/new`): the form with its cost, rooms, questions,
+ * checklist and score, the location map, visits, photos and the cards for viewings, area notes, move-in and walks. It
+ * is the one place a house is changed by hand.
+ *
+ * Edits go to a local `draft` signal and only {@link persist} writes them to the local store; sync to a server happens
+ * later and elsewhere. While there are unsaved edits the draft is kept in sessionStorage (draft-store.ts), the router
+ * guard and the reload banner ask before leaving, and a new house opened without a position cannot be saved until the
+ * pin is put. States: loading, not found, error, saving, just saved.
+ */
 @Component({
   selector: 'app-house-detail-page',
   imports: [
@@ -404,6 +414,11 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     event.returnValue = '';
   }
 
+  /**
+   * Loads what the form needs (question bank, scoring, brokers, other houses) and then either starts a new house (from
+   * a position in the URL, a shared listing, or none) or reads the house, its visits and its photos. Shared listing
+   * text arrives in navigation state, never in the URL, because it often holds a phone number.
+   */
   ngOnInit(): void {
     this.api.questions().subscribe({
       next: (list) => this.bank.set(list),
@@ -546,6 +561,10 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     void this.router.navigate(['/'], { queryParams: this.listReturn.queryParams(), replaceUrl: true });
   }
 
+  /**
+   * Starts a new house at the given position. A shared listing is first read by the no-AI parser, and the draft then
+   * counts as edited.
+   */
   private openDraft(lat: number, lon: number, shared: string, source: LocationSource | null = null): void {
     const draft = withCost(newHouse(lat, lon, source));
     this.draft.set(draft);
@@ -729,6 +748,10 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     return this.askToLeave();
   }
 
+  /**
+   * The three-way question before leaving with unsaved edits or photos still uploading: stay, leave, or save first
+   * (which leaves only if the save succeeds).
+   */
   private async askToLeave(): Promise<boolean> {
     if (this.uploading() > 0) {
       const go = await this.confirm.ask({ key: 'confirm.leaveUploading' }, { confirmKey: 'confirm.leaveAnyway', danger: true });
@@ -779,6 +802,10 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     });
   }
 
+  /**
+   * Puts a listing draft (from the AI or the no-AI parser) into the form without replacing anything the person typed;
+   * what it kept is named in `keptWarnings`.
+   */
   private applyDraft(a: HouseDraft): void {
     const d = this.draft();
     if (!d) return;
@@ -819,6 +846,10 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     return keys.map((key) => this.nameOf(this.scoring().criteria.find((c) => c.key === key) ?? { key })).join(', ');
   }
 
+  /**
+   * Records that the form has unsaved edits: clears the saved notice and the name error, withdraws the leave approval
+   * and schedules the sessionStorage copy.
+   */
   protected markDirty(): void {
     this.dirty.set(true);
     this.justSaved.set(false);
@@ -839,6 +870,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     }, DRAFT_SAVE_MS);
   }
 
+  /** The one way the form changes the draft: merges the fields in and marks the page dirty. */
   private patch(changes: Partial<HouseDto>): void {
     const d = this.draft();
     if (!d) return;
@@ -868,6 +900,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
 
   private say = (key: TKey, params?: Readonly<Record<string, string | number>>): string => this.i18n.t(key, params);
 
+  /** Adds the bank's usual questions this house does not have yet, and moves focus to the first new one. */
   protected addUsualQuestions(): void {
     const d = this.draft();
     if (!d) return;
@@ -1196,6 +1229,9 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     this.patch({ checklist });
   }
 
+  /**
+   * The pin was dragged or the map tapped: puts the house there; the position now counts as set (see {@link placePin}).
+   */
   protected onMoved(p: LatLon): void {
     this.coordsInvalid.set({ lat: false, lon: false });
     this.placePin(p.lat, p.lon);
@@ -1226,11 +1262,6 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     return ids.filter((x) => !!x).join(' ') || null;
   }
 
-  /**
-   * "Fill address from map" fills the empty Address, Street and Locality (and the name from the street when there is
-   * none). A value the user typed is only replaced after asking, with the old and new values shown; afterwards the
-   * filled fields are named.
-   */
   /**
    * The place name a shared listing (or the person) gave, while the house has no position yet: *Find* looks it up
    * (S4b-BL-83, docs/11 5.29 item 4). The locality first, else the address.
@@ -1271,6 +1302,11 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     });
   }
 
+  /**
+   * "Fill address from map" fills the empty Address, Street and Locality (and the name from the street when there is
+   * none). A value the user typed is only replaced after asking, with the old and new values shown; afterwards the
+   * filled fields are named.
+   */
   protected fillAddress(): void {
     const d = this.draft();
     if (!d || this.geocoding() || !this.locationSet()) return;
@@ -1322,6 +1358,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     this.announcer.announce({ key: 'house.addressFilledFields', params: { fields } });
   }
 
+  /** The Save button; see {@link persist}. */
   protected save(): void {
     void this.persist();
   }
@@ -1456,6 +1493,10 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     if (overlay?.fit) document.querySelector('app-location-map')?.scrollIntoView({ block: 'nearest' });
   }
 
+  /**
+   * Deletes the house after asking (the question says if saved walks go with it), or for a new house discards the form.
+   * Either way the page leaves without staying in history.
+   */
   protected async deleteHouse(): Promise<void> {
     const d = this.draft();
     if (!d) return;
@@ -1499,6 +1540,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     });
   }
 
+  /** Records a manual visit to this house now, at its position. */
   protected markVisited(): void {
     const d = this.draft();
     if (!d || this.isNew() || this.markingVisit()) return;
@@ -1635,6 +1677,10 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     return failures.some((f) => this.isStorageFull(f.reason));
   }
 
+  /**
+   * The listing link for the page: http(s) as typed, a bare domain with `https://` added, and null for any other scheme
+   * (such as javascript:), so a saved link can never run code.
+   */
   protected listingHref(url: string | null | undefined): string | null {
     const u = (url ?? '').trim();
     // Match http:// or https://
@@ -1646,6 +1692,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   }
 }
 
+/** A deep copy by JSON, for the saved state kept to restore on Discard. */
 function clone(h: HouseDto): HouseDto {
   return JSON.parse(JSON.stringify(h)) as HouseDto;
 }
@@ -1663,11 +1710,13 @@ function withCost(h: HouseDto): HouseDto {
   return h.cost ? h : { ...h, cost: {} };
 }
 
+/** Trims the text; blank becomes null. */
 function blankToNull(s: string | null | undefined): string | null {
   const t = (s ?? '').trim();
   return t ? t : null;
 }
 
+/** A non-negative whole number, or null when the value is not a finite number. */
 function toWholeNumber(n: number | null | undefined): number | null {
   if (n === null || n === undefined || typeof n !== 'number' || !Number.isFinite(n)) return null;
   return Math.max(0, Math.round(n));

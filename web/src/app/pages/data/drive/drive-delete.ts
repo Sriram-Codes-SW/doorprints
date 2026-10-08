@@ -60,6 +60,7 @@ export class DriveDeleteCard implements OnInit {
   private currentAction: DeletionAction | null = null;
   private currentPlan: DeletionPlan | null = null;
 
+  /** Reads whether a passkey is set up and whether the recovery key can be used; assumes none if it cannot tell. */
   async ngOnInit(): Promise<void> {
     try {
       this.passkeyStatus.set(await this.service.passkeyStatus());
@@ -73,6 +74,7 @@ export class DriveDeleteCard implements OnInit {
     }
   }
 
+  /** Starts a deletion: asks the service for a plan of what would go and shows it. Nothing is deleted yet. */
   protected async startDeletion(action: DeletionAction): Promise<void> {
     this.busy.set(true);
     this.error.set(null);
@@ -93,6 +95,10 @@ export class DriveDeleteCard implements OnInit {
     }
   }
 
+  /**
+   * Moves to the confirmation step: finds out whether the tick box is needed and whether the recovery key must be typed
+   * because the passkey cannot be used.
+   */
   protected async proceedToConfirm(): Promise<void> {
     if (!this.currentAction) return;
     this.busy.set(true);
@@ -123,6 +129,7 @@ export class DriveDeleteCard implements OnInit {
     this.ticked.set(!this.ticked());
   }
 
+  /** Sets up the passkey from the passkey-needed step and returns to the menu. */
   protected async registerPasskey(): Promise<void> {
     this.busy.set(true);
     try {
@@ -138,6 +145,11 @@ export class DriveDeleteCard implements OnInit {
     }
   }
 
+  /**
+   * Authorizes (passkey, or the typed recovery key, which is cleared from the page at once) and then runs the planned
+   * deletion. A wrong or unusable recovery key stays on the step with its message; the tick box must be set where
+   * required.
+   */
   protected async confirmDelete(): Promise<void> {
     if (!this.currentAction || !this.currentPlan) return;
     if (this.tickBoxRequired() && !this.ticked()) return;
@@ -235,6 +247,7 @@ export class DriveDeleteCard implements OnInit {
     }
   }
 
+  /** Back to the menu, forgetting the plan, any typed recovery key and the tick. */
   protected cancel(): void {
     this.phase.set('menu');
     this.ticked.set(false);
@@ -247,6 +260,7 @@ export class DriveDeleteCard implements OnInit {
     this.currentPlan = null;
   }
 
+  /** Shows how a deletion run ended: done, partial with the number left, or the reason it was refused. */
   private applyRun(result: { readonly ok: true; readonly finished?: boolean; readonly left?: number; readonly total?: number } | { readonly ok: false; readonly reason: string }): void {
     if (!result.ok) {
       this.showRefused(result.reason);

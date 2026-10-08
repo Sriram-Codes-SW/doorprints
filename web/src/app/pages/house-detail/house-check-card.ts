@@ -37,6 +37,10 @@ import type { CheckAnswer } from '../map/place-check-state';
 
 const NO_WALKS = { type: 'FeatureCollection' as const, features: [] };
 
+/**
+ * The *Did I walk past this house?* card: one button that checks the house's position against the saved walks and shows
+ * the answer in place, with a halo on the page's map. See the file header for the privacy rules.
+ */
 @Component({
   selector: 'app-house-check-card',
   imports: [TPipe, CheckResultView],

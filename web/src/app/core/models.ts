@@ -173,8 +173,14 @@ export interface HouseAnswer {
   sort: number;
 }
 
+/** The states an answer to a question can be in. */
 export const ANSWER_STATUSES: readonly AnswerStatus[] = ['OPEN', 'ANSWERED', 'SKIPPED'];
 
+/**
+ * A saved house as the apps and the server exchange it: the same fields, names and optional-field rules as Kotlin
+ * `HouseDto` and the server's. `deleted` rows are tombstones that sync carries; `syncVersion` orders changes and
+ * `distanceMeters` is only ever a result of a nearby search.
+ */
 export interface HouseDto {
   id: string;
   label: string;
@@ -218,6 +224,10 @@ export interface HouseDto {
   distanceMeters?: number | null;
 }
 
+/**
+ * One time spent at a place: `AUTO` when the app recorded it, `MANUAL` when the person added it. Same wire shape as the
+ * server's.
+ */
 export interface VisitDto {
   id: string;
   houseId?: string | null;
@@ -266,6 +276,10 @@ export interface RecordDto {
   syncVersion: number;
 }
 
+/**
+ * The counts of houses, shortlisted, rejected, visits and distinct streets, from the server or from this browser's own
+ * store.
+ */
 export interface StatsDto {
   houses: number;
   shortlisted: number;
@@ -343,6 +357,10 @@ export function houseScore(h: Pick<HouseDto, 'checklist' | 'rating'>, scoring: S
   return evaluateScore(h.checklist, h.rating, scoring).overall;
 }
 
+/**
+ * A blank house at the given position: status NEW, rent, no checklist, version 0. The id is new; nothing is stored
+ * until the person saves.
+ */
 export function newHouse(lat: number, lon: number, locationSource: LocationSource | null = null): HouseDto {
   return {
     id: uuid(),

@@ -307,6 +307,10 @@ export class DataPage implements OnInit, OnDestroy {
     await this.store.setLengthUnit(unit);
   }
 
+  /**
+   * Prepares the page: reads the saved export options, the length unit, storage durability and the counts of what a
+   * copy would hold. Follows a `?export=backup` link from the storage banner by choosing the backup format.
+   */
   async ngOnInit(): Promise<void> {
     // "Save a backup" from the storage-risk banner arrives as /data?export=backup: choose the restorable ZIP and
     // put focus on its button (once the saved options are read), so the next obvious tap makes a backup and not
@@ -338,6 +342,7 @@ export class DataPage implements OnInit, OnDestroy {
     this.markStarted();
   }
 
+  /** Counts the saved walks; shows 0 if the store cannot be read. */
   private async refreshSavedWalks(): Promise<void> {
     try {
       this.savedWalks.set(await this.traces.savedCount());
@@ -394,6 +399,7 @@ export class DataPage implements OnInit, OnDestroy {
     }
   }
 
+  /** Counts the changes waiting to be sent to the server; 0 when sync is off. */
   private async refreshPending(): Promise<void> {
     try {
       this.pending.set(this.sync.enabled() ? await this.sync.pendingCount() : 0);
@@ -407,6 +413,10 @@ export class DataPage implements OnInit, OnDestroy {
     await this.store.setSetting(SETTING_KEYS.exportOptions, JSON.stringify({ ...this.options(), format: this.format() }));
   }
 
+  /**
+   * After any option changes: forgets the last result, remembers the choices and recounts. Ignored while a file is
+   * being built.
+   */
   protected async onOptionChange(): Promise<void> {
     // The options are disabled while a file is built; this is the guard behind that, so a file built with the old
     // options can never be shared as if it matched what the screen now shows.
@@ -417,6 +427,7 @@ export class DataPage implements OnInit, OnDestroy {
     await this.refreshCounts();
   }
 
+  /** Chooses the file format and remembers it; a result built in another format is dropped. */
   protected setFormat(format: ExportFormat): void {
     if (this.busy()) return;
     this.format.set(format);
@@ -425,21 +436,25 @@ export class DataPage implements OnInit, OnDestroy {
     void this.persistChoices();
   }
 
+  /** Chooses all houses or only the shortlisted ones for the copy. */
   protected setScope(scope: 'all' | 'shortlisted'): void {
     this.options.update((o) => ({ ...o, scope }));
     void this.onOptionChange();
   }
 
+  /** Chooses which photos go into a file that can carry photos. */
   protected setPhotos(photos: 'all' | 'shortlisted' | 'none'): void {
     this.options.update((o) => ({ ...o, photos }));
     void this.onOptionChange();
   }
 
+  /** Includes or leaves out rejected houses. */
   protected setIncludeRejected(includeRejected: boolean): void {
     this.options.update((o) => ({ ...o, includeRejected }));
     void this.onOptionChange();
   }
 
+  /** Includes or leaves out contact names and phone numbers. */
   protected setIncludeContacts(includeContacts: boolean): void {
     this.options.update((o) => ({ ...o, includeContacts }));
     void this.onOptionChange();
@@ -462,6 +477,7 @@ export class DataPage implements OnInit, OnDestroy {
     afterNextRender(() => this.focusTarget()?.nativeElement.focus(), { injector: this.injector });
   }
 
+  /** Sets the language the readable copies are written in. */
   protected onLangChange(event: Event): void {
     const value = (event.target as HTMLSelectElement).value;
     if (isLang(value)) this.options.update((o) => ({ ...o, lang: value }));
@@ -599,11 +615,13 @@ export class DataPage implements OnInit, OnDestroy {
     this.abort?.abort();
   }
 
+  /** Shares the file just built through the system share sheet, if there is one. */
   protected async shareFile(): Promise<void> {
     const result = this.lastResult();
     if (result) await this.shareResult(result);
   }
 
+  /** Shares a built file; a failure points to saving the file instead, since it exists. */
   private async shareResult(result: ExportResult): Promise<void> {
     const outcome = await this.exporter.share(result, this.i18n.t('exp.title'));
     if (outcome === 'shared') {
@@ -652,6 +670,10 @@ export class DataPage implements OnInit, OnDestroy {
     }
   }
 
+  /**
+   * Runs a sync with the connected server now. While the first-run download question is open it runs that download
+   * instead, so the banner moves on with it.
+   */
   protected syncNow(): void {
     // While the first-run question is open, "Sync now" is the download it asks about: run it as that, so the
     // banner's state moves on with it instead of a forced pull leaving the question on screen.

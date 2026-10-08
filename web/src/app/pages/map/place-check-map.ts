@@ -37,6 +37,7 @@ export interface RingMarker {
 
 const defaultMarker = (element: HTMLElement): RingMarker => new Marker({ element, anchor: 'center' }) as unknown as RingMarker;
 
+/** Draws the ring at the checked place and frames the answer on one map; the halo is drawn by {@link TraceLayers}. */
 export class PlaceCheckMapView {
   private marker: RingMarker | null = null;
   private shown: CheckAnswer | null = null;
@@ -65,12 +66,14 @@ export class PlaceCheckMapView {
     this.layers.fitTo(bounds, this.padding());
   }
 
+  /** Removes the ring. */
   dispose(): void {
     this.marker?.remove();
     this.marker = null;
     this.shown = null;
   }
 
+  /** Whether the place and the whole answer box are inside the map's current view. */
   private onScreen(answer: CheckAnswer): boolean {
     const view = this.map.getBounds();
     const [[west, south], [east, north]] = answer.bounds;

@@ -33,6 +33,10 @@ import type { CheckAnswer, LocateProblem } from './place-check-state';
 const TITLE_KEY: Record<CheckAnswer['kind'], TKey> = { here: 'trace.here.title', house: 'trace.here.titleHouse', spot: 'trace.here.titleSpot' };
 const PROBLEM_KEY: Record<LocateProblem, TKey> = { denied: 'trace.here.deniedWeb', unavailable: 'trace.web.unavailable', timeout: 'trace.here.timeout' };
 
+/**
+ * The text answer of a place check: headline, rows and the buttons *Show on map*, *Check again*, *Cancel* and *Close*.
+ * Focus moves to its title when it appears.
+ */
 @Component({
   selector: 'app-check-result',
   imports: [TPipe],
@@ -143,6 +147,7 @@ export class CheckResultView {
   }
 }
 
+/** Shows the Map's current place-check answer, if any, above the list. */
 @Component({
   selector: 'app-place-check-panel',
   imports: [CheckResultView],

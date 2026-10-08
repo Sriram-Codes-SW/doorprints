@@ -35,6 +35,7 @@ export interface Fix {
   readonly accuracyM: number;
 }
 
+/** Overrides for the thinning, for tests. */
 export interface RecorderOptions {
   /** A fix is kept when at least this far from the last kept one (default {@link TRACE.thinDistanceM}). */
   readonly minDistanceM?: number;
@@ -42,6 +43,10 @@ export interface RecorderOptions {
   readonly minGapMs?: number;
 }
 
+/**
+ * Decides which location fixes become points of a walk and gives each its walk id. Its state is the last kept point,
+ * the walk id and the resumed mark. The same rules as the phones' recorder.
+ */
 export class TraceRecorder {
   private last: { lat: number; lon: number; atMs: number } | null = null;
   private walkId = 0;

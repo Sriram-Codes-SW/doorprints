@@ -29,7 +29,9 @@ export const QUESTION_TYPE = 'question';
 export const MAX_QUESTIONS = 100;
 export const MAX_QUESTION_TEXT = 300;
 
+/** The groups the question bank is shown in. */
 export type QuestionCategory = 'MONEY' | 'WATER_POWER' | 'RULES' | 'BUILDING' | 'LEGAL' | 'OTHER';
+/** Whether a question is for rentals, purchases, or both. */
 export type QuestionScope = 'RENT' | 'SALE' | 'BOTH';
 
 /** In the order the Questions screen groups them. */
@@ -41,6 +43,7 @@ const CUSTOM_ID_PATTERN = /^q_[0-9a-f]{8}$/;
 /** A record id: the pattern the records store accepts. */
 const ID_PATTERN = /^[A-Za-z0-9._-]{1,64}$/;
 
+/** A question to ask about a house, in the person's question bank. */
 export interface Question {
   id: string;
   /** 1..300 characters. */
@@ -269,10 +272,12 @@ export const DEFAULT_QUESTIONS: readonly DefaultQuestion[] = [
   },
 ];
 
+/** Whether the id is one of the seeded questions. */
 export function isDefaultQuestionId(id: string): boolean {
   return DEFAULT_QUESTIONS.some((d) => d.id === id);
 }
 
+/** Whether the id has the shape of a question the person added (`q_` and 8 hex characters). */
 export function isCustomQuestionId(id: string): boolean {
   return CUSTOM_ID_PATTERN.test(id);
 }

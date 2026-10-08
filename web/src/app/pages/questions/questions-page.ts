@@ -88,6 +88,7 @@ export class QuestionsPage {
     });
   }
 
+  /** Reads the question bank. `userAsked` marks a Retry, so a repeated failure is announced again. */
   protected reload(userAsked = false): void {
     this.api.questions().subscribe({
       next: (list) => {
@@ -115,6 +116,10 @@ export class QuestionsPage {
     return q.text.length > 60 ? q.text.slice(0, 57) + '…' : q.text;
   }
 
+  /**
+   * Saves the edited question text. A blank text is refused and the old one put back, so a question is never deleted by
+   * accident.
+   */
   protected editText(q: Question, event: Event): void {
     const input = event.target as HTMLInputElement;
     const text = input.value.trim();
@@ -128,14 +133,17 @@ export class QuestionsPage {
     void this.save([{ ...q, text }]);
   }
 
+  /** Saves a new category for the question. */
   protected setCategory(q: Question, event: Event): void {
     void this.save([{ ...q, category: (event.target as HTMLSelectElement).value as QuestionCategory }]);
   }
 
+  /** Saves whether the question applies to renting, buying or both. */
   protected setScope(q: Question, event: Event): void {
     void this.save([{ ...q, appliesTo: (event.target as HTMLSelectElement).value as QuestionScope }]);
   }
 
+  /** Saves whether the question is added to a house by "Add the usual questions". */
   protected setDefaultOn(q: Question, event: Event): void {
     void this.save([{ ...q, defaultOn: (event.target as HTMLInputElement).checked }]);
   }
@@ -159,10 +167,12 @@ export class QuestionsPage {
     });
   }
 
+  /** Hides the question from the bank and from the picker; answers already on houses stay. */
   protected archive(q: Question): void {
     void this.save([{ ...q, archived: true }]);
   }
 
+  /** Brings an archived question back at the end of the visible list. */
   protected bringBack(q: Question): void {
     // Back at the end of the visible list, so it does not land among questions that were renumbered meanwhile.
     const last = this.bank()
@@ -171,6 +181,7 @@ export class QuestionsPage {
     void this.save([{ ...q, archived: false, sort: last + 1 }]);
   }
 
+  /** Deletes the question after asking; a seeded question stays deleted until the bank is reset. */
   protected async remove(q: Question): Promise<void> {
     const ok = await this.confirm.ask(
       { key: 'questions.confirmDelete', params: { name: this.nameOf(q) } },
@@ -187,6 +198,7 @@ export class QuestionsPage {
     }
   }
 
+  /** Adds a question with the typed text and chosen category, unless the text is empty or the limit is reached. */
   protected async add(): Promise<void> {
     const text = this.newText.trim();
     if (text === '') {
@@ -207,6 +219,7 @@ export class QuestionsPage {
     }
   }
 
+  /** Restores the default questions, in the app's language, after asking. */
   protected async reset(): Promise<void> {
     const ok = await this.confirm.ask({ key: 'questions.confirmReset' }, { confirmKey: 'questions.reset', danger: true });
     if (!ok) return;
@@ -220,6 +233,7 @@ export class QuestionsPage {
     }
   }
 
+  /** Saves the changed questions, announces it and reads the bank again; a failure is shown above the list. */
   private async save(list: readonly Question[], announcement: Msg = { key: 'questions.updated' }): Promise<void> {
     if (list.length === 0) return;
     try {

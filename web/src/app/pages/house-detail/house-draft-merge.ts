@@ -57,6 +57,10 @@ export interface KeptValue {
   incoming: string | number;
 }
 
+/**
+ * What a listing fill wants to change: the field values to write, the fields that were empty and are now filled, and
+ * the values it kept out.
+ */
 export interface FillResult {
   changes: Partial<HouseDto>;
   /** Fields that were empty and are now filled, in form order. */
@@ -68,6 +72,7 @@ function isEmpty(v: FieldValue): boolean {
   return v === null || v === undefined || (typeof v === 'string' && v.trim() === '');
 }
 
+/** Whether two values are equal; text ignores case and surrounding spaces. */
 function same(a: FieldValue, b: FieldValue): boolean {
   if (typeof a === 'string' && typeof b === 'string') return a.trim().toLowerCase() === b.trim().toLowerCase();
   return a === b;
@@ -122,12 +127,14 @@ export interface AddressLookup {
   locality?: string | null;
 }
 
+/** A typed address part the lookup would change: shown to the person, who decides. */
 export interface AddressConflict {
   field: 'address' | 'street' | 'locality';
   old: string;
   incoming: string;
 }
 
+/** What "Fill address from map" would write: empty fields are filled at once, typed ones are listed as conflicts. */
 export interface AddressFill {
   /** Writes into empty fields only (and the name, when it is empty, from the street). */
   emptyOnly: Partial<HouseDto>;

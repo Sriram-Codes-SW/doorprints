@@ -150,6 +150,7 @@ export class SecondViewingPrompt {
     this.finish();
   }
 
+  /** Opens the new-viewing form for this house as a SECOND viewing, and closes the dialog. */
   protected book(): void {
     void this.router.navigate(['/viewings/new'], { queryParams: { houseId: this.houseId(), kind: 'SECOND' } });
     this.finish();
@@ -167,6 +168,7 @@ export class SecondViewingPrompt {
     this.opener = null;
   }
 
+  /** Tells the page the dialog is closed, once however it was closed. */
   private finish(): void {
     if (this.finished) return;
     this.finished = true;
