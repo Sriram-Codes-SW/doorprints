@@ -36,6 +36,13 @@ object HouseDocuments {
     const val NOTES_MAX = 3000
 
     /**
+     * The first [max] UTF-16 units of [s], or one fewer when the cut would fall between the two halves of a character
+     * outside the Basic Multilingual Plane (an emoji): half a character would reach the model as a broken one.
+     */
+    internal fun clipUnits(s: String, max: Int): String =
+        if (s.length > max && s[max - 1].isHighSurrogate() && s[max].isLowSurrogate()) s.take(max - 1) else s.take(max)
+
+    /**
       * The record of [h] as `Label: value` lines (empty values left out) that Ask sends and cites. It has no contact
       * line, and free text goes through [ContactRedactor].
      */
@@ -90,7 +97,7 @@ object HouseDocuments {
         line(sb, "Visits", visitSummary(h.visits))
         if (!h.notes.isNullOrBlank()) {
             val notes = h.notes.trim()
-            line(sb, "Notes", r.freeText(if (notes.length > NOTES_MAX) notes.take(NOTES_MAX) + " …" else notes))
+            line(sb, "Notes", r.freeText(if (notes.length > NOTES_MAX) clipUnits(notes, NOTES_MAX) + " …" else notes))
         }
         return sb.toString().trim()
     }

@@ -1,0 +1,194 @@
+{
+  "spec": "backend/src/test/java/app/doorprints/server/ai/agent/AiLimitsTest.java",
+  "maven": [
+    "-Dtest=AiLimitsTest"
+  ],
+  "mutations": [
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/HouseDocuments.java",
+      "find": "static final int NOTES_MAX = 3000;",
+      "replace": "static final int NOTES_MAX = 3001;",
+      "expect": "aHouseDocumentCutsNotesAtThreeThousand"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/HouseDocuments.java",
+      "find": "notes.length() > NOTES_MAX ?",
+      "replace": "notes.length() >= NOTES_MAX ?",
+      "expect": "aHouseDocumentCutsNotesAtThreeThousand"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/HouseDocuments.java",
+      "find": "+ \" …\" : notes",
+      "replace": "+ \"…\" : notes",
+      "expect": "aHouseDocumentCutsNotesAtThreeThousand"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/HouseQueries.java",
+      "find": "static final int NOTES_MAX = 2000;",
+      "replace": "static final int NOTES_MAX = 2001;",
+      "expect": "aToolResultCutsNotesAtTwoThousand"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/HouseQueries.java",
+      "find": "h.notes().length() <= NOTES_MAX",
+      "replace": "h.notes().length() < NOTES_MAX",
+      "expect": "aToolResultCutsNotesAtTwoThousand"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/PromptSafety.java",
+      "find": "if (s.length() <= max) return s;",
+      "replace": "if (s.length() < max) return s;",
+      "expect": "theCutHelperKeepsATextOfExactlyTheLimitWhole"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/PromptSafety.java",
+      "find": "Character.isHighSurrogate(s.charAt(max - 1)) &&",
+      "replace": "false &&",
+      "expect": "NeverLeavesHalfOfAnEmoji"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/PromptSafety.java",
+      "find": "s.substring(0, splits ? max - 1 : max)",
+      "replace": "s.substring(0, splits ? max - 2 : max)",
+      "expect": "NeverLeavesHalfOfAnEmoji"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/PromptSafety.java",
+      "find": "s.substring(0, splits ? max - 1 : max)",
+      "replace": "s.substring(0, max)",
+      "expect": "NeverLeavesHalfOfAnEmoji"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/config/AiProperties.java",
+      "find": "positiveOr(maxInputChars, 8000)",
+      "replace": "positiveOr(maxInputChars, 8001)",
+      "expect": "aListingOfEightThousand"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/extract/ListingExtractionService.java",
+      "find": "text.length() > props.maxInputChars()",
+      "replace": "text.length() >= props.maxInputChars()",
+      "expect": "aListingOfEightThousand"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/extract/ListingExtractionService.java",
+      "find": "text == null || text.isBlank()",
+      "replace": "text == null",
+      "expect": "aListingOfEightThousand"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/web/AiController.java",
+      "find": "@Size(max = 20000)",
+      "replace": "@Size(max = 20001)",
+      "expect": "theExtractEndpointRefuses"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/config/AiProperties.java",
+      "find": "positiveOr(maxStops, 8)",
+      "replace": "positiveOr(maxStops, 9)",
+      "expect": "theServerCapForStops"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/config/AiProperties.java",
+      "find": "Math.min(positiveOr(maxStops, 8), 25)",
+      "replace": "Math.min(positiveOr(maxStops, 8), 26)",
+      "expect": "theServerCapForStops"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerService.java",
+      "find": "if (chosen.size() == maxStops) break;",
+      "replace": "if (chosen.size() == maxStops + 1) break;",
+      "expect": "aPlanStopsAtTheCap"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerService.java",
+      "find": ".limit(maxStops)",
+      "replace": ".limit(maxStops + 1)",
+      "expect": "theFallbackRouteKeepsTheCap"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerService.java",
+      "find": "return Math.min(requested == null ? serverCap : requested, serverCap);",
+      "replace": "return requested == null ? serverCap : requested;",
+      "expect": "aRequestMayAskForFewerStops"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerService.java",
+      "find": "return Math.min(requested == null ? serverCap : requested, serverCap);",
+      "replace": "return Math.min(requested == null ? serverCap : requested, serverCap + 1);",
+      "expect": "aRequestMayAskForFewerStops"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/HouseSearchService.java",
+      "find": "MAX_RESULTS = 50;",
+      "replace": "MAX_RESULTS = 51;",
+      "expect": "aSearchReturnsTwenty"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/HouseSearchService.java",
+      "find": "c.limit() == null ? 20 :",
+      "replace": "c.limit() == null ? 21 :",
+      "expect": "aSearchReturnsTwenty"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/HouseSearchService.java",
+      "find": "Math.clamp(c.limit(), 1, MAX_RESULTS)",
+      "replace": "Math.clamp(c.limit(), 0, MAX_RESULTS)",
+      "expect": "aSearchReturnsTwenty"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/HouseSearchService.java",
+      "find": "!(lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180)",
+      "replace": "lat < -90 || lat > 90 || lon < -180 || lon > 180",
+      "expect": "nearbyRefusesACoordinateThatIsNotANumber"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/PlanModels.java",
+      "find": "@DecimalMax(\"90\")",
+      "replace": "@DecimalMax(\"91\")",
+      "expect": "aLatitudeOutside"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/PlanModels.java",
+      "find": "@DecimalMin(\"-90\")",
+      "replace": "@DecimalMin(\"-91\")",
+      "expect": "aLatitudeOutside"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/PlanModels.java",
+      "find": "@DecimalMax(\"180\")",
+      "replace": "@DecimalMax(\"181\")",
+      "expect": "aLongitudeOutside"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/PlanModels.java",
+      "find": "@DecimalMin(\"-180\")",
+      "replace": "@DecimalMin(\"-181\")",
+      "expect": "aLongitudeOutside"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/PlanModels.java",
+      "find": "@NotNull @DecimalMin(\"-90\")",
+      "replace": "@DecimalMin(\"-90\")",
+      "expect": "aMissingStartPoint"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/PlanModels.java",
+      "find": "@Min(1) @Max(25)",
+      "replace": "@Min(0) @Max(25)",
+      "expect": "aMissingStartPoint"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/PlanModels.java",
+      "find": "@Min(1) @Max(25)",
+      "replace": "@Min(1) @Max(26)",
+      "expect": "aMissingStartPoint"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/PlanModels.java",
+      "find": "@Size(max = 4000)",
+      "replace": "@Size(max = 4001)",
+      "expect": "theQuestionOfARequest"
+    }
+  ]
+}

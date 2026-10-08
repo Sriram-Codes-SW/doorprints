@@ -118,8 +118,7 @@ public class VisitPlannerService {
         if (request.question().length() > props.maxQuestionChars()) {
             throw new BadRequestException("question is longer than " + props.maxQuestionChars() + " characters");
         }
-        int maxStops = Math.min(request.maxStops() == null ? props.agent().maxStops() : request.maxStops(),
-                props.agent().maxStops());
+        int maxStops = maxStops(request.maxStops(), props.agent().maxStops());
         var tools = new VisitPlannerTools(queries, request.startLat(), request.startLon());
         var advisor = ToolCallingAdvisor.builder().toolCallingManager(boundedToolManager).build();
         var nonce = PromptSafety.nonce();
@@ -145,6 +144,11 @@ public class VisitPlannerService {
         }
         log.info("plan-visits: tools used {}", tools.calls());
         return assemble(plan, tools.seen(), tools.calls(), request.startLat(), request.startLon(), maxStops);
+    }
+
+    /** The stops a plan may have: what the request asked for (the server's cap when it asked for nothing), never more than the cap. */
+    static int maxStops(Integer requested, int serverCap) {
+        return Math.min(requested == null ? serverCap : requested, serverCap);
     }
 
     /** Validates the model's plan against what the tools returned; pure, unit-tested. */
