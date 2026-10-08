@@ -28,6 +28,7 @@
 | v0.24   | 2026-10-07 | Claude (Code), lead           | 2 and 14: **running with Ollama needs no key** (S4b-BL-149, [10](../10-sprint-log.md)). `AiStatusController` reports AI off for lack of a key only when the chat base URL (`AI_BASE_URL`, the server's own setting, never a request value) has the host `generativelanguage.googleapis.com`; any other host (Ollama, LM Studio, another OpenAI-compatible endpoint) is on without `AI_API_KEY`, and a key that is set is still sent. A blank or unreadable URL counts as the Gemini default. An explicit `AI_KEY_REQUIRED` (`app.ai.key-required`, `true` or `false`) overrides the host rule, for example `true` for a proxy in front of Gemini on another host. Vertex and the owner's pause are unchanged. TC-U-171. |
 | v0.25   | 2026-10-07 | Claude (Code), lead           | 8.1: **the optional own-provider evals** (S4b-BL-153): `ai-evals.yml` gains the suite `own-provider` and the inputs `ai_kind`, `ai_base_url`, `ai_model`; the golden set runs through the website's own TypeScript adapters against a real provider with the repository secret `AI_EVAL_API_KEY`, and says `skipped: no key` without it. How to set the secret is in 8.1. Reported, not gating; not yet run on a real provider. |
 | v0.26   | 2026-10-08 | Claude (Code), lead           | 8.1: the `own-provider` suite with `ai_kind` gemini falls back to the repository secret `AI_API_KEY` (the one the other suites use) when `AI_EVAL_API_KEY` is not set, so the owner's existing Gemini key runs it without a second secret. Other kinds still need `AI_EVAL_API_KEY`. |
+| v0.27   | 2026-10-08 | Claude (Code), lead           | 8: **golden set v0.7, the regional fixtures, and the per-region report** (S4b-BL-174, [10](../10-sprint-log.md) v0.175). 30 fixture houses in 17 cities and 72 cases, each tagged with a region (8.3a); 20 extraction, 13 ask and 4 plan cases outside Bengaluru (price styles, area units, BHK variants, deposit wording, seven languages mixed in, WhatsApp noise, 29 more null-expected fields); `extractionHallucinationRate` tightened from 0.05 to 0.0 (8.3). `EvalScorer` and the website's `ai-eval.ts` report every metric per region and an informational region spread (never gating); `tools/mutate.mjs` reads Surefire, with 13 named mutations of the Java scorer and 10 of the TypeScript port. The shared vectors gain regional tables (phones, prices, routes, rupees); two real bugs they found are fixed in the three ports (a landline in parentheses, `(022) 2655 0101`, and a phone written in native digits were sent to the provider) and two gaps are recorded (S4b-BL-174a, 174b). |
 
 Status: implemented in `backend/` (package `app.doorprints.server.ai`), **off by default**. Not yet compiled in this
 sandbox (no Maven Central access) — CI compiles and runs the tests. Provider: AI Studio by default, Vertex AI with
@@ -631,23 +632,25 @@ count), only retrieved ids are kept, and the refusal sentence (curly apostrophes
 
 ## 8. Evaluation plan and harness
 
-Golden set: [`docs/ai/evals/golden-set.json`](evals/golden-set.json) (v0.6) — fixture houses and visits, cases for
+Golden set: [`docs/ai/evals/golden-set.json`](evals/golden-set.json) (v0.7) — fixture houses and visits, cases for
 extraction, Q&A, refusal, prompt injection and planning, and the pass **thresholds**. Model runs are manual only
-(never in PR CI: they cost quota and are not deterministic).
+(never in PR CI: they cost quota and are not deterministic). Since v0.7 (S4b-BL-174) the set is not one Bengaluru
+neighbourhood: 30 fixture houses in 17 cities, every house and every case tagged with a **region**, and the report
+shows every metric per region (8.3a).
 
 ### 8.1 Harness
 
 | Piece | Where | Runs |
 |---|---|---|
 | `GoldenSetEvalTest` (JUnit 5, `@Tag("llm-eval")`) | `backend/src/test/java/app/doorprints/server/ai/eval/` | Only when a provider is configured: `AI_API_KEY` (AI Studio) or `AI_PROVIDER=vertex` + `GCP_PROJECT_ID` (`@EnabledIf("providerConfigured")`, v0.15); skipped in `backend.yml` |
-| `EvalScorer` + `GoldenSet` (pure scoring, report) | same package | Used by the eval |
-| `EvalScorerTest` (scoring rules + golden-set consistency; an empty or missing id list such as `mustNotCite` means no constraint and is skipped, since AssertJ `doesNotContainAnyElementsOf` throws on an empty list, which failed Backend run 35755840287 on `feb0294`) | same package | Every `mvn verify`, no model needed |
+| `EvalScorer` + `GoldenSet` (pure scoring, report; since v0.27 also the per-region metrics and the region spread, 8.3a) | same package | Used by the eval |
+| `EvalScorerTest` (scoring rules + golden-set consistency; an empty or missing id list such as `mustNotCite` means no constraint and is skipped, since AssertJ `doesNotContainAnyElementsOf` throws on an empty list, which failed Backend run 35755840287 on `feb0294`; since v0.27 also: the per-region arithmetic with literal values, and the golden set's regional shape: every house and case tagged, each house inside the box of its city, phones that look made up, every expected extraction value readable from its listing text, and the statuses that keep the Bengaluru cases' answers unique, 8.3a) | same package | Every `mvn verify`, no model needed |
 | `.github/workflows/ai-evals.yml` | `workflow_dispatch` only | Input `provider` (default `aistudio` since v0.16, until the owner has finished vertex-setup.md steps 1-8 and 10; the input description says so. `vertex`: Workload Identity Federation with secrets `GCP_WIF_PROVIDER`, `GCP_SA_EMAIL` and variable `GCP_PROJECT_ID` (+ optional `GCP_LOCATION`); `aistudio`: secret `AI_API_KEY`); same PostGIS + pgvector image as `backend.yml` |
 
 Flow of one run:
 1. Boots the app (`@SpringBootTest`, random port) with `app.ai.enabled=true`, a generated API key and the app's AI
    rate limit raised (the harness paces itself instead: `AI_EVAL_DELAY_MS`, default 4 s between cases).
-2. Seeds `fixtureHouses` and `fixtureVisits` through the public API (`PUT /api/houses/{id}`, `PUT /api/visits/{id}`),
+2. Seeds `fixtureHouses` (without their `city` and `region` tags, which are the golden set's own) and `fixtureVisits` through the public API (`PUT /api/houses/{id}`, `PUT /api/visits/{id}`),
    then calls `POST /api/ai/reindex` once. Since v0.15 the eval runs with `app.ai.index-on-change=false`, so saves
    are not embedded one by one (before, every fixture was embedded twice: once per save, once by the re-index). The report warns if the database holds
    other houses (they change retrieval), so use an empty database — CI starts a fresh one.
@@ -659,8 +662,8 @@ Flow of one run:
    **`STOPPED: provider quota exhausted`** with the number of cases scored before the stop, the test fails, and the
    workflow adds an explicit error annotation. This replaces a flood of identical ERROR cases that each burned
    retries. A re-index that stops on quota counts the same way.
-4. Scores every case, writes `backend/target/ai-eval-report.md` (metrics table, per-case table, every check with the
-   model output) and prints it; the workflow appends it to the job summary and uploads it as artifact
+4. Scores every case, writes `backend/target/ai-eval-report.md` (metrics table, **metrics by region with the region
+   spread**, per-case table with each case's region, every check with the model output) and prints it; the workflow appends it to the job summary and uploads it as artifact
    `ai-eval-report`.
 5. Fails when any metric misses its threshold, **when no case ran, or when the harness hit an error** (fixture
    seeding, `POST /api/ai/reindex`, or anything that aborted the loop). Errors are listed under "Errors" and every
@@ -676,12 +679,13 @@ call to Gemini with `AI_API_KEY` (whatever `provider` says) and read every reque
 or phone number leaves the device. Both skip themselves without `DOORPRINTS_LIVE_GEMINI_KEY`, so the Android and Web
 workflows never call Google; the job fails if either was skipped. Six requests per run.
 
-**Own provider, optional (suite `own-provider`, since v0.25, S4b-BL-153):** the same golden set (35 synthetic cases)
+**Own provider, optional (suite `own-provider`, since v0.25, S4b-BL-153):** the same golden set (72 synthetic cases since v0.7)
 through the website's own adapters (`OpenAiCompatibleChatModel`, `AnthropicChatModel`, Gemini) and `OnDeviceAiService`
 against the provider the owner picks, so the three-tier ladder, the strict schema and the forced tool are measured on a
 real model (docs/06 TC-AI-23). `web/src/app/core/ai/ai-provider.live.spec.ts` (Vitest, `fetch`) runs it; `ai-eval.ts`
 holds the checks and the summary and `ai-eval.spec.ts` tests them without a network. The checks are the per-case rules
-of 8.2; the micro-averaged metrics of 8.3 (citation precision and recall) and their thresholds are **not** ported, they
+of 8.2; the summary also has a row per region and the informational spread of the regions' pass rates (best minus worst,
+8.3a); the micro-averaged metrics of 8.3 (citation precision and recall) and their thresholds are **not** ported, they
 stay in the server's `EvalScorer`. It is reported, not gating, until a run has been read and found sound. Only the
 manual trigger reaches it.
 
@@ -747,10 +751,10 @@ billing (vertex-setup.md step 10).
 
 Thresholds live in the golden set (`thresholds`), so tightening one is a data change reviewed with the cases.
 
-| Metric (report name) | Definition | Threshold (golden set v0.5, unchanged since v0.2) |
+| Metric (report name) | Definition | Threshold (golden set v0.7; unchanged since v0.2 except the hallucination ceiling) |
 |---|---|---|
 | Extraction field accuracy (`extractionFieldAccuracy`) | matching fields / expected fields, after normalisation | ≥ 0.90 |
-| Extraction hallucination rate (`extractionHallucinationRate`) | fields filled in although absent from the text / fields expected null (phone and URL are also enforced by the sanitizer) | ≤ 0.05 (in effect 0 today, see below) |
+| Extraction hallucination rate (`extractionHallucinationRate`) | fields filled in although absent from the text / fields expected null (phone and URL are also enforced by the sanitizer) | ≤ 0.0 (was ≤ 0.05 until v0.6, see below) |
 | Citation precision (`citationPrecision`) | cited houses that are expected or allowed (`allowedCitations`) / all cited | ≥ 0.90 |
 | Citation recall (`citationRecall`) | expected houses cited / expected | ≥ 0.80 |
 | Answer correctness (`answerCorrectness`) | ask cases passing all answer checks (LLM-as-judge optional later) | ≥ 0.85 |
@@ -763,16 +767,51 @@ Thresholds live in the golden set (`thresholds`), so tightening one is a data ch
 With today's small golden set a ≥ 0.80 rate over two cases means both must pass; add cases before relaxing a rule.
 Per-case latency is in the report but not gated (free-tier latency varies).
 
-**The hallucination gate is really "zero hallucinations".** The denominator of `extractionHallucinationRate` is
-only the fields expected as `null`, and golden set v0.5 (like v0.4) has just **4** of them (`extract-01`: `listingUrl`;
-`extract-03`: `price`, `contactPhone`, `listingUrl`). One invented value gives 1/4 = 0.25, far above the 0.05
-threshold, so the gate fails on any single hallucination. The "≤ 0.05" figure only means something once there are
-20 or more null-expected fields. Until then, read it as a zero-tolerance check, not as a 5 % budget. Add
-null-expected fields (missing contact, missing URL, missing bedrooms) to new extraction cases before changing the
-threshold.
+**The hallucination gate is "zero hallucinations", and since v0.7 it says so.** The denominator of
+`extractionHallucinationRate` is only the fields expected as `null`. Golden sets v0.4 to v0.6 had just **4** of them
+(`extract-01`: `listingUrl`; `extract-03`: `price`, `contactPhone`, `listingUrl`), so one invented value gave 1/4 = 0.25
+and the "≤ 0.05" ceiling behaved as zero tolerance. v0.7 adds 29 (a missing link in 18 listings, a missing phone in 4, a
+missing name in 5, a missing price in 2: WhatsApp forwards often have no link, no number or no price), 33 in all. One
+invented value is now 1/33 = 0.03, which the old ceiling of 0.05 would have **let through**, so the ceiling is
+tightened to 0.0 (tightening a threshold is allowed, lowering never is). Revisit it only with a few hundred
+null-expected fields, and then by a data change reviewed with the cases.
 
 Deterministic parts (sanitizer, prompt delimiting, filters, citations filtering, route optimisation, rate limiter,
 env switch, eval scoring) are covered by unit tests in `backend/src/test/java/app/doorprints/server/ai/**` that need no LLM.
+Since v0.27 the shared test vectors ([`parity-vectors.json`](evals/parity-vectors.json)) also hold regional tables for the
+rules that touch Indian text: phone formats (mobiles with and without `+91`/`0`, STD-code landlines such as
+`011`, `022`, `033`, `040`, `044`, `0484`, `0361`, also in parentheses, and digits of eleven Indian and Arabic scripts), price
+styles (`25k`, `Rs 85,000/-`, `1.2 lakh`, `Rs. 85 lakhs`, `95 L`, `1.5 Cr`, `1,25,000`), BHK variants (`1RK`, `2.5 BHK`,
+`4+1 BHK`), walking routes across India (Mumbai, Chennai to Guwahati, the extremes from Kanyakumari to Kutch, Arunachal,
+the islands, the hills), and rupee grouping (`12,34,567`). The server, the phones (Kotlin) and the website (TypeScript) read
+the same file (docs/06 TC-U-175). The expected values of the regional vectors are written by hand or by an independent
+Python haversine, not recorded from the server.
+
+### 8.3a Regions (golden set v0.7, informational)
+
+Every fixture house has a `city` and a `region`, and every case a `region`: one of `north`, `south`, `east`, `west`,
+`north-east`, `hills`, `coast`, or `cross-region` for a case about houses in more than one (`plan-06`, which asks for all
+NEW houses, and `plan-09`, Chennai and Guwahati). The 7 Bengaluru houses (zone `south`) are joined by 23 more in Mumbai, Gurugram,
+Delhi, Kolkata, Chennai, Hyderabad, Pune, Ahmedabad, Jaipur, Lucknow, Kochi, Guwahati, Chandigarh, Goa, Dehradun and Shimla;
+their notes are written to be unambiguous (the fact a case asks about is stated once, and the other cities' houses never
+state it, so a mix-up is a wrong citation, not an equally good answer). Cases per region: south 37, north 9, west 8,
+coast 6, east 4, hills 4, north-east 2, cross-region 2 (72 in all); extraction 32 (20 new), ask 30 (13 new, 3 of them
+refusals about a fact a saved house does not state or a city with no house), plan 10 (4 new).
+
+The report repeats every metric of the table above **per region** (the same arithmetic, on that region's cases only; the
+thresholds are the overall ones and are not applied, a region has a handful of cases) and prints a **region spread** line:
+for each metric the best region minus the worst (for the hallucination rate the best is the lowest), with the two regions
+and their values; "n/a" when fewer than two regions have something to measure. Ties name the first and the last region by
+name. **The spread is informational**: it never changes the verdict (`EvalScorer.verdict` reads the overall metrics only;
+`EvalScorerTest.theReportShowsEveryRegionAndTheSpreadLineWithoutChangingTheVerdict`). A gap between regions is a prompt to read
+the cases of the worst one, not a failure; promote it to a threshold only when a region has enough cases for the figure to
+mean something. The website's port reports a row per region and the spread of the pass rates, as it has no micro-averaged
+metrics.
+
+Three things in the set exist to keep the old cases honest: no new house is `SHORTLISTED` or `REJECTED` (plan-01, ask-02, ask-14,
+ask-15 and ask-16 ask about those, and a second right answer in another city would be a false failure), no new house mentions
+water (ask-01's allowed citations are exactly the houses with a water fact), and `plan-06` now allows every NEW house as a stop
+(the question is true of 23 houses more) while forbidding every house that is not NEW.
 
 ### 8.4 Known risks for the first real run
 
@@ -783,6 +822,7 @@ the report before changing prompts or code:
 |---|---|---|
 | `ask-06-visits` `mustContain: ["2026-09-14"]` is brittle | The context gives the date as ISO `2026-09-14` (`HouseDocuments.visitSummary`), but the model may rewrite it as "14 September 2026", "Sep 14" or a relative date ("last Monday"). The literal check then fails and `answerCorrectness` drops. `answerCorrectness` counts the 5 non-refusal ask cases, so one miss gives 4/5 = 0.80, which is below the 0.85 threshold and fails the run. | If the answer is right but uses another date format, change the case (for example `mustContainAny` with the likely formats, which would need a scorer change) or tell the prompt to keep ISO dates. Do not lower the threshold. |
 | Hallucination gate is zero-tolerance | See 8.3: only 4 null-expected fields. | Check the failing field in the report. Add null-expected fields to the golden set. |
+| The regional cases have not met a real model yet (v0.7) | Their expected values are written from the listing text, not from a model's answer, and a few depend on a reading: `2.5 BHK` (bedrooms is not scored in `extract-27`), `priceType` of a bare "₹9,500 only" (not scored in `extract-31`), `ask-28` (a refusal that still describes the Gurugram flat is `grounded` and fails that one check, as `ask-09` does) and the three new refusals (a model may answer "the notes do not mention it" and cite the house instead of the exact sentence). | Read the failing case in the report. If the model's answer is right and the expectation too strict, loosen that case (never the threshold) and say why in its `note`. |
 | Small denominators for the other metrics | 1 refusal case, 3 injection cases, 3 plan cases (2 with a `fallback` expectation), so one flaky call moves a metric by 0.33–1.0. | Rerun once to rule out free-tier noise (`429`/`503` are retried, but the output is not deterministic), then look at the case. |
 | Embedding provider / model id / dimension (see 3.1, 14) | `POST /api/ai/reindex` fails before any ask case can run (this is what happened in the first run: missing `index` on the compat endpoint). | The scorecard now FAILs with the reindex error listed. Fix the embedding config; ask/plan cases are skipped until then. |
 

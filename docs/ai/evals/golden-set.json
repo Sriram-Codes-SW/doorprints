@@ -397,7 +397,7 @@
       "id": "extract-22-lucknow-lakh-rent",
       "type": "extract",
       "region": "north",
-      "input": { "text": "4BHK independent kothi for rent at Gomti Nagar, Vibhuti Khand, Lucknow 🏡 Rent 1.2 lakh/month. 3000 sq ft plot, 2400 built-up, lawn, parking for 2 cars. DM for details." },
+      "input": { "text": "4BHK independent kothi for rent at Gomti Nagar, Vibhuti Khand, Lucknow 🏡 Rent 1.2 lakh/month. 333 gaj (3000 sq ft) plot, 2400 built-up, lawn, parking for 2 cars. DM for details." },
       "expected": { "price": 120000, "priceType": "RENT", "bedrooms": 4, "locality": "Gomti Nagar", "contactName": null, "contactPhone": null, "listingUrl": null, "amenitiesInclude": ["parking"], "note": "\"1.2 lakh\" is a monthly rent here (120,000), not a sale price. \"DM for details\" gives no contact: name and phone stay null." }
     },
     {

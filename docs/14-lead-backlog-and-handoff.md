@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.111 |
+| Version | 0.112 |
 | Date | 2026-10-08 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..173); this file lists the lead-level items and points to the rest. |
@@ -120,6 +120,7 @@
 | 0.109 | 2026-10-07 | Claude (Code), lead | §7: the floor guard `node tools/check-floor.mjs` (S4b-BL-157; [10](10-sprint-log.md) v0.169) checks the rule "never weaken a gate"; the `Gate-loosening:` escape and what the guard cannot see. |
 | 0.110 | 2026-10-08 | Claude (Code), lead | The comment pass (S4b-BL-158; [10](10-sprint-log.md) v0.170) is done: important functions and types carry a doc comment (what it achieves, what it does). New code follows the same rule: a public or non-obvious function gets a short doc comment in the language's standard form, and a change that moves code moves its comment with it. |
 | 0.111 | 2026-10-08 | Claude (Code), lead | The independent review of `main` (2026-10-08) is recorded: S4b-BL-161..173 in [10](10-sprint-log.md) §12.7 (v0.173), with S4b-BL-161 (the pairing flood) to be done before any public server and S4b-BL-168 and -171 waiting for the owner. Team-level ticket range in the header is now S4b-BL-1..173. |
+| 0.112 | 2026-10-08 | Claude (Code), lead | S4b-BL-174 ([10](10-sprint-log.md) v0.175): the tests are no longer one city. §7 working rule *Not one city*; the golden set has regions ([ai/ai-design.md](ai/ai-design.md) 8.3a). |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 
@@ -576,6 +577,7 @@ to branches or PRs or main")**
 - **After retargeting a stacked pull request to `main`**, re-run its cancelled checks once, then merge; do not re-run a check that is only waiting.
 - **At most 2-3 builders in parallel** (rate limits).
 - **Screenshots:** look at the failing image or its diff image only, not every full-size PNG.
+- **Not one city (S4b-BL-174, 2026-10-08):** a new fixture, vector or table test uses places across the zones of the golden set ([ai/ai-design.md](ai/ai-design.md) 8.3a: Mumbai, Delhi, Kolkata, Chennai, Guwahati, Shimla, Kochi and the rest), not Indiranagar; a rule that touches phones, prices, areas, addresses or the map gets one shared table read by every stack that has the rule. The expected values come from the text or an independent calculation, never from the code under test; a gap a table finds is fixed, or recorded as a backlog row and pinned by a test that says what happens today.
 - **Never weaken a gate to make a change pass** (a skip, ignore or suppression, a removed test or mutation, a lowered budget); if one is truly needed, say so in the pull request.
 
 **Efficiency: done and still open (2026-09-29, #54 and #57)**
