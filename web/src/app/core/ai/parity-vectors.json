@@ -2455,6 +2455,30 @@
       "action" : "error",
       "kind" : "unavailable"
     }
+  }, {
+    "tier" : 1,
+    "status" : 301,
+    "body" : "",
+    "expected" : {
+      "action" : "error",
+      "kind" : "unavailable"
+    }
+  }, {
+    "tier" : 2,
+    "status" : 307,
+    "body" : "",
+    "expected" : {
+      "action" : "error",
+      "kind" : "unavailable"
+    }
+  }, {
+    "tier" : 3,
+    "status" : 308,
+    "body" : "",
+    "expected" : {
+      "action" : "error",
+      "kind" : "unavailable"
+    }
   } ],
   "baseUrl" : [ {
     "input" : "https://api.openai.com/v1",

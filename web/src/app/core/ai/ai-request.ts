@@ -21,7 +21,7 @@ import { OnDeviceAiError, type OnDeviceAiErrorKind } from './on-device-ai.servic
 /**
  * The one way the website's AI adapters (docs/03 §13.2, ADR-35) call a provider and word a failure, so that one failure
  * is worded one way, as the phones' `postAiJson` and `aiFailure` do: a network failure is status 0 (`unreachable`), a
- * redirect is never followed (so the key goes to the one address the person chose and a 3xx is just a status), 60 s at
+ * redirect is never followed (so the key goes to the one address the person chose) and reads as `unavailable`, 60 s at
  * most, and a status maps to the same error kinds for every provider. Prompts, answers and keys are not logged.
  */
 
@@ -37,21 +37,28 @@ export interface AiReply {
   retryAfter: string | null;
 }
 
-/** One POST of `body` as JSON with `headers` added. Status 0 is a network failure; a timeout is `unavailable`. */
+/**
+ * One POST of `body` as JSON with `headers` added. Status 0 is a network failure; a timeout is `unavailable`. The redirect
+ * mode is `manual`: with `error` a page only learns that `fetch` failed, which is indistinguishable from no network, but a
+ * browser answers `manual` with an opaque-redirect response (type `opaqueredirect`, status 0, no status, no location), which
+ * is `unavailable` as a 3xx is on the phones. Which 3xx it was is not knowable in a browser; the words do not need it.
+ */
 export async function postAiJson(fetchImpl: FetchLike, url: string, headers: Record<string, string>, body: object): Promise<AiReply> {
   try {
     const res = await fetchImpl(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...headers },
       body: JSON.stringify(body),
-      redirect: 'error',
+      redirect: 'manual',
       credentials: 'omit',
       cache: 'no-store',
       referrerPolicy: 'no-referrer',
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
+    if (res.type === 'opaqueredirect') throw new OnDeviceAiError('unavailable');
     return { status: res.status, body: await res.text(), retryAfter: res.headers.get('Retry-After') };
   } catch (e) {
+    if (e instanceof OnDeviceAiError) throw e;
     if (e instanceof DOMException && (e.name === 'TimeoutError' || e.name === 'AbortError')) throw new OnDeviceAiError('unavailable');
     return { status: 0, body: '', retryAfter: null };
   }

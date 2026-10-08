@@ -21,7 +21,7 @@
     },
     {
       "file": "web/src/app/core/ai/ai-request.ts",
-      "find": "redirect: 'error',",
+      "find": "redirect: 'manual',",
       "replace": "redirect: 'follow',",
       "expect": "does not follow a redirect"
     },

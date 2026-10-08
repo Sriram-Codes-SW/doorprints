@@ -127,11 +127,13 @@ describe.skipIf(!hasNode)('Adapters over a real socket against the fake provider
       expect((await control('GET', '/__requests')).redirected).toBe(0);
     });
 
-    // DOCUMENTED GAP (S4b-BL-175, finding F2): docs/03 §13.2 says a 3xx is "unavailable with its status" on both platforms;
-    // the phones do that, but fetch with redirect 'error' rejects, so the website says "unreachable".
-    it('DOCUMENTED GAP: a redirect reads as unreachable on the website (unavailable with 302 on the phones)', async () => {
+    // S4b-BL-175-F2: docs/03 §13.2 says a 3xx is "unavailable"; with redirect 'manual' the website says so too (a browser
+    // shows an opaque redirect, Node shows the 302 here; both are unavailable, and neither follows it).
+    it('a redirect reads as unavailable, as on the phones, and nobody reaches the target', async () => {
       await mode('redirect');
-      await expect(ask(openAi())).rejects.toMatchObject({ kind: 'unreachable' });
+      await expect(ask(openAi())).rejects.toMatchObject({ kind: 'unavailable' });
+      await expect(ask(anthropic())).rejects.toMatchObject({ kind: 'unavailable' });
+      expect((await control('GET', '/__requests')).redirected).toBe(0);
     });
 
     it('unwraps a fenced answer; no choices and an error-only 200 are unavailable', async () => {

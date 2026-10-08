@@ -172,7 +172,7 @@ describe('the request', () => {
       'anthropic-dangerous-direct-browser-access': 'true',
     });
     expect(call.url).not.toContain(KEY);
-    expect(call.init).toMatchObject({ redirect: 'error', credentials: 'omit' });
+    expect(call.init).toMatchObject({ redirect: 'manual', credentials: 'omit' });
   });
 
   it('forces the answer through one tool named for the call', async () => {

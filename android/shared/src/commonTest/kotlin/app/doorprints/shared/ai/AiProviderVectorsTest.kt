@@ -145,7 +145,7 @@ class AiProviderVectorsTest {
     @Test
     fun providerErrorsMatchTheVectors() {
         val all = errorCases("openai")
-        assertEquals(22, all.size)
+        assertEquals(25, all.size)
         for (case in all) {
             val tier = case.getValue("tier").jsonPrimitive.int
             val status = case.getValue("status").jsonPrimitive.int

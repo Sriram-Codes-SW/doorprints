@@ -142,12 +142,11 @@ try {
       assert.equal((await call('anthropic')).kind, kind, `anthropic ${mode}`);
     }
   });
-  // DOCUMENTED GAP F2 (docs/10 S4b-BL-175): a redirect is "unavailable (302)" on the phones; fetch with redirect 'error' rejects, so
-  // the website says "unreachable". The key is not sent on, which is the point; only the words differ.
-  await check('DOCUMENTED GAP: a redirect is not followed, and reads as unreachable (phones: unavailable with 302)', async () => {
+  // S4b-BL-175-F2: the adapters ask fetch for redirect 'manual', and Chromium answers a redirect with an opaque-redirect response
+  // (type opaqueredirect, status 0), which the website reads as "unavailable", as the phones do. The target is never reached.
+  await check('a redirect is not followed and reads as unavailable (as on the phones)', async () => {
     set('redirect', 'permissive');
-    const r = await call('openai');
-    assert.equal(r.kind, 'unreachable');
+    for (const kind of ['openai', 'anthropic']) assert.equal((await call(kind)).kind, 'unavailable', kind);
     assert.equal(api.state.redirected, 0, 'nobody followed it');
   });
   // DOCUMENTED GAP F3: a page can read Retry-After across origins only when the provider exposes it (Access-Control-Expose-Headers).

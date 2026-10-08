@@ -158,7 +158,7 @@ describe('providerErrors vectors', () => {
     // The rows without a `provider` are this adapter's; the Anthropic rows are anthropic.spec.ts's.
     const rows = (vectors.providerErrors as { provider?: string; tier: number; status: number; body: string; retryAfter?: string; expected: Record<string, unknown> }[])
       .filter((c) => c.provider === undefined);
-    expect(rows).toHaveLength(22);
+    expect(rows).toHaveLength(25);
     for (const c of rows) {
       const got = classifyError(c.tier as Tier, c.status, c.body, c.retryAfter ?? null) as unknown as Record<string, unknown>;
       const label = `tier ${c.tier} status ${c.status} ${c.body}`;
@@ -245,10 +245,10 @@ describe('the request', () => {
     expect(withoutKey.calls[0].init.headers).toEqual({ 'Content-Type': 'application/json' });
   });
 
-  it('follows no redirect, sends no cookies, and names the schema it was given', async () => {
+  it('follows no redirect (manual), sends no cookies, and names the schema it was given', async () => {
     const f = fakeFetch(OK());
     await model(f).generateJson('S', 'U', PLAN_SCHEMA, 0.2);
-    expect(f.calls[0].init).toMatchObject({ redirect: 'error', credentials: 'omit' });
+    expect(f.calls[0].init).toMatchObject({ redirect: 'manual', credentials: 'omit' });
     expect(f.calls[0].body['response_format'].json_schema.name).toBe('plan');
     expect(f.calls[0].body['temperature']).toBe(0.2);
     expect(f.calls[0].body['max_tokens']).toBe(2048);
