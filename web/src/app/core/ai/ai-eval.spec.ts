@@ -17,6 +17,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import type { HouseDraft, PlanResponse } from '../ai.service';
+import golden from '../../../../../docs/ai/evals/golden-set.json';
 import { type CaseResult, type GoldenCase, evalSetup, formatSummary, scoreCase } from './ai-eval';
 
 const BLUE = '11111111-1111-4111-8111-111111111111';
@@ -163,6 +164,40 @@ describe('scoreCase: the golden set\'s checks (docs/ai/ai-design.md 8.2)', () =>
 
   it('fails a case whose call failed, with the reason', () => {
     expect(scoreCase(EXTRACT, { type: 'error', message: 'rateLimited' })).toMatchObject({ passed: false, failures: ['no answer: rateLimited'] });
+  });
+});
+
+describe('the golden set against this port (v0.7, regional cases)', () => {
+  // Every key a case may use, by type: a key the port does not read would be skipped without a word, and a case that
+  // relies on it would pass here whatever the model said. The Java scorer reads the same keys (EvalScorer).
+  const KEYS: Record<string, string[]> = {
+    extract: ['price', 'priceType', 'bedrooms', 'locality', 'contactName', 'contactPhone', 'contactPhoneDigits', 'listingUrl', 'listingUrlNot', 'amenitiesInclude', 'notesMention', 'notesMustNotContain', 'draftMustNotContain', 'note'],
+    ask: ['expectedHouseIds', 'allowedCitations', 'mustContain', 'mustNotContain', 'mustNotCite', 'grounded', 'answerEquals', 'citations', 'note'],
+    plan: ['stopsSubsetOf', 'stopsMustNotInclude', 'maxStops', 'fallback', 'stops', 'summaryMustNotContain', 'note'],
+  };
+  const cases = golden.cases as unknown as GoldenCase[];
+
+  it('uses only keys the port checks, in every case', () => {
+    for (const c of cases) {
+      const unknown = Object.keys(c.expected).filter((k) => !KEYS[c.type].includes(k));
+      expect(unknown, c.id).toEqual([]);
+    }
+  });
+
+  it('tags every case with a region, and the regional extraction cases add 29 null-expected fields to the first 4', () => {
+    expect(cases.filter((c) => !c.region).map((c) => c.id)).toEqual([]);
+    const nulls = cases.filter((c) => c.type === 'extract').reduce((n, c) => n + Object.values(c.expected).filter((v) => v === null).length, 0);
+    expect(nulls).toBe(33);
+  });
+
+  it('accepts a draft that holds exactly the expected values of a regional case, and names the field that is invented', () => {
+    const lucknow = cases.find((c) => c.id === 'extract-22-lucknow-lakh-rent')!;
+    const right = draft({ price: 120000, priceType: 'RENT', bedrooms: 4, locality: 'Gomti Nagar', contactName: null, contactPhone: null, listingUrl: null, amenities: ['parking'] });
+    expect(scoreCase(lucknow, { type: 'extract', draft: right }).failures).toEqual([]);
+    expect(scoreCase(lucknow, { type: 'extract', draft: { ...right, contactName: 'Vibhuti', contactPhone: '98450 12345' } }).failures).toEqual([
+      'contactName: expected nothing, got Vibhuti',
+      'contactPhone: expected nothing, got 98450 12345',
+    ]);
   });
 });
 

@@ -118,6 +118,202 @@ class EvalScorerTest {
         }
     }
 
+    /** The zones a house or a case can carry (golden set v0.7); a case about houses in two zones is "cross-region". */
+    private static final Set<String> ZONES = Set.of("north", "south", "east", "west", "north-east", "hills", "coast");
+    private static final String CROSS_REGION = "cross-region";
+
+    /**
+     * Where each fixture city is, as a lat/lon box written down here by hand from a map (not computed from the golden
+     * set): a fixture house must lie inside the box of its own city, so a swapped sign or a house in the wrong city fails.
+     * Delhi's box starts south of Gurugram's so the two cannot be mistaken for each other.
+     */
+    private static final Map<String, double[]> CITY_BOXES = Map.ofEntries(
+            // city -> {minLat, maxLat, minLon, maxLon}
+            Map.entry("Bengaluru", new double[] {12.80, 13.15, 77.45, 77.80}),
+            Map.entry("Mumbai", new double[] {18.89, 19.30, 72.77, 73.00}),
+            Map.entry("Gurugram", new double[] {28.35, 28.52, 76.90, 77.15}),
+            Map.entry("Delhi", new double[] {28.50, 28.88, 76.84, 77.35}),
+            Map.entry("Kolkata", new double[] {22.45, 22.70, 88.25, 88.50}),
+            Map.entry("Chennai", new double[] {12.90, 13.25, 80.10, 80.35}),
+            Map.entry("Hyderabad", new double[] {17.25, 17.60, 78.30, 78.60}),
+            Map.entry("Pune", new double[] {18.40, 18.65, 73.70, 73.95}),
+            Map.entry("Ahmedabad", new double[] {22.90, 23.15, 72.45, 72.70}),
+            Map.entry("Jaipur", new double[] {26.75, 27.00, 75.65, 75.95}),
+            Map.entry("Lucknow", new double[] {26.70, 26.95, 80.85, 81.10}),
+            Map.entry("Kochi", new double[] {9.90, 10.10, 76.20, 76.40}),
+            Map.entry("Guwahati", new double[] {26.05, 26.25, 91.60, 91.90}),
+            Map.entry("Chandigarh", new double[] {30.65, 30.80, 76.70, 76.85}),
+            Map.entry("Goa", new double[] {15.00, 15.80, 73.60, 74.10}),
+            Map.entry("Dehradun", new double[] {30.20, 30.45, 77.95, 78.15}),
+            Map.entry("Shimla", new double[] {31.05, 31.15, 77.10, 77.25}));
+
+    /** A phone in the golden set must be one nobody owns: a run of repeated or counting digits at its end. */
+    private static final java.util.regex.Pattern OBVIOUSLY_FAKE_PHONE = java.util.regex.Pattern.compile(
+            "(?:\\+91[ -]?)?[6-9]\\d{4}[ -]?(?:12345|00000|55555)|0\\d{2,4}[ -]?\\d{3,4}[ -]?(?:0101|0000|5555|1234)");
+    private static final java.util.regex.Pattern PHONE_IN_TEXT = java.util.regex.Pattern.compile(
+            "(?:\\+91[ -]?)?[6-9]\\d{4}[ -]?\\d{5}|0\\d{2,4}[ -]?\\d{3,4}[ -]?\\d{3,4}");
+
+    @Test
+    void goldenSetTagsEveryHouseAndCaseWithARegionAndSpansIndia() throws Exception {
+        var golden = GoldenSet.load(GoldenSet.locate());
+        var houseRegion = new HashMap<String, String>();
+        var cities = new HashSet<String>();
+        var zonesOfHouses = new HashSet<String>();
+        for (var h : golden.fixtureHouses()) {
+            var label = String.valueOf(h.get("label"));
+            var id = String.valueOf(h.get("id")).toLowerCase(Locale.ROOT);
+            assertThat(ZONES).as("region of house %s", label).contains(String.valueOf(h.get("region")));
+            var city = String.valueOf(h.get("city"));
+            assertThat(CITY_BOXES).as("city of house %s", label).containsKey(city);
+            var box = CITY_BOXES.get(city);
+            var lat = ((Number) h.get("lat")).doubleValue();
+            var lon = ((Number) h.get("lon")).doubleValue();
+            assertThat(lat).as("%s lat inside %s", label, city).isBetween(box[0], box[1]);
+            assertThat(lon).as("%s lon inside %s", label, city).isBetween(box[2], box[3]);
+            // The address names the city, so the planner's text search ("my Mumbai houses") can find the house.
+            if (!"Bengaluru".equals(city)) {
+                assertThat(String.valueOf(h.get("address"))).as("address of %s", label).contains(city.equals("Goa") ? "Goa" : city);
+            }
+            houseRegion.put(id, String.valueOf(h.get("region")));
+            cities.add(city);
+            zonesOfHouses.add(String.valueOf(h.get("region")));
+        }
+        // At least eight cities besides Bengaluru, in every zone (owner request 2026-10-08: one city is not India).
+        assertThat(cities).hasSizeGreaterThanOrEqualTo(12).contains("Bengaluru");
+        assertThat(zonesOfHouses).containsExactlyInAnyOrderElementsOf(ZONES);
+
+        int extract = 0, ask = 0, plan = 0, nullFields = 0;
+        for (var c : golden.cases()) {
+            var region = String.valueOf(c.get("region"));
+            assertThat(ZONES.contains(region) || CROSS_REGION.equals(region)).as("region of case %s", c.get("id")).isTrue();
+            var expected = GoldenSet.map(c.get("expected"));
+            if (!"south".equals(region)) {
+                switch (String.valueOf(c.get("type"))) {
+                    case EvalScorer.EXTRACT -> extract++;
+                    case EvalScorer.ASK -> ask++;
+                    default -> plan++;
+                }
+            }
+            if (EvalScorer.EXTRACT.equals(c.get("type"))) {
+                nullFields += (int) expected.entrySet().stream().filter(e -> e.getValue() == null).count();
+            }
+            // A case that names houses is tagged with their zone, or cross-region when they are in more than one.
+            var named = new HashSet<String>();
+            for (var key : List.of("expectedHouseIds", "stopsSubsetOf")) {
+                for (var id : lower(expected.get(key))) named.add(houseRegion.get(id));
+            }
+            if (named.size() == 1) {
+                assertThat(region).as("region of case %s", c.get("id")).isEqualTo(named.iterator().next());
+            } else if (named.size() > 1) {
+                assertThat(region).as("region of case %s", c.get("id")).isEqualTo(CROSS_REGION);
+            }
+        }
+        // v0.7: at least 14 extraction, 8 ask and 3 plan cases outside Bengaluru's zone.
+        assertThat(extract).isGreaterThanOrEqualTo(14);
+        assertThat(ask).isGreaterThanOrEqualTo(8);
+        assertThat(plan).isGreaterThanOrEqualTo(3);
+        // The hallucination gate (docs/ai/ai-design.md 8.3) had 4 null-expected fields; it needs 20 to mean anything.
+        assertThat(nullFields).isGreaterThanOrEqualTo(20);
+    }
+
+    @Test
+    void newFixturesAreSyntheticAndDoNotDisturbTheBengaluruCases() throws Exception {
+        var golden = GoldenSet.load(GoldenSet.locate());
+        for (var h : golden.fixtureHouses()) {
+            var label = String.valueOf(h.get("label"));
+            if (h.get("contactPhone") != null && !"Bengaluru".equals(h.get("city"))) {
+                assertThat(OBVIOUSLY_FAKE_PHONE.matcher(String.valueOf(h.get("contactPhone"))).matches())
+                        .as("phone of %s must look made up", label).isTrue();
+            }
+            if (!"Bengaluru".equals(h.get("city"))) {
+                // The Bengaluru cases pick houses by status: plan-01, ask-02, ask-14 and ask-16 ask about SHORTLISTED
+                // houses and ask-15 about REJECTED ones, so a house elsewhere with either status would be a correct
+                // answer they do not expect. NEW is allowed because plan-06 lists every NEW house as an allowed stop.
+                assertThat(h.get("status")).as("status of %s", label).isIn("NEW", "TAKEN", "NOT_CHOSEN");
+                assertThat(GoldenSet.map(h.get("checklist"))).as("checklist of %s", label).doesNotContainKey("water");
+            }
+        }
+        for (var c : golden.cases()) {
+            if ("south".equals(c.get("region")) || !EvalScorer.EXTRACT.equals(c.get("type"))) continue;
+            var text = String.valueOf(GoldenSet.map(c.get("input")).get("text"));
+            var m = PHONE_IN_TEXT.matcher(text);
+            while (m.find()) {
+                assertThat(OBVIOUSLY_FAKE_PHONE.matcher(m.group()).matches())
+                        .as("phone '%s' in %s must look made up", m.group(), c.get("id")).isTrue();
+            }
+        }
+    }
+
+    /** An amount as a listing writes it: "25k", "Rs 85,000/-", "1.2 lakh", "Rs. 85 lakhs", "95 L", "1.5 Cr". */
+    private static final java.util.regex.Pattern AMOUNT = java.util.regex.Pattern.compile(
+            "(?i)(\\d[\\d,]*(?:\\.\\d+)?)\\s*(k|lakhs?|lacs?|l|cr|crores?)?(?![\\p{L}\\d])");
+
+    /** Every rupee amount the text can be read to say, by the rules a reader applies (k = 1,000, lakh = 1,00,000, Cr = 1,00,00,000). */
+    private static Set<Long> amountsIn(String text) {
+        var out = new HashSet<Long>();
+        var m = AMOUNT.matcher(text);
+        while (m.find()) {
+            var number = new java.math.BigDecimal(m.group(1).replace(",", ""));
+            var unit = m.group(2) == null ? "" : m.group(2).toLowerCase(Locale.ROOT);
+            long factor = switch (unit) {
+                case "k" -> 1_000L;
+                case "l", "lakh", "lakhs", "lac", "lacs" -> 100_000L;
+                case "cr", "crore", "crores" -> 10_000_000L;
+                default -> 1L;
+            };
+            out.add(number.multiply(java.math.BigDecimal.valueOf(factor)).longValue());
+        }
+        return out;
+    }
+
+    @Test
+    void theRegionalExtractionExpectationsAreStatedInTheListingText() throws Exception {
+        // The expected values are the independent source of truth: each one has to be readable from the text itself,
+        // and a field expected null has to be really absent from it (no phone, no link), or the case measures nothing.
+        var golden = GoldenSet.load(GoldenSet.locate());
+        int checked = 0;
+        for (var c : golden.cases()) {
+            if ("south".equals(c.get("region")) || !EvalScorer.EXTRACT.equals(c.get("type"))) continue;
+            checked++;
+            var id = String.valueOf(c.get("id"));
+            var text = String.valueOf(GoldenSet.map(c.get("input")).get("text"));
+            var lowered = text.toLowerCase(Locale.ROOT);
+            var textDigits = text.replaceAll("\\D", "");
+            var expected = GoldenSet.map(c.get("expected"));
+            if (expected.get("price") instanceof Number price) {
+                assertThat(amountsIn(text)).as("%s: price %s is written in the text", id, price).contains(price.longValue());
+            }
+            if (expected.containsKey("price") && expected.get("price") == null) {
+                // "Price on request" or no price at all: no figure in the text may be a rupee amount of the size of a rent or a sale.
+                assertThat(java.util.regex.Pattern.compile("(?i)\\b(?:rs\\.?|inr)\\s*\\d|₹").matcher(text).find())
+                        .as("%s: a null price but the text has a rupee amount", id).isFalse();
+            }
+            if (expected.get("contactPhone") instanceof String phone) {
+                assertThat(textDigits).as("%s: phone %s is in the text", id, phone).contains(phone.replaceAll("\\D", ""));
+            }
+            if (expected.containsKey("contactPhone") && expected.get("contactPhone") == null) {
+                assertThat(PHONE_IN_TEXT.matcher(text).find()).as("%s: a null phone but the text has a number", id).isFalse();
+            }
+            if (expected.get("listingUrl") instanceof String url) {
+                assertThat(text).as("%s: link", id).contains(url);
+            }
+            if (expected.containsKey("listingUrl") && expected.get("listingUrl") == null) {
+                assertThat(lowered).as("%s: a null link but the text has one", id).doesNotContain("http");
+            }
+            for (var key : List.of("locality", "contactName")) {
+                if (expected.get(key) instanceof String value) {
+                    assertThat(lowered).as("%s: %s '%s' is in the text", id, key, value).contains(value.toLowerCase(Locale.ROOT));
+                }
+            }
+            for (var key : List.of("amenitiesInclude", "notesMention")) {
+                for (var item : GoldenSet.strings(expected.get(key))) {
+                    assertThat(lowered).as("%s: %s '%s'", id, key, item).contains(item.toLowerCase(Locale.ROOT));
+                }
+            }
+        }
+        assertThat(checked).isGreaterThanOrEqualTo(14);
+    }
+
     @Test
     void extractionMatchesNormalisedFields() {
         var c = testCase("x1", "extract", null, map(

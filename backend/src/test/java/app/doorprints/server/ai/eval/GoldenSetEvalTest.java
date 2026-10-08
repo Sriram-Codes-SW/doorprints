@@ -256,6 +256,9 @@ class GoldenSetEvalTest {
         var now = Instant.now().toString();
         for (var house : golden.fixtureHouses()) {
             var body = new LinkedHashMap<String, Object>(house);
+            // The golden set's own tags (v0.7), not house fields.
+            body.remove("city");
+            body.remove("region");
             body.put("updatedAt", now);
             body.put("deleted", false);
             api.put().uri("/api/houses/{id}", house.get("id")).contentType(MediaType.APPLICATION_JSON)
