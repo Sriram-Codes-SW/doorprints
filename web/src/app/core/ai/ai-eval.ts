@@ -101,6 +101,8 @@ export interface CaseResult {
   region?: string;
   passed: boolean;
   failures: string[];
+  /** The model's response as compact JSON (a draft, an answer with its citations, or a plan); absent when the call failed. */
+  output?: string;
 }
 
 /** NFKC, lower case, runs of anything but letters and digits as one space (8.2; this also folds curly quotes into straight ones). */
@@ -208,11 +210,20 @@ function checkPlan(p: PlanResponse, e: Record<string, unknown>): string[] {
 /** The case's checks (docs/ai/ai-design.md 8.2). A failed call is a failed case. */
 export function scoreCase(c: GoldenCase, outcome: Outcome): CaseResult {
   let failures: string[];
+  let output: string | undefined;
   if (outcome.type === 'error') failures = [`no answer: ${outcome.message}`];
-  else if (outcome.type === 'extract') failures = checkDraft(outcome.draft, c.expected);
-  else if (outcome.type === 'ask') failures = checkAnswer(outcome.response, c.expected);
-  else failures = checkPlan(outcome.plan, c.expected);
-  return { id: c.id, type: c.type, category: c.category, region: c.region, passed: failures.length === 0, failures };
+  else if (outcome.type === 'extract') {
+    failures = checkDraft(outcome.draft, c.expected);
+    output = JSON.stringify(outcome.draft);
+  } else if (outcome.type === 'ask') {
+    failures = checkAnswer(outcome.response, c.expected);
+    const { answer, citations, grounded } = outcome.response;
+    output = JSON.stringify({ answer, citations, grounded });
+  } else {
+    failures = checkPlan(outcome.plan, c.expected);
+    output = JSON.stringify(outcome.plan);
+  }
+  return { id: c.id, type: c.type, category: c.category, region: c.region, passed: failures.length === 0, failures, output };
 }
 
 /**
@@ -247,10 +258,13 @@ function regionLines(results: CaseResult[]): string[] {
 
 const MAX_REASON = 200;
 const MAX_REASONS = 3;
+const MAX_OUTPUT = 3000;
+/** Failed cases that print their output; the summary stays far below the 1 MiB the job summary allows. */
+const MAX_OUTPUTS = 20;
 
 /**
  * The job summary in markdown. The provider is named by kind, host and model, never by key; any appearance of `key` in
- * a reason (a model can echo what it was sent) is replaced by `***`. `stopped` says why the run ended early, or null.
+ * a reason or in a failed case's output (a model can echo what it was sent) is replaced by `***`. `stopped` says why the run ended early, or null.
  */
 export function formatSummary(meta: { kind: string; host: string; model: string }, results: CaseResult[], stopped: string | null, key: string): string {
   const hide = (s: string) => (key === '' ? s : s.split(key).join('***'));
@@ -274,11 +288,20 @@ export function formatSummary(meta: { kind: string; host: string; model: string 
   const failed = results.filter((r) => !r.passed);
   if (failed.length) {
     lines.push('', 'Failed cases:');
+    let shown = 0;
+    let unseen = 0;
     for (const r of failed) {
       // Hide first: shortening could cut the key in two and leave its start showing.
       const reasons = r.failures.slice(0, MAX_REASONS).map((f) => hide(f)).map((f) => (f.length > MAX_REASON ? `${f.slice(0, MAX_REASON)}...` : f));
       lines.push(`- ${r.id}: ${reasons.join('; ')}`);
+      if (r.output !== undefined && shown < MAX_OUTPUTS) {
+        shown++;
+        // Hide before cutting (as above). A backtick is written as the JSON escape \u0060, so no answer can close the fence.
+        const out = hide(r.output).replace(/`/g, '\\u0060');
+        lines.push('  ```json', `  ${out.length > MAX_OUTPUT ? `${out.slice(0, MAX_OUTPUT)} ... (cut)` : out}`, '  ```');
+      } else if (r.output !== undefined) unseen++;
     }
+    if (unseen) lines.push(`Output of ${unseen} more failed ${unseen === 1 ? 'case' : 'cases'} not shown.`);
   }
   return `${lines.join('\n')}\n`;
 }

@@ -90,6 +90,9 @@ import static org.assertj.core.api.Assertions.assertThat;
                 "app.mcp.enabled=false",
                 // Only the explicit re-index embeds the fixtures (halves embedding calls, no async races).
                 "app.ai.index-on-change=false",
+                // Retrieval must be able to return every fixture house (production default 6, fixtures 7 since
+                // golden set v0.6); GoldenSetEvalConfigTest pins this against the golden set file.
+                "app.ai.rag.top-k=10",
                 // The eval paces itself; the app's own AI limiter must not turn cases into 429s.
                 "app.ai.rate-limit.requests-per-minute=1000",
                 "app.ai.rate-limit.burst=1000"})

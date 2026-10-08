@@ -326,4 +326,83 @@ describe('formatSummary: the job summary', () => {
   it('leaves out the region table when no case carries a region', () => {
     expect(formatSummary(meta, [result('extract-01', 'extract', true)], null, 'k')).not.toContain('Region');
   });
+
+  describe('the output of a failed case (S4b-BL-176)', () => {
+    const ASK: GoldenCase = { id: 'ask-01-water', type: 'ask', input: {}, expected: { expectedHouseIds: [BLUE], mustContain: ['Blue gate'] } };
+    const asked = (answer: string, citations: { houseId: string; label: string | null; snippet: string | null }[] = [], grounded = false) =>
+      scoreCase(ASK, { type: 'ask', response: { answer, citations, grounded, retrieved: 3 } });
+
+    it('prints a failed ask case with its answer, citations and grounded flag as compact JSON, after the reasons', () => {
+      const failed = asked('Water comes twice a day [house:x].', [{ houseId: CORNER, label: 'Corner', snippet: null }]);
+      expect(formatSummary(meta, [failed], null, 'Q9#')).toContain(
+        [
+          'Failed cases:',
+          `- ask-01-water: cited ${CORNER}, which is neither expected nor allowed; did not cite ${BLUE}; answer lacks "Blue gate"`,
+          '  ```json',
+          `  {"answer":"Water comes twice a day [house:x].","citations":[{"houseId":"${CORNER}","label":"Corner","snippet":null}],"grounded":false}`,
+          '  ```',
+          '',
+        ].join('\n'),
+      );
+    });
+
+    it('prints a failed extract case with its draft and a failed plan case with its plan', () => {
+      const wrong = scoreCase(EXTRACT, { type: 'extract', draft: draft({ price: 1, notes: null, amenities: [], contactPhone: null }) });
+      const text = formatSummary(meta, [wrong], null, 'Q9#');
+      expect(text).toContain('  {"label":null,"address":null,"street":null,"locality":"Indiranagar","price":1,"priceType":"RENT","bedrooms":2,');
+      const planCase: GoldenCase = { id: 'plan-01', type: 'plan', input: {}, expected: { maxStops: 0 } };
+      const plan: PlanResponse = { summary: 'Go', stops: [{ order: 1, houseId: BLUE, label: null, lat: 0, lon: 0, reason: null, legMeters: 0, walkMinutes: 0 }], totalMeters: 0, totalWalkMinutes: 0, toolCalls: [], fallback: true };
+      expect(formatSummary(meta, [scoreCase(planCase, { type: 'plan', plan })], null, 'Q9#')).toContain(
+        '  {"summary":"Go","stops":[{"order":1,"houseId":"11111111-1111-4111-8111-111111111111",',
+      );
+    });
+
+    it('prints no output for a call that failed (the reason says why) and none for a passing case', () => {
+      const none = scoreCase(EXTRACT, { type: 'error', message: 'rateLimited' });
+      expect(formatSummary(meta, [none], null, 'Q9#')).toContain('Failed cases:\n- extract-01: no answer: rateLimited\n');
+      expect(formatSummary(meta, [none], null, 'Q9#')).not.toContain('```');
+      const ok = asked('Blue gate house has borewell water.', [{ houseId: BLUE, label: null, snippet: null }], true);
+      expect(ok.passed).toBe(true);
+      const text = formatSummary(meta, [ok, result('ask-02', 'ask', false, ['x'])], null, 'Q9#');
+      expect(text).not.toContain('borewell');
+      expect(text).not.toContain('```');
+    });
+
+    it('cuts an output at 3,000 characters with a visible marker', () => {
+      const text = formatSummary(meta, [asked('w'.repeat(5000))], null, 'Q9#');
+      expect(text).toContain(`  {"answer":"${'w'.repeat(3000 - '{"answer":"'.length)} ... (cut)\n`);
+      expect(text).not.toContain('w'.repeat(3000));
+    });
+
+    it('does not mark an output of exactly 3,000 characters as cut', () => {
+      const fixed = '{"answer":"","citations":[],"grounded":false}'.length;
+      const text = formatSummary(meta, [asked('w'.repeat(3000 - fixed))], null, 'Q9#');
+      expect(text).toContain(`${'w'.repeat(3000 - fixed)}","citations":[],"grounded":false}\n`);
+      expect(text).not.toContain('(cut)');
+    });
+
+    it('hides the key in an output, whole or across the cut', () => {
+      const whole = formatSummary(meta, [asked('my key is sk-secret-123 ok')], null, 'sk-secret-123');
+      expect(whole).toContain('  {"answer":"my key is *** ok","citations":[],"grounded":false}');
+      expect(whole).not.toContain('sk-secret-123');
+      const across = formatSummary(meta, [asked(`${'a'.repeat(2980)}sk-secret-123 tail`)], null, 'sk-secret-123');
+      expect(across).not.toContain('sk-s');
+      expect(across).toContain(`${'a'.repeat(2980)}*** `);
+    });
+
+    it('writes a backtick in an answer as \\u0060 so the answer cannot close the code fence', () => {
+      const text = formatSummary(meta, [asked('x ``` y')], null, 'Q9#');
+      expect(text).toContain('  {"answer":"x \\u0060\\u0060\\u0060 y","citations":[],"grounded":false}');
+    });
+
+    it('prints the output of the first 20 failed cases and says how many were not shown', () => {
+      const many = Array.from({ length: 23 }, (_, i) => ({ ...asked(`answer-${i + 1}.`), id: `ask-${i + 1}` }));
+      const text = formatSummary(meta, many, null, 'Q9#');
+      expect(text).toContain('"answer":"answer-20."');
+      expect(text).not.toContain('answer-21.');
+      expect(text).toContain('- ask-23: ');
+      expect(text).toContain('Output of 3 more failed cases not shown.');
+      expect(formatSummary(meta, many.slice(0, 20), null, 'Q9#')).not.toContain('more failed');
+    });
+  });
 });
