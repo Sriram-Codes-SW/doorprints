@@ -77,6 +77,11 @@ theme:
 extra_css:
   - stylesheets/doorprints.css
 
+# The search box also searches text that arrives without a key-up (paste, voice, a tapped suggestion); the
+# translations inherit this and get the file from the English docs (hooks/i18n.py).
+extra_javascript:
+  - javascripts/search-input.js
+
 hooks:
   - hooks/i18n.py
 

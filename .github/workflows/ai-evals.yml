@@ -66,13 +66,20 @@
 #   ai_base_url and ai_model (or the repository variables AI_EVAL_BASE_URL and AI_EVAL_MODEL), with the repository secret
 #   AI_EVAL_API_KEY. The owner may never set the secret: the job then prints "skipped: no key" and succeeds without
 #   installing anything. No model name or key is in the repository. Free providers and synthetic data only (PRV-022).
+# 2026-10-08 (S4b-BL-175, keyless): the suite `local-model` (job below) installs Ollama on the runner from the official release,
+#   pinned by version and by the sha256 the release publishes (no `curl | sh`), pulls a small model and runs the same golden
+#   set through the website's openai-compatible adapter against http://127.0.0.1:11434/v1 with no key. It exists because the
+#   only real key the owner has is Gemini's: this exercises the openai-compatible kind (ladder, strict schema, fences, errors)
+#   against a real model server for nothing. No secret, no new permission, no paid service. Its first real run is CI's
+#   (docs/ai/ai-design.md 8.1). llama.cpp's server is a documented follow-up (it needs its own pinned release and a pinned GGUF
+#   file); there is no `local_server` input until it exists.
 name: AI evals
 
 on:
   workflow_dispatch:
     inputs:
       suites:
-        description: What to run. golden-set = the server's eval (below); on-device = one real Extract, Ask and Plan through the phones' and the website's own-key AI (needs AI_API_KEY whatever the provider); own-provider = the golden set through the website's adapters and the provider chosen below (optional; needs AI_EVAL_API_KEY, else "skipped - no key")
+        description: What to run. golden-set = the server's eval (below); on-device = one real Extract, Ask and Plan through the phones' and the website's own-key AI (needs AI_API_KEY whatever the provider); own-provider = the golden set through the website's adapters and the provider chosen below (optional; needs AI_EVAL_API_KEY, else "skipped - no key"); local-model = the golden set through the website's openai-compatible adapter against a small model that Ollama runs on the runner (no key, no secret, free)
         type: choice
         default: golden-set,on-device
         options:
@@ -80,6 +87,7 @@ on:
           - golden-set
           - on-device
           - own-provider
+          - local-model
       types:
         description: Case types to run
         type: choice
@@ -125,6 +133,10 @@ on:
         description: "own-provider only: model name (empty = repository variable AI_EVAL_MODEL; not used for gemini)"
         type: string
         default: ""
+      local_model:
+        description: "local-model only: the Ollama library tag to pull, e.g. qwen2.5:1.5b (about 1 GB; keep it under about 2.5 GB, the runner has no GPU)"
+        type: string
+        default: "qwen2.5:1.5b"
 
 # Least privilege: nothing by default; the job only reads the repository.
 permissions: {}
@@ -455,3 +467,130 @@ jobs:
           else
             echo "No summary was written: the setting was refused or the run failed before the first case (see the log)." >> "$GITHUB_STEP_SUMMARY"
           fi
+
+  # The golden set through a small real model that runs on the runner, with no key (S4b-BL-175; docs/06 TC-AI-25;
+  # docs/ai/ai-design.md 8.1). Ollama is installed from the official release, not with `curl | sh`: the tarball comes from the
+  # release of the pinned version, and its sha256 must equal both the digest pinned here and the one in the release's own
+  # sha256sum.txt (a mismatch stops the job before anything is unpacked). To move the pin: pick a release at
+  # https://github.com/ollama/ollama/releases, read the line of ollama-linux-amd64.tar.zst in its sha256sum.txt, change the two
+  # env values below together (Dependabot does not track this), and say so in docs/07 SEC-030.
+  # Model: qwen2.5:1.5b (986 MB, 32K context; the Ollama library page, checked 2026-10-08) is the default because it is small
+  # enough to answer in well under a minute on the runner's CPUs and is trained to follow instructions to write JSON;
+  # qwen2.5:3b (1.9 GB) is the next step up and still under 2.5 GB. Any tag of the Ollama library can be typed in `local_model`.
+  # Time: assumed, not measured. The adapters stop a call after 60 s, so a case a CPU cannot answer in that time is scored as
+  # failed; 35 cases at up to 60 s is 35 minutes, plus about 10 for the downloads and the build, so 90 minutes leaves room.
+  # Expect the first real run to show, first: a case or two timing out at 60 s on the 2 or 4 core runner (Ask and Plan have the
+  # longest prompts), and the tier-1 `json_schema` request being accepted or refused by this Ollama build (a refusal sends the
+  # ladder to tier 2, which is what it is for). Ollama checks the layer digests of the model it pulls. Reported, not gating:
+  # the job fails only on a wrong setting or when no case got an answer, like own-provider. Read-only token, no secrets, no
+  # id-token.
+  local-model:
+    name: Golden set through a local model (Ollama on the runner, no key)
+    if: inputs.suites == 'local-model'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    env:
+      OLLAMA_VERSION: v0.40.1
+      # The line of ollama-linux-amd64.tar.zst in that release's sha256sum.txt (read 2026-10-08).
+      OLLAMA_SHA256: a7aebbe3dd76ccf1351a56a3e57218ad4863cb5f9a9938c58de87a37555e355d
+      OLLAMA_HOST: 127.0.0.1:11434
+      # envconfig/config.go on main (read 2026-10-08): the default context is 4k to 256k by memory, so say it; the Ask prompt
+      # carries house notes. And no cloud features: nothing leaves the runner but the model download.
+      OLLAMA_CONTEXT_LENGTH: "8192"
+      OLLAMA_NO_CLOUD: "1"
+    steps:
+      - name: Validate inputs
+        env:
+          LOCAL_MODEL: ${{ inputs.local_model }}
+        run: |
+          if ! [[ "$LOCAL_MODEL" =~ ^[a-z0-9][a-z0-9._/-]{0,62}(:[A-Za-z0-9._-]{1,32})?$ ]]; then
+            echo "::error::local_model must be an Ollama library tag such as qwen2.5:1.5b"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install the website's packages
+        working-directory: web
+        run: npm ci --no-audit --no-fund
+
+      - name: Install Ollama (pinned release, checksum verified)
+        run: |
+          set -euo pipefail
+          command -v zstd >/dev/null || sudo apt-get install -y --no-install-recommends zstd
+          dir="$RUNNER_TEMP/ollama-download"
+          mkdir -p "$dir"
+          base="https://github.com/ollama/ollama/releases/download/${OLLAMA_VERSION}"
+          curl -fsSL --retry 3 -o "$dir/ollama-linux-amd64.tar.zst" "$base/ollama-linux-amd64.tar.zst"
+          curl -fsSL --retry 3 -o "$dir/sha256sum.txt" "$base/sha256sum.txt"
+          published="$(awk '$2 == "./ollama-linux-amd64.tar.zst" { print $1 }' "$dir/sha256sum.txt")"
+          if [ "$published" != "$OLLAMA_SHA256" ]; then
+            echo "::error::The release ${OLLAMA_VERSION} now publishes a different sha256 ($published) than the one pinned in this workflow. Check the release, then update OLLAMA_SHA256."
+            exit 1
+          fi
+          echo "$OLLAMA_SHA256  $dir/ollama-linux-amd64.tar.zst" | sha256sum --check --strict -
+          sudo tar --zstd -xf "$dir/ollama-linux-amd64.tar.zst" -C /usr/local
+          rm -rf "$dir"
+          ollama --version
+
+      - name: Start Ollama on 127.0.0.1 only
+        run: |
+          nohup ollama serve > "$RUNNER_TEMP/ollama.log" 2>&1 &
+          for _ in $(seq 1 60); do
+            if curl -fsS "http://127.0.0.1:11434/api/version" >/dev/null 2>&1; then echo "ollama is up"; exit 0; fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/ollama.log"
+          echo "::error::ollama serve did not come up"
+          exit 1
+
+      - name: Pull the model and load it once
+        timeout-minutes: 25
+        env:
+          LOCAL_MODEL: ${{ inputs.local_model }}
+        run: |
+          ollama pull "$LOCAL_MODEL"
+          # One tiny request keeps the model in memory for an hour, so the first case does not spend its 60 s on loading it.
+          curl -fsS "http://127.0.0.1:11434/api/generate" \
+            -d "$(jq -cn --arg m "$LOCAL_MODEL" '{model: $m, prompt: "Reply with OK.", stream: false, keep_alive: "1h", options: {num_predict: 4}}')" >/dev/null
+
+      - name: Run the golden set (openai-compatible kind, no key)
+        working-directory: web
+        env:
+          # No key: Ollama ignores it. ai-eval.ts runs a key-less setting only for an openai-compatible server on localhost.
+          DOORPRINTS_EVAL_KEY: ""
+          AI_EVAL_KIND: openai-compatible
+          AI_EVAL_BASE_URL: http://127.0.0.1:11434/v1
+          AI_EVAL_MODEL: ${{ inputs.local_model }}
+          AI_EVAL_TYPES: ${{ inputs.types }}
+          AI_EVAL_DELAY_MS: "0"
+        run: |
+          export DOORPRINTS_EVAL_SUMMARY="$RUNNER_TEMP/ai-eval-summary.md"
+          npx ng test --watch=false --include src/app/core/ai/ai-provider.live.spec.ts
+
+      - name: Publish the summary
+        if: always()
+        run: |
+          {
+            echo "Ollama ${OLLAMA_VERSION} (sha256 pinned), CPU only, no key. A model this small is far weaker than the providers the app is used with: read this as a check that the adapter and the ladder work against a real server, not as the quality of any model."
+            echo
+            if [ -f "$RUNNER_TEMP/ai-eval-summary.md" ]; then
+              cat "$RUNNER_TEMP/ai-eval-summary.md"
+            else
+              echo "No summary was written: the setting was refused or the run failed before the first case (see the log)."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Ollama log
+        if: failure()
+        run: tail -100 "$RUNNER_TEMP/ollama.log" || true

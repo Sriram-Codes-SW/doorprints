@@ -20,7 +20,7 @@ import { describe, expect, it } from 'vitest';
 import vectors from './parity-vectors.json';
 import {
   AiHouse, CONTACT, FALLBACK_SUMMARY, I_DONT_KNOW, Redactor, askPrompt, assemblePlan, candidateLines, citations,
-  extractionPrompt, houseText, inlineIds, legsInOrder, nearestNeighbour, nonce, redactPhones, roundHalfUp,
+  extractionPrompt, houseText, inlineIds, legsInOrder, nearestNeighbour, nonce, redactGeneric, roundHalfUp,
   planPrompt, sanitizeDraft, scrubStoredText, selectForAsk, selectForPlan, snippet, wrap, type RawListing, type PlanCandidate,
 } from './ai-core';
 import { inTheRunning } from '../../shared/house-status';
@@ -32,13 +32,13 @@ import { inTheRunning } from '../../shared/house-status';
  */
 describe('AI core parity with the server', () => {
   it('removes contacts as the server does', () => {
-    expect(vectors.redact).toHaveLength(107);
+    expect(vectors.redact).toHaveLength(133);
     for (const c of vectors.redact) {
       const r = new Redactor(c.name, c.phone);
       const actual = c.method === 'place' ? r.place(c.input)
         : c.method === 'freeText' ? r.freeText(c.input)
           : c.method === 'scrub' ? scrubStoredText(c.input, c.name, c.phone)
-            : redactPhones(c.input);
+            : redactGeneric(c.input);
       expect(actual, `${c.method} ${c.name} / ${c.phone}: ${c.input}`).toBe((c as { expected: string }).expected);
     }
   });
@@ -49,6 +49,41 @@ describe('AI core parity with the server', () => {
     // `expected` is what the ports do today (the loop above checks it); `wanted` is what they should do. Fixing the gap
     // means copying `wanted` over `expected` and dropping the two keys, so they may never already be equal.
     for (const c of gaps) expect(c.wanted).not.toBe(c.expected);
+  });
+
+  it('removes an email address whole, before the name parts', () => {
+    const suresh = new Redactor('Suresh Rao', null);
+    expect(suresh.freeText('Mail suresh.rao@gmail.com or sureshrao1983@yahoo.co.in, insta @suresh_rao, https://wa.me/919886055555'))
+      .toBe('Mail [email] or [email], insta @[contact], https://wa.me/[phone]');
+    const anil = new Redactor('Anil Verma', null);
+    expect(anil.freeText('Portal https://portal.example/contact?email=suresh.rao@gmail.com&ref=1'))
+      .toBe('Portal https://portal.example/contact?email=[email]&ref=1');
+    expect(anil.freeText('98450 12345,anil@example.com')).toBe('[phone],[email]');
+    expect(anil.freeText('Mail me at sam@example.com.')).toBe('Mail me at [email].');
+    expect(anil.place('Shop 4, mail owner@example.org')).toBe('Shop 4, mail [email]');
+    expect(scrubStoredText('Contact: Suresh Rao\nmail suresh@gmail.com ok', 'Suresh Rao', null)).toBe('mail [email] ok');
+    expect(redactGeneric('Write to a.b@c.in or 98450 12345')).toBe('Write to [email] or [phone]');
+    // A plus tag is part of the local part, and a local part has no length cap that would let a long one through whole.
+    expect(redactGeneric('Mail ravi+flat3@example.co.in now')).toBe('Mail [email] now');
+    expect(redactGeneric(`Mail ${'a'.repeat(70)}@example.com now`)).toBe('Mail [email] now');
+  });
+
+  it('keeps an at sign that is not an email address', () => {
+    const text = 'Rent 28k @ month, ask x@y or a@b.';
+    expect(new Redactor(null, null).freeText(text)).toBe(text);
+    expect(redactGeneric(text)).toBe(text);
+  });
+
+  it('replaces a name part that is also an ordinary word, on purpose', () => {
+    expect(new Redactor('Rose Bush', null).freeText('Rose garden at the back, a bush hedge, Rose said keys with Rosemary'))
+      .toBe('[contact] garden at the back, a [contact] hedge, [contact] said keys with Rosemary');
+    expect(new Redactor('Will Mark', null).freeText('Owner will mark the parking spot; Will Mark called'))
+      .toBe('Owner [contact] the parking spot; [contact] called');
+    expect(new Redactor('Gold', null).freeText('Gold coloured gate')).toBe('[contact] coloured gate');
+    expect(new Redactor('Ram', null).freeText('Ram Nagar, Sri Ram Temple road, ramp access'))
+      .toBe('[contact] Nagar, Sri [contact] Temple road, ramp access');
+    expect(new Redactor('Rose Bush', null).place('Rose Bush Lane, Rosewood Park')).toBe('[contact] Lane, Rosewood Park');
+    expect(new Redactor('K. Ramesh', null).freeText('K block near K R Puram')).toBe('K block near K R Puram');
   });
 
   it('checks listings as the server does', () => {

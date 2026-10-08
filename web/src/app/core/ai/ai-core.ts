@@ -30,6 +30,7 @@ import type { AskResponse, Citation, HouseDraft, PlanResponse, PlannedStop } fro
 
 export const CONTACT = '[contact]';
 export const PHONE = '[phone]';
+export const EMAIL = '[email]';
 
 const WORD = '[\\p{L}\\p{M}\\p{N}]';
 const STORED_CONTACT_LINE = /^[ \t]*Contact[ \t]*:.*(?:\r\n|\n|\r|$)/gimu;
@@ -66,6 +67,12 @@ function replaceInDigits(re: RegExp, s: string): string {
   return out + s.slice(last);
 }
 
+// An email address: local part (letters, digits, `._%+-`), `@`, a dotted domain. A URL or a bare @handle is not one.
+// The lookbehind makes the match start at the front of a run (so it is linear, and a long local part goes whole).
+const EMAIL_LIKE = new RegExp(
+  '(?<![\\p{L}\\p{M}\\p{N}._%+-])[\\p{L}\\p{M}\\p{N}._%+-]+@[\\p{L}\\p{N}-]+(?:\\.[\\p{L}\\p{N}-]+)+(?![\\p{L}\\p{M}\\p{N}])',
+  'gu',
+);
 const HONORIFICS = new Set([
   'mr', 'mrs', 'ms', 'miss', 'dr', 'sri', 'shri', 'smt', 'kumari', 'sir', 'madam', 'uncle', 'aunty', 'auntie',
   'anna', 'akka', 'ji', 'garu', 'owner', 'broker', 'agent', 'landlord', 'the', 'and',
@@ -144,10 +151,10 @@ export class Redactor {
     this.savedPhone = phonePattern(contactPhone);
   }
 
-  /** Address, street, locality: the whole name, the saved phone and phone-like numbers. */
+  /** Address, street, locality: the whole name, the saved phone, phone-like numbers and email addresses. */
   place(s: string | null | undefined): string | null | undefined {
     if (!s) return s;
-    let out = this.phones(s);
+    let out = this.generic(s);
     for (const p of this.fullName) out = out.replace(p, CONTACT);
     return out;
   }
@@ -160,9 +167,10 @@ export class Redactor {
     return out;
   }
 
-  private phones(s: string): string {
+  /** The rules that need no name: the saved phone, phone-like numbers, then email addresses (before the name parts). */
+  private generic(s: string): string {
     const out = this.savedPhone ? replaceInDigits(this.savedPhone, s) : s;
-    return replaceInDigits(PHONE_LIKE, out);
+    return replaceInDigits(PHONE_LIKE, out).replace(EMAIL_LIKE, EMAIL);
   }
 }
 
@@ -175,9 +183,9 @@ export function scrubStoredText(text: string | null | undefined, name: string | 
   return new Redactor(name, phone).freeText(text.replace(STORED_CONTACT_LINE, ''));
 }
 
-/** Replaces phone-like numbers with `[phone]`; for text that has no saved contact to match, such as a place name. */
-export function redactPhones(text: string | null | undefined) {
-  return text ? replaceInDigits(PHONE_LIKE, text) : text;
+/** Replaces phone-like numbers with `[phone]` and email addresses with `[email]`; for text with no saved contact. */
+export function redactGeneric(text: string | null | undefined) {
+  return text ? replaceInDigits(PHONE_LIKE, text).replace(EMAIL_LIKE, EMAIL) : text;
 }
 
 // ---------------------------------------------------------------- prompt safety (PromptSafety)

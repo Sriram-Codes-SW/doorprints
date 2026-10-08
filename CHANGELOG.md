@@ -979,6 +979,7 @@ The finishing batch of 2026-10-01 (built on stacked branches, not yet merged or 
 
 ### Fixed
 
+- **The user guide's search finds a word typed, pasted or spoken on its own** (S4b-BL-183; branch `fix/guide-search-indic-languages`; the live site changes with the deploy): Material's search read the box only when a key went up, so text that arrived another way (a paste from the menu, voice typing, a tapped suggestion) was not searched until another key was pressed; the guide now searches on every change, in English, Hindi, Tamil and Telugu. A check of the built site's search runs in CI (`tools/guide-search-check/`).
 - **Google Drive on the phones: a failure nobody expected shows a code, and joining with the recovery key works on a phone with no device key yet** (S4b-BL-146). The error line gains small selectable *Code: step/ClassName* (the step and the exception's class name only; four languages, hi, ta, te under review); the join made the folder trusted before this phone's key existed and then failed as "could not prepare the backup"; the key is now made first. Not run on a phone.
 
 - **A flaky screenshot test** (S4b-BL-138, S4b-BL-100; test code only): a screen fed by the database could be photographed while it still showed its loading frame, so `iosCompareEmpty` (Tamil) and the Tamil and Telugu house lists failed now and then under load. Every screenshot now waits for text that is on screen only once its data is in ([notes](docs/ops/screenshot-flake-notes.md)).

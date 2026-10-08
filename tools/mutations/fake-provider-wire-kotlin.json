@@ -1,0 +1,58 @@
+{
+  "spec": "android/shared/src/androidHostTest/kotlin/app/doorprints/shared/ai/FakeProviderWireTest.kt",
+  "gradle": [
+    ":shared:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.shared.ai.FakeProviderWireTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/shared/src/androidMain/kotlin/app/doorprints/shared/api/AndroidApiHttp.kt",
+      "find": "followRedirects(false)\n                followSslRedirects(false)",
+      "replace": "followRedirects(true)\n                followSslRedirects(true)",
+      "expect": "aRedirectIsNotFollowed"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OpenAiCompatClient.kt",
+      "find": "mapOf(\"Authorization\" to \"Bearer $apiKey\")",
+      "replace": "mapOf(\"Authorization\" to \"Token $apiKey\")",
+      "expect": "openAiCompatibleAnswersAStrictSchemaRequestOnTheFirstTier"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OpenAiCompatClient.kt",
+      "find": "1 to listOf(\"response_format\", \"json_schema\", \"strict\", \"unsupported\", \"not supported\")",
+      "replace": "1 to listOf(\"zzz\")",
+      "expect": "aServerThatOnlyKnowsJsonObjectMovesTheLadder"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AnthropicClient.kt",
+      "find": "mapOf(\"x-api-key\" to key, \"anthropic-version\" to VERSION)",
+      "replace": "mapOf(\"x-key\" to key, \"anthropic-version\" to VERSION)",
+      "expect": "anthropicForcesTheToolAndSendsTheDocumentedHeaders"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AnthropicClient.kt",
+      "find": "put(\"tool_choice\", buildJsonObject { put(\"type\", \"tool\"); put(\"name\", name) })",
+      "replace": "put(\"tool_choice\", buildJsonObject { put(\"type\", \"auto\"); put(\"name\", name) })",
+      "expect": "anthropicForcesTheToolAndSendsTheDocumentedHeaders"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/GeminiClient.kt",
+      "find": "mapOf(\"x-goog-api-key\" to apiKey)",
+      "replace": "mapOf(\"x-goog-key\" to apiKey)",
+      "expect": "geminiSendsTheKeyInTheGoogleHeader"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AiRequest.kt",
+      "find": "404 -> ApiException(ApiException.Kind.AI_MODEL_NOT_FOUND, status)",
+      "replace": "404 -> ApiException(ApiException.Kind.AI_UNAVAILABLE, status)",
+      "expect": "everyAdapterMapsTheStatuses"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AiRequest.kt",
+      "find": "internal const val TIMED_OUT = 504",
+      "replace": "internal const val TIMED_OUT = 503",
+      "expect": "aBodyThatNeverEndsTimesOutAs504"
+    }
+  ]
+}

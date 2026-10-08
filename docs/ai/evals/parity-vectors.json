@@ -312,309 +312,417 @@
     "input" : "Contact: X\nNotes: fine",
     "expected" : "Notes: fine"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : "Mr. Ramesh Kumar",
     "phone" : "+91 98450 12345",
     "input" : "call 9845012345 or 080 23456789, flat 1203",
     "expected" : "call [phone] or [phone], flat 1203"
   }, {
-    "method" : "phones",
+    "method" : "freeText",
+    "name" : "Suresh Rao",
+    "phone" : null,
+    "input" : "Mail suresh.rao@gmail.com or sureshrao1983@yahoo.co.in, insta @suresh_rao, https://wa.me/919886055555",
+    "expected" : "Mail [email] or [email], insta @[contact], https://wa.me/[phone]"
+  }, {
+    "method" : "freeText",
+    "name" : "Suresh Rao",
+    "phone" : "+91 98860 55555",
+    "input" : "Mail sureshrao1983@yahoo.co.in",
+    "expected" : "Mail [email]"
+  }, {
+    "method" : "freeText",
+    "name" : "Anil Verma",
+    "phone" : null,
+    "input" : "Portal https://portal.example/contact?email=suresh.rao@gmail.com&ref=1",
+    "expected" : "Portal https://portal.example/contact?email=[email]&ref=1"
+  }, {
+    "method" : "freeText",
+    "name" : "Anil Verma",
+    "phone" : null,
+    "input" : "Call 98450 12345 or mail anil@example.com",
+    "expected" : "Call [phone] or mail [email]"
+  }, {
+    "method" : "freeText",
+    "name" : "Anil Verma",
+    "phone" : null,
+    "input" : "98450 12345,anil@example.com",
+    "expected" : "[phone],[email]"
+  }, {
+    "method" : "freeText",
+    "name" : "Anil Verma",
+    "phone" : null,
+    "input" : "Mail me at sam@example.com.",
+    "expected" : "Mail me at [email]."
+  }, {
+    "method" : "place",
+    "name" : "Anil Verma",
+    "phone" : null,
+    "input" : "Shop 4, mail owner@example.org",
+    "expected" : "Shop 4, mail [email]"
+  }, {
+    "method" : "scrub",
+    "name" : "Suresh Rao",
+    "phone" : null,
+    "input" : "Contact: Suresh Rao\nmail suresh@gmail.com ok",
+    "expected" : "mail [email] ok"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "Write to a.b@c.in or 98450 12345, see https://example.com/l/123",
+    "expected" : "Write to [email] or [phone], see https://example.com/l/123"
+  }, {
+    "method" : "freeText",
+    "name" : null,
+    "phone" : null,
+    "input" : "Rent 28k @ month, ask x@y or a@b.",
+    "expected" : "Rent 28k @ month, ask x@y or a@b."
+  }, {
+    "method" : "freeText",
+    "name" : "Rose Bush",
+    "phone" : null,
+    "input" : "Rose garden at the back, a bush hedge, Rose said keys with Rosemary",
+    "expected" : "[contact] garden at the back, a [contact] hedge, [contact] said keys with Rosemary"
+  }, {
+    "method" : "freeText",
+    "name" : "Will Mark",
+    "phone" : null,
+    "input" : "Owner will mark the parking spot; Will Mark called",
+    "expected" : "Owner [contact] the parking spot; [contact] called"
+  }, {
+    "method" : "freeText",
+    "name" : "Gold",
+    "phone" : null,
+    "input" : "Gold coloured gate",
+    "expected" : "[contact] coloured gate"
+  }, {
+    "method" : "freeText",
+    "name" : "Ram",
+    "phone" : null,
+    "input" : "Ram Nagar, Sri Ram Temple road, ramp access",
+    "expected" : "[contact] Nagar, Sri [contact] Temple road, ramp access"
+  }, {
+    "method" : "place",
+    "name" : "Rose Bush",
+    "phone" : null,
+    "input" : "Rose Bush Lane, Rosewood Park",
+    "expected" : "[contact] Lane, Rosewood Park"
+  }, {
+    "method" : "freeText",
+    "name" : "K. Ramesh",
+    "phone" : null,
+    "input" : "K block near K R Puram",
+    "expected" : "K block near K R Puram"
+  }, {
+    "method" : "freeText",
+    "name" : null,
+    "phone" : null,
+    "input" : "Mail ravi+flat3@example.co.in now",
+    "expected" : "Mail [email] now"
+  }, {
+    "method" : "freeText",
+    "name" : null,
+    "phone" : null,
+    "input" : "Mail aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@example.com now",
+    "expected" : "Mail [email] now"
+  }, {
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Call +91 98200 12345 now",
     "expected" : "Call [phone] now"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Call 098200 12345 now",
     "expected" : "Call [phone] now"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Call 98200-12345",
     "expected" : "Call [phone]"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Call 98200.12345.",
     "expected" : "Call [phone]."
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Call 98200 12345 / 98200 12346",
     "expected" : "Call [phone] / [phone]"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Call 9820012345",
     "expected" : "Call [phone]"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Call +91-98200-12345",
     "expected" : "Call [phone]"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Call +91 (98200) 12345",
     "expected" : "Call [phone]"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Call 91 98200 12345",
     "expected" : "Call [phone]"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Call 0091 98200 12345",
     "expected" : "Call 0091 [phone]"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Office 011-4155 0101",
     "expected" : "Office [phone]"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Office 022 2655 0101",
     "expected" : "Office [phone]"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Office 033 2359 0101",
     "expected" : "Office [phone]"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Office 040-2354 0000",
     "expected" : "Office [phone]"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Office 044 2434 5555",
     "expected" : "Office [phone]"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Office 0484 235 1234",
     "expected" : "Office [phone]"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Office 0361 245 5555",
     "expected" : "Office [phone]"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Office 0172-270 0000",
     "expected" : "Office [phone]"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Office 0135 274 1234",
     "expected" : "Office [phone]"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Office 0177-265 1234",
     "expected" : "Office [phone]"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Office 01141550101",
     "expected" : "Office [phone]"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Office (022) 2655 0101",
     "expected" : "Office [phone]"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Office (080) 23456789",
     "expected" : "Office [phone]"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Office +91-22-2655 0101",
     "expected" : "Office [phone]"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Office 079-2630 1234 / 079-2630 1235",
     "expected" : "Office [phone] / [phone]"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Bandra West, Mumbai 400050, flat 1203",
     "expected" : "Bandra West, Mumbai 400050, flat 1203"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Rent Rs 85,000/-, deposit Rs 5,10,000",
     "expected" : "Rent Rs 85,000/-, deposit Rs 5,10,000"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Price Rs 12,34,567 only",
     "expected" : "Price Rs 12,34,567 only"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Plot 4/12, Sector 56, Gurugram 122011",
     "expected" : "Plot 4/12, Sector 56, Gurugram 122011"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "1.2 lakh per month, 1800 sq ft, 3rd floor",
     "expected" : "1.2 lakh per month, 1800 sq ft, 3rd floor"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Visit on 08-10-2026 at 5 pm",
     "expected" : "Visit on 08-10-2026 at 5 pm"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Pincode 682030, Kochi",
     "expected" : "Pincode 682030, Kochi"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Rent 28000 deposit 280000",
     "expected" : "Rent 28000 deposit 280000"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "هاتف ٩٨٢٠٠ ١٢٣٤٥",
     "expected" : "هاتف [phone]",
     "note" : "Arabic-Indic digits"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "فون ۹۸۲۰۰ ۱۲۳۴۵",
     "expected" : "فون [phone]",
     "note" : "Extended Arabic-Indic digits"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "फोन ९८२०० १२३४५",
     "expected" : "फोन [phone]",
     "note" : "Devanagari digits"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "ফোন ৯৮২০০ ১২৩৪৫",
     "expected" : "ফোন [phone]",
     "note" : "Bengali digits"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "ਫ਼ੋਨ ੯੮੨੦੦ ੧੨੩੪੫",
     "expected" : "ਫ਼ੋਨ [phone]",
     "note" : "Gurmukhi digits"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "ફોન ૯૮૨૦૦ ૧૨૩૪૫",
     "expected" : "ફોન [phone]",
     "note" : "Gujarati digits"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "ଫୋନ ୯୮୨୦୦ ୧୨୩୪୫",
     "expected" : "ଫୋନ [phone]",
     "note" : "Odia digits"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "தொலைபேசி ௯௮௨௦௦ ௧௨௩௪௫",
     "expected" : "தொலைபேசி [phone]",
     "note" : "Tamil digits"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "ఫోన్ ౯౮౨౦౦ ౧౨౩౪౫",
     "expected" : "ఫోన్ [phone]",
     "note" : "Telugu digits"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "ಫೋನ್ ೯೮೨೦೦ ೧೨೩೪೫",
     "expected" : "ಫೋನ್ [phone]",
     "note" : "Kannada digits"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "ഫോൺ ൯൮൨൦൦ ൧൨൩൪൫",
     "expected" : "ഫോൺ [phone]",
     "note" : "Malayalam digits"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "ऑफिस ०११-४१५५ ०१०१",
     "expected" : "ऑफिस [phone]",
     "note" : "Devanagari digits, a Delhi landline"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "+91 ९८२०० 12345",
     "expected" : "[phone]",
     "note" : "Latin and Devanagari digits in one number"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "किराया ८५,००० रुपये, फ्लैट १२०३",
     "expected" : "किराया ८५,००० रुपये, फ्लैट १२०३",
     "note" : "a price and a door number in Devanagari digits are not a phone"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "ফ্ল্যাট ১২০৩, পিন ৭০০০৩৩",
@@ -660,6 +768,62 @@
     "expected" : "reach the office on 2345 6789",
     "knownGap" : "S4b-BL-174a",
     "wanted" : "reach the office on [phone]"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "फोन ९८२०० १२३४५, mail anil@example.com",
+    "expected" : "फोन [phone], mail [email]",
+    "note" : "a phone in Devanagari digits beside an email address"
+  }, {
+    "method" : "freeText",
+    "name" : "Anil Verma",
+    "phone" : null,
+    "input" : "९८२०० १२३४५,anil@example.com",
+    "expected" : "[phone],[email]",
+    "note" : "Devanagari digits then an address, no space between"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "९८२००१२३४५@example.com",
+    "expected" : "[phone]@example.com",
+    "note" : "the number goes before the email rule runs, as for 9820012345@example.com below"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "9820012345@example.com",
+    "expected" : "[phone]@example.com",
+    "note" : "the Latin-digit twin of the case above"
+  }, {
+    "method" : "freeText",
+    "name" : "Pravin Kulkarni",
+    "phone" : "98900 55555",
+    "input" : "९८९०० ५५५५५ pravin@example.com",
+    "expected" : "[phone] [email]",
+    "note" : "the saved number in Devanagari digits, then an address that holds a name part"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "Office (022) 2655 0101,ravi@b.in",
+    "expected" : "Office [phone],[email]",
+    "note" : "a parenthesised STD code beside an email address"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "Call (0484) 235 1234 or office1234567890@x.in",
+    "expected" : "Call [phone] or [email]",
+    "note" : "ten digits inside an email local part are not a phone"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "Mail रमेश९८२००१२३४५@example.com now",
+    "expected" : "Mail [email] now",
+    "note" : "native digits inside an email local part go with the address"
   } ],
   "sanitize" : [ {
     "raw" : {

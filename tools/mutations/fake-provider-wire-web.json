@@ -1,0 +1,59 @@
+{
+  "spec": "web/src/app/core/ai/fake-provider.wire.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/core/ai/openai-compat.ts",
+      "find": "{ Authorization: `Bearer ${this.apiKey.trim()}` }",
+      "replace": "{ Authorization: `Token ${this.apiKey.trim()}` }",
+      "expect": "answers a strict json_schema request on the first tier"
+    },
+    {
+      "file": "web/src/app/core/ai/anthropic.ts",
+      "find": "'x-api-key': key,",
+      "replace": "'x-key': key,",
+      "expect": "forces the tool and sends the documented headers"
+    },
+    {
+      "file": "web/src/app/core/ai/anthropic.ts",
+      "find": "body['tool_choice'] = { type: 'tool', name };",
+      "replace": "body['tool_choice'] = { type: 'auto', name };",
+      "expect": "forces the tool and sends the documented headers"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-request.ts",
+      "find": "redirect: 'error',",
+      "replace": "redirect: 'follow',",
+      "expect": "does not follow a redirect"
+    },
+    {
+      "file": "web/src/app/core/ai/openai-compat.ts",
+      "find": "const TIER_1_WORDS = ['response_format', 'json_schema', 'strict', 'unsupported', 'not supported'];",
+      "replace": "const TIER_1_WORDS = ['zzz'];",
+      "expect": "moves the ladder from json_schema to json_object"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-request.ts",
+      "find": "if (status === 404) return { action: 'error', kind: 'modelNotFound' };",
+      "replace": "if (status === 404) return { action: 'error', kind: 'unavailable' };",
+      "expect": "maps 401, 403, 404"
+    },
+    {
+      "file": "web/src/app/core/ai/openai-compat.ts",
+      "find": "return m ? m[1].trim() : trimmed;",
+      "replace": "return trimmed;",
+      "expect": "unwraps a fenced answer"
+    },
+    {
+      "file": "web/src/app/core/ai/on-device-ai.service.ts",
+      "find": "{ headers: { 'x-goog-api-key': this.key } }",
+      "replace": "{ headers: { 'x-goog-key': this.key } }",
+      "expect": "sends the key in x-goog-api-key"
+    },
+    {
+      "file": "web/src/app/core/ai/anthropic.ts",
+      "find": "if (message === null || message['stop_reason'] === 'max_tokens' || !Array.isArray",
+      "replace": "if (message === null || !Array.isArray",
+      "expect": "treats max_tokens and a text-only reply as unavailable"
+    }
+  ]
+}

@@ -66,11 +66,11 @@ class ParityVectorsTest {
                 "place" -> r.place(input)
                 "freeText" -> r.freeText(input)
                 "scrub" -> ContactRedactor.scrubStoredText(input, name, phone)
-                else -> ContactRedactor.redactPhones(input)
+                else -> ContactRedactor.redactGeneric(input)
             }
             assertEquals(str(o["expected"]), actual, "${o["method"]} $name / $phone: $input")
         }
-        assertEquals(107, cases.size)
+        assertEquals(133, cases.size)
     }
 
     /**

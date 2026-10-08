@@ -74,7 +74,7 @@ class ParityVectorsTest {
                 case "place" -> r.place(input);
                 case "freeText" -> r.freeText(input);
                 case "scrub" -> ContactRedactor.scrubStoredText(input, name, phone);
-                case "phones" -> ContactRedactor.redactPhones(input);
+                case "generic" -> ContactRedactor.redactGeneric(input);
                 default -> throw new IllegalArgumentException(o.get("method").asText());
             };
             o.put("expected", result);

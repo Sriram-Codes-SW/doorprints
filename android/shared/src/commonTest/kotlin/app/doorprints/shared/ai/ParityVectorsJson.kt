@@ -336,310 +336,418 @@ internal val PARITY_VECTORS_JSON: String = listOf(
     "input" : "Contact: X\nNotes: fine",
     "expected" : "Notes: fine"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : "Mr. Ramesh Kumar",
     "phone" : "+91 98450 12345",
     "input" : "call 9845012345 or 080 23456789, flat 1203",
     "expected" : "call [phone] or [phone], flat 1203"
   }, {
-    "method" : "phones",
+    "method" : "freeText",
+    "name" : "Suresh Rao",
+    "phone" : null,
+    "input" : "Mail suresh.rao@gmail.com or sureshrao1983@yahoo.co.in, insta @suresh_rao, https://wa.me/919886055555",
+    "expected" : "Mail [email] or [email], insta @[contact], https://wa.me/[phone]"
+  }, {
+    "method" : "freeText",
+    "name" : "Suresh Rao",
+    "phone" : "+91 98860 55555",
+    "input" : "Mail sureshrao1983@yahoo.co.in",
+    "expected" : "Mail [email]"
+  }, {
+    "method" : "freeText",
+    "name" : "Anil Verma",
+    "phone" : null,
+    "input" : "Portal https://portal.example/contact?email=suresh.rao@gmail.com&ref=1",
+    "expected" : "Portal https://portal.example/contact?email=[email]&ref=1"
+  }, {
+    "method" : "freeText",
+    "name" : "Anil Verma",
+    "phone" : null,
+    "input" : "Call 98450 12345 or mail anil@example.com",
+    "expected" : "Call [phone] or mail [email]"
+  }, {
+    "method" : "freeText",
+    "name" : "Anil Verma",
+    "phone" : null,
+    "input" : "98450 12345,anil@example.com",
+    "expected" : "[phone],[email]"
+  }, {
+    "method" : "freeText",
+    "name" : "Anil Verma",
+    "phone" : null,
+    "input" : "Mail me at sam@example.com.",
+    "expected" : "Mail me at [email]."
+  }, {
+    "method" : "place",
+    "name" : "Anil Verma",
+    "phone" : null,
+    "input" : "Shop 4, mail owner@example.org",
+    "expected" : "Shop 4, mail [email]"
+  }, {
+    "method" : "scrub",
+    "name" : "Suresh Rao",
+    "phone" : null,
+    "input" : "Contact: Suresh Rao\nmail suresh@gmail.com ok",
+    "expected" : "mail [email] ok"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "Write to a.b@c.in or 98450 12345, see https://example.com/l/123",
+    "expected" : "Write to [email] or [phone], see https://example.com/l/123"
+  }, {
+    "method" : "freeText",
+    "name" : null,
+    "phone" : null,
+    "input" : "Rent 28k @ month, ask x@y or a@b.",
+    "expected" : "Rent 28k @ month, ask x@y or a@b."
+  }, {
+    "method" : "freeText",
+    "name" : "Rose Bush",
+    "phone" : null,
+    "input" : "Rose garden at the back, a bush hedge, Rose said keys with Rosemary",
+    "expected" : "[contact] garden at the back, a [contact] hedge, [contact] said keys with Rosemary"
+  }, {
+    "method" : "freeText",
+    "name" : "Will Mark",
+    "phone" : null,
+    "input" : "Owner will mark the parking spot; Will Mark called",
+    "expected" : "Owner [contact] the parking spot; [contact] called"
+  }, {
+    "method" : "freeText",
+    "name" : "Gold",
+    "phone" : null,
+    "input" : "Gold coloured gate",
+    "expected" : "[contact] coloured gate"
+  }, {
+    "method" : "freeText",
+    "name" : "Ram",
+    "phone" : null,
+    "input" : "Ram Nagar, Sri Ram Temple road, ramp access",
+    "expected" : "[contact] Nagar, Sri [contact] Temple road, ramp access"
+  }, {
+    "method" : "place",
+    "name" : "Rose Bush",
+    "phone" : null,
+    "input" : "Rose Bush Lane, Rosewood Park",
+    "expected" : "[contact] Lane, Rosewood Park"
+  }, {
+    "method" : "freeText",
+    "name" : "K. Ramesh",
+    "phone" : null,
+    "input" : "K block near K R Puram",
+    "expected" : "K block near K R Puram"
+  }, {
+    "method" : "freeText",
+    "name" : null,
+    "phone" : null,
+    "input" : "Mail ravi+flat3@example.co.in now",
+    "expected" : "Mail [email] now"
+  }, {
+    "method" : "freeText",
+    "name" : null,
+    "phone" : null,
+    "input" : "Mail aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@example.com now",
+    "expected" : "Mail [email] now"
+  }, {
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Call +91 98200 12345 now",
     "expected" : "Call [phone] now"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Call 098200 12345 now",
     "expected" : "Call [phone] now"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Call 98200-12345",
     "expected" : "Call [phone]"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Call 98200.12345.",
     "expected" : "Call [phone]."
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Call 98200 12345 / 98200 12346",
     "expected" : "Call [phone] / [phone]"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Call 9820012345",
     "expected" : "Call [phone]"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Call +91-98200-12345",
     "expected" : "Call [phone]"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Call +91 (98200) 12345",
     "expected" : "Call [phone]"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Call 91 98200 12345",
     "expected" : "Call [phone]"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Call 0091 98200 12345",
     "expected" : "Call 0091 [phone]"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Office 011-4155 0101",
     "expected" : "Office [phone]"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Office 022 2655 0101",
     "expected" : "Office [phone]"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Office 033 2359 0101",
     "expected" : "Office [phone]"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Office 040-2354 0000",
     "expected" : "Office [phone]"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Office 044 2434 5555",
     "expected" : "Office [phone]"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
-    "phone" : null,
+""",
+    """    "phone" : null,
     "input" : "Office 0484 235 1234",
     "expected" : "Office [phone]"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Office 0361 245 5555",
     "expected" : "Office [phone]"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Office 0172-270 0000",
     "expected" : "Office [phone]"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Office 0135 274 1234",
     "expected" : "Office [phone]"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Office 0177-265 1234",
     "expected" : "Office [phone]"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Office 01141550101",
     "expected" : "Office [phone]"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Office (022) 2655 0101",
     "expected" : "Office [phone]"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Office (080) 23456789",
     "expected" : "Office [phone]"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Office +91-22-2655 0101",
     "expected" : "Office [phone]"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Office 079-2630 1234 / 079-2630 1235",
     "expected" : "Office [phone] / [phone]"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Bandra West, Mumbai 400050, flat 1203",
     "expected" : "Bandra West, Mumbai 400050, flat 1203"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Rent Rs 85,000/-, deposit Rs 5,10,000",
     "expected" : "Rent Rs 85,000/-, deposit Rs 5,10,000"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Price Rs 12,34,567 only",
     "expected" : "Price Rs 12,34,567 only"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Plot 4/12, Sector 56, Gurugram 122011",
     "expected" : "Plot 4/12, Sector 56, Gurugram 122011"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "1.2 lakh per month, 1800 sq ft, 3rd floor",
     "expected" : "1.2 lakh per month, 1800 sq ft, 3rd floor"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Visit on 08-10-2026 at 5 pm",
     "expected" : "Visit on 08-10-2026 at 5 pm"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Pincode 682030, Kochi",
     "expected" : "Pincode 682030, Kochi"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "Rent 28000 deposit 280000",
     "expected" : "Rent 28000 deposit 280000"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "هاتف ٩٨٢٠٠ ١٢٣٤٥",
     "expected" : "هاتف [phone]",
     "note" : "Arabic-Indic digits"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "فون ۹۸۲۰۰ ۱۲۳۴۵",
     "expected" : "فون [phone]",
     "note" : "Extended Arabic-Indic digits"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "फोन ९८२०० १२३४५",
     "expected" : "फोन [phone]",
     "note" : "Devanagari digits"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "ফোন ৯৮২০০ ১২৩৪৫",
     "expected" : "ফোন [phone]",
     "note" : "Bengali digits"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
-""",
-    """    "input" : "ਫ਼ੋਨ ੯੮੨੦੦ ੧੨੩੪੫",
+    "input" : "ਫ਼ੋਨ ੯੮੨੦੦ ੧੨੩੪੫",
     "expected" : "ਫ਼ੋਨ [phone]",
     "note" : "Gurmukhi digits"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "ફોન ૯૮૨૦૦ ૧૨૩૪૫",
     "expected" : "ફોન [phone]",
     "note" : "Gujarati digits"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "ଫୋନ ୯୮୨୦୦ ୧୨୩୪୫",
     "expected" : "ଫୋନ [phone]",
     "note" : "Odia digits"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "தொலைபேசி ௯௮௨௦௦ ௧௨௩௪௫",
     "expected" : "தொலைபேசி [phone]",
     "note" : "Tamil digits"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "ఫోన్ ౯౮౨౦౦ ౧౨౩౪౫",
     "expected" : "ఫోన్ [phone]",
     "note" : "Telugu digits"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "ಫೋನ್ ೯೮೨೦೦ ೧೨೩೪೫",
     "expected" : "ಫೋನ್ [phone]",
     "note" : "Kannada digits"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "ഫോൺ ൯൮൨൦൦ ൧൨൩൪൫",
     "expected" : "ഫോൺ [phone]",
     "note" : "Malayalam digits"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "ऑफिस ०११-४१५५ ०१०१",
     "expected" : "ऑफिस [phone]",
     "note" : "Devanagari digits, a Delhi landline"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "+91 ९८२०० 12345",
     "expected" : "[phone]",
     "note" : "Latin and Devanagari digits in one number"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "किराया ८५,००० रुपये, फ्लैट १२०३",
     "expected" : "किराया ८५,००० रुपये, फ्लैट १२०३",
     "note" : "a price and a door number in Devanagari digits are not a phone"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : null,
     "phone" : null,
     "input" : "ফ্ল্যাট ১২০৩, পিন ৭০০০৩৩",
@@ -685,6 +793,62 @@ internal val PARITY_VECTORS_JSON: String = listOf(
     "expected" : "reach the office on 2345 6789",
     "knownGap" : "S4b-BL-174a",
     "wanted" : "reach the office on [phone]"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "फोन ९८२०० १२३४५, mail anil@example.com",
+    "expected" : "फोन [phone], mail [email]",
+    "note" : "a phone in Devanagari digits beside an email address"
+  }, {
+    "method" : "freeText",
+    "name" : "Anil Verma",
+    "phone" : null,
+    "input" : "९८२०० १२३४५,anil@example.com",
+    "expected" : "[phone],[email]",
+    "note" : "Devanagari digits then an address, no space between"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "९८२००१२३४५@example.com",
+    "expected" : "[phone]@example.com",
+    "note" : "the number goes before the email rule runs, as for 9820012345@example.com below"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "9820012345@example.com",
+    "expected" : "[phone]@example.com",
+    "note" : "the Latin-digit twin of the case above"
+  }, {
+    "method" : "freeText",
+    "name" : "Pravin Kulkarni",
+    "phone" : "98900 55555",
+    "input" : "९८९०० ५५५५५ pravin@example.com",
+    "expected" : "[phone] [email]",
+    "note" : "the saved number in Devanagari digits, then an address that holds a name part"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "Office (022) 2655 0101,ravi@b.in",
+    "expected" : "Office [phone],[email]",
+    "note" : "a parenthesised STD code beside an email address"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "Call (0484) 235 1234 or office1234567890@x.in",
+    "expected" : "Call [phone] or [email]",
+    "note" : "ten digits inside an email local part are not a phone"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "Mail रमेश९८२००१२३४५@example.com now",
+    "expected" : "Mail [email] now",
+    "note" : "native digits inside an email local part go with the address"
   } ],
   "sanitize" : [ {
     "raw" : {
@@ -874,7 +1038,8 @@ internal val PARITY_VECTORS_JSON: String = listOf(
     "raw" : {
       "label" : "1BHK furnished flat, Bandra West",
       "locality" : "Bandra West",
-      "price" : "Rs 85,000/-",
+""",
+    """      "price" : "Rs 85,000/-",
       "priceType" : "RENT",
       "bedrooms" : "1 BHK",
       "contactName" : "Amit",
@@ -1060,8 +1225,7 @@ internal val PARITY_VECTORS_JSON: String = listOf(
       "listingUrl" : null,
       "notes" : null,
       "amenities" : [ ],
-""",
-    """      "warnings" : [ ]
+      "warnings" : [ ]
     }
   }, {
     "raw" : {
@@ -1378,7 +1542,8 @@ internal val PARITY_VECTORS_JSON: String = listOf(
           "type" : "string",
           "description" : "Listing URL if one is present in the text",
           "nullable" : true
-        },
+""",
+    """        },
         "notes" : {
           "type" : "string",
           "description" : "Other useful facts (deposit, floor, furnishing, availability) in one short paragraph",
@@ -1489,8 +1654,7 @@ internal val PARITY_VECTORS_JSON: String = listOf(
       "required" : [ "answer", "citedHouseIds" ],
       "additionalProperties" : false
     },
-""",
-    """    "trailer" : "Reply with only a JSON object of this shape: {\"type\":\"object\",\"properties\":{\"answer\":{\"type\":\"string\",\"description\":\"The answer, in 1-6 sentences, citing houses inline as [house:<id>]\"},\"citedHouseIds\":{\"type\":\"array\",\"description\":\"Ids of the houses cited inline as [house:<id>] in the answer, copied exactly from the context\",\"items\":{\"type\":\"string\"}}},\"required\":[\"answer\",\"citedHouseIds\"],\"additionalProperties\":false}"
+    "trailer" : "Reply with only a JSON object of this shape: {\"type\":\"object\",\"properties\":{\"answer\":{\"type\":\"string\",\"description\":\"The answer, in 1-6 sentences, citing houses inline as [house:<id>]\"},\"citedHouseIds\":{\"type\":\"array\",\"description\":\"Ids of the houses cited inline as [house:<id>] in the answer, copied exactly from the context\",\"items\":{\"type\":\"string\"}}},\"required\":[\"answer\",\"citedHouseIds\"],\"additionalProperties\":false}"
   }, {
     "name" : "plan",
     "gemini" : {
@@ -1670,7 +1834,8 @@ internal val PARITY_VECTORS_JSON: String = listOf(
       "max_tokens" : 2048,
       "messages" : [ {
         "role" : "system",
-        "content" : "You extract house listings.\n\nReply with only a JSON object of this shape: {\"type\":\"object\",\"properties\":{\"label\":{\"type\":[\"string\",\"null\"],\"description\":\"Short human label, e.g. '2BHK near Indiranagar metro'\"},\"address\":{\"type\":[\"string\",\"null\"],\"description\":\"Full postal address as written in the listing\"},\"street\":{\"type\":[\"string\",\"null\"],\"description\":\"Street / road name only\"},\"locality\":{\"type\":[\"string\",\"null\"],\"description\":\"Locality / neighbourhood / area\"},\"price\":{\"type\":[\"string\",\"null\"],\"description\":\"Monthly rent or sale price in rupees exactly as written, e.g. '25,000' or '1.2 Cr'\"},\"priceType\":{\"type\":[\"string\",\"null\"],\"description\":\"RENT or SALE\"},\"bedrooms\":{\"type\":[\"string\",\"null\"],\"description\":\"Number of bedrooms, e.g. '2' for 2BHK\"},\"contactName\":{\"type\":[\"string\",\"null\"],\"description\":\"Contact person name\"},\"contactPhone\":{\"type\":[\"string\",\"null\"],\"description\":\"Contact phone number exactly as written\"},\"listingUrl\":{\"type\":[\"string\",\"null\"],\"description\":\"Listing URL if one is present in the text\"},\"notes\":{\"type\":[\"string\",\"null\"],\"description\":\"Other useful facts (deposit, floor, furnishing, availability) in one short paragraph\"},\"amenities\":{\"type\":\"array\",\"description\":\"Amenities such as parking, lift, power backup, gym\",\"items\":{\"type\":\"string\"}}},\"required\":[\"label\",\"address\",\"street\",\"locality\",\"price\",\"priceType\",\"bedrooms\",\"contactName\",\"contactPhone\",\"listingUrl\",\"notes\",\"amenities\"],\"additionalProperties\":false}"
+""",
+    """        "content" : "You extract house listings.\n\nReply with only a JSON object of this shape: {\"type\":\"object\",\"properties\":{\"label\":{\"type\":[\"string\",\"null\"],\"description\":\"Short human label, e.g. '2BHK near Indiranagar metro'\"},\"address\":{\"type\":[\"string\",\"null\"],\"description\":\"Full postal address as written in the listing\"},\"street\":{\"type\":[\"string\",\"null\"],\"description\":\"Street / road name only\"},\"locality\":{\"type\":[\"string\",\"null\"],\"description\":\"Locality / neighbourhood / area\"},\"price\":{\"type\":[\"string\",\"null\"],\"description\":\"Monthly rent or sale price in rupees exactly as written, e.g. '25,000' or '1.2 Cr'\"},\"priceType\":{\"type\":[\"string\",\"null\"],\"description\":\"RENT or SALE\"},\"bedrooms\":{\"type\":[\"string\",\"null\"],\"description\":\"Number of bedrooms, e.g. '2' for 2BHK\"},\"contactName\":{\"type\":[\"string\",\"null\"],\"description\":\"Contact person name\"},\"contactPhone\":{\"type\":[\"string\",\"null\"],\"description\":\"Contact phone number exactly as written\"},\"listingUrl\":{\"type\":[\"string\",\"null\"],\"description\":\"Listing URL if one is present in the text\"},\"notes\":{\"type\":[\"string\",\"null\"],\"description\":\"Other useful facts (deposit, floor, furnishing, availability) in one short paragraph\"},\"amenities\":{\"type\":\"array\",\"description\":\"Amenities such as parking, lift, power backup, gym\",\"items\":{\"type\":\"string\"}}},\"required\":[\"label\",\"address\",\"street\",\"locality\",\"price\",\"priceType\",\"bedrooms\",\"contactName\",\"contactPhone\",\"listingUrl\",\"notes\",\"amenities\"],\"additionalProperties\":false}"
       }, {
         "role" : "user",
         "content" : "Two bedroom flat in Indiranagar, rent 25,000."
@@ -1808,8 +1973,7 @@ internal val PARITY_VECTORS_JSON: String = listOf(
       "max_tokens" : 2048,
       "messages" : [ {
         "role" : "system",
-""",
-    """        "content" : "You plan house visits.\n\nReply with only a JSON object of this shape: {\"type\":\"object\",\"properties\":{\"summary\":{\"type\":\"string\",\"description\":\"2-4 sentences explaining the plan\"},\"stops\":{\"type\":\"array\",\"description\":\"Houses to visit, in visiting order\",\"items\":{\"type\":\"object\",\"properties\":{\"houseId\":{\"type\":\"string\",\"description\":\"House id exactly as returned by a tool\"},\"reason\":{\"type\":\"string\",\"description\":\"Why this house is in the plan, one sentence\"}},\"required\":[\"houseId\",\"reason\"],\"additionalProperties\":false}}},\"required\":[\"summary\",\"stops\"],\"additionalProperties\":false}"
+        "content" : "You plan house visits.\n\nReply with only a JSON object of this shape: {\"type\":\"object\",\"properties\":{\"summary\":{\"type\":\"string\",\"description\":\"2-4 sentences explaining the plan\"},\"stops\":{\"type\":\"array\",\"description\":\"Houses to visit, in visiting order\",\"items\":{\"type\":\"object\",\"properties\":{\"houseId\":{\"type\":\"string\",\"description\":\"House id exactly as returned by a tool\"},\"reason\":{\"type\":\"string\",\"description\":\"Why this house is in the plan, one sentence\"}},\"required\":[\"houseId\",\"reason\"],\"additionalProperties\":false}}},\"required\":[\"summary\",\"stops\"],\"additionalProperties\":false}"
       }, {
         "role" : "user",
         "content" : "Plan a Saturday morning near Koramangala."
@@ -2113,7 +2277,8 @@ internal val PARITY_VECTORS_JSON: String = listOf(
       "action" : "error",
       "kind" : "rateLimited",
       "retryAfterSeconds" : null
-    }
+""",
+    """    }
   }, {
     "provider" : "anthropic",
     "status" : 429,
@@ -2376,8 +2541,7 @@ internal val PARITY_VECTORS_JSON: String = listOf(
   }, {
     "input" : "",
     "expected" : {
-""",
-    """      "valid" : false,
+      "valid" : false,
       "reason" : "empty"
     }
   }, {
@@ -2611,7 +2775,8 @@ internal val PARITY_VECTORS_JSON: String = listOf(
     "response" : "{\"id\":\"msg_test\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"test-model\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_test\",\"name\":\"answer\",\"input\":{\"answer\":\"Yes\",\"citedHouseIds\":[]}}],\"stop_reason\":\"end_turn\"}",
     "expected" : {
       "text" : "{\"answer\":\"Yes\",\"citedHouseIds\":[]}"
-    }
+""",
+    """    }
   }, {
     "call" : "generate",
     "response" : "{\"id\":\"msg_test\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"test-model\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_test\",\"name\":\"answer\",\"input\":{\"answer\":\"Yes, bal\"}}],\"stop_reason\":\"max_tokens\"}",
@@ -2813,8 +2978,7 @@ internal val PARITY_VECTORS_JSON: String = listOf(
     "inOrder" : [ {
       "id" : "mussoorie",
       "meters" : 15255,
-""",
-    """      "walkMinutes" : 248
+      "walkMinutes" : 248
     }, {
       "id" : "rishikesh",
       "meters" : 45745,
@@ -2941,6 +3105,5 @@ internal val PARITY_VECTORS_JSON: String = listOf(
     "amount" : 1234567890,
     "expected" : "₹1,23,45,67,890"
   } ]
-}
-""",
+}""",
 ).joinToString("")

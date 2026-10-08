@@ -2,10 +2,10 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.112 |
+| Version | 0.116 |
 | Date | 2026-10-08 |
 | Owner | Sriram (product owner); lead: Claude |
-| Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..173); this file lists the lead-level items and points to the rest. |
+| Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..183); this file lists the lead-level items and points to the rest. |
 
 ## Change log
 
@@ -120,7 +120,11 @@
 | 0.109 | 2026-10-07 | Claude (Code), lead | §7: the floor guard `node tools/check-floor.mjs` (S4b-BL-157; [10](10-sprint-log.md) v0.169) checks the rule "never weaken a gate"; the `Gate-loosening:` escape and what the guard cannot see. |
 | 0.110 | 2026-10-08 | Claude (Code), lead | The comment pass (S4b-BL-158; [10](10-sprint-log.md) v0.170) is done: important functions and types carry a doc comment (what it achieves, what it does). New code follows the same rule: a public or non-obvious function gets a short doc comment in the language's standard form, and a change that moves code moves its comment with it. |
 | 0.111 | 2026-10-08 | Claude (Code), lead | The independent review of `main` (2026-10-08) is recorded: S4b-BL-161..173 in [10](10-sprint-log.md) §12.7 (v0.173), with S4b-BL-161 (the pairing flood) to be done before any public server and S4b-BL-168 and -171 waiting for the owner. Team-level ticket range in the header is now S4b-BL-1..173. |
-| 0.112 | 2026-10-08 | Claude (Code), lead | S4b-BL-174 ([10](10-sprint-log.md) v0.175): the tests are no longer one city. §7 working rule *Not one city*; the golden set has regions ([ai/ai-design.md](ai/ai-design.md) 8.3a). |
+| 0.112 | 2026-10-08 | Claude (Code), lead | S4b-BL-175 (keyless provider checks; [10](10-sprint-log.md) v0.175): `tools/fake-ai-provider` (a fake OpenAI-style, Anthropic and Gemini server, its tests and a Chromium CORS check) and the manual AI evals suite `local-model`; §7 points at them. Three findings are in §12.7 as S4b-BL-175-F1..F3. |
+| 0.113 | 2026-10-08 | Claude (Code), lead | **S4b-BL-179 and S4b-BL-180 built on `fix/redact-emails-pin-common-name-words`** ([10](10-sprint-log.md) v0.175): the redaction layer removes email addresses (`[email]`) on the server and on the device, and the ordinary-word name parts that stay replaced are pinned by vectors (owner decisions of 2026-10-08). Mutation lists `tools/mutations/ai-redactor-email-*.json`. |
+| 0.114 | 2026-10-08 | Claude (Code), lead | S4b-BL-183 ([10](10-sprint-log.md) v0.176): the guide's search (Material reads the box on key-up only; `search-input.js`; `tools/guide-search-check/`), a §7 pitfall. Team-level ticket range in the header is now S4b-BL-1..183. |
+| 0.115 | 2026-10-08 | Claude (Code) | **S4b-BL-171 built on `fix/owner-setup-link-first-run-only`** ([10](10-sprint-log.md) v0.178), pull request #191: the server writes the owner page's setup link to its log only at a start while no browser is signed in; the owner page's hi, ta and te sign-in hints still say "restart the server for a new link" (follow-up). |
+| 0.116 | 2026-10-08 | Claude (Code), lead | S4b-BL-174 ([10](10-sprint-log.md) v0.179): the tests are no longer one city. §7 working rule *Not one city*; the golden set has regions ([ai/ai-design.md](ai/ai-design.md) 8.3a). |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 
@@ -526,6 +530,7 @@ to branches or PRs or main")**
   (`scripts/sw-precache.mjs`) writes the precache list into `sw.js`. Check a new lazy chunk or asset is in it.
 - **Guide:** `mkdocs build --strict` output must be read for `WARNING` lines (an anchor warning once passed locally and
   failed CI); renaming a heading breaks `#anchor` links in other pages.
+- **Guide search (S4b-BL-183):** Material reads the search box on `keyup` and focus only, so a test that fills it with `fill()` or `pressSequentially` of Indic text (input events, no key-up) sees the last word missing: end the text with a key press, or use `tools/guide-search-check/check.mjs` (`--typing`). Do not set the search plugin's `lang` to `ta` or `te`: Material's worker never loads `wordcut.js` for them and the whole search dies. `site-check.mjs` (CI, `tools/check.sh guide`) checks the build; after a guide or Material change, run `check.mjs` by hand (docs/06 TC-M-65), and against the live site after a deploy.
 - **Live UI test (`tools/live-ui`):** about 15 minutes with the areas in parallel; give it 20-30 before any time limit.
   Network faults (a 502 from this session's proxy, often with a `text/plain` body: that was the "stylesheet as
   text/plain" of 2026-09-28/-29) are fetched again, reported under `transient` in `out/results.json` and not counted; a
@@ -577,6 +582,7 @@ to branches or PRs or main")**
 - **After retargeting a stacked pull request to `main`**, re-run its cancelled checks once, then merge; do not re-run a check that is only waiting.
 - **At most 2-3 builders in parallel** (rate limits).
 - **Screenshots:** look at the failing image or its diff image only, not every full-size PNG.
+- **The AI adapters are tested without keys** (S4b-BL-175): before trusting a change to `openai-compat`, `anthropic` or `GeminiClient`, run them against `tools/fake-ai-provider` (it checks requests like a vendor; `node --test tools/fake-ai-provider/server.test.mjs`, the Kotlin class `FakeProviderWireTest`, the web spec `fake-provider.wire.spec.ts`, and by hand `node tools/fake-ai-provider/browser-check.mjs` for CORS). A new wire behaviour gets a mode there with its source cited, or is marked *assumed*. The manual AI evals suite `local-model` (Ollama on the runner, no key) exercises the openai-compatible kind against a real small model.
 - **Not one city (S4b-BL-174, 2026-10-08):** a new fixture, vector or table test uses places across the zones of the golden set ([ai/ai-design.md](ai/ai-design.md) 8.3a: Mumbai, Delhi, Kolkata, Chennai, Guwahati, Shimla, Kochi and the rest), not Indiranagar; a rule that touches phones, prices, areas, addresses or the map gets one shared table read by every stack that has the rule. The expected values come from the text or an independent calculation, never from the code under test; a gap a table finds is fixed, or recorded as a backlog row and pinned by a test that says what happens today.
 - **Never weaken a gate to make a change pass** (a skip, ignore or suppression, a removed test or mutation, a lowered budget); if one is truly needed, say so in the pull request.
 
