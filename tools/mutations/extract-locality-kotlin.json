@@ -1,0 +1,22 @@
+{
+  "spec": "AiCoreTest, AiProviderVectorsTest",
+  "gradle": [
+      ":shared:testAndroidHostTest",
+      "--tests",
+      "*AiCoreTest",
+      "--tests",
+      "*AiProviderVectorsTest"
+  ],
+  "mutations": [
+    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AiPrompts.kt", "find": "            |- locality: the neighbourhood or area, never the city alone (the city goes in address). If only a road is named, use the road as the locality too.\n", "replace": "", "expect": "extractionPromptSaysLocalityIsTheAreaNotTheCity"},
+    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AiPrompts.kt", "find": "never the city alone (the city goes in address)", "replace": "the city (the city goes in address)", "expect": "extractionPromptSaysLocalityIsTheAreaNotTheCity"},
+    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AiPrompts.kt", "find": "(the city goes in address). ", "replace": ". ", "expect": "extractionPromptSaysLocalityIsTheAreaNotTheCity"},
+    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AiPrompts.kt", "find": " If only a road is named, use the road as the locality too.", "replace": "", "expect": "extractionPromptSaysLocalityIsTheAreaNotTheCity"},
+    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AiPrompts.kt", "find": "- locality: the neighbourhood or area", "replace": "- locality: the neighbourhood, area or city", "expect": "extractionPromptSaysLocalityIsTheAreaNotTheCity"},
+    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OnDeviceAi.kt", "find": "Street / road name only, e.g. 'MG Road'; null when no road is named", "replace": "Street / road name only", "expect": "schemaDialectMatchesTheVectors"},
+    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OnDeviceAi.kt", "find": "Locality / neighbourhood / area inside the city, e.g. 'Indiranagar', 'Sector 56'; never the city or district alone. When the listing names only a road, repeat the road here", "replace": "Locality / neighbourhood / area", "expect": "schemaDialectMatchesTheVectors"},
+    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OnDeviceAi.kt", "find": "; never the city or district alone", "replace": "", "expect": "schemaDialectMatchesTheVectors"},
+    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OnDeviceAi.kt", "find": ". When the listing names only a road, repeat the road here", "replace": "", "expect": "schemaDialectMatchesTheVectors"},
+    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OnDeviceAi.kt", "find": ", e.g. 'MG Road'; null when no road is named", "replace": "", "expect": "schemaDialectMatchesTheVectors"}
+  ]
+}

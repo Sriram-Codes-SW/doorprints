@@ -29,8 +29,8 @@ import java.util.List;
 public record RawListing(
         @JsonPropertyDescription("Short human label, e.g. '2BHK near Indiranagar metro'") String label,
         @JsonPropertyDescription("Full postal address as written in the listing") String address,
-        @JsonPropertyDescription("Street / road name only") String street,
-        @JsonPropertyDescription("Locality / neighbourhood / area") String locality,
+        @JsonPropertyDescription("Street / road name only, e.g. 'MG Road'; null when no road is named") String street,
+        @JsonPropertyDescription("Locality / neighbourhood / area inside the city, e.g. 'Indiranagar', 'Sector 56'; never the city or district alone. When the listing names only a road, repeat the road here") String locality,
         @JsonPropertyDescription("Monthly rent or sale price in rupees exactly as written, e.g. '25,000' or '1.2 Cr'") String price,
         @JsonPropertyDescription("RENT or SALE") String priceType,
         @JsonPropertyDescription("Number of bedrooms, e.g. '2' for 2BHK") String bedrooms,
