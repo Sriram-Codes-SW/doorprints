@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.121 |
+| Version | 0.122 |
 | Date | 2026-10-08 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..183); this file lists the lead-level items and points to the rest. |
@@ -130,6 +130,7 @@
 | 0.119 | 2026-10-08 | Claude (Code), lead | S4b-BL-184 ([10](10-sprint-log.md) v0.182): the evals workflow reads the Gemini key first for the gemini kind; a run that stopped early fails after its summary. |
 | 0.120 | 2026-10-08 | Claude (Code), lead | S4b-BL-182 ([10](10-sprint-log.md) v0.183): Extract warns when the pasted listing holds several links (`listingUrl: the text has N links, check this is the right one`, three stacks, shared vectors) and the paste boxes say how many characters of a long text are left out (website, Android, iPhone); mutation lists `extract-*.json`. |
 | 0.121 | 2026-10-08 | Claude (Code), lead | S4b-BL-181 ([10](10-sprint-log.md) v0.184): the AI limits are pinned by tests and mutation lists on the website, the phones and the server; an emoji at a notes cut, a start point off Earth on the device, and `nearby` with NaN are fixed. |
+| 0.122 | 2026-10-08 | Claude (Code), lead | S4b-BL-185 ([10](10-sprint-log.md) v0.185): the website eval scorer no longer fails every answer on "![" ; four golden-set expectations corrected; the first full runs on v0.7 are recorded in ai-design v0.35. |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 

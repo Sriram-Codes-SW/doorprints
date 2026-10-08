@@ -38,6 +38,9 @@
     { "file": "web/src/app/core/ai/ai-eval.ts", "find": "} else if (r.output !== undefined) unseen++;", "replace": "} else if (false) unseen++;", "expect": "how many were not shown" },
     { "file": "web/src/app/core/ai/ai-eval.ts", "find": "output = JSON.stringify(outcome.plan);", "replace": "output = undefined;", "expect": "failed plan case" },
     { "file": "web/src/app/core/ai/ai-eval.ts", "find": "output = JSON.stringify(outcome.draft);", "replace": "output = undefined;", "expect": "failed extract case" },
-    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "const failed = results.filter((r) => !r.passed);", "replace": "const failed = results.filter((r) => !r.passed || r.output !== undefined);", "expect": "none for a passing case" }
-  ]
+    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "const failed = results.filter((r) => !r.passed);", "replace": "const failed = results.filter((r) => !r.passed || r.output !== undefined);", "expect": "none for a passing case" },
+    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "norm(needle) === '' ?", "replace": "false ?" },
+    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "hay.normalize('NFKC').includes(needle.normalize('NFKC'))", "replace": "hay.includes(needle)" },
+    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "if (mentions(r.answer, m)) out.push(`answer contains", "replace": "if (norm(r.answer).includes(norm(m))) out.push(`answer contains" }
+]
 }

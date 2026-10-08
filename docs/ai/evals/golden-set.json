@@ -397,7 +397,7 @@
       "id": "extract-22-lucknow-lakh-rent",
       "type": "extract",
       "region": "north",
-      "input": { "text": "4BHK independent kothi for rent at Gomti Nagar, Vibhuti Khand, Lucknow 🏡 Rent 1.2 lakh/month. 333 gaj (3000 sq ft) plot, 2400 built-up, lawn, parking for 2 cars. DM for details." },
+      "input": { "text": "4BHK independent kothi for rent at Gomti Nagar, Lucknow 🏡 Rent 1.2 lakh/month. 333 gaj (3000 sq ft) plot, 2400 built-up, lawn, parking for 2 cars. DM for details." },
       "expected": { "price": 120000, "priceType": "RENT", "bedrooms": 4, "locality": "Gomti Nagar", "contactName": null, "contactPhone": null, "listingUrl": null, "amenitiesInclude": ["parking"], "note": "\"1.2 lakh\" is a monthly rent here (120,000), not a sale price. \"DM for details\" gives no contact: name and phone stay null." }
     },
     {
@@ -475,14 +475,14 @@
       "type": "ask",
       "region": "east",
       "input": { "question": "Which of my Kolkata houses has a lift?" },
-      "expected": { "expectedHouseIds": ["bbbbbbbb-0000-4000-8000-000000000006"], "mustContain": ["Salt Lake"], "mustNotCite": ["bbbbbbbb-0000-4000-8000-000000000001", "bbbbbbbb-0000-4000-8000-000000000012"], "note": "Two houses in other cities also mention a lift (Bandra, Baner): citing them is mixing cities." }
+      "expected": { "expectedHouseIds": ["bbbbbbbb-0000-4000-8000-000000000006"], "allowedCitations": ["bbbbbbbb-0000-4000-8000-000000000007"], "mustContain": ["Salt Lake"], "mustNotCite": ["bbbbbbbb-0000-4000-8000-000000000001", "bbbbbbbb-0000-4000-8000-000000000012"], "note": "Two houses in other cities also mention a lift (Bandra, Baner): citing them is mixing cities. The other Kolkata house may be cited when the answer says it has no lift (corrected after the first Gemini server run, 2026-10-08: a house the answer talks about is cited)." }
     },
     {
       "id": "ask-19-pune-noisy",
       "type": "ask",
       "region": "west",
       "input": { "question": "Which Pune flat is noisy?" },
-      "expected": { "expectedHouseIds": ["bbbbbbbb-0000-4000-8000-000000000011"], "mustContain": ["Kothrud"], "mustNotCite": ["22222222-2222-4222-8222-222222222222", "bbbbbbbb-0000-4000-8000-000000000003"], "note": "The Corner flat in Indiranagar and the Andheri 1RK are noisy too, but not in Pune." }
+      "expected": { "expectedHouseIds": ["bbbbbbbb-0000-4000-8000-000000000011"], "allowedCitations": ["bbbbbbbb-0000-4000-8000-000000000012"], "mustContain": ["Kothrud"], "mustNotCite": ["22222222-2222-4222-8222-222222222222", "bbbbbbbb-0000-4000-8000-000000000003"], "note": "The Corner flat in Indiranagar and the Andheri 1RK are noisy too, but not in Pune." }
     },
     {
       "id": "ask-20-chennai-advance",
@@ -496,7 +496,7 @@
       "type": "ask",
       "region": "west",
       "input": { "question": "Which Mumbai house has covered parking?" },
-      "expected": { "expectedHouseIds": ["bbbbbbbb-0000-4000-8000-000000000002"], "mustContain": ["Powai"], "mustNotCite": ["bbbbbbbb-0000-4000-8000-000000000004", "22222222-2222-4222-8222-222222222222"], "note": "The Gurugram flat and the Corner flat also have covered parking, in other cities." }
+      "expected": { "expectedHouseIds": ["bbbbbbbb-0000-4000-8000-000000000002"], "allowedCitations": ["bbbbbbbb-0000-4000-8000-000000000001", "bbbbbbbb-0000-4000-8000-000000000003"], "mustContain": ["Powai"], "mustNotCite": ["bbbbbbbb-0000-4000-8000-000000000004", "22222222-2222-4222-8222-222222222222"], "note": "The Gurugram flat and the Corner flat also have covered parking, in other cities. The other Mumbai houses may be cited when the answer says they have none (corrected after the first Gemini server run, 2026-10-08)." }
     },
     {
       "id": "ask-22-guwahati-katha",

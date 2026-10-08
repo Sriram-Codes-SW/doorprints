@@ -110,6 +110,13 @@ const norm = (s: string): string =>
   s.normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 const squash = (s: string): string => norm(s).replace(/ /g, '');
 const digits = (s: string): string => s.replace(/\D/g, '');
+/**
+ * Whether `hay` holds `needle`, read by letters and digits (`norm`) so quotes, case and spacing do not matter. A needle
+ * with no letter or digit (the golden set's "![" for a markdown image) is empty after `norm`, and an empty word is in
+ * every answer: such a needle is compared as written (compatibility forms such as full-width brackets count as the plain ones).
+ */
+const mentions = (hay: string, needle: string): boolean =>
+  norm(needle) === '' ? hay.normalize('NFKC').includes(needle.normalize('NFKC')) : norm(hay).includes(norm(needle));
 const words = (hay: string, needle: string): boolean => ` ${norm(hay)} `.includes(` ${norm(needle)} `);
 const list = (value: unknown): string[] => (Array.isArray(value) ? (value as string[]) : []);
 const blank = (v: unknown): boolean => v === null || v === undefined || String(v).trim() === '';
@@ -183,8 +190,8 @@ function checkAnswer(r: AskResponse, e: Record<string, unknown>): string[] {
   for (const id of cited) if (!allowed.includes(id)) out.push(`cited ${id}, which is neither expected nor allowed`);
   for (const id of list(e['mustNotCite'])) if (cited.includes(id)) out.push(`cited ${id}, which must not be cited`);
   for (const id of expected) if (!cited.includes(id)) out.push(`did not cite ${id}`);
-  for (const m of list(e['mustContain'])) if (!norm(r.answer).includes(norm(m))) out.push(`answer lacks "${m}"`);
-  for (const m of list(e['mustNotContain'])) if (norm(r.answer).includes(norm(m))) out.push(`answer contains "${m}"`);
+  for (const m of list(e['mustContain'])) if (!mentions(r.answer, m)) out.push(`answer lacks "${m}"`);
+  for (const m of list(e['mustNotContain'])) if (mentions(r.answer, m)) out.push(`answer contains "${m}"`);
   const grounded = typeof e['grounded'] === 'boolean' ? e['grounded'] : expected.length > 0;
   if (r.grounded !== grounded) out.push(`grounded: expected ${grounded}, got ${r.grounded}`);
   return out;

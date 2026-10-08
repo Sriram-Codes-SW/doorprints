@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Test plan (functional, security, accessibility, i18n, AI) |
-| Version | 0.163 |
+| Version | 0.164 |
 | Date | 2026-10-08 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -173,6 +173,7 @@
 | 0.161 | 2026-10-08 | Claude (Code), lead | TC-AI-23 and TC-AI-25 (S4b-BL-184): `ai-provider.live.spec.ts` fails, after writing the summary, when the run stopped early (key rejected, model not found, provider unreachable or too slow for the 60 s request limit); the gemini key order is stated. |
 | 0.162 | 2026-10-08 | Claude (Code), lead | TC-U-177 (S4b-BL-182): Extract's several-links warning and the paste-cut hint, in the three stacks. |
 | 0.163 | 2026-10-08 | Claude (Code), lead | New **TC-AI-28**: the AI limits (S4b-BL-181), with the named mutation lists `tools/mutations/ai-limits-{web,kotlin,java}.json`. |
+| 0.164 | 2026-10-08 | Claude (Code), lead | TC-AI-23 (S4b-BL-185): `ai-eval.spec.ts` pins the comparison of a word that is all punctuation ("![", full-width forms); 3 mutations added to `ai-eval.json`; golden-set expectations of ask-18, ask-19, ask-21, extract-22 corrected. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Design](03-design.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
