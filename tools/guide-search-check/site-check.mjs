@@ -71,6 +71,7 @@ const decode = (s) => s
   .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(+n))
   .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16)))
   .replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&amp;/g, '&')
+  .replace(/[<>]/g, '') // numeric entities can decode to an angle bracket after the tags were stripped
   .replace(/\s+/g, ' ').trim();
 
 // The built navigation: [href, title] of every page link, from index.html's sidebar.
