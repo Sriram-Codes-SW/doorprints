@@ -98,6 +98,7 @@ actual fun platformCryptoProvider(): CryptoProvider = IosCryptoProvider
  */
 @OptIn(ExperimentalForeignApi::class, ExperimentalNativeApi::class)
 internal object IosCryptoProvider : CryptoProvider {
+    /** An AES key kept as raw bytes; `toString` names no key material. */
     private class IosAesKey(val raw: ByteArray) : AesKey {
         override val sizeBytes: Int get() = raw.size
         override fun toString() = "AesKey"
@@ -109,6 +110,7 @@ internal object IosCryptoProvider : CryptoProvider {
         private val cleaner = createCleaner(ref) { CFRelease(it) }
     }
 
+    /** A P-256 private key: the Security.framework key (released with the object) and its public point. */
     private class IosP256Key(val box: SecKeyBox, private val pub: ByteArray) : P256PrivateKey {
         override val publicKey: ByteArray get() = pub.copyOf()
         override fun toString() = "P256PrivateKey"
@@ -149,6 +151,7 @@ internal object IosCryptoProvider : CryptoProvider {
         return IosAesKey(raw.copyOf())
     }
 
+    /** A [Gcm] whose block cipher is AES-ECB under [key]; a key from another provider is refused. */
     private fun gcm(key: AesKey): Gcm {
         val k = key as? IosAesKey ?: throw CryptoException(CryptoException.Kind.INVALID_KEY, "foreign key")
         return Gcm { blocks -> aesEcb(k.raw, blocks) }
@@ -186,6 +189,10 @@ internal object IosCryptoProvider : CryptoProvider {
 
     // ---- P-256 ----
 
+    /**
+     * A fresh software P-256 key from Security.framework; its public point is checked to be on the curve before it
+     * is used.
+     */
     override fun p256Generate(): P256PrivateKey {
         val ref = withDictionary(
             kSecAttrKeyType to kSecAttrKeyTypeECSECPrimeRandom,
@@ -203,6 +210,10 @@ internal object IosCryptoProvider : CryptoProvider {
         return IosP256Key(box, pub)
     }
 
+    /**
+     * Imports the private scalar: the public point is computed by [P256Base], the platform imports both, and the
+     * platform's public key must equal the computed one. The buffer holding the scalar is wiped after the import.
+     */
     override fun p256FromScalar(scalar: ByteArray): P256PrivateKey {
         if (scalar.size != 32 || !P256Scalar.isValid(scalar)) throw CryptoException(CryptoException.Kind.INVALID_KEY, "scalar out of range")
         val pub = P256Base.publicKey(scalar)
@@ -230,6 +241,10 @@ internal object IosCryptoProvider : CryptoProvider {
         return encoded.copyOf()
     }
 
+    /**
+     * Requires an uncompressed point (`04 ‖ x ‖ y`) that is on the curve; otherwise
+     * [CryptoException.Kind.INVALID_KEY].
+     */
     private fun validate(encoded: ByteArray) {
         if (encoded.size != 65 || encoded[0] != 0x04.toByte()) {
             throw CryptoException(CryptoException.Kind.INVALID_KEY, "not an uncompressed P-256 point")
@@ -240,6 +255,7 @@ internal object IosCryptoProvider : CryptoProvider {
         }
     }
 
+    /** ECDH with the validated peer point through Security.framework; returns the 32-byte x coordinate. */
     override fun p256Agree(privateKey: P256PrivateKey, peerPublic: ByteArray): ByteArray {
         val k = privateKey as? IosP256Key ?: throw CryptoException(CryptoException.Kind.INVALID_KEY, "foreign key")
         validate(peerPublic)
@@ -280,6 +296,7 @@ internal object IosCryptoProvider : CryptoProvider {
         }
     }
 
+    /** The X9.63 bytes of a key (for a public key, `04 ‖ x ‖ y`). */
     internal fun externalRepresentation(key: SecKeyRef): ByteArray {
         val data = SecKeyCopyExternalRepresentation(key, null) ?: throw CryptoException(CryptoException.Kind.UNAVAILABLE, "no external representation")
         try {
@@ -289,6 +306,7 @@ internal object IosCryptoProvider : CryptoProvider {
         }
     }
 
+    /** Copies the bytes of a `CFData`. */
     internal fun bytesOf(data: CFDataRef): ByteArray {
         val length = CFDataGetLength(data).toInt()
         if (length == 0) return ByteArray(0)
@@ -296,6 +314,7 @@ internal object IosCryptoProvider : CryptoProvider {
         return pointer.reinterpret<ByteVar>().readBytes(length)
     }
 
+    /** A `CFNumber` for [value]; the caller releases it. */
     internal fun number(value: Int): CFTypeRef? = memScoped {
         val v = alloc<kotlinx.cinterop.IntVar>()
         v.value = value

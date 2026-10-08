@@ -114,6 +114,10 @@ class Hpke internal constructor(private val p: CryptoProvider, internal val aead
      */
     fun generateKeyPair(): P256PrivateKey = p.p256Generate()
 
+    /**
+     * ExtractAndExpand (RFC 9180 §4.1): turns the ECDH output and the KEM context into the 32-byte
+     * `shared_secret`.
+     */
     private fun extractAndExpand(dh: ByteArray, kemContext: ByteArray): ByteArray {
         val eaePrk = labeledExtract(kemSuiteId, ByteArray(0), "eae_prk", dh)
         return labeledExpand(kemSuiteId, eaePrk, "shared_secret", kemContext, N_SECRET)
@@ -158,16 +162,22 @@ class Hpke internal constructor(private val p: CryptoProvider, internal val aead
         )
     }
 
+    /** Binds a key schedule to the provider: the AEAD key and the base nonce that [Context] uses for its messages. */
     internal fun context(s: Schedule) = Context(p, p.aesKey(s.key), s.baseNonce)
 
     /** SetupBaseS with a fresh ephemeral key ([generateKeyPair]). */
     fun setupBaseS(pkR: ByteArray, info: ByteArray): Sender = setupBaseS(pkR, info, generateKeyPair())
 
+    /** SetupBaseS with a caller-supplied ephemeral key; the test vectors use it to pin `enc`. */
     internal fun setupBaseS(pkR: ByteArray, info: ByteArray, ephemeral: P256PrivateKey): Sender {
         val (shared, enc) = encap(pkR, ephemeral)
         return Sender(enc, context(keySchedule(MODE_BASE, shared, info, ByteArray(0), ByteArray(0))))
     }
 
+    /**
+     * SetupBaseR: the receiving side of [setupBaseS]; decapsulates [enc] with [skR] and returns the [Context] that
+     * opens the sender's messages.
+     */
     fun setupBaseR(enc: ByteArray, skR: P256PrivateKey, info: ByteArray): Context =
         context(keySchedule(MODE_BASE, decap(enc, skR), info, ByteArray(0), ByteArray(0)))
 

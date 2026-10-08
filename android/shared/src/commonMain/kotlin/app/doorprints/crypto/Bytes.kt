@@ -22,6 +22,7 @@ import kotlin.io.encoding.Base64
 
 /** Small, explicit byte helpers for the crypto code (big-endian throughout, as RFC 9180's I2OSP). */
 internal object Bytes {
+    /** Joins [parts] into one new array. */
     fun concat(vararg parts: ByteArray): ByteArray {
         var size = 0
         for (p in parts) size += p.size
@@ -47,8 +48,10 @@ internal object Bytes {
         return out
     }
 
+    /** [value] as 4 big-endian bytes. */
     fun u32(value: Long): ByteArray = i2osp(value, 4)
 
+    /** The UTF-8 bytes of [text]. */
     fun utf8(text: String): ByteArray = text.encodeToByteArray()
 
     /** `u8(length) ‖ utf8(text)`: a label that cannot run into the field after it. */
@@ -58,6 +61,7 @@ internal object Bytes {
         return concat(byteArrayOf(b.size.toByte()), b)
     }
 
+    /** Bytewise XOR of two arrays of equal length. */
     fun xor(a: ByteArray, b: ByteArray): ByteArray {
         require(a.size == b.size)
         return ByteArray(a.size) { (a[it].toInt() xor b[it].toInt()).toByte() }
@@ -81,6 +85,7 @@ internal object Bytes {
         return bytes
     }
 
+    /** Lowercase hex of [bytes]. */
     fun hex(bytes: ByteArray): String {
         val digits = "0123456789abcdef"
         val sb = StringBuilder(bytes.size * 2)
@@ -91,6 +96,7 @@ internal object Bytes {
         return sb.toString()
     }
 
+    /** The bytes of a hex string; for fixtures of known input, so a bad digit throws. */
     fun unhex(text: String): ByteArray {
         require(text.length % 2 == 0) { "odd hex" }
         return ByteArray(text.length / 2) { i ->
@@ -125,6 +131,7 @@ internal class Hkdf(private val p: CryptoProvider) {
         return out
     }
 
+    /** HKDF-Extract then HKDF-Expand in one call. */
     fun derive(salt: ByteArray, ikm: ByteArray, info: ByteArray, length: Int): ByteArray =
         expand(extract(salt, ikm), info, length)
 

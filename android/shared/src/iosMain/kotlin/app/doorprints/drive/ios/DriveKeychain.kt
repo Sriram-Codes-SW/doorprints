@@ -116,6 +116,10 @@ object SecurityDriveKeychain : KeychainItems {
         return if (status == errSecItemNotFound) errSecSuccess else status
     }
 
+    /**
+     * Adds the item with the protection asked for, always this-device-only and available only when a passcode is
+     * set; the user-presence one needs the person on every read.
+     */
     private fun add(account: String, data: ByteArray, protection: ItemProtection): Int {
         val control = if (protection == ItemProtection.USER_PRESENCE_EACH_READ) {
             SecAccessControlCreateWithFlags(

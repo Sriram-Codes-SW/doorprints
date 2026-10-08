@@ -65,15 +65,18 @@ object IosDriveFolders {
         return path.startsWith("$root/drive-import/") && name.isNotEmpty() && '/' !in name && name != ".." && name != "."
     }
 
+    /** Removes everything directly inside [folder]. */
     fun sweep(folder: String) {
         val manager = NSFileManager.defaultManager
         manager.contentsOfDirectoryAtPath(folder, error = null)?.forEach { name -> manager.removeItemAtPath("$folder/$name", error = null) }
     }
 
+    /** Removes the file at [path] if there is one. */
     fun remove(path: String) {
         NSFileManager.defaultManager.removeItemAtPath(path, error = null)
     }
 
+    /** Creates the folder if needed and returns its path. */
     private fun made(path: String): String {
         NSFileManager.defaultManager.createDirectoryAtPath(path, withIntermediateDirectories = true, attributes = null, error = null)
         return path
@@ -102,6 +105,10 @@ class IosDriveBackupSource(
     private val appVersion: () -> String = { NSBundle.mainBundle.objectForInfoDictionaryKey("CFBundleShortVersionString") as? String ?: "" },
 ) : BackupSource {
 
+    /**
+     * Builds the backup ZIP of the current rows without photos into a private file and returns it as a
+     * [BackupPayload]; closing the payload removes the file, and so does a failure.
+     */
     override suspend fun open(): BackupPayload = withContext(Dispatchers.Default) {
         val options = ExportOptions(photos = PhotoScope.NONE, language = language(), utcOffsetMinutes = 0, exportedAtMillis = now())
         val bundle = repository.localRows().toBundle(options)
@@ -150,6 +157,7 @@ class IosDriveImportFile(folder: String = IosDriveFolders.importing) : StagingSi
     val path: String = "$folder/drive-${Uuid.random()}.zip"
     private var out: PosixFileSink? = null
 
+    /** Appends to the staged file, creating it on the first bytes. */
     override fun write(buffer: ByteArray, offset: Int, length: Int) {
         val sink = out ?: PosixFileSink(path).also { out = it }
         sink.write(buffer, offset, length)
@@ -165,6 +173,7 @@ class IosDriveImportFile(folder: String = IosDriveFolders.importing) : StagingSi
         out = null
     }
 
+    /** Closes and removes the staged file. */
     override fun discard() {
         try {
             out?.close()

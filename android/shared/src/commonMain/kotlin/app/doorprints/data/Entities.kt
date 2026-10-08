@@ -149,6 +149,7 @@ data class PhotoEntity(
     }
 }
 
+/** A house's count of live visits and the time of the latest, a Room query projection. */
 data class HouseVisitCount(val houseId: String, val visits: Int, val lastVisit: Long)
 
 /**

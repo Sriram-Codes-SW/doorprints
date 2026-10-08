@@ -76,8 +76,10 @@ class WalkStore(
      */
     fun changes(): Flow<Unit> = db.invalidationTracker.createFlow("track_points", "saved_walks").map { }
 
+    /** How many saved walks of live houses there are, for Settings. */
     fun savedWalkCount(): Flow<Int> = db.savedWalks().observeCount()
 
+    /** A house's saved walks without their point bytes, newest first. */
     fun savedWalksOf(houseId: String): Flow<List<SavedWalkSummary>> = db.savedWalks().observeForHouse(houseId)
 
     /** The walk [walkId] moved into a saved walk of [houseId], in one transaction; a refusal changes nothing. */
@@ -104,12 +106,15 @@ class WalkStore(
         SaveWalkResult.Saved(id)
     }
 
+    /** Deletes one walk from the 30-day trace; 0 is no walk and deletes nothing. */
     suspend fun deleteTraceWalk(walkId: Long) {
         if (walkId != 0L) db.track().deleteWalk(walkId)
     }
 
+    /** Deletes one saved walk. */
     suspend fun deleteSavedWalk(id: String) = db.savedWalks().delete(id)
 
+    /** Deletes every saved walk (the Settings action); the 30-day trace stays. */
     suspend fun deleteAllSavedWalks() = db.savedWalks().deleteAll()
 
     suspend fun savedWalkPoints(id: String): List<TracePoint>? =
@@ -146,6 +151,10 @@ class WalkStore(
                 (liveWalkId == 0L || w.none { it.walkId == liveWalkId }) && (id == 0L || id !in savedStarts)
             }
 
+    /**
+     * The walks a new walk is compared with: the trace walks (not the live one, not ones already saved) and every
+     * saved walk of a live house, each tagged with its source.
+     */
     private suspend fun walksOtherThanWithSource(liveWalkId: Long, sinceMs: Long): List<Pair<List<TracePoint>, WalkSource>> {
         val saved = db.savedWalks().live()
         val trace = traceWalks(liveWalkId, sinceMs, saved.mapTo(HashSet()) { it.startedAt })
@@ -174,6 +183,7 @@ class WalkStore(
         withContext(NonCancellable + Dispatchers.IO) { runCatching { db.savedWalks().sweepOfDeletedHouses() } }
     }
 
+    /** The walk's length in whole metres. */
     private fun lengthM(points: List<TracePoint>): Int = rawLengthM(points).roundToInt()
 
     /** The unrounded length, as the website's `walkLengthM`: 99.6 m is not 100 m for the question. */

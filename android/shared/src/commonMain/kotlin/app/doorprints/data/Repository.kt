@@ -74,6 +74,12 @@ import kotlinx.coroutines.flow.StateFlow
  */
 enum class AiOff { NO_SERVER, SERVER, DEVICE, OPT_IN }
 
+/**
+ * The one door the screens use for everything the phone remembers: houses, visits, photos, brokers, scoring,
+ * questions, viewings, areas, settings, the path trace, AI, sync and the copies. Writes are local edits (dirty,
+ * `updatedAt` now) followed by a request for a sync soon; reads are flows or snapshots of live rows, tombstones
+ * hidden. [CommonRepository] is the implementation both apps share.
+ */
 interface Repository {
     val settings: SettingsStore
 
@@ -99,8 +105,10 @@ interface Repository {
     /** Turns a house into a tombstone (see [saveHouse]); nothing when there is no such house. */
     suspend fun deleteHouse(id: String)
 
+    /** Writes [visit] as a local edit (`updatedAt` now, dirty) and asks for a sync soon. */
     suspend fun saveVisit(visit: VisitEntity)
     suspend fun getVisit(id: String): VisitEntity?
+    /** Turns a visit into a tombstone (see [deleteHouse]); nothing when there is no such visit. */
     suspend fun deleteVisit(id: String)
 
     /** Records a "been here" visit for a house, now. */
@@ -110,6 +118,7 @@ interface Repository {
 
     /** The path trace of the last [TRACK_KEPT_DAYS] days, oldest first (docs/11 5.27; this phone only). */
     val trackPoints: Flow<List<TrackPointEntity>>
+    /** Appends one point to the path trace; local to this phone, never synced. */
     suspend fun saveTrackPoint(point: TrackPointEntity)
     /** Points older than [before] go (the retention limit; the engine calls it when Hunt mode starts). */
     suspend fun pruneTrack(before: Long)
@@ -383,6 +392,7 @@ interface Repository {
 
     suspend fun newPlaceId(): String
 
+    /** Deletes a place (a tombstone). */
     suspend fun deletePlace(id: String)
 
     /** The live area notes, newest first (ties by id), each with its `updatedAt`, now and after each change. */
@@ -398,8 +408,13 @@ interface Repository {
 
     suspend fun newAreaNoteId(): String
 
+    /** Deletes an area note (a tombstone). */
     suspend fun deleteAreaNote(id: String)
 
+    /**
+     * Asks the saved server for its stats, to tell the person whether the address and key work; the failure is
+     * returned, not thrown.
+     */
     suspend fun testConnection(): Result<StatsDto>
 
     /**
@@ -486,6 +501,10 @@ interface Repository {
         records: Map<String, Long> = emptyMap(),
     ): UndoResult
 
+    /**
+     * What the phone knows about one street: its live houses and visits and the first visit, for the Hunt card and
+     * the street alert.
+     */
     data class StreetInfo(val street: String, val houses: Int, val visits: Int, val firstVisit: Long?)
 
     companion object {

@@ -56,6 +56,7 @@ object IosPathMonitor {
     /** The photo rules' network state over this monitor. */
     fun state(): IosNetworkState = IosNetworkState(::snapshot)
 
+    /** Starts the monitor once, under the lock. */
     private fun ensureStarted() = lock.withLock {
         if (!started) {
             started = true
@@ -63,6 +64,7 @@ object IosPathMonitor {
         }
     }
 
+    /** Creates the path monitor on its own queue; each update replaces [latest]. */
     private fun start() {
         val monitor = nw_path_monitor_create()
         val queue = dispatch_queue_create("app.doorprints.drive.network", null)

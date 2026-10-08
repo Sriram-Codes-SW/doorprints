@@ -20,6 +20,7 @@ package app.doorprints.concurrent
 
 import java.util.concurrent.locks.ReentrantLock
 
+/** The Android lock: a `ReentrantLock`, so the same thread may take it again. */
 private class ReentrantPlatformLock : PlatformLock {
     private val lock = ReentrantLock()
 
@@ -33,4 +34,5 @@ private class ReentrantPlatformLock : PlatformLock {
     }
 }
 
+/** A new [ReentrantPlatformLock]. */
 actual fun PlatformLock(): PlatformLock = ReentrantPlatformLock()

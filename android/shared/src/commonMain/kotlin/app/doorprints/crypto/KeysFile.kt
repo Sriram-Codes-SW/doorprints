@@ -114,6 +114,7 @@ class KeysException(val kind: Kind, message: String) : Exception("keys ${kind.na
     }
 }
 
+/** Which app enrolled a device; [wire] is the spelling written into `keys.json`. */
 enum class DevicePlatform(val wire: String) {
     ANDROID("android"),
     IOS("ios"),
@@ -126,6 +127,10 @@ class HpkeWrap internal constructor(val enc: ByteArray, val ct: ByteArray)
 /** An AES-256-GCM wrap with its own random nonce. */
 class AeadWrap internal constructor(val nonce: ByteArray, val ct: ByteArray)
 
+/**
+ * One enrolled device in the list: its kid, the name the person gave it, its public key, when and by whom it was
+ * enrolled, and its wrap of the folder key.
+ */
 class DeviceEntry internal constructor(
     val kid: ByteArray,
     val name: String,
@@ -215,6 +220,7 @@ class KeysBody internal constructor(
         return j.bytes()
     }
 
+    /** Writes an HPKE wrap as the canonical `enc` and `ct` object. */
     private fun wrapJson(j: CanonicalJson, w: HpkeWrap) {
         j.raw("{\"enc\":").string(Bytes.b64(w.enc)).raw(",\"ct\":").string(Bytes.b64(w.ct)).raw("}")
     }
@@ -233,6 +239,10 @@ class OpenedKeys internal constructor(private val p: CryptoProvider, val body: K
     /** The current epoch's folder key, for writing new files (a copy; the caller may zero it after use). */
     fun currentFolderKey(): ByteArray = keys.getValue(body.epoch).copyOf()
 
+    /**
+     * The folder key of [epoch], or null for an epoch this list does not reach; older epochs are unwrapped down
+     * the chain and kept.
+     */
     override fun folderKey(epoch: Int): ByteArray? {
         if (epoch < 1 || epoch > body.epoch) return null
         var e = body.epoch
@@ -338,6 +348,10 @@ class KeysFile(private val p: CryptoProvider) {
     fun repinFirstPin(file: ByteArray, device: P256PrivateKey, guard: KeysGuard, trustedFolderKey: ByteArray): OpenedKeys =
         openDevice(file, device, guard, KeysGuard.Trust.REPIN, trustedFolderKey)
 
+    /**
+     * Opens the list as a device: refuses a revoked or unlisted one, unwraps its folder key, checks the MAC,
+     * compares with the [trusted] key when given, and lets [guard] accept the list under [trust].
+     */
     private fun openDevice(file: ByteArray, device: P256PrivateKey, guard: KeysGuard, trust: KeysGuard.Trust, trusted: ByteArray?): OpenedKeys {
         val (body, mac) = parse(file)
         val pub = device.publicKey
@@ -376,6 +390,10 @@ class KeysFile(private val p: CryptoProvider) {
     fun repinWithRecovery(file: ByteArray, recovery: RecoveryKey, guard: KeysGuard): OpenedKeys =
         recoveryOpen(file, recovery, guard, KeysGuard.Trust.REPIN)
 
+    /**
+     * Opens the list with the recovery key: unwraps the recovery entry, checks the MAC, then the anchor (the chain
+     * must end at the folder key the anchor holds) and lets [guard] accept it under [trust].
+     */
     private fun recoveryOpen(file: ByteArray, recovery: RecoveryKey, guard: KeysGuard, trust: KeysGuard.Trust): OpenedKeys {
         val (body, mac) = parse(file)
         val listed = body.recovery ?: throw KeysException(KeysException.Kind.NO_RECOVERY, "no recovery key in the list")
@@ -484,6 +502,7 @@ class KeysFile(private val p: CryptoProvider) {
         }
     }
 
+    /** The revision of the next list; refuses at the largest integer both stacks read exactly. */
     private fun nextRevision(body: KeysBody): Long {
         if (body.revision >= CanonicalJson.MAX_SAFE) throw KeysException(KeysException.Kind.REVISION_LIMIT, "revision limit")
         return body.revision + 1
@@ -498,11 +517,19 @@ class KeysFile(private val p: CryptoProvider) {
         return RecoveryEntry(kid, pub, epoch, anchor, wrap(pub, kid, epoch, folderKey))
     }
 
+    /**
+     * HPKE-wraps [folderKey] to [pub] with the epoch and kid as additional data, so a wrap cannot be moved to
+     * another epoch or recipient.
+     */
     private fun wrap(pub: ByteArray, kid: ByteArray, epoch: Int, folderKey: ByteArray): HpkeWrap {
         val sealed = hpke.seal(pub, WrapAad.HPKE_INFO, WrapAad.folderKey(epoch, kid), folderKey)
         return HpkeWrap(sealed.enc, sealed.ciphertext)
     }
 
+    /**
+     * Opens a wrap made by [wrap]; any failure or a wrong length is [KeysException.Kind.UNWRAP_FAILED], never the
+     * crypto detail.
+     */
     private fun unwrap(w: HpkeWrap, key: P256PrivateKey, epoch: Int, kid: ByteArray): ByteArray {
         val folderKey = try {
             hpke.open(w.enc, key, WrapAad.HPKE_INFO, WrapAad.folderKey(epoch, kid), w.ct)
@@ -513,15 +540,21 @@ class KeysFile(private val p: CryptoProvider) {
         return folderKey
     }
 
+    /** Compares the stored MAC with the one recomputed under [folderKey], in constant time. */
     private fun checkMac(body: KeysBody, mac: ByteArray, folderKey: ByteArray) {
         if (!constantTimeEquals(mac(folderKey, body), mac)) throw KeysException(KeysException.Kind.MAC_INVALID, "MAC")
     }
 
+    /** HMAC-SHA-256 over the format label and the canonical body, keyed by the MAC key derived from the folder key. */
     private fun mac(folderKey: ByteArray, body: KeysBody): ByteArray {
         val k = FolderKey.macKey(p, folderKey)
         return p.hmacSha256(k, Bytes.concat(Bytes.utf8(FORMAT), byteArrayOf(0), body.json())).also { k.fill(0) }
     }
 
+    /**
+     * Checks the rules, MACs and encodes [body]; returns the bytes with the matching [OpenedKeys]. Refuses a list
+     * over [MAX_FILE].
+     */
     private fun write(body: KeysBody, folderKey: ByteArray): Written {
         checkRules(body)
         val bytes = encode(body, mac(folderKey, body))
@@ -549,6 +582,7 @@ class KeysFile(private val p: CryptoProvider) {
         return body to mac
     }
 
+    /** Throws [KeysException.Kind.MALFORMED] naming the field that failed. */
     private fun malformed(what: String): Nothing = throw KeysException(KeysException.Kind.MALFORMED, what)
 
     private fun b64(e: JsonElement?, size: Int, what: String): ByteArray =
@@ -559,6 +593,7 @@ class KeysFile(private val p: CryptoProvider) {
         return HpkeWrap(b64(o["enc"], 65, "wrap.enc"), b64(o["ct"], 48, "wrap.ct"))
     }
 
+    /** Reads the `body` object field by field with the strict readers; unknown or missing fields are refused. */
     private fun parseBody(e: JsonElement?): KeysBody {
         val o = JsonRead.obj(e, "revision", "epoch", "chain", "devices", "recovery", "revoked") ?: malformed("body")
         val revision = JsonRead.long(o["revision"], 1, CanonicalJson.MAX_SAFE) ?: malformed("revision")
@@ -609,6 +644,10 @@ class KeysFile(private val p: CryptoProvider) {
         return KeysBody(revision, epoch, chain, devices, recovery, revoked)
     }
 
+    /**
+     * The structural rules of a list: chain length and order, at least one recipient, entry limits, kids matching
+     * public keys, valid names, no duplicate kid, no self-enrolment, a known enroller.
+     */
     private fun checkRules(b: KeysBody) {
         fun bad(why: String): Nothing = throw KeysException(KeysException.Kind.INVALID_ENTRY, why)
         if (b.chain.size != b.epoch - 1) bad("chain length")
@@ -639,14 +678,17 @@ class KeysFile(private val p: CryptoProvider) {
         }
     }
 
+    /** Returns [pub] if it is a valid P-256 point; otherwise [KeysException.Kind.INVALID_ENTRY]. */
     private fun validPublic(pub: ByteArray): ByteArray = try {
         p.p256ValidatePublic(pub)
     } catch (_: CryptoException) {
         throw KeysException(KeysException.Kind.INVALID_ENTRY, "public key")
     }
 
+    /** The name if [validNameOrNull] accepts it, else [KeysException.Kind.INVALID_ENTRY]. */
     private fun validName(name: String): String = validNameOrNull(name) ?: throw KeysException(KeysException.Kind.INVALID_ENTRY, "device name")
 
+    /** Refuses a time outside 0..2⁵³ − 1, the range the canonical JSON carries. */
     private fun checkTime(now: Long) {
         if (now < 0 || now > CanonicalJson.MAX_SAFE) throw KeysException(KeysException.Kind.INVALID_ENTRY, "time")
     }

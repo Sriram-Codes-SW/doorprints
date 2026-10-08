@@ -62,8 +62,10 @@ object JvmCryptoProvider : CryptoProvider {
     private val keyFactories = ThreadLocal.withInitial { KeyFactory.getInstance("EC") }
     private val keyFactory: KeyFactory get() = keyFactories.get()
 
+    /** An AES key kept as a `SecretKeySpec`; the raw bytes are copied in and never handed out. */
     private class JvmAesKey(val spec: SecretKeySpec, override val sizeBytes: Int) : AesKey
 
+    /** A P-256 private key with its public point; `toString` names no key material. */
     private class JvmP256Key(val key: PrivateKey, private val pub: ByteArray) : P256PrivateKey {
         override val publicKey: ByteArray get() = pub.copyOf()
         override fun toString() = "P256PrivateKey"
@@ -93,6 +95,7 @@ object JvmCryptoProvider : CryptoProvider {
         return JvmAesKey(SecretKeySpec(raw.copyOf(), "AES"), raw.size)
     }
 
+    /** A GCM cipher with a 128-bit tag for [nonce] and [aad]; only a 96-bit nonce and a key made here are accepted. */
     private fun gcm(mode: Int, key: AesKey, nonce: ByteArray, aad: ByteArray): Cipher {
         if (nonce.size != NONCE) throw CryptoException(CryptoException.Kind.INVALID_INPUT, "nonce length")
         val k = key as? JvmAesKey ?: throw CryptoException(CryptoException.Kind.INVALID_KEY, "foreign key")
@@ -105,6 +108,7 @@ object JvmCryptoProvider : CryptoProvider {
     override fun aesGcmSeal(key: AesKey, nonce: ByteArray, aad: ByteArray, plaintext: ByteArray): ByteArray =
         gcm(Cipher.ENCRYPT_MODE, key, nonce, aad).doFinal(plaintext)
 
+    /** Opens `ciphertext ‖ tag`; every failure is [CryptoException.Kind.AUTH_FAILED] and no plaintext is returned. */
     override fun aesGcmOpen(key: AesKey, nonce: ByteArray, aad: ByteArray, sealed: ByteArray): ByteArray {
         if (sealed.size < TAG_BITS / 8) throw CryptoException(CryptoException.Kind.AUTH_FAILED, "shorter than a tag")
         val cipher = gcm(Cipher.DECRYPT_MODE, key, nonce, aad)
@@ -117,6 +121,7 @@ object JvmCryptoProvider : CryptoProvider {
         }
     }
 
+    /** A fresh P-256 key pair from the platform's generator, using this provider's `SecureRandom`. */
     override fun p256Generate(): P256PrivateKey {
         val pair = KeyPairGenerator.getInstance("EC").run {
             initialize(ECGenParameterSpec("secp256r1"), random)
@@ -169,13 +174,19 @@ object JvmCryptoProvider : CryptoProvider {
         return lambda.multiply(lambda).subtract(x1).subtract(x2).mod(p)
     }
 
+    /** A platform private key object for the scalar [d]. */
     private fun privateKey(d: BigInteger): PrivateKey = keyFactory.generatePrivate(ECPrivateKeySpec(d, params))
 
+    /**
+     * Returns a copy of [encoded] if it is an uncompressed point on P-256; otherwise
+     * [CryptoException.Kind.INVALID_KEY].
+     */
     override fun p256ValidatePublic(encoded: ByteArray): ByteArray {
         decodePoint(encoded)
         return encoded.copyOf()
     }
 
+    /** Decodes `04 ‖ x ‖ y` and checks the coordinates are below p and satisfy the curve equation. */
     private fun decodePoint(encoded: ByteArray): ECPoint {
         if (encoded.size != 65 || encoded[0] != 0x04.toByte()) throw CryptoException(CryptoException.Kind.INVALID_KEY, "not an uncompressed P-256 point")
         val x = BigInteger(1, encoded.copyOfRange(1, 33))
@@ -188,6 +199,10 @@ object JvmCryptoProvider : CryptoProvider {
         return ECPoint(x, y)
     }
 
+    /**
+     * ECDH with the validated peer point; returns the 32-byte x coordinate, left-padded with zeros if the platform
+     * trimmed it.
+     */
     override fun p256Agree(privateKey: P256PrivateKey, peerPublic: ByteArray): ByteArray {
         val k = privateKey as? JvmP256Key ?: throw CryptoException(CryptoException.Kind.INVALID_KEY, "foreign key")
         val peer = keyFactory.generatePublic(ECPublicKeySpec(decodePoint(peerPublic), params))
@@ -207,6 +222,7 @@ object JvmCryptoProvider : CryptoProvider {
         }
     }
 
+    /** The uncompressed encoding `04 ‖ x ‖ y`, 65 bytes. */
     private fun encodePoint(x: BigInteger, y: BigInteger): ByteArray {
         val out = ByteArray(65)
         out[0] = 0x04
@@ -215,6 +231,7 @@ object JvmCryptoProvider : CryptoProvider {
         return out
     }
 
+    /** A non-negative integer as exactly 32 big-endian bytes (drops a sign byte, pads short values). */
     private fun fixed32(v: BigInteger): ByteArray {
         val b = v.toByteArray()
         return when {

@@ -73,6 +73,7 @@ class RecoveryKey private constructor(private val raw: ByteArray) {
         return p.aesKey(k).also { k.fill(0) }
     }
 
+    /** The P-256 private scalar of the recovery key pair: HKDF of the 16 key bytes, reduced into the curve order. */
     internal fun scalar(p: CryptoProvider): ByteArray {
         val seed = Hkdf(p).derive(Bytes.utf8(SALT), raw, Bytes.utf8(INFO), SEED_LEN)
         return P256Scalar.reduceToScalar(seed).also { seed.fill(0) }

@@ -20,6 +20,7 @@ package app.doorprints.concurrent
 
 import platform.Foundation.NSRecursiveLock
 
+/** The iPhone lock: an `NSRecursiveLock`, so the same thread may take it again. */
 private class RecursivePlatformLock : PlatformLock {
     private val lock = NSRecursiveLock()
 
@@ -33,4 +34,5 @@ private class RecursivePlatformLock : PlatformLock {
     }
 }
 
+/** A new [RecursivePlatformLock]. */
 actual fun PlatformLock(): PlatformLock = RecursivePlatformLock()
