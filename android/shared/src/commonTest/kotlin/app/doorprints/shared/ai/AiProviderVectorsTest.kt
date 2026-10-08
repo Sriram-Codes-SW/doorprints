@@ -25,6 +25,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
@@ -170,7 +171,7 @@ class AiProviderVectorsTest {
     @Test
     fun anthropicRequestMatchesTheVectorsForEveryCall() {
         val all = cases("anthropicRequest")
-        assertEquals(listOf("listing", "answer", "plan", "ping"), all.map { it.getValue("call").jsonPrimitive.content })
+        assertEquals(listOf("listing", "answer", "plan", "ping", "listing", "answer"), all.map { it.getValue("call").jsonPrimitive.content })
         for (case in all) {
             val call = case.getValue("call").jsonPrimitive.content
             val expected = case.getValue("expected").jsonObject
@@ -179,8 +180,21 @@ class AiProviderVectorsTest {
                 system = case.getValue("system").jsonPrimitive.content, user = case.getValue("user").jsonPrimitive.content,
                 temperature = case.getValue("temperature").jsonPrimitive.doubleOrNull!!, schema = schemaFor(call),
                 maxTokens = expected.getValue("max_tokens").jsonPrimitive.int,
+                forceTool = case["forceTool"]?.jsonPrimitive?.booleanOrNull ?: true,
             )
             assertTrue(same(expected, body), "$call:\nexpected $expected\nwas      $body")
+        }
+    }
+
+    @Test
+    fun anthropicToolChoiceMatchesTheVectors() {
+        val all = cases("anthropicToolChoice")
+        assertTrue(all.size >= 8)
+        for (case in all) {
+            val status = case.getValue("status").jsonPrimitive.int
+            val body = case.getValue("body").jsonPrimitive.content
+            val expected = case.getValue("expected").jsonObject.getValue("retryWithAuto").jsonPrimitive.boolean
+            assertEquals(expected, AnthropicClient.retryWithAuto(status, body), "$status $body")
         }
     }
 

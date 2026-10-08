@@ -180,4 +180,41 @@ class AnthropicClientTest {
         assertFalse("tools" in body || "tool_choice" in body)
         assertEquals(KEY, server.seen.single().headers["x-api-key"])
     }
+
+    // S4b-BL-175-F1: newer Claude models refuse a forced tool_choice; the call is repeated once with `auto`.
+    private val refused = Reply(
+        400,
+        """{"type":"error","error":{"type":"invalid_request_error","message":"tool_choice: type \"tool\" and \"any\" are not supported for this model."}}""",
+    )
+
+    @Test
+    fun aModelThatRefusesAForcedToolIsAskedAgainWithAutoAndAnInstruction() = runTest {
+        val server = FakeServer(refused, OK)
+        assertEquals(ANSWER, server.client().answer())
+        assertEquals(listOf("""{"type":"tool","name":"answer"}""", """{"type":"auto"}"""), server.seen.map { it.json.getValue("tool_choice").toString() })
+        assertEquals("You answer questions.\n\nAnswer by calling the answer tool.", server.seen[1].json.getValue("system").jsonPrimitive.content)
+        assertEquals(server.seen[0].json.getValue("tools"), server.seen[1].json.getValue("tools"))
+    }
+
+    @Test
+    fun theChoiceIsKeptForTheClientAndTheRetryHappensOnlyOnce() = runTest {
+        val server = FakeServer(refused, OK, OK)
+        val client = server.client()
+        client.answer()
+        client.answer()
+        assertEquals(listOf("tool", "auto", "auto"), server.seen.map { it.json.getValue("tool_choice").jsonObject.getValue("type").jsonPrimitive.content })
+        val twice = FakeServer(refused, refused)
+        val e = assertFailsWith<ApiException> { twice.client().answer() }
+        assertEquals(ApiException.Kind.AI_UNAVAILABLE, e.kind)
+        assertEquals(2, twice.seen.size)
+    }
+
+    @Test
+    fun noOtherBadRequestAndNoOtherStatusIsRetried() = runTest {
+        for (reply in listOf(Reply(400, """{"error":{"message":"max_tokens: Field required"}}"""), Reply(401), Reply(529))) {
+            val server = FakeServer(reply, OK)
+            assertFailsWith<ApiException>("HTTP ${reply.status}") { server.client().answer() }
+            assertEquals(1, server.seen.size, "HTTP ${reply.status}")
+        }
+    }
 }

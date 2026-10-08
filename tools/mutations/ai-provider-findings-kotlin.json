@@ -1,0 +1,60 @@
+{
+  "spec": "android/shared/src/commonTest/kotlin/app/doorprints/shared/ai/AnthropicClientTest.kt",
+  "gradle": [
+    ":shared:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.shared.ai.AnthropicClientTest",
+    "--tests",
+    "app.doorprints.shared.ai.AiProviderVectorsTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AnthropicClient.kt",
+      "find": "status == 400 && body.lowercase()",
+      "replace": "status >= 400 && body.lowercase()",
+      "expect": "anthropicToolChoiceMatchesTheVectors"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AnthropicClient.kt",
+      "find": "\"tool_choice\" in it && \"not supported\" in it",
+      "replace": "\"not supported\" in it",
+      "expect": "anthropicToolChoiceMatchesTheVectors"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AnthropicClient.kt",
+      "find": "\"tool_choice\" in it && \"not supported\" in it",
+      "replace": "\"tool_choice\" in it",
+      "expect": "anthropicToolChoiceMatchesTheVectors"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AnthropicClient.kt",
+      "find": "\"$system\\n\\nAnswer by calling the $name tool.\"",
+      "replace": "system",
+      "expect": "anthropicRequestMatchesTheVectorsForEveryCall"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AnthropicClient.kt",
+      "find": "if (forceTool) put(\"name\", name) })",
+      "replace": "put(\"name\", name) })",
+      "expect": "anthropicRequestMatchesTheVectorsForEveryCall"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AnthropicClient.kt",
+      "find": "                forceTool = false\n                continue",
+      "replace": "                continue",
+      "expect": "aModelThatRefusesAForcedToolIsAskedAgainWithAutoAndAnInstruction"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AnthropicClient.kt",
+      "find": "if (forceTool && retryWithAuto(response.status, response.body)) {",
+      "replace": "if (retryWithAuto(response.status, response.body)) {",
+      "expect": "theChoiceIsKeptForTheClientAndTheRetryHappensOnlyOnce"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AnthropicClient.kt",
+      "find": "requestBody(SchemaDialect.nameOf(schema), model, system, user, temperature, schema, forceTool = forceTool)",
+      "replace": "requestBody(SchemaDialect.nameOf(schema), model, system, user, temperature, schema)",
+      "expect": "aModelThatRefusesAForcedToolIsAskedAgainWithAutoAndAnInstruction"
+    }
+  ]
+}

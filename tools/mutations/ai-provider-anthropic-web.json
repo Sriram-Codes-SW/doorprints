@@ -27,8 +27,8 @@
     },
     {
       "file": "web/src/app/core/ai/anthropic.ts",
-      "find": "body['tool_choice'] = { type: 'tool', name };",
-      "replace": "body['tool_choice'] = { type: 'auto', name };",
+      "find": "forceTool ? { type: 'tool', name } : { type: 'auto' }",
+      "replace": "{ type: 'auto', name }",
       "expect": "forces the answer through one tool named for the call"
     },
     {

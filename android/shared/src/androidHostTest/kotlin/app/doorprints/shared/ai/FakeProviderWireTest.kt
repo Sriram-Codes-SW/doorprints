@@ -41,7 +41,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -294,18 +293,21 @@ class FakeProviderWireTest {
     }
 
     /**
-     * DOCUMENTED GAP (S4b-BL-175, finding F1): newer Claude models refuse a forced `tool_choice` with a 400 ("tool_choice:
-     * type "tool" and "any" are not supported for this model", platform.claude.com/docs/en/api/errors). The adapter always
-     * forces the tool, so on such a model every call is `unavailable` and says nothing useful. This pins today's
-     * behaviour; a fix (fall back to `auto`) is a backlog row, not part of this change.
+     * S4b-BL-175-F1: newer Claude models refuse a forced `tool_choice` with a 400 ("tool_choice: type "tool" and "any"
+     * are not supported for this model", platform.claude.com/docs/en/api/errors). The client repeats the call once with
+     * `auto` and keeps that for later calls.
      */
     @Test
-    fun documentedGapAModelThatRefusesAForcedToolIsJustUnavailable() {
+    fun aModelThatRefusesAForcedToolIsAskedAgainWithAutoOnceAndThenRemembered() {
         mode("no-forced-tool")
-        val e = failure { anthropic().generateJson("system", "user", answer, 0.1) }
-        assertEquals(ApiException.Kind.AI_UNAVAILABLE, e.kind)
-        assertEquals(400, e.code)
-        assertNotNull(posts().single().body()["tool_choice"])
+        val client = anthropic()
+        repeat(2) {
+            val text = blocking { client.generateJson("system", "user", answer, 0.1) }
+            assertTrue("answer" in Json.parseToJsonElement(text).jsonObject, text)
+        }
+        val sent = posts().map { it.body() }
+        assertEquals(listOf("tool", "auto", "auto"), sent.map { it["tool_choice"]!!.jsonObject["type"]!!.jsonPrimitive.content })
+        assertEquals("system\n\nAnswer by calling the answer tool.", sent[1]["system"]!!.jsonPrimitive.content)
     }
 
     // ---- the server itself -------------------------------------------------------------------------------------

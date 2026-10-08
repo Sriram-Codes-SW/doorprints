@@ -1,0 +1,53 @@
+{
+  "spec": "web/src/app/core/ai/anthropic.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/core/ai/anthropic.ts",
+      "find": "return status === 400 && text.includes('tool_choice')",
+      "replace": "return status >= 400 && text.includes('tool_choice')",
+      "expect": "only a 400 that says tool_choice is not supported is retried"
+    },
+    {
+      "file": "web/src/app/core/ai/anthropic.ts",
+      "find": "text.includes('tool_choice') && text.includes('not supported')",
+      "replace": "text.includes('not supported')",
+      "expect": "only a 400 that says tool_choice is not supported is retried"
+    },
+    {
+      "file": "web/src/app/core/ai/anthropic.ts",
+      "find": "text.includes('tool_choice') && text.includes('not supported')",
+      "replace": "text.includes('tool_choice')",
+      "expect": "only a 400 that says tool_choice is not supported is retried"
+    },
+    {
+      "file": "web/src/app/core/ai/anthropic.ts",
+      "find": ": { type: 'auto' }",
+      "replace": ": { type: 'any' }",
+      "expect": "the body of every call, the ping without a tool, the unforced tool"
+    },
+    {
+      "file": "web/src/app/core/ai/anthropic.ts",
+      "find": "`${system}\\n\\nAnswer by calling the ${name} tool.`",
+      "replace": "system",
+      "expect": "the body of every call, the ping without a tool, the unforced tool"
+    },
+    {
+      "file": "web/src/app/core/ai/anthropic.ts",
+      "find": "        unforced.add(cacheKey);\n",
+      "replace": "",
+      "expect": "remembers the choice for this address and model"
+    },
+    {
+      "file": "web/src/app/core/ai/anthropic.ts",
+      "find": "const cacheKey = `${this.baseUrl()}\\n${this.settings.model}`;",
+      "replace": "const cacheKey = `${this.baseUrl()}`;",
+      "expect": "remembers the choice for this address and model"
+    },
+    {
+      "file": "web/src/app/core/ai/anthropic.ts",
+      "find": "let force = !unforced.has(cacheKey);",
+      "replace": "let force = true;",
+      "expect": "remembers the choice for this address and model"
+    }
+  ]
+}

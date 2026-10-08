@@ -32,8 +32,8 @@
     },
     {
       "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AnthropicClient.kt",
-      "find": "put(\"tool_choice\", buildJsonObject { put(\"type\", \"tool\"); put(\"name\", name) })",
-      "replace": "put(\"tool_choice\", buildJsonObject { put(\"type\", \"auto\"); put(\"name\", name) })",
+      "find": "put(\"type\", if (forceTool) \"tool\" else \"auto\")",
+      "replace": "put(\"type\", \"auto\")",
       "expect": "anthropicForcesTheToolAndSendsTheDocumentedHeaders"
     },
     {
