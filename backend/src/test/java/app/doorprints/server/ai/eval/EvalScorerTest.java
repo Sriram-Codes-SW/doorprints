@@ -325,6 +325,152 @@ class EvalScorerTest {
         assertThat(metric(metrics, "citationRecall").threshold()).isEqualTo("-");
     }
 
+    /** A golden-set case belongs to one region (docs/ai/ai-design.md 8.3, golden set v0.7). */
+    private static Map<String, Object> inRegion(String region, Map<String, Object> testCase) {
+        testCase.put("region", region);
+        return testCase;
+    }
+
+    /**
+     * Two regions with hand-countable results. north: all 4 extraction fields right (2 of them expected null, none
+     * invented), the ask cites the one expected house and names it. west: price wrong, a URL invented where none was
+     * expected (2 of 4 fields right, 1 of the 2 null fields hallucinated), the ask cites a house nobody expected and
+     * lacks the required words.
+     */
+    private static List<CaseResult> northAndWest() {
+        var fields = map("price", 100, "bedrooms", 2, "listingUrl", null, "contactPhone", null);
+        var ask = map("expectedHouseIds", List.of(H1), "mustContain", List.of("blue gate"));
+        return List.of(
+                EvalScorer.scoreExtract(inRegion("north", testCase("x-n", "extract", null, fields)),
+                        map("price", 100, "bedrooms", 2, "listingUrl", null, "contactPhone", null), null),
+                EvalScorer.scoreExtract(inRegion("west", testCase("x-w", "extract", null, fields)),
+                        map("price", 999, "bedrooms", 2, "listingUrl", "https://made.up", "contactPhone", null), null),
+                EvalScorer.scoreAsk(inRegion("north", testCase("a-n", "ask", null, ask)),
+                        map("answer", "The Blue gate house [house:" + H1 + "].", "grounded", true,
+                                "citations", List.of(map("houseId", H1))), null),
+                EvalScorer.scoreAsk(inRegion("west", testCase("a-w", "ask", null, ask)),
+                        map("answer", "The Corner flat [house:" + H2 + "].", "grounded", true,
+                                "citations", List.of(map("houseId", H2))), null));
+    }
+
+    private static Metric regional(Map<String, List<Metric>> byRegion, String region, String name) {
+        return metric(byRegion.get(region), name);
+    }
+
+    private static EvalScorer.Spread spreadOf(List<EvalScorer.Spread> spreads, String name) {
+        return spreads.stream().filter(s -> s.metric().equals(name)).findFirst().orElseThrow();
+    }
+
+    @Test
+    void everyMetricIsAlsoComputedPerRegionFromThatRegionsCasesOnly() {
+        var results = northAndWest();
+
+        var byRegion = EvalScorer.metricsByRegion(results, Map.of());
+
+        assertThat(byRegion.keySet()).containsExactly("north", "west"); // sorted by name
+        assertThat(regional(byRegion, "north", "extractionFieldAccuracy").value()).isCloseTo(1.0, within(1e-9));
+        assertThat(regional(byRegion, "north", "extractionFieldAccuracy").numerator()).isEqualTo(4);
+        assertThat(regional(byRegion, "north", "extractionFieldAccuracy").denominator()).isEqualTo(4);
+        assertThat(regional(byRegion, "west", "extractionFieldAccuracy").value()).isCloseTo(0.5, within(1e-9));
+        assertThat(regional(byRegion, "west", "extractionFieldAccuracy").numerator()).isEqualTo(2);
+        assertThat(regional(byRegion, "north", "extractionHallucinationRate").value()).isCloseTo(0.0, within(1e-9));
+        assertThat(regional(byRegion, "west", "extractionHallucinationRate").value()).isCloseTo(0.5, within(1e-9));
+        assertThat(regional(byRegion, "west", "extractionHallucinationRate").denominator()).isEqualTo(2);
+        assertThat(regional(byRegion, "north", "citationPrecision").value()).isCloseTo(1.0, within(1e-9));
+        assertThat(regional(byRegion, "west", "citationPrecision").value()).isCloseTo(0.0, within(1e-9));
+        assertThat(regional(byRegion, "west", "citationRecall").value()).isCloseTo(0.0, within(1e-9));
+        assertThat(regional(byRegion, "north", "answerCorrectness").value()).isCloseTo(1.0, within(1e-9));
+        assertThat(regional(byRegion, "west", "answerCorrectness").value()).isCloseTo(0.0, within(1e-9));
+        assertThat(regional(byRegion, "north", "refusalAccuracy").value()).isNull(); // nothing to measure there
+        // The overall metrics still pool every case: 6 of 8 fields, 1 of 4 null fields invented.
+        var overall = EvalScorer.metrics(results, Map.of());
+        assertThat(metric(overall, "extractionFieldAccuracy").value()).isCloseTo(0.75, within(1e-9));
+        assertThat(metric(overall, "extractionHallucinationRate").value()).isCloseTo(0.25, within(1e-9));
+    }
+
+    @Test
+    void theRegionSpreadIsTheBestRegionMinusTheWorstPerMetric() {
+        var spreads = EvalScorer.regionSpread(EvalScorer.metricsByRegion(northAndWest(), Map.of()));
+
+        var accuracy = spreadOf(spreads, "extractionFieldAccuracy");
+        assertThat(accuracy.bestRegion()).isEqualTo("north");
+        assertThat(accuracy.best()).isCloseTo(1.0, within(1e-9));
+        assertThat(accuracy.worstRegion()).isEqualTo("west");
+        assertThat(accuracy.worst()).isCloseTo(0.5, within(1e-9));
+        assertThat(accuracy.spread()).isCloseTo(0.5, within(1e-9));
+        // A rate where lower is better: the best region is the one with the fewest inventions.
+        var hallucination = spreadOf(spreads, "extractionHallucinationRate");
+        assertThat(hallucination.bestRegion()).isEqualTo("north");
+        assertThat(hallucination.best()).isCloseTo(0.0, within(1e-9));
+        assertThat(hallucination.worstRegion()).isEqualTo("west");
+        assertThat(hallucination.worst()).isCloseTo(0.5, within(1e-9));
+        assertThat(hallucination.spread()).isCloseTo(0.5, within(1e-9));
+        assertThat(spreadOf(spreads, "citationPrecision").spread()).isCloseTo(1.0, within(1e-9));
+        // Not measured in any region: no spread.
+        assertThat(spreadOf(spreads, "refusalAccuracy").spread()).isNull();
+        assertThat(spreads.stream().map(EvalScorer.Spread::metric).toList())
+                .isEqualTo(EvalScorer.metrics(List.of(), Map.of()).stream().map(Metric::name).toList());
+    }
+
+    @Test
+    void aSingleMeasuredRegionHasNoSpreadAndEqualRegionsHaveZero() {
+        var fields = map("price", 100);
+        var same = List.of(
+                EvalScorer.scoreExtract(inRegion("east", testCase("e1", "extract", null, fields)), map("price", 100), null),
+                EvalScorer.scoreExtract(inRegion("hills", testCase("h1", "extract", null, fields)), map("price", 100), null));
+        var tied = spreadOf(EvalScorer.regionSpread(EvalScorer.metricsByRegion(same, Map.of())), "extractionFieldAccuracy");
+        assertThat(tied.spread()).isCloseTo(0.0, within(1e-9));
+        assertThat(tied.bestRegion()).isEqualTo("east");
+        assertThat(tied.worstRegion()).isEqualTo("hills");
+
+        var one = List.of(same.get(0));
+        var alone = spreadOf(EvalScorer.regionSpread(EvalScorer.metricsByRegion(one, Map.of())), "extractionFieldAccuracy");
+        assertThat(alone.spread()).isNull();
+        assertThat(alone.bestRegion()).isNull();
+    }
+
+    @Test
+    void aCaseWithoutARegionIsCountedUnderUnassigned() {
+        var r = EvalScorer.scoreExtract(testCase("x", "extract", null, map("price", 1)), map("price", 1), null);
+
+        assertThat(r.region).isEqualTo("unassigned");
+        assertThat(EvalScorer.metricsByRegion(List.of(r), Map.of()).keySet()).containsExactly("unassigned");
+    }
+
+    @Test
+    void theReportShowsEveryRegionAndTheSpreadLineWithoutChangingTheVerdict() {
+        var results = northAndWest();
+        var thresholds = Map.<String, Map<String, Object>>of("extractionFieldAccuracy", Map.of("min", 0.7));
+        var metrics = EvalScorer.metrics(results, thresholds); // 0.75 overall: PASS, although west alone is 0.50
+
+        var md = EvalScorer.markdown(EvalScorer.header(), metrics, results, List.of(), List.of());
+
+        assertThat(md).contains("## Metrics by region (informational, not gated)",
+                "| Metric | north | west | Spread |",
+                "| extractionFieldAccuracy | 1.00 (4/4) | 0.50 (2/4) | 0.50 |",
+                "| extractionHallucinationRate | 0.00 (0/2) | 0.50 (1/2) | 0.50 |",
+                "| refusalAccuracy | n/a | n/a | n/a |",
+                "Region spread (informational, not gated; best region minus worst region per metric): "
+                        + "extractionFieldAccuracy 0.50 (north 1.00, west 0.50); "
+                        + "extractionHallucinationRate 0.50 (north 0.00, west 0.50); "
+                        + "citationPrecision 1.00 (north 1.00, west 0.00); "
+                        + "citationRecall 1.00 (north 1.00, west 0.00); "
+                        + "answerCorrectness 1.00 (north 1.00, west 0.00); "
+                        + "refusalAccuracy n/a; injectionResistance n/a; agentValidity n/a; agentNoFallbackRate n/a");
+        assertThat(md).contains("| x-w | extract | - | west | FAIL |");
+        // The regional 0.50 is below the 0.7 threshold and does not count: only the pooled 0.75 does.
+        assertThat(EvalScorer.verdict(metrics, results, List.of()).passed()).isTrue();
+        assertThat(md).contains("**Result: PASS**").doesNotContain("## Why FAIL");
+    }
+
+    @Test
+    void aRunWithNoCasesHasNoRegionSection() {
+        var md = EvalScorer.markdown(EvalScorer.header(), EvalScorer.metrics(List.of(), Map.of()), List.of(), List.of(),
+                List.of());
+
+        assertThat(md).doesNotContain("Metrics by region", "Region spread");
+    }
+
     @Test
     void markdownReportShowsResultAndEscapesCells() {
         var c = testCase("x|1", "extract", null, map("price", 100));

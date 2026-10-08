@@ -45,6 +45,10 @@ final class EvalScorer {
     static final String PLAN = "plan";
     static final String INJECTION = "prompt-injection";
     static final String REFUSAL = "refusal";
+    /** Region shown for a case that carries no {@code region} tag (the golden set tags every case). */
+    static final String UNASSIGNED = "unassigned";
+    /** Metrics where a lower value is better, so the best region is the one with the smallest value. */
+    private static final Set<String> LOWER_IS_BETTER = Set.of("extractionHallucinationRate");
 
     private static final Set<String> WORD_MATCH_FIELDS = Set.of("locality", "street", "address", "label", "contactName");
 
@@ -60,6 +64,8 @@ final class EvalScorer {
         final String id;
         final String type;
         final String category;
+        /** The golden-set case's {@code region} tag; "unassigned" when the case has none. */
+        final String region;
         final List<Check> checks = new ArrayList<>();
         String error;
         long latencyMs;
@@ -82,9 +88,14 @@ final class EvalScorer {
         Boolean fallbackAsExpected;
 
         CaseResult(String id, String type, String category) {
+            this(id, type, category, null);
+        }
+
+        CaseResult(String id, String type, String category, String region) {
             this.id = id;
             this.type = type;
             this.category = category == null ? "" : category;
+            this.region = region == null || region.isBlank() ? UNASSIGNED : region.strip();
         }
 
         boolean isInjection() {
@@ -348,7 +359,8 @@ final class EvalScorer {
 
     private static CaseResult newResult(Map<String, Object> testCase) {
         return new CaseResult(str(testCase.get("id")), str(testCase.get("type")),
-                testCase.get("category") == null ? null : str(testCase.get("category")));
+                testCase.get("category") == null ? null : str(testCase.get("category")),
+                testCase.get("region") == null ? null : str(testCase.get("region")));
     }
 
     // ---------------------------------------------------------------------------------------------------------
@@ -421,6 +433,65 @@ final class EvalScorer {
         out.add(metric("agentNoFallbackRate", "Plans whose fallback flag matches the expected value",
                 fallbacksOk, fallbacks, thresholds));
         return out;
+    }
+
+    /**
+     * One metric across regions (informational): the best and the worst region and the gap between them. All fields
+     * but {@code metric} are null when fewer than two regions have something to measure.
+     */
+    record Spread(String metric, String bestRegion, Double best, String worstRegion, Double worst, Double spread) {
+    }
+
+    /**
+     * The same metrics as {@link #metrics}, each computed from the cases of one region only, regions in name order.
+     * The thresholds only fill each metric's status; the report passes none (a region's sample is small) and the
+     * verdict never reads a regional value.
+     */
+    static Map<String, List<Metric>> metricsByRegion(List<CaseResult> results,
+                                                     Map<String, Map<String, Object>> thresholds) {
+        var cases = new java.util.TreeMap<String, List<CaseResult>>();
+        for (var r : results) cases.computeIfAbsent(r.region, k -> new ArrayList<>()).add(r);
+        var out = new LinkedHashMap<String, List<Metric>>();
+        cases.forEach((region, list) -> out.put(region, metrics(list, thresholds)));
+        return out;
+    }
+
+    /**
+     * Per metric, the best region minus the worst region (a gap, never negative). "Best" is the highest value, or the
+     * lowest for {@link #LOWER_IS_BETTER} metrics; ties go to the first region by name for the best and the last for the
+     * worst, so equal regions read "north ... west" rather than naming one region twice. Regions where the metric has
+     * nothing to measure do not count.
+     */
+    static List<Spread> regionSpread(Map<String, List<Metric>> byRegion) {
+        var names = new ArrayList<String>();
+        byRegion.values().stream().findFirst().ifPresent(first -> first.forEach(m -> names.add(m.name())));
+        var out = new ArrayList<Spread>();
+        for (var name : names) {
+            boolean lowerIsBetter = LOWER_IS_BETTER.contains(name);
+            String bestRegion = null, worstRegion = null;
+            Double best = null, worst = null;
+            int measured = 0;
+            for (var e : byRegion.entrySet()) {
+                var value = named(e.getValue(), name).value();
+                if (value == null) continue;
+                measured++;
+                if (best == null || (lowerIsBetter ? value < best : value > best)) {
+                    best = value;
+                    bestRegion = e.getKey();
+                }
+                if (worst == null || (lowerIsBetter ? value >= worst : value <= worst)) {
+                    worst = value;
+                    worstRegion = e.getKey();
+                }
+            }
+            out.add(measured < 2 ? new Spread(name, null, null, null, null, null)
+                    : new Spread(name, bestRegion, best, worstRegion, worst, Math.abs(best - worst)));
+        }
+        return out;
+    }
+
+    private static Metric named(List<Metric> metrics, String name) {
+        return metrics.stream().filter(m -> m.name().equals(name)).findFirst().orElseThrow();
     }
 
     static Metric metric(String name, String description, int numerator, int denominator,
@@ -517,10 +588,12 @@ final class EvalScorer {
                     .append(cell(m.description())).append(" |\n");
         }
 
-        sb.append("\n## Cases\n\n| Case | Type | Category | Result | Checks | Latency (ms) |\n|---|---|---|---|---:|---:|\n");
+        appendRegions(sb, results);
+
+        sb.append("\n## Cases\n\n| Case | Type | Category | Region | Result | Checks | Latency (ms) |\n|---|---|---|---|---|---:|---:|\n");
         for (var r : results) {
             sb.append("| ").append(cell(r.id)).append(" | ").append(r.type).append(" | ")
-                    .append(r.category.isEmpty() ? "-" : r.category).append(" | ")
+                    .append(r.category.isEmpty() ? "-" : r.category).append(" | ").append(cell(r.region)).append(" | ")
                     .append(r.error != null ? "ERROR" : r.passed() ? "PASS" : "FAIL").append(" | ")
                     .append(r.checksPassed()).append('/').append(r.checks.size()).append(" | ")
                     .append(r.latencyMs).append(" |\n");
@@ -540,6 +613,34 @@ final class EvalScorer {
             if (!r.output.isEmpty()) sb.append(output(r));
         }
         return sb.toString();
+    }
+
+    /**
+     * "Metrics by region" and the "Region spread" line (informational: the samples are small, no threshold is applied,
+     * and the verdict never reads them). Left out when no case ran.
+     */
+    private static void appendRegions(StringBuilder sb, List<CaseResult> results) {
+        if (results.isEmpty()) return;
+        var byRegion = metricsByRegion(results, Map.of());
+        var spreads = regionSpread(byRegion);
+        sb.append("\n## Metrics by region (informational, not gated)\n\n| Metric");
+        byRegion.keySet().forEach(region -> sb.append(" | ").append(cell(region)));
+        sb.append(" | Spread |\n|---");
+        byRegion.keySet().forEach(region -> sb.append("|---:"));
+        sb.append("|---:|\n");
+        for (var spread : spreads) {
+            sb.append("| ").append(spread.metric());
+            for (var metrics : byRegion.values()) {
+                var m = named(metrics, spread.metric());
+                sb.append(" | ").append(m.value() == null ? "n/a"
+                        : fmt(m.value()) + " (" + m.numerator() + "/" + m.denominator() + ")");
+            }
+            sb.append(" | ").append(spread.spread() == null ? "n/a" : fmt(spread.spread())).append(" |\n");
+        }
+        sb.append("\nRegion spread (informational, not gated; best region minus worst region per metric): ");
+        sb.append(String.join("; ", spreads.stream().map(s -> s.spread() == null ? s.metric() + " n/a"
+                : s.metric() + " " + fmt(s.spread()) + " (" + s.bestRegion() + " " + fmt(s.best()) + ", "
+                + s.worstRegion() + " " + fmt(s.worst()) + ")").toList())).append('\n');
     }
 
     /** Longest output shown for a passing case; failing and erroring cases show it in full. */
