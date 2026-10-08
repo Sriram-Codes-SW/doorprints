@@ -65,11 +65,16 @@ done
 # alerts were all 429s). The pairing limit (the calls that need no key: /api/pair/**, owner sign-in) is lifted for the
 # same reason: a 429 from /api/pair/redeem was read as a "SQL injection" on 2026-09-29. The limits have their own tests
 # (common/TokenBucketRateLimiterTest, config/ApiKeyFilterTest, device/PairingRateLimitFilterTest).
+# The caps on open pairing requests (50 in all, 5 per client address; a start over a cap is a 429) are lifted for the same
+# reason: after 5 starts from the scanner's one address /api/pair/start answered 429 and ZAP read the difference between
+# its boolean payloads as a "SQL injection" on deviceName (a bind parameter; S4b-BL-191). The caps have their own tests
+# (device/PairingAdmissionTest, device/PairingFloodIntegrationTest), which run with the defaults.
 docker run -d --name "$net-api" --network "$net" --network-alias api \
   -e DB_URL=jdbc:postgresql://db:5432/doorprints -e DB_USER=doorprints -e DB_PASSWORD=doorprints \
   -e APP_API_KEY="$key" -e APP_AI_ENABLED=false -e APP_MCP_ENABLED=false \
   -e RATE_LIMIT_PER_MINUTE=1000000 -e RATE_LIMIT_BURST=1000000 \
-  -e PAIRING_RATE_LIMIT_PER_MINUTE=1000000 -e PAIRING_RATE_LIMIT_BURST=1000000 "$api_image" >/dev/null
+  -e PAIRING_RATE_LIMIT_PER_MINUTE=1000000 -e PAIRING_RATE_LIMIT_BURST=1000000 \
+  -e PAIRING_MAX_OPEN=1000000 -e PAIRING_MAX_PER_SOURCE=1000000 "$api_image" >/dev/null
 up=0
 for _ in $(seq 1 90); do
   if docker exec "$net-db" bash -c 'exec 3<>/dev/tcp/api/8080 && printf "GET /actuator/health HTTP/1.0\r\n\r\n" >&3 && grep -q "\"UP\"" <&3' 2>/dev/null; then

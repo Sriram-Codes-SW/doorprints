@@ -91,6 +91,10 @@ services:
       # to the log even though a browser is signed in. Only for an owner who lost their only signed-in browser: set it,
       # `docker compose up -d`, read `docker compose logs api`, sign in, then unset it and restart. Default off.
       OWNER_SETUP_LINK_IN_LOG: ${OWNER_SETUP_LINK_IN_LOG:-false}
+      # Open pairing requests at most (S4b-BL-161, docs/03 section 12.1): in all, and from one client address. Leave the
+      # defaults; they are settings only so the release gate's API scan can lift them (S4b-BL-191).
+      PAIRING_MAX_OPEN: ${PAIRING_MAX_OPEN:-50}
+      PAIRING_MAX_PER_SOURCE: ${PAIRING_MAX_PER_SOURCE:-5}
       # Browser origins allowed to call the API: comma-separated origins (scheme://host[:port]), no path, no trailing
       # slash. The default allows only the Angular dev server. To sync the live web app on Firebase Hosting with this
       # server, opt in before `docker compose up`:

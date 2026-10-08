@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Secure build, CI/CD and deployment guide |
-| Version | 0.66 |
+| Version | 0.67 |
 | Date | 2026-10-05 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -78,6 +78,7 @@
 | 0.64 | 2026-10-08 | Claude (Code) | **`pages.yml`** (S4b-BL-183): a step after the build runs `tools/guide-search-check/site-check.mjs` on the built site (Node from the runner image, as `security.yml`'s guards); the path filters (and `pages-required.yml`'s mirror) gain `tools/guide-search-check/**`; new workflow-table row. [06](06-test-plan.md) TC-U-175. |
 | 0.65 | 2026-10-08 | Claude (Code), lead | `ai-evals.yml` (S4b-BL-184): the `gemini` kind of the `own-provider` suite reads the repository secret `AI_API_KEY` first and `AI_EVAL_API_KEY` second, so a key set for another provider is never sent to Google when both secrets exist; the other kinds read `AI_EVAL_API_KEY` only. A run of `own-provider` or `local-model` that ends early because the provider cannot be used now FAILS (it was green with 0 of 2 cases on 2026-10-08), after writing its summary. |
 | 0.66 | 2026-10-08 | Claude (Code), lead | `android.yml` (S4b-BL-170): the Lint step no longer has `continue-on-error`; `lintDebug` fails the job on any error-severity finding (the one `AppLinkUrlError` is ignored on its intent filter, with the reason). Warnings stay a report; no baseline file. |
+| 0.67 | 2026-10-09 | Claude (Code) | Settings table: `PAIRING_MAX_OPEN` and `PAIRING_MAX_PER_SOURCE` (S4b-BL-191); the API scan lifts them with the rate limits. |
 
 Related: [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Runbook](08-operations-runbook.md) · [AI docs](ai/)
 
@@ -859,6 +860,7 @@ The **Dev compose** column says whether the local `docker-compose.yml` passes th
 | `APP_API_KEY_NEXT` | No (SEC-017, Sprint 2) | empty (= no second key) | Second key accepted alongside `APP_API_KEY` during a rotation; ≥ 32 chars when set, blank means unset. Procedure: 08 §5.1 | Yes | Yes (empty) |
 | `APP_WEB_URL` | No (ADR-25) | `https://doorprints.web.app` | The web app's address, put into the owner page's connect links ([03](03-design.md) §12.1) | No | No (code default) |
 | `PAIRING_RATE_LIMIT_PER_MINUTE`, `PAIRING_RATE_LIMIT_BURST` | No (ADR-25) | `40`, `20` | Pairing calls and owner-page sign-ins per client address (they need no key) | No | No (code default) |
+| `PAIRING_MAX_OPEN`, `PAIRING_MAX_PER_SOURCE` | No (ADR-25) | `50`, `5` | Unexpired pairing requests open in all, and from one client address; a start over a cap is 429 (S4b-BL-161). Below 1 stops the start. The API scan (`backend/ci/api-scan.sh`) sets both to 1000000, as it does the rate limits | No | No (code default) |
 | `APP_AI_ENABLED`, `APP_MCP_ENABLED` | No, off by default (AI-001) | `false`, `false` | `true` turns on the AI endpoints / the MCP server ([ai/](ai/ai-design.md) §11) | No | Yes (`false`) |
 | `AI_BASE_URL` | No | `https://generativelanguage.googleapis.com/v1beta/openai/` | Chat endpoint (OpenAI-compatible). Ollama in dev compose: `http://host.docker.internal:11434/v1` (compose maps `host.docker.internal` to `host-gateway`) | No | Yes |
 | `AI_API_KEY` | No since ADR-25 (with `APP_AI_ENABLED=true` and `AI_PROVIDER=aistudio` the key may instead be set on the owner page, stored encrypted; the owner page's key wins; not used with `vertex`) | empty | Gemini API key (paid tier for real data, PRV-022; a free key only for synthetic evals); any non-empty value for Ollama | **Yes** | Yes (empty) |

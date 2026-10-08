@@ -28,14 +28,11 @@ import java.util.OptionalLong;
  * person may be typing at that moment, are never pushed out. Only unexpired pending requests count; they free
  * themselves within {@link PairingService#CODE_LIFETIME}.
  *
- * <p>No source can use up the table: {@value #MAX_OPEN_PER_CLIENT} open requests per source, and
- * {@value #MAX_OPEN} in all. A source is the client address as the server sees it (docs/08 section 1.2), so clients
+ * <p>No source can use up the table: the configured number of open requests per
+ * source (default 5), and in all (default 50; {@code app.pairing.max-per-source}, {@code app.pairing.max-open}). A source is the client address as the server sees it (docs/08 section 1.2), so clients
  * behind one proxy share one allowance.
  */
 final class PairingAdmission {
-
-    static final int MAX_OPEN = 50;
-    static final int MAX_OPEN_PER_CLIENT = 5;
 
     private PairingAdmission() {
     }
@@ -47,11 +44,11 @@ final class PairingAdmission {
     record Open(int total, Instant earliestExpiry, int fromClient, Instant clientEarliestExpiry) {
     }
 
-    /** Empty when the start may go ahead, else the seconds after which a slot frees up (at least 1). */
-    static OptionalLong retryAfterSeconds(Open open, Instant now) {
+    /** Empty when the start may go ahead under these caps, else the seconds after which a slot frees up (at least 1). */
+    static OptionalLong retryAfterSeconds(Open open, int maxOpen, int maxPerClient, Instant now) {
         long wait = 0;
-        if (open.total() >= MAX_OPEN) wait = Math.max(wait, secondsUntil(open.earliestExpiry(), now));
-        if (open.fromClient() >= MAX_OPEN_PER_CLIENT) wait = Math.max(wait, secondsUntil(open.clientEarliestExpiry(), now));
+        if (open.total() >= maxOpen) wait = Math.max(wait, secondsUntil(open.earliestExpiry(), now));
+        if (open.fromClient() >= maxPerClient) wait = Math.max(wait, secondsUntil(open.clientEarliestExpiry(), now));
         return wait == 0 ? OptionalLong.empty() : OptionalLong.of(wait);
     }
 

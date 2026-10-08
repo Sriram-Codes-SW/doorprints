@@ -18,6 +18,7 @@
 
 package app.doorprints.server.device;
 
+import app.doorprints.server.config.AppProperties;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -70,13 +71,15 @@ public class PairingService {
     private final JdbcClient jdbc;
     private final DeviceKeyStore devices;
     private final Clock clock;
+    private final AppProperties.Pairing caps;
     /** Per run, so a stored client hash cannot be matched against a table of addresses. */
     private final String clientSalt = Secrets.token();
 
-    public PairingService(JdbcClient jdbc, DeviceKeyStore devices, Clock clock) {
+    public PairingService(JdbcClient jdbc, DeviceKeyStore devices, Clock clock, AppProperties props) {
         this.jdbc = jdbc;
         this.devices = devices;
         this.clock = clock;
+        this.caps = props.pairing();
     }
 
     /** A device name as the owner page shows it: trimmed, control characters dropped, at most 60 characters. */
@@ -89,8 +92,8 @@ public class PairingService {
     /**
      * Opens a pairing request for a device and returns the code to show the owner and the token the device polls
      * with. Only the poll token's hash is stored, and of the client address only a salted hash (to cap the requests per
-     * source). At most {@link PairingAdmission#MAX_OPEN} unexpired requests are open, and
-     * {@link PairingAdmission#MAX_OPEN_PER_CLIENT} per source: a start over a cap is refused with
+     * source). At most {@code app.pairing.max-open} (default 50) unexpired requests are open, and
+     * {@code app.pairing.max-per-source} (default 5) per source: a start over a cap is refused with
      * {@link PairingBusyException} and no open request is touched, so a flood cannot push out the code a person is
      * typing (S4b-BL-161). The table stays bounded: a row is added only while fewer than 50 are open, and the hourly
      * {@link #purgeExpired} removes old ones. The user code is drawn again until no open request uses it.
@@ -111,7 +114,7 @@ public class PairingService {
                         DeviceKeyStore.instant(rs, "first_expiry"), rs.getInt("from_client"),
                         DeviceKeyStore.instant(rs, "client_first_expiry")))
                 .single();
-        PairingAdmission.retryAfterSeconds(open, now).ifPresent(wait -> {
+        PairingAdmission.retryAfterSeconds(open, caps.maxOpen(), caps.maxPerSource(), now).ifPresent(wait -> {
             throw new PairingBusyException(wait);
         });
         String code;
