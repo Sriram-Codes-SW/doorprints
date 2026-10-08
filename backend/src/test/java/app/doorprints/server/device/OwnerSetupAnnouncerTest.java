@@ -18,6 +18,7 @@
 
 package app.doorprints.server.device;
 
+import app.doorprints.server.config.AppProperties;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
@@ -49,7 +50,17 @@ class OwnerSetupAnnouncerTest {
 
     private final OwnerAuth auth = mock(OwnerAuth.class);
     private final MockEnvironment env = new MockEnvironment().withProperty("local.server.port", "8123");
-    private final OwnerSetupAnnouncer announcer = new OwnerSetupAnnouncer(auth, env);
+    private final OwnerSetupAnnouncer announcer = new OwnerSetupAnnouncer(auth, env, props(null));
+
+    /** Settings with only the recovery switch set; {@code null} leaves it to its default. */
+    private static AppProperties props(Boolean setupLinkInLog) {
+        return new AppProperties(null, null, null, null, null, null, null, null, null,
+                new AppProperties.Owner(setupLinkInLog));
+    }
+
+    private static OwnerSetupAnnouncer announcerWithSwitch(OwnerAuth auth, MockEnvironment env, boolean on) {
+        return new OwnerSetupAnnouncer(auth, env, props(on));
+    }
 
     private final Logger logger = (Logger) LoggerFactory.getLogger(OwnerSetupAnnouncer.class);
     private final ListAppender<ILoggingEvent> appender = new ListAppender<>();
@@ -170,5 +181,62 @@ class OwnerSetupAnnouncerTest {
         announcer.announce();
 
         assertThat(output()).doesNotContain(leak).doesNotContain("#setup").contains("no link was written");
+    }
+
+    // ------------------------------------------------------------------ recovery switch (S4b-BL-188)
+
+    private static final String SWITCH_WARNING = "OWNER_SETUP_LINK_IN_LOG is on, so this link is written";
+
+    @Test
+    void theSwitchIsOffByDefault() {
+        assertThat(props(null).owner().setupLinkInLog()).isFalse();
+        assertThat(new AppProperties(null, null, null, null, null, null, null, null, null, null)
+                .owner().setupLinkInLog()).isFalse();
+    }
+
+    @Test
+    void switchOffWithASessionOpenWritesNothingSecret() {
+        when(auth.hasOpenSession()).thenReturn(true);
+
+        announcerWithSwitch(auth, env, false).announce();
+
+        assertNoSecretOrLink(output(), token);
+        assertThat(output()).doesNotContain(SWITCH_WARNING);
+        verify(auth, never()).newSetupToken();
+    }
+
+    @Test
+    void switchOnWithASessionOpenWritesTheLinkAndSaysToSwitchItOff() {
+        when(auth.hasOpenSession()).thenReturn(true);
+
+        announcerWithSwitch(auth, env, true).announce();
+
+        var out = output();
+        assertThat(out).contains("http://localhost:8123/owner#setup=" + token)
+                .contains("https://<your-server-address>/owner#setup=" + token)
+                .contains(SWITCH_WARNING).contains("off again and restart");
+        verify(auth, times(1)).newSetupToken();
+    }
+
+    @Test
+    void switchOnWithNoSessionWritesTheLinkOnceAndNoWarning() {
+        when(auth.hasOpenSession()).thenReturn(false);
+
+        announcerWithSwitch(auth, env, true).announce();
+
+        var out = output();
+        assertThat(out.split("#setup=" + token, -1).length - 1).isEqualTo(2); // the local and the remote form
+        assertThat(out).doesNotContain(SWITCH_WARNING);
+        verify(auth, times(1)).newSetupToken();
+    }
+
+    @Test
+    void switchOnDoesNotWriteTheLinkWhenTheSessionCheckFails() {
+        when(auth.hasOpenSession()).thenThrow(new IllegalStateException("db down"));
+
+        announcerWithSwitch(auth, env, true).announce();
+
+        assertNoSecretOrLink(output(), token);
+        verify(auth, never()).newSetupToken();
     }
 }
