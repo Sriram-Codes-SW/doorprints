@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Test plan (functional, security, accessibility, i18n, AI) |
-| Version | 0.150 |
+| Version | 0.151 |
 | Date | 2026-10-08 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -30,7 +30,8 @@
 | 0.147 | 2026-10-07 | Claude (Code), lead | **TC-AI-23 built** (S4b-BL-153): `ai-evals.yml` gains the optional suite `own-provider`; `ai-eval.spec.ts` (setup and skip rules, the case checks, the summary and the key never shown) with the mutation list `tools/mutations/ai-eval.json`. The live spec has not run against a real provider (no key in the session). |
 | 0.148 | 2026-10-07 | Claude (Code), lead | **TC-S-44** (S4b-BL-156): the documents' version rows are checked by `tools/check-docs-versions.mjs` (with its test file) in `security.yml` and `tools/check.sh`. |
 | 0.149 | 2026-10-07 | Claude (Code), lead | **TC-S-45** (S4b-BL-157): the floor guard `tools/check-floor.mjs` (with its test file) in `security.yml` and `tools/check.sh`. |
-| 0.150 | 2026-10-08 | Claude (Code) | **TC-I-45, TC-I-46, TC-U-174** (S4b-BL-159): the import is written in batches and the writer lock is taken once per transaction; the refusals a client reads keep their text and a library `IllegalArgumentException` does not; the AI handler logs no provider message. TC-I-14 points to TC-I-45 for the lock half. |
+| 0.150 | 2026-10-08 | Claude (Code), lead | **TC-U-11 goes from Gap to Exists** (S4b-BL-160): Android `PhotoExifTest` and web `image-resize.spec.ts` pin PRV-008 (a stored photo has no GPS tag; the original bytes are never passed through); `local-db-idb.spec.ts` gains the all-or-nothing `clear()` (*Remove all data* in one transaction). |
+| 0.151 | 2026-10-08 | Claude (Code) | **TC-I-45, TC-I-46, TC-U-174** (S4b-BL-159): the import is written in batches and the writer lock is taken once per transaction; the refusals a client reads keep their text and a library `IllegalArgumentException` does not; the AI handler logs no provider message. TC-I-14 points to TC-I-45 for the lock half. |
 | 0.131 | 2026-10-06 | Claude | New section 10.1: the 27 requirement ids the review found without a mention here, each with its test or an honest *Gap* (NFR-014, NFR-015, NFR-016, PRV-007); SEC-030 is now checked in CI. |
 | 0.130 | 2026-10-06 | Claude | TC-U-135 after the senior reviewer's review: the read-only key check with a newer list, the card reading the state again, use-the-phone for the device actions. |
 | 0.129 | 2026-10-06 | Claude | TC-U-137: dates in hi, ta and te (the Drive backups table). |
@@ -208,7 +209,7 @@ Principles: test risk-first (threats with risk ≥ 6 in 02 need a test), keep ex
 | TC-U-08 | Accuracy gate | Fix with accuracy 51 m triggers no alert and no stay update | FR-016 |
 | TC-U-09 | Web `normalizeBaseUrl`, `ConfigService` | Trailing slashes trimmed, whitespace trimmed, corrupt storage gives null | FR-024 |
 | TC-U-10 | DTO mapping (`data/Mappers.kt`, shared `IsoTime`) | Epoch ms ↔ ISO-8601 round trip. Unknown status gives NEW. The mapped JSON equals the pre-Sprint-3.5 wire format. | FR-021 |
-| TC-U-11 | Photo pipeline | Output at most 1600 px. EXIF rotation applied. **EXIF GPS tag absent** in the output (Android `Repository.addPhoto`, web `resizeImage`). | FR-007, PRV-008 |
+| TC-U-11 | Photo pipeline | Output at most 1600 px. EXIF rotation applied. **EXIF GPS tag absent** in the output (Android `Repository.addPhoto`, web `resizeImage`). Web: `image-resize.spec.ts`; Android: `PhotoExifTest` (S4b-BL-160). | FR-007, PRV-008 |
 | TC-U-12 | Backend `ApiKeyFilterTest` | 17 non-canonical paths get 400 even with the key; every path outside the allowlist needs the key; health is public for GET/HEAD only; only real CORS preflights skip the key; Bearer accepted; wrong keys throttled to 429 while the right key still passes | SEC-001, SEC-008, F-20 |
 | TC-U-13 | Backend `ClientClockTest` | Null = now; past and small skew kept; +5 h and +30 days clamped to now; 2030 and 1999 rejected; event times validated but not clamped | SEC-020, F-08 |
 | TC-U-14 | Backend `ImageSanitizerTest` | JPEG: Exif (GPS), COM and trailer removed, JFIF/ICC and image data kept, idempotent. PNG: `tEXt`/`eXIf` and trailing bytes removed. WebP: `EXIF`/`XMP ` removed, VP8X flags cleared, RIFF size fixed. HTML/SVG, truncated and null input rejected | SEC-007, PRV-008, F-07 |
@@ -235,7 +236,8 @@ Paths as of Sprint 3.5: "shared" means `android/shared/src/commonTest/kotlin/app
 | TC-U-05 | **Exists** | Android shared `HouseScoreTest` (replaces `ChecklistScoreTest`; also `rankingPutsUnscoredLast`) and app `ModelMappingTest.scoreAndSyncRulesApplyToRoomEntities`, web `models.spec.ts` |
 | TC-U-06 | Part | Android shared `SyncRulesTest`: the keep-local rule (dirty and strictly newer wins; clean or missing local takes the server copy) in `app.doorprints.shared.sync.SyncRules`; app `ModelMappingTest` applies it to Room entities. Since 2026-09-24 `SyncServerResetTest` (TC-U-74) runs the whole sync against a `MockEngine` server for the reset cases (cursors kept, reset to 0, everything pushed); tombstone and `markClean` cases are still to write on that harness. |
 | TC-U-07 | Part | Android shared `StreetAlertsTest`: street key ignores case and spaces, unknown street never alerts, known street alerts once an hour. House cooldown and geocode throttle not yet extracted. |
-| TC-U-08, TC-U-11 | Gap | – |
+| TC-U-08 | Gap | – |
+| TC-U-11 | **Exists** (S4b-BL-160) | Android app `PhotoExifTest` (`addPhoto` on a generated JPEG with GPS, make and orientation written by `ExifInterface`: the source is proved to have them, the stored file has no GPS, make or Exif block and is not the source's bytes; the Exif rotation is applied to the pixels); web `image-resize.spec.ts` (the output is the canvas re-encode, never the original blob, also when no downscale is needed; longest side at most 1600 px; `imageOrientation: 'from-image'`; no fallback to the original on a failed encode), mutations in `tools/mutations/image-resize.json`. The website's test uses a fake canvas (jsdom has none): it proves the code path, not what a real browser's `toBlob` writes. |
 | TC-U-10 | **Exists** (Sprint 3.5) | Android app `ModelMappingTest` (same wire format as before, unknown or missing values fall back, visit both ways, a translated label for every shared key and status), shared `IsoTimeTest`, `ModelTest` |
 | TC-U-09 | **Exists** | Web `config.service.spec.ts` |
 | TC-U-12..14, TC-U-18 | Exists | Backend `ApiKeyFilterTest`, `ClientClockTest`, `ImageSanitizerTest` |

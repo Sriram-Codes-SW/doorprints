@@ -1,0 +1,35 @@
+{
+  "spec": "web/src/app/core/image-resize.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/core/image-resize.ts",
+      "find": "    const scale = Math.min(1, maxSize / Math.max(bitmap.width, bitmap.height));",
+      "replace": "    const scale = Math.min(1, maxSize / Math.max(bitmap.width, bitmap.height));\n    if (scale === 1) return file;",
+      "expect": "returns the canvas re-encode, never the original bytes"
+    },
+    {
+      "file": "web/src/app/core/image-resize.ts",
+      "find": "      canvas.toBlob((b) => (b ? resolve(b) : reject(new ImageResizeError('encode'))), 'image/jpeg', quality),",
+      "replace": "      canvas.toBlob((b) => (b ? resolve(b) : resolve(file)), 'image/jpeg', quality),",
+      "expect": "never falling back to the original"
+    },
+    {
+      "file": "web/src/app/core/image-resize.ts",
+      "find": "    const width = Math.max(1, Math.round(bitmap.width * scale));",
+      "replace": "    const width = Math.max(1, Math.round(bitmap.width));",
+      "expect": "shrinks the longest side to 1600 px"
+    },
+    {
+      "file": "web/src/app/core/image-resize.ts",
+      "find": "{ imageOrientation: 'from-image' }",
+      "replace": "{ imageOrientation: 'none' }",
+      "expect": "apply the Exif orientation"
+    },
+    {
+      "file": "web/src/app/core/image-resize.ts",
+      "find": "    bitmap.dispose();",
+      "replace": "    void 0;",
+      "expect": "releases the bitmap"
+    }
+  ]
+}
