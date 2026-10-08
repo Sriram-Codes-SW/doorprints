@@ -21,7 +21,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { Observable, Subject, of } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { AiService } from '../../core/ai.service';
+import { AI_MAX_LISTING_CHARS, AiService } from '../../core/ai.service';
 import type { HouseDraft } from '../../core/ai.service';
 import { Announcer } from '../../core/announcer.service';
 import { GeocodeService } from '../../core/geocode.service';
@@ -55,7 +55,7 @@ interface Fakes {
   saveHouse?: () => Observable<HouseDto>;
   reverse?: () => Observable<unknown>;
   search?: (place: string, language: string) => Observable<unknown>;
-  extractListing?: () => Observable<HouseDraft>;
+  extractListing?: (text: string) => Observable<HouseDraft>;
   aiEnabled?: boolean;
   /** The host of the person's own AI: with it, the page names it where the text goes. */
   ownHost?: string;
@@ -661,5 +661,93 @@ describe('HouseDetailPage: listingHref URL validation', () => {
     const link = host.querySelector('div.inline a.btn');
     expect(link).not.toBeNull();
     expect(link?.getAttribute('href')).toBe('https://a.com');
+  });
+});
+
+/**
+ * S4b-BL-182: Extract reads at most AI_MAX_LISTING_CHARS characters of the pasted text. The field takes what was pasted
+ * (no silent cut by the browser), says under it how many characters at the end are left out, and sends only the first
+ * AI_MAX_LISTING_CHARS.
+ */
+describe('HouseDetailPage: the pasted listing is longer than Extract reads (S4b-BL-182)', () => {
+  const CAP = AI_MAX_LISTING_CHARS;
+
+  function t(msg: Msg): string {
+    return TestBed.inject(TranslationService).t(msg.key, msg.params);
+  }
+
+  async function opened(extract: (text: string) => Observable<HouseDraft> = () => of()) {
+    const made = create({}, { lat: '12.9716', lon: '77.5946' }, { aiEnabled: true, extractListing: extract });
+    await made.fixture.whenStable();
+    return made.fixture;
+  }
+
+  async function paste(fixture: ComponentFixture<HouseDetailPage>, value: string): Promise<HTMLTextAreaElement> {
+    const host = fixture.nativeElement as HTMLElement;
+    const area = host.querySelector<HTMLTextAreaElement>('#listing-text')!;
+    area.value = value;
+    area.dispatchEvent(new Event('input'));
+    await fixture.whenStable();
+    return area;
+  }
+
+  const hintOf = (fixture: ComponentFixture<HouseDetailPage>) =>
+    (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>('#listing-cut-hint');
+
+  it('shows no hint at exactly the limit, and the field no longer cuts the paste itself', async () => {
+    const fixture = await opened();
+    const area = await paste(fixture, 'x'.repeat(CAP));
+    expect(hintOf(fixture)).toBeNull();
+    expect(area.hasAttribute('maxlength')).toBe(false);
+  });
+
+  it('says how many characters at the end are left out, one over the limit and well over it', async () => {
+    const fixture = await opened();
+    await paste(fixture, 'x'.repeat(CAP + 1));
+    expect(hintOf(fixture)?.textContent?.trim()).toBe(t({ key: 'listingFill.cut', params: { max: CAP, n: 1 } }));
+    expect(hintOf(fixture)?.textContent).toContain('Only the first 8,000 characters are read. Characters left out at the end: 1.');
+    await paste(fixture, 'x'.repeat(CAP + 2345));
+    expect(hintOf(fixture)?.textContent).toContain('2,345');
+  });
+
+  it('counts the text without the spaces round it, as it is sent', async () => {
+    const fixture = await opened();
+    await paste(fixture, '  ' + 'x'.repeat(CAP) + '   ');
+    expect(hintOf(fixture)).toBeNull();
+  });
+
+  it('is read out (a polite live region that is there before the hint) and tied to the field', async () => {
+    const fixture = await opened();
+    const host = fixture.nativeElement as HTMLElement;
+    const area = host.querySelector<HTMLTextAreaElement>('#listing-text')!;
+    const slot = host.querySelector('#listing-cut-slot')!;
+    expect(slot.getAttribute('aria-live')).toBe('polite');
+    expect(area.getAttribute('aria-describedby')).toContain('listing-cut-slot');
+    await paste(fixture, 'x'.repeat(CAP + 5));
+    expect(slot.contains(hintOf(fixture))).toBe(true);
+  });
+
+  it('sends only the first characters up to the limit', async () => {
+    const sent: string[] = [];
+    const fixture = await opened((text) => {
+      sent.push(text);
+      return of();
+    });
+    const host = fixture.nativeElement as HTMLElement;
+    await paste(fixture, 'a'.repeat(CAP) + 'TAIL');
+    [...host.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent?.trim() === t({ key: 'listingFill.submit' }))!.click();
+    expect(sent).toEqual(['a'.repeat(CAP)]);
+  });
+
+  it('sends a text at the limit whole', async () => {
+    const sent: string[] = [];
+    const fixture = await opened((text) => {
+      sent.push(text);
+      return of();
+    });
+    const host = fixture.nativeElement as HTMLElement;
+    await paste(fixture, 'b'.repeat(CAP));
+    [...host.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent?.trim() === t({ key: 'listingFill.submit' }))!.click();
+    expect(sent).toEqual(['b'.repeat(CAP)]);
   });
 });

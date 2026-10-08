@@ -1636,4 +1636,6 @@
     <string name="tour_done_title">நீங்கள் தயார்</string>
     <string name="tour_done_body">இவை Doorprints-இன் முக்கியப் பகுதிகள். நீங்கள் பார்க்கும் முதல் வீட்டிலிருந்து தொடங்குங்கள்.</string>
     <string name="tour_done_action">முடி என்பதைத் தொட்டு, செயலியைத் திறந்து வைத்துக்கொண்டு ஒரு வீட்டைப் பார்க்கச் செல்லுங்கள்.</string>
+    <!-- S4b-BL-182 (2026-10-08): the paste box says how much of a long listing is left out. Under review. -->
+    <string name="house_paste_cut">முதல் %1$s எழுத்துகள் மட்டுமே படிக்கப்படும். இறுதியில் விடுபட்ட எழுத்துகள்: %2$s.</string>
 </resources>

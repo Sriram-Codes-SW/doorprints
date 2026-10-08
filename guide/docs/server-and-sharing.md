@@ -67,6 +67,8 @@ an app, the new house's form also fills in what the listing says (see
 To install the website, see **Install the app** on **Your data**.
 
 **Anywhere, also on iPhone:** paste the ad's text into a house's **Notes**. With AI turned on, **Fill in from listing
-text** on the form for a new house suggests the details. Check them before you save.
+text** on the form for a new house suggests the details. Check them before you save. It reads the first 8,000
+characters of what you paste; a line under the box says how many at the end are left out. If the text holds more
+than one web link, the form tells you to check that the **Listing link** is the right one.
 
 ![Add a shared listing on the website: the shared ad text, with Add a house from this, Copy and Back to the map](images/web-share.png)

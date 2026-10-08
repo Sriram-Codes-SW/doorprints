@@ -21,6 +21,7 @@ package app.doorprints.server.ai.extract;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -44,8 +45,30 @@ public final class DraftSanitizer {
     private static final Pattern PRICE = Pattern.compile(
             "(?i)(\\d+(?:\\.\\d+)?)\\s*(k|thousand|l|lac|lakh|lakhs|lacs|cr|crore|crores|m|mn|million)?\\b");
     private static final Pattern FIRST_INT = Pattern.compile("\\d+");
+    private static final Pattern LINK = Pattern.compile("https?://[A-Za-z0-9\\-._~:/?#@!$&*+,;=%]+", Pattern.CASE_INSENSITIVE);
+    /** What a sentence puts after a link and is not part of it: the full stop, comma and so on, and a WhatsApp bold mark. */
+    private static final String LINK_TAIL = ".,;:!?*";
 
     private DraftSanitizer() {
+    }
+
+    /**
+     * How many different http(s) links the pasted listing text holds (S4b-BL-182; the website's {@code countListingLinks}
+     * and the phones' {@code DraftSanitizer.linkCount} give the same numbers, see the shared vectors). A link ends at the
+     * first character an address cannot hold, so Hindi, Tamil and Telugu text next to it is not part of it, and loses the
+     * punctuation a sentence puts after it; one written twice counts once and a scheme with no host is no link. One pass
+     * with a character class and no nested repeat, so the time is linear.
+     */
+    public static int linkCount(String text) {
+        var seen = new HashSet<String>();
+        var m = LINK.matcher(text);
+        while (m.find()) {
+            var link = m.group();
+            var end = link.length();
+            while (end > 0 && LINK_TAIL.indexOf(link.charAt(end - 1)) >= 0) end--;
+            if (end > link.indexOf("//") + 2) seen.add(link.substring(0, end));
+        }
+        return seen.size();
     }
 
     /**
@@ -73,6 +96,11 @@ public final class DraftSanitizer {
         var contactName = clean(raw.contactName(), CONTACT_NAME_MAX, "contactName", warnings);
         var phone = phone(raw.contactPhone(), source, warnings);
         var url = url(raw.listingUrl(), source, warnings);
+        if (url != null) {
+            // The model picked one link; if the pasted text holds several, the person is told, whatever the model thinks.
+            var links = linkCount(source);
+            if (links >= 2) warnings.add("listingUrl: the text has " + links + " links, check this is the right one");
+        }
         var notes = clean(raw.notes(), NOTES_MAX, "notes", warnings);
         var amenities = amenities(raw.amenities(), warnings);
 

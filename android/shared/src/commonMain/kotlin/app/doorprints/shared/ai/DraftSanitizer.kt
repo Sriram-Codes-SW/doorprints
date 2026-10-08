@@ -67,8 +67,29 @@ object DraftSanitizer {
         RegexOption.IGNORE_CASE,
     )
     private val FIRST_INT = Regex("\\d+")
+    private val LINK = Regex("https?://[A-Za-z0-9\\-._~:/?#@!\$&*+,;=%]+", RegexOption.IGNORE_CASE)
+    /** What a sentence puts after a link and is not part of it: the full stop, comma and so on, and a WhatsApp bold mark. */
+    private const val LINK_TAIL = ".,;:!?*"
     /** Absolute http(s) with a host and no spaces: what Java's `URI.create` accepts for these links. */
     private val HTTP_URL = Regex("^(?:https?)://[^\\s/?#]+(?:[/?#]\\S*)?$", RegexOption.IGNORE_CASE)
+
+    /**
+     * How many different http(s) links the pasted listing text holds (S4b-BL-182; the server's `linkCount` and the
+     * website's `countListingLinks` give the same numbers, see the shared vectors). A link ends at the first character an
+     * address cannot hold, so Hindi, Tamil and Telugu text next to it is not part of it, and loses the punctuation a
+     * sentence puts after it; one written twice counts once and a scheme with no host is no link. One pass with a character
+     * class and no nested repeat, so the time is linear.
+     */
+    fun linkCount(text: String): Int {
+        val seen = HashSet<String>()
+        for (m in LINK.findAll(text)) {
+            val link = m.value
+            var end = link.length
+            while (end > 0 && link[end - 1] in LINK_TAIL) end--
+            if (end > link.indexOf("//") + 2) seen += link.substring(0, end)
+        }
+        return seen.size
+    }
 
     /**
       * The checked draft for the model's [raw] listing and the [sourceText] it was read from. A null [raw] gives a
@@ -90,6 +111,11 @@ object DraftSanitizer {
         val contactName = clean(raw.contactName, CONTACT_NAME_MAX, "contactName", warnings)
         val phone = phone(raw.contactPhone, source, warnings)
         val url = url(raw.listingUrl, source, warnings)
+        if (url != null) {
+            // The model picked one link; if the pasted text holds several, the person is told, whatever the model thinks.
+            val links = linkCount(source)
+            if (links >= 2) warnings += "listingUrl: the text has $links links, check this is the right one"
+        }
         val notes = clean(raw.notes, NOTES_MAX, "notes", warnings)
         val amenities = amenities(raw.amenities, warnings)
         var label = clean(raw.label, LABEL_MAX, "label", warnings)

@@ -704,6 +704,11 @@ export function sanitizeDraft(raw: RawListing | null, sourceText: string | null)
   const contactName = clean(raw.contactName, LIMITS.contactName, 'contactName', warnings);
   const contactPhone = phone(raw.contactPhone, source, warnings);
   const listingUrl = url(raw.listingUrl, source, warnings);
+  if (listingUrl != null) {
+    // The model picked one link; if the pasted text holds several, the person is told, whatever the model thinks (S4b-BL-182).
+    const links = countListingLinks(source);
+    if (links >= 2) warnings.push(`listingUrl: the text has ${links} links, check this is the right one`);
+  }
   const notes = clean(raw.notes, LIMITS.notes, 'notes', warnings);
   const list = amenities(raw.amenities, warnings);
   let label = clean(raw.label, LIMITS.label, 'label', warnings);
@@ -713,6 +718,39 @@ export function sanitizeDraft(raw: RawListing | null, sourceText: string | null)
   }
   // The on-device model is not asked for the area (the Kotlin sanitiser is not either); the no-AI parser finds it.
   return { label, address, street, locality, price: amount, priceType: type, bedrooms: bhk, areaSqft: null, contactName, contactPhone, listingUrl, notes, amenities: list, warnings };
+}
+
+// What a sentence puts after a link and is not part of it: the full stop, comma and so on, and the * of a WhatsApp bold.
+const LINK_TAIL = '.,;:!?*';
+
+/**
+ * How many different http(s) links the pasted listing text holds (S4b-BL-182). A link ends at the first character an
+ * address cannot hold (so Hindi, Tamil and Telugu text next to it is not part of it) and loses the punctuation a
+ * sentence puts after it; one written twice counts once, and a scheme with no host is no link. One pass over the text with
+ * a character class and no nested repeat, so the time is linear.
+ */
+export function countListingLinks(text: string): number {
+  const seen = new Set<string>();
+  for (const m of text.matchAll(URL_TEXT)) {
+    const link = m[0];
+    let end = link.length;
+    while (end > 0 && LINK_TAIL.includes(link[end - 1])) end--;
+    if (end > link.indexOf('//') + 2) seen.add(link.slice(0, end));
+  }
+  return seen.size;
+}
+
+/**
+ * The pasted listing text as it is sent: trimmed, and cut to `cap` UTF-16 units (the unit the server counts), never in
+ * the middle of an emoji; `leftOut` is how many units of the trimmed text were not sent (S4b-BL-182).
+ */
+export function cutListing(text: string, cap: number): { text: string; leftOut: number } {
+  const t = text.trim();
+  if (t.length <= cap) return { text: t, leftOut: 0 };
+  let end = cap;
+  const last = t.charCodeAt(end - 1);
+  if (end > 0 && last >= 0xd800 && last <= 0xdbff) end--;
+  return { text: t.slice(0, end), leftOut: t.length - end };
 }
 
 export const LINK_REMOVED = '[link removed]';

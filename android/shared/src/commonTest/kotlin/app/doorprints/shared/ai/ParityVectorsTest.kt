@@ -96,7 +96,7 @@ class ParityVectorsTest {
 
     @Test
     fun listingChecksMatchTheServer() {
-        assertEquals(24, root.getValue("sanitize").jsonArray.size)
+        assertEquals(31, root.getValue("sanitize").jsonArray.size)
         for (c in root.getValue("sanitize").jsonArray) {
             val o = c.jsonObject
             val raw = o["raw"].takeUnless { it is JsonNull }?.let { json.decodeFromJsonElement<RawListing>(it) }
@@ -104,6 +104,27 @@ class ParityVectorsTest {
             val expected = json.encodeToJsonElement(json.decodeFromJsonElement<HouseDraftDto>(o.getValue("expected")))
             assertEquals(expected, actual, "raw: ${o["raw"]}")
         }
+    }
+
+    @Test
+    fun linksOfThePastedTextAreCountedAsTheServerDoes() {
+        val cases = root.getValue("listingLinks").jsonArray
+        for (c in cases) {
+            val o = c.jsonObject
+            assertEquals(o.getValue("expected").jsonPrimitive.long.toInt(), DraftSanitizer.linkCount(str(o["text"])!!), str(o["name"]))
+        }
+        assertEquals(17, cases.size)
+    }
+
+    @Test
+    fun thePastedTextIsCutAtTheLimitAsTheWebsiteDoes() {
+        val cases = root.getValue("listingCut").jsonArray
+        for (c in cases) {
+            val o = c.jsonObject
+            val expected = ListingCut(str(o["kept"])!!, o.getValue("leftOut").jsonPrimitive.long.toInt())
+            assertEquals(expected, ListingCut.of(str(o["text"])!!, o.getValue("cap").jsonPrimitive.long.toInt()), str(o["name"]))
+        }
+        assertEquals(9, cases.size)
     }
 
     @Test
