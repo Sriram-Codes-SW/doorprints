@@ -461,6 +461,15 @@ describe('the IndexedDB wrapper: several stores, one transaction', () => {
     expect((await db.getAll<{ id: string }>('trace_points')).map((r) => r.id)).toEqual(['7-2']);
   });
 
+  it('getMany reads the named rows in ONE transaction, skips a missing key, and makes no transaction for no keys', async () => {
+    const { factory, db } = await withWalk();
+    expect(await db.getMany('trace_points', [])).toEqual([]);
+    expect(factory.db.log).toEqual([]);
+    const rows = await db.getMany<{ id: string }>('trace_points', ['7-3', 'nope', '7-1']);
+    expect(rows.map((r) => r.id).sort()).toEqual(['7-1', '7-3']);
+    expect(factory.db.log).toEqual([{ names: ['trace_points'], mode: 'readonly' }]);
+  });
+
   it('putAll is one transaction too, and counts by index without reading rows', async () => {
     const { factory, db } = await withWalk();
     await db.putAll('trace_points', [{ id: '8-1', walk: 8, at: 1 }, { id: '8-2', walk: 8, at: 2 }]);

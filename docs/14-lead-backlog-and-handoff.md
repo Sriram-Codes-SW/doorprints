@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.126 |
+| Version | 0.127 |
 | Date | 2026-10-08 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..183); this file lists the lead-level items and points to the rest. |
@@ -135,6 +135,7 @@
 | 0.124 | 2026-10-08 | Claude (Code), lead | S4b-BL-186 ([10](10-sprint-log.md) v0.187): Ask and Plan prompts say what to do with a hostile question or request, pinned in the shared vectors; the live check (three runs each of the website's own-provider suite and the server's eval) is the lead's after the merge. |
 | 0.125 | 2026-10-08 | Claude (Code), lead | S4b-BL-177 ([10](10-sprint-log.md) v0.188): golden set v0.8 (75 cases): three cases that expected a pasted link to be dropped are rewritten, three robustness cases added; the lead runs the extract and ask cases on a real model after the merge and records the result in ai-design 8.5. |
 | 0.126 | 2026-10-08 | Claude (Code) | S4b-BL-161 Done and new S4b-BL-188 Done ([10](10-sprint-log.md) v0.189, #200): open pairing requests are capped (50 in all, 5 per source, 429, never evicted), and `OWNER_SETUP_LINK_IN_LOG` is the owner's recovery when the only signed-in browser is lost. A server updated to this version applies migration V14 at start. |
+| 0.127 | 2026-10-08 | Claude (Code), lead | S4b-BL-167, -169, -170 ([10](10-sprint-log.md) v0.190): the pull batches its local reads (web and Android), the `file://` import scheme is removed, Android lint is blocking in CI (no baseline); the pull-request run is the proof that the Lint step passes there. |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 

@@ -14,7 +14,7 @@
 #
 # SPDX-License-Identifier: AGPL-3.0-only
 
-# Android: debug APK + JVM unit tests + lint (report only); signed release APK on main when the keystore secrets exist. The APK artifact is how the app is installed (sideload), see README.md.
+# Android: debug APK + JVM unit tests + lint (blocking, S4b-BL-170); signed release APK on main when the keystore secrets exist. The APK artifact is how the app is installed (sideload), see README.md.
 name: Android
 
 # Path filters cover every file the build and tests read, not only android/** (same rule as backend.yml).
@@ -111,10 +111,11 @@ jobs:
           ./gradlew --no-daemon --stacktrace assembleDebug testDebugUnitTest :shared:testAndroidHostTest :ui:testAndroidHostTest \
             :shared:compileCommonMainKotlinMetadata :ui:compileCommonMainKotlinMetadata -Proborazzi.test.verify=true
 
-      # Android lint (includes MissingTranslation as an error, see app/build.gradle.kts). Reported, not yet
-      # blocking: switch continue-on-error off once the first report is clean.
+      # Android lint, blocking (S4b-BL-170): any error-severity finding fails the job (MissingTranslation and
+      # ExtraTranslation are errors, see app/build.gradle.kts; the one AppLinkUrlError is ignored on its intent filter,
+      # with the reason, in AndroidManifest.xml). Warnings stay in the report (lint-results-debug.html); there is no
+      # baseline file.
       - name: Lint
-        continue-on-error: true
         run: ./gradlew --no-daemon lintDebug
 
       # Artifact names follow the product name Doorprints (were house-hunt-*-apk until 2026-09-22).

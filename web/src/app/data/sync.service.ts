@@ -57,6 +57,9 @@ export const RATE_LIMIT_ATTEMPTS = 4;
 /** Longest `Retry-After` slept through (Android `RetryPolicy.maxDelayMs`); a longer one ends the run. */
 export const MAX_RATE_LIMIT_WAIT_MS = 15_000;
 
+/** Ids per local read of a pull page (S4b-BL-167): under SQLite's 999-variable limit on the phone, the same on the web. */
+export const PULL_READ_CHUNK = 500;
+
 /** What one finished sync pass did: rows pushed and pulled, rows the app refused to store, and when. */
 export interface SyncOutcome {
   pushed: number;
@@ -646,12 +649,12 @@ export class SyncService {
     let pulled = 0;
     let skipped = 0;
 
-    const houses = new Map<string, HouseRecord>(
-      (await this.store.allHouses()).map((h): [string, HouseRecord] => [h.id, h]),
-    );
-    this.live(gen);
     let houseCursor = cursors.house;
     const houseRows = wireRows(await this.call(gen, () => this.backend.housesSince(houseCursor)));
+    this.live(gen);
+    const houses = new Map<string, HouseRecord>(
+      (await readInChunks(rowIds(houseRows), (ids) => this.store.houseRowsByIds(ids))).map((h): [string, HouseRecord] => [h.id, h]),
+    );
     this.live(gen);
     for (let i = 0; i < houseRows.length; i++) {
       await this.stopPoint(gen, SETTING_KEYS.houseCursor, houseCursor, houseRows, i);
@@ -677,12 +680,12 @@ export class SyncService {
     await this.store.setSetting(SETTING_KEYS.houseCursor, String(houseCursor));
     this.live(gen);
 
-    const visits = new Map<string, VisitRecord>(
-      (await this.store.allVisits()).map((v): [string, VisitRecord] => [v.id, v]),
-    );
-    this.live(gen);
     let visitCursor = cursors.visit;
     const visitRows = wireRows(await this.call(gen, () => this.backend.visitsSince(visitCursor)));
+    this.live(gen);
+    const visits = new Map<string, VisitRecord>(
+      (await readInChunks(rowIds(visitRows), (ids) => this.store.visitRowsByIds(ids))).map((v): [string, VisitRecord] => [v.id, v]),
+    );
     this.live(gen);
     for (let i = 0; i < visitRows.length; i++) {
       await this.stopPoint(gen, SETTING_KEYS.visitCursor, visitCursor, visitRows, i);
@@ -709,12 +712,16 @@ export class SyncService {
     this.live(gen);
 
     // Records follow the visits' two decisions exactly; a row over the payload cap is untrusted and skipped.
-    const records = new Map<string, RecordRecord>(
-      (await this.store.allRecords()).map((r): [string, RecordRecord] => [recordKey(r), r]),
-    );
-    this.live(gen);
     let recordCursor = cursors.record;
     const recordRows = wireRows(await this.call(gen, () => this.backend.recordsSince(recordCursor)));
+    this.live(gen);
+    const records = new Map<string, RecordRecord>(
+      (
+        await readInChunks(recordKeys(recordRows), (keys) =>
+          this.store.recordRowsByKeys(keys.map((k): [string, string] => k.split('\u0000', 2) as [string, string])),
+        )
+      ).map((r): [string, RecordRecord] => [recordKey(r), r]),
+    );
     this.live(gen);
     for (let i = 0; i < recordRows.length; i++) {
       await this.stopPoint(gen, SETTING_KEYS.recordCursor, recordCursor, recordRows, i);
@@ -744,6 +751,15 @@ export class SyncService {
     let photoCursor = cursors.photo;
     const photoRows = wireRows(await this.call(gen, () => this.backend.photoChangesSince(photoCursor)));
     this.live(gen);
+    // The photo rows of this page and the houses they name (read after the houses phase, so a house pulled just now counts).
+    const photos = new Map<string, PhotoRecord>(
+      (await readInChunks(rowIds(photoRows), (ids) => this.store.photoRowsByIds(ids))).map((p): [string, PhotoRecord] => [p.id, p]),
+    );
+    const photoHouses = new Map<string, HouseRecord>(
+      (await readInChunks(photoRows.map((c) => c?.houseId).filter(isRecordId), (ids) => this.store.houseRowsByIds(ids))).map((h): [string, HouseRecord] => [h.id, h]),
+    );
+    this.live(gen);
+    const photoSeen = new Set<string>();
     for (let i = 0; i < photoRows.length; i++) {
       await this.stopPoint(gen, SETTING_KEYS.photoCursor, photoCursor, photoRows, i);
       this.progress.set({ phase: 'photos', done: i + 1, total: photoRows.length });
@@ -759,7 +775,9 @@ export class SyncService {
         skipped++;
         continue;
       }
-      const local = await this.store.getPhoto(change.id);
+      // A page that names one photo twice re-reads it the second time, since the first change may have changed the row.
+      const local = photoSeen.has(change.id) ? await this.store.getPhoto(change.id) : photos.get(change.id);
+      photoSeen.add(change.id);
       this.live(gen);
       if (change.deleted) {
         if (local) {
@@ -775,7 +793,7 @@ export class SyncService {
         this.live(gen);
         continue;
       }
-      const house = houses.get(change.houseId);
+      const house = photoHouses.get(change.houseId);
       if (!house || house.deleted) continue; // the house is gone or deleted here: nothing to attach the photo to
       const photoId = change.id;
       if (this.backend.photosAllowed && !this.backend.photosAllowed()) {
@@ -923,6 +941,29 @@ export function pushShowsReset(
 }
 
 /** The one map key of a record: its store key, (type, id). */
+/** The ids of a page's rows that can name a stored row. */
+function rowIds(rows: readonly ({ id?: unknown } | null | undefined)[]): string[] {
+  return rows.map((r) => r?.id).filter(isRecordId);
+}
+
+/** The keys (see {@link recordKey}) of a page's record rows that can name a stored record. */
+function recordKeys(rows: readonly ({ type?: unknown; id?: unknown } | null | undefined)[]): string[] {
+  return rows.flatMap((r) => (r && typeof r.type === 'string' && isRecordId(r.id) ? [recordKey({ type: r.type, id: r.id })] : []));
+}
+
+/**
+ * Reads the stored rows for `keys` by `read`, {@link PULL_READ_CHUNK} keys at a time, each key once: the number of
+ * reads follows the page, not the store and not one per row (S4b-BL-167).
+ */
+async function readInChunks<K, T>(keys: readonly K[], read: (chunk: K[]) => Promise<T[]>): Promise<T[]> {
+  const unique = [...new Set(keys)];
+  const found: T[] = [];
+  for (let from = 0; from < unique.length; from += PULL_READ_CHUNK) {
+    found.push(...(await read(unique.slice(from, from + PULL_READ_CHUNK))));
+  }
+  return found;
+}
+
 function recordKey(record: { type: string; id: string }): string {
   return `${record.type}\u0000${record.id}`;
 }
