@@ -41,6 +41,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -119,6 +120,7 @@ public class OwnerApiController {
     }
 
     private final OwnerAuth auth;
+    private final Clock clock;
     private final DeviceKeyStore devices;
     private final PairingService pairing;
     private final AppProperties props;
@@ -137,8 +139,9 @@ public class OwnerApiController {
     public OwnerApiController(OwnerAuth auth, DeviceKeyStore devices, PairingService pairing, AppProperties props,
                               GeminiKey geminiKey, ServerSecrets secrets, ServerSettings settings,
                               @Value("${app.ai.enabled:false}") boolean aiEnabled,
-                              @Value("${app.ai.provider:aistudio}") String aiProvider) {
+                              @Value("${app.ai.provider:aistudio}") String aiProvider, Clock clock) {
         this.auth = auth;
+        this.clock = clock;
         this.devices = devices;
         this.pairing = pairing;
         this.props = props;
@@ -292,7 +295,7 @@ public class OwnerApiController {
     public LinkView browserLink(HttpServletRequest request) {
         var token = auth.newSetupToken();
         return new LinkView(OwnerFilter.origin(request) + "/owner#setup=" + token,
-                Instant.now().plus(OwnerAuth.SETUP_LIFETIME));
+                clock.instant().plus(OwnerAuth.SETUP_LIFETIME));
     }
 
     /**

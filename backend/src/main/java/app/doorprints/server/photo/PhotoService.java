@@ -74,7 +74,7 @@ public class PhotoService {
             throw new ConflictException("Photo limit reached: at most " + maxPerHouse + " photos per house");
         }
         var clean = ImageSanitizer.sanitize(bytes);
-        photos.save(new Photo(photoId, houseId, clean.contentType(), clean.data(), Instant.now(), versions.next()));
+        photos.save(new Photo(photoId, houseId, clean.contentType(), clean.data(), clock.now(), versions.next()));
         return photoId;
     }
 
@@ -94,7 +94,7 @@ public class PhotoService {
         versions.lock();
         var photo = photos.findById(id).orElse(null);
         if (photo == null || photo.isDeleted()) return;
-        photo.markDeleted(Instant.now(), versions.next());
+        photo.markDeleted(clock.now(), versions.next());
     }
 
     /**
