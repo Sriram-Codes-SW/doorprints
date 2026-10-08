@@ -236,6 +236,10 @@ object Viewings {
         lowCriteria = scoring.criteria.filter { !it.archived && (checklist[it.key] ?: 0) in 1..2 }.map { it.key },
     )
 
+    /**
+      * What to look at again before a second viewing: [openQuestions] still unanswered and the keys of the weakly
+      * scored criteria.
+     */
     data class Recheck(val openQuestions: Int, val lowCriteria: List<String>) {
         val isEmpty: Boolean get() = openQuestions == 0 && lowCriteria.isEmpty()
     }

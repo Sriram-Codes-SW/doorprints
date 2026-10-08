@@ -31,6 +31,7 @@ import kotlin.math.sqrt
 internal object TraceGeo {
     const val K = TraceConstants.EARTH_RADIUS_M * PI / 180.0
 
+    /** Degrees to radians. */
     fun rad(degrees: Double): Double = degrees * (PI / 180.0)
 
     /** The length of the segment a to b in metres, on the plane at the mean latitude. */
@@ -78,6 +79,7 @@ internal object TraceGeo {
     fun interpolatedAtMs(aAtMs: Long, bAtMs: Long, t: Double): Long =
         aAtMs + floor(t * (bAtMs - aAtMs) + 0.5).toLong()
 
+    /** Whether the point has finite coordinates inside the valid latitude and longitude ranges. */
     fun isValid(p: TracePoint): Boolean =
         p.lat.isFinite() && p.lon.isFinite() && p.lat in -90.0..90.0 && p.lon in -180.0..180.0
 }

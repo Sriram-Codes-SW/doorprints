@@ -37,6 +37,7 @@ data class SyncOutcome(
     val httpCode: Int = 0,
     val remoteReset: Boolean = false,
 ) {
+    /** The groups of result the screens word; the stored form uses the name. */
     enum class Kind { OK, NOT_CONFIGURED, NETWORK, AUTH, CAPTIVE_PORTAL, RATE_LIMITED, SERVER, UNKNOWN }
 
     /** Five fields as before; a sixth, `R`, only after a server reset, so every other outcome is stored as it was. */
@@ -45,6 +46,9 @@ data class SyncOutcome(
             .joinToString("|")
 
     companion object {
+        /**
+         * Reads the stored form written by [encode]; null for anything else, so a damaged value reads as no result.
+         */
         fun decode(value: String?): SyncOutcome? {
             val parts = value?.split('|') ?: return null
             if (parts.size != 5 && !(parts.size == 6 && parts[5] == RESET)) return null

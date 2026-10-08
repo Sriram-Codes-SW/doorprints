@@ -33,6 +33,7 @@ import kotlinx.io.IOException
 
 /** Opens [url] in the person's browser. False: there is none (or it refused). */
 fun interface BrowserLauncher {
+    /** Opens [url] and returns whether a browser took it; it does not wait for the person. */
     fun launch(url: String): Boolean
 }
 
@@ -51,6 +52,7 @@ class BrowserOAuthConfig(
  * `CONSENT_REQUIRED` and nothing opens by itself.
  */
 class BrowserPendingConsent(private val authorizer: BrowserGoogleAuthorizer) : PendingConsent {
+    /** Runs the browser consent (open, wait for the redirect, exchange the code) and returns the resulting grant. */
     suspend fun run(): AuthorizerResult = authorizer.runConsent()
 }
 
@@ -88,6 +90,12 @@ class BrowserGoogleAuthorizer(
 
     private val quiet = Mutex()
 
+    /**
+     * Quiet path only: refreshes with the stored refresh token and never opens a screen. Only the one Drive scope is
+      * served; anything else, or a missing client id, is UNAVAILABLE. Calls are serialised so two refreshes do not race
+      * on
+     * the stored token.
+     */
     override suspend fun authorize(scopes: List<String>): AuthorizerResult {
         if (scopes != listOf(DRIVE_FILE_SCOPE)) return unavailable()
         val clientId = clientId() ?: return unavailable()
@@ -144,6 +152,12 @@ class BrowserGoogleAuthorizer(
     /** The person pressed *Cancel* in Doorprints while the browser was open. */
     fun cancel() = redirect.cancelPending()
 
+    /**
+      * The loud path, started from a screen: opens Google's consent page with a fresh PKCE verifier and state, waits up
+      * to
+     * [BrowserOAuthConfig.waitMs] for the redirect and trades the code for tokens. The pending redirect is always
+     * abandoned afterwards, so a later attempt starts clean.
+     */
     internal suspend fun runConsent(): AuthorizerResult {
         val clientId = clientId() ?: return unavailable()
         val verifier = Pkce.newVerifier(random)

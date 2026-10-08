@@ -45,6 +45,7 @@ data class DriveProblem(
      */
     val code: String? = null,
 ) {
+    /** The reasons a Drive backup action did not happen; [DriveProblem.of] maps every typed failure to one of them. */
     enum class Kind {
         /** No network (or a captive portal). Tried again at the next trigger. */
         OFFLINE,
@@ -184,6 +185,7 @@ data class DriveProblem(
 sealed interface DriveConnection {
     val kind: Kind
 
+    /** The plain states of the Drive folder for one device. */
     enum class Kind { NO_FOLDER, FOLDER_GONE, NEEDS_ENROLMENT, NEEDS_RECOVERY_KEY, READY, ERROR }
 
     /** Nothing of Doorprints in this Drive: [DriveBackupService.createFolder] makes the folder and the key set. */
@@ -223,6 +225,7 @@ sealed interface DriveConnection {
         override val kind get() = Kind.READY
     }
 
+    /** The folder could not be read or trusted; [problem] says why. */
     data class Error(val problem: DriveProblem) : DriveConnection {
         override val kind get() = Kind.ERROR
     }

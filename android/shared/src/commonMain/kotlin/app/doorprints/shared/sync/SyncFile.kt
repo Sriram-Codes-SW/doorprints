@@ -75,6 +75,10 @@ class SyncFileException(val problem: SyncFileProblem, message: String) : Excepti
  * ([DriveMerge.takesIncoming]).
  */
 data class SyncStamp(val updatedAt: Long, val by: String, val deleted: Boolean) : Comparable<SyncStamp> {
+    /**
+      * Orders by time, then writing device, then tombstone over live; a total order, so every device picks the same
+      * winner.
+     */
     override fun compareTo(other: SyncStamp): Int =
         compareValuesBy(this, other, { it.updatedAt }, { it.by }, { it.deleted })
 }
@@ -123,6 +127,7 @@ class SyncFile(val deviceId: String, val seq: Long, val writtenAt: Long, rows: M
         rows[kind].orEmpty().onEach { require(it.kind == kind) { "a ${it.kind.key} row in ${kind.key}" } }.sortedBy { it.key }
     }
 
+    /** The rows of one list, sorted by key. */
     fun rows(kind: SyncKind): List<SyncRow> = rows.getValue(kind)
 }
 
@@ -157,10 +162,16 @@ object SyncFiles {
     private val SHA256 = Regex("[0-9a-f]{64}")
     private val VERSION = Regex("[1-9][0-9]{0,8}")
 
+    /** Whether [value] can be a device id in a sync file: 8 to 64 letters, digits, `_` or `-`. */
     fun isDeviceId(value: String): Boolean = DEVICE_ID.matches(value)
 
+    /**
+      * Whether [value] looks like a Drive file id (1 to 128 letters, digits, `_` or `-`); checked before an id from a
+      * file is trusted.
+     */
     fun isDriveFileId(value: String): Boolean = DRIVE_FILE_ID.matches(value)
 
+    /** Whether [value] is a SHA-256 as 64 lower-case hex digits. */
     fun isSha256(value: String): Boolean = SHA256.matches(value)
 
     /**

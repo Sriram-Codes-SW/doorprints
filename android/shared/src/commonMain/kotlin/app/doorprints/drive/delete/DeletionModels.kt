@@ -91,6 +91,7 @@ data class AuthorizationToken(
  * says whether the token is **genuine** and whether it **still holds** (the screen lock is still on, nothing withdrew it).
  */
 interface AuthorizationGate {
+    /** Whether [token] was issued by a device check that passed. */
     suspend fun isGenuine(token: AuthorizationToken): Boolean
 
     /** Asked before every file: false stops the run before the next delete ("the lock removed half way", docs/15 §10.2). */
@@ -106,11 +107,15 @@ enum class Refusal {
 /** Why a started run stopped before the end. */
 enum class StopReason { DRIVE_ERROR, AUTHORIZATION_LOST, FILES_FAILED }
 
+/**
+ * The pre-flight's answer: the exact [DeletionPlan] to show, or the reason none could be made. Nothing is deleted yet.
+ */
 sealed interface PlanResult {
     data class Ready(val plan: DeletionPlan) : PlanResult
     data class Refused(val reason: Refusal, val error: DriveException? = null) : PlanResult
 }
 
+/** How a deletion request ended: refused before it started, or a run that deleted some or all of the plan. */
 sealed interface DeletionOutcome {
     /** Nothing was deleted. */
     data class Refused(val reason: Refusal, val error: DriveException? = null) : DeletionOutcome
@@ -165,9 +170,13 @@ data class PendingDeletion(
  * [pending] first and not start while a deletion is unfinished.
  */
 interface DeletionStore {
+    /** The unfinished deletion, or null. */
     suspend fun pending(): PendingDeletion?
+    /** Writes [pending] before the first file is deleted, so an interrupted run can be finished. */
     suspend fun savePending(pending: PendingDeletion)
+    /** Forgets the pending list once nothing is left to do. */
     suspend fun clearPending()
+    /** The marker of the last finished deletion, or null. */
     suspend fun marker(): DeletedMarker?
 
     /** Records [marker]; when [forgetFolder] the stored Drive folder ids (root, backups, keys, ...) are dropped. */

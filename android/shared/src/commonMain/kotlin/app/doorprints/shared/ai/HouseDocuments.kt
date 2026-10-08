@@ -35,6 +35,10 @@ import app.doorprints.shared.model.Distances
 object HouseDocuments {
     const val NOTES_MAX = 3000
 
+    /**
+      * The record of [h] as `Label: value` lines (empty values left out) that Ask sends and cites. It has no contact
+      * line, and free text goes through [ContactRedactor].
+     */
     fun text(h: AiHouse): String {
         val r = ContactRedactor.forContact(h.contactName, h.contactPhone)
         val sb = StringBuilder()
@@ -204,6 +208,10 @@ object HouseDocuments {
     /** The label as Ask's citations show it: free text, redacted. */
     fun label(h: AiHouse): String = ContactRedactor.forContact(h.contactName, h.contactPhone).freeText(h.label) ?: ""
 
+    /**
+      * One line on the visits: how many, the last day (UTC), and the minutes spent where both arrival and departure are
+      * known.
+     */
     fun visitSummary(visits: List<AiVisit>): String {
         if (visits.isEmpty()) return "not visited yet"
         val last = visits.maxOf { it.arrivedAt }

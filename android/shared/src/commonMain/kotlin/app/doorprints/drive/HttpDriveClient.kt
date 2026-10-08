@@ -65,6 +65,10 @@ class HttpDriveClient(
     override suspend fun about(): DriveAbout =
         json(HttpMethod.Get, url(API, "about", "fields" to DriveFields.ABOUT), AboutWire.serializer()).toModel()
 
+    /**
+      * One page, oldest `createdTime` first, from the user's Drive space (not the app-data folder); [pageSize] must be
+      * 1 to 1000.
+     */
     override suspend fun list(query: DriveQuery, pageToken: String?, pageSize: Int): DrivePage {
         require(pageSize in 1..1000)
         val target = url(
@@ -84,6 +88,7 @@ class HttpDriveClient(
         json(HttpMethod.Post, url(API, "files", "fields" to DriveFields.FILE), FileWire.serializer(), jsonBody(newFileJson(file)))
             .toModel()
 
+    /** A multipart upload; the boundary is chosen so it cannot occur in [content]. */
     override suspend fun upload(target: UploadTarget, content: ByteArray): DriveFile {
         require(content.size <= DriveClient.MULTIPART_LIMIT) { "use uploadResumable above 5 MiB" }
         val (method, path, meta) = uploadRequest(target)
@@ -95,6 +100,10 @@ class HttpDriveClient(
         ).toModel()
     }
 
+    /**
+      * Opens a resumable session. The session URI Drive returns is accepted only if it is on Google's API host over
+      * https.
+     */
     override suspend fun startUpload(target: UploadTarget, size: Long): UploadSession {
         require(size > 0)
         val (method, path, meta) = uploadRequest(target)
@@ -108,12 +117,17 @@ class HttpDriveClient(
         return UploadSession(location, size, (target as? UploadTarget.Existing)?.fileId)
     }
 
+    /**
+      * One try at sending [bytes] at [offset] of the session; the answer says how much Drive now has, or that the file
+      * is complete.
+     */
     override suspend fun uploadChunk(session: UploadSession, offset: Long, bytes: ByteArray): UploadProgress {
         require(bytes.isNotEmpty() && offset >= 0 && offset + bytes.size <= session.size)
         val range = "bytes $offset-${offset + bytes.size - 1}/${session.size}"
         return progress(session, range) { ByteArrayContent(bytes, ContentType.Application.OctetStream) }
     }
 
+    /** Asks Drive how much of the session it has, without sending bytes. */
     override suspend fun uploadStatus(session: UploadSession): UploadProgress =
         progress(session, "bytes */${session.size}", null)
 
@@ -126,12 +140,14 @@ class HttpDriveClient(
         return json(HttpMethod.Patch, target, FileWire.serializer(), jsonBody(changeJson(change))).toModel()
     }
 
+    /** The content, or the inclusive byte [range] of it. */
     override suspend fun download(fileId: String, range: LongRange?): ByteArray {
         if (range != null) require(range.first >= 0 && range.last >= range.first)
         val headers = range?.let { mapOf(HttpHeaders.Range to "bytes=${it.first}-${it.last}") }.orEmpty()
         return call(HttpMethod.Get, url(API, "files/${checkId(fileId)}", "alt" to "media"), headers).body
     }
 
+    /** Deletes for good; a file that is already gone counts as deleted. */
     override suspend fun delete(fileId: String) {
         try {
             call(HttpMethod.Delete, url(API, "files/${checkId(fileId)}"))
@@ -146,6 +162,7 @@ class HttpDriveClient(
             jsonBody(JsonObject(mapOf("trashed" to JsonPrimitive(true)))),
         ).toModel()
 
+    /** All revisions of the content, page by page, up to a fixed cap. */
     override suspend fun revisions(fileId: String): List<DriveRevision> {
         val out = mutableListOf<DriveRevision>()
         var token: String? = null
@@ -209,6 +226,11 @@ class HttpDriveClient(
         body: (() -> OutgoingContent)? = null,
     ): Exchange = retry.run { authorized(tokens) { token -> exchange(method, target, headers, body, token) } }
 
+    /**
+      * One HTTP request with the bearer token. Refuses any target outside Google's API host before sending, maps a
+      * network
+     * failure to OFFLINE and a non-2xx answer to a [DriveException] (a 308 passes only for a resumable upload).
+     */
     private suspend fun exchange(
         method: HttpMethod,
         target: String,

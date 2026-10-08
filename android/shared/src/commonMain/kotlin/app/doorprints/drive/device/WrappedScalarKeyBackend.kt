@@ -31,7 +31,9 @@ import app.doorprints.crypto.CryptoProvider
 
 /** A Keystore AES-GCM key that wraps small secrets. Implementations never reveal the key. */
 interface SecretWrapper {
+    /** The key store key's state. */
     fun status(): DeviceKeyStatus
+    /** Makes the wrapping key if it is not there. */
     fun ensureKey()
 
     /** AES-GCM of [secret] with [aad]; the result carries its own nonce. */
@@ -40,13 +42,17 @@ interface SecretWrapper {
     /** The inverse; a wrong [aad] or a changed byte is [DeviceKeyException.Kind.LOST]; a locked key is `NEEDS_UNLOCK`. */
     @Throws(DeviceKeyException::class)
     fun unwrap(wrapped: ByteArray, aad: ByteArray): ByteArray
+    /** Removes the wrapping key, which makes every wrapped secret unreadable. */
     fun deleteKey()
 }
 
 /** One small private file (the app's no-backup directory). */
 interface BlobStore {
+    /** The stored bytes, or null when nothing is stored. */
     fun read(): ByteArray?
+    /** Replaces the stored bytes. */
     fun write(data: ByteArray)
+    /** Removes the stored bytes. */
     fun delete()
 }
 
@@ -67,6 +73,10 @@ class WrappedScalarKeyBackend(
         }
     }
 
+    /**
+      * Makes a fresh P-256 scalar, stores it wrapped (the public point is the AAD) and returns the public point. The
+      * scalar is wiped.
+     */
     override fun create(): ByteArray {
         wrapper.ensureKey()
         val scalar = newScalar()
@@ -85,6 +95,11 @@ class WrappedScalarKeyBackend(
         return data.copyOfRange(0, POINT)
     }
 
+    /**
+      * Unwraps the scalar for this one agreement and wipes it afterwards. A scalar that does not match the stored
+      * public point
+     * is treated as a lost key.
+     */
     override fun agree(peerPublic: ByteArray): ByteArray {
         val data = blob.read()
         if (data == null || data.size <= POINT) throw DeviceKeyException(DeviceKeyException.Kind.LOST, "no key stored")

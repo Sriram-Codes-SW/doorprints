@@ -49,12 +49,15 @@ data class PhotoState(
 
 /** Where [PhotoState] lives. One writer at a time (the sync's single worker or tab lock). */
 interface PhotoStateStore {
+    /** The saved state, or an empty one on first use. */
     suspend fun load(): PhotoState
+    /** Replaces the saved state with [state]. */
     suspend fun save(state: PhotoState)
 }
 
 /** The part of [DrivePhotos] the sync engine uses: what it writes into the photo rows, and what it learns from other files. */
 interface PhotoRefs {
+    /** The references learned or made so far, by photo id. */
     suspend fun refs(): Map<String, PhotoRef>
 
     /** Refs read from authenticated rows of other devices' files; they fill gaps and replace only a ref known to be dead. */

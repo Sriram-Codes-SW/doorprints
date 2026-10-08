@@ -56,19 +56,29 @@ sealed interface ProofOutcome {
  * on Android 11+, a process-local key below). [now] is read **after** the person passed, for the proof's time.
  */
 interface OperationProver {
+    /**
+      * Asks the person to authenticate for [operationId] at [level] (the prompt shows [reason]) and, if they pass,
+      * returns the
+     * proof. Every refusal or failure comes back as a [ProofOutcome] other than Proved.
+     */
     suspend fun prove(operationId: String, level: DeletionLevel, reason: String, now: () -> Long): ProofOutcome
 }
 
 /** The proof's message, as on the website (`proofMessage`): `utf8(operationId) ‖ 0x00 ‖ u64be(issuedAtMs)`. */
 object OperationProof {
+    /** The bytes that are signed; [issuedAtMs] must not be negative. */
     fun message(operationId: String, issuedAtMs: Long): ByteArray {
         require(issuedAtMs >= 0) { "time" }
         val time = ByteArray(8) { i -> (issuedAtMs ushr (56 - 8 * i)).toByte() }
         return operationId.encodeToByteArray() + byteArrayOf(0) + time
     }
 
+    /**
+     * Whether [text] has the shape of a proof (64 lower-case hex digits); says nothing about whether it is genuine.
+     */
     fun isProof(text: String): Boolean = text.length == 64 && text.all { it in '0'..'9' || it in 'a'..'f' }
 
+    /** Lower-case hex of [bytes]. */
     fun hex(bytes: ByteArray): String {
         val digits = "0123456789abcdef"
         val out = StringBuilder(bytes.size * 2)

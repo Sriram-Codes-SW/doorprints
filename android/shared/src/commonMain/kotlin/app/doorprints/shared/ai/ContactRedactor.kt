@@ -66,6 +66,7 @@ object ContactRedactor {
     /** Only the generic phone-number rule, for text with no known contact. */
     fun redactPhones(text: String?): String? = if (text.isNullOrEmpty()) text else PHONE_LIKE.replace(text, PHONE)
 
+    /** Redacts one house's contact name and phone from text; made with [forContact]. */
     class Redactor internal constructor(contactName: String?, contactPhone: String?) {
         private val fullName: List<Regex>
         private val nameParts: List<Regex>

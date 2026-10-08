@@ -38,6 +38,7 @@ const val KIND_SYNC = "sync"
 
 /** The id a device writes sync files under: the hex of its key id, so the authenticated `kid` of a file names it. */
 object SyncDeviceIds {
+    /** The device id for a key id. */
     fun of(kid: ByteArray): String = Bytes.hex(kid)
 }
 
@@ -60,6 +61,10 @@ class FolderSession(
     /** This device's id in sync files and `appProperties device`. */
     val deviceId: String = SyncDeviceIds.of(deviceKid)
 
+    /**
+      * Reads `keys.json` again through the pin and returns the current key list; without a reopen function the list
+      * stays as it was.
+     */
     suspend fun refresh(): OpenedKeys {
         reopen?.let { keys = it() }
         return keys
@@ -72,6 +77,7 @@ class FolderSession(
  * whose writer the store does not keep yet). The platform builds them from its stores ([SyncRows]).
  */
 interface LocalRows {
+    /** All local rows, tombstones included. */
     suspend fun all(): List<SyncRow>
 
     /** One photo row (live or not) by id, for the tombstone of a photo deleted here and for a metadata push. */
@@ -107,7 +113,9 @@ data class DriveSyncState(
 
 /** Where [DriveSyncState] lives. One writer at a time (one tab, one worker). */
 interface SyncStateStore {
+    /** The saved state, or an empty one on first use. */
     suspend fun load(): DriveSyncState
+    /** Replaces the saved state with [state]. */
     suspend fun save(state: DriveSyncState)
 }
 
@@ -178,6 +186,7 @@ class SyncReport(
     val generation: Long,
 )
 
+/** How one sync pass ended; only [Done] and [NeedsConfirmation] carry a [SyncReport]. */
 sealed interface SyncPassResult {
     val report: SyncReport?
 

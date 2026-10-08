@@ -39,13 +39,25 @@ data class PairingMessage(
     val wrapCt: String? = null,
     val epoch: Int? = null,
 ) {
+    /**
+      * The three messages of the exchange, in order: the newcomer's commitment, the approver's answer, the newcomer's
+      * reveal.
+     */
     enum class Phase { COMMIT, APPROVER, REVEAL }
 }
 
 /** A step that worked ([code] is empty before the reveal; [message] is what to send on) or why it did not. */
 sealed interface PairingOutcome {
+    /**
+      * The step worked. [code] is the 8-digit code once both nonces are known (empty before the reveal); [message] is
+      * what to send on.
+     */
     data class Ok(val code: String, val message: PairingMessage? = null) : PairingOutcome
+    /** The step was refused; nothing is derived from the message. */
     data class Refused(val reason: Reason) : PairingOutcome
+    /**
+     * Why a message is refused: too old, a reveal that does not match its commitment, or a missing or malformed field.
+     */
     enum class Reason { EXPIRED, COMMIT_MISMATCH, INCOMPLETE }
 }
 

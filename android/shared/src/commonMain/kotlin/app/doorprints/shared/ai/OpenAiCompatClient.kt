@@ -51,6 +51,11 @@ class OpenAiCompatClient(
     internal var tier: Int = 1
         private set
 
+    /**
+      * Asks for [schema] and returns the answer text. If the server rejects the current tier the next simpler one is
+      * tried;
+     * the tier that worked is kept for later calls.
+     */
     override suspend fun generateJson(system: String, user: String, schema: JsonObject, temperature: Double): String {
         var current = tier
         while (true) {

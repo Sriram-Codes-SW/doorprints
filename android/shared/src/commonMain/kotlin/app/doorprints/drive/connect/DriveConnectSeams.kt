@@ -48,14 +48,18 @@ interface DriveSignIn {
     suspend fun revokeAccess()
 }
 
+/** How an interactive Google sign-in ended. */
 enum class SignInResult { SIGNED_IN, CANCELLED, DENIED, UNAVAILABLE, OFFLINE, FAILED }
 
 /** The few per-device preferences (plain on/off values, nothing secret). Implementations must not throw; the controller guards anyway. */
 interface DrivePrefs {
+    /** The stored value, or null. */
     fun get(key: String): String?
+    /** Stores [value] under [key]. */
     fun put(key: String, value: String)
 }
 
+/** Preferences in memory only: the default of tests and of builds without storage. */
 class MemoryDrivePrefs : DrivePrefs {
     private val values = HashMap<String, String>()
     override fun get(key: String): String? = values[key]
@@ -87,11 +91,15 @@ interface DeviceEnrolment {
     suspend fun revokeDevice(kid: ByteArray): EnrolmentRevoke
 }
 
+/** The approver side of enrolment: the wrap for the newcomer, or why none was made. */
 sealed interface EnrolmentApproval {
+    /** The newcomer is listed and the folder key is wrapped to its public key ([wrapEnc], [wrapCt]) under [epoch]. */
     class Approved(val connection: DriveConnection.Ready, val wrapEnc: ByteArray, val wrapCt: ByteArray, val epoch: Int) : EnrolmentApproval
+    /** Nothing was listed or wrapped; [problem] says why. */
     data class Failed(val problem: DriveProblem) : EnrolmentApproval
 }
 
+/** A finished revoke: the folder as it is now, and the new recovery key (shown once by the caller, never stored). */
 class EnrolmentRevoke(val connection: DriveConnection, val recoveryKey: RecoveryKey?)
 
 /** The authorisation of a delete or of an L2 action (approve, revoke, disconnect on all devices): the phone's device check. */
@@ -109,16 +117,20 @@ interface DeleteAuthorizer {
     fun forget()
 }
 
+/** The device check's answer to [DeleteAuthorizer.authorize]. */
 sealed interface DeleteAuthorization {
     /** [token] is null when no file deletion is bound (an L2 action that is not a deletion). */
     class Granted(val token: AuthorizationToken?) : DeleteAuthorization
+    /** The check was refused or failed; nothing is authorised. [reason] is the screen key. */
     data class Refused(val reason: DriveReason) : DeleteAuthorization
 }
 
 /** The sync stack built over one opened folder. */
 class SyncRig(val backend: DriveSyncBackend, val photos: DrivePhotos, val local: LocalRows)
 
+/** Builds the [SyncRig] for an opened folder session; a seam so the controller's tests can use fakes. */
 fun interface SyncRigFactory {
+    /** The sync stack for [session]. */
     fun create(session: FolderSession): SyncRig
 }
 

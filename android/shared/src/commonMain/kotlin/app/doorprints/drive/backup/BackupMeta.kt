@@ -28,6 +28,26 @@ import app.doorprints.drive.DriveFile
 import app.doorprints.drive.DriveLayout
 
 /**
+ * The two folder-key uses S4b-BL-116 adds, each its own HKDF-SHA-256 key (empty salt, as `FolderKey` does for the
+ * others, docs/15 §9.9 key separation): `doorprints/dpx1/control` MACs `doorprints.json`, `doorprints/dpx1/backup-meta`
+ * MACs a backup's metadata. The folder key itself is never an HMAC key.
+ */
+internal object BackupKeys {
+    const val CONTROL = "doorprints/dpx1/control"
+    const val BACKUP_META = "doorprints/dpx1/backup-meta"
+
+    /** The key that MACs `doorprints.json`, derived from [folderKey]; the caller wipes it after use. */
+    fun control(p: CryptoProvider, folderKey: ByteArray): ByteArray = derive(p, folderKey, CONTROL)
+    /** The key that MACs a backup's metadata, derived from [folderKey]; the caller wipes it after use. */
+    fun backupMeta(p: CryptoProvider, folderKey: ByteArray): ByteArray = derive(p, folderKey, BACKUP_META)
+
+    private fun derive(p: CryptoProvider, folderKey: ByteArray, info: String): ByteArray {
+        require(folderKey.size == 32) { "a folder key is 32 bytes" }
+        return Hkdf(p).derive(ByteArray(0), folderKey, Bytes.utf8(info), 32)
+    }
+}
+
+/**
  * The authenticated metadata of one backup in Drive (S4b-BL-116; docs/15 §1.4, §5.8), kept in its `appProperties` so
  * a listing tells the backups apart without downloading them:
  *
@@ -44,24 +64,6 @@ import app.doorprints.drive.DriveLayout
  * byte (docs: notes S4b-BL-116 §0). Every field is fixed-size in the MAC input, so no two values give the same bytes.
  * Values are canonical decimal (no sign, no leading zero) and base64 with padding; anything else is not a backup.
  */
-/**
- * The two folder-key uses S4b-BL-116 adds, each its own HKDF-SHA-256 key (empty salt, as `FolderKey` does for the
- * others, docs/15 §9.9 key separation): `doorprints/dpx1/control` MACs `doorprints.json`, `doorprints/dpx1/backup-meta`
- * MACs a backup's metadata. The folder key itself is never an HMAC key.
- */
-internal object BackupKeys {
-    const val CONTROL = "doorprints/dpx1/control"
-    const val BACKUP_META = "doorprints/dpx1/backup-meta"
-
-    fun control(p: CryptoProvider, folderKey: ByteArray): ByteArray = derive(p, folderKey, CONTROL)
-    fun backupMeta(p: CryptoProvider, folderKey: ByteArray): ByteArray = derive(p, folderKey, BACKUP_META)
-
-    private fun derive(p: CryptoProvider, folderKey: ByteArray, info: String): ByteArray {
-        require(folderKey.size == 32) { "a folder key is 32 bytes" }
-        return Hkdf(p).derive(ByteArray(0), folderKey, Bytes.utf8(info), 32)
-    }
-}
-
 class BackupMeta(
     /** When the writer made the backup (epoch milliseconds): the order of backups and the retention's clock. */
     val createdAt: Long,
@@ -82,6 +84,7 @@ class BackupMeta(
         require(kid.size == KID_SIZE && sha.size == 32)
     }
 
+    /** The bytes the MAC covers: label, then every authenticated field at a fixed width, then the file's SHA-256. */
     internal fun macInput(): ByteArray = Bytes.concat(
         Bytes.utf8(LABEL), byteArrayOf(0), Bytes.i2osp(createdAt, 8), Bytes.u32(houses.toLong()), Bytes.u32(epoch.toLong()), kid, sha,
     )

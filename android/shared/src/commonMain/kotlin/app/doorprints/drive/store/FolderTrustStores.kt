@@ -34,7 +34,9 @@ import kotlinx.serialization.Serializable
  * the person's own proof (QR enrolment or the recovery key) pins again, so a lost pin fails closed.
  */
 class FileFolderTrustStores(private val dir: String) : FolderTrustStores {
+    /** The `keys.json` pin of the folder [rootId], in a file of its own. */
     override fun keys(rootId: String): KeysWatermarkStore = FileKeysWatermarkStore(stateFileAt("$dir/" + folderFileName("keys-watermark", rootId)))
+    /** The `doorprints.json` mark of the folder [rootId], in a file of its own. */
     override fun control(rootId: String): ControlWatermarkStore = FileControlWatermarkStore(stateFileAt("$dir/" + folderFileName("control-watermark", rootId)))
 }
 
@@ -47,6 +49,10 @@ class FileKeysWatermarkStore(file: StateFile) : KeysWatermarkStore {
         KeysWatermark(it.epoch, it.revision, it.keyId.hexToByteArray(), it.bodyHash.hexToByteArray())
     }
 
+    /**
+      * Writes [next] only if the stored pin still equals [expected]; the check and the write happen under the file's
+      * lock.
+     */
     override fun compareAndSet(expected: KeysWatermark?, next: KeysWatermark): Boolean = lock.withLock {
         if (load() != expected) {
             false
@@ -69,6 +75,10 @@ class FileControlWatermarkStore(file: StateFile) : ControlWatermarkStore {
         ControlWatermark(it.revision, it.bodyHash.hexToByteArray(), it.backupsDeletedAt)
     }
 
+    /**
+      * Writes [next] only if the stored mark still equals [expected]; the check and the write happen under the file's
+      * lock.
+     */
     override fun compareAndSet(expected: ControlWatermark?, next: ControlWatermark): Boolean = lock.withLock {
         if (load() != expected) {
             false

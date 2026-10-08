@@ -35,6 +35,7 @@ import kotlinx.serialization.json.putJsonArray
  * the input's own keys, which keep their order.
  */
 object SchemaDialect {
+    /** Rewrites [node] (and everything under it) into strict JSON Schema as the class note describes. */
     fun strict(node: JsonObject): JsonObject = buildJsonObject {
         val nullable = (node["nullable"] as? JsonPrimitive)?.booleanOrNull == true
         for ((key, value) in node) {
