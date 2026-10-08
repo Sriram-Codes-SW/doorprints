@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.109 |
+| Version | 0.110 |
 | Date | 2026-10-07 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..153); this file lists the lead-level items and points to the rest. |
@@ -118,6 +118,7 @@
 | 0.107 | 2026-10-07 | Claude (Code), lead | **S4b-BL-153 built (step H of S4b-FR-40)** on `ci/ai-evals-optional-bl-153` (draft pull request; [10](10-sprint-log.md) v0.167, [06](06-test-plan.md) TC-AI-23, [ai/ai-design.md](ai/ai-design.md) v0.25): an optional suite `own-provider` in `ai-evals.yml`; the owner may set the repository secret `AI_EVAL_API_KEY` (how: ai-design 8.1), and without it the job says `skipped: no key`. S4b-FR-40 is now fully built; what is left is the owner's real-provider runs (TC-M-64, this suite). |
 | 0.108 | 2026-10-07 | Claude (Code), lead | §7 per change, step 4: `node tools/check-docs-versions.mjs` (one `Version` header row per document, equal to the highest change-log version; change-log versions unique and the latest in order); S4b-BL-156 ([10](10-sprint-log.md) v0.168). This file's header had three rows after hand merges; now one. |
 | 0.109 | 2026-10-07 | Claude (Code), lead | §7: the floor guard `node tools/check-floor.mjs` (S4b-BL-157; [10](10-sprint-log.md) v0.169) checks the rule "never weaken a gate"; the `Gate-loosening:` escape and what the guard cannot see. |
+| 0.110 | 2026-10-08 | Claude (Code), lead | The comment pass (S4b-BL-158; [10](10-sprint-log.md) v0.170) is done: important functions and types carry a doc comment (what it achieves, what it does). New code follows the same rule: a public or non-obvious function gets a short doc comment in the language's standard form, and a change that moves code moves its comment with it. |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 
