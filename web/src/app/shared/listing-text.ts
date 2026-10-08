@@ -40,17 +40,32 @@ export const LISTING_PORTALS: ReadonlyArray<readonly [string, string]> = [
 
 const URL_RE = /https?:\/\/[^\s<>"']+/;
 const TRACKING = /^(utm_.*|fbclid|gclid|igshid|ref|src)$/;
-const PHONE = /(?:\+91[\s-]?)?(?:0)?[6-9]\d{4}[\s-]?\d{5}\b/;
-const BHK = /\b(\d{1,2})\s*-?\s*(?:BHK|bhk|Bhk|bedroom|bedrooms|BR)\b/;
+// A mobile number (with or without +91 or a 0), or a landline with its STD code (011 4155 0101, (022) 2655 0101).
+const PHONE = /(?:\+91[\s-]?)?(?:0)?[6-9]\d{4}[\s-]?\d{5}\b|(?<!\d)\(?0\d{2,4}\)?[\s-]?\d{3,4}[\s-]?\d{3,4}\b/;
+// "2.5 BHK" is 2 (the half is a study), as the sanitiser reads "2.5 BHK": never 5, from the digit after the dot.
+const BHK = /\b(\d{1,2})(?:\.5)?\s*-?\s*(?:BHK|bhk|Bhk|bedroom|bedrooms|BR)\b/;
 const STUDIO = /\b(studio|1\s*RK)\b/i;
 const PRICE =
   /(?:₹|Rs\.?|INR)\s*([\d,]+(?:\.\d+)?)\s*(k|thousand|lac|lakh|lakhs|lacs|l|cr|crore|crores)?\b|\b(\d+(?:\.\d+)?)\s*(k|thousand|lac|lakh|lakhs|lacs|cr|crore|crores)\b/i;
 const RENT = /\b(for rent|rent|rental|per month|\/\s*month|monthly|lease|pm)\b/i;
 const SALE = /\b(for sale|sale|resale|buy|selling)\b/i;
-const CITIES =
-  'Bengaluru|Bangalore|Chennai|Hyderabad|Mumbai|Navi Mumbai|Thane|Pune|Delhi|New Delhi|Gurgaon|Gurugram|Noida|Kolkata|Kochi|Coimbatore|Mysuru|Mysore|Ahmedabad|Jaipur|Lucknow|Chandigarh|Indore|Bhopal|Nagpur|Surat|Vadodara|Visakhapatnam|Vijayawada|Thiruvananthapuram|Trivandrum|Madurai|Mangaluru|Mangalore';
+const CITIES = [
+  'Bengaluru', 'Bangalore', 'Chennai', 'Hyderabad', 'Mumbai', 'Navi Mumbai', 'Thane', 'Pune',
+  'Delhi', 'New Delhi', 'Gurgaon', 'Gurugram', 'Noida', 'Kolkata', 'Kochi', 'Coimbatore',
+  'Mysuru', 'Mysore', 'Ahmedabad', 'Jaipur', 'Lucknow', 'Chandigarh', 'Indore', 'Bhopal',
+  'Nagpur', 'Surat', 'Vadodara', 'Visakhapatnam', 'Vijayawada', 'Thiruvananthapuram', 'Trivandrum', 'Madurai',
+  'Mangaluru', 'Mangalore', 'Guwahati', 'Shillong', 'Imphal', 'Agartala', 'Itanagar', 'Gangtok',
+  'Dehradun', 'Shimla', 'Manali', 'Mussoorie', 'Haridwar', 'Rishikesh', 'Srinagar', 'Jammu',
+  'Leh', 'Amritsar', 'Ludhiana', 'Mohali', 'Panchkula', 'Panaji', 'Goa', 'Margao',
+  'Ranchi', 'Patna', 'Bhubaneswar', 'Cuttack', 'Raipur', 'Gandhinagar', 'Rajkot', 'Nashik',
+  'Aurangabad', 'Kolhapur', 'Kozhikode', 'Calicut', 'Thrissur', 'Kannur', 'Hubballi', 'Belagavi',
+  'Udaipur', 'Jodhpur', 'Kanpur', 'Varanasi', 'Prayagraj', 'Ghaziabad', 'Faridabad', 'Puducherry',
+  'Pondicherry', 'Tiruchirappalli', 'Salem', 'Port Blair', 'Kavaratti',
+];
+/** The names as written and in capitals (a forward in capitals says "MUMBAI"), the regular expression being case-sensitive on purpose. */
+const CITY_ALTERNATIVES = [...CITIES, ...CITIES.map((c) => c.toUpperCase())].join('|');
 const LOCALITY = new RegExp(
-  `\\b(?:in|at|near)\\s+([A-Z][\\w.'-]*(?:\\s+(?:[A-Z0-9][\\w.'-]*|of|the)){0,4}?),?\\s+(?:${CITIES})\\b`,
+  `\\b(?:in|at|near|IN|AT|NEAR)\\s+([A-Z][\\w.'-]*(?:\\s+(?:[A-Z0-9][\\w.'-]*|of|the)){0,4}?),?\\s+(?:${CITY_ALTERNATIVES})\\b`,
 );
 const AREA = /(\d{3,5})\s*(?:sq\.?\s*ft|sqft|sq\.?\s*feet|square\s*feet|sq\.?\s*m)\b/i;
 const FURNISHING = /\b(fully[- ]furnished|semi[- ]furnished|unfurnished|furnished)\b/i;

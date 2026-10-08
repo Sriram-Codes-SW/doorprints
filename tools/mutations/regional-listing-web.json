@@ -1,0 +1,15 @@
+{
+  "spec": "web/src/app/shared/listing-text.spec.ts",
+  "mutations": [
+    {"file": "web/src/app/shared/listing-text.ts", "find": "(\\d{1,2})(?:\\.5)?\\s*-?", "replace": "(\\d{1,2})\\s*-?", "expect": "Dehradun"},
+    {"file": "web/src/app/shared/listing-text.ts", "find": "|(?<!\\d)\\(?0\\d{2,4}\\)?[\\s-]?\\d{3,4}[\\s-]?\\d{3,4}\\b/;", "replace": "/;", "expect": "Kolkata"},
+    {"file": "web/src/app/shared/listing-text.ts", "find": "[...CITIES, ...CITIES.map((c) => c.toUpperCase())].join('|')", "replace": "CITIES.join('|')", "expect": "capitals"},
+    {"file": "web/src/app/shared/listing-text.ts", "find": "(?:in|at|near|IN|AT|NEAR)", "replace": "(?:in|at|near)", "expect": "capitals"},
+    {"file": "web/src/app/shared/listing-text.ts", "find": "'Guwahati', ", "replace": "", "expect": "Guwahati"},
+    {"file": "web/src/app/shared/listing-text.ts", "find": "'Dehradun', ", "replace": "", "expect": "Dehradun"},
+    {"file": "web/src/app/shared/listing-text.ts", "find": "'Port Blair', ", "replace": "", "expect": "Port Blair"},
+    {"file": "web/src/app/shared/listing-text.ts", "find": "'Bhubaneswar', ", "replace": "", "expect": "Bhubaneswar"},
+    {"file": "web/src/app/shared/listing-text.ts", "find": "'Srinagar', ", "replace": "", "expect": "Srinagar"},
+    {"file": "web/src/app/shared/listing-text.ts", "find": "'Shimla', ", "replace": "", "expect": "Shimla"}
+  ]
+}
