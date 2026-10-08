@@ -54,6 +54,10 @@ export function refusalMessage(reason: Extract<SaveWalkResult, { ok: false }>['r
   }
 }
 
+/**
+ * The *Save this walk?* sheet: choose a house for the walk, keep it 30 days (also what dismissing does), or delete it
+ * after asking. Never loses a walk by being dismissed.
+ */
 @Component({
   selector: 'app-walk-end-sheet',
   imports: [TPipe],
@@ -238,6 +242,7 @@ export class WalkEndSheet {
     });
   }
 
+  /** Opens the sheet for an ended walk and reads its points to preselect the nearest house. */
   private async open(walkId: number): Promise<void> {
     this.phase.set('choose');
     this.query.set('');
@@ -285,6 +290,7 @@ export class WalkEndSheet {
     if (ok) await this.view.answerDelete();
   }
 
+  /** Saves the walk with the chosen house; a refused save leaves the sheet open with the reason. */
   protected async save(): Promise<void> {
     const id = this.selected();
     if (id === null) return;

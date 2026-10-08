@@ -73,6 +73,7 @@ export class PlacesPage {
     });
   }
 
+  /** Reads the saved places for the list; a failure is shown and the list is left as it was. */
   private async load(): Promise<void> {
     try {
       this.places.set(await firstValueFrom(this.api.places()));
@@ -115,6 +116,10 @@ export class PlacesPage {
     this.patch(point);
   }
 
+  /**
+   * Saves the place in the form after checking it has a name and a point; a failed check focuses the first field to
+   * fix. A new place gets its id from the store. On success the form closes and the list is read again.
+   */
   protected async save(): Promise<void> {
     const f = this.form();
     if (!f || this.saving()) return;
@@ -141,6 +146,7 @@ export class PlacesPage {
     }
   }
 
+  /** Deletes the place being edited after asking. */
   protected async remove(): Promise<void> {
     const f = this.form();
     if (!f || f.id === '') return;

@@ -138,6 +138,10 @@ export class SharePage implements OnInit, OnDestroy {
   protected readonly copyFailed = signal<RunResult<true> | null>(null);
   private copiedTimer: ReturnType<typeof setTimeout> | undefined;
 
+  /**
+   * Takes the shared title, text and URL from the query, or the copy kept for a reload, joins them into the box and
+   * then removes them from the address bar and history, because a shared listing often holds a phone number.
+   */
   ngOnInit(): void {
     const q = this.route.snapshot.queryParamMap;
     // Android sends title, text and url separately; most apps fill only one or two of them.
@@ -162,6 +166,7 @@ export class SharePage implements OnInit, OnDestroy {
     }
   }
 
+  /** Forgets the kept text: it was used or knowingly left. */
   ngOnDestroy(): void {
     clearTimeout(this.copiedTimer);
     // Used or knowingly left: the text is not kept any longer (it often holds a phone number).
@@ -205,6 +210,7 @@ export class SharePage implements OnInit, OnDestroy {
     writeShareText(this.text);
   }
 
+  /** Copies the text to the clipboard and says so; a refused clipboard shows the failure. */
   protected async copy(): Promise<void> {
     // The button is only aria-disabled with the box empty: this is the guard behind it.
     if (!this.text.trim()) {
@@ -230,6 +236,7 @@ function focusBox(): void {
   if (typeof document !== 'undefined') document.getElementById('shared')?.focus();
 }
 
+/** The text kept for this tab, or empty when none or storage is blocked. */
 function readShareText(): string {
   try {
     return typeof sessionStorage === 'undefined' ? '' : (sessionStorage.getItem(SHARE_TEXT_KEY) ?? '');

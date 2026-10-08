@@ -65,6 +65,7 @@ export const RECORDER_OPTIONS = new InjectionToken<RecorderOptions>('RECORDER_OP
 /** The options `watchPosition` is called with (docs/11 5.27.8). */
 export const WATCH_OPTIONS: PositionOptions = { enableHighAccuracy: true, maximumAge: 0, timeout: 30_000 };
 
+/** Idle, recording, or paused because the page is hidden. */
 export type RecorderState = 'idle' | 'recording' | 'paused';
 
 /** Why a walk is not recording, for the card to say in words. */
@@ -75,6 +76,12 @@ export type TraceProblem =
   | 'full' // the browser's storage is full: the walk stopped
   | 'storage'; // another storage failure: the walk stopped
 
+/**
+ * Records a walk from the browser's location so the person can later see where they went and be warned about retracing.
+ * The one owner of the location watch, the screen lock and the alert for the page; pages bind to its signals. See the
+ * file header for the rules (permission asked only on the click, only while the page is visible, nothing sent
+ * anywhere).
+ */
 @Injectable({ providedIn: 'root' })
 export class TraceRecorderService implements OnDestroy {
   private readonly store = inject(TraceStore);
@@ -180,6 +187,7 @@ export class TraceRecorderService implements OnDestroy {
 
   // ---- the watch ----
 
+  /** Starts `watchPosition`; each fix is queued and each error goes to {@link failed}. */
   private watch(): void {
     const geo = this.geolocation;
     if (geo === null) return;
@@ -195,6 +203,10 @@ export class TraceRecorderService implements OnDestroy {
     this.watchId = null;
   }
 
+  /**
+   * A refused permission ends the walk with the `denied` problem; any other error only shows `unavailable` while the
+   * watch waits for the next fix.
+   */
   private failed(error: GeolocationPositionError): void {
     if (this.state() === 'idle') return;
     if (error.code === 1) {
@@ -205,10 +217,19 @@ export class TraceRecorderService implements OnDestroy {
     }
   }
 
+  /**
+   * Handles fixes strictly one after another, so a slow store write cannot reorder points. A failure of one fix does
+   * not stop the chain.
+   */
   private enqueue(position: GeolocationPosition): void {
     this.chain = this.chain.then(() => this.handleFix(position)).catch(() => undefined);
   }
 
+  /**
+   * Passes one fix through the accuracy gate and thinning ({@link TraceRecorder}), stores the point it keeps, starts a
+   * fresh context when the walk id changed, and tests the point for a retraced path when the alert is on. A storage
+   * error ends the walk instead of retrying.
+   */
   private async handleFix(position: GeolocationPosition): Promise<void> {
     if (this.state() !== 'recording') return;
     await this.ready;
@@ -300,6 +321,10 @@ export class TraceRecorderService implements OnDestroy {
     }
   }
 
+  /**
+   * A hidden page pauses the walk and drops the watch; coming back resumes it, marking the next point so no line is
+   * drawn across a pause longer than the split time, and asks for the screen lock again.
+   */
   private visibilityChanged(): void {
     const state = this.state();
     if (this.doc.visibilityState === 'hidden') {

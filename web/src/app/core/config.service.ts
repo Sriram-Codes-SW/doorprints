@@ -19,6 +19,7 @@
 import { Injectable, computed, signal } from '@angular/core';
 import { API_CONFIG_KEY, LEGACY_KEYS } from './storage-keys';
 
+/** The connected server: its base URL (no trailing slash) and the API key. */
 export interface ApiConfig {
   baseUrl: string;
   apiKey: string;
@@ -59,6 +60,11 @@ export class ConfigService {
     return !!c && !!c.baseUrl && !!c.apiKey;
   });
 
+  /**
+   * Stores the connection and uses it from now on. The URL is normalised and the key trimmed. `remember` picks where it
+   * lives: localStorage (kept) or sessionStorage (gone with the tab); the other store is emptied so the key is never in
+   * both. If storage is blocked the connection holds for this page only.
+   */
   save(config: ApiConfig, remember: boolean): void {
     const clean: ApiConfig = { baseUrl: normalizeBaseUrl(config.baseUrl), apiKey: config.apiKey.trim() };
     this.state.set(clean);
@@ -73,6 +79,9 @@ export class ConfigService {
     }
   }
 
+  /**
+   * Disconnects: forgets the URL and key in both stores, including the name used before the rename of the storage key.
+   */
   clear(): void {
     this.state.set(null);
     // Also the pre-rename name, in case main.ts could not move it (storage full or blocked): it holds the key too.
@@ -135,6 +144,7 @@ export function initialBaseUrl(hostname: string): string {
   return hostname === 'localhost' || hostname === '127.0.0.1' ? DEFAULT_BASE_URL : '';
 }
 
+/** Trims the URL and removes trailing slashes, so paths can be appended with one slash. */
 export function normalizeBaseUrl(url: string): string {
   return url.trim().replace(/\/+$/, '');
 }

@@ -228,6 +228,10 @@ export class TourOverlay {
     });
   }
 
+  /**
+   * Looks for the element a tour step points at: the first of its selectors on the page, once the route is right,
+   * polling until the wait runs out. When found it is scrolled into view and measured.
+   */
   private find(route: string, selector: string | undefined, url: string, waited: number): void {
     const onRoute = url.split(/[?#]/)[0] === route;
     // 'a || b': the first selector that is on the page (an empty list has no search box, so the heading stands in).
@@ -243,6 +247,10 @@ export class TourOverlay {
     }
   }
 
+  /**
+   * Puts the highlight around the target and places the card above or below it, on the side with room, limiting its
+   * height to that room.
+   */
   private measure(): void {
     const el = this.target;
     if (!el || !el.isConnected) return;

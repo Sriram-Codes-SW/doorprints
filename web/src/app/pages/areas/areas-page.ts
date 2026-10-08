@@ -120,6 +120,7 @@ export class AreasPage {
     });
   }
 
+  /** Reads the areas and the area notes; a failure is shown and the lists are left as they were. */
   private async load(): Promise<void> {
     try {
       this.areas.set(await firstValueFrom(this.api.areas()));
@@ -132,6 +133,7 @@ export class AreasPage {
     }
   }
 
+  /** Where a note comes from, as words: the area's name (or "area gone") or the street. */
   protected sourceOf(row: AreaNoteRow): Msg {
     const n = row.note;
     return n.areaId !== undefined
@@ -180,6 +182,10 @@ export class AreasPage {
     this.patch({ enabled: (event.target as HTMLInputElement).checked });
   }
 
+  /**
+   * Saves the area in the form after checking it has a name and a point; a failed check focuses the first field to fix.
+   * A new area gets its id from the store. On success the form closes and the lists are read again.
+   */
   protected async save(): Promise<void> {
     const f = this.form();
     if (!f || this.saving()) return;
@@ -206,6 +212,7 @@ export class AreasPage {
     }
   }
 
+  /** Deletes the area being edited after asking. */
   protected async remove(): Promise<void> {
     const f = this.form();
     if (!f || f.id === '') return;
@@ -235,6 +242,10 @@ export class AreasPage {
     this.editingNote.set(null);
   }
 
+  /**
+   * Saves the edited note. The text is required, and a street note also needs its street; a note keeps whether it
+   * belongs to an area or a street.
+   */
   protected async saveNote(row: AreaNoteRow): Promise<void> {
     const text = this.noteText.trim();
     const street = this.noteStreet.trim();
@@ -257,6 +268,7 @@ export class AreasPage {
     }
   }
 
+  /** Deletes a note after asking. */
   protected async removeNote(row: AreaNoteRow): Promise<void> {
     const ok = await this.confirm.ask({ key: 'areaNotes.confirmDelete' }, { confirmKey: 'areaNotes.delete', danger: true });
     if (!ok) return;

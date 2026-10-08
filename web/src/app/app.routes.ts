@@ -28,6 +28,10 @@ import type { SharePage } from './pages/share/share-page';
 //
 // Since Sprint 4a the app is local-first (docs/11 D-01): no route is guarded any more. Everything works with no
 // account and no server, straight from IndexedDB; connecting a server only adds sync.
+/**
+ * The app's pages. All but Connect load on demand, and no route needs an account or a server. The house pages and the
+ * share page ask before leaving unsaved edits (`canDeactivate`); an unknown address goes to the map.
+ */
 export const routes: Routes = [
   { path: 'connect', component: ConnectPage, title: 'title.connect' },
   {

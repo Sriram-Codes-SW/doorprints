@@ -106,6 +106,7 @@ export class HouseViewingsCard {
     });
   }
 
+  /** Reads this house's viewings and visits; read again after every write to the local store. */
   private reload(): void {
     if (this.isNew() || this.houseId() === '') return;
     forkJoin({ viewings: this.api.viewingsOf(this.houseId()), visits: this.api.visits(this.houseId()) }).subscribe({
@@ -133,6 +134,7 @@ export class HouseViewingsCard {
     return `viewings.kind.${v.kind}` as TKey;
   }
 
+  /** Marks the viewing done and linked to the visit, then offers *Book a second viewing?*. */
   protected async markDone(viewing: Viewing, visit: VisitDto): Promise<void> {
     try {
       await firstValueFrom(this.api.markViewingDone(viewing.id, visit.id));

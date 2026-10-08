@@ -39,6 +39,7 @@ export class OnDeviceAiError extends Error {
   }
 }
 
+/** The model and endpoint the `gemini` kind calls; the key travels only in a header, never in the URL. */
 export const GEMINI_MODEL = 'gemini-3.5-flash';
 export const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 export const MAX_INPUT_CHARS = 8000;
@@ -153,6 +154,10 @@ export class OnDeviceAiService {
   /** The clock (a test's). */
   now: () => number = () => Date.now();
 
+  /**
+   * Keeps this browser to {@link RATE_LIMIT} requests a minute, as the server does; throws `rateLimited` with the
+   * seconds to wait.
+   */
   private admit(): void {
     const t = this.now();
     while (this.recent.length && t - this.recent[0] >= 60_000) this.recent.shift();
@@ -205,6 +210,10 @@ export class OnDeviceAiService {
     }));
   }
 
+  /**
+   * Reads pasted listing text into a draft for the form. Empty or too long text throws; the model's answer always goes
+   * through {@link sanitizeDraft}.
+   */
   async extractListing(via: ModelRef, text: string): Promise<HouseDraft> {
     if (!text.trim() || text.length > MAX_INPUT_CHARS) throw new Error('listing text is empty or too long');
     this.admit();
@@ -212,6 +221,10 @@ export class OnDeviceAiService {
     return sanitizeDraft(this.parse<RawListing>(await this.model(via).generateJson(p.system, p.user, LISTING_SCHEMA, 0)), text);
   }
 
+  /**
+   * Answers a question from the saved houses only. With no matching house, or no usable answer, it returns the "I don't
+   * know" sentence; citations are only houses that were sent to the model.
+   */
   async ask(via: ModelRef, question: string, filters?: AskFilterValues): Promise<AskResponse> {
     if (!question.trim() || question.length > MAX_QUESTION_CHARS) throw new Error('question is empty or too long');
     const docs = selectForAsk(await this.houses(), question, filters);
@@ -224,6 +237,10 @@ export class OnDeviceAiService {
     return { answer: answer.answer.trim(), citations: cited, grounded: cited.length > 0, retrieved: docs.length };
   }
 
+  /**
+   * Plans visits: the model picks houses from the nearest candidates, and the order and walking legs are computed
+   * locally by {@link assemblePlan}. At most 8 stops; an unusable model answer falls back to nearest-neighbour order.
+   */
   async planVisits(via: ModelRef, request: PlanRequest): Promise<PlanResponse> {
     if (!request.question.trim() || request.question.length > MAX_QUESTION_CHARS) throw new Error('question is empty or too long');
     const maxStops = Math.max(1, Math.min(request.maxStops ?? MAX_STOPS, MAX_STOPS));

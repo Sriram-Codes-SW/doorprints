@@ -22,6 +22,7 @@ import { Observable, defer, map, of, switchMap, timer } from 'rxjs';
 import { NOMINATIM_SEARCH, RequestThrottle, placeOf, searchParams } from './place-search';
 import type { FoundPlace } from './place-search';
 
+/** The address text found for a position; every part is null when OpenStreetMap has none. */
 export interface ReverseGeocode {
   address: string | null;
   street: string | null;
@@ -55,6 +56,10 @@ export class GeocodeService {
     return this.spaced(() => this.http.get<unknown>(NOMINATIM_SEARCH, { params })).pipe(map(placeOf));
   }
 
+  /**
+   * The address, street and locality at a position, taken from the first of the usual OpenStreetMap address parts that
+   * is present.
+   */
   reverse(lat: number, lon: number): Observable<ReverseGeocode> {
     const params = new HttpParams().set('format', 'jsonv2').set('lat', lat).set('lon', lon);
     return this.spaced(() => this.http.get<NominatimResponse>('https://nominatim.openstreetmap.org/reverse', { params })).pipe(

@@ -115,6 +115,7 @@ export function resetTierCache(): void {
   winningTier.clear();
 }
 
+/** The saved base URL and model of an OpenAI-compatible provider. */
 export interface OpenAiCompatibleSettings {
   baseUrl: string;
   model: string;
@@ -128,6 +129,12 @@ export class OpenAiCompatibleChatModel implements JsonChatModel {
     private readonly fetchImpl: FetchLike = (input, init) => fetch(input, init),
   ) {}
 
+  /**
+   * Asks for JSON that follows the schema, trying the ladder of tiers from strict `json_schema` down to a plain request
+   * with the shape in the prompt. It moves down only when {@link classifyError} says the provider does not take that
+   * tier, and remembers the tier that worked for this address and model for the session. The base URL is checked first;
+   * any other failure is thrown as an {@link OnDeviceAiError}.
+   */
   async generateJson(system: string, user: string, schema: object, temperature: number): Promise<string> {
     const check = validateWebBaseUrl(this.settings.baseUrl);
     if (!check.valid) throw new OnDeviceAiError('unavailable');

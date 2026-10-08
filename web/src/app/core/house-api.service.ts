@@ -22,6 +22,14 @@ import { Observable, map } from 'rxjs';
 import { HouseDto, PhotoChangeDto, RecordDto, StatsDto, VisitDto, uuid } from './models';
 import type { PhotoMeta } from '../shared/photo-tags';
 
+/**
+ * The typed client for the optional self-hosted server's REST API (houses, visits, records, photos). The sync engine
+ * uses it to push and pull; the pages themselves read and write the local store.
+ *
+ * Paths are relative, so the API interceptor adds the configured base URL and `X-API-Key`; only
+ * {@link testConnection} sends a candidate URL and key itself. Every house read goes through `normalizeHouse`
+ * so an older server row still has a checklist and a status. HTTP errors are not caught here.
+ */
 @Injectable({ providedIn: 'root' })
 export class HouseApiService {
   private readonly http = inject(HttpClient);
@@ -91,6 +99,7 @@ export class HouseApiService {
     return this.http.put<RecordDto>(path, record);
   }
 
+  /** Saves an edit made now: unlike {@link pushHouse} it stamps `updatedAt` with the current time. */
   saveHouse(house: HouseDto): Observable<HouseDto> {
     const body: HouseDto = { ...house, updatedAt: new Date().toISOString() };
     delete body.distanceMeters;
@@ -156,6 +165,7 @@ export class HouseApiService {
   }
 }
 
+/** Fills the fields an older server row may lack (an empty checklist, status `NEW`), so callers can rely on them. */
 function normalizeHouse(h: HouseDto): HouseDto {
   return { ...h, checklist: h.checklist ?? {}, status: h.status ?? 'NEW' };
 }

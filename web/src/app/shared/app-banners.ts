@@ -371,6 +371,10 @@ export class AppBanners {
     });
   }
 
+  /**
+   * Notes whether this browser holds any house, which the install offer waits for. Overlapping calls are merged into
+   * one more pass.
+   */
   private async countHouses(): Promise<void> {
     if (this.counting) {
       this.recount = true;
@@ -428,6 +432,7 @@ export class AppBanners {
     focusMainHeading();
   }
 
+  /** "Not now" on the first-run download offer: the download is skipped and focus moves to the page heading. */
   protected async skip(): Promise<void> {
     await this.sync.skipMigration();
     focusMainHeading();
@@ -455,6 +460,7 @@ export class AppBanners {
     focusMainHeading();
   }
 
+  /** Applies the waiting update and reloads, asking first if the screen holds unsaved edits. */
   protected reload(): void {
     void this.pwa.applyUpdate();
   }

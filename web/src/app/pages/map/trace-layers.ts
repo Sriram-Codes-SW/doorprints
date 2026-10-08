@@ -46,6 +46,10 @@ export function reducedMotion(): boolean {
   return typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
+/**
+ * Owns the walk layers of one map. It keeps the latest walks, look and check, so a replaced style can be given them
+ * again by {@link TraceLayers.attach}.
+ */
 export class TraceLayers {
   private walks: LineCollection = EMPTY;
   private look: RepeatLook = 'CLEAR';
@@ -70,6 +74,7 @@ export class TraceLayers {
     }
   }
 
+  /** Draws these walks (whole walks and repeated stretches). */
   setWalks(walks: LineCollection): void {
     this.walks = walks;
     this.push(TRACK_SOURCE, walks);
@@ -94,6 +99,7 @@ export class TraceLayers {
     this.map.fitBounds(bounds, { padding, maxZoom: 18, duration: reducedMotion() ? 0 : 400 });
   }
 
+  /** Sends GeoJSON to a source when it exists. */
   private push(sourceId: string, data: LineCollection): void {
     const source = this.map.getSource(sourceId) as GeoJSONSource | undefined;
     if (source) void source.setData(data as never);

@@ -95,6 +95,10 @@ export class CriteriaPage {
     });
   }
 
+  /**
+   * Reads the scoring (criteria and rating share) and which criteria any house has scored. `userAsked` marks a Retry,
+   * so a repeated failure is announced again.
+   */
   protected reload(userAsked = false): void {
     this.api.scoring().subscribe({
       next: (scoring) => {
@@ -130,14 +134,17 @@ export class CriteriaPage {
     return this.isCustom(c) && !this.usedKeys().has(c.key);
   }
 
+  /** Saves a new weight (0 to 3) for the criterion; weight 0 means ignored in the score. */
   protected setWeight(c: Criterion, event: Event): void {
     void this.save([{ ...c, weight: Number((event.target as HTMLSelectElement).value) as Weight }]);
   }
 
+  /** Saves whether the criterion is a must-have; a house that scores below its minimum sorts after the rest. */
   protected setMustHave(c: Criterion, event: Event): void {
     void this.save([{ ...c, mustHave: (event.target as HTMLInputElement).checked }]);
   }
 
+  /** Saves the lowest score (1 to 5) a must-have accepts. */
   protected setMinScore(c: Criterion, event: Event): void {
     void this.save([{ ...c, minScore: Number((event.target as HTMLSelectElement).value) }]);
   }
@@ -154,16 +161,19 @@ export class CriteriaPage {
     void this.save(changed, { key: 'criteria.moveDone', params: { name: this.nameOf(c), n: to + 1, total: list.length } });
   }
 
+  /** Hides the criterion from the checklist; scores already given stay on the houses. */
   protected archive(c: Criterion): void {
     void this.save([{ ...c, archived: true }]);
   }
 
+  /** Brings an archived criterion back at the end of the visible list. */
   protected restore(c: Criterion): void {
     // Back at the end of the visible list, so it does not land among criteria that were renumbered meanwhile.
     const last = this.active().reduce((max, x) => Math.max(max, x.sort), -1);
     void this.save([{ ...c, archived: false, sort: last + 1 }]);
   }
 
+  /** Deletes a custom criterion no house has scored, after asking. */
   protected async remove(c: Criterion): Promise<void> {
     const ok = await this.confirm.ask(
       { key: 'criteria.confirmDelete', params: { name: this.nameOf(c) } },
@@ -180,6 +190,7 @@ export class CriteriaPage {
     }
   }
 
+  /** Adds a custom criterion with the typed name, unless the name is empty or the limit is reached. */
   protected async add(): Promise<void> {
     const name = this.newName.trim();
     if (name === '') {
@@ -200,6 +211,7 @@ export class CriteriaPage {
     }
   }
 
+  /** Saves how much of the score comes from the star rating, as a percentage of the whole. */
   protected async setShare(event: Event): Promise<void> {
     const percent = Number((event.target as HTMLSelectElement).value);
     try {
@@ -212,6 +224,7 @@ export class CriteriaPage {
     }
   }
 
+  /** Restores the default criteria after asking. */
   protected async reset(): Promise<void> {
     const ok = await this.confirm.ask({ key: 'criteria.confirmReset' }, { confirmKey: 'criteria.reset', danger: true });
     if (!ok) return;
@@ -225,6 +238,7 @@ export class CriteriaPage {
     }
   }
 
+  /** Saves the changed criteria, announces it and reads the page again; a failure is shown above the list. */
   private async save(list: readonly Criterion[], announcement: Msg = { key: 'criteria.updated' }): Promise<void> {
     if (list.length === 0) return;
     try {

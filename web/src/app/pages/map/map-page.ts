@@ -126,6 +126,16 @@ const BOTTOM_CONTROLS_QUERY = '(max-width: 760px) and (min-height: 501px)';
  */
 let fittedThisSession = false;
 
+/**
+ * The home screen: the saved houses as markers on the map and as a searchable, filterable, sortable list, and where a
+ * new house is started (a tap or the crosshair on the map, "Add at my location", typed coordinates, or a shared
+ * listing).
+ *
+ * Search, status, cost ranges and sort live in the URL so Back from a house returns to the same list. The list works
+ * without the map: when tiles cannot load (offline) or WebGL 2 is missing, the page says so and keeps the list and the
+ * add buttons that need no map. It also hosts the cards for walks and the place check, and the offline-area save
+ * button. States: loading skeleton, error with Retry, empty, no match.
+ */
 @Component({
   selector: 'app-map-page',
   imports: [RouterLink, TPipe, OfflineSave, TraceCard, WalkEndSheet, PlaceCheck, PlaceCheckPanel],
@@ -392,6 +402,11 @@ export class MapPage implements AfterViewInit, OnDestroy {
     });
   }
 
+  /**
+   * Creates the map at the last view (else over India) and remembers the view on every move. On every `style.load` it
+   * adds the house layer and then the walk layers (a style replaced after an offline start comes without them). A click
+   * on a house opens it; in add mode a click starts a new one. With no WebGL 2 it marks the map unsupported instead.
+   */
   ngAfterViewInit(): void {
     const container = this.mapEl().nativeElement;
     // Start where the user last looked, else over India (not the whole globe, where the first house would be a
@@ -488,6 +503,10 @@ export class MapPage implements AfterViewInit, OnDestroy {
     this.resizeObserver.observe(container);
   }
 
+  /**
+   * Releases the map and its observers and withdraws any place-check answer; also marks the page gone so late location
+   * results are ignored.
+   */
   ngOnDestroy(): void {
     this.destroyed = true;
     clearTimeout(this.searchTimer);
@@ -595,6 +614,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
     );
   }
 
+  /** Updates the search at once; the URL and the spoken count follow once typing pauses. */
   protected onSearch(event: Event): void {
     this.search.set((event.target as HTMLInputElement).value);
     // Once typing pauses: into the URL, and the new count said once, not on every keystroke.
@@ -605,6 +625,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
     }, SEARCH_SETTLE_MS);
   }
 
+  /** Filters the list and the map markers to one status (or all) and writes it to the URL. */
   protected setStatusFilter(filter: StatusFilter): void {
     this.statusFilter.set(filter);
     this.writeQuery();
@@ -622,6 +643,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
     this.announceCount();
   }
 
+  /** Removes the three cost ranges and puts focus on the first cost field. */
   protected clearCostFilters(): void {
     this.costFilter.set(NO_COST_FILTER);
     this.writeQuery();
@@ -629,6 +651,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
     document.getElementById('cost-monthly-min')?.focus();
   }
 
+  /** Changes the list order and writes it to the URL. */
   protected onSort(event: Event): void {
     this.sort.set((event.target as HTMLSelectElement).value as SortKey);
     this.writeQuery();
@@ -644,6 +667,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
     afterNextRender(() => document.getElementById('check-this-spot')?.focus(), { injector: this.injector });
   }
 
+  /** Leaves the crosshair mode of the place check. */
   protected cancelCheckPick(): void {
     this.checkMode.set(false);
     if (this.map) this.map.getCanvas().style.cursor = '';
@@ -682,6 +706,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
     );
   }
 
+  /** Clears the search, the status and the cost ranges together. */
   protected clearFilters(): void {
     clearTimeout(this.searchTimer);
     this.search.set('');
@@ -691,6 +716,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
     this.announceCount();
   }
 
+  /** The label key of a status filter chip. */
   protected filterKey(f: StatusFilter): TKey {
     return f === 'ALL' ? 'status.ALL' : STATUS_KEY[f];
   }
@@ -718,6 +744,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
     this.popupHouse = null;
   }
 
+  /** Frames every house in the current list. */
   protected fitAll(): void {
     this.fitToHouses(this.items().map((i) => i.house));
   }
@@ -809,6 +836,10 @@ export class MapPage implements AfterViewInit, OnDestroy {
     this.announcer.announce({ key: 'map.shown', params: { shown: this.items().length, total: this.houses().length } });
   }
 
+  /**
+   * Opens the new-house form at a position. Shared listing text goes in navigation state, never in the URL, because it
+   * often holds a phone number.
+   */
   private createAt(lat: number, lon: number): void {
     this.addMode.set(false);
     if (this.map) this.map.getCanvas().style.cursor = '';
@@ -823,6 +854,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
     });
   }
 
+  /** Gives the map's house source the houses now in the list. */
   private setMapData(houses: HouseDto[]): void {
     // MapLibre 6: GeoJSONSource.setData returns a Promise<void> (no longer `this`).
     const source = this.map?.getSource(SOURCE_ID) as unknown as { setData(data: unknown): Promise<void> } | undefined;
@@ -833,6 +865,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
     });
   }
 
+  /** Frames the houses (zoom at most 16), kept clear of the controls and actions drawn over the map. */
   private fitToHouses(houses: HouseDto[]): void {
     const map = this.map;
     if (!map || houses.length === 0) return;
@@ -870,6 +903,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
     else if (!adding && !gestures.isEnabled()) gestures.enable();
   }
 
+  /** The corner for MapLibre's controls: bottom right in the phone layout, top right otherwise. */
   private wantedControlPosition(): ControlPosition {
     return typeof matchMedia !== 'undefined' && matchMedia(BOTTOM_CONTROLS_QUERY).matches ? 'bottom-right' : 'top-right';
   }
@@ -924,6 +958,10 @@ export class MapPage implements AfterViewInit, OnDestroy {
     if (house && this.popup?.isOpen()) this.showPopup(map, house);
   }
 
+  /**
+   * Shows a popup for a house (name, status, price, BHK, score) built from text nodes, so house text is never taken as
+   * HTML.
+   */
   private showPopup(map: MlMap, h: HouseDto): void {
     this.popup?.remove();
     const el = document.createElement('div');

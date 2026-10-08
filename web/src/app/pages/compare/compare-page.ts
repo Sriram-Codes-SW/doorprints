@@ -63,6 +63,14 @@ interface Row {
   best: Set<number>;
 }
 
+/**
+ * Puts two to four houses side by side in a table, one row per fact (score, price, size, cost, rooms, rating, visits,
+ * street, distances to my places and the checklist), and highlights the best value in each scored row. It helps the
+ * person decide between the houses still in the running.
+ *
+ * The chosen houses are kept in the URL (`?ids=`), so Back from a house returns here; with no choice it starts with the
+ * shortlisted houses. States: loading, error, too few houses to compare.
+ */
 @Component({
   selector: 'app-compare-page',
   imports: [RouterLink, TPipe],
@@ -348,6 +356,10 @@ export class ComparePage {
     return (h.brokerId ? this.brokerLines().get(h.brokerId) : undefined) ?? h.contactName ?? null;
   }
 
+  /**
+   * Reads the houses and, the first time only, picks the selection: the houses in `?ids=`, else up to three shortlisted
+   * ones (or the best-ranked if fewer than two are shortlisted).
+   */
   protected reload(userAsked = false): void {
     this.api.houses().subscribe({
       next: (list) => {

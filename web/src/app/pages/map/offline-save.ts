@@ -52,6 +52,10 @@ export function outcomeMessage(outcome: SaveOutcome, name: string): Msg | null {
   }
 }
 
+/**
+ * The *Save this area for offline* button and dialog on the Map: plan (size, free room, refusals), name, progress with
+ * Stop, and the result. The download itself is `OfflineMapsService`; nothing is kept if it is stopped.
+ */
 @Component({
   selector: 'app-offline-save',
   imports: [TPipe],
@@ -225,6 +229,7 @@ export class OfflineSave {
     return this.i18n.number(megabytes(bytes), megabyteDigits(bytes));
   }
 
+  /** The sentence for a plan that cannot go ahead (too large, too many areas, not enough room), or null. */
   protected refusalText(p: SavePlan): Msg | null {
     switch (p.refusal) {
       case 'too-large':
@@ -238,6 +243,7 @@ export class OfflineSave {
     }
   }
 
+  /** Opens the dialog for the box now on screen and works out the plan (tiles, bytes, room, connection). */
   protected async open(): Promise<void> {
     const bounds = this.boundsOf()();
     if (!bounds) return;
@@ -257,6 +263,7 @@ export class OfflineSave {
     this.name.set((event.target as HTMLInputElement).value);
   }
 
+  /** Downloads the area under the chosen name, unless the plan is refused or the device is offline. */
   protected async start(): Promise<void> {
     const bounds = this.bounds;
     const p = this.plan();
@@ -272,6 +279,7 @@ export class OfflineSave {
     this.finish(outcome, name, done?.bytes ?? 0);
   }
 
+  /** Shows how the download ended; a stop closes the dialog and says nothing was kept. */
   private finish(outcome: SaveOutcome, name: string, bytes: number): void {
     if (outcome === 'cancelled') {
       // Stop closes the dialog, as Cancel does; the polite message says nothing was kept.
@@ -288,6 +296,7 @@ export class OfflineSave {
     this.phase.set('done');
   }
 
+  /** Stops the download; nothing half-saved is kept. */
   protected stop(): void {
     this.offline.cancel();
   }

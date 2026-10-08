@@ -26,6 +26,7 @@ import { AI_KINDS, type AiKind, validateWebBaseUrl } from './ai-provider-config'
  */
 
 export const EVAL_TYPES = ['extract', 'ask', 'plan'] as const;
+/** The three kinds of case in the golden set. */
 export type EvalType = (typeof EVAL_TYPES)[number];
 
 /** What the workflow passes in, as environment variables; `DOORPRINTS_EVAL_KEY` is the repository secret. */
@@ -79,6 +80,7 @@ export type Outcome =
   | { type: 'plan'; plan: PlanResponse }
   | { type: 'error'; message: string };
 
+/** Whether one golden-set case passed, and why not. */
 export interface CaseResult {
   id: string;
   type: EvalType;
@@ -96,6 +98,10 @@ const words = (hay: string, needle: string): boolean => ` ${norm(hay)} `.include
 const list = (value: unknown): string[] => (Array.isArray(value) ? (value as string[]) : []);
 const blank = (v: unknown): boolean => v === null || v === undefined || String(v).trim() === '';
 
+/**
+ * Checks an extracted draft against what the case expects (fields, amenities, notes) and that nothing it must not
+ * contain got through. Returns the failures.
+ */
 function checkDraft(d: HouseDraft, e: Record<string, unknown>): string[] {
   const out: string[] = [];
   const same = (field: 'price' | 'bedrooms') => {
@@ -137,6 +143,10 @@ function checkDraft(d: HouseDraft, e: Record<string, unknown>): string[] {
   return out;
 }
 
+/**
+ * Checks an Ask answer: a refusal must cite nothing; otherwise the cited houses must be the expected or allowed ones,
+ * the answer must hold the required text, and `grounded` must match.
+ */
 function checkAnswer(r: AskResponse, e: Record<string, unknown>): string[] {
   const out: string[] = [];
   const cited = r.citations.map((c) => c.houseId);
@@ -158,6 +168,10 @@ function checkAnswer(r: AskResponse, e: Record<string, unknown>): string[] {
   return out;
 }
 
+/**
+ * Checks a visit plan: stop count, no repeats, only allowed stops, the expected order and fallback flag, and text the
+ * summary must not hold.
+ */
 function checkPlan(p: PlanResponse, e: Record<string, unknown>): string[] {
   const out: string[] = [];
   const ids = p.stops.map((s) => s.houseId);

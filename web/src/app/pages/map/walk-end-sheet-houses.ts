@@ -29,11 +29,13 @@ export const NEAREST_HOUSE_M = 30;
 /** Houses within this distance of any point of the walk are listed (HuntEngine.NEAREST_SHOWN_M). */
 export const NEAR_HOUSES_M = 150;
 
+/** A house offered for a walk and its distance in metres. */
 export interface HouseChoice {
   readonly house: HouseDto;
   readonly distanceM: number;
 }
 
+/** The houses the sheet offers: the preselected one and the others near the walk. */
 export interface HouseChoices {
   /** The preselected house, or null. */
   readonly nearest: HouseChoice | null;
@@ -41,6 +43,10 @@ export interface HouseChoices {
   readonly near: HouseChoice[];
 }
 
+/**
+ * Picks the preselected house (within the nearest-house distance of the walk's last point) and the houses near any
+ * point of the walk. A house whose spot is only an area (`APPROX`) is never preselected.
+ */
 export function houseChoices(points: readonly { lat: number; lon: number }[], houses: readonly HouseDto[]): HouseChoices {
   if (points.length === 0) return { nearest: null, near: [] };
   const last = points[points.length - 1];

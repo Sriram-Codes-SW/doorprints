@@ -30,6 +30,10 @@ import { TranslationService } from '../../i18n/translation.service';
 import { OfflineMapsService } from '../../offline/offline-maps.service';
 import { freeBytes, megabyteDigits, megabytes } from '../../offline/offline-tiles';
 
+/**
+ * Lists the map areas saved for offline use with the room they take, and deletes one after asking. The areas are
+ * checked against the browser's cache when the card opens, because a browser may have cleared it.
+ */
 @Component({
   selector: 'app-offline-areas',
   imports: [TPipe],
@@ -123,6 +127,7 @@ export class OfflineAreasCard implements OnInit {
       : this.i18n.t('offline.usedFree', { mb: this.mb(used), free: this.mb(free) });
   });
 
+  /** Checks the saved areas against the cache and reads the storage figures. */
   async ngOnInit(): Promise<void> {
     try {
       await Promise.all([this.offline.verify(), this.offline.refreshStorage()]);
@@ -135,6 +140,7 @@ export class OfflineAreasCard implements OnInit {
     return this.i18n.number(megabytes(bytes), megabyteDigits(bytes));
   }
 
+  /** Deletes a saved area after asking and moves focus to the card heading. */
   protected async remove(id: string, name: string): Promise<void> {
     const ok = await this.confirm.ask({ key: 'offline.deleteConfirm', params: { name } }, { confirmKey: 'common.delete', danger: true });
     if (!ok) return;

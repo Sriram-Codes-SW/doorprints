@@ -27,6 +27,7 @@ import { OnDeviceAiError, type OnDeviceAiErrorKind } from './on-device-ai.servic
 
 export const REQUEST_TIMEOUT_MS = 60_000;
 
+/** The `fetch` signature the adapters call, so a test can replace it. */
 export type FetchLike = (input: string, init: RequestInit) => Promise<Response>;
 
 /** What a provider answered: the status (0 when it never answered), the whole body and its `Retry-After` header. */
