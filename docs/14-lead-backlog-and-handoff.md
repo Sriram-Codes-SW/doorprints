@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.123 |
+| Version | 0.124 |
 | Date | 2026-10-08 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..183); this file lists the lead-level items and points to the rest. |
@@ -132,6 +132,7 @@
 | 0.121 | 2026-10-08 | Claude (Code), lead | S4b-BL-181 ([10](10-sprint-log.md) v0.184): the AI limits are pinned by tests and mutation lists on the website, the phones and the server; an emoji at a notes cut, a start point off Earth on the device, and `nearby` with NaN are fixed. |
 | 0.122 | 2026-10-08 | Claude (Code), lead | S4b-BL-185 ([10](10-sprint-log.md) v0.185): the website eval scorer no longer fails every answer on "![" ; four golden-set expectations corrected; the first full runs on v0.7 are recorded in ai-design v0.35. |
 | 0.123 | 2026-10-08 | Claude (Code) | S4b-BL-187 ([10](10-sprint-log.md) v0.186): Extract's schema and prompt say the locality is the area, never the city alone (extract-27 returned "Dehradun"). Open for the lead after the merge: 3 runs of the 32 extract cases on Gemini (32 of 32 each, hallucination rate 0.0; sentinels extract-13, -14, -25, -32), result into ai-design 8.5. |
+| 0.124 | 2026-10-08 | Claude (Code), lead | S4b-BL-186 ([10](10-sprint-log.md) v0.187): Ask and Plan prompts say what to do with a hostile question or request, pinned in the shared vectors; the live check (three runs each of the website's own-provider suite and the server's eval) is the lead's after the merge. |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 
