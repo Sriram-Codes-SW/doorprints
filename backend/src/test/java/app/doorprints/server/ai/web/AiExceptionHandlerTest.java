@@ -18,10 +18,13 @@
 
 package app.doorprints.server.ai.web;
 
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.google.genai.errors.ClientException;
 import app.doorprints.server.ai.config.AiProperties;
 import app.doorprints.server.ai.embedding.GeminiEmbeddingModel.GeminiEmbeddingException;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -77,5 +80,35 @@ class AiExceptionHandlerTest {
         assertThat(hint(new AiExceptionHandler(AiProperties.defaults()), new ClientException(404, "Not Found", "x")))
                 .isNull();
         assertThat(hint(new AiExceptionHandler(), new ClientException(404, "Not Found", "x"))).isNull();
+    }
+
+    /**
+     * SEC-016, PRV-011 (S4b-BL-159): a provider error can echo parts of the prompt, which holds the person's notes, so
+     * the log names only the kind of failure (the cause's class and the provider's HTTP status) and never its text.
+     * The seam is the log output of the handler.
+     */
+    @Test
+    void theLogNamesTheFailureButNeverTheProviderMessage() {
+        var marker = "prompt-echo-" + java.util.UUID.randomUUID();
+        var logger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(AiExceptionHandler.class);
+        var lines = new ListAppender<ILoggingEvent>();
+        lines.start();
+        logger.addAppender(lines);
+        try {
+            var handler = new AiExceptionHandler();
+            handler.aiUnavailable(new AiUnavailableException("Answering failed",
+                    new ClientException(503, "UNAVAILABLE", marker)));
+            handler.aiUnavailable(new AiUnavailableException("Search failed", new IllegalStateException(marker)));
+            handler.aiUnavailable(new AiUnavailableException("Answering failed", null));
+        } finally {
+            logger.detachAppender(lines);
+        }
+        assertThat(lines.list).hasSize(3);
+        for (var line : lines.list) {
+            assertThat(line.getFormattedMessage()).doesNotContain(marker);
+            assertThat(line.getThrowableProxy()).as("no stack trace, whose message would carry the text").isNull();
+        }
+        assertThat(lines.list.get(0).getFormattedMessage()).contains("ClientException").contains("503");
+        assertThat(lines.list.get(1).getFormattedMessage()).contains("IllegalStateException");
     }
 }

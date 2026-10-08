@@ -18,6 +18,7 @@
 
 package app.doorprints.server.visit;
 
+import app.doorprints.server.common.BadRequestException;
 import app.doorprints.server.common.NotFoundException;
 import app.doorprints.server.house.HouseChangedEvent;
 import app.doorprints.server.sync.ClientClock;
@@ -85,7 +86,7 @@ public class VisitController {
         clock.validate(dto.arrivedAt(), "arrivedAt");
         clock.validate(dto.leftAt(), "leftAt");
         if (dto.leftAt() != null && dto.leftAt().isBefore(dto.arrivedAt())) {
-            throw new IllegalArgumentException("leftAt must not be before arrivedAt");
+            throw new BadRequestException("leftAt must not be before arrivedAt");
         }
         var visit = repo.findById(id).orElseGet(() -> new Visit(id));
         if (visit.getUpdatedAt() != null && visit.getUpdatedAt().isAfter(incomingUpdatedAt)) {

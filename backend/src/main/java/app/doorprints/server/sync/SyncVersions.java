@@ -19,10 +19,13 @@
 package app.doorprints.server.sync;
 
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.FlushModeType;
 import jakarta.persistence.PersistenceContext;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * Hands out sync versions so that a client pulling {@code ?since=cursor} can never skip a change (threat model F-09).
@@ -48,10 +51,32 @@ public class SyncVersions {
     @PersistenceContext
     private EntityManager em;
 
-    /** Takes the writer lock (idempotent within one transaction). Call before reading a row you are about to update. */
+    /**
+     * Marks the current transaction as one that already holds the lock, so that a writer taking versions for
+     * thousands of rows (the import) asks the database once instead of once per row. The mark is a synchronization
+     * registered on the transaction itself, so it ends with the transaction (commit or rollback) and cannot leak to
+     * the next one on the thread, and a suspended outer transaction's mark is not seen by an inner
+     * {@code REQUIRES_NEW} one, which is a different database transaction and holds nothing yet.
+     */
+    private static final class LockHeld implements TransactionSynchronization {
+    }
+
+    private static boolean heldByThisTransaction() {
+        for (var synchronization : TransactionSynchronizationManager.getSynchronizations()) {
+            if (synchronization instanceof LockHeld) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Takes the writer lock (idempotent within one transaction: the database call is made once, the later calls
+     * return at once). Call before reading a row you are about to update.
+     */
     @Transactional(propagation = Propagation.MANDATORY)
     public void lock() {
+        if (heldByThisTransaction()) return;
         em.createNativeQuery("select count(*) from pg_advisory_xact_lock(" + LOCK_KEY + ")").getSingleResult();
+        TransactionSynchronizationManager.registerSynchronization(new LockHeld());
     }
 
     /**
@@ -72,6 +97,9 @@ public class SyncVersions {
     @Transactional(propagation = Propagation.MANDATORY)
     public long next() {
         lock();
-        return ((Number) em.createNativeQuery("select nextval('sync_seq')").getSingleResult()).longValue();
+        // COMMIT: a native query would otherwise flush every pending change of the persistence context first, which
+        // turns the import's batched inserts into one round trip per row. nextval reads nothing the context holds.
+        return ((Number) em.createNativeQuery("select nextval('sync_seq')").setFlushMode(FlushModeType.COMMIT)
+                .getSingleResult()).longValue();
     }
 }

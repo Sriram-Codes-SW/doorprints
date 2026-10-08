@@ -27,6 +27,7 @@ import app.doorprints.server.ai.agent.PlanModels.PlannedStop;
 import app.doorprints.server.ai.config.AiProperties;
 import app.doorprints.server.ai.web.AiUnavailableException;
 import app.doorprints.server.ai.web.AiUsageLogger;
+import app.doorprints.server.common.BadRequestException;
 import io.micrometer.observation.ObservationRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -114,7 +115,7 @@ public class VisitPlannerService {
      */
     public PlanResponse plan(PlanRequest request) {
         if (request.question().length() > props.maxQuestionChars()) {
-            throw new IllegalArgumentException("question is longer than " + props.maxQuestionChars() + " characters");
+            throw new BadRequestException("question is longer than " + props.maxQuestionChars() + " characters");
         }
         int maxStops = Math.min(request.maxStops() == null ? props.agent().maxStops() : request.maxStops(),
                 props.agent().maxStops());

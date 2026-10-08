@@ -18,6 +18,7 @@
 
 package app.doorprints.server.photo;
 
+import app.doorprints.server.common.BadRequestException;
 import app.doorprints.server.common.ConflictException;
 import app.doorprints.server.common.NotFoundException;
 import app.doorprints.server.config.AppProperties;
@@ -122,7 +123,7 @@ public class PhotoService {
         try {
             stamp = clock.accept(Instant.ofEpochMilli(metaUpdatedAt), "metaUpdatedAt").toEpochMilli();
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("metaUpdatedAt is out of range (check the device clock)");
+            throw new BadRequestException("metaUpdatedAt is out of range (check the device clock)");
         }
         return photos.applyMeta(current.id(), PhotoMeta.orNull(roomId), PhotoMeta.writeTags(tags),
                 PhotoMeta.orNull(caption), Math.max(stamp, current.metaUpdatedAt() + 1), now, versions.next()) > 0;

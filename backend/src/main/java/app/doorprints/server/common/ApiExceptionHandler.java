@@ -94,8 +94,21 @@ public class ApiExceptionHandler {
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Malformed multipart upload");
     }
 
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ProblemDetail badRequest(IllegalArgumentException e) {
+    /**
+     * A refusal the server wrote for its caller: 400 with that message. It is the only
+     * {@link IllegalArgumentException} whose text is meant to be read by a client.
+     */
+    @ExceptionHandler(BadRequestException.class)
+    public ProblemDetail badRequest(BadRequestException e) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.getMessage());
+    }
+
+    /**
+     * Any other {@code IllegalArgumentException} came from a library or from code that did not mean to speak to the
+     * client, and its text can name internals (a class, a column, a value): 400 with a fixed text (SEC-015).
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ProblemDetail illegalArgument(IllegalArgumentException e) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Malformed request");
     }
 }
