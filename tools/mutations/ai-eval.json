@@ -1,7 +1,10 @@
 {
   "spec": "web/src/app/core/ai/ai-eval.spec.ts",
   "mutations": [
-    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "if (key === '') return { status: 'skip'", "replace": "if (false) return { status: 'skip'", "expect": "skips with the words" },
+    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "if (key === '' && !isKeylessLocal(env)) return { status: 'skip'", "replace": "if (false) return { status: 'skip'", "expect": "skips with the words" },
+    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "return check.valid && isLocalHost(check.host);", "replace": "return check.valid;", "expect": "still skips without a key for any server that is not this machine" },
+    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "if ((env['AI_EVAL_KIND'] ?? '').trim() !== 'openai-compatible') return false;", "replace": "", "expect": "still skips without a key for any server that is not this machine" },
+    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "if (key === '' && !isKeylessLocal(env)) return { status: 'skip'", "replace": "if (key === '') return { status: 'skip'", "expect": "runs without a key against an OpenAI-compatible server on this machine" },
     { "file": "web/src/app/core/ai/ai-eval.ts", "find": "validateWebBaseUrl(baseUrl);", "replace": "validateWebBaseUrl(baseUrl.replace('http:', 'https:'));", "expect": "fails loudly on a bad setting" },
     { "file": "web/src/app/core/ai/ai-eval.ts", "find": "baseUrl = check.normalised;", "replace": "baseUrl = baseUrl;", "expect": "runs an OpenAI-compatible provider" },
     { "file": "web/src/app/core/ai/ai-eval.ts", "find": "baseUrl = '';", "replace": "baseUrl = baseUrl + '';", "expect": "runs Gemini without" },

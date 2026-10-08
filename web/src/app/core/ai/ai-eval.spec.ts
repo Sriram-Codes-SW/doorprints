@@ -43,6 +43,26 @@ describe('evalSetup: when the provider evals run (S4b-BL-153)', () => {
     expect(evalSetup({ DOORPRINTS_EVAL_KEY: '   ', AI_EVAL_KIND: 'nonsense' })).toEqual({ status: 'skip', line: 'skipped: no key' });
   });
 
+  // S4b-BL-175: the suite local-model runs a model on the runner itself (Ollama, no key). A key is optional only there.
+  it('runs without a key against an OpenAI-compatible server on this machine (Ollama needs none)', () => {
+    const local = { AI_EVAL_KIND: 'openai-compatible', AI_EVAL_MODEL: 'small', AI_EVAL_DELAY_MS: '0' };
+    expect(evalSetup({ ...local, AI_EVAL_BASE_URL: 'http://127.0.0.1:11434/v1' })).toEqual({
+      status: 'run', kind: 'openai-compatible', baseUrl: 'http://127.0.0.1:11434/v1', model: 'small', key: '', delayMs: 0, types: ['extract', 'ask', 'plan'],
+    });
+    expect(evalSetup({ ...local, AI_EVAL_BASE_URL: 'http://localhost:11434/v1' })).toMatchObject({ status: 'run', key: '' });
+  });
+
+  it('still skips without a key for any server that is not this machine, and for the other kinds', () => {
+    const remote = { AI_EVAL_KIND: 'openai-compatible', AI_EVAL_MODEL: 'm', AI_EVAL_BASE_URL: 'https://api.groq.com/openai/v1' };
+    expect(evalSetup(remote)).toEqual({ status: 'skip', line: 'skipped: no key' });
+    expect(evalSetup({ ...remote, AI_EVAL_BASE_URL: 'http://10.0.0.5:11434/v1' })).toEqual({ status: 'skip', line: 'skipped: no key' });
+    expect(evalSetup({ AI_EVAL_KIND: 'anthropic', AI_EVAL_MODEL: 'm', AI_EVAL_BASE_URL: 'http://127.0.0.1:11434' })).toEqual({ status: 'skip', line: 'skipped: no key' });
+  });
+
+  it('a keyless local run still needs a model', () => {
+    expect(evalSetup({ AI_EVAL_KIND: 'openai-compatible', AI_EVAL_BASE_URL: 'http://127.0.0.1:11434/v1' })).toEqual({ status: 'invalid', line: 'a model is required' });
+  });
+
   it('runs an OpenAI-compatible provider with the normalised base URL and the defaults', () => {
     expect(evalSetup({ DOORPRINTS_EVAL_KEY: 'k', AI_EVAL_KIND: 'openai-compatible', AI_EVAL_BASE_URL: 'https://api.groq.com/openai/v1/', AI_EVAL_MODEL: 'm1' })).toEqual({
       status: 'run', kind: 'openai-compatible', baseUrl: 'https://api.groq.com/openai/v1', model: 'm1', key: 'k', delayMs: 4000, types: ['extract', 'ask', 'plan'],
