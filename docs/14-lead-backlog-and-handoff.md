@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.116 |
+| Version | 0.117 |
 | Date | 2026-10-08 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..183); this file lists the lead-level items and points to the rest. |
@@ -125,6 +125,7 @@
 | 0.114 | 2026-10-08 | Claude (Code), lead | S4b-BL-183 ([10](10-sprint-log.md) v0.176): the guide's search (Material reads the box on key-up only; `search-input.js`; `tools/guide-search-check/`), a §7 pitfall. Team-level ticket range in the header is now S4b-BL-1..183. |
 | 0.115 | 2026-10-08 | Claude (Code) | **S4b-BL-171 built on `fix/owner-setup-link-first-run-only`** ([10](10-sprint-log.md) v0.178), pull request #191: the server writes the owner page's setup link to its log only at a start while no browser is signed in; the owner page's hi, ta and te sign-in hints still say "restart the server for a new link" (follow-up). |
 | 0.116 | 2026-10-08 | Claude (Code), lead | **S4b-BL-178 built on `fix/sanitise-ai-answers`** ([10](10-sprint-log.md) v0.178): Ask answers and Plan summaries and reasons lose markdown links and images and any address the data never held, on the server, the website and the phones (shared `answerText` vectors; mutation lists `tools/mutations/ai-answer-clean-*.json`). |
+| 0.117 | 2026-10-08 | Claude (Code), lead | S4b-BL-176 ([10](10-sprint-log.md) v0.176): the own-provider eval summary prints the model's response for each failed case, so the three failures of the first Gemini run (32 of 35) can be triaged on the next run; the server eval's retrieval `topK` now covers the 7 fixture houses. Until that run, do not change prompts, thresholds or the golden set from those reasons. |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 

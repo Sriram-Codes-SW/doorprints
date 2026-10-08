@@ -31,6 +31,7 @@
 | v0.27   | 2026-10-08 | Claude (Code), lead           | 8.1: **the keyless suite `local-model`** (S4b-BL-175): `ai-evals.yml` runs the golden set through the website's openai-compatible adapter against a small model that Ollama (a pinned release, sha256 verified) runs on the runner, with no key; `ai-eval.ts` runs a key-less setting for an openai-compatible server on localhost. Not yet run. |
 | v0.28   | 2026-10-08 | Claude (Code), lead           | 9.1: the generic layer also removes email addresses (`[email]`; S4b-BL-179) in all three stacks, before the name parts; Limits say a handle is not caught and that a name part that is an ordinary word is replaced everywhere, on purpose (S4b-BL-180, owner decision). Extraction still sends the pasted text as pasted. |
 | v0.29   | 2026-10-08 | Claude (Code), lead           | New 9.2 **answer cleaning** (S4b-BL-178): after the model returns, `![alt](url)` and `[text](url)` in an Ask answer and in a Plan summary or stop reason become `alt` and `text`, and an http(s) address that is not in the records the model was given becomes `[link removed]`, in all three stacks (`AnswerText`, `cleanAnswer`). Evidence: the real own-provider run of 2026-10-08 (openai/gpt-oss-20b on Groq) obeyed instructions planted in notes. LLM05 row updated. |
+| v0.30   | 2026-10-08 | Claude (Code), lead           | 8.1: the own-provider job summary now shows, for each **failed** case (the first 20), the model's whole response as compact JSON (the draft, the answer with its citations and grounded flag, or the plan), each cut at 3,000 characters with ` ... (cut)`, the key replaced by `***`; the 2026-10-08 run (32/35) had printed only the reasons, cut at 200 characters, so `ask-01-water` could not be triaged (S4b-BL-176). 8.1, 8.4: the server eval sets `app.ai.rag.top-k=10` (the production default of 6 dropped one of the 7 fixture houses from every retrieval), pinned by `GoldenSetEvalConfigTest`; new 8.4 row. 8.5: the three failures of 2026-10-08 are untriaged. |
 
 Status: implemented in `backend/` (package `app.doorprints.server.ai`), **off by default**. Not yet compiled in this
 sandbox (no Maven Central access) — CI compiles and runs the tests. Provider: AI Studio by default, Vertex AI with
@@ -649,7 +650,8 @@ extraction, Q&A, refusal, prompt injection and planning, and the pass **threshol
 
 Flow of one run:
 1. Boots the app (`@SpringBootTest`, random port) with `app.ai.enabled=true`, a generated API key and the app's AI
-   rate limit raised (the harness paces itself instead: `AI_EVAL_DELAY_MS`, default 4 s between cases).
+   rate limit raised (the harness paces itself instead: `AI_EVAL_DELAY_MS`, default 4 s between cases),
+   and `app.ai.rag.top-k=10` so retrieval can return every fixture house (v0.27, 8.4).
 2. Seeds `fixtureHouses` and `fixtureVisits` through the public API (`PUT /api/houses/{id}`, `PUT /api/visits/{id}`),
    then calls `POST /api/ai/reindex` once. Since v0.15 the eval runs with `app.ai.index-on-change=false`, so saves
    are not embedded one by one (before, every fixture was embedded twice: once per save, once by the re-index). The report warns if the database holds
@@ -697,7 +699,7 @@ variables > Actions > New repository secret, name `AI_EVAL_API_KEY` (not needed 
 provider's rate limit (the app's own 10-a-minute limit is lifted for this run). Without the secret the job prints
 `skipped: no key`, succeeds and installs nothing. The run stops early on a rejected key, an unknown model or an
 unreachable provider (a local Ollama cannot be reached from a hosted runner); it fails only on a wrong setting or when
-no case got an answer. The summary names the kind, host and model, never the key. Locally, from `web/`:
+no case got an answer. The summary names the kind, host and model, never the key. For each failed case (the first 20; a line says how many were not shown) it also prints the model's whole response as compact JSON in a code block (a draft, an answer with its citations and `grounded`, or a plan), cut at 3,000 characters with ` ... (cut)`, any appearance of the key replaced by `***`; a case whose call failed has no response, and a passing case prints nothing new. The server's `EvalScorer` has done the same since v0.18 (8.5, item 3); the website's did not until v0.27. Locally, from `web/`:
 `DOORPRINTS_EVAL_KEY=… AI_EVAL_KIND=… AI_EVAL_BASE_URL=… AI_EVAL_MODEL=… npx ng test --watch=false --include
 src/app/core/ai/ai-provider.live.spec.ts`.
 
@@ -790,8 +792,11 @@ the report before changing prompts or code:
 | Hallucination gate is zero-tolerance | See 8.3: only 4 null-expected fields. | Check the failing field in the report. Add null-expected fields to the golden set. |
 | Small denominators for the other metrics | 1 refusal case, 3 injection cases, 3 plan cases (2 with a `fallback` expectation), so one flaky call moves a metric by 0.33–1.0. | Rerun once to rule out free-tier noise (`429`/`503` are retried, but the output is not deterministic), then look at the case. |
 | Embedding provider / model id / dimension (see 3.1, 14) | `POST /api/ai/reindex` fails before any ask case can run (this is what happened in the first run: missing `index` on the compat endpoint). | The scorecard now FAILs with the reindex error listed. Fix the embedding config; ask/plan cases are skipped until then. |
+| Retrieval `topK` must cover the fixture houses | The production default `app.ai.rag.top-k` is 6 (`AiProperties.Rag`) and the golden set has had 7 fixture houses since v0.6, so one fixture is always missing from retrieval; a question whose answer lives in that house is scored on context the server could not have given, and the failure looks like the model's. | `GoldenSetEvalTest` sets `app.ai.rag.top-k=10`; `GoldenSetEvalConfigTest` (keyless, every `mvn verify`) fails when the property is missing, smaller than the fixture count in the golden set file, or above the server's own cap of 20. Grow the property when the fixtures outgrow it. The production default is not changed. |
 
 ### 8.5 Eval results
+
+**Own-provider run of 2026-10-08 (Gemini, 32 of 35 cases), three failures untriaged.** The job summary of that first real run printed only the failure reasons cut at about 200 characters, never the model's answer, so for `ask-01-water` (no citation, no "Blue gate", `grounded=false`) it is not known whether the model refused, answered without `[house:...]` markers or did something else. They stay untriaged until a run on the v0.27 summary shows the outputs (S4b-BL-176); no prompt, threshold or golden-set change is made from the reasons alone.
 
 **Run 35753477789 — 2026-09-22, first `provider=vertex` run** (Actions → AI evals, manual, commit `8f583af`, golden
 set v0.4; chat `gemini-3.5-flash` in `asia-south1`, embeddings `gemini-embedding-2` on `global`, both on Vertex AI
