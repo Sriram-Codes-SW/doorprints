@@ -43,7 +43,7 @@ interface StoreData {
 
 interface Fault {
   store: string;
-  op: 'put' | 'delete';
+  op: 'put' | 'delete' | 'clear';
   error: DOMException;
 }
 
@@ -122,7 +122,7 @@ class FakeObjectStore {
     return typeof path === 'string' ? String(record[path]) : path.map((p) => String(record[p])).join('\u0000');
   }
 
-  private fail(op: 'put' | 'delete'): void {
+  private fail(op: 'put' | 'delete' | 'clear'): void {
     const fault = this.tx['db'].fault;
     if (fault && fault.store === this.name && fault.op === op) throw fault.error;
   }
@@ -159,7 +159,10 @@ class FakeObjectStore {
   }
 
   clear() {
-    return this.tx.run(() => ({ result: undefined, commit: () => this.data.rows.clear() }));
+    return this.tx.run(() => {
+      this.fail('clear');
+      return { result: undefined, commit: () => this.data.rows.clear() };
+    });
   }
 
   index(name: string) {
@@ -478,5 +481,25 @@ describe('the IndexedDB wrapper: several stores, one transaction', () => {
     await db.put('saved_walks', { id: 's', houseId: 'h' });
     await db.clear();
     for (const name of STORE_NAMES) expect(factory.db.stores.get(name)!.rows.size, name).toBe(0);
+  });
+
+  it('clear() is ONE readwrite transaction over all the stores, or over the one named', async () => {
+    const { factory, db } = await withWalk();
+    await db.clear();
+    await db.clear('trace_points');
+    expect(factory.db.log).toEqual([
+      { names: [...STORE_NAMES], mode: 'readwrite' },
+      { names: ['trace_points'], mode: 'readwrite' },
+    ]);
+  });
+
+  it('clear() that aborts on the third store leaves every store as it was (Remove all data is all or nothing)', async () => {
+    const { factory, db } = await withWalk();
+    for (const name of (['houses', 'visits', 'photos'] as const)) await db.put(name, { id: `${name}-row` }); // houses, visits, photos: all keyed by `id`
+    const before = STORE_NAMES.map((n) => [n, [...factory.db.stores.get(n)!.rows.keys()]]);
+    factory.db.fault = { store: 'photos', op: 'clear', error: new DOMException('Disk error.', 'UnknownError') };
+    await expect(db.clear()).rejects.toThrow();
+    expect(STORE_NAMES.map((n) => [n, [...factory.db.stores.get(n)!.rows.keys()]])).toEqual(before);
+    expect(before.slice(0, 3).every(([, keys]) => keys.length > 0)).toBe(true);
   });
 });

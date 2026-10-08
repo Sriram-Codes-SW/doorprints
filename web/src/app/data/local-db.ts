@@ -356,10 +356,22 @@ class IdbDb implements LocalDb {
     await this.run(store, 'readwrite', (s) => s.delete(idbKey(key)));
   }
 
-  async clear(store?: StoreName): Promise<void> {
-    for (const name of store ? [store] : STORE_NAMES) {
-      await this.run(name, 'readwrite', (s) => s.clear());
-    }
+  /** One readwrite transaction over every store (or the one named), so an abort keeps all the rows: Remove all data is all or nothing. */
+  clear(store?: StoreName): Promise<void> {
+    const names = store ? [store] : [...STORE_NAMES];
+    return new Promise<void>((resolve, reject) => {
+      let tx: IDBTransaction;
+      try {
+        tx = this.db.transaction(names, 'readwrite');
+        for (const name of names) tx.objectStore(name).clear();
+      } catch (err: unknown) {
+        reject(asError(err, 'IndexedDB transaction failed'));
+        return;
+      }
+      tx.oncomplete = () => resolve();
+      tx.onabort = () => reject(tx.error ?? new Error('IndexedDB transaction aborted'));
+      tx.onerror = () => reject(tx.error ?? new Error('IndexedDB transaction failed'));
+    });
   }
 
   close(): void {
