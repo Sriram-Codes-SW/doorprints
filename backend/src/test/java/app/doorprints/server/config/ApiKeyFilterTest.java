@@ -18,7 +18,7 @@
 
 package app.doorprints.server.config;
 
-import app.doorprints.server.ai.web.TokenBucketRateLimiter;
+import app.doorprints.server.common.TokenBucketRateLimiter;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
@@ -41,7 +41,7 @@ class ApiKeyFilterTest {
     /** Second key for the rotation tests (SEC-017). */
     private static final String NEXT_KEY = "next-" + UUID.randomUUID();
 
-    private final ApiKeyFilter filter = new ApiKeyFilter(KEY, new TokenBucketRateLimiter(3, 3));
+    private final ApiKeyFilter filter = ApiKeyFilters.of(KEY, new TokenBucketRateLimiter(3, 3));
 
     private record Outcome(int status, boolean passed) {
     }
@@ -118,7 +118,7 @@ class ApiKeyFilterTest {
      */
     @Test
     void wrongKeysOfAnyShapeGetTheSameAnswer() throws Exception {
-        var unthrottled = new ApiKeyFilter(KEY, new TokenBucketRateLimiter(1000, 1000));
+        var unthrottled = ApiKeyFilters.of(KEY, new TokenBucketRateLimiter(1000, 1000));
         var wrong = java.util.List.of(
                 "", "x", KEY.substring(0, KEY.length() - 1), KEY + "x",
                 KEY.substring(0, KEY.length() - 1) + (KEY.endsWith("0") ? "1" : "0"), "k".repeat(4096));
@@ -177,7 +177,7 @@ class ApiKeyFilterTest {
                 .hasMessageContaining("APP_API_KEY is too short")
                 .hasMessageContaining("at least 32 characters")
                 .hasMessageNotContaining(shortKey);
-        assertThatThrownBy(() -> new ApiKeyFilter(shortKey)).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> ApiKeyFilters.of(shortKey)).isInstanceOf(IllegalStateException.class);
         assertThatCode(() -> ApiKeyFilter.validateKeys("k".repeat(ApiKeyFilter.MIN_KEY_LENGTH), null))
                 .doesNotThrowAnyException();
     }
@@ -196,7 +196,7 @@ class ApiKeyFilterTest {
     @NullAndEmptySource
     @ValueSource(strings = {"   "})
     void blankNextKeyIsIgnored(String next) throws Exception {
-        var single = new ApiKeyFilter(KEY, next, new TokenBucketRateLimiter(100, 100));
+        var single = ApiKeyFilters.of(KEY, next, new TokenBucketRateLimiter(100, 100));
         assertThat(run(single, "GET", "/api/houses", KEY)).isEqualTo(new Outcome(200, true));
         assertThat(run(single, "GET", "/api/houses", "")).isEqualTo(new Outcome(401, false));
         assertThat(run(single, "GET", "/api/houses", "   ")).isEqualTo(new Outcome(401, false));
@@ -205,7 +205,7 @@ class ApiKeyFilterTest {
     /** SEC-017: during a rotation both the current and the next key work; anything else is still refused. */
     @Test
     void acceptsBothKeysDuringRotation() throws Exception {
-        var rotating = new ApiKeyFilter(KEY, NEXT_KEY, new TokenBucketRateLimiter(100, 100));
+        var rotating = ApiKeyFilters.of(KEY, NEXT_KEY, new TokenBucketRateLimiter(100, 100));
         assertThat(run(rotating, "GET", "/api/houses", KEY)).isEqualTo(new Outcome(200, true));
         assertThat(run(rotating, "GET", "/api/houses", NEXT_KEY)).isEqualTo(new Outcome(200, true));
 

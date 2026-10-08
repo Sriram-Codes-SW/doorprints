@@ -18,7 +18,7 @@
 
 package app.doorprints.server.device;
 
-import app.doorprints.server.ai.web.TokenBucketRateLimiter;
+import app.doorprints.server.common.TokenBucketRateLimiter;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;

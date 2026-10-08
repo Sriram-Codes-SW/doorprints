@@ -19,7 +19,7 @@
 package app.doorprints.server.device;
 
 import app.doorprints.server.common.Problems;
-import app.doorprints.server.ai.web.TokenBucketRateLimiter;
+import app.doorprints.server.common.TokenBucketRateLimiter;
 import app.doorprints.server.config.RequestPaths;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
