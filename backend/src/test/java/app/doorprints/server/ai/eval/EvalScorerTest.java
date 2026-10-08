@@ -368,6 +368,9 @@ class EvalScorerTest {
         var byRegion = EvalScorer.metricsByRegion(results, Map.of());
 
         assertThat(byRegion.keySet()).containsExactly("north", "west"); // sorted by name
+        var reversed = new ArrayList<>(results);
+        java.util.Collections.reverse(reversed); // the first case seen is west's
+        assertThat(EvalScorer.metricsByRegion(reversed, Map.of()).keySet()).containsExactly("north", "west");
         assertThat(regional(byRegion, "north", "extractionFieldAccuracy").value()).isCloseTo(1.0, within(1e-9));
         assertThat(regional(byRegion, "north", "extractionFieldAccuracy").numerator()).isEqualTo(4);
         assertThat(regional(byRegion, "north", "extractionFieldAccuracy").denominator()).isEqualTo(4);

@@ -19,7 +19,7 @@
 // Tests for tools/mutate.mjs: `node --test tools/*.test.mjs`
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { applyMutation, failingTests, gradleFailingTests, verdict } from './mutate.mjs';
+import { applyMutation, failingTests, gradleFailingTests, mavenFailingTests, verdict } from './mutate.mjs';
 
 test('gradleFailingTests reads Gradle FAILED lines and nothing else', () => {
   const out = [
@@ -33,6 +33,22 @@ test('gradleFailingTests reads Gradle FAILED lines and nothing else', () => {
     'app.doorprints.ui.TourTest > walksForwardAndBack[host]',
     'app.doorprints.ui.TourTest > theOfferComesOnce',
   ]);
+});
+
+test('mavenFailingTests reads Surefire <<< FAILURE and <<< ERROR lines, once each, and nothing else', () => {
+  const out = [
+    '[ERROR] Tests run: 27, Failures: 3, Errors: 2, Skipped: 0, Time elapsed: 0.656 s <<< FAILURE! -- in app.doorprints.server.ai.eval.EvalScorerTest',
+    '[ERROR] app.doorprints.server.ai.eval.EvalScorerTest.everyMetricIsComputedPerRegion -- Time elapsed: 0.028 s <<< FAILURE!',
+    'java.lang.AssertionError: boom',
+    '[ERROR] app.doorprints.server.ai.eval.EvalScorerTest.spreadOfOneRegion -- Time elapsed: 0.004 s <<< ERROR!',
+    '[ERROR] Failures: ',
+    '[ERROR]   EvalScorerTest.everyMetricIsComputedPerRegion:370 ',
+  ].join('\n');
+  assert.deepEqual(mavenFailingTests(out), [
+    'app.doorprints.server.ai.eval.EvalScorerTest > everyMetricIsComputedPerRegion',
+    'app.doorprints.server.ai.eval.EvalScorerTest > spreadOfOneRegion',
+  ]);
+  assert.deepEqual(mavenFailingTests('[INFO] BUILD SUCCESS'), []);
 });
 
 test('applyMutation changes the one occurrence', () => {
