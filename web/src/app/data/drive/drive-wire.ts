@@ -51,6 +51,9 @@ function obj(value: unknown): Json {
   return value as Json;
 }
 
+/**
+ * Parses a Drive file resource into a `DriveFile`; anything malformed throws a CORRUPT `DriveError` instead of passing partial data on.
+ */
 export function fileFromWire(value: unknown): DriveFile {
   const o = obj(value);
   const id = str(o, 'id');
@@ -80,6 +83,7 @@ export function fileFromWire(value: unknown): DriveFile {
   };
 }
 
+/** The Drive file resource for a `DriveFile`, used by the fake Drive's HTTP face. */
 export function fileToWire(file: DriveFile): Json {
   const wire: Json = {
     id: file.id,
@@ -97,6 +101,7 @@ export function fileToWire(file: DriveFile): Json {
   return wire;
 }
 
+/** Parses the quota answer of Drive's `about`; malformed numbers throw CORRUPT. */
 export function aboutFromWire(value: unknown): DriveAbout {
   const o = obj(value);
   const user = obj(o['user'] ?? {});
@@ -112,6 +117,7 @@ export function aboutFromWire(value: unknown): DriveAbout {
   };
 }
 
+/** Parses a Drive revision resource; malformed values throw CORRUPT. */
 export function revisionFromWire(value: unknown): DriveRevision {
   const o = obj(value);
   const id = str(o, 'id');

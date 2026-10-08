@@ -25,6 +25,7 @@ function webCryptoKey(privateKey: P256PrivateKey): CryptoKey {
   return privateKey.key;
 }
 
+/** This browser's P-256 key pair: the private key stays inside WebCrypto, the public key is raw. */
 export interface DeviceKeyPair {
   privateKey: P256PrivateKey;
   publicKey: Uint8Array;

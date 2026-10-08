@@ -45,7 +45,9 @@ import type {
 } from './drive-client';
 import { aboutFromWire, changeJson, fileFromWire, newFileJson, revisionFromWire } from './drive-wire';
 
+/** Base URL of the Drive v3 metadata API. */
 export const DRIVE_API = 'https://www.googleapis.com/drive/v3';
+/** Base URL of the Drive v3 upload API. */
 export const DRIVE_UPLOAD = 'https://www.googleapis.com/upload/drive/v3';
 
 /** Only Google's API host, over https, ever sees the token. */
@@ -65,6 +67,7 @@ export function driveUrl(base: string, path: string, params: Record<string, stri
   return url.toString();
 }
 
+/** Seams of `FetchDriveClient`: the fetch function and retry policy (tests pass fakes). */
 export interface FetchDriveClientOptions {
   fetch?: typeof fetch;
   retry?: DriveRetry;

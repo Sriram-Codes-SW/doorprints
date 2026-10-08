@@ -48,6 +48,9 @@ export interface ImportOutcome {
   undo: CopyUndo | null;
 }
 
+/**
+ * The rows a COPY import added, each with the `updatedAt` it was written with, so *Undo* removes only those that were not edited since.
+ */
 export interface CopyUndo {
   houses: Map<string, number>;
   visits: Map<string, number>;
@@ -270,6 +273,7 @@ function houseRecord(h: BackupHouse, syncVersion: number): HouseRecord {
   return houseFromDto(dto, true);
 }
 
+/** A backup visit as this browser stores it, marked dirty so it is pushed. */
 function visitRecord(v: BackupVisit, syncVersion: number): VisitRecord {
   const dto = {
     ...v,
@@ -282,6 +286,7 @@ function visitRecord(v: BackupVisit, syncVersion: number): VisitRecord {
   return visitFromDto(dto, true);
 }
 
+/** A backup photo as this browser stores it: the verified bytes as a JPEG blob, with its metadata, not yet uploaded. */
 function photoRecord(p: BackupPhoto, bytes: Uint8Array): PhotoRecord {
   const blob = new Blob([bytes as BlobPart], { type: 'image/jpeg' });
   const record: PhotoRecord = {

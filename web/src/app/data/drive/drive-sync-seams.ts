@@ -112,6 +112,7 @@ export interface DriveSyncState {
   readonly notBefore: number;
 }
 
+/** The sync state of a device that has never synced. */
 export const EMPTY_SYNC_STATE: DriveSyncState = {
   syncFolderId: null, lastSeq: 0, confirmedSeq: 0, lastFileId: null, lastChecksum: null, lastRowsHash: null,
   generation: 0, peers: {}, failures: 0, notBefore: 0,
@@ -166,6 +167,9 @@ export interface SyncReport {
   readonly generation: number;
 }
 
+/**
+ * The outcome of one sync pass: done, waiting for the person to confirm house deletions, waiting out a backoff, or paused.
+ */
 export type SyncPassResult =
   | { readonly kind: 'Done'; readonly report: SyncReport }
   | {
@@ -178,10 +182,12 @@ export type SyncPassResult =
   | { readonly kind: 'Waiting'; readonly notBefore: number }
   | { readonly kind: 'Paused' };
 
+/** The pass report, when the pass got as far as merging. */
 export function reportOf(result: SyncPassResult): SyncReport | null {
   return result.kind === 'Done' || result.kind === 'NeedsConfirmation' ? result.report : null;
 }
 
+/** The reasons of the files a pass skipped, for tests and the status line. */
 export function skippedReasons(result: SyncPassResult): SkipReason[] {
   return reportOf(result)?.skipped.map((s) => s.reason) ?? [];
 }

@@ -53,15 +53,18 @@ export interface CryptoProvider {
   p256FromStoredKey(privateKey: CryptoKey, publicKeyRaw: Uint8Array): Promise<P256PrivateKey>;
 }
 
+/** An opaque AES-GCM key held by the provider; the raw bytes are not readable from it. */
 export interface AesKey {
   readonly sizeBytes: number;
 }
 
+/** A P-256 private key held by the provider (never exported); only its public half can be read. */
 export interface P256PrivateKey {
   /** The uncompressed SEC1 encoding (65 bytes); a copy. */
   readonly publicKey: Uint8Array;
 }
 
+/** Why a primitive refused: no WebCrypto, a failed authentication tag, a bad key, or malformed input. */
 export type CryptoErrorKind = 'UNAVAILABLE' | 'AUTH_FAILED' | 'INVALID_KEY' | 'INVALID_INPUT';
 
 /** The message never holds key or plaintext bytes. */

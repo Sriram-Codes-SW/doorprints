@@ -43,10 +43,14 @@ export function pairingCode(
   return (n % 100_000_000n).toString().padStart(8, '0');
 }
 
+/**
+ * Whether a revealed nonce matches the commit posted earlier, in constant time; the check that stops the newcomer from picking its nonce after seeing the approver's, which would let it steer the 8-digit code.
+ */
 export function commitHolds(nonce: Uint8Array, commit: Uint8Array): boolean {
   return constantTimeEquals(commitNonce(nonce), commit);
 }
 
+/** Whether a pairing request is too old, or dated in the future. */
 export function pairingExpired(createdAtMs: number, nowMs: number): boolean {
   return nowMs < createdAtMs || nowMs - createdAtMs > PAIRING_TTL_MS;
 }

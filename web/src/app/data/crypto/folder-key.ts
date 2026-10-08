@@ -34,6 +34,7 @@ async function derive(p: CryptoProvider, folderKey: Uint8Array, info: string): P
   return new Hkdf(p).derive(new Uint8Array(0), folderKey, utf8(info), 32);
 }
 
+/** The key that MACs `keys.json`, derived from the folder key so the folder key itself is never used as a MAC key. */
 export function macKey(p: CryptoProvider, folderKey: Uint8Array): Promise<Uint8Array> {
   return derive(p, folderKey, 'doorprints/dpx1/dir');
 }
@@ -44,12 +45,17 @@ async function aes(p: CryptoProvider, raw: Uint8Array): Promise<AesKey> {
     raw.fill(0);
   }
 }
+/** The AES key that wraps each file's content key; the derived bytes are wiped once the key is imported. */
 export async function contentWrapKey(p: CryptoProvider, folderKey: Uint8Array): Promise<AesKey> {
   return aes(p, await derive(p, folderKey, 'doorprints/dpx1/content-wrap'));
 }
+/**
+ * The AES key that wraps the previous epoch's folder key in the key chain, so an old epoch stays readable after a re-key.
+ */
 export async function chainWrapKey(p: CryptoProvider, folderKey: Uint8Array): Promise<AesKey> {
   return aes(p, await derive(p, folderKey, 'doorprints/dpx1/chain-wrap'));
 }
+/** The 16-byte name of a folder key (its kid), derived so the key cannot be recovered from it. */
 export function keyId(p: CryptoProvider, folderKey: Uint8Array): Promise<Uint8Array> {
   return derive(p, folderKey, 'doorprints/dpx1/key-id');
 }
@@ -90,6 +96,7 @@ export async function aesFromBase(p: CryptoProvider, base: CryptoKey, info: stri
   return p.adoptAes(key);
 }
 
+/** Bytes in a key id. */
 export const KID_SIZE = 16;
 /** HPKE's `info` for every folder-key wrap. */
 export const HPKE_INFO = utf8('doorprints/dpx1/wrap');

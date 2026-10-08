@@ -24,6 +24,9 @@
 
 /** Web Locks name for a Drive sync pass. Two tabs share one device, so only one pass runs. */
 export const DRIVE_SYNC_LOCK = 'doorprints-drive-sync';
+/**
+ * Runs a function while holding a named exclusive lock; the browser version uses Web Locks, tests use an in-process one.
+ */
 export interface LockRunner {
   /**
    * Acquire an exclusive lock and run the function. The function may not run immediately

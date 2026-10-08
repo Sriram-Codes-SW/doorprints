@@ -121,6 +121,7 @@ export const SETTLE_MAX_MS = 2000;
 /** Same ceiling as the Android app and the server (shared MAX_PHOTOS_PER_HOUSE). */
 export const MAX_PHOTOS_PER_HOUSE = 20;
 
+/** The outcome of adding a photo: its id, or `limit` when the house already holds the most photos. */
 export type AddPhotoResult = { ok: true; id: string } | { ok: false; reason: 'limit' };
 
 /** This browser's position in the server's change log, per list (`GET /api/<list>?since=`). */
@@ -235,10 +236,12 @@ export class LocalStore {
     return db.getAll<HouseRecord>('houses');
   }
 
+  /** Every house that is not deleted, in export order. */
   async liveHouses(): Promise<HouseRecord[]> {
     return sortByCreated((await this.rawHouses()).filter((h) => !h.deleted));
   }
 
+  /** One live house, or undefined for an unknown or deleted id. */
   async getHouse(id: string): Promise<HouseRecord | undefined> {
     const db = await this.db();
     const house = await db.get<HouseRecord>('houses', id);
@@ -287,6 +290,9 @@ export class LocalStore {
     this.touch();
   }
 
+  /**
+   * Clears the dirty flag after a push, but only if the house has not been edited since that push began; otherwise the newer edit stays dirty for the next sync.
+   */
   async markHouseClean(id: string, pushedUpdatedAt: string | null | undefined): Promise<void> {
     const db = await this.db();
     const existing = await db.get<HouseRecord>('houses', id);
@@ -296,12 +302,14 @@ export class LocalStore {
     }
   }
 
+  /** The houses with local changes the remote has not seen, tombstones included: what a push sends. */
   async dirtyHouses(): Promise<HouseRecord[]> {
     return sortByCreated((await this.rawHouses()).filter((h) => h.dirty));
   }
 
   // ---- Visits ----
 
+  /** Every visit, tombstones included. */
   async allVisits(): Promise<VisitRecord[]> {
     return sortVisits(await this.rawVisits());
   }
@@ -327,6 +335,7 @@ export class LocalStore {
     return counts;
   }
 
+  /** Saves a local edit of a visit: stamps `updatedAt` and marks it dirty so the next sync pushes it. */
   async saveVisit(visit: VisitDto, now: number = Date.now()): Promise<VisitRecord> {
     const db = await this.db();
     const existing = await db.get<VisitRecord>('visits', visit.id);
@@ -340,6 +349,7 @@ export class LocalStore {
     return record;
   }
 
+  /** Marks a visit deleted (a tombstone, so other devices learn about it). */
   async deleteVisit(id: string, now: number = Date.now()): Promise<void> {
     const db = await this.db();
     const existing = await db.get<VisitRecord>('visits', id);
@@ -348,12 +358,14 @@ export class LocalStore {
     this.touch();
   }
 
+  /** Stores a visit that came from the remote, clean; the caller has already applied the merge rule. */
   async putVisitFromServer(dto: VisitDto): Promise<void> {
     const db = await this.db();
     await db.put('visits', visitFromDto(dto, false));
     this.touch();
   }
 
+  /** Clears the dirty flag after a push, unless the visit was edited while the push was in flight. */
   async markVisitClean(id: string, pushedUpdatedAt: string | null | undefined): Promise<void> {
     const db = await this.db();
     const existing = await db.get<VisitRecord>('visits', id);
@@ -362,12 +374,14 @@ export class LocalStore {
     }
   }
 
+  /** Visits with local changes the remote has not seen, tombstones included. */
   async dirtyVisits(): Promise<VisitRecord[]> {
     return sortVisits((await this.rawVisits()).filter((v) => v.dirty));
   }
 
   // ---- Photos ----
 
+  /** Every photo row, tombstones included. */
   async allPhotos(): Promise<PhotoRecord[]> {
     const db = await this.db();
     return sortByCreated(await db.getAll<PhotoRecord>('photos'));
@@ -380,6 +394,7 @@ export class LocalStore {
     return sortByCreated(rows.filter((p) => !p.deleted));
   }
 
+  /** One photo row by id, whether or not it is deleted. */
   async getPhoto(id: string): Promise<PhotoRecord | undefined> {
     const db = await this.db();
     return db.get<PhotoRecord>('photos', id);
@@ -525,6 +540,7 @@ export class LocalStore {
     this.touch();
   }
 
+  /** Stores a photo row as given (sync and import); no dirty flag or limit is applied here. */
   async putPhotoRecord(record: PhotoRecord): Promise<void> {
     const db = await this.db();
     await db.put('photos', record);
@@ -573,6 +589,7 @@ export class LocalStore {
     return sortRecords(rows.filter((r) => !r.deleted));
   }
 
+  /** One live record, or undefined for an unknown or deleted one. */
   async getRecord(type: string, id: string): Promise<RecordRecord | undefined> {
     const db = await this.db();
     const record = await db.get<RecordRecord>('records', [type, id]);
@@ -611,12 +628,14 @@ export class LocalStore {
     this.touch();
   }
 
+  /** Stores a record that came from the remote, clean; the caller has already applied the merge rule. */
   async putRecordFromServer(dto: RecordDto): Promise<void> {
     const db = await this.db();
     await db.put('records', recordFromDto(dto, false));
     this.touch();
   }
 
+  /** Clears the dirty flag after a push, unless the record was edited while the push was in flight. */
   async markRecordClean(type: string, id: string, pushedUpdatedAt: string | null | undefined): Promise<void> {
     const db = await this.db();
     const existing = await db.get<RecordRecord>('records', [type, id]);
@@ -631,6 +650,7 @@ export class LocalStore {
     return sortRecords(await db.getAll<RecordRecord>('records'));
   }
 
+  /** Records with local changes the remote has not seen, tombstones included. */
   async dirtyRecords(): Promise<RecordRecord[]> {
     const db = await this.db();
     return sortRecords((await db.getAll<RecordRecord>('records')).filter((r) => r.dirty));
@@ -1175,6 +1195,7 @@ export class LocalStore {
     await this.deleteRecord(AREA_TYPE, id, now);
   }
 
+  /** The live places with their edit times; rows whose payload is not a valid place are left out. */
   async placeRows(): Promise<PlaceRow[]> {
     const out: PlaceRow[] = [];
     for (const row of await this.recordsOf(PLACE_TYPE)) {
@@ -1189,6 +1210,7 @@ export class LocalStore {
     return sortByName((await this.placeRows()).map((r) => r.place), (p) => p.name);
   }
 
+  /** A fresh place id that no record of that type holds yet. */
   async newPlaceId(newId: () => string = newPlaceIdRandom): Promise<string> {
     return this.freshId(PLACE_TYPE, newId);
   }
@@ -1204,6 +1226,7 @@ export class LocalStore {
     return placeFromPayload(clean.id, payload) as Place;
   }
 
+  /** Deletes a place (a tombstone). */
   async deletePlace(id: string, now: number = Date.now()): Promise<void> {
     await this.deleteRecord(PLACE_TYPE, id, now);
   }
@@ -1223,6 +1246,7 @@ export class LocalStore {
     return newestFirst(await this.areaNoteRows());
   }
 
+  /** A fresh area-note id that no record of that type holds yet. */
   async newAreaNoteId(newId: () => string = newAreaNoteIdRandom): Promise<string> {
     return this.freshId(AREA_NOTE_TYPE, newId);
   }
@@ -1252,6 +1276,7 @@ export class LocalStore {
     return areaNoteFromPayload(clean.id, payload) as AreaNote;
   }
 
+  /** Deletes an area note (a tombstone). */
   async deleteAreaNote(id: string, now: number = Date.now()): Promise<void> {
     await this.deleteRecord(AREA_NOTE_TYPE, id, now);
   }
@@ -1285,16 +1310,19 @@ export class LocalStore {
 
   // ---- Settings ----
 
+  /** A per-browser setting, or null when unset. Settings are never synced or exported. */
   async setting(key: string): Promise<string | null> {
     const db = await this.db();
     return (await db.get<SettingRecord>('settings', key))?.value ?? null;
   }
 
+  /** Stores a per-browser setting. */
   async setSetting(key: string, value: string): Promise<void> {
     const db = await this.db();
     await db.put<SettingRecord>('settings', { key, value });
   }
 
+  /** Removes a per-browser setting. */
   async removeSetting(key: string): Promise<void> {
     const db = await this.db();
     await db.delete('settings', key);
@@ -1305,6 +1333,7 @@ export class LocalStore {
     return (await this.setting(SETTING_KEYS.lengthUnit)) === 'M' ? 'M' : 'FT';
   }
 
+  /** Stores the room length unit preference. */
   async setLengthUnit(unit: LengthUnit): Promise<void> {
     await this.setSetting(SETTING_KEYS.lengthUnit, unit);
   }
@@ -1314,16 +1343,19 @@ export class LocalStore {
     return (await this.setting(SETTING_KEYS.viewingsRemind)) !== '0';
   }
 
+  /** Stores whether viewing reminders are on. */
   async setViewingsRemind(on: boolean): Promise<void> {
     await this.setSetting(SETTING_KEYS.viewingsRemind, on ? '1' : '0');
   }
 
+  /** A numeric setting; unset or not a number reads as 0. */
   async numberSetting(key: string): Promise<number> {
     const raw = await this.setting(key);
     const n = raw === null ? Number.NaN : Number(raw);
     return Number.isFinite(n) ? n : 0;
   }
 
+  /** The stored sync positions, one per list; each is 0 before the first sync. */
   async cursors(): Promise<Cursors> {
     return {
       house: await this.numberSetting(SETTING_KEYS.houseCursor),

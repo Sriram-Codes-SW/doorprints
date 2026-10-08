@@ -165,5 +165,7 @@ export async function deleteSavedWalksOfHouse(db: LocalDb, houseId: string): Pro
 
 /** The limits of docs/11 5.27.6, from the shared constants. */
 export const MAX_SAVED_WALKS_PER_HOUSE = 20;
+/** Most saved walks one device keeps. */
 export const MAX_SAVED_WALKS_PER_DEVICE = 200;
+/** Most points one walk may hold. */
 export const MAX_WALK_POINTS = TRACE.maxWalkPoints;

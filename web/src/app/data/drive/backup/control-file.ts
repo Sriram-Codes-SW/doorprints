@@ -36,6 +36,7 @@ export type ControlErrorKind =
   | 'FORK_DETECTED'
   | 'CONCURRENT_UPDATE';
 
+/** Why `doorprints.json` was refused; like `KeysError`, no kind may trigger anything destructive. */
 export class ControlError extends Error {
   constructor(
     readonly kind: ControlErrorKind,
@@ -59,6 +60,7 @@ export interface ControlBody {
   readonly backupsDeletedAt: number | null;
 }
 
+/** The canonical bytes of the control body: the exact input to its MAC. */
 export function controlBodyJson(b: ControlBody): Uint8Array {
   return new CanonicalJson()
     .raw('{"revision":').number(b.revision)
@@ -77,6 +79,9 @@ export interface ControlWatermark {
   readonly backupsDeletedAt: number | null;
 }
 
+/**
+ * Whether two control watermarks are equal (both absent counts as equal); used by the atomic update of the stored watermark.
+ */
 export function sameControlWatermark(a: ControlWatermark | null, b: ControlWatermark | null): boolean {
   if (!a || !b) return a === b;
   return a.revision === b.revision && a.backupsDeletedAt === b.backupsDeletedAt && constantTimeEquals(a.bodyHash, b.bodyHash);
@@ -88,13 +93,17 @@ export interface ControlWatermarkStore {
   compareAndSet(expected: ControlWatermark | null, next: ControlWatermark): Promise<boolean>;
 }
 
+/** A freshly written `doorprints.json`: the bytes to upload and the body they encode. */
 export interface WrittenControl {
   readonly bytes: Uint8Array;
   readonly body: ControlBody;
 }
 
+/** The format tag of `doorprints.json`. */
 export const CONTROL_FORMAT = 'doorprints-control/1';
+/** The encryption format backups in this folder use. */
 export const CONTROL_ENCRYPTION = 'dpx/1';
+/** The largest `doorprints.json` a reader accepts, in bytes. */
 export const CONTROL_MAX_FILE = 4096;
 const MAX_TRIES = 4;
 

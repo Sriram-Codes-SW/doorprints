@@ -62,6 +62,7 @@ interface Session {
   corrupt: boolean;
 }
 
+/** Knobs of the in-memory Drive used in tests: clock, quota, listing lag and account. */
 export interface FakeDriveOptions {
   clock?: FakeClock;
   quotaBytes?: number | null;

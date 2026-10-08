@@ -41,6 +41,7 @@ export interface BackupArchive {
   photoBytes(entry: string): Promise<Uint8Array | null>;
 }
 
+/** The result of opening a backup file: the checked archive, or the first problem found. */
 export type ArchiveOpen = { ok: true; archive: BackupArchive } | { ok: false; problem: BackupProblem };
 
 const MAX_PHOTO_BYTES = 32 * 1024 * 1024;
@@ -57,6 +58,9 @@ export async function openBackup(source: Blob): Promise<ArchiveOpen> {
   }
 }
 
+/**
+ * Tells a ZIP from a bare `data.json` by the first bytes, then runs the checks in order (entry count, paths, sizes and ratio, manifest, the SHA-256 of `data.json`, the rows) before any data is returned.
+ */
 async function openChecked(source: Blob): Promise<ArchiveOpen> {
   const head = (await bytesAt(source, 0, Math.min(source.size, HEAD_BYTES))) ?? new Uint8Array(0);
   if (!isZip(head)) return isJsonObject(head) ? openBareData(source) : { ok: false, problem: 'NOT_A_BACKUP' };

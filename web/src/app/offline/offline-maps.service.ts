@@ -58,6 +58,9 @@ export interface OfflineEnv {
   newId(): string;
 }
 
+/**
+ * The real browser environment: Cache Storage, fetch, the storage estimate and the connection type, each guarded so a missing or refusing API reads as "not available".
+ */
 function browserEnv(): OfflineEnv {
   return {
     openCache: async () => {
@@ -96,6 +99,7 @@ function browserEnv(): OfflineEnv {
   };
 }
 
+/** Injection token for the browser environment; the default is the real one. */
 export const OFFLINE_ENV = new InjectionToken<OfflineEnv>('OFFLINE_ENV', { providedIn: 'root', factory: browserEnv });
 
 /** What a save came to. */
@@ -120,6 +124,10 @@ export interface SaveProgress {
   readonly bytes: number;
 }
 
+/**
+ * Saves parts of the base map in the browser so the map still draws without a network, and lists, verifies and removes them.
+ * It owns the list of saved areas (kept in localStorage, with the tiles in Cache Storage), one download at a time with progress and cancel, and the flag that turns on the offline map requests. A cancelled or failed download removes what it saved.
+ */
 @Injectable({ providedIn: 'root' })
 export class OfflineMapsService {
   private readonly env = inject(OFFLINE_ENV);

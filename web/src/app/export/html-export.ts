@@ -51,6 +51,7 @@ import { photoFileName } from './photo-names';
 /** Photo bytes, already turned into `data:` URIs by the caller (the builder itself stays synchronous and pure). */
 export type PhotoDataUris = ReadonlyMap<string, string>;
 
+/** How the HTML copy is built. */
 export interface HtmlOptions {
   /**
    * List photos by file name instead of embedding them.
@@ -63,6 +64,10 @@ export interface HtmlOptions {
   readonly photosAsFileNames?: boolean;
 }
 
+/**
+ * Builds the self-contained readable copy as one HTML string: cover, ranking, a section per house, brokers and criteria.
+ * Pure and synchronous: the caller supplies the dictionary and the photos already as `data:` URIs. All text is escaped, and the embedded content policy forbids scripts and network.
+ */
 export function buildHtml(
   bundle: ExportBundle,
   dict: Dict,
@@ -470,11 +475,13 @@ export function checklistLabel(key: string, dict: Dict, labels: ReadonlyMap<stri
   return item ? tr(dict, item.labelKey) : (labels.get(key) ?? key);
 }
 
+/** A house status as the readable copy writes it: an icon plus the translated word, so colour is never the only signal. */
 export function statusText(status: HouseStatus, dict: Dict): string {
   // The icon repeats the status in a second channel, so the file never relies on colour (WCAG 1.4.1).
   return `${STATUS_ICON[status]} ${tr(dict, `status.${status}`)}`;
 }
 
+/** A house's label, or the translated "untitled" when it has none. */
 export function labelOf(label: string, dict: Dict): string {
   return label.trim() === '' ? tr(dict, 'common.untitled') : label;
 }

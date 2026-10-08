@@ -86,6 +86,9 @@ export function needsConfirmation(plan: MergePlan): boolean {
   return plan.deferred.length > 0;
 }
 
+/**
+ * What a merge needs besides the file: this device's clock, the highest sequence already merged from the writer, the live house count and the person's answer to the shrink guard.
+ */
 export interface MergeContext {
   /** This device's clock. */
   readonly now: number;

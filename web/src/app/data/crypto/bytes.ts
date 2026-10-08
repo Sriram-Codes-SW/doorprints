@@ -25,6 +25,7 @@ export function ab(bytes: Uint8Array): Uint8Array<ArrayBuffer> {
   return out;
 }
 
+/** The parts joined into one new array, the building block of every length-prefixed encoding in the crypto formats. */
 export function concat(...parts: Uint8Array[]): Uint8Array {
   let size = 0;
   for (const p of parts) size += p.length;
@@ -50,11 +51,13 @@ export function i2osp(value: number, length: number): Uint8Array {
   return out;
 }
 
+/** The 4-byte big-endian form of [value] (a chunk index in a `dpx/1` nonce and AAD); throws if it does not fit. */
 export function u32(value: number): Uint8Array {
   return i2osp(value, 4);
 }
 
 const encoder = new TextEncoder();
+/** The UTF-8 bytes of [text], so every format hashes and signs the same bytes on every device. */
 export function utf8(text: string): Uint8Array {
   return encoder.encode(text);
 }
@@ -66,11 +69,13 @@ export function label(text: string): Uint8Array {
   return concat(new Uint8Array([b.length]), b);
 }
 
+/** Byte-wise XOR of two equal-length arrays; throws `RangeError` when the lengths differ. */
 export function xor(a: Uint8Array, b: Uint8Array): Uint8Array {
   if (a.length !== b.length) throw new RangeError('xor');
   return a.map((x, i) => x ^ b[i]);
 }
 
+/** Whether the arrays hold the same bytes. Not constant-time: use `constantTimeEquals` for MACs and other secrets. */
 export function equalBytes(a: Uint8Array, b: Uint8Array): boolean {
   if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
@@ -108,12 +113,14 @@ export function unb64(text: string, size = -1): Uint8Array | null {
   return out;
 }
 
+/** Lowercase hex of [bytes] (ids and test vectors, never secrets in logs). */
 export function hex(bytes: Uint8Array): string {
   let s = '';
   for (const b of bytes) s += b.toString(16).padStart(2, '0');
   return s;
 }
 
+/** Bytes of an even-length hex string (either case); throws `RangeError` on anything else. */
 export function unhex(text: string): Uint8Array {
   if (text.length % 2 !== 0 || !/^[0-9a-fA-F]*$/.test(text)) throw new RangeError('hex');
   const out = new Uint8Array(text.length / 2);

@@ -127,6 +127,7 @@ export class BackupLister {
   }
 }
 
+/** Sort order for a backup list: newest first, ties broken by file id so the order is the same on every device. */
 export function newestFirst(a: DriveBackup, b: DriveBackup): number {
   return b.createdAt - a.createdAt || (a.fileId < b.fileId ? -1 : a.fileId > b.fileId ? 1 : 0);
 }

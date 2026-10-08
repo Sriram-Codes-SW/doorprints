@@ -35,6 +35,9 @@ export interface SyncRecord {
   readonly dirty: boolean;
 }
 
+/**
+ * The last-edit-wins test: keep the local row only if it has unpushed changes and was edited strictly later than the incoming one. A tie goes to the incoming row.
+ */
 export function keepLocal(localDirty: boolean, localUpdatedAt: number, incomingUpdatedAt: number): boolean {
   return localDirty && localUpdatedAt > incomingUpdatedAt;
 }

@@ -36,6 +36,7 @@ import { DriveBackupService } from './drive-backup.service';
 
 /** In-memory seams and a ready-made "device" for the Drive backup specs (S4b-BL-116). Test code only. */
 
+/** In-memory device state. */
 export class MemoryStateStore implements DriveStateStore {
   value: DriveDeviceState = EMPTY_DEVICE_STATE;
   async load() {
@@ -46,6 +47,7 @@ export class MemoryStateStore implements DriveStateStore {
   }
 }
 
+/** In-memory control watermark that honours compare-and-set. */
 export class MemoryControlStore implements ControlWatermarkStore {
   constructor(public value: ControlWatermark | null = null) {}
   async load() {
@@ -58,6 +60,7 @@ export class MemoryControlStore implements ControlWatermarkStore {
   }
 }
 
+/** In-memory keys watermark that honours compare-and-set. */
 export class MemoryKeysStore implements KeysWatermarkStore {
   value: KeysWatermark | null = null;
   async load() {
@@ -70,6 +73,7 @@ export class MemoryKeysStore implements KeysWatermarkStore {
   }
 }
 
+/** In-memory folder-trust stores. */
 export class MemoryTrust implements FolderTrustStores {
   readonly keysStores = new Map<string, MemoryKeysStore>();
   readonly controlStores = new Map<string, MemoryControlStore>();

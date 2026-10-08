@@ -44,6 +44,7 @@ export interface DriveFile {
   readonly headRevisionId: string | null;
 }
 
+/** Whether the file is a Drive folder. */
 export function isFolder(file: DriveFile): boolean {
   return file.mimeType === FOLDER_MIME;
 }
@@ -137,6 +138,7 @@ export type UploadTarget =
   | { readonly kind: 'new'; readonly file: NewFile }
   | { readonly kind: 'existing'; readonly fileId: string; readonly mimeType: string; readonly change?: MetadataChange };
 
+/** The MIME type an upload will carry, new file or existing. */
 export function targetMime(target: UploadTarget): string {
   return target.kind === 'new' ? target.file.mimeType : target.mimeType;
 }
@@ -252,6 +254,7 @@ export class SignInError extends Error {
   }
 }
 
+/** A CORRUPT `DriveError` for an answer Drive should not have given; the reason is a code, never content. */
 export function corrupt(reason = 'badAnswer'): DriveError {
   return new DriveError('CORRUPT', 0, null, reason);
 }
@@ -320,6 +323,7 @@ export interface TokenProvider {
   onRejected?(token: string): Promise<void>;
 }
 
+/** Tuning for the retry loop (attempts, back-off, the longest Retry-After honoured); tests pass small ones. */
 export interface DriveRetryOptions {
   maxAttempts?: number;
   baseMs?: number;

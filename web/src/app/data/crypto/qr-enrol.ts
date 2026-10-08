@@ -28,6 +28,9 @@ export const QR_PSK_LEN = 32;
 export const QR_PUBLIC_LEN = 65;
 export const QR_PSK_ID = utf8('doorprints/dpx1/qr-psk');
 
+/**
+ * What a new browser offers an enrolled device: its public key and the secret PSK from the QR that authenticates the pairing.
+ */
 export interface QrOffer {
   publicKey: Uint8Array;
   psk: Uint8Array;

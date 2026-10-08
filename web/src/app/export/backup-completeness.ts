@@ -37,6 +37,7 @@ export type BackupGap =
   | 'PHOTOS'
   | 'CONTACTS';
 
+/** The translation key that words each gap on the export card. */
 export const BACKUP_GAP_KEY: Readonly<Record<BackupGap, TKey>> = {
   HOUSES_NOT_SHORTLISTED: 'data.gapNotShortlisted',
   HOUSES_NOT_SELECTED: 'data.gapNotSelected',
@@ -48,6 +49,9 @@ export const BACKUP_GAP_KEY: Readonly<Record<BackupGap, TKey>> = {
 
 type GapOptions = Pick<ExportOptions, 'scope' | 'includeRejected' | 'photos' | 'includeContacts'>;
 
+/**
+ * The gaps a "Full backup" made with [options] would have, in the order the export card lists them. An option another choice already covers is not listed twice.
+ */
 export function backupGaps(options: GapOptions): BackupGap[] {
   const gaps: BackupGap[] = [];
   if (options.scope === 'all') {

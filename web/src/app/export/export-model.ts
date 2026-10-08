@@ -32,6 +32,9 @@ import type { LengthUnit } from '../shared/room-sizes';
 /** The six deterministic formats of docs/11 §5.2. */
 export type ExportFormat = 'html' | 'pdf' | 'csv' | 'xlsx' | 'markdown' | 'backup';
 
+/**
+ * What the person chose on the export card: which houses, which photos, whether contacts go in, and the language of the file.
+ */
 export interface ExportOptions {
   /** Which houses go in: everything, only the shortlist, or the ids the user ticked. */
   scope: 'all' | 'shortlisted' | 'selected';
@@ -48,6 +51,7 @@ export interface ExportOptions {
   lengthUnit?: 'FT' | 'M';
 }
 
+/** Everything included, in English: what the export card starts with. */
 export const DEFAULT_EXPORT_OPTIONS: ExportOptions = {
   scope: 'all',
   selectedIds: [],
@@ -149,6 +153,7 @@ export interface ExportBundle {
 /** The contact fields; they are blanked rather than removed so every export has the same shape. */
 const CONTACT_FIELDS = ['contactName', 'contactPhone', 'brokerId'] as const;
 
+/** What `collect` is given: the store's rows, the chosen options and the one export time. */
 export interface CollectInput {
   houses: readonly HouseRecord[];
   visits: readonly VisitRecord[];

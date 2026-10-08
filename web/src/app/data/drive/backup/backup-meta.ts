@@ -50,9 +50,12 @@ async function derive(p: CryptoProvider, folderKey: Uint8Array, info: string): P
   return new Hkdf(p).derive(new Uint8Array(0), folderKey, utf8(info), 32);
 }
 
+/** The key that MACs `doorprints.json`, derived from the folder key (the folder key itself is never a MAC key). */
 export const controlKey = (p: CryptoProvider, folderKey: Uint8Array) => derive(p, folderKey, BACKUP_KEY_INFO.control);
+/** The key that MACs a backup's metadata, derived from the folder key. */
 export const backupMetaKey = (p: CryptoProvider, folderKey: Uint8Array) => derive(p, folderKey, BACKUP_KEY_INFO.backupMeta);
 
+/** The names of the `appProperties` of a backup, the MAC label, and the limits a reader enforces on its values. */
 export const BACKUP_META = {
   label: 'doorprints-backup-meta/1',
   kindBackup: 'backup',
@@ -75,6 +78,10 @@ function decimal(text: string | undefined, max: number): number | null {
   return Number.isSafeInteger(n) && n <= max ? n : null;
 }
 
+/**
+ * The authenticated facts of one backup (when, how many houses, which key epoch and writer, which file bytes), so a listing can trust them without downloading.
+ * The constructor rejects out-of-range values; `macInput` is what the MAC covers. Drive's own times and the file name are never trusted instead.
+ */
 export class BackupMeta {
   readonly writerKid: Uint8Array;
   readonly ciphertextSha256: Uint8Array;

@@ -38,6 +38,7 @@ export interface ZipEntryInfo {
   readonly localOffset: number;
 }
 
+/** The result of opening a ZIP: the file, or why not. */
 export type ZipOpen = { ok: true; zip: ZipFile } | { ok: false; problem: 'NOT_A_ZIP' | 'TOO_MANY_ENTRIES' };
 
 /** An entry that cannot be read: encrypted, compressed another way, cut short, broken or failing its CRC. */
@@ -46,6 +47,9 @@ export class ZipEntryError extends Error {}
 /** The central directory of 5 000 entries is well under a megabyte. */
 const MAX_DIRECTORY_BYTES = 8 * 1024 * 1024;
 
+/**
+ * Reads [count] bytes at [position] from the picked file without loading the rest; null when the range is outside the file.
+ */
 export async function bytesAt(source: Blob, position: number, count: number): Promise<Uint8Array | null> {
   if (count < 0 || position < 0 || position + count > source.size) return null;
   return new Uint8Array(await source.slice(position, position + count).arrayBuffer());
@@ -54,6 +58,10 @@ export async function bytesAt(source: Blob, position: number, count: number): Pr
 const u16 = (b: Uint8Array, at: number): number => b[at] | (b[at + 1] << 8);
 const u32 = (b: Uint8Array, at: number): number => (u16(b, at) | (u16(b, at + 2) << 16)) >>> 0;
 
+/**
+ * An opened ZIP: its central directory, and one entry at a time read on demand with a size limit.
+ * No constructor is public: `ZipFile.open` validates the end record and the directory first.
+ */
 export class ZipFile {
   private readonly byName: ReadonlyMap<string, ZipEntryInfo>;
 

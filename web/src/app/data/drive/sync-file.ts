@@ -27,13 +27,19 @@
 
 /** The four lists, in the order they are written and merged. A row's key is its `id`; a record's is `type/id`. */
 export type SyncKind = 'houses' | 'visits' | 'records' | 'photos';
+/** The row kinds of a sync file, in write and merge order. */
 export const SYNC_KINDS: readonly SyncKind[] = ['houses', 'visits', 'records', 'photos'];
 
 /** The most rows each list may hold (tombstones included, they are kept for ever). */
 export const SYNC_MAX_ROWS_OF: Readonly<Record<SyncKind, number>> = { houses: 20_000, visits: 50_000, records: 50_000, photos: 50_000 };
 
+/** The format tag of a sync file, version 1. */
 export const SYNC_FORMAT = 'doorprints-sync/1';
+/**
+ * The tag every sync format version starts with: a higher version is refused as made by a newer Doorprints, anything else as not a sync file.
+ */
 export const SYNC_FORMAT_PREFIX = 'doorprints-sync/';
+/** The newest sync format version this app reads. */
 export const SYNC_MAX_VERSION = 1;
 /** The cap of the decompressed JSON, in UTF-8 bytes: the backup's `data.json` cap (docs/schemas §7). */
 export const SYNC_MAX_BYTES = 16 * 1024 * 1024;
@@ -107,6 +113,9 @@ const ID = /^[A-Za-z0-9._-]{1,64}$/;
 const TYPE = /^[a-z][a-zA-Z0-9]{0,39}$/;
 const ISO = /^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})(?:\.([0-9]{1,9}))?Z$/;
 
+/**
+ * Whether the value looks like a device id (8 to 64 URL-safe characters); device ids come from other devices' files, so they are checked before use.
+ */
 export function isDeviceId(value: unknown): value is string {
   return typeof value === 'string' && DEVICE_ID.test(value);
 }

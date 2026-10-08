@@ -104,6 +104,7 @@ export function formatDecimal(value: number | null | undefined, digits = 1): str
   return fixed(value, digits);
 }
 
+/** A whole number for a readable copy; an en dash when nothing is recorded. */
 export function formatInt(value: number | null | undefined): string {
   if (value === null || value === undefined || !Number.isFinite(value)) return '–';
   return Math.round(value).toString();
@@ -135,6 +136,7 @@ export function isoUtc(iso: string | null | undefined): string {
   return date ? date.toISOString() : '';
 }
 
+/** The date for an ISO string, or null when it is missing or unparsable. */
 export function toDate(iso: string | null | undefined): Date | null {
   if (!iso) return null;
   const ms = Date.parse(iso);

@@ -49,8 +49,11 @@ export interface RetentionResult {
   readonly hold: ShrinkHold | null;
 }
 
+/** Newest backups kept per day (seven days). */
 export const RETENTION_DAILY = 7;
+/** Backups kept per week after the daily ones (four weeks). */
 export const RETENTION_WEEKLY = 4;
+/** Backups kept per month after the weekly ones (six months). */
 export const RETENTION_MONTHLY = 6;
 
 const DAY_MS = 86_400_000;

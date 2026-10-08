@@ -34,6 +34,7 @@ export interface NetworkConditions {
   readonly dataSaver: boolean;
 }
 
+/** No network. */
 export const OFFLINE: NetworkConditions = { online: false, metering: 'UNKNOWN', roaming: false, dataSaver: false };
 
 /** Where the policy gets the network from: here the website's `navigator.connection` ({@link webNetworkState}). */
@@ -44,6 +45,7 @@ export interface PhotoSettings {
   readonly uploadOnMobileData: boolean;
 }
 
+/** Photos upload on Wi-Fi only until the person turns mobile data on. */
 export const DEFAULT_PHOTO_SETTINGS: PhotoSettings = { uploadOnMobileData: false };
 
 /** How long a one-off grant lasts (30 minutes). */
@@ -59,12 +61,14 @@ export function grantActive(grant: OneOffGrant, now: number): boolean {
   return now >= grant.grantedAt && now < grant.grantedAt + ONE_OFF_TTL_MS;
 }
 
+/** Why photo upload is allowed or waiting; the screens map it to a status line. */
 export type PhotoAllowReason =
   | 'OFFLINE' | 'UNMETERED' | 'MOBILE_DATA_SETTING' | 'ONE_OFF' | 'WAITING_METERED' | 'WAITING_ROAMING' | 'WAITING_DATA_SAVER';
 
 /** What the status line says about photos: *Waiting for Wi-Fi*, *Uploading*, *Paused (offline)*, *Done*. */
 export type PhotoNetworkStatus = 'WAITING_FOR_WIFI' | 'UPLOADING' | 'PAUSED_OFFLINE' | 'DONE';
 
+/** Whether photo bytes may move now, and why. */
 export interface PhotoNetworkDecision {
   readonly allowed: boolean;
   readonly reason: PhotoAllowReason;
@@ -128,6 +132,7 @@ export function webNetworkConditions(nav: { readonly onLine?: boolean; readonly 
   return { online, metering, roaming: false, dataSaver: c?.saveData === true };
 }
 
+/** Reads the browser's network state at call time. */
 export const webNetworkState: NetworkState = () =>
   webNetworkConditions(typeof navigator === 'undefined' ? undefined : (navigator as unknown as { onLine?: boolean; connection?: ConnectionLike }));
 

@@ -78,11 +78,17 @@ export type Cell =
   /** An instant, rendered in UTC. */
   | { readonly kind: 'stamp'; readonly epochMillis: number };
 
+/** The cell for "nothing recorded". */
 export const BLANK: Cell = { kind: 'blank' };
+/** A text cell. */
 export const cellText = (value: string): Cell => ({ kind: 'text', value });
+/** A number cell with a fixed number of decimals. */
 export const cellNum = (value: number, decimals = 0): Cell => ({ kind: 'num', value, decimals });
+/** A whole-count cell. */
 export const cellCount = (value: number): Cell => ({ kind: 'count', value });
+/** A rupee-amount cell. */
 export const cellMoney = (amount: number): Cell => ({ kind: 'money', amount });
+/** A timestamp cell (epoch milliseconds, rendered in UTC). */
 export const cellStamp = (epochMillis: number): Cell => ({ kind: 'stamp', epochMillis });
 
 /**
@@ -148,6 +154,9 @@ export function rankOf(bundle: ExportBundle, houseId: string): number {
   return index < 0 ? 0 : index + 1;
 }
 
+/**
+ * The houses table: one row per house of the copy: rank, score, price, address, contacts (only when they are included), notes, cost values and visit and photo counts. Every format writes its houses from this.
+ */
 export function housesTable(bundle: ExportBundle): ExportTable {
   const s = stringsOf(bundle);
   const contacts = bundle.options.includeContacts;
@@ -352,6 +361,9 @@ export function ratingShareLine(bundle: ExportBundle): string {
   return `${stringsOf(bundle).get('col.ratingShare')} ${Math.round(bundle.scoring.ratingShare * 100)}%`;
 }
 
+/**
+ * The visits table: one row per visit of the houses in the copy, with its duration in whole minutes when the visit has finished.
+ */
 export function visitsTable(bundle: ExportBundle): ExportTable {
   const s = stringsOf(bundle);
   const columns = [
@@ -381,6 +393,9 @@ export function visitsTable(bundle: ExportBundle): ExportTable {
   return { name: 'visits', title: s.get('table.visits'), columns, rows };
 }
 
+/**
+ * The photos table: one row per photo, with the file name the backup ZIP stores it under. The bytes are not in the table.
+ */
 export function photosTable(bundle: ExportBundle): ExportTable {
   const s = stringsOf(bundle);
   const columns = [

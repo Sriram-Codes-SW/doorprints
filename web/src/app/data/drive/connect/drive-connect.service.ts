@@ -46,12 +46,21 @@ import type {
 import { MemoryStagingSink } from './local/import-sink';
 import { DeleteFlow } from './delete-flow';
 
+/** Injection token for the adapter that connects the folder and makes, lists and imports backups. */
 export const DRIVE_BACKUP_ADAPTER = new InjectionToken<DriveBackupAdapter>('DRIVE_BACKUP_ADAPTER');
+/** Injection token for the adapter that runs sync passes and photo uploads. */
 export const DRIVE_SYNC_ADAPTER = new InjectionToken<DriveSyncAdapter>('DRIVE_SYNC_ADAPTER');
+/** Injection token for the adapter that plans, authorises and runs Drive deletions. */
 export const DRIVE_DELETION_ADAPTER = new InjectionToken<DriveDeletionAdapter>('DRIVE_DELETION_ADAPTER');
 
+/**
+ * Where the Drive card stands: unconfigured, signed out, connecting, waiting for a recovery key or enrolment, showing the first recovery key, ready, or failed.
+ */
 export type ConnectState = 'Unavailable' | 'Disconnected' | 'Connecting' | 'NeedsRecoveryKey' | 'NeedsEnrolment' | 'FirstConnectShowRecoveryKey' | 'Ready' | 'Error';
 
+/**
+ * The outcome of a connect step: the new state, the recovery key to show once (first connect only) or a translation key for the error.
+ */
 export interface ConnectResult {
   readonly state: ConnectState;
   readonly recoveryKey?: string;
@@ -59,6 +68,7 @@ export interface ConnectResult {
   readonly error?: TKey;
 }
 
+/** One backup as the list shows it. */
 export interface BackupSummary {
   readonly id: string;
   readonly createdAt: number;
@@ -67,6 +77,7 @@ export interface BackupSummary {
   readonly name: string;
 }
 
+/** The last sync result as the card shows it: state, time, skipped files and whether a confirmation is needed. */
 export interface SyncInfo {
   readonly state: SyncAdapterStatus['state'];
   readonly lastSyncAt: number | null;
@@ -75,6 +86,7 @@ export interface SyncInfo {
   readonly needsShrinkConfirmation?: string; // backupId if present
 }
 
+/** The photos waiting to upload and the network settings that govern them. */
 export interface PhotoPendingInfo {
   readonly bytes: number | null;
   readonly settings: Readonly<PhotoSettings>;
@@ -93,11 +105,6 @@ export type DeleteRun =
   | { readonly ok: true; readonly finished: boolean; readonly left: number; readonly total: number }
   | { readonly ok: false; readonly reason: string };
 
-/**
- * Orchestrates Google Drive connection, backup, import, sync, photos, and deletion for the Connect page.
- * Provides a single, typed API delegating to adapters with proper error handling and state management.
- * S4b-BL-117, S4b-BL-73, docs/15 §9.4.
- */
 const AUTO_BACKUP_KEY = 'doorprints.drive.autoBackup';
 /** A passkey setup in this browser returned no PRF output, and its step list (no secrets): kept so a reload does not forget it. */
 const NO_PRF_KEY = 'doorprints.drive.passkeyNoPrf';
@@ -108,6 +115,7 @@ export interface DrivePrefs {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
 }
+/** Injection token for where the card keeps its per-device preferences. */
 export const DRIVE_PREFS = new InjectionToken<DrivePrefs>('DRIVE_PREFS');
 
 function browserPrefs(): DrivePrefs {
@@ -121,6 +129,10 @@ function browserPrefs(): DrivePrefs {
 /** Makes the Full backup ZIP of the app's data for one Drive backup run. */
 export const DRIVE_BACKUP_SOURCE = new InjectionToken<BackupSource>('DRIVE_BACKUP_SOURCE');
 
+/**
+ * The one object the Connect page talks to for Google Drive: connecting and enrolling this browser, backups, import, sync, photo upload, device management and deletion.
+ * It keeps the card's state and turns every adapter result into a typed value or a translation key, never an English string, and logs no tokens or keys. The work itself is done by the backup, sync and deletion adapters (S4b-BL-117, S4b-BL-73, docs/15 §9.4).
+ */
 @Injectable()
 export class DriveConnectService {
   private readonly state = signal<ConnectState>('Unavailable');
@@ -175,6 +187,9 @@ export class DriveConnectService {
 
   // ==================== Connection Flow ====================
 
+  /**
+   * Signs in and opens this device's Drive folder; the result says whether it is ready or needs a recovery key, an enrolment, or a first-time setup.
+   */
   async connect(): Promise<ConnectResult> {
     if (!this.isConfigured) {
       return { state: 'Unavailable', error: 'driveConnect.notConfigured' };
@@ -193,6 +208,9 @@ export class DriveConnectService {
     return this.connect();
   }
 
+  /**
+   * Creates the encrypted folder for a first connect; the recovery key comes back once, in the result, and is not stored.
+   */
   async createFolder(): Promise<ConnectResult> {
     try {
       const outcome = await this.backupAdapter.createFolder();
@@ -215,6 +233,7 @@ export class DriveConnectService {
     }
   }
 
+  /** Opens an existing folder from a typed recovery key; a mistyped key is refused before anything is sent to Drive. */
   async openWithRecoveryKey(recoveryKeyText: string): Promise<ConnectResult> {
     try {
       // The typed text is parsed strictly (check character, confusable letters, case, hyphens): a typo is refused here.
@@ -307,6 +326,7 @@ export class DriveConnectService {
 
   // ==================== Backup & Listing ====================
 
+  /** The folder's verified backups, newest first, and whether a newer one this device has seen is missing. */
   async listBackups(): Promise<
     | { readonly ok: true; readonly backups: BackupSummary[]; readonly missingNewer: boolean }
     | { readonly ok: false; readonly reason: TKey }
@@ -332,6 +352,7 @@ export class DriveConnectService {
 
   // ==================== Import ====================
 
+  /** Downloads and decrypts one backup into memory and returns it as a file; nothing is imported here. */
   async importFromDrive(
     backupId: string,
   ): Promise<
@@ -377,6 +398,9 @@ export class DriveConnectService {
 
   // ==================== Backup Operations ====================
 
+  /**
+   * Makes one encrypted backup now and applies retention. The result says if retention paused pruning because the backup is much smaller than before (the person must confirm) or if a newer backup is missing.
+   */
   async backUpNow(): Promise<
     | { readonly ok: true; readonly backup: BackupSummary; readonly needsShrinkConfirmation: boolean; readonly missingNewer: boolean }
     | { readonly ok: false; readonly reason: TKey }
@@ -419,6 +443,9 @@ export class DriveConnectService {
 
   // ==================== Sync ====================
 
+  /**
+   * Runs one sync pass; errors become a result with state `error`, and `needsConfirmation` tells the card the person must confirm first.
+   */
   async syncNow(
     opts?: { confirmShrink?: boolean },
   ): Promise<
@@ -826,6 +853,7 @@ export class DriveConnectService {
 
   // ==================== Cleanup ====================
 
+  /** Forgets this session's folder and results; files in Drive are untouched. */
   async disconnect(): Promise<void> {
     this.readyFolder = null;
     this.lastSyncResult = null;

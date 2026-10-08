@@ -40,6 +40,9 @@ export interface RegistrationPrf {
   output: Uint8Array;
 }
 
+/**
+ * The passkey seam: checks PRF support, makes a passkey and evaluates the PRF with a user verification. The browser implementation is `WebAuthnPrfAuthenticator`; tests use a fake.
+ */
 export interface PrfAuthenticator {
   /** A platform authenticator with the PRF extension is usable in this browser. */
   isSupported(): Promise<boolean>;
@@ -76,6 +79,9 @@ export interface PrfAuthenticator {
   builtInAuthenticatorAvailable?(): Promise<boolean | null>;
 }
 
+/**
+ * A secret sealed under a passkey's PRF output: opening it needs a fresh user verification, so a stolen copy of the blob is useless.
+ */
 export interface SealedBlob {
   v: 1;
   credentialId: Uint8Array;
@@ -85,6 +91,7 @@ export interface SealedBlob {
   ciphertext: Uint8Array;
 }
 
+/** The result of opening a sealed blob: the plaintext, or a typed failure (WRONG_KEY means the tag did not verify). */
 export type SealOpen =
   | { ok: true; plaintext: Uint8Array }
   | {
@@ -122,6 +129,9 @@ export function sealedBlobFromJson(text: string): SealedBlob | null {
 const INFO = utf8("doorprints/device-seal/1");
 const SALT_PREFIX = utf8("doorprints/device-seal/1/prf-salt");
 
+/**
+ * The AES key that seals or opens a blob: HKDF over the PRF output with the blob's salt. The derived raw bytes are wiped after the key is imported.
+ */
 async function sealKey(
   p: CryptoProvider,
   prfOutput: Uint8Array,
@@ -174,6 +184,10 @@ export async function prfOutputSeals(output: Uint8Array, salt: Uint8Array): Prom
   return !forged;
 }
 
+/**
+ * Seals [plaintext] under a key derived from the passkey's PRF output and a fresh salt, or fails with a typed reason.
+ * Refuses outputs that are all zero or equal to the salt or the public client salt (an authenticator that only echoes its input), and wipes the PRF output when done.
+ */
 export async function sealWithPrf(
   p: CryptoProvider,
   prf: PrfAuthenticator,

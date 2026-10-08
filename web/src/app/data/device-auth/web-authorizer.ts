@@ -31,6 +31,7 @@ import { recoveryProofKey } from "./recovery-factor";
 import type { RecoveryKey } from "../crypto/recovery-key";
 import type { CryptoProvider } from "../crypto/crypto-provider";
 
+/** One authorisation the website issued for one action; redeemed at most once. */
 export interface WebGrant {
   readonly id: number;
   readonly action: DeletionAction;
@@ -38,6 +39,7 @@ export interface WebGrant {
   readonly grantedAtMs: number;
 }
 
+/** The result of asking for an authorisation: granted, refused by policy, or denied by the passkey step. */
 export type WebAuthorization =
   | { kind: "GRANTED"; grant: WebGrant }
   | { kind: "REFUSED"; reason: RefusalReason }
@@ -46,6 +48,7 @@ export type WebAuthorization =
       reason: "CANCELLED" | "NOT_SUPPORTED" | "FAILED" | "WRONG_KEY";
     };
 
+/** The result of redeeming a grant: its freshness, or why it cannot be used (wrong action, already used, never issued). */
 export type WebRedeemed = GrantCheck | "WRONG_ACTION" | "ALREADY_USED" | "NOT_ISSUED";
 
 /**
