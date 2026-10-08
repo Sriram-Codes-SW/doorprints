@@ -89,6 +89,22 @@ class RecordApiTest {
         api.delete().uri("/api/data").header("X-Confirm-Delete", "DELETE-ALL-MY-DATA").retrieve().toBodilessEntity();
     }
 
+    /** S4b-BL-162: the database picks the live viewings of one house; another house's, tombstones and other types stay out. */
+    @Test
+    void findLiveViewingsOfHouseSelectsInTheDatabaseByTheHouseIdInThePayload() {
+        var mine = UUID.randomUUID();
+        var other = UUID.randomUUID();
+        put("viewing", "v_a", "{\"houseId\":\"" + mine + "\",\"startsAt\":1790501400000}", null, false);
+        put("viewing", "v_b", "{\"houseId\":\"" + other + "\",\"startsAt\":1790501400000}", null, false);
+        put("viewing", "v_c", "{\"houseId\":\"" + mine + "\",\"startsAt\":1790501500000}", null, false);
+        put("viewing", "v_d", "{\"houseId\":\"" + mine + "\",\"startsAt\":1790501600000}", null, true);
+        put("note", "x_1", "{\"houseId\":\"" + mine + "\"}", null, false);
+
+        assertThat(repo.findLiveViewingsOfHouse(mine.toString())).extracting(r -> r.getKey().id())
+                .containsExactlyInAnyOrder("v_a", "v_c");
+        assertThat(repo.findLiveViewingsOfHouse(UUID.randomUUID().toString())).isEmpty();
+    }
+
     @Test
     void putStoresThePayloadOpaquelyAndTheFeedReturnsItAfterTheCursor() {
         var before = maxSyncVersion();
