@@ -55,6 +55,8 @@ import java.util.regex.Pattern;
  * </ul>
  * Both methods also remove:
  * <ul>
+ *   <li>any email address ({@code name@host.tld}), whole, before the name rules run (so not {@code [contact]@host.tld});
+ *       URLs and bare {@code @handles} are not touched;</li>
  *   <li>the saved contact phone, whatever the separators ({@code 98450-12345} for {@code +91 98450 12345}), when it
  *       has 8 or more digits;</li>
  *   <li>anything else that looks like a phone number: {@code +<country code>...}, Indian mobiles
@@ -63,13 +65,15 @@ import java.util.regex.Pattern;
  *       ({@code 2500000}, {@code 1,20,00,000}) are left alone.</li>
  * </ul>
  * Name matching is case-insensitive and on word boundaries (Indic scripts included), so "Rameshwaram" is kept.
- * Placeholders are {@value #CONTACT} and {@value #PHONE}. This is best effort for free text (a name spelled
- * differently in a note is not caught); the structured contact fields are never sent at all.
+ * Placeholders are {@value #CONTACT}, {@value #PHONE} and {@value #EMAIL}. This is best effort for free text (a name
+ * spelled differently, a handle or a nickname in a note is not caught; a name part that is also an ordinary word is
+ * replaced wherever it appears); the structured contact fields are never sent at all.
  */
 public final class ContactRedactor {
 
     public static final String CONTACT = "[contact]";
     public static final String PHONE = "[phone]";
+    public static final String EMAIL = "[email]";
 
     /** Line prefix under which documents indexed before the fix stored the contact name. */
     private static final Pattern STORED_CONTACT_LINE = Pattern.compile("(?im)^[ \\t]*Contact[ \\t]*:.*(?:\\R|$)");
@@ -82,6 +86,14 @@ public final class ContactRedactor {
                     + "|0\\d{2,4}[ \\-]?\\d{3,4}[ \\-]?\\d{3,4}"          // STD code + landline
                     + "|\\d{10,15}"                                     // long digit run
                     + ")(?!" + WORD + ")");
+    /**
+     * An email address: local part (letters, digits, {@code ._%+-}), {@code @}, a dotted domain. A URL or a bare
+     * handle is not one. The lookbehind makes the match start at the front of a run (linear time, and a long local
+     * part goes whole).
+     */
+    private static final Pattern EMAIL_LIKE = Pattern.compile(
+            "(?<![\\p{L}\\p{M}\\p{N}._%+-])[\\p{L}\\p{M}\\p{N}._%+-]+@[\\p{L}\\p{N}-]+(?:\\.[\\p{L}\\p{N}-]+)+"
+                    + "(?![\\p{L}\\p{M}\\p{N}])");
     private static final Set<String> HONORIFICS = Set.of("mr", "mrs", "ms", "miss", "dr", "sri", "shri", "smt",
             "kumari", "sir", "madam", "uncle", "aunty", "auntie", "anna", "akka", "ji", "garu", "owner", "broker",
             "agent", "landlord", "the", "and");
@@ -111,10 +123,10 @@ public final class ContactRedactor {
         return forContact(contactName, contactPhone).freeText(withoutLine);
     }
 
-    /** Only the generic phone-number rule, for text with no known contact. */
-    public static String redactPhones(String text) {
+    /** Only the generic rules (phone-like numbers, then email addresses), for text with no known contact. */
+    public static String redactGeneric(String text) {
         if (text == null || text.isEmpty()) return text;
-        return PHONE_LIKE.matcher(text).replaceAll(PHONE);
+        return EMAIL_LIKE.matcher(PHONE_LIKE.matcher(text).replaceAll(PHONE)).replaceAll(EMAIL);
     }
 
     /**
@@ -184,7 +196,7 @@ public final class ContactRedactor {
          */
         public String place(String s) {
             if (s == null || s.isEmpty()) return s;
-            var out = phones(s);
+            var out = generic(s);
             for (var p : fullName) out = p.matcher(out).replaceAll(CONTACT);
             return out;
         }
@@ -200,9 +212,10 @@ public final class ContactRedactor {
             return out;
         }
 
-        private String phones(String s) {
+        /** The rules that need no name: the saved phone, phone-like numbers, then email addresses (before the name parts). */
+        private String generic(String s) {
             var out = savedPhone == null ? s : savedPhone.matcher(s).replaceAll(PHONE);
-            return PHONE_LIKE.matcher(out).replaceAll(PHONE);
+            return EMAIL_LIKE.matcher(PHONE_LIKE.matcher(out).replaceAll(PHONE)).replaceAll(EMAIL);
         }
 
         /** {@code regex} on word boundaries (Indic scripts included), case-insensitive. */

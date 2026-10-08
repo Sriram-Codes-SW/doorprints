@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.77 |
+| Version | 0.78 |
 | Date | 2026-10-08 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -86,6 +86,7 @@
 | 0.75 | 2026-10-07 | Claude (Code), lead | **ADR-35: the optional eval path is built** (S4b-BL-153): the manual *AI evals* workflow runs the golden set through the website's adapters against a provider the owner picks, with the secret `AI_EVAL_API_KEY`; nothing about it reaches the product or a user's data. |
 | 0.76 | 2026-10-08 | Claude (Code) | **§10.4: import batching, one lock per transaction and the error text** (S4b-BL-159): `SyncVersions.lock()` takes the advisory lock once per transaction and `next()` does not flush; the importer works in chunks of 500 with JDBC batches of 100; `BadRequestException` is the only `IllegalArgumentException` whose text a client reads; the AI handler logs no provider message. |
 | 0.77 | 2026-10-08 | Claude (Code) | **§13.2 and ADR-35: how the providers are tested without keys** (S4b-BL-175, [10](10-sprint-log.md) v0.175, [06](06-test-plan.md) TC-AI-24 and TC-AI-25): a fake provider server (`tools/fake-ai-provider`), the real Kotlin and TypeScript clients run against it over a socket, a Chromium CORS check, and the manual keyless suite `local-model` (Ollama on the runner); what it does not prove; three findings recorded as documented gaps (F1 forced `tool_choice`, F2 redirect wording, F3 `Retry-After` across origins). |
+| 0.78 | 2026-10-08 | Claude (Code) | **§13.1 (ADR-26): the on-device redaction also replaces email addresses** (S4b-BL-179 (email addresses) and S4b-BL-180 (name parts that are ordinary words)), in step with the server and the shared vectors. No ADR decision changes. |
 | 0.58 | 2026-10-01 | Claude (Code), lead | §11.1: the Survey of India's reply of 2026-10-01 (no prior permission for its Administrative Boundary Database; no alteration or modification; acknowledgement; National Geospatial Policy 2022 guidelines) and what it means for ADR-22 ([ops/soi-boundary-data-request.md](ops/soi-boundary-data-request.md) v0.5, [10](10-sprint-log.md) S4b-BL-111). |
 | 0.57 | 2026-10-01 | Claude (Code), lead | The finishing batch ([10](10-sprint-log.md) §13.29..§13.39, on stacked branches): §6.1 `house.move_in` (V11), the photo's room, tags, caption and `meta_updated_at` (V12), `house.floor` (V13), the statuses TAKEN and NOT_CHOSEN; §8.1 the two statuses; §9 `PUT /api/photos/{id}/meta` and `/3` on `/api/import`; §11.2 the website's offline tiles; new **ADR-29** (deletions in an update file, `doorprints-backup/3`), **ADR-30** (offline tiles on the website through `addProtocol` over Cache Storage), **ADR-31** (search engines: one indexable page, `noindex` by default), **ADR-32** (accessibility rules and their automated checks); new **§17**, the smaller decisions of the batch (copies in UTC, seeded records stamped 2000-01-01, Hunt alerts `VISIBILITY_SECRET` with the app lock, the status colours, the locality lookup on the tap only, the iPhone's wake-up notification, import caps). |
 
@@ -1385,7 +1386,7 @@ Gemini from this phone"); the local limit of 10 AI requests a minute. **Moved fr
 on-device AI, with the server's behaviour as the specification:** `PromptSafety` (nonce-tagged delimiters, stripped
 look-alike tags and control characters), the three prompts word for word, `DraftSanitizer` (phone and URL must appear in
 the pasted text, price and bedroom parsing, caps and warnings), `ContactRedactor` and `HouseDocuments` (no contact
-line, the saved name and phone and phone-like numbers replaced), the citation checks (inline `[house:<id>]` markers
+line, the saved name and phone, phone-like numbers and email addresses replaced), the citation checks (inline `[house:<id>]` markers
 win, only houses that were sent may be cited, `grounded` only with a citation, the refusal sentence exact) and
 `RouteOptimizer` (haversine, ×1.3 detour, 80 m a minute, nearest neighbour, the same fallback wording). The server
 keeps its own copies; shared test vectors (the golden set's fixtures, redaction and sanitizer cases in one JSON file)

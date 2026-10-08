@@ -26,13 +26,15 @@ package app.doorprints.shared.ai
  * [Redactor.freeText] for what the user types freely (label, checklist keys, listing URL, notes): the whole saved name
  * and every name part of 3+ letters that is not an honorific. [Redactor.place] for address, street and locality: the
  * whole name only, so "Kumar Park" survives. Both remove the saved phone (8+ digits, any separators) and anything that
- * looks like a phone number. Placeholders [CONTACT] and [PHONE].
+ * looks like a phone number or an email address (the address goes whole, before the name parts). Placeholders [CONTACT],
+ * [PHONE] and [EMAIL].
  *
  * Written without character-class intersections and `\R`, which Kotlin/Native's regex does not share with the JVM.
  */
 object ContactRedactor {
     const val CONTACT = "[contact]"
     const val PHONE = "[phone]"
+    const val EMAIL = "[email]"
 
     /** Line prefix under which documents indexed before the fix stored the contact name. */
     private val STORED_CONTACT_LINE =
@@ -46,6 +48,15 @@ object ContactRedactor {
             "|0\\d{2,4}[ \\-]?\\d{3,4}[ \\-]?\\d{3,4}" + // STD code + landline
             "|\\d{10,15}" + // long digit run
             ")(?!$WORD)",
+    )
+
+    /**
+     * An email address: local part (letters, digits, `._%+-`), `@`, a dotted domain. A URL or a bare handle is not one.
+     * The lookbehind makes the match start at the front of a run (linear time, and a long local part goes whole).
+     */
+    private val EMAIL_LIKE = Regex(
+        "(?<![\\p{L}\\p{M}\\p{N}._%+-])[\\p{L}\\p{M}\\p{N}._%+-]+@[\\p{L}\\p{N}-]+(?:\\.[\\p{L}\\p{N}-]+)+" +
+            "(?![\\p{L}\\p{M}\\p{N}])",
     )
     private val HONORIFICS = setOf(
         "mr", "mrs", "ms", "miss", "dr", "sri", "shri", "smt", "kumari", "sir", "madam", "uncle", "aunty", "auntie",
@@ -63,8 +74,9 @@ object ContactRedactor {
         return forContact(contactName, contactPhone).freeText(STORED_CONTACT_LINE.replace(text, ""))
     }
 
-    /** Only the generic phone-number rule, for text with no known contact. */
-    fun redactPhones(text: String?): String? = if (text.isNullOrEmpty()) text else PHONE_LIKE.replace(text, PHONE)
+    /** Only the generic rules (phone-like numbers, then email addresses), for text with no known contact. */
+    fun redactGeneric(text: String?): String? =
+        if (text.isNullOrEmpty()) text else EMAIL_LIKE.replace(PHONE_LIKE.replace(text, PHONE), EMAIL)
 
     /** Redacts one house's contact name and phone from text; made with [forContact]. */
     class Redactor internal constructor(contactName: String?, contactPhone: String?) {
@@ -100,7 +112,7 @@ object ContactRedactor {
         /** Place fields (address, street, locality): the whole name, the saved phone and phone-like numbers. */
         fun place(s: String?): String? {
             if (s.isNullOrEmpty()) return s
-            var out = phones(s)
+            var out = generic(s)
             for (p in fullName) out = p.replace(out, CONTACT)
             return out
         }
@@ -113,9 +125,10 @@ object ContactRedactor {
             return out
         }
 
-        private fun phones(s: String): String {
+        /** The rules that need no name: the saved phone, phone-like numbers, then email addresses (before the name parts). */
+        private fun generic(s: String): String {
             val out = savedPhone?.replace(s, PHONE) ?: s
-            return PHONE_LIKE.replace(out, PHONE)
+            return EMAIL_LIKE.replace(PHONE_LIKE.replace(out, PHONE), EMAIL)
         }
 
         private companion object {

@@ -29,6 +29,7 @@
 | v0.25   | 2026-10-07 | Claude (Code), lead           | 8.1: **the optional own-provider evals** (S4b-BL-153): `ai-evals.yml` gains the suite `own-provider` and the inputs `ai_kind`, `ai_base_url`, `ai_model`; the golden set runs through the website's own TypeScript adapters against a real provider with the repository secret `AI_EVAL_API_KEY`, and says `skipped: no key` without it. How to set the secret is in 8.1. Reported, not gating; not yet run on a real provider. |
 | v0.26   | 2026-10-08 | Claude (Code), lead           | 8.1: the `own-provider` suite with `ai_kind` gemini falls back to the repository secret `AI_API_KEY` (the one the other suites use) when `AI_EVAL_API_KEY` is not set, so the owner's existing Gemini key runs it without a second secret. Other kinds still need `AI_EVAL_API_KEY`. |
 | v0.27   | 2026-10-08 | Claude (Code), lead           | 8.1: **the keyless suite `local-model`** (S4b-BL-175): `ai-evals.yml` runs the golden set through the website's openai-compatible adapter against a small model that Ollama (a pinned release, sha256 verified) runs on the runner, with no key; `ai-eval.ts` runs a key-less setting for an openai-compatible server on localhost. Not yet run. |
+| v0.28   | 2026-10-08 | Claude (Code), lead           | 9.1: the generic layer also removes email addresses (`[email]`; S4b-BL-179) in all three stacks, before the name parts; Limits say a handle is not caught and that a name part that is an ordinary word is replaced everywhere, on purpose (S4b-BL-180, owner decision). Extraction still sends the pasted text as pasted. |
 
 Status: implemented in `backend/` (package `app.doorprints.server.ai`), **off by default**. Not yet compiled in this
 sandbox (no Maven Central access) — CI compiles and runs the tests. Provider: AI Studio by default, Vertex AI with
@@ -925,17 +926,19 @@ Rules (`ContactRedactor.Redactor`), all case-insensitive and on word boundaries 
   "Ramesh K"; saved "A. K. Sharma" removes "C/o A K Sharma", "A.K.Sharma", "AK Sharma" and "Sharma A K". The
   initials are required in place fields, so "Ramesh Layout" and "Sharma Nagar" are kept.
 - **Both:** the saved phone (when it has 8+ digits) with any separators, with or without the country code; and any phone-like number
-  (`+<cc>…`, Indian mobiles, STD-code landlines, 10-15-digit runs). Dates, prices and PIN codes are kept.
+  (`+<cc>…`, Indian mobiles, STD-code landlines, 10-15-digit runs) and any email address (`[email]`: `local@domain.tld`,
+  taken whole before the name parts, so never `[contact]@domain.tld`). Dates, prices and PIN codes are kept; a URL and a
+  bare `@handle` are not touched (notes legitimately hold portal links, and `28k @ month` is not an address).
 
-Placeholders `[contact]` / `[phone]`.
+Placeholders `[contact]` / `[phone]` / `[email]`.
 
 **Not changed.** The contact stays in the database and the normal house API (`/api/houses`), so the web and Android
 apps still show and edit it. Listing extraction (DF-27) still sends the text the user pastes, which may contain a
 contact, because extracting it is the feature; that is the user's explicit action and is disclosed.
 
 **Limits.** Free-text redaction is best effort: a nickname or a different spelling of the name in a note is not
-caught, a 7-9-digit local number that is not the saved phone is kept, and over-redaction is possible (a 10-digit
-listing id in a URL becomes `[phone]`, a word in a label or URL that equals a name part becomes `[contact]`). Place
+caught, a handle (`@name`) is not caught, a 7-9-digit local number that is not the saved phone is kept, and over-redaction is possible (a 10-digit
+listing id in a URL becomes `[phone]`, a word in a label or URL that equals a name part becomes `[contact]`). A name part that is also an ordinary word (Rose, Will, Gold) is replaced wherever it appears in free text; over-redaction is the chosen failure. Place
 fields keep single name parts on purpose, so a street or locality written with only the contact's first name
 ("Ramesh Layout" for contact "Ramesh Kumar") still reaches the provider; the whole name is removed there too (in
 order or reversed; a middle part in between, "Ramesh S. Kumar" for saved "Ramesh Kumar", is not caught there).
@@ -963,7 +966,7 @@ in pgvector (the database, not the provider); `RagService`
 scrubs chunk text and labels with `freeText()` before any prompt or citation, and `POST /api/ai/reindex` once after
 deploying replaces them.
 
-**Tests.** `ContactRedactorTest` (rules, Indic names, initials-style names such as "K. Ramesh" and "A. K. Sharma", phone formats, dates/prices untouched, legacy chunks),
+**Tests.** `ContactRedactorTest` (rules, Indic names, initials-style names such as "K. Ramesh" and "A. K. Sharma", phone formats, email addresses, name parts that are ordinary words, dates/prices untouched, legacy chunks),
 `HouseDocumentsTest` (embedding text and metadata contain no name/phone even when typed into label, address,
 checklist or notes; a label "Ramesh's 2BHK" loses the first name in text and `label` metadata; a "C/o Ramesh Kumar"
 address, street and locality for saved "Mr. Ramesh Kumar" lose the name in text and `locality` metadata),
