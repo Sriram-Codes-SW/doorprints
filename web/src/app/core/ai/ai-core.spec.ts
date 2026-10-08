@@ -20,7 +20,7 @@ import { describe, expect, it } from 'vitest';
 import vectors from './parity-vectors.json';
 import {
   AiHouse, CONTACT, FALLBACK_SUMMARY, I_DONT_KNOW, Redactor, askPrompt, assemblePlan, candidateLines, citations,
-  extractionPrompt, houseText, inlineIds, legsInOrder, nearestNeighbour, nonce, redactGeneric, roundHalfUp,
+  cleanAnswer, extractionPrompt, houseText, inlineIds, legsInOrder, nearestNeighbour, nonce, redactGeneric, roundHalfUp,
   planPrompt, sanitizeDraft, scrubStoredText, selectForAsk, selectForPlan, snippet, wrap, type RawListing, type PlanCandidate,
 } from './ai-core';
 import { inTheRunning } from '../../shared/house-status';
@@ -120,6 +120,12 @@ describe('AI core parity with the server', () => {
     const routes = vectors.routes as Route[];
     expect(routes).toHaveLength(8);
     for (const r of routes) walks(r);
+  });
+
+  it('cleans a model answer as the server does: links and images lose their address, a foreign address goes (S4b-BL-178)', () => {
+    const cases = vectors.answerText as { context: string; input: string; expected: string }[];
+    expect(cases).toHaveLength(23);
+    for (const c of cases) expect(cleanAnswer(c.input, c.context), c.input.slice(0, 80)).toBe(c.expected);
   });
 
   it('keeps the same statuses in the running as the server does (S4b-BL-99 a)', () => {
@@ -404,5 +410,34 @@ describe('AI core (what the vectors do not cover)', () => {
     expect(built.user.startsWith(`<houses-abc123>\n[house:${a}]\nHouse: A\n</houses-abc123>\n\nQuestion: Which is best?`)).toBe(true);
     expect(built.system).toContain(`reply exactly: "${I_DONT_KNOW}"`);
     expect(extractionPrompt('x', 'abc123').system.endsWith('"power backup".\n')).toBe(true);
+  });
+
+  it('cleans an answer in linear time, whatever the brackets and addresses look like (S4b-BL-178)', () => {
+    const hostile = ['[', '![', '[a](', '](', 'http://', '[x](http://'].map((u) => u.repeat(200_000));
+    hostile.push('['.repeat(30_000) + '[x]'.repeat(30_000), `[${'a'.repeat(200_000)}`, `http://${'a'.repeat(1_000_000)}`, `[a](${'('.repeat(100_000)}`);
+    for (const text of hostile) {
+      const t0 = performance.now();
+      cleanAnswer(text, text);
+      expect(performance.now() - t0, text.slice(0, 12)).toBeLessThan(1500);
+    }
+    expect(cleanAnswer(`${'x '.repeat(100_000)}https://evil.example/y`, '')).toBe(`${'x '.repeat(100_000)}[link removed]`);
+  });
+
+  it('puts the answer of Ask through cleanAnswer against the text sent, not the question (S4b-BL-178)', () => {
+    expect(cleanAnswer('![x](https://evil.example/a.png) https://example.com/l/1 https://evil.example/log?d=',
+      'House: A\nNotes: see https://example.com/l/1.')).toBe('x https://example.com/l/1 [link removed]');
+    expect(cleanAnswer(I_DONT_KNOW, '')).toBe(I_DONT_KNOW);
+  });
+
+  it('cleans the summary and the reasons of a plan against the candidates, not the fallback words (S4b-BL-178)', () => {
+    const cand = (id: string, label: string): PlanCandidate =>
+      ({ id, label, locality: 'L', street: null, status: 'NEW', price: null, priceType: null, bedrooms: null, rating: null, lat: 12.975, lon: 77.59, distanceMeters: 0 });
+    const seen = new Map([[a, cand(a, 'Gate https://example.com/g')]]);
+    const plan = assemblePlan({
+      summary: 'Go ![x](https://evil.example/p.png) see https://evil.example/s',
+      stops: [{ houseId: a, reason: 'Close, [photos](https://evil.example/r) and https://example.com/g, https://evil.example/q' }],
+    }, seen, 12.9716, 77.5946, 8);
+    expect(plan.summary).toBe('Go x see [link removed]');
+    expect(plan.stops[0].reason).toBe('Close, photos and https://example.com/g, [link removed]');
   });
 });

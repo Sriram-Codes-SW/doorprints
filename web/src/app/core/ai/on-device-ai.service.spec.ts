@@ -93,6 +93,16 @@ describe('OnDeviceAiService (ADR-26)', () => {
     expect(res.citations.map((c) => c.houseId)).toEqual(['h1']);
   });
 
+  it('removes a link or image the model put into an answer, as the server does (S4b-BL-178)', async () => {
+    houses = [house('h1', { notes: 'Quiet street, photos at https://example.com/l/1.' })];
+    const answer = ai.ask('AIzaTestKey1234', 'Which house is quiet?');
+    const req = await geminiRequest();
+    req.flush(reply({ answer: 'Quiet [house:h1] ![x](https://evil.example/t.png?d=1) see https://evil.example/log and https://example.com/l/1', citedHouseIds: ['h1'] }));
+    const res = await answer;
+    expect(res.answer).toBe('Quiet [house:h1] x see [link removed] and https://example.com/l/1');
+    expect(res.citations.map((c) => c.houseId)).toEqual(['h1']);
+  });
+
   it('sends the area notes that reach a house and its distances to my places, never the coordinates', async () => {
     areas = [{ id: 'a_1', name: 'Indiranagar', lat: 12.97, lon: 77.64, radiusM: 500, enabled: true }];
     places = [{ id: 'p_1', name: 'Office', lat: 12.9716, lon: 77.5946 }];

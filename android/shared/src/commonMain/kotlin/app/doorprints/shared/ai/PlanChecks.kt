@@ -72,6 +72,8 @@ object PlanChecks {
         maxStops: Int,
     ): PlanResponseDto {
         val byId = seen.mapKeys { it.key.lowercase() }
+        // What the model was given about the houses (labels, localities, streets), for AnswerText.clean.
+        val context = seen.values.joinToString("\n") { "${it.label}\n${it.locality.orEmpty()}\n${it.street.orEmpty()}" }
         val chosen = mutableListOf<PlanCandidate>()
         val reasons = mutableListOf<String>()
         val used = HashSet<String>()
@@ -82,10 +84,10 @@ object PlanChecks {
             val h = byId[id] ?: return@forEach
             if (!used.add(id)) return@forEach
             chosen += h
-            reasons += stop.reason?.trim() ?: ""
+            reasons += AnswerText.clean(stop.reason?.trim() ?: "", context)
         }
         var fallback = false
-        var summary = plan?.summary?.trim()
+        var summary = plan?.summary?.trim()?.let { AnswerText.clean(it, context) }
         val legs: List<RouteOptimizer.Leg>
         if (plan == null || (chosen.isEmpty() && seen.isNotEmpty() && !plan.stops.isNullOrEmpty())) {
             fallback = true

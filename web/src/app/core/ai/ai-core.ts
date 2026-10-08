@@ -704,6 +704,37 @@ export function sanitizeDraft(raw: RawListing | null, sourceText: string | null)
   return { label, address, street, locality, price: amount, priceType: type, bedrooms: bhk, areaSqft: null, contactName, contactPhone, listingUrl, notes, amenities: list, warnings };
 }
 
+export const LINK_REMOVED = '[link removed]';
+// ![alt](address) and [text](address): the text may hold one level of brackets (so `[see [house:<id>]](...)` keeps the
+// citation); every part is bounded and the parts cannot start with the same character, so a scan stays linear.
+const MD_LINK = /!?\[((?:[^[\]\n]|\[[^[\]\n]*\]){0,500})\]\([ \t\r\n]{0,3}[^() \t\r\n]{0,2000}(?:[ \t\r\n]+"[^"\n]{0,200}")?[ \t\r\n]{0,3}\)/g;
+// An http(s) address ends at the first character an address cannot hold, so the text after it (Hindi, Tamil) is left alone.
+const URL_TEXT = /https?:\/\/[A-Za-z0-9\-._~:/?#@!$&*+,;=%]+/gi;
+const URL_TAIL = '.,;:!?';
+
+/** The address without the punctuation a sentence puts after it, and that punctuation. */
+function splitUrl(url: string): [string, string] {
+  let end = url.length;
+  while (end > 0 && URL_TAIL.includes(url[end - 1])) end--;
+  return [url.slice(0, end), url.slice(end)];
+}
+
+/**
+ * The model's answer with no way to carry data out (docs/03 §13.1, S4b-BL-178; the server's `AnswerText.clean`): `![alt](url)`
+ * and `[text](url)` become `alt` and `text`; an http(s) address that does not appear in `context` (the text the model was
+ * given, after contact removal, not the question) becomes `[link removed]`, one that does is kept. Applied to the answer of
+ * Ask and to the summary and reasons of Plan, after the model returns. A claim such as "deleted" is not checked.
+ */
+export function cleanAnswer(text: string, context: string): string {
+  if (!text) return text;
+  const known = new Set<string>();
+  for (const m of context.matchAll(URL_TEXT)) known.add(splitUrl(m[0])[0].toLowerCase());
+  return text.replace(MD_LINK, '$1').replace(URL_TEXT, (m) => {
+    const [url, tail] = splitUrl(m);
+    return known.has(url.toLowerCase()) ? m : LINK_REMOVED + tail;
+  });
+}
+
 // ---------------------------------------------------------------- Ask checks (RagService.citations, AskPrompts.snippet)
 
 export const I_DONT_KNOW = "I don't know based on the houses you have saved.";
@@ -868,6 +899,8 @@ const UUID_ONLY = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-
  */
 export function assemblePlan(plan: AgentPlan | null, seen: Map<string, PlanCandidate>, lat: number, lon: number, maxStops: number): PlanResponse {
   const byId = new Map([...seen].map(([k, v]) => [k.toLowerCase(), v]));
+  // What the model was given about the houses (their labels, localities and streets), for cleanAnswer.
+  const context = [...seen.values()].map((h) => `${h.label}\n${h.locality ?? ''}\n${h.street ?? ''}`).join('\n');
   let chosen: PlanCandidate[] = [];
   let reasons: string[] = [];
   const used = new Set<string>();
@@ -879,10 +912,10 @@ export function assemblePlan(plan: AgentPlan | null, seen: Map<string, PlanCandi
     if (!h || used.has(id)) continue;
     used.add(id);
     chosen.push(h);
-    reasons.push(stop.reason?.trim() ?? '');
+    reasons.push(cleanAnswer(stop.reason?.trim() ?? '', context));
   }
   let fallback = false;
-  let summary = plan?.summary?.trim() ?? null;
+  let summary = plan?.summary ? cleanAnswer(plan.summary.trim(), context) : null;
   let legs: Leg[];
   if (plan == null || (!chosen.length && seen.size > 0 && (plan.stops?.length ?? 0) > 0)) {
     fallback = true;

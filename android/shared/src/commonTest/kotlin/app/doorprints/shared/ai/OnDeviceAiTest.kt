@@ -114,6 +114,15 @@ class OnDeviceAiTest {
     }
 
     @Test
+    fun askRemovesALinkOrImageTheModelPutInTheAnswerAndKeepsTheCitation() = runTest {
+        val gemini = FakeGemini("""{"answer":"Quiet [house:$a] ![x](https://evil.example/t.png?d=1) see https://evil.example/log and https://example.com/l/1","citedHouseIds":["$a"]}""")
+        val withLink = listOf(houses[0].copy(notes = "Quiet street, photos at https://example.com/l/1."))
+        val answer = gemini.ai(withLink).ask("Which house is quiet?")
+        assertEquals("Quiet [house:$a] x see [link removed] and https://example.com/l/1", answer.answer)
+        assertEquals(listOf(a), answer.citations.map { it.houseId })
+    }
+
+    @Test
     fun askWithNoHousesDoesNotCallGeminiAndABlankAnswerIsTheRefusal() = runTest {
         val none = FakeGemini()
         assertEquals(AiPrompts.I_DONT_KNOW, none.ai(emptyList()).ask("anything?").answer)

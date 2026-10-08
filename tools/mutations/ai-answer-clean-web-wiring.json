@@ -1,0 +1,17 @@
+{
+  "spec": "web/src/app/core/ai/on-device-ai.service.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/core/ai/on-device-ai.service.ts",
+      "find": "const text = cleanAnswer(answer.answer.trim(), docs.map((d) => d.text).join('\\n'));",
+      "replace": "const text = answer.answer.trim();",
+      "expect": "removes a link or image the model put into an answer"
+    },
+    {
+      "file": "web/src/app/core/ai/on-device-ai.service.ts",
+      "find": "const text = cleanAnswer(answer.answer.trim(), docs.map((d) => d.text).join('\\n'));",
+      "replace": "const text = cleanAnswer(answer.answer.trim(), '');",
+      "expect": "removes a link or image the model put into an answer"
+    }
+  ]
+}

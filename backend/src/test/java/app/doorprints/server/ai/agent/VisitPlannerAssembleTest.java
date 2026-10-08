@@ -61,6 +61,16 @@ class VisitPlannerAssembleTest {
     }
 
     @Test
+    void summaryAndReasonsLoseLinksAndForeignAddressesButKeepOnesFromTheHouses() {
+        var gate = house("Gate https://example.com/g", 12.9720, HouseStatus.NEW);
+        var plan = new AgentPlan("Go ![x](https://evil.example/p.png) see https://evil.example/s", List.of(new AgentStop(
+                gate.id().toString(), "Close, [photos](https://evil.example/r) and https://example.com/g, https://evil.example/q")));
+        var res = VisitPlannerService.assemble(plan, new LinkedHashMap<>(Map.of(gate.id(), gate)), List.of(), 12.9716, 77.6400, 8);
+        assertThat(res.summary()).isEqualTo("Go x see [link removed]");
+        assertThat(res.stops().get(0).reason()).isEqualTo("Close, photos and https://example.com/g, [link removed]");
+    }
+
+    @Test
     void capsNumberOfStops() {
         var plan = new AgentPlan("x", List.of(new AgentStop(a.id().toString(), ""), new AgentStop(b.id().toString(), "")));
         var res = VisitPlannerService.assemble(plan, seen, List.of(), 12.9716, 77.6400, 1);
