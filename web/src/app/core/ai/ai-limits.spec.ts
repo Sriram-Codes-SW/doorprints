@@ -137,7 +137,7 @@ describe('the on-device assistant keeps its limits (S4b-BL-181)', () => {
   let http: HttpTestingController;
   let ai: OnDeviceAiService;
   let houses: unknown[];
-  const KEY = 'AIzaTestKey1234';
+  const KEY = 'test-key-one'; // a made-up value, never a credential
   const row = (i: number) => ({
     id: `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`, label: `House ${i}`, address: null, street: null, locality: 'Indiranagar',
     lat: START.lat + i * 0.001, lon: START.lon, status: 'SHORTLISTED', price: 25000, priceType: 'RENT', bedrooms: 2, rating: 4,

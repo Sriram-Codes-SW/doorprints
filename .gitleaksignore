@@ -101,3 +101,6 @@ c899116d0bd3265a847df6cd14c8b531825cbb60:android/shared/src/androidHostTest/kotl
 93e0f8602b93dfb1514f97dde34e3c882b77e418:android/app/src/test/java/app/doorprints/AiSettingsSectionTest.kt:generic-api-key:351
 93e0f8602b93dfb1514f97dde34e3c882b77e418:android/app/src/test/java/app/doorprints/AiSettingsSectionTest.kt:generic-api-key:358
 93e0f8602b93dfb1514f97dde34e3c882b77e418:android/app/src/test/java/app/doorprints/AiSettingsSectionTest.kt:generic-api-key:363
+# Reviewed 2026-10-08: a made-up Gemini-shaped key in ai-limits.spec.ts (S4b-BL-181), never a credential; the test now uses
+# "test-key-one". The first commit stays in the branch history, so its line is listed. docs/07-secure-build-and-deploy.md.
+c6ed9c844ca35ef1d61a398ce13de4c49760635b:web/src/app/core/ai/ai-limits.spec.ts:generic-api-key:140
