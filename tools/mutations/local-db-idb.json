@@ -3,7 +3,7 @@
   "mutations": [
     {
       "file": "web/src/app/data/local-db.ts",
-      "find": "tx = this.db.transaction([...new Set(ops.map((o) => o.store))], 'readwrite');",
+      "find": "tx = this.db.transaction([...new Set([...ops.map((o) => o.store), ...guards.map((g) => g.store)])], 'readwrite');",
       "replace": "tx = this.db.transaction([ops[0].store], 'readwrite');",
       "expect": "saves a walk in ONE readwrite transaction"
     },
@@ -42,6 +42,18 @@
       "find": "    if (ops.length === 0) return Promise.resolve();\n    return new Promise<void>((resolve, reject) => {\n      let tx",
       "replace": "    return new Promise<void>((resolve, reject) => {\n      let tx",
       "expect": "deleteAll is one transaction for the keys"
+    },
+    {
+      "file": "web/src/app/data/local-db.ts",
+      "find": "for (const name of names) tx.objectStore(name).clear();",
+      "replace": "for (const name of names) this.db.transaction(name, 'readwrite').objectStore(name).clear();",
+      "expect": "clear() that aborts on the third store leaves every store as it was"
+    },
+    {
+      "file": "web/src/app/data/local-db.ts",
+      "find": "const names = store ? [store] : [...STORE_NAMES];",
+      "replace": "const names = [...STORE_NAMES];",
+      "expect": "clear() is ONE readwrite transaction over all the stores, or over the one named"
     }
   ]
 }
