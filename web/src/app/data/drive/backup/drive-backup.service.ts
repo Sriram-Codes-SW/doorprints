@@ -70,6 +70,7 @@ export interface RevokeDeviceOutcome {
 export const MAX_BACKUP_PLAINTEXT = 1024 * 1024 * 1024 + 64 * 1024 * 1024;
 /** A partial file that does not verify is put in the bin after a day (docs/15 §1.4 item 2). */
 export const STALE_PARTIAL_MS = 24 * 60 * 60 * 1000;
+/** How many confirmed shrink drops a device remembers (the oldest are dropped first). */
 export const MAX_CONFIRMED = 32;
 
 class FolderWithoutKeys extends Error {}

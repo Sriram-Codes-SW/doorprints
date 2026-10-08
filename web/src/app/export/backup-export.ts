@@ -73,15 +73,17 @@ export const BACKUP_FORMAT_V2 = 'doorprints-backup/2';
  * S4b-BL-75) accepts exactly these. Kotlin: `BackupFormat.READ_IDS`.
  */
 export const BACKUP_FORMATS_READ: readonly string[] = ['doorprints-backup/1', 'doorprints-backup/2', 'doorprints-backup/3'];
+/** Path of the manifest inside a backup ZIP. */
 export const MANIFEST_ENTRY = 'manifest.json';
+/** Path of the data file inside a backup ZIP. */
 export const DATA_ENTRY = 'data.json';
 
 /**
  * Limits an importer checks before unpacking anything (zip bombs, nonsense files). Mirrors Kotlin `BackupFormat`
  * value for value: `MAX_ENTRIES`, `MAX_UNCOMPRESSED_BYTES` (1 GiB), `MAX_COMPRESSION_RATIO` and
- * `MAX_DATA_JSON_BYTES` (**16 MiB**, the cap docs/01 SEC-041 and docs/02 T-T8 state). The web has no importer yet
- * (S4-04, Sprint 4b), so nothing reads these today; they are kept equal to Kotlin so the web reader, when it lands,
- * refuses exactly what Android refuses (`exporters.spec.ts` pins them). The server's own limit on
+ * `MAX_DATA_JSON_BYTES` (**16 MiB**, the cap docs/01 SEC-041 and docs/02 T-T8 state). The website's reader
+ * (`backup-reader.ts`) checks them before it unpacks anything; they are kept equal to Kotlin so it refuses exactly what
+ * Android refuses (`exporters.spec.ts` pins them). The server's own limit on
  * `POST /api/import` is its request body cap (`app.limits.max-import-bytes`), which the Backend team owns.
  */
 export const BACKUP_LIMITS = {
@@ -96,6 +98,7 @@ export const BACKUP_APP = 'Doorprints';
 /** Bumped with the web app's package version; never used to gate an import. */
 export const BACKUP_APP_VERSION = '1.0.0';
 
+/** A house as `data.json` holds it. Properties are in the contract's order; unset ones are left out of the file. */
 export interface BackupHouse {
   id: string;
   label: string;
@@ -148,6 +151,7 @@ export type BackupAnswer = { [K in keyof HouseAnswer]?: Exclude<HouseAnswer[K], 
 /** Moving in in the backup: `date`, `notes` and `items` (id, text, `done` only when true, sort), only what is set. */
 export type BackupMoveIn = { [K in keyof MoveIn]?: NonNullable<MoveIn[K]> };
 
+/** A visit as `data.json` holds it; times are epoch milliseconds. */
 export interface BackupVisit {
   id: string;
   houseId?: string;
@@ -160,6 +164,7 @@ export interface BackupVisit {
   updatedAt: number;
 }
 
+/** A photo row of `data.json`: its metadata and the file name inside the ZIP, not the bytes. */
 export interface BackupPhoto {
   id: string;
   houseId: string;
@@ -270,6 +275,10 @@ export interface BackupAreaNote {
   updatedAt: number;
 }
 
+/**
+ * The content of `data.json`, the whole re-importable backup.
+ * Lists after `photos` are present only when they have rows, and a file that has any of them is written as the next format number.
+ */
 export interface BackupData {
   format: string;
   exportedAt: number;
@@ -301,6 +310,9 @@ export interface BackupDeletion {
   updatedAt: number;
 }
 
+/**
+ * How many rows of each list the data file holds; written to the manifest so a reader can see what the file should hold.
+ */
 export interface BackupCounts {
   houses: number;
   visits: number;
@@ -317,12 +329,16 @@ export interface BackupCounts {
   deleted?: number;
 }
 
+/** One entry of the manifest's file list: its path, size and SHA-256, which the importer verifies. */
 export interface BackupFile {
   path: string;
   sizeBytes: number;
   sha256: string;
 }
 
+/**
+ * `manifest.json`: where the backup came from, which options made it, the counts, and a SHA-256 for every other entry of the ZIP.
+ */
 export interface BackupManifest {
   format: string;
   app: string;
@@ -343,6 +359,10 @@ export interface BackupManifest {
   sharedTo?: string;
 }
 
+/**
+ * Turns the export bundle into `data.json`'s content.
+ * The format number is the lowest that holds everything in the copy, so an older app can still read a simple copy. Tombstones and sync state are never written, and a copy made without contacts has no broker or contact fields.
+ */
 export function buildBackupData(bundle: ExportBundle): BackupData {
   const brokers = bundle.brokers.length > 0 ? bundle.brokers.map(backupBroker) : undefined;
   const hasRooms = bundle.houses.some((h) => h.house.rooms && h.house.rooms.length > 0);

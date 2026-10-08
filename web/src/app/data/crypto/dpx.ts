@@ -23,6 +23,7 @@ import type { AesKey, CryptoProvider } from './crypto-provider';
 import { contentWrapKey, KID_SIZE, WrapAad } from './folder-key';
 import type { FolderKeys } from './folder-key';
 
+/** Why a `dpx/1` file was refused; each kind is one check of the reader, found before any plaintext is released. */
 export type DpxErrorKind =
   | 'NOT_DPX'
   | 'UNSUPPORTED_VERSION'
@@ -56,6 +57,7 @@ export interface ByteSource {
   read(max: number): Promise<Uint8Array | null>;
 }
 
+/** Where a stream writer or reader puts bytes; may be async so a caller can apply back-pressure. */
 export type ByteSink = (bytes: Uint8Array) => void | Promise<void>;
 
 export const DPX_VERSION = 1;
@@ -73,6 +75,9 @@ export const MAGIC = new Uint8Array([0x44, 0x50, 0x58, 0x31]);
 export const PHOTO = 'photo/1';
 const INNER = /^[a-z][a-z0-9-]{0,39}\/[1-9][0-9]{0,3}$/;
 
+/**
+ * The parsed, authenticated header of a `dpx/1` file: which folder-key epoch and key id wrap the content key, and the nonce prefix.
+ */
 export interface DpxHeader {
   readonly epoch: number;
   readonly kid: Uint8Array;
@@ -84,6 +89,9 @@ export interface DpxHeader {
   readonly bytes: Uint8Array;
 }
 
+/**
+ * What a finished encrypt or decrypt reports: the header, the sizes, and SHA-256 of the plaintext and of the file as stored.
+ */
 export interface DpxResult {
   header: DpxHeader;
   plaintextSize: number;
@@ -116,6 +124,9 @@ function headerJson(h: Omit<DpxHeader, 'bytes'>): Uint8Array {
     .bytes();
 }
 
+/**
+ * The header as stored: magic, a 2-byte length and the canonical JSON; also the prefix every chunk authenticates. Throws `RangeError` for an empty or over-long header.
+ */
 export function frame(json: Uint8Array): Uint8Array {
   if (json.length < 1 || json.length > MAX_HEADER) throw new RangeError('header length');
   return concat(MAGIC, new Uint8Array([json.length >>> 8, json.length & 0xff]), json);
@@ -125,10 +136,16 @@ function makeHeader(h: Omit<DpxHeader, 'bytes'>): DpxHeader {
   return { ...h, bytes: frame(headerJson(h)) };
 }
 
+/**
+ * The 12-byte AES-GCM nonce of one chunk: the file's 7-byte prefix, the chunk index and a last-chunk flag, so no nonce repeats under a content key.
+ */
 export function chunkNonce(prefix: Uint8Array, index: number, last: boolean): Uint8Array {
   return concat(prefix, u32(index), new Uint8Array([last ? 1 : 0]));
 }
 
+/**
+ * The additional data of one chunk: the whole header, the index and the last-chunk flag, so a reordered, dropped or truncated chunk fails authentication.
+ */
 export function chunkAad(header: Uint8Array, index: number, last: boolean): Uint8Array {
   return concat(header, u32(index), new Uint8Array([last ? 1 : 0]));
 }
@@ -425,6 +442,9 @@ export class Dpx {
   }
 }
 
+/**
+ * Parses and checks the header of a `dpx/1` file before any key is used: version and algorithm, exactly the expected fields, and the sizes of the epoch, key id, wrapped key and nonce prefix. The bytes must also equal the canonical re-write of what was parsed. Untrusted input: every failure is a typed `DpxError`.
+ */
 function parseHeader(json: Uint8Array): DpxHeader {
   const bad = (why: string): never => {
     throw new DpxError('HEADER_INVALID', why);

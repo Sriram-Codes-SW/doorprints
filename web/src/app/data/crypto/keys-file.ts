@@ -25,6 +25,7 @@ import type { FolderKeys } from './folder-key';
 import { Hpke } from './hpke';
 import type { RecoveryKey } from './recovery-key';
 
+/** Why `keys.json` was refused; see `KeysError` for which kinds may and may not trigger anything destructive. */
 export type KeysErrorKind =
   | 'MALFORMED'
   | 'NOT_CANONICAL'
@@ -69,13 +70,16 @@ export class KeysError extends Error {
   }
 }
 
+/** Which app enrolled a device; recorded in its entry so the device list can name it. */
 export type DevicePlatform = 'android' | 'ios' | 'web';
 const PLATFORMS: readonly DevicePlatform[] = ['android', 'ios', 'web'];
 
+/** An HPKE-wrapped folder key: the encapsulated key and the ciphertext only the recipient's private key opens. */
 export interface HpkeWrap {
   enc: Uint8Array;
   ct: Uint8Array;
 }
+/** One enrolled device in `keys.json`: its public key, who enrolled it, and the folder key wrapped to it. */
 export interface DeviceEntry {
   kid: Uint8Array;
   name: string;
@@ -100,11 +104,15 @@ export interface RevokedEntry {
   revokedAt: number;
   revokedAtEpoch: number;
 }
+/** The previous epoch's folder key sealed under the next epoch's chain key. */
 export interface ChainLink {
   epoch: number;
   nonce: Uint8Array;
   ct: Uint8Array;
 }
+/**
+ * The decoded content of `keys.json`: epoch and revision, the key chain, the enrolled devices, the recovery entry and the revoked kids.
+ */
 export interface KeysBody {
   revision: number;
   epoch: number;
@@ -114,6 +122,7 @@ export interface KeysBody {
   revoked: RevokedEntry[];
 }
 
+/** The format tag of `keys.json`; a reader refuses any other. */
 export const KEYS_FORMAT = 'doorprints-keys/1';
 const MAX_FILE = 256 * 1024;
 const MAX_DEVICES = 64;
@@ -124,6 +133,9 @@ function wrapJson(j: CanonicalJson, w: HpkeWrap): void {
   j.raw('{"enc":').string(b64(w.enc)).raw(',"ct":').string(b64(w.ct)).raw('}');
 }
 
+/**
+ * The canonical bytes of [b]: the exact input to the MAC, so a reader that re-writes what it parsed must get identical bytes.
+ */
 export function bodyJson(b: KeysBody): Uint8Array {
   const j = new CanonicalJson();
   j.raw('{"revision":').number(b.revision).raw(',"epoch":').number(b.epoch).raw(',"chain":[');
@@ -330,12 +342,16 @@ export class OpenedKeys implements FolderKeys {
   }
 }
 
+/** What an enrolling device hands over: its public key, a name and its platform. */
 export interface NewDevice {
   publicKey: Uint8Array;
   name: string;
   platform: DevicePlatform;
 }
 
+/**
+ * A freshly written `keys.json`: the bytes to upload and the opened view of them, so the writer can keep working without re-reading.
+ */
 export interface WrittenKeys {
   bytes: Uint8Array;
   opened: OpenedKeys;
@@ -667,6 +683,9 @@ function array(v: unknown, what: string): unknown[] {
   return Array.isArray(v) ? v : malformed(what);
 }
 
+/**
+ * Parses the JSON body of `keys.json`, strictly: exactly the expected fields, values in range, and kids, keys and nonces of the right size. Anything else is a `KeysError`; the body is untrusted until the MAC and the pin have been checked.
+ */
 function parseBody(v: unknown): KeysBody {
   const o = exactObj(v, 'revision', 'epoch', 'chain', 'devices', 'recovery', 'revoked') ?? malformed('body');
   const revision = int(o['revision'], 1, MAX_SAFE) ?? malformed('revision');
@@ -739,6 +758,9 @@ export interface KeysWatermarkStore {
   compareAndSet(expected: KeysWatermark | null, next: KeysWatermark): Promise<boolean>;
 }
 
+/**
+ * Whether two watermarks are equal (both absent counts as equal); the comparison the atomic update of a stored watermark uses.
+ */
 export function sameWatermark(a: KeysWatermark | null, b: KeysWatermark | null): boolean {
   if (!a || !b) return a === b;
   return a.epoch === b.epoch && a.revision === b.revision && equalBytes(a.keyId, b.keyId) && equalBytes(a.bodyHash, b.bodyHash);
@@ -746,6 +768,7 @@ export function sameWatermark(a: KeysWatermark | null, b: KeysWatermark | null):
 
 /** How a list was proven: by the pin, one of the three named first-pin paths, or a repin. */
 type KeysTrust = 'PINNED' | 'FIRST_PIN' | 'RECOVERY_ANCHOR' | 'CREATED' | 'REPIN';
+/** How a `keys.json` ranks against the newest one this device has seen. */
 export type KeysOrder = 'LOWER' | 'SAME_EPOCH' | 'HIGHER_EPOCH';
 
 /** (epoch, revision) ordered lexicographically: a higher epoch always wins, a lower one never does. */

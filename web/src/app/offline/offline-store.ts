@@ -37,6 +37,9 @@ function isStr(s: unknown): s is string {
   return typeof s === 'string';
 }
 
+/**
+ * Reads one saved area from untrusted stored JSON, or null when it is unusable; missing optional parts get safe defaults and the zoom is clamped.
+ */
 function parseArea(raw: unknown): SavedArea | null {
   if (!raw || typeof raw !== 'object') return null;
   const a = raw as Record<string, unknown>;

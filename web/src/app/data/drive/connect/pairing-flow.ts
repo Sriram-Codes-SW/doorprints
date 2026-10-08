@@ -39,6 +39,7 @@ export function withWrap(message: PairingMessage, wrapEnc: string, wrapCt: strin
   return { ...message, wrapEnc, wrapCt, epoch };
 }
 
+/** The result of checking a pairing exchange: the 8-digit code to compare on both screens, or why it cannot be used. */
 export type PairingOutcome =
   | { readonly ok: true; readonly code: string }
   | { readonly ok: false; readonly reason: 'EXPIRED' | 'COMMIT_MISMATCH' | 'INCOMPLETE' };

@@ -18,14 +18,30 @@
 
 /** The twin of Kotlin's `DeletionPolicy` and `GateRules` (docs/15 3 and 10, S4b-BL-127), checked by delete-policy-vectors.json. */
 
+/** Which app is asking; the phone can use its screen lock, the website needs a passkey (PRF). */
 export type AuthPlatform = "PHONE" | "WEBSITE";
+/**
+ * How strong a confirmation an action needs: L1 none, L2 a verification, L3 a verification, a tick box and a short delay.
+ */
 export type DeleteLevel = "L1" | "L2" | "L3";
+/** The proof of presence an action asks for: none, the phone's device authentication, or the website's passkey. */
 export type Factor = "NONE" | "DEVICE_AUTH" | "PASSKEY";
+/**
+ * How a new device is paired when approving it: not at all, by QR code or typed code (phone), or by typed code (website).
+ */
 export type Pairing = "NONE" | "QR_OR_CODE" | "CODE";
+/**
+ * Why an action is refused before anything is asked: no screen lock, the website lacks PRF so use the phone, or offline.
+ */
 export type RefusalReason = "NO_DEVICE_LOCK" | "USE_PHONE" | "OFFLINE";
+/** Whether an authorisation is still usable when the action starts. */
 export type GrantCheck = "VALID" | "EXPIRED" | "NOT_YET";
+/** What the phone reports about its screen lock; UNKNOWN is not treated as removed. */
 export type LockState = "PRESENT" | "REMOVED" | "UNKNOWN";
 
+/**
+ * Every destructive or protection-weakening action in the Drive features; each has a base level in `ACTIONS` that decides how strongly the person must prove it is them.
+ */
 export type DeletionAction =
   | "DELETE_ONE_BACKUP"
   | "REMOVE_SHARED_HUNT"
@@ -45,6 +61,9 @@ interface ActionInfo {
   alwaysAllowed: boolean;
 }
 
+/**
+ * Per action: its base level, whether it needs the network, and whether it is always allowed (leaving or pausing never needs a lock).
+ */
 export const ACTIONS: Readonly<Record<DeletionAction, ActionInfo>> = {
   DELETE_ONE_BACKUP: { base: "L1", needsNetwork: true, alwaysAllowed: false },
   REMOVE_SHARED_HUNT: { base: "L1", needsNetwork: false, alwaysAllowed: false },
@@ -71,6 +90,7 @@ export const ACTIONS: Readonly<Record<DeletionAction, ActionInfo>> = {
   WEAKEN_PROTECTION: { base: "L3", needsNetwork: true, alwaysAllowed: false },
 };
 
+/** The facts `decide` weighs: platform, screen lock, website PRF support, connectivity and how many backups remain. */
 export interface DeletionContext {
   platform: AuthPlatform;
   deviceLock: boolean;
@@ -80,6 +100,7 @@ export interface DeletionContext {
   backupsLeft: number | null;
 }
 
+/** What the person must do for an allowed action; the screen shows exactly this and the gate enforces it. */
 export interface Requirements {
   level: DeleteLevel;
   factor: Factor;
@@ -89,13 +110,19 @@ export interface Requirements {
   authValidMs: number;
 }
 
+/** The policy's answer for one action: allowed with its requirements, or refused with the reason. */
 export type DeletionDecision =
   | { outcome: "ALLOWED"; requirements: Requirements }
   | { outcome: "REFUSED"; reason: RefusalReason };
 
+/** How long a verification stays valid for the action that follows it. */
 export const AUTH_VALID_MS = 60_000;
+/** The wait before an L3 confirmation button turns on. */
 export const DELAY_SECONDS_L3 = 5;
 
+/**
+ * The level of an action: deleting a backup is raised from L1 to L2 when it is the last one or the count is unknown (fail closed).
+ */
 export function levelOf(
   action: DeletionAction,
   backupsLeft: number | null,
@@ -147,6 +174,7 @@ export function decide(
   };
 }
 
+/** Whether the confirm button may be pressed: the tick box (if required) is ticked and the delay has passed. */
 export function confirmEnabled(
   r: Pick<Requirements, "tickBox" | "delaySeconds">,
   ticked: boolean,
@@ -155,6 +183,9 @@ export function confirmEnabled(
   return (!r.tickBox || ticked) && elapsedMs >= r.delaySeconds * 1000;
 }
 
+/**
+ * Whether a verification granted at [grantedAtMs] covers an action started at [startedAtMs]: not from the future, and within `authValidMs`. Actions that need no factor are always VALID.
+ */
 export function grantCheck(
   r: Pick<Requirements, "factor" | "authValidMs">,
   grantedAtMs: number,
@@ -165,9 +196,12 @@ export function grantCheck(
   return startedAtMs - grantedAtMs > r.authValidMs ? "EXPIRED" : "VALID";
 }
 
+/** Whether connecting Drive may go ahead on this device. */
 export type ConnectDecision = "ALLOWED" | "NEEDS_SCREEN_LOCK";
+/** Whether background Drive work may run, or is paused because the screen lock is gone or unknown. */
 export type RunDecision = "RUN" | "PAUSED_NO_LOCK" | "PAUSED_UNKNOWN";
 
+/** The screen-lock rules for connecting, running and dropping local keys; only the phone is held to a screen lock. */
 export const GateRules = {
   connect(platform: AuthPlatform, lockEnabled: boolean): ConnectDecision {
     return platform === "WEBSITE" || lockEnabled

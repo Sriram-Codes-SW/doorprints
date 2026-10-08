@@ -38,6 +38,10 @@ import type { RecoveryKey } from '../../crypto/recovery-key';
  * dependency injection.
  */
 
+/**
+ * What the Connect page needs to delete Doorprints' files from the person's Drive: a preflight that lists what would go, a policy decision, a short-lived authorisation, and the run itself.
+ * Nothing is deleted without a preflight plan and, for L2 and L3, an authorisation bound to that plan.
+ */
 export interface DriveDeletionAdapter {
   /** What a deletion of `action` would remove (counts and bytes only, no names). */
   preflight(action: DeletionAction): Promise<DeletionPreflightResult>;
@@ -105,14 +109,17 @@ export interface DriveDeletionAdapter {
   builtInAuthenticator?(): Promise<boolean | null>;
 }
 
+/** A preflight outcome: the plan to show (counts and bytes only), or why it was refused. */
 export type DeletionPreflightResult =
   | { readonly kind: 'ready'; readonly plan: DeletionPlan }
   | { readonly kind: 'refused'; readonly reason: string };
 
+/** An authorisation outcome: the grant to pass to the run, or why it was refused. */
 export type AuthorizationResult =
   | { readonly kind: 'granted'; readonly grant: WebGrant }
   | { readonly kind: 'refused'; readonly reason: string };
 
+/** What the confirm screen needs to enable its button: whether a tick box is required, the delay, and the check itself. */
 export interface ConfirmGateState {
   /** Whether a confirm checkbox is required (true for L3 and DELETE_ALL_BACKUPS). */
   readonly tickBoxRequired: boolean;

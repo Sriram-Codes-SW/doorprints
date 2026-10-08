@@ -74,6 +74,7 @@ export interface DriveDeviceState {
   readonly confirmedDrops: readonly string[];
 }
 
+/** The state of a device that has never connected. */
 export const EMPTY_DEVICE_STATE: DriveDeviceState = {
   deviceId: null,
   rootId: null,

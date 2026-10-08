@@ -22,8 +22,10 @@ import { CryptoError } from './crypto-provider';
 import { Hkdf } from './hpke';
 import { reduceToScalar } from './p256-scalar';
 
+/** Why typed recovery-key text was refused; lets the screen say what to fix without echoing the text. */
 export type RecoveryKeyReason = 'WRONG_LENGTH' | 'INVALID_CHARACTER' | 'OUT_OF_RANGE' | 'CHECK_MISMATCH';
 
+/** A recovery key that could not be read. The message never holds the key text. */
 export class RecoveryKeyError extends CryptoError {
   constructor(
     readonly reason: RecoveryKeyReason,

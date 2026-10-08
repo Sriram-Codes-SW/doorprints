@@ -29,9 +29,14 @@ import type { LocalRows } from '../../drive-sync-seams';
 import type { SyncKind, SyncRow } from '../../sync-file';
 import { SYNC_EARLIEST_MS, syncRow } from '../../sync-file';
 
+/**
+ * Presents the local store's houses, visits, records and photo metadata as sync rows and applies merged remote rows back, so the sync engine does not know about IndexedDB.
+ * Local-only fields (`dirty`) never leave the device.
+ */
 export class LocalRowsAdapter implements LocalRows {
   constructor(private readonly store: LocalStore, private readonly deviceId: string) {}
 
+  /** Every local row of every kind, deleted ones included (their tombstones must sync). */
   async all(): Promise<readonly SyncRow[]> {
     const rows: SyncRow[] = [];
     const houses = await this.store.allHouses();
@@ -56,6 +61,7 @@ export class LocalRowsAdapter implements LocalRows {
     return rows;
   }
 
+  /** Rows edited since the last sync (the dirty ones). Photo bytes are handled separately. */
   async changedRows(): Promise<readonly SyncRow[]> {
     const rows: SyncRow[] = [];
     for (const house of await this.store.dirtyHouses()) {
@@ -85,6 +91,7 @@ export class LocalRowsAdapter implements LocalRows {
     };
   }
 
+  /** Clears the dirty flag of houses, visits and photo metadata that the sync wrote out. */
   async markSynced(rows: readonly SyncRow[]): Promise<void> {
     for (const row of rows) {
       switch (row.kind) {
@@ -101,6 +108,7 @@ export class LocalRowsAdapter implements LocalRows {
     }
   }
 
+  /** Stores rows that won the merge as imported records (not dirty), so they are not sent back. */
   async applyRemote(rows: readonly SyncRow[]): Promise<void> {
     const imported = { houses: [] as HouseRecord[], visits: [] as VisitRecord[], records: [] as RecordRecord[], photos: [] as PhotoRecord[] };
     for (const row of rows) {

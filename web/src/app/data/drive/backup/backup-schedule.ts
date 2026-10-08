@@ -39,6 +39,7 @@ export const CLOCK_SKEW_MS = 5 * 60 * 1000;
  */
 export type ScheduleFailure = 'RETRYABLE' | 'QUOTA' | 'UNAUTHORIZED' | 'BLOCKED';
 
+/** What `decideBackup` needs: the clock, the person's switches, and the outcome of the last runs. */
 export interface ScheduleInput {
   readonly now: number;
   /** *Automatic backup and sync* is on. */
@@ -53,6 +54,7 @@ export interface ScheduleInput {
   readonly lastVerifyAt?: number | null;
 }
 
+/** Why `decideBackup` answered as it did; shown in logs and tests, never to the person verbatim. */
 export type ScheduleReason =
   | 'NOT_READY' | 'MANUAL' | 'DISABLED' | 'NEEDS_CONNECT' | 'BLOCKED' | 'WAIT_QUOTA' | 'WAIT_RETRY' | 'FIRST'
   | 'CLOCK_CHANGED' | 'DAILY' | 'NOT_DUE';
@@ -65,6 +67,10 @@ export interface ScheduleDecision {
   readonly verify: boolean;
 }
 
+/**
+ * Decides whether a backup is due, as a pure function of the clock and the last results.
+ * A manual run always goes. Otherwise: nothing when automatic backup is off, back-off after a failure (30 minutes, a day when the Drive is full, never for a lost sign-in or a blocked folder), then a backup if there is none yet, the clock moved back, or a day has passed. `verify` asks separately for the newest backup to be opened and checked.
+ */
 export function decideBackup(input: ScheduleInput): ScheduleDecision {
   const now = input.now;
   const lastSuccessAt = input.lastSuccessAt ?? null;

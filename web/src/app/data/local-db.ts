@@ -40,8 +40,12 @@
  * the trace as it was. {@link LocalDb.deleteAll} is the batch delete of one store (the 30-day prune).
  */
 
+/**
+ * The object stores of the browser database: the synced rows (houses, visits, photos, records), per-browser settings, and the path trace.
+ */
 export type StoreName = 'houses' | 'visits' | 'photos' | 'settings' | 'records' | 'trace_points' | 'saved_walks';
 
+/** Every store name, in creation order. */
 export const STORE_NAMES: readonly StoreName[] = ['houses', 'visits', 'photos', 'settings', 'records', 'trace_points', 'saved_walks'];
 
 /** The key property of each store, matching the `keyPath` used when it is created (`records`: a compound key). */
@@ -74,7 +78,9 @@ export type StoreKey = string | readonly string[];
 // indexes (S4b-BL-66); version 3 is the path trace (docs/11 5.27.8, S4b-FR-17): the `trace_points` and `saved_walks`
 // stores. Slice 1 and slice 5 (the house's own new values, photo meta, `moveIn`) change no store and no index: a
 // house and a photo only gain fields, so they did not need a version.
+/** Name of the browser database that holds all of this browser's house data. */
 export const DB_NAME = 'doorprints';
+/** Current schema version; see the note above for what each version added. */
 export const DB_VERSION = 3;
 
 /** One write of a {@link LocalDb.batch}: a put or a delete in any store. */
@@ -110,6 +116,10 @@ function guardHolds(guard: BatchGuard, n: number): boolean {
   return (guard.min === undefined || n >= guard.min) && (guard.max === undefined || n <= guard.max);
 }
 
+/**
+ * The small async key-value-with-indexes interface the app stores everything through, implemented by IndexedDB and by an in-memory stand-in for when IndexedDB is not usable.
+ * Pages never use it directly: `LocalStore` and `TraceStore` own the rules. `batch` is the only way to change several stores atomically.
+ */
 export interface LocalDb {
   /** 'indexeddb' when the data is really being kept; 'memory' when it lives only for this page. */
   readonly kind: 'indexeddb' | 'memory';
@@ -140,6 +150,9 @@ export interface LocalDb {
 /** Why IndexedDB could not be used; shown to the user as a translated message. */
 export type StorageProblem = 'unavailable' | 'blocked';
 
+/**
+ * The result of opening the database: the db to use and, when IndexedDB could not be used, why (the db is then in memory).
+ */
 export interface OpenedDb {
   db: LocalDb;
   problem: StorageProblem | null;
@@ -393,9 +406,11 @@ function idbKey(key: StoreKey): IDBValidKey {
 export interface UpgradeStore {
   createIndex(name: string, keyPath: string): unknown;
 }
+/** The part of an `IDBDatabase` a schema upgrade uses. */
 export interface UpgradeDb {
   createObjectStore(name: string, options: { keyPath: string | string[] }): UpgradeStore;
 }
+/** The part of an `IDBTransaction` a schema upgrade uses. */
 export interface UpgradeTx {
   objectStore(name: string): UpgradeStore;
 }

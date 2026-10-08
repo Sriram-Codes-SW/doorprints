@@ -83,8 +83,10 @@ export function parseJson(bytes: Uint8Array): unknown {
   }
 }
 
+/** A parsed JSON object, before its fields have been checked. */
 export type Obj = Record<string, unknown>;
 
+/** Narrows to a plain JSON object (not null, not an array); the first check of every parser of untrusted bytes. */
 export function isObj(v: unknown): v is Obj {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
 }
@@ -98,6 +100,7 @@ export function exactObj(v: unknown, ...keys: string[]): Obj | null {
   return v;
 }
 
+/** The string if [v] is one, else null (the format readers turn null into their own error kind). */
 export function str(v: unknown): string | null {
   return typeof v === 'string' ? v : null;
 }

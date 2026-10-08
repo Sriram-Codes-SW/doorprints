@@ -26,18 +26,23 @@ import type { DriveErrorKind } from './drive-client';
  * order, which backups go and at what level, the operation id, the authorization check, which failure stops a run.
  */
 
+/** How strong an authorisation a deletion needs; ordered L1 < L2 < L3. */
 export type DeletionLevel = 'L1' | 'L2' | 'L3';
 const LEVELS: readonly DeletionLevel[] = ['L1', 'L2', 'L3'];
+/** Position of a level in the order L1, L2, L3, for "at least this strong" comparisons. */
 export const levelRank = (l: DeletionLevel): number => LEVELS.indexOf(l);
 
+/** What the person asked to delete: one backup, the older backups, all backups, or everything Doorprints keeps in Drive. */
 export type DeletionAction =
   | { readonly type: 'oneBackup'; readonly fileId: string }
   | { readonly type: 'olderBackups' }
   | { readonly type: 'allBackups' }
   | { readonly type: 'everything' };
 
+/** What a file or folder in the plan is, which also fixes the phase it is deleted in. */
 export type ItemKind = 'backup' | 'sync' | 'photo' | 'shared' | 'readme' | 'control' | 'keys' | 'folder';
 
+/** One file or folder in a deletion plan, with its size and deletion phase. */
 export interface DeletionItem {
   readonly id: string;
   readonly kind: ItemKind;
@@ -45,6 +50,7 @@ export interface DeletionItem {
   readonly phase: number;
 }
 
+/** Proof that the person was verified for one operation at one level, with the time it was issued. */
 export interface AuthorizationToken {
   readonly level: DeletionLevel;
   readonly issuedAtMs: number;
@@ -53,6 +59,9 @@ export interface AuthorizationToken {
   readonly proof: string;
 }
 
+/**
+ * Why a deletion was refused, for example: offline, an authorisation that is missing, too weak, stale or for another operation, a stale plan, or a Drive error.
+ */
 export type Refusal =
   | 'OFFLINE' | 'NOT_AUTHORIZED' | 'AUTHORIZATION_TOO_WEAK' | 'AUTHORIZATION_STALE' | 'AUTHORIZATION_OTHER_OPERATION'
   | 'STALE_PLAN' | 'ROOT_NOT_FOUND' | 'NOT_A_BACKUP' | 'NOTHING_TO_DELETE' | 'OTHER_DELETION_PENDING' | 'NOTHING_PENDING'
@@ -111,6 +120,7 @@ export function phaseOf(kind: ItemKind, folderRole: string | null = null): numbe
   }
 }
 
+/** The part of a backup that selection by age needs. */
 export interface BackupRef {
   readonly id: string;
   readonly complete: boolean;
@@ -125,6 +135,10 @@ export interface BackupSelection {
 
 const byAge = (a: BackupRef, b: BackupRef): number => a.createdAt - b.createdAt || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 
+/**
+ * Which backups an action removes, oldest first, and the level it needs.
+ * Deleting one backup is L2 only when it is the last complete one; "older backups" always keeps the newest complete backup; all backups is L2; everything is L3.
+ */
 export function selectBackups(action: DeletionAction, backups: readonly BackupRef[]): BackupSelection {
   const sorted = [...backups].sort(byAge);
   switch (action.type) {

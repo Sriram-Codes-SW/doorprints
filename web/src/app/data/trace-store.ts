@@ -53,14 +53,17 @@ export type { SavedWalkRow, TracePointRow } from './trace-rows';
 
 /** The trace is kept this long (the saved walks are not pruned). */
 export const TRACE_KEPT_DAYS = 30;
+/** `TRACE_KEPT_DAYS` in milliseconds. */
 export const TRACE_KEPT_MS = TRACE_KEPT_DAYS * 86_400_000;
 
 /** *Save this walk?* is asked only for a walk of at least this many points and metres; a shorter one is just kept 30 days. */
 export const ASK_MIN_POINTS = 5;
+/** Shortest walk, in metres, that triggers the *Save this walk?* question. */
 export const ASK_MIN_LENGTH_M = 100;
 
 /** How repeated paths look (docs/11 5.27.4): CLEAR is the default. */
 export type RepeatLook = 'CLEAR' | 'SUBTLE' | 'OFF';
+/** Every repeat look, for validating a stored value. */
 export const REPEAT_LOOKS: readonly RepeatLook[] = ['CLEAR', 'SUBTLE', 'OFF'];
 
 /** Why a walk could not be saved; a refused save changes nothing and the walk stays in the 30-day trace. */
@@ -107,6 +110,10 @@ export function holdsWalkId(points: readonly TracePoint[], walkId: number): bool
   return points.some((p) => (p.walkId ?? 0) === walkId);
 }
 
+/**
+ * Everything the path trace stores in this browser: the 30-day trace of points, the walks the person saved to a house, and the trace settings.
+ * It lives beside `LocalStore` in the same database but is never synced or exported (docs/11 5.27). Saving or deleting a walk goes through one `LocalDb.batch`, so a failure leaves the trace as it was.
+ */
 @Injectable({ providedIn: 'root' })
 export class TraceStore {
   private readonly store = inject(LocalStore);
@@ -241,6 +248,7 @@ export class TraceStore {
     return houseId === undefined ? db.count('saved_walks') : db.count('saved_walks', 'houseId', houseId);
   }
 
+  /** Deletes one saved walk. */
   async deleteSavedWalk(id: string): Promise<void> {
     await (await this.db()).delete('saved_walks', id);
   }
@@ -322,6 +330,7 @@ export class TraceStore {
 
   // ---- Settings (per browser, never exported) ----
 
+  /** Whether the path trace is switched on in this browser (off by default). */
   async traceOn(): Promise<boolean> {
     return (await this.store.setting(SETTING_KEYS.traceOn)) === '1';
   }
@@ -329,6 +338,7 @@ export class TraceStore {
     await this.store.setSetting(SETTING_KEYS.traceOn, on ? '1' : '0');
   }
 
+  /** How repeated paths are drawn; CLEAR unless the person chose another look. */
   async look(): Promise<RepeatLook> {
     const v = await this.store.setting(SETTING_KEYS.traceLook);
     return REPEAT_LOOKS.includes(v as RepeatLook) ? (v as RepeatLook) : 'CLEAR';
@@ -337,6 +347,7 @@ export class TraceStore {
     await this.store.setSetting(SETTING_KEYS.traceLook, look);
   }
 
+  /** Whether the alert raised while walking is on (off by default). */
   async alertOn(): Promise<boolean> {
     return (await this.store.setting(SETTING_KEYS.traceAlert)) === '1';
   }
@@ -344,6 +355,7 @@ export class TraceStore {
     await this.store.setSetting(SETTING_KEYS.traceAlert, on ? '1' : '0');
   }
 
+  /** Whether the screen wake lock is requested during a walk (off by default). */
   async keepAwake(): Promise<boolean> {
     return (await this.store.setting(SETTING_KEYS.traceKeepAwake)) === '1';
   }

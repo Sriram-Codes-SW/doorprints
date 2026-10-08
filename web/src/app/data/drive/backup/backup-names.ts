@@ -20,6 +20,7 @@ import { civil } from './backup-retention';
 
 /** The file names of docs/15 §5.1 (local time; the names are for the person, the app goes by the metadata). */
 export const BACKUP_PARTIAL_PREFIX = 'partial-';
+/** MIME type of backup files in Drive. */
 export const BACKUP_MIME = 'application/octet-stream';
 
 /** `Doorprints-backup-2026-10-02-0930.dpx` for `createdAt` at `utcOffsetMinutes`. */

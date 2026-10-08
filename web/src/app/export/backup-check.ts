@@ -27,7 +27,7 @@ import { MAX_DURATION_MIN, MAX_ID_LENGTH, MAX_VIEWINGS, MAX_VIEWING_NOTES, MAX_W
 import { BACKUP_FORMATS_READ } from './backup-export';
 import type { BackupData } from './backup-export';
 
-/**
+/*
  * The checks of a `data.json` before anything is written (docs/schemas/README.md section 6 rule 1; S4b-BL-75): the
  * website's copy of Kotlin's `BackupValidation.checkData` and of the strict decoding in front of it, rule for rule, so a
  * file one app refuses the other refuses too. `docs/schemas/import-vectors.json` holds the shared cases
@@ -37,6 +37,7 @@ import type { BackupData } from './backup-export';
  * value of the wrong type is `BROKEN_DATA`. Then the format (`UNSUPPORTED_VERSION` above the newest number this reader
  * knows), then the rows: ids, repeats, ranges and caps. An unknown key is ignored; an unknown deletion kind too.
  */
+/** Why a file is not accepted as a backup, in the terms the import screen words; the same set of answers as the Android reader. */
 export type BackupProblem =
   | 'NOT_A_BACKUP'
   | 'UNSUPPORTED_VERSION'
@@ -48,6 +49,7 @@ export type BackupProblem =
   | 'READ_FAILED'
   | 'WRITE_FAILED';
 
+/** The result of checking `data.json`: the data (the file's own objects, unchanged), or the problem. */
 export type CheckedData = { ok: true; data: BackupData } | { ok: false; problem: BackupProblem };
 
 /** Thrown inside the decoder: the shape is not one any writer of the format produces. */
@@ -62,7 +64,9 @@ const RECORD_ID = /^[A-Za-z0-9._-]{1,64}$/;
 const INT_MIN = -2_147_483_648;
 const INT_MAX = 2_147_483_647;
 
+/** Whether [id] is a valid house, visit, photo or broker id (letters, digits, `_` and `-`, up to 64). */
 export const isRowId = (id: unknown): boolean => typeof id === 'string' && ROW_ID.test(id);
+/** Whether [id] is a valid id for a record, room or answer: dots allowed, but not `.` or `..` alone. */
 export const isRecordId = (id: unknown): boolean => typeof id === 'string' && RECORD_ID.test(id) && id !== '.' && id !== '..';
 
 function object(value: unknown): Obj {

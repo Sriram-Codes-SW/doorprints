@@ -38,6 +38,9 @@ import type { TKey } from '../../../i18n/en';
  * one backup run, one listing, one download. The twin of Kotlin's `DriveBackupResults.kt`.
  */
 
+/**
+ * What went wrong, in the terms a screen can word: Drive and network failures, key and control-file trust failures, sign-in failures.
+ */
 export type DriveProblemKind =
   | 'OFFLINE'
   | 'UNAUTHORIZED'
@@ -240,6 +243,7 @@ export interface DriveBackup {
   readonly size: number | null;
 }
 
+/** A one-line description of a backup for logs and test output; holds the key id in hex, no secret. */
 export function describeBackup(b: DriveBackup): string {
   return `DriveBackup(${b.fileId}, createdAt=${b.createdAt}, houses=${b.houses}, epoch=${b.epoch}, kid=${hex(b.writerKid)})`;
 }

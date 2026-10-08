@@ -57,6 +57,7 @@ export const RATE_LIMIT_ATTEMPTS = 4;
 /** Longest `Retry-After` slept through (Android `RetryPolicy.maxDelayMs`); a longer one ends the run. */
 export const MAX_RATE_LIMIT_WAIT_MS = 15_000;
 
+/** What one finished sync pass did: rows pushed and pulled, rows the app refused to store, and when. */
 export interface SyncOutcome {
   pushed: number;
   pulled: number;

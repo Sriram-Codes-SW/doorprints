@@ -90,6 +90,7 @@ export async function ensureFolder(
   });
 }
 
+/** Options for a resumable upload: chunk size, a saved session to resume, progress and stop hooks. */
 export interface ResumableOptions {
   chunkSize?: number;
   session?: UploadSession | null;

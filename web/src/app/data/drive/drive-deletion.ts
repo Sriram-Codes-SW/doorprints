@@ -33,11 +33,16 @@ import type { AuthorizationToken, DeletionAction, DeletionItem, DeletionLevel, I
  * only when empty; nothing is created; the stored root id is verified, never searched for.
  */
 
+/** How many files of one kind a plan removes and how many bytes they hold. */
 export interface KindTotal {
   readonly count: number;
   readonly bytes: number;
 }
 
+/**
+ * Exactly what a deletion will remove, fixed at preflight: the items with their phases, totals per kind and the count of files left alone because they are not ours.
+ * The `operationId` binds an authorisation to this plan.
+ */
 export interface DeletionPlan {
   readonly action: DeletionAction;
   readonly level: DeletionLevel;
@@ -55,7 +60,9 @@ export interface AuthorizationGate {
   stillHolds(token: AuthorizationToken, action: DeletionAction): Promise<boolean>;
 }
 
+/** Why a run ended before everything was deleted. */
 export type StopReason = 'DRIVE_ERROR' | 'AUTHORIZATION_LOST' | 'FILES_FAILED';
+/** What a device does when it connects again after a deletion: ask before backing up, or start as a first connect. */
 export type ReconnectPath = 'ASK_BEFORE_BACKUP' | 'FULL_FIRST_CONNECT';
 
 /** Kept on the device after a finished deletion: automatic backup stays off; after L3 there is no folder id. */
@@ -65,10 +72,14 @@ export interface DeletedMarker {
   readonly action: string;
 }
 
+/**
+ * After a full deletion (L3) no folder id is kept, so the next connect is a first connect; after a smaller one the person is asked before the next backup.
+ */
 export function reconnectPath(marker: DeletedMarker): ReconnectPath {
   return marker.level === 'L3' ? 'FULL_FIRST_CONNECT' : 'ASK_BEFORE_BACKUP';
 }
 
+/** A started deletion saved on the device so an interrupted run can be resumed. */
 export interface PendingDeletion {
   readonly operationId: string;
   readonly level: DeletionLevel;
@@ -79,6 +90,7 @@ export interface PendingDeletion {
   readonly createdAtMs: number;
 }
 
+/** Where a device keeps the pending deletion and the marker of the last finished one. */
 export interface DeletionStore {
   pending(): Promise<PendingDeletion | null>;
   savePending(pending: PendingDeletion): Promise<void>;
@@ -87,10 +99,12 @@ export interface DeletionStore {
   recordFinished(marker: DeletedMarker, forgetFolder: boolean): Promise<void>;
 }
 
+/** The preflight outcome: a plan, or the refusal and any Drive error. */
 export type PlanResult =
   | { readonly kind: 'ready'; readonly plan: DeletionPlan }
   | { readonly kind: 'refused'; readonly reason: Refusal; readonly error: DriveError | null };
 
+/** What a run did: refused before starting, or how far it got (finished or stopped, with the files that were kept). */
 export type DeletionOutcome =
   | { readonly kind: 'refused'; readonly reason: Refusal; readonly error: DriveError | null }
   | {
@@ -103,6 +117,7 @@ export type DeletionOutcome =
       readonly marker: DeletedMarker | null;
     };
 
+/** The seams of `DriveDeletionService`: Drive, the authorisation gate, the store, connectivity and the clock. */
 export interface DriveDeletionDeps {
   readonly drive: DriveClient;
   readonly gate: AuthorizationGate;
@@ -118,6 +133,10 @@ const createdAtOf = (f: DriveFile): number => {
 };
 const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 
+/**
+ * Deletes what Doorprints keeps in the person's Drive, safely: it lists exactly what will go before anything is deleted, checks the authorisation before each file, and can resume an interrupted run.
+ * Only files with Doorprints' own `kind` in the right folder are deleted; it never creates files and never searches for the root folder.
+ */
 export class DriveDeletionService {
   private running: Promise<unknown> = Promise.resolve();
   private readonly saveEvery: number;

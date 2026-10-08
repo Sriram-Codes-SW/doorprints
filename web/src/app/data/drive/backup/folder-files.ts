@@ -21,9 +21,13 @@ import { DRIVE_LAYOUT, DriveError, FOLDER_MIME } from '../drive-client';
 import type { DriveClient, DriveFile } from '../drive-client';
 import { downloadVerified, listAll } from '../drive-ops';
 
+/** The `appProperties` kind of the `keys.json` file. */
 export const KIND_KEYS = 'keys';
+/** The `appProperties` kind of the `doorprints.json` file. */
 export const KIND_CONTROL = 'control';
+/** File name of the device list in the Drive folder. */
 export const KEYS_NAME = 'keys.json';
+/** File name of the control file in the Drive folder. */
 export const CONTROL_NAME = 'doorprints.json';
 export const JSON_MIME = 'application/json';
 

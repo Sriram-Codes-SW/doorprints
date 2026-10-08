@@ -25,6 +25,9 @@ import { ab, concat, constantTimeEquals, hex, unhex, utf8 } from '../crypto/byte
  */
 const INFO = utf8('doorprints/deletion-proof/1');
 
+/**
+ * Turns the passkey's PRF output into the non-extractable HMAC key that signs deletion proofs; throws `RangeError` unless the output is 32 bytes.
+ */
 export async function importProofKey(prfOutput: Uint8Array): Promise<CryptoKey> {
   if (prfOutput.length !== 32) throw new RangeError('PRF output');
   const base = await crypto.subtle.importKey('raw', ab(prfOutput), 'HKDF', false, ['deriveKey']);
@@ -37,6 +40,7 @@ export async function importProofKey(prfOutput: Uint8Array): Promise<CryptoKey> 
   );
 }
 
+/** The exact bytes a proof signs: the operation id, a zero byte and the issue time as 8 bytes big-endian. */
 export function proofMessage(operationId: string, issuedAtMs: number): Uint8Array {
   if (!Number.isSafeInteger(issuedAtMs) || issuedAtMs < 0) throw new RangeError('time');
   const time = new Uint8Array(8);
@@ -46,11 +50,15 @@ export function proofMessage(operationId: string, issuedAtMs: number): Uint8Arra
   return concat(utf8(operationId), new Uint8Array([0]), time);
 }
 
+/** The proof for one operation as 64 lowercase hex characters; it exists only after the key came from a PRF open. */
 export async function signProof(key: CryptoKey, operationId: string, issuedAtMs: number): Promise<string> {
   const mac = new Uint8Array(await crypto.subtle.sign('HMAC', key, ab(proofMessage(operationId, issuedAtMs))));
   return hex(mac);
 }
 
+/**
+ * Whether [proof] is the valid signature for this operation and time; compares in constant time and rejects anything that is not 64 lowercase hex.
+ */
 export async function checkProof(key: CryptoKey, operationId: string, issuedAtMs: number, proof: string): Promise<boolean> {
   if (!/^[0-9a-f]{64}$/.test(proof)) return false;
   const mac = new Uint8Array(await crypto.subtle.sign('HMAC', key, ab(proofMessage(operationId, issuedAtMs))));

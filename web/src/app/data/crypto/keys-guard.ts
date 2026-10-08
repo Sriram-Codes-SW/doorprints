@@ -23,6 +23,7 @@ import type { KeysBody } from './keys-file';
 export { KeysGuard, keysOrder, MAX_REVISION_STEP, sameWatermark } from './keys-file';
 export type { KeysOrder, KeysWatermark, KeysWatermarkStore } from './keys-file';
 
+/** What to do with one file after a revoke: accept it, or skip it for the named reason. */
 export type RevokedVerdict = 'ACCEPT' | 'SKIP_REVOKED_WRITER' | 'SKIP_OLD_EPOCH_AFTER_REVOKE' | 'SKIP_UNKNOWN_WRITER' | 'NEWER_EPOCH';
 
 /**

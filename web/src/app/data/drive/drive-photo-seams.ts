@@ -50,8 +50,10 @@ export interface PhotoState {
   readonly bad: Readonly<Record<string, PhotoBad>>;
 }
 
+/** The photo bookkeeping of a device that has uploaded nothing. */
 export const EMPTY_PHOTO_STATE: PhotoState = { photosFolderId: null, refs: {}, bad: {} };
 
+/** Where a device keeps its `PhotoState`. */
 export interface PhotoStateStore {
   load(): Promise<PhotoState>;
   save(state: PhotoState): Promise<void>;
@@ -70,12 +72,16 @@ export type PhotoSkipReason =
   | 'BAD_ENVELOPE' | 'CHECKSUM_MISMATCH' | 'DOWNLOAD_CORRUPT' | 'REVOKED_WRITER' | 'OLD_EPOCH_AFTER_REVOKE'
   | 'UNKNOWN_WRITER' | 'NEWER_EPOCH' | 'UNSUPPORTED_VERSION';
 
+/** A photo that was skipped, with the reason; never aborts a sync. */
 export interface SkippedPhoto {
   readonly photoId: string;
   readonly reason: PhotoSkipReason;
   readonly detail?: string | null;
 }
 
+/**
+ * What happened to one photo: uploaded, already there unchanged, an existing, verified Drive file taken as its copy (adopted, e.g. another device uploaded the same bytes), or skipped.
+ */
 export type PhotoUploadResult =
   | { readonly kind: 'Uploaded'; readonly ref: PhotoRef }
   | { readonly kind: 'Unchanged'; readonly ref: PhotoRef }
@@ -91,6 +97,7 @@ export interface PhotoConfig {
   readonly keysFreshMs: number;
 }
 
+/** The production limits: photos up to 32 MiB, and a bad photo is retried after a day. */
 export const DEFAULT_PHOTO_CONFIG: PhotoConfig = {
   maxPlaintextBytes: 32 * 1024 * 1024,
   chunkSize: DEFAULT_CHUNK,

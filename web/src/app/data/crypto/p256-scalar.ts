@@ -24,6 +24,7 @@ import { unhex } from './bytes';
  * No point arithmetic here: the public key always comes from WebCrypto.
  */
 const LIMBS = 16;
+/** The order n of the P-256 group, big-endian. */
 export const P256_ORDER = unhex('ffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551');
 const ORDER_MINUS_1 = toLimbs(unhex('ffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632550'));
 

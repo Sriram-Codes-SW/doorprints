@@ -35,6 +35,7 @@ const STORE_NAMES = {
   deviceKey: 'device-key',
 } as const;
 
+/** Handle to the Drive database; `kind` says whether data is really kept or lives only for this page. */
 export interface DriveDb {
   /** 'indexeddb' when data is really kept; 'memory' when it lives only for this page. */
   readonly kind: 'indexeddb' | 'memory';
@@ -42,6 +43,9 @@ export interface DriveDb {
   close(): void;
 }
 
+/**
+ * The Drive database and the stores built on it: key-value, keys watermark, sync state, pending deletion, photo state and device state.
+ */
 export interface OpenedDriveDb {
   db: DriveDb;
   keyValueStore: KeyValueStore;
@@ -418,6 +422,9 @@ function upgradeDb(db: IDBDatabase, oldVersion: number, newVersion: number): voi
   }
 }
 
+/**
+ * Opens the `doorprints-drive` IndexedDB database, or falls back to in-memory stores when IndexedDB is unavailable (private window); the fallback keeps nothing across a reload.
+ */
 export async function openDriveDb(): Promise<OpenedDriveDb> {
   try {
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
