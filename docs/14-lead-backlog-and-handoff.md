@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.111 |
+| Version | 0.112 |
 | Date | 2026-10-08 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..173); this file lists the lead-level items and points to the rest. |
@@ -120,6 +120,7 @@
 | 0.109 | 2026-10-07 | Claude (Code), lead | §7: the floor guard `node tools/check-floor.mjs` (S4b-BL-157; [10](10-sprint-log.md) v0.169) checks the rule "never weaken a gate"; the `Gate-loosening:` escape and what the guard cannot see. |
 | 0.110 | 2026-10-08 | Claude (Code), lead | The comment pass (S4b-BL-158; [10](10-sprint-log.md) v0.170) is done: important functions and types carry a doc comment (what it achieves, what it does). New code follows the same rule: a public or non-obvious function gets a short doc comment in the language's standard form, and a change that moves code moves its comment with it. |
 | 0.111 | 2026-10-08 | Claude (Code), lead | The independent review of `main` (2026-10-08) is recorded: S4b-BL-161..173 in [10](10-sprint-log.md) §12.7 (v0.173), with S4b-BL-161 (the pairing flood) to be done before any public server and S4b-BL-168 and -171 waiting for the owner. Team-level ticket range in the header is now S4b-BL-1..173. |
+| 0.112 | 2026-10-08 | Claude (Code), lead | S4b-BL-176 ([10](10-sprint-log.md) v0.175): the own-provider eval summary prints the model's response for each failed case, so the three failures of the first Gemini run (32 of 35) can be triaged on the next run; the server eval's retrieval `topK` now covers the 7 fixture houses. Until that run, do not change prompts, thresholds or the golden set from those reasons. |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 

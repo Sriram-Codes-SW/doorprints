@@ -14,6 +14,17 @@
     { "file": "web/src/app/core/ai/ai-eval.ts", "find": "if (stopped) lines.push", "replace": "if (false) lines.push", "expect": "says where a run stopped" },
     { "file": "web/src/app/core/ai/ai-eval.ts", "find": "(key === '' ? s : s.split(key).join('***'))", "replace": "s", "expect": "never prints the key" },
     { "file": "web/src/app/core/ai/ai-eval.ts", "find": ".map((f) => hide(f)).map((f) => (f.length > MAX_REASON ? `${f.slice(0, MAX_REASON)}...` : f))", "replace": ".map((f) => (f.length > MAX_REASON ? `${f.slice(0, MAX_REASON)}...` : f)).map((f) => hide(f))", "expect": "across the 200-character cut" },
-    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "slice(0, MAX_REASONS)", "replace": "slice(0, MAX_REASONS + 1)", "expect": "shortens a long reason" }
+    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "slice(0, MAX_REASONS)", "replace": "slice(0, MAX_REASONS + 1)", "expect": "shortens a long reason" },
+    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "const MAX_OUTPUTS = 20;", "replace": "const MAX_OUTPUTS = 21;", "expect": "first 20 failed cases" },
+    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "const MAX_OUTPUT = 3000;", "replace": "const MAX_OUTPUT = 3001;", "expect": "cuts an output at 3,000" },
+    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "out.length > MAX_OUTPUT ?", "replace": "out.length >= MAX_OUTPUT ?", "expect": "exactly 3,000" },
+    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "const out = hide(r.output).replace", "replace": "const out = r.output.replace", "expect": "hides the key in an output" },
+    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "const out = hide(r.output).replace", "replace": "const out = hide(r.output.slice(0, MAX_OUTPUT)).replace", "expect": "hides the key in an output" },
+    { "file": "web/src/app/core/ai/ai-eval.ts", "find": ".replace(/`/g, '\\\\u0060')", "replace": "", "expect": "cannot close the code fence" },
+    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "JSON.stringify({ answer, citations, grounded })", "replace": "JSON.stringify({ answer, grounded })", "expect": "answer, citations and grounded flag" },
+    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "} else if (r.output !== undefined) unseen++;", "replace": "} else if (false) unseen++;", "expect": "how many were not shown" },
+    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "output = JSON.stringify(outcome.plan);", "replace": "output = undefined;", "expect": "failed plan case" },
+    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "output = JSON.stringify(outcome.draft);", "replace": "output = undefined;", "expect": "failed extract case" },
+    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "const failed = results.filter((r) => !r.passed);", "replace": "const failed = results.filter((r) => !r.passed || r.output !== undefined);", "expect": "none for a passing case" }
   ]
 }
