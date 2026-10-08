@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.129 |
+| Version | 0.130 |
 | Date | 2026-10-08 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..183); this file lists the lead-level items and points to the rest. |
@@ -138,6 +138,7 @@
 | 0.127 | 2026-10-08 | Claude (Code), lead | S4b-BL-167, -169, -170 ([10](10-sprint-log.md) v0.190): the pull batches its local reads (web and Android), the `file://` import scheme is removed, Android lint is blocking in CI (no baseline); the pull-request run is the proof that the Lint step passes there. |
 | 0.128 | 2026-10-08 | Claude (Code), engineer | S4b-BL-163, S4b-BL-164 and S4b-BL-166 done ([10](10-sprint-log.md) v0.191): the push tie rule (the same stamp and content writes nothing and burns no version), one writer for the filters' problem+json answers, the injected clock in four more backend classes. The `SyncTieApiTest` integration tests need PostGIS and ran only in CI. |
 | 0.129 | 2026-10-09 | Claude (Code), engineer | S4b-BL-163 follow-up ([10](10-sprint-log.md) v0.192): the first CI run of `SyncTieApiTest` found two real faults (record payload compared as text against `jsonb` text; a new house answered with nanosecond times), both fixed with unit tests. |
+| 0.130 | 2026-10-09 | Claude (Code), engineer | S4b-BL-175-F1 and -F2 fixed, -F3 documented ([10](10-sprint-log.md) v0.193): the Anthropic adapters retry once with `tool_choice: auto` on the documented 400; the website reads a redirect as *unavailable*. A change to the Anthropic request or the redirect mode re-runs `node --test tools/fake-ai-provider`, the wire specs and `browser-check.mjs` (§7). |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 

@@ -39,8 +39,8 @@
     },
     {
       "file": "web/src/app/core/ai/anthropic.ts",
-      "find": "const cacheKey = `${this.baseUrl()}\\n${this.settings.model}`;",
-      "replace": "const cacheKey = `${this.baseUrl()}`;",
+      "find": "const cacheKey = `${check.valid ? check.normalised : ''}\\n${this.settings.model}`;",
+      "replace": "const cacheKey = `${check.valid ? check.normalised : ''}`;",
       "expect": "remembers the choice for this address and model"
     },
     {

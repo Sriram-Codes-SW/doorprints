@@ -134,7 +134,8 @@ export class AnthropicChatModel implements JsonChatModel {
   async generateJson(system: string, user: string, schema: object, temperature: number): Promise<string> {
     const name = schemaName(schema);
     const strict = toStrictSchema(schema);
-    const cacheKey = `${this.baseUrl()}\n${this.settings.model}`;
+    const check = this.address();
+    const cacheKey = `${check.valid ? check.normalised : ''}\n${this.settings.model}`;
     let force = !unforced.has(cacheKey);
     for (;;) {
       const body = anthropicBody(name, this.settings.model, system, user, temperature, strict, MAX_TOKENS, force);
@@ -159,14 +160,14 @@ export class AnthropicChatModel implements JsonChatModel {
     if (!anthropicPingAnswered(res.body)) throw new OnDeviceAiError('unavailable');
   }
 
-  private baseUrl(): string {
-    const check = validateWebBaseUrl(this.settings.baseUrl.trim() || ANTHROPIC_BASE_URL);
-    return check.valid ? check.normalised : '';
+  /** The checked address this configuration calls (an empty one means Anthropic's own). */
+  private address(): ReturnType<typeof validateWebBaseUrl> {
+    return validateWebBaseUrl(this.settings.baseUrl.trim() || ANTHROPIC_BASE_URL);
   }
 
   /** One POST to `{base}/v1/messages`; no key, no request. */
   private post(body: object): ReturnType<typeof postAiJson> {
-    const check = validateWebBaseUrl(this.settings.baseUrl.trim() || ANTHROPIC_BASE_URL);
+    const check = this.address();
     if (!check.valid) throw new OnDeviceAiError('unavailable');
     const key = this.apiKey.trim();
     if (key === '') throw new OnDeviceAiError('keyRejected');
