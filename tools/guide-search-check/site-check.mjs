@@ -63,15 +63,25 @@ const SITES = [['en', ''], ['hi', 'hi'], ['ta', 'ta'], ['te', 'te']];
 const problems = [];
 const bad = (lang, what, detail) => problems.push(`[${lang}] ${what}: ${detail}`);
 
-// Angle-bracket entities are left as they are on purpose (no title prints one; a title that did would show up as a
-// mismatch below): decoding them after the tags are stripped could rebuild a tag (CodeQL js/incomplete-multi-character-sanitization).
-const decode = (s) => s
-  .replace(/<[^>]+>/g, '')
+// The text of an HTML fragment: tags dropped by a scan (not a regex, so no half-removed tag can be left behind), the
+// entities a built title can hold decoded, and any angle bracket that decoding produced dropped. Angle-bracket entities
+// themselves are left as they are on purpose (no title prints one; a title that did would show up as a mismatch below).
+function stripTags(s) {
+  let out = '';
+  let inTag = false;
+  for (const c of s) {
+    if (c === '<') inTag = true;
+    else if (c === '>' && inTag) inTag = false;
+    else if (!inTag) out += c;
+  }
+  return out;
+}
+const decode = (s) => stripTags(s)
   .replace(/&para;/g, '')
   .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(+n))
   .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16)))
   .replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&amp;/g, '&')
-  .replace(/[<>]/g, '') // numeric entities can decode to an angle bracket after the tags were stripped
+  .replace(/[<>]/g, '')
   .replace(/\s+/g, ' ').trim();
 
 // The built navigation: [href, title] of every page link, from index.html's sidebar.
