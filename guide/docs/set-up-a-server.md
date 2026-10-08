@@ -273,6 +273,16 @@ them may use AI, and can paste your Gemini key. Nobody else needs it.
 
 Keep the owner page's address in your password manager: `https://` your address from step 7, then `/owner`.
 
+**If you lose your only signed-in browser** (you cleared its cookies, or you have a new computer) and the server still
+thinks it is signed in, the logs hold no link. To get one:
+
+1. In `.env`, add the line `OWNER_SETUP_LINK_IN_LOG=true`.
+2. Run `docker compose up -d` in **doorprints-main**, then `docker compose logs api`, and use the link under
+   **Doorprints owner page** as in the steps above. The text there says the setting is on.
+3. Once you are signed in, **take the line out of `.env` again** (or change it to `false`) and run
+   `docker compose up -d`. While it is on, every start writes a working link into the logs, and the logs are read by
+   more tools than you.
+
 ## Step 9: Connect the apps
 
 Each app connects with a short code or a QR code, so you never type the API key into an app. Each one gets a key of
@@ -373,7 +383,7 @@ First, see what the server says about the problem. These messages are called log
 | The phone connects but the website doesn't | Check that the `APP_CORS_ORIGINS` line in `.env` is exactly `https://doorprints.web.app`. Then run `docker compose up -d`. Make sure Tailscale is on for that computer too. If the browser asks to allow access to devices on your network, choose **Allow**. |
 | **Ask**, **Plan** or **Assistant** don't appear | `.env` needs `APP_AI_ENABLED=true` (after a change, run `docker compose up -d`). Then check three things: a Gemini key is saved on the owner page (or in `AI_API_KEY`); **AI on this server** is on; and **AI** is ticked for that device under **Devices**. In the app, also turn on **Use AI features in this browser** (website, **Connect** page) or **Use AI features on this phone** (phone, **Settings**). |
 | **Get a code** says the server cannot connect by code yet | The server is older than this guide. Update it (see *Everyday use*), or open **Use an API key instead** and type your Doorprints API key. |
-| The owner page link no longer works | It works only once, within an hour. If no browser has signed in yet, restart the server with `docker compose restart api` and use the new link in the logs. If one has, the logs hold no link: in that browser, open the owner page and choose **Add another browser**. |
+| The owner page link no longer works | It works only once, within an hour. If no browser has signed in yet, restart the server with `docker compose restart api` and use the new link in the logs. If one has, the logs hold no link: in that browser, open the owner page and choose **Add another browser**. If you no longer have that browser, use the recovery at the end of step 8 (`OWNER_SETUP_LINK_IN_LOG=true`). |
 | `tailscale` is not recognized, or `command not found` | Windows: open a new terminal after installing Tailscale. Mac: use the longer form in step 7. |
 | AI answers fail after working earlier | You have probably reached the free daily limit. Try again the next day. |
 | All your houses are gone from the server | The folder was renamed or moved (see step 2). Move it back. Or, on Android, use **Import a backup** with your latest copy, then **Sync now**. |

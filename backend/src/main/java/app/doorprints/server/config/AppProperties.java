@@ -38,7 +38,8 @@ public record AppProperties(
         Privacy privacy,
         /* The web app's address, for the owner page's connect links (APP_WEB_URL); docs/03 §12.1. */
         String webUrl,
-        Pairing pairing) {
+        Pairing pairing,
+        Owner owner) {
 
     public AppProperties {
         rateLimit = rateLimit == null ? new RateLimit(null, null, null, null) : rateLimit;
@@ -47,6 +48,19 @@ public record AppProperties(
         privacy = privacy == null ? new Privacy(null) : privacy;
         webUrl = webUrl == null || webUrl.isBlank() ? "https://doorprints.web.app" : webUrl.replaceAll("/+$", "");
         pairing = pairing == null ? new Pairing(null, null) : pairing;
+        owner = owner == null ? new Owner(null) : owner;
+    }
+
+    /**
+     * Owner page settings. {@code setupLinkInLog} (OWNER_SETUP_LINK_IN_LOG, default false) is the owner's recovery
+     * switch (S4b-BL-188, docs/03 section 12.1): when on, the one-hour setup link is written to the log at a start
+     * even though a browser is signed in; the owner who lost their only signed-in browser uses it, then switches it
+     * off again.
+     */
+    public record Owner(Boolean setupLinkInLog) {
+        public Owner {
+            setupLinkInLog = Boolean.TRUE.equals(setupLinkInLog);
+        }
     }
 
     /**

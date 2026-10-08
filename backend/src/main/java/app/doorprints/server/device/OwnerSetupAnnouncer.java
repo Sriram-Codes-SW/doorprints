@@ -18,6 +18,7 @@
 
 package app.doorprints.server.device;
 
+import app.doorprints.server.config.AppProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -43,24 +44,33 @@ public class OwnerSetupAnnouncer {
 
     private static final Logger log = LoggerFactory.getLogger(OwnerSetupAnnouncer.class);
 
+    static final String SWITCH_WARNING = "OWNER_SETUP_LINK_IN_LOG is on, so this link is written even though a browser "
+            + "is signed in. Anyone who can read this log can use it for the next hour: sign in, then switch "
+            + "OWNER_SETUP_LINK_IN_LOG off again and restart.";
+
     private final OwnerAuth auth;
     private final Environment env;
+    private final AppProperties props;
 
-    public OwnerSetupAnnouncer(OwnerAuth auth, Environment env) {
+    public OwnerSetupAnnouncer(OwnerAuth auth, Environment env, AppProperties props) {
         this.auth = auth;
         this.env = env;
+        this.props = props;
     }
 
     @EventListener(ApplicationReadyEvent.class)
     public void announce() {
         try {
-            if (auth.hasOpenSession()) {
+            var recovery = props.owner().setupLinkInLog();
+            var signedIn = auth.hasOpenSession();
+            if (signedIn && !recovery) {
                 log.info("Doorprints owner page: a browser is already signed in. To sign in another browser, open the "
                         + "owner page in a signed-in browser and choose \"Add another browser\"; it makes a "
                         + "one-time link.");
                 return;
             }
-            writeLink(auth.newSetupToken());
+            // With the switch on and a browser still signed in, the owner asked for the link (recovery), so say so.
+            writeLink(auth.newSetupToken(), recovery && signedIn);
         } catch (RuntimeException e) {
             // Fail closed: nothing secret, and not the exception's message either (a driver may echo a query).
             log.warn("Doorprints owner page: could not check whether a browser is signed in ({}); no link was written.",
@@ -68,7 +78,7 @@ public class OwnerSetupAnnouncer {
         }
     }
 
-    private void writeLink(String token) {
+    private void writeLink(String token, boolean recoveryWhileSignedIn) {
         var port = env.getProperty("local.server.port", env.getProperty("server.port", "8080"));
         log.info("""
 
@@ -77,7 +87,8 @@ public class OwnerSetupAnnouncer {
                   http://localhost:{}/owner#setup={}
                 If you reach this server by another address (Tailscale, another computer), use that address instead:
                   https://<your-server-address>/owner#setup={}
-                No browser is signed in yet, so a new link is written here at every start until one is.
-                ===============================""", port, token, token);
+                {}
+                ===============================""", port, token, token, recoveryWhileSignedIn ? SWITCH_WARNING
+                : "No browser is signed in yet, so a new link is written here at every start until one is.");
     }
 }
