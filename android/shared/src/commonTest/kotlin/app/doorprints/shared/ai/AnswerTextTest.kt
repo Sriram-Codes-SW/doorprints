@@ -21,6 +21,7 @@ package app.doorprints.shared.ai
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.measureTime
 
@@ -45,9 +46,21 @@ class AnswerTextTest {
     fun hostileLongInputIsScannedInLinearTime() {
         val texts = listOf("[", "![", "[a](", "](", "http://", "[x](http://").map { it.repeat(200_000) } +
             listOf("[".repeat(30_000) + "[x]".repeat(30_000), "[" + "a".repeat(200_000), "[a](" + "(".repeat(100_000), "http://" + "a".repeat(1_000_000))
+        // The wall-clock limit is only a backstop: Kotlin/Native's regex engine is several times slower per character than
+        // the JVM's (8.5 s for the 2.2 million characters of "[x](http://" x 200,000 on a CI runner, 2026-10-08), so a
+        // tight limit measures the machine. Linearity is what the next loop checks.
         for (text in texts) {
             val took = measureTime { AnswerText.clean(text, text) }
-            assertTrue(took < 5.seconds, "${text.take(12)} took $took")
+            assertTrue(took < 90.seconds, "${text.take(12)} took $took")
+        }
+        // Four times the input must take about four times as long (linear), not sixteen (quadratic). The factor 10 leaves
+        // room for timer noise and warm-up; a floor on the small run keeps a very fast one from making the ratio noisy.
+        for (piece in listOf("[", "![", "[a](", "](", "http://", "[x](http://")) {
+            val small = piece.repeat(50_000)
+            val large = piece.repeat(200_000)
+            val tSmall = maxOf(measureTime { AnswerText.clean(small, small) }, 200.milliseconds)
+            val tLarge = measureTime { AnswerText.clean(large, large) }
+            assertTrue(tLarge < tSmall * 10, "$piece: 4x the input took $tLarge, 1x took $tSmall")
         }
         assertEquals("x ".repeat(100_000) + "[link removed]", AnswerText.clean("x ".repeat(100_000) + "https://evil.example/y", ""))
     }
