@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.131 |
+| Version | 0.132 |
 | Date | 2026-10-08 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..183); this file lists the lead-level items and points to the rest. |
@@ -140,6 +140,7 @@
 | 0.129 | 2026-10-09 | Claude (Code), engineer | S4b-BL-163 follow-up ([10](10-sprint-log.md) v0.192): the first CI run of `SyncTieApiTest` found two real faults (record payload compared as text against `jsonb` text; a new house answered with nanosecond times), both fixed with unit tests. |
 | 0.130 | 2026-10-09 | Claude (Code), engineer | S4b-BL-162 done for the viewings ([10](10-sprint-log.md)): a house save no longer reads every viewing; areas, places and notes stay whole reads, with the reason in the row. |
 | 0.131 | 2026-10-09 | Claude (Code), engineer | S4b-BL-165 done ([10](10-sprint-log.md)): `TokenBucketRateLimiter` is in `server.common`; one constructor each for `ApiKeyFilter` and `AiExceptionHandler`; `PackageBoundaryTest`. |
+| 0.132 | 2026-10-09 | Claude (Code), lead | Owner-page strings and guide rows in hi/ta/te updated ([10](10-sprint-log.md) v0.195); S4b-BL-189 and S4b-BL-190 recorded. |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 
