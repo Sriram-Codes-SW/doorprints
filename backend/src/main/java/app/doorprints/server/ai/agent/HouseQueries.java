@@ -19,6 +19,7 @@
 package app.doorprints.server.ai.agent;
 
 import app.doorprints.server.ai.ContactRedactor;
+import app.doorprints.server.ai.PromptSafety;
 import app.doorprints.server.ai.agent.HouseSearchService.Criteria;
 import app.doorprints.server.ai.agent.HouseSearchService.HouseSummary;
 import app.doorprints.server.common.NotFoundException;
@@ -64,7 +65,7 @@ public class HouseQueries {
         static HouseDetails of(HouseDto h) {
             var r = ContactRedactor.forHouse(h);
             var notes = h.notes() == null || h.notes().length() <= NOTES_MAX ? h.notes()
-                    : h.notes().substring(0, NOTES_MAX) + " …";
+                    : PromptSafety.clipUnits(h.notes(), NOTES_MAX) + " …";
             Map<String, Integer> checklist = null;
             if (h.checklist() != null) {
                 var m = new LinkedHashMap<String, Integer>();

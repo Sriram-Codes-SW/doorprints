@@ -19,6 +19,7 @@
 package app.doorprints.server.ai.rag;
 
 import app.doorprints.server.ai.ContactRedactor;
+import app.doorprints.server.ai.PromptSafety;
 import app.doorprints.server.ai.agent.RouteOptimizer;
 import app.doorprints.server.house.HouseAnswer;
 import app.doorprints.server.house.HouseMoveIn;
@@ -123,7 +124,7 @@ public final class HouseDocuments {
         line(sb, "Visits", visitSummary(visits));
         if (h.notes() != null && !h.notes().isBlank()) {
             var notes = h.notes().strip();
-            notes = notes.length() > NOTES_MAX ? notes.substring(0, NOTES_MAX) + " …" : notes;
+            notes = notes.length() > NOTES_MAX ? PromptSafety.clipUnits(notes, NOTES_MAX) + " …" : notes;
             line(sb, "Notes", r.freeText(notes));
         }
         return sb.toString().strip();

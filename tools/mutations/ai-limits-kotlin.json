@@ -1,0 +1,160 @@
+{
+  "spec": "AiLimitsTest",
+  "gradle": [
+    ":shared:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.shared.ai.AiLimitsTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OnDeviceSelection.kt",
+      "find": "const val MAX_HOUSES = 40",
+      "replace": "const val MAX_HOUSES = 41",
+      "expect": "planKeepsTheFortyNearest"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OnDeviceSelection.kt",
+      "find": "if (kept.size <= MAX_HOUSES) kept",
+      "replace": "if (kept.size < MAX_HOUSES) kept",
+      "expect": "askDoesNotRankOrCutExactlyForty"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OnDeviceSelection.kt",
+      "find": "                    .thenBy { it.index })\n                .take(MAX_HOUSES)",
+      "replace": "                    .thenByDescending { it.index })\n                .take(MAX_HOUSES)",
+      "expect": "askKeepsTheFortyHousesSharingMostWords"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OnDeviceSelection.kt",
+      "find": ".thenBy { it.index })\n            .take(MAX_HOUSES).map { it.value }",
+      "replace": ".thenByDescending { it.index })\n            .take(MAX_HOUSES).map { it.value }",
+      "expect": "planSendsFortyOfFortyOne"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/HouseDocuments.kt",
+      "find": "const val NOTES_MAX = 3000",
+      "replace": "const val NOTES_MAX = 3001",
+      "expect": "notesAreCutAtThreeThousand"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/HouseDocuments.kt",
+      "find": "if (notes.length > NOTES_MAX)",
+      "replace": "if (notes.length >= NOTES_MAX)",
+      "expect": "notesAreCutAtThreeThousand"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/HouseDocuments.kt",
+      "find": "clipUnits(notes, NOTES_MAX) + \" …\"",
+      "replace": "clipUnits(notes, NOTES_MAX) + \"…\"",
+      "expect": "notesAreCutAtThreeThousand"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/HouseDocuments.kt",
+      "find": "val notes = h.notes.trim()",
+      "replace": "val notes = h.notes",
+      "expect": "notesAreMeasuredAfterTrimming"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/HouseDocuments.kt",
+      "find": "if (s.length > max && s[max - 1]",
+      "replace": "if (s.length >= max && s[max - 1]",
+      "expect": "theCutHelperKeepsATextOfExactlyTheLimitWhole"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/HouseDocuments.kt",
+      "find": "s[max - 1].isHighSurrogate() &&",
+      "replace": "false &&",
+      "expect": "aCutNeverLeavesHalfOfAnEmoji"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/HouseDocuments.kt",
+      "find": "s.take(max - 1) else s.take(max)",
+      "replace": "s.take(max - 2) else s.take(max)",
+      "expect": "aCutNeverLeavesHalfOfAnEmoji"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/HouseDocuments.kt",
+      "find": "s.take(max - 1) else s.take(max)",
+      "replace": "s.take(max - 1) else s.take(max - 1)",
+      "expect": "notesAreCutAtThreeThousand"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/HouseDocuments.kt",
+      "find": "s.take(max - 1) else s.take(max)",
+      "replace": "s.take(max) else s.take(max)",
+      "expect": "aCutNeverLeavesHalfOfAnEmoji"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OnDeviceAi.kt",
+      "find": "const val MAX_INPUT_CHARS = 8000",
+      "replace": "const val MAX_INPUT_CHARS = 8001",
+      "expect": "aListingOfEightThousand"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OnDeviceAi.kt",
+      "find": "require(text.length <= MAX_INPUT_CHARS)",
+      "replace": "require(text.length < MAX_INPUT_CHARS)",
+      "expect": "aListingOfEightThousand"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OnDeviceAi.kt",
+      "find": "require(text.isNotBlank()) { \"text is empty\" }",
+      "replace": "require(true) { \"text is empty\" }",
+      "expect": "aListingOfSpacesOnlyIsRefused"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OnDeviceAi.kt",
+      "find": "const val MAX_STOPS = 8",
+      "replace": "const val MAX_STOPS = 9",
+      "expect": "planOffersOnlyTheFortyNearest"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OnDeviceAi.kt",
+      "find": "MAX_STOPS).coerceAtLeast(1)",
+      "replace": "MAX_STOPS).coerceAtLeast(0)",
+      "expect": "aRequestMayAskForFewerStops"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OnDeviceAi.kt",
+      "find": "minOf(request.maxStops ?: MAX_STOPS, MAX_STOPS)",
+      "replace": "(request.maxStops ?: MAX_STOPS)",
+      "expect": "aRequestMayAskForFewerStops"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OnDeviceAi.kt",
+      "find": "request.startLat in -90.0..90.0",
+      "replace": "request.startLat in -90.0..91.0",
+      "expect": "aStartPointThatIsNotOnEarth"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OnDeviceAi.kt",
+      "find": "request.startLat in -90.0..90.0",
+      "replace": "request.startLat in -90.0..<90.0",
+      "expect": "thePolesAndTheDateLineAreAccepted"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OnDeviceAi.kt",
+      "find": "request.startLon in -180.0..180.0",
+      "replace": "request.startLon in -181.0..180.0",
+      "expect": "aStartPointThatIsNotOnEarth"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OnDeviceAi.kt",
+      "find": "request.startLon in -180.0..180.0",
+      "replace": "request.startLon in -180.0..<180.0",
+      "expect": "thePolesAndTheDateLineAreAccepted"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/PlanChecks.kt",
+      "find": "if (chosen.size == maxStops) return@forEach",
+      "replace": "if (chosen.size == maxStops + 1) return@forEach",
+      "expect": "aPlanStopsAtTheCap"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/PlanChecks.kt",
+      "find": ".filter { HouseStatusRules.inTheRunning(it.status) }.take(maxStops)",
+      "replace": ".filter { HouseStatusRules.inTheRunning(it.status) }.take(maxStops + 1)",
+      "expect": "theFallbackRouteKeepsTheCap"
+    }
+  ]
+}

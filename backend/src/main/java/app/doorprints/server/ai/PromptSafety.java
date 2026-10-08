@@ -49,6 +49,16 @@ public final class PromptSafety {
         return HexFormat.of().formatHex(bytes);
     }
 
+    /**
+     * The first {@code max} UTF-16 units of {@code s}, or one fewer when the cut would fall between the two halves of
+     * a character outside the Basic Multilingual Plane (an emoji): half a character would reach the provider as a broken one.
+     */
+    public static String clipUnits(String s, int max) {
+        if (s.length() <= max) return s;
+        boolean splits = Character.isHighSurrogate(s.charAt(max - 1)) && Character.isLowSurrogate(s.charAt(max));
+        return s.substring(0, splits ? max - 1 : max);
+    }
+
     /** Removes control characters and any tag that could be mistaken for one of our delimiters. */
     public static String neutralize(String text, String tagName) {
         if (text == null) return "";

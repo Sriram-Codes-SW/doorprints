@@ -244,6 +244,8 @@ export class OnDeviceAiService {
    */
   async planVisits(via: ModelRef, request: PlanRequest): Promise<PlanResponse> {
     if (!request.question.trim() || request.question.length > MAX_QUESTION_CHARS) throw new Error('question is empty or too long');
+    // The server's PlanRequest bounds (docs/ai/ai-design.md 9): a point that is not on Earth (or NaN) is refused here too.
+    if (!(Math.abs(request.startLat) <= 90) || !(Math.abs(request.startLon) <= 180)) throw new Error('the start point is not on Earth');
     const maxStops = Math.max(1, Math.min(request.maxStops ?? MAX_STOPS, MAX_STOPS));
     const candidates = selectForPlan(await this.houses(), request.startLat, request.startLon);
     const seen = new Map<string, PlanCandidate>(candidates.map((c) => [c.id, c]));
