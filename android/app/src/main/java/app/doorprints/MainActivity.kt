@@ -44,6 +44,11 @@ import app.doorprints.ui.ProvideAppServices
 import kotlinx.coroutines.flow.MutableStateFlow
 import java.util.UUID
 
+/**
+ * The app's one Activity: hosts the common Compose UI behind the app lock, turns notification taps and shared links into
+ * [DeepLink]s, and relays Google Drive's consent and confirm screens to the code that asked for them.
+ * The system starts it from the launcher, a notification, a shared link or the Drive sign-in redirect.
+ */
 class MainActivity : ComponentActivity() {
 
     private val deepLinks = MutableStateFlow<DeepLink?>(null)
@@ -141,6 +146,11 @@ class MainActivity : ComponentActivity() {
         intent.data = null
     }
 
+    /**
+     * Reads the intent as one [DeepLink], or null when it carries nothing valid. Checked in order: a connect link, a file
+     * or text shared to the app, then the notification extras. Every id, screen name and coordinate is validated here,
+     * because any app can send this Activity an intent.
+     */
     private fun parse(intent: Intent): DeepLink? {
         // A connect link (doorprints://connect, the owner page's QR code): only a checked one; the app asks first.
         if (intent.action == Intent.ACTION_VIEW) {

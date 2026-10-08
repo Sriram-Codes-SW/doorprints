@@ -37,6 +37,11 @@ import app.doorprints.ui.Formats
 import app.doorprints.ui.Routes
 import app.doorprints.ui.canPostNotifications
 
+/**
+ * Every notification the app posts: the channels, the fixed ids and tags that keep two features from replacing each
+ * other's notification, the intent extras that carry a tap back into [MainActivity], and the builders for each kind.
+ * House names, areas and routes are private, so every channel that could show them hides them on a locked screen (F-14).
+ */
 object Notifications {
     const val CHANNEL_HUNT = "hunt"
     const val CHANNEL_ALERTS = "alerts"
@@ -167,7 +172,11 @@ object Notifications {
      */
     const val EXTRA_START_HUNT_AREA = "startHuntArea"
 
-    /** Pass a localised context (an Activity, or AppLocale.wrap(app)) so channel names follow the app language. */
+    /**
+     * Creates (or renames, if they exist) the notification channels the person can mute or reshape in Android's settings.
+     * Safe to call at every start: Android keeps the person's own channel settings and only updates the names and
+     * descriptions. Pass a localised context (an Activity, or AppLocale.wrap(app)) so channel names follow the app language.
+     */
     fun createChannels(context: Context) {
         val nm = context.getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(
@@ -223,6 +232,10 @@ object Notifications {
         )
     }
 
+    /**
+     * The tap action for a notification: brings [MainActivity] to the front (one instance) with [extras], which the
+     * activity validates before acting. Immutable, and one [requestCode] per distinct target so the intents stay apart.
+     */
     fun openAppIntent(context: Context, requestCode: Int, extras: Intent.() -> Unit = {}): PendingIntent {
         val intent = Intent(context, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)

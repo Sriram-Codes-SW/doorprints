@@ -30,7 +30,9 @@ import java.io.File
 
 /** Either an open, validated backup or the reason it was refused. */
 sealed interface BackupOpen {
+    /** The backup passed every check; the caller owns [reader] and must close it. */
     data class Ok(val reader: BackupReader) : BackupOpen
+    /** The backup was refused; [problem] says why, in terms the Import screen can word. */
     data class Failed(val problem: BackupProblem) : BackupOpen
 }
 
@@ -60,6 +62,10 @@ class BackupReader private constructor(
     override fun close() = source.close()
 
     companion object {
+        /**
+         * Opens and validates the staged [file] without writing any row. A missing or unreadable file is READ_FAILED,
+         * not a bad backup.
+         */
         fun open(file: File): BackupOpen {
             // A staged copy that is gone (a failed import deletes it) is a storage problem, not a bad file:
             // "not a Doorprints backup" would send the user looking for the wrong fix.

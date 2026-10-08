@@ -50,8 +50,10 @@ class DeferredActivityLauncher(
     private var starter: Starter? = null
     private var pending: CompletableDeferred<ActivityOutcome>? = null
 
+    /** True while an Activity is in front and can start a screen for a result; false in the background. */
     val isAttached: Boolean get() = starter != null
 
+    /** The foreground Activity's [starter], set when it comes to the front (see ActivityProvider.register). */
     fun attach(starter: Starter) {
         this.starter = starter
     }

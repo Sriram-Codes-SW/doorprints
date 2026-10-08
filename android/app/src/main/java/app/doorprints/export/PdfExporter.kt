@@ -76,6 +76,10 @@ private val GREY = Color.rgb(0x5F, 0x6B, 0x67)
  */
 object PdfExporter {
 
+    /**
+     * Draws [bundle] as a PDF on the platform's PdfDocument (595 by 842 points): a cover, one page per house, then
+     * the brokers; writes it to [out] and reports progress after each house. Blocking; does not close [out].
+     */
     fun write(
         bundle: ExportBundle,
         photoFile: (String) -> File,
