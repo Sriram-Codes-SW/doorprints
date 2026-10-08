@@ -52,6 +52,7 @@ import kotlinx.serialization.json.floatOrNull
  *  6. the house layers are the top two, so no base layer covers a marker.
  */
 object IndiaViewCheck {
+    /** Every rule above that [style] breaks, one short line each; empty when the style is right. */
     fun problems(style: JsonObject): List<String> {
         val problems = mutableListOf<String>()
         val layers = (style["layers"] as? JsonArray).orEmpty().mapNotNull { it as? JsonObject }

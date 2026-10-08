@@ -192,6 +192,11 @@ private val HouseDraftSaver = Saver<HouseEntity?, Any>(
     restore = { saved -> (saved as? List<*>)?.let(::restoreDraft) },
 )
 
+/**
+ * The inverse of [HouseDraftSaver]'s save: reads the flat list back into a house by position. Fields added since the
+ * first version are read with a default when the list is shorter (a draft saved by an older version); a list that does
+ * not fit gives null, so the house is read from Room again.
+ */
 private fun restoreDraft(v: List<*>): HouseEntity? = runCatching {
     HouseEntity(
         id = v[0] as String,

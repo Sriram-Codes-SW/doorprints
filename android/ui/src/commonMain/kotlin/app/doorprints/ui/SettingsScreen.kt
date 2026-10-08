@@ -105,12 +105,19 @@ fun SyncOutcome.text(): String = when (kind) {
     SyncOutcome.Kind.UNKNOWN -> stringResource(Res.string.sync_err_unknown)
 }
 
+/** A section heading on a settings-style screen, announced as a heading by screen readers. */
 @Composable
 fun SectionHeading(text: String, modifier: Modifier = Modifier) {
     Text(text, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium,
         modifier = modifier.semantics { heading() })
 }
 
+/**
+ * The Settings tab: language, your data (the copy and backup screens, sharing updates, the weekly backup), Hunt mode,
+ * offline maps, Google Drive, the optional server (address, connect by code or key, sync), AI, brokers, criteria,
+ * questions, viewings, areas and places, length units, privacy, the app lock and About with the tour. Sections a
+ * platform does not have are left out, not disabled. Server results are live regions that announce each finished run.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},

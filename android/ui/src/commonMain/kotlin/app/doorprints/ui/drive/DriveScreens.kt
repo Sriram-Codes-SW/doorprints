@@ -126,6 +126,10 @@ private fun rememberClipboard(host: DriveHost): ClipboardSeam {
     }
 }
 
+/**
+ * The text of a dictionary [key] in the current language, filled with [args]; a key the table does not know falls back
+ * to the generic "could not connect" text.
+ */
 @Composable
 internal fun t(key: String, vararg args: Any): String {
     val res: StringResource = DRIVE_STRINGS[key] ?: Res.string.drive_connect_failed
@@ -175,6 +179,7 @@ private fun Heading(text: String, main: Boolean = false) {
     )
 }
 
+/** A full-width 48 dp button: filled when [primary], red when [danger], outlined otherwise. */
 @Composable
 private fun DriveButton(text: String, onClick: () -> Unit, enabled: Boolean = true, primary: Boolean = false, danger: Boolean = false, description: String? = null) {
     val modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).let { m -> if (description != null) m.semantics { contentDescription = description } else m }
@@ -250,6 +255,7 @@ fun QrCodeView(text: String, description: String, modifier: Modifier = Modifier)
 
 // ---- Connect card -------------------------------------------------------------------------------------------------------------
 
+/** The connect card's *Connect* or *Retry* button (after an [error]), as the card state allows. */
 @Composable
 private fun ControlsFor(ui: DriveUiState, holder: DriveHolder, error: DriveReason?) {
     for (spec in connectControls(ui.card, error, ui.keySaved, ui.busy)) {
@@ -261,6 +267,7 @@ private fun ControlsFor(ui: DriveUiState, holder: DriveHolder, error: DriveReaso
     }
 }
 
+/** The card before connecting: the intro and *Connect*, or the failure that ended the last try with *Retry*. */
 @Composable
 private fun DisconnectedCard(ui: DriveUiState, holder: DriveHolder) {
     if (ui.error == null) {
@@ -284,6 +291,9 @@ private fun FolderGoneCard(ui: DriveUiState, holder: DriveHolder) {
     }
 }
 
+/**
+ * A failure as a live (assertive) message for screen readers, its small selectable code, and the buttons that retry.
+ */
 @Composable
 private fun ErrorBox(error: DriveReason?, ui: DriveUiState, holder: DriveHolder) {
     LiveMessage(assertive = true) {
@@ -293,6 +303,10 @@ private fun ErrorBox(error: DriveReason?, ui: DriveUiState, holder: DriveHolder)
     ControlsFor(ui, holder, error)
 }
 
+/**
+ * The recovery key of a new folder, shown once with *Copy*, the warning and the "I have saved it" tick. *Next* needs
+ * the tick; *Skip* asks to go on without it. The key is held only by the state until the card is left.
+ */
 @Composable
 private fun RecoveryKeyCard(ui: DriveUiState, holder: DriveHolder, clipboard: ClipboardSeam) {
     val key = ui.connectKey
@@ -320,6 +334,10 @@ private fun RecoveryKeyCard(ui: DriveUiState, holder: DriveHolder, clipboard: Cl
     }
 }
 
+/**
+ * A folder that exists already: join with the typed recovery key (kept only in this composable and cleared when sent),
+ * or by enrolment from a connected phone. [revoked] says this device was removed, which changes the first message.
+ */
 @Composable
 private fun JoinCard(ui: DriveUiState, holder: DriveHolder, scanner: QrScanner, host: DriveHost, clipboard: ClipboardSeam, revoked: Boolean) {
     // The typed key lives only here, and is cleared the moment it is sent (the holder never keeps it).
@@ -366,6 +384,10 @@ private fun JoinCard(ui: DriveUiState, holder: DriveHolder, scanner: QrScanner, 
 
 // ---- Enrolment ----------------------------------------------------------------------------------------------------------------------
 
+/**
+ * Adding a device by QR code and 8-digit code, from either side: the new device ([newDevice] true) shows its code and
+ * waits for the reply, the connected phone reads the offer, compares the numbers and approves after the device check.
+ */
 @Composable
 private fun EnrolCard(ui: DriveUiState, holder: DriveHolder, scanner: QrScanner, host: DriveHost, clipboard: ClipboardSeam, newDevice: Boolean) {
     val scope = rememberCoroutineScope()
@@ -490,6 +512,7 @@ private fun ScanOrPaste(
 
 // ---- Ready: backups, sync, devices, deleting, disconnect ------------------------------------------------------------------------------
 
+/** The connected card: Backups, Sync and photos, Devices, adding a device, Delete and *Disconnect*. */
 @Composable
 private fun ReadyCard(ui: DriveUiState, holder: DriveHolder, scanner: QrScanner, host: DriveHost, clipboard: ClipboardSeam) {
     LiveMessage { Text(t("driveConnect.ready")) }
@@ -508,6 +531,11 @@ private fun ReadyCard(ui: DriveUiState, holder: DriveHolder, scanner: QrScanner,
     DriveButton(t("driveConnect.disconnect"), holder::disconnect, enabled = !ui.busy, danger = true)
 }
 
+/**
+ * Backups: the last backup, *Back up now*, the shrink question when a much smaller backup was held back, the warning
+ * that a newer backup is missing, and the list of backups in its four states (loading, failed with *Retry*, empty, rows
+ * with *Import a backup* and *Delete this backup*), then the automatic backup switch.
+ */
 @Composable
 private fun BackupsCard(ui: DriveUiState, holder: DriveHolder, host: DriveHost) {
     val b = ui.backups
@@ -552,6 +580,10 @@ private fun BackupsCard(ui: DriveUiState, holder: DriveHolder, host: DriveHost) 
     )
 }
 
+/**
+ * One backup: its date, houses and size, with *Import a backup* and *Delete this backup*; the buttons are named with
+ * the date for screen readers.
+ */
 @Composable
 private fun BackupRow(backup: BackupSummary, enabled: Boolean, onImport: () -> Unit, deleteEnabled: Boolean, onDelete: () -> Unit) {
     val whenText = backup.createdAt.dateText()
@@ -574,6 +606,10 @@ private fun BackupRow(backup: BackupSummary, enabled: Boolean, onImport: () -> U
     }
 }
 
+/**
+ * Sync: the status line, *Sync now*, the shrink question for sync, and the photo upload switch (Wi-Fi only by default)
+ * with its status and the one-off mobile-data upload.
+ */
 @Composable
 private fun SyncCard(ui: DriveUiState, holder: DriveHolder) {
     val s = ui.sync
@@ -605,6 +641,10 @@ private fun SyncCard(ui: DriveUiState, holder: DriveHolder) {
     LiveMessage(assertive = true) { if (s.photoError) Text(t("driveSync.photoError"), color = MaterialTheme.colorScheme.error) }
 }
 
+/**
+ * Devices: the signed-in account, the listed devices with *Revoke*, and after a revoke the new recovery key that must
+ * be ticked as saved.
+ */
 @Composable
 private fun DevicesCard(ui: DriveUiState, holder: DriveHolder) {
     val d = ui.devices
@@ -645,6 +685,10 @@ private fun DevicesCard(ui: DriveUiState, holder: DriveHolder) {
     }
 }
 
+/**
+ * One listed device, marked as this one when it is; every other device has *Revoke*, named with the device for screen
+ * readers.
+ */
 @Composable
 private fun DeviceRow(device: ListedDevice, enabled: Boolean, onRevoke: () -> Unit) {
     Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -661,6 +705,7 @@ private fun DeviceRow(device: ListedDevice, enabled: Boolean, onRevoke: () -> Un
 
 // ---- Deleting ------------------------------------------------------------------------------------------------------------------------------
 
+/** Deleting Drive data: the menu of choices, or the steps of the delete in progress ([DeleteFlow]). */
 @Composable
 private fun DeleteCard(ui: DriveUiState, holder: DriveHolder, host: DriveHost) {
     Heading(t("driveDelete.heading"))
@@ -708,6 +753,10 @@ private fun DeleteFlow(ui: DriveUiState, holder: DriveHolder, host: DriveHost) {
     }
 }
 
+/**
+ * What a delete would remove: a count per kind of file (never a file name), the total, and the files of others it will
+ * keep.
+ */
 @Composable
 private fun PlanLines(plan: app.doorprints.drive.delete.DeletionPlan) {
     Column(Modifier.semantics(mergeDescendants = true) {}) {
@@ -727,6 +776,11 @@ private fun PlanLines(plan: app.doorprints.drive.delete.DeletionPlan) {
     }
 }
 
+/**
+ * The last step before a delete: the warning, the tick box and the countdown the policy asks for (counted on the
+ * holder's monotonic clock), the device-check note, then *Delete*, which stays off until [deleteConfirmEnabled] allows
+ * it.
+ */
 @Composable
 private fun ConfirmStep(ui: DriveUiState, holder: DriveHolder, host: DriveHost) {
     val d = ui.delete

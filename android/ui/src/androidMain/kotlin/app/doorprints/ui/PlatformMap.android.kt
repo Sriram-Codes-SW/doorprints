@@ -201,6 +201,7 @@ actual fun PlatformMap(
     )
 }
 
+/** The camera now as a [CameraSpot], or null while the map has no target. */
 private fun MapLibreMap.spot(): CameraSpot? {
     val p = cameraPosition
     return p.target?.let { CameraSpot(it.latitude, it.longitude, p.zoom, p.bearing) }
@@ -245,6 +246,12 @@ private class MapLibreControl(private val m: MapLibreMap, private val reload: ()
     override fun reloadStyle() = reload()
 }
 
+/**
+ * Adds the app's own sources and layers to a loaded style, from the bottom up: the path trace and its repeat overlay,
+ * the place check's halo, ring, cross and label, then the house dots and house names on top, so no base layer covers a
+ * marker. Status is told by size, ring and opacity as well as colour. Called on every style load, after India's
+ * boundaries are applied.
+ */
 private fun addHouseLayers(style: Style, labelSizeSp: Float) {
     // The path trace first, so it is drawn under the houses (the same values as trackLayerJson, iOS's copy).
     style.addSource(GeoJsonSource(TRACK_SOURCE, trackGeoJson(emptyList())))

@@ -160,6 +160,7 @@ class PlaceCheckController(
  */
 class HeadlineFacts(val distanceM: Int, val days: List<Long>, val moreDays: Int)
 
+/** The numbers for the headline of an answer of [band], or null when no row is of that band. */
 fun headlineFacts(rows: List<PlaceRow>, band: PlaceBand): HeadlineFacts? {
     val mine = rows.filter { it.band == band } // already newest first
     if (mine.isEmpty()) return null

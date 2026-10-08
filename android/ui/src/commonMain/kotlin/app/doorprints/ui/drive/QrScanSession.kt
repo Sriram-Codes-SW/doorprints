@@ -56,6 +56,7 @@ class QrScanSession(
     private val accepts: (String) -> Boolean,
     private val onState: (State) -> Unit = {},
 ) {
+    /** Where the scan is. The final states release the camera. */
     sealed interface State {
         data object Idle : State
         data object RequestingPermission : State
@@ -75,6 +76,7 @@ class QrScanSession(
         data object Failed : State
     }
 
+    /** Why the last code the camera read was not taken: not a Doorprints code, or longer than a code can be. */
     enum class Problem { NotADoorprintsCode, TooLong }
 
     var state: State = State.Idle

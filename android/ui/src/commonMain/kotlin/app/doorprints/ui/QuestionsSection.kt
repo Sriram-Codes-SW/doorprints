@@ -176,6 +176,10 @@ private fun answerWords(): AnswerWords = AnswerWords(
     notice = stringResource(Res.string.answer_notice),
 )
 
+/**
+ * One question asked at this house: its answer field and *Skip* and *Remove*. Typing an answer marks it answered,
+ * clearing it opens it again; a skipped question stays skipped until *Skip* is turned off.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun AnswerCard(answer: HouseAnswer, onChange: (HouseAnswer) -> Unit, onRemove: () -> Unit) {

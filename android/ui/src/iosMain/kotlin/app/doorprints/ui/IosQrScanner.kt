@@ -101,6 +101,10 @@ fun iosQrScanner(
     accepts: (String) -> Boolean = { parseQrOffer(it) != null },
 ): QrScanner = IosQrScanner(labels, accepts)
 
+/**
+ * The camera permission as [CameraPermission], from AVFoundation's authorization status; any status it does not know
+ * counts as restricted.
+ */
 internal fun cameraPermissionOf(status: Long): CameraPermission = when (status) {
     AVAuthorizationStatusAuthorized -> CameraPermission.Authorized
     AVAuthorizationStatusNotDetermined -> CameraPermission.NotDetermined
@@ -113,6 +117,11 @@ private fun defaultCamera(): AVCaptureDevice? = AVCaptureDevice.defaultDeviceWit
 private fun currentPermission(): CameraPermission =
     cameraPermissionOf(AVCaptureDevice.authorizationStatusForMediaType(AVMediaTypeVideo))
 
+/**
+ * [QrScanner] for the iPhone. [scan] runs one [QrScanSession] on the main thread: it shows the scanner screen over the
+ * top view controller when the camera starts looking, dismisses it before answering, and lets the camera go when the
+ * caller is cancelled. A code only counts when [accepts] takes it.
+ */
 internal class IosQrScanner(
     private val labels: QrScannerLabels,
     private val accepts: (String) -> Boolean,

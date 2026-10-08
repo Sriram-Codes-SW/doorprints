@@ -90,6 +90,15 @@ private class CompareRow(
 private val SelectionSaver = listSaver<Set<String>, String>(save = { it.toList() }, restore = { it.toSet() })
 
 /**
+ * The houses Compare offers (S4b-BL-99 a): those in the running ([HouseStatusRules.inTheRunning]: not Rejected, not Not
+ * chosen, the same rule as the website's Compare and every Plan), shortlisted first, then by the ranking.
+ */
+internal fun compareCandidates(houses: List<HouseEntity>, scoring: Scoring): List<HouseEntity> =
+    houses.filter { HouseStatusRules.inTheRunning(it.status) }
+        .let { list -> Ranking.sort(list) { it.ranked(scoring) } }
+        .sortedByDescending { it.status == HouseStatus.SHORTLISTED }
+
+/**
  * Compare up to four houses side by side (UX review, whole-app audit).
  *
  * **Kept.** The selection is saved state, so opening a house from the table (the designed way to look at one) and
@@ -113,15 +122,6 @@ private val SelectionSaver = listSaver<Set<String>, String>(save = { it.toList()
  * flash on the way in; [counts] its visits per house. Common code since CMP-4 P4c: `:app`'s `CompareScreen(onOpenHouse,
  * onOpenMap)` (`ui/CompareTab.kt`) collects both from the repository with the activity's lifecycle and passes them in.
  */
-/**
- * The houses Compare offers (S4b-BL-99 a): those in the running ([HouseStatusRules.inTheRunning]: not Rejected, not Not
- * chosen, the same rule as the website's Compare and every Plan), shortlisted first, then by the ranking.
- */
-internal fun compareCandidates(houses: List<HouseEntity>, scoring: Scoring): List<HouseEntity> =
-    houses.filter { HouseStatusRules.inTheRunning(it.status) }
-        .let { list -> Ranking.sort(list) { it.ranked(scoring) } }
-        .sortedByDescending { it.status == HouseStatus.SHORTLISTED }
-
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun CompareScreen(
@@ -430,6 +430,7 @@ private fun CompareTable(
     }
 }
 
+/** One cell of the comparison table: [width] wide, bold when it is a [header]. */
 @Composable
 private fun Cell(text: String, width: Dp, header: Boolean = false) {
     // Min height instead of a fixed one, so text can grow with the font scale (A11Y-A03).

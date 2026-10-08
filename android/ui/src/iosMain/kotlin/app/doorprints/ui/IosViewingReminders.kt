@@ -115,6 +115,10 @@ internal object IosViewingReminders {
         }
     }
 
+    /**
+     * One local notification for [identifier] at the calendar time of [fireAt], once, with the default sound;
+     * [userInfo] is what a tap reads.
+     */
     private fun request(identifier: String, fireAt: Long, body: String, userInfo: Map<String, String>?): UNNotificationRequest {
         val content = UNMutableNotificationContent().apply {
             setBody(body)

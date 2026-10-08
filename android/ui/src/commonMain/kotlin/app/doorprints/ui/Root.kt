@@ -70,6 +70,10 @@ import org.jetbrains.compose.resources.stringResource
 sealed interface DeepLink {
     /** A house's form; [questions]: scrolled to its questions (a viewing reminder's *Questions*, S4b-BL-93b). */
     data class OpenHouse(val id: String, val questions: Boolean = false) : DeepLink
+    /**
+     * A new house at [lat], [lon], from a Hunt mode arrival alert: [visitId] is the visit, which the first save links
+     * to the house and whose alert it removes.
+     */
     data class NewHouse(val lat: Double, val lon: Double, val visitId: String?) : DeepLink
 
     /** Export, Import or Settings, from an export/import/backup notification. Always one of the notification screens. */
@@ -108,6 +112,7 @@ sealed interface DeepLink {
     data object OfferHunt : DeepLink
 }
 
+/** One tab of the bottom bar. */
 private data class NavTab(val route: String, val label: StringResource, val icon: ImageVector)
 
 private val baseTabs = listOf(
@@ -118,6 +123,10 @@ private val baseTabs = listOf(
 private val assistantTab = NavTab("assistant", Res.string.nav_assistant, Icons.Default.Search)
 private val settingsTab = NavTab("settings", Res.string.nav_settings, Icons.Default.Settings)
 
+/**
+ * The navigation routes: patterns for the graph and builders that fill in the ids. The notification screens are the
+ * only routes a platform may open from outside.
+ */
 object Routes {
     /** The routes a notification may open; `:app`'s `Notifications.SCREEN_*` are these. */
     const val SETTINGS = "settings"

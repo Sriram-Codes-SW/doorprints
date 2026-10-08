@@ -164,6 +164,10 @@ fun WalkEndSheetContent(
     }
 }
 
+/**
+ * The sentence for a walk that could not be saved: red, in a polite live region that is always composed so it is
+ * announced once when it appears.
+ */
 @Composable
 private fun RefusalNote(text: String?) {
     // Always composed, so the sentence is announced once when it appears.

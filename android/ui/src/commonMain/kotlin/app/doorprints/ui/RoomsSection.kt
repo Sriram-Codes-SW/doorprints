@@ -132,6 +132,10 @@ fun RoomsSection(rooms: List<HouseRoom>?, unit: LengthUnit, onChange: (List<Hous
     }
 }
 
+/**
+ * One room of the house: its type and optional name, length and width (the area follows), condition, notes, move up and
+ * down, and delete. The title is the room's name, or its type when it has none.
+ */
 @Composable
 private fun RoomCard(
     room: HouseRoom,

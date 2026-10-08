@@ -110,6 +110,7 @@ internal val LightScheme = lightColorScheme(
     surfaceBright = Color(0xFFFFFFFF),
 )
 
+/** The dark counterpart of [LightScheme]: the same token mapping with the dark values. */
 internal val DarkScheme = darkColorScheme(
     primary = Color(0xFF6FD1B3),
     onPrimary = Color(0xFF0B1F19),
@@ -223,8 +224,13 @@ private val INDIC_LANGUAGES = setOf("hi", "ta", "te")
 @Composable
 expect fun uiLanguage(): String
 
+/** The app's colours beyond Material's roles ([DoorprintsColors]) for the current theme. */
 val LocalDoorprintsColors = staticCompositionLocalOf { LightExtra }
 
+/**
+ * The app's theme: light or dark (the system's by default) colours and Material roles, the extra
+ * [LocalDoorprintsColors], and the typography with taller lines for Hindi, Tamil and Telugu.
+ */
 @Composable
 fun DoorprintsTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
     val language = uiLanguage()

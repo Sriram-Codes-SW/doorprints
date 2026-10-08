@@ -170,6 +170,10 @@ internal object IosHunt : HuntEffects {
         end()
     }
 
+    /**
+     * Ends Hunt mode here: stops Core Location and the battery monitor, drops the engine after telling it the reason,
+     * and cancels the scope. Nothing happens when it is not running.
+     */
     private fun end() {
         val current = engine ?: return
         manager?.stopUpdatingLocation()
@@ -323,6 +327,7 @@ internal class HuntFixThrottle {
     private var lastLat = 0.0
     private var lastLon = 0.0
 
+    /** The next fix passes, whatever the time since the last one. */
     fun reset() {
         lastAt = Long.MIN_VALUE
     }
@@ -362,6 +367,10 @@ internal object IosGeocoder {
     /** How long a lookup may take before it counts as "no answer" (as Android's). */
     const val LOOKUP_TIMEOUT_MS = 10_000L
 
+    /**
+     * The street, area and address at [lat], [lon], or null for coordinates out of range or when [IosGeocoder] has no
+     * answer in time.
+     */
     suspend fun place(lat: Double, lon: Double): Place? {
         if (lat !in -90.0..90.0 || lon !in -180.0..180.0) return null
         return withContext(Dispatchers.Main) {

@@ -106,6 +106,10 @@ data class AiProviderForm(
         return saved.kind == service.kind && mine.normalised == theirs.normalised
     }
 
+    /**
+     * The key on this phone is the one for the service on the screen: a key is saved and the saved settings are this
+     * form's ([savedHere]). A key for another service is never shown as this one's.
+     */
     fun keySavedHere(saved: AiProviderConfig, hasKey: Boolean): Boolean = hasKey && savedHere(saved, hasKey)
 
     /** The service list's choice: the preset's address, or the saved address and model when the choice returns to them. */
@@ -200,11 +204,20 @@ data class AiProviderForm(
 sealed interface AiFailure {
     /** [host] is empty for Gemini, whose words name Google. */
     data class KeyRejected(val host: String) : AiFailure
+    /** The service does not know the model that was typed. */
     data object ModelNotFound : AiFailure
+    /** The service asked to wait; [seconds] is its answer, or a minute when it gave none. */
     data class RateLimited(val seconds: Long) : AiFailure
+    /**
+     * No answer from [host]; [local] says the host is on this phone or computer, where the service may simply not be
+     * running.
+     */
     data class Unreachable(val host: String, val local: Boolean) : AiFailure
+    /** The service answered with a server error, or is unavailable. */
     data object Down : AiFailure
+    /** Any other HTTP answer, by its [code]. */
     data class Other(val code: Int) : AiFailure
+    /** The call did not get to the service at all (no network, or an error that is not an API answer). */
     data object Offline : AiFailure
 
     companion object {
