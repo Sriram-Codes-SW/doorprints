@@ -1,0 +1,9 @@
+{
+  "spec": "PlaceLookupTest.kt",
+  "gradle": [":shared:testAndroidHostTest", "--tests", "app.doorprints.shared.location.PlaceLookupTest"],
+  "mutations": [
+    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/location/PlaceLookup.kt", "find": ".let { cutOnCharacters(it, MAX_QUERY) }", "replace": ".take(MAX_QUERY)", "expect": "aLongAddressIsNeverCutInsideAnEmoji"},
+    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/location/PlaceLookup.kt", "find": "text[i].isHighSurrogate() && i + 1 < text.length && text[i + 1].isLowSurrogate()) 2 else 1", "replace": "false) 2 else 1", "expect": "aLongAddressIsNeverCutInsideAnEmoji"},
+    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/location/PlaceLookup.kt", "find": "while (i < text.length && chars < max) {", "replace": "while (i < text.length && chars < max - 1) {", "expect": "aLongAddressIsNeverCutInsideAnEmoji"}
+  ]
+}
