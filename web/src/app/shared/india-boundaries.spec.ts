@@ -36,6 +36,7 @@ import {
   TILE_ZOOM_GUARD,
 } from './india-boundaries';
 import { libertyExcerpt } from './testing/liberty-style.fixture';
+import placeVectors from '../../../../docs/schemas/india-place-vectors.json';
 
 const URL_ = 'https://doorprints.web.app/geo/in-boundaries.geojson';
 /** Rule 2 on boundary_3 with the bundled polygon (S4b-BL-12). */
@@ -666,6 +667,27 @@ describe('the held areas (rule 2 on boundary_3, S4b-BL-12)', () => {
     ];
     for (const z of [9, 14]) {
       for (const [where, line] of indian) expect(draws(filter, tileLine(z, line)), `${where}, z${z}`).toBe(true);
+    }
+  });
+
+  // S4b-BL-174: one table of places across India (docs/schemas/india-place-vectors.json), also read by Android's
+  // IndiaBoundaryDataTest. Short admin lines at each place, at tile zoom 9 and 14, through MapLibre's own evaluator and
+  // the real polygon: Pakistani and Chinese lines inside the held areas are left out, every Indian place is drawn
+  // (Jammu and Kashmir, Ladakh up to the LoC and the LAC, Arunachal Pradesh, Sikkim, the islands, Kutch, Kanyakumari).
+  it('draws the admin lines of every place of the shared table across India, and only the held areas\' are left out', () => {
+    const places = placeVectors.places as { name: string; zone: string; lat: number; lon: number; heldBy?: string }[];
+    expect(places).toHaveLength(55);
+    expect(places.filter((pl) => pl.heldBy).map((pl) => pl.name)).toHaveLength(12);
+    // Every zone of the golden set has a place, and the named regions of the brief are in.
+    expect([...new Set(places.map((pl) => pl.zone))].sort()).toEqual(['coast', 'east', 'hills', 'north', 'north-east', 'west']);
+    for (const name of ['Kutch', 'Kanyakumari', 'Sikkim', 'Arunachal', 'Andaman', 'Lakshadweep', 'Ladakh', 'Kashmir']) {
+      expect(JSON.stringify(placeVectors.places), name).toContain(name);
+    }
+    for (const z of [9, 14]) {
+      for (const pl of places) {
+        const line = tileLine(z, [[pl.lon, pl.lat], [pl.lon + 0.004, pl.lat + 0.004]]);
+        expect(draws(filter, line), `${pl.name} (${pl.heldBy ? 'held by ' + pl.heldBy : 'India'}), z${z}`).toBe(pl.heldBy === undefined);
+      }
     }
   });
 

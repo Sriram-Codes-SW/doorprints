@@ -1,0 +1,8 @@
+{
+  "spec": "web/src/app/shared/india-boundaries.spec.ts",
+  "mutations": [
+    {"file": "web/src/app/shared/india-boundaries.ts", "find": "return ['!', ['within', geometry]];", "replace": "return ['!', ['within', { type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1], [0, 0]]] }]];", "expect": "draws the admin lines of every place of the shared table"},
+    {"file": "web/src/app/shared/india-boundaries.ts", "find": "return ['!', ['within', geometry]];", "replace": "return ['==', 1, 1];", "expect": "draws the admin lines of every place of the shared table"},
+    {"file": "web/src/app/shared/india-boundaries.ts", "find": "return ['!', ['within', geometry]];", "replace": "return ['==', 1, 0];", "expect": "draws the admin lines of every place of the shared table"}
+  ]
+}

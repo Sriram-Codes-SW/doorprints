@@ -1,0 +1,14 @@
+{
+  "spec": "web/src/app/core/place-search.spec.ts",
+  "mutations": [
+    {"file": "web/src/app/core/place-search.ts", "find": "Array.from(place.replace(/\\s+/g, ' ').trim()).slice(0, MAX_QUERY).join('').trim()", "replace": "place.replace(/\\s+/g, ' ').trim().slice(0, MAX_QUERY)", "expect": "cuts a very long address on a whole character"},
+    {"file": "web/src/app/core/place-search.ts", "find": "const q = Array.from(place.replace(/\\s+/g, ' ').trim()).slice(0, MAX_QUERY)", "replace": "const q = Array.from(place.replace(/\\s+/g, ' ').trim()).slice(0, MAX_QUERY + 1)", "expect": "cuts a very long address on a whole character"},
+    {"file": "web/src/app/core/geocode.service.ts", "find": "a['road'] ?? a['pedestrian'] ?? a['residential']", "replace": "a['road'] ?? a['residential']", "expect": "reads the street and the locality"},
+    {"file": "web/src/app/core/geocode.service.ts", "find": "a['road'] ?? a['pedestrian'] ?? a['residential']", "replace": "a['road'] ?? a['pedestrian']", "expect": "reads the street and the locality"},
+    {"file": "web/src/app/core/geocode.service.ts", "find": "a['suburb'] ?? a['neighbourhood']", "replace": "a['neighbourhood']", "expect": "reads the street and the locality"},
+    {"file": "web/src/app/core/geocode.service.ts", "find": "a['neighbourhood'] ?? a['city_district']", "replace": "a['city_district']", "expect": "reads the street and the locality"},
+    {"file": "web/src/app/core/geocode.service.ts", "find": "a['city_district'] ?? a['city']", "replace": "a['city']", "expect": "reads the street and the locality"},
+    {"file": "web/src/app/core/geocode.service.ts", "find": "a['town'] ?? a['village']", "replace": "a['town']", "expect": "reads the street and the locality"},
+    {"file": "web/src/app/core/geocode.service.ts", "find": "a['city'] ?? a['town']", "replace": "a['town']", "expect": "reads the street and the locality"}
+  ]
+}

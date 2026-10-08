@@ -20,6 +20,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LANGUAGES, Lang } from './languages';
 import { DICTIONARIES } from './all-dictionaries';
 import { TranslationService } from './translation.service';
+import vectors from '../core/ai/parity-vectors.json';
 
 const LANG_STORAGE_KEY = 'doorprints.lang';
 
@@ -145,6 +146,15 @@ describe('TranslationService', () => {
       const base = service.price(25000);
       expect(service.price(25000, 'RENT')).toBe(service.t('price.perMonth', { price: base }));
       expect(service.price(25000, 'RENT')).toContain(base);
+    });
+
+    // S4b-BL-174: the amounts of the shared vectors (docs/ai/evals/parity-vectors.json, `rupees`), written out by hand in
+    // the Indian grouping (12,34,567), not read back from Intl as the test above does. The Android app's Formats.rupees
+    // is checked against the same list (FormatsParityTest).
+    it.each(LANGUAGES.map((l) => l.code))('writes the shared regional amounts with lakh and crore grouping in %s', (code) => {
+      const rupees = vectors.rupees as { amount: number; expected: string }[];
+      expect(rupees.length).toBe(17);
+      for (const c of rupees) expect(serviceIn(code).price(c.amount).replace(/\s/g, ''), String(c.amount)).toBe(c.expected);
     });
 
     it('rounds to whole rupees', () => {

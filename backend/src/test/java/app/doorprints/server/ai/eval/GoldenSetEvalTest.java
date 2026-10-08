@@ -92,7 +92,7 @@ import static org.assertj.core.api.Assertions.assertThat;
                 "app.ai.index-on-change=false",
                 // Retrieval must be able to return every fixture house (production default 6, fixtures 7 since
                 // golden set v0.6); GoldenSetEvalConfigTest pins this against the golden set file.
-                "app.ai.rag.top-k=10",
+                "app.ai.rag.top-k=20",
                 // The eval paces itself; the app's own AI limiter must not turn cases into 429s.
                 "app.ai.rate-limit.requests-per-minute=1000",
                 "app.ai.rate-limit.burst=1000"})
@@ -259,6 +259,9 @@ class GoldenSetEvalTest {
         var now = Instant.now().toString();
         for (var house : golden.fixtureHouses()) {
             var body = new LinkedHashMap<String, Object>(house);
+            // The golden set's own tags (v0.7), not house fields.
+            body.remove("city");
+            body.remove("region");
             body.put("updatedAt", now);
             body.put("deleted", false);
             api.put().uri("/api/houses/{id}", house.get("id")).contentType(MediaType.APPLICATION_JSON)

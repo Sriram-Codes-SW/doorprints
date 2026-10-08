@@ -38,11 +38,35 @@ const PHONE_LIKE = new RegExp(
   '(?<![\\p{L}\\p{M}\\p{N}+])(?:' +
     '\\+\\d(?:[ .()\\-]{0,2}\\d){6,14}' + // +<cc> ... (7-15 digits)
     '|(?:(?:\\+?91|0)[ \\-]?)?[6-9](?:[ .\\-]?\\d){9}' + // Indian mobile
-    '|0\\d{2,4}[ \\-]?\\d{3,4}[ \\-]?\\d{3,4}' + // STD code + landline
+    '|\\(?0\\d{2,4}\\)?[ \\-]?\\d{3,4}[ \\-]?\\d{3,4}' + // STD code (also "(022)") + landline
     '|\\d{10,15}' + // long digit run
     `)(?!${WORD})`,
   'gu',
 );
+/** The zero of each script whose ten digits follow it: Arabic-Indic, Urdu, Devanagari, Bengali, Gurmukhi, Gujarati, Odia, Tamil, Telugu, Kannada, Malayalam. */
+const DIGIT_ZEROS = [0x0660, 0x06f0, 0x0966, 0x09e6, 0x0a66, 0x0ae6, 0x0b66, 0x0be6, 0x0c66, 0x0ce6, 0x0d66];
+const NATIVE_DIGIT = /[\u0660-\u0669\u06f0-\u06f9\u0966-\u096f\u09e6-\u09ef\u0a66-\u0a6f\u0ae6-\u0aef\u0b66-\u0b6f\u0be6-\u0bef\u0c66-\u0c6f\u0ce6-\u0cef\u0d66-\u0d6f]/g;
+
+/** `s` with those scripts' digits written as 0-9, one character for one character (every digit is in the BMP). */
+export function asciiDigits(s: string): string {
+  return s.replace(NATIVE_DIGIT, (c) => {
+    const code = c.charCodeAt(0);
+    return String(code - DIGIT_ZEROS.find((zero) => code >= zero && code <= zero + 9)!);
+  });
+}
+
+/** `s` with every match of `re` (global) replaced by `[phone]`; the matching reads native digits as 0-9, the rest of `s` is kept. */
+function replaceInDigits(re: RegExp, s: string): string {
+  let out = '';
+  let last = 0;
+  for (const m of asciiDigits(s).matchAll(re)) {
+    const at = m.index ?? 0;
+    out += s.slice(last, at) + PHONE;
+    last = at + m[0].length;
+  }
+  return out + s.slice(last);
+}
+
 // An email address: local part (letters, digits, `._%+-`), `@`, a dotted domain. A URL or a bare @handle is not one.
 // The lookbehind makes the match start at the front of a run (so it is linear, and a long local part goes whole).
 const EMAIL_LIKE = new RegExp(
@@ -145,8 +169,8 @@ export class Redactor {
 
   /** The rules that need no name: the saved phone, phone-like numbers, then email addresses (before the name parts). */
   private generic(s: string): string {
-    const out = this.savedPhone ? s.replace(this.savedPhone, PHONE) : s;
-    return out.replace(PHONE_LIKE, PHONE).replace(EMAIL_LIKE, EMAIL);
+    const out = this.savedPhone ? replaceInDigits(this.savedPhone, s) : s;
+    return replaceInDigits(PHONE_LIKE, out).replace(EMAIL_LIKE, EMAIL);
   }
 }
 
@@ -161,7 +185,7 @@ export function scrubStoredText(text: string | null | undefined, name: string | 
 
 /** Replaces phone-like numbers with `[phone]` and email addresses with `[email]`; for text with no saved contact. */
 export function redactGeneric(text: string | null | undefined) {
-  return text ? text.replace(PHONE_LIKE, PHONE).replace(EMAIL_LIKE, EMAIL) : text;
+  return text ? replaceInDigits(PHONE_LIKE, text).replace(EMAIL_LIKE, EMAIL) : text;
 }
 
 // ---------------------------------------------------------------- prompt safety (PromptSafety)

@@ -29,8 +29,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Pins the configuration of {@link GoldenSetEvalTest}, which cannot run without a provider key (S4b-BL-176): retrieval
- * must be able to return every fixture house, or a question about the dropped one is scored on an answer the server could
- * not have given (docs/ai/ai-design.md 8.4, "retrieval topK must cover the fixture houses"). The production default of
+ * must return as much as the server allows and every city's fixture houses must fit in it, or a question about the dropped
+ * one is scored on an answer the server could not have given (docs/ai/ai-design.md 8.4, "retrieval topK"). The production default of
  * {@code app.ai.rag.top-k} (6) is not touched. Reads the test's own annotation and the golden set file; no model, no
  * database, no Spring context.
  */
@@ -46,11 +46,21 @@ class GoldenSetEvalConfigTest {
     }
 
     @Test
-    void theEvalSetsRetrievalTopKToCoverEveryFixtureHouse() throws IOException {
-        var fixtures = GoldenSet.load(GoldenSet.locate()).fixtureHouses().size();
-        assertThat(fixtures).as("fixture houses in the golden set").isPositive();
-        assertThat(configuredTopK()).as("%s in GoldenSetEvalTest's properties", PROPERTY)
-                .isNotNull().isGreaterThanOrEqualTo(fixtures);
+    void theEvalSetsRetrievalTopKToTheLargestValueTheServerAllows() {
+        // The golden set has more fixture houses than the server can ever retrieve (30 against the cap of 20, since v0.7),
+        // so "cover every fixture house" is out of reach. The eval takes the most the server offers instead.
+        var cap = new AiProperties.Rag(Integer.MAX_VALUE, null).topK();
+        assertThat(configuredTopK()).as("%s in GoldenSetEvalTest's properties", PROPERTY).isNotNull().isEqualTo(cap);
+    }
+
+    @Test
+    void noCityHasMoreFixtureHousesThanRetrievalCanReturn() throws IOException {
+        // A question is about one city (or one region of a few); its houses must all fit in what retrieval returns, or a
+        // question about the dropped one is scored on an answer the server could not have given.
+        var byCity = GoldenSet.load(GoldenSet.locate()).fixtureHouses().stream()
+                .collect(java.util.stream.Collectors.groupingBy(h -> String.valueOf(h.get("city")), java.util.stream.Collectors.counting()));
+        assertThat(byCity).as("fixture houses per city in the golden set").isNotEmpty();
+        assertThat(byCity.values()).as("houses in the biggest city").allSatisfy(n -> assertThat(n).isLessThanOrEqualTo((long) configuredTopK()));
     }
 
     @Test

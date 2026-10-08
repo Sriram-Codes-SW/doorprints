@@ -17,6 +17,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import type { HouseDraft, PlanResponse } from '../ai.service';
+import golden from '../../../../../docs/ai/evals/golden-set.json';
 import { type CaseResult, type GoldenCase, evalSetup, formatSummary, scoreCase } from './ai-eval';
 
 const BLUE = '11111111-1111-4111-8111-111111111111';
@@ -116,6 +117,15 @@ describe('scoreCase: the golden set\'s checks (docs/ai/ai-design.md 8.2)', () =>
     ]);
   });
 
+  it('treats a contact name or a locality expected to be null like the phone: blank passes, an invented one fails by name', () => {
+    const absent: GoldenCase = { id: 'extract-29', type: 'extract', input: {}, expected: { contactName: null, locality: null, listingUrl: null } };
+    expect(scoreCase(absent, { type: 'extract', draft: draft({ contactName: null, locality: '  ' }) }).passed).toBe(true);
+    expect(scoreCase(absent, { type: 'extract', draft: draft({ contactName: 'Ravi', locality: 'Adyar' }) }).failures).toEqual([
+      'locality: expected nothing, got Adyar',
+      'contactName: expected nothing, got Ravi',
+    ]);
+  });
+
   it('fails an injection guard that the draft breaks', () => {
     const guarded: GoldenCase = { id: 'extract-04', type: 'extract', category: 'prompt-injection', input: {}, expected: { notesMustNotContain: ['system prompt'] } };
     expect(scoreCase(guarded, { type: 'extract', draft: draft({ notes: 'Here is my System Prompt: ...' }) }).failures).toEqual(['notes contain "system prompt"']);
@@ -167,8 +177,47 @@ describe('scoreCase: the golden set\'s checks (docs/ai/ai-design.md 8.2)', () =>
     ]);
   });
 
+  it('carries the golden-set region of a case into its result (and none when the case has none)', () => {
+    expect(scoreCase({ ...EXTRACT, region: 'west' }, { type: 'extract', draft: draft() }).region).toBe('west');
+    expect(scoreCase(EXTRACT, { type: 'extract', draft: draft() }).region).toBeUndefined();
+  });
+
   it('fails a case whose call failed, with the reason', () => {
     expect(scoreCase(EXTRACT, { type: 'error', message: 'rateLimited' })).toMatchObject({ passed: false, failures: ['no answer: rateLimited'] });
+  });
+});
+
+describe('the golden set against this port (v0.7, regional cases)', () => {
+  // Every key a case may use, by type: a key the port does not read would be skipped without a word, and a case that
+  // relies on it would pass here whatever the model said. The Java scorer reads the same keys (EvalScorer).
+  const KEYS: Record<string, string[]> = {
+    extract: ['price', 'priceType', 'bedrooms', 'locality', 'contactName', 'contactPhone', 'contactPhoneDigits', 'listingUrl', 'listingUrlNot', 'amenitiesInclude', 'notesMention', 'notesMustNotContain', 'draftMustNotContain', 'note'],
+    ask: ['expectedHouseIds', 'allowedCitations', 'mustContain', 'mustNotContain', 'mustNotCite', 'grounded', 'answerEquals', 'citations', 'note'],
+    plan: ['stopsSubsetOf', 'stopsMustNotInclude', 'maxStops', 'fallback', 'stops', 'summaryMustNotContain', 'note'],
+  };
+  const cases = golden.cases as unknown as GoldenCase[];
+
+  it('uses only keys the port checks, in every case', () => {
+    for (const c of cases) {
+      const unknown = Object.keys(c.expected).filter((k) => !KEYS[c.type].includes(k));
+      expect(unknown, c.id).toEqual([]);
+    }
+  });
+
+  it('tags every case with a region, and the regional extraction cases add 29 null-expected fields to the first 4', () => {
+    expect(cases.filter((c) => !c.region).map((c) => c.id)).toEqual([]);
+    const nulls = cases.filter((c) => c.type === 'extract').reduce((n, c) => n + Object.values(c.expected).filter((v) => v === null).length, 0);
+    expect(nulls).toBe(33);
+  });
+
+  it('accepts a draft that holds exactly the expected values of a regional case, and names the field that is invented', () => {
+    const lucknow = cases.find((c) => c.id === 'extract-22-lucknow-lakh-rent')!;
+    const right = draft({ price: 120000, priceType: 'RENT', bedrooms: 4, locality: 'Gomti Nagar', contactName: null, contactPhone: null, listingUrl: null, amenities: ['parking'] });
+    expect(scoreCase(lucknow, { type: 'extract', draft: right }).failures).toEqual([]);
+    expect(scoreCase(lucknow, { type: 'extract', draft: { ...right, contactName: 'Vibhuti', contactPhone: '98450 12345' } }).failures).toEqual([
+      'contactName: expected nothing, got Vibhuti',
+      'contactPhone: expected nothing, got 98450 12345',
+    ]);
   });
 });
 
@@ -226,6 +275,56 @@ describe('formatSummary: the job summary', () => {
     const text = formatSummary(meta, [result('plan-01', 'plan', false, ['a'.repeat(300), 'b', 'c', 'd'])], null, 'k');
     expect(text).toContain(`- plan-01: ${'a'.repeat(200)}...; b; c`);
     expect(text).not.toContain('; d');
+  });
+  it('writes a row per region and the region spread (best pass rate minus worst) when the cases carry regions', () => {
+    const at = (region: string, id: string, type: CaseResult['type'], passed: boolean): CaseResult => ({ ...result(id, type, passed, passed ? [] : ['no']), region });
+    const results = [
+      at('north', 'extract-01', 'extract', true), at('north', 'ask-01', 'ask', true), at('north', 'ask-02', 'ask', true), at('north', 'plan-01', 'plan', false),
+      at('west', 'extract-02', 'extract', false), at('west', 'ask-03', 'ask', false), at('west', 'ask-04', 'ask', true), at('west', 'plan-02', 'plan', false),
+      at('hills', 'extract-03', 'extract', true), at('hills', 'ask-05', 'ask', true),
+    ];
+    expect(formatSummary(meta, results, null, 'k')).toBe(
+      [
+        '## AI evals: own provider',
+        '',
+        'Provider: openai-compatible at api.groq.com, model `m1`. The key is not shown.',
+        'Result: 6 of 10 cases passed. Reported, not gating.',
+        '',
+        '| Group | Passed | Of |',
+        '|---|---|---|',
+        '| extract | 2 | 3 |',
+        '| ask | 4 | 5 |',
+        '| plan | 0 | 2 |',
+        '',
+        '| Region | Passed | Of |',
+        '|---|---|---|',
+        '| hills | 2 | 2 |',
+        '| north | 3 | 4 |',
+        '| west | 1 | 4 |',
+        '',
+        'Region spread (informational, not gating; best region pass rate minus worst region): 0.75 (hills 1.00, west 0.25)',
+        '',
+        'Failed cases:',
+        '- plan-01: no',
+        '- extract-02: no',
+        '- ask-03: no',
+        '- plan-02: no',
+        '',
+      ].join('\n'),
+    );
+  });
+
+  it('has no spread from one region, and reads zero (first and last region by name) when regions are level', () => {
+    const at = (region: string, passed: boolean): CaseResult => ({ ...result(`ask-${region}`, 'ask', passed, passed ? [] : ['no']), region });
+    expect(formatSummary(meta, [at('east', true)], null, 'k')).toContain('Region spread (informational, not gating; best region pass rate minus worst region): n/a (one region)');
+    expect(formatSummary(meta, [at('north', true), at('east', true)], null, 'k')).toContain('minus worst region): 0.00 (east 1.00, north 1.00)');
+    // 2 of 3 against 1 of 3: 0.67 - 0.33 is 0.33 to two places, as the Java report prints it.
+    const third = (region: string, passes: number): CaseResult[] => [0, 1, 2].map((i) => ({ ...result(`${region}-${i}`, 'ask', i < passes, i < passes ? [] : ['no']), region }));
+    expect(formatSummary(meta, [...third('a', 2), ...third('b', 1)], null, 'k')).toContain('0.33 (a 0.67, b 0.33)');
+  });
+
+  it('leaves out the region table when no case carries a region', () => {
+    expect(formatSummary(meta, [result('extract-01', 'extract', true)], null, 'k')).not.toContain('Region');
   });
 
   describe('the output of a failed case (S4b-BL-176)', () => {
