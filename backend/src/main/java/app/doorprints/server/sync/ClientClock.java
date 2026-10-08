@@ -52,7 +52,8 @@ public class ClientClock {
         this(Clock.systemUTC(), props.sync().maxClockSkewSeconds(), props.sync().maxFutureDays());
     }
 
-    ClientClock(Clock clock, int maxSkewSeconds, int maxFutureDays) {
+    /** With a given clock, so a test can fix the time every class that takes a {@code ClientClock} reads. */
+    public ClientClock(Clock clock, int maxSkewSeconds, int maxFutureDays) {
         this.clock = clock;
         this.maxSkew = Duration.ofSeconds(maxSkewSeconds);
         this.maxFuture = Duration.ofDays(maxFutureDays);

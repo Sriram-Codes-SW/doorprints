@@ -18,6 +18,7 @@
 
 package app.doorprints.server.device;
 
+import app.doorprints.server.common.Problems;
 import app.doorprints.server.config.RequestPaths;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -74,12 +75,12 @@ public class OwnerFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         var method = request.getMethod();
         if (!"GET".equals(method) && !"POST".equals(method)) {
-            write(response, 405, "Method not allowed");
+            Problems.write(response, 405, "Method not allowed");
             return;
         }
         if (!"1".equals(request.getHeader(HEADER)) || !sameOrigin(request)) {
             log.warn("owner.reject reason=cross-site-or-no-header path={}", RequestPaths.forLog(RequestPaths.path(request)));
-            write(response, 403, "Use the owner page");
+            Problems.write(response, 403, "Use the owner page");
             return;
         }
         var path = RequestPaths.path(request);
@@ -89,7 +90,7 @@ public class OwnerFilter extends OncePerRequestFilter {
         }
         var session = auth.check(cookie(request));
         if (session.isEmpty()) {
-            write(response, 401, "Sign in to the owner page with the link from the server's log");
+            Problems.write(response, 401, "Sign in to the owner page with the link from the server's log");
             return;
         }
         request.setAttribute(SESSION_ATTRIBUTE, session.get());
@@ -129,13 +130,4 @@ public class OwnerFilter extends OncePerRequestFilter {
         return null;
     }
 
-    /**
-     * Writes a small problem+json error body with fixed text.
-     */
-    private static void write(HttpServletResponse response, int status, String detail) throws IOException {
-        response.setStatus(status);
-        response.setContentType("application/problem+json");
-        response.setCharacterEncoding("UTF-8");
-        response.getWriter().write("{\"status\":" + status + ",\"detail\":\"" + detail + "\"}");
-    }
 }

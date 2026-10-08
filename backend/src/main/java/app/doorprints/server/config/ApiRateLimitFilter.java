@@ -18,6 +18,7 @@
 
 package app.doorprints.server.config;
 
+import app.doorprints.server.common.Problems;
 import app.doorprints.server.ai.web.TokenBucketRateLimiter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -26,6 +27,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Map;
 
 /**
  * General request rate limit per client address for every path except the public health check (F-05). Runs before
@@ -53,11 +55,8 @@ public class ApiRateLimitFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         var decision = limiter.tryAcquire("ip:" + request.getRemoteAddr());
         if (!decision.allowed()) {
-            response.setStatus(429);
-            response.setHeader("Retry-After", Long.toString(decision.retryAfterSeconds()));
-            response.setContentType("application/problem+json");
-            response.getWriter().write("{\"status\":429,\"detail\":\"Rate limit exceeded, retry in "
-                    + decision.retryAfterSeconds() + "s\"}");
+            Problems.write(response, 429, "Rate limit exceeded, retry in " + decision.retryAfterSeconds() + "s",
+                    Map.of("Retry-After", Long.toString(decision.retryAfterSeconds())));
             return;
         }
         chain.doFilter(request, response);

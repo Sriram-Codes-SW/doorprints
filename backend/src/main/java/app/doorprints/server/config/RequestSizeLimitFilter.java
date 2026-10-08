@@ -18,6 +18,7 @@
 
 package app.doorprints.server.config;
 
+import app.doorprints.server.common.Problems;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ReadListener;
 import jakarta.servlet.ServletException;
@@ -78,9 +79,7 @@ public class RequestSizeLimitFilter extends OncePerRequestFilter {
         long limit = limitFor(request);
         long declared = request.getContentLengthLong();
         if (declared > limit) {
-            response.setStatus(413);
-            response.setContentType("application/problem+json");
-            response.getWriter().write("{\"status\":413,\"detail\":\"Request body too large (max " + limit + " bytes)\"}");
+            Problems.write(response, 413, "Request body too large (max " + limit + " bytes)");
             return;
         }
         chain.doFilter(declared >= 0 ? request : new Limited(request, limit), response);
