@@ -16,9 +16,9 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { classifyStatus } from './ai-request';
-import { AnthropicChatModel, anthropicBody, anthropicInput, anthropicPingAnswered } from './anthropic';
+import { AnthropicChatModel, anthropicBody, anthropicInput, anthropicPingAnswered, resetToolChoiceCache, retryWithAuto } from './anthropic';
 import type { JsonChatModel } from './json-chat-model';
 import { ANSWER_SCHEMA, LISTING_SCHEMA, OnDeviceAiError, PLAN_SCHEMA } from './on-device-ai.service';
 import { toStrictSchema } from './schema-dialect';
@@ -65,16 +65,26 @@ const kindOf = async (p: Promise<unknown>) => {
   }
 };
 
+beforeEach(() => resetToolChoiceCache());
+
 describe('anthropicRequest vectors', () => {
-  it('anthropicRequest vectors: the body of every call, the ping without a tool', () => {
-    expect(vectors.anthropicRequest.map((c) => c.call)).toEqual(['listing', 'answer', 'plan', 'ping']);
-    for (const c of vectors.anthropicRequest) {
+  it('anthropicRequest vectors: the body of every call, the ping without a tool, the unforced tool', () => {
+    expect(vectors.anthropicRequest.map((c) => c.call)).toEqual(['listing', 'answer', 'plan', 'ping', 'listing', 'answer']);
+    for (const c of vectors.anthropicRequest as { call: string; model: string; system: string; user: string; temperature: number; forceTool?: boolean; expected: object }[]) {
       const ping = c.call === 'ping';
       const strict = ping ? null : toStrictSchema(SCHEMAS[c.call]);
-      const body = anthropicBody(c.call, c.model, c.system, c.user, c.temperature, strict, ping ? 5 : 2048);
+      const body = anthropicBody(c.call, c.model, c.system, c.user, c.temperature, strict, ping ? 5 : 2048, c.forceTool ?? true);
       expect(body, c.call).toEqual(c.expected);
       expect(JSON.stringify(body), `${c.call} key order`).toBe(JSON.stringify(c.expected));
     }
+  });
+});
+
+describe('anthropicToolChoice vectors', () => {
+  it('anthropicToolChoice vectors: only a 400 that says tool_choice is not supported is retried with auto', () => {
+    const rows = vectors.anthropicToolChoice as { status: number; body: string; expected: { retryWithAuto: boolean } }[];
+    expect(rows.length).toBeGreaterThanOrEqual(8);
+    for (const c of rows) expect(retryWithAuto(c.status, c.body), `${c.status} ${c.body}`).toBe(c.expected.retryWithAuto);
   });
 });
 
@@ -104,6 +114,50 @@ describe('anthropic error vectors (the Anthropic rows of providerErrors)', () =>
   });
 });
 
+describe('a model that refuses a forced tool (S4b-BL-175-F1)', () => {
+  const REFUSED: Step = {
+    status: 400,
+    body: JSON.stringify({ type: 'error', error: { type: 'invalid_request_error', message: 'tool_choice: type "tool" and "any" are not supported for this model.' } }),
+  };
+  it('retries once with tool_choice auto and an instruction, and answers from the tool call', async () => {
+    const f = fakeFetch(REFUSED, OK);
+    expect(await run(model(f))).toBe(ANSWER);
+    expect(f.calls.map((c) => c.body['tool_choice'])).toEqual([{ type: 'tool', name: 'answer' }, { type: 'auto' }]);
+    expect(f.calls[1].body['system']).toBe('You answer.\n\nAnswer by calling the answer tool.');
+    expect(f.calls[1].body['tools']).toEqual(f.calls[0].body['tools']);
+  });
+
+  it('remembers the choice for this address and model, not for another model', async () => {
+    const f = fakeFetch(REFUSED, OK, OK, OK);
+    await run(model(f));
+    await run(model(f));
+    expect(f.calls.map((c) => c.body['tool_choice']['type'])).toEqual(['tool', 'auto', 'auto']);
+    await run(model(f, KEY, { baseUrl: 'https://api.anthropic.com', model: 'other-model' }));
+    expect(f.calls[3].body['tool_choice']['type']).toBe('tool');
+  });
+
+  it('retries only once: a second refusal is unavailable', async () => {
+    const f = fakeFetch(REFUSED);
+    expect(await kindOf(run(model(f)))).toBe('unavailable');
+    expect(f.calls).toHaveLength(2);
+  });
+
+  it('does not retry any other 400, nor another status', async () => {
+    for (const step of [{ status: 400, body: '{"error":{"message":"max_tokens: Field required"}}' }, 401, 529] as Step[]) {
+      const f = fakeFetch(step);
+      await kindOf(run(model(f)));
+      expect(f.calls, JSON.stringify(step)).toHaveLength(1);
+    }
+  });
+
+  it('does not touch the ping, which has no tool', async () => {
+    const f = fakeFetch(PING_OK);
+    await model(f).ping();
+    expect(f.calls[0].body['tool_choice']).toBeUndefined();
+    expect(f.calls[0].body['system']).toBe('Reply with {"ok": true}.');
+  });
+});
+
 describe('the request', () => {
   it('posts to {base}/v1/messages with the key and version headers and the browser header, never the key in the URL', async () => {
     const f = fakeFetch(OK);
@@ -118,7 +172,7 @@ describe('the request', () => {
       'anthropic-dangerous-direct-browser-access': 'true',
     });
     expect(call.url).not.toContain(KEY);
-    expect(call.init).toMatchObject({ redirect: 'error', credentials: 'omit' });
+    expect(call.init).toMatchObject({ redirect: 'manual', credentials: 'omit' });
   });
 
   it('forces the answer through one tool named for the call', async () => {

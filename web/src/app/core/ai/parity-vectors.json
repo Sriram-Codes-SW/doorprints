@@ -2455,6 +2455,30 @@
       "action" : "error",
       "kind" : "unavailable"
     }
+  }, {
+    "tier" : 1,
+    "status" : 301,
+    "body" : "",
+    "expected" : {
+      "action" : "error",
+      "kind" : "unavailable"
+    }
+  }, {
+    "tier" : 2,
+    "status" : 307,
+    "body" : "",
+    "expected" : {
+      "action" : "error",
+      "kind" : "unavailable"
+    }
+  }, {
+    "tier" : 3,
+    "status" : 308,
+    "body" : "",
+    "expected" : {
+      "action" : "error",
+      "kind" : "unavailable"
+    }
   } ],
   "baseUrl" : [ {
     "input" : "https://api.openai.com/v1",
@@ -2870,6 +2894,179 @@
         "role" : "user",
         "content" : "ping"
       } ]
+    }
+  }, {
+    "call" : "listing",
+    "model" : "test-model",
+    "system" : "You extract house listings.",
+    "user" : "Two bedroom flat in Indiranagar, rent 25,000.",
+    "temperature" : 0,
+    "expected" : {
+      "model" : "test-model",
+      "max_tokens" : 2048,
+      "temperature" : 0,
+      "system" : "You extract house listings.\n\nAnswer by calling the listing tool.",
+      "messages" : [ {
+        "role" : "user",
+        "content" : "Two bedroom flat in Indiranagar, rent 25,000."
+      } ],
+      "tools" : [ {
+        "name" : "listing",
+        "description" : "Reply by calling this tool with the answer.",
+        "input_schema" : {
+          "type" : "object",
+          "properties" : {
+            "label" : {
+              "type" : [ "string", "null" ],
+              "description" : "Short human label, e.g. '2BHK near Indiranagar metro'"
+            },
+            "address" : {
+              "type" : [ "string", "null" ],
+              "description" : "Full postal address as written in the listing"
+            },
+            "street" : {
+              "type" : [ "string", "null" ],
+              "description" : "Street / road name only, e.g. 'MG Road'; null when no road is named"
+            },
+            "locality" : {
+              "type" : [ "string", "null" ],
+              "description" : "Locality / neighbourhood / area inside the city, e.g. 'Indiranagar', 'Sector 56'; never the city or district alone. When the listing names only a road, repeat the road here"
+            },
+            "price" : {
+              "type" : [ "string", "null" ],
+              "description" : "Monthly rent or sale price in rupees exactly as written, e.g. '25,000' or '1.2 Cr'"
+            },
+            "priceType" : {
+              "type" : [ "string", "null" ],
+              "description" : "RENT or SALE"
+            },
+            "bedrooms" : {
+              "type" : [ "string", "null" ],
+              "description" : "Number of bedrooms, e.g. '2' for 2BHK"
+            },
+            "contactName" : {
+              "type" : [ "string", "null" ],
+              "description" : "Contact person name"
+            },
+            "contactPhone" : {
+              "type" : [ "string", "null" ],
+              "description" : "Contact phone number exactly as written"
+            },
+            "listingUrl" : {
+              "type" : [ "string", "null" ],
+              "description" : "Listing URL if one is present in the text"
+            },
+            "notes" : {
+              "type" : [ "string", "null" ],
+              "description" : "Other useful facts (deposit, floor, furnishing, availability) in one short paragraph"
+            },
+            "amenities" : {
+              "type" : "array",
+              "description" : "Amenities such as parking, lift, power backup, gym",
+              "items" : {
+                "type" : "string"
+              }
+            }
+          },
+          "required" : [ "label", "address", "street", "locality", "price", "priceType", "bedrooms", "contactName", "contactPhone", "listingUrl", "notes", "amenities" ],
+          "additionalProperties" : false
+        }
+      } ],
+      "tool_choice" : {
+        "type" : "auto"
+      }
+    },
+    "forceTool" : false
+  }, {
+    "call" : "answer",
+    "model" : "test-model",
+    "system" : "You answer questions about saved houses.",
+    "user" : "Which house has parking?",
+    "temperature" : 0.1,
+    "expected" : {
+      "model" : "test-model",
+      "max_tokens" : 2048,
+      "temperature" : 0.1,
+      "system" : "You answer questions about saved houses.\n\nAnswer by calling the answer tool.",
+      "messages" : [ {
+        "role" : "user",
+        "content" : "Which house has parking?"
+      } ],
+      "tools" : [ {
+        "name" : "answer",
+        "description" : "Reply by calling this tool with the answer.",
+        "input_schema" : {
+          "type" : "object",
+          "properties" : {
+            "answer" : {
+              "type" : "string",
+              "description" : "The answer, in 1-6 sentences, citing houses inline as [house:<id>]"
+            },
+            "citedHouseIds" : {
+              "type" : "array",
+              "description" : "Ids of the houses cited inline as [house:<id>] in the answer, copied exactly from the context",
+              "items" : {
+                "type" : "string"
+              }
+            }
+          },
+          "required" : [ "answer", "citedHouseIds" ],
+          "additionalProperties" : false
+        }
+      } ],
+      "tool_choice" : {
+        "type" : "auto"
+      }
+    },
+    "forceTool" : false
+  } ],
+  "anthropicToolChoice" : [ {
+    "status" : 400,
+    "body" : "{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"tool_choice: type \\\"tool\\\" and \\\"any\\\" are not supported for this model.\"},\"request_id\":\"req_vec\"}",
+    "expected" : {
+      "retryWithAuto" : true
+    }
+  }, {
+    "status" : 400,
+    "body" : "{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"TOOL_CHOICE: TYPE \\\"TOOL\\\" AND \\\"ANY\\\" ARE NOT SUPPORTED FOR THIS MODEL.\"},\"request_id\":\"req_vec\"}",
+    "expected" : {
+      "retryWithAuto" : true
+    }
+  }, {
+    "status" : 400,
+    "body" : "{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"max_tokens: Field required\"},\"request_id\":\"req_vec\"}",
+    "expected" : {
+      "retryWithAuto" : false
+    }
+  }, {
+    "status" : 400,
+    "body" : "{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"tool_choice.name: Tool \\\"nope\\\" not found in tools\"},\"request_id\":\"req_vec\"}",
+    "expected" : {
+      "retryWithAuto" : false
+    }
+  }, {
+    "status" : 400,
+    "body" : "{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"tools.0.input_schema: this schema feature is not supported\"},\"request_id\":\"req_vec\"}",
+    "expected" : {
+      "retryWithAuto" : false
+    }
+  }, {
+    "status" : 400,
+    "body" : "",
+    "expected" : {
+      "retryWithAuto" : false
+    }
+  }, {
+    "status" : 401,
+    "body" : "{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"tool_choice: type \\\"tool\\\" and \\\"any\\\" are not supported for this model.\"},\"request_id\":\"req_vec\"}",
+    "expected" : {
+      "retryWithAuto" : false
+    }
+  }, {
+    "status" : 529,
+    "body" : "{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Overloaded\"},\"request_id\":\"req_vec\"}",
+    "expected" : {
+      "retryWithAuto" : false
     }
   } ],
   "anthropicContent" : [ {

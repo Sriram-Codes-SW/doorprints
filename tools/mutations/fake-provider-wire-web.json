@@ -15,13 +15,13 @@
     },
     {
       "file": "web/src/app/core/ai/anthropic.ts",
-      "find": "body['tool_choice'] = { type: 'tool', name };",
-      "replace": "body['tool_choice'] = { type: 'auto', name };",
+      "find": "forceTool ? { type: 'tool', name } : { type: 'auto' }",
+      "replace": "{ type: 'auto', name }",
       "expect": "forces the tool and sends the documented headers"
     },
     {
       "file": "web/src/app/core/ai/ai-request.ts",
-      "find": "redirect: 'error',",
+      "find": "redirect: 'manual',",
       "replace": "redirect: 'follow',",
       "expect": "does not follow a redirect"
     },

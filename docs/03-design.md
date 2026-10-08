@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.85 |
+| Version | 0.86 |
 | Date | 2026-10-08 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -96,6 +96,7 @@
 | 0.57 | 2026-10-01 | Claude (Code), lead | The finishing batch ([10](10-sprint-log.md) §13.29..§13.39, on stacked branches): §6.1 `house.move_in` (V11), the photo's room, tags, caption and `meta_updated_at` (V12), `house.floor` (V13), the statuses TAKEN and NOT_CHOSEN; §8.1 the two statuses; §9 `PUT /api/photos/{id}/meta` and `/3` on `/api/import`; §11.2 the website's offline tiles; new **ADR-29** (deletions in an update file, `doorprints-backup/3`), **ADR-30** (offline tiles on the website through `addProtocol` over Cache Storage), **ADR-31** (search engines: one indexable page, `noindex` by default), **ADR-32** (accessibility rules and their automated checks); new **§17**, the smaller decisions of the batch (copies in UTC, seeded records stamped 2000-01-01, Hunt alerts `VISIBILITY_SECRET` with the app lock, the status colours, the locality lookup on the tap only, the iPhone's wake-up notification, import caps). |
 | 0.84 | 2026-10-09 | Claude (Code), engineer | §12 limits row: the token bucket is `common/TokenBucketRateLimiter` (moved out of `ai.web`, S4b-BL-165). |
 | 0.85 | 2026-10-09 | Claude (Code) | §12.1: the two caps on open pairing requests are settings (`PAIRING_MAX_OPEN`, `PAIRING_MAX_PER_SOURCE`; defaults unchanged, below 1 refused at start), lifted only by the API scan (S4b-BL-191, #205). |
+| 0.86 | 2026-10-09 | Claude (Code), engineer | **§13.2: the three findings of the keyless provider checks** (S4b-BL-175-F1..F3, [10](10-sprint-log.md) v0.197, [06](06-test-plan.md) v0.175 TC-AI-30 and TC-AI-31). **F1:** a model that refuses a forced tool (a 400 saying `tool_choice` is not supported) is asked again once with `tool_choice: auto` and the instruction `Answer by calling the <name> tool.`, on both platforms, driven by the vectors `anthropicRequest` (two unforced cases) and `anthropicToolChoice` (8 rows). **F2:** the website asks for `redirect: 'manual'` and reads a browser's opaque redirect as *unavailable*, as the phones read a 3xx; `providerErrors` gains three 3xx rows. **F3:** no code change; the paragraph "`Retry-After` across origins" states the browser limit and the 60 s default both stacks already use. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -1545,7 +1546,7 @@ a model on another computer in the house puts an https proxy in front of it or r
 
 The answer is `choices[0].message.content`; surrounding whitespace and a Markdown code fence (```` ``` ```` or
 ```` ```json ````) are removed, then the caller parses the JSON. No `choices`, or a `content` that is not text (a refusal,
-a tool call), is *unavailable*. Redirects are not followed (the shared client sets `followRedirects = false` and `expectSuccess = false`, so the key goes only to the address the person chose and a 3xx is *unavailable* with its status); the timeout is 60 s as for Gemini and covers the answer to the last byte of its body; a network failure is *unavailable* with code 0, in both adapters. Both adapters send through one internal helper (`postAiJson`), so that one failure is worded one way. Prompts and answers are
+a tool call), is *unavailable*. Redirects are not followed (the shared client sets `followRedirects = false` and `expectSuccess = false`, so the key goes only to the address the person chose and a 3xx is *unavailable* with its status; the website asks `fetch` for `redirect: 'manual'`, and a browser answers that with an opaque-redirect response, which carries no status and no location, so there a redirect is *unavailable* too, with no status to report, and the person reads the same words on both: S4b-BL-175-F2); the timeout is 60 s as for Gemini and covers the answer to the last byte of its body; a network failure is *unavailable* with code 0, in both adapters. Both adapters send through one internal helper (`postAiJson`), so that one failure is worded one way. Prompts and answers are
 never logged. The exact bodies are the `openaiRequest` vectors.
 
 **The fallback ladder.** Not every server honours `json_schema` (Ollama's older builds, many proxies). The adapter tries
@@ -1596,6 +1597,18 @@ holds it (an empty one means it), and it passes the same rules as any base URL (
   "tool_choice": { "type":"tool", "name": <the same name> } }
 ```
 
+**Models that refuse a forced tool (S4b-BL-175-F1).** Newer Claude models answer a `tool_choice` of type `tool` or `any` with
+a 400 `invalid_request_error` ("tool_choice: type "tool" and "any" are not supported for this model."), and accept `auto`
+and `none` (platform.claude.com/docs/en/api/errors, "Forced tool use not supported", read 2026-10-08). So the adapter, on
+both platforms, **repeats the call once** when the answer is a 400 whose body (case-insensitive) holds both `tool_choice`
+and `not supported`, with `tool_choice: {"type":"auto"}` and the system text followed by a blank line and `Answer by
+calling the <name> tool.`; the tool and its strict `input_schema` are the same, so the answer is still the first `tool_use`
+block's `input`, and a model that then writes text is *unavailable* as before. Nothing else is retried (any other 400, any
+other status, and a second refusal read as errors always do). The choice is kept per client on the phones (the repository
+builds a client per use, so there a refusing model costs one quick extra request per call, as the OpenAI tier cache does)
+and per address and model for the session on the website. The ping has no tool and is not affected. The exact bodies and
+the rule are the vectors `anthropicRequest` (the two unforced cases) and `anthropicToolChoice`.
+
 Structured output is a **forced tool**, not a ladder: with `tool_choice` naming the one tool, the model has to answer with
 arguments that match `input_schema`, and **the answer is the `input` of the first `tool_use` content block** (an object,
 written as compact JSON text; any `text` block before it is ignored). There are no tiers, no trailer and no fence to
@@ -1612,7 +1625,7 @@ it limits the schema features allowed. `ping()` is one call with `max_tokens` 5,
 `stop_reason: "max_tokens"` is *not* an error here). **Errors** are the table above, from one shared status map
 (`aiFailure` in Kotlin, `classifyStatus` in TypeScript): 401 and 403 `keyRejected`, 404 `modelNotFound`, 429 `rateLimited`
 with `Retry-After` seconds, a network failure `unreachable`; every other status, a 400, a 413, a 5xx and **529
-(overloaded)** included, is `unavailable`, and no 400 body moves a ladder (there is none). The transport rules are the
+(overloaded)** included, is `unavailable`, and no 400 body moves a ladder (there is none; the one 400 that is answered with a second call is the refusal of a forced tool, above). The transport rules are the
 helper's (`postAiJson`): the key goes to the one address, no redirect, 60 s over the whole body. The page's
 CSP `connect-src` already allows `https:`, so `https://api.anthropic.com` needs no change to `firebase.json`.
 
@@ -1643,15 +1656,27 @@ the website refuses a `[::1]` base URL itself, with the same reason as another h
 `10.0.2.2` in the network security config (S4b-BL-150), never globally; on iOS, App Transport Security's local-networking
 exception covers loopback only.
 
-**How the providers are tested without keys (S4b-BL-175).** The only real key the owner has is Gemini's, so the other kinds had run only against in-memory mocks and the shared vectors. Three more layers cost nothing. (1) `tools/fake-ai-provider/server.mjs`, a Node server (built-ins only, loopback) that speaks the public wire formats of the OpenAI-style `/chat/completions` (OpenAI, OpenRouter, Groq, Ollama, LM Studio, Custom: the base URL decides the route), Anthropic's `/v1/messages` and Gemini's `generateContent`, and checks each request the way a vendor does (bearer key, `x-api-key`, `anthropic-version`, a forced `tool_choice`, strict schemas, no key in the URL), so a wrong request is a failing test and not a silent pass. Its modes make it refuse `json_schema`, refuse every format, wrap the JSON in a fence, return no choices, cut the JSON off, answer 401, 403, 404, 429 with `Retry-After`, 500 or 529, answer HTTP 200 with only an `error` (OpenRouter), redirect, or send headers and then stall. Each shape cites its source in the file; what no source states is marked *assumed* there. (2) The real clients against it: `FakeProviderWireTest` (OkHttp through `AndroidApiHttp`, as the app builds it) and `fake-provider.wire.spec.ts` (real `fetch`) run the success path, the ladder, the status mapping, the redirect and the truncated answer, and on the phones the stalled body (504); `tools/fake-ai-provider/browser-check.mjs` bundles the website's adapters, loads them in Chromium from one origin and calls the server on another with a vendor-like CORS policy, so the header lists are tested for real (a stray `x-api-key` on the OpenAI route is blocked; the Anthropic call passes only with `anthropic-dangerous-direct-browser-access`). (3) The manual *AI evals* suite `local-model`: Ollama (a pinned release, sha256 verified) runs a small model on the runner and the golden set goes through the openai-compatible adapter with no key. **What this does not prove:** that a vendor still behaves like its documentation (the fake follows the pages read on 2026-10-08), real quotas and rate limits, the CORS lists of OpenAI, Anthropic, Groq and OpenRouter (only Ollama's is sourced; the others are *assumed*), or the quality of any real model (a 1.5B model on a CPU says little about the answers of a paid one). **Findings**, each pinned by a test marked *documented gap* and a backlog row in [10](10-sprint-log.md): a newer Claude model refuses a forced `tool_choice` with a 400 and the adapter always forces it, so every call reads *unavailable* (F1); a redirect is *unavailable* with its status on the phones, as the paragraph above says, but *unreachable* on the website, because `fetch` with `redirect: 'error'` rejects (F2); a page can read a cross-origin `Retry-After` only if the provider exposes it, so a 429 may read as the 60 s default (F3).
+**How the providers are tested without keys (S4b-BL-175).** The only real key the owner has is Gemini's, so the other kinds had run only against in-memory mocks and the shared vectors. Three more layers cost nothing. (1) `tools/fake-ai-provider/server.mjs`, a Node server (built-ins only, loopback) that speaks the public wire formats of the OpenAI-style `/chat/completions` (OpenAI, OpenRouter, Groq, Ollama, LM Studio, Custom: the base URL decides the route), Anthropic's `/v1/messages` and Gemini's `generateContent`, and checks each request the way a vendor does (bearer key, `x-api-key`, `anthropic-version`, a forced `tool_choice`, strict schemas, no key in the URL), so a wrong request is a failing test and not a silent pass. Its modes make it refuse `json_schema`, refuse every format, wrap the JSON in a fence, return no choices, cut the JSON off, answer 401, 403, 404, 429 with `Retry-After`, 500 or 529, answer HTTP 200 with only an `error` (OpenRouter), redirect, or send headers and then stall. Each shape cites its source in the file; what no source states is marked *assumed* there. (2) The real clients against it: `FakeProviderWireTest` (OkHttp through `AndroidApiHttp`, as the app builds it) and `fake-provider.wire.spec.ts` (real `fetch`) run the success path, the ladder, the status mapping, the redirect and the truncated answer, and on the phones the stalled body (504); `tools/fake-ai-provider/browser-check.mjs` bundles the website's adapters, loads them in Chromium from one origin and calls the server on another with a vendor-like CORS policy, so the header lists are tested for real (a stray `x-api-key` on the OpenAI route is blocked; the Anthropic call passes only with `anthropic-dangerous-direct-browser-access`). (3) The manual *AI evals* suite `local-model`: Ollama (a pinned release, sha256 verified) runs a small model on the runner and the golden set goes through the openai-compatible adapter with no key. **What this does not prove:** that a vendor still behaves like its documentation (the fake follows the pages read on 2026-10-08), real quotas and rate limits, the CORS lists of OpenAI, Anthropic, Groq and OpenRouter (only Ollama's is sourced; the others are *assumed*), or the quality of any real model (a 1.5B model on a CPU says little about the answers of a paid one). **Findings**, each pinned by a test marked *documented gap* and a backlog row in [10](10-sprint-log.md): a newer Claude model refuses a forced `tool_choice` with a 400 and the adapter always forced it, so every call read *unavailable* (F1, fixed: see "Models that refuse a forced tool" above); a redirect was *unavailable* with its status on the phones, as the paragraph above says, but *unreachable* on the website, because `fetch` with `redirect: 'error'` only rejects (F2, fixed: the website uses `redirect: 'manual'` and reads the browser's opaque-redirect response as *unavailable*; what stays different is that the website cannot know which 3xx it was, and the phones keep the status in the exception without showing it); a page can read a cross-origin `Retry-After` only if the provider exposes it, so a 429 may read as the 60 s default (F3, documented below, no code change).
+
+**`Retry-After` across origins (S4b-BL-175-F3).** A browser lets a page read only the CORS-safelisted response headers of
+another origin plus those the server lists in `Access-Control-Expose-Headers` (MDN, "Access-Control-Expose-Headers");
+`Retry-After` is not safelisted. So on the website a 429's wait is the provider's number **only if that provider exposes
+the header**; if it does not, the adapter reads no number and the wait shown is the default of 60 seconds (`OnDeviceAiError`
+on the website, `AiFailure.RateLimited(seconds ?: 60)` on the phones, so the same words and the same default on every
+platform). The phones' own HTTP stack reads the header whatever the CORS policy is. Whether OpenAI, Anthropic, Groq and
+OpenRouter expose it is **not sourced** (a search on 2026-10-09 found nothing; only a real 429 from a free tier shows it),
+so no claim about them is made in the app or the guide, and `browser-check.mjs` keeps the documented gap pinned (7 s with the
+header exposed, 60 s without). No code can read a header the browser hides; when a real answer is known, a sentence in the
+Settings help (four languages, hi/ta/te under review) is the follow-up, kept in S4b-BL-175-F3.
 
 **Test vectors** (`docs/ai/evals/parity-vectors.json`, copied to the Kotlin common tests and the website by
 `.github/scripts/parity-vectors-kotlin.py`; the backend's `ParityVectorsTest` reads the same file and leaves sections it does not compute as they are):
 `schemaDialect` (3 cases: Gemini dialect, strict output, trailer text), `openaiRequest` (8: request bodies per tier and
-the ping), `openaiContent` (9: the answer text, fences, missing choices), `providerErrors` (22: status, body and
+the ping), `openaiContent` (9: the answer text, fences, missing choices), `providerErrors` (25, 3 of them a 3xx: status, body and
 `Retry-After` to a kind or the next tier; the rows without a `provider` field) and `baseUrl` (34: the rules above, with the
-Android-only flag). The Anthropic adapter (S4b-BL-152) adds `anthropicRequest` (4: the three calls with their tool and
-the ping without one), `anthropicContent` (16: twelve answers, a tool call among text, the first of two, a cut-off,
+Android-only flag). The Anthropic adapter (S4b-BL-152) adds `anthropicRequest` (6: the three calls with their tool, the
+ping without one, and, from F1, `listing` and `answer` with `"forceTool": false`), `anthropicToolChoice` (F1: 8 rows of
+status and body to `retryWithAuto`), `anthropicContent` (16: twelve answers, a tool call among text, the first of two, a cut-off,
 a refusal, no `content`; four pings) and 12 rows of `providerErrors` marked `"provider": "anthropic"` (401, 403, 404,
 429 with and without a usable `Retry-After`, a 400 whose words would move the OpenAI ladder, 413, 500, 529, a 3xx and
 status 0).

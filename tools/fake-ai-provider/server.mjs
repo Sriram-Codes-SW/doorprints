@@ -137,9 +137,12 @@ function problem(fam, mode, req, b, state) {
     if (!Array.isArray(b.messages) || !b.messages.length || !b.messages.every((m) => ['user', 'assistant'].includes(m?.role) && m.content)) return [400, 'messages: Field required'];
     if (b.tools !== undefined) {
       if (!Array.isArray(b.tools) || !b.tools.every((t) => isText(t?.name) && t.input_schema?.type === 'object')) return [400, 'tools: each tool needs a name and an input_schema of type object'];
-      // The fake's own contract (stricter than the vendor, which defaults to auto): the app must force the tool.
-      if (b.tool_choice?.type !== 'tool' || !b.tools.some((t) => t.name === b.tool_choice.name)) return [400, 'tool_choice: must be {type: "tool", name} naming one of the tools'];
-      if (mode === 'no-forced-tool') return [400, 'tool_choice: type "tool" and "any" are not supported for this model.']; // errors page, "Forced tool use not supported"
+      // The fake's own contract (stricter than the vendor, which defaults to auto): the app says what it wants, either
+      // {type: "tool", name} naming one of the tools or {type: "auto"}; `any` and a missing tool_choice are refused here.
+      const tc = b.tool_choice;
+      if (tc?.type !== 'auto' && (tc?.type !== 'tool' || !b.tools.some((t) => t.name === tc.name))) return [400, 'tool_choice: must be {type: "tool", name} naming one of the tools, or {type: "auto"}'];
+      // errors page, "Forced tool use not supported": `tool` and `any` are a 400 on newer models, `auto` and `none` are accepted.
+      if (mode === 'no-forced-tool' && tc.type === 'tool') return [400, 'tool_choice: type "tool" and "any" are not supported for this model.'];
     }
   } else if (!Array.isArray(b.contents) || !b.contents.length || b.generationConfig?.responseMimeType !== 'application/json' || !isObj(b.generationConfig?.responseSchema)) {
     return [400, 'Invalid JSON payload: contents and generationConfig.responseMimeType/responseSchema are required'];
@@ -169,7 +172,7 @@ function successBody(fam, mode, body, answer) {
   const base = { id: 'msg_fake', type: 'message', role: 'assistant', model: body.model };
   if (!body.tools) return { ...base, stop_reason: 'max_tokens', content: [{ type: 'text', text: '{"ok' }] }; // a 5-token ping stops at the limit
   if (mode === 'text-only') return { ...base, stop_reason: 'end_turn', content: [{ type: 'text', text: 'I cannot do that.' }] };
-  return { ...base, stop_reason: mode === 'max-tokens' ? 'max_tokens' : 'tool_use', content: [{ type: 'tool_use', id: 'toolu_fake', name: body.tool_choice.name, input: JSON.parse(answer) }] };
+  return { ...base, stop_reason: mode === 'max-tokens' ? 'max_tokens' : 'tool_use', content: [{ type: 'tool_use', id: 'toolu_fake', name: body.tools[0].name, input: JSON.parse(answer) }] };
 }
 
 /** Starts the server on 127.0.0.1; resolves with {port, state, close()}. */

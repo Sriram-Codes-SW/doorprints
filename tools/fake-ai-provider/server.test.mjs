@@ -162,9 +162,14 @@ describe('Anthropic /v1/messages', () => {
   });
   it('refuses tools without tool_choice, or a tool_choice naming no tool, or no max_tokens', async () => {
     assert.equal((await an(anBody({ tool_choice: undefined }))).status, 400);
-    assert.equal((await an(anBody({ tool_choice: { type: 'auto' } }))).status, 400);
+    assert.equal((await an(anBody({ tool_choice: { type: 'any' } }))).status, 400, 'the fake takes only tool or auto');
     assert.equal((await an(anBody({ tool_choice: { type: 'tool', name: 'other' } }))).status, 400);
     assert.equal((await an(anBody({ max_tokens: undefined }))).status, 400);
+  });
+  it('takes tool_choice auto, and answers through the one tool', async () => {
+    const j = await (await an(anBody({ tool_choice: { type: 'auto' } }))).json();
+    assert.equal(j.stop_reason, 'tool_use');
+    assert.equal(j.content.find((b) => b.type === 'tool_use').name, 'answer');
   });
   it('takes a tool-less ping and answers text that stopped at max_tokens', async () => {
     const j = await (await an(anBody({ tools: undefined, tool_choice: undefined, max_tokens: 5 }))).json();
@@ -177,6 +182,8 @@ describe('Anthropic /v1/messages', () => {
     const r = await an(anBody(), 'no-forced-tool');
     assert.equal(r.status, 400);
     assert.match((await r.json()).error.message, /not supported for this model/);
+    // The documented rule: `any` and `tool` are refused, `auto` is accepted (platform.claude.com/docs/en/api/errors).
+    assert.equal((await an(anBody({ tool_choice: { type: 'auto' } }), 'no-forced-tool')).status, 200);
   });
   it('maps statuses with the documented error types and Retry-After on 429', async () => {
     for (const [mode, status, type] of [['unauthorized', 401, 'authentication_error'], ['forbidden', 403, 'permission_error'], ['not-found', 404, 'not_found_error'], ['rate-limit', 429, 'rate_limit_error'], ['server-error', 500, 'api_error'], ['overloaded', 529, 'overloaded_error']]) {

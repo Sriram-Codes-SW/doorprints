@@ -38,8 +38,8 @@
     },
     {
       "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AnthropicClient.kt",
-      "find": "put(\"tool_choice\", buildJsonObject { put(\"type\", \"tool\");",
-      "replace": "put(\"tool_choice\", buildJsonObject { put(\"type\", \"auto\");",
+      "find": "put(\"type\", if (forceTool) \"tool\" else \"auto\")",
+      "replace": "put(\"type\", \"auto\")",
       "expect": "theAnswerIsForcedThroughOneToolNamedForTheCall"
     },
     {
@@ -80,8 +80,8 @@
     },
     {
       "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AnthropicClient.kt",
-      "find": "put(\"temperature\", temperature)\n            put(\"system\", system)",
-      "replace": "put(\"system\", system)\n            put(\"temperature\", temperature)",
+      "find": "put(\"temperature\", temperature)\n            put(\"system\", if (schema != null && !forceTool) \"$system\\n\\nAnswer by calling the $name tool.\" else system)",
+      "replace": "put(\"system\", if (schema != null && !forceTool) \"$system\\n\\nAnswer by calling the $name tool.\" else system)\n            put(\"temperature\", temperature)",
       "expect": "anthropicRequestMatchesTheVectorsForEveryCall"
     },
     {

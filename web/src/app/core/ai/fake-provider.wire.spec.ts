@@ -21,7 +21,7 @@ import { TestBed } from '@angular/core/testing';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LocalStore } from '../../data/local-store.service';
 import golden from '../../../../../docs/ai/evals/golden-set.json';
-import { AnthropicChatModel } from './anthropic';
+import { AnthropicChatModel, resetToolChoiceCache } from './anthropic';
 import { OpenAiCompatibleChatModel, resetTierCache } from './openai-compat';
 import { ANSWER_SCHEMA, GEMINI_URL, GeminiChatModel, OnDeviceAiError, OnDeviceAiService } from './on-device-ai.service';
 
@@ -65,6 +65,7 @@ describe.skipIf(!hasNode)('Adapters over a real socket against the fake provider
   afterAll(() => child?.kill());
   beforeEach(async () => {
     resetTierCache();
+    resetToolChoiceCache();
     await control('DELETE', '/__requests');
     await mode('ok');
   });
@@ -126,11 +127,13 @@ describe.skipIf(!hasNode)('Adapters over a real socket against the fake provider
       expect((await control('GET', '/__requests')).redirected).toBe(0);
     });
 
-    // DOCUMENTED GAP (S4b-BL-175, finding F2): docs/03 §13.2 says a 3xx is "unavailable with its status" on both platforms;
-    // the phones do that, but fetch with redirect 'error' rejects, so the website says "unreachable".
-    it('DOCUMENTED GAP: a redirect reads as unreachable on the website (unavailable with 302 on the phones)', async () => {
+    // S4b-BL-175-F2: docs/03 §13.2 says a 3xx is "unavailable"; with redirect 'manual' the website says so too (a browser
+    // shows an opaque redirect, Node shows the 302 here; both are unavailable, and neither follows it).
+    it('a redirect reads as unavailable, as on the phones, and nobody reaches the target', async () => {
       await mode('redirect');
-      await expect(ask(openAi())).rejects.toMatchObject({ kind: 'unreachable' });
+      await expect(ask(openAi())).rejects.toMatchObject({ kind: 'unavailable' });
+      await expect(ask(anthropic())).rejects.toMatchObject({ kind: 'unavailable' });
+      expect((await control('GET', '/__requests')).redirected).toBe(0);
     });
 
     it('unwraps a fenced answer; no choices and an error-only 200 are unavailable', async () => {
@@ -197,12 +200,16 @@ describe.skipIf(!hasNode)('Adapters over a real socket against the fake provider
       expect(await requests()).toHaveLength(0);
     });
 
-    // DOCUMENTED GAP (S4b-BL-175, finding F1): newer Claude models refuse a forced tool_choice with a 400
-    // (platform.claude.com/docs/en/api/errors, "Forced tool use not supported"); the adapter always forces the tool.
-    it('DOCUMENTED GAP: a model that refuses a forced tool is just unavailable', async () => {
+    // S4b-BL-175-F1: newer Claude models refuse a forced tool_choice with a 400 (platform.claude.com/docs/en/api/errors,
+    // "Forced tool use not supported"); the adapter repeats the call once with tool_choice auto and remembers it.
+    it('a model that refuses a forced tool is asked again with tool_choice auto, once, and then remembered', async () => {
       await mode('no-forced-tool');
-      await expect(ask(anthropic())).rejects.toMatchObject({ kind: 'unavailable' });
-      expect((await requests())[0].body.tool_choice).toBeDefined();
+      const model = anthropic();
+      expect(Object.keys(JSON.parse(await ask(model)))).toContain('answer');
+      expect(Object.keys(JSON.parse(await ask(model)))).toContain('answer');
+      const types = (await requests()).map((r) => r.body.tool_choice.type);
+      expect(types).toEqual(['tool', 'auto', 'auto']);
+      expect((await requests())[1].body.system).toMatch(/\n\nAnswer by calling the answer tool\.$/);
     });
   });
 

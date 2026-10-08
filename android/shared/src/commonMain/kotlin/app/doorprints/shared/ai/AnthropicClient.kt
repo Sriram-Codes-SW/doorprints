@@ -33,7 +33,9 @@ import kotlinx.serialization.json.put
  * Anthropic's Messages API (`POST {baseUrl}/v1/messages`), called straight from this device with the person's own key
  * (docs/03 §13.2, ADR-35). The key goes only in an `x-api-key` header to [baseUrl] (never in a URL) and is required:
  * without one nothing is sent and the call is a refused key. The answer is forced through one tool whose input schema is
- * the call's strict schema ([SchemaDialect]); the answer is that tool call's `input`. Failures are the [ApiException]s
+ * the call's strict schema ([SchemaDialect]); the answer is that tool call's `input`. Newer Claude models refuse a forced
+ * tool (a 400 saying `tool_choice` is not supported): the call is then repeated once with `tool_choice: auto` and an
+ * instruction, and the client keeps that choice for its later calls. Failures are the [ApiException]s
  * the screens already word ([aiFailure]); a network failure, a timeout and a redirect are [postAiJson]'s. Neither
  * prompts, answers nor the key are logged.
  */
@@ -45,15 +47,24 @@ class AnthropicClient(
     /** Null turns the limit off (tests, whose virtual clock would end it at once). */
     private val timeoutMs: Long? = 60_000,
 ) : JsonChatModel {
+    /** False once the model has refused a forced tool; kept for this client's later calls. */
+    internal var forceTool: Boolean = true
+
     /**
       * Asks for [schema] as a forced tool call and returns the tool input as JSON text. A missing key, a refused key or
       * an unusable answer is an [ApiException].
      */
     override suspend fun generateJson(system: String, user: String, schema: JsonObject, temperature: Double): String {
-        val body = requestBody(SchemaDialect.nameOf(schema), model, system, user, temperature, schema)
-        val response = post(body)
-        if (response.status !in 200..299) throw failure(response.status, response.retryAfter)
-        return contentOf(response.body)
+        while (true) {
+            val body = requestBody(SchemaDialect.nameOf(schema), model, system, user, temperature, schema, forceTool = forceTool)
+            val response = post(body)
+            if (forceTool && retryWithAuto(response.status, response.body)) {
+                forceTool = false
+                continue
+            }
+            if (response.status !in 200..299) throw failure(response.status, response.retryAfter)
+            return contentOf(response.body)
+        }
     }
 
     /** One call with 5 tokens and no tool: the key and the model work when it answers (it may stop at the limit). */
@@ -83,16 +94,17 @@ class AnthropicClient(
 
         /**
          * The request body (docs/03 §13.2): the prompts, and for a [schema] one tool named [name] with its strict schema
-         * as `input_schema`, chosen by `tool_choice` so the model has to answer through it. No [schema] (the ping) adds neither.
+         * as `input_schema`, chosen by `tool_choice` so the model has to answer through it (with [forceTool] false: `auto`, and
+         * the system text ends with an instruction to call the tool). No [schema] (the ping) adds neither.
          */
         internal fun requestBody(
             name: String, model: String, system: String, user: String, temperature: Double,
-            schema: JsonObject?, maxTokens: Int = MAX_TOKENS,
+            schema: JsonObject?, maxTokens: Int = MAX_TOKENS, forceTool: Boolean = true,
         ): JsonObject = buildJsonObject {
             put("model", model)
             put("max_tokens", maxTokens)
             put("temperature", temperature)
-            put("system", system)
+            put("system", if (schema != null && !forceTool) "$system\n\nAnswer by calling the $name tool." else system)
             put("messages", buildJsonArray { add(buildJsonObject { put("role", "user"); put("content", user) }) })
             if (schema != null) {
                 put("tools", buildJsonArray {
@@ -102,9 +114,16 @@ class AnthropicClient(
                         put("input_schema", SchemaDialect.strict(schema))
                     })
                 })
-                put("tool_choice", buildJsonObject { put("type", "tool"); put("name", name) })
+                put("tool_choice", buildJsonObject { put("type", if (forceTool) "tool" else "auto"); if (forceTool) put("name", name) })
             }
         }
+
+        /**
+         * Whether a failed answer is a model refusing a forced tool (the `anthropicToolChoice` vectors): a 400 whose body
+         * (case-insensitive) says `tool_choice` and `not supported`, as platform.claude.com/docs/en/api/errors documents.
+         */
+        internal fun retryWithAuto(status: Int, body: String): Boolean =
+            status == 400 && body.lowercase().let { "tool_choice" in it && "not supported" in it }
 
         private fun unavailable() = ApiException(ApiException.Kind.AI_UNAVAILABLE, 502)
 

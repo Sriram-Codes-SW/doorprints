@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.133 |
+| Version | 0.134 |
 | Date | 2026-10-08 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..183); this file lists the lead-level items and points to the rest. |
@@ -142,6 +142,7 @@
 | 0.131 | 2026-10-09 | Claude (Code), engineer | S4b-BL-165 done ([10](10-sprint-log.md)): `TokenBucketRateLimiter` is in `server.common`; one constructor each for `ApiKeyFilter` and `AiExceptionHandler`; `PackageBoundaryTest`. |
 | 0.132 | 2026-10-09 | Claude (Code), lead | Owner-page strings and guide rows in hi/ta/te updated ([10](10-sprint-log.md) v0.195); S4b-BL-189 and S4b-BL-190 recorded. |
 | 0.133 | 2026-10-09 | Claude (Code) | S4b-BL-191 Done ([10](10-sprint-log.md) v0.196, #205): the pairing caps are settings (`PAIRING_MAX_OPEN`, `PAIRING_MAX_PER_SOURCE`, defaults unchanged) and the API scan lifts them; fixes the ZAP false positive on `/api/pair/start`. |
+| 0.134 | 2026-10-09 | Claude (Code), engineer | S4b-BL-175-F1 and -F2 fixed, -F3 documented ([10](10-sprint-log.md) v0.197): the Anthropic adapters retry once with `tool_choice: auto` on the documented 400; the website reads a redirect as *unavailable*. A change to the Anthropic request or the redirect mode re-runs `node --test tools/fake-ai-provider`, the wire specs and `browser-check.mjs` (§7). |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 

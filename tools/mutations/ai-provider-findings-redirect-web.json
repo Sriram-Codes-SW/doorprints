@@ -1,0 +1,35 @@
+{
+  "spec": "web/src/app/core/ai/ai-request.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/core/ai/ai-request.ts",
+      "find": "redirect: 'manual',",
+      "replace": "redirect: 'follow',",
+      "expect": "asks fetch not to follow it, with no cookies"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-request.ts",
+      "find": "if (res.type === 'opaqueredirect') throw new OnDeviceAiError('unavailable');",
+      "replace": "if (res.type === 'opaqueredirect') return { status: 0, body: '', retryAfter: null };",
+      "expect": "reads the opaque redirect of a browser as unavailable"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-request.ts",
+      "find": "if (res.type === 'opaqueredirect') throw new OnDeviceAiError('unavailable');",
+      "replace": "if (res.type === 'opaque') throw new OnDeviceAiError('unavailable');",
+      "expect": "reads the opaque redirect of a browser as unavailable"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-request.ts",
+      "find": "    if (e instanceof OnDeviceAiError) throw e;\n",
+      "replace": "",
+      "expect": "reads the opaque redirect of a browser as unavailable"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-request.ts",
+      "find": "  return { action: 'error', kind: 'unavailable' };\n}",
+      "replace": "  return status >= 300 && status < 400 ? { action: 'error', kind: 'unreachable' } : { action: 'error', kind: 'unavailable' };\n}",
+      "expect": "reads a 3xx status that is shown as unavailable"
+    }
+  ]
+}
