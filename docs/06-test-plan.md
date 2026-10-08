@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Test plan (functional, security, accessibility, i18n, AI) |
-| Version | 0.160 TC-AI-26 (S4b-BL-176): `GoldenSetEvalConfigTest` now requires `top-k` to equal the server's cap of 20 and no city to hold more fixture houses than that, because 30 fixture houses cannot all be retrieved. |
+| Version | 0.160 |
 | Date | 2026-10-08 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -40,7 +40,7 @@
 | 0.157 | 2026-10-08 | Claude (Code) | New TC-S-46 (`OwnerSetupAnnouncerTest`) and TC-I-47 (`OwnerSetupLinkFirstRunIntegrationTest`): the owner page's setup link is written to the log only while no browser is signed in (S4b-BL-171). |
 | 0.158 | 2026-10-08 | Claude (Code), lead | TC-AI-15 and TC-U-85 cover the answer cleaner (S4b-BL-178): 23 new `answerText` parity vectors, `AnswerTextTest`, `AskAnswerCleaningTest`, the plan case in `VisitPlannerAssembleTest`, the website and phone specs, a long-input test in each stack, mutation lists `tools/mutations/ai-answer-clean-web.json`, `-web-wiring.json` and `-kotlin.json`. |
 | 0.159 | 2026-10-08 | Claude (Code), lead | **TC-AI-23 extended** (S4b-BL-176): the job summary of the own-provider evals prints, for each failed case (the first 20), the model's whole response as compact JSON cut at 3,000 characters with ` ... (cut)`, the key never shown; `ai-eval.spec.ts` gains eight tests with literal expected text (an ask case's answer and citations, extract and plan outputs, no output for a failed call or a passing case, the cut and its exact limit, the key whole and across the cut, a backtick that cannot close the fence, the cap of 20 with the *not shown* line) and `tools/mutations/ai-eval.json` eleven mutations. **TC-AI-26 (new, automatic):** `GoldenSetEvalConfigTest` (keyless, `mvn verify`) pins that the server eval's `app.ai.rag.top-k` covers the fixture houses of the golden set and stays within the server's cap, and that the production default stays 6. |
-| 0.160 | 2026-10-08 | Claude (Code), lead | **TC-AI-27 and TC-U-176** (S4b-BL-174): the golden set v0.7 with its regions, the per-region scoring and the regional tables of the deterministic rules; TC-AI-23 now runs 72 cases. |
+| 0.160 | 2026-10-08 | Claude (Code), lead | **TC-AI-27 and TC-U-176** (S4b-BL-174): the golden set v0.7 with its regions, the per-region scoring and the regional tables of the deterministic rules; TC-AI-23 now runs 72 cases. TC-AI-26 (S4b-BL-176): `GoldenSetEvalConfigTest` now requires `top-k` to equal the server's cap of 20 and no city to hold more fixture houses than that, because 30 fixture houses cannot all be retrieved. |
 | 0.131 | 2026-10-06 | Claude | New section 10.1: the 27 requirement ids the review found without a mention here, each with its test or an honest *Gap* (NFR-014, NFR-015, NFR-016, PRV-007); SEC-030 is now checked in CI. |
 | 0.130 | 2026-10-06 | Claude | TC-U-135 after the senior reviewer's review: the read-only key check with a newer list, the card reading the state again, use-the-phone for the device actions. |
 | 0.129 | 2026-10-06 | Claude | TC-U-137: dates in hi, ta and te (the Drive backups table). |
