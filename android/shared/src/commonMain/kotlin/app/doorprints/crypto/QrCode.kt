@@ -43,6 +43,7 @@ private object Gf {
 /** EXP[8] of GF(2^8) with polynomial 0x11d. Tests pin this so the table cannot drift. */
 val QR_GF_EXP8: Int get() = Gf.exp[8]
 
+/** Multiplication in GF(2^8), by the log tables. */
 private fun mul(a: Int, b: Int): Int = if (a == 0 || b == 0) 0 else Gf.exp[Gf.log[a] + Gf.log[b]]
 
 /** Version information bits for versions 7 to 40 (ISO/IEC 18004). */
@@ -52,6 +53,10 @@ fun qrVersionBits(version: Int): Int {
     return (version shl 12) or (rem and 0xfff)
 }
 
+/**
+ * The error-correction layout of one version: the check codewords per block and the blocks as (count, data
+ * codewords) groups.
+ */
 private class EccSpec(val ecc: Int, val groups: List<Pair<Int, Int>>)
 
 /** Error correction M, versions 1 to 10 (blocks: count, data codewords). */
@@ -83,6 +88,7 @@ private val ALIGN = listOf(
     intArrayOf(6, 28, 50),
 )
 
+/** The Reed-Solomon generator polynomial of [degree], without its leading term. */
 private fun rsDivisor(degree: Int): IntArray {
     val result = IntArray(degree)
     result[degree - 1] = 1
@@ -97,6 +103,7 @@ private fun rsDivisor(degree: Int): IntArray {
     return result
 }
 
+/** The Reed-Solomon check codewords of [data] for a generator from [rsDivisor]. */
 private fun rsRemainder(data: IntArray, divisor: IntArray): IntArray {
     val result = IntArray(divisor.size)
     for (b in data) {
@@ -110,6 +117,7 @@ private fun rsRemainder(data: IntArray, divisor: IntArray): IntArray {
 
 private fun dataCodewords(version: Int): Int = ECC[version - 1].groups.sumOf { it.first * it.second }
 
+/** How many payload bytes fit in [version] in byte mode (the mode and count headers taken off). */
 private fun byteCapacity(version: Int): Int {
     val countBits = if (version <= 9) 8 else 16
     return (dataCodewords(version) * 8 - 4 - countBits) / 8
@@ -121,6 +129,10 @@ private fun chooseVersion(length: Int): Int {
     throw IllegalArgumentException("qr payload is longer than version 10")
 }
 
+/**
+ * The data codewords of a symbol: mode, byte count and payload, then the terminator and the alternating pad bytes
+ * up to the version's capacity.
+ */
 private fun packData(version: Int, bytes: ByteArray): IntArray {
     val countBits = if (version <= 9) 8 else 16
     val capacity = dataCodewords(version)
@@ -149,6 +161,7 @@ private fun packData(version: Int, bytes: ByteArray): IntArray {
     return out
 }
 
+/** Self-check: whether [data] with [ecc] is a valid Reed-Solomon codeword (all syndromes zero). */
 private fun syndromeClear(data: IntArray, ecc: IntArray): Boolean {
     val cw = data + ecc
     for (i in ecc.indices) {
@@ -160,6 +173,10 @@ private fun syndromeClear(data: IntArray, ecc: IntArray): Boolean {
     return true
 }
 
+/**
+ * Splits the data into blocks, adds each block's check codewords (verified before use) and interleaves them into
+ * the order the symbol is read in.
+ */
 private fun interleave(version: Int, data: IntArray): IntArray {
     val spec = ECC[version - 1]
     val divisor = rsDivisor(spec.ecc)
@@ -183,6 +200,10 @@ private fun interleave(version: Int, data: IntArray): IntArray {
     return out.toIntArray()
 }
 
+/**
+ * Places the function patterns, the interleaved [codewords] with mask 0, and the format and version information;
+ * returns the matrix `[y][x]`.
+ */
 private fun draw(version: Int, codewords: IntArray): Array<BooleanArray> {
     val size = 21 + 4 * (version - 1)
     val dark = Array(size) { BooleanArray(size) }

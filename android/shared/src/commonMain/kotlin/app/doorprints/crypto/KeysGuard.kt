@@ -76,6 +76,10 @@ class KeysGuard(private val p: CryptoProvider, private val store: KeysWatermarkS
     /** After [KeysFile.createFirstDevice]'s list was confirmed by Drive: the first pin, only if there is none. */
     fun pinCreated(written: KeysFile.Written) = accept(written.opened, Trust.CREATED)
 
+    /**
+     * The shared pin update: checks the list against the stored pin and replaces the pin by compare-and-set,
+     * retrying up to [MAX_TRIES] times if another writer moves it meanwhile.
+     */
     internal fun accept(opened: OpenedKeys, trust: Trust) {
         val next = watermarkOf(p, opened)
         repeat(MAX_TRIES) {
@@ -97,6 +101,10 @@ class KeysGuard(private val p: CryptoProvider, private val store: KeysWatermarkS
         throw KeysException(KeysException.Kind.CONCURRENT_UPDATE, "the watermark kept changing")
     }
 
+    /**
+     * The rollback, fork and chain checks for one step from the pin [seen] to [next]; throws a [KeysException]
+     * when the new list cannot follow the pinned one.
+     */
     private fun verify(seen: KeysWatermark, opened: OpenedKeys, next: KeysWatermark) {
         when (order(seen.epoch, seen.revision, next.epoch, next.revision)) {
             Order.LOWER -> throw KeysException(KeysException.Kind.ROLLED_BACK, "epoch ${next.epoch} revision ${next.revision} is older than epoch ${seen.epoch} revision ${seen.revision}")
@@ -163,6 +171,7 @@ class KeysGuard(private val p: CryptoProvider, private val store: KeysWatermarkS
  * [Verdict.SKIP_UNKNOWN_WRITER] (a device that opened the folder with the recovery key joins as a device first).
  */
 object RevokedEpochRule {
+    /** What to do with a file, given who wrote it and when. */
     enum class Verdict {
         ACCEPT,
 
@@ -179,6 +188,7 @@ object RevokedEpochRule {
         NEWER_EPOCH,
     }
 
+    /** Applies the rule to one file; the first matching case wins. */
     fun check(body: KeysBody, fileEpoch: Int, writerKid: ByteArray, writtenAt: Long): Verdict {
         if (fileEpoch > body.epoch) return Verdict.NEWER_EPOCH
         val revokedWriter = body.revokedEntry(writerKid)

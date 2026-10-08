@@ -804,6 +804,10 @@ open class CommonRepository(
         syncSoon()
     }
 
+    /**
+     * Calls `/api/stats` with the saved address and key on the IO dispatcher; the outcome, success or failure, is
+     * the result.
+     */
     override suspend fun testConnection(): Result<StatsDto> = withContext(Dispatchers.IO) {
         val s = settings.current()
         runCatching { apiFor(s.serverUrl, s.apiKey).stats() }
@@ -870,6 +874,10 @@ open class CommonRepository(
         AiKind.ANTHROPIC -> anthropicFor?.invoke(config.baseUrl, config.model, key)
     }
 
+    /**
+     * Works out whether AI is offered and why not, from the settings and the server's report, and publishes it to
+     * [aiOff] and [aiEnabled]. With the person's own key only this phone's switch counts.
+     */
     private fun publishAi(s: AppSettings): Boolean {
         // With the person's own key nothing depends on a server: only this phone's switch counts.
         val off = if (usesOwnKey(s)) (if (s.aiFeatures) null else AiOff.OPT_IN) else serverAi ?: if (s.aiFeatures) null else AiOff.OPT_IN
@@ -950,6 +958,10 @@ open class CommonRepository(
     /** On-device AI for the saved key, or null when AI goes through the server. One per key, so its rate limit holds. */
     private var onDevice: Pair<Pair<AiProviderConfig, String>, OnDeviceAi>? = null
 
+    /**
+     * The on-device AI for the saved key, or null when AI goes through the server; the instance is reused while
+     * the key and provider stay the same.
+     */
     private suspend fun ownKeyAi(): OnDeviceAi? {
         val s = settings.current()
         if (!usesOwnKey(s)) return null
@@ -958,6 +970,10 @@ open class CommonRepository(
         return OnDeviceAi(chatModel(s.aiProviderConfig, s.geminiKey)!!, ::aiHouses).also { onDevice = key to it }
     }
 
+    /**
+     * Runs [block] against the configured server on the IO dispatcher; throws `IllegalStateException` when no
+     * server is set.
+     */
     private suspend fun <T> withApi(block: suspend (ApiClient) -> T): T = withContext(Dispatchers.IO) {
         val s = settings.current()
         check(s.serverConfigured) { "Server not configured" }
@@ -1003,6 +1019,11 @@ open class CommonRepository(
             sweepWalksOfDeletedHouses() // sync end: a house tombstone that arrived deletes its saved walks (docs/11 5.27.6)
         }
 
+    /**
+     * One sync pass for [sync]: push the dirty rows, then pull what the remote changed, behind the settings'
+     * [SyncBackend]. When the remote is found behind this phone everything is pushed again and the pull restarts
+     * from 0.
+     */
     private suspend fun syncPass(photosAllowed: Boolean): SyncOutcome = withContext(Dispatchers.IO) {
         val s = settings.current()
         val backend = syncBackendFor(s) ?: return@withContext SyncOutcome(SyncOutcome.Kind.NOT_CONFIGURED)

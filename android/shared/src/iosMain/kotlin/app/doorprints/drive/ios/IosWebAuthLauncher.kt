@@ -56,6 +56,10 @@ class IosWebAuthLauncher(
     private var session: ASWebAuthenticationSession? = null
     private var anchors: AnchorProvider? = null
 
+    /**
+     * Opens the sign-in sheet for [url] on the main thread; false when the URL is invalid or the system refuses to
+     * start it.
+     */
     override fun launch(url: String): Boolean {
         val target = NSURL.URLWithString(url) ?: return false
         var started = false
@@ -63,6 +67,10 @@ class IosWebAuthLauncher(
         return started
     }
 
+    /**
+     * Creates and starts the session, replacing and cancelling one that is up. A completion from a replaced
+     * session is ignored.
+     */
     private fun start(target: NSURL): Boolean {
         val old = session
         var created: ASWebAuthenticationSession? = null
@@ -90,11 +98,12 @@ class IosWebAuthLauncher(
         return ok
     }
 
-    /** The sign-in sheet is on screen no longer in use (the person pressed *Cancel* in Doorprints while it was up). */
+    /** Closes the sign-in sheet if it is up (the person pressed *Cancel* in Doorprints while it was showing). */
     fun cancel() {
         onMain { session?.cancel() }
     }
 
+    /** Runs [block] on the main thread, waiting for it when called from another. */
     private fun onMain(block: () -> Unit) {
         if (NSThread.isMainThread) block() else dispatch_sync(dispatch_get_main_queue(), block)
     }

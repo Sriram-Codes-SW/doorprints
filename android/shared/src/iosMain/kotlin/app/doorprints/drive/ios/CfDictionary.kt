@@ -40,10 +40,12 @@ internal class CfDictionaryBuilder {
     val ref: CFMutableDictionaryRef? = CFDictionaryCreateMutable(null, 0, kCFTypeDictionaryKeyCallBacks.ptr, kCFTypeDictionaryValueCallBacks.ptr)
     private val owned = mutableListOf<CFTypeRef>()
 
+    /** Adds an entry whose key and value the framework owns (its constants); nothing to release. */
     fun put(key: CFTypeRef?, value: CFTypeRef?) {
         CFDictionaryAddValue(ref, key, value)
     }
 
+    /** Adds an entry whose value this code created; the builder releases that reference in [close]. */
     fun putOwned(key: CFTypeRef?, value: CFTypeRef?) {
         CFDictionaryAddValue(ref, key, value)
         if (value != null) owned += value
@@ -54,6 +56,7 @@ internal class CfDictionaryBuilder {
         putOwned(key, CFBridgingRetain(value))
     }
 
+    /** Releases the owned values and the dictionary; call once, after the Security call. */
     fun close() {
         owned.forEach { CFRelease(it) }
         owned.clear()
@@ -61,6 +64,7 @@ internal class CfDictionaryBuilder {
     }
 }
 
+/** Builds a dictionary with [build], runs [use] on it, and releases everything afterwards, even if [use] throws. */
 @OptIn(ExperimentalForeignApi::class)
 internal inline fun <T> withCfDictionary(build: CfDictionaryBuilder.() -> Unit, use: (CFMutableDictionaryRef?) -> T): T {
     val builder = CfDictionaryBuilder()

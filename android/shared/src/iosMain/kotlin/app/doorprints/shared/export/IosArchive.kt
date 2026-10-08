@@ -76,6 +76,7 @@ private class CommonCryptoSha256 : Sha256 {
         bytes.usePinned { CC_SHA256_Update(context.ptr, it.addressOf(offset), length.convert()) }
     }
 
+    /** Finishes the hash and frees its native context; the object cannot be used again. */
     override fun digest(): ByteArray {
         check(!done)
         done = true
@@ -169,6 +170,10 @@ class PosixFileSink(path: String) : CopySink, AutoCloseable {
 
     override val position: Long get() = written + buffered
 
+    /**
+     * Appends to the buffer, which is written out when full; a chunk as large as the buffer goes straight to the
+     * file.
+     */
     override fun write(bytes: ByteArray, offset: Int, length: Int) {
         if (length >= buffer.size) {
             flush()
@@ -181,12 +186,14 @@ class PosixFileSink(path: String) : CopySink, AutoCloseable {
         buffered += length
     }
 
+    /** Overwrites bytes already written (the ZIP header fields known only at the end); the buffer is flushed first. */
     override fun patch(at: Long, bytes: ByteArray) {
         require(at + bytes.size <= position)
         flush()
         writeAt(at, bytes, 0, bytes.size)
     }
 
+    /** Writes the buffered bytes to the file. */
     private fun flush() {
         if (buffered == 0) return
         writeAt(written, buffer, 0, buffered)
@@ -194,6 +201,10 @@ class PosixFileSink(path: String) : CopySink, AutoCloseable {
         buffered = 0
     }
 
+    /**
+     * Writes all of the range at [at] with `pwrite`, looping over short writes; a failure is a
+     * [PosixFileException].
+     */
     private fun writeAt(at: Long, bytes: ByteArray, offset: Int, length: Int) {
         var done = 0
         bytes.usePinned { pinned ->

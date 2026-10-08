@@ -91,6 +91,10 @@ class SecureEnclaveDeviceKey(
     private val secureEnclave: Boolean = !runsInSimulator(),
 ) : DeviceKeyBackend {
 
+    /**
+     * ABSENT when there is no key, NEEDS_UNLOCK when it cannot be read or used now, INVALIDATED when the system
+     * lost it (the passcode was removed), READY when one key agreement works.
+     */
     override fun status(): DeviceKeyStatus {
         val lookup = lookup()
         return when {
@@ -143,12 +147,14 @@ class SecureEnclaveDeviceKey(
 
     // ---- the Security calls ----
 
+    /** The result of a key lookup: the Security status and the key reference, which the caller releases. */
     private class Lookup(val status: Int, val ref: SecKeyRef?) {
         fun release() {
             ref?.let { CFRelease(it) }
         }
     }
 
+    /** Finds the key by its tag. */
     private fun lookup(): Lookup = withCfDictionary({
         put(kSecClass, kSecClassKey)
         putBridged(kSecAttrApplicationTag, tagData())
@@ -162,6 +168,10 @@ class SecureEnclaveDeviceKey(
         }
     }
 
+    /**
+     * Creates the permanent key with the access class and key-usage control above; null when the access control
+     * cannot be made.
+     */
     private fun createKey(): SecKeyRef? {
         val control = SecAccessControlCreateWithFlags(null, kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly, kSecAccessControlPrivateKeyUsage, null)
             ?: return null
@@ -183,6 +193,7 @@ class SecureEnclaveDeviceKey(
         }
     }
 
+    /** The public point of [key], checked to be an uncompressed P-256 point. */
     private fun publicOf(key: SecKeyRef): ByteArray {
         val publicRef = SecKeyCopyPublicKey(key) ?: throw DeviceKeyException(DeviceKeyException.Kind.NEEDS_UNLOCK, "no public key")
         try {
@@ -194,6 +205,7 @@ class SecureEnclaveDeviceKey(
         }
     }
 
+    /** ECDH of [key] with [peerPublic]; a Security error becomes a [DeviceKeyException] of the matching kind. */
     private fun agreeWith(key: SecKeyRef, peerPublic: ByteArray): ByteArray {
         val peer = try {
             IosCryptoProvider.importKey(peerPublic, kSecAttrKeyClassPublic)
@@ -224,6 +236,7 @@ class SecureEnclaveDeviceKey(
         }
     }
 
+    /** The key tag as `NSData`. */
     private fun tagData(): NSData = tag.encodeToByteArray().toNSData()
 
     companion object {
@@ -232,8 +245,10 @@ class SecureEnclaveDeviceKey(
         /** The Simulator sets this variable for every app it runs; a device never does. */
         fun runsInSimulator(): Boolean = NSProcessInfo.processInfo.environment["SIMULATOR_DEVICE_NAME"] != null
 
+        /** The kind of [DeviceKeyException] for a Security status. */
         fun kindOf(status: Int): DeviceKeyException.Kind = KeychainStatus.deviceKeyKind(status)
 
+        /** A [DeviceKeyException] for a Security status; the message holds the status code and no key material. */
         fun exceptionFor(status: Int, what: String): DeviceKeyException =
             DeviceKeyException(kindOf(status), "$what (status $status)")
     }

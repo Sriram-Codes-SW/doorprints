@@ -35,6 +35,10 @@ internal class Gcm(private val ecb: BlockEncryptor) {
         fun encryptBlocks(blocks: ByteArray): ByteArray
     }
 
+    /**
+     * Encrypts [plaintext] and returns `ciphertext ‖ 16-byte tag`, the layout the JVM provider's AES-GCM also
+     * uses.
+     */
     fun seal(nonce: ByteArray, aad: ByteArray, plaintext: ByteArray): ByteArray {
         requireNonce(nonce)
         val h = ecb.encryptBlocks(ByteArray(16))
@@ -43,6 +47,10 @@ internal class Gcm(private val ecb: BlockEncryptor) {
         return ciphertext + tag
     }
 
+    /**
+     * Checks the tag over [aad] and the ciphertext and only then decrypts; throws
+     * [CryptoException.Kind.AUTH_FAILED] on any mismatch.
+     */
     fun open(nonce: ByteArray, aad: ByteArray, sealed: ByteArray): ByteArray {
         requireNonce(nonce)
         if (sealed.size < TAG) throw CryptoException(CryptoException.Kind.AUTH_FAILED, "shorter than a tag")
@@ -55,6 +63,7 @@ internal class Gcm(private val ecb: BlockEncryptor) {
         return ctr(nonce, ciphertext)
     }
 
+    /** Only the 96-bit nonce is supported (the one Doorprints uses everywhere). */
     private fun requireNonce(nonce: ByteArray) {
         if (nonce.size != NONCE) throw CryptoException(CryptoException.Kind.INVALID_INPUT, "nonce length")
     }
@@ -78,6 +87,7 @@ internal class Gcm(private val ecb: BlockEncryptor) {
         return ByteArray(data.size) { (data[it].toInt() xor stream[it].toInt()).toByte() }
     }
 
+    /** The GCM tag: GHASH over [aad] and [ciphertext], masked with the encryption of the first counter block. */
     private fun tag(h: ByteArray, nonce: ByteArray, aad: ByteArray, ciphertext: ByteArray): ByteArray {
         val s = ghash(h, aad, ciphertext)
         val j0 = ByteArray(16)

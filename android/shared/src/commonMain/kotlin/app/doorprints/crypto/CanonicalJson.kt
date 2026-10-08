@@ -38,6 +38,7 @@ internal class CanonicalJson {
 
     fun raw(text: String) = apply { sb.append(text) }
 
+    /** Appends [value] as a JSON string with the format's fixed escaping. */
     fun string(value: String) = apply {
         sb.append('"')
         for (c in value) {
@@ -58,8 +59,10 @@ internal class CanonicalJson {
 
     fun number(value: Long) = apply { sb.append(value.toString()) }
 
+    /** The text written so far. */
     override fun toString() = sb.toString()
 
+    /** The UTF-8 bytes of the text written so far. */
     fun bytes(): ByteArray = sb.toString().encodeToByteArray()
 
     companion object {
@@ -86,6 +89,7 @@ internal class CanonicalJson {
 
 /** Strict readers over a parsed value; each returns null when the value is not exactly of that kind. */
 internal object JsonRead {
+    /** The object, only if its keys are exactly [keys] (no more, no fewer). */
     fun obj(e: JsonElement?, vararg keys: String): JsonObject? {
         if (e !is JsonObject) return null
         if (e.keys != keys.toSet()) return null

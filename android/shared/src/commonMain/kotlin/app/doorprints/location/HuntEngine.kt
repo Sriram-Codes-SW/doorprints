@@ -165,6 +165,7 @@ class HuntEngine(
      */
     suspend fun walkToAskAbout(): Long? = data.lastEndedWalk(track.walkId)
 
+    /** Forgets the repeat-walk alert state, for a new walk or a reset. */
     private fun dropAlert() {
         alertWalkId = 0
         alert = null
@@ -191,6 +192,7 @@ class HuntEngine(
         if (a == null) alertPending.add(point) else ring(a.onPoint(point))
     }
 
+    /** Passes a detected repeat run, in metres, to the platform as an alert; null is no run. */
     private fun ring(runM: Double?) {
         if (runM != null) effects.alertRepeat(runM.roundToInt())
     }
@@ -223,6 +225,10 @@ class HuntEngine(
         effects.requestUpdates(stationary)
     }
 
+    /**
+     * Reads the battery at most every [BATTERY_CHECK_MS]; below [LOW_BATTERY_PERCENT] and not charging it tells
+     * the platform and stops Hunt mode. Returns true when it stopped.
+     */
     private fun stopIfBatteryLow(): Boolean {
         val at = now()
         if (at - lastBatteryCheckAt < BATTERY_CHECK_MS) return false
@@ -236,6 +242,10 @@ class HuntEngine(
         return false
     }
 
+    /**
+     * Updates the Hunt card's nearest house (within [NEAREST_SHOWN_M]) and alerts once per house per
+     * [HOUSE_ALERT_AGAIN_MS] when it is inside the alert radius.
+     */
     private fun checkNearbyHouses(lat: Double, lon: Double) {
         val at = now()
         // A house whose spot is only approximate (FR-068) is never the nearest: its marker is a ring, not a place.
@@ -253,6 +263,10 @@ class HuntEngine(
         effects.alertHouse(house, distance.toInt())
     }
 
+    /**
+     * Asks the platform which street this is, at most every [GEOCODE_AGAIN_MS] or [GEOCODE_AGAIN_M]; on a new
+     * street it updates the card and alerts if the street has houses or visits and was not alerted recently.
+     */
     private fun checkStreet(lat: Double, lon: Double) {
         val at = now()
         val moved = Geo.distanceM(lastGeocodeLat, lastGeocodeLon, lat, lon)
@@ -274,6 +288,7 @@ class HuntEngine(
         }
     }
 
+    /** Feeds the fix to the stay detector and starts or ends the visit it reports. */
     private fun checkStay(lat: Double, lon: Double, time: Long) {
         when (val event = stays.onLocation(lat, lon, time)) {
             is StayDetector.Event.Started -> onStayStarted(event)
@@ -288,6 +303,10 @@ class HuntEngine(
         .filter { it.second <= HOUSE_AT_M }
         .minByOrNull { it.second }?.first
 
+    /**
+     * Saves an automatic visit at the spot (linked to a saved house within [HOUSE_AT_M]) and, when no house is
+     * there, asks the platform to offer saving the place.
+     */
     private fun onStayStarted(e: StayDetector.Event.Started) {
         val visitId = newId()
         stayPromptVisitId = visitId
@@ -304,6 +323,7 @@ class HuntEngine(
         if (house == null) effects.alertStay(visitId, e.lat, e.lon)
     }
 
+    /** Closes the visit that [onStayStarted] opened with the time left and the final position. */
     private fun onStayEnded(e: StayDetector.Event.Ended) {
         val visitId = stayPromptVisitId ?: return
         stayPromptVisitId = null
@@ -347,6 +367,7 @@ class TrackRecorder(private val minDistanceM: Double = 20.0, private val minGapM
     var walkId: Long = 0
         private set
 
+    /** Forgets the walk and the last kept point. */
     fun reset() {
         lastAt = Long.MIN_VALUE
         walkId = 0
@@ -373,9 +394,12 @@ interface HuntData {
     val houses: Flow<List<HouseEntity>>
     val tracking: Flow<HuntTracking>
     suspend fun streetInfo(street: String): Repository.StreetInfo
+    /** Saves an automatic visit. */
     suspend fun saveVisit(visit: VisitEntity)
     suspend fun getVisit(id: String): VisitEntity?
+    /** Appends a kept fix to the path trace. */
     suspend fun saveTrackPoint(point: TrackPointEntity)
+    /** Drops trace points older than [before]. */
     suspend fun pruneTrack(before: Long)
 
     /** The walks the alert compares the live walk with (the others, saved walks included); none by default. */

@@ -52,6 +52,10 @@ class AndroidDeviceAuth(
     override fun isDeviceLockEnabled(): Boolean =
         context()?.getSystemService(KeyguardManager::class.java)?.isDeviceSecure == true
 
+    /**
+     * Shows the system prompt for [reason] and maps the result: no foreground activity is NOT_AVAILABLE, no screen
+     * lock is LOCK_NOT_SET, an unexpected failure is FAILED. Cancellation is rethrown.
+     */
     override suspend fun authenticate(reason: String, level: DeleteLevel): AuthResult {
         val ctx = context() ?: return AuthResult.NOT_AVAILABLE
         if (ctx.getSystemService(KeyguardManager::class.java)?.isDeviceSecure != true) return AuthResult.LOCK_NOT_SET
@@ -64,11 +68,13 @@ class AndroidDeviceAuth(
         }
     }
 
+    /** The API 26-28 path: asks [launcher]; without one it fails closed as NOT_AVAILABLE. */
     private suspend fun legacy(reason: String): AuthResult {
         val l = launcher ?: return AuthResult.NOT_AVAILABLE
         return if (l.confirm(reason)) AuthResult.SUCCESS else AuthResult.CANCELLED
     }
 
+    /** The API 29+ path: one `BiometricPrompt` that resumes with the final result and cancels with the coroutine. */
     private suspend fun prompt(ctx: Context, reason: String): AuthResult = suspendCancellableCoroutine { cont ->
         val builder = BiometricPrompt.Builder(ctx).setTitle(reason)
         if (Build.VERSION.SDK_INT >= 30) {
@@ -97,6 +103,7 @@ object AndroidAuthErrors {
     /** BiometricConstants.ERROR_NEGATIVE_BUTTON (13); the platform class has no public constant for it. */
     const val ERROR_NEGATIVE_BUTTON = 13
 
+    /** The [AuthResult] for a final BiometricPrompt error code; unknown codes are FAILED. */
     fun map(code: Int): AuthResult = when (code) {
         BiometricPrompt.BIOMETRIC_ERROR_CANCELED, BiometricPrompt.BIOMETRIC_ERROR_USER_CANCELED,
         ERROR_NEGATIVE_BUTTON -> AuthResult.CANCELLED
@@ -114,6 +121,10 @@ class AndroidLockLostDetector(
     private val context: () -> Context?,
     private val keyProbe: (() -> Boolean)? = null,
 ) : LockLostDetector {
+    /**
+     * REMOVED when the keyguard is not secure or the key probe says the lock-bound key is gone; UNKNOWN when there
+     * is no context to ask.
+     */
     override fun lockState(): LockState {
         val keyguard = context()?.getSystemService(KeyguardManager::class.java) ?: return LockState.UNKNOWN
         if (!keyguard.isDeviceSecure) return LockState.REMOVED
