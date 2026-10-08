@@ -172,6 +172,9 @@ app:
   pairing:
     requests-per-minute: ${PAIRING_RATE_LIMIT_PER_MINUTE:40}
     burst: ${PAIRING_RATE_LIMIT_BURST:20}
+    # Open pairing requests at most, in all and from one client address (S4b-BL-161). The release gate's API scan lifts them.
+    max-open: ${PAIRING_MAX_OPEN:50}
+    max-per-source: ${PAIRING_MAX_PER_SOURCE:5}
   rate-limit:
     # Per client address, all paths except /actuator/health (429 + Retry-After when exceeded).
     requests-per-minute: ${RATE_LIMIT_PER_MINUTE:600}

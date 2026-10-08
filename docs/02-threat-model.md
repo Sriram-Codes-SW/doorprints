@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Threat model (STRIDE) |
-| Version | 0.67 |
+| Version | 0.68 |
 | Date | 2026-10-08 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -78,6 +78,7 @@
 | 0.65 | 2026-10-08 | Claude (Code) | **F-30 and TB3 ↔ TB6 add email addresses** (S4b-BL-179 (email addresses) and S4b-BL-180 (name parts that are ordinary words)): the generic redaction layer removes email addresses (`[email]`) in free text on the server and on the device; the limits now say a handle is not caught and that ordinary-word name parts are replaced on purpose (owner decision). F-30 stays Fixed. |
 | 0.66 | 2026-10-08 | Claude (Code) | **T-I27 narrowed (S4b-BL-171, owner decision of 2026-10-08):** the setup link is written to the log only at a start while no browser is signed in; afterwards the log holds no token and no link, and a start makes no setup token, so a log that is shipped, shared or kept for months holds a live link only from the first start. Tests TC-S-46, TC-I-47 ([03](03-design.md) §12.1). |
 | 0.67 | 2026-10-08 | Claude (Code) | **T-S8 and T-I27, two backend changes** ([03](03-design.md) §12.1): T-S8 gains the cap on open pairing requests (50 in all, 5 per source, refused with 429, never evicted; S4b-BL-161, review finding B2; residual: many addresses can fill the slots for 10 minutes); T-I27 gains the owner's recovery switch `OWNER_SETUP_LINK_IN_LOG` (default off; S4b-BL-188), the explicit way back when the only signed-in browser is lost while its session row is still open. Tests TC-S-47, TC-S-48, TC-I-48. |
+| 0.68 | 2026-10-09 | Claude (Code) | **T-S8:** the caps on open pairing requests are settings (`PAIRING_MAX_OPEN`, `PAIRING_MAX_PER_SOURCE`, defaults 50 and 5 unchanged) so the release gate's API scan can lift them: the fixed caps made `/api/pair/start` answer 429 to the scanner, which ZAP read as a SQL injection on `deviceName` (a false positive; S4b-BL-191, PR). Test TC-S-49. |
 
 Related: [Requirements](01-requirements.md) · [DFDs](04-data-flow-diagrams.md) · [Design](03-design.md) · [Test plan](06-test-plan.md) · [AI docs](ai/)
 
@@ -188,7 +189,7 @@ flowchart LR
 | T-S5 | P2 Hunt | Mock-location app fakes GPS and triggers false alerts or visits | 1 | 1 | 1 Low | Accept: single user owns the device. Optionally ignore `isMock` fixes. | - |
 | T-S6 | P7 MCP | An unauthenticated MCP client uses house tools | 2 | 3 | **6 High** | Same auth as the API, localhost/stdio by default (AI-007) | Planned |
 | T-S7 | Sideloaded APK | User installs a repackaged or malicious APK that pretends to be Doorprints (or the pre-rename House Hunt) | 1 | 3 | 3 Medium | Signed releases with a published SHA-256 and signer certificate fingerprint (SEC-018) | F-11 |
-| T-S8 | Pairing by code ([03](03-design.md) §12.1, ADR-25) | Someone who can reach a self-hosted server starts a pairing request with a name like the owner's phone and waits for the owner to approve it | 1 | 3 | 3 Medium | No list of requests to click: the owner types the code shown on the device in front of them; the page shows the name the device sent before *Approve*; codes are 8 symbols, expire after 10 minutes and allow 5 wrong entries a minute per session; the key is handed over once, on the device's own poll (poll token hashed). A new device has AI off. A flood of starts cannot push out the code a person is typing: at most 50 open requests in all and 5 per source, a start over a cap is refused with 429 and `Retry-After` and the older requests are kept (S4b-BL-161; the source is a salted hash of the address, never the address). Residual: several addresses can fill the 50 slots for 10 minutes and make a real device wait. Tests TC-I-39, TC-S-48, TC-I-48 | - |
+| T-S8 | Pairing by code ([03](03-design.md) §12.1, ADR-25) | Someone who can reach a self-hosted server starts a pairing request with a name like the owner's phone and waits for the owner to approve it | 1 | 3 | 3 Medium | No list of requests to click: the owner types the code shown on the device in front of them; the page shows the name the device sent before *Approve*; codes are 8 symbols, expire after 10 minutes and allow 5 wrong entries a minute per session; the key is handed over once, on the device's own poll (poll token hashed). A new device has AI off. A flood of starts cannot push out the code a person is typing: at most 50 open requests in all and 5 per source, a start over a cap is refused with 429 and `Retry-After` and the older requests are kept (S4b-BL-161; the source is a salted hash of the address, never the address). The two caps are settings (`PAIRING_MAX_OPEN`, `PAIRING_MAX_PER_SOURCE`; defaults 50 and 5 stay in production); only the release gate's API scan lifts them, as it lifts the rate limits (S4b-BL-191). Residual: several addresses can fill the 50 slots for 10 minutes and make a real device wait. Tests TC-I-39, TC-S-48, TC-I-48, TC-S-49 | - |
 
 ### 3.2 Tampering
 

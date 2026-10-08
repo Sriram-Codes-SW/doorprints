@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.84 |
+| Version | 0.85 |
 | Date | 2026-10-08 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -95,6 +95,7 @@
 | 0.58 | 2026-10-01 | Claude (Code), lead | §11.1: the Survey of India's reply of 2026-10-01 (no prior permission for its Administrative Boundary Database; no alteration or modification; acknowledgement; National Geospatial Policy 2022 guidelines) and what it means for ADR-22 ([ops/soi-boundary-data-request.md](ops/soi-boundary-data-request.md) v0.5, [10](10-sprint-log.md) S4b-BL-111). |
 | 0.57 | 2026-10-01 | Claude (Code), lead | The finishing batch ([10](10-sprint-log.md) §13.29..§13.39, on stacked branches): §6.1 `house.move_in` (V11), the photo's room, tags, caption and `meta_updated_at` (V12), `house.floor` (V13), the statuses TAKEN and NOT_CHOSEN; §8.1 the two statuses; §9 `PUT /api/photos/{id}/meta` and `/3` on `/api/import`; §11.2 the website's offline tiles; new **ADR-29** (deletions in an update file, `doorprints-backup/3`), **ADR-30** (offline tiles on the website through `addProtocol` over Cache Storage), **ADR-31** (search engines: one indexable page, `noindex` by default), **ADR-32** (accessibility rules and their automated checks); new **§17**, the smaller decisions of the batch (copies in UTC, seeded records stamped 2000-01-01, Hunt alerts `VISIBILITY_SECRET` with the app lock, the status colours, the locality lookup on the tap only, the iPhone's wake-up notification, import caps). |
 | 0.84 | 2026-10-09 | Claude (Code), engineer | §12 limits row: the token bucket is `common/TokenBucketRateLimiter` (moved out of `ai.web`, S4b-BL-165). |
+| 0.85 | 2026-10-09 | Claude (Code) | §12.1: the two caps on open pairing requests are settings (`PAIRING_MAX_OPEN`, `PAIRING_MAX_PER_SOURCE`; defaults unchanged, below 1 refused at start), lifted only by the API scan (S4b-BL-191, PR). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -1371,7 +1372,7 @@ Keychain, and the website's `sessionStorage` or, with *Remember on this device*,
 `PAIRING_RATE_LIMIT_PER_MINUTE`, `PAIRING_RATE_LIMIT_BURST`), besides the general limit.
 
 **Open requests are capped, never pushed out (S4b-BL-161, independent review finding B2):** at most **50** unexpired
-pending requests in all and **5 per source**; a `POST /api/pair/start` over either cap is refused with **429** and
+pending requests in all and **5 per source** (settings `PAIRING_MAX_OPEN` and `PAIRING_MAX_PER_SOURCE`, `app.pairing.max-open` and `app.pairing.max-per-source`; unset means these defaults, a value below 1 stops the start; the release gate's API scan sets both to a million, like the rate limits, S4b-BL-191); a `POST /api/pair/start` over either cap is refused with **429** and
 `Retry-After` (the seconds until the soonest open request that matters expires, 1 to 600), and no open request is
 touched. The first version dropped the oldest open request to make room, so 50 starts inside the code's 10 minutes
 pushed out the code a person was typing, and the per-address limit does not stop several addresses. A *source* is the
