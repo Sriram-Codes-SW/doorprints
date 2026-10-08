@@ -336,11 +336,119 @@ internal val PARITY_VECTORS_JSON: String = listOf(
     "input" : "Contact: X\nNotes: fine",
     "expected" : "Notes: fine"
   }, {
-    "method" : "phones",
+    "method" : "generic",
     "name" : "Mr. Ramesh Kumar",
     "phone" : "+91 98450 12345",
     "input" : "call 9845012345 or 080 23456789, flat 1203",
     "expected" : "call [phone] or [phone], flat 1203"
+  }, {
+    "method" : "freeText",
+    "name" : "Suresh Rao",
+    "phone" : null,
+    "input" : "Mail suresh.rao@gmail.com or sureshrao1983@yahoo.co.in, insta @suresh_rao, https://wa.me/919886055555",
+    "expected" : "Mail [email] or [email], insta @[contact], https://wa.me/[phone]"
+  }, {
+    "method" : "freeText",
+    "name" : "Suresh Rao",
+    "phone" : "+91 98860 55555",
+    "input" : "Mail sureshrao1983@yahoo.co.in",
+    "expected" : "Mail [email]"
+  }, {
+    "method" : "freeText",
+    "name" : "Anil Verma",
+    "phone" : null,
+    "input" : "Portal https://portal.example/contact?email=suresh.rao@gmail.com&ref=1",
+    "expected" : "Portal https://portal.example/contact?email=[email]&ref=1"
+  }, {
+    "method" : "freeText",
+    "name" : "Anil Verma",
+    "phone" : null,
+    "input" : "Call 98450 12345 or mail anil@example.com",
+    "expected" : "Call [phone] or mail [email]"
+  }, {
+    "method" : "freeText",
+    "name" : "Anil Verma",
+    "phone" : null,
+    "input" : "98450 12345,anil@example.com",
+    "expected" : "[phone],[email]"
+  }, {
+    "method" : "freeText",
+    "name" : "Anil Verma",
+    "phone" : null,
+    "input" : "Mail me at sam@example.com.",
+    "expected" : "Mail me at [email]."
+  }, {
+    "method" : "place",
+    "name" : "Anil Verma",
+    "phone" : null,
+    "input" : "Shop 4, mail owner@example.org",
+    "expected" : "Shop 4, mail [email]"
+  }, {
+    "method" : "scrub",
+    "name" : "Suresh Rao",
+    "phone" : null,
+    "input" : "Contact: Suresh Rao\nmail suresh@gmail.com ok",
+    "expected" : "mail [email] ok"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "Write to a.b@c.in or 98450 12345, see https://example.com/l/123",
+    "expected" : "Write to [email] or [phone], see https://example.com/l/123"
+  }, {
+    "method" : "freeText",
+    "name" : null,
+    "phone" : null,
+    "input" : "Rent 28k @ month, ask x@y or a@b.",
+    "expected" : "Rent 28k @ month, ask x@y or a@b."
+  }, {
+    "method" : "freeText",
+    "name" : "Rose Bush",
+    "phone" : null,
+    "input" : "Rose garden at the back, a bush hedge, Rose said keys with Rosemary",
+    "expected" : "[contact] garden at the back, a [contact] hedge, [contact] said keys with Rosemary"
+  }, {
+    "method" : "freeText",
+    "name" : "Will Mark",
+    "phone" : null,
+    "input" : "Owner will mark the parking spot; Will Mark called",
+    "expected" : "Owner [contact] the parking spot; [contact] called"
+  }, {
+    "method" : "freeText",
+    "name" : "Gold",
+    "phone" : null,
+    "input" : "Gold coloured gate",
+    "expected" : "[contact] coloured gate"
+  }, {
+    "method" : "freeText",
+    "name" : "Ram",
+    "phone" : null,
+    "input" : "Ram Nagar, Sri Ram Temple road, ramp access",
+    "expected" : "[contact] Nagar, Sri [contact] Temple road, ramp access"
+  }, {
+    "method" : "place",
+    "name" : "Rose Bush",
+    "phone" : null,
+    "input" : "Rose Bush Lane, Rosewood Park",
+    "expected" : "[contact] Lane, Rosewood Park"
+  }, {
+    "method" : "freeText",
+    "name" : "K. Ramesh",
+    "phone" : null,
+    "input" : "K block near K R Puram",
+    "expected" : "K block near K R Puram"
+  }, {
+    "method" : "freeText",
+    "name" : null,
+    "phone" : null,
+    "input" : "Mail ravi+flat3@example.co.in now",
+    "expected" : "Mail [email] now"
+  }, {
+    "method" : "freeText",
+    "name" : null,
+    "phone" : null,
+    "input" : "Mail aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@example.com now",
+    "expected" : "Mail [email] now"
   } ],
   "sanitize" : [ {
     "raw" : {
@@ -409,7 +517,8 @@ internal val PARITY_VECTORS_JSON: String = listOf(
       "label" : "House",
       "address" : null,
       "street" : null,
-      "locality" : null,
+""",
+    """      "locality" : null,
       "price" : 8500000,
       "priceType" : "RENT",
       "bedrooms" : null,
@@ -511,8 +620,7 @@ internal val PARITY_VECTORS_JSON: String = listOf(
   }, {
     "raw" : null,
     "source" : "anything",
-""",
-    """    "expected" : {
+    "expected" : {
       "label" : "Untitled listing",
       "address" : null,
       "street" : null,
@@ -801,7 +909,8 @@ internal val PARITY_VECTORS_JSON: String = listOf(
           }
         }
       }
-    },
+""",
+    """    },
     "strict" : {
       "type" : "object",
       "properties" : {
@@ -888,8 +997,7 @@ internal val PARITY_VECTORS_JSON: String = listOf(
                 "type" : [ "string", "null" ],
                 "description" : "Number of bedrooms, e.g. '2' for 2BHK"
               },
-""",
-    """              "contactName" : {
+              "contactName" : {
                 "type" : [ "string", "null" ],
                 "description" : "Contact person name"
               },
@@ -1122,7 +1230,8 @@ internal val PARITY_VECTORS_JSON: String = listOf(
     }
   } ],
   "openaiContent" : [ {
-    "response" : "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"{\\\"answer\\\":\\\"Yes\\\",\\\"citedHouseIds\\\":[]}\"}}]}",
+""",
+    """    "response" : "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"{\\\"answer\\\":\\\"Yes\\\",\\\"citedHouseIds\\\":[]}\"}}]}",
     "expected" : {
       "text" : "{\"answer\":\"Yes\",\"citedHouseIds\":[]}"
     }
@@ -1251,8 +1360,7 @@ internal val PARITY_VECTORS_JSON: String = listOf(
       "tier" : 2
     }
   }, {
-""",
-    """    "tier" : 1,
+    "tier" : 1,
     "status" : 400,
     "body" : "{\"error\":\"This model does not support structured output: unsupported\"}",
     "expected" : {
@@ -1703,7 +1811,8 @@ internal val PARITY_VECTORS_JSON: String = listOf(
               "type" : [ "string", "null" ],
               "description" : "Street / road name only"
             },
-            "locality" : {
+""",
+    """            "locality" : {
               "type" : [ "string", "null" ],
               "description" : "Locality / neighbourhood / area"
             },
@@ -1810,8 +1919,7 @@ internal val PARITY_VECTORS_JSON: String = listOf(
         "content" : "Plan Saturday."
       } ],
       "tools" : [ {
-""",
-    """        "name" : "plan",
+        "name" : "plan",
         "description" : "Reply by calling this tool with the answer.",
         "input_schema" : {
           "type" : "object",

@@ -32,12 +32,16 @@ on:
       - "guide/**"
       # The translations' Android pictures are the screenshot tests' shots in that language (guide/hooks/i18n.py).
       - "android/app/src/test/screenshots/**"
+      # The search check below (docs/06 TC-U-175).
+      - "tools/guide-search-check/**"
       - ".github/workflows/pages.yml"
   pull_request:
     paths:
       - "guide/**"
       # The translations' Android pictures are the screenshot tests' shots in that language (guide/hooks/i18n.py).
       - "android/app/src/test/screenshots/**"
+      # The search check below (docs/06 TC-U-175).
+      - "tools/guide-search-check/**"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -89,6 +93,13 @@ jobs:
       - name: Build the site
         working-directory: guide
         run: mkdocs build --strict --site-dir "$RUNNER_TEMP/site"
+
+      # The site's search without a browser (S4b-BL-183): each language's index (lang, separator), its pages and headings
+      # against the built HTML, Material's own search worker over the index (every title, every heading, single words
+      # typed alone), and the script that makes the box search text that arrives without a key-up. A browser check is
+      # tools/guide-search-check/check.mjs (manual, TC-M-65).
+      - name: Check the built site's search
+        run: node tools/guide-search-check/site-check.mjs "$RUNNER_TEMP/site"
 
       - name: Upload the site for Pages
         if: github.ref == 'refs/heads/main'

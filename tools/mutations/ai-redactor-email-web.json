@@ -1,0 +1,47 @@
+{
+  "spec": "web/src/app/core/ai/ai-core.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/core/ai/ai-core.ts",
+      "find": "return out.replace(PHONE_LIKE, PHONE).replace(EMAIL_LIKE, EMAIL);",
+      "replace": "return out.replace(PHONE_LIKE, PHONE);",
+      "expect": "removes an email address whole, before the name parts"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-core.ts",
+      "find": "return text ? text.replace(PHONE_LIKE, PHONE).replace(EMAIL_LIKE, EMAIL) : text;",
+      "replace": "return text ? text.replace(PHONE_LIKE, PHONE) : text;",
+      "expect": "removes an email address whole, before the name parts"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-core.ts",
+      "find": "    let out = this.generic(s);\n    for (const p of this.fullName) out = out.replace(p, CONTACT);\n    return out;",
+      "replace": "    let out = this.savedPhone ? s.replace(this.savedPhone, PHONE) : s;\n    out = out.replace(PHONE_LIKE, PHONE);\n    for (const p of this.fullName) out = out.replace(p, CONTACT);\n    return out.replace(EMAIL_LIKE, EMAIL);",
+      "expect": "removes an email address whole, before the name parts"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-core.ts",
+      "find": "[\\\\p{L}\\\\p{M}\\\\p{N}._%+-]+@",
+      "replace": "[\\\\p{L}\\\\p{M}\\\\p{N}._%-]+@",
+      "expect": "removes an email address whole, before the name parts"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-core.ts",
+      "find": "[\\\\p{L}\\\\p{M}\\\\p{N}._%+-]+@",
+      "replace": "[\\\\p{L}\\\\p{M}\\\\p{N}._%+-]{1,64}@",
+      "expect": "removes an email address whole, before the name parts"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-core.ts",
+      "find": "(?:\\\\.[\\\\p{L}\\\\p{N}-]+)+(?![\\\\p{L}\\\\p{M}\\\\p{N}])'",
+      "replace": "(?:\\\\.[\\\\p{L}\\\\p{N}-]+)*(?![\\\\p{L}\\\\p{M}\\\\p{N}])'",
+      "expect": "keeps an at sign that is not an email address"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-core.ts",
+      "find": "    for (const p of this.nameParts) out = out.replace(p, CONTACT);",
+      "replace": "    for (const p of this.nameParts.slice(0, 1)) out = out.replace(p, CONTACT);",
+      "expect": "replaces a name part that is also an ordinary word, on purpose"
+    }
+  ]
+}

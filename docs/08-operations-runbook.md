@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Operations runbook |
-| Version | 0.24 |
+| Version | 0.25 |
 | Date | 2026-10-08 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -36,6 +36,7 @@
 | 0.22 | 2026-10-03 | Cursor Agent, lead | S4b-BL-124: §7 IR-11 (the Google project stopped or a client deleted), IR-12 (a leaked Picker key) and IR-13 (a person who lost access to their Google account), from [15](15-google-drive-backup-and-sharing.md). |
 | 0.23 | 2026-10-07 | Claude (Code), lead | §3 `AI_API_KEY`: no key is needed for an `AI_BASE_URL` other than the Gemini API (S4b-BL-149). |
 | 0.24 | 2026-10-08 | Claude (Code), lead | New **§1.2**: the three per-address rate limits behind a reverse proxy outside Tomcat's internal ranges (one shared bucket; widen `server.tomcat.remoteip.internal-proxies`, do not switch to `framework`); §6.2: what `DataService.deleteAll` leaves alone (device keys, owner sessions, pairing requests, the server secret and settings). From an independent review, 2026-10-08. |
+| 0.25 | 2026-10-08 | Claude (Code) | §5.1a: the owner page's setup link is written to the log only while no browser is signed in; afterwards use *Add another browser* (S4b-BL-171). |
 
 Related: [Build and deploy](07-secure-build-and-deploy.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Google Drive design](15-google-drive-backup-and-sharing.md)
 
@@ -192,9 +193,11 @@ Do not leave `APP_API_KEY_NEXT` set after a rotation: while it is set, two keys 
 Each app install has its own key, obtained by pairing ([03](03-design.md) §12.1). The server's owner manages them on
 the **owner page**, `https://<server>/owner`.
 
-- **First sign-in, or a lost browser:** the server writes a one-time link to its log at every start
-  (`docker compose logs api`, look for "Doorprints owner page"). It works once, for one hour. Restart the server
-  (`docker compose restart api`) for a new one; a signed-in browser can also make one (*Add another browser*).
+- **First sign-in, or a lost browser:** while no browser is signed in, the server writes a one-time link to its log at
+  every start (`docker compose logs api`, look for "Doorprints owner page"). It works once, for one hour. Restart the
+  server (`docker compose restart api`) for a new one. Once a browser is signed in the log holds no link, only a line
+  saying where to get one: a signed-in browser makes it with *Add another browser*. If every browser was signed out or
+  has been idle for 30 days, the next start writes a link again.
 - **A lost or sold phone:** owner page → *Devices* → *Revoke*. Its key stops working at once; the other devices are
   not affected and the owner key does not change.
 - **Someone else's phone on your server:** it starts with AI off; turn *AI* on for it only if it may use your Gemini

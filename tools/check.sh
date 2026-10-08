@@ -27,8 +27,8 @@
 # An area is picked from the same paths as its CI workflow's path filter (S4b-BL-105): android from android.yml's
 # (android/**, docs/schemas/**, web/public/geo/**, the two AI test-vector files), ios from the inputs of the iOS klib
 # compile in shared-ios.yml's, web from web.yml's (web/**, docs/schemas/**, tools/fake-ai-provider/**, .github/firebase-tools/**) and guide from
-# pages.yml's (guide/**, the Android screenshots). Keep them in step when a filter changes. The backend is not an area
-# (mvn verify needs PostGIS): a change to backend.yml's inputs prints a reminder.
+# pages.yml's (guide/**, the Android screenshots, tools/guide-search-check/**). Keep them in step when a filter changes.
+# The backend is not an area (mvn verify needs PostGIS): a change to backend.yml's inputs prints a reminder.
 #
 # The Android Gradle checks are one Gradle invocation (Gradle parallelises the modules itself); the iOS klib compile
 # needs the Kotlin/Native toolchain and runs as its own Gradle build after the Android one (a second Gradle build in
@@ -49,7 +49,7 @@ areas_for() {
   grep -qE '^(android/(shared|ui)/(src/(commonMain|iosMain|nativeMain)/|build\.gradle\.kts$)|android/(build\.gradle\.kts|settings\.gradle\.kts|gradle\.properties)$|android/gradle/|ios/|\.github/workflows/shared-ios\.yml$)' \
     <<<"$changed" && areas="$areas ios"
   grep -qE '^(web/|docs/schemas/|tools/fake-ai-provider/|\.github/firebase-tools/|\.github/workflows/web\.yml$)' <<<"$changed" && areas="$areas web"
-  grep -qE '^(guide/|android/app/src/test/screenshots/|\.github/workflows/pages\.yml$)' <<<"$changed" && areas="$areas guide"
+  grep -qE '^(guide/|android/app/src/test/screenshots/|tools/guide-search-check/|\.github/workflows/pages\.yml$)' <<<"$changed" && areas="$areas guide"
   grep -qE '^(backend/|docs/ai/evals/|docs/schemas/|docker-compose\.yml$|web/src/app/export/backup-export\.ts$|web/src/app/export/golden/|android/shared/src/commonMain/kotlin/app/doorprints/shared/export/Backup\.kt$|\.github/workflows/backend\.yml$)' \
     <<<"$changed" && echo "Backend inputs changed: run cd backend && mvn -B -ntp verify (needs PostGIS, see backend.yml); not run here." >&2
   [ "$areas" = "licence" ] && [ -n "$changed" ] && echo "No android, iOS, web or guide input changed: licence headers and document versions only." >&2
@@ -103,7 +103,7 @@ guide_check() {
   local out rc
   out="$(mkdocs build --strict --site-dir "$LOGS/site" 2>&1)"; rc=$?
   echo "$out"
-  [ "$rc" -eq 0 ] && ! grep -q "WARNING" <<<"$out"
+  [ "$rc" -eq 0 ] && ! grep -q "WARNING" <<<"$out" && node "$ROOT/tools/guide-search-check/site-check.mjs" "$LOGS/site"
 }
 has guide && start guide guide_check
 

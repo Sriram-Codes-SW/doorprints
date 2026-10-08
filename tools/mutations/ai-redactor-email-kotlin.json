@@ -1,0 +1,52 @@
+{
+  "spec": "android/shared/src/commonTest/kotlin/app/doorprints/shared/ai/ContactRedactorTest.kt",
+  "gradle": [
+    ":shared:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.shared.ai.ContactRedactorTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/ContactRedactor.kt",
+      "find": "EMAIL_LIKE.replace(PHONE_LIKE.replace(out, PHONE), EMAIL)",
+      "replace": "PHONE_LIKE.replace(out, PHONE)",
+      "expect": "emailAddressesAreRemovedWholeBeforeTheNameParts"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/ContactRedactor.kt",
+      "find": "EMAIL_LIKE.replace(PHONE_LIKE.replace(text, PHONE), EMAIL)",
+      "replace": "PHONE_LIKE.replace(text, PHONE)",
+      "expect": "emailAddressesAreRemovedWholeBeforeTheNameParts"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/ContactRedactor.kt",
+      "find": "            var out = generic(s)\n            for (p in fullName) out = p.replace(out, CONTACT)\n            return out",
+      "replace": "            var out = savedPhone?.replace(s, PHONE) ?: s\n            out = PHONE_LIKE.replace(out, PHONE)\n            for (p in fullName) out = p.replace(out, CONTACT)\n            return EMAIL_LIKE.replace(out, EMAIL)",
+      "expect": "emailAddressesAreRemovedWholeBeforeTheNameParts"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/ContactRedactor.kt",
+      "find": "[\\\\p{L}\\\\p{M}\\\\p{N}._%+-]+@",
+      "replace": "[\\\\p{L}\\\\p{M}\\\\p{N}._%-]+@",
+      "expect": "emailAddressesAreRemovedWholeBeforeTheNameParts"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/ContactRedactor.kt",
+      "find": "[\\\\p{L}\\\\p{M}\\\\p{N}._%+-]+@",
+      "replace": "[\\\\p{L}\\\\p{M}\\\\p{N}._%+-]{1,64}@",
+      "expect": "emailAddressesAreRemovedWholeBeforeTheNameParts"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/ContactRedactor.kt",
+      "find": "(?:\\\\.[\\\\p{L}\\\\p{N}-]+)+\"",
+      "replace": "(?:\\\\.[\\\\p{L}\\\\p{N}-]+)*\"",
+      "expect": "anAtSignThatIsNotAnEmailAddressIsKept"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/ContactRedactor.kt",
+      "find": "for (p in nameParts) out = p.replace(out, CONTACT)",
+      "replace": "for (p in nameParts.take(1)) out = p.replace(out, CONTACT)",
+      "expect": "aNamePartThatIsAnOrdinaryWordIsReplacedInFreeTextOnPurpose"
+    }
+  ]
+}
