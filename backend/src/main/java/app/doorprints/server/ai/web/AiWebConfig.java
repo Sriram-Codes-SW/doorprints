@@ -19,6 +19,7 @@
 package app.doorprints.server.ai.web;
 
 import app.doorprints.server.ai.config.AiProperties;
+import app.doorprints.server.common.TokenBucketRateLimiter;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

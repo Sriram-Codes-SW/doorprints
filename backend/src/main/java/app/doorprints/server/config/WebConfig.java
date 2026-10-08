@@ -18,7 +18,7 @@
 
 package app.doorprints.server.config;
 
-import app.doorprints.server.ai.web.TokenBucketRateLimiter;
+import app.doorprints.server.common.TokenBucketRateLimiter;
 import app.doorprints.server.backup.BackupController;
 import app.doorprints.server.device.DeviceKeyStore;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;

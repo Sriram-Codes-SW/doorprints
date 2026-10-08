@@ -23,7 +23,6 @@ import app.doorprints.server.ai.config.AiProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -46,19 +45,12 @@ public class AiExceptionHandler {
     /** Null in unit tests that build the handler directly: then no Vertex setup hints are added. */
     private final AiProperties props;
 
-    /** For tests: no provider settings, so no setup hints. */
-    public AiExceptionHandler() {
-        this((AiProperties) null);
-    }
-
-    public AiExceptionHandler(AiProperties props) {
-        this.props = props;
-    }
-
-    /** Spring: {@code AiProperties} is bound by {@code @ConfigurationPropertiesScan}; tolerate its absence (slices). */
-    @Autowired
+    /**
+     * Spring: {@code AiProperties} is bound by {@code @ConfigurationPropertiesScan}; tolerate its absence (slices).
+     * Tests build the handler through {@code AiExceptionHandlers.of}.
+     */
     public AiExceptionHandler(ObjectProvider<AiProperties> props) {
-        this(props.getIfAvailable());
+        this.props = props.getIfAvailable();
     }
 
     /**

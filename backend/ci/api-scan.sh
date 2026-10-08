@@ -64,7 +64,7 @@ done
 # requests would otherwise get 429s, which ZAP reads as answers to its payloads (the first run's "SQL injection"
 # alerts were all 429s). The pairing limit (the calls that need no key: /api/pair/**, owner sign-in) is lifted for the
 # same reason: a 429 from /api/pair/redeem was read as a "SQL injection" on 2026-09-29. The limits have their own tests
-# (ai/web/TokenBucketRateLimiterTest, config/ApiKeyFilterTest, device/PairingRateLimitFilterTest).
+# (common/TokenBucketRateLimiterTest, config/ApiKeyFilterTest, device/PairingRateLimitFilterTest).
 docker run -d --name "$net-api" --network "$net" --network-alias api \
   -e DB_URL=jdbc:postgresql://db:5432/doorprints -e DB_USER=doorprints -e DB_PASSWORD=doorprints \
   -e APP_API_KEY="$key" -e APP_AI_ENABLED=false -e APP_MCP_ENABLED=false \

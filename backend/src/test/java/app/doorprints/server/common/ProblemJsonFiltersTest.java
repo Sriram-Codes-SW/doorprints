@@ -18,7 +18,7 @@
 
 package app.doorprints.server.common;
 
-import app.doorprints.server.ai.web.TokenBucketRateLimiter;
+import app.doorprints.server.config.ApiKeyFilters;
 import app.doorprints.server.config.ApiKeyFilter;
 import app.doorprints.server.config.ApiRateLimitFilter;
 import app.doorprints.server.config.RequestSizeLimitFilter;
@@ -96,7 +96,7 @@ class ProblemJsonFiltersTest {
 
     @Test
     void apiKeyFilterAnswers401ForAMissingOrWrongKey() throws Exception {
-        var filter = new ApiKeyFilter(KEY, new TokenBucketRateLimiter(100, 100));
+        var filter = ApiKeyFilters.of(KEY, new TokenBucketRateLimiter(100, 100));
         var missing = run(filter, request("GET", "/api/houses"));
         assertProblem(missing, 401, "Missing or wrong X-API-Key");
         assertThat(missing.getHeader("Retry-After")).isNull();
@@ -107,7 +107,7 @@ class ProblemJsonFiltersTest {
 
     @Test
     void apiKeyFilterAnswers429WithRetryAfterOnceTheFailuresAreUsedUp() throws Exception {
-        var filter = new ApiKeyFilter(KEY, new TokenBucketRateLimiter(1, 1));
+        var filter = ApiKeyFilters.of(KEY, new TokenBucketRateLimiter(1, 1));
         assertThat(run(filter, request("GET", "/api/houses")).getStatus()).isEqualTo(401);
         var refused = run(filter, request("GET", "/api/houses"));
         assertProblem(refused, 429, "Too many failed attempts, retry in " + retryAfter(refused) + "s");
@@ -116,7 +116,7 @@ class ProblemJsonFiltersTest {
 
     @Test
     void apiKeyFilterAnswers400ForANonCanonicalPath() throws Exception {
-        var filter = new ApiKeyFilter(KEY, new TokenBucketRateLimiter(100, 100));
+        var filter = ApiKeyFilters.of(KEY, new TokenBucketRateLimiter(100, 100));
         var response = run(filter, request("GET", "/api/%2e%2e/houses"));
         assertProblem(response, 400, "Malformed request path");
     }

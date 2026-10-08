@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-package app.doorprints.server.ai.web;
+package app.doorprints.server.common;
 
 import org.junit.jupiter.api.Test;
 

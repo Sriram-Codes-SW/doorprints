@@ -18,6 +18,7 @@
 
 package app.doorprints.server.ai.vertex;
 
+import app.doorprints.server.ai.web.AiExceptionHandlers;
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.genai.errors.ApiException;
@@ -374,7 +375,7 @@ class VertexGenerateContentContractTest {
         assertThat(ProviderErrors.isQuotaExhausted(thrown)).isTrue();
 
         // What the app's clients and the eval harness see: 503 + code AI_QUOTA_EXHAUSTED + Retry-After.
-        var response = new AiExceptionHandler().aiUnavailable(new AiUnavailableException("Answering failed", thrown));
+        var response = AiExceptionHandlers.of(null).aiUnavailable(new AiUnavailableException("Answering failed", thrown));
         assertThat(response.getStatusCode().value()).isEqualTo(503);
         assertThat(response.getHeaders().getFirst(HttpHeaders.RETRY_AFTER)).isEqualTo("60");
         assertThat(response.getBody()).isNotNull();
@@ -391,7 +392,7 @@ class VertexGenerateContentContractTest {
         assertThat(requestBodies).hasSize(1);
         assertThat(rootApiException(thrown).code()).isEqualTo(403);
         assertThat(ProviderErrors.isQuotaExhausted(thrown)).isFalse();
-        var response = new AiExceptionHandler(handlerProps())
+        var response = AiExceptionHandlers.of(handlerProps())
                 .aiUnavailable(new AiUnavailableException("Answering failed", thrown));
         assertThat(response.getStatusCode().value()).isEqualTo(503);
         assertThat(response.getHeaders().getFirst(HttpHeaders.RETRY_AFTER)).isNull();
@@ -416,7 +417,7 @@ class VertexGenerateContentContractTest {
         assertThat(ProviderErrors.httpFailure(thrown))
                 .contains(new ProviderErrors.HttpFailure(ProviderErrors.Call.CHAT, 404));
 
-        var response = new AiExceptionHandler(handlerProps())
+        var response = AiExceptionHandlers.of(handlerProps())
                 .aiUnavailable(new AiUnavailableException("Answering failed", thrown));
         assertThat(response.getStatusCode().value()).isEqualTo(503);
         assertThat(response.getBody()).isNotNull();
@@ -425,7 +426,7 @@ class VertexGenerateContentContractTest {
                 .doesNotContain("AI_VERTEX_EMBEDDING_LOCATION").doesNotContain(PROJECT);
 
         // AI Studio setups (or a handler without settings) get no Vertex hint.
-        var aiStudio = new AiExceptionHandler(AiProperties.defaults())
+        var aiStudio = AiExceptionHandlers.of(AiProperties.defaults())
                 .aiUnavailable(new AiUnavailableException("Answering failed", thrown));
         assertThat(aiStudio.getBody()).isNotNull();
         assertThat(aiStudio.getBody().getProperties()).doesNotContainKey(AiExceptionHandler.SETUP_HINT_PROPERTY);
