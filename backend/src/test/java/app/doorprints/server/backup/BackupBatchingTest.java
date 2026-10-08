@@ -20,6 +20,7 @@ package app.doorprints.server.backup;
 
 import jakarta.persistence.EntityManagerFactory;
 import org.hibernate.SessionFactory;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.ResourceLock;
@@ -99,6 +100,15 @@ class BackupBatchingTest {
         factory.setReadTimeout(Duration.ofMinutes(3));
         api = RestClient.builder().baseUrl("http://localhost:" + port).requestFactory(factory)
                 .defaultHeader("X-API-Key", KEY).build();
+        api.delete().uri("/api/data").header("X-Confirm-Delete", "DELETE-ALL-MY-DATA").retrieve().toBodilessEntity();
+    }
+
+    /**
+     * Leaves the shared database empty: this class imports thousands of rows, and a later class that counts statements
+     * over "every live house" (ChecklistBatchFetchTest) would otherwise load them all and fail depending on test order.
+     */
+    @AfterEach
+    void wipe() {
         api.delete().uri("/api/data").header("X-Confirm-Delete", "DELETE-ALL-MY-DATA").retrieve().toBodilessEntity();
     }
 
