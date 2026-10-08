@@ -1414,6 +1414,155 @@ internal val PARITY_VECTORS_JSON: String = listOf(
       "amenities" : [ "lift", "लिफ्ट" ],
       "warnings" : [ ]
     }
+  }, {
+    "raw" : {
+      "label" : "2BHK in Thane West",
+      "listingUrl" : "https://www.99acres.example/p/thane-2bhk-81"
+    },
+    "source" : "2BHK for rent in Thane West, Rs 24,000. Photos: https://www.99acres.example/p/thane-2bhk-81\nBroker site: https://www.magicbricks.example/p/55021",
+    "expected" : {
+      "label" : "2BHK in Thane West",
+      "address" : null,
+      "street" : null,
+      "locality" : null,
+      "price" : null,
+      "priceType" : null,
+      "bedrooms" : null,
+      "contactName" : null,
+      "contactPhone" : null,
+      "listingUrl" : "https://www.99acres.example/p/thane-2bhk-81",
+      "notes" : null,
+      "amenities" : [ ],
+      "warnings" : [ "listingUrl: the text has 2 links, check this is the right one" ]
+    }
+  }, {
+    "raw" : {
+      "label" : "Flat in Edappally",
+      "listingUrl" : "https://flats.example/k/77"
+    },
+    "source" : "Flat near Edappally, Kochi. Details https://flats.example/k/77, link again https://flats.example/k/77.",
+    "expected" : {
+      "label" : "Flat in Edappally",
+      "address" : null,
+      "street" : null,
+      "locality" : null,
+      "price" : null,
+      "priceType" : null,
+      "bedrooms" : null,
+      "contactName" : null,
+      "contactPhone" : null,
+      "listingUrl" : "https://flats.example/k/77",
+      "notes" : null,
+      "amenities" : [ ],
+      "warnings" : [ ]
+    }
+  }, {
+    "raw" : {
+      "label" : "Flat in Beltola",
+      "listingUrl" : "https://d.example/9"
+    },
+    "source" : "Guwahati Beltola flat https://a.example/1 https://b.example/2 https://c.example/3",
+    "expected" : {
+      "label" : "Flat in Beltola",
+      "address" : null,
+      "street" : null,
+      "locality" : null,
+      "price" : null,
+      "priceType" : null,
+      "bedrooms" : null,
+      "contactName" : null,
+      "contactPhone" : null,
+      "listingUrl" : null,
+      "notes" : null,
+      "amenities" : [ ],
+      "warnings" : [ "listingUrl: not found in the listing text, dropped" ]
+    }
+  }, {
+    "raw" : {
+      "label" : "Cottage in Shimla",
+      "listingUrl" : null
+    },
+    "source" : "Cottage, Summer Hill, Shimla. https://a.example/s/1 and https://b.example/s/2",
+    "expected" : {
+      "label" : "Cottage in Shimla",
+      "address" : null,
+      "street" : null,
+      "locality" : null,
+      "price" : null,
+      "priceType" : null,
+      "bedrooms" : null,
+      "contactName" : null,
+      "contactPhone" : null,
+      "listingUrl" : null,
+      "notes" : null,
+      "amenities" : [ ],
+      "warnings" : [ ]
+    }
+  }, {
+    "raw" : {
+      "label" : "जयपुर 2BHK",
+      "listingUrl" : "https://b.example/j/2"
+    },
+    "source" : "जयपुर, मालवीय नगर: 2BHK किराये पर। पहला https://a.example/j/1। दूसरा https://b.example/j/2 तीसरा https://c.example/j/3",
+    "expected" : {
+      "label" : "जयपुर 2BHK",
+      "address" : null,
+      "street" : null,
+      "locality" : null,
+      "price" : null,
+      "priceType" : null,
+      "bedrooms" : null,
+      "contactName" : null,
+      "contactPhone" : null,
+      "listingUrl" : "https://b.example/j/2",
+      "notes" : null,
+      "amenities" : [ ],
+      "warnings" : [ "listingUrl: the text has 3 links, check this is the right one" ]
+    }
+  }, {
+    "raw" : {
+      "label" : "Flat in Salt Lake",
+      "listingUrl" : "https://a.example/k/1",
+      "notes" : "Also see https://b.example/2 and https://c.example/3"
+    },
+    "source" : "Salt Lake Sector V flat https://a.example/k/1 only",
+    "expected" : {
+      "label" : "Flat in Salt Lake",
+      "address" : null,
+      "street" : null,
+      "locality" : null,
+      "price" : null,
+      "priceType" : null,
+      "bedrooms" : null,
+      "contactName" : null,
+      "contactPhone" : null,
+      "listingUrl" : "https://a.example/k/1",
+      "notes" : "Also see https://b.example/2 and https://c.example/3",
+      "amenities" : [ ],
+      "warnings" : [ ]
+    }
+  }, {
+    "raw" : {
+      "label" : "Flat in Andheri",
+      "listingUrl" : "https://a.example/m/1"
+    },
+    "source" : "Rent in Mumbai Andheri: see https://a.example/m/1, or https://b.example/m/2.",
+    "expected" : {
+      "label" : "Flat in Andheri",
+      "address" : null,
+      "street" : null,
+""",
+    """      "locality" : null,
+      "price" : null,
+      "priceType" : null,
+      "bedrooms" : null,
+      "contactName" : null,
+      "contactPhone" : null,
+      "listingUrl" : "https://a.example/m/1",
+      "notes" : null,
+      "amenities" : [ ],
+      "warnings" : [ "listingUrl: the text has 2 links, check this is the right one" ]
+    }
   } ],
   "snippet" : [ {
     "doc" : "House: Blue gate\nLocality: Indiranagar\nPrice: Rs 25000 per month (rent)\nNotes: close to the metro, good water",
@@ -1540,8 +1689,7 @@ internal val PARITY_VECTORS_JSON: String = listOf(
           "description" : "Contact person name",
           "nullable" : true
         },
-""",
-    """        "contactPhone" : {
+        "contactPhone" : {
           "type" : "string",
           "description" : "Contact phone number exactly as written",
           "nullable" : true
@@ -1777,7 +1925,8 @@ internal val PARITY_VECTORS_JSON: String = listOf(
                 "description" : "Number of bedrooms, e.g. '2' for 2BHK"
               },
               "contactName" : {
-                "type" : [ "string", "null" ],
+""",
+    """                "type" : [ "string", "null" ],
                 "description" : "Contact person name"
               },
               "contactPhone" : {
@@ -1841,8 +1990,7 @@ internal val PARITY_VECTORS_JSON: String = listOf(
       "max_tokens" : 2048,
       "messages" : [ {
         "role" : "system",
-""",
-    """        "content" : "You extract house listings.\n\nReply with only a JSON object of this shape: {\"type\":\"object\",\"properties\":{\"label\":{\"type\":[\"string\",\"null\"],\"description\":\"Short human label, e.g. '2BHK near Indiranagar metro'\"},\"address\":{\"type\":[\"string\",\"null\"],\"description\":\"Full postal address as written in the listing\"},\"street\":{\"type\":[\"string\",\"null\"],\"description\":\"Street / road name only\"},\"locality\":{\"type\":[\"string\",\"null\"],\"description\":\"Locality / neighbourhood / area\"},\"price\":{\"type\":[\"string\",\"null\"],\"description\":\"Monthly rent or sale price in rupees exactly as written, e.g. '25,000' or '1.2 Cr'\"},\"priceType\":{\"type\":[\"string\",\"null\"],\"description\":\"RENT or SALE\"},\"bedrooms\":{\"type\":[\"string\",\"null\"],\"description\":\"Number of bedrooms, e.g. '2' for 2BHK\"},\"contactName\":{\"type\":[\"string\",\"null\"],\"description\":\"Contact person name\"},\"contactPhone\":{\"type\":[\"string\",\"null\"],\"description\":\"Contact phone number exactly as written\"},\"listingUrl\":{\"type\":[\"string\",\"null\"],\"description\":\"Listing URL if one is present in the text\"},\"notes\":{\"type\":[\"string\",\"null\"],\"description\":\"Other useful facts (deposit, floor, furnishing, availability) in one short paragraph\"},\"amenities\":{\"type\":\"array\",\"description\":\"Amenities such as parking, lift, power backup, gym\",\"items\":{\"type\":\"string\"}}},\"required\":[\"label\",\"address\",\"street\",\"locality\",\"price\",\"priceType\",\"bedrooms\",\"contactName\",\"contactPhone\",\"listingUrl\",\"notes\",\"amenities\"],\"additionalProperties\":false}"
+        "content" : "You extract house listings.\n\nReply with only a JSON object of this shape: {\"type\":\"object\",\"properties\":{\"label\":{\"type\":[\"string\",\"null\"],\"description\":\"Short human label, e.g. '2BHK near Indiranagar metro'\"},\"address\":{\"type\":[\"string\",\"null\"],\"description\":\"Full postal address as written in the listing\"},\"street\":{\"type\":[\"string\",\"null\"],\"description\":\"Street / road name only\"},\"locality\":{\"type\":[\"string\",\"null\"],\"description\":\"Locality / neighbourhood / area\"},\"price\":{\"type\":[\"string\",\"null\"],\"description\":\"Monthly rent or sale price in rupees exactly as written, e.g. '25,000' or '1.2 Cr'\"},\"priceType\":{\"type\":[\"string\",\"null\"],\"description\":\"RENT or SALE\"},\"bedrooms\":{\"type\":[\"string\",\"null\"],\"description\":\"Number of bedrooms, e.g. '2' for 2BHK\"},\"contactName\":{\"type\":[\"string\",\"null\"],\"description\":\"Contact person name\"},\"contactPhone\":{\"type\":[\"string\",\"null\"],\"description\":\"Contact phone number exactly as written\"},\"listingUrl\":{\"type\":[\"string\",\"null\"],\"description\":\"Listing URL if one is present in the text\"},\"notes\":{\"type\":[\"string\",\"null\"],\"description\":\"Other useful facts (deposit, floor, furnishing, availability) in one short paragraph\"},\"amenities\":{\"type\":\"array\",\"description\":\"Amenities such as parking, lift, power backup, gym\",\"items\":{\"type\":\"string\"}}},\"required\":[\"label\",\"address\",\"street\",\"locality\",\"price\",\"priceType\",\"bedrooms\",\"contactName\",\"contactPhone\",\"listingUrl\",\"notes\",\"amenities\"],\"additionalProperties\":false}"
       }, {
         "role" : "user",
         "content" : "Two bedroom flat in Indiranagar, rent 25,000."
@@ -2141,7 +2289,8 @@ internal val PARITY_VECTORS_JSON: String = listOf(
   }, {
     "tier" : 1,
     "status" : 400,
-    "body" : "{\"error\":\"This model does not support structured output: unsupported\"}",
+""",
+    """    "body" : "{\"error\":\"This model does not support structured output: unsupported\"}",
     "expected" : {
       "action" : "nextTier",
       "tier" : 2
@@ -2284,8 +2433,7 @@ internal val PARITY_VECTORS_JSON: String = listOf(
       "action" : "error",
       "kind" : "rateLimited",
       "retryAfterSeconds" : null
-""",
-    """    }
+    }
   }, {
     "provider" : "anthropic",
     "status" : 429,
@@ -2699,7 +2847,8 @@ internal val PARITY_VECTORS_JSON: String = listOf(
       } ],
       "tools" : [ {
         "name" : "plan",
-        "description" : "Reply by calling this tool with the answer.",
+""",
+    """        "description" : "Reply by calling this tool with the answer.",
         "input_schema" : {
           "type" : "object",
           "properties" : {
@@ -2782,8 +2931,7 @@ internal val PARITY_VECTORS_JSON: String = listOf(
     "response" : "{\"id\":\"msg_test\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"test-model\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_test\",\"name\":\"answer\",\"input\":{\"answer\":\"Yes\",\"citedHouseIds\":[]}}],\"stop_reason\":\"end_turn\"}",
     "expected" : {
       "text" : "{\"answer\":\"Yes\",\"citedHouseIds\":[]}"
-""",
-    """    }
+    }
   }, {
     "call" : "generate",
     "response" : "{\"id\":\"msg_test\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"test-model\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_test\",\"name\":\"answer\",\"input\":{\"answer\":\"Yes, bal\"}}],\"stop_reason\":\"max_tokens\"}",
@@ -3154,7 +3302,8 @@ internal val PARITY_VECTORS_JSON: String = listOf(
     "expected" : "Photos: [link removed]"
   }, {
     "context" : "Notes: photos at https://example.com/l/123 and the site http://builder.example/plan?id=7, call back.",
-    "input" : "Photos: https://example.com/l/1234",
+""",
+    """    "input" : "Photos: https://example.com/l/1234",
     "expected" : "Photos: [link removed]"
   }, {
     "context" : "Notes: photos at https://example.com/l/123 and the site http://builder.example/plan?id=7, call back.",
@@ -3202,9 +3351,132 @@ internal val PARITY_VECTORS_JSON: String = listOf(
     "expected" : "Rent is 25,000 (negotiable) in [Indiranagar]; see [house:11111111-1111-4111-8111-111111111111]. Visit example.com or www.evil.example, mail me."
   }, {
     "context" : "",
-""",
-    """    "input" : "x https://evil.example/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa y",
+    "input" : "x https://evil.example/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa y",
     "expected" : "x [link removed] y"
+  } ],
+  "listingLinks" : [ {
+    "name" : "no link",
+    "text" : "Call the owner on 98450 12345 after 6 pm.",
+    "expected" : 0
+  }, {
+    "name" : "one link",
+    "text" : "https://a.example/x",
+    "expected" : 1
+  }, {
+    "name" : "two links on two lines",
+    "text" : "Flat in Thane: https://99acres.example/p/1\nSame owner: https://magicbricks.example/p/2",
+    "expected" : 2
+  }, {
+    "name" : "the same link twice",
+    "text" : "https://a.example/x and again https://a.example/x.",
+    "expected" : 1
+  }, {
+    "name" : "full stop, comma and exclamation mark after a link",
+    "text" : "See https://a.example/x. Or https://a.example/x, or https://a.example/x!",
+    "expected" : 1
+  }, {
+    "name" : "links in brackets",
+    "text" : "(https://a.example/x) and (https://b.example/y)",
+    "expected" : 2
+  }, {
+    "name" : "links in markdown",
+    "text" : "[flat](https://a.example/x) [flat 2](https://b.example/y)",
+    "expected" : 2
+  }, {
+    "name" : "bold marks round a WhatsApp link",
+    "text" : "*https://a.example/x* then https://a.example/x",
+    "expected" : 1
+  }, {
+    "name" : "Hindi text after the link, with a danda",
+    "text" : "विवरण: https://a.example/p/7। दूसरा लिंक https://b.example/p/8 देखें",
+    "expected" : 2
+  }, {
+    "name" : "Tamil text joined to the link, the same link twice",
+    "text" : "விவரம்https://a.example/1 மற்றொன்று https://a.example/1",
+    "expected" : 1
+  }, {
+    "name" : "Telugu text between two links",
+    "text" : "లింక్ https://a.example/1 మరియు https://b.example/2",
+    "expected" : 2
+  }, {
+    "name" : "a capital scheme is a link",
+    "text" : "HTTP://A.EXAMPLE/x and http://b.example/y",
+    "expected" : 2
+  }, {
+    "name" : "http and https are two links",
+    "text" : "http://a.example/x https://a.example/x",
+    "expected" : 2
+  }, {
+    "name" : "a path is case sensitive",
+    "text" : "https://a.example/Abc https://a.example/abc",
+    "expected" : 2
+  }, {
+    "name" : "query and fragment belong to the link",
+    "text" : "https://a.example/p?id=1&x=2#top, https://a.example/p?id=1&x=2#top",
+    "expected" : 1
+  }, {
+    "name" : "a scheme with no host is not a link",
+    "text" : "see https:// or https://. or http://?",
+    "expected" : 0
+  }, {
+    "name" : "other schemes and bare hosts are not links",
+    "text" : "ftp://a.example/x mailto:a@b.example www.a.example",
+    "expected" : 0
+  } ],
+  "listingCut" : [ {
+    "name" : "empty",
+    "text" : "",
+    "cap" : 3,
+    "kept" : "",
+    "leftOut" : 0
+  }, {
+    "name" : "shorter than the limit",
+    "text" : "abc",
+    "cap" : 10,
+    "kept" : "abc",
+    "leftOut" : 0
+  }, {
+    "name" : "exactly the limit",
+    "text" : "abcdef",
+    "cap" : 6,
+    "kept" : "abcdef",
+    "leftOut" : 0
+  }, {
+    "name" : "one over the limit",
+    "text" : "abcdef",
+    "cap" : 5,
+    "kept" : "abcde",
+    "leftOut" : 1
+  }, {
+    "name" : "spaces round the text are not counted",
+    "text" : "  abcdef  ",
+    "cap" : 4,
+    "kept" : "abcd",
+    "leftOut" : 2
+  }, {
+    "name" : "only spaces",
+    "text" : "     ",
+    "cap" : 3,
+    "kept" : "",
+    "leftOut" : 0
+  }, {
+    "name" : "an emoji split at the limit is left out whole",
+    "text" : "ab😀cd",
+    "cap" : 3,
+    "kept" : "ab",
+    "leftOut" : 4
+  }, {
+    "name" : "an emoji that fits is kept whole",
+    "text" : "ab😀cd",
+    "cap" : 4,
+    "kept" : "ab😀",
+    "leftOut" : 2
+  }, {
+    "name" : "Hindi counted in UTF-16 units, as the server counts",
+    "text" : "नमस्ते",
+    "cap" : 3,
+    "kept" : "नमस",
+    "leftOut" : 3
   } ]
 }
 """,

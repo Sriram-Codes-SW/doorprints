@@ -87,6 +87,7 @@ import app.doorprints.data.PhotoEntity
 import app.doorprints.data.Repository
 import app.doorprints.ui.res.*
 import app.doorprints.shared.api.HouseDraftDto
+import app.doorprints.shared.ai.ListingCut
 import app.doorprints.shared.listing.ListingText
 import app.doorprints.shared.model.ScoreResult
 import app.doorprints.shared.model.Scoring
@@ -2034,11 +2035,7 @@ private fun PasteListingDialog(onDismiss: () -> Unit, onDraft: (HouseDraftDto, L
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(stringResource(Res.string.house_paste_hint), style = MaterialTheme.typography.bodySmall)
-                OutlinedTextField(
-                    text, { text = it.take(8000) },
-                    label = { Text(stringResource(Res.string.house_paste_field)) },
-                    minLines = 4, maxLines = 8, modifier = Modifier.fillMaxWidth(),
-                )
+                PasteListingText(text, { text = it })
                 AiDisclosure(style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 LiveMessage(assertive = error != null && !busy) {
@@ -2057,7 +2054,8 @@ private fun PasteListingDialog(onDismiss: () -> Unit, onDraft: (HouseDraftDto, L
                 job = scope.launch {
                     busy = true
                     error = null
-                    val result = runCatching { repo.extractListing(text) }
+                    // Extract reads the first MAX_INPUT_CHARS characters; PasteListingText says how many are left out (S4b-BL-182).
+                    val result = runCatching { repo.extractListing(ListingCut.of(text).text) }
                     // Cancelled: the dialog is closing, so neither a draft nor an error.
                     ensureActive()
                     result.onSuccess { onDraft(it, it.warnings) }.onFailure { error = errorText(it) }

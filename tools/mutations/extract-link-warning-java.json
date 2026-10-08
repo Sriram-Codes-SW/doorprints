@@ -1,0 +1,15 @@
+{
+  "spec": "DraftSanitizerTest, ParityVectorsTest",
+  "maven": ["-Dtest=DraftSanitizerTest,ParityVectorsTest"],
+  "mutations": [
+    {"file": "backend/src/main/java/app/doorprints/server/ai/extract/DraftSanitizer.java", "find": "if (links >= 2) warnings", "replace": "if (links > 2) warnings", "expect": "warnsWhenTheTextHasSeveralLinksAndTheDraftHasOne"},
+    {"file": "backend/src/main/java/app/doorprints/server/ai/extract/DraftSanitizer.java", "find": "if (links >= 2) warnings", "replace": "if (links >= 1) warnings", "expect": "warnsWhenTheTextHasSeveralLinksAndTheDraftHasOne"},
+    {"file": "backend/src/main/java/app/doorprints/server/ai/extract/DraftSanitizer.java", "find": "\"listingUrl: the text has \" + links + \" links", "replace": "\"listingUrl: the text has \" + (links + 1) + \" links", "expect": "warnsWhenTheTextHasSeveralLinksAndTheDraftHasOne"},
+    {"file": "backend/src/main/java/app/doorprints/server/ai/extract/DraftSanitizer.java", "find": "if (url != null) {\n            // The model picked", "replace": "if (url == null) {\n            // The model picked", "expect": "warnsWhenTheTextHasSeveralLinksAndTheDraftHasOne"},
+    {"file": "backend/src/main/java/app/doorprints/server/ai/extract/DraftSanitizer.java", "find": "var links = linkCount(source);", "replace": "var links = linkCount(source + (raw.notes() == null ? \"\" : raw.notes()));", "expect": "countsThePastedTextNotTheLinksTheModelWroteInTheNotes"},
+    {"file": "backend/src/main/java/app/doorprints/server/ai/extract/DraftSanitizer.java", "find": "seen.add(link.substring(0, end));", "replace": "seen.add(link.substring(0, end) + seen.size());", "expect": "theServerGivesTheRecordedAnswers"},
+    {"file": "backend/src/main/java/app/doorprints/server/ai/extract/DraftSanitizer.java", "find": "LINK_TAIL = \".,;:!?*\";", "replace": "LINK_TAIL = \".,;:!?\";", "expect": "theServerGivesTheRecordedAnswers"},
+    {"file": "backend/src/main/java/app/doorprints/server/ai/extract/DraftSanitizer.java", "find": "if (end > link.indexOf(\"//\") + 2)", "replace": "if (end > 0)", "expect": "theServerGivesTheRecordedAnswers"},
+    {"file": "backend/src/main/java/app/doorprints/server/ai/extract/DraftSanitizer.java", "find": "Pattern.compile(\"https?://[A-Za-z0-9", "replace": "Pattern.compile(\"https://[A-Za-z0-9", "expect": "theServerGivesTheRecordedAnswers"}
+  ]
+}

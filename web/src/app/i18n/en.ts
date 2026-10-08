@@ -1665,6 +1665,8 @@ export const en = {
   'ai.modelNotFound': 'The AI service does not know this model. Check the model name on the Connect page, under AI features.',
   'ai.unreachable': 'Could not reach {host}. Check the address and your connection.',
   'ai.unreachableLocal': 'Could not reach {host}. Check that it is running and that it allows this site (CORS); the browser blocks it otherwise.',
+  // S4b-BL-182 (2026-10-08): the paste box says how much of a long listing is left out.
+  'listingFill.cut': 'Only the first {max} characters are read. Characters left out at the end: {n}.',
 };
 
 /** Every translation must have exactly these keys (checked by the compiler). */
