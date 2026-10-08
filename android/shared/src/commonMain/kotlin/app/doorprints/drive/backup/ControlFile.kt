@@ -31,6 +31,7 @@ import kotlinx.serialization.json.JsonObject
 
 /** Why `doorprints.json` was refused. */
 class ControlException(val kind: Kind, message: String) : Exception("control ${kind.name}: $message") {
+    /** The ways a control file is refused; each one stops the open and leaves the watermark as it was. */
     enum class Kind {
         /** Not JSON, or not the `doorprints-control/1` structure. */
         MALFORMED,
@@ -73,6 +74,7 @@ class ControlBody(
     /** *Delete all backups* (S4b-BL-119) sets it; a backup whose `createdAt` is not after it is never listed again. */
     val backupsDeletedAt: Long?,
 ) {
+    /** The body in canonical JSON, the exact bytes the MAC and the watermark hash cover. */
     internal fun json(): ByteArray = CanonicalJson()
         .raw("{\"revision\":").number(revision)
         .raw(",\"epoch\":").number(epoch.toLong())
@@ -97,7 +99,9 @@ class ControlWatermark(val revision: Long, bodyHash: ByteArray, val backupsDelet
 
 /** Where a device keeps its [ControlWatermark] for one folder (sealed on the device); [compareAndSet] is atomic. */
 interface ControlWatermarkStore {
+    /** The watermark this device accepted, or null before the first. */
     fun load(): ControlWatermark?
+    /** Stores [next] only if the stored watermark is still [expected]; false when it changed meanwhile. */
     fun compareAndSet(expected: ControlWatermark?, next: ControlWatermark): Boolean
 }
 
@@ -118,6 +122,7 @@ interface ControlWatermarkStore {
  */
 class ControlFile(private val p: CryptoProvider) {
 
+    /** A control file ready to upload: its canonical [bytes] and the [body] they encode. */
     class Written(val bytes: ByteArray, val body: ControlBody)
 
     /** The first control file of a folder this device just made (revision 1, the current epoch). */
@@ -185,6 +190,11 @@ class ControlFile(private val p: CryptoProvider) {
         CanonicalJson().raw(",\"mac\":").string(Bytes.b64(mac)).raw("}").bytes(),
     )
 
+    /**
+      * Reads [file] strictly: size limit, the exact fields and ranges, and the bytes must equal the canonical
+      * re-encoding.
+     * The MAC is not checked here ([open] does it); returns the body and the MAC bytes.
+     */
     internal fun parse(file: ByteArray): Pair<ControlBody, ByteArray> {
         fun bad(what: String): Nothing = throw ControlException(ControlException.Kind.MALFORMED, what)
         if (file.size > MAX_FILE) bad("too large")

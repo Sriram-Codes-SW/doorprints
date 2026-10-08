@@ -162,6 +162,10 @@ class KeychainSecretStore internal constructor(
         withContext(NonCancellable) { editUnderLock(block) }
     }
 
+    /**
+     * Runs [block] with the edit flag set; if it throws, restores the item and rethrows (an undo that fails is
+     * added as suppressed).
+     */
     private suspend fun <T> editUnderLock(block: suspend () -> T): T {
         inEdit = true
         before = null
@@ -210,6 +214,7 @@ class KeychainSecretStore internal constructor(
     /** The item's [data] before a change; null when there was no item. */
     private class Before(val data: ByteArray?)
 
+    /** Deletes the Keychain item; one that is not there is fine. */
     private fun delete() {
         val status = keychain.delete(service, account)
         check(status == errSecSuccess || status == errSecItemNotFound) { "Keychain: delete failed (status $status)" }

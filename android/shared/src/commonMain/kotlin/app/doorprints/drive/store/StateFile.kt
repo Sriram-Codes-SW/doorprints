@@ -54,6 +54,7 @@ object PathLocks {
     private val gate = PlatformLock()
     private val locks = HashMap<String, PlatformLock>()
 
+    /** The lock for [path]; the same object for every call with the same path. */
     fun of(path: String): PlatformLock = gate.withLock { locks.getOrPut(path.trimEnd('/')) { PlatformLock() } }
 }
 

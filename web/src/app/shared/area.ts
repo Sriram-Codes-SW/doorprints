@@ -48,6 +48,7 @@ const AREA_ID = /^a_[0-9a-f]{8}$/;
 const PLACE_ID = /^p_[0-9a-f]{8}$/;
 const NOTE_ID = /^n_[0-9a-f]{8}$/;
 
+/** A circle on the map the person cares about, with a name and a radius. House area notes can be attached to it. */
 export interface Area {
   id: string;
   /** 1..100. */
@@ -60,6 +61,7 @@ export interface Area {
   enabled: boolean;
 }
 
+/** A named point the person wants distances to (work, school). */
 export interface Place {
   id: string;
   /** 1..60. */
@@ -77,18 +79,21 @@ export interface AreaNote {
   text: string;
 }
 
+/** A stored area with its last edit time. */
 export interface AreaRow {
   id: string;
   updatedAt: string | null;
   area: Area;
 }
 
+/** A stored place with its last edit time. */
 export interface PlaceRow {
   id: string;
   updatedAt: string | null;
   place: Place;
 }
 
+/** A stored area note with its last edit time. */
 export interface AreaNoteRow {
   id: string;
   updatedAt: string | null;
@@ -110,6 +115,7 @@ export const validLon = (v: unknown): v is number => typeof v === 'number' && Nu
 export const validRadius = (v: unknown): v is number =>
   typeof v === 'number' && Number.isInteger(v) && v >= MIN_RADIUS_M && v <= MAX_RADIUS_M;
 
+/** The value if it is non-blank text within `max` characters, else undefined. */
 function text(value: unknown, max: number): string | undefined {
   return typeof value === 'string' && value.trim() !== '' && value.length <= max ? value : undefined;
 }
@@ -146,6 +152,7 @@ export function placeFromPayload(id: string, payload: Record<string, unknown> | 
   return { id, name, lat, lon };
 }
 
+/** The record payload of a place, with the keys in the contract's order. */
 export function placeToPayload(p: Place): Record<string, unknown> {
   return { name: p.name, lat: p.lat, lon: p.lon };
 }
@@ -182,6 +189,7 @@ export function newestFirst<T extends { id: string; updatedAt: string | null }>(
   return [...list].sort((a, b) => stamp(b.updatedAt) - stamp(a.updatedAt) || compareIds(a.id, b.id));
 }
 
+/** A random id: the prefix and 8 hex characters. */
 function newId(prefix: string): string {
   const bytes = new Uint8Array(4);
   crypto.getRandomValues(bytes);
@@ -238,6 +246,7 @@ export function areasReaching(house: HousePoint, areas: readonly Area[]): Area[]
   return areas.filter((a) => haversineMeters(house.lat, house.lon, a.lat, a.lon) <= a.radiusM);
 }
 
+/** The distance from a house to one place, in the units the screens use. */
 export interface PlaceDistance {
   place: Place;
   /** Straight-line metres. */

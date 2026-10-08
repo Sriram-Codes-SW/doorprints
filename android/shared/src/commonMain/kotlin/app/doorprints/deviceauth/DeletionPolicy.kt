@@ -51,6 +51,7 @@ data class DeletionContext(
     val backupsLeft: Int?,
 )
 
+/** What the person must pass for an action: nothing, the phone's screen lock or a passkey. */
 enum class Factor { NONE, DEVICE_AUTH, PASSKEY }
 
 /** Approving a new device also needs this (docs/15 10.1): the phone scans the QR code or compares the code. */
@@ -67,6 +68,7 @@ data class Requirements(
     val authValidMs: Long,
 )
 
+/** Why an action is not offered at all. */
 enum class RefusalReason {
     /** A phone without a screen lock (docs/15 10.3). */
     NO_DEVICE_LOCK,
@@ -83,6 +85,7 @@ sealed interface DeletionDecision {
     data class Refused(val reason: RefusalReason) : DeletionDecision
 }
 
+/** Whether a granted factor can still start an operation. */
 enum class GrantCheck { VALID, EXPIRED, NOT_YET }
 
 /** Docs/15 3 and 10.1 as pure functions: no I/O, no clock, so Kotlin and the TypeScript twin run the same vectors. */

@@ -24,11 +24,16 @@ package app.doorprints.shared.ai
  * the server's tool-calling agent, so its prompt says the candidates are given rather than found with tools.
  */
 object AiPrompts {
+    /** The two texts of one model request: the instructions ([system]) and the data ([user]). */
     data class Built(val system: String, val user: String)
 
     /** The Ask refusal, exact (the golden set's refusal cases compare it). */
     const val I_DONT_KNOW = "I don't know based on the houses you have saved."
 
+    /**
+      * The prompt for *Fill in from listing text*. The pasted text is fenced with a per-request [nonce] tag and the
+      * instructions call it data, so text inside it cannot pose as an instruction.
+     */
     fun extraction(listingText: String, nonce: String): Built {
         val tag = "listing-$nonce"
         val system = """

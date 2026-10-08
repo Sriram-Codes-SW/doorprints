@@ -204,6 +204,7 @@ object Ranking {
         .thenByDescending { it.updatedAt }
         .thenBy { it.id }
 
+    /** Orders two houses by [comparator]: negative when [a] ranks first. */
     fun compare(a: RankedHouse, b: RankedHouse): Int = comparator.compare(a, b)
 
     /** [items] best first, each ranked by [of]. */

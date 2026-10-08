@@ -47,6 +47,7 @@ const STATUS_COLOUR: Expression = [
 
 const IS_APPROX: Expression = ['==', ['get', 'approx'], true];
 
+/** MapLibre paint for the house circles: size and colour by status, a hollow ring for an approximate spot. */
 export const HOUSE_PAINT = {
   // Size also encodes status (shortlisted and taken larger, rejected and not chosen smaller), so colour is not the only cue.
   'circle-radius': [
@@ -67,6 +68,7 @@ export const HOUSE_PAINT = {
   'circle-opacity': ['case', IS_APPROX, 0, ['match', ['get', 'status'], 'REJECTED', 0.75, 'NOT_CHOSEN', 0.75, 1]],
 } as const;
 
+/** One house as a GeoJSON point, with what the paint reads. */
 export interface HouseFeature {
   type: 'Feature';
   id: string;

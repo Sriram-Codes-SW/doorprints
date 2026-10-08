@@ -68,6 +68,10 @@ class SecretOperationProver(
     private val crypto: CryptoProvider,
 ) : OperationProver {
 
+    /**
+      * Opens the protected secret (the person authenticates), then signs the operation with it; the secret is wiped as
+      * soon as the HMAC is made.
+     */
     override suspend fun prove(operationId: String, level: DeletionLevel, reason: String, now: () -> Long): ProofOutcome {
         val opened = try {
             secret.open(reason)

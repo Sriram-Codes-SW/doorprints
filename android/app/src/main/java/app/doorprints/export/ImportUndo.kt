@@ -38,6 +38,7 @@ object ImportUndo {
 
     private val json = Json { ignoreUnknownKeys = true }
 
+    /** The private folder that holds the undo records. */
     fun dir(context: Context): File = File(context.filesDir, "imports")
 
     /** Writes [record]; false when it could not be written (the import stands, it just cannot be undone). */
@@ -54,6 +55,7 @@ object ImportUndo {
     fun hideRow(context: Context, runId: String, now: Long = System.currentTimeMillis()): Boolean =
         hideRow(dir(context), runId, now)
 
+    /** Removes the record of [runId]. Does nothing for an id that is not a UUID. */
     fun delete(context: Context, runId: String) {
         fileOf(dir(context), runId)?.delete()
     }
@@ -68,6 +70,7 @@ object ImportUndo {
     /** Removes records older than [KEEP_MS] (and any half-written temp file); run at app start. */
     fun sweep(context: Context, now: Long = System.currentTimeMillis()) = sweep(dir(context), now)
 
+    /** Writes [record] to a temp file and renames it into place; false when [dir] cannot be written to. */
     internal fun save(dir: File, record: CopyRecord): Boolean = runCatching {
         val target = fileOf(dir, record.runId) ?: return false
         dir.mkdirs()
@@ -81,6 +84,10 @@ object ImportUndo {
         true
     }.getOrDefault(false)
 
+    /**
+     * The record of [runId] if its file reads, names the same run and is within [KEEP_MS] of [now]; anything else is
+     * null.
+     */
     internal fun load(dir: File, runId: String, now: Long): CopyRecord? {
         val file = fileOf(dir, runId)?.takeIf { it.isFile } ?: return null
         val record = runCatching { json.decodeFromString(CopyRecord.serializer(), file.readText()) }.getOrNull()
@@ -92,11 +99,13 @@ object ImportUndo {
         return record
     }
 
+    /** Hides the house list's undo row for [runId] (keeps the record); false if there is nothing to hide. */
     internal fun hideRow(dir: File, runId: String, now: Long): Boolean {
         val record = load(dir, runId, now)?.takeIf { !it.undone && !it.rowHidden } ?: return false
         return save(dir, record.copy(rowHidden = true))
     }
 
+    /** The newest readable record that is not undone yet and not expired. */
     internal fun latestUndoable(dir: File, now: Long): CopyRecord? =
         dir.listFiles().orEmpty()
             .filter { it.isFile && it.name.endsWith(".json") }
@@ -104,6 +113,7 @@ object ImportUndo {
             .filter { !it.undone }
             .maxByOrNull { it.finishedAt }
 
+    /** Deletes expired records and leftover temp files in [dir]. */
     internal fun sweep(dir: File, now: Long) {
         dir.listFiles()?.forEach { file ->
             if (file.name.endsWith(".tmp") || now - file.lastModified() > KEEP_MS) file.delete()

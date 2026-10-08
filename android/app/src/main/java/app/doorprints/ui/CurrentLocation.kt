@@ -49,6 +49,10 @@ import kotlinx.coroutines.withContext
 suspend fun currentLocation(context: Context): Pair<Double, Double>? =
     withContext(Dispatchers.Main.immediate) { lookUpLocation(context) }
 
+/**
+ * Play services' fresh high-accuracy fix, else a recent accurate last known one, else null; null too without the
+ * location permission.
+ */
 @SuppressLint("MissingPermission")
 private suspend fun lookUpLocation(context: Context): Pair<Double, Double>? {
     if (!hasLocationPermission(context)) return null

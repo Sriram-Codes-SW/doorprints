@@ -34,8 +34,10 @@ export interface CostFilter {
   perSqFt: CostRange;
 }
 
+/** The filter that accepts every house. */
 export const NO_COST_FILTER: Readonly<CostFilter> = { monthly: {}, moveIn: {}, perSqFt: {} };
 
+/** Whether the range has a lower or an upper end. */
 export function rangeIsSet(r: CostRange): boolean {
   return r.min != null || r.max != null;
 }

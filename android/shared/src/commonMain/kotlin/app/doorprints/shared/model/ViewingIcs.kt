@@ -33,6 +33,12 @@ object ViewingIcs {
     private const val CRLF = "\r\n"
     private const val FIRST_LINE_OCTETS = 75
 
+    /**
+      * The iCalendar text for [viewing] at [houseLabel]. [houseAddress] becomes the location when present;
+      * [viewingWord] is the
+      * title's first word in the person's language; [dtstampMs] is written as the stamp so the output does not depend
+      * on the clock.
+     */
     fun build(
         viewing: Viewing,
         houseLabel: String,

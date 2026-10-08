@@ -143,6 +143,7 @@ interface IosOfflineMaps {
     fun networkMetered(): Boolean
 }
 
+/** Hears the offline store: every change comes as the whole list of packs. */
 interface IosOfflineMapsListener {
     fun onPacks(packs: List<IosOfflinePack>)
 }

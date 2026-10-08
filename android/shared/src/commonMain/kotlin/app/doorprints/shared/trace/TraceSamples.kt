@@ -56,6 +56,7 @@ internal class Samples {
     val part = IntList()
     val size get() = lat.size
 
+    /** Appends one sample: position, arc length from the walk's first point, and the part number. */
     fun add(la: Double, lo: Double, a: Double, p: Int) {
         lat.add(la); lon.add(lo); arc.add(a); part.add(p)
     }
@@ -80,6 +81,10 @@ internal class SampleBuilder {
     var lastAddedFrom = 0
         private set
 
+    /**
+      * Adds the next point of the walk; a resumed point starts a new part, any other adds the densified samples of the
+      * segment from the previous point.
+     */
     fun add(lat: Double, lon: Double, resumed: Boolean) {
         lastAddedFrom = samples.size
         if (!has) {

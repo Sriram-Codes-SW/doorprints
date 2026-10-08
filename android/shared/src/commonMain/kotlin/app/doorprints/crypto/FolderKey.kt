@@ -35,13 +35,18 @@ internal object FolderKey {
     private const val CHAIN_WRAP = "doorprints/dpx1/chain-wrap"
     private const val KEY_ID = "doorprints/dpx1/key-id"
 
+    /** The key that MACs `keys.json`. */
     fun macKey(p: CryptoProvider, folderKey: ByteArray): ByteArray = derive(p, folderKey, DIR)
+    /** The key that wraps a file's content key. */
     fun contentWrapKey(p: CryptoProvider, folderKey: ByteArray): AesKey = aes(p, derive(p, folderKey, CONTENT_WRAP))
+    /** The key that wraps the previous epoch's folder key. */
     fun chainWrapKey(p: CryptoProvider, folderKey: ByteArray): AesKey = aes(p, derive(p, folderKey, CHAIN_WRAP))
 
     private fun aes(p: CryptoProvider, raw: ByteArray): AesKey = p.aesKey(raw).also { raw.fill(0) }
+    /** The public name of the folder key kept in a device's pin; it is not usable as a key. */
     fun keyId(p: CryptoProvider, folderKey: ByteArray): ByteArray = derive(p, folderKey, KEY_ID)
 
+    /** HKDF-SHA-256 of the folder key with an empty salt and [info]; the caller zeroes the result when done. */
     private fun derive(p: CryptoProvider, folderKey: ByteArray, info: String): ByteArray {
         require(folderKey.size == SIZE) { "a folder key is 32 bytes" }
         return Hkdf(p).derive(ByteArray(0), folderKey, Bytes.utf8(info), 32)

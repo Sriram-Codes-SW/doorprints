@@ -213,6 +213,10 @@ private fun PlacedCard(area: Rect, spot: Rect?, bottom: Boolean, gap: Float, cle
     }
 }
 
+/**
+ * The tour card's frame: a bordered surface that screen readers read first as a pane with the step's title. The copy
+ * used for measuring ([probe]) is hidden from them.
+ */
 @Composable
 private fun CardSurface(title: String, probe: Boolean, content: @Composable ColumnScope.() -> Unit) {
     Surface(
@@ -235,6 +239,10 @@ private fun CardSurface(title: String, probe: Boolean, content: @Composable Colu
     ) { Column(Modifier.padding(16.dp)) { content() } }
 }
 
+/**
+ * One tour step: its count, the title (focused when the step appears), the text with the *Try it* line, and *Skip*,
+ * *Back* and *Next* or *Finish*.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun StepCard(
@@ -302,6 +310,7 @@ private fun StepCard(
     }
 }
 
+/** The one-time offer to take the tour: *Take the tour* or *Not now*. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun OfferCard(probe: Boolean, onStart: () -> Unit, onDecline: () -> Unit) {

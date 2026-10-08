@@ -24,11 +24,11 @@ import app.doorprints.drive.auth.AuthorizerResult
 import app.doorprints.drive.auth.ConsentResolver
 import app.doorprints.drive.auth.GoogleAuthorizer
 
-/** A [GoogleAuthorizer] built on first use, so a phone without Google Play services never constructs the Play one. */
 /** The Android source of [RandomBytes]: `SecureRandom`. */
 fun secureRandomBytes(random: java.security.SecureRandom = java.security.SecureRandom()): RandomBytes =
     { size -> ByteArray(size).also(random::nextBytes) }
 
+/** A [GoogleAuthorizer] built on first use, so a phone without Google Play services never constructs the Play one. */
 class LazyGoogleAuthorizer(create: () -> GoogleAuthorizer) : GoogleAuthorizer {
     private val inner by lazy(create)
     override suspend fun authorize(scopes: List<String>): AuthorizerResult = inner.authorize(scopes)
@@ -41,6 +41,7 @@ class LazyGoogleAuthorizer(create: () -> GoogleAuthorizer) : GoogleAuthorizer {
  * the default, the system browser with PKCE the fallback. Pure of Android singletons so a JVM test builds it over fakes.
  */
 object DriveAuthorizers {
+    /** The two kinds built together: [authorizer] is what the Drive code calls; [browser] is kept for the redirect to reach. */
     class Parts(val authorizer: GoogleAuthorizer, val browser: BrowserGoogleAuthorizer)
 
     /** The sign-in this phone uses: Play's (built only when asked) when [playAvailable] says so, else the browser's. */

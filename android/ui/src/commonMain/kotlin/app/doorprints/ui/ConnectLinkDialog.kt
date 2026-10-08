@@ -50,6 +50,7 @@ sealed interface ConnectLinkEnd {
     data class Connected(val houses: Long?) : ConnectLinkEnd
     /** The invite was already used or has expired (410). */
     data object Used : ConnectLinkEnd
+    /** Any failure other than a used or expired invite; [error] says why. */
     data class Failed(val error: Throwable) : ConnectLinkEnd
 }
 

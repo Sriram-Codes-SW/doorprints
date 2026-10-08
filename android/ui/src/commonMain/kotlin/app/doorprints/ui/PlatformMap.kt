@@ -27,6 +27,7 @@ import app.doorprints.shared.trace.RepeatLook
 /** The map's camera, kept in saved state so the map comes back where the user left it. */
 data class CameraSpot(val lat: Double, val lon: Double, val zoom: Double, val bearing: Double)
 
+/** Saves the camera as four numbers; anything else restores as no spot. */
 internal val CameraSpotSaver = Saver<CameraSpot?, DoubleArray>(
     save = { it?.let { c -> doubleArrayOf(c.lat, c.lon, c.zoom, c.bearing) } },
     restore = { a -> if (a.size == 4) CameraSpot(a[0], a[1], a[2], a[3]) else null },
@@ -48,8 +49,10 @@ interface MapControl {
     /** Moves to [lat], [lon] at [zoom]: animated, or at once when [animate] is false (*Remove animations*). */
     fun moveTo(lat: Double, lon: Double, zoom: Double, animate: Boolean)
 
+    /** One zoom level in, animated unless [animate] is false. */
     fun zoomIn(animate: Boolean)
 
+    /** One zoom level out, animated unless [animate] is false. */
     fun zoomOut(animate: Boolean)
 
     /**

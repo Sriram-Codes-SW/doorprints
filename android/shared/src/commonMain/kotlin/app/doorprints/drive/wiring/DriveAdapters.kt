@@ -46,6 +46,10 @@ class TokenDriveSignIn(
     /** Drive can only be switched on with a screen lock (docs/15 §10.3): without one nothing is asked of Google. */
     private val canConnect: () -> Boolean = { true },
 ) : DriveSignIn {
+    /**
+      * Asks for a token (quiet while Google's grant holds). Without a screen lock nothing is asked of Google and the
+      * result is UNAVAILABLE.
+     */
     override suspend fun signIn(): SignInResult = if (!canConnect()) SignInResult.UNAVAILABLE else try {
         tokens.accessToken()
         SignInResult.SIGNED_IN
@@ -57,8 +61,10 @@ class TokenDriveSignIn(
         SignInResult.FAILED
     }
 
+    /** Forgets the token held in memory; the grant at Google stays. */
     override suspend fun signOut() = tokens.forget()
 
+    /** Forgets the token and asks Google to withdraw the grant. */
     override suspend fun revokeAccess() = tokens.revokeAccess()
 
     companion object {
@@ -79,17 +85,22 @@ class TokenDriveSignIn(
 
 /** [DeviceEnrolment] over [DriveBackupService]: the outcome types differ only in name, the rules stay in the service. */
 class BackupDeviceEnrolment(private val service: DriveBackupService) : DeviceEnrolment {
+    /** Lists the newcomer and wraps the folder key for it (base mode). */
     override suspend fun approveDevice(publicKey: ByteArray, name: String, platform: DevicePlatform): EnrolmentApproval =
         approval(service.approveDevice(publicKey, name, platform))
 
+    /** Lists the newcomer and wraps the folder key for it under the pre-shared key from the QR code. */
     override suspend fun approveDevicePsk(publicKey: ByteArray, name: String, platform: DevicePlatform, psk: ByteArray): EnrolmentApproval =
         approval(service.approveDevicePsk(publicKey, name, platform, psk))
 
+    /** The newcomer opens the approver's wrap and pins the folder. */
     override suspend fun joinFromWrap(enc: ByteArray, ct: ByteArray, epoch: Int): DriveConnection = service.joinFromWrap(enc, ct, epoch)
 
+    /** The newcomer opens the pre-shared-key wrap and pins the folder. */
     override suspend fun joinFromPsk(enc: ByteArray, ct: ByteArray, epoch: Int, psk: ByteArray): DriveConnection =
         service.joinFromPsk(enc, ct, epoch, psk)
 
+    /** Revokes the device with key id [kid] (a new epoch and a new recovery key). */
     override suspend fun revokeDevice(kid: ByteArray): EnrolmentRevoke {
         val out = service.revokeDevice(kid)
         return EnrolmentRevoke(out.connection, out.recoveryKey)
@@ -118,8 +129,10 @@ class ProverDeviceAuth(
     private var bound: String? = null
     private var proved: OperationProofValue? = null
 
+    /** Whether the phone has a screen lock (the keyguard test; needs no Activity). */
     override fun isDeviceLockEnabled(): Boolean = lockEnabled()
 
+    /** The next device check is for [operationId]; clears any proof left from before. */
     override fun bindNext(operationId: String?) {
         lock.withLock {
             bound = operationId
@@ -127,8 +140,15 @@ class ProverDeviceAuth(
         }
     }
 
+    /** The proof of the last passed check, handed out once. */
     override fun takeProof(): OperationProofValue? = lock.withLock { proved.also { proved = null } }
 
+    /**
+      * Runs the device check for [level] (L2 or L3; L1 asks nothing and a call for it fails closed) and keeps the proof
+      * the
+      * prover signed. A proof that is not 64 hex digits is no pass. Without a bound operation the proof is for a
+      * one-off label.
+     */
     override suspend fun authenticate(reason: String, level: DeleteLevel): AuthResult {
         val asLevel = when (level) {
             DeleteLevel.L2 -> DeletionLevel.L2
@@ -152,6 +172,7 @@ class ProverDeviceAuth(
     companion object {
         const val OPERATION_PREFIX = "doorprints/device-check/"
 
+        /** Maps the prover's outcome to the device check's result; every non-pass maps to a distinct refusal. */
         fun resultOf(outcome: ProofOutcome): AuthResult = when (outcome) {
             is ProofOutcome.Proved -> AuthResult.SUCCESS
             ProofOutcome.Denied -> AuthResult.LOCKED_OUT

@@ -50,6 +50,7 @@ const SEP = '[^\\p{L}\\p{M}\\p{N}]+';
 const SEP_OPTIONAL = '[^\\p{L}\\p{M}\\p{N}]*';
 const MIN_SAVED_PHONE_DIGITS = 8;
 
+/** Escapes `s` so it matches itself as literal text inside a regular expression (also `/` and `-`). */
 export function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\/-]/g, '\\$&');
 }
@@ -141,23 +142,33 @@ export class Redactor {
   }
 }
 
+/**
+ * Cleans text the person saved before it goes into a prompt: drops any `Contact:` line, then removes the house's
+ * contact name and phone like {@link Redactor.freeText}. Returns empty input unchanged.
+ */
 export function scrubStoredText(text: string | null | undefined, name: string | null | undefined, phone: string | null | undefined) {
   if (!text) return text;
   return new Redactor(name, phone).freeText(text.replace(STORED_CONTACT_LINE, ''));
 }
 
+/** Replaces phone-like numbers with `[phone]`; for text that has no saved contact to match, such as a place name. */
 export function redactPhones(text: string | null | undefined) {
   return text ? text.replace(PHONE_LIKE, PHONE) : text;
 }
 
 // ---------------------------------------------------------------- prompt safety (PromptSafety)
 
+/**
+ * A random 6-hex-digit suffix for the prompt tags, so text a house or listing carries cannot guess the tag that closes
+ * its block.
+ */
 export function nonce(): string {
   const bytes = new Uint8Array(3);
   crypto.getRandomValues(bytes);
   return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
+/** Removes control characters and C1 characters, keeping line feed and tab (and carriage return when `keepCr`). */
 function dropControls(text: string, keepCr: boolean): string {
   let out = '';
   for (const c of text) {
@@ -168,11 +179,19 @@ function dropControls(text: string, keepCr: boolean): string {
   return out;
 }
 
+/**
+ * Makes untrusted text safe to put between prompt tags: control characters go and so does any opening or closing tag
+ * named `tagName`, so the text cannot end its own block and write instructions outside it.
+ */
 export function neutralize(text: string | null | undefined, tagName: string): string {
   if (text == null) return '';
   return dropControls(text, true).replace(new RegExp(`</?\\s*${escapeRegex(tagName)}[^>]*>`, 'giu'), '');
 }
 
+/**
+ * Puts untrusted text between `<tagName-n>` tags after {@link neutralize}; the model is told that everything inside is
+ * data.
+ */
 export function wrap(tagName: string, n: string, untrusted: string | null | undefined): string {
   const tag = `${tagName}-${n}`;
   return `<${tag}>\n${neutralize(untrusted, tagName)}\n</${tag}>`;
@@ -185,6 +204,10 @@ export interface AiVisit {
   leftAt?: number | null;
 }
 
+/**
+ * A saved house in the shape the AI features read. It carries what {@link houseText} may use; the person's own offer is
+ * not part of its cost lines.
+ */
 export interface AiHouse {
   id: string;
   label?: string | null;
@@ -240,6 +263,10 @@ function utcDate(ms: number): string {
   return new Date(ms).toISOString().slice(0, 10);
 }
 
+/**
+ * One line about the visits to a house: how many, the date of the last (UTC), and the minutes spent when arrivals and
+ * departures were both recorded.
+ */
 export function visitSummary(visits: AiVisit[] | undefined): string {
   if (!visits?.length) return 'not visited yet';
   const last = Math.max(...visits.map((v) => v.arrivedAt));
@@ -250,6 +277,13 @@ export function visitSummary(visits: AiVisit[] | undefined): string {
     (total > 0 ? `, ${total} min in total` : '');
 }
 
+/**
+ * The document the model reads for one house: `Key: value` lines in the same words as the server's HouseDocuments and
+ * the phones' AiHouse, so all three give the same answers.
+ *
+ * Every free-text field goes through {@link Redactor}, so the contact name and phone never reach the model; the contact
+ * itself is not a line. Empty fields are left out and notes are cut at {@link NOTES_MAX} characters.
+ */
 export function houseText(h: AiHouse): string {
   const r = new Redactor(h.contactName, h.contactPhone);
   const lines: string[] = [];
@@ -433,12 +467,16 @@ function months(n: number): string {
   return `${n} month${n === 1 ? '' : 's'}`;
 }
 
+/** The house's label with its contact name and phone removed, for citations and plan stops. */
 export function houseLabel(h: AiHouse): string {
   return (new Redactor(h.contactName, h.contactPhone).freeText(h.label) as string) ?? '';
 }
 
 // ---------------------------------------------------------------- listing checks (DraftSanitizer)
 
+/**
+ * What the model returned for a listing, all text and not yet trusted; {@link sanitizeDraft} turns it into a {@link HouseDraft}.
+ */
 export interface RawListing {
   label?: string | null;
   address?: string | null;
@@ -464,6 +502,10 @@ function abbreviate(s: string): string {
   return t.length <= 40 ? t : t.slice(0, 40) + '…';
 }
 
+/**
+ * Tidies one text field of a model draft: no control characters, spaces collapsed (notes keep their line breaks), the
+ * words null, n/a and unknown become null, and text over `max` is cut with a warning.
+ */
 export function clean(value: string | null | undefined, max: number, field: string, warnings: string[]): string | null {
   if (value == null) return null;
   let s = dropControls(value, false);
@@ -485,6 +527,10 @@ function priceType(value: string | null | undefined, warnings: string[]): 'RENT'
   return null;
 }
 
+/**
+ * Reads an amount as written ("25,000", "1.2 Cr", "85 lakh") into rupees with exact integer arithmetic, so the result
+ * equals the server's BigDecimal one. Unreadable or out-of-range amounts become null with a warning.
+ */
 function price(value: string | null | undefined, warnings: string[]): number | null {
   if (!value || !value.trim()) return null;
   const m = PRICE.exec(value.replace(/,/g, '').replace(/_/g, ''));
@@ -533,6 +579,10 @@ function bedrooms(value: string | null | undefined, warnings: string[]): number 
   return n;
 }
 
+/**
+ * Keeps a phone number only if it has 7 to 15 digits and its last ten digits occur in the listing text: a number the
+ * model made up is dropped with a warning.
+ */
 function phone(value: string | null | undefined, source: string, warnings: string[]): string | null {
   if (!value || !value.trim()) return null;
   const kept = value.replace(/[^0-9+()\- ]/g, '').trim();
@@ -548,6 +598,10 @@ function phone(value: string | null | undefined, source: string, warnings: strin
   return kept.slice(0, LIMITS.phone);
 }
 
+/**
+ * Keeps a link only if it is http(s), at most 1000 characters and written in the listing text itself, so the model
+ * cannot invent a link.
+ */
 function url(value: string | null | undefined, source: string, warnings: string[]): string | null {
   if (!value || !value.trim()) return null;
   const v = value.trim();
@@ -586,6 +640,12 @@ function defaultLabel(bhk: number | null, locality: string | null, street: strin
   return (where == null ? what : `${what} in ${where}`).slice(0, LIMITS.label);
 }
 
+/**
+ * The safety check between the model and the form: turns the model's raw listing fields into a {@link HouseDraft} that
+ * is valid whatever the model returned. Each field is cleaned and limited, the phone and link must appear in
+ * `sourceText`, and every correction is added to `warnings`. A missing label gets a generated one; nothing here is
+ * saved until the person saves the form.
+ */
 export function sanitizeDraft(raw: RawListing | null, sourceText: string | null): HouseDraft {
   if (raw == null) {
     return { label: 'Untitled listing', address: null, street: null, locality: null, price: null, priceType: null, bedrooms: null, areaSqft: null, contactName: null, contactPhone: null, listingUrl: null, notes: null, amenities: [], warnings: ['Model returned nothing usable'] };
@@ -629,10 +689,12 @@ export interface ModelAnswer {
   citedHouseIds?: string[] | null;
 }
 
+/** True when the answer is exactly the "I don't know" sentence (curly quotes accepted). */
 export function isRefusal(answer: string | null | undefined): boolean {
   return answer != null && I_DONT_KNOW === answer.trim().replace(/’/g, "'").replace(/‘/g, "'");
 }
 
+/** The house ids the answer cites inline as `[house:<id>]`, lower case, once each, in order. */
 export function inlineIds(answer: string | null | undefined): string[] {
   if (!answer) return [];
   const out = new Set<string>();
@@ -648,10 +710,15 @@ function normalizeId(id: string | null | undefined): string {
   return s;
 }
 
+/** The lower-case words of three or more letters or digits in `s`, for matching a question against house text. */
 export function words(s: string | null | undefined): Set<string> {
   return new Set((s ?? '').toLowerCase().split(/[^\p{L}\p{N}]+/u).filter((w) => w.length > 2));
 }
 
+/**
+ * The line of a house document that shares most words with the question (the first on a tie), cut to `max` characters;
+ * the short quote shown under a citation.
+ */
 export function snippet(doc: string | null | undefined, question: string | null | undefined, max: number): string {
   if (!doc || !doc.trim()) return '';
   const q = words(question);
@@ -670,6 +737,11 @@ export function snippet(doc: string | null | undefined, question: string | null 
   return s.length <= max ? s : s.slice(0, max - 1) + '…';
 }
 
+/**
+ * The houses an answer really cites. Ids written inline win; the model's `citedHouseIds` list is used only when there
+ * are none. An id that is not one of the houses sent to the model is dropped, and a refusal or an empty answer cites
+ * nothing.
+ */
 export function citations(answer: ModelAnswer, docs: AskDocument[], question: string): Citation[] {
   const text = answer.answer ?? '';
   if (!text.trim() || isRefusal(text)) return [];
@@ -692,6 +764,7 @@ export interface Leg { to: RoutePoint; meters: number; walkMinutes: number }
 const EARTH_RADIUS_M = 6_371_008.8;
 const rad = (d: number) => (d * Math.PI) / 180;
 
+/** The great-circle distance between two points in metres. */
 export function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const dLat = rad(lat2 - lat1);
   const dLon = rad(lon2 - lon1);
@@ -699,6 +772,7 @@ export function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: 
   return 2 * EARTH_RADIUS_M * Math.asin(Math.min(1, Math.sqrt(a)));
 }
 
+/** Whole minutes to walk `meters`: a 1.3 detour factor over the straight line at 80 m a minute, rounded up. */
 export function walkMinutes(meters: number): number {
   return meters <= 0 ? 0 : Math.ceil((meters * 1.3) / 80);
 }
@@ -706,6 +780,10 @@ export function walkMinutes(meters: number): number {
 /** Java's Math.round (half up); JavaScript's Math.round is half up for positives too, so this is it. */
 export const roundHalfUp = (v: number) => Math.floor(v + 0.5);
 
+/**
+ * Orders `stops` by going to the nearest unvisited one each time, starting at the given point. Good enough for a walk
+ * between a few houses and the same rule as the server's RouteOptimizer.
+ */
 export function nearestNeighbour(lat: number, lon: number, stops: RoutePoint[]): Leg[] {
   const remaining = [...stops];
   const legs: Leg[] = [];
@@ -724,6 +802,7 @@ export function nearestNeighbour(lat: number, lon: number, stops: RoutePoint[]):
   return legs;
 }
 
+/** The legs from the start point through `stops` in the order given. */
 export function legsInOrder(lat: number, lon: number, stops: RoutePoint[]): Leg[] {
   return stops.map((p) => {
     const d = haversineMeters(lat, lon, p.lat, p.lon);
@@ -733,6 +812,10 @@ export function legsInOrder(lat: number, lon: number, stops: RoutePoint[]): Leg[
   });
 }
 
+/**
+ * A house offered to the model for a visit plan: the facts it needs and its distance from the start point. Never the
+ * contact.
+ */
 export interface PlanCandidate {
   id: string; label: string; locality: string | null; street: string | null; status: string | null;
   price: number | null; priceType: string | null; bedrooms: number | null; rating: number | null;
@@ -745,6 +828,12 @@ export const FALLBACK_REASON = 'Found by the search; ordered by walking distance
 export const FALLBACK_SUMMARY = 'The assistant could not finish a plan, so these are the houses it found, ordered by nearest neighbour from your start point.';
 const UUID_ONLY = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 
+/**
+ * Builds the visit plan from what the model chose, trusting only ids that were offered as candidates (each once, up to
+ * `maxStops`). The model decides which houses; the order and the walking legs are computed here. When the model gave no
+ * plan, or only ids that were not candidates, the plan falls back to the nearest-neighbour order of the houses in the
+ * running and says so (`fallback`).
+ */
 export function assemblePlan(plan: AgentPlan | null, seen: Map<string, PlanCandidate>, lat: number, lon: number, maxStops: number): PlanResponse {
   const byId = new Map([...seen].map(([k, v]) => [k.toLowerCase(), v]));
   let chosen: PlanCandidate[] = [];
@@ -792,6 +881,10 @@ export interface AskFilterValues {
   status?: string; priceType?: string; maxPrice?: number; minBedrooms?: number; minRating?: number;
 }
 
+/**
+ * Picks the houses the model may see for a question: the ones that pass the filters and, if more than
+ * {@link MAX_HOUSES} remain, the ones whose text shares most words with the question (stable on ties).
+ */
 export function selectForAsk(houses: AiHouse[], question: string, f?: AskFilterValues): AskDocument[] {
   const kept = houses.filter((h) =>
     (!f?.status || h.status === f.status) && (!f?.priceType || h.priceType === f.priceType) &&
@@ -807,6 +900,10 @@ export function selectForAsk(houses: AiHouse[], question: string, f?: AskFilterV
   return chosen.map((h) => ({ id: h.id, text: houseText(h), label: houseLabel(h) }));
 }
 
+/**
+ * Picks the {@link MAX_HOUSES} houses nearest to the start point as plan candidates, with contact details removed from
+ * their text fields.
+ */
 export function selectForPlan(houses: AiHouse[], lat: number, lon: number): PlanCandidate[] {
   return houses.map((h, index) => {
     const r = new Redactor(h.contactName, h.contactPhone);
@@ -822,6 +919,7 @@ export function selectForPlan(houses: AiHouse[], lat: number, lon: number): Plan
   }).sort((a, b) => a.c.distanceMeters - b.c.distanceMeters || a.index - b.index).slice(0, MAX_HOUSES).map((x) => x.c);
 }
 
+/** One line per candidate for the plan prompt: id, label, locality, status, price, bedrooms, rating and distance. */
 export function candidateLines(candidates: PlanCandidate[]): string {
   return candidates.map((c) => [
     `id: ${c.id}`, `label: ${c.label}`, `locality: ${c.locality ?? c.street ?? '-'}`, `status: ${c.status ?? '-'}`,
@@ -834,6 +932,10 @@ export function candidateLines(candidates: PlanCandidate[]): string {
 
 export interface Built { system: string; user: string }
 
+/**
+ * The prompt that asks the model to read one listing. The listing is wrapped as data and the rules tell the model not
+ * to follow instructions inside it; the wording is the server's.
+ */
 export function extractionPrompt(listing: string, n: string): Built {
   const tag = `listing-${n}`;
   const system = `You extract rental/sale property details from a single listing (WhatsApp message, classified ad or web page text) for a personal house-hunting app in India.
@@ -851,6 +953,10 @@ Rules:
   return { system, user: 'Extract the listing below.\n\n' + wrap('listing', n, listing) };
 }
 
+/**
+ * The prompt for a question about the saved houses: answer only from the records, cite ids, or say the
+ * {@link I_DONT_KNOW} sentence. The records are data, wrapped under the tag with the nonce `n`.
+ */
 export function askPrompt(question: string, docs: { id: string; text: string }[], n: string): Built {
   const tag = `houses-${n}`;
   const system = `You answer questions about ONE person's house hunt using ONLY the saved-house records between <${tag}> and </${tag}>. Each record starts with its id.
@@ -867,6 +973,10 @@ Rules:
   return { system, user: `<${tag}>\n${context.trim()}\n</${tag}>\n\nQuestion: ${neutralize(question, 'houses')}` };
 }
 
+/**
+ * The prompt for a visit plan: choose from the candidate houses only, at most `maxStops`; the order is computed
+ * afterwards by {@link assemblePlan}.
+ */
 export function planPrompt(question: string, lat: number, lon: number, maxStops: number, candidates: string, n: string): Built {
   const tag = `houses-${n}`;
   const system = `You plan house visits for one person who is house hunting. Start point: lat ${lat.toFixed(6)}, lon ${lon.toFixed(6)}.

@@ -28,6 +28,7 @@ import type { TranslationService } from '../i18n/translation.service';
 import { TRACE } from './trace-geo';
 import type { PlaceCheckResult, PlaceRow, PlaceStatus } from './trace-place-check';
 
+/** What was asked about: where I am now, a house, or a spot on the map. */
 export type PlaceKind = 'here' | 'house' | 'spot';
 
 /** At most this many days in the headline and this many rows under it. */
@@ -39,6 +40,7 @@ export function dayKey(epochMs: number, timeZone?: string): string {
   return new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone }).format(new Date(epochMs));
 }
 
+/** What {@link placeCheckSummary} needs besides the result. */
 export interface PlaceSummaryOptions {
   /** True when at least one saved walk exists (the *none* sentence then says so). */
   readonly hasSaved: boolean;
@@ -68,6 +70,11 @@ export interface PlaceSummary {
 
 const wholeMetres = (d: number) => Math.max(1, Math.ceil(d));
 
+/**
+ * Decides what the answer says, with no words in it: the days and the distance for the headline, the rows to list, and
+ * the loose-fix accuracy. Only the walks in the headline's band are listed: within the tolerance for WALKED, all nearby
+ * ones for CLOSE.
+ */
 export function placeCheckSummary(result: PlaceCheckResult, options: PlaceSummaryOptions): PlaceSummary {
   const band: readonly PlaceRow[] = result.status === 'WALKED' ? result.rows.filter((r) => r.walked) : result.status === 'CLOSE' ? result.rows : [];
   // Distinct days of the headline's band, newest first (the rows are already newest first).
@@ -108,6 +115,10 @@ export function placeTextHelpers(i18n: TranslationService, timeZone?: string): P
   };
 }
 
+/**
+ * The answer as sentences in the app language: the headline, one line per walk, the count of rows left out, and the
+ * notes after them.
+ */
 export interface PlaceText {
   readonly headline: string;
   readonly rows: readonly string[];

@@ -73,12 +73,20 @@ class PhoneDeletionAuthorizer(
     private val issued = LinkedHashMap<String, Issued>()
     private val asking = Mutex()
 
+    /** Whether the phone has a screen lock; any failure of the check counts as no lock (fail closed). */
     override fun isDeviceLockEnabled(): Boolean = try {
         auth.isDeviceLockEnabled()
     } catch (_: Exception) {
         false
     }
 
+    /**
+     * Runs the policy and the device check for [action]. One prompt at a time, so the operation bound for the check and
+      * the proof taken back belong together. A file deletion ([operationId] set) of level 2 or 3 is granted only with
+      * the
+     * check's proof; a pass that signed nothing is refused. Issued tokens are remembered (at most [MAX_ISSUED]) so
+     * [isGenuine] and [stillHolds] can verify them later.
+     */
     override suspend fun authorize(action: PolicyAction, ctx: DeletionContext, operationId: String?, promptReason: String): DeleteAuthorization {
         // One ask at a time: the bound operation and the proof taken back belong to the same prompt.
         val (a, proved) = asking.withLock {
@@ -130,16 +138,23 @@ class PhoneDeletionAuthorizer(
         }
     }
 
+    /** Drops every issued token. */
     override fun forget() {
         issued.clear()
     }
 
+    /**
+     * Whether [token] is one this class issued, still young enough, and whose grant the policy accepts for redeeming.
+     */
     override suspend fun isGenuine(token: AuthorizationToken): Boolean {
         val entry = entryOf(token) ?: return false
         if (!fresh(token)) return false
         return gate.redeem(entry.grant, entry.action) == Redeemed.OK
     }
 
+    /**
+     * Whether [token] is still genuine and young and the policy still lets the run go on (the lock is still there).
+     */
     override suspend fun stillHolds(token: AuthorizationToken): Boolean {
         val entry = entryOf(token) ?: return false
         if (!fresh(token)) return false

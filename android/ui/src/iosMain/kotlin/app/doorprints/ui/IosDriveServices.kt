@@ -135,6 +135,12 @@ internal class IosDriveServices(
 
     val controller: DriveConnectController get() = graph.controller
 
+    /**
+     * Assembles the Drive graph for this phone: Google sign-in through the browser sheet (offered only with the app in
+     * front and never by an automatic pass), the Keychain and Secure Enclave for secrets and the device key, the
+     * passcode-based device check, the network monitor, and the common sync and backup sources. The first time Drive is
+     * in use, the triggers start.
+     */
     private fun build(): DriveGraph {
         // Google's sheet is offered only with the app in front: the watching starts with the graph, not only with the triggers.
         IosForeground.install()

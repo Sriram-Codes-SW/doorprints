@@ -170,6 +170,10 @@ export class PlanPage implements AfterViewInit, OnDestroy {
     this.viewReady.set(true);
   }
 
+  /**
+   * Stops a request still running and keeps the request, start point and route in {@link AiSessionState} (memory only),
+   * so Back from a stop shows the route again.
+   */
   ngOnDestroy(): void {
     this.destroyed = true;
     this.request?.unsubscribe();
@@ -212,6 +216,10 @@ export class PlanPage implements AfterViewInit, OnDestroy {
     }
   }
 
+  /**
+   * Sets the start point from the device location. Only a press of the button asks for it; a result that arrives after
+   * the page is gone is dropped.
+   */
   protected useMyLocation(): void {
     if (typeof navigator === 'undefined' || !navigator.geolocation || this.locating()) return;
     this.locating.set(true);
@@ -271,6 +279,11 @@ export class PlanPage implements AfterViewInit, OnDestroy {
     if (this.questionMissing() && value.trim()) this.questionMissing.set(false);
   }
 
+  /**
+   * Asks the AI to plan visits from the start point, with 1 to 8 stops. A missing request or start point shows what is
+   * missing and focuses its field instead of planning from somewhere the person never chose. The route is drawn on the
+   * map and announced once; an earlier error stays, marked as updating, until this run ends.
+   */
   protected submit(): void {
     if (this.busy()) return;
     const q = this.question.trim();
@@ -363,6 +376,10 @@ export class PlanPage implements AfterViewInit, OnDestroy {
     if (move) this.map?.easeTo({ center: [lon, lat], zoom: 14 });
   }
 
+  /**
+   * Creates the route map. Until a start is set a click sets it; afterwards the start marker is dragged. The route
+   * layer is added on load.
+   */
   private createMap(container: HTMLDivElement): void {
     const s = this.start();
     const map = createMlMap(this.i18n, { container, center: [s.lon, s.lat], zoom: this.startSet() ? 13 : 4 });
@@ -444,6 +461,7 @@ export class PlanPage implements AfterViewInit, OnDestroy {
   }
 }
 
+/** Keeps a number within `min` and `max`; a non-finite value gives `min`. */
 function clamp(n: number, min: number, max: number): number {
   return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : min;
 }

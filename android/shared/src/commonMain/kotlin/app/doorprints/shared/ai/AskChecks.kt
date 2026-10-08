@@ -40,6 +40,11 @@ object AskChecks {
         Regex("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
     private val NON_WORD = Regex("[^\\p{L}\\p{N}]+")
 
+    /**
+     * The citations to show for [answer]: the houses named inline that were really sent in [docs], in order of first
+      * appearance, each with the line of its record closest to [question]. None for a blank answer or the refusal
+      * sentence.
+     */
     fun citations(answer: ModelAnswer, docs: List<AskDocument>, question: String): List<CitationDto> {
         val text = answer.answer ?: ""
         if (text.isBlank() || isRefusal(text)) return emptyList()
@@ -54,6 +59,7 @@ object AskChecks {
     fun isRefusal(answer: String?): Boolean =
         answer != null && AiPrompts.I_DONT_KNOW == answer.trim().replace('’', '\'').replace('‘', '\'')
 
+    /** The lower-case ids of the form `[house:<uuid>]` in [answer], in order and without repeats. */
     fun inlineIds(answer: String?): List<String> {
         if (answer == null) return emptyList()
         val out = LinkedHashSet<String>()
@@ -90,6 +96,7 @@ object AskChecks {
         return if (s.length <= max) s else s.take(max - 1) + "…"
     }
 
+    /** The distinct lower-case words of more than two characters; the measure of how much two texts share. */
     internal fun words(s: String?): Set<String> =
         if (s == null) emptySet() else s.lowercase().split(NON_WORD).filter { it.length > 2 }.toSet()
 }

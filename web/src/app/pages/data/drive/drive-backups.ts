@@ -72,6 +72,7 @@ export class DriveBackupsCard implements OnInit, OnDestroy {
   private autoBackupInterval: number | null = null;
   private visibilityListener: (() => void) | null = null;
 
+  /** Lists the backups and starts the automatic-backup checks. */
   ngOnInit(): void {
     this.loadBackups();
     this.loadAutoBackupState();
@@ -84,6 +85,10 @@ export class DriveBackupsCard implements OnInit, OnDestroy {
     this.cleanupVisibilityListener();
   }
 
+  /**
+   * Makes a backup in Drive now and says how many houses it holds. If the service asks for shrink confirmation, the
+   * person is asked to confirm.
+   */
   protected async backupNow(): Promise<void> {
     if (this.backupBusy()) return;
 
@@ -120,6 +125,7 @@ export class DriveBackupsCard implements OnInit, OnDestroy {
     await this.loadBackups();
   }
 
+  /** The person confirms the smaller backup. */
   protected async confirmShrink(): Promise<void> {
     const backupId = this.shrinkBackupId();
     if (!backupId) return;
@@ -142,6 +148,10 @@ export class DriveBackupsCard implements OnInit, OnDestroy {
     this.backupBusy.set(false);
   }
 
+  /**
+   * Downloads a backup from Drive and hands it to the *Import a backup* card as a file; nothing is imported until the
+   * person confirms there.
+   */
   protected async importBackup(backupId: string): Promise<void> {
     if (this.importBusy()) return;
 
@@ -164,12 +174,14 @@ export class DriveBackupsCard implements OnInit, OnDestroy {
     await this.loadBackups();
   }
 
+  /** Turns automatic backups on or off. */
   protected toggleAutoBackup(event: Event): void {
     const checked = (event.target as HTMLInputElement).checked;
     this.autoBackupEnabled.set(checked);
     void this.service.setAutoBackup(checked);
   }
 
+  /** Reads the backup list; a newer backup missing from Drive is announced. */
   private async loadBackups(): Promise<void> {
     this.listState.set('loading');
     this.listError.set(null);
@@ -194,6 +206,7 @@ export class DriveBackupsCard implements OnInit, OnDestroy {
     this.autoBackupEnabled.set(this.service.autoBackupEnabled());
   }
 
+  /** While the page is open, checks every 15 minutes whether an automatic backup is due. */
   private setupAutoBackupInterval(): void {
     this.autoBackupInterval = window.setInterval(async () => {
       if (!this.autoBackupEnabled()) return;
@@ -211,6 +224,7 @@ export class DriveBackupsCard implements OnInit, OnDestroy {
     }
   }
 
+  /** Checks for a due automatic backup when the page becomes visible. */
   private setupVisibilityListener(): void {
     this.visibilityListener = () => {
       if (document.visibilityState === 'visible' && this.autoBackupEnabled()) {
@@ -227,6 +241,7 @@ export class DriveBackupsCard implements OnInit, OnDestroy {
     }
   }
 
+  /** Runs a backup that is due, with no message, and refreshes the list if one ran. */
   private async runDueBackupSilent(): Promise<void> {
     const result = await this.service.runDueBackup();
     if (result.ran) {

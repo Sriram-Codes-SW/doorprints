@@ -110,10 +110,12 @@ export function samePhone(a: string | null | undefined, b: string | null | undef
   return key !== null && key === phoneKey(b);
 }
 
+/** The value if it is non-blank text within `max` characters, else undefined. */
 function text(value: unknown, max: number): string | undefined {
   return typeof value === 'string' && value.trim() !== '' && value.length <= max ? value : undefined;
 }
 
+/** The rating rounded to a whole number if it is from 1 to 5, else undefined. */
 function stars(value: unknown): number | undefined {
   if (typeof value !== 'number' || !Number.isFinite(value)) return undefined;
   const n = Math.round(value);

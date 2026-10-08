@@ -50,6 +50,7 @@ class IosStateFile(private val path: String) : StateFile {
 
     override fun exists(): Boolean = NSFileManager.defaultManager.fileExistsAtPath(path)
 
+    /** The file's modification time (ms) and size, or null when it is missing; a cheap way to notice a change. */
     override fun stamp(): Pair<Long, Long>? {
         val attributes = NSFileManager.defaultManager.attributesOfItemAtPath(path, error = null) ?: return null
         val modified = (attributes[NSFileModificationDate] as? NSDate)?.timeIntervalSince1970?.times(1000.0)?.toLong() ?: 0L
@@ -57,6 +58,7 @@ class IosStateFile(private val path: String) : StateFile {
         return modified to size
     }
 
+    /** Removes the file under the lock; a missing file is fine, a failure to remove it throws [IOException]. */
     override fun delete() {
         lock.withLock {
             val manager = NSFileManager.defaultManager
@@ -66,6 +68,7 @@ class IosStateFile(private val path: String) : StateFile {
         }
     }
 
+    /** Writes the whole text atomically (see the class), making the folder first; any failure throws [IOException]. */
     override fun writeText(text: String) {
         lock.withLock {
             val folder = path.substringBeforeLast('/', "")

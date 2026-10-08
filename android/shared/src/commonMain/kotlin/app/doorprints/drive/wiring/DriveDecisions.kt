@@ -29,6 +29,7 @@ import app.doorprints.drive.connect.ConnectState
 /** What the phone remembers about Drive being in use: [engaged] is persisted, [seenConnected] lives for the process only. */
 data class Engagement(val engaged: Boolean = false, val seenConnected: Boolean = false)
 
+/** Remembers whether Drive is in use on this phone, from the controller's state changes. */
 object DriveEngagement {
     /**
      * [Engagement] after the controller moved to [state] with [folderGone] as it stands. A folder that is open
@@ -73,11 +74,13 @@ object DriveSyncChoice {
 /** Why a background Drive run did not go. */
 enum class SkipReason { NOT_CONNECTED, AUTO_OFF, LOCK_REMOVED, LOCK_UNKNOWN, KEY_LOST }
 
+/** Whether a background Drive run may go, or why not. */
 sealed interface WorkDecision {
     data object Run : WorkDecision
     data class Skip(val reason: SkipReason) : WorkDecision
 }
 
+/** The guard of every background Drive run. */
 object DriveWorkRules {
     /**
      * May a background Drive run go (docs/15 §1.3, §10.3)? Only when Drive is connected **and** automatic backup is on
@@ -117,7 +120,9 @@ enum class LockNotice {
     KEY_LOST,
 }
 
+/** What the screen lock means for the Drive card, the background work and the notices (docs/15 §10.3). */
 object DriveLockRules {
+    /** The notice Settings shows for the state of the lock, whether Drive is in use and a key store fault. */
     fun notice(engaged: Boolean, lockPresent: Boolean, keyStoreFault: Boolean = false): LockNotice = when {
         lockPresent && engaged && keyStoreFault -> LockNotice.KEY_LOST
         lockPresent -> LockNotice.NONE

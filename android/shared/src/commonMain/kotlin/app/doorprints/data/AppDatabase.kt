@@ -34,6 +34,11 @@ import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 
+/**
+ * Room's converters from the model's structured values (checklist, rooms, answers, move-in, photo tags) to JSON
+ * text and back. The rooms, answers, move-in and tags read leniently: text that does not decode reads as empty,
+ * never as a crash.
+ */
 class Converters {
     private val mapSerializer = MapSerializer(String.serializer(), Int.serializer())
 
@@ -81,6 +86,11 @@ class Converters {
             ?.let { PhotoTags.coerced(it) }?.takeIf { it.isNotEmpty() }
 }
 
+/**
+ * The `houses` table. Reads hide tombstones unless they say otherwise; `dirty`, `markClean` and `versions` serve
+ * the sync loop and the import preview. A row is marked clean only while its `updatedAt` is still the one that was
+ * pushed, so an edit made during a sync stays dirty.
+ */
 @Dao
 interface HouseDao {
     @Query("SELECT * FROM houses WHERE deleted = 0 ORDER BY updatedAt DESC")
@@ -145,6 +155,7 @@ interface HouseDao {
     fun observeForBroker(brokerId: String): Flow<List<HouseEntity>>
 }
 
+/** The `visits` table, read and marked clean like [HouseDao]. */
 @Dao
 interface VisitDao {
     @Query("SELECT * FROM visits WHERE deleted = 0 AND houseId = :houseId ORDER BY arrivedAt DESC")
@@ -202,6 +213,10 @@ interface VisitDao {
     suspend fun liveForHouse(houseId: String): List<VisitEntity>
 }
 
+/**
+ * The `photos` table: the rows, the upload and delete queues (`uploaded`, `deleted`) and the metadata flags
+ * (`metaDirty`) that the photo sync works through.
+ */
 @Dao
 interface PhotoDao {
     @Query("SELECT * FROM photos WHERE houseId = :houseId AND deleted = 0 ORDER BY createdAt")
@@ -261,6 +276,7 @@ interface PhotoDao {
     suspend fun markAllMetaDirty()
 }
 
+/** The `track_points` table, the path trace of the last days; local to this phone and never synced. */
 @Dao
 interface TrackDao {
     /** The trace of the last days, oldest first, for the map's line (docs/11 5.27). */
@@ -408,6 +424,11 @@ interface RecordDao {
     version = 11,
     exportSchema = true,
 )
+/**
+ * The phone's Room database (houses, visits, photos, path trace, records, saved walks), one for Android and iOS.
+ * The version, [MIGRATIONS] and the exported schema files are pinned by `RoomSchemaTest`, so a table change cannot
+ * reach an installed app unmigrated.
+ */
 @TypeConverters(Converters::class)
 @ConstructedBy(AppDatabaseConstructor::class)
 abstract class AppDatabase : RoomDatabase() {
@@ -430,11 +451,6 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        /**
-         * Every migration, in order, for the three builders (Android's `AppDatabaseFactory`, iOS's `AppDatabaseIos`,
-         * the tests): a new version adds its migration here once (readiness review 2026-09-29, docs/14 §8 finding 6)
-         * and pins its `<version>.json` in `RoomSchemaTest`.
-         */
         /** v3 (S4b-FR-2, 2026-09-29): the path trace's `track_points`, a local-only table (never synced). */
         val MIGRATION_2_3 = object : Migration(2, 3) {
             override fun migrate(connection: SQLiteConnection) {
@@ -557,6 +573,11 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Every migration, in order, for the three builders (Android's `AppDatabaseFactory`, iOS's `AppDatabaseIos`,
+         * the tests): a new version adds its migration here once (readiness review 2026-09-29, docs/14 §8 finding 6)
+         * and pins its `<version>.json` in `RoomSchemaTest`.
+         */
         val MIGRATIONS: Array<Migration> = arrayOf(
             MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8,
             MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11,

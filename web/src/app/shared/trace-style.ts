@@ -56,11 +56,13 @@ export const TRACK_WIDTHS: readonly (readonly [number, number])[] = [
 export const TRACK_REPEAT_FACTOR_CLEAR = 1.8;
 export const TRACK_REPEAT_FACTOR_SUBTLE = 1;
 
+/** A walk or stretch as a GeoJSON line. */
 export interface LineFeature {
   readonly type: 'Feature';
   readonly properties: Record<string, string>;
   readonly geometry: { readonly type: 'LineString'; readonly coordinates: [number, number][] };
 }
+/** Lines as a GeoJSON feature collection, the data of a walk source. */
 export interface LineCollection {
   readonly type: 'FeatureCollection';
   readonly features: LineFeature[];
@@ -83,6 +85,7 @@ export function repeatFactor(look: RepeatLook): number | null {
 
 const round = (n: number) => Math.round(n * 100) / 100;
 
+/** A MapLibre width expression that grows with the zoom, scaled by `factor`. */
 function widthStops(factor: number): unknown[] {
   return ['interpolate', ['linear'], ['zoom'], ...TRACK_WIDTHS.flatMap(([zoom, width]) => [zoom, round(width * factor)])];
 }
@@ -92,10 +95,12 @@ export function repeatWidthExpression(look: RepeatLook): unknown[] {
   return widthStops(repeatFactor(look) ?? TRACK_REPEAT_FACTOR_SUBTLE);
 }
 
+/** Whether the repeated-stretch layer is drawn: hidden only when the look is Off. */
 export function repeatVisibility(look: RepeatLook): 'visible' | 'none' {
   return look === 'OFF' ? 'none' : 'visible';
 }
 
+/** The layer for whole walks (the base lines). */
 export function trackLayerJson(): LineLayerJson {
   return {
     id: TRACK_LAYER,
@@ -107,6 +112,7 @@ export function trackLayerJson(): LineLayerJson {
   };
 }
 
+/** The dashed layer over repeated stretches, in the width and visibility of the chosen look. */
 export function trackRepeatLayerJson(look: RepeatLook): LineLayerJson {
   return {
     id: TRACK_REPEAT_LAYER,

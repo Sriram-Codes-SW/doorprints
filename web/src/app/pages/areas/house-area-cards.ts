@@ -190,6 +190,7 @@ export class HouseAreaNotesCard {
     });
   }
 
+  /** Reads the areas and notes; shows none if the store cannot be read. */
   private async reload(): Promise<void> {
     try {
       this.areas.set(await firstValueFrom(this.api.areas()));
@@ -200,6 +201,7 @@ export class HouseAreaNotesCard {
     }
   }
 
+  /** Where a note comes from, as words: the area's name or the street. */
   protected sourceOf(row: AreaNoteRow): Msg {
     const n = row.note;
     const name = n.areaId !== undefined ? this.areas().find((a) => a.id === n.areaId)?.name : undefined;
@@ -208,6 +210,9 @@ export class HouseAreaNotesCard {
       : { key: 'areaNotes.fromStreet', params: { street: n.street ?? '' } };
   }
 
+  /**
+   * Opens the form for a street note or an area note. An area note needs at least one area, otherwise the card says so.
+   */
   protected start(kind: 'street' | 'area'): void {
     this.noAreas.set(false);
     if (kind === 'area' && this.areas().length === 0) {
@@ -226,6 +231,7 @@ export class HouseAreaNotesCard {
     this.open.set(null);
   }
 
+  /** Saves the new note for the street (the house's own) or the chosen area, after checking the text and the area. */
   protected async save(): Promise<void> {
     const kind = this.open();
     if (!kind || this.saving()) return;

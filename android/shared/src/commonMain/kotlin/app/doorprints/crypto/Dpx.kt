@@ -88,6 +88,10 @@ class DpxHeader internal constructor(
     /** `"DPX1" ‖ u16 length ‖ canonical JSON`. */
     val bytes: ByteArray by lazy { Dpx.frame(json()) }
 
+    /**
+     * The canonical JSON of the header, fields in the format's order: the exact bytes that the length prefix and
+     * every chunk cover.
+     */
     internal fun json(): ByteArray = CanonicalJson()
         .raw("{\"v\":").number(Dpx.VERSION.toLong())
         .raw(",\"alg\":").string(Dpx.ALG)
@@ -352,6 +356,10 @@ class Dpx(private val p: CryptoProvider) {
         return parseHeader(json)
     }
 
+    /**
+     * Parses the header JSON and requires that writing it again gives the same bytes, so a header has one
+     * spelling.
+     */
     private fun parseHeader(json: ByteArray): DpxHeader {
         fun bad(why: String): Nothing = throw DpxException(DpxException.Kind.HEADER_INVALID, why)
         val root = CanonicalJson.parse(json) as? kotlinx.serialization.json.JsonObject ?: bad("not a JSON object")
@@ -375,6 +383,7 @@ class Dpx(private val p: CryptoProvider) {
         return header
     }
 
+    /** An in-memory [ByteSink] that grows as needed. */
     private class Buffer : ByteSink {
         private var buf = ByteArray(1024)
         private var size = 0

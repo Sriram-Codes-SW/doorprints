@@ -44,6 +44,7 @@ object Pkce {
     /** The `state` nonce that ties the redirect to the request (RFC 6749 §10.12). */
     fun newState(random: RandomBytes): String = randomToken(random, STATE_BYTES)
 
+    /** Whether [v] fits RFC 7636's verifier grammar (length and characters); a check for callers and tests. */
     fun isValidVerifier(v: String): Boolean = v.length in 43..128 && v.all { it in UNRESERVED }
 
     private fun randomToken(random: RandomBytes, bytes: Int): String {

@@ -38,6 +38,7 @@ import type { LineCollection } from './trace-style';
 import { ringElement } from './trace-ring';
 import type { MapStyleWatch } from './map-style';
 
+/** A position in degrees. */
 export interface LatLon {
   lat: number;
   lon: number;
@@ -182,6 +183,11 @@ export class LocationMap implements AfterViewInit, OnDestroy {
     });
   }
 
+  /**
+   * Creates the map and its marker (draggable when `editable`); a drag or a click moves the marker to a position
+   * rounded to 6 decimals and reports it. The walk layers are added on every `style.load`, because a style replaced
+   * after an offline start comes without them. Does nothing when no map can be made (no WebGL 2).
+   */
   ngAfterViewInit(): void {
     const container = this.mapEl().nativeElement;
     const center: [number, number] = [this.lon(), this.lat()];
@@ -246,6 +252,7 @@ export class LocationMap implements AfterViewInit, OnDestroy {
     return new Marker({ element: ringElement(ring.label), anchor: 'center' }).setLngLat([ring.lon, ring.lat]).addTo(map);
   }
 
+  /** Asks the map to request its style again, for the "Try again" button on the offline message. */
   protected retry(): void {
     this.styleWatch?.retry();
   }
@@ -264,6 +271,7 @@ export class LocationMap implements AfterViewInit, OnDestroy {
 
 const EMPTY_LINES: LineCollection = { type: 'FeatureCollection', features: [] };
 
+/** Rounds a coordinate to 6 decimals (about 0.1 m), the precision pins are stored at. */
 export function round6(n: number): number {
   return Math.round(n * 1e6) / 1e6;
 }

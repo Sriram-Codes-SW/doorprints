@@ -268,6 +268,7 @@ object DefaultQuestions {
 
     private val byId: Map<String, Default> = ALL.associateBy { it.id }
 
+    /** The seeded question with this id, or null for an id that is not one. */
     fun byId(id: String): Default? = byId[id]
 
     /** The whole seeded bank in [language] (what a fresh install holds after seeding). */

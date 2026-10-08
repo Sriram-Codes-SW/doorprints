@@ -52,6 +52,10 @@ object PromptErrors {
     /** BiometricConstants.ERROR_NEGATIVE_BUTTON (13); the platform class has no public constant for it. */
     const val ERROR_NEGATIVE_BUTTON = 13
 
+    /**
+     * The [ProofOutcome] for a final BiometricPrompt error [code]: cancelled, timed out, locked out, no lock, no
+     * sensor, else failed.
+     */
     fun map(code: Int): ProofOutcome = when (code) {
         BiometricPrompt.BIOMETRIC_ERROR_CANCELED, BiometricPrompt.BIOMETRIC_ERROR_USER_CANCELED, ERROR_NEGATIVE_BUTTON -> ProofOutcome.Cancelled
         BiometricPrompt.BIOMETRIC_ERROR_TIMEOUT -> ProofOutcome.TimedOut
@@ -143,6 +147,10 @@ class KeystoreOperationProver(
 
 /** The prover for this phone: the Keystore one from Android 11, the plain pass result below (docs/15 §10.2). */
 object OperationProvers {
+    /**
+     * The prover for [sdk]; [context] gives the foreground Activity for the prompt, [auth] and [p] serve the software
+     * fallback.
+     */
     fun forThisDevice(context: () -> Context?, auth: DeviceAuth, p: CryptoProvider, sdk: Int = Build.VERSION.SDK_INT): OperationProver =
         if (sdk >= Build.VERSION_CODES.R) {
             @Suppress("NewApi")

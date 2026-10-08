@@ -48,8 +48,14 @@ class ShownKey(val text: String) {
 /** The system prompt lines of the device check (translated by the screen, read by the controller). */
 data class DrivePrompts(val delete: String, val revoke: String, val approve: String, val disconnectAll: String)
 
+/** Where the backups list is: loading, failed, empty or showing rows. */
 enum class ListState { LOADING, ERROR, EMPTY, LIST }
 
+/**
+ * The Backups part of the Drive card: the list and its [ListState], the last backup made, a running backup ([busy]),
+ * the last failure, and the shrink question ([shrinkHoldId] is the backup whose older neighbours are held back until
+ * the person answers). [missingNewer] warns that a newer backup than the listed ones was seen.
+ */
 data class BackupsUi(
     val listState: ListState = ListState.LOADING,
     val list: List<BackupSummary> = emptyList(),
@@ -67,6 +73,10 @@ data class BackupsUi(
     val noSource: Boolean = false,
 )
 
+/**
+ * The Sync and photos part of the Drive card: the status line, a running sync, whether the shrink question was put off
+ * for now ([confirmDismissed]), the Wi-Fi-only switch, the bytes of photos still waiting and their network status.
+ */
 data class SyncUi(
     val info: SyncInfo = SyncInfo(SyncState.NOT_RUN, null),
     val busy: Boolean = false,
@@ -77,6 +87,10 @@ data class SyncUi(
     val photoError: Boolean = false,
 )
 
+/**
+ * The Devices part of the Drive card: the signed-in account, the listed devices, the device whose revoke is being
+ * confirmed, the *Disconnect on all devices* question and the new recovery key shown once after a revoke.
+ */
 data class DevicesUi(
     val devices: List<ListedDevice> = emptyList(),
     val account: String? = null,
@@ -88,6 +102,10 @@ data class DevicesUi(
     val error: DriveReason? = null,
 )
 
+/**
+ * The delete flow: its [phase], the [choice] made, the plan and the confirm info (tick box, countdown, device-check
+ * level), and the progress of a run that stopped part way ([left] of [total] files).
+ */
 data class DeleteUi(
     val phase: DeletePhase = DeletePhase.MENU,
     val choice: DeleteChoice? = null,
@@ -179,6 +197,9 @@ class DriveHolder(
 ) {
     private val _ui = MutableStateFlow(initial())
 
+    /**
+     * The first state: the controller's state and notice, with the deleted-folder question when that is already known.
+     */
     private fun initial() = DriveUiState(
         connect = actions.state.value, notice = actions.enrolmentNotice.value,
         error = if (actions.folderGone.value && actions.state.value == ConnectState.DISCONNECTED) DriveReason.FOLDER_GONE else null,
@@ -208,6 +229,10 @@ class DriveHolder(
         scope.launch { actions.enrolmentNotice.collect { n -> _ui.update { it.copy(notice = n) } } }
     }
 
+    /**
+     * Runs one operation in the holder's scope. An unexpected failure ends the busy state with the generic error and
+     * its code (step and class name, never a message); cancellation is passed on.
+     */
     private fun <T> launchOp(block: suspend () -> T) {
         scope.launch {
             try {
@@ -241,6 +266,10 @@ class DriveHolder(
         launchOp { applyConnect(actions.createFolder()) }
     }
 
+    /**
+     * Shows how a connect, join or new folder ended: the controller's state and failure, and the recovery key when one
+     * was made (held as a [ShownKey] until the key screen is left).
+     */
     private fun applyConnect(result: ConnectResult) {
         _ui.update {
             it.copy(
@@ -250,6 +279,7 @@ class DriveHolder(
         }
     }
 
+    /** The "I have saved my recovery key" tick; it can only be on while a key is shown. */
     fun setKeySaved(saved: Boolean) = _ui.update { it.copy(keySaved = saved && it.connectKey != null) }
 
     /** *Next* on the key screen: only with the box ticked. The key is dropped from the state. */
@@ -274,6 +304,10 @@ class DriveHolder(
         launchOp { applyConnect(actions.openWithRecoveryKey(typed)) }
     }
 
+    /**
+     * *Disconnect this device*: forgets the session and this device's Google grant, then resets the card. Every file in
+     * Drive stays.
+     */
     fun disconnect() {
         _ui.update { it.copy(busy = true) }
         launchOp {
@@ -284,6 +318,10 @@ class DriveHolder(
 
     // ---- Ready: loading --------------------------------------------------------------------------------------------
 
+    /**
+     * Fills the connected card: the automatic backup and sync settings at once, the account and devices, then the
+     * backups list and the waiting photos.
+     */
     private fun loadReady() {
         _ui.update { it.copy(backups = it.backups.copy(auto = actions.autoBackupEnabled()), sync = it.sync.copy(info = actions.syncStatus(), wifiOnly = actions.photosWifiOnly())) }
         launchOp {
@@ -294,6 +332,10 @@ class DriveHolder(
         loadPhotos()
     }
 
+    /**
+     * Fills the backups list from Drive: LOADING first, then EMPTY or LIST, or ERROR with the reason. Also keeps the
+     * newest backup as the "last backup" line.
+     */
     fun loadBackups() {
         _ui.update { it.copy(backups = it.backups.copy(listState = ListState.LOADING, listError = null)) }
         launchOp {
@@ -323,6 +365,10 @@ class DriveHolder(
 
     // ---- Backups ---------------------------------------------------------------------------------------------------
 
+    /**
+     * Makes a backup now (ignored while one is running). A much smaller backup than before leaves
+     * [BackupsUi.shrinkHoldId] set, which opens the shrink question; a failure goes to [BackupsUi.error] with its code.
+     */
     fun backUpNow() {
         if (_ui.value.backups.busy) return
         _ui.update { it.copy(backups = it.backups.copy(busy = true, error = null, errorCode = null, noSource = false)) }
@@ -342,6 +388,7 @@ class DriveHolder(
         }
     }
 
+    /** The person accepted the smaller backup: pruning of the older backups goes on, then the list is loaded again. */
     fun confirmShrink() {
         val id = _ui.value.backups.shrinkHoldId ?: return
         _ui.update { it.copy(backups = it.backups.copy(busy = true)) }
@@ -352,6 +399,7 @@ class DriveHolder(
         }
     }
 
+    /** The person keeps the older backups: the shrink question is dismissed and nothing is pruned. */
     fun keepOlderBackups() = _ui.update { it.copy(backups = it.backups.copy(shrinkHoldId = null)) }
 
     fun setAutoBackup(enabled: Boolean) {
@@ -361,6 +409,10 @@ class DriveHolder(
 
     // ---- Sync and photos -------------------------------------------------------------------------------------------
 
+    /**
+     * Runs a sync pass (ignored while one runs). [confirmShrink] lets the pass go on after the shrink guard asked; the
+     * status line and the waiting photos are read again afterwards.
+     */
     fun syncNow(confirmShrink: Boolean = false) {
         if (_ui.value.sync.busy) return
         _ui.update { it.copy(sync = it.sync.copy(busy = true, confirmDismissed = false)) }
@@ -375,6 +427,10 @@ class DriveHolder(
 
     fun notNowSyncShrink() = _ui.update { it.copy(sync = it.sync.copy(confirmDismissed = true)) }
 
+    /**
+     * The photo upload switch: saves it and reads it back; a failure shows the photo error instead of leaving the
+     * switch wrong.
+     */
     fun setWifiOnly(wifiOnly: Boolean) {
         try {
             actions.setPhotosWifiOnly(wifiOnly)
@@ -402,6 +458,10 @@ class DriveHolder(
 
     fun cancelRevoke() = _ui.update { it.copy(devices = it.devices.copy(revoking = null)) }
 
+    /**
+     * Revokes the device chosen in [askRevoke] after the device check. On success the new recovery key is held in
+     * [DevicesUi.newKey] until it is ticked as saved and dismissed.
+     */
     fun confirmRevoke() {
         val device = _ui.value.devices.revoking ?: return
         if (_ui.value.busy) return
@@ -428,6 +488,10 @@ class DriveHolder(
 
     fun cancelDisconnectAll() = _ui.update { it.copy(devices = it.devices.copy(confirmingDisconnectAll = false)) }
 
+    /**
+     * *Disconnect on all devices*: revokes Google's grant after the device check, then resets the card as a plain
+     * disconnect does.
+     */
     fun confirmDisconnectAll() {
         if (_ui.value.busy) return
         _ui.update { it.copy(busy = true, devices = it.devices.copy(confirmingDisconnectAll = false)) }
@@ -470,6 +534,11 @@ class DriveHolder(
     /** This phone is the connected one: wait for the new device's code. */
     fun startApprove() = _ui.update { it.copy(enrol = EnrolUi.ApproverInput()) }
 
+    /**
+     * The approver gives the newcomer's offer (scanned or pasted): a text that is not an offer leaves the dialog open
+     * with an error, a good one moves to the comparison of the numbers, with *This device is a* preset from the offer
+     * (a website offer is a computer).
+     */
     fun submitOffer(text: String) {
         val c = codec ?: return
         val offer = c.parseOffer(text)
@@ -530,6 +599,7 @@ class DriveHolder(
 
     // ---- Deleting --------------------------------------------------------------------------------------------------
 
+    /** The deletion the menu choice means, or null for one backup without a chosen backup. */
     private fun actionOf(choice: DeleteChoice, oneBackupId: String?): DeletionAction? = when (choice) {
         DeleteChoice.OLDER_BACKUPS -> DeletionAction.OlderBackups
         DeleteChoice.ALL_BACKUPS -> DeletionAction.AllBackups
@@ -568,6 +638,7 @@ class DriveHolder(
         }
     }
 
+    /** Flips the confirm step's tick box and clears its hint. */
     fun toggleTick() {
         val d = _ui.value.delete
         if (d.phase != DeletePhase.CONFIRM || d.info?.tickBoxRequired != true || _ui.value.busy) return
@@ -596,6 +667,10 @@ class DriveHolder(
         launchOp { applyRun(actions.resumeDelete(prompts().delete), previous = d.copy(phase = DeletePhase.PARTIAL)) }
     }
 
+    /**
+     * Shows how a delete run ended: done, or part way with the files left. A refused device check leaves the person on
+     * the step they were on, with the reason.
+     */
     private fun applyRun(r: Outcome<app.doorprints.drive.connect.DeleteRun>, previous: DeleteUi) {
         when (r) {
             is Outcome.Ok -> _ui.update {

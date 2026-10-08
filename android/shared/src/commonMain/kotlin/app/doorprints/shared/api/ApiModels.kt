@@ -38,6 +38,11 @@ import kotlinx.serialization.json.JsonObject
 // Sprint 3.5: same property names, defaults and nullability, so the JSON on the wire is identical. Timestamps are ISO-8601
 // strings (see IsoTime); the apps store epoch milliseconds.
 
+/**
+  * A house on the wire (`/api/houses`), also the form the Drive sync file stores. Times are ISO-8601 text; [deleted]
+  * marks a
+ * tombstone and [syncVersion] is the server's position of the row (0 where none applies).
+ */
 @Serializable
 data class HouseDto(
     val id: String,
@@ -78,6 +83,7 @@ data class HouseDto(
     val syncVersion: Long = 0,
 )
 
+/** A visit on the wire (`/api/visits`): where and when the person arrived and left; a visit may be tied to a house. */
 @Serializable
 data class VisitDto(
     val id: String,
@@ -170,6 +176,7 @@ data class StatsDto(
 
 // ---- AI endpoints (docs/ai/ai-design.md section 13; backend app.doorprints.server.ai.*) ----
 
+/** The server's AI switches: whether AI and the MCP endpoint are on, and the models in use. */
 @Serializable
 data class AiStatusDto(
     val enabled: Boolean = false,
@@ -182,6 +189,7 @@ data class AiStatusDto(
 
 // ---- Pairing (docs/03 §12.1, ADR-25; backend app.doorprints.server.device.PairingController) ----
 
+/** Begins pairing: the name this device will be listed under. */
 @Serializable
 data class PairStartRequest(val deviceName: String)
 
@@ -189,6 +197,7 @@ data class PairStartRequest(val deviceName: String)
 @Serializable
 data class PairStartedDto(val userCode: String, val pollToken: String, val expiresIn: Long, val interval: Int)
 
+/** Polls a pairing with the token from [PairStartedDto]. */
 @Serializable
 data class PairPollRequest(val pollToken: String)
 
@@ -196,12 +205,15 @@ data class PairPollRequest(val pollToken: String)
 @Serializable
 data class PairPolledDto(val status: String, val deviceKey: String? = null)
 
+/** Pairs with an invite code the owner made, naming this device. */
 @Serializable
 data class PairRedeemRequest(val invite: String, val deviceName: String)
 
+/** The API key issued to this device once pairing is approved; a secret. */
 @Serializable
 data class DeviceKeyDto(val deviceKey: String)
 
+/** The pasted listing text to read. */
 @Serializable
 data class ExtractListingRequest(val text: String)
 
@@ -225,12 +237,19 @@ data class HouseDraftDto(
     val areaSqft: Int? = null,
 )
 
+/** A question about the saved houses. */
 @Serializable
 data class AskRequest(val question: String)
 
+/** A house the answer relied on, with a label and the line of its record that supports it. */
 @Serializable
 data class CitationDto(val houseId: String, val label: String? = null, val snippet: String? = null)
 
+/**
+  * An answer to Ask with its [citations]. [grounded] says the answer rests on cited houses; [retrieved] is how many
+  * houses
+ * were considered.
+ */
 @Serializable
 data class AskResponseDto(
     val answer: String = "",
@@ -239,9 +258,11 @@ data class AskResponseDto(
     val retrieved: Int = 0,
 )
 
+/** A visit-plan request: the wish in words, the start point, and an optional cap on stops. */
 @Serializable
 data class PlanRequest(val question: String, val startLat: Double, val startLon: Double, val maxStops: Int? = null)
 
+/** One stop of a plan, in visiting order, with the walk from the previous point. */
 @Serializable
 data class PlannedStopDto(
     val order: Int,
@@ -254,6 +275,10 @@ data class PlannedStopDto(
     val walkMinutes: Int = 0,
 )
 
+/**
+  * A visit plan; [fallback] is true when the stops are the nearest-neighbour order because the model gave no usable
+  * plan.
+ */
 @Serializable
 data class PlanResponseDto(
     val summary: String? = null,

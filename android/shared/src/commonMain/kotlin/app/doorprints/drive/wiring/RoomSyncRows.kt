@@ -45,6 +45,10 @@ class RoomSyncRows(
     private val deviceId: () -> String,
     private val photoSize: (photoId: String) -> Long?,
 ) : LocalRows {
+    /**
+      * Every house, visit and record (tombstones included) and every photo row, in the sync file's row form; a row the
+      * file's schema refuses is left out.
+     */
     override suspend fun all(): List<SyncRow> {
         val by = deviceId()
         // A writer the file's schema refuses would drop every row below, one by one, and write an empty file: stop instead.
@@ -59,6 +63,7 @@ class RoomSyncRows(
         return rows
     }
 
+    /** The photo row by id as a DTO, or null when this device has no such photo. */
     override suspend fun photo(photoId: String): PhotoChangeDto? = db.photos().get(photoId)?.let(::photoChange)
 
     private fun photoChange(p: PhotoEntity): PhotoChangeDto = PhotoChangeDto(

@@ -49,6 +49,12 @@ class DriveImportService(
     private val p: CryptoProvider,
     private val scratch: ScratchSpace = MemoryScratchSpace,
 ) {
+    /**
+     * Fetches [backup], proves it (see the class notes) and streams the decrypted ZIP into [staging]. Returns
+     * [ImportDownload.Verified] only when every check passed; otherwise [staging] is discarded and the result is
+      * [ImportDownload.Refused]. [maxPlaintext] caps the decrypted size. The scratch copy of the ciphertext is always
+      * deleted.
+     */
     suspend fun download(
         folder: ReadyFolder,
         backup: DriveBackup,

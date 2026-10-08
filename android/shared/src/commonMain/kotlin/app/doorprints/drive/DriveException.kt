@@ -43,6 +43,7 @@ class DriveException(
     cause: Throwable? = null,
 ) : IOException("Drive ${kind.name} (HTTP $httpStatus)", cause) {
 
+    /** The reasons a Drive call fails, grouped so callers decide on the kind and never on a raw status. */
     enum class Kind {
         /** 401 twice: the token was refused, and the one the [TokenProvider] gave next too. Connect again. */
         UNAUTHORIZED,

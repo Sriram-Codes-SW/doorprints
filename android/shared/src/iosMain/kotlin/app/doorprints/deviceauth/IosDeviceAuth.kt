@@ -36,8 +36,13 @@ import kotlin.coroutines.resume
  */
 @OptIn(ExperimentalForeignApi::class)
 class IosDeviceAuth : DeviceAuth {
+    /** Whether the device-owner policy (passcode, Face ID or Touch ID) can be evaluated. */
     override fun isDeviceLockEnabled(): Boolean = LAContext().canEvaluatePolicy(LAPolicyDeviceOwnerAuthentication, error = null)
 
+    /**
+     * Shows the system prompt for [reason]. Cancel, lockout and no-passcode have their own results; everything
+     * else is FAILED, and the prompt is invalidated if the coroutine is cancelled.
+     */
     override suspend fun authenticate(reason: String, level: DeleteLevel): AuthResult {
         if (!isDeviceLockEnabled()) return AuthResult.LOCK_NOT_SET
         return suspendCancellableCoroutine { cont ->

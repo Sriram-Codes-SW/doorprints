@@ -47,6 +47,10 @@ object ApiKeyCipher {
     private const val IV_BYTES = 12
     private const val TAG_BITS = 128
 
+    /**
+     * The Keystore key, created on first use. Its alias is a stored name (see above); the key material never leaves
+     * the Keystore.
+     */
     private fun key(): SecretKey {
         val keyStore = KeyStore.getInstance(KEYSTORE).apply { load(null) }
         (keyStore.getEntry(ALIAS, null) as? KeyStore.SecretKeyEntry)?.let { return it.secretKey }
@@ -61,6 +65,10 @@ object ApiKeyCipher {
         return generator.generateKey()
     }
 
+    /**
+     * Seals [plain] for the settings file; each call uses a fresh random IV, so the same key encrypts to a different
+     * string every time. Throws if the Keystore is unavailable.
+     */
     fun encrypt(plain: String): String {
         val cipher = Cipher.getInstance(TRANSFORMATION)
         cipher.init(Cipher.ENCRYPT_MODE, key()) // the Keystore picks a fresh random IV
@@ -69,6 +77,10 @@ object ApiKeyCipher {
         return PREFIX + Base64.encodeToString(iv + sealed, Base64.NO_WRAP)
     }
 
+    /**
+     * Opens a string made by [encrypt]; null for nothing stored, an unknown format, a tampered value or a key that is
+     * gone (after a restore to a new phone). Never throws: the caller asks the person for the key again.
+     */
     fun decrypt(stored: String?): String? {
         if (stored.isNullOrEmpty() || !stored.startsWith(PREFIX)) return null
         return runCatching {

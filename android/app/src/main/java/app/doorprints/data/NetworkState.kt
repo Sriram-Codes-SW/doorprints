@@ -33,7 +33,15 @@ data class NetworkSnapshot(
     val metered: Boolean,
 )
 
+/**
+ * Reads the phone's active network for the sync worker, so it can wait on a captive portal and keep photos for Wi-Fi
+ * when asked.
+ */
 object NetworkState {
+    /**
+     * The active network's [NetworkSnapshot]; with no network, or no way to read it, a disconnected, metered one (the
+     * cautious answer).
+     */
     fun current(context: Context): NetworkSnapshot {
         val cm = context.getSystemService(ConnectivityManager::class.java)
             ?: return NetworkSnapshot(connected = false, validated = false, captivePortal = false, metered = true)

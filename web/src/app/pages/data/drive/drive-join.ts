@@ -54,6 +54,10 @@ export class DriveJoinComponent implements AfterViewInit {
     this.keyInput?.nativeElement.focus();
   }
 
+  /**
+   * Opens the Drive folder with the typed recovery key. The typed key is cleared from the page once it works; a wrong
+   * key shows the service's reason.
+   */
   async onJoin(): Promise<void> {
     if (this.busy()) return;
 
@@ -94,6 +98,7 @@ export class DriveJoinComponent implements AfterViewInit {
     this.recoveryKeyText.set(el instanceof HTMLInputElement ? el.value : '');
   }
 
+  /** Disconnects this browser from Drive. */
   async onDisconnect(): Promise<void> {
     this.busy.set(true);
     try {

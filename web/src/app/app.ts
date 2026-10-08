@@ -64,6 +64,12 @@ const NAV_ICONS = {
   connect: 'M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z',
 } as const;
 
+/**
+ * The shell of the app: header with the brand and language, the navigation (a bottom bar on phones, in the header
+ * otherwise), the banners, the tour, the confirmation dialog and the live region for announcements. It also gives each
+ * page change a fresh start: the page scrolls to the top (or to where Back left it) and focus moves to the page
+ * heading.
+ */
 @Component({
   selector: 'app-root',
   imports: [RouterOutlet, RouterLink, RouterLinkActive, TPipe, ConfirmDialog, AppBanners, ReminderBanners, TourOverlay],
@@ -664,6 +670,7 @@ export class App {
     });
   }
 
+  /** Notes how far `main` was scrolled when a page is left, keeping the last 50 pages. */
   private rememberScroll(navigationId: number): void {
     // By element id, not the view query: the first navigation starts before the shell has rendered.
     const main = document.getElementById('main');
@@ -696,6 +703,7 @@ export class App {
     attempt();
   }
 
+  /** Follows whether the phone layout (up to 600px wide) applies. */
   private watchPhoneLayout(): void {
     if (typeof matchMedia === 'undefined') return;
     const query = matchMedia('(max-width: 600px)');
@@ -756,6 +764,7 @@ export class App {
     this.navMore.set(nav.scrollWidth - nav.clientWidth - nav.scrollLeft > 1);
   }
 
+  /** Switches the app language and announces it in the new language once it has loaded. */
   protected onLang(event: Event): void {
     const value = (event.target as HTMLSelectElement).value;
     if (!isLang(value)) return;
@@ -766,6 +775,10 @@ export class App {
     );
   }
 
+  /**
+   * Moves focus to the page's main heading (or to `main`), so keyboard and screen-reader users start at the top of the
+   * new page.
+   */
   private focusHeading(): void {
     const main = this.main().nativeElement;
     const target = main.querySelector<HTMLElement>('h1') ?? main;

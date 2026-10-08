@@ -48,6 +48,7 @@ interface QrScanBackend {
     /** The scanner module is installed; when it is not, the install is requested and this answers false until it is there. */
     suspend fun moduleReady(): Boolean
 
+    /** Opens the scanner and waits for one code; the scanned text is untrusted. */
     suspend fun scan(): QrScanBackendResult
 }
 

@@ -36,6 +36,7 @@ data class ExportRequest(
     val target: String,
     val options: ExportOptions,
 ) {
+    /** The request as WorkManager input data, read back by [fromData]. */
     fun toData(): Data = workDataOf(
         KEY_FORMAT to format.name,
         KEY_TARGET to target,
@@ -95,6 +96,10 @@ data class ExportRequest(
          */
         const val KEY_LOCATION = "location"
 
+        /**
+         * The request in a worker's input [data], or null when the format or target is missing; an unknown or absent
+         * option falls back to its default.
+         */
         fun fromData(data: Data): ExportRequest? {
             val format = ExportFormat.entries.firstOrNull { it.name == data.getString(KEY_FORMAT) } ?: return null
             val target = data.getString(KEY_TARGET) ?: return null

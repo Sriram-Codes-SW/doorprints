@@ -37,6 +37,10 @@ import kotlinx.serialization.json.putJsonObject
 
 internal val driveJson = Json { ignoreUnknownKeys = true; explicitNulls = false }
 
+/**
+ * Drive's `File` resource as JSON: every field optional, because a `fields` mask leaves some out.
+ * Read it with [toModel]; build the Drive-shaped answer for tests with [of].
+ */
 @Serializable
 internal data class FileWire(
     val id: String? = null,
@@ -86,6 +90,7 @@ internal data class FileWire(
     }
 }
 
+/** The answer of `files.list`: one page of [FileWire]s and the token for the next page. */
 @Serializable
 internal data class ListWire(
     val files: List<FileWire> = emptyList(),
@@ -99,6 +104,10 @@ internal data class UserWire(val emailAddress: String? = null, val displayName: 
 @Serializable
 internal data class QuotaWire(val limit: String? = null, val usage: String? = null, val usageInDrive: String? = null)
 
+/**
+ * The answer of `about.get`. [toModel] needs the account's e-mail address (else the answer is corrupt) and reads the
+ * quota numbers, which Drive sends as strings.
+ */
 @Serializable
 internal data class AboutWire(val user: UserWire? = null, val storageQuota: QuotaWire? = null) {
     fun toModel(): DriveAbout {
@@ -113,6 +122,7 @@ internal data class AboutWire(val user: UserWire? = null, val storageQuota: Quot
     }
 }
 
+/** One entry of `revisions.list`; [toModel] fails with CORRUPT when the id, size or time is malformed. */
 @Serializable
 internal data class RevisionWire(val id: String? = null, val modifiedTime: String? = null, val size: String? = null) {
     fun toModel() = DriveRevision(
@@ -125,6 +135,9 @@ internal data class RevisionWire(val id: String? = null, val modifiedTime: Strin
 @Serializable
 internal data class RevisionsWire(val revisions: List<RevisionWire> = emptyList(), val nextPageToken: String? = null)
 
+/**
+ * A [DriveException.Kind.CORRUPT] for an answer that is not what Drive sends; [reason] names the check, never content.
+ */
 internal fun corrupt(reason: String = "badAnswer") = DriveException(DriveException.Kind.CORRUPT, reason = reason)
 
 private fun time(text: String?): Long =

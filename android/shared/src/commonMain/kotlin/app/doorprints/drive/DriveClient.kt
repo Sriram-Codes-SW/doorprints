@@ -22,10 +22,12 @@ package app.doorprints.drive
 sealed interface UploadTarget {
     val mimeType: String
 
+    /** Content for a file that does not exist yet; its [mimeType] is the new file's. */
     data class New(val file: NewFile) : UploadTarget {
         override val mimeType: String get() = file.mimeType
     }
 
+    /** New content (and optionally [change]d metadata) for the file [fileId]; the upload keeps its id. */
     data class Existing(
         val fileId: String,
         override val mimeType: String,

@@ -57,9 +57,11 @@ fun interface MergeRule {
  * the same row.
  */
 object SyncRules {
+    /** Keeps the local row only if it has unsent changes and was edited strictly later than the incoming one. */
     fun keepLocal(localDirty: Boolean, localUpdatedAt: Long, incomingUpdatedAt: Long): Boolean =
         localDirty && localUpdatedAt > incomingUpdatedAt
 
+    /** The same rule on records; with no local row there is nothing to keep. */
     fun keepLocal(local: SyncRecord?, incoming: SyncRecord): Boolean =
         local != null && keepLocal(local.dirty, local.updatedAt, incoming.updatedAt)
 

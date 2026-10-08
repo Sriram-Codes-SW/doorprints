@@ -31,10 +31,12 @@ import kotlin.time.Instant
  * Instant.toEpochMilli() did.
  */
 object IsoTime {
+    /** The ISO-8601 UTC text of [epochMillis]. */
     fun format(epochMillis: Long): String = Instant.fromEpochMilliseconds(epochMillis).toString()
 
     /** @throws IllegalArgumentException when [iso] is not an ISO-8601 instant. */
     fun parseMillis(iso: String): Long = Instant.parse(iso).toEpochMilliseconds()
 
+    /** The current time in epoch milliseconds. */
     fun nowMillis(): Long = Clock.System.now().toEpochMilliseconds()
 }

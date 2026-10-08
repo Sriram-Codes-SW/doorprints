@@ -69,6 +69,10 @@ export class BrokersPage {
     });
   }
 
+  /**
+   * Reads the brokers and counts the live houses linked to each. `userAsked` marks a Retry, so a repeated failure is
+   * announced again.
+   */
   protected reload(userAsked = false): void {
     this.api.brokers().subscribe({
       next: (rows) => {

@@ -27,6 +27,11 @@
 import { K, TRACE, interpolatedAtMs, isValidLatLon, nearestOnSegment, segmentLengthM } from './trace-geo';
 import type { TracePoint } from './trace-geo';
 
+/**
+ * The answer in one word. WALKED: a walk passed within the tolerance. CLOSE: walks passed nearby but not that close.
+ * NONE: there are walks but none nearby. EMPTY: there are no walks to compare. IMPRECISE: the location fix was too
+ * inexact to use. INVALID_PLACE: the position is not on the globe.
+ */
 export type PlaceStatus = 'WALKED' | 'CLOSE' | 'NONE' | 'EMPTY' | 'IMPRECISE' | 'INVALID_PLACE';
 
 /** A walk to compare: its points (already split), where it came from, and the walk id the save rule compares. */
@@ -51,6 +56,10 @@ export interface PlaceRow {
   readonly t: number;
 }
 
+/**
+ * The result of {@link placeCheck}: the status, whether the fix was loose, the nearest distance and one row per walk
+ * near the place.
+ */
 export interface PlaceCheckResult {
   readonly status: PlaceStatus;
   /** An accepted but loose fix (its accuracy is above the tolerance): the sheet adds a warning. Never makes `WALKED` easier. */
@@ -61,6 +70,7 @@ export interface PlaceCheckResult {
   readonly rows: readonly PlaceRow[];
 }
 
+/** Options for {@link placeCheck}, for tests only. */
 export interface PlaceCheckOptions {
   /**
    * TEST ONLY. Overrides {@link TRACE.toleranceM} for the *walked* bound (the unit test that pins the inclusive bound passes

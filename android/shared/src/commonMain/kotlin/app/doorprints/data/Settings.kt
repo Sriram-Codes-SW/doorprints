@@ -116,6 +116,7 @@ data class AppSettings(
     /** Last four characters of the Gemini key, for Settings' masked hint. */
     val geminiKeyHint get() = if (geminiKey.length >= 8) geminiKey.takeLast(4) else ""
 
+    /** Whether both a server address and a key are saved. */
     val serverConfigured get() = serverUrl.isNotBlank() && apiKey.isNotBlank()
 
     /** Last four characters of the key, for a masked hint in Settings (the full key is never shown again). */
@@ -201,6 +202,11 @@ enum class TourEnd(val wire: String) {
 /** Who answers AI requests: the connected server, or Gemini directly with the person's own key (ADR-26). */
 enum class AiProviderChoice { SERVER, DEVICE }
 
+/**
+ * The phone's settings in a DataStore, with secrets (the server key, the person's own AI key) kept in a
+ * [SecretStore] instead. Settings are read as one [AppSettings] flow; each `save` function is one atomic edit, and
+ * a change that makes old sync state meaningless (a different server) resets it in the same edit.
+ */
 class SettingsStore(
     private val dataStore: DataStore<Preferences>,
     private val secrets: SecretStore,
@@ -435,6 +441,7 @@ class SettingsStore(
         dataStore.edit { p -> stale.forEach { p.remove(longPreferencesKey(it)) } }
     }
 
+    /** The settings as they are now, read once. */
     suspend fun current() = settings.first()
 
     /**
@@ -494,6 +501,10 @@ class SettingsStore(
      */
     suspend fun saveServer(url: String, key: String) = secrets.editing { saveServerEdit(url, key) }
 
+    /**
+     * The edit behind [saveServer]: a different address resets the sync cursors (a full download), and a new
+     * address or key clears the sync-failure record, which belonged to the old setup.
+     */
     private suspend fun saveServerEdit(url: String, key: String) = dataStore.edit {
         val clean = url.trim().trimEnd('/')
         val changed = it[Keys.serverUrl] != clean
@@ -517,6 +528,7 @@ class SettingsStore(
         }
     }
 
+    /** Saves the Hunt mode alert radius and the minimum stay. */
     suspend fun saveTracking(alertRadiusM: Int, minStayMinutes: Int) = dataStore.edit {
         it[Keys.alertRadius] = alertRadiusM
         it[Keys.minStay] = minStayMinutes
@@ -564,6 +576,7 @@ class SettingsStore(
         it[Keys.shareContacts] = ShareContact.encode(current.map { c -> if (c.id == id) c.copy(lastSharedAt = at) else c })
     }
 
+    /** Removes the contact with [id] from the share list. */
     suspend fun removeShareContact(id: String) = dataStore.edit {
         it[Keys.shareContacts] = ShareContact.encode(ShareContact.decode(it[Keys.shareContacts]).filter { c -> c.id != id })
     }
@@ -630,8 +643,10 @@ class SettingsStore(
         if (outcome.kind == SyncOutcome.Kind.OK) it[Keys.lastSyncOkAt] = at
     }
 
+    /** How far each kind of row has been pulled from the remote (a position the sync only compares and stores). */
     data class Cursors(val house: Long, val visit: Long, val photo: Long, val record: Long = 0L)
 
+    /** The saved pull cursors; 0 for a kind never pulled. */
     suspend fun cursors(): Cursors {
         val p = dataStore.data.first()
         return Cursors(
@@ -678,6 +693,7 @@ class SettingsStore(
         it[Keys.autoBackupKeep] = keep.coerceIn(1, 20)
     }
 
+    /** Records when the last automatic backup ran and its error text (empty on success). */
     suspend fun saveAutoBackupResult(at: Long, error: String) = dataStore.edit {
         it[Keys.lastAutoBackupAt] = at
         it[Keys.lastAutoBackupError] = error

@@ -164,6 +164,7 @@ object Saf {
         }
     }
 
+    /** Deletes the document at [uri]; false when the provider refuses or the document is gone (never throws). */
     fun delete(context: Context, uri: Uri): Boolean = runCatching {
         DocumentsContract.deleteDocument(context.contentResolver, uri)
     }.getOrDefault(false)
@@ -228,6 +229,7 @@ fun <T> oldestBeyondRetention(
  */
 class CreateExportDocument : ActivityResultContract<CreateExportDocument.Request, Uri?>() {
 
+    /** What to create: the [mimeType] and suggested [fileName] of the format the person chose. */
     data class Request(val mimeType: String, val fileName: String)
 
     override fun createIntent(context: Context, input: Request): Intent =

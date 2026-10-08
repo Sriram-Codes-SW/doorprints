@@ -37,11 +37,16 @@ class RetryPolicy(
     /** Injected so tests do not wait; production suspends (does not block a thread, unlike Thread.sleep). */
     val sleep: suspend (Long) -> Unit = { delay(it) },
 ) {
+    /**
+      * The wait before retry number [attempt] (1 is the first): a random time up to the capped exponential, so retries
+      * spread out.
+     */
     fun backoffMs(attempt: Int): Long {
         val exp = baseDelayMs shl (attempt - 1).coerceIn(0, 20)
         return random.nextLong(0, min(maxDelayMs, exp) + 1)
     }
 
+    /** Whether a call may be repeated: idempotent methods, or one the client marked as safe to repeat. */
     fun isRetriable(method: String, markedIdempotent: Boolean): Boolean =
         method in IDEMPOTENT_METHODS || markedIdempotent
 

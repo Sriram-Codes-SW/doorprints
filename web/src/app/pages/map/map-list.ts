@@ -27,10 +27,12 @@ import { NO_COST_FILTER, type CostFilter, type CostRange } from '../../shared/co
  * filtered list, and a filtered view can be bookmarked or shared (UX audit 2026-09-23).
  */
 export type SortKey = 'recent' | 'score' | 'price';
+/** A status to show, or all. */
 export type StatusFilter = HouseStatus | 'ALL';
 
 export const SORT_KEYS: readonly SortKey[] = ['recent', 'score', 'price'];
 
+/** The list's state as it goes into the URL: search text, status, sort and cost ranges. */
 export interface ListQuery {
   q: string;
   status: StatusFilter;
@@ -71,6 +73,7 @@ export function parseListQuery(get: (name: string) => string | null): ListQuery 
   };
 }
 
+/** Reads the cost range ends from the URL; an end that is not a whole number of rupees is ignored. */
 function parseCostFilter(get: (name: string) => string | null): CostFilter {
   const cost: CostFilter = { monthly: {}, moveIn: {}, perSqFt: {} };
   for (const [range, end, name] of COST_PARAMS) {
@@ -119,6 +122,7 @@ export function comparePrice(a: HouseDto, b: HouseDto): number {
   return (a.price ?? 0) - (b.price ?? 0);
 }
 
+/** Groups houses for the price sort: rent first, then sale, then a price of unknown type, then no price. */
 function priceGroup(h: HouseDto): number {
   if (h.price === null || h.price === undefined) return 3;
   if (h.priceType === 'RENT') return 0;
@@ -177,6 +181,7 @@ export function brokerSearchText(broker: Pick<Broker, 'name' | 'agency' | 'feeTe
   return [broker.name, broker.agency, broker.feeTerms].filter((x) => !!x).join(' ');
 }
 
+/** When the house last changed in ms (updated, else created); 0 if neither is readable. */
 export function timeOf(h: HouseDto): number {
   const t = Date.parse(h.updatedAt ?? h.createdAt ?? '');
   return Number.isNaN(t) ? 0 : t;

@@ -127,6 +127,7 @@ export class ConfirmDialog {
     });
   }
 
+  /** Settles the request with the chosen button. */
   protected answer(choice: ConfirmAnswer): void {
     this.answered = true;
     this.confirm.settle(choice);
@@ -138,6 +139,7 @@ export class ConfirmDialog {
     this.answer('cancel');
   }
 
+  /** Settles as Cancel if the dialog was closed without an answer, and returns focus to the control that opened it. */
   protected onClose(): void {
     if (!this.answered) this.confirm.settle('cancel');
     this.opener?.focus();

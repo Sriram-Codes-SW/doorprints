@@ -142,6 +142,7 @@ fun trackSourceJson(): JsonObject = buildJsonObject {
     put("data", Json.parseToJsonElement(trackGeoJson(emptyList())))
 }
 
+/** A filter for features whose `kind` property is [kind]. */
 private fun kindFilter(kind: String): JsonArray = buildJsonArray {
     add("=="); add(buildJsonArray { add("get"); add("kind") }); add(kind)
 }
@@ -299,6 +300,7 @@ fun houseLayersJson(labelSizeSp: Float): List<JsonObject> {
         add("to-boolean")
         add(buildJsonArray { add("get"); add("approx") })
     }
+    /** An expression that picks [then] for a house whose location is approximate and [otherwise] for the rest. */
     fun ifApprox(then: JsonElement, otherwise: JsonElement) = buildJsonArray {
         add("case")
         add(approx)

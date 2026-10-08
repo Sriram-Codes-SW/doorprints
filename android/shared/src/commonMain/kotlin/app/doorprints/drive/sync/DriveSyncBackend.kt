@@ -86,8 +86,18 @@ class DriveSyncBackend(
         confirmNext = true
     }
 
+    /**
+     * Whether Drive has lost what this device wrote ([DriveSyncEngine.isBehind]); the cursors mean nothing for
+     * snapshots.
+     */
     override suspend fun isBehind(cursors: List<Long>): Boolean = engine.isBehind()
 
+    /**
+      * Runs one whole sync pass: writes this device's state, reads the other devices' files and keeps the rows to hand
+      * out
+     * through the `*Since` calls. A backoff ([SyncPassResult.Waiting]) is thrown as RATE_LIMITED with the wait, and a
+     * pause as CANCELLED with the reason `paused`. A confirmed shrink guard is used up by one pass that gets through.
+     */
     override suspend fun commitPushes() {
         val confirm = confirmNext
         taken = emptyList()
@@ -105,10 +115,13 @@ class DriveSyncBackend(
         }
     }
 
+    /** Sends nothing: the row is written by [commitPushes]. The answer carries no position. */
     override suspend fun pushHouse(house: HouseDto): HouseDto = house.copy(syncVersion = 0)
 
+    /** Sends nothing: the row is written by [commitPushes]. The answer carries no position. */
     override suspend fun pushVisit(visit: VisitDto): VisitDto = visit.copy(syncVersion = 0)
 
+    /** Sends nothing: the row is written by [commitPushes]. The answer carries no position. */
     override suspend fun pushRecord(record: RecordDto): RecordDto = record.copy(syncVersion = 0)
 
     /** The tombstone of a photo deleted here (its local row goes right after): kept in the file for ever. */
@@ -129,17 +142,29 @@ class DriveSyncBackend(
         service.upload(photoId, size, open)
     }
 
+    /**
+      * Sends nothing: returns the local photo row with [meta] applied and no position (the row travels in
+      * [commitPushes]),
+     * or null when this device has no such photo.
+     */
     override suspend fun pushPhotoMeta(photoId: String, meta: PhotoMetaDto): PhotoChangeDto? {
         val photo = local.photo(photoId) ?: return null
         return photo.copy(roomId = meta.roomId, tags = meta.tags, caption = meta.caption, metaUpdatedAt = meta.metaUpdatedAt, syncVersion = 0)
     }
 
+    /** The houses the last pass took from other devices, if that pass is newer than [cursor]. */
     override suspend fun housesSince(cursor: Long): List<HouseDto> = decode(SyncKind.HOUSES, cursor, HouseDto.serializer()) { it.copy(syncVersion = generation) }
 
+    /** The visits the last pass took from other devices, if that pass is newer than [cursor]. */
     override suspend fun visitsSince(cursor: Long): List<VisitDto> = decode(SyncKind.VISITS, cursor, VisitDto.serializer()) { it.copy(syncVersion = generation) }
 
+    /** The records the last pass took from other devices, if that pass is newer than [cursor]. */
     override suspend fun recordsSince(cursor: Long): List<RecordDto> = decode(SyncKind.RECORDS, cursor, RecordDto.serializer()) { it.copy(syncVersion = generation) }
 
+    /**
+      * The photo rows the last pass took, except live photos whose bytes are not in Drive yet and are not on this
+      * device.
+     */
     override suspend fun photoChangesSince(cursor: Long): List<PhotoChangeDto> {
         val all = decode(SyncKind.PHOTOS, cursor, PhotoChangeDto.serializer()) { it.copy(syncVersion = generation) }
         val service = photos ?: return all
@@ -149,9 +174,14 @@ class DriveSyncBackend(
         return all.filter { it.deleted || it.id in refs || local.photo(it.id) != null }
     }
 
+    /** The photo's bytes; NOT_FOUND when they cannot be had or fail their checks. */
     override suspend fun downloadPhoto(photoId: String): ByteArray =
         downloadPhotoIfAvailable(photoId) ?: throw DriveException(DriveException.Kind.NOT_FOUND, reason = "photoUnavailable")
 
+    /**
+      * The photo's bytes, or null when the file is not there or fails a check (the skip is recorded in [photoSkips]); a
+      * network failure is thrown.
+     */
     override suspend fun downloadPhotoIfAvailable(photoId: String): ByteArray? {
         val service = photos ?: throw DriveSyncNotYet("photo download", "S4b-BL-128")
         return service.download(photoId)
@@ -210,10 +240,13 @@ object SyncRows {
     /** [by]: the device that made this version of the row (the local device for a row whose writer is not kept). */
     fun house(dto: HouseDto, by: String): SyncRow = row(SyncKind.HOUSES, HouseDto.serializer(), dto, by)
 
+    /** The visit as a sync row written by [by]. */
     fun visit(dto: VisitDto, by: String): SyncRow = row(SyncKind.VISITS, VisitDto.serializer(), dto, by)
 
+    /** The record as a sync row written by [by]. */
     fun record(dto: RecordDto, by: String): SyncRow = row(SyncKind.RECORDS, RecordDto.serializer(), dto, by)
 
+    /** The photo row as a sync row written by [by], with the Drive file of its bytes when [ref] is known. */
     fun photo(dto: PhotoChangeDto, by: String, ref: PhotoRef? = null): SyncRow {
         val base = row(SyncKind.PHOTOS, PhotoChangeDto.serializer(), dto, by)
         return if (ref == null) base else withRef(base, ref)

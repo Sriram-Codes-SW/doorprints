@@ -102,6 +102,10 @@ export class AskPage implements OnDestroy {
     }
   }
 
+  /**
+   * Stops a request still running and keeps the question, filters and answer in {@link AiSessionState}, so Back from a
+   * cited house shows them again without another AI call.
+   */
   ngOnDestroy(): void {
     this.request?.unsubscribe();
     this.session.ask = {
@@ -126,6 +130,10 @@ export class AskPage implements OnDestroy {
     if (this.questionMissing() && value.trim()) this.questionMissing.set(false);
   }
 
+  /**
+   * Sends the question with the chosen filters. An empty question only shows why; an earlier error stays on screen,
+   * marked as updating, until this run ends. The answer is announced once and focus moves to its heading.
+   */
   protected submit(): void {
     if (this.busy()) return;
     const q = this.question.trim();

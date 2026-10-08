@@ -63,6 +63,11 @@ import java.security.MessageDigest
  */
 object Exporters {
 
+    /**
+     * Writes [bundle] as [format] into [out], blocking: call it off the main thread. Photos are read one at a time
+     * through [photoFile]. The CSV, XLSX and backup writers close [out] (they end the ZIP); HTML, PDF and Markdown
+     * only flush it. [onProgress] is also the stop point (see above).
+     */
     fun write(
         bundle: ExportBundle,
         format: ExportFormat,
@@ -254,6 +259,7 @@ object Exporters {
         return BackupFile(path, size, hex(digest.digest()))
     }
 
+    /** Lower-case hexadecimal text of [bytes], as the backup manifest writes its SHA-256 values. */
     fun hex(bytes: ByteArray): String {
         val out = StringBuilder(bytes.size * 2)
         for (b in bytes) {

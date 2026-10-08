@@ -27,6 +27,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class AgentPlan(val summary: String? = null, val stops: List<AgentStop>? = null)
 
+/** One stop the model chose: a house id and its reason, both unchecked. */
 @Serializable
 data class AgentStop(val houseId: String? = null, val reason: String? = null)
 
@@ -57,6 +58,11 @@ object PlanChecks {
         "The assistant could not finish a plan, so these are the houses it found, ordered by nearest neighbour from your start point."
     private val UUID_TEXT = Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
+    /**
+      * The plan to show: [plan]'s stops that name a known candidate (each once, up to [maxStops]) with the legs
+      * recomputed
+     * from the start point, or the fallback order when [plan] is missing or none of its stops was usable.
+     */
     fun assemble(
         plan: AgentPlan?,
         seen: Map<String, PlanCandidate>,

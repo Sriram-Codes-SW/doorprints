@@ -113,6 +113,10 @@ class ViewingReminderScheduler(
         }
     }
 
+    /**
+     * Sets one alarm for a reminder due at [at]: exact if allowed, else a window ending at [at], else WorkManager
+     * work. Returns which was used.
+     */
     private fun schedule(operation: PendingIntent, id: String, kind: HuntReminders.Kind, at: Long, nowMs: Long): How {
         if (canScheduleExact()) {
             try {
@@ -248,6 +252,10 @@ class ViewingReminderScheduler(
 /** The reminders' (and the area wake-up's) short-lived scope for a receiver's `goAsync` work (the app's scope is the process's). */
 internal val receiverScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+/**
+ * Runs [block] on [receiverScope] while keeping the broadcast alive with `goAsync`, so the process is not stopped
+ * mid-work; errors are dropped and the broadcast is always finished.
+ */
 internal fun BroadcastReceiver.runAsync(block: suspend () -> Unit) {
     // The system always hands a real PendingResult to onReceive; a unit test that calls onReceive itself gets null. A
     // null one used to throw from the `finally` below, on a background thread, and a later test saw that as an

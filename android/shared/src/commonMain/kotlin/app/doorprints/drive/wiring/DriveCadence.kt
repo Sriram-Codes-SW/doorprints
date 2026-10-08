@@ -67,20 +67,25 @@ object DriveCadence {
 
 /** Where the cadence is kept between runs. */
 interface CadenceStore {
+    /** The stored cadence, or level 0 with no pass yet. */
     fun load(): CadenceState
+    /** Stores [state]; may drop the write. */
     fun save(state: CadenceState)
 }
 
 /** The cadence over a [CadenceStore]; writes only what changed. */
 class DriveCadenceGate(private val store: CadenceStore) {
+    /** Whether the periodic wake at [now] should run its pass. */
     fun due(now: Long): Boolean = DriveCadence.due(store.load(), now)
 
+    /** Moves the cadence on after a sync pass that gave [info]; writes only on a change. */
     fun record(info: SyncInfo, now: Long) {
         val before = store.load()
         val after = DriveCadence.afterPass(before, info, now)
         if (after != before) store.save(after)
     }
 
+    /** Back to the base level (a local change, or the app in front); writes only on a change. */
     fun reset() {
         val before = store.load()
         val after = DriveCadence.reset(before)

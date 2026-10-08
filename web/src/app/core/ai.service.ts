@@ -83,6 +83,7 @@ export interface Citation {
   snippet: string | null;
 }
 
+/** The answer to a question about the saved houses and the houses it cites; `grounded` is true when it cites at least one, `retrieved` counts the houses the model was shown. */
 export interface AskResponse {
   answer: string;
   citations: Citation[];
@@ -108,6 +109,7 @@ export interface PlannedStop {
   walkMinutes: number;
 }
 
+/** A suggested order for visiting houses from a start point, with walking legs; `fallback` is true when the model's plan was unusable and the stops are the houses it found, nearest first. */
 export interface PlanResponse {
   summary: string | null;
   stops: PlannedStop[];
@@ -375,6 +377,7 @@ function readOptIn(): boolean {
 /** Splits an answer into text and [house:<id>] citation markers, so markers can become links. */
 export type AnswerPart = { kind: 'text'; text: string } | { kind: 'cite'; houseId: string };
 
+/** Cuts `answer` at each `[house:<uuid>]` marker, in order; text between markers stays as text parts. */
 export function splitCitations(answer: string): AnswerPart[] {
   const parts: AnswerPart[] = [];
   const re = /\[house:([0-9a-fA-F-]{36})\]/g;

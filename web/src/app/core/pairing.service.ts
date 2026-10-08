@@ -33,6 +33,7 @@ export interface PairingStarted {
   interval: number;
 }
 
+/** The answer to a poll. `deviceKey` comes once, with `approved`; `denied` and `expired` end the pairing. */
 export interface PairingPolled {
   status: 'pending' | 'approved' | 'denied' | 'expired';
   /** Only with `approved`, and only once. */
@@ -54,10 +55,18 @@ export interface ConnectLink {
 export class PairingService {
   private readonly http = inject(HttpClient);
 
+  /**
+   * Asks the server for a pairing code to type on the owner page; the device name is what the owner sees in the list of
+   * devices.
+   */
   start(baseUrl: string, deviceName: string): Observable<PairingStarted> {
     return this.http.post<PairingStarted>(`${baseUrl}/api/pair/start`, { deviceName });
   }
 
+  /**
+   * Asks whether the owner has approved the code yet, with the token from {@link start}; call it every `interval`
+   * seconds.
+   */
   poll(baseUrl: string, pollToken: string): Observable<PairingPolled> {
     return this.http.post<PairingPolled>(`${baseUrl}/api/pair/poll`, { pollToken });
   }

@@ -34,6 +34,10 @@ import type { TKey } from '../../i18n/en';
 
 const PROBLEM_KEY: Record<LocateProblem, TKey> = { denied: 'trace.here.deniedWeb', unavailable: 'trace.web.unavailable', timeout: 'trace.here.timeout' };
 
+/**
+ * The *Have I been here?* button and the dialog that offers *Where I am now* and *A spot on the map*. The result goes
+ * to {@link PlaceCheckState}.
+ */
 @Component({
   selector: 'app-place-check',
   imports: [TPipe],
@@ -171,6 +175,7 @@ export class PlaceCheck {
     return PROBLEM_KEY[problem];
   }
 
+  /** Opens the dialog, ending any wait for a fix and clearing a location problem. */
   protected open(): void {
     this.opener = document.getElementById('place-check-open');
     this.state.cancelLocating();
@@ -185,11 +190,13 @@ export class PlaceCheck {
     this.state.locateHere();
   }
 
+  /** Closes the dialog and asks the page to enter its crosshair mode. */
   protected spot(): void {
     this.shut();
     this.pickSpot.emit();
   }
 
+  /** Cancels a wait for a fix and closes the dialog. */
   protected close(): void {
     this.state.cancelLocating();
     this.shut();

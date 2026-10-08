@@ -73,12 +73,14 @@ class FileDrivePrefs(private val store: StateFile) : DrivePrefs {
         return values
     }
 
+    /** The stored value; an unchanged file is not parsed again. */
     override fun get(key: String): String? = lock.withLock { read()[key] }
 
     /** Called after a value changed (not on a failed write): the wiring reschedules the background work from it. */
     @Volatile
     var onChange: ((key: String, value: String) -> Unit)? = null
 
+    /** Stores [value] under [key] (the whole file is rewritten atomically); a failed write is dropped silently. */
     override fun put(key: String, value: String) {
         val written = lock.withLock {
             try {
@@ -163,6 +165,7 @@ class FolderPinProbe(
     private val rootId: () -> String?,
     private val trustDir: String,
 ) {
+    /** Whether the folder in use has a stored pin; when that cannot be told, a pin is assumed. */
     fun isPinned(): Boolean = try {
         val root = rootId() ?: return false
         pinFileOf(root)?.let { FileKeysWatermarkStore(it).load() != null } ?: false

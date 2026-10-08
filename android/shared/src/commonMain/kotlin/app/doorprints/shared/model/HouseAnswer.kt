@@ -98,9 +98,13 @@ data class AnswerWords(
     val lockIn: String = "Lock-in %1\$s",
     val notice: String = "Notice %1\$s",
 ) {
+    /**
+     * Replaces `%1$s`-style placeholders in [template] with [args] by position; a missing argument becomes empty text.
+     */
     internal fun fill(template: String, vararg args: String): String =
         PLACEHOLDER.replace(template) { args.getOrElse(it.groupValues[1].toInt() - 1) { "" } }
 
+    /** "1 month" or "N months" in this language's words. */
     internal fun monthsText(n: Int): String = fill(if (n == 1) month else months, n.toString())
 
     companion object {
@@ -154,6 +158,7 @@ object HouseAnswers {
     val ORDER: Comparator<HouseAnswer> =
         compareBy<HouseAnswer> { it.answerStatus != AnswerStatus.OPEN }.thenBy { it.sort }.thenBy { it.id }
 
+    /** [answers] in the shared display order; null is an empty list. */
     fun ordered(answers: List<HouseAnswer>?): List<HouseAnswer> = answers.orEmpty().sortedWith(ORDER)
 
     /** The next answer's sort: one past the largest, 0 for the first. */

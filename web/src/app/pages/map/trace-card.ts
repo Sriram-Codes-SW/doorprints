@@ -57,6 +57,10 @@ const LOOK_KEYS: Record<RepeatLook, { label: TKey; desc: TKey }> = {
   OFF: { label: 'trace.repeatLook.off', desc: 'trace.repeatLook.offDesc' },
 };
 
+/**
+ * The *Trace my path* card: switch, start and finish a walk, the retrace alert and screen lock settings, and the alert
+ * banner. The recorder service owns the walk, so it goes on when the page is left.
+ */
 @Component({
   selector: 'app-trace-card',
   imports: [TPipe],
@@ -331,6 +335,7 @@ export class TraceCard {
     });
   }
 
+  /** The sentence for why a walk is not recording. */
   protected problemKey(problem: TraceProblem): TKey {
     return PROBLEM_KEY[problem];
   }
@@ -339,6 +344,7 @@ export class TraceCard {
     this.open.set((event.target as HTMLDetailsElement).open);
   }
 
+  /** Shows the alert banner for a few seconds. */
   private showBanner(): void {
     clearTimeout(this.bannerTimer);
     this.bannerOpen.set(true);
@@ -350,6 +356,7 @@ export class TraceCard {
     this.bannerOpen.set(false);
   }
 
+  /** The trace switch; turning it off ends a walk that is recording. */
   protected async toggleOn(event: Event): Promise<void> {
     const on = (event.target as HTMLInputElement).checked;
     // Turning the trace off while a walk records ends the walk (what is stored stays).
@@ -394,6 +401,7 @@ export class TraceCard {
     if (ok) await this.view.deleteAllSaved();
   }
 
+  /** *Clear the path*: asks, then removes the 30-day trace (saved walks stay). */
   protected async clear(): Promise<void> {
     const ok = await this.confirm.ask({ key: 'trace.card.clearConfirm' }, { confirmKey: 'trace.card.clear', danger: true });
     if (ok) await this.view.clearTrace();

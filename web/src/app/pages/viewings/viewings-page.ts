@@ -153,6 +153,7 @@ export class ViewingsPage {
     }
   }
 
+  /** Reads all viewings and houses. `userAsked` marks a Retry, so a repeated failure is announced again. */
   protected reload(userAsked = false): void {
     forkJoin({ viewings: this.api.viewings(), houses: this.api.houses() }).subscribe({
       next: ({ viewings, houses }) => {
@@ -212,6 +213,7 @@ export class ViewingsPage {
     return notes.length > 80 ? notes.slice(0, 77) + '…' : notes;
   }
 
+  /** Marks a viewing done, and offers *Book a second viewing?* unless its house is gone. */
   protected async happened(v: Viewing): Promise<void> {
     try {
       await firstValueFrom(this.api.markViewingDone(v.id));
@@ -225,6 +227,7 @@ export class ViewingsPage {
     }
   }
 
+  /** Sets the viewing's status to cancelled. */
   protected async cancel(v: Viewing): Promise<void> {
     try {
       await firstValueFrom(this.api.saveViewing({ ...v, status: 'CANCELLED' }));

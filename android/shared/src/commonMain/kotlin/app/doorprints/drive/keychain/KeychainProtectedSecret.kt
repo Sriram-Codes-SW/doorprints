@@ -46,6 +46,9 @@ class KeychainProtectedSecret(
     private val account: String = ACCOUNT,
 ) : ProtectedSecret {
 
+    /**
+     * Asks the person through the system prompt (shown with [reason]) and returns the secret; runs off the main thread.
+     */
     override suspend fun open(reason: String): SecretOpen = withContext(Dispatchers.IO) { openNow(reason) }
 
     /** [open] on the calling thread (the tests' entry; the real one blocks while the system prompt is up). */

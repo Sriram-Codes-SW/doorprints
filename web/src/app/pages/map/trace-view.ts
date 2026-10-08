@@ -39,6 +39,10 @@ export const LIVE_REDRAW_MS = 5000;
 
 const EMPTY: LineCollection = { type: 'FeatureCollection', features: [] };
 
+/**
+ * The shared state of the walks on the Map: settings, the drawn lines and counts, and the *Save this walk?* question.
+ * Read by the card, the sheet, the place check and the page.
+ */
 @Injectable({ providedIn: 'root' })
 export class TraceView {
   private readonly store = inject(TraceStore);
@@ -128,6 +132,7 @@ export class TraceView {
     this.repeatCount.set(repeats.reduce((n, r) => n + r.shown.length, 0));
   }
 
+  /** Redraws while a walk records, at most once per redraw interval. */
   private liveTick(): void {
     const wait = this.lastLiveAt + LIVE_REDRAW_MS - Date.now();
     if (wait <= 0) {
@@ -165,6 +170,7 @@ export class TraceView {
     }
   }
 
+  /** Finds the latest ended walk that has not been asked about; null if none or the store fails. */
   private async findAsk(liveWalkId: number): Promise<void> {
     try {
       this.ask.set(await this.store.lastEndedWalk(liveWalkId, await this.store.askedUpTo()));
@@ -184,6 +190,7 @@ export class TraceView {
     this.announcer.announce({ key: 'trace.kept.snack' });
   }
 
+  /** *Delete this walk*: removes it from the trace and counts it as asked. */
   async answerDelete(): Promise<void> {
     const walk = this.ask();
     if (!walk) return;
@@ -209,19 +216,23 @@ export class TraceView {
 
   // ---- settings and the two deletes ----
 
+  /** Turns the path trace on or off and remembers it. */
   async setTraceOn(on: boolean): Promise<void> {
     this.traceOn.set(on);
     await this.store.setTraceOn(on);
   }
+  /** Chooses how repeated stretches look and remembers it. */
   async setLook(look: RepeatLook): Promise<void> {
     this.look.set(look);
     await this.store.setLook(look);
   }
+  /** Turns the retrace alert on or off, remembers it and applies it to a walk already recording. */
   async setAlertOn(on: boolean): Promise<void> {
     this.alertOn.set(on);
     await this.store.setAlertOn(on);
     await this.recorder.setAlertOn(on); // a walk now recording follows the switch at once
   }
+  /** Turns the screen lock setting on or off and remembers it. */
   async setKeepAwake(on: boolean): Promise<void> {
     this.keepAwake.set(on);
     await this.store.setKeepAwake(on);

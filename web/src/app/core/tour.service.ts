@@ -28,6 +28,7 @@ export type TourEnd = 'done' | 'skipped';
 /** The tour is only ever offered on the Map, where a first visit starts. */
 const OFFER_ROUTE = '/';
 
+/** The remembered end of the tour, or null when it was never finished or storage is blocked. */
 function read(): string | null {
   try {
     return typeof localStorage === 'undefined' ? null : localStorage.getItem(TOUR_KEY);

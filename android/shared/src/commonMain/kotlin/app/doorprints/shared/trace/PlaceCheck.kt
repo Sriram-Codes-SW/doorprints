@@ -48,6 +48,10 @@ data class PlaceCheckResult(
  * centred on the place. Pure: no clock, no I/O, no network, nothing stored.
  */
 object PlaceCheck {
+    /**
+      * Checks one place against [walks]: the status, the nearest distance and one row per walk that passed within the
+      * near band, newest first. [fixAccuracyM] is the place fix's accuracy, if known; a poor one is refused.
+     */
     fun check(
         placeLat: Double,
         placeLon: Double,
@@ -55,6 +59,10 @@ object PlaceCheck {
         fixAccuracyM: Double? = null,
     ): PlaceCheckResult = check(placeLat, placeLon, walks, fixAccuracyM, boxRejection = true)
 
+    /**
+     * The check with its test knobs: [boxRejection] only skips segments that cannot be near, so turning it off must not
+     * change a result; [toleranceM] replaces the walked tolerance (tests only).
+     */
     internal fun check(
         placeLat: Double,
         placeLon: Double,
@@ -141,6 +149,10 @@ class PlaceCheckRun internal constructor(
         return true
     }
 
+    /**
+      * The answer so far: rows newest first, WALKED if any row is within the tolerance, CLOSE if only near ones, NONE
+      * or EMPTY (no walk had a segment) otherwise.
+     */
     fun result(): PlaceCheckResult {
         gate?.let { return it }
         // 6. Newest first by time; a tie by the later input index. Never by distance.

@@ -129,6 +129,7 @@ class DriveGraph(
  *   and the pause notice is cleared when the folder is open again with a lock.
  */
 object DriveAssembly {
+    /** Builds the whole Drive graph over [d] and starts watching the controller to keep the "Drive in use" flag. */
     fun assemble(d: DriveDeps): DriveGraph {
         val p = DeviceKeyCryptoProvider(d.crypto)
         val stores = DriveFileStores(d.dir)

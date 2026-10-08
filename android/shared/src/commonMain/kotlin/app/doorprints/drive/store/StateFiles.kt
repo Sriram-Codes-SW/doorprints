@@ -45,6 +45,7 @@ internal fun <D, T : Any> readState(file: StateFile, serializer: KSerializer<D>,
     }
 }
 
+/** Writes [dto] to [file] as JSON, atomically (see [StateFile]); the version field is part of [dto]. */
 internal fun <D> writeState(file: StateFile, serializer: KSerializer<D>, dto: D) {
     file.writeText(json.encodeToString(serializer, dto))
 }

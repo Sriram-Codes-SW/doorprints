@@ -26,6 +26,11 @@ import { I18nTitleStrategy } from './i18n/i18n-title.strategy';
 import { initialLang } from './i18n/translation.service';
 
 // Angular 21+ is zoneless by default, so no zone.js / provideZoneChangeDetection here.
+/**
+ * The app's providers: the router (a Back that a guard cancels leaves history as it was), the HTTP client with the API
+ * interceptor, translated route titles, and the one-time seeding of the question bank before the first screen.
+ * Zoneless.
+ */
 export const appConfig: ApplicationConfig = {
   providers: [
     provideRouter(

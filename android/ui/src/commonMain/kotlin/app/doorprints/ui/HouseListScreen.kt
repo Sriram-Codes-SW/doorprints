@@ -81,6 +81,7 @@ import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
+/** The house list's sort orders: newest first, best score, lowest price. */
 private enum class Sort(val label: StringResource) {
     RECENT(Res.string.sort_recent), SCORE(Res.string.sort_score), PRICE(Res.string.sort_price)
 }
@@ -573,6 +574,7 @@ fun HouseListScreen(
     }
 }
 
+/** The *Houses* heading, shared by the empty list and the full one. */
 @Composable
 private fun HousesHeading() {
     Text(stringResource(Res.string.houses_title), style = MaterialTheme.typography.headlineSmall,
@@ -972,6 +974,10 @@ private fun SortMenu(sort: Sort, onSort: (Sort) -> Unit, modifier: Modifier = Mo
     }
 }
 
+/**
+ * One house on the list: name, status (glyph and words, not colour alone), place, price, bedrooms, score and visits,
+ * with a *must-have missed* chip. The whole card is one button for TalkBack.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun HouseCard(h: HouseEntity, score: ScoreResult, visits: Int, modifier: Modifier = Modifier, onClick: () -> Unit) {

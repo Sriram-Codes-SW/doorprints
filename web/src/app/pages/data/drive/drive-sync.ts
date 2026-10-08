@@ -104,6 +104,10 @@ export class DriveSyncCard implements OnInit, OnDestroy {
     });
   }
 
+  /**
+   * Syncs once, then keeps syncing: when the browser comes back online, when the page is hidden, and every 30 minutes
+   * while it is open.
+   */
   async ngOnInit(): Promise<void> {
     await this.performSync();
     this.onlineHandler = () => void this.performSync();
@@ -118,6 +122,7 @@ export class DriveSyncCard implements OnInit, OnDestroy {
     await this.loadPhotoSettings();
   }
 
+  /** Stops the timers and listeners. */
   ngOnDestroy(): void {
     this.alive = false;
     if (this.afterChangeTimer !== null) window.clearTimeout(this.afterChangeTimer);
@@ -127,6 +132,10 @@ export class DriveSyncCard implements OnInit, OnDestroy {
     if (this.visibilityHandler) document.removeEventListener('visibilitychange', this.visibilityHandler);
   }
 
+  /**
+   * Runs one sync and shows its state. One run at a time. If the service asks for the shrink confirmation it stops and
+   * waits for the person.
+   */
   protected async performSync(): Promise<void> {
     if (this.busy()) return;
     this.busy.set(true);
@@ -160,6 +169,7 @@ export class DriveSyncCard implements OnInit, OnDestroy {
     }
   }
 
+  /** The person gives the shrink confirmation, and the sync is run again with it. */
   protected async confirmShrinkDeletion(): Promise<void> {
     this.busy.set(true);
     try {
@@ -174,11 +184,13 @@ export class DriveSyncCard implements OnInit, OnDestroy {
     }
   }
 
+  /** The person declines the shrink confirmation. */
   protected cancelConfirmation(): void {
     this.needsConfirmation.set(false);
     this.syncState.set('synced');
   }
 
+  /** Chooses whether photos are uploaded only on Wi-Fi. */
   protected async togglePhotosWifiOnly(event: Event): Promise<void> {
     const checked = (event.target as HTMLInputElement).checked;
     this.busy.set(true);
@@ -193,6 +205,7 @@ export class DriveSyncCard implements OnInit, OnDestroy {
     }
   }
 
+  /** Uploads the waiting photos now, over mobile data, once. */
   protected async uploadPhotosNowOverMobile(): Promise<void> {
     this.busy.set(true);
     try {
@@ -206,6 +219,7 @@ export class DriveSyncCard implements OnInit, OnDestroy {
     }
   }
 
+  /** Reads the photo upload rule and the size of the photos waiting. */
   private async loadPhotoSettings(): Promise<void> {
     try {
       const settings = await this.service.photoSettings();

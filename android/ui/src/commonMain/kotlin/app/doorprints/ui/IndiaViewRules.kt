@@ -356,6 +356,7 @@ object IndiaViewRules {
         layer.isSymbol && layer.sourceLayer == PLACE_SOURCE_LAYER &&
             (layer.filterText == null || layer.filterText.contains(quote("state")))
 
+    /** The ids of the layers that can show a state label. */
     fun stateLabelLayers(layers: List<LayerInfo>): List<String> = layers.filter(::isStateLabelLayer).map { it.id }
 
     /**

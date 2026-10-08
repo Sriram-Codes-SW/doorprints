@@ -60,6 +60,7 @@ class AndroidRepository(
     anthropicFor = Api::anthropic,
     emulatorHostAllowed = true,
 ) {
+    /** The folder holding every photo file, for the exporters and the backup. */
     fun photoDir() = File(photoDirPath().toString())
 
     /** The file a photo row's bytes live in, for the exporters. */

@@ -28,6 +28,10 @@ import app.doorprints.drive.delete.DeletionLevel
 class SoftwareOperationProver(private val auth: DeviceAuth, private val p: CryptoProvider) : OperationProver {
     private val key: ByteArray by lazy { p.randomBytes(32) }
 
+    /**
+      * Authenticates (L3 for a level 3 deletion, else L2), then signs the operation with a random key held in memory by
+      * this prover.
+     */
     override suspend fun prove(operationId: String, level: DeletionLevel, reason: String, now: () -> Long): ProofOutcome {
         val result = try {
             auth.authenticate(reason, if (level == DeletionLevel.L3) DeleteLevel.L3 else DeleteLevel.L2)

@@ -70,6 +70,10 @@ interface DriveActions {
 
     suspend fun listBackups(): Outcome<BackupList>
     suspend fun backUpNow(): Outcome<BackUpDone>
+    /**
+     * The person confirmed the drop that the shrink guard held back after a much smaller backup: pruning of the older
+     * backups goes on at the next run.
+     */
     suspend fun confirmShrink(backupId: String)
     fun autoBackupEnabled(): Boolean
     fun setAutoBackup(enabled: Boolean)
@@ -78,14 +82,27 @@ interface DriveActions {
     fun syncStatus(): SyncInfo
     fun photosWifiOnly(): Boolean
     fun setPhotosWifiOnly(wifiOnly: Boolean)
+    /** A 30-minute exception to the Wi-Fi-only rule for photo upload. */
     fun uploadPhotosNowOverMobile()
     suspend fun pendingPhotoBytes(): Long?
     fun photoStatus(pendingPhotos: Int): PhotoNetworkStatus
 
     fun devicePublicKey(): ByteArray
     fun listedDevices(): List<ListedDevice>
+    /**
+     * The connected phone approves a new device whose QR text it read: the device check, then the folder key wrapped
+     * for exactly [publicKey] with the one-time [psk]. The wrap goes back to the new device as the reply.
+     */
     suspend fun approveJoinedDevicePsk(publicKey: ByteArray, name: String, platform: DevicePlatform, psk: ByteArray, promptReason: String): Outcome<EnrolmentWrap>
+    /**
+     * The new device opens the approver's reply with its one-time [psk] and, on success, joins the folder and pins this
+     * device.
+     */
     suspend fun joinFromPsk(wrapEnc: String, wrapCt: String, epoch: Int, psk: ByteArray): ConnectResult
+    /**
+     * The device check, then removal of one listed device. The answer carries the new recovery key, which the screen
+     * shows once.
+     */
     suspend fun revokeListedDevice(kidHex: String, promptReason: String): Outcome<RevokeDone>
 
     suspend fun deletePlan(action: DeletionAction): Outcome<DeletionPlan>
@@ -171,6 +188,7 @@ interface QrScanner {
     suspend fun scan(): QrScan
 }
 
+/** How one scan ended: a code, the person leaving, no camera, or the camera refused to this app. */
 sealed interface QrScan {
     data class Scanned(val text: String) : QrScan
     data object Cancelled : QrScan
@@ -220,8 +238,16 @@ class NewcomerOffer(val qrText: String, val code: String, val psk: ByteArray) {
     override fun toString() = "NewcomerOffer(<secret>)"
 }
 
+/**
+ * The newcomer's offer as the approving phone reads it: the new device's [publicKey], its announced name and platform
+ * (neither is trusted: the approver names the device), the one-time [psk] and the 8-digit [code] to compare. [psk] is
+ * secret and never printed.
+ */
 class ApproverOffer(val publicKey: ByteArray, val deviceName: String, val platform: DevicePlatform, val psk: ByteArray, val code: String) {
     override fun toString() = "ApproverOffer($deviceName, <secret>)"
 }
 
+/**
+ * The approver's reply as the newcomer reads it: the wrapped folder key ([enc], [ct]) and the key epoch it belongs to.
+ */
 class ReplyWrap(val enc: String, val ct: String, val epoch: Int)

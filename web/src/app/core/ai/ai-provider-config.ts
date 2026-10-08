@@ -27,6 +27,7 @@ import { AI_BASE_URL_KEY, AI_KIND_KEY, AI_MODEL_KEY } from '../storage-keys';
 /** `anthropic` is Anthropic's Messages API (`anthropic.ts`): a key and a model; its address is its own. */
 export type AiKind = 'gemini' | 'openai-compatible' | 'anthropic';
 
+/** The kinds of own provider the app supports. */
 export const AI_KINDS: readonly AiKind[] = ['gemini', 'openai-compatible', 'anthropic'];
 
 /** The person's choice. `baseUrl` and `model` matter to `openai-compatible` only; the key keeps its own slot. */
@@ -44,6 +45,7 @@ export interface AiPreset {
   keyOptional: boolean;
 }
 
+/** The starting points offered for an OpenAI-compatible address; local servers need no key. */
 export const AI_PRESETS: readonly AiPreset[] = [
   { id: 'openai', baseUrl: 'https://api.openai.com/v1', keyOptional: false },
   { id: 'openrouter', baseUrl: 'https://openrouter.ai/api/v1', keyOptional: false },
@@ -145,6 +147,7 @@ export function isUsable(config: AiProviderConfig, hasKey: boolean): boolean {
   return hasKey && config.model.trim() !== '' && validateWebBaseUrl(config.baseUrl.trim() || ANTHROPIC_BASE_URL).valid;
 }
 
+/** A saved setting, or empty text when none is saved or storage is blocked. */
 function read(key: string): string {
   try {
     return localStorage.getItem(key) ?? '';

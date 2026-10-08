@@ -49,6 +49,7 @@ sealed interface ConnectDecision {
     data object NeedsScreenLock : ConnectDecision
 }
 
+/** Whether a Drive run may go ahead; see [GateRules.run]. */
 sealed interface RunDecision {
     data object Run : RunDecision
 
@@ -64,6 +65,10 @@ object GateRules {
     fun connect(platform: AuthPlatform, lockEnabled: Boolean): ConnectDecision =
         if (platform == AuthPlatform.WEBSITE || lockEnabled) ConnectDecision.Allowed else ConnectDecision.NeedsScreenLock
 
+    /**
+     * Whether Drive work may run: the website always; a phone only while its screen lock is present. A lock that
+     * was removed or cannot be read pauses it.
+     */
     fun run(platform: AuthPlatform, lock: LockState): RunDecision = when {
         platform == AuthPlatform.WEBSITE -> RunDecision.Run
         lock == LockState.PRESENT -> RunDecision.Run
@@ -83,6 +88,7 @@ class AuthGrant internal constructor(
     val grantedAtMs: Long,
 )
 
+/** The outcome of [DriveGate.authorize]. */
 sealed interface Authorization {
     data class Granted(val grant: AuthGrant) : Authorization
     data class Refused(val reason: RefusalReason) : Authorization
@@ -94,6 +100,7 @@ sealed interface Authorization {
     data class Paused(val decision: RunDecision) : Authorization
 }
 
+/** The answer to [DriveGate.redeem]: the grant may be used ([OK]) or why it may not. */
 enum class Redeemed { OK, EXPIRED, NOT_YET, WRONG_ACTION, ALREADY_USED, PAUSED }
 
 /**
@@ -111,6 +118,7 @@ class DriveGate(
     private var nextId = 1L
     private val spent = HashSet<Long>()
 
+    /** Whether Drive may be connected now: a phone needs a screen lock first. */
     fun canConnect(): ConnectDecision = GateRules.connect(platform, auth.isDeviceLockEnabled())
 
     /** Before sync, backup, delete or share. A removed lock drops the LOCAL keys only and asks for re-enrolment. */
@@ -127,6 +135,11 @@ class DriveGate(
         return GateRules.run(platform, lock)
     }
 
+    /**
+     * Decides whether a deletion-type [action] may start and, if it needs a factor, asks the phone's own lock
+     * screen ([reason] is the text it shows). Returns a one-use [AuthGrant] to [redeem], or why not. A failed or
+     * throwing check is a denial, never a pass.
+     */
     suspend fun authorize(action: DeletionAction, ctx: DeletionContext, reason: String): Authorization {
         val req = when (val d = DeletionPolicy.decide(action, ctx)) {
             is DeletionDecision.Refused -> return Authorization.Refused(d.reason)
@@ -165,5 +178,6 @@ class DriveGate(
         }
     }
 
+    /** Mints a grant with a fresh id stamped with the current time. */
     private fun issue(action: DeletionAction, req: Requirements) = AuthGrant(nextId++, action, req, clock())
 }

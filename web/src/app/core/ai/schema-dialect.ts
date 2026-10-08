@@ -35,6 +35,7 @@ export function toStrictSchema(schema: object): object {
   return convert(schema as Node);
 }
 
+/** Converts one schema node and the nodes below it; see {@link toStrictSchema}. */
 function convert(node: Node): Node {
   const nullable = node['nullable'] === true;
   const out: Node = {};

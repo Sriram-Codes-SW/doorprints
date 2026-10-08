@@ -105,6 +105,7 @@ internal object P256Scalar {
         }
     }
 
+    /** The inverse of the limb split: 8 words, least significant first, as 32 big-endian bytes. */
     private fun fromLimbs(l: IntArray): ByteArray {
         val out = ByteArray(32)
         for (i in 0 until 8) {

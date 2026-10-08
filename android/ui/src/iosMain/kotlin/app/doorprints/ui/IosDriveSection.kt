@@ -94,6 +94,7 @@ internal fun LockNotice.iosMessage(): StringResource = when (this) {
     LockNotice.PAUSED, LockNotice.NONE -> Res.string.lock_notice_ios_paused
 }
 
+/** The passcode notice above the Drive card: a heading when a passcode is needed, then the words. */
 @Composable
 private fun IosLockNoticeBlock(notice: LockNotice) {
     if (notice == LockNotice.NEEDS_LOCK) {
@@ -105,6 +106,11 @@ private fun IosLockNoticeBlock(notice: LockNotice) {
     Text(stringResource(notice.iosMessage()))
 }
 
+/**
+ * The Drive card with this app's hand-offs: *Import a backup* from Drive (one at a time, with its failure shown under
+ * the list), *Save a copy first*, the sensitive clipboard, the camera scanner with its words, and the Settings page for
+ * a refused camera.
+ */
 @Composable
 private fun IosDriveCard(drive: IosDriveServices) {
     val vm: DriveViewModel = viewModel {

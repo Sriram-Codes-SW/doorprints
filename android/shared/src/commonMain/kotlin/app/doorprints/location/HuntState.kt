@@ -72,6 +72,7 @@ object HuntState {
     private val _state = MutableStateFlow(State())
     val state: StateFlow<State> = _state
 
+    /** Replaces the state with [transform] of the current one; the engine writes, the Map's Hunt card reads. */
     fun update(transform: (State) -> State) {
         _state.value = transform(_state.value)
     }

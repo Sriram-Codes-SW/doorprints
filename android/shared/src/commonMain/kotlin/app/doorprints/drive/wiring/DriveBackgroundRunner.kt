@@ -31,13 +31,18 @@ import app.doorprints.drive.connect.SyncState
 interface BackgroundOps {
     /** Drive is in use on this phone (persisted; asked without building the Drive graph). */
     val engaged: Boolean
+    /** The folder is open in this process. */
     val isReady: Boolean
+    /** Whether *Automatic backup* is on. */
     fun autoBackupEnabled(): Boolean
 
     /** The lock check before a run ([app.doorprints.deviceauth.DriveGate.beforeRun]): a removed lock drops local keys only. */
     fun lockDecision(): RunDecision
+    /** Signs in and opens the folder. */
     suspend fun connect(): ConnectResult
+    /** One sync pass. */
     suspend fun sync(): SyncInfo
+    /** A backup if the schedule says one is due. */
     suspend fun runDueBackup(): DueBackupResult
 
     /**
@@ -90,6 +95,11 @@ sealed interface RunOutcome {
  * touches nothing in Drive: no upload, download or delete (the lock check drops local keys only).
  */
 class DriveBackgroundRunner(private val ops: BackgroundOps, private val onSync: (SyncInfo) -> Unit = {}) {
+    /**
+      * Runs the steps asked for, in order (connect if needed, sync, backup), checking the lock before each. The result
+      * is the
+     * worst of the steps (failure over retry over success); a skipped run touches nothing in Drive.
+     */
     suspend fun run(sync: Boolean, backup: Boolean): RunOutcome {
         // A pause that still stands says nothing again (the notice was shown when it began) and builds nothing.
         if (ops.engaged) ops.standingPause()?.let { return RunOutcome.Skipped(it) }

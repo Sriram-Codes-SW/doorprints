@@ -45,6 +45,10 @@ class AnthropicClient(
     /** Null turns the limit off (tests, whose virtual clock would end it at once). */
     private val timeoutMs: Long? = 60_000,
 ) : JsonChatModel {
+    /**
+      * Asks for [schema] as a forced tool call and returns the tool input as JSON text. A missing key, a refused key or
+      * an unusable answer is an [ApiException].
+     */
     override suspend fun generateJson(system: String, user: String, schema: JsonObject, temperature: Double): String {
         val body = requestBody(SchemaDialect.nameOf(schema), model, system, user, temperature, schema)
         val response = post(body)

@@ -49,10 +49,12 @@ export class DriveDevicesCard implements OnInit {
   /** Which action the passkey sentence is for. Revoke keeps the deletion sentence. */
   protected readonly passkeyFor = signal<'revoke' | 'disconnect'>('revoke');
 
+  /** Reads the devices on the folder. */
   async ngOnInit(): Promise<void> {
     await this.reload();
   }
 
+  /** Revokes one device (needs the passkey). The folder gets a new recovery key, shown once. */
   protected async revoke(kidHex: string): Promise<void> {
     this.busy.set(true);
     this.error.set(null);
@@ -73,6 +75,7 @@ export class DriveDevicesCard implements OnInit {
     }
   }
 
+  /** Disconnects every device from the folder (needs the passkey). */
   protected async disconnectAll(): Promise<void> {
     this.busy.set(true);
     this.error.set(null);
@@ -90,6 +93,7 @@ export class DriveDevicesCard implements OnInit {
     this.recoverySaved.set(!this.recoverySaved());
   }
 
+  /** Hides the new recovery key, only once the person says it is saved. */
   protected dismissRecovery(): void {
     if (!this.recoverySaved()) return;
     this.recoveryKey.set(null);
@@ -101,6 +105,7 @@ export class DriveDevicesCard implements OnInit {
     this.error.set(null);
   }
 
+  /** Reads the device list and the Google account address. */
   private async reload(): Promise<void> {
     try {
       this.devices.set(await this.service.listedDevices());
@@ -110,6 +115,7 @@ export class DriveDevicesCard implements OnInit {
     }
   }
 
+  /** Shows why an action was refused; a passkey requirement opens the passkey step for that action. */
   private showRefused(reason: string, action: 'revoke' | 'disconnect' = 'revoke'): void {
     if (reason === 'USE_PHONE') {
       this.passkeyFor.set(action);

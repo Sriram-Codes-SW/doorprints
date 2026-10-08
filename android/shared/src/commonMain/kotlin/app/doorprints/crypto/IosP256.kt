@@ -51,12 +51,14 @@ internal object P256Base {
         BooleanArray(256) { ((bytes[it / 8].toInt() ushr (7 - it % 8)) and 1) == 1 }
     }
 
+    /** A 32-byte big-endian element as 16 limbs of 16 bits, least significant first. */
     private fun limbs(bigEndian: ByteArray): LongArray = LongArray(LIMBS) {
         val lo = bigEndian[31 - 2 * it].toLong() and 0xFF
         val hi = bigEndian[30 - 2 * it].toLong() and 0xFF
         lo or (hi shl 8)
     }
 
+    /** The inverse of [limbs]: 32 big-endian bytes. */
     private fun bytes(a: LongArray): ByteArray = ByteArray(32) {
         val limb = a[(31 - it) / 2]
         (if ((31 - it) % 2 == 0) limb else limb ushr 8).toByte()
@@ -64,6 +66,7 @@ internal object P256Base {
 
     // ---- field arithmetic modulo p ----
 
+    /** Propagates carries between limbs so each is back in 0..65535, except the last, which keeps the overflow. */
     private fun carry(t: LongArray) {
         for (i in 0 until t.size - 1) {
             val c = t[i] shr 16
@@ -107,18 +110,21 @@ internal object P256Base {
         return LongArray(LIMBS) { (t[it] and keepT) or (d[it] and keepT.inv()) }
     }
 
+    /** Field addition modulo p. */
     private fun add(a: LongArray, b: LongArray): LongArray {
         val t = LongArray(WORK)
         for (i in 0 until LIMBS) t[i] = a[i] + b[i]
         return reduce(t)
     }
 
+    /** Field subtraction modulo p. */
     private fun sub(a: LongArray, b: LongArray): LongArray {
         val t = LongArray(WORK)
         for (i in 0 until LIMBS) t[i] = a[i] - b[i] + P[i] // b < p, so never negative
         return reduce(t)
     }
 
+    /** Field multiplication modulo p, schoolbook over the limbs, then reduced. */
     private fun mul(a: LongArray, b: LongArray): LongArray {
         val t = LongArray(WORK)
         for (i in 0 until LIMBS) {
@@ -128,6 +134,7 @@ internal object P256Base {
         return reduce(t)
     }
 
+    /** Raises [a] to a public exponent given as bits, most significant first (square and multiply). */
     private fun pow(a: LongArray, exponentBits: BooleanArray): LongArray {
         var r = ONE
         for (bit in exponentBits) {
@@ -137,6 +144,7 @@ internal object P256Base {
         return r
     }
 
+    /** Constant-time choice: [whenOne] if [bit] is 1, else [whenZero], with no branch on the bit. */
     private fun select(bit: Long, whenOne: LongArray, whenZero: LongArray): LongArray {
         val m = -bit
         return LongArray(LIMBS) { (whenOne[it] and m) or (whenZero[it] and m.inv()) }
@@ -144,11 +152,14 @@ internal object P256Base {
 
     /** Field operations on 32-byte big-endian elements below p, exposed for the known-answer tests. */
     fun fieldAdd(a: ByteArray, b: ByteArray): ByteArray = bytes(add(limbs(a), limbs(b)))
+    /** Field subtraction on 32-byte elements, for the known-answer tests. */
     fun fieldSub(a: ByteArray, b: ByteArray): ByteArray = bytes(sub(limbs(a), limbs(b)))
+    /** Field multiplication on 32-byte elements, for the known-answer tests. */
     fun fieldMul(a: ByteArray, b: ByteArray): ByteArray = bytes(mul(limbs(a), limbs(b)))
 
     // ---- points: projective (X : Y : Z), the point at infinity is (0 : 1 : 0) ----
 
+    /** A projective point (X : Y : Z) of limb arrays. */
     private class Point(val x: LongArray, val y: LongArray, val z: LongArray)
 
     /** Complete addition (RCB 2016, Algorithm 4, a = −3); also correct for P = Q and for either input at infinity. */

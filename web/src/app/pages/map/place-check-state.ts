@@ -75,6 +75,10 @@ export function boundsOf(place: { lat: number; lon: number }, stretches: readonl
   ];
 }
 
+/**
+ * Holds the answer to *Have I been here?* for the Map page and the house page, and runs the check when a button asks.
+ * See the file header for what it may and may not do.
+ */
 @Injectable({ providedIn: 'root' })
 export class PlaceCheckState {
   private readonly store = inject(TraceStore);
@@ -136,6 +140,7 @@ export class PlaceCheckState {
     if (answer) this.requestShow(answer);
   }
 
+  /** Asks the map to frame the answer; the counter makes a second press frame again. */
   private requestShow(answer: CheckAnswer): void {
     this.showRequest.set({ n: ++this.shows, bounds: answer.bounds });
   }
