@@ -18,11 +18,15 @@
 
 package app.doorprints.server.device;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -75,8 +79,21 @@ public class PairingController {
      * A device asks to connect by code; the owner approves it on the owner page.
      */
     @PostMapping("/api/pair/start")
-    public PairingService.Started start(@Valid @RequestBody StartRequest body) {
-        return pairing.start(body.deviceName());
+    public PairingService.Started start(@Valid @RequestBody StartRequest body, HttpServletRequest request) {
+        return pairing.start(body.deviceName(), request.getRemoteAddr());
+    }
+
+    /**
+     * Too many requests are open, in all or from this address: 429 with {@code Retry-After}, the older requests kept
+     * (S4b-BL-161). The text is fixed and says nothing of the table.
+     */
+    @ExceptionHandler(PairingBusyException.class)
+    public ResponseEntity<Map<String, Object>> busy(PairingBusyException e) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(HttpHeaders.RETRY_AFTER, Long.toString(e.retryAfterSeconds()))
+                .contentType(MediaType.APPLICATION_PROBLEM_JSON)
+                .body(Map.of("status", 429, "detail",
+                        "Too many devices are waiting to connect, retry in " + e.retryAfterSeconds() + "s"));
     }
 
     /**

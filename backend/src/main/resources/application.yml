@@ -165,6 +165,10 @@ app:
   # The web app's address, for the owner page's connect links and QR codes (docs/03 §12.1).
   web-url: ${APP_WEB_URL:https://doorprints.web.app}
   # Pairing and signing in to the owner page need no key, so they get their own limit per client address.
+  # The owner's recovery switch (S4b-BL-188, docs/03 section 12.1): true writes the one-hour setup link to the log at a
+  # start even though a browser is signed in. Off by default; switch it off again after signing in.
+  owner:
+    setup-link-in-log: ${OWNER_SETUP_LINK_IN_LOG:false}
   pairing:
     requests-per-minute: ${PAIRING_RATE_LIMIT_PER_MINUTE:40}
     burst: ${PAIRING_RATE_LIMIT_BURST:20}
