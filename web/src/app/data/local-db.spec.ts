@@ -84,6 +84,17 @@ describe('MemoryDb', () => {
     expect(await new MemoryDb().get('houses', 'missing')).toBeUndefined();
   });
 
+  it('getMany returns the rows under the given keys (compound ones too) and skips a key that is not there', async () => {
+    const db = new MemoryDb();
+    await db.put('houses', { id: 'a', label: 'A' });
+    await db.put('houses', { id: 'b', label: 'B' });
+    await db.put('records', { type: 'broker', id: 'x', payload: {} });
+    await db.put('records', { type: 'place', id: 'x', payload: {} });
+    expect((await db.getMany<{ id: string }>('houses', ['b', 'zzz', 'a'])).map((r) => r.id)).toEqual(['b', 'a']);
+    expect((await db.getMany<{ type: string }>('records', [['place', 'x'], ['other', 'x']])).map((r) => r.type)).toEqual(['place']);
+    expect(await db.getMany('houses', [])).toEqual([]);
+  });
+
   it('keys the records store by (type, id), so the same id under two types is two rows', async () => {
     const db = new MemoryDb();
     await db.put('records', { type: 'broker', id: 'x', payload: { name: 'A' } });

@@ -1,0 +1,42 @@
+{
+  "spec": "android/app/src/test/java/app/doorprints/ImportLinkTest.kt",
+  "gradle": [":app:testDebugUnitTest", "--tests", "app.doorprints.ImportLinkTest"],
+  "mutations": [
+    {
+      "file": "android/app/src/main/AndroidManifest.xml",
+      "find": "<data android:scheme=\"content\" />\n",
+      "replace": "<data android:scheme=\"content\" />\n                <data android:scheme=\"file\" />\n",
+      "expect": "theFileOpenFilterTakesContentAndTheTwoBackupTypesOnly"
+    },
+    {
+      "file": "android/app/src/main/AndroidManifest.xml",
+      "find": "<data android:scheme=\"content\" />\n",
+      "replace": "<data android:scheme=\"content\" />\n                <data android:scheme=\"file\" />\n",
+      "expect": "noIntentFilterDeclaresTheFileScheme"
+    },
+    {
+      "file": "android/app/src/main/AndroidManifest.xml",
+      "find": "<data android:mimeType=\"application/json\" />\n            </intent-filter>\n            <intent-filter>\n                <action android:name=\"android.intent.action.SEND\" />\n                <category android:name=\"android.intent.category.DEFAULT\" />\n                <data android:mimeType=\"application/zip\" />",
+      "replace": "<data android:mimeType=\"application/json\" />\n                <data android:mimeType=\"application/pdf\" />\n            </intent-filter>\n            <intent-filter>\n                <action android:name=\"android.intent.action.SEND\" />\n                <category android:name=\"android.intent.category.DEFAULT\" />\n                <data android:mimeType=\"application/zip\" />",
+      "expect": "theFileOpenFilterTakesContentAndTheTwoBackupTypesOnly"
+    },
+    {
+      "file": "android/app/src/main/java/app/doorprints/ImportLink.kt",
+      "find": "it.scheme == \"content\" }",
+      "replace": "it.scheme == \"content\" || it.scheme == \"file\" }",
+      "expect": "aFilePathALinkOrNothingIsRefused"
+    },
+    {
+      "file": "android/app/src/main/java/app/doorprints/MainActivity.kt",
+      "find": "return ImportLink.of(stream)",
+      "replace": "return stream.takeIf { it.scheme == \"content\" || it.scheme == \"file\" }?.let { DeepLink.ImportFile(it.toString()) }",
+      "expect": "bothIntentRoutesGoThroughImportLinkAndTheActivityNamesNoFileScheme"
+    },
+    {
+      "file": "android/app/src/main/java/app/doorprints/MainActivity.kt",
+      "find": "return ImportLink.of(intent.data)",
+      "replace": "return intent.data?.takeIf { it.scheme == \"content\" || it.scheme == \"file\" }?.let { DeepLink.ImportFile(it.toString()) }",
+      "expect": "bothIntentRoutesGoThroughImportLinkAndTheActivityNamesNoFileScheme"
+    }
+  ]
+}

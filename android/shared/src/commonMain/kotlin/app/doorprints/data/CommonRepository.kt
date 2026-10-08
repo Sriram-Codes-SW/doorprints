@@ -1057,37 +1057,50 @@ open class CommonRepository(
         var houseCursor = cursors.house
         var visitCursor = cursors.visit
         var pulled = 0
-        for (dto in backend.housesSince(houseCursor)) {
+        // S4b-BL-167: the local rows of a page are read in chunks (`readInChunks`), not one query per pulled row.
+        val houseRows = backend.housesSince(houseCursor)
+        val localHouses = readInChunks(houseRows.map { it.id }) { db.houses().getMany(it) }.associateByTo(HashMap()) { it.id }
+        for (dto in houseRows) {
             houseCursor = maxOf(houseCursor, dto.syncVersion)
-            val local = db.houses().get(dto.id)
             val incoming = dto.toEntity()
-            if (merge.keepLocal(local, incoming)) continue
-            db.houses().upsert(incoming); pulled++
+            if (merge.keepLocal(localHouses[dto.id], incoming)) continue
+            db.houses().upsert(incoming); localHouses[dto.id] = incoming; pulled++
         }
-        for (dto in backend.visitsSince(visitCursor)) {
+        val visitRows = backend.visitsSince(visitCursor)
+        val localVisits = readInChunks(visitRows.map { it.id }) { db.visits().getMany(it) }.associateByTo(HashMap()) { it.id }
+        for (dto in visitRows) {
             visitCursor = maxOf(visitCursor, dto.syncVersion)
-            val local = db.visits().get(dto.id)
             val incoming = dto.toEntity()
-            if (merge.keepLocal(local, incoming)) continue
-            db.visits().upsert(incoming); pulled++
+            if (merge.keepLocal(localVisits[dto.id], incoming)) continue
+            db.visits().upsert(incoming); localVisits[dto.id] = incoming; pulled++
         }
         // Records (docs/11 5.30): a row this phone cannot use (toEntity null) is skipped and the cursor still moves
         // past it, as the web does; the next app version that can read it pulls it again from a fresh cursor.
         var recordCursor = cursors.record
-        for (dto in backend.recordsSince(recordCursor)) {
+        val recordRows = backend.recordsSince(recordCursor)
+        val localRecords = HashMap<Pair<String, String>, RecordEntity>()
+        recordRows.mapNotNull { it.toEntity() }.groupBy({ it.type }, { it.id }).forEach { (type, ids) ->
+            readInChunks(ids) { db.records().getMany(type, it) }.forEach { localRecords[it.type to it.id] = it }
+        }
+        for (dto in recordRows) {
             recordCursor = maxOf(recordCursor, dto.syncVersion)
             val incoming = dto.toEntity() ?: continue
-            val local = db.records().get(incoming.type, incoming.id)
-            if (merge.keepLocal(local, incoming)) continue
-            db.records().upsert(incoming); pulled++
+            if (merge.keepLocal(localRecords[incoming.type to incoming.id], incoming)) continue
+            db.records().upsert(incoming); localRecords[incoming.type to incoming.id] = incoming; pulled++
         }
         settings.saveCursors(houseCursor, visitCursor, recordCursor)
 
         // Photos: apply delete tombstones from other devices, download new photos of live houses.
         var photoCursor = cursors.photo
         var photosComplete = true
-        for (change in backend.photoChangesSince(cursors.photo)) {
-            val local = db.photos().get(change.id)
+        val photoChanges = backend.photoChangesSince(cursors.photo)
+        val localPhotos = readInChunks(photoChanges.map { it.id }) { db.photos().getMany(it) }.associateBy { it.id }
+        // The houses the page's photos name, read after the houses above were stored, so a house pulled just now counts.
+        val photoHouses = readInChunks(photoChanges.map { it.houseId }) { db.houses().getMany(it) }.associateBy { it.id }
+        val photoSeen = HashSet<String>()
+        for (change in photoChanges) {
+            // A page that names one photo twice reads it again the second time: the first change may have changed the row.
+            val local = if (photoSeen.add(change.id)) localPhotos[change.id] else db.photos().get(change.id)
             if (change.deleted) {
                 if (local != null) {
                     deleteFile(photoFileOf(local.id)); db.photos().delete(change.id); pulled++
@@ -1102,7 +1115,7 @@ open class CommonRepository(
             } else if (BackupValidation.isValidId(change.id)) {
                 // The id becomes a file name: a server id outside the backup id rule is not downloaded (defence in
                 // depth; the server issues UUIDs), and the cursor moves past it like any handled row.
-                val house = db.houses().get(change.houseId)
+                val house = photoHouses[change.houseId]
                 if (house != null && !house.deleted) {
                     if (!photosAllowed) {
                         photosWaiting++; photosComplete = false; continue
@@ -1129,6 +1142,13 @@ open class CommonRepository(
             remoteReset = remoteReset,
         )
     }
+
+    /**
+     * Reads the stored rows for [keys] with [read], [PULL_READ_CHUNK] distinct keys per query: the number of queries
+     * follows the page, not the store and not one per row (S4b-BL-167).
+     */
+    private suspend fun <T> readInChunks(keys: List<String>, read: suspend (List<String>) -> List<T>): List<T> =
+        keys.distinct().chunked(PULL_READ_CHUNK).flatMap { read(it) }
 
     /** Thrown by [pushAll] when a push answer shows the server behind this phone; [pushed] rows went before it. */
     private class ServerWasReset(val pushed: Int) : Exception()
@@ -1847,6 +1867,9 @@ open class CommonRepository(
     }
 
     companion object {
+        /** Ids per local read of a pull page, under SQLite's default limit of 999 variables (S4b-BL-167); the web uses the same. */
+        internal const val PULL_READ_CHUNK = 500
+
         /** Photo [id]'s file in the photo folder [photoDir]: `<photoDir>/<id>.jpg` ([photoFileOf]; `PhotoFileTest`). */
         internal fun photoFileIn(photoDir: String, id: String): Path = Path(photoDir, "$id.jpg")
     }

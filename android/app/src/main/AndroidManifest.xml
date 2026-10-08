@@ -76,7 +76,12 @@
             <!-- The way back from the system browser's Google sign-in (docs/15 §5.5, phones without Google Play
                  services): app.doorprints:/oauth2redirect?code=…&state=…. Any app can send this intent, so
                  BrowserRedirect completes a request only for the pending request's own state and refuses the rest. -->
-            <intent-filter>
+            <!-- Lint's AppLinkUrlError ("at least one host must be specified") is ignored here on purpose (S4b-BL-170): the
+                 return address is a private-use scheme with a single slash, app.doorprints:/oauth2redirect (RFC 8252
+                 section 7.1, the form Google accepts for this client), so it has no host by design; a host would change
+                 the redirect URI and break the sign-in. The system does not match the path without a host, so this
+                 filter takes every app.doorprints: link, and BrowserRedirect acts only on the pending request's own state. -->
+            <intent-filter tools:ignore="AppLinkUrlError">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
@@ -84,12 +89,13 @@
             </intent-filter>
             <!-- A backup or update file opened in Doorprints (docs/11 5.28, S4b-FR-3): "open with" from a file app or
                  a chat's attachment (VIEW), or "share to Doorprints" (SEND). ZIP and JSON, the two forms a backup
-                 takes; the Import screen validates the file as any picked one and refuses anything else. -->
+                 takes; the Import screen validates the file as any picked one and refuses anything else. Only content://: another app
+                 cannot hand over a readable file:// path (scoped storage; since API 24 the sender gets a
+                 FileUriExposedException), so that scheme only widened what the app claims to open (S4b-BL-169). -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:scheme="content" />
-                <data android:scheme="file" />
                 <data android:mimeType="application/zip" />
                 <data android:mimeType="application/json" />
             </intent-filter>

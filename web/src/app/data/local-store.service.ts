@@ -241,6 +241,12 @@ export class LocalStore {
     return sortByCreated((await this.rawHouses()).filter((h) => !h.deleted));
   }
 
+  /** The stored houses with these ids, tombstones included, in one read; an unknown id adds nothing (the sync pull's merge). */
+  async houseRowsByIds(ids: readonly string[]): Promise<HouseRecord[]> {
+    const db = await this.db();
+    return db.getMany<HouseRecord>('houses', ids);
+  }
+
   /** One live house, or undefined for an unknown or deleted id. */
   async getHouse(id: string): Promise<HouseRecord | undefined> {
     const db = await this.db();
@@ -312,6 +318,12 @@ export class LocalStore {
   /** Every visit, tombstones included. */
   async allVisits(): Promise<VisitRecord[]> {
     return sortVisits(await this.rawVisits());
+  }
+
+  /** The stored visits with these ids, tombstones included, in one read. */
+  async visitRowsByIds(ids: readonly string[]): Promise<VisitRecord[]> {
+    const db = await this.db();
+    return db.getMany<VisitRecord>('visits', ids);
   }
 
   private async rawVisits(): Promise<VisitRecord[]> {
@@ -392,6 +404,12 @@ export class LocalStore {
     const db = await this.db();
     const rows = await db.getAllByIndex<PhotoRecord>('photos', 'houseId', houseId);
     return sortByCreated(rows.filter((p) => !p.deleted));
+  }
+
+  /** The stored photo rows with these ids, deleted ones included, in one read. */
+  async photoRowsByIds(ids: readonly string[]): Promise<PhotoRecord[]> {
+    const db = await this.db();
+    return db.getMany<PhotoRecord>('photos', ids);
   }
 
   /** One photo row by id, whether or not it is deleted. */
@@ -648,6 +666,12 @@ export class LocalStore {
   async allRecords(): Promise<RecordRecord[]> {
     const db = await this.db();
     return sortRecords(await db.getAll<RecordRecord>('records'));
+  }
+
+  /** The stored records under these `[type, id]` keys, tombstones included, in one read. */
+  async recordRowsByKeys(keys: readonly (readonly [string, string])[]): Promise<RecordRecord[]> {
+    const db = await this.db();
+    return db.getMany<RecordRecord>('records', keys.map(([type, id]): [string, string] => [type, id]));
   }
 
   /** Records with local changes the remote has not seen, tombstones included. */
