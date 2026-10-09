@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.138 |
+| Version | 0.139 |
 | Date | 2026-10-08 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..183); this file lists the lead-level items and points to the rest. |
@@ -147,6 +147,7 @@
 | 0.136 | 2026-10-09 | Claude (Code), engineer | S4b-BL-190 done in code ([10](10-sprint-log.md) v0.199): the `local-model` suite's defaults and request limit changed; the proof is the next manual run of the suite, whose summary the lead reads. |
 | 0.137 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-168, slice 1 (web, photos)** (PR #213, branch `refactor/web-split-photos-slice`): new §9 *Web file layout* with the analysis of the two big web files, the deletion-test verdicts and the slice plan; the photos moved to `data/photo-store.ts` and `pages/house-detail/house-photos.ts`, no behaviour change. |
 | 0.138 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-168, slice 1 on the phones (photos), PR #212:** the new §10 *Phone file layout* records the analysis of `HouseEditScreen.kt` and `CommonRepository.kt` by kind of data (which splits pass the deletion test and which fail), the slice plan (photos, viewings, areas and places, questions, criteria, brokers, status/rating/checklist, on-device AI) and what slice 1 moved: `PhotoStore` (`:shared`) and `HousePhotos.kt` (`:ui`). Behaviour-neutral: no screenshot re-recorded. [10](10-sprint-log.md) v0.201, [03](03-design.md) v0.88, [06](06-test-plan.md) v0.178. |
+| 0.139 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-168, slice 2 (web, records layer and viewings)** (PR #214, branch `refactor/web-split-records-viewings-slice`): `RecordStore` and `ViewingStore` leave `local-store.service.ts` (1,360 to 1,138 lines); §9 records the measured numbers, what was split and why, and the remaining plan. [10](10-sprint-log.md) v0.202, [03](03-design.md) v0.89. |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 
@@ -695,7 +696,7 @@ Line numbers below are those of `main` at `d39bc6a` (before slice 1): `data/loca
 | # | Slice | Where | Expected reduction |
 |---|---|---|---|
 | 1 | **Photos** (PR #213) | store `PhotoStore`; page `HousePhotos` | measured: store -150, page -108 |
-| 2 | Records layer and viewings | store | about -200 |
+| 2 | Records layer and viewings (PR #214, done) | store | measured: store -222 |
 | 3 | Areas, places, area notes | store | about -160 |
 | 4 | Questions | store and page | about -240 |
 | 5 | Criteria and checklist | store and page | about -200 |
@@ -716,6 +717,26 @@ markup stays in the page template: moving it into a child component would add a 
 is not byte-for-byte. Tests: `data/photo-store.spec.ts` (13, passed on the old code first) and
 `pages/house-detail/house-photos.spec.ts` (20, the page's photos card through the DOM, also passed first); the full
 suite goes from 3,778 to 3,811 tests. The live UI run (`tools/live-ui`) is for the web deploy after the merge.
+
+**Slice 2 (web, records layer and viewings), measured.** `local-store.service.ts` 1,360 to 1,138 lines (new
+`record-store.ts` 154, `viewing-store.ts` 129). Callers use `store.records.<method>` and `store.viewings.<method>`
+(`recordsOf` is `records.ofType`, `viewings()` is `viewings.all()`, and so on; `allRecordsOf` is `records.allOfType`).
+Both passed the deletion test on reading the code: `RecordStore` is called by the sync, the import, the Drive rows and
+by every record kind still in the store (brokers, criteria, questions, areas, places, notes) and by `ViewingStore`;
+`ViewingStore` is called by the local-data facade (which the viewings page, the house card and the reminders use), the
+export and the on-device AI. Two helpers that the areas, places and notes already shared moved with the records layer
+because they are about records and not about any one kind: `freshId` (the id draw; `newViewingId` is now its
+caller too, one copy instead of two) and `saveIfChanged` (was `writeIfChanged`, the write that skips an unchanged
+payload and refuses a new row past a cap; the viewings save used the same logic spelled out, and now calls it, with the
+same result and the same errors). `sortRecords` is exported from `record-store.ts` for the brokers' rows. Still in the
+store on purpose: `markAllForResync` and `putImported` (they write houses, visits, photos and records together, so they
+fail the deletion test), and the settings. Tests: `data/record-store.spec.ts` (11; the first 10 passed on the old code before anything moved) for the
+reads and writes that had no direct test (`allRecords`, `allRecordsOf`, `recordRowsByKeys`, `putRecordFromServer`, the
+clean mark, the tombstone shape, the revision bumps, the id draw); the viewings tests stayed in `local-store.spec.ts`
+and now call `store.viewings` (one more there: the viewing row's edit time). The full suite goes from 3,809 to 3,821
+tests (12 new, none removed). Hand mutations: `tools/mutations/record-store.json` (14) and `viewing-store.json` (11),
+each killed by a named test; the two existing lists that touch `local-store.service.ts` (`trace-store.json`,
+`trace-privacy.json`) still hold with their strings unchanged.
 
 ## 10. Phone file layout (S4b-BL-168)
 
