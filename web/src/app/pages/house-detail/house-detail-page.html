@@ -264,20 +264,20 @@
               max="200"
               step="1"
               inputmode="numeric"
-              [ngModel]="floorShown(d)"
-              (ngModelChange)="typeFloor(d, $event)"
-              [attr.aria-invalid]="floorInvalid(d) ? 'true' : null"
-              [attr.aria-describedby]="floorInvalid(d) ? 'house-floor-error' : 'house-floor-hint'"
+              [ngModel]="floor.shown(d)"
+              (ngModelChange)="floor.type(d, $event)"
+              [attr.aria-invalid]="floor.invalid(d) ? 'true' : null"
+              [attr.aria-describedby]="floor.invalid(d) ? 'house-floor-error' : 'house-floor-hint'"
             />
-            @if (floorInvalid(d)) {
-              <span id="house-floor-error" class="field-error" role="alert">{{ (floorBasement(d) ? 'house.floorBasementInvalid' : 'house.floorInvalid') | t }}</span>
+            @if (floor.invalid(d)) {
+              <span id="house-floor-error" class="field-error" role="alert">{{ (floor.basement(d) ? 'house.floorBasementInvalid' : 'house.floorInvalid') | t }}</span>
             } @else {
-              <span id="house-floor-hint" class="field-hint">{{ (floorBasement(d) ? 'house.floorBasementHint' : 'house.floorHint') | t }}</span>
+              <span id="house-floor-hint" class="field-hint">{{ (floor.basement(d) ? 'house.floorBasementHint' : 'house.floorHint') | t }}</span>
             }
           </div>
         </div>
         <div class="field checkbox">
-          <input id="house-floor-basement" type="checkbox" role="switch" [checked]="floorBasement(d)" (change)="setBasement(d, $event)" />
+          <input id="house-floor-basement" type="checkbox" role="switch" [checked]="floor.basement(d)" (change)="floor.setBasement(d, $event)" />
           <label for="house-floor-basement">{{ 'house.floorBasementToggle' | t }}</label>
         </div>
         <!-- S4b-BL-85: another house within about 30 m with the same bedrooms and floor; a warning, never a block. -->
@@ -439,8 +439,8 @@
            (Your data) only changes how they are typed and shown. Every control's name says which room it belongs to. -->
       <section class="card" aria-labelledby="rooms-heading">
         <h2 id="rooms-heading">{{ 'rooms.heading' | t }}</h2>
-        @for (r of rooms(d); track r.id; let i = $index) {
-          @let title = roomTitle(r, i);
+        @for (r of rooms.list(d); track r.id; let i = $index) {
+          @let title = rooms.title(r, i);
           <div class="room" role="group" [attr.aria-label]="title">
             <div class="room-head">
               <h3 class="room-title">{{ title }}</h3>
@@ -451,7 +451,7 @@
                 [id]="'room-up-' + r.id"
                 [disabled]="i === 0"
                 [attr.aria-label]="'rooms.moveUp' | t: { name: title }"
-                (click)="moveRoom(r.id, -1)"
+                (click)="rooms.move(r.id, -1)"
               >
                 <span aria-hidden="true">↑</span>
               </button>
@@ -459,9 +459,9 @@
                 type="button"
                 class="btn btn-sm room-move"
                 [id]="'room-down-' + r.id"
-                [disabled]="i === rooms(d).length - 1"
+                [disabled]="i === rooms.list(d).length - 1"
                 [attr.aria-label]="'rooms.moveDown' | t: { name: title }"
-                (click)="moveRoom(r.id, 1)"
+                (click)="rooms.move(r.id, 1)"
               >
                 <span aria-hidden="true">↓</span>
               </button>
@@ -473,10 +473,10 @@
                   [id]="'room-type-' + r.id"
                   [attr.aria-label]="'rooms.aria' | t: { field: ('rooms.type' | t), room: title }"
                   [ngModel]="r.type"
-                  (ngModelChange)="setRoomType(r.id, $event)"
+                  (ngModelChange)="rooms.setType(r.id, $event)"
                 >
-                  @for (t of roomTypes; track t) {
-                    <option [value]="t">{{ roomTypeKey[t] | t }}</option>
+                  @for (t of rooms.types; track t) {
+                    <option [value]="t">{{ rooms.typeKey[t] | t }}</option>
                   }
                 </select>
               </div>
@@ -489,15 +489,15 @@
                   autocomplete="off"
                   [attr.aria-label]="'rooms.aria' | t: { field: ('rooms.name' | t), room: title }"
                   [ngModel]="r.name ?? ''"
-                  (ngModelChange)="editRoom(r.id, { name: $event || null })"
+                  (ngModelChange)="rooms.edit(r.id, { name: $event || null })"
                 />
               </div>
             </div>
             <div class="row">
-              @for (dim of dims; track dim.key) {
+              @for (dim of rooms.dims; track dim.key) {
                 <fieldset class="field room-size">
                   <legend>{{ dim.label | t }}</legend>
-                  @if (lengthUnit() === 'M') {
+                  @if (rooms.lengthUnit() === 'M') {
                     <div class="size-inputs">
                       <input
                         type="number"
@@ -507,8 +507,8 @@
                         inputmode="decimal"
                         [id]="'room-' + dim.key + '-' + r.id"
                         [attr.aria-label]="'rooms.aria' | t: { field: (dim.label | t) + ' (' + ('rooms.metres' | t) + ')', room: title }"
-                        [value]="metresOf(r[dim.key])"
-                        (change)="setRoomMetres(r.id, dim.key, $any($event.target).value)"
+                        [value]="rooms.metresOf(r[dim.key])"
+                        (change)="rooms.setMetres(r.id, dim.key, $any($event.target).value)"
                       />
                       <span aria-hidden="true">{{ 'rooms.metres' | t }}</span>
                     </div>
@@ -523,8 +523,8 @@
                         inputmode="numeric"
                         [id]="'room-' + dim.key + '-' + r.id"
                         [attr.aria-label]="'rooms.aria' | t: { field: (dim.label | t) + ' (' + ('rooms.feet' | t) + ')', room: title }"
-                        [value]="feetOf(r[dim.key])"
-                        (change)="setRoomFeet(r.id, dim.key, feet.value, inches.value)"
+                        [value]="rooms.feetOf(r[dim.key])"
+                        (change)="rooms.setFeet(r.id, dim.key, feet.value, inches.value)"
                       />
                       <span aria-hidden="true">{{ 'rooms.feet' | t }}</span>
                       <input
@@ -535,8 +535,8 @@
                         step="1"
                         inputmode="numeric"
                         [attr.aria-label]="'rooms.aria' | t: { field: (dim.label | t) + ' (' + ('rooms.inches' | t) + ')', room: title }"
-                        [value]="inchesOf(r[dim.key])"
-                        (change)="setRoomFeet(r.id, dim.key, feet.value, inches.value)"
+                        [value]="rooms.inchesOf(r[dim.key])"
+                        (change)="rooms.setFeet(r.id, dim.key, feet.value, inches.value)"
                       />
                       <span aria-hidden="true">{{ 'rooms.inches' | t }}</span>
                     </div>
@@ -544,7 +544,7 @@
                 </fieldset>
               }
             </div>
-            @if (roomAreaLine(r); as area) {
+            @if (rooms.areaLine(r); as area) {
               <p class="room-area" role="status">{{ area }}</p>
             }
             <div class="row">
@@ -554,10 +554,10 @@
                   [id]="'room-condition-' + r.id"
                   [attr.aria-label]="'rooms.aria' | t: { field: ('rooms.condition' | t), room: title }"
                   [ngModel]="r.condition == null ? '' : '' + r.condition"
-                  (ngModelChange)="setRoomCondition(r.id, $event)"
+                  (ngModelChange)="rooms.setCondition(r.id, $event)"
                 >
                   <option value="">{{ 'rooms.conditionNone' | t }}</option>
-                  @for (n of conditions; track n) {
+                  @for (n of rooms.conditions; track n) {
                     <option [value]="'' + n">{{ 'common.stars' | t: { n: n } }}</option>
                   }
                 </select>
@@ -571,7 +571,7 @@
                 maxlength="2000"
                 [attr.aria-label]="'rooms.aria' | t: { field: ('rooms.notes' | t), room: title }"
                 [ngModel]="r.notes ?? ''"
-                (ngModelChange)="editRoom(r.id, { notes: $event || null })"
+                (ngModelChange)="rooms.edit(r.id, { notes: $event || null })"
               ></textarea>
             </div>
             <button
@@ -579,7 +579,7 @@
               class="btn btn-danger"
               [id]="'room-delete-' + r.id"
               [attr.aria-label]="'rooms.aria' | t: { field: ('rooms.delete' | t), room: title }"
-              (click)="deleteRoom(r.id)"
+              (click)="rooms.remove(r.id)"
             >
               {{ 'common.delete' | t }}
             </button>
@@ -587,14 +587,14 @@
         } @empty {
           <p id="rooms-empty" class="muted">{{ 'rooms.empty' | t }}</p>
         }
-        @if (roomsTotalLine(d); as total) {
+        @if (rooms.totalLine(d); as total) {
           <p class="room-total" role="status">{{ total }}</p>
         }
         <div class="actions">
-          <button id="rooms-add" type="button" class="btn" [disabled]="rooms(d).length >= maxRooms" (click)="addRoom()">
+          <button id="rooms-add" type="button" class="btn" [disabled]="rooms.list(d).length >= rooms.max" (click)="rooms.add()">
             {{ 'rooms.add' | t }}
           </button>
-          @if (rooms(d).length >= maxRooms) {
+          @if (rooms.list(d).length >= rooms.max) {
             <span id="rooms-max" class="muted">{{ 'rooms.max' | t }}</span>
           }
         </div>

@@ -48,7 +48,7 @@ const HOUSE: HouseDto = {
 
 interface Page {
   draft: () => HouseDto;
-  lengthUnit: { set: (u: 'FT' | 'M') => void };
+  rooms: { lengthUnit: { set: (u: 'FT' | 'M') => void }; add: () => void };
 }
 
 /** The house form on a saved house holding `rooms`, the length unit as the local setting has it. */
@@ -211,7 +211,7 @@ describe('HouseDetailPage: the Rooms section (slice 1c)', () => {
     const { fixture, host, page } = await open([ROOM], 'FT');
     const first = () => host.querySelectorAll<HTMLInputElement>('#room-lengthCm-r1, .room-size input');
     expect(host.querySelector<HTMLInputElement>('#room-lengthCm-r1')!.value).toBe('13');
-    page.lengthUnit.set('M');
+    page.rooms.lengthUnit.set('M');
     await settled(fixture);
     expect(first().length).toBeGreaterThan(0);
     expect(host.querySelector<HTMLInputElement>('#room-lengthCm-r1')!.value).toBe('3.96');
@@ -451,13 +451,17 @@ describe('HouseDetailPage: the rooms and floor edges (S4b-BL-168 slice 6, writte
     basement.click();
     await settled(fixture);
     expect(page.draft().floor).toBe(-2);
-    // Zero is the ground floor: it carries no sign, whatever the switch says.
+    // Zero carries no sign, whatever the switch says; a basement 0 stays 0 and is refused by the message.
     await type(fixture, floor, '0');
     expect(page.draft().floor).toBe(0);
     basement.click();
     await settled(fixture);
     expect(page.draft().floor).toBe(0);
     expect(host.querySelector('#house-floor-error')).toBeNull();
+    basement.click();
+    await settled(fixture);
+    expect(page.draft().floor).toBe(0);
+    expect(host.querySelector('#house-floor-error')?.textContent).toContain('basement level from 1 to 5');
   });
 
   it('turns a floor above the ground into a basement and back with the switch, and refuses a basement past 5 and a floor past 200', async () => {
@@ -477,6 +481,44 @@ describe('HouseDetailPage: the rooms and floor edges (S4b-BL-168 slice 6, writte
     await type(fixture, host.querySelector<HTMLInputElement>('#house-floor')!, '200');
     expect(host.querySelector('#house-floor-error')).toBeNull();
     expect(host.querySelector('#house-floor')!.getAttribute('aria-describedby')).toBe('house-floor-hint');
+  });
+
+  it('adds no 31st room even when asked directly, and shows a size as feet and inches', async () => {
+    const thirty = Array.from({ length: 30 }, (_, i): HouseRoom => ({ id: 'r' + i, type: 'OTHER', lengthCm: 320, sort: i }));
+    const { fixture, host, page } = await open(thirty);
+    page.rooms.add();
+    await settled(fixture);
+    expect(page.draft().rooms!.length).toBe(30);
+    const length = host.querySelector<HTMLInputElement>('#room-lengthCm-r0')!;
+    expect([length.value, length.parentElement!.querySelectorAll('input')[1].value]).toEqual(['10', '6']);
+  });
+
+  it('calls a fractional floor not a floor: the message shows and the save is refused', async () => {
+    const { fixture, host, saved } = await open(null);
+    const floor = host.querySelector<HTMLInputElement>('#house-floor')!;
+    await type(fixture, floor, '2.5');
+    expect(host.querySelector('#house-floor-error')?.textContent).toContain('-5 to 200');
+    floor.scrollIntoView = () => undefined; // jsdom has no layout
+    [...host.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Save')!.click();
+    await settled(fixture);
+    expect(saved.length).toBe(0);
+  });
+
+  it('keeps the focus on the arrow pressed while the room can still move that way, and shows no feet or inches for an unknown size', async () => {
+    const three: HouseRoom[] = [
+      { id: 'a', type: 'HALL', sort: 0 },
+      { id: 'b', type: 'HALL', sort: 1 },
+      { id: 'c', type: 'HALL', sort: 2 },
+    ];
+    const { fixture, host } = await open(three);
+    host.querySelector<HTMLButtonElement>('#room-up-c')!.click();
+    await settled(fixture);
+    expect(document.activeElement?.id).toBe('room-up-c');
+    host.querySelector<HTMLButtonElement>('#room-down-a')!.click();
+    await settled(fixture);
+    expect(document.activeElement?.id).toBe('room-down-a');
+    const length = host.querySelector<HTMLInputElement>('#room-lengthCm-a')!;
+    expect([length.value, length.parentElement!.querySelectorAll('input')[1].value]).toEqual(['', '']);
   });
 
   it('names an untitled twin and joins several twins in the duplicate-flat warning', async () => {

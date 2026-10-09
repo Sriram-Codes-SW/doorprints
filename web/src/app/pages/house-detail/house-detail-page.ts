@@ -53,8 +53,7 @@ import { errorMsg, telHref } from '../../core/format';
 import type { TKey } from '../../i18n/en';
 import { MAX_ANSWERS, MAX_ANSWER, MAX_ANSWER_TEXT, cleanAnswers, cleanCost, cleanMoveIn, cleanRooms } from '../../data/records';
 import { LocalStore } from '../../data/local-store.service';
-import { ROOM_TYPES, ROOM_TYPE_KEY } from '../../core/models';
-import type { HouseAnswer, HouseRoom, MoveIn, RoomType } from '../../core/models';
+import type { HouseAnswer, MoveIn } from '../../core/models';
 import { MOVE_IN_TAG } from '../../shared/photo-tags';
 import type { PhotoMetaInput } from '../../data/photo-store';
 import { HouseMoveInCard } from './house-move-in-card';
@@ -64,24 +63,14 @@ import { TraceStore } from '../../data/trace-store';
 import type { OpenedPhoto } from './house-move-in-card';
 import { PhotoMetaEditor } from './photo-meta-editor';
 import { HousePhotos, isStorageFull } from './house-photos';
+import { HouseRooms } from './house-rooms';
+import { HouseFloor, floorOf } from './house-floor';
 import { QUESTION_CATEGORIES } from '../../shared/question';
 import type { Question, QuestionCategory } from '../../shared/question';
 import { HouseViewingsCard } from '../viewings/house-viewings-card';
 import { HouseAreaNotesCard, HouseDistancesCard } from '../areas/house-area-cards';
 import { addUsual, answerFor, ordered, usualQuestions } from '../../shared/house-answers';
-import {
-  areaNumber,
-  areaSqCm,
-  cmToFeetInches,
-  metresText,
-  moveRoom,
-  parseFeetInches,
-  parseMetres,
-  totalAreaSqCm,
-} from '../../shared/room-sizes';
 import { duplicateFlats } from '../../shared/duplicate-flat';
-import { parseFloor } from '../../shared/house-floor';
-import type { LengthUnit } from '../../shared/room-sizes';
 import { costSummary } from '../../shared/house-cost';
 import { brokerLine } from '../../shared/broker';
 import { criterionName } from '../../shared/criterion-name';
@@ -201,16 +190,15 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   protected readonly fillError = signal<RunResult<Msg> | null>(null);
 
   protected readonly draft = signal<HouseDto | null>(null);
-  /** Rooms (slice 1c): the length unit is a local display preference; the draft always holds centimetres. */
-  protected readonly lengthUnit = signal<LengthUnit>('FT');
-  protected readonly roomTypes = ROOM_TYPES;
-  protected readonly roomTypeKey = ROOM_TYPE_KEY;
-  protected readonly maxRooms = MAX_ROOMS;
-  protected readonly conditions = [1, 2, 3, 4, 5];
-  protected readonly dims = [
-    { key: 'lengthCm', label: 'rooms.length' },
-    { key: 'widthCm', label: 'rooms.width' },
-  ] as const;
+  /** The rooms of this house: the list in the draft, the sizes in the chosen unit (house-rooms.ts). */
+  protected readonly rooms = new HouseRooms({
+    i18n: this.i18n,
+    injector: this.injector,
+    draft: () => this.draft(),
+    patch: (changes) => this.patch(changes),
+  });
+  /** The floor of this house: the level, the Basement switch and whether it is a floor (house-floor.ts). */
+  protected readonly floor = new HouseFloor({ patch: (changes) => this.patch(changes) });
   /** The brokers the Broker select offers (slice 1b), by name. */
   protected readonly brokers = signal<BrokerRow[]>([]);
   /** Every house in this browser, for the duplicate-flat warning under the floor (S4b-BL-85). */
@@ -367,7 +355,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     });
     this.unsaved.register(this, () => this.persist());
     afterNextRender(() => this.watchToolbar());
-    this.store.lengthUnit().then((u) => this.lengthUnit.set(u), () => undefined);
+    this.store.lengthUnit().then((u) => this.rooms.lengthUnit.set(u), () => undefined);
   }
 
   ngOnDestroy(): void {
@@ -961,89 +949,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     return `questions.category.${category}` as TKey;
   }
 
-  // ---- Rooms (slice 1c, docs/11 5.6) ----
-
-  protected rooms(d: HouseDto): HouseRoom[] {
-    return d.rooms ?? [];
-  }
-
-  /** The name typed, else the type's translated name; with the room's position so every control's name is unique. */
-  protected roomTitle(r: HouseRoom, index: number): string {
-    return `${index + 1}. ${r.name?.trim() || this.i18n.t(ROOM_TYPE_KEY[r.type])}`;
-  }
-
-  protected addRoom(): void {
-    const d = this.draft();
-    if (!d) return;
-    const rooms = this.rooms(d);
-    if (rooms.length >= MAX_ROOMS) return;
-    const sort = rooms.reduce((max, r) => Math.max(max, (r.sort ?? 0) + 1), 0);
-    const room: HouseRoom = { id: uuid(), type: 'BEDROOM', sort };
-    this.patch({ rooms: [...rooms, room] });
-    afterNextRender(() => document.getElementById('room-type-' + room.id)?.focus(), { injector: this.injector });
-  }
-
-  protected editRoom(id: string, changes: Partial<HouseRoom>): void {
-    const d = this.draft();
-    if (!d) return;
-    this.patch({ rooms: this.rooms(d).map((r) => (r.id === id ? { ...r, ...changes } : r)) });
-  }
-
-  /** Up (-1) or down (+1) in the order shown, every sort renumbered (S4b-BL-87); focus stays on the button pressed. */
-  protected moveRoom(id: string, by: -1 | 1): void {
-    const d = this.draft();
-    if (!d) return;
-    this.patch({ rooms: moveRoom(this.rooms(d), id, by) });
-    const button = `room-${by < 0 ? 'up' : 'down'}-${id}`;
-    afterNextRender(() => {
-      const el = document.getElementById(button) as HTMLButtonElement | null;
-      // At the top or the bottom the pressed button is disabled: the other one takes the focus.
-      (el && !el.disabled ? el : document.getElementById(`room-${by < 0 ? 'down' : 'up'}-${id}`))?.focus();
-    }, { injector: this.injector });
-  }
-
-  // ---- The floor and the duplicate-flat warning (S4b-BL-87, S4b-BL-85) ----
-
-  /**
-   * The Basement switch under Floor set with no level to carry the sign (blank or 0), by house id (S4b-BL-104 c). A
-   * level other than 0 carries the sign itself, so this only matters until one is typed.
-   */
-  private readonly basementSet = signal<{ id: string; on: boolean } | null>(null);
-
-  /** The Basement switch: the floor's sign once a level is typed, else what the switch was last set to. */
-  protected floorBasement(d: HouseDto): boolean {
-    if (typeof d.floor === 'number' && d.floor !== 0) return d.floor < 0;
-    const set = this.basementSet();
-    return set !== null && set.id === d.id && set.on;
-  }
-
-  /** What Floor shows: the level without its sign, which the Basement switch holds. */
-  protected floorShown(d: HouseDto): unknown {
-    return typeof d.floor === 'number' ? Math.abs(d.floor) : d.floor;
-  }
-
-  /** A level typed in Floor: below the ground while the switch is on; a minus typed anyway turns the switch on. */
-  protected typeFloor(d: HouseDto, value: unknown): void {
-    const typed = typeof value === 'number' && Number.isFinite(value) ? value : null;
-    // Clearing the level keeps the switch as it was, so "2" can become "3" of a basement without it turning off.
-    const below = (typed !== null && typed < 0) || this.floorBasement(d);
-    this.basementSet.set({ id: d.id, on: below });
-    if (typed === null) this.patch({ floor: value as number | null });
-    else this.patch({ floor: below && typed !== 0 ? -Math.abs(typed) : typed });
-  }
-
-  /** The Basement switch: turns the typed level into a basement level or back. */
-  protected setBasement(d: HouseDto, event: Event): void {
-    const on = (event.target as HTMLInputElement).checked;
-    this.basementSet.set({ id: d.id, on });
-    if (typeof d.floor === 'number' && d.floor !== 0) this.patch({ floor: on ? -Math.abs(d.floor) : Math.abs(d.floor) });
-  }
-
-  /** Something is typed in Floor that is not a floor from -5 to 200, or a basement level that is not 1 to 5. */
-  protected floorInvalid(d: HouseDto): boolean {
-    if (d.floor == null || (d.floor as unknown) === '') return false;
-    return (d.floor === 0 && this.floorBasement(d)) || floorOf(d.floor) === null;
-  }
+  // ---- The duplicate-flat warning (S4b-BL-85) ----
 
   /**
    * "Maybe the same flat as …": the other houses within about 30 m with the same bedrooms and floor as what is typed
@@ -1056,64 +962,6 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     if (ids.length === 0) return null;
     const names = ids.map((id) => others.find((h) => h.id === id)?.label?.trim() || this.i18n.t('common.untitled'));
     return this.i18n.t('house.duplicateFlat', { names: this.i18n.list(names) });
-  }
-
-  protected deleteRoom(id: string): void {
-    const d = this.draft();
-    if (!d) return;
-    this.patch({ rooms: this.rooms(d).filter((r) => r.id !== id) });
-    // The focus goes to Add room, not to the top of the page.
-    afterNextRender(() => document.getElementById('rooms-add')?.focus(), { injector: this.injector });
-  }
-
-  protected setRoomType(id: string, type: string): void {
-    this.editRoom(id, { type: ROOM_TYPES.includes(type as RoomType) ? (type as RoomType) : 'OTHER' });
-  }
-
-  protected setRoomCondition(id: string, value: string): void {
-    this.editRoom(id, { condition: value === '' ? null : Number(value) });
-  }
-
-  /** Feet mode: the two boxes (feet, inches) make one size in cm; both blank is unknown. */
-  protected setRoomFeet(id: string, key: 'lengthCm' | 'widthCm', feet: string, inches: string): void {
-    const blank = feet.trim() === '' && inches.trim() === '';
-    this.editRoom(id, { [key]: blank ? null : parseFeetInches(feet, inches) });
-  }
-
-  /** Metres mode: one decimal number is one size in cm; blank or out of range is unknown. */
-  protected setRoomMetres(id: string, key: 'lengthCm' | 'widthCm', metres: string): void {
-    this.editRoom(id, { [key]: parseMetres(metres) });
-  }
-
-  protected feetOf(cm: number | null | undefined): number | '' {
-    return cm == null ? '' : cmToFeetInches(cm).feet;
-  }
-
-  protected inchesOf(cm: number | null | undefined): number | '' {
-    return cm == null ? '' : cmToFeetInches(cm).inches;
-  }
-
-  protected metresOf(cm: number | null | undefined): string {
-    return cm == null ? '' : metresText(cm);
-  }
-
-  /** "Area: 156 sq ft" (or "14.5 m²") once both sizes are known; the area of the stored centimetres, whatever the unit. */
-  protected roomAreaLine(r: HouseRoom): string | null {
-    const sq = areaSqCm(r);
-    return sq === null ? null : this.i18n.t('rooms.area', { v: this.areaText(sq) });
-  }
-
-  /** "Total area: 312 sq ft" below the list, when at least one room has both sizes. */
-  protected roomsTotalLine(d: HouseDto): string | null {
-    const { total, sized } = totalAreaSqCm(this.rooms(d));
-    return sized === 0 ? null : this.i18n.t('rooms.total', { v: this.areaText(total) });
-  }
-
-  private areaText(sqCm: number): string {
-    const unit = this.lengthUnit();
-    return unit === 'M'
-      ? this.i18n.t('rooms.sqm', { v: areaNumber(sqCm, unit) })
-      : this.i18n.t('rooms.sqft', { v: this.i18n.number(Number(areaNumber(sqCm, unit))) });
   }
 
   /** The Broker select: a broker fills the contact name and phone from it; None keeps what is there and unlinks. */
@@ -1365,10 +1213,10 @@ export class HouseDetailPage implements OnInit, OnDestroy {
       field?.focus({ preventScroll: true });
       return false;
     }
-    if (this.floorInvalid(d)) {
+    if (this.floor.invalid(d)) {
       // Not a floor from -5 to 200: saving would drop what was typed without a word, so the field's message stays and
       // focus goes to it (WCAG 3.3.1, 3.3.3), as for the name and the position above.
-      this.error.set(runResult({ key: this.floorBasement(d) ? 'house.floorBasementInvalid' : 'house.floorInvalid' }));
+      this.error.set(runResult({ key: this.floor.basement(d) ? 'house.floorBasementInvalid' : 'house.floorInvalid' }));
       const field = document.getElementById('house-floor');
       field?.scrollIntoView({ block: 'center' });
       field?.focus({ preventScroll: true });
@@ -1604,14 +1452,6 @@ export class HouseDetailPage implements OnInit, OnDestroy {
 /** A deep copy by JSON, for the saved state kept to restore on Discard. */
 function clone(h: HouseDto): HouseDto {
   return JSON.parse(JSON.stringify(h)) as HouseDto;
-}
-
-/** The most rooms a house holds (the server and Android agree). */
-const MAX_ROOMS = 30;
-
-/** A typed floor (a number input gives a number, or "" when cleared) as -5..200, else null (S4b-BL-87). */
-function floorOf(value: unknown): number | null {
-  return typeof value === 'number' && Number.isFinite(value) ? parseFloor(String(value)) : null;
 }
 
 /** The form binds the Cost fields to `cost.*`, so a draft always carries an object there (null on the wire). */

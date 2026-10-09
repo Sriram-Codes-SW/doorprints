@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.93 |
+| Version | 0.94 |
 | Date | 2026-10-08 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -104,6 +104,7 @@
 | 0.91 | 2026-10-09 | Claude (Code), engineer | S4b-BL-168 slice 4 (web, PR #217): the component table names `QuestionStore` (`data/question-store.ts`, `LocalStore.questions`). |
 | 0.92 | 2026-10-09 | Claude (Code), engineer | **Phone file layout** (S4b-BL-168 slice 2, PR #216; [14](14-lead-backlog-and-handoff.md) §10): the viewings leave `CommonRepository`. The component table names `ViewingStore` (`:shared` `data/ViewingStore.kt`). |
 | 0.93 | 2026-10-09 | Claude (Code), engineer | S4b-BL-168 slice 5 (web): the component table names `CriteriaStore` (`data/criteria-store.ts`, `LocalStore.criteria`). |
+| 0.94 | 2026-10-09 | Claude (Code), engineer | S4b-BL-168 slice 6 (web): the component table names `HouseRooms` (`pages/house-detail/house-rooms.ts`) and `HouseFloor` (`pages/house-detail/house-floor.ts`). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -400,6 +401,8 @@ is no Mac and no paid Apple account.
 | `LocalDb`, `MemoryDb`, `LocalStore` | `data/local-db.ts`, `data/local-store.service.ts` | The browser's own copy of everything: IndexedDB stores `houses`, `visits`, `photos` (blobs) and `settings`, database `doorprints` version 1. A hand-written wrapper rather than Dexie or `idb` (ADR-19). `MemoryDb` is the fallback when IndexedDB is blocked — the app still works for the session and says clearly that nothing is being kept. |
 | `PhotoStore` | `data/photo-store.ts` (S4b-BL-168) | The photo rows, reached as `LocalStore.photos`: the 20-per-house limit, a tombstone only for a photo the server has, the room/tags/caption meta with its last-write-wins stamp, what a full resend marks. Separate so a change to what a photo holds does not edit the 1,300-line `LocalStore`. |
 | `HousePhotos` | `pages/house-detail/house-photos.ts` (S4b-BL-168) | The photos card of the house page: the list, adding a batch, delete, the details editor. The page owns the draft, the large view and the leave guard. |
+| `HouseRooms` | `pages/house-detail/house-rooms.ts` (S4b-BL-168) | The Rooms card of the house page: the list in the draft, add (up to 30), edit, move and delete with the focus kept, a size in feet and inches or in metres as centimetres, and the area and total lines in the chosen length unit. The page owns the draft and the save. Separate so a change to what a room holds edits this file and the card, not the page. |
+| `HouseFloor` | `pages/house-detail/house-floor.ts` (S4b-BL-168) | The Floor field and the Basement switch of the house page: the level shown without its sign, the sign held by the switch while no level is typed, whether what is typed is a floor from -5 to 200 (`floorOf`, also used by the save and the duplicate-flat warning). |
 | `RecordStore` | `data/record-store.ts` (S4b-BL-168) | The record rows, reached as `LocalStore.records`: the reads by type and by `[type, id]` key, the save that stamps a row and marks it dirty (keeping its sync version), the tombstone, the clean mark after a push, the dirty and full lists the sync reads, the id draw that avoids a stored row, and the write that skips an unchanged payload and refuses a new row past a cap. The sync, the import, the Drive rows and every record kind in `LocalStore` call it. |
 | `ViewingStore` | `data/viewing-store.ts` (S4b-BL-168) | The viewings, reached as `LocalStore.viewings`: records of type `viewing` read as typed rows, the save that refuses what the server refuses (bad id, blank house, start or duration out of range, text over its cap, the 5 001st viewing), `next`, `markDone`. Goes through `RecordStore`; the viewings page, the house card and the reminders reach it through `LocalDataService`. |
 | `AreaStore` | `data/area-store.ts` (S4b-BL-168) | The hunting areas, reached as `LocalStore.areas`: records of type `area` read as typed rows, the save that refuses a bad id, a blank or over-long name, a point or radius out of range and the 21st area, and writes only when something changed. Goes through `RecordStore`; the areas page, the house's area cards, the map and the offline maps reach it through `LocalDataService`, and the export and the on-device AI call it directly. |
