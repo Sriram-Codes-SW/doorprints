@@ -39,6 +39,7 @@ nav:
   - "हंट मोड": hunt-mode.md
   - "आपके रास्ते": your-paths.md
   - "भाषा, थीम, गोपनीयता, ऑफ़लाइन नक़्शे": settings-and-privacy.md
+  - "हम क्या जाँचते हैं": what-we-test.md
   - "समस्याएँ और आम सवाल": faq.md
 
 theme:

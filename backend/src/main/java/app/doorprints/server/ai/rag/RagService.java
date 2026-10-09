@@ -110,6 +110,10 @@ public class RagService {
             return new AskResponse(AskPrompts.I_DONT_KNOW, List.of(), false, 0);
         }
 
+        // Ids only (never the question, the text, notes, names or phones): which houses reach the model, in order.
+        if (log.isDebugEnabled()) {
+            log.debug("ask retrieved {} houses: {}", docs.size(), docs.stream().map(Document::getId).toList());
+        }
         var prompt = AskPrompts.build(question, docs, PromptSafety.nonce());
         ModelAnswer answer;
         try {
