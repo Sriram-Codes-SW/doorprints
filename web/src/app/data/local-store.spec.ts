@@ -294,41 +294,41 @@ describe('LocalStore', () => {
   // ---- Records: the one store for every other Sprint 4b entity (docs/11 5.30 item 2) ----
 
   it('saves a record as dirty with a fresh updatedAt, keeps the sync version, and lists live rows by type', async () => {
-    await store.saveRecord('broker', 'b2', { name: 'Later' }, T2);
-    await store.saveRecord('broker', 'b1', { name: 'Earlier' }, T1);
-    await store.saveRecord('place', 'p1', { name: 'Office' }, T1);
-    await store.putRecordFromServer({ type: 'broker', id: 'b3', payload: {}, updatedAt: '2026-09-03T00:00:00.000Z', deleted: false, syncVersion: 9 });
-    expect((await store.recordsOf('broker')).map((r) => r.id)).toEqual(['b1', 'b2', 'b3']);
-    expect(await store.recordsOf('viewing')).toEqual([]);
+    await store.records.save('broker', 'b2', { name: 'Later' }, T2);
+    await store.records.save('broker', 'b1', { name: 'Earlier' }, T1);
+    await store.records.save('place', 'p1', { name: 'Office' }, T1);
+    await store.records.putFromServer({ type: 'broker', id: 'b3', payload: {}, updatedAt: '2026-09-03T00:00:00.000Z', deleted: false, syncVersion: 9 });
+    expect((await store.records.ofType('broker')).map((r) => r.id)).toEqual(['b1', 'b2', 'b3']);
+    expect(await store.records.ofType('viewing')).toEqual([]);
 
-    const b1 = await store.getRecord('broker', 'b1');
+    const b1 = await store.records.get('broker', 'b1');
     expect(b1).toEqual({ type: 'broker', id: 'b1', payload: { name: 'Earlier' }, updatedAt: '2026-09-01T00:00:00.000Z', deleted: false, syncVersion: 0, dirty: true });
     // A local edit of a synced row keeps the row's sync version.
-    await store.saveRecord('broker', 'b3', { name: 'Edited' }, T2);
-    expect((await store.getRecord('broker', 'b3'))?.syncVersion).toBe(9);
-    expect((await store.dirtyRecords()).map((r) => `${r.type}/${r.id}`)).toEqual(['broker/b1', 'place/p1', 'broker/b2', 'broker/b3']);
+    await store.records.save('broker', 'b3', { name: 'Edited' }, T2);
+    expect((await store.records.get('broker', 'b3'))?.syncVersion).toBe(9);
+    expect((await store.records.dirty()).map((r) => `${r.type}/${r.id}`)).toEqual(['broker/b1', 'place/p1', 'broker/b2', 'broker/b3']);
   });
 
   it('turns a deleted record into a tombstone with an empty payload, hidden from reads but kept for the sync', async () => {
-    await store.saveRecord('viewing', 'v1', { at: '2026-10-01' }, T1);
-    await store.deleteRecord('viewing', 'v1', T2);
-    await store.deleteRecord('viewing', 'never-there', T2);
-    expect(await store.getRecord('viewing', 'v1')).toBeUndefined();
-    expect(await store.recordsOf('viewing')).toEqual([]);
-    const [tombstone] = await store.dirtyRecords();
+    await store.records.save('viewing', 'v1', { at: '2026-10-01' }, T1);
+    await store.records.delete('viewing', 'v1', T2);
+    await store.records.delete('viewing', 'never-there', T2);
+    expect(await store.records.get('viewing', 'v1')).toBeUndefined();
+    expect(await store.records.ofType('viewing')).toEqual([]);
+    const [tombstone] = await store.records.dirty();
     expect(tombstone).toEqual({ type: 'viewing', id: 'v1', payload: {}, updatedAt: '2026-09-02T00:00:00.000Z', deleted: true, syncVersion: 0, dirty: true });
   });
 
   it('clears a record’s dirty flag only when nothing changed while the push was in flight', async () => {
-    const saved = await store.saveRecord('place', 'p1', { name: 'Office' }, T1);
-    await store.saveRecord('place', 'p1', { name: 'Office, moved' }, T2);
-    await store.markRecordClean('place', 'p1', saved.updatedAt);
-    expect((await store.getRecord('place', 'p1'))?.dirty).toBe(true);
-    await store.markRecordClean('place', 'p1', '2026-09-02T00:00:00.000Z');
-    expect((await store.getRecord('place', 'p1'))?.dirty).toBe(false);
+    const saved = await store.records.save('place', 'p1', { name: 'Office' }, T1);
+    await store.records.save('place', 'p1', { name: 'Office, moved' }, T2);
+    await store.records.markClean('place', 'p1', saved.updatedAt);
+    expect((await store.records.get('place', 'p1'))?.dirty).toBe(true);
+    await store.records.markClean('place', 'p1', '2026-09-02T00:00:00.000Z');
+    expect((await store.records.get('place', 'p1'))?.dirty).toBe(false);
     // A resync after a server reset marks it again, with everything else.
     await store.markAllForResync();
-    expect((await store.dirtyRecords()).map((r) => r.id)).toEqual(['p1']);
+    expect((await store.records.dirty()).map((r) => r.id)).toEqual(['p1']);
   });
 
   it('refuses a record it could not sync: a bad type or id, or a payload over the server’s cap', async () => {
@@ -339,19 +339,19 @@ describe('LocalStore', () => {
     ] as const) {
       let thrown: unknown = null;
       try {
-        await store.saveRecord(type, id, payload as Record<string, unknown>, T1);
+        await store.records.save(type, id, payload as Record<string, unknown>, T1);
       } catch (err: unknown) {
         thrown = err;
       }
       expect(thrown, `${type}/${id}`).toBeInstanceOf(LocalDataError);
     }
-    expect(await store.dirtyRecords()).toEqual([]);
+    expect(await store.records.dirty()).toEqual([]);
   });
 
   it('removes the records with everything else when the user clears this browser', async () => {
-    await store.saveRecord('broker', 'b1', { name: 'A' }, T1);
+    await store.records.save('broker', 'b1', { name: 'A' }, T1);
     await store.clearEverything();
-    expect(await store.dirtyRecords()).toEqual([]);
+    expect(await store.records.dirty()).toEqual([]);
   });
 
   it('knows when this browser holds nothing yet', async () => {
@@ -451,7 +451,7 @@ describe('LocalStore brokers', () => {
     expect(brokers).toHaveLength(1);
     expect(brokers[0].broker).toEqual({ name: 'Ravi Kumar', phone: '+91 98400 11111' });
     expect(saved.brokerId).toBe(brokers[0].id);
-    expect((await store.getRecord('broker', brokers[0].id))?.dirty).toBe(true);
+    expect((await store.records.get('broker', brokers[0].id))?.dirty).toBe(true);
   });
 
   it('names the broker by the phone when the house has no contact name, and never makes one from a blank phone', async () => {
@@ -514,7 +514,7 @@ describe('LocalStore brokers', () => {
     expect(after.contactName).toBe('Ravi Kumar');
     expect(after.contactPhone).toBe('+91 98400 11111');
     expect(after.dirty).toBe(true);
-    const tombstone = (await store.dirtyRecords()).find((r) => r.id === h1.brokerId);
+    const tombstone = (await store.records.dirty()).find((r) => r.id === h1.brokerId);
     expect(tombstone?.deleted).toBe(true);
     expect(tombstone?.payload).toEqual({});
   });
@@ -528,8 +528,8 @@ describe('LocalStore brokers', () => {
   });
 
   it('skips a stored record that is not a broker', async () => {
-    await store.saveRecord('broker', 'bad', { name: '' });
-    await store.saveRecord('broker', 'good', { name: 'Good' });
+    await store.records.save('broker', 'bad', { name: '' });
+    await store.records.save('broker', 'good', { name: 'Good' });
     expect((await store.brokers()).map((b) => b.id)).toEqual(['good']);
   });
 
@@ -606,33 +606,33 @@ describe('LocalStore criteria', () => {
     const scoring = await store.scoring();
     expect(scoring.criteria.map((c) => c.key)).toEqual([...BUILT_IN_KEYS]);
     expect(scoring.ratingShare).toBe(0.5);
-    expect(await store.recordsOf('criterion')).toEqual([]);
+    expect(await store.records.ofType('criterion')).toEqual([]);
   });
 
   it('writes only what differs from the defaults: a built-in set back to its default has its record deleted', async () => {
     await store.saveCriterion(power({ weight: 3, mustHave: true, minScore: 4 }), T1);
-    const stored = await store.getRecord('criterion', 'power');
+    const stored = await store.records.get('criterion', 'power');
     expect(stored?.payload).toEqual({ weight: 3, mustHave: true, minScore: 4, sort: 1 });
     expect(Object.keys(stored?.payload ?? {})).toEqual(['weight', 'mustHave', 'minScore', 'sort']);
     expect(stored?.dirty).toBe(true);
     expect((await store.scoring()).criteria.find((c) => c.key === 'power')).toMatchObject({ weight: 3, mustHave: true, minScore: 4 });
     await store.saveCriterion(power(), T2);
-    expect(await store.getRecord('criterion', 'power')).toBeUndefined();
+    expect(await store.records.get('criterion', 'power')).toBeUndefined();
     // Saving the default of a built-in that never had a record writes nothing.
     await store.saveCriterion(power({ key: 'water', sort: 0 }), T2);
-    expect(await store.recordsOf('criterion')).toEqual([]);
+    expect(await store.records.ofType('criterion')).toEqual([]);
   });
 
   it('archives a built-in with a record that keeps the archived flag, and never stores a label for it', async () => {
     await store.saveCriterion({ ...power(), label: 'Ignored label', archived: true }, T1);
-    expect((await store.getRecord('criterion', 'power'))?.payload).toEqual({ weight: 2, mustHave: false, minScore: 3, sort: 1, archived: true });
+    expect((await store.records.get('criterion', 'power'))?.payload).toEqual({ weight: 2, mustHave: false, minScore: 3, sort: 1, archived: true });
   });
 
   it('adds a custom criterion with a key of c_ and 8 hex characters, at the end, Medium', async () => {
     const added = await store.addCriterion('Pets allowed', 2, T1);
     expect(added.key).toMatch(/^c_[0-9a-f]{8}$/);
     expect(added).toMatchObject({ label: 'Pets allowed', weight: 2, mustHave: false, minScore: 3, sort: 10 });
-    expect((await store.getRecord('criterion', added.key))?.payload).toEqual({ label: 'Pets allowed', weight: 2, mustHave: false, minScore: 3, sort: 10 });
+    expect((await store.records.get('criterion', added.key))?.payload).toEqual({ label: 'Pets allowed', weight: 2, mustHave: false, minScore: 3, sort: 10 });
     const second = await store.addCriterion('Lift', 3, T1);
     expect(second.sort).toBe(11);
     expect((await store.scoring()).criteria.map((c) => c.key).slice(-2)).toEqual([added.key, second.key]);
@@ -667,21 +667,21 @@ describe('LocalStore criteria', () => {
     await store.saveHouse(house('h1', { checklist: { [added.key]: 4 } }), T1);
     expect(await store.criterionInUse(added.key)).toBe(true);
     await expect(store.deleteCriterion(added.key)).rejects.toMatchObject({ key: 'criteria.inUse' });
-    expect(await store.getRecord('criterion', added.key)).toBeDefined();
+    expect(await store.records.get('criterion', added.key)).toBeDefined();
     await store.deleteHouse('h1', T2);
     expect(await store.criterionInUse(added.key)).toBe(false);
     await store.deleteCriterion(added.key, T2);
-    expect(await store.getRecord('criterion', added.key)).toBeUndefined();
+    expect(await store.records.get('criterion', added.key)).toBeUndefined();
     // A built-in can only be archived.
     await expect(store.deleteCriterion('water')).rejects.toBeInstanceOf(LocalDataError);
   });
 
   it('stores the rating share as the preference score.ratingShare, and deletes it at the default 0.5', async () => {
     await store.setRatingShare(0.25, T1);
-    expect((await store.getRecord('preference', 'score.ratingShare'))?.payload).toEqual({ value: '0.25' });
+    expect((await store.records.get('preference', 'score.ratingShare'))?.payload).toEqual({ value: '0.25' });
     expect((await store.scoring()).ratingShare).toBe(0.25);
     await store.setRatingShare(0.5, T2);
-    expect(await store.getRecord('preference', 'score.ratingShare')).toBeUndefined();
+    expect(await store.records.get('preference', 'score.ratingShare')).toBeUndefined();
     expect((await store.scoring()).ratingShare).toBe(0.5);
     await store.setRatingShare(7, T2);
     expect((await store.scoring()).ratingShare).toBe(1);
@@ -692,20 +692,20 @@ describe('LocalStore criteria', () => {
     await store.addCriterion('Pets', 2, T1);
     await store.setRatingShare(0.75, T1);
     await store.resetCriteria(T2);
-    expect(await store.recordsOf('criterion')).toEqual([]);
-    expect(await store.recordsOf('preference')).toEqual([]);
+    expect(await store.records.ofType('criterion')).toEqual([]);
+    expect(await store.records.ofType('preference')).toEqual([]);
     const scoring = await store.scoring();
     expect(scoring.criteria).toHaveLength(10);
     expect(scoring.ratingShare).toBe(0.5);
     // The tombstones stay for the next sync.
-    expect((await store.dirtyRecords()).every((r) => r.deleted)).toBe(true);
+    expect((await store.records.dirty()).every((r) => r.deleted)).toBe(true);
   });
 
   it('reads an out-of-range stored value as the default', async () => {
-    await store.saveRecord('criterion', 'water', { weight: 9, mustHave: 'x', minScore: 0, sort: -4 }, T1);
+    await store.records.save('criterion', 'water', { weight: 9, mustHave: 'x', minScore: 0, sort: -4 }, T1);
     const water = (await store.scoring()).criteria.find((c) => c.key === 'water');
     expect(water).toMatchObject({ weight: 2, mustHave: false, minScore: 3, sort: 0 });
-    await store.saveRecord('preference', 'score.ratingShare', { value: 'lots' }, T1);
+    await store.records.save('preference', 'score.ratingShare', { value: 'lots' }, T1);
     expect((await store.scoring()).ratingShare).toBe(0.5);
   });
 });
@@ -724,12 +724,12 @@ describe('LocalStore questions', () => {
 
   it('seeds every default once: fixed ids, the text of the current language, clean and stamped 2000-01-01', async () => {
     expect(await store.seedQuestions('ta', T1)).toBe(DEFAULT_QUESTIONS.length);
-    const rows = await store.recordsOf('question');
+    const rows = await store.records.ofType('question');
     expect(rows.map((r) => r.id).sort()).toEqual(DEFAULT_QUESTIONS.map((d) => d.id).sort());
     // S4b-BL-90a: never pushed, and older than any real edit, so another device's edit or deletion always wins.
     expect(rows.every((r) => !r.dirty)).toBe(true);
     expect(rows.every((r) => r.updatedAt === '2000-01-01T00:00:00.000Z')).toBe(true);
-    expect(await store.dirtyRecords()).toEqual([]);
+    expect(await store.records.dirty()).toEqual([]);
     const pulledEdit = { ...rows[0], updatedAt: new Date(T1).toISOString() };
     expect(keepLocalRecord(rows[0], pulledEdit)).toBe(false);
     const water = (await store.questions()).find((q) => q.id === 'qd_water')!;
@@ -757,11 +757,11 @@ describe('LocalStore questions', () => {
     await store.deleteQuestion('qd_water', T2);
     expect(await store.seedQuestions('en', T3)).toBe(0);
     expect(await ids()).not.toContain('qd_water');
-    expect((await store.getRecord('question', 'qd_water'))).toBeUndefined();
+    expect((await store.records.get('question', 'qd_water'))).toBeUndefined();
   });
 
   it('does not seed over a default that another device already sent', async () => {
-    await store.saveRecord('question', 'qd_water', { text: 'Edited elsewhere', category: 'OTHER', appliesTo: 'BOTH', defaultOn: false, sort: 3 }, T1);
+    await store.records.save('question', 'qd_water', { text: 'Edited elsewhere', category: 'OTHER', appliesTo: 'BOTH', defaultOn: false, sort: 3 }, T1);
     expect(await store.seedQuestions('en', T2)).toBe(DEFAULT_QUESTIONS.length - 1);
     expect((await store.questions()).find((q) => q.id === 'qd_water')!.text).toBe('Edited elsewhere');
   });
@@ -792,7 +792,7 @@ describe('LocalStore questions', () => {
     const added = await store.addQuestion('  Is there a lift?  ', 'BUILDING', 'SALE', T2);
     expect(added.id).toMatch(/^q_[0-9a-f]{8}$/);
     expect(added).toMatchObject({ text: 'Is there a lift?', category: 'BUILDING', appliesTo: 'SALE', defaultOn: false, sort: DEFAULT_QUESTIONS.length });
-    const record = await store.getRecord('question', added.id);
+    const record = await store.records.get('question', added.id);
     expect(Object.keys(record!.payload)).toEqual(['text', 'category', 'appliesTo', 'defaultOn', 'sort']);
     expect(record!.dirty).toBe(true);
   });
@@ -819,12 +819,12 @@ describe('LocalStore questions', () => {
 
   it('saves only the record that changed, and reorders by writing the rows whose number moved', async () => {
     await store.seedQuestions('en', T1);
-    for (const r of await store.dirtyRecords()) await store.markRecordClean('question', r.id, r.updatedAt);
-    expect(await store.dirtyRecords()).toEqual([]);
+    for (const r of await store.records.dirty()) await store.records.markClean('question', r.id, r.updatedAt);
+    expect(await store.records.dirty()).toEqual([]);
     const bank = await store.questions();
     const [a, b] = [bank[0], bank[1]];
     await store.saveQuestions([{ ...a, sort: b.sort }, { ...b, sort: a.sort }], T2);
-    expect((await store.dirtyRecords()).map((r) => r.id).sort()).toEqual([a.id, b.id].sort());
+    expect((await store.records.dirty()).map((r) => r.id).sort()).toEqual([a.id, b.id].sort());
     expect((await store.questions()).slice(0, 2).map((q) => q.id)).toEqual([b.id, a.id]);
   });
 
@@ -832,21 +832,21 @@ describe('LocalStore questions', () => {
     await store.seedQuestions('en', T1);
     const q = (await store.questions())[0];
     await store.saveQuestion({ ...q, archived: true }, T2);
-    expect((await store.getRecord('question', q.id))!.payload['archived']).toBe(true);
+    expect((await store.records.get('question', q.id))!.payload['archived']).toBe(true);
     await store.saveQuestion({ ...q, archived: false }, T3);
-    expect(Object.keys((await store.getRecord('question', q.id))!.payload)).not.toContain('archived');
+    expect(Object.keys((await store.records.get('question', q.id))!.payload)).not.toContain('archived');
   });
 
   it('deletes any question, a seeded one too, as a tombstone the next sync sends', async () => {
     await store.seedQuestions('en', T1);
     await store.deleteQuestion('qd_pets', T2);
     expect(await ids()).not.toContain('qd_pets');
-    const tomb = (await store.dirtyRecords()).find((r) => r.id === 'qd_pets');
+    const tomb = (await store.records.dirty()).find((r) => r.id === 'qd_pets');
     expect(tomb).toMatchObject({ deleted: true, payload: {} });
   });
 
   it('reads a stored row with a blank text as no question', async () => {
-    await store.saveRecord('question', 'q_bad00001', { text: '  ', category: 'MONEY' }, T1);
+    await store.records.save('question', 'q_bad00001', { text: '  ', category: 'MONEY' }, T1);
     expect(await ids()).toEqual([]);
     expect(await store.questionRows()).toEqual([]);
   });
@@ -876,7 +876,7 @@ describe('LocalStore questions', () => {
 });
 
 /** Slice 3b-1 (docs/11 5.8): viewings, records of type `viewing`; no migration, a house is untouched. */
-describe('LocalStore viewings', () => {
+describe('ViewingStore (LocalStore.viewings)', () => {
   let store: LocalStore;
   const NOW = Date.parse('2026-09-30T12:00:00.000Z');
   const HOUR = 3_600_000;
@@ -897,83 +897,90 @@ describe('LocalStore viewings', () => {
   });
 
   it('saves a viewing as a dirty record of type viewing with the payload keys in the contract order', async () => {
-    await store.saveViewing(viewing('v_00000001', { notes: 'Bring a tape', withWhom: 'Meena' }), T1);
-    const record = await store.getRecord('viewing', 'v_00000001');
+    await store.viewings.save(viewing('v_00000001', { notes: 'Bring a tape', withWhom: 'Meena' }), T1);
+    const record = await store.records.get('viewing', 'v_00000001');
     expect(Object.keys(record!.payload)).toEqual(['houseId', 'startsAt', 'durationMin', 'kind', 'status', 'remindMin', 'withWhom', 'notes']);
     expect(record).toMatchObject({ dirty: true, deleted: false });
-    expect(await store.viewings()).toEqual([viewing('v_00000001', { notes: 'Bring a tape', withWhom: 'Meena' })]);
+    expect(await store.viewings.all()).toEqual([viewing('v_00000001', { notes: 'Bring a tape', withWhom: 'Meena' })]);
   });
 
   it('writes only when something changed: an unchanged save keeps updatedAt and the sync queue as they were', async () => {
-    await store.saveViewing(viewing('v_00000001'), T1);
-    const first = await store.getRecord('viewing', 'v_00000001');
-    for (const r of await store.dirtyRecords()) await store.markRecordClean('viewing', r.id, r.updatedAt);
-    await store.saveViewing(viewing('v_00000001'), T2);
-    expect((await store.getRecord('viewing', 'v_00000001'))?.updatedAt).toBe(first?.updatedAt);
-    expect(await store.dirtyRecords()).toEqual([]);
-    await store.saveViewing(viewing('v_00000001', { notes: 'Now with notes' }), T2);
-    expect((await store.dirtyRecords()).map((r) => r.id)).toEqual(['v_00000001']);
-    expect((await store.getRecord('viewing', 'v_00000001'))?.updatedAt).not.toBe(first?.updatedAt);
+    await store.viewings.save(viewing('v_00000001'), T1);
+    const first = await store.records.get('viewing', 'v_00000001');
+    for (const r of await store.records.dirty()) await store.records.markClean('viewing', r.id, r.updatedAt);
+    await store.viewings.save(viewing('v_00000001'), T2);
+    expect((await store.records.get('viewing', 'v_00000001'))?.updatedAt).toBe(first?.updatedAt);
+    expect(await store.records.dirty()).toEqual([]);
+    await store.viewings.save(viewing('v_00000001', { notes: 'Now with notes' }), T2);
+    expect((await store.records.dirty()).map((r) => r.id)).toEqual(['v_00000001']);
+    expect((await store.records.get('viewing', 'v_00000001'))?.updatedAt).not.toBe(first?.updatedAt);
   });
 
   it('lists the viewings by start then id, and those of one house', async () => {
-    await store.saveViewing(viewing('v_0000000b', { startsAt: NOW }), T1);
-    await store.saveViewing(viewing('v_0000000a', { startsAt: NOW }), T1);
-    await store.saveViewing(viewing('v_00000003', { startsAt: NOW - HOUR, houseId: 'h2' }), T1);
-    expect((await store.viewings()).map((v) => v.id)).toEqual(['v_00000003', 'v_0000000a', 'v_0000000b']);
-    expect((await store.viewingsOf('h1')).map((v) => v.id)).toEqual(['v_0000000a', 'v_0000000b']);
-    expect((await store.viewingRows()).map((r) => r.id).sort()).toEqual(['v_00000003', 'v_0000000a', 'v_0000000b']);
+    await store.viewings.save(viewing('v_0000000b', { startsAt: NOW }), T1);
+    await store.viewings.save(viewing('v_0000000a', { startsAt: NOW }), T1);
+    await store.viewings.save(viewing('v_00000003', { startsAt: NOW - HOUR, houseId: 'h2' }), T1);
+    expect((await store.viewings.all()).map((v) => v.id)).toEqual(['v_00000003', 'v_0000000a', 'v_0000000b']);
+    expect((await store.viewings.ofHouse('h1')).map((v) => v.id)).toEqual(['v_0000000a', 'v_0000000b']);
+    expect((await store.viewings.rows()).map((r) => r.id).sort()).toEqual(['v_00000003', 'v_0000000a', 'v_0000000b']);
   });
 
   it('draws a new v_ id that clashes with no record, a deleted one included', async () => {
-    await store.saveViewing(viewing('v_aaaaaaaa'), T1);
-    await store.deleteViewing('v_aaaaaaaa', T1);
+    await store.viewings.save(viewing('v_aaaaaaaa'), T1);
+    await store.viewings.delete('v_aaaaaaaa', T1);
     const drawn = ['v_aaaaaaaa', 'v_aaaaaaaa', 'v_bbbbbbbb'];
-    expect(await store.newViewingId(() => drawn.shift() ?? 'v_cccccccc')).toBe('v_bbbbbbbb');
-    expect(await store.newViewingId()).toMatch(/^v_[0-9a-f]{8}$/);
+    expect(await store.viewings.newId(() => drawn.shift() ?? 'v_cccccccc')).toBe('v_bbbbbbbb');
+    expect(await store.viewings.newId()).toMatch(/^v_[0-9a-f]{8}$/);
+  });
+
+  it('gives each saved viewing row its edit time', async () => {
+    await store.viewings.save({ id: 'v_00000001', houseId: 'h1', startsAt: NOW + HOUR, durationMin: 30, kind: 'FIRST', status: 'PLANNED', remindMin: 60 }, T2);
+    expect(await store.viewings.rows()).toEqual([
+      { id: 'v_00000001', updatedAt: '2026-09-02T00:00:00.000Z', viewing: expect.objectContaining({ id: 'v_00000001', houseId: 'h1' }) },
+    ]);
   });
 
   it('deletes a viewing as a tombstone the next sync sends, and leaves the house alone', async () => {
     await store.saveHouse(house('h1'), T1);
-    await store.saveViewing(viewing('v_00000001'), T1);
-    await store.deleteViewing('v_00000001', T2);
-    expect(await store.viewings()).toEqual([]);
-    expect((await store.dirtyRecords()).find((r) => r.id === 'v_00000001')).toMatchObject({ deleted: true, payload: {} });
+    await store.viewings.save(viewing('v_00000001'), T1);
+    await store.viewings.delete('v_00000001', T2);
+    expect(await store.viewings.all()).toEqual([]);
+    expect((await store.records.dirty()).find((r) => r.id === 'v_00000001')).toMatchObject({ deleted: true, payload: {} });
     expect((await store.getHouse('h1'))?.deleted).toBe(false);
   });
 
   it('keeps the viewings of a house that is deleted (they are shown as a house that is gone)', async () => {
     await store.saveHouse(house('h1'), T1);
-    await store.saveViewing(viewing('v_00000001'), T1);
+    await store.viewings.save(viewing('v_00000001'), T1);
     await store.deleteHouse('h1', T2);
-    expect((await store.viewings()).map((v) => v.id)).toEqual(['v_00000001']);
+    expect((await store.viewings.all()).map((v) => v.id)).toEqual(['v_00000001']);
   });
 
   it('finds the next PLANNED viewing of a house at or after now', async () => {
-    await store.saveViewing(viewing('v_00000001', { startsAt: NOW + 5 * HOUR }), T1);
-    await store.saveViewing(viewing('v_00000002', { startsAt: NOW + HOUR }), T1);
-    await store.saveViewing(viewing('v_00000003', { startsAt: NOW + 30 * 60_000, status: 'CANCELLED' }), T1);
-    await store.saveViewing(viewing('v_00000004', { startsAt: NOW - HOUR }), T1);
-    await store.saveViewing(viewing('v_00000005', { startsAt: NOW + 30 * 60_000, houseId: 'h2' }), T1);
-    expect((await store.nextViewing('h1', NOW))?.id).toBe('v_00000002');
-    expect((await store.nextViewing('h1', NOW + 2 * HOUR))?.id).toBe('v_00000001');
-    expect(await store.nextViewing('h1', NOW + 6 * HOUR)).toBeNull();
-    expect(await store.nextViewing('nobody', NOW)).toBeNull();
+    await store.viewings.save(viewing('v_00000001', { startsAt: NOW + 5 * HOUR }), T1);
+    await store.viewings.save(viewing('v_00000002', { startsAt: NOW + HOUR }), T1);
+    await store.viewings.save(viewing('v_00000003', { startsAt: NOW + 30 * 60_000, status: 'CANCELLED' }), T1);
+    await store.viewings.save(viewing('v_00000004', { startsAt: NOW - HOUR }), T1);
+    await store.viewings.save(viewing('v_00000005', { startsAt: NOW + 30 * 60_000, houseId: 'h2' }), T1);
+    expect((await store.viewings.next('h1', NOW))?.id).toBe('v_00000002');
+    expect((await store.viewings.next('h1', NOW + 2 * HOUR))?.id).toBe('v_00000001');
+    expect(await store.viewings.next('h1', NOW + 6 * HOUR)).toBeNull();
+    expect(await store.viewings.next('nobody', NOW)).toBeNull();
   });
 
   it('marks a viewing done with its visit, keeping the old visit when none is given', async () => {
-    await store.saveViewing(viewing('v_00000001'), T1);
-    const done = await store.markViewingDone('v_00000001', 'visit-1', T2);
+    await store.viewings.save(viewing('v_00000001'), T1);
+    const done = await store.viewings.markDone('v_00000001', 'visit-1', T2);
     expect(done).toMatchObject({ status: 'DONE', visitId: 'visit-1' });
-    expect((await store.getRecord('viewing', 'v_00000001'))?.payload).toMatchObject({ status: 'DONE', visitId: 'visit-1' });
-    await store.saveViewing(viewing('v_00000002', { visitId: 'old-visit' }), T1);
-    expect(await store.markViewingDone('v_00000002', undefined, T2)).toMatchObject({ status: 'DONE', visitId: 'old-visit' });
-    await expect(store.markViewingDone('v_99999999')).rejects.toBeInstanceOf(LocalDataError);
+    expect((await store.records.get('viewing', 'v_00000001'))?.payload).toMatchObject({ status: 'DONE', visitId: 'visit-1' });
+    await store.viewings.save(viewing('v_00000002', { visitId: 'old-visit' }), T1);
+    expect(await store.viewings.markDone('v_00000002', undefined, T2)).toMatchObject({ status: 'DONE', visitId: 'old-visit' });
+    await expect(store.viewings.markDone('v_99999999')).rejects.toBeInstanceOf(LocalDataError);
   });
 
   it('refuses a bad id, a blank house, a start that is not positive, a duration outside 5..480 and over-long text', async () => {
-    const refused = (over: Partial<Viewing>) => expect(store.saveViewing(viewing('v_00000001', over))).rejects.toBeInstanceOf(LocalDataError);
-    await expect(store.saveViewing(viewing('bad id'))).rejects.toBeInstanceOf(LocalDataError);
+    const refused = (over: Partial<Viewing>) => expect(store.viewings.save(viewing('v_00000001', over))).rejects.toBeInstanceOf(LocalDataError);
+    await expect(store.viewings.save(viewing('bad id'))).rejects.toBeInstanceOf(LocalDataError);
     await refused({ houseId: '  ' });
     await refused({ houseId: 'x'.repeat(65) });
     await refused({ startsAt: 0 });
@@ -984,23 +991,23 @@ describe('LocalStore viewings', () => {
     await refused({ withWhom: 'x'.repeat(201) });
     await refused({ notes: 'x'.repeat(2001) });
     await refused({ kind: 'THIRD' as Viewing['kind'] });
-    expect(await store.viewings()).toEqual([]);
+    expect(await store.viewings.all()).toEqual([]);
   });
 
   it('reads a stored row with no house or no time as no viewing', async () => {
-    await store.saveRecord('viewing', 'v_00000001', { startsAt: NOW }, T1);
-    await store.saveRecord('viewing', 'v_00000002', { houseId: 'h1' }, T1);
-    expect(await store.viewings()).toEqual([]);
-    expect(await store.viewingRows()).toEqual([]);
+    await store.records.save('viewing', 'v_00000001', { startsAt: NOW }, T1);
+    await store.records.save('viewing', 'v_00000002', { houseId: 'h1' }, T1);
+    expect(await store.viewings.all()).toEqual([]);
+    expect(await store.viewings.rows()).toEqual([]);
   });
 
   it('refuses the 5 001st viewing, and still lets an existing one be edited at the cap', async () => {
     for (let i = 0; i < 5000; i++) {
-      await store.saveRecord('viewing', 'v_' + i.toString(16).padStart(8, '0'), { houseId: 'h1', startsAt: NOW + i }, T1);
+      await store.records.save('viewing', 'v_' + i.toString(16).padStart(8, '0'), { houseId: 'h1', startsAt: NOW + i }, T1);
     }
-    await expect(store.saveViewing(viewing('v_ffffffff'))).rejects.toMatchObject({ key: 'viewings.max' });
-    await store.saveViewing(viewing('v_00000000', { startsAt: NOW, notes: 'edited at the cap' }), T2);
-    expect((await store.getRecord('viewing', 'v_00000000'))?.payload).toMatchObject({ notes: 'edited at the cap' });
+    await expect(store.viewings.save(viewing('v_ffffffff'))).rejects.toMatchObject({ key: 'viewings.max' });
+    await store.viewings.save(viewing('v_00000000', { startsAt: NOW, notes: 'edited at the cap' }), T2);
+    expect((await store.records.get('viewing', 'v_00000000'))?.payload).toMatchObject({ notes: 'edited at the cap' });
   }, 60_000);
 });
 
@@ -1018,23 +1025,23 @@ describe('LocalStore areas, places and area notes', () => {
 
   it('saves an area as a dirty record of type area with the keys in the contract order, enabled only when false', async () => {
     await store.saveArea(area('a_00000001'), T1);
-    const record = await store.getRecord('area', 'a_00000001');
+    const record = await store.records.get('area', 'a_00000001');
     expect(Object.keys(record!.payload)).toEqual(['name', 'lat', 'lon', 'radiusM']);
     expect(record).toMatchObject({ dirty: true, deleted: false });
     await store.saveArea(area('a_00000001', { enabled: false, name: '  Adyar  ' }), T2);
-    expect(Object.keys((await store.getRecord('area', 'a_00000001'))!.payload)).toEqual(['name', 'lat', 'lon', 'radiusM', 'enabled']);
+    expect(Object.keys((await store.records.get('area', 'a_00000001'))!.payload)).toEqual(['name', 'lat', 'lon', 'radiusM', 'enabled']);
     expect(await store.areas()).toEqual([area('a_00000001', { enabled: false })]);
   });
 
   it('writes only when something changed: an unchanged area keeps updatedAt and the sync queue as they were', async () => {
     await store.saveArea(area('a_00000001'), T1);
-    const first = await store.getRecord('area', 'a_00000001');
-    for (const r of await store.dirtyRecords()) await store.markRecordClean('area', r.id, r.updatedAt);
+    const first = await store.records.get('area', 'a_00000001');
+    for (const r of await store.records.dirty()) await store.records.markClean('area', r.id, r.updatedAt);
     await store.saveArea(area('a_00000001'), T2);
-    expect((await store.getRecord('area', 'a_00000001'))?.updatedAt).toBe(first?.updatedAt);
-    expect(await store.dirtyRecords()).toEqual([]);
+    expect((await store.records.get('area', 'a_00000001'))?.updatedAt).toBe(first?.updatedAt);
+    expect(await store.records.dirty()).toEqual([]);
     await store.saveArea(area('a_00000001', { radiusM: 900 }), T2);
-    expect((await store.dirtyRecords()).map((r) => r.id)).toEqual(['a_00000001']);
+    expect((await store.records.dirty()).map((r) => r.id)).toEqual(['a_00000001']);
   });
 
   it('lists areas and places by name then id, and notes newest first', async () => {
@@ -1070,7 +1077,7 @@ describe('LocalStore areas, places and area notes', () => {
     await store.saveAreaNote(note('n_00000001', { street: undefined, areaId: 'a_00000001' }), T1);
     await store.deleteArea('a_00000001', T2);
     expect(await store.areas()).toEqual([]);
-    expect((await store.dirtyRecords()).find((r) => r.id === 'a_00000001')).toMatchObject({ deleted: true, payload: {} });
+    expect((await store.records.dirty()).find((r) => r.id === 'a_00000001')).toMatchObject({ deleted: true, payload: {} });
     expect((await store.areaNotes()).map((n) => n.id)).toEqual(['n_00000001']);
   });
 
@@ -1115,12 +1122,12 @@ describe('LocalStore areas, places and area notes', () => {
   });
 
   it('skips a stored row that is not readable, without truncating the rest', async () => {
-    await store.saveRecord('area', 'a_00000001', { name: '', lat: 1, lon: 1, radiusM: 500 }, T1);
-    await store.saveRecord('area', 'a_00000002', { name: 'Good', lat: 1, lon: 1, radiusM: 50 }, T1);
-    await store.saveRecord('place', 'p_00000001', { name: 'Bad', lat: 999, lon: 1 }, T1);
-    await store.saveRecord('areanote', 'n_00000001', { text: 'no target' }, T1);
-    await store.saveRecord('areanote', 'n_00000002', { areaId: 'a', street: 's', text: 'both' }, T1);
-    await store.saveRecord('areanote', 'n_00000003', { street: 'MG Road', text: 'Ok' }, T1);
+    await store.records.save('area', 'a_00000001', { name: '', lat: 1, lon: 1, radiusM: 500 }, T1);
+    await store.records.save('area', 'a_00000002', { name: 'Good', lat: 1, lon: 1, radiusM: 50 }, T1);
+    await store.records.save('place', 'p_00000001', { name: 'Bad', lat: 999, lon: 1 }, T1);
+    await store.records.save('areanote', 'n_00000001', { text: 'no target' }, T1);
+    await store.records.save('areanote', 'n_00000002', { areaId: 'a', street: 's', text: 'both' }, T1);
+    await store.records.save('areanote', 'n_00000003', { street: 'MG Road', text: 'Ok' }, T1);
     expect((await store.areas()).map((a) => [a.id, a.radiusM])).toEqual([['a_00000002', 500]]);
     expect(await store.places()).toEqual([]);
     expect((await store.areaNotes()).map((n) => n.id)).toEqual(['n_00000003']);

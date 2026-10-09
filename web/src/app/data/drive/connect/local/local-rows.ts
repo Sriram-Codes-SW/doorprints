@@ -49,7 +49,7 @@ export class LocalRowsAdapter implements LocalRows {
     }
     const recordTypes = this.collectRecordTypes();
     for (const type of recordTypes) {
-      const records = await this.store.allRecordsOf(type);
+      const records = await this.store.records.allOfType(type);
       for (const rec of records) {
         rows.push(this.toSyncRow('records', `${rec.type}/${rec.id}`, rec.updatedAt, rec.deleted, { ...rec }));
       }
@@ -70,7 +70,7 @@ export class LocalRowsAdapter implements LocalRows {
     for (const visit of await this.store.dirtyVisits()) {
       rows.push(this.toSyncRow('visits', visit.id, visit.updatedAt, visit.deleted, { ...visit }));
     }
-    for (const rec of await this.store.dirtyRecords()) {
+    for (const rec of await this.store.records.dirty()) {
       rows.push(this.toSyncRow('records', `${rec.type}/${rec.id}`, rec.updatedAt, rec.deleted, { ...rec }));
     }
     return rows;

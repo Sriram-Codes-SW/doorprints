@@ -19,6 +19,7 @@ import { HttpRequest, provideHttpClient, withFetch, withInterceptors } from '@an
 import { TestBed } from '@angular/core/testing';
 import { describe, expect, it } from 'vitest';
 import { LocalStore } from '../../data/local-store.service';
+import type { ViewingStore } from '../../data/viewing-store';
 import { OnDeviceAiService } from './on-device-ai.service';
 
 /** The key, from the environment of the manual *AI evals* workflow only (the `AI_API_KEY` secret). */
@@ -56,7 +57,7 @@ describe.skipIf(!KEY)('OnDeviceAiService against Gemini (real key)', () => {
     const store: Pick<LocalStore, 'allHouses' | 'allVisits' | 'viewings' | 'areas' | 'places' | 'areaNoteRows'> = {
       allHouses: async () => houses as unknown as Awaited<ReturnType<LocalStore['allHouses']>>,
       allVisits: async () => [],
-      viewings: async () => [],
+      viewings: { all: async () => [] } as unknown as ViewingStore,
       areas: async () => [],
       places: async () => [],
       areaNoteRows: async () => [],
