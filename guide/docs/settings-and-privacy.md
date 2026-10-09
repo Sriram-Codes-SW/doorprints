@@ -57,6 +57,22 @@ asks an AI service itself, with a key of your own. You choose the service: Googl
 OpenAI, OpenRouter, Groq, Anthropic, a model on your own computer (Ollama or LM Studio), or any other service that speaks the same
 chat language.
 
+### What it looks like
+
+**Fill in from listing text** is on the form for a new house. Paste an ad (1) and choose **Fill in the form** (2):
+
+![Fill in from listing text on the website, before: a WhatsApp-style ad is pasted into the Listing text box, with the Fill in the form button below it](images/web-ai-extract-before.png)
+
+The form then holds the AI's suggestions: the name (1) and the price (2) are filled in, with the BHK below. Check them,
+set the location on the map and save. A detail the ad does not give stays empty.
+
+![Fill in from listing text on the website, after: the form is filled in with the name 2BHK near Indiranagar, price 28000 and BHK 2](images/web-ai-extract-after.png)
+
+These pictures are an **example answer**, made with a made-up ad and a stand-in for the AI service on the same
+computer (no key, nothing sent anywhere); the words of the answer were scripted. What you get depends on the service
+and model you choose. For **Ask** and **Plan** see [Compare and plan](compare-and-plan.md#what-ask-and-plan-look-like-with-ai-on), and for what we test
+and what it costs, [What we test](what-we-test.md).
+
 ### On Android and iPhone
 
 1. Make a key with the service you want to use (a model on your own computer needs none). For Gemini, open

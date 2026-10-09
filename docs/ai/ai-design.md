@@ -44,6 +44,7 @@
 | v0.40   | 2026-10-09 | Claude (Code), engineer       | 8.1: the keyless provider checks found three things (S4b-BL-175-F1..F3, [10](../10-sprint-log.md) v0.193); F1 and F2 are fixed in the adapters (the Anthropic call is repeated once with `tool_choice: auto` when a newer Claude model refuses a forced tool; the website reads a redirect as unavailable), F3 is documented; the eval suites need no change. |
 | v0.41   | 2026-10-09 | Claude (Code), engineer       | 8.1: **the `local-model` suite answers in time** (S4b-BL-190, [10](../10-sprint-log.md) v0.198): default model `qwen2.5:0.5b`, a 180 s request limit for the loopback eval only (`AI_EVAL_TIMEOUT_MS`, read by `evalSetup`, passed to the adapter's new optional argument; the app's 60 s is unchanged), `OLLAMA_NUM_PARALLEL=1`, `OLLAMA_KEEP_ALIVE`, a JSON warm-up, the job at 150 minutes; the context stays 8192 (measured: longest prompt 14,256 characters). Not yet proven by a run. |
 | v0.42   | 2026-10-09 | Claude (Code), engineer       | 10 and 11: the answer budget `max-output-tokens` / `AI_MAX_OUTPUT_TOKENS` rises from 2,048 to **8,192** (S4b-BL-194 item 1). On Gemini 3.x the output limit includes the hidden thinking tokens, so a prompt that makes the model think a lot (the injection cases `ask-14`, `ask-16`) left no room for the JSON and the answer was cut off (`UnexpectedEndOfInputException`, `StreamReadException`, then `503 Answering failed`); the visible answers use 130 to 350 tokens. Thinking level, prompts, thresholds and cases are unchanged. `AiOutputTokensTest` pins the default in the record and in `application.yml`. The phones' and website's own Gemini calls still send 2,048 (not changed here; S4b-BL-194). |
+| v0.43   | 2026-10-09 | Claude (Code), engineer       | **Ask logs the retrieved house ids at DEBUG** (section 7 note on prompts and logging): one line per ask after retrieval and redaction, ids only; the golden-set job raises only that logger to DEBUG (S4b-BL-194 item 2). `AskRetrievedIdsLogTest` pins the order, the absence of question and document text, and that nothing is logged at INFO or above. |
 
 Status: implemented in `backend/` (package `app.doorprints.server.ai`), **off by default**. Not yet compiled in this
 sandbox (no Maven Central access) — CI compiles and runs the tests. Provider: AI Studio by default, Vertex AI with
@@ -596,7 +597,10 @@ Common pattern:
 3. **Output** = JSON schema from a Java record (`@JsonPropertyDescription` on each field) via Spring AI's
    `BeanOutputConverter`; low temperature (0 for extraction, 0.1 for Q&A, 0.2 for planning).
 4. Prompts are never logged; `spring.ai.chat.observations.log-prompt/log-completion` and the ChatClient equivalents
-   are explicitly `false`.
+   are explicitly `false`. The one addition: `RagService` logs, at DEBUG only, `ask retrieved N houses: [ids]` (house
+   ids in the order sent to the model; never the question, the text, notes, names or phones). The `ai-evals.yml`
+   golden-set step turns that one logger to DEBUG, so a failed Ask case shows whether the house was retrieved
+   (S4b-BL-194); production stays at INFO.
 
 Key rules per feature: extraction — "only facts stated; null if absent; never guess phone numbers/URLs/prices";
 Q&A — "only the records; otherwise reply exactly *I don't know based on the houses you have saved.*; cite
@@ -1133,7 +1137,7 @@ unchanged.
 Optional: Gemini "thinking" can be reduced with `SPRING_AI_OPENAI_CHAT_REASONING_EFFORT=low` (compat endpoint
 supports `reasoning_effort` [G1]); on Vertex with `SPRING_AI_GOOGLE_GENAI_CHAT_THINKING_LEVEL=LOW`. The manual *AI evals* workflow sets the right one for
 the golden-set run from its input `thinking_level` (`default` leaves the model's own level) and the scorecard header
-states it (S4b-BL-195).
+states it (S4b-BL-197).
 
 ## 12. Connecting Claude Desktop / Cowork to the MCP server
 

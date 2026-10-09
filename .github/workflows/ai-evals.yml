@@ -110,7 +110,7 @@ on:
           - aistudio
           - vertex
       thinking_level:
-        description: "golden-set only: the model's thinking level (S4b-BL-195). default = the model's own, unchanged. The others set SPRING_AI_GOOGLE_GENAI_CHAT_THINKING_LEVEL (vertex) or SPRING_AI_OPENAI_CHAT_REASONING_EFFORT (aistudio) for the server; the scorecard header shows it"
+        description: "golden-set only: the model's thinking level (S4b-BL-197). default = the model's own, unchanged. The others set SPRING_AI_GOOGLE_GENAI_CHAT_THINKING_LEVEL (vertex) or SPRING_AI_OPENAI_CHAT_REASONING_EFFORT (aistudio) for the server; the scorecard header shows it"
         type: choice
         default: default
         options:
@@ -287,6 +287,10 @@ jobs:
           DB_PASSWORD: doorprints
           APP_AI_ENABLED: "true"
           APP_MCP_ENABLED: "false"
+          # DEBUG for one class only, RagService: one line per ask with the retrieved house ids, so a failed case shows
+          # whether the house was retrieved (S4b-BL-194). Ids only. SPRING_APPLICATION_JSON because an env-var name
+          # binds in lower case (a logger name is case-sensitive) and a package name would also raise HouseIndexer.
+          SPRING_APPLICATION_JSON: '{"logging":{"level":{"app.doorprints.server.ai.rag.RagService":"DEBUG"}}}'
           AI_PROVIDER: ${{ inputs.provider }}
           # The key is only handed to the aistudio path; Vertex AI uses the federated credentials instead.
           AI_API_KEY: ${{ inputs.provider == 'aistudio' && secrets.AI_API_KEY || '' }}
@@ -302,7 +306,7 @@ jobs:
           # Only override when set: an empty value would replace the application.yml default.
           if [ -n "$CHAT_MODEL_INPUT" ]; then export AI_CHAT_MODEL="$CHAT_MODEL_INPUT"; fi
           if [ -n "$EMBEDDING_MODEL_INPUT" ]; then export AI_EMBEDDING_MODEL="$EMBEDDING_MODEL_INPUT"; fi
-          # Thinking level (S4b-BL-195): only when chosen; "default" leaves the model's own level. Spring Boot's relaxed
+          # Thinking level (S4b-BL-197): only when chosen; "default" leaves the model's own level. Spring Boot's relaxed
           # binding reads these environment variables straight into spring.ai.google.genai.chat.thinking-level (an enum,
           # MINIMAL | LOW | MEDIUM | HIGH, upper case) and spring.ai.openai.chat.reasoning-effort (a string, lower case);
           # no SPRING_APPLICATION_JSON is needed, so it cannot clash with one set for another purpose. The scorecard
