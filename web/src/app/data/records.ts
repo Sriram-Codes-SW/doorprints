@@ -165,6 +165,16 @@ export function isoNow(now: number = Date.now()): string {
   return new Date(now).toISOString();
 }
 
+/** Text order by code unit, so exports are byte-for-byte reproducible whatever the browser's locale. */
+export function compareText(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+/** Export and display order everywhere: oldest first by createdAt, ties broken by id. */
+export function sortByCreated<T extends { createdAt?: string | null; id: string }>(rows: readonly T[]): T[] {
+  return [...rows].sort((a, b) => compareText(a.createdAt ?? '', b.createdAt ?? '') || compareText(a.id, b.id));
+}
+
 const PRICE_TYPES: readonly PriceType[] = ['RENT', 'SALE'];
 const SOURCES: readonly VisitSource[] = ['AUTO', 'MANUAL'];
 

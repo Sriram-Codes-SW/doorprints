@@ -73,7 +73,7 @@ export class ImportService {
   async localVersions(): Promise<LocalVersions> {
     const houses = await this.store.allHouses();
     const visits = await this.store.allVisits();
-    const photos = await this.store.allPhotos();
+    const photos = await this.store.photos.all();
     const versions = async (type: string) => new Map((await this.store.allRecordsOf(type)).map((r) => [r.id, millis(r.updatedAt)]));
     const live = async (type: string) => new Set((await this.store.allRecordsOf(type)).filter((r) => !r.deleted).map((r) => r.id));
     return {
@@ -209,8 +209,8 @@ export class ImportService {
     await this.store.putImported({ records, houses, visits, photos });
     // Photos already here whose meta is newer in the file: only the meta, marked for the next sync.
     for (const p of actions.photoMeta) {
-      const here = await this.store.getPhoto(p.id);
-      if (here && !here.deleted) await this.store.putPhotoRecord(withPhotoMeta(here, cleanMeta(p), true));
+      const here = await this.store.photos.get(p.id);
+      if (here && !here.deleted) await this.store.photos.put(withPhotoMeta(here, cleanMeta(p), true));
     }
     let removed = 0;
     for (const id of actions.removedHouseIds) {
@@ -255,8 +255,8 @@ export class ImportService {
       if (row && !row.deleted && millis(row.updatedAt) === at && !(row.houseId && keptHouses.has(row.houseId))) await this.store.deleteVisit(id, now);
     }
     for (const id of undo.photos) {
-      const row = await this.store.getPhoto(id);
-      if (row && !row.deleted && !keptHouses.has(row.houseId)) await this.store.deletePhoto(id, now);
+      const row = await this.store.photos.get(id);
+      if (row && !row.deleted && !keptHouses.has(row.houseId)) await this.store.photos.delete(id, now);
     }
     for (const [key, at] of undo.records) {
       const [type, id] = key.split('\n');

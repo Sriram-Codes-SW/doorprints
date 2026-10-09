@@ -18,7 +18,8 @@
 
 import { computed } from '@angular/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CACHE_NAME_PREFIX, LocalStore, MAX_PHOTOS_PER_HOUSE, SETTLE_MS } from './local-store.service';
+import { CACHE_NAME_PREFIX, LocalStore, SETTLE_MS } from './local-store.service';
+import { MAX_PHOTOS_PER_HOUSE } from './photo-store';
 import { SETTING_KEYS } from './records';
 import { keepLocalRecord } from './sync-rules';
 import { LocalDataError } from '../core/local-error';
@@ -147,7 +148,7 @@ describe('LocalStore', () => {
     marks.push(view());
     await store.saveVisit(visit('v1', 'h1', '2026-09-05T00:00:00.000Z'), T1);
     marks.push(view());
-    await store.addPhoto('h1', new Blob([new Uint8Array([1])], { type: 'image/jpeg' }), 'p1', T1);
+    await store.photos.add('h1', new Blob([new Uint8Array([1])], { type: 'image/jpeg' }), 'p1', T1);
     marks.push(view());
     await store.deleteHouse('h1', T2);
     marks.push(view());
@@ -230,42 +231,42 @@ describe('LocalStore', () => {
 
   it('keeps a photo’s bytes and removes them again', async () => {
     await store.saveHouse(house('h1'), T1);
-    const added = await store.addPhoto('h1', new Blob([new Uint8Array([1, 2, 3])], { type: 'image/jpeg' }), 'p1', T1);
+    const added = await store.photos.add('h1', new Blob([new Uint8Array([1, 2, 3])], { type: 'image/jpeg' }), 'p1', T1);
     expect(added.ok).toBe(true);
-    expect(await store.photosOf('h1')).toHaveLength(1);
+    expect(await store.photos.ofHouse('h1')).toHaveLength(1);
     // Never uploaded, so it is simply forgotten.
-    await store.deletePhoto('p1', T2);
-    expect(await store.allPhotos()).toHaveLength(0);
+    await store.photos.delete('p1', T2);
+    expect(await store.photos.all()).toHaveLength(0);
   });
 
   it('leaves a tombstone for a photo the server already has', async () => {
     await store.saveHouse(house('h1'), T1);
-    await store.addPhoto('h1', new Blob([new Uint8Array([1])], { type: 'image/jpeg' }), 'p1', T1);
-    const stored = await store.getPhoto('p1');
-    await store.putPhotoRecord({ ...stored!, uploaded: true });
-    await store.deletePhoto('p1', T2);
-    const all = await store.allPhotos();
+    await store.photos.add('h1', new Blob([new Uint8Array([1])], { type: 'image/jpeg' }), 'p1', T1);
+    const stored = await store.photos.get('p1');
+    await store.photos.put({ ...stored!, uploaded: true });
+    await store.photos.delete('p1', T2);
+    const all = await store.photos.all();
     expect(all).toHaveLength(1);
     expect(all[0].deleted).toBe(true);
     expect(all[0].blob).toBeNull();
-    expect(await store.photosOf('h1')).toHaveLength(0);
+    expect(await store.photos.ofHouse('h1')).toHaveLength(0);
   });
 
   it('refuses more than the shared per-house photo limit', async () => {
     await store.saveHouse(house('h1'), T1);
     for (let i = 0; i < MAX_PHOTOS_PER_HOUSE; i++) {
-      const result = await store.addPhoto('h1', new Blob([new Uint8Array([i])], { type: 'image/jpeg' }), `p${i}`, T1);
+      const result = await store.photos.add('h1', new Blob([new Uint8Array([i])], { type: 'image/jpeg' }), `p${i}`, T1);
       expect(result.ok).toBe(true);
     }
-    const extra = await store.addPhoto('h1', new Blob([new Uint8Array([99])], { type: 'image/jpeg' }), 'px', T1);
+    const extra = await store.photos.add('h1', new Blob([new Uint8Array([99])], { type: 'image/jpeg' }), 'px', T1);
     expect(extra.ok).toBe(false);
   });
 
   it('deleting a house also drops its photos', async () => {
     await store.saveHouse(house('h1'), T1);
-    await store.addPhoto('h1', new Blob([new Uint8Array([1])], { type: 'image/jpeg' }), 'p1', T1);
+    await store.photos.add('h1', new Blob([new Uint8Array([1])], { type: 'image/jpeg' }), 'p1', T1);
     await store.deleteHouse('h1', T2);
-    expect(await store.photosOf('h1')).toHaveLength(0);
+    expect(await store.photos.ofHouse('h1')).toHaveLength(0);
   });
 
   it('counts the same five numbers the server’s /api/stats returns', async () => {

@@ -95,8 +95,8 @@ describe('LocalRowsAdapter', () => {
     await store.putHouseFromServer(house('h2', 'Clean'));
     const allHouses = vi.spyOn(store, 'allHouses');
     const dirtyHouses = vi.spyOn(store, 'dirtyHouses');
-    const allPhotos = vi.spyOn(store, 'allPhotos');
-    const getPhoto = vi.spyOn(store, 'getPhoto');
+    const allPhotos = vi.spyOn(store.photos, 'all');
+    const getPhoto = vi.spyOn(store.photos, 'get');
     const changed = await adapter.changedRows();
     expect(changed.map((r) => r.key)).toEqual(['h1']);
     expect(dirtyHouses).toHaveBeenCalled();

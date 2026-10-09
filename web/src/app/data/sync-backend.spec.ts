@@ -304,7 +304,7 @@ describe('SyncService through the SyncBackend seam', () => {
     backend.photos = [{ id: P1, houseId: H1, contentType: 'image/jpeg', sizeBytes: 2, deleted: false, syncVersion: 9 }];
     await sync.syncNow(true);
     expect(backend.calls).toContain(`downloadPhoto ${P1}`);
-    expect((await store.getPhoto(P1))?.uploaded).toBe(true);
+    expect((await store.photos.get(P1))?.uploaded).toBe(true);
     expect((await store.cursors()).photo).toBe(9);
   });
 
@@ -317,14 +317,14 @@ describe('SyncService through the SyncBackend seam', () => {
     ];
     await sync.syncNow(true);
     expect(sync.lastError()).toBeNull();
-    expect(await store.getPhoto(P1)).toBeUndefined();
-    expect((await store.getPhoto(P2))?.uploaded).toBe(true);
+    expect(await store.photos.get(P1)).toBeUndefined();
+    expect((await store.photos.get(P2))?.uploaded).toBe(true);
     expect((await store.cursors()).photo).toBe(10);
   });
 
   it('photo bytes wait while the backend says photos are not allowed (S4b-BL-128)', async () => {
     await store.putHouseFromServer({ ...house(H1), updatedAt: AT, syncVersion: 1 });
-    await store.putPhotoRecord({
+    await store.photos.put({
       id: P2, houseId: H1, blob: new Blob([new Uint8Array([9])], { type: 'image/jpeg' }), contentType: 'image/jpeg', sizeBytes: 1,
       createdAt: AT, updatedAt: AT, deleted: false, syncVersion: 0, uploaded: false,
     });
@@ -339,8 +339,8 @@ describe('SyncService through the SyncBackend seam', () => {
     await sync.syncNow(true);
     expect(backend.calls).toContain(`uploadPhoto ${P2}`);
     expect(backend.calls).toContain(`downloadPhoto ${P1}`);
-    expect((await store.getPhoto(P1))?.uploaded).toBe(true);
-    expect((await store.getPhoto(P2))?.uploaded).toBe(true);
+    expect((await store.photos.get(P1))?.uploaded).toBe(true);
+    expect((await store.photos.get(P2))?.uploaded).toBe(true);
   });
 
   it('keeps keepLocalRecord as the server rule', () => {

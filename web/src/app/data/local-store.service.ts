@@ -25,7 +25,8 @@ import type { LocalDb, OpenedDb, StorageProblem } from './local-db';
 import { BROKER_TYPE, MAX_BROKER_NAME, MAX_BROKER_PHONE, brokerFromPayload, brokerToPayload, phoneKey, samePhone } from '../shared/broker';
 import type { Broker, BrokerRow } from '../shared/broker';
 import { deleteSavedWalksOfHouse } from './trace-rows';
-import { SETTING_KEYS, houseFromDto, isoNow, millis, photoMetaOf, recordFromDto, visitFromDto, withPhotoMeta } from './records';
+import { SETTING_KEYS, compareText, houseFromDto, isoNow, millis, recordFromDto, sortByCreated, visitFromDto } from './records';
+import { PhotoStore } from './photo-store';
 import {
   BUILT_IN_KEYS,
   CRITERION_TYPE,
@@ -108,8 +109,6 @@ import {
 } from '../shared/area';
 import type { Area, AreaNote, AreaNoteRow, AreaRow, Place, PlaceRow } from '../shared/area';
 import type { LengthUnit } from '../shared/room-sizes';
-import { MOVE_IN_TAG, cleanMeta, hasMeta, incomingWins } from '../shared/photo-tags';
-import type { PhotoMeta } from '../shared/photo-tags';
 import { choose as chooseStatus, closeTargets } from '../shared/house-status';
 import type { HouseRecord, PhotoRecord, RecordRecord, SettingRecord, VisitRecord } from './records';
 
@@ -117,12 +116,6 @@ import type { HouseRecord, PhotoRecord, RecordRecord, SettingRecord, VisitRecord
 export const SETTLE_MS = 300;
 /** During a long run of writes (a first-run download), views still refresh at least this often. */
 export const SETTLE_MAX_MS = 2000;
-
-/** Same ceiling as the Android app and the server (shared MAX_PHOTOS_PER_HOUSE). */
-export const MAX_PHOTOS_PER_HOUSE = 20;
-
-/** The outcome of adding a photo: its id, or `limit` when the house already holds the most photos. */
-export type AddPhotoResult = { ok: true; id: string } | { ok: false; reason: 'limit' };
 
 /** This browser's position in the server's change log, per list (`GET /api/<list>?since=`). */
 export interface Cursors {
@@ -168,6 +161,12 @@ export class LocalStore {
    * that need every write keep `revision`.
    */
   readonly settled = signal(0);
+
+  /** The photo rows (`photo-store.ts`); they share this store's database and revision. */
+  readonly photos = new PhotoStore(
+    () => this.db(),
+    () => this.touch(),
+  );
 
   private opened: Promise<LocalDb> | null = null;
   private settleTimer: ReturnType<typeof setTimeout> | undefined;
@@ -275,7 +274,7 @@ export class LocalStore {
     const existing = await db.get<HouseRecord>('houses', id);
     if (!existing) return;
     await db.put('houses', { ...existing, deleted: true, dirty: true, updatedAt: isoNow(now) });
-    for (const photo of await this.photosOf(id)) await this.deletePhoto(photo.id, now);
+    for (const photo of await this.photos.ofHouse(id)) await this.photos.delete(photo.id, now);
     // A saved walk is the house's and never outlives it; the website has no undo (docs/11 5.27.6, PRV-030).
     await deleteSavedWalksOfHouse(db, id);
     this.touch();
@@ -391,109 +390,6 @@ export class LocalStore {
     return sortVisits((await this.rawVisits()).filter((v) => v.dirty));
   }
 
-  // ---- Photos ----
-
-  /** Every photo row, tombstones included. */
-  async allPhotos(): Promise<PhotoRecord[]> {
-    const db = await this.db();
-    return sortByCreated(await db.getAll<PhotoRecord>('photos'));
-  }
-
-  /** A house's live photos, through the `houseId` index: the store holds Blobs, so every photo is not read (S4b-BL-66). */
-  async photosOf(houseId: string): Promise<PhotoRecord[]> {
-    const db = await this.db();
-    const rows = await db.getAllByIndex<PhotoRecord>('photos', 'houseId', houseId);
-    return sortByCreated(rows.filter((p) => !p.deleted));
-  }
-
-  /** The stored photo rows with these ids, deleted ones included, in one read. */
-  async photoRowsByIds(ids: readonly string[]): Promise<PhotoRecord[]> {
-    const db = await this.db();
-    return db.getMany<PhotoRecord>('photos', ids);
-  }
-
-  /** One photo row by id, whether or not it is deleted. */
-  async getPhoto(id: string): Promise<PhotoRecord | undefined> {
-    const db = await this.db();
-    return db.get<PhotoRecord>('photos', id);
-  }
-
-  /**
-   * Stores photo bytes for a house. The blob is already resized and re-encoded by the caller. `meta` is the photo's
-   * room, tags and caption when they are known at once (the condition record's *Add a photo* chooses MOVE_IN), stamped
-   * `metaUpdatedAt = now` and waiting to be pushed.
-   */
-  async addPhoto(
-    houseId: string,
-    blob: Blob,
-    id: string = uuid(),
-    now: number = Date.now(),
-    meta?: Pick<PhotoMeta, 'roomId' | 'tags' | 'caption'>,
-  ): Promise<AddPhotoResult> {
-    if ((await this.photosOf(houseId)).length >= MAX_PHOTOS_PER_HOUSE) return { ok: false, reason: 'limit' };
-    const db = await this.db();
-    const record: PhotoRecord = {
-      id,
-      houseId,
-      blob,
-      contentType: blob.type || 'image/jpeg',
-      sizeBytes: blob.size,
-      createdAt: isoNow(now),
-      updatedAt: isoNow(now),
-      deleted: false,
-      syncVersion: 0,
-      uploaded: false,
-    };
-    const clean = meta ? cleanMeta({ ...meta, metaUpdatedAt: now }) : null;
-    await db.put('photos', clean && hasMeta({ ...clean, metaUpdatedAt: 0 }) ? withPhotoMeta(record, clean, true) : record);
-    this.touch();
-    return { ok: true, id };
-  }
-
-  /**
-   * Saves a photo's room, tags and caption (docs/11 5.7): coerced, stamped `metaUpdatedAt = now` and marked for the next
-   * sync. Nothing is written, and `false` comes back, when the photo is gone or the meta is what it already is.
-   */
-  async setPhotoMeta(id: string, meta: Pick<PhotoMeta, 'roomId' | 'tags' | 'caption'>, now: number = Date.now()): Promise<boolean> {
-    const db = await this.db();
-    const existing = await db.get<PhotoRecord>('photos', id);
-    if (!existing || existing.deleted) return false;
-    const clean = cleanMeta({ ...meta, metaUpdatedAt: 1 });
-    const before = photoMetaOf(existing);
-    if (before.roomId === clean.roomId && before.caption === clean.caption && before.tags.join('\n') === clean.tags.join('\n')) return false;
-    // Strictly newer than what is stored, so two edits inside one millisecond still order.
-    const stamp = Math.max(now, before.metaUpdatedAt + 1);
-    await db.put('photos', withPhotoMeta(existing, { ...clean, metaUpdatedAt: stamp }, true));
-    this.touch();
-    return true;
-  }
-
-  /** Applies the meta a server row carries when it is strictly newer than the stored one (last write wins). */
-  async applyPhotoMetaFromServer(id: string, incoming: PhotoMeta): Promise<boolean> {
-    const db = await this.db();
-    const existing = await db.get<PhotoRecord>('photos', id);
-    if (!existing || existing.deleted) return false;
-    if (!incomingWins(photoMetaOf(existing).metaUpdatedAt, incoming.metaUpdatedAt)) return false;
-    await db.put('photos', withPhotoMeta(existing, incoming, false));
-    this.touch();
-    return true;
-  }
-
-  /** The push of a photo's meta went through: the flag clears only when the meta was not edited again meanwhile. */
-  async markPhotoMetaClean(id: string, pushedAt: number): Promise<void> {
-    const db = await this.db();
-    const existing = await db.get<PhotoRecord>('photos', id);
-    if (existing && existing.metaDirty && (existing.metaUpdatedAt ?? 0) === pushedAt) {
-      const { metaDirty: _dirty, ...clean } = existing;
-      await db.put('photos', clean);
-    }
-  }
-
-  /** The photos of one house tagged MOVE_IN, oldest first: the condition record (docs/11 5.24). */
-  async conditionPhotos(houseId: string): Promise<PhotoRecord[]> {
-    return (await this.photosOf(houseId)).filter((p) => photoMetaOf(p).tags.some((t) => t === MOVE_IN_TAG));
-  }
-
   /**
    * Choosing TAKEN, after the chosen house itself is saved: the house that was TAKEN goes back to SHORTLISTED (M1) and,
    * when `markOthers`, every other house still open becomes NOT_CHOSEN (`closeTargets`). Returns how many houses
@@ -533,36 +429,6 @@ export class LocalStore {
     }
     if (changed > 0) this.touch();
     return changed;
-  }
-
-  /**
-   * Drops the bytes now. A photo the server already has keeps a tombstone so the delete is pushed on the next
-   * sync (threat model F-15); one that never left this browser is removed outright.
-   */
-  async deletePhoto(id: string, now: number = Date.now()): Promise<void> {
-    const db = await this.db();
-    const existing = await db.get<PhotoRecord>('photos', id);
-    if (!existing) return;
-    if (existing.uploaded) {
-      await db.put('photos', { ...existing, blob: null, deleted: true, updatedAt: isoNow(now) });
-    } else {
-      await db.delete('photos', id);
-    }
-    this.touch();
-  }
-
-  /** Forgets a photo completely (used when the server confirms a delete, or a tombstone arrives from elsewhere). */
-  async forgetPhoto(id: string): Promise<void> {
-    const db = await this.db();
-    await db.delete('photos', id);
-    this.touch();
-  }
-
-  /** Stores a photo row as given (sync and import); no dirty flag or limit is applied here. */
-  async putPhotoRecord(record: PhotoRecord): Promise<void> {
-    const db = await this.db();
-    await db.put('photos', record);
-    this.touch();
   }
 
   // ---- Import (S4b-BL-75) ----
@@ -697,14 +563,7 @@ export class LocalStore {
     for (const record of await db.getAll<RecordRecord>('records')) {
       if (!record.dirty) await db.put('records', { ...record, dirty: true });
     }
-    for (const photo of await db.getAll<PhotoRecord>('photos')) {
-      if (photo.deleted) continue;
-      const resendBytes = !!photo.blob && photo.uploaded;
-      const resendMeta = (photo.metaUpdatedAt ?? 0) > 0 && photo.metaDirty !== true;
-      if (resendBytes || resendMeta) {
-        await db.put('photos', { ...photo, ...(resendBytes ? { uploaded: false } : {}), ...(resendMeta ? { metaDirty: true } : {}) });
-      }
-    }
+    await this.photos.markAllForResync();
     this.touch();
   }
 
@@ -1492,19 +1351,10 @@ function linked(house: HouseDto, row: BrokerRow): HouseDto {
 
 /** Records in backup order (docs/11 5.30 item 3): by last edit, then id. */
 function sortRecords(rows: readonly RecordRecord[]): RecordRecord[] {
-  return [...rows].sort((a, b) => cmp(a.updatedAt ?? '', b.updatedAt ?? '') || cmp(a.id, b.id));
+  return [...rows].sort((a, b) => compareText(a.updatedAt ?? '', b.updatedAt ?? '') || compareText(a.id, b.id));
 }
 
 /** Visits in export order: by arrival, then id. */
 function sortVisits(rows: readonly VisitRecord[]): VisitRecord[] {
-  return [...rows].sort((a, b) => cmp(a.arrivedAt, b.arrivedAt) || cmp(a.id, b.id));
-}
-
-/** Export and display order everywhere: oldest first by createdAt, ties broken by id. */
-function sortByCreated<T extends { createdAt?: string | null; id: string }>(rows: readonly T[]): T[] {
-  return [...rows].sort((a, b) => cmp(a.createdAt ?? '', b.createdAt ?? '') || cmp(a.id, b.id));
-}
-
-function cmp(a: string, b: string): number {
-  return a < b ? -1 : a > b ? 1 : 0;
+  return [...rows].sort((a, b) => compareText(a.arrivedAt, b.arrivedAt) || compareText(a.id, b.id));
 }

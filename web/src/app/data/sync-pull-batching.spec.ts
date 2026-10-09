@@ -259,7 +259,7 @@ describe('SyncService pull batching (S4b-BL-167)', () => {
 
   it('photos: a tombstone forgets a local photo, a known house gets the download, an unknown house is skipped, across a chunk edge', async () => {
     await store.putHouseFromServer({ ...houseDto(1, 'here'), syncVersion: 1 });
-    await store.putPhotoRecord({
+    await store.photos.put({
       id: id(4, 1), houseId: id(1, 1), blob: new Blob(['x']), contentType: 'image/jpeg', sizeBytes: 1,
       createdAt: null, updatedAt: null, deleted: false, syncVersion: 1, uploaded: true,
     });
@@ -272,8 +272,8 @@ describe('SyncService pull batching (S4b-BL-167)', () => {
       photoDto(900, 1), // known house, after the chunk edge: download
     ];
     await sync.syncNow(true);
-    expect(await store.getPhoto(id(4, 1))).toBeUndefined();
+    expect(await store.photos.get(id(4, 1))).toBeUndefined();
     expect([...api.fetched].sort()).toEqual([id(4, 2), id(4, 900)]);
-    expect(await store.getPhoto(id(4, 3))).toBeUndefined();
+    expect(await store.photos.get(id(4, 3))).toBeUndefined();
   });
 });
