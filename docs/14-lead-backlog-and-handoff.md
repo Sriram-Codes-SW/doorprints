@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.145 |
+| Version | 0.146 |
 | Date | 2026-10-08 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..183); this file lists the lead-level items and points to the rest. |
@@ -154,6 +154,7 @@
 | 0.143 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-168, slice 5 (web, criteria and the rating share)** (branch `refactor/web-split-criteria-slice`): `CriteriaStore` leaves `local-store.service.ts` (842 to 709 lines), reached as `store.criteria`; §9 marks slice 5 done with the measured numbers, the verdict on the page part (left) and the remaining plan (items 6 to 9). Behaviour-neutral. |
 | 0.144 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-168, slice 6 (web, rooms and floor)** (branch `refactor/web-split-rooms-slice`): `HouseRooms` (`pages/house-detail/house-rooms.ts`, 165 lines) and `HouseFloor` (`pages/house-detail/house-floor.ts`, 82) leave `house-detail-page.ts` (1,655 to 1,495 lines); the template's calls are renamed in place (`rooms.add()`, `floor.basement(d)`). §9 records slice 6 with the numbers, what was not split and why (the duplicate-flat line, the Rooms card's markup), and the plan after it (items 7 to 9). 14 new tests in `house-rooms.spec.ts` (11 passed on the old code first, none moved), `tools/mutations/house-rooms.json` (31) and `house-floor.json` (16). Behaviour-neutral. |
 | 0.145 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-168, slice 3 on the phones (areas, places and area notes), PR #220:** §10 marks slice 3 done with the numbers (`CommonRepository.kt` 1,764 -> 1,715, `AreaStore.kt` 147), says how `writeCapped` is shared (the store takes the repository's record writers), what was not split and why, and updates the remaining plan. [10](10-sprint-log.md) v0.208, [03](03-design.md) v0.95, [06](06-test-plan.md) v0.180. |
+| 0.146 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-168, slice 4 on the phones (questions), PR #222:** §10 marks slice 4 done with the numbers (`CommonRepository.kt` 1,715 -> 1,637, `QuestionStore.kt` 146), says what was not split and why (a house's answers stay with the house), and updates the remaining plan. [10](10-sprint-log.md) v0.209, [03](03-design.md) v0.96, [06](06-test-plan.md) v0.181. |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 
@@ -819,7 +820,7 @@ ticket, photos first, so the two stacks stay parallel).
 | Photos, sync and import loops | `CommonRepository.kt` 1093-1138 (pull), 1240-1277 (push), 1517-1545, 1663-1720 (imports) | houses, cursors, counters, one transaction | Each loop shares its cursor, counters or transaction with the houses and visits around it | **Fails**: not split; they use `PhotoStore` for every file and meta rule |
 | Viewings | `CommonRepository.kt` 573-617; UI already in `ViewingsScreen.kt` | the record table | The reminders, the export rows, the import and the screens decode and cap a viewing | **Passes. Slice 2 (done)** |
 | Areas, places, area notes | `CommonRepository.kt` 566-630 (on 2026-10-09, after slice 2) | the record table | The Map, the house page, the Assistant's text, the wake-up, the exporters, the import and its undo read the three kinds the same way (one writer, `writeCapped`) | **Passes. Slice 3 (done)** |
-| Questions and a house's answers | `CommonRepository.kt` 470-572 | the record table, seeding | The bank, the form's questions, the reminders, the import | Passes, slice 4 |
+| Questions and a house's answers | `CommonRepository.kt` 470-572 | the record table, seeding | The bank, the form's questions, the reminders, the import | **Passes. Slice 4 (done)**; a house's answers stay with the house (below) |
 | Criteria and scoring | `CommonRepository.kt` 382-469 | the record table | The form's checklist, the list's score, Compare, the import | Passes, slice 5 |
 | Brokers and contact | `CommonRepository.kt` 303-380, 693-733; form 1171-1235, `BrokerSection` | houses, the record table, the once-only move of contacts | The houses flow, `saveHouse`, the export rows, the import | Passes, slice 6 (data and UI together) |
 | Saved walks | `WalkStore.kt` (S4b-FR-14) | the walk tables | Already split | Done before |
@@ -903,5 +904,37 @@ cap's exception arguments, and the messages of the refused saves. **Not split:**
 kinds as generic records), the export and import loops (one transaction over every kind), the Assistant's house document
 (it reads the three lists through `areas()`, `places()` and `areaNotes()` and stays with the other kinds it reads), and
 `AreasScreen.kt` (already one screen file). No screenshot was re-recorded.
-**Remaining:** 4 questions and answers -> 5 criteria and scoring -> 6 brokers and contact -> 7 status, rating, checklist
-(optional) -> 8 on-device AI.
+**Remaining (after slice 3):** 4 questions and answers -> 5 criteria and scoring -> 6 brokers and contact -> 7 status,
+rating, checklist (optional) -> 8 on-device AI.
+
+**Slice 4, what moved (PR #222).** `QuestionStore` (`:shared` `data/QuestionStore.kt`, a plain class) owns reading a question
+from its record row (`of`: decoded, coerced, skipped when it cannot be trusted), the bank in its order (`sort`, then id), seeding the
+fourteen defaults (clean, stamped 2000-01-01, a tombstone keeps a deleted default deleted), seeding once per install (the
+`questions.seeded` mark and the gate that makes two starts at once seed once), *Reset to defaults* (a deleted default that
+would be the 101st stays deleted), saving one or many (trimmed, coerced, no write when the live record already says the
+same, `RecordLimitException` at 100), adding a custom question at the end with an id no tombstone holds, deleting, and the
+backup's row for a question (`importedRow`, the `imported*` mapper this slice takes out of the big file). It takes the
+`RecordWriter` that `AreaStore` already uses (the repository now builds that object once, `recordWriter`, and hands it to both
+stores) and `SettingsStore` for the seeding mark. `CommonRepository` delegates every `Repository` question member; the export
+loop calls `QuestionStore.of`, and the copy import and its undo call `QuestionStore.importedRow`. Before: `CommonRepository.kt`
+1,715 lines. After: 1,637, plus `QuestionStore.kt` (146, of which about 30 are the header and comments). A new question value
+now edits `QuestionStore.kt`, the model, `ExportModel.kt` and the screen, and no longer scrolls through the repository.
+Tests: `QuestionsRepositoryTest` 7 -> 12. Three characterization tests were added and passed on the old code before anything
+moved (a row that cannot be trusted is skipped from the bank, the observed list and the backup and from the next sort
+position, and an unknown category reads OTHER; *Reset* at the cap restores a live default; a padded text trims and writes
+nothing when it equals what is stored, the longest text is accepted, and a deleted question's id at the cap is refused). Two
+more were written after the move, for mutants (the first custom question of an empty bank sorts first; an imported question is
+cleaned, stamped with the file's time and marked dirty), and four assertions were added to existing tests after the move
+(the first seed writes 14, a custom question of the longest text is accepted, a backup carries each question's own stamp, and
+with no row left at all the seeding mark still stops a second seed; the last one killed the one mutant that survived the
+first run). The mutation list
+`tools/mutations/question-store-kotlin.json` has 38 one-line changes (36 to `QuestionStore.kt`, two to `CommonRepository.kt`:
+the export's stamp and the copy import's stamp), each killed by a named test. Not listed, equivalent or unforceable: the new
+id's tombstone check (`used`; the id is random, so no test can make it clash, as for the viewings and areas), the seeding
+gate's `Mutex` (a second concurrent start would write nothing anyway, since the first has written every row), and the
+messages of the refused saves. **Not split:** a house's answers (`saveAnswers` is three lines that save the house, and the
+answers are a field of the house, so they travel with the house's mapper, sync and import; one caller, so it fails the
+deletion test), the sync pull and push (the questions travel as generic records), the export and import loops (one
+transaction over every kind), the questions' lines in the Assistant's house document (it reads every kind through
+`questions()`), and `QuestionsScreen.kt` and `QuestionsSection.kt` (already separate files). No screenshot was re-recorded.
+**Remaining:** 5 criteria and scoring -> 6 brokers and contact -> 7 status, rating, checklist (optional) -> 8 on-device AI.

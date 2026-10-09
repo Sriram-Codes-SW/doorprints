@@ -145,11 +145,15 @@ class QuestionsRepositoryTest {
         repo.seedQuestionsOnce("ta")
         assertEquals(emptyList<String>(), ids())
         assertTrue(settings.questionsSeeded())
+        // The mark, not the rows, says it was done: with no row left at all (not even a tombstone) it still seeds nothing.
+        db.records().deleteAll()
+        repo.seedQuestionsOnce("ta")
+        assertEquals(emptyList<String>(), ids())
     }
 
     @Test
     fun seedingRespectsATombstoneAndAnEditAndTakesAnyOtherLanguageAsEnglish(): Unit = runBlocking {
-        repo.seedQuestions("mr")
+        assertEquals(14, repo.seedQuestions("mr"))
         assertEquals(DefaultQuestions.byId("qd_pets")!!.text.getValue("en"), repo.questions().first { it.id == "qd_pets" }.text)
         repo.deleteQuestion("qd_pets")
         val water = repo.questions().first { it.id == "qd_water" }
@@ -266,11 +270,46 @@ class QuestionsRepositoryTest {
         // The next custom question goes after the last question that can be read (sort 14), not after a skipped row.
         val id = repo.addQuestion("Is there a lift?")
         assertEquals(14, repo.questions().first { it.id == id }.sort)
+        // The longest text is allowed.
+        val long = repo.addQuestion("x".repeat(300))
+        assertEquals(300, repo.questions().first { it.id == long }.text.length)
         // A row from a newer app reads with the nearest value it knows: an unknown category is OTHER, scope BOTH, sort 0.
         db.records().upsert(
             RecordEntity(QuestionType.name, "q_0000cafe", """{"text":"Odd?","category":"X","appliesTo":"Y","sort":-3}""", at),
         )
         assertEquals(Question("q_0000cafe", "Odd?", "OTHER", "BOTH", false, 0), repo.questions().first { it.id == "q_0000cafe" })
+    }
+
+    @Test
+    fun theFirstCustomQuestionOfAnEmptyBankSortsFirst(): Unit = runBlocking {
+        val id = repo.addQuestion("Is there a water meter?")
+        assertEquals(0, repo.questions().single().sort)
+        val second = repo.addQuestion("Is there a lift?")
+        assertEquals(1, repo.questions().first { it.id == second }.sort)
+        assertTrue(Question.isCustomId(id))
+    }
+
+    @Test
+    fun anImportedQuestionIsCleanedStampedWithTheFilesTimeAndMarkedDirty(): Unit = runBlocking {
+        repo.seedQuestions("en")
+        val data = BackupData.of(repo.localRows().toBundle(ExportOptions(exportedAtMillis = at)))
+        // The backup carries each question's own stamp (a seed's is the earliest the server accepts).
+        assertEquals(DefaultQuestions.SEEDED_AT, data.questionRows.first { it.id == "qd_water" }.updatedAt)
+        val odd = data.questionRows.first { it.id == "qd_water" }.copy(
+            id = "q_0000abcd", text = "Lift?", category = "ZZZ", appliesTo = "QQQ", updatedAt = 5,
+        )
+        val file = data.copy(questions = listOf(odd))
+        val local = repo.localVersions()
+        val actions = ImportPlan.plan(
+            file, local.houses, local.visits, local.photoIds, emptySet(), ImportMode.MERGE, newId = { "x" },
+            localQuestions = local.questions,
+        )
+        assertEquals(1, repo.applyImport(actions) { null }.questions)
+        val row = db.records().get(QuestionType.name, "q_0000abcd")!!
+        assertEquals(5L, row.updatedAt)
+        assertTrue(row.dirty)
+        assertFalse(row.deleted)
+        assertEquals("""{"text":"Lift?","category":"OTHER","appliesTo":"BOTH","defaultOn":${odd.defaultOn},"sort":${odd.sort}}""", row.payload)
     }
 
     @Test

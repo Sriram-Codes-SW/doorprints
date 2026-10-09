@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Test plan (functional, security, accessibility, i18n, AI) |
-| Version | 0.180 |
+| Version | 0.181 |
 | Date | 2026-10-08 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -190,6 +190,7 @@
 | 0.178 | 2026-10-09 | Claude (Code), engineer | **TC-U-79** (S4b-BL-168 slice 1, PR #212): `PhotoFileByIdTest` has 5 tests (two characterization tests added before the photos moved to `PhotoStore`: deleting a photo the server has keeps a tombstone and removes the file; an import writes a photo under its id and skips an id that would leave the photo folder). No test removed. |
 | 0.179 | 2026-10-09 | Claude (Code), engineer | **TC-U-104** (S4b-BL-168 slice 2, PR #216): `ViewingsRepositoryTest` has 8 tests (two characterization tests added before the viewings moved to `ViewingStore`: the reminder ids include the tombstones, and a row that does not decode, has no start or is a tombstone is left out of every read and of a copy; marking done without a visit keeps the one the viewing had). Mutation list `tools/mutations/viewing-store-kotlin.json` (13 one-line changes to `ViewingStore.kt`, each killed by a named test). No test removed. |
 | 0.180 | 2026-10-09 | Claude (Code), engineer | **TC-U-107** (S4b-BL-168 slice 3, PR #220): `AreasRepositoryTest` has 10 tests (four characterization tests added before the areas, places and notes moved to `AreaStore`: a place trims, is dirty and is written only when changed; an unchanged note keeps its stamp and a blank target counts as absent; saving what is already there at the cap is not refused; a row that cannot be trusted is skipped from the lists and the backup; and a copy import stamps the three lists no later than now and marks them dirty, added for two surviving mutants). Mutation list `tools/mutations/area-store-kotlin.json` (33 one-line changes to `AreaStore.kt` and the wake-up stamp in `CommonRepository.kt`, each killed by a named test of `AreasRepositoryTest` or `AreaWakeupAndroidTest`). No test removed. |
+| 0.181 | 2026-10-09 | Claude (Code), engineer | **TC-U-112** (S4b-BL-168 slice 4, PR #222): `QuestionsRepositoryTest` has 12 tests (three characterization tests added before the question bank moved to `QuestionStore`: a row that cannot be trusted is skipped; *Reset* at the cap restores a live default; a padded text trims and a deleted question's id at the cap is refused. Two more and four assertions added after the move, for mutants). Mutation list `tools/mutations/question-store-kotlin.json` (38 one-line changes to `QuestionStore.kt` and the two question stamps in `CommonRepository.kt`, each killed by a named test of `QuestionsRepositoryTest`; one survived the first run and is killed after a test change). No test removed. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Design](03-design.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
