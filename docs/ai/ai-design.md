@@ -43,6 +43,7 @@
 | v0.39   | 2026-10-09 | Claude (Code), engineer       | Package table: `TokenBucketRateLimiter` is shared with the core filters and lives in `server.common` (S4b-BL-165). |
 | v0.40   | 2026-10-09 | Claude (Code), engineer       | 8.1: the keyless provider checks found three things (S4b-BL-175-F1..F3, [10](../10-sprint-log.md) v0.193); F1 and F2 are fixed in the adapters (the Anthropic call is repeated once with `tool_choice: auto` when a newer Claude model refuses a forced tool; the website reads a redirect as unavailable), F3 is documented; the eval suites need no change. |
 | v0.41   | 2026-10-09 | Claude (Code), engineer       | 8.1: **the `local-model` suite answers in time** (S4b-BL-190, [10](../10-sprint-log.md) v0.198): default model `qwen2.5:0.5b`, a 180 s request limit for the loopback eval only (`AI_EVAL_TIMEOUT_MS`, read by `evalSetup`, passed to the adapter's new optional argument; the app's 60 s is unchanged), `OLLAMA_NUM_PARALLEL=1`, `OLLAMA_KEEP_ALIVE`, a JSON warm-up, the job at 150 minutes; the context stays 8192 (measured: longest prompt 14,256 characters). Not yet proven by a run. |
+| v0.42   | 2026-10-09 | Claude (Code), engineer       | 10 and 11: the answer budget `max-output-tokens` / `AI_MAX_OUTPUT_TOKENS` rises from 2,048 to **8,192** (S4b-BL-194 item 1). On Gemini 3.x the output limit includes the hidden thinking tokens, so a prompt that makes the model think a lot (the injection cases `ask-14`, `ask-16`) left no room for the JSON and the answer was cut off (`UnexpectedEndOfInputException`, `StreamReadException`, then `503 Answering failed`); the visible answers use 130 to 350 tokens. Thinking level, prompts, thresholds and cases are unchanged. `AiOutputTokensTest` pins the default in the record and in `application.yml`. The phones' and website's own Gemini calls still send 2,048 (not changed here; S4b-BL-194). |
 
 Status: implemented in `backend/` (package `app.doorprints.server.ai`), **off by default**. Not yet compiled in this
 sandbox (no Maven Central access) — CI compiles and runs the tests. Provider: AI Studio by default, Vertex AI with
@@ -1082,7 +1083,7 @@ unchanged.
 ## 10. Cost controls & observability
 
 - Zero-cost defaults (Gemini free tier or local Ollama); all features opt-in.
-- Per-request: input limits, `max-output-tokens` (2,048), temperature ≤ 0.2, top-k 6, similarity threshold 0.25,
+- Per-request: input limits, `max-output-tokens` (8,192; on Gemini 3.x the limit includes the hidden thinking tokens, so 2,048 cut the JSON off on the injection cases, S4b-BL-194; the visible answers use 130 to 350 tokens), temperature ≤ 0.2, top-k 6, similarity threshold 0.25,
   no LLM call when retrieval is empty, agent tool caps.
 - Per-minute: `AI_RATE_LIMIT_PER_MINUTE` / `AI_RATE_LIMIT_BURST` for `/api/ai/**` (not `/api/ai/status`), separate
   `MCP_RATE_LIMIT_PER_MINUTE` for `/mcp` (an MCP session makes several protocol calls). 429 + `Retry-After`.
@@ -1117,7 +1118,7 @@ unchanged.
 | `AI_EMBEDDING_TASK_TYPE` | empty | e.g. `RETRIEVAL_DOCUMENT`, only for `gemini-embedding-001` (Embedding 2 rejects task types) |
 | `AI_VECTOR_INIT_SCHEMA` | `false` | Let PgVectorStore create the table (only if V2 skipped it) |
 | `AI_TIMEOUT` / `AI_MAX_RETRIES` | `60s` / `2` | HTTP client limits |
-| `AI_MAX_INPUT_CHARS` / `AI_MAX_QUESTION_CHARS` / `AI_MAX_OUTPUT_TOKENS` | `8000` / `1000` / `2048` | Guardrails |
+| `AI_MAX_INPUT_CHARS` / `AI_MAX_QUESTION_CHARS` / `AI_MAX_OUTPUT_TOKENS` | `8000` / `1000` / `8192` | Guardrails; the output limit includes Gemini 3.x thinking tokens, so keep it well above the visible answer (S4b-BL-194) |
 | `AI_RATE_LIMIT_PER_MINUTE` / `AI_RATE_LIMIT_BURST` / `MCP_RATE_LIMIT_PER_MINUTE` | `10` / `5` / `60` | Rate limits |
 | `AI_RAG_TOP_K` / `AI_RAG_SIMILARITY_THRESHOLD` | `6` / `0.25` | Retrieval |
 | `AI_AGENT_MAX_TOOL_CALLS` / `AI_AGENT_MAX_CALLS_PER_TOOL` / `AI_AGENT_MAX_STOPS` | `12` / `4` / `8` | Agent bounds |
