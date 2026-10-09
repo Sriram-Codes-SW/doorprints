@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.89 |
+| Version | 0.90 |
 | Date | 2026-10-08 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -99,7 +99,8 @@
 | 0.86 | 2026-10-09 | Claude (Code), engineer | **§13.2: the three findings of the keyless provider checks** (S4b-BL-175-F1..F3, [10](10-sprint-log.md) v0.197, [06](06-test-plan.md) v0.175 TC-AI-30 and TC-AI-31). **F1:** a model that refuses a forced tool (a 400 saying `tool_choice` is not supported) is asked again once with `tool_choice: auto` and the instruction `Answer by calling the <name> tool.`, on both platforms, driven by the vectors `anthropicRequest` (two unforced cases) and `anthropicToolChoice` (8 rows). **F2:** the website asks for `redirect: 'manual'` and reads a browser's opaque redirect as *unavailable*, as the phones read a 3xx; `providerErrors` gains three 3xx rows. **F3:** no code change; the paragraph "`Retry-After` across origins" states the browser limit and the 60 s default both stacks already use. |
 | 0.87 | 2026-10-09 | Claude (Code), engineer | S4b-BL-168 slice 1: the component table names `PhotoStore` (`data/photo-store.ts`, reached as `LocalStore.photos`) and `HousePhotos` (`pages/house-detail/house-photos.ts`). |
 | 0.88 | 2026-10-09 | Claude (Code), engineer | **Phone file layout** (S4b-BL-168 slice 1, PR #212; [14](14-lead-backlog-and-handoff.md) §10): the photos leave the two big files. `PhotoStore` (`:shared`) owns the photo folder, a photo's file by id and its local edit rules; `HousePhotos.kt` (`:ui`) owns the form's photo state, strip, viewer and details dialog. `CommonRepository` and `HouseEditScreen` keep their public members. |
-| 0.89 | 2026-10-09 | Claude (Code), engineer | **Phone file layout** (S4b-BL-168 slice 2, PR #216; [14](14-lead-backlog-and-handoff.md) §10): the viewings leave `CommonRepository`. The component table names `ViewingStore` (`:shared` `data/ViewingStore.kt`). |
+| 0.89 | 2026-10-09 | Claude (Code), engineer | S4b-BL-168 slice 2 (web, PR #214): the component table names `RecordStore` (`data/record-store.ts`, `LocalStore.records`) and `ViewingStore` (`data/viewing-store.ts`, `LocalStore.viewings`). |
+| 0.90 | 2026-10-09 | Claude (Code), engineer | **Phone file layout** (S4b-BL-168 slice 2, PR #216; [14](14-lead-backlog-and-handoff.md) §10): the viewings leave `CommonRepository`. The component table names `ViewingStore` (`:shared` `data/ViewingStore.kt`). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -396,6 +397,8 @@ is no Mac and no paid Apple account.
 | `LocalDb`, `MemoryDb`, `LocalStore` | `data/local-db.ts`, `data/local-store.service.ts` | The browser's own copy of everything: IndexedDB stores `houses`, `visits`, `photos` (blobs) and `settings`, database `doorprints` version 1. A hand-written wrapper rather than Dexie or `idb` (ADR-19). `MemoryDb` is the fallback when IndexedDB is blocked — the app still works for the session and says clearly that nothing is being kept. |
 | `PhotoStore` | `data/photo-store.ts` (S4b-BL-168) | The photo rows, reached as `LocalStore.photos`: the 20-per-house limit, a tombstone only for a photo the server has, the room/tags/caption meta with its last-write-wins stamp, what a full resend marks. Separate so a change to what a photo holds does not edit the 1,300-line `LocalStore`. |
 | `HousePhotos` | `pages/house-detail/house-photos.ts` (S4b-BL-168) | The photos card of the house page: the list, adding a batch, delete, the details editor. The page owns the draft, the large view and the leave guard. |
+| `RecordStore` | `data/record-store.ts` (S4b-BL-168) | The record rows, reached as `LocalStore.records`: the reads by type and by `[type, id]` key, the save that stamps a row and marks it dirty (keeping its sync version), the tombstone, the clean mark after a push, the dirty and full lists the sync reads, the id draw that avoids a stored row, and the write that skips an unchanged payload and refuses a new row past a cap. The sync, the import, the Drive rows and every record kind in `LocalStore` call it. |
+| `ViewingStore` | `data/viewing-store.ts` (S4b-BL-168) | The viewings, reached as `LocalStore.viewings`: records of type `viewing` read as typed rows, the save that refuses what the server refuses (bad id, blank house, start or duration out of range, text over its cap, the 5 001st viewing), `next`, `markDone`. Goes through `RecordStore`; the viewings page, the house card and the reminders reach it through `LocalDataService`. |
 | `SyncService`, `syncRules` | `data/sync.service.ts`, `data/sync-rules.ts` | The same push/pull, cursor and last-write-wins rules as Android (section 10), against the API-key server when one is configured. Optional. The loop (cursors, progress, *Stop*, cancellation, the 429 wait) stays here; every remote call goes through `SYNC_BACKEND` (below). `serverBehind`, `wireVersion` and the `MergeRule` type live in `sync-rules.ts` (re-exported from `sync.service.ts`). |
 | `SyncBackend`, `ServerSyncBackend`, `SYNC_BACKEND` | `data/sync-backend.ts` (S4b-BL-70) | The web's side of the seam of §10.1, the same members as Kotlin's with `Observable`s; `ServerSyncBackend` wraps `HouseApiService` unchanged and is the token's default. |
 | `StorageService` | `data/storage.service.ts` | `navigator.storage.persist()` / `estimate()`; drives the durability warnings of NFR-027. |

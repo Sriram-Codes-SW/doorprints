@@ -449,7 +449,7 @@ describe('OnDeviceAiService depends on the interface only', () => {
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(), provideHttpClientTesting(),
-        { provide: LocalStore, useValue: { allHouses: async () => [house], allVisits: async () => [], viewings: async () => [], areas: async () => [], places: async () => [], areaNoteRows: async () => [] } },
+        { provide: LocalStore, useValue: { allHouses: async () => [house], allVisits: async () => [], viewings: { all: async () => [] }, areas: async () => [], places: async () => [], areaNoteRows: async () => [] } },
       ],
     });
     const res = await TestBed.inject(OnDeviceAiService).ask(fake, 'Which house is quiet?');

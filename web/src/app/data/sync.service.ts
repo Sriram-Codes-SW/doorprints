@@ -331,7 +331,7 @@ export class SyncService {
   async pendingCount(): Promise<number> {
     const houses = (await this.store.dirtyHouses()).length;
     const visits = (await this.store.dirtyVisits()).length;
-    const records = (await this.store.dirtyRecords()).length;
+    const records = (await this.store.records.dirty()).length;
     const photos = (await this.store.photos.all()).filter(
       (p) => (p.deleted && p.uploaded) || (!p.deleted && ((!p.uploaded && !!p.blob) || p.metaDirty === true)),
     ).length;
@@ -534,7 +534,7 @@ export class SyncService {
     this.live(gen);
     const visits = await this.store.dirtyVisits();
     this.live(gen);
-    const records = await this.store.dirtyRecords();
+    const records = await this.store.records.dirty();
     this.live(gen);
     const photos = await this.store.photos.all();
     this.live(gen);
@@ -572,7 +572,7 @@ export class SyncService {
       const saved = await this.call(gen, () => this.backend.pushRecord(recordToDto(record)));
       this.live(gen);
       if (pushShowsReset(record.updatedAt, saved, highest)) throw new RemoteReset();
-      await sent(() => this.store.markRecordClean(record.type, record.id, record.updatedAt));
+      await sent(() => this.store.records.markClean(record.type, record.id, record.updatedAt));
       this.live(gen);
       step();
     }
@@ -718,7 +718,7 @@ export class SyncService {
     const records = new Map<string, RecordRecord>(
       (
         await readInChunks(recordKeys(recordRows), (keys) =>
-          this.store.recordRowsByKeys(keys.map((k): [string, string] => k.split('\u0000', 2) as [string, string])),
+          this.store.records.rowsByKeys(keys.map((k): [string, string] => k.split('\u0000', 2) as [string, string])),
         )
       ).map((r): [string, RecordRecord] => [recordKey(r), r]),
     );
@@ -741,7 +741,7 @@ export class SyncService {
       // Only a dirty local row can win against the server's (sync-rules.ts keepLocal), so only those were read; a
       // backend whose rule can keep a clean row (Drive's last-write-wins, S4b-BL-118) needs every record read here.
       if (merge(records.get(recordKey(record)), record)) continue;
-      await this.store.putRecordFromServer(record);
+      await this.store.records.putFromServer(record);
       this.live(gen);
       pulled++;
     }

@@ -140,7 +140,7 @@ describe('a walk is in no export, backup or sync path of the website', () => {
   });
 
   it('the server sync reads only the dirty records, and none of them is a walk', async () => {
-    const text = JSON.stringify([await local.dirtyHouses(), await local.dirtyVisits(), await local.dirtyRecords(), await local.allHouses(), await local.allVisits(), await local.photos.all(), await local.allRecords()]);
+    const text = JSON.stringify([await local.dirtyHouses(), await local.dirtyVisits(), await local.records.dirty(), await local.allHouses(), await local.allVisits(), await local.photos.all(), await local.records.all()]);
     expect(text).toContain(String(HOUSE_MARKER.lat));
     for (const needle of WALK_NEEDLES) expect(text, needle).not.toContain(needle);
   });

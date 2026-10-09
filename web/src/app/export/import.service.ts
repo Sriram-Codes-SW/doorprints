@@ -74,8 +74,8 @@ export class ImportService {
     const houses = await this.store.allHouses();
     const visits = await this.store.allVisits();
     const photos = await this.store.photos.all();
-    const versions = async (type: string) => new Map((await this.store.allRecordsOf(type)).map((r) => [r.id, millis(r.updatedAt)]));
-    const live = async (type: string) => new Set((await this.store.allRecordsOf(type)).filter((r) => !r.deleted).map((r) => r.id));
+    const versions = async (type: string) => new Map((await this.store.records.allOfType(type)).map((r) => [r.id, millis(r.updatedAt)]));
+    const live = async (type: string) => new Set((await this.store.records.allOfType(type)).filter((r) => !r.deleted).map((r) => r.id));
     return {
       houses: new Map(houses.map((h) => [h.id, millis(h.updatedAt)])),
       visits: new Map(visits.map((v) => [v.id, millis(v.updatedAt)])),
@@ -260,8 +260,8 @@ export class ImportService {
     }
     for (const [key, at] of undo.records) {
       const [type, id] = key.split('\n');
-      const row = await this.store.getRecord(type, id);
-      if (row && millis(row.updatedAt) === at) await this.store.deleteRecord(type, id, now);
+      const row = await this.store.records.get(type, id);
+      if (row && millis(row.updatedAt) === at) await this.store.records.delete(type, id, now);
     }
     return { removed, kept };
   }

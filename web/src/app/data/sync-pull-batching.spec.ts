@@ -241,7 +241,7 @@ describe('SyncService pull batching (S4b-BL-167)', () => {
     api.houses = Array.from({ length: N }, (_, n) => houseDto(n, 'server'));
     api.visits = Array.from({ length: N }, (_, n) => visitDto(n, 0));
     api.records = Array.from({ length: N }, (_, n) => recordDto(n, 'server'));
-    await store.putRecordFromServer({ ...recordDto(1, 'old'), syncVersion: 1, updatedAt: '2026-01-01T00:00:00.000Z' });
+    await store.records.putFromServer({ ...recordDto(1, 'old'), syncVersion: 1, updatedAt: '2026-01-01T00:00:00.000Z' });
 
     await sync.syncNow(true);
 
@@ -252,7 +252,7 @@ describe('SyncService pull batching (S4b-BL-167)', () => {
     }
     const visits = await store.allVisits();
     expect(new Set(visits.map((v) => v.id))).toEqual(new Set(Array.from({ length: N }, (_, n) => id(2, n))));
-    const records = await store.allRecords();
+    const records = await store.records.all();
     expect(records.length).toBe(N);
     expect(records.every((r) => r.payload['name'] === 'server')).toBe(true);
   });

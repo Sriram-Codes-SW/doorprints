@@ -224,7 +224,7 @@ export class LocalDataService {
 
   /** Every live viewing, by start then id (slice 3b-1). */
   viewings(): Observable<Viewing[]> {
-    return defer(() => from(this.store.viewings()));
+    return defer(() => from(this.store.viewings.all()));
   }
 
   /** *Notify me while Doorprints is open* (slice 3b-2): on unless turned off; this browser only. */
@@ -238,27 +238,27 @@ export class LocalDataService {
 
   /** The viewing records that exist, for the copies. */
   viewingRows(): Observable<ViewingRow[]> {
-    return defer(() => from(this.store.viewingRows()));
+    return defer(() => from(this.store.viewings.rows()));
   }
 
   viewingsOf(houseId: string): Observable<Viewing[]> {
-    return defer(() => from(this.store.viewingsOf(houseId)));
+    return defer(() => from(this.store.viewings.ofHouse(houseId)));
   }
 
   /** The earliest PLANNED viewing of the house at or after now, or null. */
   nextViewing(houseId: string, nowMs: number = Date.now()): Observable<Viewing | null> {
-    return defer(() => from(this.store.nextViewing(houseId, nowMs)));
+    return defer(() => from(this.store.viewings.next(houseId, nowMs)));
   }
 
   /** A fresh `v_` id that no viewing record, a deleted one included, has. */
   newViewingId(): Observable<string> {
-    return defer(() => from(this.store.newViewingId()));
+    return defer(() => from(this.store.viewings.newId()));
   }
 
   saveViewing(viewing: Viewing): Observable<Viewing> {
     return defer(() =>
       from(
-        this.store.saveViewing(viewing).then((saved) => {
+        this.store.viewings.save(viewing).then((saved) => {
           this.sync.syncSoon();
           return saved;
         }),
@@ -267,14 +267,14 @@ export class LocalDataService {
   }
 
   deleteViewing(id: string): Observable<void> {
-    return this.writing(() => this.store.deleteViewing(id));
+    return this.writing(() => this.store.viewings.delete(id));
   }
 
   /** *It happened* / *Mark viewing done*: DONE, with the visit that shows it happened when there is one. */
   markViewingDone(id: string, visitId?: string | null): Observable<Viewing> {
     return defer(() =>
       from(
-        this.store.markViewingDone(id, visitId).then((saved) => {
+        this.store.viewings.markDone(id, visitId).then((saved) => {
           this.sync.syncSoon();
           return saved;
         }),

@@ -20,6 +20,7 @@ import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LocalStore } from '../data/local-store.service';
 import type { PhotoStore } from '../data/photo-store';
+import type { ViewingStore } from '../data/viewing-store';
 import { LocalDataError } from '../core/local-error';
 import { DEFAULT_EXPORT_OPTIONS } from './export-model';
 import { ExportService, MAX_EXPORT_PHOTO_BYTES, approximateSize, checkPhotoBudget, isAbortError } from './export.service';
@@ -45,7 +46,7 @@ function fakeStore(photos: PhotoRecord[]): Partial<LocalStore> {
     criterionRows: () => Promise.resolve([]),
     preferenceRows: () => Promise.resolve([]),
     questionRows: () => Promise.resolve([]),
-    viewingRows: () => Promise.resolve([]),
+    viewings: { rows: () => Promise.resolve([]) } as unknown as ViewingStore,
     areaRows: () => Promise.resolve([]),
     placeRows: () => Promise.resolve([]),
     areaNoteRows: () => Promise.resolve([]),
@@ -280,7 +281,7 @@ describe('lengthUnit (slice 1c)', () => {
       criterionRows: () => Promise.resolve([]),
       preferenceRows: () => Promise.resolve([]),
       questionRows: () => Promise.resolve([]),
-      viewingRows: () => Promise.resolve([]),
+      viewings: { rows: () => Promise.resolve([]) } as unknown as ViewingStore,
       areaRows: () => Promise.resolve([]),
       placeRows: () => Promise.resolve([]),
       areaNoteRows: () => Promise.resolve([]),

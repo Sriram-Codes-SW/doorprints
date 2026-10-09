@@ -171,7 +171,7 @@ describe('SyncService through the SyncBackend seam', () => {
   it('pushes the dirty rows, then pulls since the stored cursors, through any backend', async () => {
     await store.saveHouse(house(H1, { label: 'Mine' }), Date.parse(AT));
     await store.saveVisit({ id: V1, houseId: H1, lat: 1, lon: 2, arrivedAt: AT, source: 'MANUAL', deleted: false, syncVersion: 0 }, Date.parse(AT));
-    await store.saveRecord('broker', B1, { name: 'Ravi' }, Date.parse(AT));
+    await store.records.save('broker', B1, { name: 'Ravi' }, Date.parse(AT));
     await store.setSetting(SETTING_KEYS.houseCursor, '10');
     await store.setSetting(SETTING_KEYS.visitCursor, '20');
     await store.setSetting(SETTING_KEYS.recordCursor, '30');
@@ -244,18 +244,18 @@ describe('SyncService through the SyncBackend seam', () => {
   it('shows the rule every local record, clean ones too (S4b-BL-130)', async () => {
     // A clean record newer than the incoming one: the server's rule overwrites it, a last-write-wins rule keeps it.
     const pullOlderRecord = async (): Promise<unknown> => {
-      await store.putRecordFromServer({ type: 'broker', id: B1, payload: { name: 'Newer here' }, updatedAt: '2026-09-22T00:00:00.000Z', deleted: false, syncVersion: 1 });
+      await store.records.putFromServer({ type: 'broker', id: B1, payload: { name: 'Newer here' }, updatedAt: '2026-09-22T00:00:00.000Z', deleted: false, syncVersion: 1 });
       backend.records = [{ type: 'broker', id: B1, payload: { name: 'Older snapshot' }, updatedAt: AT, deleted: false, syncVersion: 2 }];
       await sync.syncNow(true);
-      return (await store.allRecords()).find((r) => r.id === B1)?.payload;
+      return (await store.records.all()).find((r) => r.id === B1)?.payload;
     };
     expect(await pullOlderRecord()).toEqual({ name: 'Older snapshot' });
     backend.mergeRule = (local, incoming) => !!local && millis(local.updatedAt) >= millis(incoming.updatedAt);
-    await store.putRecordFromServer({ type: 'broker', id: B1, payload: { name: 'Newer here' }, updatedAt: '2026-09-22T00:00:00.000Z', deleted: false, syncVersion: 3 });
+    await store.records.putFromServer({ type: 'broker', id: B1, payload: { name: 'Newer here' }, updatedAt: '2026-09-22T00:00:00.000Z', deleted: false, syncVersion: 3 });
     backend.records = [{ type: 'broker', id: B1, payload: { name: 'Older snapshot' }, updatedAt: AT, deleted: false, syncVersion: 4 }];
     await sync.syncNow(true);
-    expect((await store.allRecords()).find((r) => r.id === B1)?.payload).toEqual({ name: 'Newer here' });
-    expect(await store.dirtyRecords()).toEqual([]);
+    expect((await store.records.all()).find((r) => r.id === B1)?.payload).toEqual({ name: 'Newer here' });
+    expect(await store.records.dirty()).toEqual([]);
   });
 
   it('sends everything again and pulls from 0 when the backend is behind', async () => {
