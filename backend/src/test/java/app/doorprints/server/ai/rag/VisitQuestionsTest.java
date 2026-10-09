@@ -22,25 +22,51 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** S4b-BL-194 item 2: the conservative rule that says a question is about the person's visits. */
+/**
+ * S4b-BL-194 item 2: the conservative rules that say a question is about the person's visits, and whether it asks for
+ * the houses without one.
+ */
 class VisitQuestionsTest {
 
+    /** Question | is about visits | is negated (only read for a question about visits). */
+    private static final String[] TABLE = {
+            "Which houses have I already visited and when?|true|false",
+            "how many visits did I make to Blue gate|true|false",
+            "VISITED houses|true|false",
+            "When did I last visit the flat on MG Road?|true|false",
+            "Which houses have I not visited yet?|true|true",
+            "Which houses have I NOT VISITED?|true|true",
+            "Which houses haven't I visited yet?|true|true",
+            "Which houses haven’t I visited?|true|true",
+            "Which houses have I never visited?|true|true",
+            "Which houses have I yet to visit?|true|true",
+            "List my unvisited houses|true|true",
+            "Which houses did I not visit?|true|true",
+            "Which houses have no visits?|true|true",
+            "Which 2 BHK is cheapest?|false|false",
+            "Which house has the best water pressure?|false|false",
+            "Is there a revisiting policy?|false|false",
+            "Should I revisit the Blue gate house?|false|false",
+            "Is there visitor parking?|false|false",
+            "supervisor|false|false"};
+
     @Test
-    void questionsAboutVisitsAreRecognised() {
-        assertThat(VisitQuestions.isAbout("Which houses have I already visited and when?")).isTrue();
-        assertThat(VisitQuestions.isAbout("how many visits did I make to Blue gate")).isTrue();
-        assertThat(VisitQuestions.isAbout("VISITED houses")).isTrue();
-        assertThat(VisitQuestions.isAbout("When did I last visit the flat on MG Road?")).isTrue();
-        assertThat(VisitQuestions.isAbout("Which houses have I not visited yet?")).isTrue();
+    void theRulesOnATableOfQuestions() {
+        for (var row : TABLE) {
+            var cells = row.split("\\|");
+            boolean about = Boolean.parseBoolean(cells[1]);
+            assertThat(VisitQuestions.isAbout(cells[0])).as("about: " + cells[0]).isEqualTo(about);
+            if (about) {
+                assertThat(VisitQuestions.isNegated(cells[0])).as("negated: " + cells[0])
+                        .isEqualTo(Boolean.parseBoolean(cells[2]));
+            }
+        }
     }
 
     @Test
-    void otherQuestionsAreNot() {
-        assertThat(VisitQuestions.isAbout("Which 2 BHK is cheapest?")).isFalse();
-        assertThat(VisitQuestions.isAbout("Which house has the best water pressure?")).isFalse();
-        assertThat(VisitQuestions.isAbout("Is there a revisiting policy?")).isFalse();
-        assertThat(VisitQuestions.isAbout("supervisor")).isFalse();
-        assertThat(VisitQuestions.isAbout("")).isFalse();
+    void nullAndBlankAreNotAboutVisits() {
         assertThat(VisitQuestions.isAbout(null)).isFalse();
+        assertThat(VisitQuestions.isAbout("  ")).isFalse();
+        assertThat(VisitQuestions.isNegated(null)).isFalse();
     }
 }

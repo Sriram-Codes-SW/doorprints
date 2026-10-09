@@ -31,8 +31,6 @@ import app.doorprints.server.ai.web.AiUsageLogger;
 import app.doorprints.server.common.BadRequestException;
 import app.doorprints.server.house.House;
 import app.doorprints.server.house.HouseRepository;
-import app.doorprints.server.visit.VisitRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
@@ -71,24 +69,12 @@ public class RagService {
     private final VectorStore vectorStore;
     private final AiProperties props;
     private final HouseRepository houses;
-    /** Null in a unit test that has no visits: then a question about visits is retrieved like any other. */
-    private final VisitRepository visits;
-
-    /** At most this many visited houses are looked up for one question (the filter holds their ids). */
-    static final int VISITED_IDS_MAX = 200;
 
     public RagService(ChatClient chat, VectorStore vectorStore, AiProperties props, HouseRepository houses) {
-        this(chat, vectorStore, props, houses, null);
-    }
-
-    @Autowired
-    public RagService(ChatClient chat, VectorStore vectorStore, AiProperties props, HouseRepository houses,
-                      VisitRepository visits) {
         this.chat = chat;
         this.vectorStore = vectorStore;
         this.props = props;
         this.houses = houses;
-        this.visits = visits;
     }
 
     /**
@@ -115,9 +101,7 @@ public class RagService {
                     .filterExpression(AskPrompts.filter(filters))
                     .build();
             docs = vectorStore.similaritySearch(search);
-            if (visits != null && VisitQuestions.isAbout(question)) {
-                docs = withVisited(docs, visitedDocs(question, filters));
-            }
+            if (VisitQuestions.isAbout(question)) docs = withVisited(docs, visitedDocs(question, filters));
             if (docs != null && !docs.isEmpty()) docs = redacted(docs, contactsOf(docs));
         } catch (RuntimeException e) {
             throw new AiUnavailableException("Search over your houses failed", e);
@@ -151,38 +135,41 @@ public class RagService {
         return answered(answer, docs, question);
     }
 
-    /**
-     * The documents of the houses that have visits, for a question about visits (S4b-BL-194 item 2: vector similarity
-     * alone returned 20 houses without one of the two visited, because most documents say "not visited yet"). Same
-     * question and filters, narrowed to the visited houses, no similarity threshold (they are chosen by fact, not by
-     * resemblance), as many as there are visited ids, then sorted newest visit first. Nothing visited: nothing extra.
-     */
-    private List<Document> visitedDocs(String question, AskFilters filters) {
-        var ids = visits.visitedHouseIds().stream().limit(VISITED_IDS_MAX).map(UUID::toString).toList();
-        if (ids.isEmpty()) return List.of();
-        var found = vectorStore.similaritySearch(SearchRequest.builder()
-                .query(question)
-                .topK(ids.size())
-                .similarityThreshold(0.0)
-                .filterExpression(AskPrompts.filter(filters, ids))
-                .build());
-        return found == null ? List.of() : byRecency(found, ids);
-    }
+    /** How many documents the visited search asks for: all of them in any realistic hunt, so recency can decide. */
+    static final int VISITED_FETCH_MAX = 200;
 
     /**
-     * The documents in the order of {@code idsNewestFirst} (the most recent visit first), so that recency decides what
-     * the cap keeps, not similarity; a document not in the list goes last. Stable, pure.
+     * The documents of the houses for a question about visits (S4b-BL-194 item 2: vector similarity alone returned 20
+     * houses without one of the two visited, because most documents say "not visited yet"): ONE search with the same
+     * question and filters plus the document metadata {@code visited == true} (or {@code false} for a negated
+     * question), no similarity threshold, up to {@value #VISITED_FETCH_MAX} documents. The visited ones are sorted by
+     * {@code lastVisit}, newest first; the unvisited ones stay in the store's order (most similar first). A store
+     * indexed before this metadata existed has no such documents, so the ordinary result stands (re-index once).
      */
-    static List<Document> byRecency(List<Document> docs, List<String> idsNewestFirst) {
-        var position = new HashMap<String, Integer>();
-        for (int i = 0; i < idsNewestFirst.size(); i++) position.putIfAbsent(idsNewestFirst.get(i), i);
-        return docs.stream()
-                .sorted(java.util.Comparator.comparingInt(d -> position.getOrDefault(d.getId(), Integer.MAX_VALUE)))
-                .toList();
+    private List<Document> visitedDocs(String question, AskFilters filters) {
+        boolean negated = VisitQuestions.isNegated(question);
+        var found = vectorStore.similaritySearch(SearchRequest.builder()
+                .query(question)
+                .topK(VISITED_FETCH_MAX)
+                .similarityThreshold(0.0)
+                .filterExpression(AskPrompts.filter(filters, !negated))
+                .build());
+        if (found == null) return List.of();
+        return negated ? found : byLastVisit(found);
     }
 
     private List<Document> withVisited(List<Document> similar, List<Document> visited) {
         return withVisited(similar == null ? List.of() : similar, visited, props.rag().topK());
+    }
+
+    /** The documents by metadata {@code lastVisit}, newest first; equal ones by id, a missing or odd value last. Pure. */
+    static List<Document> byLastVisit(List<Document> docs) {
+        return docs.stream().sorted(java.util.Comparator
+                .comparingLong((Document d) -> -lastVisit(d)).thenComparing(Document::getId)).toList();
+    }
+
+    private static long lastVisit(Document d) {
+        return d.getMetadata().get("lastVisit") instanceof Number n ? n.longValue() : Long.MIN_VALUE + 1;
     }
 
     /** The visited documents first, then the similar ones not among them, at most {@code cap}. Pure. */

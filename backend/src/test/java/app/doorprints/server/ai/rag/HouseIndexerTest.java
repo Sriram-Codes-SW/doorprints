@@ -472,4 +472,27 @@ class HouseIndexerTest {
         verify(log, never()).warn(anyString(), any(Object.class), any(Object.class));
         verify(log, never()).info(anyString(), any(Object.class));
     }
+
+    @Test
+    void indexingAHouseWritesItsCurrentVisitsIntoTheMetadata() {
+        var house = new House(UUID.randomUUID());
+        house.setLabel("Blue gate");
+        when(houses.findById(house.getId())).thenReturn(Optional.of(house));
+        var visit = new app.doorprints.server.visit.Visit(UUID.randomUUID());
+        visit.setHouseId(house.getId());
+        visit.setArrivedAt(java.time.Instant.parse("2026-09-14T10:00:00Z"));
+        when(visits.findByDeletedFalseAndHouseIdOrderByArrivedAtDesc(house.getId()))
+                .thenReturn(List.of(visit)).thenReturn(List.of());
+
+        indexer.index(house.getId()); // a visit was added
+        indexer.index(house.getId()); // the visit was deleted
+
+        var added = org.mockito.ArgumentCaptor.forClass(List.class);
+        verify(vectorStore, times(2)).add(added.capture());
+        var first = ((org.springframework.ai.document.Document) added.getAllValues().get(0).getFirst()).getMetadata();
+        var second = ((org.springframework.ai.document.Document) added.getAllValues().get(1).getFirst()).getMetadata();
+        assertThat(first).containsEntry("visited", true)
+                .containsEntry("lastVisit", java.time.Instant.parse("2026-09-14T10:00:00Z").getEpochSecond());
+        assertThat(second).containsEntry("visited", false).doesNotContainKey("lastVisit");
+    }
 }

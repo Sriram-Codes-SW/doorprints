@@ -21,20 +21,29 @@ package app.doorprints.server.ai.rag;
 import java.util.regex.Pattern;
 
 /**
- * Whether an Ask question is about the person's visits (S4b-BL-194 item 2). A visit is not something the question's
- * embedding finds reliably among house documents that mostly say "not visited yet", so such a question also gets the
- * houses that have visits ({@code RagService}). The rule is deliberately narrow: the English words the apps use
- * (visit, visits, visited, visiting) as whole words; other languages are not guessed.
+ * Whether an Ask question is about the person's visits, and whether it asks for the houses WITHOUT one (S4b-BL-194
+ * item 2). A visit is not something the question's embedding finds reliably among house documents that mostly say "not
+ * visited yet", so such a question also gets the houses chosen by the document metadata {@code visited}
+ * ({@code RagService}). The rules are deliberately narrow: the English words the apps use (visit, visits, visited,
+ * visiting, unvisited) as whole words, and a short list of negations; other languages are not guessed.
  */
 final class VisitQuestions {
 
-    private static final Pattern WORD = Pattern.compile("\\bvisit(?:s|ed|ing)?\\b",
-            Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
+    private static final int FLAGS = Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE;
+    private static final Pattern ABOUT = Pattern.compile("\\b(?:un)?visit(?:s|ed|ing)?\\b", FLAGS);
+    private static final Pattern NEGATED = Pattern.compile(
+            "\\bnot\\b|\\bnever\\b|\\b(?:have|has|did|do)n['\u2019]t\\b|\\byet to\\b|\\bunvisited\\b"
+                    + "|\\bno visits?\\b|\\bwithout (?:a |any )?visits?\\b", FLAGS);
 
     private VisitQuestions() {
     }
 
     static boolean isAbout(String question) {
-        return question != null && WORD.matcher(question).find();
+        return question != null && ABOUT.matcher(question).find();
+    }
+
+    /** Only meaningful for a question that {@link #isAbout}: it asks for the houses that have not been visited. */
+    static boolean isNegated(String question) {
+        return question != null && NEGATED.matcher(question).find();
     }
 }

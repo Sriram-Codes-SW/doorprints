@@ -1,14 +1,14 @@
 {
   "spec": "backend/src/test/java/app/doorprints/server/ai/rag/RagServiceVisitedRetrievalTest.java",
   "maven": [
-    "-Dtest=RagServiceVisitedRetrievalTest,VisitQuestionsTest"
+    "-Dtest=RagServiceVisitedRetrievalTest,VisitQuestionsTest,HouseDocumentsTest,HouseIndexerTest"
   ],
   "mutations": [
     {
       "file": "backend/src/main/java/app/doorprints/server/ai/rag/RagService.java",
-      "find": "if (visits != null && VisitQuestions.isAbout(question)) {",
-      "replace": "if (visits != null && !VisitQuestions.isAbout(question)) {",
-      "expect": "aQuestionNotAboutVisitsNeverAsksForVisitedHouses"
+      "find": "if (VisitQuestions.isAbout(question)) docs = withVisited",
+      "replace": "if (!VisitQuestions.isAbout(question)) docs = withVisited",
+      "expect": "aQuestionNotAboutVisitsMakesNoExtraSearch"
     },
     {
       "file": "backend/src/main/java/app/doorprints/server/ai/rag/RagService.java",
@@ -20,61 +20,91 @@
       "file": "backend/src/main/java/app/doorprints/server/ai/rag/RagService.java",
       "find": "return out.values().stream().limit(cap).toList();",
       "replace": "return out.values().stream().toList();",
-      "expect": "aVisitQuestionAddsTheVisitedHousesFirstAndStaysWithinTheCap"
+      "expect": "aVisitQuestionRunsOneFilteredSearchAndPutsTheVisitedHousesFirstWithinTheCap"
     },
     {
       "file": "backend/src/main/java/app/doorprints/server/ai/rag/RagService.java",
-      "find": ".filterExpression(AskPrompts.filter(filters, ids))",
-      "replace": ".filterExpression(AskPrompts.filter(filters))",
-      "expect": "theVisitedSearchIsFilteredToTheVisitedHousesAndKeepsTheCallersFilters"
+      "find": ".filterExpression(AskPrompts.filter(filters, !negated))",
+      "replace": ".filterExpression(AskPrompts.filter(filters, true))",
+      "expect": "aNegatedVisitQuestionFiltersOnVisitedFalseAndKeepsTheStoresOrder"
     },
     {
       "file": "backend/src/main/java/app/doorprints/server/ai/rag/RagService.java",
-      "find": "if (ids.isEmpty()) return List.of();",
-      "replace": "if (ids.isEmpty() && false) return List.of();",
-      "expect": "withNoVisitsTheOrdinaryResultIsUsed"
-    },
-    {
-      "file": "backend/src/main/java/app/doorprints/server/ai/rag/AskPrompts.java",
-      "find": "if (f == null) return op.build();",
-      "replace": "if (f == null || op != null) return op == null ? null : op.build();",
-      "expect": "theVisitedSearchIsFilteredToTheVisitedHousesAndKeepsTheCallersFilters"
-    },
-    {
-      "file": "backend/src/main/java/app/doorprints/server/ai/rag/VisitQuestions.java",
-      "find": "\"\\\\bvisit(?:s|ed|ing)?\\\\b\"",
-      "replace": "\"visit\"",
-      "expect": "otherQuestionsAreNot"
-    },
-    {
-      "file": "backend/src/main/java/app/doorprints/server/ai/rag/VisitQuestions.java",
-      "find": "(?:s|ed|ing)?",
-      "replace": "(?:s)?",
-      "expect": "questionsAboutVisitsAreRecognised"
+      "find": ".filterExpression(AskPrompts.filter(filters, !negated))",
+      "replace": ".filterExpression(AskPrompts.filter((AskFilters) null, !negated))",
+      "expect": "theExtraSearchFiltersOnVisitedTrueKeepsTheCallersFiltersAndTheTopK"
     },
     {
       "file": "backend/src/main/java/app/doorprints/server/ai/rag/RagService.java",
-      "find": "return found == null ? List.of() : byRecency(found, ids);",
-      "replace": "return found == null ? List.of() : found;",
+      "find": "return negated ? found : byLastVisit(found);",
+      "replace": "return found;",
       "expect": "visitedHousesReachTheModelNewestVisitFirstWhateverTheSimilarityOrder"
     },
     {
       "file": "backend/src/main/java/app/doorprints/server/ai/rag/RagService.java",
-      "find": "position.getOrDefault(d.getId(), Integer.MAX_VALUE)))",
-      "replace": "-position.getOrDefault(d.getId(), Integer.MAX_VALUE)))",
-      "expect": "byRecencySortsByPositionAndPutsUnknownLast"
+      "find": "return negated ? found : byLastVisit(found);",
+      "replace": "return byLastVisit(found);",
+      "expect": "aNegatedVisitQuestionFiltersOnVisitedFalseAndKeepsTheStoresOrder"
     },
     {
       "file": "backend/src/main/java/app/doorprints/server/ai/rag/RagService.java",
-      "find": ".topK(ids.size())",
+      "find": ".comparingLong((Document d) -> -lastVisit(d))",
+      "replace": ".comparingLong((Document d) -> lastVisit(d))",
+      "expect": "byLastVisitSortsNewestFirstTiesByIdAndMissingLast"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/RagService.java",
+      "find": ".thenComparing(Document::getId)).toList();",
+      "replace": ".thenComparing(Document::getId, java.util.Comparator.reverseOrder())).toList();",
+      "expect": "byLastVisitSortsNewestFirstTiesByIdAndMissingLast"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/RagService.java",
+      "find": ".topK(VISITED_FETCH_MAX)",
       "replace": ".topK(props.rag().topK())",
       "expect": "moreVisitedHousesThanTheCapKeepTheMostRecentlyVisited"
     },
     {
       "file": "backend/src/main/java/app/doorprints/server/ai/rag/RagService.java",
-      "find": "return found == null ? List.of() : byRecency(found, ids);",
-      "replace": "return found == null ? List.of() : byRecency(found.stream().limit(props.rag().topK()).toList(), ids);",
-      "expect": "moreVisitedHousesThanTheCapKeepTheMostRecentlyVisited"
+      "find": "d.getMetadata().get(\"lastVisit\") instanceof Number n ? n.longValue()",
+      "replace": "d.getMetadata().get(\"lastVisit\") instanceof Long n ? n.longValue()",
+      "expect": "byLastVisitReadsAnyNumberType"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/AskPrompts.java",
+      "find": "FilterExpressionBuilder.Op op = visited == null ? null : b.eq(\"visited\", visited);",
+      "replace": "FilterExpressionBuilder.Op op = visited == null ? null : b.eq(\"visitedX\", visited);",
+      "expect": "theExtraSearchFiltersOnVisitedTrueKeepsTheCallersFiltersAndTheTopK"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/VisitQuestions.java",
+      "find": "\\\\b(?:un)?visit(?:s|ed|ing)?\\\\b",
+      "replace": "visit",
+      "expect": "theRulesOnATableOfQuestions"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/VisitQuestions.java",
+      "find": "\\\\bnot\\\\b|",
+      "replace": "",
+      "expect": "theRulesOnATableOfQuestions"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/HouseDocuments.java",
+      "find": "m.put(\"visited\", visited);",
+      "replace": "m.put(\"visited\", !visited);",
+      "expect": "metadataSaysWhetherAHouseWasVisitedAndWhenLast"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/HouseDocuments.java",
+      "find": ".max(Comparator.naturalOrder())\n                    .orElseThrow().getEpochSecond()",
+      "replace": ".min(Comparator.naturalOrder())\n                    .orElseThrow().getEpochSecond()",
+      "expect": "metadataSaysWhetherAHouseWasVisitedAndWhenLast"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/HouseDocuments.java",
+      "find": "text(h, visits, viewings, areas), metadata(h, visits));",
+      "replace": "text(h, visits, viewings, areas), metadata(h));",
+      "expect": "indexingAHouseWritesItsCurrentVisitsIntoTheMetadata"
     }
   ]
 }

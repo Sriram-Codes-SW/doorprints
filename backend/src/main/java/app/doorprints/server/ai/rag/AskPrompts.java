@@ -87,11 +87,14 @@ public final class AskPrompts {
         return filter(f, null);
     }
 
-    /** As {@link #filter(AskFilters)}, and when {@code houseIds} is given only those houses (a visit question). */
-    public static Filter.Expression filter(AskFilters f, List<String> houseIds) {
-        if (f == null && houseIds == null) return null;
+    /**
+     * As {@link #filter(AskFilters)}, and when {@code visited} is given also only the houses whose document metadata
+     * {@code visited} equals it (a question about visits).
+     */
+    public static Filter.Expression filter(AskFilters f, Boolean visited) {
+        if (f == null && visited == null) return null;
         var b = new FilterExpressionBuilder();
-        FilterExpressionBuilder.Op op = houseIds == null ? null : b.in("houseId", houseIds.toArray());
+        FilterExpressionBuilder.Op op = visited == null ? null : b.eq("visited", visited);
         if (f == null) return op.build();
         if (f.status() != null) op = and(b, op, b.eq("status", f.status().name()));
         if (f.priceType() != null) op = and(b, op, b.eq("priceType", f.priceType()));
