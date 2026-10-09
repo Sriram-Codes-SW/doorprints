@@ -106,7 +106,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
@@ -343,95 +342,7 @@ open class CommonRepository(
 
     override fun brokerHouses(id: String): Flow<List<HouseEntity>> = db.houses().observeForBroker(id)
 
-    // ---- Criteria and ranking (docs/11 5.4, slice 2) ----
-
-    /** A criterion row with its key; null when the payload does not decode or the key is not a usable id. */
-    private fun RecordEntity.toCriterion(): Criterion? = decode(CriterionType)?.copy(key = id)?.coerced()
-
-    private fun scoringOf(criteria: List<RecordEntity>, preferences: List<RecordEntity>): Scoring = Scoring.of(
-        criteria.mapNotNull { it.toCriterion() },
-        preferences.mapNotNull { row -> row.decode(PreferenceType)?.let { row.id to it.value } }.toMap(),
-    )
-
-    override fun observeScoring(): Flow<Scoring> =
-        combine(db.records().byType(CriterionType.name), db.records().byType(PreferenceType.name), ::scoringOf)
-
-    override suspend fun scoring(): Scoring =
-        scoringOf(db.records().listByType(CriterionType.name), db.records().listByType(PreferenceType.name))
-
-    override suspend fun saveCriterion(criterion: Criterion) {
-        db.withImmediateTransaction { writeCriterion(criterion, scoring()) }
-    }
-
-    override suspend fun saveCriteria(criteria: List<Criterion>) {
-        db.withImmediateTransaction {
-            for (c in criteria) writeCriterion(c, scoring())
-        }
-    }
-
-    /**
-     * One criterion as a record, or no record for a built-in at its default (a reset of that one). Nothing is written
-     * when the record already says the same, so a renumbering does not stamp criteria that did not move.
-     */
-    private suspend fun writeCriterion(criterion: Criterion, current: Scoring) {
-        val clean = requireNotNull(criterion.coerced()) { "criterion key '${criterion.key}' is not [A-Za-z0-9._-]{1,64}" }
-        if (clean.isDefault) {
-            deleteRecord(CriterionType, clean.key)
-            return
-        }
-        val stored = db.records().get(CriterionType.name, clean.key)?.takeUnless { it.deleted }?.toCriterion()
-        if (stored == clean) return
-        if (current[clean.key] == null && current.criteria.size >= Criterion.MAX_CRITERIA) {
-            throw RecordLimitException(CriterionType.name, Criterion.MAX_CRITERIA)
-        }
-        saveRecord(CriterionType, clean.key, clean)
-    }
-
-    override suspend fun addCriterion(label: String, weight: Int): String {
-        val name = label.trim()
-        require(name.isNotEmpty() && name.length <= Criterion.MAX_LABEL) { "a criterion needs a name of 1..${Criterion.MAX_LABEL} characters" }
-        var key = ""
-        db.withImmediateTransaction {
-            val current = scoring()
-            if (current.criteria.size >= Criterion.MAX_CRITERIA) throw RecordLimitException(CriterionType.name, Criterion.MAX_CRITERIA)
-            // A key a tombstone holds is taken too: reusing it would bring back the old criterion's scores on the houses.
-            val used = db.records().versions(CriterionType.name).mapTo(HashSet()) { it.id }
-            key = Criterion.newCustomKey({ it in used })
-            val sort = (current.criteria.maxOfOrNull { it.sort } ?: -1) + 1
-            saveRecord(CriterionType, key, Criterion(key = key, label = name, weight = weight, sort = sort).coerced()!!)
-        }
-        return key
-    }
-
-    override suspend fun deleteCriterion(key: String): Boolean {
-        if (key in Checklist.keys) return false
-        var deleted = false
-        db.withImmediateTransaction {
-            if (db.houses().all().none { !it.deleted && it.checklist.containsKey(key) }) {
-                deleteRecord(CriterionType, key)
-                deleted = true
-            }
-        }
-        return deleted
-    }
-
-    override suspend fun saveRatingShare(share: Double) {
-        val value = share.coerceIn(0.0, 1.0)
-        if (value == Scoring.DEFAULT_RATING_SHARE) {
-            deleteRecord(PreferenceType, Preference.RATING_SHARE)
-        } else {
-            saveRecord(PreferenceType, Preference.RATING_SHARE, Preference(Scoring.shareText(value)))
-        }
-    }
-
-    override suspend fun resetScoring() {
-        db.withImmediateTransaction {
-            for (row in db.records().listByType(CriterionType.name)) deleteRecord(CriterionType, row.id)
-            for (row in db.records().listByType(PreferenceType.name)) deleteRecord(PreferenceType, row.id)
-        }
-    }
-
-    // ---- The question bank (docs/11 5.5, slice 3a): the rules are QuestionStore's (S4b-BL-168) ----
+    // ---- Criteria and ranking (docs/11 5.4, slice 2): the rules are CriterionStore's (S4b-BL-168) ----
 
     // The record kinds' shared writer: it checks the id and the size, stamps the row and asks for a sync.
     private val recordWriter = object : RecordWriter {
@@ -439,6 +350,26 @@ open class CommonRepository(
 
         override suspend fun delete(type: RecordType<*>, id: String) = deleteRecord(type, id)
     }
+
+    private val criterionStore = CriterionStore(db, recordWriter)
+
+    override fun observeScoring(): Flow<Scoring> = criterionStore.observeScoring()
+
+    override suspend fun scoring(): Scoring = criterionStore.scoring()
+
+    override suspend fun saveCriterion(criterion: Criterion) = criterionStore.save(criterion)
+
+    override suspend fun saveCriteria(criteria: List<Criterion>) = criterionStore.saveAll(criteria)
+
+    override suspend fun addCriterion(label: String, weight: Int): String = criterionStore.add(label, weight)
+
+    override suspend fun deleteCriterion(key: String): Boolean = criterionStore.delete(key)
+
+    override suspend fun saveRatingShare(share: Double) = criterionStore.saveRatingShare(share)
+
+    override suspend fun resetScoring() = criterionStore.reset()
+
+    // ---- The question bank (docs/11 5.5, slice 3a): the rules are QuestionStore's (S4b-BL-168) ----
 
     private val questionStore = QuestionStore(db, recordWriter, settings)
 
@@ -1120,7 +1051,7 @@ open class CommonRepository(
             lengthUnit = settings.lengthUnit.first(),
             // At most 40 criteria (more can only come from a newer app's sync), so the copy's own check accepts it.
             criteria = db.records().listByType(CriterionType.name)
-                .mapNotNull { row -> row.toCriterion()?.let { ExportCriterion.of(it, row.updatedAt) } }
+                .mapNotNull { row -> CriterionStore.of(row)?.let { ExportCriterion.of(it, row.updatedAt) } }
                 .take(Criterion.MAX_CRITERIA),
             preferences = db.records().listByType(PreferenceType.name).mapNotNull { row ->
                 row.decode(PreferenceType)?.let { ExportPreference(row.id, it.value.take(Preference.MAX_VALUE), row.updatedAt) }
@@ -1263,11 +1194,11 @@ open class CommonRepository(
         }
         // Criteria and preferences (slice 2), by key with the file's `updatedAt`: the plan kept the new and newer ones.
         for (c in actions.criteria) {
-            db.records().upsert(importedCriterion(c, c.updatedAt))
+            db.records().upsert(CriterionStore.importedCriterion(c, c.updatedAt))
             onProgress(++done, total)
         }
         for (p in actions.preferences) {
-            db.records().upsert(importedPreference(p, p.updatedAt))
+            db.records().upsert(CriterionStore.importedPreference(p, p.updatedAt))
             onProgress(++done, total)
         }
         // The question bank (slice 3a), by id with the file's `updatedAt`, like the criteria.
@@ -1378,18 +1309,6 @@ open class CommonRepository(
         updatedAt = updatedAt, deleted = false, dirty = true,
     )
 
-    /** A backup's criterion as its record row: coerced (the plan checked it), dirty so it is pushed. */
-    private fun importedCriterion(c: ExportCriterion, updatedAt: Long): RecordEntity = RecordEntity(
-        type = CriterionType.name, id = c.key,
-        payload = CriterionType.encode(checkNotNull(c.toCriterion().coerced()) { "criterion ${c.key} was not checked" }),
-        updatedAt = updatedAt, deleted = false, dirty = true,
-    )
-
-    private fun importedPreference(p: ExportPreference, updatedAt: Long): RecordEntity = RecordEntity(
-        type = PreferenceType.name, id = p.key, payload = PreferenceType.encode(Preference(p.value)),
-        updatedAt = updatedAt, deleted = false, dirty = true,
-    )
-
     /**
      * [applyImport] for [ImportMode.COPY]: all or nothing.
      *
@@ -1460,11 +1379,11 @@ open class CommonRepository(
                 }
                 // A copy keeps the criteria's keys (the copied houses' scores name them) and merges them like a merge.
                 for (c in actions.criteria) {
-                    writeRecord(importedCriterion(c, CopyUndo.copyStamp(c.updatedAt, now)))
+                    writeRecord(CriterionStore.importedCriterion(c, CopyUndo.copyStamp(c.updatedAt, now)))
                     onProgress(++done, total)
                 }
                 for (p in actions.preferences) {
-                    db.records().upsert(importedPreference(p, CopyUndo.copyStamp(p.updatedAt, now)))
+                    db.records().upsert(CriterionStore.importedPreference(p, CopyUndo.copyStamp(p.updatedAt, now)))
                     onProgress(++done, total)
                 }
                 for (q in actions.questions) {
