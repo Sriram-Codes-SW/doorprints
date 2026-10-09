@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.138 |
+| Version | 0.139 |
 | Date | 2026-10-08 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..183); this file lists the lead-level items and points to the rest. |
@@ -147,6 +147,7 @@
 | 0.136 | 2026-10-09 | Claude (Code), engineer | S4b-BL-190 done in code ([10](10-sprint-log.md) v0.199): the `local-model` suite's defaults and request limit changed; the proof is the next manual run of the suite, whose summary the lead reads. |
 | 0.137 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-168, slice 1 (web, photos)** (PR #213, branch `refactor/web-split-photos-slice`): new §9 *Web file layout* with the analysis of the two big web files, the deletion-test verdicts and the slice plan; the photos moved to `data/photo-store.ts` and `pages/house-detail/house-photos.ts`, no behaviour change. |
 | 0.138 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-168, slice 1 on the phones (photos), PR #212:** the new §10 *Phone file layout* records the analysis of `HouseEditScreen.kt` and `CommonRepository.kt` by kind of data (which splits pass the deletion test and which fail), the slice plan (photos, viewings, areas and places, questions, criteria, brokers, status/rating/checklist, on-device AI) and what slice 1 moved: `PhotoStore` (`:shared`) and `HousePhotos.kt` (`:ui`). Behaviour-neutral: no screenshot re-recorded. [10](10-sprint-log.md) v0.201, [03](03-design.md) v0.88, [06](06-test-plan.md) v0.178. |
+| 0.139 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-168, slice 2 on the phones (viewings), PR #216:** §10 marks slice 2 done with the numbers (`CommonRepository.kt` 1,790 -> 1,764, `ViewingStore.kt` 93) and updates the remaining plan. [10](10-sprint-log.md) v0.202, [03](03-design.md) v0.89, [06](06-test-plan.md) v0.179. |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 
@@ -734,7 +735,7 @@ ticket, photos first, so the two stacks stay parallel).
 | **Photos, form** | `HouseEditScreen.kt`: state and effects 505-690, strip 1240-1366, viewer 1470-1488, details dialog 1654-1670, `PhotoDeleteViewModel` 256-286, `PhotoViewer` 1941-2015 (about 380 lines, in 12 places) | `PhotoEntity`, `HouseFormServices`, `PlatformFeatures`, the form's snackbar, `MovingInCard` | The strip, the *Moving in* card's *Add a photo*, the viewer and the details dialog share one pending-delete, focus and problem state: without the module each repeats it | **Passes. Slice 1 (done)** |
 | **Photos, data** | `CommonRepository.kt`: folder and file helpers 168-190, `savePhotoMeta` 292-301, `deletePhoto` 773-782, `photoPath`, `photoFileOf`, `importedPhotoPath` 1354-1390, `discardUncommittedPhotoFiles` 1755-1760 | the photo DAO, the folder, `BackupValidation` | The sync pull and push, merge import, copy import, the import's undo, the exporters and both phones' thumbnails all need the same folder and id rules | **Passes. Slice 1 (done)**; the loops over the rows stay (below) |
 | Photos, sync and import loops | `CommonRepository.kt` 1093-1138 (pull), 1240-1277 (push), 1517-1545, 1663-1720 (imports) | houses, cursors, counters, one transaction | Each loop shares its cursor, counters or transaction with the houses and visits around it | **Fails**: not split; they use `PhotoStore` for every file and meta rule |
-| Viewings | `CommonRepository.kt` 573-617; UI already in `ViewingsScreen.kt` | the record table | The reminders, the export rows, the import and the screens decode and cap a viewing | Passes (small), slice 2 |
+| Viewings | `CommonRepository.kt` 573-617; UI already in `ViewingsScreen.kt` | the record table | The reminders, the export rows, the import and the screens decode and cap a viewing | **Passes. Slice 2 (done)** |
 | Areas, places, area notes | `CommonRepository.kt` 618-690 | the record table | Same shape as viewings (three types, one writer `writeCapped`) | Passes, slice 3 |
 | Questions and a house's answers | `CommonRepository.kt` 470-572 | the record table, seeding | The bank, the form's questions, the reminders, the import | Passes, slice 4 |
 | Criteria and scoring | `CommonRepository.kt` 382-469 | the record table | The form's checklist, the list's score, Compare, the import | Passes, slice 5 |
@@ -769,3 +770,21 @@ how photos are taken, shown, deleted or edited now edits `HousePhotos.kt` (and `
 dialog), and a change to the photo folder, a photo's file or its local edit rules edits `PhotoStore.kt`: neither big file
 (before: both). A new photo value that must also travel (sync, import) still edits the loops listed above in
 `CommonRepository.kt`, until slices for sync and import are decided.
+
+**Slice 2, what moved (PR #216).** `ViewingStore` (`:shared` `data/ViewingStore.kt`, a plain class) owns reading a viewing
+from its record row (decoded, coerced, skipped when it cannot be trusted), the list by start, one house's viewings, the
+next one, the ids for the reminders (tombstones included), saving (coerced, no write when nothing changed), a new id
+that clashes with no tombstone, deleting, marking done, and the backup's row for a viewing (`importedRow`, which is the
+`imported*` mapper this slice takes out of the big file). `CommonRepository` delegates every `Repository` viewing member
+and hands the store its own `saveRecord` and `deleteRecord`, so the id, size and 5,000 caps and the sync request stay
+where every record kind has them. The export, import and undo loops stay and call `ViewingStore.of` and `importedRow`.
+Before: `CommonRepository.kt` 1,790 lines. After: 1,764, plus `ViewingStore.kt` (93). The saving is small because the
+viewings were small (about 45 lines); the gain is that a new viewing value edits `ViewingStore.kt`, `ExportViewing`
+and the screen, and no longer scrolls through the repository to find the reads and the writes. Tests: two
+characterization tests were added to `ViewingsRepositoryTest` before the move; the mutation list
+`tools/mutations/viewing-store.json` has 13 one-line changes, each killed by a named test (one, a new id that reuses
+a tombstone's id, is not listed: the id is random, so no test can force the clash; `ViewingsTest` covers `Viewing.newId`).
+**Not split:** the areas, places and notes (slice 3) share `writeCapped` and stay for that slice; the viewings' lines in
+the AI document (`CommonRepository.kt` about 870-890) belong to the Assistant's house documents, which read every kind.
+**Remaining:** 3 areas, places and notes -> 4 questions and answers -> 5 criteria and scoring -> 6 brokers and contact
+-> 7 status, rating, checklist (optional) -> 8 on-device AI.
