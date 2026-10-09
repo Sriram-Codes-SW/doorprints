@@ -194,9 +194,9 @@ export class OnDeviceAiService {
     for (const viewing of await this.store.viewings.all()) {
       viewingsByHouse.set(viewing.houseId, [...(viewingsByHouse.get(viewing.houseId) ?? []), viewing]);
     }
-    const areas = await this.store.areas();
-    const places = await this.store.places();
-    const noteRows = await this.store.areaNoteRows();
+    const areas = await this.store.areas.all();
+    const places = await this.store.places.all();
+    const noteRows = await this.store.areaNotes.rows();
     const live = (await this.store.allHouses()).filter((h) => !h.deleted);
     live.sort((a, b) => Date.parse(b.updatedAt ?? '') - Date.parse(a.updatedAt ?? '') || 0);
     return live.map((h) => ({

@@ -19,6 +19,9 @@ import { HttpRequest, provideHttpClient, withFetch, withInterceptors } from '@an
 import { TestBed } from '@angular/core/testing';
 import { describe, expect, it } from 'vitest';
 import { LocalStore } from '../../data/local-store.service';
+import type { AreaNoteStore } from '../../data/area-note-store';
+import type { AreaStore } from '../../data/area-store';
+import type { PlaceStore } from '../../data/place-store';
 import type { ViewingStore } from '../../data/viewing-store';
 import { OnDeviceAiService } from './on-device-ai.service';
 
@@ -54,13 +57,13 @@ describe.skipIf(!KEY)('OnDeviceAiService against Gemini (real key)', () => {
     ];
     // Typed on purpose: the service reads these six methods of the store; a method it starts to use that is missing here
     // (the live run once failed on `viewings`, added after this test was written) fails the build, not the manual run.
-    const store: Pick<LocalStore, 'allHouses' | 'allVisits' | 'viewings' | 'areas' | 'places' | 'areaNoteRows'> = {
+    const store: Pick<LocalStore, 'allHouses' | 'allVisits' | 'viewings' | 'areas' | 'places' | 'areaNotes'> = {
       allHouses: async () => houses as unknown as Awaited<ReturnType<LocalStore['allHouses']>>,
       allVisits: async () => [],
       viewings: { all: async () => [] } as unknown as ViewingStore,
-      areas: async () => [],
-      places: async () => [],
-      areaNoteRows: async () => [],
+      areas: { all: async () => [] } as unknown as AreaStore,
+      places: { all: async () => [] } as unknown as PlaceStore,
+      areaNotes: { rows: async () => [] } as unknown as AreaNoteStore,
     };
     TestBed.configureTestingModule({
       providers: [
