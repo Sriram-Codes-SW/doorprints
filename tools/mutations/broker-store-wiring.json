@@ -1,0 +1,7 @@
+{
+  "spec": "web/src/app/data/local-store.spec.ts",
+  "mutations": [
+    {"file": "web/src/app/data/local-store.service.ts", "find": "this.migrating ??= this.brokers.migrate().then(", "replace": "this.migrating ??= Promise.resolve(0).then(", "expect": "runs once when the store opens, and sets the flag"},
+    {"file": "web/src/app/data/local-store.service.ts", "find": "houseFromDto(await this.brokers.link(house, now), true)", "replace": "houseFromDto(house, true)", "expect": "makes a broker from a saved house with a phone and links the house to it"}
+  ]
+}
