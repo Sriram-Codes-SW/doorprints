@@ -62,7 +62,6 @@ import app.doorprints.shared.model.CriterionType
 import app.doorprints.shared.model.Preference
 import app.doorprints.shared.model.PreferenceType
 import app.doorprints.shared.model.Scoring
-import app.doorprints.shared.model.DefaultQuestions
 import app.doorprints.shared.model.HouseAnswer
 import app.doorprints.shared.model.HouseAnswers
 import app.doorprints.shared.model.HouseRooms
@@ -432,104 +431,41 @@ open class CommonRepository(
         }
     }
 
-    // ---- The question bank and a house's answers (docs/11 5.5, slice 3a) ----
+    // ---- The question bank (docs/11 5.5, slice 3a): the rules are QuestionStore's (S4b-BL-168) ----
 
-    /** A question row with its id, coerced; null when the payload does not decode or cannot be trusted (skipped). */
-    private fun RecordEntity.toQuestion(): Question? = decode(QuestionType)?.copy(id = id)?.coerced()
+    // The record kinds' shared writer: it checks the id and the size, stamps the row and asks for a sync.
+    private val recordWriter = object : RecordWriter {
+        override suspend fun <T> save(type: RecordType<T>, id: String, value: T) = saveRecord(type, id, value)
 
-    private fun questionsOf(rows: List<RecordEntity>): List<Question> =
-        rows.mapNotNull { it.toQuestion() }.sortedWith(Question.ORDER)
-
-    override fun observeQuestions(): Flow<List<Question>> = db.records().byType(QuestionType.name).map(::questionsOf)
-
-    override suspend fun questions(): List<Question> = questionsOf(db.records().listByType(QuestionType.name))
-
-    override suspend fun seedQuestions(language: String): Int {
-        var written = 0
-        db.withImmediateTransaction {
-            for (d in DefaultQuestions.ALL) {
-                // A tombstone is a record too: a default the person deleted stays deleted (Reset brings it back).
-                if (db.records().get(QuestionType.name, d.id) != null) continue
-                // Clean and stamped SEEDED_AT (S4b-BL-90a): an untouched default is never pushed, and whatever another
-                // device did to it wins when it is pulled. An edit here makes it dirty with a real time.
-                val payload = QuestionType.encode(d.question(language))
-                db.records().upsert(
-                    RecordEntity(QuestionType.name, d.id, payload, updatedAt = DefaultQuestions.SEEDED_AT, dirty = false),
-                )
-                written++
-            }
-        }
-        return written
+        override suspend fun delete(type: RecordType<*>, id: String) = deleteRecord(type, id)
     }
 
-    private val seedGate = Mutex()
+    private val questionStore = QuestionStore(db, recordWriter, settings)
 
-    override suspend fun seedQuestionsOnce(language: String) {
-        seedGate.withLock {
-            if (settings.questionsSeeded()) return
-            seedQuestions(language)
-            settings.markQuestionsSeeded()
-        }
-    }
+    override fun observeQuestions(): Flow<List<Question>> = questionStore.observeAll()
 
-    override suspend fun resetQuestions(language: String) {
-        db.withImmediateTransaction {
-            for (d in DefaultQuestions.ALL) {
-                // A deleted default that would be the 101st question stays deleted (the web skips it too).
-                val live = db.records().get(QuestionType.name, d.id)?.deleted == false
-                if (!live && db.records().countLive(QuestionType.name) >= Question.MAX_QUESTIONS) continue
-                saveRecord(QuestionType, d.id, d.question(language))
-            }
-        }
-    }
+    override suspend fun questions(): List<Question> = questionStore.all()
 
-    override suspend fun saveQuestion(question: Question) {
-        db.withImmediateTransaction { writeQuestion(question) }
-    }
+    override suspend fun seedQuestions(language: String): Int = questionStore.seed(language)
 
-    override suspend fun saveQuestions(questions: List<Question>) {
-        db.withImmediateTransaction { for (q in questions) writeQuestion(q) }
-    }
+    override suspend fun seedQuestionsOnce(language: String) = questionStore.seedOnce(language)
 
-    /** One question as a record; nothing is written when the record already says the same (a renumbering stamps only the moved). */
-    private suspend fun writeQuestion(question: Question) {
-        val clean = requireNotNull(question.copy(text = question.text.trim()).coerced()) {
-            "a question needs a record id and a text of 1..${Question.MAX_TEXT} characters"
-        }
-        val stored = db.records().get(QuestionType.name, clean.id)?.takeUnless { it.deleted }
-        if (stored?.toQuestion() == clean) return
-        if (stored == null && db.records().countLive(QuestionType.name) >= Question.MAX_QUESTIONS) {
-            throw RecordLimitException(QuestionType.name, Question.MAX_QUESTIONS)
-        }
-        saveRecord(QuestionType, clean.id, clean)
-    }
+    override suspend fun resetQuestions(language: String) = questionStore.reset(language)
+
+    override suspend fun saveQuestion(question: Question) = questionStore.save(question)
+
+    override suspend fun saveQuestions(questions: List<Question>) = questionStore.saveAll(questions)
 
     override suspend fun addQuestion(
         text: String,
         category: QuestionCategory,
         appliesTo: QuestionScope,
         defaultOn: Boolean,
-    ): String {
-        val words = text.trim()
-        require(words.isNotEmpty() && words.length <= Question.MAX_TEXT) { "a question needs 1..${Question.MAX_TEXT} characters" }
-        var id = ""
-        db.withImmediateTransaction {
-            val live = db.records().listByType(QuestionType.name)
-            if (live.size >= Question.MAX_QUESTIONS) throw RecordLimitException(QuestionType.name, Question.MAX_QUESTIONS)
-            // An id a tombstone holds is taken too: reusing it would bring the old question back on another device.
-            val used = db.records().versions(QuestionType.name).mapTo(HashSet()) { it.id }
-            id = Question.newCustomId({ it in used })
-            val sort = (live.mapNotNull { it.toQuestion() }.maxOfOrNull { it.sort } ?: -1) + 1
-            saveRecord(
-                QuestionType, id,
-                Question(id, words, category.name, appliesTo.name, defaultOn, sort),
-            )
-        }
-        return id
-    }
+    ): String = questionStore.add(text, category, appliesTo, defaultOn)
 
-    override suspend fun deleteQuestion(id: String) = deleteRecord(QuestionType, id)
+    override suspend fun deleteQuestion(id: String) = questionStore.delete(id)
 
+    // A house's answers are a field of the house, saved with it.
     override suspend fun saveAnswers(houseId: String, answers: List<HouseAnswer>?) {
         val house = db.houses().get(houseId)?.takeUnless { it.deleted } ?: return
         saveHouse(house.copy(answers = answers))
@@ -565,14 +501,7 @@ open class CommonRepository(
 
     // ---- Hunting areas, my places and area notes (docs/11 slice 4a): the rules are AreaStore's (S4b-BL-168) ----
 
-    private val areaStore = AreaStore(
-        db,
-        object : RecordWriter {
-            override suspend fun <T> save(type: RecordType<T>, id: String, value: T) = saveRecord(type, id, value)
-
-            override suspend fun delete(type: RecordType<*>, id: String) = deleteRecord(type, id)
-        },
-    )
+    private val areaStore = AreaStore(db, recordWriter)
 
     override fun observeAreas(): Flow<List<Area>> = areaStore.observeAreas()
     override suspend fun areas(): List<Area> = areaStore.areas()
@@ -1198,7 +1127,7 @@ open class CommonRepository(
             },
             // At most 100 questions, for the same reason as the criteria.
             questions = db.records().listByType(QuestionType.name)
-                .mapNotNull { row -> row.toQuestion()?.let { ExportQuestion.of(it, row.updatedAt) } }
+                .mapNotNull { row -> QuestionStore.of(row)?.let { ExportQuestion.of(it, row.updatedAt) } }
                 .take(Question.MAX_QUESTIONS),
             // The viewings (slice 3b-1): untrusted rows are skipped, so the copy's own check accepts what it writes.
             viewings = db.records().listByType(ViewingType.name)
@@ -1343,7 +1272,7 @@ open class CommonRepository(
         }
         // The question bank (slice 3a), by id with the file's `updatedAt`, like the criteria.
         for (q in actions.questions) {
-            db.records().upsert(importedQuestion(q, q.updatedAt))
+            db.records().upsert(QuestionStore.importedRow(q, q.updatedAt))
             onProgress(++done, total)
         }
         // The viewings (slice 3b-1), by id with the file's `updatedAt`: a newer row brings back one deleted here.
@@ -1456,13 +1385,6 @@ open class CommonRepository(
         updatedAt = updatedAt, deleted = false, dirty = true,
     )
 
-    /** A backup's question as its record row: coerced (the plan checked it), dirty so it is pushed. */
-    private fun importedQuestion(q: ExportQuestion, updatedAt: Long): RecordEntity = RecordEntity(
-        type = QuestionType.name, id = q.id,
-        payload = QuestionType.encode(checkNotNull(q.toQuestion().coerced()) { "question ${q.id} was not checked" }),
-        updatedAt = updatedAt, deleted = false, dirty = true,
-    )
-
     private fun importedPreference(p: ExportPreference, updatedAt: Long): RecordEntity = RecordEntity(
         type = PreferenceType.name, id = p.key, payload = PreferenceType.encode(Preference(p.value)),
         updatedAt = updatedAt, deleted = false, dirty = true,
@@ -1546,7 +1468,7 @@ open class CommonRepository(
                     onProgress(++done, total)
                 }
                 for (q in actions.questions) {
-                    writeRecord(importedQuestion(q, CopyUndo.copyStamp(q.updatedAt, now)))
+                    writeRecord(QuestionStore.importedRow(q, CopyUndo.copyStamp(q.updatedAt, now)))
                     onProgress(++done, total)
                 }
                 for (house in actions.houses) {
