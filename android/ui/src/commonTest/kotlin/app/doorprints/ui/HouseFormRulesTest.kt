@@ -262,4 +262,23 @@ class HouseFormRulesTest {
         // Off, the field reads as before.
         assertEquals(listOf(0, 3, -2), listOf("0", "3", "-2").map { floorOf(it, basement = false) })
     }
+
+    /** A checklist score (the form's rows): set, replaced, cleared by the same value again or by "–", others untouched. */
+    @Test
+    fun aChecklistScoreIsSetReplacedAndClearedByTheSameValueOrByDash() {
+        val start = mapOf("water" to 3, "security" to 0)
+        // Set, and a new value replaces the old one (0 is a score, not "none").
+        assertEquals(mapOf("water" to 3, "security" to 0, "parking" to 5), start.withScore("parking", 5))
+        assertEquals(mapOf("water" to 4, "security" to 0), start.withScore("water", 4))
+        assertEquals(mapOf("water" to 3, "security" to 2), start.withScore("security", 2))
+        // The chosen score again clears it, zero included.
+        assertEquals(mapOf("security" to 0), start.withScore("water", 3))
+        assertEquals(mapOf("water" to 3), start.withScore("security", 0))
+        // "–" clears; a criterion without a score stays without one.
+        assertEquals(mapOf("security" to 0), start.withScore("water", null))
+        assertEquals(start, start.withScore("parking", null))
+        assertEquals(emptyMap(), emptyMap<String, Int>().withScore("water", null))
+        // The scores of other criteria (an archived one's among them) are left as they are.
+        assertEquals(mapOf("old" to 1, "water" to 2), mapOf("old" to 1).withScore("water", 2))
+    }
 }

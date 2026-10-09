@@ -19,6 +19,7 @@
 package app.doorprints
 
 import androidx.activity.ComponentActivity
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
@@ -28,6 +29,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.core.content.FileProvider
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import app.doorprints.data.HouseEntity
@@ -40,6 +42,7 @@ import app.doorprints.ui.ProvideAppServices
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -58,6 +61,14 @@ class CriteriaScreenTest {
 
     private val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
     private val at = 1_760_000_000_000
+
+    // The form's camera file goes through FileProvider, whose cache outlives a Robolectric application (as in MovingInScreenTest).
+    @Before fun clearFileProviderCache() {
+        runCatching {
+            FileProvider::class.java.getDeclaredField("sCache").apply { isAccessible = true }
+                .let { (it.get(null) as MutableMap<*, *>).clear() }
+        }
+    }
 
     private fun scoring(): Scoring = runBlocking { repo.scoring() }
 
@@ -149,6 +160,33 @@ class CriteriaScreenTest {
         compose.setContent { ProvideAppServices { HouseEditScreen(houseId = "a", newLat = null, newLon = null, visitId = null, onDone = {}) } }
         compose.waitUntil(5_000) { compose.onAllNodesWithText("Scored 2 of 10 that matter").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("Must-have missed: Safety and security").assertExists()
+    }
+
+    @Test
+    fun aChecklistScoreIsSetClearedByTheSameOptionAgainAndByTheDash() {
+        runBlocking { repo.saveHouse(HouseEntity(id = "a", label = "Green View", lat = 12.97, lon = 77.59, createdAt = at, updatedAt = at)) }
+        compose.setContent { ProvideAppServices { HouseEditScreen(houseId = "a", newLat = null, newLon = null, visitId = null, onDone = {}) } }
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Water supply · not rated").fetchSemanticsNodes().isNotEmpty() }
+        compose.onAllNodesWithText("Scored", substring = true).assertCountEquals(0)
+        fun tap(description: String) {
+            compose.onNodeWithContentDescription(description, useUnmergedTree = true).performScrollTo().performClick()
+            compose.waitForIdle()
+        }
+        // A score is set, and the coverage line counts it.
+        tap("Water supply: 4 out of 5")
+        compose.onNodeWithText("Water supply · 4 out of 5").assertExists()
+        compose.onNodeWithText("Scored 1 of 10 that matter").assertExists()
+        // The chosen option again clears it.
+        tap("Water supply: 4 out of 5")
+        compose.onNodeWithText("Water supply · not rated").assertExists()
+        compose.onAllNodesWithText("Scored", substring = true).assertCountEquals(0)
+        // Zero is a score; "–" clears it.
+        tap("Water supply: 0 out of 5")
+        compose.onNodeWithText("Water supply · 0 out of 5").assertExists()
+        compose.onNodeWithText("Scored 1 of 10 that matter").assertExists()
+        tap("Water supply: not rated")
+        compose.onNodeWithText("Water supply · not rated").assertExists()
+        compose.onAllNodesWithText("Scored", substring = true).assertCountEquals(0)
     }
 
     @Test

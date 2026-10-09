@@ -255,6 +255,14 @@ private fun percentDecoded(s: String): String? {
     return out.toString()
 }
 
+/**
+ * The checklist with [key] scored [n]. "–" ([n] null) clears the score, and so does tapping the chosen score again
+ * (kept as a shortcut for the same); any other value sets it. The other criteria's scores are left as they are,
+ * including those of archived criteria, which the form does not show.
+ */
+fun Map<String, Int>.withScore(key: String, n: Int?): Map<String, Int> =
+    if (n == null || this[key] == n) this - key else this + (key to n)
+
 /** An ASCII hex digit's value, or null (as Android's `UriCodec`: no other script's digits). */
 private fun hexValue(c: Char): Int? = when (c) {
     in '0'..'9' -> c - '0'

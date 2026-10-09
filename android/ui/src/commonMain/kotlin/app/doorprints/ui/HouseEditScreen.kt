@@ -999,11 +999,7 @@ fun HouseEditScreen(
                     val name = c.displayName()
                     val label = if (c.weight == 0) stringResource(Res.string.house_check_ignored, name) else name
                     ChecklistRow(label, d.checklist[key]) { n ->
-                        update {
-                            val current = it.checklist[key]
-                            // "–" clears; tapping the chosen score again is kept as a shortcut for the same.
-                            it.copy(checklist = if (n == null || current == n) it.checklist - key else it.checklist + (key to n))
-                        }
+                        update { it.copy(checklist = it.checklist.withScore(key, n)) }
                     }
                 }
                 ScoreSummary(d.scoreResult(scoring), scoring)
