@@ -109,6 +109,16 @@ on:
         options:
           - aistudio
           - vertex
+      thinking_level:
+        description: "golden-set only: the model's thinking level (S4b-BL-195). default = the model's own, unchanged. The others set SPRING_AI_GOOGLE_GENAI_CHAT_THINKING_LEVEL (vertex) or SPRING_AI_OPENAI_CHAT_REASONING_EFFORT (aistudio) for the server; the scorecard header shows it"
+        type: choice
+        default: default
+        options:
+          - default
+          - minimal
+          - low
+          - medium
+          - high
       chat_model:
         description: Chat model override, e.g. gemini-3.5-flash-lite (empty = AI_CHAT_MODEL default from application.yml)
         type: string
@@ -163,6 +173,7 @@ jobs:
         env:
           DELAY_MS: ${{ inputs.delay_ms }}
           PROVIDER: ${{ inputs.provider }}
+          THINKING_LEVEL: ${{ inputs.thinking_level }}
           CHAT_MODEL_INPUT: ${{ inputs.chat_model }}
           EMBEDDING_MODEL_INPUT: ${{ inputs.embedding_model }}
         run: |
@@ -172,6 +183,10 @@ jobs:
           fi
           if [ "$PROVIDER" != "vertex" ] && [ "$PROVIDER" != "aistudio" ]; then
             echo "::error::provider must be vertex or aistudio"
+            exit 1
+          fi
+          if ! [[ "$THINKING_LEVEL" =~ ^(default|minimal|low|medium|high)$ ]]; then
+            echo "::error::thinking_level must be default, minimal, low, medium or high"
             exit 1
           fi
           for m in "$CHAT_MODEL_INPUT" "$EMBEDDING_MODEL_INPUT"; do
@@ -280,12 +295,26 @@ jobs:
           AI_VERTEX_EMBEDDING_LOCATION: ${{ vars.AI_VERTEX_EMBEDDING_LOCATION }}
           AI_EVAL_TYPES: ${{ inputs.types }}
           AI_EVAL_DELAY_MS: ${{ inputs.delay_ms }}
+          THINKING_LEVEL: ${{ inputs.thinking_level }}
           CHAT_MODEL_INPUT: ${{ inputs.chat_model }}
           EMBEDDING_MODEL_INPUT: ${{ inputs.embedding_model }}
         run: |
           # Only override when set: an empty value would replace the application.yml default.
           if [ -n "$CHAT_MODEL_INPUT" ]; then export AI_CHAT_MODEL="$CHAT_MODEL_INPUT"; fi
           if [ -n "$EMBEDDING_MODEL_INPUT" ]; then export AI_EMBEDDING_MODEL="$EMBEDDING_MODEL_INPUT"; fi
+          # Thinking level (S4b-BL-195): only when chosen; "default" leaves the model's own level. Spring Boot's relaxed
+          # binding reads these environment variables straight into spring.ai.google.genai.chat.thinking-level (an enum,
+          # MINIMAL | LOW | MEDIUM | HIGH, upper case) and spring.ai.openai.chat.reasoning-effort (a string, lower case);
+          # no SPRING_APPLICATION_JSON is needed, so it cannot clash with one set for another purpose. The scorecard
+          # header ("Thinking level") reads the same two properties back from the running server.
+          if [ "$THINKING_LEVEL" != "default" ]; then
+            if [ "$AI_PROVIDER" = "vertex" ]; then
+              SPRING_AI_GOOGLE_GENAI_CHAT_THINKING_LEVEL="$(printf '%s' "$THINKING_LEVEL" | tr '[:lower:]' '[:upper:]')"
+              export SPRING_AI_GOOGLE_GENAI_CHAT_THINKING_LEVEL
+            else
+              export SPRING_AI_OPENAI_CHAT_REASONING_EFFORT="$THINKING_LEVEL"
+            fi
+          fi
           if [ -n "$GCP_LOCATION_SETTING" ]; then export GCP_LOCATION="$GCP_LOCATION_SETTING"; fi
           if [ -z "$AI_VERTEX_EMBEDDING_LOCATION" ]; then unset AI_VERTEX_EMBEDDING_LOCATION; fi
           # No -Dsurefire.failIfNoSpecifiedTests=false: if the test class is renamed or removed, Surefire fails the

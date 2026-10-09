@@ -759,6 +759,17 @@ class EvalScorerTest {
     }
 
     @Test
+    void thinkingLabelNamesTheLevelTheServerRunsWith() {
+        // Vertex reads spring.ai.google.genai.chat.thinking-level, AI Studio reads spring.ai.openai.chat.reasoning-effort.
+        assertThat(EvalScorer.thinkingLabel(true, "LOW", "")).isEqualTo("LOW");
+        assertThat(EvalScorer.thinkingLabel(true, "", "high")).isEqualTo("model default");
+        assertThat(EvalScorer.thinkingLabel(false, "", "low")).isEqualTo("low");
+        assertThat(EvalScorer.thinkingLabel(false, "HIGH", "")).isEqualTo("model default");
+        assertThat(EvalScorer.thinkingLabel(true, null, null)).isEqualTo("model default");
+        assertThat(EvalScorer.thinkingLabel(false, " ", "  ")).isEqualTo("model default");
+    }
+
+    @Test
     void markdownReportShowsResultAndEscapesCells() {
         var c = testCase("x|1", "extract", null, map("price", 100));
         var r = EvalScorer.scoreExtract(c, map("price", 0), null);
