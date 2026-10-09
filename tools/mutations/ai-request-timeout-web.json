@@ -1,0 +1,10 @@
+{
+  "spec": "web/src/app/core/ai/ai-request.spec.ts",
+  "mutations": [
+    { "file": "web/src/app/core/ai/ai-request.ts", "find": "timeoutMs: number = REQUEST_TIMEOUT_MS,", "replace": "timeoutMs: number = 120_000,", "expect": "is 60 seconds unless a caller says otherwise" },
+    { "file": "web/src/app/core/ai/ai-request.ts", "find": "AbortSignal.timeout(timeoutMs)", "replace": "AbortSignal.timeout(REQUEST_TIMEOUT_MS)", "expect": "takes the limit a caller passes" },
+    { "file": "web/src/app/core/ai/ai-request.ts", "find": "AbortSignal.timeout(timeoutMs)", "replace": "AbortSignal.timeout(timeoutMs * 1000)", "expect": "really stops a call that never answers" },
+    { "file": "web/src/app/core/ai/openai-compat.ts", "find": "headers, body, this.timeoutMs);", "replace": "headers, body);", "expect": "is passed on by the openai-compatible adapter" },
+    { "file": "web/src/app/core/ai/openai-compat.ts", "find": "private readonly timeoutMs: number = REQUEST_TIMEOUT_MS,", "replace": "private readonly timeoutMs: number = 90_000,", "expect": "is passed on by the openai-compatible adapter" }
+  ]
+}

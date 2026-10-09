@@ -48,7 +48,7 @@ describe('evalSetup: when the provider evals run (S4b-BL-153)', () => {
   it('runs without a key against an OpenAI-compatible server on this machine (Ollama needs none)', () => {
     const local = { AI_EVAL_KIND: 'openai-compatible', AI_EVAL_MODEL: 'small', AI_EVAL_DELAY_MS: '0' };
     expect(evalSetup({ ...local, AI_EVAL_BASE_URL: 'http://127.0.0.1:11434/v1' })).toEqual({
-      status: 'run', kind: 'openai-compatible', baseUrl: 'http://127.0.0.1:11434/v1', model: 'small', key: '', delayMs: 0, types: ['extract', 'ask', 'plan'],
+      status: 'run', kind: 'openai-compatible', baseUrl: 'http://127.0.0.1:11434/v1', model: 'small', key: '', delayMs: 0, timeoutMs: 60000, types: ['extract', 'ask', 'plan'],
     });
     expect(evalSetup({ ...local, AI_EVAL_BASE_URL: 'http://localhost:11434/v1' })).toMatchObject({ status: 'run', key: '' });
   });
@@ -66,13 +66,51 @@ describe('evalSetup: when the provider evals run (S4b-BL-153)', () => {
 
   it('runs an OpenAI-compatible provider with the normalised base URL and the defaults', () => {
     expect(evalSetup({ DOORPRINTS_EVAL_KEY: 'k', AI_EVAL_KIND: 'openai-compatible', AI_EVAL_BASE_URL: 'https://api.groq.com/openai/v1/', AI_EVAL_MODEL: 'm1' })).toEqual({
-      status: 'run', kind: 'openai-compatible', baseUrl: 'https://api.groq.com/openai/v1', model: 'm1', key: 'k', delayMs: 4000, types: ['extract', 'ask', 'plan'],
+      status: 'run', kind: 'openai-compatible', baseUrl: 'https://api.groq.com/openai/v1', model: 'm1', key: 'k', delayMs: 4000, timeoutMs: 60000, types: ['extract', 'ask', 'plan'],
     });
   });
 
   it('runs Anthropic with no base URL, and reads the types and the delay', () => {
     expect(evalSetup({ DOORPRINTS_EVAL_KEY: 'k', AI_EVAL_KIND: 'anthropic', AI_EVAL_MODEL: 'm2', AI_EVAL_TYPES: 'extract,plan', AI_EVAL_DELAY_MS: '6500' })).toEqual({
-      status: 'run', kind: 'anthropic', baseUrl: '', model: 'm2', key: 'k', delayMs: 6500, types: ['extract', 'plan'],
+      status: 'run', kind: 'anthropic', baseUrl: '', model: 'm2', key: 'k', delayMs: 6500, timeoutMs: 60000, types: ['extract', 'plan'],
+    });
+  });
+
+  // S4b-BL-190: a small model on a 3-core CPU needs more than the app's 60 s per call; only a server on this machine may ask.
+  describe('the request limit (AI_EVAL_TIMEOUT_MS, S4b-BL-190)', () => {
+    const local = { AI_EVAL_KIND: 'openai-compatible', AI_EVAL_MODEL: 'small', AI_EVAL_BASE_URL: 'http://127.0.0.1:11434/v1' };
+
+    it('is 60 seconds when nothing is set, empty or blank', () => {
+      expect(evalSetup(local)).toMatchObject({ status: 'run', timeoutMs: 60_000 });
+      expect(evalSetup({ ...local, AI_EVAL_TIMEOUT_MS: '' })).toMatchObject({ status: 'run', timeoutMs: 60_000 });
+      expect(evalSetup({ ...local, AI_EVAL_TIMEOUT_MS: '  ' })).toMatchObject({ status: 'run', timeoutMs: 60_000 });
+    });
+
+    it('is the number given for a server on this machine, at both ends of the allowed range', () => {
+      expect(evalSetup({ ...local, AI_EVAL_TIMEOUT_MS: '180000' })).toMatchObject({ status: 'run', timeoutMs: 180_000 });
+      expect(evalSetup({ ...local, AI_EVAL_TIMEOUT_MS: ' 1000 ' })).toMatchObject({ status: 'run', timeoutMs: 1_000 });
+      expect(evalSetup({ ...local, AI_EVAL_TIMEOUT_MS: '600000', AI_EVAL_BASE_URL: 'http://localhost:11434/v1' })).toMatchObject({ status: 'run', timeoutMs: 600_000 });
+    });
+
+    it.each(['999', '600001', '0', '-5', '1e5', '60s', '1.5', '9999999999'])('refuses %s', (value) => {
+      expect(evalSetup({ ...local, AI_EVAL_TIMEOUT_MS: value })).toEqual({
+        status: 'invalid', line: 'timeout must be a whole number of milliseconds from 1000 to 600000',
+      });
+    });
+
+    it('is refused for a provider that is not on this machine, with or without a key (only the loopback eval may wait longer)', () => {
+      const remote = { DOORPRINTS_EVAL_KEY: 'k', AI_EVAL_KIND: 'openai-compatible', AI_EVAL_MODEL: 'm', AI_EVAL_BASE_URL: 'https://api.groq.com/openai/v1' };
+      expect(evalSetup({ ...remote, AI_EVAL_TIMEOUT_MS: '180000' })).toEqual({
+        status: 'invalid', line: 'a longer request limit is only for a server on this machine',
+      });
+      expect(evalSetup({ DOORPRINTS_EVAL_KEY: 'k', AI_EVAL_KIND: 'gemini', AI_EVAL_TIMEOUT_MS: '180000' })).toMatchObject({ status: 'invalid' });
+      expect(evalSetup({ DOORPRINTS_EVAL_KEY: 'k', AI_EVAL_KIND: 'anthropic', AI_EVAL_MODEL: 'm', AI_EVAL_TIMEOUT_MS: '180000' })).toMatchObject({ status: 'invalid' });
+      expect(evalSetup({ ...remote })).toMatchObject({ status: 'run', timeoutMs: 60_000 });
+    });
+
+    it('is not looked at when there is no key and the server is not on this machine (skipped first)', () => {
+      expect(evalSetup({ AI_EVAL_KIND: 'openai-compatible', AI_EVAL_MODEL: 'm', AI_EVAL_BASE_URL: 'https://api.groq.com/openai/v1', AI_EVAL_TIMEOUT_MS: '180000' }))
+        .toEqual({ status: 'skip', line: 'skipped: no key' });
     });
   });
 
