@@ -142,23 +142,23 @@ export class LocalDataService {
    * read it again after `settled` moves, like every stored value.
    */
   scoring(): Observable<Scoring> {
-    return defer(() => from(this.store.scoring()));
+    return defer(() => from(this.store.criteria.scoring()));
   }
 
   /** The criterion records that exist (what differs from the defaults), for the Criteria screen and the copies. */
   criterionRows(): Observable<CriterionRow[]> {
-    return defer(() => from(this.store.criterionRows()));
+    return defer(() => from(this.store.criteria.rows()));
   }
 
-  /** Saves criteria (each writes a record only when it differs from the default); see `LocalStore.saveCriterion`. */
+  /** Saves criteria (each writes a record only when it differs from the default); see `CriteriaStore.save`. */
   saveCriteria(list: readonly Criterion[]): Observable<void> {
-    return this.writing(() => this.store.saveCriteria(list));
+    return this.writing(() => this.store.criteria.saveMany(list));
   }
 
   addCriterion(label: string, weight: Weight = 2): Observable<Criterion> {
     return defer(() =>
       from(
-        this.store.addCriterion(label, weight).then((saved) => {
+        this.store.criteria.add(label, weight).then((saved) => {
           this.sync.syncSoon();
           return saved;
         }),
@@ -168,22 +168,22 @@ export class LocalDataService {
 
   /** Deletes a custom criterion that no house has scored. */
   deleteCriterion(key: string): Observable<void> {
-    return this.writing(() => this.store.deleteCriterion(key));
+    return this.writing(() => this.store.criteria.delete(key));
   }
 
   /** Stores the share of the star rating in the overall score, 0..1. */
   setRatingShare(share: number): Observable<void> {
-    return this.writing(() => this.store.setRatingShare(share));
+    return this.writing(() => this.store.criteria.setRatingShare(share));
   }
 
   /** Deletes every criterion and preference record: back to the defaults. */
   resetCriteria(): Observable<void> {
-    return this.writing(() => this.store.resetCriteria());
+    return this.writing(() => this.store.criteria.reset());
   }
 
   /** True when a live house has a score under this criterion key (a custom one can then only be archived). */
   criterionInUse(key: string): Observable<boolean> {
-    return defer(() => from(this.store.criterionInUse(key)));
+    return defer(() => from(this.store.criteria.inUse(key)));
   }
 
   /** The question bank, archived questions included, by `sort` then id (slice 3a). */

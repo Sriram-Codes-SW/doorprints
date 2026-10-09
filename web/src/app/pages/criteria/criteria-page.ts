@@ -40,7 +40,7 @@ const SHARE_PERCENTS: readonly number[] = [0, 25, 50, 75, 100];
  * (Ignore, Low, Medium, High), can be a must-have with a minimum score, can be moved up or down, archived and
  * restored; custom criteria are added by name (at most 40 in all). The Rating share sets how much the star rating
  * counts against the checklist, and Reset to defaults removes every choice. Every change is saved at once, and only
- * what differs from the defaults is stored (`LocalStore.saveCriterion`).
+ * what differs from the defaults is stored (`CriteriaStore.save`).
  */
 @Component({
   selector: 'app-criteria-page',
