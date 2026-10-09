@@ -40,7 +40,7 @@
    "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
    "find": "requireNotNull(broker.coerced())",
    "replace": "requireNotNull(broker)",
-   "expect": "aSavedBrokerIsCleaned"
+   "expect": "aBrokerWithoutANameIsRefused"
   },
   {
    "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
@@ -208,7 +208,7 @@
    "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
    "find": "if (!settings.brokersMigrated()) {",
    "replace": "if (true) {",
-   "expect": "theMigrationGroupsHousesByNormalisedPhone"
+   "expect": "theMigrationRunsOncePerInstall"
   },
   {
    "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
@@ -256,7 +256,7 @@
    "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
    "find": "PhoneKey.of(p) ?: \"raw:$p\"",
    "replace": "PhoneKey.of(p) ?: \"raw\"",
-   "expect": "theMigrationGroupsHousesByNormalisedPhone"
+   "expect": "theMigrationRunsOncePerInstall"
   },
   {
    "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
@@ -274,7 +274,7 @@
    "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
    "find": "db.houses().upsert(h.copy(brokerId = id, updatedAt = stamp, dirty = true))",
    "replace": "db.houses().upsert(h.copy(brokerId = id, updatedAt = 0L, dirty = true))",
-   "expect": "theMigrationGroupsHousesByNormalisedPhone"
+   "expect": "theMigrationRunsOncePerInstall"
   },
   {
    "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",

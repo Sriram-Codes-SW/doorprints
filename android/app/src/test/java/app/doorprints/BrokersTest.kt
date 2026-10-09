@@ -366,6 +366,8 @@ class BrokersTest {
         assertFalse(row.deleted)
         assertTrue(row.updatedAt >= before)
         assertEquals(Broker(name = "Ravi", agency = "Adyar Homes"), row.toBroker())
+        // Stored cleaned, not only read back cleaned.
+        assertEquals(BrokerType.encode(Broker(name = "Ravi", agency = "Adyar Homes")), row.payload)
 
         val minted = repo.saveBroker(Broker(name = "Meena"))
         assertNotEquals("b-ravi", minted)
@@ -485,6 +487,7 @@ class BrokersTest {
         assertTrue(row.dirty)
         assertFalse(row.deleted)
         assertEquals(Broker(name = "Odd", phone = "98400 11111"), row.toBroker())
+        assertEquals(BrokerType.encode(Broker(name = "Odd", phone = "98400 11111")), row.payload)
 
         // A copy stamps what it writes no later than now, even for a file from the future.
         val future = file.copy(brokers = listOf(odd.copy(id = "b-file", updatedAt = Long.MAX_VALUE / 2)))
@@ -554,5 +557,25 @@ class BrokersTest {
         assertEquals(7L, linked.updatedAt)
         assertFalse(linked.dirty)
         assertEquals(3, db.records().countLive(BrokerType.name))
+    }
+
+    @Test
+    fun theMigrationRunsOncePerInstallEvenForAFreshRepositoryAndKeepsShortNumbersApartWithTheirStamp(): Unit = runBlocking {
+        db.houses().upsert(house("a", "Short", "12345", updatedAt = at + 1))
+        db.houses().upsert(house("b", "Shorter", "12346", updatedAt = at + 2))
+        repo.migrateContactsToBrokers()
+        val a = db.houses().get("a")!!
+        val b = db.houses().get("b")!!
+        assertNotNull(a.brokerId)
+        assertNotEquals(a.brokerId, b.brokerId)
+        assertEquals(setOf("Short", "Shorter"), repo.observeBrokers().first().map { it.second.name }.toSet())
+        assertTrue(a.updatedAt > at + 2)
+        assertEquals(a.updatedAt, b.updatedAt)
+
+        // A new repository on the same install asks the setting, not its own memory, and changes nothing.
+        db.houses().upsert(house("late", "Late", "98400 11111"))
+        AndroidRepository(context, db, settings).migrateContactsToBrokers()
+        assertNull(db.houses().get("late")!!.brokerId)
+        assertEquals(2, db.records().countLive(BrokerType.name))
     }
 }
