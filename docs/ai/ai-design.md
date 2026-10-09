@@ -46,6 +46,7 @@
 | v0.42   | 2026-10-09 | Claude (Code), engineer       | 10 and 11: the answer budget `max-output-tokens` / `AI_MAX_OUTPUT_TOKENS` rises from 2,048 to **8,192** (S4b-BL-194 item 1). On Gemini 3.x the output limit includes the hidden thinking tokens, so a prompt that makes the model think a lot (the injection cases `ask-14`, `ask-16`) left no room for the JSON and the answer was cut off (`UnexpectedEndOfInputException`, `StreamReadException`, then `503 Answering failed`); the visible answers use 130 to 350 tokens. Thinking level, prompts, thresholds and cases are unchanged. `AiOutputTokensTest` pins the default in the record and in `application.yml`. The phones' and website's own Gemini calls still send 2,048 (not changed here; S4b-BL-194). |
 | v0.43   | 2026-10-09 | Claude (Code), engineer       | **Ask logs the retrieved house ids at DEBUG** (section 7 note on prompts and logging): one line per ask after retrieval and redaction, ids only; the golden-set job raises only that logger to DEBUG (S4b-BL-194 item 2). `AskRetrievedIdsLogTest` pins the order, the absence of question and document text, and that nothing is logged at INFO or above. |
 | v0.44   | 2026-10-09 | Claude (Code), engineer       | **Ask finds the visited houses** (section 7, S4b-BL-194 item 2, [10](../10-sprint-log.md) v0.222). Proven cause: with 30 houses, 28 saying `Visits: not visited yet`, vector similarity returned 20 documents without one of the two visited houses. **The document metadata gains `visited` (boolean) and `lastVisit` (the latest arrival, epoch seconds; absent without a visit)**, dates and a flag only. A question with visit, visits, visited, visiting or unvisited runs ONE more search with the caller's filters and `visited == true` (`false` for a negated question: not, never, haven't, yet to, unvisited, no visits), no similarity threshold, up to 200 documents; the visited ones are sorted newest visit first (ties by id), the unvisited ones keep the store's order (most similar first); they go before the similar ones, at most top-k, no repeats. Redaction and the prompt are as before. The document text is unchanged, but **existing indexes lack the new metadata: run `POST /api/ai/reindex` once** (until then the extra search finds nothing and the ordinary result stands). The website and phones build their own Ask context from up to 40 houses and do not use this retrieval. |
+| v0.45   | 2026-10-09 | Claude (Code), engineer       | **13.2: the own-key Gemini request and the *AI speed and cost* setting** (S4b-BL-198 step 2, the website; [10](../10-sprint-log.md) v0.226, [03](../03-design.md) 0.104). Quality sends no `thinkingConfig`, Balanced `generationConfig.thinkingConfig.thinkingLevel` `MEDIUM`, Economy `LOW`, for the own-key Gemini adapter only (the field and its values confirmed in the Gemini API reference); hidden unless AI is on and the service is Gemini; the Gemini `maxOutputTokens` rises from 2,048 to 8,192; the vectors gain `geminiRequest`. |
 
 Status: implemented in `backend/` (package `app.doorprints.server.ai`), **off by default**. Not yet compiled in this
 sandbox (no Maven Central access) — CI compiles and runs the tests. Provider: AI Studio by default, Vertex AI with
@@ -1139,7 +1140,7 @@ unchanged.
 Optional: Gemini "thinking" can be reduced with `SPRING_AI_OPENAI_CHAT_REASONING_EFFORT=low` (compat endpoint
 supports `reasoning_effort` [G1]); on Vertex with `SPRING_AI_GOOGLE_GENAI_CHAT_THINKING_LEVEL=LOW`. The manual *AI evals* workflow sets the right one for
 the golden-set run from its input `thinking_level` (`default` leaves the model's own level) and the scorecard header
-states it (S4b-BL-198).
+states it (S4b-BL-198). The website lets a person with their own Gemini key choose the same trade-off (13.2).
 
 ## 12. Connecting Claude Desktop / Cowork to the MCP server
 
@@ -1286,6 +1287,56 @@ No body. Response `{ "indexed": 42 }`. Admin/maintenance action (e.g. a button i
 | `plan-visits` | `pages/plan`: start from device location, a draggable marker or typed coordinates; `maxStops` 1–8; ordered list + numbered MapLibre markers and a straight-line route; `fallback` notice | `AssistantScreen` Plan tab: start from the current location; ordered cards with leg distance and walking time |
 | Errors | `aiErrorMsg`: 429 → "try again in {s} seconds" (from `Retry-After`), 503 → provider unavailable/quota, 404 → AI off | `aiErrorText`: same mapping; AI POSTs are never retried automatically |
 | Disclosure (AI-010) | "The text is sent to the AI provider set up on your server…" under each input | Same text in the Assistant and the paste dialog |
+
+### 13.2 The own-key Gemini request and the *AI speed and cost* setting (S4b-BL-198 step 2)
+
+The website's own-key Gemini adapter (`GeminiChatModel`, `web/src/app/core/ai/on-device-ai.service.ts`; the phones' `GeminiClient`
+follows in the next pull request) posts this body to `generateContent` (the key in `x-goog-api-key`, never in the URL):
+
+```json
+{
+  "systemInstruction": { "parts": [{ "text": "<system>" }] },
+  "contents": [{ "role": "user", "parts": [{ "text": "<user>" }] }],
+  "generationConfig": {
+    "temperature": 0.1,
+    "maxOutputTokens": 8192,
+    "responseMimeType": "application/json",
+    "responseSchema": { "...": "the call's schema" },
+    "thinkingConfig": { "thinkingLevel": "LOW" }
+  }
+}
+```
+
+- **The setting.** *AI speed and cost* has three choices, shown as **Quality**, **Balanced** and **Economy**. Quality (the default)
+  sends **no** `thinkingConfig`, so the model thinks as it always did and nothing changes for anyone who does not touch the
+  setting. Balanced sends `generationConfig.thinkingConfig.thinkingLevel = "MEDIUM"`, Economy `"LOW"`. The field is last in
+  `generationConfig`; the exact bodies are the vectors `geminiRequest` in `docs/ai/evals/parity-vectors.json` (answer for each
+  choice, plan for Economy, the ping for Quality and Economy), checked by the website's `gemini-request.spec.ts`; the phones
+  will check the same file.
+- **Where it is confirmed.** The Gemini API reference for `generateContent`
+  (<https://ai.google.dev/api/generate-content>, read 2026-10-09): `GenerationConfig.thinkingConfig` is a `ThinkingConfig` with
+  `includeThoughts`, `thinkingBudget` and `thinkingLevel`; `ThinkingLevel` is `THINKING_LEVEL_UNSPECIFIED`, `MINIMAL`, `LOW`,
+  `MEDIUM`, `HIGH`, "recommended for Gemini 3 or later models; use with earlier models results in an error". The thinking guide
+  (<https://ai.google.dev/gemini-api/docs/thinking>) names the same levels for the Interactions API as `thinking_level`. The
+  server's Spring AI 2.0.1 `GoogleGenAiChatProperties.thinkingLevel` shows the same four values. Not confirmed there: that
+  `gemini-3.5-flash` itself accepts `MEDIUM` (the guide's table of supported levels lists neighbouring models, not this one);
+  `LOW` is the level the golden-set run measured on it. A request the model rejects would be read as *unavailable*, and
+  *Test key* sends the chosen level so the person finds that out there.
+- **Why.** On Gemini 3.x the hidden thinking tokens are about three quarters of the output cost. Server golden set, Vertex,
+  `gemini-3.5-flash`: about 72,700 thinking tokens per full run at the default against about 23,000 at LOW, an estimated cost per
+  full run of about Rs 99 against about Rs 61 (38% less), and an average time per call of 5.3 s against 3.1 s (Ask), 5.1 s against 2.1 s
+  (Extract) and 11.7 s against 6.8 s (Plan), with no quality loss in the first LOW run (74 of 75 cases, injection resistance 1.00,
+  plan validity 1.00). The screen therefore says "about 40% cheaper and about twice as fast" for Economy, "in our tests".
+- **Only the own-key Gemini adapter.** The OpenAI-compatible and Anthropic adapters, and every other service (Groq, Ollama and the
+  rest), are sent nothing for this setting (version 1) and the setting is not shown for them. A stored choice is kept, not used.
+- **Hidden unless it applies (owner, 2026-10-09).** The control is not rendered unless AI features are on, the person's own AI is
+  the one that answers and the service is Google Gemini.
+- **Storage.** `localStorage` `doorprints.ai-quality` = `quality` | `balanced` | `economy`; anything else reads as `quality`; never
+  in a backup, copy, sync or share file; *Remove key* and *Remove all data* delete it.
+- **The answer budget.** The Gemini call's `maxOutputTokens` rises from 2,048 to **8,192**. On Gemini 3.x the limit includes the thinking tokens, so a
+  thinking-heavy prompt could spend 2,048 before the JSON began and cut the answer off; this is the website's side of the server bug
+  fixed by raising `max-output-tokens` (section 10, S4b-BL-194). The OpenAI-compatible and Anthropic `max_tokens` stay at 2,048 (pinned
+  by their vectors).
 
 ## 14. Unverified / open items
 

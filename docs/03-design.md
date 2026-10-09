@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.103 |
-| Date | 2026-10-08 |
+| Version | 0.104 |
+| Date | 2026-10-09 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -114,6 +114,7 @@
 | 0.101 | 2026-10-09 | Claude (Code), engineer | **Phone file layout** (S4b-BL-168 slice 6; [14](14-lead-backlog-and-handoff.md) §10): the brokers, their link to the houses and the once-only move of contacts leave `CommonRepository`. The component table names `BrokerStore` (`:shared` `data/BrokerStore.kt`). Numbered after 0.100 of slice 5 (PR #225), which is not merged yet. |
 | 0.102 | 2026-10-09 | Claude (Code), engineer | **Phone file layout** (S4b-BL-168 slice 8; [14](14-lead-backlog-and-handoff.md) §10): whether AI is offered, the person's provider choice and the three AI calls leave `CommonRepository`. The component table names `AiStore` (`:shared` `data/AiStore.kt`). Numbered after 0.101 of slice 6 (PR #226). |
 | 0.103 | 2026-10-09 | Claude (Code), engineer | **Phone file layout** (S4b-BL-168 slice 7; [14](14-lead-backlog-and-handoff.md) §10): the house form's checklist and score summary leave `HouseEditScreen.kt`. The component table names `ChecklistSection` (`:ui` `ChecklistSection.kt`) and `withScore` (`HouseFormRules.kt`). Numbered after 0.102 of slice 8. |
+| 0.104 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-198 step 2 (the website): the *AI speed and cost* setting and the Gemini answer budget** (owner request, 2026-10-09; [10](10-sprint-log.md) v0.226, [06](06-test-plan.md) TC-U-190 and TC-U-191, [ai-design](ai/ai-design.md) v0.45). §13.2 (ADR-35 note): Quality, Balanced and Economy for the own-key Gemini adapter only, mapped to no `thinkingConfig`, `thinkingLevel` `MEDIUM` and `LOW`; hidden unless AI features are on and the service is Gemini; a device-only preference; the Gemini call's `maxOutputTokens` rises from 2048 to 8192; the vectors gain `geminiRequest`. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -1482,7 +1483,7 @@ run against the Kotlin, the TypeScript and the Java so the three give the same a
 **The Gemini call** (on-device): `POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent`
 with the key in the `x-goog-api-key` header (never in the URL), a `systemInstruction`, the user message, `responseMimeType:
 application/json` and a `responseSchema` built from the same records (field descriptions word for word), temperature
-0 (extract), 0.1 (Ask), 0.2 (Plan), at most 2048 output tokens, a 60 s timeout. A 429 is shown as "out of free quota,
+0 (extract), 0.1 (Ask), 0.2 (Plan), at most 8192 output tokens (2048 until S4b-BL-198: on Gemini 3.x the limit includes the hidden thinking tokens, S4b-BL-194), a 60 s timeout. A 429 is shown as "out of free quota,
 try again later", a 400 or 403 on the key as "Google did not accept this key". Prompts and answers are never logged.
 
 **Choosing:** Settings (phones) and *Connect* (website) → *AI features* has the switch and, below it, **Use my own
@@ -1719,9 +1720,30 @@ ping without one, and, from F1, `listing` and `answer` with `"forceTool": false`
 status and body to `retryWithAuto`), `anthropicContent` (16: twelve answers, a tool call among text, the first of two, a cut-off,
 a refusal, no `content`; four pings) and 12 rows of `providerErrors` marked `"provider": "anthropic"` (401, 403, 404,
 429 with and without a usable `Retry-After`, a 400 whose words would move the OpenAI ladder, 413, 500, 529, a 3xx and
-status 0).
+status 0). The Gemini request adds `geminiRequest` (S4b-BL-198: the exact body for each *AI speed and cost* choice).
 
-**What does not change.** `gemini` behaves exactly as ADR-26; the server's AI; Ask's word ranking, Plan's single
+**AI speed and cost** (S4b-BL-198 step 2, the website; the phones follow in a second pull request). A setting in *AI features*
+with three choices, **Quality**, **Balanced** and **Economy**, for the `gemini` kind only. Why: on Gemini 3.x the hidden thinking
+tokens are about three quarters of the output cost; on the server golden set (Vertex, `gemini-3.5-flash`) a lower thinking level
+cut the thinking tokens of a full run from about 72,700 to about 23,000, the estimated cost from about Rs 99 to about Rs 61
+(about 38% less) and the time of a call from 5.3 s to 3.1 s (Ask), 5.1 s to 2.1 s (Extract) and 11.7 s to 6.8 s (Plan), with no
+quality loss in the first run (74 of 75 cases, injection resistance 1.00, plan validity 1.00). The mapping is the field the
+Gemini API reference gives for `generateContent` (`GenerationConfig.thinkingConfig.thinkingLevel`, one of `MINIMAL`, `LOW`,
+`MEDIUM`, `HIGH`): Quality sends **no** `thinkingConfig` (the model's own default, which is also what a person who never
+opens the setting gets, so nothing changes for them), Balanced sends `"thinkingConfig": {"thinkingLevel": "MEDIUM"}` and
+Economy `"LOW"`, last in `generationConfig`. **Only Gemini:** for an OpenAI-compatible service, Anthropic, Groq, Ollama and
+the rest nothing is sent and the setting is not shown (version 1; a `reasoning_effort` mapping for OpenAI-compatible
+providers is a possible later step). **Hidden unless it applies (owner, 2026-10-09):** the control is not rendered, not just
+disabled, unless AI features are on, the person's own AI is the one that answers and the service is Google Gemini; a stored
+choice is kept but ignored then. It is a device-only preference (`localStorage` `doorprints.ai-quality`, the values `quality`,
+`balanced`, `economy`; anything else reads as Quality), never in a backup, copy, sync or share file, and *Remove key* and
+*Remove all data* delete it. *Test key* sends the choice too, so a key that cannot use it is found out there. The same
+change raises the Gemini call's `maxOutputTokens` from 2048 to **8192**, as the server's default rose in S4b-BL-194 (the
+OpenAI-compatible and Anthropic limits of 2048 stay, pinned by their vectors). The request bodies are the vectors
+`geminiRequest` (6 cases: Ask for each choice, Plan Economy, the ping for Quality and Economy). Details and the Gemini API
+sources: [ai-design](ai/ai-design.md) 13.2.
+
+**What does not change.** `gemini` behaves exactly as ADR-26 (unless the person chooses Balanced or Economy; the larger answer budget is the one change for everyone); the server's AI; Ask's word ranking, Plan's single
 structured call and the local limit of 10 requests a minute; the prompts; every screen outside *AI features*.
 
 ## 14. Architecture decision records

@@ -1662,4 +1662,12 @@ export const te: Dict = {
   'ai.unreachableLocal': '{host} ను చేరుకోలేకపోయాం. అది నడుస్తోందా, ఈ సైట్‌ను అనుమతిస్తోందా (CORS) సరిచూడండి; లేకపోతే బ్రౌజర్ దాన్ని అడ్డుకుంటుంది.',
   // S4b-BL-182 (2026-10-08): the paste box says how much of a long listing is left out. Under review (owner rule: hi/ta/te ship marked under review).
   'listingFill.cut': 'మొదటి {max} అక్షరాలు మాత్రమే చదవబడతాయి. చివరలో వదిలివేసిన అక్షరాలు: {n}.',
+  // S4b-BL-198 step 2 (2026-10-09): AI speed and cost. Under review (owner rule: hi/ta/te ship marked under review).
+  'connect.aiQualityHeading': 'AI వేగం మరియు ఖర్చు',
+  'connect.aiQualityQuality': 'Quality (నాణ్యత)',
+  'connect.aiQualityQualityHint': 'మోడల్ సొంత డిఫాల్ట్ సెట్టింగ్. ఏదీ మారదు.',
+  'connect.aiQualityBalanced': 'Balanced (సమతుల్యం)',
+  'connect.aiQualityBalancedHint': 'మధ్యస్థ ఆలోచన: వేగం, ఖర్చులో Quality, Economy మధ్య.',
+  'connect.aiQualityEconomy': 'Economy (పొదుపు)',
+  'connect.aiQualityEconomyHint': 'మా పరీక్షల్లో సుమారు 40% చౌక, సుమారు రెట్టింపు వేగం; జవాబులు అంతే బాగున్నాయి.',
 };

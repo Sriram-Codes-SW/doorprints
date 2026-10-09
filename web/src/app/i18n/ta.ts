@@ -1662,4 +1662,12 @@ export const ta: Dict = {
   'ai.unreachableLocal': '{host} ஐ அடைய முடியவில்லை. அது இயங்குகிறதா, இந்தத் தளத்தை அனுமதிக்கிறதா (CORS) எனச் சரிபார்க்கவும்; இல்லையெனில் உலாவி அதைத் தடுக்கும்.',
   // S4b-BL-182 (2026-10-08): the paste box says how much of a long listing is left out. Under review (owner rule: hi/ta/te ship marked under review).
   'listingFill.cut': 'முதல் {max} எழுத்துகள் மட்டுமே படிக்கப்படும். இறுதியில் விடுபட்ட எழுத்துகள்: {n}.',
+  // S4b-BL-198 step 2 (2026-10-09): AI speed and cost. Under review (owner rule: hi/ta/te ship marked under review).
+  'connect.aiQualityHeading': 'AI வேகமும் செலவும்',
+  'connect.aiQualityQuality': 'Quality (தரம்)',
+  'connect.aiQualityQualityHint': 'மாடலின் சொந்த இயல்புநிலை அமைப்பு. எதுவும் மாற்றப்படாது.',
+  'connect.aiQualityBalanced': 'Balanced (சமநிலை)',
+  'connect.aiQualityBalancedHint': 'நடுத்தர அளவு சிந்தனை: வேகத்திலும் செலவிலும் Quality, Economy இரண்டுக்கும் இடையில்.',
+  'connect.aiQualityEconomy': 'Economy (சிக்கனம்)',
+  'connect.aiQualityEconomyHint': 'எங்கள் சோதனைகளில் சுமார் 40% மலிவு, சுமார் இருமடங்கு வேகம்; பதில்களும் அதே தரம்.',
 };

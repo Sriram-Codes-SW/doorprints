@@ -19,7 +19,12 @@
 // Tests for tools/mutate.mjs: `node --test tools/*.test.mjs`
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { applyMutation, failingTests, gradleFailingTests, mavenFailingTests, verdict } from './mutate.mjs';
+import { applyMutation, failingTests, gradleFailingTests, includeArgs, mavenFailingTests, verdict } from './mutate.mjs';
+
+test('includeArgs takes one spec file or an array of them, by file name', () => {
+  assert.deepEqual(includeArgs('web/src/app/a/x.spec.ts'), ['--include=**/x.spec.ts']);
+  assert.deepEqual(includeArgs(['web/src/app/a/x.spec.ts', 'web/src/app/b/y.spec.ts']), ['--include=**/x.spec.ts', '--include=**/y.spec.ts']);
+});
 
 test('gradleFailingTests reads Gradle FAILED lines and nothing else', () => {
   const out = [

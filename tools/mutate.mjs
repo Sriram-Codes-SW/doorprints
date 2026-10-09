@@ -23,7 +23,7 @@
 //
 //   node tools/mutate.mjs tools/mutations/maplibre-worker-check.json
 //
-// File format: { "spec": "web/src/app/data/x.spec.ts", "mutations": [
+// File format: { "spec": "web/src/app/data/x.spec.ts" (or an array of spec files), "mutations": [
 //   { "file": "web/scripts/x.mjs", "find": "a !== b", "replace": "false", "expect": "names both versions" } ] }
 // `find` must occur exactly once in `file`; `expect` is a substring of the failing test's name. The spec is run with
 // `npx ng test --watch=false --include=<spec>` in web/. Exit 1 when any mutation survives (no failing test, or none
@@ -100,8 +100,13 @@ function runMaven(args) {
   return { output: (r.stdout || '') + (r.stderr || ''), status: r.status };
 }
 
+/** The `--include` arguments for a list's `spec`: one spec file, or an array of them when the killing tests are in several. */
+export function includeArgs(spec) {
+  return [].concat(spec).map((s) => `--include=**/${path.basename(s)}`);
+}
+
 function runSpec(spec) {
-  const r = spawnSync('npx', ['ng', 'test', '--watch=false', `--include=**/${path.basename(spec)}`], {
+  const r = spawnSync('npx', ['ng', 'test', '--watch=false', ...includeArgs(spec)], {
     cwd: path.join(ROOT, 'web'),
     encoding: 'utf8',
     maxBuffer: 64 * 1024 * 1024,
