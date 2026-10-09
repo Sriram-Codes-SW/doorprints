@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Secure build, CI/CD and deployment guide |
-| Version | 0.69 |
+| Version | 0.70 |
 | Date | 2026-10-05 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -81,6 +81,7 @@
 | 0.67 | 2026-10-09 | Claude (Code) | Settings table: `PAIRING_MAX_OPEN` and `PAIRING_MAX_PER_SOURCE` (S4b-BL-191); the API scan lifts them with the rate limits. |
 | 0.68 | 2026-10-09 | Claude (Code), engineer | §2 supply chain: every `FROM` in the two Dockerfiles is pinned by digest and checked in the Security workflow (S4b-BL-172, `check-dockerfile-pins.py`); Dependabot's docker entry keeps the digests current. |
 | 0.69 | 2026-10-09 | Claude (Code) | `ai-evals.yml` suite `local-model` (S4b-BL-190): default model `qwen2.5:0.5b`, job timeout 150 minutes, `OLLAMA_NUM_PARALLEL=1`, `OLLAMA_KEEP_ALIVE=1h`, a JSON warm-up, and `AI_EVAL_TIMEOUT_MS=180000` (read by the harness only for a server on localhost; the app's 60 s is unchanged). Same pinned Ollama, same permissions, no secret. |
+| 0.70 | 2026-10-09 | Claude (Code) | §AI variables: `AI_MAX_OUTPUT_TOKENS` default `8192` (was `2048`; it includes the model's thinking tokens on Gemini 3.x; S4b-BL-194). |
 
 Related: [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Runbook](08-operations-runbook.md) · [AI docs](ai/)
 
@@ -874,7 +875,7 @@ The **Dev compose** column says whether the local `docker-compose.yml` passes th
 | `AI_EMBEDDING_API_KEY` | No | `AI_API_KEY` | Only for `google-genai`, when embeddings use a different key. Dev compose passes `${AI_EMBEDDING_API_KEY:-${AI_API_KEY:-}}` so an unset value keeps the fallback | **Yes** | Yes |
 | `AI_EMBEDDING_TASK_TYPE` | No | empty | Only with `gemini-embedding-001` (e.g. `RETRIEVAL_DOCUMENT`); `gemini-embedding-2` rejects task types | No | Yes |
 | `AI_VECTOR_INIT_SCHEMA` | No | `false` | Flyway V2 creates the vector table; keep `false` | No | Yes |
-| `AI_MAX_INPUT_CHARS`, `AI_MAX_QUESTION_CHARS`, `AI_MAX_OUTPUT_TOKENS` | No | `8000`, `1000`, `2048` | Input and output caps (AI-009) | No | Yes |
+| `AI_MAX_INPUT_CHARS`, `AI_MAX_QUESTION_CHARS`, `AI_MAX_OUTPUT_TOKENS` | No | `8000`, `1000`, `8192` | Input and output caps (AI-009); the output cap includes the model's thinking tokens on Gemini 3.x | No | Yes |
 | `AI_RATE_LIMIT_PER_MINUTE`, `AI_RATE_LIMIT_BURST`, `MCP_RATE_LIMIT_PER_MINUTE` | No | `10`, `5`, `60` | Free-tier quota guards (AI-009) | No | Yes |
 | `AI_RAG_TOP_K`, `AI_RAG_SIMILARITY_THRESHOLD` | No | `6`, `0.25` | RAG retrieval | No | Yes |
 | `AI_AGENT_MAX_TOOL_CALLS`, `AI_AGENT_MAX_CALLS_PER_TOOL`, `AI_AGENT_MAX_STOPS` | No | `12`, `4`, `8` | Planner step limits | No | Yes |

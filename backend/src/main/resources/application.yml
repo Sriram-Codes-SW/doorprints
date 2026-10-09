@@ -210,7 +210,9 @@ app:
     index-on-change: ${AI_INDEX_ON_CHANGE:true}
     max-input-chars: ${AI_MAX_INPUT_CHARS:8000}
     max-question-chars: ${AI_MAX_QUESTION_CHARS:1000}
-    max-output-tokens: ${AI_MAX_OUTPUT_TOKENS:2048}
+    # Answer budget per call. On Gemini 3.x it also covers the hidden thinking tokens, so keep it well above the
+    # visible answer (about 130 to 350 tokens); 2048 cut the JSON off on the injection cases (S4b-BL-194).
+    max-output-tokens: ${AI_MAX_OUTPUT_TOKENS:8192}
     rate-limit:
       # Token bucket per API key over /api/ai/** and /mcp. Keeps usage inside free-tier quotas.
       requests-per-minute: ${AI_RATE_LIMIT_PER_MINUTE:10}
