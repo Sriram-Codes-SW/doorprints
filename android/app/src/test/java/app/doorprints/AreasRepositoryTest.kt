@@ -313,10 +313,10 @@ class AreasRepositoryTest {
         repo.savePlace(Place("p_0a1b2c3d", "Office", 13.0827, 80.2707))
         repo.saveAreaNote(AreaNote("n_11223344", areaId = adyar.id, text = "Tanker"))
         val data = BackupData.of(repo.localRows().toBundle(ExportOptions(exportedAtMillis = at)))
-        // The area is stamped in the past (kept as it is); the place and the note in the future (never later than now).
+        // A stamp in the future is never kept (CopyUndo.copyStamp): the three rows are written no later than now.
         val future = Long.MAX_VALUE / 2
         val file = data.copy(
-            areas = listOf(data.areaRows.single().copy(updatedAt = 12_345)),
+            areas = listOf(data.areaRows.single().copy(updatedAt = future)),
             places = listOf(data.placeRows.single().copy(updatedAt = future)),
             areaNotes = listOf(data.areaNoteRows.single().copy(updatedAt = future)),
         )
@@ -331,7 +331,7 @@ class AreasRepositoryTest {
             db.records().get(AreaNoteType.name, "n_11223344")!!,
         )
         assertTrue("every imported row is pushed", rows.all { it.dirty && !it.deleted })
-        assertEquals(12_345L, rows[0].updatedAt)
+        assertTrue("a future stamp is cut to now", rows[0].updatedAt in before..System.currentTimeMillis())
         assertTrue("a future stamp is cut to now", rows[1].updatedAt in before..System.currentTimeMillis())
         assertTrue("a future stamp is cut to now", rows[2].updatedAt in before..System.currentTimeMillis())
     }

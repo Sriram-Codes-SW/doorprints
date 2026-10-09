@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Test plan (functional, security, accessibility, i18n, AI) |
-| Version | 0.179 |
+| Version | 0.180 |
 | Date | 2026-10-08 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -189,6 +189,7 @@
 | 0.177 | 2026-10-09 | Claude (Code), engineer | **TC-AI-25** (S4b-BL-190, [10](10-sprint-log.md) v0.198): the `local-model` suite gets a smaller default model, a 180 s request limit for the loopback eval only (`AI_EVAL_TIMEOUT_MS`, tests in `ai-eval.spec.ts` and `ai-request.spec.ts`, mutation lists named in the row) and a longer job; pass = every case answered or a failure with its reason; the next manual run is the proof. |
 | 0.178 | 2026-10-09 | Claude (Code), engineer | **TC-U-79** (S4b-BL-168 slice 1, PR #212): `PhotoFileByIdTest` has 5 tests (two characterization tests added before the photos moved to `PhotoStore`: deleting a photo the server has keeps a tombstone and removes the file; an import writes a photo under its id and skips an id that would leave the photo folder). No test removed. |
 | 0.179 | 2026-10-09 | Claude (Code), engineer | **TC-U-104** (S4b-BL-168 slice 2, PR #216): `ViewingsRepositoryTest` has 8 tests (two characterization tests added before the viewings moved to `ViewingStore`: the reminder ids include the tombstones, and a row that does not decode, has no start or is a tombstone is left out of every read and of a copy; marking done without a visit keeps the one the viewing had). Mutation list `tools/mutations/viewing-store-kotlin.json` (13 one-line changes to `ViewingStore.kt`, each killed by a named test). No test removed. |
+| 0.180 | 2026-10-09 | Claude (Code), engineer | **TC-U-107** (S4b-BL-168 slice 3, PR #PRNUM): `AreasRepositoryTest` has 10 tests (four characterization tests added before the areas, places and notes moved to `AreaStore`: a place trims, is dirty and is written only when changed; an unchanged note keeps its stamp and a blank target counts as absent; saving what is already there at the cap is not refused; a row that cannot be trusted is skipped from the lists and the backup; and a copy import stamps the three lists no later than now and marks them dirty, added for two surviving mutants). Mutation list `tools/mutations/area-store-kotlin.json` (33 one-line changes to `AreaStore.kt` and the wake-up stamp in `CommonRepository.kt`, each killed by a named test of `AreasRepositoryTest` or `AreaWakeupAndroidTest`). No test removed. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Design](03-design.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
