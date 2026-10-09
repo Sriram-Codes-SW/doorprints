@@ -29,6 +29,10 @@ import { SETTING_KEYS, compareText, houseFromDto, isoNow, millis, recordFromDto,
 import { PhotoStore } from './photo-store';
 import { RecordStore, sortRecords } from './record-store';
 import { ViewingStore } from './viewing-store';
+import { AreaStore } from './area-store';
+import { PlaceStore } from './place-store';
+import { AreaNoteStore } from './area-note-store';
+import { QuestionStore } from './question-store';
 import {
   BUILT_IN_KEYS,
   CRITERION_TYPE,
@@ -47,50 +51,6 @@ import {
   scoringOf,
 } from '../shared/scoring';
 import type { Criterion, CriterionRow, PreferenceRow, Scoring, Weight } from '../shared/scoring';
-import {
-  DEFAULT_QUESTIONS,
-  DEFAULT_QUESTIONS_SEEDED_AT,
-  MAX_QUESTIONS,
-  MAX_QUESTION_TEXT,
-  QUESTION_TYPE,
-  defaultQuestion,
-  isCustomQuestionId,
-  isDefaultQuestionId,
-  newQuestionId,
-  questionFromPayload,
-  questionToPayload,
-  sortQuestions,
-} from '../shared/question';
-import type { Question, QuestionCategory, QuestionRow, QuestionScope } from '../shared/question';
-import {
-  AREA_NOTE_TYPE,
-  AREA_TYPE,
-  MAX_AREAS,
-  MAX_AREA_ID,
-  MAX_AREA_NAME,
-  MAX_AREA_NOTES,
-  MAX_NOTE_TEXT,
-  MAX_PLACES,
-  MAX_PLACE_NAME,
-  MAX_STREET,
-  PLACE_TYPE,
-  areaFromPayload,
-  areaNoteFromPayload,
-  areaNoteToPayload,
-  areaToPayload,
-  isRecordKey,
-  newAreaIdRandom,
-  newAreaNoteIdRandom,
-  newPlaceIdRandom,
-  newestFirst,
-  placeFromPayload,
-  placeToPayload,
-  sortByName,
-  validLat,
-  validLon,
-  validRadius,
-} from '../shared/area';
-import type { Area, AreaNote, AreaNoteRow, AreaRow, Place, PlaceRow } from '../shared/area';
 import type { LengthUnit } from '../shared/room-sizes';
 import { choose as chooseStatus, closeTargets } from '../shared/house-status';
 import type { HouseRecord, PhotoRecord, RecordRecord, SettingRecord, VisitRecord } from './records';
@@ -160,12 +120,26 @@ export class LocalStore {
   /** The viewings (`viewing-store.ts`), records of type `viewing`. */
   readonly viewings = new ViewingStore(this.records);
 
+  /** The hunting areas (`area-store.ts`), records of type `area`. */
+  readonly areas = new AreaStore(this.records);
+
+  /** My places (`place-store.ts`), records of type `place`. */
+  readonly places = new PlaceStore(this.records);
+
+  /** The area notes (`area-note-store.ts`), records of type `areanote`. */
+  readonly areaNotes = new AreaNoteStore(this.records);
+
+  /** The viewing-question bank (`question-store.ts`), records of type `question`, and its seeding. */
+  readonly questions = new QuestionStore(
+    this.records,
+    () => this.db(),
+    () => this.touch(),
+  );
+
   private opened: Promise<LocalDb> | null = null;
   private settleTimer: ReturnType<typeof setTimeout> | undefined;
   private settleSince = 0;
   private migrating: Promise<void> | null = null;
-  /** The language the bank is seeded in, once {@link seedQuestionsOnce} has been called (also after *Remove all data*). */
-  private seedLanguage: (() => string) | null = null;
 
   /** The opened database, once the one-off move of the contacts into brokers has run (see {@link ready}). */
   private async db(): Promise<LocalDb> {
@@ -705,275 +679,6 @@ export class LocalStore {
     return BUILT_IN_KEYS.length + custom;
   }
 
-  // ---- Viewing questions (docs/11 5.5, slice 3a: records of type `question`) ----
-
-  /** The live question records, oldest edit first; a row whose payload is not a question (a blank text) is skipped. */
-  async questionRows(): Promise<QuestionRow[]> {
-    const out: QuestionRow[] = [];
-    for (const row of await this.records.ofType(QUESTION_TYPE)) {
-      const question = questionFromPayload(row.id, row.payload);
-      if (question) out.push({ id: row.id, updatedAt: row.updatedAt ?? null, question });
-    }
-    return out;
-  }
-
-  /** The bank, archived questions included, by `sort` then id. */
-  async questions(): Promise<Question[]> {
-    return sortQuestions((await this.questionRows()).map((r) => r.question));
-  }
-
-  /**
-   * Seeds the bank: for each default whose id has NO record a clean record stamped {@link DEFAULT_QUESTIONS_SEEDED_AT}
-   * with the text in [language] (hi, ta or te; anything else English; S4b-BL-90a). A tombstone counts as a record, so
-   * a default the person deleted is not brought back.
-   * Returns how many were written.
-   */
-  async seedQuestions(language: string, now: number = Date.now()): Promise<number> {
-    const db = await this.db();
-    return this.writeDefaults(db, language, now, false);
-  }
-
-  /**
-   * Seeds once per install: the first call sets the local setting `questions.seeded` (not synced), so later starts do
-   * nothing and a bank the person emptied stays empty until *Reset to defaults*. `language` is read at each use
-   * (the language the app is in then), also after *Remove all data* seeded the bank again.
-   */
-  async seedQuestionsOnce(language: () => string, now: number = Date.now()): Promise<void> {
-    this.seedLanguage = language;
-    const db = await this.db();
-    if (await db.get<SettingRecord>('settings', SETTING_KEYS.questionsSeeded)) return;
-    await this.writeDefaults(db, language(), now, false);
-    await db.put<SettingRecord>('settings', { key: SETTING_KEYS.questionsSeeded, value: '1' });
-  }
-
-  /**
-   * *Reset to defaults*: every default id gets its record again, whatever state it was in (deleted, edited, archived),
-   * with the text in [language]; the person's own questions stay. A default that would take the bank past
-   * {@link MAX_QUESTIONS} is not brought back.
-   */
-  async resetQuestions(language: string, now: number = Date.now()): Promise<number> {
-    const db = await this.db();
-    return this.writeDefaults(db, language, now, true);
-  }
-
-  private async writeDefaults(db: LocalDb, language: string, now: number, overwrite: boolean): Promise<number> {
-    const rows = await db.getAllByIndex<RecordRecord>('records', 'type', QUESTION_TYPE);
-    const byId = new Map(rows.map((r) => [r.id, r]));
-    let live = rows.filter((r) => !r.deleted).length;
-    let written = 0;
-    for (const def of DEFAULT_QUESTIONS) {
-      const existing = byId.get(def.id);
-      if (existing && !overwrite) continue;
-      if ((!existing || existing.deleted) && live >= MAX_QUESTIONS) continue;
-      if (!existing || existing.deleted) live += 1;
-      const record = recordFromDto(
-        {
-          type: QUESTION_TYPE,
-          id: def.id,
-          payload: questionToPayload(defaultQuestion(def, language)),
-          // A seed is clean and stamped DEFAULT_QUESTIONS_SEEDED_AT (S4b-BL-90a): never pushed, and whatever another
-          // device did to it wins when pulled. *Reset to defaults* is the person's own edit: now, dirty.
-          updatedAt: isoNow(overwrite ? now : DEFAULT_QUESTIONS_SEEDED_AT),
-          deleted: false,
-          syncVersion: existing?.syncVersion ?? 0,
-        },
-        overwrite,
-      );
-      await db.put('records', record);
-      written += 1;
-    }
-    if (written > 0) this.touch();
-    return written;
-  }
-
-  /**
-   * Saves a question (an edit, an archive, a move): only that record is written. A default keeps its fixed id.
-   *
-   * @throws LocalDataError `error.badRecord` for an id that is neither a default's nor `q_` and 8 hex characters, or a
-   *   blank or over-long text; `questions.max` when a new question would be the 101st.
-   */
-  async saveQuestion(question: Question, now: number = Date.now()): Promise<void> {
-    if (!isDefaultQuestionId(question.id) && !isCustomQuestionId(question.id)) throw new LocalDataError('error.badRecord');
-    const text = question.text.trim();
-    if (text === '' || text.length > MAX_QUESTION_TEXT) throw new LocalDataError('error.badRecord');
-    if (!(await this.records.get(QUESTION_TYPE, question.id)) && (await this.records.ofType(QUESTION_TYPE)).length >= MAX_QUESTIONS) {
-      throw new LocalDataError('questions.max');
-    }
-    await this.records.save(QUESTION_TYPE, question.id, questionToPayload({ ...question, text }), now);
-  }
-
-  /** Saves several questions (a move renumbers two or more): each as {@link saveQuestion}. */
-  async saveQuestions(list: readonly Question[], now: number = Date.now()): Promise<void> {
-    for (const question of list) await this.saveQuestion(question, now);
-  }
-
-  /**
-   * Adds a custom question at the end of the bank: a new id `q_` and 8 lowercase hex characters (an id that clashes with
-   * any record, a deleted one included, is drawn again). `newId` is a seam for tests.
-   *
-   * @throws LocalDataError `error.badRecord` for a blank or over-long text; `questions.max` at 100 questions.
-   */
-  async addQuestion(
-    text: string,
-    category: QuestionCategory = 'OTHER',
-    appliesTo: QuestionScope = 'BOTH',
-    now: number = Date.now(),
-    newId: () => string = newQuestionId,
-  ): Promise<Question> {
-    const asked = text.trim();
-    if (asked === '' || asked.length > MAX_QUESTION_TEXT) throw new LocalDataError('error.badRecord');
-    if ((await this.records.ofType(QUESTION_TYPE)).length >= MAX_QUESTIONS) throw new LocalDataError('questions.max');
-    const db = await this.db();
-    let id = newId();
-    for (let attempt = 0; attempt < 50 && (await db.get<RecordRecord>('records', [QUESTION_TYPE, id])); attempt++) id = newId();
-    if (await db.get<RecordRecord>('records', [QUESTION_TYPE, id])) throw new LocalDataError('error.badRecord');
-    const sort = (await this.questions()).reduce((max, q) => Math.max(max, q.sort), -1) + 1;
-    const question: Question = { id, text: asked, category, appliesTo, defaultOn: false, sort };
-    await this.saveQuestion(question, now);
-    return question;
-  }
-
-  /** Deletes a question, a seeded one too (a tombstone): a deleted default stays deleted until *Reset to defaults*. */
-  async deleteQuestion(id: string, now: number = Date.now()): Promise<void> {
-    await this.records.delete(QUESTION_TYPE, id, now);
-  }
-
-  // ---- Hunting areas, my places and area notes (docs/11 "Design of slice 4a": records of type `area`, `place`, `areanote`) ----
-
-  /** The live area records, oldest edit first; a row that is not an area (bad name or point) is skipped as untrusted. */
-  async areaRows(): Promise<AreaRow[]> {
-    const out: AreaRow[] = [];
-    for (const row of await this.records.ofType(AREA_TYPE)) {
-      const area = areaFromPayload(row.id, row.payload);
-      if (area) out.push({ id: row.id, updatedAt: row.updatedAt ?? null, area });
-    }
-    return out;
-  }
-
-  /** Every live area, by name then id. */
-  async areas(): Promise<Area[]> {
-    return sortByName((await this.areaRows()).map((r) => r.area), (a) => a.name);
-  }
-
-  /** A fresh `a_` id that no area record, a deleted one included, has (`newId` is a seam for tests). */
-  async newAreaId(newId: () => string = newAreaIdRandom): Promise<string> {
-    return this.records.freshId(AREA_TYPE, newId);
-  }
-
-  /**
-   * Saves an area: only that record is written, and only when it differs from what is stored. The name is trimmed.
-   *
-   * @throws LocalDataError `error.badRecord` for a bad id, a blank or over-long name, a point or radius out of range;
-   *   `areas.max` when a new area would be the 21st.
-   */
-  async saveArea(area: Area, now: number = Date.now()): Promise<Area> {
-    const clean: Area = { ...area, name: area.name.trim() };
-    if (
-      !isRecordKey(clean.id) ||
-      clean.name === '' ||
-      clean.name.length > MAX_AREA_NAME ||
-      !validLat(clean.lat) ||
-      !validLon(clean.lon) ||
-      !validRadius(clean.radiusM)
-    ) {
-      throw new LocalDataError('error.badRecord');
-    }
-    const payload = areaToPayload(clean);
-    await this.records.saveIfChanged(AREA_TYPE, clean.id, payload, MAX_AREAS, 'areas.max', now);
-    return areaFromPayload(clean.id, payload) as Area;
-  }
-
-  /** Deletes an area (a tombstone). Its notes stay but reach no house until the area is back. */
-  async deleteArea(id: string, now: number = Date.now()): Promise<void> {
-    await this.records.delete(AREA_TYPE, id, now);
-  }
-
-  /** The live places with their edit times; rows whose payload is not a valid place are left out. */
-  async placeRows(): Promise<PlaceRow[]> {
-    const out: PlaceRow[] = [];
-    for (const row of await this.records.ofType(PLACE_TYPE)) {
-      const place = placeFromPayload(row.id, row.payload);
-      if (place) out.push({ id: row.id, updatedAt: row.updatedAt ?? null, place });
-    }
-    return out;
-  }
-
-  /** Every live place, by name then id. */
-  async places(): Promise<Place[]> {
-    return sortByName((await this.placeRows()).map((r) => r.place), (p) => p.name);
-  }
-
-  /** A fresh place id that no record of that type holds yet. */
-  async newPlaceId(newId: () => string = newPlaceIdRandom): Promise<string> {
-    return this.records.freshId(PLACE_TYPE, newId);
-  }
-
-  /** @throws LocalDataError `error.badRecord` for a bad id, name (1..60) or point; `places.max` when a new place would be the 11th. */
-  async savePlace(place: Place, now: number = Date.now()): Promise<Place> {
-    const clean: Place = { ...place, name: place.name.trim() };
-    if (!isRecordKey(clean.id) || clean.name === '' || clean.name.length > MAX_PLACE_NAME || !validLat(clean.lat) || !validLon(clean.lon)) {
-      throw new LocalDataError('error.badRecord');
-    }
-    const payload = placeToPayload(clean);
-    await this.records.saveIfChanged(PLACE_TYPE, clean.id, payload, MAX_PLACES, 'places.max', now);
-    return placeFromPayload(clean.id, payload) as Place;
-  }
-
-  /** Deletes a place (a tombstone). */
-  async deletePlace(id: string, now: number = Date.now()): Promise<void> {
-    await this.records.delete(PLACE_TYPE, id, now);
-  }
-
-  /** The live area-note records (every one, whether or not its area still exists), oldest edit first. */
-  async areaNoteRows(): Promise<AreaNoteRow[]> {
-    const out: AreaNoteRow[] = [];
-    for (const row of await this.records.ofType(AREA_NOTE_TYPE)) {
-      const note = areaNoteFromPayload(row.id, row.payload);
-      if (note) out.push({ id: row.id, updatedAt: row.updatedAt ?? null, note });
-    }
-    return out;
-  }
-
-  /** Every live note, newest edit first. */
-  async areaNotes(): Promise<AreaNoteRow[]> {
-    return newestFirst(await this.areaNoteRows());
-  }
-
-  /** A fresh area-note id that no record of that type holds yet. */
-  async newAreaNoteId(newId: () => string = newAreaNoteIdRandom): Promise<string> {
-    return this.records.freshId(AREA_NOTE_TYPE, newId);
-  }
-
-  /**
-   * @throws LocalDataError `error.badRecord` for a bad id, neither or both of `areaId` (<= 64) and `street` (1..100),
-   *   or a blank or over-long text (1..1000); `areaNotes.max` when a new note would be the 201st.
-   */
-  async saveAreaNote(note: AreaNote, now: number = Date.now()): Promise<AreaNote> {
-    const clean: AreaNote = { id: note.id, text: note.text.trim() };
-    const areaId = note.areaId?.trim();
-    const street = note.street?.trim();
-    if (areaId) clean.areaId = areaId;
-    if (street) clean.street = street;
-    if (
-      !isRecordKey(clean.id) ||
-      (clean.areaId === undefined) === (clean.street === undefined) ||
-      (clean.areaId?.length ?? 0) > MAX_AREA_ID ||
-      (clean.street?.length ?? 0) > MAX_STREET ||
-      clean.text === '' ||
-      clean.text.length > MAX_NOTE_TEXT
-    ) {
-      throw new LocalDataError('error.badRecord');
-    }
-    const payload = areaNoteToPayload(clean);
-    await this.records.saveIfChanged(AREA_NOTE_TYPE, clean.id, payload, MAX_AREA_NOTES, 'areaNotes.max', now);
-    return areaNoteFromPayload(clean.id, payload) as AreaNote;
-  }
-
-  /** Deletes an area note (a tombstone). */
-  async deleteAreaNote(id: string, now: number = Date.now()): Promise<void> {
-    await this.records.delete(AREA_NOTE_TYPE, id, now);
-  }
-
   // ---- Settings ----
 
   /** A per-browser setting, or null when unset. Settings are never synced or exported. */
@@ -1075,8 +780,7 @@ export class LocalStore {
     const db = await this.db();
     await db.clear();
     await clearCacheStorage();
-    // An empty browser still starts with the standard questions, as a new install does.
-    if (this.seedLanguage) await this.seedQuestionsOnce(this.seedLanguage);
+    await this.questions.seedAgainIfAsked();
     this.touch();
   }
 }

@@ -20,6 +20,10 @@ import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LocalStore } from '../data/local-store.service';
 import type { PhotoStore } from '../data/photo-store';
+import type { AreaNoteStore } from '../data/area-note-store';
+import type { AreaStore } from '../data/area-store';
+import type { PlaceStore } from '../data/place-store';
+import type { QuestionStore } from '../data/question-store';
 import type { ViewingStore } from '../data/viewing-store';
 import { LocalDataError } from '../core/local-error';
 import { DEFAULT_EXPORT_OPTIONS } from './export-model';
@@ -45,11 +49,11 @@ function fakeStore(photos: PhotoRecord[]): Partial<LocalStore> {
     brokers: () => Promise.resolve(FIXTURE_BROKERS),
     criterionRows: () => Promise.resolve([]),
     preferenceRows: () => Promise.resolve([]),
-    questionRows: () => Promise.resolve([]),
+    questions: { rows: () => Promise.resolve([]) } as unknown as QuestionStore,
     viewings: { rows: () => Promise.resolve([]) } as unknown as ViewingStore,
-    areaRows: () => Promise.resolve([]),
-    placeRows: () => Promise.resolve([]),
-    areaNoteRows: () => Promise.resolve([]),
+    areas: { rows: () => Promise.resolve([]) } as unknown as AreaStore,
+    places: { rows: () => Promise.resolve([]) } as unknown as PlaceStore,
+    areaNotes: { rows: () => Promise.resolve([]) } as unknown as AreaNoteStore,
     lengthUnit: () => Promise.resolve('FT' as const),
   };
 }
@@ -280,11 +284,11 @@ describe('lengthUnit (slice 1c)', () => {
       brokers: () => Promise.resolve(FIXTURE_BROKERS),
       criterionRows: () => Promise.resolve([]),
       preferenceRows: () => Promise.resolve([]),
-      questionRows: () => Promise.resolve([]),
+      questions: { rows: () => Promise.resolve([]) } as unknown as QuestionStore,
       viewings: { rows: () => Promise.resolve([]) } as unknown as ViewingStore,
-      areaRows: () => Promise.resolve([]),
-      placeRows: () => Promise.resolve([]),
-      areaNoteRows: () => Promise.resolve([]),
+      areas: { rows: () => Promise.resolve([]) } as unknown as AreaStore,
+      places: { rows: () => Promise.resolve([]) } as unknown as PlaceStore,
+      areaNotes: { rows: () => Promise.resolve([]) } as unknown as AreaNoteStore,
       lengthUnit: () => Promise.resolve('M' as const),
     };
     TestBed.configureTestingModule({ providers: [{ provide: LocalStore, useValue: metersStore }] });

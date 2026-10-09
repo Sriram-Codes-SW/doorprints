@@ -54,8 +54,8 @@ describe.skipIf(setup.status === 'skip')('Golden set through the chosen provider
         {
           provide: LocalStore,
           useValue: {
-            allHouses: async () => houses, allVisits: async () => visits, viewings: { all: async () => [] }, areas: async () => [],
-            places: async () => [], areaNoteRows: async () => [],
+            allHouses: async () => houses, allVisits: async () => visits, viewings: { all: async () => [] }, areas: { all: async () => [] },
+            places: { all: async () => [] }, areaNotes: { rows: async () => [] },
           },
         },
       ],

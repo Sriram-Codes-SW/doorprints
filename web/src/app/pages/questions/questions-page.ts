@@ -41,7 +41,7 @@ interface Group {
  * Questions (slice 3a, docs/11 5.5), reached from Your data: the bank of questions to ask at a viewing, grouped by
  * category. Each question can be edited, given a category and a scope (Rent, Buy, Both), switched to "Ask by default",
  * moved, archived and brought back, or deleted (a seeded one too: it stays deleted until Reset to defaults). Every change
- * is saved at once and writes only the record that changed (`LocalStore.saveQuestion`).
+ * is saved at once and writes only the record that changed (`LocalStore.questions.save`).
  */
 @Component({
   selector: 'app-questions-page',
