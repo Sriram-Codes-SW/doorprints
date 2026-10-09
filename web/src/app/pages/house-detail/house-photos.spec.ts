@@ -19,7 +19,7 @@
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
-import { Observable, Subject, of, throwError } from 'rxjs';
+import { NEVER, Observable, Subject, of, throwError } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AiService } from '../../core/ai.service';
 import { Announcer } from '../../core/announcer.service';
@@ -50,7 +50,8 @@ const HOUSE: HouseDto = {
 const photo = (id: string): PhotoSummary => ({ id, createdAt: '2026-09-05T11:05:00.000Z', roomId: null, tags: [], caption: null, metaUpdatedAt: 0 });
 
 interface PhotosPage {
-  uploading: () => number;
+  photos: { uploading: () => number; editing: () => string | null };
+  onFiles: (event: Event) => Promise<void>;
   canLeave: () => boolean | Promise<boolean>;
   onBeforeUnload: (event: BeforeUnloadEvent) => void;
   openPhoto: (src: string, n: number) => void;
@@ -65,6 +66,8 @@ interface Setup {
   /** Open a new house (no id in the route) instead of a stored one. */
   isNew?: boolean;
   answers?: boolean[];
+  /** The list is read once and never again, so what the page keeps itself between two reads shows. */
+  readOnce?: boolean;
 }
 
 async function settle(fixture: ComponentFixture<unknown>): Promise<void> {
@@ -107,6 +110,7 @@ async function open(setup: Setup = {}) {
   const uploads: { blob: Blob; meta: unknown }[] = [];
   const removed: string[] = [];
   let next = 1;
+  let reads = 0;
   const api = {
     houses: () => of([]),
     brokers: () => of([]),
@@ -119,7 +123,7 @@ async function open(setup: Setup = {}) {
     areaNotes: () => of([]),
     places: () => of([]),
     settled: signal(0),
-    photos: () => of(stored.map(photo)),
+    photos: () => (setup.readOnce && reads++ > 0 ? NEVER : of(stored.map(photo))),
     photo: () => throwError(() => new Error('no bytes')),
     conditionPhotos: () => of([]),
     uploadPhoto: (_house: string, blob: Blob, _id: unknown, meta: unknown) => {
@@ -223,7 +227,7 @@ describe('HouseDetailPage: the photos card', () => {
     const r = await open({ upload: () => pending, answers: [false, true] });
     await choose(r, ['one.jpg', 'two.jpg']);
     await settle(r.fixture);
-    expect(r.page.uploading()).toBe(2);
+    expect(r.page.photos.uploading()).toBe(2);
     expect(text(card(r.host).querySelector('label.upload'))).toBe('Uploading (2)…');
     // Closing the tab asks, and so does a route change: the first answer says stay, the second leave.
     const event = new Event('beforeunload', { cancelable: true }) as BeforeUnloadEvent;
@@ -332,6 +336,77 @@ describe('HouseDetailPage: the photos card', () => {
     card(r.host).querySelector<HTMLButtonElement>('.photo-del')!.click();
     await settle(r.fixture);
     expect(card(r.host).querySelector('app-photo-meta-editor')).toBeNull();
+    expect(r.page.photos.editing()).toBeNull();
     expect(r.page.lightbox()).toBeNull();
+  });
+
+  it('says the result once when a second batch is chosen while the first is still running', async () => {
+    const pending = [new Subject<{ id: string }>(), new Subject<{ id: string }>()];
+    let n = 0;
+    const r = await open({ upload: () => pending[n++] });
+    await choose(r, ['one.jpg']);
+    await settle(r.fixture);
+    await choose(r, ['two.jpg']);
+    await settle(r.fixture);
+    expect(r.page.photos.uploading()).toBe(2);
+    pending[0].next({ id: 'x1' });
+    pending[0].complete();
+    await settle(r.fixture);
+    expect(r.announce.mock.calls.filter(([m]) => m.key.startsWith('house.photos'))).toEqual([]);
+    pending[1].next({ id: 'x2' });
+    pending[1].complete();
+    await settle(r.fixture);
+    expect(r.announce.mock.calls.filter(([m]) => m.key.startsWith('house.photos'))).toEqual([[{ key: 'house.photosAdded', params: { n: 2 } }]]);
+  });
+
+  it('keeps the list of failures in the same place while more files of the batch fail', async () => {
+    const second = new Subject<{ id: string }>();
+    let n = 0;
+    const r = await open({ upload: () => (n++ === 0 ? throwError(() => new Error('first')) : second) });
+    await choose(r, ['one.jpg', 'two.jpg']);
+    await settle(r.fixture);
+    const list = card(r.host).querySelector('.with-list')!;
+    expect(list.querySelectorAll('li')).toHaveLength(1);
+    second.error(new Error('second'));
+    await settle(r.fixture);
+    expect(card(r.host).querySelector('.with-list')).toBe(list);
+    expect([...list.querySelectorAll('li')].map(text)).toEqual(['one.jpg: first', 'two.jpg: second']);
+  });
+
+  it('links to Your data when one of several failures was the browser running out of space', async () => {
+    const full = Object.assign(new Error('quota'), { name: 'QuotaExceededError' });
+    const r = await open({ upload: () => throwError(() => full) });
+    await choose(r, ['bad.jpg', 'fine.jpg']);
+    await settle(r.fixture);
+    expect([...card(r.host).querySelectorAll('.failures li')].map((li) => text(li).slice(0, 15))).toEqual(['bad.jpg: Could ', 'fine.jpg: This ']);
+    expect(card(r.host).querySelector('a')?.getAttribute('href')).toBe('/data?export=backup');
+  });
+
+  it('does not list a photo twice when the store answers with one that is already listed', async () => {
+    const r = await open({ stored: ['a'], readOnce: true, upload: () => of({ id: 'a' }) });
+    await choose(r, ['one.jpg']);
+    await settle(r.fixture);
+    expect(card(r.host).querySelectorAll('.photo-item')).toHaveLength(1);
+  });
+
+  it('adds nothing to a house that is not saved yet', async () => {
+    const r = await open({ isNew: true });
+    const input = document.createElement('input');
+    Object.defineProperty(input, 'files', { value: [new File(['x'], 'one.jpg')] });
+    await r.page.onFiles({ target: input } as unknown as Event);
+    expect(r.uploads).toEqual([]);
+    expect(r.announce.mock.calls.filter(([m]) => m.key.startsWith('house.photos'))).toEqual([]);
+  });
+
+  it('clears the failed-delete message when the next delete is confirmed', async () => {
+    let n = 0;
+    const r = await open({ stored: ['a', 'b'], answers: [true, true], remove: () => (n++ === 0 ? throwError(() => new Error('disk')) : of(undefined)) });
+    const buttons = () => card(r.host).querySelectorAll<HTMLButtonElement>('.photo-del');
+    buttons()[0].click();
+    await settle(r.fixture);
+    expect(text(card(r.host).querySelector('p.error'))).toBe('Could not delete the photo: disk');
+    buttons()[1].click();
+    await settle(r.fixture);
+    expect(card(r.host).querySelector('p.error')).toBeNull();
   });
 });

@@ -332,7 +332,7 @@ export class SyncService {
     const houses = (await this.store.dirtyHouses()).length;
     const visits = (await this.store.dirtyVisits()).length;
     const records = (await this.store.dirtyRecords()).length;
-    const photos = (await this.store.allPhotos()).filter(
+    const photos = (await this.store.photos.all()).filter(
       (p) => (p.deleted && p.uploaded) || (!p.deleted && ((!p.uploaded && !!p.blob) || p.metaDirty === true)),
     ).length;
     return houses + visits + records + photos;
@@ -536,7 +536,7 @@ export class SyncService {
     this.live(gen);
     const records = await this.store.dirtyRecords();
     this.live(gen);
-    const photos = await this.store.allPhotos();
+    const photos = await this.store.photos.all();
     this.live(gen);
     // Deletes first, so a house that lost a photo does not re-upload it.
     const photoDeletes = photos.filter((p) => p.deleted && p.uploaded);
@@ -579,7 +579,7 @@ export class SyncService {
     for (const photo of photoDeletes) {
       await this.call(gen, () => this.backend.deletePhoto(photo.id));
       this.live(gen);
-      await sent(() => this.store.forgetPhoto(photo.id));
+      await sent(() => this.store.photos.forget(photo.id));
       this.live(gen);
       step();
     }
@@ -591,21 +591,21 @@ export class SyncService {
       await this.call(gen, () => this.backend.uploadPhoto(photo.houseId, bytes, photo.id));
       this.live(gen);
       // The stored row, not the one read before the upload: a meta edit made meanwhile stays.
-      await this.store.putPhotoRecord({ ...((await this.store.getPhoto(photo.id)) ?? photo), uploaded: true });
+      await this.store.photos.put({ ...((await this.store.photos.get(photo.id)) ?? photo), uploaded: true });
       this.live(gen);
       step();
     }
     for (const listed of metaPushes) {
-      const photo = await this.store.getPhoto(listed.id);
+      const photo = await this.store.photos.get(listed.id);
       this.live(gen);
       if (!photo || photo.deleted || photo.metaDirty !== true) continue;
       const meta = photoMetaOf(photo);
       const saved = await this.call(gen, () => this.backend.pushPhotoMeta(photo.id, meta));
       this.live(gen);
       // The server keeps the newer meta and answers it: an older one of ours changes nothing there (last write wins).
-      await sent(() => this.store.applyPhotoMetaFromServer(photo.id, photoMetaOf(saved ?? {})));
+      await sent(() => this.store.photos.applyMetaFromServer(photo.id, photoMetaOf(saved ?? {})));
       this.live(gen);
-      await sent(() => this.store.markPhotoMetaClean(photo.id, meta.metaUpdatedAt));
+      await sent(() => this.store.photos.markMetaClean(photo.id, meta.metaUpdatedAt));
       this.live(gen);
       step();
     }
@@ -753,7 +753,7 @@ export class SyncService {
     this.live(gen);
     // The photo rows of this page and the houses they name (read after the houses phase, so a house pulled just now counts).
     const photos = new Map<string, PhotoRecord>(
-      (await readInChunks(rowIds(photoRows), (ids) => this.store.photoRowsByIds(ids))).map((p): [string, PhotoRecord] => [p.id, p]),
+      (await readInChunks(rowIds(photoRows), (ids) => this.store.photos.rowsByIds(ids))).map((p): [string, PhotoRecord] => [p.id, p]),
     );
     const photoHouses = new Map<string, HouseRecord>(
       (await readInChunks(photoRows.map((c) => c?.houseId).filter(isRecordId), (ids) => this.store.houseRowsByIds(ids))).map((h): [string, HouseRecord] => [h.id, h]),
@@ -776,12 +776,12 @@ export class SyncService {
         continue;
       }
       // A page that names one photo twice re-reads it the second time, since the first change may have changed the row.
-      const local = photoSeen.has(change.id) ? await this.store.getPhoto(change.id) : photos.get(change.id);
+      const local = photoSeen.has(change.id) ? await this.store.photos.get(change.id) : photos.get(change.id);
       photoSeen.add(change.id);
       this.live(gen);
       if (change.deleted) {
         if (local) {
-          await this.store.forgetPhoto(change.id);
+          await this.store.photos.forget(change.id);
           this.live(gen);
           pulled++;
         }
@@ -789,7 +789,7 @@ export class SyncService {
       }
       if (local) {
         // A photo already here: only its meta can differ, and the newer `metaUpdatedAt` wins (slice 5).
-        if (!local.deleted && (await this.store.applyPhotoMetaFromServer(change.id, photoMetaOf(change)))) pulled++;
+        if (!local.deleted && (await this.store.photos.applyMetaFromServer(change.id, photoMetaOf(change)))) pulled++;
         this.live(gen);
         continue;
       }
@@ -830,7 +830,7 @@ export class SyncService {
         uploaded: true,
       }, photoMetaOf(change), false);
       try {
-        await this.store.putPhotoRecord(record);
+        await this.store.photos.put(record);
       } catch (err: unknown) {
         if (isQuotaError(err)) await this.keepPhotoPosition(gen, cursorBefore, photoRows, i);
         throw err;

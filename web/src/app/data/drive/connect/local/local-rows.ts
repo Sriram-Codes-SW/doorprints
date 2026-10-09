@@ -54,7 +54,7 @@ export class LocalRowsAdapter implements LocalRows {
         rows.push(this.toSyncRow('records', `${rec.type}/${rec.id}`, rec.updatedAt, rec.deleted, { ...rec }));
       }
     }
-    const photos = await this.store.allPhotos();
+    const photos = await this.store.photos.all();
     for (const photo of photos) {
       rows.push(this.toSyncRow('photos', photo.id, photo.updatedAt, photo.deleted, { ...photo } as Record<string, unknown>));
     }
@@ -77,7 +77,7 @@ export class LocalRowsAdapter implements LocalRows {
   }
 
   async photo(photoId: string): Promise<PhotoChangeDto | null> {
-    const found = await this.store.getPhoto(photoId);
+    const found = await this.store.photos.get(photoId);
     if (!found) return null;
     return {
       id: found.id,
@@ -102,7 +102,7 @@ export class LocalRowsAdapter implements LocalRows {
           await this.store.markVisitClean(row.key, row.stamp.updatedAt > 0 ? new Date(row.stamp.updatedAt).toISOString() : null);
           break;
         case 'photos':
-          await this.store.markPhotoMetaClean(row.key, row.stamp.updatedAt);
+          await this.store.photos.markMetaClean(row.key, row.stamp.updatedAt);
           break;
       }
     }

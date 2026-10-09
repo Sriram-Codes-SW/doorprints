@@ -55,15 +55,15 @@ import { MAX_ANSWERS, MAX_ANSWER, MAX_ANSWER_TEXT, cleanAnswers, cleanCost, clea
 import { LocalStore } from '../../data/local-store.service';
 import { ROOM_TYPES, ROOM_TYPE_KEY } from '../../core/models';
 import type { HouseAnswer, HouseRoom, MoveIn, RoomType } from '../../core/models';
-import type { PhotoSummary } from '../../core/local-data.service';
-import { MOVE_IN_TAG, photoTagKey } from '../../shared/photo-tags';
-import type { PhotoMeta } from '../../shared/photo-tags';
+import { MOVE_IN_TAG } from '../../shared/photo-tags';
+import type { PhotoMetaInput } from '../../data/photo-store';
 import { HouseMoveInCard } from './house-move-in-card';
 import { HouseCheckCard } from './house-check-card';
 import { HouseWalksCard } from './house-walks-card';
 import { TraceStore } from '../../data/trace-store';
 import type { OpenedPhoto } from './house-move-in-card';
 import { PhotoMetaEditor } from './photo-meta-editor';
+import { HousePhotos, isStorageFull } from './house-photos';
 import { QUESTION_CATEGORIES } from '../../shared/question';
 import type { Question, QuestionCategory } from '../../shared/question';
 import { HouseViewingsCard } from '../viewings/house-viewings-card';
@@ -90,7 +90,6 @@ import type { Criterion, ScoreResult, Scoring } from '../../shared/scoring';
 import type { BrokerRow } from '../../shared/broker';
 import { LocalDataError } from '../../core/local-error';
 import { Announcer } from '../../core/announcer.service';
-import { resizeImage } from '../../core/image-resize';
 import { LatLon, LocationMap, round6 } from '../../shared/location-map';
 import type { MapOverlay } from '../../shared/location-map';
 import { AuthImage } from '../../shared/auth-image';
@@ -116,14 +115,8 @@ interface OpenPhoto {
   alt: string;
 }
 
-/** A photo that could not be added, named in the photos card. */
 /** Said while a save runs; withdrawn on failure (persist()). */
 const SAVING: Msg = { key: 'house.saving' };
-
-interface PhotoFailure {
-  file: string;
-  reason: Msg;
-}
 
 /** How long typing pauses before the unsaved draft is written to sessionStorage. */
 const DRAFT_SAVE_MS = 500;
@@ -274,15 +267,17 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   protected readonly markingVisit = signal(false);
   protected readonly visitsMsg = signal<RunResult<Msg> | null>(null);
 
-  protected readonly photoIds = signal<string[]>([]);
-  /** The photos' room, tags and caption by photo id (slice 5); read again with the photo list. */
-  protected readonly photoInfo = signal<ReadonlyMap<string, PhotoSummary>>(new Map());
-  /** The photo whose details editor is open, if any. */
-  protected readonly editingPhoto = signal<string | null>(null);
-  protected readonly uploading = signal(0);
-  /** The files of the current batch that could not be added; one run per batch, so a batch failing again is read. */
-  protected readonly photoFailures = signal<RunResult<readonly PhotoFailure[]> | null>(null);
-  protected readonly photosMsg = signal<RunResult<Msg> | null>(null);
+  /** The photos of this house: the list, the uploads, the details editor (house-photos.ts). */
+  protected readonly photos = new HousePhotos({
+    api: this.api,
+    announcer: this.announcer,
+    confirm: this.confirm,
+    i18n: this.i18n,
+    house: () => this.draft(),
+    isNew: () => this.isNew(),
+    onDeleted: () => this.lightbox.set(null),
+  });
+  /** The photo open in the large view: one of the photos card, or a condition photo of the Moving in card. */
   protected readonly lightbox = signal<OpenPhoto | null>(null);
   /** A failed delete, shown next to the delete button. */
   protected readonly dangerMsg = signal<RunResult<Msg> | null>(null);
@@ -337,8 +332,6 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   private draftTimer: ReturnType<typeof setTimeout> | undefined;
   /** The house as loaded, for "Discard" on restored edits. */
   private pristine: { draft: HouseDto; dirty: boolean; locationSet: boolean } | null = null;
-  /** Upload results of the files chosen together, announced once when the last one is done. */
-  private batch = { added: 0, failed: 0 };
   /**
    * The listing read and the address lookup in flight, and whether the page is gone. Leaving the page is one of the
    * ends of "Reading the listing…", "Filling address…" and "Locating…": their late result must not fill a form,
@@ -423,7 +416,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
 
   /** Browser reload or tab close with unsaved edits or photos still uploading: the browser's own "Leave site?". */
   protected onBeforeUnload(event: BeforeUnloadEvent): void {
-    if ((!this.dirty() && this.uploading() === 0) || this.unsaved.leaving) return;
+    if ((!this.dirty() && this.photos.uploading() === 0) || this.unsaved.leaving) return;
     event.preventDefault();
     // Older browsers only show the prompt when returnValue is set; the text itself is never displayed.
     event.returnValue = '';
@@ -504,22 +497,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
       next: (v) => this.visits.set(v),
       error: () => this.visits.set([]),
     });
-    this.refreshPhotos(id);
-  }
-
-  /** Reads the house's photos with their meta (the list under the thumbnails, the details editor). */
-  private refreshPhotos(id: string | undefined = this.draft()?.id): void {
-    if (!id) return;
-    this.api.photos(id).subscribe({
-      next: (list) => {
-        this.photoIds.set(list.map((p) => p.id));
-        this.photoInfo.set(new Map(list.map((p) => [p.id, p])));
-      },
-      error: () => {
-        this.photoIds.set([]);
-        this.photoInfo.set(new Map());
-      },
-    });
+    this.photos.refresh(id);
   }
 
   /**
@@ -761,7 +739,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
       this.leaveApproved = false;
       return true;
     }
-    if (this.uploading() === 0 && !this.dirty()) return true;
+    if (this.photos.uploading() === 0 && !this.dirty()) return true;
     return this.askToLeave();
   }
 
@@ -770,7 +748,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
    * (which leaves only if the save succeeds).
    */
   private async askToLeave(): Promise<boolean> {
-    if (this.uploading() > 0) {
+    if (this.photos.uploading() > 0) {
       const go = await this.confirm.ask({ key: 'confirm.leaveUploading' }, { confirmKey: 'confirm.leaveAnyway', danger: true });
       if (!go) return false;
     }
@@ -1193,32 +1171,6 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     this.lightbox.set(photo);
   }
 
-  // ---- Photo details (slice 5, docs/11 5.7) ----
-
-  protected roomNameOf(p: PhotoMeta): string {
-    const room = p.roomId ? (this.draft()?.rooms ?? []).find((r) => r.id === p.roomId) : undefined;
-    return room ? room.name?.trim() || this.i18n.t(ROOM_TYPE_KEY[room.type]) : '';
-  }
-
-  protected tagLabel(tag: string): string {
-    const key = photoTagKey(tag);
-    return key ? this.i18n.t(key) : tag;
-  }
-
-  protected tagsOf(p: PhotoMeta): string {
-    return p.tags.map((t) => this.tagLabel(t)).join(', ');
-  }
-
-  protected editPhoto(id: string): void {
-    this.editingPhoto.set(this.editingPhoto() === id ? null : id);
-  }
-
-  protected photoDetailsSaved(id: string): void {
-    this.editingPhoto.set(null);
-    this.refreshPhotos();
-    setTimeout(() => document.getElementById('photo-details-' + id)?.focus());
-  }
-
   protected setRating(n: number | null): void {
     this.patch({ rating: n });
   }
@@ -1609,63 +1561,12 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     return this.onFiles(event, { roomId: null, tags: [MOVE_IN_TAG], caption: null });
   }
 
-  /**
-   * Adds the chosen photos one by one. The result is said **once**, when the last file is done ("Photos added: 3.
-   * Not added: 1"), not once per photo, and every file that failed is listed in the photos card with its reason.
-   */
-  protected async onFiles(event: Event, meta?: Pick<PhotoMeta, 'roomId' | 'tags' | 'caption'>): Promise<void> {
+  /** The files chosen in a photo input are added to the house (the input is emptied, so the same file can be chosen again). */
+  protected onFiles(event: Event, meta?: PhotoMetaInput): Promise<void> {
     const input = event.target as HTMLInputElement;
     const files: File[] = input.files ? Array.from(input.files) : [];
     input.value = '';
-    const d = this.draft();
-    if (!d || this.isNew() || files.length === 0) return;
-    if (this.uploading() === 0) {
-      // A new batch: the previous one's results are no longer news.
-      this.batch = { added: 0, failed: 0 };
-      this.photoFailures.set(null);
-      this.photosMsg.set(null);
-    }
-    this.uploading.update((n) => n + files.length);
-    for (const file of files) {
-      try {
-        const blob = await resizeImage(file, 1600, 0.8);
-        const res = await firstValueFrom(this.api.uploadPhoto(d.id, blob, undefined, meta));
-        this.photoIds.update((ids) => (ids.includes(res.id) ? ids : [...ids, res.id]));
-        this.refreshPhotos();
-        this.batch.added++;
-      } catch (err: unknown) {
-        this.batch.failed++;
-        // The batch's first failure starts its run; later ones join it, so the list grows in the same node.
-        const failure: PhotoFailure = { file: file.name, reason: errorMsg(err) };
-        this.photoFailures.update((r) =>
-          r === null ? runResult<readonly PhotoFailure[]>([failure]) : { value: [...r.value, failure], run: r.run },
-        );
-      } finally {
-        this.uploading.update((n) => n - 1);
-      }
-    }
-    if (this.uploading() > 0) return;
-    const { added, failed } = this.batch;
-    this.announcer.announce(
-      failed > 0 ? { key: 'house.photosResult', params: { added, failed } } : { key: 'house.photosAdded', params: { n: added } },
-    );
-  }
-
-  protected async deletePhoto(id: string): Promise<void> {
-    const ok = await this.confirm.ask({ key: 'confirm.deletePhoto' }, { confirmKey: 'common.delete', danger: true });
-    if (!ok) return;
-    this.photosMsg.set(null);
-    this.api.deletePhoto(id).subscribe({
-      next: () => {
-        this.photoIds.update((ids) => ids.filter((x) => x !== id));
-        if (this.editingPhoto() === id) this.editingPhoto.set(null);
-        this.lightbox.set(null);
-        this.announcer.announce({ key: 'house.photoDeleted' });
-        document.getElementById('photos-heading')?.focus();
-      },
-      error: (err: unknown) =>
-        this.photosMsg.set(runResult({ key: 'house.deletePhotoFailed', params: { reason: errorMsg(err) } })),
-    });
+    return this.photos.add(files, meta);
   }
 
   protected openPhoto(src: string, n: number): void {
@@ -1683,16 +1584,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     if (dialog && event.target === dialog) dialog.close();
   }
 
-  /** A save or photo failed because the browser is out of space (directly, or as the reason of a wrapper message). */
-  protected isStorageFull(m: Msg): boolean {
-    if (m.key === 'error.storageFull') return true;
-    const reason = m.params?.['reason'];
-    return typeof reason === 'object' && reason !== null && reason.key === 'error.storageFull';
-  }
-
-  protected anyStorageFull(failures: readonly PhotoFailure[]): boolean {
-    return failures.some((f) => this.isStorageFull(f.reason));
-  }
+  protected readonly isStorageFull = isStorageFull;
 
   /**
    * The listing link for the page: http(s) as typed, a bare domain with `https://` added, and null for any other scheme

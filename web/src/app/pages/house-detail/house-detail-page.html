@@ -975,8 +975,8 @@
           <h2 id="photos-heading" tabindex="-1">{{ 'house.photos' | t }}</h2>
           @if (!isNew()) {
             <label class="btn btn-sm upload">
-              @if (uploading() > 0) {
-                {{ 'house.uploading' | t: { n: uploading() } }}
+              @if (photos.uploading() > 0) {
+                {{ 'house.uploading' | t: { n: photos.uploading() } }}
               } @else {
                 <span aria-hidden="true">＋</span> {{ 'house.addPhotos' | t }}
               }
@@ -987,7 +987,7 @@
         <!-- Every photo that could not be added, by name, and a failed delete: here, not at the top of the page. -->
         <div role="alert">
           <!-- One run per batch: a file failing in the same batch joins its list; a new batch is a new node. -->
-          @if (photoFailures(); as card) {
+          @if (photos.failures(); as card) {
             @for (c of [card]; track c.run) {
               <div class="error small with-list">
                 <p>{{ 'house.photosFailed' | t }}</p>
@@ -996,13 +996,13 @@
                     <li>{{ 'house.photoFailedItem' | t: { file: f.file, reason: f.reason } }}</li>
                   }
                 </ul>
-                @if (anyStorageFull(c.value)) {
+                @if (photos.anyStorageFull(c.value)) {
                   <a routerLink="/data" [queryParams]="{ export: 'backup' }">{{ 'nav.data' | t }}</a>
                 }
               </div>
             }
           }
-          @if (photosMsg(); as card) {
+          @if (photos.message(); as card) {
             @for (c of [card]; track c.run) {
               <p class="error small">{{ c.value.key | t: c.value.params }}</p>
             }
@@ -1010,12 +1010,12 @@
         </div>
         @if (isNew()) {
           <p class="muted small">{{ 'house.saveFirstPhotos' | t }}</p>
-        } @else if (photoIds().length === 0) {
+        } @else if (photos.ids().length === 0) {
           <p class="muted small empty-inline"><span aria-hidden="true">📷 </span>{{ 'house.noPhotos' | t }}</p>
         } @else {
           <ul class="gallery">
-            @for (id of photoIds(); track id; let i = $index) {
-              <li class="photo-item" [class.editing]="editingPhoto() === id">
+            @for (id of photos.ids(); track id; let i = $index) {
+              <li class="photo-item" [class.editing]="photos.editing() === id">
                 <div class="photo">
                   <app-auth-image
                     [photoId]="id"
@@ -1027,19 +1027,19 @@
                     class="photo-del"
                     [attr.aria-label]="'house.deletePhoto' | t: { n: i + 1 }"
                     [title]="'house.deletePhoto' | t: { n: i + 1 }"
-                    (click)="deletePhoto(id)"
+                    (click)="photos.remove(id)"
                   >
                     <span aria-hidden="true">✕</span>
                   </button>
                 </div>
                 <!-- Slice 5: what the person said about the photo, under it: its room, tags and caption. -->
-                @if (photoInfo().get(id); as info) {
+                @if (photos.info().get(id); as info) {
                   <div class="photo-meta">
                     @if (info.roomId) {
-                      <span class="photo-room">{{ roomNameOf(info) || ('photoMeta.untagged' | t) }}</span>
+                      <span class="photo-room">{{ photos.roomNameOf(info) || ('photoMeta.untagged' | t) }}</span>
                     }
                     @if (info.tags.length > 0) {
-                      <span class="photo-tags">{{ tagsOf(info) }}</span>
+                      <span class="photo-tags">{{ photos.tagsOf(info) }}</span>
                     }
                     @if (info.caption) {
                       <span class="photo-caption">{{ info.caption }}</span>
@@ -1048,20 +1048,20 @@
                       type="button"
                       class="btn btn-sm photo-edit"
                       [id]="'photo-details-' + id"
-                      [attr.aria-expanded]="editingPhoto() === id"
+                      [attr.aria-expanded]="photos.editing() === id"
                       [attr.aria-label]="'photoMeta.edit' | t: { n: i + 1 }"
-                      (click)="editPhoto(id)"
+                      (click)="photos.toggleDetails(id)"
                     >
                       {{ 'photoMeta.editShort' | t }}
                     </button>
                   </div>
-                  @if (editingPhoto() === id) {
+                  @if (photos.editing() === id) {
                     <app-photo-meta-editor
                       [photo]="info"
                       [n]="i + 1"
                       [rooms]="d.rooms ?? []"
-                      (saved)="photoDetailsSaved(id)"
-                      (closed)="editPhoto(id)"
+                      (saved)="photos.detailsSaved(id)"
+                      (closed)="photos.toggleDetails(id)"
                     />
                   }
                 }

@@ -36,7 +36,7 @@ describe('LocalStore photo meta', () => {
     store = new LocalStore();
     await store.ready();
     await store.saveHouse(house('h1'), T1);
-    await store.addPhoto('h1', jpeg(), 'p1', T1);
+    await store.photos.add('h1', jpeg(), 'p1', T1);
   });
 
   afterEach(() => {
@@ -44,7 +44,7 @@ describe('LocalStore photo meta', () => {
   });
 
   it('a photo starts without any meta and without a dirty flag', async () => {
-    const p = await store.getPhoto('p1');
+    const p = await store.photos.get('p1');
     expect(p).not.toHaveProperty('roomId');
     expect(p).not.toHaveProperty('tags');
     expect(p).not.toHaveProperty('metaUpdatedAt');
@@ -52,73 +52,73 @@ describe('LocalStore photo meta', () => {
   });
 
   it('saving the meta coerces it, stamps metaUpdatedAt and marks the photo for the next sync', async () => {
-    expect(await store.setPhotoMeta('p1', { roomId: 'c1', tags: ['damp', 'leaky tap', 'LEAKY TAP'], caption: '  Corner  ' }, T2)).toBe(true);
-    const p = await store.getPhoto('p1');
+    expect(await store.photos.setMeta('p1', { roomId: 'c1', tags: ['damp', 'leaky tap', 'LEAKY TAP'], caption: '  Corner  ' }, T2)).toBe(true);
+    const p = await store.photos.get('p1');
     expect(p).toMatchObject({ roomId: 'c1', tags: ['DAMP', 'leaky tap'], caption: '  Corner  ', metaUpdatedAt: T2, metaDirty: true });
   });
 
   it('writes nothing when the meta is what it already is', async () => {
-    await store.setPhotoMeta('p1', { roomId: null, tags: ['DAMP'], caption: null }, T1);
+    await store.photos.setMeta('p1', { roomId: null, tags: ['DAMP'], caption: null }, T1);
     const revision = store.revision();
-    expect(await store.setPhotoMeta('p1', { roomId: null, tags: ['DAMP'], caption: '' }, T2)).toBe(false);
-    expect((await store.getPhoto('p1'))?.metaUpdatedAt).toBe(T1);
+    expect(await store.photos.setMeta('p1', { roomId: null, tags: ['DAMP'], caption: '' }, T2)).toBe(false);
+    expect((await store.photos.get('p1'))?.metaUpdatedAt).toBe(T1);
     expect(store.revision()).toBe(revision);
   });
 
   it('removing the last of the meta still counts as an edit, so it reaches the server', async () => {
-    await store.setPhotoMeta('p1', { roomId: 'c1', tags: [], caption: null }, T1);
-    expect(await store.setPhotoMeta('p1', { roomId: null, tags: [], caption: null }, T2)).toBe(true);
-    const p = await store.getPhoto('p1');
+    await store.photos.setMeta('p1', { roomId: 'c1', tags: [], caption: null }, T1);
+    expect(await store.photos.setMeta('p1', { roomId: null, tags: [], caption: null }, T2)).toBe(true);
+    const p = await store.photos.get('p1');
     expect(p).not.toHaveProperty('roomId');
     expect(p).toMatchObject({ metaUpdatedAt: T2, metaDirty: true });
   });
 
   it('two edits in one millisecond still order', async () => {
-    await store.setPhotoMeta('p1', { roomId: null, tags: ['DAMP'], caption: null }, T1);
-    await store.setPhotoMeta('p1', { roomId: null, tags: ['CRACK'], caption: null }, T1);
-    expect((await store.getPhoto('p1'))?.metaUpdatedAt).toBe(T1 + 1);
+    await store.photos.setMeta('p1', { roomId: null, tags: ['DAMP'], caption: null }, T1);
+    await store.photos.setMeta('p1', { roomId: null, tags: ['CRACK'], caption: null }, T1);
+    expect((await store.photos.get('p1'))?.metaUpdatedAt).toBe(T1 + 1);
   });
 
   it('a deleted or unknown photo is not edited', async () => {
-    expect(await store.setPhotoMeta('nope', { roomId: null, tags: ['DAMP'], caption: null }, T1)).toBe(false);
-    await store.deletePhoto('p1', T2);
-    expect(await store.setPhotoMeta('p1', { roomId: null, tags: ['DAMP'], caption: null }, T2)).toBe(false);
+    expect(await store.photos.setMeta('nope', { roomId: null, tags: ['DAMP'], caption: null }, T1)).toBe(false);
+    await store.photos.delete('p1', T2);
+    expect(await store.photos.setMeta('p1', { roomId: null, tags: ['DAMP'], caption: null }, T2)).toBe(false);
   });
 
   it('last write wins on metaUpdatedAt: only a strictly newer server meta replaces ours', async () => {
-    await store.setPhotoMeta('p1', { roomId: null, tags: ['DAMP'], caption: 'mine' }, T2);
+    await store.photos.setMeta('p1', { roomId: null, tags: ['DAMP'], caption: 'mine' }, T2);
     const theirs = { roomId: 'r9', tags: ['LEAK'], caption: 'theirs' };
-    expect(await store.applyPhotoMetaFromServer('p1', { ...theirs, metaUpdatedAt: T2 })).toBe(false);
-    expect(await store.applyPhotoMetaFromServer('p1', { ...theirs, metaUpdatedAt: T1 })).toBe(false);
-    expect((await store.getPhoto('p1'))?.caption).toBe('mine');
-    expect(await store.applyPhotoMetaFromServer('p1', { ...theirs, metaUpdatedAt: T2 + 1 })).toBe(true);
-    const p = await store.getPhoto('p1');
+    expect(await store.photos.applyMetaFromServer('p1', { ...theirs, metaUpdatedAt: T2 })).toBe(false);
+    expect(await store.photos.applyMetaFromServer('p1', { ...theirs, metaUpdatedAt: T1 })).toBe(false);
+    expect((await store.photos.get('p1'))?.caption).toBe('mine');
+    expect(await store.photos.applyMetaFromServer('p1', { ...theirs, metaUpdatedAt: T2 + 1 })).toBe(true);
+    const p = await store.photos.get('p1');
     expect(p).toMatchObject({ roomId: 'r9', tags: ['LEAK'], caption: 'theirs', metaUpdatedAt: T2 + 1 });
     expect(p).not.toHaveProperty('metaDirty');
   });
 
   it('marking the push clean keeps the flag when the meta was edited again meanwhile', async () => {
-    await store.setPhotoMeta('p1', { roomId: null, tags: ['DAMP'], caption: null }, T1);
-    await store.setPhotoMeta('p1', { roomId: null, tags: ['CRACK'], caption: null }, T2);
-    await store.markPhotoMetaClean('p1', T1);
-    expect((await store.getPhoto('p1'))?.metaDirty).toBe(true);
-    await store.markPhotoMetaClean('p1', T2);
-    expect(await store.getPhoto('p1')).not.toHaveProperty('metaDirty');
+    await store.photos.setMeta('p1', { roomId: null, tags: ['DAMP'], caption: null }, T1);
+    await store.photos.setMeta('p1', { roomId: null, tags: ['CRACK'], caption: null }, T2);
+    await store.photos.markMetaClean('p1', T1);
+    expect((await store.photos.get('p1'))?.metaDirty).toBe(true);
+    await store.photos.markMetaClean('p1', T2);
+    expect(await store.photos.get('p1')).not.toHaveProperty('metaDirty');
   });
 
   it('a photo added with MOVE_IN chosen has that meta, stamped and waiting', async () => {
-    await store.addPhoto('h1', jpeg(), 'p2', T2, { roomId: null, tags: ['MOVE_IN'], caption: null });
-    expect(await store.getPhoto('p2')).toMatchObject({ tags: ['MOVE_IN'], metaUpdatedAt: T2, metaDirty: true });
-    expect((await store.conditionPhotos('h1')).map((p) => p.id)).toEqual(['p2']);
-    await store.setPhotoMeta('p1', { roomId: null, tags: ['move_in'], caption: null }, T2);
-    expect((await store.conditionPhotos('h1')).map((p) => p.id).sort()).toEqual(['p1', 'p2']);
+    await store.photos.add('h1', jpeg(), 'p2', T2, { roomId: null, tags: ['MOVE_IN'], caption: null });
+    expect(await store.photos.get('p2')).toMatchObject({ tags: ['MOVE_IN'], metaUpdatedAt: T2, metaDirty: true });
+    expect((await store.photos.conditionOf('h1')).map((p) => p.id)).toEqual(['p2']);
+    await store.photos.setMeta('p1', { roomId: null, tags: ['move_in'], caption: null }, T2);
+    expect((await store.photos.conditionOf('h1')).map((p) => p.id).sort()).toEqual(['p1', 'p2']);
   });
 
   it('a full resend marks a photo with meta dirty again', async () => {
-    await store.setPhotoMeta('p1', { roomId: null, tags: ['DAMP'], caption: null }, T1);
-    await store.markPhotoMetaClean('p1', T1);
+    await store.photos.setMeta('p1', { roomId: null, tags: ['DAMP'], caption: null }, T1);
+    await store.photos.markMetaClean('p1', T1);
     await store.markAllForResync();
-    expect((await store.getPhoto('p1'))?.metaDirty).toBe(true);
+    expect((await store.photos.get('p1'))?.metaDirty).toBe(true);
   });
 });
 
