@@ -100,7 +100,7 @@
 | 0.87 | 2026-10-09 | Claude (Code), engineer | S4b-BL-168 slice 1: the component table names `PhotoStore` (`data/photo-store.ts`, reached as `LocalStore.photos`) and `HousePhotos` (`pages/house-detail/house-photos.ts`). |
 | 0.88 | 2026-10-09 | Claude (Code), engineer | **Phone file layout** (S4b-BL-168 slice 1, PR #212; [14](14-lead-backlog-and-handoff.md) §10): the photos leave the two big files. `PhotoStore` (`:shared`) owns the photo folder, a photo's file by id and its local edit rules; `HousePhotos.kt` (`:ui`) owns the form's photo state, strip, viewer and details dialog. `CommonRepository` and `HouseEditScreen` keep their public members. |
 | 0.89 | 2026-10-09 | Claude (Code), engineer | S4b-BL-168 slice 2 (web, PR #214): the component table names `RecordStore` (`data/record-store.ts`, `LocalStore.records`) and `ViewingStore` (`data/viewing-store.ts`, `LocalStore.viewings`). |
-| 0.90 | 2026-10-09 | Claude (Code), engineer | S4b-BL-168 slice 3 (web, PR #PRNUM): the component table names `AreaStore` (`data/area-store.ts`, `LocalStore.areas`), `PlaceStore` (`data/place-store.ts`, `LocalStore.places`) and `AreaNoteStore` (`data/area-note-store.ts`, `LocalStore.areaNotes`). |
+| 0.90 | 2026-10-09 | Claude (Code), engineer | S4b-BL-168 slice 3 (web, PR #215): the component table names `AreaStore` (`data/area-store.ts`, `LocalStore.areas`), `PlaceStore` (`data/place-store.ts`, `LocalStore.places`) and `AreaNoteStore` (`data/area-note-store.ts`, `LocalStore.areaNotes`). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 

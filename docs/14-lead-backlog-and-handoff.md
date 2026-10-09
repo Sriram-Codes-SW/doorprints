@@ -148,7 +148,7 @@
 | 0.137 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-168, slice 1 (web, photos)** (PR #213, branch `refactor/web-split-photos-slice`): new §9 *Web file layout* with the analysis of the two big web files, the deletion-test verdicts and the slice plan; the photos moved to `data/photo-store.ts` and `pages/house-detail/house-photos.ts`, no behaviour change. |
 | 0.138 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-168, slice 1 on the phones (photos), PR #212:** the new §10 *Phone file layout* records the analysis of `HouseEditScreen.kt` and `CommonRepository.kt` by kind of data (which splits pass the deletion test and which fail), the slice plan (photos, viewings, areas and places, questions, criteria, brokers, status/rating/checklist, on-device AI) and what slice 1 moved: `PhotoStore` (`:shared`) and `HousePhotos.kt` (`:ui`). Behaviour-neutral: no screenshot re-recorded. [10](10-sprint-log.md) v0.201, [03](03-design.md) v0.88, [06](06-test-plan.md) v0.178. |
 | 0.139 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-168, slice 2 (web, records layer and viewings)** (PR #214, branch `refactor/web-split-records-viewings-slice`): `RecordStore` and `ViewingStore` leave `local-store.service.ts` (1,360 to 1,138 lines); §9 records the measured numbers, what was split and why, and the remaining plan. [10](10-sprint-log.md) v0.202, [03](03-design.md) v0.89. |
-| 0.140 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-168, slice 3 (web, areas, places and area notes)** (PR #PRNUM, branch `refactor/web-split-areas-places-notes-slice`): `AreaStore`, `PlaceStore` and `AreaNoteStore` leave `local-store.service.ts` (1,138 to 985 lines), reached as `store.areas`, `store.places` and `store.areaNotes`; §9 marks slice 3 done with the measured numbers and the verdicts. Behaviour-neutral. |
+| 0.140 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-168, slice 3 (web, areas, places and area notes)** (PR #215, branch `refactor/web-split-areas-places-notes-slice`): `AreaStore`, `PlaceStore` and `AreaNoteStore` leave `local-store.service.ts` (1,138 to 985 lines), reached as `store.areas`, `store.places` and `store.areaNotes`; §9 marks slice 3 done with the measured numbers and the verdicts. Behaviour-neutral. |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 
@@ -698,7 +698,7 @@ Line numbers below are those of `main` at `d39bc6a` (before slice 1): `data/loca
 |---|---|---|---|
 | 1 | **Photos** (PR #213) | store `PhotoStore`; page `HousePhotos` | measured: store -150, page -108 |
 | 2 | Records layer and viewings (PR #214, done) | store | measured: store -222 |
-| 3 | Areas, places, area notes (PR #PRNUM, done) | store | measured: store -153 |
+| 3 | Areas, places, area notes (PR #215, done) | store | measured: store -153 |
 | 4 | Questions | store and page | about -240 |
 | 5 | Criteria and checklist | store and page | about -200 |
 | 6 | Rooms and floor | page | about -150 |
