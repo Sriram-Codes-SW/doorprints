@@ -1,13 +1,13 @@
 {
   "spec": "web/src/app/pages/house-detail/house-detail-page.spec.ts",
   "mutations": [
-    {"file": "web/src/app/pages/house-detail/house-detail-page.ts", "find": "const text = this.listingCut().text;", "replace": "const text = this.listingText.trim();", "expect": "sends only the first characters"},
-    {"file": "web/src/app/pages/house-detail/house-detail-page.ts", "find": "this.cutOfText = cutListing(this.listingText, this.listingMax);", "replace": "this.cutOfText = cutListing(this.listingText, this.listingMax + 1);", "expect": "says how many characters"},
-    {"file": "web/src/app/pages/house-detail/house-detail-page.ts", "find": "this.cutOfText = cutListing(this.listingText, this.listingMax);", "replace": "this.cutOfText = cutListing(this.listingText, this.listingMax - 1);", "expect": "shows no hint at exactly the limit"},
-    {"file": "web/src/app/pages/house-detail/house-detail-page.html", "find": "@if (listingCut().leftOut > 0) {", "replace": "@if (listingCut().leftOut >= 0) {", "expect": "shows no hint at exactly the limit"},
-    {"file": "web/src/app/pages/house-detail/house-detail-page.html", "find": "{ max: listingMax, n: listingCut().leftOut }", "replace": "{ max: listingMax, n: listingCut().leftOut + 1 }", "expect": "says how many characters"},
+    {"file": "web/src/app/pages/house-detail/house-listing-fill.ts", "find": "const text = this.cut().text;", "replace": "const text = this.text.trim();", "expect": "sends only the first characters"},
+    {"file": "web/src/app/pages/house-detail/house-listing-fill.ts", "find": "this.cutOfText = cutListing(this.text, this.max);", "replace": "this.cutOfText = cutListing(this.text, this.max + 1);", "expect": "says how many characters"},
+    {"file": "web/src/app/pages/house-detail/house-listing-fill.ts", "find": "this.cutOfText = cutListing(this.text, this.max);", "replace": "this.cutOfText = cutListing(this.text, this.max - 1);", "expect": "shows no hint at exactly the limit"},
+    {"file": "web/src/app/pages/house-detail/house-detail-page.html", "find": "@if (listing.cut().leftOut > 0) {", "replace": "@if (listing.cut().leftOut >= 0) {", "expect": "shows no hint at exactly the limit"},
+    {"file": "web/src/app/pages/house-detail/house-detail-page.html", "find": "{ max: listing.max, n: listing.cut().leftOut }", "replace": "{ max: listing.max, n: listing.cut().leftOut + 1 }", "expect": "says how many characters"},
     {"file": "web/src/app/pages/house-detail/house-detail-page.html", "find": "aria-describedby=\"listing-fill-hint listing-cut-slot\"", "replace": "aria-describedby=\"listing-fill-hint\"", "expect": "is read out"},
     {"file": "web/src/app/pages/house-detail/house-detail-page.html", "find": "class=\"field-hint\" aria-live=\"polite\"", "replace": "class=\"field-hint\"", "expect": "is read out"},
-    {"file": "web/src/app/pages/house-detail/house-detail-page.html", "find": "            [placeholder]=\"'listingFill.placeholder' | t\"\n            aria-describedby", "replace": "            [attr.maxlength]=\"listingMax\"\n            [placeholder]=\"'listingFill.placeholder' | t\"\n            aria-describedby", "expect": "no longer cuts the paste"}
+    {"file": "web/src/app/pages/house-detail/house-detail-page.html", "find": "            [placeholder]=\"'listingFill.placeholder' | t\"\n            aria-describedby", "replace": "            [attr.maxlength]=\"listing.max\"\n            [placeholder]=\"'listingFill.placeholder' | t\"\n            aria-describedby", "expect": "no longer cuts the paste"}
   ]
 }

@@ -17,23 +17,20 @@
  */
 
 import { Injectable, signal } from '@angular/core';
-import { LocalDataError } from '../core/local-error';
-import { uuid } from '../core/models';
 import type { HouseDto, StatsDto, VisitDto } from '../core/models';
 import { openLocalDb } from './local-db';
 import type { LocalDb, OpenedDb, StorageProblem } from './local-db';
-import { BROKER_TYPE, MAX_BROKER_NAME, MAX_BROKER_PHONE, brokerFromPayload, brokerToPayload, phoneKey, samePhone } from '../shared/broker';
-import type { Broker, BrokerRow } from '../shared/broker';
 import { deleteSavedWalksOfHouse } from './trace-rows';
-import { SETTING_KEYS, compareText, houseFromDto, isoNow, millis, recordFromDto, sortByCreated, visitFromDto } from './records';
+import { SETTING_KEYS, compareText, houseFromDto, isoNow, millis, sortByCreated, visitFromDto } from './records';
 import { PhotoStore } from './photo-store';
-import { RecordStore, sortRecords } from './record-store';
+import { RecordStore } from './record-store';
 import { ViewingStore } from './viewing-store';
 import { AreaStore } from './area-store';
 import { PlaceStore } from './place-store';
 import { AreaNoteStore } from './area-note-store';
 import { QuestionStore } from './question-store';
 import { CriteriaStore } from './criteria-store';
+import { BrokerStore } from './broker-store';
 import type { LengthUnit } from '../shared/room-sizes';
 import { choose as chooseStatus, closeTargets } from '../shared/house-status';
 import type { HouseRecord, PhotoRecord, RecordRecord, SettingRecord, VisitRecord } from './records';
@@ -122,6 +119,14 @@ export class LocalStore {
   /** The checklist criteria and the rating share (`criteria-store.ts`), records of type `criterion` and `preference`. */
   readonly criteria = new CriteriaStore(this.records, () => this.rawHouses());
 
+  /** The brokers (`broker-store.ts`), records of type `broker`, the contact copies on their houses and the contacts migration. */
+  readonly brokers = new BrokerStore(
+    this.records,
+    () => this.db(),
+    () => this.rawDb(),
+    () => this.touch(),
+  );
+
   private opened: Promise<LocalDb> | null = null;
   private settleTimer: ReturnType<typeof setTimeout> | undefined;
   private settleSince = 0;
@@ -130,7 +135,7 @@ export class LocalStore {
   /** The opened database, once the one-off move of the contacts into brokers has run (see {@link ready}). */
   private async db(): Promise<LocalDb> {
     const db = await this.rawDb();
-    this.migrating ??= this.moveContactsToBrokers(db).then(
+    this.migrating ??= this.brokers.migrate().then(
       () => undefined,
       () => undefined,
     );
@@ -210,7 +215,7 @@ export class LocalStore {
     const db = await this.db();
     const existing = await db.get<HouseRecord>('houses', house.id);
     const record: HouseRecord = {
-      ...houseFromDto(await this.withBroker(house, now), true),
+      ...houseFromDto(await this.brokers.link(house, now), true),
       createdAt: existing?.createdAt ?? house.createdAt ?? isoNow(now),
       updatedAt: isoNow(now),
       syncVersion: existing?.syncVersion ?? house.syncVersion ?? 0,
@@ -431,121 +436,6 @@ export class LocalStore {
     this.touch();
   }
 
-  // ---- Brokers (docs/11 5.25, slice 1b: records of type `broker`; the house keeps copies of the contact) ----
-
-  /** The live brokers, oldest edit first; a row whose payload is not a broker (a blank name) is skipped. */
-  async brokers(): Promise<BrokerRow[]> {
-    return brokerRows(await this.records.ofType(BROKER_TYPE));
-  }
-
-  /**
-   * Saves a broker (create or update) and rewrites the name and phone copies on every live house linked to it, so the
-   * exports, the search and an old app keep showing the contact.
-   *
-   * @throws LocalDataError when the name is blank or too long.
-   */
-  async saveBroker(id: string, broker: Broker, now: number = Date.now()): Promise<BrokerRow> {
-    const clean = brokerFromPayload({ ...broker });
-    if (!clean) throw new LocalDataError('error.badRecord');
-    const record = await this.records.save(BROKER_TYPE, id, brokerToPayload(clean), now);
-    const db = await this.db();
-    for (const house of await db.getAll<HouseRecord>('houses')) {
-      if (house.deleted || house.brokerId !== id) continue;
-      if (house.contactName === clean.name && house.contactPhone === (clean.phone ?? null)) continue;
-      await db.put('houses', { ...house, contactName: clean.name, contactPhone: clean.phone ?? null, dirty: true, updatedAt: isoNow(now) });
-    }
-    this.touch();
-    return { id, updatedAt: record.updatedAt ?? null, broker: clean };
-  }
-
-  /** Deletes a broker (a tombstone); its houses lose the link and keep the contact details they hold. */
-  async deleteBroker(id: string, now: number = Date.now()): Promise<void> {
-    await this.records.delete(BROKER_TYPE, id, now);
-    const db = await this.db();
-    for (const house of await db.getAll<HouseRecord>('houses')) {
-      if (house.brokerId === id) await db.put('houses', { ...house, brokerId: null, dirty: true, updatedAt: isoNow(now) });
-    }
-    this.touch();
-  }
-
-  /** The live houses linked to a broker, in list order, for the broker's page. */
-  async brokerHouses(id: string): Promise<HouseRecord[]> {
-    return sortByCreated((await this.rawHouses()).filter((h) => !h.deleted && h.brokerId === id));
-  }
-
-  /**
-   * What {@link saveHouse} does about the broker. A house linked to a broker that exists gets that broker's name and
-   * phone as its contact. A house with a phone and no link is linked to the broker with the same number, or to a new
-   * one made from it (`ensureBroker`); a blank phone never makes a broker. An id that names no broker is left alone.
-   */
-  private async withBroker(house: HouseDto, now: number): Promise<HouseDto> {
-    if (house.brokerId) {
-      const known = (await this.brokers()).find((row) => row.id === house.brokerId);
-      return known ? linked(house, known) : house;
-    }
-    const phone = (house.contactPhone ?? '').trim();
-    if (phone === '') return house;
-    const found = (await this.brokers()).find((row) => samePhone(row.broker.phone, phone));
-    if (found) return linked(house, found);
-    const name = (house.contactName ?? '').trim() || phone;
-    const broker: Broker = { name: name.slice(0, MAX_BROKER_NAME), phone: phone.slice(0, MAX_BROKER_PHONE) };
-    return linked(house, await this.saveBroker(uuid(), broker, now));
-  }
-
-  /** Runs {@link moveContactsToBrokers} again (it does nothing once the flag is set); returns the houses it linked. */
-  async migrateContactsToBrokers(): Promise<number> {
-    return this.moveContactsToBrokers(await this.rawDb());
-  }
-
-  /**
-   * The one-off migration (slice 1b): each live house with a phone and no broker is linked to a broker made from its
-   * contact, one broker per distinct number (the last ten digits; "+91 98400 11111", "098400-11111" and
-   * "9840011111" are one). A broker that already has the number is reused. The flag `brokers.migrated` is set at the
-   * end, so a person who later unlinks a house on purpose is never re-linked, and a run that stopped half way
-   * resumes. Works on the raw database because {@link db} waits for it.
-   */
-  private async moveContactsToBrokers(db: LocalDb, now: number = Date.now()): Promise<number> {
-    if (await db.get<SettingRecord>('settings', SETTING_KEYS.brokersMigrated)) return 0;
-    const houses = sortByCreated(
-      (await db.getAll<HouseRecord>('houses')).filter((h) => !h.deleted && !h.brokerId && (h.contactPhone ?? '').trim() !== ''),
-    );
-    const groups = new Map<string, HouseRecord[]>();
-    for (const house of houses) {
-      const phone = (house.contactPhone ?? '').trim();
-      // A number too short to compare stands only for itself.
-      const key = phoneKey(phone) ?? `raw:${phone}`;
-      groups.set(key, [...(groups.get(key) ?? []), house]);
-    }
-    const existing = brokerRows(
-      (await db.getAllByIndex<RecordRecord>('records', 'type', BROKER_TYPE)).filter((r) => !r.deleted),
-    );
-    let linkedHouses = 0;
-    for (const [key, members] of groups) {
-      // The newest edit names the broker.
-      const latest = members.reduce((a, b) => (millis(b.updatedAt) >= millis(a.updatedAt) ? b : a));
-      let row = existing.find((r) => (phoneKey(r.broker.phone) ?? `raw:${(r.broker.phone ?? '').trim()}`) === key);
-      if (!row) {
-        const phone = (latest.contactPhone ?? '').trim();
-        const name = (latest.contactName ?? '').trim() || phone;
-        const broker: Broker = { name: name.slice(0, MAX_BROKER_NAME), phone: phone.slice(0, MAX_BROKER_PHONE) };
-        const record = recordFromDto(
-          { type: BROKER_TYPE, id: uuid(), payload: brokerToPayload(broker), updatedAt: isoNow(now), deleted: false, syncVersion: 0 },
-          true,
-        );
-        await db.put('records', record);
-        row = { id: record.id, updatedAt: record.updatedAt ?? null, broker };
-        existing.push(row);
-      }
-      for (const house of members) {
-        await db.put('houses', { ...house, brokerId: row.id, dirty: true, updatedAt: isoNow(now) });
-        linkedHouses += 1;
-      }
-    }
-    await db.put<SettingRecord>('settings', { key: SETTING_KEYS.brokersMigrated, value: '1' });
-    if (linkedHouses > 0) this.touch();
-    return linkedHouses;
-  }
-
   // ---- Settings ----
 
   /** A per-browser setting, or null when unset. Settings are never synced or exported. */
@@ -686,21 +576,6 @@ async function clearCacheStorage(): Promise<void> {
   } catch {
     // Cache Storage unavailable or refused; the stores above are cleared either way.
   }
-}
-
-/** The brokers among some `broker` records, as rows; a payload that is not a broker is skipped as untrusted. */
-function brokerRows(rows: readonly RecordRecord[]): BrokerRow[] {
-  const out: BrokerRow[] = [];
-  for (const row of sortRecords(rows)) {
-    const broker = brokerFromPayload(row.payload);
-    if (broker) out.push({ id: row.id, updatedAt: row.updatedAt ?? null, broker });
-  }
-  return out;
-}
-
-/** The house linked to a broker: its id, and the broker's name and phone as the contact copies. */
-function linked(house: HouseDto, row: BrokerRow): HouseDto {
-  return { ...house, brokerId: row.id, contactName: row.broker.name, contactPhone: row.broker.phone ?? null };
 }
 
 /** Visits in export order: by arrival, then id. */
