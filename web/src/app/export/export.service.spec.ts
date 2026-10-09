@@ -23,6 +23,7 @@ import type { PhotoStore } from '../data/photo-store';
 import type { AreaNoteStore } from '../data/area-note-store';
 import type { AreaStore } from '../data/area-store';
 import type { PlaceStore } from '../data/place-store';
+import type { QuestionStore } from '../data/question-store';
 import type { ViewingStore } from '../data/viewing-store';
 import { LocalDataError } from '../core/local-error';
 import { DEFAULT_EXPORT_OPTIONS } from './export-model';
@@ -48,7 +49,7 @@ function fakeStore(photos: PhotoRecord[]): Partial<LocalStore> {
     brokers: () => Promise.resolve(FIXTURE_BROKERS),
     criterionRows: () => Promise.resolve([]),
     preferenceRows: () => Promise.resolve([]),
-    questionRows: () => Promise.resolve([]),
+    questions: { rows: () => Promise.resolve([]) } as unknown as QuestionStore,
     viewings: { rows: () => Promise.resolve([]) } as unknown as ViewingStore,
     areas: { rows: () => Promise.resolve([]) } as unknown as AreaStore,
     places: { rows: () => Promise.resolve([]) } as unknown as PlaceStore,
@@ -283,7 +284,7 @@ describe('lengthUnit (slice 1c)', () => {
       brokers: () => Promise.resolve(FIXTURE_BROKERS),
       criterionRows: () => Promise.resolve([]),
       preferenceRows: () => Promise.resolve([]),
-      questionRows: () => Promise.resolve([]),
+      questions: { rows: () => Promise.resolve([]) } as unknown as QuestionStore,
       viewings: { rows: () => Promise.resolve([]) } as unknown as ViewingStore,
       areas: { rows: () => Promise.resolve([]) } as unknown as AreaStore,
       places: { rows: () => Promise.resolve([]) } as unknown as PlaceStore,

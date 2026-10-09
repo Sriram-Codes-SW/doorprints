@@ -1,0 +1,33 @@
+{
+  "spec": "web/src/app/data/question-store.spec.ts",
+  "mutations": [
+    {"file": "web/src/app/data/question-store.ts", "find": "updatedAt: row.updatedAt ?? null, question", "replace": "updatedAt: null, question", "expect": "gives each question row its record id"},
+    {"file": "web/src/app/data/question-store.ts", "find": "sortQuestions((await this.rows()).map((r) => r.question))", "replace": "(await this.rows()).map((r) => r.question)", "expect": "lists the bank by sort number then id"},
+    {"file": "web/src/app/data/question-store.ts", "find": "if (written > 0) this.changed();", "replace": "this.changed();", "expect": "bumps the revision when a seeding writes something"},
+    {"file": "web/src/app/data/question-store.ts", "find": "    await db.put<SettingRecord>('settings', { key: SETTING_KEYS.questionsSeeded, value: '1' });\n", "replace": "", "expect": "seeds the first start in the language it is asked for"},
+    {"file": "web/src/app/data/question-store.ts", "find": "await this.writeDefaults(db, language(), now, false);", "replace": "await this.writeDefaults(db, 'en', now, false);", "expect": "seeds the first start in the language it is asked for"},
+    {"file": "web/src/app/data/question-store.ts", "find": "    if (await db.get<SettingRecord>('settings', SETTING_KEYS.questionsSeeded)) return;\n", "replace": "", "expect": "seeds once per install"},
+    {"file": "web/src/app/data/question-store.ts", "find": "if (this.seedLanguage) await this.seedOnce(this.seedLanguage);", "replace": "", "expect": "seeds again after Remove all data"},
+    {"file": "web/src/app/data/question-store.ts", "find": "isoNow(overwrite ? now : DEFAULT_QUESTIONS_SEEDED_AT)", "replace": "isoNow(now)", "expect": "seeds every default clean and older than any real edit"},
+    {"file": "web/src/app/data/question-store.ts", "find": "if (existing && !overwrite) continue;", "replace": "if (existing && overwrite) continue;", "expect": "resets every default, edited ones included"},
+    {"file": "web/src/app/data/question-store.ts", "find": "        },\n        overwrite,\n      );", "replace": "        },\n        false,\n      );", "expect": "resets every default, edited ones included"},
+    {"file": "web/src/app/data/question-store.ts", "find": "&& live >= MAX_QUESTIONS) continue;", "replace": "&& live > MAX_QUESTIONS) continue;", "expect": "brings back only as many defaults as fit"},
+    {"file": "web/src/app/data/question-store.ts", "find": "      if (!existing || existing.deleted) live += 1;\n", "replace": "", "expect": "brings back only as many defaults as fit"},
+    {"file": "web/src/app/data/question-store.ts", "find": "syncVersion: existing?.syncVersion ?? 0,", "replace": "syncVersion: 0,", "expect": "keeps the sync version of a default"},
+    {"file": "web/src/app/data/question-store.ts", "find": "!isDefaultQuestionId(question.id) && !isCustomQuestionId(question.id)", "replace": "!isCustomQuestionId(question.id)", "expect": "accepts the fixed id of a default"},
+    {"file": "web/src/app/data/question-store.ts", "find": "if (!isDefaultQuestionId(question.id) && !isCustomQuestionId(question.id)) throw", "replace": "if (false) throw", "expect": "refuses an id that is not q_ and 8 lowercase hex characters"},
+    {"file": "web/src/app/data/question-store.ts", "find": "if (text === '' || text.length > MAX_QUESTION_TEXT) throw", "replace": "if (text.length > MAX_QUESTION_TEXT) throw", "expect": "trims the text on a save"},
+    {"file": "web/src/app/data/question-store.ts", "find": "if (text === '' || text.length > MAX_QUESTION_TEXT) throw", "replace": "if (text === '' || text.length >= MAX_QUESTION_TEXT) throw", "expect": "trims the text on a save"},
+    {"file": "web/src/app/data/question-store.ts", "find": "(await this.records.ofType(QUESTION_TYPE)).length >= MAX_QUESTIONS) {", "replace": "(await this.records.ofType(QUESTION_TYPE)).length > MAX_QUESTIONS) {", "expect": "counts only live questions toward the cap"},
+    {"file": "web/src/app/data/question-store.ts", "find": "if (!(await this.records.get(QUESTION_TYPE, question.id)) &&", "replace": "if (true &&", "expect": "lets a stored question be edited when the bank is full"},
+    {"file": "web/src/app/data/question-store.ts", "find": "if (asked === '' || asked.length > MAX_QUESTION_TEXT) throw", "replace": "if (asked.length > MAX_QUESTION_TEXT) throw", "expect": "says the text is bad, not that the bank is full"},
+    {"file": "web/src/app/data/question-store.ts", "find": "asked.length > MAX_QUESTION_TEXT) throw", "replace": "asked.length >= MAX_QUESTION_TEXT) throw", "expect": "accepts a text of exactly 300 characters once trimmed"},
+    {"file": "web/src/app/data/question-store.ts", "find": "const id = await this.records.freshId(QUESTION_TYPE, newId);", "replace": "const id = newId();", "expect": "gives up with a bad-record error when every drawn id clashes"},
+    {"file": "web/src/app/data/question-store.ts", "find": "Math.max(max, q.sort), -1) + 1;", "replace": "Math.max(max, q.sort), 0) + 1;", "expect": "numbers the first question of an empty bank 0"},
+    {"file": "web/src/app/data/question-store.ts", "find": "Math.max(max, q.sort), -1) + 1;", "replace": "Math.max(max, q.sort), -1) + 2;", "expect": "numbers the first question of an empty bank 0"},
+    {"file": "web/src/app/data/question-store.ts", "find": "category: QuestionCategory = 'OTHER',", "replace": "category: QuestionCategory = 'MONEY',", "expect": "adds with the category Other and the scope Both"},
+    {"file": "web/src/app/data/question-store.ts", "find": "appliesTo, defaultOn: false, sort };", "replace": "appliesTo, defaultOn: true, sort };", "expect": "adds with the category Other and the scope Both"},
+    {"file": "web/src/app/data/question-store.ts", "find": "await this.records.delete(QUESTION_TYPE, id, now);", "replace": "await this.records.delete(QUESTION_TYPE, id + 'x', now);", "expect": "bumps the revision on a save and on the delete"},
+    {"file": "web/src/app/data/question-store.ts", "find": "for (const question of list) await this.save(question, now);", "replace": "for (const question of list.slice(1)) await this.save(question, now);", "expect": "keeps the questions saved before the one that fails"}
+  ]
+}
