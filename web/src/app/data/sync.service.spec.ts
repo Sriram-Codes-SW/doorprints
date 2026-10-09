@@ -346,7 +346,7 @@ describe('SyncService', () => {
       expect(api.since.photo).toEqual([]);
       expect(api.fetchedPhotos).toEqual([]);
       expect(await store.allHouses()).toEqual([]);
-      expect(await store.allPhotos()).toEqual([]);
+      expect(await store.photos.all()).toEqual([]);
       expect(sync.lastOutcome()).toBeNull();
     });
 
@@ -657,21 +657,21 @@ describe('SyncService', () => {
 
     it('sends photo deletes before uploads, so a removed photo is not re-uploaded', async () => {
       await store.saveHouse(house('local-1'), Date.parse('2026-09-01T00:00:00.000Z'));
-      await store.addPhoto('local-1', new Blob([new Uint8Array([1])], { type: 'image/jpeg' }), 'p-keep');
-      await store.addPhoto('local-1', new Blob([new Uint8Array([2])], { type: 'image/jpeg' }), 'p-gone');
-      const gone = await store.getPhoto('p-gone');
-      await store.putPhotoRecord({ ...gone!, uploaded: true });
-      await store.deletePhoto('p-gone');
+      await store.photos.add('local-1', new Blob([new Uint8Array([1])], { type: 'image/jpeg' }), 'p-keep');
+      await store.photos.add('local-1', new Blob([new Uint8Array([2])], { type: 'image/jpeg' }), 'p-gone');
+      const gone = await store.photos.get('p-gone');
+      await store.photos.put({ ...gone!, uploaded: true });
+      await store.photos.delete('p-gone');
       await sync.syncNow(true);
       expect(api.deletedPhotos).toEqual(['p-gone']);
       expect(api.uploadedPhotos).toEqual(['p-keep']);
-      expect(await store.getPhoto('p-gone')).toBeUndefined();
+      expect(await store.photos.get('p-gone')).toBeUndefined();
     });
 
     it('removes a photo the server says is gone, and fetches one it says is new', async () => {
       recordedServer();
       // Seed the tombstoned photo so there is something for the delete to remove.
-      await store.putPhotoRecord({
+      await store.photos.put({
         id: PHOTO_GONE,
         houseId: HOUSE_ID,
         blob: new Blob([new Uint8Array([9])], { type: 'image/jpeg' }),
@@ -684,8 +684,8 @@ describe('SyncService', () => {
         uploaded: true,
       });
       await sync.syncNow(true);
-      expect(await store.getPhoto(PHOTO_GONE)).toBeUndefined();
-      const fetched = await store.getPhoto(PHOTO_NEW);
+      expect(await store.photos.get(PHOTO_GONE)).toBeUndefined();
+      const fetched = await store.photos.get(PHOTO_NEW);
       expect(api.fetchedPhotos).toEqual([PHOTO_NEW]);
       expect(fetched?.uploaded).toBe(true);
       expect(fetched?.syncVersion).toBe(7);
@@ -695,7 +695,7 @@ describe('SyncService', () => {
       api.photoChanges = () => of(parse<PhotoChangeDto>(PHOTOS_SINCE));
       await sync.syncNow(true);
       expect(api.fetchedPhotos).toEqual([]);
-      expect(await store.getPhoto(PHOTO_NEW)).toBeUndefined();
+      expect(await store.photos.get(PHOTO_NEW)).toBeUndefined();
       // The cursor still moves: those changes have been considered and need not be sent again.
       expect((await store.cursors()).photo).toBe(8);
     });
@@ -719,23 +719,23 @@ describe('SyncService', () => {
 
     it('uploads the bytes first and then sends the meta, once', async () => {
       await store.saveHouse(house('local-1'), Date.parse('2026-09-01T00:00:00.000Z'));
-      await store.addPhoto('local-1', jpeg(), 'p-1', 1000);
-      await store.setPhotoMeta('p-1', { roomId: 'r1', tags: ['DAMP', 'leaky tap'], caption: 'Corner' }, 5000);
+      await store.photos.add('local-1', jpeg(), 'p-1', 1000);
+      await store.photos.setMeta('p-1', { roomId: 'r1', tags: ['DAMP', 'leaky tap'], caption: 'Corner' }, 5000);
       expect(await sync.pendingCount()).toBe(2);
       await sync.syncNow(true);
       expect(api.uploadedPhotos).toEqual(['p-1']);
       expect(api.pushedMeta).toEqual([{ id: 'p-1', meta: meta() }]);
-      expect((await store.getPhoto('p-1'))?.metaDirty).toBeUndefined();
+      expect((await store.photos.get('p-1'))?.metaDirty).toBeUndefined();
       await sync.syncNow(true);
       expect(api.pushedMeta).toHaveLength(1);
     });
 
     it('sends the meta of a photo that is already on the server, and of nobody else', async () => {
       await store.saveHouse(house('local-1'), Date.parse('2026-09-01T00:00:00.000Z'));
-      await store.addPhoto('local-1', jpeg(), 'p-old', 1000);
-      await store.addPhoto('local-1', jpeg(), 'p-plain', 1000);
-      for (const id of ['p-old', 'p-plain']) await store.putPhotoRecord({ ...(await store.getPhoto(id))!, uploaded: true });
-      await store.setPhotoMeta('p-old', { roomId: null, tags: ['MOVE_IN'], caption: null }, 7000);
+      await store.photos.add('local-1', jpeg(), 'p-old', 1000);
+      await store.photos.add('local-1', jpeg(), 'p-plain', 1000);
+      for (const id of ['p-old', 'p-plain']) await store.photos.put({ ...(await store.photos.get(id))!, uploaded: true });
+      await store.photos.setMeta('p-old', { roomId: null, tags: ['MOVE_IN'], caption: null }, 7000);
       await sync.syncNow(true);
       expect(api.uploadedPhotos).toEqual([]);
       expect(api.pushedMeta.map((m) => m.id)).toEqual(['p-old']);
@@ -744,12 +744,12 @@ describe('SyncService', () => {
 
     it('takes the meta the server answers when it is newer than ours (last write wins on metaUpdatedAt)', async () => {
       await store.saveHouse(house('local-1'), Date.parse('2026-09-01T00:00:00.000Z'));
-      await store.addPhoto('local-1', jpeg(), 'p-1', 1000);
-      await store.putPhotoRecord({ ...(await store.getPhoto('p-1'))!, uploaded: true });
-      await store.setPhotoMeta('p-1', { roomId: null, tags: ['DAMP'], caption: 'mine' }, 5000);
+      await store.photos.add('local-1', jpeg(), 'p-1', 1000);
+      await store.photos.put({ ...(await store.photos.get('p-1'))!, uploaded: true });
+      await store.photos.setMeta('p-1', { roomId: null, tags: ['DAMP'], caption: 'mine' }, 5000);
       api.metaAnswer = (id) => ({ id, houseId: 'local-1', deleted: false, syncVersion: 2000, roomId: null, tags: ['LEAK'], caption: 'theirs', metaUpdatedAt: 9000 });
       await sync.syncNow(true);
-      const after = await store.getPhoto('p-1');
+      const after = await store.photos.get('p-1');
       expect(after?.caption).toBe('theirs');
       expect(after?.tags).toEqual(['LEAK']);
       expect(after?.metaUpdatedAt).toBe(9000);
@@ -758,31 +758,31 @@ describe('SyncService', () => {
 
     it('keeps ours when the server answers an older meta, and clears the flag', async () => {
       await store.saveHouse(house('local-1'), Date.parse('2026-09-01T00:00:00.000Z'));
-      await store.addPhoto('local-1', jpeg(), 'p-1', 1000);
-      await store.putPhotoRecord({ ...(await store.getPhoto('p-1'))!, uploaded: true });
-      await store.setPhotoMeta('p-1', { roomId: null, tags: ['DAMP'], caption: 'mine' }, 5000);
+      await store.photos.add('local-1', jpeg(), 'p-1', 1000);
+      await store.photos.put({ ...(await store.photos.get('p-1'))!, uploaded: true });
+      await store.photos.setMeta('p-1', { roomId: null, tags: ['DAMP'], caption: 'mine' }, 5000);
       api.metaAnswer = (id) => ({ id, houseId: 'local-1', deleted: false, syncVersion: 2000, roomId: null, tags: [], caption: 'older', metaUpdatedAt: 4000 });
       await sync.syncNow(true);
-      const after = await store.getPhoto('p-1');
+      const after = await store.photos.get('p-1');
       expect(after?.caption).toBe('mine');
       expect(after?.metaDirty).toBeUndefined();
     });
 
     it('pulls a newer meta onto a photo already here, and ignores an older or equal one', async () => {
       await store.saveHouse(house(HOUSE_ID), Date.parse('2026-09-01T00:00:00.000Z'));
-      await store.addPhoto(HOUSE_ID, jpeg(), PHOTO_NEW, 1000);
-      await store.putPhotoRecord({ ...(await store.getPhoto(PHOTO_NEW))!, uploaded: true });
-      await store.setPhotoMeta(PHOTO_NEW, { roomId: null, tags: [], caption: 'local' }, 5000);
-      await store.putPhotoRecord({ ...(await store.getPhoto(PHOTO_NEW))!, metaDirty: false });
+      await store.photos.add(HOUSE_ID, jpeg(), PHOTO_NEW, 1000);
+      await store.photos.put({ ...(await store.photos.get(PHOTO_NEW))!, uploaded: true });
+      await store.photos.setMeta(PHOTO_NEW, { roomId: null, tags: [], caption: 'local' }, 5000);
+      await store.photos.put({ ...(await store.photos.get(PHOTO_NEW))!, metaDirty: false });
       const change = (at: number, caption: string): PhotoChangeDto => ({
         id: PHOTO_NEW, houseId: HOUSE_ID, deleted: false, syncVersion: 50 + at, roomId: 'r9', tags: ['view', 'VIEW', 'Extra'], caption, metaUpdatedAt: at,
       });
       api.photoChanges = () => of([change(5000, 'same time')]);
       await sync.syncNow(true);
-      expect((await store.getPhoto(PHOTO_NEW))?.caption).toBe('local');
+      expect((await store.photos.get(PHOTO_NEW))?.caption).toBe('local');
       api.photoChanges = () => of([change(6000, 'newer')]);
       await sync.syncNow(true);
-      const after = await store.getPhoto(PHOTO_NEW);
+      const after = await store.photos.get(PHOTO_NEW);
       expect(after?.caption).toBe('newer');
       expect(after?.roomId).toBe('r9');
       // Coerced on read: the fixed tag in any case is the fixed key and the repeat goes.
@@ -795,7 +795,7 @@ describe('SyncService', () => {
       api.photoChanges = () =>
         of([{ id: PHOTO_NEW, houseId: HOUSE_ID, contentType: 'image/jpeg', deleted: false, syncVersion: 12, roomId: 'r1', tags: ['MOVE_IN'], caption: 'Hall', metaUpdatedAt: 8000 }]);
       await sync.syncNow(true);
-      const got = await store.getPhoto(PHOTO_NEW);
+      const got = await store.photos.get(PHOTO_NEW);
       expect(got).toMatchObject({ roomId: 'r1', tags: ['MOVE_IN'], caption: 'Hall', metaUpdatedAt: 8000, uploaded: true });
       expect(got?.metaDirty).toBeUndefined();
     });
@@ -933,7 +933,7 @@ describe('SyncService', () => {
       expect(sync.lastError()).toBeNull();
       expect(waits).toEqual([1000]);
       expect(api.fetchedPhotos).toEqual([PHOTO_NEW, PHOTO_NEW]);
-      expect(await store.getPhoto(PHOTO_NEW)).toBeTruthy();
+      expect(await store.photos.get(PHOTO_NEW)).toBeTruthy();
       expect((await store.cursors()).photo).toBe(8);
       expect(sync.lastOutcome()).not.toBeNull();
     });
@@ -1055,7 +1055,7 @@ describe('SyncService', () => {
     it('stops the photo phase on the first "storage full" and says so in the app language', async () => {
       recordedServer();
       const put = vi
-        .spyOn(store, 'putPhotoRecord')
+        .spyOn(store.photos, 'put')
         .mockRejectedValue(new DOMException('The quota has been exceeded.', 'QuotaExceededError'));
       await sync.syncNow(true);
       // Translated advice, not the browser's English DOMException text through error.detail.
@@ -1382,7 +1382,7 @@ describe('SyncService', () => {
     it('counts what the server has not received yet', async () => {
       await store.saveHouse(house('local-1'), Date.parse('2026-09-01T00:00:00.000Z'));
       await store.saveHouse(house('local-2'), Date.parse('2026-09-01T00:00:00.000Z'));
-      await store.addPhoto('local-1', new Blob([new Uint8Array([1])], { type: 'image/jpeg' }), PHOTO_NEW);
+      await store.photos.add('local-1', new Blob([new Uint8Array([1])], { type: 'image/jpeg' }), PHOTO_NEW);
       expect(await sync.pendingCount()).toBe(3);
     });
   });

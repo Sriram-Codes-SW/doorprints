@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.136 |
+| Version | 0.137 |
 | Date | 2026-10-08 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..183); this file lists the lead-level items and points to the rest. |
@@ -145,6 +145,7 @@
 | 0.134 | 2026-10-09 | Claude (Code), engineer | S4b-BL-175-F1 and -F2 fixed, -F3 documented ([10](10-sprint-log.md) v0.197): the Anthropic adapters retry once with `tool_choice: auto` on the documented 400; the website reads a redirect as *unavailable*. A change to the Anthropic request or the redirect mode re-runs `node --test tools/fake-ai-provider`, the wire specs and `browser-check.mjs` (§7). |
 | 0.135 | 2026-10-09 | Claude (Code), engineer | S4b-BL-172 Done ([10](10-sprint-log.md)): `FROM` images in `backend/Dockerfile` and `backend/db/Dockerfile` pinned by `@sha256:` digest; `check-dockerfile-pins.py` in `security.yml`. |
 | 0.136 | 2026-10-09 | Claude (Code), engineer | S4b-BL-190 done in code ([10](10-sprint-log.md) v0.199): the `local-model` suite's defaults and request limit changed; the proof is the next manual run of the suite, whose summary the lead reads. |
+| 0.137 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-168, slice 1 (web, photos)** (PR #213, branch `refactor/web-split-photos-slice`): new §9 *Web file layout* with the analysis of the two big web files, the deletion-test verdicts and the slice plan; the photos moved to `data/photo-store.ts` and `pages/house-detail/house-photos.ts`, no behaviour change. |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 
@@ -642,3 +643,75 @@ under half a day, M one to two days, L more; *safe now* means no behaviour chang
 | 15 | **Done** 2026-09-29. **Stale docs**: `docs/schemas/README.md` §9 lists S4-00/a, /b as uncommitted and /g as open (done: `LenientChecklistSerializer`); the `local-db.ts` comment names "Sprint 4b" for what is now 4c. | | Next PR. | S |
 
 **Order before the next feature code:** the safe S items as one pull request (`chore/sprint-readiness`: findings 4a, 4b, 5, 6, 7a, 12's small items, 15), then the IndexedDB upgrade path with S4b-BL-66 (2), the `SyncBackend` seam (1) and the backup rule (3) each as their own change; 3b then comes with the COOP/CSP and Noto change (7b, 11) and the rewritten docs/13 (7c).
+
+## 9. Web file layout (S4b-BL-168)
+
+Owner decision 2026-10-09 ("easy to read code is more maintainable"): split the web's big files **by kind of data**, so
+that adding or changing a house value edits one small file. One kind per pull request, each behaviour-neutral. The rule
+of the row (S4b-BL-168 in [10](10-sprint-log.md) §12.7) is the **deletion test**: delete the new module; its complexity
+must reappear in several callers, otherwise do not split. Here "callers" are the modules, template sections and guards
+that read or write the kind. At least three distinct ones passes; one (the file we are shrinking) fails.
+
+Line numbers below are those of `main` at `d39bc6a` (before slice 1): `data/local-store.service.ts` 1,510 lines,
+`pages/house-detail/house-detail-page.ts` 1,763 lines (template 1,106).
+
+**The store (`local-store.service.ts`)**
+
+| Kind | Lines | Other kinds it touches | Deletion test |
+|---|---|---|---|
+| Core: open, revision, settle | 150-224 | all | stays |
+| Houses and Taken / Close this hunt | 226-315, 497-536 | photos (`deleteHouse`), trace rows, brokers (`withBroker`) | stays (the heart); Taken/Close **fails** (houses only) |
+| Visits | 316-393 | none | **fails**: plain CRUD of the same shape as houses and records, no rule of its own |
+| **Photos** | 394-496, 538-566 (132) | houses (delete), import, full resend | **passes**: sync (13 call sites), local-data (6), import (5), Drive rows (3), export (1), resend |
+| Import, derived, clear everything | 568-599, 1397-1476 | houses, visits, photos, records | **fails**: write several stores at once, 1-3 callers |
+| Records layer (type index, save, delete, mark clean) | 601-681 | every record family, sync | passes with the families below, not alone |
+| Brokers | 711-824 | houses (contact copies on every linked house), the `db()` migration gate | passes, entangled with houses |
+| Criteria and rating share | 826-943 | records, houses (checklists) | passes |
+| Questions | 945-1076 | records, a seed setting, the language | passes |
+| Viewings | 1078-1170 | records | passes |
+| Areas, places, area notes | 1172-1333 | records | passes |
+| Settings (unit, reminders, cursors) | 1335-1395 | none | passes weakly (small) |
+
+**The house page (`house-detail-page.ts`)**
+
+| Kind | Lines (ts) | Other kinds it touches | Deletion test |
+|---|---|---|---|
+| **Photos** | 277-289, 341, 510-521, 1191-1219, 1607-1700 (about 150) + template 972-1067 | the draft (id, label, rooms), the Moving in card (condition photos), the leave guard, the reload guard, the large view | **passes**: five consumers |
+| Listing paste / Extract | 175-208, 603-636, 794-846 (about 120) | the draft, the address fill, the shared listing on arrival | passes, borderline (three) |
+| Location, pin, geocode, overlay | 233-265, 677-716, 1252-1380, 1508-1516 (about 260) | listing fill, saved walks, persist | passes, entangled with four kinds |
+| Rooms and floor | 986-1141 (about 155) | the draft, photo room names, the duplicate-flat warning | passes |
+| Questions | 297-318, 898-985 (about 110) | the draft, persist | passes weakly |
+| Checklist, score, rating | 320-340, 847-870, 1222-1250 (about 80) | scoring, the list | passes weakly |
+| Visits | 268-275, 1561-1606 (about 60) | none | **fails** |
+| Broker | 222-230, 1142-1164 (about 35) | the draft | **fails**: two methods |
+| Cost line | 739-770 (about 32) | none | **fails** |
+| Status and Moving in | 1165-1195, 1495-1507 | already a child card | **fails** |
+| Draft, dirty, persist | 870-897, 1379-1500 | everything | stays (core) |
+| Leave and back guard, delete, toolbar, large view | 533-600, 754-793, 1517-1560, 350-430 | everything | stays (core) |
+
+**Slice plan** (smallest and most self-contained first; the reductions after slice 1 are estimates)
+
+| # | Slice | Where | Expected reduction |
+|---|---|---|---|
+| 1 | **Photos** (PR #213) | store `PhotoStore`; page `HousePhotos` | measured: store -150, page -108 |
+| 2 | Records layer and viewings | store | about -200 |
+| 3 | Areas, places, area notes | store | about -160 |
+| 4 | Questions | store and page | about -240 |
+| 5 | Criteria and checklist | store and page | about -200 |
+| 6 | Rooms and floor | page | about -150 |
+| 7 | Brokers (after a seam for writing houses) | store and page | about -150 |
+| 8 | Listing paste / Extract | page | about -120 |
+| 9 | Location and geocode (the hardest) | page | about -260 |
+
+Expected end state: the store about 600 lines, the page about 900. Settings may follow. Not split on purpose: the kinds
+marked *fails*. Android (`HouseEditScreen.kt`, `CommonRepository.kt`) is a separate series.
+
+**Slice 1 (web, photos), measured.** `local-store.service.ts` 1,510 to 1,360 (new `photo-store.ts`, 190);
+`house-detail-page.ts` 1,763 to 1,655 (new `house-photos.ts`, 191). Callers use `store.photos.<method>`. The five
+hand-written `Pick<PhotoMeta, 'roomId' | 'tags' | 'caption'>` became one `PhotoMetaInput`. Files a new photo field
+touches by hand, traced: before 7 (`photo-tags.ts`, `records.ts`, `local-store.service.ts`, `local-data.service.ts`,
+`house-detail-page.ts`, its template, `photo-meta-editor.ts`); after 5, and neither big `.ts` file. The photos card's
+markup stays in the page template: moving it into a child component would add a host element and move its styles, which
+is not byte-for-byte. Tests: `data/photo-store.spec.ts` (13, passed on the old code first) and
+`pages/house-detail/house-photos.spec.ts` (20, the page's photos card through the DOM, also passed first); the full
+suite goes from 3,778 to 3,811 tests. The live UI run (`tools/live-ui`) is for the web deploy after the merge.

@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.86 |
+| Version | 0.87 |
 | Date | 2026-10-08 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -97,6 +97,7 @@
 | 0.84 | 2026-10-09 | Claude (Code), engineer | §12 limits row: the token bucket is `common/TokenBucketRateLimiter` (moved out of `ai.web`, S4b-BL-165). |
 | 0.85 | 2026-10-09 | Claude (Code) | §12.1: the two caps on open pairing requests are settings (`PAIRING_MAX_OPEN`, `PAIRING_MAX_PER_SOURCE`; defaults unchanged, below 1 refused at start), lifted only by the API scan (S4b-BL-191, #205). |
 | 0.86 | 2026-10-09 | Claude (Code), engineer | **§13.2: the three findings of the keyless provider checks** (S4b-BL-175-F1..F3, [10](10-sprint-log.md) v0.197, [06](06-test-plan.md) v0.175 TC-AI-30 and TC-AI-31). **F1:** a model that refuses a forced tool (a 400 saying `tool_choice` is not supported) is asked again once with `tool_choice: auto` and the instruction `Answer by calling the <name> tool.`, on both platforms, driven by the vectors `anthropicRequest` (two unforced cases) and `anthropicToolChoice` (8 rows). **F2:** the website asks for `redirect: 'manual'` and reads a browser's opaque redirect as *unavailable*, as the phones read a 3xx; `providerErrors` gains three 3xx rows. **F3:** no code change; the paragraph "`Retry-After` across origins" states the browser limit and the 60 s default both stacks already use. |
+| 0.87 | 2026-10-09 | Claude (Code), engineer | S4b-BL-168 slice 1: the component table names `PhotoStore` (`data/photo-store.ts`, reached as `LocalStore.photos`) and `HousePhotos` (`pages/house-detail/house-photos.ts`). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -388,6 +389,8 @@ is no Mac and no paid Apple account.
 |---|---|---|
 | `ConfigService` | `core/config.*` | Base URL + key in sessionStorage, or localStorage with "Remember on this device". **Since Sprint 4a `configGuard` is gone** and no route is guarded: the app is local-first, and a configured server only adds sync (section 16.4). |
 | `LocalDb`, `MemoryDb`, `LocalStore` | `data/local-db.ts`, `data/local-store.service.ts` | The browser's own copy of everything: IndexedDB stores `houses`, `visits`, `photos` (blobs) and `settings`, database `doorprints` version 1. A hand-written wrapper rather than Dexie or `idb` (ADR-19). `MemoryDb` is the fallback when IndexedDB is blocked — the app still works for the session and says clearly that nothing is being kept. |
+| `PhotoStore` | `data/photo-store.ts` (S4b-BL-168) | The photo rows, reached as `LocalStore.photos`: the 20-per-house limit, a tombstone only for a photo the server has, the room/tags/caption meta with its last-write-wins stamp, what a full resend marks. Separate so a change to what a photo holds does not edit the 1,300-line `LocalStore`. |
+| `HousePhotos` | `pages/house-detail/house-photos.ts` (S4b-BL-168) | The photos card of the house page: the list, adding a batch, delete, the details editor. The page owns the draft, the large view and the leave guard. |
 | `SyncService`, `syncRules` | `data/sync.service.ts`, `data/sync-rules.ts` | The same push/pull, cursor and last-write-wins rules as Android (section 10), against the API-key server when one is configured. Optional. The loop (cursors, progress, *Stop*, cancellation, the 429 wait) stays here; every remote call goes through `SYNC_BACKEND` (below). `serverBehind`, `wireVersion` and the `MergeRule` type live in `sync-rules.ts` (re-exported from `sync.service.ts`). |
 | `SyncBackend`, `ServerSyncBackend`, `SYNC_BACKEND` | `data/sync-backend.ts` (S4b-BL-70) | The web's side of the seam of §10.1, the same members as Kotlin's with `Observable`s; `ServerSyncBackend` wraps `HouseApiService` unchanged and is the token's default. |
 | `StorageService` | `data/storage.service.ts` | `navigator.storage.persist()` / `estimate()`; drives the durability warnings of NFR-027. |

@@ -26,6 +26,7 @@ import { StorageService } from '../data/storage.service';
 import { houseToDto, photoMetaOf, visitToDto } from '../data/records';
 import type { PhotoRecord } from '../data/records';
 import type { PhotoMeta } from '../shared/photo-tags';
+import type { PhotoMetaInput } from '../data/photo-store';
 import { LocalDataError } from './local-error';
 import type { Broker, BrokerRow } from '../shared/broker';
 import type { Criterion, CriterionRow, Scoring, Weight } from '../shared/scoring';
@@ -387,19 +388,19 @@ export class LocalDataService {
 
   /** A house's live photos with their meta (slice 5), oldest first: the photos list and the condition record. */
   photos(houseId: string): Observable<PhotoSummary[]> {
-    return defer(() => from(this.store.photosOf(houseId).then((list) => list.map(summary))));
+    return defer(() => from(this.store.photos.ofHouse(houseId).then((list) => list.map(summary))));
   }
 
   /** The photos of a house tagged MOVE_IN, oldest first (docs/11 5.24). */
   conditionPhotos(houseId: string): Observable<PhotoSummary[]> {
-    return defer(() => from(this.store.conditionPhotos(houseId).then((list) => list.map(summary))));
+    return defer(() => from(this.store.photos.conditionOf(houseId).then((list) => list.map(summary))));
   }
 
   /** Saves a photo's room, tags and caption; false when nothing changed. */
-  setPhotoMeta(id: string, meta: Pick<PhotoMeta, 'roomId' | 'tags' | 'caption'>): Observable<boolean> {
+  setPhotoMeta(id: string, meta: PhotoMetaInput): Observable<boolean> {
     return defer(() =>
       from(
-        this.store.setPhotoMeta(id, meta).then((changed) => {
+        this.store.photos.setMeta(id, meta).then((changed) => {
           if (changed) this.sync.syncSoon();
           return changed;
         }),
@@ -426,10 +427,10 @@ export class LocalDataService {
     houseId: string,
     file: Blob,
     id: string = uuid(),
-    meta?: Pick<PhotoMeta, 'roomId' | 'tags' | 'caption'>,
+    meta?: PhotoMetaInput,
   ): Observable<{ id: string }> {
     return defer(() =>
-      from(this.store.addPhoto(houseId, file, id, Date.now(), meta)).pipe(
+      from(this.store.photos.add(houseId, file, id, Date.now(), meta)).pipe(
         map((result) => {
           if (!result.ok) throw photoLimit();
           this.sync.syncSoon();
@@ -441,7 +442,7 @@ export class LocalDataService {
 
   photo(id: string): Observable<Blob> {
     return defer(() =>
-      from(this.store.getPhoto(id)).pipe(
+      from(this.store.photos.get(id)).pipe(
         map((record) => {
           // A photo that only exists on the server (not downloaded yet) reads as missing until the next sync.
           if (!record || record.deleted || !record.blob) throw notFound();
@@ -454,7 +455,7 @@ export class LocalDataService {
   deletePhoto(id: string): Observable<void> {
     return defer(() =>
       from(
-        this.store.deletePhoto(id).then(() => {
+        this.store.photos.delete(id).then(() => {
           this.sync.syncSoon();
         }),
       ),
