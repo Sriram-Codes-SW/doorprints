@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.140 |
+| Version | 0.141 |
 | Date | 2026-10-08 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..183); this file lists the lead-level items and points to the rest. |
@@ -149,6 +149,7 @@
 | 0.138 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-168, slice 1 on the phones (photos), PR #212:** the new §10 *Phone file layout* records the analysis of `HouseEditScreen.kt` and `CommonRepository.kt` by kind of data (which splits pass the deletion test and which fail), the slice plan (photos, viewings, areas and places, questions, criteria, brokers, status/rating/checklist, on-device AI) and what slice 1 moved: `PhotoStore` (`:shared`) and `HousePhotos.kt` (`:ui`). Behaviour-neutral: no screenshot re-recorded. [10](10-sprint-log.md) v0.201, [03](03-design.md) v0.88, [06](06-test-plan.md) v0.178. |
 | 0.139 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-168, slice 2 (web, records layer and viewings)** (PR #214, branch `refactor/web-split-records-viewings-slice`): `RecordStore` and `ViewingStore` leave `local-store.service.ts` (1,360 to 1,138 lines); §9 records the measured numbers, what was split and why, and the remaining plan. [10](10-sprint-log.md) v0.202, [03](03-design.md) v0.89. |
 | 0.140 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-168, slice 3 (web, areas, places and area notes)** (PR #215, branch `refactor/web-split-areas-places-notes-slice`): `AreaStore`, `PlaceStore` and `AreaNoteStore` leave `local-store.service.ts` (1,138 to 985 lines), reached as `store.areas`, `store.places` and `store.areaNotes`; §9 marks slice 3 done with the measured numbers and the verdicts. Behaviour-neutral. |
+| 0.141 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-168, slice 4 (web, questions)** (PR #217, branch `refactor/web-split-questions-slice`): `QuestionStore` leaves `local-store.service.ts` (985 to 842 lines), reached as `store.questions`; §9 marks slice 4 done with the measured numbers, the verdict on the page part (left) and the remaining plan (items 5 to 9). Behaviour-neutral. |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 
@@ -699,7 +700,7 @@ Line numbers below are those of `main` at `d39bc6a` (before slice 1): `data/loca
 | 1 | **Photos** (PR #213) | store `PhotoStore`; page `HousePhotos` | measured: store -150, page -108 |
 | 2 | Records layer and viewings (PR #214, done) | store | measured: store -222 |
 | 3 | Areas, places, area notes (PR #215, done) | store | measured: store -153 |
-| 4 | Questions | store and page | about -240 |
+| 4 | Questions (PR #217, done: the store; the page part is left) | store and page | measured: store -143 |
 | 5 | Criteria and checklist | store and page | about -200 |
 | 6 | Rooms and floor | page | about -150 |
 | 7 | Brokers (after a seam for writing houses) | store and page | about -150 |
@@ -760,8 +761,36 @@ added for mutants that survived (the id check in `AreaStore` and `PlaceStore` is
 error at the cap tells the two apart). The full suite goes from 3,821 to 3,833 tests (12 new, none removed). Hand
 mutations: `tools/mutations/area-store.json`, `place-store.json` and `area-note-store.json` (11, 10 and 11), each killed by a
 named test, no equivalent mutant left. The two existing lists that touch `local-store.service.ts` (`trace-store.json`,
-`trace-privacy.json`) still hold with their strings unchanged. The remaining
-plan is items 4 to 9 above, in order.
+`trace-privacy.json`) still hold with their strings unchanged.
+
+**Slice 4 (web, questions), measured.** `local-store.service.ts` 985 to 842 lines (new `question-store.ts` 191; the plan said
+about -240 for store and page together, and this is the store's part). Callers use `store.questions` (`questionRows()` is
+`questions.rows()`, `questions()` is `questions.all()`, `seedQuestions` is `questions.seed`, `seedQuestionsOnce` is
+`questions.seedOnce`, `resetQuestions` is `questions.reset`, `saveQuestion` is `questions.save`, `saveQuestions` is
+`questions.saveMany`, `addQuestion` is `questions.add`, `deleteQuestion` is `questions.delete`). Deletion test, on reading the
+code: the bank is read or written by the local-data facade (the questions page, the house page's picker and *Add the usual
+questions*), the export (`export.service.ts`), the app start (`app.config.ts`, the once-per-install seeding), the import
+through `RecordStore` (rows) and `LocalStore.clearEverything` (seeding again after *Remove all data*); four distinct callers,
+it **passes**. The class takes `RecordStore` for every read and save, and the database and the revision directly only for the
+seeding, which writes rows with their own edit times and a clean flag (`RecordStore.save` always stamps now and dirty); the
+language of the seeding (`seedLanguage`) moved into it, and `LocalStore.clearEverything` now calls
+`questions.seedAgainIfAsked()`. One behaviour-neutral simplification: `add` draws its id with `RecordStore.freshId` (as the
+viewings do since slice 2) instead of its own copy of the loop; the copy allowed 51 draws and `freshId` allows 50, which only
+matters if 50 drawn ids in a row clash with stored ones. **Not split, on purpose:** the page's part of the plan row (the house
+page's questions, `house-detail-page.ts` about 110 lines in two places) passes the deletion test only weakly (the draft, the
+persist) and stays for a later pass; this slice is the store. Tests: `data/question-store.spec.ts` (25 new, none moved; the
+16 existing tests of `LocalStore questions` in `local-store.spec.ts` stay there with their calls renamed); the first 21 passed
+on the old code in the first commit of the branch before anything moved (rows with their edit times, the order of the bank,
+the revision bumps, the language of the seeding at each use and after *Remove all data*, the reset stamping now and dirty,
+the sync version kept, the cap during a reset and a seeding, the trimming and the 300-character edge, the id shapes, a
+deleted question freeing its place, the sort of the next question, the id that clashes, the unknown delete, the list that
+stops at the first bad question); the last four (seeded rows clean and stamped 2000-01-01, the setting stopping a second start,
+an edit at the cap, a bad text at the cap) were added for mutants that survived. The full suite goes from 3,833 to 3,858
+tests (25 new, none removed). Hand mutations: `tools/mutations/question-store.json` (28), each killed by a named test. Two
+mutants that look possible are equivalent and are not in the list: the cap check in `add` (`>` for `>=`, because `save`
+refuses the 101st question with the same error) and `Math.max` over the sorted bank (the last question already has the
+highest number). The two existing lists that touch `local-store.service.ts` (`trace-store.json`, `trace-privacy.json`) still
+hold with their strings unchanged. The remaining plan is items 5 to 9 above, in order.
 
 ## 10. Phone file layout (S4b-BL-168)
 

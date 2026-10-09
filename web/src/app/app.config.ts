@@ -50,7 +50,7 @@ export const appConfig: ApplicationConfig = {
     // stop the app, which then simply starts with an empty bank the person can reset.
     provideAppInitializer(() =>
       inject(LocalStore)
-        .seedQuestionsOnce(initialLang)
+        .questions.seedOnce(initialLang)
         .catch(() => undefined),
     ),
   ],

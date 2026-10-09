@@ -188,23 +188,23 @@ export class LocalDataService {
 
   /** The question bank, archived questions included, by `sort` then id (slice 3a). */
   questions(): Observable<Question[]> {
-    return defer(() => from(this.store.questions()));
+    return defer(() => from(this.store.questions.all()));
   }
 
   /** The question records that exist, for the copies. */
   questionRows(): Observable<QuestionRow[]> {
-    return defer(() => from(this.store.questionRows()));
+    return defer(() => from(this.store.questions.rows()));
   }
 
   /** Saves questions (an edit, an archive, a move); only these records are written. */
   saveQuestions(list: readonly Question[]): Observable<void> {
-    return this.writing(() => this.store.saveQuestions(list));
+    return this.writing(() => this.store.questions.saveMany(list));
   }
 
   addQuestion(text: string, category: QuestionCategory = 'OTHER', appliesTo: QuestionScope = 'BOTH'): Observable<Question> {
     return defer(() =>
       from(
-        this.store.addQuestion(text, category, appliesTo).then((saved) => {
+        this.store.questions.add(text, category, appliesTo).then((saved) => {
           this.sync.syncSoon();
           return saved;
         }),
@@ -214,12 +214,12 @@ export class LocalDataService {
 
   /** Deletes a question, a seeded one too; it stays deleted until the bank is reset. */
   deleteQuestion(id: string): Observable<void> {
-    return this.writing(() => this.store.deleteQuestion(id));
+    return this.writing(() => this.store.questions.delete(id));
   }
 
   /** *Reset to defaults*: the standard questions come back in [language]; the person's own stay. */
   resetQuestions(language: string): Observable<void> {
-    return this.writing(() => this.store.resetQuestions(language).then(() => undefined));
+    return this.writing(() => this.store.questions.reset(language).then(() => undefined));
   }
 
   /** Every live viewing, by start then id (slice 3b-1). */

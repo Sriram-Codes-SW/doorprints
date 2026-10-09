@@ -32,6 +32,7 @@ import { ViewingStore } from './viewing-store';
 import { AreaStore } from './area-store';
 import { PlaceStore } from './place-store';
 import { AreaNoteStore } from './area-note-store';
+import { QuestionStore } from './question-store';
 import {
   BUILT_IN_KEYS,
   CRITERION_TYPE,
@@ -50,21 +51,6 @@ import {
   scoringOf,
 } from '../shared/scoring';
 import type { Criterion, CriterionRow, PreferenceRow, Scoring, Weight } from '../shared/scoring';
-import {
-  DEFAULT_QUESTIONS,
-  DEFAULT_QUESTIONS_SEEDED_AT,
-  MAX_QUESTIONS,
-  MAX_QUESTION_TEXT,
-  QUESTION_TYPE,
-  defaultQuestion,
-  isCustomQuestionId,
-  isDefaultQuestionId,
-  newQuestionId,
-  questionFromPayload,
-  questionToPayload,
-  sortQuestions,
-} from '../shared/question';
-import type { Question, QuestionCategory, QuestionRow, QuestionScope } from '../shared/question';
 import type { LengthUnit } from '../shared/room-sizes';
 import { choose as chooseStatus, closeTargets } from '../shared/house-status';
 import type { HouseRecord, PhotoRecord, RecordRecord, SettingRecord, VisitRecord } from './records';
@@ -143,12 +129,17 @@ export class LocalStore {
   /** The area notes (`area-note-store.ts`), records of type `areanote`. */
   readonly areaNotes = new AreaNoteStore(this.records);
 
+  /** The viewing-question bank (`question-store.ts`), records of type `question`, and its seeding. */
+  readonly questions = new QuestionStore(
+    this.records,
+    () => this.db(),
+    () => this.touch(),
+  );
+
   private opened: Promise<LocalDb> | null = null;
   private settleTimer: ReturnType<typeof setTimeout> | undefined;
   private settleSince = 0;
   private migrating: Promise<void> | null = null;
-  /** The language the bank is seeded in, once {@link seedQuestionsOnce} has been called (also after *Remove all data*). */
-  private seedLanguage: (() => string) | null = null;
 
   /** The opened database, once the one-off move of the contacts into brokers has run (see {@link ready}). */
   private async db(): Promise<LocalDb> {
@@ -688,139 +679,6 @@ export class LocalStore {
     return BUILT_IN_KEYS.length + custom;
   }
 
-  // ---- Viewing questions (docs/11 5.5, slice 3a: records of type `question`) ----
-
-  /** The live question records, oldest edit first; a row whose payload is not a question (a blank text) is skipped. */
-  async questionRows(): Promise<QuestionRow[]> {
-    const out: QuestionRow[] = [];
-    for (const row of await this.records.ofType(QUESTION_TYPE)) {
-      const question = questionFromPayload(row.id, row.payload);
-      if (question) out.push({ id: row.id, updatedAt: row.updatedAt ?? null, question });
-    }
-    return out;
-  }
-
-  /** The bank, archived questions included, by `sort` then id. */
-  async questions(): Promise<Question[]> {
-    return sortQuestions((await this.questionRows()).map((r) => r.question));
-  }
-
-  /**
-   * Seeds the bank: for each default whose id has NO record a clean record stamped {@link DEFAULT_QUESTIONS_SEEDED_AT}
-   * with the text in [language] (hi, ta or te; anything else English; S4b-BL-90a). A tombstone counts as a record, so
-   * a default the person deleted is not brought back.
-   * Returns how many were written.
-   */
-  async seedQuestions(language: string, now: number = Date.now()): Promise<number> {
-    const db = await this.db();
-    return this.writeDefaults(db, language, now, false);
-  }
-
-  /**
-   * Seeds once per install: the first call sets the local setting `questions.seeded` (not synced), so later starts do
-   * nothing and a bank the person emptied stays empty until *Reset to defaults*. `language` is read at each use
-   * (the language the app is in then), also after *Remove all data* seeded the bank again.
-   */
-  async seedQuestionsOnce(language: () => string, now: number = Date.now()): Promise<void> {
-    this.seedLanguage = language;
-    const db = await this.db();
-    if (await db.get<SettingRecord>('settings', SETTING_KEYS.questionsSeeded)) return;
-    await this.writeDefaults(db, language(), now, false);
-    await db.put<SettingRecord>('settings', { key: SETTING_KEYS.questionsSeeded, value: '1' });
-  }
-
-  /**
-   * *Reset to defaults*: every default id gets its record again, whatever state it was in (deleted, edited, archived),
-   * with the text in [language]; the person's own questions stay. A default that would take the bank past
-   * {@link MAX_QUESTIONS} is not brought back.
-   */
-  async resetQuestions(language: string, now: number = Date.now()): Promise<number> {
-    const db = await this.db();
-    return this.writeDefaults(db, language, now, true);
-  }
-
-  private async writeDefaults(db: LocalDb, language: string, now: number, overwrite: boolean): Promise<number> {
-    const rows = await db.getAllByIndex<RecordRecord>('records', 'type', QUESTION_TYPE);
-    const byId = new Map(rows.map((r) => [r.id, r]));
-    let live = rows.filter((r) => !r.deleted).length;
-    let written = 0;
-    for (const def of DEFAULT_QUESTIONS) {
-      const existing = byId.get(def.id);
-      if (existing && !overwrite) continue;
-      if ((!existing || existing.deleted) && live >= MAX_QUESTIONS) continue;
-      if (!existing || existing.deleted) live += 1;
-      const record = recordFromDto(
-        {
-          type: QUESTION_TYPE,
-          id: def.id,
-          payload: questionToPayload(defaultQuestion(def, language)),
-          // A seed is clean and stamped DEFAULT_QUESTIONS_SEEDED_AT (S4b-BL-90a): never pushed, and whatever another
-          // device did to it wins when pulled. *Reset to defaults* is the person's own edit: now, dirty.
-          updatedAt: isoNow(overwrite ? now : DEFAULT_QUESTIONS_SEEDED_AT),
-          deleted: false,
-          syncVersion: existing?.syncVersion ?? 0,
-        },
-        overwrite,
-      );
-      await db.put('records', record);
-      written += 1;
-    }
-    if (written > 0) this.touch();
-    return written;
-  }
-
-  /**
-   * Saves a question (an edit, an archive, a move): only that record is written. A default keeps its fixed id.
-   *
-   * @throws LocalDataError `error.badRecord` for an id that is neither a default's nor `q_` and 8 hex characters, or a
-   *   blank or over-long text; `questions.max` when a new question would be the 101st.
-   */
-  async saveQuestion(question: Question, now: number = Date.now()): Promise<void> {
-    if (!isDefaultQuestionId(question.id) && !isCustomQuestionId(question.id)) throw new LocalDataError('error.badRecord');
-    const text = question.text.trim();
-    if (text === '' || text.length > MAX_QUESTION_TEXT) throw new LocalDataError('error.badRecord');
-    if (!(await this.records.get(QUESTION_TYPE, question.id)) && (await this.records.ofType(QUESTION_TYPE)).length >= MAX_QUESTIONS) {
-      throw new LocalDataError('questions.max');
-    }
-    await this.records.save(QUESTION_TYPE, question.id, questionToPayload({ ...question, text }), now);
-  }
-
-  /** Saves several questions (a move renumbers two or more): each as {@link saveQuestion}. */
-  async saveQuestions(list: readonly Question[], now: number = Date.now()): Promise<void> {
-    for (const question of list) await this.saveQuestion(question, now);
-  }
-
-  /**
-   * Adds a custom question at the end of the bank: a new id `q_` and 8 lowercase hex characters (an id that clashes with
-   * any record, a deleted one included, is drawn again). `newId` is a seam for tests.
-   *
-   * @throws LocalDataError `error.badRecord` for a blank or over-long text; `questions.max` at 100 questions.
-   */
-  async addQuestion(
-    text: string,
-    category: QuestionCategory = 'OTHER',
-    appliesTo: QuestionScope = 'BOTH',
-    now: number = Date.now(),
-    newId: () => string = newQuestionId,
-  ): Promise<Question> {
-    const asked = text.trim();
-    if (asked === '' || asked.length > MAX_QUESTION_TEXT) throw new LocalDataError('error.badRecord');
-    if ((await this.records.ofType(QUESTION_TYPE)).length >= MAX_QUESTIONS) throw new LocalDataError('questions.max');
-    const db = await this.db();
-    let id = newId();
-    for (let attempt = 0; attempt < 50 && (await db.get<RecordRecord>('records', [QUESTION_TYPE, id])); attempt++) id = newId();
-    if (await db.get<RecordRecord>('records', [QUESTION_TYPE, id])) throw new LocalDataError('error.badRecord');
-    const sort = (await this.questions()).reduce((max, q) => Math.max(max, q.sort), -1) + 1;
-    const question: Question = { id, text: asked, category, appliesTo, defaultOn: false, sort };
-    await this.saveQuestion(question, now);
-    return question;
-  }
-
-  /** Deletes a question, a seeded one too (a tombstone): a deleted default stays deleted until *Reset to defaults*. */
-  async deleteQuestion(id: string, now: number = Date.now()): Promise<void> {
-    await this.records.delete(QUESTION_TYPE, id, now);
-  }
-
   // ---- Settings ----
 
   /** A per-browser setting, or null when unset. Settings are never synced or exported. */
@@ -922,8 +780,7 @@ export class LocalStore {
     const db = await this.db();
     await db.clear();
     await clearCacheStorage();
-    // An empty browser still starts with the standard questions, as a new install does.
-    if (this.seedLanguage) await this.seedQuestionsOnce(this.seedLanguage);
+    await this.questions.seedAgainIfAsked();
     this.touch();
   }
 }
