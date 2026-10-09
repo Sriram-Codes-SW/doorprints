@@ -1,0 +1,370 @@
+{
+ "spec": "android/app/src/test/java/app/doorprints/BrokersTest.kt",
+ "gradle": [
+  ":app:testDebugUnitTest",
+  "--tests",
+  "app.doorprints.BrokersTest"
+ ],
+ "mutations": [
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": ".sortedWith(compareBy({ it.second.name.lowercase() }, { it.first }))",
+   "replace": ".sortedWith(compareBy({ it.second.name }, { it.first }))",
+   "expect": "brokersAreListedByName"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": "db.records().byType(BrokerType.name).map { rows ->",
+   "replace": "db.records().byType(\"area\").map { rows ->",
+   "expect": "brokersAreListedByName"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": "}.onStart { migrate() }",
+   "replace": "}",
+   "expect": "everyFirstReadOfTheHousesOrTheBrokersRunsTheMigration"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": "ExportBroker.of(row.id, broker, row.updatedAt) }",
+   "replace": "ExportBroker.of(row.id, broker, 0L) }",
+   "expect": "brokersAreListedByName"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": "db.records().listByType(BrokerType.name).mapNotNull { row -> row.toBroker()?.let { row to it } }",
+   "replace": "db.records().listByType(\"area\").mapNotNull { row -> row.toBroker()?.let { row to it } }",
+   "expect": "brokersAreListedByName"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": "requireNotNull(broker.coerced())",
+   "replace": "requireNotNull(broker)",
+   "expect": "aSavedBrokerIsCleaned"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": "val brokerId = id ?: Uuid.random().toString()",
+   "replace": "val brokerId = id ?: \"fixed\"",
+   "expect": "savingAHouseWithAPhoneMakes"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": "records.save(BrokerType, brokerId, clean)",
+   "replace": "records.save(BrokerType, brokerId, broker)",
+   "expect": "aSavedBrokerIsCleaned"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": "if (h.contactName != clean.name || h.contactPhone != clean.phone) {",
+   "replace": "if (true) {",
+   "expect": "savingABrokerRewritesTheCopies"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": "h.contactName != clean.name || h.contactPhone != clean.phone",
+   "replace": "h.contactName != clean.name",
+   "expect": "aBrokersPhoneAloneOrNameAloneIsCopied"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": "h.contactName != clean.name || h.contactPhone != clean.phone",
+   "replace": "h.contactPhone != clean.phone",
+   "expect": "aBrokersPhoneAloneOrNameAloneIsCopied"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": "contactPhone = clean.phone, updatedAt = stamp, dirty = true",
+   "replace": "contactPhone = clean.phone, updatedAt = stamp, dirty = false",
+   "expect": "savingABrokerRewritesTheCopies"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": "contactPhone = clean.phone, updatedAt = stamp, dirty = true",
+   "replace": "contactPhone = clean.phone, updatedAt = 0L, dirty = true",
+   "expect": "savingABrokerRewritesTheCopies"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": "contactName = clean.name, contactPhone",
+   "replace": "contactName = h.contactName, contactPhone",
+   "expect": "aBrokersPhoneAloneOrNameAloneIsCopied"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": "records.delete(BrokerType, id)",
+   "replace": "Unit",
+   "expect": "deletingABrokerUnlinksItsHouses"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": "h.copy(brokerId = null, updatedAt = stamp, dirty = true)",
+   "replace": "h.copy(brokerId = null, updatedAt = stamp, dirty = false)",
+   "expect": "deletingABrokerUnlinksItsHouses"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": "h.copy(brokerId = null, updatedAt = stamp, dirty = true)",
+   "replace": "h.copy(brokerId = null, updatedAt = 0L, dirty = true)",
+   "expect": "deletingABrokerNobodyHas"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": "for (h in db.houses().liveForBroker(id)) db.houses()",
+   "replace": "for (h in emptyList<HouseEntity>()) db.houses()",
+   "expect": "deletingABrokerUnlinksItsHouses"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": "db.houses().observeForBroker(id)",
+   "replace": "db.houses().observeForBroker(id + \"x\")",
+   "expect": "savingABrokerRewritesTheCopies"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": "if (house.deleted) return house",
+   "replace": "if (false) return house",
+   "expect": "aBlankPhoneNeverMakesABroker"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": "return house.copy(contactName = broker.name, contactPhone = broker.phone)\n        }",
+   "replace": "return house\n        }",
+   "expect": "aLinkedHouseTakesItsBrokers"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": "if (phone.isEmpty()) return house",
+   "replace": "if (false) return house",
+   "expect": "aBlankPhoneNeverMakesABroker"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": "val phone = house.contactPhone?.trim().orEmpty()",
+   "replace": "val phone = house.contactPhone.orEmpty()",
+   "expect": "aBrokerMadeFromAContactIsTrimmed"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": "PhoneKey.of(it.second.phone) == k }",
+   "replace": "PhoneKey.of(it.second.phone) != k }",
+   "expect": "savingAHouseWithAPhoneMakes"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": "key?.let { k -> live().firstOrNull { PhoneKey.of(it.second.phone) == k } }",
+   "replace": "live().firstOrNull { PhoneKey.of(it.second.phone) == key }",
+   "expect": "aBlankPhoneNeverMakesABroker"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": "                return house\n            }\n            id to fresh",
+   "replace": "                throw e\n            }\n            id to fresh",
+   "expect": "aFullBrokerTypeRefuses"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": "return house.copy(brokerId = id, contactName = broker.name, contactPhone = broker.phone)",
+   "replace": "return house.copy(brokerId = id, contactName = broker.name, contactPhone = house.contactPhone)",
+   "expect": "savingAHouseWithAPhoneMakes"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": "return house.copy(brokerId = id, contactName = broker.name, contactPhone = broker.phone)",
+   "replace": "return house.copy(brokerId = id, contactName = house.contactName, contactPhone = broker.phone)",
+   "expect": "savingAHouseWithAPhoneMakes"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": "return house.copy(brokerId = id, contactName",
+   "replace": "return house.copy(brokerId = null, contactName",
+   "expect": "savingAHouseWithAPhoneMakes"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": ".take(Broker.MAX_NAME),",
+   "replace": ".take(Broker.MAX_NAME + 1),",
+   "expect": "aBrokerMadeFromAContactIsTrimmed"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": "phone = phone.take(Broker.MAX_PHONE),",
+   "replace": "phone = phone.take(Broker.MAX_PHONE + 1),",
+   "expect": "aBrokerMadeFromAContactIsTrimmed"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": "contactName?.trim().takeUnless { it.isNullOrEmpty() } ?: phone",
+   "replace": "contactName.takeUnless { it.isNullOrEmpty() } ?: phone",
+   "expect": "aBrokerMadeFromAContactIsTrimmed"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": "contactName?.trim().takeUnless { it.isNullOrEmpty() } ?: phone",
+   "replace": "contactName?.trim().takeUnless { it.isNullOrEmpty() } ?: \"\"",
+   "expect": "savingAHouseWithAPhoneMakes"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": "if (!settings.brokersMigrated()) {",
+   "replace": "if (true) {",
+   "expect": "theMigrationGroupsHousesByNormalisedPhone"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": "settings.markBrokersMigrated()",
+   "replace": "Unit",
+   "expect": "theMigrationGroupsHousesByNormalisedPhone"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": ".filter { it.brokerId == null && !it.contactPhone.isNullOrBlank() }",
+   "replace": ".filter { !it.contactPhone.isNullOrBlank() }",
+   "expect": "theMigrationLeavesALinkedHouseAlone"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": ".filter { it.brokerId == null && !it.contactPhone.isNullOrBlank() }",
+   "replace": ".filter { it.brokerId == null }",
+   "expect": "theMigrationGroupsHousesByNormalisedPhone"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": "if (b.updatedAt >= a.updatedAt) b else a",
+   "replace": "if (b.updatedAt > a.updatedAt) b else a",
+   "expect": "theMigrationGroupsHousesByNormalisedPhone"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": "if (b.updatedAt >= a.updatedAt) b else a",
+   "replace": "if (b.updatedAt <= a.updatedAt) b else a",
+   "expect": "theMigrationGroupsHousesByNormalisedPhone"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": ".sortedWith(compareBy({ it.createdAt }, { it.id }))",
+   "replace": ".sortedWith(compareByDescending<HouseEntity> { it.createdAt }.thenByDescending { it.id })",
+   "expect": "theMigrationGroupsHousesByNormalisedPhone"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": "if (keyOf(broker.phone) !in known) known[keyOf(broker.phone)] = id",
+   "replace": "known[keyOf(broker.phone)] = id",
+   "expect": "theMigrationLeavesALinkedHouseAlone"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": "PhoneKey.of(p) ?: \"raw:$p\"",
+   "replace": "PhoneKey.of(p) ?: \"raw\"",
+   "expect": "theMigrationGroupsHousesByNormalisedPhone"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": "saveNew(madeFrom(newest.contactName, newest.contactPhone!!.trim())) ?: continue",
+   "replace": "saveNew(madeFrom(newest.contactName, newest.contactPhone!!.trim())) ?: \"x\"",
+   "expect": "theMigrationOfAFullType"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": "db.houses().upsert(h.copy(brokerId = id, updatedAt = stamp, dirty = true))",
+   "replace": "db.houses().upsert(h.copy(brokerId = id, updatedAt = stamp, dirty = false))",
+   "expect": "theMigrationGroupsHousesByNormalisedPhone"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": "db.houses().upsert(h.copy(brokerId = id, updatedAt = stamp, dirty = true))",
+   "replace": "db.houses().upsert(h.copy(brokerId = id, updatedAt = 0L, dirty = true))",
+   "expect": "theMigrationGroupsHousesByNormalisedPhone"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": "    } catch (e: RecordLimitException) {\n        null",
+   "replace": "    } catch (e: RecordLimitException) {\n        throw e",
+   "expect": "theMigrationOfAFullType"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": "updatedAt = updatedAt, deleted = false, dirty = true,",
+   "replace": "updatedAt = updatedAt, deleted = false, dirty = false,",
+   "expect": "anImportedBroker"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": "updatedAt = updatedAt, deleted = false, dirty = true,",
+   "replace": "updatedAt = 0L, deleted = false, dirty = true,",
+   "expect": "anImportedBroker"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": "updatedAt = updatedAt, deleted = false, dirty = true,",
+   "replace": "updatedAt = updatedAt, deleted = true, dirty = true,",
+   "expect": "anImportedBroker"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+   "find": "checkNotNull(b.toBroker().coerced())",
+   "replace": "checkNotNull(b.toBroker())",
+   "expect": "anImportedBroker"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt",
+   "find": "brokerStore.linked(house).copy(",
+   "replace": "house.copy(",
+   "expect": "savingAHouseWithAPhoneMakes"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt",
+   "find": "            brokerStore.exportRows(),",
+   "replace": "            emptyList(),",
+   "expect": "brokersAreListedByName"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt",
+   "find": "            db.records().upsert(BrokerStore.importedRow(broker, broker.updatedAt))",
+   "replace": "            db.records().upsert(BrokerStore.importedRow(broker, 0L))",
+   "expect": "aBackupCarriesTheBrokers"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt",
+   "find": "writeRecord(BrokerStore.importedRow(broker, CopyUndo.copyStamp(broker.updatedAt, now)))",
+   "replace": "writeRecord(BrokerStore.importedRow(broker, broker.updatedAt))",
+   "expect": "anImportedBroker"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt",
+   "find": "fun house(id: String): Flow<HouseEntity?> = flow {\n        brokerStore.migrate()",
+   "replace": "fun house(id: String): Flow<HouseEntity?> = flow {\n        Unit",
+   "expect": "everyFirstReadOfTheHousesOrTheBrokersRunsTheMigration"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt",
+   "find": "suspend fun houseSnapshot(): List<HouseEntity> {\n        brokerStore.migrate()",
+   "replace": "suspend fun houseSnapshot(): List<HouseEntity> {\n        Unit",
+   "expect": "everyFirstReadOfTheHousesOrTheBrokersRunsTheMigration"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt",
+   "find": "suspend fun getHouse(id: String): HouseEntity? {\n        brokerStore.migrate()",
+   "replace": "suspend fun getHouse(id: String): HouseEntity? {\n        Unit",
+   "expect": "everyFirstReadOfTheHousesOrTheBrokersRunsTheMigration"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt",
+   "find": "override val houses: Flow<List<HouseEntity>> = flow {\n        brokerStore.migrate()",
+   "replace": "override val houses: Flow<List<HouseEntity>> = flow {\n        Unit",
+   "expect": "theFirstReadOfTheHousesRunsTheMigration"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt",
+   "find": "withContext(Dispatchers.IO) {\n        brokerStore.migrate()",
+   "replace": "withContext(Dispatchers.IO) {\n        Unit",
+   "expect": "everyFirstReadOfTheHousesOrTheBrokersRunsTheMigration"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt",
+   "find": ".onStart { brokerStore.migrate() }",
+   "replace": ".onStart { Unit }",
+   "expect": "everyFirstReadOfTheHousesOrTheBrokersRunsTheMigration"
+  }
+ ]
+}
