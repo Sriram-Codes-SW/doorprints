@@ -26,14 +26,10 @@ import app.doorprints.data.Repository.UndoResult
 import app.doorprints.export.CopyUndo
 import app.doorprints.shared.ai.AiHouse
 import app.doorprints.shared.ai.AiVisit
-import app.doorprints.shared.ai.AiKind
 import app.doorprints.shared.ai.AiProviderConfig
-import app.doorprints.shared.ai.AnthropicClient
-import app.doorprints.shared.ai.BaseUrlCheck
 import app.doorprints.shared.ai.BaseUrlValidator
 import app.doorprints.shared.ai.GeminiClient
 import app.doorprints.shared.ai.JsonChatModel
-import app.doorprints.shared.ai.OnDeviceAi
 import app.doorprints.shared.api.ApiClient
 import app.doorprints.shared.api.AskResponseDto
 import app.doorprints.shared.api.HouseDraftDto
@@ -101,9 +97,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
@@ -139,14 +133,14 @@ open class CommonRepository(
     private val syncSoon: () -> Unit,
     private val apiFor: (serverUrl: String, apiKey: String) -> ApiClient,
     /** Gemini with the person's own key, for on-device AI (docs/03 §13.1); null where a platform has none (tests). */
-    private val geminiFor: ((apiKey: String) -> GeminiClient)? = null,
+    geminiFor: ((apiKey: String) -> GeminiClient)? = null,
     syncBackendFor: (suspend (AppSettings) -> SyncBackend?)? = null,
     /** An OpenAI-compatible endpoint with the person's own key, for on-device AI (docs/03 §13.2); null where a platform has none. */
-    private val openAiFor: ((baseUrl: String, model: String, apiKey: String) -> JsonChatModel)? = null,
+    openAiFor: ((baseUrl: String, model: String, apiKey: String) -> JsonChatModel)? = null,
     /** Anthropic with the person's own key, for on-device AI (docs/03 §13.2); null where a platform has none. */
-    private val anthropicFor: ((baseUrl: String, model: String, apiKey: String) -> JsonChatModel)? = null,
+    anthropicFor: ((baseUrl: String, model: String, apiKey: String) -> JsonChatModel)? = null,
     /** True on Android only: the emulator's name for its computer, `10.0.2.2`, may be an http base URL ([BaseUrlValidator]). */
-    private val emulatorHostAllowed: Boolean = false,
+    emulatorHostAllowed: Boolean = false,
 ) : Repository {
     private val syncBackendFor: suspend (AppSettings) -> SyncBackend? = syncBackendFor
         ?: { s -> if (s.serverConfigured) ServerSyncBackend(apiFor(s.serverUrl, s.apiKey)) else null }
@@ -459,124 +453,28 @@ open class CommonRepository(
         runCatching { apiFor(s.serverUrl, s.apiKey).stats() }
     }
 
-    // ---- AI features (optional; hidden unless the server reports enabled = true) ----
+    // ---- AI features (optional; hidden unless the server reports enabled = true): AiStore (S4b-BL-168) ----
 
-    private val _aiEnabled = MutableStateFlow(false)
-    override val aiEnabled: StateFlow<Boolean> = _aiEnabled.asStateFlow()
-    private val _aiOff = MutableStateFlow<AiOff?>(AiOff.NO_SERVER)
-    override val aiOff: StateFlow<AiOff?> = _aiOff.asStateFlow()
+    private val ai = AiStore(settings, apiFor, geminiFor, openAiFor, anthropicFor, emulatorHostAllowed, ::aiHouses)
 
-    /** What the server said last: AI on for this device, or why not (NO_SERVER, SERVER, DEVICE). */
-    private var serverAi: AiOff? = AiOff.NO_SERVER
+    override val aiEnabled: StateFlow<Boolean> = ai.enabled
+    override val aiOff: StateFlow<AiOff?> = ai.off
 
-    /**
-     * Asks the server whether AI features are on for this device. No server set up means off, and so does a real
-     * `enabled: false` answer. A failed request (offline, a timeout, a server error) keeps what was known (UX review,
-     * whole-app audit): turning the Assistant tab off on every network error removed it while the user was on it.
-     * AI is then offered only when this phone's *AI features* switch is on too ([AppSettings.aiFeatures]).
-     */
-    override suspend fun refreshAiStatus(): Boolean = withContext(Dispatchers.IO) {
-        val s = settings.current()
-        serverAi = if (!s.serverConfigured) {
-            AiOff.NO_SERVER
-        } else {
-            runCatching { apiFor(s.serverUrl, s.apiKey).aiStatus() }.fold(
-                { status ->
-                    when {
-                        status.offForDevice -> AiOff.DEVICE
-                        !status.enabled -> AiOff.SERVER
-                        else -> null
-                    }
-                },
-                { e ->
-                    if (e is kotlinx.coroutines.CancellationException) throw e
-                    serverAi
-                },
-            )
-        }
-        publishAi(s)
-    }
+    override suspend fun refreshAiStatus(): Boolean = ai.refreshStatus()
 
-    override suspend fun setAiFeatures(on: Boolean) {
-        settings.saveAiFeatures(on)
-        publishAi(settings.current())
-    }
+    override suspend fun setAiFeatures(on: Boolean) = ai.setFeatures(on)
 
-    /** On-device AI with the person's own key (docs/03 §13.1): chosen, and a key saved. */
-    private fun usesOwnKey(s: AppSettings) = s.aiProvider == AiProviderChoice.DEVICE && when (s.aiProviderConfig.kind) {
-        AiKind.GEMINI -> s.geminiKey.isNotBlank() && geminiFor != null
-        // The key is optional here (a model on the person's own computer needs none).
-        AiKind.OPENAI_COMPATIBLE -> openAiFor != null && s.aiProviderConfig.model.isNotBlank() &&
-            BaseUrlValidator.check(s.aiProviderConfig.baseUrl, emulatorHostAllowed) is BaseUrlCheck.Valid
-        // Anthropic has no keyless form: the key is required.
-        AiKind.ANTHROPIC -> anthropicFor != null && s.geminiKey.isNotBlank() && s.aiProviderConfig.model.isNotBlank() &&
-            BaseUrlValidator.check(s.aiProviderConfig.baseUrl, emulatorHostAllowed) is BaseUrlCheck.Valid
-    }
+    override suspend fun saveGeminiKey(key: String) = ai.saveKey(key)
 
-    /** The model for the saved choice, or null when nothing here can build it. */
-    private fun chatModel(config: AiProviderConfig, key: String): JsonChatModel? = when (config.kind) {
-        AiKind.GEMINI -> geminiFor?.invoke(key)
-        AiKind.OPENAI_COMPATIBLE -> openAiFor?.invoke(config.baseUrl, config.model, key)
-        AiKind.ANTHROPIC -> anthropicFor?.invoke(config.baseUrl, config.model, key)
-    }
+    override suspend fun setAiProvider(choice: AiProviderChoice) = ai.setProvider(choice)
 
-    /**
-     * Works out whether AI is offered and why not, from the settings and the server's report, and publishes it to
-     * [aiOff] and [aiEnabled]. With the person's own key only this phone's switch counts.
-     */
-    private fun publishAi(s: AppSettings): Boolean {
-        // With the person's own key nothing depends on a server: only this phone's switch counts.
-        val off = if (usesOwnKey(s)) (if (s.aiFeatures) null else AiOff.OPT_IN) else serverAi ?: if (s.aiFeatures) null else AiOff.OPT_IN
-        _aiOff.value = off
-        _aiEnabled.value = off == null
-        return off == null
-    }
+    override suspend fun removeGeminiKey() = ai.removeKey()
 
-    override suspend fun saveGeminiKey(key: String) {
-        settings.saveGeminiKey(key)
-        publishAi(settings.current())
-    }
+    override suspend fun testGeminiKey(key: String): Result<Unit> = ai.testProvider(AiProviderConfig.GEMINI, key)
 
-    override suspend fun setAiProvider(choice: AiProviderChoice) {
-        settings.saveAiProvider(choice)
-        publishAi(settings.current())
-    }
+    override suspend fun saveAiProviderConfig(config: AiProviderConfig, key: String) = ai.saveConfig(config, key)
 
-    override suspend fun removeGeminiKey() {
-        settings.removeGeminiKey()
-        publishAi(settings.current())
-    }
-
-    override suspend fun testGeminiKey(key: String): Result<Unit> = testAiProvider(AiProviderConfig.GEMINI, key)
-
-    override suspend fun saveAiProviderConfig(config: AiProviderConfig, key: String) {
-        val checked = checkedConfig(config)
-        require(checked.kind != AiKind.ANTHROPIC || key.isNotBlank()) { "key" }
-        settings.saveAiProviderConfig(checked, key)
-        publishAi(settings.current())
-    }
-
-    override suspend fun testAiProvider(config: AiProviderConfig, key: String): Result<Unit> = withContext(Dispatchers.IO) {
-        runCatching {
-            val client = chatModel(checkedConfig(config), key.trim()) ?: throw IllegalStateException("no provider")
-            client.ping()
-        }
-    }
-
-    /** [config] with its base URL normalised, or an [IllegalArgumentException] saying what is wrong with it. */
-    private fun checkedConfig(config: AiProviderConfig): AiProviderConfig = when (config.kind) {
-        AiKind.GEMINI -> AiProviderConfig.GEMINI
-        AiKind.OPENAI_COMPATIBLE, AiKind.ANTHROPIC -> {
-            // Anthropic has one address; a config saved without one means that.
-            val address = if (config.kind == AiKind.ANTHROPIC && config.baseUrl.isBlank()) AnthropicClient.BASE_URL else config.baseUrl
-            val url = when (val check = BaseUrlValidator.check(address, emulatorHostAllowed)) {
-                is BaseUrlCheck.Valid -> check.normalised
-                is BaseUrlCheck.Invalid -> throw IllegalArgumentException(check.reason.wire)
-            }
-            require(config.model.isNotBlank()) { "model" }
-            config.copy(baseUrl = url, model = config.model.trim())
-        }
-    }
+    override suspend fun testAiProvider(config: AiProviderConfig, key: String): Result<Unit> = ai.testProvider(config, key)
 
     /** The saved houses and their visits as on-device AI reads them, most recently changed first. */
     private suspend fun aiHouses(): List<AiHouse> {
@@ -601,40 +499,11 @@ open class CommonRepository(
         }
     }
 
-    /** On-device AI for the saved key, or null when AI goes through the server. One per key, so its rate limit holds. */
-    private var onDevice: Pair<Pair<AiProviderConfig, String>, OnDeviceAi>? = null
+    override suspend fun extractListing(text: String): HouseDraftDto = ai.extractListing(text)
 
-    /**
-     * The on-device AI for the saved key, or null when AI goes through the server; the instance is reused while
-     * the key and provider stay the same.
-     */
-    private suspend fun ownKeyAi(): OnDeviceAi? {
-        val s = settings.current()
-        if (!usesOwnKey(s)) return null
-        val key = s.aiProviderConfig to s.geminiKey
-        onDevice?.let { (saved, ai) -> if (saved == key) return ai }
-        return OnDeviceAi(chatModel(s.aiProviderConfig, s.geminiKey)!!, ::aiHouses).also { onDevice = key to it }
-    }
+    override suspend fun ask(question: String): AskResponseDto = ai.ask(question)
 
-    /**
-     * Runs [block] against the configured server on the IO dispatcher; throws `IllegalStateException` when no
-     * server is set.
-     */
-    private suspend fun <T> withApi(block: suspend (ApiClient) -> T): T = withContext(Dispatchers.IO) {
-        val s = settings.current()
-        check(s.serverConfigured) { "Server not configured" }
-        block(apiFor(s.serverUrl, s.apiKey))
-    }
-
-    // The same three calls, answered by the server or on this device (ADR-26): the screens do not know which.
-    override suspend fun extractListing(text: String): HouseDraftDto =
-        ownKeyAi()?.let { withContext(Dispatchers.IO) { it.extractListing(text) } } ?: withApi { it.extractListing(text) }
-
-    override suspend fun ask(question: String): AskResponseDto =
-        ownKeyAi()?.let { withContext(Dispatchers.IO) { it.ask(question) } } ?: withApi { it.ask(question) }
-
-    override suspend fun planVisits(request: PlanRequest): PlanResponseDto =
-        ownKeyAi()?.let { withContext(Dispatchers.IO) { it.planVisits(request) } } ?: withApi { it.planVisits(request) }
+    override suspend fun planVisits(request: PlanRequest): PlanResponseDto = ai.planVisits(request)
 
     // ---- Pairing (docs/03 §12.1): no key yet, so the client is made without one ----
 

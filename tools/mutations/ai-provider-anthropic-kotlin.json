@@ -91,19 +91,19 @@
       "expect": "theStatusesTheScreensWordAreMappedForAGenerateAndAPing"
     },
     {
-      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt",
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
       "find": "require(checked.kind != AiKind.ANTHROPIC || key.isNotBlank()) { \"key\" }",
       "replace": "require(true) { \"key\" }",
       "expect": "anAnthropicChoiceNeedsAKeyAndAnHttpsAddressAndNothingIsSavedWithoutThem"
     },
     {
-      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt",
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
       "find": "AiKind.ANTHROPIC -> anthropicFor?.invoke(config.baseUrl, config.model, key)",
       "replace": "AiKind.ANTHROPIC -> null",
       "expect": "testingAnAnthropicChoiceSendsOnePingToItAndSavesNothing"
     },
     {
-      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt",
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
       "find": "val address = if (config.kind == AiKind.ANTHROPIC && config.baseUrl.isBlank()) AnthropicClient.BASE_URL else config.baseUrl",
       "replace": "val address = config.baseUrl",
       "expect": "anAnthropicChoiceWithNoSavedAddressUsesAnthropicsOwn"
