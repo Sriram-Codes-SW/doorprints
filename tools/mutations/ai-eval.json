@@ -41,6 +41,15 @@
     { "file": "web/src/app/core/ai/ai-eval.ts", "find": "const failed = results.filter((r) => !r.passed);", "replace": "const failed = results.filter((r) => !r.passed || r.output !== undefined);", "expect": "none for a passing case" },
     { "file": "web/src/app/core/ai/ai-eval.ts", "find": "norm(needle) === '' ?", "replace": "false ?" },
     { "file": "web/src/app/core/ai/ai-eval.ts", "find": "hay.normalize('NFKC').includes(needle.normalize('NFKC'))", "replace": "hay.includes(needle)" },
-    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "if (mentions(r.answer, m)) out.push(`answer contains", "replace": "if (norm(r.answer).includes(norm(m))) out.push(`answer contains" }
+    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "if (mentions(r.answer, m)) out.push(`answer contains", "replace": "if (norm(r.answer).includes(norm(m))) out.push(`answer contains" },
+    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "let timeoutMs = DEFAULT_TIMEOUT_MS;", "replace": "let timeoutMs = 30_000;", "expect": "is 60 seconds when nothing is set, empty or blank" },
+    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "(env['AI_EVAL_TIMEOUT_MS'] ?? '').trim()", "replace": "(env['AI_EVAL_TIMEOUT_MS'] ?? '')", "expect": "is the number given for a server on this machine" },
+    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "if (!isKeylessLocal(env)) return invalid('a longer", "replace": "if (false) return invalid('a longer", "expect": "is refused for a provider that is not on this machine" },
+    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "/^\\d{1,7}$/.test(limit) ? Number(limit) : -1", "replace": "Number(limit)", "expect": "refuses 60s" },
+    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "timeoutMs < MIN_TIMEOUT_MS ||", "replace": "timeoutMs <= MIN_TIMEOUT_MS ||", "expect": "is the number given for a server on this machine" },
+    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "timeoutMs < MIN_TIMEOUT_MS ||", "replace": "timeoutMs < MIN_TIMEOUT_MS - 1 ||", "expect": "refuses 999" },
+    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "const MAX_TIMEOUT_MS = 600_000;", "replace": "const MAX_TIMEOUT_MS = 600_001;", "expect": "refuses 600001" },
+    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "const MAX_TIMEOUT_MS = 600_000;", "replace": "const MAX_TIMEOUT_MS = 599_999;", "expect": "is the number given for a server on this machine" },
+    { "file": "web/src/app/core/ai/ai-eval.ts", "find": "delayMs: Number(delay), timeoutMs, types", "replace": "delayMs: Number(delay), timeoutMs: 60_000, types", "expect": "is the number given for a server on this machine" }
 ]
 }

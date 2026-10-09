@@ -42,7 +42,7 @@ const setup = evalSetup(proc?.env ?? {});
  * Synthetic data only. Reported, not gating: the test fails only when the setup is wrong or no case got an answer.
  */
 describe.skipIf(setup.status === 'skip')('Golden set through the chosen provider (real key)', () => {
-  it('runs the cases and writes the summary', { timeout: 3_600_000 }, async () => {
+  it('runs the cases and writes the summary', { timeout: 7_200_000 }, async () => {
     if (setup.status !== 'run') throw new Error(setup.line);
     const at = (c: unknown) => c as never;
     const now = '2026-09-20T10:00:00Z';
@@ -64,7 +64,7 @@ describe.skipIf(setup.status === 'skip')('Golden set through the chosen provider
     const config = { kind: setup.kind, baseUrl: setup.baseUrl, model: setup.model };
     const via: ModelRef =
       setup.kind === 'gemini' ? setup.key
-      : setup.kind === 'openai-compatible' ? new OpenAiCompatibleChatModel(config, setup.key)
+      : setup.kind === 'openai-compatible' ? new OpenAiCompatibleChatModel(config, setup.key, undefined, setup.timeoutMs)
       : new AnthropicChatModel(config, setup.key);
 
     // The app's own 10-a-minute limit is not what is measured; the provider's limits are, and `delayMs` paces for them.
@@ -101,7 +101,7 @@ describe.skipIf(setup.status === 'skip')('Golden set through the chosen provider
     const file = proc?.env?.['DOORPRINTS_EVAL_SUMMARY'];
     if (file && proc?.getBuiltinModule) proc.getBuiltinModule('node:fs').writeFileSync(file, text);
     // The summary above is written either way. A run that ended early because the provider could not be used (key
-    // rejected, model not found, unreachable or too slow for the 60 s request limit) is not a quality result: it fails,
+    // rejected, model not found, unreachable or too slow for the request limit: 60 s, or AI_EVAL_TIMEOUT_MS for a model on this machine, S4b-BL-190) is not a quality result: it fails,
     // so a green run never hides "0 of 2 cases" (the first keyless run of 2026-10-08 was green with 0 of 2).
     expect(stopped, `the run stopped early: ${stopped}`).toBeNull();
     expect(answered, 'no case got an answer from the provider').toBeGreaterThan(0);

@@ -33,7 +33,12 @@ export type EvalType = (typeof EVAL_TYPES)[number];
 export type EvalSetup =
   | { status: 'skip'; line: string }
   | { status: 'invalid'; line: string }
-  | { status: 'run'; kind: AiKind; baseUrl: string; model: string; key: string; delayMs: number; types: EvalType[] };
+  | { status: 'run'; kind: AiKind; baseUrl: string; model: string; key: string; delayMs: number; timeoutMs: number; types: EvalType[] };
+
+/** The app's request limit, and the bounds of the one the loopback eval may ask for (S4b-BL-190). */
+const DEFAULT_TIMEOUT_MS = 60_000;
+const MIN_TIMEOUT_MS = 1_000;
+const MAX_TIMEOUT_MS = 600_000;
 
 /**
  * Whether the setting names an OpenAI-compatible server on this machine (`localhost`, `127.0.0.1`): the one place a key is
@@ -72,7 +77,17 @@ export function evalSetup(env: Record<string, string | undefined>): EvalSetup {
   if (types.some((t) => !EVAL_TYPES.includes(t as EvalType))) return invalid('types must be some of extract, ask, plan');
   const delay = env['AI_EVAL_DELAY_MS'] ?? '4000';
   if (!/^\d{1,6}$/.test(delay)) return invalid('delay must be a whole number of milliseconds');
-  return { status: 'run', kind: kind as AiKind, baseUrl, model: kind === 'gemini' ? '' : model, key, delayMs: Number(delay), types: types as EvalType[] };
+  // A longer request limit (S4b-BL-190) is for the model on this machine only: a hosted provider keeps the app's 60 s.
+  const limit = (env['AI_EVAL_TIMEOUT_MS'] ?? '').trim();
+  let timeoutMs = DEFAULT_TIMEOUT_MS;
+  if (limit !== '') {
+    if (!isKeylessLocal(env)) return invalid('a longer request limit is only for a server on this machine');
+    timeoutMs = /^\d{1,7}$/.test(limit) ? Number(limit) : -1;
+    if (timeoutMs < MIN_TIMEOUT_MS || timeoutMs > MAX_TIMEOUT_MS) {
+      return invalid(`timeout must be a whole number of milliseconds from ${MIN_TIMEOUT_MS} to ${MAX_TIMEOUT_MS}`);
+    }
+  }
+  return { status: 'run', kind: kind as AiKind, baseUrl, model: kind === 'gemini' ? '' : model, key, delayMs: Number(delay), timeoutMs, types: types as EvalType[] };
 }
 
 /** One case of golden-set.json (only the parts the checks read). */

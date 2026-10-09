@@ -38,12 +38,19 @@ export interface AiReply {
 }
 
 /**
- * One POST of `body` as JSON with `headers` added. Status 0 is a network failure; a timeout is `unavailable`. The redirect
+ * One POST of `body` as JSON with `headers` added, stopped after `timeoutMs` (60 s unless the caller passes another; the
+ * app never does, only the loopback eval of the `local-model` suite, S4b-BL-190). Status 0 is a network failure; a timeout is `unavailable`. The redirect
  * mode is `manual`: with `error` a page only learns that `fetch` failed, which is indistinguishable from no network, but a
  * browser answers `manual` with an opaque-redirect response (type `opaqueredirect`, status 0, no status, no location), which
  * is `unavailable` as a 3xx is on the phones. Which 3xx it was is not knowable in a browser; the words do not need it.
  */
-export async function postAiJson(fetchImpl: FetchLike, url: string, headers: Record<string, string>, body: object): Promise<AiReply> {
+export async function postAiJson(
+  fetchImpl: FetchLike,
+  url: string,
+  headers: Record<string, string>,
+  body: object,
+  timeoutMs: number = REQUEST_TIMEOUT_MS,
+): Promise<AiReply> {
   try {
     const res = await fetchImpl(url, {
       method: 'POST',
@@ -53,7 +60,7 @@ export async function postAiJson(fetchImpl: FetchLike, url: string, headers: Rec
       credentials: 'omit',
       cache: 'no-store',
       referrerPolicy: 'no-referrer',
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     if (res.type === 'opaqueredirect') throw new OnDeviceAiError('unavailable');
     return { status: res.status, body: await res.text(), retryAfter: res.headers.get('Retry-After') };

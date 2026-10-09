@@ -20,7 +20,7 @@ import type { JsonChatModel } from './json-chat-model';
 import { ANSWER_SCHEMA, LISTING_SCHEMA, OnDeviceAiError, PLAN_SCHEMA } from './on-device-ai.service';
 import { validateWebBaseUrl } from './ai-provider-config';
 import { schemaTrailer, toStrictSchema } from './schema-dialect';
-import { type ErrorAction, type FetchLike, classifyStatus, failure, postAiJson } from './ai-request';
+import { type ErrorAction, type FetchLike, REQUEST_TIMEOUT_MS, classifyStatus, failure, postAiJson } from './ai-request';
 
 /**
  * The `openai-compatible` kind (docs/03 §13.2, ADR-35): `POST {baseUrl}/chat/completions`, the chat API that OpenAI,
@@ -127,6 +127,8 @@ export class OpenAiCompatibleChatModel implements JsonChatModel {
     private readonly settings: OpenAiCompatibleSettings,
     private readonly apiKey: string,
     private readonly fetchImpl: FetchLike = (input, init) => fetch(input, init),
+    /** The request limit; only the loopback eval passes a longer one (S4b-BL-190). */
+    private readonly timeoutMs: number = REQUEST_TIMEOUT_MS,
   ) {}
 
   /**
@@ -175,6 +177,6 @@ export class OpenAiCompatibleChatModel implements JsonChatModel {
   /** One POST: the key only in an `Authorization` header, and only when there is one. */
   private post(baseUrl: string, body: object): ReturnType<typeof postAiJson> {
     const headers: Record<string, string> = this.apiKey.trim() !== '' ? { Authorization: `Bearer ${this.apiKey.trim()}` } : {};
-    return postAiJson(this.fetchImpl, `${baseUrl}/chat/completions`, headers, body);
+    return postAiJson(this.fetchImpl, `${baseUrl}/chat/completions`, headers, body, this.timeoutMs);
   }
 }
