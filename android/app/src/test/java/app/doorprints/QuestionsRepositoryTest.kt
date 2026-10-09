@@ -31,6 +31,7 @@ import app.doorprints.data.AndroidRepository
 import app.doorprints.data.AppDatabase
 import app.doorprints.data.DatabaseFile
 import app.doorprints.data.HouseEntity
+import app.doorprints.data.RecordEntity
 import app.doorprints.data.SecretStore
 import app.doorprints.data.SettingsStore
 import app.doorprints.data.create
@@ -250,6 +251,60 @@ class QuestionsRepositoryTest {
         val data = BackupData.of(repo.localRows().toBundle(ExportOptions(exportedAtMillis = at, includeContacts = false)))
         assertEquals(BackupFormat.ID_2, data.format)
         assertEquals(repo.getHouse("h1")!!.answers, data.houses.single().answers)
+    }
+
+    @Test
+    fun aRowThatCannotBeTrustedIsSkippedFromTheBankTheBackupAndTheNextSortPosition(): Unit = runBlocking {
+        repo.seedQuestions("en")
+        db.records().upsert(RecordEntity(QuestionType.name, "q_0000bad1", """{"text":" ","sort":50}""", at))
+        db.records().upsert(RecordEntity(QuestionType.name, "q_0000bad2", "not json", at))
+        db.records().upsert(RecordEntity(QuestionType.name, "bad id", """{"text":"Pets?","sort":60}""", at))
+        assertEquals(DefaultQuestions.ALL.map { it.id }, ids())
+        assertEquals(DefaultQuestions.ALL.map { it.id }, repo.observeQuestions().first().map { it.id })
+        val data = BackupData.of(repo.localRows().toBundle(ExportOptions(exportedAtMillis = at)))
+        assertEquals(14, data.questionRows.size)
+        // The next custom question goes after the last question that can be read (sort 14), not after a skipped row.
+        val id = repo.addQuestion("Is there a lift?")
+        assertEquals(14, repo.questions().first { it.id == id }.sort)
+        // A row from a newer app reads with the nearest value it knows: an unknown category is OTHER, scope BOTH, sort 0.
+        db.records().upsert(
+            RecordEntity(QuestionType.name, "q_0000cafe", """{"text":"Odd?","category":"X","appliesTo":"Y","sort":-3}""", at),
+        )
+        assertEquals(Question("q_0000cafe", "Odd?", "OTHER", "BOTH", false, 0), repo.questions().first { it.id == "q_0000cafe" })
+    }
+
+    @Test
+    fun resetAtTheCapRestoresALiveDefaultButNotADeletedOne(): Unit = runBlocking {
+        repo.seedQuestions("en")
+        repeat(86) { repo.addQuestion("Custom $it") }
+        assertEquals(100, repo.questions().size)
+        repo.saveQuestion(repo.questions().first { it.id == "qd_water" }.copy(text = "Edited"))
+        repo.resetQuestions("hi")
+        assertEquals(DefaultQuestions.byId("qd_water")!!.question("hi"), repo.questions().first { it.id == "qd_water" })
+        assertEquals(100, repo.questions().size)
+    }
+
+    @Test
+    fun savingATrimmedQuestionWritesOnlyWhenItDiffersAndATombstonesIdAtTheCapIsRefused(): Unit = runBlocking {
+        repo.seedQuestions("en")
+        val water = repo.questions().first { it.id == "qd_water" }
+        val stamp = db.records().get(QuestionType.name, "qd_water")!!.updatedAt
+        // Padding alone is not a change: it trims to what is stored, so nothing is written.
+        repo.saveQuestion(water.copy(text = "  " + water.text + " "))
+        assertEquals(stamp, db.records().get(QuestionType.name, "qd_water")!!.updatedAt)
+        repo.saveQuestion(water.copy(text = "  Borewell?  "))
+        assertEquals("Borewell?", repo.questions().first { it.id == "qd_water" }.text)
+        repo.saveQuestion(water.copy(text = "x".repeat(300)))
+        assertThrows(IllegalArgumentException::class.java) { runBlocking { repo.saveQuestion(water.copy(text = "x".repeat(301))) } }
+        // At the cap a deleted question's id is not "there": saving it is refused, as a new question is.
+        val gone = repo.addQuestion("Soon gone")
+        repo.deleteQuestion(gone)
+        repeat(86) { repo.addQuestion("Custom $it") }
+        assertEquals(100, repo.questions().size)
+        assertThrows(RecordLimitException::class.java) { runBlocking { repo.saveQuestion(Question(gone, "Back again")) } }
+        // Archived questions count toward the 100 and can still be saved.
+        repo.saveQuestion(repo.questions().last().copy(archived = true))
+        assertEquals(100, repo.questions().size)
     }
 
     @Test
