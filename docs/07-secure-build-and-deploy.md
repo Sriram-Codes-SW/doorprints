@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Secure build, CI/CD and deployment guide |
-| Version | 0.71 |
-| Date | 2026-10-05 |
+| Version | 0.72 |
+| Date | 2026-10-09 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -83,6 +83,7 @@
 | 0.69 | 2026-10-09 | Claude (Code) | `ai-evals.yml` suite `local-model` (S4b-BL-190): default model `qwen2.5:0.5b`, job timeout 150 minutes, `OLLAMA_NUM_PARALLEL=1`, `OLLAMA_KEEP_ALIVE=1h`, a JSON warm-up, and `AI_EVAL_TIMEOUT_MS=180000` (read by the harness only for a server on localhost; the app's 60 s is unchanged). Same pinned Ollama, same permissions, no secret. |
 | 0.70 | 2026-10-09 | Claude (Code) | §AI variables: `AI_MAX_OUTPUT_TOKENS` default `8192` (was `2048`; it includes the model's thinking tokens on Gemini 3.x; S4b-BL-194). |
 | 0.71 | 2026-10-09 | Claude (Code) | §2 supply chain: the final image removes the base image's unused `/usr/bin/pebble` while the base ships it with HIGH CVEs and no fix (S4b-BL-195). |
+| 0.72 | 2026-10-09 | Claude (Code) | New §7.3: Docker Hub login for CI pulls (the secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN`, a read-only token, what happens without them; S4b-BL-197). |
 
 Related: [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Runbook](08-operations-runbook.md) · [AI docs](ai/)
 
@@ -1062,6 +1063,37 @@ ever added to that pool, which step 4 avoids. The fix is to grant `firebase-host
 (Workload Identity User), check a manual **Web** run on `main` still deploys, then remove the `repository_id`
 principal. Not verified: whether the console accepts the `@` in that value; if it refuses, keep the current grant and
 tell us.
+
+### 7.3 Docker Hub login for CI pulls (owner setup, optional)
+
+**Why.** Several jobs pull images from Docker Hub on a fresh GitHub-hosted runner (Semgrep, Trivy, MobSF, the
+`maven`, `eclipse-temurin` and `postgis/postgis` base images of `docker build`). The runners share addresses, so Docker
+Hub's anonymous pull limit is often used up and a job fails with `429 toomanyrequests`. A login with a free account
+raises the limit for that job. No paid plan is needed.
+
+**Secrets (repository secrets, exactly these names).**
+
+| Secret | Value |
+|---|---|
+| `DOCKERHUB_USERNAME` | The Docker Hub user name (not the e-mail address) |
+| `DOCKERHUB_TOKEN` | A personal access token with the permission **Public Repo Read-only** (Docker Hub, Account settings, Personal access tokens). Give it an expiry and write the expiry date in the password manager entry and the calendar ([08](08-operations-runbook.md) §4). Never use the account password. |
+
+**Jobs that log in:** `security.yml` `semgrep` and `trivy`; `android.yml` `mobsf`; `backend.yml` `verify` and `image`;
+`ai-evals.yml` `eval`. Each has a step that checks both secrets exist (the only step that sees them besides the login)
+and a `docker/login-action` step (full commit SHA, v4.6.0) that runs only when they do, with `continue-on-error`. No
+job gets new `permissions`. Jobs whose images come from `ghcr.io` (gitleaks, the ZAP scans) and jobs without
+containers do not log in.
+
+**Without the secrets** (not yet added, a fork's or Dependabot's pull request, or an expired or revoked token) nothing
+breaks: the check finds no secret, the login is skipped (or fails with a warning), and the pulls are anonymous as before,
+so the rate limit can still hit.
+
+**Safety.** The token reaches only the check step's shell and `docker/login-action`; no step prints it. The login writes
+`~/.docker/config.json`; the action removes it when the job ends, and `backend.yml` `verify` and `image` and
+`ai-evals.yml` `eval` run `docker logout` before the repository's own scripts and tests run. `mobsf` and `trivy` keep
+the login until the job ends because the next steps are `docker run` of a pinned image (`android/ci/mobsf-scan.sh` is
+repository code that runs while logged in; a fork cannot reach it, as forks get no secrets). No workflow uploads the
+Docker config as an artifact. If the token leaks, revoke it in Docker Hub and create a new one ([08](08-operations-runbook.md) §5.2).
 
 ## 8. Pre-deploy checklist (per environment)
 
