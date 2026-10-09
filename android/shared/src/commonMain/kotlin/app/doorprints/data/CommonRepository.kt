@@ -563,71 +563,39 @@ open class CommonRepository(
 
     override suspend fun markViewingDone(id: String, visitId: String?) = viewingStore.markDone(id, visitId)
 
-    // ---- Hunting areas, my places and area notes (docs/11 slice 4a) ----
+    // ---- Hunting areas, my places and area notes (docs/11 slice 4a): the rules are AreaStore's (S4b-BL-168) ----
 
-    private fun RecordEntity.toArea(): Area? = decode(AreaType)?.copy(id = id)?.coerced()
-    private fun RecordEntity.toPlace(): Place? = decode(PlaceType)?.copy(id = id)?.coerced()
-    private fun RecordEntity.toAreaNote(): AreaNote? = decode(AreaNoteType)?.copy(id = id, updatedAt = updatedAt)?.coerced()
+    private val areaStore = AreaStore(
+        db,
+        object : RecordWriter {
+            override suspend fun <T> save(type: RecordType<T>, id: String, value: T) = saveRecord(type, id, value)
 
-    private fun areasOf(rows: List<RecordEntity>) = rows.mapNotNull { it.toArea() }.sortedWith(Area.BY_NAME)
-    private fun placesOf(rows: List<RecordEntity>) = rows.mapNotNull { it.toPlace() }.sortedWith(Place.BY_NAME)
-    private fun notesOf(rows: List<RecordEntity>) = rows.mapNotNull { it.toAreaNote() }.sortedWith(AreaNote.NEWEST_FIRST)
+            override suspend fun delete(type: RecordType<*>, id: String) = deleteRecord(type, id)
+        },
+    )
 
-    override fun observeAreas(): Flow<List<Area>> = db.records().byType(AreaType.name).map(::areasOf)
-    override suspend fun areas(): List<Area> = areasOf(db.records().listByType(AreaType.name))
-    override fun observePlaces(): Flow<List<Place>> = db.records().byType(PlaceType.name).map(::placesOf)
-    override suspend fun places(): List<Place> = placesOf(db.records().listByType(PlaceType.name))
-    override fun observeAreaNotes(): Flow<List<AreaNote>> = db.records().byType(AreaNoteType.name).map(::notesOf)
-    override suspend fun areaNotes(): List<AreaNote> = notesOf(db.records().listByType(AreaNoteType.name))
+    override fun observeAreas(): Flow<List<Area>> = areaStore.observeAreas()
+    override suspend fun areas(): List<Area> = areaStore.areas()
+    override fun observePlaces(): Flow<List<Place>> = areaStore.observePlaces()
+    override suspend fun places(): List<Place> = areaStore.places()
+    override fun observeAreaNotes(): Flow<List<AreaNote>> = areaStore.observeNotes()
+    override suspend fun areaNotes(): List<AreaNote> = areaStore.notes()
 
-    override suspend fun saveArea(area: Area) {
-        val clean = area.copy(name = area.name.trim())
-        require(clean.isValid) { "an area needs a record id, a name of 1..${Area.MAX_NAME}, a point and a radius of 200..2000 m" }
-        writeCapped(AreaType, clean.id, clean, Area.MAX_AREAS) { it.toArea() }
-    }
+    override suspend fun saveArea(area: Area) = areaStore.saveArea(area)
+    override suspend fun savePlace(place: Place) = areaStore.savePlace(place)
+    override suspend fun saveAreaNote(note: AreaNote) = areaStore.saveNote(note)
 
-    override suspend fun savePlace(place: Place) {
-        val clean = place.copy(name = place.name.trim())
-        require(clean.isValid) { "a place needs a record id, a name of 1..${Place.MAX_NAME} and a point" }
-        writeCapped(PlaceType, clean.id, clean, Place.MAX_PLACES) { it.toPlace() }
-    }
-
-    override suspend fun saveAreaNote(note: AreaNote) {
-        val clean = note.copy(
-            areaId = note.areaId?.trim()?.ifEmpty { null }, street = note.street?.trim()?.ifEmpty { null },
-            text = note.text.trim(), updatedAt = 0L,
-        )
-        require(clean.isValid) { "an area note needs a record id, exactly one of an area or a street, and 1..${AreaNote.MAX_TEXT} characters" }
-        writeCapped(AreaNoteType, clean.id, clean, AreaNote.MAX_NOTES) { it.toAreaNote()?.copy(updatedAt = 0L) }
-    }
-
-    /**
-     * Writes [value] unless the live record already says the same (no write: it keeps its stamp and is not pushed
-     * again); `RecordLimitException` when it would be live record number [max] + 1 of [type].
-     */
-    private suspend fun <T> writeCapped(type: RecordType<T>, id: String, value: T, max: Int, read: (RecordEntity) -> T?) {
-        db.withImmediateTransaction {
-            val stored = db.records().get(type.name, id)?.takeUnless { it.deleted }
-            if (stored != null && read(stored) == value) return@withImmediateTransaction
-            if (stored == null && db.records().countLive(type.name) >= max) throw RecordLimitException(type.name, max)
-            saveRecord(type, id, value)
-        }
-    }
-
-    // A tombstone's id is taken too: reusing it would bring the old record back on another device.
-    private suspend fun usedIds(type: RecordType<*>): Set<String> = db.records().versions(type.name).mapTo(HashSet()) { it.id }
-
-    override suspend fun newAreaId(): String = usedIds(AreaType).let { used -> Area.newId({ it in used }) }
-    override suspend fun newPlaceId(): String = usedIds(PlaceType).let { used -> Place.newId({ it in used }) }
-    override suspend fun newAreaNoteId(): String = usedIds(AreaNoteType).let { used -> AreaNote.newId({ it in used }) }
+    override suspend fun newAreaId(): String = areaStore.newAreaId()
+    override suspend fun newPlaceId(): String = areaStore.newPlaceId()
+    override suspend fun newAreaNoteId(): String = areaStore.newNoteId()
 
     override suspend fun deleteArea(id: String) {
-        deleteRecord(AreaType, id)
+        areaStore.deleteArea(id)
         // The wake-up's per-area stamp (slice 4b) goes with it; a delete by a sync is pruned when the geofences are set.
         settings.removeAreaLastNotified(id)
     }
-    override suspend fun deletePlace(id: String) = deleteRecord(PlaceType, id)
-    override suspend fun deleteAreaNote(id: String) = deleteRecord(AreaNoteType, id)
+    override suspend fun deletePlace(id: String) = areaStore.deletePlace(id)
+    override suspend fun deleteAreaNote(id: String) = areaStore.deleteNote(id)
 
     /**
      * The once-only move of contacts into brokers (slice 1b), on the first read after the update: every live house
@@ -1239,11 +1207,11 @@ open class CommonRepository(
             // Areas, places and area notes (slice 4a): untrusted rows are skipped, a stored radius out of range is 500, and
             // nothing is cut to the caps (as the website and the server read them; the caps hold at each save).
             areas = db.records().listByType(AreaType.name)
-                .mapNotNull { row -> row.toArea()?.let { ExportArea.of(it, row.updatedAt) } },
+                .mapNotNull { row -> AreaStore.areaOf(row)?.let { ExportArea.of(it, row.updatedAt) } },
             places = db.records().listByType(PlaceType.name)
-                .mapNotNull { row -> row.toPlace()?.let { ExportPlace.of(it, row.updatedAt) } },
+                .mapNotNull { row -> AreaStore.placeOf(row)?.let { ExportPlace.of(it, row.updatedAt) } },
             areaNotes = db.records().listByType(AreaNoteType.name)
-                .mapNotNull { row -> row.toAreaNote()?.let { ExportAreaNote.of(it, row.updatedAt) } },
+                .mapNotNull { row -> AreaStore.noteOf(row)?.let { ExportAreaNote.of(it, row.updatedAt) } },
             // The tombstones, for an update file's deletions (S4b-BL-82).
             deletedHouses = db.houses().deletedIds().toSet().let { gone ->
                 db.houses().versions().filter { it.id in gone }.associate { it.id to it.updatedAt }
@@ -1384,7 +1352,7 @@ open class CommonRepository(
             onProgress(++done, total)
         }
         // Areas, places and area notes (slice 4a), by id with the file's `updatedAt`, like the questions.
-        for (row in importedSlice4a(actions) { it }) {
+        for (row in AreaStore.importedRows(actions) { it }) {
             db.records().upsert(row)
             onProgress(++done, total)
         }
@@ -1495,23 +1463,6 @@ open class CommonRepository(
         updatedAt = updatedAt, deleted = false, dirty = true,
     )
 
-    /**
-     * A backup's areas, places and area notes as record rows (slice 4a), stamped by [stamp] from the file's `updatedAt`:
-     * coerced (the plan checked them), dirty so they are pushed.
-     */
-    private fun importedSlice4a(actions: ImportActions, stamp: (Long) -> Long): List<RecordEntity> =
-        actions.areas.map { a ->
-            imported(AreaType, a.id, checkNotNull(a.toArea()?.coerced()) { "area ${a.id} was not checked" }, stamp(a.updatedAt))
-        } + actions.places.map { p ->
-            imported(PlaceType, p.id, checkNotNull(p.toPlace()?.coerced()) { "place ${p.id} was not checked" }, stamp(p.updatedAt))
-        } + actions.areaNotes.map { n ->
-            imported(AreaNoteType, n.id, checkNotNull(n.toAreaNote().coerced()) { "note ${n.id} was not checked" }, stamp(n.updatedAt))
-        }
-
-    private fun <T> imported(type: RecordType<T>, id: String, value: T, updatedAt: Long) = RecordEntity(
-        type = type.name, id = id, payload = type.encode(value), updatedAt = updatedAt, deleted = false, dirty = true,
-    )
-
     private fun importedPreference(p: ExportPreference, updatedAt: Long): RecordEntity = RecordEntity(
         type = PreferenceType.name, id = p.key, payload = PreferenceType.encode(Preference(p.value)),
         updatedAt = updatedAt, deleted = false, dirty = true,
@@ -1615,7 +1566,7 @@ open class CommonRepository(
                     onProgress(++done, total)
                 }
                 // A copy keeps the ids of areas, places and notes (a note names its area) and merges them like a merge.
-                for (row in importedSlice4a(actions) { CopyUndo.copyStamp(it, now) }) {
+                for (row in AreaStore.importedRows(actions) { CopyUndo.copyStamp(it, now) }) {
                     db.records().upsert(row)
                     onProgress(++done, total)
                 }

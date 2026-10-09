@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.144 |
+| Version | 0.145 |
 | Date | 2026-10-08 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..183); this file lists the lead-level items and points to the rest. |
@@ -153,6 +153,7 @@
 | 0.142 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-168, slice 2 on the phones (viewings), PR #216:** §10 marks slice 2 done with the numbers (`CommonRepository.kt` 1,790 -> 1,764, `ViewingStore.kt` 93) and updates the remaining plan. [10](10-sprint-log.md) v0.205, [03](03-design.md) v0.92, [06](06-test-plan.md) v0.179. |
 | 0.143 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-168, slice 5 (web, criteria and the rating share)** (branch `refactor/web-split-criteria-slice`): `CriteriaStore` leaves `local-store.service.ts` (842 to 709 lines), reached as `store.criteria`; §9 marks slice 5 done with the measured numbers, the verdict on the page part (left) and the remaining plan (items 6 to 9). Behaviour-neutral. |
 | 0.144 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-168, slice 6 (web, rooms and floor)** (branch `refactor/web-split-rooms-slice`): `HouseRooms` (`pages/house-detail/house-rooms.ts`, 165 lines) and `HouseFloor` (`pages/house-detail/house-floor.ts`, 82) leave `house-detail-page.ts` (1,655 to 1,495 lines); the template's calls are renamed in place (`rooms.add()`, `floor.basement(d)`). §9 records slice 6 with the numbers, what was not split and why (the duplicate-flat line, the Rooms card's markup), and the plan after it (items 7 to 9). 14 new tests in `house-rooms.spec.ts` (11 passed on the old code first, none moved), `tools/mutations/house-rooms.json` (31) and `house-floor.json` (16). Behaviour-neutral. |
+| 0.145 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-168, slice 3 on the phones (areas, places and area notes), PR #220:** §10 marks slice 3 done with the numbers (`CommonRepository.kt` 1,764 -> 1,715, `AreaStore.kt` 147), says how `writeCapped` is shared (the store takes the repository's record writers), what was not split and why, and updates the remaining plan. [10](10-sprint-log.md) v0.208, [03](03-design.md) v0.95, [06](06-test-plan.md) v0.180. |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 
@@ -817,7 +818,7 @@ ticket, photos first, so the two stacks stay parallel).
 | **Photos, data** | `CommonRepository.kt`: folder and file helpers 168-190, `savePhotoMeta` 292-301, `deletePhoto` 773-782, `photoPath`, `photoFileOf`, `importedPhotoPath` 1354-1390, `discardUncommittedPhotoFiles` 1755-1760 | the photo DAO, the folder, `BackupValidation` | The sync pull and push, merge import, copy import, the import's undo, the exporters and both phones' thumbnails all need the same folder and id rules | **Passes. Slice 1 (done)**; the loops over the rows stay (below) |
 | Photos, sync and import loops | `CommonRepository.kt` 1093-1138 (pull), 1240-1277 (push), 1517-1545, 1663-1720 (imports) | houses, cursors, counters, one transaction | Each loop shares its cursor, counters or transaction with the houses and visits around it | **Fails**: not split; they use `PhotoStore` for every file and meta rule |
 | Viewings | `CommonRepository.kt` 573-617; UI already in `ViewingsScreen.kt` | the record table | The reminders, the export rows, the import and the screens decode and cap a viewing | **Passes. Slice 2 (done)** |
-| Areas, places, area notes | `CommonRepository.kt` 618-690 | the record table | Same shape as viewings (three types, one writer `writeCapped`) | Passes, slice 3 |
+| Areas, places, area notes | `CommonRepository.kt` 566-630 (on 2026-10-09, after slice 2) | the record table | The Map, the house page, the Assistant's text, the wake-up, the exporters, the import and its undo read the three kinds the same way (one writer, `writeCapped`) | **Passes. Slice 3 (done)** |
 | Questions and a house's answers | `CommonRepository.kt` 470-572 | the record table, seeding | The bank, the form's questions, the reminders, the import | Passes, slice 4 |
 | Criteria and scoring | `CommonRepository.kt` 382-469 | the record table | The form's checklist, the list's score, Compare, the import | Passes, slice 5 |
 | Brokers and contact | `CommonRepository.kt` 303-380, 693-733; form 1171-1235, `BrokerSection` | houses, the record table, the once-only move of contacts | The houses flow, `saveHouse`, the export rows, the import | Passes, slice 6 (data and UI together) |
@@ -869,3 +870,38 @@ a tombstone's id, is not listed: the id is random, so no test can force the clas
 the AI document (`CommonRepository.kt` about 870-890) belong to the Assistant's house documents, which read every kind.
 **Remaining:** 3 areas, places and notes -> 4 questions and answers -> 5 criteria and scoring -> 6 brokers and contact
 -> 7 status, rating, checklist (optional) -> 8 on-device AI.
+
+**Slice 3, what moved (PR #220).** `AreaStore` (`:shared` `data/AreaStore.kt`, a plain class) owns reading an area, a place and an
+area note from its record row (`areaOf`, `placeOf`, `noteOf`: decoded, coerced, skipped when they cannot be trusted; a
+note also carries its row's edit stamp), the three lists in their orders, saving (trimmed, validated, no write when the
+live record already says the same, `RecordLimitException` when the type is full), a new id that clashes with no
+tombstone, deleting, and the backup's rows for the three (`importedRows`, the `imported*` mapper this slice takes out of
+the big file, with the generic `imported` helper that only it used). **How `writeCapped` is shared:** it is a private
+function of `AreaStore`, because its only three callers are the three kinds in that file; the store takes the
+repository's record writers through a two-method interface (`RecordWriter`: `save` and `delete`, generic in the record
+type, which a pair of lambdas cannot be), so the id, size and 5,000-row checks and the sync request stay where every
+record kind has them; `CommonRepository` hands it an object that calls its own `saveRecord` and `deleteRecord`. One class
+for the three kinds, not three (the web has three because its stores are also reached from pages one by one): here they
+share the writer, the table and the import mapper, so splitting them would put the writer in a fourth place. The
+repository delegates every `Repository` member; `deleteArea` stays a two-line function there, because forgetting the
+wake-up's stamp is the settings' business, not a record's. The export, import and undo loops stay and call
+`AreaStore.areaOf`, `placeOf`, `noteOf` and `importedRows`. Before: `CommonRepository.kt` 1,764 lines. After: 1,715, plus
+`AreaStore.kt` (147, of which about 30 are the header and comments). A new area, place or note value now edits
+`AreaStore.kt`, the model, `ExportModel.kt` and the screen, and no longer scrolls through the repository for the reads and
+the writes. Tests: `AreasRepositoryTest` 5 -> 10; four characterization tests were added and passed on the old code before
+anything moved (a place trims, is dirty and is written only when changed; an unchanged note keeps its stamp and a blank
+target counts as absent; saving what is already there at the cap is not refused, while a tombstone's id at the cap is
+refused; a row that cannot be trusted is skipped from the lists and the backup); the fifth (a copy import stamps the three
+lists no later than now and marks them dirty) was written after the move, for two mutants that survived (it runs on the new code only; `applyCopy` itself was
+not touched). The mutation list `tools/mutations/area-store-kotlin.json` has
+33 one-line changes (32 to `AreaStore.kt`, one to `CommonRepository.kt`: the wake-up stamp kept after a delete), each
+killed by a named test; two survived the first run (the place order, a one-off JVM crash of the Gradle worker, and the
+area's copy stamp, because a past stamp equals its own minimum) and are killed after a rerun and a test change. Not listed,
+equivalent or unforceable: the new ids' tombstone check (`usedIds`; the id is random, so no test can make it clash, as for
+the viewings), the `coerced()` calls in `importedRows` (the import plan has already refused what they would change), the
+cap's exception arguments, and the messages of the refused saves. **Not split:** the sync pull and push (they move the three
+kinds as generic records), the export and import loops (one transaction over every kind), the Assistant's house document
+(it reads the three lists through `areas()`, `places()` and `areaNotes()` and stays with the other kinds it reads), and
+`AreasScreen.kt` (already one screen file). No screenshot was re-recorded.
+**Remaining:** 4 questions and answers -> 5 criteria and scoring -> 6 brokers and contact -> 7 status, rating, checklist
+(optional) -> 8 on-device AI.
