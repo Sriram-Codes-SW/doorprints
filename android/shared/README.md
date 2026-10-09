@@ -1134,7 +1134,7 @@ Twenty-first round (2026-09-22, Design and UX review of 1.22):
 * **Checklist score control (major; Design Director).** The ✓ asked about in 1.22 is not confirmed and is gone. It
   made a score look like a filter (docs/05 §5 lists the checklist as a *segmented radio*, `.options .option`; the ✓ is
   for toggle chips), it widened only the chosen chip so the ones after it moved on every tap, and it pushed "5" into a
-  sideways-scrolling strip at 320 dp and at 200 % on 360 dp. `ChecklistRow` is now the web's control, drawn like
+  sideways-scrolling strip at 320 dp and at 200 % on 360 dp. `ChecklistRow` (in `ChecklistSection.kt` since S4b-BL-168 slice 7) is now the web's control, drawn like
   `RatingRow`: a `FlowRow(selectableGroup(), 4 dp gaps)` of fixed 48 dp squares (`sizeIn(min 48 dp)`, 8 dp corner),
   chosen = `primary` fill, 2 dp `primary` edge, `onPrimary` SemiBold `labelLarge`; otherwise `surface` with a 1 dp
   `outline` edge; each a `selectable(role = RadioButton)` with "Water: 3 out of 5" as its name. The chosen state is a

@@ -21,6 +21,8 @@ package app.doorprints
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
@@ -176,6 +178,8 @@ class CriteriaScreenTest {
         tap("Water supply: 4 out of 5")
         compose.onNodeWithText("Water supply · 4 out of 5").assertExists()
         compose.onNodeWithText("Scored 1 of 10 that matter").assertExists()
+        compose.onNodeWithContentDescription("Water supply: 4 out of 5", useUnmergedTree = true).assertIsSelected()
+        compose.onNodeWithContentDescription("Water supply: 3 out of 5", useUnmergedTree = true).assertIsNotSelected()
         // The chosen option again clears it.
         tap("Water supply: 4 out of 5")
         compose.onNodeWithText("Water supply · not rated").assertExists()
@@ -187,6 +191,36 @@ class CriteriaScreenTest {
         tap("Water supply: not rated")
         compose.onNodeWithText("Water supply · not rated").assertExists()
         compose.onAllNodesWithText("Scored", substring = true).assertCountEquals(0)
+        // The top of the scale is an option too.
+        tap("Water supply: 5 out of 5")
+        compose.onNodeWithText("Water supply · 5 out of 5").assertExists()
+    }
+
+    @Test
+    fun theChecklistHidesAnArchivedCriterionLabelsAnIgnoredOneAndKeepsTheOtherScores() {
+        runBlocking {
+            repo.saveCriterion(scoring()["parking"]!!.copy(archived = true))
+            repo.saveCriterion(scoring()["power"]!!.copy(weight = 0))
+            repo.saveCriterion(scoring()["security"]!!.copy(mustHave = true, minScore = 4))
+            repo.saveHouse(HouseEntity(id = "a", label = "Green View", lat = 12.97, lon = 77.59, checklist = mapOf("water" to 4, "parking" to 3), rating = 2, createdAt = at, updatedAt = at))
+        }
+        compose.setContent { ProvideAppServices { HouseEditScreen(houseId = "a", newLat = null, newLon = null, visitId = null, onDone = {}) } }
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Water supply · 4 out of 5").fetchSemanticsNodes().isNotEmpty() }
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Power backup (not counted) · not rated").fetchSemanticsNodes().isNotEmpty() }
+        // An archived criterion is not shown, whatever its score.
+        compose.onAllNodesWithText("Parking · 3 out of 5").assertCountEquals(0)
+        compose.onAllNodesWithText("Parking · not rated").assertCountEquals(0)
+        // The summary counts the star rating by its share (half): (4 + 2) / 2; a must-have not scored yet is named.
+        compose.onNodeWithText("Overall score: 3.0 out of 5").assertExists()
+        compose.onNodeWithText("Scored 1 of 8 that matter").assertExists()
+        compose.onNodeWithText("Must-have not checked yet: Safety and security").assertExists()
+        // Scoring another criterion keeps the scores already there and shows the missed must-have.
+        compose.onNodeWithContentDescription("Safety and security: 2 out of 5", useUnmergedTree = true).performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Water supply · 4 out of 5").assertExists()
+        compose.onNodeWithText("Scored 2 of 8 that matter").assertExists()
+        compose.onNodeWithText("Must-have missed: Safety and security").assertExists()
+        compose.onAllNodesWithText("Must-have not checked yet", substring = true).assertCountEquals(0)
     }
 
     @Test
