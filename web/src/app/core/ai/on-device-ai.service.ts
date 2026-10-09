@@ -191,7 +191,7 @@ export class OnDeviceAiService {
       byHouse.set(v.houseId, list);
     }
     const viewingsByHouse = new Map<string, Viewing[]>();
-    for (const viewing of await this.store.viewings()) {
+    for (const viewing of await this.store.viewings.all()) {
       viewingsByHouse.set(viewing.houseId, [...(viewingsByHouse.get(viewing.houseId) ?? []), viewing]);
     }
     const areas = await this.store.areas();

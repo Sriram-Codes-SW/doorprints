@@ -19,7 +19,7 @@
 import { Injectable, signal } from '@angular/core';
 import { LocalDataError } from '../core/local-error';
 import { uuid } from '../core/models';
-import type { HouseDto, RecordDto, StatsDto, VisitDto } from '../core/models';
+import type { HouseDto, StatsDto, VisitDto } from '../core/models';
 import { openLocalDb } from './local-db';
 import type { LocalDb, OpenedDb, StorageProblem } from './local-db';
 import { BROKER_TYPE, MAX_BROKER_NAME, MAX_BROKER_PHONE, brokerFromPayload, brokerToPayload, phoneKey, samePhone } from '../shared/broker';
@@ -27,6 +27,8 @@ import type { Broker, BrokerRow } from '../shared/broker';
 import { deleteSavedWalksOfHouse } from './trace-rows';
 import { SETTING_KEYS, compareText, houseFromDto, isoNow, millis, recordFromDto, sortByCreated, visitFromDto } from './records';
 import { PhotoStore } from './photo-store';
+import { RecordStore, sortRecords } from './record-store';
+import { ViewingStore } from './viewing-store';
 import {
   BUILT_IN_KEYS,
   CRITERION_TYPE,
@@ -60,25 +62,6 @@ import {
   sortQuestions,
 } from '../shared/question';
 import type { Question, QuestionCategory, QuestionRow, QuestionScope } from '../shared/question';
-import {
-  MAX_DURATION_MIN,
-  MAX_ID_LENGTH,
-  MAX_VIEWINGS,
-  MAX_VIEWING_NOTES,
-  MAX_WITH_WHOM,
-  MIN_DURATION_MIN,
-  REMIND_OPTIONS,
-  VIEWING_KINDS,
-  VIEWING_STATUSES,
-  VIEWING_TYPE,
-  isViewingId,
-  newViewingId as newViewingIdRandom,
-  nextViewingOf,
-  sortViewings,
-  viewingFromPayload,
-  viewingToPayload,
-} from '../shared/viewing';
-import type { Viewing, ViewingRow } from '../shared/viewing';
 import {
   AREA_NOTE_TYPE,
   AREA_TYPE,
@@ -167,6 +150,15 @@ export class LocalStore {
     () => this.db(),
     () => this.touch(),
   );
+
+  /** The record rows (`record-store.ts`): the table every kind but houses, visits and photos lives in. */
+  readonly records = new RecordStore(
+    () => this.db(),
+    () => this.touch(),
+  );
+
+  /** The viewings (`viewing-store.ts`), records of type `viewing`. */
+  readonly viewings = new ViewingStore(this.records);
 
   private opened: Promise<LocalDb> | null = null;
   private settleTimer: ReturnType<typeof setTimeout> | undefined;
@@ -433,12 +425,6 @@ export class LocalStore {
 
   // ---- Import (S4b-BL-75) ----
 
-  /** Every record of one `type`, tombstones included: an import's last-write-wins comparison. */
-  async allRecordsOf(type: string): Promise<RecordRecord[]> {
-    const db = await this.db();
-    return db.getAllByIndex<RecordRecord>('records', 'type', type);
-  }
-
   /**
    * Writes the rows an import chose, as they are (the caller stamped and marked them; `ImportService`), then bumps the
    * revision once, so a screen re-reads after the whole import rather than per row.
@@ -462,88 +448,6 @@ export class LocalStore {
   async getVisitRow(id: string): Promise<VisitRecord | undefined> {
     const db = await this.db();
     return db.get<VisitRecord>('visits', id);
-  }
-
-  // ---- Records (docs/11 5.30 item 2: every other Sprint 4b entity, in one store) ----
-
-  /** The live records of one `type`, through the `type` index, oldest edit first. */
-  async recordsOf(type: string): Promise<RecordRecord[]> {
-    const db = await this.db();
-    const rows = await db.getAllByIndex<RecordRecord>('records', 'type', type);
-    return sortRecords(rows.filter((r) => !r.deleted));
-  }
-
-  /** One live record, or undefined for an unknown or deleted one. */
-  async getRecord(type: string, id: string): Promise<RecordRecord | undefined> {
-    const db = await this.db();
-    const record = await db.get<RecordRecord>('records', [type, id]);
-    return record && !record.deleted ? record : undefined;
-  }
-
-  /**
-   * Saves a local edit of one record: stamps `updatedAt` and marks it dirty. The sync version of the stored row is
-   * kept, as for a house.
-   *
-   * @throws LocalDataError when the type or id is not usable, or the payload is over the server's cap.
-   */
-  async saveRecord(
-    type: string,
-    id: string,
-    payload: Record<string, unknown>,
-    now: number = Date.now(),
-  ): Promise<RecordRecord> {
-    const db = await this.db();
-    const existing = await db.get<RecordRecord>('records', [type, id]);
-    const record = recordFromDto(
-      { type, id, payload, updatedAt: isoNow(now), deleted: false, syncVersion: existing?.syncVersion ?? 0 },
-      true,
-    );
-    await db.put('records', record);
-    this.touch();
-    return record;
-  }
-
-  /** Marks a record deleted: a tombstone with an empty payload, so other devices learn about it. */
-  async deleteRecord(type: string, id: string, now: number = Date.now()): Promise<void> {
-    const db = await this.db();
-    const existing = await db.get<RecordRecord>('records', [type, id]);
-    if (!existing) return;
-    await db.put<RecordRecord>('records', { ...existing, payload: {}, deleted: true, dirty: true, updatedAt: isoNow(now) });
-    this.touch();
-  }
-
-  /** Stores a record that came from the remote, clean; the caller has already applied the merge rule. */
-  async putRecordFromServer(dto: RecordDto): Promise<void> {
-    const db = await this.db();
-    await db.put('records', recordFromDto(dto, false));
-    this.touch();
-  }
-
-  /** Clears the dirty flag after a push, unless the record was edited while the push was in flight. */
-  async markRecordClean(type: string, id: string, pushedUpdatedAt: string | null | undefined): Promise<void> {
-    const db = await this.db();
-    const existing = await db.get<RecordRecord>('records', [type, id]);
-    if (existing && millis(existing.updatedAt) === millis(pushedUpdatedAt)) {
-      await db.put('records', { ...existing, dirty: false });
-    }
-  }
-
-  /** Every record of every type, tombstones included (the pull's merge rule needs the clean ones too, S4b-BL-130). */
-  async allRecords(): Promise<RecordRecord[]> {
-    const db = await this.db();
-    return sortRecords(await db.getAll<RecordRecord>('records'));
-  }
-
-  /** The stored records under these `[type, id]` keys, tombstones included, in one read. */
-  async recordRowsByKeys(keys: readonly (readonly [string, string])[]): Promise<RecordRecord[]> {
-    const db = await this.db();
-    return db.getMany<RecordRecord>('records', keys.map(([type, id]): [string, string] => [type, id]));
-  }
-
-  /** Records with local changes the remote has not seen, tombstones included. */
-  async dirtyRecords(): Promise<RecordRecord[]> {
-    const db = await this.db();
-    return sortRecords((await db.getAll<RecordRecord>('records')).filter((r) => r.dirty));
   }
 
   /**
@@ -571,7 +475,7 @@ export class LocalStore {
 
   /** The live brokers, oldest edit first; a row whose payload is not a broker (a blank name) is skipped. */
   async brokers(): Promise<BrokerRow[]> {
-    return brokerRows(await this.recordsOf(BROKER_TYPE));
+    return brokerRows(await this.records.ofType(BROKER_TYPE));
   }
 
   /**
@@ -583,7 +487,7 @@ export class LocalStore {
   async saveBroker(id: string, broker: Broker, now: number = Date.now()): Promise<BrokerRow> {
     const clean = brokerFromPayload({ ...broker });
     if (!clean) throw new LocalDataError('error.badRecord');
-    const record = await this.saveRecord(BROKER_TYPE, id, brokerToPayload(clean), now);
+    const record = await this.records.save(BROKER_TYPE, id, brokerToPayload(clean), now);
     const db = await this.db();
     for (const house of await db.getAll<HouseRecord>('houses')) {
       if (house.deleted || house.brokerId !== id) continue;
@@ -596,7 +500,7 @@ export class LocalStore {
 
   /** Deletes a broker (a tombstone); its houses lose the link and keep the contact details they hold. */
   async deleteBroker(id: string, now: number = Date.now()): Promise<void> {
-    await this.deleteRecord(BROKER_TYPE, id, now);
+    await this.records.delete(BROKER_TYPE, id, now);
     const db = await this.db();
     for (const house of await db.getAll<HouseRecord>('houses')) {
       if (house.brokerId === id) await db.put('houses', { ...house, brokerId: null, dirty: true, updatedAt: isoNow(now) });
@@ -687,7 +591,7 @@ export class LocalStore {
   /** The live criterion records (only what differs from the defaults), oldest edit first; a bad key is skipped. */
   async criterionRows(): Promise<CriterionRow[]> {
     const out: CriterionRow[] = [];
-    for (const row of await this.recordsOf(CRITERION_TYPE)) {
+    for (const row of await this.records.ofType(CRITERION_TYPE)) {
       const criterion = criterionFromPayload(row.id, row.payload);
       if (criterion) out.push({ key: row.id, updatedAt: row.updatedAt ?? null, criterion });
     }
@@ -697,7 +601,7 @@ export class LocalStore {
   /** The live preference records, oldest edit first; a row without a text value is skipped. */
   async preferenceRows(): Promise<PreferenceRow[]> {
     const out: PreferenceRow[] = [];
-    for (const row of await this.recordsOf(PREFERENCE_TYPE)) {
+    for (const row of await this.records.ofType(PREFERENCE_TYPE)) {
       const value = row.payload['value'];
       if (typeof value === 'string') out.push({ key: row.id, value, updatedAt: row.updatedAt ?? null });
     }
@@ -721,17 +625,17 @@ export class LocalStore {
     const builtIn = isBuiltInKey(criterion.key);
     if (!builtIn && !isCustomKey(criterion.key)) throw new LocalDataError('error.badRecord');
     if (builtIn && isDefaultCriterion(criterion)) {
-      await this.deleteRecord(CRITERION_TYPE, criterion.key, now);
+      await this.records.delete(CRITERION_TYPE, criterion.key, now);
       return;
     }
     if (!builtIn) {
       const label = criterion.label?.trim() ?? '';
       if (label === '' || label.length > MAX_CRITERION_LABEL) throw new LocalDataError('error.badRecord');
-      if (!(await this.getRecord(CRITERION_TYPE, criterion.key)) && (await this.criterionCount()) >= MAX_CRITERIA) {
+      if (!(await this.records.get(CRITERION_TYPE, criterion.key)) && (await this.criterionCount()) >= MAX_CRITERIA) {
         throw new LocalDataError('criteria.max');
       }
     }
-    await this.saveRecord(CRITERION_TYPE, criterion.key, criterionToPayload({ ...criterion, label: criterion.label?.trim() }), now);
+    await this.records.save(CRITERION_TYPE, criterion.key, criterionToPayload({ ...criterion, label: criterion.label?.trim() }), now);
   }
 
   /** Saves several criteria (a re-ordering, a weight change on each): each as {@link saveCriterion}. */
@@ -774,7 +678,7 @@ export class LocalStore {
   async deleteCriterion(key: string, now: number = Date.now()): Promise<void> {
     if (!isCustomKey(key)) throw new LocalDataError('error.badRecord');
     if (await this.criterionInUse(key)) throw new LocalDataError('criteria.inUse');
-    await this.deleteRecord(CRITERION_TYPE, key, now);
+    await this.records.delete(CRITERION_TYPE, key, now);
   }
 
   /** True when a live house has a checklist score under `key`. */
@@ -785,19 +689,19 @@ export class LocalStore {
   /** Stores the rating share (0..1); the default 0.5 needs no record, so it deletes it. */
   async setRatingShare(share: number, now: number = Date.now()): Promise<void> {
     const value = ratingShareValue(Math.min(1, Math.max(0, share)));
-    if (Number(value) === DEFAULT_RATING_SHARE) await this.deleteRecord(PREFERENCE_TYPE, RATING_SHARE_KEY, now);
-    else await this.saveRecord(PREFERENCE_TYPE, RATING_SHARE_KEY, { value }, now);
+    if (Number(value) === DEFAULT_RATING_SHARE) await this.records.delete(PREFERENCE_TYPE, RATING_SHARE_KEY, now);
+    else await this.records.save(PREFERENCE_TYPE, RATING_SHARE_KEY, { value }, now);
   }
 
   /** "Reset to defaults": deletes every criterion and preference record (tombstones, so other devices follow). */
   async resetCriteria(now: number = Date.now()): Promise<void> {
-    for (const row of await this.recordsOf(CRITERION_TYPE)) await this.deleteRecord(CRITERION_TYPE, row.id, now);
-    for (const row of await this.recordsOf(PREFERENCE_TYPE)) await this.deleteRecord(PREFERENCE_TYPE, row.id, now);
+    for (const row of await this.records.ofType(CRITERION_TYPE)) await this.records.delete(CRITERION_TYPE, row.id, now);
+    for (const row of await this.records.ofType(PREFERENCE_TYPE)) await this.records.delete(PREFERENCE_TYPE, row.id, now);
   }
 
   /** The ten built-ins plus the live custom records: what the cap of 40 counts (archived ones included). */
   private async criterionCount(): Promise<number> {
-    const custom = (await this.recordsOf(CRITERION_TYPE)).filter((r) => !isBuiltInKey(r.id)).length;
+    const custom = (await this.records.ofType(CRITERION_TYPE)).filter((r) => !isBuiltInKey(r.id)).length;
     return BUILT_IN_KEYS.length + custom;
   }
 
@@ -806,7 +710,7 @@ export class LocalStore {
   /** The live question records, oldest edit first; a row whose payload is not a question (a blank text) is skipped. */
   async questionRows(): Promise<QuestionRow[]> {
     const out: QuestionRow[] = [];
-    for (const row of await this.recordsOf(QUESTION_TYPE)) {
+    for (const row of await this.records.ofType(QUESTION_TYPE)) {
       const question = questionFromPayload(row.id, row.payload);
       if (question) out.push({ id: row.id, updatedAt: row.updatedAt ?? null, question });
     }
@@ -892,10 +796,10 @@ export class LocalStore {
     if (!isDefaultQuestionId(question.id) && !isCustomQuestionId(question.id)) throw new LocalDataError('error.badRecord');
     const text = question.text.trim();
     if (text === '' || text.length > MAX_QUESTION_TEXT) throw new LocalDataError('error.badRecord');
-    if (!(await this.getRecord(QUESTION_TYPE, question.id)) && (await this.recordsOf(QUESTION_TYPE)).length >= MAX_QUESTIONS) {
+    if (!(await this.records.get(QUESTION_TYPE, question.id)) && (await this.records.ofType(QUESTION_TYPE)).length >= MAX_QUESTIONS) {
       throw new LocalDataError('questions.max');
     }
-    await this.saveRecord(QUESTION_TYPE, question.id, questionToPayload({ ...question, text }), now);
+    await this.records.save(QUESTION_TYPE, question.id, questionToPayload({ ...question, text }), now);
   }
 
   /** Saves several questions (a move renumbers two or more): each as {@link saveQuestion}. */
@@ -918,7 +822,7 @@ export class LocalStore {
   ): Promise<Question> {
     const asked = text.trim();
     if (asked === '' || asked.length > MAX_QUESTION_TEXT) throw new LocalDataError('error.badRecord');
-    if ((await this.recordsOf(QUESTION_TYPE)).length >= MAX_QUESTIONS) throw new LocalDataError('questions.max');
+    if ((await this.records.ofType(QUESTION_TYPE)).length >= MAX_QUESTIONS) throw new LocalDataError('questions.max');
     const db = await this.db();
     let id = newId();
     for (let attempt = 0; attempt < 50 && (await db.get<RecordRecord>('records', [QUESTION_TYPE, id])); attempt++) id = newId();
@@ -931,101 +835,7 @@ export class LocalStore {
 
   /** Deletes a question, a seeded one too (a tombstone): a deleted default stays deleted until *Reset to defaults*. */
   async deleteQuestion(id: string, now: number = Date.now()): Promise<void> {
-    await this.deleteRecord(QUESTION_TYPE, id, now);
-  }
-
-  // ---- Viewings (docs/11 5.8, slice 3b-1: records of type `viewing`) ----
-
-  /** The live viewing records, oldest edit first; a row that is not a viewing (no house, no time) is skipped as untrusted. */
-  async viewingRows(): Promise<ViewingRow[]> {
-    const out: ViewingRow[] = [];
-    for (const row of await this.recordsOf(VIEWING_TYPE)) {
-      const viewing = viewingFromPayload(row.id, row.payload);
-      if (viewing) out.push({ id: row.id, updatedAt: row.updatedAt ?? null, viewing });
-    }
-    return out;
-  }
-
-  /** Every live viewing, by `startsAt` then id. */
-  async viewings(): Promise<Viewing[]> {
-    return sortViewings((await this.viewingRows()).map((r) => r.viewing));
-  }
-
-  /** The viewings of one house (a house that is gone keeps its viewings; this still finds them by id). */
-  async viewingsOf(houseId: string): Promise<Viewing[]> {
-    return (await this.viewings()).filter((v) => v.houseId === houseId);
-  }
-
-  /** The earliest PLANNED viewing of the house at or after `nowMs`, or null. */
-  async nextViewing(houseId: string, nowMs: number = Date.now()): Promise<Viewing | null> {
-    return nextViewingOf(await this.viewings(), houseId, nowMs);
-  }
-
-  /**
-   * `v_` and 8 lowercase hex characters, an id no record of type `viewing` has, a tombstone included (an id that
-   * clashes is drawn again). `newId` is a seam for tests.
-   */
-  async newViewingId(newId: () => string = newViewingIdRandom): Promise<string> {
-    const db = await this.db();
-    for (let attempt = 0; attempt < 50; attempt++) {
-      const id = newId();
-      if (!(await db.get<RecordRecord>('records', [VIEWING_TYPE, id]))) return id;
-    }
-    throw new LocalDataError('error.badRecord');
-  }
-
-  /**
-   * Saves a viewing: only that record is written, and only when it differs from what is stored (so an unchanged form
-   * does not touch `updatedAt` or the sync queue). A new one is the 5 001st refused.
-   *
-   * @throws LocalDataError `error.badRecord` for a bad id, a blank house, a start that is not positive, a duration
-   *   outside 5..480, a kind, status or reminder outside the lists, or a `withWhom` or `notes` over its cap;
-   *   `viewings.max` at 5 000 live viewings.
-   */
-  async saveViewing(viewing: Viewing, now: number = Date.now()): Promise<Viewing> {
-    const clean: Viewing = { ...viewing, houseId: viewing.houseId.trim() };
-    if (clean.withWhom !== undefined) clean.withWhom = clean.withWhom.trim();
-    if (clean.notes !== undefined) clean.notes = clean.notes.trim();
-    if (
-      !isViewingId(clean.id) ||
-      clean.houseId === '' ||
-      clean.houseId.length > MAX_ID_LENGTH ||
-      (clean.visitId?.length ?? 0) > MAX_ID_LENGTH ||
-      !Number.isSafeInteger(clean.startsAt) ||
-      clean.startsAt <= 0 ||
-      !Number.isInteger(clean.durationMin) ||
-      clean.durationMin < MIN_DURATION_MIN ||
-      clean.durationMin > MAX_DURATION_MIN ||
-      !VIEWING_KINDS.includes(clean.kind) ||
-      !VIEWING_STATUSES.includes(clean.status) ||
-      !REMIND_OPTIONS.includes(clean.remindMin) ||
-      (clean.withWhom?.length ?? 0) > MAX_WITH_WHOM ||
-      (clean.notes?.length ?? 0) > MAX_VIEWING_NOTES
-    ) {
-      throw new LocalDataError('error.badRecord');
-    }
-    const payload = viewingToPayload(clean);
-    const existing = await this.getRecord(VIEWING_TYPE, clean.id);
-    if (existing) {
-      if (JSON.stringify(existing.payload) === JSON.stringify(payload)) return viewingFromPayload(clean.id, payload) as Viewing;
-    } else if ((await this.recordsOf(VIEWING_TYPE)).length >= MAX_VIEWINGS) {
-      throw new LocalDataError('viewings.max');
-    }
-    await this.saveRecord(VIEWING_TYPE, clean.id, payload, now);
-    return viewingFromPayload(clean.id, payload) as Viewing;
-  }
-
-  /** Deletes a viewing (a tombstone the next sync sends). The house, if it still exists, is not touched. */
-  async deleteViewing(id: string, now: number = Date.now()): Promise<void> {
-    await this.deleteRecord(VIEWING_TYPE, id, now);
-  }
-
-  /** *It happened* / *Mark viewing done*: status DONE, and `visitId` when a visit is given (else the old one is kept). */
-  async markViewingDone(id: string, visitId?: string | null, now: number = Date.now()): Promise<Viewing> {
-    const row = await this.getRecord(VIEWING_TYPE, id);
-    const viewing = row ? viewingFromPayload(id, row.payload) : null;
-    if (!viewing) throw new LocalDataError('error.notFoundLocal');
-    return this.saveViewing({ ...viewing, status: 'DONE', ...(visitId ? { visitId } : {}) }, now);
+    await this.records.delete(QUESTION_TYPE, id, now);
   }
 
   // ---- Hunting areas, my places and area notes (docs/11 "Design of slice 4a": records of type `area`, `place`, `areanote`) ----
@@ -1033,7 +843,7 @@ export class LocalStore {
   /** The live area records, oldest edit first; a row that is not an area (bad name or point) is skipped as untrusted. */
   async areaRows(): Promise<AreaRow[]> {
     const out: AreaRow[] = [];
-    for (const row of await this.recordsOf(AREA_TYPE)) {
+    for (const row of await this.records.ofType(AREA_TYPE)) {
       const area = areaFromPayload(row.id, row.payload);
       if (area) out.push({ id: row.id, updatedAt: row.updatedAt ?? null, area });
     }
@@ -1047,7 +857,7 @@ export class LocalStore {
 
   /** A fresh `a_` id that no area record, a deleted one included, has (`newId` is a seam for tests). */
   async newAreaId(newId: () => string = newAreaIdRandom): Promise<string> {
-    return this.freshId(AREA_TYPE, newId);
+    return this.records.freshId(AREA_TYPE, newId);
   }
 
   /**
@@ -1069,19 +879,19 @@ export class LocalStore {
       throw new LocalDataError('error.badRecord');
     }
     const payload = areaToPayload(clean);
-    await this.writeIfChanged(AREA_TYPE, clean.id, payload, MAX_AREAS, 'areas.max', now);
+    await this.records.saveIfChanged(AREA_TYPE, clean.id, payload, MAX_AREAS, 'areas.max', now);
     return areaFromPayload(clean.id, payload) as Area;
   }
 
   /** Deletes an area (a tombstone). Its notes stay but reach no house until the area is back. */
   async deleteArea(id: string, now: number = Date.now()): Promise<void> {
-    await this.deleteRecord(AREA_TYPE, id, now);
+    await this.records.delete(AREA_TYPE, id, now);
   }
 
   /** The live places with their edit times; rows whose payload is not a valid place are left out. */
   async placeRows(): Promise<PlaceRow[]> {
     const out: PlaceRow[] = [];
-    for (const row of await this.recordsOf(PLACE_TYPE)) {
+    for (const row of await this.records.ofType(PLACE_TYPE)) {
       const place = placeFromPayload(row.id, row.payload);
       if (place) out.push({ id: row.id, updatedAt: row.updatedAt ?? null, place });
     }
@@ -1095,7 +905,7 @@ export class LocalStore {
 
   /** A fresh place id that no record of that type holds yet. */
   async newPlaceId(newId: () => string = newPlaceIdRandom): Promise<string> {
-    return this.freshId(PLACE_TYPE, newId);
+    return this.records.freshId(PLACE_TYPE, newId);
   }
 
   /** @throws LocalDataError `error.badRecord` for a bad id, name (1..60) or point; `places.max` when a new place would be the 11th. */
@@ -1105,19 +915,19 @@ export class LocalStore {
       throw new LocalDataError('error.badRecord');
     }
     const payload = placeToPayload(clean);
-    await this.writeIfChanged(PLACE_TYPE, clean.id, payload, MAX_PLACES, 'places.max', now);
+    await this.records.saveIfChanged(PLACE_TYPE, clean.id, payload, MAX_PLACES, 'places.max', now);
     return placeFromPayload(clean.id, payload) as Place;
   }
 
   /** Deletes a place (a tombstone). */
   async deletePlace(id: string, now: number = Date.now()): Promise<void> {
-    await this.deleteRecord(PLACE_TYPE, id, now);
+    await this.records.delete(PLACE_TYPE, id, now);
   }
 
   /** The live area-note records (every one, whether or not its area still exists), oldest edit first. */
   async areaNoteRows(): Promise<AreaNoteRow[]> {
     const out: AreaNoteRow[] = [];
-    for (const row of await this.recordsOf(AREA_NOTE_TYPE)) {
+    for (const row of await this.records.ofType(AREA_NOTE_TYPE)) {
       const note = areaNoteFromPayload(row.id, row.payload);
       if (note) out.push({ id: row.id, updatedAt: row.updatedAt ?? null, note });
     }
@@ -1131,7 +941,7 @@ export class LocalStore {
 
   /** A fresh area-note id that no record of that type holds yet. */
   async newAreaNoteId(newId: () => string = newAreaNoteIdRandom): Promise<string> {
-    return this.freshId(AREA_NOTE_TYPE, newId);
+    return this.records.freshId(AREA_NOTE_TYPE, newId);
   }
 
   /**
@@ -1155,40 +965,13 @@ export class LocalStore {
       throw new LocalDataError('error.badRecord');
     }
     const payload = areaNoteToPayload(clean);
-    await this.writeIfChanged(AREA_NOTE_TYPE, clean.id, payload, MAX_AREA_NOTES, 'areaNotes.max', now);
+    await this.records.saveIfChanged(AREA_NOTE_TYPE, clean.id, payload, MAX_AREA_NOTES, 'areaNotes.max', now);
     return areaNoteFromPayload(clean.id, payload) as AreaNote;
   }
 
   /** Deletes an area note (a tombstone). */
   async deleteAreaNote(id: string, now: number = Date.now()): Promise<void> {
-    await this.deleteRecord(AREA_NOTE_TYPE, id, now);
-  }
-
-  private async freshId(type: string, newId: () => string): Promise<string> {
-    const db = await this.db();
-    for (let attempt = 0; attempt < 50; attempt++) {
-      const id = newId();
-      if (!(await db.get<RecordRecord>('records', [type, id]))) return id;
-    }
-    throw new LocalDataError('error.badRecord');
-  }
-
-  /** Writes a record only when its payload differs from the stored one; a new record past `cap` live ones is refused. */
-  private async writeIfChanged(
-    type: string,
-    id: string,
-    payload: Record<string, unknown>,
-    cap: number,
-    capKey: 'areas.max' | 'places.max' | 'areaNotes.max',
-    now: number,
-  ): Promise<void> {
-    const existing = await this.getRecord(type, id);
-    if (existing) {
-      if (JSON.stringify(existing.payload) === JSON.stringify(payload)) return;
-    } else if ((await this.recordsOf(type)).length >= cap) {
-      throw new LocalDataError(capKey);
-    }
-    await this.saveRecord(type, id, payload, now);
+    await this.records.delete(AREA_NOTE_TYPE, id, now);
   }
 
   // ---- Settings ----
@@ -1347,11 +1130,6 @@ function brokerRows(rows: readonly RecordRecord[]): BrokerRow[] {
 /** The house linked to a broker: its id, and the broker's name and phone as the contact copies. */
 function linked(house: HouseDto, row: BrokerRow): HouseDto {
   return { ...house, brokerId: row.id, contactName: row.broker.name, contactPhone: row.broker.phone ?? null };
-}
-
-/** Records in backup order (docs/11 5.30 item 3): by last edit, then id. */
-function sortRecords(rows: readonly RecordRecord[]): RecordRecord[] {
-  return [...rows].sort((a, b) => compareText(a.updatedAt ?? '', b.updatedAt ?? '') || compareText(a.id, b.id));
 }
 
 /** Visits in export order: by arrival, then id. */

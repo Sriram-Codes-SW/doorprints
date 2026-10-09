@@ -95,7 +95,7 @@ export class ExportService {
       criteria: await this.store.criterionRows(),
       preferences: await this.store.preferenceRows(),
       questions: await this.store.questionRows(),
-      viewings: await this.store.viewingRows(),
+      viewings: await this.store.viewings.rows(),
       areas: await this.store.areaRows(),
       places: await this.store.placeRows(),
       areaNotes: await this.store.areaNoteRows(),

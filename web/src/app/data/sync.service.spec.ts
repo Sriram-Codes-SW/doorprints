@@ -519,7 +519,7 @@ describe('SyncService', () => {
     /** The record envelope (docs/11 5.30 item 2) takes the visits' path: pushed after them, pulled with its own cursor. */
     it('pushes a dirty record after the visits, as stored, and clears its dirty flag', async () => {
       await store.saveVisit({ id: 'local-v', lat: 1, lon: 2, arrivedAt: '2026-09-01T00:00:00.000Z', source: 'MANUAL', deleted: false, syncVersion: 0 }, Date.parse('2026-09-01T00:00:00.000Z'));
-      const saved = await store.saveRecord('broker', 'local-b', { name: 'Ravi' }, Date.parse('2026-09-01T00:00:00.000Z'));
+      const saved = await store.records.save('broker', 'local-b', { name: 'Ravi' }, Date.parse('2026-09-01T00:00:00.000Z'));
       const order: string[] = [];
       const pushVisit = api.pushVisit.bind(api);
       const pushRecord = api.pushRecord.bind(api);
@@ -536,29 +536,29 @@ describe('SyncService', () => {
       expect(api.pushedRecords).toEqual([
         { type: 'broker', id: 'local-b', payload: { name: 'Ravi' }, updatedAt: saved.updatedAt, deleted: false, syncVersion: 0 },
       ]);
-      expect(await store.dirtyRecords()).toEqual([]);
+      expect(await store.records.dirty()).toEqual([]);
       expect(sync.lastOutcome()?.pushed).toBe(2);
     });
 
     /** Slice 3b-1: a viewing is a record of type `viewing`, so it rides the record sync unchanged. */
     it('pushes a viewing as a record of type viewing, and pulls one back through the viewing reader', async () => {
-      const saved = await store.saveViewing(
+      const saved = await store.viewings.save(
         { id: 'v_0a1b2c3d', houseId: 'h-1', startsAt: 1790501400000, durationMin: 45, kind: 'SECOND', status: 'PLANNED', remindMin: 30, notes: 'Bring a tape' },
         Date.parse('2026-09-01T00:00:00.000Z'),
       );
       expect(saved.durationMin).toBe(45);
-      expect(await store.dirtyRecords()).toHaveLength(1);
+      expect(await store.records.dirty()).toHaveLength(1);
       await sync.syncNow(true);
       expect(api.pushedRecords.map((r) => [r.type, r.id, r.deleted])).toEqual([['viewing', 'v_0a1b2c3d', false]]);
       expect(api.pushedRecords[0].payload).toEqual({
         houseId: 'h-1', startsAt: 1790501400000, durationMin: 45, kind: 'SECOND', status: 'PLANNED', remindMin: 30, notes: 'Bring a tape',
       });
-      expect(await store.dirtyRecords()).toEqual([]);
-      await store.putRecordFromServer({
+      expect(await store.records.dirty()).toEqual([]);
+      await store.records.putFromServer({
         type: 'viewing', id: 'v_ffffffff', payload: { houseId: 'h-2', startsAt: 1790000000000, status: 'DONE' },
         updatedAt: '2026-09-02T00:00:00.000Z', deleted: false, syncVersion: 4,
       });
-      expect((await store.viewings()).map((v) => [v.id, v.status, v.durationMin, v.kind])).toEqual([
+      expect((await store.viewings.all()).map((v) => [v.id, v.status, v.durationMin, v.kind])).toEqual([
         ['v_ffffffff', 'DONE', 30, 'FIRST'],
         ['v_0a1b2c3d', 'PLANNED', 45, 'SECOND'],
       ]);
@@ -574,8 +574,8 @@ describe('SyncService', () => {
       const pushed = api.pushedRecords.map((r) => [r.type, r.id]).sort();
       expect(pushed).toEqual([['area', 'a_0a1b2c3d'], ['areanote', 'n_0a1b2c3d'], ['place', 'p_0a1b2c3d']]);
       expect(api.pushedRecords.find((r) => r.type === 'area')?.payload).toEqual({ name: 'Adyar', lat: 13.0067, lon: 80.2574, radiusM: 500, enabled: false });
-      expect(await store.dirtyRecords()).toEqual([]);
-      await store.putRecordFromServer({
+      expect(await store.records.dirty()).toEqual([]);
+      await store.records.putFromServer({
         type: 'area', id: 'a_ffffffff', payload: { name: 'Anna Nagar', lat: 13.085, lon: 80.21, radiusM: 99999 },
         updatedAt: '2026-09-02T00:00:00.000Z', deleted: false, syncVersion: 4,
       });
@@ -583,16 +583,16 @@ describe('SyncService', () => {
     });
 
     it('stores the records the server sent, tombstones included, and keeps an edit made while the push was in flight', async () => {
-      await store.putRecordFromServer({ type: 'place', id: PLACE_GONE, payload: { name: 'Office' }, updatedAt: '2026-09-01T00:00:00.000Z', deleted: false, syncVersion: 3 });
-      await store.saveRecord('broker', BROKER_ID, { name: 'Mine' }, Date.parse('2026-09-21T00:00:00.000Z'));
+      await store.records.putFromServer({ type: 'place', id: PLACE_GONE, payload: { name: 'Office' }, updatedAt: '2026-09-01T00:00:00.000Z', deleted: false, syncVersion: 3 });
+      await store.records.save('broker', BROKER_ID, { name: 'Mine' }, Date.parse('2026-09-21T00:00:00.000Z'));
       recordedServer();
       // The same race `markHouseClean` exists for: edited again while the push is in flight, later than the
       // server's row (2026-09-29T09:00), so the flag stays and last write wins for the local row.
       api.pushRecord = (pushed: RecordDto) =>
-        defer(() => from(store.saveRecord(pushed.type, pushed.id, { name: 'Mine, again' }, Date.parse('2026-09-30T00:00:00.000Z')).then(() => pushed)));
+        defer(() => from(store.records.save(pushed.type, pushed.id, { name: 'Mine, again' }, Date.parse('2026-09-30T00:00:00.000Z')).then(() => pushed)));
       await sync.syncNow(true);
-      expect(await store.getRecord('place', PLACE_GONE)).toBeUndefined();
-      const brokers = await store.recordsOf('broker');
+      expect(await store.records.get('place', PLACE_GONE)).toBeUndefined();
+      const brokers = await store.records.ofType('broker');
       expect(brokers).toHaveLength(1);
       expect(brokers[0].payload).toEqual({ name: 'Mine, again' });
       expect(brokers[0].dirty).toBe(true);
@@ -601,10 +601,10 @@ describe('SyncService', () => {
     });
 
     it('overwrites a clean local record with the server’s and keeps the payload exactly', async () => {
-      await store.putRecordFromServer({ type: 'broker', id: BROKER_ID, payload: { name: 'Old' }, updatedAt: '2026-09-01T00:00:00.000Z', deleted: false, syncVersion: 3 });
+      await store.records.putFromServer({ type: 'broker', id: BROKER_ID, payload: { name: 'Old' }, updatedAt: '2026-09-01T00:00:00.000Z', deleted: false, syncVersion: 3 });
       recordedServer();
       await sync.syncNow(true);
-      const broker = await store.getRecord('broker', BROKER_ID);
+      const broker = await store.records.get('broker', BROKER_ID);
       expect(broker?.payload).toEqual({ name: 'Anita', agency: 'Homes & Co', phone: '+91 98765 43210' });
       expect(broker?.syncVersion).toBe(21);
       expect(broker?.dirty).toBe(false);
@@ -886,8 +886,8 @@ describe('SyncService', () => {
       rows.push({ type: 'place', id: 'no-version', payload: {}, deleted: false } as RecordDto);
       api.records = () => of(rows);
       await sync.syncNow(true);
-      expect(await store.dirtyRecords()).toEqual([]);
-      expect(await store.recordsOf('place')).toEqual([]);
+      expect(await store.records.dirty()).toEqual([]);
+      expect(await store.records.ofType('place')).toEqual([]);
       expect(sync.lastOutcome()?.skipped).toBe(4);
       // Three rows carried a usable version and have been considered; the fourth holds nothing back.
       expect((await store.cursors()).record).toBe(23);

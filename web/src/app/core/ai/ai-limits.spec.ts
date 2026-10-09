@@ -150,7 +150,7 @@ describe('the on-device assistant keeps its limits (S4b-BL-181)', () => {
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(), provideHttpClientTesting(),
-        { provide: LocalStore, useValue: { allHouses: async () => houses, allVisits: async () => [], viewings: async () => [], areas: async () => [], places: async () => [], areaNoteRows: async () => [] } },
+        { provide: LocalStore, useValue: { allHouses: async () => houses, allVisits: async () => [], viewings: { all: async () => [] }, areas: async () => [], places: async () => [], areaNoteRows: async () => [] } },
       ],
     });
     http = TestBed.inject(HttpTestingController);

@@ -1,0 +1,16 @@
+{
+  "spec": "web/src/app/data/local-store.spec.ts",
+  "mutations": [
+    { "file": "web/src/app/data/viewing-store.ts", "find": "(await this.all()).filter((v) => v.houseId === houseId)", "replace": "(await this.all()).filter((v) => v.houseId !== houseId)", "expect": "lists the viewings by start then id" },
+    { "file": "web/src/app/data/viewing-store.ts", "find": "updatedAt: row.updatedAt ?? null,", "replace": "updatedAt: null,", "expect": "gives each saved viewing row its edit time" },
+    { "file": "web/src/app/data/viewing-store.ts", "find": "clean.startsAt <= 0", "replace": "clean.startsAt < 0", "expect": "refuses a bad id" },
+    { "file": "web/src/app/data/viewing-store.ts", "find": "status: 'DONE', ...(visitId", "replace": "status: 'PLANNED', ...(visitId", "expect": "marks a viewing done" },
+    { "file": "web/src/app/data/viewing-store.ts", "find": "...(visitId ? { visitId } : {})", "replace": "visitId: visitId ?? undefined", "expect": "marks a viewing done" },
+    { "file": "web/src/app/data/viewing-store.ts", "find": "this.records.freshId(VIEWING_TYPE, newId)", "replace": "this.records.freshId('place', newId)", "expect": "draws a new v_ id" },
+    { "file": "web/src/app/data/viewing-store.ts", "find": "houseId: viewing.houseId.trim() }", "replace": "houseId: viewing.houseId }", "expect": "refuses a bad id" },
+    { "file": "web/src/app/data/viewing-store.ts", "find": "MAX_VIEWINGS, 'viewings.max', now", "replace": "MAX_VIEWINGS + 1, 'viewings.max', now", "expect": "refuses the 5 001st viewing" },
+    { "file": "web/src/app/data/viewing-store.ts", "find": "if (!viewing) throw new LocalDataError('error.notFoundLocal');", "replace": "if (!viewing) return undefined as unknown as Viewing;", "expect": "marks a viewing done" },
+    { "file": "web/src/app/data/record-store.ts", "find": "if (JSON.stringify(existing.payload) === JSON.stringify(payload)) return;", "replace": "if (JSON.stringify(existing.payload) === JSON.stringify(payload) && false) return;", "expect": "writes only when something changed" },
+    { "file": "web/src/app/data/record-store.ts", "find": "} else if ((await this.ofType(type)).length >= cap) {", "replace": "} else if ((await this.ofType(type)).length > cap) {", "expect": "refuses the 5 001st viewing" }
+  ]
+}
