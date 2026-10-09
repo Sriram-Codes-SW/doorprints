@@ -31,17 +31,22 @@ import app.doorprints.data.AndroidRepository
 import app.doorprints.data.AppDatabase
 import app.doorprints.data.DatabaseFile
 import app.doorprints.data.HouseEntity
+import app.doorprints.data.RecordEntity
 import app.doorprints.data.SecretStore
 import app.doorprints.data.SettingsStore
 import app.doorprints.data.create
+import app.doorprints.data.toBroker
 import app.doorprints.data.toBundle
 import app.doorprints.shared.export.BackupData
 import app.doorprints.shared.export.BackupFormat
+import app.doorprints.shared.export.ExportBroker
 import app.doorprints.shared.export.ExportOptions
 import app.doorprints.shared.export.ImportMode
 import app.doorprints.shared.export.ImportPlan
 import app.doorprints.shared.model.Broker
 import app.doorprints.shared.model.BrokerType
+import app.doorprints.shared.records.RecordLimitException
+import app.doorprints.shared.records.RecordRules
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -51,8 +56,10 @@ import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -330,5 +337,245 @@ class BrokersTest {
             localBrokers = repo.localVersions().brokers,
         )
         assertEquals(emptyList<Any>(), again.brokers)
+    }
+
+    // ---- characterization before the move into BrokerStore (S4b-BL-168, slice 6) ----
+
+    @Test
+    fun brokersAreListedByNameIgnoringCaseThenIdAndARowThatCannotBeTrustedIsSkippedEverywhere(): Unit = runBlocking {
+        repo.saveBroker(Broker(name = "beta"), "b2")
+        repo.saveBroker(Broker(name = "Beta"), "b1")
+        repo.saveBroker(Broker(name = "alpha"), "b3")
+        repo.saveBroker(Broker(name = "Zed"), "b4")
+        db.records().upsert(RecordEntity(BrokerType.name, "bad1", """{"name":" "}""", at))
+        db.records().upsert(RecordEntity(BrokerType.name, "bad2", "not json", at))
+        db.records().upsert(RecordEntity(BrokerType.name, "bad3", """{"name":"${"x".repeat(201)}"}""", at))
+        assertEquals(listOf("b3", "b1", "b2", "b4"), repo.observeBrokers().first().map { it.first })
+        // The backup lists the same rows by id, each with its own stamp.
+        val exported = repo.localRows().brokers
+        assertEquals(listOf("b1", "b2", "b3", "b4"), exported.map { it.id })
+        assertEquals(db.records().get(BrokerType.name, "b3")!!.updatedAt, exported.first { it.id == "b3" }.updatedAt)
+    }
+
+    @Test
+    fun aSavedBrokerIsCleanedMarkedDirtyAndKeepsTheIdItWasGiven(): Unit = runBlocking {
+        val before = System.currentTimeMillis()
+        assertEquals("b-ravi", repo.saveBroker(Broker(name = "  Ravi  ", phone = " ", agency = " Adyar Homes ", rating = 9), "b-ravi"))
+        val row = db.records().get(BrokerType.name, "b-ravi")!!
+        assertTrue(row.dirty)
+        assertFalse(row.deleted)
+        assertTrue(row.updatedAt >= before)
+        assertEquals(Broker(name = "Ravi", agency = "Adyar Homes"), row.toBroker())
+        // Stored cleaned, not only read back cleaned.
+        assertEquals(BrokerType.encode(Broker(name = "Ravi", agency = "Adyar Homes")), row.payload)
+
+        val minted = repo.saveBroker(Broker(name = "Meena"))
+        assertNotEquals("b-ravi", minted)
+        assertEquals("Meena", db.records().get(BrokerType.name, minted)!!.toBroker()!!.name)
+    }
+
+    @Test
+    fun aHouseLinkedToADeletedBrokerKeepsItsLinkAndItsOwnContact(): Unit = runBlocking {
+        val id = repo.saveBroker(Broker(name = "Gone", phone = "98400 11111"))
+        repo.deleteBroker(id)
+        repo.saveHouse(house("h1", "Mine", "97000 33333", brokerId = id))
+        val row = repo.getHouse("h1")!!
+        assertEquals(id, row.brokerId)
+        assertEquals("Mine", row.contactName)
+        assertEquals("97000 33333", row.contactPhone)
+        assertEquals(emptyList<Any>(), repo.observeBrokers().first())
+    }
+
+    @Test
+    fun aBrokerMadeFromAContactIsTrimmedAndCutToTheRecordsLimits(): Unit = runBlocking {
+        repo.saveHouse(house("h1", "N".repeat(250), "9".repeat(60)))
+        val long = repo.getHouse("h1")!!
+        assertEquals(200, long.contactName!!.length)
+        assertEquals(50, long.contactPhone!!.length)
+        val made = repo.observeBrokers().first().single()
+        assertEquals(long.brokerId, made.first)
+        assertEquals("N".repeat(200), made.second.name)
+        assertEquals("9".repeat(50), made.second.phone)
+
+        repo.saveHouse(house("h2", "  Kumar  ", " 98765 43210 "))
+        assertEquals("Kumar", repo.getHouse("h2")!!.contactName)
+        assertEquals("98765 43210", repo.getHouse("h2")!!.contactPhone)
+        assertEquals(listOf("Kumar", "N".repeat(200)), repo.observeBrokers().first().map { it.second.name })
+    }
+
+    @Test
+    fun aFullBrokerTypeRefusesANewBrokerButNotAChangeAndALinkingHouseIsSavedUnlinked(): Unit = runBlocking {
+        for (i in 0 until RecordRules.MAX_ROWS_PER_TYPE) {
+            db.records().upsert(RecordEntity(BrokerType.name, "b_" + i.toString().padStart(4, '0'), """{"name":"B$i"}""", at))
+        }
+        assertThrows(RecordLimitException::class.java) { runBlocking { repo.saveBroker(Broker(name = "One more")) } }
+        repo.saveBroker(Broker(name = "Changed"), "b_0001")
+        assertEquals("Changed", db.records().get(BrokerType.name, "b_0001")!!.toBroker()!!.name)
+
+        repo.saveHouse(house("h1", "Ravi", "98400 11111"))
+        val row = repo.getHouse("h1")!!
+        assertNull(row.brokerId)
+        assertEquals("Ravi", row.contactName)
+        assertEquals("98400 11111", row.contactPhone)
+        assertEquals(RecordRules.MAX_ROWS_PER_TYPE, db.records().countLive(BrokerType.name))
+    }
+
+    @Test
+    fun deletingABrokerNobodyHasStillUnlinksTheHousesThatNameItAndWritesNoRecord(): Unit = runBlocking {
+        repo.saveHouse(house("h1", "Someone", "98765 43210", brokerId = "gone-broker"))
+        db.houses().upsert(repo.getHouse("h1")!!.copy(dirty = false, updatedAt = 5))
+        repo.deleteBroker("gone-broker")
+        val row = repo.getHouse("h1")!!
+        assertNull(row.brokerId)
+        assertTrue(row.dirty)
+        assertTrue(row.updatedAt > 5)
+        assertNull(db.records().get(BrokerType.name, "gone-broker"))
+    }
+
+    @Test
+    fun aDeletedHouseIsNeitherListedUnderItsBrokerNorRewrittenWithIt(): Unit = runBlocking {
+        repo.saveHouse(house("h1", "Ravi", "98400 11111"))
+        repo.saveHouse(house("h2", "Meena", "97000 33333"))
+        val ravi = repo.getHouse("h1")!!.brokerId!!
+        val meena = repo.getHouse("h2")!!.brokerId!!
+        repo.deleteHouse("h1")
+        assertEquals(emptyList<Any>(), repo.brokerHouses(ravi).first())
+        assertEquals(listOf("h2"), repo.brokerHouses(meena).first().map { it.id })
+        repo.saveBroker(Broker(name = "Ravi Kumar", phone = "98400 11111"), ravi)
+        assertEquals("Ravi", db.houses().get("h1")!!.contactName)
+    }
+
+    @Test
+    fun theMigrationIgnoresADeletedBrokerAndWhenTheTypeIsFullLinksOnlyToTheOnesThatAreThere(): Unit = runBlocking {
+        val old = repo.saveBroker(Broker(name = "Old", phone = "98400 11111"))
+        repo.deleteBroker(old)
+        db.houses().upsert(house("a", "Ravi", "98400 11111"))
+        repo.migrateContactsToBrokers()
+        val a = db.houses().get("a")!!
+        assertNotNull(a.brokerId)
+        assertNotEquals(old, a.brokerId)
+        assertEquals(listOf("Ravi"), repo.observeBrokers().first().map { it.second.name })
+    }
+
+    @Test
+    fun theMigrationOfAFullTypeLinksTheHouseWhoseNumberIsKnownLeavesTheOtherUnlinkedAndIsDoneAnyway(): Unit = runBlocking {
+        for (i in 1 until RecordRules.MAX_ROWS_PER_TYPE) {
+            db.records().upsert(RecordEntity(BrokerType.name, "b_" + i.toString().padStart(4, '0'), """{"name":"B$i"}""", at))
+        }
+        db.records().upsert(RecordEntity(BrokerType.name, "b_known", """{"name":"Known","phone":"97000 33333"}""", at))
+        db.houses().upsert(house("a", "Ravi", "98400 11111"))
+        db.houses().upsert(house("d", "Meena", "97000 33333"))
+        repo.migrateContactsToBrokers()
+        assertNull(db.houses().get("a")!!.brokerId)
+        assertEquals("b_known", db.houses().get("d")!!.brokerId)
+        assertTrue(settings.brokersMigrated())
+        assertEquals(RecordRules.MAX_ROWS_PER_TYPE, db.records().countLive(BrokerType.name))
+    }
+
+    @Test
+    fun anImportedBrokerIsCleanedMarkedDirtyAndStampedWithTheFilesTimeOrNoLaterThanNowForACopy(): Unit = runBlocking {
+        val odd = ExportBroker(id = "b-odd", name = "  Odd  ", phone = " 98400 11111 ", rating = 9, updatedAt = 5)
+        val file = BackupData.of(repo.localRows().toBundle(ExportOptions(exportedAtMillis = at))).copy(brokers = listOf(odd))
+        val local = repo.localVersions()
+        val merge = ImportPlan.plan(
+            file, local.houses, local.visits, local.photoIds, emptySet(), ImportMode.MERGE, newId = { "x" },
+            localBrokers = local.brokers,
+        )
+        assertEquals(1, repo.applyImport(merge) { null }.brokers)
+        val row = db.records().get(BrokerType.name, "b-odd")!!
+        assertEquals(5L, row.updatedAt)
+        assertTrue(row.dirty)
+        assertFalse(row.deleted)
+        assertEquals(Broker(name = "Odd", phone = "98400 11111"), row.toBroker())
+        assertEquals(BrokerType.encode(Broker(name = "Odd", phone = "98400 11111")), row.payload)
+
+        // A copy stamps what it writes no later than now, even for a file from the future.
+        val future = file.copy(brokers = listOf(odd.copy(id = "b-file", updatedAt = Long.MAX_VALUE / 2)))
+        val before = System.currentTimeMillis()
+        val copy = ImportPlan.plan(future, local.houses, local.visits, local.photoIds, emptySet(), ImportMode.COPY, newId = { "b-copy" })
+        assertEquals(1, repo.applyImport(copy) { null }.brokers)
+        val later = db.records().get(BrokerType.name, "b-copy")!!
+        assertTrue(later.dirty)
+        assertTrue(later.updatedAt in before..System.currentTimeMillis())
+        assertEquals(Broker(name = "Odd", phone = "98400 11111"), later.toBroker())
+    }
+
+    // ---- written after the move, for mutants (BrokerStore) ----
+
+    @Test
+    fun everyFirstReadOfTheHousesOrTheBrokersRunsTheMigrationBeforeAnythingIsShown(): Unit = runBlocking {
+        val reads: List<suspend () -> Unit> = listOf(
+            { repo.observeBrokers().first() },
+            { repo.house("a").first() },
+            { repo.houseSnapshot() },
+            { repo.getHouse("a") },
+            { repo.localRows() },
+            { repo.observeRecords(BrokerType).first() },
+        )
+        for ((n, read) in reads.withIndex()) {
+            db.close()
+            context.deleteDatabase(DatabaseFile.NAME)
+            db = AppDatabase.create(context)
+            settings = SettingsStore(
+                PreferenceDataStoreFactory.create(scope = scope) { File(context.filesDir, "brokers-test-$n.preferences_pb") },
+                MemorySecrets,
+            )
+            repo = AndroidRepository(context, db, settings)
+            db.houses().upsert(house("a", "Ravi", "98400 11111"))
+            read()
+            assertNotNull("read $n", db.houses().get("a")!!.brokerId)
+            assertTrue("read $n", settings.brokersMigrated())
+            File(context.filesDir, "brokers-test-$n.preferences_pb").delete()
+        }
+    }
+
+    @Test
+    fun aBrokersPhoneAloneOrNameAloneIsCopiedToItsHouses(): Unit = runBlocking {
+        repo.saveHouse(house("h1", "Ravi", "98400 11111"))
+        val id = repo.getHouse("h1")!!.brokerId!!
+        db.houses().upsert(repo.getHouse("h1")!!.copy(dirty = false, updatedAt = 5))
+        repo.saveBroker(Broker(name = "Ravi", phone = "+91 98400 11111"), id)
+        assertEquals("+91 98400 11111", db.houses().get("h1")!!.contactPhone)
+        assertTrue(db.houses().get("h1")!!.dirty)
+        db.houses().upsert(db.houses().get("h1")!!.copy(dirty = false, updatedAt = 5))
+        repo.saveBroker(Broker(name = "Ravi K", phone = "+91 98400 11111"), id)
+        assertEquals("Ravi K", db.houses().get("h1")!!.contactName)
+        assertTrue(db.houses().get("h1")!!.dirty)
+    }
+
+    @Test
+    fun theMigrationLeavesALinkedHouseAloneAndTakesTheFirstOfTwoBrokersWithTheNumber(): Unit = runBlocking {
+        db.records().upsert(RecordEntity(BrokerType.name, "b1", """{"name":"First","phone":"98400 11111"}""", at))
+        db.records().upsert(RecordEntity(BrokerType.name, "b2", """{"name":"Second","phone":"098400-11111"}""", at))
+        db.records().upsert(RecordEntity(BrokerType.name, "b3", """{"name":"Third","phone":"97000 33333"}""", at))
+        db.houses().upsert(house("a", "Ravi", "9840011111", updatedAt = at + 1))
+        db.houses().upsert(house("l", "Linked", "97000 33333", updatedAt = 7, brokerId = "b1").copy(dirty = false))
+        repo.migrateContactsToBrokers()
+        assertEquals("b1", db.houses().get("a")!!.brokerId)
+        val linked = db.houses().get("l")!!
+        assertEquals("b1", linked.brokerId)
+        assertEquals(7L, linked.updatedAt)
+        assertFalse(linked.dirty)
+        assertEquals(3, db.records().countLive(BrokerType.name))
+    }
+
+    @Test
+    fun theMigrationRunsOncePerInstallEvenForAFreshRepositoryAndKeepsShortNumbersApartWithTheirStamp(): Unit = runBlocking {
+        db.houses().upsert(house("a", "Short", "12345", updatedAt = at + 1))
+        db.houses().upsert(house("b", "Shorter", "12346", updatedAt = at + 2))
+        repo.migrateContactsToBrokers()
+        val a = db.houses().get("a")!!
+        val b = db.houses().get("b")!!
+        assertNotNull(a.brokerId)
+        assertNotEquals(a.brokerId, b.brokerId)
+        assertEquals(setOf("Short", "Shorter"), repo.observeBrokers().first().map { it.second.name }.toSet())
+        assertTrue(a.updatedAt > at + 2)
+        assertEquals(a.updatedAt, b.updatedAt)
+
+        // A new repository on the same install asks the setting, not its own memory, and changes nothing.
+        db.houses().upsert(house("late", "Late", "98400 11111"))
+        AndroidRepository(context, db, settings).migrateContactsToBrokers()
+        assertNull(db.houses().get("late")!!.brokerId)
+        assertEquals(2, db.records().countLive(BrokerType.name))
     }
 }
