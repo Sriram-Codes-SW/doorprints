@@ -109,21 +109,21 @@
       </div>
     }
     @if (isNew() && ai.enabled()) {
-      <details class="card listing-fill" [open]="listingOpen">
+      <details class="card listing-fill" [open]="listing.open">
         <summary>{{ 'listingFill.title' | t }}</summary>
         <div class="field">
           <label for="listing-text">{{ 'listingFill.label' | t }}</label>
           <textarea
             id="listing-text"
             rows="5"
-            [(ngModel)]="listingText"
+            [(ngModel)]="listing.text"
             [placeholder]="'listingFill.placeholder' | t"
             aria-describedby="listing-fill-hint listing-cut-slot"
           ></textarea>
           <!-- The slot is there before the hint, so a screen reader announces it when a long paste fills it (S4b-BL-182). -->
           <div id="listing-cut-slot" class="field-hint" aria-live="polite">
-            @if (listingCut().leftOut > 0) {
-              <span id="listing-cut-hint">{{ 'listingFill.cut' | t: { max: listingMax, n: listingCut().leftOut } }}</span>
+            @if (listing.cut().leftOut > 0) {
+              <span id="listing-cut-hint">{{ 'listingFill.cut' | t: { max: listing.max, n: listing.cut().leftOut } }}</span>
             }
           </div>
           <span id="listing-fill-hint" class="field-hint">{{ 'listingFill.hint' | t }} {{ (ai.usesOwnKey() ? 'ai.disclosureOwnKeyHost' : 'ai.disclosure') | t: { host: ai.ownHost() } }}</span>
@@ -131,31 +131,31 @@
         <button
           type="button"
           class="btn"
-          [attr.aria-disabled]="filling() || !listingText.trim() ? 'true' : null"
-          (click)="fillFromListing()"
+          [attr.aria-disabled]="listing.filling() || !listing.text.trim() ? 'true' : null"
+          (click)="listing.fill()"
         >
-          {{ (filling() ? 'listingFill.working' : 'listingFill.submit') | t }}
+          {{ (listing.filling() ? 'listingFill.working' : 'listingFill.submit') | t }}
         </button>
-        <div class="refresh-slot" [class.stale]="filling()">
+        <div class="refresh-slot" [class.stale]="listing.filling()">
           <div role="alert">
-            @if (fillError(); as card) {
+            @if (listing.error(); as card) {
               @for (c of [card]; track c.run) {
                 <p class="error">{{ c.value.key | t: c.value.params }}</p>
               }
             }
           </div>
-          @if (filling() && fillError()) {
+          @if (listing.filling() && listing.error()) {
             <div class="refresh-bar" role="progressbar" [attr.aria-label]="'listingFill.working' | t"></div>
           }
         </div>
-        @if (fillWarnings().length > 0 || keptWarnings().length > 0) {
+        @if (listing.warnings().length > 0 || listing.kept().length > 0) {
           <div class="warnings">
             <p>{{ 'listingFill.warnings' | t }}</p>
             <ul>
-              @for (k of keptWarnings(); track $index) {
+              @for (k of listing.kept(); track $index) {
                 <li>{{ k.key | t: k.params }}</li>
               }
-              @for (w of fillWarnings(); track $index) {
+              @for (w of listing.warnings(); track $index) {
                 <li>{{ w }}</li>
               }
             </ul>

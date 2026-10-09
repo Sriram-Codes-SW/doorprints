@@ -85,13 +85,13 @@ import { AuthImage } from '../../shared/auth-image';
 import { Msg, TranslationService } from '../../i18n/translation.service';
 import { TitleOverride } from '../../i18n/i18n-title.strategy';
 import { ConfirmService } from '../../core/confirm.service';
-import { AI_MAX_LISTING_CHARS, AiService, HouseDraft, aiErrorMsg } from '../../core/ai.service';
-import { cutListing } from '../../core/ai/ai-core';
+import { AI_MAX_LISTING_CHARS, AiService } from '../../core/ai.service';
 import { TPipe } from '../../i18n/t.pipe';
 import { UnsavedChanges } from '../../core/unsaved-changes.service';
 import { COUNTRY_VIEW, loadStartPoint, locationErrorKey, parseCoordinate } from '../../shared/map-center';
 import { locateOnce } from '../../shared/locate-once';
-import { AddressLookup, FIELD_LABEL, FillField, addressFill, mergeListingDraft } from './house-draft-merge';
+import { AddressLookup, FIELD_LABEL, FillField, addressFill } from './house-draft-merge';
+import { HouseListingFill } from './house-listing-fill';
 import { clearDraft, draftKey, readDraft, writeDraft } from './draft-store';
 import { type BackKey, HOUSE_BACK_STATE, backTarget, exitAfterRemoval } from './back-target';
 import { ListReturn } from '../map/list-return';
@@ -159,35 +159,14 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   protected readonly ai = inject(AiService);
   protected readonly i18n = inject(TranslationService);
 
-  // "Fill in from listing text" (AI, new houses only; hidden unless the server has AI enabled).
-  protected listingText = '';
-  /** The listing box starts open when the house came from a shared listing (the text is already in it). */
-  protected listingOpen = false;
-  protected readonly listingMax = AI_MAX_LISTING_CHARS;
-  private cutFor = '';
-  private cutOfText = cutListing('', AI_MAX_LISTING_CHARS);
-
-  /**
-   * The pasted text as Extract reads it: trimmed and cut at {@link listingMax}; `leftOut` feeds the hint under the field
-   * (S4b-BL-182). Kept for the last text, so the page's checks do not cut it again.
-   */
-  protected listingCut(): { text: string; leftOut: number } {
-    if (this.cutFor !== this.listingText) {
-      this.cutFor = this.listingText;
-      this.cutOfText = cutListing(this.listingText, this.listingMax);
-    }
-    return this.cutOfText;
-  }
-  protected readonly filling = signal(false);
-  protected readonly fillWarnings = signal<string[]>([]);
-  /** Typed values the fill kept, with what the listing says instead ("Kept your Name; the listing says …"). */
-  protected readonly keptWarnings = signal<Msg[]>([]);
-  /**
-   * Why the listing could not be read: shown in the listing card, next to the button. Every message a button can
-   * produce twice in a row with the same words is keyed on its run ({@link RunResult}), so the second one is a new
-   * node in its live region and is read again (web UX gate R9).
-   */
-  protected readonly fillError = signal<RunResult<Msg> | null>(null);
+  /** "Fill in from listing text" (AI, new houses only; hidden unless the server has AI enabled) (house-listing-fill.ts). */
+  protected readonly listing = new HouseListingFill({
+    ai: this.ai,
+    i18n: this.i18n,
+    announcer: this.announcer,
+    draft: () => this.draft(),
+    patch: (changes) => this.patch(changes),
+  });
 
   protected readonly draft = signal<HouseDto | null>(null);
   /** The rooms of this house: the list in the draft, the sizes in the chosen unit (house-rooms.ts). */
@@ -321,11 +300,11 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   /** The house as loaded, for "Discard" on restored edits. */
   private pristine: { draft: HouseDto; dirty: boolean; locationSet: boolean } | null = null;
   /**
-   * The listing read and the address lookup in flight, and whether the page is gone. Leaving the page is one of the
-   * ends of "Reading the listing…", "Filling address…" and "Locating…": their late result must not fill a form,
-   * open a question or announce "Form filled in" / "Location found" on whatever page the user went to.
+   * The address lookup in flight, and whether the page is gone. Leaving the page is one of the ends of "Reading the
+   * listing…" (the listing's own read, see {@link HouseListingFill.stop}), "Filling address…" and "Locating…": their
+   * late result must not fill a form, open a question or announce "Form filled in" / "Location found" on whatever
+   * page the user went to.
    */
-  private fillRequest: Subscription | null = null;
   private lookupRequest: Subscription | null = null;
   private findRequest: Subscription | null = null;
   private destroyed = false;
@@ -360,7 +339,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.destroyed = true;
-    this.fillRequest?.unsubscribe();
+    this.listing.stop();
     this.lookupRequest?.unsubscribe();
     this.findRequest?.unsubscribe();
     this.unsaved.release(this);
@@ -452,8 +431,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
       const shared = sharedAll.slice(0, AI_MAX_LISTING_CHARS);
       if (shared) {
         // The box gets all of it, so the hint says how much Extract leaves out; the notes keep the first part, as before.
-        this.listingText = sharedAll;
-        this.listingOpen = true;
+        this.listing.show(sharedAll);
       }
       if (hasPosition) {
         // Placed by a tap or the crosshair on the map (MapPage.createAt): the source is MAP until the person says
@@ -554,7 +532,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     if (shared) {
       // The no-AI parser first (docs/11 5.29): the price, BHK, locality, link and phone the share text says, and the
       // whole text in the notes so nothing shared is lost; *Fill in from listing text* (AI) stays the second pass.
-      this.applyDraft(parseListingText(shared));
+      this.listing.apply(parseListingText(shared));
       this.dirty.set(true);
     }
     this.loading.set(false);
@@ -750,64 +728,6 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     // a missing name, keeps the page with the reason shown).
     if (answer === 'alt') return this.persist(false);
     return true;
-  }
-
-  /**
-   * Sends pasted listing text to POST /api/ai/extract-listing and fills the **empty** form fields; a typed value is
-   * never replaced, and every one the listing disagrees with is named. Nothing is saved: the user reviews, picks
-   * the map location and presses Add (docs/ai AI-004 human confirmation).
-   */
-  protected fillFromListing(): void {
-    const text = this.listingCut().text;
-    if (!text || this.filling()) return;
-    this.filling.set(true);
-    // The last failure stays, drawn as being updated, until this read ends and replaces or removes it (S4b-BL-2).
-    this.fillWarnings.set([]);
-    this.keptWarnings.set([]);
-    this.fillRequest = this.ai.extractListing(text).subscribe({
-      next: (draft) => {
-        this.fillRequest = null;
-        this.fillError.set(null);
-        this.applyDraft(draft);
-        this.fillWarnings.set(draft.warnings ?? []);
-        this.filling.set(false);
-        this.announcer.announce({
-          key: this.keptWarnings().length > 0 ? 'listingFill.doneKept' : 'listingFill.done',
-          params: { n: this.keptWarnings().length },
-        });
-        document.getElementById('house-name')?.focus();
-      },
-      error: (err: unknown) => {
-        this.fillRequest = null;
-        this.fillError.set(runResult({ key: 'listingFill.failed', params: { reason: aiErrorMsg(err) } }));
-        this.filling.set(false);
-      },
-    });
-  }
-
-  /**
-   * Puts a listing draft (from the AI or the no-AI parser) into the form without replacing anything the person typed;
-   * what it kept is named in `keptWarnings`.
-   */
-  private applyDraft(a: HouseDraft): void {
-    const d = this.draft();
-    if (!d) return;
-    const result = mergeListingDraft(d, a);
-    this.patch(result.changes);
-    this.keptWarnings.set(
-      result.kept.map((k) => ({
-        key: 'listingFill.kept',
-        params: { field: { key: FIELD_LABEL[k.field] }, value: this.shownValue(k.field, k.incoming) },
-      })),
-    );
-  }
-
-  /** A listing value as the form would show it: a price in rupees, a price type in words. */
-  private shownValue(field: FillField, value: string | number): Msg | string {
-    if (field === 'price' && typeof value === 'number') return this.i18n.price(value, null);
-    if (field === 'priceType') return { key: value === 'SALE' ? 'price.sale' : 'price.rent' };
-    if (field === 'areaSqft') return { key: 'common.sqft', params: { n: value } };
-    return String(value);
   }
 
   protected score(h: HouseDto): number | null {
