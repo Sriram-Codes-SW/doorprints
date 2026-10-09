@@ -154,7 +154,7 @@
 | 0.143 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-168, slice 5 (web, criteria and the rating share)** (branch `refactor/web-split-criteria-slice`): `CriteriaStore` leaves `local-store.service.ts` (842 to 709 lines), reached as `store.criteria`; §9 marks slice 5 done with the measured numbers, the verdict on the page part (left) and the remaining plan (items 6 to 9). Behaviour-neutral. |
 | 0.144 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-168, slice 6 (web, rooms and floor)** (branch `refactor/web-split-rooms-slice`): `HouseRooms` (`pages/house-detail/house-rooms.ts`, 165 lines) and `HouseFloor` (`pages/house-detail/house-floor.ts`, 82) leave `house-detail-page.ts` (1,655 to 1,495 lines); the template's calls are renamed in place (`rooms.add()`, `floor.basement(d)`). §9 records slice 6 with the numbers, what was not split and why (the duplicate-flat line, the Rooms card's markup), and the plan after it (items 7 to 9). 14 new tests in `house-rooms.spec.ts` (11 passed on the old code first, none moved), `tools/mutations/house-rooms.json` (31) and `house-floor.json` (16). Behaviour-neutral. |
 | 0.145 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-168, slice 3 on the phones (areas, places and area notes), PR #220:** §10 marks slice 3 done with the numbers (`CommonRepository.kt` 1,764 -> 1,715, `AreaStore.kt` 147), says how `writeCapped` is shared (the store takes the repository's record writers), what was not split and why, and updates the remaining plan. [10](10-sprint-log.md) v0.208, [03](03-design.md) v0.95, [06](06-test-plan.md) v0.180. |
-| 0.146 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-168, slice 4 on the phones (questions), PR #222:** §10 marks slice 4 done with the numbers (`CommonRepository.kt` 1,715 -> 1,637, `QuestionStore.kt` 146), says what was not split and why (a house's answers stay with the house), and updates the remaining plan. [10](10-sprint-log.md) v0.209, [03](03-design.md) v0.96, [06](06-test-plan.md) v0.181. |
+| 0.146 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-168, slice 4 on the phones (questions), PR #223:** §10 marks slice 4 done with the numbers (`CommonRepository.kt` 1,715 -> 1,637, `QuestionStore.kt` 146), says what was not split and why (a house's answers stay with the house), and updates the remaining plan. [10](10-sprint-log.md) v0.209, [03](03-design.md) v0.96, [06](06-test-plan.md) v0.181. |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 
@@ -907,7 +907,7 @@ kinds as generic records), the export and import loops (one transaction over eve
 **Remaining (after slice 3):** 4 questions and answers -> 5 criteria and scoring -> 6 brokers and contact -> 7 status,
 rating, checklist (optional) -> 8 on-device AI.
 
-**Slice 4, what moved (PR #222).** `QuestionStore` (`:shared` `data/QuestionStore.kt`, a plain class) owns reading a question
+**Slice 4, what moved (PR #223).** `QuestionStore` (`:shared` `data/QuestionStore.kt`, a plain class) owns reading a question
 from its record row (`of`: decoded, coerced, skipped when it cannot be trusted), the bank in its order (`sort`, then id), seeding the
 fourteen defaults (clean, stamped 2000-01-01, a tombstone keeps a deleted default deleted), seeding once per install (the
 `questions.seeded` mark and the gate that makes two starts at once seed once), *Reset to defaults* (a deleted default that

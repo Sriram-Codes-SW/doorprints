@@ -106,7 +106,7 @@
 | 0.93 | 2026-10-09 | Claude (Code), engineer | S4b-BL-168 slice 5 (web): the component table names `CriteriaStore` (`data/criteria-store.ts`, `LocalStore.criteria`). |
 | 0.94 | 2026-10-09 | Claude (Code), engineer | S4b-BL-168 slice 6 (web): the component table names `HouseRooms` (`pages/house-detail/house-rooms.ts`) and `HouseFloor` (`pages/house-detail/house-floor.ts`). |
 | 0.95 | 2026-10-09 | Claude (Code), engineer | **Phone file layout** (S4b-BL-168 slice 3, PR #220; [14](14-lead-backlog-and-handoff.md) §10): the areas, places and area notes leave `CommonRepository`. The component table names `AreaStore` (`:shared` `data/AreaStore.kt`). |
-| 0.96 | 2026-10-09 | Claude (Code), engineer | **Phone file layout** (S4b-BL-168 slice 4, PR #222; [14](14-lead-backlog-and-handoff.md) §10): the viewing-question bank leaves `CommonRepository`. The component table names `QuestionStore` (`:shared` `data/QuestionStore.kt`). |
+| 0.96 | 2026-10-09 | Claude (Code), engineer | **Phone file layout** (S4b-BL-168 slice 4, PR #223; [14](14-lead-backlog-and-handoff.md) §10): the viewing-question bank leaves `CommonRepository`. The component table names `QuestionStore` (`:shared` `data/QuestionStore.kt`). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
