@@ -151,6 +151,8 @@ function fakeAi(on: boolean) {
     usesOwnKey: signal(false),
     ownHost: signal(''),
     aiConfig: signal({ kind: 'gemini', baseUrl: '', model: '' }),
+    aiQuality: signal('quality'),
+    setAiQuality: () => undefined,
     offReason: signal(on ? null : 'optOut'),
     refresh: () => undefined,
   };
@@ -312,6 +314,18 @@ function connectService(service: string, theme: 'light' | 'dark'): Case['render'
   };
 }
 
+/** The Connect page's AI card on Google Gemini, with the *AI speed and cost* group (S4b-BL-198): it must be there, or this case proves nothing. */
+function connectGemini(theme: 'light' | 'dark'): Case['render'] {
+  return async (lang) => {
+    document.documentElement.style.colorScheme = theme;
+    const rendered = await page(ConnectPage)(lang);
+    if (!(rendered.fixture.nativeElement as HTMLElement).querySelector('fieldset#ai-quality input[type="radio"]')) {
+      throw new Error('the AI speed and cost group is not on the page');
+    }
+    return rendered;
+  };
+}
+
 const CASES: Case[] = [
   { name: 'Map (empty)', render: async (lang) => {
     vi.spyOn(MapPage.prototype, 'ngAfterViewInit').mockImplementation(() => undefined);
@@ -370,6 +384,8 @@ const CASES: Case[] = [
   { name: 'Connect (Custom service, errors, dark)', render: connectService('custom', 'dark') },
   { name: 'Connect (Ollama, errors, light)', render: connectService('ollama', 'light') },
   { name: 'Connect (Ollama, errors, dark)', render: connectService('ollama', 'dark') },
+  { name: 'Connect (Gemini, AI speed and cost, light)', render: connectGemini('light') },
+  { name: 'Connect (Gemini, AI speed and cost, dark)', render: connectGemini('dark') },
   { name: 'Ask', render: page(AskPage) },
   { name: 'House detail (existing)', render: page(HouseDetailPage, { params: { id: 'h1' } }) },
   { name: 'House detail (new)', render: page(HouseDetailPage, { query: { lat: '12.9', lon: '77.6' } }) },
