@@ -119,11 +119,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import kotlinx.io.IOException
-import kotlinx.io.buffered
-import kotlinx.io.files.FileSystem
 import kotlinx.io.files.Path
-import kotlinx.io.files.SystemFileSystem
 import kotlin.time.Clock
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -133,10 +129,8 @@ import kotlin.uuid.Uuid
  * with the optional server, the offline copy's reads and writes, the import's merge and copy and their undo. Moved
  * from `:app`'s `AndroidRepository` unchanged in behaviour; what needs the platform comes in through the constructor.
  *
- * - [photoDir]: the folder the photo files live in (Android: `filesDir/photos`). A photo row's `path` is still written
- *   as the file's full path in it, but never read to reach the file: the file is found from the row's id
- *   ([photoFileOf]), because an iOS app's container folder moves when the app is updated (S4b-BL-52). The files are
- *   read and written with kotlinx-io's [SystemFileSystem].
+ * - [photoDir]: the folder the photo files live in (Android: `filesDir/photos`); the files and the photo rows' local
+ *   edits are [PhotoStore]'s (S4b-BL-168), and a photo row's file is found from its id ([photoFileOf]; S4b-BL-52).
  * - [syncSoon]: asks for a sync shortly (Android: `SyncWorker.syncSoon`, a WorkManager job).
  * - [apiFor]: the API client for a server address and key (Android: the app-wide HTTP stack; a test's fake engine).
  * - `syncBackendFor`: where [sync] goes for the current settings, or null when nothing is set up (S4b-BL-70); left
@@ -165,30 +159,12 @@ open class CommonRepository(
     private val syncBackendFor: suspend (AppSettings) -> SyncBackend? = syncBackendFor
         ?: { s -> if (s.serverConfigured) ServerSyncBackend(apiFor(s.serverUrl, s.apiKey)) else null }
 
-    protected val fs: FileSystem = SystemFileSystem
-
     /** The clock every local edit is stamped with. */
     protected fun now(): Long = Clock.System.now().toEpochMilliseconds()
 
-    /**
-     * The photo folder, created when missing. Two calls on the IO pool can race to create it on a first run, and
-     * kotlinx-io's native `createDirectories` then fails with "File exists" where `java.io.File.mkdirs` did not; a
-     * folder that is there afterwards is all that counts.
-     */
-    protected fun photoDirPath(): Path = Path(photoDir).also { dir ->
-        try {
-            fs.createDirectories(dir)
-        } catch (e: IOException) {
-            if (fs.metadataOrNull(dir)?.isDirectory != true) throw e
-        }
-    }
+    private val photoStore = PhotoStore(db, photoDir, ::now, syncSoon)
 
-    private fun writeFile(path: Path, bytes: ByteArray) = fs.sink(path).buffered().use { it.write(bytes) }
-
-    /** Deletes a photo file if it is there; like `java.io.File.delete`, never throws (a failure leaves the file). */
-    private fun deleteFile(path: Path) {
-        runCatching { fs.delete(path, mustExist = false) }
-    }
+    protected fun photoDirPath(): Path = photoStore.dirPath()
 
     // Every read of the houses and the records waits for the once-only move of contacts into brokers (slice 1b), so
     // no screen ever sees the houses before it: the flag makes every later call a plain read.
@@ -234,7 +210,7 @@ open class CommonRepository(
         emitAll(db.houses().observe(id))
     }
     override fun visitsFor(houseId: String) = db.visits().observeForHouse(houseId)
-    override fun photosFor(houseId: String) = db.photos().observeForHouse(houseId)
+    override fun photosFor(houseId: String) = photoStore.observeForHouse(houseId)
 
     override suspend fun houseSnapshot(): List<HouseEntity> {
         migrateContactsToBrokers()
@@ -289,16 +265,7 @@ open class CommonRepository(
     override suspend fun closeTargetCount(takenId: String): Int =
         HouseStatusRules.closeTargets(db.houses().all().map { StatusHouse(it.id, it.status) }, takenId).size
 
-    override suspend fun savePhotoMeta(photoId: String, meta: PhotoMeta): Boolean {
-        val photo = db.photos().get(photoId)?.takeUnless { it.deleted } ?: return false
-        val clean = PhotoMeta.coerced(meta.roomId, meta.tags, meta.caption, null)
-        if (clean.sameValues(photo.meta)) return false
-        // Past the stored time, whatever the clock says, so the edit wins against the one it replaces.
-        val stamp = maxOf(now(), photo.metaUpdatedAt + 1)
-        db.photos().upsert(photo.withMeta(clean.copy(metaUpdatedAt = stamp), dirty = true))
-        syncSoon()
-        return true
-    }
+    override suspend fun savePhotoMeta(photoId: String, meta: PhotoMeta): Boolean = photoStore.saveMeta(photoId, meta)
 
     // ---- Brokers (docs/11 5.25, slice 1b) ----
 
@@ -766,19 +733,7 @@ open class CommonRepository(
         db.visits().firstOnStreet(street),
     )
 
-    /**
-     * Deletes the local file now. A photo the server already has is queued (deleted = 1) and the delete is sent on
-     * the next sync, even if the phone is offline now (threat model F-15).
-     */
-    override suspend fun deletePhoto(photo: PhotoEntity): Unit = withContext(Dispatchers.IO) {
-        deleteFile(photoFileOf(photo.id))
-        if (photo.uploaded) {
-            db.photos().markDeleted(photo.id)
-            syncSoon()
-        } else {
-            db.photos().delete(photo.id)
-        }
-    }
+    override suspend fun deletePhoto(photo: PhotoEntity): Unit = photoStore.delete(photo)
 
     override fun <T> observeRecords(type: RecordType<T>): Flow<List<Pair<String, T>>> =
         db.records().byType(type.name).map { rows -> rows.mapNotNull { row -> row.decode(type)?.let { row.id to it } } }
@@ -1103,7 +1058,7 @@ open class CommonRepository(
             val local = if (photoSeen.add(change.id)) localPhotos[change.id] else db.photos().get(change.id)
             if (change.deleted) {
                 if (local != null) {
-                    deleteFile(photoFileOf(local.id)); db.photos().delete(change.id); pulled++
+                    photoStore.deleteFile(photoFileOf(local.id)); db.photos().delete(change.id); pulled++
                 }
             } else if (local != null) {
                 // A meta change from another device (slice 5): the newer `metaUpdatedAt` wins; an edit here that is
@@ -1124,7 +1079,7 @@ open class CommonRepository(
                     // Null: this photo cannot be had (Drive: tampered, planted, a revoked writer); skipped, the backend reports it.
                     val bytes = backend.downloadPhotoIfAvailable(change.id)
                     if (bytes != null) {
-                        writeFile(out, bytes)
+                        photoStore.write(out, bytes)
                         db.photos().upsert(
                             PhotoEntity(change.id, change.houseId, out.toString(), true, now()).withMeta(change.meta(), dirty = false),
                         )
@@ -1243,14 +1198,14 @@ open class CommonRepository(
         var photosWaiting = 0
         for (p in db.photos().pendingUpload()) {
             val file = photoFileOf(p.id)
-            val size = fs.metadataOrNull(file)?.size
+            val size = photoStore.sizeOf(file)
             if (size == null || db.houses().get(p.houseId)?.deleted != false) continue
             if (!photosAllowed) {
                 photosWaiting++; continue
             }
             // Streamed from the file, not read into memory; each (re)try opens the file again. A permanent refusal
             // keeps the photo on this phone only ([SyncBackend.uploadPhoto]); anything else aborts the sync.
-            backend.uploadPhoto(p.houseId, p.id, file.name, size) { fs.source(file).buffered() }
+            backend.uploadPhoto(p.houseId, p.id, file.name, size) { photoStore.open(file) }
             db.photos().upsert(p.copy(uploaded = true)); pushed++
         }
         // Photo meta (slice 5) after the uploads, so a photo taken with a tag reaches the server first. The answer is the
@@ -1352,10 +1307,7 @@ open class CommonRepository(
     }
 
     /** The path a photo row's bytes live in, for the exporter and the importer; the folder is created when missing. */
-    fun photoPath(id: String): Path {
-        photoDirPath()
-        return photoFileOf(id)
-    }
+    fun photoPath(id: String): Path = photoStore.pathFor(id)
 
     /**
      * The file photo [id]'s bytes live in, built from the photo folder and the id; creates nothing. Every read of a
@@ -1363,29 +1315,7 @@ open class CommonRepository(
      * folder changes when the app is updated, so a stored full path goes stale, while the id does not. On Android the
      * folder does not move, so this is the same file the row names.
      */
-    fun photoFileOf(id: String): Path = photoFileIn(photoDir, id)
-
-    /**
-     * The photo path for an id that came out of a backup, or null when it would not land in the photo
-     * directory.
-     *
-     * `BackupValidation.checkData` already refuses a backup whose ids are not `[A-Za-z0-9_-]{1,64}`, so this
-     * never fires on a file that got this far; it is here because [photoPath] interpolates its argument straight
-     * into a path, and a second, independent check costs one path resolution per photo. The id check alone keeps
-     * the name inside the folder (no separator, no `..`); a file already at that name is resolved as well, so a link
-     * to an existing file elsewhere is refused. A dangling link is not caught (`exists` follows links), as the old
-     * `canonicalPath` check did not catch it either; the folder is the app's private one. A file that vanishes between
-     * the two calls makes the photo count as skipped rather than stopping the import. Defence in depth for the same
-     * bug class as the zip-slip guard on entry names.
-     */
-    private fun importedPhotoPath(id: String): Path? {
-        if (!BackupValidation.isValidId(id)) return null
-        val path = photoPath(id)
-        if (!fs.exists(path)) return path
-        return runCatching {
-            if (fs.resolve(path).parent == fs.resolve(photoDirPath())) path else null
-        }.getOrNull()
-    }
+    fun photoFileOf(id: String): Path = photoStore.fileOf(id)
 
     /**
      * Writes an import's rows (S4-04). Imported rows keep the timestamps the backup gave them, so the server's
@@ -1517,9 +1447,9 @@ open class CommonRepository(
         for (photo in actions.photos) {
             val entry = actions.photoSources[photo.id]
             val bytes = entry?.let { photoBytes(it) }
-            val out = importedPhotoPath(photo.id)
+            val out = photoStore.importedPathFor(photo.id)
             if (bytes != null && out != null && db.houses().get(photo.houseId)?.deleted == false) {
-                writeFile(out, bytes)
+                photoStore.write(out, bytes)
                 db.photos().upsert(photo.toEntity(out.toString()))
                 photos++
             } else {
@@ -1663,10 +1593,10 @@ open class CommonRepository(
             for (photo in actions.photos) {
                 val entry = actions.photoSources[photo.id]
                 val bytes = entry?.let { photoBytes(it) }
-                val out = importedPhotoPath(photo.id)
+                val out = photoStore.importedPathFor(photo.id)
                 if (bytes != null && out != null && photo.houseId in newHouseIds) {
                     written[out] = photo.id
-                    writeFile(out, bytes)
+                    photoStore.write(out, bytes)
                     photoRows += photo.toEntity(out.toString())
                 } else {
                     skipped++
@@ -1743,21 +1673,8 @@ open class CommonRepository(
         return result
     }
 
-    /**
-     * After a copy import that did not finish ([applyCopy]'s catch): deletes each photo file it wrote ([written], file
-     * to photo id) whose row is not in the database, and keeps the others. The transaction is all or nothing, so
-     * after a rollback no row is there and every file goes, as before; but a cancellation of the caller can also land
-     * after the commit (the rows are written, then the resumption throws), and deleting then would leave committed
-     * rows pointing at missing files (code review of PR #23). A row that cannot be read counts as missing, the old
-     * rule. `NonCancellable`, because the caller is usually being cancelled right now (Room 2.8's reads do not check
-     * that today, but nothing promises it); only these reads and deletes are, never the transaction itself.
-     */
-    protected suspend fun discardUncommittedPhotoFiles(written: Map<Path, String>) = withContext(NonCancellable) {
-        for ((file, id) in written) {
-            val committed = runCatching { db.photos().get(id) != null }.getOrDefault(false)
-            if (!committed) deleteFile(file)
-        }
-    }
+    /** [PhotoStore.discardUncommitted] after a copy import that did not finish ([applyCopy]'s catch). */
+    protected suspend fun discardUncommittedPhotoFiles(written: Map<Path, String>) = photoStore.discardUncommitted(written)
 
     /**
      * Undoes a copy import (UX review, round 16): removes exactly the rows it added, given as the ids of its
@@ -1861,7 +1778,7 @@ open class CommonRepository(
             }
         }
         // After the commit: a rolled-back undo must not have deleted a single photo file.
-        files.forEach { deleteFile(it) }
+        files.forEach { photoStore.deleteFile(it) }
         if (removed > 0 || changedRecords) syncSoon()
         UndoResult(removed, keptHouses.size, keptHouses)
     }
@@ -1869,8 +1786,5 @@ open class CommonRepository(
     companion object {
         /** Ids per local read of a pull page, under SQLite's default limit of 999 variables (S4b-BL-167); the web uses the same. */
         internal const val PULL_READ_CHUNK = 500
-
-        /** Photo [id]'s file in the photo folder [photoDir]: `<photoDir>/<id>.jpg` ([photoFileOf]; `PhotoFileTest`). */
-        internal fun photoFileIn(photoDir: String, id: String): Path = Path(photoDir, "$id.jpg")
     }
 }

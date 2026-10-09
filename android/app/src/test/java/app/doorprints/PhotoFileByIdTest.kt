@@ -34,6 +34,9 @@ import app.doorprints.data.PhotoEntity
 import app.doorprints.data.SecretStore
 import app.doorprints.data.SettingsStore
 import app.doorprints.data.create
+import app.doorprints.shared.export.ExportPhoto
+import app.doorprints.shared.export.ImportActions
+import app.doorprints.shared.export.ImportMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -41,6 +44,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -127,5 +131,39 @@ class PhotoFileByIdTest {
         repo.photoFileOf("p3")
 
         assertFalse("the photo folder is not created", dir.exists())
+    }
+
+    @Test
+    fun deletingAPhotoTheServerHasRemovesTheFileAndQueuesTheDelete(): Unit = runBlocking {
+        val at = 1_760_000_000_000
+        db.houses().upsert(HouseEntity(id = "h1", label = "House", lat = 12.97, lon = 77.59, createdAt = at, updatedAt = at))
+        val file = repo.photoFile("p4").apply { writeBytes(byteArrayOf(1)) }
+        val row = PhotoEntity("p4", "h1", file.path, uploaded = true, createdAt = at)
+        db.photos().upsert(row)
+
+        repo.deletePhoto(row)
+
+        assertFalse(file.exists())
+        assertTrue("kept as a tombstone, so the next sync sends the delete", db.photos().get("p4")!!.deleted)
+    }
+
+    @Test
+    fun anImportWritesAPhotoUnderItsIdAndSkipsAnIdThatWouldLeaveThePhotoFolder(): Unit = runBlocking {
+        val at = 1_760_000_000_000
+        db.houses().upsert(HouseEntity(id = "h1", label = "House", lat = 12.97, lon = 77.59, createdAt = at, updatedAt = at))
+        val bytes = byteArrayOf(7, 8, 9)
+        val actions = ImportActions(
+            ImportMode.MERGE, emptyList(), emptyList(),
+            photos = listOf(ExportPhoto("p5", "h1", "p5.jpg", at), ExportPhoto("../escape", "h1", "x.jpg", at)),
+            photoSources = mapOf("p5" to "p5.jpg", "../escape" to "x.jpg"),
+        )
+
+        val result = repo.applyImport(actions, { _, _ -> }) { bytes }
+
+        assertEquals(1, result.photos)
+        assertEquals(1, result.photosSkipped)
+        assertArrayEquals(bytes, repo.photoFile("p5").readBytes())
+        assertFalse("nothing landed beside the photo folder", File(repo.photoDir().parentFile, "escape.jpg").exists())
+        assertNull(db.photos().get("../escape"))
     }
 }
