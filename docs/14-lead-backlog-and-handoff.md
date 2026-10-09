@@ -152,7 +152,7 @@
 | 0.141 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-168, slice 4 (web, questions)** (PR #217, branch `refactor/web-split-questions-slice`): `QuestionStore` leaves `local-store.service.ts` (985 to 842 lines), reached as `store.questions`; §9 marks slice 4 done with the measured numbers, the verdict on the page part (left) and the remaining plan (items 5 to 9). Behaviour-neutral. |
 | 0.142 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-168, slice 2 on the phones (viewings), PR #216:** §10 marks slice 2 done with the numbers (`CommonRepository.kt` 1,790 -> 1,764, `ViewingStore.kt` 93) and updates the remaining plan. [10](10-sprint-log.md) v0.205, [03](03-design.md) v0.92, [06](06-test-plan.md) v0.179. |
 | 0.143 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-168, slice 5 (web, criteria and the rating share)** (branch `refactor/web-split-criteria-slice`): `CriteriaStore` leaves `local-store.service.ts` (842 to 709 lines), reached as `store.criteria`; §9 marks slice 5 done with the measured numbers, the verdict on the page part (left) and the remaining plan (items 6 to 9). Behaviour-neutral. |
-| 0.144 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-168, slice 3 on the phones (areas, places and area notes), PR #PRNUM:** §10 marks slice 3 done with the numbers (`CommonRepository.kt` 1,764 -> 1,715, `AreaStore.kt` 147), says how `writeCapped` is shared (the store takes the repository's record writers), what was not split and why, and updates the remaining plan. [10](10-sprint-log.md) v0.207, [03](03-design.md) v0.94, [06](06-test-plan.md) v0.180. |
+| 0.144 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-168, slice 3 on the phones (areas, places and area notes), PR #220:** §10 marks slice 3 done with the numbers (`CommonRepository.kt` 1,764 -> 1,715, `AreaStore.kt` 147), says how `writeCapped` is shared (the store takes the repository's record writers), what was not split and why, and updates the remaining plan. [10](10-sprint-log.md) v0.207, [03](03-design.md) v0.94, [06](06-test-plan.md) v0.180. |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 
@@ -868,7 +868,7 @@ the AI document (`CommonRepository.kt` about 870-890) belong to the Assistant's 
 **Remaining:** 3 areas, places and notes -> 4 questions and answers -> 5 criteria and scoring -> 6 brokers and contact
 -> 7 status, rating, checklist (optional) -> 8 on-device AI.
 
-**Slice 3, what moved (PR #PRNUM).** `AreaStore` (`:shared` `data/AreaStore.kt`, a plain class) owns reading an area, a place and an
+**Slice 3, what moved (PR #220).** `AreaStore` (`:shared` `data/AreaStore.kt`, a plain class) owns reading an area, a place and an
 area note from its record row (`areaOf`, `placeOf`, `noteOf`: decoded, coerced, skipped when they cannot be trusted; a
 note also carries its row's edit stamp), the three lists in their orders, saving (trimmed, validated, no write when the
 live record already says the same, `RecordLimitException` when the type is full), a new id that clashes with no
