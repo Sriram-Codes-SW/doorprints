@@ -91,7 +91,7 @@ export class ExportService {
       houses: await this.store.allHouses(),
       visits: await this.store.allVisits(),
       photos: await this.store.photos.all(),
-      brokers: await this.store.brokers(),
+      brokers: await this.store.brokers.rows(),
       criteria: await this.store.criteria.rows(),
       preferences: await this.store.criteria.preferenceRows(),
       questions: await this.store.questions.rows(),

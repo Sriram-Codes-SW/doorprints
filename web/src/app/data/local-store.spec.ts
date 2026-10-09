@@ -421,7 +421,7 @@ describe('LocalStore', () => {
 
 /**
  * Brokers (slice 1b, docs/11 5.25): the house keeps copies of the broker's name and phone, `saveHouse` links or makes
- * the broker, `saveBroker` rewrites the copies, `deleteBroker` unlinks, and a one-off migration turns the contacts of
+ * the broker, `brokers.save` rewrites the copies, `brokers.delete` unlinks, and a one-off migration turns the contacts of
  * the houses already stored into brokers.
  */
 describe('LocalStore brokers', () => {
@@ -446,7 +446,7 @@ describe('LocalStore brokers', () => {
 
   it('makes a broker from a saved house with a phone and links the house to it', async () => {
     const saved = await store.saveHouse(house('h1', RAVI), T1);
-    const brokers = await store.brokers();
+    const brokers = await store.brokers.rows();
     expect(brokers).toHaveLength(1);
     expect(brokers[0].broker).toEqual({ name: 'Ravi Kumar', phone: '+91 98400 11111' });
     expect(saved.brokerId).toBe(brokers[0].id);
@@ -455,17 +455,17 @@ describe('LocalStore brokers', () => {
 
   it('names the broker by the phone when the house has no contact name, and never makes one from a blank phone', async () => {
     await store.saveHouse(house('h1', { contactPhone: '98400 11111' }), T1);
-    expect((await store.brokers())[0].broker.name).toBe('98400 11111');
+    expect((await store.brokers.rows())[0].broker.name).toBe('98400 11111');
     await store.saveHouse(house('h2', { contactName: 'Only a name', contactPhone: '   ' }), T1);
     await store.saveHouse(house('h3'), T1);
-    expect(await store.brokers()).toHaveLength(1);
+    expect(await store.brokers.rows()).toHaveLength(1);
     expect((await store.getHouse('h2'))?.brokerId ?? null).toBeNull();
   });
 
   it('links a house to the broker that already has the number, however it is written', async () => {
     const first = await store.saveHouse(house('h1', RAVI), T1);
     const second = await store.saveHouse(house('h2', { contactName: 'R.', contactPhone: '098400-11111' }), T2);
-    expect(await store.brokers()).toHaveLength(1);
+    expect(await store.brokers.rows()).toHaveLength(1);
     expect(second.brokerId).toBe(first.brokerId);
     // The copies follow the broker, so the two houses show the same contact.
     expect(second.contactName).toBe('Ravi Kumar');
@@ -480,14 +480,14 @@ describe('LocalStore brokers', () => {
     const dangling = await store.saveHouse(house('h2', { brokerId: 'gone', contactName: 'Kept', contactPhone: '5551234567' }), T2);
     expect(dangling.brokerId).toBe('gone');
     expect(dangling.contactName).toBe('Kept');
-    expect(await store.brokers()).toHaveLength(1);
+    expect(await store.brokers.rows()).toHaveLength(1);
   });
 
   it('rewrites the copies on every linked house when a broker is saved, and marks them dirty', async () => {
     const h1 = await store.saveHouse(house('h1', RAVI), T1);
     await store.saveHouse(house('h2', { contactName: 'Other', contactPhone: '9000000001' }), T1);
     await store.markHouseClean('h1', h1.updatedAt);
-    await store.saveBroker(h1.brokerId!, { name: 'Ravi K.', phone: '+91 98400 22222', agency: 'Adyar Homes' }, T2);
+    await store.brokers.save(h1.brokerId!, { name: 'Ravi K.', phone: '+91 98400 22222', agency: 'Adyar Homes' }, T2);
     const after = (await store.getHouse('h1'))!;
     expect(after.contactName).toBe('Ravi K.');
     expect(after.contactPhone).toBe('+91 98400 22222');
@@ -495,19 +495,19 @@ describe('LocalStore brokers', () => {
     expect(after.updatedAt).toBe('2026-09-02T00:00:00.000Z');
     expect((await store.getHouse('h2'))?.contactName).toBe('Other');
     // A broker without a phone leaves the house without one.
-    await store.saveBroker(h1.brokerId!, { name: 'Ravi K.' }, T2);
+    await store.brokers.save(h1.brokerId!, { name: 'Ravi K.' }, T2);
     expect((await store.getHouse('h1'))?.contactPhone).toBeNull();
   });
 
   it('refuses a broker with a blank name', async () => {
-    await expect(store.saveBroker('b1', { name: '  ' })).rejects.toBeInstanceOf(LocalDataError);
-    expect(await store.brokers()).toEqual([]);
+    await expect(store.brokers.save('b1', { name: '  ' })).rejects.toBeInstanceOf(LocalDataError);
+    expect(await store.brokers.rows()).toEqual([]);
   });
 
   it('unlinks the houses and keeps their contact when a broker is deleted', async () => {
     const h1 = await store.saveHouse(house('h1', RAVI), T1);
-    await store.deleteBroker(h1.brokerId!, T2);
-    expect(await store.brokers()).toEqual([]);
+    await store.brokers.delete(h1.brokerId!, T2);
+    expect(await store.brokers.rows()).toEqual([]);
     const after = (await store.getHouse('h1'))!;
     expect(after.brokerId).toBeNull();
     expect(after.contactName).toBe('Ravi Kumar');
@@ -523,13 +523,13 @@ describe('LocalStore brokers', () => {
     await store.saveHouse(house('h2', { contactName: 'x', contactPhone: '9000000001' }), T1);
     await store.saveHouse(house('h3', { contactPhone: '9840011111' }), T2);
     await store.deleteHouse('h3', T2);
-    expect((await store.brokerHouses(a.brokerId!)).map((h) => h.id)).toEqual(['h1']);
+    expect((await store.brokers.housesOf(a.brokerId!)).map((h) => h.id)).toEqual(['h1']);
   });
 
   it('skips a stored record that is not a broker', async () => {
     await store.records.save('broker', 'bad', { name: '' });
     await store.records.save('broker', 'good', { name: 'Good' });
-    expect((await store.brokers()).map((b) => b.id)).toEqual(['good']);
+    expect((await store.brokers.rows()).map((b) => b.id)).toEqual(['good']);
   });
 
   describe('the one-off migration of the contacts', () => {
@@ -551,8 +551,8 @@ describe('LocalStore brokers', () => {
 
     it('makes one broker per number, named by the newest house, and links the houses', async () => {
       await seed();
-      expect(await store.migrateContactsToBrokers()).toBe(4);
-      const brokers = await store.brokers();
+      expect(await store.brokers.migrate()).toBe(4);
+      const brokers = await store.brokers.rows();
       expect(brokers.map((b) => b.broker.name).sort()).toEqual(['Meena', 'R. Kumar']);
       const ravi = brokers.find((b) => b.broker.name === 'R. Kumar')!;
       // "+91 98400 11111", "098400-11111" and "9840011111" are one broker; its number is the newest house's.
@@ -571,21 +571,21 @@ describe('LocalStore brokers', () => {
 
     it('does nothing the second time, so a house unlinked on purpose stays unlinked', async () => {
       await seed();
-      await store.migrateContactsToBrokers();
-      const brokers = await store.brokers();
+      await store.brokers.migrate();
+      const brokers = await store.brokers.rows();
       const meena = brokers.find((b) => b.broker.name === 'Meena')!;
-      await store.deleteBroker(meena.id);
-      expect(await store.migrateContactsToBrokers()).toBe(0);
+      await store.brokers.delete(meena.id);
+      expect(await store.brokers.migrate()).toBe(0);
       expect((await store.getHouse('d'))?.brokerId).toBeNull();
-      expect(await store.brokers()).toHaveLength(1);
+      expect(await store.brokers.rows()).toHaveLength(1);
     });
 
     it('reuses a broker that already has the number', async () => {
-      await store.saveBroker('existing', { name: 'Already here', phone: '9840011111' }, T1);
+      await store.brokers.save('existing', { name: 'Already here', phone: '9840011111' }, T1);
       await seed();
-      await store.migrateContactsToBrokers();
+      await store.brokers.migrate();
       expect((await store.getHouse('b'))?.brokerId).toBe('existing');
-      expect((await store.brokers()).map((b) => b.broker.name).sort()).toEqual(['Already here', 'Meena']);
+      expect((await store.brokers.rows()).map((b) => b.broker.name).sort()).toEqual(['Already here', 'Meena']);
     });
   });
 });

@@ -107,13 +107,13 @@ export class LocalDataService {
 
   /** The live brokers, oldest edit first (slice 1b). */
   brokers(): Observable<BrokerRow[]> {
-    return defer(() => from(this.store.brokers()));
+    return defer(() => from(this.store.brokers.rows()));
   }
 
   saveBroker(id: string, broker: Broker): Observable<BrokerRow> {
     return defer(() =>
       from(
-        this.store.saveBroker(id, broker).then((saved) => {
+        this.store.brokers.save(id, broker).then((saved) => {
           this.sync.syncSoon();
           return saved;
         }),
@@ -125,7 +125,7 @@ export class LocalDataService {
   deleteBroker(id: string): Observable<void> {
     return defer(() =>
       from(
-        this.store.deleteBroker(id).then(() => {
+        this.store.brokers.delete(id).then(() => {
           this.sync.syncSoon();
         }),
       ),
@@ -134,7 +134,7 @@ export class LocalDataService {
 
   /** The live houses linked to a broker. */
   brokerHouses(id: string): Observable<HouseDto[]> {
-    return defer(() => from(this.store.brokerHouses(id).then((list) => list.map(houseToDto))));
+    return defer(() => from(this.store.brokers.housesOf(id).then((list) => list.map(houseToDto))));
   }
 
   /**
