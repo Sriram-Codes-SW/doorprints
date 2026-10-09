@@ -337,11 +337,27 @@ class HouseDocumentsTest {
     }
 
     @Test
+    void metadataSaysWhetherAHouseWasVisitedAndWhenLast() {
+        var older = new VisitDto(UUID.randomUUID(), id, 12.97, 77.64, "MG Road",
+                Instant.parse("2026-09-01T10:00:00Z"), null, VisitSource.AUTO, null, false, 1);
+        var newer = new VisitDto(UUID.randomUUID(), id, 12.97, 77.64, "MG Road",
+                Instant.parse("2026-09-14T10:00:00Z"), null, VisitSource.AUTO, null, false, 1);
+
+        var visited = HouseDocuments.toDocument(house, List.of(older, newer)).getMetadata();
+        assertThat(visited).containsEntry("visited", true)
+                .containsEntry("lastVisit", Instant.parse("2026-09-14T10:00:00Z").getEpochSecond());
+
+        var never = HouseDocuments.toDocument(house, List.of()).getMetadata();
+        assertThat(never).containsEntry("visited", false).doesNotContainKey("lastVisit");
+        assertThat(HouseDocuments.metadata(house)).containsEntry("visited", false).doesNotContainKey("lastVisit");
+    }
+
+    @Test
     void metadataSkipsNullsAndNotesAreCapped() {
         var bare = new HouseDto(id, "Plot", null, null, null, 0, 0, null, null, null, null, null, null, null, null,
                 "n".repeat(10_000), null, null, null, null, null, null, null, null, Map.of(), null, null, false, 1, null);
         var doc = HouseDocuments.toDocument(bare, List.of());
-        assertThat(doc.getMetadata()).containsOnlyKeys("houseId", "label");
+        assertThat(doc.getMetadata()).containsOnlyKeys("houseId", "label", "visited").containsEntry("visited", false);
         assertThat(doc.getText()).contains("Visits: not visited yet");
         assertThat(doc.getText().length()).isLessThan(HouseDocuments.NOTES_MAX + 200);
     }
