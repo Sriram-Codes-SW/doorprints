@@ -24,6 +24,7 @@ import type { AreaNoteStore } from '../data/area-note-store';
 import type { AreaStore } from '../data/area-store';
 import type { PlaceStore } from '../data/place-store';
 import type { QuestionStore } from '../data/question-store';
+import type { CriteriaStore } from '../data/criteria-store';
 import type { ViewingStore } from '../data/viewing-store';
 import { LocalDataError } from '../core/local-error';
 import { DEFAULT_EXPORT_OPTIONS } from './export-model';
@@ -47,8 +48,7 @@ function fakeStore(photos: PhotoRecord[]): Partial<LocalStore> {
     allVisits: () => Promise.resolve(FIXTURE_VISITS.map((v) => ({ ...v }))),
     photos: { all: () => Promise.resolve(photos) } as unknown as PhotoStore,
     brokers: () => Promise.resolve(FIXTURE_BROKERS),
-    criterionRows: () => Promise.resolve([]),
-    preferenceRows: () => Promise.resolve([]),
+    criteria: { rows: () => Promise.resolve([]), preferenceRows: () => Promise.resolve([]) } as unknown as CriteriaStore,
     questions: { rows: () => Promise.resolve([]) } as unknown as QuestionStore,
     viewings: { rows: () => Promise.resolve([]) } as unknown as ViewingStore,
     areas: { rows: () => Promise.resolve([]) } as unknown as AreaStore,
@@ -282,8 +282,7 @@ describe('lengthUnit (slice 1c)', () => {
       allVisits: () => Promise.resolve(FIXTURE_VISITS.map((v) => ({ ...v }))),
       photos: { all: () => Promise.resolve(FIXTURE_PHOTOS) } as unknown as PhotoStore,
       brokers: () => Promise.resolve(FIXTURE_BROKERS),
-      criterionRows: () => Promise.resolve([]),
-      preferenceRows: () => Promise.resolve([]),
+      criteria: { rows: () => Promise.resolve([]), preferenceRows: () => Promise.resolve([]) } as unknown as CriteriaStore,
       questions: { rows: () => Promise.resolve([]) } as unknown as QuestionStore,
       viewings: { rows: () => Promise.resolve([]) } as unknown as ViewingStore,
       areas: { rows: () => Promise.resolve([]) } as unknown as AreaStore,

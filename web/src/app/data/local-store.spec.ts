@@ -602,98 +602,98 @@ describe('LocalStore criteria', () => {
   const power = (over: Partial<Criterion> = {}): Criterion => ({ key: 'power', weight: 2, mustHave: false, minScore: 3, sort: 1, ...over });
 
   it('has the defaults, and a rating share of 0.5, when nothing is stored', async () => {
-    const scoring = await store.scoring();
+    const scoring = await store.criteria.scoring();
     expect(scoring.criteria.map((c) => c.key)).toEqual([...BUILT_IN_KEYS]);
     expect(scoring.ratingShare).toBe(0.5);
     expect(await store.records.ofType('criterion')).toEqual([]);
   });
 
   it('writes only what differs from the defaults: a built-in set back to its default has its record deleted', async () => {
-    await store.saveCriterion(power({ weight: 3, mustHave: true, minScore: 4 }), T1);
+    await store.criteria.save(power({ weight: 3, mustHave: true, minScore: 4 }), T1);
     const stored = await store.records.get('criterion', 'power');
     expect(stored?.payload).toEqual({ weight: 3, mustHave: true, minScore: 4, sort: 1 });
     expect(Object.keys(stored?.payload ?? {})).toEqual(['weight', 'mustHave', 'minScore', 'sort']);
     expect(stored?.dirty).toBe(true);
-    expect((await store.scoring()).criteria.find((c) => c.key === 'power')).toMatchObject({ weight: 3, mustHave: true, minScore: 4 });
-    await store.saveCriterion(power(), T2);
+    expect((await store.criteria.scoring()).criteria.find((c) => c.key === 'power')).toMatchObject({ weight: 3, mustHave: true, minScore: 4 });
+    await store.criteria.save(power(), T2);
     expect(await store.records.get('criterion', 'power')).toBeUndefined();
     // Saving the default of a built-in that never had a record writes nothing.
-    await store.saveCriterion(power({ key: 'water', sort: 0 }), T2);
+    await store.criteria.save(power({ key: 'water', sort: 0 }), T2);
     expect(await store.records.ofType('criterion')).toEqual([]);
   });
 
   it('archives a built-in with a record that keeps the archived flag, and never stores a label for it', async () => {
-    await store.saveCriterion({ ...power(), label: 'Ignored label', archived: true }, T1);
+    await store.criteria.save({ ...power(), label: 'Ignored label', archived: true }, T1);
     expect((await store.records.get('criterion', 'power'))?.payload).toEqual({ weight: 2, mustHave: false, minScore: 3, sort: 1, archived: true });
   });
 
   it('adds a custom criterion with a key of c_ and 8 hex characters, at the end, Medium', async () => {
-    const added = await store.addCriterion('Pets allowed', 2, T1);
+    const added = await store.criteria.add('Pets allowed', 2, T1);
     expect(added.key).toMatch(/^c_[0-9a-f]{8}$/);
     expect(added).toMatchObject({ label: 'Pets allowed', weight: 2, mustHave: false, minScore: 3, sort: 10 });
     expect((await store.records.get('criterion', added.key))?.payload).toEqual({ label: 'Pets allowed', weight: 2, mustHave: false, minScore: 3, sort: 10 });
-    const second = await store.addCriterion('Lift', 3, T1);
+    const second = await store.criteria.add('Lift', 3, T1);
     expect(second.sort).toBe(11);
-    expect((await store.scoring()).criteria.map((c) => c.key).slice(-2)).toEqual([added.key, second.key]);
+    expect((await store.criteria.scoring()).criteria.map((c) => c.key).slice(-2)).toEqual([added.key, second.key]);
   });
 
   it('draws a custom key again when it clashes with a record, a deleted one included', async () => {
-    const first = await store.addCriterion('One', 2, T1, () => 'c_00000001');
-    await store.deleteCriterion(first.key, T2);
+    const first = await store.criteria.add('One', 2, T1, () => 'c_00000001');
+    await store.criteria.delete(first.key, T2);
     const keys = ['c_00000001', 'c_00000001', 'c_00000002'];
-    const second = await store.addCriterion('Two', 2, T2, () => keys.shift() ?? 'c_ffffffff');
+    const second = await store.criteria.add('Two', 2, T2, () => keys.shift() ?? 'c_ffffffff');
     expect(second.key).toBe('c_00000002');
   });
 
   it('refuses a blank or oversized label', async () => {
-    await expect(store.addCriterion('   ')).rejects.toBeInstanceOf(LocalDataError);
-    await expect(store.addCriterion('x'.repeat(61))).rejects.toBeInstanceOf(LocalDataError);
-    await expect(store.addCriterion('x'.repeat(60))).resolves.toBeDefined();
-    await expect(store.saveCriterion({ key: 'not-a-key!', weight: 2, mustHave: false, minScore: 3, sort: 0 })).rejects.toBeInstanceOf(LocalDataError);
+    await expect(store.criteria.add('   ')).rejects.toBeInstanceOf(LocalDataError);
+    await expect(store.criteria.add('x'.repeat(61))).rejects.toBeInstanceOf(LocalDataError);
+    await expect(store.criteria.add('x'.repeat(60))).resolves.toBeDefined();
+    await expect(store.criteria.save({ key: 'not-a-key!', weight: 2, mustHave: false, minScore: 3, sort: 0 })).rejects.toBeInstanceOf(LocalDataError);
   });
 
   it('refuses the 41st criterion (the ten built-ins count) with "At most 40 criteria"', async () => {
-    for (let i = 0; i < 30; i++) await store.addCriterion(`Custom ${i}`, 2, T1, () => `c_${i.toString(16).padStart(8, '0')}`);
-    expect((await store.scoring()).criteria).toHaveLength(40);
-    await expect(store.addCriterion('One too many')).rejects.toMatchObject({ key: 'criteria.max' });
+    for (let i = 0; i < 30; i++) await store.criteria.add(`Custom ${i}`, 2, T1, () => `c_${i.toString(16).padStart(8, '0')}`);
+    expect((await store.criteria.scoring()).criteria).toHaveLength(40);
+    await expect(store.criteria.add('One too many')).rejects.toMatchObject({ key: 'criteria.max' });
     // An existing one can still be changed.
-    await expect(store.saveCriterion({ key: 'c_00000000', label: 'Renamed', weight: 1, mustHave: false, minScore: 3, sort: 10 })).resolves.toBeUndefined();
-    expect((await store.scoring()).criteria).toHaveLength(40);
+    await expect(store.criteria.save({ key: 'c_00000000', label: 'Renamed', weight: 1, mustHave: false, minScore: 3, sort: 10 })).resolves.toBeUndefined();
+    expect((await store.criteria.scoring()).criteria).toHaveLength(40);
   });
 
   it('deletes a custom criterion only when no house has a score under its key', async () => {
-    const added = await store.addCriterion('Pets', 2, T1);
+    const added = await store.criteria.add('Pets', 2, T1);
     await store.saveHouse(house('h1', { checklist: { [added.key]: 4 } }), T1);
-    expect(await store.criterionInUse(added.key)).toBe(true);
-    await expect(store.deleteCriterion(added.key)).rejects.toMatchObject({ key: 'criteria.inUse' });
+    expect(await store.criteria.inUse(added.key)).toBe(true);
+    await expect(store.criteria.delete(added.key)).rejects.toMatchObject({ key: 'criteria.inUse' });
     expect(await store.records.get('criterion', added.key)).toBeDefined();
     await store.deleteHouse('h1', T2);
-    expect(await store.criterionInUse(added.key)).toBe(false);
-    await store.deleteCriterion(added.key, T2);
+    expect(await store.criteria.inUse(added.key)).toBe(false);
+    await store.criteria.delete(added.key, T2);
     expect(await store.records.get('criterion', added.key)).toBeUndefined();
     // A built-in can only be archived.
-    await expect(store.deleteCriterion('water')).rejects.toBeInstanceOf(LocalDataError);
+    await expect(store.criteria.delete('water')).rejects.toBeInstanceOf(LocalDataError);
   });
 
   it('stores the rating share as the preference score.ratingShare, and deletes it at the default 0.5', async () => {
-    await store.setRatingShare(0.25, T1);
+    await store.criteria.setRatingShare(0.25, T1);
     expect((await store.records.get('preference', 'score.ratingShare'))?.payload).toEqual({ value: '0.25' });
-    expect((await store.scoring()).ratingShare).toBe(0.25);
-    await store.setRatingShare(0.5, T2);
+    expect((await store.criteria.scoring()).ratingShare).toBe(0.25);
+    await store.criteria.setRatingShare(0.5, T2);
     expect(await store.records.get('preference', 'score.ratingShare')).toBeUndefined();
-    expect((await store.scoring()).ratingShare).toBe(0.5);
-    await store.setRatingShare(7, T2);
-    expect((await store.scoring()).ratingShare).toBe(1);
+    expect((await store.criteria.scoring()).ratingShare).toBe(0.5);
+    await store.criteria.setRatingShare(7, T2);
+    expect((await store.criteria.scoring()).ratingShare).toBe(1);
   });
 
   it('resets to the defaults: every criterion and preference record becomes a tombstone', async () => {
-    await store.saveCriterion(power({ weight: 3 }), T1);
-    await store.addCriterion('Pets', 2, T1);
-    await store.setRatingShare(0.75, T1);
-    await store.resetCriteria(T2);
+    await store.criteria.save(power({ weight: 3 }), T1);
+    await store.criteria.add('Pets', 2, T1);
+    await store.criteria.setRatingShare(0.75, T1);
+    await store.criteria.reset(T2);
     expect(await store.records.ofType('criterion')).toEqual([]);
     expect(await store.records.ofType('preference')).toEqual([]);
-    const scoring = await store.scoring();
+    const scoring = await store.criteria.scoring();
     expect(scoring.criteria).toHaveLength(10);
     expect(scoring.ratingShare).toBe(0.5);
     // The tombstones stay for the next sync.
@@ -702,10 +702,10 @@ describe('LocalStore criteria', () => {
 
   it('reads an out-of-range stored value as the default', async () => {
     await store.records.save('criterion', 'water', { weight: 9, mustHave: 'x', minScore: 0, sort: -4 }, T1);
-    const water = (await store.scoring()).criteria.find((c) => c.key === 'water');
+    const water = (await store.criteria.scoring()).criteria.find((c) => c.key === 'water');
     expect(water).toMatchObject({ weight: 2, mustHave: false, minScore: 3, sort: 0 });
     await store.records.save('preference', 'score.ratingShare', { value: 'lots' }, T1);
-    expect((await store.scoring()).ratingShare).toBe(0.5);
+    expect((await store.criteria.scoring()).ratingShare).toBe(0.5);
   });
 });
 
