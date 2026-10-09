@@ -342,3 +342,150 @@ describe('HouseDetailPage: moving rooms and the floor (S4b-BL-87, S4b-BL-85)', (
   });
 });
 
+
+describe('HouseDetailPage: the rooms and floor edges (S4b-BL-168 slice 6, written before the code moved)', () => {
+  it('numbers a new room after the highest sort, counting a room without one as 0', async () => {
+    const { fixture, host, page } = await open([
+      { id: 'a', type: 'HALL', sort: 4 },
+      { id: 'b', type: 'HALL', sort: 9 },
+      { id: 'c', type: 'HALL' },
+    ]);
+    host.querySelector<HTMLButtonElement>('#rooms-add')!.click();
+    await settled(fixture);
+    expect(page.draft().rooms!.map((r) => r.sort)).toEqual([4, 9, undefined, 10]);
+    expect(page.draft().rooms![3]).toMatchObject({ type: 'BEDROOM' });
+  });
+
+  it('puts the focus on the new room\'s type, on Add room after a delete, and on the other arrow at the end of the list', async () => {
+    const { fixture, host, page } = await open([ROOM, { id: 'r2', type: 'KITCHEN', sort: 1 }]);
+    host.querySelector<HTMLButtonElement>('#rooms-add')!.click();
+    await settled(fixture);
+    const added = page.draft().rooms![2].id;
+    expect(document.activeElement?.id).toBe('room-type-' + added);
+    host.querySelector<HTMLButtonElement>('#room-delete-' + added)!.click();
+    await settled(fixture);
+    expect(document.activeElement?.id).toBe('rooms-add');
+    // The second room moves up to the top, where its Up button is disabled: the Down button takes the focus.
+    host.querySelector<HTMLButtonElement>('#room-up-r2')!.click();
+    await settled(fixture);
+    expect(document.activeElement?.id).toBe('room-down-r2');
+    host.querySelector<HTMLButtonElement>('#room-down-r2')!.click();
+    await settled(fixture);
+    expect(document.activeElement?.id).toBe('room-up-r2');
+  });
+
+  it('names a room by its type when the name is blank, and keeps a typed name trimmed', async () => {
+    const { host } = await open([
+      { id: 'a', type: 'KITCHEN', name: '   ', sort: 0 },
+      { id: 'b', type: 'HALL', name: '  Den ', sort: 1 },
+    ]);
+    expect([...host.querySelectorAll('.room-title')].map((h) => h.textContent?.trim())).toEqual(['1. Kitchen', '2. Den']);
+  });
+
+  it('turns a type the list does not know into Other, and a cleared condition into none', async () => {
+    const { fixture, host, page } = await open([{ id: 'r1', type: 'HALL', condition: 4, sort: 0 }]);
+    await type(fixture, host.querySelector<HTMLSelectElement>('#room-condition-r1')!, '', 'change');
+    expect(page.draft().rooms![0].condition).toBeNull();
+    const select = host.querySelector<HTMLSelectElement>('#room-type-r1')!;
+    const option = document.createElement('option');
+    option.value = 'ATTIC';
+    select.append(option);
+    await type(fixture, select, 'ATTIC', 'change');
+    expect(page.draft().rooms![0].type).toBe('OTHER');
+  });
+
+  it('reads feet with blank inches, clears a size when both boxes are blank, and leaves the other size alone', async () => {
+    const { fixture, host, page } = await open([{ id: 'r1', type: 'HALL', lengthCm: 305, widthCm: 244, sort: 0 }]);
+    const length = host.querySelector<HTMLInputElement>('#room-lengthCm-r1')!;
+    const inches = length.parentElement!.querySelectorAll('input')[1];
+    inches.value = '';
+    await type(fixture, length, '12', 'change');
+    expect(page.draft().rooms![0]).toMatchObject({ lengthCm: 366, widthCm: 244 });
+    length.value = '';
+    await type(fixture, inches, '', 'change');
+    expect(page.draft().rooms![0].lengthCm).toBeNull();
+    expect(page.draft().rooms![0].widthCm).toBe(244);
+    expect(length.value).toBe('');
+    expect(inches.value).toBe('');
+  });
+
+  it('clears a size typed in metres when it is blank or out of range, and shows an unknown size as empty', async () => {
+    const { fixture, host, page } = await open([{ id: 'r1', type: 'HALL', lengthCm: 305, sort: 0 }], 'M');
+    const width = host.querySelector<HTMLInputElement>('#room-widthCm-r1')!;
+    const length = host.querySelector<HTMLInputElement>('#room-lengthCm-r1')!;
+    expect(width.value).toBe('');
+    expect(length.value).toBe('3.05');
+    await type(fixture, length, '', 'change');
+    expect(page.draft().rooms![0].lengthCm).toBeNull();
+    await type(fixture, width, '99', 'change');
+    expect(page.draft().rooms![0].widthCm).toBeNull();
+  });
+
+  it('shows an area only when both sizes are known, and no total when no room has both', async () => {
+    const { host } = await open([{ id: 'r1', type: 'HALL', lengthCm: 305, sort: 0 }, { id: 'r2', type: 'HALL', sort: 1 }]);
+    expect(host.querySelector('.room-area')).toBeNull();
+    expect(host.querySelector('.room-total')).toBeNull();
+  });
+
+  it('shows areas in square metres in the metres setting and groups thousands of square feet', async () => {
+    const metres = await open([ROOM, { id: 'r2', type: 'BEDROOM', lengthCm: 305, widthCm: 305, sort: 1 }], 'M');
+    expect(metres.host.querySelector('.room-total')?.textContent?.trim()).toBe('Total area: 23.8 m²');
+    TestBed.resetTestingModule();
+    const big = await open([{ id: 'r1', type: 'HALL', lengthCm: 1500, widthCm: 1200, sort: 0 }], 'FT');
+    expect(big.host.querySelector('.room-area')?.textContent?.trim()).toBe('Area: 1,938 sq ft');
+  });
+
+  it('shows the level without its sign, and leaves a blank or zero level to the switch', async () => {
+    const { fixture, host, page } = await open(null, 'FT', { floor: -2 });
+    const floor = host.querySelector<HTMLInputElement>('#house-floor')!;
+    const basement = host.querySelector<HTMLInputElement>('#house-floor-basement')!;
+    expect(floor.value).toBe('2');
+    // The switch with no level typed changes nothing in the draft; the first level typed then follows the switch.
+    await type(fixture, floor, '');
+    expect(basement.checked).toBe(true);
+    basement.click();
+    await settled(fixture);
+    expect(page.draft().floor).toBeNull();
+    await type(fixture, floor, '2');
+    expect(page.draft().floor).toBe(2);
+    basement.click();
+    await settled(fixture);
+    expect(page.draft().floor).toBe(-2);
+    // Zero is the ground floor: it carries no sign, whatever the switch says.
+    await type(fixture, floor, '0');
+    expect(page.draft().floor).toBe(0);
+    basement.click();
+    await settled(fixture);
+    expect(page.draft().floor).toBe(0);
+    expect(host.querySelector('#house-floor-error')).toBeNull();
+  });
+
+  it('turns a floor above the ground into a basement and back with the switch, and refuses a basement past 5 and a floor past 200', async () => {
+    const { fixture, host, page } = await open(null, 'FT', { floor: 4 });
+    const basement = host.querySelector<HTMLInputElement>('#house-floor-basement')!;
+    basement.click();
+    await settled(fixture);
+    expect(page.draft().floor).toBe(-4);
+    await type(fixture, host.querySelector<HTMLInputElement>('#house-floor')!, '6');
+    expect(host.querySelector('#house-floor-error')?.textContent).toContain('basement level from 1 to 5');
+    expect(host.querySelector('#house-floor')!.getAttribute('aria-describedby')).toBe('house-floor-error');
+    basement.click();
+    await settled(fixture);
+    expect(host.querySelector('#house-floor-error')).toBeNull();
+    await type(fixture, host.querySelector<HTMLInputElement>('#house-floor')!, '201');
+    expect(host.querySelector('#house-floor-error')?.textContent).toContain('-5 to 200');
+    await type(fixture, host.querySelector<HTMLInputElement>('#house-floor')!, '200');
+    expect(host.querySelector('#house-floor-error')).toBeNull();
+    expect(host.querySelector('#house-floor')!.getAttribute('aria-describedby')).toBe('house-floor-hint');
+  });
+
+  it('names an untitled twin and joins several twins in the duplicate-flat warning', async () => {
+    const twin: HouseDto = { ...HOUSE, id: 'twin', label: '  ', lat: 12.97161, bedrooms: 2, floor: 3, rooms: null };
+    const other: HouseDto = { ...twin, id: 'other', label: 'Corner flat' };
+    const { host } = await open(null, 'FT', { bedrooms: 2.4, floor: 3 }, [twin, other]);
+    const line = host.querySelector('#house-same-flat')?.textContent ?? '';
+    expect(line).toContain('Untitled');
+    expect(line).toContain('Corner flat');
+    expect(line).toContain(' and ');
+  });
+});
