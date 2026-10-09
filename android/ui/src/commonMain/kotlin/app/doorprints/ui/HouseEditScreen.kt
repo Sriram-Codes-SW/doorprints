@@ -20,13 +20,9 @@ package app.doorprints.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -40,7 +36,6 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -51,17 +46,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusProperties
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
@@ -75,16 +64,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import coil3.compose.AsyncImage
 import app.doorprints.data.HouseEntity
-import app.doorprints.data.PhotoEntity
-import app.doorprints.data.Repository
 import app.doorprints.ui.res.*
 import app.doorprints.shared.api.HouseDraftDto
 import app.doorprints.shared.ai.ListingCut
@@ -104,12 +87,7 @@ import app.doorprints.shared.model.HouseStatus
 import app.doorprints.shared.model.DuplicateFlat
 import app.doorprints.shared.model.HouseValues
 import app.doorprints.shared.model.LocationSource
-import app.doorprints.shared.model.MAX_PHOTOS_PER_HOUSE
-import app.doorprints.shared.model.HouseRoom
 import app.doorprints.shared.model.MoveIn
-import app.doorprints.shared.model.PhotoMeta
-import app.doorprints.shared.model.PhotoTags
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.ensureActive
@@ -131,13 +109,6 @@ import kotlin.uuid.Uuid
  * Keeps "not loaded yet" apart from "not on this phone" (UX review, round 21).
  */
 private class RoomAnswer(val house: HouseEntity?)
-
-/** Focus targets besides a photo's delete button (whose target is the photo id). */
-private const val FOCUS_GALLERY = "gallery"
-private const val FOCUS_CAMERA = "camera"
-
-/** Prefix of a thumbnail's focus target (the viewer gives focus back to the photo it was opened from). */
-private const val FOCUS_THUMB = "thumb:"
 
 /** How long "Use my current location" waits for a fix. */
 private const val LOCATION_TIMEOUT_MS = 15_000L
@@ -244,45 +215,6 @@ private fun restoreDraft(v: List<*>): HouseEntity? = runCatching {
         floor = v.getOrNull(38) as Int?,
     )
 }.getOrNull()
-
-/**
- * Photo deletes waiting for their *Undo* snackbar (UX review, whole-app audit). Held by the back-stack entry, not the
- * composition, so a rotation or the language switch during the 10 s no longer deletes the photo at once: the screen
- * shows the snackbar again for every delete still waiting. A delete is carried out when its snackbar ends without
- * *Undo* ([commit]), or when the entry is really closed ([onCleared], in the app scope). A delete still waiting when
- * the process dies keeps the photo, the safe side. Common since CMP-6 P6a: given the repository and the app scope
- * ([AppServices]), where it read them from the application before.
- */
-internal class PhotoDeleteViewModel(
-    private val repository: Repository,
-    private val appScope: CoroutineScope,
-) : ViewModel() {
-    /** A photo removed from the row, and its number in the row when it was deleted ("Photo 2 deleted"). */
-    data class Pending(val photo: PhotoEntity, val number: Int)
-
-    var pending by mutableStateOf<Map<String, Pending>>(emptyMap())
-        private set
-
-    fun add(photo: PhotoEntity, number: Int) {
-        pending = pending + (photo.id to Pending(photo, number))
-    }
-
-    fun undo(id: String) {
-        pending = pending - id
-    }
-
-    fun commit(id: String) {
-        val p = pending[id] ?: return
-        pending = pending - id
-        appScope.launch { repository.deletePhoto(p.photo) }
-    }
-
-    override fun onCleared() {
-        val left = pending.values.toList()
-        pending = emptyMap()
-        left.forEach { p -> appScope.launch { repository.deletePhoto(p.photo) } }
-    }
-}
 
 /**
  * A house's form: a new one (from the map or a visit) or an existing one. Common since CMP-6 P6a: the geocoder, the
@@ -489,8 +421,6 @@ fun HouseEditScreen(
 
     val visitsFlow = remember(id) { repo.visitsFor(id) }
     val visits by visitsFlow.collectAsStateWithLifecycle(emptyList())
-    val photosFlow = remember(id) { repo.photosFor(id) }
-    val photos by photosFlow.collectAsStateWithLifecycle(emptyList())
     val aiEnabled by repo.aiEnabled.collectAsStateWithLifecycle()
     val brokers: List<Pair<String, Broker>> by remember(repo) { repo.observeBrokers() }.collectAsStateWithLifecycle(emptyList())
     // Every live house, for the duplicate-flat warning (S4b-BL-85) under the floor.
@@ -518,9 +448,6 @@ fun HouseEditScreen(
         draft = merged.house
         pasteMessage = pasteResultText(merged, parsed.warnings)
     }
-    // The last photo that could not be added (limit or unreadable), shown under the photo buttons until closed.
-    var photoProblem by rememberSaveable { mutableStateOf<Repository.AddPhotoResult?>(null) }
-    var addingPhoto by remember { mutableStateOf(false) }
     val latInvalid = latText?.let { parseCoordinate(it, 90.0) == null } == true
     val lonInvalid = lonText?.let { parseCoordinate(it, 180.0) == null } == true
     var locating by remember { mutableStateOf(false) }
@@ -539,10 +466,6 @@ fun HouseEditScreen(
     var markOthersOnSave by rememberSaveable { mutableStateOf(false) }
     var confirmClose by rememberSaveable { mutableStateOf<Int?>(null) }
     var closedCount by rememberSaveable { mutableStateOf<Int?>(null) }
-    // The next photo taken is for the condition record: it gets the MOVE_IN tag (saveable across the camera hand-off).
-    var moveInPhoto by rememberSaveable { mutableStateOf(false) }
-    // The photo whose room, tags and caption are being edited (from the viewer).
-    var metaPhotoId by rememberSaveable { mutableStateOf<String?>(null) }
 
     fun update(transform: (HouseEntity) -> HouseEntity) {
         draft = draft?.let(transform)
@@ -602,34 +525,9 @@ fun HouseEditScreen(
     }
     PlatformBackHandler(enabled = dirty || busy) { leave() }
 
-    // Photo delete with undo (see PhotoDeleteViewModel).
     val snackbar = remember { SnackbarHostState() }
-    val photoDeletes: PhotoDeleteViewModel = viewModel { PhotoDeleteViewModel(repo, services.appScope) }
-    val pendingDelete = photoDeletes.pending
-    val shownPhotos = photos.filter { it.id !in pendingDelete }
-    val photoFocus = remember { HashMap<String, FocusRequester>() }
-    val thumbFocus = remember { HashMap<String, FocusRequester>() }
-    // Taking and picking photos (PlatformFeatures.addPhotos, off on iOS for now). Without them the two buttons are not
-    // composed, so their focus requesters are never used: requestFocus on an unattached requester throws.
-    val canAddPhotos = LocalPlatformFeatures.current.addPhotos
-    val galleryFocus = remember { FocusRequester() }
-    val cameraFocus = remember { FocusRequester() }
-    var focusTarget by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(focusTarget) {
-        val target = focusTarget ?: return@LaunchedEffect
-        // One frame for the row to drop the photo and canFocus = true to apply, then focus; one frame for TalkBack.
-        withFrameNanos { }
-        runCatching {
-            when {
-                target == FOCUS_GALLERY -> if (canAddPhotos) galleryFocus.requestFocus()
-                target == FOCUS_CAMERA -> if (canAddPhotos) cameraFocus.requestFocus()
-                target.startsWith(FOCUS_THUMB) -> thumbFocus[target.removePrefix(FOCUS_THUMB)]?.requestFocus()
-                else -> photoFocus[target]?.requestFocus()
-            }
-        }
-        withFrameNanos { }
-        focusTarget = null
-    }
+    // This house's photos (HousePhotos.kt): the strip, the viewer, delete with Undo in this snackbar.
+    val photos = rememberHousePhotos(id, snackbar)
     // A reminder's *Questions* (S4b-BL-93b): once the form is drawn, its questions heading goes to the top of the
     // screen (a box taller than the screen from the heading down, so the questions show under it, not the fields above).
     val questionsView = remember { BringIntoViewRequester() }
@@ -639,55 +537,6 @@ fun HouseEditScreen(
         questionsView.bringIntoView(Rect(0f, 0f, 1f, QUESTIONS_VIEW_PX))
         onQuestionsShown()
     }
-    val undoLabel = stringResource(Res.string.common_undo)
-    // A delete still waiting for its snackbar is carried out now (before another photo is added or deleted).
-    fun commitPendingDelete() {
-        snackbar.currentSnackbarData?.dismiss()
-    }
-    fun showUndo(p: PhotoDeleteViewModel.Pending) {
-        scope.launch {
-            // Cancelled (a rotation, or the screen closing) throws here and leaves the delete pending: the new
-            // composition shows the snackbar again, or the view model carries it out when the entry is closed.
-            val result = snackbar.showSnackbar(
-                message = getString(Res.string.house_photo_deleted, p.number),
-                actionLabel = undoLabel,
-                duration = SnackbarDuration.Long,
-            )
-            if (result == SnackbarResult.ActionPerformed) photoDeletes.undo(p.photo.id) else photoDeletes.commit(p.photo.id)
-        }
-    }
-    // After a configuration change: the deletes still waiting get their snackbar back.
-    LaunchedEffect(Unit) { photoDeletes.pending.values.forEach(::showUndo) }
-    fun deletePhoto(p: PhotoEntity, number: Int) {
-        commitPendingDelete()
-        val index = shownPhotos.indexOfFirst { it.id == p.id }
-        val rest = shownPhotos.filter { it.id != p.id }
-        val next = rest.getOrNull(index) ?: rest.lastOrNull()
-        photoDeletes.add(p, number)
-        if (touchExploration()) focusTarget = next?.id ?: FOCUS_GALLERY.takeIf { canAddPhotos }
-        showUndo(PhotoDeleteViewModel.Pending(p, number))
-    }
-
-    fun addPhoto(photo: PickedPhoto) {
-        if (addingPhoto) return
-        addingPhoto = true
-        photoProblem = null
-        scope.launch {
-            try {
-                // NonCancellable: a rotation while a big photo is being shrunk must not lose it.
-                val tags = if (moveInPhoto) listOf(PhotoTags.MOVE_IN) else emptyList()
-                moveInPhoto = false
-                val result = withContext(NonCancellable) { form.addPhoto(id, photo, tags) }
-                photoProblem = result.takeIf { it != Repository.AddPhotoResult.ADDED }
-            } finally {
-                addingPhoto = false
-            }
-        }
-    }
-
-    // The camera and the photo picker (the app's, HouseFormServices): each photo is shrunk and stored the same way.
-    val photoSources = form.rememberPhotoSources { addPhoto(it) }
-
     // "Use my current location": asks for the permission first when needed, then tries again once. The "asked" flag
     // is shared with the Map and the Assistant (LocationPermission.kt). After a refusal, or an approximate-only
     // answer, the note under the button ([LocationPermissionNote], round 3) says why and offers the next step:
@@ -745,9 +594,6 @@ fun HouseEditScreen(
             scope.launch { snackbar.showSnackbar(savedText) }
         }
     }
-
-    // The photo viewer, by photo id so a delete elsewhere cannot shift it to another photo.
-    var viewerPhotoId by rememberSaveable { mutableStateOf<String?>(null) }
 
     val saveLabel = stringResource(Res.string.common_save)
     val savingLabel = stringResource(Res.string.house_saving)
@@ -1237,133 +1083,15 @@ fun HouseEditScreen(
                     },
                 )
 
-                // Without adding photos (iOS for now; PlatformFeatures.addPhotos) there is no take or pick button
-                // and no "save first" prompt, and a house with no photos has no Photos section at all; photos it
-                // already has (from a server) are still shown, and can be opened and deleted.
-                if (canAddPhotos || photos.isNotEmpty()) {
-                    HorizontalDivider()
-                    SectionHeading(stringResource(Res.string.house_photos))
-                    if (saved == null) {
-                        // A new house: its photos belong to a saved row. One tap saves and continues on it (whole-app audit).
-                        if (isNew && canAddPhotos) {
-                            Text(stringResource(Res.string.house_save_first_photos), style = MaterialTheme.typography.bodySmall)
-                            OutlinedButton(
-                                onClick = { save() },
-                                enabled = canSave,
-                                modifier = Modifier.heightIn(min = 48.dp),
-                            ) { ButtonLabel(stringResource(Res.string.house_save_add_photos)) }
-                        }
-                    } else {
-                        if (canAddPhotos) {
-                            Column {
-                                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    OutlinedButton(
-                                        onClick = {
-                                            commitPendingDelete()
-                                            moveInPhoto = false
-                                            photoSources.takePhoto()
-                                        },
-                                        enabled = !addingPhoto,
-                                        modifier = Modifier.heightIn(min = 48.dp).focusRequester(cameraFocus).then(
-                                            if (focusTarget == FOCUS_CAMERA) Modifier.focusProperties { canFocus = true } else Modifier,
-                                        ),
-                                    ) { Text(stringResource(Res.string.house_take_photo)) }
-                                    OutlinedButton(
-                                        onClick = {
-                                            commitPendingDelete()
-                                            moveInPhoto = false
-                                            photoSources.pickFromGallery()
-                                        },
-                                        enabled = !addingPhoto,
-                                        modifier = Modifier.heightIn(min = 48.dp).focusRequester(galleryFocus).then(
-                                            if (focusTarget == FOCUS_GALLERY) Modifier.focusProperties { canFocus = true } else Modifier,
-                                        ),
-                                    ) { Text(stringResource(Res.string.house_from_gallery)) }
-                                }
-                                // Where the user is looking after taking or picking a photo (round 21), not at the top of the form.
-                                LiveMessage {
-                                    val problem = photoProblem
-                                    when {
-                                        addingPhoto -> Text(
-                                            stringResource(Res.string.house_adding_photo),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            modifier = Modifier.padding(top = 8.dp),
-                                        )
-                                        problem != null -> {
-                                            val text = when (problem) {
-                                                Repository.AddPhotoResult.LIMIT_REACHED ->
-                                                    stringResource(Res.string.house_photo_limit, MAX_PHOTOS_PER_HOUSE)
-                                                else -> stringResource(Res.string.house_photo_unreadable)
-                                            }
-                                            ResultCard(
-                                                tone = ResultTone.ERROR,
-                                                text = text,
-                                                onDismiss = {
-                                                    photoProblem = null
-                                                    if (touchExploration()) focusTarget = FOCUS_CAMERA
-                                                },
-                                                modifier = Modifier.padding(top = 8.dp),
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        val name = d.label.ifBlank { unnamed }
-                        val openLabel = stringResource(Res.string.house_photo_open)
-                        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            shownPhotos.forEachIndexed { index, p ->
-                                val deleteFocus = photoFocus.getOrPut(p.id) { FocusRequester() }
-                                val openFocus = thumbFocus.getOrPut(p.id) { FocusRequester() }
-                                Column(Modifier.width(120.dp)) {
-                                Box {
-                                    // A button: opens the photo larger (the web's photo tile, docs/05 §5).
-                                    AsyncImage(
-                                        model = form.photoModel(p.id),
-                                        contentDescription = stringResource(Res.string.house_photo_desc, index + 1, name),
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier.size(120.dp).clip(MaterialTheme.shapes.small)
-                                            .focusRequester(openFocus)
-                                            .then(
-                                                if (focusTarget == FOCUS_THUMB + p.id) {
-                                                    Modifier.focusProperties { canFocus = true }
-                                                } else {
-                                                    Modifier
-                                                },
-                                            )
-                                            .clickable(role = Role.Button, onClickLabel = openLabel) { viewerPhotoId = p.id },
-                                    )
-                                    // IconButton is 48 dp, on a surface so it stays visible on light photos.
-                                    Surface(shape = MaterialTheme.shapes.small, tonalElevation = 2.dp,
-                                        modifier = Modifier.align(Alignment.TopEnd)) {
-                                        IconButton(
-                                            onClick = { deletePhoto(p, index + 1) },
-                                            modifier = Modifier.focusRequester(deleteFocus).then(
-                                                if (focusTarget == p.id) Modifier.focusProperties { canFocus = true } else Modifier,
-                                            ),
-                                        ) {
-                                            Icon(Icons.Default.Delete,
-                                                contentDescription = stringResource(Res.string.house_delete_photo, index + 1))
-                                        }
-                                    }
-                                }
-                                // Its room, tags and caption (slice 5), those it has; edited from the viewer.
-                                photoMetaSummary(p, d.rooms)?.let {
-                                    Text(it, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                                }
-                                }
-                            }
-                            // The photo being added, so the row shows that something is happening (decoding a 12 MP photo
-                            // takes seconds on a budget phone). Decorative: the live message above says it.
-                            if (addingPhoto) {
-                                Box(
-                                    Modifier.size(120.dp).background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.small),
-                                    contentAlignment = Alignment.Center,
-                                ) { CircularProgressIndicator() }
-                            }
-                        }
-                    }
-                }
+                HousePhotosSection(
+                    photos = photos,
+                    isNew = isNew,
+                    isSaved = saved != null,
+                    canSave = canSave,
+                    onSave = { save() },
+                    name = d.label.ifBlank { unnamed },
+                    rooms = d.rooms,
+                )
 
                 HorizontalDivider()
                 // A FlowRow, so *I'm here now* goes under the heading when both do not fit (Wave D: in a Row the
@@ -1446,15 +1174,11 @@ fun HouseEditScreen(
                         moveIn = d.moveIn,
                         onChange = { m -> update { it.copy(moveIn = m) } },
                         rooms = d.rooms,
-                        photos = shownPhotos,
-                        canAddPhoto = canAddPhotos && saved != null,
-                        addingPhoto = addingPhoto,
-                        onAddPhoto = {
-                            commitPendingDelete()
-                            moveInPhoto = true
-                            photoSources.takePhoto()
-                        },
-                        onOpenPhoto = { viewerPhotoId = it },
+                        photos = photos.shown,
+                        canAddPhoto = photos.canAdd && saved != null,
+                        addingPhoto = photos.adding,
+                        onAddPhoto = photos.takeMoveInPhoto,
+                        onOpenPhoto = photos.openViewer,
                         closeEnabled = !busy && saved?.status == HouseStatus.TAKEN,
                         onCloseHunt = { scope.launch { confirmClose = repo.closeTargetCount(id) } },
                     )
@@ -1467,26 +1191,7 @@ fun HouseEditScreen(
             }
         }
 
-        viewerPhotoId?.let { openId ->
-            val start = shownPhotos.indexOfFirst { it.id == openId }
-            if (start < 0) {
-                // Deleted (here or by sync) while open: nothing to show.
-                LaunchedEffect(openId) { viewerPhotoId = null }
-            } else {
-                PhotoViewer(
-                    photos = shownPhotos,
-                    start = start,
-                    name = d.label.ifBlank { unnamed },
-                    rooms = d.rooms,
-                    onDetails = { metaPhotoId = it },
-                    onClose = {
-                        viewerPhotoId = null
-                        // Back to the thumbnail it was opened from, not the top of the form.
-                        if (touchExploration()) focusTarget = FOCUS_THUMB + openId
-                    },
-                )
-            }
-        }
+        HousePhotoViewer(photos, name = d.label.ifBlank { unnamed }, rooms = d.rooms)
     }
 
     if (confirmLeave && dirty) {
@@ -1651,25 +1356,7 @@ fun HouseEditScreen(
         )
     }
 
-    metaPhotoId?.let { pid ->
-        val photo = photos.firstOrNull { it.id == pid }
-        if (photo == null) {
-            LaunchedEffect(pid) { metaPhotoId = null }
-        } else {
-            val savedText = stringResource(Res.string.photo_meta_saved)
-            PhotoMetaDialog(
-                photo = photo,
-                rooms = draft?.rooms,
-                onDismiss = { metaPhotoId = null },
-                onSave = { meta ->
-                    metaPhotoId = null
-                    scope.launch {
-                        if (withContext(NonCancellable) { repo.savePhotoMeta(pid, meta) }) snackbar.showSnackbar(savedText)
-                    }
-                },
-            )
-        }
-    }
+    HousePhotoDetails(photos, rooms = draft?.rooms)
 
     if (showPaste) {
         PasteListingDialog(
@@ -1936,77 +1623,6 @@ private suspend fun pasteResultText(merge: ListingMerge, warnings: List<String>)
     if (merge.kept.isNotEmpty()) parts += getString(Res.string.house_paste_kept, names(merge.kept))
     if (warnings.isNotEmpty()) parts += getString(Res.string.house_paste_check, warnings.joinToString("; "))
     return parts.joinToString(" ")
-}
-
-/**
- * The full-screen photo viewer (whole-app audit; the web's "Photo viewer", docs/05 §5): the house's photos in a
- * horizontal pager, each fitted to the screen, "Photo 2 of 5" and a 48 dp Close. Back closes it too. Its pane title
- * tells TalkBack where it is.
- */
-@Composable
-private fun PhotoViewer(
-    photos: List<PhotoEntity>,
-    start: Int,
-    name: String,
-    rooms: List<HouseRoom>?,
-    onDetails: (String) -> Unit,
-    onClose: () -> Unit,
-) {
-    val title = stringResource(Res.string.house_photo_viewer)
-    val form = LocalAppServices.current.houseForm
-    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        val pager = rememberPagerState(initialPage = start) { photos.size }
-        Surface(
-            color = Color.Black,
-            contentColor = Color.White,
-            modifier = Modifier.fillMaxSize().semantics { paneTitle = title },
-        ) {
-            Column(Modifier.fillMaxSize()) {
-                Row(
-                    Modifier.fillMaxWidth().padding(4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        stringResource(Res.string.house_photo_position, pager.currentPage + 1, photos.size),
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.weight(1f).padding(start = 12.dp),
-                    )
-                    // Room, tags and caption (slice 5) of the photo on screen.
-                    photos.getOrNull(pager.currentPage)?.let { p ->
-                        IconButton(onClick = { onDetails(p.id) }, modifier = Modifier.size(48.dp)) {
-                            Icon(
-                                Icons.Default.Edit,
-                                contentDescription = stringResource(Res.string.photo_details_desc, pager.currentPage + 1),
-                            )
-                        }
-                    }
-                    IconButton(onClick = onClose, modifier = Modifier.size(48.dp)) {
-                        Icon(Icons.Default.Close, contentDescription = stringResource(Res.string.common_close))
-                    }
-                }
-                // What the photo shows (slice 5): its room, tags and caption, when it has any.
-                photos.getOrNull(pager.currentPage)?.let { p ->
-                    photoMetaSummary(p, rooms)?.let {
-                        Text(it, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
-                    }
-                }
-                HorizontalPager(
-                    state = pager,
-                    modifier = Modifier.fillMaxWidth().weight(1f),
-                    key = { page -> photos.getOrNull(page)?.id ?: page },
-                ) { page ->
-                    photos.getOrNull(page)?.let { p ->
-                        AsyncImage(
-                            model = form.photoModel(p.id),
-                            contentDescription = stringResource(Res.string.house_photo_desc, page + 1, name),
-                            contentScale = ContentScale.Fit,
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    }
-                }
-            }
-        }
-    }
 }
 
 /**
