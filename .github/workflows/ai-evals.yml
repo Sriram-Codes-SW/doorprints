@@ -181,6 +181,23 @@ jobs:
             fi
           done
 
+      # Vertex AI is paid from the Google Cloud trial credit, which ends on 22 Dec 2026 (docs/08 10.4). A rerun by anyone
+      # with write access must not be able to spend beyond it: Vertex needs the repository variable VERTEX_EVAL_ENABLED=true
+      # (the owner sets it for a run and deletes it afterwards) and is refused from 15 Dec 2026 whatever the variable says.
+      - name: Vertex AI trial guard
+        if: ${{ inputs.provider == 'vertex' }}
+        env:
+          VERTEX_EVAL_ENABLED: ${{ vars.VERTEX_EVAL_ENABLED }}
+        run: |
+          if [ "$VERTEX_EVAL_ENABLED" != "true" ]; then
+            echo "::error::Vertex AI evals are switched off. The owner turns them on with the repository variable VERTEX_EVAL_ENABLED=true (Settings > Secrets and variables > Actions > Variables) while the Google Cloud trial credit lasts. Or run with provider=aistudio."
+            exit 1
+          fi
+          if [[ "$(date -u +%F)" > "2026-12-14" ]]; then
+            echo "::error::Vertex AI evals are closed from 2026-12-15: the Google Cloud trial credit ends on 2026-12-22 (docs/08-operations-runbook.md 10.4). Run with provider=aistudio."
+            exit 1
+          fi
+
       - name: Check the provider's secrets are set
         env:
           PROVIDER: ${{ inputs.provider }}
