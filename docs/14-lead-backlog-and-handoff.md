@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.136 |
+| Version | 0.137 |
 | Date | 2026-10-08 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..183); this file lists the lead-level items and points to the rest. |
@@ -145,6 +145,7 @@
 | 0.134 | 2026-10-09 | Claude (Code), engineer | S4b-BL-175-F1 and -F2 fixed, -F3 documented ([10](10-sprint-log.md) v0.197): the Anthropic adapters retry once with `tool_choice: auto` on the documented 400; the website reads a redirect as *unavailable*. A change to the Anthropic request or the redirect mode re-runs `node --test tools/fake-ai-provider`, the wire specs and `browser-check.mjs` (§7). |
 | 0.135 | 2026-10-09 | Claude (Code), engineer | S4b-BL-172 Done ([10](10-sprint-log.md)): `FROM` images in `backend/Dockerfile` and `backend/db/Dockerfile` pinned by `@sha256:` digest; `check-dockerfile-pins.py` in `security.yml`. |
 | 0.136 | 2026-10-09 | Claude (Code), engineer | S4b-BL-190 done in code ([10](10-sprint-log.md) v0.199): the `local-model` suite's defaults and request limit changed; the proof is the next manual run of the suite, whose summary the lead reads. |
+| 0.137 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-168, slice 1 on the phones (photos), PR #NN:** the new §9 *Phone file layout* records the analysis of `HouseEditScreen.kt` and `CommonRepository.kt` by kind of data (which splits pass the deletion test and which fail), the slice plan (photos, viewings, areas and places, questions, criteria, brokers, status/rating/checklist, on-device AI) and what slice 1 moved: `PhotoStore` (`:shared`) and `HousePhotos.kt` (`:ui`). Behaviour-neutral: no screenshot re-recorded. [10](10-sprint-log.md) v0.200, [03](03-design.md) v0.87, [06](06-test-plan.md) v0.178. |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 
@@ -642,3 +643,56 @@ under half a day, M one to two days, L more; *safe now* means no behaviour chang
 | 15 | **Done** 2026-09-29. **Stale docs**: `docs/schemas/README.md` §9 lists S4-00/a, /b as uncommitted and /g as open (done: `LenientChecklistSerializer`); the `local-db.ts` comment names "Sprint 4b" for what is now 4c. | | Next PR. | S |
 
 **Order before the next feature code:** the safe S items as one pull request (`chore/sprint-readiness`: findings 4a, 4b, 5, 6, 7a, 12's small items, 15), then the IndexedDB upgrade path with S4b-BL-66 (2), the `SyncBackend` seam (1) and the backup rule (3) each as their own change; 3b then comes with the COOP/CSP and Noto change (7b, 11) and the rewritten docs/13 (7c).
+
+## 9. Phone file layout (S4b-BL-168)
+
+Owner-approved 2026-10-09 ("Easy to read code is more maintainable"): split the big files by **kind of data**, so that
+adding or changing a house value edits one small file. One kind per pull request, each behaviour-neutral (the existing
+suites pass, the screenshots are not re-recorded, no test is removed). The deletion test decides each split: delete the new
+module; if the complexity would not reappear in several callers, do not split. This section is the phones' side
+(`:ui`, `:shared`); the website's side (`house-detail-page.ts`, `local-store.service.ts`) is its own slices in the same
+ticket, photos first, so the two stacks stay parallel.
+
+**What the two files held** on 2026-10-09 (line ranges of `main` before slice 1; `HouseEditScreen.kt` 2,261 lines,
+`CommonRepository.kt` 1,876):
+
+| Kind of data | Where (before) | What it touches | Deletion test (callers that would repeat it) | Verdict |
+|---|---|---|---|---|
+| **Photos, form** | `HouseEditScreen.kt`: state and effects 505-690, strip 1240-1366, viewer 1470-1488, details dialog 1654-1670, `PhotoDeleteViewModel` 256-286, `PhotoViewer` 1941-2015 (about 380 lines, in 12 places) | `PhotoEntity`, `HouseFormServices`, `PlatformFeatures`, the form's snackbar, `MovingInCard` | The strip, the *Moving in* card's *Add a photo*, the viewer and the details dialog share one pending-delete, focus and problem state: without the module each repeats it | **Passes. Slice 1 (done)** |
+| **Photos, data** | `CommonRepository.kt`: folder and file helpers 168-190, `savePhotoMeta` 292-301, `deletePhoto` 773-782, `photoPath`, `photoFileOf`, `importedPhotoPath` 1354-1390, `discardUncommittedPhotoFiles` 1755-1760 | the photo DAO, the folder, `BackupValidation` | The sync pull and push, merge import, copy import, the import's undo, the exporters and both phones' thumbnails all need the same folder and id rules | **Passes. Slice 1 (done)**; the loops over the rows stay (below) |
+| Photos, sync and import loops | `CommonRepository.kt` 1093-1138 (pull), 1240-1277 (push), 1517-1545, 1663-1720 (imports) | houses, cursors, counters, one transaction | Each loop shares its cursor, counters or transaction with the houses and visits around it | **Fails**: not split; they use `PhotoStore` for every file and meta rule |
+| Viewings | `CommonRepository.kt` 573-617; UI already in `ViewingsScreen.kt` | the record table | The reminders, the export rows, the import and the screens decode and cap a viewing | Passes (small), slice 2 |
+| Areas, places, area notes | `CommonRepository.kt` 618-690 | the record table | Same shape as viewings (three types, one writer `writeCapped`) | Passes, slice 3 |
+| Questions and a house's answers | `CommonRepository.kt` 470-572 | the record table, seeding | The bank, the form's questions, the reminders, the import | Passes, slice 4 |
+| Criteria and scoring | `CommonRepository.kt` 382-469 | the record table | The form's checklist, the list's score, Compare, the import | Passes, slice 5 |
+| Brokers and contact | `CommonRepository.kt` 303-380, 693-733; form 1171-1235, `BrokerSection` | houses, the record table, the once-only move of contacts | The houses flow, `saveHouse`, the export rows, the import | Passes, slice 6 (data and UI together) |
+| Saved walks | `WalkStore.kt` (S4b-FR-14) | the walk tables | Already split | Done before |
+| Rooms, questions, moving in, path trace, viewings card | `RoomsSection.kt`, `QuestionsSection.kt`, `MovingInSection.kt`, `PathTraceSection.kt`, `ViewingsScreen.kt` | | Already split | Done before |
+| Status, rating, checklist | `HouseEditScreen.kt` 917-1010, 1148-1170, `RatingRow`, `ScoreSummary`, `ChecklistRow` | the draft's own fields | One caller (the form); the functions are already separate | **Fails** the test; a plain move of already-separate functions, only if the owner wants it (slice 7, optional) |
+| Cost, floor, available from | `HouseEditScreen.kt` `CostSection`, `RupeeField`, `MonthsField`, `AvailableFromField`, `FloorField` | the draft's own fields | One caller | **Fails**: not split |
+| Location (*Use my current location*, approximate) | `HouseEditScreen.kt` 691-740, 1043-1146 | permission, geocoder, the draft | One caller (the shared permission helper is already in `LocationPermission.kt`) | **Fails**: not split |
+| Paste a listing | `HouseEditScreen.kt` 509-520, `PasteListingDialog`, `mergeListing` | the draft, the parser | One caller | **Fails**: not split |
+| The draft's save and restore, leaving, *changed elsewhere* | `HouseEditScreen.kt` 150-245, 547-600 | the whole form | It is the form itself | **Fails**: stays |
+| On-device AI (keys, providers, the three calls) | `CommonRepository.kt` 816-992 | settings, the AI classes | Settings, the Assistant, the paste dialog | Passes, slice 8 (not a house value) |
+| Sync | `CommonRepository.kt` 1015-1278 | every table, the backend seam | One caller (`sync`); a procedure, not a kind | **Fails**: stays (its seam is `SyncBackend`, S4b-BL-70) |
+| Export, import, copy, undo | `CommonRepository.kt` 1280-1790 | every table, one transaction | One transaction over all kinds; each kind slice takes its own `imported*` mapper with it | **Fails** as a module: stays; shrinks by one mapper per slice |
+| Pairing, track points | `CommonRepository.kt` 205-210, 993-1010 | | A few one-line delegations | **Fails**: not split |
+
+**Slice plan, smallest and most self-contained first:** 1 photos (this change; the web does photos first as well) ->
+2 viewings -> 3 areas, places and notes -> 4 questions and answers -> 5 criteria and scoring -> 6 brokers and contact ->
+7 status, rating, checklist (optional, a plain move) -> 8 on-device AI. A slice takes the kind's reads, writes,
+mapper and `imported*` row writer out of `CommonRepository.kt`, and the kind's section out of `HouseEditScreen.kt`
+where it has state; it keeps `Repository`'s public members as they are (the screens and tests call them).
+
+**Slice 1, what moved.** `PhotoStore` (`:shared` `data/PhotoStore.kt`, a plain class like `WalkStore`) owns the photo
+folder, the file of a photo by its id, the import's path guard, writing, deleting and streaming a file, deleting a
+photo (the tombstone for an uploaded one), saving its room, tags and caption, and discarding the files of a copy import
+that did not finish; `CommonRepository` delegates to it with the same public and protected members. `HousePhotos.kt`
+(`:ui`) owns `PhotoDeleteViewModel`, the state of taking, picking, deleting with *Undo*, the strip, the viewer and the
+details dialog (`rememberHousePhotos`, `HousePhotosSection`, `HousePhotoViewer`, `HousePhotoDetails`); the form calls
+those four and reads `photos.shown`, `photos.canAdd`, `photos.adding` for the *Moving in* card. Before: `HouseEditScreen.kt`
+2,261 lines, `CommonRepository.kt` 1,876. After: 1,877 and 1,790, plus `HousePhotos.kt` and `PhotoStore.kt`. A change to
+how photos are taken, shown, deleted or edited now edits `HousePhotos.kt` (and `MovingInSection.kt` for the meta
+dialog), and a change to the photo folder, a photo's file or its local edit rules edits `PhotoStore.kt`: neither big file
+(before: both). A new photo value that must also travel (sync, import) still edits the loops listed above in
+`CommonRepository.kt`, until slices for sync and import are decided.
