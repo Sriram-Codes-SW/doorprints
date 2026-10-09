@@ -57,7 +57,10 @@ const BLANK: HouseDraft = {
 };
 
 /** A new house at a pin in Kochi, `extract` answering the button of the listing card. */
-async function open(extract: (text: string) => Observable<HouseDraft> = () => of(), aiEnabled = true) {
+async function open(
+  extract: (text: string) => Observable<HouseDraft> = () => of(),
+  aiEnabled = true,
+) {
   const extractListing = vi.fn(extract);
   TestBed.configureTestingModule({
     imports: [HouseDetailPage],
@@ -207,33 +210,52 @@ describe('HouseDetailPage: the listing card (Fill in the form)', () => {
     expect(submit(host).getAttribute('aria-disabled')).toBeNull();
   });
 
-  it('clears the earlier warnings when the next read starts', async () => {
+  it('clears the earlier warnings and kept values when the next read starts', async () => {
     const reads: Subject<HouseDraft>[] = [];
     const { fixture, host } = await open(() => {
       const s = new Subject<HouseDraft>();
       reads.push(s);
       return s;
     });
+    await type(fixture, '#house-name', 'My own name');
     await type(fixture, '#listing-text', 'a listing');
     submit(host).click();
-    reads[0].next({ ...BLANK, warnings: ['Check the rent'] });
+    reads[0].next({ ...BLANK, label: 'Other name', warnings: ['Check the rent'] });
     await settled(fixture);
-    expect(warnings(host)).toEqual(['Check the rent']);
+    expect(warnings(host)).toEqual(['Kept your Name; the listing says “Other name”.', 'Check the rent']);
     submit(host).click();
     await settled(fixture);
     expect(host.querySelector('.listing-fill .warnings')).toBeNull();
   });
 
-  it('shows a failure with its reason, announces nothing and lets the person press again', async () => {
-    const { fixture, host, extractListing, announce } = await open(() => new Observable<HouseDraft>((s) => s.error(new Error('model busy'))));
+  it('shows a failure with its reason, announces nothing, and lets the person press again, which removes it', async () => {
+    let calls = 0;
+    const { fixture, host, extractListing, announce } = await open(() =>
+      ++calls === 1 ? new Observable<HouseDraft>((s) => s.error(new Error('model busy'))) : of(BLANK),
+    );
     await type(fixture, '#listing-text', 'a listing');
     submit(host).click();
     await settled(fixture);
     expect(host.querySelector('.listing-fill p.error')?.textContent).toContain('model busy');
     expect(announce).not.toHaveBeenCalled();
+    expect(submit(host).getAttribute('aria-disabled')).toBeNull();
     submit(host).click();
     await settled(fixture);
     expect(extractListing).toHaveBeenCalledTimes(2);
+    expect(host.querySelector('.listing-fill p.error')).toBeNull();
+  });
+
+  it('shows a kept Rent as Rent', async () => {
+    const { fixture, host } = await open(() => of({ ...BLANK, priceType: 'RENT' }));
+    await type(fixture, '#house-price', '25000');
+    const select = host.querySelector<HTMLSelectElement>('#house-price-type')!;
+    select.selectedIndex = 1;
+    select.dispatchEvent(new Event('change'));
+    await settled(fixture);
+    await type(fixture, '#listing-text', 'a listing');
+    submit(host).click();
+    await settled(fixture);
+    expect(warnings(host)).toEqual(['Kept your Price type; the listing says “Rent (per month)”.']);
   });
 
   it('drops a read that answers after the page is gone: nothing filled, nothing announced', async () => {
@@ -283,11 +305,12 @@ describe('HouseDetailPage: a shared listing on arrival', () => {
   });
 
   it('gives the box all of a long share and the parser only the first 8,000 characters', async () => {
-    const long = '3 BHK Rs 50,000 per month ' + 'x'.repeat(9000) + ' Rs 99,999';
+    const long = '3 BHK for rent ' + 'x'.repeat(9000) + ' Rs 99,999 per month';
     history.replaceState({ shared: long }, '');
     const { host, page } = await open();
     expect(host.querySelector<HTMLTextAreaElement>('#listing-text')!.value).toBe(long);
-    expect(page.draft().price).toBe(50000);
+    expect(page.draft().bedrooms).toBe(3);
+    expect(page.draft().price ?? null).toBeNull();
     expect(host.querySelector('#listing-cut-hint')).not.toBeNull();
   });
 });
