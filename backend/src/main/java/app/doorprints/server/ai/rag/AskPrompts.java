@@ -84,9 +84,15 @@ public final class AskPrompts {
 
     /** Builds the pgvector metadata filter, or null when no filter was given. */
     public static Filter.Expression filter(AskFilters f) {
-        if (f == null) return null;
+        return filter(f, null);
+    }
+
+    /** As {@link #filter(AskFilters)}, and when {@code houseIds} is given only those houses (a visit question). */
+    public static Filter.Expression filter(AskFilters f, List<String> houseIds) {
+        if (f == null && houseIds == null) return null;
         var b = new FilterExpressionBuilder();
-        FilterExpressionBuilder.Op op = null;
+        FilterExpressionBuilder.Op op = houseIds == null ? null : b.in("houseId", houseIds.toArray());
+        if (f == null) return op.build();
         if (f.status() != null) op = and(b, op, b.eq("status", f.status().name()));
         if (f.priceType() != null) op = and(b, op, b.eq("priceType", f.priceType()));
         if (f.maxPrice() != null) op = and(b, op, b.lte("price", f.maxPrice()));

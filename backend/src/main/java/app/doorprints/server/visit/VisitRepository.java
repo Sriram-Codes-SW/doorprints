@@ -42,6 +42,15 @@ public interface VisitRepository extends JpaRepository<Visit, UUID> {
     /** The live visits of several houses in one query (the reindex's batches), newest first. */
     List<Visit> findByDeletedFalseAndHouseIdInOrderByArrivedAtDesc(Collection<UUID> houseIds);
 
+    /**
+     * The ids of the houses with at least one live visit, the most recently visited first (Ask: a question about visits
+     * must reach these houses whatever the vector similarity says, S4b-BL-194).
+     */
+    @Query("""
+            select v.houseId from Visit v where v.deleted = false and v.houseId is not null
+            group by v.houseId order by max(v.arrivedAt) desc""")
+    List<UUID> visitedHouseIds();
+
     long countByDeletedFalse();
 
     /** A deleted house's visits stay in the history but lose the link (and get a new sync version). */

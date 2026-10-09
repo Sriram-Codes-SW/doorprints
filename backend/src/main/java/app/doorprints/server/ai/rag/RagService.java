@@ -31,6 +31,8 @@ import app.doorprints.server.ai.web.AiUsageLogger;
 import app.doorprints.server.common.BadRequestException;
 import app.doorprints.server.house.House;
 import app.doorprints.server.house.HouseRepository;
+import app.doorprints.server.visit.VisitRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
@@ -69,12 +71,24 @@ public class RagService {
     private final VectorStore vectorStore;
     private final AiProperties props;
     private final HouseRepository houses;
+    /** Null in a unit test that has no visits: then a question about visits is retrieved like any other. */
+    private final VisitRepository visits;
+
+    /** At most this many visited houses are looked up for one question (the filter holds their ids). */
+    static final int VISITED_IDS_MAX = 200;
 
     public RagService(ChatClient chat, VectorStore vectorStore, AiProperties props, HouseRepository houses) {
+        this(chat, vectorStore, props, houses, null);
+    }
+
+    @Autowired
+    public RagService(ChatClient chat, VectorStore vectorStore, AiProperties props, HouseRepository houses,
+                      VisitRepository visits) {
         this.chat = chat;
         this.vectorStore = vectorStore;
         this.props = props;
         this.houses = houses;
+        this.visits = visits;
     }
 
     /**
@@ -101,6 +115,9 @@ public class RagService {
                     .filterExpression(AskPrompts.filter(filters))
                     .build();
             docs = vectorStore.similaritySearch(search);
+            if (visits != null && VisitQuestions.isAbout(question)) {
+                docs = withVisited(docs, visitedDocs(question, filters));
+            }
             if (docs != null && !docs.isEmpty()) docs = redacted(docs, contactsOf(docs));
         } catch (RuntimeException e) {
             throw new AiUnavailableException("Search over your houses failed", e);
@@ -132,6 +149,36 @@ public class RagService {
             return new AskResponse(AskPrompts.I_DONT_KNOW, List.of(), false, docs.size());
         }
         return answered(answer, docs, question);
+    }
+
+    /**
+     * The documents of the houses that have visits, for a question about visits (S4b-BL-194 item 2: vector similarity
+     * alone returned 20 houses without one of the two visited, because most documents say "not visited yet"). Same
+     * question and filters, narrowed to the visited houses, no similarity threshold (they are chosen by fact, not by
+     * resemblance), at most the same top-k. Nothing visited: nothing extra.
+     */
+    private List<Document> visitedDocs(String question, AskFilters filters) {
+        var ids = visits.visitedHouseIds().stream().limit(VISITED_IDS_MAX).map(UUID::toString).toList();
+        if (ids.isEmpty()) return List.of();
+        var found = vectorStore.similaritySearch(SearchRequest.builder()
+                .query(question)
+                .topK(props.rag().topK())
+                .similarityThreshold(0.0)
+                .filterExpression(AskPrompts.filter(filters, ids))
+                .build());
+        return found == null ? List.of() : found;
+    }
+
+    private List<Document> withVisited(List<Document> similar, List<Document> visited) {
+        return withVisited(similar == null ? List.of() : similar, visited, props.rag().topK());
+    }
+
+    /** The visited documents first, then the similar ones not among them, at most {@code cap}. Pure. */
+    static List<Document> withVisited(List<Document> similar, List<Document> visited, int cap) {
+        var out = new LinkedHashMap<String, Document>();
+        for (var d : visited) out.putIfAbsent(d.getId(), d);
+        for (var d : similar) out.putIfAbsent(d.getId(), d);
+        return out.values().stream().limit(cap).toList();
     }
 
     /**

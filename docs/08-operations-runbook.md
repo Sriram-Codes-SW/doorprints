@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Operations runbook |
-| Version | 0.28 |
+| Version | 0.29 |
 | Date | 2026-10-08 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -40,6 +40,7 @@
 | 0.26 | 2026-10-08 | Claude (Code) | §5.1a: the recovery when the only signed-in browser is lost while its session is still open (`OWNER_SETUP_LINK_IN_LOG=true`, restart, read the log, sign in, switch it off; S4b-BL-188), and the caps on open pairing requests (50 in all, 5 per client address, 429 over them; S4b-BL-161). |
 | 0.27 | 2026-10-09 | Claude (Code) | §5.1a: the pairing caps are the settings `PAIRING_MAX_OPEN` and `PAIRING_MAX_PER_SOURCE` (defaults unchanged; S4b-BL-191). |
 | 0.28 | 2026-10-09 | Claude (Code) | §10.4: the **Vertex AI trial guard** (S4b-BL-193). `ai-evals.yml` refuses `provider=vertex` unless the repository variable `VERTEX_EVAL_ENABLED` is `true`, and refuses it from 2026-12-15 whatever the variable says, so a rerun by anyone with write access cannot spend beyond the trial credit. New rows: turn Vertex on for a run and off again, the hard stops at the end (unlink billing, disable the service account or the Workload Identity pool, delete the variables and secrets), a low per-minute and per-day quota on the Vertex AI API. |
+| 0.29 | 2026-10-09 | Claude (Code) | §1.1: Ask finds the visited houses for a question about visits (S4b-BL-194); no re-index is needed after this upgrade, because the document text did not change. |
 
 Related: [Build and deploy](07-secure-build-and-deploy.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Google Drive design](15-google-drive-backup-and-sharing.md)
 
@@ -74,7 +75,7 @@ AI is off by default (AI-001); none of these variables is needed then. Full list
 | `AI_INDEX_ON_CHANGE` | `true` | `false` stops embedding each house right after a save; only `POST /api/ai/reindex` embeds then (fewer provider calls). Deletes still leave the index at once. |
 | `GOOGLE_APPLICATION_CREDENTIALS` | unset | Vertex only, standard ADC variable: path to a credential file. Not needed on Cloud Run (the attached service account) or locally after `gcloud auth application-default login`; on a non-Google host it points to the mode-600 key file ([07](07-secure-build-and-deploy.md) §4). |
 
-After changing the embedding provider or model, or `AI_PROVIDER`, run `POST /api/ai/reindex` so every house is embedded with the new model on the new endpoint (both providers use the same model, so this is a precaution when only `AI_PROVIDER` changed).
+After upgrading to the version that adds the visited-houses step to Ask (S4b-BL-194), no `POST /api/ai/reindex` is needed: the document text is unchanged. After changing the embedding provider or model, or `AI_PROVIDER`, run `POST /api/ai/reindex` so every house is embedded with the new model on the new endpoint (both providers use the same model, so this is a precaution when only `AI_PROVIDER` changed).
 
 **Once after deploying the contact-redaction fix** (Sprint 3, C-13, [02](02-threat-model.md) F-30): run `POST /api/ai/reindex` until it returns 200, **after the final version of the fix is deployed** ([ai/ai-design.md](ai/ai-design.md) v0.10 §9.1; a reindex run on an earlier build of the fix must be repeated). Vectors indexed before it may still hold the contact name (before ai-design v0.7), a first name in the label (v0.7), a "C/o <owner>" address (v0.8 and older) or an initials-style "C/o K Ramesh" address (v0.9 and older) in pgvector (the database, not the provider); the Ask path already scrubs them before any prompt or citation, and the reindex replaces them with redacted text. The dev `docker-compose.yml` passes all these settings from the shell or a `.env` file ([07 §7](07-secure-build-and-deploy.md), column *Dev compose*).
 
