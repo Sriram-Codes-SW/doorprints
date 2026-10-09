@@ -101,6 +101,7 @@ public class RagService {
                     .filterExpression(AskPrompts.filter(filters))
                     .build();
             docs = vectorStore.similaritySearch(search);
+            if (VisitQuestions.isAbout(question)) docs = withVisited(docs, visitedDocs(question, filters));
             if (docs != null && !docs.isEmpty()) docs = redacted(docs, contactsOf(docs));
         } catch (RuntimeException e) {
             throw new AiUnavailableException("Search over your houses failed", e);
@@ -132,6 +133,51 @@ public class RagService {
             return new AskResponse(AskPrompts.I_DONT_KNOW, List.of(), false, docs.size());
         }
         return answered(answer, docs, question);
+    }
+
+    /** How many documents the visited search asks for: all of them in any realistic hunt, so recency can decide. */
+    static final int VISITED_FETCH_MAX = 200;
+
+    /**
+     * The documents of the houses for a question about visits (S4b-BL-194 item 2: vector similarity alone returned 20
+     * houses without one of the two visited, because most documents say "not visited yet"): ONE search with the same
+     * question and filters plus the document metadata {@code visited == true} (or {@code false} for a negated
+     * question), no similarity threshold, up to {@value #VISITED_FETCH_MAX} documents. The visited ones are sorted by
+     * {@code lastVisit}, newest first; the unvisited ones stay in the store's order (most similar first). A store
+     * indexed before this metadata existed has no such documents, so the ordinary result stands (re-index once).
+     */
+    private List<Document> visitedDocs(String question, AskFilters filters) {
+        boolean negated = VisitQuestions.isNegated(question);
+        var found = vectorStore.similaritySearch(SearchRequest.builder()
+                .query(question)
+                .topK(VISITED_FETCH_MAX)
+                .similarityThreshold(0.0)
+                .filterExpression(AskPrompts.filter(filters, !negated))
+                .build());
+        if (found == null) return List.of();
+        return negated ? found : byLastVisit(found);
+    }
+
+    private List<Document> withVisited(List<Document> similar, List<Document> visited) {
+        return withVisited(similar == null ? List.of() : similar, visited, props.rag().topK());
+    }
+
+    /** The documents by metadata {@code lastVisit}, newest first; equal ones by id, a missing or odd value last. Pure. */
+    static List<Document> byLastVisit(List<Document> docs) {
+        return docs.stream().sorted(java.util.Comparator
+                .comparingLong((Document d) -> -lastVisit(d)).thenComparing(Document::getId)).toList();
+    }
+
+    private static long lastVisit(Document d) {
+        return d.getMetadata().get("lastVisit") instanceof Number n ? n.longValue() : Long.MIN_VALUE + 1;
+    }
+
+    /** The visited documents first, then the similar ones not among them, at most {@code cap}. Pure. */
+    static List<Document> withVisited(List<Document> similar, List<Document> visited, int cap) {
+        var out = new LinkedHashMap<String, Document>();
+        for (var d : visited) out.putIfAbsent(d.getId(), d);
+        for (var d : similar) out.putIfAbsent(d.getId(), d);
+        return out.values().stream().limit(cap).toList();
     }
 
     /**

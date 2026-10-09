@@ -69,12 +69,12 @@ public final class HouseDocuments {
     }
 
     static Document toDocument(HouseDto h, List<VisitDto> visits, List<ViewingLine> viewings) {
-        return new Document(h.id().toString(), text(h, visits, viewings), metadata(h));
+        return new Document(h.id().toString(), text(h, visits, viewings), metadata(h, visits));
     }
 
     /** As above, with the areas, places and area notes of slice 4a. */
     static Document toDocument(HouseDto h, List<VisitDto> visits, List<ViewingLine> viewings, AreaLines.All areas) {
-        return new Document(h.id().toString(), text(h, visits, viewings, areas), metadata(h));
+        return new Document(h.id().toString(), text(h, visits, viewings, areas), metadata(h, visits));
     }
 
     /** Stable, labelled plain text; the labels double as grounding cues for the model. No contact name or phone. */
@@ -136,6 +136,14 @@ public final class HouseDocuments {
      * with the text ({@code MetadataMode.EMBED}), and citation labels reach MCP clients.
      */
     public static Map<String, Object> metadata(HouseDto h) {
+        return metadata(h, List.of());
+    }
+
+    /**
+     * As above, with {@code visited} (a boolean) and, when there is a live visit, {@code lastVisit} (the latest arrival,
+     * epoch seconds): the filter and sort keys for a question about visits (S4b-BL-194). Dates and a flag only.
+     */
+    public static Map<String, Object> metadata(HouseDto h, List<VisitDto> visits) {
         var r = ContactRedactor.forHouse(h);
         var m = new HashMap<String, Object>();
         m.put("houseId", h.id().toString());
@@ -146,6 +154,12 @@ public final class HouseDocuments {
         if (h.bedrooms() != null) m.put("bedrooms", h.bedrooms());
         if (h.rating() != null) m.put("rating", h.rating());
         if (h.locality() != null) m.put("locality", r.place(h.locality()));
+        boolean visited = visits != null && !visits.isEmpty();
+        m.put("visited", visited);
+        if (visited) {
+            m.put("lastVisit", visits.stream().map(VisitDto::arrivedAt).max(Comparator.naturalOrder())
+                    .orElseThrow().getEpochSecond());
+        }
         return m;
     }
 
