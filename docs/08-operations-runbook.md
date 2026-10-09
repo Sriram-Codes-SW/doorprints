@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Operations runbook |
-| Version | 0.27 |
+| Version | 0.28 |
 | Date | 2026-10-08 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -39,6 +39,7 @@
 | 0.25 | 2026-10-08 | Claude (Code) | §5.1a: the owner page's setup link is written to the log only while no browser is signed in; afterwards use *Add another browser* (S4b-BL-171). |
 | 0.26 | 2026-10-08 | Claude (Code) | §5.1a: the recovery when the only signed-in browser is lost while its session is still open (`OWNER_SETUP_LINK_IN_LOG=true`, restart, read the log, sign in, switch it off; S4b-BL-188), and the caps on open pairing requests (50 in all, 5 per client address, 429 over them; S4b-BL-161). |
 | 0.27 | 2026-10-09 | Claude (Code) | §5.1a: the pairing caps are the settings `PAIRING_MAX_OPEN` and `PAIRING_MAX_PER_SOURCE` (defaults unchanged; S4b-BL-191). |
+| 0.28 | 2026-10-09 | Claude (Code) | §10.4: the **Vertex AI trial guard** (S4b-BL-193). `ai-evals.yml` refuses `provider=vertex` unless the repository variable `VERTEX_EVAL_ENABLED` is `true`, and refuses it from 2026-12-15 whatever the variable says, so a rerun by anyone with write access cannot spend beyond the trial credit. New rows: turn Vertex on for a run and off again, the hard stops at the end (unlink billing, disable the service account or the Workload Identity pool, delete the variables and secrets), a low per-minute and per-day quota on the Vertex AI API. |
 
 Related: [Build and deploy](07-secure-build-and-deploy.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Google Drive design](15-google-drive-backup-and-sharing.md)
 
@@ -536,6 +537,9 @@ feature keep working). Owner: the product owner. Step by step for the AI part: [
 | By about 15 Dec 2026 | **Decide** (product owner): (a) **back to AI Studio**: `AI_PROVIDER=aistudio`; real data only with a paid-tier Gemini API key ([01](01-requirements.md) PRV-022; the free tier is for synthetic evals only); or (b) **upgrade the billing account** to paid and keep Vertex AI, with the spend cap budget and alerts of section 10.2 created **before** the upgrade; or (c) turn cloud AI off (`APP_AI_ENABLED=false`) | Decision recorded in the sprint log ([10](10-sprint-log.md)) |
 | **Before 22 Dec 2026** | Carry out the decision on every host (`AI_PROVIDER`, keys or credentials) and run `POST /api/ai/reindex` if the provider changed; run one small `ai-evals.yml` run (`types` = `extract`) on the provider now in use | Eval run green or STOPPED only by quota |
 | Before 22 Dec 2026 | **Staging tear-down** (section 10.3, [07](07-secure-build-and-deploy.md) §6.5): delete the Cloud SQL instance and the Cloud Run service; spend cap budgets do not cover Cloud SQL | Nothing billable left in the staging project |
+| **While Vertex AI is used** | Set the repository variable `VERTEX_EVAL_ENABLED=true` only for the days of a run and delete it afterwards: `ai-evals.yml` refuses `provider=vertex` without it (S4b-BL-193). In the Google Cloud console: APIs & Services > Vertex AI API > Quotas, set a low requests-per-minute and per-day limit; Billing > Budgets keep their e-mail alerts (they do not stop spending) | A run without the variable stops with the message that Vertex AI evals are switched off |
+| **From 2026-12-15** | The workflow refuses `provider=vertex` on its own from this date, even with the variable set. Do not upgrade the trial account ("Activate full account"): an expired trial is suspended, not charged | The guard step fails with "closed from 2026-12-15" |
+| **Hard stop at trial end** | Billing > Account management > My projects > `doorprints-ai` > Change billing / Disable billing; IAM > Service accounts > disable `doorprints-ai@…`, or delete the Workload Identity pool `github`; delete the secrets `GCP_WIF_PROVIDER` and `GCP_SA_EMAIL` and the variables `GCP_PROJECT_ID`, `GCP_LOCATION`, `AI_VERTEX_EMBEDDING_LOCATION`, `VERTEX_EVAL_ENABLED` | No billing account is linked, so no call to Vertex AI can be charged |
 | If Vertex AI is dropped | Disable the Vertex AI API or shut down `doorprints-ai`; delete the GitHub secrets `GCP_WIF_PROVIDER` and `GCP_SA_EMAIL`; remove the Workload Identity principal binding; leave `ai-evals.yml` on `provider=aistudio` | No Google Cloud credential left that can call Vertex AI |
 | If Vertex AI is kept | Spend cap budget and 50/90/100 % alerts active on the paid account (section 10.2); the trial-period $50/$150/$250 alerts replaced | Budget page shows the monthly target |
 | Firebase Test Lab | Nothing to do: it keeps working within the no-cost daily quota (section 10.3) | – |
