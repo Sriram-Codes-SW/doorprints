@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Secure build, CI/CD and deployment guide |
-| Version | 0.70 |
+| Version | 0.71 |
 | Date | 2026-10-05 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -82,6 +82,7 @@
 | 0.68 | 2026-10-09 | Claude (Code), engineer | §2 supply chain: every `FROM` in the two Dockerfiles is pinned by digest and checked in the Security workflow (S4b-BL-172, `check-dockerfile-pins.py`); Dependabot's docker entry keeps the digests current. |
 | 0.69 | 2026-10-09 | Claude (Code) | `ai-evals.yml` suite `local-model` (S4b-BL-190): default model `qwen2.5:0.5b`, job timeout 150 minutes, `OLLAMA_NUM_PARALLEL=1`, `OLLAMA_KEEP_ALIVE=1h`, a JSON warm-up, and `AI_EVAL_TIMEOUT_MS=180000` (read by the harness only for a server on localhost; the app's 60 s is unchanged). Same pinned Ollama, same permissions, no secret. |
 | 0.70 | 2026-10-09 | Claude (Code) | §AI variables: `AI_MAX_OUTPUT_TOKENS` default `8192` (was `2048`; it includes the model's thinking tokens on Gemini 3.x; S4b-BL-194). |
+| 0.71 | 2026-10-09 | Claude (Code) | §2 supply chain: the final image removes the base image's unused `/usr/bin/pebble` while the base ships it with HIGH CVEs and no fix (S4b-BL-195). |
 
 Related: [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Runbook](08-operations-runbook.md) · [AI docs](ai/)
 
@@ -239,7 +240,7 @@ OWASP Dependency-Check is not used: its NVD download is slow and needs an API ke
 | `gradle/actions/setup-gradle` validates `gradle-wrapper.jar` | Wrapper tampering |
 | Keep dependencies minimal (ADR-06, ADR-12) | Smaller attack surface |
 | Build images from official `eclipse-temurin`/`maven` images and rebuild weekly for OS patches (`apt-get upgrade` stays in the Dockerfile) | Base image CVEs |
-| **Pin every `FROM` by digest**, `image:tag@sha256:<64 hex>` with the readable tag kept, in `backend/Dockerfile` and `backend/db/Dockerfile` (S4b-BL-172). `.github/scripts/check-dockerfile-pins.py` fails the Security workflow without it (`FROM scratch` and a build-stage alias are exempt); Dependabot's `docker` ecosystem (`/backend`, `/backend/db`) moves tag and digest together, so the pin is a pull request to review, not a hand edit. By hand: `docker buildx imagetools inspect <image>:<tag>` and copy the top-level `Digest:` (the multi-architecture index, not one platform) | A tag can be moved to other content (T-T5); the same rule as the Actions SHAs and the ZAP and MobSF digests |
+| **Pin every `FROM` by digest**, `image:tag@sha256:<64 hex>` with the readable tag kept, in `backend/Dockerfile` and `backend/db/Dockerfile` (S4b-BL-172). `.github/scripts/check-dockerfile-pins.py` fails the Security workflow without it (`FROM scratch` and a build-stage alias are exempt); Dependabot's `docker` ecosystem (`/backend`, `/backend/db`) moves tag and digest together, so the pin is a pull request to review, not a hand edit. The final stage deletes `/usr/bin/pebble` (the Ubuntu rock base's unused Go service manager, three HIGH CVEs, fix not in the base yet; S4b-BL-195); drop that `RUN` once a bumped base passes Trivy without it. By hand: `docker buildx imagetools inspect <image>:<tag>` and copy the top-level `Digest:` (the multi-architecture index, not one platform) | A tag can be moved to other content (T-T5); the same rule as the Actions SHAs and the ZAP and MobSF digests |
 | Record the image digest in the release notes. Deploy by digest. | Integrity |
 
 ## 3. Repository and branch protection
