@@ -1,0 +1,16 @@
+{
+  "spec": "web/src/app/data/area-stores.spec.ts",
+  "mutations": [
+    {"file": "web/src/app/data/area-note-store.ts", "find": "updatedAt: row.updatedAt ?? null, note", "replace": "updatedAt: null, note", "expect": "gives each area-note row its edit time"},
+    {"file": "web/src/app/data/area-note-store.ts", "find": "return newestFirst(await this.rows())", "replace": "return await this.rows()", "expect": "lists areas and places by name then id, and notes newest first"},
+    {"file": "web/src/app/data/area-note-store.ts", "find": "this.records.freshId(AREA_NOTE_TYPE, newId)", "replace": "newId()", "expect": "draws new a_, p_ and n_ ids that clash"},
+    {"file": "web/src/app/data/area-note-store.ts", "find": "text: note.text.trim() }", "replace": "text: note.text }", "expect": "trims a note text, street and area id"},
+    {"file": "web/src/app/data/area-note-store.ts", "find": "const areaId = note.areaId?.trim();", "replace": "const areaId = note.areaId;", "expect": "trims a note text, street and area id"},
+    {"file": "web/src/app/data/area-note-store.ts", "find": "if (street) clean.street = street;", "replace": "if (note.street !== undefined) clean.street = street;", "expect": "trims a note text, street and area id"},
+    {"file": "web/src/app/data/area-note-store.ts", "find": "(clean.areaId === undefined) === (clean.street === undefined)", "replace": "false", "expect": "refuses a bad place and a bad note"},
+    {"file": "web/src/app/data/area-note-store.ts", "find": "(clean.areaId?.length ?? 0) > MAX_AREA_ID", "replace": "(clean.areaId?.length ?? 0) >= MAX_AREA_ID", "expect": "accepts the edges of the ranges"},
+    {"file": "web/src/app/data/area-note-store.ts", "find": "clean.text.length > MAX_NOTE_TEXT", "replace": "clean.text.length >= MAX_NOTE_TEXT", "expect": "accepts the edges of the ranges"},
+    {"file": "web/src/app/data/area-note-store.ts", "find": "MAX_AREA_NOTES, 'areaNotes.max', now", "replace": "MAX_AREA_NOTES + 1, 'areaNotes.max', now", "expect": "caps the live records at 20 areas"},
+    {"file": "web/src/app/data/area-note-store.ts", "find": "await this.records.delete(AREA_NOTE_TYPE, id, now)", "replace": "await this.records.delete(AREA_NOTE_TYPE, id + 'x', now)", "expect": "makes a saved change dirty for the sync"}
+  ]
+}

@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.139 |
+| Version | 0.140 |
 | Date | 2026-10-08 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..183); this file lists the lead-level items and points to the rest. |
@@ -148,6 +148,7 @@
 | 0.137 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-168, slice 1 (web, photos)** (PR #213, branch `refactor/web-split-photos-slice`): new §9 *Web file layout* with the analysis of the two big web files, the deletion-test verdicts and the slice plan; the photos moved to `data/photo-store.ts` and `pages/house-detail/house-photos.ts`, no behaviour change. |
 | 0.138 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-168, slice 1 on the phones (photos), PR #212:** the new §10 *Phone file layout* records the analysis of `HouseEditScreen.kt` and `CommonRepository.kt` by kind of data (which splits pass the deletion test and which fail), the slice plan (photos, viewings, areas and places, questions, criteria, brokers, status/rating/checklist, on-device AI) and what slice 1 moved: `PhotoStore` (`:shared`) and `HousePhotos.kt` (`:ui`). Behaviour-neutral: no screenshot re-recorded. [10](10-sprint-log.md) v0.201, [03](03-design.md) v0.88, [06](06-test-plan.md) v0.178. |
 | 0.139 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-168, slice 2 (web, records layer and viewings)** (PR #214, branch `refactor/web-split-records-viewings-slice`): `RecordStore` and `ViewingStore` leave `local-store.service.ts` (1,360 to 1,138 lines); §9 records the measured numbers, what was split and why, and the remaining plan. [10](10-sprint-log.md) v0.202, [03](03-design.md) v0.89. |
+| 0.140 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-168, slice 3 (web, areas, places and area notes)** (PR #215, branch `refactor/web-split-areas-places-notes-slice`): `AreaStore`, `PlaceStore` and `AreaNoteStore` leave `local-store.service.ts` (1,138 to 985 lines), reached as `store.areas`, `store.places` and `store.areaNotes`; §9 marks slice 3 done with the measured numbers and the verdicts. Behaviour-neutral. |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 
@@ -697,7 +698,7 @@ Line numbers below are those of `main` at `d39bc6a` (before slice 1): `data/loca
 |---|---|---|---|
 | 1 | **Photos** (PR #213) | store `PhotoStore`; page `HousePhotos` | measured: store -150, page -108 |
 | 2 | Records layer and viewings (PR #214, done) | store | measured: store -222 |
-| 3 | Areas, places, area notes | store | about -160 |
+| 3 | Areas, places, area notes (PR #215, done) | store | measured: store -153 |
 | 4 | Questions | store and page | about -240 |
 | 5 | Criteria and checklist | store and page | about -200 |
 | 6 | Rooms and floor | page | about -150 |
@@ -737,6 +738,30 @@ and now call `store.viewings` (one more there: the viewing row's edit time). The
 tests (12 new, none removed). Hand mutations: `tools/mutations/record-store.json` (14) and `viewing-store.json` (11),
 each killed by a named test; the two existing lists that touch `local-store.service.ts` (`trace-store.json`,
 `trace-privacy.json`) still hold with their strings unchanged.
+
+**Slice 3 (web, areas, places and area notes), measured.** `local-store.service.ts` 1,138 to 985 lines (new `area-store.ts` 91,
+`place-store.ts` 78, `area-note-store.ts` 92; the plan said about -160). Callers use `store.areas`, `store.places` and
+`store.areaNotes` (`areas()` is `areas.all()`, `areaRows()` is `areas.rows()`, `newAreaId()` is `areas.newId()`, `saveArea` is
+`areas.save`, `deleteArea` is `areas.delete`, and the same for the other two). Deletion test, on reading the code: the callers
+of each of the three are the same three modules, the local-data facade (the areas page, the places page, the house's area and
+distance cards, the map and the offline maps reach it), the export (`export.service.ts`) and the on-device AI documents
+(`on-device-ai.service.ts`), plus the sync and the import through `RecordStore` (rows, not these classes). Three callers per
+kind is the least that passes; each of the three **passes**. They were not merged into one class: a note reaches a house by an
+area's radius or by a street, and a place drives a distance, but the three have different validation, caps and sort orders and
+share nothing but the helpers already in `RecordStore` (`freshId`, `saveIfChanged`); one class would be a bag of three kinds
+again. The rule that decides which house a note reaches (`notesReaching`, `areasReaching`, `distancesToPlaces`) was already in
+`shared/area.ts` and stays there. What stays in the store on purpose: nothing of these kinds (the imports of `shared/area` went
+with them: 29 lines). Tests: `data/area-stores.spec.ts` (21) holds the 9 area, place and note tests that were in
+`local-store.spec.ts` (moved, calls renamed) and 12 new ones (the rows with their edit times, the trimming of a place name and
+of a note's text, street and area id, the edges of every range, the ids that are not record keys, the enabled flag and the
+default radius, the order by name against the order of ids and edits, the dirty flag after an edit and a delete, and which
+error a bad id gets at the cap); the first 10 new ones passed on the old code before anything moved, and the last two were
+added for mutants that survived (the id check in `AreaStore` and `PlaceStore` is also made by `RecordStore.save`, and only the
+error at the cap tells the two apart). The full suite goes from 3,821 to 3,833 tests (12 new, none removed). Hand
+mutations: `tools/mutations/area-store.json`, `place-store.json` and `area-note-store.json` (11, 10 and 11), each killed by a
+named test, no equivalent mutant left. The two existing lists that touch `local-store.service.ts` (`trace-store.json`,
+`trace-privacy.json`) still hold with their strings unchanged. The remaining
+plan is items 4 to 9 above, in order.
 
 ## 10. Phone file layout (S4b-BL-168)
 

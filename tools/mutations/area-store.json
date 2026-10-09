@@ -1,0 +1,16 @@
+{
+  "spec": "web/src/app/data/area-stores.spec.ts",
+  "mutations": [
+    {"file": "web/src/app/data/area-store.ts", "find": "updatedAt: row.updatedAt ?? null, area", "replace": "updatedAt: null, area", "expect": "gives each area row its record id"},
+    {"file": "web/src/app/data/area-store.ts", "find": "sortByName((await this.rows()).map((r) => r.area), (a) => a.name)", "replace": "(await this.rows()).map((r) => r.area)", "expect": "orders areas and places by name even when"},
+    {"file": "web/src/app/data/area-store.ts", "find": "this.records.freshId(AREA_TYPE, newId)", "replace": "newId()", "expect": "draws new a_, p_ and n_ ids that clash"},
+    {"file": "web/src/app/data/area-store.ts", "find": "name: area.name.trim() }", "replace": "name: area.name }", "expect": "saves an area as a dirty record of type area"},
+    {"file": "web/src/app/data/area-store.ts", "find": "!isRecordKey(clean.id) ||", "replace": "false ||", "expect": "says the id is bad, not that the list is full"},
+    {"file": "web/src/app/data/area-store.ts", "find": "clean.name === '' ||", "replace": "false ||", "expect": "refuses a bad area"},
+    {"file": "web/src/app/data/area-store.ts", "find": "clean.name.length > MAX_AREA_NAME", "replace": "clean.name.length >= MAX_AREA_NAME", "expect": "accepts the edges of the ranges"},
+    {"file": "web/src/app/data/area-store.ts", "find": "!validLat(clean.lat) ||", "replace": "false ||", "expect": "refuses a point or radius one step outside"},
+    {"file": "web/src/app/data/area-store.ts", "find": "!validRadius(clean.radiusM)", "replace": "false", "expect": "refuses a point or radius one step outside"},
+    {"file": "web/src/app/data/area-store.ts", "find": "MAX_AREAS, 'areas.max', now", "replace": "MAX_AREAS + 1, 'areas.max', now", "expect": "caps the live records at 20 areas"},
+    {"file": "web/src/app/data/area-store.ts", "find": "await this.records.delete(AREA_TYPE, id, now)", "replace": "await this.records.delete(AREA_TYPE, id + 'x', now)", "expect": "deletes as a tombstone"}
+  ]
+}
