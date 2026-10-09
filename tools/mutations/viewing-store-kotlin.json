@@ -1,0 +1,88 @@
+{
+  "spec": "android/app/src/test/java/app/doorprints/ViewingsRepositoryTest.kt",
+  "gradle": [
+    ":app:testDebugUnitTest",
+    "--tests",
+    "app.doorprints.ViewingsRepositoryTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/ViewingStore.kt",
+      "find": ".sortedWith(Viewing.ORDER)",
+      "replace": ".sortedWith(Viewing.ORDER.reversed())",
+      "expect": "theListIsByStart"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/ViewingStore.kt",
+      "find": "rows.mapNotNull(::of)",
+      "replace": "rows.mapNotNull { it.decode(ViewingType)?.copy(id = it.id) }",
+      "expect": "theReminderIdsInclude"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/ViewingStore.kt",
+      "find": "all().filter { it.houseId == houseId }",
+      "replace": "all().filter { it.houseId != houseId }",
+      "expect": "theListIsByStart"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/ViewingStore.kt",
+      "find": "db.records().versions(ViewingType.name).map { it.id }",
+      "replace": "db.records().listByType(ViewingType.name).filter { !it.deleted }.map { it.id }",
+      "expect": "theReminderIdsInclude"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/ViewingStore.kt",
+      "find": "get(ViewingType.name, id)?.takeUnless { it.deleted }?.let(::of)",
+      "replace": "get(ViewingType.name, id)?.let(::of)",
+      "expect": "theReminderIdsInclude"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/ViewingStore.kt",
+      "find": "if (get(clean.id) == clean)",
+      "replace": "if (false)",
+      "expect": "savingCoercesMarksDirty"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/ViewingStore.kt",
+      "find": "requireNotNull(viewing.coerced())",
+      "replace": "requireNotNull(viewing)",
+      "expect": "savingCoercesMarksDirty"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/ViewingStore.kt",
+      "find": "Viewings.nextOf(all(), houseId, nowMs)",
+      "replace": "Viewings.nextOf(all(), houseId, 0L)",
+      "expect": "theListIsByStart"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/ViewingStore.kt",
+      "find": "visitId ?: viewing.visitId",
+      "replace": "visitId",
+      "expect": "markingDoneWithoutAVisit"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/ViewingStore.kt",
+      "find": "status = ViewingStatus.DONE.name",
+      "replace": "status = ViewingStatus.PLANNED.name",
+      "expect": "theListIsByStart"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/ViewingStore.kt",
+      "find": "suspend fun delete(id: String) = deleteRecord(id)",
+      "replace": "suspend fun delete(id: String) = Unit",
+      "expect": "aNewIdNeverClashes"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/ViewingStore.kt",
+      "find": "updatedAt = updatedAt, deleted = false, dirty = true,",
+      "replace": "updatedAt = updatedAt, deleted = false, dirty = false,",
+      "expect": "aBackupCarriesTheViewings"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/ViewingStore.kt",
+      "find": "val viewing = get(id) ?: return",
+      "replace": "val viewing = get(id) ?: Viewing(id = id, houseId = \"h1\", startsAt = 1L)",
+      "expect": "markingDoneWithoutAVisit"
+    }
+  ]
+}

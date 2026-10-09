@@ -77,9 +77,7 @@ import app.doorprints.shared.model.QuestionCategory
 import app.doorprints.shared.model.QuestionScope
 import app.doorprints.shared.model.QuestionType
 import app.doorprints.shared.model.Viewing
-import app.doorprints.shared.model.ViewingStatus
 import app.doorprints.shared.model.ViewingType
-import app.doorprints.shared.model.Viewings
 import app.doorprints.shared.model.Area
 import app.doorprints.shared.model.AreaNote
 import app.doorprints.shared.model.AreaNoteType
@@ -537,50 +535,33 @@ open class CommonRepository(
         saveHouse(house.copy(answers = answers))
     }
 
-    // ---- Viewings (docs/11 5.8, slice 3b-1) ----
+    // ---- Viewings (docs/11 5.8, slice 3b-1): the rules are ViewingStore's (S4b-BL-168) ----
 
-    /** A viewing row with its id, coerced; null when the payload does not decode or cannot be trusted (skipped). */
-    private fun RecordEntity.toViewing(): Viewing? = decode(ViewingType)?.copy(id = id)?.coerced()
+    private val viewingStore = ViewingStore(
+        db,
+        saveRecord = { id, viewing -> saveRecord(ViewingType, id, viewing) },
+        deleteRecord = { id -> deleteRecord(ViewingType, id) },
+    )
 
-    private fun viewingsOf(rows: List<RecordEntity>): List<Viewing> =
-        rows.mapNotNull { it.toViewing() }.sortedWith(Viewing.ORDER)
+    override fun observeViewings(): Flow<List<Viewing>> = viewingStore.observeAll()
 
-    override fun observeViewings(): Flow<List<Viewing>> = db.records().byType(ViewingType.name).map(::viewingsOf)
+    override suspend fun viewings(): List<Viewing> = viewingStore.all()
 
-    override suspend fun viewings(): List<Viewing> = viewingsOf(db.records().listByType(ViewingType.name))
+    override suspend fun viewingIdsForReminders(): List<String> = viewingStore.idsForReminders()
 
-    // The versions query lists the tombstones too, without decoding a payload.
-    override suspend fun viewingIdsForReminders(): List<String> = db.records().versions(ViewingType.name).map { it.id }
+    override suspend fun viewingsOf(houseId: String): List<Viewing> = viewingStore.ofHouse(houseId)
 
-    override suspend fun viewingsOf(houseId: String): List<Viewing> = viewings().filter { it.houseId == houseId }
+    override suspend fun nextViewing(houseId: String, nowMs: Long): Viewing? = viewingStore.next(houseId, nowMs)
 
-    override suspend fun nextViewing(houseId: String, nowMs: Long): Viewing? = Viewings.nextOf(viewings(), houseId, nowMs)
+    override suspend fun getViewing(id: String): Viewing? = viewingStore.get(id)
 
-    override suspend fun getViewing(id: String): Viewing? =
-        db.records().get(ViewingType.name, id)?.takeUnless { it.deleted }?.toViewing()
+    override suspend fun saveViewing(viewing: Viewing) = viewingStore.save(viewing)
 
-    override suspend fun saveViewing(viewing: Viewing) {
-        val clean = requireNotNull(viewing.coerced()) { "a viewing needs a record id, a house and a start time" }
-        db.withImmediateTransaction {
-            val stored = db.records().get(ViewingType.name, clean.id)?.takeUnless { it.deleted }?.toViewing()
-            // Nothing new: no write, so the record keeps its stamp and is not pushed again.
-            if (stored == clean) return@withImmediateTransaction
-            saveRecord(ViewingType, clean.id, clean)
-        }
-    }
+    override suspend fun newViewingId(): String = viewingStore.newId()
 
-    override suspend fun newViewingId(): String {
-        // A tombstone's id is taken too: reusing it would bring the old viewing back on another device.
-        val used = db.records().versions(ViewingType.name).mapTo(HashSet()) { it.id }
-        return Viewing.newId({ it in used })
-    }
+    override suspend fun deleteViewing(id: String) = viewingStore.delete(id)
 
-    override suspend fun deleteViewing(id: String) = deleteRecord(ViewingType, id)
-
-    override suspend fun markViewingDone(id: String, visitId: String?) {
-        val viewing = getViewing(id) ?: return
-        saveViewing(viewing.copy(status = ViewingStatus.DONE.name, visitId = visitId ?: viewing.visitId))
-    }
+    override suspend fun markViewingDone(id: String, visitId: String?) = viewingStore.markDone(id, visitId)
 
     // ---- Hunting areas, my places and area notes (docs/11 slice 4a) ----
 
@@ -1253,7 +1234,7 @@ open class CommonRepository(
                 .take(Question.MAX_QUESTIONS),
             // The viewings (slice 3b-1): untrusted rows are skipped, so the copy's own check accepts what it writes.
             viewings = db.records().listByType(ViewingType.name)
-                .mapNotNull { row -> row.toViewing()?.let { ExportViewing.of(it, row.updatedAt) } }
+                .mapNotNull { row -> ViewingStore.of(row)?.let { ExportViewing.of(it, row.updatedAt) } }
                 .take(Viewing.MAX_VIEWINGS),
             // Areas, places and area notes (slice 4a): untrusted rows are skipped, a stored radius out of range is 500, and
             // nothing is cut to the caps (as the website and the server read them; the caps hold at each save).
@@ -1399,7 +1380,7 @@ open class CommonRepository(
         }
         // The viewings (slice 3b-1), by id with the file's `updatedAt`: a newer row brings back one deleted here.
         for (v in actions.viewings) {
-            db.records().upsert(importedViewing(v, v.updatedAt))
+            db.records().upsert(ViewingStore.importedRow(v, v.updatedAt))
             onProgress(++done, total)
         }
         // Areas, places and area notes (slice 4a), by id with the file's `updatedAt`, like the questions.
@@ -1511,13 +1492,6 @@ open class CommonRepository(
     private fun importedQuestion(q: ExportQuestion, updatedAt: Long): RecordEntity = RecordEntity(
         type = QuestionType.name, id = q.id,
         payload = QuestionType.encode(checkNotNull(q.toQuestion().coerced()) { "question ${q.id} was not checked" }),
-        updatedAt = updatedAt, deleted = false, dirty = true,
-    )
-
-    /** A backup's viewing as its record row: coerced (the plan checked it), dirty so it is pushed. */
-    private fun importedViewing(v: ExportViewing, updatedAt: Long): RecordEntity = RecordEntity(
-        type = ViewingType.name, id = v.id,
-        payload = ViewingType.encode(checkNotNull(v.toViewing().coerced()) { "viewing ${v.id} was not checked" }),
         updatedAt = updatedAt, deleted = false, dirty = true,
     )
 
@@ -1637,7 +1611,7 @@ open class CommonRepository(
                     onProgress(++done, total)
                 }
                 for (v in actions.viewings) {
-                    writeRecord(importedViewing(v, CopyUndo.copyStamp(v.updatedAt, now)))
+                    writeRecord(ViewingStore.importedRow(v, CopyUndo.copyStamp(v.updatedAt, now)))
                     onProgress(++done, total)
                 }
                 // A copy keeps the ids of areas, places and notes (a note names its area) and merges them like a merge.
@@ -1758,7 +1732,7 @@ open class CommonRepository(
                     val (type, id) = CopyUndo.recordOf(key) ?: continue
                     val row = db.records().get(type, id)
                     val inUse = row != null && !row.deleted && when (type) {
-                        ViewingType.name -> row.toViewing()?.houseId?.let { h -> live.any { it.id == h } } == true
+                        ViewingType.name -> ViewingStore.of(row)?.houseId?.let { h -> live.any { it.id == h } } == true
                         BrokerType.name -> live.any { it.brokerId == id }
                         CriterionType.name -> id !in Checklist.keys && live.any { it.checklist.containsKey(id) }
                         QuestionType.name -> live.any { h -> h.answers.orEmpty().any { it.questionId == id } }
