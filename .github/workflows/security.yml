@@ -152,6 +152,11 @@ jobs:
         run: |
           python3 .github/scripts/check_action_pins_test.py
           python3 .github/scripts/check-action-pins.py
+      # S4b-BL-172 (SEC-024): every FROM in every Dockerfile names its base image by digest (tag@sha256:...).
+      - name: Dockerfile base images are pinned by digest
+        run: |
+          python3 .github/scripts/check_dockerfile_pins_test.py
+          python3 .github/scripts/check-dockerfile-pins.py
       - name: Only allowlisted author and committer emails in the new commits
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}

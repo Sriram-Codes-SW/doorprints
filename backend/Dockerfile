@@ -15,14 +15,14 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 
 # Build: docker build -t doorprints-api backend  (the Doorprints API)
-FROM maven:3.9-eclipse-temurin-25 AS build
+FROM maven:3.9-eclipse-temurin-25@sha256:93b8a14ea2f412782e4e842651273b4d903e35cc496284f178fbbe2d67d00976 AS build
 WORKDIR /src
 COPY pom.xml .
 RUN mvn -q -B dependency:go-offline
 COPY src src
 RUN mvn -q -B package -DskipTests
 
-FROM eclipse-temurin:25-jre
+FROM eclipse-temurin:25-jre@sha256:fcd7fd7b387f94bb2ac461478a7436ad8e349924c374ea8313919624dceae636
 WORKDIR /app
 # Take the distribution's security fixes that are newer than the base image (Trivy's HIGH gate, TC-S-05, failed on an
 # OpenSSL fix published the day before the image was rebuilt); the lists are removed again so the layer stays small.
