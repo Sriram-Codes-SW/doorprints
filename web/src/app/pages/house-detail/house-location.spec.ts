@@ -1,3 +1,20 @@
+/*
+ * Copyright 2026 Sriram (Sriram-Codes-SW)
+ *
+ * This file is part of Doorprints.
+ *
+ * Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+ * Public License as published by the Free Software Foundation, version 3 of the License.
+ *
+ * Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+ * the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
 
 // The house page's location card, through the page's DOM: the typed coordinates, the pin moved on the map, the
 // Approximate switch, Use my location, Find, Fill address from map, the start of a new house with no position, and the
@@ -172,9 +189,11 @@ describe('HouseDetailPage: the pin and the typed coordinates', () => {
     const { fixture, host, page } = await open();
     await type(fixture, '#house-lat', ' 10.5 ', 'change');
     expect(pin(page)).toEqual([10.5, 76.2673, 'MAP']);
+    await type(fixture, '#house-lat', '10.1234567891', 'change');
+    expect(pin(page)).toEqual([10.123457, 76.2673, 'MAP']);
     expect(coordsError(host)).toBeNull();
     await type(fixture, '#house-lon', '76.123456789', 'change');
-    expect(pin(page)).toEqual([10.5, 76.123457, 'MAP']);
+    expect(pin(page)).toEqual([10.123457, 76.123457, 'MAP']);
   });
 
   it('keeps an invalid typed value in the field, marks it, names the reason, and leaves the pin where it was', async () => {
@@ -279,6 +298,17 @@ describe('HouseDetailPage: the pin and the typed coordinates', () => {
     approx(host).click();
     await settled(fixture);
     expect(page.draft().locationSource).toBe('GPS');
+  });
+
+  it('a switch turned on again over a house already approximate does not remember APPROX as the source before', async () => {
+    const { fixture, host, page } = await open({ saved: { ...SAVED, locationSource: 'APPROX' } });
+    approx(host).checked = true;
+    approx(host).dispatchEvent(new Event('change'));
+    await settled(fixture);
+    expect(page.draft().locationSource).toBe('APPROX');
+    approx(host).click();
+    await settled(fixture);
+    expect(page.draft().locationSource).toBe('MAP');
   });
 
   it('a house saved as approximate goes to MAP when the switch is turned off after reopening', async () => {
@@ -394,6 +424,20 @@ describe('HouseDetailPage: a new house with no position', () => {
     expect(host.querySelector('.error[role="alert"]')?.textContent?.trim()).toBe(t('house.nameRequired'));
   });
 
+  it('keeps a name failure showing when the pin is put after the position refusal was replaced by it', async () => {
+    const { fixture, host, page } = await open({ query: {} });
+    await type(fixture, '#house-name', 'Flat');
+    page.save();
+    await settled(fixture);
+    expect(host.querySelector('.error[role="alert"]')?.textContent?.trim()).toBe(t('house.locationRequired'));
+    await type(fixture, '#house-name', '');
+    page.save();
+    await settled(fixture);
+    expect(host.querySelector('.error[role="alert"]')?.textContent?.trim()).toBe(t('house.nameRequired'));
+    await type(fixture, '#house-lat', '12', 'change');
+    expect(host.querySelector('.error[role="alert"]')?.textContent?.trim()).toBe(t('house.nameRequired'));
+  });
+
   it('starts at the last map view, at zoom 12 at least', async () => {
     localStorage.setItem(MAP_VIEW_KEY, JSON.stringify({ lat: 13.08, lon: 80.27, zoom: 9 }));
     const { fixture, page } = await open({ query: {} });
@@ -452,6 +496,17 @@ describe('HouseDetailPage: Find on the map', () => {
     const { fixture, host } = await open();
     await type(fixture, '#house-locality', 'Indiranagar');
     expect(hasFind(host)).toBe(false);
+  });
+
+  it('looks the place up in the language of the page', async () => {
+    const search = vi.fn((_place: string, _language: string) => of(null));
+    const { fixture, host } = await open({ query: {}, search });
+    await type(fixture, '#house-locality', 'Indiranagar');
+    const find = button(host, t('house.findPlace', { place: 'Indiranagar' }));
+    await TestBed.inject(TranslationService).setLang('hi');
+    find.click();
+    await settled(fixture);
+    expect(search).toHaveBeenCalledWith('Indiranagar', 'hi');
   });
 
   it('puts the pin there as approximate, says so, announces it, and sets the position', async () => {

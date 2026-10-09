@@ -734,19 +734,19 @@
       <!-- Location -->
       <section class="card" aria-labelledby="location-heading">
         <h2 id="location-heading">{{ 'house.location' | t }}</h2>
-        @if (!locationSet()) {
+        @if (!position.placed()) {
           <!-- A new house with no position yet (share target, bookmark): the pin is only a starting guess. -->
-          <p id="location-unset" [class]="locationError() ? 'error' : 'warn-box'">{{ 'house.locationUnset' | t }}</p>
+          <p id="location-unset" [class]="position.required() ? 'error' : 'warn-box'">{{ 'house.locationUnset' | t }}</p>
         }
         <app-location-map
           [lat]="d.lat"
           [lon]="d.lon"
-          [zoom]="startZoom()"
+          [zoom]="position.startZoom()"
           [color]="statusColor[d.status]"
           [label]="'house.mapLabel' | t"
-          [describedBy]="locationSet() ? 'location-hint' : 'location-unset location-hint'"
+          [describedBy]="position.placed() ? 'location-hint' : 'location-unset location-hint'"
           [overlay]="overlay()"
-          (moved)="onMoved($event)"
+          (moved)="position.onMoved($event)"
         />
         <p id="location-hint" class="muted small">{{ 'house.mapHint' | t }}</p>
         <div class="row coords">
@@ -760,9 +760,9 @@
               autocomplete="off"
               spellcheck="false"
               [value]="d.lat"
-              [attr.aria-invalid]="locationError() || coordsInvalid().lat ? 'true' : null"
-              [attr.aria-describedby]="coordsDescribedBy('lat')"
-              (change)="onCoord('lat', $event)"
+              [attr.aria-invalid]="position.required() || position.coordsInvalid().lat ? 'true' : null"
+              [attr.aria-describedby]="position.describedBy('lat')"
+              (change)="position.onCoord('lat', $event)"
             />
           </div>
           <div class="field">
@@ -774,48 +774,48 @@
               autocomplete="off"
               spellcheck="false"
               [value]="d.lon"
-              [attr.aria-invalid]="locationError() || coordsInvalid().lon ? 'true' : null"
-              [attr.aria-describedby]="coordsDescribedBy('lon')"
-              (change)="onCoord('lon', $event)"
+              [attr.aria-invalid]="position.required() || position.coordsInvalid().lon ? 'true' : null"
+              [attr.aria-describedby]="position.describedBy('lon')"
+              (change)="position.onCoord('lon', $event)"
             />
           </div>
         </div>
         <!-- Exists before the message does, so the message is announced when it appears. -->
         <div role="alert">
-          @if (coordsError()) {
+          @if (position.coordsError()) {
             <p id="coords-error" class="field-error">{{ 'house.coordsInvalid' | t }}</p>
           }
         </div>
         <div class="location-actions">
-          @if (placeQuery(); as place) {
+          @if (position.placeQuery(); as place) {
             <!-- S4b-BL-83: the listing's locality, looked up only on this tap; the pin lands there, approximate. -->
             <button
               type="button"
               class="btn btn-primary btn-sm"
-              [attr.aria-disabled]="finding() ? 'true' : null"
-              (click)="findPlace()"
+              [attr.aria-disabled]="position.finding() ? 'true' : null"
+              (click)="position.findPlace()"
             >
-              {{ (finding() ? 'house.findingPlace' : 'house.findPlace') | t: { place } }}
+              {{ (position.finding() ? 'house.findingPlace' : 'house.findPlace') | t: { place } }}
             </button>
           }
-          @if (canLocate) {
+          @if (position.canLocate) {
             <!-- Filled while the pin is not set yet: standing outside the house, it is the fastest way to put it. -->
             <button
               type="button"
-              [class]="locationSet() || placeQuery() ? 'btn btn-sm' : 'btn btn-primary btn-sm'"
-              [attr.aria-disabled]="locating() ? 'true' : null"
-              (click)="useMyLocation()"
+              [class]="position.placed() || position.placeQuery() ? 'btn btn-sm' : 'btn btn-primary btn-sm'"
+              [attr.aria-disabled]="position.locating() ? 'true' : null"
+              (click)="position.useMyLocation()"
             >
-              {{ (locating() ? 'house.locating' : 'house.useMyLocation') | t }}
+              {{ (position.locating() ? 'house.locating' : 'house.useMyLocation') | t }}
             </button>
           }
           <button
             type="button"
             class="btn btn-sm"
-            [attr.aria-disabled]="geocoding() || !locationSet() ? 'true' : null"
-            (click)="fillAddress()"
+            [attr.aria-disabled]="position.geocoding() || !position.placed() ? 'true' : null"
+            (click)="position.fillAddress()"
           >
-            {{ (geocoding() ? 'house.lookingUp' : 'house.fillAddress') | t }}
+            {{ (position.geocoding() ? 'house.lookingUp' : 'house.fillAddress') | t }}
           </button>
         </div>
         <!-- FR-068: the spot is only the locality. The marker becomes a hollow ring and Hunt mode never alerts here. -->
@@ -825,7 +825,7 @@
             type="checkbox"
             role="switch"
             [checked]="d.locationSource === 'APPROX'"
-            (change)="setApprox($event)"
+            (change)="position.setApprox($event)"
             aria-describedby="approx-hint"
           />
           <label for="house-approx">{{ 'house.approx' | t }}</label>
@@ -833,23 +833,23 @@
         </div>
         <!-- Why "Use my location" or "Fill address from map" did not work, right under them. Kept, dimmed, while
              either runs again (S4b-BL-2). -->
-        <div class="refresh-slot" [class.stale]="locating() || geocoding()">
+        <div class="refresh-slot" [class.stale]="position.locating() || position.geocoding()">
           <div role="alert">
-            @if (locationMsg(); as card) {
+            @if (position.message(); as card) {
               @for (c of [card]; track c.run) {
                 <p class="error small">{{ c.value.key | t: c.value.params }}</p>
               }
             }
           </div>
-          @if ((locating() || geocoding()) && locationMsg()) {
+          @if ((position.locating() || position.geocoding()) && position.message()) {
             <div
               class="refresh-bar"
               role="progressbar"
-              [attr.aria-label]="(locating() ? 'house.locating' : 'house.lookingUp') | t"
+              [attr.aria-label]="(position.locating() ? 'house.locating' : 'house.lookingUp') | t"
             ></div>
           }
         </div>
-        @if (placeMsg(); as found) {
+        @if (position.foundMessage(); as found) {
           @if (d.locationSource === 'APPROX') {
             <p class="muted small">{{ found.value.key | t: found.value.params }}</p>
           }
@@ -859,7 +859,7 @@
       </section>
 
       <!-- Did I walk past this house? (docs/11 5.27.13): one button; the answer in place and on the map above. Hidden for a new house. -->
-      <app-house-check-card [house]="d" [isNew]="isNew()" [locationSet]="locationSet()" (overlay)="showOverlay($event)" />
+      <app-house-check-card [house]="d" [isNew]="isNew()" [locationSet]="position.placed()" (overlay)="showOverlay($event)" />
 
       <!-- Saved walks (docs/11 5.27.6): the walks linked to this house; Show on map draws on the map above. -->
       <app-house-walks-card [houseId]="d.id" [isNew]="isNew()" (overlay)="showOverlay($event)" />

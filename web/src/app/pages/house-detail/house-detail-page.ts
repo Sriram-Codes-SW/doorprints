@@ -34,7 +34,6 @@ import { Location } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
-import type { Subscription } from 'rxjs';
 import { LocalDataService } from '../../core/local-data.service';
 import { GeocodeService } from '../../core/geocode.service';
 import {
@@ -79,7 +78,7 @@ import type { Criterion, ScoreResult, Scoring } from '../../shared/scoring';
 import type { BrokerRow } from '../../shared/broker';
 import { LocalDataError } from '../../core/local-error';
 import { Announcer } from '../../core/announcer.service';
-import { LatLon, LocationMap, round6 } from '../../shared/location-map';
+import { LocationMap, round6 } from '../../shared/location-map';
 import type { MapOverlay } from '../../shared/location-map';
 import { AuthImage } from '../../shared/auth-image';
 import { Msg, TranslationService } from '../../i18n/translation.service';
@@ -88,10 +87,9 @@ import { ConfirmService } from '../../core/confirm.service';
 import { AI_MAX_LISTING_CHARS, AiService } from '../../core/ai.service';
 import { TPipe } from '../../i18n/t.pipe';
 import { UnsavedChanges } from '../../core/unsaved-changes.service';
-import { COUNTRY_VIEW, loadStartPoint, locationErrorKey, parseCoordinate } from '../../shared/map-center';
-import { locateOnce } from '../../shared/locate-once';
-import { AddressLookup, FIELD_LABEL, FillField, addressFill } from './house-draft-merge';
+import { COUNTRY_VIEW, loadStartPoint } from '../../shared/map-center';
 import { HouseListingFill } from './house-listing-fill';
+import { HouseLocation } from './house-location';
 import { clearDraft, draftKey, readDraft, writeDraft } from './draft-store';
 import { type BackKey, HOUSE_BACK_STATE, backTarget, exitAfterRemoval } from './back-target';
 import { ListReturn } from '../map/list-return';
@@ -198,27 +196,17 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   protected readonly nameError = signal(false);
   /** Save failures only (name or location missing, the save itself failed) and a failed load; at the top. */
   protected readonly error = signal<RunResult<Msg> | null>(null);
-  protected readonly geocoding = signal(false);
-  /** *Find “Indiranagar” on the map* is running (S4b-BL-83). */
-  protected readonly finding = signal(false);
-  /** What *Find* put on the map, said under the buttons until the pin is moved or the page is left. */
-  protected readonly placeMsg = signal<RunResult<Msg> | null>(null);
-  /**
-   * False for a new house opened without a position (the share target, a bookmarked /houses/new) until the user
-   * has put the pin: chosen a spot on the map, typed coordinates, or used their location. Saving is refused until
-   * then — a house saved at the starting view would be a house in the wrong place.
-   */
-  protected readonly locationSet = signal(true);
-  protected readonly locationError = signal(false);
-  protected readonly locating = signal(false);
-  /** A failure of "Use my location" or "Fill address from map", shown under those buttons. */
-  protected readonly locationMsg = signal<RunResult<Msg> | null>(null);
-  /** Typed coordinates that are not valid; the typed text stays in the field and the pin stays where it was. */
-  protected readonly coordsInvalid = signal<{ lat: boolean; lon: boolean }>({ lat: false, lon: false });
-  protected readonly coordsError = computed(() => this.coordsInvalid().lat || this.coordsInvalid().lon);
-  /** Zoom the location map opens at: street level for a known position, wider for a starting guess. */
-  protected readonly startZoom = signal(16);
-  protected readonly canLocate = typeof navigator !== 'undefined' && 'geolocation' in navigator;
+  /** Where the house is: the pin, the typed coordinates, Use my location, Find, Fill address from map (house-location.ts). */
+  protected readonly position = new HouseLocation({
+    geocode: this.geocode,
+    i18n: this.i18n,
+    announcer: this.announcer,
+    confirm: this.confirm,
+    draft: () => this.draft(),
+    patch: (changes) => this.patch(changes),
+    error: this.error,
+    gone: () => this.destroyed,
+  });
   /** Unsaved edits from an earlier visit to this page (a discarded tab) were put back; offer to discard them. */
   protected readonly restored = signal(false);
   /** "Back" goes back in history (to Compare, an Ask answer, a Plan stop, the filtered list), not always to "/". */
@@ -299,14 +287,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   private draftTimer: ReturnType<typeof setTimeout> | undefined;
   /** The house as loaded, for "Discard" on restored edits. */
   private pristine: { draft: HouseDto; dirty: boolean; locationSet: boolean } | null = null;
-  /**
-   * The address lookup in flight, and whether the page is gone. Leaving the page is one of the ends of "Reading the
-   * listing…" (the listing's own read, see {@link HouseListingFill.stop}), "Filling address…" and "Locating…": their
-   * late result must not fill a form, open a question or announce "Form filled in" / "Location found" on whatever
-   * page the user went to.
-   */
-  private lookupRequest: Subscription | null = null;
-  private findRequest: Subscription | null = null;
+  /** Set first thing in `ngOnDestroy`: the late answer of a read, a lookup or a location request is dropped. */
   private destroyed = false;
   /**
    * Set just before this page calls `Location.back()` itself, once leaving has been settled (asked and answered in
@@ -340,8 +321,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroyed = true;
     this.listing.stop();
-    this.lookupRequest?.unsubscribe();
-    this.findRequest?.unsubscribe();
+    this.position.stop();
     this.unsaved.release(this);
     this.toolbarObserver?.disconnect();
     if (this.shortQuery && this.onShortChange) this.shortQuery.removeEventListener('change', this.onShortChange);
@@ -440,7 +420,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
       } else {
         // No position (share target, bookmark): never 0°, 0°. Start from the last map view, or the newest house,
         // or the country, and require the pin to be put before saving.
-        this.locationSet.set(false);
+        this.position.placed.set(false);
         void this.startWithoutPosition(shared);
       }
       return;
@@ -547,7 +527,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   private async startWithoutPosition(shared: string): Promise<void> {
     const view = loadStartPoint();
     if (view) {
-      this.startZoom.set(Math.max(view.zoom, 12));
+      this.position.startZoom.set(Math.max(view.zoom, 12));
       this.openDraft(round6(view.lat), round6(view.lon), shared);
       return;
     }
@@ -561,7 +541,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
         .filter((h) => !h.deleted)
         .sort((a, b) => Date.parse(b.createdAt ?? '') - Date.parse(a.createdAt ?? ''))[0];
       if (newest) {
-        this.startZoom.set(13);
+        this.position.startZoom.set(13);
         this.openDraft(newest.lat, newest.lon, shared);
         return;
       }
@@ -570,7 +550,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     }
     // A failed read can also answer after the page is gone.
     if (this.destroyed) return;
-    this.startZoom.set(COUNTRY_VIEW.zoom);
+    this.position.startZoom.set(COUNTRY_VIEW.zoom);
     this.openDraft(COUNTRY_VIEW.lat, COUNTRY_VIEW.lon, shared);
   }
 
@@ -581,11 +561,11 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   private afterLoad(): void {
     const d = this.draft();
     if (!d) return;
-    this.pristine = { draft: clone(d), dirty: this.dirty(), locationSet: this.locationSet() };
+    this.pristine = { draft: clone(d), dirty: this.dirty(), locationSet: this.position.placed() };
     const stored = readDraft(this.storeKey);
     if (stored && (this.isNew() || stored.draft.id === d.id)) {
       this.draft.set(withCost(stored.draft));
-      this.locationSet.set(stored.locationSet);
+      this.position.placed.set(stored.locationSet);
       this.dirty.set(true);
       this.restored.set(true);
       this.announcer.announce({ key: 'house.draftRestored' });
@@ -601,8 +581,8 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     clearDraft(this.storeKey);
     this.draft.set(clone(p.draft));
     this.dirty.set(p.dirty);
-    this.locationSet.set(p.locationSet);
-    this.coordsInvalid.set({ lat: false, lon: false });
+    this.position.placed.set(p.locationSet);
+    this.position.coordsInvalid.set({ lat: false, lon: false });
     this.restored.set(false);
     this.announcer.announce({ key: 'house.draftDiscarded' });
     // The note and its button are gone: focus goes to the page title rather than to <body>.
@@ -615,58 +595,6 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     if (!d || this.isNew()) return;
     const name: Msg | string = d.label.trim() || { key: 'common.untitled' };
     this.pageTitle.message.set({ key: 'title.houseNamed', params: { name } });
-  }
-
-  /** "Use my location" (Permissions-Policy allows geolocation for this origin): puts the pin where the user is. */
-  protected useMyLocation(): void {
-    if (!this.canLocate || this.locating()) return;
-    this.locating.set(true);
-    // The last failure under the buttons stays, drawn as being updated, until this run ends (S4b-BL-2).
-    // locateOnce drops the answer, found or failed, when this page is gone by then (the destroyed guard).
-    locateOnce({
-      gone: () => this.destroyed,
-      found: (pos) => {
-        this.locating.set(false);
-        this.locationMsg.set(null);
-        this.coordsInvalid.set({ lat: false, lon: false });
-        this.placePin(round6(pos.coords.latitude), round6(pos.coords.longitude), 'GPS');
-        this.announcer.announce({ key: 'house.locationFound' });
-      },
-      failed: (err) => {
-        this.locating.set(false);
-        this.locationMsg.set(runResult({ key: locationErrorKey(err) }));
-      },
-    });
-  }
-
-  /**
-   * The user put the pin somewhere: the position now counts as set, and the source says how (a drag, a tap or typed
-   * coordinates are MAP; *Use my location* is GPS). Moving the pin of a house marked approximate keeps it approximate:
-   * the person said the spot is rough, and a nudge does not make it the building. GPS always wins.
-   */
-  private placePin(lat: number, lon: number, source: LocationSource = 'MAP'): void {
-    this.locationSet.set(true);
-    if (this.locationError()) {
-      this.locationError.set(false);
-      if (this.error()?.value.key === 'house.locationRequired') this.error.set(null);
-    }
-    const current = this.draft()?.locationSource ?? null;
-    this.patch({ lat, lon, locationSource: current === 'APPROX' && source === 'MAP' ? 'APPROX' : source });
-  }
-
-  /** The source before *Approximate location* was switched on, put back when it is switched off (MAP by default). */
-  private sourceBeforeApprox: LocationSource | null = null;
-
-  /** The *Approximate location* switch (FR-068): on sets `APPROX`; off goes back to what it was. */
-  protected setApprox(event: Event): void {
-    const on = (event.target as HTMLInputElement).checked;
-    const current = this.draft()?.locationSource ?? null;
-    if (on) {
-      if (current !== 'APPROX') this.sourceBeforeApprox = current;
-      this.patch({ locationSource: 'APPROX' });
-    } else {
-      this.patch({ locationSource: this.sourceBeforeApprox ?? 'MAP' });
-    }
   }
 
   /** The *Included in the rent* switch of the Cost section. */
@@ -769,7 +697,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     clearTimeout(this.draftTimer);
     this.draftTimer = setTimeout(() => {
       const d = this.draft();
-      if (d && this.dirty() && this.storeKey) writeDraft(this.storeKey, { draft: d, locationSet: this.locationSet() });
+      if (d && this.dirty() && this.storeKey) writeDraft(this.storeKey, { draft: d, locationSet: this.position.placed() });
     }, DRAFT_SAVE_MS);
   }
 
@@ -966,135 +894,6 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     this.patch({ checklist });
   }
 
-  /**
-   * The pin was dragged or the map tapped: puts the house there; the position now counts as set (see {@link placePin}).
-   */
-  protected onMoved(p: LatLon): void {
-    this.coordsInvalid.set({ lat: false, lon: false });
-    this.placePin(p.lat, p.lon);
-  }
-
-  /**
-   * Typed coordinates: the keyboard alternative to dragging the pin. An invalid value is kept in the field (the user
-   * corrects it rather than retyping it), the field is marked invalid with the reason under the fields, and the pin
-   * stays where it was until the value is valid.
-   */
-  protected onCoord(axis: 'lat' | 'lon', event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const value = parseCoordinate(input.value, axis === 'lat' ? 90 : 180);
-    const d = this.draft();
-    if (!d) return;
-    if (value === null) {
-      this.coordsInvalid.update((c) => ({ ...c, [axis]: true }));
-      return;
-    }
-    this.coordsInvalid.update((c) => ({ ...c, [axis]: false }));
-    const lat = axis === 'lat' ? round6(value) : d.lat;
-    const lon = axis === 'lon' ? round6(value) : d.lon;
-    this.placePin(lat, lon);
-  }
-
-  protected coordsDescribedBy(axis: 'lat' | 'lon'): string | null {
-    const ids = [this.locationSet() ? null : 'location-unset', this.coordsInvalid()[axis] ? 'coords-error' : null];
-    return ids.filter((x) => !!x).join(' ') || null;
-  }
-
-  /**
-   * The place name a shared listing (or the person) gave, while the house has no position yet: *Find* looks it up
-   * (S4b-BL-83, docs/11 5.29 item 4). The locality first, else the address.
-   */
-  protected placeQuery(): string | null {
-    // A method, not a computed: the form's fields write into the draft object in place (ngModel).
-    const d = this.draft();
-    if (!d || this.locationSet()) return null;
-    return d.locality?.trim() || d.address?.trim() || null;
-  }
-
-  /**
-   * *Find “…” on the map*, on the person's tap only: Nominatim's `/search` (one request a second, `GeocodeService`)
-   * puts the pin at the place, marked approximate, for the person to drag to the house; a name it does not know says so.
-   */
-  protected findPlace(): void {
-    const place = this.placeQuery();
-    if (!place || this.finding()) return;
-    this.finding.set(true);
-    this.findRequest = this.geocode.search(place, this.i18n.lang()).subscribe({
-      next: (found) => {
-        this.findRequest = null;
-        this.finding.set(false);
-        if (!found) {
-          this.locationMsg.set(runResult({ key: 'house.placeNotFound', params: { place } }));
-          return;
-        }
-        this.locationMsg.set(null);
-        this.placePin(round6(found.lat), round6(found.lon), 'APPROX');
-        this.placeMsg.set(runResult({ key: 'house.placeFound', params: { place } }));
-        this.announcer.announce({ key: 'house.placeFound', params: { place } });
-      },
-      error: (err: unknown) => {
-        this.findRequest = null;
-        this.finding.set(false);
-        this.locationMsg.set(runResult({ key: 'house.lookupFailed', params: { reason: errorMsg(err) } }));
-      },
-    });
-  }
-
-  /**
-   * "Fill address from map" fills the empty Address, Street and Locality (and the name from the street when there is
-   * none). A value the user typed is only replaced after asking, with the old and new values shown; afterwards the
-   * filled fields are named.
-   */
-  protected fillAddress(): void {
-    const d = this.draft();
-    if (!d || this.geocoding() || !this.locationSet()) return;
-    this.geocoding.set(true);
-    // As for "Use my location": the last failure stays, drawn as being updated, until the lookup ends (S4b-BL-2).
-    this.lookupRequest = this.geocode.reverse(d.lat, d.lon).subscribe({
-      next: (r) => {
-        this.lookupRequest = null;
-        this.geocoding.set(false);
-        this.locationMsg.set(null);
-        void this.applyAddress(r);
-      },
-      error: (err: unknown) => {
-        this.lookupRequest = null;
-        this.locationMsg.set(runResult({ key: 'house.lookupFailed', params: { reason: errorMsg(err) } }));
-        this.geocoding.set(false);
-      },
-    });
-  }
-
-  private async applyAddress(found: AddressLookup): Promise<void> {
-    const cur = this.draft();
-    if (!cur) return;
-    const fill = addressFill(cur, found);
-    const changes: Partial<HouseDto> = { ...fill.emptyOnly };
-    const filled: FillField[] = [...fill.filled];
-    if (fill.conflicts.length > 0) {
-      const lines = fill.conflicts
-        .map((c) => this.i18n.t('house.addressChange', { field: { key: FIELD_LABEL[c.field] }, old: c.old, new: c.incoming }))
-        .join('\n');
-      const answer = await this.confirm.choose(
-        { key: 'house.addressReplaceAsk', params: { changes: lines } },
-        { confirmKey: 'house.addressReplace', altKey: filled.length > 0 ? 'house.addressFillEmpty' : null },
-      );
-      if (answer === 'cancel') return;
-      if (answer === 'confirm') {
-        for (const c of fill.conflicts) {
-          changes[c.field] = c.incoming;
-          filled.push(c.field);
-        }
-      }
-    }
-    if (filled.length === 0) {
-      this.announcer.announce({ key: 'house.addressNothing' });
-      return;
-    }
-    this.patch(changes);
-    const fields = this.i18n.list(filled.map((f) => this.i18n.t(FIELD_LABEL[f])));
-    this.announcer.announce({ key: 'house.addressFilledFields', params: { fields } });
-  }
-
   /** The Save button; see {@link persist}. */
   protected save(): void {
     void this.persist();
@@ -1116,15 +915,15 @@ export class HouseDetailPage implements OnInit, OnDestroy {
       return false;
     }
     this.nameError.set(false);
-    if (!this.locationSet()) {
-      this.locationError.set(true);
+    if (!this.position.placed()) {
+      this.position.required.set(true);
       this.error.set(runResult({ key: 'house.locationRequired' }));
       const lat = document.getElementById('house-lat');
       lat?.scrollIntoView({ block: 'center' });
       lat?.focus({ preventScroll: true });
       return false;
     }
-    const invalid = this.coordsInvalid();
+    const invalid = this.position.coordsInvalid();
     if (invalid.lat || invalid.lon) {
       // A typed coordinate is not valid: saving now would keep the old pin without saying so.
       this.error.set(runResult({ key: 'house.coordsInvalid' }));

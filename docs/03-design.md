@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.97 |
+| Version | 0.98 |
 | Date | 2026-10-08 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -108,6 +108,7 @@
 | 0.95 | 2026-10-09 | Claude (Code), engineer | **Phone file layout** (S4b-BL-168 slice 3, PR #220; [14](14-lead-backlog-and-handoff.md) §10): the areas, places and area notes leave `CommonRepository`. The component table names `AreaStore` (`:shared` `data/AreaStore.kt`). |
 | 0.96 | 2026-10-09 | Claude (Code), engineer | S4b-BL-168 slice 7 (web): the component table names `BrokerStore` (`data/broker-store.ts`, `LocalStore.brokers`). |
 | 0.97 | 2026-10-09 | Claude (Code), engineer | S4b-BL-168 slice 8 (web): the component table names `HouseListingFill` (`pages/house-detail/house-listing-fill.ts`). |
+| 0.98 | 2026-10-09 | Claude (Code), engineer | S4b-BL-168 slice 9 (web): the component table names `HouseLocation` (`pages/house-detail/house-location.ts`). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -408,6 +409,7 @@ is no Mac and no paid Apple account.
 | `HouseRooms` | `pages/house-detail/house-rooms.ts` (S4b-BL-168) | The Rooms card of the house page: the list in the draft, add (up to 30), edit, move and delete with the focus kept, a size in feet and inches or in metres as centimetres, and the area and total lines in the chosen length unit. The page owns the draft and the save. Separate so a change to what a room holds edits this file and the card, not the page. |
 | `HouseFloor` | `pages/house-detail/house-floor.ts` (S4b-BL-168) | The Floor field and the Basement switch of the house page: the level shown without its sign, the sign held by the switch while no level is typed, whether what is typed is a floor from -5 to 200 (`floorOf`, also used by the save and the duplicate-flat warning). |
 | `HouseListingFill` | `pages/house-detail/house-listing-fill.ts` (S4b-BL-168) | The listing card of the house page: the pasted text and how it is cut for Extract (`AI_MAX_LISTING_CHARS`, the hint for what is left out), the read by the AI with its busy, failure and late-result rules, and the merge of any listing draft (the AI's, or the no-AI parser's for a shared listing on arrival) into the form without replacing what was typed, naming what it kept. The page owns the draft and the arrival (it reads the navigation state and opens the draft). |
+| `HouseLocation` | `pages/house-detail/house-location.ts` (S4b-BL-168) | Where the house is, on the house page: the pin and the typed coordinates (valid or marked invalid), the *Approximate location* switch and the source it goes back to, *Use my location*, *Find* (the place name looked up on the person's tap) and *Fill address from map* (the reverse lookup and the question before a typed value is replaced), each with its busy, failure and late-result rules. The page owns the draft, the arrival (the starting view) and the save (refused while the position is unset or a coordinate is invalid). |
 | `RecordStore` | `data/record-store.ts` (S4b-BL-168) | The record rows, reached as `LocalStore.records`: the reads by type and by `[type, id]` key, the save that stamps a row and marks it dirty (keeping its sync version), the tombstone, the clean mark after a push, the dirty and full lists the sync reads, the id draw that avoids a stored row, and the write that skips an unchanged payload and refuses a new row past a cap. The sync, the import, the Drive rows and every record kind in `LocalStore` call it. |
 | `ViewingStore` | `data/viewing-store.ts` (S4b-BL-168) | The viewings, reached as `LocalStore.viewings`: records of type `viewing` read as typed rows, the save that refuses what the server refuses (bad id, blank house, start or duration out of range, text over its cap, the 5 001st viewing), `next`, `markDone`. Goes through `RecordStore`; the viewings page, the house card and the reminders reach it through `LocalDataService`. |
 | `AreaStore` | `data/area-store.ts` (S4b-BL-168) | The hunting areas, reached as `LocalStore.areas`: records of type `area` read as typed rows, the save that refuses a bad id, a blank or over-long name, a point or radius out of range and the 21st area, and writes only when something changed. Goes through `RecordStore`; the areas page, the house's area cards, the map and the offline maps reach it through `LocalDataService`, and the export and the on-device AI call it directly. |
