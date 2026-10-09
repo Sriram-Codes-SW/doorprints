@@ -249,4 +249,109 @@ class AreasRepositoryTest {
         val copy = ImportPlan.plan(revive, again.houses, again.visits, again.photoIds, emptySet(), ImportMode.COPY, newId = { java.util.UUID.randomUUID().toString() })
         assertEquals(listOf("p_0a1b2c3d"), copy.places.map { it.id })
     }
+
+    @Test
+    fun savingAPlaceTrimsMarksDirtyAndWritesOnlyWhatChanged(): Unit = runBlocking {
+        repo.savePlace(Place("p_0a0a0a0a", "  Office  ", 13.0827, 80.2707))
+        val row = db.records().get(PlaceType.name, "p_0a0a0a0a")!!
+        assertTrue("a saved place is pushed on the next sync", row.dirty)
+        assertEquals("""{"name":"Office","lat":13.0827,"lon":80.2707}""", row.payload)
+        Thread.sleep(2)
+        repo.savePlace(Place("p_0a0a0a0a", "Office", 13.0827, 80.2707))
+        assertEquals(row.updatedAt, db.records().get(PlaceType.name, "p_0a0a0a0a")!!.updatedAt)
+        Thread.sleep(2)
+        repo.savePlace(Place("p_0a0a0a0a", "Office 2", 13.0827, 80.2707))
+        assertTrue(db.records().get(PlaceType.name, "p_0a0a0a0a")!!.updatedAt > row.updatedAt)
+        val longName = "x".repeat(Place.MAX_NAME + 1)
+        for (bad in listOf(Place("p_1", " ", 1.0, 1.0), Place("p_1", "A", 91.0, 1.0), Place("p_1", "A", 1.0, 181.0), Place("p_1", longName, 1.0, 1.0), Place("p/1", "A", 1.0, 1.0))) {
+            assertThrows(bad.toString(), IllegalArgumentException::class.java) { runBlocking { repo.savePlace(bad) } }
+        }
+    }
+
+    @Test
+    fun anUnchangedNoteKeepsItsStampAndABlankTargetCountsAsAbsent(): Unit = runBlocking {
+        repo.saveAreaNote(AreaNote("n_00000001", street = "MG Road", text = "Noisy"))
+        val row = db.records().get(AreaNoteType.name, "n_00000001")!!
+        Thread.sleep(2)
+        repo.saveAreaNote(AreaNote("n_00000001", street = "MG Road", text = "Noisy", updatedAt = 99))
+        assertEquals(row.updatedAt, db.records().get(AreaNoteType.name, "n_00000001")!!.updatedAt)
+        assertEquals(row.updatedAt, repo.areaNotes().single().updatedAt)
+        Thread.sleep(2)
+        repo.saveAreaNote(AreaNote("n_00000001", street = "MG Road", text = "Very noisy"))
+        assertTrue(db.records().get(AreaNoteType.name, "n_00000001")!!.updatedAt > row.updatedAt)
+        // A blank area id is no target, so the street stands alone; a padded one is trimmed.
+        repo.saveAreaNote(AreaNote("n_00000002", areaId = "   ", street = "Lake Road", text = "Quiet"))
+        assertEquals("""{"street":"Lake Road","text":"Quiet"}""", db.records().get(AreaNoteType.name, "n_00000002")!!.payload)
+        repo.saveAreaNote(AreaNote("n_00000003", areaId = " a_00000001 ", street = " ", text = "Tanker"))
+        assertEquals("""{"areaId":"a_00000001","text":"Tanker"}""", db.records().get(AreaNoteType.name, "n_00000003")!!.payload)
+        val long = "x".repeat(AreaNote.MAX_TEXT + 1)
+        assertThrows(IllegalArgumentException::class.java) { runBlocking { repo.saveAreaNote(AreaNote("n_00000004", street = "MG", text = long)) } }
+    }
+
+    @Test
+    fun savingWhatIsAlreadyThereAtTheCapIsNotRefused(): Unit = runBlocking {
+        for (i in 0 until Area.MAX_AREAS) repo.saveArea(adyar.copy(id = "a_" + i.toString(16).padStart(8, '0')))
+        repo.saveArea(adyar.copy(id = "a_00000003"))
+        for (i in 0 until Place.MAX_PLACES) repo.savePlace(Place("p_" + i.toString(16).padStart(8, '0'), "P$i", 1.0, 1.0))
+        repo.savePlace(Place("p_00000003", "P3", 1.0, 1.0))
+        for (i in 0 until AreaNote.MAX_NOTES) {
+            db.records().upsert(RecordEntity(AreaNoteType.name, "n_" + i.toString(16).padStart(8, '0'), """{"street":"MG Road","text":"x"}""", at))
+        }
+        repo.saveAreaNote(AreaNote("n_00000003", street = "MG Road", text = "x"))
+        repo.saveAreaNote(AreaNote("n_00000003", street = "MG Road", text = "changed"))
+        assertEquals("changed", repo.areaNotes().first { it.id == "n_00000003" }.text)
+        assertEquals(listOf(Area.MAX_AREAS, Place.MAX_PLACES, AreaNote.MAX_NOTES), listOf(repo.areas().size, repo.places().size, repo.areaNotes().size))
+        // A deleted record's id coming back once the type is full again counts as a new live record.
+        repo.deletePlace("p_00000003")
+        repo.savePlace(Place("p_ffffffff", "New", 1.0, 1.0))
+        assertThrows(RecordLimitException::class.java) { runBlocking { repo.savePlace(Place("p_00000003", "P3", 1.0, 1.0)) } }
+    }
+
+    @Test
+    fun aCopyImportStampsAndMarksTheThreeListsDirty(): Unit = runBlocking {
+        repo.saveArea(adyar)
+        repo.savePlace(Place("p_0a1b2c3d", "Office", 13.0827, 80.2707))
+        repo.saveAreaNote(AreaNote("n_11223344", areaId = adyar.id, text = "Tanker"))
+        val data = BackupData.of(repo.localRows().toBundle(ExportOptions(exportedAtMillis = at)))
+        // A stamp in the future is never kept (CopyUndo.copyStamp): the three rows are written no later than now.
+        val future = Long.MAX_VALUE / 2
+        val file = data.copy(
+            areas = listOf(data.areaRows.single().copy(updatedAt = future)),
+            places = listOf(data.placeRows.single().copy(updatedAt = future)),
+            areaNotes = listOf(data.areaNoteRows.single().copy(updatedAt = future)),
+        )
+        val local = repo.localVersions()
+        val before = System.currentTimeMillis()
+        val plan = ImportPlan.plan(file, local.houses, local.visits, local.photoIds, emptySet(), ImportMode.COPY, newId = { "x" })
+        val result = repo.applyImport(plan) { null }
+        assertEquals(listOf(1, 1, 1), listOf(result.areas, result.places, result.areaNotes))
+        val rows = listOf(
+            db.records().get(AreaType.name, adyar.id)!!,
+            db.records().get(PlaceType.name, "p_0a1b2c3d")!!,
+            db.records().get(AreaNoteType.name, "n_11223344")!!,
+        )
+        assertTrue("every imported row is pushed", rows.all { it.dirty && !it.deleted })
+        assertTrue("a future stamp is cut to now", rows[0].updatedAt in before..System.currentTimeMillis())
+        assertTrue("a future stamp is cut to now", rows[1].updatedAt in before..System.currentTimeMillis())
+        assertTrue("a future stamp is cut to now", rows[2].updatedAt in before..System.currentTimeMillis())
+    }
+
+    @Test
+    fun aRowThatCannotBeTrustedIsSkippedFromTheListsAndTheBackup(): Unit = runBlocking {
+        repo.saveArea(adyar)
+        repo.savePlace(Place("p_0a1b2c3d", "Office", 13.0827, 80.2707))
+        repo.saveAreaNote(AreaNote("n_11223344", street = "MG Road", text = "Noisy"))
+        db.records().upsert(RecordEntity(AreaType.name, "a_0000bad1", """{"name":"Far","lat":999.0,"lon":2.0}""", at))
+        db.records().upsert(RecordEntity(AreaType.name, "a_0000bad2", "not json", at))
+        db.records().upsert(RecordEntity(PlaceType.name, "p_0000bad1", """{"name":"Far","lat":1.0,"lon":999.0}""", at))
+        db.records().upsert(RecordEntity(AreaNoteType.name, "n_0000bad1", """{"areaId":"a_1","street":"MG","text":"both"}""", at))
+        assertEquals(listOf(adyar.id), repo.areas().map { it.id })
+        assertEquals(listOf("p_0a1b2c3d"), repo.places().map { it.id })
+        assertEquals(listOf("n_11223344"), repo.areaNotes().map { it.id })
+        assertEquals(listOf(adyar.id), repo.observeAreas().first().map { it.id })
+        val data = BackupData.of(repo.localRows().toBundle(ExportOptions(exportedAtMillis = at)))
+        assertEquals(listOf(1, 1, 1), listOf(data.areaRows.size, data.placeRows.size, data.areaNoteRows.size))
+        // A note's row carries its edit stamp into the list and the backup.
+        assertEquals(db.records().get(AreaNoteType.name, "n_11223344")!!.updatedAt, data.areaNoteRows.single().updatedAt)
+    }
 }
