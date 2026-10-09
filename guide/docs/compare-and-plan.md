@@ -47,3 +47,25 @@ The walking times are only a rough guess.
 (Without AI, you reach this page only by typing its address. The menu hides **Plan** until AI is on.)
 
 <img src="images/android-assistant.png" width="300" alt="The Android Assistant screen when AI is off: The assistant is not available right now, with Try again and Go to the map">
+
+## What Ask and Plan look like with AI on
+
+These pictures show the website with AI turned on. They were made with three made-up houses and a stand-in for the AI
+service on the same computer: nothing was sent anywhere and no key was used. The words of each answer were scripted,
+so every picture below is an **example answer**. Your own answers depend on the AI service and model you choose.
+
+**Ask** with an answer that cites its houses. Each number in the answer (1) opens the house it comes from, and **Houses
+this answer uses** (2) lists them:
+
+![Ask on the website, example answer: the question "Which house has the best water supply?" is answered from two saved houses, with numbered links to Green View 2BHK and Lakeview 2BHK](images/web-ai-ask-answer.png)
+
+When your saved houses do not say, **Ask** gives one fixed sentence and cites no house:
+
+![Ask on the website, example answer: for a question your houses cannot answer, the fixed answer "I don't know based on the houses you have saved." with a note that it is not backed by your saved houses](images/web-ai-ask-refusal.png)
+
+**Plan** with your request (1) and the route it makes (2): the saved houses that match, in walking order, with a rough
+time for each leg:
+
+![Plan on the website, example answer: a request for shortlisted 2BHKs under 35k gives a two-stop route, Green View 2BHK then Lakeview 2BHK, with the distance and walking time of each leg](images/web-ai-plan.png)
+
+To see what we test, and how it did the last time we measured it, see [What we test](what-we-test.md).
