@@ -1,0 +1,342 @@
+{
+  "spec": "android/shared/src/androidHostTest/kotlin/app/doorprints/data/AiStatusRepositoryTest.kt",
+  "gradle": [
+    ":shared:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.data.AiStatusRepositoryTest",
+    "--tests",
+    "app.doorprints.data.AiProviderRepositoryTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "private var serverAi: AiOff? = AiOff.NO_SERVER",
+      "replace": "private var serverAi: AiOff? = null",
+      "expect": "withNoServerAndNoOwnKeyAiIsOff"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "if (!s.serverConfigured) {",
+      "replace": "if (s.serverConfigured) {",
+      "expect": "withNoServerAndNoOwnKeyAiIsOff"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "status.offForDevice -> AiOff.DEVICE",
+      "replace": "status.offForDevice -> AiOff.SERVER",
+      "expect": "theServersAnswerDecides"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "status.offForDevice -> AiOff.DEVICE",
+      "replace": "status.offForDevice && status.enabled -> AiOff.DEVICE",
+      "expect": "theServersAnswerDecides"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "!status.enabled -> AiOff.SERVER",
+      "replace": "!status.enabled -> AiOff.DEVICE",
+      "expect": "theServersAnswerDecides"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "else -> null",
+      "replace": "else -> AiOff.SERVER",
+      "expect": "theServersAnswerDecides"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "if (e is kotlinx.coroutines.CancellationException) throw e",
+      "replace": "if (false) throw e",
+      "expect": "aCancelledStatusRequestIsNotSwallowed"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "                    serverAi\n                },",
+      "replace": "                    AiOff.NO_SERVER\n                },",
+      "expect": "aFailedStatusRequestKeepsWhatWasKnown"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "settings.saveAiFeatures(on)\n        publish(settings.current())",
+      "replace": "settings.saveAiFeatures(on)",
+      "expect": "theServersAnswerDecides"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "settings.saveAiFeatures(on)",
+      "replace": "settings.saveAiFeatures(true)",
+      "expect": "theServersAnswerDecides"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "s.aiProvider == AiProviderChoice.DEVICE &&",
+      "replace": "true &&",
+      "expect": "theOwnKeyNeedsNoServer"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "AiKind.GEMINI -> s.geminiKey.isNotBlank() && geminiFor != null",
+      "replace": "AiKind.GEMINI -> geminiFor != null",
+      "expect": "aChoiceIsAnOwnKeyOnlyWhenItHasWhatItsKindNeeds"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "AiKind.GEMINI -> s.geminiKey.isNotBlank() && geminiFor != null",
+      "replace": "AiKind.GEMINI -> s.geminiKey.isNotBlank()",
+      "expect": "aChoiceIsAnOwnKeyOnlyWhenItHasWhatItsKindNeeds"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "AiKind.OPENAI_COMPATIBLE -> openAiFor != null && s.aiProviderConfig.model.isNotBlank() &&",
+      "replace": "AiKind.OPENAI_COMPATIBLE -> s.aiProviderConfig.model.isNotBlank() &&",
+      "expect": "aChoiceIsAnOwnKeyOnlyWhenItHasWhatItsKindNeeds"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "AiKind.OPENAI_COMPATIBLE -> openAiFor != null && s.aiProviderConfig.model.isNotBlank() &&",
+      "replace": "AiKind.OPENAI_COMPATIBLE -> openAiFor != null &&",
+      "expect": "aChoiceIsAnOwnKeyOnlyWhenItHasWhatItsKindNeeds"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "AiKind.OPENAI_COMPATIBLE -> openAiFor != null && s.aiProviderConfig.model.isNotBlank() &&",
+      "replace": "AiKind.OPENAI_COMPATIBLE -> openAiFor != null && s.geminiKey.isNotBlank() && s.aiProviderConfig.model.isNotBlank() &&",
+      "expect": "aChoiceIsAnOwnKeyOnlyWhenItHasWhatItsKindNeeds"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "AiKind.OPENAI_COMPATIBLE -> openAiFor != null && s.aiProviderConfig.model.isNotBlank() &&\n            BaseUrlValidator.check(s.aiProviderConfig.baseUrl, emulatorHostAllowed) is BaseUrlCheck.Valid",
+      "replace": "AiKind.OPENAI_COMPATIBLE -> openAiFor != null && s.aiProviderConfig.model.isNotBlank()",
+      "expect": "aChoiceIsAnOwnKeyOnlyWhenItHasWhatItsKindNeeds"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "AiKind.ANTHROPIC -> anthropicFor != null && s.geminiKey.isNotBlank() && s.aiProviderConfig.model.isNotBlank() &&",
+      "replace": "AiKind.ANTHROPIC -> s.geminiKey.isNotBlank() && s.aiProviderConfig.model.isNotBlank() &&",
+      "expect": "aChoiceIsAnOwnKeyOnlyWhenItHasWhatItsKindNeeds"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "AiKind.ANTHROPIC -> anthropicFor != null && s.geminiKey.isNotBlank() && s.aiProviderConfig.model.isNotBlank() &&",
+      "replace": "AiKind.ANTHROPIC -> anthropicFor != null && s.aiProviderConfig.model.isNotBlank() &&",
+      "expect": "aChoiceIsAnOwnKeyOnlyWhenItHasWhatItsKindNeeds"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "AiKind.ANTHROPIC -> anthropicFor != null && s.geminiKey.isNotBlank() && s.aiProviderConfig.model.isNotBlank() &&",
+      "replace": "AiKind.ANTHROPIC -> anthropicFor != null && s.geminiKey.isNotBlank() &&",
+      "expect": "aChoiceIsAnOwnKeyOnlyWhenItHasWhatItsKindNeeds"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "AiKind.ANTHROPIC -> anthropicFor != null && s.geminiKey.isNotBlank() && s.aiProviderConfig.model.isNotBlank() &&\n            BaseUrlValidator.check(s.aiProviderConfig.baseUrl, emulatorHostAllowed) is BaseUrlCheck.Valid",
+      "replace": "AiKind.ANTHROPIC -> anthropicFor != null && s.geminiKey.isNotBlank() && s.aiProviderConfig.model.isNotBlank()",
+      "expect": "aChoiceIsAnOwnKeyOnlyWhenItHasWhatItsKindNeeds"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "AiKind.GEMINI -> geminiFor?.invoke(key)",
+      "replace": "AiKind.GEMINI -> null",
+      "expect": "theThreeCallsGoToTheOwnKey"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "AiKind.OPENAI_COMPATIBLE -> openAiFor?.invoke(config.baseUrl, config.model, key)",
+      "replace": "AiKind.OPENAI_COMPATIBLE -> null",
+      "expect": "anOpenAiCompatibleChoiceBuildsTheOpenAiClient"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "if (usesOwnKey(s)) (if",
+      "replace": "if (false) (if",
+      "expect": "theOwnKeyNeedsNoServer"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "(if (s.aiFeatures) null else AiOff.OPT_IN)",
+      "replace": "null",
+      "expect": "theOwnKeyNeedsNoServer"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "else serverAi ?: if (s.aiFeatures) null else AiOff.OPT_IN",
+      "replace": "else serverAi ?: null",
+      "expect": "theServersAnswerDecides"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "_off.value = off\n",
+      "replace": "_off.value = _off.value\n",
+      "expect": "theServersAnswerDecides"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "_enabled.value = off == null",
+      "replace": "_enabled.value = false",
+      "expect": "theServersAnswerDecides"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "return off == null",
+      "replace": "return true",
+      "expect": "withNoServerAndNoOwnKeyAiIsOff"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "settings.saveGeminiKey(key)\n        publish(settings.current())",
+      "replace": "settings.saveGeminiKey(key)",
+      "expect": "theOwnKeyNeedsNoServer"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "settings.saveAiProvider(choice)\n        publish(settings.current())",
+      "replace": "settings.saveAiProvider(choice)",
+      "expect": "theOwnKeyNeedsNoServer"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "settings.removeGeminiKey()\n        publish(settings.current())",
+      "replace": "settings.removeGeminiKey()",
+      "expect": "theOwnKeyNeedsNoServer"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "settings.saveAiProviderConfig(checked, key)\n        publish(settings.current())",
+      "replace": "settings.saveAiProviderConfig(checked, key)",
+      "expect": "aChoiceIsAnOwnKeyOnlyWhenItHasWhatItsKindNeeds"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "settings.saveAiProviderConfig(checked, key)",
+      "replace": "settings.saveAiProviderConfig(config, key)",
+      "expect": "anOpenAiCompatibleChoiceBuildsTheOpenAiClientWithTheNormalisedAddress"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "chatModel(checkedConfig(config), key.trim())",
+      "replace": "chatModel(config, key.trim())",
+      "expect": "testingAProviderSendsOnePingToItAndSavesNothing"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "is BaseUrlCheck.Valid -> check.normalised",
+      "replace": "is BaseUrlCheck.Valid -> address",
+      "expect": "anOpenAiCompatibleChoiceBuildsTheOpenAiClientWithTheNormalisedAddress"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "throw IllegalArgumentException(check.reason.wire)",
+      "replace": "throw IllegalArgumentException(check.reason.name)",
+      "expect": "aBadAddressOrAnEmptyModelIsRefusedAndNothingIsSaved"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "require(config.model.isNotBlank()) { \"model\" }",
+      "replace": "require(true) { \"model\" }",
+      "expect": "aBadAddressOrAnEmptyModelIsRefusedAndNothingIsSaved"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "if (!usesOwnKey(s)) return null",
+      "replace": "if (false) return null",
+      "expect": "theThreeCallsGoToTheOwnKey"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "val key = s.aiProviderConfig to s.geminiKey",
+      "replace": "val key = s.aiProviderConfig to \"\"",
+      "expect": "oneOnDeviceAiServesAKeyAndAChangedKey"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "if (saved == key) return ai",
+      "replace": "if (false) return ai",
+      "expect": "oneOnDeviceAiServesAKeyAndAChangedKey"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "if (saved == key) return ai",
+      "replace": "return ai",
+      "expect": "oneOnDeviceAiServesAKeyAndAChangedKey"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": ".also { onDevice = key to it }",
+      "replace": ".also { }",
+      "expect": "oneOnDeviceAiServesAKeyAndAChangedKey"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "OnDeviceAi(chatModel(s.aiProviderConfig, s.geminiKey)!!, houses)",
+      "replace": "OnDeviceAi(chatModel(s.aiProviderConfig, s.geminiKey)!!, { emptyList() })",
+      "expect": "theAssistantReadsTheLiveHousesNewestFirst"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "check(s.serverConfigured) { \"Server not configured\" }",
+      "replace": "check(true) { \"Server not configured\" }",
+      "expect": "withNeitherAServerNorAKeyTheCallsSayTheServerIsNotSet"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "ownKeyAi()?.let { withContext(Dispatchers.IO) { it.extractListing(text) } } ?: withApi { it.extractListing(text) }",
+      "replace": "withApi { it.extractListing(text) }",
+      "expect": "theThreeCallsGoToTheOwnKey"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "ownKeyAi()?.let { withContext(Dispatchers.IO) { it.ask(question) } } ?: withApi { it.ask(question) }",
+      "replace": "withApi { it.ask(question) }",
+      "expect": "theThreeCallsGoToTheOwnKey"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "ownKeyAi()?.let { withContext(Dispatchers.IO) { it.planVisits(request) } } ?: withApi { it.planVisits(request) }",
+      "replace": "withApi { it.planVisits(request) }",
+      "expect": "theThreeCallsGoToTheOwnKey"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "ownKeyAi()?.let { withContext(Dispatchers.IO) { it.ask(question) } } ?: withApi { it.ask(question) }",
+      "replace": "ownKeyAi()?.let { withContext(Dispatchers.IO) { it.ask(question) } } ?: error(\"x\")",
+      "expect": "theThreeCallsGoToTheOwnKey"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt",
+      "find": "override val aiEnabled: StateFlow<Boolean> = ai.enabled",
+      "replace": "override val aiEnabled: StateFlow<Boolean> = kotlinx.coroutines.flow.MutableStateFlow(false)",
+      "expect": "theServersAnswerDecides"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt",
+      "find": "override val aiOff: StateFlow<AiOff?> = ai.off",
+      "replace": "override val aiOff: StateFlow<AiOff?> = kotlinx.coroutines.flow.MutableStateFlow<AiOff?>(AiOff.SERVER)",
+      "expect": "withNoServerAndNoOwnKeyAiIsOff"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt",
+      "find": "emulatorHostAllowed, ::aiHouses)",
+      "replace": "false, ::aiHouses)",
+      "expect": "theEmulatorsAddressIsAllowedOnlyWhereThePlatformSaysSo"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt",
+      "find": "emulatorHostAllowed, ::aiHouses)",
+      "replace": "emulatorHostAllowed) { emptyList() }",
+      "expect": "theAssistantReadsTheLiveHousesNewestFirst"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt",
+      "find": "db.houses().all().sortedByDescending { it.updatedAt }.map { h ->",
+      "replace": "db.houses().all().sortedBy { it.updatedAt }.map { h ->",
+      "expect": "theAssistantReadsTheLiveHousesNewestFirst"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt",
+      "find": "AiViewing(it.id, it.startsAt, it.kind, it.status, it.notes)",
+      "replace": "AiViewing(it.id, it.startsAt, it.kind, it.status, null)",
+      "expect": "theAssistantReadsTheLiveHousesNewestFirst"
+    }
+  ]
+}
