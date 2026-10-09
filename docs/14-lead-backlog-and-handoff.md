@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.141 |
+| Version | 0.142 |
 | Date | 2026-10-08 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..183); this file lists the lead-level items and points to the rest. |
@@ -150,6 +150,7 @@
 | 0.139 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-168, slice 2 (web, records layer and viewings)** (PR #214, branch `refactor/web-split-records-viewings-slice`): `RecordStore` and `ViewingStore` leave `local-store.service.ts` (1,360 to 1,138 lines); §9 records the measured numbers, what was split and why, and the remaining plan. [10](10-sprint-log.md) v0.202, [03](03-design.md) v0.89. |
 | 0.140 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-168, slice 3 (web, areas, places and area notes)** (PR #215, branch `refactor/web-split-areas-places-notes-slice`): `AreaStore`, `PlaceStore` and `AreaNoteStore` leave `local-store.service.ts` (1,138 to 985 lines), reached as `store.areas`, `store.places` and `store.areaNotes`; §9 marks slice 3 done with the measured numbers and the verdicts. Behaviour-neutral. |
 | 0.141 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-168, slice 4 (web, questions)** (PR #217, branch `refactor/web-split-questions-slice`): `QuestionStore` leaves `local-store.service.ts` (985 to 842 lines), reached as `store.questions`; §9 marks slice 4 done with the measured numbers, the verdict on the page part (left) and the remaining plan (items 5 to 9). Behaviour-neutral. |
+| 0.142 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-168, slice 5 (web, criteria and the rating share)** (branch `refactor/web-split-criteria-slice`): `CriteriaStore` leaves `local-store.service.ts` (842 to 709 lines), reached as `store.criteria`; §9 marks slice 5 done with the measured numbers, the verdict on the page part (left) and the remaining plan (items 6 to 9). Behaviour-neutral. |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 
@@ -701,7 +702,7 @@ Line numbers below are those of `main` at `d39bc6a` (before slice 1): `data/loca
 | 2 | Records layer and viewings (PR #214, done) | store | measured: store -222 |
 | 3 | Areas, places, area notes (PR #215, done) | store | measured: store -153 |
 | 4 | Questions (PR #217, done: the store; the page part is left) | store and page | measured: store -143 |
-| 5 | Criteria and checklist | store and page | about -200 |
+| 5 | Criteria and the rating share (done: the store; the page part is left) | store and page | measured: store -133 |
 | 6 | Rooms and floor | page | about -150 |
 | 7 | Brokers (after a seam for writing houses) | store and page | about -150 |
 | 8 | Listing paste / Extract | page | about -120 |
@@ -791,6 +792,8 @@ mutants that look possible are equivalent and are not in the list: the cap check
 refuses the 101st question with the same error) and `Math.max` over the sorted bank (the last question already has the
 highest number). The two existing lists that touch `local-store.service.ts` (`trace-store.json`, `trace-privacy.json`) still
 hold with their strings unchanged. The remaining plan is items 5 to 9 above, in order.
+
+**Slice 5 (web, criteria and the rating share), measured.** `local-store.service.ts` 842 to 709 lines (new `criteria-store.ts` 165; the plan said about -200 for store and page together, and this is the store's part). Callers use `store.criteria` (`criterionRows()` is `criteria.rows()`, `preferenceRows()` is `criteria.preferenceRows()`, `scoring()` is `criteria.scoring()`, `saveCriterion` is `criteria.save`, `saveCriteria` is `criteria.saveMany`, `addCriterion` is `criteria.add`, `deleteCriterion` is `criteria.delete`, `criterionInUse` is `criteria.inUse`; `setRatingShare` and `resetCriteria` are `criteria.setRatingShare` and `criteria.reset`). Deletion test, on reading the code: the scoring is read by the criteria page, the compare page, the map page, the house page and the second-viewing prompt (all through the local-data facade) and by the export (`export.service.ts`); the import writes the same rows through `RecordStore`. Five distinct callers, it **passes**. The class takes `RecordStore` for every read and write, and one reader of the house rows (`() => rawHouses()`) for `inUse`, the single place where criteria touch houses (a custom criterion cannot be deleted while a live house has a score under its key). One behaviour-neutral simplification, as in slice 4: `add` draws its key with `RecordStore.freshId` instead of its own copy of the loop (51 draws became 50, which only matters if 50 drawn keys in a row clash). **Not split, on purpose:** the page's part of the plan row (the house page's checklist, score and rating, `house-detail-page.ts` about 80 lines in three places) has one reader of the scoring, the page itself, and three small methods that patch the draft (`setRating`, `clearRating`, `setCheck`), so deleting a `HouseChecklist` module would move that complexity into one caller; it fails the deletion test and stays. Tests: `data/criteria-store.spec.ts` (22 new, none moved; the 11 existing tests of `LocalStore criteria` in `local-store.spec.ts` stay there with their calls renamed); the first 21 passed on the old code in the first commit of the branch before anything moved (rows with their edit times, the preference rows, the scoring merge, the list save, the trimmed label, the label edges, the key shapes, the cap with archived and deleted rows, the defaults of an added criterion, the sort number, the cap before the draw, the clashing keys, the edit times and tombstones, the criterion in use for a score of 0, the clamped and rounded share, the reset); the last (a criterion in use refuses its delete) was added for a mutant that survived, with two assertions added to existing tests for two more (a share over 1 is clamped, and the share's tombstone takes the edit time). The full suite goes from 3,858 to 3,880 tests (22 new, none removed). Hand mutations: `tools/mutations/criteria-store.json` (31), each killed by a named test. One mutant that looks possible is equivalent and is not in the list: the start value of the `Math.max` over the sort numbers (`-1` for `0`), because the scoring always holds the ten built-ins, whose sort numbers start at 0. The two existing lists that touch `local-store.service.ts` (`trace-store.json`, `trace-privacy.json`) still hold with their strings unchanged. The remaining plan is items 6 to 9 above, in order.
 
 ## 10. Phone file layout (S4b-BL-168)
 
