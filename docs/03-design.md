@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.94 |
+| Version | 0.95 |
 | Date | 2026-10-08 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -105,6 +105,7 @@
 | 0.92 | 2026-10-09 | Claude (Code), engineer | **Phone file layout** (S4b-BL-168 slice 2, PR #216; [14](14-lead-backlog-and-handoff.md) §10): the viewings leave `CommonRepository`. The component table names `ViewingStore` (`:shared` `data/ViewingStore.kt`). |
 | 0.93 | 2026-10-09 | Claude (Code), engineer | S4b-BL-168 slice 5 (web): the component table names `CriteriaStore` (`data/criteria-store.ts`, `LocalStore.criteria`). |
 | 0.94 | 2026-10-09 | Claude (Code), engineer | S4b-BL-168 slice 6 (web): the component table names `HouseRooms` (`pages/house-detail/house-rooms.ts`) and `HouseFloor` (`pages/house-detail/house-floor.ts`). |
+| 0.95 | 2026-10-09 | Claude (Code), engineer | S4b-BL-168 slice 7 (web): the component table names `BrokerStore` (`data/broker-store.ts`, `LocalStore.brokers`). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -410,6 +411,7 @@ is no Mac and no paid Apple account.
 | `AreaNoteStore` | `data/area-note-store.ts` (S4b-BL-168) | The area notes, reached as `LocalStore.areaNotes`: records of type `areanote` (a note about one area or one street) read as typed rows, newest edit first, the save that refuses neither or both targets, a blank or over-long text and the 201st note. Which house a note reaches is decided in `shared/area.ts`. Goes through `RecordStore`. |
 | `QuestionStore` | `data/question-store.ts` (S4b-BL-168) | The viewing-question bank, reached as `LocalStore.questions`: records of type `question` read as typed rows, by `sort` then id, the save that refuses a bad id, a blank or over-long text and the 101st question, and the seeding of the standard questions (once per install, again after *Remove all data*, and on *Reset to defaults*, in the language of the app). Goes through `RecordStore`, except the seeding, which writes rows clean with their own edit times. |
 | `CriteriaStore` | `data/criteria-store.ts` (S4b-BL-168) | The checklist criteria and the rating share, reached as `LocalStore.criteria`: records of type `criterion` and `preference` read as typed rows, merged with the defaults into the effective scoring, the save that writes only what differs from the defaults and refuses a bad key, a blank or over-long label and the 41st criterion, the delete that refuses a criterion a house has a score under, and the reset. Goes through `RecordStore`; reads the house rows only for the in-use check. |
+| `BrokerStore` | `data/broker-store.ts` (S4b-BL-168) | The brokers, reached as `LocalStore.brokers`: records of type `broker` read as typed rows (a payload with a blank name is skipped), the save that rewrites the name and phone copies on every live house linked to the broker, the delete that unlinks its houses and leaves them their contact, the houses of a broker, the link a saved house gets (the broker with the same last ten digits, or a new one made from the contact), and the one-off move of older houses' contacts into brokers, which runs when the store opens. Goes through `RecordStore`; reads and writes the house rows for the copies and the link. |
 | `SyncService`, `syncRules` | `data/sync.service.ts`, `data/sync-rules.ts` | The same push/pull, cursor and last-write-wins rules as Android (section 10), against the API-key server when one is configured. Optional. The loop (cursors, progress, *Stop*, cancellation, the 429 wait) stays here; every remote call goes through `SYNC_BACKEND` (below). `serverBehind`, `wireVersion` and the `MergeRule` type live in `sync-rules.ts` (re-exported from `sync.service.ts`). |
 | `SyncBackend`, `ServerSyncBackend`, `SYNC_BACKEND` | `data/sync-backend.ts` (S4b-BL-70) | The web's side of the seam of §10.1, the same members as Kotlin's with `Observable`s; `ServerSyncBackend` wraps `HouseApiService` unchanged and is the token's default. |
 | `StorageService` | `data/storage.service.ts` | `navigator.storage.persist()` / `estimate()`; drives the durability warnings of NFR-027. |
