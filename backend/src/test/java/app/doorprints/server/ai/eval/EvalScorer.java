@@ -743,6 +743,16 @@ final class EvalScorer {
     }
 
     /** Keeps insertion order for the report header. */
+    /**
+     * The thinking level the server ran with, for the report header: the provider's own property (Vertex:
+     * {@code spring.ai.google.genai.chat.thinking-level}; AI Studio: {@code spring.ai.openai.chat.reasoning-effort}),
+     * or "model default" when it is not set.
+     */
+    static String thinkingLabel(boolean vertex, String vertexThinkingLevel, String openAiReasoningEffort) {
+        var value = vertex ? vertexThinkingLevel : openAiReasoningEffort;
+        return value == null || value.isBlank() ? "model default" : value.strip();
+    }
+
     static Map<String, String> header() {
         return new LinkedHashMap<>();
     }
