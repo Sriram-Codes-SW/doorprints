@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Secure build, CI/CD and deployment guide |
-| Version | 0.68 |
+| Version | 0.69 |
 | Date | 2026-10-05 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -79,7 +79,8 @@
 | 0.65 | 2026-10-08 | Claude (Code), lead | `ai-evals.yml` (S4b-BL-184): the `gemini` kind of the `own-provider` suite reads the repository secret `AI_API_KEY` first and `AI_EVAL_API_KEY` second, so a key set for another provider is never sent to Google when both secrets exist; the other kinds read `AI_EVAL_API_KEY` only. A run of `own-provider` or `local-model` that ends early because the provider cannot be used now FAILS (it was green with 0 of 2 cases on 2026-10-08), after writing its summary. |
 | 0.66 | 2026-10-08 | Claude (Code), lead | `android.yml` (S4b-BL-170): the Lint step no longer has `continue-on-error`; `lintDebug` fails the job on any error-severity finding (the one `AppLinkUrlError` is ignored on its intent filter, with the reason). Warnings stay a report; no baseline file. |
 | 0.67 | 2026-10-09 | Claude (Code) | Settings table: `PAIRING_MAX_OPEN` and `PAIRING_MAX_PER_SOURCE` (S4b-BL-191); the API scan lifts them with the rate limits. |
-| 0.68 | 2026-10-09 | Claude (Code) | `ai-evals.yml` suite `local-model` (S4b-BL-190): default model `qwen2.5:0.5b`, job timeout 150 minutes, `OLLAMA_NUM_PARALLEL=1`, `OLLAMA_KEEP_ALIVE=1h`, a JSON warm-up, and `AI_EVAL_TIMEOUT_MS=180000` (read by the harness only for a server on localhost; the app's 60 s is unchanged). Same pinned Ollama, same permissions, no secret. |
+| 0.68 | 2026-10-09 | Claude (Code), engineer | §2 supply chain: every `FROM` in the two Dockerfiles is pinned by digest and checked in the Security workflow (S4b-BL-172, `check-dockerfile-pins.py`); Dependabot's docker entry keeps the digests current. |
+| 0.69 | 2026-10-09 | Claude (Code) | `ai-evals.yml` suite `local-model` (S4b-BL-190): default model `qwen2.5:0.5b`, job timeout 150 minutes, `OLLAMA_NUM_PARALLEL=1`, `OLLAMA_KEEP_ALIVE=1h`, a JSON warm-up, and `AI_EVAL_TIMEOUT_MS=180000` (read by the harness only for a server on localhost; the app's 60 s is unchanged). Same pinned Ollama, same permissions, no secret. |
 
 Related: [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Runbook](08-operations-runbook.md) · [AI docs](ai/)
 
@@ -236,7 +237,8 @@ OWASP Dependency-Check is not used: its NVD download is slow and needs an API ke
 | Commit lock files: `web/package-lock.json` (committed, `0e4e22a`; `web.yml` runs `npm ci` only since 2026-09-29), Gradle wrapper + optional dependency verification (`gradle/verification-metadata.xml`), Maven versions pinned by the Spring Boot BOM | Reproducible builds |
 | `gradle/actions/setup-gradle` validates `gradle-wrapper.jar` | Wrapper tampering |
 | Keep dependencies minimal (ADR-06, ADR-12) | Smaller attack surface |
-| Build images from official `eclipse-temurin`/`maven` images and rebuild weekly for OS patches | Base image CVEs |
+| Build images from official `eclipse-temurin`/`maven` images and rebuild weekly for OS patches (`apt-get upgrade` stays in the Dockerfile) | Base image CVEs |
+| **Pin every `FROM` by digest**, `image:tag@sha256:<64 hex>` with the readable tag kept, in `backend/Dockerfile` and `backend/db/Dockerfile` (S4b-BL-172). `.github/scripts/check-dockerfile-pins.py` fails the Security workflow without it (`FROM scratch` and a build-stage alias are exempt); Dependabot's `docker` ecosystem (`/backend`, `/backend/db`) moves tag and digest together, so the pin is a pull request to review, not a hand edit. By hand: `docker buildx imagetools inspect <image>:<tag>` and copy the top-level `Digest:` (the multi-architecture index, not one platform) | A tag can be moved to other content (T-T5); the same rule as the Actions SHAs and the ZAP and MobSF digests |
 | Record the image digest in the release notes. Deploy by digest. | Integrity |
 
 ## 3. Repository and branch protection
