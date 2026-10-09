@@ -1137,7 +1137,9 @@ unchanged.
 | `GOOGLE_APPLICATION_CREDENTIALS` | – | Standard ADC variable (set by `google-github-actions/auth`); not needed on Cloud Run or after `gcloud auth application-default login` |
 
 Optional: Gemini "thinking" can be reduced with `SPRING_AI_OPENAI_CHAT_REASONING_EFFORT=low` (compat endpoint
-supports `reasoning_effort` [G1]); on Vertex with `SPRING_AI_GOOGLE_GENAI_CHAT_THINKING_LEVEL=LOW`.
+supports `reasoning_effort` [G1]); on Vertex with `SPRING_AI_GOOGLE_GENAI_CHAT_THINKING_LEVEL=LOW`. The manual *AI evals* workflow sets the right one for
+the golden-set run from its input `thinking_level` (`default` leaves the model's own level) and the scorecard header
+states it (S4b-BL-198).
 
 ## 12. Connecting Claude Desktop / Cowork to the MCP server
 

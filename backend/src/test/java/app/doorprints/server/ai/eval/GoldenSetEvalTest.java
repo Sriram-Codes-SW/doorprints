@@ -135,6 +135,12 @@ class GoldenSetEvalTest {
     @Value("${spring.ai.google.genai.chat.model:unknown}")
     String vertexChatModel;
 
+    @Value("${spring.ai.google.genai.chat.thinking-level:}")
+    String vertexThinkingLevel;
+
+    @Value("${spring.ai.openai.chat.reasoning-effort:}")
+    String openAiReasoningEffort;
+
     @Value("${app.ai.vertex.location:}")
     String vertexLocation;
 
@@ -181,6 +187,7 @@ class GoldenSetEvalTest {
                         + (vertexEmbeddingLocation.isBlank() ? vertexLocation : vertexEmbeddingLocation) + ")"
                 : "aistudio (" + baseUrl + ")");
         header.put("Chat model", vertex ? vertexChatModel : openAiChatModel);
+        header.put("Thinking level", EvalScorer.thinkingLabel(vertex, vertexThinkingLevel, openAiReasoningEffort));
         header.put("Embedding", embeddingProvider + " / " + embeddingModel);
         header.put("Case types", String.join(", ", types.stream().sorted().toList()));
         header.put("Started", started.toString());
