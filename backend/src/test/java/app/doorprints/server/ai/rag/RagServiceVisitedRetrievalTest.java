@@ -100,7 +100,7 @@ class RagServiceVisitedRetrievalTest {
         var visited = captor.getAllValues().get(1);
         assertThat(visited.getFilterExpression().toString()).contains("houseId").contains(visitedA.toString())
                 .contains("priceType");
-        assertThat(visited.getTopK()).isEqualTo(20);
+        assertThat(visited.getTopK()).isEqualTo(1); // as many as there are visited ids, so recency can decide
         assertThat(captor.getAllValues().get(0).getFilterExpression().toString()).doesNotContain("houseId");
     }
 
@@ -129,18 +129,52 @@ class RagServiceVisitedRetrievalTest {
         verify(store, times(1)).similaritySearch(any(SearchRequest.class));
     }
 
-    @Test
-    void moreVisitedHousesThanTheCapAreCutAtTheCap() {
-        var many = IntStream.range(0, 25).mapToObj(i -> UUID.randomUUID()).toList();
+    /** A store that holds the visited houses and answers a filtered search in a scrambled (similarity) order. */
+    private static VectorStore scrambledStore(List<UUID> visitedNewestFirst, List<Document> plain) {
+        var scrambled = new ArrayList<>(visitedNewestFirst);
+        java.util.Collections.shuffle(scrambled, new java.util.Random(7));
         var store = mock(VectorStore.class);
-        when(store.similaritySearch(any(SearchRequest.class))).thenAnswer(inv ->
-                ((SearchRequest) inv.getArgument(0)).getFilterExpression() != null
-                        ? many.stream().limit(20).map(RagServiceVisitedRetrievalTest::doc).toList() : similar());
-        var visits = mock(VisitRepository.class);
-        when(visits.visitedHouseIds()).thenReturn(many);
+        when(store.similaritySearch(any(SearchRequest.class))).thenAnswer(inv -> {
+            var req = (SearchRequest) inv.getArgument(0);
+            return req.getFilterExpression() == null ? plain
+                    : scrambled.stream().limit(req.getTopK()).map(RagServiceVisitedRetrievalTest::doc).toList();
+        });
+        return store;
+    }
 
-        assertThat(retrievedIds(store, visits, VISIT_Q)).hasSize(20)
-                .containsExactlyElementsOf(many.stream().limit(20).map(UUID::toString).toList());
+    @Test
+    void visitedHousesReachTheModelNewestVisitFirstWhateverTheSimilarityOrder() {
+        var newestFirst = IntStream.range(0, 6).mapToObj(i -> UUID.randomUUID()).toList();
+        var visits = mock(VisitRepository.class);
+        when(visits.visitedHouseIds()).thenReturn(newestFirst);
+
+        var ids = retrievedIds(scrambledStore(newestFirst, similar()), visits, VISIT_Q);
+
+        assertThat(ids).startsWith(newestFirst.stream().map(UUID::toString).toArray(String[]::new));
+    }
+
+    @Test
+    void moreVisitedHousesThanTheCapKeepTheMostRecentlyVisited() {
+        var newestFirst = IntStream.range(0, 25).mapToObj(i -> UUID.randomUUID()).toList();
+        var visits = mock(VisitRepository.class);
+        when(visits.visitedHouseIds()).thenReturn(newestFirst);
+
+        var ids = retrievedIds(scrambledStore(newestFirst, similar()), visits, VISIT_Q);
+
+        assertThat(ids).hasSize(20).containsExactlyElementsOf(
+                newestFirst.stream().limit(20).map(UUID::toString).toList());
+        assertThat(ids).doesNotContainAnyElementsOf(newestFirst.stream().skip(20).map(UUID::toString).toList());
+    }
+
+    @Test
+    void byRecencySortsByPositionAndPutsUnknownLast() {
+        var a = UUID.randomUUID();
+        var b = UUID.randomUUID();
+        var c = UUID.randomUUID();
+        var stranger = doc(UUID.randomUUID());
+        assertThat(RagService.byRecency(List.of(doc(c), stranger, doc(a), doc(b)),
+                List.of(a.toString(), b.toString(), c.toString()))).extracting(Document::getId)
+                .containsExactly(a.toString(), b.toString(), c.toString(), stranger.getId());
     }
 
     @Test

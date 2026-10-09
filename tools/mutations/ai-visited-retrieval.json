@@ -51,6 +51,30 @@
       "find": "(?:s|ed|ing)?",
       "replace": "(?:s)?",
       "expect": "questionsAboutVisitsAreRecognised"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/RagService.java",
+      "find": "return found == null ? List.of() : byRecency(found, ids);",
+      "replace": "return found == null ? List.of() : found;",
+      "expect": "visitedHousesReachTheModelNewestVisitFirstWhateverTheSimilarityOrder"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/RagService.java",
+      "find": "position.getOrDefault(d.getId(), Integer.MAX_VALUE)))",
+      "replace": "-position.getOrDefault(d.getId(), Integer.MAX_VALUE)))",
+      "expect": "byRecencySortsByPositionAndPutsUnknownLast"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/RagService.java",
+      "find": ".topK(ids.size())",
+      "replace": ".topK(props.rag().topK())",
+      "expect": "moreVisitedHousesThanTheCapKeepTheMostRecentlyVisited"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/RagService.java",
+      "find": "return found == null ? List.of() : byRecency(found, ids);",
+      "replace": "return found == null ? List.of() : byRecency(found.stream().limit(props.rag().topK()).toList(), ids);",
+      "expect": "moreVisitedHousesThanTheCapKeepTheMostRecentlyVisited"
     }
   ]
 }

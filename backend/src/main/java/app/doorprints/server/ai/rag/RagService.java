@@ -155,18 +155,30 @@ public class RagService {
      * The documents of the houses that have visits, for a question about visits (S4b-BL-194 item 2: vector similarity
      * alone returned 20 houses without one of the two visited, because most documents say "not visited yet"). Same
      * question and filters, narrowed to the visited houses, no similarity threshold (they are chosen by fact, not by
-     * resemblance), at most the same top-k. Nothing visited: nothing extra.
+     * resemblance), as many as there are visited ids, then sorted newest visit first. Nothing visited: nothing extra.
      */
     private List<Document> visitedDocs(String question, AskFilters filters) {
         var ids = visits.visitedHouseIds().stream().limit(VISITED_IDS_MAX).map(UUID::toString).toList();
         if (ids.isEmpty()) return List.of();
         var found = vectorStore.similaritySearch(SearchRequest.builder()
                 .query(question)
-                .topK(props.rag().topK())
+                .topK(ids.size())
                 .similarityThreshold(0.0)
                 .filterExpression(AskPrompts.filter(filters, ids))
                 .build());
-        return found == null ? List.of() : found;
+        return found == null ? List.of() : byRecency(found, ids);
+    }
+
+    /**
+     * The documents in the order of {@code idsNewestFirst} (the most recent visit first), so that recency decides what
+     * the cap keeps, not similarity; a document not in the list goes last. Stable, pure.
+     */
+    static List<Document> byRecency(List<Document> docs, List<String> idsNewestFirst) {
+        var position = new HashMap<String, Integer>();
+        for (int i = 0; i < idsNewestFirst.size(); i++) position.putIfAbsent(idsNewestFirst.get(i), i);
+        return docs.stream()
+                .sorted(java.util.Comparator.comparingInt(d -> position.getOrDefault(d.getId(), Integer.MAX_VALUE)))
+                .toList();
     }
 
     private List<Document> withVisited(List<Document> similar, List<Document> visited) {
