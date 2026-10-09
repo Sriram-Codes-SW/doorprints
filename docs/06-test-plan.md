@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Test plan (functional, security, accessibility, i18n, AI) |
-| Version | 0.186 |
+| Version | 0.187 |
 | Date | 2026-10-08 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -196,6 +196,7 @@
 | 0.184 | 2026-10-09 | Claude (Code), engineer | **TC-U-168** (S4b-BL-168 slice 8): `AiStatusRepositoryTest` is new, 10 tests, all passing on the old code before the AI choice moved to `AiStore` (no server and no key is off, and a chosen device without a key changes nothing; the server's answer and the phone's switch as the last word; a failed request keeps what was known; a cancelled request is not swallowed; the own key needs no server and only the switch counts; what each kind needs to count as an own key, and a platform without clients; the three calls go to the own key or the server; no server and no key says *Server not configured*; one on-device AI serves a key and a changed key starts its rate limit again; the Assistant reads the live houses newest first with their viewings). Mutation list `tools/mutations/ai-store-kotlin.json` (55 one-line changes, 49 to `AiStore.kt` and six to `CommonRepository.kt`, each killed by a named test of `AiStatusRepositoryTest` or `AiProviderRepositoryTest`); the three mutations of `ai-provider-anthropic-kotlin.json` that named `CommonRepository.kt` now name `AiStore.kt`. The parity vectors are untouched. No test removed. Numbered after 0.183 of slice 6 (PR #226). |
 | 0.185 | 2026-10-09 | Claude (Code), engineer | **TC-U-188** (S4b-BL-196): the guide page "What we test" lists every case of the golden set, checked by `tools/guide-search-check/ai-cases.test.mjs` and `ai-cases.mjs` in the `User guide site` job and `tools/check.sh guide`. |
 | 0.186 | 2026-10-09 | Claude (Code) | TC-AI-32: Ask retrieves the visited houses for a question about visits (S4b-BL-194). |
+| 0.187 | 2026-10-09 | Claude (Code), engineer | **TC-U-189** (S4b-BL-168 slice 7): the checklist's set and clear rule is pinned before it moves to `ChecklistSection.kt`: `HouseFormRulesTest.aChecklistScoreIsSetReplacedAndClearedByTheSameValueOrByDash` (`Map<String, Int>.withScore`: set, replace, the same value again and "–" clear, zero is a score, other criteria's scores stay) and, in `CriteriaScreenTest` (7 -> 9 tests), `aChecklistScoreIsSetClearedByTheSameOptionAgainAndByTheDash` and `theChecklistHidesAnArchivedCriterionLabelsAnIgnoredOneAndKeepsTheOtherScores`; all passing on the old code. Mutation list `tools/mutations/checklist-section-kotlin.json` (26 one-line changes: 6 to `withScore`, 18 to `ChecklistSection.kt` and 2 to the form's call; run once, each killed by a named test, none survived. Not listed, equivalent or covered elsewhere: the `n == null` half of the condition (a mutation of it does not compile, the else branch needs `n` as an Int), the order of the options with "–" last and the 12.dp spacing (screenshots), the polite live region of `LiveMessage` (unchanged, `ScreensA11ySweepTest`), the `?: it` fallback to a key's own name for a criterion the list no longer has). Screenshots verified, none re-recorded (TC-M-25 unaffected: no base-map change). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Design](03-design.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
