@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Operations runbook |
-| Version | 0.28 |
-| Date | 2026-10-08 |
+| Version | 0.29 |
+| Date | 2026-10-09 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -40,6 +40,7 @@
 | 0.26 | 2026-10-08 | Claude (Code) | §5.1a: the recovery when the only signed-in browser is lost while its session is still open (`OWNER_SETUP_LINK_IN_LOG=true`, restart, read the log, sign in, switch it off; S4b-BL-188), and the caps on open pairing requests (50 in all, 5 per client address, 429 over them; S4b-BL-161). |
 | 0.27 | 2026-10-09 | Claude (Code) | §5.1a: the pairing caps are the settings `PAIRING_MAX_OPEN` and `PAIRING_MAX_PER_SOURCE` (defaults unchanged; S4b-BL-191). |
 | 0.28 | 2026-10-09 | Claude (Code) | §10.4: the **Vertex AI trial guard** (S4b-BL-193). `ai-evals.yml` refuses `provider=vertex` unless the repository variable `VERTEX_EVAL_ENABLED` is `true`, and refuses it from 2026-12-15 whatever the variable says, so a rerun by anyone with write access cannot spend beyond the trial credit. New rows: turn Vertex on for a run and off again, the hard stops at the end (unlink billing, disable the service account or the Workload Identity pool, delete the variables and secrets), a low per-minute and per-day quota on the Vertex AI API. |
+| 0.29 | 2026-10-09 | Claude (Code) | §4: renew the Docker Hub token before it expires; §5.2: rotating it (S4b-BL-197, [07](07-secure-build-and-deploy.md) §7.3). |
 
 Related: [Build and deploy](07-secure-build-and-deploy.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Google Drive design](15-google-drive-backup-and-sharing.md)
 
@@ -163,6 +164,7 @@ After restoring into production, make sure `sync_seq.last_value` ≥ `max(sync_v
 | Weekly | Merge Dependabot PRs after CI passes. Read the weekly `security.yml` run (Trivy SBOM/fs/config, npm audit, gitleaks, Semgrep) and any ZAP report. When a Spring Boot patch manages Tomcat 11.0.25 or later, remove the `tomcat.version` override from `backend/pom.xml` (F-28, 07 §1). |
 | Monthly | DB size check. Check the backup run history. Update the Android app if a release exists. Check AI spend against the budget and the per-user and global caps (section 10.2). While the Google Cloud trial runs: credit left and days left (section 10.3). Firebase Hosting usage (section 2) and *Releases to keep* = 10. |
 | One-off (2026) | **By about 15 Dec 2026:** Google Cloud trial export and provider decision; **before 22 Dec 2026:** switch or upgrade, tear down staging (section 10.4). Put both dates in the calendar and the password manager entry. |
+| Before the Docker Hub token expires | Create a new read-only token (*Public Repo Read-only*) and replace the repository secret `DOCKERHUB_TOKEN` ([07](07-secure-build-and-deploy.md) §7.3). Put the expiry date in the calendar. After it expires the jobs still run, with anonymous pulls and the risk of `429 toomanyrequests`. |
 | Quarterly | Restore drill (TC-O-01). Rebuild the base image. Check free-tier terms (Render, Supabase/Neon, Firebase Hosting Spark, OpenFreeMap, Nominatim, LLM). If a custom domain was ever bought: auto-renew on and the renewal date in the calendar ([12](12-brand-and-naming.md) section D). |
 | 6-monthly | Rotate `APP_API_KEY` (section 5.1). Review the threat model findings. |
 | Yearly | Rotate DB, backup-role and CI secrets. Review the docs (bump versions). Check the keystore backup is readable. |
@@ -234,6 +236,7 @@ the **owner page**, `https://<server>/owner`.
 | Vertex AI credential | GitHub Actions (Workload Identity Federation) and Cloud Run (attached service account): no stored key, nothing to rotate; on suspicion remove the `roles/iam.workloadIdentityUser` binding or disable the service account, then re-grant after the fix. JSON key on a non-Google host only: quarterly and on suspicion, create a new key → replace the file named by `GOOGLE_APPLICATION_CREDENTIALS` → redeploy → delete the old key in IAM. [07](07-secure-build-and-deploy.md) §4, [02](02-threat-model.md) T-I22. |
 | Deploy hook / SSH key | Regenerate in Render / replace the `authorized_keys` line → update the GitHub environment secret |
 | Web deploy identity (`FIREBASE_WIF_PROVIDER`, `FIREBASE_SA_EMAIL`; Firebase project `doorprints`) | **Nothing to rotate**: Workload Identity Federation issues a token of about an hour to `web.yml` on `main` only, and the service account `firebase-hosting-deploy` has no key ([07](07-secure-build-and-deploy.md) §6.3). **On suspicion** (an unexpected release in *Hosting → release history*, a changed provider condition, a key found on the service account): Cloud console → project `doorprints` → *IAM & Admin → Service Accounts* → `firebase-hosting-deploy` → *Disable* (or remove its *Workload Identity User* binding); delete any key listed under *Keys*; check the provider `github-web-deploy`'s attribute condition against 07 §6.3 step 6; roll back the site (IR-10); then re-enable. The two GitHub secrets are identifiers, not credentials. If the Cloudflare secrets were ever added, delete them (07 §6.3 step 8). |
+| Docker Hub token (`DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`) | Docker Hub, Account settings, Personal access tokens: create a new token with **Public Repo Read-only**, replace the repository secret `DOCKERHUB_TOKEN`, delete the old token. On suspicion of a leak, delete the token first, then replace. Check the next CI run shows *Log in to Docker Hub* green. [07](07-secure-build-and-deploy.md) §7.3. |
 | GitHub PAT | Revoke at github.com/settings/tokens. Create a fine-grained one with expiry ≤ 90 days only if needed. |
 | Age backup key | Create a new key pair → update `BACKUP_AGE_RECIPIENT`. Keep the old private key until the old backups expire (30 days). |
 | Android signing key | **Do not rotate** unless it is compromised (see IR-7) |

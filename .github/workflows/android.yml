@@ -174,6 +174,22 @@ jobs:
           chmod +x gradlew
           ./gradlew --no-daemon --stacktrace :app:assembleRelease
 
+      # Docker Hub rate limit (docs/07 section 7.3): optional login with a read-only access token. Without the two secrets
+      # (forks, Dependabot, not yet set, expired) the step is skipped or fails softly and the pulls stay anonymous.
+      - name: Docker Hub secrets present?
+        id: dockerhub
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          if [ -n "$DOCKERHUB_USERNAME" ] && [ -n "$DOCKERHUB_TOKEN" ]; then echo "present=true" >> "$GITHUB_OUTPUT"; fi
+      - name: Log in to Docker Hub (pull rate limit)
+        if: ${{ steps.dockerhub.outputs.present == 'true' }}
+        continue-on-error: true
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: MobSF static scan
         run: |
           chmod +x ci/mobsf-scan.sh
