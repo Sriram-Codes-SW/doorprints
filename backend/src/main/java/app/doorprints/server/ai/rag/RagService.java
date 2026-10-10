@@ -65,6 +65,16 @@ public class RagService {
 
     private static final Logger log = LoggerFactory.getLogger(RagService.class);
 
+    /**
+     * Eval-only seams for the canary suite (S4b-BL-237, docs/ai/ai-design.md 8.6), package-private and null or false in
+     * production: nothing reads them from configuration, a property or the environment. Only the test class
+     * {@code AskCanarySeams} (same package, test sources) sets them, for one canary run. {@code canarySystemText}
+     * rewrites the built system text before it is sent; {@code canaryListedIdsCount} lets the model's {@code citedHouseIds}
+     * count as citations even when the answer states facts inline about other houses (the inline-marker rule bypassed).
+     */
+    static volatile java.util.function.UnaryOperator<String> canarySystemText;
+    static volatile boolean canaryListedIdsCount;
+
     private final ChatClient chat;
     private final VectorStore vectorStore;
     private final AiProperties props;
@@ -119,7 +129,7 @@ public class RagService {
         ModelAnswer answer;
         try {
             var result = chat.prompt()
-                    .system(prompt.system())
+                    .system(systemText(prompt.system()))
                     .user(prompt.user())
                     .options(ChatOptions.builder().temperature(0.1).maxTokens(props.maxOutputTokens()))
                     .call()
@@ -250,7 +260,7 @@ public class RagService {
 
         var ids = new LinkedHashSet<String>(inlineIds(text));
         int listedNotInline = 0;
-        if (ids.isEmpty()) {
+        if (ids.isEmpty() || canaryListedIdsCount) {
             if (answer.citedHouseIds() != null) {
                 for (var id : answer.citedHouseIds()) {
                     var n = normalizeId(id);
@@ -280,6 +290,12 @@ public class RagService {
             log.info("ask: dropped {} citedHouseIds not referenced inline", listedNotInline);
         }
         return out;
+    }
+
+    /** The system text as sent: the built one, unless a canary rewrites it. */
+    static String systemText(String built) {
+        var canary = canarySystemText;
+        return canary == null ? built : canary.apply(built);
     }
 
     /**

@@ -243,6 +243,73 @@ class AgreementTest {
     }
 
     // ---------------------------------------------------------------------------------------------------------
+    // Field-level agreement of the extract cases (S4b-BL-236)
+    // ---------------------------------------------------------------------------------------------------------
+
+    @Test
+    void theStructuredFieldsAreNormalisedOneByOneAndTheAmenitiesAreASet() {
+        var fields = Agreement.extractFields(map("price", 28000, "priceType", "RENT", "bedrooms", 2, "locality", "Anna Nagar",
+                "contactPhone", "+91 98400 12345", "listingUrl", "https://x.example/a/", "amenities", List.of("Lift", "parking"),
+                "label", "2BHK Anna Nagar", "notes", "Deposit 2 months."));
+        var again = Agreement.extractFields(map("price", 28000.0, "priceType", "rent", "bedrooms", 2L, "locality", "anna-nagar",
+                "contactPhone", "9840012345", "listingUrl", "HTTPS://x.example/a", "amenities", List.of("parking", "lift"),
+                "label", "Two BHK, Anna Nagar", "notes", "Deposit: two months", "street", ""));
+        for (var f : Agreement.STRUCTURED_FIELDS) assertThat(fields.get(f)).as(f).isEqualTo(again.get(f));
+        assertThat(fields.get("amenities")).isEqualTo("lift,parking").isEqualTo(again.get("amenities"));
+        assertThat(fields.get("street")).isNull();
+        assertThat(again.get("street")).isNull();
+        assertThat(fields.get("areaSqft")).isNull();
+        assertThat(fields.get("label")).isNotEqualTo(again.get("label"));
+        assertThat(fields.get("notes")).isNotEqualTo(again.get("notes"));
+        assertThat(fields).doesNotContainKey("warnings");
+    }
+
+    @Test
+    void fieldAgreementCountsPerFieldAndTheWholeStructuredTupleWithFreeTextApart() {
+        // Hand-counted: 3 extract cases run twice. a: all the same. b: price differs (28000 vs 30000), notes differ.
+        // c: only the label differs. So price 2/3, the tuple 2/3, every other structured field 3/3, label 2/3, notes 2/3.
+        var trials = new EvalScorer.Trials();
+        trials.record(1, extract("a", map("price", 28000, "locality", "Adyar", "amenities", List.of("lift"), "label", "x", "notes", "n")));
+        trials.record(2, extract("a", map("price", 28000, "locality", "Adyar", "amenities", List.of("Lift"), "label", "x", "notes", "n")));
+        trials.record(1, extract("b", map("price", 28000, "locality", "Powai", "label", "y", "notes", "deposit 3 months")));
+        trials.record(2, extract("b", map("price", 30000, "locality", "Powai", "label", "y", "notes", "3 months deposit")));
+        trials.record(1, extract("c", map("price", 9500, "bedrooms", 0, "label", "1RK Velachery", "notes", "n")));
+        trials.record(2, extract("c", map("price", 9500, "bedrooms", 0, "label", "Velachery 1RK", "notes", "n")));
+        var byName = new HashMap<String, Agreement.FieldRow>();
+        Agreement.fieldRows(trials.perCase()).forEach(r -> byName.put(r.field(), r));
+
+        assertThat(byName.get("price")).isEqualTo(new Agreement.FieldRow("price", 3, 2, false));
+        assertThat(byName.get("locality")).isEqualTo(new Agreement.FieldRow("locality", 3, 3, false));
+        assertThat(byName.get("bedrooms")).isEqualTo(new Agreement.FieldRow("bedrooms", 3, 3, false));
+        assertThat(byName.get("amenities")).isEqualTo(new Agreement.FieldRow("amenities", 3, 3, false));
+        assertThat(byName.get(Agreement.STRUCTURED_TUPLE)).isEqualTo(new Agreement.FieldRow(Agreement.STRUCTURED_TUPLE, 3, 2, false));
+        assertThat(byName.get("label")).isEqualTo(new Agreement.FieldRow("label", 3, 2, true));
+        assertThat(byName.get("notes")).isEqualTo(new Agreement.FieldRow("notes", 3, 2, true));
+        assertThat(byName.get("price").differing()).isEqualTo(1);
+
+        var md = EvalScorer.markdown(EvalScorer.header(), EvalScorer.metrics(trials.gated(), Map.of()), trials.gated(),
+                List.of(), List.of(), trials);
+        assertThat(md).contains("### Field agreement of the extract cases (informational, not gated)")
+                .contains("| price | 3 | 2 | 0.67 (95% CI 0.21-0.94) | 1 |")
+                .contains("| all structured fields | 3 | 2 | 0.67 (95% CI 0.21-0.94) | 1 |")
+                .contains("| label (free text) | 3 | 2 |")
+                .doesNotContain("| price (free text)");
+    }
+
+    @Test
+    void fieldAgreementLeavesOutInfraTrialsAndIsAbsentWithoutARepeatedExtractCase() {
+        var trials = new EvalScorer.Trials();
+        trials.record(1, extract("a", map("price", 1)));
+        trials.record(2, infra(extract("a", map("price", 2))));
+        trials.record(1, plan("p", false, H1));
+        trials.record(2, plan("p", false, H1));
+        assertThat(Agreement.fieldRows(trials.perCase())).isEmpty();
+        var md = EvalScorer.markdown(EvalScorer.header(), EvalScorer.metrics(trials.gated(), Map.of()), trials.gated(),
+                List.of(), List.of(), trials);
+        assertThat(md).contains("## Agreement across trials").doesNotContain("Field agreement");
+    }
+
+    // ---------------------------------------------------------------------------------------------------------
     // Which types are repeated
     // ---------------------------------------------------------------------------------------------------------
 

@@ -74,6 +74,12 @@
 #   AI_EVAL_API_KEY. The owner may never set the secret: the job then prints "skipped: no key" and succeeds without
 #   installing anything. No model name or key is in the repository. Free providers and synthetic data only (PRV-022).
 # 2026-10-10 (S4b-BL-226): the input `address_set` (default `default`) picks a set of docs/ai/evals/address-variants.json for the
+# 2026-10-10 (S4b-BL-236, S4b-BL-237): the inputs `eval_set` (golden-set | hard-set: the additive case file of docs/ai/evals,
+#   run against the golden set's fixtures, informational) and `canary` (none | a live canary of docs/ai/evals/canaries.json:
+#   an eval-only degraded configuration whose metric must drop, printed as "CANARY: ... seen / NOT seen", informational),
+#   golden-set suite only, validated in the first job and passed through the environment (AI_EVAL_SET, AI_EVAL_CANARY). The
+#   Metrics table shows a Wilson 95% interval after every value, and tools/ai-eval-compare.mjs prints a paired sign-test
+#   verdict for two scorecards. The model-spread matrix (docs/ai/ai-design.md 8.6) is `chat_model` on the hard set.
 #   golden-set, own-provider and local-model suites; it is validated against the set names in the first job and passed through
 #   the environment (AI_EVAL_ADDRESS_SET), never interpolated into a script. Only the default run has a verdict; the other sets
 #   are informational (docs/ai/ai-design.md 8.3b), so this file's result steps are unchanged: a run under a set never reads
@@ -143,6 +149,22 @@ on:
           - vernacular-strict
           - messy
           - hostile
+      eval_set:
+        description: "golden-set only (S4b-BL-236, docs/ai/ai-design.md 8.6): which case file runs. golden-set = the golden set, the only run with a verdict. hard-set = docs/ai/evals/hard-set.json, additive cases against the golden set's fixtures, informational (no thresholds, every metric 'not gated'). Not combined with address_set"
+        type: choice
+        default: golden-set
+        options:
+          - golden-set
+          - hard-set
+      canary:
+        description: "golden-set only (S4b-BL-237, docs/ai/ai-design.md 8.6): the canary suite. none = a normal run. A name turns on that eval-only degraded configuration of docs/ai/evals/canaries.json for this run (the seam is set by test code, never by configuration), runs only the canary's case types, gates nothing and prints 'CANARY: <name> expected drop seen / NOT seen'. The keyless canaries run in every build (CanariesTest), not here"
+        type: choice
+        default: none
+        options:
+          - none
+          - no-sanitizer
+          - no-citation-filter
+          - prompt-without-rules
       provider:
         description: Model provider. aistudio = AI_API_KEY secret. vertex = Google Cloud Vertex AI; needs docs/ai/vertex-setup.md steps 1-8 done first (secrets GCP_WIF_PROVIDER, GCP_SA_EMAIL, variable GCP_PROJECT_ID)
         type: choice
@@ -216,10 +238,24 @@ jobs:
           PROVIDER: ${{ inputs.provider }}
           THINKING_LEVEL: ${{ inputs.thinking_level }}
           ADDRESS_SET: ${{ inputs.address_set }}
+          EVAL_SET: ${{ inputs.eval_set }}
+          CANARY: ${{ inputs.canary }}
           REPEAT_TYPES: ${{ inputs.repeat_types }}
           CHAT_MODEL_INPUT: ${{ inputs.chat_model }}
           EMBEDDING_MODEL_INPUT: ${{ inputs.embedding_model }}
         run: |
+          if ! [[ "$EVAL_SET" =~ ^(golden-set|hard-set)$ ]]; then
+            echo "::error::eval_set must be golden-set or hard-set (a file in docs/ai/evals)"
+            exit 1
+          fi
+          if ! [[ "$CANARY" =~ ^(none|no-sanitizer|no-citation-filter|prompt-without-rules)$ ]]; then
+            echo "::error::canary must be none or a live canary of docs/ai/evals/canaries.json"
+            exit 1
+          fi
+          if [ "$EVAL_SET" != "golden-set" ] && [ "$ADDRESS_SET" != "default" ]; then
+            echo "::error::eval_set and address_set cannot be combined (the address fingerprints are the golden set's); run them apart"
+            exit 1
+          fi
           if ! [[ "$DELAY_MS" =~ ^[0-9]{1,6}$ ]]; then
             echo "::error::delay_ms must be a whole number of milliseconds"
             exit 1
@@ -377,6 +413,10 @@ jobs:
           AI_EVAL_REPEATS: ${{ inputs.repeats }}
           AI_EVAL_REPEAT_TYPES: ${{ inputs.repeat_types }}
           AI_EVAL_ADDRESS_SET: ${{ inputs.address_set }}
+          # The additive eval set and the live canary (S4b-BL-236, S4b-BL-237): validated above, read by the test from the
+          # environment, never interpolated into a script. Both are informational: the verdict stays the golden set's.
+          AI_EVAL_SET: ${{ inputs.eval_set }}
+          AI_EVAL_CANARY: ${{ inputs.canary }}
           THINKING_LEVEL: ${{ inputs.thinking_level }}
           CHAT_MODEL_INPUT: ${{ inputs.chat_model }}
           EMBEDDING_MODEL_INPUT: ${{ inputs.embedding_model }}
