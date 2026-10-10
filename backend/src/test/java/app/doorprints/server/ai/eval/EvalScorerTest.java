@@ -66,7 +66,15 @@ class EvalScorerTest {
         var metricNames = EvalScorer.metrics(List.of(), Map.of()).stream().map(Metric::name).toList();
         assertThat(golden.thresholds().keySet()).containsExactlyInAnyOrderElementsOf(metricNames);
         golden.thresholds().values().forEach(t -> assertThat(t.keySet()).containsAnyOf("min", "max"));
+        assertConsistent(golden, true);
+    }
 
+    /**
+     * The golden set's own consistency checks, shared with {@code AddressVariantsTest}, which runs them on every applied
+     * address set (S4b-BL-225). {@code full}: the golden set as it is, so its counts hold; an applied set may leave
+     * cases out ("not applicable"), and only the checks that do not count apply.
+     */
+    static void assertConsistent(GoldenSet golden, boolean full) {
         var fixtureIds = golden.fixtureHouseIds();
         assertThat(fixtureIds).doesNotHaveDuplicates();
         var caseIds = new HashSet<String>();
@@ -101,9 +109,11 @@ class EvalScorerTest {
         // TC-AI-04 (release security gate): at least 25 injection cases, of every type, and each one has a guard
         // check to fail (injectionResisted() is vacuously true for a case without one).
         var injections = golden.cases().stream().filter(c -> EvalScorer.INJECTION.equals(c.get("category"))).toList();
-        assertThat(injections).hasSizeGreaterThanOrEqualTo(25);
-        assertThat(injections.stream().map(c -> c.get("type")).distinct().toList())
-                .containsExactlyInAnyOrder(EvalScorer.EXTRACT, EvalScorer.ASK, EvalScorer.PLAN);
+        if (full) {
+            assertThat(injections).hasSizeGreaterThanOrEqualTo(25);
+            assertThat(injections.stream().map(c -> c.get("type")).distinct().toList())
+                    .containsExactlyInAnyOrder(EvalScorer.EXTRACT, EvalScorer.ASK, EvalScorer.PLAN);
+        }
         var guardKeys = Set.of("listingUrlNot", "notesMustNotContain", "draftMustNotContain", "mustNotContain",
                 "mustNotCite", "stopsMustNotInclude", "summaryMustNotContain");
         for (var c : injections) {
@@ -207,18 +217,7 @@ class EvalScorerTest {
         var golden = GoldenSet.load(GoldenSet.locate());
         assertThat(golden.version()).isEqualTo("0.9"); // 0.9 only added scorer keys (S4b-BL-203)
         assertThat(golden.cases()).hasSize(75);
-        for (var c : golden.cases()) {
-            if (!EvalScorer.EXTRACT.equals(c.get("type"))) continue;
-            var text = String.valueOf(GoldenSet.map(c.get("input")).get("text"));
-            // The server's app.ai.max-input-chars default (AiProperties), written out so a change to it shows here.
-            assertThat(text.codePointCount(0, text.length())).as("length of %s", c.get("id")).isLessThanOrEqualTo(8000);
-            var expected = GoldenSet.map(c.get("expected"));
-            if (expected.get("listingUrlNot") instanceof String not && text.contains(not)) {
-                assertThat(expected.get("listingUrl")).as("%s: a pasted link is 'not expected' but no other pasted link is", c.get("id"))
-                        .isInstanceOf(String.class);
-                assertThat(text).as("%s: the expected link", c.get("id")).contains(String.valueOf(expected.get("listingUrl")));
-            }
-        }
+        assertPastedListingsKeepToTheSanitiser(golden);
         var byId = new HashMap<String, Map<String, Object>>();
         golden.cases().forEach(c -> byId.put(String.valueOf(c.get("id")), c));
         var tagEscape = String.valueOf(GoldenSet.map(byId.get("extract-06-injection-tag-escape").get("input")).get("text"));
@@ -236,6 +235,22 @@ class EvalScorerTest {
         assertThat(GoldenSet.strings(hindi.get("citations"))).isEmpty();
     }
 
+    /** Every pasted listing fits the input cap, and a link expected "not" to be kept is never the only pasted one (also run on every applied address set). */
+    static void assertPastedListingsKeepToTheSanitiser(GoldenSet golden) {
+        for (var c : golden.cases()) {
+            if (!EvalScorer.EXTRACT.equals(c.get("type"))) continue;
+            var text = String.valueOf(GoldenSet.map(c.get("input")).get("text"));
+            // The server's app.ai.max-input-chars default (AiProperties), written out so a change to it shows here.
+            assertThat(text.codePointCount(0, text.length())).as("length of %s", c.get("id")).isLessThanOrEqualTo(8000);
+            var expected = GoldenSet.map(c.get("expected"));
+            if (expected.get("listingUrlNot") instanceof String not && text.contains(not)) {
+                assertThat(expected.get("listingUrl")).as("%s: a pasted link is 'not expected' but no other pasted link is", c.get("id"))
+                        .isInstanceOf(String.class);
+                assertThat(text).as("%s: the expected link", c.get("id")).contains(String.valueOf(expected.get("listingUrl")));
+            }
+        }
+    }
+
     private static final java.util.regex.Pattern OBVIOUSLY_FAKE_PHONE = java.util.regex.Pattern.compile(
             "(?:\\+91[ -]?)?[6-9]\\d{4}[ -]?(?:12345|00000|55555)|0\\d{2,4}[ -]?\\d{3,4}[ -]?(?:0101|0000|5555|1234)");
     private static final java.util.regex.Pattern PHONE_IN_TEXT = java.util.regex.Pattern.compile(
@@ -243,7 +258,15 @@ class EvalScorerTest {
 
     @Test
     void goldenSetTagsEveryHouseAndCaseWithARegionAndSpansIndia() throws Exception {
-        var golden = GoldenSet.load(GoldenSet.locate());
+        assertRegions(GoldenSet.load(GoldenSet.locate()), "city-word-in-address", true);
+    }
+
+    /**
+     * Zones, boxes and the city anchor of every fixture house, and the region of every case. {@code anchorRule} is the
+     * address set's (S4b-BL-225): the city is in the address ({@code city-word-in-address}, the golden set's own rule),
+     * in the notes ({@code city-word-in-notes}), or not asserted ({@code none}); Bengaluru is exempt, as ever.
+     */
+    static void assertRegions(GoldenSet golden, String anchorRule, boolean full) {
         var houseRegion = new HashMap<String, String>();
         var cities = new HashSet<String>();
         var zonesOfHouses = new HashSet<String>();
@@ -259,8 +282,9 @@ class EvalScorerTest {
             assertThat(lat).as("%s lat inside %s", label, city).isBetween(box[0], box[1]);
             assertThat(lon).as("%s lon inside %s", label, city).isBetween(box[2], box[3]);
             // The address names the city, so the planner's text search ("my Mumbai houses") can find the house.
-            if (!"Bengaluru".equals(city)) {
-                assertThat(String.valueOf(h.get("address"))).as("address of %s", label).contains(city.equals("Goa") ? "Goa" : city);
+            if (!"Bengaluru".equals(city) && !"none".equals(anchorRule)) {
+                var field = "city-word-in-notes".equals(anchorRule) ? "notes" : "address";
+                assertThat(String.valueOf(h.get(field))).as("%s of %s (%s)", field, label, anchorRule).contains(city.equals("Goa") ? "Goa" : city);
             }
             houseRegion.put(id, String.valueOf(h.get("region")));
             cities.add(city);
@@ -296,6 +320,7 @@ class EvalScorerTest {
                 assertThat(region).as("region of case %s", c.get("id")).isEqualTo(CROSS_REGION);
             }
         }
+        if (!full) return; // an applied set may leave cases out; the counts are the golden set's own
         // v0.7: at least 14 extraction, 8 ask and 3 plan cases outside Bengaluru's zone.
         assertThat(extract).isGreaterThanOrEqualTo(14);
         assertThat(ask).isGreaterThanOrEqualTo(8);
@@ -306,7 +331,11 @@ class EvalScorerTest {
 
     @Test
     void newFixturesAreSyntheticAndDoNotDisturbTheBengaluruCases() throws Exception {
-        var golden = GoldenSet.load(GoldenSet.locate());
+        assertSynthetic(GoldenSet.load(GoldenSet.locate()));
+    }
+
+    /** Invented phones, statuses that keep the Bengaluru cases' one right answer (also run on every applied address set). */
+    static void assertSynthetic(GoldenSet golden) {
         for (var h : golden.fixtureHouses()) {
             var label = String.valueOf(h.get("label"));
             if (h.get("contactPhone") != null && !"Bengaluru".equals(h.get("city"))) {
@@ -356,9 +385,15 @@ class EvalScorerTest {
 
     @Test
     void theRegionalExtractionExpectationsAreStatedInTheListingText() throws Exception {
-        // The expected values are the independent source of truth: each one has to be readable from the text itself,
-        // and a field expected null has to be really absent from it (no phone, no link), or the case measures nothing.
-        var golden = GoldenSet.load(GoldenSet.locate());
+        assertExpectationsAreInTheText(GoldenSet.load(GoldenSet.locate()), true);
+    }
+
+    /**
+     * The expected values are the independent source of truth: each one has to be readable from the text itself, and a
+     * field expected null has to be really absent from it (no phone, no link), or the case measures nothing. Also run on
+     * every applied address set, which rewrites some listings and their expected locality together.
+     */
+    static void assertExpectationsAreInTheText(GoldenSet golden, boolean full) {
         int checked = 0;
         for (var c : golden.cases()) {
             if ("south".equals(c.get("region")) || !EvalScorer.EXTRACT.equals(c.get("type"))) continue;
@@ -399,7 +434,7 @@ class EvalScorerTest {
                 }
             }
         }
-        assertThat(checked).isGreaterThanOrEqualTo(14);
+        if (full) assertThat(checked).isGreaterThanOrEqualTo(14);
     }
 
     @Test
