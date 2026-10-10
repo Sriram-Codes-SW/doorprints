@@ -20,6 +20,8 @@ import { TestBed } from '@angular/core/testing';
 import { describe, expect, it } from 'vitest';
 import { LocalStore } from '../../data/local-store.service';
 import golden from '../../../../../docs/ai/evals/golden-set.json';
+import variants from '../../../../../docs/ai/evals/address-variants.json';
+import { type GoldenLike, type VariantsFile, addressRunHeader, selectAddressRun } from './address-variants';
 import { type CaseResult, type GoldenCase, type Outcome, evalSetup, formatSummary, scoreCase } from './ai-eval';
 import { aiHostOf } from './ai-provider-config';
 import { AnthropicChatModel } from './anthropic';
@@ -45,9 +47,14 @@ describe.skipIf(setup.status === 'skip')('Golden set through the chosen provider
   it('runs the cases and writes the summary', { timeout: 7_200_000 }, async () => {
     if (setup.status !== 'run') throw new Error(setup.line);
     const at = (c: unknown) => c as never;
+    // The address set (S4b-BL-226): informational, the verdict is the default run's. The default run (no AI_EVAL_ADDRESS_SET) uses
+    // the golden set as it is. A set whose applied fingerprint is not the one the file records is a harness error: nothing is sent.
+    const addressRun = selectAddressRun(golden as unknown as GoldenLike, variants as unknown as VariantsFile, setup.addressSet);
+    if (addressRun?.error) throw new Error(addressRun.error);
+    const used = (addressRun?.golden ?? golden) as typeof golden;
     const now = '2026-09-20T10:00:00Z';
-    const houses = golden.fixtureHouses.map(({ city: _city, region: _region, ...h }) => ({ ...h, deleted: false, updatedAt: now })); // the golden set's own tags are not house fields
-    const visits = golden.fixtureVisits.map((v) => ({ ...v, deleted: false, updatedAt: now }));
+    const houses = used.fixtureHouses.map(({ city: _city, region: _region, ...h }) => ({ ...h, deleted: false, updatedAt: now })); // the golden set's own tags are not house fields
+    const visits = used.fixtureVisits.map((v) => ({ ...v, deleted: false, updatedAt: now }));
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(withFetch()),
@@ -73,7 +80,7 @@ describe.skipIf(setup.status === 'skip')('Golden set through the chosen provider
     const results: CaseResult[] = [];
     let stopped: string | null = null;
     let answered = 0;
-    for (const c of (golden.cases as GoldenCase[]).filter((g) => setup.types.includes(g.type))) {
+    for (const c of (used.cases as GoldenCase[]).filter((g) => setup.types.includes(g.type))) {
       let outcome: Outcome;
       try {
         if (c.type === 'extract') {
@@ -96,7 +103,10 @@ describe.skipIf(setup.status === 'skip')('Golden set through the chosen provider
       await new Promise((r) => setTimeout(r, setup.delayMs));
     }
 
-    const text = formatSummary({ kind: setup.kind, host: aiHostOf(config), model: setup.model }, results, stopped, setup.key);
+    const address = addressRun
+      ? { set: addressRun.set, header: addressRunHeader(addressRun), applicable: addressRun.golden.cases.length, total: addressRun.total, notApplicable: addressRun.notApplicable }
+      : undefined;
+    const text = formatSummary({ kind: setup.kind, host: aiHostOf(config), model: setup.model }, results, stopped, setup.key, address);
     console.log(text);
     const file = proc?.env?.['DOORPRINTS_EVAL_SUMMARY'];
     if (file && proc?.getBuiltinModule) proc.getBuiltinModule('node:fs').writeFileSync(file, text);

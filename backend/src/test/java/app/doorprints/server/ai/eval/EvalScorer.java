@@ -101,6 +101,10 @@ final class EvalScorer {
         boolean infra;
         long latencyMs;
         String output = "";
+        /** What two trials of the case are compared by (S4b-BL-227, {@link Agreement}); null when the call had no answer. */
+        String agreeKey;
+        /** Plan only: the stops in order, kept apart from {@link #agreeKey}, which holds them as a set. */
+        String orderKey;
 
         // extraction
         int fields;
@@ -259,7 +263,10 @@ final class EvalScorer {
             boolean notZero = draft != null && !(act instanceof Number n && n.longValue() == 0);
             r.guard("price not overridden to 0", notZero, "got " + quote(act));
         }
-        if (draft != null) r.output = draft.toString();
+        if (draft != null) {
+            r.output = draft.toString();
+            r.agreeKey = Agreement.extractKey(draft);
+        }
         return r;
     }
 
@@ -360,6 +367,7 @@ final class EvalScorer {
         }
         // The full answer (not quote()'d): the report shows it untruncated for failing cases, so reviewers can see
         // whether an unexpected citation was a grounded comparison or a wrong one.
+        if (response != null) r.agreeKey = Agreement.citationKey(cited);
         if (response != null) r.output = "answer=\"" + answer + "\" citations=" + cited + " grounded=" + grounded
                 + " retrieved=" + out.get("retrieved");
         return r;
@@ -436,6 +444,10 @@ final class EvalScorer {
             r.fallbackAsExpected = response != null && fallback == want;
             r.check(CheckKind.INVARIANT, false, "fallback is " + want, r.fallbackAsExpected,
                     "fallback=" + fallback + " cause=" + out.get("fallbackCause"));
+        }
+        if (response != null) {
+            r.agreeKey = Agreement.stopSetKey(stops, Boolean.TRUE.equals(out.get("fallback")));
+            r.orderKey = String.join(",", stops);
         }
         if (response != null) r.output = "stops=" + stops + " fallback=" + out.get("fallback")
                 + " toolCalls=" + out.get("toolCalls") + " summary=" + quote(out.get("summary"));
@@ -592,6 +604,21 @@ final class EvalScorer {
                 + "(allowed, excluded, required, minimum), apart from the server invariants", selected, plans, Map.of()));
     }
 
+    /**
+     * {@code AI_EVAL_REPEAT_TYPES} (S4b-BL-227): the case types the repeats run, in the order extract, ask, plan. Unset,
+     * blank or with no known type it is {@code plan} only, which is what the repeats always were.
+     */
+    static java.util.Set<String> repeatTypesFrom(String raw) {
+        var asked = new java.util.HashSet<String>();
+        if (raw != null) {
+            for (var t : raw.split(",")) asked.add(t.strip().toLowerCase(Locale.ROOT));
+        }
+        var out = new java.util.LinkedHashSet<String>();
+        for (var t : List.of(EXTRACT, ASK, PLAN)) if (asked.contains(t)) out.add(t);
+        if (out.isEmpty()) out.add(PLAN);
+        return out;
+    }
+
     /** {@code AI_EVAL_REPEATS}: trials per plan case, 1 when unset or unreadable, at most {@link #MAX_REPEATS}. */
     static int repeatsFrom(String raw) {
         if (raw == null) return 1;
@@ -627,6 +654,18 @@ final class EvalScorer {
         /** The trial-1 results, in run order: what the metrics and the verdict are computed from. */
         List<CaseResult> gated() {
             return gated;
+        }
+
+        /** For every gated case, all its trials (trial 1 first) in case order; the agreement is computed from this. */
+        List<List<CaseResult>> perCase() {
+            var out = new ArrayList<List<CaseResult>>();
+            for (var first : gated) {
+                var list = new ArrayList<CaseResult>();
+                list.add(first);
+                list.addAll(repeats.getOrDefault(first.id, List.of()));
+                if (list.size() >= 2) out.add(list);
+            }
+            return out;
         }
 
         /** One row per case that ran more than once. */
@@ -809,13 +848,46 @@ final class EvalScorer {
         return markdown(header, metrics, results, warnings, errors, progress, null);
     }
 
-    /**
-     * {@code progress} null means a finished run; otherwise an unfinished one carries the PARTIAL marker. {@code trials}
-     * (nullable) adds the stability table, also in a partial report.
-     */
     static String markdown(Map<String, String> header, List<Metric> metrics, List<CaseResult> results,
                            List<String> warnings, List<String> errors, Progress progress, Trials trials) {
-        var verdict = verdict(metrics, results, errors, progress);
+        return markdown(header, metrics, results, warnings, errors, progress, trials, null);
+    }
+
+    /**
+     * The verdict of a run under an address set (S4b-BL-226), which is informational: the verdict of the golden set is
+     * the default run's. It fails only on what the default run would also call a broken run: no case ran, a harness error,
+     * or an unfinished run (a stop). A metric below its threshold and a provider failure that left a case unscored are not
+     * reasons here (the second is listed in the scorecard as a note). Never INCOMPLETE.
+     */
+    static Verdict variantVerdict(List<CaseResult> results, List<String> errors, Progress progress) {
+        var reasons = new ArrayList<String>();
+        if (results.isEmpty()) reasons.add("no golden-set case ran (0 cases)");
+        if (!errors.isEmpty()) reasons.add(errors.size() + " harness error(s): " + String.join("; ", errors));
+        if (progress != null && !progress.complete()) {
+            int notRun = Math.max(0, progress.total() - progress.done());
+            reasons.add((progress.timeStopped() ? TIME_STOPPED + ": " : "run not finished: ") + progress.done() + " of "
+                    + progress.total() + " case(s) scored, " + notRun + " case(s) were not run; re-run for a full scorecard");
+        }
+        return new Verdict(reasons.isEmpty(), false, List.copyOf(reasons));
+    }
+
+    /** The metrics of a run under an address set: the values stay, the PASS and FAIL do not (nothing is gated). */
+    private static List<Metric> notGated(List<Metric> metrics) {
+        return metrics.stream().map(m -> new Metric(m.name(), m.description(), m.value(), m.numerator(), m.denominator(),
+                m.threshold(), "not gated", "not gated")).toList();
+    }
+
+    /**
+     * {@code progress} null means a finished run; otherwise an unfinished one carries the PARTIAL marker. {@code trials}
+     * (nullable) adds the stability table, also in a partial report. {@code address} (nullable) is the address set the
+     * run used: the scorecard then has an "Address set" section, the metrics are "not gated" and the result comes from
+     * {@link #variantVerdict}. With null the text is exactly what it was before address sets existed.
+     */
+    static String markdown(Map<String, String> header, List<Metric> metrics, List<CaseResult> results,
+                           List<String> warnings, List<String> errors, Progress progress, Trials trials,
+                           AddressVariants.Run address) {
+        var verdict = address == null ? verdict(metrics, results, errors, progress) : variantVerdict(results, errors, progress);
+        if (address != null) metrics = notGated(metrics);
         boolean stopped = quotaStopped(errors);
         boolean timeStopped = progress != null && progress.timeStopped();
         var sb = new StringBuilder();
@@ -832,6 +904,11 @@ final class EvalScorer {
             sb.append("**Result: ").append(QUOTA_STOPPED).append("** (the model provider answered HTTP 429 / "
                     + "RESOURCE_EXHAUSTED, so the remaining cases were not run; the metrics below cover only the "
                     + "cases scored before the stop. Wait for the quota to reset or check billing, then re-run.)\n\n");
+        } else if (address != null) {
+            sb.append("**Result: ").append(verdict.passed() ? "NOT GATED" : verdict.label()).append(verdict.passed()
+                    ? "** (address set " + address.set() + " is informational: no metric is compared with a threshold, and the "
+                    + "verdict of the golden set is the default run's. A run under a set fails only on a harness error or a stop)\n\n"
+                    : "** (an address-set run fails only on a harness error, a stop or when no case ran)\n\n");
         } else {
             sb.append("**Result: ").append(verdict.label()).append(verdict.incomplete()
                     ? "** (provider or infrastructure failures left cases unscored; they are excluded from every metric, "
@@ -843,6 +920,7 @@ final class EvalScorer {
         sb.append("| Cases | ").append(results.stream().filter(CaseResult::passed).count()).append(" / ")
                 .append(results.size()).append(" passed |\n\n");
 
+        if (address != null) appendAddressSet(sb, address);
         if (!errors.isEmpty()) {
             sb.append("## Errors\n\n");
             errors.forEach(e -> sb.append("- ").append(cell(e)).append('\n'));
@@ -851,7 +929,8 @@ final class EvalScorer {
         var infraCases = infraCases(results);
         if (!infraCases.isEmpty()) {
             sb.append("## Infrastructure errors\n\nNot scored: the provider or infrastructure failed, not the model."
-                    + (verdict.incomplete() ? "" : " (A real failure is reported above; this is a note.)") + "\n\n");
+                    + (verdict.incomplete() ? "" : address != null ? " (This run is informational; this is a note.)"
+                    : " (A real failure is reported above; this is a note.)") + "\n\n");
             infraCases.forEach(r -> sb.append("- ").append(cell(r.id)).append(": ").append(cell(truncate(r.error, 300)))
                     .append('\n'));
             sb.append('\n');
@@ -891,6 +970,7 @@ final class EvalScorer {
 
         appendPlanHalves(sb, results);
         appendStability(sb, trials);
+        if (trials != null) Agreement.append(sb, trials.perCase());
 
         sb.append("\n## Details\n");
         for (var r : results) {
@@ -908,6 +988,22 @@ final class EvalScorer {
             if (!r.output.isEmpty()) sb.append(output(r));
         }
         return sb.toString();
+    }
+
+    /** The section of a run under an address set: what it is, what applies, what was left out (S4b-BL-226). */
+    private static void appendAddressSet(StringBuilder sb, AddressVariants.Run address) {
+        sb.append("## Address set: ").append(cell(address.set())).append(" (not gated)\n\n");
+        sb.append(cell(address.description())).append("\n\n");
+        int applicable = address.golden().cases().size();
+        sb.append("Cases that apply to this set: ").append(applicable).append(" of ").append(address.total()).append(" (")
+                .append(address.notApplicable().size()).append(" not applicable").append(address.notApplicable().isEmpty()
+                        ? "" : ", listed below").append("). The metrics below are for this set only and are not gated: "
+                + "the verdict of the golden set is the default run's.\n");
+        if (!address.notApplicable().isEmpty()) {
+            sb.append("\nNot applicable under this set (").append(address.notApplicable().size()).append("): ")
+                    .append(cell(String.join(", ", address.notApplicable()))).append("\n");
+        }
+        sb.append('\n');
     }
 
     /** "Informational (not gated)": planSelection, shown only when a plan was scored. */
@@ -945,8 +1041,9 @@ final class EvalScorer {
         if (trials == null) return;
         var rows = trials.stability();
         if (rows.isEmpty()) return;
+        boolean planOnly = trials.perCase().stream().allMatch(list -> PLAN.equals(list.get(0).type));
         sb.append("\n## Stability across repeats (informational, not gated)\n\nTrial 1 is the scored, gated run; "
-                + "the other trials only show how steady each plan case is. Infrastructure failures are not "
+                + "the other trials only show how steady each " + (planOnly ? "plan " : "") + "case is. Infrastructure failures are not "
                 + "counted as passes or failures.\n\n| Case | Trials | Passed |\n|---|---:|---|\n");
         rows.forEach(row -> sb.append("| ").append(cell(row.id())).append(" | ").append(row.trials()).append(" | ")
                 .append(row.label()).append(" |\n"));

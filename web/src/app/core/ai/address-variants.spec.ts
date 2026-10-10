@@ -18,7 +18,7 @@
 import { describe, expect, it } from 'vitest';
 import golden from '../../../../../docs/ai/evals/golden-set.json';
 import variantsJson from '../../../../../docs/ai/evals/address-variants.json';
-import { type GoldenLike, type VariantsFile, ANCHOR_RULES, applyAddressSet, canonicalJson, fingerprint, placeWords } from './address-variants';
+import { type GoldenLike, type VariantsFile, ANCHOR_RULES, addressRunHeader, applyAddressSet, canonicalJson, fingerprint, placeWords, selectAddressRun } from './address-variants';
 
 /**
  * The address variants (S4b-BL-225) in the website's port: the same behaviour as the server eval's AddressVariantsTest, on the
@@ -299,6 +299,43 @@ describe('every applied set is still a golden set', () => {
       expect(new Set(list).size, `${c.id} guards once`).toBe(list.length);
     }
     for (const h of hostile.fixtureHouses) expect(String(h['address'])).toContain('. ');
+  });
+});
+
+describe('choosing a set for a run (S4b-BL-226)', () => {
+  it('is nothing at all for the default: unset, blank or named', () => {
+    for (const name of [undefined, null, '', '  ', 'default']) expect(selectAddressRun(base, variants, name), String(name)).toBeNull();
+  });
+
+  it('carries the applied golden set, what was left out and the header line, with no error', () => {
+    const run = selectAddressRun(base, variants, 'landmark-pin')!;
+    expect(run.set).toBe('landmark-pin');
+    expect(run.error).toBeNull();
+    expect(run.golden.cases).toHaveLength(71);
+    expect(run.notApplicable).toEqual(NOT_APPLICABLE['landmark-pin']);
+    expect(run.total).toBe(75);
+    // The first twelve characters of the fingerprint the file records, found by a separate calculation.
+    expect(addressRunHeader(run)).toBe('landmark-pin (address-variants v0.1, fingerprint 345ca24bcf32)');
+    expect(base.cases).toHaveLength(75);
+  });
+
+  it('is a run of its own for known, with nothing left out', () => {
+    const run = selectAddressRun(base, variants, 'known')!;
+    expect(run.notApplicable).toEqual([]);
+    expect(run.golden.cases).toHaveLength(75);
+    expect(run.error).toBeNull();
+  });
+
+  it('names both fingerprints when the applied set is not the one the file records', () => {
+    const tampered = { ...variants, fingerprints: { ...variants.fingerprints, 'unknown-invented': '0'.repeat(64) } };
+    const run = selectAddressRun(base, tampered, 'unknown-invented')!;
+    expect(run.error).toContain('unknown-invented');
+    expect(run.error).toContain('361631beb5ed');
+    expect(run.error).toContain('0'.repeat(64));
+  });
+
+  it('refuses a set that is not in the file', () => {
+    expect(() => selectAddressRun(base, variants, 'nope')).toThrow(/nope/);
   });
 });
 

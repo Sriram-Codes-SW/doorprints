@@ -150,6 +150,9 @@ jobs:
       # against it by the Web (fake-provider.wire.spec.ts) and Android (FakeProviderWireTest) workflows.
       - name: Fake AI provider server tests
         run: node --test tools/fake-ai-provider/server.test.mjs
+      # S4b-BL-227: the scorecard comparison tool of the AI evals (Node built-ins only).
+      - name: AI eval comparison tool tests
+        run: node --test tools/ai-eval-compare.test.mjs
       # S4b-BL-157: the floor guard. A change must not loosen a gate: a new test skip or focus, a deleted test or spec, a new
       # suppression or empty catch, a removed mutation entry, a raised bundle budget. Exit 2 = it could not run (no
       # origin/main), which fails the step too; a skipped guard is never a pass. The allow line `Gate-loosening: <why>` is read
