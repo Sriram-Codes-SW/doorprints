@@ -62,7 +62,7 @@ class KeystoreSecretStoreTest {
     )
     private val apiKeyEnc = stringPreferencesKey("apiKeyEnc")
     private val geminiKeyEnc = stringPreferencesKey("geminiKeyEnc")
-    private val key = "sk-test-0123456789abcdef"
+    private val key = "test-" + java.util.UUID.randomUUID()
 
     @Before fun clean() {
         file.delete()

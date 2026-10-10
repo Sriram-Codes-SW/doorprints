@@ -119,10 +119,12 @@ class RootNavigationVisitLinkTest {
         start(DeepLink.NewHouse(12.9716, 77.5946, "visit-open"))
         waitFor("Save a house")
         links.value = DeepLink.NewHouse(12.9716, 77.5946, "visit-open")
-        compose.waitForIdle()
-        pump()
-        waitFor("Save a house")
-        assertEquals(2, handled)
+        // The form is already showing, so wait for the second tap itself to be handled (Room's answer resumes it later).
+        compose.waitUntil(10_000) {
+            pump()
+            handled == 2
+        }
+        assertEquals(1, count("Save a house"))
         back()
         // One form was stacked: a single Back reaches the Map.
         waitFor("Hunt mode")
