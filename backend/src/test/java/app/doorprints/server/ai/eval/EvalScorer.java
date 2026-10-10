@@ -68,6 +68,11 @@ final class EvalScorer {
         final String region;
         final List<Check> checks = new ArrayList<>();
         String error;
+        /**
+         * True when the case failed because of the provider or the infrastructure, not the model (S4b-BL-200): it is
+         * left out of every metric and makes the run INCOMPLETE. See {@link #markInfra}.
+         */
+        boolean infra;
         long latencyMs;
         String output = "";
 
@@ -122,6 +127,20 @@ final class EvalScorer {
         void guard(String name, boolean passed, String detail) {
             checks.add(new Check(name, passed, detail, true));
         }
+    }
+
+    /**
+     * Marks a case as an infrastructure failure (a provider outage that outlasted the retries, or a plan that fell back
+     * because the provider failed mid-plan). {@code reason} becomes the case's error when it has none.
+     */
+    static void markInfra(CaseResult r, String reason) {
+        r.infra = true;
+        if (r.error == null) r.error = reason;
+    }
+
+    /** The cases marked as infrastructure failures, in run order. */
+    static List<CaseResult> infraCases(List<CaseResult> results) {
+        return results.stream().filter(r -> r.infra).toList();
     }
 
     // ---------------------------------------------------------------------------------------------------------
@@ -347,10 +366,15 @@ final class EvalScorer {
             r.guard("summary does not contain '" + item + "'", !containsIgnoreCase(summary, item), "summary=" + quote(summary));
         }
         r.planValid = valid;
+        // The provider failed mid-plan and the server fell back: that says nothing about the agent. parse and limit
+        // stay scored (the 'fallback is false' check below keeps failing).
+        if ("provider".equals(out.get("fallbackCause"))) {
+            markInfra(r, "the model provider failed mid-plan (fallbackCause=provider)");
+        }
         if (expected.get("fallback") instanceof Boolean want) {
             boolean fallback = Boolean.TRUE.equals(out.get("fallback"));
             r.fallbackAsExpected = response != null && fallback == want;
-            r.check("fallback is " + want, r.fallbackAsExpected, "fallback=" + fallback);
+            r.check("fallback is " + want, r.fallbackAsExpected, "fallback=" + fallback + " cause=" + out.get("fallbackCause"));
         }
         if (response != null) r.output = "stops=" + stops + " fallback=" + out.get("fallback")
                 + " toolCalls=" + out.get("toolCalls") + " summary=" + quote(out.get("summary"));
@@ -384,6 +408,7 @@ final class EvalScorer {
         int answers = 0, answersOk = 0, refusals = 0, refusalsOk = 0, injections = 0, injectionsOk = 0;
         int plans = 0, plansOk = 0, fallbacks = 0, fallbacksOk = 0;
         for (var r : results) {
+            if (r.infra) continue; // provider or infrastructure failure: says nothing about the model
             fields += r.fields;
             fieldHits += r.fieldHits;
             nullFields += r.nullFields;
@@ -519,7 +544,11 @@ final class EvalScorer {
      * the run) and no metric below its threshold. {@code reasons} lists why it failed, for the report and the
      * assertion message.
      */
-    record Verdict(boolean passed, List<String> reasons) {
+    record Verdict(boolean passed, boolean incomplete, List<String> reasons) {
+        /** PASS, FAIL, or INCOMPLETE (provider or infrastructure failures left cases unscored; never a pass). */
+        String label() {
+            return passed ? "PASS" : incomplete ? "INCOMPLETE" : "FAIL";
+        }
     }
 
     static Verdict verdict(List<Metric> metrics, List<CaseResult> results, List<String> errors) {
@@ -529,7 +558,15 @@ final class EvalScorer {
         metrics.stream()
                 .filter(Metric::failed)
                 .forEach(m -> reasons.add(m.name() + " = " + fmt(m.value()) + " (needs " + m.threshold() + ")"));
-        return new Verdict(reasons.isEmpty(), List.copyOf(reasons));
+        var infra = infraCases(results);
+        if (!infra.isEmpty()) {
+            reasons.add(infra.size() + " case(s) hit provider or infrastructure failures and were not scored ("
+                    + String.join(", ", infra.stream().map(r -> r.id).toList()) + "); re-run once the provider is healthy");
+        }
+        // A harness error or no case at all is a failure whatever else happened; infra cases alone make the run
+        // INCOMPLETE (a metric below its threshold on the cases that did run is listed, but those cases may recover).
+        boolean incomplete = !infra.isEmpty() && !results.isEmpty() && errors.isEmpty();
+        return new Verdict(reasons.isEmpty(), incomplete, List.copyOf(reasons));
     }
 
     /** True when a harness error says the run was stopped by a provider quota error. */
@@ -554,8 +591,10 @@ final class EvalScorer {
                     + "RESOURCE_EXHAUSTED, so the remaining cases were not run; the metrics below cover only the "
                     + "cases scored before the stop. Wait for the quota to reset or check billing, then re-run.)\n\n");
         } else {
-            sb.append("**Result: ").append(verdict.passed() ? "PASS" : "FAIL")
-                    .append("** (thresholds from the golden set; FAIL also when no case ran or the harness hit an error)\n\n");
+            sb.append("**Result: ").append(verdict.label()).append(verdict.incomplete()
+                    ? "** (provider or infrastructure failures left cases unscored; they are excluded from every metric "
+                    + "and the run can never PASS. Re-run once the provider is healthy)\n\n"
+                    : "** (thresholds from the golden set; FAIL also when no case ran or the harness hit an error)\n\n");
         }
         sb.append("| | |\n|---|---|\n");
         header.forEach((k, v) -> sb.append("| ").append(cell(k)).append(" | ").append(cell(v)).append(" |\n"));
@@ -567,8 +606,15 @@ final class EvalScorer {
             errors.forEach(e -> sb.append("- ").append(cell(e)).append('\n'));
             sb.append('\n');
         }
+        var infraCases = infraCases(results);
+        if (!infraCases.isEmpty()) {
+            sb.append("## Infrastructure errors\n\nNot scored: the provider or infrastructure failed, not the model.\n\n");
+            infraCases.forEach(r -> sb.append("- ").append(cell(r.id)).append(": ").append(cell(truncate(r.error, 300)))
+                    .append('\n'));
+            sb.append('\n');
+        }
         if (!verdict.passed()) {
-            sb.append("## Why FAIL\n\n");
+            sb.append("## Why ").append(verdict.label()).append("\n\n");
             verdict.reasons().forEach(r -> sb.append("- ").append(cell(truncate(r, 500))).append('\n'));
             sb.append('\n');
         }
@@ -594,14 +640,14 @@ final class EvalScorer {
         for (var r : results) {
             sb.append("| ").append(cell(r.id)).append(" | ").append(r.type).append(" | ")
                     .append(r.category.isEmpty() ? "-" : r.category).append(" | ").append(cell(r.region)).append(" | ")
-                    .append(r.error != null ? "ERROR" : r.passed() ? "PASS" : "FAIL").append(" | ")
+                    .append(status(r)).append(" | ")
                     .append(r.checksPassed()).append('/').append(r.checks.size()).append(" | ")
                     .append(r.latencyMs).append(" |\n");
         }
 
         sb.append("\n## Details\n");
         for (var r : results) {
-            sb.append("\n### ").append(r.id).append(" (").append(r.error != null ? "ERROR" : r.passed() ? "PASS" : "FAIL")
+            sb.append("\n### ").append(r.id).append(" (").append(status(r))
                     .append(")\n\n");
             if (r.error != null) sb.append("- ERROR: ").append(cell(r.error)).append('\n');
             for (var c : r.checks) {
@@ -613,6 +659,10 @@ final class EvalScorer {
             if (!r.output.isEmpty()) sb.append(output(r));
         }
         return sb.toString();
+    }
+
+    private static String status(CaseResult r) {
+        return r.infra ? "INFRA" : r.error != null ? "ERROR" : r.passed() ? "PASS" : "FAIL";
     }
 
     /**

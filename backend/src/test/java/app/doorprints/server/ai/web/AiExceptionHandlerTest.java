@@ -82,6 +82,48 @@ class AiExceptionHandlerTest {
         assertThat(hint(AiExceptionHandlers.of(null), new ClientException(404, "Not Found", "x"))).isNull();
     }
 
+    private static Object cause(Throwable providerError) {
+        var body = AiExceptionHandlers.of(null).aiUnavailable(failure(providerError)).getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.getStatus()).isEqualTo(503);
+        return body.getProperties() == null ? null : body.getProperties().get(AiExceptionHandler.CAUSE_PROPERTY);
+    }
+
+    /** S4b-BL-200: the eval harness (and any client) can tell an outage from unreadable model output without text. */
+    @Test
+    void aProviderFailureCarriesCauseProvider() {
+        assertThat(cause(new ClientException(503, "UNAVAILABLE", "x"))).isEqualTo("provider");
+        assertThat(cause(new ClientException(429, "Too Many Requests", "x"))).isEqualTo("provider");
+        assertThat(cause(new GeminiEmbeddingException("I/O error"))).isEqualTo("provider");
+        assertThat(cause(new java.net.http.HttpTimeoutException("timed out"))).isEqualTo("provider");
+        assertThat(cause(new java.net.ConnectException("refused"))).isEqualTo("provider");
+    }
+
+    @Test
+    void unreadableModelOutputCarriesCauseModelAndNotProvider() {
+        var converter = new org.springframework.ai.converter.BeanOutputConverter<>(
+                app.doorprints.server.ai.agent.PlanModels.AgentPlan.class);
+        var unreadable = org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class,
+                () -> converter.convert("this is not json"));
+        assertThat(cause(unreadable)).isEqualTo("model");
+    }
+
+    @Test
+    void anUnclassifiedFailureHasNoCauseAndStaysA503() {
+        assertThat(cause(new IllegalStateException("boom"))).isNull();
+        var noCause = AiExceptionHandlers.of(null).aiUnavailable(new AiUnavailableException("Answering failed", null));
+        assertThat(noCause.getStatusCode().value()).isEqualTo(503);
+        assertThat(noCause.getBody().getProperties()).doesNotContainKey(AiExceptionHandler.CAUSE_PROPERTY);
+    }
+
+    @Test
+    void theCauseDoesNotChangeTheQuotaCodeOrTheRetryHeader() {
+        var quota = AiExceptionHandlers.of(null).aiUnavailable(failure(new ClientException(429, "Too Many Requests", "x")));
+        assertThat(quota.getBody().getProperties()).containsEntry("code", AiExceptionHandler.QUOTA_EXHAUSTED_CODE)
+                .containsEntry(AiExceptionHandler.CAUSE_PROPERTY, "provider").containsEntry("retryable", true);
+        assertThat(quota.getHeaders().getFirst("Retry-After")).isEqualTo("60");
+    }
+
     /**
      * SEC-016, PRV-011 (S4b-BL-159): a provider error can echo parts of the prompt, which holds the person's notes, so
      * the log names only the kind of failure (the cause's class and the provider's HTTP status) and never its text.

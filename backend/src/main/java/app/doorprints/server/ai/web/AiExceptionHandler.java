@@ -42,6 +42,12 @@ public class AiExceptionHandler {
     /** Problem-detail property with an owner setup hint (Vertex AI 401/403/404: auth, IAM, model not in location). */
     public static final String SETUP_HINT_PROPERTY = "setupHint";
 
+    /**
+     * Problem-detail property saying why the call failed: {@code provider} (HTTP error, timeout, connect failure of the
+     * model provider) or {@code model} (output that could not be parsed); see {@link ProviderErrors#cause}.
+     */
+    public static final String CAUSE_PROPERTY = "cause";
+
     /** Null in unit tests that build the handler directly: then no Vertex setup hints are added. */
     private final AiProperties props;
 
@@ -74,6 +80,9 @@ public class AiExceptionHandler {
                 ? e.getMessage() + ". The AI provider's quota or rate limit is exhausted; try again later."
                 : e.getMessage() + ". The AI provider is unavailable or its free quota is exhausted; try again later.");
         problem.setProperty("retryable", true);
+        // S4b-BL-200: provider (HTTP/timeout/connect) or model (unreadable output); absent when it cannot be told.
+        var why = ProviderErrors.cause(e);
+        if (why != null) problem.setProperty(CAUSE_PROPERTY, why);
         if (hint != null) problem.setProperty(SETUP_HINT_PROPERTY, hint);
         var response = ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE);
         if (quota) {

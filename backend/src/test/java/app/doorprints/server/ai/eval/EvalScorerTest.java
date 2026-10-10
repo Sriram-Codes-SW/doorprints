@@ -920,4 +920,168 @@ class EvalScorerTest {
         assertThat(verdict.passed()).isFalse();
         assertThat(verdict.reasons()).containsExactly("extractionFieldAccuracy = 0.00 (needs >= 0.90)");
     }
+
+    // ---- S4b-BL-200: infrastructure failures are not model failures
+
+    private static CaseResult infraExtract(String id) {
+        var r = EvalScorer.scoreExtract(testCase(id, "extract", null, map("price", 100)), null, "HTTP 503: provider down");
+        EvalScorer.markInfra(r, "HTTP 503 (cause provider) after 3 attempts");
+        return r;
+    }
+
+    @Test
+    void anInfraCaseIsInNoMetricDenominator() {
+        var ok = EvalScorer.scoreExtract(testCase("x1", "extract", null, map("price", 100)), map("price", 100), null);
+        var infra = infraExtract("x2");
+        assertThat(infra.fields).as("the scorer still counted its field").isEqualTo(1);
+
+        var metrics = EvalScorer.metrics(List.of(ok, infra), Map.of("extractionFieldAccuracy", Map.of("min", 0.9)));
+
+        assertThat(metric(metrics, "extractionFieldAccuracy").denominator()).isEqualTo(1);
+        assertThat(metric(metrics, "extractionFieldAccuracy").numerator()).isEqualTo(1);
+        assertThat(metric(metrics, "extractionFieldAccuracy").status()).isEqualTo("PASS");
+    }
+
+    @Test
+    void anInfraPlanDoesNotDragAgentValidityOrTheFallbackRateDown() {
+        var ids = List.of(H1, H2);
+        var planCase = testCase("plan-1", "plan", null, map("fallback", false));
+        var ok = EvalScorer.scorePlan(planCase, map("stops", List.of(map("houseId", H1)), "fallback", false), null, ids);
+        var infra = EvalScorer.scorePlan(planCase, null, "HTTP 503: provider down", ids);
+        EvalScorer.markInfra(infra, "HTTP 503 (cause provider)");
+
+        var metrics = EvalScorer.metrics(List.of(ok, infra), Map.of(
+                "agentValidity", Map.of("min", 1.0), "agentNoFallbackRate", Map.of("min", 1.0)));
+
+        assertThat(metric(metrics, "agentValidity").denominator()).isEqualTo(1);
+        assertThat(metric(metrics, "agentValidity").status()).isEqualTo("PASS");
+        assertThat(metric(metrics, "agentNoFallbackRate").denominator()).isEqualTo(1);
+        assertThat(metric(metrics, "agentNoFallbackRate").status()).isEqualTo("PASS");
+    }
+
+    @Test
+    void anInfraAskRefusalAndInjectionCaseAreNotCounted() {
+        var ask = testCase("ask-1", "ask", null, map("expectedHouseIds", List.of(H1)));
+        var refusal = testCase("ask-r", "ask", "refusal", map("answerEquals", "I don't know."));
+        var injection = testCase("inj", "extract", "prompt-injection", map("price", 100));
+        var infra = new ArrayList<CaseResult>();
+        for (var c : List.of(ask, refusal)) {
+            var r = EvalScorer.scoreAsk(c, null, "HTTP 503");
+            EvalScorer.markInfra(r, "provider");
+            infra.add(r);
+        }
+        var inj = EvalScorer.scoreExtract(injection, null, "HTTP 503");
+        EvalScorer.markInfra(inj, "provider");
+        infra.add(inj);
+
+        var metrics = EvalScorer.metrics(infra, Map.of());
+
+        for (var name : List.of("citationPrecision", "citationRecall", "answerCorrectness", "refusalAccuracy",
+                "injectionResistance", "extractionFieldAccuracy")) {
+            assertThat(metric(metrics, name).denominator()).as(name).isZero();
+            assertThat(metric(metrics, name).value()).as(name).isNull();
+        }
+    }
+
+    @Test
+    void aModelFailureIsStillScoredAgainstTheModel() {
+        var ok = EvalScorer.scoreExtract(testCase("x1", "extract", null, map("price", 100)), map("price", 100), null);
+        var bad = EvalScorer.scoreExtract(testCase("x2", "extract", null, map("price", 100)), null, "HTTP 503: model");
+
+        var metrics = EvalScorer.metrics(List.of(ok, bad), Map.of("extractionFieldAccuracy", Map.of("min", 0.9)));
+
+        assertThat(metric(metrics, "extractionFieldAccuracy").denominator()).isEqualTo(2);
+        assertThat(metric(metrics, "extractionFieldAccuracy").status()).isEqualTo("FAIL");
+    }
+
+    @Test
+    void anInfraErrorMakesTheRunIncompleteNeverPass() {
+        var ok = EvalScorer.scoreExtract(testCase("x1", "extract", null, map("price", 100)), map("price", 100), null);
+        var infra = infraExtract("x2");
+        var results = List.of(ok, infra);
+        var metrics = EvalScorer.metrics(results, Map.of("extractionFieldAccuracy", Map.of("min", 0.9)));
+        assertThat(metric(metrics, "extractionFieldAccuracy").status()).as("the metrics alone would pass").isEqualTo("PASS");
+
+        var verdict = EvalScorer.verdict(metrics, results, List.of());
+        var md = EvalScorer.markdown(EvalScorer.header(), metrics, results, List.of(), List.of());
+
+        assertThat(verdict.passed()).isFalse();
+        assertThat(verdict.incomplete()).isTrue();
+        assertThat(verdict.label()).isEqualTo("INCOMPLETE");
+        assertThat(verdict.reasons()).hasSize(1);
+        assertThat(verdict.reasons().get(0)).startsWith("1 case(s) hit provider or infrastructure failures")
+                .contains("x2");
+        assertThat(md).contains("**Result: INCOMPLETE**", "## Infrastructure errors", "- x2: ", "| x2 | extract | - ",
+                "| INFRA |", "### x2 (INFRA)");
+        assertThat(md).doesNotContain("**Result: PASS**").doesNotContain("**Result: FAIL**");
+        assertThat(EvalScorer.infraCases(results)).extracting(r -> r.id).containsExactly("x2");
+    }
+
+    @Test
+    void passNeedsZeroInfraErrors() {
+        var ok = EvalScorer.scoreExtract(testCase("x1", "extract", null, map("price", 100)), map("price", 100), null);
+        var metrics = EvalScorer.metrics(List.of(ok), Map.of("extractionFieldAccuracy", Map.of("min", 0.9)));
+
+        var clean = EvalScorer.verdict(metrics, List.of(ok), List.of());
+        assertThat(clean.passed()).isTrue();
+        assertThat(clean.incomplete()).isFalse();
+        assertThat(clean.label()).isEqualTo("PASS");
+        assertThat(EvalScorer.markdown(EvalScorer.header(), metrics, List.of(ok), List.of(), List.of()))
+                .contains("**Result: PASS**").doesNotContain("Infrastructure errors", "INCOMPLETE");
+
+        var withInfra = EvalScorer.verdict(metrics, List.of(ok, infraExtract("x2")), List.of());
+        assertThat(withInfra.passed()).isFalse();
+    }
+
+    @Test
+    void aRealMetricFailureWithAnInfraErrorStaysListedAndIsNeverPass() {
+        var bad = EvalScorer.scoreExtract(testCase("x1", "extract", null, map("price", 100)), map("price", 5), null);
+        var results = List.of(bad, infraExtract("x2"));
+        var metrics = EvalScorer.metrics(results, Map.of("extractionFieldAccuracy", Map.of("min", 0.9)));
+
+        var verdict = EvalScorer.verdict(metrics, results, List.of());
+
+        assertThat(verdict.passed()).isFalse();
+        assertThat(verdict.label()).isEqualTo("INCOMPLETE");
+        assertThat(verdict.reasons()).anyMatch(r -> r.startsWith("extractionFieldAccuracy = 0.00"))
+                .anyMatch(r -> r.startsWith("1 case(s) hit provider"));
+    }
+
+    @Test
+    void harnessErrorsAndZeroCasesStayFailEvenWithInfraCases() {
+        var infra = infraExtract("x1");
+        var metrics = EvalScorer.metrics(List.of(infra), Map.of());
+
+        assertThat(EvalScorer.verdict(metrics, List.of(infra), List.of("seeding failed")).label()).isEqualTo("FAIL");
+        assertThat(EvalScorer.verdict(metrics, List.of(), List.of()).label()).isEqualTo("FAIL");
+    }
+
+    @Test
+    void aPlanThatFellBackBecauseOfTheProviderIsAnInfraCase() {
+        var ids = List.of(H1, H2);
+        var planCase = testCase("plan-1", "plan", null, map("fallback", false));
+
+        var provider = EvalScorer.scorePlan(planCase,
+                map("stops", List.of(map("houseId", H1)), "fallback", true, "fallbackCause", "provider"), null, ids);
+        assertThat(provider.infra).isTrue();
+        assertThat(provider.error).contains("fallbackCause=provider");
+
+        for (var cause : new String[] {"parse", "limit"}) {
+            var r = EvalScorer.scorePlan(planCase,
+                    map("stops", List.of(map("houseId", H1)), "fallback", true, "fallbackCause", cause), null, ids);
+            assertThat(r.infra).as(cause).isFalse();
+            assertThat(r.fallbackAsExpected).as("the 'fallback is false' check keeps failing").isFalse();
+        }
+        var none = EvalScorer.scorePlan(planCase, map("stops", List.of(), "fallback", false), null, ids);
+        assertThat(none.infra).isFalse();
+    }
+
+    @Test
+    void theQuotaStopKeepsItsOwnLabelEvenWithInfraCases() {
+        var results = List.of(infraExtract("x1"));
+        var errors = List.of(EvalScorer.QUOTA_STOPPED + " (still 503)");
+        var md = EvalScorer.markdown(EvalScorer.header(), EvalScorer.metrics(results, Map.of()), results, List.of(), errors);
+
+        assertThat(md).contains("**Result: STOPPED: provider quota exhausted**").doesNotContain("**Result: INCOMPLETE**");
+    }
 }
