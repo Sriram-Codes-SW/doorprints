@@ -27,6 +27,9 @@
 #     secret AI_API_KEY (https://aistudio.google.com/apikey).
 # Quota-aware: on HTTP 429 / RESOURCE_EXHAUSTED the harness stops, the scorecard says
 # "STOPPED: provider quota exhausted" and the job fails with an explicit error annotation.
+# Time-budgeted (S4b-BL-202): the test stops between cases after AI_EVAL_DEADLINE_MS (default 35 minutes), writes the
+# scorecard after every case ("PARTIAL (n of N cases)" until the run completes) and says "STOPPED: time budget"; the
+# verdict is INCOMPLETE, never PASS. The mvn step has its own timeout (41 minutes), below the job's 45.
 # Ownership: the workflow file belongs to DevSecOps (owner of .github/**, adopted 2026-09-22, reviewed against the
 # repo's CI rules: manual trigger only, permissions {} with job-level contents: read, persist-credentials: false,
 # untrusted inputs passed through env and validated, never interpolated into scripts). The eval harness and golden
@@ -301,6 +304,10 @@ jobs:
 
       - name: Run GoldenSetEvalTest
         working-directory: backend
+        # Below the job's 45 minutes (S4b-BL-202): if the run is still going, this step is cancelled and the steps below
+        # (all `if: always()`) still publish the scorecard, which the test rewrites after every case ("PARTIAL (n of N
+        # cases)"). The test's own time budget (AI_EVAL_DEADLINE_MS, default 35 minutes) stops the run cleanly before this.
+        timeout-minutes: 41
         env:
           DB_URL: jdbc:postgresql://127.0.0.1:5432/doorprints
           DB_USER: doorprints
@@ -359,6 +366,22 @@ jobs:
             exit 1
           fi
 
+      - name: Report a time-budget stop
+        if: always()
+        run: |
+          if [ -f backend/target/ai-eval-report.md ] && grep -q "STOPPED: time budget" backend/target/ai-eval-report.md; then
+            echo "::error title=AI eval STOPPED::The time budget (AI_EVAL_DEADLINE_MS, default 35 minutes) was used up. The remaining cases were not run and the run is not a PASS (INCOMPLETE). Run fewer types, a lower thinking level or a shorter delay_ms, then re-run."
+            exit 1
+          fi
+
+      - name: Report an unfinished scorecard
+        if: always()
+        run: |
+          if [ -f backend/target/ai-eval-report.md ] && grep -q '^\*\*PARTIAL (' backend/target/ai-eval-report.md && ! grep -q "STOPPED: " backend/target/ai-eval-report.md; then
+            echo "::error title=AI eval PARTIAL::The run ended before every case was scored (the job or the step was cancelled or killed). The scorecard covers only the cases scored so far and is not a PASS."
+            exit 1
+          fi
+
       - name: Report provider or infrastructure errors
         if: always()
         run: |
@@ -386,11 +409,12 @@ jobs:
           retention-days: 30
 
       - name: Upload test reports
-        if: failure()
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: ai-eval-test-reports
           path: backend/target/surefire-reports/
+          if-no-files-found: ignore
           retention-days: 7
 
       - name: Database logs

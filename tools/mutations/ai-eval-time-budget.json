@@ -1,0 +1,19 @@
+{
+  "spec": "backend/src/test/java/app/doorprints/server/ai/eval/DeadlineTest.java",
+  "maven": ["-Dtest=DeadlineTest,EvalRunTest,EvalScorerTest"],
+  "mutations": [
+    {"file": "backend/src/test/java/app/doorprints/server/ai/eval/Deadline.java", "find": "return !clock.instant().isBefore(end);", "replace": "return false;", "expect": "firesAtTheBudgetAndAfterIt"},
+    {"file": "backend/src/test/java/app/doorprints/server/ai/eval/Deadline.java", "find": "return !clock.instant().isBefore(end);", "replace": "return !clock.instant().plusMillis(2).isBefore(end);", "expect": "doesNotFireBeforeTheBudgetIsUsedUp"},
+    {"file": "backend/src/test/java/app/doorprints/server/ai/eval/Deadline.java", "find": "return !clock.instant().isBefore(end);", "replace": "return clock.instant().isAfter(end);", "expect": "firesAtTheBudgetAndAfterIt"},
+    {"file": "backend/src/test/java/app/doorprints/server/ai/eval/Deadline.java", "find": "static final long DEFAULT_MS = 35L * 60_000;", "replace": "static final long DEFAULT_MS = 5L * 60_000;", "expect": "theDefaultIsThirtyFiveMinutes"},
+    {"file": "backend/src/test/java/app/doorprints/server/ai/eval/EvalScorer.java", "find": "if (progress != null && !progress.complete()) {\n            sb.append(\"**\")", "replace": "if (false) {\n            sb.append(\"**\")", "expect": "aRunThatIsStillGoingIsMarkedPartialAndNeverReadsPass"},
+    {"file": "backend/src/test/java/app/doorprints/server/ai/eval/EvalScorer.java", "find": "boolean unfinished = progress != null && !progress.complete();", "replace": "boolean unfinished = false;", "expect": "aTimeBudgetStopIsIncompleteAndNeverPassEvenWhenEveryScoredCasePassed"},
+    {"file": "backend/src/test/java/app/doorprints/server/ai/eval/EvalScorer.java", "find": "return !timeStopped && done >= total;", "replace": "return true;", "expect": "aRunThatIsStillGoingIsMarkedPartialAndNeverReadsPass"},
+    {"file": "backend/src/test/java/app/doorprints/server/ai/eval/EvalScorer.java", "find": "boolean incomplete = (!infra.isEmpty() || unfinished) && !realFailure;", "replace": "boolean incomplete = (!infra.isEmpty() || unfinished) && false;", "expect": "aTimeBudgetStopIsIncompleteAndNeverPassEvenWhenEveryScoredCasePassed"},
+    {"file": "backend/src/test/java/app/doorprints/server/ai/eval/EvalScorer.java", "find": "boolean incomplete = (!infra.isEmpty() || unfinished) && !realFailure;", "replace": "boolean incomplete = (!infra.isEmpty() || unfinished);", "expect": "aTimeBudgetStopDoesNotHideARealFailure"},
+    {"file": "backend/src/test/java/app/doorprints/server/ai/eval/EvalScorer.java", "find": "static final String TIME_STOPPED = \"STOPPED: time budget\";", "replace": "static final String TIME_STOPPED = \"STOPPED: time\";", "expect": "aTimeBudgetStopIsIncompleteAndNeverPassEvenWhenEveryScoredCasePassed"},
+    {"file": "backend/src/test/java/app/doorprints/server/ai/eval/EvalRun.java", "find": "if (deadline.expired()) return true; // also after the pause, which counts towards the budget", "replace": "", "expect": "theLoopStopsBetweenCasesWhenTheBudgetIsUsedUp"},
+    {"file": "backend/src/test/java/app/doorprints/server/ai/eval/EvalRun.java", "find": "} catch (Deadline.Expired e) {\n                return true;", "replace": "} catch (Deadline.Expired e) {\n                throw e;", "expect": "aCaseThatRunsOutOfTimeInsideIsNotScoredAndStopsTheRun"},
+    {"file": "backend/src/test/java/app/doorprints/server/ai/eval/EvalRun.java", "find": "afterCase.accept(new Progress(results.size(), cases.size(), false));", "replace": "", "expect": "theScorecardFileExistsAfterEveryCaseAndNamesHowFarTheRunIs"}
+  ]
+}
