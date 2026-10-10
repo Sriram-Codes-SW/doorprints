@@ -75,6 +75,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * {@code PUT /api/visits/{id}}), rebuild the vector index ({@code POST /api/ai/reindex}), run every case through the
  * real HTTP endpoints (API-key filter, validation and sanitizers included), score it with {@link EvalScorer}, write a
  * markdown scorecard to {@code target/ai-eval-report.md} and fail if a metric misses the golden set's thresholds.
+ * A case that fails because of the provider (not the model) is listed as an infrastructure error, left out of every
+ * metric, and makes the verdict INCOMPLETE (the test still fails; it never reads PASS).
  *
  * <p>Use an empty database: other saved houses change what retrieval returns (the report warns when it sees any).
  * Optional environment: {@code AI_EVAL_TYPES} (default {@code extract,ask,plan}), {@code AI_EVAL_DELAY_MS} (pause
@@ -302,6 +304,7 @@ class GoldenSetEvalTest {
         var input = GoldenSet.map(testCase.get("input"));
         Map<String, Object> response = null;
         String error = null;
+        String infra = null;
         long t0 = System.nanoTime();
         try {
             response = switch (type) {
@@ -311,6 +314,10 @@ class GoldenSetEvalTest {
             };
         } catch (QuotaExhausted e) {
             throw e; // stops the run; this case is not scored
+        } catch (InfraFailure e) {
+            error = e.getMessage();
+            infra = e.getMessage();
+            response = null;
         } catch (RestClientResponseException e) {
             error = "HTTP " + e.getStatusCode().value() + ": " + EvalScorer.truncate(e.getResponseBodyAsString(), 300);
             response = null;
@@ -324,14 +331,17 @@ class GoldenSetEvalTest {
             case ASK -> EvalScorer.scoreAsk(testCase, response, error);
             default -> EvalScorer.scorePlan(testCase, response, error, golden.fixtureHouseIds());
         };
+        // A provider failure that outlasted the retries says nothing about the model: not scored, run INCOMPLETE.
+        if (infra != null) EvalScorer.markInfra(result, infra);
         result.latencyMs = ms;
         return result;
     }
 
     /**
-     * POST with retries on 503/429 (provider quota or transient failure), honouring Retry-After. A provider quota error
-     * (problem {@code code: AI_QUOTA_EXHAUSTED}) is retried once after Retry-After and then throws
-     * {@link QuotaExhausted}, which stops the run.
+     * POST with retries on 503/429, honouring Retry-After; {@link RetryPolicy} decides from the problem's {@code cause}:
+     * a provider failure is retried and then throws {@link InfraFailure}; a model failure (unreadable output) is not
+     * retried and is scored. A provider quota error (problem {@code code: AI_QUOTA_EXHAUSTED}) is retried once after
+     * Retry-After and then throws {@link QuotaExhausted}, which stops the run.
      */
     private Map<String, Object> post(String path, Object body) {
         for (int attempt = 1; ; attempt++) {
@@ -354,12 +364,36 @@ class GoldenSetEvalTest {
                     if (reportedSetupHints.add(hint)) warnings.add("POST " + path + " returned " + status + ", setup: " + hint);
                     throw e;
                 }
-                if ((status != 503 && status != 429) || attempt >= MAX_ATTEMPTS) throw e;
+                switch (RetryPolicy.decide(status, RetryPolicy.causeOf(bodyOf(e)), attempt, MAX_ATTEMPTS)) {
+                    case SCORE -> throw e;
+                    case INFRA -> throw new InfraFailure("POST " + path + " still HTTP " + status + " (cause "
+                            + RetryPolicy.PROVIDER + ") after " + attempt + " attempt(s): "
+                            + EvalScorer.truncate(String.valueOf(bodyOf(e)), 200));
+                    case RETRY -> { }
+                }
                 long waitMs = retryAfterMs(e, attempt);
                 warnings.add("POST " + path + " returned " + status + (quota ? " (provider quota exhausted)" : "")
                         + " (attempt " + attempt + "), retried after " + waitMs / 1000 + " s");
                 pause(waitMs);
             }
+        }
+    }
+
+    private static String bodyOf(RestClientResponseException e) {
+        try {
+            return e.getResponseBodyAsString();
+        } catch (RuntimeException ignored) {
+            return null;
+        }
+    }
+
+    /**
+     * The provider failed (problem {@code cause: provider}) on every attempt: the case is recorded as an infrastructure
+     * error, left out of the metrics, and the run is INCOMPLETE ({@link RetryPolicy}).
+     */
+    static final class InfraFailure extends RuntimeException {
+        InfraFailure(String message) {
+            super(message);
         }
     }
 

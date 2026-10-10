@@ -85,6 +85,8 @@ class VisitPlannerLimitTest {
         final Function<Prompt, ChatResponse> wrapUp;
         final List<Prompt> withTools = new ArrayList<>();
         final List<Prompt> withoutTools = new ArrayList<>();
+        /** When set, the model call after the scripted tool turns fails with this instead of answering. */
+        RuntimeException failAfterTools;
 
         Script(List<String> toolTurns, String finalAnswer, Function<Prompt, ChatResponse> wrapUp) {
             this.toolTurns = toolTurns;
@@ -109,6 +111,7 @@ class VisitPlannerLimitTest {
             int turn = withTools.size();
             withTools.add(prompt);
             if (turn < toolTurns.size()) return toolCall(turn, toolTurns.get(turn));
+            if (failAfterTools != null) throw failAfterTools;
             return text(finalAnswer);
         }
     }
@@ -347,5 +350,90 @@ class VisitPlannerLimitTest {
         assertThat(res.fallback()).isTrue();
         assertThat(res.stops()).extracting(PlanModels.PlannedStop::houseId).containsExactly(a.id());
         assertThat(model.withoutTools).isEmpty();
+    }
+
+    // ---- S4b-BL-200: why a plan fell back (fallbackCause)
+
+    @Test
+    void aPlanThatNeededNoFallbackHasNoFallbackCause() {
+        var a = house("Baner flat", "Baner", 18.5590, null);
+        var res = run(new Script(List.of("searchHouses"), plan("One", a.id()), p -> {
+            throw new AssertionError("no wrap-up call expected");
+        }));
+
+        assertThat(res.fallback()).isFalse();
+        assertThat(res.fallbackCause()).isNull();
+    }
+
+    @Test
+    void aProviderErrorAfterUsefulToolCallsFallsBackWithCauseProvider() {
+        house("Baner flat", "Baner", 18.5590, null);
+        var model = new Script(List.of("searchHouses"), "unused", p -> {
+            throw new AssertionError("no wrap-up call expected");
+        });
+        model.failAfterTools = new RuntimeException("Failed to generate content",
+                new com.google.genai.errors.ServerException(503, "UNAVAILABLE", "overloaded"));
+
+        var res = run(model);
+
+        assertThat(res.fallback()).isTrue();
+        assertThat(res.fallbackCause()).isEqualTo("provider");
+    }
+
+    @Test
+    void unreadableModelOutputFallsBackWithCauseParse() {
+        house("Baner flat", "Baner", 18.5590, null);
+        var res = run(new Script(List.of("searchHouses"), "this is not json at all", p -> {
+            throw new AssertionError("no wrap-up call expected");
+        }));
+
+        assertThat(res.fallback()).isTrue();
+        assertThat(res.fallbackCause()).isEqualTo("parse");
+    }
+
+    @Test
+    void aWrapUpThatDoesNotAnswerWithAPlanFallsBackWithCauseLimit() {
+        house("Baner flat", "Baner", 18.5590, null);
+
+        var res = run(new Script(FIVE_SEARCHES, "unused", p -> text("I could not decide.")));
+
+        assertThat(res.fallback()).isTrue();
+        assertThat(res.fallbackCause()).isEqualTo("limit");
+    }
+
+    @Test
+    void aWrapUpThatAnswersWithNothingFallsBackWithCauseLimit() {
+        house("Baner flat", "Baner", 18.5590, null);
+
+        var res = run(new Script(FIVE_SEARCHES, "unused", p -> text("null")));
+
+        assertThat(res.fallback()).isTrue();
+        assertThat(res.fallbackCause()).isEqualTo("limit");
+    }
+
+    @Test
+    void aWrapUpCallThatFailsOnTheProviderAfterTheLimitWasHitIsStillLimitNotProvider() {
+        // The model used up its tool budget (model behaviour); the provider failing afterwards must not excuse that.
+        house("Baner flat", "Baner", 18.5590, null);
+
+        var res = run(new Script(FIVE_SEARCHES, "unused", p -> {
+            throw new RuntimeException("Failed to generate content",
+                    new com.google.genai.errors.ServerException(503, "UNAVAILABLE", "overloaded"));
+        }));
+
+        assertThat(res.fallback()).isTrue();
+        assertThat(res.fallbackCause()).isEqualTo("limit");
+    }
+
+    @Test
+    void aWrapUpCallThatFailsForAnyOtherReasonFallsBackWithCauseLimit() {
+        house("Baner flat", "Baner", 18.5590, null);
+
+        var res = run(new Script(FIVE_SEARCHES, "unused", p -> {
+            throw new IllegalStateException("provider down");
+        }));
+
+        assertThat(res.fallback()).isTrue();
+        assertThat(res.fallbackCause()).isEqualTo("limit");
     }
 }

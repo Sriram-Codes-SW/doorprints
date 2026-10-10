@@ -101,5 +101,79 @@ class ProviderErrorsTest {
         var b = new RuntimeException("b", a);
         a.initCause(b);
         assertThat(ProviderErrors.isQuotaExhausted(a)).isFalse();
+        assertThat(ProviderErrors.cause(a)).isNull();
+    }
+
+    // ---- S4b-BL-200: provider failure or model failure
+
+    @Test
+    void httpStatusTimeoutAndConnectErrorsAreProviderFailures() {
+        assertThat(ProviderErrors.cause(wrapped(new ClientException(408, "Request Timeout", "x")))).isEqualTo("provider");
+        assertThat(ProviderErrors.cause(wrapped(new ServerException(500, "Internal", "x")))).isEqualTo("provider");
+        assertThat(ProviderErrors.cause(wrapped(new ServerException(503, "Service Unavailable", "")))).isEqualTo("provider");
+        assertThat(ProviderErrors.cause(wrapped(new ClientException(429, "Too Many Requests", "x")))).isEqualTo("provider");
+        assertThat(ProviderErrors.cause(wrapped(RateLimitException.builder().headers(Headers.builder().build()).build())))
+                .isEqualTo("provider");
+        assertThat(ProviderErrors.cause(wrapped(new GeminiEmbeddingException("HTTP 503", 503, "UNAVAILABLE"))))
+                .isEqualTo("provider");
+        assertThat(ProviderErrors.cause(wrapped(new GeminiEmbeddingException("I/O error")))).isEqualTo("provider");
+        assertThat(ProviderErrors.cause(wrapped(HttpClientErrorException.create(HttpStatus.BAD_GATEWAY, "Bad Gateway",
+                new HttpHeaders(), new byte[0], StandardCharsets.UTF_8)))).isEqualTo("provider");
+        assertThat(ProviderErrors.cause(wrapped(new java.net.http.HttpTimeoutException("request timed out"))))
+                .isEqualTo("provider");
+        assertThat(ProviderErrors.cause(wrapped(new java.net.ConnectException("refused")))).isEqualTo("provider");
+        assertThat(ProviderErrors.cause(wrapped(new java.net.SocketTimeoutException("read timed out"))))
+                .isEqualTo("provider");
+        assertThat(ProviderErrors.cause(wrapped(new java.util.concurrent.TimeoutException("slow")))).isEqualTo("provider");
+        assertThat(ProviderErrors.cause(wrapped(new org.springframework.web.client.ResourceAccessException("I/O error",
+                new java.io.IOException("reset"))))).isEqualTo("provider");
+    }
+
+    @Test
+    void otherClientErrorsAreNotExcusedAsProviderFailures() {
+        // 400 (request too long, malformed, schema rejected) and 401/403/404 are our request or setup, not an outage.
+        for (int status : new int[] {400, 401, 403, 404, 413, 422}) {
+            assertThat(ProviderErrors.cause(wrapped(new ClientException(status, "Client error", "x"))))
+                    .as("google-genai %d", status).isNull();
+            assertThat(ProviderErrors.cause(wrapped(new GeminiEmbeddingException("HTTP " + status, status, "X"))))
+                    .as("embedding %d", status).isNull();
+            assertThat(ProviderErrors.cause(wrapped(HttpClientErrorException.create(HttpStatus.valueOf(status), "x",
+                    new HttpHeaders(), new byte[0], StandardCharsets.UTF_8)))).as("spring %d", status).isNull();
+        }
+        assertThat(ProviderErrors.cause(wrapped(BadRequestException.builder().headers(Headers.builder().build()).build())))
+                .as("openai-java 400").isNull();
+    }
+
+    @Test
+    void aJacksonParseErrorIsAModelFailureEvenThoughItIsAnIoException() {
+        // JsonProcessingException extends IOException: the model check must come before the I/O check.
+        var parse = new com.fasterxml.jackson.core.JsonParseException(null, "Unexpected character");
+        assertThat(parse).isInstanceOf(java.io.IOException.class);
+        assertThat(ProviderErrors.cause(parse)).isEqualTo("model");
+        assertThat(ProviderErrors.cause(wrapped(parse))).isEqualTo("model");
+    }
+
+    @Test
+    void unreadableOrEmptyModelOutputIsAModelFailure() {
+        var converter = new org.springframework.ai.converter.BeanOutputConverter<>(
+                app.doorprints.server.ai.agent.PlanModels.AgentPlan.class);
+        // What ChatClient.responseEntity does with text that is not the requested JSON (the real converter, not a stub).
+        var notJson = org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class,
+                () -> converter.convert("I could not decide."));
+        assertThat(ProviderErrors.cause(wrapped(notJson))).isEqualTo("model");
+        var truncated = org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class,
+                () -> converter.convert("{\"summary\":\"cut o"));
+        assertThat(ProviderErrors.cause(wrapped(truncated))).isEqualTo("model");
+        var empty = org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class, () -> converter.convert(""));
+        assertThat(ProviderErrors.cause(wrapped(empty))).isEqualTo("model");
+        assertThat(ProviderErrors.cause(wrapped(
+                new com.fasterxml.jackson.core.JsonParseException(null, "Unexpected character")))).isEqualTo("model");
+    }
+
+    @Test
+    void anUnclassifiedFailureHasNoCauseAndMessagesAreNeverInspected() {
+        assertThat(ProviderErrors.cause(wrapped(new IllegalStateException("boom")))).isNull();
+        assertThat(ProviderErrors.cause(new RuntimeException("503 UNAVAILABLE timeout json parse"))).isNull();
+        assertThat(ProviderErrors.cause(null)).isNull();
     }
 }

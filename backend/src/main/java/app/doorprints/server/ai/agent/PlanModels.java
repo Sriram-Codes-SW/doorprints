@@ -57,11 +57,18 @@ public final class PlanModels {
 
     /**
      * {@code fallback} is true when the agent ran out of budget or returned an unusable plan and the server built a
-     * deterministic nearest-neighbour route from the houses the agent had found.
+     * deterministic nearest-neighbour route from the houses the agent had found. {@code fallbackCause} (S4b-BL-200)
+     * says why, and is null when {@code fallback} is false: {@link #FALLBACK_PROVIDER} (the model provider failed
+     * mid-plan), {@link #FALLBACK_PARSE} (unreadable output or no usable stop) or {@link #FALLBACK_LIMIT} (the tool
+     * budget ran out and the wrap-up call did not give a plan). An additive field: clients ignore what they do not know.
      */
     public record PlanResponse(String summary, List<PlannedStop> stops, long totalMeters, int totalWalkMinutes,
-                               List<String> toolCalls, boolean fallback) {
+                               List<String> toolCalls, boolean fallback, String fallbackCause) {
     }
+
+    public static final String FALLBACK_PROVIDER = "provider";
+    public static final String FALLBACK_PARSE = "parse";
+    public static final String FALLBACK_LIMIT = "limit";
 
     /** Structured output target for the model. */
     public record AgentPlan(

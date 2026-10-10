@@ -19,6 +19,7 @@
 package app.doorprints.server.ai.agent;
 
 import app.doorprints.server.ai.AnswerText;
+import app.doorprints.server.ai.ProviderErrors;
 import app.doorprints.server.ai.PromptSafety;
 import app.doorprints.server.ai.agent.HouseSearchService.HouseSummary;
 import app.doorprints.server.ai.agent.PlanModels.AgentPlan;
@@ -144,6 +145,8 @@ public class VisitPlannerService {
 
         long started = System.nanoTime();
         AgentPlan plan = null;
+        // Why there is no plan (PlanModels.FALLBACK_*), for the response; null while there is one.
+        String noPlan = null;
         try {
             var result = chat.prompt()
                     .system(systemPrompt(request.startLat(), request.startLon(), maxStops))
@@ -155,21 +158,35 @@ public class VisitPlannerService {
                     .responseEntity(AgentPlan.class);
             AiUsageLogger.log("plan-visits", result.response(), started);
             plan = result.entity();
+            if (plan == null) noPlan = PlanModels.FALLBACK_PARSE;
         } catch (RuntimeException e) {
             if (limitWatch.hit && !tools.calls().isEmpty()) {
                 // The model used its allowance (often a fifth searchHouses): let it finish with what it found.
                 log.info("plan-visits: tool limit reached after {}, making one wrap-up call", tools.calls());
-                plan = wrapUp(request, maxStops, nonce, tools);
+                var wrap = wrapUp(request, maxStops, nonce, tools);
+                plan = wrap.plan();
+                noPlan = wrap.failure();
                 if (plan == null && tools.seen().isEmpty()) throw new AiUnavailableException("Visit planning failed", e);
             } else {
                 if (tools.seen().isEmpty()) throw new AiUnavailableException("Visit planning failed", e);
+                noPlan = fallbackCause(e);
                 // Unparseable output or a provider error after useful tool calls: degrade gracefully.
                 log.info("plan-visits: agent did not finish ({}), using nearest-neighbour fallback after {} tool calls",
                         e.getClass().getSimpleName(), tools.calls().size());
             }
         }
         log.info("plan-visits: tools used {}", tools.calls());
-        return assemble(plan, tools.seen(), tools.calls(), request.startLat(), request.startLon(), maxStops);
+        return assemble(plan, tools.seen(), tools.calls(), request.startLat(), request.startLon(), maxStops, noPlan);
+    }
+
+    /** {@code provider} when the model provider failed (HTTP error, timeout, connect), otherwise {@code parse}. */
+    static String fallbackCause(RuntimeException e) {
+        return ProviderErrors.CAUSE_PROVIDER.equals(ProviderErrors.cause(e)) ? PlanModels.FALLBACK_PROVIDER
+                : PlanModels.FALLBACK_PARSE;
+    }
+
+    /** The wrap-up call's plan, or why it gave none: always {@code limit} (the budget ran out first, whatever failed after). */
+    private record WrapUp(AgentPlan plan, String failure) {
     }
 
     private static String userText(PlanRequest request, String nonce) {
@@ -212,7 +229,7 @@ public class VisitPlannerService {
      * followed by {@link #limitNotice}. Returns the model's plan (checked later by {@link #assemble}) or null when this
      * call fails or answers with something that is not a plan; there is no second attempt.
      */
-    private AgentPlan wrapUp(PlanRequest request, int maxStops, String nonce, VisitPlannerTools tools) {
+    private WrapUp wrapUp(PlanRequest request, int maxStops, String nonce, VisitPlannerTools tools) {
         long started = System.nanoTime();
         try {
             var result = chat.prompt()
@@ -222,10 +239,12 @@ public class VisitPlannerService {
                     .call()
                     .responseEntity(AgentPlan.class);
             AiUsageLogger.log("plan-visits-wrap-up", result.response(), started);
-            return result.entity();
+            var plan = result.entity();
+            return new WrapUp(plan, plan == null ? PlanModels.FALLBACK_LIMIT : null);
         } catch (RuntimeException e) {
             log.info("plan-visits: the wrap-up call failed ({})", e.getClass().getSimpleName());
-            return null;
+            // The model already used up its tool budget (its own behaviour): a provider error now must not excuse that.
+            return new WrapUp(null, PlanModels.FALLBACK_LIMIT);
         }
     }
 
@@ -296,9 +315,19 @@ public class VisitPlannerService {
                 .toList();
     }
 
-    /** Validates the model's plan against what the tools returned; pure, unit-tested. */
+    /** The same, for a plan that is missing for no named reason (read as unusable output). */
     static PlanResponse assemble(AgentPlan plan, Map<UUID, HouseSummary> seen, List<String> calls,
                                  double startLat, double startLon, int maxStops) {
+        return assemble(plan, seen, calls, startLat, startLon, maxStops, null);
+    }
+
+    /**
+     * Validates the model's plan against what the tools returned; pure, unit-tested. {@code noPlan} says why
+     * {@code plan} is null ({@code PlanModels.FALLBACK_*}; null reads as unusable output); it becomes the response's
+     * {@code fallbackCause} only when the fallback route is taken. A plan whose stops are all invented is {@code parse}.
+     */
+    static PlanResponse assemble(AgentPlan plan, Map<UUID, HouseSummary> seen, List<String> calls,
+                                 double startLat, double startLon, int maxStops, String noPlan) {
         // What the model was given about the houses (labels, localities, streets), for AnswerText.clean.
         var known = new StringBuilder();
         for (var h : seen.values()) {
@@ -324,11 +353,13 @@ public class VisitPlannerService {
             }
         }
         boolean fallback = false;
+        String fallbackCause = null;
         String summary = plan == null || plan.summary() == null ? null : AnswerText.clean(plan.summary().strip(), context);
         List<RouteOptimizer.Leg> legs;
         if (plan == null || (chosen.isEmpty() && !seen.isEmpty() && (plan.stops() != null && !plan.stops().isEmpty()))) {
             // No usable plan: nearest-neighbour over the houses in the running that the agent found.
             fallback = true;
+            fallbackCause = plan == null && noPlan != null ? noPlan : PlanModels.FALLBACK_PARSE;
             chosen.clear();
             reasons.clear();
             var points = fallbackPoints(seen, startLat, startLon, maxStops);
@@ -358,6 +389,6 @@ public class VisitPlannerService {
         if (summary == null || summary.isBlank()) {
             summary = stops.isEmpty() ? "No saved houses matched the request." : "Visit plan with " + stops.size() + " stops.";
         }
-        return new PlanResponse(summary, stops, totalMeters, totalMinutes, calls, fallback);
+        return new PlanResponse(summary, stops, totalMeters, totalMinutes, calls, fallback, fallbackCause);
     }
 }

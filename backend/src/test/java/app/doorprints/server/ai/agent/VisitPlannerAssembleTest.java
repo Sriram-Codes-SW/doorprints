@@ -209,4 +209,30 @@ class VisitPlannerAssembleTest {
         assertThat(res.fallback()).isFalse();
         assertThat(res.summary()).isEqualTo("Nothing matches");
     }
+
+    // ---- S4b-BL-200: fallbackCause
+
+    @Test
+    void fallbackCauseIsNullWithoutAFallbackAndTheGivenCauseWhenThereIsNoPlan() {
+        var fine = VisitPlannerService.assemble(new AgentPlan("Two", List.of(new AgentStop(a.id().toString(), "x"))), seen,
+                List.of(), 12.9716, 77.6400, 8, "provider");
+        assertThat(fine.fallback()).isFalse();
+        assertThat(fine.fallbackCause()).as("a cause is only reported for a fallback").isNull();
+
+        for (var cause : List.of("provider", "parse", "limit")) {
+            var res = VisitPlannerService.assemble(null, seen, List.of(), 12.9716, 77.6400, 8, cause);
+            assertThat(res.fallback()).isTrue();
+            assertThat(res.fallbackCause()).isEqualTo(cause);
+        }
+        assertThat(VisitPlannerService.assemble(null, seen, List.of(), 12.9716, 77.6400, 8).fallbackCause())
+                .as("no cause given: the output was unusable").isEqualTo("parse");
+    }
+
+    @Test
+    void aPlanWithOnlyInventedHousesFallsBackWithCauseParseWhateverCauseWasGiven() {
+        var plan = new AgentPlan("Invented", List.of(new AgentStop(UUID.randomUUID().toString(), "invented")));
+        var res = VisitPlannerService.assemble(plan, seen, List.of(), 12.9716, 77.6400, 8, "provider");
+        assertThat(res.fallback()).isTrue();
+        assertThat(res.fallbackCause()).isEqualTo("parse");
+    }
 }

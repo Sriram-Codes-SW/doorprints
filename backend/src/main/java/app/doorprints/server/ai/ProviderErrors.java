@@ -21,10 +21,15 @@ package app.doorprints.server.ai;
 import com.google.genai.errors.ApiException;
 import app.doorprints.server.ai.embedding.GeminiEmbeddingModel.GeminiEmbeddingException;
 import app.doorprints.server.ai.rag.HouseIndexer.ReindexFailedException;
+import com.google.genai.errors.GenAiIOException;
+import com.openai.errors.OpenAIIoException;
 import com.openai.errors.OpenAIServiceException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientResponseException;
 
+import java.io.IOException;
 import java.util.Collections;
+import java.util.concurrent.TimeoutException;
 import java.util.IdentityHashMap;
 import java.util.Optional;
 import java.util.Set;
@@ -64,6 +69,55 @@ public final class ProviderErrors {
             }
         }
         return false;
+    }
+
+    /** {@link #cause}: the provider answered with an HTTP error, timed out or could not be reached. */
+    public static final String CAUSE_PROVIDER = "provider";
+    /** {@link #cause}: the provider answered but its output could not be read (not JSON, truncated, empty). */
+    public static final String CAUSE_MODEL = "model";
+
+    /**
+     * Why an AI call failed, for clients and the eval harness (S4b-BL-200): {@link #CAUSE_PROVIDER} for an HTTP error,
+     * timeout or connect failure of the model provider (a retry can help; it says nothing about the model), or
+     * {@link #CAUSE_MODEL} for output that could not be parsed (a retry would only ask again). {@code null} when the
+     * chain holds neither, so a client never reads a guess as a fact. The cause chain is walked outermost first and
+     * the first recognised node decides; only types are inspected, never message text.
+     */
+    public static String cause(Throwable error) {
+        Set<Throwable> seen = Collections.newSetFromMap(new IdentityHashMap<>());
+        int depth = 0;
+        for (Throwable t = error; t != null && depth < MAX_DEPTH && seen.add(t); t = t.getCause(), depth++) {
+            if (t instanceof com.fasterxml.jackson.core.JsonProcessingException
+                    || t instanceof tools.jackson.core.JacksonException) {
+                return CAUSE_MODEL;
+            }
+            // An HTTP answer decides by its status: 5xx, 429 and 408 are the provider's; any other 4xx (400 request too
+            // long, malformed or schema rejected; 401/403/404 setup) is ours and gets no cause, so it is scored.
+            Integer status = httpStatus(t);
+            if (status != null) return providerStatus(status) ? CAUSE_PROVIDER : null;
+            if (t instanceof GenAiIOException || t instanceof OpenAIIoException || t instanceof GeminiEmbeddingException
+                    || t instanceof ReindexFailedException || t instanceof ResourceAccessException
+                    || t instanceof TimeoutException || t instanceof IOException) {
+                return CAUSE_PROVIDER;
+            }
+        }
+        return null;
+    }
+
+    /** The provider's HTTP status carried by this exception, or null (no status: an I/O error, or another type). */
+    private static Integer httpStatus(Throwable t) {
+        return switch (t) {
+            case ApiException a -> a.code();
+            case OpenAIServiceException o -> o.statusCode();
+            case RestClientResponseException r -> r.getStatusCode().value();
+            case GeminiEmbeddingException g when g.httpStatus() > 0 -> g.httpStatus();
+            default -> null;
+        };
+    }
+
+    /** 5xx, 429 (quota) and 408 (timeout): the provider's side. */
+    private static boolean providerStatus(int status) {
+        return status >= 500 || status == TOO_MANY_REQUESTS || status == 408;
     }
 
     /** Which call failed: chat (google-genai {@link ApiException}) or embeddings ({@link GeminiEmbeddingException}). */

@@ -359,6 +359,14 @@ jobs:
             exit 1
           fi
 
+      - name: Report provider or infrastructure errors
+        if: always()
+        run: |
+          if [ -f backend/target/ai-eval-report.md ] && grep -q '^\*\*Result: INCOMPLETE\*\*' backend/target/ai-eval-report.md; then
+            echo "::error title=AI eval INCOMPLETE::The model provider or the infrastructure failed for some cases (see Infrastructure errors in the scorecard). They are not scored and the run is not a PASS. Re-run once the provider is healthy."
+            exit 1
+          fi
+
       - name: Publish scorecard to the job summary
         if: always()
         run: |
