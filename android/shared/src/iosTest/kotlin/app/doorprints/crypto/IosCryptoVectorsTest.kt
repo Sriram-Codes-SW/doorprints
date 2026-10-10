@@ -53,10 +53,18 @@ class IosCryptoVectorsTest {
 
     private fun h(s: String) = Bytes.unhex(s)
     private fun ByteArray.hx() = Bytes.hex(this)
-    private fun JsonObject.s(key: String): String = getValue(key).jsonPrimitive.content
+    private fun JsonObject.need(key: String) = this[key] ?: error("vector key '$key' is missing; the object has ${keys.sorted()}")
+    private fun JsonObject.s(key: String): String = need(key).jsonPrimitive.content
     private fun JsonObject.h(key: String): ByteArray = h(s(key))
     private fun JsonObject.b(key: String): ByteArray = checkNotNull(Bytes.unb64(s(key))) { key }
-    private fun JsonObject.arr(key: String): List<JsonObject> = getValue(key).jsonArray.map { it.jsonObject }
+    private fun JsonObject.arr(key: String): List<JsonObject> = need(key).jsonArray.map { it.jsonObject }
+
+    /** Reports which vector failed and with what, so a K/N stack trace with a doubtful line number is not all there is. */
+    private inline fun <T> stage(what: String, block: () -> T): T = try {
+        block()
+    } catch (e: Throwable) {
+        throw AssertionError("$what failed: ${e::class.simpleName}: ${e.message}", e)
+    }
 
     private fun load(name: String): JsonObject {
         val starts = listOfNotNull(
@@ -127,14 +135,14 @@ class IosCryptoVectorsTest {
     @Test
     fun recoveryKeyVectors() {
         for (v in dpx.arr("recovery")) {
-            val key = RecoveryKey.fromBytes(v.h("bytes"))
+            val key = stage("recovery fromBytes") { RecoveryKey.fromBytes(v.h("bytes")) }
             assertEquals(v.s("symbols"), key.symbols)
             assertEquals(v.s("display"), key.display)
             assertContentEquals(v.h("bytes"), RecoveryKey.parse(v.s("display")).bytes)
-            assertEquals(v.s("scalar"), key.scalar(p).hx())
-            val pair = key.keyPair(p)
+            assertEquals(v.s("scalar"), stage("recovery scalar") { key.scalar(p).hx() })
+            val pair = stage("recovery keyPair (import of the scalar)") { key.keyPair(p) }
             assertEquals(v.s("publicKey"), pair.publicKey.hx())
-            assertEquals(v.s("kid"), kidOf(p, pair.publicKey).hx())
+            assertEquals(v.s("kid"), stage("recovery kid") { kidOf(p, pair.publicKey).hx() })
         }
     }
 
@@ -176,10 +184,10 @@ class IosCryptoVectorsTest {
 
     @Test
     fun keysFileVectors() {
-        val k = dpx.getValue("keys").jsonObject
+        val k = dpx.need("keys").jsonObject
         val files = KeysFile(FakeRandom(p, k.s("seed")))
         val devices = k.arr("devices").map { d ->
-            val pair = Hpke(p).deriveKeyPair(d.h("ikm"))
+            val pair = stage("keys deriveKeyPair") { Hpke(p).deriveKeyPair(d.h("ikm")) }
             pair to KeysFile.NewDevice(pair.publicKey, d.s("name"), DevicePlatform.entries.single { it.wire == d.s("platform") })
         }
         var recovery = RecoveryKey.fromBytes(k.h("recoveryBytes"))
@@ -252,10 +260,10 @@ class IosCryptoVectorsTest {
 
     @Test
     fun hpkeOfficialAndRegressionVectors() {
-        val hpke = load("hpke-vectors.json").getValue("hpke").jsonObject
+        val hpke = load("hpke-vectors.json").need("hpke").jsonObject
         val official = hpke.arr("official")
         val regression = hpke.arr("regression")
         assertTrue(official.isNotEmpty() && regression.isNotEmpty())
-        (official + regression).forEach(::runHpke)
+        (official + regression).forEachIndexed { i, v -> stage("hpke vector $i (${v["source"]})") { runHpke(v) } }
     }
 }
