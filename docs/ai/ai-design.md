@@ -62,7 +62,8 @@
 | v0.58   | 2026-10-10 | Claude (Code), engineer       | **15: provider safety blocks and abusive text** (S4b-BL-232, [10](../10-sprint-log.md) 0.240, [02](../02-threat-model.md) AB-12). The owner decision (no filtering or censoring of what people type or say), the per-provider fields that count as blocked (Gemini `promptFeedback.blockReason` and the `finishReason`s `SAFETY`, `PROHIBITED_CONTENT`, `BLOCKLIST`, `SPII`, `RECITATION`; OpenAI-compatible `content_filter`, `refusal`, 400 `content_policy_violation` / `content_filter`; Anthropic `stop_reason` `refusal`), the new failure `blocked` / `AI_BLOCKED` (no retry, no ladder, no provider text), the four-language message, the vectors section `blockedResponses`, and what the server does today. Planned: S4b-BL-233..S4b-BL-235. |
 | v0.59   | 2026-10-10 | Claude (Code), engineer       | **Stale compose notes corrected:** section 2 and the merge gate 1 said `docker-compose.yml` cannot select `AI_PROVIDER=vertex`; it passes the Vertex settings and documents the ADC mount (checked against the file on `main`, 2026-10-10). Docs only. |
 | v0.60   | 2026-10-10 | Claude (Code), engineer       | **13.3 Voice input: the `Transcriber` core** (voice PR 2, S4b-BL-219, ADR-37): the two adapters, the limits, the capability table and the two new vector sections; no caller. |
-| v0.61   | 2026-10-10 | Claude (Code), engineer       | **Extract reliability on the website and the phones** (S4b-BL-238; `feat/ai-extract-reliability`; the consult's reliability contract, gaps a-d): the web Gemini path gets the 60 s request limit of `postAiJson` (a timeout is `unavailable`); one idempotent *Fill in* (the listing's notes go into one block between `--- from listing ---` and `--- end of listing ---`, replaced on a second run, the person's notes untouched; the same lines on both stacks); *Undo fill* restores the form as it was before the fill; the fields a fill wrote carry a "from the listing" mark until edited; the no-AI regex price against the model's price gives a warning with both figures (zero cost, never a correction). Typed fields are still never overwritten. No prompt, sanitizer or parity vector changed. |
+| v0.61   | 2026-10-10 | Claude (Code), engineer       | **8.6 Validity of the evals** (S4b-BL-236, S4b-BL-237; `feat/ai-eval-validity-and-agreement`): the Vertex-only evidence statement and its assumption, Wilson intervals on every metric line, the paired sign-test verdict of the compare tool, field-level agreement for Extract, the canary suite (`canaries.json`, three keyless in every build, three live behind the `canary` input with package-private test-only seams), the hard set (`hard-set.json`, 18 additive cases, `eval_set` input) and the model-spread run matrix. No prompt, threshold or golden-set case changed. |
+| v0.62   | 2026-10-10 | Claude (Code), engineer       | **Extract reliability on the website and the phones** (S4b-BL-238; `feat/ai-extract-reliability`; the consult's reliability contract, gaps a-d): the web Gemini path gets the 60 s request limit of `postAiJson` (a timeout is `unavailable`); one idempotent *Fill in* (the listing's notes go into one block between `--- from listing ---` and `--- end of listing ---`, replaced on a second run, the person's notes untouched; the same lines on both stacks); *Undo fill* restores the form as it was before the fill; the fields a fill wrote carry a "from the listing" mark until edited; the no-AI regex price against the model's price gives a warning with both figures (zero cost, never a correction). Typed fields are still never overwritten. No prompt, sanitizer or parity vector changed. |
 
 Status: implemented in `backend/` (package `app.doorprints.server.ai`), **off by default**. Not yet compiled in this
 sandbox (no Maven Central access) — CI compiles and runs the tests. Provider: AI Studio by default, Vertex AI with
@@ -1111,6 +1112,94 @@ The next manual run checks both changes on the live model.
   data that is **already stored**: stored contacts are redacted from every automatic provider-bound path (embedding,
   Ask context and citations, agent and MCP tool results) and that control is unchanged. Extraction does not read
   stored houses, and the draft it returns is only saved when the user confirms it.
+
+### 8.6 Validity of the evals: what the scorecard can show (S4b-BL-236, S4b-BL-237, 2026-10-10)
+
+**The evidence statement (owner constraint, 2026-10-10).** The only model the evals can be run against is Gemini on Vertex
+AI, through the server eval (`ai-evals.yml`, `provider=vertex`, paid from the trial credit). Everything in this section is
+therefore designed under one explicit **assumption: hosted models behave broadly alike on these tasks**, so what Vertex shows
+about the cases is taken as a statement about the cases, not about Gemini. The assumption is made testable where it can be:
+the **model-spread matrix** below runs the same cases on two Vertex models of different size, and a case set that cannot
+tell a weaker model from the default is not discriminating, whatever model is used later. **What the Vertex-only evidence
+cannot support**, and is not claimed: the own-provider adapters (`openai-compatible`, `anthropic`) on a hosted model, the
+on-device paths of the phones (Kotlin, Compose) and the website (TypeScript) on a real model (the fakes of S4b-BL-175 pin
+the wire format, not the answers), latency on real networks, real listings and real questions, and whether a right-looking
+cited answer misleads a person (6).
+
+**Intervals (informational).** Every metric line of the server scorecard and every group line of the website's summary carries
+its **Wilson 95% interval**, as `0.97 (95% CI 0.83-1.00)` (`Interval.java`, `ai-eval-stats.ts`; the threshold is compared with
+the value alone). What the golden set's sizes can show, at a perfect score: injection 25/25 gives a lower bound of 0.87, plan
+validity 10/10 gives 0.72, refusal 5/5 gives 0.57, 217/217 fields gives 0.98, and 0 hallucinations in 35 null-expected fields
+bounds the rate at 0.10. **Trials to detect a 10-point drop** (80% power, one-sided alpha 0.05, independent trials): a metric
+at 1.00 falling to 0.90 needs 16 trials, so every gate at 1.00 is detectable today except by chance; `extractionFieldAccuracy`
+0.95 to 0.85 needs 44 fields (the 217 are correlated inside their 34 cases, so count 2 passes); citation precision or recall
+0.90 to 0.80 needs 69 citations (3 ask passes); `answerCorrectness` 69 cases (3 ask passes); `agentNoFallbackRate` 0.80 to
+0.70 needs 109 plans (11 plan passes; the 0.80 threshold is not measurable at 10 cases, its interval at 10/10 is 0.72-1.00).
+
+**The paired verdict.** `tools/ai-eval-compare.mjs` pairs the cases two scorecards both scored (PASS or FAIL; an ERROR or
+INFRA on either side leaves the pair out), counts only the **discordant pairs** and prints an exact two-sided sign test:
+`PAIRED: 75 cases scored in both, 8 discordant pairs (7 default-only passes, 1 variant-only), exact two-sided sign test
+p = 0.070: no significant difference at 0.05`. With the golden set's 75 cases, 8:0 is significant (p = 0.008), 7:1 is not; a
+run with no discordant pair is "no difference observed", never "the same". Any two scorecards of one case set compare this
+way: default against an address set, the hard set on two models, or two default runs for the noise floor.
+
+**Field-level agreement (informational).** With `repeat_types` including `extract`, the agreement section gains a table per
+field: the structured fields (`price`, `priceType`, `bedrooms`, `areaSqft`, `locality`, `street`, `contactPhone`,
+`listingUrl`) after the scorer's normalisation (28,000 and 28000 are one value; case, punctuation and spacing folded; the
+phone's last ten digits; the link without its trailing slash), `amenities` as a set, the row **all structured fields** for
+the tuple, and the free-text fields (`label`, `notes`, `address`, `contactName`) apart, because wording varies even when the
+facts agree (that is why 48 of 68 whole-draft pairs differed in the first repeat run). The whole-draft row stays. Nothing is
+gated; sensible gates once measured are 0.95 per structured field and 0.90 for the tuple.
+
+**Canaries (`docs/ai/evals/canaries.json`, `Canaries.java`).** A scorecard that can only say PASS proves nothing, so six
+degraded configurations each name a metric that **must move**. Three are **keyless** and run on every build (`CanariesTest`,
+synthesised outputs, no provider; the server eval needs PostGIS and a model endpoint, so they run in-process rather than
+against the fake provider): `shuffled-expectations` (the ideal draft of case i, which scores 1.00 against its own case, scored
+against case i+1: field accuracy must fall below 0.30), `always-refuse` (every ask case answered with the refusal: citation
+recall 0 while refusal accuracy stays 1.00, so the two cannot be gamed together) and `prompt-swap` (an Ask-shaped object
+scored as a draft: field accuracy must stay below 0.20, the floor an empty draft gets from the 35 null-expected fields). Three
+are **live**, one run each with the workflow input `canary=<name>`: `no-sanitizer` (hallucination rate must rise above 0.00),
+`no-citation-filter` (citation precision must fall below 0.90) and `prompt-without-rules` (the data-not-instructions bullet
+removed from the built Extract and Ask system texts before sending; injection resistance must fall below 1.00). The live
+seams are **package-private static fields** of `ListingExtractionService` and `RagService`, null or false in production,
+read from no property or environment variable, set only by the test classes `ExtractCanarySeams` and `AskCanarySeams` for one
+run and reset after it; `ExtractCanarySeamsTest` and `AskCanarySeamsTest` prove the default path is the production one. The
+prompt files are not changed: the canary rewrites the built text for one run, and the parity vectors stay as they are. A
+canary run gates nothing and prints `CANARY: <name> expected drop seen` or `NOT seen`; **NOT seen on a live canary is a
+finding about the case set** (the bypassed part is not load-bearing on these cases, so a case that makes it load-bearing is
+missing), not a pass.
+
+**The hard set (`docs/ai/evals/hard-set.json`, 18 cases, `eval_set=hard-set`).** Additive cases for the failures the golden set
+does not exercise, each with a one-line `rationale`: two listings in one paste, rent next to deposit and maintenance,
+Devanagari and Tamil numerals, sale-or-rent ambiguity (`priceType` null), a Hinglish WhatsApp forward, competing figures
+(sqft, maintenance); multi-hop asks (parking under Rs 30,000; pets and a gym), temporal asks (visited before, how many
+visited), a near-miss refusal (a maintenance charge another house states); a plan with constraints that cannot both hold, a
+tie (two houses 600 m apart, set check only), an impossible afternoon across 2,500 km; and three abuse cases (S4b-BL-235,
+informational: the facts must be read, whether the expletive is repeated is reported). The file names `fixturesFrom:
+golden-set.json`, has no `thresholds`, and `EvalSets.select` runs its cases against the golden set's fixtures; the scorecard
+says `Eval set: hard-set v0.1` and every metric is "not gated". The golden set's 75 cases are byte for byte what they were.
+
+**Model spread: the Vertex-only substitute for a provider matrix.** Two models of different size on the same cases, paired by
+case. Run matrix (`suites=golden-set`, `provider=vertex`, `thinking_level=default`, `types=extract,ask,plan`, `repeats=1`):
+
+| Run | `eval_set` | `chat_model` | Reads |
+|---|---|---|---|
+| D1 | golden-set | (default, `gemini-3.5-flash`) | the verdict, the intervals; the noise floor against D2 |
+| D2 | golden-set | (default) | `compare D1 D2`: discordant pairs between two runs of the same model |
+| H1 | hard-set | (default) | the hard cases on the default model, not gated |
+| W1 | hard-set | `gemini-3.5-flash-lite` | `compare H1 W1`: the weaker model must score measurably lower on the hard set |
+| W2 | golden-set | `gemini-3.5-flash-lite` | `compare D1 W2`: does the golden set tell the models apart at all? |
+
+How to read it: **the hard set is discriminating when `compare H1 W1` names the default as better at 0.05** (or when the
+weaker model loses on cases the default wins, with more discordant pairs than `compare D1 D2` shows for noise). If W1 and
+H1 are within noise, the hard cases are not hard for this family of models and the assumption above has no test; if the
+golden set (W2) also fails to separate the models, its 75 cases say little about model quality and only its guards (the
+injection, refusal and validity gates) carry information. The model-spread result goes in 8.5 once run; the lead runs it
+(the owner approved the Vertex cost; the sessions dispatch nothing).
+
+**Determinism, in short (3 of the consult).** No two-call self-consistency in the app (it doubles the person's cost); the
+zero-cost signal is the no-AI regex price against the model's price, flagged as a warning (`feat/ai-extract-reliability`).
+A seed for the evals is S4b-BL-228.
 
 ## 9. Threat model (OWASP Top 10 for LLM Applications 2025 [OW])
 

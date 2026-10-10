@@ -91,6 +91,70 @@ final class Agreement {
         };
     }
 
+    /** The structured fields of a draft, compared one by one across trials (S4b-BL-236); the order of the agreement table. */
+    static final List<String> STRUCTURED_FIELDS = List.of("price", "priceType", "bedrooms", "areaSqft", "locality", "street",
+            "contactPhone", "listingUrl");
+    /** Compared as a set, apart from the structured tuple. */
+    static final String AMENITIES = "amenities";
+    /** Free text: reported apart and informational, because wording varies even when the facts agree. */
+    static final List<String> FREE_TEXT_FIELDS = List.of("label", "notes", "address", "contactName");
+    /** The row that says whether every structured field agreed at once. */
+    static final String STRUCTURED_TUPLE = "all structured fields";
+
+    /**
+     * The draft's fields after the scorer's normalisation ({@link #normalise}: 28,000 and 28000 are one value, case,
+     * punctuation and spacing folded, the phone's last ten digits, the link without its trailing slash), the amenities as
+     * a sorted set. A blank or missing field is null. Only the fields named above are kept.
+     */
+    static Map<String, Object> extractFields(Map<String, Object> draft) {
+        var out = new TreeMap<String, Object>();
+        for (var f : STRUCTURED_FIELDS) out.put(f, normalise(f, draft.get(f)));
+        for (var f : FREE_TEXT_FIELDS) out.put(f, normalise(f, draft.get(f)));
+        var amenities = normalise(AMENITIES, draft.get(AMENITIES));
+        out.put(AMENITIES, amenities instanceof Collection<?> c ? String.join(",", new TreeSet<>(c.stream().map(String::valueOf).toList())) : null);
+        return out;
+    }
+
+    /** One field across the cases run at least twice: how many cases agreed on it in every scored trial. */
+    record FieldRow(String field, int cases, int agreeing, boolean freeText) {
+        int differing() {
+            return cases - agreeing;
+        }
+    }
+
+    /**
+     * The field-level agreement of the extract cases (S4b-BL-236): per structured field, the amenities set and the whole
+     * structured tuple, then the free-text fields apart. A case agrees on a field when every scored trial has the same
+     * normalised value as trial 1 (both null counts as the same). Empty when no extract case ran twice.
+     */
+    static List<FieldRow> fieldRows(List<List<CaseResult>> perCase) {
+        var compared = new ArrayList<List<CaseResult>>();
+        for (var trials : perCase) {
+            var list = scored(trials);
+            if (list.size() >= 2 && EvalScorer.EXTRACT.equals(list.get(0).type) && list.stream().allMatch(r -> r.agreeFields != null)) {
+                compared.add(list);
+            }
+        }
+        if (compared.isEmpty()) return List.of();
+        var out = new ArrayList<FieldRow>();
+        for (var f : STRUCTURED_FIELDS) out.add(row(f, compared, List.of(f), false));
+        out.add(row(AMENITIES, compared, List.of(AMENITIES), false));
+        out.add(row(STRUCTURED_TUPLE, compared, STRUCTURED_FIELDS, false));
+        for (var f : FREE_TEXT_FIELDS) out.add(row(f, compared, List.of(f), true));
+        return out;
+    }
+
+    private static FieldRow row(String name, List<List<CaseResult>> compared, List<String> fields, boolean freeText) {
+        int agreeing = 0;
+        for (var list : compared) {
+            var first = list.get(0).agreeFields;
+            boolean same = list.stream().skip(1).allMatch(r -> fields.stream()
+                    .allMatch(f -> java.util.Objects.equals(first.get(f), r.agreeFields.get(f))));
+            if (same) agreeing++;
+        }
+        return new FieldRow(name, compared.size(), agreeing, freeText);
+    }
+
     static String citationKey(Collection<String> cited) {
         return "cited=" + String.join(",", new TreeSet<>(cited));
     }
@@ -172,6 +236,19 @@ final class Agreement {
             sb.append("\nPlan stop order: ").append(order.agreeing()).append(" of ").append(order.cases())
                     .append(" cases kept the same order in every trial (")
                     .append(EvalScorer.fmt((double) order.agreeing() / order.cases())).append(").\n");
+        }
+        var fields = fieldRows(perCase);
+        if (!fields.isEmpty()) {
+            sb.append("\n### Field agreement of the extract cases (informational, not gated)\n\n"
+                    + "Per field, the cases whose every scored trial gave the same normalised value as trial 1 (28,000 and 28000 are "
+                    + "one value; case, punctuation and spacing folded; the phone's last ten digits; amenities as a set). The free-text "
+                    + "fields are reported apart: wording varies even when the facts agree, so they do not count against the "
+                    + "structured tuple.\n\n| Field | Cases | Agree | Agreement (95% CI) | Differ |\n|---|---:|---:|---:|---:|\n");
+            for (var f : fields) {
+                sb.append("| ").append(f.field()).append(f.freeText() ? " (free text)" : "").append(" | ").append(f.cases())
+                        .append(" | ").append(f.agreeing()).append(" | ").append(Interval.label(f.agreeing(), f.cases()))
+                        .append(" | ").append(f.differing()).append(" |\n");
+            }
         }
         sb.append("\n");
         rows.forEach(r -> sb.append(ruleOfThree(r)).append('\n'));
