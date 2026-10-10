@@ -67,6 +67,31 @@ final class EvalRun {
         return false;
     }
 
+    /**
+     * Trials 2..{@code repeats} of the plan cases (S4b-BL-203), informational: each result goes to {@code trials} under its
+     * trial number, never to the gated results. Before every trial run it pauses, then stops when the deadline has passed
+     * or a case runs out of time ({@link Deadline.Expired}); {@code afterTrial} rewrites the scorecard.
+     *
+     * @return true when the repeats stopped because of the time budget (the gated trial is unaffected)
+     */
+    static boolean runRepeats(List<Map<String, Object>> planCases, int repeats, EvalScorer.Trials trials,
+                              Deadline deadline, Runnable between, Function<Map<String, Object>, CaseResult> runCase,
+                              Runnable afterTrial) {
+        for (int trial = 2; trial <= repeats; trial++) {
+            for (var testCase : planCases) {
+                between.run();
+                if (deadline.expired()) return true;
+                try {
+                    trials.record(trial, runCase.apply(testCase));
+                } catch (Deadline.Expired e) {
+                    return true;
+                }
+                afterTrial.run();
+            }
+        }
+        return false;
+    }
+
     /** Writes to a temporary file beside the target, then moves it over: a reader never sees half a scorecard. */
     static void writeAtomically(Path target, String content) throws IOException {
         var dir = target.toAbsolutePath().getParent();

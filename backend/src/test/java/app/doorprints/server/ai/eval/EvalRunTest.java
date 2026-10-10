@@ -172,4 +172,106 @@ class EvalRunTest {
         assertThat(EvalRun.run(cases(2), results, deadline, () -> { }, EvalRunTest::scored, progress -> { })).isTrue();
         assertThat(results).isEmpty();
     }
+
+    // ---- Repeats of the plan cases (S4b-BL-203) respect the time budget ----
+
+    private static final String H1 = "11111111-1111-4111-8111-111111111111";
+
+    private static List<Map<String, Object>> planCases(int n) {
+        var out = new ArrayList<Map<String, Object>>();
+        for (int i = 1; i <= n; i++) {
+            var c = new HashMap<String, Object>();
+            c.put("id", "p" + i);
+            c.put("type", "plan");
+            c.put("expected", Map.of("stopsSubsetOf", List.of(H1), "minStops", 1));
+            c.put("input", Map.of());
+            out.add(c);
+        }
+        return out;
+    }
+
+    private static CaseResult scoredPlan(Map<String, Object> testCase) {
+        return EvalScorer.scorePlan(testCase, Map.of("stops", List.of(Map.of("houseId", H1)), "fallback", false), null,
+                List.of(H1));
+    }
+
+    private static EvalScorer.Trials firstTrial(List<Map<String, Object>> cases) {
+        var trials = new EvalScorer.Trials();
+        cases.forEach(c -> trials.record(1, scoredPlan(c)));
+        return trials;
+    }
+
+    @Test
+    void repeatsRunEveryPlanCaseOnceMoreForEachTrialAndLeaveTheGatedResultsAlone() {
+        var cases = planCases(2);
+        var trials = firstTrial(cases);
+        var ran = new ArrayList<String>();
+        var rewrites = new int[1];
+
+        var stopped = EvalRun.runRepeats(cases, 3, trials, new Deadline(new Manual(), Duration.ofMinutes(35)), () -> { },
+                c -> { ran.add(String.valueOf(c.get("id"))); return scoredPlan(c); }, () -> rewrites[0]++);
+
+        assertThat(stopped).isFalse();
+        assertThat(ran).containsExactly("p1", "p2", "p1", "p2");
+        assertThat(rewrites[0]).as("the scorecard is rewritten after every repeat").isEqualTo(4);
+        assertThat(trials.gated()).hasSize(2);
+        assertThat(trials.stability()).extracting(EvalScorer.Stability::label).containsExactly("3/3 passed", "3/3 passed");
+    }
+
+    @Test
+    void repeatsStopWhenTheBudgetIsUsedUpBeforeATrialAndLeaveTheGatedTrialComplete() {
+        var cases = planCases(2);
+        var trials = firstTrial(cases);
+        var clock = new Manual();
+        var ran = new ArrayList<String>();
+
+        // Each pause between trials costs 20 minutes of a 35 minute budget: one repeat fits, the second does not.
+        var stopped = EvalRun.runRepeats(cases, 3, trials, new Deadline(clock, Duration.ofMinutes(35)),
+                () -> clock.now = clock.now.plus(Duration.ofMinutes(20)),
+                c -> { ran.add(String.valueOf(c.get("id"))); return scoredPlan(c); }, () -> { });
+
+        assertThat(stopped).isTrue();
+        assertThat(ran).containsExactly("p1");
+        assertThat(trials.gated()).hasSize(2);
+        assertThat(trials.stability()).extracting(EvalScorer.Stability::label).containsExactly("2/2 passed");
+    }
+
+    @Test
+    void aRepeatThatRunsOutOfTimeIsNotRecordedAndStopsTheRepeats() {
+        var cases = planCases(2);
+        var trials = firstTrial(cases);
+
+        var stopped = EvalRun.runRepeats(cases, 3, trials, new Deadline(new Manual(), Duration.ofMinutes(35)), () -> { },
+                c -> { throw new Deadline.Expired(Duration.ofMinutes(35)); }, () -> { });
+
+        assertThat(stopped).isTrue();
+        assertThat(trials.stability()).isEmpty();
+    }
+
+    @Test
+    void anExpiredBudgetRunsNoRepeatAtAll() {
+        var clock = new Manual();
+        var deadline = new Deadline(clock, Duration.ofMinutes(35));
+        clock.now = clock.now.plus(Duration.ofMinutes(36));
+        var trials = firstTrial(planCases(1));
+
+        assertThat(EvalRun.runRepeats(planCases(1), 5, trials, deadline, () -> { }, EvalRunTest::scoredPlan, () -> { }))
+                .isTrue();
+        assertThat(trials.stability()).isEmpty();
+    }
+
+    @Test
+    void thePartialScorecardCarriesTheStabilityTable() {
+        var cases = planCases(1);
+        var trials = firstTrial(cases);
+        trials.record(2, EvalScorer.scorePlan(cases.get(0),
+                Map.of("stops", List.of(), "fallback", false), null, List.of(H1)));
+        var results = trials.gated();
+
+        var md = EvalScorer.markdown(EvalScorer.header(), EvalScorer.metrics(results, Map.of()), results, List.of(),
+                List.of(), new Progress(1, 3, false), trials);
+
+        assertThat(md).contains("PARTIAL (1 of 3 cases)", "## Stability across repeats (informational, not gated)",
+                "| p1 | 2 | 1/2 passed |");
+    }
 }

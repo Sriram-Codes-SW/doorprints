@@ -81,6 +81,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>Use an empty database: other saved houses change what retrieval returns (the report warns when it sees any).
  * Optional environment: {@code AI_EVAL_TYPES} (default {@code extract,ask,plan}), {@code AI_EVAL_DELAY_MS} (pause
  * between cases for free-tier rate limits, default 4000), {@code AI_EVAL_GOLDEN_SET} (another golden set file) and
+ * {@code AI_EVAL_REPEATS} (S4b-BL-203: trials per plan case, default 1, at most {@link EvalScorer#MAX_REPEATS}; trial 1
+ * is scored and gated as ever, trials 2 and later only fill the report's stability table; each repeat is one more
+ * plan-only pass, so run it with {@code AI_EVAL_TYPES=plan}; the repeats also stop at the time budget, and the
+ * stability table is in every partial scorecard) and
  * {@code AI_EVAL_DEADLINE_MS} (time budget, default 35 minutes).
  *
  * <p>Time budget (S4b-BL-202): the scorecard is rewritten after every case and marked {@code PARTIAL (n of N cases)}
@@ -164,6 +168,8 @@ class GoldenSetEvalTest {
     private RestClient api;
     /** The run's time budget (AI_EVAL_DEADLINE_MS, default 35 min), fixed at the start of the test. */
     private Deadline deadline;
+    /** Trial 1 (the gated results) and the repeats of the plan cases (S4b-BL-203). */
+    private EvalScorer.Trials trials = new EvalScorer.Trials();
     private final List<String> warnings = new ArrayList<>();
     /** Each distinct Vertex AI setup hint is reported once, not once per case. */
     private final Set<String> reportedSetupHints = new HashSet<>();
@@ -188,6 +194,7 @@ class GoldenSetEvalTest {
         var types = new HashSet<>(Arrays.asList(env("AI_EVAL_TYPES", "extract,ask,plan")
                 .toLowerCase(Locale.ROOT).strip().split("\\s*,\\s*")));
         long delayMs = Math.max(0, Long.parseLong(env("AI_EVAL_DELAY_MS", "4000")));
+        int repeats = EvalScorer.repeatsFrom(System.getenv("AI_EVAL_REPEATS"));
         var started = Instant.now();
         var budget = Duration.ofMillis(Deadline.parseMs(env("AI_EVAL_DEADLINE_MS", "")));
         deadline = new Deadline(Clock.systemUTC(), budget);
@@ -203,10 +210,12 @@ class GoldenSetEvalTest {
         header.put("Thinking level", EvalScorer.thinkingLabel(vertex, vertexThinkingLevel, openAiReasoningEffort));
         header.put("Embedding", embeddingProvider + " / " + embeddingModel);
         header.put("Case types", String.join(", ", types.stream().sorted().toList()));
+        if (repeats > 1 && types.contains(PLAN)) header.put("Plan trials", repeats + " (trial 1 gated, the rest informational)");
         header.put("Started", started.toString());
         checkThresholdsDeclared(golden);
 
-        var results = new ArrayList<CaseResult>();
+        trials = new EvalScorer.Trials();
+        var results = trials.gated();
         var planned = new ArrayList<Map<String, Object>>();
         for (var testCase : golden.cases()) {
             var type = String.valueOf(testCase.get("type"));
@@ -227,6 +236,18 @@ class GoldenSetEvalTest {
             timeStopped = EvalRun.run(planned, results, deadline,
                     () -> pause(Math.min(delayMs, deadline.remaining().toMillis())),
                     c -> run(c, golden), progress -> writeReport(started, golden, results, progress));
+            // Trials 2..repeats of the plan cases: informational, never in the metrics or the verdict, and also bound by
+            // the time budget (a stop here leaves the gated trial untouched).
+            if (!timeStopped && seeded && repeats > 1 && types.contains(PLAN)) {
+                var planCases = planned.stream().filter(c -> PLAN.equals(String.valueOf(c.get("type")))).toList();
+                var progressNow = new EvalScorer.Progress(results.size(), planned.size(), false);
+                if (EvalRun.runRepeats(planCases, repeats, trials, deadline,
+                        () -> pause(Math.min(delayMs, deadline.remaining().toMillis())), c -> run(c, golden),
+                        () -> writeReport(started, golden, results, progressNow))) {
+                    warnings.add("The repeats of the plan cases stopped at the time budget; the gated trial is complete, "
+                            + "the stability table covers only the trials that ran.");
+                }
+            }
         } catch (QuotaExhausted e) {
             errors.add(EvalScorer.QUOTA_STOPPED + " (" + e.getMessage() + "); " + results.size()
                     + " case(s) scored before the stop, the rest were not run");
@@ -248,7 +269,7 @@ class GoldenSetEvalTest {
                                      EvalScorer.Progress progress) {
         header.put("Duration", Duration.between(started, Instant.now()).toSeconds() + " s");
         var metrics = EvalScorer.metrics(results, golden.thresholds());
-        var markdown = EvalScorer.markdown(header, metrics, results, warnings, errors, progress);
+        var markdown = EvalScorer.markdown(header, metrics, results, warnings, errors, progress, trials);
         try {
             EvalRun.writeAtomically(REPORT, markdown);
         } catch (IOException e) {

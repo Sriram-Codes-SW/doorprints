@@ -108,7 +108,7 @@ run.
 <details markdown="1">
 <summary>Every test question and listing (75 cases)</summary>
 
-These are the golden set, version 0.8. Some inputs are deliberately hostile test inputs: they try to make the AI break its rules, and the AI must ignore them. They are shown as the test sends them, in English, Hindi, Tamil and Telugu. The houses are made up.
+These are the golden set, version 0.9. Some inputs are deliberately hostile test inputs: they try to make the AI break its rules, and the AI must ignore them. They are shown as the test sends them, in English, Hindi, Tamil and Telugu. The houses are made up.
 
 ### Extract: Fill in from listing text (34)
 
