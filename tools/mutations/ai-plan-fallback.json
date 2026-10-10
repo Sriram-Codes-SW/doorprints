@@ -1,0 +1,68 @@
+{
+  "spec": "backend/src/test/java/app/doorprints/server/ai/agent/VisitPlannerAssembleTest.java",
+  "maven": [
+    "-Dtest=VisitPlannerAssembleTest"
+  ],
+  "mutations": [
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerService.java",
+      "find": ".sorted(Comparator.comparingDouble(Near::meters).thenComparing(n -> n.house().id().toString()))",
+      "replace": ".sorted(Comparator.comparingDouble(n -> 0.0))",
+      "expect": "theFallbackStillCapsTheStopsAtTheNearestOnes"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerService.java",
+      "find": ".filter(n -> n.meters() <= FALLBACK_MAX_METERS)",
+      "replace": ".filter(n -> true)",
+      "expect": "theFallbackWithOnlyFarHousesIsEmptyAndSaysSo"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerService.java",
+      "find": ".filter(n -> n.meters() <= FALLBACK_MAX_METERS)",
+      "replace": ".filter(n -> !(n.meters() > FALLBACK_MAX_METERS))",
+      "expect": "theFallbackSkipsAHouseWithoutUsableCoordinates"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerService.java",
+      "find": "static final double FALLBACK_MAX_METERS = 50_000;",
+      "replace": "static final double FALLBACK_MAX_METERS = 60_000;",
+      "expect": "theFallbackRangeIsFiftyKilometres"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerService.java",
+      "find": "static final double FALLBACK_MAX_METERS = 50_000;",
+      "replace": "static final double FALLBACK_MAX_METERS = 40_000;",
+      "expect": "theFallbackRangeIsFiftyKilometres"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerService.java",
+      "find": ".limit(maxStops)\n                .map(n ->",
+      "replace": ".map(n ->",
+      "expect": "theFallbackStillCapsTheStopsAtTheNearestOnes"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerService.java",
+      "find": ".filter(h -> h.status() == null || h.status().inTheRunning())\n                .map(h -> new Near",
+      "replace": ".map(h -> new Near",
+      "expect": "theFallbackKeepsRejectedAndNotChosenHousesOutEvenWhenTheyAreNearest"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerService.java",
+      "find": ".thenComparing(n -> n.house().id().toString()))",
+      "replace": ".thenComparing(n -> n.house().label().length()))",
+      "expect": "theFallbackBreaksEqualDistancesByHouseId"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerService.java",
+      "find": "summary = points.isEmpty() ? FALLBACK_NONE_IN_REACH\n                    :",
+      "replace": "summary = false ? FALLBACK_NONE_IN_REACH\n                    :",
+      "expect": "theFallbackWithOnlyFarHousesIsEmptyAndSaysSo"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerService.java",
+      "find": "static final String FALLBACK_NONE_IN_REACH = \"No saved houses within reach of your start point were found.\";",
+      "replace": "static final String FALLBACK_NONE_IN_REACH = \"No saved houses matched the request.\";",
+      "expect": "theFallbackWithOnlyFarHousesIsEmptyAndSaysSo"
+    }
+  ]
+}
