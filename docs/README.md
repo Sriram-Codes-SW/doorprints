@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.122 |
+| Version | 0.123 |
 | Date | 2026-10-06 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -22,6 +22,7 @@
 | 0.120 | 2026-10-07 | Claude (Code) | The document-version guard `tools/check-docs-versions.mjs` (S4b-BL-156): docs/14 v0.108, docs/10 v0.168, docs/06 v0.148. |
 | 0.121 | 2026-10-07 | Claude (Code) | The floor guard `tools/check-floor.mjs` (S4b-BL-157): docs/14 v0.109, docs/10 v0.169, docs/06 v0.149. |
 | 0.122 | 2026-10-10 | Claude (Code), engineer | New [ai/voice-input.md](ai/voice-input.md) (voice input: consult, design and plan; S4b-BL-218..S4b-BL-224): docs/10 v0.237, docs/14 v0.155. |
+| 0.123 | 2026-10-10 | Claude (Code), engineer | Kinds PR 1 (S4b-BL-205): 03 v0.106 (ADR-36, §18), 06 v0.197 (TC-U-194, TC-U-195), 10 v0.238, 14 v0.156, `schemas/README.md` v1.31 and the new `schemas/kinds/` (the schemas folder stays one index row, now naming the kind files). |
 | 0.112 | 2026-10-06 | Claude | The review backlog: docs/01 v0.41, 06 v0.131 (section 10.1), 07 v0.60, 14 v0.89. |
 | 0.111 | 2026-10-06 | Claude | Full-system review fixes and the manual test checklist (`docs/ops/manual-test-checklist.md`): docs/07 v0.59, docs/14 v0.88. |
 | 0.110 | 2026-10-06 | Claude | Review fixes on PR #139: docs/10 v0.149, 06 v0.130, 15 v0.27. |
@@ -171,7 +172,7 @@ Everything must run on free tiers. These documents follow a Secure Software Deve
 | – | [ops/path-trace-spec-review.md](ops/path-trace-spec-review.md) | Session record: the senior review of the path trace v2 design (2026-10-06); the decisions are in [11](11-feature-parity-and-export-spec.md) 5.27 |
 | – | [ops/path-trace-check-review.md](ops/path-trace-check-review.md) | Session record: the senior review of the place check, *Have I been here?*, and the website integration plan (2026-10-06); the decisions are in [11](11-feature-parity-and-export-spec.md) 5.27.13 and [03](03-design.md) §6.2b |
 | – | [ops/path-trace-web-notes.md](ops/path-trace-web-notes.md) | Session record: the website's trace and place check logic, hand-over notes for the UI change (S4b-FR-17, S4b-FR-24); the UI is built since (PR #146) |
-| – | [Shared schemas](schemas/) | `doorprints-backup/1`: the one backup format the server, Android and web all implement, plus the canonical `backup-sample.json`: the server and Android tests read it, and the web writer's golden copy is checked against it by the backend's `BackupParityTest` (S4-00, [03](03-design.md) ADR-20, [06](06-test-plan.md) TC-I-34). Section 0, "What an import is" (the approved definition, Sprint 4b S4b-00), is maintained by the Docs team | Backend (section 0: Docs team) |
+| – | [Shared schemas](schemas/) | `doorprints-backup/1`: the one backup format the server, Android and web all implement, plus the canonical `backup-sample.json` and the kind files of `kinds/` (ADR-36): the server and Android tests read it, and the web writer's golden copy is checked against it by the backend's `BackupParityTest` (S4-00, [03](03-design.md) ADR-20, [06](06-test-plan.md) TC-I-34). Section 0, "What an import is" (the approved definition, Sprint 4b S4b-00), is maintained by the Docs team | Backend (section 0: Docs team) |
 | – | [CHANGELOG](../CHANGELOG.md) (repo root) | Release notes in Keep a Changelog format: Unreleased + released versions | Docs team |
 | – | [SECURITY.md](../SECURITY.md) (repo root) | How to report a vulnerability privately | Owner |
 | AI | [AI features](ai/) | Spring AI design, RAG, extractor, agent, MCP server, prompts, evals; [Vertex AI setup](ai/vertex-setup.md) (owner guide and this project's setup outcome); [Voice input](ai/voice-input.md) (consult, design and plan, planned) | **AI team** (Docs team while the AI team is idle, Sprint 3.5 follow-up) |

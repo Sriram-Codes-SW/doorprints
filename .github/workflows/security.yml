@@ -163,6 +163,13 @@ jobs:
           if [ -n "$HEAD_SHA" ]; then FLOOR_GUARD_ALLOW="$(git log -1 --format=%B "$HEAD_SHA")"; export FLOOR_GUARD_ALLOW; fi
           node --test tools/check-floor.test.mjs
           node tools/check-floor.mjs
+      # S4b-BL-205 (docs/03 ADR-36 §18.6): the file-size budget. A product source file over 900 lines fails (600 warns);
+      # the files already over 900 are allowlisted at their size of 2026-10-10 in tools/size-budget.json and may not grow.
+      # The floor guard above reports a raised or added allowlist entry.
+      - name: The file-size budget holds (no source file over 900 lines beyond the allowlist)
+        run: |
+          node --test tools/check-size-budget.test.mjs
+          node tools/check-size-budget.mjs
       # SEC-030: third-party actions pinned to a commit SHA, every workflow with top-level permissions.
       - name: Third-party actions are pinned to a commit SHA
         run: |

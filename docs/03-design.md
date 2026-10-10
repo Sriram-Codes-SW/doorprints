@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.105 |
+| Version | 0.106 |
 | Date | 2026-10-10 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -116,6 +116,7 @@
 | 0.103 | 2026-10-09 | Claude (Code), engineer | **Phone file layout** (S4b-BL-168 slice 7; [14](14-lead-backlog-and-handoff.md) §10): the house form's checklist and score summary leave `HouseEditScreen.kt`. The component table names `ChecklistSection` (`:ui` `ChecklistSection.kt`) and `withScore` (`HouseFormRules.kt`). Numbered after 0.102 of slice 8. |
 | 0.104 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-198 step 2 (the website): the *AI speed and cost* setting and the Gemini answer budget** (owner request, 2026-10-09; [10](10-sprint-log.md) v0.226, [06](06-test-plan.md) TC-U-190 and TC-U-191, [ai-design](ai/ai-design.md) v0.45). §13.2 (ADR-35 note): Quality, Balanced and Economy for the own-key Gemini adapter only, mapped to no `thinkingConfig`, `thinkingLevel` `MEDIUM` and `LOW`; hidden unless AI features are on and the service is Gemini; a device-only preference; the Gemini call's `maxOutputTokens` rises from 2048 to 8192; the vectors gain `geminiRequest`. |
 | 0.105 | 2026-10-10 | Claude (Code), engineer | **S4b-BL-198 step 2 on the phones** ([10](10-sprint-log.md) v0.228, [06](06-test-plan.md) TC-U-192, TC-U-193 and TC-M-67, [ai-design](ai/ai-design.md) v0.47). §13.2: the *AI speed and cost* setting in `AppSettings`, `SettingsStore`, `Repository.setAiQuality`, `AiStore` and `GeminiClient.requestBody`; shown in Settings > AI features only for the own Gemini key; the Gemini `maxOutputTokens` 2048 to 8192 on the phones too; the final measured numbers. |
+| 0.106 | 2026-10-10 | Claude (Code), engineer | **ADR-36 and new §18: kinds, one candidate concept described by a kind file** (kinds PR 1, S4b-BL-205; [14](14-lead-backlog-and-handoff.md) N21; [10](10-sprint-log.md) v0.238, [06](06-test-plan.md) TC-U-194 and TC-U-195). The decision, the container named *Search* (owner to confirm), the deletion test applied before any code, the kind file (`docs/schemas/kinds/`), the eleven one-way doors with alternatives, reasons and reversal costs, the second pass against `kind-vectors.json`, and the file-size budget. Voice input stays ADR-37 (S4b-BL-218). Nothing reads the kind file at run time yet. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -1784,6 +1785,7 @@ structured call and the local limit of 10 requests a minute; the prompts; every 
 | ADR-33 | **Backup, sync and deletion through each person's own Google Drive, encrypted on the device** (owner, 2026-10-02: "Let us implement it. After real world use, we can change as needed"; design [15](15-google-drive-backup-and-sharing.md), decisions §6 and §6.1). Amends D-28's `drive.appdata` ([11](11-feature-parity-and-export-spec.md)) | `drive.appdata` (hidden, not shareable, lost with the project); the full `drive` scope (restricted: a paid yearly assessment); a hosted server (ruled out, D-28); one shared sync file (no lock in Drive) or a file per record (too many calls); a passphrase (typed often, forgotten, total loss); RSA-OAEP or X25519 (platform gaps); `SyncRules.keepLocal` for the merge | **No hosted server**: each device talks to Google with client OAuth (the website's token model, PKCE on the iPhone, the browser with PKCE on Android unless the spike S4b-BL-122 shows it fails). **One scope, `drive.file`**, a visible `Doorprints` folder. **One sync file per device plus dated backups** (7 daily, 4 weekly, 6 monthly; a shrink guard; `state=complete` marks a finished backup). **Every file encrypted on the device**: random content keys under a chained folder key per epoch, wrapped by **HPKE** (RFC 9180, DHKEM(P-256, HKDF-SHA256), AES-256-GCM) for each enrolled device's non-extractable key and for a **recovery key pair** derived from a 128-bit recovery key saved at the first connect (skippable only after a warning); `keys.json` MACed with a revision counter against rollback; new devices join by QR code (HPKE PSK mode), a commit-then-reveal code, or the recovery key; revoking starts a new epoch. **Merge: last-write-wins on `updatedAt`** with ties by device id and tombstones kept for ever (`sync/1`, S4b-BL-130). **Deletion levels**: L1 a dialog; L2 and L3 also the phone's own authentication (operation-bound on Android 11+); a screen lock required on the phones; the website L1, and L2/L3 only with a PRF-sealed passkey. On the phones L3 also has the 5-second delay of the shared policy vectors; on the website the owner chose a tick box and no countdown ([15](15-google-drive-backup-and-sharing.md) §10.4). Photos on Wi-Fi only by default with a switch and a one-off. Deferred: sharing (S4b-BL-120), the authenticator app (S4b-BL-129), *Lock old backups again*, a monthly mobile-data limit. Costs: encrypted backups open only in Doorprints (the website with the recovery key included); a person without a recovery key who loses every device loses the backups; the checks inside the app cannot bind someone holding the Google account ([02](02-threat-model.md) §10, RR-25) |
 | ADR-34 | **The path trace, version 2: one shared repeat algorithm held by a vector file, saved walks as local-only rows, the website records only while visible** (owner, 2026-10-06: repeats thicker, second colour, dashed; an optional sound; save a walk to a house; "Phone only"; the website too; the person chooses how repeats look; [11](11-feature-parity-and-export-spec.md) 5.27.0..5.27.11) | Detection on a server (ruled out: location history must not leave the device); a fixed grid of 20 m cells (two readings 21 m apart in different cells are "different", 39 m apart in one cell are "the same"); matching points only, without densified samples (misses a street walked with points in other places); a SQL foreign key with `ON DELETE CASCADE` (houses are tombstoned, never hard-deleted, so it would never fire); saved walks in the backup (the owner chose phone only); a hosted web push or a background tab for the website's alert (a hidden page gets no fixes); Doorprints playing its own sound on Android (the system channel lets the person mute it); one colour and width for all (the owner wants emphasis, and the person must be able to turn it down) | **Distances on a local flat plane (`cos(latitude)`), 10 m samples, a 25 m corridor, an 80 m minimum run, a 30 m bridge, two different walks**: reasoned from the 50 m accuracy gate and the 20 m / 5 min thinning (11 5.27.2). **Written twice, from the text, and held to `trace-repeat-vectors.json`** (*proposed* until both stacks pass). **Saved walks are in their own table with no `dirty`, `updatedAt` or `deleted` column**, so no sync can pick them up; **no SQL FK**, a sweeper removes the walks of a deleted house when the delete is final. **The overlay is a second layer over the solid base line**, drawn by the newest of the walks over a stretch, so the dash is one line; *Clear* is 1.8 x the base width, *Subtle* 1.0 x, *Off* hides the layer, and the look is applied live to the running style through a `PlatformMap` `repeatLook` parameter (Android `LineLayer.setProperties`, iPhone `setRepeatLook`, website `setPaintProperty`; not through `JsonStyleOps`, which edits style JSON before load), not by rebuilding data. **The question after a walk is a watermark** (`walkAskedUpTo`), computed from `track_points`, so a walk cut by a process kill is still asked about once. **The Android phone-to-phone transfer copies the database, saved walks included** (`data_extraction_rules.xml`), and the documents say so. **The alert is a notification on its own channel** (phones) so the system mutes it; on the website a beep started by the person's tap and a banner. **Cost:** a second colour (`#E65100`) to keep apart from the markers and the base map (TC-M-25, TC-M-57), a detection pass off the main thread, and a migration (Room 11, IndexedDB 3). |
 | ADR-35 | **On the person's own device, the AI provider is the person's choice: Gemini, any OpenAI-compatible endpoint, or Anthropic; device-only** (owner, 2026-10-07; §13.2) | **A server passthrough** (the server calls the person's endpoint: ruled out, it makes the server an open proxy and an SSRF target, T-I44, and a server with no AI of its own would carry the person's key); **Gemini through its own OpenAI-compatible endpoint** (one adapter, but it hides the native one that works today and leaves out every other AI); **on-device models** (too large and weaker, as in ADR-26) | One interface, `JsonChatModel`, so the screens, the prompts and the safety code stay as they are; the person's choice never leaves the device (D-31). A de-facto standard, `/chat/completions`, covers OpenAI, OpenRouter, Groq, Ollama and LM Studio with one adapter; a three-tier ladder (`json_schema`, `json_object`, plain) keeps servers that lack structured output working. Anthropic (S4b-BL-152) takes the same interface with a forced tool instead of a ladder and the same strict converter. Costs: three adapters (Gemini, OpenAI-compatible, Anthropic) in TypeScript and in Kotlin, held together by parity vectors; the strings in four languages (hi, ta, te under review); the privacy text, which now names the host; a new error (*model not found*); a local `http` endpoint is a new exposure (T-I43), limited to this device. Tested without keys by a fake provider server and a keyless local-model suite (S4b-BL-175, §13.2). |
+| ADR-36 | **Kinds: one candidate concept, described per kind by a built-in kind file; houses are the first kind** (owner, 2026-10-10, [14](14-lead-backlog-and-handoff.md) N21; S4b-BL-205; §18). The container is called *Search* (owner to confirm) | Separate apps over a shared core; a preset pack in the records layer first (the superseded plan of N21: extras in `records`, kept for compatibility that no user needs); per-kind stores and screens; user-defined fields first | A kind file per kind (`docs/schemas/kinds/<kind>.json`, format `doorprints-kind/1`, its own `version`): labels as keys into the existing dictionaries, the fixed core fields and sections it shows, typed extras (number, money, text, enum, date, bool) with unit codes and placements, the five fixed status names with the kind's labels, the checklist, the question scopes, the search fields and the AI slots. Built in and embedded on three stacks; one kind per data set; a one-time format reset puts `kind`, `money` (amount and cadence) and `extras` on the candidate (S4b-BL-206). The deletion test passes for the resolver, the renderer and money, and fails for a container store, per-kind screens and the records layer (§18.2). Eleven one-way doors are chosen with their alternatives and reversal costs (§18.4) and were reviewed against the vectors before any UI work (§18.5). Costs: about 750 house-worded strings in four languages to budget, 14 guide pages, kind-aware AI with a golden-set section per kind; location stays required. A file-size budget lands first (§18.6). Stop criteria after PRs 4 and 5 (N21). |
 
 ## 15. Design risks and open items
 
@@ -1936,3 +1938,128 @@ the default unless the owner objects.
 | **On iPhone, the area wake-up's notification opens the Map, which offers Hunt mode** (S4b-BL-96); no *Dismiss*, so the cooldown is stamped when it is posted; the notification permission is asked after "Always". | An iPhone app cannot start tracking from a notification action; the cooldown must hold without a button. |
 | **An import keeps to the caps**: 100 questions, 40 criteria (backend and phones; the website's importer too). | A merge of two full banks could pass the caps the screens and the server enforce. |
 
+## 18. Kinds: one candidate concept described by a kind file (ADR-36)
+
+The decision of [14](14-lead-backlog-and-handoff.md) N21 (owner, 2026-10-10, revised the same day because there are
+no users yet), designed here before any code: kinds PR 1, S4b-BL-205. Nothing reads the kind file at run time yet.
+
+### 18.1 The decision
+
+- **One candidate concept, many kinds.** A house is the first *kind*; a school, a clinic, a wedding venue, a PG or a
+  plot are later kinds of the same candidate, with the same screens: the map, the list, the form, Compare, the copies,
+  the AI. What differs per kind is data, in a **kind file** (`docs/schemas/kinds/<kind>.json`, §18.3): labels, which
+  core fields and sections show, typed extras and where they go, the statuses' labels, the checklist, the question
+  scopes, what search reads and what the AI may see.
+- **Built-in kinds only.** The kind files ship embedded in both apps and the server (the `default-questions.json`
+  pattern: one test per stack reads the file). Importable packs wait for two built-in kinds and a trust model (a kind
+  file feeds AI prompts, an injection surface). Runtime user-defined fields are a later layer over the same typed extras.
+- **One kind per data set.** No kind picker per search and no mixed list; Settings chooses the kind of a data set
+  (PR 8, S4b-BL-212).
+- **A one-time format reset first** (PR 2, S4b-BL-206): `kind`, `money` and `extras` become first-class fields on the
+  candidate (a Room column, a jsonb column, an IndexedDB field), not the records layer; the backup family restarts at
+  `doorprints-backup/1`. Only public surfaces are renamed (§18.4); the internal `house` identifiers are renamed when a
+  file is split.
+- **Location stays required.** The map is the home screen; location-free verticals stay out of scope.
+- **The container is called *Search*.** **Decision (owner to confirm):** *Search*, not *Shortlist* and never *Hunt*.
+  *Hunt* collides with Hunt mode (the GPS feature); *Shortlist* collides with the status *Shortlisted*, which every
+  marker, filter and Compare shows, and a shortlist is a subset while the container also holds the rejected ones.
+  *Search* collides only with the list's search box, and the wording avoids it ("your house search", "your school
+  search"). On the wire the container is the `search` object of a data set (§18.4 door 10), never a table of its own.
+- **Voice input** is a separate decision, ADR-37 ([ai/voice-input](ai/voice-input.md), S4b-BL-218). It is a later input
+  method that rides the kind-aware renderer of PRs 4 and 5: the mic button is built once there, not on the hand-written
+  screens those pull requests replace. Nothing in this section depends on it.
+
+### 18.2 The deletion test, applied before any code
+
+The rule of [14](14-lead-backlog-and-handoff.md) §9: delete the new module; its complexity must reappear in at least
+three distinct callers, otherwise it is not a module.
+
+| Proposed module | Callers that would carry its work if it were deleted | Verdict |
+|---|---|---|
+| The kind file and its label and visibility resolver (`KindLabels`, PR 3) | the form (both stacks), the house page, the list and its search, Compare, the readable copies, the import preview, the AI documents, the guide | **passes**: eight callers, each would hard-code the house words again |
+| The typed-extras renderer (PR 4) | the form, the house page, Compare, the copies, search and filters, the AI lines | **passes**: six callers; today the cost, floor and BHK fields are written out by hand in each |
+| `money` with a cadence (one type for price, deposit, maintenance, offers) | the form, Compare's monthly and move-in sums, the cost filters, the copies, the AI lines, the duplicate-flat check | **passes** |
+| A *Search* container as its own entity (a table, a sync family, its own screens) | Settings only (one kind per data set) | **fails**: the container is a `search` settings object of the data set, no store |
+| A store or screen per kind (`SchoolStore`, `SchoolEditScreen`) | one each | **fails**: that is the "new screens" of the PR 5 stop criterion |
+| Extras in the generic records layer (the superseded plan) | sync, import and search would each read two places for one candidate | **fails** now that there is nothing to migrate: a first-class field is one place |
+| The `was` mapping of `house.json` (today's wire place of each value) | the reset of PR 2 only | **fails** as a module: kept as data in the file and dropped by PR 2 |
+| A runtime field editor for user-defined fields | none yet | **deferred** until a kind needs it |
+
+### 18.3 The kind file
+
+`docs/schemas/kinds/kind.schema.json` (JSON Schema 2020-12, format `doorprints-kind/1`) describes it;
+`docs/schemas/kinds/house.json` is today's house as a kind; `docs/schemas/kinds/kind-vectors.json` pins what it resolves
+to ([schemas README](schemas/README.md) §8.4). In short:
+
+- **`format`** is the file format, **`version`** the kind's own revision (an integer from 1, §18.4 door 4).
+- **Labels are keys, never text**: `{ "web": "house.price", "android": "house_price_sale" }`, one key per stack into the
+  dictionaries that already hold the four languages and their *under review* marks. `null` means that stack shows no
+  text there (Android's form has no *Details* heading). `byCadence` names another key while the money cadence is that
+  one (Android's *Rent ₹/month* for a monthly price). The two stacks' words differ today (*Price (₹)* and *Price ₹*), so a
+  single key per field would have changed one of them; PR 3 may merge them later as a visible, reviewed change.
+- **`core`**: the fixed fields every candidate has on the wire (`label`, `status`, `rating`, `money`, `address`,
+  `street`, `locality`, `contactName`, `contactPhone`, `brokerId`, `listingUrl`, `notes`, `location`,
+  `locationSource`), each with the kind's label and placement (`section`, `order`, `visible`). A core field the kind
+  leaves out is hidden, its value still kept and synced. `label` and `location` must be listed.
+- **`extras`**: the kind's typed fields, `extras.<id>` on the wire (§18.4 door 5). For houses: `bedrooms`, `areaSqft`,
+  `floor` and the eleven cost fields of today.
+- **`sections`**: the page's sections in display order, from a fixed list (details, cost, rooms, questions, viewings,
+  moveIn, areaNotes, distances, location, walks, checklist, visits, photos); one left out is hidden for the kind.
+- **`statuses`**: the five fixed names, each with the kind's label. **`checklist`**: the built-in criteria and labels.
+  **`questions`**: the seed file and what each `appliesTo` scope means in money cadences (`RENT` = monthly, `SALE` =
+  once). **`search`**: what the list search reads. **`ai`**: the slots `extract`, `ask`, `plan` and `never` (§18.4 door 10).
+
+### 18.4 The one-way doors
+
+Each is a name or a shape that is cheap to choose now and expensive to change once a release has users. Today
+reversing any of them costs a code change and a wipe of the owner's test devices; after the first release it costs a
+new format id and a reader for the old one kept for ever. The second pass (§18.5) reviewed each against the vectors.
+
+| # | Door | Choice | Alternatives | Why | Reversal cost after a release |
+|---|---|---|---|---|---|
+| 1 | **Backup format id** | **Decision (owner to confirm):** restart at `doorprints-backup/1` (N21). The new reader requires `candidates`; a file of the old family (it has `houses`) is refused with "made by an older Doorprints, export it again", never half-read | `doorprints-backup/4` (continue the numbering, no reused id); a new family name `doorprints-data/1` | No backup outside the owner's test devices exists; one number line from 1 is the simplest story for the guide and the threat model. The reused id is the trade-off: an old `/1` file on a test device is refused by shape, not by id | A new id and a second reader for ever |
+| 2 | **Wire and backup JSON names** | `candidates` (the backup list, the sync file list, `/api/candidates`); **Decision (owner to confirm):** `houseId` becomes `candidateId` on visits, photos and viewings in the same reset; `data.json` keeps its name | Keep `houseId` (fewer edits now; a school's visits say "house" on the wire for ever); `items`, `places` (`places` is already the saved places) | Public surfaces are renamed once, in the reset, or never; `candidate` is the word for one thing being compared, whatever it is | A format bump and a rename on three stacks |
+| 3 | **The candidate's new fields** | `kind` (the kind id, required, `^[a-z][a-z0-9_]{1,31}$`); `money` (`{ "amount": ..., "cadence": ... }`, absent when unknown); `extras` (an object keyed by extra id, absent when empty, never `{}`) | `type`, `category`; `fields`, `attributes`, `custom`; keeping `price` and `priceType` | `kind` reads plainly in the four languages' docs. A viewing already has a `kind` (FIRST or SECOND): a different object, so no clash on the wire, but writers must not confuse the two | Format bump |
+| 4 | **The kind schema and its `version`** | `format: "doorprints-kind/1"` names the file format; `version` (integer 1..1000) is the kind's own revision, raised when a field's type, unit or cadence changes, never for a label key. A reader refuses an unknown format and reads a lower or equal `version` | A semver string; one number for both; no version | Two questions, two numbers: "can I parse this file?" and "is this the house I know?". Built-in kinds ship inside the build, so today they always match | Cheap while kinds are built in; costly once packs are imported |
+| 5 | **How extras are typed** | Six types: `number` (`integer`, `min`, `max`, `unit` required), `money`, `text` (`maxLength`), `enum` (option ids `UPPER_SNAKE`), `date` (`YYYY-MM-DD`, no time zone, as `availableFrom` today), `bool`. On the wire: a JSON number, a money object, a string, the option id, the date string, `true`/`false`. A reader keeps and round-trips an extra id it does not know (a newer app's field survives an older device's sync) without showing it; a known id with a value of the wrong type or out of range reads as unknown (today's coercion rule) | Free-form values; a `phone` or `url` type (those are core fields); dropping unknown extras (the data loss that drove the superseded plan) | Exactly what the house needs today plus the B-rated use cases of N21 (a yes/no, a date); a seventh type is additive | Adding a type: cheap. Renaming or re-meaning one: format bump |
+| 6 | **Unit codes** | A closed list: `count`, `level`, `sqft`, `sqm`, `cm`, `m`, `km`, `minute`, `day`, `month`, `year`, `percent` | Free text units; SI only (the person writes square feet) | A code is translated by the dictionaries and compared by search and filters; free text cannot be | Adding: cheap. Renaming: format bump |
+| 7 | **Money with cadence** | `amount`: whole rupees, an integer 0..1,000,000,000,000 (`MAX_RUPEES`); `cadence`: `once`, `day`, `week`, `month`, `quarter`, `year`; both keys always written; no currency key (rupees, the India-only rule). Today's `RENT` is `month`, `SALE` is `once`. An extra money field either fixes its cadences (`deposit`: once, `maintenance`: month) or follows the candidate's own money (`cadenceFrom: "money"`: `myOffer`, `agreedPrice`) | Paise; decimals; an ISO currency code; keeping `priceType` beside a bare number | Whole rupees is what every stack stores today; a cadence covers school fees per year, a gym per month, a hall per day; a currency key can be added later as an optional field | Format bump |
+| 8 | **Status names** | The five names `NEW`, `SHORTLISTED`, `REJECTED`, `TAKEN`, `NOT_CHOSEN` stay for every kind (`HouseStatus.fromWire` never changes); a kind gives each its label (a school's `TAKEN` may read *Admitted*) | Statuses per kind | `HouseStatusRules`, the filters, the colours, the Plan filters and the AI all read the names | Very high: every stack and every file |
+| 9 | **Default-question and criterion ids** | Kept exactly: `qd_*` question ids and the ten checklist keys (`water` .. `commute`) are the house kind's; another kind adds its own ids with a kind prefix (`qd_school_*`, its own checklist keys). The `appliesTo` scopes stay `BOTH`, `RENT`, `SALE` for houses and are mapped to cadences in the kind file | Renaming to neutral ids; one shared list | Two devices seed the same records by id; one kind per data set means keys never meet another kind's | Seeds re-made on every device |
+| 10 | **Hunt-level fields and the AI contract slots** | The data set's own fields live in a `search` object (`{ "kind": "house" }` in the backup and the settings, PR 2), reserved for later fields of the container. The kind file's `ai` slots: `extract` (what the listing extract fills, today's `RawListing`), `ask` (the Ask document lines), `plan` (Plan's filters), `never` (never sent from a saved candidate: `contactName`, `contactPhone`, `myOffer`); read from PR 7 | Hard-coded per kind in the prompts; no slots until PR 7 | The prompts, the redaction and the parity vectors must change together on three stacks; naming the slots now lets PR 7 read data instead of growing branches | Moderate: a prompt change and the parity vectors |
+| 11 | **Labels are keys, per stack** | Keys into the existing dictionaries, one per stack, never inline text | Inline text in four languages in the kind file; one shared key set | Keeps the translation workflow, the parity tests and the *under review* marks in one place, keeps kind text out of AI prompts, and keeps today's per-stack words unchanged | Cheap |
+
+### 18.5 The second pass, with the vectors
+
+Done before any UI work, against `kind-vectors.json` and today's code on the three stacks. What it found and what
+changed:
+
+- **The two stacks' labels differ for the same field** (*Price (₹)* on the website, *Price ₹* and, for a monthly price,
+  *Rent ₹/month* on Android; *Checklist* and *Checklist (0 = bad, 5 = great)*). Labels became per stack, with
+  `byCadence`. Merging them is a visible change for PR 3, not this one.
+- **The form order differs between the stacks** (on reading `HouseEditScreen.kt`: Android puts the cost card before
+  the address, the notes, contact and listing link after the location, and has a *Contact* heading the website lacks). The kind file records the website's order; PR 4 either adds a
+  per-stack order or records the Android difference as an explained screenshot diff. Open for PR 4.
+- **Some labels are templates** (*Visits (%1$d)*): the resolver passes the same arguments as the screens do today.
+- **`priceType` drives the question scopes** (`appliesTo` `RENT`/`SALE`): mapped to cadences in `questions.scopes`.
+- **`myOffer` never goes to a provider** today (the server's `HouseDocuments`): it is in `ai.never`, not in `ask`.
+- **A viewing already has a `kind` key** (FIRST or SECOND): kept, noted under door 3.
+- **The format id restart reuses `/1`** (door 1): guarded by shape and flagged for the owner.
+- **Every key of a backup house today has exactly one place** in the kind file (`was`): the website, Android and the
+  server each check it against their own model (`house-kind-file.spec.ts`, `HouseKindFileTest` twice).
+
+The vectors are fixed: a later pull request that changes a resolved label, a field list, the layout, the visibility,
+the wire place of a value or what search reads turns the kind tests red on the three stacks, so "zero change" for houses
+is proved, not claimed ([06](06-test-plan.md) TC-U-194).
+
+### 18.6 The file-size budget
+
+Rule 1 of the retrospective in N21, in force before the big edits of PR 4: `tools/check-size-budget.mjs` reads
+`tools/size-budget.json` and fails a product source file (Kotlin, Java, TypeScript, HTML, CSS, Swift, JavaScript under
+`android/`, `web/src/`, `backend/src/main/` and `ios/`; tests, test helpers and the translation dictionaries left out)
+over **900** lines, and warns over **600**. The 13 files already over 900 on 2026-10-10 are on its allowlist at that
+day's size (among them `HouseEditScreen.kt` 1,779, `MapScreen.kt` 1,519, `CommonRepository.kt` 1,302 and
+`house-detail-page.ts` 1,214) and may not grow; a shrunk file is asked to lower its entry. The floor guard
+(`tools/check-floor.mjs`) reports a raised or added entry, a raised limit or a new table as a loosening. It runs in
+`tools/check.sh` on every branch and in the *Security* workflow on every pull request ([06](06-test-plan.md) TC-U-195).
+PR 4 shrinks the four big files and lowers their entries.
