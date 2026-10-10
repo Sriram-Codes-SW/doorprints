@@ -105,4 +105,108 @@ class VisitPlannerAssembleTest {
         assertThat(res.stops()).isEmpty();
         assertThat(res.summary()).isEqualTo("Nothing matches");
     }
+
+    private static HouseSummary at(String id, String label, double lat, double lon, HouseStatus status) {
+        return new HouseSummary(UUID.fromString(id), label, "L", null, status, 30000L, "RENT", 2, 4, lat, lon, null);
+    }
+
+    private static final String FAR_SUMMARY = "No saved houses within reach of your start point were found.";
+    private static final double PUNE_LAT = 18.5074, PUNE_LON = 73.8077;
+
+    /** Plan-08: the Bengaluru houses were seen first, the Pune flats after; the start is in Pune. */
+    private static Map<UUID, HouseSummary> bengaluruThenPune() {
+        var m = new LinkedHashMap<UUID, HouseSummary>();
+        for (var h : List.of(
+                at("aaaaaaaa-0000-4000-8000-000000000002", "B2", 12.9352, 77.6245, HouseStatus.SHORTLISTED),
+                at("aaaaaaaa-0000-4000-8000-000000000001", "B1", 12.9716, 77.6400, HouseStatus.NEW),
+                at("aaaaaaaa-0000-4000-8000-000000000005", "B5", 12.9141, 77.6101, HouseStatus.NEW),
+                at("aaaaaaaa-0000-4000-8000-000000000003", "B3", 12.9279, 77.6271, HouseStatus.SHORTLISTED),
+                at("bbbbbbbb-0000-4000-8000-000000000012", "P12", 18.5204, 73.8567, HouseStatus.NEW),
+                at("bbbbbbbb-0000-4000-8000-000000000011", "P11", 18.5089, 73.8070, HouseStatus.SHORTLISTED))) {
+            m.put(h.id(), h);
+        }
+        return m;
+    }
+
+    @Test
+    void theFallbackOffersTheHousesNearTheStartNotTheFirstSeen() {
+        var res = VisitPlannerService.assemble(null, bengaluruThenPune(), List.of("searchHouses"), PUNE_LAT, PUNE_LON, 4);
+        assertThat(res.fallback()).isTrue();
+        assertThat(res.stops()).extracting(PlanModels.PlannedStop::label).containsExactly("P11", "P12");
+        assertThat(res.summary()).startsWith("The assistant could not finish a plan");
+    }
+
+    @Test
+    void theFallbackWithOnlyFarHousesIsEmptyAndSaysSo() {
+        var res = VisitPlannerService.assemble(null, bengaluruThenPune(), List.of("searchHouses"), 28.6139, 77.2090, 4);
+        assertThat(res.fallback()).isTrue();
+        assertThat(res.stops()).isEmpty();
+        assertThat(res.summary()).isEqualTo(FAR_SUMMARY);
+        assertThat(res.totalMeters()).isZero();
+    }
+
+    @Test
+    void theFallbackRangeIsFiftyKilometres() {
+        // 0.4 degrees of latitude is about 44.5 km, 0.5 about 55.6 km.
+        var inside = at("cccccccc-0000-4000-8000-000000000001", "in", PUNE_LAT + 0.4, PUNE_LON, HouseStatus.NEW);
+        var outside = at("cccccccc-0000-4000-8000-000000000002", "out", PUNE_LAT + 0.5, PUNE_LON, HouseStatus.NEW);
+        var m = new LinkedHashMap<UUID, HouseSummary>();
+        m.put(outside.id(), outside);
+        m.put(inside.id(), inside);
+        var res = VisitPlannerService.assemble(null, m, List.of(), PUNE_LAT, PUNE_LON, 8);
+        assertThat(res.stops()).extracting(PlanModels.PlannedStop::label).containsExactly("in");
+    }
+
+    @Test
+    void theFallbackSkipsAHouseWithoutUsableCoordinates() {
+        var m = bengaluruThenPune();
+        var nan = at("dddddddd-0000-4000-8000-000000000001", "nan", Double.NaN, PUNE_LON, HouseStatus.NEW);
+        var inf = at("dddddddd-0000-4000-8000-000000000002", "inf", PUNE_LAT, Double.POSITIVE_INFINITY, HouseStatus.NEW);
+        var wild = at("dddddddd-0000-4000-8000-000000000003", "wild", 95.0, PUNE_LON, HouseStatus.NEW);
+        m.put(nan.id(), nan);
+        m.put(inf.id(), inf);
+        m.put(wild.id(), wild);
+        var res = VisitPlannerService.assemble(null, m, List.of(), PUNE_LAT, PUNE_LON, 8);
+        assertThat(res.stops()).extracting(PlanModels.PlannedStop::label).containsExactly("P11", "P12");
+    }
+
+    @Test
+    void theFallbackStillCapsTheStopsAtTheNearestOnes() {
+        var res = VisitPlannerService.assemble(null, bengaluruThenPune(), List.of(), PUNE_LAT, PUNE_LON, 1);
+        assertThat(res.stops()).extracting(PlanModels.PlannedStop::label).containsExactly("P11");
+    }
+
+    @Test
+    void theFallbackKeepsRejectedAndNotChosenHousesOutEvenWhenTheyAreNearest() {
+        var m = new LinkedHashMap<UUID, HouseSummary>();
+        var near = at("eeeeeeee-0000-4000-8000-000000000001", "rejected", PUNE_LAT, PUNE_LON, HouseStatus.REJECTED);
+        var near2 = at("eeeeeeee-0000-4000-8000-000000000002", "notchosen", PUNE_LAT, PUNE_LON, HouseStatus.NOT_CHOSEN);
+        var ok = at("eeeeeeee-0000-4000-8000-000000000003", "ok", PUNE_LAT + 0.05, PUNE_LON, HouseStatus.NEW);
+        m.put(near.id(), near);
+        m.put(near2.id(), near2);
+        m.put(ok.id(), ok);
+        var res = VisitPlannerService.assemble(null, m, List.of(), PUNE_LAT, PUNE_LON, 1);
+        assertThat(res.stops()).extracting(PlanModels.PlannedStop::label).containsExactly("ok");
+    }
+
+    @Test
+    void theFallbackBreaksEqualDistancesByHouseId() {
+        var hi = at("ffffffff-0000-4000-8000-000000000009", "hi", PUNE_LAT + 0.01, PUNE_LON, HouseStatus.NEW);
+        var lo = at("ffffffff-0000-4000-8000-000000000001", "lo", PUNE_LAT + 0.01, PUNE_LON, HouseStatus.NEW);
+        var m = new LinkedHashMap<UUID, HouseSummary>();
+        m.put(hi.id(), hi);
+        m.put(lo.id(), lo);
+        var res = VisitPlannerService.assemble(null, m, List.of(), PUNE_LAT, PUNE_LON, 1);
+        assertThat(res.stops()).extracting(PlanModels.PlannedStop::label).containsExactly("lo");
+        var all = VisitPlannerService.assemble(null, m, List.of(), PUNE_LAT, PUNE_LON, 2);
+        assertThat(all.stops()).extracting(PlanModels.PlannedStop::label).containsExactly("lo", "hi");
+    }
+
+    @Test
+    void anEmptyPlanFromTheModelIsNotTheFarFallback() {
+        var res = VisitPlannerService.assemble(new AgentPlan("Nothing matches", List.of()), bengaluruThenPune(), List.of(),
+                PUNE_LAT, PUNE_LON, 4);
+        assertThat(res.fallback()).isFalse();
+        assertThat(res.summary()).isEqualTo("Nothing matches");
+    }
 }
