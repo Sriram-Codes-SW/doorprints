@@ -122,6 +122,13 @@ object AppLocale {
     }
 
     /**
+     * The language Android resolved for [context]'s resources, one of [SUPPORTED]: the `resolved_language` string each
+     * `values` folder carries. A phone set to [Marathi, Hindi] resolves to Hindi (S4b-BL-22: the export's default
+     * language reads this, as the screens and the dates do, not the configuration's first locale).
+     */
+    fun resolved(context: Context): String = context.getString(R.string.resolved_language)
+
+    /**
      * The UI strings are Compose resources (ADR-23 CMP-2), which take the language from the process's default locale
      * rather than from a configuration, and choose from that one locale only; Android resources choose from the whole
      * list. So the default is set to the language Android resolved for [context]'s resources, read from the
@@ -132,7 +139,7 @@ object AppLocale {
      * DoorprintsApp.onConfigurationChanged.
      */
     fun applyDefault(context: Context) {
-        val chosen = Locale.forLanguageTag(context.getString(R.string.resolved_language))
+        val chosen = Locale.forLanguageTag(resolved(context))
         if (LocaleList.getDefault()[0].language == chosen.language) return
         val list = context.resources.configuration.locales
         val rest = (0 until list.size()).map { list[it] }.filter { it.language != chosen.language }
