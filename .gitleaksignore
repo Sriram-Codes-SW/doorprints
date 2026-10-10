@@ -104,3 +104,36 @@ c899116d0bd3265a847df6cd14c8b531825cbb60:android/shared/src/androidHostTest/kotl
 # Reviewed 2026-10-08: a made-up Gemini-shaped key in ai-limits.spec.ts (S4b-BL-181), never a credential; the test now uses
 # "test-key-one". The first commit stays in the branch history, so its line is listed. docs/07-secure-build-and-deploy.md.
 c6ed9c844ca35ef1d61a398ce13de4c49760635b:web/src/app/core/ai/ai-limits.spec.ts:generic-api-key:140
+
+# Reviewed 2026-10-10 (owner approved): the copies of the public known-answer vectors (RFC 9180 HPKE hex, DPX regression base64
+# keys) under android/app/src/androidTest/assets/crypto, and the made-up key "sk-test-0123456789abcdef" in KeystoreSecretStoreTest
+# (S4b-BL-27, S4b-BL-133, branch test/android-test-hardening; the test now builds its key at runtime). Not live credentials.
+# Listed by commit so a scan that sees that branch ignores only these lines. docs/07-secure-build-and-deploy.md.
+02e56b710bae0039feeef62eae42d2dc09c84647:android/app/src/androidTest/assets/crypto/dpx-vectors.json:generic-api-key:101
+02e56b710bae0039feeef62eae42d2dc09c84647:android/app/src/androidTest/assets/crypto/dpx-vectors.json:generic-api-key:112
+02e56b710bae0039feeef62eae42d2dc09c84647:android/app/src/androidTest/assets/crypto/dpx-vectors.json:generic-api-key:116
+02e56b710bae0039feeef62eae42d2dc09c84647:android/app/src/androidTest/assets/crypto/dpx-vectors.json:generic-api-key:127
+02e56b710bae0039feeef62eae42d2dc09c84647:android/app/src/androidTest/assets/crypto/dpx-vectors.json:generic-api-key:131
+02e56b710bae0039feeef62eae42d2dc09c84647:android/app/src/androidTest/assets/crypto/dpx-vectors.json:generic-api-key:142
+02e56b710bae0039feeef62eae42d2dc09c84647:android/app/src/androidTest/assets/crypto/dpx-vectors.json:generic-api-key:146
+02e56b710bae0039feeef62eae42d2dc09c84647:android/app/src/androidTest/assets/crypto/dpx-vectors.json:generic-api-key:156
+02e56b710bae0039feeef62eae42d2dc09c84647:android/app/src/androidTest/assets/crypto/dpx-vectors.json:generic-api-key:160
+02e56b710bae0039feeef62eae42d2dc09c84647:android/app/src/androidTest/assets/crypto/dpx-vectors.json:generic-api-key:170
+02e56b710bae0039feeef62eae42d2dc09c84647:android/app/src/androidTest/assets/crypto/dpx-vectors.json:generic-api-key:174
+02e56b710bae0039feeef62eae42d2dc09c84647:android/app/src/androidTest/assets/crypto/dpx-vectors.json:generic-api-key:184
+02e56b710bae0039feeef62eae42d2dc09c84647:android/app/src/androidTest/assets/crypto/dpx-vectors.json:generic-api-key:188
+02e56b710bae0039feeef62eae42d2dc09c84647:android/app/src/androidTest/assets/crypto/dpx-vectors.json:generic-api-key:97
+02e56b710bae0039feeef62eae42d2dc09c84647:android/app/src/androidTest/assets/crypto/hpke-vectors.json:generic-api-key:126
+02e56b710bae0039feeef62eae42d2dc09c84647:android/app/src/androidTest/assets/crypto/hpke-vectors.json:generic-api-key:129
+02e56b710bae0039feeef62eae42d2dc09c84647:android/app/src/androidTest/assets/crypto/hpke-vectors.json:generic-api-key:182
+02e56b710bae0039feeef62eae42d2dc09c84647:android/app/src/androidTest/assets/crypto/hpke-vectors.json:generic-api-key:183
+02e56b710bae0039feeef62eae42d2dc09c84647:android/app/src/androidTest/assets/crypto/hpke-vectors.json:generic-api-key:185
+02e56b710bae0039feeef62eae42d2dc09c84647:android/app/src/androidTest/assets/crypto/hpke-vectors.json:generic-api-key:213
+02e56b710bae0039feeef62eae42d2dc09c84647:android/app/src/androidTest/assets/crypto/hpke-vectors.json:generic-api-key:214
+02e56b710bae0039feeef62eae42d2dc09c84647:android/app/src/androidTest/assets/crypto/hpke-vectors.json:generic-api-key:216
+02e56b710bae0039feeef62eae42d2dc09c84647:android/app/src/androidTest/assets/crypto/hpke-vectors.json:generic-api-key:238
+02e56b710bae0039feeef62eae42d2dc09c84647:android/app/src/androidTest/assets/crypto/hpke-vectors.json:generic-api-key:239
+02e56b710bae0039feeef62eae42d2dc09c84647:android/app/src/androidTest/assets/crypto/hpke-vectors.json:generic-api-key:241
+02e56b710bae0039feeef62eae42d2dc09c84647:android/app/src/androidTest/assets/crypto/hpke-vectors.json:generic-api-key:60
+02e56b710bae0039feeef62eae42d2dc09c84647:android/app/src/androidTest/assets/crypto/hpke-vectors.json:generic-api-key:69
+02e56b710bae0039feeef62eae42d2dc09c84647:android/app/src/androidTest/java/app/doorprints/KeystoreSecretStoreTest.kt:generic-api-key:65
