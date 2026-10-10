@@ -1,15 +1,19 @@
 {
  "format": "doorprints-import-vectors/1",
- "note": "Shared by android/shared ImportVectorsTest, android/app BackupReaderParityTest and web backup-import.spec.ts (docs/schemas/README.md section 6.1). Stamps are in the past (2026-05-28).",
+ "note": "Shared by android/shared ImportVectorsTest, android/app BackupReaderParityTest and web backup-import.spec.ts (docs/schemas/README.md section 6.1). Stamps are in the past (2026-05-28). Since the format reset of S4b-BL-206 every file is doorprints-backup/1 with candidates; a file of the old family (houses) is refused as OLD_FORMAT whatever its number.",
  "checks": [
   {
-   "name": "a /1 file with one house",
+   "name": "a file with one candidate",
    "data": {
     "format": "doorprints-backup/1",
     "exportedAt": 1780000000000,
-    "houses": [
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [
      {
       "id": "h1",
+      "kind": "house",
       "label": "House h1",
       "lat": 12.97,
       "lon": 77.59,
@@ -25,21 +29,25 @@
    "problem": null
   },
   {
-   "name": "a /2 file with a broker",
+   "name": "a file with a broker",
    "data": {
-    "format": "doorprints-backup/2",
+    "format": "doorprints-backup/1",
     "exportedAt": 1780000000000,
-    "houses": [
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [
      {
       "id": "h1",
+      "kind": "house",
       "label": "House h1",
       "lat": 12.97,
       "lon": 77.59,
       "status": "NEW",
+      "brokerId": "b1",
       "checklist": {},
       "createdAt": 1779999999000,
-      "updatedAt": 1780000000000,
-      "brokerId": "b1"
+      "updatedAt": 1780000000000
      }
     ],
     "visits": [],
@@ -55,13 +63,17 @@
    "problem": null
   },
   {
-   "name": "a /3 update file with a deletion",
+   "name": "an update file with a deletion",
    "data": {
-    "format": "doorprints-backup/3",
+    "format": "doorprints-backup/1",
     "exportedAt": 1780000000000,
-    "houses": [
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [
      {
       "id": "h1",
+      "kind": "house",
       "label": "House h1",
       "lat": 12.97,
       "lon": 77.59,
@@ -75,7 +87,7 @@
     "photos": [],
     "deleted": [
      {
-      "kind": "house",
+      "kind": "candidate",
       "id": "h9",
       "updatedAt": 1780000000000
      }
@@ -86,9 +98,12 @@
   {
    "name": "a deletion of an unknown kind is read and ignored",
    "data": {
-    "format": "doorprints-backup/3",
+    "format": "doorprints-backup/1",
     "exportedAt": 1780000000000,
-    "houses": [],
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [],
     "visits": [],
     "photos": [],
     "deleted": [
@@ -104,9 +119,12 @@
   {
    "name": "a newer format asks to update the app",
    "data": {
-    "format": "doorprints-backup/4",
+    "format": "doorprints-backup/2",
     "exportedAt": 1780000000000,
-    "houses": [],
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [],
     "visits": [],
     "photos": []
    },
@@ -117,9 +135,13 @@
    "data": {
     "format": "doorprints-backup/1",
     "exportedAt": 1780000000000,
-    "houses": [
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [
      {
       "id": "h1",
+      "kind": "house",
       "label": "House h1",
       "lat": 12.97,
       "lon": 77.59,
@@ -130,6 +152,7 @@
      },
      {
       "id": "h1",
+      "kind": "house",
       "label": "House h1",
       "lat": 12.97,
       "lon": 77.59,
@@ -149,9 +172,13 @@
    "data": {
     "format": "doorprints-backup/1",
     "exportedAt": 1780000000000,
-    "houses": [
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [
      {
       "id": "../h1",
+      "kind": "house",
       "label": "House ../h1",
       "lat": 12.97,
       "lon": 77.59,
@@ -171,9 +198,13 @@
    "data": {
     "format": "doorprints-backup/1",
     "exportedAt": 1780000000000,
-    "houses": [
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [
      {
       "id": "h1",
+      "kind": "house",
       "label": "House h1",
       "lon": 77.59,
       "status": "NEW",
@@ -192,9 +223,13 @@
    "data": {
     "format": "doorprints-backup/1",
     "exportedAt": 1780000000000,
-    "houses": [
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [
      {
       "id": "h1",
+      "kind": "house",
       "label": "House h1",
       "lat": 12.97,
       "lon": 77.59,
@@ -214,9 +249,13 @@
    "data": {
     "format": "doorprints-backup/1",
     "exportedAt": 1780000000000,
-    "houses": [
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [
      {
       "id": "h1",
+      "kind": "house",
       "label": "House h1",
       "lat": 12.97,
       "lon": 77.59,
@@ -236,12 +275,15 @@
    "data": {
     "format": "doorprints-backup/1",
     "exportedAt": 1780000000000,
-    "houses": [],
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [],
     "visits": [],
     "photos": [
      {
       "id": "p1",
-      "houseId": "",
+      "candidateId": "",
       "fileName": "p1.jpg",
       "createdAt": 1779999999900
      }
@@ -252,9 +294,12 @@
   {
    "name": "a broker with a blank name",
    "data": {
-    "format": "doorprints-backup/2",
+    "format": "doorprints-backup/1",
     "exportedAt": 1780000000000,
-    "houses": [],
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [],
     "visits": [],
     "photos": [],
     "brokers": [
@@ -270,18 +315,19 @@
   {
    "name": "a room longer than 50 m",
    "data": {
-    "format": "doorprints-backup/2",
+    "format": "doorprints-backup/1",
     "exportedAt": 1780000000000,
-    "houses": [
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [
      {
       "id": "h1",
+      "kind": "house",
       "label": "House h1",
       "lat": 12.97,
       "lon": 77.59,
       "status": "NEW",
-      "checklist": {},
-      "createdAt": 1779999999000,
-      "updatedAt": 1780000000000,
       "rooms": [
        {
         "id": "r1",
@@ -289,7 +335,10 @@
         "lengthCm": 9999,
         "sort": 0
        }
-      ]
+      ],
+      "checklist": {},
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000000
      }
     ],
     "visits": [],
@@ -300,9 +349,12 @@
   {
    "name": "a built-in criterion with a label",
    "data": {
-    "format": "doorprints-backup/2",
+    "format": "doorprints-backup/1",
     "exportedAt": 1780000000000,
-    "houses": [],
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [],
     "visits": [],
     "photos": [],
     "criteria": [
@@ -322,15 +374,18 @@
   {
    "name": "a viewing of two minutes",
    "data": {
-    "format": "doorprints-backup/2",
+    "format": "doorprints-backup/1",
     "exportedAt": 1780000000000,
-    "houses": [],
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [],
     "visits": [],
     "photos": [],
     "viewings": [
      {
       "id": "v_1",
-      "houseId": "h1",
+      "candidateId": "h1",
       "startsAt": 1780000000000,
       "durationMin": 2,
       "kind": "FIRST",
@@ -345,9 +400,12 @@
   {
    "name": "an area of 100 m",
    "data": {
-    "format": "doorprints-backup/2",
+    "format": "doorprints-backup/1",
     "exportedAt": 1780000000000,
-    "houses": [],
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [],
     "visits": [],
     "photos": [],
     "areas": [
@@ -366,9 +424,12 @@
   {
    "name": "an area note with two targets",
    "data": {
-    "format": "doorprints-backup/2",
+    "format": "doorprints-backup/1",
     "exportedAt": 1780000000000,
-    "houses": [],
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [],
     "visits": [],
     "photos": [],
     "areaNotes": [
@@ -386,11 +447,15 @@
   {
    "name": "a photo with eleven tags",
    "data": {
-    "format": "doorprints-backup/2",
+    "format": "doorprints-backup/1",
     "exportedAt": 1780000000000,
-    "houses": [
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [
      {
       "id": "h1",
+      "kind": "house",
       "label": "House h1",
       "lat": 12.97,
       "lon": 77.59,
@@ -404,7 +469,7 @@
     "photos": [
      {
       "id": "p1",
-      "houseId": "h1",
+      "candidateId": "h1",
       "fileName": "p1.jpg",
       "createdAt": 1779999999900,
       "tags": [
@@ -428,11 +493,15 @@
   {
    "name": "a deletion of a house the file also has",
    "data": {
-    "format": "doorprints-backup/3",
+    "format": "doorprints-backup/1",
     "exportedAt": 1780000000000,
-    "houses": [
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [
      {
       "id": "h1",
+      "kind": "house",
       "label": "House h1",
       "lat": 12.97,
       "lon": 77.59,
@@ -446,7 +515,7 @@
     "photos": [],
     "deleted": [
      {
-      "kind": "house",
+      "kind": "candidate",
       "id": "h1",
       "updatedAt": 1780000000000
      }
@@ -457,19 +526,22 @@
   {
    "name": "the same deletion twice",
    "data": {
-    "format": "doorprints-backup/3",
+    "format": "doorprints-backup/1",
     "exportedAt": 1780000000000,
-    "houses": [],
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [],
     "visits": [],
     "photos": [],
     "deleted": [
      {
-      "kind": "house",
+      "kind": "candidate",
       "id": "h9",
       "updatedAt": 1780000000000
      },
      {
-      "kind": "house",
+      "kind": "candidate",
       "id": "h9",
       "updatedAt": 1780000000001
      }
@@ -480,6 +552,51 @@
   {
    "name": "a deletion with a bad id",
    "data": {
+    "format": "doorprints-backup/1",
+    "exportedAt": 1780000000000,
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [],
+    "visits": [],
+    "photos": [],
+    "deleted": [
+     {
+      "kind": "candidate",
+      "id": "a/b",
+      "updatedAt": 1780000000000
+     }
+    ]
+   },
+   "problem": "BROKEN_DATA"
+  },
+  {
+   "name": "a /1 file of the old family (houses, not candidates) is made by an older Doorprints",
+   "data": {
+    "format": "doorprints-backup/1",
+    "exportedAt": 1780000000000,
+    "houses": [
+     {
+      "id": "h1",
+      "label": "House h1",
+      "lat": 12.97,
+      "lon": 77.59,
+      "status": "NEW",
+      "price": 25000,
+      "priceType": "RENT",
+      "checklist": {},
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000000
+     }
+    ],
+    "visits": [],
+    "photos": []
+   },
+   "problem": "OLD_FORMAT"
+  },
+  {
+   "name": "a /3 file of the old family is made by an older Doorprints, not a newer one",
+   "data": {
     "format": "doorprints-backup/3",
     "exportedAt": 1780000000000,
     "houses": [],
@@ -488,12 +605,339 @@
     "deleted": [
      {
       "kind": "house",
-      "id": "a/b",
+      "id": "h9",
       "updatedAt": 1780000000000
      }
     ]
    },
+   "problem": "OLD_FORMAT"
+  },
+  {
+   "name": "a candidate without a kind",
+   "data": {
+    "format": "doorprints-backup/1",
+    "exportedAt": 1780000000000,
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [
+     {
+      "id": "h1",
+      "label": "House h1",
+      "lat": 12.97,
+      "lon": 77.59,
+      "status": "NEW",
+      "checklist": {},
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000000
+     }
+    ],
+    "visits": [],
+    "photos": []
+   },
    "problem": "BROKEN_DATA"
+  },
+  {
+   "name": "a kind that is not a kind id",
+   "data": {
+    "format": "doorprints-backup/1",
+    "exportedAt": 1780000000000,
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [
+     {
+      "id": "h1",
+      "kind": "House",
+      "label": "House h1",
+      "lat": 12.97,
+      "lon": 77.59,
+      "status": "NEW",
+      "checklist": {},
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000000
+     }
+    ],
+    "visits": [],
+    "photos": []
+   },
+   "problem": "BROKEN_DATA"
+  },
+  {
+   "name": "rent chosen and no price yet: money with a cadence only",
+   "data": {
+    "format": "doorprints-backup/1",
+    "exportedAt": 1780000000000,
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [
+     {
+      "id": "h1",
+      "kind": "house",
+      "label": "House h1",
+      "lat": 12.97,
+      "lon": 77.59,
+      "status": "NEW",
+      "money": {
+       "cadence": "month"
+      },
+      "checklist": {},
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000000
+     }
+    ],
+    "visits": [],
+    "photos": []
+   },
+   "problem": null
+  },
+  {
+   "name": "money by the year is not a cadence of a house",
+   "data": {
+    "format": "doorprints-backup/1",
+    "exportedAt": 1780000000000,
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [
+     {
+      "id": "h1",
+      "kind": "house",
+      "label": "House h1",
+      "lat": 12.97,
+      "lon": 77.59,
+      "status": "NEW",
+      "money": {
+       "amount": 300000,
+       "cadence": "year"
+      },
+      "checklist": {},
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000000
+     }
+    ],
+    "visits": [],
+    "photos": []
+   },
+   "problem": "BROKEN_DATA"
+  },
+  {
+   "name": "money with a fractional amount",
+   "data": {
+    "format": "doorprints-backup/1",
+    "exportedAt": 1780000000000,
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [
+     {
+      "id": "h1",
+      "kind": "house",
+      "label": "House h1",
+      "lat": 12.97,
+      "lon": 77.59,
+      "status": "NEW",
+      "money": {
+       "amount": 25000.5,
+       "cadence": "month"
+      },
+      "checklist": {},
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000000
+     }
+    ],
+    "visits": [],
+    "photos": []
+   },
+   "problem": "BROKEN_DATA"
+  },
+  {
+   "name": "a deposit paid every month",
+   "data": {
+    "format": "doorprints-backup/1",
+    "exportedAt": 1780000000000,
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [
+     {
+      "id": "h1",
+      "kind": "house",
+      "label": "House h1",
+      "lat": 12.97,
+      "lon": 77.59,
+      "status": "NEW",
+      "extras": {
+       "deposit": {
+        "amount": 50000,
+        "cadence": "month"
+       }
+      },
+      "checklist": {},
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000000
+     }
+    ],
+    "visits": [],
+    "photos": []
+   },
+   "problem": "BROKEN_DATA"
+  },
+  {
+   "name": "a deposit with no amount",
+   "data": {
+    "format": "doorprints-backup/1",
+    "exportedAt": 1780000000000,
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [
+     {
+      "id": "h1",
+      "kind": "house",
+      "label": "House h1",
+      "lat": 12.97,
+      "lon": 77.59,
+      "status": "NEW",
+      "extras": {
+       "deposit": {
+        "cadence": "once"
+       }
+      },
+      "checklist": {},
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000000
+     }
+    ],
+    "visits": [],
+    "photos": []
+   },
+   "problem": "BROKEN_DATA"
+  },
+  {
+   "name": "an extra this app does not know is read and kept",
+   "data": {
+    "format": "doorprints-backup/1",
+    "exportedAt": 1780000000000,
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [
+     {
+      "id": "h1",
+      "kind": "house",
+      "label": "House h1",
+      "lat": 12.97,
+      "lon": 77.59,
+      "status": "NEW",
+      "extras": {
+       "bedrooms": 2,
+       "fromNewerApp": 4,
+       "gymOpens": "06:00",
+       "hasLift": true,
+       "yearlyFee": {
+        "amount": 12000,
+        "cadence": "year"
+       }
+      },
+      "checklist": {},
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000000
+     }
+    ],
+    "visits": [],
+    "photos": []
+   },
+   "problem": null
+  },
+  {
+   "name": "an unknown extra whose value is a list",
+   "data": {
+    "format": "doorprints-backup/1",
+    "exportedAt": 1780000000000,
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [
+     {
+      "id": "h1",
+      "kind": "house",
+      "label": "House h1",
+      "lat": 12.97,
+      "lon": 77.59,
+      "status": "NEW",
+      "extras": {
+       "fromNewerApp": [
+        1,
+        2
+       ]
+      },
+      "checklist": {},
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000000
+     }
+    ],
+    "visits": [],
+    "photos": []
+   },
+   "problem": "BROKEN_DATA"
+  },
+  {
+   "name": "an unknown extra whose id is not a field id",
+   "data": {
+    "format": "doorprints-backup/1",
+    "exportedAt": 1780000000000,
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [
+     {
+      "id": "h1",
+      "kind": "house",
+      "label": "House h1",
+      "lat": 12.97,
+      "lon": 77.59,
+      "status": "NEW",
+      "extras": {
+       "from-newer-app": 1
+      },
+      "checklist": {},
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000000
+     }
+    ],
+    "visits": [],
+    "photos": []
+   },
+   "problem": "BROKEN_DATA"
+  },
+  {
+   "name": "an empty extras object reads as none",
+   "data": {
+    "format": "doorprints-backup/1",
+    "exportedAt": 1780000000000,
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [
+     {
+      "id": "h1",
+      "kind": "house",
+      "label": "House h1",
+      "lat": 12.97,
+      "lon": 77.59,
+      "status": "NEW",
+      "extras": {},
+      "checklist": {},
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000000
+     }
+    ],
+    "visits": [],
+    "photos": []
+   },
+   "problem": null
   }
  ],
  "merges": [
@@ -520,9 +964,13 @@
    "data": {
     "format": "doorprints-backup/1",
     "exportedAt": 1780000000000,
-    "houses": [
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [
      {
       "id": "h1",
+      "kind": "house",
       "label": "House h1",
       "lat": 12.97,
       "lon": 77.59,
@@ -533,6 +981,7 @@
      },
      {
       "id": "h2",
+      "kind": "house",
       "label": "House h2",
       "lat": 12.97,
       "lon": 77.59,
@@ -543,6 +992,7 @@
      },
      {
       "id": "h3",
+      "kind": "house",
       "label": "House h3",
       "lat": 12.97,
       "lon": 77.59,
@@ -584,9 +1034,13 @@
    "data": {
     "format": "doorprints-backup/1",
     "exportedAt": 1780000000000,
-    "houses": [
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [
      {
       "id": "h1",
+      "kind": "house",
       "label": "House h1",
       "lat": 12.97,
       "lon": 77.59,
@@ -630,9 +1084,13 @@
    "data": {
     "format": "doorprints-backup/1",
     "exportedAt": 1780000000000,
-    "houses": [
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [
      {
       "id": "h1",
+      "kind": "house",
       "label": "House h1",
       "lat": 12.97,
       "lon": 77.59,
@@ -675,9 +1133,13 @@
    "data": {
     "format": "doorprints-backup/1",
     "exportedAt": 1780000000000,
-    "houses": [
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [
      {
       "id": "h1",
+      "kind": "house",
       "label": "House h1",
       "lat": 12.97,
       "lon": 77.59,
@@ -717,9 +1179,13 @@
    "data": {
     "format": "doorprints-backup/1",
     "exportedAt": 1780000000000,
-    "houses": [
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [
      {
       "id": "h1",
+      "kind": "house",
       "label": "House h1",
       "lat": 12.97,
       "lon": 77.59,
@@ -732,7 +1198,7 @@
     "visits": [
      {
       "id": "v1",
-      "houseId": "h1",
+      "candidateId": "h1",
       "lat": 12.97,
       "lon": 77.59,
       "arrivedAt": 1779999999500,
@@ -741,7 +1207,7 @@
      },
      {
       "id": "v2",
-      "houseId": "hx",
+      "candidateId": "hx",
       "lat": 12.97,
       "lon": 77.59,
       "arrivedAt": 1779999999500,
@@ -760,13 +1226,13 @@
     "photos": [
      {
       "id": "p1",
-      "houseId": "h1",
+      "candidateId": "h1",
       "fileName": "p1.jpg",
       "createdAt": 1779999999900
      },
      {
       "id": "p2",
-      "houseId": "h1",
+      "candidateId": "h1",
       "fileName": "p2.jpg",
       "createdAt": 1779999999900
      }
@@ -802,9 +1268,13 @@
    "data": {
     "format": "doorprints-backup/1",
     "exportedAt": 1780000000000,
-    "houses": [
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [
      {
       "id": "h1",
+      "kind": "house",
       "label": "House h1",
       "lat": 12.97,
       "lon": 77.59,
@@ -847,9 +1317,13 @@
    "data": {
     "format": "doorprints-backup/1",
     "exportedAt": 1780000000000,
-    "houses": [
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [
      {
       "id": "h1",
+      "kind": "house",
       "label": "House h1",
       "lat": 12.97,
       "lon": 77.59,
@@ -887,9 +1361,12 @@
     "viewings": {}
    },
    "data": {
-    "format": "doorprints-backup/2",
+    "format": "doorprints-backup/1",
     "exportedAt": 1780000000000,
-    "houses": [],
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [],
     "visits": [],
     "photos": [],
     "brokers": [
@@ -932,11 +1409,15 @@
     }
    },
    "data": {
-    "format": "doorprints-backup/2",
+    "format": "doorprints-backup/1",
     "exportedAt": 1780000000000,
-    "houses": [
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [
      {
       "id": "h1",
+      "kind": "house",
       "label": "House h1",
       "lat": 12.97,
       "lon": 77.59,
@@ -951,7 +1432,7 @@
     "viewings": [
      {
       "id": "v_1",
-      "houseId": "h1",
+      "candidateId": "h1",
       "startsAt": 1780000000000,
       "durationMin": 30,
       "kind": "FIRST",
@@ -987,38 +1468,50 @@
     "viewings": {}
    },
    "data": {
-    "format": "doorprints-backup/2",
+    "format": "doorprints-backup/1",
     "exportedAt": 1780000000000,
-    "houses": [
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [
      {
       "id": "h1",
+      "kind": "house",
       "label": "House h1",
       "lat": 12.97,
       "lon": 77.59,
       "status": "NEW",
-      "floor": 201,
+      "extras": {
+       "floor": 201
+      },
       "checklist": {},
       "createdAt": 1779999999000,
       "updatedAt": 1780000000100
      },
      {
       "id": "h2",
+      "kind": "house",
       "label": "House h2",
       "lat": 12.97,
       "lon": 77.59,
       "status": "NEW",
-      "floor": -6,
+      "extras": {
+       "floor": -6
+      },
       "checklist": {},
       "createdAt": 1779999999000,
       "updatedAt": 1780000000100
      },
      {
       "id": "h3",
+      "kind": "house",
       "label": "House h3",
       "lat": 12.97,
       "lon": 77.59,
       "status": "NEW",
-      "floor": -5,
+      "extras": {
+       "floor": -5
+      },
       "checklist": {},
       "createdAt": 1779999999000,
       "updatedAt": 1780000000100
@@ -1055,9 +1548,13 @@
    "data": {
     "format": "doorprints-backup/1",
     "exportedAt": 1780000000000,
-    "houses": [
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [
      {
       "id": "h1",
+      "kind": "house",
       "label": "House h1",
       "lat": 12.97,
       "lon": 77.59,
@@ -1068,6 +1565,7 @@
      },
      {
       "id": "h2",
+      "kind": "house",
       "label": "House h2",
       "lat": 12.97,
       "lon": 77.59,
@@ -1106,14 +1604,17 @@
     "viewings": {}
    },
    "data": {
-    "format": "doorprints-backup/3",
+    "format": "doorprints-backup/1",
     "exportedAt": 1780000000000,
-    "houses": [],
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [],
     "visits": [],
     "photos": [],
     "deleted": [
      {
-      "kind": "house",
+      "kind": "candidate",
       "id": "h5",
       "updatedAt": 1780000000300
      }
@@ -1144,14 +1645,17 @@
     "viewings": {}
    },
    "data": {
-    "format": "doorprints-backup/3",
+    "format": "doorprints-backup/1",
     "exportedAt": 1780000000000,
-    "houses": [],
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [],
     "visits": [],
     "photos": [],
     "deleted": [
      {
-      "kind": "house",
+      "kind": "candidate",
       "id": "h5",
       "updatedAt": 1780000000300
      }
@@ -1182,14 +1686,17 @@
     "viewings": {}
    },
    "data": {
-    "format": "doorprints-backup/3",
+    "format": "doorprints-backup/1",
     "exportedAt": 1780000000000,
-    "houses": [],
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [],
     "visits": [],
     "photos": [],
     "deleted": [
      {
-      "kind": "house",
+      "kind": "candidate",
       "id": "h5",
       "updatedAt": 1780000000300
      }
@@ -1220,14 +1727,17 @@
     "viewings": {}
    },
    "data": {
-    "format": "doorprints-backup/3",
+    "format": "doorprints-backup/1",
     "exportedAt": 1780000000000,
-    "houses": [],
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [],
     "visits": [],
     "photos": [],
     "deleted": [
      {
-      "kind": "house",
+      "kind": "candidate",
       "id": "h5",
       "updatedAt": 1780000000300
      }
@@ -1257,14 +1767,17 @@
     "viewings": {}
    },
    "data": {
-    "format": "doorprints-backup/3",
+    "format": "doorprints-backup/1",
     "exportedAt": 1780000000000,
-    "houses": [],
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [],
     "visits": [],
     "photos": [],
     "deleted": [
      {
-      "kind": "house",
+      "kind": "candidate",
       "id": "h5",
       "updatedAt": 1780000000300
      }
@@ -1296,14 +1809,17 @@
     "viewings": {}
    },
    "data": {
-    "format": "doorprints-backup/3",
+    "format": "doorprints-backup/1",
     "exportedAt": 1780000000000,
-    "houses": [],
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [],
     "visits": [],
     "photos": [],
     "deleted": [
      {
-      "kind": "house",
+      "kind": "candidate",
       "id": "h5",
       "updatedAt": 1780000000300
      }
@@ -1333,9 +1849,12 @@
     "viewings": {}
    },
    "data": {
-    "format": "doorprints-backup/3",
+    "format": "doorprints-backup/1",
     "exportedAt": 1780000000000,
-    "houses": [],
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [],
     "visits": [],
     "photos": [],
     "deleted": [
@@ -1361,7 +1880,7 @@
     "photos/p1.jpg"
    ],
    "photoOk": true,
-   "base64": "UEsDBBQAAAAAAABQvFz3L0pwLwEAAC8BAAAJAAAAZGF0YS5qc29ueyJmb3JtYXQiOiJkb29ycHJpbnRzLWJhY2t1cC8xIiwiZXhwb3J0ZWRBdCI6MTc4MDAwMDAwMDAwMCwiaG91c2VzIjpbeyJpZCI6ImgxIiwibGFiZWwiOiJIb3VzZSBoMSIsImxhdCI6MTIuOTcsImxvbiI6NzcuNTksInN0YXR1cyI6Ik5FVyIsImNoZWNrbGlzdCI6e30sImNyZWF0ZWRBdCI6MTc3OTk5OTk5OTAwMCwidXBkYXRlZEF0IjoxNzgwMDAwMDAwMDAwfV0sInZpc2l0cyI6W10sInBob3RvcyI6W3siaWQiOiJwMSIsImhvdXNlSWQiOiJoMSIsImZpbGVOYW1lIjoicDEuanBnIiwiY3JlYXRlZEF0IjoxNzc5OTk5OTk5OTAwfV19UEsDBBQAAAAAAABQvFxgDcQdLAEAACwBAAANAAAAcGhvdG9zL3AxLmpwZwAfPl18m7rZ+Bc2VXSTstHwDy5NbIuqyegHJkVkg6LB4P8ePVx7mrnY9xY1VHOSsdDvDi1Ma4qpyOcGJURjgqHA3/4dPFt6mbjX9hU0U3KRsM/uDSxLaomox+YFJENigaC/3v0cO1p5mLfW9RQzUnGQr87tDCtKaYinxuUEI0JhgJ++3fwbOll4l7bV9BMyUXCPrs3sCypJaIemxeQDIkFgf5693PsaOVh3lrXU8xIxUG+OrczrCilIZ4alxOMCIUBffp282/oZOFd2lbTT8hEwT26NrMvqCShHZoWkw+IBID9efZy72vkYN1Z1lLPS8RAvTm2Mq8rpCCdGZYSjwuEAHz5dfJu62fgXNlV0k7LR8A8uTWyLqsnoByZFZIOiweD/Hj1ce5q52PcWNVBLAwQUAAAAAAAAULxczYYUo+YBAADmAQAADQAAAG1hbmlmZXN0Lmpzb257ImZvcm1hdCI6ImRvb3JwcmludHMtYmFja3VwLzEiLCJhcHAiOiJEb29ycHJpbnRzIiwiYXBwVmVyc2lvbiI6IjEuMC4wIiwiY3JlYXRlZEF0IjoiMjAyNi0wNS0yOFQxMDowMDowMFoiLCJsYW5ndWFnZSI6ImVuIiwic2NvcGUiOiJBTEwiLCJpbmNsdWRlUmVqZWN0ZWQiOnRydWUsInBob3RvU2NvcGUiOiJBTEwiLCJpbmNsdWRlQ29udGFjdHMiOnRydWUsImNvdW50cyI6eyJob3VzZXMiOjEsInZpc2l0cyI6MCwicGhvdG9zIjoxfSwiZmlsZXMiOlt7InBhdGgiOiJkYXRhLmpzb24iLCJzaXplQnl0ZXMiOjMwMywic2hhMjU2IjoiZDIxMTdkYzNkODczMzQ2MTllOWM4M2IwOGY4MTlkYmZlM2Y2NTJlYmNkMDI4YTFlNmNmMWFhYmE4ZjI4NWRmMyJ9LHsicGF0aCI6InBob3Rvcy9wMS5qcGciLCJzaXplQnl0ZXMiOjMwMCwic2hhMjU2IjoiODIyMjhlNzA2ZGJhMGRkZjcyMTM3MzMwNGRmZTMyNmE5YzcwMmFhODA2ZWU5OTJiYTMwZTcwYzJjOWM1M2FjYSJ9XX1QSwECFAMUAAAAAAAAULxc9y9KcC8BAAAvAQAACQAAAAAAAAAAAAAAgAEAAAAAZGF0YS5qc29uUEsBAhQDFAAAAAAAAFC8XGANxB0sAQAALAEAAA0AAAAAAAAAAAAAAIABVgEAAHBob3Rvcy9wMS5qcGdQSwECFAMUAAAAAAAAULxczYYUo+YBAADmAQAADQAAAAAAAAAAAAAAgAGtAgAAbWFuaWZlc3QuanNvblBLBQYAAAAAAwADAK0AAAC+BAAAAAA="
+   "base64": "UEsDBBQAAAAAAABQvFxXMgxYYAEAAGABAAAJAAAAZGF0YS5qc29ueyJmb3JtYXQiOiJkb29ycHJpbnRzLWJhY2t1cC8xIiwiZXhwb3J0ZWRBdCI6MTc4MDAwMDAwMDAwMCwic2VhcmNoIjp7ImtpbmQiOiJob3VzZSJ9LCJjYW5kaWRhdGVzIjpbeyJpZCI6ImgxIiwia2luZCI6ImhvdXNlIiwibGFiZWwiOiJIb3VzZSBoMSIsImxhdCI6MTIuOTcsImxvbiI6NzcuNTksInN0YXR1cyI6Ik5FVyIsImNoZWNrbGlzdCI6e30sImNyZWF0ZWRBdCI6MTc3OTk5OTk5OTAwMCwidXBkYXRlZEF0IjoxNzgwMDAwMDAwMDAwfV0sInZpc2l0cyI6W10sInBob3RvcyI6W3siaWQiOiJwMSIsImNhbmRpZGF0ZUlkIjoiaDEiLCJmaWxlTmFtZSI6InAxLmpwZyIsImNyZWF0ZWRBdCI6MTc3OTk5OTk5OTkwMH1dfVBLAwQUAAAAAAAAULxcYA3EHSwBAAAsAQAADQAAAHBob3Rvcy9wMS5qcGcAHz5dfJu62fgXNlV0k7LR8A8uTWyLqsnoByZFZIOiweD/Hj1ce5q52PcWNVRzkrHQ7w4tTGuKqcjnBiVEY4KhwN/+HTxbepm41/YVNFNykbDP7g0sS2qJqMfmBSRDYoGgv979HDtaeZi31vUUM1JxkK/O7QwrSmmIp8blBCNCYYCfvt38GzpZeJe21fQTMlFwj67N7AsqSWiHpsXkAyJBYH+evdz7GjlYd5a11PMSMVBvjq3M6wopSGeGpcTjAiFAX36dvNv6GThXdpW00/IRME9ujazL6gkoR2aFpMPiASA/Xn2cu9r5GDdWdZSz0vEQL05tjKvK6QgnRmWEo8LhAB8+XXybutn4FzZVdJOy0fAPLk1si6rJ6AcmRWSDosHg/x49XHuaudj3FjVQSwMEFAAAAAAAAFC8XCRBc8vqAQAA6gEAAA0AAABtYW5pZmVzdC5qc29ueyJmb3JtYXQiOiJkb29ycHJpbnRzLWJhY2t1cC8xIiwiYXBwIjoiRG9vcnByaW50cyIsImFwcFZlcnNpb24iOiIxLjAuMCIsImNyZWF0ZWRBdCI6IjIwMjYtMDUtMjhUMTA6MDA6MDBaIiwibGFuZ3VhZ2UiOiJlbiIsInNjb3BlIjoiQUxMIiwiaW5jbHVkZVJlamVjdGVkIjp0cnVlLCJwaG90b1Njb3BlIjoiQUxMIiwiaW5jbHVkZUNvbnRhY3RzIjp0cnVlLCJjb3VudHMiOnsiY2FuZGlkYXRlcyI6MSwidmlzaXRzIjowLCJwaG90b3MiOjF9LCJmaWxlcyI6W3sicGF0aCI6ImRhdGEuanNvbiIsInNpemVCeXRlcyI6MzUyLCJzaGEyNTYiOiJjY2VjODRlNzE5ZDVjYTFmZWJkZDQyNjk4MDAwZTNlN2NkZTA4ZTMyOGU0NDAxMDEyM2MwYTVmMjIzYWQ2MTViIn0seyJwYXRoIjoicGhvdG9zL3AxLmpwZyIsInNpemVCeXRlcyI6MzAwLCJzaGEyNTYiOiI4MjIyOGU3MDZkYmEwZGRmNzIxMzczMzA0ZGZlMzI2YTljNzAyYWE4MDZlZTk5MmJhMzBlNzBjMmM5YzUzYWNhIn1dfVBLAQIUAxQAAAAAAABQvFxXMgxYYAEAAGABAAAJAAAAAAAAAAAAAACAAQAAAABkYXRhLmpzb25QSwECFAMUAAAAAAAAULxcYA3EHSwBAAAsAQAADQAAAAAAAAAAAAAAgAGHAQAAcGhvdG9zL3AxLmpwZ1BLAQIUAxQAAAAAAABQvFwkQXPL6gEAAOoBAAANAAAAAAAAAAAAAACAAd4CAABtYW5pZmVzdC5qc29uUEsFBgAAAAADAAMArQAAAPMEAAAAAA=="
   },
   {
    "name": "a deflated backup",
@@ -1371,7 +1890,7 @@
     "photos/p1.jpg"
    ],
    "photoOk": true,
-   "base64": "UEsDBBQAAAAIAABQvFz3L0pwuAAAAC8BAAAJAAAAZGF0YS5qc29udY67DoJAEEV/xUyNKCZmhc7CRBtaC2OxwCIrC7PZhzEh/LuzaIiFTjWPO/eeAWo0HXeQQYVotJG9s8uCl63XqwQiEE+NxolqT5KE7dZzRdCgt8JCdhlAVmTQBL3ihVA0HMNx8VmF302cMuqxh4yxeJtGYB13nv4hP5xJVjaibJW0JB5GGo3gcy5L3zXlel3xX0TjNYKHtNIFJup1gw6/+HSAmaBPM24tlch5J6ZzfNc3+JOcBv/xBVBLAwQUAAAACAAAULxcYA3EHRMBAAAsAQAADQAAAHBob3Rvcy9wMS5qcGdjkLeLrZm96+YPcbPQksmbLn7g1/PN6V518gW7mmtK86KDD/7L2cZUz9p547uYaUjxpI0X3vPp+mR3rTzxnE3VJblp4YH7/2Rtoqtm7rj+TdQkuGjihvPveHW8szpXHH/GquKc1Lhg/72/MtZRlTO2X/sqYhxUOGH9ubc82l6ZHcuPPWVRdkpsmL/v7h9pq8iK6duufhE2CizoX3f2DbeWZ0b7sqNPmJUcE+rn7b3zW8oyonza1iufhQwD8vvWnnnNpemR3rb0yGMmRYf4url7bv+StAgvm7rl8idBA/+83jWnX3FquKe1Ljn8iFHBPq52zu5bPyXMw0qnbL70UUDfL7dn9amXHOpuqS2LDz1kIMH/AFBLAwQUAAAACAAAULxczYYUozgBAADmAQAADQAAAG1hbmlmZXN0Lmpzb25tj8FOwzAQRP/F5zRd203i5Fbg2BMgDiAOG3vdpJTYShwkqPLv2LSqEELywTP7tDN7YtaN7xhYw4xzox/7IUyrFvXb7NecZQy9j7O76+xsPdE49W6IE55DDtHUI2Egs02bBIhyBcVKqEcODaT3HJEjDvsZ9xQJGqKetPNJbHe7qPpBH2dD93QgHRexJowzZcx3LriH/8hbNwTUsdGF1G5O/ZoT69w8UfzxjH30U59MuGxK7pIx2x8T8HJiHkOXjseA+WFyP736L7r5DAmQIKPuUBRlggTnldHSqErKTclrqrWSLSireG1aS9KWhaBWGxAKOZXacsQWlRWqMFayJbsGntusPc8Pfv83FH6FKiGEogpK0yIYYyvBZYyHjYl5osRaVyAQFZREdS1alBBpLXStC4ka2fK6fANQSwECFAMUAAAACAAAULxc9y9KcLgAAAAvAQAACQAAAAAAAAAAAAAAgAEAAAAAZGF0YS5qc29uUEsBAhQDFAAAAAgAAFC8XGANxB0TAQAALAEAAA0AAAAAAAAAAAAAAIAB3wAAAHBob3Rvcy9wMS5qcGdQSwECFAMUAAAACAAAULxczYYUozgBAADmAQAADQAAAAAAAAAAAAAAgAEdAgAAbWFuaWZlc3QuanNvblBLBQYAAAAAAwADAK0AAACAAwAAAAA="
+   "base64": "UEsDBBQAAAAIAABQvFxXMgxYzwAAAGABAAAJAAAAZGF0YS5qc29udY/BSsUwEEV/Re46VitIbHcuBN28rQtxMS+ZZ2PzmpCkIpT+u5MKRUFnNcMc5p5ZcArpTAU9bAgpJjeVfHkkM87xqoUCf8aQCtt7QVp9d72XQmZKZkC/YHSTlQtDmDNjVTA0WWepcEb/ssBty3rtF6jg6che5sc6X2yEry7tTdNp6cOEXuvmtpOwQmWWczg8PAtmBjajd1ngpQYmpl1Sd9+1Sc7R0l/666vCh8uuVEXp4xBK+KEbq8z+x9P+wcl5PtCZN6R5j2/4J72rGesXUEsDBBQAAAAIAABQvFxgDcQdEwEAACwBAAANAAAAcGhvdG9zL3AxLmpwZ2OQt4utmb3r5g9xs9CSyZsufuDX883pXnXyBbuaa0rzooMP/svZxlTP2nnju5hpSPGkjRfe8+n6ZHetPPGcTdUluWnhgfv/ZG2iq2buuP5N1CS4aOKG8+94dbyzOlccf8aq4pzUuGD/vb8y1lGVM7Zf+ypiHFQ4Yf25tzzaXpkdy489ZVF2SmyYv+/uH2mryIrp265+ETYKLOhfd/YNt5ZnRvuyo0+YlRwT6uftvfNbyjKifNrWK5+FDAPy+9aeec2l6ZHetvTIYyZFh/i6uXtu/5K0CC+buuXyJ0ED/7zeNadfcWq4p7UuOfyIUcE+rnbO7ls/JczDSqdsvvRRQN8vt2f1qZcc6m6pLYsPPWQgwf8AUEsDBBQAAAAIAABQvFwkQXPLOAEAAOoBAAANAAAAbWFuaWZlc3QuanNvbm2QzU7DMBCE38XnNF3b+b8VOPYEiAOIw2a9aVNKbCUOElR5d+y2Qggh+TI7n2ZGPonOju/oRSOMtaMb+8FPqxbpbXZrKRKBzgXv7se7nJ54nHo7BEemkEI40sjo2WxikgJVrCBfqepRQgPxPQfkiMNuxh0HgoegJ7Iuis12G1Q/0HE2fM8HphAkGj/OnAi3t94+/Efe2sEjhUVXkuwc9zUnQTiY3oQ5QclEfPRTHw24psXrkoiuP0bg5SQc+n38APSYHiZ73tZ/8c3nOUHnKug9qrwIEBFTlXEpa5MTyo5bYzJV1BUAsOaSDEPFWlWcZSBBKk2AeaeURlPIvBVL8lN4WbN2Mj243Z9SgF+llVIhsITCtAjGdKWSutQaMtOFqgJrKkEhVlAw17VqUUOgSVFNuUZCsbwu31BLAQIUAxQAAAAIAABQvFxXMgxYzwAAAGABAAAJAAAAAAAAAAAAAACAAQAAAABkYXRhLmpzb25QSwECFAMUAAAACAAAULxcYA3EHRMBAAAsAQAADQAAAAAAAAAAAAAAgAH2AAAAcGhvdG9zL3AxLmpwZ1BLAQIUAxQAAAAIAABQvFwkQXPLOAEAAOoBAAANAAAAAAAAAAAAAACAATQCAABtYW5pZmVzdC5qc29uUEsFBgAAAAADAAMArQAAAJcDAAAAAA=="
   },
   {
    "name": "an update file says who it is for",
@@ -1380,7 +1899,7 @@
    "photoEntries": [],
    "sharedTo": "Priya",
    "update": true,
-   "base64": "UEsDBBQAAAAIAABQvFyrQo8FswAAACgBAAAJAAAAZGF0YS5qc29ufY4/D8IgEMW/irkZq9UYpJuDiZOrg3GgBQMpFsIfY9L0u3u0TSfjTe/gvXu/Hp7Wv3iECoS13nndxbCuedMmt9kDAflx1kcpTmgp6XG7DAFlU5ABqnsPWuABVaLf8FoaXC75czU/5eyuYBS17aCitDgwAiHymDAP1/MNbY2STWt0QHM/4OolX3opm2bsTU7wX0TDg8BbBx0zE2qnbLSzFtJIzIywre5G3EyIvRM7g3+Hhy9QSwMEFAAAAAgAAFC8XCtdfrgeAQAAtQEAAA0AAABtYW5pZmVzdC5qc29ubZDLTsMwEEX/xeu0+EGcx67AsgtEKxYgFhNn0riE2HIcpFL13xm3FeoCyYu5d47ujOfIOhe+ILKatc4FH+wYp0UD5nP2d4plDLyn3tNf72K9YpisG6kjlnzJyTQBIWK7SkmSS73g+UKWW8Frnt4bIQOMuxl2SASOpCfjfBKr9ZqUHc0wt/iCezQUxOoYZsyY7110m//IRzdGMLTRlTRuTvvVR9a7eUKqRMa+7WSTya9Jl7LFAc8zxCljnR0S/H5kHmKfDgERlvvJnXe0P/hwiAmQlSbdg8w1QbnUGqARFXKQBeRClc19UyI3usgVz7FSFVeIBZAuVKW7RnIsSiMaJUpVsNPHOS1gu6EP4e3Z+JbfnO0CbR0Rz8EegJ1+AVBLAQIUAxQAAAAIAABQvFyrQo8FswAAACgBAAAJAAAAAAAAAAAAAACAAQAAAABkYXRhLmpzb25QSwECFAMUAAAACAAAULxcK11+uB4BAAC1AQAADQAAAAAAAAAAAAAAgAHaAAAAbWFuaWZlc3QuanNvblBLBQYAAAAAAgACAHIAAAAjAgAAAAA="
+   "base64": "UEsDBBQAAAAIAABQvFwKJq2xygAAAFkBAAAJAAAAZGF0YS5qc29ufY/BasMwEER/pcxZTetAUe1bD4Wccs2h9LCRtlhYtYQkl4Lxv2flBEOgdE+zaDTzdsZXSN9U0MGGkGJyY8mPZzLDFJ8aKPBvDKmwfRNLo1+ft1HITMn06GYMbrSS0IcpMxYFQ6N1lgpndB8z3PpY0+6MCp7O7GU/1P1hdfjK0ux3rRYdRnRa715aKStUJonD8f0kNtOzGbzLYp5rYWLaIHV7nRVyipb+wl8+FX5cdqUiio59KOGmLXuWPyv7jXi7SLqv57T4L3y5AFBLAwQUAAAACAAAULxcvbL3WB4BAAC5AQAADQAAAG1hbmlmZXN0Lmpzb25tkE9PAyEQxb8L522F/e/eqh57MLbxoPEwC0NLXYGwrElt+t0dto3pwYQDb94vj8ecmHbhCyLrmHIu+GBsHBc9yM/J3wmWMfCevKc/7zJ6xTAaZ8kRS77kNJQBIaJapaSc5/WCV4u83Qre8XTeCBnA7ibYIRFoSY/S+SRW6zUpY+UwKXzBA0oKYl0ME2bM7110m//IR2cjSGp0JaWbUr/uxCRYZRTVISUy9m1Gkwx+TbtcFQ44vyPOGdNmSPD7iXmI+7QMiLA8jG7uaX7w4TinFWVFeg95VRN0DwWv+kb2WORC96rCmhwtOGIpJDYKdaV02YjmvketeFO2sm+hVW1dKNkU7PwxpwVUG/oU3q6Ob/nN6i7Q1hHxHMwR2PkXUEsBAhQDFAAAAAgAAFC8XAomrbHKAAAAWQEAAAkAAAAAAAAAAAAAAIABAAAAAGRhdGEuanNvblBLAQIUAxQAAAAIAABQvFy9svdYHgEAALkBAAANAAAAAAAAAAAAAACAAfEAAABtYW5pZmVzdC5qc29uUEsFBgAAAAACAAIAcgAAADoCAAAAAA=="
   },
   {
    "name": "a photo whose bytes do not match is skipped",
@@ -1390,61 +1909,71 @@
     "photos/p1.jpg"
    ],
    "photoOk": false,
-   "base64": "UEsDBBQAAAAAAABQvFz3L0pwLwEAAC8BAAAJAAAAZGF0YS5qc29ueyJmb3JtYXQiOiJkb29ycHJpbnRzLWJhY2t1cC8xIiwiZXhwb3J0ZWRBdCI6MTc4MDAwMDAwMDAwMCwiaG91c2VzIjpbeyJpZCI6ImgxIiwibGFiZWwiOiJIb3VzZSBoMSIsImxhdCI6MTIuOTcsImxvbiI6NzcuNTksInN0YXR1cyI6Ik5FVyIsImNoZWNrbGlzdCI6e30sImNyZWF0ZWRBdCI6MTc3OTk5OTk5OTAwMCwidXBkYXRlZEF0IjoxNzgwMDAwMDAwMDAwfV0sInZpc2l0cyI6W10sInBob3RvcyI6W3siaWQiOiJwMSIsImhvdXNlSWQiOiJoMSIsImZpbGVOYW1lIjoicDEuanBnIiwiY3JlYXRlZEF0IjoxNzc5OTk5OTk5OTAwfV19UEsDBBQAAAAAAABQvFxNMKkVLAEAACwBAAANAAAAcGhvdG9zL3AxLmpwZwAfPl18m7rZ+Bc2VXSTstHwDy5NbIuqyegHJkVkg6LB4P8ePVx7mrnY9xY1VHOSsdDvDi1Ma4qpyOcGJURjgqHA3/4dPFt6mbjX9hU0U3KRsM/uDSxLaomox+YFJENigaC/3v0cO1p5mLfW9RQzUnGQr87tDCtKaYinxuUEI0JhgJ++3fwbOll4l7bV9BMyUXCPrs3sCypJaIemxeQDIkFgf5693PsaOVh3lrXU8xIxUG+OrczrCilIZ4alxOMCIUBffp282/oZOFd2lbTT8hEwT26NrMvqCShHZoWkw+IBID9efZy72vkYN1Z1lLPS8RAvTm2Mq8rpCCdGZYSjwuEAHz5dfJu62fgXNlV0k7LR8A8uTWyLqsnoByZFZIOiweD/Hj1ce5q52PcWeFBLAwQUAAAAAAAAULxczYYUo+YBAADmAQAADQAAAG1hbmlmZXN0Lmpzb257ImZvcm1hdCI6ImRvb3JwcmludHMtYmFja3VwLzEiLCJhcHAiOiJEb29ycHJpbnRzIiwiYXBwVmVyc2lvbiI6IjEuMC4wIiwiY3JlYXRlZEF0IjoiMjAyNi0wNS0yOFQxMDowMDowMFoiLCJsYW5ndWFnZSI6ImVuIiwic2NvcGUiOiJBTEwiLCJpbmNsdWRlUmVqZWN0ZWQiOnRydWUsInBob3RvU2NvcGUiOiJBTEwiLCJpbmNsdWRlQ29udGFjdHMiOnRydWUsImNvdW50cyI6eyJob3VzZXMiOjEsInZpc2l0cyI6MCwicGhvdG9zIjoxfSwiZmlsZXMiOlt7InBhdGgiOiJkYXRhLmpzb24iLCJzaXplQnl0ZXMiOjMwMywic2hhMjU2IjoiZDIxMTdkYzNkODczMzQ2MTllOWM4M2IwOGY4MTlkYmZlM2Y2NTJlYmNkMDI4YTFlNmNmMWFhYmE4ZjI4NWRmMyJ9LHsicGF0aCI6InBob3Rvcy9wMS5qcGciLCJzaXplQnl0ZXMiOjMwMCwic2hhMjU2IjoiODIyMjhlNzA2ZGJhMGRkZjcyMTM3MzMwNGRmZTMyNmE5YzcwMmFhODA2ZWU5OTJiYTMwZTcwYzJjOWM1M2FjYSJ9XX1QSwECFAMUAAAAAAAAULxc9y9KcC8BAAAvAQAACQAAAAAAAAAAAAAAgAEAAAAAZGF0YS5qc29uUEsBAhQDFAAAAAAAAFC8XE0wqRUsAQAALAEAAA0AAAAAAAAAAAAAAIABVgEAAHBob3Rvcy9wMS5qcGdQSwECFAMUAAAAAAAAULxczYYUo+YBAADmAQAADQAAAAAAAAAAAAAAgAGtAgAAbWFuaWZlc3QuanNvblBLBQYAAAAAAwADAK0AAAC+BAAAAAA="
+   "base64": "UEsDBBQAAAAAAABQvFxXMgxYYAEAAGABAAAJAAAAZGF0YS5qc29ueyJmb3JtYXQiOiJkb29ycHJpbnRzLWJhY2t1cC8xIiwiZXhwb3J0ZWRBdCI6MTc4MDAwMDAwMDAwMCwic2VhcmNoIjp7ImtpbmQiOiJob3VzZSJ9LCJjYW5kaWRhdGVzIjpbeyJpZCI6ImgxIiwia2luZCI6ImhvdXNlIiwibGFiZWwiOiJIb3VzZSBoMSIsImxhdCI6MTIuOTcsImxvbiI6NzcuNTksInN0YXR1cyI6Ik5FVyIsImNoZWNrbGlzdCI6e30sImNyZWF0ZWRBdCI6MTc3OTk5OTk5OTAwMCwidXBkYXRlZEF0IjoxNzgwMDAwMDAwMDAwfV0sInZpc2l0cyI6W10sInBob3RvcyI6W3siaWQiOiJwMSIsImNhbmRpZGF0ZUlkIjoiaDEiLCJmaWxlTmFtZSI6InAxLmpwZyIsImNyZWF0ZWRBdCI6MTc3OTk5OTk5OTkwMH1dfVBLAwQUAAAAAAAAULxcTTCpFSwBAAAsAQAADQAAAHBob3Rvcy9wMS5qcGcAHz5dfJu62fgXNlV0k7LR8A8uTWyLqsnoByZFZIOiweD/Hj1ce5q52PcWNVRzkrHQ7w4tTGuKqcjnBiVEY4KhwN/+HTxbepm41/YVNFNykbDP7g0sS2qJqMfmBSRDYoGgv979HDtaeZi31vUUM1JxkK/O7QwrSmmIp8blBCNCYYCfvt38GzpZeJe21fQTMlFwj67N7AsqSWiHpsXkAyJBYH+evdz7GjlYd5a11PMSMVBvjq3M6wopSGeGpcTjAiFAX36dvNv6GThXdpW00/IRME9ujazL6gkoR2aFpMPiASA/Xn2cu9r5GDdWdZSz0vEQL05tjKvK6QgnRmWEo8LhAB8+XXybutn4FzZVdJOy0fAPLk1si6rJ6AcmRWSDosHg/x49XHuaudj3FnhQSwMEFAAAAAAAAFC8XCRBc8vqAQAA6gEAAA0AAABtYW5pZmVzdC5qc29ueyJmb3JtYXQiOiJkb29ycHJpbnRzLWJhY2t1cC8xIiwiYXBwIjoiRG9vcnByaW50cyIsImFwcFZlcnNpb24iOiIxLjAuMCIsImNyZWF0ZWRBdCI6IjIwMjYtMDUtMjhUMTA6MDA6MDBaIiwibGFuZ3VhZ2UiOiJlbiIsInNjb3BlIjoiQUxMIiwiaW5jbHVkZVJlamVjdGVkIjp0cnVlLCJwaG90b1Njb3BlIjoiQUxMIiwiaW5jbHVkZUNvbnRhY3RzIjp0cnVlLCJjb3VudHMiOnsiY2FuZGlkYXRlcyI6MSwidmlzaXRzIjowLCJwaG90b3MiOjF9LCJmaWxlcyI6W3sicGF0aCI6ImRhdGEuanNvbiIsInNpemVCeXRlcyI6MzUyLCJzaGEyNTYiOiJjY2VjODRlNzE5ZDVjYTFmZWJkZDQyNjk4MDAwZTNlN2NkZTA4ZTMyOGU0NDAxMDEyM2MwYTVmMjIzYWQ2MTViIn0seyJwYXRoIjoicGhvdG9zL3AxLmpwZyIsInNpemVCeXRlcyI6MzAwLCJzaGEyNTYiOiI4MjIyOGU3MDZkYmEwZGRmNzIxMzczMzA0ZGZlMzI2YTljNzAyYWE4MDZlZTk5MmJhMzBlNzBjMmM5YzUzYWNhIn1dfVBLAQIUAxQAAAAAAABQvFxXMgxYYAEAAGABAAAJAAAAAAAAAAAAAACAAQAAAABkYXRhLmpzb25QSwECFAMUAAAAAAAAULxcTTCpFSwBAAAsAQAADQAAAAAAAAAAAAAAgAGHAQAAcGhvdG9zL3AxLmpwZ1BLAQIUAxQAAAAAAABQvFwkQXPL6gEAAOoBAAANAAAAAAAAAAAAAACAAd4CAABtYW5pZmVzdC5qc29uUEsFBgAAAAADAAMArQAAAPMEAAAAAA=="
   },
   {
    "name": "data.json that does not match the manifest",
    "problem": "CHECKSUM_MISMATCH",
-   "base64": "UEsDBBQAAAAAAABQvFzV4sXKMAEAADABAAAJAAAAZGF0YS5qc29ueyJmb3JtYXQiOiJkb29ycHJpbnRzLWJhY2t1cC8xIiwiZXhwb3J0ZWRBdCI6MTc4MDAwMDAwMDAwMCwiaG91c2VzIjpbeyJpZCI6ImgxIiwibGFiZWwiOiJIb3VzZSBoMSIsImxhdCI6MTIuOTcsImxvbiI6NzcuNTksInN0YXR1cyI6Ik5FVyIsImNoZWNrbGlzdCI6e30sImNyZWF0ZWRBdCI6MTc3OTk5OTk5OTAwMCwidXBkYXRlZEF0IjoxNzgwMDAwMDAwMDAwfV0sInZpc2l0cyI6W10sInBob3RvcyI6W3siaWQiOiJwMSIsImhvdXNlSWQiOiJoMSIsImZpbGVOYW1lIjoicDEuanBnIiwiY3JlYXRlZEF0IjoxNzc5OTk5OTk5OTAwfV19IFBLAwQUAAAAAAAAULxchtWkz3EBAABxAQAADQAAAG1hbmlmZXN0Lmpzb257ImZvcm1hdCI6ImRvb3JwcmludHMtYmFja3VwLzEiLCJhcHAiOiJEb29ycHJpbnRzIiwiYXBwVmVyc2lvbiI6IjEuMC4wIiwiY3JlYXRlZEF0IjoiMjAyNi0wNS0yOFQxMDowMDowMFoiLCJsYW5ndWFnZSI6ImVuIiwic2NvcGUiOiJBTEwiLCJpbmNsdWRlUmVqZWN0ZWQiOnRydWUsInBob3RvU2NvcGUiOiJBTEwiLCJpbmNsdWRlQ29udGFjdHMiOnRydWUsImNvdW50cyI6eyJob3VzZXMiOjEsInZpc2l0cyI6MCwicGhvdG9zIjoxfSwiZmlsZXMiOlt7InBhdGgiOiJkYXRhLmpzb24iLCJzaXplQnl0ZXMiOjMwMywic2hhMjU2IjoiZDIxMTdkYzNkODczMzQ2MTllOWM4M2IwOGY4MTlkYmZlM2Y2NTJlYmNkMDI4YTFlNmNmMWFhYmE4ZjI4NWRmMyJ9XX1QSwECFAMUAAAAAAAAULxc1eLFyjABAAAwAQAACQAAAAAAAAAAAAAAgAEAAAAAZGF0YS5qc29uUEsBAhQDFAAAAAAAAFC8XIbVpM9xAQAAcQEAAA0AAAAAAAAAAAAAAIABVwEAAG1hbmlmZXN0Lmpzb25QSwUGAAAAAAIAAgByAAAA8wIAAAAA"
+   "base64": "UEsDBBQAAAAAAABQvFxXMgxYYAEAAGABAAAJAAAAZGF0YS5qc29ueyJmb3JtYXQiOiJkb29ycHJpbnRzLWJhY2t1cC8xIiwiZXhwb3J0ZWRBdCI6MTc4MDAwMDAwMDAwMCwic2VhcmNoIjp7ImtpbmQiOiJob3VzZSJ9LCJjYW5kaWRhdGVzIjpbeyJpZCI6ImgxIiwia2luZCI6ImhvdXNlIiwibGFiZWwiOiJIb3VzZSBoMSIsImxhdCI6MTIuOTcsImxvbiI6NzcuNTksInN0YXR1cyI6Ik5FVyIsImNoZWNrbGlzdCI6e30sImNyZWF0ZWRBdCI6MTc3OTk5OTk5OTAwMCwidXBkYXRlZEF0IjoxNzgwMDAwMDAwMDAwfV0sInZpc2l0cyI6W10sInBob3RvcyI6W3siaWQiOiJwMSIsImNhbmRpZGF0ZUlkIjoiaDEiLCJmaWxlTmFtZSI6InAxLmpwZyIsImNyZWF0ZWRBdCI6MTc3OTk5OTk5OTkwMH1dfVBLAwQUAAAAAAAAULxcn9vOIHUBAAB1AQAADQAAAG1hbmlmZXN0Lmpzb257ImZvcm1hdCI6ImRvb3JwcmludHMtYmFja3VwLzEiLCJhcHAiOiJEb29ycHJpbnRzIiwiYXBwVmVyc2lvbiI6IjEuMC4wIiwiY3JlYXRlZEF0IjoiMjAyNi0wNS0yOFQxMDowMDowMFoiLCJsYW5ndWFnZSI6ImVuIiwic2NvcGUiOiJBTEwiLCJpbmNsdWRlUmVqZWN0ZWQiOnRydWUsInBob3RvU2NvcGUiOiJBTEwiLCJpbmNsdWRlQ29udGFjdHMiOnRydWUsImNvdW50cyI6eyJjYW5kaWRhdGVzIjoxLCJ2aXNpdHMiOjAsInBob3RvcyI6MX0sImZpbGVzIjpbeyJwYXRoIjoiZGF0YS5qc29uIiwic2l6ZUJ5dGVzIjozMDMsInNoYTI1NiI6ImQyMTE3ZGMzZDg3MzM0NjE5ZTljODNiMDhmODE5ZGJmZTNmNjUyZWJjZDAyOGExZTZjZjFhYWJhOGYyODVkZjMifV19UEsBAhQDFAAAAAAAAFC8XFcyDFhgAQAAYAEAAAkAAAAAAAAAAAAAAIABAAAAAGRhdGEuanNvblBLAQIUAxQAAAAAAABQvFyf284gdQEAAHUBAAANAAAAAAAAAAAAAACAAYcBAABtYW5pZmVzdC5qc29uUEsFBgAAAAACAAIAcgAAACcDAAAAAA=="
   },
   {
    "name": "an entry outside the archive",
    "problem": "SUSPICIOUS_PATH",
-   "base64": "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"
+   "base64": "UEsDBBQAAAAAAABQvFxXMgxYYAEAAGABAAAJAAAAZGF0YS5qc29ueyJmb3JtYXQiOiJkb29ycHJpbnRzLWJhY2t1cC8xIiwiZXhwb3J0ZWRBdCI6MTc4MDAwMDAwMDAwMCwic2VhcmNoIjp7ImtpbmQiOiJob3VzZSJ9LCJjYW5kaWRhdGVzIjpbeyJpZCI6ImgxIiwia2luZCI6ImhvdXNlIiwibGFiZWwiOiJIb3VzZSBoMSIsImxhdCI6MTIuOTcsImxvbiI6NzcuNTksInN0YXR1cyI6Ik5FVyIsImNoZWNrbGlzdCI6e30sImNyZWF0ZWRBdCI6MTc3OTk5OTk5OTAwMCwidXBkYXRlZEF0IjoxNzgwMDAwMDAwMDAwfV0sInZpc2l0cyI6W10sInBob3RvcyI6W3siaWQiOiJwMSIsImNhbmRpZGF0ZUlkIjoiaDEiLCJmaWxlTmFtZSI6InAxLmpwZyIsImNyZWF0ZWRBdCI6MTc3OTk5OTk5OTkwMH1dfVBLAwQUAAAAAAAAULxcYA3EHSwBAAAsAQAADQAAAHBob3Rvcy9wMS5qcGcAHz5dfJu62fgXNlV0k7LR8A8uTWyLqsnoByZFZIOiweD/Hj1ce5q52PcWNVRzkrHQ7w4tTGuKqcjnBiVEY4KhwN/+HTxbepm41/YVNFNykbDP7g0sS2qJqMfmBSRDYoGgv979HDtaeZi31vUUM1JxkK/O7QwrSmmIp8blBCNCYYCfvt38GzpZeJe21fQTMlFwj67N7AsqSWiHpsXkAyJBYH+evdz7GjlYd5a11PMSMVBvjq3M6wopSGeGpcTjAiFAX36dvNv6GThXdpW00/IRME9ujazL6gkoR2aFpMPiASA/Xn2cu9r5GDdWdZSz0vEQL05tjKvK6QgnRmWEo8LhAB8+XXybutn4FzZVdJOy0fAPLk1si6rJ6AcmRWSDosHg/x49XHuaudj3FjVQSwMEFAAAAAAAAFC8XCRBc8vqAQAA6gEAAA0AAABtYW5pZmVzdC5qc29ueyJmb3JtYXQiOiJkb29ycHJpbnRzLWJhY2t1cC8xIiwiYXBwIjoiRG9vcnByaW50cyIsImFwcFZlcnNpb24iOiIxLjAuMCIsImNyZWF0ZWRBdCI6IjIwMjYtMDUtMjhUMTA6MDA6MDBaIiwibGFuZ3VhZ2UiOiJlbiIsInNjb3BlIjoiQUxMIiwiaW5jbHVkZVJlamVjdGVkIjp0cnVlLCJwaG90b1Njb3BlIjoiQUxMIiwiaW5jbHVkZUNvbnRhY3RzIjp0cnVlLCJjb3VudHMiOnsiY2FuZGlkYXRlcyI6MSwidmlzaXRzIjowLCJwaG90b3MiOjF9LCJmaWxlcyI6W3sicGF0aCI6ImRhdGEuanNvbiIsInNpemVCeXRlcyI6MzUyLCJzaGEyNTYiOiJjY2VjODRlNzE5ZDVjYTFmZWJkZDQyNjk4MDAwZTNlN2NkZTA4ZTMyOGU0NDAxMDEyM2MwYTVmMjIzYWQ2MTViIn0seyJwYXRoIjoicGhvdG9zL3AxLmpwZyIsInNpemVCeXRlcyI6MzAwLCJzaGEyNTYiOiI4MjIyOGU3MDZkYmEwZGRmNzIxMzczMzA0ZGZlMzI2YTljNzAyYWE4MDZlZTk5MmJhMzBlNzBjMmM5YzUzYWNhIn1dfVBLAwQUAAAAAAAAULxcgxbcjAEAAAABAAAACwAAAC4uL2V2aWwudHh0eFBLAQIUAxQAAAAAAABQvFxXMgxYYAEAAGABAAAJAAAAAAAAAAAAAACAAQAAAABkYXRhLmpzb25QSwECFAMUAAAAAAAAULxcYA3EHSwBAAAsAQAADQAAAAAAAAAAAAAAgAGHAQAAcGhvdG9zL3AxLmpwZ1BLAQIUAxQAAAAAAABQvFwkQXPL6gEAAOoBAAANAAAAAAAAAAAAAACAAd4CAABtYW5pZmVzdC5qc29uUEsBAhQDFAAAAAAAAFC8XIMW3IwBAAAAAQAAAAsAAAAAAAAAAAAAAIAB8wQAAC4uL2V2aWwudHh0UEsFBgAAAAAEAAQA5gAAAB0FAAAAAA=="
   },
   {
    "name": "a backslash in a name",
    "problem": "SUSPICIOUS_PATH",
-   "base64": "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"
+   "base64": "UEsDBBQAAAAAAABQvFxXMgxYYAEAAGABAAAJAAAAZGF0YS5qc29ueyJmb3JtYXQiOiJkb29ycHJpbnRzLWJhY2t1cC8xIiwiZXhwb3J0ZWRBdCI6MTc4MDAwMDAwMDAwMCwic2VhcmNoIjp7ImtpbmQiOiJob3VzZSJ9LCJjYW5kaWRhdGVzIjpbeyJpZCI6ImgxIiwia2luZCI6ImhvdXNlIiwibGFiZWwiOiJIb3VzZSBoMSIsImxhdCI6MTIuOTcsImxvbiI6NzcuNTksInN0YXR1cyI6Ik5FVyIsImNoZWNrbGlzdCI6e30sImNyZWF0ZWRBdCI6MTc3OTk5OTk5OTAwMCwidXBkYXRlZEF0IjoxNzgwMDAwMDAwMDAwfV0sInZpc2l0cyI6W10sInBob3RvcyI6W3siaWQiOiJwMSIsImNhbmRpZGF0ZUlkIjoiaDEiLCJmaWxlTmFtZSI6InAxLmpwZyIsImNyZWF0ZWRBdCI6MTc3OTk5OTk5OTkwMH1dfVBLAwQUAAAAAAAAULxcYA3EHSwBAAAsAQAADQAAAHBob3Rvcy9wMS5qcGcAHz5dfJu62fgXNlV0k7LR8A8uTWyLqsnoByZFZIOiweD/Hj1ce5q52PcWNVRzkrHQ7w4tTGuKqcjnBiVEY4KhwN/+HTxbepm41/YVNFNykbDP7g0sS2qJqMfmBSRDYoGgv979HDtaeZi31vUUM1JxkK/O7QwrSmmIp8blBCNCYYCfvt38GzpZeJe21fQTMlFwj67N7AsqSWiHpsXkAyJBYH+evdz7GjlYd5a11PMSMVBvjq3M6wopSGeGpcTjAiFAX36dvNv6GThXdpW00/IRME9ujazL6gkoR2aFpMPiASA/Xn2cu9r5GDdWdZSz0vEQL05tjKvK6QgnRmWEo8LhAB8+XXybutn4FzZVdJOy0fAPLk1si6rJ6AcmRWSDosHg/x49XHuaudj3FjVQSwMEFAAAAAAAAFC8XCRBc8vqAQAA6gEAAA0AAABtYW5pZmVzdC5qc29ueyJmb3JtYXQiOiJkb29ycHJpbnRzLWJhY2t1cC8xIiwiYXBwIjoiRG9vcnByaW50cyIsImFwcFZlcnNpb24iOiIxLjAuMCIsImNyZWF0ZWRBdCI6IjIwMjYtMDUtMjhUMTA6MDA6MDBaIiwibGFuZ3VhZ2UiOiJlbiIsInNjb3BlIjoiQUxMIiwiaW5jbHVkZVJlamVjdGVkIjp0cnVlLCJwaG90b1Njb3BlIjoiQUxMIiwiaW5jbHVkZUNvbnRhY3RzIjp0cnVlLCJjb3VudHMiOnsiY2FuZGlkYXRlcyI6MSwidmlzaXRzIjowLCJwaG90b3MiOjF9LCJmaWxlcyI6W3sicGF0aCI6ImRhdGEuanNvbiIsInNpemVCeXRlcyI6MzUyLCJzaGEyNTYiOiJjY2VjODRlNzE5ZDVjYTFmZWJkZDQyNjk4MDAwZTNlN2NkZTA4ZTMyOGU0NDAxMDEyM2MwYTVmMjIzYWQ2MTViIn0seyJwYXRoIjoicGhvdG9zL3AxLmpwZyIsInNpemVCeXRlcyI6MzAwLCJzaGEyNTYiOiI4MjIyOGU3MDZkYmEwZGRmNzIxMzczMzA0ZGZlMzI2YTljNzAyYWE4MDZlZTk5MmJhMzBlNzBjMmM5YzUzYWNhIn1dfVBLAwQUAAAAAAAAULxcgxbcjAEAAAABAAAADQAAAHBob3Rvc1xwMi5qcGd4UEsBAhQDFAAAAAAAAFC8XFcyDFhgAQAAYAEAAAkAAAAAAAAAAAAAAIABAAAAAGRhdGEuanNvblBLAQIUAxQAAAAAAABQvFxgDcQdLAEAACwBAAANAAAAAAAAAAAAAACAAYcBAABwaG90b3MvcDEuanBnUEsBAhQDFAAAAAAAAFC8XCRBc8vqAQAA6gEAAA0AAAAAAAAAAAAAAIAB3gIAAG1hbmlmZXN0Lmpzb25QSwECFAMUAAAAAAAAULxcgxbcjAEAAAABAAAADQAAAAAAAAAAAAAAgAHzBAAAcGhvdG9zXHAyLmpwZ1BLBQYAAAAABAAEAOgAAAAfBQAAAAA="
+  },
+  {
+   "name": "a backup ZIP of the old family is refused, not half read",
+   "problem": "OLD_FORMAT",
+   "base64": "UEsDBBQAAAAAAABQvFz3L0pwLwEAAC8BAAAJAAAAZGF0YS5qc29ueyJmb3JtYXQiOiJkb29ycHJpbnRzLWJhY2t1cC8xIiwiZXhwb3J0ZWRBdCI6MTc4MDAwMDAwMDAwMCwiaG91c2VzIjpbeyJpZCI6ImgxIiwibGFiZWwiOiJIb3VzZSBoMSIsImxhdCI6MTIuOTcsImxvbiI6NzcuNTksInN0YXR1cyI6Ik5FVyIsImNoZWNrbGlzdCI6e30sImNyZWF0ZWRBdCI6MTc3OTk5OTk5OTAwMCwidXBkYXRlZEF0IjoxNzgwMDAwMDAwMDAwfV0sInZpc2l0cyI6W10sInBob3RvcyI6W3siaWQiOiJwMSIsImhvdXNlSWQiOiJoMSIsImZpbGVOYW1lIjoicDEuanBnIiwiY3JlYXRlZEF0IjoxNzc5OTk5OTk5OTAwfV19UEsDBBQAAAAAAABQvFxgDcQdLAEAACwBAAANAAAAcGhvdG9zL3AxLmpwZwAfPl18m7rZ+Bc2VXSTstHwDy5NbIuqyegHJkVkg6LB4P8ePVx7mrnY9xY1VHOSsdDvDi1Ma4qpyOcGJURjgqHA3/4dPFt6mbjX9hU0U3KRsM/uDSxLaomox+YFJENigaC/3v0cO1p5mLfW9RQzUnGQr87tDCtKaYinxuUEI0JhgJ++3fwbOll4l7bV9BMyUXCPrs3sCypJaIemxeQDIkFgf5693PsaOVh3lrXU8xIxUG+OrczrCilIZ4alxOMCIUBffp282/oZOFd2lbTT8hEwT26NrMvqCShHZoWkw+IBID9efZy72vkYN1Z1lLPS8RAvTm2Mq8rpCCdGZYSjwuEAHz5dfJu62fgXNlV0k7LR8A8uTWyLqsnoByZFZIOiweD/Hj1ce5q52PcWNVBLAwQUAAAAAAAAULxczYYUo+YBAADmAQAADQAAAG1hbmlmZXN0Lmpzb257ImZvcm1hdCI6ImRvb3JwcmludHMtYmFja3VwLzEiLCJhcHAiOiJEb29ycHJpbnRzIiwiYXBwVmVyc2lvbiI6IjEuMC4wIiwiY3JlYXRlZEF0IjoiMjAyNi0wNS0yOFQxMDowMDowMFoiLCJsYW5ndWFnZSI6ImVuIiwic2NvcGUiOiJBTEwiLCJpbmNsdWRlUmVqZWN0ZWQiOnRydWUsInBob3RvU2NvcGUiOiJBTEwiLCJpbmNsdWRlQ29udGFjdHMiOnRydWUsImNvdW50cyI6eyJob3VzZXMiOjEsInZpc2l0cyI6MCwicGhvdG9zIjoxfSwiZmlsZXMiOlt7InBhdGgiOiJkYXRhLmpzb24iLCJzaXplQnl0ZXMiOjMwMywic2hhMjU2IjoiZDIxMTdkYzNkODczMzQ2MTllOWM4M2IwOGY4MTlkYmZlM2Y2NTJlYmNkMDI4YTFlNmNmMWFhYmE4ZjI4NWRmMyJ9LHsicGF0aCI6InBob3Rvcy9wMS5qcGciLCJzaXplQnl0ZXMiOjMwMCwic2hhMjU2IjoiODIyMjhlNzA2ZGJhMGRkZjcyMTM3MzMwNGRmZTMyNmE5YzcwMmFhODA2ZWU5OTJiYTMwZTcwYzJjOWM1M2FjYSJ9XX1QSwECFAMUAAAAAAAAULxc9y9KcC8BAAAvAQAACQAAAAAAAAAAAAAAgAEAAAAAZGF0YS5qc29uUEsBAhQDFAAAAAAAAFC8XGANxB0sAQAALAEAAA0AAAAAAAAAAAAAAIABVgEAAHBob3Rvcy9wMS5qcGdQSwECFAMUAAAAAAAAULxczYYUo+YBAADmAQAADQAAAAAAAAAAAAAAgAGtAgAAbWFuaWZlc3QuanNvblBLBQYAAAAAAwADAK0AAAC+BAAAAAA="
   },
   {
    "name": "a ZIP without a manifest",
    "problem": "NOT_A_BACKUP",
-   "base64": "UEsDBBQAAAAAAABQvFz3L0pwLwEAAC8BAAAJAAAAZGF0YS5qc29ueyJmb3JtYXQiOiJkb29ycHJpbnRzLWJhY2t1cC8xIiwiZXhwb3J0ZWRBdCI6MTc4MDAwMDAwMDAwMCwiaG91c2VzIjpbeyJpZCI6ImgxIiwibGFiZWwiOiJIb3VzZSBoMSIsImxhdCI6MTIuOTcsImxvbiI6NzcuNTksInN0YXR1cyI6Ik5FVyIsImNoZWNrbGlzdCI6e30sImNyZWF0ZWRBdCI6MTc3OTk5OTk5OTAwMCwidXBkYXRlZEF0IjoxNzgwMDAwMDAwMDAwfV0sInZpc2l0cyI6W10sInBob3RvcyI6W3siaWQiOiJwMSIsImhvdXNlSWQiOiJoMSIsImZpbGVOYW1lIjoicDEuanBnIiwiY3JlYXRlZEF0IjoxNzc5OTk5OTk5OTAwfV19UEsBAhQDFAAAAAAAAFC8XPcvSnAvAQAALwEAAAkAAAAAAAAAAAAAAIABAAAAAGRhdGEuanNvblBLBQYAAAAAAQABADcAAABWAQAAAAA="
+   "base64": "UEsDBBQAAAAAAABQvFxXMgxYYAEAAGABAAAJAAAAZGF0YS5qc29ueyJmb3JtYXQiOiJkb29ycHJpbnRzLWJhY2t1cC8xIiwiZXhwb3J0ZWRBdCI6MTc4MDAwMDAwMDAwMCwic2VhcmNoIjp7ImtpbmQiOiJob3VzZSJ9LCJjYW5kaWRhdGVzIjpbeyJpZCI6ImgxIiwia2luZCI6ImhvdXNlIiwibGFiZWwiOiJIb3VzZSBoMSIsImxhdCI6MTIuOTcsImxvbiI6NzcuNTksInN0YXR1cyI6Ik5FVyIsImNoZWNrbGlzdCI6e30sImNyZWF0ZWRBdCI6MTc3OTk5OTk5OTAwMCwidXBkYXRlZEF0IjoxNzgwMDAwMDAwMDAwfV0sInZpc2l0cyI6W10sInBob3RvcyI6W3siaWQiOiJwMSIsImNhbmRpZGF0ZUlkIjoiaDEiLCJmaWxlTmFtZSI6InAxLmpwZyIsImNyZWF0ZWRBdCI6MTc3OTk5OTk5OTkwMH1dfVBLAQIUAxQAAAAAAABQvFxXMgxYYAEAAGABAAAJAAAAAAAAAAAAAACAAQAAAABkYXRhLmpzb25QSwUGAAAAAAEAAQA3AAAAhwEAAAAA"
   },
   {
    "name": "a ZIP without data.json",
    "problem": "NOT_A_BACKUP",
-   "base64": "UEsDBBQAAAAAAABQvFyG1aTPcQEAAHEBAAANAAAAbWFuaWZlc3QuanNvbnsiZm9ybWF0IjoiZG9vcnByaW50cy1iYWNrdXAvMSIsImFwcCI6IkRvb3JwcmludHMiLCJhcHBWZXJzaW9uIjoiMS4wLjAiLCJjcmVhdGVkQXQiOiIyMDI2LTA1LTI4VDEwOjAwOjAwWiIsImxhbmd1YWdlIjoiZW4iLCJzY29wZSI6IkFMTCIsImluY2x1ZGVSZWplY3RlZCI6dHJ1ZSwicGhvdG9TY29wZSI6IkFMTCIsImluY2x1ZGVDb250YWN0cyI6dHJ1ZSwiY291bnRzIjp7ImhvdXNlcyI6MSwidmlzaXRzIjowLCJwaG90b3MiOjF9LCJmaWxlcyI6W3sicGF0aCI6ImRhdGEuanNvbiIsInNpemVCeXRlcyI6MzAzLCJzaGEyNTYiOiJkMjExN2RjM2Q4NzMzNDYxOWU5YzgzYjA4ZjgxOWRiZmUzZjY1MmViY2QwMjhhMWU2Y2YxYWFiYThmMjg1ZGYzIn1dfVBLAQIUAxQAAAAAAABQvFyG1aTPcQEAAHEBAAANAAAAAAAAAAAAAACAAQAAAABtYW5pZmVzdC5qc29uUEsFBgAAAAABAAEAOwAAAJwBAAAAAA=="
+   "base64": "UEsDBBQAAAAAAABQvFyf284gdQEAAHUBAAANAAAAbWFuaWZlc3QuanNvbnsiZm9ybWF0IjoiZG9vcnByaW50cy1iYWNrdXAvMSIsImFwcCI6IkRvb3JwcmludHMiLCJhcHBWZXJzaW9uIjoiMS4wLjAiLCJjcmVhdGVkQXQiOiIyMDI2LTA1LTI4VDEwOjAwOjAwWiIsImxhbmd1YWdlIjoiZW4iLCJzY29wZSI6IkFMTCIsImluY2x1ZGVSZWplY3RlZCI6dHJ1ZSwicGhvdG9TY29wZSI6IkFMTCIsImluY2x1ZGVDb250YWN0cyI6dHJ1ZSwiY291bnRzIjp7ImNhbmRpZGF0ZXMiOjEsInZpc2l0cyI6MCwicGhvdG9zIjoxfSwiZmlsZXMiOlt7InBhdGgiOiJkYXRhLmpzb24iLCJzaXplQnl0ZXMiOjMwMywic2hhMjU2IjoiZDIxMTdkYzNkODczMzQ2MTllOWM4M2IwOGY4MTlkYmZlM2Y2NTJlYmNkMDI4YTFlNmNmMWFhYmE4ZjI4NWRmMyJ9XX1QSwECFAMUAAAAAAAAULxcn9vOIHUBAAB1AQAADQAAAAAAAAAAAAAAgAEAAAAAbWFuaWZlc3QuanNvblBLBQYAAAAAAQABADsAAACgAQAAAAA="
   },
   {
    "name": "a newer format in a ZIP",
    "problem": "UNSUPPORTED_VERSION",
-   "base64": "UEsDBBQAAAAAAABQvFyFbaTiXwAAAF8AAAAJAAAAZGF0YS5qc29ueyJmb3JtYXQiOiJkb29ycHJpbnRzLWJhY2t1cC80IiwiZXhwb3J0ZWRBdCI6MTc4MDAwMDAwMDAwMCwiaG91c2VzIjpbXSwidmlzaXRzIjpbXSwicGhvdG9zIjpbXX1QSwMEFAAAAAAAAFC8XMxXd45wAQAAcAEAAA0AAABtYW5pZmVzdC5qc29ueyJmb3JtYXQiOiJkb29ycHJpbnRzLWJhY2t1cC80IiwiYXBwIjoiRG9vcnByaW50cyIsImFwcFZlcnNpb24iOiIxLjAuMCIsImNyZWF0ZWRBdCI6IjIwMjYtMDUtMjhUMTA6MDA6MDBaIiwibGFuZ3VhZ2UiOiJlbiIsInNjb3BlIjoiQUxMIiwiaW5jbHVkZVJlamVjdGVkIjp0cnVlLCJwaG90b1Njb3BlIjoiQUxMIiwiaW5jbHVkZUNvbnRhY3RzIjp0cnVlLCJjb3VudHMiOnsiaG91c2VzIjowLCJ2aXNpdHMiOjAsInBob3RvcyI6MH0sImZpbGVzIjpbeyJwYXRoIjoiZGF0YS5qc29uIiwic2l6ZUJ5dGVzIjo5NSwic2hhMjU2IjoiOTNlODQ5YjY4ZTU5ODE0NmEzMGY4NmE0NTZlOTUyMDIxZDIzZTU4NDk0NDBlNmQ3OTkwYzgwMjY0OTJmMmI1YyJ9XX1QSwECFAMUAAAAAAAAULxchW2k4l8AAABfAAAACQAAAAAAAAAAAAAAgAEAAAAAZGF0YS5qc29uUEsBAhQDFAAAAAAAAFC8XMxXd45wAQAAcAEAAA0AAAAAAAAAAAAAAIABhgAAAG1hbmlmZXN0Lmpzb25QSwUGAAAAAAIAAgByAAAAIQIAAAAA"
+   "base64": "UEsDBBQAAAAAAABQvFxtLjxLfQAAAH0AAAAJAAAAZGF0YS5qc29ueyJmb3JtYXQiOiJkb29ycHJpbnRzLWJhY2t1cC8yIiwiZXhwb3J0ZWRBdCI6MTc4MDAwMDAwMDAwMCwic2VhcmNoIjp7ImtpbmQiOiJob3VzZSJ9LCJjYW5kaWRhdGVzIjpbXSwidmlzaXRzIjpbXSwicGhvdG9zIjpbXX1QSwMEFAAAAAAAAFC8XPDnamJ1AQAAdQEAAA0AAABtYW5pZmVzdC5qc29ueyJmb3JtYXQiOiJkb29ycHJpbnRzLWJhY2t1cC8yIiwiYXBwIjoiRG9vcnByaW50cyIsImFwcFZlcnNpb24iOiIxLjAuMCIsImNyZWF0ZWRBdCI6IjIwMjYtMDUtMjhUMTA6MDA6MDBaIiwibGFuZ3VhZ2UiOiJlbiIsInNjb3BlIjoiQUxMIiwiaW5jbHVkZVJlamVjdGVkIjp0cnVlLCJwaG90b1Njb3BlIjoiQUxMIiwiaW5jbHVkZUNvbnRhY3RzIjp0cnVlLCJjb3VudHMiOnsiY2FuZGlkYXRlcyI6MCwidmlzaXRzIjowLCJwaG90b3MiOjB9LCJmaWxlcyI6W3sicGF0aCI6ImRhdGEuanNvbiIsInNpemVCeXRlcyI6MTI1LCJzaGEyNTYiOiI3ZDJlZmJiZWU5ZTA1NjExMTZlMzRjZTYzMDEyZWVlOGYyYWYwZWFlZWIwMDc3MWQwOWRmZmI5YmFiMWU3ODdmIn1dfVBLAQIUAxQAAAAAAABQvFxtLjxLfQAAAH0AAAAJAAAAAAAAAAAAAACAAQAAAABkYXRhLmpzb25QSwECFAMUAAAAAAAAULxc8OdqYnUBAAB1AQAADQAAAAAAAAAAAAAAgAGkAAAAbWFuaWZlc3QuanNvblBLBQYAAAAAAgACAHIAAABEAgAAAAA="
   },
   {
    "name": "an entry that expands more than 100 times",
    "problem": "TOO_LARGE",
-   "base64": "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"
+   "base64": "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"
   },
   {
    "name": "a bare data.json",
    "problem": null,
    "houses": 1,
    "photoEntries": [],
-   "base64": "eyJmb3JtYXQiOiJkb29ycHJpbnRzLWJhY2t1cC8xIiwiZXhwb3J0ZWRBdCI6MTc4MDAwMDAwMDAwMCwiaG91c2VzIjpbeyJpZCI6ImgxIiwibGFiZWwiOiJIb3VzZSBoMSIsImxhdCI6MTIuOTcsImxvbiI6NzcuNTksInN0YXR1cyI6Ik5FVyIsImNoZWNrbGlzdCI6e30sImNyZWF0ZWRBdCI6MTc3OTk5OTk5OTAwMCwidXBkYXRlZEF0IjoxNzgwMDAwMDAwMDAwfV0sInZpc2l0cyI6W10sInBob3RvcyI6W3siaWQiOiJwMSIsImhvdXNlSWQiOiJoMSIsImZpbGVOYW1lIjoicDEuanBnIiwiY3JlYXRlZEF0IjoxNzc5OTk5OTk5OTAwfV19"
+   "base64": "eyJmb3JtYXQiOiJkb29ycHJpbnRzLWJhY2t1cC8xIiwiZXhwb3J0ZWRBdCI6MTc4MDAwMDAwMDAwMCwic2VhcmNoIjp7ImtpbmQiOiJob3VzZSJ9LCJjYW5kaWRhdGVzIjpbeyJpZCI6ImgxIiwia2luZCI6ImhvdXNlIiwibGFiZWwiOiJIb3VzZSBoMSIsImxhdCI6MTIuOTcsImxvbiI6NzcuNTksInN0YXR1cyI6Ik5FVyIsImNoZWNrbGlzdCI6e30sImNyZWF0ZWRBdCI6MTc3OTk5OTk5OTAwMCwidXBkYXRlZEF0IjoxNzgwMDAwMDAwMDAwfV0sInZpc2l0cyI6W10sInBob3RvcyI6W3siaWQiOiJwMSIsImNhbmRpZGF0ZUlkIjoiaDEiLCJmaWxlTmFtZSI6InAxLmpwZyIsImNyZWF0ZWRBdCI6MTc3OTk5OTk5OTkwMH1dfQ=="
   },
   {
    "name": "a bare data.json with a byte-order mark",
    "problem": null,
    "houses": 1,
    "photoEntries": [],
-   "base64": "77u/eyJmb3JtYXQiOiJkb29ycHJpbnRzLWJhY2t1cC8xIiwiZXhwb3J0ZWRBdCI6MTc4MDAwMDAwMDAwMCwiaG91c2VzIjpbeyJpZCI6ImgxIiwibGFiZWwiOiJIb3VzZSBoMSIsImxhdCI6MTIuOTcsImxvbiI6NzcuNTksInN0YXR1cyI6Ik5FVyIsImNoZWNrbGlzdCI6e30sImNyZWF0ZWRBdCI6MTc3OTk5OTk5OTAwMCwidXBkYXRlZEF0IjoxNzgwMDAwMDAwMDAwfV0sInZpc2l0cyI6W10sInBob3RvcyI6W3siaWQiOiJwMSIsImhvdXNlSWQiOiJoMSIsImZpbGVOYW1lIjoicDEuanBnIiwiY3JlYXRlZEF0IjoxNzc5OTk5OTk5OTAwfV19"
+   "base64": "77u/eyJmb3JtYXQiOiJkb29ycHJpbnRzLWJhY2t1cC8xIiwiZXhwb3J0ZWRBdCI6MTc4MDAwMDAwMDAwMCwic2VhcmNoIjp7ImtpbmQiOiJob3VzZSJ9LCJjYW5kaWRhdGVzIjpbeyJpZCI6ImgxIiwia2luZCI6ImhvdXNlIiwibGFiZWwiOiJIb3VzZSBoMSIsImxhdCI6MTIuOTcsImxvbiI6NzcuNTksInN0YXR1cyI6Ik5FVyIsImNoZWNrbGlzdCI6e30sImNyZWF0ZWRBdCI6MTc3OTk5OTk5OTAwMCwidXBkYXRlZEF0IjoxNzgwMDAwMDAwMDAwfV0sInZpc2l0cyI6W10sInBob3RvcyI6W3siaWQiOiJwMSIsImNhbmRpZGF0ZUlkIjoiaDEiLCJmaWxlTmFtZSI6InAxLmpwZyIsImNyZWF0ZWRBdCI6MTc3OTk5OTk5OTkwMH1dfQ=="
   },
   {
    "name": "a bare data.json from a newer app",
    "problem": "UNSUPPORTED_VERSION",
-   "base64": "eyJmb3JtYXQiOiJkb29ycHJpbnRzLWJhY2t1cC80IiwiZXhwb3J0ZWRBdCI6MTc4MDAwMDAwMDAwMCwiaG91c2VzIjpbXSwidmlzaXRzIjpbXSwicGhvdG9zIjpbXX0="
+   "base64": "eyJmb3JtYXQiOiJkb29ycHJpbnRzLWJhY2t1cC8yIiwiZXhwb3J0ZWRBdCI6MTc4MDAwMDAwMDAwMCwic2VhcmNoIjp7ImtpbmQiOiJob3VzZSJ9LCJjYW5kaWRhdGVzIjpbXSwidmlzaXRzIjpbXSwicGhvdG9zIjpbXX0="
+  },
+  {
+   "name": "a bare data.json of the old family",
+   "problem": "OLD_FORMAT",
+   "base64": "eyJmb3JtYXQiOiJkb29ycHJpbnRzLWJhY2t1cC8xIiwiZXhwb3J0ZWRBdCI6MTc4MDAwMDAwMDAwMCwiaG91c2VzIjpbeyJpZCI6ImgxIiwibGFiZWwiOiJIb3VzZSBoMSIsImxhdCI6MTIuOTcsImxvbiI6NzcuNTksInN0YXR1cyI6Ik5FVyIsImNoZWNrbGlzdCI6e30sImNyZWF0ZWRBdCI6MTc3OTk5OTk5OTAwMCwidXBkYXRlZEF0IjoxNzgwMDAwMDAwMDAwfV0sInZpc2l0cyI6W10sInBob3RvcyI6W3siaWQiOiJwMSIsImhvdXNlSWQiOiJoMSIsImZpbGVOYW1lIjoicDEuanBnIiwiY3JlYXRlZEF0IjoxNzc5OTk5OTk5OTAwfV19"
   },
   {
    "name": "a bare JSON file that is not ours",
@@ -1454,7 +1983,7 @@
   {
    "name": "a bare data.json with a broken row",
    "problem": "BROKEN_DATA",
-   "base64": "eyJmb3JtYXQiOiJkb29ycHJpbnRzLWJhY2t1cC8xIiwiZXhwb3J0ZWRBdCI6MSwiaG91c2VzIjpbeyJpZCI6ImgxIn1dfQ=="
+   "base64": "eyJmb3JtYXQiOiJkb29ycHJpbnRzLWJhY2t1cC8xIiwiZXhwb3J0ZWRBdCI6MSwic2VhcmNoIjp7ImtpbmQiOiJob3VzZSJ9LCJjYW5kaWRhdGVzIjpbeyJpZCI6ImgxIiwia2luZCI6ImhvdXNlIn1dfQ=="
   },
   {
    "name": "a PDF",

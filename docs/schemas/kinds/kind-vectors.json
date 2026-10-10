@@ -1,6 +1,6 @@
 {
  "format": "doorprints-kind-vectors/1",
- "note": "What docs/schemas/kinds/house.json resolves to today (S4b-BL-205, docs/03 ADR-36 §18). Written once from the dictionaries on main at 33807905 (web/src/app/i18n/{en,hi,ta,te}.ts and android/ui/src/commonMain/composeResources/values*/strings.xml) and then fixed: a later pull request that changes a resolved label, a field list, the layout, the visibility, the wire place of a value or what search reads turns the kind tests red on all three stacks, so \"zero change\" for houses is proved, not claimed. Change a vector only with the change it pins, and say why in the pull request. hi, ta and te strings are under review, as in the dictionaries.",
+ "note": "What docs/schemas/kinds/house.json resolves to today (S4b-BL-205, docs/03 ADR-36 §18). Written once from the dictionaries on main at 33807905 (web/src/app/i18n/{en,hi,ta,te}.ts and android/ui/src/commonMain/composeResources/values*/strings.xml) and then fixed: a later pull request that changes a resolved label, a field list, the layout, the visibility, the wire place of a value or what search reads turns the kind tests red on all three stacks, so \"zero change\" for houses is proved, not claimed. Change a vector only with the change it pins, and say why in the pull request. hi, ta and te strings are under review, as in the dictionaries. Since the format reset (S4b-BL-206) `wire` names where each field is on the wire and in a backup: a core field under its own id (location as lat and lon), an extra under extras.<id>; it replaces `was`, the place before the reset.",
  "kinds": [
   {
    "id": "house",
@@ -156,12 +156,10 @@
    ],
    "money": [
     {
-     "cadence": "month",
-     "was": "RENT"
+     "cadence": "month"
     },
     {
-     "cadence": "once",
-     "was": "SALE"
+     "cadence": "once"
     }
    ],
    "layout": {
@@ -200,23 +198,35 @@
      "locationSource"
     ]
    },
-   "was": {
-    "money": "price, priceType",
+   "wire": {
+    "label": "label",
+    "status": "status",
+    "rating": "rating",
+    "money": "money",
+    "address": "address",
+    "street": "street",
+    "locality": "locality",
+    "contactName": "contactName",
+    "contactPhone": "contactPhone",
+    "brokerId": "brokerId",
+    "listingUrl": "listingUrl",
+    "notes": "notes",
     "location": "lat, lon",
-    "bedrooms": "bedrooms",
-    "areaSqft": "areaSqft",
-    "floor": "floor",
-    "deposit": "cost.deposit",
-    "depositMonths": "cost.depositMonths",
-    "maintenance": "cost.maintenance",
-    "maintenanceIncluded": "cost.maintenanceIncluded",
-    "brokerage": "cost.brokerage",
-    "brokerageMonths": "cost.brokerageMonths",
-    "lockInMonths": "cost.lockInMonths",
-    "noticeMonths": "cost.noticeMonths",
-    "availableFrom": "cost.availableFrom",
-    "myOffer": "cost.myOffer",
-    "agreedPrice": "cost.agreedPrice"
+    "locationSource": "locationSource",
+    "bedrooms": "extras.bedrooms",
+    "areaSqft": "extras.areaSqft",
+    "floor": "extras.floor",
+    "deposit": "extras.deposit",
+    "depositMonths": "extras.depositMonths",
+    "maintenance": "extras.maintenance",
+    "maintenanceIncluded": "extras.maintenanceIncluded",
+    "brokerage": "extras.brokerage",
+    "brokerageMonths": "extras.brokerageMonths",
+    "lockInMonths": "extras.lockInMonths",
+    "noticeMonths": "extras.noticeMonths",
+    "availableFrom": "extras.availableFrom",
+    "myOffer": "extras.myOffer",
+    "agreedPrice": "extras.agreedPrice"
    },
    "checklist": [
     "water",
