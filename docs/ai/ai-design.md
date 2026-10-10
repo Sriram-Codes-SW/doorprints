@@ -48,7 +48,8 @@
 | v0.44   | 2026-10-09 | Claude (Code), engineer       | **Ask finds the visited houses** (section 7, S4b-BL-194 item 2, [10](../10-sprint-log.md) v0.222). Proven cause: with 30 houses, 28 saying `Visits: not visited yet`, vector similarity returned 20 documents without one of the two visited houses. **The document metadata gains `visited` (boolean) and `lastVisit` (the latest arrival, epoch seconds; absent without a visit)**, dates and a flag only. A question with visit, visits, visited, visiting or unvisited runs ONE more search with the caller's filters and `visited == true` (`false` for a negated question: not, never, haven't, yet to, unvisited, no visits), no similarity threshold, up to 200 documents; the visited ones are sorted newest visit first (ties by id), the unvisited ones keep the store's order (most similar first); they go before the similar ones, at most top-k, no repeats. Redaction and the prompt are as before. The document text is unchanged, but **existing indexes lack the new metadata: run `POST /api/ai/reindex` once** (until then the extra search finds nothing and the ordinary result stands). The website and phones build their own Ask context from up to 40 houses and do not use this retrieval. |
 | v0.45   | 2026-10-09 | Claude (Code), engineer       | **13.2: the own-key Gemini request and the *AI speed and cost* setting** (S4b-BL-198 step 2, the website; [10](../10-sprint-log.md) v0.226, [03](../03-design.md) 0.104). Quality sends no `thinkingConfig`, Balanced `generationConfig.thinkingConfig.thinkingLevel` `MEDIUM`, Economy `LOW`, for the own-key Gemini adapter only (the field and its values confirmed in the Gemini API reference); hidden unless AI is on and the service is Gemini; the Gemini `maxOutputTokens` rises from 2,048 to 8,192; the vectors gain `geminiRequest`. |
 | v0.46   | 2026-10-10 | Claude (Code), engineer       | **5 and 6: the planner's fallback offers the houses nearest to the start, never far-away ones** (S4b-BL-194 item 3, [10](../10-sprint-log.md) v0.227). `VisitPlannerService.assemble` used to take the first `maxStops` houses the tools returned, in the order first seen, and only then order them by nearest neighbour; in the Vertex run 38005913774 plan-08 (start in Pune) made 5 tool calls, hit the budget and the fallback returned four Bengaluru houses. Now the fallback takes the houses in the running with usable coordinates, drops those farther than 50 km (straight line) from the start point, sorts the rest nearest first (equal distances by house id), keeps the nearest `maxStops` and orders them by nearest neighbour; with none left it returns no stops, `fallback: true` and the summary *No saved houses within reach of your start point were found.* The prompt, the tool-call budget, the golden set and the thresholds are unchanged, and plan-08 still expects `fallback: false`: this makes the degraded answer safe, it does not make the planner finish more often. Server only; the website's and the phones' own planners are listed in S4b-BL-199. |
-| v0.47   | 2026-10-10 | Claude (Code), engineer       | **13.2 on the phones** (S4b-BL-198 step 2, second pull request; [10](../10-sprint-log.md) v0.228, [03](../03-design.md) 0.105). The Kotlin `GeminiClient` (Android and iPhone) builds the vectors `geminiRequest` byte for byte, with `maxOutputTokens` 8,192; *AI speed and cost* in Settings > AI features, stored in the settings store, hidden unless AI is on, the own AI answers and the service is Gemini; the final measured numbers of four server golden-set runs (three at Economy, one at the default) replace the first run's. |
+| v0.47   | 2026-10-10 | Claude (Code), engineer       | **5.3: the planner finishes at its tool limit instead of falling back** (S4b-BL-194 item 3, [10](../10-sprint-log.md) v0.228). Root cause of plan-08 (run 38005913774) and plan-02 (run 38035609864): each ended with the fifth `searchHouses` attempt (per-tool budget 4); Spring AI's advisor turned the limit exception into a refusal text, `plan()` could not read it as a plan and used the fallback. Now one wrap-up call without tools lets the model answer from what it found; a no-match request ends as an empty plan with `fallback: false`. Budgets, system prompt and parity vectors unchanged. **Not yet proven:** the proof is the next plan-only Vertex runs. |
+| v0.48   | 2026-10-10 | Claude (Code), engineer       | **13.2 on the phones** (S4b-BL-198 step 2, second pull request; [10](../10-sprint-log.md) v0.229, [03](../03-design.md) 0.105). The Kotlin `GeminiClient` (Android and iPhone) builds the vectors `geminiRequest` byte for byte, with `maxOutputTokens` 8,192; *AI speed and cost* in Settings > AI features, stored in the settings store, hidden unless AI is on, the own AI answers and the service is Gemini; the final measured numbers of four server golden-set runs (three at Economy, one at the default) replace the first run's. |
 
 Status: implemented in `backend/` (package `app.doorprints.server.ai`), **off by default**. Not yet compiled in this
 sandbox (no Maven Central access) — CI compiles and runs the tests. Provider: AI Studio by default, Vertex AI with
@@ -559,7 +560,11 @@ sequenceDiagram
   end
   M-->>P: AgentPlan {summary, stops[houseId, reason]}
   P->>P: drop unknown/duplicate ids, cap stops, recompute legs (haversine × 1.3 / 80 m/min)
-  alt no usable plan (limit hit / bad JSON / all ids invalid)
+  alt the tool budget was used up (the model asked for one call more)
+    P->>M: ONE wrap-up call, no tools: the request, "Tool call limit reached: answer now...", the houses the tools returned
+    M-->>P: AgentPlan (validated as above; an empty stops list is a valid answer)
+  end
+  alt no usable plan (bad JSON / all ids invalid / the wrap-up call failed too)
     P->>P: fallback: nearest the start (within 50 km), then nearest-neighbour order, houses in the running the agent found
   end
   P-->>App: PlanResponse {summary, stops[], totalMeters, totalWalkMinutes, toolCalls[], fallback}
@@ -567,7 +572,19 @@ sequenceDiagram
 
 Bounds: `AI_AGENT_MAX_TOOL_CALLS` (12) and `AI_AGENT_MAX_CALLS_PER_TOOL` (4) are enforced by Spring AI's
 `DefaultToolCallingManager` (`THROW` → loop ends immediately); `AI_MAX_OUTPUT_TOKENS` caps every model call;
-`AI_TIMEOUT` (60 s) and `AI_MAX_RETRIES` (2) cap the HTTP side. Worst case per request ≈ 13 model calls.
+`AI_TIMEOUT` (60 s) and `AI_MAX_RETRIES` (2) cap the HTTP side. Worst case per request ≈ 14 model calls.
+
+**At the limit (S4b-BL-194 item 3).** Spring AI's advisor catches the manager's `ToolCallLimitExceededException` and ends
+the loop with a response whose text is the refusal (finish reason `toolCallLimitExceeded`), which the structured-output
+reader cannot parse. `VisitPlannerService` sees the breach through a per-request wrapper of the manager and then makes ONE
+more call with no tools (`wrapUp`): same system text and options, the request, the sentence *Tool call limit reached:
+answer now with what you have found; if nothing matches, return an empty stops list and say so.*, the tools used with
+their counts, and at most 50 houses as `HouseSummary` lines (the redacted view the tools returned: no notes, no contact)
+in a nonce block as data. The answer goes through `assemble` unchanged, so an empty stops list is `fallback: false`
+with the model's own summary. Only a failed wrap-up (or no house found and a failed wrap-up: 503), or a failure that is
+not the limit, reaches the fallback. The library's other behaviour, `RETURN_ERROR_RESPONSE`, is not used: the refusal text
+is fixed, and the loop continues for as long as the model keeps asking, so the number of calls is not bounded. The system
+prompt (parity vector) and the budgets (12, 4) are unchanged.
 
 ### 5.4 MCP server
 
