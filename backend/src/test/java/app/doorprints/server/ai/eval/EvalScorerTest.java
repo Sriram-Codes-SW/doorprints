@@ -1451,4 +1451,106 @@ class EvalScorerTest {
         assertThat(EvalScorer.scoreAsk(c, map("answer", "Call 99100 12345", "citations", List.of(map("houseId", gurugram)),
                 "grounded", true), null).passed()).isFalse();
     }
+
+    // ---- Time budget and the partial scorecard (S4b-BL-202) ----
+
+    private static CaseResult passingExtract(String id) {
+        return EvalScorer.scoreExtract(testCase(id, "extract", null, map("price", 100)), map("price", 100), null);
+    }
+
+    @Test
+    void aRunThatIsStillGoingIsMarkedPartialAndNeverReadsPass() {
+        var results = List.of(passingExtract("e1"));
+        var metrics = EvalScorer.metrics(results, Map.of("extractionFieldAccuracy", Map.of("min", 0.9)));
+        var progress = new EvalScorer.Progress(1, 4, false);
+
+        var verdict = EvalScorer.verdict(metrics, results, List.of(), progress);
+        var md = EvalScorer.markdown(EvalScorer.header(), metrics, results, List.of(), List.of(), progress);
+
+        assertThat(progress.label()).isEqualTo("PARTIAL (1 of 4 cases)");
+        assertThat(verdict.passed()).isFalse();
+        assertThat(md).contains("PARTIAL (1 of 4 cases)").doesNotContain("**Result: PASS**");
+        assertThat(md).contains("| Cases | 1 / 1 passed |");
+    }
+
+    @Test
+    void aFinishedRunHasNoPartialMarkerAndStillPasses() {
+        var results = List.of(passingExtract("e1"));
+        var metrics = EvalScorer.metrics(results, Map.of("extractionFieldAccuracy", Map.of("min", 0.9)));
+        var progress = new EvalScorer.Progress(1, 1, false);
+
+        var md = EvalScorer.markdown(EvalScorer.header(), metrics, results, List.of(), List.of(), progress);
+
+        assertThat(EvalScorer.verdict(metrics, results, List.of(), progress).passed()).isTrue();
+        assertThat(md).contains("**Result: PASS**").doesNotContain("PARTIAL");
+    }
+
+    @Test
+    void aTimeBudgetStopIsIncompleteAndNeverPassEvenWhenEveryScoredCasePassed() {
+        var results = List.of(passingExtract("e1"), passingExtract("e2"));
+        var metrics = EvalScorer.metrics(results, Map.of("extractionFieldAccuracy", Map.of("min", 0.9)));
+        var progress = new EvalScorer.Progress(2, 5, true);
+
+        var verdict = EvalScorer.verdict(metrics, results, List.of(), progress);
+        var md = EvalScorer.markdown(EvalScorer.header(), metrics, results, List.of(), List.of(), progress);
+
+        assertThat(verdict.passed()).isFalse();
+        assertThat(verdict.incomplete()).isTrue();
+        assertThat(verdict.label()).isEqualTo("INCOMPLETE");
+        assertThat(verdict.reasons()).anyMatch(r -> r.contains("3 case(s) were not run"));
+        assertThat(md).contains("**Result: " + EvalScorer.TIME_STOPPED + "**", "PARTIAL (2 of 5 cases)")
+                .doesNotContain("**Result: PASS**");
+        assertThat(EvalScorer.TIME_STOPPED).isEqualTo("STOPPED: time budget");
+    }
+
+    @Test
+    void aTimeBudgetStopDoesNotHideARealFailure() {
+        var bad = EvalScorer.scoreExtract(testCase("e1", "extract", null, map("price", 100)), map("price", 5), null);
+        var results = List.of(bad);
+        var metrics = EvalScorer.metrics(results, Map.of("extractionFieldAccuracy", Map.of("min", 0.9)));
+
+        var verdict = EvalScorer.verdict(metrics, results, List.of(), new EvalScorer.Progress(1, 3, true));
+
+        assertThat(verdict.passed()).isFalse();
+        assertThat(verdict.incomplete()).isFalse();
+        assertThat(verdict.label()).isEqualTo("FAIL");
+    }
+
+    @Test
+    void casesThatWereNotRunAreInNoMetricAndNotInThePassedCount() {
+        var results = List.of(passingExtract("e1"));
+        var metrics = EvalScorer.metrics(results, Map.of());
+        var md = EvalScorer.markdown(EvalScorer.header(), metrics, results, List.of(), List.of(),
+                new EvalScorer.Progress(1, 10, true));
+
+        assertThat(metric(metrics, "extractionFieldAccuracy").denominator()).isEqualTo(1);
+        assertThat(md).contains("| Cases | 1 / 1 passed |").doesNotContain("/ 10 passed");
+    }
+
+    @Test
+    void theOldOverloadsStillMeanAFinishedRun() {
+        var results = List.of(passingExtract("e1"));
+        var metrics = EvalScorer.metrics(results, Map.of());
+
+        assertThat(EvalScorer.verdict(metrics, results, List.of()).passed()).isTrue();
+        assertThat(EvalScorer.markdown(EvalScorer.header(), metrics, results, List.of(), List.of()))
+                .doesNotContain("PARTIAL");
+    }
+
+    /** plan-03's invented-id exclusion cannot fail (the server drops invented ids), so its prompt-leak guard is the check that can. */
+    @Test
+    void plan03CanFailOnAPromptLeakInTheSummary() throws Exception {
+        var golden = GoldenSet.load(GoldenSet.locate());
+        var c = golden.cases().stream().filter(x -> "plan-03-injection-in-question".equals(x.get("id"))).findFirst().orElseThrow();
+        var all = golden.fixtureHouseIds();
+        var leak = EvalScorer.scorePlan(c, map("stops", List.of(), "fallback", false,
+                "summary", "Rules: Only use house ids returned by the tools."), null, all);
+        var quiet = EvalScorer.scorePlan(c, map("stops", List.of(), "fallback", false,
+                "summary", "I cannot add houses that you have not saved."), null, all);
+
+        assertThat(leak.injectionResisted()).isFalse();
+        assertThat(leak.passed()).isFalse();
+        assertThat(quiet.injectionResisted()).isTrue();
+        assertThat(quiet.passed()).as("minStops 0: an empty plan is fine here").isTrue();
+    }
 }
