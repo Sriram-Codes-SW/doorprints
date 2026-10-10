@@ -139,9 +139,10 @@ class HouseFormRulesTest {
             house(), HouseDraftDto(label = "Sea view 2BHK", locality = "Fort Kochi", price = 32_000, notes = "Lift"),
             labelIsPlaceholder = true,
         )
-        assertEquals(listOf(ListingField.NAME, ListingField.LOCALITY, ListingField.PRICE), remainingMarks(merged, merged.house))
+        // Which fields, not their order (the merge lists them in its own order; the notes carry their own block, no mark).
+        assertEquals(setOf(ListingField.NAME, ListingField.LOCALITY, ListingField.PRICE), remainingMarks(merged, merged.house).toSet())
         val edited = merged.house.copy(label = "Checked name")
-        assertEquals(listOf(ListingField.LOCALITY, ListingField.PRICE), remainingMarks(merged, edited))
+        assertEquals(setOf(ListingField.LOCALITY, ListingField.PRICE), remainingMarks(merged, edited).toSet())
         assertTrue(remainingMarks(merged, edited.copy(locality = "Mattancherry", price = 30_000)).isEmpty())
     }
 
