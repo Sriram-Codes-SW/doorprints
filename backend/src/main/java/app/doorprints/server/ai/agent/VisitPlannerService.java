@@ -43,6 +43,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnBooleanProp
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -153,6 +154,38 @@ public class VisitPlannerService {
         return Math.min(requested == null ? serverCap : requested, serverCap);
     }
 
+    /**
+     * How far from the start point a house may be for the fallback route to offer it: 50 km. A house hunt is one
+     * city (the greater Pune or Bengaluru area is well inside it) while the saved houses can span several cities, and
+     * the fallback must never offer a house in another one (golden case plan-08 once got four Bengaluru houses for a
+     * start in Pune). It is wider than the 5 km of the {@code nearbyHouses} tool on purpose: that tool is the
+     * model's search, this is the safety net for a plan that failed.
+     */
+    static final double FALLBACK_MAX_METERS = 50_000;
+
+    /** The summary of a fallback when no house the agent found is within {@link #FALLBACK_MAX_METERS} of the start. */
+    static final String FALLBACK_NONE_IN_REACH = "No saved houses within reach of your start point were found.";
+
+    /**
+     * The fallback's candidates: the houses in the running that have usable coordinates and lie within
+     * {@link #FALLBACK_MAX_METERS} of the start, nearest to the start first (equal distances by house id), at most
+     * {@code maxStops}. The order the tools returned them in does not matter.
+     */
+    private static List<RouteOptimizer.Point> fallbackPoints(Map<UUID, HouseSummary> seen, double startLat,
+                                                             double startLon, int maxStops) {
+        record Near(HouseSummary house, double meters) {
+        }
+        return seen.values().stream()
+                .filter(h -> h.status() == null || h.status().inTheRunning())
+                .map(h -> new Near(h, RouteOptimizer.haversineMeters(startLat, startLon, h.lat(), h.lon())))
+                // A NaN or infinite coordinate gives a NaN distance, and NaN <= x is false: such a house is skipped.
+                .filter(n -> n.meters() <= FALLBACK_MAX_METERS)
+                .sorted(Comparator.comparingDouble(Near::meters).thenComparing(n -> n.house().id().toString()))
+                .limit(maxStops)
+                .map(n -> new RouteOptimizer.Point(n.house().id().toString(), n.house().lat(), n.house().lon()))
+                .toList();
+    }
+
     /** Validates the model's plan against what the tools returned; pure, unit-tested. */
     static PlanResponse assemble(AgentPlan plan, Map<UUID, HouseSummary> seen, List<String> calls,
                                  double startLat, double startLon, int maxStops) {
@@ -188,17 +221,14 @@ public class VisitPlannerService {
             fallback = true;
             chosen.clear();
             reasons.clear();
-            var points = seen.values().stream()
-                    .filter(h -> h.status() == null || h.status().inTheRunning())
-                    .limit(maxStops)
-                    .map(h -> new RouteOptimizer.Point(h.id().toString(), h.lat(), h.lon()))
-                    .toList();
+            var points = fallbackPoints(seen, startLat, startLon, maxStops);
             legs = RouteOptimizer.nearestNeighbour(startLat, startLon, points);
             legs.forEach(l -> {
                 chosen.add(seen.get(UUID.fromString(l.to().id())));
                 reasons.add("Found by the search; ordered by walking distance");
             });
-            summary = "The assistant could not finish a plan, so these are the houses it found, ordered by "
+            summary = points.isEmpty() ? FALLBACK_NONE_IN_REACH
+                    : "The assistant could not finish a plan, so these are the houses it found, ordered by "
                     + "nearest neighbour from your start point.";
         } else {
             legs = RouteOptimizer.legsInOrder(startLat, startLon, chosen.stream()
