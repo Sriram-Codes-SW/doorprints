@@ -122,19 +122,19 @@
       "file": "backend/src/main/java/app/doorprints/server/ai/agent/HouseSearchService.java",
       "find": "MAX_RESULTS = 50;",
       "replace": "MAX_RESULTS = 51;",
-      "expect": "aSearchReturnsTwenty"
+      "expect": "aSearchReturnsFifty"
     },
     {
       "file": "backend/src/main/java/app/doorprints/server/ai/agent/HouseSearchService.java",
-      "find": "c.limit() == null ? 20 :",
-      "replace": "c.limit() == null ? 21 :",
-      "expect": "aSearchReturnsTwenty"
+      "find": "DEFAULT_RESULTS = MAX_RESULTS;",
+      "replace": "DEFAULT_RESULTS = 21;",
+      "expect": "aSearchReturnsFifty"
     },
     {
       "file": "backend/src/main/java/app/doorprints/server/ai/agent/HouseSearchService.java",
       "find": "Math.clamp(c.limit(), 1, MAX_RESULTS)",
       "replace": "Math.clamp(c.limit(), 0, MAX_RESULTS)",
-      "expect": "aSearchReturnsTwenty"
+      "expect": "aSearchReturnsFifty"
     },
     {
       "file": "backend/src/main/java/app/doorprints/server/ai/agent/HouseSearchService.java",
