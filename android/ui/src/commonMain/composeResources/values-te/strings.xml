@@ -1551,6 +1551,8 @@
     <string name="lock_notice_ios_needs">Google Drive బ్యాకప్‌కు ఈ iPhoneలో పాస్‌కోడ్ అవసరం. సెట్టింగ్‌ల యాప్‌లో Face ID &amp; పాస్‌కోడ్ కింద పెట్టి, తర్వాత తిరిగి రండి.</string>
     <string name="lock_notice_ios_paused">ఈ iPhoneలో ఇక పాస్‌కోడ్ లేనందున Google Drive బ్యాకప్ ఆగింది. మీ ఇళ్లు ఈ iPhoneలో సురక్షితంగా ఉన్నాయి. కొనసాగడానికి పాస్‌కోడ్ పెట్టండి.</string>
     <string name="lock_notice_ios_key_lost">ఈ iPhone సురక్షిత కీని కోల్పోయినందున Google Drive బ్యాకప్ ఆగింది. మీ ఇళ్లు ఈ iPhoneలో సురక్షితంగా ఉన్నాయి. కొనసాగడానికి Google Drive కి మళ్లీ కనెక్ట్ అవ్వండి.</string>
+    <!-- S4b-BL-145: the title of the local notice when a Drive pass finds the passcode gone (under review). -->
+    <string name="lock_notice_ios_notif_title">Google Drive బ్యాకప్ ఆగింది</string>
     <string name="qr_scan_hint">కెమెరాను మరొక పరికరంలోని Doorprints కోడ్ వైపు పెట్టండి.</string>
     <string name="qr_scan_not_doorprints">ఇది Doorprints కోడ్ కాదు.</string>
     <string name="qr_scan_too_long">ఈ కోడ్ Doorprints కోడ్ అయ్యేందుకు చాలా పొడవుగా ఉంది.</string>

@@ -124,6 +124,7 @@ class QrEnrolTest {
         assertEquals("dp1.", QR_PREFIX)
         assertEquals(32, QR_PSK_LEN)
         assertEquals(65, QR_PUBLIC_LEN)
+        assertEquals(1, QR_PLATFORM_LEN)
         assertEquals("doorprints/dpx1/qr-psk", String(QR_PSK_ID, Charsets.UTF_8))
     }
 
@@ -160,8 +161,11 @@ class QrEnrolTest {
     fun writesEachSharedValidOfferToTheExactText() {
         val valid = shared.rows("valid")
         assertTrue(valid.isNotEmpty())
-        for (v in valid) assertEquals(v.s("name"), v.s("text"), qrOfferText(v.h("publicKey"), v.h("psk")))
+        for (v in valid) assertEquals(v.s("name"), v.s("text"), qrOfferText(v.h("publicKey"), v.h("psk"), platformOf(v.s("platform"))))
     }
+
+    /** The vectors' platform name: "unknown" is the earlier offer without the byte. */
+    private fun platformOf(name: String): DevicePlatform? = if (name == "unknown") null else DevicePlatform.entries.single { it.wire == name }
 
     @Test
     fun readsEachSharedValidOfferToTheExactBytes() {
@@ -170,6 +174,20 @@ class QrEnrolTest {
             assertNotNull(v.s("name"), parsed)
             assertEquals(v.s("name"), v.s("publicKey"), parsed!!.publicKey.hex())
             assertEquals(v.s("name"), v.s("psk"), parsed.psk.hex())
+            assertEquals(v.s("name"), platformOf(v.s("platform")), parsed.platform)
+        }
+    }
+
+    @Test
+    fun anUnassignedPlatformByteReadsAsUnknownAndKeepsTheOffer() {
+        val rows = shared.rows("unassignedPlatform")
+        assertTrue(rows.isNotEmpty())
+        for (v in rows) {
+            val parsed = parseQrOffer(v.s("text"))
+            assertNotNull(v.s("name"), parsed)
+            assertEquals(v.s("name"), v.s("publicKey"), parsed!!.publicKey.hex())
+            assertEquals(v.s("name"), v.s("psk"), parsed.psk.hex())
+            assertNull(v.s("name"), parsed.platform)
         }
     }
 
@@ -184,6 +202,7 @@ class QrEnrolTest {
             assertNotNull(f.s("name"), parsed)
             assertEquals(f.s("name"), want.s("publicKey"), parsed!!.publicKey.hex())
             assertEquals(f.s("name"), want.s("psk"), parsed.psk.hex())
+            assertEquals(f.s("name"), platformOf(want.s("platform")), parsed.platform)
         }
     }
 

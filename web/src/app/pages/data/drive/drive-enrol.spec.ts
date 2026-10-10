@@ -155,6 +155,8 @@ describe('DriveEnrolCard', () => {
     b.component['requestText'].set(offer);
     await b.component['approveQr']();
     expect(b.svc.approveJoinedDevicePsk).toHaveBeenCalledTimes(1);
+    // The website's own offer carries the platform byte, so the approver lists it as a website.
+    expect(b.svc.approveJoinedDevicePsk.mock.calls[0]).toEqual([expect.anything(), 'Website', expect.anything(), 'web']);
 
     a.component['replyText'].set(b.component['replyText']());
     await a.component['joinFromQr']();
@@ -205,6 +207,21 @@ describe('DriveEnrolCard', () => {
     b.fixture.detectChanges();
     expect(b.svc.approveJoinedDevice).not.toHaveBeenCalled();
     expect(b.component['error']()).toBe(b.i18n.t('driveEnrol.badMessage'));
+  });
+
+  it('lists a new device under the platform its offer carries (S4b-BL-144)', async () => {
+    const cases: [Parameters<typeof qrOfferText>[2], string, string][] = [
+      ['ios', 'iPhone', 'ios'],
+      ['android', 'Android phone', 'android'],
+      [undefined, 'Website', 'web'],
+    ];
+    for (const [offered, name, listed] of cases) {
+      const b = await render();
+      b.component['becomeQrApprover']();
+      b.component['requestText'].set(qrOfferText(deviceKey, new Uint8Array(32), offered));
+      await b.component['approveQr']();
+      expect(b.svc.approveJoinedDevicePsk.mock.calls[0]).toEqual([expect.anything(), name, expect.anything(), listed]);
+    }
   });
 
   it('approving without a passkey does not use the deletion sentence', async () => {

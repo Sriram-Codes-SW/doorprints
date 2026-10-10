@@ -117,6 +117,16 @@ class KeychainSettingsTest {
         }
     }
 
+    /** A DataStore that runs the edit, writes nothing and throws [CancellationException] (a cancel before the commit). */
+    private class CancelBeforeCommitDataStore(private val real: DataStore<Preferences>) : DataStore<Preferences> {
+        override val data = real.data
+
+        override suspend fun updateData(transform: suspend (t: Preferences) -> Preferences): Preferences {
+            transform(real.data.first())
+            throw CancellationException("cancelled before the settings were written (test)")
+        }
+    }
+
     private val files = mutableListOf<String>()
 
     private fun newPath(): String =
@@ -252,6 +262,18 @@ class KeychainSettingsTest {
         assertFailsWith<CancellationException> { store.saveServer("https://a.example", KEY_2) }
         assertEquals(KEY_2, keychain.key(), "the Keychain was rolled back under settings that hold the new key")
         assertEquals(KEY_2, store.current().apiKey)
+    }
+
+    @Test
+    fun aCancellationBeforeTheSettingsCommittedPutsTheOldKeyBack() = runTest {
+        val path = newPath()
+        val real = PreferenceDataStoreFactory.createWithPath(produceFile = { path.toPath() })
+        SettingsStore(real, secrets).saveServer("https://a.example", KEY_1)
+
+        val store = SettingsStore(CancelBeforeCommitDataStore(real), secrets)
+        assertFailsWith<CancellationException> { store.saveServer("https://a.example", KEY_2) }
+        assertEquals(KEY_1, keychain.key(), "the Keychain kept a key the settings never saved")
+        assertEquals(KEY_1, SettingsStore(real, secrets).current().apiKey)
     }
 
     @Test

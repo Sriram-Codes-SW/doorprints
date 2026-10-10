@@ -116,7 +116,7 @@ private fun IosDriveCard(drive: IosDriveServices) {
     val vm: DriveViewModel = viewModel {
         DriveViewModel(
             ControllerDriveActions(drive.controller, folderGone = drive.graph.folderGone),
-            codec = Dp1EnrolmentCodec(drive.graph.crypto),
+            codec = Dp1EnrolmentCodec(drive.graph.crypto, DevicePlatform.IOS),
             deviceName = { IosDriveServices.iosDeviceName() },
             platform = DevicePlatform.IOS,
         )

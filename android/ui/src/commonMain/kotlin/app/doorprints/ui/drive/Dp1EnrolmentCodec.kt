@@ -35,7 +35,7 @@ import kotlinx.serialization.json.put
 
 /**
  * The text of the two enrolment messages for the Drive screens ([EnrolmentCodec]), over the shared QR code and pairing
- * code classes. The offer is the website's `dp1.` text (`pk_new ‖ s`, docs/15 §9.5), so a phone and the website can enrol
+ * code classes. The offer is the website's `dp1.` text (`pk_new ‖ s ‖ platform`, docs/15 §9.5), so a phone and the website can enrol
  * each other; the reply is the website's JSON `{"wrapEnc","wrapCt","epoch"}` for the same reason.
  *
  * The 8-digit code is a check of the offer text: both phones derive it from the offer's public key and secret, so a
@@ -44,20 +44,23 @@ import kotlinx.serialization.json.put
  */
 class Dp1EnrolmentCodec(
     private val p: CryptoProvider,
-    /** The name the approving phone lists a phone under: the offer carries no name (the website's `dp1.` has none). */
+    /** This device's platform, written into the offers it makes (S4b-BL-144) so the approver lists it correctly. */
+    private val platform: DevicePlatform,
+    /** The name the approving phone lists a phone under: the offer carries no name (the website's `dp1.` has none), only the platform byte. */
     private val newDeviceName: String = NEW_DEVICE_NAME,
 ) : EnrolmentCodec {
     private val codes = PairingCode(p)
 
     override fun newOffer(publicKey: ByteArray, deviceName: String): NewcomerOffer {
         val psk = p.randomBytes(QR_PSK_LEN)
-        return NewcomerOffer(qrOfferText(publicKey, psk), codeOf(publicKey, psk), psk)
+        return NewcomerOffer(qrOfferText(publicKey, psk, platform), codeOf(publicKey, psk), psk)
     }
 
     override fun parseOffer(text: String): ApproverOffer? {
         if (text.length > MAX_TEXT) return null
         val offer = parseQrOffer(text) ?: return null
-        return ApproverOffer(offer.publicKey, newDeviceName, DevicePlatform.ANDROID, offer.psk, codeOf(offer.publicKey, offer.psk))
+        // An offer made before S4b-BL-144 has no platform; the device list keeps the earlier guess for it.
+        return ApproverOffer(offer.publicKey, newDeviceName, offer.platform ?: LEGACY_PLATFORM, offer.psk, codeOf(offer.publicKey, offer.psk))
     }
 
     override fun encodeReply(wrap: EnrolmentWrap): String = buildJsonObject {
@@ -86,6 +89,9 @@ class Dp1EnrolmentCodec(
 
     companion object {
         const val NEW_DEVICE_NAME = "New phone"
+
+        /** The platform listed for an offer that carries none: keys.json has no "unknown", so the earlier guess stays. */
+        val LEGACY_PLATFORM = DevicePlatform.ANDROID
 
         /** Longer than any offer (97 bytes as text) or reply; stops a huge paste before it is parsed. */
         const val MAX_TEXT = 4096

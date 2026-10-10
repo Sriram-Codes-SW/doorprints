@@ -495,7 +495,7 @@ class SettingsStore(
 
     /** Moves a plaintext key from v0.1 into the encrypted slot. Safe to call on every start. */
     suspend fun migrateLegacyKey() {
-        secrets.editing {
+        secrets.editing({ dataStore.data.first() }) {
             dataStore.edit {
                 val plain = it[Keys.apiKeyPlain] ?: return@edit
                 if (plain.isNotBlank()) secrets.put(it, plain)
@@ -509,7 +509,7 @@ class SettingsStore(
      * so the key never has to be shown in the text field again (threat model AB-02). Inside [SecretStore.editing],
      * so a key kept outside the settings is put back if the settings cannot be written (S4b-BL-30).
      */
-    suspend fun saveServer(url: String, key: String) = secrets.editing { saveServerEdit(url, key) }
+    suspend fun saveServer(url: String, key: String) = secrets.editing({ dataStore.data.first() }) { saveServerEdit(url, key) }
 
     /**
      * The edit behind [saveServer]: a different address resets the sync cursors (a full download), and a new
@@ -616,7 +616,7 @@ class SettingsStore(
     suspend fun saveAiProviderConfig(config: AiProviderConfig, key: String) {
         val store = checkNotNull(geminiSecrets) { "No place for an AI key on this platform" }
         val gemini = config.kind == AiKind.GEMINI
-        store.editing {
+        store.editing({ dataStore.data.first() }) {
             dataStore.edit {
                 if (key.isBlank()) store.clear(it) else store.put(it, key.trim())
                 it[Keys.aiKind] = config.kind.wire
@@ -633,7 +633,7 @@ class SettingsStore(
     /** Forgets the AI key and the kind, address, model and *AI speed and cost* choice with it; AI goes back to the server. */
     suspend fun removeGeminiKey() {
         val store = geminiSecrets ?: return
-        store.editing {
+        store.editing({ dataStore.data.first() }) {
             dataStore.edit {
                 store.clear(it)
                 it.remove(Keys.aiKind)

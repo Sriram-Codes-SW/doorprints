@@ -24,6 +24,7 @@ import app.doorprints.crypto.JvmCryptoProvider
 import app.doorprints.crypto.QR_PREFIX
 import app.doorprints.crypto.QR_PSK_LEN
 import app.doorprints.crypto.parseQrOffer
+import app.doorprints.crypto.qrOfferText
 import app.doorprints.drive.connect.EnrolmentWrap
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
@@ -36,7 +37,7 @@ import org.junit.Test
 /** The `dp1.` offer, the reply and the 8-digit code of the Drive screens (docs/15 §9.5; the website's formats). */
 class DriveEnrolmentCodecTest {
     private val p = JvmCryptoProvider
-    private val codec = Dp1EnrolmentCodec(p)
+    private val codec = Dp1EnrolmentCodec(p, DevicePlatform.IOS)
     private val key = p.p256Generate().publicKey
 
     @Test
@@ -83,7 +84,25 @@ class DriveEnrolmentCodecTest {
         assertArrayEquals(key, approver.publicKey)
         assertArrayEquals(offer.psk, approver.psk)
         assertEquals(Dp1EnrolmentCodec.NEW_DEVICE_NAME, approver.deviceName)
-        assertEquals(DevicePlatform.ANDROID, approver.platform)
+        assertEquals("the approver lists the newcomer under the platform the offer carries", DevicePlatform.IOS, approver.platform)
+    }
+
+    @Test
+    fun eachPlatformSurvivesTheOffer() {
+        for (platform in DevicePlatform.entries) {
+            val offer = Dp1EnrolmentCodec(p, platform).newOffer(key, "x")
+            assertEquals(platform, codec.parseOffer(offer.qrText)!!.platform)
+            assertEquals("the code does not depend on the platform byte", offer.code, codec.parseOffer(offer.qrText)!!.code)
+        }
+    }
+
+    @Test
+    fun anOfferWithoutAPlatformKeepsTheEarlierGuess() {
+        val psk = ByteArray(QR_PSK_LEN) { 3 }
+        val legacy = qrOfferText(key, psk)
+        val approver = codec.parseOffer(legacy)!!
+        assertEquals(Dp1EnrolmentCodec.LEGACY_PLATFORM, approver.platform)
+        assertEquals(codec.codeOf(key, psk), approver.code)
     }
 
     @Test
