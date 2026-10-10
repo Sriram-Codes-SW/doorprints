@@ -1,0 +1,187 @@
+{
+  "spec": "android/shared/src/commonTest/kotlin/app/doorprints/shared/ai/GeminiRequestTest.kt and AiProviderVectorsTest.kt, android/shared/src/commonTest/kotlin/app/doorprints/data/AiProviderSettingsTest.kt, android/shared/src/androidHostTest/kotlin/app/doorprints/data/AiProviderRepositoryTest.kt and android/app/src/test/java/app/doorprints/AiSettingsSectionTest.kt",
+  "gradle": [
+    ":shared:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.shared.ai.GeminiRequestTest",
+    "--tests",
+    "app.doorprints.shared.ai.AiProviderVectorsTest",
+    "--tests",
+    "app.doorprints.data.AiProviderSettingsTest",
+    "--tests",
+    "app.doorprints.data.AiProviderRepositoryTest",
+    ":app:testDebugUnitTest",
+    "--tests",
+    "app.doorprints.AiSettingsSectionTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/GeminiClient.kt",
+      "find": "const val MAX_OUTPUT_TOKENS = 8192",
+      "replace": "const val MAX_OUTPUT_TOKENS = 2048",
+      "expect": "everyChoiceAsksForAnAnswerBudgetOf8192"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/GeminiClient.kt",
+      "find": "put(\"thinkingConfig\", buildJsonObject { put(\"thinkingLevel\", level) })",
+      "replace": "put(\"thinkingConfig\", buildJsonObject { put(\"thinkingLevel\", level); put(\"includeThoughts\", false) })",
+      "expect": "balancedAsksForMediumThinkingAndEconomyForLow"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/GeminiClient.kt",
+      "find": "put(\"responseSchema\", schema)\n                    quality.thinkingLevel?.let { level ->\n                        put(\"thinkingConfig\", buildJsonObject { put(\"thinkingLevel\", level) })\n                    }",
+      "replace": "quality.thinkingLevel?.let { level ->\n                        put(\"thinkingConfig\", buildJsonObject { put(\"thinkingLevel\", level) })\n                    }\n                    put(\"responseSchema\", schema)",
+      "expect": "geminiRequestMatchesTheVectorsForEveryCallAndSetting"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/GeminiClient.kt",
+      "find": "val body = requestBody(system, user, schema, temperature, quality)",
+      "replace": "val body = requestBody(system, user, schema, temperature)",
+      "expect": "theClientPostsTheBodyOfItsChoice"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/GeminiClient.kt",
+      "find": "private val quality: AiQuality = AiQuality.DEFAULT,",
+      "replace": "private val quality: AiQuality = AiQuality.ECONOMY,",
+      "expect": "theClientDefaultsToQualityWhenNoChoiceIsGiven"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OpenAiCompatClient.kt",
+      "find": "const val MAX_TOKENS = 2048",
+      "replace": "const val MAX_TOKENS = 8192",
+      "expect": "theOtherServicesKeepTheirLimitOf2048"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AnthropicClient.kt",
+      "find": "const val MAX_TOKENS = 2048",
+      "replace": "const val MAX_TOKENS = 8192",
+      "expect": "theOtherServicesKeepTheirLimitOf2048"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AiQuality.kt",
+      "find": "BALANCED -> \"MEDIUM\"",
+      "replace": "BALANCED -> \"LOW\"",
+      "expect": "theChoicesMapToGeminisThinkingLevel"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AiQuality.kt",
+      "find": "ECONOMY -> \"LOW\"",
+      "replace": "ECONOMY -> \"MEDIUM\"",
+      "expect": "theChoicesMapToGeminisThinkingLevel"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AiQuality.kt",
+      "find": "QUALITY -> null",
+      "replace": "QUALITY -> \"LOW\"",
+      "expect": "qualityAndNoSettingSendNoThinkingField"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AiQuality.kt",
+      "find": "val DEFAULT = QUALITY",
+      "replace": "val DEFAULT = ECONOMY",
+      "expect": "qualityIsTheDefault"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AiQuality.kt",
+      "find": "entries.firstOrNull { it.wire == value } ?: DEFAULT",
+      "replace": "entries.firstOrNull { it.wire.equals(value, ignoreCase = true) } ?: DEFAULT",
+      "expect": "aStoredTextIsAChoiceOnlyWhenItIsExactly"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/Settings.kt",
+      "find": "aiQuality = AiQuality.fromWire(p[Keys.aiQuality]),",
+      "replace": "aiQuality = AiQuality.DEFAULT,",
+      "expect": "theSpeedAndCostChoiceIsQualityUntilChosen"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/Settings.kt",
+      "find": "it[Keys.aiQuality] = quality.wire",
+      "replace": "it[Keys.aiQuality] = AiQuality.DEFAULT.wire",
+      "expect": "theSpeedAndCostChoiceIsQualityUntilChosen"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/Settings.kt",
+      "find": "it.remove(Keys.aiQuality)",
+      "replace": "Unit",
+      "expect": "savingAProviderKeepsTheChoiceAndRemovingTheKeyDeletesIt"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "val quality = if (s.aiProviderConfig.kind == AiKind.GEMINI) s.aiQuality else AiQuality.DEFAULT",
+      "replace": "val quality = AiQuality.DEFAULT",
+      "expect": "theSavedSpeedAndCostChoiceReachesTheGeminiRequest"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "chatModel(checkedConfig(config), key.trim(), settings.current().aiQuality)",
+      "replace": "chatModel(checkedConfig(config), key.trim(), AiQuality.DEFAULT)",
+      "expect": "theSavedSpeedAndCostChoiceReachesTheGeminiRequest"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "val key = Triple(s.aiProviderConfig, s.geminiKey, quality)",
+      "replace": "val key = Triple(s.aiProviderConfig, s.geminiKey, AiQuality.DEFAULT)",
+      "expect": "theSavedSpeedAndCostChoiceReachesTheGeminiRequest"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "        settings.saveAiQuality(quality)\n",
+      "replace": "        Unit\n",
+      "expect": "theSavedSpeedAndCostChoiceReachesTheGeminiRequest"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt",
+      "find": "override suspend fun setAiQuality(quality: AiQuality) = ai.setQuality(quality)",
+      "replace": "override suspend fun setAiQuality(quality: AiQuality) = Unit",
+      "expect": "theSavedSpeedAndCostChoiceReachesTheGeminiRequest"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/AiSettingsSection.kt",
+      "find": "    if (form.isGemini) {\n        AiQualityGroup(",
+      "replace": "    if (true) {\n        AiQualityGroup(",
+      "expect": "theGroupIsNotComposedForAnotherService"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/AiSettingsSection.kt",
+      "find": "onSelect = { onSelect(choice) },",
+      "replace": "onSelect = { onSelect(AiQuality.QUALITY) },",
+      "expect": "choosingARowKeepsItAtOnce"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/AiSettingsSection.kt",
+      "find": "selected = choice == selected,",
+      "replace": "selected = choice == AiQuality.QUALITY,",
+      "expect": "choosingARowKeepsItAtOnce"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/AiSettingsSection.kt",
+      "find": "modifier = Modifier.semantics { heading() },",
+      "replace": "modifier = Modifier,",
+      "expect": "theGroupIsAHeadingedRadioGroup"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/AiSettingsSection.kt",
+      "find": "Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(4.dp)) {\n            for (choice in AiQuality.entries)",
+      "replace": "Column(Modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {\n            for (choice in AiQuality.entries)",
+      "expect": "theGroupIsAHeadingedRadioGroup"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/AiSettingsSection.kt",
+      "find": "for (choice in AiQuality.entries) {",
+      "replace": "for (choice in AiQuality.entries.reversed()) {",
+      "expect": "theGroupIsAHeadingedRadioGroup"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/AiSettingsSection.kt",
+      "find": "AiQualityGroup(settings.aiQuality) { choice -> scope.launch { repo.setAiQuality(choice) } }",
+      "replace": "AiQualityGroup(settings.aiQuality) { }",
+      "expect": "choosingARowKeepsItAtOnce"
+    },
+    {
+      "file": "android/ui/src/commonMain/composeResources/values/strings.xml",
+      "find": "About 40 percent cheaper and about twice as fast in our tests",
+      "replace": "About 50 percent cheaper and about twice as fast in our tests",
+      "expect": "theGroupIsShownForGeminiWithTheWebsitesThreeChoices"
+    }
+  ]
+}

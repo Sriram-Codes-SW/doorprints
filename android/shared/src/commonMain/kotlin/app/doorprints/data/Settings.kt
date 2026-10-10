@@ -20,6 +20,7 @@ package app.doorprints.data
 
 import app.doorprints.shared.ai.AiKind
 import app.doorprints.shared.ai.AiProviderConfig
+import app.doorprints.shared.ai.AiQuality
 import app.doorprints.shared.trace.RepeatLook
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
@@ -88,6 +89,12 @@ data class AppSettings(
      */
     val aiProviderConfig: AiProviderConfig = AiProviderConfig.GEMINI,
     /**
+     * *AI speed and cost* (S4b-BL-198 step 2, docs/ai/ai-design.md 13.2): how long Gemini may think. A plain preference,
+     * never secret, never exported; kept while AI is off or another service is chosen, but only the own-key Gemini client
+     * reads it. Nothing saved, or anything unknown, is [AiQuality.QUALITY], which sends nothing (today's behaviour).
+     */
+    val aiQuality: AiQuality = AiQuality.DEFAULT,
+    /**
      * The app lock (docs/11 5.19, S4b-FR-5): the phone's own screen lock (PIN, pattern, fingerprint or face) is asked
      * when the app opens and when it comes back after [appLockAfterSeconds] in the background. Off by default.
      */
@@ -133,7 +140,7 @@ data class AppSettings(
             "lastSyncAt=$lastSyncAt, lastSync=$lastSync, syncFailures=$syncFailures, syncFailingSince=$syncFailingSince, " +
             "lastSyncOkAt=$lastSyncOkAt, autoBackup=$autoBackup, autoBackupFolder=$autoBackupFolder, " +
             "autoBackupKeep=$autoBackupKeep, lastAutoBackupAt=$lastAutoBackupAt, lastAutoBackupError=$lastAutoBackupError, " +
-            "aiFeatures=$aiFeatures, aiProvider=$aiProvider, geminiKey=${if (geminiKey.isEmpty()) "none" else "set"}, aiKind=${aiProviderConfig.kind.wire}, " +
+            "aiFeatures=$aiFeatures, aiProvider=$aiProvider, geminiKey=${if (geminiKey.isEmpty()) "none" else "set"}, aiKind=${aiProviderConfig.kind.wire}, aiQuality=${aiQuality.wire}, " +
             "appLock=$appLock, appLockAfterSeconds=$appLockAfterSeconds, pathTrace=$pathTrace, repeatLook=$repeatLook, repeatAlert=$repeatAlert, " +
             "shareContacts=${shareContacts.size}, lengthUnit=$lengthUnit)"
 }
@@ -260,6 +267,8 @@ class SettingsStore(
         val aiKind = stringPreferencesKey("aiKind")
         val aiBaseUrl = stringPreferencesKey("aiBaseUrl")
         val aiModel = stringPreferencesKey("aiModel")
+        /** [AppSettings.aiQuality], by wire name (`quality`, `balanced`, `economy`): the web's `doorprints.ai-quality`. */
+        val aiQuality = stringPreferencesKey("aiQuality")
         /** [AppSettings.appLock] and [AppSettings.appLockAfterSeconds]. */
         val appLock = booleanPreferencesKey("appLock")
         val appLockAfter = intPreferencesKey("appLockAfterSeconds")
@@ -320,6 +329,7 @@ class SettingsStore(
                 baseUrl = p[Keys.aiBaseUrl] ?: "",
                 model = p[Keys.aiModel] ?: "",
             ),
+            aiQuality = AiQuality.fromWire(p[Keys.aiQuality]),
             appLock = p[Keys.appLock] ?: false,
             appLockAfterSeconds = AppLockTimes.valid(p[Keys.appLockAfter]),
             pathTrace = p[Keys.pathTrace] ?: false,
@@ -617,7 +627,10 @@ class SettingsStore(
         }
     }
 
-    /** Forgets the AI key and the kind, address and model with it; AI goes back to the server. */
+    /** Saves the *AI speed and cost* choice (S4b-BL-198 step 2); read by the own-key Gemini client only. */
+    suspend fun saveAiQuality(quality: AiQuality) = dataStore.edit { it[Keys.aiQuality] = quality.wire }
+
+    /** Forgets the AI key and the kind, address, model and *AI speed and cost* choice with it; AI goes back to the server. */
     suspend fun removeGeminiKey() {
         val store = geminiSecrets ?: return
         store.editing {
@@ -626,6 +639,7 @@ class SettingsStore(
                 it.remove(Keys.aiKind)
                 it.remove(Keys.aiBaseUrl)
                 it.remove(Keys.aiModel)
+                it.remove(Keys.aiQuality)
                 it[Keys.aiProvider] = AiProviderChoice.SERVER.name
             }
         }

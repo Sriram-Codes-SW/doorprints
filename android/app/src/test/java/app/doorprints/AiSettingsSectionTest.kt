@@ -32,8 +32,15 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
@@ -55,7 +62,9 @@ import app.doorprints.data.SettingsStore
 import app.doorprints.screenshots.ScreenshotTestApp
 import app.doorprints.shared.ai.AiKind
 import app.doorprints.shared.ai.AiProviderConfig
+import app.doorprints.shared.ai.AiQuality
 import app.doorprints.shared.api.ApiException
+import app.doorprints.ui.AI_QUALITY_TAG
 import app.doorprints.ui.AiDisclosure
 import app.doorprints.ui.AiSettingsSection
 import app.doorprints.ui.AppServices
@@ -429,6 +438,119 @@ class AiSettingsSectionTest {
         assertFalse(compose.onAllNodesWithText("straight to", substring = true).fetchSemanticsNodes().isNotEmpty())
     }
 
+    // --- AI speed and cost (S4b-BL-198 step 2, TC-U-193) -------------------------------------------------------
+
+    private fun group() = compose.onNodeWithTag(AI_QUALITY_TAG)
+
+    private fun groupIsComposed() = compose.onAllNodesWithTag(AI_QUALITY_TAG).fetchSemanticsNodes().isNotEmpty()
+
+    @Test fun theGroupIsShownForGeminiWithTheWebsitesThreeChoicesAndHelpAndQualityChosen() {
+        show()
+        group().performScrollTo().assertExists()
+        waitFor("AI speed and cost")
+        waitFor("The model's own default setting. Nothing is changed.")
+        waitFor("Thinks a medium amount: between Quality and Economy on speed and cost.")
+        waitFor("About 40 percent cheaper and about twice as fast in our tests, with answers as good.")
+        compose.onNodeWithText("Quality").assertIsSelected()
+        compose.onNodeWithText("Balanced").assertIsNotSelected()
+        compose.onNodeWithText("Economy").assertIsNotSelected()
+    }
+
+    @Test fun theGroupIsAHeadingedRadioGroupOfThreeRowsInReadingOrderEachAtLeast48dpHigh() {
+        show()
+        compose.onNode(hasText("AI speed and cost") and SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)).assertExists()
+        val radios = SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.RadioButton) and hasAnyAncestor(hasTestTag(AI_QUALITY_TAG))
+        val rows = compose.onAllNodes(radios)
+        rows.assertCountEquals(3)
+        assertEquals(
+            listOf("Quality", "Balanced", "Economy"),
+            rows.fetchSemanticsNodes().map { it.config[SemanticsProperties.Text].first().text },
+        )
+        for (i in 0 until 3) rows[i].performScrollTo().assertHeightIsAtLeast(48.dp)
+        compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.SelectableGroup) and hasAnyAncestor(hasTestTag(AI_QUALITY_TAG))).assertExists()
+    }
+
+    @Test fun choosingARowKeepsItAtOnceWithoutSave() {
+        show()
+        press("Economy")
+        waitSettings { it.aiQuality == AiQuality.ECONOMY }
+        compose.onNodeWithText("Economy").assertIsSelected()
+        compose.onNodeWithText("Quality").assertIsNotSelected()
+        press("Balanced")
+        waitSettings { it.aiQuality == AiQuality.BALANCED }
+        press("Quality")
+        waitSettings { it.aiQuality == AiQuality.QUALITY }
+        compose.onNodeWithText("Quality").assertIsSelected()
+    }
+
+    @Test fun aSavedChoiceShowsOnOpening() {
+        runBlocking { store.saveAiQuality(AiQuality.BALANCED) }
+        show()
+        waitFor("AI speed and cost")
+        group().performScrollTo()
+        compose.onNodeWithText("Balanced").assertIsSelected()
+        compose.onNodeWithText("Quality").assertIsNotSelected()
+    }
+
+    @Test fun theGroupIsNotComposedForAnotherServiceAndIsBackWithItsChoiceOnReturningToGemini() {
+        runBlocking { store.saveAiQuality(AiQuality.ECONOMY) }
+        show()
+        compose.onNodeWithText("Economy").assertIsSelected()
+        for (service in listOf("OpenAI", "Anthropic", "Ollama (on this device)", "Custom (OpenAI-compatible)")) {
+            choose(service)
+            assertFalse("the group is composed for $service", groupIsComposed())
+            gone("AI speed and cost")
+        }
+        // Kept while hidden, ignored by every other service, and shown again for Gemini.
+        assertEquals(AiQuality.ECONOMY, settings().aiQuality)
+        choose("Google Gemini")
+        group().performScrollTo().assertExists()
+        compose.onNodeWithText("Economy").assertIsSelected()
+    }
+
+    @Test fun theGroupIsNotComposedWithAiFeaturesOffOrWithTheServerAnswering() {
+        runBlocking { store.saveAiQuality(AiQuality.ECONOMY) }
+        // AI features off: the whole own-AI part is hidden, the choice is kept.
+        runBlocking {
+            store.saveAiFeatures(false)
+            store.saveAiProvider(AiProviderChoice.DEVICE)
+        }
+        provide {
+            val s by store.settings.collectAsState(AppSettings())
+            val off by real.aiOff.collectAsState()
+            Column(Modifier.verticalScroll(rememberScrollState())) { AiSettingsSection(s, off) }
+        }
+        waitFor("AI features")
+        assertFalse(groupIsComposed())
+        assertEquals(AiQuality.ECONOMY, settings().aiQuality)
+        // Features on and a server connected that answers: the own AI is not the one answering, so no group.
+        runBlocking {
+            store.saveAiFeatures(true)
+            store.saveServer("https://sync.example", "test-server-key-12345")
+            store.saveAiProvider(AiProviderChoice.SERVER)
+        }
+        waitFor("Use my server")
+        assertFalse(groupIsComposed())
+        gone("AI speed and cost")
+        // Choosing the own AI brings it back with the kept choice.
+        press("Use my own AI on this phone")
+        waitSettings { it.aiProvider == AiProviderChoice.DEVICE }
+        waitFor("AI speed and cost")
+        group().performScrollTo().assertExists()
+        compose.onNodeWithText("Economy").assertIsSelected()
+    }
+
+    @Test fun removeKeyForgetsTheChoice() {
+        runBlocking { store.saveGeminiKey("AIzaOwnKeyForTests1234") }
+        show()
+        press("Economy")
+        waitSettings { it.aiQuality == AiQuality.ECONOMY }
+        press("Remove key")
+        waitSettings { it.geminiKey.isEmpty() }
+        assertEquals(AiQuality.QUALITY, settings().aiQuality)
+        compose.onNodeWithText("Quality").assertIsSelected()
+    }
+
     // --- targets ----------------------------------------------------------------------------------------------
 
     @Test fun theButtonsAreAtLeast48dpHigh() {
@@ -447,6 +569,8 @@ class FakeAiRepository(real: Repository, private val store: SettingsStore) : Rep
     override suspend fun saveAiProviderConfig(config: AiProviderConfig, key: String) = store.saveAiProviderConfig(config, key)
     override suspend fun saveGeminiKey(key: String) = store.saveGeminiKey(key)
     override suspend fun removeGeminiKey() = store.removeGeminiKey()
+    override suspend fun setAiProvider(choice: AiProviderChoice) { store.saveAiProvider(choice) }
+    override suspend fun setAiQuality(quality: AiQuality) { store.saveAiQuality(quality) }
 
     var testResult: Result<Unit> = Result.success(Unit)
     var geminiResult: Result<Unit> = Result.success(Unit)

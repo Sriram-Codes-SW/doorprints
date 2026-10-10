@@ -121,7 +121,7 @@ class AiStatusRepositoryTest {
         photoDir = File(tmp.root, "photos").path,
         syncSoon = {},
         apiFor = { url, key -> if (withServer) ApiClient(url, key, ApiHttp.client(serverEngine), callTimeoutMs = null) else error("no server") },
-        geminiFor = if (withProviders) ({ key -> GeminiClient(ApiHttp.client(geminiEngine), key, timeoutMs = null) }) else null,
+        geminiFor = if (withProviders) ({ key, quality -> GeminiClient(ApiHttp.client(geminiEngine), key, timeoutMs = null, quality = quality) }) else null,
         openAiFor = if (withProviders) ({ url, model, key -> OpenAiCompatClient(ApiHttp.client(geminiEngine), url, model, key, timeoutMs = null) }) else null,
         anthropicFor = if (withProviders) ({ url, model, key -> AnthropicClient(ApiHttp.client(geminiEngine), model, key, url, timeoutMs = null) }) else null,
     )

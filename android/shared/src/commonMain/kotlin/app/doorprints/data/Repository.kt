@@ -19,6 +19,7 @@
 package app.doorprints.data
 
 import app.doorprints.shared.ai.AiProviderConfig
+import app.doorprints.shared.ai.AiQuality
 import app.doorprints.shared.api.AskResponseDto
 import app.doorprints.shared.trace.TracePoint
 import app.doorprints.shared.trace.TraceWalk
@@ -437,6 +438,12 @@ interface Repository {
 
     /** Forgets the Gemini key; AI goes back to the server, if one is connected. */
     suspend fun removeGeminiKey()
+
+    /**
+     * Saves the *AI speed and cost* choice (S4b-BL-198 step 2): only the own-key Gemini client reads it; for any other
+     * service it is kept and ignored. [removeGeminiKey] forgets it.
+     */
+    suspend fun setAiQuality(quality: AiQuality)
 
     /** Chooses who answers AI requests; the Gemini key, if any, is kept. */
     suspend fun setAiProvider(choice: AiProviderChoice)

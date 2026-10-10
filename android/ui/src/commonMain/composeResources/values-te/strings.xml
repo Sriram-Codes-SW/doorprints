@@ -1638,4 +1638,12 @@
     <string name="tour_done_action">ముగించు నొక్కి, యాప్ తెరిచి ఉంచుకుని ఇంటిని చూడటానికి వెళ్ళండి.</string>
     <!-- S4b-BL-182 (2026-10-08): the paste box says how much of a long listing is left out. Under review. -->
     <string name="house_paste_cut">మొదటి %1$s అక్షరాలు మాత్రమే చదవబడతాయి. చివరలో వదిలివేసిన అక్షరాలు: %2$s.</string>
+    <!-- S4b-BL-198 step 2 (2026-10-10): AI speed and cost (the 40 percent is spelled out because Compose resources show a bare % as written), as the website's strings. Under review. -->
+    <string name="settings_ai_quality_heading">AI వేగం మరియు ఖర్చు</string>
+    <string name="settings_ai_quality_quality">Quality (నాణ్యత)</string>
+    <string name="settings_ai_quality_quality_hint">మోడల్ సొంత డిఫాల్ట్ సెట్టింగ్. ఏదీ మారదు.</string>
+    <string name="settings_ai_quality_balanced">Balanced (సమతుల్యం)</string>
+    <string name="settings_ai_quality_balanced_hint">మధ్యస్థ ఆలోచన: వేగం, ఖర్చులో Quality, Economy మధ్య.</string>
+    <string name="settings_ai_quality_economy">Economy (పొదుపు)</string>
+    <string name="settings_ai_quality_economy_hint">మా పరీక్షల్లో సుమారు 40 శాతం చౌక, సుమారు రెట్టింపు వేగం; జవాబులు అంతే బాగున్నాయి.</string>
 </resources>

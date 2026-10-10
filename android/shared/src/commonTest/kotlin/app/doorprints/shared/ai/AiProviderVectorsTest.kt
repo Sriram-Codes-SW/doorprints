@@ -44,7 +44,7 @@ import kotlin.test.assertTrue
 /**
  * The AI provider's shared test vectors (docs/03 §13.2, ADR-35; `docs/ai/evals/parity-vectors.json`, sections
  * `schemaDialect`, `openaiRequest`, `openaiContent`, `providerErrors` and `baseUrl`; TC-U-168; `anthropicRequest`, `anthropicContent` and the Anthropic
- * rows of `providerErrors`: TC-U-172) run through the Kotlin
+ * rows of `providerErrors`: TC-U-172; `geminiRequest`: TC-U-192) run through the Kotlin
  * code. The website runs the same file through its TypeScript code. Common code, so the iPhone's simulator runs them too.
  */
 class AiProviderVectorsTest {
@@ -183,6 +183,26 @@ class AiProviderVectorsTest {
                 forceTool = case["forceTool"]?.jsonPrimitive?.booleanOrNull ?: true,
             )
             assertTrue(same(expected, body), "$call:\nexpected $expected\nwas      $body")
+        }
+    }
+
+    @Test
+    fun geminiRequestMatchesTheVectorsForEveryCallAndSetting() {
+        val all = cases("geminiRequest")
+        assertEquals(
+            listOf("answer/quality", "answer/balanced", "answer/economy", "plan/economy", "ping/quality", "ping/economy"),
+            all.map { it.getValue("call").jsonPrimitive.content + "/" + it.getValue("quality").jsonPrimitive.content },
+        )
+        for (case in all) {
+            val call = case.getValue("call").jsonPrimitive.content
+            val quality = AiQuality.fromWire(case.getValue("quality").jsonPrimitive.content)
+            val expected = case.getValue("expected").jsonObject
+            val schema = if (call == "ping") OnDeviceAi.PING_SCHEMA else schemaFor(call)!!
+            val body = GeminiClient.requestBody(
+                system = case.getValue("system").jsonPrimitive.content, user = case.getValue("user").jsonPrimitive.content,
+                schema = schema, temperature = case.getValue("temperature").jsonPrimitive.doubleOrNull!!, quality = quality,
+            )
+            assertTrue(same(expected, body), "$call/${quality.wire}:\nexpected $expected\nwas      $body")
         }
     }
 

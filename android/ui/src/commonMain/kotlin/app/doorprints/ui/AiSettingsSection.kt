@@ -57,9 +57,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.error
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -73,6 +75,7 @@ import app.doorprints.data.AiOff
 import app.doorprints.data.AiProviderChoice
 import app.doorprints.data.AppSettings
 import app.doorprints.shared.ai.AiKind
+import app.doorprints.shared.ai.AiQuality
 import app.doorprints.shared.ai.BaseUrlReason
 import app.doorprints.shared.api.ApiException
 import app.doorprints.ui.res.*
@@ -346,7 +349,12 @@ private fun OwnAiForm(settings: AppSettings) {
     LiveMessage(assertive = result?.first == ResultTone.ERROR) {
         result?.let { (tone, text) -> androidx.compose.runtime.key(run) { ResultCard(tone = tone, text = text) } }
     }
-    if (form.isGemini) Text(stringResource(Res.string.settings_gemini_free_tier), style = MaterialTheme.typography.bodySmall)
+    // AI speed and cost (S4b-BL-198 step 2): not composed at all unless AI is on (this form is shown only then), the own AI
+    // answers (likewise) and the service on the screen is Google Gemini; a stored choice is kept but ignored otherwise.
+    if (form.isGemini) {
+        AiQualityGroup(settings.aiQuality) { choice -> scope.launch { repo.setAiQuality(choice) } }
+        Text(stringResource(Res.string.settings_gemini_free_tier), style = MaterialTheme.typography.bodySmall)
+    }
     // Before anything is sent, where it goes (T-I43): the host of what is on the screen.
     if (host.isNotEmpty()) {
         Text(
@@ -355,6 +363,47 @@ private fun OwnAiForm(settings: AppSettings) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
+}
+
+/**
+ * *AI speed and cost*: Quality, Balanced and Economy as a radio group named by its heading, each row a 48 dp target with
+ * one line of help (the words of the website's Connect page). A choice is kept at once; there is no Save.
+ */
+@Composable
+private fun AiQualityGroup(selected: AiQuality, onSelect: (AiQuality) -> Unit) {
+    Column(Modifier.fillMaxWidth().testTag(AI_QUALITY_TAG), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            stringResource(Res.string.settings_ai_quality_heading),
+            style = MaterialTheme.typography.titleSmall,
+            modifier = Modifier.semantics { heading() },
+        )
+        Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            for (choice in AiQuality.entries) {
+                ProviderRow(
+                    selected = choice == selected,
+                    enabled = true,
+                    title = stringResource(qualityTitle(choice)),
+                    hint = stringResource(qualityHint(choice)),
+                    onSelect = { onSelect(choice) },
+                )
+            }
+        }
+    }
+}
+
+/** The test tag of the *AI speed and cost* group, so a test can tell whether it is composed. */
+const val AI_QUALITY_TAG = "ai-quality"
+
+private fun qualityTitle(choice: AiQuality): StringResource = when (choice) {
+    AiQuality.QUALITY -> Res.string.settings_ai_quality_quality
+    AiQuality.BALANCED -> Res.string.settings_ai_quality_balanced
+    AiQuality.ECONOMY -> Res.string.settings_ai_quality_economy
+}
+
+private fun qualityHint(choice: AiQuality): StringResource = when (choice) {
+    AiQuality.QUALITY -> Res.string.settings_ai_quality_quality_hint
+    AiQuality.BALANCED -> Res.string.settings_ai_quality_balanced_hint
+    AiQuality.ECONOMY -> Res.string.settings_ai_quality_economy_hint
 }
 
 private fun urlReasonText(reason: BaseUrlReason): StringResource = when (reason) {

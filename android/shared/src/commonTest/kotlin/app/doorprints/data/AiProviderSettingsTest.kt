@@ -26,6 +26,7 @@ import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import app.doorprints.shared.ai.AiKind
 import app.doorprints.shared.ai.AiProviderConfig
+import app.doorprints.shared.ai.AiQuality
 import app.doorprints.shared.export.BackupData
 import app.doorprints.shared.export.BackupFormat
 import app.doorprints.shared.export.ExportFixture
@@ -133,6 +134,52 @@ class AiProviderSettingsTest {
         assertEquals(AiProviderConfig.GEMINI, settings.aiProviderConfig)
         assertEquals(AiProviderChoice.SERVER, settings.aiProvider)
         assertTrue(raw().keys.none { it == "aiKind" || it == "aiBaseUrl" || it == "aiModel" }, raw().keys.toString())
+    }
+
+    // --- AI speed and cost (S4b-BL-198 step 2, TC-U-192) ---------------------------------------------------------
+
+    @Test
+    fun theSpeedAndCostChoiceIsQualityUntilChosenThenSavedAndReadAsItsWireName() = runTest {
+        assertEquals(AiQuality.QUALITY, store.current().aiQuality)
+        assertTrue("aiQuality" !in raw().keys, "a read-time default only: ${raw().keys}")
+        store.saveAiQuality(AiQuality.ECONOMY)
+        assertEquals(AiQuality.ECONOMY, store.current().aiQuality)
+        assertEquals("economy", raw()["aiQuality"])
+        store.saveAiQuality(AiQuality.BALANCED)
+        assertEquals("balanced", raw()["aiQuality"])
+        assertEquals(AiQuality.BALANCED, store.current().aiQuality)
+    }
+
+    @Test
+    fun anUnknownStoredChoiceReadsAsQualityAndIsNotRewritten() = runTest {
+        for (stored in listOf("", "ECONOMY", "Economy", "fast", "LOW", " balanced")) {
+            dataStore.edit { it[stringPreferencesKey("aiQuality")] = stored }
+            assertEquals(AiQuality.QUALITY, store.current().aiQuality, "'$stored'")
+            assertEquals(stored, raw()["aiQuality"], "read only; the stored text stays")
+        }
+    }
+
+    @Test
+    fun savingAProviderKeepsTheChoiceAndRemovingTheKeyDeletesIt() = runTest {
+        store.saveGeminiKey("AIzaOwnKeyForTests1234")
+        store.saveAiQuality(AiQuality.ECONOMY)
+        // Another service and back: kept the whole time (and ignored by the client for the other service).
+        store.saveAiProviderConfig(local, "sk-LocalKey-1234")
+        assertEquals(AiQuality.ECONOMY, store.current().aiQuality)
+        store.saveGeminiKey("AIzaOwnKeyForTests1234")
+        assertEquals(AiQuality.ECONOMY, store.current().aiQuality)
+        store.removeGeminiKey()
+        assertEquals(AiQuality.QUALITY, store.current().aiQuality)
+        assertTrue("aiQuality" !in raw().keys, "the stored value is deleted, not set to Quality: ${raw().keys}")
+    }
+
+    @Test
+    fun theChoiceIsPrintedAsAPlainSettingAndNeverInABackup() = runTest {
+        store.saveGeminiKey("AIzaOwnKeyForTests1234")
+        store.saveAiQuality(AiQuality.ECONOMY)
+        assertTrue("aiQuality=economy" in store.current().toString())
+        val text = BackupFormat.json.encodeToString(BackupData.serializer(), BackupData.of(ExportFixture.bundle())).lowercase()
+        assertFalse("aiquality" in text || "economy" in text, "the backup JSON mentions the choice")
     }
 
     @Test

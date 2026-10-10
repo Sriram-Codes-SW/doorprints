@@ -46,31 +46,51 @@ class GeminiClient(
     private val baseUrl: String = BASE_URL,
     /** Null turns the limit off (tests, whose virtual clock would end it at once). */
     private val timeoutMs: Long? = 60_000,
+    /** *AI speed and cost*: how long the model may think ([AiQuality.QUALITY] sends nothing, as before the setting existed). */
+    private val quality: AiQuality = AiQuality.DEFAULT,
 ) : JsonChatModel {
     companion object {
         const val MODEL = "gemini-3.5-flash"
         const val BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
-        const val MAX_OUTPUT_TOKENS = 2048
+
+        /**
+         * The answer budget. On Gemini 3.x the limit includes the hidden thinking tokens, so 2,048 could be spent before the
+         * JSON began and cut it off (S4b-BL-194); the visible answers use 130 to 350 tokens. As the server's default and the
+         * website's. The OpenAI-compatible and Anthropic limits stay 2,048 (their vectors pin them).
+         */
+        const val MAX_OUTPUT_TOKENS = 8192
         private val json = Json { ignoreUnknownKeys = true }
+
+        /**
+         * The body of one `generateContent` request (the `geminiRequest` vectors). With [AiQuality.QUALITY] there is no
+         * `thinkingConfig`; with Balanced or Economy `generationConfig.thinkingConfig.thinkingLevel` is `MEDIUM` or `LOW`
+         * (Gemini API reference, `GenerationConfig.thinkingConfig`; docs/ai/ai-design.md 13.2). It goes last, so the body for
+         * Quality is what it was before the setting existed, apart from the larger answer budget.
+         */
+        fun requestBody(system: String, user: String, schema: JsonObject, temperature: Double, quality: AiQuality = AiQuality.DEFAULT): JsonObject =
+            buildJsonObject {
+                put("systemInstruction", buildJsonObject { put("parts", buildJsonArray { add(buildJsonObject { put("text", system) }) }) })
+                put("contents", buildJsonArray {
+                    add(buildJsonObject {
+                        put("role", "user")
+                        put("parts", buildJsonArray { add(buildJsonObject { put("text", user) }) })
+                    })
+                })
+                put("generationConfig", buildJsonObject {
+                    put("temperature", temperature)
+                    put("maxOutputTokens", MAX_OUTPUT_TOKENS)
+                    put("responseMimeType", "application/json")
+                    put("responseSchema", schema)
+                    quality.thinkingLevel?.let { level ->
+                        put("thinkingConfig", buildJsonObject { put("thinkingLevel", level) })
+                    }
+                })
+            }
     }
 
     /** The model's JSON answer as text, for [schema] (an OpenAPI-style object schema). */
     override suspend fun generateJson(system: String, user: String, schema: JsonObject, temperature: Double): String {
-        val body = buildJsonObject {
-            put("systemInstruction", buildJsonObject { put("parts", buildJsonArray { add(buildJsonObject { put("text", system) }) }) })
-            put("contents", buildJsonArray {
-                add(buildJsonObject {
-                    put("role", "user")
-                    put("parts", buildJsonArray { add(buildJsonObject { put("text", user) }) })
-                })
-            })
-            put("generationConfig", buildJsonObject {
-                put("temperature", temperature)
-                put("maxOutputTokens", MAX_OUTPUT_TOKENS)
-                put("responseMimeType", "application/json")
-                put("responseSchema", schema)
-            })
-        }
+        val body = requestBody(system, user, schema, temperature, quality)
         val response = postAiJson(http, "$baseUrl/models/$model:generateContent", mapOf("x-goog-api-key" to apiKey), body, timeoutMs)
         val status = response.status
         val text = response.body

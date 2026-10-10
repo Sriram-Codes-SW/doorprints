@@ -101,7 +101,7 @@ object IosAppContainer {
             photoDir = iosDataDirectory() + "/photos",
             syncSoon = { syncRequests.trySend(Unit) },
             apiFor = { url, key -> ApiClient(url, key, http) },
-            geminiFor = { key -> app.doorprints.shared.ai.GeminiClient(http, key) },
+            geminiFor = { key, quality -> app.doorprints.shared.ai.GeminiClient(http, key, quality = quality) },
             openAiFor = { url, model, key -> app.doorprints.shared.ai.OpenAiCompatClient(http, url, model, key) },
             anthropicFor = { url, model, key -> app.doorprints.shared.ai.AnthropicClient(http, model, key, url) },
             // While Drive is in use it replaces the server for sync (docs/15 §1.3): the Drive pass finds its own backend

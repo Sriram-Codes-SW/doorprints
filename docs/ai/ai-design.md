@@ -49,6 +49,7 @@
 | v0.45   | 2026-10-09 | Claude (Code), engineer       | **13.2: the own-key Gemini request and the *AI speed and cost* setting** (S4b-BL-198 step 2, the website; [10](../10-sprint-log.md) v0.226, [03](../03-design.md) 0.104). Quality sends no `thinkingConfig`, Balanced `generationConfig.thinkingConfig.thinkingLevel` `MEDIUM`, Economy `LOW`, for the own-key Gemini adapter only (the field and its values confirmed in the Gemini API reference); hidden unless AI is on and the service is Gemini; the Gemini `maxOutputTokens` rises from 2,048 to 8,192; the vectors gain `geminiRequest`. |
 | v0.46   | 2026-10-10 | Claude (Code), engineer       | **5 and 6: the planner's fallback offers the houses nearest to the start, never far-away ones** (S4b-BL-194 item 3, [10](../10-sprint-log.md) v0.227). `VisitPlannerService.assemble` used to take the first `maxStops` houses the tools returned, in the order first seen, and only then order them by nearest neighbour; in the Vertex run 38005913774 plan-08 (start in Pune) made 5 tool calls, hit the budget and the fallback returned four Bengaluru houses. Now the fallback takes the houses in the running with usable coordinates, drops those farther than 50 km (straight line) from the start point, sorts the rest nearest first (equal distances by house id), keeps the nearest `maxStops` and orders them by nearest neighbour; with none left it returns no stops, `fallback: true` and the summary *No saved houses within reach of your start point were found.* The prompt, the tool-call budget, the golden set and the thresholds are unchanged, and plan-08 still expects `fallback: false`: this makes the degraded answer safe, it does not make the planner finish more often. Server only; the website's and the phones' own planners are listed in S4b-BL-199. |
 | v0.47   | 2026-10-10 | Claude (Code), engineer       | **5.3: the planner finishes at its tool limit instead of falling back** (S4b-BL-194 item 3, [10](../10-sprint-log.md) v0.228). Root cause of plan-08 (run 38005913774) and plan-02 (run 38035609864): each ended with the fifth `searchHouses` attempt (per-tool budget 4); Spring AI's advisor turned the limit exception into a refusal text, `plan()` could not read it as a plan and used the fallback. Now one wrap-up call without tools lets the model answer from what it found; a no-match request ends as an empty plan with `fallback: false`. Budgets, system prompt and parity vectors unchanged. **Not yet proven:** the proof is the next plan-only Vertex runs. |
+| v0.48   | 2026-10-10 | Claude (Code), engineer       | **13.2 on the phones** (S4b-BL-198 step 2, second pull request; [10](../10-sprint-log.md) v0.229, [03](../03-design.md) 0.105). The Kotlin `GeminiClient` (Android and iPhone) builds the vectors `geminiRequest` byte for byte, with `maxOutputTokens` 8,192; *AI speed and cost* in Settings > AI features, stored in the settings store, hidden unless AI is on, the own AI answers and the service is Gemini; the final measured numbers of four server golden-set runs (three at Economy, one at the default) replace the first run's. |
 
 Status: implemented in `backend/` (package `app.doorprints.server.ai`), **off by default**. Not yet compiled in this
 sandbox (no Maven Central access) — CI compiles and runs the tests. Provider: AI Studio by default, Vertex AI with
@@ -1158,7 +1159,7 @@ unchanged.
 Optional: Gemini "thinking" can be reduced with `SPRING_AI_OPENAI_CHAT_REASONING_EFFORT=low` (compat endpoint
 supports `reasoning_effort` [G1]); on Vertex with `SPRING_AI_GOOGLE_GENAI_CHAT_THINKING_LEVEL=LOW`. The manual *AI evals* workflow sets the right one for
 the golden-set run from its input `thinking_level` (`default` leaves the model's own level) and the scorecard header
-states it (S4b-BL-198). The website lets a person with their own Gemini key choose the same trade-off (13.2).
+states it (S4b-BL-198). The website and the phones let a person with their own Gemini key choose the same trade-off (13.2).
 
 ## 12. Connecting Claude Desktop / Cowork to the MCP server
 
@@ -1308,8 +1309,8 @@ No body. Response `{ "indexed": 42 }`. Admin/maintenance action (e.g. a button i
 
 ### 13.2 The own-key Gemini request and the *AI speed and cost* setting (S4b-BL-198 step 2)
 
-The website's own-key Gemini adapter (`GeminiChatModel`, `web/src/app/core/ai/on-device-ai.service.ts`; the phones' `GeminiClient`
-follows in the next pull request) posts this body to `generateContent` (the key in `x-goog-api-key`, never in the URL):
+The own-key Gemini adapter (the website's `GeminiChatModel`, `web/src/app/core/ai/on-device-ai.service.ts`, and the phones' `GeminiClient`,
+`android/shared/.../ai/GeminiClient.kt`, one Kotlin class for Android and iPhone) posts this body to `generateContent` (the key in `x-goog-api-key`, never in the URL):
 
 ```json
 {
@@ -1329,8 +1330,8 @@ follows in the next pull request) posts this body to `generateContent` (the key 
   sends **no** `thinkingConfig`, so the model thinks as it always did and nothing changes for anyone who does not touch the
   setting. Balanced sends `generationConfig.thinkingConfig.thinkingLevel = "MEDIUM"`, Economy `"LOW"`. The field is last in
   `generationConfig`; the exact bodies are the vectors `geminiRequest` in `docs/ai/evals/parity-vectors.json` (answer for each
-  choice, plan for Economy, the ping for Quality and Economy), checked by the website's `gemini-request.spec.ts`; the phones
-  will check the same file.
+  choice, plan for Economy, the ping for Quality and Economy), checked by the website's `gemini-request.spec.ts` and the phones' `AiProviderVectorsTest.geminiRequestMatchesTheVectorsForEveryCallAndSetting`
+  (`GeminiClient.requestBody`), which read the same file.
 - **Where it is confirmed.** The Gemini API reference for `generateContent`
   (<https://ai.google.dev/api/generate-content>, read 2026-10-09): `GenerationConfig.thinkingConfig` is a `ThinkingConfig` with
   `includeThoughts`, `thinkingBudget` and `thinkingLevel`; `ThinkingLevel` is `THINKING_LEVEL_UNSPECIFIED`, `MINIMAL`, `LOW`,
@@ -1340,21 +1341,30 @@ follows in the next pull request) posts this body to `generateContent` (the key 
   `gemini-3.5-flash` itself accepts `MEDIUM` (the guide's table of supported levels lists neighbouring models, not this one);
   `LOW` is the level the golden-set run measured on it. A request the model rejects would be read as *unavailable*, and
   *Test key* sends the chosen level so the person finds that out there.
-- **Why.** On Gemini 3.x the hidden thinking tokens are about three quarters of the output cost. Server golden set, Vertex,
-  `gemini-3.5-flash`: about 72,700 thinking tokens per full run at the default against about 23,000 at LOW, an estimated cost per
-  full run of about Rs 99 against about Rs 61 (38% less), and an average time per call of 5.3 s against 3.1 s (Ask), 5.1 s against 2.1 s
-  (Extract) and 11.7 s against 6.8 s (Plan), with no quality loss in the first LOW run (74 of 75 cases, injection resistance 1.00,
-  plan validity 1.00). The screen therefore says "about 40% cheaper and about twice as fast" for Economy, "in our tests".
+- **Why.** On Gemini 3.x the hidden thinking tokens are about three quarters of the output cost. Final measurement, four server
+  golden-set runs on Vertex, `gemini-3.5-flash`, 2026-10-09/10, `main` with the fixes (S4b-BL-194, #229): three runs at Economy
+  (`LOW`) scored 74, 75 and 75 of 75 cases, injection resistance 1.00 and plan validity 1.00 every time; the default run scored 74 of
+  75 and plan validity 0.90 (plan-08). Per full run the thinking tokens are about 82,600 (default) against about 23,000 (`LOW`) and the
+  estimated cost about Rs 116 against Rs 61 (47% less), at list prices of $1.50 per million input and $9.00 per million output
+  tokens (third-party price listings, thinking billed as output, about Rs 88 per dollar). The average time per call is 5.5 s against
+  3.1 s (Ask), 5.4 s against 2.1 s (Extract) and 18.2 s against 6.8 s (Plan). That is 47% cheaper and 1.8 to 2.7 times faster with no
+  quality loss, so the screen's "about 40% cheaper and about twice as fast" for Economy, "in our tests", is the conservative reading
+  and stays (the phones' Compose resources spell it "40 percent": `StringParityTest` refuses a bare % there).
 - **Only the own-key Gemini adapter.** The OpenAI-compatible and Anthropic adapters, and every other service (Groq, Ollama and the
   rest), are sent nothing for this setting (version 1) and the setting is not shown for them. A stored choice is kept, not used.
 - **Hidden unless it applies (owner, 2026-10-09).** The control is not rendered unless AI features are on, the person's own AI is
-  the one that answers and the service is Google Gemini.
-- **Storage.** `localStorage` `doorprints.ai-quality` = `quality` | `balanced` | `economy`; anything else reads as `quality`; never
-  in a backup, copy, sync or share file; *Remove key* and *Remove all data* delete it.
+  the one that answers and the service is Google Gemini. On the phones it sits in Settings > AI features, inside the own-AI form, so it
+  is composed only with the switch on, *Use my own AI on this phone* chosen and *Google Gemini* in the service list (`AiQualityGroup`,
+  test tag `ai-quality`); a radio group under a heading, each row a 48 dp target with the website's one line of help.
+- **Storage.** Website: `localStorage` `doorprints.ai-quality`. Phones: the settings store (Preferences DataStore) key `aiQuality`, a
+  plain preference beside `aiKind`; both hold `quality` | `balanced` | `economy`, and anything else reads as `quality`; never in a
+  backup, copy, sync or share file; *Remove key* deletes it (on the website *Remove all data* too; the phones have no such button: the
+  system's *Clear data* removes the whole store). `AiStore` builds the Gemini client with the stored choice, and the cached on-device
+  AI is rebuilt when the choice changes; for another service the choice is not passed on.
 - **The answer budget.** The Gemini call's `maxOutputTokens` rises from 2,048 to **8,192**. On Gemini 3.x the limit includes the thinking tokens, so a
   thinking-heavy prompt could spend 2,048 before the JSON began and cut the answer off; this is the website's side of the server bug
   fixed by raising `max-output-tokens` (section 10, S4b-BL-194). The OpenAI-compatible and Anthropic `max_tokens` stay at 2,048 (pinned
-  by their vectors).
+  by their vectors). The phones' `GeminiClient.MAX_OUTPUT_TOKENS` rises the same way.
 
 ## 14. Unverified / open items
 
