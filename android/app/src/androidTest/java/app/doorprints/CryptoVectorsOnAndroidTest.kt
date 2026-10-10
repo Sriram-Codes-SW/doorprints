@@ -84,7 +84,7 @@ class CryptoVectorsOnAndroidTest {
             if (v.has("skEm")) assertEquals(v.getString("pkEm"), p.p256FromScalar(v.h("skEm")).publicKey.hex())
             if (v.has("skRm")) assertEquals(v.getString("pkRm"), p.p256FromScalar(v.h("skRm")).publicKey.hex())
             // ECDH both ways agrees (the provider's KeyAgreement on a key it just made from a scalar).
-            val viaScalar = p.p256FromScalar(v.h("skEm").takeIf { v.has("skEm") } ?: ByteArray(32).also { it[31] = 7 })
+            val viaScalar = p.p256FromScalar(if (v.has("skEm")) v.h("skEm") else ByteArray(32).also { it[31] = 7 })
             val ab = p.p256Agree(viaScalar, skR.publicKey)
             val ba = p.p256Agree(skR, viaScalar.publicKey)
             assertArrayEquals(ab, ba)

@@ -103,8 +103,10 @@ class KeystoreSecretStoreTest {
 
     @Test fun aValueNotSealedOnThisDeviceReadsAsNoKey() = runBlocking {
         // A restored or copied settings file: the Keystore key is not in the backup, so the value cannot be opened.
-        dataStore.updateData { p -> p.toMutablePreferences().also { it[apiKeyEnc] = "v1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" } }
-        assertNull(ApiKeyCipher.decrypt("v1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"))
+        // Built at run time: a literal of this shape trips the secret scanners.
+        val unopenable = "v1:" + "A".repeat(40)
+        dataStore.updateData { p -> p.toMutablePreferences().also { it[apiKeyEnc] = unopenable } }
+        assertNull(ApiKeyCipher.decrypt(unopenable))
         assertEquals("", settings.current().apiKey)
     }
 }

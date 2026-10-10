@@ -561,11 +561,11 @@ class AiSettingsSectionTest {
         // The existing disclosure stays, and the sentences are one block after it in reading order.
         waitFor("Contact names and phone numbers saved with a house are left out")
         compose.onNodeWithTag(AI_WORTH_TAG).assertExists()
-        // Turning AI on keeps them and shows the Test button as before.
+        // Turning AI on keeps them and shows the service form (its Save button; Test appears only once a key is saved).
         runBlocking { store.saveAiFeatures(true); store.saveAiProvider(AiProviderChoice.DEVICE) }
         waitFor("AI service")
         waitFor(worth)
-        waitFor("Test")
+        waitFor("Save")
     }
 
     @Test fun theGuideLinkIsOneTapTargetWithAnAccessibleNameThatStartsWithItsLabel() {
