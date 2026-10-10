@@ -65,6 +65,7 @@ import app.doorprints.shared.ai.AiProviderConfig
 import app.doorprints.shared.ai.AiQuality
 import app.doorprints.shared.api.ApiException
 import app.doorprints.ui.AI_QUALITY_TAG
+import app.doorprints.ui.AI_WORTH_TAG
 import app.doorprints.ui.AiDisclosure
 import app.doorprints.ui.AiSettingsSection
 import app.doorprints.ui.AppServices
@@ -539,6 +540,39 @@ class AiSettingsSectionTest {
         waitFor("AI speed and cost")
         group().performScrollTo().assertExists()
         compose.onNodeWithText("Economy").assertIsSelected()
+    }
+
+    // --- S4b-BL-215: the three sentences ----------------------------------------------------------------------
+
+    @Test fun threeSentencesAndTheGuideLinkShowWithAiOffAndOn() {
+        runBlocking { store.saveAiFeatures(false) }
+        provide {
+            val s by store.settings.collectAsState(AppSettings())
+            val off by real.aiOff.collectAsState()
+            Column(Modifier.verticalScroll(rememberScrollState())) { AiSettingsSection(s, off) }
+        }
+        waitFor("AI features")
+        val worth = "knows nothing about the market, the law or a locality"
+        waitFor(worth)
+        waitFor("about a rupee or a few per use")
+        waitFor("Google may read what you send")
+        waitFor("A pasted ad is sent as pasted")
+        waitFor("Is AI worth it for me? Read the guide")
+        // The existing disclosure stays, and the sentences are one block after it in reading order.
+        waitFor("Contact names and phone numbers saved with a house are left out")
+        compose.onNodeWithTag(AI_WORTH_TAG).assertExists()
+        // Turning AI on keeps them and shows the Test button as before.
+        runBlocking { store.saveAiFeatures(true); store.saveAiProvider(AiProviderChoice.DEVICE) }
+        waitFor("AI service")
+        waitFor(worth)
+        waitFor("Test")
+    }
+
+    @Test fun theGuideLinkIsOneTapTargetWithAnAccessibleNameThatStartsWithItsLabel() {
+        show()
+        val link = compose.onNode(hasContentDescription("Is AI worth it for me? Opens the user guide in the browser"))
+        link.performScrollTo().assertHeightIsAtLeast(48.dp)
+        compose.onNodeWithText("Is AI worth it for me? Read the guide").assertExists()
     }
 
     @Test fun removeKeyForgetsTheChoice() {

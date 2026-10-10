@@ -1672,4 +1672,10 @@ export const te: Dict = {
   'connect.aiQualityBalancedHint': 'మధ్యస్థ ఆలోచన: వేగం, ఖర్చులో Quality, Economy మధ్య.',
   'connect.aiQualityEconomy': 'Economy (పొదుపు)',
   'connect.aiQualityEconomyHint': 'మా పరీక్షల్లో సుమారు 40% చౌక, సుమారు రెట్టింపు వేగం; జవాబులు అంతే బాగున్నాయి.',
+  // S4b-BL-215 (2026-10-10): three honest sentences on the AI card, the words of the guide's 'Is AI worth it for me?'. Under review (owner rule: hi/ta/te ship marked under review).
+  'connect.aiWorth': 'AI మీరు సేవ్ చేసిన మీ సొంత ఇళ్లు, నోట్స్‌ను చదువుతుంది. మార్కెట్, చట్టం లేదా ఒక ప్రాంతం గురించి దానికి ఏమీ తెలియదు; Doorprints లోని మిగతా భాగం అది లేకుండా కూడా పనిచేస్తుంది.',
+  'connect.aiCost': 'చెల్లింపు కీతో ప్రతి వినియోగానికి సుమారు ఒక రూపాయి లేదా కొన్ని రూపాయలు అవుతుంది. Google ఉచిత స్థాయి ఉచితమే, కానీ రోజువారీ పరిమితి ఉంది; మీరు పంపేదాన్ని Google చదవవచ్చు.',
+  'connect.aiSends': 'మీ ప్రశ్న, సరిపోయే ఇంటి నోట్స్ మీరు ఎంచుకున్న సేవకు వెళ్తాయి; సేవ్ చేసిన కాంటాక్ట్ పేర్లు, ఫోన్ నంబర్లు, ఈమెయిళ్లను ముందుగా, మా వల్ల అయినంత వరకు, మారుస్తాము. పేస్ట్ చేసిన ప్రకటన పేస్ట్ చేసినట్లే పంపబడుతుంది.',
+  'connect.aiGuide': 'AI నాకు ఉపయోగమా? గైడ్ చదవండి',
+  'connect.aiGuideAria': 'AI నాకు ఉపయోగమా? గైడ్ చదవండి (కొత్త ట్యాబ్‌లో తెరుచుకుంటుంది)',
 };
