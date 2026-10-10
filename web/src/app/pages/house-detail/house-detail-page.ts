@@ -88,7 +88,7 @@ import { AI_MAX_LISTING_CHARS, AiService } from '../../core/ai.service';
 import { TPipe } from '../../i18n/t.pipe';
 import { UnsavedChanges } from '../../core/unsaved-changes.service';
 import { COUNTRY_VIEW, loadStartPoint } from '../../shared/map-center';
-import { HouseListingFill } from './house-listing-fill';
+import { HouseListingCard, HouseListingFill } from './house-listing-card';
 import { HouseLocation } from './house-location';
 import { clearDraft, draftKey, readDraft, writeDraft } from './draft-store';
 import { type BackKey, HOUSE_BACK_STATE, backTarget, exitAfterRemoval } from './back-target';
@@ -129,7 +129,7 @@ const DRAFT_SAVE_MS = 500;
     HouseViewingsCard,
     HouseAreaNotesCard,
     HouseDistancesCard,
-    HouseMoveInCard,
+    HouseMoveInCard, HouseListingCard,
     HouseCheckCard,
     HouseWalksCard,
     PhotoMetaEditor,
@@ -159,11 +159,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
 
   /** "Fill in from listing text" (AI, new houses only; hidden unless the server has AI enabled) (house-listing-fill.ts). */
   protected readonly listing = new HouseListingFill({
-    ai: this.ai,
-    i18n: this.i18n,
-    announcer: this.announcer,
-    draft: () => this.draft(),
-    patch: (changes) => this.patch(changes),
+    ai: this.ai, i18n: this.i18n, announcer: this.announcer, draft: () => this.draft(), patch: (changes) => this.patch(changes),
   });
 
   protected readonly draft = signal<HouseDto | null>(null);
@@ -683,6 +679,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
    */
   protected markDirty(): void {
     this.dirty.set(true);
+    this.listing.touched(); // an edit may take a "from the listing" mark away (S4b-BL-238)
     this.justSaved.set(false);
     this.leaveApproved = false;
     if (this.nameError() && this.draft()?.label.trim()) {

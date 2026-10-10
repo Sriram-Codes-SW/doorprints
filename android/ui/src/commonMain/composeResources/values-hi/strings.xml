@@ -459,6 +459,11 @@
     <string name="house_paste_filled">भरा गया: %1$s। इन्हें जाँचें, फिर सहेजें।</string>
     <string name="house_paste_kept">आपका लिखा हुआ रखा गया: %1$s।</string>
     <string name="house_paste_nothing">लिस्टिंग में भरने के लिए कुछ नया नहीं था।</string>
+    <!-- S4b-BL-238 (2026-10-10): Undo fill, the marks and the price check. Under review. -->
+    <string name="house_paste_undo">भरना पूर्ववत करें</string>
+    <string name="house_paste_undone">भरना पूर्ववत किया गया। फ़ॉर्म पहले जैसा है।</string>
+    <string name="house_paste_from_listing">लिस्टिंग से, आपने अभी जाँचा नहीं: %1$s</string>
+    <string name="house_paste_price_differs">टेक्स्ट में %1$s लिखा है, पर AI ने %2$s पढ़ा। कृपया कीमत जाँच लें।</string>
     <string name="house_photo_open">बड़ा करके देखें</string>
     <string name="house_photo_position">%2$d में से तस्वीर %1$d</string>
     <string name="house_photo_viewer">तस्वीर दर्शक</string>

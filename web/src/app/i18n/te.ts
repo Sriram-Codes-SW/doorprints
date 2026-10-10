@@ -568,6 +568,12 @@ export const te: Dict = {
   'house.addressNothing': 'చిరునామాకు చేర్చడానికి మ్యాప్‌లో కొత్తగా ఏమీ లేదు.',
   'listingFill.kept': 'మీ {field} ఉంచాం; లిస్టింగ్‌లో “{value}” అని ఉంది.',
   'listingFill.doneKept': 'లిస్టింగ్ నుండి ఫారం నింపబడింది. మీరు టైప్ చేసిన విలువలు ఉంచాం: {n}. సేవ్ చేసే ముందు ఫారం తనిఖీ చేయండి.',
+  // S4b-BL-238 (2026-10-10): Undo fill, the marks and the price check. Under review (owner rule: hi/ta/te ship marked under review).
+  'listingFill.undo': 'నింపడాన్ని రద్దు చేయి',
+  'listingFill.undoHint': 'లిస్టింగ్ చదవడానికి ముందు ఉన్నట్లుగా ఫారంను తిరిగి పెడుతుంది. ఏదీ సేవ్ కాలేదు.',
+  'listingFill.undone': 'నింపడం రద్దు అయింది. ఫారం ముందు ఉన్నట్లే ఉంది.',
+  'listingFill.fromListing': 'లిస్టింగ్ నుండి, మీరు ఇంకా తనిఖీ చేయలేదు:',
+  'listingFill.priceDiffers': 'టెక్స్ట్‌లో {text} ఉంది, కానీ AI {ai} అని చదివింది. దయచేసి ధరను తనిఖీ చేయండి.',
   'confirm.leaveUploading': 'ఫోటోలు ఇంకా చేర్చబడుతున్నాయి. ఇప్పుడు వెళ్తే అవన్నీ చేరాయో లేదో చూడలేరు. అయినా వెళ్లాలా?',
   'confirm.leaveAnyway': 'అయినా వెళ్లండి',
   'confirm.leaveShared': 'ఈ పేజీ వదిలి వెళ్లాలా? ఇక్కడ మార్చిన టెక్స్ట్ పోతుంది.',

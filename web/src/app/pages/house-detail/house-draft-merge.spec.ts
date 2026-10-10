@@ -19,7 +19,7 @@
 import { describe, expect, it } from 'vitest';
 import type { HouseDraft } from '../../core/ai.service';
 import { HouseDto, newHouse } from '../../core/models';
-import { addressFill, mergeListingDraft } from './house-draft-merge';
+import { addressFill, mergeListingDraft, withListingBlock } from './house-draft-merge';
 import { DRAFT_PREFIX, draftKey, parseStoredDraft } from './draft-store';
 
 function draft(partial: Partial<HouseDraft>): HouseDraft {
@@ -82,9 +82,22 @@ describe('"Fill in from listing text"', () => {
     expect(typed.kept).toEqual([{ field: 'priceType', incoming: 'SALE' }]);
   });
 
-  it('adds the description and amenities to the notes without replacing them', () => {
+  it('adds the description and amenities to the notes as a marked block, after what the person wrote', () => {
     const result = mergeListingDraft(form({ notes: 'Owner is friendly' }), draft({ notes: 'Semi-furnished', amenities: ['Lift', 'Gym'] }));
-    expect(result.changes.notes).toBe('Owner is friendly\nSemi-furnished\nLift, Gym');
+    expect(result.changes.notes).toBe('Owner is friendly\n--- from listing ---\nSemi-furnished\nLift, Gym\n--- end of listing ---');
+  });
+
+  it('replaces the block on a second fill instead of appending it, and leaves the notes around it alone (S4b-BL-238)', () => {
+    const once = mergeListingDraft(form({ notes: 'Owner is friendly' }), draft({ notes: 'Semi-furnished', amenities: ['Lift'] }));
+    const notesAfterOnce = once.changes.notes!;
+    const again = mergeListingDraft(form({ notes: notesAfterOnce }), draft({ notes: 'Semi-furnished', amenities: ['Lift'] }));
+    expect(again.changes.notes).toBeUndefined();
+    const edited = mergeListingDraft(form({ notes: `${notesAfterOnce}\nCalled on Monday` }), draft({ notes: 'Fully furnished', amenities: ['Lift', 'Gym'] }));
+    expect(edited.changes.notes).toBe('Owner is friendly\n--- from listing ---\nFully furnished\nLift, Gym\n--- end of listing ---\nCalled on Monday');
+    // A block whose end line the person deleted runs to the end of the notes.
+    expect(withListingBlock('Mine\n--- from listing ---\nold text', 'new')).toBe('Mine\n--- from listing ---\nnew\n--- end of listing ---');
+    expect(withListingBlock(null, 'new')).toBe('--- from listing ---\nnew\n--- end of listing ---');
+    expect(withListingBlock('Mine\n--- from listing ---\nold\n--- end of listing ---', '')).toBe('Mine');
   });
 });
 

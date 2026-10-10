@@ -458,6 +458,11 @@
     <string name="house_paste_filled">Filled in: %1$s. Check them, then save.</string>
     <string name="house_paste_kept">Kept what you had typed for: %1$s.</string>
     <string name="house_paste_nothing">The listing had nothing new to fill in.</string>
+    <!-- S4b-BL-238 (2026-10-10): Undo fill, the "from the listing" marks and the price check. -->
+    <string name="house_paste_undo">Undo fill</string>
+    <string name="house_paste_undone">Fill undone. The form is as it was before.</string>
+    <string name="house_paste_from_listing">From the listing, not yet checked by you: %1$s</string>
+    <string name="house_paste_price_differs">The text says %1$s but the AI read %2$s. Please check the price.</string>
     <string name="house_photo_open">open larger view</string>
     <string name="house_photo_position">Photo %1$d of %2$d</string>
     <string name="house_photo_viewer">Photo viewer</string>

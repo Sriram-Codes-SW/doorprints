@@ -146,12 +146,70 @@ describe('HouseDetailPage: the listing card (Fill in the form)', () => {
     expect(submit(host).getAttribute('aria-disabled')).toBeNull();
   });
 
-  it('appends the listing\'s notes and amenities to the notes', async () => {
+  it('puts the listing\'s notes and amenities in the notes as one marked block, and a second fill replaces it (S4b-BL-238)', async () => {
     const { fixture, host, page } = await open(() => of({ ...BLANK, notes: 'Lift, near the ferry', amenities: ['Parking', 'Gym'] }));
     await type(fixture, '#listing-text', 'a listing');
     submit(host).click();
     await settled(fixture);
-    expect(page.draft().notes).toBe('Lift, near the ferry\nParking, Gym');
+    expect(page.draft().notes).toBe('--- from listing ---\nLift, near the ferry\nParking, Gym\n--- end of listing ---');
+    submit(host).click();
+    await settled(fixture);
+    expect(page.draft().notes).toBe('--- from listing ---\nLift, near the ferry\nParking, Gym\n--- end of listing ---');
+  });
+
+  it('offers Undo fill, which puts the form back as it was, announces it and moves focus to the fill button (S4b-BL-238)', async () => {
+    const { fixture, host, page, announce } = await open(() => of({ ...BLANK, label: 'Sea view 2BHK', price: 32000, priceType: 'RENT', notes: 'Lift' }));
+    await type(fixture, '#house-name', 'My own name');
+    expect(host.querySelector('.listing-undo')).toBeNull();
+    await type(fixture, '#listing-text', 'a listing');
+    submit(host).click();
+    await settled(fixture);
+    expect(page.draft()).toMatchObject({ label: 'My own name', price: 32000, priceType: 'RENT' });
+    const undo = host.querySelector<HTMLButtonElement>('.listing-undo')!;
+    expect(undo.textContent?.trim()).toBe('Undo fill');
+    expect(host.querySelector('#listing-undo-hint')?.textContent).toContain('Nothing has been saved');
+    undo.click();
+    await settled(fixture);
+    expect(page.draft()).toMatchObject({ label: 'My own name', price: null, notes: null });
+    expect(host.querySelector('.listing-undo')).toBeNull();
+    expect(host.querySelector('.listing-fill .warnings')).toBeNull();
+    expect(announce).toHaveBeenLastCalledWith({ key: 'listingFill.undone' });
+    expect(document.activeElement?.id).toBe('listing-fill-submit');
+  });
+
+  it('marks the fields the fill wrote, and a mark goes when the person edits that field (S4b-BL-238)', async () => {
+    const { fixture, host } = await open(() => of({ ...BLANK, label: 'Sea view 2BHK', locality: 'Fort Kochi', price: 32000 }));
+    expect(host.querySelector('.listing-marks')).toBeNull();
+    await type(fixture, '#listing-text', 'a listing');
+    submit(host).click();
+    await settled(fixture);
+    const chips = () => [...host.querySelectorAll('.listing-marks .chip')].map((c) => c.textContent?.trim());
+    expect(host.querySelector('.listing-marks')?.textContent).toContain('From the listing, not yet checked by you:');
+    expect(chips()).toEqual(['Name', 'Locality', 'Price (₹)']);
+    // A real keystroke's input event bubbles to the form's (input)="markDirty()"; the type helper's does not.
+    const name = host.querySelector<HTMLInputElement>('#house-name')!;
+    name.value = 'Checked name';
+    name.dispatchEvent(new Event('input', { bubbles: true }));
+    await settled(fixture);
+    expect(chips()).toEqual(['Locality', 'Price (₹)']);
+  });
+
+  it('warns when the no-AI reading of the price differs from the model\'s, with both figures (S4b-BL-238)', async () => {
+    const { fixture, host } = await open(() => of({ ...BLANK, price: 2500, priceType: 'RENT' }));
+    await type(fixture, '#listing-text', '3BHK Satellite, Ahmedabad. Rent Rs 45,000, maintenance 2,500 extra.');
+    submit(host).click();
+    await settled(fixture);
+    expect(host.querySelector('.listing-fill .warnings .price-differs')?.textContent?.replace(/\s+/g, ' ').trim())
+      .toBe('The text says ₹45,000 but the AI read ₹2,500. Please check the price.');
+  });
+
+  it('gives no price warning when the no-AI reading and the model agree (S4b-BL-238)', async () => {
+    const { fixture, host } = await open(() => of({ ...BLANK, price: 45000, priceType: 'RENT' }));
+    await type(fixture, '#listing-text', '3BHK Satellite, Ahmedabad. Rent Rs 45,000, maintenance 2,500 extra.');
+    submit(host).click();
+    await settled(fixture);
+    expect(host.querySelector('.price-differs')).toBeNull();
+    expect(host.querySelector('.listing-fill .warnings')).toBeNull();
   });
 
   it('keeps what was typed, names the listing\'s value and announces the count', async () => {

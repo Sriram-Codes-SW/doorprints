@@ -104,9 +104,56 @@ class HouseFormRulesTest {
         assertEquals("Ravi", merged.house.contactName)
         assertEquals(25_000L, merged.house.price)
         assertEquals("+91 98450 00000", merged.house.contactPhone)
-        assertEquals("lift, parking", merged.house.notes)
+        assertEquals("--- from listing ---\nlift, parking\n--- end of listing ---", merged.house.notes)
         assertEquals(listOf(ListingField.PRICE, ListingField.PHONE, ListingField.NOTES), merged.filled)
         assertEquals(listOf(ListingField.NAME, ListingField.CONTACT), merged.kept)
+    }
+
+    @Test
+    fun aSecondFillReplacesTheListingBlockInTheNotesAndLeavesThePersonsNotesAlone() {
+        val listing = HouseDraftDto(notes = "Semi furnished", amenities = listOf("lift"))
+        val once = mergeListing(house(notes = "Owner is friendly"), listing, labelIsPlaceholder = true)
+        assertEquals("Owner is friendly\n--- from listing ---\nSemi furnished\nlift\n--- end of listing ---", once.house.notes)
+        assertEquals(listOf(ListingField.NOTES), once.filled)
+        val again = mergeListing(once.house, listing, labelIsPlaceholder = true)
+        assertEquals(once.house.notes, again.house.notes)
+        assertTrue(again.filled.isEmpty())
+        val edited = mergeListing(
+            once.house.copy(notes = once.house.notes + "\nCalled on Monday"),
+            HouseDraftDto(notes = "Fully furnished", amenities = listOf("lift", "gym")),
+            labelIsPlaceholder = true,
+        )
+        assertEquals(
+            "Owner is friendly\n--- from listing ---\nFully furnished\nlift, gym\n--- end of listing ---\nCalled on Monday",
+            edited.house.notes,
+        )
+        // A block whose end line the person deleted runs to the end of the notes; a blank block removes it.
+        assertEquals("Mine\n--- from listing ---\nnew\n--- end of listing ---", withListingBlock("Mine\n--- from listing ---\nold text", "new"))
+        assertEquals("--- from listing ---\nnew\n--- end of listing ---", withListingBlock(null, "new"))
+        assertEquals("Mine", withListingBlock("Mine\n--- from listing ---\nold\n--- end of listing ---", ""))
+    }
+
+    @Test
+    fun aMarkStaysWhileTheFilledFieldIsUnchangedAndGoesWhenItIsEdited() {
+        val merged = mergeListing(
+            house(), HouseDraftDto(label = "Sea view 2BHK", locality = "Fort Kochi", price = 32_000, notes = "Lift"),
+            labelIsPlaceholder = true,
+        )
+        // Which fields, not their order (the merge lists them in its own order; the notes carry their own block, no mark).
+        assertEquals(setOf(ListingField.NAME, ListingField.LOCALITY, ListingField.PRICE), remainingMarks(merged, merged.house).toSet())
+        val edited = merged.house.copy(label = "Checked name")
+        assertEquals(setOf(ListingField.LOCALITY, ListingField.PRICE), remainingMarks(merged, edited).toSet())
+        assertTrue(remainingMarks(merged, edited.copy(locality = "Mattancherry", price = 30_000)).isEmpty())
+    }
+
+    @Test
+    fun theRegexPriceIsComparedWithTheModelsOnTheSameTextsAsTheWebsite() {
+        assertEquals(45_000L to 2_500L, priceDisagreement("3BHK Satellite, Ahmedabad. Rent Rs 45,000, maintenance 2,500 extra.", HouseDraftDto(price = 2_500)))
+        assertEquals(32_000L to 100_000L, priceDisagreement("2BHK Kothrud, rent ₹32,000, deposit 1 lakh.", HouseDraftDto(price = 100_000)))
+        assertNull(priceDisagreement("2BHK Adyar, rent Rs 28,000, advance 10 months.", HouseDraftDto(price = 28_000)))
+        assertNull(priceDisagreement("Ballygunge 2BHK for sale, price on request.", HouseDraftDto(price = 11_000_000)))
+        assertNull(priceDisagreement("2BHK Adyar, rent Rs 28,000.", HouseDraftDto(price = null)))
+        assertNull(priceDisagreement("   ", HouseDraftDto(price = 28_000)))
     }
 
     @Test
