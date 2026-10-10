@@ -73,9 +73,32 @@ function isEmpty(v: FieldValue): boolean {
 }
 
 /** Whether two values are equal; text ignores case and surrounding spaces. */
-function same(a: FieldValue, b: FieldValue): boolean {
+export function same(a: FieldValue, b: FieldValue): boolean {
   if (typeof a === 'string' && typeof b === 'string') return a.trim().toLowerCase() === b.trim().toLowerCase();
   return a === b;
+}
+
+/**
+ * The lines that bracket what a listing fill wrote into the notes (S4b-BL-238): a second fill replaces that block instead
+ * of appending another, and the person's own notes around it are never touched. The same two lines on the phones
+ * (`HouseFormRules.kt`), so a house synced between them keeps one block.
+ */
+export const LISTING_NOTES_START = '--- from listing ---';
+export const LISTING_NOTES_END = '--- end of listing ---';
+
+/**
+ * `current` notes with the listing block set to `block`: an existing block (from the start line to the end line, or to
+ * the end of the notes when the end line is missing) is replaced, otherwise the block is appended after the person's
+ * notes. An empty `block` removes the block. Idempotent: the same block twice gives the same notes.
+ */
+export function withListingBlock(current: string | null | undefined, block: string): string {
+  const notes = current ?? '';
+  const start = notes.indexOf(LISTING_NOTES_START);
+  const wrapped = block.trim() ? `${LISTING_NOTES_START}\n${block.trim()}\n${LISTING_NOTES_END}` : '';
+  if (start < 0) return [notes.trim(), wrapped].filter((x) => x).join('\n');
+  const endAt = notes.indexOf(LISTING_NOTES_END, start);
+  const after = endAt < 0 ? '' : notes.slice(endAt + LISTING_NOTES_END.length);
+  return [notes.slice(0, start).trim(), wrapped, after.trim()].filter((x) => x).join('\n');
 }
 
 /**
@@ -84,7 +107,8 @@ function same(a: FieldValue, b: FieldValue): boolean {
  * value is reported in `kept`, so the page can say "Kept your Name; the listing says …".
  *
  * `priceType` counts as empty while there is no price yet: a new form starts on "Rent", which is a default, not a
- * choice. The listing's description and amenities are appended to the notes, never replacing them.
+ * choice. The listing's description and amenities go into the notes as one marked block ({@link withListingBlock}),
+ * after the person's own notes; a second fill replaces that block, so running Extract twice never duplicates text.
  */
 export function mergeListingDraft(current: HouseDto, draft: HouseDraft): FillResult {
   const changes: Partial<HouseDto> = {};
@@ -111,11 +135,12 @@ export function mergeListingDraft(current: HouseDto, draft: HouseDraft): FillRes
   consider('contactName', draft.contactName, isEmpty(current.contactName));
   consider('contactPhone', draft.contactPhone, isEmpty(current.contactPhone));
   consider('listingUrl', draft.listingUrl, isEmpty(current.listingUrl));
-  const extra = [draft.notes, draft.amenities?.length ? draft.amenities.join(', ') : null].filter(
-    (x): x is string => !!x && !!x.trim() && !(current.notes ?? '').includes(x.trim()),
-  );
-  if (extra.length > 0) {
-    changes.notes = [current.notes, ...extra].filter((x): x is string => !!x && !!x.trim()).join('\n');
+  const block = [draft.notes, draft.amenities?.length ? draft.amenities.join(', ') : null]
+    .filter((x): x is string => !!x && !!x.trim())
+    .join('\n');
+  if (block) {
+    const notes = withListingBlock(current.notes, block);
+    if (notes !== (current.notes ?? '')) changes.notes = notes;
   }
   return { changes, filled, kept };
 }

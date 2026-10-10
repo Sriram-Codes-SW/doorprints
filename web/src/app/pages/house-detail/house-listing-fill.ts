@@ -22,7 +22,7 @@
 // `house-detail-page.ts` because three readers share it: the listing card of the template, the page's arrival (which
 // puts a shared text in the box and applies the parser's draft) and the page's destruction (which ends a read in
 // flight). The page owns the draft; this changes it only through `patch`.
-import { signal } from '@angular/core';
+import { computed, signal } from '@angular/core';
 import type { Subscription } from 'rxjs';
 import { AI_MAX_LISTING_CHARS, aiErrorMsg } from '../../core/ai.service';
 import type { AiService, HouseDraft } from '../../core/ai.service';
@@ -32,8 +32,18 @@ import type { HouseDto } from '../../core/models';
 import type { Msg, TranslationService } from '../../i18n/translation.service';
 import { runResult } from '../../shared/run-result';
 import type { RunResult } from '../../shared/run-result';
-import { FIELD_LABEL, mergeListingDraft } from './house-draft-merge';
+import { priceDisagreement } from '../../shared/listing-price-check';
+import { FIELD_LABEL, mergeListingDraft, same } from './house-draft-merge';
 import type { FillField } from './house-draft-merge';
+
+/** A field the last fill wrote, with the value it wrote: the "from the listing" mark stays while the field still holds it. */
+export interface FillMark {
+  field: FillField;
+  value: string | number;
+}
+
+/** The fields a fill may change, for the snapshot *Undo fill* restores. */
+const SNAPSHOT_FIELDS: ReadonlyArray<FillField | 'notes'> = [...(Object.keys(FIELD_LABEL) as FillField[]), 'notes'];
 
 /** What the listing card of the house page needs from the page. */
 export interface HouseListingFillDeps {
@@ -62,6 +72,20 @@ export class HouseListingFill {
    * node in its live region and is read again (web UX gate R9).
    */
   readonly error = signal<RunResult<Msg> | null>(null);
+  /**
+   * The form as it was before the last fill (S4b-BL-238): *Undo fill* writes these values back, typed fields included,
+   * and then disappears. Null when there is nothing to undo.
+   */
+  readonly before = signal<Partial<HouseDto> | null>(null);
+  /** What the last fill wrote, for the "from the listing" marks; a mark goes when its field is edited. */
+  private readonly written = signal<FillMark[]>([]);
+  /** The marks still true of the form: the fields the fill wrote whose value the person has not changed since. */
+  readonly marks = computed(() => {
+    const d = this.deps.draft();
+    return d ? this.written().filter((m) => same(d[m.field] as string | number | null | undefined, m.value)) : [];
+  });
+  /** The regex-versus-model price warning of the last fill (S4b-BL-238), shown with the listing's own warnings. */
+  readonly priceWarning = signal<Msg | null>(null);
   private cutFor = '';
   private cutOfText = cutListing('', AI_MAX_LISTING_CHARS);
   /** The read in flight: leaving the page ends it, so its late result fills no form and announces nothing. */
@@ -105,6 +129,11 @@ export class HouseListingFill {
         this.error.set(null);
         this.apply(draft);
         this.warnings.set(draft.warnings ?? []);
+        // Zero-cost second opinion on the one high-stakes field: the no-AI parser's price against the model's.
+        const differs = priceDisagreement(text, draft);
+        this.priceWarning.set(
+          differs ? { key: 'listingFill.priceDiffers', params: { text: this.deps.i18n.price(differs.text, null), ai: this.deps.i18n.price(differs.ai, null) } } : null,
+        );
         this.filling.set(false);
         this.deps.announcer.announce({
           key: this.kept().length > 0 ? 'listingFill.doneKept' : 'listingFill.done',
@@ -128,6 +157,11 @@ export class HouseListingFill {
     const d = this.deps.draft();
     if (!d) return;
     const result = mergeListingDraft(d, a);
+    // The snapshot for Undo fill is the form before this fill, the fields a fill can touch (S4b-BL-238).
+    const before: Partial<HouseDto> = {};
+    for (const f of SNAPSHOT_FIELDS) (before as Record<string, unknown>)[f] = d[f] ?? null;
+    this.before.set(before);
+    this.written.set(result.filled.map((field) => ({ field, value: result.changes[field] as string | number })));
     this.deps.patch(result.changes);
     this.kept.set(
       result.kept.map((k) => ({
@@ -135,6 +169,29 @@ export class HouseListingFill {
         params: { field: { key: FIELD_LABEL[k.field] }, value: this.shown(k.field, k.incoming) },
       })),
     );
+  }
+
+  /**
+   * *Undo fill* (S4b-BL-238): puts back the form as it was before the last fill (every field a fill can write, the notes
+   * included), clears the marks and the fill's messages, announces it, and moves focus to the fill button so the person
+   * is where they were. Nothing is saved by either the fill or the undo.
+   */
+  undo(): void {
+    const before = this.before();
+    if (!before) return;
+    this.deps.patch(before);
+    this.before.set(null);
+    this.written.set([]);
+    this.kept.set([]);
+    this.warnings.set([]);
+    this.priceWarning.set(null);
+    this.deps.announcer.announce({ key: 'listingFill.undone' });
+    document.getElementById('listing-fill-submit')?.focus();
+  }
+
+  /** The names of the fields still carrying a "from the listing" mark, as one translated list. */
+  markNames(): Msg[] {
+    return this.marks().map((m) => ({ key: FIELD_LABEL[m.field] }));
   }
 
   /** Ends the read in flight (the page is going away). */
