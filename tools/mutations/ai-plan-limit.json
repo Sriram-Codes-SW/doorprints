@@ -1,0 +1,116 @@
+{
+  "spec": "backend/src/test/java/app/doorprints/server/ai/agent/VisitPlannerLimitTest.java",
+  "maven": [
+    "-Dtest=VisitPlannerLimitTest,VisitPlannerAssembleTest"
+  ],
+  "mutations": [
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerService.java",
+      "find": "if (limitWatch.hit && !tools.calls().isEmpty()) {",
+      "replace": "if (false && !tools.calls().isEmpty()) {",
+      "expect": "theFifthSearchHousesAttemptLeadsToAFinalPlanNotTheFallback"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerService.java",
+      "find": "                hit = true;",
+      "replace": "                hit = false;",
+      "expect": "aRequestThatMatchesNothingGetsAnEmptyPlanWithTheModelsHonestSummaryNotAFallback"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerService.java",
+      "find": "if (limitWatch.hit && !tools.calls().isEmpty()) {",
+      "replace": "if (!limitWatch.hit && !tools.calls().isEmpty()) {",
+      "expect": "theFifthSearchHousesAttemptLeadsToAFinalPlanNotTheFallback"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerService.java",
+      "find": "if (limitWatch.hit && !tools.calls().isEmpty()) {",
+      "replace": "if (!tools.calls().isEmpty()) {",
+      "expect": "aFailureThatIsNotTheLimitFallsBackAsBeforeWithoutAWrapUpCall"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerService.java",
+      "find": "                if (plan == null && tools.seen().isEmpty()) throw new AiUnavailableException(\"Visit planning failed\", e);\n            } else {",
+      "replace": "            } else {",
+      "expect": "aFailedWrapUpWithNoHouseFoundIsStillUnavailable"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerService.java",
+      "find": "            log.info(\"plan-visits: the wrap-up call failed ({})\", e.getClass().getSimpleName());\n            return null;",
+      "replace": "            log.info(\"plan-visits: the wrap-up call failed ({})\", e.getClass().getSimpleName());\n            throw e;",
+      "expect": "theFallbackRunsOnlyWhenTheWrapUpCallItselfFails"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerService.java",
+      "find": ".user(userText(request, nonce) + \"\\n\\n\" + limitNotice(tools.calls(), tools.seen()))",
+      "replace": ".user(userText(request, nonce) + \"\\n\\n\" + limitNotice(tools.calls(), tools.seen()))\n                    .tools(tools)",
+      "expect": "theWrapUpCallHasNoToolsTheSameSystemTextAndTheLimitNoticeInTheUserText"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerService.java",
+      "find": ".user(userText(request, nonce) + \"\\n\\n\" + limitNotice(tools.calls(), tools.seen()))",
+      "replace": ".user(limitNotice(tools.calls(), tools.seen()))",
+      "expect": "theWrapUpCallHasNoToolsTheSameSystemTextAndTheLimitNoticeInTheUserText"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerService.java",
+      "find": "                    .system(systemPrompt(request.startLat(), request.startLon(), maxStops))\n                    .user(userText(request, nonce) + \"\\n\\n\"",
+      "replace": "                    .system(\"You plan house visits.\")\n                    .user(userText(request, nonce) + \"\\n\\n\"",
+      "expect": "theWrapUpCallHasNoToolsTheSameSystemTextAndTheLimitNoticeInTheUserText"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerService.java",
+      "find": "Tool call limit reached: answer now with what you have found; if nothing matches, \"",
+      "replace": "Tool call limit reached. \"",
+      "expect": "theWrapUpCallHasNoToolsTheSameSystemTextAndTheLimitNoticeInTheUserText"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerService.java",
+      "find": "calls.forEach(c -> used.merge(c, 1, Integer::sum));",
+      "replace": "calls.forEach(c -> used.put(c, 1));",
+      "expect": "theWrapUpCallHasNoToolsTheSameSystemTextAndTheLimitNoticeInTheUserText"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerService.java",
+      "find": ".append(PromptSafety.wrap(\"houses\", PromptSafety.nonce(), lines.toString().strip()));",
+      "replace": ".append(lines.toString().strip());",
+      "expect": "theWrapUpCallHasNoToolsTheSameSystemTextAndTheLimitNoticeInTheUserText"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerService.java",
+      "find": "seen.values().stream().limit(WRAP_UP_MAX_HOUSES).forEach(",
+      "replace": "seen.values().stream().forEach(",
+      "expect": "theWrapUpHouseListIsCappedAtFiftyAndSaysHowManyWereLeftOut"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerService.java",
+      "find": "static final int WRAP_UP_MAX_HOUSES = HouseSearchService.MAX_RESULTS;",
+      "replace": "static final int WRAP_UP_MAX_HOUSES = 51;",
+      "expect": "theWrapUpHouseListIsCappedAtFiftyAndSaysHowManyWereLeftOut"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerService.java",
+      "find": "if (seen.isEmpty()) return text.append(\"The tools returned no houses.\").toString();",
+      "replace": "if (seen.isEmpty()) return text.toString();",
+      "expect": "theFifthSearchWithNoHouseFoundAtAllStillGetsTheWrapUpAndAnEmptyPlan"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerService.java",
+      "find": ".onLimitExceeded(ToolCallLimitBehavior.THROW)",
+      "replace": ".onLimitExceeded(ToolCallLimitBehavior.RETURN_ERROR_RESPONSE)",
+      "expect": "theFifthSearchHousesAttemptLeadsToAFinalPlanNotTheFallback"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerService.java",
+      "find": ".maxCallsPerTool(props.agent().maxCallsPerTool())",
+      "replace": ".maxCallsPerTool(props.agent().maxCallsPerTool() + 1)",
+      "expect": "theFifthSearchHousesAttemptLeadsToAFinalPlanNotTheFallback"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerService.java",
+      "find": ".maxTotalToolCalls(props.agent().maxToolCalls())",
+      "replace": ".maxTotalToolCalls(props.agent().maxToolCalls() + 1)",
+      "expect": "theTotalBudgetOfTwelveIsHandledTheSameWay"
+    }
+  ]
+}
