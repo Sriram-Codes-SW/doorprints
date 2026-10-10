@@ -2,7 +2,7 @@
 
 This page is for you if you want sync or the AI features and you are not a programmer. It takes you through every
 step, from an empty computer to **Ask** and **Plan** working on your phone. It takes about an hour. Most of that time
-is waiting for downloads. Everything on this page is free.
+is waiting for downloads. Everything on this page can be done for free; the one optional exception is the paid Google tier for AI in step 4.
 
 A **server** is a program that runs all the time on one computer and looks after your houses for your other devices.
 Think of it as a home post office that all your devices send to and collect from.
@@ -144,17 +144,9 @@ You can move the same key to Google's paid tier. This helps in two ways:
   main reason to pay.
 - **No daily limit to run out of** in normal use.
 
-**What it costs.** You pay only for what you use. There is no monthly fee. The AI counts text in small pieces called
-"tokens" (a token is roughly part of a word). On Google's price list of September 2026, the model Doorprints uses
-(Gemini 3.5 Flash) costs US$1.50 for every million tokens sent and US$9 for every million received.
-
-- One **Ask** question sends a few thousand tokens and gets a few hundred back. It costs about **one US cent**
-  (around a rupee).
-- **Plan** asks the AI several times, so one plan costs a few cents.
-- Keeping your houses searchable costs far less.
-- A month of house-hunting with a hundred questions costs roughly US$1 to US$2.
-
-Prices change. Check [Google's price list](https://ai.google.dev/gemini-api/docs/pricing).
+**What it costs.** You pay only for what you use. There is no monthly fee. The cost per pasted ad, per question and per
+plan, and for a busy month, is in one table: [What it costs](what-we-test.md#what-it-costs). Keeping your houses
+searchable costs far less than the questions. Prices change. Check [Google's price list](https://ai.google.dev/gemini-api/docs/pricing).
 
 **How to switch:**
 

@@ -54,7 +54,7 @@ What each one can do ("offline" means without internet; "AI" means the computer 
 | **Hunt mode** (alerts when you pass a house you have seen) | No | Yes | Yes |
 | **Wake me in my hunting areas** | No | Yes | Yes (new) |
 | **Save an area of the map for offline** | Yes | Yes | Yes |
-| Ask and Plan visits (AI) | With [the AI provider you chose](settings-and-privacy.md#ai-without-a-server), or [your own server](set-up-a-server.md) with AI turned on | Same | Same |
+| Ask and Plan visits (AI), optional: [is it worth it for me?](settings-and-privacy.md#is-ai-worth-it) | With [the AI provider you chose](settings-and-privacy.md#ai-without-a-server), or [your own server](set-up-a-server.md) with AI turned on | Same | Same, early like the rest of the iPhone app |
 | Works offline | Yes, after the first visit | Yes | Yes |
 
 On the phones, **Help** in **Settings**, under **About**, opens this guide in the app's language. The website has a

@@ -53,9 +53,34 @@ shared computer, use **Remove all data** on **Your data** when you are done.
 ## AI without a server
 
 You can use **Ask**, **Plan** and **Fill in from listing text** without running a server. Your phone or browser then
-asks an AI service itself, with a key of your own. You choose the service: Google Gemini (free on Google's free tier),
+asks an AI service itself, with a key of your own. You choose the service: Google Gemini (it has a free tier, with a daily limit and weaker privacy terms: see the warning at the end of this section),
 OpenAI, OpenRouter, Groq, Anthropic, a model on your own computer (Ollama or LM Studio), or any other service that speaks the same
 chat language.
+
+### Is AI worth it for me? {#is-ai-worth-it}
+
+Doorprints works fully without AI: search, filters, Compare, backups, viewings and Hunt mode never need a key.
+
+AI reads **your own notes**, which a search engine has never seen:
+
+- **Ask** answers "which house had the best water, and when did I see it?" from your saved houses, with links.
+- **Fill in from listing text** turns a pasted WhatsApp ad into a form you check before saving.
+- **Plan visits** picks the saved houses that match your request and puts them in walking order.
+
+It knows nothing about the market, the law or a locality; a search engine or general chatbot is better there. Ask
+says "I don't know" rather than guessing.
+
+**Worth it** if you have more houses than you can hold in your head, write real notes and paste many ads. **Not worth
+it** if you track a handful of houses or keep little text.
+
+**Cost:** about a rupee or a few per use on a paid key, in [one table](what-we-test.md#what-it-costs) at list prices
+of October 2026. Google's free tier is free, with a daily limit; Google may read what you send.
+
+**Privacy:** your question and the matching house notes go to the service you chose. Saved contact names, phones and
+emails are replaced first, as far as we can; a nickname or short local number can slip through. A pasted ad is sent
+as pasted.
+
+**Setup:** one key, a few steps. What we check: [What we test](what-we-test.md).
 
 ### What it looks like
 
@@ -126,7 +151,7 @@ before it answers:
 
 - **Quality**: the model's own default setting. Nothing is changed; this is what you get if you never touch the group.
 - **Balanced**: thinks a medium amount, between Quality and Economy on speed and cost.
-- **Economy**: in our tests about 40% cheaper and about twice as fast, with answers as good.
+- **Economy**: in our tests about 40% cheaper and about twice as fast, with answers as good. "Our tests" are four full runs of the test list on one model (Gemini 3.5 Flash; three at Economy, one at the default), so treat it as a guide, not a promise.
 
 Most of what a Gemini answer costs is the model's thinking, so a lower setting saves money on a key that has billing turned
 on. Your choice is kept on this browser or phone and applies at once, with no Save. It is only for Google Gemini keys: with any other service, or

@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Software Requirements Specification |
-| Version | 0.49 |
-| Date | 2026-10-07 |
+| Version | 0.50 |
+| Date | 2026-10-10 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -61,6 +61,7 @@
 | 0.47 | 2026-10-07 | Claude (Code), docs pass | New **AI-018**, the AI provider of the person's choice on the device ([03](03-design.md) §13.2, ADR-35; [11](11-feature-parity-and-export-spec.md) D-31; planned): Gemini, any OpenAI-compatible endpoint or Anthropic, device-only, nothing in a backup. Traceability row added. |
 | 0.48 | 2026-10-07 | Claude (Code), lead | **AI-018: `anthropic` is built** (S4b-BL-152; [03](03-design.md) §13.2 v0.74): Anthropic's Messages API on the website and both phones, a key required, its address fixed. |
 | 0.49 | 2026-10-08 | Claude (Code) | **AI-010 and PRV-009 name email addresses** (S4b-BL-179 (email addresses) and S4b-BL-180 (name parts that are ordinary words)): the generic layer of `ContactRedactor` removes email addresses (`[email]`) from free text before it goes to a provider, in all three stacks; PRV-009 reason (1) adds handles and the ordinary-word name parts. Status unchanged (AI-010 Impl, PRV-009 Part). |
+| 0.50 | 2026-10-10 | Claude (Code), docs pass | **Section 11.3 (out of scope):** the entry *bring-your-own AI key ... (rejected 2026-09-22; ...)* is replaced by a dated note that it is no longer out of scope; AI-018 and ADR-26 / ADR-35 built it on the device (S4b-BL-214, [10](10-sprint-log.md) v0.235). No requirement changed. |
 
 Related: [README](README.md) · [Threat model](02-threat-model.md) · [Design](03-design.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Test plan](06-test-plan.md) · [AI docs](ai/)
 
@@ -436,7 +437,7 @@ AI features are **optional** and **off unless configured**. The AI team owns the
 
 ### 11.3 Out of scope
 
-Multi-tenant accounts, sharing links, a native iOS app (the PWA serves iPhones; the shared KMP module keeps a later iOS app possible, ADR-14), push notifications from the server, scraping property portals, payments, bring-your-own AI key for anyone not signed in (rejected 2026-09-22; for signed-in users allowed by the owner on 2026-09-29, [11](11-feature-parity-and-export-spec.md) D-23, with Google sign-in), importing from other apps or arbitrary spreadsheets (owner decision of 2026-09-23: later, as its own separately named feature, never called "import"; 6.9), legal/title verification, turn-by-turn navigation, offline tile packs (Could, later).
+Multi-tenant accounts, sharing links, a native iOS app (the PWA serves iPhones; the shared KMP module keeps a later iOS app possible, ADR-14), push notifications from the server, scraping property portals, payments, bring-your-own AI key is **no longer out of scope** (note of 2026-10-10: it was rejected on 2026-09-22, allowed by the owner on 2026-09-29, [11](11-feature-parity-and-export-spec.md) D-23, and is built: [03](03-design.md) ADR-26 for a Gemini key and AI-018 / ADR-35 for any provider, on the website, Android and iPhone, with no server and no account), importing from other apps or arbitrary spreadsheets (owner decision of 2026-09-23: later, as its own separately named feature, never called "import"; 6.9), legal/title verification, turn-by-turn navigation, offline tile packs (Could, later).
 
 ## 12. Requirements traceability matrix
 
