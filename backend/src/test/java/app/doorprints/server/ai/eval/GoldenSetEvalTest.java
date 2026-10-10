@@ -35,9 +35,9 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -80,7 +80,13 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * <p>Use an empty database: other saved houses change what retrieval returns (the report warns when it sees any).
  * Optional environment: {@code AI_EVAL_TYPES} (default {@code extract,ask,plan}), {@code AI_EVAL_DELAY_MS} (pause
- * between cases for free-tier rate limits, default 4000) and {@code AI_EVAL_GOLDEN_SET} (another golden set file).
+ * between cases for free-tier rate limits, default 4000), {@code AI_EVAL_GOLDEN_SET} (another golden set file) and
+ * {@code AI_EVAL_DEADLINE_MS} (time budget, default 35 minutes).
+ *
+ * <p>Time budget (S4b-BL-202): the scorecard is rewritten after every case and marked {@code PARTIAL (n of N cases)}
+ * until the run completes, so a killed job still leaves one. When the budget is used up between cases (or before a
+ * retry) the run stops with {@code STOPPED: time budget}: the verdict is INCOMPLETE (never PASS), the cases not run are
+ * not scored, and the test fails. One slow case overshoots the budget by at most one request (the read timeout).
  */
 @Tag("llm-eval")
 @EnabledIf(value = "providerConfigured",
@@ -156,6 +162,8 @@ class GoldenSetEvalTest {
     String embeddingProvider;
 
     private RestClient api;
+    /** The run's time budget (AI_EVAL_DEADLINE_MS, default 35 min), fixed at the start of the test. */
+    private Deadline deadline;
     private final List<String> warnings = new ArrayList<>();
     /** Each distinct Vertex AI setup hint is reported once, not once per case. */
     private final Set<String> reportedSetupHints = new HashSet<>();
@@ -181,6 +189,9 @@ class GoldenSetEvalTest {
                 .toLowerCase(Locale.ROOT).strip().split("\\s*,\\s*")));
         long delayMs = Math.max(0, Long.parseLong(env("AI_EVAL_DELAY_MS", "4000")));
         var started = Instant.now();
+        var budget = Duration.ofMillis(Deadline.parseMs(env("AI_EVAL_DEADLINE_MS", "")));
+        deadline = new Deadline(Clock.systemUTC(), budget);
+        header.put("Time budget", budget.toMinutes() + " min");
 
         header.put("Golden set", "v" + golden.version() + " (" + golden.date() + "), " + path.normalize());
         boolean vertex = "vertex".equals(provider);
@@ -196,41 +207,55 @@ class GoldenSetEvalTest {
         checkThresholdsDeclared(golden);
 
         var results = new ArrayList<CaseResult>();
-        List<Metric> metrics = List.of();
+        var planned = new ArrayList<Map<String, Object>>();
+        for (var testCase : golden.cases()) {
+            var type = String.valueOf(testCase.get("type"));
+            if (!Set.of(EXTRACT, ASK, PLAN).contains(type)) {
+                warnings.add("Skipped case " + testCase.get("id") + ": unknown type '" + type + "'");
+                continue;
+            }
+            if (types.contains(type)) planned.add(testCase);
+        }
+        boolean timeStopped = false;
         try {
+            writeReport(started, golden, results, new EvalScorer.Progress(0, planned.size(), false));
             boolean seeded = true;
             if (types.contains(ASK) || types.contains(PLAN)) seeded = seed(golden);
-            boolean first = true;
-            for (var testCase : golden.cases()) {
-                var type = String.valueOf(testCase.get("type"));
-                if (!Set.of(EXTRACT, ASK, PLAN).contains(type)) {
-                    warnings.add("Skipped case " + testCase.get("id") + ": unknown type '" + type + "'");
-                    continue;
-                }
-                if (!types.contains(type)) continue;
-                // Without fixtures and an index, ask/plan scores would only measure the seeding failure.
-                if (!seeded && !EXTRACT.equals(type)) continue;
-                if (!first) pause(delayMs);
-                first = false;
-                results.add(run(testCase, golden));
-            }
+            // Without fixtures and an index, ask/plan scores would only measure the seeding failure.
+            if (!seeded) planned.removeIf(c -> !EXTRACT.equals(String.valueOf(c.get("type"))));
+            // The scorecard is rewritten after every case, so a killed job still leaves one (S4b-BL-202).
+            timeStopped = EvalRun.run(planned, results, deadline,
+                    () -> pause(Math.min(delayMs, deadline.remaining().toMillis())),
+                    c -> run(c, golden), progress -> writeReport(started, golden, results, progress));
         } catch (QuotaExhausted e) {
             errors.add(EvalScorer.QUOTA_STOPPED + " (" + e.getMessage() + "); " + results.size()
                     + " case(s) scored before the stop, the rest were not run");
+        } catch (Deadline.Expired e) {
+            timeStopped = true; // the budget ran out during seeding
         } catch (RuntimeException e) {
             errors.add("Eval aborted: " + describe(e));
-        } finally {
-            header.put("Duration", Duration.between(started, Instant.now()).toSeconds() + " s");
-            metrics = EvalScorer.metrics(results, golden.thresholds());
-            var markdown = EvalScorer.markdown(header, metrics, results, warnings, errors);
-            Files.createDirectories(REPORT.getParent());
-            Files.writeString(REPORT, markdown, StandardCharsets.UTF_8);
-            System.out.println(markdown);
         }
+        var progress = new EvalScorer.Progress(results.size(), planned.size(), timeStopped);
+        var metrics = writeReport(started, golden, results, progress);
 
-        // Fails on zero cases, any harness error (e.g. seeding / reindex 503) or a metric below its threshold.
-        var verdict = EvalScorer.verdict(metrics, results, errors);
+        // Fails on zero cases, any harness error (e.g. seeding / reindex 503), a time-budget stop or a metric below its threshold.
+        var verdict = EvalScorer.verdict(metrics, results, errors, progress);
         assertThat(verdict.reasons()).as("AI eval failed; scorecard: %s", REPORT.toAbsolutePath()).isEmpty();
+    }
+
+    /** Scores what has run so far and replaces the scorecard file (atomically); returns the metrics. */
+    private List<Metric> writeReport(Instant started, GoldenSet golden, List<CaseResult> results,
+                                     EvalScorer.Progress progress) {
+        header.put("Duration", Duration.between(started, Instant.now()).toSeconds() + " s");
+        var metrics = EvalScorer.metrics(results, golden.thresholds());
+        var markdown = EvalScorer.markdown(header, metrics, results, warnings, errors, progress);
+        try {
+            EvalRun.writeAtomically(REPORT, markdown);
+        } catch (IOException e) {
+            throw new IllegalStateException("cannot write " + REPORT, e);
+        }
+        if (progress.complete() || progress.timeStopped() || !errors.isEmpty()) System.out.println(markdown);
+        return metrics;
     }
 
     private static String describe(RuntimeException e) {
@@ -345,6 +370,8 @@ class GoldenSetEvalTest {
      */
     private Map<String, Object> post(String path, Object body) {
         for (int attempt = 1; ; attempt++) {
+            // A case that keeps retrying cannot outlast the budget by more than one request (the read timeout).
+            if (attempt > 1) deadline.check();
             try {
                 var spec = api.post().uri(path);
                 if (body != null) spec = spec.contentType(MediaType.APPLICATION_JSON).body(body);
@@ -374,7 +401,7 @@ class GoldenSetEvalTest {
                 long waitMs = retryAfterMs(e, attempt);
                 warnings.add("POST " + path + " returned " + status + (quota ? " (provider quota exhausted)" : "")
                         + " (attempt " + attempt + "), retried after " + waitMs / 1000 + " s");
-                pause(waitMs);
+                pause(Math.min(waitMs, deadline.remaining().toMillis()));
             }
         }
     }

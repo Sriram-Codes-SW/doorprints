@@ -40,6 +40,11 @@ final class EvalScorer {
 
     /** Result line (and harness-error prefix) when the run stopped because the provider's quota ran out. */
     static final String QUOTA_STOPPED = "STOPPED: provider quota exhausted";
+    /**
+     * Result line when the run stopped because its time budget ({@code AI_EVAL_DEADLINE_MS}) was used up: an
+     * infrastructure stop like the quota one; the verdict is INCOMPLETE (never PASS) and the cases not run are not scored.
+     */
+    static final String TIME_STOPPED = "STOPPED: time budget";
     static final String EXTRACT = "extract";
     static final String ASK = "ask";
     static final String PLAN = "plan";
@@ -594,7 +599,27 @@ final class EvalScorer {
         }
     }
 
+    /**
+     * How far a run is: {@code done} of {@code total} cases scored. A run with {@code timeStopped} or fewer cases
+     * done than planned is PARTIAL (S4b-BL-202): it is written after every case so a killed job still leaves a
+     * scorecard, and it can never read PASS.
+     */
+    record Progress(int done, int total, boolean timeStopped) {
+        boolean complete() {
+            return !timeStopped && done >= total;
+        }
+
+        String label() {
+            return "PARTIAL (" + done + " of " + total + " cases)";
+        }
+    }
+
     static Verdict verdict(List<Metric> metrics, List<CaseResult> results, List<String> errors) {
+        return verdict(metrics, results, errors, null);
+    }
+
+    /** {@code progress} null means a finished run. Cases not run are in no metric and are never counted as passed. */
+    static Verdict verdict(List<Metric> metrics, List<CaseResult> results, List<String> errors, Progress progress) {
         var reasons = new ArrayList<String>();
         if (results.isEmpty()) reasons.add("no golden-set case ran (0 cases)");
         if (!errors.isEmpty()) reasons.add(errors.size() + " harness error(s): " + String.join("; ", errors));
@@ -606,11 +631,17 @@ final class EvalScorer {
             reasons.add(infra.size() + " case(s) hit provider or infrastructure failures and were not scored ("
                     + String.join(", ", infra.stream().map(r -> r.id).toList()) + "); re-run once the provider is healthy");
         }
+        boolean unfinished = progress != null && !progress.complete();
+        if (unfinished) {
+            int notRun = Math.max(0, progress.total() - progress.done());
+            reasons.add((progress.timeStopped() ? TIME_STOPPED + ": " : "run not finished: ") + progress.done() + " of "
+                    + progress.total() + " case(s) scored, " + notRun + " case(s) were not run; re-run for a full scorecard");
+        }
         // INCOMPLETE must never hide a real failure: a harness error, no case at all, or a metric that misses its
         // threshold even if every infrastructure case had passed (its best case) is FAIL, with the infra errors as a
         // note. Only when every metric would pass in the best case and infra cases exist is the run INCOMPLETE.
         boolean realFailure = results.isEmpty() || !errors.isEmpty() || metrics.stream().anyMatch(Metric::failsInBestCase);
-        boolean incomplete = !infra.isEmpty() && !realFailure;
+        boolean incomplete = (!infra.isEmpty() || unfinished) && !realFailure;
         return new Verdict(reasons.isEmpty(), incomplete, List.copyOf(reasons));
     }
 
@@ -627,11 +658,26 @@ final class EvalScorer {
 
     static String markdown(Map<String, String> header, List<Metric> metrics, List<CaseResult> results,
                            List<String> warnings, List<String> errors) {
-        var verdict = verdict(metrics, results, errors);
+        return markdown(header, metrics, results, warnings, errors, null);
+    }
+
+    /** {@code progress} null means a finished run; otherwise an unfinished one carries the PARTIAL marker. */
+    static String markdown(Map<String, String> header, List<Metric> metrics, List<CaseResult> results,
+                           List<String> warnings, List<String> errors, Progress progress) {
+        var verdict = verdict(metrics, results, errors, progress);
         boolean stopped = quotaStopped(errors);
+        boolean timeStopped = progress != null && progress.timeStopped();
         var sb = new StringBuilder();
         sb.append("# Doorprints AI eval scorecard\n\n");
-        if (stopped) {
+        if (progress != null && !progress.complete()) {
+            sb.append("**").append(progress.label()).append("**: not every case has run, so this is not a verdict on the "
+                    + "golden set.\n\n");
+        }
+        if (timeStopped && !stopped) {
+            sb.append("**Result: ").append(TIME_STOPPED).append("** (the time budget AI_EVAL_DEADLINE_MS was used up, so "
+                    + "the remaining cases were not run; the metrics below cover only the cases scored before the stop, and "
+                    + "the run can never PASS. Re-run with a larger budget, fewer types or a lower thinking level)\n\n");
+        } else if (stopped) {
             sb.append("**Result: ").append(QUOTA_STOPPED).append("** (the model provider answered HTTP 429 / "
                     + "RESOURCE_EXHAUSTED, so the remaining cases were not run; the metrics below cover only the "
                     + "cases scored before the stop. Wait for the quota to reset or check billing, then re-run.)\n\n");
