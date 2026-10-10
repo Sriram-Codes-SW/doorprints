@@ -4,7 +4,7 @@
   "title": "Doorprints sync file, doorprints-sync/1",
   "description": "The inner format of a device's sync file in Google Drive (S4b-BL-130, docs/15 §5.1), inside the dpx/1 envelope and gzipped. One file per device holds that device's whole state, tombstones included and kept for ever. The readers are SyncFiles.parse (android/shared, app.doorprints.shared.sync) and parseSyncFile (web/src/app/data/drive/sync-file.ts); they also check what a schema cannot: the whole file is at most 16 MiB of UTF-8, all four lists together hold at most 100000 rows, a key appears once per list, deviceId is the writer the envelope authenticated, and times are real calendar instants from 2000-01-01T00:00:00Z on. Unknown properties are ignored (a newer writer within /1). Rows carry the sync DTOs' other fields, which the sync loop validates like a server row.",
   "type": "object",
-  "required": ["format", "deviceId", "seq", "writtenAt", "houses", "visits", "records", "photos"],
+  "required": ["format", "deviceId", "seq", "writtenAt", "candidates", "visits", "records", "photos"],
   "properties": {
     "format": { "const": "doorprints-sync/1" },
     "deviceId": { "$ref": "#/$defs/deviceId" },
@@ -15,7 +15,7 @@
       "maximum": 9007199254740991
     },
     "writtenAt": { "$ref": "#/$defs/time" },
-    "houses": { "type": "array", "maxItems": 20000, "items": { "$ref": "#/$defs/house" } },
+    "candidates": { "type": "array", "maxItems": 20000, "items": { "$ref": "#/$defs/candidate" } },
     "visits": { "type": "array", "maxItems": 50000, "items": { "$ref": "#/$defs/visit" } },
     "records": { "type": "array", "maxItems": 50000, "items": { "$ref": "#/$defs/record" } },
     "photos": { "type": "array", "maxItems": 50000, "items": { "$ref": "#/$defs/photo" } }
@@ -43,8 +43,8 @@
         "by": { "$ref": "#/$defs/deviceId" }
       }
     },
-    "house": {
-      "description": "HouseDto plus by.",
+    "candidate": {
+      "description": "HouseDto (the sync API's candidate: kind, money and extras since the format reset of S4b-BL-206) plus by.",
       "allOf": [{ "$ref": "#/$defs/version" }],
       "required": ["id"],
       "properties": { "id": { "$ref": "#/$defs/id" } }
@@ -55,7 +55,7 @@
       "required": ["id"],
       "properties": {
         "id": { "$ref": "#/$defs/id" },
-        "houseId": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/id" }] }
+        "candidateId": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/id" }] }
       }
     },
     "record": {
@@ -70,10 +70,10 @@
     "photo": {
       "description": "PhotoChangeDto plus by, and the Drive file of its bytes with their SHA-256.",
       "allOf": [{ "$ref": "#/$defs/version" }],
-      "required": ["id", "houseId"],
+      "required": ["id", "candidateId"],
       "properties": {
         "id": { "$ref": "#/$defs/id" },
-        "houseId": { "$ref": "#/$defs/id" },
+        "candidateId": { "$ref": "#/$defs/id" },
         "driveFileId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,128}$" },
         "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
       }

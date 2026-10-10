@@ -2,7 +2,7 @@
  "format": "doorprints-kind/1",
  "id": "house",
  "version": 1,
- "note": "The kind file for houses (docs/03 ADR-36 and §18; S4b-BL-205). It describes today's house exactly: the same fields, sections, statuses, checklist and question scopes, with labels as keys that resolve to today's strings (web: the dictionaries in web/src/app/i18n, Android: android/ui/src/commonMain/composeResources). Nothing reads it at run time yet: kinds PR 3 (S4b-BL-207) adds the resolver, PR 4 the renderer. `was` names where a value lives in today's wire and backup format (doorprints-backup/2 and /3); the format reset (PR 2, S4b-BL-206) moves it to `money` or `extras.<id>` and drops `was`. kind-vectors.json pins what this file resolves to.",
+ "note": "The kind file for houses (docs/03 ADR-36 and §18; S4b-BL-205). It describes today's house exactly: the same fields, sections, statuses, checklist and question scopes, with labels as keys that resolve to today's strings (web: the dictionaries in web/src/app/i18n, Android: android/ui/src/commonMain/composeResources). Nothing reads it at run time yet: kinds PR 3 (S4b-BL-207) adds the resolver, PR 4 the renderer. On the wire (doorprints-backup/1 after the format reset of PR 2, S4b-BL-206) a core field is the key of its id on the candidate (`location` is `lat` and `lon`) and an extra is `extras.<id>`; a money value is `{"amount", "cadence"}`. kind-vectors.json pins what this file resolves to.",
  "labels": {
   "new": { "web": "house.newTitle", "android": "house_new_title" },
   "many": { "web": "map.stats.houses", "android": "houses_title" },
@@ -35,11 +35,11 @@
   { "id": "status", "section": "details", "order": 20, "label": { "web": "house.status", "android": "house_status" } },
   { "id": "rating", "section": "details", "order": 30, "label": { "web": "house.rating", "android": "house_rating" } },
   {
-   "id": "money", "section": "details", "order": 40, "was": "price, priceType",
+   "id": "money", "section": "details", "order": 40,
    "label": { "web": "house.price", "android": "house_price_sale", "byCadence": { "month": { "android": "house_price_rent" } } },
    "cadences": [
-    { "id": "month", "was": "RENT", "label": { "web": "price.rent", "android": "house_rent" } },
-    { "id": "once", "was": "SALE", "label": { "web": "price.sale", "android": "house_buy" } }
+    { "id": "month", "label": { "web": "price.rent", "android": "house_rent" } },
+    { "id": "once", "label": { "web": "price.sale", "android": "house_buy" } }
    ]
   },
   { "id": "address", "section": "details", "order": 80, "label": { "web": "house.address", "android": "house_address" } },
@@ -50,24 +50,24 @@
   { "id": "brokerId", "section": "details", "order": 130, "label": { "web": "house.broker", "android": "house_broker" } },
   { "id": "listingUrl", "section": "details", "order": 140, "label": { "web": "house.listingUrl", "android": "house_listing" } },
   { "id": "notes", "section": "details", "order": 150, "label": { "web": "house.notes", "android": "house_notes" } },
-  { "id": "location", "section": "location", "order": 10, "was": "lat, lon", "label": { "web": "house.location", "android": "house_location_heading" } },
+  { "id": "location", "section": "location", "order": 10, "label": { "web": "house.location", "android": "house_location_heading" } },
   { "id": "locationSource", "section": "location", "order": 20, "label": { "web": "house.approx", "android": "house_approx" } }
  ],
  "extras": [
-  { "id": "bedrooms", "type": "number", "integer": true, "min": 0, "unit": "count", "section": "details", "order": 50, "was": "bedrooms", "label": { "web": "house.bhk", "android": "house_bhk" } },
-  { "id": "areaSqft", "type": "number", "integer": true, "min": 1, "max": 100000, "unit": "sqft", "section": "details", "order": 60, "was": "areaSqft", "label": { "web": "house.areaSqft", "android": "house_area" } },
-  { "id": "floor", "type": "number", "integer": true, "min": -5, "max": 200, "unit": "level", "section": "details", "order": 70, "was": "floor", "label": { "web": "house.floor", "android": "house_floor" } },
-  { "id": "deposit", "type": "money", "max": 1000000000000, "cadences": ["once"], "section": "cost", "order": 10, "was": "cost.deposit", "label": { "web": "cost.deposit", "android": "house_deposit" } },
-  { "id": "depositMonths", "type": "number", "integer": true, "min": 0, "max": 120, "unit": "month", "section": "cost", "order": 20, "was": "cost.depositMonths", "label": { "web": "cost.depositMonths", "android": "house_deposit_months" } },
-  { "id": "maintenance", "type": "money", "max": 1000000000000, "cadences": ["month"], "section": "cost", "order": 30, "was": "cost.maintenance", "label": { "web": "cost.maintenance", "android": "house_maintenance" } },
-  { "id": "maintenanceIncluded", "type": "bool", "section": "cost", "order": 40, "was": "cost.maintenanceIncluded", "label": { "web": "cost.maintenanceIncluded", "android": "house_maintenance_included" } },
-  { "id": "brokerage", "type": "money", "max": 1000000000000, "cadences": ["once"], "section": "cost", "order": 50, "was": "cost.brokerage", "label": { "web": "cost.brokerage", "android": "house_brokerage" } },
-  { "id": "brokerageMonths", "type": "number", "integer": true, "min": 0, "max": 120, "unit": "month", "section": "cost", "order": 60, "was": "cost.brokerageMonths", "label": { "web": "cost.brokerageMonths", "android": "house_brokerage_months" } },
-  { "id": "lockInMonths", "type": "number", "integer": true, "min": 0, "max": 120, "unit": "month", "section": "cost", "order": 70, "was": "cost.lockInMonths", "label": { "web": "cost.lockInMonths", "android": "house_lock_in" } },
-  { "id": "noticeMonths", "type": "number", "integer": true, "min": 0, "max": 120, "unit": "month", "section": "cost", "order": 80, "was": "cost.noticeMonths", "label": { "web": "cost.noticeMonths", "android": "house_notice" } },
-  { "id": "availableFrom", "type": "date", "section": "cost", "order": 90, "was": "cost.availableFrom", "label": { "web": "cost.availableFrom", "android": "house_available_from" } },
-  { "id": "myOffer", "type": "money", "max": 1000000000000, "cadenceFrom": "money", "section": "cost", "order": 100, "was": "cost.myOffer", "label": { "web": "cost.myOffer", "android": "house_my_offer" } },
-  { "id": "agreedPrice", "type": "money", "max": 1000000000000, "cadenceFrom": "money", "section": "cost", "order": 110, "was": "cost.agreedPrice", "label": { "web": "cost.agreedPrice", "android": "house_agreed_price" } }
+  { "id": "bedrooms", "type": "number", "integer": true, "min": 0, "unit": "count", "section": "details", "order": 50, "label": { "web": "house.bhk", "android": "house_bhk" } },
+  { "id": "areaSqft", "type": "number", "integer": true, "min": 1, "max": 100000, "unit": "sqft", "section": "details", "order": 60, "label": { "web": "house.areaSqft", "android": "house_area" } },
+  { "id": "floor", "type": "number", "integer": true, "min": -5, "max": 200, "unit": "level", "section": "details", "order": 70, "label": { "web": "house.floor", "android": "house_floor" } },
+  { "id": "deposit", "type": "money", "max": 1000000000000, "cadences": ["once"], "section": "cost", "order": 10, "label": { "web": "cost.deposit", "android": "house_deposit" } },
+  { "id": "depositMonths", "type": "number", "integer": true, "min": 0, "max": 120, "unit": "month", "section": "cost", "order": 20, "label": { "web": "cost.depositMonths", "android": "house_deposit_months" } },
+  { "id": "maintenance", "type": "money", "max": 1000000000000, "cadences": ["month"], "section": "cost", "order": 30, "label": { "web": "cost.maintenance", "android": "house_maintenance" } },
+  { "id": "maintenanceIncluded", "type": "bool", "section": "cost", "order": 40, "label": { "web": "cost.maintenanceIncluded", "android": "house_maintenance_included" } },
+  { "id": "brokerage", "type": "money", "max": 1000000000000, "cadences": ["once"], "section": "cost", "order": 50, "label": { "web": "cost.brokerage", "android": "house_brokerage" } },
+  { "id": "brokerageMonths", "type": "number", "integer": true, "min": 0, "max": 120, "unit": "month", "section": "cost", "order": 60, "label": { "web": "cost.brokerageMonths", "android": "house_brokerage_months" } },
+  { "id": "lockInMonths", "type": "number", "integer": true, "min": 0, "max": 120, "unit": "month", "section": "cost", "order": 70, "label": { "web": "cost.lockInMonths", "android": "house_lock_in" } },
+  { "id": "noticeMonths", "type": "number", "integer": true, "min": 0, "max": 120, "unit": "month", "section": "cost", "order": 80, "label": { "web": "cost.noticeMonths", "android": "house_notice" } },
+  { "id": "availableFrom", "type": "date", "section": "cost", "order": 90, "label": { "web": "cost.availableFrom", "android": "house_available_from" } },
+  { "id": "myOffer", "type": "money", "max": 1000000000000, "cadenceFrom": "money", "section": "cost", "order": 100, "label": { "web": "cost.myOffer", "android": "house_my_offer" } },
+  { "id": "agreedPrice", "type": "money", "max": 1000000000000, "cadenceFrom": "money", "section": "cost", "order": 110, "label": { "web": "cost.agreedPrice", "android": "house_agreed_price" } }
  ],
  "checklist": [
   { "key": "water", "label": { "web": "check.water", "android": "check_water" } },

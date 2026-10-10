@@ -164,8 +164,7 @@
    "properties": {
     "section": { "$ref": "#/$defs/sectionId" },
     "order": { "type": "integer", "minimum": 0, "maximum": 10000 },
-    "visible": { "type": "boolean", "default": true },
-    "was": { "type": "string", "description": "Where the value lives in the format before the reset (dropped by S4b-BL-206)." }
+    "visible": { "type": "boolean", "default": true }
    }
   },
   "cadence": {
@@ -196,8 +195,7 @@
       "required": ["id", "label"],
       "properties": {
        "id": { "$ref": "#/$defs/cadence" },
-       "label": { "$ref": "#/$defs/label" },
-       "was": { "type": "string" }
+       "label": { "$ref": "#/$defs/label" }
       }
      }
     }
