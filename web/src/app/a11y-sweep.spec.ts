@@ -717,7 +717,7 @@ describe('what a screen reader says (TC-U-WEB-A11Y-10)', () => {
   });
 
   it('on short phones the legend is placed at the top of the map, the actions at the bottom (S4b-BL-49)', () => {
-    const block = /@media \(max-width: 760px\) and \(max-height: 700px\) \{([\s\S]*)\n\}/.exec(mapCss)?.[1] ?? '';
+    const block = /@media \(max-width: 760px\) and \(max-height: 700px\) and \(orientation: portrait\) \{([\s\S]*)\n\}/.exec(mapCss)?.[1] ?? '';
     expect(block).not.toBe('');
     expect(/\.legend \{[^}]*position: absolute;[^}]*top: var\(--space-3\);/.test(block)).toBe(true);
     // Clear of MapLibre's control column at the end, as the add-mode hint is.
