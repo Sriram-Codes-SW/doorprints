@@ -55,7 +55,8 @@ class IosCryptoVectorsTest {
     private fun ByteArray.hx() = Bytes.hex(this)
     private fun JsonObject.need(key: String) = this[key] ?: error("vector key '$key' is missing; the object has ${keys.sorted()}")
     private fun JsonObject.s(key: String): String = need(key).jsonPrimitive.content
-    private fun JsonObject.h(key: String): ByteArray = h(s(key))
+    // Bytes.unhex, not h(...): inside this extension h(String) would resolve to the extension itself and read the value as a key.
+    private fun JsonObject.h(key: String): ByteArray = Bytes.unhex(s(key))
     private fun JsonObject.b(key: String): ByteArray = checkNotNull(Bytes.unb64(s(key))) { key }
     private fun JsonObject.arr(key: String): List<JsonObject> = need(key).jsonArray.map { it.jsonObject }
 
