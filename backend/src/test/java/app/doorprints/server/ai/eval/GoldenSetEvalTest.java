@@ -223,7 +223,13 @@ class GoldenSetEvalTest {
         header.put("Thinking level", EvalScorer.thinkingLabel(vertex, vertexThinkingLevel, openAiReasoningEffort));
         header.put("Embedding", embeddingProvider + " / " + embeddingModel);
         header.put("Case types", String.join(", ", types.stream().sorted().toList()));
-        if (repeats > 1 && types.contains(PLAN)) header.put("Plan trials", repeats + " (trial 1 gated, the rest informational)");
+        var repeatTypes = new java.util.LinkedHashSet<>(EvalScorer.repeatTypesFrom(System.getenv("AI_EVAL_REPEAT_TYPES")));
+        repeatTypes.retainAll(types);
+        if (repeats > 1 && repeatTypes.equals(Set.of(PLAN))) {
+            header.put("Plan trials", repeats + " (trial 1 gated, the rest informational)");
+        } else if (repeats > 1 && !repeatTypes.isEmpty()) {
+            header.put("Trials", repeats + " of the " + String.join(", ", repeatTypes) + " cases (trial 1 gated, the rest informational)");
+        }
         header.put("Started", started.toString());
         checkThresholdsDeclared(golden);
 
@@ -256,13 +262,15 @@ class GoldenSetEvalTest {
                     c -> run(c, golden), progress -> writeReport(started, golden, results, progress));
             // Trials 2..repeats of the plan cases: informational, never in the metrics or the verdict, and also bound by
             // the time budget (a stop here leaves the gated trial untouched).
-            if (!timeStopped && seeded && repeats > 1 && types.contains(PLAN)) {
-                var planCases = planned.stream().filter(c -> PLAN.equals(String.valueOf(c.get("type")))).toList();
+            // AI_EVAL_REPEAT_TYPES (S4b-BL-227) says which types: plan only unless asked otherwise.
+            var repeatCases = planned.stream().filter(c -> repeatTypes.contains(String.valueOf(c.get("type")))).toList();
+            if (!timeStopped && seeded && repeats > 1 && !repeatCases.isEmpty()) {
+                var planCases = repeatCases;
                 var progressNow = new EvalScorer.Progress(results.size(), planned.size(), false);
                 if (EvalRun.runRepeats(planCases, repeats, trials, deadline,
                         () -> pause(Math.min(delayMs, deadline.remaining().toMillis())), c -> run(c, golden),
                         () -> writeReport(started, golden, results, progressNow))) {
-                    warnings.add("The repeats of the plan cases stopped at the time budget; the gated trial is complete, "
+                    warnings.add("The repeats of the " + (repeatTypes.equals(Set.of(PLAN)) ? "plan " : "") + "cases stopped at the time budget; the gated trial is complete, "
                             + "the stability table covers only the trials that ran.");
                 }
             }

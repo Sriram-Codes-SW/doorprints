@@ -119,6 +119,16 @@ on:
         description: "golden-set only: trials per plan case, 1 to 5 (S4b-BL-203). Trial 1 is scored and gated as always; trials 2 and later only fill the report's stability table (informational). Each repeat is one more plan pass of 10 cases and the same model calls, so run it with types = plan"
         type: string
         default: "1"
+      repeat_types:
+        description: "golden-set only: which case types the repeats (input repeats) run (S4b-BL-227). plan = what the repeats always were. Others also repeat that type, one more pass of its cases per trial (extract 34, ask 31, plan 10), and the scorecard gains the agreement across trials (informational)"
+        type: choice
+        default: plan
+        options:
+          - plan
+          - extract
+          - ask
+          - extract,ask
+          - extract,ask,plan
       address_set:
         description: "Address set (S4b-BL-226, docs/ai/ai-design.md 8.3b): which addresses the fixture houses have. default = the golden set as it is, the only run with a verdict. Any other set is informational: the metrics are shown as 'not gated', the cases the set cannot ask about are listed, and the run fails only on a harness error or a stop. Works with every suite that runs the golden set"
         type: choice
@@ -206,6 +216,7 @@ jobs:
           PROVIDER: ${{ inputs.provider }}
           THINKING_LEVEL: ${{ inputs.thinking_level }}
           ADDRESS_SET: ${{ inputs.address_set }}
+          REPEAT_TYPES: ${{ inputs.repeat_types }}
           CHAT_MODEL_INPUT: ${{ inputs.chat_model }}
           EMBEDDING_MODEL_INPUT: ${{ inputs.embedding_model }}
         run: |
@@ -223,6 +234,10 @@ jobs:
           fi
           if ! [[ "$ADDRESS_SET" =~ ^(default|known|known-alt|unknown-invented|landmark-pin|vernacular|vernacular-strict|messy|hostile)$ ]]; then
             echo "::error::address_set must be one of the sets in docs/ai/evals/address-variants.json (or default)"
+            exit 1
+          fi
+          if ! [[ "$REPEAT_TYPES" =~ ^(plan|extract|ask|extract,ask|extract,ask,plan)$ ]]; then
+            echo "::error::repeat_types must be plan, extract, ask, extract,ask or extract,ask,plan"
             exit 1
           fi
           for m in "$CHAT_MODEL_INPUT" "$EMBEDDING_MODEL_INPUT"; do
@@ -360,6 +375,7 @@ jobs:
           AI_EVAL_TYPES: ${{ inputs.types }}
           AI_EVAL_DELAY_MS: ${{ inputs.delay_ms }}
           AI_EVAL_REPEATS: ${{ inputs.repeats }}
+          AI_EVAL_REPEAT_TYPES: ${{ inputs.repeat_types }}
           AI_EVAL_ADDRESS_SET: ${{ inputs.address_set }}
           THINKING_LEVEL: ${{ inputs.thinking_level }}
           CHAT_MODEL_INPUT: ${{ inputs.chat_model }}
