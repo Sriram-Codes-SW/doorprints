@@ -1544,6 +1544,8 @@
     <string name="lock_notice_ios_needs">Google Drive காப்புப்பிரதிக்கு இந்த iPhone-இல் கடவுக்குறியீடு தேவை. அமைப்புகள் செயலியில் Face ID &amp; கடவுக்குறியீடு என்பதில் அமைத்துவிட்டு, பிறகு திரும்பி வாருங்கள்.</string>
     <string name="lock_notice_ios_paused">இந்த iPhone-இல் இனி கடவுக்குறியீடு இல்லாததால் Google Drive காப்புப்பிரதி இடைநிறுத்தப்பட்டுள்ளது. உங்கள் வீடுகள் இந்த iPhone-இல் பாதுகாப்பாக உள்ளன. தொடர கடவுக்குறியீட்டை அமைக்கவும்.</string>
     <string name="lock_notice_ios_key_lost">இந்த iPhone-இன் பாதுகாப்பான விசை இழக்கப்பட்டதால் Google Drive காப்புப்பிரதி இடைநிறுத்தப்பட்டுள்ளது. உங்கள் வீடுகள் இந்த iPhone-இல் பாதுகாப்பாக உள்ளன. தொடர Google Drive உடன் மீண்டும் இணையுங்கள்.</string>
+    <!-- S4b-BL-145: the title of the local notice when a Drive pass finds the passcode gone (under review). -->
+    <string name="lock_notice_ios_notif_title">Google Drive காப்புப்பிரதி இடைநிறுத்தப்பட்டது</string>
     <string name="qr_scan_hint">கேமராவை மற்ற சாதனத்தில் உள்ள Doorprints குறியீட்டை நோக்கிப் பிடிக்கவும்.</string>
     <string name="qr_scan_not_doorprints">இது Doorprints குறியீடு அல்ல.</string>
     <string name="qr_scan_too_long">இந்தக் குறியீடு Doorprints குறியீடாக இருக்க மிகவும் நீளமானது.</string>

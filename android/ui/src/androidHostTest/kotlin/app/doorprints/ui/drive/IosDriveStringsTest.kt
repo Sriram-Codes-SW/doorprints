@@ -35,7 +35,7 @@ class IosDriveStringsTest {
     private val languages = mapOf("en" to "values", "hi" to "values-hi", "ta" to "values-ta", "te" to "values-te")
 
     private val keys = listOf(
-        "lock_notice_ios_heading", "lock_notice_ios_needs", "lock_notice_ios_paused", "lock_notice_ios_key_lost",
+        "lock_notice_ios_heading", "lock_notice_ios_needs", "lock_notice_ios_paused", "lock_notice_ios_key_lost", "lock_notice_ios_notif_title",
         "qr_scan_hint", "qr_scan_not_doorprints", "qr_scan_too_long", "qr_scan_viewfinder",
     )
 

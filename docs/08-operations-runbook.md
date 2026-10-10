@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Operations runbook |
-| Version | 0.30 |
+| Version | 0.31 |
 | Date | 2026-10-09 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -42,6 +42,7 @@
 | 0.28 | 2026-10-09 | Claude (Code) | §10.4: the **Vertex AI trial guard** (S4b-BL-193). `ai-evals.yml` refuses `provider=vertex` unless the repository variable `VERTEX_EVAL_ENABLED` is `true`, and refuses it from 2026-12-15 whatever the variable says, so a rerun by anyone with write access cannot spend beyond the trial credit. New rows: turn Vertex on for a run and off again, the hard stops at the end (unlink billing, disable the service account or the Workload Identity pool, delete the variables and secrets), a low per-minute and per-day quota on the Vertex AI API. |
 | 0.29 | 2026-10-09 | Claude (Code) | §4: renew the Docker Hub token before it expires; §5.2: rotating it (S4b-BL-197, [07](07-secure-build-and-deploy.md) §7.3). |
 | 0.30 | 2026-10-09 | Claude (Code) | §1.1: Ask finds the visited houses for a question about visits (S4b-BL-194); no re-index is needed after this upgrade, because the document text did not change. |
+| 0.31 | 2026-10-10 | Claude (Code), engineer | New §1.3: the iPhone app and a self-hosted server on plain `http://` (App Transport Security; S4b-BL-59). |
 
 Related: [Build and deploy](07-secure-build-and-deploy.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Google Drive design](15-google-drive-backup-and-sharing.md)
 
@@ -83,6 +84,10 @@ After upgrading to the version that adds the visited-houses step to Ask (S4b-BL-
 ### 1.2 Behind a reverse proxy: whose address the rate limits see
 
 The three per-address limiters (the general limit, 600 requests a minute with a burst of 300; wrong or missing API keys, 10 a minute; pairing and owner sign-in, 40 a minute) key on the request's remote address (`getRemoteAddr()`). `server.forward-headers-strategy: native` (`application.yml`, env `FORWARD_HEADERS_STRATEGY`) lets Tomcat take the client address from `X-Forwarded-For`, but only from a proxy it counts as internal (its default private ranges). Behind a proxy outside them (a CDN, a tunnel, a proxy on a public address) every client shares the proxy's address and therefore one bucket: one client's burst throttles everybody, and the ten wrong keys a minute are counted across all clients together (a correct key is never throttled by that one). The limiter also drops all its buckets once it holds more than 10,000 keys, which forgets the limits. For such a proxy keep `native` and widen Tomcat's list to exactly the proxy's addresses with `server.tomcat.remoteip.internal-proxies` (a regular expression; as an environment variable `SERVER_TOMCAT_REMOTEIP_INTERNAL_PROXIES`). Do not trust a whole network you do not run, and do not switch to `framework`: that strategy takes the forwarded headers from any sender, so a client that reaches the server directly could invent its own address, and the property above does not apply to it.
+
+### 1.3 The iPhone app and a server on plain `http://` (S4b-BL-59)
+
+App Transport Security, at its default in the iPhone app, refuses plain `http://` to a host with a domain name, so a self-hosted server must be reached over `https://` (the supported set-up: Tailscale's `https://` address, [the server guide](../guide/docs/set-up-a-server.md)). A server on a LAN IP address or a `.local` name is outside ATS and connects without TLS, after iOS asks for local network access; that is as on Android, and the traffic is readable on that network. Loopback is the only plain `http://` exception for the AI provider ([03](03-design.md), the local-address rule of the AI providers).
 
 ## 2. Monitoring
 

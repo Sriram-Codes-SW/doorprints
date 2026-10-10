@@ -1544,6 +1544,8 @@
     <string name="lock_notice_ios_needs">Google Drive बैकअप के लिए इस iPhone में पासकोड ज़रूरी है। सेटिंग्स ऐप में Face ID और पासकोड के अंदर लगाएँ, फिर यहाँ लौटें।</string>
     <string name="lock_notice_ios_paused">Google Drive बैकअप रुका है क्योंकि इस iPhone में अब पासकोड नहीं है। आपके मकान इस iPhone में सुरक्षित हैं। जारी रखने के लिए पासकोड लगाएँ।</string>
     <string name="lock_notice_ios_key_lost">Google Drive बैकअप रुका है क्योंकि इस iPhone की सुरक्षित कुंजी खो गई है। आपके मकान इस iPhone में सुरक्षित हैं। जारी रखने के लिए Google Drive से फिर जुड़ें।</string>
+    <!-- S4b-BL-145: the title of the local notice when a Drive pass finds the passcode gone (under review). -->
+    <string name="lock_notice_ios_notif_title">Google Drive बैकअप रुका</string>
     <string name="qr_scan_hint">कैमरे को दूसरे डिवाइस पर दिख रहे Doorprints कोड की ओर रखें।</string>
     <string name="qr_scan_not_doorprints">यह Doorprints कोड नहीं है।</string>
     <string name="qr_scan_too_long">यह कोड Doorprints कोड होने के लिए बहुत लंबा है।</string>

@@ -54,6 +54,13 @@ interface SecretStore {
      * neither. A store that keeps it elsewhere (the iOS Keychain) puts its own item back when [block] throws.
      */
     suspend fun <T> editing(block: suspend () -> T): T = block()
+
+    /**
+     * As [editing], with [readSettings] to read the settings as they are stored now (S4b-BL-57). A store that keeps
+     * the key elsewhere uses it when [block] ends in a cancellation: it undoes its change only if the settings do not
+     * hold the change it made, that is, if the edit never committed. The default ignores it.
+     */
+    suspend fun <T> editing(readSettings: suspend () -> Preferences, block: suspend () -> T): T = editing(block)
 }
 
 /**
