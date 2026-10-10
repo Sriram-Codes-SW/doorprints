@@ -76,6 +76,31 @@ describe('evalSetup: when the provider evals run (S4b-BL-153)', () => {
     });
   });
 
+  // S4b-BL-226: AI_EVAL_ADDRESS_SET names a set of address-variants.json; the default run is the setup as it always was.
+  describe('the address set (AI_EVAL_ADDRESS_SET, S4b-BL-226)', () => {
+    const gemini = { DOORPRINTS_EVAL_KEY: 'k', AI_EVAL_KIND: 'gemini' };
+
+    it.each([undefined, '', '   ', 'default'])('leaves the setup exactly as it was when the value is %j', (value) => {
+      expect(evalSetup({ ...gemini, AI_EVAL_ADDRESS_SET: value })).toEqual(evalSetup(gemini));
+      expect(evalSetup({ ...gemini, AI_EVAL_ADDRESS_SET: value })).not.toHaveProperty('addressSet');
+    });
+
+    it('carries the name of a set, trimmed', () => {
+      expect(evalSetup({ ...gemini, AI_EVAL_ADDRESS_SET: ' unknown-invented ' })).toMatchObject({ status: 'run', addressSet: 'unknown-invented', kind: 'gemini' });
+      expect(evalSetup({ ...gemini, AI_EVAL_ADDRESS_SET: 'known' })).toMatchObject({ status: 'run', addressSet: 'known' });
+    });
+
+    it.each(['Unknown', 'a b', '../x', 'x'.repeat(40), '-a', 'a_b', '1a', 'a--'])('refuses %j before anything is sent', (value) => {
+      expect(evalSetup({ ...gemini, AI_EVAL_ADDRESS_SET: value })).toEqual({
+        status: 'invalid', line: 'address set must be a name from address-variants.json (lower-case letters and hyphens)',
+      });
+    });
+
+    it('is not looked at when there is no key (skipped first)', () => {
+      expect(evalSetup({ AI_EVAL_KIND: 'gemini', AI_EVAL_ADDRESS_SET: 'Nope!' })).toEqual({ status: 'skip', line: 'skipped: no key' });
+    });
+  });
+
   // S4b-BL-190: a small model on a 3-core CPU needs more than the app's 60 s per call; only a server on this machine may ask.
   describe('the request limit (AI_EVAL_TIMEOUT_MS, S4b-BL-190)', () => {
     const local = { AI_EVAL_KIND: 'openai-compatible', AI_EVAL_MODEL: 'small', AI_EVAL_BASE_URL: 'http://127.0.0.1:11434/v1' };
@@ -402,6 +427,51 @@ describe('formatSummary: the job summary', () => {
         '',
       ].join('\n'),
     );
+  });
+
+  // S4b-BL-226: a run under an address set is informational; the summary names the set and lists what was left out.
+  describe('under an address set', () => {
+    const address = {
+      set: 'landmark-pin', header: 'landmark-pin (address-variants v0.1, fingerprint 345ca24bcf32)', applicable: 71, total: 75,
+      notApplicable: ['extract-04-injection', 'ask-03-why-rejected', 'ask-07-injection-reveal-prompt', 'plan-04-injection-notes'],
+    };
+
+    it('writes the set, the cases that apply, the cases left out and says the result is not gated', () => {
+      const results = [result('extract-01', 'extract', true), result('ask-01', 'ask', false, ['grounded: expected true, got false'])];
+      expect(formatSummary(meta, results, null, 'k', address)).toBe(
+        [
+          '## AI evals: own provider',
+          '',
+          'Provider: openai-compatible at api.groq.com, model `m1`. The key is not shown.',
+          'Address set: landmark-pin (address-variants v0.1, fingerprint 345ca24bcf32).',
+          'Result: 1 of 2 cases passed. Address set: landmark-pin (not gated); reported, not gating.',
+          'Cases that apply to this set: 71 of 75 (4 not applicable, listed below).',
+          'Not applicable under this set (4): extract-04-injection, ask-03-why-rejected, ask-07-injection-reveal-prompt, plan-04-injection-notes',
+          '',
+          '| Group | Passed | Of |',
+          '|---|---|---|',
+          '| extract | 1 | 1 |',
+          '| ask | 0 | 1 |',
+          '',
+          'Failed cases:',
+          '- ask-01: grounded: expected true, got false',
+          '',
+        ].join('\n'),
+      );
+    });
+
+    it('lists nothing when every case applies, and keeps the stop line', () => {
+      const text = formatSummary(meta, [result('extract-01', 'extract', true)], 'key rejected', 'k', { ...address, applicable: 75, notApplicable: [] });
+      expect(text).toContain('Cases that apply to this set: 75 of 75 (0 not applicable).');
+      expect(text).not.toContain('Not applicable under this set');
+      expect(text).toContain('STOPPED: key rejected after 1 cases.');
+    });
+
+    it('is exactly the old summary when there is no address set', () => {
+      const results = [result('extract-01', 'extract', true)];
+      expect(formatSummary(meta, results, null, 'k', undefined)).toBe(formatSummary(meta, results, null, 'k'));
+      expect(formatSummary(meta, results, null, 'k')).not.toContain('Address set');
+    });
   });
 
   it('says where a run stopped, and omits the failed list when nothing failed', () => {

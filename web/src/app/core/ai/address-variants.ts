@@ -218,6 +218,48 @@ export function applyAddressSet<G extends GoldenLike>(golden: G, variants: Varia
   return { set, golden: copy, notApplicable };
 }
 
+/**
+ * A named set chosen for a run (S4b-BL-226), like `AddressVariants.Run` in Java: the golden set to run, what was left out,
+ * and what the summary names. A run under a set is informational (the verdict is the default run's). `error` is a harness
+ * error when the fingerprint of the applied set is not the one the file records.
+ */
+export interface AddressRun<G> {
+  set: string;
+  description: string;
+  version: string;
+  fingerprint: string;
+  golden: G;
+  notApplicable: string[];
+  total: number;
+  error: string | null;
+}
+
+/** The run of a named set over `golden`, or null for the default. Throws like {@link applyAddressSet} for an unknown set. */
+export function selectAddressRun<G extends GoldenLike>(golden: G, variants: VariantsFile, name: string | undefined | null): AddressRun<G> | null {
+  if (isDefaultAddressSet(name)) return null;
+  const applied = applyAddressSet(golden, variants, name);
+  const print = fingerprint(applied.golden);
+  const recorded = variants.fingerprints[applied.set];
+  return {
+    set: applied.set,
+    description: variants.sets[applied.set].description,
+    version: variants.version,
+    fingerprint: print,
+    golden: applied.golden,
+    notApplicable: applied.notApplicable,
+    total: golden.cases.length,
+    error:
+      print === recorded
+        ? null
+        : `Address set '${applied.set}': its fingerprint is ${print} but address-variants.json records ${recorded}; the file, the golden set or a port has changed without the other (docs/ai/ai-design.md 8.3b)`,
+  };
+}
+
+/** `known-alt (address-variants v0.1, fingerprint 089350e09de9)`, the line the summary and the Java scorecard show. */
+export function addressRunHeader(run: Pick<AddressRun<unknown>, 'set' | 'version' | 'fingerprint'>): string {
+  return `${run.set} (address-variants v${run.version}, fingerprint ${run.fingerprint.slice(0, 12)})`;
+}
+
 /** `JSON.stringify` of a string, which is what the canonical form (and the Java and Python ports of it) uses. */
 const quote = (s: string): string => JSON.stringify(s);
 

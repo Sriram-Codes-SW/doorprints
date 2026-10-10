@@ -73,6 +73,11 @@
 #   ai_base_url and ai_model (or the repository variables AI_EVAL_BASE_URL and AI_EVAL_MODEL), with the repository secret
 #   AI_EVAL_API_KEY. The owner may never set the secret: the job then prints "skipped: no key" and succeeds without
 #   installing anything. No model name or key is in the repository. Free providers and synthetic data only (PRV-022).
+# 2026-10-10 (S4b-BL-226): the input `address_set` (default `default`) picks a set of docs/ai/evals/address-variants.json for the
+#   golden-set, own-provider and local-model suites; it is validated against the set names in the first job and passed through
+#   the environment (AI_EVAL_ADDRESS_SET), never interpolated into a script. Only the default run has a verdict; the other sets
+#   are informational (docs/ai/ai-design.md 8.3b), so this file's result steps are unchanged: a run under a set never reads
+#   `Result: INCOMPLETE`, and still reports a quota stop, a time-budget stop and an unfinished scorecard.
 # 2026-10-08 (S4b-BL-175, keyless): the suite `local-model` (job below) installs Ollama on the runner from the official release,
 #   pinned by version and by the sha256 the release publishes (no `curl | sh`), pulls a small model and runs the same golden
 #   set through the website's openai-compatible adapter against http://127.0.0.1:11434/v1 with no key. It exists because the
@@ -114,6 +119,30 @@ on:
         description: "golden-set only: trials per plan case, 1 to 5 (S4b-BL-203). Trial 1 is scored and gated as always; trials 2 and later only fill the report's stability table (informational). Each repeat is one more plan pass of 10 cases and the same model calls, so run it with types = plan"
         type: string
         default: "1"
+      repeat_types:
+        description: "golden-set only: which case types the repeats (input repeats) run (S4b-BL-227). plan = what the repeats always were. Others also repeat that type, one more pass of its cases per trial (extract 34, ask 31, plan 10), and the scorecard gains the agreement across trials (informational)"
+        type: choice
+        default: plan
+        options:
+          - plan
+          - extract
+          - ask
+          - extract,ask
+          - extract,ask,plan
+      address_set:
+        description: "Address set (S4b-BL-226, docs/ai/ai-design.md 8.3b): which addresses the fixture houses have. default = the golden set as it is, the only run with a verdict. Any other set is informational: the metrics are shown as 'not gated', the cases the set cannot ask about are listed, and the run fails only on a harness error or a stop. Works with every suite that runs the golden set"
+        type: choice
+        default: default
+        options:
+          - default
+          - known
+          - known-alt
+          - unknown-invented
+          - landmark-pin
+          - vernacular
+          - vernacular-strict
+          - messy
+          - hostile
       provider:
         description: Model provider. aistudio = AI_API_KEY secret. vertex = Google Cloud Vertex AI; needs docs/ai/vertex-setup.md steps 1-8 done first (secrets GCP_WIF_PROVIDER, GCP_SA_EMAIL, variable GCP_PROJECT_ID)
         type: choice
@@ -186,6 +215,8 @@ jobs:
           DELAY_MS: ${{ inputs.delay_ms }}
           PROVIDER: ${{ inputs.provider }}
           THINKING_LEVEL: ${{ inputs.thinking_level }}
+          ADDRESS_SET: ${{ inputs.address_set }}
+          REPEAT_TYPES: ${{ inputs.repeat_types }}
           CHAT_MODEL_INPUT: ${{ inputs.chat_model }}
           EMBEDDING_MODEL_INPUT: ${{ inputs.embedding_model }}
         run: |
@@ -199,6 +230,14 @@ jobs:
           fi
           if ! [[ "$THINKING_LEVEL" =~ ^(default|minimal|low|medium|high)$ ]]; then
             echo "::error::thinking_level must be default, minimal, low, medium or high"
+            exit 1
+          fi
+          if ! [[ "$ADDRESS_SET" =~ ^(default|known|known-alt|unknown-invented|landmark-pin|vernacular|vernacular-strict|messy|hostile)$ ]]; then
+            echo "::error::address_set must be one of the sets in docs/ai/evals/address-variants.json (or default)"
+            exit 1
+          fi
+          if ! [[ "$REPEAT_TYPES" =~ ^(plan|extract|ask|extract,ask|extract,ask,plan)$ ]]; then
+            echo "::error::repeat_types must be plan, extract, ask, extract,ask or extract,ask,plan"
             exit 1
           fi
           for m in "$CHAT_MODEL_INPUT" "$EMBEDDING_MODEL_INPUT"; do
@@ -336,6 +375,8 @@ jobs:
           AI_EVAL_TYPES: ${{ inputs.types }}
           AI_EVAL_DELAY_MS: ${{ inputs.delay_ms }}
           AI_EVAL_REPEATS: ${{ inputs.repeats }}
+          AI_EVAL_REPEAT_TYPES: ${{ inputs.repeat_types }}
+          AI_EVAL_ADDRESS_SET: ${{ inputs.address_set }}
           THINKING_LEVEL: ${{ inputs.thinking_level }}
           CHAT_MODEL_INPUT: ${{ inputs.chat_model }}
           EMBEDDING_MODEL_INPUT: ${{ inputs.embedding_model }}
@@ -567,6 +608,7 @@ jobs:
           AI_EVAL_MODEL: ${{ inputs.ai_model || vars.AI_EVAL_MODEL }}
           AI_EVAL_TYPES: ${{ inputs.types }}
           AI_EVAL_DELAY_MS: ${{ inputs.delay_ms }}
+          AI_EVAL_ADDRESS_SET: ${{ inputs.address_set }}
         run: |
           export DOORPRINTS_EVAL_SUMMARY="$RUNNER_TEMP/ai-eval-summary.md"
           npx ng test --watch=false --include src/app/core/ai/ai-provider.live.spec.ts
@@ -699,6 +741,7 @@ jobs:
           AI_EVAL_MODEL: ${{ inputs.local_model }}
           AI_EVAL_TYPES: ${{ inputs.types }}
           AI_EVAL_DELAY_MS: "0"
+          AI_EVAL_ADDRESS_SET: ${{ inputs.address_set }}
           # 180 s a request instead of the app's 60 s; the harness honours it only for a server on this machine (S4b-BL-190).
           AI_EVAL_TIMEOUT_MS: "180000"
         run: |
