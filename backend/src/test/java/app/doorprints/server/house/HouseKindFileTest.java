@@ -98,7 +98,13 @@ class HouseKindFileTest {
         }
     }
 
-    /** The AI slot {@code extract} names what the listing extract returns today, in the schema's order. */
+    /**
+     * The extract's outputs that fill no field of the candidate: {@code amenities} is a list on the draft only (shown as
+     * a hint, never stored as a house value), so the kind file's {@code extract} slot does not name it.
+     */
+    private static final Set<String> DRAFT_ONLY = Set.of("amenities");
+
+    /** The AI slot {@code extract} names the candidate fields the listing extract fills today, in the schema's order. */
     @Test
     void theExtractSlotIsTheListingExtractsFields() throws IOException {
         var k = kind();
@@ -106,6 +112,8 @@ class HouseKindFileTest {
         for (var f : list(k.get("core"))) byId.put(f.get("id").asText(), f);
         for (var f : list(k.get("extras"))) byId.put(f.get("id").asText(), f);
         var extract = list(k.get("ai").get("extract")).stream().flatMap(id -> wire(byId.get(id.asText())).stream()).toList();
-        assertThat(extract).containsExactlyElementsOf(names(RawListing.class));
+        assertThat(names(RawListing.class)).containsAll(DRAFT_ONLY);
+        assertThat(extract).containsExactlyElementsOf(
+                names(RawListing.class).stream().filter(n -> !DRAFT_ONLY.contains(n)).toList());
     }
 }

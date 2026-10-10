@@ -2045,6 +2045,9 @@ changed:
 - **Some labels are templates** (*Visits (%1$d)*): the resolver passes the same arguments as the screens do today.
 - **`priceType` drives the question scopes** (`appliesTo` `RENT`/`SALE`): mapped to cadences in `questions.scopes`.
 - **`myOffer` never goes to a provider** today (the server's `HouseDocuments`): it is in `ai.never`, not in `ask`.
+- **The listing extract also returns `amenities`**, a list on the draft that fills no candidate field (it is shown as a
+  hint), so the `extract` slot names only the fields it fills; the server's `HouseKindFileTest` pins that exception.
+  Found by the first CI run of that test.
 - **A viewing already has a `kind` key** (FIRST or SECOND): kept, noted under door 3.
 - **The format id restart reuses `/1`** (door 1): guarded by shape and flagged for the owner.
 - **Every key of a backup house today has exactly one place** in the kind file (`was`): the website, Android and the
