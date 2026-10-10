@@ -58,7 +58,8 @@
 | v0.54   | 2026-10-10 | Claude (Code), engineer       | **8.1: the suite `key-check`** (S4b-BL-217, [10](../10-sprint-log.md) 0.238): `ai-evals.yml` lists the models `AI_API_KEY` can use and sends one tiny request to the pinned model and to `gemini-3.5-flash-lite`. Not yet run. |
 | v0.55   | 2026-10-10 | Claude (Code), engineer       | **8.3b Address variants** (S4b-BL-225, [10](../10-sprint-log.md) v0.240, [06](../06-test-plan.md) 0.197): new `docs/ai/evals/address-variants.json` (v0.1) with eight sets that change only the address-like text of the 30 fixture houses (known, known-alt, unknown-invented, landmark-pin, vernacular, vernacular-strict, messy, hostile), `AddressVariants` (Java test tree and a TypeScript port) with a variant-safe rule that lists the cases a set cannot ask about as not applicable, and fingerprints of every applied set recomputed by both ports. The golden set (v0.9) and a default run are unchanged; nothing runs a set yet (S4b-BL-226). |
 | v0.56   | 2026-10-10 | Claude (Code), engineer       | **8.1 item 7 and 8.3b: choose an address set for a run** (S4b-BL-226, [10](../10-sprint-log.md) v0.241, [06](../06-test-plan.md) 0.198): `AI_EVAL_ADDRESS_SET` and the workflow input `address_set` (golden-set, own-provider and local-model suites), the scorecard header row and section `Address set: X (not gated)` with the cases not applicable, metrics shown as `not gated`, a fingerprint check as a harness error, and `EvalScorer.variantVerdict` (a run under a set fails only on a harness error or a stop). The website summary says the same. The default run is unchanged and still the only one with a verdict. |
-| v0.57   | 2026-10-10 | Claude (Code), engineer       | **Stale compose notes corrected:** section 2 and the merge gate 1 said `docker-compose.yml` cannot select `AI_PROVIDER=vertex`; it passes the Vertex settings and documents the ADC mount (checked against the file on `main`, 2026-10-10). Docs only. |
+| v0.57   | 2026-10-10 | Claude (Code), engineer       | **8.1 item 6a: repeat types and agreement across trials** (S4b-BL-227, [10](../10-sprint-log.md) v0.242, [06](../06-test-plan.md) 0.199): `AI_EVAL_REPEAT_TYPES` and the workflow input `repeat_types` (default plan, today's behaviour), the scorecard section *Agreement across trials* (extract draft equality after normalisation, ask citation set and pass/fail, plan stop set and fallback, stop order apart), the rule-of-three line, and `tools/ai-eval-compare.mjs`. Informational; no gate, temperature or seed changed. |
+| v0.59   | 2026-10-10 | Claude (Code), engineer       | **Stale compose notes corrected:** section 2 and the merge gate 1 said `docker-compose.yml` cannot select `AI_PROVIDER=vertex`; it passes the Vertex settings and documents the ADC mount (checked against the file on `main`, 2026-10-10). Docs only. |
 
 Status: implemented in `backend/` (package `app.doorprints.server.ai`), **off by default**. Not yet compiled in this
 sandbox (no Maven Central access) — CI compiles and runs the tests. Provider: AI Studio by default, Vertex AI with
@@ -105,7 +106,7 @@ including `AI_EMBEDDING_PROVIDER=openai`.
 > an empty default there would be passed through as an empty value and defeat the `AI_EMBEDDING_API_KEY` →
 > `AI_API_KEY` fallback in `application.yml`, so do not "simplify" it to `${AI_EMBEDDING_API_KEY:-}`.
 
-> **docker-compose and Vertex AI (resolved, v0.57; was requested in v0.16).** `docker-compose.yml` now passes
+> **docker-compose and Vertex AI (resolved, v0.59; was requested in v0.16).** `docker-compose.yml` now passes
 > `AI_PROVIDER` (default `aistudio`), `GCP_PROJECT_ID`, `GCP_LOCATION`, `AI_VERTEX_EMBEDDING_LOCATION`,
 > `AI_VERTEX_ENDPOINT`, `AI_VERTEX_API_VERSION` and `AI_INDEX_ON_CHANGE` to the backend, with empty values meaning "use
 > the default" as in `application.yml`, and its header has a Vertex example (no `AI_API_KEY`). **So
@@ -740,6 +741,20 @@ Flow of one run:
    quota rules are the same as for any call. The repeats are bound by the time budget (S4b-BL-202; checked before each trial;
    a stop leaves the gated trial complete and adds a warning), and every partial scorecard carries the stability table. **Cost:** each repeat is one more plan-only pass (10 cases, each a
    multi-call agent run), so run it with the workflow input `types` = `plan` rather than repeating Extract and Ask.
+6a. **Repeat types and agreement** (S4b-BL-227; environment `AI_EVAL_REPEAT_TYPES`, workflow input `repeat_types`, default `plan`):
+   the repeats of item 6 run the plan cases only unless asked; `extract`, `ask` or any mix also repeat those cases (one more pass
+   of 34, 31 and 10 cases per trial, each a paid call, so choose them with a small `repeats`). Trial 1 is still the only gated
+   trial. When any case ran at least twice the scorecard gains **Agreement across trials (informational, not gated)**: every
+   scored trial after the first is compared with trial 1 of its case (a trial that failed at the provider is left out), and a case
+   *agrees* when all its trials do. Extract: the whole draft after the scorer's normalisation (case, punctuation and spacing folded,
+   phone digits, link without a trailing slash, blank = missing, lists in order). Ask: the same set of cited houses and the same
+   pass or fail. Plan: the same set of stops and the same fallback flag; the stop order is reported apart. `agreement(type)` =
+   cases whose trials all agree / cases run at least twice. For each type a line says either "N trial pairs, none differ, so the
+   per-trial disagreement rate is at most 3/N at 95% confidence (rule of three)" or how many pairs differ (the rule of three needs
+   none). The scorecard never says the model is deterministic: the line bounds how often a repeat differed on these cases.
+   Production temperatures are untouched (extraction 0.0, Ask 0.1, Plan 0.2) and no eval-only temperature or seed is added (a seed
+   is S4b-BL-228, not verified). `tools/ai-eval-compare.mjs default-report.md variant-report.md` prints, per metric and per
+   agreement row, the default value, the variant's and the address gap (default minus variant). The website's eval does not repeat.
 7. **Address set** (S4b-BL-226; environment `AI_EVAL_ADDRESS_SET`, workflow input `address_set`, default `default`; see 8.3b): after
    the golden set loads, a named set of `docs/ai/evals/address-variants.json` replaces the fixture houses' addresses and the
    cases that name a changed place, before anything is seeded. The default run does not read the file and its scorecard is
@@ -982,7 +997,7 @@ the not-applicable list, the fingerprint check and the verdict, which stays the 
 set: X (not gated)` and the same two lines about the cases that apply; without a set its text is unchanged. To compare two runs,
 read the same metric in the default scorecard and in the set's: the difference is the address gap, and with one trial per case
 it includes the model's own run-to-run noise (the `known` set, which is the default's content reported as a set, measures that
-noise on its own). The agreement metrics that separate the two are S4b-BL-227, a seed S4b-BL-228, and the results of the first
+noise on its own). The agreement metrics that separate the two are in 8.1 item 6a (S4b-BL-227), a seed is S4b-BL-228, and the results of the first
 variant runs go in 8.5 (S4b-BL-229) once the owner has approved them.
 
 ### 8.4 Known risks for the first real run
@@ -1549,7 +1564,7 @@ The own-key Gemini adapter (the website's `GeminiChatModel`, `web/src/app/core/a
 
 
 - **Merge gates (v0.16, coordination with other teams; none can be closed by the AI team alone):**
-  1. **docker-compose** (compose owner): **closed (v0.57).** `docker-compose.yml` passes `AI_PROVIDER`, `GCP_PROJECT_ID`,
+  1. **docker-compose** (compose owner): **closed (v0.59).** `docker-compose.yml` passes `AI_PROVIDER`, `GCP_PROJECT_ID`,
      `GCP_LOCATION`, `AI_VERTEX_EMBEDDING_LOCATION`, `AI_VERTEX_ENDPOINT` and `AI_INDEX_ON_CHANGE`, and its header has the
      Vertex example; the read-only ADC mount and `GOOGLE_APPLICATION_CREDENTIALS` are commented lines to uncomment on
      first use (section 2). Vertex mode works with `mvn spring-boot:run`, `docker compose` and Cloud Run.
