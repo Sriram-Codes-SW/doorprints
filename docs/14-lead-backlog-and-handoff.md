@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.162 |
+| Version | 0.163 |
 | Date | 2026-10-10 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..183); this file lists the lead-level items and points to the rest. |
@@ -170,6 +170,7 @@
 | 0.160 | 2026-10-10 | Claude (Code), engineer | Z4 done and Z5 closed (see the table); S4b-BL-61 in review ([10](10-sprint-log.md) v0.242). |
 | 0.161 | 2026-10-10 | Claude (Code), engineer | §2 N21 voice: **voice PR 2 (S4b-BL-219) is in review** (draft PR #265): the `Transcriber` core with no caller ([10](10-sprint-log.md) v0.251). Next voice step is PR 3 (S4b-BL-220). |
 | 0.162 | 2026-10-10 | Claude (Code), engineer | §2 N21: **kinds PR 1 (S4b-BL-205) in review** on `feat/kinds-pr1-adr-schema`: ADR-36 and [03](03-design.md) §18, the kind files, the file-size budget; the three one-way-door choices of §18.4 owner-approved 2026-10-10. |
+| 0.163 | 2026-10-10 | Claude (Code), engineer | **§11: the state at the end of the long session of 2026-10-10** (what merged, what is open, what the live runs showed, the decisions that wait for the owner, how to resume). Docs only. |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 
@@ -972,3 +973,49 @@ transaction over every kind), the questions' lines in the Assistant's house docu
 
 **End state of the phone series (S4b-BL-168, slices 1 to 8; slice 7 moved only the checklist and the score).** `CommonRepository.kt` 1,876 -> 1,299 lines (-577, 31%), `HouseEditScreen.kt` 2,261 -> 1,779 (-482, 21%; the photos left it in slice 1 and the checklist and score in slice 7; the status radios and the rating stayed). Seven plain classes carry the kinds: `PhotoStore` 163, `ViewingStore` 93, `AreaStore` 147, `QuestionStore` 146, `CriterionStore` 151, `BrokerStore` 195 and `AiStore` 208 lines (903 in all), `HousePhotos.kt` 583 holds the form's photos and `ChecklistSection.kt` 158 the form's checklist and score; the files did not shrink to a small size and the code did not get smaller (the stores add their headers and delegations), what changed is where a change goes. **The plan's expected numbers:** the table above named about 380 lines of the form for the photos (`HouseEditScreen.kt` lost 384) and the repository ranges of each kind (the slices took them out; slice 8's 176 lines became 131 fewer in the repository, the rest being the delegations that keep `Repository`'s members as they are). It did not promise a size for either file; it promised that a new house value edits one small file for its kind. That holds for the photos, viewings, areas and notes, questions, criteria, brokers and the AI choice. It does not hold for the house's own fields: a new field on the house still edits `HouseEditScreen.kt` (the draft, the section, the save), `CommonRepository.kt` (the sync and import loops and the house mapper) and `ExportModel.kt`, because the table marked those parts **Fails** the deletion test: they have one caller each or are one transaction over every kind. `CommonRepository.kt` is still the biggest file of `:shared` (the sync, and the export, import, copy and undo in one transaction) and `HouseEditScreen.kt` is still the form itself; the series made neither of them short, and it should not be repeated for them unless the owner wants a split of the import loops by a way other than kind. **Remaining:** nothing in the plan; the status radios and the rating are not split (above).
 
+## 11. State at the end of 2026-10-10 (hand-off)
+
+Written so a new session can continue without this one's memory. Backlog ids and statuses are in [10](10-sprint-log.md); this is the picture around them.
+
+### 11.1 What merged to `main` today
+
+- **Kinds, step 1** (#251): ADR-36, the kind schema, the house kind file, label vectors, the CI file-size budget. Owner-approved: container name *Search*, backup family restarts at `doorprints-backup/1`, `houseId` becomes `candidateId`.
+- **Voice, steps 1-2:** ADR-37 and threat-model rows (#250); the `Transcriber` core with fake-audio tests and additive parity sections (#265, in the batch #268). No UI yet.
+- **AI:** provider safety-block handling, the `blocked` failure (#254); landline redaction and the planner fallback (#261); the AI settings sentences (#256); extract reliability: web Gemini 60 s timeout, idempotent fill, Undo, "From the listing" marks, price-disagreement warning (#271).
+- **AI evals:** address sets (#252, #253), agreement metrics (#255), validity work: Wilson intervals, paired verdict, field-level agreement, canaries, hard set (#270), injection scoring fix, report split and the `no-wrapping` canary (#274).
+- **Other batch items** (#268 integration of #251, #254, #256-#262, #265; then #266, #267, #269, #272): backup texts, map chrome, web fixes and cache headers, Android test hardening, ZAP retry, status corrections, the gitleaks ignore for the Android crypto vector copies, the iPhone and Drive follow-ups (BL-57(2), 59, 131, 144, 145), the portrait-only legend, the longer `AreasScreenTest` waits.
+- Main is green; the full live UI test passed on the deployed site (all sections, 1,687 s).
+
+### 11.2 Open
+
+- **#264, kinds step 2 (the one-time format reset)** is NOT done: only the shared schema files in `docs/schemas` were moved to the new shape. The half-built server part (`Money`, `CandidateExtras`, the Flyway squash start) was reverted to keep the branch compiling and is saved as a patch on the remote branch `wip/kinds-pr2-backend-patch` (`wip/kinds-pr2-backend.patch`). The web, Android and iPhone parts were never started. Known contradiction with ADR-36 door 7: a house's money must allow a cadence with no amount. Redo from the ADR, in stacked pull requests (server and schemas, web, Android and iPhone-common).
+- **Kinds steps 3-9** (labels, renderer, hidden `schools` kind, search and copies, kind-aware AI, Settings and guide, security gate) and **voice steps 3-7** (spoken-style cases, web, Android, iPhone, Sarvam and clip suite): unstarted. The voice screens come after kinds step 5.
+- **Dependabot** #209, #210, #211.
+
+### 11.3 What the live Vertex runs showed (model `gemini-3.5-flash`, location `global`)
+
+Golden set 75/75 twice (zero discordant cases: the eval repeats). Plan x5 on the address sets `unknown-invented` and `hostile`: 50/50 trials each, all metrics 1.00. Agreement across trials: ask 30 of 31 cases, plan 9 of 10 cases (same stops), extract whole-draft only 6 of 34 (free-text wording; structured-field agreement is measured separately since #270). **Weaker model** `gemini-3.5-flash-lite` (valid only after `GCP_LOCATION=global`): golden set 70/75, five cases lost, all one-way (citation precision 0.91, answer correctness 0.92; sign test p = 0.063); so the golden set can tell models apart on ask metrics, not on extraction, refusals, plans or injection. **Canaries** (degraded configurations that should lower a metric): `no-sanitizer`, `no-citation-filter`, `prompt-without-rules` and `no-wrapping` all showed NO drop on this model: the safeguards are defence in depth here, not visibly load-bearing, and injection resistance (25 cases, lower 95% bound 0.87) does not separate even the weaker model. The honest injection sentence is in [ai-design](ai/ai-design.md) 8.6. **Hard set** (18 cases, informational): 14/18 on the default model, 13/18 on the weaker one; the same four fail on both: two are mistakes in the cases (`hard-ask-01`: the Adyar flat has no parking in its notes, so only Kakkanad is expected; `hard-ask-03`: the Ask document shows only the date of the last visit, both fixture visits are on one day, so "I don't know" is right), one is a real gap (`hard-extract-03`: Devanagari digits give price null; the open row S4b-BL-174b), one is a policy question (`hard-extract-05`: sale and rent both offered, the model said SALE, the case wants null). Run D3 (the default model under the corrected injection scoring) was still running when this was written; its report is the `ai-eval-report` artifact of the run after N1.
+
+### 11.4 Decisions that wait for the owner
+
+1. **Sale and rent both offered:** should Extract return `priceType` null (the person chooses) or the first offer? Null needs a prompt change and a re-pin of the parity vectors.
+2. **First visit date in the Ask document:** today only the last visit date appears, so "which did I see first" cannot be answered; adding it changes the pinned document lines.
+3. **Billing:** check the spend of the Google Cloud project `doorprints-ai` (the plan estimated about Rs 455-600 plus small follow-ups; the actual figure was never read). The repository variable `VERTEX_EVAL_ENABLED` should be deleted when the runs are done.
+4. **The AI Studio key** (`AI_API_KEY`) answers HTTP 402 (prepaid credit used up); the on-device live suite and own-key Gemini evals need a top-up or another key. Vertex is unaffected.
+5. The owner's own to-dos (devices, accounts, native-speaker review, manual TC-M checks, the Survey of India items) were left alone on purpose.
+
+### 11.5 Next, in order
+
+1. Correct `hard-ask-01` and `hard-ask-03` in `docs/ai/evals/hard-set.json` (v0.2); keep `hard-extract-03` as a labelled known gap.
+2. Print the injection split in the website summary (`ai-eval.ts`; the Java scorecard already does).
+3. Redo kinds step 2, then steps 3-9; voice steps after kinds step 5.
+4. A harder injection set only after the decision above on what to claim (Fable's advice: pipeline-guarded versus model-dependent cases, a gate of "no model-dependent case followed an instruction", n >= 59 for a 0.95 lower bound).
+
+### 11.6 How to resume, and the traps met today
+
+- **Vertex runs only work from `main`:** the workload-identity condition pins the branch. Dispatch `ai-evals.yml` with `provider=vertex`; inputs of note: `eval_set` (golden-set, hard-set), `canary`, `chat_model`, `address_set`, `repeats`, `repeat_types`.
+- **Merging many pull requests:** every one bumps the same `docs/10`, `docs/06`, `ai-design` version rows, so each merge conflicts the next. A resolver script (renumber rows after main's, header = max + 1) and the sequencing scripts are on `wip/kinds-pr2-backend-patch` under `wip/`. Its union step can duplicate a backlog row that both sides edited: after using it, check for new duplicate `S4b-BL` ids against `main`. For many ready pull requests, merge them into one integration branch and run CI once (that is how #268 worked).
+- **A conflicted pull request gets no CI.** The secret scan reads every branch's history: a test-vector copy on one branch failed the scan on all (fixed by the reviewed `.gitleaksignore` lines, #267).
+- **Gradle works here:** `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64`, `ANDROID_HOME=/root/android-sdk`, `./gradlew --offline --console=plain`; check free disk before each run (keep 1.5 GB) and delete `build` folders afterwards. The iOS test source compiles on Linux with `-Pkotlin.native.enableKlibsCrossCompilation=true :shared:compileTestKotlinIosSimulatorArm64`.
+- **Long jobs:** run them as tracked background tasks. Detached `setsid` scripts were lost twice when the sandbox network proxy restarted; the live UI test needs the proxy and about 28 minutes (set a 45-minute limit).
+- **A bad claim to avoid:** a builder's "all green" before every check had finished was wrong once; list the checks by name.
