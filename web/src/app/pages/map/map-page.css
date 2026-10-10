@@ -590,9 +590,10 @@
  * the list's heading and counters keep their place above the bottom bar (Tamil at 130% on 384x615, 320px at 150%).
  * The legend sits at the start, clear of the control column at the end (as .add-hint does; the hint and the legend are
  * never shown together: add mode hides the legend), wrapping inside what is left. The stack stops being the legend's
- * containing block, so both children are placed against the map.
+ * containing block, so both children are placed against the map. Portrait only: in landscape (iPhone SE, 667x375) the
+ * actions would sit over MapLibre's controls (live UI test, 2026-10-10).
  */
-@media (max-width: 760px) and (max-height: 700px) {
+@media (max-width: 760px) and (max-height: 700px) and (orientation: portrait) {
   .map-stack {
     position: static;
   }
