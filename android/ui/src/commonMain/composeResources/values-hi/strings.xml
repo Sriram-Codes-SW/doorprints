@@ -659,6 +659,8 @@
     <string name="settings_ai_key_removed">AI कुंजी और सेटिंग हटाई गईं</string>
     <string name="ai_key_rejected_host">%1$s ने आपकी कुंजी नहीं मानी। उसे सेटिंग्स में AI सुविधाएँ के नीचे जाँचें।</string>
     <string name="ai_model_not_found">AI सेवा इस मॉडल को नहीं जानती। मॉडल का नाम सेटिंग्स में AI सुविधाएँ के नीचे जाँचें।</string>
+    <!-- S4b-BL-232 (2026-10-10): under review (hi/ta/te ship marked under review). -->
+    <string name="ai_blocked">AI सेवा ने इस टेक्स्ट को स्वीकार नहीं किया। कुछ भी नहीं बदला गया। शब्द बदलकर फिर कोशिश करें।</string>
     <string name="ai_unreachable">%1$s तक नहीं पहुँचा जा सका। पता और अपना कनेक्शन जाँचें।</string>
     <string name="ai_unreachable_local">%1$s तक नहीं पहुँचा जा सका। जाँचें कि वह चल रहा है और इस फ़ोन से पहुँचा जा सकता है।</string>
     <string name="ai_disclosure_own_key_host">यह टेक्स्ट, मिलते-जुलते मकानों के नोट के साथ, आपकी अपनी कुंजी से इस फ़ोन से सीधे %1$s को भेजा जाता है।</string>

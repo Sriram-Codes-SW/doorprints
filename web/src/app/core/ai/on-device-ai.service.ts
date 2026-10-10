@@ -28,10 +28,14 @@ import {
   candidateLines, citations, cleanAnswer, extractionPrompt, nonce, planPrompt, sanitizeDraft, selectForAsk, selectForPlan,
 } from './ai-core';
 import { type AiQuality, geminiThinkingLevel } from './ai-quality';
+import { geminiBlocked } from './ai-blocked';
 import type { JsonChatModel } from './json-chat-model';
 
-/** `modelNotFound` and `unreachable` come from an OpenAI-compatible provider (docs/03 §13.2); Gemini never raises them. */
-export type OnDeviceAiErrorKind = 'rateLimited' | 'keyRejected' | 'unavailable' | 'modelNotFound' | 'unreachable';
+/**
+ * `modelNotFound` and `unreachable` come from an OpenAI-compatible provider (docs/03 §13.2); Gemini never raises them.
+ * `blocked` is the provider's own safety system declining the text (S4b-BL-232): never retried, its words never kept.
+ */
+export type OnDeviceAiErrorKind = 'rateLimited' | 'keyRejected' | 'unavailable' | 'modelNotFound' | 'unreachable' | 'blocked';
 
 /** Why an on-device AI request failed, in the words the screens use (see `aiErrorMsg`). */
 export class OnDeviceAiError extends Error {
@@ -144,6 +148,7 @@ export class GeminiChatModel implements JsonChatModel {
       }
       throw new OnDeviceAiError('unavailable');
     }
+    if (geminiBlocked(res)) throw new OnDeviceAiError('blocked');
     const parts = res?.candidates?.[0]?.content?.parts;
     if (!parts) throw new OnDeviceAiError('unavailable');
     return parts.map((p) => p.text ?? '').join('');

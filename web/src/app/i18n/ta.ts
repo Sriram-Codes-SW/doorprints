@@ -1658,6 +1658,8 @@ export const ta: Dict = {
   'connect.aiLocalCorsHintOther': 'உள்ளூர் சர்வர் தனது CORS அமைப்புகளில் https://doorprints.web.app ஐ அனுமதிக்காவிட்டால், இந்தத் தளம் அதை அடைவதை உலாவி தடுக்கும்.',
   'ai.keyRejectedHost': '{host} உங்கள் சாவியை ஏற்கவில்லை. இணைப்பு பக்கத்தில் AI வசதிகள் என்பதன் கீழ் அதைச் சரிபார்க்கவும்.',
   'ai.modelNotFound': 'AI சேவைக்கு இந்த மாடல் தெரியவில்லை. இணைப்பு பக்கத்தில் AI வசதிகள் என்பதன் கீழ் மாடல் பெயரைச் சரிபார்க்கவும்.',
+  // S4b-BL-232 (2026-10-10): under review (owner rule: hi/ta/te ship marked under review).
+  'ai.blocked': 'AI சேவை இந்த உரையை ஏற்கவில்லை. எதுவும் மாற்றப்படவில்லை. சொற்களை மாற்றி மீண்டும் முயலவும்.',
   'ai.unreachable': '{host} ஐ அடைய முடியவில்லை. முகவரியையும் உங்கள் இணைப்பையும் சரிபார்க்கவும்.',
   'ai.unreachableLocal': '{host} ஐ அடைய முடியவில்லை. அது இயங்குகிறதா, இந்தத் தளத்தை அனுமதிக்கிறதா (CORS) எனச் சரிபார்க்கவும்; இல்லையெனில் உலாவி அதைத் தடுக்கும்.',
   // S4b-BL-182 (2026-10-08): the paste box says how much of a long listing is left out. Under review (owner rule: hi/ta/te ship marked under review).

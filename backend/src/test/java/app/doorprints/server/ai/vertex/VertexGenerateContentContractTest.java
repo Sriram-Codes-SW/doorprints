@@ -336,6 +336,54 @@ class VertexGenerateContentContractTest {
         assertThat(result.entity().citedHouseIds()).containsExactly("0b3f2c1e-5d6a-4f7b-9c8d-1e2f3a4b5c6d");
     }
 
+    // What a provider safety block does on the server today (S4b-BL-232, docs/ai/ai-design.md 15; the server maps nothing to
+    // a "declined" result yet, backlog S4b-BL-233). Shapes: ai.google.dev/api/generate-content, promptFeedback.blockReason
+    // (no candidates) and a candidate finishReason SAFETY.
+
+    static final String PROMPT_BLOCKED = """
+            {
+              "promptFeedback": {
+                "blockReason": "SAFETY"
+              },
+              "usageMetadata": {
+                "promptTokenCount": 9,
+                "totalTokenCount": 9
+              },
+              "modelVersion": "gemini-3.5-flash",
+              "responseId": "5fbRaOnZIdOq2PgP-L3P8Ag"
+            }
+            """;
+
+    static final String ANSWER_BLOCKED = """
+            {
+              "candidates": [
+                {
+                  "finishReason": "SAFETY"
+                }
+              ],
+              "usageMetadata": {
+                "promptTokenCount": 412,
+                "totalTokenCount": 412
+              },
+              "modelVersion": "gemini-3.5-flash",
+              "responseId": "6fbRaPoaJeOq2PgP-L3P8Ag"
+            }
+            """;
+
+    @Test
+    void todayABlockedPromptAndASafetyFinishFailTheStructuredCallAfterOneRequest() {
+        for (var body : List.of(PROMPT_BLOCKED, ANSWER_BLOCKED)) {
+            replies.clear();
+            requestBodies.clear();
+            replies.add(new Reply(200, body));
+
+            // Pinned as observed in CI; the services catch RuntimeException and answer 503 (AiExceptionHandler).
+            assertThatThrownBy(() -> ChatClient.create(model(0)).prompt().user("q").call()
+                    .responseEntity(ModelAnswer.class)).isInstanceOf(RuntimeException.class);
+            assertThat(requestBodies).hasSize(1);
+        }
+    }
+
     @Test
     void functionCallRoundTripSendsTheThoughtSignatureBack() {
         replies.add(new Reply(200, FUNCTION_CALL_RESPONSE));

@@ -3905,5 +3905,350 @@
         }
       }
     }
+  } ],
+  "blockedResponses" : [ {
+    "provider" : "gemini",
+    "status" : 200,
+    "body" : "{\"promptFeedback\":{\"blockReason\":\"SAFETY\",\"safetyRatings\":[{\"category\":\"HARM_CATEGORY_HARASSMENT\",\"probability\":\"HIGH\"}]},\"usageMetadata\":{\"promptTokenCount\":9}}",
+    "expected" : {
+      "blocked" : true
+    },
+    "note" : "prompt blocked: SAFETY"
+  }, {
+    "provider" : "gemini",
+    "status" : 200,
+    "body" : "{\"promptFeedback\":{\"blockReason\":\"BLOCKLIST\"}}",
+    "expected" : {
+      "blocked" : true
+    },
+    "note" : "prompt blocked: BLOCKLIST"
+  }, {
+    "provider" : "gemini",
+    "status" : 200,
+    "body" : "{\"promptFeedback\":{\"blockReason\":\"PROHIBITED_CONTENT\"}}",
+    "expected" : {
+      "blocked" : true
+    },
+    "note" : "prompt blocked: PROHIBITED_CONTENT"
+  }, {
+    "provider" : "gemini",
+    "status" : 200,
+    "body" : "{\"promptFeedback\":{\"blockReason\":\"OTHER\"}}",
+    "expected" : {
+      "blocked" : true
+    },
+    "note" : "prompt blocked: OTHER"
+  }, {
+    "provider" : "gemini",
+    "status" : 200,
+    "body" : "{\"candidates\":[],\"promptFeedback\":{\"blockReason\":\"SAFETY\"}}",
+    "expected" : {
+      "blocked" : true
+    },
+    "note" : "prompt blocked with an empty candidates list"
+  }, {
+    "provider" : "gemini",
+    "status" : 200,
+    "body" : "{\"candidates\":[{\"finishReason\":\"SAFETY\",\"safetyRatings\":[{\"category\":\"HARM_CATEGORY_HATE_SPEECH\",\"probability\":\"MEDIUM\",\"blocked\":true}]}]}",
+    "expected" : {
+      "blocked" : true
+    },
+    "note" : "answer withheld: SAFETY"
+  }, {
+    "provider" : "gemini",
+    "status" : 200,
+    "body" : "{\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"{\\\"answer\\\":\\\"SENTINEL-PROVIDER-WORDS\\\"}\"}]},\"finishReason\":\"PROHIBITED_CONTENT\"}]}",
+    "expected" : {
+      "blocked" : true
+    },
+    "note" : "answer withheld: PROHIBITED_CONTENT, even with partial text"
+  }, {
+    "provider" : "gemini",
+    "status" : 200,
+    "body" : "{\"candidates\":[{\"finishReason\":\"BLOCKLIST\"}]}",
+    "expected" : {
+      "blocked" : true
+    },
+    "note" : "answer withheld: BLOCKLIST"
+  }, {
+    "provider" : "gemini",
+    "status" : 200,
+    "body" : "{\"candidates\":[{\"finishReason\":\"SPII\"}]}",
+    "expected" : {
+      "blocked" : true
+    },
+    "note" : "answer withheld: SPII"
+  }, {
+    "provider" : "gemini",
+    "status" : 200,
+    "body" : "{\"candidates\":[{\"finishReason\":\"RECITATION\"}]}",
+    "expected" : {
+      "blocked" : true
+    },
+    "note" : "answer withheld: RECITATION"
+  }, {
+    "provider" : "gemini",
+    "status" : 200,
+    "body" : "{\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"{\\\"ok\\\":true}\"}]},\"finishReason\":\"STOP\"}]}",
+    "expected" : {
+      "blocked" : false
+    },
+    "note" : "a normal answer"
+  }, {
+    "provider" : "gemini",
+    "status" : 200,
+    "body" : "{\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"{\\\"ok\\\":\"}]},\"finishReason\":\"MAX_TOKENS\"}]}",
+    "expected" : {
+      "blocked" : false
+    },
+    "note" : "cut off at the token limit stays generic"
+  }, {
+    "provider" : "gemini",
+    "status" : 200,
+    "body" : "{\"candidates\":[{\"finishReason\":\"OTHER\"}]}",
+    "expected" : {
+      "blocked" : false
+    },
+    "note" : "finishReason OTHER stays generic"
+  }, {
+    "provider" : "gemini",
+    "status" : 200,
+    "body" : "{\"candidates\":[{\"finishReason\":\"LANGUAGE\"}]}",
+    "expected" : {
+      "blocked" : false
+    },
+    "note" : "finishReason LANGUAGE stays generic"
+  }, {
+    "provider" : "gemini",
+    "status" : 200,
+    "body" : "{\"candidates\":[{\"finishReason\":\"MALFORMED_FUNCTION_CALL\"}]}",
+    "expected" : {
+      "blocked" : false
+    },
+    "note" : "malformed call stays generic"
+  }, {
+    "provider" : "gemini",
+    "status" : 200,
+    "body" : "{}",
+    "expected" : {
+      "blocked" : false
+    },
+    "note" : "no candidates and no feedback stays generic"
+  }, {
+    "provider" : "gemini",
+    "status" : 200,
+    "body" : "{\"candidates\":[],\"promptFeedback\":{}}",
+    "expected" : {
+      "blocked" : false
+    },
+    "note" : "empty feedback without a blockReason stays generic"
+  }, {
+    "provider" : "gemini",
+    "status" : 200,
+    "body" : "{\"candidates\":[],\"promptFeedback\":{\"blockReason\":\"BLOCK_REASON_UNSPECIFIED\"}}",
+    "expected" : {
+      "blocked" : false
+    },
+    "note" : "unspecified blockReason is not a block"
+  }, {
+    "provider" : "gemini",
+    "status" : 429,
+    "body" : "{\"error\":{\"code\":429,\"message\":\"quota\",\"status\":\"RESOURCE_EXHAUSTED\"}}",
+    "expected" : {
+      "blocked" : false
+    },
+    "note" : "quota"
+  }, {
+    "provider" : "gemini",
+    "status" : 500,
+    "body" : "{\"error\":{\"code\":500,\"message\":\"internal\",\"status\":\"INTERNAL\"}}",
+    "expected" : {
+      "blocked" : false
+    },
+    "note" : "server error"
+  }, {
+    "provider" : "gemini",
+    "status" : 403,
+    "body" : "{\"error\":{\"code\":403,\"message\":\"key\",\"status\":\"PERMISSION_DENIED\"}}",
+    "expected" : {
+      "blocked" : false
+    },
+    "note" : "refused key"
+  }, {
+    "provider" : "gemini",
+    "status" : 200,
+    "body" : "not json",
+    "expected" : {
+      "blocked" : false
+    },
+    "note" : "not JSON"
+  }, {
+    "provider" : "openai",
+    "status" : 200,
+    "body" : "{\"choices\":[{\"index\":0,\"finish_reason\":\"content_filter\",\"message\":{\"role\":\"assistant\",\"content\":null}}]}",
+    "expected" : {
+      "blocked" : true
+    },
+    "note" : "finish_reason content_filter, no text"
+  }, {
+    "provider" : "openai",
+    "status" : 200,
+    "body" : "{\"choices\":[{\"index\":0,\"finish_reason\":\"content_filter\",\"message\":{\"role\":\"assistant\",\"content\":\"{\\\"answer\\\":\\\"SENTINEL-PROVIDER-WORDS\\\"}\"}}]}",
+    "expected" : {
+      "blocked" : true
+    },
+    "note" : "finish_reason content_filter, partial text"
+  }, {
+    "provider" : "openai",
+    "status" : 200,
+    "body" : "{\"choices\":[{\"index\":0,\"finish_reason\":\"stop\",\"message\":{\"role\":\"assistant\",\"content\":null,\"refusal\":\"I can't help with SENTINEL-PROVIDER-WORDS\"}}]}",
+    "expected" : {
+      "blocked" : true
+    },
+    "note" : "message.refusal text"
+  }, {
+    "provider" : "openai",
+    "status" : 400,
+    "body" : "{\"error\":{\"message\":\"Your request was rejected as a result of our safety system. SENTINEL-PROVIDER-WORDS\",\"type\":\"invalid_request_error\",\"param\":null,\"code\":\"content_policy_violation\"}}",
+    "expected" : {
+      "blocked" : true
+    },
+    "note" : "400 content_policy_violation"
+  }, {
+    "provider" : "openai",
+    "status" : 400,
+    "body" : "{\"error\":{\"message\":\"The response was filtered SENTINEL-PROVIDER-WORDS\",\"type\":null,\"param\":\"prompt\",\"code\":\"content_filter\",\"status\":400}}",
+    "expected" : {
+      "blocked" : true
+    },
+    "note" : "400 content_filter (Azure OpenAI)"
+  }, {
+    "provider" : "openai",
+    "status" : 200,
+    "body" : "{\"choices\":[{\"index\":0,\"finish_reason\":\"stop\",\"message\":{\"role\":\"assistant\",\"content\":\"{\\\"ok\\\":true}\",\"refusal\":null}}]}",
+    "expected" : {
+      "blocked" : false
+    },
+    "note" : "a normal answer with a null refusal"
+  }, {
+    "provider" : "openai",
+    "status" : 200,
+    "body" : "{\"choices\":[{\"index\":0,\"finish_reason\":\"stop\",\"message\":{\"role\":\"assistant\",\"content\":\"{\\\"ok\\\":true}\",\"refusal\":\"\"}}]}",
+    "expected" : {
+      "blocked" : false
+    },
+    "note" : "an empty refusal is not one"
+  }, {
+    "provider" : "openai",
+    "status" : 200,
+    "body" : "{\"choices\":[{\"index\":0,\"finish_reason\":\"length\",\"message\":{\"role\":\"assistant\",\"content\":\"{\\\"ok\\\":\"}}]}",
+    "expected" : {
+      "blocked" : false
+    },
+    "note" : "length stays generic"
+  }, {
+    "provider" : "openai",
+    "status" : 400,
+    "body" : "{\"error\":{\"message\":\"response_format json_schema is not supported\"}}",
+    "expected" : {
+      "blocked" : false
+    },
+    "note" : "a 400 that walks the ladder is not a block"
+  }, {
+    "provider" : "openai",
+    "status" : 400,
+    "body" : "{\"error\":{\"message\":\"context length exceeded\",\"code\":\"context_length_exceeded\"}}",
+    "expected" : {
+      "blocked" : false
+    },
+    "note" : "another 400 code"
+  }, {
+    "provider" : "openai",
+    "status" : 429,
+    "body" : "{\"error\":{\"message\":\"rate\",\"code\":\"rate_limit_exceeded\"}}",
+    "expected" : {
+      "blocked" : false
+    },
+    "note" : "429"
+  }, {
+    "provider" : "openai",
+    "status" : 500,
+    "body" : "{\"error\":{\"message\":\"boom\"}}",
+    "expected" : {
+      "blocked" : false
+    },
+    "note" : "500"
+  }, {
+    "provider" : "openai",
+    "status" : 400,
+    "body" : "content_filter in plain text",
+    "expected" : {
+      "blocked" : false
+    },
+    "note" : "a 400 that is not JSON is not read for words"
+  }, {
+    "provider" : "anthropic",
+    "status" : 200,
+    "body" : "{\"id\":\"msg_test\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"test-model\",\"content\":[{\"type\":\"text\",\"text\":\"SENTINEL-PROVIDER-WORDS\"}],\"stop_reason\":\"refusal\",\"stop_details\":{\"type\":\"refusal\",\"category\":null,\"explanation\":\"SENTINEL-PROVIDER-WORDS\"}}",
+    "expected" : {
+      "blocked" : true
+    },
+    "note" : "stop_reason refusal"
+  }, {
+    "provider" : "anthropic",
+    "status" : 200,
+    "body" : "{\"id\":\"msg_test\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"test-model\",\"content\":[],\"stop_reason\":\"refusal\"}",
+    "expected" : {
+      "blocked" : true
+    },
+    "note" : "stop_reason refusal, no content"
+  }, {
+    "provider" : "anthropic",
+    "status" : 200,
+    "body" : "{\"id\":\"msg_test\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"test-model\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_test\",\"name\":\"answer\",\"input\":{\"answer\":\"Yes\",\"citedHouseIds\":[]}}],\"stop_reason\":\"tool_use\"}",
+    "expected" : {
+      "blocked" : false
+    },
+    "note" : "a normal tool call"
+  }, {
+    "provider" : "anthropic",
+    "status" : 200,
+    "body" : "{\"id\":\"msg_test\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"test-model\",\"content\":[{\"type\":\"text\",\"text\":\"No.\"}],\"stop_reason\":\"end_turn\"}",
+    "expected" : {
+      "blocked" : false
+    },
+    "note" : "a text answer stays generic"
+  }, {
+    "provider" : "anthropic",
+    "status" : 200,
+    "body" : "{\"id\":\"msg_test\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"test-model\",\"content\":[],\"stop_reason\":\"max_tokens\"}",
+    "expected" : {
+      "blocked" : false
+    },
+    "note" : "max_tokens stays generic"
+  }, {
+    "provider" : "anthropic",
+    "status" : 400,
+    "body" : "{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"tool_choice is not supported\"}}",
+    "expected" : {
+      "blocked" : false
+    },
+    "note" : "400"
+  }, {
+    "provider" : "anthropic",
+    "status" : 429,
+    "body" : "{\"type\":\"error\",\"error\":{\"type\":\"rate_limit_error\",\"message\":\"slow down\"}}",
+    "expected" : {
+      "blocked" : false
+    },
+    "note" : "429"
+  }, {
+    "provider" : "anthropic",
+    "status" : 529,
+    "body" : "{\"type\":\"error\",\"error\":{\"type\":\"overloaded_error\",\"message\":\"busy\"}}",
+    "expected" : {
+      "blocked" : false
+    },
+    "note" : "529"
   } ]
 }

@@ -1658,6 +1658,8 @@ export const hi: Dict = {
   'connect.aiLocalCorsHintOther': 'जब तक लोकल सर्वर अपनी CORS सेटिंग में https://doorprints.web.app को अनुमति न दे, ब्राउज़र इस साइट को उस तक पहुँचने नहीं देता।',
   'ai.keyRejectedHost': '{host} ने आपकी कुंजी नहीं मानी। उसे कनेक्शन पेज पर AI सुविधाएँ के नीचे जाँचें।',
   'ai.modelNotFound': 'AI सेवा इस मॉडल को नहीं जानती। मॉडल का नाम कनेक्शन पेज पर AI सुविधाएँ के नीचे जाँचें।',
+  // S4b-BL-232 (2026-10-10): under review (owner rule: hi/ta/te ship marked under review).
+  'ai.blocked': 'AI सेवा ने इस टेक्स्ट को स्वीकार नहीं किया। कुछ भी नहीं बदला गया। शब्द बदलकर फिर कोशिश करें।',
   'ai.unreachable': '{host} तक नहीं पहुँचा जा सका। पता और अपना कनेक्शन जाँचें।',
   'ai.unreachableLocal': '{host} तक नहीं पहुँचा जा सका। जाँचें कि वह चल रहा है और इस साइट को अनुमति देता है (CORS); वरना ब्राउज़र उसे रोक देता है।',
   // S4b-BL-182 (2026-10-08): the paste box says how much of a long listing is left out. Under review (owner rule: hi/ta/te ship marked under review).

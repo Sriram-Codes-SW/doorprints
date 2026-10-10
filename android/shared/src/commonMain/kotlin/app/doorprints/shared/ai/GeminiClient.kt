@@ -95,6 +95,7 @@ class GeminiClient(
         val status = response.status
         val text = response.body
         if (status !in 200..299) throw failure(status, text)
+        if (AiBlocked.gemini(status, text)) throw AiBlocked.failure(status)
         val candidate = runCatching { json.parseToJsonElement(text).jsonObject["candidates"]?.jsonArray?.firstOrNull()?.jsonObject }
             .getOrNull() ?: throw ApiException(ApiException.Kind.AI_UNAVAILABLE, 502)
         val parts = candidate["content"]?.jsonObject?.get("parts")?.jsonArray ?: throw ApiException(ApiException.Kind.AI_UNAVAILABLE, 502)

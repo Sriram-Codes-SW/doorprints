@@ -13,6 +13,13 @@ the end of this file) once `v0.1.0` is tagged (C-02 in the [sprint log](docs/10-
 
 ## [Unreleased]
 
+- **AI: a provider's safety block is handled, not retried** (S4b-BL-232). When the AI service's own safety system declines a text
+  (Gemini `promptFeedback.blockReason` or a `SAFETY`-type finish, an OpenAI-compatible `content_filter`, `refusal` or content-policy
+  400, an Anthropic `refusal`), the website and the apps show "The AI service declined this text. Nothing was changed. Edit the
+  wording and try again." in English, Hindi, Tamil and Telugu (the last three under review), ask once, and keep none of the
+  provider's words. Doorprints does not filter or censor what you type or say. The server still answers such a block as a
+  generic "unavailable" (S4b-BL-233).
+
 **Current CI status (2026-09-22): green on `19006bc`**, the tip of `main` — Backend ✅, Security ✅,
 Android ✅ and Shared iOS compile ✅. `19006bc` changes backend test code only, so of the five workflows only Backend
 and Security are triggered by the push; Android, Shared iOS compile and Web are path-filtered. The Android and

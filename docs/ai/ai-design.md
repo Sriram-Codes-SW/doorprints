@@ -56,6 +56,7 @@
 | v0.52   | 2026-10-10 | Claude (Code), engineer       | **8.2 and 8.3: the golden-set scorer measures the right thing** (S4b-BL-203, [10](../10-sprint-log.md) v0.233, [06](../06-test-plan.md) 0.195). Golden set v0.9. `expected.grounded: "any"` skips only the grounded check (ask-28, the phone-privacy case: the fixed refusal or a redacted grounded answer, never the number). Plan cases state `minStops` and `stopsMustInclude`, so an empty plan no longer passes vacuously (seven cases need a stop; plan-03 and plan-09 say `minStops: 0`). Plan checks are two kinds, server invariants and model selection, shown per case in the report, with an informational `planSelection`. `agentValidity` is defined and gated as before. `AI_EVAL_REPEATS` / input `repeats` adds a stability table for the plan cases (trial 1 gated, the rest informational). |
 | v0.53   | 2026-10-10 | Claude (Code), engineer       | **Planner rules (section 4): search hints** (S4b-BL-204, [10](../10-sprint-log.md) v0.234, [06](../06-test-plan.md) 0.196). "Be economical: at most a handful of tool calls" became "at most 4 calls per tool" plus how the search works (one call with no text filter returns every saved house, up to 50; one call per named place with text set to that one word; an empty result means no such house, do not repeat it). The `text` tool-parameter description of `searchHouses` (planner and MCP) says it is one literal substring and to give one word. Server only; the pinned vector `prompts.plan.server` was regenerated, the device prompt is unchanged. |
 | v0.54   | 2026-10-10 | Claude (Code), engineer       | **8.1: the suite `key-check`** (S4b-BL-217, [10](../10-sprint-log.md) 0.238): `ai-evals.yml` lists the models `AI_API_KEY` can use and sends one tiny request to the pinned model and to `gemini-3.5-flash-lite`. Not yet run. |
+| v0.55   | 2026-10-10 | Claude (Code), engineer       | **15: provider safety blocks and abusive text** (S4b-BL-232, [10](../10-sprint-log.md) 0.240, [02](../02-threat-model.md) AB-12). The owner decision (no filtering or censoring of what people type or say), the per-provider fields that count as blocked (Gemini `promptFeedback.blockReason` and the `finishReason`s `SAFETY`, `PROHIBITED_CONTENT`, `BLOCKLIST`, `SPII`, `RECITATION`; OpenAI-compatible `content_filter`, `refusal`, 400 `content_policy_violation` / `content_filter`; Anthropic `stop_reason` `refusal`), the new failure `blocked` / `AI_BLOCKED` (no retry, no ladder, no provider text), the four-language message, the vectors section `blockedResponses`, and what the server does today. Planned: S4b-BL-233..S4b-BL-235. |
 
 Status: implemented in `backend/` (package `app.doorprints.server.ai`), **off by default**. Not yet compiled in this
 sandbox (no Maven Central access) — CI compiles and runs the tests. Provider: AI Studio by default, Vertex AI with
@@ -1492,6 +1493,62 @@ The own-key Gemini adapter (the website's `GeminiChatModel`, `web/src/app/core/a
      1.9.10 (via okhttp). Ask DevSecOps to run the Security workflow on the branch **before** merging, so a finding
      does not turn `main` red for every team; any finding is fixed with a version override in the Spring AI section
      of `backend/pom.xml` (AI team) or a documented, time-boxed exception (DevSecOps), not by removing the gate.
+
+## 15. Provider safety blocks and abusive text (S4b-BL-232, 2026-10-10)
+
+**Owner decision (2026-10-10): the app does not filter, censor or scan what people type or say.** The notes are private,
+a word list fails across English, Hindi, Tamil, Telugu and Hinglish (spelling, script, code-mixing), and a filter would
+also flag honest notes (a broker's rude remark kept as a warning). What the app does instead is handle the provider's own
+safety system gracefully when it declines a text: a distinct, non-retryable failure, one fixed message, and none of the
+provider's words kept.
+
+### 15.1 What counts as blocked, per provider (field names read from the vendors' documents on 2026-10-10)
+
+| Provider | Blocked when | Stays a generic failure |
+|---|---|---|
+| Gemini `generateContent` ([G4] `PromptFeedback.blockReason`, [G5] `FinishReason`) | HTTP 200 and `promptFeedback.blockReason` set to anything but `BLOCK_REASON_UNSPECIFIED` (`SAFETY`, `BLOCKLIST`, `PROHIBITED_CONTENT`, `OTHER`, `IMAGE_SAFETY`; the prompt was blocked and no candidates are returned), or the first candidate's `finishReason` is `SAFETY`, `PROHIBITED_CONTENT`, `BLOCKLIST`, `SPII` or `RECITATION` (the answer was withheld; even with partial text, which is unusable JSON) | `MAX_TOKENS`, `OTHER`, `LANGUAGE`, `MALFORMED_FUNCTION_CALL`, `PUP_LIMITED_DISABLED` (an account matter, not the wording), an empty `candidates` list with no `blockReason`, any non-200 |
+| OpenAI-compatible `chat/completions` ([O1] finish reasons, [Z1] Azure OpenAI content filtering) | HTTP 200 and `choices[0].finish_reason` is `content_filter`, or `choices[0].message.refusal` is a non-empty string; or HTTP 400 and `error.code` is `content_policy_violation` or `content_filter` (Azure OpenAI's filtered prompt) | `length`, a null or empty `refusal`, every other 400 (including the structured-output 400s that walk the ladder), 429, 5xx, a 400 body that is not JSON |
+| Anthropic `/v1/messages` ([A1] refusals) | HTTP 200 and `stop_reason` is `refusal` (a streaming classifier intervened; `stop_details` carries a category and an explanation, which are not read) | `max_tokens`, `end_turn`, every 400 (input validation), 429, 529 |
+
+Only named fields are read, never message text, so what a provider echoes (which can be the abusive words themselves) is
+not parsed, kept or logged. The check runs **before** the structured-output ladder and the forced-tool retry look at the
+body, so a blocked answer never walks a tier and is never asked again (one request, counted in tests). It is not reported
+as a model or parse failure (`unavailable`). The failure carries only its kind and the HTTP status.
+
+Why `RECITATION` counts: the provider withheld the answer, asking the same text again fails the same way, and editing the
+wording is what helps. `OTHER` as a finish reason does not: it is Google's "unknown reason", too broad to tell the person
+their wording is the cause. The HTTP 400 form is Azure OpenAI's documented prompt filter; OpenAI's own documents name
+`content_policy_violation` for image requests, and the code is accepted for chat as a harmless alias (the vectors pin
+both). I could not confirm it for OpenAI chat; the assumption is marked in the vectors' notes.
+
+### 15.2 The failure and its words
+
+`blocked` on the website (`OnDeviceAiError`, `web/src/app/core/ai/ai-blocked.ts`) and `ApiException.Kind.AI_BLOCKED` /
+`AiFailure.Blocked` on the phones (`android/shared/.../ai/AiBlocked.kt`, `AiFailure` in `:ui`, which the iPhone shares).
+One message in four languages, no parameter that could carry provider text: "The AI service declined this text. Nothing
+was changed. Edit the wording and try again." (`ai.blocked` on the website, `ai_blocked` on the phones; Hindi, Tamil and
+Telugu under review). It appears where every other AI failure appears (the Ask and Plan pages, *Fill in from listing
+text*, the Connect and Settings *Test*), in the same live region, so it is announced the same way. The shared vectors hold
+43 response bodies in a new section `blockedResponses` (additive: the older sections are unchanged and the server's
+`ParityVectorsTest` passes the section through).
+
+### 15.3 The server (docs only; nothing mapped yet)
+
+SERVER_TODAY
+
+### 15.4 Planned follow-ups (not in this change)
+
+- S4b-BL-233: map a provider safety block on the server to a clean "declined" answer (see 15.3).
+- S4b-BL-234: the prompt rule "do not repeat abusive words, stay neutral and factual" rides the kinds AI step (kinds PR 7,
+  S4b-BL-211), because any prompt change re-pins the parity vectors.
+- S4b-BL-235: informational eval cases with abuse and expletives for the spoken-style set and the hostile address set (no
+  thresholds, only what the model does).
+
+[G4] https://ai.google.dev/api/generate-content (`PromptFeedback`, read 2026-10-10); [G5] the same page, `Candidate.finishReason`
+(read 2026-10-10); [A1] https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/handle-streaming-refusals
+(read 2026-10-10); [Z1] https://learn.microsoft.com/azure/ai-foundry/openai/concepts/content-filter (scenarios 2, 3 and 5, read
+2026-10-10); [O1] OpenAI's `chat.completions` types list `content_filter` among the finish reasons (the reference page itself
+was not reachable on 2026-10-10, so this is read through the SDK type definitions).
 
 ## Sources
 

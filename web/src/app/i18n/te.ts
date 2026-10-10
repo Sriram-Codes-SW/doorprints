@@ -1658,6 +1658,8 @@ export const te: Dict = {
   'connect.aiLocalCorsHintOther': 'లోకల్ సర్వర్ తన CORS సెట్టింగ్‌లలో https://doorprints.web.app ను అనుమతించకపోతే, ఈ సైట్ దాన్ని చేరడాన్ని బ్రౌజర్ అడ్డుకుంటుంది.',
   'ai.keyRejectedHost': '{host} మీ కీని అంగీకరించలేదు. కనెక్షన్ పేజీలో AI ఫీచర్లు కింద దాన్ని సరిచూడండి.',
   'ai.modelNotFound': 'AI సేవకు ఈ మోడల్ తెలియదు. కనెక్షన్ పేజీలో AI ఫీచర్లు కింద మోడల్ పేరును సరిచూడండి.',
+  // S4b-BL-232 (2026-10-10): under review (owner rule: hi/ta/te ship marked under review).
+  'ai.blocked': 'AI సేవ ఈ వచనాన్ని అంగీకరించలేదు. ఏదీ మార్చబడలేదు. పదాలను మార్చి మళ్లీ ప్రయత్నించండి.',
   'ai.unreachable': '{host} ను చేరుకోలేకపోయాం. చిరునామాను, మీ కనెక్షన్‌ను సరిచూడండి.',
   'ai.unreachableLocal': '{host} ను చేరుకోలేకపోయాం. అది నడుస్తోందా, ఈ సైట్‌ను అనుమతిస్తోందా (CORS) సరిచూడండి; లేకపోతే బ్రౌజర్ దాన్ని అడ్డుకుంటుంది.',
   // S4b-BL-182 (2026-10-08): the paste box says how much of a long listing is left out. Under review (owner rule: hi/ta/te ship marked under review).

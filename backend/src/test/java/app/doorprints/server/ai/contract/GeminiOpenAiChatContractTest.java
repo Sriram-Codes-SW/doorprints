@@ -330,6 +330,62 @@ public class GeminiOpenAiChatContractTest {
         assertThat(requestBodies).hasSize(1); // maxRetries 0 here; production uses AI_MAX_RETRIES
     }
 
+    // What a provider safety block does on the server today (S4b-BL-232, docs/ai/ai-design.md 15). The server maps nothing
+    // to a "declined" result yet (backlog S4b-BL-233); these tests pin the outcome so the later change starts from facts.
+    // Shapes: Gemini's OpenAI-compatible endpoint reports a filtered answer as finish_reason "content_filter" with no
+    // content (OpenAI's SDK types and Azure OpenAI document the same value), a filtered prompt as HTTP 400.
+
+    static final String CONTENT_FILTER = """
+            {
+              "choices": [
+                {
+                  "finish_reason": "content_filter",
+                  "index": 0,
+                  "message": {
+                    "role": "assistant"
+                  }
+                }
+              ],
+              "created": 1758528004,
+              "id": "CXbRaNt9Ie-Bz7IP2pSX8Ag",
+              "model": "gemini-3.5-flash",
+              "object": "chat.completion"
+            }
+            """;
+
+    @Test
+    void todayAContentFilterFinishReachesTheServiceAsAnEmptyAnswerWithTheFinishReason() {
+        replies.add(new Reply(200, CONTENT_FILTER));
+
+        var response = model().call(new Prompt("q"));
+
+        assertThat(response.getResult().getMetadata().getFinishReason()).isEqualToIgnoringCase("content_filter");
+        assertThat(response.getResult().getOutput().getText()).isNullOrEmpty();
+    }
+
+    @Test
+    void todayAContentFilterFinishFailsTheStructuredCall() {
+        replies.add(new Reply(200, CONTENT_FILTER));
+
+        // Pinned as observed in CI; the services catch RuntimeException and answer 503 (AiExceptionHandler).
+        assertThatThrownBy(() -> ChatClient.create(model()).prompt().user("q").call().responseEntity(ModelAnswer.class))
+                .isInstanceOf(RuntimeException.class);
+    }
+
+    @Test
+    void todayAFilteredPromptIsAnHttp400TheServicesTurnInto503WithNoCause() {
+        replies.add(new Reply(400, "{\"error\":{\"message\":\"blocked\",\"type\":\"invalid_request_error\","
+                + "\"code\":\"content_policy_violation\"}}"));
+
+        var thrown = org.assertj.core.api.Assertions.catchThrowable(() -> model().call(new Prompt("q")));
+
+        assertThat(thrown).isInstanceOf(RuntimeException.class);
+        // A 400 is "ours" to ProviderErrors (request or setup), so the problem detail carries no cause property.
+        assertThat(app.doorprints.server.ai.ProviderErrors.cause(thrown)).isNull();
+        assertThat(app.doorprints.server.ai.ProviderErrors.isQuotaExhausted(thrown)).isFalse();
+        assertThat(requestBodies).hasSize(1);
+    }
+
     /** Must be public: Spring AI invokes tool methods reflectively. */
     public static class CountTools {
         final AtomicReference<String> locality = new AtomicReference<>();

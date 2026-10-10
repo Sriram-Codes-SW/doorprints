@@ -39,6 +39,8 @@ class ApiException(
         AI_KEY_REJECTED,
         /** An OpenAI-compatible provider does not know the model the person typed (HTTP 404; docs/03 §13.2). */
         AI_MODEL_NOT_FOUND,
+        /** The AI provider's own safety system declined the text; never retried, its words never shown (S4b-BL-232). */
+        AI_BLOCKED,
     }
 
     companion object {

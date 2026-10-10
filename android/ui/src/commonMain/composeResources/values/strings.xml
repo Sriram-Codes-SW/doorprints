@@ -659,6 +659,7 @@
     <string name="settings_ai_key_removed">AI key and settings removed</string>
     <string name="ai_key_rejected_host">%1$s did not accept your key. Check it in Settings, under AI features.</string>
     <string name="ai_model_not_found">The AI service does not know this model. Check the model name in Settings, under AI features.</string>
+    <string name="ai_blocked">The AI service declined this text. Nothing was changed. Edit the wording and try again.</string>
     <string name="ai_unreachable">Could not reach %1$s. Check the address and your connection.</string>
     <string name="ai_unreachable_local">Could not reach %1$s. Check that it is running and that this phone can reach it.</string>
     <string name="ai_disclosure_own_key_host">The text is sent from this phone straight to %1$s with your own key, together with the matching house notes.</string>
