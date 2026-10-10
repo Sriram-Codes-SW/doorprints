@@ -1,0 +1,1144 @@
+diff --git a/backend/src/main/java/app/doorprints/server/house/House.java b/backend/src/main/java/app/doorprints/server/house/House.java
+index 14dcc692..2d908381 100644
+--- a/backend/src/main/java/app/doorprints/server/house/House.java
++++ b/backend/src/main/java/app/doorprints/server/house/House.java
+@@ -28,17 +28,27 @@ import java.util.Map;
+ import java.util.UUID;
+ 
+ /**
+- * Database row of one saved house: where it is, what it costs, the person's rating, notes and contact details, and
+- * the sync fields. Cost, rooms, answers and move-in details are kept as JSON text and read through their own types. A
+- * deleted house stays as a tombstone for sync with its content blanked ({@link #purgeContent}).
++ * Database row of one saved candidate (a house is the first kind, docs/03 §18): its kind, where it is, what it costs
++ * ({@link Money} as two columns), the person's rating, notes and contact details, and the sync fields. The extras, the
++ * rooms, the answers and the move-in are kept as JSON text and read through their own types. A deleted candidate stays
++ * as a tombstone for sync with its content blanked ({@link #purgeContent}). The class keeps its name: only the public
++ * surfaces were renamed by the format reset (S4b-BL-206).
+  */
+ @Entity
+ @Table(name = "house")
+ public class House {
+ 
++    /** The kind of every candidate this server makes on its own (docs/schemas/kinds/house.json). */
++    public static final String HOUSE_KIND = "house";
++    /** A kind id (docs/03 §18.4 door 3). */
++    public static final String KIND_PATTERN = "^[a-z][a-z0-9_]{1,31}$";
++
+     @Id
+     private UUID id;
+ 
++    @Column(nullable = false)
++    private String kind = HOUSE_KIND;
++
+     @Column(nullable = false)
+     private String label;
+     private String address;
+@@ -54,22 +64,21 @@ public class House {
+     @Column(nullable = false)
+     private HouseStatus status = HouseStatus.NEW;
+ 
+-    private Long price;
+-    private String priceType;
+-    private Integer bedrooms;
++    /** The {@link Money}'s amount, whole rupees; null when unknown. */
++    private Long moneyAmount;
++    /** The {@link Money}'s cadence; null when the candidate has no money at all. */
++    private String moneyCadence;
+     private Integer rating;
+     private String contactName;
+     private String contactPhone;
+     private String listingUrl;
+     private String notes;
+-    /* Slice 1a of the Sprint 4b data model (V7): the house's own values, all optional. */
+-    private Integer areaSqft;
+     private String locationSource;
+-    /** The {@link HouseCost} as compact JSON text, null for no cost; stored as sent, like a record payload. */
++    /** The {@link CandidateExtras} as compact JSON text, null for none; stored as sent after validation. */
+     @JdbcTypeCode(SqlTypes.JSON)
+     @Column(columnDefinition = "jsonb")
+-    private String cost;
+-    /** Slice 1c (V9): the {@link HouseRoom} list as compact JSON text, null for no rooms; stored as sent. */
++    private String extras;
++    /** Slice 1c: the {@link HouseRoom} list as compact JSON text, null for no rooms; stored as sent. */
+     @JdbcTypeCode(SqlTypes.JSON)
+     @Column(columnDefinition = "jsonb")
+     private String rooms;
+@@ -81,9 +90,7 @@ public class House {
+     @JdbcTypeCode(SqlTypes.JSON)
+     @Column(columnDefinition = "jsonb")
+     private String moveIn;
+-    /** S4b-BL-87 (V13): the floor the flat is on, {@link #MIN_FLOOR}..{@link #MAX_FLOOR} with 0 the ground floor. */
+-    private Integer floor;
+-    /** Slice 1b (V8): the id of the house's broker, a record of type {@code broker}. No foreign key: it may dangle. */
++    /** Slice 1b: the id of the house's broker, a record of type {@code broker}. No foreign key: it may dangle. */
+     private String brokerId;
+ 
+     @ElementCollection(fetch = FetchType.EAGER)
+@@ -113,9 +120,10 @@ public class House {
+     }
+ 
+     /**
+-     * Keeps only what a tombstone needs (id, deleted, timestamps, sync version) and drops the content: notes, contact
+-     * details, prices, the slice 1a values (area, location source, cost, broker), the rooms, the answers, the move-in, the floor and the checklist (threat model F-16,
+-     * PRV-005). The location stays because the columns are NOT NULL, but it is reset to 0,0.
++     * Keeps only what a tombstone needs (id, kind, deleted, timestamps, sync version) and drops the content: notes,
++     * contact details, the money, the extras (area, floor, BHK, cost and any extra this server does not know), the
++     * location source, the broker, the rooms, the answers, the move-in and the checklist (threat model F-16, PRV-005).
++     * The location stays because the columns are NOT NULL, but it is reset to 0,0.
+      */
+     public void purgeContent() {
+         label = "";
+@@ -124,26 +132,35 @@ public class House {
+         locality = null;
+         lat = 0;
+         lon = 0;
+-        price = null;
+-        priceType = null;
+-        bedrooms = null;
++        moneyAmount = null;
++        moneyCadence = null;
+         rating = null;
+         contactName = null;
+         contactPhone = null;
+         listingUrl = null;
+         notes = null;
+-        areaSqft = null;
+         locationSource = null;
+-        cost = null;
++        extras = null;
+         rooms = null;
+         answers = null;
+         moveIn = null;
+-        floor = null;
+         brokerId = null;
+         checklist.clear();
+     }
+ 
++    /** The money as one value: {@code null} when the row has no cadence (and so no money). */
++    public Money getMoney() {
++        return moneyCadence == null ? null : new Money(moneyAmount, moneyCadence);
++    }
++
++    public void setMoney(Money money) {
++        this.moneyAmount = money == null ? null : money.amount();
++        this.moneyCadence = money == null ? null : money.cadence();
++    }
++
+     public UUID getId() { return id; }
++    public String getKind() { return kind; }
++    public void setKind(String kind) { this.kind = kind == null ? HOUSE_KIND : kind; }
+     public String getLabel() { return label; }
+     public void setLabel(String label) { this.label = label; }
+     public String getAddress() { return address; }
+@@ -158,12 +175,6 @@ public class House {
+     public void setLon(double lon) { this.lon = lon; }
+     public HouseStatus getStatus() { return status; }
+     public void setStatus(HouseStatus status) { this.status = status; }
+-    public Long getPrice() { return price; }
+-    public void setPrice(Long price) { this.price = price; }
+-    public String getPriceType() { return priceType; }
+-    public void setPriceType(String priceType) { this.priceType = priceType; }
+-    public Integer getBedrooms() { return bedrooms; }
+-    public void setBedrooms(Integer bedrooms) { this.bedrooms = bedrooms; }
+     public Integer getRating() { return rating; }
+     public void setRating(Integer rating) { this.rating = rating; }
+     public String getContactName() { return contactName; }
+@@ -174,20 +185,17 @@ public class House {
+     public void setListingUrl(String listingUrl) { this.listingUrl = listingUrl; }
+     public String getNotes() { return notes; }
+     public void setNotes(String notes) { this.notes = notes; }
+-    public Integer getAreaSqft() { return areaSqft; }
+-    public void setAreaSqft(Integer areaSqft) { this.areaSqft = areaSqft; }
+     public String getLocationSource() { return locationSource; }
+     public void setLocationSource(String locationSource) { this.locationSource = locationSource; }
+-    public String getCost() { return cost; }
+-    public void setCost(String cost) { this.cost = cost; }
++    /** The {@link CandidateExtras} as JSON text ({@link CandidateExtras#parse}); null for none. */
++    public String getExtras() { return extras; }
++    public void setExtras(String extras) { this.extras = extras; }
+     public String getRooms() { return rooms; }
+     public void setRooms(String rooms) { this.rooms = rooms; }
+     public String getAnswers() { return answers; }
+     public void setAnswers(String answers) { this.answers = answers; }
+     public String getMoveIn() { return moveIn; }
+     public void setMoveIn(String moveIn) { this.moveIn = moveIn; }
+-    public Integer getFloor() { return floor; }
+-    public void setFloor(Integer floor) { this.floor = floor; }
+     public String getBrokerId() { return brokerId; }
+     public void setBrokerId(String brokerId) { this.brokerId = brokerId; }
+     public Map<String, Integer> getChecklist() { return checklist; }
+diff --git a/backend/src/main/java/app/doorprints/server/house/HouseController.java b/backend/src/main/java/app/doorprints/server/house/HouseController.java
+index 27760f0d..425ae246 100644
+--- a/backend/src/main/java/app/doorprints/server/house/HouseController.java
++++ b/backend/src/main/java/app/doorprints/server/house/HouseController.java
+@@ -31,10 +31,11 @@ import java.util.List;
+ import java.util.UUID;
+ 
+ /**
+- * HTTP endpoints for houses, the main record the apps sync; the rules live in {@link HouseService}.
++ * HTTP endpoints for candidates (houses are the first kind; {@code /api/candidates} since the format reset of
++ * S4b-BL-206), the main record the apps sync; the rules live in {@link HouseService}.
+  */
+ @RestController
+-@RequestMapping("/api/houses")
++@RequestMapping("/api/candidates")
+ public class HouseController {
+ 
+     private final HouseService service;
+diff --git a/backend/src/main/java/app/doorprints/server/house/HouseDto.java b/backend/src/main/java/app/doorprints/server/house/HouseDto.java
+index c6c52dcc..fe068bcc 100644
+--- a/backend/src/main/java/app/doorprints/server/house/HouseDto.java
++++ b/backend/src/main/java/app/doorprints/server/house/HouseDto.java
+@@ -30,55 +30,66 @@ import java.util.Map;
+ import java.util.UUID;
+ 
+ /**
+- * One house over the sync API ({@code GET /api/houses}, {@code PUT /api/houses/{id}}).
++ * One candidate over the sync API ({@code GET /api/candidates}, {@code PUT /api/candidates/{id}}); a house is the
++ * first kind (docs/03 ADR-36 and §18). The record keeps its name: the format reset of S4b-BL-206 renamed the public
++ * surfaces only.
+  *
+  * <h2>Null semantics (NFR-025)</h2>
+  * <ul>
+- *   <li><b>On the wire the server writes every field, {@code null} included.</b> A {@code null} means "this house
+- *       has no value for that field" — not "unknown" and not "unchanged". Clients can therefore tell an empty
+- *       {@code notes} from a missing one without guessing, and a tombstone (see below) is recognisable by its
++ *   <li><b>On the wire the server writes every field, {@code null} included.</b> A {@code null} means "this
++ *       candidate has no value for that field" — not "unknown" and not "unchanged". Clients can therefore tell an
++ *       empty {@code notes} from a missing one without guessing, and a tombstone (see below) is recognisable by its
+  *       blanked fields. This is the opposite choice from the backup format, which leaves empty fields out
+- *       (docs/schemas/README.md section 4); both are explicit, so a round trip through either is lossless.</li>
++ *       (docs/schemas/README.md section 4); both are explicit, so a round trip through either is lossless. Inside
++ *       {@code money} and {@code extras} an absent value is left out, as in a backup.</li>
+  *   <li><b>On input, absent and {@code null} are the same thing, and a {@code PUT} is a full replacement.</b> The
+- *       body describes the house as the client knows it; every field in {@link #applyTo} is written, so a field the
+- *       client leaves out is cleared. A client that only wants to change one field must send the whole house
+- *       (which is what the Android and web apps do — they hold the row locally). Partial updates ("null = leave
+- *       as it is") arrive with HouseDto v2 in Sprint 4b, for collections only, and will be marked as such.</li>
++ *       body describes the candidate as the client knows it; every field in {@link #applyTo} is written, so a field
++ *       the client leaves out is cleared. A client that only wants to change one field must send the whole candidate
++ *       (which is what the Android and web apps do — they hold the row locally).</li>
+  *   <li><b>Defaults for a missing value:</b> {@code status} → {@code NEW}; {@code checklist} → cleared, because
+  *       absent is a value here too ({@link House#setChecklist} replaces the whole map); {@code createdAt} and
+  *       {@code updatedAt} → server time ({@link app.doorprints.server.sync.ClientClock}); {@code lat}/{@code lon} → 0,
+  *       which is also what "no location yet" looks like. {@code deleted} defaults to {@code false} and
+- *       {@code syncVersion} to 0 because Jackson is configured not to fail on missing primitives.</li>
++ *       {@code syncVersion} to 0 because Jackson is configured not to fail on missing primitives. {@code kind} has
++ *       no default: it is required (docs/03 §18.4 door 3).</li>
+  *   <li><b>Server-managed fields.</b> {@code syncVersion} is assigned by the server and ignored on input;
+- *       {@code distanceMeters} is only written, and only by {@code GET /api/houses/nearby} (it is {@code null}
++ *       {@code distanceMeters} is only written, and only by {@code GET /api/candidates/nearby} (it is {@code null}
+  *       everywhere else, including in exports). {@code deleted} <em>is</em> read on input: {@code true} deletes
+- *       the house, exactly like {@code DELETE /api/houses/{id}}.</li>
++ *       the candidate, exactly like {@code DELETE /api/candidates/{id}}.</li>
+  *   <li><b>{@code label} is required but may be empty.</b> {@code ""} is a real value (an unnamed house, and
+  *       what a tombstone keeps); only a missing {@code label} is rejected. The backup format allows the same, so a
+  *       restored backup can be synced.</li>
+  *   <li><b>A tombstone</b> (a row with {@code deleted: true}) carries {@code label: ""} and {@code null} in every
+  *       other content field: the content is purged, not hidden (threat model F-16). Tombstones are never
+  *       exported.</li>
+- *   <li><b>The slice 1a values</b> ({@code areaSqft}, {@code locationSource}, {@code cost}; docs/11 section 5.30
+- *       item 1) are optional like the rest. {@code locationSource} is {@code GPS}, {@code MAP} or {@code APPROX}
+- *       (FR-068), absent for a house saved before it existed. {@code cost} is a {@link HouseCost} object whose own
+- *       absent fields are left out; it is {@code null} when no field is set, and an empty object on input is the
+- *       same as none. A value out of range is a 400, like the other fields.</li>
++ *   <li><b>{@code money}</b> is a {@link Money}: the price in whole rupees and its cadence ({@code month} for a rent,
++ *       {@code once} for a sale, the only two a house has). A house marked as a rent before its rent is known has a
++ *       cadence and no amount; {@code null} when neither is known. Out of range or another cadence is a 400.</li>
++ *   <li><b>{@code extras}</b> is a {@link CandidateExtras}: for a house the BHK, the carpet area, the floor and the
++ *       eleven cost fields (docs/11 section 5.21), a rupee field as money; an id this server does not know is kept
++ *       (door 5). {@code null} when none is set, and an empty object on input is the same as none. A value out of
++ *       range, a money extra without its amount or with a cadence it may not have, or an unknown id that breaks the
++ *       rules of {@link CandidateExtras} is a 400.</li>
++ *   <li><b>{@code locationSource}</b> is {@code GPS}, {@code MAP} or {@code APPROX} (FR-068), absent when unknown.</li>
+  *   <li><b>{@code rooms}</b> (slice 1c, docs/11 section 5.6) is a list of at most 30 {@link HouseRoom}s with
+  *       distinct ids, {@code null} when the house has none (an empty list on input is the same as none). A room out
+  *       of range, a 31st room or a repeated id is a 400. A tombstone carries {@code null}.</li>
+  *   <li><b>{@code moveIn}</b> (slice 5, docs/11 section 5.24) is a {@link HouseMoveIn} (date, notes, at most 30 items
+  *       with distinct ids), {@code null} when the house has none (an empty object on input is the same as none). A
+  *       value out of range, a 31st item or a repeated id is a 400. A tombstone carries {@code null}.</li>
+- *   <li><b>{@code floor}</b> (S4b-BL-87) is the floor the flat is on, -5..200 with 0 the ground floor, {@code null}
+- *       when unknown; a value out of range is a 400. A tombstone carries {@code null}.</li>
+  *   <li><b>{@code brokerId}</b> (slice 1b, docs/11 section 5.25) is the record id of the house's broker, absent for
+  *       none. There is no foreign key: a broker deleted or not yet synced leaves the id dangling, which readers take
+  *       as no broker. A tombstone carries {@code null}.</li>
+  * </ul>
++ *
++ * <p>{@link #price}, {@link #priceType}, {@link #bedrooms}, {@link #areaSqft}, {@link #floor} and {@link #cost} read
++ * the house's values out of {@code money} and {@code extras} for the server's own readers (the AI documents, its
++ * search and its plan), which kept their words through the reset; they are not properties on the wire.
+  */
+ public record HouseDto(
+         UUID id,
++        /* The kind id, required (door 3); `house` for every candidate the apps make today. */
++        @NotNull @Pattern(regexp = House.KIND_PATTERN) String kind,
+         /* Required but may be empty: a house saved from a map tap before it is named, and every tombstone,
+            has label "". @NotBlank would make such a row impossible to sync or to restore from a backup, which the
+            shared backup format explicitly allows (docs/schemas/README.md section 3.1). */
+@@ -89,25 +100,20 @@ public record HouseDto(
+         @DecimalMin("-90") @DecimalMax("90") double lat,
+         @DecimalMin("-180") @DecimalMax("180") double lon,
+         HouseStatus status,
+-        @PositiveOrZero Long price,
+-        @Pattern(regexp = "RENT|SALE") String priceType,
+-        @PositiveOrZero Integer bedrooms,
++        @Valid Money money,
+         @Min(1) @Max(5) Integer rating,
+         @Size(max = 200) String contactName,
+         @Size(max = 50) String contactPhone,
+         @Size(max = 1000) String listingUrl,
+         @Size(max = 20000) String notes,
+-        @Min(1) @Max(100_000) Integer areaSqft,
+         @Pattern(regexp = LOCATION_SOURCES) String locationSource,
+-        @Valid HouseCost cost,
++        @Valid CandidateExtras extras,
+         /* Slice 1c: at most 30 rooms with distinct ids; an empty list is the same as none. */
+         @Valid @Size(max = HouseRoom.MAX) List<@NotNull @Valid HouseRoom> rooms,
+         /* Slice 3a: at most 60 viewing answers with distinct ids; an empty list is the same as none. */
+         @Valid @Size(max = HouseAnswer.MAX) List<@NotNull @Valid HouseAnswer> answers,
+         /* Slice 5: the moving-in card of a taken house (date, notes, at most 30 items); an empty object is the same as none. */
+         @Valid HouseMoveIn moveIn,
+-        /* S4b-BL-87: the floor the flat is on, 0 the ground floor and a negative one a basement level. */
+-        @Min(House.MIN_FLOOR) @Max(House.MAX_FLOOR) Integer floor,
+         /* Slice 1b: a broker's record id. Not checked against the records: a dangling id reads as no broker. */
+         @Pattern(regexp = RecordDto.ID_PATTERN) String brokerId,
+         Map<@Size(max = 100) String, @Min(0) @Max(5) Integer> checklist,
+@@ -121,24 +127,60 @@ public record HouseDto(
+     public static final String LOCATION_SOURCES = "GPS|MAP|APPROX";
+ 
+     /**
+-     * The house as sent to clients, without a distance.
++     * The candidate as sent to clients, without a distance.
+      */
+     public static HouseDto from(House h) {
+         return from(h, null);
+     }
+ 
+     /**
+-     * The house as sent to clients; the distance is set only by the nearby search. The stored JSON parts are parsed
+-     * into their types.
++     * The candidate as sent to clients; the distance is set only by the nearby search. The stored JSON parts are
++     * parsed into their types.
+      */
+     public static HouseDto from(House h, Double distanceMeters) {
+-        return new HouseDto(h.getId(), h.getLabel(), h.getAddress(), h.getStreet(), h.getLocality(),
+-                h.getLat(), h.getLon(), h.getStatus(), h.getPrice(), h.getPriceType(), h.getBedrooms(),
+-                h.getRating(), h.getContactName(), h.getContactPhone(), h.getListingUrl(), h.getNotes(),
+-                h.getAreaSqft(), h.getLocationSource(), HouseCost.parse(h.getCost()), HouseRoom.parse(h.getRooms()),
+-                HouseAnswer.parse(h.getAnswers()), HouseMoveIn.parse(h.getMoveIn()), h.getFloor(), h.getBrokerId(),
+-                Map.copyOf(h.getChecklist()), h.getCreatedAt(), h.getUpdatedAt(), h.isDeleted(),
+-                h.getSyncVersion(), distanceMeters);
++        return new HouseDto(h.getId(), h.getKind(), h.getLabel(), h.getAddress(), h.getStreet(), h.getLocality(),
++                h.getLat(), h.getLon(), h.getStatus(), h.getMoney(), h.getRating(), h.getContactName(),
++                h.getContactPhone(), h.getListingUrl(), h.getNotes(), h.getLocationSource(),
++                CandidateExtras.parse(h.getExtras()), HouseRoom.parse(h.getRooms()), HouseAnswer.parse(h.getAnswers()),
++                HouseMoveIn.parse(h.getMoveIn()), h.getBrokerId(), Map.copyOf(h.getChecklist()), h.getCreatedAt(),
++                h.getUpdatedAt(), h.isDeleted(), h.getSyncVersion(), distanceMeters);
++    }
++
++    /** The price in whole rupees, or {@code null}: {@code money.amount}. */
++    public Long price() {
++        return money == null ? null : money.amount();
++    }
++
++    /** {@code RENT} for a monthly price, {@code SALE} for a one-time one, else {@code null}: what the AI reads. */
++    public String priceType() {
++        return money == null ? null : money.priceType();
++    }
++
++    /** {@code extras.bedrooms}, or {@code null}. */
++    public Integer bedrooms() {
++        return extras == null ? null : extras.bedrooms();
++    }
++
++    /** {@code extras.areaSqft}, or {@code null}. */
++    public Integer areaSqft() {
++        return extras == null ? null : extras.areaSqft();
++    }
++
++    /** {@code extras.floor}, or {@code null}. */
++    public Integer floor() {
++        return extras == null ? null : extras.floor();
++    }
++
++    /** The eleven cost fields out of {@code extras} in rupees and months, or {@code null} when none is set. */
++    public HouseCost cost() {
++        return extras == null ? null : extras.cost();
++    }
++
++    /** A house's money is a rent or a sale ({@code docs/schemas/kinds/house.json}); another kind may use any cadence. */
++    @JsonIgnore
++    @AssertTrue(message = "money.cadence must be month (a rent) or once (a sale) for a house")
++    public boolean isMoneyOfTheKind() {
++        return money == null || !House.HOUSE_KIND.equals(kind) || Money.HOUSE_CADENCES.contains(money.cadence());
+     }
+ 
+     /** Two rooms with one id cannot be told apart by the clients; a getter constraint so Bean Validation runs it. */
+@@ -160,6 +202,7 @@ public record HouseDto(
+      * sync version are set by the service.
+      */
+     void applyTo(House h) {
++        h.setKind(kind);
+         h.setLabel(label);
+         h.setAddress(address);
+         h.setStreet(street);
+@@ -167,21 +210,17 @@ public record HouseDto(
+         h.setLat(lat);
+         h.setLon(lon);
+         h.setStatus(status == null ? HouseStatus.NEW : status);
+-        h.setPrice(price);
+-        h.setPriceType(priceType);
+-        h.setBedrooms(bedrooms);
++        h.setMoney(money);
+         h.setRating(rating);
+         h.setContactName(contactName);
+         h.setContactPhone(contactPhone);
+         h.setListingUrl(listingUrl);
+         h.setNotes(notes);
+-        h.setAreaSqft(areaSqft);
+         h.setLocationSource(locationSource);
+-        h.setCost(HouseCost.write(cost));
++        h.setExtras(CandidateExtras.write(extras));
+         h.setRooms(HouseRoom.write(rooms));
+         h.setAnswers(HouseAnswer.write(answers));
+         h.setMoveIn(HouseMoveIn.write(moveIn));
+-        h.setFloor(floor);
+         h.setBrokerId(brokerId);
+         h.setChecklist(checklist);
+         h.setDeleted(deleted);
+diff --git a/backend/src/main/java/app/doorprints/server/visit/VisitController.java b/backend/src/main/java/app/doorprints/server/visit/VisitController.java
+index c5158f4a..daceeed6 100644
+--- a/backend/src/main/java/app/doorprints/server/visit/VisitController.java
++++ b/backend/src/main/java/app/doorprints/server/visit/VisitController.java
+@@ -64,7 +64,7 @@ public class VisitController {
+     @GetMapping
+     @Transactional(readOnly = true)
+     public List<VisitDto> list(@RequestParam(required = false) Long since,
+-                               @RequestParam(required = false) UUID houseId) {
++                               @RequestParam(name = "candidateId", required = false) UUID houseId) {
+         List<Visit> visits;
+         if (since != null) visits = repo.findBySyncVersionGreaterThanOrderBySyncVersion(since);
+         else if (houseId != null) visits = repo.findByDeletedFalseAndHouseIdOrderByArrivedAtDesc(houseId);
+diff --git a/backend/src/main/java/app/doorprints/server/visit/VisitDto.java b/backend/src/main/java/app/doorprints/server/visit/VisitDto.java
+index 26bf2086..14b87bf1 100644
+--- a/backend/src/main/java/app/doorprints/server/visit/VisitDto.java
++++ b/backend/src/main/java/app/doorprints/server/visit/VisitDto.java
+@@ -18,6 +18,7 @@
+ 
+ package app.doorprints.server.visit;
+ 
++import com.fasterxml.jackson.annotation.JsonProperty;
+ import jakarta.validation.constraints.DecimalMax;
+ import jakarta.validation.constraints.DecimalMin;
+ import jakarta.validation.constraints.NotNull;
+@@ -28,14 +29,15 @@ import java.util.UUID;
+ 
+ /**
+  * One visit over the sync API. Same null semantics as {@link app.doorprints.server.house.HouseDto}: every field is written,
+- * {@code null} included, and on input absent means "no value" ({@code houseId} absent unlinks the visit,
++ * {@code null} included, and on input absent means "no value" ({@code candidateId} absent unlinks the visit,
+  * {@code leftAt} absent means the visit has not ended). {@code source} defaults to {@code MANUAL},
+  * {@code updatedAt} to server time; {@code syncVersion} is server-managed. A deleted visit keeps only its id,
+  * timestamps and sync version — where the user was is purged (PRV-005).
+  */
+ public record VisitDto(
+         UUID id,
+-        UUID houseId,
++        /* The candidate it belongs to: `candidateId` on the wire since the format reset (S4b-BL-206). */
++        @JsonProperty("candidateId") UUID houseId,
+         @DecimalMin("-90") @DecimalMax("90") double lat,
+         @DecimalMin("-180") @DecimalMax("180") double lon,
+         @Size(max = 200) String street,
+diff --git a/backend/src/main/resources/db/migration/V10__house_answers.sql b/backend/src/main/resources/db/migration/V10__house_answers.sql
+deleted file mode 100644
+index 395ae007..00000000
+--- a/backend/src/main/resources/db/migration/V10__house_answers.sql
++++ /dev/null
+@@ -1,20 +0,0 @@
+--- Copyright 2026 Sriram (Sriram-Codes-SW)
+---
+--- This file is part of Doorprints.
+---
+--- Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+--- Public License as published by the Free Software Foundation, version 3 of the License.
+---
+--- Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+--- warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+--- details.
+---
+--- You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+--- the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+---
+--- SPDX-License-Identifier: AGPL-3.0-only
+-
+--- The Sprint 4b data model, slice 3a (docs/11 section 5.5, ADR-28): a house's answers to the viewing questions, as one
+--- JSON array (at most 60 objects; absent when there are none, never '[]'), stored as the client sent it like rooms,
+--- because nothing on the server computes with it. Blanked in the tombstone purge with the other house values.
+-ALTER TABLE house ADD COLUMN answers jsonb;
+diff --git a/backend/src/main/resources/db/migration/V11__house_move_in.sql b/backend/src/main/resources/db/migration/V11__house_move_in.sql
+deleted file mode 100644
+index f9252ce2..00000000
+--- a/backend/src/main/resources/db/migration/V11__house_move_in.sql
++++ /dev/null
+@@ -1,21 +0,0 @@
+--- Copyright 2026 Sriram (Sriram-Codes-SW)
+---
+--- This file is part of Doorprints.
+---
+--- Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+--- Public License as published by the Free Software Foundation, version 3 of the License.
+---
+--- Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+--- warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+--- details.
+---
+--- You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+--- the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+---
+--- SPDX-License-Identifier: AGPL-3.0-only
+-
+--- Slice 5 (docs/11 section 5.24, ADR-28): the moving-in card of a taken house (date, notes, at most 30 ticked items) as
+--- one JSON object, stored as the client sent it like cost, rooms and answers, because nothing on the server computes
+--- with it. Absent when the house has none, never '{}'. Blanked in the tombstone purge with the other house values.
+--- The two new statuses (TAKEN, NOT_CHOSEN) need no migration: the status column is plain text without a CHECK.
+-ALTER TABLE house ADD COLUMN move_in jsonb;
+diff --git a/backend/src/main/resources/db/migration/V12__photo_meta.sql b/backend/src/main/resources/db/migration/V12__photo_meta.sql
+deleted file mode 100644
+index 052cf4cb..00000000
+--- a/backend/src/main/resources/db/migration/V12__photo_meta.sql
++++ /dev/null
+@@ -1,24 +0,0 @@
+--- Copyright 2026 Sriram (Sriram-Codes-SW)
+---
+--- This file is part of Doorprints.
+---
+--- Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+--- Public License as published by the Free Software Foundation, version 3 of the License.
+---
+--- Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+--- warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+--- details.
+---
+--- You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+--- the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+---
+--- SPDX-License-Identifier: AGPL-3.0-only
+-
+--- Slice 5 (docs/11 section 5.7, ADR-28): what a person says about a photo. room_id names a room of the house (no
+--- foreign key: rooms live in the house's JSON and may be gone), tags is a JSON array of at most 10 strings, caption is
+--- at most 200 characters, and meta_updated_at (epoch ms, 0 = never edited) decides last-write-wins between devices.
+--- A tombstone blanks all four (the caption is the person's own words).
+-ALTER TABLE photo ADD COLUMN room_id         varchar(64);
+-ALTER TABLE photo ADD COLUMN tags            jsonb;
+-ALTER TABLE photo ADD COLUMN caption         varchar(200);
+-ALTER TABLE photo ADD COLUMN meta_updated_at bigint NOT NULL DEFAULT 0;
+diff --git a/backend/src/main/resources/db/migration/V13__house_floor.sql b/backend/src/main/resources/db/migration/V13__house_floor.sql
+deleted file mode 100644
+index 18ce1090..00000000
+--- a/backend/src/main/resources/db/migration/V13__house_floor.sql
++++ /dev/null
+@@ -1,19 +0,0 @@
+--- Copyright 2026 Sriram (Sriram-Codes-SW)
+---
+--- This file is part of Doorprints.
+---
+--- Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+--- Public License as published by the Free Software Foundation, version 3 of the License.
+---
+--- Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+--- warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+--- details.
+---
+--- You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+--- the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+---
+--- SPDX-License-Identifier: AGPL-3.0-only
+-
+--- S4b-BL-87: the floor the flat is on (0 the ground floor, -5..200, checked by HouseDto and the backup import), which
+--- the duplicate-flat warning compares with the bedrooms and the point. Null when unknown; blanked in the tombstone purge.
+-ALTER TABLE house ADD COLUMN floor integer;
+diff --git a/backend/src/main/resources/db/migration/V14__pairing_client.sql b/backend/src/main/resources/db/migration/V14__pairing_client.sql
+deleted file mode 100644
+index 10232cfd..00000000
+--- a/backend/src/main/resources/db/migration/V14__pairing_client.sql
++++ /dev/null
+@@ -1,21 +0,0 @@
+--- Copyright 2026 Sriram (Sriram-Codes-SW)
+---
+--- This file is part of Doorprints.
+---
+--- Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+--- Public License as published by the Free Software Foundation, version 3 of the License.
+---
+--- Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+--- warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+--- details.
+---
+--- You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+--- the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+---
+--- SPDX-License-Identifier: AGPL-3.0-only
+-
+--- Which source opened a pairing request (S4b-BL-161, docs/03 section 12.1): a salted SHA-256 of the client address,
+--- never the address, so at most a few requests per source stay open. The salt is made at each start of the server, so
+--- the hash links only requests of one run (they live 10 minutes). Null for a row from before this migration.
+-ALTER TABLE pairing_request ADD COLUMN client_hash bytea;
+-CREATE INDEX pairing_request_client_idx ON pairing_request (client_hash) WHERE status = 'pending';
+diff --git a/backend/src/main/resources/db/migration/V1__init.sql b/backend/src/main/resources/db/migration/V1__init.sql
+index d0535881..f1fe5f74 100644
+--- a/backend/src/main/resources/db/migration/V1__init.sql
++++ b/backend/src/main/resources/db/migration/V1__init.sql
+@@ -1,32 +1,56 @@
++-- The whole schema in one migration: the one-time format reset of S4b-BL-206 (docs/03 ADR-36 and §18, kinds PR 2)
++-- squashed the fourteen migrations V1..V14 into this file. No server had been deployed with data (the owner's test
++-- servers are wiped), so nothing is migrated: a database made by the old V1..V14 is dropped and created again
++-- (Flyway refuses it: the checksums and the missing versions differ). From here on a change is a new file again.
++
+ CREATE EXTENSION IF NOT EXISTS postgis;
+ 
+ -- Monotonic counter used for offline sync: every write gets a new value and
+ -- clients ask for "everything with sync_version > the last one I saw".
+ CREATE SEQUENCE sync_seq;
+ 
++-- One candidate per row (a house is the first kind; docs/03 §18). The table keeps its name `house`: only the public
++-- surfaces were renamed by the reset (the wire's `candidates`, `/api/candidates`, `candidateId`).
++--   kind           the kind id (`house`), ^[a-z][a-z0-9_]{1,31}$ (docs/03 §18.4 door 3).
++--   money_*        the price as an amount (whole rupees, null when unknown) and its cadence (`month` for a rent,
++--                  `once` for a sale; one of once, day, week, month, quarter, year); both null when neither is known.
++--   extras         the kind's typed extras as one JSON object keyed by extra id (for a house: bedrooms, areaSqft,
++--                  floor and the eleven cost fields, a money extra as {"amount", "cadence"}), stored as the client
++--                  sent it after validation, ids this server does not know included (door 5); null when empty,
++--                  never '{}'.
++--   location_source GPS, MAP or APPROX (FR-068); null when unknown.
++--   rooms, answers, move_in  the nested lists and the moving-in card as JSON, stored as sent (null for none).
++--   broker_id      a record id of type `broker`; no foreign key on purpose (records sync on their own cursor).
++-- A tombstone blanks every content column (threat model F-16, PRV-005; `House.purgeContent`).
+ CREATE TABLE house (
+-    id             uuid PRIMARY KEY,
+-    label          varchar(200)     NOT NULL,
+-    address        varchar(500),
+-    street         varchar(200),
+-    locality       varchar(200),
+-    lat            double precision NOT NULL,
+-    lon            double precision NOT NULL,
+-    geog           geography(Point, 4326)
+-                   GENERATED ALWAYS AS (ST_SetSRID(ST_MakePoint(lon, lat), 4326)::geography) STORED,
+-    status         varchar(20)      NOT NULL DEFAULT 'NEW',
+-    price          bigint,
+-    price_type     varchar(10),
+-    bedrooms       integer,
+-    rating         integer,
+-    contact_name   varchar(200),
+-    contact_phone  varchar(50),
+-    listing_url    varchar(1000),
+-    notes          text,
+-    created_at     timestamptz      NOT NULL,
+-    updated_at     timestamptz      NOT NULL,
+-    deleted        boolean          NOT NULL DEFAULT false,
+-    sync_version   bigint           NOT NULL
++    id              uuid PRIMARY KEY,
++    kind            varchar(32)      NOT NULL DEFAULT 'house',
++    label           varchar(200)     NOT NULL,
++    address         varchar(500),
++    street          varchar(200),
++    locality        varchar(200),
++    lat             double precision NOT NULL,
++    lon             double precision NOT NULL,
++    geog            geography(Point, 4326)
++                    GENERATED ALWAYS AS (ST_SetSRID(ST_MakePoint(lon, lat), 4326)::geography) STORED,
++    status          varchar(20)      NOT NULL DEFAULT 'NEW',
++    money_amount    bigint,
++    money_cadence   varchar(10),
++    rating          integer,
++    contact_name    varchar(200),
++    contact_phone   varchar(50),
++    listing_url     varchar(1000),
++    notes           text,
++    location_source varchar(10),
++    extras          jsonb,
++    rooms           jsonb,
++    answers         jsonb,
++    move_in         jsonb,
++    broker_id       varchar(64),
++    created_at      timestamptz      NOT NULL,
++    updated_at      timestamptz      NOT NULL,
++    deleted         boolean          NOT NULL DEFAULT false,
++    sync_version    bigint           NOT NULL
+ );
+ CREATE INDEX house_geog_idx ON house USING gist (geog);
+ CREATE INDEX house_sync_idx ON house (sync_version);
+@@ -39,6 +63,9 @@ CREATE TABLE house_checklist (
+     PRIMARY KEY (house_id, item)
+ );
+ 
++-- A visit's candidate is `house_id` (`candidateId` on the wire); null when the visit is at a place that is not a
++-- candidate, or after its candidate was deleted (the delete unlinks it). A deleted visit keeps only what a tombstone
++-- needs (id, deleted, updated_at, sync_version); the place is wiped.
+ CREATE TABLE visit (
+     id           uuid PRIMARY KEY,
+     house_id     uuid REFERENCES house (id) ON DELETE SET NULL,
+@@ -58,11 +85,153 @@ CREATE INDEX visit_geog_idx ON visit USING gist (geog);
+ CREATE INDEX visit_sync_idx ON visit (sync_version);
+ CREATE INDEX visit_house_idx ON visit (house_id);
+ 
++-- Photos are part of offline sync: a delete leaves a tombstone (deleted = true, bytes removed) with a new
++-- sync_version, so other devices learn about it via GET /api/photos?since=<cursor>. Tombstones are purged by the
++-- scheduled TombstonePurgeJob after app.privacy.tombstone-retention-days (default 90). What a person says about a
++-- photo (docs/11 section 5.7): room_id names a room of the candidate (no foreign key: rooms live in the candidate's
++-- JSON and may be gone), tags is a JSON array of at most 10 strings, caption at most 200 characters, and
++-- meta_updated_at (epoch ms, 0 = never edited) decides last-write-wins between devices. A tombstone blanks all four.
+ CREATE TABLE photo (
+-    id           uuid PRIMARY KEY,
+-    house_id     uuid         NOT NULL REFERENCES house (id) ON DELETE CASCADE,
+-    content_type varchar(100) NOT NULL,
+-    data         bytea        NOT NULL,
+-    created_at   timestamptz  NOT NULL
++    id              uuid PRIMARY KEY,
++    house_id        uuid         NOT NULL REFERENCES house (id) ON DELETE CASCADE,
++    content_type    varchar(100) NOT NULL,
++    data            bytea,
++    created_at      timestamptz  NOT NULL,
++    deleted         boolean      NOT NULL DEFAULT false,
++    size_bytes      integer,
++    updated_at      timestamptz  NOT NULL,
++    sync_version    bigint       NOT NULL,
++    room_id         varchar(64),
++    tags            jsonb,
++    caption         varchar(200),
++    meta_updated_at bigint       NOT NULL DEFAULT 0
+ );
+ CREATE INDEX photo_house_idx ON photo (house_id);
++CREATE INDEX photo_sync_idx ON photo (sync_version);
++
++-- Optional AI "Ask my house hunt" (RAG) storage. See docs/ai/ai-design.md.
++--
++-- The table layout mirrors what Spring AI 2.0.1's PgVectorStore reads and writes
++-- (PgVectorStore#createObjectsInDatabase): id uuid PK, content text, metadata json,
++-- embedding vector(N) plus an HNSW cosine index named spring_ai_vector_index.
++-- One row per candidate; id = candidate id so re-indexing is an upsert (ON CONFLICT (id)).
++--
++-- The dimension is FIXED at 768 here and must equal AI_EMBEDDING_DIMENSIONS
++-- (gemini-embedding-2 / gemini-embedding-001 with output dimensionality 768, or
++-- Ollama nomic-embed-text which is natively 768).
++--
++-- Environments without the pgvector extension (e.g. a plain PostGIS image) must keep
++-- working with AI disabled, so everything is guarded: if "vector" is not available this
++-- part is a no-op. If you install pgvector later, either set
++-- AI_VECTOR_INIT_SCHEMA=true once or run the statements below by hand.
++DO $$
++BEGIN
++    IF EXISTS (SELECT 1 FROM pg_available_extensions WHERE name = 'vector') THEN
++        EXECUTE 'CREATE EXTENSION IF NOT EXISTS vector';
++        EXECUTE $ddl$
++            CREATE TABLE IF NOT EXISTS vector_store (
++                id        uuid PRIMARY KEY,
++                content   text,
++                metadata  json,
++                embedding vector(768)
++            )
++        $ddl$;
++        EXECUTE 'CREATE INDEX IF NOT EXISTS spring_ai_vector_index ON vector_store USING hnsw (embedding vector_cosine_ops)';
++    ELSE
++        RAISE NOTICE 'pgvector extension not available: skipping vector_store (AI RAG features need it)';
++    END IF;
++END
++$$;
++
++-- Device keys, pairing and the owner page (docs/03 §12.1, ADR-25). Every secret is stored as its SHA-256 hash only:
++-- a copy of this database gives no working key, code, invite or session.
++
++-- One row per connected app install. ai_allowed: the owner's per-device AI switch, off for a new device.
++CREATE TABLE device_key (
++    id           uuid PRIMARY KEY,
++    name         varchar(60)  NOT NULL,
++    key_hash     bytea        NOT NULL UNIQUE,
++    key_last4    varchar(4)   NOT NULL,
++    via          varchar(10)  NOT NULL CHECK (via IN ('code', 'invite')),
++    ai_allowed   boolean      NOT NULL DEFAULT false,
++    created_at   timestamptz  NOT NULL,
++    last_used_at timestamptz,
++    revoked_at   timestamptz
++);
++
++-- A device waiting for the owner to type its code (RFC 8628 in small). The device polls with poll_hash's token.
++-- client_hash (S4b-BL-161, docs/03 section 12.1): a salted SHA-256 of the client address, never the address, so at
++-- most a few requests per source stay open. The salt is made at each start of the server, so the hash links only
++-- requests of one run (they live 10 minutes).
++CREATE TABLE pairing_request (
++    id           uuid PRIMARY KEY,
++    user_code    varchar(8)   NOT NULL,
++    poll_hash    bytea        NOT NULL UNIQUE,
++    device_name  varchar(60)  NOT NULL,
++    status       varchar(10)  NOT NULL CHECK (status IN ('pending', 'approved', 'denied', 'claimed')),
++    created_at   timestamptz  NOT NULL,
++    expires_at   timestamptz  NOT NULL,
++    device_id    uuid REFERENCES device_key (id) ON DELETE SET NULL,
++    client_hash  bytea
++);
++CREATE INDEX pairing_request_code_idx ON pairing_request (user_code) WHERE status = 'pending';
++CREATE INDEX pairing_request_client_idx ON pairing_request (client_hash) WHERE status = 'pending';
++
++-- One-time invites the owner page shows as a QR code or a link.
++CREATE TABLE pairing_invite (
++    id           uuid PRIMARY KEY,
++    token_hash   bytea        NOT NULL UNIQUE,
++    created_at   timestamptz  NOT NULL,
++    expires_at   timestamptz  NOT NULL,
++    used_at      timestamptz,
++    device_id    uuid REFERENCES device_key (id) ON DELETE SET NULL
++);
++
++-- Owner page access: one-time setup links (kind 'setup') and signed-in browsers (kind 'session').
++CREATE TABLE owner_token (
++    id           uuid PRIMARY KEY,
++    kind         varchar(10)  NOT NULL CHECK (kind IN ('setup', 'session')),
++    token_hash   bytea        NOT NULL UNIQUE,
++    label        varchar(120),
++    created_at   timestamptz  NOT NULL,
++    last_used_at timestamptz,
++    expires_at   timestamptz  NOT NULL,
++    used_at      timestamptz,
++    revoked_at   timestamptz
++);
++
++-- Secrets and settings the owner sets on the owner page (docs/03 §12.1, ADR-25): the Gemini key, stored encrypted
++-- with AES-256-GCM under a key derived from the server's owner key (APP_API_KEY), so a copy of this database alone
++-- does not reveal it; and plain switches such as "AI paused".
++CREATE TABLE server_secret (
++    name         varchar(40)  PRIMARY KEY,
++    ciphertext   bytea        NOT NULL,
++    last4        varchar(4)   NOT NULL,
++    updated_at   timestamptz  NOT NULL
++);
++
++CREATE TABLE server_setting (
++    name         varchar(40)  PRIMARY KEY,
++    value        varchar(200) NOT NULL,
++    updated_at   timestamptz  NOT NULL
++);
++
++-- The Sprint 4b data model (docs/11 section 5.30, ADR-28). Every kind of data other than candidates, visits and
++-- photos (criteria, questions, viewings, hunting areas, places, area notes, brokers, preferences) is one row here,
++-- keyed by its type and the client's id, with the payload stored opaquely: the server never reads a payload, only
++-- stores and syncs it (GET /api/records?since=, PUT /api/records/{type}/{id}), so a new kind of data costs no table,
++-- entity or endpoint. (The one exception is a viewing's `candidateId`, which the AI index and the backup read.) A
++-- delete leaves a tombstone (deleted = true, payload '{}') with a new sync_version, purged by the daily job after
++-- app.privacy.tombstone-retention-days like the other tombstones. Caps (per type at most 5 000 live rows, a payload
++-- at most 64 KiB) are enforced by the controller.
++CREATE TABLE record (
++    type         varchar(40)  NOT NULL,
++    id           varchar(64)  NOT NULL,
++    payload      jsonb        NOT NULL DEFAULT '{}',
++    updated_at   timestamptz  NOT NULL,
++    deleted      boolean      NOT NULL DEFAULT false,
++    sync_version bigint       NOT NULL,
++    PRIMARY KEY (type, id)
++);
++
++CREATE INDEX record_sync_idx ON record (sync_version);
+diff --git a/backend/src/main/resources/db/migration/V2__pgvector_store.sql b/backend/src/main/resources/db/migration/V2__pgvector_store.sql
+deleted file mode 100644
+index 41365108..00000000
+--- a/backend/src/main/resources/db/migration/V2__pgvector_store.sql
++++ /dev/null
+@@ -1,33 +0,0 @@
+--- Optional AI "Ask my house hunt" (RAG) storage. See docs/ai/ai-design.md.
+---
+--- The table layout mirrors what Spring AI 2.0.1's PgVectorStore reads and writes
+--- (PgVectorStore#createObjectsInDatabase): id uuid PK, content text, metadata json,
+--- embedding vector(N) plus an HNSW cosine index named spring_ai_vector_index.
+--- One row per house; id = house id so re-indexing is an upsert (ON CONFLICT (id)).
+---
+--- The dimension is FIXED at 768 here and must equal AI_EMBEDDING_DIMENSIONS
+--- (gemini-embedding-2 / gemini-embedding-001 with output dimensionality 768, or
+--- Ollama nomic-embed-text which is natively 768).
+---
+--- Environments without the pgvector extension (e.g. a plain PostGIS image) must keep
+--- working with AI disabled, so everything is guarded: if "vector" is not available this
+--- migration is a no-op. If you install pgvector later, either set
+--- AI_VECTOR_INIT_SCHEMA=true once or run the statements below by hand.
+-DO $$
+-BEGIN
+-    IF EXISTS (SELECT 1 FROM pg_available_extensions WHERE name = 'vector') THEN
+-        EXECUTE 'CREATE EXTENSION IF NOT EXISTS vector';
+-        EXECUTE $ddl$
+-            CREATE TABLE IF NOT EXISTS vector_store (
+-                id        uuid PRIMARY KEY,
+-                content   text,
+-                metadata  json,
+-                embedding vector(768)
+-            )
+-        $ddl$;
+-        EXECUTE 'CREATE INDEX IF NOT EXISTS spring_ai_vector_index ON vector_store USING hnsw (embedding vector_cosine_ops)';
+-    ELSE
+-        RAISE NOTICE 'pgvector extension not available: skipping vector_store (AI RAG features need it)';
+-    END IF;
+-END
+-$$;
+diff --git a/backend/src/main/resources/db/migration/V3__photo_tombstones_and_privacy.sql b/backend/src/main/resources/db/migration/V3__photo_tombstones_and_privacy.sql
+deleted file mode 100644
+index ac355820..00000000
+--- a/backend/src/main/resources/db/migration/V3__photo_tombstones_and_privacy.sql
++++ /dev/null
+@@ -1,29 +0,0 @@
+--- Wave 2 security hardening (threat model F-06, F-15, F-16). V2 belongs to the optional pgvector store.
+---
+--- Photos become part of offline sync: a delete leaves a tombstone (deleted = true, bytes removed) with a new
+--- sync_version, so other devices learn about it via GET /api/photos?since=<cursor>. Tombstones are purged by
+--- the scheduled TombstonePurgeJob after app.privacy.tombstone-retention-days (default 90).
+-
+-ALTER TABLE photo ALTER COLUMN data DROP NOT NULL;
+-ALTER TABLE photo ADD COLUMN deleted      boolean NOT NULL DEFAULT false;
+-ALTER TABLE photo ADD COLUMN size_bytes   integer;
+-ALTER TABLE photo ADD COLUMN updated_at   timestamptz;
+-ALTER TABLE photo ADD COLUMN sync_version bigint;
+-
+-UPDATE photo SET size_bytes = octet_length(data), updated_at = created_at, sync_version = nextval('sync_seq');
+-
+-ALTER TABLE photo ALTER COLUMN updated_at SET NOT NULL;
+-ALTER TABLE photo ALTER COLUMN sync_version SET NOT NULL;
+-CREATE INDEX photo_sync_idx ON photo (sync_version);
+-
+--- Houses deleted before this migration still hold their content in the tombstone: blank it now (PRV-005).
+-UPDATE house
+-SET label = '', address = NULL, street = NULL, locality = NULL, price = NULL, price_type = NULL, bedrooms = NULL,
+-    rating = NULL, contact_name = NULL, contact_phone = NULL, listing_url = NULL, notes = NULL
+-WHERE deleted;
+-DELETE FROM house_checklist WHERE house_id IN (SELECT id FROM house WHERE deleted);
+-UPDATE photo SET deleted = true, data = NULL
+-WHERE house_id IN (SELECT id FROM house WHERE deleted) AND NOT deleted;
+-
+--- Soft-deleted visits: keep only what a tombstone needs (id, deleted, updated_at, sync_version); drop the place.
+-UPDATE visit SET street = NULL, lat = 0, lon = 0, left_at = NULL WHERE deleted;
+diff --git a/backend/src/main/resources/db/migration/V4__device_keys_and_pairing.sql b/backend/src/main/resources/db/migration/V4__device_keys_and_pairing.sql
+deleted file mode 100644
+index 455bcff9..00000000
+--- a/backend/src/main/resources/db/migration/V4__device_keys_and_pairing.sql
++++ /dev/null
+@@ -1,67 +0,0 @@
+--- Copyright 2026 Sriram (Sriram-Codes-SW)
+---
+--- This file is part of Doorprints.
+---
+--- Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+--- Public License as published by the Free Software Foundation, version 3 of the License.
+---
+--- Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+--- warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+--- details.
+---
+--- You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+--- the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+---
+--- SPDX-License-Identifier: AGPL-3.0-only
+-
+--- Device keys, pairing and the owner page (docs/03 §12.1, ADR-25). Every secret is stored as its SHA-256 hash only:
+--- a copy of this database gives no working key, code, invite or session.
+-
+--- One row per connected app install. ai_allowed: the owner's per-device AI switch, off for a new device.
+-CREATE TABLE device_key (
+-    id           uuid PRIMARY KEY,
+-    name         varchar(60)  NOT NULL,
+-    key_hash     bytea        NOT NULL UNIQUE,
+-    key_last4    varchar(4)   NOT NULL,
+-    via          varchar(10)  NOT NULL CHECK (via IN ('code', 'invite')),
+-    ai_allowed   boolean      NOT NULL DEFAULT false,
+-    created_at   timestamptz  NOT NULL,
+-    last_used_at timestamptz,
+-    revoked_at   timestamptz
+-);
+-
+--- A device waiting for the owner to type its code (RFC 8628 in small). The device polls with poll_hash's token.
+-CREATE TABLE pairing_request (
+-    id           uuid PRIMARY KEY,
+-    user_code    varchar(8)   NOT NULL,
+-    poll_hash    bytea        NOT NULL UNIQUE,
+-    device_name  varchar(60)  NOT NULL,
+-    status       varchar(10)  NOT NULL CHECK (status IN ('pending', 'approved', 'denied', 'claimed')),
+-    created_at   timestamptz  NOT NULL,
+-    expires_at   timestamptz  NOT NULL,
+-    device_id    uuid REFERENCES device_key (id) ON DELETE SET NULL
+-);
+-CREATE INDEX pairing_request_code_idx ON pairing_request (user_code) WHERE status = 'pending';
+-
+--- One-time invites the owner page shows as a QR code or a link.
+-CREATE TABLE pairing_invite (
+-    id           uuid PRIMARY KEY,
+-    token_hash   bytea        NOT NULL UNIQUE,
+-    created_at   timestamptz  NOT NULL,
+-    expires_at   timestamptz  NOT NULL,
+-    used_at      timestamptz,
+-    device_id    uuid REFERENCES device_key (id) ON DELETE SET NULL
+-);
+-
+--- Owner page access: one-time setup links (kind 'setup') and signed-in browsers (kind 'session').
+-CREATE TABLE owner_token (
+-    id           uuid PRIMARY KEY,
+-    kind         varchar(10)  NOT NULL CHECK (kind IN ('setup', 'session')),
+-    token_hash   bytea        NOT NULL UNIQUE,
+-    label        varchar(120),
+-    created_at   timestamptz  NOT NULL,
+-    last_used_at timestamptz,
+-    expires_at   timestamptz  NOT NULL,
+-    used_at      timestamptz,
+-    revoked_at   timestamptz
+-);
+diff --git a/backend/src/main/resources/db/migration/V5__server_secrets.sql b/backend/src/main/resources/db/migration/V5__server_secrets.sql
+deleted file mode 100644
+index 82f9b36b..00000000
+--- a/backend/src/main/resources/db/migration/V5__server_secrets.sql
++++ /dev/null
+@@ -1,31 +0,0 @@
+--- Copyright 2026 Sriram (Sriram-Codes-SW)
+---
+--- This file is part of Doorprints.
+---
+--- Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+--- Public License as published by the Free Software Foundation, version 3 of the License.
+---
+--- Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+--- warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+--- details.
+---
+--- You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+--- the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+---
+--- SPDX-License-Identifier: AGPL-3.0-only
+-
+--- Secrets and settings the owner sets on the owner page (docs/03 §12.1, ADR-25): the Gemini key, stored encrypted
+--- with AES-256-GCM under a key derived from the server's owner key (APP_API_KEY), so a copy of this database alone
+--- does not reveal it; and plain switches such as "AI paused".
+-CREATE TABLE server_secret (
+-    name         varchar(40)  PRIMARY KEY,
+-    ciphertext   bytea        NOT NULL,
+-    last4        varchar(4)   NOT NULL,
+-    updated_at   timestamptz  NOT NULL
+-);
+-
+-CREATE TABLE server_setting (
+-    name         varchar(40)  PRIMARY KEY,
+-    value        varchar(200) NOT NULL,
+-    updated_at   timestamptz  NOT NULL
+-);
+diff --git a/backend/src/main/resources/db/migration/V6__records.sql b/backend/src/main/resources/db/migration/V6__records.sql
+deleted file mode 100644
+index 43477042..00000000
+--- a/backend/src/main/resources/db/migration/V6__records.sql
++++ /dev/null
+@@ -1,34 +0,0 @@
+--- Copyright 2026 Sriram (Sriram-Codes-SW)
+---
+--- This file is part of Doorprints.
+---
+--- Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+--- Public License as published by the Free Software Foundation, version 3 of the License.
+---
+--- Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+--- warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+--- details.
+---
+--- You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+--- the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+---
+--- SPDX-License-Identifier: AGPL-3.0-only
+-
+--- The Sprint 4b data model, slice 0 (docs/11 section 5.30, ADR-28). Every new kind of data of Sprint 4b (criteria,
+--- questions, viewings, hunting areas, places, area notes, brokers, photo metadata, the move-in record, preferences)
+--- is one row here, keyed by its kind and the client's id, with the payload stored opaquely: the server never reads
+--- a payload, only stores and syncs it (GET /api/records?since=, PUT /api/records/{type}/{id}), so a new kind of
+--- data costs no table, entity or endpoint. A delete leaves a tombstone (deleted = true, payload '{}') with a new
+--- sync_version, purged by the daily job after app.privacy.tombstone-retention-days like the other tombstones.
+--- Caps (per type at most 5 000 live rows, a payload at most 64 KiB) are enforced by the controller.
+-CREATE TABLE record (
+-    type         varchar(40)  NOT NULL,
+-    id           varchar(64)  NOT NULL,
+-    payload      jsonb        NOT NULL DEFAULT '{}',
+-    updated_at   timestamptz  NOT NULL,
+-    deleted      boolean      NOT NULL DEFAULT false,
+-    sync_version bigint       NOT NULL,
+-    PRIMARY KEY (type, id)
+-);
+-
+-CREATE INDEX record_sync_idx ON record (sync_version);
+diff --git a/backend/src/main/resources/db/migration/V7__house_values.sql b/backend/src/main/resources/db/migration/V7__house_values.sql
+deleted file mode 100644
+index 62338d76..00000000
+--- a/backend/src/main/resources/db/migration/V7__house_values.sql
++++ /dev/null
+@@ -1,24 +0,0 @@
+--- Copyright 2026 Sriram (Sriram-Codes-SW)
+---
+--- This file is part of Doorprints.
+---
+--- Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+--- Public License as published by the Free Software Foundation, version 3 of the License.
+---
+--- Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+--- warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+--- details.
+---
+--- You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+--- the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+---
+--- SPDX-License-Identifier: AGPL-3.0-only
+-
+--- The Sprint 4b data model, slice 1a (docs/11 sections 5.21 and 5.30 item 1, ADR-28, FR-068): the house's own values.
+--- All three are optional and absent for a house saved before this. The carpet area is what the person wrote (sq ft);
+--- location_source is GPS, MAP or APPROX (an approximate spot: a hollow marker, never a Hunt-mode alert); cost is the
+--- eleven money fields of docs/11 section 5.21 as one JSON object (absent fields left out, never '{}'), stored as the
+--- client sent it like a record payload, because nothing on the server computes with it.
+-ALTER TABLE house ADD COLUMN area_sqft       integer;
+-ALTER TABLE house ADD COLUMN location_source varchar(10);
+-ALTER TABLE house ADD COLUMN cost            jsonb;
+diff --git a/backend/src/main/resources/db/migration/V8__house_broker.sql b/backend/src/main/resources/db/migration/V8__house_broker.sql
+deleted file mode 100644
+index 7fc05349..00000000
+--- a/backend/src/main/resources/db/migration/V8__house_broker.sql
++++ /dev/null
+@@ -1,20 +0,0 @@
+--- Copyright 2026 Sriram (Sriram-Codes-SW)
+---
+--- This file is part of Doorprints.
+---
+--- Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+--- Public License as published by the Free Software Foundation, version 3 of the License.
+---
+--- Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+--- warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+--- details.
+---
+--- You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+--- the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+---
+--- SPDX-License-Identifier: AGPL-3.0-only
+-
+--- The Sprint 4b data model, slice 1b (docs/11 section 5.25, ADR-28): a house may name its broker. broker_id is the
+--- id of a record of type 'broker' (see V6). There is no foreign key on purpose: records sync on their own cursor, so a
+--- house can arrive before its broker, and a deleted broker leaves the id dangling, which readers take as no broker.
+-ALTER TABLE house ADD COLUMN broker_id varchar(64);
+diff --git a/backend/src/main/resources/db/migration/V9__house_rooms.sql b/backend/src/main/resources/db/migration/V9__house_rooms.sql
+deleted file mode 100644
+index 8d5f556e..00000000
+--- a/backend/src/main/resources/db/migration/V9__house_rooms.sql
++++ /dev/null
+@@ -1,20 +0,0 @@
+--- Copyright 2026 Sriram (Sriram-Codes-SW)
+---
+--- This file is part of Doorprints.
+---
+--- Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+--- Public License as published by the Free Software Foundation, version 3 of the License.
+---
+--- Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+--- warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+--- details.
+---
+--- You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+--- the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+---
+--- SPDX-License-Identifier: AGPL-3.0-only
+-
+--- The Sprint 4b data model, slice 1c (docs/11 section 5.6, ADR-28): a house's rooms with sizes and condition, as one
+--- JSON array (at most 30 objects; absent when there are none, never '[]'), stored as the client sent it like cost,
+--- because nothing on the server computes with it. Blanked in the tombstone purge with the other house values.
+-ALTER TABLE house ADD COLUMN rooms jsonb;

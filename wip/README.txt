@@ -1,0 +1,1 @@
+Work in progress, not source. The half-built server part of kinds PR 2 (S4b-BL-206), reverted from PR 264 to keep it compiling. Apply with: git apply --3way wip/kinds-pr2-backend.patch. Delete this branch when PR 2 has been redone.
