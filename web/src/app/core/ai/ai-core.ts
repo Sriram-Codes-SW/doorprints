@@ -113,6 +113,8 @@ function phonePattern(phone: string | null | undefined): RegExp | null {
   const variants = new Set([digits]);
   if (digits.length > 10) variants.add(digits.slice(-10));
   if (digits.startsWith('0') && digits.length > MIN_SAVED_PHONE_DIGITS) variants.add(digits.slice(1));
+  // A metro landline (0 + 2-digit STD code + 8 digits) is often written in a note without its STD code (S4b-BL-174a).
+  if (digits.length === 11 && digits.startsWith('0')) variants.add(digits.slice(3));
   const alternatives = [...variants].map((v) => v.split('').join('[ .()\\-]{0,2}'));
   return new RegExp(`(?<!\\d)\\+?(?:${alternatives.join('|')})(?!\\d)`, 'gu');
 }
@@ -937,14 +939,34 @@ export interface PlanCandidate {
 export interface AgentPlan { summary?: string | null; stops?: { houseId?: string | null; reason?: string | null }[] | null }
 
 export const FALLBACK_REASON = 'Found by the search; ordered by walking distance';
+/** How far from the start point a house may be for the fallback route to offer it, as the server's `FALLBACK_MAX_METERS`: a house hunt is one city. */
+export const FALLBACK_MAX_METERS = 50_000;
+/** The summary of a fallback when no candidate is within {@link FALLBACK_MAX_METERS} of the start. */
+export const FALLBACK_NONE_IN_REACH = 'No saved houses within reach of your start point were found.';
 export const FALLBACK_SUMMARY = 'The assistant could not finish a plan, so these are the houses it found, ordered by nearest neighbour from your start point.';
 const UUID_ONLY = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+
+/**
+ * The fallback's candidates, as the server's `fallbackPoints`: the houses in the running with usable coordinates within
+ * {@link FALLBACK_MAX_METERS} of the start, nearest to the start first (equal distances by house id), at most `maxStops`.
+ */
+function fallbackPoints(seen: Map<string, PlanCandidate>, lat: number, lon: number, maxStops: number): RoutePoint[] {
+  return [...seen.values()]
+    .filter((h) => inTheRunning(h.status))
+    .map((h) => ({ h, meters: haversineMeters(lat, lon, h.lat, h.lon) }))
+    // A NaN distance (an unusable coordinate) is not within reach.
+    .filter((n) => n.meters <= FALLBACK_MAX_METERS)
+    .sort((x, y) => x.meters - y.meters || (x.h.id.toLowerCase() < y.h.id.toLowerCase() ? -1 : x.h.id.toLowerCase() > y.h.id.toLowerCase() ? 1 : 0))
+    .slice(0, maxStops)
+    .map((n) => ({ id: n.h.id, lat: n.h.lat, lon: n.h.lon }));
+}
 
 /**
  * Builds the visit plan from what the model chose, trusting only ids that were offered as candidates (each once, up to
  * `maxStops`). The model decides which houses; the order and the walking legs are computed here. When the model gave no
  * plan, or only ids that were not candidates, the plan falls back to the nearest-neighbour order of the houses in the
- * running and says so (`fallback`).
+ * running within {@link FALLBACK_MAX_METERS} of the start (the nearest `maxStops` of them) and says so (`fallback`);
+ * with none in reach it has no stops and says that (S4b-BL-199, as the server's `assemble`).
  */
 export function assemblePlan(plan: AgentPlan | null, seen: Map<string, PlanCandidate>, lat: number, lon: number, maxStops: number): PlanResponse {
   const byId = new Map([...seen].map(([k, v]) => [k.toLowerCase(), v]));
@@ -968,11 +990,11 @@ export function assemblePlan(plan: AgentPlan | null, seen: Map<string, PlanCandi
   let legs: Leg[];
   if (plan == null || (!chosen.length && seen.size > 0 && (plan.stops?.length ?? 0) > 0)) {
     fallback = true;
-    const points = [...seen.values()].filter((h) => inTheRunning(h.status)).slice(0, maxStops).map((h) => ({ id: h.id, lat: h.lat, lon: h.lon }));
+    const points = fallbackPoints(seen, lat, lon, maxStops);
     legs = nearestNeighbour(lat, lon, points);
     chosen = legs.map((l) => seen.get(l.to.id)!);
     reasons = legs.map(() => FALLBACK_REASON);
-    summary = FALLBACK_SUMMARY;
+    summary = points.length ? FALLBACK_SUMMARY : FALLBACK_NONE_IN_REACH;
   } else {
     legs = legsInOrder(lat, lon, chosen.map((h) => ({ id: h.id, lat: h.lat, lon: h.lon })));
   }

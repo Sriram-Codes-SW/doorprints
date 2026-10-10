@@ -192,6 +192,8 @@ object ContactRedactor {
                 val variants = linkedSetOf(digits)
                 if (digits.length > 10) variants += digits.takeLast(10)
                 if (digits.startsWith("0") && digits.length > MIN_SAVED_PHONE_DIGITS) variants += digits.substring(1)
+                // A metro landline (0 + 2-digit STD code + 8 digits) is often written in a note without its STD code (S4b-BL-174a).
+                if (digits.length == 11 && digits.startsWith("0")) variants += digits.substring(3)
                 val alternatives = variants.map { v -> v.toList().joinToString("[ .()\\-]{0,2}") }
                 return Regex("(?<!\\d)\\+?(?:${alternatives.joinToString("|")})(?!\\d)")
             }

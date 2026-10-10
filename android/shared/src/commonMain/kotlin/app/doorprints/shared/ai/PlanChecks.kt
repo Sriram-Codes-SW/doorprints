@@ -49,14 +49,38 @@ data class PlanCandidate(
 
 /**
  * The checks on a plan: the server's `VisitPlannerService.assemble`, ported (docs/03 §13.1). Stops are kept only if
- * they name a candidate, once each, up to [maxStops]; without a usable plan the non-rejected candidates are ordered by
- * nearest neighbour instead, with the same words as the server. Legs are always recomputed here.
+ * they name a candidate, once each, up to [maxStops]; without a usable plan the candidates in the running within
+ * [FALLBACK_MAX_METERS] of the start, nearest first, at most [maxStops], are ordered by nearest neighbour instead, with
+ * the same words as the server (S4b-BL-199; the shared vectors' `planFallback`). Legs are always recomputed here.
  */
 object PlanChecks {
     const val FALLBACK_REASON = "Found by the search; ordered by walking distance"
     const val FALLBACK_SUMMARY =
         "The assistant could not finish a plan, so these are the houses it found, ordered by nearest neighbour from your start point."
+
+    /** How far from the start point a house may be for the fallback route to offer it, as the server's `FALLBACK_MAX_METERS`: a house hunt is one city. */
+    const val FALLBACK_MAX_METERS = 50_000.0
+
+    /** The summary of a fallback when no candidate is within [FALLBACK_MAX_METERS] of the start. */
+    const val FALLBACK_NONE_IN_REACH = "No saved houses within reach of your start point were found."
     private val UUID_TEXT = Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+
+    /**
+     * The fallback's candidates, as the server's `fallbackPoints`: the houses in the running with usable coordinates
+     * within [FALLBACK_MAX_METERS] of the start, nearest to the start first (equal distances by house id), at most
+     * [maxStops]. The order of [seen] does not matter.
+     */
+    private fun fallbackPoints(seen: Map<String, PlanCandidate>, startLat: Double, startLon: Double, maxStops: Int): List<RouteOptimizer.Point> {
+        val near = ArrayList<Pair<PlanCandidate, Double>>()
+        for (h in seen.values) {
+            if (!HouseStatusRules.inTheRunning(h.status)) continue
+            val meters: Double = RouteOptimizer.haversineMeters(startLat, startLon, h.lat, h.lon)
+            // A NaN distance (an unusable coordinate) is not within reach.
+            if (meters <= FALLBACK_MAX_METERS) near += h to meters
+        }
+        return near.sortedWith(compareBy<Pair<PlanCandidate, Double>> { it.second }.thenBy { it.first.id.lowercase() })
+            .take(maxStops).map { RouteOptimizer.Point(it.first.id, it.first.lat, it.first.lon) }
+    }
 
     /**
       * The plan to show: [plan]'s stops that name a known candidate (each once, up to [maxStops]) with the legs
@@ -93,14 +117,13 @@ object PlanChecks {
             fallback = true
             chosen.clear()
             reasons.clear()
-            val points = seen.values.filter { HouseStatusRules.inTheRunning(it.status) }.take(maxStops)
-                .map { RouteOptimizer.Point(it.id, it.lat, it.lon) }
+            val points = fallbackPoints(seen, startLat, startLon, maxStops)
             legs = RouteOptimizer.nearestNeighbour(startLat, startLon, points)
             legs.forEach { l ->
                 chosen += seen.getValue(l.to.id)
                 reasons += FALLBACK_REASON
             }
-            summary = FALLBACK_SUMMARY
+            summary = if (points.isEmpty()) FALLBACK_NONE_IN_REACH else FALLBACK_SUMMARY
         } else {
             legs = RouteOptimizer.legsInOrder(startLat, startLon, chosen.map { RouteOptimizer.Point(it.id, it.lat, it.lon) })
         }

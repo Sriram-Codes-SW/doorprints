@@ -52,6 +52,17 @@ class ContactRedactorTest {
     }
 
     @Test
+    fun aSavedLandlineWrittenWithoutItsStdCodeIsRemoved() {
+        val r = ContactRedactor.forContact(null, "080 2345 6789")
+        assertEquals("reach the office on [phone]", r.freeText("reach the office on 2345 6789"))
+        assertEquals("call [phone] or [phone]", r.freeText("call 23456789 or 2345.6789"))
+        assertEquals("plot 12345678, deposit 2345 6788", r.freeText("plot 12345678, deposit 2345 6788"))
+        // A 10-digit saved number and a landline saved without the 0 have no such variant.
+        assertEquals("ext 450 12345", ContactRedactor.forContact(null, "98450 12345").freeText("ext 450 12345"))
+        assertEquals("office 2345 6789", ContactRedactor.forContact(null, "8023456789").freeText("office 2345 6789"))
+    }
+
+    @Test
     fun anAtSignThatIsNotAnEmailAddressIsKept() {
         val text = "Rent 28k @ month, ask x@y or a@b."
         assertEquals(text, ContactRedactor.forContact(null, null).freeText(text))
