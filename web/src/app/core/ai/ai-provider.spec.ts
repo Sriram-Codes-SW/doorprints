@@ -185,10 +185,15 @@ describe('providerErrors vectors', () => {
     expect([(silent as OnDeviceAiError).kind, (silent as OnDeviceAiError).retryAfter]).toEqual(['rateLimited', 60]);
   });
 
-  it('a missing choice, a refusal or a page that is not JSON is unavailable', async () => {
-    for (const body of ['{"choices":[]}', '{"choices":[{"message":{"content":null,"refusal":"no"}}]}', 'not json']) {
+  it('a missing choice or a page that is not JSON is unavailable', async () => {
+    for (const body of ['{"choices":[]}', 'not json']) {
       expect(await kindOf(run(model(fakeFetch({ status: 200, body }))))).toBe('unavailable');
     }
+  });
+
+  it('a refusal is blocked, not unavailable (S4b-BL-232)', async () => {
+    const body = '{"choices":[{"message":{"content":null,"refusal":"no"}}]}';
+    expect(await kindOf(run(model(fakeFetch({ status: 200, body }))))).toBe('blocked');
   });
 });
 

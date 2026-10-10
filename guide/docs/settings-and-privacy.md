@@ -20,6 +20,7 @@ Light and dark themes follow your device's setting on all three.
 - The AI features send your question and the matching house notes to the AI provider you chose (its name is shown where
   you set it): through your server, or, with your own key, straight from your phone or browser. The contact names and phone numbers saved with a house are
   left out.
+- Doorprints does not filter, censor or scan what you type or say. If the AI service itself declines a text, you see one short message and nothing is changed; the service's own words are not shown or kept.
 - Hunt mode's location stays on your phone.
 - India's boundaries on the map are shown as the Government of India depicts them.
 

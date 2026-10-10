@@ -206,6 +206,8 @@ sealed interface AiFailure {
     data class KeyRejected(val host: String) : AiFailure
     /** The service does not know the model that was typed. */
     data object ModelNotFound : AiFailure
+    /** The provider's own safety system declined the text (S4b-BL-232); its words are never shown. */
+    data object Blocked : AiFailure
     /** The service asked to wait; [seconds] is its answer, or a minute when it gave none. */
     data class RateLimited(val seconds: Long) : AiFailure
     /**
@@ -227,6 +229,7 @@ sealed interface AiFailure {
             return when (e.kind) {
                 ApiException.Kind.AI_KEY_REJECTED -> KeyRejected(host)
                 ApiException.Kind.AI_MODEL_NOT_FOUND -> ModelNotFound
+                ApiException.Kind.AI_BLOCKED -> Blocked
                 ApiException.Kind.RATE_LIMITED -> RateLimited(e.retryAfterSeconds ?: 60L)
                 // A network failure is code 0 (OpenAiCompatClient.UNREACHABLE).
                 ApiException.Kind.AI_UNAVAILABLE ->

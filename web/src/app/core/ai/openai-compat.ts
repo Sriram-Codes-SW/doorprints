@@ -20,6 +20,7 @@ import type { JsonChatModel } from './json-chat-model';
 import { ANSWER_SCHEMA, LISTING_SCHEMA, OnDeviceAiError, PLAN_SCHEMA } from './on-device-ai.service';
 import { validateWebBaseUrl } from './ai-provider-config';
 import { schemaTrailer, toStrictSchema } from './schema-dialect';
+import { openAiBlocked, parseBody } from './ai-blocked';
 import { type ErrorAction, type FetchLike, REQUEST_TIMEOUT_MS, classifyStatus, failure, postAiJson } from './ai-request';
 
 /**
@@ -147,6 +148,8 @@ export class OpenAiCompatibleChatModel implements JsonChatModel {
     for (;;) {
       const body = openAiBody(tier, this.settings.model, name, system, user, temperature, strict);
       const res = await this.post(check.normalised, body);
+      // Before the ladder: a blocked answer is final, and its words must not be read for trigger words.
+      if (openAiBlocked(res.status, parseBody(res.body))) throw new OnDeviceAiError('blocked');
       if (res.status >= 200 && res.status < 300) {
         const text = answerText(res.body);
         if (text === null) throw new OnDeviceAiError('unavailable');
@@ -168,6 +171,7 @@ export class OpenAiCompatibleChatModel implements JsonChatModel {
     if (!check.valid) throw new OnDeviceAiError('unavailable');
     const body = openAiBody(3, this.settings.model, 'ping', PING_SYSTEM, 'ping', 0, null, PING_MAX_TOKENS);
     const res = await this.post(check.normalised, body);
+    if (openAiBlocked(res.status, parseBody(res.body))) throw new OnDeviceAiError('blocked');
     if (res.status < 200 || res.status >= 300) {
       throw failure(classifyError(3, res.status, res.body, res.retryAfter));
     }

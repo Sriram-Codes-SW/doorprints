@@ -327,6 +327,8 @@ export function aiErrorMsg(err: unknown, host?: string): Msg {
     if (err.kind === 'rateLimited') return { key: 'ai.rateLimited', params: { s: err.retryAfter } };
     if (err.kind === 'keyRejected') return where ? { key: 'ai.keyRejectedHost', params: { host: where } } : { key: 'ai.keyRejected' };
     if (err.kind === 'modelNotFound') return { key: 'ai.modelNotFound' };
+    // The provider's own safety system declined the text (S4b-BL-232): one fixed message, never the provider's words.
+    if (err.kind === 'blocked') return { key: 'ai.blocked' };
     if (err.kind === 'unreachable' && where) return { key: isLocalHost(where) ? 'ai.unreachableLocal' : 'ai.unreachable', params: { host: where } };
     return { key: 'ai.providerDown' };
   }
