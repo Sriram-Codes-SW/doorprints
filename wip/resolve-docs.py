@@ -28,6 +28,15 @@ for path in sys.argv[1:]:
         if ours and VER.match(ours[0]) and theirs and VER.match(theirs[0]):
             a, b = ver(ours[0], VER), ver(theirs[0], VER)
             m = max(a[:2], b[:2]); header_v = (m[0], m[1] + 1, a[2])
+    if header_v is None:
+        # no header conflict (both sides had the same version): derive it from the file
+        hdr = next((l for l in out if l and VER.match(l)), None)
+        tmax = max([ver(l, ROW)[:2] for _, o, th in hunks for l in th if ROW.match(l)] or [(0, 0)])
+        if hdr:
+            a = ver(hdr, VER)
+            m = max(a[:2], tmax)
+            header_v = (m[0], m[1] + 1, a[2])
+            out = [f"| Version | {fmt(*header_v)} |" if (l and VER.match(l)) else l for l in out]
     res = {}
     nxt = header_v
     for idx, ours, theirs in hunks:
