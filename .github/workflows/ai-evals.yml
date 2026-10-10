@@ -801,6 +801,7 @@ jobs:
               case "$code" in
                 429) msg="quota/rate limited. $msg" ;;
                 404) msg="model not served for this key. $msg" ;;
+                402) msg="the key's prepaid AI Studio credit is used up (not a model-name problem). $msg" ;;
               esac
               result[$m]="$code | $msg"
             fi
@@ -826,6 +827,8 @@ jobs:
               echo "::warning::The pinned model $m is NOT served for this key (HTTP 404). Change GEMINI_MODEL / MODEL to one from the list in the summary."
             elif [ "$c" = "429" ]; then
               echo "::warning::The pinned model $m is quota/rate limited for this key (HTTP 429); the key may be on a tier with no quota for it."
+            elif [ "$c" = "402" ]; then
+              echo "::warning::The pinned model $m answered HTTP 402: the key's prepaid AI Studio credit is used up (RESOURCE_EXHAUSTED, prepayment credits depleted). The model name is fine."
             elif [ "$c" != "200" ]; then
               echo "::warning::The pinned model $m answered HTTP $c."
             fi
@@ -835,6 +838,8 @@ jobs:
             verdict="$web_model still answers for this key: keep GEMINI_MODEL."
           elif [ "$c" = "404" ]; then
             verdict="$web_model is not served for this key: change GEMINI_MODEL (web) and MODEL (Android) to a model from the list above."
+          elif [ "$c" = "402" ]; then
+            verdict="$web_model answered HTTP 402: the key's prepaid AI Studio credit is used up. This is not a model-name problem, so keep GEMINI_MODEL; top up the credit or use another key. The Vertex path (provider=vertex, billed to the Google Cloud trial credit) is unaffected."
           elif [ "$c" = "429" ]; then
             verdict="$web_model is quota/rate limited for this key: the model exists but this key has no free quota for it now; try later or pick another model from the list."
           else
