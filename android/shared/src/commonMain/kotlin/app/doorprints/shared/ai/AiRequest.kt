@@ -20,11 +20,16 @@ package app.doorprints.shared.ai
 
 import app.doorprints.shared.api.ApiException
 import io.ktor.client.HttpClient
+import io.ktor.client.request.HttpRequestBuilder
+import io.ktor.client.request.forms.MultiPartFormDataContent
+import io.ktor.client.request.forms.formData
 import io.ktor.client.request.header
 import io.ktor.client.request.preparePost
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
+import io.ktor.http.Headers
+import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withTimeoutOrNull
@@ -45,11 +50,61 @@ internal class AiReply(val status: Int, val retryAfter: String?, val body: Strin
  */
 internal suspend fun postAiJson(
     http: HttpClient, url: String, headers: Map<String, String>, body: JsonObject, timeoutMs: Long?,
+): AiReply = postAi(http, url, headers, timeoutMs) {
+    contentType(ContentType.Application.Json)
+    setBody(body.toString())
+}
+
+/**
+ * One field of a `multipart/form-data` request ([postAiMultipart]): a text [value], or, when [fileName] is set, the
+ * file whose bytes the caller passes separately with its [contentType]. It never holds the bytes, so a list of these can
+ * be printed, compared with the `transcribeRequest` vectors or logged by a test without the audio.
+ */
+internal data class AiFormField(
+    val name: String,
+    val value: String? = null,
+    val fileName: String? = null,
+    val contentType: String? = null,
+)
+
+/**
+ * [postAiJson] for a `multipart/form-data` body (OpenAI's `/audio/transcriptions`, voice input, ADR-37): the same time
+ * limit, the same network-failure and timeout codes, no redirect followed (the shared client), and a status returned,
+ * never thrown. [file] is attached to the one field with a file name; it stays in memory, and neither it nor the answer
+ * is logged or put in an error (T-I48).
+ */
+internal suspend fun postAiMultipart(
+    http: HttpClient, url: String, headers: Map<String, String>, fields: List<AiFormField>, file: ByteArray, timeoutMs: Long?,
+): AiReply = postAi(http, url, headers, timeoutMs) {
+    setBody(
+        MultiPartFormDataContent(
+            formData {
+                for (field in fields) {
+                    val fileName = field.fileName
+                    if (fileName == null) {
+                        append(field.name, field.value ?: "")
+                    } else {
+                        append(
+                            field.name, file,
+                            Headers.build {
+                                append(HttpHeaders.ContentType, field.contentType ?: "application/octet-stream")
+                                append(HttpHeaders.ContentDisposition, "filename=\"${fileName.replace("\"", "")}\"")
+                            },
+                        )
+                    }
+                }
+            },
+        ),
+    )
+}
+
+/** The exchange both helpers share: the headers, the body [configure] sets, the time limit and the failure codes. */
+private suspend fun postAi(
+    http: HttpClient, url: String, headers: Map<String, String>, timeoutMs: Long?, configure: HttpRequestBuilder.() -> Unit,
 ): AiReply {
     suspend fun exchange() = http.preparePost(url) {
         headers.forEach { (name, value) -> header(name, value) }
-        contentType(ContentType.Application.Json)
-        setBody(body.toString())
+        this.configure()
     }.execute { AiReply(it.status.value, it.headers["Retry-After"], it.bodyAsText()) }
     return try {
         (if (timeoutMs == null) exchange() else withTimeoutOrNull(timeoutMs) { exchange() })
