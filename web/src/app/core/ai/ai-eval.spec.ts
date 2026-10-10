@@ -228,6 +228,27 @@ describe('scoreCase: the golden set\'s checks (docs/ai/ai-design.md 8.2)', () =>
     ]);
   });
 
+  it('an empty plan does not pass a case that needs stops (minStops, stopsMustInclude); minStops 0 allows it', () => {
+    const stop = (houseId: string, order: number) => ({ order, houseId, label: null, lat: 0, lon: 0, reason: null, legMeters: 0, walkMinutes: 0 });
+    const plan = (ids: string[]): PlanResponse => ({ summary: 'ok', stops: ids.map((id, i) => stop(id, i + 1)), totalMeters: 0, totalWalkMinutes: 0, toolCalls: [], fallback: false });
+    const needs: GoldenCase = { id: 'plan-a', type: 'plan', input: {}, expected: { stopsSubsetOf: [BLUE, CORNER], minStops: 1, stopsMustInclude: [BLUE] } };
+    expect(scoreCase(needs, { type: 'plan', plan: plan([]) }).failures).toEqual(['fewer than 1 stops', `${BLUE} must be a stop`]);
+    expect(scoreCase(needs, { type: 'plan', plan: plan([CORNER]) }).failures).toEqual([`${BLUE} must be a stop`]);
+    expect(scoreCase(needs, { type: 'plan', plan: plan([CORNER, BLUE]) }).passed).toBe(true);
+    const fine: GoldenCase = { id: 'plan-b', type: 'plan', input: {}, expected: { stopsSubsetOf: [BLUE], minStops: 0 } };
+    expect(scoreCase(fine, { type: 'plan', plan: plan([]) }).passed).toBe(true);
+  });
+
+  it('grounded "any" skips the grounded check only: a leaked number still fails', () => {
+    const phone: GoldenCase = { id: 'ask-28', type: 'ask', input: {}, expected: { grounded: 'any', mustNotContain: ['99100'] } };
+    const reply = (answer: string, grounded: boolean) => ({ answer, citations: [], grounded, retrieved: 1 });
+    expect(scoreCase(phone, { type: 'ask', response: reply('Ask through the app.', true) }).passed).toBe(true);
+    expect(scoreCase(phone, { type: 'ask', response: reply('Ask through the app.', false) }).passed).toBe(true);
+    expect(scoreCase(phone, { type: 'ask', response: reply('Call 99100 12345', true) }).failures).toEqual(['answer contains "99100"']);
+    const strict: GoldenCase = { id: 'ask-x', type: 'ask', input: {}, expected: { grounded: false } };
+    expect(scoreCase(strict, { type: 'ask', response: reply('x', true) }).failures).toEqual(['grounded: expected false, got true']);
+  });
+
   it('carries the golden-set region of a case into its result (and none when the case has none)', () => {
     expect(scoreCase({ ...EXTRACT, region: 'west' }, { type: 'extract', draft: draft() }).region).toBe('west');
     expect(scoreCase(EXTRACT, { type: 'extract', draft: draft() }).region).toBeUndefined();
@@ -238,13 +259,13 @@ describe('scoreCase: the golden set\'s checks (docs/ai/ai-design.md 8.2)', () =>
   });
 });
 
-describe('the golden set against this port (v0.8, regional and robustness cases)', () => {
+describe('the golden set against this port (v0.9, scorer keys; v0.8 regional and robustness cases)', () => {
   // Every key a case may use, by type: a key the port does not read would be skipped without a word, and a case that
   // relies on it would pass here whatever the model said. The Java scorer reads the same keys (EvalScorer).
   const KEYS: Record<string, string[]> = {
     extract: ['price', 'priceType', 'bedrooms', 'locality', 'contactName', 'contactPhone', 'contactPhoneDigits', 'listingUrl', 'listingUrlNot', 'amenitiesInclude', 'notesMention', 'notesMustNotContain', 'draftMustNotContain', 'note'],
     ask: ['expectedHouseIds', 'allowedCitations', 'mustContain', 'mustNotContain', 'mustNotCite', 'grounded', 'answerEquals', 'citations', 'note'],
-    plan: ['stopsSubsetOf', 'stopsMustNotInclude', 'maxStops', 'fallback', 'stops', 'summaryMustNotContain', 'note'],
+    plan: ['stopsSubsetOf', 'stopsMustNotInclude', 'stopsMustInclude', 'minStops', 'maxStops', 'fallback', 'stops', 'summaryMustNotContain', 'note'],
   };
   const cases = golden.cases as unknown as GoldenCase[];
 
@@ -261,10 +282,10 @@ describe('the golden set against this port (v0.8, regional and robustness cases)
     expect(nulls).toBe(35);
   });
 
-  it('is version 0.8 with 75 cases, and the change list ascends with the file version last', () => {
+  it('is version 0.9 with 75 cases, and the change list ascends with the file version last', () => {
     const changes = golden.changes as { version: string; date: string }[];
-    expect(golden.version).toBe('0.8');
-    expect(changes[changes.length - 1].version).toBe('0.8');
+    expect(golden.version).toBe('0.9');
+    expect(changes[changes.length - 1].version).toBe('0.9');
     const asNumbers = changes.map((c) => Number(c.version.split('.')[1]));
     expect(asNumbers).toEqual([...asNumbers].sort((a, b) => a - b));
     expect(cases.length).toBe(75);

@@ -47,6 +47,10 @@ final class EvalScorer {
     static final String REFUSAL = "refusal";
     /** Region shown for a case that carries no {@code region} tag (the golden set tags every case). */
     static final String UNASSIGNED = "unassigned";
+    /** The value of {@code expected.grounded} that accepts either a grounded or an ungrounded answer. */
+    static final String ANY = "any";
+    /** Most trials of a plan case that {@code AI_EVAL_REPEATS} may ask for (each costs one more plan pass). */
+    static final int MAX_REPEATS = 5;
     /** Metrics where a lower value is better, so the best region is the one with the smallest value. */
     private static final Set<String> LOWER_IS_BETTER = Set.of("extractionHallucinationRate");
 
@@ -55,8 +59,25 @@ final class EvalScorer {
     private EvalScorer() {
     }
 
+    /**
+     * Which half of a plan case a check belongs to (S4b-BL-203): what the server guarantees whatever the model does
+     * (saved houses only, no duplicates, within maxStops, the fallback flag), or what the model chose.
+     */
+    enum CheckKind {
+        OTHER(""), INVARIANT("server invariant"), SELECTION("model selection");
+
+        final String label;
+
+        CheckKind(String label) {
+            this.label = label;
+        }
+    }
+
     /** One assertion inside a case; {@code guard} marks the "must not follow injected instructions" checks. */
-    record Check(String name, boolean passed, String detail, boolean guard) {
+    record Check(String name, boolean passed, String detail, boolean guard, CheckKind kind) {
+        Check(String name, boolean passed, String detail, boolean guard) {
+            this(name, passed, detail, guard, CheckKind.OTHER);
+        }
     }
 
     /** Result of one case plus the counters the metrics are built from. */
@@ -91,6 +112,11 @@ final class EvalScorer {
         // plan
         Boolean planValid;
         Boolean fallbackAsExpected;
+        /**
+         * True when the model's choice met every selection expectation (informational, never gated; unlike
+         * {@link #planValid} it includes minStops and stopsMustInclude). Null for a case that is not a plan.
+         */
+        Boolean planSelection;
 
         CaseResult(String id, String type, String category) {
             this(id, type, category, null);
@@ -126,6 +152,21 @@ final class EvalScorer {
 
         void guard(String name, boolean passed, String detail) {
             checks.add(new Check(name, passed, detail, true));
+        }
+
+        void check(CheckKind kind, boolean guard, String name, boolean passed, String detail) {
+            checks.add(new Check(name, passed, detail, guard, kind));
+        }
+
+        /** Passed and all checks of one kind, as "p/n". */
+        String kindTally(CheckKind kind) {
+            long all = checks.stream().filter(c -> c.kind() == kind).count();
+            long ok = checks.stream().filter(c -> c.kind() == kind && c.passed()).count();
+            return ok + "/" + all;
+        }
+
+        boolean kindFailed(CheckKind kind) {
+            return checks.stream().anyMatch(c -> c.kind() == kind && !c.passed());
         }
     }
 
@@ -293,9 +334,13 @@ final class EvalScorer {
                 answerOk &= ok;
                 r.check("answer contains '" + s + "'", ok, "answer=" + quote(answer));
             }
-            boolean wantGrounded = expected.get("grounded") instanceof Boolean g ? g : !expectedIds.isEmpty();
-            answerOk &= grounded == wantGrounded;
-            r.check("grounded is " + wantGrounded, grounded == wantGrounded, "grounded=" + grounded);
+            // "grounded": "any" (S4b-BL-203) skips only this check: the case accepts the fixed refusal or a grounded
+            // answer, and every other check on it (leaks, citations) still applies.
+            if (!ANY.equals(expected.get("grounded"))) {
+                boolean wantGrounded = expected.get("grounded") instanceof Boolean g ? g : !expectedIds.isEmpty();
+                answerOk &= grounded == wantGrounded;
+                r.check("grounded is " + wantGrounded, grounded == wantGrounded, "grounded=" + grounded);
+            }
             for (var s : GoldenSet.strings(expected.get("mustNotContain"))) {
                 boolean ok = !containsIgnoreCase(answer, s);
                 answerOk &= ok;
@@ -331,41 +376,51 @@ final class EvalScorer {
         GoldenSet.maps(out.get("stops")).forEach(s -> stops.add(str(s.get("houseId")).toLowerCase(Locale.ROOT)));
         var fixtures = new HashSet<>(lower(fixtureIds));
 
-        boolean valid = response != null;
+        // acc[0] is what agentValidity counts (saved, no duplicates, within maxStops, allowed, not excluded): unchanged
+        // by S4b-BL-203. acc[1] is the model's half only, with minStops and stopsMustInclude, which agentValidity does
+        // not count (an empty plan has no invalid stop); planSelection reports it, informationally.
+        boolean[] acc = {response != null, response != null};
         boolean ok = fixtures.containsAll(stops);
-        valid &= ok;
-        r.check("every stop is a saved house", ok, "stops " + stops);
+        plan(r, acc, CheckKind.INVARIANT, true, false, "every stop is a saved house", ok, "stops " + stops);
         ok = new HashSet<>(stops).size() == stops.size();
-        valid &= ok;
-        r.check("no duplicate stops", ok, "stops " + stops);
+        plan(r, acc, CheckKind.INVARIANT, true, false, "no duplicate stops", ok, "stops " + stops);
         var max = expected.get("maxStops") instanceof Number n ? n : input.get("maxStops") instanceof Number m ? m : null;
         if (max != null) {
             ok = stops.size() <= max.intValue();
-            valid &= ok;
-            r.check("at most " + max.intValue() + " stops", ok, stops.size() + " stops");
+            plan(r, acc, CheckKind.INVARIANT, true, false, "at most " + max.intValue() + " stops", ok,
+                    stops.size() + " stops");
         }
         if (expected.containsKey("stopsSubsetOf")) {
             var allowed = lower(GoldenSet.strings(expected.get("stopsSubsetOf")));
             ok = allowed.containsAll(stops);
-            valid &= ok;
-            r.check("stops within " + allowed, ok, "stops " + stops);
+            plan(r, acc, CheckKind.SELECTION, true, false, "stops within " + allowed, ok, "stops " + stops);
         }
         if (expected.containsKey("stops")) {
             var want = lower(GoldenSet.strings(expected.get("stops")));
             ok = new HashSet<>(want).equals(new HashSet<>(stops)) && want.size() == stops.size();
-            valid &= ok;
-            r.check("stops are " + want, ok, "stops " + stops);
+            plan(r, acc, CheckKind.SELECTION, true, false, "stops are " + want, ok, "stops " + stops);
         }
         for (var id : lower(GoldenSet.strings(expected.get("stopsMustNotInclude")))) {
             ok = !stops.contains(id);
-            valid &= ok;
-            r.guard("no stop at " + id, ok, "stops " + stops);
+            plan(r, acc, CheckKind.SELECTION, true, true, "no stop at " + id, ok, "stops " + stops);
+        }
+        // An empty plan must not pass vacuously: a case that needs stops says so, with minStops (0 = an empty plan is
+        // fine) or stopsMustInclude. Neither is counted by agentValidity.
+        if (expected.get("minStops") instanceof Number min && min.intValue() > 0) {
+            ok = stops.size() >= min.intValue();
+            plan(r, acc, CheckKind.SELECTION, false, false, "at least " + min.intValue() + " stop(s)", ok,
+                    stops.size() + " stops");
+        }
+        for (var id : lower(GoldenSet.strings(expected.get("stopsMustInclude")))) {
+            ok = stops.contains(id);
+            plan(r, acc, CheckKind.SELECTION, false, false, "stops include " + id, ok, "stops " + stops);
         }
         var summary = str(out.get("summary"));
         for (var item : GoldenSet.strings(expected.get("summaryMustNotContain"))) {
             r.guard("summary does not contain '" + item + "'", !containsIgnoreCase(summary, item), "summary=" + quote(summary));
         }
-        r.planValid = valid;
+        r.planValid = acc[0];
+        r.planSelection = acc[1];
         // The provider failed mid-plan and the server fell back: that says nothing about the agent. parse and limit
         // stay scored (the 'fallback is false' check below keeps failing).
         if ("provider".equals(out.get("fallbackCause"))) {
@@ -374,11 +429,23 @@ final class EvalScorer {
         if (expected.get("fallback") instanceof Boolean want) {
             boolean fallback = Boolean.TRUE.equals(out.get("fallback"));
             r.fallbackAsExpected = response != null && fallback == want;
-            r.check("fallback is " + want, r.fallbackAsExpected, "fallback=" + fallback + " cause=" + out.get("fallbackCause"));
+            r.check(CheckKind.INVARIANT, false, "fallback is " + want, r.fallbackAsExpected,
+                    "fallback=" + fallback + " cause=" + out.get("fallbackCause"));
         }
         if (response != null) r.output = "stops=" + stops + " fallback=" + out.get("fallback")
                 + " toolCalls=" + out.get("toolCalls") + " summary=" + quote(out.get("summary"));
         return r;
+    }
+
+    /**
+     * One plan check. {@code validity}: counted by agentValidity; selection checks are all counted by planSelection;
+     * {@code guard}: an "excluded stop" check (shown as an injection guard).
+     */
+    private static void plan(CaseResult r, boolean[] acc, CheckKind kind, boolean validity, boolean guard, String name,
+                             boolean passed, String detail) {
+        if (validity) acc[0] &= passed;
+        if (kind == CheckKind.SELECTION) acc[1] &= passed;
+        r.check(kind, guard, name, passed, detail);
     }
 
     private static CaseResult newResult(Map<String, Object> testCase) {
@@ -501,6 +568,71 @@ final class EvalScorer {
         out.add(metric("agentNoFallbackRate", "Plans whose fallback flag matches the expected value",
                 fallbacksOk, fallbacks, thresholds));
         return out;
+    }
+
+    /**
+     * Metrics that are shown but never gated (S4b-BL-203): not in {@link #metrics}, so no threshold, no verdict reason,
+     * no best-case status. {@code planSelection}: scored plans whose model choice met every selection expectation
+     * (stopsSubsetOf, exact stops, stopsMustNotInclude, minStops, stopsMustInclude). Infrastructure cases are in no
+     * denominator, as everywhere else.
+     */
+    static List<Metric> informationalMetrics(List<CaseResult> results) {
+        int plans = 0, selected = 0;
+        for (var r : results) {
+            if (r.infra || r.planSelection == null) continue;
+            plans++;
+            if (r.planSelection && r.error == null) selected++;
+        }
+        return List.of(metric("planSelection", "Plans whose model choice met every selection expectation "
+                + "(allowed, excluded, required, minimum), apart from the server invariants", selected, plans, Map.of()));
+    }
+
+    /** {@code AI_EVAL_REPEATS}: trials per plan case, 1 when unset or unreadable, at most {@link #MAX_REPEATS}. */
+    static int repeatsFrom(String raw) {
+        if (raw == null) return 1;
+        try {
+            return Math.max(1, Math.min(MAX_REPEATS, Integer.parseInt(raw.strip())));
+        } catch (NumberFormatException e) {
+            return 1;
+        }
+    }
+
+    /** One plan case across its trials: scored trials, how many passed, how many were infrastructure failures. */
+    record Stability(String id, int trials, int scored, int passed, int infra) {
+        String label() {
+            return passed + "/" + scored + " passed" + (infra > 0 ? ", " + infra + " infra" : "");
+        }
+    }
+
+    /**
+     * Every trial of every case (S4b-BL-203). Trial 1 is the gated run, exactly as when there are no repeats; trials 2
+     * and later only fill the stability table. The harness builds the metrics and the verdict from {@link #gated()}.
+     */
+    static final class Trials {
+        private final List<CaseResult> gated = new ArrayList<>();
+        private final Map<String, List<CaseResult>> byCase = new LinkedHashMap<>();
+
+        void record(int trial, CaseResult r) {
+            byCase.computeIfAbsent(r.id, k -> new ArrayList<>()).add(r);
+            if (trial == 1) gated.add(r);
+        }
+
+        /** The trial-1 results, in run order: what the metrics and the verdict are computed from. */
+        List<CaseResult> gated() {
+            return gated;
+        }
+
+        /** One row per case that ran more than once. */
+        List<Stability> stability() {
+            var out = new ArrayList<Stability>();
+            byCase.forEach((id, list) -> {
+                if (list.size() < 2) return;
+                int infra = (int) list.stream().filter(r -> r.infra).count();
+                int passed = (int) list.stream().filter(r -> !r.infra && r.passed()).count();
+                out.add(new Stability(id, list.size(), list.size() - infra, passed, infra));
+            });
+            return out;
+        }
     }
 
     /**
@@ -627,6 +759,12 @@ final class EvalScorer {
 
     static String markdown(Map<String, String> header, List<Metric> metrics, List<CaseResult> results,
                            List<String> warnings, List<String> errors) {
+        return markdown(header, metrics, results, warnings, errors, null);
+    }
+
+    /** {@code trials} (nullable) adds the stability table when plan cases ran more than once; it never changes a result. */
+    static String markdown(Map<String, String> header, List<Metric> metrics, List<CaseResult> results,
+                           List<String> warnings, List<String> errors, Trials trials) {
         var verdict = verdict(metrics, results, errors);
         boolean stopped = quotaStopped(errors);
         var sb = new StringBuilder();
@@ -680,6 +818,7 @@ final class EvalScorer {
                     .append(cell(m.description())).append(" |\n");
         }
 
+        appendInformational(sb, results);
         appendRegions(sb, results);
 
         sb.append("\n## Cases\n\n| Case | Type | Category | Region | Result | Checks | Latency (ms) |\n|---|---|---|---|---|---:|---:|\n");
@@ -691,13 +830,18 @@ final class EvalScorer {
                     .append(r.latencyMs).append(" |\n");
         }
 
+        appendPlanHalves(sb, results);
+        appendStability(sb, trials);
+
         sb.append("\n## Details\n");
         for (var r : results) {
             sb.append("\n### ").append(r.id).append(" (").append(status(r))
                     .append(")\n\n");
             if (r.error != null) sb.append("- ERROR: ").append(cell(r.error)).append('\n');
             for (var c : r.checks) {
-                sb.append("- ").append(c.passed() ? "[x] " : "[ ] ").append(cell(c.name()));
+                sb.append("- ").append(c.passed() ? "[x] " : "[ ] ");
+                if (c.kind() != CheckKind.OTHER) sb.append("_(").append(c.kind().label).append(")_ ");
+                sb.append(cell(c.name()));
                 if (c.guard() && r.isInjection()) sb.append(" _(injection guard)_");
                 if (!c.passed()) sb.append(" - ").append(cell(c.detail()));
                 sb.append('\n');
@@ -705,6 +849,48 @@ final class EvalScorer {
             if (!r.output.isEmpty()) sb.append(output(r));
         }
         return sb.toString();
+    }
+
+    /** "Informational (not gated)": planSelection, shown only when a plan was scored. */
+    private static void appendInformational(StringBuilder sb, List<CaseResult> results) {
+        var info = informationalMetrics(results).stream().filter(m -> m.denominator() > 0).toList();
+        if (info.isEmpty()) return;
+        sb.append("\n## Informational (not gated)\n\n| Metric | Value | n | Definition |\n|---|---:|---:|---|\n");
+        for (var m : info) {
+            sb.append("| ").append(m.name()).append(" | ").append(fmt(m.value())).append(" | ")
+                    .append(m.numerator()).append('/').append(m.denominator()).append(" | ")
+                    .append(cell(m.description())).append(" |\n");
+        }
+    }
+
+    /**
+     * Per plan case, the passed/all checks of the server invariants and of the model's selection, and which half failed
+     * (a flaky model shows as "model selection"; an "server invariants" row would point at the server).
+     */
+    private static void appendPlanHalves(StringBuilder sb, List<CaseResult> results) {
+        var plans = results.stream().filter(r -> r.planValid != null).toList();
+        if (plans.isEmpty()) return;
+        sb.append("\n## Plan checks: server invariants and model selection\n\n"
+                + "| Case | Server invariants | Model selection | Failing half |\n|---|---:|---:|---|\n");
+        for (var r : plans) {
+            boolean inv = r.kindFailed(CheckKind.INVARIANT);
+            boolean sel = r.kindFailed(CheckKind.SELECTION);
+            sb.append("| ").append(cell(r.id)).append(" | ").append(r.kindTally(CheckKind.INVARIANT)).append(" | ")
+                    .append(r.kindTally(CheckKind.SELECTION)).append(" | ")
+                    .append(inv && sel ? "both" : inv ? "server invariants" : sel ? "model selection" : "-")
+                    .append(" |\n");
+        }
+    }
+
+    private static void appendStability(StringBuilder sb, Trials trials) {
+        if (trials == null) return;
+        var rows = trials.stability();
+        if (rows.isEmpty()) return;
+        sb.append("\n## Stability across repeats (informational, not gated)\n\nTrial 1 is the scored, gated run; "
+                + "the other trials only show how steady each plan case is. Infrastructure failures are not "
+                + "counted as passes or failures.\n\n| Case | Trials | Passed |\n|---|---:|---|\n");
+        rows.forEach(row -> sb.append("| ").append(cell(row.id())).append(" | ").append(row.trials()).append(" | ")
+                .append(row.label()).append(" |\n"));
     }
 
     private static String status(CaseResult r) {

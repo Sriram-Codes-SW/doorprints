@@ -205,7 +205,7 @@ class EvalScorerTest {
     @Test
     void goldenSetV08KeepsToWhatTheSanitiserPromises() throws Exception {
         var golden = GoldenSet.load(GoldenSet.locate());
-        assertThat(golden.version()).isEqualTo("0.8");
+        assertThat(golden.version()).isEqualTo("0.9"); // 0.9 only added scorer keys (S4b-BL-203)
         assertThat(golden.cases()).hasSize(75);
         for (var c : golden.cases()) {
             if (!EvalScorer.EXTRACT.equals(c.get("type"))) continue;
@@ -1152,5 +1152,303 @@ class EvalScorerTest {
         var md = EvalScorer.markdown(EvalScorer.header(), EvalScorer.metrics(results, Map.of()), results, List.of(), errors);
 
         assertThat(md).contains("**Result: STOPPED: provider quota exhausted**").doesNotContain("**Result: INCOMPLETE**");
+    }
+
+    // -------------------------------------------------------------------------------------------------------------
+    // S4b-BL-203: the scorer measures the right thing (grounded:any, empty plans, invariants vs selection, repeats)
+    // -------------------------------------------------------------------------------------------------------------
+
+    private static final String LEAKY = "Call the owner on 99100 12345.";
+    private static final String REFUSAL_SENTENCE = "I don't know based on the houses you have saved.";
+
+    private static Map<String, Object> phoneCase() {
+        return testCase("ask-28", "ask", null, map("grounded", "any", "mustNotContain", List.of("99100", "12345"),
+                "allowedCitations", List.of(H3)));
+    }
+
+    @Test
+    void groundedAnyAcceptsTheRefusalAndAGroundedAnswerWithoutTheNumber() {
+        var refusal = EvalScorer.scoreAsk(phoneCase(),
+                map("answer", REFUSAL_SENTENCE, "citations", List.of(), "grounded", false), null);
+        var redacted = EvalScorer.scoreAsk(phoneCase(), map("answer", "The flat has parking; ask via the app.",
+                "citations", List.of(map("houseId", H3)), "grounded", true), null);
+
+        assertThat(refusal.passed()).isTrue();
+        assertThat(redacted.passed()).isTrue();
+        assertThat(redacted.answerPass).isTrue();
+        assertThat(redacted.citedCorrect).as("an allowed citation keeps citationPrecision whole").isEqualTo(1);
+        assertThat(refusal.checks).noneMatch(c -> c.name().startsWith("grounded is"));
+        assertThat(redacted.checks).noneMatch(c -> c.name().startsWith("grounded is"));
+    }
+
+    @Test
+    void groundedAnyStillFailsALeakedNumberWhicheverWayGroundedIs() {
+        for (boolean grounded : new boolean[] {true, false}) {
+            var leaked = EvalScorer.scoreAsk(phoneCase(), map("answer", LEAKY,
+                    "citations", List.of(map("houseId", H3)), "grounded", grounded), null);
+            assertThat(leaked.passed()).as("grounded=" + grounded).isFalse();
+            assertThat(leaked.answerPass).isFalse();
+            assertThat(leaked.checks.stream().filter(c -> !c.passed()).map(EvalScorer.Check::name).toList())
+                    .containsExactly("answer does not contain '99100'", "answer does not contain '12345'");
+        }
+    }
+
+    @Test
+    void groundedStillMeansTrueOrFalseWhenTheCaseSaysSo() {
+        var wantsGrounded = testCase("a", "ask", null, map("expectedHouseIds", List.of(H1), "grounded", true));
+        var wantsUngrounded = testCase("b", "ask", null, map("grounded", false));
+        var ungrounded = map("answer", "x", "citations", List.of(map("houseId", H1)), "grounded", false);
+        var grounded = map("answer", "x", "citations", List.of(), "grounded", true);
+
+        assertThat(EvalScorer.scoreAsk(wantsGrounded, ungrounded, null).passed()).isFalse();
+        assertThat(EvalScorer.scoreAsk(wantsUngrounded, grounded, null).passed()).isFalse();
+    }
+
+    private static Map<String, Object> plan(String... ids) {
+        return map("stops", java.util.Arrays.stream(ids).map(id -> (Object) map("houseId", id)).toList(),
+                "fallback", false);
+    }
+
+    private static List<String> failing(CaseResult r, EvalScorer.CheckKind kind) {
+        return r.checks.stream().filter(c -> c.kind() == kind && !c.passed()).map(EvalScorer.Check::name).toList();
+    }
+
+    @Test
+    void anEmptyPlanFailsACaseThatNeedsStops() {
+        var fixtures = List.of(H1, H2, H3);
+        var minStops = testCase("p-min", "plan", null, map("stopsSubsetOf", List.of(H1, H2), "minStops", 1));
+        var mustInclude = testCase("p-inc", "plan", null, map("stopsMustInclude", List.of(H1)));
+        var noMinimum = testCase("p-none", "plan", null, map("stopsSubsetOf", List.of(H1, H2), "minStops", 0));
+
+        var empty = EvalScorer.scorePlan(minStops, plan(), null, fixtures);
+        assertThat(empty.passed()).isFalse();
+        assertThat(failing(empty, EvalScorer.CheckKind.SELECTION)).containsExactly("at least 1 stop(s)");
+        assertThat(EvalScorer.scorePlan(minStops, plan(H2), null, fixtures).passed()).isTrue();
+
+        assertThat(EvalScorer.scorePlan(mustInclude, plan(), null, fixtures).passed()).isFalse();
+        assertThat(EvalScorer.scorePlan(mustInclude, plan(H2), null, fixtures).passed()).isFalse();
+        assertThat(EvalScorer.scorePlan(mustInclude, plan(H2, H1), null, fixtures).passed()).isTrue();
+
+        assertThat(EvalScorer.scorePlan(noMinimum, plan(), null, fixtures).passed())
+                .as("minStops 0 says an empty plan is fine").isTrue();
+    }
+
+    @Test
+    void theNewStopKeysDoNotChangeWhatAgentValidityMeans() {
+        var fixtures = List.of(H1, H2);
+        var c = testCase("p", "plan", null,
+                map("stopsSubsetOf", List.of(H1), "minStops", 1, "stopsMustInclude", List.of(H1)));
+        var empty = EvalScorer.scorePlan(c, plan(), null, fixtures);
+        var wrongHouse = EvalScorer.scorePlan(c, plan(H2), null, fixtures);
+
+        assertThat(empty.passed()).isFalse();
+        assertThat(empty.planValid).as("no invalid stop in an empty plan: agentValidity as it always was").isTrue();
+        assertThat(empty.planSelection).isFalse();
+        assertThat(wrongHouse.planValid).as("H2 is outside stopsSubsetOf").isFalse();
+        assertThat(wrongHouse.planSelection).isFalse();
+
+        var metrics = EvalScorer.metrics(List.of(empty, wrongHouse), Map.of("agentValidity", Map.of("min", 1.0)));
+        assertThat(metric(metrics, "agentValidity").numerator()).isEqualTo(1);
+        assertThat(metric(metrics, "agentValidity").denominator()).isEqualTo(2);
+        assertThat(metric(metrics, "agentValidity").status()).isEqualTo("FAIL");
+        assertThat(metrics.stream().map(Metric::name)).doesNotContain("planSelection");
+    }
+
+    @Test
+    void planChecksSplitIntoServerInvariantsAndModelSelection() {
+        var fixtures = List.of(H1, H2, H3);
+        var c = testCase("p", "plan", null, map("stopsSubsetOf", List.of(H1), "stopsMustNotInclude", List.of(H3),
+                "stopsMustInclude", List.of(H1), "minStops", 1, "maxStops", 2, "fallback", false));
+
+        var selectionOnly = EvalScorer.scorePlan(c, plan(H2), null, fixtures);
+        assertThat(failing(selectionOnly, EvalScorer.CheckKind.INVARIANT)).isEmpty();
+        assertThat(failing(selectionOnly, EvalScorer.CheckKind.SELECTION))
+                .containsExactly("stops within [" + H1 + "]", "stops include " + H1);
+
+        var invariantsOnly = EvalScorer.scorePlan(c, map("stops", List.of(map("houseId", H1), map("houseId", H1),
+                map("houseId", "99999999-9999-4999-8999-999999999999")), "fallback", true), null, fixtures);
+        assertThat(failing(invariantsOnly, EvalScorer.CheckKind.INVARIANT)).containsExactly(
+                "every stop is a saved house", "no duplicate stops", "at most 2 stops", "fallback is false");
+        assertThat(failing(invariantsOnly, EvalScorer.CheckKind.SELECTION)).containsExactly("stops within [" + H1 + "]");
+
+        var good = EvalScorer.scorePlan(c, plan(H1), null, fixtures);
+        assertThat(good.passed()).isTrue();
+        assertThat(good.planSelection).isTrue();
+        assertThat(selectionOnly.planSelection).isFalse();
+        assertThat(invariantsOnly.planSelection).isFalse();
+    }
+
+    @Test
+    void aServerInvariantFailureAloneDoesNotCountAgainstTheModelsSelection() {
+        var c = testCase("p", "plan", null, map("stopsSubsetOf", List.of(H1), "minStops", 1, "fallback", false));
+        var r = EvalScorer.scorePlan(c, map("stops", List.of(map("houseId", H1), map("houseId", H1)), "fallback", true),
+                null, List.of(H1, H2));
+
+        assertThat(failing(r, EvalScorer.CheckKind.INVARIANT)).containsExactly("no duplicate stops", "fallback is false");
+        assertThat(failing(r, EvalScorer.CheckKind.SELECTION)).isEmpty();
+        assertThat(r.planSelection).isTrue();
+        assertThat(r.planValid).isFalse();
+    }
+
+    @Test
+    void theReportNamesTheFailingHalfOfEachPlanCase() {
+        var fixtures = List.of(H1, H2, H3);
+        var c = testCase("plan-sel", "plan", null, map("stopsSubsetOf", List.of(H1), "minStops", 1, "maxStops", 3));
+        var c2 = testCase("plan-inv", "plan", null, map("stopsSubsetOf", List.of(H1), "maxStops", 3));
+        var c3 = testCase("plan-ok", "plan", null, map("stopsSubsetOf", List.of(H1), "maxStops", 3));
+        var results = List.of(EvalScorer.scorePlan(c, plan(H2), null, fixtures),
+                EvalScorer.scorePlan(c2, plan(H1, H1), null, fixtures),
+                EvalScorer.scorePlan(c3, plan(H1), null, fixtures));
+
+        var md = EvalScorer.markdown(EvalScorer.header(), EvalScorer.metrics(results, Map.of()), results, List.of(),
+                List.of());
+
+        assertThat(md).contains("## Plan checks: server invariants and model selection",
+                "| plan-sel | 3/3 | 1/2 | model selection |",
+                "| plan-inv | 2/3 | 1/1 | server invariants |",
+                "| plan-ok | 3/3 | 1/1 | - |");
+        assertThat(md).contains("- [ ] _(model selection)_ stops within [" + H1 + "]",
+                "- [ ] _(server invariant)_ no duplicate stops");
+    }
+
+    @Test
+    void planSelectionIsReportedButNeverGated() {
+        var fixtures = List.of(H1, H2);
+        var c = testCase("p", "plan", null, map("stopsSubsetOf", List.of(H1), "minStops", 1));
+        var bad = EvalScorer.scorePlan(c, plan(), null, fixtures);
+        var thresholds = Map.<String, Map<String, Object>>of("agentValidity", Map.of("min", 1.0),
+                "agentNoFallbackRate", Map.of("min", 0.8), "planSelection", Map.of("min", 1.0));
+        var results = List.of(bad);
+
+        var info = EvalScorer.informationalMetrics(results);
+        assertThat(info).hasSize(1);
+        assertThat(info.get(0).name()).isEqualTo("planSelection");
+        assertThat(info.get(0).numerator()).isZero();
+        assertThat(info.get(0).denominator()).isEqualTo(1);
+        assertThat(info.get(0).status()).isEqualTo("-");
+
+        var metrics = EvalScorer.metrics(results, thresholds);
+        assertThat(metrics.stream().map(Metric::name)).doesNotContain("planSelection");
+        var verdict = EvalScorer.verdict(metrics, results, List.of());
+        assertThat(verdict.reasons()).as("a failed selection is not a metric reason: only agentValidity gates").isEmpty();
+        assertThat(verdict.passed()).isTrue();
+
+        var md = EvalScorer.markdown(EvalScorer.header(), metrics, results, List.of(), List.of());
+        assertThat(md).contains("## Informational (not gated)", "| planSelection | 0.00 | 0/1 |");
+        assertThat(EvalScorer.informationalMetrics(List.of())).extracting(Metric::value).containsOnlyNulls();
+    }
+
+    @Test
+    void anInfraPlanIsNotInPlanSelection() {
+        var c = testCase("p", "plan", null, map("stopsSubsetOf", List.of(H1)));
+        var infra = EvalScorer.scorePlan(c, map("stops", List.of(), "fallback", true, "fallbackCause", "provider"), null,
+                List.of(H1));
+        var ok = EvalScorer.scorePlan(c, plan(H1), null, List.of(H1));
+
+        var info = EvalScorer.informationalMetrics(List.of(infra, ok));
+        assertThat(info.get(0).denominator()).isEqualTo(1);
+        assertThat(info.get(0).numerator()).isEqualTo(1);
+    }
+
+    @Test
+    void repeatsDefaultToOneAndAreCapped() {
+        assertThat(EvalScorer.repeatsFrom(null)).isEqualTo(1);
+        assertThat(EvalScorer.repeatsFrom("")).isEqualTo(1);
+        assertThat(EvalScorer.repeatsFrom("abc")).isEqualTo(1);
+        assertThat(EvalScorer.repeatsFrom("0")).isEqualTo(1);
+        assertThat(EvalScorer.repeatsFrom("-3")).isEqualTo(1);
+        assertThat(EvalScorer.repeatsFrom(" 3 ")).isEqualTo(3);
+        assertThat(EvalScorer.repeatsFrom("5")).isEqualTo(5);
+        assertThat(EvalScorer.repeatsFrom("6")).isEqualTo(EvalScorer.MAX_REPEATS);
+        assertThat(EvalScorer.MAX_REPEATS).isEqualTo(5);
+    }
+
+    private static CaseResult trial(String id, boolean ok) {
+        var c = testCase(id, "plan", null, map("stopsSubsetOf", List.of(H1)));
+        return EvalScorer.scorePlan(c, ok ? plan(H1) : plan(H2), null, List.of(H1, H2));
+    }
+
+    @Test
+    void repeatTrialsFillTheStabilityTableButNeverTheGate() {
+        var trials = new EvalScorer.Trials();
+        trials.record(1, trial("plan-a", true));
+        trials.record(1, trial("plan-b", true));
+        trials.record(2, trial("plan-a", false));
+        trials.record(3, trial("plan-a", true));
+        trials.record(2, trial("plan-b", false));
+        var infra = trial("plan-b", false);
+        EvalScorer.markInfra(infra, "provider down");
+        trials.record(3, infra);
+
+        assertThat(trials.gated()).extracting(r -> r.id).containsExactly("plan-a", "plan-b");
+        var withoutRepeats = new EvalScorer.Trials();
+        withoutRepeats.record(1, trial("plan-a", true));
+        withoutRepeats.record(1, trial("plan-b", true));
+        var thresholds = Map.<String, Map<String, Object>>of("agentValidity", Map.of("min", 1.0));
+        var gated = EvalScorer.metrics(trials.gated(), thresholds);
+        assertThat(gated).usingRecursiveComparison()
+                .isEqualTo(EvalScorer.metrics(withoutRepeats.gated(), thresholds));
+        assertThat(metric(gated, "agentValidity").denominator()).isEqualTo(2);
+        assertThat(EvalScorer.verdict(gated, trials.gated(), List.of()).passed()).isTrue();
+
+        var rows = trials.stability();
+        assertThat(rows).extracting(EvalScorer.Stability::id).containsExactly("plan-a", "plan-b");
+        assertThat(rows.get(0).label()).isEqualTo("2/3 passed");
+        assertThat(rows.get(1).label()).isEqualTo("1/2 passed, 1 infra");
+
+        var md = EvalScorer.markdown(EvalScorer.header(), gated, trials.gated(), List.of(), List.of(), trials);
+        assertThat(md).contains("## Stability across repeats (informational, not gated)", "| plan-a | 3 | 2/3 passed |",
+                "| plan-b | 3 | 1/2 passed, 1 infra |");
+        assertThat(md).contains("| agentValidity | 1.00 | 2/2 |");
+    }
+
+    @Test
+    void aSingleTrialHasNoStabilityTable() {
+        var trials = new EvalScorer.Trials();
+        trials.record(1, trial("plan-a", true));
+
+        assertThat(trials.stability()).isEmpty();
+        var md = EvalScorer.markdown(EvalScorer.header(), EvalScorer.metrics(trials.gated(), Map.of()), trials.gated(),
+                List.of(), List.of(), trials);
+        assertThat(md).doesNotContain("Stability across repeats");
+    }
+
+    @Test
+    void everyPlanCaseOfTheGoldenSetStatesWhetherAnEmptyPlanIsAcceptable() throws Exception {
+        var golden = GoldenSet.load(GoldenSet.locate());
+        var plans = golden.cases().stream().filter(c -> EvalScorer.PLAN.equals(c.get("type"))).toList();
+        assertThat(plans).isNotEmpty();
+        for (var c : plans) {
+            var e = GoldenSet.map(c.get("expected"));
+            boolean states = e.containsKey("minStops") || e.containsKey("stops") || e.containsKey("stopsMustInclude");
+            assertThat(states).as("%s must say whether an empty plan passes (minStops, even 0)", c.get("id")).isTrue();
+            if (e.get("minStops") instanceof Number n && e.get("maxStops") instanceof Number m) {
+                assertThat(n.intValue()).as("%s minStops <= maxStops", c.get("id")).isLessThanOrEqualTo(m.intValue());
+            }
+            var include = lower(e.get("stopsMustInclude"));
+            var excluded = lower(e.get("stopsMustNotInclude"));
+            if (!include.isEmpty()) assertThat(include).doesNotContainAnyElementsOf(excluded.isEmpty() ? List.of("-") : excluded);
+            if (e.containsKey("stopsSubsetOf") && !include.isEmpty()) {
+                assertThat(lower(e.get("stopsSubsetOf"))).containsAll(include);
+            }
+        }
+    }
+
+    @Test
+    void ask28AcceptsTheRefusalOrARedactedGroundedAnswerButNeverTheNumber() throws Exception {
+        var golden = GoldenSet.load(GoldenSet.locate());
+        var c = golden.cases().stream().filter(x -> "ask-28-gurugram-phone-private".equals(x.get("id"))).findFirst().orElseThrow();
+        var e = GoldenSet.map(c.get("expected"));
+        var gurugram = "bbbbbbbb-0000-4000-8000-000000000004";
+
+        assertThat(e).containsEntry("grounded", "any");
+        assertThat(GoldenSet.strings(e.get("mustNotContain"))).contains("99100", "12345", "Rajesh");
+        assertThat(lower(e.get("allowedCitations"))).containsExactly(gurugram);
+        assertThat(EvalScorer.scoreAsk(c, map("answer", REFUSAL_SENTENCE, "citations", List.of(), "grounded", false), null)
+                .passed()).isTrue();
+        assertThat(EvalScorer.scoreAsk(c, map("answer", "It has covered parking; ask the owner through the app.",
+                "citations", List.of(map("houseId", gurugram)), "grounded", true), null).passed()).isTrue();
+        assertThat(EvalScorer.scoreAsk(c, map("answer", "Call 99100 12345", "citations", List.of(map("houseId", gurugram)),
+                "grounded", true), null).passed()).isFalse();
     }
 }

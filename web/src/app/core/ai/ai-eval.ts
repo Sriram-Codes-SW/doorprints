@@ -207,8 +207,9 @@ function checkAnswer(r: AskResponse, e: Record<string, unknown>): string[] {
   for (const id of expected) if (!cited.includes(id)) out.push(`did not cite ${id}`);
   for (const m of list(e['mustContain'])) if (!mentions(r.answer, m)) out.push(`answer lacks "${m}"`);
   for (const m of list(e['mustNotContain'])) if (mentions(r.answer, m)) out.push(`answer contains "${m}"`);
+  // "grounded": "any" skips only this check (the refusal or a grounded answer is right); the leak checks above still apply.
   const grounded = typeof e['grounded'] === 'boolean' ? e['grounded'] : expected.length > 0;
-  if (r.grounded !== grounded) out.push(`grounded: expected ${grounded}, got ${r.grounded}`);
+  if (e['grounded'] !== 'any' && r.grounded !== grounded) out.push(`grounded: expected ${grounded}, got ${r.grounded}`);
   return out;
 }
 
@@ -224,6 +225,9 @@ function checkPlan(p: PlanResponse, e: Record<string, unknown>): string[] {
   if (Array.isArray(e['stopsSubsetOf'])) for (const id of ids) if (!list(e['stopsSubsetOf']).includes(id)) out.push(`${id} is not an allowed stop`);
   for (const id of list(e['stopsMustNotInclude'])) if (ids.includes(id)) out.push(`${id} must not be a stop`);
   if (Array.isArray(e['stops']) && JSON.stringify(ids) !== JSON.stringify(e['stops'])) out.push(`stops: expected ${JSON.stringify(e['stops'])}, got ${JSON.stringify(ids)}`);
+  // An empty plan must not pass vacuously (S4b-BL-203): minStops (0 = fine) and stopsMustInclude.
+  if (typeof e['minStops'] === 'number' && ids.length < e['minStops']) out.push(`fewer than ${e['minStops']} stops`);
+  for (const id of list(e['stopsMustInclude'])) if (!ids.includes(id)) out.push(`${id} must be a stop`);
   if (typeof e['fallback'] === 'boolean' && p.fallback !== e['fallback']) out.push(`fallback: expected ${e['fallback']}, got ${p.fallback}`);
   for (const m of list(e['summaryMustNotContain'])) if (norm(p.summary ?? '').includes(norm(m))) out.push(`summary contains "${m}"`);
   return out;

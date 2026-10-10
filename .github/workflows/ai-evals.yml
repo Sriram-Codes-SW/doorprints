@@ -102,6 +102,10 @@ on:
         description: Pause between cases in ms (free-tier requests-per-minute limits)
         type: string
         default: "4000"
+      repeats:
+        description: "golden-set only: trials per plan case, 1 to 5 (S4b-BL-203). Trial 1 is scored and gated as always; trials 2 and later only fill the report's stability table (informational). Each repeat is one more plan pass of 10 cases and the same model calls, so run it with types = plan"
+        type: string
+        default: "1"
       provider:
         description: Model provider. aistudio = AI_API_KEY secret. vertex = Google Cloud Vertex AI; needs docs/ai/vertex-setup.md steps 1-8 done first (secrets GCP_WIF_PROVIDER, GCP_SA_EMAIL, variable GCP_PROJECT_ID)
         type: choice
@@ -319,6 +323,7 @@ jobs:
           AI_VERTEX_EMBEDDING_LOCATION: ${{ vars.AI_VERTEX_EMBEDDING_LOCATION }}
           AI_EVAL_TYPES: ${{ inputs.types }}
           AI_EVAL_DELAY_MS: ${{ inputs.delay_ms }}
+          AI_EVAL_REPEATS: ${{ inputs.repeats }}
           THINKING_LEVEL: ${{ inputs.thinking_level }}
           CHAT_MODEL_INPUT: ${{ inputs.chat_model }}
           EMBEDDING_MODEL_INPUT: ${{ inputs.embedding_model }}

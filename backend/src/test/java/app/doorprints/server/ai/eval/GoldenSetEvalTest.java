@@ -80,7 +80,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * <p>Use an empty database: other saved houses change what retrieval returns (the report warns when it sees any).
  * Optional environment: {@code AI_EVAL_TYPES} (default {@code extract,ask,plan}), {@code AI_EVAL_DELAY_MS} (pause
- * between cases for free-tier rate limits, default 4000) and {@code AI_EVAL_GOLDEN_SET} (another golden set file).
+ * between cases for free-tier rate limits, default 4000), {@code AI_EVAL_GOLDEN_SET} (another golden set file) and
+ * {@code AI_EVAL_REPEATS} (S4b-BL-203: trials per plan case, default 1, at most {@link EvalScorer#MAX_REPEATS}; trial 1
+ * is scored and gated as ever, trials 2 and later only fill the report's stability table; each repeat is one more
+ * plan-only pass, so run it with {@code AI_EVAL_TYPES=plan}).
  */
 @Tag("llm-eval")
 @EnabledIf(value = "providerConfigured",
@@ -180,6 +183,7 @@ class GoldenSetEvalTest {
         var types = new HashSet<>(Arrays.asList(env("AI_EVAL_TYPES", "extract,ask,plan")
                 .toLowerCase(Locale.ROOT).strip().split("\\s*,\\s*")));
         long delayMs = Math.max(0, Long.parseLong(env("AI_EVAL_DELAY_MS", "4000")));
+        int repeats = EvalScorer.repeatsFrom(System.getenv("AI_EVAL_REPEATS"));
         var started = Instant.now();
 
         header.put("Golden set", "v" + golden.version() + " (" + golden.date() + "), " + path.normalize());
@@ -192,10 +196,12 @@ class GoldenSetEvalTest {
         header.put("Thinking level", EvalScorer.thinkingLabel(vertex, vertexThinkingLevel, openAiReasoningEffort));
         header.put("Embedding", embeddingProvider + " / " + embeddingModel);
         header.put("Case types", String.join(", ", types.stream().sorted().toList()));
+        if (repeats > 1 && types.contains(PLAN)) header.put("Plan trials", repeats + " (trial 1 gated, the rest informational)");
         header.put("Started", started.toString());
         checkThresholdsDeclared(golden);
 
-        var results = new ArrayList<CaseResult>();
+        var trials = new EvalScorer.Trials();
+        var results = trials.gated();
         List<Metric> metrics = List.of();
         try {
             boolean seeded = true;
@@ -212,7 +218,17 @@ class GoldenSetEvalTest {
                 if (!seeded && !EXTRACT.equals(type)) continue;
                 if (!first) pause(delayMs);
                 first = false;
-                results.add(run(testCase, golden));
+                trials.record(1, run(testCase, golden));
+            }
+            // Trials 2..repeats of the plan cases: informational, never in the metrics or the verdict.
+            if (seeded && types.contains(PLAN)) {
+                for (int trial = 2; trial <= repeats; trial++) {
+                    for (var testCase : golden.cases()) {
+                        if (!PLAN.equals(String.valueOf(testCase.get("type")))) continue;
+                        pause(delayMs);
+                        trials.record(trial, run(testCase, golden));
+                    }
+                }
             }
         } catch (QuotaExhausted e) {
             errors.add(EvalScorer.QUOTA_STOPPED + " (" + e.getMessage() + "); " + results.size()
@@ -222,7 +238,7 @@ class GoldenSetEvalTest {
         } finally {
             header.put("Duration", Duration.between(started, Instant.now()).toSeconds() + " s");
             metrics = EvalScorer.metrics(results, golden.thresholds());
-            var markdown = EvalScorer.markdown(header, metrics, results, warnings, errors);
+            var markdown = EvalScorer.markdown(header, metrics, results, warnings, errors, trials);
             Files.createDirectories(REPORT.getParent());
             Files.writeString(REPORT, markdown, StandardCharsets.UTF_8);
             System.out.println(markdown);
