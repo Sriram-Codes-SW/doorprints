@@ -69,6 +69,9 @@ To install the website, see **Install the app** on **Your data**.
 **Anywhere, also on iPhone:** paste the ad's text into a house's **Notes**. With AI turned on, **Fill in from listing
 text** on the form for a new house suggests the details. Check them before you save. It reads the first 8,000
 characters of what you paste; a line under the box says how many at the end are left out. If the text holds more
-than one web link, the form tells you to check that the **Listing link** is the right one.
+than one web link, the form tells you to check that the **Listing link** is the right one. What it put in your notes sits
+between the lines `--- from listing ---` and `--- end of listing ---`, so reading the text again replaces that part and
+never doubles it; the fields it filled are listed as **From the listing** until you edit them; and **Undo fill** puts the
+form back as it was. If the rupee amount in the text and the AI's price differ, the form says so and asks you to check.
 
 ![Add a shared listing on the website: the shared ad text, with Add a house from this, Copy and Back to the map](images/web-share.png)

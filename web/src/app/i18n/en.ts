@@ -587,6 +587,12 @@ export const en = {
   'house.addressNothing': 'The map had nothing new to add to the address.',
   'listingFill.kept': 'Kept your {field}; the listing says “{value}”.',
   'listingFill.doneKept': 'Form filled in from the listing. Values you had typed were kept: {n}. Please check the form before saving.',
+  // S4b-BL-238 (2026-10-10): Undo fill, the "from the listing" marks and the price check.
+  'listingFill.undo': 'Undo fill',
+  'listingFill.undoHint': 'Puts the form back as it was before the listing was read. Nothing has been saved.',
+  'listingFill.undone': 'Fill undone. The form is as it was before.',
+  'listingFill.fromListing': 'From the listing, not yet checked by you:',
+  'listingFill.priceDiffers': 'The text says {text} but the AI read {ai}. Please check the price.',
   'confirm.leaveUploading': 'Photos are still being added. If you leave now, you will not see whether they all worked. Leave anyway?',
   'confirm.leaveAnyway': 'Leave anyway',
   'confirm.leaveShared': 'Leave this page? The text you edited here will be lost.',

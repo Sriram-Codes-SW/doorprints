@@ -22,7 +22,7 @@
 // `house-detail-page.ts` because three readers share it: the listing card of the template, the page's arrival (which
 // puts a shared text in the box and applies the parser's draft) and the page's destruction (which ends a read in
 // flight). The page owns the draft; this changes it only through `patch`.
-import { computed, signal } from '@angular/core';
+import { signal } from '@angular/core';
 import type { Subscription } from 'rxjs';
 import { AI_MAX_LISTING_CHARS, aiErrorMsg } from '../../core/ai.service';
 import type { AiService, HouseDraft } from '../../core/ai.service';
@@ -79,11 +79,23 @@ export class HouseListingFill {
   readonly before = signal<Partial<HouseDto> | null>(null);
   /** What the last fill wrote, for the "from the listing" marks; a mark goes when its field is edited. */
   private readonly written = signal<FillMark[]>([]);
-  /** The marks still true of the form: the fields the fill wrote whose value the person has not changed since. */
-  readonly marks = computed(() => {
+  /**
+   * The marks still true of the form: the fields the fill wrote whose value the person has not changed since. A method,
+   * not a computed: the form's inputs edit the draft object in place, so the signal does not change when a field does.
+   */
+  marks(): FillMark[] {
+    this.edits(); // read so the card re-renders on every edit the page reports through touched()
     const d = this.deps.draft();
     return d ? this.written().filter((m) => same(d[m.field] as string | number | null | undefined, m.value)) : [];
-  });
+  }
+
+  /** The number of edits the page has reported ({@link touched}); the marks are re-read when it changes. */
+  private readonly edits = signal(0);
+
+  /** The page says a field was edited: the marks are checked again (the form edits its draft object in place). */
+  touched(): void {
+    this.edits.update((n) => n + 1);
+  }
   /** The regex-versus-model price warning of the last fill (S4b-BL-238), shown with the listing's own warnings. */
   readonly priceWarning = signal<Msg | null>(null);
   private cutFor = '';

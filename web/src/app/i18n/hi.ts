@@ -568,6 +568,12 @@ export const hi: Dict = {
   'house.addressNothing': 'नक्शे से पते में जोड़ने को कुछ नया नहीं मिला।',
   'listingFill.kept': 'आपका {field} रखा गया; लिस्टिंग में “{value}” है।',
   'listingFill.doneKept': 'लिस्टिंग से फ़ॉर्म भर दिया गया। आपके लिखे मान रखे गए: {n}। सहेजने से पहले फ़ॉर्म जाँच लें।',
+  // S4b-BL-238 (2026-10-10): Undo fill, the marks and the price check. Under review (owner rule: hi/ta/te ship marked under review).
+  'listingFill.undo': 'भरना पूर्ववत करें',
+  'listingFill.undoHint': 'फ़ॉर्म को वैसा कर देता है जैसा लिस्टिंग पढ़ने से पहले था। कुछ भी सहेजा नहीं गया है।',
+  'listingFill.undone': 'भरना पूर्ववत किया गया। फ़ॉर्म पहले जैसा है।',
+  'listingFill.fromListing': 'लिस्टिंग से, आपने अभी जाँचा नहीं:',
+  'listingFill.priceDiffers': 'टेक्स्ट में {text} लिखा है, पर AI ने {ai} पढ़ा। कृपया कीमत जाँच लें।',
   'confirm.leaveUploading': 'तस्वीरें अभी जोड़ी जा रही हैं। अभी जाने पर आप नहीं देख पाएँगे कि सब जुड़ीं या नहीं। फिर भी जाएँ?',
   'confirm.leaveAnyway': 'फिर भी जाएँ',
   'confirm.leaveShared': 'यह पेज छोड़ें? यहाँ बदला गया टेक्स्ट खो जाएगा।',

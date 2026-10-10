@@ -459,6 +459,11 @@
     <string name="house_paste_filled">நிரப்பப்பட்டது: %1$s. அவற்றைச் சரிபார்த்து சேமிக்கவும்.</string>
     <string name="house_paste_kept">நீங்கள் தட்டச்சு செய்தது வைக்கப்பட்டது: %1$s.</string>
     <string name="house_paste_nothing">விளம்பரத்தில் நிரப்ப புதிதாக எதுவும் இல்லை.</string>
+    <!-- S4b-BL-238 (2026-10-10): Undo fill, the marks and the price check. Under review. -->
+    <string name="house_paste_undo">நிரப்பியதைச் செயல்தவிர்</string>
+    <string name="house_paste_undone">நிரப்பியது செயல்தவிர்க்கப்பட்டது. படிவம் முன்பு இருந்தபடியே உள்ளது.</string>
+    <string name="house_paste_from_listing">விளம்பரத்திலிருந்து, நீங்கள் இன்னும் சரிபார்க்கவில்லை: %1$s</string>
+    <string name="house_paste_price_differs">உரையில் %1$s என்று உள்ளது, ஆனால் AI %2$s என்று படித்தது. விலையைச் சரிபார்க்கவும்.</string>
     <string name="house_photo_open">பெரிதாகப் பார்</string>
     <string name="house_photo_position">%2$d இல் படம் %1$d</string>
     <string name="house_photo_viewer">படக் காட்சி</string>

@@ -13,6 +13,7 @@ the end of this file) once `v0.1.0` is tagged (C-02 in the [sprint log](docs/10-
 
 ## [Unreleased]
 
+- **Fill in from listing text: one block, an undo, marks and a price check** (S4b-BL-238; branch `feat/ai-extract-reliability`, draft pull request): reading a listing a second time replaces what the AI put in your notes (between `--- from listing ---` and `--- end of listing ---`) instead of adding it again; **Undo fill** puts the form back as it was; the fields the listing filled are listed as **From the listing** until you edit them; and when the rupee amount in the text and the AI's price differ, the form says so. On the website the AI call with your own Gemini key now gives up after 60 seconds like the other kinds. Website and Android, in English, Hindi, Tamil and Telugu (the last three under review).
 - **AI: a provider's safety block is handled, not retried** (S4b-BL-232). When the AI service's own safety system declines a text
   (Gemini `promptFeedback.blockReason` or a `SAFETY`-type finish, an OpenAI-compatible `content_filter`, `refusal` or content-policy
   400, an Anthropic `refusal`), the website and the apps show "The AI service declined this text. Nothing was changed. Edit the

@@ -66,7 +66,7 @@ export { HouseListingFill } from './house-listing-fill';
         <button type="button" class="btn btn-sm listing-undo" (click)="listing().undo()" [attr.aria-describedby]="'listing-undo-hint'">
           {{ 'listingFill.undo' | t }}
         </button>
-        <span id="listing-undo-hint" class="visually-hidden">{{ 'listingFill.undoHint' | t }}</span>
+        <span id="listing-undo-hint" class="sr-only">{{ 'listingFill.undoHint' | t }}</span>
       }
       <div class="refresh-slot" [class.stale]="listing().filling()">
         <div role="alert">
