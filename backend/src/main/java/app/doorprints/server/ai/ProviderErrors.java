@@ -91,15 +91,33 @@ public final class ProviderErrors {
                     || t instanceof tools.jackson.core.JacksonException) {
                 return CAUSE_MODEL;
             }
-            if (t instanceof ApiException || t instanceof GenAiIOException || t instanceof OpenAIServiceException
-                    || t instanceof OpenAIIoException || t instanceof GeminiEmbeddingException
-                    || t instanceof ReindexFailedException || t instanceof RestClientResponseException
-                    || t instanceof ResourceAccessException || t instanceof TimeoutException
-                    || t instanceof IOException) {
+            // An HTTP answer decides by its status: 5xx, 429 and 408 are the provider's; any other 4xx (400 request too
+            // long, malformed or schema rejected; 401/403/404 setup) is ours and gets no cause, so it is scored.
+            Integer status = httpStatus(t);
+            if (status != null) return providerStatus(status) ? CAUSE_PROVIDER : null;
+            if (t instanceof GenAiIOException || t instanceof OpenAIIoException || t instanceof GeminiEmbeddingException
+                    || t instanceof ReindexFailedException || t instanceof ResourceAccessException
+                    || t instanceof TimeoutException || t instanceof IOException) {
                 return CAUSE_PROVIDER;
             }
         }
         return null;
+    }
+
+    /** The provider's HTTP status carried by this exception, or null (no status: an I/O error, or another type). */
+    private static Integer httpStatus(Throwable t) {
+        return switch (t) {
+            case ApiException a -> a.code();
+            case OpenAIServiceException o -> o.statusCode();
+            case RestClientResponseException r -> r.getStatusCode().value();
+            case GeminiEmbeddingException g when g.httpStatus() > 0 -> g.httpStatus();
+            default -> null;
+        };
+    }
+
+    /** 5xx, 429 (quota) and 408 (timeout): the provider's side. */
+    private static boolean providerStatus(int status) {
+        return status >= 500 || status == TOO_MANY_REQUESTS || status == 408;
     }
 
     /** Which call failed: chat (google-genai {@link ApiException}) or embeddings ({@link GeminiEmbeddingException}). */

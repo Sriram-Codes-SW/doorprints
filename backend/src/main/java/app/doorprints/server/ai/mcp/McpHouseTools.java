@@ -53,7 +53,7 @@ public class McpHouseTools {
             @ToolParam(required = false, description = "Maximum price in rupees (monthly rent for RENT)") Long maxPrice,
             @ToolParam(required = false, description = "Minimum number of bedrooms") Integer minBedrooms,
             @ToolParam(required = false, description = "Minimum personal rating 1-5") Integer minRating,
-            @ToolParam(required = false, description = "Maximum results, 1-50 (default 20)") Integer limit) {
+            @ToolParam(required = false, description = "Maximum results, 1-50 (default 50)") Integer limit) {
         return queries.searchHouses(text, status, priceType, maxPrice, minBedrooms, minRating, limit);
     }
 

@@ -1,0 +1,74 @@
+{
+  "spec": ["backend/src/test/java/app/doorprints/server/ai/eval/FixtureSeedingTest.java", "backend/src/test/java/app/doorprints/server/ai/agent/HouseSearchServiceTest.java", "backend/src/test/java/app/doorprints/server/ai/agent/HouseQueriesSearchTest.java", "backend/src/test/java/app/doorprints/server/ai/agent/AiLimitsTest.java"],
+  "maven": [
+    "-Dtest=FixtureSeedingTest,HouseSearchServiceTest,HouseQueriesSearchTest,AiLimitsTest"
+  ],
+  "mutations": [
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/HouseSearchService.java",
+      "find": "\n            .thenComparing(HouseDto::id);\n\n    /** Nearest first",
+      "replace": ";\n\n    /** Nearest first",
+      "expect": "housesWithEqualTimestampsComeBackInIdOrder"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/HouseSearchService.java",
+      "find": "                .sorted(NEWEST_FIRST)\n",
+      "replace": "",
+      "expect": "housesWithEqualTimestampsComeBackInIdOrder"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/HouseSearchService.java",
+      "find": "Comparator.nullsLast(Comparator.<Instant>reverseOrder())",
+      "replace": "Comparator.nullsLast(Comparator.<Instant>naturalOrder())",
+      "expect": "theNewestEditStillComesFirst"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/HouseSearchService.java",
+      "find": "\n            .thenComparing(HouseDto::id);\n\n    private final HouseService",
+      "replace": ";\n\n    private final HouseService",
+      "expect": "nearbyHousesAtTheSameDistanceComeBackInIdOrder"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/HouseSearchService.java",
+      "find": "DEFAULT_RESULTS = MAX_RESULTS;",
+      "replace": "DEFAULT_RESULTS = 20;",
+      "expect": "aSearchWithoutALimitReturnsEveryHouseUpToTheCap"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/FixtureSeeding.java",
+      "find": "now.minusSeconds(i).toString()",
+      "replace": "now.toString()",
+      "expect": "seedBodyGivesEachHouseItsOwnUpdatedAt"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/FixtureSeeding.java",
+      "find": "now.minusSeconds(i).toString()",
+      "replace": "now.plusSeconds(i).toString()",
+      "expect": "theGoldenSetsFixtureHousesGetDistinctTimestampsInOrder"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/FixtureSeeding.java",
+      "find": "if (got != expected) {",
+      "replace": "if (got > expected) {",
+      "expect": "aSmallerOrLargerOrMissingIndexedCountIsAHarnessError"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/FixtureSeeding.java",
+      "find": "if (got != expected) {",
+      "replace": "if (got < expected) {",
+      "expect": "aSmallerOrLargerOrMissingIndexedCountIsAHarnessError"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/FixtureSeeding.java",
+      "find": "if (got != expected) {",
+      "replace": "if (false) {",
+      "expect": "aSmallerOrLargerOrMissingIndexedCountIsAHarnessError"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/GoldenSetEvalTest.java",
+      "find": "            if (countError != null) {\n                errors.add(countError);\n                return false;\n            }\n",
+      "replace": "",
+      "expect": "theHarnessSeedsThroughSeedBodyAndFailsTheRunOnTheIndexedCountError"
+    }
+  ]
+}

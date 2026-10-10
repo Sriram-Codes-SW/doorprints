@@ -396,19 +396,62 @@ final class EvalScorer {
      * as n/a and never fails. {@code status} is PASS, FAIL or "-" (no threshold / not measured).
      */
     record Metric(String name, String description, Double value, int numerator, int denominator, String threshold,
-                  String status) {
+                  String status, String bestStatus) {
         boolean failed() {
             return "FAIL".equals(status);
         }
+
+        /** True when the metric misses its threshold even if every infrastructure case had passed. */
+        boolean failsInBestCase() {
+            return "FAIL".equals(bestStatus);
+        }
     }
 
+    /**
+     * The metrics of the scored cases (infrastructure cases are in no denominator). Each metric also carries
+     * {@code bestStatus}: its status if every infrastructure case had passed (the best the unscored cases could do),
+     * which {@link #verdict} uses to tell a real failure (FAIL) from a run that is merely incomplete.
+     */
     static List<Metric> metrics(List<CaseResult> results, Map<String, Map<String, Object>> thresholds) {
+        var actual = metrics(results, thresholds, false);
+        if (infraCases(results).isEmpty()) return actual;
+        var best = metrics(results, thresholds, true);
+        var out = new ArrayList<Metric>();
+        for (int i = 0; i < actual.size(); i++) {
+            var m = actual.get(i);
+            out.add(new Metric(m.name(), m.description(), m.value(), m.numerator(), m.denominator(), m.threshold(),
+                    m.status(), best.get(i).status()));
+        }
+        return out;
+    }
+
+    /**
+     * {@code assumeInfraPass}: count each infrastructure case as if it had passed everything it was expected to (its
+     * expected fields, citations, answer, plan validity and fallback flag all met).
+     */
+    private static List<Metric> metrics(List<CaseResult> results, Map<String, Map<String, Object>> thresholds,
+                                        boolean assumeInfraPass) {
         int fields = 0, fieldHits = 0, nullFields = 0, hallucinated = 0;
         int cited = 0, citedCorrect = 0, expectedCitations = 0, expectedCited = 0;
         int answers = 0, answersOk = 0, refusals = 0, refusalsOk = 0, injections = 0, injectionsOk = 0;
         int plans = 0, plansOk = 0, fallbacks = 0, fallbacksOk = 0;
         for (var r : results) {
-            if (r.infra) continue; // provider or infrastructure failure: says nothing about the model
+            if (r.infra) { // provider or infrastructure failure: says nothing about the model
+                if (assumeInfraPass) {
+                    fields += r.fields;
+                    fieldHits += r.fields;
+                    cited += r.expectedCitations;
+                    citedCorrect += r.expectedCitations;
+                    expectedCitations += r.expectedCitations;
+                    expectedCited += r.expectedCitations;
+                    if (r.answerPass != null) { answers++; answersOk++; }
+                    if (r.refusalPass != null) { refusals++; refusalsOk++; }
+                    if (r.isInjection()) { injections++; injectionsOk++; }
+                    if (r.planValid != null) { plans++; plansOk++; }
+                    if (r.fallbackAsExpected != null) { fallbacks++; fallbacksOk++; }
+                }
+                continue;
+            }
             fields += r.fields;
             fieldHits += r.fieldHits;
             nullFields += r.nullFields;
@@ -532,7 +575,7 @@ final class EvalScorer {
             threshold = "<= " + fmt(max.doubleValue());
             if (value != null) status = value <= max.doubleValue() + 1e-9 ? "PASS" : "FAIL";
         }
-        return new Metric(name, description, value, numerator, denominator, threshold, status);
+        return new Metric(name, description, value, numerator, denominator, threshold, status, status);
     }
 
     // ---------------------------------------------------------------------------------------------------------
@@ -563,9 +606,11 @@ final class EvalScorer {
             reasons.add(infra.size() + " case(s) hit provider or infrastructure failures and were not scored ("
                     + String.join(", ", infra.stream().map(r -> r.id).toList()) + "); re-run once the provider is healthy");
         }
-        // A harness error or no case at all is a failure whatever else happened; infra cases alone make the run
-        // INCOMPLETE (a metric below its threshold on the cases that did run is listed, but those cases may recover).
-        boolean incomplete = !infra.isEmpty() && !results.isEmpty() && errors.isEmpty();
+        // INCOMPLETE must never hide a real failure: a harness error, no case at all, or a metric that misses its
+        // threshold even if every infrastructure case had passed (its best case) is FAIL, with the infra errors as a
+        // note. Only when every metric would pass in the best case and infra cases exist is the run INCOMPLETE.
+        boolean realFailure = results.isEmpty() || !errors.isEmpty() || metrics.stream().anyMatch(Metric::failsInBestCase);
+        boolean incomplete = !infra.isEmpty() && !realFailure;
         return new Verdict(reasons.isEmpty(), incomplete, List.copyOf(reasons));
     }
 
@@ -592,8 +637,8 @@ final class EvalScorer {
                     + "cases scored before the stop. Wait for the quota to reset or check billing, then re-run.)\n\n");
         } else {
             sb.append("**Result: ").append(verdict.label()).append(verdict.incomplete()
-                    ? "** (provider or infrastructure failures left cases unscored; they are excluded from every metric "
-                    + "and the run can never PASS. Re-run once the provider is healthy)\n\n"
+                    ? "** (provider or infrastructure failures left cases unscored; they are excluded from every metric, "
+                    + "every metric would pass if they had passed, and the run can never PASS. Re-run once the provider is healthy)\n\n"
                     : "** (thresholds from the golden set; FAIL also when no case ran or the harness hit an error)\n\n");
         }
         sb.append("| | |\n|---|---|\n");
@@ -608,7 +653,8 @@ final class EvalScorer {
         }
         var infraCases = infraCases(results);
         if (!infraCases.isEmpty()) {
-            sb.append("## Infrastructure errors\n\nNot scored: the provider or infrastructure failed, not the model.\n\n");
+            sb.append("## Infrastructure errors\n\nNot scored: the provider or infrastructure failed, not the model."
+                    + (verdict.incomplete() ? "" : " (A real failure is reported above; this is a note.)") + "\n\n");
             infraCases.forEach(r -> sb.append("- ").append(cell(r.id)).append(": ").append(cell(truncate(r.error, 300)))
                     .append('\n'));
             sb.append('\n');

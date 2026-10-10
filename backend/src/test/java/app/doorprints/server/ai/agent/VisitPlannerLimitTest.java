@@ -412,7 +412,8 @@ class VisitPlannerLimitTest {
     }
 
     @Test
-    void aWrapUpCallThatFailsOnTheProviderFallsBackWithCauseProvider() {
+    void aWrapUpCallThatFailsOnTheProviderAfterTheLimitWasHitIsStillLimitNotProvider() {
+        // The model used up its tool budget (model behaviour); the provider failing afterwards must not excuse that.
         house("Baner flat", "Baner", 18.5590, null);
 
         var res = run(new Script(FIVE_SEARCHES, "unused", p -> {
@@ -421,7 +422,7 @@ class VisitPlannerLimitTest {
         }));
 
         assertThat(res.fallback()).isTrue();
-        assertThat(res.fallbackCause()).isEqualTo("provider");
+        assertThat(res.fallbackCause()).isEqualTo("limit");
     }
 
     @Test

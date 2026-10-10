@@ -185,7 +185,7 @@ public class VisitPlannerService {
                 : PlanModels.FALLBACK_PARSE;
     }
 
-    /** The wrap-up call's plan, or why it gave none ({@code provider}, else {@code limit}: the budget ran out). */
+    /** The wrap-up call's plan, or why it gave none: always {@code limit} (the budget ran out first, whatever failed after). */
     private record WrapUp(AgentPlan plan, String failure) {
     }
 
@@ -243,8 +243,8 @@ public class VisitPlannerService {
             return new WrapUp(plan, plan == null ? PlanModels.FALLBACK_LIMIT : null);
         } catch (RuntimeException e) {
             log.info("plan-visits: the wrap-up call failed ({})", e.getClass().getSimpleName());
-            return new WrapUp(null, ProviderErrors.CAUSE_PROVIDER.equals(ProviderErrors.cause(e))
-                    ? PlanModels.FALLBACK_PROVIDER : PlanModels.FALLBACK_LIMIT);
+            // The model already used up its tool budget (its own behaviour): a provider error now must not excuse that.
+            return new WrapUp(null, PlanModels.FALLBACK_LIMIT);
         }
     }
 

@@ -50,7 +50,8 @@
 | v0.46   | 2026-10-10 | Claude (Code), engineer       | **5 and 6: the planner's fallback offers the houses nearest to the start, never far-away ones** (S4b-BL-194 item 3, [10](../10-sprint-log.md) v0.227). `VisitPlannerService.assemble` used to take the first `maxStops` houses the tools returned, in the order first seen, and only then order them by nearest neighbour; in the Vertex run 38005913774 plan-08 (start in Pune) made 5 tool calls, hit the budget and the fallback returned four Bengaluru houses. Now the fallback takes the houses in the running with usable coordinates, drops those farther than 50 km (straight line) from the start point, sorts the rest nearest first (equal distances by house id), keeps the nearest `maxStops` and orders them by nearest neighbour; with none left it returns no stops, `fallback: true` and the summary *No saved houses within reach of your start point were found.* The prompt, the tool-call budget, the golden set and the thresholds are unchanged, and plan-08 still expects `fallback: false`: this makes the degraded answer safe, it does not make the planner finish more often. Server only; the website's and the phones' own planners are listed in S4b-BL-199. |
 | v0.47   | 2026-10-10 | Claude (Code), engineer       | **5.3: the planner finishes at its tool limit instead of falling back** (S4b-BL-194 item 3, [10](../10-sprint-log.md) v0.228). Root cause of plan-08 (run 38005913774) and plan-02 (run 38035609864): each ended with the fifth `searchHouses` attempt (per-tool budget 4); Spring AI's advisor turned the limit exception into a refusal text, `plan()` could not read it as a plan and used the fallback. Now one wrap-up call without tools lets the model answer from what it found; a no-match request ends as an empty plan with `fallback: false`. Budgets, system prompt and parity vectors unchanged. **Not yet proven:** the proof is the next plan-only Vertex runs. |
 | v0.48   | 2026-10-10 | Claude (Code), engineer       | **13.2 on the phones** (S4b-BL-198 step 2, second pull request; [10](../10-sprint-log.md) v0.229, [03](../03-design.md) 0.105). The Kotlin `GeminiClient` (Android and iPhone) builds the vectors `geminiRequest` byte for byte, with `maxOutputTokens` 8,192; *AI speed and cost* in Settings > AI features, stored in the settings store, hidden unless AI is on, the own AI answers and the service is Gemini; the final measured numbers of four server golden-set runs (three at Economy, one at the default) replace the first run's. |
-| v0.49   | 2026-10-10 | Claude (Code), engineer       | **8.1, 12 and 13: the eval tells provider failures from model failures** (S4b-BL-200, [10](../10-sprint-log.md) v0.230, [06](../06-test-plan.md) 0.192). One provider 503 in a plan case used to score the case as an error, count it in every denominator and drop `agentValidity` to 0.90 (a FAIL), while an unreadable model answer, also a 503, was retried as if it were an outage. Now the problem detail of a 503 carries `cause` (`provider`: HTTP status, timeout or connect error, found by type in the cause chain by `ProviderErrors.cause`; `model`: output that could not be parsed; absent when unknown), and the plan response carries `fallbackCause` (`provider`, `parse`, `limit`, or null without a fallback). The harness (`RetryPolicy`) retries a provider failure and then records the case as an infrastructure error: excluded from every metric denominator, listed under *Infrastructure errors*, and the verdict is **INCOMPLETE** (the job still fails, with its own annotation; never PASS). A model failure is never retried and is scored; a failure without a cause is retried but scored. A plan with `fallbackCause=provider` is an infrastructure case; `parse` and `limit` stay scored, so the `fallback is false` check keeps failing. No threshold, metric definition or scoring rule changed. |
+| v0.49   | 2026-10-10 | Claude (Code), engineer       | **8.1, 5.3: deterministic fixtures and a complete planner search** (S4b-BL-201, [10](../10-sprint-log.md) v0.230). The harness saves fixture house *i* with `updatedAt` = start minus *i* seconds (`FixtureSeeding.seedBody`), because 30 equal timestamps left the order of the house list, and so which 20 of 30 houses a search returned, to the database. `HouseSearchService` orders by newest edit and then id (`nearby`: distance, then id) and returns up to the cap of 50 houses when no limit is given (it was 20; the cap was already 50), about 3,000 tokens for a full result. The harness fails the run (a harness error, not a scored case) when `POST /api/ai/reindex` indexes a number of houses other than the fixture count. `HouseSummary` is unchanged: the city is not in it (open, S4b-BL-201). The planner prompt is not changed here. |
+| v0.50   | 2026-10-10 | Claude (Code), engineer       | **8.1, 12 and 13: the eval tells provider failures from model failures** (S4b-BL-200, [10](../10-sprint-log.md) v0.231, [06](../06-test-plan.md) 0.193). One provider 503 in a plan case used to score the case as an error, count it in every denominator and drop `agentValidity` to 0.90 (a FAIL), while an unreadable model answer, also a 503, was retried as if it were an outage. Now the problem detail of a 503 carries `cause` (`provider`: an HTTP 5xx, 429 or 408 answer, a timeout or a connect error, found by type in the cause chain by `ProviderErrors.cause`; `model`: output that could not be parsed; absent when unknown), and the plan response carries `fallbackCause` (`provider`, `parse`, `limit`, or null without a fallback). The harness (`RetryPolicy`) retries a provider failure and then records the case as an infrastructure error: excluded from every metric denominator, listed under *Infrastructure errors*, and the verdict is **INCOMPLETE** (the job still fails, with its own annotation; never PASS). v0.50: INCOMPLETE never hides a real failure: for each metric the scorer computes the best case, as if every infrastructure case had passed; a metric that still misses its threshold there (always the case at a 1.00 threshold after one scored model failure) makes the verdict FAIL, with the infrastructure errors as a note. A model failure is never retried and is scored; a failure without a cause is retried but scored. A plan with `fallbackCause=provider` is an infrastructure case; `parse` and `limit` stay scored, so the `fallback is false` check keeps failing. No threshold, metric definition or scoring rule changed. |
 
 Status: implemented in `backend/` (package `app.doorprints.server.ai`), **off by default**. Not yet compiled in this
 sandbox (no Maven Central access) — CI compiles and runs the tests. Provider: AI Studio by default, Vertex AI with
@@ -707,7 +708,11 @@ Flow of one run:
    `provider` is retried and, if it persists, recorded as an **infrastructure error** (the case is not scored, is in no
    metric denominator and is listed under *Infrastructure errors*); `model` (unreadable output) is never retried and
    is scored as a failure (ERROR); no `cause` is retried and then scored, because nothing proves it was not the model.
-   Nothing is skipped silently.
+   Nothing is skipped silently. A harness-side read timeout (3 minutes per call) is scored against the model on purpose:
+   a call that slow is a failure of the feature, whoever is to blame.
+   **Coverage, said plainly (v0.50):** the pure parts (`ProviderErrors.cause`, `RetryPolicy`, `EvalScorer`, the planner's
+   `fallbackCause`) have unit tests and mutation gates; the wiring in `GoldenSetEvalTest.post` (the switch on the policy's
+   decision) and the call to `markInfra` need a live provider and are NOT covered by a test or a mutation gate.
    **Quota stop (v0.15):** a `503` with `code: AI_QUOTA_EXHAUSTED` (provider 429 / `RESOURCE_EXHAUSTED`, 10) gets one
    retry after `Retry-After`; if it persists, the run stops, the case is not scored, the report's result line reads
    **`STOPPED: provider quota exhausted`** with the number of cases scored before the stop, the test fails, and the
@@ -716,11 +721,15 @@ Flow of one run:
 4. Scores every case, writes `backend/target/ai-eval-report.md` (metrics table, **metrics by region with the region
    spread**, per-case table with each case's region, every check with the model output) and prints it; the workflow appends it to the job summary and uploads it as artifact
    `ai-eval-report`.
-   **INCOMPLETE (v0.49):** when any case is an infrastructure error (also a plan whose response has
+   **INCOMPLETE (v0.49, tightened in v0.50):** when any case is an infrastructure error (also a plan whose response has
    `fallbackCause: "provider"`; `parse` and `limit` stay scored) the result line reads **`INCOMPLETE`**, never PASS, the
-   test fails, and the workflow adds its own error annotation beside the quota one. A harness error or no case at all
-   stays FAIL; a metric below its threshold is still listed under *Why INCOMPLETE* but the run cannot settle it,
-   because the unscored cases may recover it. Re-run when the provider is healthy; no threshold is loosened.
+   test fails, and the workflow adds its own error annotation beside the quota one. **INCOMPLETE never hides a real
+   failure (v0.50):** for each metric the scorer also computes the best case, as if every infrastructure case had
+   passed everything it was expected to (`Metric.bestStatus`). If any metric still misses its threshold in that best
+   case, or a harness error occurred, or no case ran, the verdict is **FAIL** and the infrastructure errors are listed
+   as a note; only when every metric would pass in the best case is it INCOMPLETE. At a 1.00 threshold (plan validity,
+   injection resistance, refusals) one scored model failure is therefore always FAIL. Re-run when the provider is
+   healthy; no threshold is loosened.
 5. Fails when any metric misses its threshold, **when no case ran, or when the harness hit an error** (fixture
    seeding, `POST /api/ai/reindex`, or anything that aborted the loop). Errors are listed under "Errors" and every
    reason under "Why FAIL" in the report (`EvalScorer.verdict`, unit-tested in `EvalScorerTest`). If seeding or the
@@ -1124,8 +1133,8 @@ unchanged.
 - Per-minute: `AI_RATE_LIMIT_PER_MINUTE` / `AI_RATE_LIMIT_BURST` for `/api/ai/**` (not `/api/ai/status`), separate
   `MCP_RATE_LIMIT_PER_MINUTE` for `/mcp` (an MCP session makes several protocol calls). 429 + `Retry-After`.
 - Provider errors (quota exhausted, 5xx, bad JSON) → `503` ProblemDetail with `retryable: true`. Since v0.49 it also
-  has `cause`: `provider` (HTTP error, timeout or connect failure of the model provider) or `model` (output that could
-  not be parsed, so a retry would only ask again); no `cause` when the cause chain shows neither (types only, never
+  has `cause`: `provider` (a 5xx, 429 or 408 answer, a timeout or a connect failure of the model provider) or `model` (output that could
+  not be parsed, so a retry would only ask again); any other 4xx (400 request too long or malformed, 401/403/404 setup) gets no `cause`, so it is scored, not excused; no `cause` when the cause chain shows neither (types only, never
   message text). Since v0.15 a
   provider quota error (HTTP 429 / `RESOURCE_EXHAUSTED` from AI Studio or Vertex, detected by type and status code
   in the cause chain by `app.doorprints.server.ai.ProviderErrors`, never by message text) additionally carries
@@ -1305,7 +1314,7 @@ Response:
 ```
 `fallback: true` means the server built a nearest-neighbour route itself (show a subtle notice). Since v0.49
 `fallbackCause` says why (null when `fallback` is false): `provider` (the model provider failed mid-plan), `parse`
-(unreadable output or no usable stop) or `limit` (the tool budget ran out and the wrap-up call gave no plan). It is an
+(unreadable output or no usable stop) or `limit` (the tool budget ran out and the wrap-up call gave no plan, or failed: the model's own use of its budget is not excused by a provider error after it). It is an
 additive field: the website and the phones ignore it. Draw stops on the
 map in `order`; walking times are estimates (straight line × 1.3 at 4.8 km/h).
 

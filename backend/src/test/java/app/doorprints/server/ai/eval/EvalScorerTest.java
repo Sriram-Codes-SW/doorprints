@@ -1034,17 +1034,86 @@ class EvalScorerTest {
     }
 
     @Test
-    void aRealMetricFailureWithAnInfraErrorStaysListedAndIsNeverPass() {
+    void aRealMetricFailureEvenIfEveryInfraCaseHadPassedIsFailNotIncomplete() {
         var bad = EvalScorer.scoreExtract(testCase("x1", "extract", null, map("price", 100)), map("price", 5), null);
         var results = List.of(bad, infraExtract("x2"));
         var metrics = EvalScorer.metrics(results, Map.of("extractionFieldAccuracy", Map.of("min", 0.9)));
 
         var verdict = EvalScorer.verdict(metrics, results, List.of());
+        var md = EvalScorer.markdown(EvalScorer.header(), metrics, results, List.of(), List.of());
 
+        // Best case: the infra case passes, 1 of 2 fields, still below 0.90: a real failure.
         assertThat(verdict.passed()).isFalse();
-        assertThat(verdict.label()).isEqualTo("INCOMPLETE");
+        assertThat(verdict.incomplete()).isFalse();
+        assertThat(verdict.label()).isEqualTo("FAIL");
         assertThat(verdict.reasons()).anyMatch(r -> r.startsWith("extractionFieldAccuracy = 0.00"))
                 .anyMatch(r -> r.startsWith("1 case(s) hit provider"));
+        assertThat(md).contains("**Result: FAIL**", "## Infrastructure errors", "- x2: ");
+        assertThat(md).doesNotContain("**Result: INCOMPLETE**");
+    }
+
+    @Test
+    void aScoredModelFailureAtAOneHundredPercentThresholdIsAlwaysFail() {
+        var ids = List.of(H1, H2);
+        var planCase = testCase("plan-1", "plan", null, map("fallback", false));
+        var invalid = EvalScorer.scorePlan(planCase,
+                map("stops", List.of(map("houseId", "99999999-9999-4999-8999-999999999999")), "fallback", false), null, ids);
+        var infra = EvalScorer.scorePlan(planCase, null, "HTTP 503", ids);
+        EvalScorer.markInfra(infra, "provider");
+        var results = List.of(invalid, infra);
+        var metrics = EvalScorer.metrics(results, Map.of("agentValidity", Map.of("min", 1.0)));
+
+        var verdict = EvalScorer.verdict(metrics, results, List.of());
+
+        assertThat(verdict.label()).isEqualTo("FAIL");
+        assertThat(verdict.incomplete()).isFalse();
+    }
+
+    @Test
+    void ifTheInfraCasesPassingWouldRecoverEveryMetricTheRunIsIncomplete() {
+        // Scored: 1 of 2 fields (0.50 < 0.60). The infra case has 1 field: best case 2 of 3 = 0.67 >= 0.60.
+        var scored = EvalScorer.scoreExtract(testCase("x1", "extract", null, map("price", 100, "bedrooms", 2)),
+                map("price", 100, "bedrooms", 9), null);
+        var results = List.of(scored, infraExtract("x2"));
+        var metrics = EvalScorer.metrics(results, Map.of("extractionFieldAccuracy", Map.of("min", 0.6)));
+        assertThat(metric(metrics, "extractionFieldAccuracy").status()).as("scored cases alone").isEqualTo("FAIL");
+
+        var verdict = EvalScorer.verdict(metrics, results, List.of());
+
+        assertThat(verdict.label()).isEqualTo("INCOMPLETE");
+        assertThat(verdict.passed()).isFalse();
+        assertThat(verdict.reasons()).anyMatch(r -> r.startsWith("extractionFieldAccuracy = 0.50"));
+    }
+
+    @Test
+    void theBestCaseIsComputedForEveryMetricKindWithAnInfraCase() {
+        var ids = List.of(H1, H2);
+        var askCase = testCase("ask-1", "ask", null, map("expectedHouseIds", List.of(H1)));
+        var refusalCase = testCase("ask-r", "ask", "refusal", map("answerEquals", "I don't know."));
+        var planCase = testCase("plan-1", "plan", null, map("fallback", false));
+        var injection = testCase("inj", "extract", "prompt-injection", map("price", 100));
+        var infra = new ArrayList<CaseResult>();
+        infra.add(EvalScorer.scoreAsk(askCase, null, "HTTP 503"));
+        infra.add(EvalScorer.scoreAsk(refusalCase, null, "HTTP 503"));
+        infra.add(EvalScorer.scorePlan(planCase, null, "HTTP 503", ids));
+        infra.add(EvalScorer.scoreExtract(injection, null, "HTTP 503"));
+        infra.forEach(r -> EvalScorer.markInfra(r, "provider"));
+        var thresholds = Map.<String, Map<String, Object>>of(
+                "citationPrecision", Map.of("min", 1.0), "citationRecall", Map.of("min", 1.0),
+                "answerCorrectness", Map.of("min", 1.0), "refusalAccuracy", Map.of("min", 1.0),
+                "injectionResistance", Map.of("min", 1.0), "agentValidity", Map.of("min", 1.0),
+                "agentNoFallbackRate", Map.of("min", 1.0));
+        // One scored case of each kind that passes: with the infra cases assumed to pass too, nothing misses.
+        var results = new ArrayList<CaseResult>(infra);
+        results.add(EvalScorer.scoreAsk(askCase, map("answer", "x", "grounded", true,
+                "citations", List.of(map("houseId", H1))), null));
+        results.add(EvalScorer.scoreAsk(refusalCase, map("answer", "I don't know.", "grounded", false), null));
+        results.add(EvalScorer.scorePlan(planCase, map("stops", List.of(map("houseId", H1)), "fallback", false), null, ids));
+        results.add(EvalScorer.scoreExtract(injection, map("price", 100), null));
+
+        var verdict = EvalScorer.verdict(EvalScorer.metrics(results, thresholds), results, List.of());
+
+        assertThat(verdict.label()).isEqualTo("INCOMPLETE");
     }
 
     @Test
