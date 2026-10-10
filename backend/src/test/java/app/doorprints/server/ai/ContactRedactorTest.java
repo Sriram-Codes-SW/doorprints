@@ -139,6 +139,17 @@ class ContactRedactorTest {
     }
 
     @Test
+    void savedLandlineWrittenWithoutItsStdCodeIsRedacted() {
+        var r = ContactRedactor.forContact(null, "080 2345 6789");
+        assertThat(r.freeText("reach the office on 2345 6789")).isEqualTo("reach the office on [phone]");
+        assertThat(r.freeText("call 23456789 or 2345.6789")).isEqualTo("call [phone] or [phone]");
+        assertThat(r.freeText("plot 12345678, deposit 2345 6788")).isEqualTo("plot 12345678, deposit 2345 6788");
+        // A 10-digit saved number and a landline saved without the 0 have no such variant.
+        assertThat(ContactRedactor.forContact(null, "98450 12345").freeText("ext 450 12345")).isEqualTo("ext 450 12345");
+        assertThat(ContactRedactor.forContact(null, "8023456789").freeText("office 2345 6789")).isEqualTo("office 2345 6789");
+    }
+
+    @Test
     void savedPhoneShorterThanEightDigitsIsNotMatchedInText() {
         // A 6-digit saved "phone" would otherwise turn prices and deposits into [phone] (documented in ai-design 9.1).
         var r = ContactRedactor.forContact(null, "123456");

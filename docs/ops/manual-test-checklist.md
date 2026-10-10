@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | The complete manual test list for Doorprints before real-system testing starts and before Android/iOS development continues: every check a person redoes on real devices, whether or not an automated suite or a review session already covered it |
-| Version | 0.10 |
+| Version | 0.11 |
 | Date | 2026-10-10 |
 | Author | Claude, senior reviewer |
 | Status | Draft |
@@ -22,6 +22,7 @@
 | 0.8 | 2026-10-06 | Claude (Code), lead | Section 14 after `feat/qr-scanner-and-backlog` (draft PR #145): new **MT-82..MT-85** (the Android scan with Google's code scanner, the first-use download of the scanner module, the iPhone scan, a phone without Play services hides Scan) for TC-M-62; MT-70 and its automated list now describe the Android HMAC proof (the grant id is no longer the proof, `DeviceAuthorizationGate` is gone); MT-65 gains the sync back-off; the not-built list drops the camera scan and the Android HMAC proof. |
 | 0.9 | 2026-10-06 | Claude (Code), docs pass | Section 15 (MT-75..MT-81): the features are built on `feat/path-trace-v2` (PR #146, not yet merged); every row stays *not run*: nobody has run them on a device. MT-81 and MT-80 also cover TalkBack and VoiceOver for the sheets and the Tamil and Telugu weekday patterns; the TC-M-25 re-run is owed ([06](../06-test-plan.md)). |
 | 0.10 | 2026-10-10 | Claude (Code), engineer | New section 16, **voice input (Planned)**: MT-82..MT-87 for what CI cannot test (a real microphone and the permission dialogs, the speak-review-send flow, Safari mp4, auto-stop, TalkBack and VoiceOver, no audio at rest), and the note that `firebase.json` `microphone=()` changes only in the web voice pull request ([03](../03-design.md) ADR-37, S4b-BL-218). |
+| 0.11 | 2026-10-10 | Claude (Code), engineer | New section 17, **a provider safety block** (MT-88, S4b-BL-232). |
 
 ## 1. How to use this list
 
@@ -869,3 +870,18 @@ Added 2026-10-10 with the design ([03](../03-design.md) ADR-37, [ai/voice-input]
 | MT-87 | No audio at rest; the recogniser is on-device (Planned) | owner | E1/E4/E5 | no (planned, not built) | |
 
 **The website's `Permissions-Policy`.** `web/firebase.json` keeps `microphone=()` today (also named in [07](../07-secure-build-and-deploy.md) and checklist section 9). It changes to `microphone=(self)` **only in the web voice pull request (S4b-BL-221)**, together with TC-S-23 and the row that reads the header; until then the header test must still see `microphone=()`.
+
+## 17. A provider safety block (S4b-BL-232)
+
+#### MT-88 The AI service declines a text (needs a real key)
+- **Area:** Website, Android app, iPhone app. **Who:** owner. **Env:** E1, E4, E5 as named.
+- **Steps:** (1) With your own Gemini key, open *Ask a question* and type a question made only of strong abuse in English, then in Hindi, Tamil, Telugu and Hinglish (use words you would not put in a note). (2) Press *Ask*. (3) Do the same in *Fill in from listing text* with an abusive "listing". (4) Repeat with an OpenAI-compatible service and Anthropic if you have a key. (5) Type a normal question afterwards.
+- **Expected:** Either the service answers or you see "The AI service declined this text. Nothing was changed. Edit the wording and try again." (in the app's language) in the same place as other AI errors, announced by the screen reader; nothing is saved or changed; the message never repeats your words or the provider's; pressing *Ask* again sends one new request, not a burst; a normal question works at once. The app itself never blocks or alters what you type.
+- **Automated or reviewed by:** TC-AI-40 (canned responses only; a real provider's choice to decline cannot be forced in CI). Reviewer ran it: no.
+- Pass / Fail / Date: ____  by: ____
+
+### 17.1 Summary rows (add to §13 when the owner starts the run)
+
+| Id | Title | Who | Env | Reviewer ran it | Result |
+|---|---|---|---|---|---|
+| MT-88 | The AI service declines a text | owner | E1/E4/E5 | no | |

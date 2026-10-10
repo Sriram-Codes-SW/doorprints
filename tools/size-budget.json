@@ -1,0 +1,44 @@
+{
+ "format": "doorprints-size-budget/1",
+ "note": "The file-size budget (docs/14 N21 rule 1, docs/03 ADR-36 §18.6, S4b-BL-205), read by tools/check-size-budget.mjs. `allow`: the product files already over `fail` on 2026-10-10 (main at 33807905), each at its size that day; an entry may only go down or go away (tools/check-floor.mjs reports a raised or added one). `tables`: translation dictionaries, which grow with every string by design and are not measured.",
+ "warn": 600,
+ "fail": 900,
+ "roots": [
+  "android/",
+  "web/src/",
+  "backend/src/main/",
+  "ios/"
+ ],
+ "extensions": [
+  ".kt",
+  ".java",
+  ".ts",
+  ".html",
+  ".css",
+  ".swift",
+  ".js"
+ ],
+ "tables": {
+  "web/src/app/i18n/en.ts": "the English dictionary",
+  "web/src/app/i18n/hi.ts": "the Hindi dictionary",
+  "web/src/app/i18n/ta.ts": "the Tamil dictionary",
+  "web/src/app/i18n/te.ts": "the Telugu dictionary",
+  "web/src/app/export/export-strings.ts": "the readable copies' words in four languages",
+  "android/shared/src/commonMain/kotlin/app/doorprints/shared/export/ExportStrings.kt": "the readable copies' words in four languages"
+ },
+ "allow": {
+  "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt": 1302,
+  "android/ui/src/commonMain/kotlin/app/doorprints/ui/HouseEditScreen.kt": 1779,
+  "android/ui/src/commonMain/kotlin/app/doorprints/ui/HouseListScreen.kt": 1033,
+  "android/ui/src/commonMain/kotlin/app/doorprints/ui/ImportScreen.kt": 1014,
+  "android/ui/src/commonMain/kotlin/app/doorprints/ui/MapScreen.kt": 1519,
+  "android/ui/src/commonMain/kotlin/app/doorprints/ui/SettingsScreen.kt": 948,
+  "backend/src/main/java/app/doorprints/server/backup/BackupService.java": 1250,
+  "web/src/app/core/ai/ai-core.ts": 1111,
+  "web/src/app/data/sync.service.ts": 1020,
+  "web/src/app/pages/house-detail/house-detail-page.html": 1106,
+  "web/src/app/pages/house-detail/house-detail-page.ts": 1214,
+  "web/src/app/pages/map/map-page.ts": 1023,
+  "web/src/styles.css": 1036
+ }
+}

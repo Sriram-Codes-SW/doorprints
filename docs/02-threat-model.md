@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Threat model (STRIDE) |
-| Version | 0.69 |
+| Version | 0.70 |
 | Date | 2026-10-10 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -80,6 +80,7 @@
 | 0.67 | 2026-10-08 | Claude (Code) | **T-S8 and T-I27, two backend changes** ([03](03-design.md) §12.1): T-S8 gains the cap on open pairing requests (50 in all, 5 per source, refused with 429, never evicted; S4b-BL-161, review finding B2; residual: many addresses can fill the slots for 10 minutes); T-I27 gains the owner's recovery switch `OWNER_SETUP_LINK_IN_LOG` (default off; S4b-BL-188), the explicit way back when the only signed-in browser is lost while its session row is still open. Tests TC-S-47, TC-S-48, TC-I-48. |
 | 0.68 | 2026-10-09 | Claude (Code) | **T-S8:** the caps on open pairing requests are settings (`PAIRING_MAX_OPEN`, `PAIRING_MAX_PER_SOURCE`, defaults 50 and 5 unchanged) so the release gate's API scan can lift them: the fixed caps made `/api/pair/start` answer 429 to the scanner, which ZAP read as a SQL injection on `deviceName` (a false positive; S4b-BL-191, #205). Test TC-S-49. |
 | 0.69 | 2026-10-10 | Claude (Code), engineer | **New section 11, voice input (planned, [03](03-design.md) ADR-37, S4b-BL-218, [ai/voice-input](ai/voice-input.md)):** T-I45 (audio to the provider, the new data flow DF-49), T-I46 (spoken personal data cannot be redacted before transcription), T-T20 (prompt injection by speech), T-I47 (accidental activation), T-D14 (cost surprise), T-I48 (audio never stored: a testable control), AB-17 and RR-33 (proposed). All Planned, nothing is built. |
+| 0.70 | 2026-10-10 | Claude (Code), engineer | **AB-12, provider safety blocks and abusive text** (S4b-BL-232, [ai/ai-design](ai/ai-design.md) 15): the owner decision that the app does not filter or censor what people type or say, and why; the provider's own block is handled as a distinct failure with no provider text kept. |
 
 Related: [Requirements](01-requirements.md) · [DFDs](04-data-flow-diagrams.md) · [Design](03-design.md) · [Test plan](06-test-plan.md) · [AI docs](ai/)
 
@@ -285,6 +286,7 @@ flowchart LR
 | AB-09 | User misuse | Hunt mode left running all day. Visits recorded at a friend's home (sensitive location). | T-D6, A1 | Auto-stop, easy visit deletion, retention purge |
 | AB-10 | Stalker (misuse of the product) | Someone installs the app on another person's phone to track them | A1 | The ongoing notification cannot be hidden (Android FGS rule). No remote live-location feature. Data stays with the phone owner's server. |
 | AB-11 | Someone else on the owner's network or Tailscale share | Starts pairing requests named like the owner's devices, hoping one gets approved | T-S8 | The owner types the code from the device in front of them; nothing is approved from a list; a new device has AI off; *Revoke* on the owner page. |
+| AB-12 | Person typing or speaking abuse, or a provider that declines the text | A note, a pasted listing or a question holds expletives or abuse; the AI provider's own safety system declines the call, or its error body echoes the words | T-I7, T-D4 | **No filtering or censoring of what people type or say** (owner decision 2026-10-10): the notes are private, word lists fail across English, Hindi, Tamil, Telugu and Hinglish, and a filter would flag honest notes. Instead the provider's verdict is read from named fields only (`promptFeedback.blockReason`, `finishReason`, `finish_reason` `content_filter`, `refusal`, `stop_reason` `refusal`), is **never retried** (no repeated spend, no hammering a safety system) and never walks the structured-output ladder, is reported as one fixed message with no provider text, and the provider's words are never logged or kept. Residual: the provider's own terms apply to what is sent to it; the server still answers a block as a generic 503 until S4b-BL-233. |
 
 ## 5. Findings in the current code
 

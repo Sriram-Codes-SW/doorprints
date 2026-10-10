@@ -25,6 +25,7 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.isPopup
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -172,18 +173,26 @@ class AreasScreenTest {
             repo.savePlace(Place("p_0a1b2c3d", "Office", 13.0827, 80.2707))
         }
         compose.setContent { ProvideAppServices { HouseEditScreen(houseId = "h1", newLat = null, newLon = null, visitId = null, onDone = {}) } }
+        // S4b-BL-189: the notes, the places (Distances) and the dialogs' contents each arrive from Room or DataStore on
+        // their own threads, which Compose's idling does not wait for; every assertion on one waits for it first.
         waitFor("Water tanker every morning")
+        waitFor("Area: Adyar")
         compose.onNodeWithText("Area: Adyar").performScrollTo().assertExists()
+        waitFor("8.6 km · about 141 min on foot")
         compose.onNodeWithText("Distances").performScrollTo().assertExists()
         compose.onNodeWithText("8.6 km · about 141 min on foot", substring = true).performScrollTo().assertExists()
+        waitFor("Add a note for this street")
         compose.onNodeWithText("Add a note for this street").performScrollTo().performClick()
+        waitFor("Street: MG Road")
         compose.onNodeWithText("Street: MG Road").assertExists()
         compose.onNode(hasText("Note") and hasAnyAncestor(isDialog())).performTextInput("Floods in the monsoon")
         compose.onNode(hasText("Save") and hasAnyAncestor(isDialog())).performClick()
         compose.waitUntil(5_000) { runBlocking { repo.areaNotes() }.any { it.street == "MG Road" && it.text == "Floods in the monsoon" } }
         waitFor("Floods in the monsoon")
         // For an area: the area this house is in comes first and is marked.
+        waitFor("Add a note for an area")
         compose.onNodeWithText("Add a note for an area").performScrollTo().performClick()
+        compose.waitUntil(5_000) { compose.onAllNodesWithContentDescription("Area: Adyar (this house is in it)").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithContentDescription("Area: Adyar (this house is in it)").assertExists()
     }
 

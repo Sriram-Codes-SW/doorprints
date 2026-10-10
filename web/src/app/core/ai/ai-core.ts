@@ -23,7 +23,8 @@
 import type { HouseAnswer, HouseRoom } from '../models';
 import type { Viewing } from '../../shared/viewing';
 import { cmToFeetInches } from '../../shared/room-sizes';
-import { inTheRunning } from '../../shared/house-status';
+import { FALLBACK_MAX_METERS, FALLBACK_NONE_IN_REACH, FALLBACK_REASON, FALLBACK_SUMMARY, fallbackPoints, haversineMeters, legsInOrder, nearestNeighbour, roundHalfUp, walkMinutes } from './plan-fallback';
+import type { AgentPlan, Leg, PlanCandidate, RoutePoint } from './plan-fallback';
 import type { AskResponse, Citation, HouseDraft, PlanResponse, PlannedStop } from '../ai.service';
 
 // ---------------------------------------------------------------- contact removal (ContactRedactor)
@@ -113,6 +114,8 @@ function phonePattern(phone: string | null | undefined): RegExp | null {
   const variants = new Set([digits]);
   if (digits.length > 10) variants.add(digits.slice(-10));
   if (digits.startsWith('0') && digits.length > MIN_SAVED_PHONE_DIGITS) variants.add(digits.slice(1));
+  // A metro landline (0 + 2-digit STD code + 8 digits) is often written in a note without its STD code (S4b-BL-174a).
+  if (digits.length === 11 && digits.startsWith('0')) variants.add(digits.slice(3));
   const alternatives = [...variants].map((v) => v.split('').join('[ .()\\-]{0,2}'));
   return new RegExp(`(?<!\\d)\\+?(?:${alternatives.join('|')})(?!\\d)`, 'gu');
 }
@@ -870,81 +873,14 @@ export function citations(answer: ModelAnswer, docs: AskDocument[], question: st
 
 // ---------------------------------------------------------------- routes (RouteOptimizer) and plan checks
 
-export interface RoutePoint { id: string; lat: number; lon: number }
-export interface Leg { to: RoutePoint; meters: number; walkMinutes: number }
-
-const EARTH_RADIUS_M = 6_371_008.8;
-const rad = (d: number) => (d * Math.PI) / 180;
-
-/** The great-circle distance between two points in metres. */
-export function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const dLat = rad(lat2 - lat1);
-  const dLon = rad(lon2 - lon1);
-  const a = Math.sin(dLat / 2) ** 2 + Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(dLon / 2) ** 2;
-  return 2 * EARTH_RADIUS_M * Math.asin(Math.min(1, Math.sqrt(a)));
-}
-
-/** Whole minutes to walk `meters`: a 1.3 detour factor over the straight line at 80 m a minute, rounded up. */
-export function walkMinutes(meters: number): number {
-  return meters <= 0 ? 0 : Math.ceil((meters * 1.3) / 80);
-}
-
-/** Java's Math.round (half up); JavaScript's Math.round is half up for positives too, so this is it. */
-export const roundHalfUp = (v: number) => Math.floor(v + 0.5);
-
-/**
- * Orders `stops` by going to the nearest unvisited one each time, starting at the given point. Good enough for a walk
- * between a few houses and the same rule as the server's RouteOptimizer.
- */
-export function nearestNeighbour(lat: number, lon: number, stops: RoutePoint[]): Leg[] {
-  const remaining = [...stops];
-  const legs: Leg[] = [];
-  while (remaining.length) {
-    let bestIdx = 0;
-    let best = Number.MAX_VALUE;
-    remaining.forEach((p, i) => {
-      const d = haversineMeters(lat, lon, p.lat, p.lon);
-      if (d < best) { best = d; bestIdx = i; }
-    });
-    const next = remaining.splice(bestIdx, 1)[0];
-    legs.push({ to: next, meters: best, walkMinutes: walkMinutes(best) });
-    lat = next.lat;
-    lon = next.lon;
-  }
-  return legs;
-}
-
-/** The legs from the start point through `stops` in the order given. */
-export function legsInOrder(lat: number, lon: number, stops: RoutePoint[]): Leg[] {
-  return stops.map((p) => {
-    const d = haversineMeters(lat, lon, p.lat, p.lon);
-    lat = p.lat;
-    lon = p.lon;
-    return { to: p, meters: d, walkMinutes: walkMinutes(d) };
-  });
-}
-
-/**
- * A house offered to the model for a visit plan: the facts it needs and its distance from the start point. Never the
- * contact.
- */
-export interface PlanCandidate {
-  id: string; label: string; locality: string | null; street: string | null; status: string | null;
-  price: number | null; priceType: string | null; bedrooms: number | null; rating: number | null;
-  lat: number; lon: number; distanceMeters: number;
-}
-
-export interface AgentPlan { summary?: string | null; stops?: { houseId?: string | null; reason?: string | null }[] | null }
-
-export const FALLBACK_REASON = 'Found by the search; ordered by walking distance';
-export const FALLBACK_SUMMARY = 'The assistant could not finish a plan, so these are the houses it found, ordered by nearest neighbour from your start point.';
 const UUID_ONLY = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 
 /**
  * Builds the visit plan from what the model chose, trusting only ids that were offered as candidates (each once, up to
  * `maxStops`). The model decides which houses; the order and the walking legs are computed here. When the model gave no
  * plan, or only ids that were not candidates, the plan falls back to the nearest-neighbour order of the houses in the
- * running and says so (`fallback`).
+ * running within {@link FALLBACK_MAX_METERS} of the start (the nearest `maxStops` of them) and says so (`fallback`);
+ * with none in reach it has no stops and says that (S4b-BL-199, as the server's `assemble`).
  */
 export function assemblePlan(plan: AgentPlan | null, seen: Map<string, PlanCandidate>, lat: number, lon: number, maxStops: number): PlanResponse {
   const byId = new Map([...seen].map(([k, v]) => [k.toLowerCase(), v]));
@@ -968,11 +904,11 @@ export function assemblePlan(plan: AgentPlan | null, seen: Map<string, PlanCandi
   let legs: Leg[];
   if (plan == null || (!chosen.length && seen.size > 0 && (plan.stops?.length ?? 0) > 0)) {
     fallback = true;
-    const points = [...seen.values()].filter((h) => inTheRunning(h.status)).slice(0, maxStops).map((h) => ({ id: h.id, lat: h.lat, lon: h.lon }));
+    const points = fallbackPoints(seen, lat, lon, maxStops);
     legs = nearestNeighbour(lat, lon, points);
     chosen = legs.map((l) => seen.get(l.to.id)!);
     reasons = legs.map(() => FALLBACK_REASON);
-    summary = FALLBACK_SUMMARY;
+    summary = points.length ? FALLBACK_SUMMARY : FALLBACK_NONE_IN_REACH;
   } else {
     legs = legsInOrder(lat, lon, chosen.map((h) => ({ id: h.id, lat: h.lat, lon: h.lon })));
   }
@@ -1109,3 +1045,5 @@ Rules:
 }
 
 export type { AskResponse };
+export { FALLBACK_MAX_METERS, FALLBACK_NONE_IN_REACH, FALLBACK_REASON, FALLBACK_SUMMARY, haversineMeters, legsInOrder, nearestNeighbour, roundHalfUp, walkMinutes };
+export type { AgentPlan, Leg, PlanCandidate, RoutePoint };

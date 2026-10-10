@@ -268,6 +268,16 @@
       <label for="ai-features">{{ 'connect.aiSwitch' | t }}</label>
       <p id="ai-features-hint" class="muted small">{{ 'connect.aiHint' | t }}</p>
     </div>
+    <!-- S4b-BL-215: three honest sentences (what it is for, what it costs, what it sends) with the guide's section.
+         Always shown, so the choice to turn AI on is informed; the same words as the guide and the phone apps. -->
+    <div class="ai-worth muted small" id="ai-worth">
+      <p>{{ 'connect.aiWorth' | t }}</p>
+      <p>{{ 'connect.aiCost' | t }}</p>
+      <p>{{ 'connect.aiSends' | t }}</p>
+      <p>
+        <a [href]="aiGuideHref()" target="_blank" rel="noopener noreferrer" [attr.aria-label]="'connect.aiGuideAria' | t">{{ 'connect.aiGuide' | t }}</a>
+      </p>
+    </div>
     @if (ai.optedIn()) {
       <fieldset class="ai-provider">
         <legend class="sr-only">{{ 'connect.aiProviderLegend' | t }}</legend>

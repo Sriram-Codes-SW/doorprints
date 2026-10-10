@@ -1658,6 +1658,8 @@ export const hi: Dict = {
   'connect.aiLocalCorsHintOther': 'जब तक लोकल सर्वर अपनी CORS सेटिंग में https://doorprints.web.app को अनुमति न दे, ब्राउज़र इस साइट को उस तक पहुँचने नहीं देता।',
   'ai.keyRejectedHost': '{host} ने आपकी कुंजी नहीं मानी। उसे कनेक्शन पेज पर AI सुविधाएँ के नीचे जाँचें।',
   'ai.modelNotFound': 'AI सेवा इस मॉडल को नहीं जानती। मॉडल का नाम कनेक्शन पेज पर AI सुविधाएँ के नीचे जाँचें।',
+  // S4b-BL-232 (2026-10-10): under review (owner rule: hi/ta/te ship marked under review).
+  'ai.blocked': 'AI सेवा ने इस टेक्स्ट को स्वीकार नहीं किया। कुछ भी नहीं बदला गया। शब्द बदलकर फिर कोशिश करें।',
   'ai.unreachable': '{host} तक नहीं पहुँचा जा सका। पता और अपना कनेक्शन जाँचें।',
   'ai.unreachableLocal': '{host} तक नहीं पहुँचा जा सका। जाँचें कि वह चल रहा है और इस साइट को अनुमति देता है (CORS); वरना ब्राउज़र उसे रोक देता है।',
   // S4b-BL-182 (2026-10-08): the paste box says how much of a long listing is left out. Under review (owner rule: hi/ta/te ship marked under review).
@@ -1670,4 +1672,10 @@ export const hi: Dict = {
   'connect.aiQualityBalancedHint': 'मध्यम सोच: गति और लागत में Quality और Economy के बीच।',
   'connect.aiQualityEconomy': 'Economy (किफ़ायती)',
   'connect.aiQualityEconomyHint': 'हमारी जाँच में लगभग 40% सस्ता और लगभग दोगुना तेज़, और जवाब उतने ही अच्छे।',
+  // S4b-BL-215 (2026-10-10): three honest sentences on the AI card, the words of the guide's 'Is AI worth it for me?'. Under review (owner rule: hi/ta/te ship marked under review).
+  'connect.aiWorth': 'AI आपके अपने सहेजे हुए मकानों और नोट्स को पढ़ता है। उसे बाज़ार, कानून या किसी इलाक़े की कोई जानकारी नहीं है, और Doorprints का बाकी हिस्सा उसके बिना भी चलता है।',
+  'connect.aiCost': 'पैसे वाली कुंजी पर हर उपयोग में लगभग एक रुपया या कुछ रुपये लगते हैं। Google का मुफ़्त स्तर मुफ़्त है पर उसकी रोज़ की सीमा है, और आप जो भेजते हैं उसे Google पढ़ सकता है।',
+  'connect.aiSends': 'आपका सवाल और मिलते-जुलते मकानों के नोट्स आपकी चुनी सेवा को जाते हैं; सहेजे गए संपर्क के नाम, फ़ोन और ईमेल पहले, जहाँ तक हम कर सकते हैं, बदल दिए जाते हैं। चिपकाया हुआ विज्ञापन जैसा है वैसा ही भेजा जाता है।',
+  'connect.aiGuide': 'क्या AI मेरे लिए ठीक है? गाइड पढ़ें',
+  'connect.aiGuideAria': 'क्या AI मेरे लिए ठीक है? गाइड पढ़ें (नए टैब में खुलता है)',
 };

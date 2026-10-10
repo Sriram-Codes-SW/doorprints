@@ -51,11 +51,31 @@ export async function postAiJson(
   body: object,
   timeoutMs: number = REQUEST_TIMEOUT_MS,
 ): Promise<AiReply> {
+  return postAi(fetchImpl, url, { 'Content-Type': 'application/json', ...headers }, JSON.stringify(body), timeoutMs);
+}
+
+/**
+ * {@link postAiJson} for a `multipart/form-data` body (OpenAI's `/audio/transcriptions`, voice input, ADR-37): the same
+ * time limit, redirect mode and failure codes. No `Content-Type` is set, so the browser writes the form's own boundary.
+ * The form (the audio in it) stays in memory; neither it nor the answer is logged or put in an error (T-I48).
+ */
+export async function postAiMultipart(
+  fetchImpl: FetchLike,
+  url: string,
+  headers: Record<string, string>,
+  form: FormData,
+  timeoutMs = REQUEST_TIMEOUT_MS,
+): Promise<AiReply> {
+  return postAi(fetchImpl, url, { ...headers }, form, timeoutMs);
+}
+
+/** The exchange both helpers share. */
+async function postAi(fetchImpl: FetchLike, url: string, headers: Record<string, string>, body: BodyInit, timeoutMs: number): Promise<AiReply> {
   try {
     const res = await fetchImpl(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...headers },
-      body: JSON.stringify(body),
+      headers,
+      body,
       redirect: 'manual',
       credentials: 'omit',
       cache: 'no-store',

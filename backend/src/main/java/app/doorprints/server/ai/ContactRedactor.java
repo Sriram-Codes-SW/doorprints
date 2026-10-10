@@ -310,6 +310,8 @@ public final class ContactRedactor {
             variants.add(digits);
             if (digits.length() > 10) variants.add(digits.substring(digits.length() - 10));
             if (digits.startsWith("0") && digits.length() > MIN_SAVED_PHONE_DIGITS) variants.add(digits.substring(1));
+            // A metro landline (0 + 2-digit STD code + 8 digits) is often written in a note without its STD code (S4b-BL-174a).
+            if (digits.length() == 11 && digits.startsWith("0")) variants.add(digits.substring(3));
             var alternatives = new ArrayList<String>();
             for (var v : variants) {
                 var sb = new StringBuilder();

@@ -715,6 +715,16 @@ describe('what a screen reader says (TC-U-WEB-A11Y-10)', () => {
       expect(rule, name).not.toMatch(/display:\s*(flex|grid|inline-flex)/);
     }
   });
+
+  it('on short phones the legend is placed at the top of the map, the actions at the bottom (S4b-BL-49)', () => {
+    const block = /@media \(max-width: 760px\) and \(max-height: 700px\) \{([\s\S]*)\n\}/.exec(mapCss)?.[1] ?? '';
+    expect(block).not.toBe('');
+    expect(/\.legend \{[^}]*position: absolute;[^}]*top: var\(--space-3\);/.test(block)).toBe(true);
+    // Clear of MapLibre's control column at the end, as the add-mode hint is.
+    expect(/\.legend \{[^}]*max-width: calc\(100% - var\(--space-3\) - var\(--target\)/.test(block)).toBe(true);
+    expect(/\.map-stack \{[^}]*position: static;/.test(block)).toBe(true);
+    expect(/\.map-actions,\s*\.map-stack\.with-legend \.map-actions \{[^}]*bottom: var\(--space-2\);/.test(block)).toBe(true);
+  });
 });
 
 function accessibleNameOf(el: Element): string {

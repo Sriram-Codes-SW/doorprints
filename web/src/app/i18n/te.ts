@@ -1658,6 +1658,8 @@ export const te: Dict = {
   'connect.aiLocalCorsHintOther': 'లోకల్ సర్వర్ తన CORS సెట్టింగ్‌లలో https://doorprints.web.app ను అనుమతించకపోతే, ఈ సైట్ దాన్ని చేరడాన్ని బ్రౌజర్ అడ్డుకుంటుంది.',
   'ai.keyRejectedHost': '{host} మీ కీని అంగీకరించలేదు. కనెక్షన్ పేజీలో AI ఫీచర్లు కింద దాన్ని సరిచూడండి.',
   'ai.modelNotFound': 'AI సేవకు ఈ మోడల్ తెలియదు. కనెక్షన్ పేజీలో AI ఫీచర్లు కింద మోడల్ పేరును సరిచూడండి.',
+  // S4b-BL-232 (2026-10-10): under review (owner rule: hi/ta/te ship marked under review).
+  'ai.blocked': 'AI సేవ ఈ వచనాన్ని అంగీకరించలేదు. ఏదీ మార్చబడలేదు. పదాలను మార్చి మళ్లీ ప్రయత్నించండి.',
   'ai.unreachable': '{host} ను చేరుకోలేకపోయాం. చిరునామాను, మీ కనెక్షన్‌ను సరిచూడండి.',
   'ai.unreachableLocal': '{host} ను చేరుకోలేకపోయాం. అది నడుస్తోందా, ఈ సైట్‌ను అనుమతిస్తోందా (CORS) సరిచూడండి; లేకపోతే బ్రౌజర్ దాన్ని అడ్డుకుంటుంది.',
   // S4b-BL-182 (2026-10-08): the paste box says how much of a long listing is left out. Under review (owner rule: hi/ta/te ship marked under review).
@@ -1670,4 +1672,10 @@ export const te: Dict = {
   'connect.aiQualityBalancedHint': 'మధ్యస్థ ఆలోచన: వేగం, ఖర్చులో Quality, Economy మధ్య.',
   'connect.aiQualityEconomy': 'Economy (పొదుపు)',
   'connect.aiQualityEconomyHint': 'మా పరీక్షల్లో సుమారు 40% చౌక, సుమారు రెట్టింపు వేగం; జవాబులు అంతే బాగున్నాయి.',
+  // S4b-BL-215 (2026-10-10): three honest sentences on the AI card, the words of the guide's 'Is AI worth it for me?'. Under review (owner rule: hi/ta/te ship marked under review).
+  'connect.aiWorth': 'AI మీరు సేవ్ చేసిన మీ సొంత ఇళ్లు, నోట్స్‌ను చదువుతుంది. మార్కెట్, చట్టం లేదా ఒక ప్రాంతం గురించి దానికి ఏమీ తెలియదు; Doorprints లోని మిగతా భాగం అది లేకుండా కూడా పనిచేస్తుంది.',
+  'connect.aiCost': 'చెల్లింపు కీతో ప్రతి వినియోగానికి సుమారు ఒక రూపాయి లేదా కొన్ని రూపాయలు అవుతుంది. Google ఉచిత స్థాయి ఉచితమే, కానీ రోజువారీ పరిమితి ఉంది; మీరు పంపేదాన్ని Google చదవవచ్చు.',
+  'connect.aiSends': 'మీ ప్రశ్న, సరిపోయే ఇంటి నోట్స్ మీరు ఎంచుకున్న సేవకు వెళ్తాయి; సేవ్ చేసిన కాంటాక్ట్ పేర్లు, ఫోన్ నంబర్లు, ఈమెయిళ్లను ముందుగా, మా వల్ల అయినంత వరకు, మారుస్తాము. పేస్ట్ చేసిన ప్రకటన పేస్ట్ చేసినట్లే పంపబడుతుంది.',
+  'connect.aiGuide': 'AI నాకు ఉపయోగమా? గైడ్ చదవండి',
+  'connect.aiGuideAria': 'AI నాకు ఉపయోగమా? గైడ్ చదవండి (కొత్త ట్యాబ్‌లో తెరుచుకుంటుంది)',
 };

@@ -23,6 +23,7 @@ import android.content.res.Configuration
 import android.os.LocaleList
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.core.app.ApplicationProvider
+import app.doorprints.export.ExportBuilder
 import app.doorprints.ui.Formats
 import app.doorprints.ui.appLanguage
 import app.doorprints.ui.res.Res
@@ -75,6 +76,14 @@ class AppLocaleTest {
 
         assertEquals("hi", Locale.getDefault().language)
         assertEquals("नक्शा", uiString(Res.string.nav_map))
+    }
+
+    @Test
+    fun theExportsDefaultLanguageIsTheResolvedOneNotTheConfigurationsFirst() {
+        // S4b-BL-22: Marathi first (not shipped), Hindi second: the screens are Hindi, so the copy is proposed in Hindi.
+        assertEquals("hi", ExportBuilder.defaults(phoneSetTo("mr-IN", "hi-IN")).language)
+        assertEquals("en", ExportBuilder.defaults(phoneSetTo("fr-FR")).language)
+        assertEquals("ta", ExportBuilder.defaults(phoneSetTo("ta-IN", "hi-IN")).language)
     }
 
     @Test
