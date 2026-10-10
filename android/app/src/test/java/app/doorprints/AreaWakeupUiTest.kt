@@ -48,6 +48,8 @@ import app.doorprints.ui.LocalAppServices
 import app.doorprints.ui.LocalPlatformFeatures
 import app.doorprints.ui.PlatformFeatures
 import app.doorprints.ui.ProvideAppServices
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -115,6 +117,11 @@ class AreaWakeupUiTest {
         runBlocking {
             settings.setAreaWakeup(false)
             settings.clearAreaWakeupOffNotice()
+            // S4b-BL-100: the application's scope (SupervisorJob on Dispatchers.IO) and anything it launched for this
+            // test's repository must not outlive the test's Robolectric application: an exception thrown by one after
+            // its data directory is gone reached no test and came out as UncaughtExceptionsBeforeTest in the next
+            // test of the same JVM (the compose rule reports exceptions that arrive between tests at the next start).
+            app.appScope.coroutineContext[Job]?.cancelAndJoin()
         }
     }
 
