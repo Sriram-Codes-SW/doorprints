@@ -1,0 +1,59 @@
+{
+  "spec": "web/src/app/core/ai/address-variants.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/core/ai/address-variants.ts",
+      "find": "const HOUSE_KEYS = ['address', 'street', 'locality', 'label', 'notesAppend'];",
+      "replace": "const HOUSE_KEYS = ['address', 'street', 'locality', 'label', 'notesAppend', 'price'];",
+      "expect": "refuses a house row that names price"
+    },
+    {
+      "file": "web/src/app/core/ai/address-variants.ts",
+      "find": "return { set: DEFAULT_ADDRESS_SET, golden, notApplicable: [] };",
+      "replace": "return { set: DEFAULT_ADDRESS_SET, golden: deepCopy(golden), notApplicable: [] };",
+      "expect": "is the input object itself"
+    },
+    {
+      "file": "web/src/app/core/ai/address-variants.ts",
+      "find": "key !== 'note' && mentions(item, tokens)",
+      "replace": "mentions(item, tokens)",
+      "expect": "runs a case that is rewritten"
+    },
+    {
+      "file": "web/src/app/core/ai/address-variants.ts",
+      "find": "w.length >= 3 && !generic.has(w)",
+      "replace": "w.length >= 3",
+      "expect": "does not count a word the new text still holds, a generic word"
+    },
+    {
+      "file": "web/src/app/core/ai/address-variants.ts",
+      "find": "/\\p{L}/u.test(w) && ",
+      "replace": "",
+      "expect": "does not count a word the new text still holds, a generic word"
+    },
+    {
+      "file": "web/src/app/core/ai/address-variants.ts",
+      "find": "`${notes} ${row.notesAppend}`",
+      "replace": "`${notes}${row.notesAppend}`",
+      "expect": "writes notes as the original"
+    },
+    {
+      "file": "web/src/app/core/ai/address-variants.ts",
+      "find": "Object.keys(o).sort()",
+      "replace": "Object.keys(o)",
+      "expect": "writes canonical JSON with sorted keys"
+    },
+    {
+      "file": "web/src/app/core/ai/address-variants.ts",
+      "find": "if (!list.includes(g)) list.push(g);",
+      "replace": "list.push(g);",
+      "expect": "hostile ends every address"
+    },
+    {
+      "file": "web/src/app/core/ai/address-variants.ts",
+      "find": "w.length >= 3 && !generic.has(w)",
+      "replace": "!generic.has(w)",
+      "expect": "does not count a word the new text still holds, a generic word"
+    }
+  ]
+}

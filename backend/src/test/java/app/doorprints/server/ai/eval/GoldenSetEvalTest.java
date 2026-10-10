@@ -85,7 +85,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  * is scored and gated as ever, trials 2 and later only fill the report's stability table; each repeat is one more
  * plan-only pass, so run it with {@code AI_EVAL_TYPES=plan}; the repeats also stop at the time budget, and the
  * stability table is in every partial scorecard) and
- * {@code AI_EVAL_DEADLINE_MS} (time budget, default 35 minutes).
+ * {@code AI_EVAL_DEADLINE_MS} (time budget, default 35 minutes) and
+ * {@code AI_EVAL_ADDRESS_SET} (S4b-BL-226: a set of {@code docs/ai/evals/address-variants.json}, default {@code default}; the
+ * run then uses that set's addresses, the cases the set cannot ask about are listed as not applicable, the scorecard says
+ * {@code Address set} and every metric is "not gated": the verdict of the golden set is the default run's, and a run under a
+ * set fails only on a harness error or a stop; the default run does not read the file and its scorecard is unchanged).
  *
  * <p>Time budget (S4b-BL-202): the scorecard is rewritten after every case and marked {@code PARTIAL (n of N cases)}
  * until the run completes, so a killed job still leaves one. When the budget is used up between cases (or before a
@@ -178,11 +182,19 @@ class GoldenSetEvalTest {
     /** Harness errors (seeding, re-indexing, anything that aborted the run): any entry makes the scorecard FAIL. */
     private final List<String> errors = new ArrayList<>();
     private final Map<String, String> header = EvalScorer.header();
+    /** The address set of this run (S4b-BL-226), or null for the default run, which is the only one with a verdict. */
+    private AddressVariants.Run addressRun;
 
     @Test
     void goldenSetMeetsThresholds() throws IOException {
         var path = GoldenSet.locate();
-        var golden = GoldenSet.load(path);
+        var loaded = GoldenSet.load(path);
+        // AI_EVAL_ADDRESS_SET (S4b-BL-226): unset, empty or "default" is the run as ever (the variants file is not even
+        // read); a name from address-variants.json runs the golden set with that set's addresses, informational only.
+        var addressName = env("AI_EVAL_ADDRESS_SET", AddressVariants.DEFAULT_SET);
+        addressRun = AddressVariants.isDefault(addressName) ? null
+                : AddressVariants.load(AddressVariants.locate()).select(loaded, addressName);
+        var golden = addressRun == null ? loaded : addressRun.golden();
         var requestFactory = new JdkClientHttpRequestFactory();
         requestFactory.setReadTimeout(Duration.ofMinutes(3));
         api = RestClient.builder()
@@ -200,7 +212,8 @@ class GoldenSetEvalTest {
         deadline = new Deadline(Clock.systemUTC(), budget);
         header.put("Time budget", budget.toMinutes() + " min");
 
-        header.put("Golden set", "v" + golden.version() + " (" + golden.date() + "), " + path.normalize());
+        header.put("Golden set", "v" + loaded.version() + " (" + loaded.date() + "), " + path.normalize());
+        if (addressRun != null) header.put("Address set", addressRun.headerValue());
         boolean vertex = "vertex".equals(provider);
         header.put("Provider", vertex
                 ? "vertex (Vertex AI, chat " + vertexLocation + ", embeddings "
@@ -210,7 +223,13 @@ class GoldenSetEvalTest {
         header.put("Thinking level", EvalScorer.thinkingLabel(vertex, vertexThinkingLevel, openAiReasoningEffort));
         header.put("Embedding", embeddingProvider + " / " + embeddingModel);
         header.put("Case types", String.join(", ", types.stream().sorted().toList()));
-        if (repeats > 1 && types.contains(PLAN)) header.put("Plan trials", repeats + " (trial 1 gated, the rest informational)");
+        var repeatTypes = new java.util.LinkedHashSet<>(EvalScorer.repeatTypesFrom(System.getenv("AI_EVAL_REPEAT_TYPES")));
+        repeatTypes.retainAll(types);
+        if (repeats > 1 && repeatTypes.equals(Set.of(PLAN))) {
+            header.put("Plan trials", repeats + " (trial 1 gated, the rest informational)");
+        } else if (repeats > 1 && !repeatTypes.isEmpty()) {
+            header.put("Trials", repeats + " of the " + String.join(", ", repeatTypes) + " cases (trial 1 gated, the rest informational)");
+        }
         header.put("Started", started.toString());
         checkThresholdsDeclared(golden);
 
@@ -229,7 +248,12 @@ class GoldenSetEvalTest {
         try {
             writeReport(started, golden, results, new EvalScorer.Progress(0, planned.size(), false));
             boolean seeded = true;
-            if (types.contains(ASK) || types.contains(PLAN)) seeded = seed(golden);
+            if (addressRun != null && addressRun.error() != null) {
+                // The applied set is not the one the file records: nothing is seeded or run, the scorecard says why.
+                errors.add(addressRun.error());
+                planned.clear();
+                seeded = false;
+            } else if (types.contains(ASK) || types.contains(PLAN)) seeded = seed(golden);
             // Without fixtures and an index, ask/plan scores would only measure the seeding failure.
             if (!seeded) planned.removeIf(c -> !EXTRACT.equals(String.valueOf(c.get("type"))));
             // The scorecard is rewritten after every case, so a killed job still leaves one (S4b-BL-202).
@@ -238,13 +262,15 @@ class GoldenSetEvalTest {
                     c -> run(c, golden), progress -> writeReport(started, golden, results, progress));
             // Trials 2..repeats of the plan cases: informational, never in the metrics or the verdict, and also bound by
             // the time budget (a stop here leaves the gated trial untouched).
-            if (!timeStopped && seeded && repeats > 1 && types.contains(PLAN)) {
-                var planCases = planned.stream().filter(c -> PLAN.equals(String.valueOf(c.get("type")))).toList();
+            // AI_EVAL_REPEAT_TYPES (S4b-BL-227) says which types: plan only unless asked otherwise.
+            var repeatCases = planned.stream().filter(c -> repeatTypes.contains(String.valueOf(c.get("type")))).toList();
+            if (!timeStopped && seeded && repeats > 1 && !repeatCases.isEmpty()) {
+                var planCases = repeatCases;
                 var progressNow = new EvalScorer.Progress(results.size(), planned.size(), false);
                 if (EvalRun.runRepeats(planCases, repeats, trials, deadline,
                         () -> pause(Math.min(delayMs, deadline.remaining().toMillis())), c -> run(c, golden),
                         () -> writeReport(started, golden, results, progressNow))) {
-                    warnings.add("The repeats of the plan cases stopped at the time budget; the gated trial is complete, "
+                    warnings.add("The repeats of the " + (repeatTypes.equals(Set.of(PLAN)) ? "plan " : "") + "cases stopped at the time budget; the gated trial is complete, "
                             + "the stability table covers only the trials that ran.");
                 }
             }
@@ -260,7 +286,9 @@ class GoldenSetEvalTest {
         var metrics = writeReport(started, golden, results, progress);
 
         // Fails on zero cases, any harness error (e.g. seeding / reindex 503), a time-budget stop or a metric below its threshold.
-        var verdict = EvalScorer.verdict(metrics, results, errors, progress);
+        // Under an address set the verdict is the default run's (S4b-BL-226): this run fails only on a harness error or a stop.
+        var verdict = addressRun == null ? EvalScorer.verdict(metrics, results, errors, progress)
+                : EvalScorer.variantVerdict(results, errors, progress);
         assertThat(verdict.reasons()).as("AI eval failed; scorecard: %s", REPORT.toAbsolutePath()).isEmpty();
     }
 
@@ -269,7 +297,7 @@ class GoldenSetEvalTest {
                                      EvalScorer.Progress progress) {
         header.put("Duration", Duration.between(started, Instant.now()).toSeconds() + " s");
         var metrics = EvalScorer.metrics(results, golden.thresholds());
-        var markdown = EvalScorer.markdown(header, metrics, results, warnings, errors, progress, trials);
+        var markdown = EvalScorer.markdown(header, metrics, results, warnings, errors, progress, trials, addressRun);
         try {
             EvalRun.writeAtomically(REPORT, markdown);
         } catch (IOException e) {

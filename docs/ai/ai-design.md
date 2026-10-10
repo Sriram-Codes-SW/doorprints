@@ -56,7 +56,10 @@
 | v0.52   | 2026-10-10 | Claude (Code), engineer       | **8.2 and 8.3: the golden-set scorer measures the right thing** (S4b-BL-203, [10](../10-sprint-log.md) v0.233, [06](../06-test-plan.md) 0.195). Golden set v0.9. `expected.grounded: "any"` skips only the grounded check (ask-28, the phone-privacy case: the fixed refusal or a redacted grounded answer, never the number). Plan cases state `minStops` and `stopsMustInclude`, so an empty plan no longer passes vacuously (seven cases need a stop; plan-03 and plan-09 say `minStops: 0`). Plan checks are two kinds, server invariants and model selection, shown per case in the report, with an informational `planSelection`. `agentValidity` is defined and gated as before. `AI_EVAL_REPEATS` / input `repeats` adds a stability table for the plan cases (trial 1 gated, the rest informational). |
 | v0.53   | 2026-10-10 | Claude (Code), engineer       | **Planner rules (section 4): search hints** (S4b-BL-204, [10](../10-sprint-log.md) v0.234, [06](../06-test-plan.md) 0.196). "Be economical: at most a handful of tool calls" became "at most 4 calls per tool" plus how the search works (one call with no text filter returns every saved house, up to 50; one call per named place with text set to that one word; an empty result means no such house, do not repeat it). The `text` tool-parameter description of `searchHouses` (planner and MCP) says it is one literal substring and to give one word. Server only; the pinned vector `prompts.plan.server` was regenerated, the device prompt is unchanged. |
 | v0.54   | 2026-10-10 | Claude (Code), engineer       | **8.1: the suite `key-check`** (S4b-BL-217, [10](../10-sprint-log.md) 0.238): `ai-evals.yml` lists the models `AI_API_KEY` can use and sends one tiny request to the pinned model and to `gemini-3.5-flash-lite`. Not yet run. |
-| v0.55   | 2026-10-10 | Claude (Code), engineer       | **15: provider safety blocks and abusive text** (S4b-BL-232, [10](../10-sprint-log.md) 0.240, [02](../02-threat-model.md) AB-12). The owner decision (no filtering or censoring of what people type or say), the per-provider fields that count as blocked (Gemini `promptFeedback.blockReason` and the `finishReason`s `SAFETY`, `PROHIBITED_CONTENT`, `BLOCKLIST`, `SPII`, `RECITATION`; OpenAI-compatible `content_filter`, `refusal`, 400 `content_policy_violation` / `content_filter`; Anthropic `stop_reason` `refusal`), the new failure `blocked` / `AI_BLOCKED` (no retry, no ladder, no provider text), the four-language message, the vectors section `blockedResponses`, and what the server does today. Planned: S4b-BL-233..S4b-BL-235. |
+| v0.55   | 2026-10-10 | Claude (Code), engineer       | **8.3b Address variants** (S4b-BL-225, [10](../10-sprint-log.md) v0.240, [06](../06-test-plan.md) 0.197): new `docs/ai/evals/address-variants.json` (v0.1) with eight sets that change only the address-like text of the 30 fixture houses (known, known-alt, unknown-invented, landmark-pin, vernacular, vernacular-strict, messy, hostile), `AddressVariants` (Java test tree and a TypeScript port) with a variant-safe rule that lists the cases a set cannot ask about as not applicable, and fingerprints of every applied set recomputed by both ports. The golden set (v0.9) and a default run are unchanged; nothing runs a set yet (S4b-BL-226). |
+| v0.56   | 2026-10-10 | Claude (Code), engineer       | **8.1 item 7 and 8.3b: choose an address set for a run** (S4b-BL-226, [10](../10-sprint-log.md) v0.241, [06](../06-test-plan.md) 0.198): `AI_EVAL_ADDRESS_SET` and the workflow input `address_set` (golden-set, own-provider and local-model suites), the scorecard header row and section `Address set: X (not gated)` with the cases not applicable, metrics shown as `not gated`, a fingerprint check as a harness error, and `EvalScorer.variantVerdict` (a run under a set fails only on a harness error or a stop). The website summary says the same. The default run is unchanged and still the only one with a verdict. |
+| v0.57   | 2026-10-10 | Claude (Code), engineer       | **8.1 item 6a: repeat types and agreement across trials** (S4b-BL-227, [10](../10-sprint-log.md) v0.242, [06](../06-test-plan.md) 0.199): `AI_EVAL_REPEAT_TYPES` and the workflow input `repeat_types` (default plan, today's behaviour), the scorecard section *Agreement across trials* (extract draft equality after normalisation, ask citation set and pass/fail, plan stop set and fallback, stop order apart), the rule-of-three line, and `tools/ai-eval-compare.mjs`. Informational; no gate, temperature or seed changed. |
+| v0.58   | 2026-10-10 | Claude (Code), engineer       | **15: provider safety blocks and abusive text** (S4b-BL-232, [10](../10-sprint-log.md) 0.240, [02](../02-threat-model.md) AB-12). The owner decision (no filtering or censoring of what people type or say), the per-provider fields that count as blocked (Gemini `promptFeedback.blockReason` and the `finishReason`s `SAFETY`, `PROHIBITED_CONTENT`, `BLOCKLIST`, `SPII`, `RECITATION`; OpenAI-compatible `content_filter`, `refusal`, 400 `content_policy_violation` / `content_filter`; Anthropic `stop_reason` `refusal`), the new failure `blocked` / `AI_BLOCKED` (no retry, no ladder, no provider text), the four-language message, the vectors section `blockedResponses`, and what the server does today. Planned: S4b-BL-233..S4b-BL-235. |
 
 Status: implemented in `backend/` (package `app.doorprints.server.ai`), **off by default**. Not yet compiled in this
 sandbox (no Maven Central access) — CI compiles and runs the tests. Provider: AI Studio by default, Vertex AI with
@@ -748,6 +751,30 @@ Flow of one run:
    quota rules are the same as for any call. The repeats are bound by the time budget (S4b-BL-202; checked before each trial;
    a stop leaves the gated trial complete and adds a warning), and every partial scorecard carries the stability table. **Cost:** each repeat is one more plan-only pass (10 cases, each a
    multi-call agent run), so run it with the workflow input `types` = `plan` rather than repeating Extract and Ask.
+6a. **Repeat types and agreement** (S4b-BL-227; environment `AI_EVAL_REPEAT_TYPES`, workflow input `repeat_types`, default `plan`):
+   the repeats of item 6 run the plan cases only unless asked; `extract`, `ask` or any mix also repeat those cases (one more pass
+   of 34, 31 and 10 cases per trial, each a paid call, so choose them with a small `repeats`). Trial 1 is still the only gated
+   trial. When any case ran at least twice the scorecard gains **Agreement across trials (informational, not gated)**: every
+   scored trial after the first is compared with trial 1 of its case (a trial that failed at the provider is left out), and a case
+   *agrees* when all its trials do. Extract: the whole draft after the scorer's normalisation (case, punctuation and spacing folded,
+   phone digits, link without a trailing slash, blank = missing, lists in order). Ask: the same set of cited houses and the same
+   pass or fail. Plan: the same set of stops and the same fallback flag; the stop order is reported apart. `agreement(type)` =
+   cases whose trials all agree / cases run at least twice. For each type a line says either "N trial pairs, none differ, so the
+   per-trial disagreement rate is at most 3/N at 95% confidence (rule of three)" or how many pairs differ (the rule of three needs
+   none). The scorecard never says the model is deterministic: the line bounds how often a repeat differed on these cases.
+   Production temperatures are untouched (extraction 0.0, Ask 0.1, Plan 0.2) and no eval-only temperature or seed is added (a seed
+   is S4b-BL-228, not verified). `tools/ai-eval-compare.mjs default-report.md variant-report.md` prints, per metric and per
+   agreement row, the default value, the variant's and the address gap (default minus variant). The website's eval does not repeat.
+7. **Address set** (S4b-BL-226; environment `AI_EVAL_ADDRESS_SET`, workflow input `address_set`, default `default`; see 8.3b): after
+   the golden set loads, a named set of `docs/ai/evals/address-variants.json` replaces the fixture houses' addresses and the
+   cases that name a changed place, before anything is seeded. The default run does not read the file and its scorecard is
+   byte for byte what it was. A run under a set is **informational**: the scorecard header has `Address set | <name>
+   (address-variants v0.1, fingerprint <12 hex>)`, a section `Address set: <name> (not gated)` lists the cases that apply and the
+   ones that do not, the metrics keep their values and read `not gated` instead of PASS or FAIL, the result line reads `NOT
+   GATED`, and the run fails only on a harness error, a stop (quota, time budget, unfinished) or when no case ran
+   (`EvalScorer.variantVerdict`); a provider failure that left a case unscored is a note. If the applied set does not have the
+   fingerprint the file records, nothing is seeded and the run fails with both values. The workflow validates the name against the
+   set names and passes it through the environment, for the golden-set, own-provider and local-model suites alike.
 
 **On-device AI, real key** (job `on-device`, input `suites`, since v0.22): after the golden set (whatever its result,
 so the two never share the per-minute quota), `OnDeviceAiLiveTest` (Kotlin, `android/shared` androidHostTest, on the
@@ -906,6 +933,82 @@ Three things in the set exist to keep the old cases honest: no new house is `SHO
 ask-15 and ask-16 ask about those, and a second right answer in another city would be a false failure), no new house mentions
 water (ask-01's allowed citations are exactly the houses with a water fact), and `plan-06` now allows every NEW house as a stop
 (the question is true of 23 houses more) while forbidding every house that is not NEW.
+
+### 8.3b Address variants (S4b-BL-225, informational)
+
+**Why (owner request, 2026-10-10).** Every fixture house sits at a place the model already knows (Indiranagar, Bandra West,
+Saket), so a pass says nothing about a street, a layout or a locality it has never seen, about an address typed in
+Devanagari, Tamil or Telugu, or about an address that is only a landmark or a PIN code. `docs/ai/evals/address-variants.json`
+(its own `version`, 0.1) holds named **sets** that change the address-like text of the 30 fixture houses and, where a case
+names a place a set changed, that case; the golden set (`golden-set.json`, v0.9, 75 cases, the thresholds) is not changed by
+it and a default run is byte for byte what it was. `AddressVariants.apply(golden, set)` builds the varied copy (pure, in
+`backend/src/test/java/app/doorprints/server/ai/eval/AddressVariants.java`, with a TypeScript port,
+`web/src/app/core/ai/address-variants.ts`); `default` or no set returns the golden set object itself.
+
+| Set | What changes | City anchor | Cases rewritten | Not applicable |
+|---|---|---|---|---|
+| `known` | nothing: the golden set as it is, named so a run can say so | address | 0 | 0 |
+| `known-alt` | another real, well-known locality in the same city for every house (Whitefield for Indiranagar, Juhu for Bandra West, Hauz Khas for Saket), with its street and, where the label named the locality, its label | address | 42 | 0 |
+| `unknown-invented` | a street or layout that does not exist inside the real locality and city: "Plot 14, Sri Venkateshwara Layout 3rd Phase, Indiranagar, Bengaluru" | address | 20 | 0 |
+| `landmark-pin` | no street: odd houses by a landmark and the locality ("behind the red temple, 2nd lane, Indiranagar"), even houses by "PIN 560038" alone; the city moves to the notes | notes | 9 | 4 |
+| `vernacular` | address, street and locality in Devanagari, Tamil or Telugu script; the notes get "City: Pune." in English | notes | 0 | 5 |
+| `vernacular-strict` | the same script text without the English city word: a finding generator, never a gate | none | 0 | 26 |
+| `messy` | doubled punctuation, stray spaces, misspelt words, an empty address (house 4), a 400-character address (house 5); the locality field and the city word stay | address | 0 | 0 |
+| `hostile` | every address ends in an instruction-like sentence, a markdown link or image, SQL-looking text or a made-up phone number; six pasted listings end in one; set-level guards go into every case | address | 6 | 0 |
+
+**What a set may change, and nothing else** (anything more is an error, not ignored): of a house, `address`, `street`,
+`locality`, `label` and `notesAppend` (the notes become the original, a space and the appended text, or the appended text
+alone when there were none); of a case, `input.text` (extract) or `input.question` (ask, plan), `expected.mustContain`,
+`expected.locality`, and `expectedDelete: ["locality"]` (a listing that no longer holds a locality expects none; the harness
+does not guess one); `guards` (hostile only) are appended to `mustNotContain` (ask), `summaryMustNotContain` (plan) or
+`notesMustNotContain` (extract) of every case that runs. Ids, coordinates, status, price, price type, bedrooms, rating,
+checklist, contact fields and the visits are untouched by construction, and a test names each one.
+
+**The variant-safe rule** keeps a case from being scored against a place it no longer asks about. A case runs under a set
+when the set rewrites it, or when none of the *place words* the set changed is in its input or expected strings (not its
+free-text `note`); any other case is listed **not applicable** and is not run. A place word is a word (lower-cased letters and
+digits) of a house's old locality, label or city that the old text of the house held, that its new text (address, street,
+locality, label, notes) no longer holds, with a letter, three characters or more, and not one of the file's `genericWords`
+(layout, nagar, road, sector and a few more). Two consequences are on purpose: the city counts as changed only when nothing of
+the house names it any more (so `landmark-pin` and `vernacular` carry it in the notes and lose few cases, `vernacular-strict`
+loses every case that names a city), and one house losing a word removes the cases that name it from the whole run (the
+word is the set's, not the house's). The lists above are pinned by both ports against a separate calculation, not by the code
+under test.
+
+**Checks, with no key.** `AddressVariantsTest` and `address-variants.spec.ts` pin: the identity of the default and of `known`;
+that the golden set is never changed; the whitelist (each forbidden house and case key is refused); the notes rule; the
+variant-safe rule on a small made-up set and the exact not-applicable list of every real set; the city anchor per set (the
+golden set's own rule that a non-Bengaluru address holds its city, kept for the sets that say so, held in the notes for the
+two that say so, not asserted for `vernacular-strict`); the field limits of the server (label, street, locality 200
+characters, address 500); that no phone number is added that does not look made up; and the **fingerprint** of every applied
+set (SHA-256 of the canonical JSON of its houses, visits and cases: sorted keys, no white space, whole numbers without a
+fraction, UTF-8) recorded in the file and recomputed by the Java and the Vitest tests, so the two ports cannot drift. The
+golden set's own consistency checks (`EvalScorerTest.assertConsistent`, `assertRegions`, `assertSynthetic`,
+`assertExpectationsAreInTheText`, `assertPastedListingsKeepToTheSanitiser`) and the website's key, region, length and link
+checks run on every applied set. When the golden set or the file changes, a fingerprint test fails with the new value;
+copy it into the file's `fingerprints` and run the other port's test.
+
+**Honesty limits.** All the content is synthetic and invented; PIN codes are indicative and were not checked against the
+post office, invented street and layout names were made up and not checked against a gazetteer (one may exist by
+chance), and the real localities of `known-alt` are public names, not data about anyone. Labels stay as typed in every set
+but `known-alt`, and most labels hold the locality, so a model can still find a house by its label: the sets test the address
+text, not a house with no name. Notes are never rewritten, so a few still name the original street or landmark (Karve Road,
+Elliot's Beach, Infopark). The coordinates are untouched, so an invented address sits at the real house's coordinates. The
+extraction cases do not read the fixture houses (they paste a listing); their variants change the pasted text only, and the
+locality the model must return is the one in that text. `unknown-invented` keeps the locality and the city real on purpose,
+so every case that names one stays answerable: the unknown part is the street or layout, not the locality. A model that
+quotes a hostile address back can trip a guard without being fooled: read the case before calling it an injection.
+`vernacular-strict` is expected to fail cases, because the city is only in the script; that is its finding, not a defect of
+the set.
+
+**How a run uses a set (S4b-BL-226).** See 8.1, item 7: the choice, the scorecard section `Address set: X (not gated)`,
+the not-applicable list, the fingerprint check and the verdict, which stays the default run's. The website's summary
+(`ai-provider.live.spec.ts`, `formatSummary`) says `Address set: <name> (address-variants v0.1, fingerprint ...)`, `Result: ... Address
+set: X (not gated)` and the same two lines about the cases that apply; without a set its text is unchanged. To compare two runs,
+read the same metric in the default scorecard and in the set's: the difference is the address gap, and with one trial per case
+it includes the model's own run-to-run noise (the `known` set, which is the default's content reported as a set, measures that
+noise on its own). The agreement metrics that separate the two are in 8.1 item 6a (S4b-BL-227), a seed is S4b-BL-228, and the results of the first
+variant runs go in 8.5 (S4b-BL-229) once the owner has approved them.
 
 ### 8.4 Known risks for the first real run
 

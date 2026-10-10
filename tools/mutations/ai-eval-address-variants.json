@@ -1,0 +1,82 @@
+{
+  "spec": [
+    "backend/src/test/java/app/doorprints/server/ai/eval/AddressVariantsTest.java"
+  ],
+  "maven": [
+    "-Dtest=AddressVariantsTest"
+  ],
+  "mutations": [
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/AddressVariants.java",
+      "find": "Set.of(\"address\", \"street\", \"locality\", \"label\", \"notesAppend\")",
+      "replace": "Set.of(\"address\", \"street\", \"locality\", \"label\", \"notesAppend\", \"price\")",
+      "expect": "aHouseRowCannotNameAnythingButTheFiveAddressFields"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/AddressVariants.java",
+      "find": "return new Applied(DEFAULT_SET, golden, List.of());",
+      "replace": "return new Applied(DEFAULT_SET, new GoldenSet(deepCopy(golden.root())), List.of());",
+      "expect": "theDefaultIsTheInputObjectItselfWhetherUnsetBlankOrNamed"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/AddressVariants.java",
+      "find": "before.contains(w) && !after.contains(w) && HAS_LETTER.matcher(w).find() && w.length() >= 3",
+      "replace": "before.contains(w) && HAS_LETTER.matcher(w).find() && w.length() >= 3",
+      "expect": "aWordTheNewTextStillHoldsOrTheFileCallsGenericOrWithoutALetterIsNotAChangedPlace"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/AddressVariants.java",
+      "find": "before.contains(w) && !after.contains(w) && HAS_LETTER.matcher(w).find() && w.length() >= 3",
+      "replace": "before.contains(w) && !after.contains(w) && w.length() >= 3",
+      "expect": "aWordTheNewTextStillHoldsOrTheFileCallsGenericOrWithoutALetterIsNotAChangedPlace"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/AddressVariants.java",
+      "find": "&& !generic.contains(w)) {",
+      "replace": ") {",
+      "expect": "aWordTheNewTextStillHoldsOrTheFileCallsGenericOrWithoutALetterIsNotAChangedPlace"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/AddressVariants.java",
+      "find": "if (\"note\".equals(e.getKey())) continue;",
+      "replace": "",
+      "expect": "aCaseRunsWhenItIsRewrittenOrNoChangedPlaceWordIsInIt"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/AddressVariants.java",
+      "find": "notes.isBlank() ? append : notes + \" \" + append",
+      "replace": "notes.isBlank() ? append : notes + append",
+      "expect": "notesAreTheOriginalThenASpaceThenTheAppendAndTheAppendAloneWhenThereAreNone"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/AddressVariants.java",
+      "find": "if (!list.contains(g)) list.add(g);",
+      "replace": "list.add(g);",
+      "expect": "hostileAddsItsGuardsToEveryCaseAndTheDefaultDoesNotHaveThem"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/AddressVariants.java",
+      "find": "var sorted = new TreeMap<String, Object>();",
+      "replace": "var sorted = new LinkedHashMap<String, Object>();",
+      "expect": "canonicalJsonSortsKeysDropsWhiteSpaceAndWritesNumbersAndStringsLikeJsonStringify"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/AddressVariants.java",
+      "find": "d == Math.rint(d) && Math.abs(d) < 1e15",
+      "replace": "false",
+      "expect": "canonicalJsonSortsKeysDropsWhiteSpaceAndWritesNumbersAndStringsLikeJsonStringify"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/AddressVariants.java",
+      "find": "expected.remove(key);",
+      "replace": "expected.put(key, null);",
+      "expect": "theFingerprintOfEverySetIsTheOneTheFileRecordsAndTheTypeScriptPortChecksTheSame"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/AddressVariants.java",
+      "find": "before.contains(w) && !after.contains(w) && HAS_LETTER.matcher(w).find() && w.length() >= 3",
+      "replace": "before.contains(w) && !after.contains(w) && HAS_LETTER.matcher(w).find()",
+      "expect": "aWordTheNewTextStillHoldsOrTheFileCallsGenericOrWithoutALetterIsNotAChangedPlace"
+    }
+  ]
+}
