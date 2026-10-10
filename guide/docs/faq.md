@@ -20,7 +20,7 @@ website you can still add a house offline with **Add at my location** or **Type 
 [troubleshooting table](set-up-a-server.md#if-something-goes-wrong).
 
 **Where do I get an API key?** An API key is a long password. You make the Doorprints API key yourself when you set
-up your server. The Gemini key for AI is free and comes from Google.
+up your server. You get the Gemini key for AI from Google. It has a free tier with a daily limit and weaker privacy terms (see [Is AI worth it for me?](settings-and-privacy.md#is-ai-worth-it)).
 [Two different keys](set-up-a-server.md#two-different-keys) explains which goes where.
 
 **Do I need both keys at once?** No. You need the Doorprints API key from the start: the server won't run without it.
