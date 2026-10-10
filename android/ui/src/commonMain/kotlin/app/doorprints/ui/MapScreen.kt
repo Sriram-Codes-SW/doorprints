@@ -183,7 +183,7 @@ private enum class AfterGrant { HUNT, SAVE_HERE, MY_LOCATION, CHECK_HERE }
  * draws at the bottom start ([attributionBottomDp]: the legend while it is drawn, or a row of controls that reaches
  * it), 4 dp from the bare map edge otherwise, as the web lifts its corner controls with `--map-stack-h`, so no Compose
  * surface hides it or takes its taps. While a snackbar sits beside the landscape row, in the legend's place, the "i"
- * is hidden along with the legend and comes back in the same place when it goes (round 10), never half covered. Its
+ * is lifted above the snackbar, never hidden or covered (S4b-BL-4, [attributionOverlayTopDp]). Its
  * logo is off (the BSD licence does not ask for it; the web shows none). The
  * map is north-up ([MAP_NORTH_UP], round 8): rotation, tilt and the compass are off, as on the web, so no rotated map
  * is ever left without a visible way back to north (WCAG 2.5.1), and a camera saved before is restored at bearing 0.
@@ -612,6 +612,8 @@ fun MapScreen(
     var fabHeightPx by remember { mutableIntStateOf(0) }
     // The legend's own height at the bottom start (round 7), to lift MapLibre's attribution above it.
     var legendHeightPx by remember { mutableIntStateOf(0) }
+    // The snackbar host's measured height (0 with none showing), for lifting the attribution above a snackbar beside the row.
+    var snackbarHeightPx by remember { mutableIntStateOf(0) }
     // The status names measured at the legend's style, one line, for this locale and font scale (as ActionBar measures
     // its labels): the narrowest legend that breaks no name (round 7: the widest name, its dot box, gap and padding),
     // and its width with all three on one line (round 8: one line or one item per line, never a mix).
@@ -747,7 +749,7 @@ fun MapScreen(
         }
         // A snackbar beside the row sits where the row layout's legend is, so the legend fades out while it shows
         // (round 7; round 8 fades instead of cutting). The attribution stays above the legend's place (round 9), and
-        // is hidden while the snackbar is there (round 10).
+        // is lifted above the snackbar beside the row (S4b-BL-4; round 10 hid it).
         val snackbarAtStart = controlsInRow && snackbarBesideRow(maxWidth.value, rowWidthDp.value) &&
             snackbar.currentSnackbarData != null
         // The top of the legend's place at the bottom start, or 0 when it has none (or is not measured yet). The band
@@ -773,18 +775,19 @@ fun MapScreen(
         // otherwise. The legend's place, not whether it is shown (round 9): the margin is set without animation, so
         // following the fade made the "i" jump down and up with every snackbar. The logo is off: MapLibre's BSD
         // licence does not ask for it, and the web shows none.
-        val attributionOverlayTop = when {
+        val legendOrRowTop = when {
             legendAt != null && legendAt != LegendPlace.IN_BAND && legendPlaceTop > 0.dp -> legendPlaceTop.value
             controlsInRow && rowReachesAttribution(maxWidth.value, rowWidthDp.value) -> (rowHeightDp - 16.dp).value
             else -> 0f
         }
+        // S4b-BL-4: while a snackbar sits beside the row the "i" is lifted above it (never hidden: R5, nothing covers or
+        // hides the attribution), by the snackbar's measured top.
+        val attributionOverlayTop = attributionOverlayTopDp(
+            legendOrRowTop,
+            if (snackbarAtStart) with(density) { snackbarHeightPx.toDp() }.value else 0f,
+        )
         val attributionBottomPx = with(density) { attributionBottomDp(attributionOverlayTop).dp.roundToPx() }
         val gutterPx = with(density) { MAP_GUTTER_DP.dp.roundToPx() }
-        // Round 10: while a snackbar sits beside the landscape row, in the legend's place, the "i" is hidden with the
-        // legend instead of being left half covered (a one-line snackbar 48 dp tall from 16 dp up cuts through a
-        // 21 dp "i" about 54-75 dp up, which looks like a rendering bug; "Finding your location…" can stay 15 s). It
-        // is not moved, so it comes back in the same place, whole and tappable, as soon as the snackbar goes; the
-        // credits are one tap away again then (MapLibre's setAttributionEnabled only toggles the view's visibility).
         // The snackbar's width (its host less the margins), for where its action goes (round 8).
         val snackbarWidthDp = if (controlsInRow && snackbarBesideRow(maxWidth.value, rowWidthDp.value)) {
             maxWidth - 16.dp - rowWidthDp - 8.dp
@@ -800,7 +803,7 @@ fun MapScreen(
             check = checkOverlay ?: focusOverlay,
             labelSizeSp = markerLabelSizeSp(labelFontScale),
             showLocation = permissionGranted,
-            attribution = MapAttribution(gutterPx, attributionBottomPx, shown = !snackbarAtStart),
+            attribution = MapAttribution(gutterPx, attributionBottomPx, shown = true),
             events = object : MapEvents {
                 override fun onReady(control: MapControl) {
                     map = control
@@ -1154,13 +1157,13 @@ fun MapScreen(
         // on its own line (rounds 7 and 8), so it does not squeeze the message into a narrow column.
         SnackbarHost(
             snackbar,
-            if (controlsInRow && snackbarBesideRow(maxWidth.value, rowWidthDp.value)) {
+            (if (controlsInRow && snackbarBesideRow(maxWidth.value, rowWidthDp.value)) {
                 Modifier.align(Alignment.BottomStart).fillMaxWidth()
                     .padding(start = 16.dp, bottom = 16.dp, end = rowWidthDp + 8.dp)
             } else {
                 Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(bottom = controlsDp)
                     .padding(horizontal = 16.dp)
-            },
+            }).onSizeChanged { snackbarHeightPx = it.height },
         ) { data ->
             val actionWidthDp = data.visuals.actionLabel?.let { label ->
                 val px = textMeasurer.measure(label, snackbarActionStyle, softWrap = false, maxLines = 1).size.width

@@ -935,7 +935,9 @@ export class MapPage implements AfterViewInit, OnDestroy {
     const stack = this.stack().nativeElement;
     const panel = this.panel().nativeElement;
     const update = () => {
-      wrap.style.setProperty('--map-stack-h', `${Math.ceil(stack.getBoundingClientRect().height)}px`);
+      // On short phones the legend is at the top and the stack is not positioned, so the actions alone are the row.
+      const row = getComputedStyle(stack).position === 'static' ? (stack.querySelector('.map-actions') ?? stack) : stack;
+      wrap.style.setProperty('--map-stack-h', `${Math.ceil(row.getBoundingClientRect().height)}px`);
       // The phone map leaves room under it for the list's heading and counters (listPeek, map-page.css).
       const head = panel.querySelector('.panel-head');
       const stats = panel.querySelector('.stats');
@@ -943,6 +945,8 @@ export class MapPage implements AfterViewInit, OnDestroy {
     };
     this.stackObserver = new ResizeObserver(update);
     this.stackObserver.observe(stack);
+    const actions = stack.querySelector('.map-actions');
+    if (actions) this.stackObserver.observe(actions);
     // The panel changes size when the counters first appear, and with the text size or the language.
     this.stackObserver.observe(panel);
     update();

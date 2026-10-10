@@ -368,6 +368,15 @@ fun rowReachesAttribution(mapWidthDp: Float, rowWidthDp: Float): Boolean =
 fun attributionBottomDp(overlayTopDp: Float): Float =
     if (overlayTopDp > 0f) overlayTopDp + MAP_ATTRIBUTION_OVERLAY_GAP_DP else MAP_ATTRIBUTION_GAP_DP
 
+/**
+ * The top of whatever the attribution button must clear at the bottom start, in dp (S4b-BL-4; R5 in docs/05 15.3: nothing
+ * covers or hides the credits): the higher of [placeTopDp] (the legend's place or a row that reaches the button, 0 for
+ * none) and the snackbar's top ([snackbarHeightDp] above its 16 dp bottom margin, 0 when no snackbar sits beside the
+ * row). The snackbar's own height is 0 before it is measured, so the button then stays where it was.
+ */
+fun attributionOverlayTopDp(placeTopDp: Float, snackbarHeightDp: Float): Float =
+    if (snackbarHeightDp > 0f) maxOf(placeTopDp, MAP_GUTTER_DP + snackbarHeightDp) else placeTopDp
+
 /** The 12 dp padding on each side of a snackbar's action button (M3's TextButton), in dp. */
 const val SNACKBAR_ACTION_PADDING_DP = 24f
 
