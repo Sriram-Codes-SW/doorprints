@@ -190,6 +190,10 @@ on:
         description: Embedding model override, e.g. gemini-embedding-001 (empty = default gemini-embedding-2; must give 768 dims)
         type: string
         default: ""
+      gcp_location:
+        description: "golden-set, provider=vertex only: the Vertex AI location for this run (empty = the repository variable GCP_LOCATION). Some models are not served from every location; gemini-3.5-flash-lite answered 404 from asia-south1 and needs global"
+        type: string
+        default: ""
       ai_kind:
         description: "own-provider only: the kind of provider (docs/03 ADR-35). Its key is the repository secret AI_EVAL_API_KEY; the gemini kind uses AI_API_KEY first"
         type: choice
@@ -243,7 +247,12 @@ jobs:
           REPEAT_TYPES: ${{ inputs.repeat_types }}
           CHAT_MODEL_INPUT: ${{ inputs.chat_model }}
           EMBEDDING_MODEL_INPUT: ${{ inputs.embedding_model }}
+          GCP_LOCATION_INPUT: ${{ inputs.gcp_location }}
         run: |
+          if ! [[ "$GCP_LOCATION_INPUT" =~ ^([a-z0-9-]{1,32})?$ ]]; then
+            echo "::error::gcp_location may only contain lower-case letters, digits and hyphens (for example global or asia-south1)"
+            exit 1
+          fi
           if ! [[ "$EVAL_SET" =~ ^(golden-set|hard-set)$ ]]; then
             echo "::error::eval_set must be golden-set or hard-set (a file in docs/ai/evals)"
             exit 1
@@ -406,7 +415,7 @@ jobs:
           # The key is only handed to the aistudio path; Vertex AI uses the federated credentials instead.
           AI_API_KEY: ${{ inputs.provider == 'aistudio' && secrets.AI_API_KEY || '' }}
           GCP_PROJECT_ID: ${{ inputs.provider == 'vertex' && (vars.GCP_PROJECT_ID || secrets.GCP_PROJECT_ID) || '' }}
-          GCP_LOCATION_SETTING: ${{ vars.GCP_LOCATION || secrets.GCP_LOCATION }}
+          GCP_LOCATION_SETTING: ${{ inputs.gcp_location || vars.GCP_LOCATION || secrets.GCP_LOCATION }}
           AI_VERTEX_EMBEDDING_LOCATION: ${{ vars.AI_VERTEX_EMBEDDING_LOCATION }}
           AI_EVAL_TYPES: ${{ inputs.types }}
           AI_EVAL_DELAY_MS: ${{ inputs.delay_ms }}
