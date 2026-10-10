@@ -62,6 +62,11 @@ final class GoldenSet {
         return new GoldenSet(JsonParserFactory.getJsonParser().parseMap(json));
     }
 
+    /** The parsed file as it is (AddressVariants copies it, never changes it). */
+    Map<String, Object> root() {
+        return root;
+    }
+
     String version() {
         return String.valueOf(root.getOrDefault("version", "?"));
     }
