@@ -372,16 +372,22 @@ class VertexGenerateContentContractTest {
 
     @Test
     void todayABlockedPromptAndASafetyFinishFailTheStructuredCallAfterOneRequest() {
+        var seen = new java.util.ArrayList<String>();
         for (var body : List.of(PROMPT_BLOCKED, ANSWER_BLOCKED)) {
             replies.clear();
             requestBodies.clear();
             replies.add(new Reply(200, body));
 
-            // Pinned as observed in CI; the services catch RuntimeException and answer 503 (AiExceptionHandler).
-            assertThatThrownBy(() -> ChatClient.create(model(0)).prompt().user("q").call()
-                    .responseEntity(ModelAnswer.class)).isInstanceOf(RuntimeException.class);
-            assertThat(requestBodies).hasSize(1);
+            String outcome;
+            try {
+                var result = ChatClient.create(model(0)).prompt().user("q").call().responseEntity(ModelAnswer.class);
+                outcome = "returned entity=" + result.entity() + " text=" + result.response().getResult().getOutput().getText();
+            } catch (RuntimeException e) {
+                outcome = "threw " + e.getClass().getName() + " cause=" + app.doorprints.server.ai.ProviderErrors.cause(e);
+            }
+            seen.add(outcome + " requests=" + requestBodies.size());
         }
+        assertThat(seen).as("observed outcomes").isEqualTo(List.of("?", "?"));
     }
 
     @Test
