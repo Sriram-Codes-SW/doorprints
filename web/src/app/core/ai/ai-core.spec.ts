@@ -32,7 +32,7 @@ import { inTheRunning } from '../../shared/house-status';
  */
 describe('AI core parity with the server', () => {
   it('removes contacts as the server does', () => {
-    expect(vectors.redact).toHaveLength(134);
+    expect(vectors.redact).toHaveLength(137);
     for (const c of vectors.redact) {
       const r = new Redactor(c.name, c.phone);
       const actual = c.method === 'place' ? r.place(c.input)
@@ -45,10 +45,20 @@ describe('AI core parity with the server', () => {
 
   it('documents each known gap of the contact removal and says which backlog row closes it (S4b-BL-174)', () => {
     const gaps = (vectors.redact as { knownGap?: string; wanted?: string; expected: string }[]).filter((c) => c.knownGap);
-    expect(gaps.map((c) => c.knownGap)).toEqual(['S4b-BL-174a']);
-    // `expected` is what the ports do today (the loop above checks it); `wanted` is what they should do. Fixing the gap
-    // means copying `wanted` over `expected` and dropping the two keys, so they may never already be equal.
+    // S4b-BL-174a is closed (a saved landline without its STD code); a new gap is written down with `knownGap`. `expected` is
+    // what the ports do today (the loop above checks it); `wanted` is what they should do; they may never already be equal.
+    expect(gaps.map((c) => c.knownGap)).toEqual([]);
     for (const c of gaps) expect(c.wanted).not.toBe(c.expected);
+  });
+
+  it('removes a saved landline written without its STD code, and only that number (S4b-BL-174a)', () => {
+    const r = new Redactor(null, '080 2345 6789');
+    expect(r.freeText('reach the office on 2345 6789')).toBe('reach the office on [phone]');
+    expect(r.freeText('call 23456789 or 2345.6789')).toBe('call [phone] or [phone]');
+    expect(r.freeText('plot 12345678, deposit 2345 6788')).toBe('plot 12345678, deposit 2345 6788');
+    // A 10-digit saved number and a landline saved without the 0 have no such variant.
+    expect(new Redactor(null, '98450 12345').freeText('ext 450 12345')).toBe('ext 450 12345');
+    expect(new Redactor(null, '8023456789').freeText('office 2345 6789')).toBe('office 2345 6789');
   });
 
   it('removes an email address whole, before the name parts', () => {
@@ -404,6 +414,23 @@ describe('AI core (what the vectors do not cover)', () => {
     expect(fallback.fallback).toBe(true);
     expect(fallback.summary).toBe(FALLBACK_SUMMARY);
     expect(fallback.stops.map((s) => s.houseId)).toEqual([a]);
+  });
+
+  it('falls back as the server does: the houses within 50 km of the start, nearest first (S4b-BL-199, shared vectors)', () => {
+    type Case = { note: string; start: number[]; maxStops: number; planStops: string[] | null;
+      houses: { id: string; status: string | null; lat: number; lon: number }[]; expected: { ids: string[]; fallback: boolean; summary: string } };
+    const cases = (vectors as unknown as { planFallback: Case[] }).planFallback;
+    expect(cases).toHaveLength(6);
+    for (const c of cases) {
+      const seen = new Map(c.houses.map((h): [string, PlanCandidate] => [h.id, {
+        id: h.id, label: h.id.slice(-2), locality: 'L', street: null, status: h.status, price: null, priceType: null,
+        bedrooms: null, rating: null, lat: h.lat, lon: h.lon, distanceMeters: 0 }]));
+      const plan = assemblePlan(c.planStops ? { stops: c.planStops.map((houseId) => ({ houseId })) } : null, seen, c.start[0], c.start[1], c.maxStops);
+      expect(plan.stops.map((s) => s.houseId), c.note).toEqual(c.expected.ids);
+      expect(plan.fallback, c.note).toBe(c.expected.fallback);
+      expect(plan.summary, c.note).toBe(c.expected.summary);
+      expect(plan.stops.map((s) => s.order), c.note).toEqual(c.expected.ids.map((_, i) => i + 1));
+    }
   });
 
   it('leaves Not chosen houses out of the fallback route and tells the model to skip them, as the server does (S4b-BL-99 a)', () => {

@@ -790,9 +790,8 @@ internal val PARITY_VECTORS_JSON: String = listOf(
     "name" : null,
     "phone" : "080 2345 6789",
     "input" : "reach the office on 2345 6789",
-    "expected" : "reach the office on 2345 6789",
-    "knownGap" : "S4b-BL-174a",
-    "wanted" : "reach the office on [phone]"
+    "expected" : "reach the office on [phone]",
+    "note" : "S4b-BL-174a closed: a saved 11-digit number starting 0 also matches its last 8 digits (a metro landline written without its STD code)"
   }, {
     "method" : "generic",
     "name" : null,
@@ -856,6 +855,27 @@ internal val PARITY_VECTORS_JSON: String = listOf(
     "input" : "Call १२३४ ५६७८ now",
     "expected" : "Call [phone] now",
     "note" : "a saved 8-digit number written in Devanagari digits: only the saved-number rule can see it, the phone-like rule needs 10"
+  }, {
+    "method" : "freeText",
+    "name" : null,
+    "phone" : "080 2345 6789",
+    "input" : "call 2345-6789 now",
+    "expected" : "call [phone] now",
+    "note" : "S4b-BL-174a: the saved landline without its STD code, written with a hyphen"
+  }, {
+    "method" : "freeText",
+    "name" : null,
+    "phone" : "080 2345 6789",
+    "input" : "plot 12345678 sold, deposit 2345 6788",
+    "expected" : "plot 12345678 sold, deposit 2345 6788",
+    "note" : "S4b-BL-174a: other 8-digit numbers (a price, a plot number) are left alone; only the saved number's last 8 digits go"
+  }, {
+    "method" : "freeText",
+    "name" : null,
+    "phone" : "080 2345 6789",
+    "input" : "ऑफिस २३४५ ६७८९",
+    "expected" : "ऑफिस [phone]",
+    "note" : "S4b-BL-174a: the same landline without its STD code, in Devanagari digits"
   } ],
   "sanitize" : [ {
     "raw" : {
@@ -1005,7 +1025,8 @@ internal val PARITY_VECTORS_JSON: String = listOf(
     }
   }, {
     "raw" : {
-      "amenities" : [ "A0", "A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "A10", "A11", "A12", "A13", "A14", "A15", "A16", "A17", "A18", "A19", "A20", "A21", "A22", "A23", "A24" ]
+""",
+    """      "amenities" : [ "A0", "A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "A10", "A11", "A12", "A13", "A14", "A15", "A16", "A17", "A18", "A19", "A20", "A21", "A22", "A23", "A24" ]
     },
     "source" : "",
     "expected" : {
@@ -1034,8 +1055,7 @@ internal val PARITY_VECTORS_JSON: String = listOf(
       "price" : null,
       "priceType" : null,
       "bedrooms" : null,
-""",
-    """      "contactName" : null,
+      "contactName" : null,
       "contactPhone" : null,
       "listingUrl" : null,
       "notes" : null,
@@ -1517,7 +1537,8 @@ internal val PARITY_VECTORS_JSON: String = listOf(
       "listingUrl" : "https://b.example/j/2",
       "notes" : null,
       "amenities" : [ ],
-      "warnings" : [ "listingUrl: the text has 3 links, check this is the right one" ]
+""",
+    """      "warnings" : [ "listingUrl: the text has 3 links, check this is the right one" ]
     }
   }, {
     "raw" : {
@@ -1551,8 +1572,7 @@ internal val PARITY_VECTORS_JSON: String = listOf(
       "label" : "Flat in Andheri",
       "address" : null,
       "street" : null,
-""",
-    """      "locality" : null,
+      "locality" : null,
       "price" : null,
       "priceType" : null,
       "bedrooms" : null,
@@ -1882,7 +1902,8 @@ internal val PARITY_VECTORS_JSON: String = listOf(
       "temperature" : 0,
       "max_tokens" : 2048,
       "messages" : [ {
-        "role" : "system",
+""",
+    """        "role" : "system",
         "content" : "You extract house listings."
       }, {
         "role" : "user",
@@ -1910,8 +1931,7 @@ internal val PARITY_VECTORS_JSON: String = listOf(
               },
               "locality" : {
                 "type" : [ "string", "null" ],
-""",
-    """                "description" : "Locality / neighbourhood / area inside the city, e.g. 'Indiranagar', 'Sector 56'; never the city or district alone. When the listing names only a road, repeat the road here"
+                "description" : "Locality / neighbourhood / area inside the city, e.g. 'Indiranagar', 'Sector 56'; never the city or district alone. When the listing names only a road, repeat the road here"
               },
               "price" : {
                 "type" : [ "string", "null" ],
@@ -2198,7 +2218,8 @@ internal val PARITY_VECTORS_JSON: String = listOf(
       "error" : "unavailable"
     }
   }, {
-    "response" : "not json at all",
+""",
+    """    "response" : "not json at all",
     "expected" : {
       "error" : "unavailable"
     }
@@ -2245,8 +2266,7 @@ internal val PARITY_VECTORS_JSON: String = listOf(
     }
   }, {
     "tier" : 2,
-""",
-    """    "status" : 404,
+    "status" : 404,
     "body" : "{\"error\":\"model 'nope' not found, try pulling it first\"}",
     "expected" : {
       "action" : "error",
@@ -2784,7 +2804,8 @@ internal val PARITY_VECTORS_JSON: String = listOf(
               "description" : "Contact person name"
             },
             "contactPhone" : {
-              "type" : [ "string", "null" ],
+""",
+    """              "type" : [ "string", "null" ],
               "description" : "Contact phone number exactly as written"
             },
             "listingUrl" : {
@@ -2814,8 +2835,7 @@ internal val PARITY_VECTORS_JSON: String = listOf(
     }
   }, {
     "call" : "answer",
-""",
-    """    "model" : "test-model",
+    "model" : "test-model",
     "system" : "You answer questions about saved houses.",
     "user" : "Which house has parking?",
     "temperature" : 0.1,
@@ -3169,7 +3189,8 @@ internal val PARITY_VECTORS_JSON: String = listOf(
     "call" : "generate",
     "response" : "not json",
     "expected" : {
-      "error" : "unavailable"
+""",
+    """      "error" : "unavailable"
     }
   }, {
     "call" : "ping",
@@ -3203,8 +3224,7 @@ internal val PARITY_VECTORS_JSON: String = listOf(
     "nearestNeighbour" : [ {
       "id" : "bandra",
       "meters" : 1265,
-""",
-    """      "walkMinutes" : 21
+      "walkMinutes" : 21
     }, {
       "id" : "andheri",
       "meters" : 7342,
@@ -3937,6 +3957,158 @@ internal val PARITY_VECTORS_JSON: String = listOf(
           "thinkingLevel" : "LOW"
         }
       }
+    }
+  } ],
+  "planFallback" : [ {
+    "note" : "the houses are listed far to near; the cap keeps the two nearest to the start, then the walking order",
+    "start" : [ 12.9716, 77.5946 ],
+    "maxStops" : 2,
+    "houses" : [ {
+      "id" : "00000000-0000-4000-8000-000000000001",
+      "status" : "NEW",
+      "lat" : 12.9916,
+      "lon" : 77.5946
+    }, {
+      "id" : "00000000-0000-4000-8000-000000000002",
+      "status" : "NEW",
+      "lat" : 12.9816,
+      "lon" : 77.5946
+    }, {
+      "id" : "00000000-0000-4000-8000-000000000003",
+      "status" : "SHORTLISTED",
+      "lat" : 12.9766,
+      "lon" : 77.5946
+    } ],
+    "planStops" : null,
+    "expected" : {
+      "ids" : [ "00000000-0000-4000-8000-000000000003", "00000000-0000-4000-8000-000000000002" ],
+      "fallback" : true,
+      "summary" : "The assistant could not finish a plan, so these are the houses it found, ordered by nearest neighbour from your start point."
+    }
+  }, {
+    "note" : "a start in Pune with Bengaluru houses saved first: only the Pune house is within 50 km",
+    "start" : [ 18.5204, 73.8567 ],
+    "maxStops" : 8,
+    "houses" : [ {
+      "id" : "00000000-0000-4000-8000-000000000004",
+      "status" : "NEW",
+      "lat" : 12.9716,
+      "lon" : 77.5946
+    }, {
+      "id" : "00000000-0000-4000-8000-000000000005",
+      "status" : "SHORTLISTED",
+      "lat" : 12.9352,
+      "lon" : 77.6245
+    }, {
+      "id" : "00000000-0000-4000-8000-000000000006",
+      "status" : "NEW",
+      "lat" : 18.5314,
+      "lon" : 73.8446
+    } ],
+    "planStops" : [ "not-a-house" ],
+    "expected" : {
+      "ids" : [ "00000000-0000-4000-8000-000000000006" ],
+      "fallback" : true,
+      "summary" : "The assistant could not finish a plan, so these are the houses it found, ordered by nearest neighbour from your start point."
+    }
+  }, {
+    "note" : "no saved house within 50 km of the start: no stops and the none-in-reach summary",
+    "start" : [ 18.5204, 73.8567 ],
+    "maxStops" : 8,
+    "houses" : [ {
+      "id" : "00000000-0000-4000-8000-000000000007",
+      "status" : "NEW",
+      "lat" : 12.9716,
+      "lon" : 77.5946
+    }, {
+      "id" : "00000000-0000-4000-8000-000000000008",
+      "status" : "NEW",
+      "lat" : 12.9352,
+      "lon" : 77.6245
+    } ],
+    "planStops" : null,
+    "expected" : {
+      "ids" : [ ],
+      "fallback" : true,
+      "summary" : "No saved houses within reach of your start point were found."
+    }
+  }, {
+    "note" : "50 km is the limit: 0.44 degrees north (about 48.9 km) is offered, 0.46 (about 51.2 km) is not",
+    "start" : [ 12.9716, 77.5946 ],
+    "maxStops" : 8,
+    "houses" : [ {
+      "id" : "00000000-0000-4000-8000-000000000009",
+      "status" : "NEW",
+      "lat" : 13.4316,
+      "lon" : 77.5946
+    }, {
+      "id" : "00000000-0000-4000-8000-000000000010",
+      "status" : "NEW",
+      "lat" : 13.4116,
+      "lon" : 77.5946
+    } ],
+    "planStops" : null,
+    "expected" : {
+      "ids" : [ "00000000-0000-4000-8000-000000000010" ],
+      "fallback" : true,
+      "summary" : "The assistant could not finish a plan, so these are the houses it found, ordered by nearest neighbour from your start point."
+    }
+  }, {
+    "note" : "REJECTED and NOT_CHOSEN houses are left out; TAKEN and a house with no status are in the running",
+    "start" : [ 12.9716, 77.5946 ],
+    "maxStops" : 8,
+    "houses" : [ {
+      "id" : "00000000-0000-4000-8000-000000000011",
+      "status" : "REJECTED",
+      "lat" : 12.9726,
+      "lon" : 77.5946
+    }, {
+      "id" : "00000000-0000-4000-8000-000000000012",
+      "status" : "NOT_CHOSEN",
+      "lat" : 12.9736,
+      "lon" : 77.5946
+    }, {
+      "id" : "00000000-0000-4000-8000-000000000013",
+      "status" : "TAKEN",
+      "lat" : 12.9746,
+      "lon" : 77.5946
+    }, {
+      "id" : "00000000-0000-4000-8000-000000000014",
+      "status" : null,
+      "lat" : 12.9756,
+      "lon" : 77.5946
+    }, {
+      "id" : "00000000-0000-4000-8000-000000000015",
+      "status" : "SHORTLISTED",
+      "lat" : 12.9766,
+      "lon" : 77.5946
+    } ],
+    "planStops" : null,
+    "expected" : {
+      "ids" : [ "00000000-0000-4000-8000-000000000013", "00000000-0000-4000-8000-000000000014", "00000000-0000-4000-8000-000000000015" ],
+      "fallback" : true,
+      "summary" : "The assistant could not finish a plan, so these are the houses it found, ordered by nearest neighbour from your start point."
+    }
+  }, {
+    "note" : "two houses at the same place: the lower id first, so the cap of one keeps it",
+    "start" : [ 12.9716, 77.5946 ],
+    "maxStops" : 1,
+    "houses" : [ {
+      "id" : "00000000-0000-4000-8000-000000000017",
+      "status" : "NEW",
+      "lat" : 12.9816,
+      "lon" : 77.5946
+    }, {
+      "id" : "00000000-0000-4000-8000-000000000016",
+      "status" : "NEW",
+      "lat" : 12.9816,
+      "lon" : 77.5946
+    } ],
+    "planStops" : null,
+    "expected" : {
+      "ids" : [ "00000000-0000-4000-8000-000000000016" ],
+      "fallback" : true,
+      "summary" : "The assistant could not finish a plan, so these are the houses it found, ordered by nearest neighbour from your start point."
     }
   } ]
 }
