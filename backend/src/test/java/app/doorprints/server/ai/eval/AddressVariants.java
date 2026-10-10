@@ -81,6 +81,20 @@ final class AddressVariants {
     record Applied(String set, GoldenSet golden, List<String> notApplicable) {
     }
 
+    /**
+     * A named set chosen for a run (S4b-BL-226): the golden set to run, what was left out, and the line the scorecard
+     * header shows. A run of a set is informational (the verdict is the default run's); {@code error} is a harness error
+     * when the fingerprint of the applied set is not the one the file records, which means the file, the golden set or a
+     * port has drifted.
+     */
+    record Run(String set, String description, String version, String fingerprint, GoldenSet golden,
+               List<String> notApplicable, int total, String error) {
+        /** {@code known-alt (address-variants v0.1, fingerprint 089350e09de9)}. */
+        String headerValue() {
+            return set + " (address-variants v" + version + ", fingerprint " + fingerprint.substring(0, 12) + ")";
+        }
+    }
+
     private final Map<String, Object> root;
 
     AddressVariants(Map<String, Object> root) {
@@ -223,6 +237,24 @@ final class AddressVariants {
         }
         copy.put("cases", kept);
         return new Applied(name, new GoldenSet(copy), List.copyOf(notApplicable));
+    }
+
+    /**
+     * The run of a named set over {@code golden}, or null for the default (unset, blank or {@code default}): a default
+     * run does not even read the variants file. Throws like {@link #apply} for a set that is not in the file.
+     */
+    Run select(GoldenSet golden, String name) {
+        if (isDefault(name)) return null;
+        var applied = apply(golden, name);
+        var fingerprint = fingerprint(applied.golden());
+        var recorded = recordedFingerprint(applied.set());
+        String error = null;
+        if (!fingerprint.equals(recorded)) {
+            error = "Address set '" + applied.set() + "': its fingerprint is " + fingerprint + " but address-variants.json records "
+                    + recorded + "; the file, the golden set or a port has changed without the other (docs/ai/ai-design.md 8.3b)";
+        }
+        return new Run(applied.set(), String.valueOf(set(applied.set()).get("description")), version(), fingerprint,
+                applied.golden(), applied.notApplicable(), golden.cases().size(), error);
     }
 
     /** The place words the house lost: see the class comment. */

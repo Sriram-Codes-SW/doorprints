@@ -57,6 +57,7 @@
 | v0.53   | 2026-10-10 | Claude (Code), engineer       | **Planner rules (section 4): search hints** (S4b-BL-204, [10](../10-sprint-log.md) v0.234, [06](../06-test-plan.md) 0.196). "Be economical: at most a handful of tool calls" became "at most 4 calls per tool" plus how the search works (one call with no text filter returns every saved house, up to 50; one call per named place with text set to that one word; an empty result means no such house, do not repeat it). The `text` tool-parameter description of `searchHouses` (planner and MCP) says it is one literal substring and to give one word. Server only; the pinned vector `prompts.plan.server` was regenerated, the device prompt is unchanged. |
 | v0.54   | 2026-10-10 | Claude (Code), engineer       | **8.1: the suite `key-check`** (S4b-BL-217, [10](../10-sprint-log.md) 0.238): `ai-evals.yml` lists the models `AI_API_KEY` can use and sends one tiny request to the pinned model and to `gemini-3.5-flash-lite`. Not yet run. |
 | v0.55   | 2026-10-10 | Claude (Code), engineer       | **8.3b Address variants** (S4b-BL-225, [10](../10-sprint-log.md) v0.240, [06](../06-test-plan.md) 0.197): new `docs/ai/evals/address-variants.json` (v0.1) with eight sets that change only the address-like text of the 30 fixture houses (known, known-alt, unknown-invented, landmark-pin, vernacular, vernacular-strict, messy, hostile), `AddressVariants` (Java test tree and a TypeScript port) with a variant-safe rule that lists the cases a set cannot ask about as not applicable, and fingerprints of every applied set recomputed by both ports. The golden set (v0.9) and a default run are unchanged; nothing runs a set yet (S4b-BL-226). |
+| v0.56   | 2026-10-10 | Claude (Code), engineer       | **8.1 item 7 and 8.3b: choose an address set for a run** (S4b-BL-226, [10](../10-sprint-log.md) v0.241, [06](../06-test-plan.md) 0.198): `AI_EVAL_ADDRESS_SET` and the workflow input `address_set` (golden-set, own-provider and local-model suites), the scorecard header row and section `Address set: X (not gated)` with the cases not applicable, metrics shown as `not gated`, a fingerprint check as a harness error, and `EvalScorer.variantVerdict` (a run under a set fails only on a harness error or a stop). The website summary says the same. The default run is unchanged and still the only one with a verdict. |
 
 Status: implemented in `backend/` (package `app.doorprints.server.ai`), **off by default**. Not yet compiled in this
 sandbox (no Maven Central access) — CI compiles and runs the tests. Provider: AI Studio by default, Vertex AI with
@@ -748,6 +749,16 @@ Flow of one run:
    quota rules are the same as for any call. The repeats are bound by the time budget (S4b-BL-202; checked before each trial;
    a stop leaves the gated trial complete and adds a warning), and every partial scorecard carries the stability table. **Cost:** each repeat is one more plan-only pass (10 cases, each a
    multi-call agent run), so run it with the workflow input `types` = `plan` rather than repeating Extract and Ask.
+7. **Address set** (S4b-BL-226; environment `AI_EVAL_ADDRESS_SET`, workflow input `address_set`, default `default`; see 8.3b): after
+   the golden set loads, a named set of `docs/ai/evals/address-variants.json` replaces the fixture houses' addresses and the
+   cases that name a changed place, before anything is seeded. The default run does not read the file and its scorecard is
+   byte for byte what it was. A run under a set is **informational**: the scorecard header has `Address set | <name>
+   (address-variants v0.1, fingerprint <12 hex>)`, a section `Address set: <name> (not gated)` lists the cases that apply and the
+   ones that do not, the metrics keep their values and read `not gated` instead of PASS or FAIL, the result line reads `NOT
+   GATED`, and the run fails only on a harness error, a stop (quota, time budget, unfinished) or when no case ran
+   (`EvalScorer.variantVerdict`); a provider failure that left a case unscored is a note. If the applied set does not have the
+   fingerprint the file records, nothing is seeded and the run fails with both values. The workflow validates the name against the
+   set names and passes it through the environment, for the golden-set, own-provider and local-model suites alike.
 
 **On-device AI, real key** (job `on-device`, input `suites`, since v0.22): after the golden set (whatever its result,
 so the two never share the per-minute quota), `OnDeviceAiLiveTest` (Kotlin, `android/shared` androidHostTest, on the
@@ -974,11 +985,14 @@ quotes a hostile address back can trip a guard without being fooled: read the ca
 `vernacular-strict` is expected to fail cases, because the city is only in the script; that is its finding, not a defect of
 the set.
 
-**Not wired into a run yet.** Choosing a set for a run (`AI_EVAL_ADDRESS_SET`, the workflow input `address_set`), the scorecard
-line `Address set`, the not-applicable list in the scorecard and "Address set: X (not gated)" are the next pull request
-(S4b-BL-226); the verdict and the exit code will come from the default run only, a variant run failing only on a harness
-error or a stop. The agreement metrics are S4b-BL-227, a seed S4b-BL-228, and the results of the first variant runs go in 8.5
-(S4b-BL-229) once the owner has approved them.
+**How a run uses a set (S4b-BL-226).** See 8.1, item 7: the choice, the scorecard section `Address set: X (not gated)`,
+the not-applicable list, the fingerprint check and the verdict, which stays the default run's. The website's summary
+(`ai-provider.live.spec.ts`, `formatSummary`) says `Address set: <name> (address-variants v0.1, fingerprint ...)`, `Result: ... Address
+set: X (not gated)` and the same two lines about the cases that apply; without a set its text is unchanged. To compare two runs,
+read the same metric in the default scorecard and in the set's: the difference is the address gap, and with one trial per case
+it includes the model's own run-to-run noise (the `known` set, which is the default's content reported as a set, measures that
+noise on its own). The agreement metrics that separate the two are S4b-BL-227, a seed S4b-BL-228, and the results of the first
+variant runs go in 8.5 (S4b-BL-229) once the owner has approved them.
 
 ### 8.4 Known risks for the first real run
 

@@ -33,7 +33,11 @@ export type EvalType = (typeof EVAL_TYPES)[number];
 export type EvalSetup =
   | { status: 'skip'; line: string }
   | { status: 'invalid'; line: string }
-  | { status: 'run'; kind: AiKind; baseUrl: string; model: string; key: string; delayMs: number; timeoutMs: number; types: EvalType[] };
+  | { status: 'run'; kind: AiKind; baseUrl: string; model: string; key: string; delayMs: number; timeoutMs: number; types: EvalType[]; addressSet?: string };
+
+/** A set name of docs/ai/evals/address-variants.json: lower-case words joined by hyphens (S4b-BL-226). */
+const ADDRESS_SET_NAME = /^[a-z]+(-[a-z]+)*$/;
+const MAX_ADDRESS_SET_NAME = 32;
 
 /** The app's request limit, and the bounds of the one the loopback eval may ask for (S4b-BL-190). */
 const DEFAULT_TIMEOUT_MS = 60_000;
@@ -87,7 +91,17 @@ export function evalSetup(env: Record<string, string | undefined>): EvalSetup {
       return invalid(`timeout must be a whole number of milliseconds from ${MIN_TIMEOUT_MS} to ${MAX_TIMEOUT_MS}`);
     }
   }
-  return { status: 'run', kind: kind as AiKind, baseUrl, model: kind === 'gemini' ? '' : model, key, delayMs: Number(delay), timeoutMs, types: types as EvalType[] };
+  // The address set (S4b-BL-226): unset, blank or `default` is the run as it always was (no key in the setup); a name is
+  // checked against the file when the spec applies it, here only that it is a name at all.
+  const addressSet = (env['AI_EVAL_ADDRESS_SET'] ?? '').trim();
+  const named = addressSet !== '' && addressSet !== 'default';
+  if (named && (addressSet.length > MAX_ADDRESS_SET_NAME || !ADDRESS_SET_NAME.test(addressSet))) {
+    return invalid('address set must be a name from address-variants.json (lower-case letters and hyphens)');
+  }
+  return {
+    status: 'run', kind: kind as AiKind, baseUrl, model: kind === 'gemini' ? '' : model, key, delayMs: Number(delay), timeoutMs, types: types as EvalType[],
+    ...(named ? { addressSet } : {}),
+  };
 }
 
 /** One case of golden-set.json (only the parts the checks read). */
@@ -288,11 +302,25 @@ const MAX_OUTPUT = 3000;
 /** Failed cases that print their output; the summary stays far below the 1 MiB the job summary allows. */
 const MAX_OUTPUTS = 20;
 
+/** The address set a run used (S4b-BL-226), as the summary names it: `header` is `addressRunHeader` of address-variants.ts. */
+export interface AddressRunInfo {
+  set: string;
+  header: string;
+  /** Cases of the golden set that apply to the set, and all of them. */
+  applicable: number;
+  total: number;
+  notApplicable: string[];
+}
+
 /**
  * The job summary in markdown. The provider is named by kind, host and model, never by key; any appearance of `key` in
  * a reason or in a failed case's output (a model can echo what it was sent) is replaced by `***`. `stopped` says why the run ended early, or null.
+ * `address` (S4b-BL-226) names the address set of the run and the cases it left out; without it the text is what it was
+ * before address sets existed.
  */
-export function formatSummary(meta: { kind: string; host: string; model: string }, results: CaseResult[], stopped: string | null, key: string): string {
+export function formatSummary(
+  meta: { kind: string; host: string; model: string }, results: CaseResult[], stopped: string | null, key: string, address?: AddressRunInfo,
+): string {
   const hide = (s: string) => (key === '' ? s : s.split(key).join('***'));
   const passed = results.filter((r) => r.passed).length;
   const row = (name: string, of: CaseResult[]) => `| ${name} | ${of.filter((r) => r.passed).length} | ${of.length} |`;
@@ -300,8 +328,18 @@ export function formatSummary(meta: { kind: string; host: string; model: string 
     '## AI evals: own provider',
     '',
     `Provider: ${meta.kind}${meta.host ? ` at ${meta.host}` : ''}${meta.model ? `, model \`${meta.model}\`` : ''}. The key is not shown.`,
-    `Result: ${passed} of ${results.length} cases passed. Reported, not gating.`,
   ];
+  if (address) lines.push(`Address set: ${address.header}.`);
+  lines.push(
+    address
+      ? `Result: ${passed} of ${results.length} cases passed. Address set: ${address.set} (not gated); reported, not gating.`
+      : `Result: ${passed} of ${results.length} cases passed. Reported, not gating.`,
+  );
+  if (address) {
+    const left = address.notApplicable.length;
+    lines.push(`Cases that apply to this set: ${address.applicable} of ${address.total} (${left} not applicable${left ? ', listed below' : ''}).`);
+    if (left) lines.push(`Not applicable under this set (${left}): ${address.notApplicable.join(', ')}`);
+  }
   if (stopped) lines.push(`STOPPED: ${stopped} after ${results.length} cases.`);
   lines.push('', '| Group | Passed | Of |', '|---|---|---|');
   for (const type of EVAL_TYPES) {
