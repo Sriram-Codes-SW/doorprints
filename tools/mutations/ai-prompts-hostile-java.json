@@ -1,7 +1,7 @@
 {
   "spec": "backend/src/test/java/app/doorprints/server/ai/rag/AskPromptsTest.java",
   "maven": [
-    "-Dtest=AskPromptsTest,PlanPromptTest,EvalScorerTest"
+    "-Dtest=AskPromptsTest,PlanPromptTest,EvalScorerTest,VisitPlannerToolsDescriptionTest"
   ],
   "mutations": [
     {
@@ -111,6 +111,36 @@
       "find": "Case-insensitive text to find",
       "replace": "Text to find",
       "expect": "everyLeakMarkerOfTheGoldenSetIsStillInThePrompt"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerService.java",
+      "find": "A search that returns no houses means the user has no such \\\n                house: do not repeat it with other words or filters.",
+      "replace": "",
+      "expect": "tellsTheModelHowManyCallsItHasAndHowToSearchByPlace"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerService.java",
+      "find": "make one searchHouses call per \\\n                place with text set to that one word. ",
+      "replace": "",
+      "expect": "tellsTheModelHowManyCallsItHasAndHowToSearchByPlace"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerTools.java",
+      "find": ". Matched literally as one substring: give ONE word, best a city or locality (text=\\\"Pune\\\"; \\\"Pune flats\\\" matches nothing). Summaries do not show the city, so this is how to find a city's houses.",
+      "replace": "",
+      "expect": "thePlannerToolSaysToGiveOneWordAndShowsTheExample"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/mcp/McpHouseTools.java",
+      "find": ". Matched literally as one substring: give ONE word, best a city or locality (text=\\\"Pune\\\"; \\\"Pune flats\\\" matches nothing). Summaries do not show the city, so this is how to find a city's houses.",
+      "replace": "",
+      "expect": "theMcpToolSaysTheSame"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/mcp/McpHouseTools.java",
+      "find": "give ONE word, best a city",
+      "replace": "give a word, best a city",
+      "expect": "bothToolsCarryTheSameWords"
     }
   ]
 }

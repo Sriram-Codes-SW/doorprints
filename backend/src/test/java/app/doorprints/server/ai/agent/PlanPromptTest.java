@@ -47,6 +47,17 @@ class PlanPromptTest {
     }
 
     @Test
+    void tellsTheModelHowManyCallsItHasAndHowToSearchByPlace() {
+        var system = VisitPlannerService.systemPrompt(12.9716, 77.5946, 5);
+        // The numbers are the real limits (AiProperties.Agent: 4 per tool) and the real page size of a search (50).
+        assertThat(system).contains("Be economical: at most 4 calls per tool.")
+                .contains("One searchHouses call with no text filter returns every saved house (up to 50)")
+                .contains("make one searchHouses call per place with text set to that one word.")
+                .contains("A search that returns no houses means the user has no such house: do not repeat it with other words or filters.");
+        assertThat(system).doesNotContain("a handful");
+    }
+
+    @Test
     void tellsTheModelToPlanOnlyTheHouseHuntingPartOfARequest() {
         var system = VisitPlannerService.systemPrompt(12.9716, 77.5946, 5);
         assertThat(system).contains("\n" + RULE + "\n");
