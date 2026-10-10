@@ -7,6 +7,7 @@
 | v0.3    | 2026-09-22 | Claude (Cowork) – Docs team | **Owner's setup outcome recorded** (2026-09-22): new section "Status of this project's setup"; project id `doorprints-ai`; step 8 results as a worked example (chat `gemini-3.5-flash` answers in `asia-south1`; `gemini-embedding-2` answers 404 there and works on `global`), so the repository variables are `GCP_PROJECT_ID=doorprints-ai`, `GCP_LOCATION=asia-south1`, `AI_VERTEX_EMBEDDING_LOCATION=global` (step 6); data-residency note (chat processed in India, embedding text on the `global` endpoint); trial credit ends **22 Dec 2026**, new step 14 "Before the trial ends" (export by about 15 Dec, then switch back to AI Studio or upgrade billing; checklist in [runbook 10.4](../08-operations-runbook.md)). Steps 11 and 12 add `AI_VERTEX_EMBEDDING_LOCATION=global`. Step 4.5: the stricter attribute condition (repository and `refs/heads/main`) asked for by the DevSecOps review of `ai-evals.yml` is now the recommended one. |
 | v0.4    | 2026-09-22 | Claude (Cowork) – Docs team | Status: step 10 is **started**. The first `provider=vertex` eval run 35753477789 (`gemini-3.5-flash` in `asia-south1` + `gemini-embedding-2` on `global`, commit `8f583af`) failed only on citationPrecision 0.78 (7/9); commit `feb0294` answers it (golden set v0.5, inline-marker citation rule) without lowering thresholds. The re-run and the credit check are still open, so the workflow default stays `aistudio`. Step 9 stays open. |
 | v0.5    | 2026-10-09 | Claude (Code) | **Trial guard** (S4b-BL-193): `provider=vertex` now needs the repository variable `VERTEX_EVAL_ENABLED=true` and is refused from 2026-12-15. First three Vertex server runs recorded (71, 72 and 71 of 75 cases; see the status table). Step 14 names the hard stop. |
+| v0.6 | 2026-10-10 | Claude (Code) | Step 11 no longer says `docker compose` cannot pass the Vertex settings: it does (checked against `docker-compose.yml` on `main`); the ADC mount stays a manual uncomment. Docs only. |
 
 This guide switches the Doorprints AI features from the Gemini API in Google AI Studio to **Google Cloud Vertex AI**
 (Google renamed it "Gemini Enterprise Agent Platform" in 2026; the console may show either name, and the API is still
@@ -302,10 +303,12 @@ cd backend && mvn spring-boot:run
 Your own Google account needs the **Vertex AI User** role on the project (as project owner you already have more).
 No `AI_API_KEY` is needed. `POST /api/ai/reindex` once after switching.
 
-**Not yet with `docker compose`:** `docker-compose.yml` does not pass `AI_PROVIDER`, `GCP_PROJECT_ID`,
-`GCP_LOCATION` or the credentials file to the container yet (requested from its owner, see ai-design.md section 2).
-Until that lands, run the backend with `mvn spring-boot:run` as above (the database can still come from compose:
-`docker compose up db`).
+**With `docker compose`:** `docker-compose.yml` passes `AI_PROVIDER`, `GCP_PROJECT_ID`, `GCP_LOCATION` and the other Vertex
+settings to the container (see its header for the example). The credentials file is the manual part: uncomment the
+`volumes:` line and the `GOOGLE_APPLICATION_CREDENTIALS` line under `api:` in the compose file (they are commented out
+because a bind mount of a missing file fails the whole `docker compose up`), after `gcloud auth application-default
+login`. The container runs as UID 10001, so the mounted file must be readable by that UID. Running the backend with
+`mvn spring-boot:run` as above and only the database from compose (`docker compose up db`) still works.
 
 ## Step 12. Cloud Run (when the backend is deployed there)
 
