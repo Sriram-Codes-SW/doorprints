@@ -1,24 +1,75 @@
 {
   "format": "doorprints-qr-enrol-vectors/1",
-  "comment": "The dp1. enrolment offer text (docs/15 9.5 i): dp1. + base64url without padding of pk_new (65 bytes, first byte 0x04) + s (32 bytes). Regression vectors made by a script from the rule, run by qr-enrol.spec.ts and QrEnrolTest. The 8-digit offer code is derived by the Android codec only (the website does not show one for a dp1. offer), so it has no vector here.",
+  "comment": "The dp1. enrolment offer text (docs/15 9.5 i): dp1. + base64url without padding of pk_new (65 bytes, first byte 0x04) + s (32 bytes) + one platform byte (S4b-BL-144: 1 android, 2 ios, 3 web). An offer without the platform byte (97 bytes, made before S4b-BL-144) is still valid and reads as platform unknown; so does an offer whose platform byte is 0 or unassigned (unassignedPlatform, read only). Regression vectors made by a script from the rule, run by qr-enrol.spec.ts and QrEnrolTest. The 8-digit offer code is derived by the phones' codec only (the website does not show one for a dp1. offer) and does not depend on the platform byte, so it has no vector here.",
   "valid": [
     {
       "name": "ascending bytes",
       "publicKey": "0401080f161d242b323940474e555c636a71787f868d949ba2a9b0b7bec5ccd3dae1e8eff6fd040b121920272e353c434a51585f666d747b828990979ea5acb3ba",
       "psk": "030e19242f3a45505b66717c87929da8b3bec9d4dfeaf5000b16212c37424d58",
-      "text": "dp1.BAEIDxYdJCsyOUBHTlVcY2pxeH-GjZSboqmwt77FzNPa4ejv9v0ECxIZICcuNTxDSlFYX2ZtdHuCiZCXnqWss7oDDhkkLzpFUFtmcXyHkp2os77J1N_q9QALFiEsN0JNWA"
+      "text": "dp1.BAEIDxYdJCsyOUBHTlVcY2pxeH-GjZSboqmwt77FzNPa4ejv9v0ECxIZICcuNTxDSlFYX2ZtdHuCiZCXnqWss7oDDhkkLzpFUFtmcXyHkp2os77J1N_q9QALFiEsN0JNWA",
+      "platform": "unknown"
     },
     {
       "name": "0xfb and 0xff bytes (uses - and _)",
       "publicKey": "04fbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfb",
       "psk": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
-      "text": "dp1.BPv7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v__________________________________________w"
+      "text": "dp1.BPv7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v__________________________________________w",
+      "platform": "unknown"
     },
     {
       "name": "all zero but the 0x04 prefix",
       "publicKey": "0400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
       "psk": "0000000000000000000000000000000000000000000000000000000000000000",
-      "text": "dp1.BAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      "text": "dp1.BAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "platform": "unknown"
+    },
+    {
+      "name": "ascending bytes, android",
+      "publicKey": "0401080f161d242b323940474e555c636a71787f868d949ba2a9b0b7bec5ccd3dae1e8eff6fd040b121920272e353c434a51585f666d747b828990979ea5acb3ba",
+      "psk": "030e19242f3a45505b66717c87929da8b3bec9d4dfeaf5000b16212c37424d58",
+      "platform": "android",
+      "text": "dp1.BAEIDxYdJCsyOUBHTlVcY2pxeH-GjZSboqmwt77FzNPa4ejv9v0ECxIZICcuNTxDSlFYX2ZtdHuCiZCXnqWss7oDDhkkLzpFUFtmcXyHkp2os77J1N_q9QALFiEsN0JNWAE"
+    },
+    {
+      "name": "ascending bytes, ios",
+      "publicKey": "0401080f161d242b323940474e555c636a71787f868d949ba2a9b0b7bec5ccd3dae1e8eff6fd040b121920272e353c434a51585f666d747b828990979ea5acb3ba",
+      "psk": "030e19242f3a45505b66717c87929da8b3bec9d4dfeaf5000b16212c37424d58",
+      "platform": "ios",
+      "text": "dp1.BAEIDxYdJCsyOUBHTlVcY2pxeH-GjZSboqmwt77FzNPa4ejv9v0ECxIZICcuNTxDSlFYX2ZtdHuCiZCXnqWss7oDDhkkLzpFUFtmcXyHkp2os77J1N_q9QALFiEsN0JNWAI"
+    },
+    {
+      "name": "ascending bytes, web",
+      "publicKey": "0401080f161d242b323940474e555c636a71787f868d949ba2a9b0b7bec5ccd3dae1e8eff6fd040b121920272e353c434a51585f666d747b828990979ea5acb3ba",
+      "psk": "030e19242f3a45505b66717c87929da8b3bec9d4dfeaf5000b16212c37424d58",
+      "platform": "web",
+      "text": "dp1.BAEIDxYdJCsyOUBHTlVcY2pxeH-GjZSboqmwt77FzNPa4ejv9v0ECxIZICcuNTxDSlFYX2ZtdHuCiZCXnqWss7oDDhkkLzpFUFtmcXyHkp2os77J1N_q9QALFiEsN0JNWAM"
+    },
+    {
+      "name": "0xfb and 0xff bytes, ios",
+      "publicKey": "04fbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfb",
+      "psk": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "platform": "ios",
+      "text": "dp1.BPv7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v__________________________________________wI"
+    }
+  ],
+  "unassignedPlatform": [
+    {
+      "name": "platform byte 0 (explicitly unknown)",
+      "publicKey": "0401080f161d242b323940474e555c636a71787f868d949ba2a9b0b7bec5ccd3dae1e8eff6fd040b121920272e353c434a51585f666d747b828990979ea5acb3ba",
+      "psk": "030e19242f3a45505b66717c87929da8b3bec9d4dfeaf5000b16212c37424d58",
+      "text": "dp1.BAEIDxYdJCsyOUBHTlVcY2pxeH-GjZSboqmwt77FzNPa4ejv9v0ECxIZICcuNTxDSlFYX2ZtdHuCiZCXnqWss7oDDhkkLzpFUFtmcXyHkp2os77J1N_q9QALFiEsN0JNWAA"
+    },
+    {
+      "name": "platform byte 4 (unassigned)",
+      "publicKey": "0401080f161d242b323940474e555c636a71787f868d949ba2a9b0b7bec5ccd3dae1e8eff6fd040b121920272e353c434a51585f666d747b828990979ea5acb3ba",
+      "psk": "030e19242f3a45505b66717c87929da8b3bec9d4dfeaf5000b16212c37424d58",
+      "text": "dp1.BAEIDxYdJCsyOUBHTlVcY2pxeH-GjZSboqmwt77FzNPa4ejv9v0ECxIZICcuNTxDSlFYX2ZtdHuCiZCXnqWss7oDDhkkLzpFUFtmcXyHkp2os77J1N_q9QALFiEsN0JNWAQ"
+    },
+    {
+      "name": "platform byte 255 (unassigned)",
+      "publicKey": "0401080f161d242b323940474e555c636a71787f868d949ba2a9b0b7bec5ccd3dae1e8eff6fd040b121920272e353c434a51585f666d747b828990979ea5acb3ba",
+      "psk": "030e19242f3a45505b66717c87929da8b3bec9d4dfeaf5000b16212c37424d58",
+      "text": "dp1.BAEIDxYdJCsyOUBHTlVcY2pxeH-GjZSboqmwt77FzNPa4ejv9v0ECxIZICcuNTxDSlFYX2ZtdHuCiZCXnqWss7oDDhkkLzpFUFtmcXyHkp2os77J1N_q9QALFiEsN0JNWP8"
     }
   ],
   "forms": [
@@ -71,6 +122,16 @@
       "name": "trailing newline text",
       "input": "dp1.BAEIDxYdJCsyOUBHTlVcY2pxeH-GjZSboqmwt77FzNPa4ejv9v0ECxIZICcuNTxDSlFYX2ZtdHuCiZCXnqWss7oDDhkkLzpFUFtmcXyHkp2os77J1N_q9QALFiEsN0JNWA\nnext line",
       "offer": "ascending bytes"
+    },
+    {
+      "name": "url fragment with a platform byte",
+      "input": "https://doorprints.web.app/enrol#dp1.BAEIDxYdJCsyOUBHTlVcY2pxeH-GjZSboqmwt77FzNPa4ejv9v0ECxIZICcuNTxDSlFYX2ZtdHuCiZCXnqWss7oDDhkkLzpFUFtmcXyHkp2os77J1N_q9QALFiEsN0JNWAI",
+      "offer": "ascending bytes, ios"
+    },
+    {
+      "name": "inside a sentence with a platform byte",
+      "input": "see dp1.BAEIDxYdJCsyOUBHTlVcY2pxeH-GjZSboqmwt77FzNPa4ejv9v0ECxIZICcuNTxDSlFYX2ZtdHuCiZCXnqWss7oDDhkkLzpFUFtmcXyHkp2os77J1N_q9QALFiEsN0JNWAI and more",
+      "offer": "ascending bytes, ios"
     }
   ],
   "invalid": [
@@ -107,8 +168,8 @@
       "input": "dp1.BAEIDxYd"
     },
     {
-      "name": "one extra byte (98 bytes)",
-      "input": "dp1.BAEIDxYdJCsyOUBHTlVcY2pxeH-GjZSboqmwt77FzNPa4ejv9v0ECxIZICcuNTxDSlFYX2ZtdHuCiZCXnqWss7oDDhkkLzpFUFtmcXyHkp2os77J1N_q9QALFiEsN0JNWAA"
+      "name": "two extra bytes (99 bytes)",
+      "input": "dp1.BAEIDxYdJCsyOUBHTlVcY2pxeH-GjZSboqmwt77FzNPa4ejv9v0ECxIZICcuNTxDSlFYX2ZtdHuCiZCXnqWss7oDDhkkLzpFUFtmcXyHkp2os77J1N_q9QALFiEsN0JNWAIA"
     },
     {
       "name": "one byte short (96 bytes)",
@@ -173,6 +234,26 @@
     {
       "name": "prefix then separator",
       "input": "dp1.#BAEIDxYdJCsyOUBHTlVcY2pxeH-GjZSboqmwt77FzNPa4ejv9v0ECxIZICcuNTxDSlFYX2ZtdHuCiZCXnqWss7oDDhkkLzpFUFtmcXyHkp2os77J1N_q9QALFiEsN0JNWA"
+    },
+    {
+      "name": "98 bytes with a first byte of 0x05",
+      "input": "dp1.BQEIDxYdJCsyOUBHTlVcY2pxeH-GjZSboqmwt77FzNPa4ejv9v0ECxIZICcuNTxDSlFYX2ZtdHuCiZCXnqWss7oDDhkkLzpFUFtmcXyHkp2os77J1N_q9QALFiEsN0JNWAI"
+    },
+    {
+      "name": "98 bytes with a compressed point prefix 0x02",
+      "input": "dp1.AgEIDxYdJCsyOUBHTlVcY2pxeH-GjZSboqmwt77FzNPa4ejv9v0ECxIZICcuNTxDSlFYX2ZtdHuCiZCXnqWss7oDDhkkLzpFUFtmcXyHkp2os77J1N_q9QALFiEsN0JNWAI"
+    },
+    {
+      "name": "platform offer with padding appended",
+      "input": "dp1.BAEIDxYdJCsyOUBHTlVcY2pxeH-GjZSboqmwt77FzNPa4ejv9v0ECxIZICcuNTxDSlFYX2ZtdHuCiZCXnqWss7oDDhkkLzpFUFtmcXyHkp2os77J1N_q9QALFiEsN0JNWAI="
+    },
+    {
+      "name": "platform offer truncated by two characters",
+      "input": "dp1.BAEIDxYdJCsyOUBHTlVcY2pxeH-GjZSboqmwt77FzNPa4ejv9v0ECxIZICcuNTxDSlFYX2ZtdHuCiZCXnqWss7oDDhkkLzpFUFtmcXyHkp2os77J1N_q9QALFiEsN0JNW"
+    },
+    {
+      "name": "platform offer with a non-canonical last character",
+      "input": "dp1.BAEIDxYdJCsyOUBHTlVcY2pxeH-GjZSboqmwt77FzNPa4ejv9v0ECxIZICcuNTxDSlFYX2ZtdHuCiZCXnqWss7oDDhkkLzpFUFtmcXyHkp2os77J1N_q9QALFiEsN0JNWAx"
     }
   ]
 }

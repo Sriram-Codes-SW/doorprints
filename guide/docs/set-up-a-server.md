@@ -288,6 +288,9 @@ devices.
    **Connect to a server?**, showing your server's address.
 3. Check the address, then tap **Connect**. The code works once, within 10 minutes.
 
+!!! note "iPhone and a server address"
+    The iPhone app only connects to an address that starts with `https://`, such as the Tailscale address from step 7. A plain `http://` address with a name is refused by iOS itself. An address made of numbers, such as `http://192.168.1.20:8080`, or ending in `.local` is allowed, but it is not encrypted: use it only on a network you trust, and iOS will ask to find devices on your local network.
+
 **With a code (the website, or a phone):**
 
 1. Type your address from step 7 in the app: on the website, open **Connect** and use **API address (URL)**; on a

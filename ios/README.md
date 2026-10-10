@@ -107,6 +107,6 @@ ad-hoc signed (`CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO`; owner-approved, 
 that the app holds `compose-resources`, the 120 Hz key, both purpose strings, the location background mode and a
 valid signature, and runs `ci/launch-smoke.sh`: it installs the app on an iPhone simulator, grants it location and
 sets a simulated location next to the self-check's house (`simctl privacy`, `simctl location`), launches it with
-`-DoorprintsSelfCheck`, passes only on `DOORPRINTS-SELFCHECK done PASS` with the `indiaView`, `map` and `hunt` lines
+`-DoorprintsSelfCheck`, passes only on `DOORPRINTS-SELFCHECK done PASS` with the `keychain`, `indiaView`, `map` and `hunt` lines each `PASS` and no `SKIP` line
 (read from the console, or from the simulator's unified log when the console has no `done` line) and saves a
 screenshot. The screenshot and the logs are uploaded as the `ios-app-launch` artifact.

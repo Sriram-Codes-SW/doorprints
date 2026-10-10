@@ -19,6 +19,7 @@
 import { Injectable, Inject, InjectionToken, Optional, signal } from '@angular/core';
 import type { BackupSource } from '../backup/drive-backup-seams';
 import { b64, hex, unb64, unhex } from '../../crypto/bytes';
+import type { DevicePlatform } from '../../crypto/keys-file';
 import type { RecoveryKey } from '../../crypto/recovery-key';
 import { RecoveryKey as RecoveryKeyClass } from '../../crypto/recovery-key';
 import type { DriveBackupAdapter } from './backup-adapter';
@@ -746,6 +747,7 @@ export class DriveConnectService {
     publicKey: Uint8Array,
     name: string,
     psk: Uint8Array,
+    platform: DevicePlatform = 'web',
   ): Promise<
     | { readonly ok: true; readonly wrapEnc: string; readonly wrapCt: string; readonly epoch: number }
     | { readonly ok: false; readonly reason: string }
@@ -753,7 +755,7 @@ export class DriveConnectService {
     const auth = await this.authorizePolicyAction('APPROVE_DEVICE');
     if (!auth.ok) return auth;
     try {
-      const approved = await this.backupAdapter.approveDevicePsk(publicKey, name, 'web', psk);
+      const approved = await this.backupAdapter.approveDevicePsk(publicKey, name, platform, psk);
       if (approved.kind === 'error') return { ok: false, reason: problemToMsg(approved.problem.kind) };
       this.updateReadyFolderFromConnection(approved.connection);
       this.state.set('Ready');

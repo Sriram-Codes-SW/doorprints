@@ -18,6 +18,7 @@
 
 package app.doorprints.ui
 
+import app.doorprints.drive.wiring.DriveLockRules
 import app.doorprints.drive.wiring.LockNotice
 import app.doorprints.ui.res.Res
 import app.doorprints.ui.res.lock_notice_ios_key_lost
@@ -37,6 +38,18 @@ class IosDriveUiTest {
         assertSame(Res.string.lock_notice_ios_needs, LockNotice.NEEDS_LOCK.iosMessage())
         assertSame(Res.string.lock_notice_ios_paused, LockNotice.PAUSED.iosMessage())
         assertSame(Res.string.lock_notice_ios_key_lost, LockNotice.KEY_LOST.iosMessage())
+    }
+
+    @Test
+    fun theLockPauseNoticeOpensSettingsAndCarriesNoData() {
+        assertEquals(
+            DeepLink.OpenScreen(Routes.SETTINGS),
+            notificationDeepLink(mapOf<Any?, Any?>(IosDriveServices.KEY_OPEN_SETTINGS to "1")),
+        )
+        // The pause is worded as Settings words it, key lost or passcode gone, under one id so a second replaces the first.
+        assertEquals(LockNotice.KEY_LOST, DriveLockRules.pausedNotice(keyStoreFault = true))
+        assertEquals(LockNotice.PAUSED, DriveLockRules.pausedNotice(keyStoreFault = false))
+        assertEquals("drive-lock-paused", IosDriveServices.ID_LOCK_PAUSED)
     }
 
     @Test

@@ -18,6 +18,7 @@
 
 package app.doorprints.drive.wiring
 
+import app.doorprints.crypto.DevicePlatform
 import app.doorprints.ui.drive.Dp1EnrolmentCodec
 import android.content.ActivityNotFoundException
 import android.content.Context
@@ -109,7 +110,7 @@ private fun DriveCard(drive: DriveServices) {
     val vm: DriveViewModel = viewModel {
         DriveViewModel(
             ControllerDriveActions(drive.controller, folderGone = drive.graph.folderGone),
-            codec = Dp1EnrolmentCodec(drive.graph.crypto),
+            codec = Dp1EnrolmentCodec(drive.graph.crypto, DevicePlatform.ANDROID),
             deviceName = { Build.MODEL.orEmpty().ifBlank { "Android phone" } },
         )
     }

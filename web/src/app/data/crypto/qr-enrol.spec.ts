@@ -22,7 +22,7 @@ import { WebCryptoProvider } from './crypto-provider';
 import { HPKE_INFO, WrapAad, kidOf } from './folder-key';
 import { Hpke } from './hpke';
 import vectorsJson from '../../../../../docs/schemas/qr-enrol-vectors.json';
-import { parseQrOffer, QR_PSK_ID, QR_PSK_LEN, qrOfferText } from './qr-enrol';
+import { parseQrOffer, QR_PSK_ID, QR_PSK_LEN, qrOfferText, type QrPlatform } from './qr-enrol';
 
 const p = new WebCryptoProvider();
 
@@ -59,13 +59,16 @@ describe('enrolment QR payload and HPKE PSK', () => {
 /** The `dp1.` text against `docs/schemas/qr-enrol-vectors.json`, the same cases as Kotlin's `QrEnrolTest`. */
 describe('enrolment offer text against the shared vectors', () => {
   const vectors = vectorsJson as unknown as {
-    valid: { name: string; publicKey: string; psk: string; text: string }[];
+    valid: { name: string; publicKey: string; psk: string; platform: QrPlatform | 'unknown'; text: string }[];
+    unassignedPlatform: { name: string; publicKey: string; psk: string; text: string }[];
     forms: { name: string; input: string; offer: string }[];
     invalid: { name: string; input: string }[];
   };
 
+  const platformOf = (name: QrPlatform | 'unknown') => (name === 'unknown' ? undefined : name);
+
   it('writes each valid offer to the exact text', () => {
-    for (const v of vectors.valid) expect(qrOfferText(unhex(v.publicKey), unhex(v.psk))).toBe(v.text);
+    for (const v of vectors.valid) expect(qrOfferText(unhex(v.publicKey), unhex(v.psk), platformOf(v.platform)), v.name).toBe(v.text);
   });
 
   it('reads each valid offer back to the exact bytes', () => {
@@ -74,6 +77,18 @@ describe('enrolment offer text against the shared vectors', () => {
       expect(parsed, v.name).not.toBeNull();
       expect(hex(parsed!.publicKey), v.name).toBe(v.publicKey);
       expect(hex(parsed!.psk), v.name).toBe(v.psk);
+      expect(parsed!.platform, v.name).toBe(platformOf(v.platform) ?? null);
+    }
+  });
+
+  it('reads an unassigned platform byte as unknown and keeps the offer', () => {
+    expect(vectors.unassignedPlatform.length).toBeGreaterThan(0);
+    for (const v of vectors.unassignedPlatform) {
+      const parsed = parseQrOffer(v.text);
+      expect(parsed, v.name).not.toBeNull();
+      expect(hex(parsed!.publicKey), v.name).toBe(v.publicKey);
+      expect(hex(parsed!.psk), v.name).toBe(v.psk);
+      expect(parsed!.platform, v.name).toBeNull();
     }
   });
 
@@ -84,6 +99,7 @@ describe('enrolment offer text against the shared vectors', () => {
       expect(parsed, f.name).not.toBeNull();
       expect(hex(parsed!.publicKey), f.name).toBe(want.publicKey);
       expect(hex(parsed!.psk), f.name).toBe(want.psk);
+      expect(parsed!.platform, f.name).toBe(platformOf(want.platform) ?? null);
     }
   });
 

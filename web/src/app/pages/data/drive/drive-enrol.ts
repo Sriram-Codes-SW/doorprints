@@ -37,6 +37,8 @@ import {
 
 /** The name written into keys.json for a browser that joins by the 8-digit code. */
 const WEBSITE_DEVICE_NAME = 'Website';
+/** The name an approving website lists a new device under, by the platform its offer carries (the same words on every language). */
+const DEVICE_NAMES = { android: 'Android phone', ios: 'iPhone', web: WEBSITE_DEVICE_NAME } as const;
 
 /**
  * Second-browser enrolment (docs/15 §9.5 i). The new browser can show a QR code (`pk_new ‖ s`) or an 8-digit
@@ -102,7 +104,7 @@ export class DriveEnrolCard {
     const pkNew = await this.publicKey();
     if (!pkNew) return;
     this.psk = crypto.getRandomValues(new Uint8Array(32));
-    const text = qrOfferText(pkNew, this.psk);
+    const text = qrOfferText(pkNew, this.psk, 'web');
     this.requestText.set(text);
     this.qr.set(encodeQr(new TextEncoder().encode(text)));
     this.role.set('qr-new');
@@ -128,7 +130,9 @@ export class DriveEnrolCard {
       this.error.set(this.i18n.t('driveEnrol.badMessage'));
       return;
     }
-    const out = await this.service.approveJoinedDevicePsk(offer.publicKey, WEBSITE_DEVICE_NAME, offer.psk);
+    // The offer's platform byte (S4b-BL-144) says what the new device is; an older offer without one is listed as a website.
+    const platform = offer.platform ?? 'web';
+    const out = await this.service.approveJoinedDevicePsk(offer.publicKey, DEVICE_NAMES[platform], offer.psk, platform);
     if (!out.ok) {
       this.error.set(this.i18n.t(this.reasonKey(out.reason)));
       return;

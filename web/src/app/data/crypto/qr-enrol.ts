@@ -20,12 +20,17 @@ import { b64, unb64, utf8 } from './bytes';
 
 /**
  * The enrolment QR (docs/15 §9.5 i, S4b-BL-134). The text is `dp1.` plus base64url of
- * `pk_new (65) ‖ s (32)`. `s` is 32 bytes: RFC 9180's minimum PSK for HKDF-SHA-256. The design's 128 bits are
+ * `pk_new (65) ‖ s (32)` and, since S4b-BL-144, one platform byte. `s` is 32 bytes: RFC 9180's minimum PSK for HKDF-SHA-256. The design's 128 bits are
  * shorter than that, so the website uses 32. `psk_id` is this constant.
  */
 export const QR_PREFIX = 'dp1.';
 export const QR_PSK_LEN = 32;
 export const QR_PUBLIC_LEN = 65;
+/** The platform byte after `s`: 0 unknown, 1 android, 2 ios, 3 web; any other value reads as unknown. */
+export const QR_PLATFORM_LEN = 1;
+
+export type QrPlatform = 'android' | 'ios' | 'web';
+const PLATFORM_BYTES: readonly QrPlatform[] = ['android', 'ios', 'web'];
 export const QR_PSK_ID = utf8('doorprints/dpx1/qr-psk');
 
 /**
@@ -34,6 +39,8 @@ export const QR_PSK_ID = utf8('doorprints/dpx1/qr-psk');
 export interface QrOffer {
   publicKey: Uint8Array;
   psk: Uint8Array;
+  /** The new device's platform; null for an offer made before S4b-BL-144 or with an unassigned byte. */
+  platform: QrPlatform | null;
 }
 
 function b64url(bytes: Uint8Array): string {
@@ -46,13 +53,17 @@ function b64urlDecode(text: string): Uint8Array | null {
   return unb64(text.replaceAll('-', '+').replaceAll('_', '/') + pad);
 }
 
-/** The text a new browser shows as a QR code and as a code to copy. */
-export function qrOfferText(publicKey: Uint8Array, psk: Uint8Array): string {
+/**
+ * The text a new browser shows as a QR code and as a code to copy. With `platform` it ends in the platform byte;
+ * without, it is the earlier 97-byte form, which every reader still accepts.
+ */
+export function qrOfferText(publicKey: Uint8Array, psk: Uint8Array, platform?: QrPlatform): string {
   if (publicKey.length !== QR_PUBLIC_LEN || publicKey[0] !== 4) throw new RangeError('public key');
   if (psk.length !== QR_PSK_LEN) throw new RangeError('psk');
-  const raw = new Uint8Array(QR_PUBLIC_LEN + QR_PSK_LEN);
+  const raw = new Uint8Array(QR_PUBLIC_LEN + QR_PSK_LEN + (platform ? QR_PLATFORM_LEN : 0));
   raw.set(publicKey);
   raw.set(psk, QR_PUBLIC_LEN);
+  if (platform) raw[QR_PUBLIC_LEN + QR_PSK_LEN] = PLATFORM_BYTES.indexOf(platform) + 1;
   return QR_PREFIX + b64url(raw);
 }
 
@@ -63,6 +74,8 @@ export function parseQrOffer(text: string): QrOffer | null {
   if (at < 0) return null;
   const body = trimmed.slice(at + QR_PREFIX.length).split(/[\s#?&]/, 1)[0] ?? '';
   const raw = b64urlDecode(body);
-  if (!raw || raw.length !== QR_PUBLIC_LEN + QR_PSK_LEN || raw[0] !== 4) return null;
-  return { publicKey: raw.subarray(0, QR_PUBLIC_LEN), psk: raw.subarray(QR_PUBLIC_LEN) };
+  const base = QR_PUBLIC_LEN + QR_PSK_LEN;
+  if (!raw || (raw.length !== base && raw.length !== base + QR_PLATFORM_LEN) || raw[0] !== 4) return null;
+  const platform = raw.length > base ? (PLATFORM_BYTES[raw[base] - 1] ?? null) : null;
+  return { publicKey: raw.subarray(0, QR_PUBLIC_LEN), psk: raw.subarray(QR_PUBLIC_LEN, base), platform };
 }

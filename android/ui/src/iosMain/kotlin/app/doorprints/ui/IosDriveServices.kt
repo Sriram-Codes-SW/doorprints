@@ -65,6 +65,8 @@ import app.doorprints.drive.wiring.SkipReason
 import app.doorprints.drive.wiring.TokenDriveSignIn
 import app.doorprints.data.iosDataDirectory
 import app.doorprints.shared.api.IsoTime
+import app.doorprints.ui.res.Res
+import app.doorprints.ui.res.lock_notice_ios_notif_title
 import io.ktor.client.HttpClient
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.CoroutineScope
@@ -74,6 +76,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import org.jetbrains.compose.resources.getString
 import platform.Foundation.NSBundle
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSFileSize
@@ -180,7 +183,16 @@ internal class IosDriveServices(
             ),
         )
         // The first time Drive is in use (the folder opened) the triggers start; started again, they do nothing twice.
-        graph.prefs.onChange = { key, _ -> if (key == FileDrivePrefs.KEY_ENGAGED) scope.launch(Dispatchers.Main) { start() } }
+        graph.prefs.onChange = { key, _ ->
+            if (key == FileDrivePrefs.KEY_ENGAGED) {
+                scope.launch(Dispatchers.Main) {
+                    start()
+                    // In context: the person has just connected Drive, and a paused backup is the one notice Drive can send.
+                    // iOS shows its prompt once; a "Don't allow" leaves the Settings notice as the only word.
+                    if (engaged && IosNotifications.canAsk()) IosNotifications.request {}
+                }
+            }
+        }
         return graph
     }
 
@@ -275,7 +287,9 @@ internal class IosDriveServices(
 
     /**
      * One run ([DriveBackgroundRunner]). Nothing is built, asked or touched when Drive is not in use. A pause for a removed
-     * passcode or a lost key is remembered in the lock file (the Settings notice reads it), not announced by a notification.
+     * passcode is remembered in the lock file (the Settings notice reads it) and announced once by a local notification
+     * ([notifyLockPaused], S4b-BL-145): the runner calls it only when the pause begins, and a pause that stands says nothing
+     * again (`DriveBackgroundRunnerTest`).
      */
     suspend fun runInBackground(sync: Boolean, backup: Boolean, onSync: (SyncInfo) -> Unit = {}): RunOutcome {
         if (!engaged) return RunOutcome.Skipped(SkipReason.NOT_CONNECTED)
@@ -283,13 +297,38 @@ internal class IosDriveServices(
             controller = { controller },
             engaged = true,
             lock = { graph.gate.beforeRun() },
-            notifyLock = {},
+            notifyLock = ::notifyLockPaused,
             standing = { DriveLockRules.standingPause(lockMemory.paused, iosHasScreenLock(), lockMemory.keyStoreFault) },
         )
         return DriveBackgroundRunner(ops, onSync).run(sync, backup)
     }
 
+    /**
+     * The local notice of a pause (S4b-BL-145): the words of Settings' notice (`lock_notice_ios_paused`, or `_key_lost` when
+     * the passcode is there but the key is gone) under the title "Google Drive backup paused", as Android's. Dropped when the
+     * person has not allowed notifications (the Settings notice still shows it at the next visit); a second pause replaces
+     * the first (one id). A tap opens Settings, where the Drive card is.
+     */
+    private fun notifyLockPaused() {
+        scope.launch(Dispatchers.Main) {
+            if (!IosNotifications.authorized()) return@launch
+            val notice = DriveLockRules.pausedNotice(lockMemory.keyStoreFault && iosHasScreenLock())
+            IosNotifications.post(
+                ID_LOCK_PAUSED,
+                getString(Res.string.lock_notice_ios_notif_title),
+                getString(notice.iosMessage()),
+                mapOf<Any?, Any?>(KEY_OPEN_SETTINGS to "1"),
+            )
+        }
+    }
+
     companion object {
+        /** The notification id of the pause notice: a second one replaces the first. */
+        const val ID_LOCK_PAUSED = "drive-lock-paused"
+
+        /** The `userInfo` key of a tap that opens Settings (the value is ignored). */
+        const val KEY_OPEN_SETTINGS = "openSettings"
+
         /** `Application Support/Doorprints/drive`: the per-device files; the folder above is flagged out of backups. */
         const val DIR = "drive"
         private const val PERIOD_MINUTES = 30

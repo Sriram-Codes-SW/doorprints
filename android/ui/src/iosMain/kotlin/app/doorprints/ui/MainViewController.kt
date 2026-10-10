@@ -106,6 +106,8 @@ fun installAreaWakeup() {
  * well-formed UUID for a house or visit, coordinates in range; anything else is ignored.
  */
 internal fun notificationDeepLink(userInfo: Map<Any?, *>): DeepLink? {
+    // Drive's pause notice (S4b-BL-145): Settings, where the Drive card is; nothing else is read from it.
+    if (userInfo[IosDriveServices.KEY_OPEN_SETTINGS] != null) return DeepLink.OpenScreen(Routes.SETTINGS)
     (userInfo[IosHunt.KEY_OPEN_HOUSE] as? String)?.let { return if (isUuid(it)) DeepLink.OpenHouse(it) else null }
     (userInfo[IosHunt.KEY_OPEN_VIEWING] as? String)?.let { return if (RecordRules.isValidId(it)) DeepLink.OpenViewing(it) else null }
     // A Hunt mode reminder (slice 3c) or an area wake-up (S4b-BL-96): the Map, which offers Hunt mode (S4b-BL-94c) and
