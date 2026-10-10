@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.160 |
+| Version | 0.161 |
 | Date | 2026-10-10 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..183); this file lists the lead-level items and points to the rest. |
@@ -168,6 +168,7 @@
 | 0.158 | 2026-10-10 | Claude (Code), engineer | Stale statuses of section 1 and N14/N17/N19/N20 corrected against the commit history (finishing batch, path trace v2, the guided tours, the AI provider series, the phones' Drive and scanner are merged; PRs #142, #145, #150, #146, #157, #160..#169). N21 ("nothing built") left as is: no kinds code is on `main`. See [10](10-sprint-log.md) v0.243. |
 | 0.159 | 2026-10-10 | Claude (Code), engineer | §8 finding 11: the Gradle configuration cache is an opt-in flag, not on by default (not verifiable without a Gradle run); S4b-BL-189's ZAP retry built ([10](10-sprint-log.md) v0.242). |
 | 0.160 | 2026-10-10 | Claude (Code), engineer | Z4 done and Z5 closed (see the table); S4b-BL-61 in review ([10](10-sprint-log.md) v0.242). |
+| 0.161 | 2026-10-10 | Claude (Code), engineer | §2 N21 voice: **voice PR 2 (S4b-BL-219) is in review** (draft PR #265): the `Transcriber` core with no caller ([10](10-sprint-log.md) v0.251). Next voice step is PR 3 (S4b-BL-220). |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 
