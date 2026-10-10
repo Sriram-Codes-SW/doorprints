@@ -18,8 +18,9 @@
 
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, timeout } from 'rxjs';
 import { LocalStore } from '../../data/local-store.service';
+import { REQUEST_TIMEOUT_MS } from './ai-request';
 import { distancesToPlaces, notesReaching } from '../../shared/area';
 import type { Viewing } from '../../shared/viewing';
 import type { AskResponse, HouseDraft, PlanRequest, PlanResponse } from '../ai.service';
@@ -28,10 +29,14 @@ import {
   candidateLines, citations, cleanAnswer, extractionPrompt, nonce, planPrompt, sanitizeDraft, selectForAsk, selectForPlan,
 } from './ai-core';
 import { type AiQuality, geminiThinkingLevel } from './ai-quality';
+import { geminiBlocked } from './ai-blocked';
 import type { JsonChatModel } from './json-chat-model';
 
-/** `modelNotFound` and `unreachable` come from an OpenAI-compatible provider (docs/03 §13.2); Gemini never raises them. */
-export type OnDeviceAiErrorKind = 'rateLimited' | 'keyRejected' | 'unavailable' | 'modelNotFound' | 'unreachable';
+/**
+ * `modelNotFound` and `unreachable` come from an OpenAI-compatible provider (docs/03 §13.2); Gemini never raises them.
+ * `blocked` is the provider's own safety system declining the text (S4b-BL-232): never retried, its words never kept.
+ */
+export type OnDeviceAiErrorKind = 'rateLimited' | 'keyRejected' | 'unavailable' | 'modelNotFound' | 'unreachable' | 'blocked';
 
 /** Why an on-device AI request failed, in the words the screens use (see `aiErrorMsg`). */
 export class OnDeviceAiError extends Error {
@@ -126,13 +131,25 @@ export function geminiBody(system: string, user: string, schema: object, tempera
  * [JsonChatModel] for the key it is made with, at the thinking level of [quality] (*AI speed and cost*).
  */
 export class GeminiChatModel implements JsonChatModel {
-  constructor(private readonly http: HttpClient, private readonly key: string, private readonly quality: AiQuality = 'quality') {}
+  /**
+   * `timeoutMs`: the same 60 s request limit as `postAiJson` gives the other kinds (S4b-BL-238; the Gemini path had none,
+   * so a stalled call hung the form). A timeout is `unavailable`, the words the other kinds use. The app never passes
+   * another value; tests do.
+   */
+  constructor(
+    private readonly http: HttpClient,
+    private readonly key: string,
+    private readonly quality: AiQuality = 'quality',
+    private readonly timeoutMs: number = REQUEST_TIMEOUT_MS,
+  ) {}
 
   async generateJson(system: string, user: string, schema: object, temperature: number): Promise<string> {
     const body = geminiBody(system, user, schema, temperature, this.quality);
     let res: GeminiResponse;
     try {
-      res = await firstValueFrom(this.http.post<GeminiResponse>(GEMINI_URL, body, { headers: { 'x-goog-api-key': this.key } }));
+      res = await firstValueFrom(
+        this.http.post<GeminiResponse>(GEMINI_URL, body, { headers: { 'x-goog-api-key': this.key } }).pipe(timeout({ first: this.timeoutMs })),
+      );
     } catch (e) {
       if (e instanceof HttpErrorResponse) {
         const text = JSON.stringify(e.error ?? '');
@@ -144,6 +161,7 @@ export class GeminiChatModel implements JsonChatModel {
       }
       throw new OnDeviceAiError('unavailable');
     }
+    if (geminiBlocked(res)) throw new OnDeviceAiError('blocked');
     const parts = res?.candidates?.[0]?.content?.parts;
     if (!parts) throw new OnDeviceAiError('unavailable');
     return parts.map((p) => p.text ?? '').join('');

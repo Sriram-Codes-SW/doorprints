@@ -110,6 +110,7 @@ fun AiSettingsSection(settings: AppSettings, aiOff: AiOff?) {
         modifier = Modifier.tourTarget(TourTargets.SETTINGS_AI),
         onChange = { on -> scope.launch { repo.setAiFeatures(on) } },
     )
+    AiWorthIt()
     if (!settings.aiFeatures) return
 
     Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -139,6 +140,32 @@ fun AiSettingsSection(settings: AppSettings, aiOff: AiOff?) {
         else -> Res.string.settings_ai_on
     }
     Text(stringResource(status), style = MaterialTheme.typography.bodySmall)
+}
+
+/** Tag of the three sentences under the AI switch (S4b-BL-215), for tests. */
+const val AI_WORTH_TAG = "ai-worth"
+
+/**
+ * S4b-BL-215: three short sentences under the AI switch, shown with AI on or off so the choice is informed: what AI is for
+ * and not for, what it costs, what it sends; then a link to the guide's *Is AI worth it for me?* in the app's language.
+ * The words are the guide's and the website's. One column in reading order, body-small text in the variant colour like the
+ * switch's own hint, no line limits (nothing is cut at a large font), and the link is a 48 dp button whose spoken name
+ * starts with its visible label.
+ */
+@Composable
+private fun AiWorthIt() {
+    val platform = LocalPlatformServices.current
+    val language = uiLanguage()
+    val desc = stringResource(Res.string.settings_ai_guide_desc)
+    Column(Modifier.fillMaxWidth().testTag(AI_WORTH_TAG), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        for (sentence in listOf(Res.string.settings_ai_worth, Res.string.settings_ai_cost, Res.string.settings_ai_sends)) {
+            Text(stringResource(sentence), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        TextButton(
+            onClick = { platform.openUrl(UserGuide.aiWorthItUrl(language)) },
+            modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = desc },
+        ) { Text(stringResource(Res.string.settings_ai_guide)) }
+    }
 }
 
 /**

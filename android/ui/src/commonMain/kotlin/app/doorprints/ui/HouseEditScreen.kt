@@ -435,6 +435,7 @@ fun HouseEditScreen(
     var confirmVisitDelete by rememberSaveable { mutableStateOf<String?>(null) }
     var showPaste by rememberSaveable { mutableStateOf(false) }
     var pasteMessage by rememberSaveable { mutableStateOf<String?>(null) }
+    val fill = remember { ListingFillState() } // the last fill, for Undo fill and the marks (S4b-BL-238)
     // A shared listing (docs/11 5.29): the no-AI parser fills the fresh form once; the summary says what it did. The
     // text is cleared by the caller as soon as it is taken, so a recreated screen does not fill the form again.
     LaunchedEffect(listingText) {
@@ -444,7 +445,7 @@ fun HouseEditScreen(
         onListingConsumed()
         val parsed = ListingText.parse(text)
         val merged = mergeListing(current, parsed, labelIsPlaceholder = current.label == defaultLabel)
-        draft = merged.house
+        draft = merged.house.also { fill.record(current, merged) }
         pasteMessage = pasteResultText(merged, parsed.warnings)
     }
     val latInvalid = latText?.let { parseCoordinate(it, 90.0) == null } == true
@@ -731,16 +732,9 @@ fun HouseEditScreen(
                             onClick = { showPaste = true },
                             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                         ) { ButtonLabel(stringResource(Res.string.house_paste_title)) }
-                        LiveMessage {
-                            pasteMessage?.let {
-                                ResultCard(
-                                    tone = ResultTone.NEUTRAL,
-                                    text = it,
-                                    onDismiss = { pasteMessage = null },
-                                    modifier = Modifier.padding(top = 8.dp),
-                                )
-                            }
-                        }
+                        // The result line, Undo fill and the "from the listing" marks (ListingFillUndo.kt, S4b-BL-238).
+                        PasteResult(pasteMessage, fill, draft, onDismiss = { pasteMessage = null },
+                            onUndo = { draft = it; fill.clear(); scope.launch { pasteMessage = getString(Res.string.house_paste_undone) } })
                         Spacer(Modifier.height(12.dp))
                     }
                     OutlinedTextField(d.label, { v -> update { it.copy(label = v) } },
@@ -1351,7 +1345,7 @@ fun HouseEditScreen(
                     val placeholder = current.label.isBlank() || current.label == defaultLabel ||
                         (isNew && current.label == baseline?.label)
                     val merged = mergeListing(current, draftFromAi, labelIsPlaceholder = placeholder)
-                    draft = merged.house
+                    draft = merged.house.also { fill.record(current, merged) }
                     // Compose resources are read with a suspend call outside composition (cached after the first read),
                     // so the summary lands one dispatch after the fields; if the screen is recreated in between, the
                     // fields are kept and only the summary is lost (CMP-3 review: accepted).
@@ -1580,7 +1574,7 @@ private fun AvailableFromField(value: String?, onChange: (String?) -> Unit) {
 }
 
 /** The field names a listing fill reports ("Filled in: price and contact name."). */
-private val ListingField.nameRes: StringResource
+internal val ListingField.nameRes: StringResource
     get() = when (this) {
         ListingField.NAME -> Res.string.paste_field_name
         ListingField.ADDRESS -> Res.string.paste_field_address
@@ -1658,7 +1652,7 @@ private fun PasteListingDialog(onDismiss: () -> Unit, onDraft: (HouseDraftDto, L
                     val result = runCatching { repo.extractListing(ListingCut.of(text).text) }
                     // Cancelled: the dialog is closing, so neither a draft nor an error.
                     ensureActive()
-                    result.onSuccess { onDraft(it, it.warnings) }.onFailure { error = errorText(it) }
+                    result.onSuccess { onDraft(it, it.warnings + priceWarning(text, it)) }.onFailure { error = errorText(it) }
                     busy = false
                 }
             }) { Text(stringResource(Res.string.house_paste_go)) }

@@ -358,3 +358,36 @@ describe('security headers for Google sign-in (S4b-BL-73)', () => {
     expect(csp).not.toContain('fonts.gstatic.com');
   });
 });
+
+// docs/14 Z4: the content-hashed bundles are cached for a year; everything else keeps `no-cache` from the "**" rule.
+describe('cache headers (Z4)', () => {
+  const rules = firebaseJson.hosting.headers as { source: string; headers: { key: string; value: string }[] }[];
+  const hashed = rules.find((r) => r.headers.some((h) => h.key === 'Cache-Control' && h.value.includes('immutable')));
+  /** The small part of Firebase's glob syntax this rule uses: {a,b}, @(a|b) and *. */
+  const matches = (name: string): boolean => {
+    const re = (hashed?.source ?? '')
+      .replace(/\{([^}]*)\}/g, (_m, alt: string) => `(${alt.split(',').join('|')})`)
+      .replace(/@\(/g, '(')
+      .replace(/\*/g, '[^/]*');
+    return new RegExp(`^${re}$`).test(name);
+  };
+
+  it('gives the hashed bundles one year, immutable, after the "**" rule so it wins', () => {
+    expect(hashed?.headers).toEqual([{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }]);
+    expect(rules.findIndex((r) => r === hashed)).toBeGreaterThan(rules.findIndex((r) => r.source === '**'));
+  });
+
+  it('matches the names the build hashes, and nothing that keeps its name between releases', () => {
+    for (const name of ['/main-6EL6OIW6.js', '/chunk-CDW-IbI4.js', '/polyfills-ABCD1234.js', '/styles-TNUKQERW.css']) {
+      expect(matches(name), name).toBe(true);
+    }
+    for (const name of ['/sw.js', '/config.js', '/index.html', '/maplibre.css', '/maplibre-gl-worker.mjs', '/geo/in-boundaries.geojson', '/manifest.webmanifest', '/fonts/main-x.js']) {
+      expect(matches(name), name).toBe(false);
+    }
+  });
+
+  it('keeps no-cache on every other path', () => {
+    const all = rules.find((r) => r.source === '**');
+    expect(all?.headers.find((h) => h.key === 'Cache-Control')?.value).toBe('no-cache');
+  });
+});

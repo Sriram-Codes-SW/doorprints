@@ -16,6 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { readFileSync } from 'node:fs';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
@@ -122,6 +123,7 @@ describe('PlanPage', () => {
   let host: HTMLElement;
   let i18n: TranslationService;
   let planVisits: ReturnType<typeof vi.fn>;
+  let aiEnabled: ReturnType<typeof signal<boolean>>;
 
   beforeEach(async () => {
     localStorage.clear();
@@ -141,11 +143,12 @@ describe('PlanPage', () => {
       );
     }
     planVisits = vi.fn(() => new Subject<PlanResponse>());
+    aiEnabled = signal(true);
     TestBed.configureTestingModule({
       imports: [PlanPage],
       providers: [
         provideRouter([]),
-        { provide: AiService, useValue: { enabled: signal(true), usesOwnKey: signal(false), ownHost: signal(''), planVisits } },
+        { provide: AiService, useValue: { enabled: aiEnabled, offReason: () => 'noServer' as const, usesOwnKey: signal(false), ownHost: signal(''), planVisits } },
         // No stored map view and no houses: the start stays unset until the user sets it.
         { provide: LocalDataService, useValue: { houses: () => of([]) } },
       ],
@@ -192,6 +195,19 @@ describe('PlanPage', () => {
     host.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit', { cancelable: true }));
     await fixture.whenStable();
   }
+
+  it('hides the form while AI is off, and the stylesheet lets [hidden] win over the grid', async () => {
+    const layout = host.querySelector<HTMLElement>('.layout')!;
+    expect(layout.hidden).toBe(false);
+    aiEnabled.set(false);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(layout.hidden).toBe(true);
+    // jsdom does not order author rules against the user-agent [hidden] rule, so the rule itself is read: without it
+    // `.layout { display: grid }` beats [hidden] and the form shows under the no-server note (S4b-BL-61).
+    const css = readFileSync('src/app/pages/plan/plan-page.css', 'utf8');
+    expect(css).toMatch(/\.layout\[hidden\]\s*\{\s*display:\s*none;?\s*\}/);
+  });
 
   it('sets the start from a typed latitude and longitude, with neither field marked', async () => {
     await type('lat', '12.9716');

@@ -109,17 +109,24 @@ fi
 # -O: the description names the test's random localhost port; scan the container instead. -I: warnings alone do not
 # fail the run here (the High check below decides). -T: at most 10 minutes of active scan. The replacer adds the key
 # to every request.
+# One automatic retry, only when ZAP wrote no report at all (S4b-BL-189: "ZAP wrote no report (exit 3)" failed #202 once and
+# passed unchanged on the re-run). A run that wrote a report is never repeated, so a High alert cannot be retried away.
 set +e
-docker run --rm --network "$net" -v "$(cd "$out" && pwd):/zap/wrk:rw" "$zap_image" \
-  zap-api-scan.py -t openapi.json -f openapi -O http://api:8080 -I -T 10 \
-  -J zap.json -r zap.html \
-  -z "-config replacer.full_list(0).description=apikey -config replacer.full_list(0).enabled=true \
+for attempt in 1 2; do
+  rm -f "$out/zap.json" "$out/zap.html"
+  docker run --rm --network "$net" -v "$(cd "$out" && pwd):/zap/wrk:rw" "$zap_image" \
+    zap-api-scan.py -t openapi.json -f openapi -O http://api:8080 -I -T 10 \
+    -J zap.json -r zap.html \
+    -z "-config replacer.full_list(0).description=apikey -config replacer.full_list(0).enabled=true \
 -config replacer.full_list(0).matchtype=REQ_HEADER -config replacer.full_list(0).matchstr=X-API-Key \
 -config replacer.full_list(0).regex=false -config replacer.full_list(0).replacement=$key"
-zap_status=$?
+  zap_status=$?
+  [ -s "$out/zap.json" ] && break
+  [ "$attempt" = 1 ] && echo "::warning::ZAP wrote no report (exit $zap_status); running the scan once more (S4b-BL-189)"
+done
 set -e
 if [ ! -s "$out/zap.json" ]; then
-  echo "::error::ZAP wrote no report (exit $zap_status)"
+  echo "::error::ZAP wrote no report (exit $zap_status), twice"
   docker logs "$net-api" 2>&1 | tail -40
   exit 1
 fi

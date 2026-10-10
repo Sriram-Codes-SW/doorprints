@@ -253,6 +253,7 @@ class AiProviderFormTest {
     @Test fun eachFailureOfATestHasItsOwnWords() {
         assertEquals(AiFailure.KeyRejected("api.openai.com"), failure(ApiException.Kind.AI_KEY_REJECTED, 401))
         assertEquals(AiFailure.ModelNotFound, failure(ApiException.Kind.AI_MODEL_NOT_FOUND, 404))
+        assertEquals(AiFailure.Blocked, failure(ApiException.Kind.AI_BLOCKED, 200), "the provider declined the text")
         assertEquals(AiFailure.RateLimited(12), failure(ApiException.Kind.RATE_LIMITED, 429, retry = 12))
         assertEquals(AiFailure.RateLimited(60), failure(ApiException.Kind.RATE_LIMITED, 429))
         assertEquals(AiFailure.Unreachable("api.openai.com", local = false), failure(ApiException.Kind.AI_UNAVAILABLE, 0))

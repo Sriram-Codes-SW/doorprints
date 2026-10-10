@@ -34,4 +34,12 @@ class UserGuideTest {
         assertEquals(UserGuide.URL, UserGuide.url("fr"))
         assertEquals(UserGuide.URL, UserGuide.url(""))
     }
+
+    @Test fun theAiWorthItSectionIsInTheAppsLanguage() {
+        assertEquals("https://sriram-codes-sw.github.io/doorprints/settings-and-privacy.html#is-ai-worth-it", UserGuide.aiWorthItUrl("en"))
+        assertEquals("https://sriram-codes-sw.github.io/doorprints/hi/settings-and-privacy.html#is-ai-worth-it", UserGuide.aiWorthItUrl("hi"))
+        assertEquals("https://sriram-codes-sw.github.io/doorprints/ta/settings-and-privacy.html#is-ai-worth-it", UserGuide.aiWorthItUrl("ta"))
+        assertEquals("https://sriram-codes-sw.github.io/doorprints/te/settings-and-privacy.html#is-ai-worth-it", UserGuide.aiWorthItUrl("te"))
+        assertEquals("https://sriram-codes-sw.github.io/doorprints/settings-and-privacy.html#is-ai-worth-it", UserGuide.aiWorthItUrl("fr"))
+    }
 }

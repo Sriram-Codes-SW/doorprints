@@ -927,24 +927,23 @@ export class MapPage implements AfterViewInit, OnDestroy {
    * The phone layout's bottom row (legend and actions) is measured into `--map-stack-h` on the map region, so
    * MapLibre's bottom-right controls and the offline message sit above it whatever its height (a two-row legend in
    * Tamil, two stacked buttons, 200% text). On wider screens the row has no box and measures 0, which nothing uses.
-   * The list's heading and counters are measured into `--map-peek` the same way (used by the phone layout only).
+   * The list's heading and counters are measured into `--map-peek` the same way (phone layout only). On short phones
+   * the legend is at the top and the stack is not positioned, so the actions alone are the row (listPeek, map-page.css).
    */
   private watchStack(): void {
     if (typeof ResizeObserver === 'undefined') return;
-    const wrap = this.wrap().nativeElement;
-    const stack = this.stack().nativeElement;
-    const panel = this.panel().nativeElement;
+    const wrap = this.wrap().nativeElement, stack = this.stack().nativeElement, panel = this.panel().nativeElement;
     const update = () => {
-      wrap.style.setProperty('--map-stack-h', `${Math.ceil(stack.getBoundingClientRect().height)}px`);
-      // The phone map leaves room under it for the list's heading and counters (listPeek, map-page.css).
+      const row = getComputedStyle(stack).position === 'static' ? (stack.querySelector('.map-actions') ?? stack) : stack;
+      wrap.style.setProperty('--map-stack-h', `${Math.ceil(row.getBoundingClientRect().height)}px`);
       const head = panel.querySelector('.panel-head');
       const stats = panel.querySelector('.stats');
       if (head) wrap.style.setProperty('--map-peek', `${listPeek(head.getBoundingClientRect(), stats?.getBoundingClientRect() ?? null)}px`);
     };
     this.stackObserver = new ResizeObserver(update);
     this.stackObserver.observe(stack);
-    // The panel changes size when the counters first appear, and with the text size or the language.
-    this.stackObserver.observe(panel);
+    const actions = stack.querySelector('.map-actions'); if (actions) this.stackObserver.observe(actions);
+    this.stackObserver.observe(panel); // it resizes when the counters first appear, and with the text size or language
     update();
   }
 

@@ -29,7 +29,8 @@
 #   /sw.js and /manifest.webmanifest: HTTP 200, Cache-Control with no-cache and without immutable, and the right
 #     Content-Type (JavaScript; application/manifest+json). The Content-Type also proves that the file itself was
 #     served: a missing file would be answered by the rewrite with index.html and HTTP 200.
-#   The hashed main-*.js that this build's index.html loads: HTTP 200 and a JavaScript Content-Type. The live "/"
+#   The hashed main-*.js that this build's index.html loads: HTTP 200, a JavaScript Content-Type and an immutable
+#     Cache-Control (Z4). The live "/"
 #     must reference that same file, which proves that this deploy, not the previous release, is being served.
 #   /geo/in-boundaries.geojson (India's boundary on the map, 2026-09-24): HTTP 200, Content-Type application/geo+json
 #     or application/json (so not the rewritten shell), X-Content-Type-Options nosniff, Cache-Control with no-cache
@@ -48,6 +49,7 @@
 #   deadline and the printed curl error (coordinator review of the Cloudflare job).
 # 2026-09-24 (DevSecOps): section 4, India's boundary file /geo/in-boundaries.geojson (owner issue P0, branch
 #   fix/india-boundaries): type, nosniff, revalidation and byte identity with the deployed build.
+# 2026-10-10 (Web, Z4): the hashed main-*.js must be served with an immutable Cache-Control.
 set -uo pipefail # no errexit: every problem is collected before the script fails
 
 base="${1:?usage: check-live-headers.sh <site URL> <build dir>}"
@@ -193,6 +195,9 @@ if [ -n "$main_js" ]; then
     fail "/${main_js} answered HTTP ${status}, expected 200$(last_error hashed)"
   else
     printf '%s' "$ctype" | grep -qi 'javascript' || fail "/${main_js}: Content-Type is '${ctype:-missing}', expected JavaScript"
+    # Content-hashed, so it may be cached for a year (docs/14 Z4; the rule in web/firebase.json).
+    hcache=$(header "${work}/hashed.h" cache-control)
+    printf '%s' "$hcache" | grep -qi 'immutable' || fail "/${main_js}: Cache-Control is '${hcache:-missing}', expected max-age=31536000, immutable"
   fi
 else
   fail "no content-hashed .js file found in ${build}; cannot check that assets are served as files"

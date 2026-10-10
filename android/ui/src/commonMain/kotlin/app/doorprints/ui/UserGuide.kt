@@ -54,6 +54,9 @@ object UserGuide {
 
     /** The guide's home page in [language] (a language code, as [uiLanguage] gives it); English for any other. */
     fun url(language: String): String = if (language in TRANSLATED) "$URL$language/" else URL
+
+    /** The guide's section *Is AI worth it for me?* in [language] (S4b-BL-215), linked from the AI features settings. */
+    fun aiWorthItUrl(language: String): String = url(language) + "settings-and-privacy.html#is-ai-worth-it"
 }
 
 /**

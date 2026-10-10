@@ -17,6 +17,7 @@
  */
 
 import { ANTHROPIC_BASE_URL, validateWebBaseUrl } from './ai-provider-config';
+import { anthropicBlocked, parseBody } from './ai-blocked';
 import { type FetchLike, failure, classifyStatus, postAiJson } from './ai-request';
 import type { JsonChatModel } from './json-chat-model';
 import { schemaName } from './openai-compat';
@@ -140,6 +141,7 @@ export class AnthropicChatModel implements JsonChatModel {
     for (;;) {
       const body = anthropicBody(name, this.settings.model, system, user, temperature, strict, MAX_TOKENS, force);
       const res = await this.post(body);
+      if (anthropicBlocked(res.status, parseBody(res.body))) throw new OnDeviceAiError('blocked');
       if (force && retryWithAuto(res.status, res.body)) {
         force = false;
         unforced.add(cacheKey);
@@ -156,6 +158,7 @@ export class AnthropicChatModel implements JsonChatModel {
   async ping(): Promise<void> {
     const body = anthropicBody('ping', this.settings.model, PING_SYSTEM, 'ping', 0, null, PING_MAX_TOKENS);
     const res = await this.post(body);
+    if (anthropicBlocked(res.status, parseBody(res.body))) throw new OnDeviceAiError('blocked');
     if (res.status < 200 || res.status >= 300) throw failure(classifyStatus(res.status, res.retryAfter));
     if (!anthropicPingAnswered(res.body)) throw new OnDeviceAiError('unavailable');
   }

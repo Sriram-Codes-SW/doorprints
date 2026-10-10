@@ -58,6 +58,7 @@ class AnthropicClient(
         while (true) {
             val body = requestBody(SchemaDialect.nameOf(schema), model, system, user, temperature, schema, forceTool = forceTool)
             val response = post(body)
+            if (AiBlocked.anthropic(response.status, response.body)) throw AiBlocked.failure(response.status)
             if (forceTool && retryWithAuto(response.status, response.body)) {
                 forceTool = false
                 continue
@@ -71,6 +72,7 @@ class AnthropicClient(
     override suspend fun ping() {
         val body = requestBody("ping", model, "Reply with {\"ok\": true}.", "ping", 0.0, schema = null, maxTokens = 5)
         val response = post(body)
+        if (AiBlocked.anthropic(response.status, response.body)) throw AiBlocked.failure(response.status)
         if (response.status !in 200..299) throw failure(response.status, response.retryAfter)
         pingAnswered(response.body)
     }

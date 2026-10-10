@@ -1,0 +1,73 @@
+{
+  "spec": [
+    "backend/src/test/java/app/doorprints/server/ai/eval/IntervalTest.java",
+    "backend/src/test/java/app/doorprints/server/ai/eval/CanariesTest.java",
+    "backend/src/test/java/app/doorprints/server/ai/eval/AgreementTest.java",
+    "backend/src/test/java/app/doorprints/server/ai/eval/EvalSetsTest.java",
+    "backend/src/test/java/app/doorprints/server/ai/extract/ExtractCanarySeamsTest.java",
+    "backend/src/test/java/app/doorprints/server/ai/rag/AskCanarySeamsTest.java"
+  ],
+  "maven": ["-Dtest=IntervalTest,CanariesTest,AgreementTest,EvalSetsTest,ExtractCanarySeamsTest,AskCanarySeamsTest"],
+  "mutations": [
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/Interval.java",
+      "find": "double half = Z * Math.sqrt(p * (1 - p) / n + z2 / (4.0 * n * n)) / denominator;",
+      "replace": "double half = Z * Math.sqrt(p * (1 - p) / n) / denominator;",
+      "expect": "everyPerfectScoreOfTheGoldenSetHasTheLowerBoundTheConsultStated"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/Interval.java",
+      "find": "if (n <= 0) return null;",
+      "replace": "if (n < 0) return null;",
+      "expect": "theLabelIsTheValueThenTheIntervalAndNothingWhenNothingWasMeasured"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/Canaries.java",
+      "find": "boolean seen = \"above\".equals(c.expect()) ? m.value() > c.bound() + 1e-9 : m.value() < c.bound() - 1e-9;",
+      "replace": "boolean seen = true;",
+      "expect": "shuffledExpectationsDropFieldAccuracyBelowTheBound"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/Canaries.java",
+      "find": "var next = cases.get((i + 1) % cases.size());",
+      "replace": "var next = cases.get(i);",
+      "expect": "shuffledExpectationsDropFieldAccuracyBelowTheBound"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/Canaries.java",
+      "find": "if (!dropping && bullet && bulletText(lines, line).contains(phrase)) dropping = true;",
+      "replace": "if (!dropping && bullet && line.contains(phrase)) dropping = true;",
+      "expect": "promptWithoutRulesRemovesExactlyTheDataRuleBulletOfEachBuiltPromptAndNothingElse"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/Agreement.java",
+      "find": "out.add(row(STRUCTURED_TUPLE, compared, STRUCTURED_FIELDS, false));",
+      "replace": "out.add(row(STRUCTURED_TUPLE, compared, List.of(\"price\"), false));",
+      "expect": "fieldAgreementCountsPerFieldAndTheWholeStructuredTupleWithFreeTextApart"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/Agreement.java",
+      "find": "if (list.size() >= 2 && EvalScorer.EXTRACT.equals(list.get(0).type) && list.stream().allMatch(r -> r.agreeFields != null)) {",
+      "replace": "if (list.size() >= 2 && list.stream().allMatch(r -> r.agreeFields != null)) {",
+      "expect": "fieldAgreementLeavesOutInfraTrialsAndIsAbsentWithoutARepeatedExtractCase"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/EvalSets.java",
+      "find": "if (file.root().containsKey(\"thresholds\")) {",
+      "replace": "if (false) {",
+      "expect": "aSetWithThresholdsOrOtherFixturesIsRefusedBecauseAnAdditiveSetIsInformational"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/extract/ListingExtractionService.java",
+      "find": "return canarySkipSanitizer ? unsanitized(raw) : DraftSanitizer.sanitize(raw, text);",
+      "replace": "return unsanitized(raw);",
+      "expect": "bothSeamsAreOffByDefaultAndTheDefaultPathIsTheProductionOne"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/RagService.java",
+      "find": "if (ids.isEmpty() || canaryListedIdsCount) {",
+      "replace": "if (true) {",
+      "expect": "bothSeamsAreOffByDefaultAndAListedHouseWithoutAnInlineFactIsNotCited"
+    }
+  ]
+}

@@ -459,6 +459,11 @@
     <string name="house_paste_filled">भरा गया: %1$s। इन्हें जाँचें, फिर सहेजें।</string>
     <string name="house_paste_kept">आपका लिखा हुआ रखा गया: %1$s।</string>
     <string name="house_paste_nothing">लिस्टिंग में भरने के लिए कुछ नया नहीं था।</string>
+    <!-- S4b-BL-238 (2026-10-10): Undo fill, the marks and the price check. Under review. -->
+    <string name="house_paste_undo">भरना पूर्ववत करें</string>
+    <string name="house_paste_undone">भरना पूर्ववत किया गया। फ़ॉर्म पहले जैसा है।</string>
+    <string name="house_paste_from_listing">लिस्टिंग से, आपने अभी जाँचा नहीं: %1$s</string>
+    <string name="house_paste_price_differs">टेक्स्ट में %1$s लिखा है, पर AI ने %2$s पढ़ा। कृपया कीमत जाँच लें।</string>
     <string name="house_photo_open">बड़ा करके देखें</string>
     <string name="house_photo_position">%2$d में से तस्वीर %1$d</string>
     <string name="house_photo_viewer">तस्वीर दर्शक</string>
@@ -659,6 +664,8 @@
     <string name="settings_ai_key_removed">AI कुंजी और सेटिंग हटाई गईं</string>
     <string name="ai_key_rejected_host">%1$s ने आपकी कुंजी नहीं मानी। उसे सेटिंग्स में AI सुविधाएँ के नीचे जाँचें।</string>
     <string name="ai_model_not_found">AI सेवा इस मॉडल को नहीं जानती। मॉडल का नाम सेटिंग्स में AI सुविधाएँ के नीचे जाँचें।</string>
+    <!-- S4b-BL-232 (2026-10-10): under review (hi/ta/te ship marked under review). -->
+    <string name="ai_blocked">AI सेवा ने इस टेक्स्ट को स्वीकार नहीं किया। कुछ भी नहीं बदला गया। शब्द बदलकर फिर कोशिश करें।</string>
     <string name="ai_unreachable">%1$s तक नहीं पहुँचा जा सका। पता और अपना कनेक्शन जाँचें।</string>
     <string name="ai_unreachable_local">%1$s तक नहीं पहुँचा जा सका। जाँचें कि वह चल रहा है और इस फ़ोन से पहुँचा जा सकता है।</string>
     <string name="ai_disclosure_own_key_host">यह टेक्स्ट, मिलते-जुलते मकानों के नोट के साथ, आपकी अपनी कुंजी से इस फ़ोन से सीधे %1$s को भेजा जाता है।</string>
@@ -1648,4 +1655,10 @@
     <string name="settings_ai_quality_balanced_hint">मध्यम सोच: गति और लागत में Quality और Economy के बीच।</string>
     <string name="settings_ai_quality_economy">Economy (किफ़ायती)</string>
     <string name="settings_ai_quality_economy_hint">हमारी जाँच में लगभग 40 प्रतिशत सस्ता और लगभग दोगुना तेज़, और जवाब उतने ही अच्छे।</string>
+    <!-- S4b-BL-215 (2026-10-10): three honest sentences on the AI card, the same words as the website and the guide's "Is AI worth it for me?". Under review. -->
+    <string name="settings_ai_worth">AI आपके अपने सहेजे हुए मकानों और नोट्स को पढ़ता है। उसे बाज़ार, कानून या किसी इलाक़े की कोई जानकारी नहीं है, और Doorprints का बाकी हिस्सा उसके बिना भी चलता है।</string>
+    <string name="settings_ai_cost">पैसे वाली कुंजी पर हर उपयोग में लगभग एक रुपया या कुछ रुपये लगते हैं। Google का मुफ़्त स्तर मुफ़्त है पर उसकी रोज़ की सीमा है, और आप जो भेजते हैं उसे Google पढ़ सकता है।</string>
+    <string name="settings_ai_sends">आपका सवाल और मिलते-जुलते मकानों के नोट्स आपकी चुनी सेवा को जाते हैं; सहेजे गए संपर्क के नाम, फ़ोन और ईमेल पहले, जहाँ तक हम कर सकते हैं, बदल दिए जाते हैं। चिपकाया हुआ विज्ञापन जैसा है वैसा ही भेजा जाता है।</string>
+    <string name="settings_ai_guide">क्या AI मेरे लिए ठीक है? गाइड पढ़ें</string>
+    <string name="settings_ai_guide_desc">क्या AI मेरे लिए ठीक है? उपयोगकर्ता गाइड ब्राउज़र में खुलती है</string>
 </resources>

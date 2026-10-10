@@ -16,6 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 import type { AskResponse, HouseDraft, PlanResponse } from '../ai.service';
+import { ciCell } from './ai-eval-stats';
 import { AI_KINDS, type AiKind, isLocalHost, validateWebBaseUrl } from './ai-provider-config';
 
 /**
@@ -323,7 +324,11 @@ export function formatSummary(
 ): string {
   const hide = (s: string) => (key === '' ? s : s.split(key).join('***'));
   const passed = results.filter((r) => r.passed).length;
-  const row = (name: string, of: CaseResult[]) => `| ${name} | ${of.filter((r) => r.passed).length} | ${of.length} |`;
+  // The Wilson 95% interval of the pass rate (S4b-BL-236): informational, what this many cases can show.
+  const row = (name: string, of: CaseResult[]) => {
+    const passed = of.filter((r) => r.passed).length;
+    return `| ${name} | ${passed} | ${of.length} | ${ciCell(passed, of.length)} |`;
+  };
   const lines = [
     '## AI evals: own provider',
     '',
@@ -341,7 +346,7 @@ export function formatSummary(
     if (left) lines.push(`Not applicable under this set (${left}): ${address.notApplicable.join(', ')}`);
   }
   if (stopped) lines.push(`STOPPED: ${stopped} after ${results.length} cases.`);
-  lines.push('', '| Group | Passed | Of |', '|---|---|---|');
+  lines.push('', '| Group | Passed | Of | 95% CI |', '|---|---|---|---|');
   for (const type of EVAL_TYPES) {
     const of = results.filter((r) => r.type === type);
     if (of.length) lines.push(row(type, of));

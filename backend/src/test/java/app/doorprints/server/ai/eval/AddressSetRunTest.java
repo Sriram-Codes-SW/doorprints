@@ -154,7 +154,7 @@ class AddressSetRunTest {
         var results = List.of(extract("extract-a", true), extract("extract-b", false));
         var plain = report(null, results, List.of(), null);
         assertThat(plain).doesNotContain("Address set").doesNotContain("NOT GATED")
-                .contains("**Result: FAIL** (thresholds from the golden set;").contains("| extractionFieldAccuracy | 0.50 | 1/2 | >= 0.90 | FAIL |");
+                .contains("**Result: FAIL** (thresholds from the golden set;").contains("| extractionFieldAccuracy | 0.50 (95% CI 0.09-0.91) | 1/2 | >= 0.90 | FAIL |");
         // The old overloads still give the same text.
         var metrics = EvalScorer.metrics(results, THRESHOLDS);
         assertThat(EvalScorer.markdown(new java.util.LinkedHashMap<>(), metrics, results, List.of(), List.of(), (EvalScorer.Progress) null, null))
@@ -174,7 +174,7 @@ class AddressSetRunTest {
                 .contains("the verdict of the golden set is the default run's")
                 .doesNotContain("**Result: FAIL**").doesNotContain("**Result: PASS**");
         var metricsSection = md.substring(md.indexOf("## Metrics\n"), md.indexOf("\n## ", md.indexOf("## Metrics\n") + 5));
-        assertThat(metricsSection).contains("| extractionFieldAccuracy | 0.50 | 1/2 | >= 0.90 | not gated |")
+        assertThat(metricsSection).contains("| extractionFieldAccuracy | 0.50 (95% CI 0.09-0.91) | 1/2 | >= 0.90 | not gated |")
                 .doesNotContain("| PASS |").doesNotContain("| FAIL |");
     }
 

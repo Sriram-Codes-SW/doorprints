@@ -65,6 +65,7 @@ import app.doorprints.shared.ai.AiProviderConfig
 import app.doorprints.shared.ai.AiQuality
 import app.doorprints.shared.api.ApiException
 import app.doorprints.ui.AI_QUALITY_TAG
+import app.doorprints.ui.AI_WORTH_TAG
 import app.doorprints.ui.AiDisclosure
 import app.doorprints.ui.AiSettingsSection
 import app.doorprints.ui.AppServices
@@ -359,6 +360,7 @@ class AiSettingsSectionTest {
         type("API key", "sk-typed-key")
         failWith(ApiException(ApiException.Kind.AI_KEY_REJECTED, 401), "api.openai.com did not accept your key.")
         failWith(ApiException(ApiException.Kind.AI_MODEL_NOT_FOUND, 404), "The AI service does not know this model.")
+        failWith(ApiException(ApiException.Kind.AI_BLOCKED, 200), "The AI service declined this text. Nothing was changed. Edit the wording and try again.")
         failWith(ApiException(ApiException.Kind.RATE_LIMITED, 429, retryAfterSeconds = 12), "Try again in 12 s.")
         failWith(ApiException(ApiException.Kind.AI_UNAVAILABLE, 0), "Could not reach api.openai.com. Check the address")
         failWith(ApiException(ApiException.Kind.AI_UNAVAILABLE, 503), "The AI provider is unavailable")
@@ -538,6 +540,39 @@ class AiSettingsSectionTest {
         waitFor("AI speed and cost")
         group().performScrollTo().assertExists()
         compose.onNodeWithText("Economy").assertIsSelected()
+    }
+
+    // --- S4b-BL-215: the three sentences ----------------------------------------------------------------------
+
+    @Test fun threeSentencesAndTheGuideLinkShowWithAiOffAndOn() {
+        runBlocking { store.saveAiFeatures(false) }
+        provide {
+            val s by store.settings.collectAsState(AppSettings())
+            val off by real.aiOff.collectAsState()
+            Column(Modifier.verticalScroll(rememberScrollState())) { AiSettingsSection(s, off) }
+        }
+        waitFor("AI features")
+        val worth = "knows nothing about the market, the law or a locality"
+        waitFor(worth)
+        waitFor("about a rupee or a few per use")
+        waitFor("Google may read what you send")
+        waitFor("A pasted ad is sent as pasted")
+        waitFor("Is AI worth it for me? Read the guide")
+        // The existing disclosure stays, and the sentences are one block after it in reading order.
+        waitFor("Contact names and phone numbers saved with a house are left out")
+        compose.onNodeWithTag(AI_WORTH_TAG).assertExists()
+        // Turning AI on keeps them and shows the service form (its Save button; Test appears only once a key is saved).
+        runBlocking { store.saveAiFeatures(true); store.saveAiProvider(AiProviderChoice.DEVICE) }
+        waitFor("AI service")
+        waitFor(worth)
+        waitFor("Save")
+    }
+
+    @Test fun theGuideLinkIsOneTapTargetWithAnAccessibleNameThatStartsWithItsLabel() {
+        show()
+        val link = compose.onNode(hasContentDescription("Is AI worth it for me? Opens the user guide in the browser"))
+        link.performScrollTo().assertHeightIsAtLeast(48.dp)
+        compose.onNodeWithText("Is AI worth it for me? Read the guide").assertExists()
     }
 
     @Test fun removeKeyForgetsTheChoice() {

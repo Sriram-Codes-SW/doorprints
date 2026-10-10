@@ -62,6 +62,7 @@ class OpenAiCompatClient(
             val body = requestBody(SchemaDialect.nameOf(schema), current, model, system, user, temperature, schema)
             val response = post(body)
             val status = response.status
+            if (AiBlocked.openAi(status, response.body)) throw AiBlocked.failure(status)
             if (status in 200..299) {
                 tier = current
                 return contentOf(response.body)
@@ -78,6 +79,7 @@ class OpenAiCompatClient(
         val body = requestBody("ping", 3, model, "Reply with {\"ok\": true}.", "ping", 0.0, schema = null, maxTokens = 5)
         val response = post(body)
         val status = response.status
+        if (AiBlocked.openAi(status, response.body)) throw AiBlocked.failure(status)
         if (status !in 200..299) throw failure(status, response.retryAfter)
         contentOf(response.body)
     }

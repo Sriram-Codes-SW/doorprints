@@ -70,17 +70,18 @@ class ParityVectorsTest {
             }
             assertEquals(str(o["expected"]), actual, "${o["method"]} $name / $phone: $input")
         }
-        assertEquals(134, cases.size)
+        assertEquals(137, cases.size)
     }
 
     /**
      * S4b-BL-174: a known gap is written down, not hidden. `expected` is what the ports do today (the test above checks
      * it); `wanted` is what they should do. Closing the gap means copying `wanted` over `expected` and dropping both keys.
+     * S4b-BL-174a is closed, so no gap is open now.
      */
     @Test
     fun theKnownGapsOfContactRemovalNameTheirBacklogRow() {
         val gaps = root.getValue("redact").jsonArray.map { it.jsonObject }.filter { "knownGap" in it }
-        assertEquals(listOf("S4b-BL-174a"), gaps.map { str(it["knownGap"]) })
+        assertEquals(emptyList(), gaps.map { str(it["knownGap"]) })
         for (g in gaps) assertNotEquals(str(g["expected"]), str(g["wanted"]))
     }
 
@@ -150,6 +151,39 @@ class ParityVectorsTest {
         val routes = root.getValue("routes").jsonArray
         assertEquals(8, routes.size)
         for (r in routes) checkRoute(r.jsonObject)
+    }
+
+    /**
+     * S4b-BL-199: the plan's fallback route (no usable plan) is the server's: the houses in the running within 50 km of
+     * the start, nearest first, at most the cap, then nearest-neighbour order; none in reach gives no stops.
+     */
+    @Test
+    fun thePlanFallbackIsTheServersNearestWithin50Km() {
+        val cases = root.getValue("planFallback").jsonArray
+        assertEquals(6, cases.size)
+        for (c in cases) {
+            val o = c.jsonObject
+            val note = str(o["note"])!!
+            val start = o.getValue("start").jsonArray
+            val seen = linkedMapOf<String, PlanCandidate>()
+            for (h in o.getValue("houses").jsonArray) {
+                val hh = h.jsonObject
+                val id = str(hh["id"])!!
+                seen[id] = PlanCandidate(
+                    id, id.takeLast(2), "L", null, str(hh["status"]), null, null, null, null,
+                    hh.getValue("lat").jsonPrimitive.double, hh.getValue("lon").jsonPrimitive.double, 0,
+                )
+            }
+            val stops = (o["planStops"] as? JsonArray)?.map { AgentStop(str(it)) }
+            val plan = PlanChecks.assemble(
+                stops?.let { AgentPlan(null, it) }, seen, emptyList(),
+                start[0].jsonPrimitive.double, start[1].jsonPrimitive.double, o.getValue("maxStops").jsonPrimitive.long.toInt(),
+            )
+            val expected = o.getValue("expected").jsonObject
+            assertEquals(expected.getValue("ids").jsonArray.map { str(it) }, plan.stops.map { it.houseId }, note)
+            assertEquals(expected.getValue("fallback").jsonPrimitive.boolean, plan.fallback, note)
+            assertEquals(str(expected["summary"]), plan.summary, note)
+        }
     }
 
     private fun checkRoute(route: JsonObject) {
