@@ -18,6 +18,10 @@
 
 package app.doorprints.server.ai.rag;
 
+import org.springframework.ai.document.Document;
+
+import java.util.List;
+import java.util.function.BiFunction;
 import java.util.function.UnaryOperator;
 
 /**
@@ -40,12 +44,23 @@ public final class AskCanarySeams {
         RagService.canarySystemText = rewrite;
     }
 
+    /** Builds the whole prompt from the raw question and records (canary {@code no-wrapping}); null restores the default. */
+    public static void prompt(BiFunction<String, List<Document>, AskPrompts.Built> build) {
+        RagService.canaryPrompt = build;
+    }
+
+    /** The prompt the service would send for these inputs and {@code nonce} right now (default or canary), for tests. */
+    public static AskPrompts.Built builtPrompt(String question, List<Document> docs, String nonce) {
+        return RagService.builtPrompt(question, docs, nonce);
+    }
+
     public static void reset() {
         RagService.canaryListedIdsCount = false;
         RagService.canarySystemText = null;
+        RagService.canaryPrompt = null;
     }
 
     public static boolean isDefault() {
-        return !RagService.canaryListedIdsCount && RagService.canarySystemText == null;
+        return !RagService.canaryListedIdsCount && RagService.canarySystemText == null && RagService.canaryPrompt == null;
     }
 }

@@ -18,6 +18,7 @@
 
 package app.doorprints.server.ai.extract;
 
+import java.util.function.Function;
 import java.util.function.UnaryOperator;
 
 /**
@@ -40,12 +41,24 @@ public final class ExtractCanarySeams {
         ListingExtractionService.canarySystemText = rewrite;
     }
 
+    /** Builds the whole prompt from the raw listing text (canary {@code no-wrapping}); null restores the default. */
+    public static void prompt(Function<String, ExtractionPrompts.Built> build) {
+        ListingExtractionService.canaryPrompt = build;
+    }
+
+    /** The prompt the service would send for {@code text} and {@code nonce} right now (default or canary), for tests. */
+    public static ExtractionPrompts.Built builtPrompt(String text, String nonce) {
+        return ListingExtractionService.builtPrompt(text, nonce);
+    }
+
     public static void reset() {
         ListingExtractionService.canarySkipSanitizer = false;
         ListingExtractionService.canarySystemText = null;
+        ListingExtractionService.canaryPrompt = null;
     }
 
     public static boolean isDefault() {
-        return !ListingExtractionService.canarySkipSanitizer && ListingExtractionService.canarySystemText == null;
+        return !ListingExtractionService.canarySkipSanitizer && ListingExtractionService.canarySystemText == null
+                && ListingExtractionService.canaryPrompt == null;
     }
 }

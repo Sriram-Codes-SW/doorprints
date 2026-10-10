@@ -74,6 +74,12 @@ public class RagService {
      */
     static volatile java.util.function.UnaryOperator<String> canarySystemText;
     static volatile boolean canaryListedIdsCount;
+    /**
+     * Builds the whole prompt from the raw question and the retrieved records instead of {@link AskPrompts#build}
+     * (canary {@code no-wrapping}: a fixed tag, no neutralisation, the "Records exist only between the tags" rule left out).
+     * Null in production.
+     */
+    static volatile java.util.function.BiFunction<String, List<Document>, AskPrompts.Built> canaryPrompt;
 
     private final ChatClient chat;
     private final VectorStore vectorStore;
@@ -125,7 +131,7 @@ public class RagService {
         if (log.isDebugEnabled()) {
             log.debug("ask retrieved {} houses: {}", docs.size(), docs.stream().map(Document::getId).toList());
         }
-        var prompt = AskPrompts.build(question, docs, PromptSafety.nonce());
+        var prompt = builtPrompt(question, docs, PromptSafety.nonce());
         ModelAnswer answer;
         try {
             var result = chat.prompt()
@@ -290,6 +296,12 @@ public class RagService {
             log.info("ask: dropped {} citedHouseIds not referenced inline", listedNotInline);
         }
         return out;
+    }
+
+    /** The prompt as sent: {@link AskPrompts#build} with the call's nonce, unless the no-wrapping canary builds it. */
+    static AskPrompts.Built builtPrompt(String question, List<Document> docs, String nonce) {
+        var canary = canaryPrompt;
+        return canary == null ? AskPrompts.build(question, docs, nonce) : canary.apply(question, docs);
     }
 
     /** The system text as sent: the built one, unless a canary rewrites it. */

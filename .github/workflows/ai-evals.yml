@@ -74,6 +74,8 @@
 #   AI_EVAL_API_KEY. The owner may never set the secret: the job then prints "skipped: no key" and succeeds without
 #   installing anything. No model name or key is in the repository. Free providers and synthetic data only (PRV-022).
 # 2026-10-10 (S4b-BL-226): the input `address_set` (default `default`) picks a set of docs/ai/evals/address-variants.json for the
+# 2026-10-10 (S4b-BL-239): the `canary` input has a fourth live choice, `no-wrapping` (the nonce tag and the neutraliser off, one
+#   Ask rule removed, scored on six delimiter cases); its value is in the Validate-inputs regex below like the other three.
 # 2026-10-10 (S4b-BL-236, S4b-BL-237): the inputs `eval_set` (golden-set | hard-set: the additive case file of docs/ai/evals,
 #   run against the golden set's fixtures, informational) and `canary` (none | a live canary of docs/ai/evals/canaries.json:
 #   an eval-only degraded configuration whose metric must drop, printed as "CANARY: ... seen / NOT seen", informational),
@@ -157,7 +159,7 @@ on:
           - golden-set
           - hard-set
       canary:
-        description: "golden-set only (S4b-BL-237, docs/ai/ai-design.md 8.6): the canary suite. none = a normal run. A name turns on that eval-only degraded configuration of docs/ai/evals/canaries.json for this run (the seam is set by test code, never by configuration), runs only the canary's case types, gates nothing and prints 'CANARY: <name> expected drop seen / NOT seen'. The keyless canaries run in every build (CanariesTest), not here"
+        description: "golden-set only (S4b-BL-237, docs/ai/ai-design.md 8.6): the canary suite. none = a normal run. A name turns on that eval-only degraded configuration of docs/ai/evals/canaries.json for this run (the seam is set by test code, never by configuration), runs only the canary's case types (no-wrapping: only its six listed cases), gates nothing and prints 'CANARY: <name> expected drop seen / NOT seen' with the characters it removed from each system text. The keyless canaries run in every build (CanariesTest), not here"
         type: choice
         default: none
         options:
@@ -165,6 +167,7 @@ on:
           - no-sanitizer
           - no-citation-filter
           - prompt-without-rules
+          - no-wrapping
       provider:
         description: Model provider. aistudio = AI_API_KEY secret. vertex = Google Cloud Vertex AI; needs docs/ai/vertex-setup.md steps 1-8 done first (secrets GCP_WIF_PROVIDER, GCP_SA_EMAIL, variable GCP_PROJECT_ID)
         type: choice
@@ -248,7 +251,7 @@ jobs:
             echo "::error::eval_set must be golden-set or hard-set (a file in docs/ai/evals)"
             exit 1
           fi
-          if ! [[ "$CANARY" =~ ^(none|no-sanitizer|no-citation-filter|prompt-without-rules)$ ]]; then
+          if ! [[ "$CANARY" =~ ^(none|no-sanitizer|no-citation-filter|prompt-without-rules|no-wrapping)$ ]]; then
             echo "::error::canary must be none or a live canary of docs/ai/evals/canaries.json"
             exit 1
           fi

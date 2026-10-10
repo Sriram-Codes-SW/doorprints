@@ -30,6 +30,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 import java.util.function.UnaryOperator;
 
 /** Feature 1: free text listing -> validated {@link HouseDraft} via ChatClient structured output. */
@@ -46,6 +47,11 @@ public class ListingExtractionService {
      */
     static volatile UnaryOperator<String> canarySystemText;
     static volatile boolean canarySkipSanitizer;
+    /**
+     * Builds the whole prompt from the raw text instead of {@link ExtractionPrompts#build} (canary {@code no-wrapping}:
+     * a fixed tag and no neutralisation). Null in production.
+     */
+    static volatile Function<String, ExtractionPrompts.Built> canaryPrompt;
 
     private final ChatClient chat;
     private final AiProperties props;
@@ -67,7 +73,7 @@ public class ListingExtractionService {
         if (text.length() > props.maxInputChars()) {
             throw new BadRequestException("text is longer than " + props.maxInputChars() + " characters");
         }
-        var prompt = ExtractionPrompts.build(text, PromptSafety.nonce());
+        var prompt = builtPrompt(text, PromptSafety.nonce());
         long started = System.nanoTime();
         try {
             var result = chat.prompt()
@@ -81,6 +87,12 @@ public class ListingExtractionService {
         } catch (RuntimeException e) {
             throw new AiUnavailableException("Listing extraction failed", e);
         }
+    }
+
+    /** The prompt as sent: {@link ExtractionPrompts#build} with the call's nonce, unless the no-wrapping canary builds it. */
+    static ExtractionPrompts.Built builtPrompt(String text, String nonce) {
+        var canary = canaryPrompt;
+        return canary == null ? ExtractionPrompts.build(text, nonce) : canary.apply(text);
     }
 
     /** The system text as sent: the built one, unless a canary rewrites it. */
