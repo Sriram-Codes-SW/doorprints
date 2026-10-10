@@ -180,11 +180,11 @@ class AiLimitsTest {
     }
 
     @Test
-    void aSearchReturnsTwentyHousesByDefaultAndAtMostFifty() {
+    void aSearchReturnsFiftyHousesByDefaultAndAtMostFifty() {
         var search = new HouseSearchService(housesOf(60));
         assertThat(HouseSearchService.MAX_RESULTS).isEqualTo(50);
-        assertThat(search.search(null)).hasSize(20);
-        assertThat(search.search(new Criteria(null, null, null, null, null, null, null, null, null))).hasSize(20);
+        assertThat(search.search(null)).hasSize(50);
+        assertThat(search.search(new Criteria(null, null, null, null, null, null, null, null, null))).hasSize(50);
         assertThat(search.search(new Criteria(null, null, null, null, null, null, null, null, 7))).hasSize(7);
         assertThat(search.search(new Criteria(null, null, null, null, null, null, null, null, 50))).hasSize(50);
         assertThat(search.search(new Criteria(null, null, null, null, null, null, null, null, 51))).hasSize(50);

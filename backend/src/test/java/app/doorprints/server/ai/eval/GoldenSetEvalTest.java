@@ -253,6 +253,12 @@ class GoldenSetEvalTest {
             // Saves are not embedded one by one here (app.ai.index-on-change=false), so no settling pause is needed.
             var indexed = post("/api/ai/reindex", null);
             header.put("Indexed houses", String.valueOf(indexed.get("indexed")));
+            // A partial index would lower the Ask and Plan scores for a reason that is not the model: harness error.
+            var countError = FixtureSeeding.indexedCountError(indexed.get("indexed"), golden.fixtureHouses().size());
+            if (countError != null) {
+                errors.add(countError);
+                return false;
+            }
             return true;
         } catch (QuotaExhausted e) {
             throw e;
@@ -263,16 +269,14 @@ class GoldenSetEvalTest {
     }
 
     private void seedFixtures(GoldenSet golden) {
-        var now = Instant.now().toString();
-        for (var house : golden.fixtureHouses()) {
-            var body = new LinkedHashMap<String, Object>(house);
-            // The golden set's own tags (v0.7), not house fields.
-            body.remove("city");
-            body.remove("region");
-            body.put("updatedAt", now);
-            body.put("deleted", false);
+        var nowInstant = Instant.now();
+        var now = nowInstant.toString();
+        var fixtureHouses = golden.fixtureHouses();
+        for (int i = 0; i < fixtureHouses.size(); i++) {
+            var house = fixtureHouses.get(i);
+            // Distinct, ordered timestamps: the same list order, and so the same search results, every run.
             api.put().uri("/api/houses/{id}", house.get("id")).contentType(MediaType.APPLICATION_JSON)
-                    .body(body).retrieve().toBodilessEntity();
+                    .body(FixtureSeeding.seedBody(house, i, nowInstant)).retrieve().toBodilessEntity();
         }
         for (var visit : golden.fixtureVisits()) {
             var body = new LinkedHashMap<String, Object>(visit);
