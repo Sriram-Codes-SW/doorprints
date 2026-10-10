@@ -176,6 +176,7 @@ private class FakeRepository(private val hold: Boolean = false) : Repository {
     override suspend fun setAiFeatures(on: Boolean) = TODO()
     override suspend fun saveGeminiKey(key: String) = TODO()
     override suspend fun removeGeminiKey() = TODO()
+    override suspend fun setAiQuality(quality: app.doorprints.shared.ai.AiQuality) = TODO()
     override suspend fun saveAiProviderConfig(config: app.doorprints.shared.ai.AiProviderConfig, key: String) = TODO()
     override suspend fun testAiProvider(config: app.doorprints.shared.ai.AiProviderConfig, key: String): Result<Unit> = TODO()
     override suspend fun setAiProvider(choice: app.doorprints.data.AiProviderChoice) = TODO()

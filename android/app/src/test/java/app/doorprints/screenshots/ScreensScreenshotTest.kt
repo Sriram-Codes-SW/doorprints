@@ -418,6 +418,12 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
         shootAi("settings_ai_openai") { pickService(Res.string.settings_ai_service_openai) }
     }
 
+    /** Google Gemini, the default service: the key field and its buttons and, under them, *AI speed and cost* (S4b-BL-198 step 2). */
+    @Test fun settingsAiGemini() {
+        assumeTrue(lang == "en" && !dark)
+        shootAi("settings_ai_gemini") {}
+    }
+
     /** Custom chosen and Save pressed with nothing typed: the three errors, in Tamil, dark. */
     @Test fun settingsAiErrors() {
         assumeTrue(lang == "ta" && dark)

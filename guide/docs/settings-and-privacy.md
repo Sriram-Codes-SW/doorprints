@@ -120,17 +120,18 @@ leave that off on a shared computer. **Remove key** forgets the key and your cho
 
 ### AI speed and cost {#ai-speed-and-cost}
 
-On the website, under **AI features**, when you use **Google Gemini** a group called **AI speed and cost** lets you choose how
-long the model thinks before it answers:
+On the website (the Connect page, under **AI features**) and in the Android and iPhone apps (**Settings**, then **AI features**),
+when you use **Google Gemini** with your own key, a group called **AI speed and cost** lets you choose how long the model thinks
+before it answers:
 
 - **Quality**: the model's own default setting. Nothing is changed; this is what you get if you never touch the group.
 - **Balanced**: thinks a medium amount, between Quality and Economy on speed and cost.
 - **Economy**: in our tests about 40% cheaper and about twice as fast, with answers as good.
 
 Most of what a Gemini answer costs is the model's thinking, so a lower setting saves money on a key that has billing turned
-on. Your choice is kept in this browser and applies at once. It is only for Google Gemini keys: with any other service, or
-with AI features off, the group is not shown and nothing is sent (a choice you made stays saved). For now it is on the
-website only. The figures are from our own test runs, so yours may differ.
+on. Your choice is kept on this browser or phone and applies at once, with no Save. It is only for Google Gemini keys: with any other service, or
+with AI features off, the group is not shown and nothing is sent (a choice you made stays saved). **Remove key** forgets
+the choice too. It works the same on the website and in the apps. The figures are from our own test runs, so yours may differ.
 
 On the website, **Your data** also has a **Privacy page** link (`privacy.html`) and **Back up to Google Drive**.
 See [Back up to Google Drive](google-drive.md).

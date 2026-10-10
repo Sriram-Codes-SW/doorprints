@@ -26,12 +26,14 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.room.Room
 import app.doorprints.shared.ai.AiKind
 import app.doorprints.shared.ai.AiProviderConfig
+import app.doorprints.shared.ai.AiQuality
 import app.doorprints.shared.ai.AnthropicClient
 import app.doorprints.shared.ai.GeminiClient
 import app.doorprints.shared.ai.OpenAiCompatClient
 import app.doorprints.shared.api.ApiHttp
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
+import io.ktor.client.engine.mock.toByteArray
 import io.ktor.http.Headers
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.CoroutineScope
@@ -67,6 +69,7 @@ class AiProviderRepositoryTest {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).allowMainThreadQueries().build()
     private val geminiCalls = mutableListOf<String>()
+    private val geminiBodies = mutableListOf<String>()
     private val openAiCalls = mutableListOf<Pair<String, String?>>()
     private val anthropicCalls = mutableListOf<Pair<String, String?>>()
 
@@ -84,6 +87,7 @@ class AiProviderRepositoryTest {
     private val json = Headers.build { append("Content-Type", "application/json") }
     private val geminiEngine = MockEngine { request ->
         geminiCalls += request.url.toString()
+        geminiBodies += request.body.toByteArray().decodeToString().replace(" ", "")
         respond("""{"candidates":[{"content":{"parts":[{"text":"{\"label\":\"From Gemini\"}"}]}}]}""", HttpStatusCode.OK, json)
     }
     private val openAiEngine = MockEngine { request ->
@@ -109,7 +113,7 @@ class AiProviderRepositoryTest {
         photoDir = File(tmp.root, "photos").path,
         syncSoon = {},
         apiFor = { _, _ -> error("no server in this test") },
-        geminiFor = { key -> GeminiClient(ApiHttp.client(geminiEngine), key, timeoutMs = null) },
+        geminiFor = { key, quality -> GeminiClient(ApiHttp.client(geminiEngine), key, timeoutMs = null, quality = quality) },
         openAiFor = { url, model, key -> OpenAiCompatClient(ApiHttp.client(openAiEngine), url, model, key, timeoutMs = null) },
         anthropicFor = { url, model, key -> AnthropicClient(ApiHttp.client(anthropicEngine), model, key, url, timeoutMs = null) },
         emulatorHostAllowed = emulator,
@@ -131,6 +135,57 @@ class AiProviderRepositoryTest {
         assertEquals("From Gemini", repo.extractListing("2BHK in Indiranagar").label)
         assertEquals(1, geminiCalls.size)
         assertTrue(openAiCalls.isEmpty())
+    }
+
+    @Test
+    fun theSavedSpeedAndCostChoiceReachesTheGeminiRequestAndTakesEffectOnTheNextCall() = runBlocking {
+        val repo = repository()
+        repo.saveGeminiKey("AIzaOwnKeyForTests1234")
+        // Nothing chosen: Quality, which sends no thinking field, and the larger answer budget.
+        repo.extractListing("2BHK in Indiranagar")
+        assertFalse(geminiBodies.last(), "thinking" in geminiBodies.last().lowercase())
+        assertTrue(geminiBodies.last(), "\"maxOutputTokens\":8192" in geminiBodies.last())
+        repo.setAiQuality(AiQuality.BALANCED)
+        assertEquals(AiQuality.BALANCED, settings.current().aiQuality)
+        repo.extractListing("another listing")
+        assertTrue(geminiBodies.last(), "\"thinkingConfig\":{\"thinkingLevel\":\"MEDIUM\"}" in geminiBodies.last())
+        repo.setAiQuality(AiQuality.ECONOMY)
+        repo.extractListing("a third listing")
+        assertTrue(geminiBodies.last(), "\"thinkingConfig\":{\"thinkingLevel\":\"LOW\"}" in geminiBodies.last())
+        // *Test key* asks with the choice too, so a key that cannot use it is found out there.
+        assertTrue(repo.testGeminiKey("AIzaOwnKeyForTests1234").isSuccess)
+        assertTrue(geminiBodies.last(), "\"thinkingLevel\":\"LOW\"" in geminiBodies.last())
+        // Back to Quality: the field is gone again.
+        repo.setAiQuality(AiQuality.QUALITY)
+        repo.extractListing("a fourth listing")
+        assertFalse(geminiBodies.last(), "thinking" in geminiBodies.last().lowercase())
+    }
+
+    @Test
+    fun theChoiceIsKeptButNeverSentToAnotherService() = runBlocking {
+        val repo = repository()
+        repo.setAiQuality(AiQuality.ECONOMY)
+        repo.saveAiProviderConfig(local, "")
+        repo.extractListing("2BHK in Indiranagar")
+        repo.saveAiProviderConfig(anthropic, "test-key-not-real")
+        repo.extractListing("2BHK in Indiranagar")
+        assertEquals(AiQuality.ECONOMY, settings.current().aiQuality)
+        assertTrue(geminiCalls.isEmpty())
+        assertEquals(1, openAiCalls.size)
+        assertEquals(1, anthropicCalls.size)
+        // Back to Gemini: the kept choice is used again.
+        repo.saveGeminiKey("AIzaOwnKeyForTests1234")
+        repo.extractListing("2BHK in Indiranagar")
+        assertTrue(geminiBodies.last(), "\"thinkingLevel\":\"LOW\"" in geminiBodies.last())
+    }
+
+    @Test
+    fun removingTheKeyForgetsTheChoice() = runBlocking {
+        val repo = repository()
+        repo.saveGeminiKey("AIzaOwnKeyForTests1234")
+        repo.setAiQuality(AiQuality.ECONOMY)
+        repo.removeGeminiKey()
+        assertEquals(AiQuality.QUALITY, settings.current().aiQuality)
     }
 
     @Test

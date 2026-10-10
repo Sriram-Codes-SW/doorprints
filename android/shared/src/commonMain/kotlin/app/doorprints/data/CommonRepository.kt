@@ -27,6 +27,7 @@ import app.doorprints.export.CopyUndo
 import app.doorprints.shared.ai.AiHouse
 import app.doorprints.shared.ai.AiVisit
 import app.doorprints.shared.ai.AiProviderConfig
+import app.doorprints.shared.ai.AiQuality
 import app.doorprints.shared.ai.BaseUrlValidator
 import app.doorprints.shared.ai.GeminiClient
 import app.doorprints.shared.ai.JsonChatModel
@@ -133,7 +134,7 @@ open class CommonRepository(
     private val syncSoon: () -> Unit,
     private val apiFor: (serverUrl: String, apiKey: String) -> ApiClient,
     /** Gemini with the person's own key, for on-device AI (docs/03 §13.1); null where a platform has none (tests). */
-    geminiFor: ((apiKey: String) -> GeminiClient)? = null,
+    geminiFor: ((apiKey: String, quality: AiQuality) -> GeminiClient)? = null,
     syncBackendFor: (suspend (AppSettings) -> SyncBackend?)? = null,
     /** An OpenAI-compatible endpoint with the person's own key, for on-device AI (docs/03 §13.2); null where a platform has none. */
     openAiFor: ((baseUrl: String, model: String, apiKey: String) -> JsonChatModel)? = null,
@@ -469,6 +470,8 @@ open class CommonRepository(
     override suspend fun setAiProvider(choice: AiProviderChoice) = ai.setProvider(choice)
 
     override suspend fun removeGeminiKey() = ai.removeKey()
+
+    override suspend fun setAiQuality(quality: AiQuality) = ai.setQuality(quality)
 
     override suspend fun testGeminiKey(key: String): Result<Unit> = ai.testProvider(AiProviderConfig.GEMINI, key)
 

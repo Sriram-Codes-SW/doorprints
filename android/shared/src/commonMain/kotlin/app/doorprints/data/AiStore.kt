@@ -21,6 +21,7 @@ package app.doorprints.data
 import app.doorprints.shared.ai.AiHouse
 import app.doorprints.shared.ai.AiKind
 import app.doorprints.shared.ai.AiProviderConfig
+import app.doorprints.shared.ai.AiQuality
 import app.doorprints.shared.ai.AnthropicClient
 import app.doorprints.shared.ai.BaseUrlCheck
 import app.doorprints.shared.ai.BaseUrlValidator
@@ -50,7 +51,7 @@ import kotlinx.coroutines.withContext
 internal class AiStore(
     private val settings: SettingsStore,
     private val apiFor: (serverUrl: String, apiKey: String) -> ApiClient,
-    private val geminiFor: ((apiKey: String) -> GeminiClient)?,
+    private val geminiFor: ((apiKey: String, quality: AiQuality) -> GeminiClient)?,
     private val openAiFor: ((baseUrl: String, model: String, apiKey: String) -> JsonChatModel)?,
     private val anthropicFor: ((baseUrl: String, model: String, apiKey: String) -> JsonChatModel)?,
     private val emulatorHostAllowed: Boolean,
@@ -109,8 +110,8 @@ internal class AiStore(
     }
 
     /** The model for the saved choice, or null when nothing here can build it. */
-    private fun chatModel(config: AiProviderConfig, key: String): JsonChatModel? = when (config.kind) {
-        AiKind.GEMINI -> geminiFor?.invoke(key)
+    private fun chatModel(config: AiProviderConfig, key: String, quality: AiQuality): JsonChatModel? = when (config.kind) {
+        AiKind.GEMINI -> geminiFor?.invoke(key, quality)
         AiKind.OPENAI_COMPATIBLE -> openAiFor?.invoke(config.baseUrl, config.model, key)
         AiKind.ANTHROPIC -> anthropicFor?.invoke(config.baseUrl, config.model, key)
     }
@@ -137,6 +138,11 @@ internal class AiStore(
         publish(settings.current())
     }
 
+    /** Saves the *AI speed and cost* choice; the next call builds its client with it. No publish: nothing about "AI on" changes. */
+    suspend fun setQuality(quality: AiQuality) {
+        settings.saveAiQuality(quality)
+    }
+
     suspend fun removeKey() {
         settings.removeGeminiKey()
         publish(settings.current())
@@ -151,7 +157,7 @@ internal class AiStore(
 
     suspend fun testProvider(config: AiProviderConfig, key: String): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
-            val client = chatModel(checkedConfig(config), key.trim()) ?: throw IllegalStateException("no provider")
+            val client = chatModel(checkedConfig(config), key.trim(), settings.current().aiQuality) ?: throw IllegalStateException("no provider")
             client.ping()
         }
     }
@@ -172,7 +178,7 @@ internal class AiStore(
     }
 
     /** On-device AI for the saved key, or null when AI goes through the server. One per key, so its rate limit holds. */
-    private var onDevice: Pair<Pair<AiProviderConfig, String>, OnDeviceAi>? = null
+    private var onDevice: Pair<Triple<AiProviderConfig, String, AiQuality>, OnDeviceAi>? = null
 
     /**
      * The on-device AI for the saved key, or null when AI goes through the server; the instance is reused while
@@ -181,9 +187,11 @@ internal class AiStore(
     private suspend fun ownKeyAi(): OnDeviceAi? {
         val s = settings.current()
         if (!usesOwnKey(s)) return null
-        val key = s.aiProviderConfig to s.geminiKey
+        // Only the Gemini client reads the choice, so for another service it is left out of the key and a change rebuilds nothing.
+        val quality = if (s.aiProviderConfig.kind == AiKind.GEMINI) s.aiQuality else AiQuality.DEFAULT
+        val key = Triple(s.aiProviderConfig, s.geminiKey, quality)
         onDevice?.let { (saved, ai) -> if (saved == key) return ai }
-        return OnDeviceAi(chatModel(s.aiProviderConfig, s.geminiKey)!!, houses).also { onDevice = key to it }
+        return OnDeviceAi(chatModel(s.aiProviderConfig, s.geminiKey, quality)!!, houses).also { onDevice = key to it }
     }
 
     /**
