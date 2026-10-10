@@ -23,7 +23,8 @@
 import type { HouseAnswer, HouseRoom } from '../models';
 import type { Viewing } from '../../shared/viewing';
 import { cmToFeetInches } from '../../shared/room-sizes';
-import { inTheRunning } from '../../shared/house-status';
+import { FALLBACK_MAX_METERS, FALLBACK_NONE_IN_REACH, FALLBACK_REASON, FALLBACK_SUMMARY, fallbackPoints, haversineMeters, legsInOrder, nearestNeighbour, roundHalfUp, walkMinutes } from './plan-fallback';
+import type { AgentPlan, Leg, PlanCandidate, RoutePoint } from './plan-fallback';
 import type { AskResponse, Citation, HouseDraft, PlanResponse, PlannedStop } from '../ai.service';
 
 // ---------------------------------------------------------------- contact removal (ContactRedactor)
@@ -872,94 +873,7 @@ export function citations(answer: ModelAnswer, docs: AskDocument[], question: st
 
 // ---------------------------------------------------------------- routes (RouteOptimizer) and plan checks
 
-export interface RoutePoint { id: string; lat: number; lon: number }
-export interface Leg { to: RoutePoint; meters: number; walkMinutes: number }
-
-const EARTH_RADIUS_M = 6_371_008.8;
-const rad = (d: number) => (d * Math.PI) / 180;
-
-/** The great-circle distance between two points in metres. */
-export function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const dLat = rad(lat2 - lat1);
-  const dLon = rad(lon2 - lon1);
-  const a = Math.sin(dLat / 2) ** 2 + Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(dLon / 2) ** 2;
-  return 2 * EARTH_RADIUS_M * Math.asin(Math.min(1, Math.sqrt(a)));
-}
-
-/** Whole minutes to walk `meters`: a 1.3 detour factor over the straight line at 80 m a minute, rounded up. */
-export function walkMinutes(meters: number): number {
-  return meters <= 0 ? 0 : Math.ceil((meters * 1.3) / 80);
-}
-
-/** Java's Math.round (half up); JavaScript's Math.round is half up for positives too, so this is it. */
-export const roundHalfUp = (v: number) => Math.floor(v + 0.5);
-
-/**
- * Orders `stops` by going to the nearest unvisited one each time, starting at the given point. Good enough for a walk
- * between a few houses and the same rule as the server's RouteOptimizer.
- */
-export function nearestNeighbour(lat: number, lon: number, stops: RoutePoint[]): Leg[] {
-  const remaining = [...stops];
-  const legs: Leg[] = [];
-  while (remaining.length) {
-    let bestIdx = 0;
-    let best = Number.MAX_VALUE;
-    remaining.forEach((p, i) => {
-      const d = haversineMeters(lat, lon, p.lat, p.lon);
-      if (d < best) { best = d; bestIdx = i; }
-    });
-    const next = remaining.splice(bestIdx, 1)[0];
-    legs.push({ to: next, meters: best, walkMinutes: walkMinutes(best) });
-    lat = next.lat;
-    lon = next.lon;
-  }
-  return legs;
-}
-
-/** The legs from the start point through `stops` in the order given. */
-export function legsInOrder(lat: number, lon: number, stops: RoutePoint[]): Leg[] {
-  return stops.map((p) => {
-    const d = haversineMeters(lat, lon, p.lat, p.lon);
-    lat = p.lat;
-    lon = p.lon;
-    return { to: p, meters: d, walkMinutes: walkMinutes(d) };
-  });
-}
-
-/**
- * A house offered to the model for a visit plan: the facts it needs and its distance from the start point. Never the
- * contact.
- */
-export interface PlanCandidate {
-  id: string; label: string; locality: string | null; street: string | null; status: string | null;
-  price: number | null; priceType: string | null; bedrooms: number | null; rating: number | null;
-  lat: number; lon: number; distanceMeters: number;
-}
-
-export interface AgentPlan { summary?: string | null; stops?: { houseId?: string | null; reason?: string | null }[] | null }
-
-export const FALLBACK_REASON = 'Found by the search; ordered by walking distance';
-/** How far from the start point a house may be for the fallback route to offer it, as the server's `FALLBACK_MAX_METERS`: a house hunt is one city. */
-export const FALLBACK_MAX_METERS = 50_000;
-/** The summary of a fallback when no candidate is within {@link FALLBACK_MAX_METERS} of the start. */
-export const FALLBACK_NONE_IN_REACH = 'No saved houses within reach of your start point were found.';
-export const FALLBACK_SUMMARY = 'The assistant could not finish a plan, so these are the houses it found, ordered by nearest neighbour from your start point.';
 const UUID_ONLY = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-
-/**
- * The fallback's candidates, as the server's `fallbackPoints`: the houses in the running with usable coordinates within
- * {@link FALLBACK_MAX_METERS} of the start, nearest to the start first (equal distances by house id), at most `maxStops`.
- */
-function fallbackPoints(seen: Map<string, PlanCandidate>, lat: number, lon: number, maxStops: number): RoutePoint[] {
-  return [...seen.values()]
-    .filter((h) => inTheRunning(h.status))
-    .map((h) => ({ h, meters: haversineMeters(lat, lon, h.lat, h.lon) }))
-    // A NaN distance (an unusable coordinate) is not within reach.
-    .filter((n) => n.meters <= FALLBACK_MAX_METERS)
-    .sort((x, y) => x.meters - y.meters || (x.h.id.toLowerCase() < y.h.id.toLowerCase() ? -1 : x.h.id.toLowerCase() > y.h.id.toLowerCase() ? 1 : 0))
-    .slice(0, maxStops)
-    .map((n) => ({ id: n.h.id, lat: n.h.lat, lon: n.h.lon }));
-}
 
 /**
  * Builds the visit plan from what the model chose, trusting only ids that were offered as candidates (each once, up to
@@ -1131,3 +1045,5 @@ Rules:
 }
 
 export type { AskResponse };
+export { FALLBACK_MAX_METERS, FALLBACK_NONE_IN_REACH, FALLBACK_REASON, FALLBACK_SUMMARY, haversineMeters, legsInOrder, nearestNeighbour, roundHalfUp, walkMinutes };
+export type { AgentPlan, Leg, PlanCandidate, RoutePoint };

@@ -183,9 +183,8 @@ private enum class AfterGrant { HUNT, SAVE_HERE, MY_LOCATION, CHECK_HERE }
  * draws at the bottom start ([attributionBottomDp]: the legend while it is drawn, or a row of controls that reaches
  * it), 4 dp from the bare map edge otherwise, as the web lifts its corner controls with `--map-stack-h`, so no Compose
  * surface hides it or takes its taps. While a snackbar sits beside the landscape row, in the legend's place, the "i"
- * is lifted above the snackbar, never hidden or covered (S4b-BL-4, [attributionOverlayTopDp]). Its
- * logo is off (the BSD licence does not ask for it; the web shows none). The
- * map is north-up ([MAP_NORTH_UP], round 8): rotation, tilt and the compass are off, as on the web, so no rotated map
+ * is lifted above the snackbar, never hidden or covered (S4b-BL-4, [attributionOverlayTopDp]). Its logo is off (the
+ * BSD licence does not ask for it; the web shows none). The map is north-up ([MAP_NORTH_UP], round 8): rotation, tilt and the compass are off, as on the web, so no rotated map
  * is ever left without a visible way back to north (WCAG 2.5.1), and a camera saved before is restored at bearing 0.
  *
  * **Gutters (round 6).** The Hunt card's edge, the bottom controls, the legend and the snackbar are all 16 dp from the
@@ -748,8 +747,7 @@ fun MapScreen(
             LegendPlace.IN_BAND, null -> 0.dp
         }
         // A snackbar beside the row sits where the row layout's legend is, so the legend fades out while it shows
-        // (round 7; round 8 fades instead of cutting). The attribution stays above the legend's place (round 9), and
-        // is lifted above the snackbar beside the row (S4b-BL-4; round 10 hid it).
+        // (round 7; round 8 fades instead of cutting). The attribution is lifted above it (S4b-BL-4).
         val snackbarAtStart = controlsInRow && snackbarBesideRow(maxWidth.value, rowWidthDp.value) &&
             snackbar.currentSnackbarData != null
         // The top of the legend's place at the bottom start, or 0 when it has none (or is not measured yet). The band
@@ -780,8 +778,7 @@ fun MapScreen(
             controlsInRow && rowReachesAttribution(maxWidth.value, rowWidthDp.value) -> (rowHeightDp - 16.dp).value
             else -> 0f
         }
-        // S4b-BL-4: while a snackbar sits beside the row the "i" is lifted above it (never hidden: R5, nothing covers or
-        // hides the attribution), by the snackbar's measured top.
+        // S4b-BL-4: while a snackbar sits beside the row the "i" is lifted above it, by the snackbar's measured top.
         val attributionOverlayTop = attributionOverlayTopDp(
             legendOrRowTop,
             if (snackbarAtStart) with(density) { snackbarHeightPx.toDp() }.value else 0f,
