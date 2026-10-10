@@ -80,6 +80,8 @@ of October 2026. Google's free tier is free, with a daily limit; Google may read
 emails are replaced first, as far as we can; a nickname or short local number can slip through. A pasted ad is sent
 as pasted.
 
+The same three short sentences (what AI is for, what it costs, what it sends) are on the **AI features** card in the apps, with a link to this section.
+
 **Setup:** one key, a few steps. What we check: [What we test](what-we-test.md).
 
 ### What it looks like

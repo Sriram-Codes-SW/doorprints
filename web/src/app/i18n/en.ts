@@ -1675,6 +1675,12 @@ export const en = {
   'connect.aiQualityBalancedHint': 'Thinks a medium amount: between Quality and Economy on speed and cost.',
   'connect.aiQualityEconomy': 'Economy',
   'connect.aiQualityEconomyHint': 'About 40% cheaper and about twice as fast in our tests, with answers as good.',
+  // S4b-BL-215 (2026-10-10): three honest sentences on the AI card, the words of the guide's 'Is AI worth it for me?'.
+  'connect.aiWorth': 'AI reads your own saved houses and notes. It knows nothing about the market, the law or a locality, and the rest of Doorprints works without it.',
+  'connect.aiCost': 'It costs about a rupee or a few per use on a paid key. Google\'s free tier is free with a daily limit, and Google may read what you send.',
+  'connect.aiSends': 'Your question and the matching house notes go to the service you chose, with saved contact names, phones and emails replaced first as far as we can. A pasted ad is sent as pasted.',
+  'connect.aiGuide': 'Is AI worth it for me? Read the guide',
+  'connect.aiGuideAria': 'Is AI worth it for me? Read the guide (opens in a new tab)',
 };
 
 /** Every translation must have exactly these keys (checked by the compiler). */

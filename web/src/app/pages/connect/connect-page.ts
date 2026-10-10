@@ -27,7 +27,7 @@ import { HouseApiService } from '../../core/house-api.service';
 import { StatsDto } from '../../core/models';
 import { errorMsg } from '../../core/format';
 import { Announcer } from '../../core/announcer.service';
-import { Msg } from '../../i18n/translation.service';
+import { Msg, TranslationService } from '../../i18n/translation.service';
 import type { TKey } from '../../i18n/en';
 import { ConfirmService } from '../../core/confirm.service';
 import { AiService, aiErrorMsg, aiOffMsg } from '../../core/ai.service';
@@ -47,6 +47,7 @@ import { AiSessionState } from '../../core/ai-session.state';
 import { TPipe } from '../../i18n/t.pipe';
 import { RunResult, runResult } from '../../shared/run-result';
 import { focusIfLost } from '../../shared/focus';
+import { aiWorthItUrl } from '../../shared/help-link';
 
 /**
  * Connects this browser to the optional self-hosted server and sets up the person's own AI. The server can be joined by
@@ -73,6 +74,9 @@ export class ConnectPage {
   private readonly aiSession = inject(AiSessionState);
   private readonly pairingApi = inject(PairingService);
   private readonly injector = inject(Injector);
+  private readonly i18n = inject(TranslationService);
+  /** The guide's *Is AI worth it for me?* in the app's language (S4b-BL-215). */
+  protected readonly aiGuideHref = computed(() => aiWorthItUrl(this.i18n.lang()));
   /** The check in flight. Editing a field or leaving the page drops it, so its result never lands on other values. */
   private request: Subscription | null = null;
   /** The code request or poll in flight (docs/03 §12.1). Cancel, an edit of the address or leaving the page drops it. */

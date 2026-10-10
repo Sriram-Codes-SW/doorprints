@@ -1646,4 +1646,10 @@
     <string name="settings_ai_quality_balanced_hint">మధ్యస్థ ఆలోచన: వేగం, ఖర్చులో Quality, Economy మధ్య.</string>
     <string name="settings_ai_quality_economy">Economy (పొదుపు)</string>
     <string name="settings_ai_quality_economy_hint">మా పరీక్షల్లో సుమారు 40 శాతం చౌక, సుమారు రెట్టింపు వేగం; జవాబులు అంతే బాగున్నాయి.</string>
+    <!-- S4b-BL-215 (2026-10-10): three honest sentences on the AI card, the same words as the website and the guide's "Is AI worth it for me?". Under review. -->
+    <string name="settings_ai_worth">AI మీరు సేవ్ చేసిన మీ సొంత ఇళ్లు, నోట్స్‌ను చదువుతుంది. మార్కెట్, చట్టం లేదా ఒక ప్రాంతం గురించి దానికి ఏమీ తెలియదు; Doorprints లోని మిగతా భాగం అది లేకుండా కూడా పనిచేస్తుంది.</string>
+    <string name="settings_ai_cost">చెల్లింపు కీతో ప్రతి వినియోగానికి సుమారు ఒక రూపాయి లేదా కొన్ని రూపాయలు అవుతుంది. Google ఉచిత స్థాయి ఉచితమే, కానీ రోజువారీ పరిమితి ఉంది; మీరు పంపేదాన్ని Google చదవవచ్చు.</string>
+    <string name="settings_ai_sends">మీ ప్రశ్న, సరిపోయే ఇంటి నోట్స్ మీరు ఎంచుకున్న సేవకు వెళ్తాయి; సేవ్ చేసిన కాంటాక్ట్ పేర్లు, ఫోన్ నంబర్లు, ఈమెయిళ్లను ముందుగా, మా వల్ల అయినంత వరకు, మారుస్తాము. పేస్ట్ చేసిన ప్రకటన పేస్ట్ చేసినట్లే పంపబడుతుంది.</string>
+    <string name="settings_ai_guide">AI నాకు ఉపయోగమా? గైడ్ చదవండి</string>
+    <string name="settings_ai_guide_desc">AI నాకు ఉపయోగమా? యూజర్ గైడ్ బ్రౌజర్‌లో తెరుచుకుంటుంది</string>
 </resources>
