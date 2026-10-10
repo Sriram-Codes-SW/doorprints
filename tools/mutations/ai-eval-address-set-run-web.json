@@ -1,0 +1,47 @@
+{
+  "spec": ["web/src/app/core/ai/ai-eval.spec.ts", "web/src/app/core/ai/address-variants.spec.ts"],
+  "mutations": [
+    {
+      "file": "web/src/app/core/ai/ai-eval.ts",
+      "find": "...(named ? { addressSet } : {}),",
+      "replace": "addressSet,",
+      "expect": "leaves the setup exactly as it was"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-eval.ts",
+      "find": "addressSet.length > MAX_ADDRESS_SET_NAME || ",
+      "replace": "",
+      "expect": "refuses"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-eval.ts",
+      "find": "if (address) lines.push(`Address set: ${address.header}.`);",
+      "replace": "",
+      "expect": "writes the set, the cases that apply"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-eval.ts",
+      "find": "if (left) lines.push(`Not applicable under this set",
+      "replace": "if (left > 99) lines.push(`Not applicable under this set",
+      "expect": "writes the set, the cases that apply"
+    },
+    {
+      "file": "web/src/app/core/ai/address-variants.ts",
+      "find": "if (isDefaultAddressSet(name)) return null;",
+      "replace": "if (name == null) return null;",
+      "expect": "is nothing at all for the default"
+    },
+    {
+      "file": "web/src/app/core/ai/address-variants.ts",
+      "find": "print === recorded",
+      "replace": "true",
+      "expect": "names both fingerprints"
+    },
+    {
+      "file": "web/src/app/core/ai/address-variants.ts",
+      "find": "run.fingerprint.slice(0, 12)",
+      "replace": "run.fingerprint.slice(0, 8)",
+      "expect": "carries the applied golden set"
+    }
+  ]
+}
