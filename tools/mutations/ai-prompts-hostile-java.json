@@ -126,13 +126,13 @@
     },
     {
       "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerTools.java",
-      "find": ". Matched literally as one substring: give ONE word, best a city or locality (text=\\\"Pune\\\"; \\\"Pune flats\\\" matches nothing). Summaries do not show the city, so this is how to find a city's houses.",
+      "find": ". Matched literally as one substring: give ONE word, best a city or locality (text=\\\"Pune\\\"; \\\"Pune flats\\\" matches nothing). Summaries show the locality and street but not the city, so this is how to find a city's houses.",
       "replace": "",
       "expect": "thePlannerToolSaysToGiveOneWordAndShowsTheExample"
     },
     {
       "file": "backend/src/main/java/app/doorprints/server/ai/mcp/McpHouseTools.java",
-      "find": ". Matched literally as one substring: give ONE word, best a city or locality (text=\\\"Pune\\\"; \\\"Pune flats\\\" matches nothing). Summaries do not show the city, so this is how to find a city's houses.",
+      "find": ". Matched literally as one substring: give ONE word, best a city or locality (text=\\\"Pune\\\"; \\\"Pune flats\\\" matches nothing). Summaries show the locality and street but not the city, so this is how to find a city's houses.",
       "replace": "",
       "expect": "theMcpToolSaysTheSame"
     },

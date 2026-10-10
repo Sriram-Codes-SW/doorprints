@@ -92,7 +92,7 @@ public class VisitPlannerTools {
      * Tool: search the user's saved houses; every result is remembered as seen.
      */
     public List<HouseSummary> searchHouses(
-            @ToolParam(required = false, description = "Case-insensitive text to find in label, address, street, locality or notes. Matched literally as one substring: give ONE word, best a city or locality (text=\"Pune\"; \"Pune flats\" matches nothing). Summaries do not show the city, so this is how to find a city's houses.") String text,
+            @ToolParam(required = false, description = "Case-insensitive text to find in label, address, street, locality or notes. Matched literally as one substring: give ONE word, best a city or locality (text=\"Pune\"; \"Pune flats\" matches nothing). Summaries show the locality and street but not the city, so this is how to find a city's houses.") String text,
             @ToolParam(required = false, description = "NEW, SHORTLISTED, REJECTED, TAKEN or NOT_CHOSEN") String status,
             @ToolParam(required = false, description = "RENT or SALE") String priceType,
             @ToolParam(required = false, description = "Maximum price in rupees (monthly rent for RENT)") Long maxPrice,
