@@ -486,6 +486,27 @@
             </div>
           </form>
         }
+        <!-- AI speed and cost (S4b-BL-198): not rendered for any other service, nor with AI off or the server answering. -->
+        @if (isGemini()) {
+          <fieldset id="ai-quality" class="ai-quality">
+            <legend>{{ 'connect.aiQualityHeading' | t }}</legend>
+            @for (q of qualities; track q.id) {
+              <div class="field checkbox">
+                <input
+                  [id]="'ai-quality-' + q.id"
+                  type="radio"
+                  name="aiQuality"
+                  [value]="q.id"
+                  [checked]="ai.aiQuality() === q.id"
+                  (change)="chooseQuality($event)"
+                  [attr.aria-describedby]="'ai-quality-' + q.id + '-hint'"
+                />
+                <label [for]="'ai-quality-' + q.id">{{ q.label | t }}</label>
+                <p [id]="'ai-quality-' + q.id + '-hint'" class="muted small">{{ q.hint | t }}</p>
+              </div>
+            }
+          </fieldset>
+        }
         @if (shownHost(); as host) {
           <p id="ai-disclosure" class="muted small">{{ 'ai.disclosureOwnKeyHost' | t: { host: host } }}</p>
         }

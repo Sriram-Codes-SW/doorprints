@@ -23,9 +23,10 @@ import type { Msg } from '../i18n/translation.service';
 import { ConfigService } from './config.service';
 import { AI_OPT_IN_KEY, AI_PROVIDER_KEY, GEMINI_KEY_KEY } from './storage-keys';
 import { type AiProviderConfig, aiHostOf, clearAiConfig, isLocalHost, isUsable, readAiConfig, saveAiConfig } from './ai/ai-provider-config';
+import { type AiQuality, clearAiQuality, readAiQuality, saveAiQuality } from './ai/ai-quality';
 import { AnthropicChatModel } from './ai/anthropic';
 import { OpenAiCompatibleChatModel } from './ai/openai-compat';
-import { type ModelRef, OnDeviceAiError, OnDeviceAiService } from './ai/on-device-ai.service';
+import { GeminiChatModel, type ModelRef, OnDeviceAiError, OnDeviceAiService } from './ai/on-device-ai.service';
 import { errorMsg } from './format';
 import type { HouseStatus, PriceType } from './models';
 
@@ -149,6 +150,12 @@ export class AiService {
   private readonly aiConfigState = signal<AiProviderConfig>(readAiConfig());
   /** The person's own AI: its kind, base URL and model (docs/03 §13.2). Device-only; the key keeps the Gemini key's slot. */
   readonly aiConfig = this.aiConfigState.asReadonly();
+  private readonly aiQualityState = signal<AiQuality>(readAiQuality());
+  /**
+   * The *AI speed and cost* choice (S4b-BL-198 step 2): Quality unless the person chose otherwise. Kept while AI is off or
+   * another service is chosen, but only the own-key Gemini adapter reads it.
+   */
+  readonly aiQuality = this.aiQualityState.asReadonly();
   /** The host the person's own AI call goes to (shown in every disclosure), '' while none is set. */
   readonly ownHost = computed(() => aiHostOf(this.aiConfigState()));
   /**
@@ -224,9 +231,16 @@ export class AiService {
     this.aiConfigState.set(saveAiConfig(config));
   }
 
+  /** Saves the *AI speed and cost* choice (localStorage, on this device only). */
+  setAiQuality(quality: AiQuality): void {
+    this.aiQualityState.set(saveAiQuality(quality));
+  }
+
   /** Forgets the own key and the provider choice; AI goes back to the server, if one is connected. */
   removeGeminiKey(): void {
     clearAiConfig();
+    clearAiQuality();
+    this.aiQualityState.set(readAiQuality());
     this.aiConfigState.set(readAiConfig());
     this.geminiKeyState.set('');
     for (const s of [() => localStorage, () => sessionStorage]) {
@@ -246,7 +260,7 @@ export class AiService {
 
   /** Whether Google accepts [key]: one tiny request, nothing saved. Rejects with an [OnDeviceAiError]. */
   testGeminiKey(key: string): Promise<void> {
-    return this.onDevice.test(key.trim());
+    return this.onDevice.test(this.geminiRef(key.trim()));
   }
 
   /** *Test* for any kind: one tiny request with [config] and [key] as typed, nothing saved. Rejects with an [OnDeviceAiError]. */
@@ -254,9 +268,18 @@ export class AiService {
     return this.onDevice.test(this.modelFor(config, key.trim()));
   }
 
+  /**
+   * Gemini with the key: the plain key (the model's own thinking level) for Quality, so nothing changes for anyone who
+   * has not touched *AI speed and cost*, else an adapter that asks for less thinking.
+   */
+  private geminiRef(key: string): ModelRef {
+    const quality = this.aiQualityState();
+    return quality === 'quality' ? key : new GeminiChatModel(this.http, key, quality);
+  }
+
   /** Who answers a call for [config]: a Gemini key (the native adapter), an OpenAI-compatible model or Anthropic. */
   private modelFor(config: AiProviderConfig, key: string): ModelRef {
-    if (config.kind === 'gemini') return key;
+    if (config.kind === 'gemini') return this.geminiRef(key);
     if (config.kind === 'openai-compatible') return new OpenAiCompatibleChatModel({ baseUrl: config.baseUrl, model: config.model }, key);
     return new AnthropicChatModel({ baseUrl: config.baseUrl, model: config.model }, key);
   }

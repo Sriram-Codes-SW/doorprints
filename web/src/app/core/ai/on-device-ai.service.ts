@@ -27,6 +27,7 @@ import {
   AgentPlan, AiHouse, AskFilterValues, I_DONT_KNOW, ModelAnswer, PlanCandidate, RawListing, askPrompt, assemblePlan,
   candidateLines, citations, cleanAnswer, extractionPrompt, nonce, planPrompt, sanitizeDraft, selectForAsk, selectForPlan,
 } from './ai-core';
+import { type AiQuality, geminiThinkingLevel } from './ai-quality';
 import type { JsonChatModel } from './json-chat-model';
 
 /** `modelNotFound` and `unreachable` come from an OpenAI-compatible provider (docs/03 §13.2); Gemini never raises them. */
@@ -42,6 +43,11 @@ export class OnDeviceAiError extends Error {
 /** The model and endpoint the `gemini` kind calls; the key travels only in a header, never in the URL. */
 export const GEMINI_MODEL = 'gemini-3.5-flash';
 export const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+/**
+ * The answer budget of a Gemini call. On Gemini 3.x the limit includes the hidden thinking tokens, so 2,048 could be spent
+ * before the JSON began and cut it off (S4b-BL-194); the visible answers use 130 to 350 tokens. As the server's default.
+ */
+export const GEMINI_MAX_OUTPUT_TOKENS = 8192;
 export const MAX_INPUT_CHARS = 8000;
 export const MAX_QUESTION_CHARS = 1000;
 export const RATE_LIMIT = 10;
@@ -98,18 +104,32 @@ interface GeminiResponse {
 }
 
 /**
- * The `gemini` kind (ADR-26), unchanged: Google's `generateContent` with the person's key in `x-goog-api-key`, never in
- * a URL. A [JsonChatModel] for the key it is made with.
+ * The body of one `generateContent` request (the `geminiRequest` vectors). With Quality there is no `thinkingConfig`; with
+ * Balanced or Economy `generationConfig.thinkingConfig.thinkingLevel` is `MEDIUM` or `LOW` (Gemini API reference,
+ * `GenerationConfig.thinkingConfig` and `ThinkingLevel`; docs/ai/ai-design.md 13.2). It goes last, so the body for Quality
+ * is what it was before the setting existed, apart from the larger answer budget.
+ */
+export function geminiBody(system: string, user: string, schema: object, temperature: number, quality: AiQuality = 'quality') {
+  const level = geminiThinkingLevel(quality);
+  return {
+    systemInstruction: { parts: [{ text: system }] },
+    contents: [{ role: 'user', parts: [{ text: user }] }],
+    generationConfig: {
+      temperature, maxOutputTokens: GEMINI_MAX_OUTPUT_TOKENS, responseMimeType: 'application/json', responseSchema: schema,
+      ...(level ? { thinkingConfig: { thinkingLevel: level } } : {}),
+    },
+  };
+}
+
+/**
+ * The `gemini` kind (ADR-26): Google's `generateContent` with the person's key in `x-goog-api-key`, never in a URL. A
+ * [JsonChatModel] for the key it is made with, at the thinking level of [quality] (*AI speed and cost*).
  */
 export class GeminiChatModel implements JsonChatModel {
-  constructor(private readonly http: HttpClient, private readonly key: string) {}
+  constructor(private readonly http: HttpClient, private readonly key: string, private readonly quality: AiQuality = 'quality') {}
 
   async generateJson(system: string, user: string, schema: object, temperature: number): Promise<string> {
-    const body = {
-      systemInstruction: { parts: [{ text: system }] },
-      contents: [{ role: 'user', parts: [{ text: user }] }],
-      generationConfig: { temperature, maxOutputTokens: 2048, responseMimeType: 'application/json', responseSchema: schema },
-    };
+    const body = geminiBody(system, user, schema, temperature, this.quality);
     let res: GeminiResponse;
     try {
       res = await firstValueFrom(this.http.post<GeminiResponse>(GEMINI_URL, body, { headers: { 'x-goog-api-key': this.key } }));
@@ -135,7 +155,7 @@ export class GeminiChatModel implements JsonChatModel {
 }
 
 /**
- * Who answers an on-device call: a Gemini key (the string, as before ADR-35) or any [JsonChatModel] the caller made
+ * Who answers an on-device call: a Gemini key (the string, as before ADR-35: the model's own thinking level) or any [JsonChatModel] the caller made
  * from the person's settings (`AiService`).
  */
 export type ModelRef = string | JsonChatModel;

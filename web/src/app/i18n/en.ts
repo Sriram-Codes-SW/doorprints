@@ -1667,6 +1667,14 @@ export const en = {
   'ai.unreachableLocal': 'Could not reach {host}. Check that it is running and that it allows this site (CORS); the browser blocks it otherwise.',
   // S4b-BL-182 (2026-10-08): the paste box says how much of a long listing is left out.
   'listingFill.cut': 'Only the first {max} characters are read. Characters left out at the end: {n}.',
+  // S4b-BL-198 step 2 (2026-10-09): AI speed and cost, shown for an own Google Gemini key only.
+  'connect.aiQualityHeading': 'AI speed and cost',
+  'connect.aiQualityQuality': 'Quality',
+  'connect.aiQualityQualityHint': 'The model\'s own default setting. Nothing is changed.',
+  'connect.aiQualityBalanced': 'Balanced',
+  'connect.aiQualityBalancedHint': 'Thinks a medium amount: between Quality and Economy on speed and cost.',
+  'connect.aiQualityEconomy': 'Economy',
+  'connect.aiQualityEconomyHint': 'About 40% cheaper and about twice as fast in our tests, with answers as good.',
 };
 
 /** Every translation must have exactly these keys (checked by the compiler). */

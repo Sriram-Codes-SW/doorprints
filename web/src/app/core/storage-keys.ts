@@ -58,6 +58,14 @@ export const AI_BASE_URL_KEY = `${STORAGE_PREFIX}ai-base-url`;
 export const AI_MODEL_KEY = `${STORAGE_PREFIX}ai-model`;
 
 /**
+ * The *AI speed and cost* choice, 'quality', 'balanced' or 'economy' (localStorage; S4b-BL-198, docs/ai/ai-design.md 13.2).
+ * Absent or anything else means 'quality'. Kept while AI is off or another service is chosen, but then ignored; not a
+ * secret, and never in a backup, copy, sync or share file; *Remove key* and "Remove all data" delete it.
+ * See core/ai/ai-quality.ts.
+ */
+export const AI_QUALITY_KEY = `${STORAGE_PREFIX}ai-quality`;
+
+/**
  * The map areas saved for offline use (localStorage, JSON; S4b-BL-79): a name, a box and the files' addresses. The
  * tiles themselves are in Cache Storage (`offline/offline-protocol.ts`). The name and place are the person's, so
  * "Remove all data" sweeps this key with the others and deletes the cache beside it.

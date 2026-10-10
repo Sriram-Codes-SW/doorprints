@@ -1,0 +1,172 @@
+{
+  "spec": [
+    "web/src/app/core/ai/ai-quality.spec.ts",
+    "web/src/app/core/ai/gemini-request.spec.ts",
+    "web/src/app/core/ai-quality.service.spec.ts",
+    "web/src/app/pages/connect/connect-ai-quality.spec.ts"
+  ],
+  "mutations": [
+    {
+      "file": "web/src/app/core/ai/ai-quality.ts",
+      "find": "if (quality === 'balanced') return 'MEDIUM';",
+      "replace": "if (quality === 'balanced') return 'LOW';",
+      "expect": "maps the choices to Gemini's thinking level"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-quality.ts",
+      "find": "if (quality === 'economy') return 'LOW';",
+      "replace": "if (quality === 'economy') return 'MEDIUM';",
+      "expect": "maps the choices to Gemini's thinking level"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-quality.ts",
+      "find": "if (quality === 'economy') return 'LOW';\n  return null;",
+      "replace": "if (quality === 'economy') return 'LOW';\n  return 'LOW';",
+      "expect": "maps the choices to Gemini's thinking level"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-quality.ts",
+      "find": "DEFAULT_AI_QUALITY: AiQuality = 'quality';",
+      "replace": "DEFAULT_AI_QUALITY: AiQuality = 'economy';",
+      "expect": "Quality is the default"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-quality.ts",
+      "find": "AI_QUALITIES: readonly AiQuality[] = ['quality', 'balanced', 'economy'];",
+      "replace": "AI_QUALITIES: readonly AiQuality[] = ['economy', 'balanced', 'quality'];",
+      "expect": "offers Quality, Balanced and Economy"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-quality.ts",
+      "find": "return AI_QUALITIES.find((q) => q === raw) ?? DEFAULT_AI_QUALITY;",
+      "replace": "return (raw as AiQuality | null | undefined) ?? DEFAULT_AI_QUALITY;",
+      "expect": "reads an unknown, empty, wrong-case or hostile stored value as Quality"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-quality.ts",
+      "find": "const saved = parseAiQuality(quality);",
+      "replace": "const saved = quality;",
+      "expect": "parses text without touching storage"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-quality.ts",
+      "find": "    localStorage.removeItem(AI_QUALITY_KEY);",
+      "replace": "    void 0;",
+      "expect": "clearing removes the saved choice"
+    },
+    {
+      "file": "web/src/app/core/storage-keys.ts",
+      "find": "`${STORAGE_PREFIX}ai-quality`",
+      "replace": "'ai-quality'",
+      "expect": "keeps a valid choice under a doorprints. key"
+    },
+    {
+      "file": "web/src/app/core/ai/on-device-ai.service.ts",
+      "find": "export const GEMINI_MAX_OUTPUT_TOKENS = 8192;",
+      "replace": "export const GEMINI_MAX_OUTPUT_TOKENS = 2048;",
+      "expect": "asks for up to 8192 output tokens in every setting"
+    },
+    {
+      "file": "web/src/app/core/ai/on-device-ai.service.ts",
+      "find": "...(level ? { thinkingConfig: { thinkingLevel: level } } : {}),",
+      "replace": "thinkingConfig: { thinkingLevel: level ?? 'LOW' },",
+      "expect": "sends no thinking field with Quality"
+    },
+    {
+      "file": "web/src/app/core/ai/on-device-ai.service.ts",
+      "find": "{ thinkingConfig: { thinkingLevel: level } }",
+      "replace": "{ thinkingConfig: { thinking_level: level } }",
+      "expect": "Balanced sends generationConfig.thinkingConfig.thinkingLevel MEDIUM"
+    },
+    {
+      "file": "web/src/app/core/ai/on-device-ai.service.ts",
+      "find": "responseSchema: schema,\n      ...(level ? { thinkingConfig: { thinkingLevel: level } } : {}),",
+      "replace": "...(level ? { thinkingConfig: { thinkingLevel: level } } : {}), responseSchema: schema,",
+      "expect": "geminiRequest vectors: the exact body for every call and setting, keys in order"
+    },
+    {
+      "file": "web/src/app/core/ai/on-device-ai.service.ts",
+      "find": "const body = geminiBody(system, user, schema, temperature, this.quality);",
+      "replace": "const body = geminiBody(system, user, schema, temperature, 'quality');",
+      "expect": "Economy sends generationConfig.thinkingConfig.thinkingLevel LOW"
+    },
+    {
+      "file": "web/src/app/core/ai.service.ts",
+      "find": "return quality === 'quality' ? key : new GeminiChatModel(this.http, key, quality);",
+      "replace": "return key;",
+      "expect": "gives a Gemini adapter with the choice to the own-key calls"
+    },
+    {
+      "file": "web/src/app/core/ai.service.ts",
+      "find": "return quality === 'quality' ? key : new GeminiChatModel(this.http, key, quality);",
+      "replace": "return new GeminiChatModel(this.http, key, quality);",
+      "expect": "gives the plain key to the adapter with Quality"
+    },
+    {
+      "file": "web/src/app/core/ai.service.ts",
+      "find": "clearAiQuality();",
+      "replace": "void 0;",
+      "expect": "Remove key forgets it"
+    },
+    {
+      "file": "web/src/app/core/ai.service.ts",
+      "find": "return this.onDevice.test(this.geminiRef(key.trim()));",
+      "replace": "return this.onDevice.test(key.trim());",
+      "expect": "Test key sends the choice too"
+    },
+    {
+      "file": "web/src/app/pages/connect/connect-page.html",
+      "find": "@if (isGemini()) {\n          <fieldset id=\"ai-quality\"",
+      "replace": "@if (true) {\n          <fieldset id=\"ai-quality\"",
+      "expect": "every other service: not rendered at all"
+    },
+    {
+      "file": "web/src/app/pages/connect/connect-page.html",
+      "find": "@if (ai.optedIn()) {",
+      "replace": "@if (true) {",
+      "expect": "AI off: not rendered at all"
+    },
+    {
+      "file": "web/src/app/pages/connect/connect-page.html",
+      "find": "      @if (ownKey()) {",
+      "replace": "      @if (true) {",
+      "expect": "the server chosen to answer: not rendered"
+    },
+    {
+      "file": "web/src/app/pages/connect/connect-page.html",
+      "find": "[checked]=\"ai.aiQuality() === q.id\"",
+      "replace": "[checked]=\"q.id === 'quality'\"",
+      "expect": "shows the saved choice when the page opens"
+    },
+    {
+      "file": "web/src/app/pages/connect/connect-page.html",
+      "find": "name=\"aiQuality\"",
+      "replace": "name=\"aiQualityX\"",
+      "expect": "is a named group of three radios"
+    },
+    {
+      "file": "web/src/app/pages/connect/connect-page.html",
+      "find": "[attr.aria-describedby]=\"'ai-quality-' + q.id + '-hint'\"",
+      "replace": "[attr.aria-describedby]=\"'ai-quality-' + q.id\"",
+      "expect": "gives each radio a label and one line of help it is described by"
+    },
+    {
+      "file": "web/src/app/pages/connect/connect-page.ts",
+      "find": "this.ai.setAiQuality(parseAiQuality((event.target as HTMLInputElement).value));",
+      "replace": "this.ai.setAiQuality('quality');",
+      "expect": "keeps a choice at once, on this device"
+    },
+    {
+      "file": "web/src/app/i18n/en.ts",
+      "find": "'About 40% cheaper and about twice as fast in our tests, with answers as good.'",
+      "replace": "'Cheaper and faster in our tests, with answers as good.'",
+      "expect": "gives each radio a label and one line of help it is described by"
+    },
+    {
+      "file": "web/src/app/i18n/te.ts",
+      "find": "'connect.aiQualityEconomy': 'Economy (పొదుపు)',",
+      "replace": "'connect.aiQualityEconomy': 'పొదుపు',",
+      "expect": "names Economy, Balanced and Quality the same way in every language"
+    }
+  ]
+}

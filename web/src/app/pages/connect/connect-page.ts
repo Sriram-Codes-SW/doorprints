@@ -34,6 +34,7 @@ import { AiService, aiErrorMsg, aiOffMsg } from '../../core/ai.service';
 import {
   AI_PRESETS, ANTHROPIC_BASE_URL, type AiPreset, type AiProviderConfig, type BaseUrlReason, GEMINI_HOST, isLocalHost, validateWebBaseUrl,
 } from '../../core/ai/ai-provider-config';
+import { AI_QUALITIES, type AiQuality, parseAiQuality } from '../../core/ai/ai-quality';
 import {
   ConnectLink,
   PairingPolled,
@@ -518,6 +519,15 @@ export class ConnectPage {
     }
   }
 
+  /** *AI speed and cost* (S4b-BL-198): shown only for the person's own Google Gemini key; each choice with its words. */
+  protected readonly qualities: readonly { id: AiQuality; label: TKey; hint: TKey }[] = AI_QUALITIES.map((id) => ({
+    id, label: QUALITY_LABEL[id], hint: QUALITY_HINT[id],
+  }));
+
+  protected chooseQuality(event: Event): void {
+    this.ai.setAiQuality(parseAiQuality((event.target as HTMLInputElement).value));
+  }
+
   /** The *AI features* switch of this browser; nothing AI is offered until it is on. */
   protected setAiFeatures(event: Event): void {
     const on = (event.target as HTMLInputElement).checked;
@@ -648,6 +658,17 @@ export function pairingErrorMsg(err: unknown): Msg {
 }
 
 type ServiceId = 'gemini' | 'anthropic' | AiPreset['id'];
+
+const QUALITY_LABEL: Readonly<Record<AiQuality, TKey>> = {
+  quality: 'connect.aiQualityQuality',
+  balanced: 'connect.aiQualityBalanced',
+  economy: 'connect.aiQualityEconomy',
+};
+const QUALITY_HINT: Readonly<Record<AiQuality, TKey>> = {
+  quality: 'connect.aiQualityQualityHint',
+  balanced: 'connect.aiQualityBalancedHint',
+  economy: 'connect.aiQualityEconomyHint',
+};
 
 const SERVICE_LABEL: Readonly<Record<ServiceId, TKey>> = {
   gemini: 'connect.aiService.gemini',

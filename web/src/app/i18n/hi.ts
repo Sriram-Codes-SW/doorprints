@@ -1662,4 +1662,12 @@ export const hi: Dict = {
   'ai.unreachableLocal': '{host} तक नहीं पहुँचा जा सका। जाँचें कि वह चल रहा है और इस साइट को अनुमति देता है (CORS); वरना ब्राउज़र उसे रोक देता है।',
   // S4b-BL-182 (2026-10-08): the paste box says how much of a long listing is left out. Under review (owner rule: hi/ta/te ship marked under review).
   'listingFill.cut': 'केवल पहले {max} अक्षर पढ़े जाते हैं। अंत में छूटे अक्षर: {n}।',
+  // S4b-BL-198 step 2 (2026-10-09): AI speed and cost. Under review (owner rule: hi/ta/te ship marked under review).
+  'connect.aiQualityHeading': 'AI की गति और लागत',
+  'connect.aiQualityQuality': 'Quality (गुणवत्ता)',
+  'connect.aiQualityQualityHint': 'मॉडल की अपनी डिफ़ॉल्ट सेटिंग। कुछ भी बदला नहीं जाता।',
+  'connect.aiQualityBalanced': 'Balanced (संतुलित)',
+  'connect.aiQualityBalancedHint': 'मध्यम सोच: गति और लागत में Quality और Economy के बीच।',
+  'connect.aiQualityEconomy': 'Economy (किफ़ायती)',
+  'connect.aiQualityEconomyHint': 'हमारी जाँच में लगभग 40% सस्ता और लगभग दोगुना तेज़, और जवाब उतने ही अच्छे।',
 };

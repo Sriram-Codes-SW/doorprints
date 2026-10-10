@@ -118,6 +118,20 @@ leave that off on a shared computer. **Remove key** forgets the key and your cho
     start it with `OLLAMA_ORIGINS=https://doorprints.web.app` set; in LM Studio, allow `https://doorprints.web.app`
     in its server's CORS setting. Otherwise **Test** says it could not reach `localhost`.
 
+### AI speed and cost {#ai-speed-and-cost}
+
+On the website, under **AI features**, when you use **Google Gemini** a group called **AI speed and cost** lets you choose how
+long the model thinks before it answers:
+
+- **Quality**: the model's own default setting. Nothing is changed; this is what you get if you never touch the group.
+- **Balanced**: thinks a medium amount, between Quality and Economy on speed and cost.
+- **Economy**: in our tests about 40% cheaper and about twice as fast, with answers as good.
+
+Most of what a Gemini answer costs is the model's thinking, so a lower setting saves money on a key that has billing turned
+on. Your choice is kept in this browser and applies at once. It is only for Google Gemini keys: with any other service, or
+with AI features off, the group is not shown and nothing is sent (a choice you made stays saved). For now it is on the
+website only. The figures are from our own test runs, so yours may differ.
+
 On the website, **Your data** also has a **Privacy page** link (`privacy.html`) and **Back up to Google Drive**.
 See [Back up to Google Drive](google-drive.md).
 
