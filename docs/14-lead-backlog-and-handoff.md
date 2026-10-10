@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.156 |
+| Version | 0.157 |
 | Date | 2026-10-10 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..183); this file lists the lead-level items and points to the rest. |
@@ -165,6 +165,7 @@
 | 0.154 | 2026-10-10 | Claude (Code), engineer | §2 N21: **the decision on generalizing Doorprints beyond house hunting ("kinds")**, owner-approved 2026-10-10 and **revised the same day** (no users yet: build the typed model directly after a one-time format reset; the preset-pack-first plan is superseded); nine pull requests as S4b-BL-205..S4b-BL-212 and S4b-BL-216 ([10](10-sprint-log.md) v0.236), the one-way doors, the stop criteria, and the pointer row S4b-BL-213. Docs only. |
 | 0.155 | 2026-10-10 | Claude (Code), engineer | §2 N21: **voice input is part of the plan** (owner, 2026-10-10): a paragraph and the rows S4b-BL-218..S4b-BL-224 ([10](10-sprint-log.md) v0.237), new [ai/voice-input](ai/voice-input.md); ADR numbers kinds ADR-36, voice ADR-37; the voice UI comes after kinds PR 5. Also fixes two stale references (PR 9 is S4b-BL-216; no pointer row S4b-BL-213). Docs only. |
 | 0.156 | 2026-10-10 | Claude (Code), engineer | §2 N21 voice: **voice PR 1 (S4b-BL-218) is in review**: ADR-37 and the threat-model, data-flow, release-gate and manual-checklist rows are written ([10](10-sprint-log.md) v0.239); docs only, nothing built. Next voice step is PR 2 (S4b-BL-219) once the ADR is merged. |
+| 0.157 | 2026-10-10 | Claude (Code), engineer | Z4 done and Z5 closed (see the table); S4b-BL-61 in review ([10](10-sprint-log.md) v0.242). |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 
@@ -341,8 +342,8 @@ section is only today's state. Earlier versions of this file (git history) carry
 | Z1 | CSP `connect-src https:` wildcard | Accepted: the user's own server address is unknown at build time. Record in [07](07-secure-build-and-deploy.md) and [02](02-threat-model.md) RR-30 (re-checked for Drive, 2026-10-02). |
 | Z2 | No SRI on the Google Fonts stylesheet | **Sprint 4b:** self-host the Noto Sans Devanagari, Tamil and Telugu subsets; drop fonts.googleapis.com and fonts.gstatic.com from the CSP (privacy and zero cost). |
 | Z3 | COEP header missing | Accepted: no cross-origin isolation needed; `require-corp` would break tiles and fonts. |
-| Z4 | Cache-control warnings (`no-cache` on everything) | Optional Sprint 4b: `immutable, max-age=31536000` for hashed JS/CSS. |
-| Z5 | Suspicious comments in shipped JS | Check whether ours or a library's. Low. |
+| Z4 | Cache-control warnings (`no-cache` on everything) | **Done 2026-10-10** (branch `fix/web-plan-form-cache-headers`): `web/firebase.json` gives `main-*`, `chunk-*`, `polyfills-*` and `styles-*` (`.js`/`.css`) `public, max-age=31536000, immutable`; everything else keeps `no-cache`; `seo.spec.ts` pins it, `check-live-headers.sh` checks the live `main-*.js`. |
+| Z5 | Suspicious comments in shipped JS | **Closed 2026-10-10:** the production build has no comment of ours; the `/*` hits are MapLibre's GLSL shader strings and `/* @vite-ignore */`, none a secret or TODO. No build option changed. |
 
 ## 4. Parked or owner-decision items
 
