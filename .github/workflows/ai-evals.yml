@@ -25,6 +25,10 @@
 #   aistudio (default until the owner has finished docs/ai/vertex-setup.md steps 1-8 and step 10 has confirmed the
 #     trial credit is applied; then change the default below to vertex): Gemini Developer API; needs the repository
 #     secret AI_API_KEY (https://aistudio.google.com/apikey).
+# 2026-10-10 (S4b-BL-217): the suite `key-check` (job at the end) asks the Gemini Developer API which models AI_API_KEY can
+#   use and whether the model pinned in the apps (GEMINI_MODEL in web/src/app/core/ai/on-device-ai.service.ts, MODEL in
+#   android/shared/.../ai/GeminiClient.kt, both read from the source) still answers. Only curl and jq; the key goes in a
+#   header file, never the URL; the job passes whenever it can report.
 # Quota-aware: on HTTP 429 / RESOURCE_EXHAUSTED the harness stops, the scorecard says
 # "STOPPED: provider quota exhausted" and the job fails with an explicit error annotation.
 # Time-budgeted (S4b-BL-202): the test stops between cases after AI_EVAL_DEADLINE_MS (default 35 minutes), writes the
@@ -91,6 +95,7 @@ on:
           - on-device
           - own-provider
           - local-model
+          - key-check
       types:
         description: Case types to run
         type: choice
@@ -716,3 +721,145 @@ jobs:
       - name: Ollama log
         if: failure()
         run: tail -100 "$RUNNER_TEMP/ollama.log" || true
+
+  # S4b-BL-217: facts about the key, not guesses. Fails only when AI_API_KEY is unset or the model list call itself fails;
+  # a 404 or 429 for a model is reported (annotation and summary), not a failure of the job.
+  key-check:
+    name: Which models the AI_API_KEY can use (Gemini Developer API)
+    if: inputs.suites == 'key-check'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: List the models and try the pinned one
+        env:
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+        shell: bash
+        run: |
+          set +x
+          set -uo pipefail
+          if [ -z "$AI_API_KEY" ]; then
+            echo "::error::Repository secret AI_API_KEY is not set (Settings > Secrets and variables > Actions). Nothing to check."
+            exit 1
+          fi
+          api="https://generativelanguage.googleapis.com/v1beta"
+          work="$(mktemp -d)"
+          umask 077
+          # The key goes to curl in a header file: not in the URL, not in a logged command line.
+          printf 'x-goog-api-key: %s\n' "$AI_API_KEY" > "$work/hdr"
+          summary="$GITHUB_STEP_SUMMARY"
+
+          # The pinned model, read from both apps so a rename cannot drift.
+          web_model="$(sed -n "s/.*GEMINI_MODEL = '\([^']*\)'.*/\1/p" web/src/app/core/ai/on-device-ai.service.ts | head -1)"
+          and_model="$(sed -n 's/.*const val MODEL = "\([^"]*\)".*/\1/p' android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/GeminiClient.kt | head -1)"
+          for m in "$web_model" "$and_model"; do
+            if ! [[ "$m" =~ ^[a-z0-9][a-z0-9.-]{0,63}$ ]]; then
+              echo "::error::Could not read the pinned model from the sources (got '$m')."
+              exit 1
+            fi
+          done
+          echo "Pinned in the website: $web_model; pinned in the Android app: $and_model"
+
+          # 1. The model list (all pages; a page token is not a secret).
+          : > "$work/all.json"
+          token=""
+          for page in 1 2 3 4 5 6 7 8; do
+            url="$api/models?pageSize=200"
+            [ -n "$token" ] && url="$url&pageToken=$token"
+            code="$(curl -sS -o "$work/page.json" -w '%{http_code}' -H @"$work/hdr" "$url")" || code="000"
+            if [ "$code" != "200" ]; then
+              echo "::error::The model list call failed: HTTP $code $(jq -r '.error.status // empty' "$work/page.json" 2>/dev/null) $(jq -r '.error.message // empty' "$work/page.json" 2>/dev/null)"
+              exit 1
+            fi
+            jq -c '.models[]?' "$work/page.json" >> "$work/all.json"
+            token="$(jq -r '.nextPageToken // empty' "$work/page.json")"
+            [ -z "$token" ] && break
+          done
+          jq -r 'select((.supportedGenerationMethods // []) | index("generateContent")) | .name | sub("^models/"; "")' \
+            "$work/all.json" | sort -u > "$work/names.txt"
+          total="$(wc -l < "$work/names.txt" | tr -d ' ')"
+          echo "Models that support generateContent: $total"
+          echo "--- gemini-*"; grep '^gemini-' "$work/names.txt" || echo "(none)"
+          echo "--- other"; grep -v '^gemini-' "$work/names.txt" || echo "(none)"
+
+          # 2. One tiny request per model.
+          body='{"contents":[{"parts":[{"text":"Reply with the single word ok"}]}],"generationConfig":{"maxOutputTokens":256}}'
+          declare -A result
+          try_model() {
+            local m="$1" code msg
+            code="$(curl -sS -o "$work/r.json" -w '%{http_code}' -H @"$work/hdr" -H 'content-type: application/json' \
+              -d "$body" "$api/models/$m:generateContent")" || code="000"
+            if [ "$code" = "200" ]; then
+              result[$m]="200 | $(jq -r '"prompt " + ((.usageMetadata.promptTokenCount // 0)|tostring) + ", answer " + ((.usageMetadata.candidatesTokenCount // 0)|tostring) + ", thoughts " + ((.usageMetadata.thoughtsTokenCount // 0)|tostring) + ", total " + ((.usageMetadata.totalTokenCount // 0)|tostring)' "$work/r.json")"
+            else
+              msg="$(jq -r '(.error.status // "?") + ": " + (.error.message // "no message")' "$work/r.json" 2>/dev/null | head -c 300)"
+              case "$code" in
+                429) msg="quota/rate limited. $msg" ;;
+                404) msg="model not served for this key. $msg" ;;
+              esac
+              result[$m]="$code | $msg"
+            fi
+            echo "$m -> $code: ${result[$m]#* | }"
+          }
+          tested=""
+          for m in "$web_model" "$and_model" gemini-3.5-flash-lite; do
+            case " $tested " in *" $m "*) continue ;; esac
+            if [ "$m" = "gemini-3.5-flash-lite" ] && ! grep -qx "$m" "$work/names.txt"; then
+              echo "$m is not in the list: not tried."
+              continue
+            fi
+            tested="$tested $m"
+            try_model "$m"
+          done
+
+          # 3. Annotations and the summary.
+          verdict=""
+          for m in $tested; do
+            [ "$m" = "gemini-3.5-flash-lite" ] && continue
+            c="${result[$m]%% | *}"
+            if [ "$c" = "404" ]; then
+              echo "::warning::The pinned model $m is NOT served for this key (HTTP 404). Change GEMINI_MODEL / MODEL to one from the list in the summary."
+            elif [ "$c" = "429" ]; then
+              echo "::warning::The pinned model $m is quota/rate limited for this key (HTTP 429); the key may be on a tier with no quota for it."
+            elif [ "$c" != "200" ]; then
+              echo "::warning::The pinned model $m answered HTTP $c."
+            fi
+          done
+          c="${result[$web_model]%% | *}"
+          if [ "$c" = "200" ]; then
+            verdict="$web_model still answers for this key: keep GEMINI_MODEL."
+          elif [ "$c" = "404" ]; then
+            verdict="$web_model is not served for this key: change GEMINI_MODEL (web) and MODEL (Android) to a model from the list above."
+          elif [ "$c" = "429" ]; then
+            verdict="$web_model is quota/rate limited for this key: the model exists but this key has no free quota for it now; try later or pick another model from the list."
+          else
+            verdict="$web_model answered HTTP $c: see the table; no conclusion about the model name."
+          fi
+          [ "$web_model" != "$and_model" ] && verdict="$verdict WARNING: the website pins $web_model but Android pins $and_model."
+          {
+            echo "## AI_API_KEY: models and the pinned model"
+            echo
+            echo "Models that support generateContent: **$total**"
+            echo
+            echo "**gemini-\***"
+            echo
+            echo '```'; grep '^gemini-' "$work/names.txt" || echo "(none)"; echo '```'
+            echo
+            echo "<details><summary>Other models</summary>"
+            echo
+            echo '```'; grep -v '^gemini-' "$work/names.txt" || echo "(none)"; echo '```'
+            echo "</details>"
+            echo
+            echo "| Model | HTTP | Result |"
+            echo "|---|---|---|"
+            for m in $tested; do
+              echo "| $m | ${result[$m]%% | *} | ${result[$m]#* | } |"
+            done
+            echo
+            echo "**What it means:** $verdict"
+          } >> "$summary"
