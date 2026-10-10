@@ -33,7 +33,7 @@
 # The Android Gradle checks are one Gradle invocation (Gradle parallelises the modules itself); the iOS klib compile
 # needs the Kotlin/Native toolchain and runs as its own Gradle build after the Android one (a second Gradle build in
 # the same project directory would contend for the lock), so "android" and "ios" are one sequence; web, the guide and
-# the licence headers, the document-version check and the floor guard (always) run beside it.
+# the licence headers, the document-version check, the floor guard and the file-size budget (always) run beside it.
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -95,6 +95,8 @@ has licence && start licence python3 "$ROOT/.github/scripts/licence-headers.py" 
 has licence && start docs-versions bash -c "cd '$ROOT' && node --test tools/check-docs-versions.test.mjs && node tools/check-docs-versions.mjs"
 # Always: the floor guard (S4b-BL-157), this branch against origin/main; exit 2 (no origin/main) fails here too.
 has licence && start floor bash -c "cd '$ROOT' && node --test tools/check-floor.test.mjs && node tools/check-floor.mjs"
+# Always: the file-size budget (S4b-BL-205; warn at 600 lines, fail at 900, the allowlist in tools/size-budget.json only shrinks).
+has licence && start size-budget bash -c "cd '$ROOT' && node --test tools/check-size-budget.test.mjs && node tools/check-size-budget.mjs"
 if has android || has ios; then start gradle gradle_seq; fi
 has web && start web bash -c "cd '$ROOT' && node tools/check-specs.mjs && node tools/check-templates.mjs && node --test tools/*.test.mjs && cd web && npx ng test --watch=false && CI=true npm run test:ci && npm run build"
 # --strict fails on errors; a WARNING line once passed locally and failed CI (docs/14 §7), so it fails here too.

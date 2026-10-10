@@ -22,7 +22,8 @@
 //   - a new test skip or focus (in a test file); a deleted test file; fewer test cases in a file than before;
 //   - a new suppression comment or annotation (not in documents); a new empty catch block;
 //   - a mutation entry removed from tools/mutations/*.json without one added in the same file;
-//   - a larger (or removed) maximumWarning / maximumError in an angular.json budget.
+//   - a larger (or removed) maximumWarning / maximumError in an angular.json budget;
+//   - a looser file-size budget in tools/size-budget.json (S4b-BL-205): a raised limit or entry, an added entry or table.
 // Tightening is silent. Exit 0: none (or allowed); 1: loosening found; 2: could not run (never read 2 as a pass).
 // An allowed loosening: a line `Gate-loosening: <reason>` in the last commit message or in $FLOOR_GUARD_ALLOW makes the
 // findings warnings (exit 0); the reason must say why, and the pull request description must repeat it.
@@ -30,6 +31,8 @@
 // It cannot see: a weaker test body, a weaker mutation, a test moved to another file, an untracked file, a skip that
 // is not on a line of its own, or a Gate-loosening line in an earlier commit. Plain Node, regex over the diff.
 import { spawnSync } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const TEST_FILE = /(?:\.(?:spec|test)\.[cm]?[jt]sx?|Tests?\.(?:kt|java))$/;
@@ -105,6 +108,28 @@ export function findings(diffText) {
   return out.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line || a.reason.localeCompare(b.reason));
 }
 
+/**
+ * The loosenings of the file-size budget (tools/size-budget.json, S4b-BL-205) between two versions of its text, as
+ * [{ file, line: 1, reason }]: a higher `warn` or `fail`, an allowlist entry raised or added, a new table, a root or an
+ * extension no longer measured, or the file removed (`after` null). Pure: tested on fixture texts.
+ */
+export function budgetLoosenings(before, after, file = 'tools/size-budget.json') {
+  const out = [], add = (reason) => out.push({ file, line: 1, reason });
+  const old = JSON.parse(before);
+  if (after === null) { add('size budget removed'); return out; }
+  const now = JSON.parse(after);
+  for (const k of ['warn', 'fail']) if (!(now[k] <= old[k])) add(`size budget ${k} raised from ${old[k]} to ${now[k]}`);
+  for (const [path, lines] of Object.entries(now.allow ?? {})) {
+    if (!(path in (old.allow ?? {}))) add(`size budget entry added: ${path} (${lines})`);
+    else if (!(lines <= old.allow[path])) add(`size budget of ${path} raised from ${old.allow[path]} to ${lines}`);
+  }
+  for (const path of Object.keys(now.tables ?? {})) if (!(path in (old.tables ?? {}))) add(`size budget table added: ${path}`);
+  for (const k of ['roots', 'extensions']) {
+    for (const v of old[k] ?? []) if (!(now[k] ?? []).includes(v)) add(`size budget no longer measures ${k === 'roots' ? 'root' : 'extension'} ${v}`);
+  }
+  return out;
+}
+
 function main() {
   const git = (...args) => spawnSync('git', ['-c', 'core.quotepath=off', ...args], { encoding: 'utf8', maxBuffer: 1 << 28 });
   const cannot = (why) => { console.error(`floor guard cannot run: ${why}`); process.exit(2); };
@@ -115,6 +140,12 @@ function main() {
   const diff = git('diff', '--unified=0', '--no-color', '--no-ext-diff', '-M', base.stdout.trim());
   if (diff.status !== 0) cannot(`git diff failed: ${diff.stderr.trim()}`);
   const found = findings(diff.stdout);
+  // The file-size budget is JSON whose meaning a line diff cannot pair; compare the two versions instead.
+  const budgetBefore = git('show', `${base.stdout.trim()}:tools/size-budget.json`);
+  if (budgetBefore.status === 0) {
+    const now = path.join(git('rev-parse', '--show-toplevel').stdout.trim(), 'tools', 'size-budget.json');
+    found.push(...budgetLoosenings(budgetBefore.stdout, fs.existsSync(now) ? fs.readFileSync(now, 'utf8') : null));
+  }
   const allow = /^Gate-loosening:[ \t]*(\S.*)$/m.exec(`${process.env.FLOOR_GUARD_ALLOW ?? ''}\n${git('log', '-1', '--format=%B').stdout}`);
   if (!found.length) console.log('floor guard: no loosening against origin/main.');
   else if (allow) {

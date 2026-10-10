@@ -23,7 +23,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { findings } from './check-floor.mjs';
+import { budgetLoosenings, findings } from './check-floor.mjs';
 
 // The fixtures name the words the guard looks for. They are joined here so that this file does not itself contain them
 // (the guard reads this file's added lines on the pull request that adds it).
@@ -201,6 +201,34 @@ test('without origin/main the guard exits 2 and says so, never 0', () => {
   const r = scenario({ base: { 'a.txt': '1\n' }, change: { 'a.txt': '2\n' }, originMain: false });
   assert.equal(r.status, 2);
   assert.deepEqual(r.err, ['floor guard cannot run: no origin/main ref. Fix: git fetch --no-tags origin main:refs/remotes/origin/main']);
+});
+
+// The file-size budget (S4b-BL-205): its JSON is compared version to version, not line by line.
+const budget = (over = {}) => JSON.stringify({
+  warn: 600, fail: 900, roots: ['web/src/'], extensions: ['.ts'], tables: { 'web/src/en.ts': 'dictionary' }, allow: { 'web/src/big.ts': 1214 }, ...over,
+}, null, 1);
+
+test('a looser size budget is reported: a raised limit or entry, an added entry or table, a root no longer measured', () => {
+  const r = (over) => budgetLoosenings(budget(), budget(over)).map((x) => x.reason);
+  assert.deepEqual(r({ fail: 1000 }), ['size budget fail raised from 900 to 1000']);
+  assert.deepEqual(r({ allow: { 'web/src/big.ts': 1215 } }), ['size budget of web/src/big.ts raised from 1214 to 1215']);
+  assert.deepEqual(r({ allow: { 'web/src/big.ts': 1214, 'web/src/new.ts': 950 } }), ['size budget entry added: web/src/new.ts (950)']);
+  assert.deepEqual(r({ tables: { 'web/src/en.ts': 'dictionary', 'web/src/a.ts': 'x' } }), ['size budget table added: web/src/a.ts']);
+  assert.deepEqual(r({ roots: [] }), ['size budget no longer measures root web/src/']);
+  assert.deepEqual(budgetLoosenings(budget(), null).map((x) => x.reason), ['size budget removed']);
+});
+
+test('a tighter size budget is silent: a lower entry, a removed entry, a lower limit', () => {
+  assert.deepEqual(budgetLoosenings(budget(), budget({ allow: { 'web/src/big.ts': 1100 } })), []);
+  assert.deepEqual(budgetLoosenings(budget(), budget({ allow: {}, warn: 500 })), []);
+});
+
+test('a branch that raises a size budget entry exits 1 naming the file', () => {
+  const r = scenario({
+    base: { 'tools/size-budget.json': budget() }, change: { 'tools/size-budget.json': budget({ allow: { 'web/src/big.ts': 1300 } }) },
+  });
+  assert.equal(r.status, 1);
+  assert.equal(r.out[0], 'tools/size-budget.json:1: size budget of web/src/big.ts raised from 1214 to 1300');
 });
 
 test('outside a git repository the guard exits 2', () => {
