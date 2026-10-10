@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Data flow diagrams (DFD) and data dictionary |
-| Version | 0.17 |
-| Date | 2026-09-24 |
+| Version | 0.18 |
+| Date | 2026-10-10 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -29,6 +29,7 @@
 | 0.15 | 2026-09-23 | Claude (Cowork), Docs team | **Owner decision of 2026-09-23: the web app is on Firebase Hosting at `https://doorprints.web.app`** ([03](03-design.md) ADR-21), replacing the Cloudflare Pages plan, which was never set up. **DF-45**, **DF-46**, **D5** and **D10** name that origin (Doorprints' own; the twin `doorprints.firebaseapp.com` is a different origin with its own, separate browser storage and is never shared); the §6b share-target diagram and its note name Firebase Hosting and its `**` rewrite. No flow changes. |
 | 0.16 | 2026-09-24 | Claude (Code), engineer | Legacy House Hunt names renamed (owner request of 2026-09-24; [03](03-design.md) ADR-24). D1 is the Room file `doorprints.db` (renamed from `househunt.db` at start), D5 the key `doorprints.api-config` (moved from `house-hunt.api-config` at start); paths follow the moved packages. |
 | 0.17 | 2026-09-24 | Claude (Code), engineer | CMP-4 P4b ([03](03-design.md) ADR-23 P4b): D3's code is in `:shared` commonMain; the store itself (file, entries, the sealed key) did not change. |
+| 0.18 | 2026-10-10 | Claude (Code), engineer | **Voice input, planned** ([03](03-design.md) ADR-37, S4b-BL-218): a note after the AI client flows (section 6.1) and the data-dictionary row **DF-49** (audio to the person's configured provider, class C2, never stored). Nothing is built. |
 
 Related: [Threat model](02-threat-model.md) (uses these element IDs) · [Design](03-design.md) · [Requirements](01-requirements.md) · [AI docs](ai/)
 
@@ -366,6 +367,9 @@ flowchart LR
 
 The start location for "Plan visits" (class C3) goes to the API and, as part of the planner's tool results, may reach the LLM provider. The UI discloses that questions and matching house notes are sent to the configured provider (AI-010).
 
+**Voice input (planned, S4b-BL-218, [03](03-design.md) ADR-37).** A microphone button in the Ask, Fill in from listing text and Plan notes boxes adds one flow, **DF-49** (section 7): the audio of a tap-to-talk recording (30 s at most) goes from P1/P4 to the AI provider the person already configured (E6; on a phone, *this device* keeps it on the phone when on-device recognition is forced). The reply is a transcript that lands in the text box as editable text; it is never sent on its own, and then DF-27 and DF-21/DF-22 run unchanged. The audio is never stored (bytes in memory only). A spoken phone number reaches E6 before `ContactRedactor` can act (T-I46, [02](02-threat-model.md) §11). Off by default; nothing is built.
+
+
 ## 6a. Level 2: Offline copy and import (Sprint 4a)
 
 Both apps build every copy from their **own** store — Android from D1/D2, the web app from D9 — so this whole
@@ -501,6 +505,7 @@ flowchart LR
 | DF-45 | P4 ↔ D9 (IndexedDB) | The web app's own copy: houses, visits, photo **blobs**, settings, sync cursors | **C3** | IndexedDB in the browser profile, scoped to the origin, which on Firebase Hosting is Doorprints' own (`https://doorprints.web.app`; the twin `https://doorprints.firebaseapp.com` is a different origin with a separate store and is never shared, [12](12-brand-and-naming.md) N-02; the GitHub Pages origin `sriram-codes-sw.github.io`, shared with the owner's other Pages sites, was dropped before anything was deployed there, [02](02-threat-model.md) F-31); OS disk encryption where the user has it | New in Sprint 4a: the web app is local-first, so the browser now holds a full copy rather than a view of the server ([03](03-design.md) §16.4). Cleared by "Remove all Doorprints data from this browser" ([02](02-threat-model.md) T-I17) |
 | DF-47 | E9 (another app) → P4 `/share` | Shared `title`, `text`, `url` of a listing, as a GET query | C2 (often an owner's or broker's phone number), **untrusted** | On the device (Android share sheet → browser); answered by `sw.js` from the cached shell, so it reaches the static host only when no worker controls the page | Section 6b. Shown as plain text; stripped from the address bar and from the URL of the tab's history entry at once; passed on only in navigation state, which is `history.state`: **residual**, the text stays in the `/` entry until the map strips it and in an unsaved `/houses/new` entry until the tab closes, survives a reload and may be kept by session restore; stored only if the user saves a house ([02](02-threat-model.md) T-I26) |
 | DF-48 | P1 → D8 (backup folder, Android) | The weekly `doorprints-backup/1` ZIP (S4-07): built with the default export options plus all photos (`ExportBuilder.defaults(…).copy(photos = ALL)`), so contact names and phone numbers are included | **C3** | Storage Access Framework into the folder the user granted once (`OpenDocumentTree`), written under a `partial-` name and renamed when complete; no network of its own (a cloud-provider folder uploads it on whatever connection it has, [10](10-sprint-log.md) §11.3 item 8) | Retention keeps the newest *n* finished backups (default 4, 1–20) by modified time. Uses the persisted folder grant in D11 |
+| DF-49 | P1/P4 → E6 (the person's configured AI provider), then E6 → P1/P4 the transcript | **Planned (S4b-BL-218, [03](03-design.md) ADR-37):** one recording (tap to talk, 30 s at most, 60 s for providers other than Sarvam, 2 MB cap) as `webm/opus` (Safari `mp4`), `m4a` or `ogg`, sent by `Transcriber.transcribe(bytes, mime, langHint)` (Gemini `generateContent` with `inlineData`, or a multipart `…/audio/transcriptions`); the reply `{text, language}` | **C2** (a voice is personal data, and what is said may carry a phone number or a name: third-party PII that `ContactRedactor` cannot redact in audio) | HTTPS only, no redirects, the key in a header from the device (never the server: no key-holding proxy), only when *Voice input* is on and the provider accepts audio | Opt-in, off by default; permission asked at first use; the audio is never stored, logged, synced or backed up (T-I48); the transcript is shown and editable before anything is sent; [02](02-threat-model.md) T-I45..T-I48, T-T20, T-D14, RR-33 |
 | DF-46 | P4 → D10 (Cache Storage) | Every file of this build, precached by `install` (`index.html`, entry and lazy chunks, the MapLibre worker under `maplibre/`, `manifest.webmanifest`, icons), plus other successful same-origin GETs under the base path kept by `fetchAndKeep` (never a navigation response); never `/api/...` or cross-origin | C0 | Cache Storage, scoped to the **origin**, not the app. On Firebase Hosting (`https://doorprints.web.app`) the origin is Doorprints' own; the app still names its cache `doorprints-shell-<build id><base path>` and deletes only its own caches (S4-05a, written for the shared GitHub Pages origin that was dropped on 2026-09-23), which costs nothing and keeps a second deployment path safe | **Deliberately excludes every `/api/...` response and every cross-origin request** (SEC-044), so no copy of the user's data exists outside D9. The fetch handler also ignores every request outside its own base path |
 
 ## 8. Data store inventory and retention
