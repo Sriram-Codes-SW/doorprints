@@ -114,7 +114,7 @@ public class HouseSearchService {
      * @throws IllegalArgumentException if the latitude or longitude is out of range
      */
     public List<HouseSummary> nearby(double lat, double lon, double radiusMeters) {
-        if (lat < -90 || lat > 90 || lon < -180 || lon > 180) throw new BadRequestException("invalid coordinates");
+        if (!(lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180)) throw new BadRequestException("invalid coordinates");
         return houses.nearby(lat, lon, Math.clamp(radiusMeters, 1, 5000)).stream().sorted(NEAREST_FIRST).map(HouseSummary::of).toList();
     }
 
