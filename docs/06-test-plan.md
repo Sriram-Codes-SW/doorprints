@@ -200,7 +200,7 @@
 | 0.188 | 2026-10-09 | Claude (Code), engineer | **TC-U-190, TC-U-191 and TC-M-66** (S4b-BL-198 step 2, the website; [03](03-design.md) 0.104, [ai-design](ai/ai-design.md) v0.45): the *AI speed and cost* setting, the Gemini request body (vectors `geminiRequest`, 8192 tokens) and the Connect page control, and a manual check with a real key. Mutation list `tools/mutations/ai-quality-setting-web.json`. |
 | 0.189 | 2026-10-10 | Claude (Code), engineer | TC-AI-33: the planner's fallback offers the houses nearest the start (S4b-BL-194 item 3; [10](10-sprint-log.md) v0.227). |
 | 0.190 | 2026-10-10 | Claude (Code), engineer | TC-AI-34: the planner makes one wrap-up call at its tool limit (S4b-BL-194 item 3; [10](10-sprint-log.md) v0.228). |
-| 0.191 | 2026-10-10 | Claude (Code), engineer | **TC-U-192, TC-U-193 and TC-M-67** (S4b-BL-198 step 2 on the phones; [03](03-design.md) 0.105, [ai-design](ai/ai-design.md) v0.47): the Kotlin setting and Gemini request (vectors `geminiRequest`, 8192 tokens), the Settings control, and a manual check with a real key on a phone. Mutation list `tools/mutations/ai-quality-setting-kotlin.json`. |
+| 0.191 | 2026-10-10 | Claude (Code), engineer | **TC-U-192, TC-U-193 and TC-M-67** (S4b-BL-198 step 2 on the phones; [03](03-design.md) 0.105, [ai-design](ai/ai-design.md) v0.48): the Kotlin setting and Gemini request (vectors `geminiRequest`, 8192 tokens), the Settings control, and a manual check with a real key on a phone. Mutation list `tools/mutations/ai-quality-setting-kotlin.json`. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Design](03-design.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
