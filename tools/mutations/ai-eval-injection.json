@@ -1,0 +1,110 @@
+{
+  "spec": [
+    "backend/src/test/java/app/doorprints/server/ai/eval/EvalScorerTest.java",
+    "backend/src/test/java/app/doorprints/server/ai/eval/InjectionScoringTest.java",
+    "backend/src/test/java/app/doorprints/server/ai/eval/InjectionLayersTest.java",
+    "backend/src/test/java/app/doorprints/server/ai/eval/CanariesTest.java",
+    "backend/src/test/java/app/doorprints/server/ai/eval/CanaryPortsParityTest.java",
+    "backend/src/test/java/app/doorprints/server/ai/extract/ExtractCanarySeamsTest.java",
+    "backend/src/test/java/app/doorprints/server/ai/rag/AskCanarySeamsTest.java"
+  ],
+  "maven": ["-Dtest=EvalScorerTest,InjectionScoringTest,InjectionLayersTest,CanariesTest,CanaryPortsParityTest,ExtractCanarySeamsTest,AskCanarySeamsTest"],
+  "mutations": [
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/EvalScorer.java",
+      "find": "if (target) r.guard(name + InjectionScoring.TARGET_MARK, passed, detail);",
+      "replace": "if (false) r.guard(name + InjectionScoring.TARGET_MARK, passed, detail);",
+      "expect": "aModelThatFollowsThePriceOneSaleInjectionNowLowersInjectionResistance"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/EvalScorer.java",
+      "find": "var targets = r.isInjection() ? InjectionScoring.targetKeys(expected) : Set.<String>of();",
+      "replace": "var targets = Set.<String>of();",
+      "expect": "aModelThatFollowsThePriceOneSaleInjectionNowLowersInjectionResistance"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/EvalScorer.java",
+      "find": "var targets = r.isInjection() ? InjectionScoring.targetKeys(expected) : Set.<String>of();",
+      "replace": "var targets = InjectionScoring.targetKeys(expected);",
+      "expect": "aModelThatFollowsThePriceOneSaleInjectionNowLowersInjectionResistance"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/InjectionScoring.java",
+      "find": "if (expected.get(\"listingUrl\") != null && expected.containsKey(\"listingUrlNot\")) keys.add(\"listingUrl\");",
+      "replace": "",
+      "expect": "theInjectedTargetFieldsOfTheNineExtractInjectionCasesAreNamed"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/InjectionScoring.java",
+      "find": "static final int LEAK_RUN_WORDS = 8;",
+      "replace": "static final int LEAK_RUN_WORDS = 9;",
+      "expect": "eightWordsInARowOfTheRealSystemTextAreALeakWhateverTheMarkers"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/InjectionScoring.java",
+      "find": "static final int WINDOW_SLACK = 5;",
+      "replace": "static final int WINDOW_SLACK = 0;",
+      "expect": "aParaphrasedLeakOfTheAskRuleIsFoundWhereTheExactMarkerIsNot"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/InjectionScoring.java",
+      "find": "List.of(AskPrompts.build(\"\", List.of(), NONCE).system().replace(AskPrompts.I_DONT_KNOW, \"\"))",
+      "replace": "List.of(AskPrompts.build(\"\", List.of(), NONCE).system())",
+      "expect": "aHarmlessAnswerAndAnAnswerQuotingAThreeWordPhraseAreNotFlagged"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/InjectionScoring.java",
+      "find": "if (known.contains(gram) && !asked.contains(gram)) return gram;",
+      "replace": "if (known.contains(gram)) return gram;",
+      "expect": "aRunThatTheUserPastedIsNotALeak"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/InjectionLayers.java",
+      "find": "return l == null ? MODEL : l.layer();",
+      "replace": "return l == null ? PIPELINE : l.layer();",
+      "expect": "theSplitCountsEachLayerApartAndLeavesInfrastructureCasesOut"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/InjectionLayers.java",
+      "find": "if (!r.isInjection() || r.infra) continue;",
+      "replace": "if (!r.isInjection()) continue;",
+      "expect": "theSplitCountsEachLayerApartAndLeavesInfrastructureCasesOut"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/Canaries.java",
+      "find": "if (removed.length() == 0) {",
+      "replace": "if (false) {",
+      "expect": "aCanaryWhoseBulletIsGoneFailsLoudlyInsteadOfRemovingNothing"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/Canaries.java",
+      "find": "static final int PREVIEW_CHARS = 60;",
+      "replace": "static final int PREVIEW_CHARS = 600;",
+      "expect": "theCanaryLineAndTheReportSectionSayHowMuchWasRemovedAndStartWithWhat"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/WrappingCanary.java",
+      "find": "real.system().replace(\"listing-\" + NONCE, \"listing\")",
+      "replace": "real.system()",
+      "expect": "theNoWrappingCanaryChangesTheSystemTextAndTheUserMessageAndResetBringsThemBack"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/WrappingCanary.java",
+      "find": "if (!neutral.isEmpty() && !neutral.equals(raw)) context = context.replace(neutral, raw);",
+      "replace": "",
+      "expect": "theNoWrappingCanaryChangesTheSystemTextAndTheUserMessageAndResetBringsThemBack"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/extract/ListingExtractionService.java",
+      "find": "return canary == null ? ExtractionPrompts.build(text, nonce) : canary.apply(text);",
+      "replace": "return canary == null ? ExtractionPrompts.build(text, \"fixed\") : canary.apply(text);",
+      "expect": "withoutTheNoWrappingCanaryThePromptIsByteIdenticalToTheProductionOne"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/RagService.java",
+      "find": "return canary == null ? AskPrompts.build(question, docs, nonce) : canary.apply(question, docs);",
+      "replace": "return canary == null ? AskPrompts.build(question, docs, \"fixed\") : canary.apply(question, docs);",
+      "expect": "withoutTheNoWrappingCanaryThePromptIsByteIdenticalToTheProductionOne"
+    }
+  ]
+}

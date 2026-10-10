@@ -212,7 +212,17 @@ class GoldenSetEvalTest {
         // the test, the run is informational and the scorecard prints "CANARY: <name> expected drop seen / NOT seen".
         var canaryName = env("AI_EVAL_CANARY", Canaries.NONE);
         canary = Canaries.isNone(canaryName) ? null : Canaries.load(Canaries.locate()).byName(canaryName);
-        if (canary != null) Canaries.apply(canary);
+        boolean canaryRefused = false;
+        if (canary != null) {
+            try {
+                Canaries.apply(canary);
+            } catch (IllegalStateException e) {
+                canaryRefused = true;
+                // S4b-BL-239: the bullet or the shape the canary rewrites is not in the real prompt any more, so the canary
+                // would change nothing. A harness error: no case runs, the scorecard says why and the job fails.
+                errors.add("Canary seam refused: " + e.getMessage());
+            }
+        }
         // AI_EVAL_ADDRESS_SET (S4b-BL-226): unset, empty or "default" is the run as ever (the variants file is not even
         // read); a name from address-variants.json runs the golden set with that set's addresses, informational only.
         var addressName = env("AI_EVAL_ADDRESS_SET", AddressVariants.DEFAULT_SET);
@@ -243,7 +253,8 @@ class GoldenSetEvalTest {
         header.put("Golden set", "v" + loaded.version() + " (" + loaded.date() + "), " + path.normalize());
         if (evalSet != null) header.put("Eval set", evalSet.headerValue() + " (fixtures of the golden set; not gated)");
         if (canary != null) {
-            header.put("Canary", canary.name() + " (" + canary.kind() + "; not gated; types " + String.join(", ", canary.types()) + ")");
+            header.put("Canary", canary.name() + " (" + canary.kind() + "; not gated; types " + String.join(", ", canary.types())
+                    + (canary.cases().isEmpty() ? "" : "; only " + canary.cases().size() + " cases: " + String.join(", ", canary.cases())) + ")");
             types.retainAll(canary.types()); // a canary runs only the types its metric is made of
         }
         if (addressRun != null) header.put("Address set", addressRun.headerValue());
@@ -275,8 +286,10 @@ class GoldenSetEvalTest {
                 warnings.add("Skipped case " + testCase.get("id") + ": unknown type '" + type + "'");
                 continue;
             }
-            if (types.contains(type)) planned.add(testCase);
+            // A canary with a 'cases' key (no-wrapping) scores only the cases its seam can change.
+            if (types.contains(type) && (canary == null || canary.runs(String.valueOf(testCase.get("id"))))) planned.add(testCase);
         }
+        if (canaryRefused) planned.clear(); // the seam was refused: nothing is run against it
         boolean timeStopped = false;
         try {
             writeReport(started, golden, results, new EvalScorer.Progress(0, planned.size(), false));
@@ -286,7 +299,7 @@ class GoldenSetEvalTest {
                 errors.add(addressRun.error());
                 planned.clear();
                 seeded = false;
-            } else if (types.contains(ASK) || types.contains(PLAN)) seeded = seed(golden);
+            } else if (!canaryRefused && (types.contains(ASK) || types.contains(PLAN))) seeded = seed(golden); // no calls for a refused canary
             // Without fixtures and an index, ask/plan scores would only measure the seeding failure.
             if (!seeded) planned.removeIf(c -> !EXTRACT.equals(String.valueOf(c.get("type"))));
             // The scorecard is rewritten after every case, so a killed job still leaves one (S4b-BL-202).
@@ -329,7 +342,8 @@ class GoldenSetEvalTest {
     /** The informational marker of this run: the canary's section with its result line, else the eval set's, else null. */
     private EvalScorer.Informational informational(List<Metric> metrics) {
         if (canary != null) {
-            return new EvalScorer.Informational("Canary", canary.name(), canary.description(), Canaries.line(canary, metrics));
+            return new EvalScorer.Informational("Canary", canary.name(), canary.description() + Canaries.evidenceText(),
+                    Canaries.line(canary, metrics));
         }
         return evalSet == null ? null : evalSet.info();
     }
