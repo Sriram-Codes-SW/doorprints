@@ -21,6 +21,7 @@ package app.doorprints.server.ai.eval;
 import app.doorprints.server.ai.eval.EvalScorer.CaseResult;
 import app.doorprints.server.ai.eval.EvalScorer.Metric;
 import app.doorprints.server.ai.web.AiExceptionHandler;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
@@ -89,7 +90,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  * {@code AI_EVAL_ADDRESS_SET} (S4b-BL-226: a set of {@code docs/ai/evals/address-variants.json}, default {@code default}; the
  * run then uses that set's addresses, the cases the set cannot ask about are listed as not applicable, the scorecard says
  * {@code Address set} and every metric is "not gated": the verdict of the golden set is the default run's, and a run under a
- * set fails only on a harness error or a stop; the default run does not read the file and its scorecard is unchanged).
+ * set fails only on a harness error or a stop; the default run does not read the file and its scorecard is unchanged),
+ * {@code AI_EVAL_SET} (S4b-BL-236: an additive set such as {@code hard-set} beside the golden set, its cases against the
+ * golden set's fixtures, no thresholds, the scorecard says {@code Eval set} and nothing is gated) and {@code AI_EVAL_CANARY}
+ * (S4b-BL-237: one live canary of {@code canaries.json}; its eval-only seam is on for this run, only the canary's case types
+ * run, nothing is gated, and the scorecard prints {@code CANARY: <name> expected drop seen} or {@code NOT seen}).
  *
  * <p>Time budget (S4b-BL-202): the scorecard is rewritten after every case and marked {@code PARTIAL (n of N cases)}
  * until the run completes, so a killed job still leaves one. When the budget is used up between cases (or before a
@@ -184,14 +189,37 @@ class GoldenSetEvalTest {
     private final Map<String, String> header = EvalScorer.header();
     /** The address set of this run (S4b-BL-226), or null for the default run, which is the only one with a verdict. */
     private AddressVariants.Run addressRun;
+    /** The additive eval set of this run (S4b-BL-236, {@code AI_EVAL_SET}), or null for the golden set. Informational. */
+    private EvalSets.Run evalSet;
+    /** The live canary of this run (S4b-BL-237, {@code AI_EVAL_CANARY}), or null. Informational; its seam is on for this run only. */
+    private Canaries.Canary canary;
+
+    @AfterEach
+    void canarySeamsOff() {
+        Canaries.reset();
+    }
 
     @Test
     void goldenSetMeetsThresholds() throws IOException {
         var path = GoldenSet.locate();
         var loaded = GoldenSet.load(path);
+        // AI_EVAL_SET (S4b-BL-236): unset, "default" or "golden-set" is the golden set as ever (no other file is read); a
+        // set name runs that file's cases against the golden set's fixtures, informational only (no thresholds, no verdict).
+        var setName = env("AI_EVAL_SET", EvalSets.GOLDEN);
+        evalSet = EvalSets.isGolden(setName) ? null : EvalSets.select(loaded, path, setName);
+        if (evalSet != null) loaded = evalSet.golden();
+        // AI_EVAL_CANARY (S4b-BL-237): one live canary of canaries.json; its eval-only seam is turned on here and off after
+        // the test, the run is informational and the scorecard prints "CANARY: <name> expected drop seen / NOT seen".
+        var canaryName = env("AI_EVAL_CANARY", Canaries.NONE);
+        canary = Canaries.isNone(canaryName) ? null : Canaries.load(Canaries.locate()).byName(canaryName);
+        if (canary != null) Canaries.apply(canary);
         // AI_EVAL_ADDRESS_SET (S4b-BL-226): unset, empty or "default" is the run as ever (the variants file is not even
         // read); a name from address-variants.json runs the golden set with that set's addresses, informational only.
         var addressName = env("AI_EVAL_ADDRESS_SET", AddressVariants.DEFAULT_SET);
+        if (evalSet != null && !AddressVariants.isDefault(addressName)) {
+            errors.add("AI_EVAL_SET and AI_EVAL_ADDRESS_SET cannot be combined (the address fingerprints are the golden set's); run them apart");
+            addressName = AddressVariants.DEFAULT_SET;
+        }
         addressRun = AddressVariants.isDefault(addressName) ? null
                 : AddressVariants.load(AddressVariants.locate()).select(loaded, addressName);
         var golden = addressRun == null ? loaded : addressRun.golden();
@@ -213,6 +241,11 @@ class GoldenSetEvalTest {
         header.put("Time budget", budget.toMinutes() + " min");
 
         header.put("Golden set", "v" + loaded.version() + " (" + loaded.date() + "), " + path.normalize());
+        if (evalSet != null) header.put("Eval set", evalSet.headerValue() + " (fixtures of the golden set; not gated)");
+        if (canary != null) {
+            header.put("Canary", canary.name() + " (" + canary.kind() + "; not gated; types " + String.join(", ", canary.types()) + ")");
+            types.retainAll(canary.types()); // a canary runs only the types its metric is made of
+        }
         if (addressRun != null) header.put("Address set", addressRun.headerValue());
         boolean vertex = "vertex".equals(provider);
         header.put("Provider", vertex
@@ -231,7 +264,7 @@ class GoldenSetEvalTest {
             header.put("Trials", repeats + " of the " + String.join(", ", repeatTypes) + " cases (trial 1 gated, the rest informational)");
         }
         header.put("Started", started.toString());
-        checkThresholdsDeclared(golden);
+        if (evalSet == null) checkThresholdsDeclared(golden); // an additive set has none, by design
 
         trials = new EvalScorer.Trials();
         var results = trials.gated();
@@ -287,9 +320,18 @@ class GoldenSetEvalTest {
 
         // Fails on zero cases, any harness error (e.g. seeding / reindex 503), a time-budget stop or a metric below its threshold.
         // Under an address set the verdict is the default run's (S4b-BL-226): this run fails only on a harness error or a stop.
-        var verdict = addressRun == null ? EvalScorer.verdict(metrics, results, errors, progress)
+        // An eval set or a canary (S4b-BL-236, S4b-BL-237) is informational by construction, like an address set.
+        var verdict = addressRun == null && informational(metrics) == null ? EvalScorer.verdict(metrics, results, errors, progress)
                 : EvalScorer.variantVerdict(results, errors, progress);
         assertThat(verdict.reasons()).as("AI eval failed; scorecard: %s", REPORT.toAbsolutePath()).isEmpty();
+    }
+
+    /** The informational marker of this run: the canary's section with its result line, else the eval set's, else null. */
+    private EvalScorer.Informational informational(List<Metric> metrics) {
+        if (canary != null) {
+            return new EvalScorer.Informational("Canary", canary.name(), canary.description(), Canaries.line(canary, metrics));
+        }
+        return evalSet == null ? null : evalSet.info();
     }
 
     /** Scores what has run so far and replaces the scorecard file (atomically); returns the metrics. */
@@ -297,7 +339,8 @@ class GoldenSetEvalTest {
                                      EvalScorer.Progress progress) {
         header.put("Duration", Duration.between(started, Instant.now()).toSeconds() + " s");
         var metrics = EvalScorer.metrics(results, golden.thresholds());
-        var markdown = EvalScorer.markdown(header, metrics, results, warnings, errors, progress, trials, addressRun);
+        var markdown = EvalScorer.markdown(header, metrics, results, warnings, errors, progress, trials, addressRun,
+                informational(metrics));
         try {
             EvalRun.writeAtomically(REPORT, markdown);
         } catch (IOException e) {

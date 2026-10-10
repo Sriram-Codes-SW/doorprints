@@ -103,6 +103,8 @@ final class EvalScorer {
         String output = "";
         /** What two trials of the case are compared by (S4b-BL-227, {@link Agreement}); null when the call had no answer. */
         String agreeKey;
+        /** Extract only: the draft's fields after normalisation, for the field-level agreement (S4b-BL-236); null without a draft. */
+        Map<String, Object> agreeFields;
         /** Plan only: the stops in order, kept apart from {@link #agreeKey}, which holds them as a set. */
         String orderKey;
 
@@ -266,6 +268,7 @@ final class EvalScorer {
         if (draft != null) {
             r.output = draft.toString();
             r.agreeKey = Agreement.extractKey(draft);
+            r.agreeFields = Agreement.extractFields(draft);
         }
         return r;
     }
@@ -886,8 +889,32 @@ final class EvalScorer {
     static String markdown(Map<String, String> header, List<Metric> metrics, List<CaseResult> results,
                            List<String> warnings, List<String> errors, Progress progress, Trials trials,
                            AddressVariants.Run address) {
-        var verdict = address == null ? verdict(metrics, results, errors, progress) : variantVerdict(results, errors, progress);
-        if (address != null) metrics = notGated(metrics);
+        return markdown(header, metrics, results, warnings, errors, progress, trials, address, null);
+    }
+
+    /**
+     * A run that is informational by construction (S4b-BL-236, S4b-BL-237): an eval set other than the golden set (an
+     * additive case file such as {@code hard-set.json}) or a canary (a degraded configuration whose metric must drop).
+     * {@code resultLine} is the canary's verdict line ({@code CANARY: <name> expected drop seen} or {@code NOT seen}),
+     * null for an eval set. Such a run is never gated and never the golden set's verdict.
+     */
+    record Informational(String kind, String name, String description, String resultLine) {
+        String label() {
+            return kind + " " + name;
+        }
+    }
+
+    /**
+     * {@code info} (nullable) marks a run that is informational by construction, like {@code address}: the metrics are
+     * "not gated", the verdict is {@link #variantVerdict}, and the canary's result line, when there is one, is printed
+     * under the result. With both null the text is exactly what it was before.
+     */
+    static String markdown(Map<String, String> header, List<Metric> metrics, List<CaseResult> results,
+                           List<String> warnings, List<String> errors, Progress progress, Trials trials,
+                           AddressVariants.Run address, Informational info) {
+        boolean informational = address != null || info != null;
+        var verdict = !informational ? verdict(metrics, results, errors, progress) : variantVerdict(results, errors, progress);
+        if (informational) metrics = notGated(metrics);
         boolean stopped = quotaStopped(errors);
         boolean timeStopped = progress != null && progress.timeStopped();
         var sb = new StringBuilder();
@@ -909,6 +936,12 @@ final class EvalScorer {
                     ? "** (address set " + address.set() + " is informational: no metric is compared with a threshold, and the "
                     + "verdict of the golden set is the default run's. A run under a set fails only on a harness error or a stop)\n\n"
                     : "** (an address-set run fails only on a harness error, a stop or when no case ran)\n\n");
+        } else if (info != null) {
+            sb.append("**Result: ").append(verdict.passed() ? "NOT GATED" : verdict.label()).append(verdict.passed()
+                    ? "** (" + cell(info.label()) + " is informational: no metric is compared with a threshold, and the verdict of "
+                    + "the golden set is the default run's. Such a run fails only on a harness error or a stop)\n\n"
+                    : "** (an informational run fails only on a harness error, a stop or when no case ran)\n\n");
+            if (info.resultLine() != null) sb.append("**").append(cell(info.resultLine())).append("**\n\n");
         } else {
             sb.append("**Result: ").append(verdict.label()).append(verdict.incomplete()
                     ? "** (provider or infrastructure failures left cases unscored; they are excluded from every metric, "
@@ -921,6 +954,10 @@ final class EvalScorer {
                 .append(results.size()).append(" passed |\n\n");
 
         if (address != null) appendAddressSet(sb, address);
+        if (info != null) {
+            sb.append("## ").append(cell(info.kind())).append(": ").append(cell(info.name())).append(" (not gated)\n\n")
+                    .append(cell(info.description())).append("\n\n");
+        }
         if (!errors.isEmpty()) {
             sb.append("## Errors\n\n");
             errors.forEach(e -> sb.append("- ").append(cell(e)).append('\n'));
@@ -929,7 +966,7 @@ final class EvalScorer {
         var infraCases = infraCases(results);
         if (!infraCases.isEmpty()) {
             sb.append("## Infrastructure errors\n\nNot scored: the provider or infrastructure failed, not the model."
-                    + (verdict.incomplete() ? "" : address != null ? " (This run is informational; this is a note.)"
+                    + (verdict.incomplete() ? "" : informational ? " (This run is informational; this is a note.)"
                     : " (A real failure is reported above; this is a note.)") + "\n\n");
             infraCases.forEach(r -> sb.append("- ").append(cell(r.id)).append(": ").append(cell(truncate(r.error, 300)))
                     .append('\n'));
@@ -947,10 +984,11 @@ final class EvalScorer {
             sb.append('\n');
         }
 
-        sb.append("## Metrics\n\n| Metric | Value | n | Threshold | Status | Definition |\n|---|---:|---:|---|---|---|\n");
+        sb.append("## Metrics\n\nThe value is followed by its Wilson 95% interval (informational, S4b-BL-236: what n cases can show; "
+                + "the threshold is compared with the value alone).\n\n| Metric | Value | n | Threshold | Status | Definition |\n|---|---:|---:|---|---|---|\n");
         for (var m : metrics) {
             sb.append("| ").append(m.name()).append(" | ")
-                    .append(m.value() == null ? "n/a" : fmt(m.value())).append(" | ")
+                    .append(Interval.label(m.numerator(), m.denominator())).append(" | ")
                     .append(m.numerator()).append('/').append(m.denominator()).append(" | ")
                     .append(cell(m.threshold())).append(" | ").append(m.status()).append(" | ")
                     .append(cell(m.description())).append(" |\n");
@@ -1012,7 +1050,7 @@ final class EvalScorer {
         if (info.isEmpty()) return;
         sb.append("\n## Informational (not gated)\n\n| Metric | Value | n | Definition |\n|---|---:|---:|---|\n");
         for (var m : info) {
-            sb.append("| ").append(m.name()).append(" | ").append(fmt(m.value())).append(" | ")
+            sb.append("| ").append(m.name()).append(" | ").append(Interval.label(m.numerator(), m.denominator())).append(" | ")
                     .append(m.numerator()).append('/').append(m.denominator()).append(" | ")
                     .append(cell(m.description())).append(" |\n");
         }

@@ -28,10 +28,24 @@ import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBooleanProperty;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.UnaryOperator;
+
 /** Feature 1: free text listing -> validated {@link HouseDraft} via ChatClient structured output. */
 @Service
 @ConditionalOnBooleanProperty("app.ai.enabled")
 public class ListingExtractionService {
+
+    /**
+     * Eval-only seams for the canary suite (S4b-BL-237, docs/ai/ai-design.md 8.6), package-private and null or false
+     * in production: nothing reads them from configuration, a property or the environment, so no deployment can turn
+     * them on. Only the test class {@code ExtractCanarySeams} (same package, test sources) sets them, for one canary run.
+     * {@code canarySystemText} rewrites the built system text before it is sent (a prompt without its rules);
+     * {@code canarySkipSanitizer} hands the model's output on as a draft without {@link DraftSanitizer}.
+     */
+    static volatile UnaryOperator<String> canarySystemText;
+    static volatile boolean canarySkipSanitizer;
 
     private final ChatClient chat;
     private final AiProperties props;
@@ -57,15 +71,39 @@ public class ListingExtractionService {
         long started = System.nanoTime();
         try {
             var result = chat.prompt()
-                    .system(prompt.system())
+                    .system(systemText(prompt.system()))
                     .user(prompt.user())
                     .options(ChatOptions.builder().temperature(0.0).maxTokens(props.maxOutputTokens()))
                     .call()
                     .responseEntity(RawListing.class);
             AiUsageLogger.log("extract-listing", result.response(), started);
-            return DraftSanitizer.sanitize(result.entity(), text);
+            return finish(result.entity(), text);
         } catch (RuntimeException e) {
             throw new AiUnavailableException("Listing extraction failed", e);
         }
+    }
+
+    /** The system text as sent: the built one, unless a canary rewrites it. */
+    static String systemText(String built) {
+        var canary = canarySystemText;
+        return canary == null ? built : canary.apply(built);
+    }
+
+    /** The draft the caller gets: the sanitised one, unless the no-sanitizer canary is on. */
+    static HouseDraft finish(RawListing raw, String text) {
+        return canarySkipSanitizer ? unsanitized(raw) : DraftSanitizer.sanitize(raw, text);
+    }
+
+    /**
+     * The model's output as a draft with the numbers read but nothing confirmed against the text and nothing clamped:
+     * what Extract would be without {@link DraftSanitizer}. Canary only.
+     */
+    static HouseDraft unsanitized(RawListing raw) {
+        var warnings = new ArrayList<String>(List.of("canary: sanitizer bypassed"));
+        if (raw == null) return new HouseDraft(null, null, null, null, null, null, null, null, null, null, null, List.of(), warnings);
+        return new HouseDraft(raw.label(), raw.address(), raw.street(), raw.locality(), DraftSanitizer.price(raw.price(), warnings),
+                DraftSanitizer.priceType(raw.priceType(), warnings), DraftSanitizer.bedrooms(raw.bedrooms(), warnings),
+                raw.contactName(), raw.contactPhone(), raw.listingUrl(), raw.notes(),
+                raw.amenities() == null ? List.of() : List.copyOf(raw.amenities()), warnings);
     }
 }

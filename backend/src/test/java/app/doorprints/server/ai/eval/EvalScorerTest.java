@@ -815,7 +815,7 @@ class EvalScorerTest {
         var md = EvalScorer.markdown(header, metrics, new ArrayList<>(List.of(r)), List.of("careful"));
 
         assertThat(md).startsWith("# Doorprints AI eval scorecard\n");
-        assertThat(md).contains("**Result: FAIL**", "| extractionFieldAccuracy | 0.00 | 0/1 | >= 0.90 | FAIL |",
+        assertThat(md).contains("**Result: FAIL**", "| extractionFieldAccuracy | 0.00 (95% CI 0.00-0.79) | 0/1 | >= 0.90 | FAIL |",
                 "m\\|1", "x\\|1", "- careful", "- [ ] price = 100");
         assertThat(List.of(md.split("\n"))).doesNotContain("| x|1 | extract | - | FAIL | 0/1 | 0 |");
     }
@@ -1369,7 +1369,7 @@ class EvalScorerTest {
         assertThat(verdict.passed()).isTrue();
 
         var md = EvalScorer.markdown(EvalScorer.header(), metrics, results, List.of(), List.of());
-        assertThat(md).contains("## Informational (not gated)", "| planSelection | 0.00 | 0/1 |");
+        assertThat(md).contains("## Informational (not gated)", "| planSelection | 0.00 (95% CI 0.00-0.79) | 0/1 |");
         assertThat(EvalScorer.informationalMetrics(List.of())).extracting(Metric::value).containsOnlyNulls();
     }
 
@@ -1434,7 +1434,7 @@ class EvalScorerTest {
         var md = EvalScorer.markdown(EvalScorer.header(), gated, trials.gated(), List.of(), List.of(), trials);
         assertThat(md).contains("## Stability across repeats (informational, not gated)", "| plan-a | 3 | 2/3 passed |",
                 "| plan-b | 3 | 1/2 passed, 1 infra |");
-        assertThat(md).contains("| agentValidity | 1.00 | 2/2 |");
+        assertThat(md).contains("| agentValidity | 1.00 (95% CI 0.34-1.00) | 2/2 |");
     }
 
     @Test
