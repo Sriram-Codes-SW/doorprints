@@ -84,17 +84,59 @@ fun isShareCopy(target: String): Boolean = !target.startsWith("content://") && !
  * sentence outside composition.
  */
 @Composable
-fun exportResultText(target: String?, name: String?, location: String?, partial: Boolean): String = when {
+fun exportResultText(target: String?, name: String?, location: String?, partial: Boolean): String {
+    val sentence = exportSentence(target, name, location, partial)
+    return stringResource(sentence.resource, *sentence.args.toTypedArray())
+}
+
+/** A text to look up: a string resource and the values for its placeholders. */
+private class Sentence(val resource: StringResource, val args: List<Any> = emptyList())
+
+/**
+ * Which sentence a finished export says, and with what: the one place the branching is written (S4b-BL-41), so the
+ * result card ([exportResultText]) and the notification ([exportResultSentence]) only look the result up.
+ */
+private fun exportSentence(target: String?, name: String?, location: String?, partial: Boolean): Sentence = when {
     // A copy in the app's private cache is not "saved" anywhere the user can reach.
-    target != null && isShareCopy(target) -> stringResource(
+    target != null && isShareCopy(target) -> Sentence(
         if (partial) Res.string.export_ready_partial else Res.string.export_ready,
-        name ?: target.substringAfterLast('/'),
+        listOf(name ?: target.substringAfterLast('/')),
     )
-    name == null -> stringResource(if (partial) Res.string.export_done_partial_plain else Res.string.export_done_plain)
-    location != null -> stringResource(
-        if (partial) Res.string.export_done_partial_in else Res.string.export_done_in, location, name,
+    name == null -> Sentence(if (partial) Res.string.export_done_partial_plain else Res.string.export_done_plain)
+    location != null -> Sentence(
+        if (partial) Res.string.export_done_partial_in else Res.string.export_done_in, listOf(location, name),
     )
-    else -> stringResource(if (partial) Res.string.export_done_partial else Res.string.export_done, name)
+    else -> Sentence(if (partial) Res.string.export_done_partial else Res.string.export_done, listOf(name))
+}
+
+/**
+ * The counts of a finished import's sentence, worked out once (S4b-BL-41): [restored] houses brought back, then the
+ * non-zero counts that were [added] and [updated], each a plural and its number.
+ */
+private class ImportParts(
+    val restored: Int,
+    val added: List<Pair<PluralStringResource, Int>>,
+    val updated: List<Pair<PluralStringResource, Int>>,
+)
+
+private fun importParts(
+    houses: Int,
+    visits: Int,
+    photos: Int,
+    updatedHouses: Int,
+    updatedVisits: Int,
+    restoredHouses: Int,
+): ImportParts {
+    fun nonZero(vararg counts: Pair<PluralStringResource, Int>) = counts.filter { it.second > 0 }
+    return ImportParts(
+        restored = restoredHouses,
+        added = nonZero(
+            Res.plurals.count_houses to (houses - updatedHouses - restoredHouses).coerceAtLeast(0),
+            Res.plurals.count_visits to (visits - updatedVisits).coerceAtLeast(0),
+            Res.plurals.count_photos to photos,
+        ),
+        updated = nonZero(Res.plurals.count_houses to updatedHouses, Res.plurals.count_visits to updatedVisits),
+    )
 }
 
 /**
@@ -104,18 +146,15 @@ fun exportResultText(target: String?, name: String?, location: String?, partial:
  */
 @Composable
 fun importedText(run: ImportRun): String {
+    val parts = importParts(run.houses, run.visits, run.photos, run.updatedHouses, run.updatedVisits, run.restoredHouses)
     @Composable
-    fun parts(vararg counts: Pair<PluralStringResource, Int>): List<String> =
-        counts.filter { it.second > 0 }.map { (plural, n) -> pluralStringResource(plural, n, n) }
-    val added = parts(
-        Res.plurals.count_houses to (run.houses - run.updatedHouses - run.restoredHouses).coerceAtLeast(0),
-        Res.plurals.count_visits to (run.visits - run.updatedVisits).coerceAtLeast(0),
-        Res.plurals.count_photos to run.photos,
-    )
-    val updated = parts(Res.plurals.count_houses to run.updatedHouses, Res.plurals.count_visits to run.updatedVisits)
+    fun words(counts: List<Pair<PluralStringResource, Int>>): List<String> =
+        counts.map { (plural, n) -> pluralStringResource(plural, n, n) }
+    val added = words(parts.added)
+    val updated = words(parts.updated)
     val sentences = buildList {
-        if (run.restoredHouses > 0) {
-            add(pluralStringResource(Res.plurals.import_restored_result, run.restoredHouses, run.restoredHouses))
+        if (parts.restored > 0) {
+            add(pluralStringResource(Res.plurals.import_restored_result, parts.restored, parts.restored))
         }
         if (added.isNotEmpty()) add(stringResource(Res.string.import_added, joinedList(added)))
         if (updated.isNotEmpty()) add(stringResource(Res.string.import_updated, joinedList(updated)))
@@ -127,16 +166,9 @@ fun importedText(run: ImportRun): String {
  * [exportResultText] outside composition, for the export notification (S4b-BL-106: was `ExportWorker.resultText`
  * with its own Android resources), so the notification and the result card say the same sentence.
  */
-suspend fun exportResultSentence(target: String?, name: String?, location: String?, partial: Boolean): String = when {
-    target != null && isShareCopy(target) -> getString(
-        if (partial) Res.string.export_ready_partial else Res.string.export_ready,
-        name ?: target.substringAfterLast('/'),
-    )
-    name == null -> getString(if (partial) Res.string.export_done_partial_plain else Res.string.export_done_plain)
-    location != null -> getString(
-        if (partial) Res.string.export_done_partial_in else Res.string.export_done_in, location, name,
-    )
-    else -> getString(if (partial) Res.string.export_done_partial else Res.string.export_done, name)
+suspend fun exportResultSentence(target: String?, name: String?, location: String?, partial: Boolean): String {
+    val sentence = exportSentence(target, name, location, partial)
+    return getString(sentence.resource, *sentence.args.toTypedArray())
 }
 
 /**
@@ -152,16 +184,13 @@ suspend fun importedSentence(
     updatedVisits: Int = 0,
     restoredHouses: Int = 0,
 ): String {
-    suspend fun parts(vararg counts: Pair<PluralStringResource, Int>): List<String> =
-        counts.filter { it.second > 0 }.map { (plural, n) -> getPluralString(plural, n, n) }
-    val added = parts(
-        Res.plurals.count_houses to (houses - updatedHouses - restoredHouses).coerceAtLeast(0),
-        Res.plurals.count_visits to (visits - updatedVisits).coerceAtLeast(0),
-        Res.plurals.count_photos to photos,
-    )
-    val updated = parts(Res.plurals.count_houses to updatedHouses, Res.plurals.count_visits to updatedVisits)
+    val parts = importParts(houses, visits, photos, updatedHouses, updatedVisits, restoredHouses)
+    suspend fun words(counts: List<Pair<PluralStringResource, Int>>): List<String> =
+        counts.map { (plural, n) -> getPluralString(plural, n, n) }
+    val added = words(parts.added)
+    val updated = words(parts.updated)
     val sentences = buildList {
-        if (restoredHouses > 0) add(getPluralString(Res.plurals.import_restored_result, restoredHouses, restoredHouses))
+        if (parts.restored > 0) add(getPluralString(Res.plurals.import_restored_result, parts.restored, parts.restored))
         if (added.isNotEmpty()) add(getString(Res.string.import_added, joinedListText(added)))
         if (updated.isNotEmpty()) add(getString(Res.string.import_updated, joinedListText(updated)))
     }

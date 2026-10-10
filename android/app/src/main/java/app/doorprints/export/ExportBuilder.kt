@@ -58,9 +58,7 @@ object ExportBuilder {
      * data reads the same from either, and the cover says so ("Times shown for UTC +00:00").
      */
     fun defaults(context: Context, now: Long = System.currentTimeMillis()) = ExportOptions(
-        language = AppLocale.current(context)
-            ?: context.resources.configuration.locales[0]?.language?.takeIf { it in AppLocale.SUPPORTED }
-            ?: "en",
+        language = AppLocale.current(context) ?: AppLocale.resolved(context),
         utcOffsetMinutes = 0,
         exportedAtMillis = now,
     )
