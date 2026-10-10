@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.106 |
+| Version | 0.107 |
 | Date | 2026-10-10 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -117,6 +117,7 @@
 | 0.104 | 2026-10-09 | Claude (Code), engineer | **S4b-BL-198 step 2 (the website): the *AI speed and cost* setting and the Gemini answer budget** (owner request, 2026-10-09; [10](10-sprint-log.md) v0.226, [06](06-test-plan.md) TC-U-190 and TC-U-191, [ai-design](ai/ai-design.md) v0.45). §13.2 (ADR-35 note): Quality, Balanced and Economy for the own-key Gemini adapter only, mapped to no `thinkingConfig`, `thinkingLevel` `MEDIUM` and `LOW`; hidden unless AI features are on and the service is Gemini; a device-only preference; the Gemini call's `maxOutputTokens` rises from 2048 to 8192; the vectors gain `geminiRequest`. |
 | 0.105 | 2026-10-10 | Claude (Code), engineer | **S4b-BL-198 step 2 on the phones** ([10](10-sprint-log.md) v0.228, [06](06-test-plan.md) TC-U-192, TC-U-193 and TC-M-67, [ai-design](ai/ai-design.md) v0.47). §13.2: the *AI speed and cost* setting in `AppSettings`, `SettingsStore`, `Repository.setAiQuality`, `AiStore` and `GeminiClient.requestBody`; shown in Settings > AI features only for the own Gemini key; the Gemini `maxOutputTokens` 2048 to 8192 on the phones too; the final measured numbers. |
 | 0.106 | 2026-10-10 | Claude (Code), engineer | **ADR-37: voice input** (voice pull request 1, S4b-BL-218; [ai/voice-input](ai/voice-input.md); [02](02-threat-model.md) v0.69, [04](04-data-flow-diagrams.md) v0.18, [13](13-release-security-checklist.md) v0.9). Opt-in, off by default; transcription through the person's own configured provider where it accepts audio; one `Transcriber` interface; audio never stored or backed up; transcript always shown and editable before anything is sent; the platform recogniser only when forced on-device; no key-holding proxy ever; alternatives with the dated options table, consequences and stop criteria. Docs only, **Planned, nothing is built**. The row is the last in the ADR list so that kinds ADR-36 (S4b-BL-205) merges beside it. |
+| 0.107 | 2026-10-10 | Claude (Code), engineer | **CMP-9 finding** (new 11.3): keep the per-platform map code; re-assess maplibre-compose at 1.0. No spike built; based on the repository and the library's public README. Docs only. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -1269,6 +1270,15 @@ at most 2,000 tiles and 10 areas, the size and the browser's free storage shown 
 about, a few requests at a time, each tile fetched once. The website also keeps the style's raster layer, its style
 files and the glyph ranges of Devanagari, Tamil and Telugu, about 5 MB more. Nothing is fetched in the background or
 refreshed on its own; a person deletes an area, or *Remove all data* removes all of them.
+
+### 11.3 maplibre-compose: the CMP-9 finding (2026-10-10)
+
+[10](10-sprint-log.md) CMP-9 asked whether the maplibre-compose library (`org.maplibre.compose`) should replace the per-platform map code. **Finding: not now; re-assess at 1.0.** No spike was built; the finding rests on the repository and on the library's public README (read 2026-10-10 at github.com/maplibre/maplibre-compose).
+
+- **What the repository does today.** Android draws the map with MapLibre Android; the iPhone with a `UIKitView` around `MLNMapView` (`PlatformMap.ios.kt`, `IosMap.kt`, `MapLibreMapView.swift`). India's boundary rules (ADR-22) are applied once, in common code, to the style as JSON (`applyIndiaView` over `StyleOps`; `JsonStyleOps` on iPhone, [10](10-sprint-log.md) 13.13), and a check (`IndiaViewCheck`) reads the result. The map code is therefore small and the part that matters for the boundary rule is already shared.
+- **What the library says about itself.** Its README lists Android and iOS as Beta, desktop and web as Alpha, and states that the public API is still evolving and that minor releases can contain breaking changes. It wraps the same MapLibre SDKs.
+- **Why not now.** Moving would put the boundary rule (a legal requirement, ADR-22) behind a pre-1.0 API whose layer and filter model we would have to check against `applyIndiaView` and `IndiaViewCheck`, and would re-run the map checks on both platforms (TC-M-25) for no user-visible gain. The shared part is already shared.
+- **Not checked, so open:** whether the library exposes the style as JSON or filters on existing layers the way `StyleOps` needs, its offline-region support (the app has offline areas), and a 1.0 date. Re-assess when it reaches 1.0, or if the native iPhone map code becomes a maintenance burden.
 
 ## 12. Security design (summary)
 

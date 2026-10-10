@@ -58,6 +58,7 @@
 | v0.54   | 2026-10-10 | Claude (Code), engineer       | **8.1: the suite `key-check`** (S4b-BL-217, [10](../10-sprint-log.md) 0.238): `ai-evals.yml` lists the models `AI_API_KEY` can use and sends one tiny request to the pinned model and to `gemini-3.5-flash-lite`. Not yet run. |
 | v0.55   | 2026-10-10 | Claude (Code), engineer       | **8.3b Address variants** (S4b-BL-225, [10](../10-sprint-log.md) v0.240, [06](../06-test-plan.md) 0.197): new `docs/ai/evals/address-variants.json` (v0.1) with eight sets that change only the address-like text of the 30 fixture houses (known, known-alt, unknown-invented, landmark-pin, vernacular, vernacular-strict, messy, hostile), `AddressVariants` (Java test tree and a TypeScript port) with a variant-safe rule that lists the cases a set cannot ask about as not applicable, and fingerprints of every applied set recomputed by both ports. The golden set (v0.9) and a default run are unchanged; nothing runs a set yet (S4b-BL-226). |
 | v0.56   | 2026-10-10 | Claude (Code), engineer       | **8.1 item 7 and 8.3b: choose an address set for a run** (S4b-BL-226, [10](../10-sprint-log.md) v0.241, [06](../06-test-plan.md) 0.198): `AI_EVAL_ADDRESS_SET` and the workflow input `address_set` (golden-set, own-provider and local-model suites), the scorecard header row and section `Address set: X (not gated)` with the cases not applicable, metrics shown as `not gated`, a fingerprint check as a harness error, and `EvalScorer.variantVerdict` (a run under a set fails only on a harness error or a stop). The website summary says the same. The default run is unchanged and still the only one with a verdict. |
+| v0.57   | 2026-10-10 | Claude (Code), engineer       | **Stale compose notes corrected:** section 2 and the merge gate 1 said `docker-compose.yml` cannot select `AI_PROVIDER=vertex`; it passes the Vertex settings and documents the ADC mount (checked against the file on `main`, 2026-10-10). Docs only. |
 
 Status: implemented in `backend/` (package `app.doorprints.server.ai`), **off by default**. Not yet compiled in this
 sandbox (no Maven Central access) — CI compiles and runs the tests. Provider: AI Studio by default, Vertex AI with
@@ -67,7 +68,7 @@ sandbox (no Maven Central access) — CI compiles and runs the tests. Provider: 
 `citationPrecision` 0.78; commit `feb0294` answers it (inline-marker citation rule, golden set v0.5, 8.2) without
 lowering thresholds. Still open: a re-run on `feb0294` or later, the credit check ([vertex-setup.md](vertex-setup.md)
 step 10) and step 9 (captured responses). Merge gate 2 (DevSecOps review of `ai-evals.yml`)
-is closed; the docker-compose request must be done before compose support for Vertex is announced, and the Trivy
+is closed; the docker-compose request is done (`docker-compose.yml` passes the Vertex settings; v0.57), and the Trivy
 scan of the new dependencies is DevSecOps' (section 14, "Merge gates").
 
 ---
@@ -104,29 +105,19 @@ including `AI_EMBEDDING_PROVIDER=openai`.
 > an empty default there would be passed through as an empty value and defeat the `AI_EMBEDDING_API_KEY` →
 > `AI_API_KEY` fallback in `application.yml`, so do not "simplify" it to `${AI_EMBEDDING_API_KEY:-}`.
 
-> **docker-compose and Vertex AI (open, requested v0.16).** `docker-compose.yml` (owned by another team) does not yet
-> pass the Vertex settings, and its header still says AI needs `AI_API_KEY` only, so **`AI_PROVIDER=vertex` cannot be
-> selected through the documented compose path** (use `mvn spring-boot:run`, [vertex-setup.md](vertex-setup.md) step
-> 11, until then). Requested from the compose owner, same pattern as the v0.6 request for `AI_EMBEDDING_*`:
->
-> 1. `backend.environment`, defaults mirroring `application.yml`: `AI_PROVIDER: ${AI_PROVIDER:-aistudio}`,
->    `GCP_PROJECT_ID: ${GCP_PROJECT_ID:-}`, `GCP_LOCATION: ${GCP_LOCATION:-asia-south1}`,
->    `AI_VERTEX_EMBEDDING_LOCATION: ${AI_VERTEX_EMBEDDING_LOCATION:-}`, `AI_VERTEX_ENDPOINT: ${AI_VERTEX_ENDPOINT:-}`,
->    `AI_INDEX_ON_CHANGE: ${AI_INDEX_ON_CHANGE:-true}`. Empty values are safe here: the app treats a blank
->    embedding location / endpoint / project as unset (`AiProperties.Vertex`), unlike the `AI_EMBEDDING_API_KEY` case.
-> 2. Application Default Credentials in the container: the host's ADC file
->    (`~/.config/gcloud/application_default_credentials.json` after `gcloud auth application-default login`) mounted
->    **read-only**, e.g. at `/run/gcp/adc.json:ro`, and `GOOGLE_APPLICATION_CREDENTIALS: /run/gcp/adc.json`. Because a
->    bind mount of a missing file fails (or creates a directory), the AI team suggests an opt-in override file (e.g.
->    `docker-compose.vertex.yml`, `docker compose -f docker-compose.yml -f docker-compose.vertex.yml up`) rather than
->    an always-on mount; an empty `GOOGLE_APPLICATION_CREDENTIALS` is ignored by google-auth-library 1.33.0
->    (`DefaultCredentialsProvider` checks for a non-empty value), so passing it through with an empty default is
->    also safe. The container runs as UID 10001 with a read-only root filesystem: the mounted file must be readable
->    by that UID (the gcloud file is mode 600 for the host user on Linux; copy it to a 0644 file in a private
->    directory, or run the service with a matching `user:`; the compose owner's call). The ADC
->    file is a refresh token for the owner's Google account: never bake it into the image or commit it.
-> 3. Header comment: add a Vertex example (`APP_AI_ENABLED=true AI_PROVIDER=vertex GCP_PROJECT_ID=… GCP_LOCATION=…`,
->    no `AI_API_KEY`) next to the Gemini and Ollama ones, and drop "AI needs `AI_API_KEY`" as the only option.
+> **docker-compose and Vertex AI (resolved, v0.57; was requested in v0.16).** `docker-compose.yml` now passes
+> `AI_PROVIDER` (default `aistudio`), `GCP_PROJECT_ID`, `GCP_LOCATION`, `AI_VERTEX_EMBEDDING_LOCATION`,
+> `AI_VERTEX_ENDPOINT`, `AI_VERTEX_API_VERSION` and `AI_INDEX_ON_CHANGE` to the backend, with empty values meaning "use
+> the default" as in `application.yml`, and its header has a Vertex example (no `AI_API_KEY`). **So
+> `AI_PROVIDER=vertex` can be selected through the compose path.** The credentials are the one manual step: Application
+> Default Credentials only (there is no Vertex API key). Compose cannot mount a file conditionally (a bind mount of a
+> missing file fails the whole `docker compose up`), so there is no override file; the `volumes:` line that mounts the
+> host's ADC file read-only at `/adc/application_default_credentials.json` and the `GOOGLE_APPLICATION_CREDENTIALS`
+> line are commented out in the compose file, to be uncommented the first time Vertex is used after
+> `gcloud auth application-default login`. The container runs as UID 10001 with a read-only root filesystem, so the
+> mounted file must be readable by that UID (the gcloud file is mode 600 for the host user on Linux). The ADC file is
+> a refresh token for the owner's Google account: never bake it into an image or commit it. Not run end to end in a
+> container by the author of this note (no Vertex project in the session); read from `docker-compose.yml` on `main`.
 
 | | Default (Gemini free tier) | Alternative (Ollama, local) |
 |---|---|---|
@@ -1558,11 +1549,10 @@ The own-key Gemini adapter (the website's `GeminiChatModel`, `web/src/app/core/a
 
 
 - **Merge gates (v0.16, coordination with other teams; none can be closed by the AI team alone):**
-  1. **docker-compose** (compose owner): pass `AI_PROVIDER`, `GCP_PROJECT_ID`, `GCP_LOCATION`,
-     `AI_VERTEX_EMBEDDING_LOCATION`, `AI_VERTEX_ENDPOINT`, `AI_INDEX_ON_CHANGE` and `GOOGLE_APPLICATION_CREDENTIALS`
-     with a read-only ADC mount, and update the header comment; exact request in section 2. Until then Vertex mode is
-     documented only for `mvn spring-boot:run` and Cloud Run. Not a blocker for merging the code (default
-     `aistudio` is unchanged), but a blocker for announcing compose support.
+  1. **docker-compose** (compose owner): **closed (v0.57).** `docker-compose.yml` passes `AI_PROVIDER`, `GCP_PROJECT_ID`,
+     `GCP_LOCATION`, `AI_VERTEX_EMBEDDING_LOCATION`, `AI_VERTEX_ENDPOINT` and `AI_INDEX_ON_CHANGE`, and its header has the
+     Vertex example; the read-only ADC mount and `GOOGLE_APPLICATION_CREDENTIALS` are commented lines to uncomment on
+     first use (section 2). Vertex mode works with `mvn spring-boot:run`, `docker compose` and Cloud Run.
   2. **DevSecOps review of `ai-evals.yml`** (owner of `.github/**`): the AI-team change adds `id-token: write` on the
      eval job (used only by the WIF step) and the third-party action `google-github-actions/auth@v3`.
      **Status: closed.** Sign-off: DevSecOps team (Claude), 2026-09-22, recorded in the workflow header. Approved
