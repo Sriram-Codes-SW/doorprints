@@ -387,7 +387,13 @@ class VertexGenerateContentContractTest {
             }
             seen.add(outcome + " requests=" + requestBodies.size());
         }
-        assertThat(seen).as("observed outcomes").isEqualTo(List.of("?", "?"));
+        // Order is the loop's: first PROMPT_BLOCKED (promptFeedback.blockReason SAFETY, no candidates), then ANSWER_BLOCKED
+        // (candidate finishReason SAFETY). This pins TODAY's behaviour (observed in CI): both fail inside Spring AI with an
+        // internal exception, after one request and with no cause ProviderErrors can classify. A future clean "declined"
+        // mapping (S4b-BL-233) must change this test on purpose.
+        assertThat(seen).as("observed outcomes").containsExactly(
+                "threw java.lang.NullPointerException cause=null requests=1",
+                "threw java.util.NoSuchElementException cause=null requests=1");
     }
 
     @Test

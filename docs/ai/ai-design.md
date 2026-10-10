@@ -1637,7 +1637,20 @@ text*, the Connect and Settings *Test*), in the same live region, so it is annou
 
 ### 15.3 The server (docs only; nothing mapped yet)
 
-SERVER_TODAY
+Nothing on the server reads a provider's block, so today it surfaces as an internal failure that the services turn into a
+generic, retryable 503 ("unavailable or its free quota is exhausted"), which is the wrong words for a block. Observed in the
+contract tests (CI, 2026-10-10), each after exactly one request and with no cause `ProviderErrors.cause` can classify:
+
+- **Vertex AI** (`VertexGenerateContentContractTest`): a blocked prompt (`promptFeedback.blockReason` `SAFETY`, no candidates)
+  throws a `NullPointerException`; a candidate with `finishReason` `SAFETY` throws a `NoSuchElementException`.
+- **AI Studio / OpenAI-compatible** (`GeminiOpenAiChatContractTest`): `finish_reason` `content_filter` with no content gives an
+  empty answer carrying that finish reason, and the structured call (`responseEntity`) throws a `RuntimeException`; an HTTP 400
+  `content_policy_violation` throws a `RuntimeException`, quota is false and `ProviderErrors.cause` is null (a 400 is "ours").
+
+These tests pin today's behaviour on purpose; the clean "declined" mapping stays the Planned row S4b-BL-233 and must change
+them. **Unconfirmed:** that OpenAI's chat endpoint returns `error.code` `content_policy_violation` for a refused text. OpenAI's
+documents name it for image requests (not reachable on 2026-10-10 beyond SDK type definitions); Azure OpenAI documents a 400
+with `code` `content_filter` for a filtered prompt ([Z1], scenario 3). Both codes are accepted and pinned by the vectors.
 
 ### 15.4 Planned follow-ups (not in this change)
 
