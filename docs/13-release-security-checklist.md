@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | The manual part of the release security gate: the one-hour list per release, and the scope of the deep self-run pentest |
-| Version | 0.8 |
-| Date | 2026-10-02 |
+| Version | 0.9 |
+| Date | 2026-10-10 |
 | Author | Claude (Code), lead |
 | Status | Draft. Written (story S4b-SEC-3); **not yet run on a release candidate**, which is the story's last acceptance item |
 
@@ -20,6 +20,7 @@
 | 0.6 | 2026-10-02 | Claude (Code), lead | The owner decided [15](15-google-drive-backup-and-sharing.md) (v0.5): I15 (authenticator app) deferred; I12 for the website's PRF-only rule; I5 with Android's browser-and-PKCE default. |
 | 0.7 | 2026-10-02 | Claude (Code), lead | The encryption core is built (S4b-BL-125, [15](15-google-drive-backup-and-sharing.md) §9.9): I10, I11, I14 and I16 name the unit tests that already hold their rules on Linux (TC-U-128, TC-U-130, TC-U-127; [06](06-test-plan.md)), so the release run checks the real Drive and the screens; I14 adds the website's recovery key in Firefox and Safari ([02](02-threat-model.md) RR-27). I13 is unchanged (the screen lock is S4b-BL-127). |
 | 0.8 | 2026-10-02 | Claude (Code), lead | I11 adds a list re-wrapped under another folder key (the review of S4b-BL-125: refused by the pin and the recovery anchor, TC-U-132). |
+| 0.9 | 2026-10-10 | Claude (Code), engineer | **Voice input, planned** ([03](03-design.md) ADR-37, S4b-BL-218): F11 (voice off by default, permissions asked at use, no audio at rest) and G4, the privacy note and Play data-safety answer to be done at voice pull request 5 (S4b-BL-222), a Planned note and not a claim. |
 
 ## 1. What this is, and when it runs
 
@@ -139,6 +140,7 @@ Run **AI evals** (`ai-evals.yml`, manual) on the release commit first. The golde
 | F8 | LLM08 Vector and embedding weaknesses | One store per deployment; deletion (TC-AI-08) | Passed |
 | F9 | LLM09 Misinformation | Citations and refusal (TC-AI-02, TC-AI-03) | Thresholds met |
 | F10 | LLM10 Unbounded consumption | Quota and limits (TC-AI-07); the provider's spend cap (AI-015) | Cap set; 429 seen at the quota |
+| F11 | Voice input (planned, [03](03-design.md) ADR-37; only when voice is in this release) | *Voice input* is **off by default** on a fresh install (Settings > AI features) and on the website; the microphone permission is **asked at first use**, with a rationale, never at install or start-up (Android `RECORD_AUDIO` is not requested before a tap); the microphone button is hidden for a provider that cannot transcribe; the audio is in no backup, copy or sync file (T-I48 tests); the disclosure names the host; the website's `Permissions-Policy` has `microphone=(self)` only if the web voice pull request has shipped | Still true, or voice is not in this release |
 
 ### G. Privacy: the DPDP Act and Play's data safety (5 minutes)
 
@@ -147,6 +149,7 @@ Run **AI evals** (`ai-evals.yml`, manual) on the release commit first. The golde
 | G1 | What the release collects, sends and keeps | Matches [04](04-data-flow-diagrams.md) and the privacy note in the apps; a new flow is documented first |
 | G2 | Play's data-safety form (Play release only) | Its answers match G1: location and contacts stay on the device or go to the user's own server; map tiles see the IP address; AI text goes to the chosen provider only when AI is on |
 | G3 | The DPDP Act, 2023 | Personal use is outside the Act ([01](01-requirements.md) §9, section 3(c)(i)). There is no hosted server (D-28): the owner never receives anyone's data, so Doorprints holds nothing to notify about or erase on request. **The person's right to erasure is exercised directly in the app**: *Delete this backup*, *Delete all backups* and *Delete everything Doorprints keeps in my Google Drive* work on every platform and really delete (I7), *Remove all data* clears a device, and the privacy page ([15](15-google-drive-backup-and-sharing.md) S4b-BL-121) says in plain words what each does, what stays (other devices, shared copies others imported, Google's own retention) and how to remove Doorprints' access at Google. Recheck if a hosted service is ever added |
+| G4 | **Planned, to be done at voice pull request 5 (S4b-BL-222); not a claim today:** voice input in the privacy note in the apps and in Play's data-safety form (Play release only) | Audio is sent to the AI provider the person configured, only when *Voice input* is on, and is not stored or shared by Doorprints; the form's audio and voice answers and the microphone permission rationale match [04](04-data-flow-diagrams.md) DF-49; until voice ships, no such answer is given | Not applicable until voice ships |
 
 ### I. Google sign-in and Drive (10 minutes; only once Drive is built, [15](15-google-drive-backup-and-sharing.md))
 

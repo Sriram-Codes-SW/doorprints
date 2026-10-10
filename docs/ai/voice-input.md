@@ -3,6 +3,7 @@
 | Version | Date       | Author                    | Change |
 |---------|------------|---------------------------|--------|
 | v0.1    | 2026-10-10 | Claude (Code), engineer   | First version (docs only, no code): the consult of 2026-10-10 (options with dated prices, recommendation, the minimum additive design, evals, a seven-pull-request plan with stop criteria, and what was not verified). The owner (2026-10-10) chose to start toward the kinds refactor ([14](../14-lead-backlog-and-handoff.md) N21) **while including voice input**. Backlog rows S4b-BL-218..S4b-BL-224 in [10](../10-sprint-log.md); the decision record is ADR-37 in [03](../03-design.md) (written by voice pull request 1, the number is reserved here). |
+| v0.2    | 2026-10-10 | Claude (Code), engineer   | Voice pull request 1 (S4b-BL-218): ADR-37 is written in [03](../03-design.md); the threat-model rows, DF-49, gate rows F11 and G4 and the manual rows MT-82..MT-87 are in [02](../02-threat-model.md) §11, [04](../04-data-flow-diagrams.md), [13](../13-release-security-checklist.md) and the [manual checklist](../ops/manual-test-checklist.md). The options table of section 2 is dated the same day as this change and was not re-fetched from the vendors here; section 7 (not verified) still stands, and the prices are re-read before voice pull request 4. |
 
 Status: **Planned; nothing is built.** Written for the owner, the AI team and the reviewers of voice pull request 1.
 
