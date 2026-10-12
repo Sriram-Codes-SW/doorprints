@@ -44,6 +44,7 @@
 // checks that Close withdraws the sentence from the page's live region, and takes a screenshot of the answer on a 360x640
 // phone. Never run it against anything but the deploy under test; it writes nothing outside its own browser profile.
 const { chromium, devices } = require('playwright');
+const { ROUTES, phoneContext, layoutAudit } = require('./layout-audit');
 const { walkSteps, eastOf, nonTileRequests, todayWeekday } = require('./trace-helpers');
 const fs = require('fs'), path = require('path');
 const ARGS = process.argv.slice(2).filter((a) => !a.startsWith('--'));
@@ -61,7 +62,6 @@ const check = (area, name, ok, detail = '') => {
   results.push({ area, name, ok, detail });
   if (!ok) console.log(`FAIL [${area}] ${name}${detail ? ' — ' + String(detail).slice(0, 300) : ''}`);
 };
-const ROUTES = ['/', '/compare', '/data', '/connect', '/ask', '/plan', '/share', '/houses/new?lat=12.9716&lon=77.5946', '/does-not-exist'];
 const LANGS = ['en', 'hi', 'ta', 'te'];
 const THEMES = ['light', 'dark'];
 /**
@@ -432,20 +432,12 @@ async function mapLabels(page, glyphs) {
 /** Runs in the page: the layout problems a phone shows, as a list of findings (empty when all is well). */
 function mobileAudit() {
   const out = [];
-  // A page wider than the phone's screen widens the layout viewport (innerWidth) and is shown zoomed out, so the
-  // screen width is the measure (the context's screen is its viewport).
-  const W = Math.min(window.innerWidth, screen.width), H = window.innerHeight;
-  if (window.innerWidth > screen.width + 1) out.push(`page laid out ${window.innerWidth}px wide on a ${screen.width}px screen (zoomed out)`);
   // checkVisibility(): content inside a closed <details> keeps a box in Chrome but is not drawn (the Connect page's
   // "Use an API key instead" was reported as under the bottom bar on 2026-09-29).
   const shown = (el) => { if (el.checkVisibility && !el.checkVisibility()) return false; const s = getComputedStyle(el); if (s.visibility === 'hidden' || s.display === 'none') return false; const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
   const hidden = (el) => el.closest('.sr-only, [aria-hidden="true"], .skip-link') !== null;
   const name = (el) => { const t = (el.getAttribute('aria-label') || el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 30); return `${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''}${el.classList.length ? '.' + [...el.classList].slice(0, 2).join('.') : ''}${t ? ` "${t}"` : ''}`; };
   const main = document.querySelector('main');
-  // Sideways scroll: the document, and <main> (the app's page scroller, which the document check does not see).
-  const doc = document.scrollingElement.scrollWidth - W;
-  if (doc > 1) out.push(`page scrolls sideways by ${doc}px`);
-  if (main && main.scrollWidth - main.clientWidth > 1) out.push(`main scrolls sideways by ${main.scrollWidth - main.clientWidth}px`);
   // Touch targets: 44x44 CSS px (UX-007). An input inside a label counts by its label; links inside running text
   // (WCAG 2.5.8's inline exception), MapLibre's credits (a 24px (i) and links in its text) and the house form's
   // draggable pin (27x41; the map tap, "Use my location" and the typed coordinates do the same, 2.5.8's equivalent
@@ -473,34 +465,9 @@ function mobileAudit() {
     if (under.length) out.push(`under the bottom bar at the end of the page: ${under.slice(0, 3).map((el) => `${name(el)} by ${Math.round(el.getBoundingClientRect().bottom - barTop)}px`).join(', ')}`);
     main.scrollTop = top;
   }
-  // MapLibre's controls stay inside the map and clear of the page's legend, buttons and hint.
-  const ctrl = document.querySelector('.map-wrap .maplibregl-ctrl-bottom-right, .map-wrap .maplibregl-ctrl-top-right');
-  const wrap = document.querySelector('.map-wrap');
-  if (ctrl && wrap && shown(wrap)) {
-    const box = wrap.getBoundingClientRect();
-    const parts = [...ctrl.children].filter(shown).map((c) => c.getBoundingClientRect());
-    for (const r of parts) if (r.top < box.top - 1 || r.bottom > box.bottom + 1) out.push(`a map control (${Math.round(r.top)}-${Math.round(r.bottom)}px) outside the map (${Math.round(box.top)}-${Math.round(box.bottom)}px)`);
-    for (const el of document.querySelectorAll('.map-stack > *, .add-hint')) {
-      if (!shown(el)) continue;
-      const b = el.getBoundingClientRect();
-      if (parts.some((r) => Math.min(r.right, b.right) - Math.max(r.left, b.left) > 1 && Math.min(r.bottom, b.bottom) - Math.max(r.top, b.top) > 1)) out.push(`a map control overlaps ${name(el)}`);
-    }
-  }
-  // The map fits the screen and its canvas matches its box. A runaway layout once made the map 22,000px tall (and its canvas
-  // 4,096px, the texture limit) on phones under 700px tall, with the page itself still the right size (2026-10-12).
-  const mapEl = document.querySelector('.maplibregl-map');
-  if (mapEl && shown(mapEl)) {
-    const mh = mapEl.getBoundingClientRect().height;
-    if (mh > H + 1) out.push(`the map is taller than the screen: ${Math.round(mh)}px of ${H}px`);
-    const cv = mapEl.querySelector('canvas');
-    if (cv && cv.height >= 4096) out.push(`the map canvas is at the texture limit (${cv.width}x${cv.height})`);
-  }
   // The skip link stays out of sight until it has focus, however many lines its label wraps to.
   const skip = document.querySelector('.skip-link');
   if (skip && document.activeElement !== skip && skip.getBoundingClientRect().bottom > 0) out.push(`skip link showing without focus (bottom ${Math.round(skip.getBoundingClientRect().bottom)}px)`);
-  // The app fits the screen: header, banners and page no taller than the viewport.
-  const root = document.querySelector('app-root');
-  if (root && root.getBoundingClientRect().height > H + 1) out.push(`app taller than the screen: ${Math.round(root.getBoundingClientRect().height)}px of ${H}px`);
   return out;
 }
 
@@ -508,18 +475,7 @@ async function mobile(browser) {
   let combo = 0; // phone, language and theme, in order: picks this profile's place (REGIONS)
   for (const phone of PHONES) for (const lang of phone.langs) for (const theme of phone.themes && lang === 'en' ? phone.themes : ['light']) {
     const place = regionAt(combo++);
-    const { defaultBrowserType, ...profile } = devices[phone.device];
-    const viewport = phone.viewport || profile.viewport;
-    const ctx = await browser.newContext({ ...profile, viewport, screen: viewport, colorScheme: theme, serviceWorkers: 'block' });
-    await ctx.addInitScript(([lang, text]) => {
-      try {
-        if (!sessionStorage.getItem('__init')) {
-          sessionStorage.setItem('__init', '1');
-          localStorage.setItem('doorprints.lang', lang);
-        }
-      } catch {}
-      if (text) document.addEventListener('DOMContentLoaded', () => { document.documentElement.style.fontSize = `${text}%`; });
-    }, [lang, phone.text]);
+    const { ctx, viewport } = await phoneContext(browser, devices, { device: phone.device, viewport: phone.viewport, theme, lang, text: phone.text });
     const page = await ctx.newPage();
     const errors = watch(page);
     // Glyph ranges for the map's labels (requested from MapLibre's worker, seen at the context).
@@ -547,7 +503,7 @@ async function mobile(browser) {
       await gotoRetry(page, BASE + route);
       await settle(page);
       if (route === '/') await page.waitForTimeout(CREDITS_FOLD_MS + 1500);
-      const found = await page.evaluate(mobileAudit);
+      const found = [...(await page.evaluate(layoutAudit)), ...(await page.evaluate(mobileAudit))];
       check('mobile', `${tag}: layout`, found.length === 0, found.join(' ; '));
       if (listed === 'HOUSE') check('mobile', `${tag0}: the saved house shows its locality (${place.city}, ${place.zone})`, (await page.locator('#house-locality').inputValue().catch(() => '')) === place.locality);
       if (route === '/' && viewport.width <= 640) {
