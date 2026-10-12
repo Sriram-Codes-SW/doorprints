@@ -573,7 +573,7 @@ jobs:
   # Rollback: Firebase console > Hosting > release history > Rollback (docs/08). No rebuild needed.
   deploy-firebase:
     name: Deploy to Firebase Hosting
-    needs: [build, pwa-files, firebase-config, firebase-setup]
+    needs: [build, pwa-files, layout-gate, firebase-config, firebase-setup]
     if: needs.firebase-setup.outputs.ready == 'true' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-26.04
     timeout-minutes: 20
