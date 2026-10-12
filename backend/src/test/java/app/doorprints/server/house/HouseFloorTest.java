@@ -26,11 +26,11 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** S4b-BL-87: the house's floor, -5..200 on the sync API, kept through the entity and blanked in the tombstone. */
+/** S4b-BL-87: the house's floor, -5..200 on the sync API ({@code extras.floor} since S4b-BL-206), kept through the entity and blanked in the tombstone. */
 class HouseFloorTest {
 
     private static HouseDto house(Integer floor) {
-        return new HouseDto(UUID.randomUUID(), "Green View", null, null, null, 12.9, 77.6, HouseStatus.NEW, null, null,
+        return TestHouses.dto(UUID.randomUUID(), "Green View", null, null, null, 12.9, 77.6, HouseStatus.NEW, null, null,
                 2, null, null, null, null, null, null, null, null, null, null, null, floor, null, Map.of(), null, null,
                 false, 0, null);
     }
@@ -41,7 +41,7 @@ class HouseFloorTest {
             var validator = factory.getValidator();
             for (var ok : new Integer[] {null, -5, 0, 3, 200}) assertThat(validator.validate(house(ok))).as("%s", ok).isEmpty();
             for (var bad : new int[] {-6, 201}) {
-                assertThat(validator.validate(house(bad))).extracting(v -> v.getPropertyPath().toString()).containsExactly("floor");
+                assertThat(validator.validate(house(bad))).extracting(v -> v.getPropertyPath().toString()).containsExactly("extras.floor");
             }
         }
     }

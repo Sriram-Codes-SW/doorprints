@@ -51,7 +51,7 @@ public final class ExtractionPrompts {
                 numbers, URLs, prices or addresses.
                 - price: copy the amount as written (e.g. "25,000", "1.2 Cr", "85 lakh"). For rent, the monthly rent \
                 (not the deposit; put the deposit in notes).
-                - priceType: RENT or SALE.
+                - priceType: RENT or SALE. If the listing offers both, leave price and priceType null and put both amounts in notes.
                 - bedrooms: the number of bedrooms (2BHK -> "2", 1RK/studio -> "0").
                 - label: at most 8 words, e.g. "2BHK near Indiranagar metro".
                 - locality: the neighbourhood or area, never the city alone (the city goes in address). If only a \

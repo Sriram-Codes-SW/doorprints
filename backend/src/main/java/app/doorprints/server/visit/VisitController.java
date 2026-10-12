@@ -64,7 +64,7 @@ public class VisitController {
     @GetMapping
     @Transactional(readOnly = true)
     public List<VisitDto> list(@RequestParam(required = false) Long since,
-                               @RequestParam(required = false) UUID houseId) {
+                               @RequestParam(name = "candidateId", required = false) UUID houseId) {
         List<Visit> visits;
         if (since != null) visits = repo.findBySyncVersionGreaterThanOrderBySyncVersion(since);
         else if (houseId != null) visits = repo.findByDeletedFalseAndHouseIdOrderByArrivedAtDesc(houseId);

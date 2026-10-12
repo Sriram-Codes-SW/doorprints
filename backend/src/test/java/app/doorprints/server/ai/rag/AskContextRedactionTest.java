@@ -21,6 +21,7 @@ package app.doorprints.server.ai.rag;
 import app.doorprints.server.ai.rag.AskModels.ModelAnswer;
 import app.doorprints.server.house.House;
 import app.doorprints.server.house.HouseDto;
+import app.doorprints.server.house.TestHouses;
 import app.doorprints.server.house.HouseStatus;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.document.Document;
@@ -105,7 +106,7 @@ class AskContextRedactionTest {
 
     @Test
     void freshlyIndexedChunksGoThroughUnchangedApartFromRedaction() {
-        var dto = new HouseDto(id, "Blue gate", null, null, "Indiranagar", 12.97, 77.64, HouseStatus.NEW, 28000L,
+        var dto = TestHouses.dto(id, "Blue gate", null, null, "Indiranagar", 12.97, 77.64, HouseStatus.NEW, 28000L,
                 "RENT", 2, null, "Ramesh Kumar", "+91 98450 12345", null, "Ramesh says water is 24x7",
                 null, null, null, null, null, null, null, null, Map.of(), null, null, false, 1, null);
         var fresh = HouseDocuments.toDocument(dto, List.of());

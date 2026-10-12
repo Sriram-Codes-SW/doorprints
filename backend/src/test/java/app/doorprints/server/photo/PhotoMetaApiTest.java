@@ -81,6 +81,7 @@ class PhotoMetaApiTest {
 
     private Map<String, Object> putHouse(UUID id, Map<String, Object> moveIn) {
         var body = new HashMap<String, Object>();
+        body.put("kind", "house");
         body.put("label", "Green View");
         body.put("lat", 12.9);
         body.put("lon", 77.6);
@@ -88,7 +89,7 @@ class PhotoMetaApiTest {
         body.put("checklist", Map.of());
         body.put("updatedAt", Instant.now().toString());
         if (moveIn != null) body.put("moveIn", moveIn);
-        return api.put().uri("/api/houses/{id}", id).contentType(MediaType.APPLICATION_JSON).body(body)
+        return api.put().uri("/api/candidates/{id}", id).contentType(MediaType.APPLICATION_JSON).body(body)
                 .retrieve().body(MAP);
     }
 
@@ -102,7 +103,7 @@ class PhotoMetaApiTest {
                 return "photo.jpg";
             }
         });
-        api.post().uri("/api/houses/{id}/photos", houseId).contentType(MediaType.MULTIPART_FORM_DATA).body(form)
+        api.post().uri("/api/candidates/{id}/photos", houseId).contentType(MediaType.MULTIPART_FORM_DATA).body(form)
                 .retrieve().toBodilessEntity();
         return photoId;
     }
@@ -270,8 +271,8 @@ class PhotoMetaApiTest {
         var id = uploadPhoto();
         putMeta(id, meta("c1", List.of("MOVE_IN"), "private words", T0));
 
-        api.delete().uri("/api/houses/{id}", houseId).retrieve().toBodilessEntity();
-        var house = api.get().uri("/api/houses?since=0").retrieve().body(LIST).stream()
+        api.delete().uri("/api/candidates/{id}", houseId).retrieve().toBodilessEntity();
+        var house = api.get().uri("/api/candidates?since=0").retrieve().body(LIST).stream()
                 .filter(h -> h.get("id").equals(houseId.toString())).findFirst().orElseThrow();
         assertThat(house.get("deleted")).isEqualTo(true);
         assertThat(house.get("moveIn")).as("the tombstone keeps no move-in").isNull();

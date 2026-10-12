@@ -19,6 +19,7 @@
 package app.doorprints.server.ai.agent;
 
 import app.doorprints.server.house.HouseDto;
+import app.doorprints.server.house.TestHouses;
 import app.doorprints.server.house.HouseService;
 import app.doorprints.server.house.HouseStatus;
 import app.doorprints.server.visit.VisitRepository;
@@ -48,7 +49,7 @@ class HouseQueriesSearchTest {
         var list = new ArrayList<HouseDto>();
         var now = Instant.parse("2026-10-10T08:00:00Z");
         for (int i = 0; i < n; i++) {
-            list.add(new HouseDto(UUID.nameUUIDFromBytes(("q" + i).getBytes()), "House " + i, "addr", "street",
+            list.add(TestHouses.dto(UUID.nameUUIDFromBytes(("q" + i).getBytes()), "House " + i, "addr", "street",
                     "Indiranagar", 12.97, 77.64, status, 30000L, "RENT", 2, null, null, null, null, null, null, null, null, null, null, null, null, null, Map.of(), null, now.minusSeconds(i), false, 1, null));
         }
         return list;

@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.108 |
-| Date | 2026-10-10 |
+| Version | 0.109 |
+| Date | 2026-10-12 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -119,6 +119,7 @@
 | 0.106 | 2026-10-10 | Claude (Code), engineer | **ADR-37: voice input** (voice pull request 1, S4b-BL-218; [ai/voice-input](ai/voice-input.md); [02](02-threat-model.md) v0.69, [04](04-data-flow-diagrams.md) v0.18, [13](13-release-security-checklist.md) v0.9). Opt-in, off by default; transcription through the person's own configured provider where it accepts audio; one `Transcriber` interface; audio never stored or backed up; transcript always shown and editable before anything is sent; the platform recogniser only when forced on-device; no key-holding proxy ever; alternatives with the dated options table, consequences and stop criteria. Docs only, **Planned, nothing is built**. The row is the last in the ADR list so that kinds ADR-36 (S4b-BL-205) merges beside it. |
 | 0.107 | 2026-10-10 | Claude (Code), engineer | **CMP-9 finding** (new 11.3): keep the per-platform map code; re-assess maplibre-compose at 1.0. No spike built; based on the repository and the library's public README. Docs only. |
 | 0.108 | 2026-10-10 | Claude (Code), engineer | **ADR-36 and new §18: kinds, one candidate concept described by a kind file** (kinds PR 1, S4b-BL-205; [14](14-lead-backlog-and-handoff.md) N21; [10](10-sprint-log.md) v0.254, [06](06-test-plan.md) TC-U-198 and TC-U-199). The decision, the container named *Search* (owner-approved 2026-10-10), the deletion test applied before any code, the kind file (`docs/schemas/kinds/`), the eleven one-way doors with alternatives, reasons and reversal costs, the second pass against `kind-vectors.json`, and the file-size budget. Voice input stays ADR-37 (S4b-BL-218). Nothing reads the kind file at run time yet. |
+| 0.109 | 2026-10-12 | Claude (Code), engineer | **Kinds step 2, the server part** (S4b-BL-206; [10](10-sprint-log.md) v0.265): §9 lists `/api/candidates` and the candidate's `kind`, `money` and `extras`, `candidateId` on visits and photos; §18.4 door 7 and §18.5 record the finding that a house's own money may have a cadence and no amount (a rent not known yet), with the server's rules for unknown extras. The backup format is unchanged until the apps move. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -137,7 +138,7 @@ Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md
 Main ideas:
 
 - **Offline-first on Android.** Room is the phone's source of truth. The server is a sync hub plus the web app's backend.
-- **Client-generated UUIDs** for houses, visits and photos. Creates are idempotent (`PUT /api/houses/{id}`, photo `id` form field).
+- **Client-generated UUIDs** for houses, visits and photos. Creates are idempotent (`PUT /api/candidates/{id}`, photo `id` form field).
 - **Change feed by sequence.** Every write takes `nextval('sync_seq')`. Clients pull `since=<cursor>`.
 - **Simple single-user security.** One API key in the `X-API-Key` header, CORS allowlist, TLS at the host edge.
 - **Zero cost.** Every component has a free-tier home (section 5).
@@ -206,9 +207,9 @@ flowchart LR
     rl --> key["ApiKeyFilter<br/>order 2, canonical path, deny by default"]
     key --> airl["AiRateLimitFilter<br/>order 3, /api/ai and /mcp"]
     key --> dc["DataController<br/>/api/export, /api/data"]
-    key --> hc["HouseController<br/>/api/houses"]
+    key --> hc["HouseController<br/>/api/candidates"]
     key --> vc["VisitController<br/>/api/visits"]
-    key --> pc["PhotoController<br/>/api/houses/id/photos, /api/photos"]
+    key --> pc["PhotoController<br/>/api/candidates/id/photos, /api/photos"]
     key --> sc["StatsController<br/>/api/stats"]
     hc --> hs["HouseService<br/>LWW upsert, delete with purge, nearby"]
     hs --> sv["SyncVersions + ClientClock<br/>advisory lock, clamp updatedAt"]
@@ -794,7 +795,7 @@ sequenceDiagram
     WM->>SW: doWork
     SW->>R: sync
     R->>DB: dirty houses
-    R->>API: PUT /api/houses/id with X-API-Key
+    R->>API: PUT /api/candidates/id with X-API-Key
     API->>PG: find by id, compare updated_at
     alt incoming is newer or new row
         API->>PG: apply fields, sync_version = nextval
@@ -803,7 +804,7 @@ sequenceDiagram
     end
     API-->>R: 200 HouseDto
     R->>DB: markClean where id and updatedAt match
-    R->>API: GET /api/houses?since=houseCursor
+    R->>API: GET /api/candidates?since=houseCursor
     API-->>R: changes ordered by sync_version
     R->>DB: upsert each unless local is dirty and newer
     R->>R: save cursors
@@ -963,7 +964,7 @@ sequenceDiagram
     R->>DB: PhotoEntity uploaded false
     R->>SW: syncSoon
     SW->>R: sync - after houses and visits are pushed
-    R->>API: POST /api/houses/houseId/photos multipart id and file
+    R->>API: POST /api/candidates/houseId/photos multipart id and file
     API->>PG: house exists
     API->>API: at most 5 MB, type from magic bytes, house live, under 20 photos, strip Exif GPS
     alt photo id already stored
@@ -1031,7 +1032,7 @@ sequenceDiagram
     API-->>C: draft - not saved
     C-->>U: pre-filled form, AI fields highlighted
     U->>C: review, edit, Save
-    C->>API: normal PUT /api/houses/id
+    C->>API: normal PUT /api/candidates/id
 ```
 
 ### 7.7 Plan my visits (built; UI: web `pages/plan`, Android `AssistantScreen`)
@@ -1111,19 +1112,19 @@ Base path `/api`. Auth: header `X-API-Key: <key>` on every `/api/**` call (401 J
 
 | Method | Path | Params / body | Response | Notes |
 |---|---|---|---|---|
-| GET | `/api/houses` | `since` (long, optional) | `HouseDto[]` | Without `since`: live houses, newest `updatedAt` first. With `since`: all changes including tombstones, ordered by `syncVersion`. |
-| GET | `/api/houses/{id}` | - | `HouseDto` | 404 if unknown (tombstones are returned) |
-| PUT | `/api/houses/{id}` | `HouseDto` JSON (validated) | `HouseDto` | Create or LWW update. Returns the stored row if it is newer. |
-| DELETE | `/api/houses/{id}` | - | 204 | Tombstone + new sync version; content blanked, photos tombstoned, visits unlinked. A PUT with `deleted: true` does the same. |
-| GET | `/api/houses/nearby` | `lat` (−90..90), `lon` (−180..180), `radius` (m, > 0, default 50, capped 5000) | `HouseDto[]` with `distanceMeters` | At most 50, nearest first, live only. 400 on out-of-range values. |
-| GET | `/api/houses/street` | `name` (1..200) | `HouseDto[]` | Case-insensitive exact match on `lower(street)` (uses the index), live only |
-| GET | `/api/houses/{houseId}/photos` | - | `UUID[]` | Live photos, ordered by `createdAt` |
-| POST | `/api/houses/{houseId}/photos` | multipart: `file` (JPEG/PNG/WebP by magic bytes, at most 5 MB), `id` (UUID, optional) | `{ "id": UUID }` | Idempotent on `id` (never resurrects a deleted photo). 404 if the house is unknown or deleted, 400 if not an image, 409 over 20 photos, 413 over 5 MB. Metadata stripped. |
-| GET | `/api/photos?since=` | `since` (long, required) | `PhotoDto[]` | Change feed: `{id, houseId, contentType, sizeBytes, createdAt, updatedAt, deleted, syncVersion}` and, since slice 5, `roomId, tags, caption, metaUpdatedAt`; no bytes |
+| GET | `/api/candidates` | `since` (long, optional) | `HouseDto[]` | **`/api/houses` until the format reset** (S4b-BL-206, kinds PR 2, 2026-10-12): a candidate carries `kind` (required, `^[a-z][a-z0-9_]{1,31}$`), `money` (`{amount?, cadence}`, a house's cadence `month` or `once`) and `extras` (the kind's typed extras keyed by id, unknown ids kept) in place of `price`, `priceType`, `bedrooms`, `areaSqft`, `floor` and `cost` (§18.4 doors 3, 5 and 7; `HouseDto`, `Money`, `CandidateExtras`). Without `since`: live houses, newest `updatedAt` first. With `since`: all changes including tombstones, ordered by `syncVersion`. |
+| GET | `/api/candidates/{id}` | - | `HouseDto` | 404 if unknown (tombstones are returned) |
+| PUT | `/api/candidates/{id}` | `HouseDto` JSON (validated) | `HouseDto` | Create or LWW update. Returns the stored row if it is newer. |
+| DELETE | `/api/candidates/{id}` | - | 204 | Tombstone + new sync version; content blanked, photos tombstoned, visits unlinked. A PUT with `deleted: true` does the same. |
+| GET | `/api/candidates/nearby` | `lat` (−90..90), `lon` (−180..180), `radius` (m, > 0, default 50, capped 5000) | `HouseDto[]` with `distanceMeters` | At most 50, nearest first, live only. 400 on out-of-range values. |
+| GET | `/api/candidates/street` | `name` (1..200) | `HouseDto[]` | Case-insensitive exact match on `lower(street)` (uses the index), live only |
+| GET | `/api/candidates/{id}/photos` | - | `UUID[]` | Live photos, ordered by `createdAt` |
+| POST | `/api/candidates/{id}/photos` | multipart: `file` (JPEG/PNG/WebP by magic bytes, at most 5 MB), `id` (UUID, optional) | `{ "id": UUID }` | Idempotent on `id` (never resurrects a deleted photo). 404 if the house is unknown or deleted, 400 if not an image, 409 over 20 photos, 413 over 5 MB. Metadata stripped. |
+| GET | `/api/photos?since=` | `since` (long, required) | `PhotoDto[]` | Change feed: `{id, candidateId, contentType, sizeBytes, createdAt, updatedAt, deleted, syncVersion}` and, since slice 5, `roomId, tags, caption, metaUpdatedAt`; no bytes |
 | PUT | `/api/photos/{id}/meta` | `{roomId, tags, caption, metaUpdatedAt}` | `PhotoDto` | **New 2026-10-01** (slice 5): last write wins on `metaUpdatedAt`; an edit not newer than the stored one changes nothing and gets the stored meta back; new `sync_version`, so the photo feed carries it. 400 on a bad tag, room id or caption, 404 for an unknown or deleted photo. |
 | GET | `/api/photos/{id}` | - | image bytes | `Cache-Control: private, max-age=2592000`. 404 for tombstones. |
 | DELETE | `/api/photos/{id}` | - | 204 | Tombstone (bytes removed) + new sync version. No error if missing or already deleted. |
-| GET | `/api/visits` | `since` or `houseId` (optional) | `VisitDto[]` | `since`: change feed. `houseId`: live visits for the house, newest first. Neither: all live visits. |
+| GET | `/api/visits` | `since` or `candidateId` (optional) | `VisitDto[]` | `since`: change feed. `candidateId` (`houseId` until S4b-BL-206, also the visit's own key on the wire): live visits for the house, newest first. Neither: all live visits. |
 | PUT | `/api/visits/{id}` | `VisitDto` JSON | `VisitDto` | LWW. `source` defaults to MANUAL. |
 | DELETE | `/api/visits/{id}` | - | 204 | Tombstone; the place (lat/lon/street/leftAt) is removed |
 | GET | `/api/stats` | - | `{houses, shortlisted, rejected, visits, streets, maxSyncVersion}` | `maxSyncVersion` (since 2026-09-24, S4b-BL-20): the highest sync version the server has handed out, `sync_seq`'s position (`SyncVersions.highest()`, 0 before the first write). It never goes back on a healthy server, also after `DELETE /api/data`; clients read a value below a stored cursor as a reset server (§10.1). Older servers omit it (clients: unknown) |
@@ -2035,7 +2036,7 @@ new format id and a reader for the old one kept for ever. The second pass (§18.
 | 4 | **The kind schema and its `version`** | `format: "doorprints-kind/1"` names the file format; `version` (integer 1..1000) is the kind's own revision, raised when a field's type, unit or cadence changes, never for a label key. A reader refuses an unknown format and reads a lower or equal `version` | A semver string; one number for both; no version | Two questions, two numbers: "can I parse this file?" and "is this the house I know?". Built-in kinds ship inside the build, so today they always match | Cheap while kinds are built in; costly once packs are imported |
 | 5 | **How extras are typed** | Six types: `number` (`integer`, `min`, `max`, `unit` required), `money`, `text` (`maxLength`), `enum` (option ids `UPPER_SNAKE`), `date` (`YYYY-MM-DD`, no time zone, as `availableFrom` today), `bool`. On the wire: a JSON number, a money object, a string, the option id, the date string, `true`/`false`. A reader keeps and round-trips an extra id it does not know (a newer app's field survives an older device's sync) without showing it; a known id with a value of the wrong type or out of range reads as unknown (today's coercion rule) | Free-form values; a `phone` or `url` type (those are core fields); dropping unknown extras (the data loss that drove the superseded plan) | Exactly what the house needs today plus the B-rated use cases of N21 (a yes/no, a date); a seventh type is additive | Adding a type: cheap. Renaming or re-meaning one: format bump |
 | 6 | **Unit codes** | A closed list: `count`, `level`, `sqft`, `sqm`, `cm`, `m`, `km`, `minute`, `day`, `month`, `year`, `percent` | Free text units; SI only (the person writes square feet) | A code is translated by the dictionaries and compared by search and filters; free text cannot be | Adding: cheap. Renaming: format bump |
-| 7 | **Money with cadence** | `amount`: whole rupees, an integer 0..1,000,000,000,000 (`MAX_RUPEES`); `cadence`: `once`, `day`, `week`, `month`, `quarter`, `year`; both keys always written; no currency key (rupees, the India-only rule). Today's `RENT` is `month`, `SALE` is `once`. An extra money field either fixes its cadences (`deposit`: once, `maintenance`: month) or follows the candidate's own money (`cadenceFrom: "money"`: `myOffer`, `agreedPrice`) | Paise; decimals; an ISO currency code; keeping `priceType` beside a bare number | Whole rupees is what every stack stores today; a cadence covers school fees per year, a gym per month, a hall per day; a currency key can be added later as an optional field | Format bump |
+| 7 | **Money with cadence** | `amount`: whole rupees, an integer 0..1,000,000,000,000 (`MAX_RUPEES`); `cadence`: `once`, `day`, `week`, `month`, `quarter`, `year`; both keys always written for a money extra, while the candidate's own `money` may carry a cadence and no amount (a house marked as a rent before the rent is known: the form's toggle and the question scopes read it; found in kinds PR 2, §18.5), so there `amount` is left out when unknown and `cadence` is always written; no currency key (rupees, the India-only rule). Today's `RENT` is `month`, `SALE` is `once`. An extra money field either fixes its cadences (`deposit`: once, `maintenance`: month) or follows the candidate's own money (`cadenceFrom: "money"`: `myOffer`, `agreedPrice`) | Paise; decimals; an ISO currency code; keeping `priceType` beside a bare number | Whole rupees is what every stack stores today; a cadence covers school fees per year, a gym per month, a hall per day; a currency key can be added later as an optional field | Format bump |
 | 8 | **Status names** | The five names `NEW`, `SHORTLISTED`, `REJECTED`, `TAKEN`, `NOT_CHOSEN` stay for every kind (`HouseStatus.fromWire` never changes); a kind gives each its label (a school's `TAKEN` may read *Admitted*) | Statuses per kind | `HouseStatusRules`, the filters, the colours, the Plan filters and the AI all read the names | Very high: every stack and every file |
 | 9 | **Default-question and criterion ids** | Kept exactly: `qd_*` question ids and the ten checklist keys (`water` .. `commute`) are the house kind's; another kind adds its own ids with a kind prefix (`qd_school_*`, its own checklist keys). The `appliesTo` scopes stay `BOTH`, `RENT`, `SALE` for houses and are mapped to cadences in the kind file | Renaming to neutral ids; one shared list | Two devices seed the same records by id; one kind per data set means keys never meet another kind's | Seeds re-made on every device |
 | 10 | **Hunt-level fields and the AI contract slots** | The data set's own fields live in a `search` object (`{ "kind": "house" }` in the backup and the settings, PR 2), reserved for later fields of the container. The kind file's `ai` slots: `extract` (what the listing extract fills, today's `RawListing`), `ask` (the Ask document lines), `plan` (Plan's filters), `never` (never sent from a saved candidate: `contactName`, `contactPhone`, `myOffer`); read from PR 7 | Hard-coded per kind in the prompts; no slots until PR 7 | The prompts, the redaction and the parity vectors must change together on three stacks; naming the slots now lets PR 7 read data instead of growing branches | Moderate: a prompt change and the parity vectors |
@@ -2062,6 +2063,13 @@ changed:
 - **The format id restart reuses `/1`** (door 1): guarded by shape; owner-approved 2026-10-10.
 - **Every key of a backup house today has exactly one place** in the kind file (`was`): the website, Android and the
   server each check it against their own model (`house-kind-file.spec.ts`, `HouseKindFileTest` twice).
+- **Found in kinds PR 2 (S4b-BL-206, the server part, 2026-10-12): a house's money may have a cadence and no
+  amount.** A house is marked as a rent before its rent is known (the form's toggle; the question scopes `RENT` and
+  `SALE` read it), so door 7's "both keys always written" holds for a money extra only; the candidate's own `money`
+  leaves `amount` out when unknown. `myOffer` and `agreedPrice` follow the money's cadence, or `month` when the
+  candidate has none. The server's sync API checks a house's cadence (`month` or `once`) and keeps an unknown extra
+  only as a field id with a value of one of the six types (a number, a text of at most 2,000 characters, a boolean or
+  a money object; at most 30 per candidate).
 
 The vectors are fixed: a later pull request that changes a resolved label, a field list, the layout, the visibility,
 the wire place of a value or what search reads turns the kind tests red on the three stacks, so "zero change" for houses

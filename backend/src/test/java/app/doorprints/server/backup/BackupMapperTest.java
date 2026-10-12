@@ -199,7 +199,7 @@ class BackupMapperTest {
     @Test
     void aFloorMakesTheCopyVersionTwo() {
         var h = house(FIRST, EXPORTED_AT, false);
-        h.setFloor(0);
+        h.setExtras("{\"floor\":0}");
         var data = BackupMapper.toBackup(List.of(h), List.of(), List.of(), EXPORTED_AT);
         assertThat(data.format()).isEqualTo("doorprints-backup/2");
         assertThat(data.houses().getFirst().floor()).isZero();
@@ -276,7 +276,7 @@ class BackupMapperTest {
     void roomsMakeItVersionTwoAndAreWrittenOnlyWhenThereAreSome() {
         var withRooms = house(FIRST, EXPORTED_AT, false);
         withRooms.setRooms(roomsJson());
-        withRooms.setCost("{\"deposit\":64000}");
+        withRooms.setExtras("{\"deposit\":{\"amount\":64000,\"cadence\":\"once\"}}");
         withRooms.setBrokerId("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
         var withEmpty = house(SECOND, EXPORTED_AT.plusSeconds(1), false);
         withEmpty.setRooms("[]");

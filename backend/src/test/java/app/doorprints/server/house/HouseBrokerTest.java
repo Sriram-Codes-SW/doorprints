@@ -30,7 +30,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class HouseBrokerTest {
 
     private static HouseDto house(String brokerId) {
-        return new HouseDto(UUID.randomUUID(), "Green View", null, null, null, 12.9, 77.6, HouseStatus.NEW, null, null,
+        return TestHouses.dto(UUID.randomUUID(), "Green View", null, null, null, 12.9, 77.6, HouseStatus.NEW, null, null,
                 null, null, "Ravi Kumar", "+91 98400 11111", null, null, null, null, null, null, null, null, null, brokerId, Map.of(), null,
                 null, false, 0, null);
     }

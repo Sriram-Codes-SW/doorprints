@@ -28,16 +28,26 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Database row of one saved house: where it is, what it costs, the person's rating, notes and contact details, and
- * the sync fields. Cost, rooms, answers and move-in details are kept as JSON text and read through their own types. A
- * deleted house stays as a tombstone for sync with its content blanked ({@link #purgeContent}).
+ * Database row of one saved candidate (a house is the first kind, docs/03 §18): its kind, where it is, what it costs
+ * ({@link Money} as two columns), the person's rating, notes and contact details, and the sync fields. The extras, the
+ * rooms, the answers and the move-in are kept as JSON text and read through their own types. A deleted candidate stays
+ * as a tombstone for sync with its content blanked ({@link #purgeContent}). The class keeps its name: only the public
+ * surfaces were renamed by the format reset (S4b-BL-206).
  */
 @Entity
 @Table(name = "house")
 public class House {
 
+    /** The kind of every candidate this server makes on its own (docs/schemas/kinds/house.json). */
+    public static final String HOUSE_KIND = "house";
+    /** A kind id (docs/03 §18.4 door 3). */
+    public static final String KIND_PATTERN = "^[a-z][a-z0-9_]{1,31}$";
+
     @Id
     private UUID id;
+
+    @Column(nullable = false)
+    private String kind = HOUSE_KIND;
 
     @Column(nullable = false)
     private String label;
@@ -54,36 +64,33 @@ public class House {
     @Column(nullable = false)
     private HouseStatus status = HouseStatus.NEW;
 
-    private Long price;
-    private String priceType;
-    private Integer bedrooms;
+    /** The {@link Money}'s amount, whole rupees; null when unknown. */
+    private Long moneyAmount;
+    /** The {@link Money}'s cadence; null when the candidate has no money at all. */
+    private String moneyCadence;
     private Integer rating;
     private String contactName;
     private String contactPhone;
     private String listingUrl;
     private String notes;
-    /* Slice 1a of the Sprint 4b data model (V7): the house's own values, all optional. */
-    private Integer areaSqft;
     private String locationSource;
-    /** The {@link HouseCost} as compact JSON text, null for no cost; stored as sent, like a record payload. */
+    /** The {@link CandidateExtras} as compact JSON text, null for none; stored as sent after validation. */
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
-    private String cost;
-    /** Slice 1c (V9): the {@link HouseRoom} list as compact JSON text, null for no rooms; stored as sent. */
+    private String extras;
+    /** Slice 1c: the {@link HouseRoom} list as compact JSON text, null for no rooms; stored as sent. */
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private String rooms;
-    /** Slice 3a (V10): the {@link HouseAnswer} list as compact JSON text, null for no answers; stored as sent. */
+    /** Slice 3a: the {@link HouseAnswer} list as compact JSON text, null for no answers; stored as sent. */
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private String answers;
-    /** Slice 5 (V11): the {@link HouseMoveIn} object as compact JSON text, null for none; stored as sent. */
+    /** Slice 5: the {@link HouseMoveIn} object as compact JSON text, null for none; stored as sent. */
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private String moveIn;
-    /** S4b-BL-87 (V13): the floor the flat is on, {@link #MIN_FLOOR}..{@link #MAX_FLOOR} with 0 the ground floor. */
-    private Integer floor;
-    /** Slice 1b (V8): the id of the house's broker, a record of type {@code broker}. No foreign key: it may dangle. */
+    /** Slice 1b: the id of the house's broker, a record of type {@code broker}. No foreign key: it may dangle. */
     private String brokerId;
 
     @ElementCollection(fetch = FetchType.EAGER)
@@ -113,9 +120,10 @@ public class House {
     }
 
     /**
-     * Keeps only what a tombstone needs (id, deleted, timestamps, sync version) and drops the content: notes, contact
-     * details, prices, the slice 1a values (area, location source, cost, broker), the rooms, the answers, the move-in, the floor and the checklist (threat model F-16,
-     * PRV-005). The location stays because the columns are NOT NULL, but it is reset to 0,0.
+     * Keeps only what a tombstone needs (id, kind, deleted, timestamps, sync version) and drops the content: notes,
+     * contact details, the money, the extras (area, floor, BHK, cost and any extra this server does not know), the
+     * location source, the broker, the rooms, the answers, the move-in and the checklist (threat model F-16, PRV-005).
+     * The location stays because the columns are NOT NULL, but it is reset to 0,0.
      */
     public void purgeContent() {
         label = "";
@@ -124,26 +132,35 @@ public class House {
         locality = null;
         lat = 0;
         lon = 0;
-        price = null;
-        priceType = null;
-        bedrooms = null;
+        moneyAmount = null;
+        moneyCadence = null;
         rating = null;
         contactName = null;
         contactPhone = null;
         listingUrl = null;
         notes = null;
-        areaSqft = null;
         locationSource = null;
-        cost = null;
+        extras = null;
         rooms = null;
         answers = null;
         moveIn = null;
-        floor = null;
         brokerId = null;
         checklist.clear();
     }
 
+    /** The money as one value: {@code null} when the row has no cadence (and so no money). */
+    public Money getMoney() {
+        return moneyCadence == null ? null : new Money(moneyAmount, moneyCadence);
+    }
+
+    public void setMoney(Money money) {
+        this.moneyAmount = money == null ? null : money.amount();
+        this.moneyCadence = money == null ? null : money.cadence();
+    }
+
     public UUID getId() { return id; }
+    public String getKind() { return kind; }
+    public void setKind(String kind) { this.kind = kind == null ? HOUSE_KIND : kind; }
     public String getLabel() { return label; }
     public void setLabel(String label) { this.label = label; }
     public String getAddress() { return address; }
@@ -158,12 +175,6 @@ public class House {
     public void setLon(double lon) { this.lon = lon; }
     public HouseStatus getStatus() { return status; }
     public void setStatus(HouseStatus status) { this.status = status; }
-    public Long getPrice() { return price; }
-    public void setPrice(Long price) { this.price = price; }
-    public String getPriceType() { return priceType; }
-    public void setPriceType(String priceType) { this.priceType = priceType; }
-    public Integer getBedrooms() { return bedrooms; }
-    public void setBedrooms(Integer bedrooms) { this.bedrooms = bedrooms; }
     public Integer getRating() { return rating; }
     public void setRating(Integer rating) { this.rating = rating; }
     public String getContactName() { return contactName; }
@@ -174,20 +185,17 @@ public class House {
     public void setListingUrl(String listingUrl) { this.listingUrl = listingUrl; }
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
-    public Integer getAreaSqft() { return areaSqft; }
-    public void setAreaSqft(Integer areaSqft) { this.areaSqft = areaSqft; }
     public String getLocationSource() { return locationSource; }
     public void setLocationSource(String locationSource) { this.locationSource = locationSource; }
-    public String getCost() { return cost; }
-    public void setCost(String cost) { this.cost = cost; }
+    /** The {@link CandidateExtras} as JSON text ({@link CandidateExtras#parse}); null for none. */
+    public String getExtras() { return extras; }
+    public void setExtras(String extras) { this.extras = extras; }
     public String getRooms() { return rooms; }
     public void setRooms(String rooms) { this.rooms = rooms; }
     public String getAnswers() { return answers; }
     public void setAnswers(String answers) { this.answers = answers; }
     public String getMoveIn() { return moveIn; }
     public void setMoveIn(String moveIn) { this.moveIn = moveIn; }
-    public Integer getFloor() { return floor; }
-    public void setFloor(Integer floor) { this.floor = floor; }
     public String getBrokerId() { return brokerId; }
     public void setBrokerId(String brokerId) { this.brokerId = brokerId; }
     public Map<String, Integer> getChecklist() { return checklist; }

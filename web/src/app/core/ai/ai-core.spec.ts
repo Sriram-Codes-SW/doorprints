@@ -20,7 +20,7 @@ import { describe, expect, it } from 'vitest';
 import vectors from './parity-vectors.json';
 import {
   AiHouse, CONTACT, FALLBACK_SUMMARY, I_DONT_KNOW, Redactor, askPrompt, assemblePlan, candidateLines, citations,
-  cleanAnswer, countListingLinks, cutListing, extractionPrompt, houseText, inlineIds, legsInOrder, nearestNeighbour, nonce, redactGeneric, roundHalfUp,
+  cleanAnswer, countListingLinks, cutListing, extractionPrompt, visitSummary, houseText, inlineIds, legsInOrder, nearestNeighbour, nonce, redactGeneric, roundHalfUp,
   planPrompt, sanitizeDraft, scrubStoredText, selectForAsk, selectForPlan, snippet, wrap, type RawListing, type PlanCandidate,
 } from './ai-core';
 import { inTheRunning } from '../../shared/house-status';
@@ -504,6 +504,19 @@ describe('AI core (what the vectors do not cover)', () => {
     expect(system).toContain('- locality: the neighbourhood or area, never the city alone (the city goes in address). If only a road is named, use the road as the locality too.');
     expect(system.indexOf('- label:')).toBeLessThan(system.indexOf('- locality:'));
     expect(system.indexOf('- locality:')).toBeLessThan(system.indexOf('- notes:'));
+  });
+
+  it('tells the model to leave price and priceType null when a listing offers both sale and rent', () => {
+    const system = extractionPrompt('3BHK Baner, sale 1.2 Cr or rent 45k', 'abc123').system;
+    expect(system).toContain('- priceType: RENT or SALE. If the listing offers both, leave price and priceType null and put both amounts in notes.');
+    expect(system.indexOf('- price:')).toBeLessThan(system.indexOf('- priceType:'));
+    expect(system.indexOf('- priceType:')).toBeLessThan(system.indexOf('- bedrooms:'));
+  });
+
+  it('names the first day as well as the last when a house has several visits', () => {
+    expect(visitSummary([{ arrivedAt: 1_758_270_800_000 }, { arrivedAt: 1_758_530_000_000, leftAt: 1_758_531_800_000 }]))
+      .toBe('2 visits, first on 2025-09-19, last on 2025-09-22, 30 min in total');
+    expect(visitSummary([{ arrivedAt: 1_758_530_000_000 }])).toBe('1 visit, last on 2025-09-22');
   });
 
   it('cleans an answer in linear time, whatever the brackets and addresses look like (S4b-BL-178)', () => {

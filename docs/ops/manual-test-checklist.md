@@ -385,7 +385,7 @@ All with a **test Google account**. Record the Google Cloud project's consent-sc
 
 #### MT-47 TC-M-39: the *Set up your own server* page, end to end
 - **Steps:** Follow the page: Docker Desktop, `.env` with `APP_API_KEY` (32+ chars) and `APP_CORS_ORIGINS=https://doorprints.web.app`, `docker compose up --build -d` (note the time), `GET /actuator/health` is `{"status":"UP"}`, `tools/server-smoke.sh http://localhost:8080` all PASS, Tailscale Serve for HTTPS, the owner page at `/owner` with the setup link from the log, *Connect* on the website and Android **by code** and by QR, a sync both ways, per-device AI switch, a Gemini key saved on the owner page, Ask and Plan.
-- **Expected:** every step as the page says; `GET /api/houses` without a key is 401, a wrong key 401 then 429 after 10 tries; the owner page refuses cross-site calls (403).
+- **Expected:** every step as the page says; `GET /api/candidates` without a key is 401, a wrong key 401 then 429 after 10 tries; the owner page refuses cross-site calls (403).
 - **Automated or reviewed by:** `mvn -B -ntp verify` (505 tests with PostGIS; TC-I-36/-39/-40/-42), ZAP API scan in `backend.yml`. Reviewer ran it: **no** (needs JDK 25 and a PostGIS container; the session had JDK 21 and 1 GB of disk). the reviewer read `ApiKeyFilter`, `OwnerFilter`, `RecordController`, `WebConfig` CORS, `SecurityHeadersFilter`, `application.yml`: yes.
 - Pass / Fail / Date: ____  by: ____
 

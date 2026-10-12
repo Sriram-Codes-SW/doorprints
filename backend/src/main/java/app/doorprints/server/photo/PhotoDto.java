@@ -18,6 +18,8 @@
 
 package app.doorprints.server.photo;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -30,8 +32,10 @@ import java.util.UUID;
  * what the photo was. Slice 5 adds the person's {@code roomId}, {@code tags}, {@code caption} and
  * {@code metaUpdatedAt} (0 = never edited), written like the rest (null, not absent; the tags {@code null} when none), so
  * the change feed carries an edit. Read-only: photos are created by the multipart upload, not by sending this record.
+ * The candidate it belongs to is {@code candidateId} on the wire since the format reset (S4b-BL-206).
  */
-public record PhotoDto(UUID id, UUID houseId, String contentType, Integer sizeBytes, Instant createdAt,
+public record PhotoDto(UUID id, @JsonProperty("candidateId") UUID houseId, String contentType, Integer sizeBytes,
+                       Instant createdAt,
                        Instant updatedAt, boolean deleted, long syncVersion,
                        String roomId, List<String> tags, String caption, long metaUpdatedAt) {
 
