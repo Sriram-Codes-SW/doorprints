@@ -21,13 +21,20 @@ name: Web
 
 on:
   pull_request:
-    paths-ignore: ["web/**", "docs/schemas/**", ".github/workflows/web.yml", ".github/firebase-tools/**"]
+    paths-ignore: ["web/**", "docs/schemas/**", "tools/fake-ai-provider/**", ".github/workflows/web.yml", ".github/firebase-tools/**"]
 
 permissions: {}
 
 jobs:
   build:
     name: ng test + ng build (Node 24)
+    runs-on: ubuntu-26.04
+    timeout-minutes: 2
+    steps:
+      - run: echo "No web input changed in this pull request; web.yml did not run."
+
+  layout-gate:
+    name: Phone layout gate (320x568, 360x640, 390x664)
     runs-on: ubuntu-26.04
     timeout-minutes: 2
     steps:

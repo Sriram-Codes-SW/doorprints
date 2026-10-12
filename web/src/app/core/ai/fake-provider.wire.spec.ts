@@ -111,8 +111,8 @@ describe.skipIf(!hasNode)('Adapters over a real socket against the fake provider
       expect(bodies[2].messages[0].content).toContain('of this shape');
     });
 
-    it('maps 401, 403, 404, 429 with Retry-After, 500 and 529 to the same error kinds as the phones', async () => {
-      const expected: [string, string][] = [['unauthorized', 'keyRejected'], ['forbidden', 'keyRejected'], ['not-found', 'modelNotFound'], ['server-error', 'unavailable'], ['overloaded', 'unavailable']];
+    it('maps 401, 403, 404, 429 with Retry-After, 500, 529, 402 and a spent quota (insufficient_quota) to the same error kinds as the phones', async () => {
+      const expected: [string, string][] = [['unauthorized', 'keyRejected'], ['forbidden', 'keyRejected'], ['not-found', 'modelNotFound'], ['server-error', 'unavailable'], ['overloaded', 'unavailable'], ['payment-required', 'quotaExhausted'], ['quota-spent', 'quotaExhausted']];
       for (const [m, kind] of expected) {
         await mode(m);
         await expect(ask(openAi())).rejects.toMatchObject({ kind });
@@ -178,8 +178,8 @@ describe.skipIf(!hasNode)('Adapters over a real socket against the fake provider
       expect((await requests())[0].body.tools).toBeUndefined();
     });
 
-    it('maps every status to the same kinds, 429 with Retry-After, 529 overloaded as unavailable', async () => {
-      const expected: [string, string][] = [['unauthorized', 'keyRejected'], ['forbidden', 'keyRejected'], ['not-found', 'modelNotFound'], ['server-error', 'unavailable'], ['overloaded', 'unavailable']];
+    it('maps every status to the same kinds, 429 with Retry-After, 529 overloaded as unavailable, 402 billing_error as quotaExhausted', async () => {
+      const expected: [string, string][] = [['unauthorized', 'keyRejected'], ['forbidden', 'keyRejected'], ['not-found', 'modelNotFound'], ['server-error', 'unavailable'], ['overloaded', 'unavailable'], ['payment-required', 'quotaExhausted'], ['quota-spent', 'quotaExhausted']];
       for (const [m, kind] of expected) {
         await mode(m);
         await expect(ask(anthropic())).rejects.toMatchObject({ kind });
@@ -233,10 +233,14 @@ describe.skipIf(!hasNode)('Adapters over a real socket against the fake provider
       expect(req.url).toBe(new URL(GEMINI_URL).pathname);
     });
 
-    it('maps a quota stop to rateLimited and an invalid key (400 API_KEY_INVALID) to keyRejected', async () => {
+    it('maps a per-minute quota stop to rateLimited, a spent daily quota (PerDay) and a 402 to quotaExhausted, and an invalid key (400 API_KEY_INVALID) to keyRejected', async () => {
       const model = toFake();
       await mode('rate-limit');
       await expect(ask(model)).rejects.toMatchObject({ kind: 'rateLimited' });
+      await mode('quota-spent');
+      await expect(ask(model)).rejects.toMatchObject({ kind: 'quotaExhausted' });
+      await mode('payment-required');
+      await expect(ask(model)).rejects.toMatchObject({ kind: 'quotaExhausted' });
       await mode('bad-key');
       await expect(ask(model)).rejects.toMatchObject({ kind: 'keyRejected' });
     });

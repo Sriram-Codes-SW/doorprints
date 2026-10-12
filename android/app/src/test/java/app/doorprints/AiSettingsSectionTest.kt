@@ -361,6 +361,7 @@ class AiSettingsSectionTest {
         failWith(ApiException(ApiException.Kind.AI_KEY_REJECTED, 401), "api.openai.com did not accept your key.")
         failWith(ApiException(ApiException.Kind.AI_MODEL_NOT_FOUND, 404), "The AI service does not know this model.")
         failWith(ApiException(ApiException.Kind.AI_BLOCKED, 200), "The AI service declined this text. Nothing was changed. Edit the wording and try again.")
+        failWith(ApiException(ApiException.Kind.AI_QUOTA_EXHAUSTED, 402), "Your key's free quota or credit is used up. Check usage and billing with your provider; the app works without AI.")
         failWith(ApiException(ApiException.Kind.RATE_LIMITED, 429, retryAfterSeconds = 12), "Try again in 12 s.")
         failWith(ApiException(ApiException.Kind.AI_UNAVAILABLE, 0), "Could not reach api.openai.com. Check the address")
         failWith(ApiException(ApiException.Kind.AI_UNAVAILABLE, 503), "The AI provider is unavailable")

@@ -1,0 +1,52 @@
+{
+  "spec": "android/shared/src/commonTest/kotlin/app/doorprints/shared/ai/AiQuotaTest.kt",
+  "gradle": [
+    ":shared:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.shared.ai.AiQuotaTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AiQuota.kt",
+      "find": "        if (status == 402) return true\n",
+      "replace": "",
+      "expect": "theSharedVectorsSayWhichRepliesAreASpentQuota"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AiQuota.kt",
+      "find": "private const val DAILY = \"PerDay\"",
+      "replace": "private const val DAILY = \"Per\"",
+      "expect": "theSharedVectorsSayWhichRepliesAreASpentQuota"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AiQuota.kt",
+      "find": "        if (status == 429) return dailyQuota(error)\n",
+      "replace": "",
+      "expect": "theSharedVectorsSayWhichRepliesAreASpentQuota"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AiRequest.kt",
+      "find": "    AiQuota.isExhausted(status, body) -> ApiException(ApiException.Kind.AI_QUOTA_EXHAUSTED, status)\n",
+      "replace": "",
+      "expect": "aiFailureNamesTheKindAndKeepsAWaitForAPerMinute429"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/GeminiClient.kt",
+      "find": "        AiQuota.isExhausted(status, body) -> ApiException(ApiException.Kind.AI_QUOTA_EXHAUSTED, status)\n",
+      "replace": "",
+      "expect": "geminiMapsADailyQuotaAndA402ToExhaustedAndAMinuteToAWait"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OpenAiCompatClient.kt",
+      "find": " && !AiQuota.isExhausted(status, body)",
+      "replace": "",
+      "expect": "anOpenAiCompatibleInsufficientQuotaAnd402AreExhaustedAfterOneCall"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AnthropicClient.kt",
+      "find": "                continue\n            }\n            if (response.status !in 200..299) throw failure(response.status, response.retryAfter, response.body)",
+      "replace": "                continue\n            }\n            if (response.status !in 200..299) throw failure(response.status, response.retryAfter)",
+      "expect": "anAnthropicBillingErrorAndALowCreditBalanceAreExhausted"
+    }
+  ]
+}

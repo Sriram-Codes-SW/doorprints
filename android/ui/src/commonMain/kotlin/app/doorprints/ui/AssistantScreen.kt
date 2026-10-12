@@ -688,6 +688,7 @@ fun aiFailureText(): (AiFailure) -> String {
     val keyRejectedHost = stringResource(Res.string.ai_key_rejected_host)
     val modelNotFound = stringResource(Res.string.ai_model_not_found)
     val blocked = stringResource(Res.string.ai_blocked)
+    val quotaExhausted = stringResource(Res.string.ai_quota_exhausted)
     val unreachable = stringResource(Res.string.ai_unreachable)
     val unreachableLocal = stringResource(Res.string.ai_unreachable_local)
     return { f ->
@@ -695,6 +696,7 @@ fun aiFailureText(): (AiFailure) -> String {
             is AiFailure.KeyRejected -> if (f.host.isEmpty()) keyRejected else formatPositional(keyRejectedHost, f.host)
             AiFailure.ModelNotFound -> modelNotFound
             AiFailure.Blocked -> blocked
+            AiFailure.QuotaExhausted -> quotaExhausted
             is AiFailure.RateLimited -> formatPositional(rate, f.seconds)
             is AiFailure.Unreachable -> formatPositional(if (f.local) unreachableLocal else unreachable, f.host)
             AiFailure.Down -> down

@@ -98,7 +98,7 @@ has licence && start floor bash -c "cd '$ROOT' && node --test tools/check-floor.
 # Always: the file-size budget (S4b-BL-205; warn at 600 lines, fail at 900, the allowlist in tools/size-budget.json only shrinks).
 has licence && start size-budget bash -c "cd '$ROOT' && node --test tools/check-size-budget.test.mjs && node tools/check-size-budget.mjs"
 if has android || has ios; then start gradle gradle_seq; fi
-has web && start web bash -c "cd '$ROOT' && node tools/check-specs.mjs && node tools/check-templates.mjs && node --test tools/*.test.mjs && cd web && npx ng test --watch=false && CI=true npm run test:ci && npm run build"
+has web && start web bash -c "cd '$ROOT' && node tools/check-specs.mjs && node tools/check-templates.mjs && node --test tools/*.test.mjs && cd web && npx ng test --watch=false && CI=true npm run test:ci && npm run build && cd ../tools/live-ui && npm ci --no-audit --no-fund && npx playwright install chromium && node layout-gate.js"
 # --strict fails on errors; a WARNING line once passed locally and failed CI (docs/14 §7), so it fails here too.
 guide_check() {
   cd "$ROOT/guide" || return 1

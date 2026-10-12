@@ -64,6 +64,9 @@
 #
 # 2026-10-02 (Web), draft PR #118: deploy-firebase writes config.js from vars.GOOGLE_OAUTH_WEB_CLIENT_ID
 #   (empty allowed; Drive then stays unavailable). Do not invent a client id.
+#
+# 2026-10-12 (Web), branch ci/web-mobile-layout-gate (S4b-BL-245): new job layout-gate, the phone layout gate
+#   (tools/live-ui/layout-gate.js, docs/06 TC-S-46), after the build, on pull requests and pushes to main.
 name: Web
 
 # Triggers: a push to main touching the paths below (tag pushes do not trigger), a pull request to main (tests the
@@ -377,6 +380,64 @@ jobs:
       - name: Check the built site
         run: node check-pwa.cjs site
 
+  # The phone layout gate (S4b-BL-245, docs/06 TC-S-46): the built site, served locally and offline, opened on 320x568,
+  # 360x640 and 390x664 phones at normal and 130% text; the map and the app must fit the screen (a runaway map, 14,000-21,000px
+  # tall, reached production on 2026-10-12 because only the post-deploy live UI test looked). tools/live-ui/layout-gate.js
+  # is the same script `tools/check.sh` runs. A normal job (no `if`), so it can be a required check. The full live UI test
+  # after the deploy (tools/live-ui/live-ui.js, TC-M-26) is unchanged.
+  # Sparse checkout: only the script and its npm project (Playwright and axe-core, pinned by its lock file).
+  layout-gate:
+    name: Phone layout gate (320x568, 360x640, 390x664)
+    needs: build
+    # ubuntu-24.04, not 26.04 like the other jobs: Playwright 1.56.1 refuses `install --with-deps` on 26.04 ("does not support
+    # chromium on ubuntu26.04-x64"). Move to 26.04 with a Playwright that supports it (tools/live-ui/package.json).
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: tools/live-ui
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            /tools/live-ui/
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: tools/live-ui/package-lock.json
+
+      - name: Download the built site
+        uses: actions/download-artifact@v8
+        with:
+          name: doorprints-web-dist
+          path: site
+
+      - name: Install Playwright
+        run: npm ci --no-audit --no-fund
+
+      # Chromium's download, keyed by the Playwright version the lock file pins; the system libraries are installed
+      # on every run (they are not in the cache).
+      - name: Playwright version
+        id: playwright
+        run: echo "version=$(node -p "require('playwright/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run the layout gate on the built site
+        run: node layout-gate.js "$GITHUB_WORKSPACE/site"
+
   # Checks, on every run (pull requests included) and with no credentials at all, what the deploy job relies on:
   # web/firebase.json passes the deploy gate (.github/firebase-tools/check-firebase-json.sh), and the pinned
   # firebase-tools installs and reports its pinned version (.github/firebase-tools/install.sh). A bad Hosting
@@ -512,7 +573,7 @@ jobs:
   # Rollback: Firebase console > Hosting > release history > Rollback (docs/08). No rebuild needed.
   deploy-firebase:
     name: Deploy to Firebase Hosting
-    needs: [build, pwa-files, firebase-config, firebase-setup]
+    needs: [build, pwa-files, layout-gate, firebase-config, firebase-setup]
     if: needs.firebase-setup.outputs.ready == 'true' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-26.04
     timeout-minutes: 20

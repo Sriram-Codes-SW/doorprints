@@ -1,0 +1,61 @@
+{
+  "spec": [
+    "web/src/app/core/ai/ai-quota.spec.ts"
+  ],
+  "mutations": [
+    {
+      "file": "web/src/app/core/ai/ai-quota.ts",
+      "find": "  if (status === 402) return true;\n",
+      "replace": "",
+      "expect": "every provider reply says the quota is used up or not"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-quota.ts",
+      "find": "const DAILY = 'PerDay';",
+      "replace": "const DAILY = 'Per';",
+      "expect": "every provider reply says the quota is used up or not"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-quota.ts",
+      "find": "  if (text(error['type']) === 'billing_error') return true;\n",
+      "replace": "",
+      "expect": "every provider reply says the quota is used up or not"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-quota.ts",
+      "find": "  if (status === 429) return dailyQuota(error);\n",
+      "replace": "",
+      "expect": "every provider reply says the quota is used up or not"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-request.ts",
+      "find": "  if (isQuotaExhausted(status, body)) return { action: 'error', kind: 'quotaExhausted' };\n",
+      "replace": "",
+      "expect": "classifyStatus names the kind"
+    },
+    {
+      "file": "web/src/app/core/ai/on-device-ai.service.ts",
+      "find": "        if (isQuotaExhausted(e.status, text)) throw new OnDeviceAiError('quotaExhausted');\n",
+      "replace": "",
+      "expect": "a 429 with a PerDay quota id is quotaExhausted"
+    },
+    {
+      "file": "web/src/app/core/ai/openai-compat.ts",
+      "find": "tier < 3 && !isQuotaExhausted(status, body)) {",
+      "replace": "tier < 3) {",
+      "expect": "not walked down the structured-output ladder"
+    },
+    {
+      "file": "web/src/app/core/ai/anthropic.ts",
+      "find": "throw failure(classifyStatus(res.status, res.retryAfter, res.body));\n      const text",
+      "replace": "throw failure(classifyStatus(res.status, res.retryAfter));\n      const text",
+      "expect": "a billing_error and a low credit balance are quotaExhausted"
+    },
+    {
+      "file": "web/src/app/core/ai.service.ts",
+      "find": "    if (err.kind === 'quotaExhausted') return { key: 'ai.quotaExhausted' };\n",
+      "replace": "",
+      "expect": "are one message with no parameter"
+    }
+  ]
+}
