@@ -228,7 +228,7 @@ public final class CandidateExtras {
     }
 
     private static void follows(List<String> out, String id, Money m, boolean ranges) {
-        if (m != null && (m.amount() == null || (ranges && !m.isValid()))) out.add(id);
+        if (m != null && (m.amount() == null || m.cadence() == null || (ranges && !m.isValid()))) out.add(id);
     }
 
     private static void months(List<String> out, String id, Integer value, boolean ranges) {

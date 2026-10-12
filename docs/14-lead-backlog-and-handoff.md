@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.167 |
+| Version | 0.168 |
 | Date | 2026-10-10 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..183); this file lists the lead-level items and points to the rest. |
@@ -174,7 +174,8 @@
 | 0.164 | 2026-10-12 | Claude (Code), engineer | **§11.4 items 1-4 decided** (S4b-BL-241): sale-and-rent gives a null price and type with both amounts in the notes; the Ask document names the first visit; the Vertex spend is Rs 4,339 and the eval code stays; the AI Studio key is to be replaced by a free-tier key (owner action). |
 | 0.165 | 2026-10-12 | Claude (Code), engineer | §11.4 item 4 done: the free-tier `AI_API_KEY` passed `key-check` and `on-device` (TC-U-88). |
 | 0.166 | 2026-10-12 | Claude (Code), engineer | §7: a web UI change runs the layout gate (`tools/check.sh`, `web.yml`); the owner accepts a map-layout change on a real phone (S4b-BL-245). |
-| 0.167 | 2026-10-12 | Claude (Code), engineer | **§11.4 item 6**: kinds step 3 reads an old-family backup instead of refusing it (ADR-36 door 1 changed at the lead's instruction); the owner confirms or reverts. |
+| 0.167 | 2026-10-12 | Claude (Code), engineer | **§11.4 item 6**: owner decision, a price without a type is not read as a monthly rent (kinds step 3). |
+| 0.168 | 2026-10-12 | Claude (Code), engineer | **§11.4 item 6**: kinds step 3 reads an old-family backup instead of refusing it (ADR-36 door 1 changed at the lead's instruction); the owner confirms or reverts. |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 
@@ -1011,7 +1012,8 @@ Golden set 75/75 twice (zero discordant cases: the eval repeats). Plan x5 on the
 3. **Billing: read.** The actual spend on the Google Cloud project `doorprints-ai` is Rs 4,339 (the plan estimated Rs 455-600). The owner keeps `VERTEX_EVAL_ENABLED` and the eval code for now.
 4. **The AI Studio key (`AI_API_KEY`): done (2026-10-12).** Replaced by the owner with a free-tier key from a project without billing. `key-check` shows the pinned models answer 200; `on-device` passed on the second attempt after one transient provider 503. Recorded in [06](06-test-plan.md) TC-U-88 and [ai-design](ai/ai-design.md) 2.1. Run both again monthly and before a release (they cost nothing on the free tier).
 5. The owner's own to-dos (devices, accounts, native-speaker review, manual TC-M checks, the Survey of India items) were left alone on purpose.
-6. **Old backups after the format reset: open, owner to confirm (kinds step 3, S4b-BL-206, 2026-10-12).** ADR-36 door 1 (owner-approved 2026-10-10) said a file of the old backup family (`houses`) is refused with "made by an older Doorprints, export it again". Kinds step 3 was asked to keep old backups importable, so every reader now reads an old-family file whole and its houses become candidates; a file with both lists is refused ([03](03-design.md) §18.4 door 1, [schemas README](schemas/README.md) §1.1). Keeping it costs one mapping per stack and the old import cases in `import-vectors.json`; reverting it is a refusal in that mapping on three stacks and an OLD_FORMAT sentence in four languages.
+6. **A price without a type: closed (owner, 2026-10-12, after a Fable check; S4b-BL-206).** It is **not** read as a monthly rent: money keeps the amount and no cadence (`month` is `RENT`, `once` is `SALE`, absent is no type), so a 1.2 crore price of type *Not set* is never shown "per month". For a house a cadence that is present is `month` or `once`; a money with neither key is invalid; the cadence vocabulary is unchanged. The server's `Money.of` and the website's `moneyOf` agree ([03](03-design.md) §18.4 door 7); the backup mapping follows in kinds step 3 part 2.
+7. **Old backups after the format reset: closed (owner confirmed, 2026-10-12; kinds step 3, S4b-BL-206).** The final text of ADR-36 door 1 is: **old-family backups are read, not refused.** ADR-36 door 1 (owner-approved 2026-10-10) said a file of the old backup family (`houses`) is refused with "made by an older Doorprints, export it again". Kinds step 3 was asked to keep old backups importable, so every reader now reads an old-family file whole and its houses become candidates; a file with both lists is refused ([03](03-design.md) §18.4 door 1, [schemas README](schemas/README.md) §1.1). It costs one mapping per stack and the old import cases in `import-vectors.json`.
 
 ### 11.5 Next, in order
 

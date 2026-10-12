@@ -82,25 +82,43 @@ describe('the candidate of a house (kinds step 3)', () => {
     expect(houseOf(c).price).toBeNull();
   });
 
-  it('reads a price without a type as monthly, and writes no money when neither is known (the server\'s Money.of)', () => {
-    expect(moneyOf(18000, null)).toEqual({ amount: 18000, cadence: 'month' });
+  it('keeps a price without a type typeless, never as a monthly rent, and writes no money when neither is known (owner, 2026-10-12)', () => {
+    expect(moneyOf(1_20_00_000, null)).toEqual({ amount: 1_20_00_000 });
     expect(moneyOf(null, null)).toBeNull();
     expect(moneyOf(null, 'SALE')).toEqual({ cadence: 'once' });
+    const typeless = { ...ADYAR, price: 1_20_00_000, priceType: null, cost: null, bedrooms: null, areaSqft: null, floor: null };
+    const c = candidateOf(typeless);
+    expect(c.money).toEqual({ amount: 1_20_00_000 });
+    expect([houseOf(c).price, houseOf(c).priceType]).toEqual([1_20_00_000, null]);
+    expect(houseOf({ ...ADYAR_CANDIDATE, money: {} } as unknown as CandidateDto).price).toBeNull();
     // An offer follows the money's cadence, or a month when the house has none.
     expect(candidateOf({ ...ADYAR, price: null, priceType: null, cost: { myOffer: 9000 } }).extras).toEqual({ bedrooms: 2, areaSqft: 1150, floor: 3, myOffer: { amount: 9000, cadence: 'month' } });
   });
 
-  it('reads a known extra of the wrong type, or a money extra with the wrong cadence, as unknown (absent)', () => {
+  it('reads a known extra of the wrong type as unknown (absent)', () => {
     const c = {
       ...ADYAR_CANDIDATE,
       money: { amount: 7, cadence: 'week' },
-      extras: { bedrooms: 'two', deposit: { amount: 5000, cadence: 'month' }, maintenance: 2500, maintenanceIncluded: 'no', availableFrom: 20261015, myOffer: { cadence: 'month' } },
+      extras: { bedrooms: 'two', maintenance: 2500, maintenanceIncluded: 'no', availableFrom: 20261015, myOffer: { cadence: 'month' } },
     } as unknown as CandidateDto;
     const h = houseOf(c);
     expect(h.price).toBe(7);
     expect(h.priceType).toBeNull(); // a week is not a house's cadence
     expect([h.bedrooms, h.cost]).toEqual([null, null]);
     expect(h.extrasOther).toBeUndefined();
+  });
+
+  it('keeps the amount of a money extra stored with another cadence, so the next write does not lose it', () => {
+    const c = { ...ADYAR_CANDIDATE, extras: { deposit: { amount: 5000, cadence: 'month' }, brokerage: { amount: 900, cadence: 'year' }, maintenance: { amount: 2500, cadence: 'once' } } } as unknown as CandidateDto;
+    const h = houseOf(c);
+    expect(h.cost).toEqual({ deposit: 5000, maintenance: 2500, brokerage: 900 });
+    // Written back with the field's own cadence: the house model has no place for another one.
+    expect(candidateOf(h).extras).toEqual({ deposit: { amount: 5000, cadence: 'once' }, maintenance: { amount: 2500, cadence: 'month' }, brokerage: { amount: 900, cadence: 'once' } });
+  });
+
+  it('drops a money extra that is not a money object with an amount (a number, a text, no amount)', () => {
+    const h = houseOf({ ...ADYAR_CANDIDATE, extras: { deposit: 5000, maintenance: '2500', brokerage: { cadence: 'once' }, agreedPrice: { amount: -1, cadence: 'month' } } } as unknown as CandidateDto);
+    expect(h.cost).toBeNull();
   });
 
   it('keeps an extra a newer app wrote, after the known ones in id order, and only of an extras type', () => {
@@ -124,11 +142,23 @@ describe('the candidate of a house (kinds step 3)', () => {
     expect(Object.keys(back.extras!)).toEqual([...Object.keys(ADYAR_CANDIDATE.extras), 'fromNewerApp', 'gateCode', 'schoolFee', 'zPetsAllowed']);
   });
 
-  it('keeps at most 30 unknown extras and texts of at most 2,000 characters', () => {
+  it('keeps at most 30 unknown extras, the first 30 by id', () => {
     const many = Object.fromEntries(Array.from({ length: 40 }, (_, i) => [`x${String(i).padStart(2, '0')}`, i]));
-    expect(Object.keys(cleanOtherExtras(many)!)).toHaveLength(MAX_OTHER_EXTRAS);
+    const kept = Object.keys(cleanOtherExtras(many)!);
+    expect(kept).toHaveLength(MAX_OTHER_EXTRAS);
+    expect(kept.at(-1)).toBe('x29');
+  });
+
+  it('drops an unknown extra whose id is not a field id', () => {
+    expect(cleanOtherExtras({ Bad: 1, 'from-newer': 2, '9lives': 3, ok: 4 })).toEqual({ ok: 4 });
+  });
+
+  it('drops an unknown text extra over 2,000 characters and keeps one of exactly 2,000', () => {
     expect(cleanOtherExtras({ long: 'a'.repeat(2001), ok: 'a'.repeat(2000) })).toEqual({ ok: 'a'.repeat(2000) });
-    expect(cleanOtherExtras({ bedrooms: 3 })).toBeNull(); // a known id is never "other"
+  });
+
+  it('never keeps a known id as an unknown extra', () => {
+    expect(cleanOtherExtras({ bedrooms: 3, deposit: { amount: 1, cadence: 'once' } })).toBeNull();
   });
 
   it('keeps a kind other than house as it came, and writes house for a house', () => {

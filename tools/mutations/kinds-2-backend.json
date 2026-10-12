@@ -60,6 +60,12 @@
     },
     {
       "file": "backend/src/main/java/app/doorprints/server/house/Money.java",
+      "find": "        return new Money(amount, cadence);",
+      "replace": "        return new Money(amount, cadence == null ? \"month\" : cadence);",
+      "expect": "moneyMapsTodaysPriceTypeBothWays"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/house/Money.java",
       "find": "        if (\"SALE\".equals(priceType)) return \"once\";",
       "replace": "",
       "expect": "moneyMapsTodaysPriceTypeBothWays"

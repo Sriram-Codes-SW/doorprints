@@ -149,8 +149,10 @@ class CandidateExtrasTest {
             assertThat(validator.validate(withMoney("house", new Money(90000L, "year"))))
                     .extracting(v -> v.getPropertyPath().toString()).containsExactly("moneyOfTheKind");
             assertThat(validator.validate(withMoney("school", new Money(90000L, "year")))).as("another kind").isEmpty();
-            assertThat(validator.validate(withMoney("house", new Money(1L, null))))
-                    .extracting(v -> v.getPropertyPath().toString()).containsExactly("money.cadence");
+            // A price whose type is not set: an amount and no cadence (owner, 2026-10-12); neither is refused.
+            assertThat(validator.validate(withMoney("house", new Money(1L, null)))).as("a typeless price").isEmpty();
+            assertThat(validator.validate(withMoney("house", new Money(null, null))))
+                    .extracting(v -> v.getPropertyPath().toString()).containsExactly("money.known");
             assertThat(validator.validate(withMoney("house", new Money(-1L, "month"))))
                     .extracting(v -> v.getPropertyPath().toString()).containsExactly("money.amount");
         }
@@ -167,6 +169,9 @@ class CandidateExtrasTest {
         assertThat(Money.of(12500000L, "SALE")).isEqualTo(new Money(12500000L, "once"));
         assertThat(Money.of(null, "RENT")).isEqualTo(new Money(null, "month"));
         assertThat(Money.of(null, null)).isNull();
+        // A price without a type is not a monthly rent (owner, 2026-10-12): it keeps no cadence and reads back typeless.
+        assertThat(Money.of(1_20_00_000L, null)).isEqualTo(new Money(1_20_00_000L, null));
+        assertThat(new Money(1L, null).priceType()).isNull();
         assertThat(new Money(1L, "month").priceType()).isEqualTo("RENT");
         assertThat(new Money(1L, "once").priceType()).isEqualTo("SALE");
         assertThat(new Money(1L, "year").priceType()).isNull();

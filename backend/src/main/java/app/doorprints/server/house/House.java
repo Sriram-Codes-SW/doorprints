@@ -148,9 +148,9 @@ public class House {
         checklist.clear();
     }
 
-    /** The money as one value: {@code null} when the row has no cadence (and so no money). */
+    /** The money as one value: {@code null} when the row has neither an amount nor a cadence. */
     public Money getMoney() {
-        return moneyCadence == null ? null : new Money(moneyAmount, moneyCadence);
+        return moneyAmount == null && moneyCadence == null ? null : new Money(moneyAmount, moneyCadence);
     }
 
     public void setMoney(Money money) {
