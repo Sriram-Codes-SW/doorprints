@@ -389,7 +389,9 @@ jobs:
   layout-gate:
     name: Phone layout gate (320x568, 360x640, 390x664)
     needs: build
-    runs-on: ubuntu-26.04
+    # ubuntu-24.04, not 26.04 like the other jobs: Playwright 1.56.1 refuses `install --with-deps` on 26.04 ("does not support
+    # chromium on ubuntu26.04-x64"). Move to 26.04 with a Playwright that supports it (tools/live-ui/package.json).
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: read
