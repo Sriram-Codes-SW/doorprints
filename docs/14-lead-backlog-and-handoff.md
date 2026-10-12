@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.163 |
+| Version | 0.164 |
 | Date | 2026-10-10 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..183); this file lists the lead-level items and points to the rest. |
@@ -171,6 +171,7 @@
 | 0.161 | 2026-10-10 | Claude (Code), engineer | §2 N21 voice: **voice PR 2 (S4b-BL-219) is in review** (draft PR #265): the `Transcriber` core with no caller ([10](10-sprint-log.md) v0.251). Next voice step is PR 3 (S4b-BL-220). |
 | 0.162 | 2026-10-10 | Claude (Code), engineer | §2 N21: **kinds PR 1 (S4b-BL-205) in review** on `feat/kinds-pr1-adr-schema`: ADR-36 and [03](03-design.md) §18, the kind files, the file-size budget; the three one-way-door choices of §18.4 owner-approved 2026-10-10. |
 | 0.163 | 2026-10-10 | Claude (Code), engineer | **§11: the state at the end of the long session of 2026-10-10** (what merged, what is open, what the live runs showed, the decisions that wait for the owner, how to resume). Docs only. |
+| 0.164 | 2026-10-12 | Claude (Code), engineer | **§11.4 items 1-4 decided** (S4b-BL-241): sale-and-rent gives a null price and type with both amounts in the notes; the Ask document names the first visit; the Vertex spend is Rs 4,339 and the eval code stays; the AI Studio key is to be replaced by a free-tier key (owner action). |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 
@@ -999,10 +1000,10 @@ Golden set 75/75 twice (zero discordant cases: the eval repeats). Plan x5 on the
 
 ### 11.4 Decisions that wait for the owner
 
-1. **Sale and rent both offered:** should Extract return `priceType` null (the person chooses) or the first offer? Null needs a prompt change and a re-pin of the parity vectors.
-2. **First visit date in the Ask document:** today only the last visit date appears, so "which did I see first" cannot be answered; adding it changes the pinned document lines.
-3. **Billing:** check the spend of the Google Cloud project `doorprints-ai` (the plan estimated about Rs 455-600 plus small follow-ups; the actual figure was never read). The repository variable `VERTEX_EVAL_ENABLED` should be deleted when the runs are done.
-4. **The AI Studio key** (`AI_API_KEY`) answers HTTP 402 (prepaid credit used up); the on-device live suite and own-key Gemini evals need a top-up or another key. Vertex is unaffected.
+1. **Sale and rent both offered: closed (owner, 2026-10-12; S4b-BL-241).** Extract returns `priceType` null and `price` null and puts both amounts in the notes; the `priceType` bullet of the Extract prompt says so in all three stacks, the JSON-schema description is unchanged, so no request-body vector moved.
+2. **First visit date in the Ask document: closed (owner, 2026-10-12; S4b-BL-241).** A house with several visits now reads `Visits: 2 visits, first on <date>, last on <date>, N min in total`; one visit reads as before. Dates only, so `hard-ask-03` stays the same-day question (both fixture visits are on 2026-09-14).
+3. **Billing: read.** The actual spend on the Google Cloud project `doorprints-ai` is Rs 4,339 (the plan estimated Rs 455-600). The owner keeps `VERTEX_EVAL_ENABLED` and the eval code for now.
+4. **The AI Studio key (`AI_API_KEY`) answers HTTP 402: open owner action.** The owner will not top up AI Studio (zero-cost rule). Replace `AI_API_KEY` with a free-tier key from a project without billing, then dispatch `ai-evals.yml` with suite `key-check`, then `on-device`. Recorded in [06](06-test-plan.md) TC-U-88 and [ai-design](ai/ai-design.md) 2.1. Vertex is unaffected.
 5. The owner's own to-dos (devices, accounts, native-speaker review, manual TC-M checks, the Survey of India items) were left alone on purpose.
 
 ### 11.5 Next, in order
