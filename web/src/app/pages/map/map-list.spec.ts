@@ -18,6 +18,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { HouseDto, PriceType, newHouse } from '../../core/models';
+import { candidateOf, houseOf } from '../../core/candidate';
 import { floorLocalSearchText } from '../../shared/house-floor';
 import type { TKey } from '../../i18n/en';
 import { hi } from '../../i18n/hi';
@@ -126,6 +127,15 @@ describe('searchText', () => {
   };
 
   it('a blank query matches every house', () => expect(matching('  ')).toEqual(['green', 'lake']));
+  // Kinds step 3 (S4b-BL-206): a house stored and synced as a candidate (kind, money, extras) is searched by the same
+  // values as before, read from its extras; an extra a newer app wrote is kept but, like on the screens, never searched.
+  it('a house read from its candidate is found by the same values, and an unknown extra is not searched', () => {
+    const stored = houseOf(candidateOf({ ...green, floor: 0, extrasOther: { gateCode: 'zebra-12' } }));
+    expect(stored.floor).toBe(0);
+    expect(searchText(stored, greenBroker)).toBe(searchText({ ...green, floor: 0 }, greenBroker));
+    expect(searchText(stored, greenBroker).includes('ground floor')).toBe(true);
+    expect(searchText(stored, greenBroker).includes('zebra')).toBe(false);
+  });
   it('the label matches ignoring case', () => expect(matching('green view')).toEqual(['green']));
   it('the address, street and locality match', () => {
     expect(matching('5th cross')).toEqual(['green']);

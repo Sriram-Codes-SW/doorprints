@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.109 |
+| Version | 0.110 |
 | Date | 2026-10-12 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -120,6 +120,7 @@
 | 0.107 | 2026-10-10 | Claude (Code), engineer | **CMP-9 finding** (new 11.3): keep the per-platform map code; re-assess maplibre-compose at 1.0. No spike built; based on the repository and the library's public README. Docs only. |
 | 0.108 | 2026-10-10 | Claude (Code), engineer | **ADR-36 and new §18: kinds, one candidate concept described by a kind file** (kinds PR 1, S4b-BL-205; [14](14-lead-backlog-and-handoff.md) N21; [10](10-sprint-log.md) v0.254, [06](06-test-plan.md) TC-U-198 and TC-U-199). The decision, the container named *Search* (owner-approved 2026-10-10), the deletion test applied before any code, the kind file (`docs/schemas/kinds/`), the eleven one-way doors with alternatives, reasons and reversal costs, the second pass against `kind-vectors.json`, and the file-size budget. Voice input stays ADR-37 (S4b-BL-218). Nothing reads the kind file at run time yet. |
 | 0.109 | 2026-10-12 | Claude (Code), engineer | **Kinds step 2, the server part** (S4b-BL-206; [10](10-sprint-log.md) v0.265): §9 lists `/api/candidates` and the candidate's `kind`, `money` and `extras`, `candidateId` on visits and photos; §18.4 door 7 and §18.5 record the finding that a house's own money may have a cadence and no amount (a rent not known yet), with the server's rules for unknown extras. The backup format is unchanged until the apps move. |
+| 0.110 | 2026-10-12 | Claude (Code), engineer | **Kinds step 3, the web part 1** (S4b-BL-206; [10](10-sprint-log.md) v0.267): §18.5 records that the website's IndexedDB moves to version 4, not 1 (a browser cannot open a lower version than it holds), rewriting every stored house as a candidate in place, and that the screens still read a house through one mapping at the store and at the server client. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -2063,6 +2064,15 @@ changed:
 - **The format id restart reuses `/1`** (door 1): guarded by shape; owner-approved 2026-10-10.
 - **Every key of a backup house today has exactly one place** in the kind file (`was`): the website, Android and the
   server each check it against their own model (`house-kind-file.spec.ts`, `HouseKindFileTest` twice).
+- **Found in kinds step 3 (S4b-BL-206, the web part, 2026-10-12): the website's IndexedDB cannot restart at
+  version 1.** A browser refuses to open a database at a lower version than it holds (`VersionError`), so the plan's
+  "IndexedDB `DB_VERSION` 1" is **version 4**: its step rewrites every row of `houses` as a candidate (`kind`, `money`,
+  `extras`) inside the upgrade transaction, so a failure leaves the database at version 3 as it was, and a row a
+  version-3 database wrote still reads as the house it is (`data/candidate-rows.ts`). Visits, photos and their
+  `houseId` indexes stay: those are internal names, and the wire and the backup say `candidateId`. The screens still
+  read a house (`HouseDto`); `core/candidate.ts` is the one mapping, used at the store and at the server client
+  (`/api/candidates`), the twin of the server's `Money.of`, `CandidateExtras.of` and its `HouseDto` readers. An extra a
+  newer app wrote is kept (`extrasOther`) and written back after the known ones, never shown or searched.
 - **Found in kinds PR 2 (S4b-BL-206, the server part, 2026-10-12): a house's money may have a cadence and no
   amount.** A house is marked as a rent before its rent is known (the form's toggle; the question scopes `RENT` and
   `SALE` read it), so door 7's "both keys always written" holds for a money extra only; the candidate's own `money`

@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Feature parity and offline-copy export specification |
-| Version | 0.62 |
+| Version | 0.63 |
 | Date | 2026-10-07 |
 | Author | Claude (Cowork) – Product/Architecture |
 | Status | Draft: product-owner decisions D-01, D-02, D-03, D-08, D-21 (AI access) and D-23..D-25 (Sprint 4b reminders, hunting areas, location permissions) and D-26 (India's boundaries on the map, 2026-09-24) applied; ready for Sprint 4 planning |
@@ -72,6 +72,7 @@
 | 0.60 | 2026-10-06 | Claude (Code), docs pass | **The path trace v2 and the place check moved from *planned* to *built*** (`feat/path-trace-v2`, PR #146, not yet merged; S4b-FR-13..FR-17 and FR-24 built, FR-18 the guide done). 5.27.0 and 5.27.13 no longer say *design, not built*; 5.27.10 names the real test classes (`TraceVectorsTest` replaces the planned two vector classes); the vector file is *confirmed*; the Room 11 and IndexedDB 3 rows say built. Owner device checks (TC-M-25 re-run, TC-M-57..61, MT-75..81) stay open and are not claimed. The review of the branch found six must-fix items (the Android Map redraw, the walk to ask about, the live walk's own points after the Room upgrade, the website's alert switch, `HuntService`'s Finish walk intent, the docs) and sixteen smaller ones: [10](10-sprint-log.md) S4b-FR-25..S4b-FR-37. |
 | 0.61 | 2026-10-07 | Claude (Code), docs pass | New **D-31**: any AI provider on the device, device-only ([03](03-design.md) §13.2, ADR-35; [01](01-requirements.md) AI-018; planned). |
 | 0.62 | 2026-10-07 | Claude (Code), lead | **D-31: Anthropic is built** (S4b-BL-152; [03](03-design.md) §13.2 v0.74): the third kind of the on-device provider, in the same device-only rules (no key, address or model in a backup, copy, sync, Drive or share file). |
+| 0.63 | 2026-10-12 | Claude (Code), engineer | 8.2: IndexedDB version 4 (kinds step 3, S4b-BL-206): the `houses` store holds candidates. |
 | 0.52 | 2026-10-01 | Claude (Code), lead | 5.6: the **Basement** switch under Floor and the import's tolerant reading of a floor out of range, with a warning in the preview (S4b-BL-104 c, d); search finds the floor in the app's language too (S4b-BL-104 b). |
 | 0.51 | 2026-10-01 | Claude (Code), lead | **The finishing batch built** (on stacked branches, [10](10-sprint-log.md) §13.29..§13.40): built notes for 5.2 (copies in UTC, the iPhone's copies and imports, the website's import), 5.6 (the floor, moving rooms), 5.7 (photo tags), 5.8 (the iPhone's calendar file, the reminder follow-ups), 5.17 and 5.18 (the iPhone wake-up), 5.19 (the emulator test, Hunt alerts with the app lock), 5.20 (offline maps on the website), 5.21 (the cost filters), 5.24 (moving in, the statuses Taken and Not chosen), 5.25 (the duplicate-flat warning), 5.28 (deletions in an update file, `/3`) and 5.29 (the locality lookup). |
 
@@ -2229,7 +2230,8 @@ erDiagram
 | Room | 6 | `photos.storage`, `driveFileId`, `driveMissing`, `thumbOnly`; bound account ID in encrypted settings | 5 |
 | Room | 11 (built on `feat/path-trace-v2`) | `saved_walks` (5.27.6, [03](03-design.md) §6.2): the walks the person saved, linked to a house; on the phone only, never in a backup. `track_points` gains `walkId`. `11.json`, `MIGRATION_10_11` tested | S4b-FR-14 |
 | IndexedDB | 3 (built on `feat/path-trace-v2`; `DB_VERSION` is 2 on `main`) | `trace_points` and `saved_walks` stores (5.27.8), website only, never exported; `upgradeLocalDb` step `oldVersion < 3` | S4b-FR-17 |
-| IndexedDB | 1 → 4 | Mirrors Room 2 (version 1, 4a), Room 4 and 5 (versions 2 and 3, 4b, with the upgrade path S4b-BL-71), Room 6 (version 4, 5); the hand-written wrapper of `local-db.ts`, no Dexie (4a decision) | 4a–5 |
+| IndexedDB | 4 (`DB_VERSION` 4; kinds step 3, S4b-BL-206) | Every row of `houses` is rewritten as a candidate (`kind`, `money` with its cadence, `extras`) in the upgrade transaction ([03](03-design.md) §18.5); no store or index changes. A browser cannot open a lower version than it holds, so the format reset's "version 1" is version 4 here | Kinds |
+| IndexedDB | 1 → 4 (the plan of 4a) | Mirrors Room 2 (version 1, 4a), Room 4 and 5 (versions 2 and 3, 4b, with the upgrade path S4b-BL-71), Room 6 (version 4, 5); the hand-written wrapper of `local-db.ts`, no Dexie (4a decision) | 4a–5 |
 
 Definition of done for every 4b/5 story that adds data: the new fields appear in **all six export formats** and round-trip through the JSON backup.
 

@@ -183,6 +183,11 @@ export const ANSWER_STATUSES: readonly AnswerStatus[] = ['OPEN', 'ANSWERED', 'SK
  */
 export interface HouseDto {
   id: string;
+  /**
+   * The candidate's kind (docs/03 ADR-36, S4b-BL-206) when it is not `house`; absent for a house, the only kind today.
+   * Kept so a row of another kind is written back as it came (`core/candidate.ts`).
+   */
+  kind?: string | null;
   label: string;
   address?: string | null;
   street?: string | null;
@@ -217,6 +222,11 @@ export interface HouseDto {
    */
   brokerId?: string | null;
   checklist: Record<string, number>;
+  /**
+   * The extras a newer app wrote that this one does not know (ADR-36 §18.4 door 5), by extra id: never shown or
+   * searched, only kept and written back after the known ones (`core/candidate.ts`). Absent when there are none.
+   */
+  extrasOther?: Record<string, number | string | boolean | { amount: number; cadence: string }> | null;
   createdAt?: string | null;
   updatedAt?: string | null;
   deleted: boolean;
