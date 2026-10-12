@@ -329,6 +329,8 @@ export function aiErrorMsg(err: unknown, host?: string): Msg {
     if (err.kind === 'modelNotFound') return { key: 'ai.modelNotFound' };
     // The provider's own safety system declined the text (S4b-BL-232): one fixed message, never the provider's words.
     if (err.kind === 'blocked') return { key: 'ai.blocked' };
+    // The key's free quota or credit is used up (S4b-BL-243): not a wait, so not the rate-limit words.
+    if (err.kind === 'quotaExhausted') return { key: 'ai.quotaExhausted' };
     if (err.kind === 'unreachable' && where) return { key: isLocalHost(where) ? 'ai.unreachableLocal' : 'ai.unreachable', params: { host: where } };
     return { key: 'ai.providerDown' };
   }

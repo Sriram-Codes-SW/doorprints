@@ -1671,6 +1671,8 @@ export const en = {
   'ai.modelNotFound': 'The AI service does not know this model. Check the model name on the Connect page, under AI features.',
   // S4b-BL-232 (2026-10-10): the AI provider's own safety system declined the text. Nothing is filtered by the app.
   'ai.blocked': 'The AI service declined this text. Nothing was changed. Edit the wording and try again.',
+  // S4b-BL-243 (2026-10-12): the key's free quota or credit is used up (402, a daily Gemini quota, insufficient_quota, a billing error).
+  'ai.quotaExhausted': 'Your key\'s free quota or credit is used up. Check usage and billing with your provider; the app works without AI.',
   'ai.unreachable': 'Could not reach {host}. Check the address and your connection.',
   'ai.unreachableLocal': 'Could not reach {host}. Check that it is running and that it allows this site (CORS); the browser blocks it otherwise.',
   // S4b-BL-182 (2026-10-08): the paste box says how much of a long listing is left out.
