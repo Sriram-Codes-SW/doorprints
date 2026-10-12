@@ -29,6 +29,7 @@ import app.doorprints.server.ai.extract.ListingExtractionService;
 import app.doorprints.server.ai.rag.HouseDocuments;
 import app.doorprints.server.common.BadRequestException;
 import app.doorprints.server.house.HouseDto;
+import app.doorprints.server.house.TestHouses;
 import app.doorprints.server.house.HouseService;
 import app.doorprints.server.house.HouseStatus;
 import jakarta.validation.Validation;
@@ -65,7 +66,7 @@ class AiLimitsTest {
     }
 
     private static HouseDto house(String notes) {
-        return new HouseDto(UUID.randomUUID(), "Plot", null, null, null, 12.97, 77.64, HouseStatus.NEW, null, null, null, null,
+        return TestHouses.dto(UUID.randomUUID(), "Plot", null, null, null, 12.97, 77.64, HouseStatus.NEW, null, null, null, null,
                 null, null, null, notes, null, null, null, null, null, null, null, null, Map.of(), null, null, false, 1, null);
     }
 

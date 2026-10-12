@@ -88,8 +88,8 @@ class ProblemJsonFiltersTest {
     @Test
     void apiRateLimitFilterAnswers429WithRetryAfter() throws Exception {
         var filter = new ApiRateLimitFilter(new TokenBucketRateLimiter(1, 1));
-        assertThat(run(filter, request("GET", "/api/houses")).getStatus()).isEqualTo(200);
-        var refused = run(filter, request("GET", "/api/houses"));
+        assertThat(run(filter, request("GET", "/api/candidates")).getStatus()).isEqualTo(200);
+        var refused = run(filter, request("GET", "/api/candidates"));
         assertProblem(refused, 429, "Rate limit exceeded, retry in " + retryAfter(refused) + "s");
         assertThat(retryAfter(refused)).isPositive();
     }
@@ -97,10 +97,10 @@ class ProblemJsonFiltersTest {
     @Test
     void apiKeyFilterAnswers401ForAMissingOrWrongKey() throws Exception {
         var filter = ApiKeyFilters.of(KEY, new TokenBucketRateLimiter(100, 100));
-        var missing = run(filter, request("GET", "/api/houses"));
+        var missing = run(filter, request("GET", "/api/candidates"));
         assertProblem(missing, 401, "Missing or wrong X-API-Key");
         assertThat(missing.getHeader("Retry-After")).isNull();
-        var wrong = request("GET", "/api/houses");
+        var wrong = request("GET", "/api/candidates");
         wrong.addHeader("X-API-Key", "not-the-key");
         assertThat(run(filter, wrong).getContentAsString()).isEqualTo(missing.getContentAsString());
     }
@@ -108,8 +108,8 @@ class ProblemJsonFiltersTest {
     @Test
     void apiKeyFilterAnswers429WithRetryAfterOnceTheFailuresAreUsedUp() throws Exception {
         var filter = ApiKeyFilters.of(KEY, new TokenBucketRateLimiter(1, 1));
-        assertThat(run(filter, request("GET", "/api/houses")).getStatus()).isEqualTo(401);
-        var refused = run(filter, request("GET", "/api/houses"));
+        assertThat(run(filter, request("GET", "/api/candidates")).getStatus()).isEqualTo(401);
+        var refused = run(filter, request("GET", "/api/candidates"));
         assertProblem(refused, 429, "Too many failed attempts, retry in " + retryAfter(refused) + "s");
         assertThat(retryAfter(refused)).isPositive();
     }
@@ -124,7 +124,7 @@ class ProblemJsonFiltersTest {
     @Test
     void requestSizeLimitFilterAnswers413WithTheCap() throws Exception {
         var filter = new RequestSizeLimitFilter(10);
-        var big = request("POST", "/api/houses");
+        var big = request("POST", "/api/candidates");
         big.setContent(new byte[11]);
         var response = run(filter, big);
         assertProblem(response, 413, "Request body too large (max 10 bytes)");

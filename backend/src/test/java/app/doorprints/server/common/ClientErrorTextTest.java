@@ -112,8 +112,8 @@ class ClientErrorTextTest {
     @Test
     void aFileThatIsNotAnImageSaysSo() {
         var houseId = UUID.randomUUID();
-        api().put().uri("/api/houses/{id}", houseId).contentType(MediaType.APPLICATION_JSON)
-                .body(Map.of("label", "Photo target", "lat", 12.9, "lon", 77.6)).retrieve().toBodilessEntity();
+        api().put().uri("/api/candidates/{id}", houseId).contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of("kind", "house", "label", "Photo target", "lat", 12.9, "lon", 77.6)).retrieve().toBodilessEntity();
         var form = new LinkedMultiValueMap<String, Object>();
         form.add("id", UUID.randomUUID().toString());
         form.add("file", new ByteArrayResource("<svg onload=alert(1)>".getBytes()) {
@@ -122,7 +122,7 @@ class ClientErrorTextTest {
                 return "photo.jpg";
             }
         });
-        assertThat(refusal(() -> api().post().uri("/api/houses/{id}/photos", houseId)
+        assertThat(refusal(() -> api().post().uri("/api/candidates/{id}/photos", houseId)
                 .contentType(MediaType.MULTIPART_FORM_DATA).body(form).retrieve().body(String.class)))
                 .contains("Only well-formed JPEG, PNG or WebP images are allowed");
     }

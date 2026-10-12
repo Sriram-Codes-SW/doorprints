@@ -57,7 +57,10 @@ class HouseKindFileTest {
         return StreamSupport.stream(node.spliterator(), false).toList();
     }
 
-    /** Where each field's value is on today's wire: {@code was} split on ", ", or the field id. */
+    /**
+     * Where each field's value is in the backup format and the listing extract of today: {@code was} split on ", ", or
+     * the field id. The sync API has the new shape already (S4b-BL-206); the backup follows with the apps.
+     */
     private static List<String> wire(JsonNode field) {
         var was = field.get("was");
         return Arrays.asList((was == null ? field.get("id").asText() : was.asText()).split(", "));
@@ -73,17 +76,29 @@ class HouseKindFileTest {
                 .containsExactly(Arrays.stream(HouseStatus.values()).map(Enum::name).toArray(String[]::new));
     }
 
+    /**
+     * The sync API's shape since the format reset (S4b-BL-206): a core field sits under its own id ({@code location}
+     * as {@code lat} and {@code lon}), every extra under {@code extras.<id>} in the kind file's order, and the cost
+     * fields the AI documents read ({@link HouseCost}) are the extras after the BHK, the area and the floor.
+     */
     @Test
     void everyHouseFieldHasAPlaceInTheKindFileAndNothingElseDoes() throws IOException {
         var k = kind();
-        var placed = new ArrayList<String>();
-        for (var f : list(k.get("core"))) placed.addAll(wire(f));
-        for (var f : list(k.get("extras"))) placed.addAll(wire(f));
-        var dto = names(HouseDto.class).stream().filter(n -> !NOT_FIELDS.contains(n)).toList();
-        assertThat(placed.stream().filter(w -> !w.startsWith("cost.")).toList()).containsExactlyInAnyOrderElementsOf(dto);
-        assertThat(placed.stream().filter(w -> w.startsWith("cost.")).toList())
-                .containsExactlyElementsOf(names(HouseCost.class).stream().map(n -> "cost." + n).toList());
+        var core = new ArrayList<String>();
+        for (var f : list(k.get("core"))) {
+            var id = f.get("id").asText();
+            if ("location".equals(id)) core.addAll(List.of("lat", "lon"));
+            else core.add(id);
+        }
+        var dto = names(HouseDto.class).stream().filter(n -> !NOT_FIELDS.contains(n) && !WIRE_ONLY.contains(n)).toList();
+        assertThat(core).containsExactlyInAnyOrderElementsOf(dto);
+        var extras = list(k.get("extras")).stream().map(f -> f.get("id").asText()).toList();
+        assertThat(extras).containsExactlyElementsOf(CandidateExtras.KNOWN);
+        assertThat(extras.subList(3, extras.size())).containsExactlyElementsOf(names(HouseCost.class));
     }
+
+    /** The candidate's own kind id and its extras object: on the wire, but not fields the kind file places. */
+    private static final Set<String> WIRE_ONLY = Set.of("kind", "extras");
 
     @Test
     void theCapsAreTheServers() throws IOException {

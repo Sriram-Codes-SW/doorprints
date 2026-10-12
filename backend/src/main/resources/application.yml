@@ -93,11 +93,11 @@ spring:
         dimensions: ${AI_EMBEDDING_DIMENSIONS:768}
     vectorstore:
       pgvector:
-        # Must match V2__pgvector_store.sql (vector(768)).
+        # Must match the vector_store table of V1__init.sql (vector(768)).
         dimensions: ${AI_EMBEDDING_DIMENSIONS:768}
         index-type: HNSW
         distance-type: COSINE_DISTANCE
-        # Flyway V2 owns the table; set true only if pgvector was installed after V2 ran.
+        # Flyway V1 owns the table; set true only if pgvector was installed after V1 ran.
         initialize-schema: ${AI_VECTOR_INIT_SCHEMA:false}
     chat:
       # Never log prompts/completions: they contain the user's private notes.
@@ -231,7 +231,7 @@ app:
       # header. openai: Spring AI's OpenAI-compatible embeddings (spring.ai.openai.*), e.g. for Ollama.
       provider: ${AI_EMBEDDING_PROVIDER:google-genai}
       model: ${AI_EMBEDDING_MODEL:gemini-embedding-2}
-      # Must match V2__pgvector_store.sql (vector(768)); sent as outputDimensionality.
+      # Must match the vector_store table of V1__init.sql (vector(768)); sent as outputDimensionality.
       dimensions: ${AI_EMBEDDING_DIMENSIONS:768}
       base-url: ${AI_EMBEDDING_BASE_URL:https://generativelanguage.googleapis.com/v1beta}
       api-key: ${AI_EMBEDDING_API_KEY:${AI_API_KEY:}}

@@ -56,6 +56,24 @@ class FixtureSeedingTest {
         assertThat(house).containsKeys("city", "region");
     }
 
+    /** S4b-BL-206: the golden set's price, type and BHK reach the sync API as the candidate's kind, money and extras. */
+    @Test
+    void seedBodySendsTheHouseAsACandidateOfTheHouseKind() {
+        var rent = Map.<String, Object>of("id", "h-1", "label", "Blue gate", "price", 28000, "priceType", "RENT",
+                "bedrooms", 2);
+        assertThat(FixtureSeeding.seedBody(rent, 0, NOW)).containsEntry("kind", "house")
+                .containsEntry("money", Map.of("amount", 28000, "cadence", "month"))
+                .containsEntry("extras", Map.of("bedrooms", 2)).doesNotContainKeys("price", "priceType", "bedrooms");
+        var sale = Map.<String, Object>of("id", "h-2", "label", "Sea view", "price", 12500000, "priceType", "SALE");
+        assertThat(FixtureSeeding.seedBody(sale, 0, NOW))
+                .containsEntry("money", Map.of("amount", 12500000, "cadence", "once")).doesNotContainKey("extras");
+        assertThat(FixtureSeeding.seedBody(Map.of("id", "h-3", "label", "Plain"), 0, NOW))
+                .containsEntry("kind", "house").doesNotContainKeys("money", "extras");
+        var visit = Map.<String, Object>of("id", "v-1", "houseId", "h-1", "lat", 19.07, "lon", 72.88);
+        assertThat(FixtureSeeding.visitBody(visit, NOW)).containsEntry("candidateId", "h-1")
+                .containsEntry("updatedAt", NOW.toString()).containsEntry("deleted", false).doesNotContainKey("houseId");
+    }
+
     @Test
     void theGoldenSetsFixtureHousesGetDistinctTimestampsInOrder() throws IOException {
         var houses = GoldenSet.load(GoldenSet.locate()).fixtureHouses();

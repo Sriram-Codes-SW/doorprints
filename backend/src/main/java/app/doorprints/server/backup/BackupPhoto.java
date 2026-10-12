@@ -29,7 +29,7 @@ import java.util.UUID;
  *
  * <p>{@code fileName} is {@code <id>.jpg}, the name the bytes have inside a backup ZIP's {@code photos/} folder
  * ({@link BackupFormat#photoEntry}). A JSON-only copy (what {@code GET /api/export} returns) carries no bytes: they
- * are fetched from {@code GET /api/photos/{id}} and uploaded with {@code POST /api/houses/{id}/photos}.
+ * are fetched from {@code GET /api/photos/{id}} and uploaded with {@code POST /api/candidates/{id}/photos}.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({"id", "houseId", "fileName", "createdAt", "roomId", "tags", "caption", "metaUpdatedAt"})

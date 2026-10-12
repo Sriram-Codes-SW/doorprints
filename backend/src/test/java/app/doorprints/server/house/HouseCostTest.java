@@ -75,11 +75,13 @@ class HouseCostTest {
         try (var factory = Validation.buildDefaultValidatorFactory()) {
             var validator = factory.getValidator();
             var bad = new HouseCost(-1L, null, null, null, null, 121, null, null, "2026-02-30", null, null);
-            var house = new HouseDto(UUID.randomUUID(), "Bad", null, null, null, 12.9, 77.6, HouseStatus.NEW, null,
+            var house = TestHouses.dto(UUID.randomUUID(), "Bad", null, null, null, 12.9, 77.6, HouseStatus.NEW, null,
                     null, null, null, null, null, null, null, 0, "GUESS", bad, null, null, null, null, null, Map.of(), null, null, false, 0, null);
             assertThat(validator.validate(house)).extracting(v -> v.getPropertyPath().toString())
-                    .containsExactlyInAnyOrder("areaSqft", "locationSource", "cost.deposit", "cost.brokerageMonths",
-                            "cost.availableFromADate");
+                    // The cost lives in the extras since the format reset (S4b-BL-206): a rupee field as money, the
+                    // date that is not on the calendar under the extras' own rule.
+                    .containsExactlyInAnyOrder("extras.areaSqft", "locationSource", "extras.deposit.amount",
+                            "extras.brokerageMonths", "extras.wellFormed");
             assertThat(validator.validate(bad)).extracting(ConstraintViolation::getMessage)
                     .contains("availableFrom must be a calendar date, YYYY-MM-DD");
             var fine = new HouseCost(64000L, null, 2500L, false, null, 1, 11, 2, "2026-10-15", 30000L, 31000L);

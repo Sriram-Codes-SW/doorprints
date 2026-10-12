@@ -21,11 +21,12 @@ package app.doorprints.server.backup;
 import app.doorprints.server.backup.ImportReport.Outcome;
 import app.doorprints.server.backup.ImportReport.Tally;
 import app.doorprints.server.common.BadRequestException;
+import app.doorprints.server.house.CandidateExtras;
 import app.doorprints.server.house.House;
+import app.doorprints.server.house.Money;
 import app.doorprints.server.house.HouseChangedEvent;
 import app.doorprints.server.house.HouseAnswer;
 import app.doorprints.server.house.HouseMoveIn;
-import app.doorprints.server.house.HouseCost;
 import app.doorprints.server.house.HouseRoom;
 import app.doorprints.server.house.HouseDto;
 import app.doorprints.server.house.HouseRepository;
@@ -83,7 +84,7 @@ import java.util.UUID;
  *       on {@code updatedAt}, like a house; a house's {@code brokerId} is kept as given, even when no such broker
  *       exists yet. The export writes the list, and the format id {@code /2}, only when the copy holds something {@code /1} has no place for (see {@link BackupFormat#ID_WITH_BROKERS}).</li>
  *   <li><b>Photos are metadata only.</b> The JSON carries no image bytes, so photo rows are reported and skipped;
- *       the bytes are uploaded with {@code POST /api/houses/{id}/photos}.</li>
+ *       the bytes are uploaded with {@code POST /api/candidates/{id}/photos}.</li>
  *   <li><b>A missing checklist is read as no scores</b>, not refused — the one lenient always-present field
  *       (docs/schemas/README.md section 4.4). When that clears scores this server has, the report names the
  *       house.</li>
@@ -224,7 +225,7 @@ public class BackupService {
         });
         if (!data.photos().isEmpty()) {
             fileNotes.add(data.photos().size() + " photo row(s) carry no image bytes in a JSON backup; upload them "
-                    + "with POST /api/houses/{id}/photos");
+                    + "with POST /api/candidates/{id}/photos");
         }
 
         // Brokers are independent of the houses (a house's brokerId is not checked against them), so they merge last.
@@ -426,21 +427,19 @@ public class BackupService {
         house.setLat(row.lat());
         house.setLon(row.lon());
         house.setStatus(row.status() == null ? HouseStatus.NEW : row.status());
-        house.setPrice(row.price());
-        house.setPriceType(row.priceType());
-        house.setBedrooms(row.bedrooms());
+        var money = Money.of(row.price(), row.priceType()); // this format's values as money and extras (S4b-BL-206)
+        house.setMoney(money);
+        house.setExtras(CandidateExtras.write(CandidateExtras.of(row.bedrooms(), row.areaSqft(), row.floor(),
+                row.cost(), money == null ? null : money.cadence()))); // offers at the money's cadence; {} is none
         house.setRating(row.rating());
         house.setContactName(row.contactName());
         house.setContactPhone(row.contactPhone());
         house.setListingUrl(row.listingUrl());
         house.setNotes(row.notes());
-        house.setAreaSqft(row.areaSqft());
         house.setLocationSource(row.locationSource());
-        house.setCost(HouseCost.write(row.cost())); // an empty object reads as no cost
         house.setRooms(HouseRoom.write(row.rooms())); // an empty list reads as no rooms
         house.setAnswers(HouseAnswer.write(row.answers())); // an empty list reads as no answers
         house.setMoveIn(HouseMoveIn.write(row.moveIn())); // an empty object reads as no move-in
-        house.setFloor(row.floor());
         house.setBrokerId(row.brokerId()); // as given: the broker may arrive later, or be read as none
         house.setChecklist(row.checklist() == null ? Map.of() : row.checklist());
         house.setDeleted(false);

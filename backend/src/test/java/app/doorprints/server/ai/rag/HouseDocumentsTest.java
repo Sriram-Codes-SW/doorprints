@@ -21,6 +21,7 @@ package app.doorprints.server.ai.rag;
 import app.doorprints.server.house.HouseAnswer;
 import app.doorprints.server.house.HouseCost;
 import app.doorprints.server.house.HouseDto;
+import app.doorprints.server.house.TestHouses;
 import app.doorprints.server.house.HouseRoom;
 import app.doorprints.server.house.HouseStatus;
 import app.doorprints.server.visit.VisitDto;
@@ -37,7 +38,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class HouseDocumentsTest {
 
     private final UUID id = UUID.randomUUID();
-    private final HouseDto house = new HouseDto(id, "Blue gate", "12 MG Road", "MG Road", "Indiranagar", 12.97, 77.64,
+    private final HouseDto house = TestHouses.dto(id, "Blue gate", "12 MG Road", "MG Road", "Indiranagar", 12.97, 77.64,
             HouseStatus.SHORTLISTED, 28000L, "RENT", 2, 4, "Ramesh", "+91 98450 12345", null,
             "Great water pressure", null, null, null, null, null, null, null, null, Map.of("water", 5, "parking", 2), null, null, false, 7, null);
 
@@ -65,7 +66,7 @@ class HouseDocumentsTest {
 
     @Test
     void contactNameAndPhoneNeverReachTheEmbeddingTextEvenWhenTypedIntoOtherFields() {
-        var leaky = new HouseDto(id, "Ramesh Kumar's flat", "Near Kumar stores, ph 98450 12345", "MG Road",
+        var leaky = TestHouses.dto(id, "Ramesh Kumar's flat", "Near Kumar stores, ph 98450 12345", "MG Road",
                 "Indiranagar", 12.97, 77.64, HouseStatus.NEW, 28000L, "RENT", 2, 4, "Ramesh Kumar", "+91 98450 12345",
                 "https://example.com/l/9845012345",
                 "Ramesh said water is fine. Call ramesh on 98450-12345 or his wife on +91 99001 23456 after 6.",
@@ -87,7 +88,7 @@ class HouseDocumentsTest {
 
     @Test
     void labelNamedAfterTheOwnersFirstNameLosesItInTextAndMetadata() {
-        var h = new HouseDto(id, "Ramesh's 2BHK, Indiranagar", "12 MG Road", "MG Road", "Indiranagar", 12.97, 77.64,
+        var h = TestHouses.dto(id, "Ramesh's 2BHK, Indiranagar", "12 MG Road", "MG Road", "Indiranagar", 12.97, 77.64,
                 HouseStatus.NEW, 28000L, "RENT", 2, 4, "Ramesh Kumar", "+91 98450 12345", null, "Kumar is fine",
                 null, null, null, null, null, null, null, null, Map.of("Ramesh fixes leaks", 4), null, null, false, 7, null);
 
@@ -103,7 +104,7 @@ class HouseDocumentsTest {
 
     @Test
     void careOfAddressWithTheOwnersFullNameLosesItInTextAndMetadata() {
-        var h = new HouseDto(id, "Blue gate", "C/o Ramesh Kumar, 12 MG Road", "C/o Ramesh  Kumar",
+        var h = TestHouses.dto(id, "Blue gate", "C/o Ramesh Kumar, 12 MG Road", "C/o Ramesh  Kumar",
                 "Kumar Ramesh layout", 12.97, 77.64, HouseStatus.NEW, 28000L, "RENT", 2, 4, "Mr. Ramesh Kumar",
                 "+91 98450 12345", null, "Fine", null, null, null, null, null, null, null, null, Map.of(), null, null, false, 7, null);
 
@@ -125,7 +126,7 @@ class HouseDocumentsTest {
     @Test
     void carpetAreaAndCostLinesAreIndexedButNeverMyOffer() {
         var cost = new HouseCost(64000L, 3, 2500L, false, null, 1, 11, 2, "2026-10-15", 30000L, 31000L);
-        var h = new HouseDto(id, "Blue gate", null, null, null, 12.97, 77.64, HouseStatus.NEW, 32000L, "RENT", 2,
+        var h = TestHouses.dto(id, "Blue gate", null, null, null, 12.97, 77.64, HouseStatus.NEW, 32000L, "RENT", 2,
                 null, null, null, null, null, 1150, "GPS", cost, null, null, null, null, null, Map.of(), null, null, false, 1, null);
 
         var text = HouseDocuments.text(h, List.of());
@@ -143,7 +144,7 @@ class HouseDocumentsTest {
         // Months when there are no rupees, "included" when the rent covers the maintenance, and no line for a
         // field that is not set.
         var sale = new HouseCost(null, 2, 2500L, true, 25000L, null, null, null, null, null, null);
-        var saleText = HouseDocuments.text(new HouseDto(id, "Plot", null, null, null, 0, 0, null, null, null,
+        var saleText = HouseDocuments.text(TestHouses.dto(id, "Plot", null, null, null, 0, 0, null, null, null,
                 null, null, null, null, null, null, null, null, sale, null, null, null, null, null, Map.of(), null, null, false, 1, null), List.of());
         assertThat(saleText).contains("Deposit: 2 months\n").contains("Maintenance: Rs 2500 per month (included)\n")
                 .contains("Brokerage: Rs 25000\n").doesNotContain("Lock-in").doesNotContain("Notice")
@@ -162,7 +163,7 @@ class HouseDocumentsTest {
                 new HouseRoom("m", "BEDROOM", "Master bedroom", 396, 366, 4, "Damp patch near the window", 0),
                 new HouseRoom("s", "STORE", "", null, 200, 2, null, 2),
                 new HouseRoom("p", "POOJA", null, null, null, null, null, 2));
-        var h = new HouseDto(id, "Blue gate", null, null, null, 12.97, 77.64, HouseStatus.NEW, null, null, 2,
+        var h = TestHouses.dto(id, "Blue gate", null, null, null, 12.97, 77.64, HouseStatus.NEW, null, null, 2,
                 null, null, null, null, null, 1150, "GPS", null, rooms, null, null, null, null, Map.of(), null, null, false, 1, null);
 
         var text = HouseDocuments.text(h, List.of());
@@ -226,7 +227,7 @@ class HouseDocumentsTest {
     /** S4b-BL-87: a Floor line right after the carpet area, in the apps' words (0 the ground floor, below 0 a basement). */
     @Test
     void theFloorLineFollowsTheCarpetArea() {
-        java.util.function.IntFunction<String> text = floor -> HouseDocuments.text(new HouseDto(id, "Blue gate", null, null,
+        java.util.function.IntFunction<String> text = floor -> HouseDocuments.text(TestHouses.dto(id, "Blue gate", null, null,
                 null, 12.97, 77.64, HouseStatus.NEW, null, null, 2, null, null, null, null, null, 1150, null, null, null, null,
                 null, floor, null, Map.of(), null, null, false, 1, null), List.of());
         assertThat(text.apply(3)).contains("Carpet area: 1150 sq ft\nFloor: 3\n");
@@ -236,13 +237,13 @@ class HouseDocumentsTest {
     }
 
     private HouseDto withAnswers(List<HouseAnswer> answers) {
-        return new HouseDto(id, "Blue gate", null, null, null, 12.97, 77.64, HouseStatus.NEW, null, null, 2,
+        return TestHouses.dto(id, "Blue gate", null, null, null, 12.97, 77.64, HouseStatus.NEW, null, null, 2,
                 null, "Ramesh Kumar", "+91 98450 12345", null, null, null, null, null, null, answers, null, null, null, Map.of(),
                 null, null, false, 1, null);
     }
 
     private HouseDto withMoveIn(app.doorprints.server.house.HouseMoveIn moveIn) {
-        return new HouseDto(id, "Blue gate", null, null, null, 12.97, 77.64, HouseStatus.TAKEN, null, null, 2,
+        return TestHouses.dto(id, "Blue gate", null, null, null, 12.97, 77.64, HouseStatus.TAKEN, null, null, 2,
                 null, "Ramesh Kumar", "+91 98450 12345", null, null, null, null, null, null, null, moveIn, null, null,
                 Map.of(), null, null, false, 1, null);
     }
@@ -364,7 +365,7 @@ class HouseDocumentsTest {
 
     @Test
     void metadataSkipsNullsAndNotesAreCapped() {
-        var bare = new HouseDto(id, "Plot", null, null, null, 0, 0, null, null, null, null, null, null, null, null,
+        var bare = TestHouses.dto(id, "Plot", null, null, null, 0, 0, null, null, null, null, null, null, null, null,
                 "n".repeat(10_000), null, null, null, null, null, null, null, null, Map.of(), null, null, false, 1, null);
         var doc = HouseDocuments.toDocument(bare, List.of());
         assertThat(doc.getMetadata()).containsOnlyKeys("houseId", "label", "visited").containsEntry("visited", false);
@@ -378,7 +379,7 @@ class HouseDocumentsTest {
     private static final double ADYAR_LON = 80.2574;
 
     private HouseDto at(double lat, double lon, String street, String source) {
-        return new HouseDto(id, "Blue gate", null, street, null, lat, lon, HouseStatus.NEW, null, null, 2, null,
+        return TestHouses.dto(id, "Blue gate", null, street, null, lat, lon, HouseStatus.NEW, null, null, 2, null,
                 "Ramesh Kumar", "+91 98450 12345", null, null, null, source, null, null, null, null, null, null, Map.of(),
                 null, null, false, 1, null);
     }

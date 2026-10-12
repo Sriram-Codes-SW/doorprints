@@ -62,10 +62,10 @@ class ApiKeyFilterTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "/api;x/houses", "/api/houses;jsessionid=1", "/%61pi/houses", "/api/%2e%2e/houses", "/api%2fhouses",
-            "//api/houses", "/api//houses", "/api/./houses", "/api/../api/houses", "/api/houses.", "/api/houses/",
+            "/api;x/houses", "/api/candidates;jsessionid=1", "/%61pi/houses", "/api/%2e%2e/houses", "/api%2fhouses",
+            "//api/candidates", "/api//houses", "/api/./houses", "/api/../api/candidates", "/api/candidates.", "/api/candidates/",
             "/actuator/health;x", "/actuator/health/", "/actuator/health/..%2f..%2fapi%2fhouses", "/api\\houses",
-            "/actuator/health/../../api/houses", "/api/houses/%20"})
+            "/actuator/health/../../api/candidates", "/api/candidates/%20"})
     void rejectsNonCanonicalPathsEvenWithTheKey(String uri) throws Exception {
         var outcome = run("GET", uri, KEY);
         assertThat(outcome.status()).isEqualTo(400);
@@ -73,7 +73,7 @@ class ApiKeyFilterTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"/api/houses", "/API/houses", "/mcp", "/", "/error", "/actuator/env", "/api/ai/status",
+    @ValueSource(strings = {"/api/candidates", "/API/houses", "/mcp", "/", "/error", "/actuator/env", "/api/ai/status",
             "/actuatorx/health", "/actuator/healthz"})
     void everythingOutsideTheAllowlistNeedsTheKey(String uri) throws Exception {
         assertThat(run("GET", uri, null)).isEqualTo(new Outcome(401, false));
@@ -89,19 +89,19 @@ class ApiKeyFilterTest {
 
     @Test
     void onlyRealCorsPreflightsSkipTheKey() throws Exception {
-        var preflight = new MockHttpServletRequest("OPTIONS", "/api/houses");
+        var preflight = new MockHttpServletRequest("OPTIONS", "/api/candidates");
         preflight.addHeader("Origin", "https://example.org");
         preflight.addHeader("Access-Control-Request-Method", "PUT");
         var chain = new MockFilterChain();
         filter.doFilter(preflight, new MockHttpServletResponse(), chain);
         assertThat(chain.getRequest()).isNotNull();
 
-        assertThat(run("OPTIONS", "/api/houses", null).status()).isEqualTo(401);
+        assertThat(run("OPTIONS", "/api/candidates", null).status()).isEqualTo(401);
     }
 
     @Test
     void acceptsTheKeyAndBearerTokens() throws Exception {
-        assertThat(run("GET", "/api/houses", KEY)).isEqualTo(new Outcome(200, true));
+        assertThat(run("GET", "/api/candidates", KEY)).isEqualTo(new Outcome(200, true));
         var bearer = new MockHttpServletRequest("GET", "/mcp");
         bearer.addHeader("Authorization", "Bearer " + KEY);
         var chain = new MockFilterChain();
@@ -125,7 +125,7 @@ class ApiKeyFilterTest {
         String firstBody = null;
         java.util.Map<String, String> firstHeaders = null;
         for (var key : wrong) {
-            var request = new MockHttpServletRequest("GET", "/api/houses");
+            var request = new MockHttpServletRequest("GET", "/api/candidates");
             request.setRemoteAddr("203.0.113.9");
             request.addHeader("X-API-Key", key);
             var response = new MockHttpServletResponse();
@@ -147,15 +147,15 @@ class ApiKeyFilterTest {
 
     @Test
     void throttlesRepeatedWrongKeysButNeverTheRightOne() throws Exception {
-        for (int i = 0; i < 3; i++) assertThat(run("GET", "/api/houses", "wrong-key").status()).isEqualTo(401);
-        var request = new MockHttpServletRequest("GET", "/api/houses");
+        for (int i = 0; i < 3; i++) assertThat(run("GET", "/api/candidates", "wrong-key").status()).isEqualTo(401);
+        var request = new MockHttpServletRequest("GET", "/api/candidates");
         request.setRemoteAddr("203.0.113.7");
         request.addHeader("X-API-Key", "wrong-again");
         var response = new MockHttpServletResponse();
         filter.doFilter(request, response, new MockFilterChain());
         assertThat(response.getStatus()).isEqualTo(429);
         assertThat(response.getHeader("Retry-After")).isNotBlank();
-        assertThat(run("GET", "/api/houses", KEY)).isEqualTo(new Outcome(200, true));
+        assertThat(run("GET", "/api/candidates", KEY)).isEqualTo(new Outcome(200, true));
     }
 
     @Test
@@ -197,17 +197,17 @@ class ApiKeyFilterTest {
     @ValueSource(strings = {"   "})
     void blankNextKeyIsIgnored(String next) throws Exception {
         var single = ApiKeyFilters.of(KEY, next, new TokenBucketRateLimiter(100, 100));
-        assertThat(run(single, "GET", "/api/houses", KEY)).isEqualTo(new Outcome(200, true));
-        assertThat(run(single, "GET", "/api/houses", "")).isEqualTo(new Outcome(401, false));
-        assertThat(run(single, "GET", "/api/houses", "   ")).isEqualTo(new Outcome(401, false));
+        assertThat(run(single, "GET", "/api/candidates", KEY)).isEqualTo(new Outcome(200, true));
+        assertThat(run(single, "GET", "/api/candidates", "")).isEqualTo(new Outcome(401, false));
+        assertThat(run(single, "GET", "/api/candidates", "   ")).isEqualTo(new Outcome(401, false));
     }
 
     /** SEC-017: during a rotation both the current and the next key work; anything else is still refused. */
     @Test
     void acceptsBothKeysDuringRotation() throws Exception {
         var rotating = ApiKeyFilters.of(KEY, NEXT_KEY, new TokenBucketRateLimiter(100, 100));
-        assertThat(run(rotating, "GET", "/api/houses", KEY)).isEqualTo(new Outcome(200, true));
-        assertThat(run(rotating, "GET", "/api/houses", NEXT_KEY)).isEqualTo(new Outcome(200, true));
+        assertThat(run(rotating, "GET", "/api/candidates", KEY)).isEqualTo(new Outcome(200, true));
+        assertThat(run(rotating, "GET", "/api/candidates", NEXT_KEY)).isEqualTo(new Outcome(200, true));
 
         var bearer = new MockHttpServletRequest("GET", "/mcp");
         bearer.addHeader("Authorization", "Bearer " + NEXT_KEY);
@@ -215,23 +215,23 @@ class ApiKeyFilterTest {
         rotating.doFilter(bearer, new MockHttpServletResponse(), chain);
         assertThat(chain.getRequest()).isNotNull();
 
-        assertThat(run(rotating, "GET", "/api/houses", null)).isEqualTo(new Outcome(401, false));
-        assertThat(run(rotating, "GET", "/api/houses", "wrong-key")).isEqualTo(new Outcome(401, false));
+        assertThat(run(rotating, "GET", "/api/candidates", null)).isEqualTo(new Outcome(401, false));
+        assertThat(run(rotating, "GET", "/api/candidates", "wrong-key")).isEqualTo(new Outcome(401, false));
         // Prefixes, concatenations and case variants of a valid key are not valid.
-        assertThat(run(rotating, "GET", "/api/houses", KEY.substring(0, KEY.length() - 1)).status()).isEqualTo(401);
-        assertThat(run(rotating, "GET", "/api/houses", KEY + NEXT_KEY).status()).isEqualTo(401);
-        assertThat(run(rotating, "GET", "/api/houses", NEXT_KEY.toUpperCase()).status()).isEqualTo(401);
+        assertThat(run(rotating, "GET", "/api/candidates", KEY.substring(0, KEY.length() - 1)).status()).isEqualTo(401);
+        assertThat(run(rotating, "GET", "/api/candidates", KEY + NEXT_KEY).status()).isEqualTo(401);
+        assertThat(run(rotating, "GET", "/api/candidates", NEXT_KEY.toUpperCase()).status()).isEqualTo(401);
     }
 
     /** Without a next key configured, a would-be next key is just a wrong key. */
     @Test
     void nextKeyIsNotAcceptedUnlessConfigured() throws Exception {
-        assertThat(run("GET", "/api/houses", NEXT_KEY)).isEqualTo(new Outcome(401, false));
+        assertThat(run("GET", "/api/candidates", NEXT_KEY)).isEqualTo(new Outcome(401, false));
     }
 
     @Test
     void canonicalPathRules() {
-        assertThat(RequestPaths.isCanonical("/api/houses/6f1c2a9e-0000-4000-8000-000000000000")).isTrue();
+        assertThat(RequestPaths.isCanonical("/api/candidates/6f1c2a9e-0000-4000-8000-000000000000")).isTrue();
         assertThat(RequestPaths.isCanonical("/")).isTrue();
         assertThat(RequestPaths.isCanonical("")).isFalse();
         assertThat(RequestPaths.isCanonical("api/houses")).isFalse();

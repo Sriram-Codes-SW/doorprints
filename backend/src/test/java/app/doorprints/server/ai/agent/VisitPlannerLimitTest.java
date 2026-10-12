@@ -23,6 +23,7 @@ import app.doorprints.server.ai.agent.PlanModels.PlanRequest;
 import app.doorprints.server.ai.config.AiProperties;
 import app.doorprints.server.ai.web.AiUnavailableException;
 import app.doorprints.server.house.HouseDto;
+import app.doorprints.server.house.TestHouses;
 import app.doorprints.server.house.HouseService;
 import app.doorprints.server.house.HouseStatus;
 import app.doorprints.server.visit.VisitRepository;
@@ -71,7 +72,7 @@ class VisitPlannerLimitTest {
     private final List<HouseDto> saved = new ArrayList<>();
 
     private HouseDto house(String label, String locality, double lat, String notes) {
-        var h = new HouseDto(UUID.randomUUID(), label, "addr", "Main Road", locality, lat, LON, HouseStatus.SHORTLISTED,
+        var h = TestHouses.dto(UUID.randomUUID(), label, "addr", "Main Road", locality, lat, LON, HouseStatus.SHORTLISTED,
                 32000L, "RENT", 2, 5, "Lakshmi Narayanan", "+91 99001 23456", null, notes, null, null, null, null, null,
                 null, null, null, Map.of(), null, null, false, 1, null);
         saved.add(h);

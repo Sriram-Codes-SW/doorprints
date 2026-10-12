@@ -43,7 +43,30 @@ final class FixtureSeeding {
         // The golden set's own tags (v0.7), not house fields.
         body.remove("city");
         body.remove("region");
+        // The golden set keeps the house's words (price, priceType, bedrooms, as the AI contract does); the sync API
+        // takes a candidate since the format reset (S4b-BL-206): its kind, its money and its extras.
+        body.put("kind", "house");
+        var price = body.remove("price");
+        var type = body.remove("priceType");
+        if (price != null || type != null) {
+            var money = new LinkedHashMap<String, Object>();
+            if (price != null) money.put("amount", price);
+            money.put("cadence", "SALE".equals(type) ? "once" : "month");
+            body.put("money", money);
+        }
+        var bedrooms = body.remove("bedrooms");
+        if (bedrooms != null) body.put("extras", Map.of("bedrooms", bedrooms));
         body.put("updatedAt", now.minusSeconds(i).toString());
+        body.put("deleted", false);
+        return body;
+    }
+
+    /** The JSON body that saves a fixture visit: its house is {@code candidateId} on the sync API (S4b-BL-206). */
+    static Map<String, Object> visitBody(Map<String, Object> visit, Instant now) {
+        var body = new LinkedHashMap<String, Object>(visit);
+        var houseId = body.remove("houseId");
+        if (houseId != null) body.put("candidateId", houseId);
+        body.put("updatedAt", now.toString());
         body.put("deleted", false);
         return body;
     }

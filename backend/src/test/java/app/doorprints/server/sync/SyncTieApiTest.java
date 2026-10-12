@@ -142,16 +142,17 @@ class SyncTieApiTest {
         var id = UUID.randomUUID();
         putHouse(id, "Green View", T);
         var tomb = new HashMap<String, Object>();
+        tomb.put("kind", "house");
         tomb.put("label", "");
         tomb.put("lat", 0.0);
         tomb.put("lon", 0.0);
         tomb.put("deleted", true);
         tomb.put("updatedAt", NEWER.toString());
-        var deleted = api.put().uri("/api/houses/{id}", id).contentType(MediaType.APPLICATION_JSON).body(tomb)
+        var deleted = api.put().uri("/api/candidates/{id}", id).contentType(MediaType.APPLICATION_JSON).body(tomb)
                 .retrieve().body(MAP);
         var counter = maxSyncVersion();
 
-        var again = api.put().uri("/api/houses/{id}", id).contentType(MediaType.APPLICATION_JSON).body(tomb)
+        var again = api.put().uri("/api/candidates/{id}", id).contentType(MediaType.APPLICATION_JSON).body(tomb)
                 .retrieve().body(MAP);
 
         assertThat(version(again)).isEqualTo(version(deleted));
@@ -239,6 +240,7 @@ class SyncTieApiTest {
 
     private Map<String, Object> putHouse(UUID id, String label, Instant updatedAt) {
         var body = new HashMap<String, Object>();
+        body.put("kind", "house");
         body.put("label", label);
         body.put("lat", 12.97);
         body.put("lon", 77.59);
@@ -246,12 +248,12 @@ class SyncTieApiTest {
         body.put("status", "NEW");
         body.put("checklist", Map.of("water", 5));
         body.put("updatedAt", updatedAt.toString());
-        return api.put().uri("/api/houses/{id}", id).contentType(MediaType.APPLICATION_JSON).body(body)
+        return api.put().uri("/api/candidates/{id}", id).contentType(MediaType.APPLICATION_JSON).body(body)
                 .retrieve().body(MAP);
     }
 
     private Map<String, Object> getHouse(UUID id) {
-        return api.get().uri("/api/houses/{id}", id).retrieve().body(MAP);
+        return api.get().uri("/api/candidates/{id}", id).retrieve().body(MAP);
     }
 
     private Map<String, Object> putVisit(UUID id, String street, Instant updatedAt) {

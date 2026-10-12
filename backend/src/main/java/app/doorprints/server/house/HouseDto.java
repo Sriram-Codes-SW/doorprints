@@ -30,55 +30,66 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * One house over the sync API ({@code GET /api/houses}, {@code PUT /api/houses/{id}}).
+ * One candidate over the sync API ({@code GET /api/candidates}, {@code PUT /api/candidates/{id}}); a house is the
+ * first kind (docs/03 ADR-36 and §18). The record keeps its name: the format reset of S4b-BL-206 renamed the public
+ * surfaces only.
  *
  * <h2>Null semantics (NFR-025)</h2>
  * <ul>
- *   <li><b>On the wire the server writes every field, {@code null} included.</b> A {@code null} means "this house
- *       has no value for that field" — not "unknown" and not "unchanged". Clients can therefore tell an empty
- *       {@code notes} from a missing one without guessing, and a tombstone (see below) is recognisable by its
+ *   <li><b>On the wire the server writes every field, {@code null} included.</b> A {@code null} means "this
+ *       candidate has no value for that field" — not "unknown" and not "unchanged". Clients can therefore tell an
+ *       empty {@code notes} from a missing one without guessing, and a tombstone (see below) is recognisable by its
  *       blanked fields. This is the opposite choice from the backup format, which leaves empty fields out
- *       (docs/schemas/README.md section 4); both are explicit, so a round trip through either is lossless.</li>
+ *       (docs/schemas/README.md section 4); both are explicit, so a round trip through either is lossless. Inside
+ *       {@code money} and {@code extras} an absent value is left out, as in a backup.</li>
  *   <li><b>On input, absent and {@code null} are the same thing, and a {@code PUT} is a full replacement.</b> The
- *       body describes the house as the client knows it; every field in {@link #applyTo} is written, so a field the
- *       client leaves out is cleared. A client that only wants to change one field must send the whole house
- *       (which is what the Android and web apps do — they hold the row locally). Partial updates ("null = leave
- *       as it is") arrive with HouseDto v2 in Sprint 4b, for collections only, and will be marked as such.</li>
+ *       body describes the candidate as the client knows it; every field in {@link #applyTo} is written, so a field
+ *       the client leaves out is cleared. A client that only wants to change one field must send the whole candidate
+ *       (which is what the Android and web apps do — they hold the row locally).</li>
  *   <li><b>Defaults for a missing value:</b> {@code status} → {@code NEW}; {@code checklist} → cleared, because
  *       absent is a value here too ({@link House#setChecklist} replaces the whole map); {@code createdAt} and
  *       {@code updatedAt} → server time ({@link app.doorprints.server.sync.ClientClock}); {@code lat}/{@code lon} → 0,
  *       which is also what "no location yet" looks like. {@code deleted} defaults to {@code false} and
- *       {@code syncVersion} to 0 because Jackson is configured not to fail on missing primitives.</li>
+ *       {@code syncVersion} to 0 because Jackson is configured not to fail on missing primitives. {@code kind} has
+ *       no default: it is required (docs/03 §18.4 door 3).</li>
  *   <li><b>Server-managed fields.</b> {@code syncVersion} is assigned by the server and ignored on input;
- *       {@code distanceMeters} is only written, and only by {@code GET /api/houses/nearby} (it is {@code null}
+ *       {@code distanceMeters} is only written, and only by {@code GET /api/candidates/nearby} (it is {@code null}
  *       everywhere else, including in exports). {@code deleted} <em>is</em> read on input: {@code true} deletes
- *       the house, exactly like {@code DELETE /api/houses/{id}}.</li>
+ *       the candidate, exactly like {@code DELETE /api/candidates/{id}}.</li>
  *   <li><b>{@code label} is required but may be empty.</b> {@code ""} is a real value (an unnamed house, and
  *       what a tombstone keeps); only a missing {@code label} is rejected. The backup format allows the same, so a
  *       restored backup can be synced.</li>
  *   <li><b>A tombstone</b> (a row with {@code deleted: true}) carries {@code label: ""} and {@code null} in every
  *       other content field: the content is purged, not hidden (threat model F-16). Tombstones are never
  *       exported.</li>
- *   <li><b>The slice 1a values</b> ({@code areaSqft}, {@code locationSource}, {@code cost}; docs/11 section 5.30
- *       item 1) are optional like the rest. {@code locationSource} is {@code GPS}, {@code MAP} or {@code APPROX}
- *       (FR-068), absent for a house saved before it existed. {@code cost} is a {@link HouseCost} object whose own
- *       absent fields are left out; it is {@code null} when no field is set, and an empty object on input is the
- *       same as none. A value out of range is a 400, like the other fields.</li>
+ *   <li><b>{@code money}</b> is a {@link Money}: the price in whole rupees and its cadence ({@code month} for a rent,
+ *       {@code once} for a sale, the only two a house has). A house marked as a rent before its rent is known has a
+ *       cadence and no amount; {@code null} when neither is known. Out of range or another cadence is a 400.</li>
+ *   <li><b>{@code extras}</b> is a {@link CandidateExtras}: for a house the BHK, the carpet area, the floor and the
+ *       eleven cost fields (docs/11 section 5.21), a rupee field as money; an id this server does not know is kept
+ *       (door 5). {@code null} when none is set, and an empty object on input is the same as none. A value out of
+ *       range, a money extra without its amount or with a cadence it may not have, or an unknown id that breaks the
+ *       rules of {@link CandidateExtras} is a 400.</li>
+ *   <li><b>{@code locationSource}</b> is {@code GPS}, {@code MAP} or {@code APPROX} (FR-068), absent when unknown.</li>
  *   <li><b>{@code rooms}</b> (slice 1c, docs/11 section 5.6) is a list of at most 30 {@link HouseRoom}s with
  *       distinct ids, {@code null} when the house has none (an empty list on input is the same as none). A room out
  *       of range, a 31st room or a repeated id is a 400. A tombstone carries {@code null}.</li>
  *   <li><b>{@code moveIn}</b> (slice 5, docs/11 section 5.24) is a {@link HouseMoveIn} (date, notes, at most 30 items
  *       with distinct ids), {@code null} when the house has none (an empty object on input is the same as none). A
  *       value out of range, a 31st item or a repeated id is a 400. A tombstone carries {@code null}.</li>
- *   <li><b>{@code floor}</b> (S4b-BL-87) is the floor the flat is on, -5..200 with 0 the ground floor, {@code null}
- *       when unknown; a value out of range is a 400. A tombstone carries {@code null}.</li>
  *   <li><b>{@code brokerId}</b> (slice 1b, docs/11 section 5.25) is the record id of the house's broker, absent for
  *       none. There is no foreign key: a broker deleted or not yet synced leaves the id dangling, which readers take
  *       as no broker. A tombstone carries {@code null}.</li>
  * </ul>
+ *
+ * <p>{@link #price}, {@link #priceType}, {@link #bedrooms}, {@link #areaSqft}, {@link #floor} and {@link #cost} read
+ * the house's values out of {@code money} and {@code extras} for the server's own readers (the AI documents, its
+ * search and its plan), which kept their words through the reset; they are not properties on the wire.
  */
 public record HouseDto(
         UUID id,
+        /* The kind id, required (door 3); `house` for every candidate the apps make today. */
+        @NotNull @Pattern(regexp = House.KIND_PATTERN) String kind,
         /* Required but may be empty: a house saved from a map tap before it is named, and every tombstone,
            has label "". @NotBlank would make such a row impossible to sync or to restore from a backup, which the
            shared backup format explicitly allows (docs/schemas/README.md section 3.1). */
@@ -89,25 +100,20 @@ public record HouseDto(
         @DecimalMin("-90") @DecimalMax("90") double lat,
         @DecimalMin("-180") @DecimalMax("180") double lon,
         HouseStatus status,
-        @PositiveOrZero Long price,
-        @Pattern(regexp = "RENT|SALE") String priceType,
-        @PositiveOrZero Integer bedrooms,
+        @Valid Money money,
         @Min(1) @Max(5) Integer rating,
         @Size(max = 200) String contactName,
         @Size(max = 50) String contactPhone,
         @Size(max = 1000) String listingUrl,
         @Size(max = 20000) String notes,
-        @Min(1) @Max(100_000) Integer areaSqft,
         @Pattern(regexp = LOCATION_SOURCES) String locationSource,
-        @Valid HouseCost cost,
+        @Valid CandidateExtras extras,
         /* Slice 1c: at most 30 rooms with distinct ids; an empty list is the same as none. */
         @Valid @Size(max = HouseRoom.MAX) List<@NotNull @Valid HouseRoom> rooms,
         /* Slice 3a: at most 60 viewing answers with distinct ids; an empty list is the same as none. */
         @Valid @Size(max = HouseAnswer.MAX) List<@NotNull @Valid HouseAnswer> answers,
         /* Slice 5: the moving-in card of a taken house (date, notes, at most 30 items); an empty object is the same as none. */
         @Valid HouseMoveIn moveIn,
-        /* S4b-BL-87: the floor the flat is on, 0 the ground floor and a negative one a basement level. */
-        @Min(House.MIN_FLOOR) @Max(House.MAX_FLOOR) Integer floor,
         /* Slice 1b: a broker's record id. Not checked against the records: a dangling id reads as no broker. */
         @Pattern(regexp = RecordDto.ID_PATTERN) String brokerId,
         Map<@Size(max = 100) String, @Min(0) @Max(5) Integer> checklist,
@@ -121,24 +127,62 @@ public record HouseDto(
     public static final String LOCATION_SOURCES = "GPS|MAP|APPROX";
 
     /**
-     * The house as sent to clients, without a distance.
+     * The candidate as sent to clients, without a distance.
      */
     public static HouseDto from(House h) {
         return from(h, null);
     }
 
     /**
-     * The house as sent to clients; the distance is set only by the nearby search. The stored JSON parts are parsed
-     * into their types.
+     * The candidate as sent to clients; the distance is set only by the nearby search. The stored JSON parts are
+     * parsed into their types.
      */
     public static HouseDto from(House h, Double distanceMeters) {
-        return new HouseDto(h.getId(), h.getLabel(), h.getAddress(), h.getStreet(), h.getLocality(),
-                h.getLat(), h.getLon(), h.getStatus(), h.getPrice(), h.getPriceType(), h.getBedrooms(),
-                h.getRating(), h.getContactName(), h.getContactPhone(), h.getListingUrl(), h.getNotes(),
-                h.getAreaSqft(), h.getLocationSource(), HouseCost.parse(h.getCost()), HouseRoom.parse(h.getRooms()),
-                HouseAnswer.parse(h.getAnswers()), HouseMoveIn.parse(h.getMoveIn()), h.getFloor(), h.getBrokerId(),
-                Map.copyOf(h.getChecklist()), h.getCreatedAt(), h.getUpdatedAt(), h.isDeleted(),
-                h.getSyncVersion(), distanceMeters);
+        return new HouseDto(h.getId(), h.getKind(), h.getLabel(), h.getAddress(), h.getStreet(), h.getLocality(),
+                h.getLat(), h.getLon(), h.getStatus(), h.getMoney(), h.getRating(), h.getContactName(),
+                h.getContactPhone(), h.getListingUrl(), h.getNotes(), h.getLocationSource(),
+                CandidateExtras.parse(h.getExtras()), HouseRoom.parse(h.getRooms()), HouseAnswer.parse(h.getAnswers()),
+                HouseMoveIn.parse(h.getMoveIn()), h.getBrokerId(), Map.copyOf(h.getChecklist()), h.getCreatedAt(),
+                h.getUpdatedAt(), h.isDeleted(), h.getSyncVersion(), distanceMeters);
+    }
+
+    /** The price in whole rupees, or {@code null}: {@code money.amount}. */
+    public Long price() {
+        return money == null ? null : money.amount();
+    }
+
+    /** {@code RENT} for a monthly price, {@code SALE} for a one-time one, else {@code null}: what the AI reads. */
+    public String priceType() {
+        return money == null ? null : money.priceType();
+    }
+
+    /** {@code extras.bedrooms}, or {@code null}. */
+    public Integer bedrooms() {
+        return extras == null ? null : extras.bedrooms();
+    }
+
+    /** {@code extras.areaSqft}, or {@code null}. */
+    public Integer areaSqft() {
+        return extras == null ? null : extras.areaSqft();
+    }
+
+    /** {@code extras.floor}, or {@code null}. */
+    public Integer floor() {
+        return extras == null ? null : extras.floor();
+    }
+
+    /** The eleven cost fields out of {@code extras} in rupees and months, or {@code null} when none is set. */
+    public HouseCost cost() {
+        return extras == null ? null : extras.cost();
+    }
+
+    /** A house's money is a rent or a sale ({@code docs/schemas/kinds/house.json}); other kinds may use any cadence. */
+    @JsonIgnore
+    @AssertTrue(message = "money.cadence must be month (a rent) or once (a sale) for a house")
+    public boolean isMoneyOfTheKind() {
+        // A missing cadence is the money's own @NotNull (Set.of would throw on null).
+        return money == null || money.cadence() == null || !House.HOUSE_KIND.equals(kind)
+                || Money.HOUSE_CADENCES.contains(money.cadence());
     }
 
     /** Two rooms with one id cannot be told apart by the clients; a getter constraint so Bean Validation runs it. */
@@ -160,6 +204,7 @@ public record HouseDto(
      * sync version are set by the service.
      */
     void applyTo(House h) {
+        h.setKind(kind);
         h.setLabel(label);
         h.setAddress(address);
         h.setStreet(street);
@@ -167,21 +212,17 @@ public record HouseDto(
         h.setLat(lat);
         h.setLon(lon);
         h.setStatus(status == null ? HouseStatus.NEW : status);
-        h.setPrice(price);
-        h.setPriceType(priceType);
-        h.setBedrooms(bedrooms);
+        h.setMoney(money);
         h.setRating(rating);
         h.setContactName(contactName);
         h.setContactPhone(contactPhone);
         h.setListingUrl(listingUrl);
         h.setNotes(notes);
-        h.setAreaSqft(areaSqft);
         h.setLocationSource(locationSource);
-        h.setCost(HouseCost.write(cost));
+        h.setExtras(CandidateExtras.write(extras));
         h.setRooms(HouseRoom.write(rooms));
         h.setAnswers(HouseAnswer.write(answers));
         h.setMoveIn(HouseMoveIn.write(moveIn));
-        h.setFloor(floor);
         h.setBrokerId(brokerId);
         h.setChecklist(checklist);
         h.setDeleted(deleted);

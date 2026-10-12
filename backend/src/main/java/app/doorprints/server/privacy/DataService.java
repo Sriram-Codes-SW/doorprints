@@ -79,7 +79,7 @@ public class DataService {
         em.createNativeQuery("delete from house_checklist").executeUpdate();
         em.createNativeQuery("delete from house").executeUpdate();
         em.createNativeQuery("delete from record").executeUpdate();
-        // The optional pgvector table (V2) only exists when the extension is installed.
+        // The optional pgvector table (Flyway V1) only exists when the extension is installed.
         var hasVectorStore = em.createNativeQuery("select to_regclass('public.vector_store') is not null")
                 .getSingleResult();
         if (Boolean.TRUE.equals(hasVectorStore)) em.createNativeQuery("delete from vector_store").executeUpdate();

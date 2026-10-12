@@ -20,6 +20,7 @@ package app.doorprints.server.ai.agent;
 
 import app.doorprints.server.ai.agent.HouseSearchService.Criteria;
 import app.doorprints.server.house.HouseDto;
+import app.doorprints.server.house.TestHouses;
 import app.doorprints.server.house.HouseStatus;
 import org.junit.jupiter.api.Test;
 
@@ -40,7 +41,7 @@ import static org.mockito.Mockito.when;
 class HouseSearchServiceTest {
 
     private static HouseDto house(HouseStatus status, Long price, Integer bedrooms, Integer rating, String notes) {
-        return new HouseDto(UUID.randomUUID(), "Blue gate", "12 MG Road", "MG Road", "Indiranagar", 12.97, 77.64,
+        return TestHouses.dto(UUID.randomUUID(), "Blue gate", "12 MG Road", "MG Road", "Indiranagar", 12.97, 77.64,
                 status, price, "RENT", bedrooms, rating, null, null, null, notes, null, null, null, null, null, null, null, null, Map.of(), null, null, false, 1,
                 null);
     }
@@ -78,7 +79,7 @@ class HouseSearchServiceTest {
     private static final Instant SAME = Instant.parse("2026-10-10T08:00:00Z");
 
     private static HouseDto at(UUID id, Instant updatedAt, Double distance) {
-        return new HouseDto(id, "H-" + id, "addr", "street", "Indiranagar", 12.97, 77.64, HouseStatus.NEW, 30000L,
+        return TestHouses.dto(id, "H-" + id, "addr", "street", "Indiranagar", 12.97, 77.64, HouseStatus.NEW, 30000L,
                 "RENT", 2, null, null, null, null, null, null, null, null, null, null, null, null, null, Map.of(), null, updatedAt, false, 1, distance);
     }
 

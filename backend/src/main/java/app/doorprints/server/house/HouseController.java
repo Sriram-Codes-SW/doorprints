@@ -31,10 +31,11 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * HTTP endpoints for houses, the main record the apps sync; the rules live in {@link HouseService}.
+ * HTTP endpoints for candidates (houses are the first kind; {@code /api/candidates} since the format reset of
+ * S4b-BL-206), the main record the apps sync; the rules live in {@link HouseService}.
  */
 @RestController
-@RequestMapping("/api/houses")
+@RequestMapping("/api/candidates")
 public class HouseController {
 
     private final HouseService service;
