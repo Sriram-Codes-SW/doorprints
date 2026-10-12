@@ -44,7 +44,6 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -72,7 +71,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * stops, the scorecard says {@code STOPPED: provider quota exhausted} and the test fails, instead of recording every
  * remaining case as an error. To save calls, saves are not embedded one by one ({@code app.ai.index-on-change=false});
  * the single re-index embeds each fixture house once.
- * Flow: seed the fixture houses and visits through the public API ({@code PUT /api/houses/{id}},
+ * Flow: seed the fixture houses and visits through the public API ({@code PUT /api/candidates/{id}},
  * {@code PUT /api/visits/{id}}), rebuild the vector index ({@code POST /api/ai/reindex}), run every case through the
  * real HTTP endpoints (API-key filter, validation and sanitizers included), score it with {@link EvalScorer}, write a
  * markdown scorecard to {@code target/ai-eval-report.md} and fail if a metric misses the golden set's thresholds.
@@ -403,23 +402,19 @@ class GoldenSetEvalTest {
 
     private void seedFixtures(GoldenSet golden) {
         var nowInstant = Instant.now();
-        var now = nowInstant.toString();
         var fixtureHouses = golden.fixtureHouses();
         for (int i = 0; i < fixtureHouses.size(); i++) {
             var house = fixtureHouses.get(i);
             // Distinct, ordered timestamps: the same list order, and so the same search results, every run.
-            api.put().uri("/api/houses/{id}", house.get("id")).contentType(MediaType.APPLICATION_JSON)
+            api.put().uri("/api/candidates/{id}", house.get("id")).contentType(MediaType.APPLICATION_JSON)
                     .body(FixtureSeeding.seedBody(house, i, nowInstant)).retrieve().toBodilessEntity();
         }
         for (var visit : golden.fixtureVisits()) {
-            var body = new LinkedHashMap<String, Object>(visit);
-            body.put("updatedAt", now);
-            body.put("deleted", false);
             api.put().uri("/api/visits/{id}", visit.get("id")).contentType(MediaType.APPLICATION_JSON)
-                    .body(body).retrieve().toBodilessEntity();
+                    .body(FixtureSeeding.visitBody(visit, nowInstant)).retrieve().toBodilessEntity();
         }
         var fixtureIds = new HashSet<>(golden.fixtureHouseIds());
-        var live = api.get().uri("/api/houses").retrieve().body(LIST);
+        var live = api.get().uri("/api/candidates").retrieve().body(LIST);
         long others = live == null ? 0 : live.stream()
                 .map(h -> String.valueOf(h.get("id")).toLowerCase(Locale.ROOT))
                 .filter(id -> !fixtureIds.contains(id))

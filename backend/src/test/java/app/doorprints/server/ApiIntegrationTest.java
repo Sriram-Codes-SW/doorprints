@@ -95,6 +95,7 @@ class ApiIntegrationTest {
 
     private Map<String, Object> house(String label, double lat, double lon, String street) {
         var body = new HashMap<String, Object>();
+        body.put("kind", "house");
         body.put("label", label);
         body.put("lat", lat);
         body.put("lon", lon);
@@ -107,7 +108,7 @@ class ApiIntegrationTest {
     }
 
     private Map<String, Object> put(UUID id, Map<String, Object> body) {
-        return api.put().uri("/api/houses/{id}", id).contentType(MediaType.APPLICATION_JSON)
+        return api.put().uri("/api/candidates/{id}", id).contentType(MediaType.APPLICATION_JSON)
                 .body(body).retrieve().body(MAP);
     }
 
@@ -140,7 +141,7 @@ class ApiIntegrationTest {
                 return "photo.jpg";
             }
         });
-        var result = api.post().uri("/api/houses/{id}/photos", houseId).contentType(MediaType.MULTIPART_FORM_DATA)
+        var result = api.post().uri("/api/candidates/{id}/photos", houseId).contentType(MediaType.MULTIPART_FORM_DATA)
                 .body(form).retrieve().body(MAP);
         assertThat(result).containsEntry("id", photoId.toString());
         return photoId;
@@ -148,7 +149,7 @@ class ApiIntegrationTest {
 
     @Test
     void rejectsRequestsWithoutKey() {
-        assertThatThrownBy(() -> anonymous.get().uri("/api/houses").retrieve().body(String.class))
+        assertThatThrownBy(() -> anonymous.get().uri("/api/candidates").retrieve().body(String.class))
                 .isInstanceOfSatisfying(HttpClientErrorException.class,
                         e -> assertThat(e.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(401)));
     }
@@ -182,9 +183,9 @@ class ApiIntegrationTest {
         var rawAnonymous = RestClient.builder().requestFactory(new JdkClientHttpRequestFactory()).build();
         var rawWithKey = RestClient.builder().requestFactory(new JdkClientHttpRequestFactory())
                 .defaultHeader("X-API-Key", KEY).build();
-        for (var path : List.of("/api;x/houses", "/api/houses;jsessionid=1", "/%61pi/houses", "//api/houses",
-                "/api//houses", "/api/./houses", "/api/houses.", "/actuator/health;x/../../api/houses",
-                "/API/houses", "/api/houses/")) {
+        for (var path : List.of("/api;x/houses", "/api/candidates;jsessionid=1", "/%61pi/houses", "//api/candidates",
+                "/api//houses", "/api/./houses", "/api/candidates.", "/actuator/health;x/../../api/candidates",
+                "/API/houses", "/api/candidates/")) {
             var uri = URI.create(base + path);
             assertThat(status(() -> rawAnonymous.get().uri(uri).retrieve().body(String.class)))
                     .as("anonymous %s", path).isIn(400, 401);
@@ -198,7 +199,7 @@ class ApiIntegrationTest {
     void aMalformedMultipartUploadIsABadRequestNotAServerError() {
         var id = UUID.randomUUID();
         put(id, house("Upload test", 12.97, 77.59, "MG Road"));
-        assertThatThrownBy(() -> api.post().uri("/api/houses/{id}/photos", id)
+        assertThatThrownBy(() -> api.post().uri("/api/candidates/{id}/photos", id)
                 .contentType(MediaType.MULTIPART_FORM_DATA).body("x").retrieve().toBodilessEntity())
                 .isInstanceOfSatisfying(HttpClientErrorException.class,
                         e -> assertThat(e.getStatusCode().value()).isEqualTo(400));
@@ -222,15 +223,15 @@ class ApiIntegrationTest {
         assertThat(((Map<?, ?>) saved.get("checklist")).get("water")).isEqualTo(5);
 
         // ~20 m away: found within 50 m, not within 5 m
-        var near = api.get().uri("/api/houses/nearby?lat=12.97178&lon=77.59460&radius=50").retrieve().body(LIST);
+        var near = api.get().uri("/api/candidates/nearby?lat=12.97178&lon=77.59460&radius=50").retrieve().body(LIST);
         assertThat(near).anySatisfy(h -> {
             assertThat(h.get("id")).isEqualTo(id.toString());
             assertThat(((Number) h.get("distanceMeters")).doubleValue()).isBetween(15.0, 25.0);
         });
-        var tooFar = api.get().uri("/api/houses/nearby?lat=12.97178&lon=77.59460&radius=5").retrieve().body(LIST);
+        var tooFar = api.get().uri("/api/candidates/nearby?lat=12.97178&lon=77.59460&radius=5").retrieve().body(LIST);
         assertThat(tooFar).noneMatch(h -> h.get("id").equals(id.toString()));
 
-        var onStreet = api.get().uri("/api/houses/street?name={s}", street.toUpperCase()).retrieve().body(LIST);
+        var onStreet = api.get().uri("/api/candidates/street?name={s}", street.toUpperCase()).retrieve().body(LIST);
         assertThat(onStreet).hasSize(1);
     }
 
@@ -244,50 +245,71 @@ class ApiIntegrationTest {
         var saved = put(id, body);
         assertThat(saved.get("label")).isEqualTo("నీలం గేటు ఇల్లు");
         assertThat(saved.get("notes")).isEqualTo("पानी का दबाव अच्छा है");
-        var onStreet = api.get().uri("/api/houses/street?name={s}", street).retrieve().body(LIST);
+        var onStreet = api.get().uri("/api/candidates/street?name={s}", street).retrieve().body(LIST);
         assertThat(onStreet).singleElement().satisfies(h -> assertThat(h.get("street")).isEqualTo(street));
     }
 
-    /** Slice 1a (V7): the house's own values go in through PUT and come back out of GET and the sync list. */
+    private static Map<String, Object> money(int amount, String cadence) {
+        return Map.of("amount", amount, "cadence", cadence);
+    }
+
+    /**
+     * The format reset (S4b-BL-206): the kind, the money and the extras go in through PUT and come back out of GET and
+     * the sync list, the extras in the kind file's order with an id this server does not know kept (door 5).
+     */
     @Test
-    void carpetAreaLocationSourceAndCostRoundTrip() {
+    void kindMoneyAndExtrasRoundTrip() {
         var id = UUID.randomUUID();
         var body = house("Green View 2BHK", 13.006, 80.2574, "MG Road");
-        body.put("price", 32000);
-        body.put("priceType", "RENT");
-        body.put("areaSqft", 1150);
+        body.put("money", money(32000, "month"));
         body.put("locationSource", "APPROX");
-        var cost = new HashMap<String, Object>();
-        cost.put("deposit", 64000);
-        cost.put("maintenance", 2500);
-        cost.put("maintenanceIncluded", false);
-        cost.put("brokerageMonths", 1);
-        cost.put("lockInMonths", 11);
-        cost.put("noticeMonths", 2);
-        cost.put("availableFrom", "2026-10-15");
-        cost.put("myOffer", 30000);
-        cost.put("agreedPrice", 31000);
-        body.put("cost", cost);
+        var extras = new HashMap<String, Object>();
+        extras.put("bedrooms", 2);
+        extras.put("areaSqft", 1150);
+        extras.put("floor", 0);
+        extras.put("deposit", money(64000, "once"));
+        extras.put("maintenance", money(2500, "month"));
+        extras.put("maintenanceIncluded", false);
+        extras.put("brokerageMonths", 1);
+        extras.put("lockInMonths", 11);
+        extras.put("noticeMonths", 2);
+        extras.put("availableFrom", "2026-10-15");
+        extras.put("myOffer", money(30000, "month"));
+        extras.put("agreedPrice", money(31000, "month"));
+        extras.put("fromNewerApp", 4);
+        body.put("extras", extras);
 
         var saved = put(id, body);
-        var read = api.get().uri("/api/houses/{id}", id).retrieve().body(MAP);
+        var read = api.get().uri("/api/candidates/{id}", id).retrieve().body(MAP);
         for (var h : List.of(saved, read)) {
-            assertThat(h).containsEntry("areaSqft", 1150).containsEntry("locationSource", "APPROX");
-            // Absent cost fields are left out of the object (a client reads absent and null alike).
-            assertThat(h.get("cost")).isEqualTo(cost);
+            assertThat(h).containsEntry("kind", "house").containsEntry("locationSource", "APPROX")
+                    .containsEntry("money", money(32000, "month"));
+            // Absent extras are left out of the object (a client reads absent and null alike).
+            assertThat(h.get("extras")).isEqualTo(extras);
+            assertThat(h).doesNotContainKeys("price", "priceType", "bedrooms", "areaSqft", "floor", "cost");
         }
-        var listed = api.get().uri("/api/houses?since=0").retrieve().body(LIST).stream()
+        var listed = api.get().uri("/api/candidates?since=0").retrieve().body(LIST).stream()
                 .filter(h -> h.get("id").equals(id.toString())).findFirst().orElseThrow();
-        assertThat(listed.get("cost")).isEqualTo(cost);
+        assertThat(listed.get("extras")).isEqualTo(extras);
+        // The known ids in the kind file's order, then the unknown one: the stored text is the wire's order.
+        var raw = api.get().uri("/api/candidates/{id}", id).retrieve().body(String.class);
+        assertThat(raw).contains("\"extras\":{\"bedrooms\":2,\"areaSqft\":1150,\"floor\":0,\"deposit\":"
+                + "{\"amount\":64000,\"cadence\":\"once\"}").contains("\"agreedPrice\":{\"amount\":31000,"
+                + "\"cadence\":\"month\"},\"fromNewerApp\":4}");
 
-        // A PUT is a full replacement: leaving the values out clears them, and {} is the same as no cost.
+        // A house marked as a rent before the rent is known: a cadence and no amount.
+        var unknownRent = house("Green View 2BHK", 13.006, 80.2574, "MG Road");
+        unknownRent.put("money", Map.of("cadence", "month"));
+        assertThat(put(id, unknownRent).get("money")).isEqualTo(Map.of("cadence", "month"));
+
+        // A PUT is a full replacement: leaving the values out clears them, and {} is the same as no extras.
         var cleared = house("Green View 2BHK", 13.006, 80.2574, "MG Road");
-        cleared.put("cost", Map.of());
+        cleared.put("extras", Map.of());
         var replaced = put(id, cleared);
-        assertThat(replaced.get("areaSqft")).isNull();
+        assertThat(replaced.get("money")).isNull();
         assertThat(replaced.get("locationSource")).isNull();
-        assertThat(replaced.get("cost")).isNull();
-        assertThat(api.get().uri("/api/houses/{id}", id).retrieve().body(MAP).get("cost")).isNull();
+        assertThat(replaced.get("extras")).isNull();
+        assertThat(api.get().uri("/api/candidates/{id}", id).retrieve().body(MAP).get("extras")).isNull();
     }
 
     private static Map<String, Object> room(String id, String type, Integer sort) {
@@ -303,7 +325,7 @@ class ApiIntegrationTest {
         return room;
     }
 
-    /** Slice 1c (V9): rooms go in through PUT, keep their order and come back from GET and the sync list. */
+    /** Slice 1c: rooms go in through PUT, keep their order and come back from GET and the sync list. */
     @Test
     void roomsRoundTripAndAPutWithoutThemClearsThem() {
         var id = UUID.randomUUID();
@@ -313,8 +335,8 @@ class ApiIntegrationTest {
         body.put("rooms", rooms);
 
         var saved = put(id, body);
-        var read = api.get().uri("/api/houses/{id}", id).retrieve().body(MAP);
-        var listed = api.get().uri("/api/houses?since=0").retrieve().body(LIST).stream()
+        var read = api.get().uri("/api/candidates/{id}", id).retrieve().body(MAP);
+        var listed = api.get().uri("/api/candidates?since=0").retrieve().body(LIST).stream()
                 .filter(h -> h.get("id").equals(id.toString())).findFirst().orElseThrow();
         for (var h : List.of(saved, read, listed)) {
             // Absent room fields are left out of the object, like the cost's.
@@ -325,7 +347,7 @@ class ApiIntegrationTest {
         var empty = house("Green View 2BHK", 13.006, 80.2574, "MG Road");
         empty.put("rooms", List.of());
         assertThat(put(id, empty).get("rooms")).isNull();
-        assertThat(api.get().uri("/api/houses/{id}", id).retrieve().body(MAP).get("rooms")).isNull();
+        assertThat(api.get().uri("/api/candidates/{id}", id).retrieve().body(MAP).get("rooms")).isNull();
         put(id, body);
         assertThat(put(id, house("Green View 2BHK", 13.006, 80.2574, "MG Road")).get("rooms")).isNull();
     }
@@ -363,7 +385,7 @@ class ApiIntegrationTest {
                 e -> assertThat(e.getResponseBodyAsString()).contains("rooms must not repeat an id"));
         assertThatThrownBy(() -> put(id, thirtyOne)).isInstanceOfSatisfying(RestClientResponseException.class,
                 e -> assertThat(e.getResponseBodyAsString()).contains("rooms"));
-        assertThat(status(() -> api.get().uri("/api/houses/{id}", id).retrieve().body(MAP))).isEqualTo(404);
+        assertThat(status(() -> api.get().uri("/api/candidates/{id}", id).retrieve().body(MAP))).isEqualTo(404);
         // Thirty is fine.
         thirtyOne.put("rooms", many.subList(0, 30));
         assertThat(put(id, thirtyOne).get("rooms")).asList().hasSize(30);
@@ -380,7 +402,7 @@ class ApiIntegrationTest {
         return answer;
     }
 
-    /** Slice 3a (V10): answers go in through PUT, keep their order and come back from GET and the sync list. */
+    /** Slice 3a: answers go in through PUT, keep their order and come back from GET and the sync list. */
     @Test
     void answersRoundTripAndAPutWithoutThemClearsThem() {
         var id = UUID.randomUUID();
@@ -391,8 +413,8 @@ class ApiIntegrationTest {
         body.put("answers", answers);
 
         var saved = put(id, body);
-        var read = api.get().uri("/api/houses/{id}", id).retrieve().body(MAP);
-        var listed = api.get().uri("/api/houses?since=0").retrieve().body(LIST).stream()
+        var read = api.get().uri("/api/candidates/{id}", id).retrieve().body(MAP);
+        var listed = api.get().uri("/api/candidates?since=0").retrieve().body(LIST).stream()
                 .filter(h -> h.get("id").equals(id.toString())).findFirst().orElseThrow();
         for (var h : List.of(saved, read, listed)) {
             // Absent answer fields are left out of the object, like the cost's.
@@ -403,7 +425,7 @@ class ApiIntegrationTest {
         var empty = house("Green View 2BHK", 13.006, 80.2574, "MG Road");
         empty.put("answers", List.of());
         assertThat(put(id, empty).get("answers")).isNull();
-        assertThat(api.get().uri("/api/houses/{id}", id).retrieve().body(MAP).get("answers")).isNull();
+        assertThat(api.get().uri("/api/candidates/{id}", id).retrieve().body(MAP).get("answers")).isNull();
         put(id, body);
         assertThat(put(id, house("Green View 2BHK", 13.006, 80.2574, "MG Road")).get("answers")).isNull();
     }
@@ -441,13 +463,13 @@ class ApiIntegrationTest {
                 e -> assertThat(e.getResponseBodyAsString()).contains("answers must not repeat an id"));
         assertThatThrownBy(() -> put(id, sixtyOne)).isInstanceOfSatisfying(RestClientResponseException.class,
                 e -> assertThat(e.getResponseBodyAsString()).contains("answers"));
-        assertThat(status(() -> api.get().uri("/api/houses/{id}", id).retrieve().body(MAP))).isEqualTo(404);
+        assertThat(status(() -> api.get().uri("/api/candidates/{id}", id).retrieve().body(MAP))).isEqualTo(404);
         // Sixty is fine.
         sixtyOne.put("answers", many.subList(0, 60));
         assertThat(put(id, sixtyOne).get("answers")).asList().hasSize(60);
     }
 
-    /** Slice 1b (V8): a house's brokerId goes in through PUT and comes back from GET and the sync list. */
+    /** Slice 1b: a house's brokerId goes in through PUT and comes back from GET and the sync list. */
     @Test
     void brokerIdRoundTripsAndABadOneIsRefused() {
         var id = UUID.randomUUID();
@@ -456,8 +478,8 @@ class ApiIntegrationTest {
         body.put("brokerId", broker);
 
         var saved = put(id, body);
-        var read = api.get().uri("/api/houses/{id}", id).retrieve().body(MAP);
-        var listed = api.get().uri("/api/houses?since=0").retrieve().body(LIST).stream()
+        var read = api.get().uri("/api/candidates/{id}", id).retrieve().body(MAP);
+        var listed = api.get().uri("/api/candidates?since=0").retrieve().body(LIST).stream()
                 .filter(h -> h.get("id").equals(id.toString())).findFirst().orElseThrow();
         for (var h : List.of(saved, read, listed)) assertThat(h).containsEntry("brokerId", broker);
 
@@ -472,38 +494,65 @@ class ApiIntegrationTest {
         assertThat(status(() -> put(UUID.randomUUID(), bad))).isEqualTo(400);
     }
 
-    /** Out-of-range slice 1a values are refused with 400 like the other fields, naming the field. */
+    /**
+     * Out-of-range values, a missing or bad kind, money of another cadence and malformed extras are refused with 400
+     * like the other fields, naming the field.
+     */
     @Test
-    void badCarpetAreaLocationSourceOrCostIsABadRequest() {
+    void badKindMoneyLocationSourceOrExtrasIsABadRequest() {
         var id = UUID.randomUUID();
         var badSource = house("Bad", 12.9, 77.6, null);
         badSource.put("locationSource", "GUESS");
+        var noKind = house("Bad", 12.9, 77.6, null);
+        noKind.remove("kind");
+        var badKind = house("Bad", 12.9, 77.6, null);
+        badKind.put("kind", "House!");
+        var yearlyRent = house("Bad", 12.9, 77.6, null);
+        yearlyRent.put("money", money(400000, "year"));
+        var noCadence = house("Bad", 12.9, 77.6, null);
+        noCadence.put("money", Map.of("amount", 32000));
+        var negativePrice = house("Bad", 12.9, 77.6, null);
+        negativePrice.put("money", money(-1, "month"));
         var badArea = house("Bad", 12.9, 77.6, null);
-        badArea.put("areaSqft", 0);
+        badArea.put("extras", Map.of("areaSqft", 0));
         var negativeDeposit = house("Bad", 12.9, 77.6, null);
-        negativeDeposit.put("cost", Map.of("deposit", -1));
+        negativeDeposit.put("extras", Map.of("deposit", money(-1, "once")));
+        var monthlyDeposit = house("Bad", 12.9, 77.6, null);
+        monthlyDeposit.put("extras", Map.of("deposit", money(64000, "month")));
+        var depositWithoutAmount = house("Bad", 12.9, 77.6, null);
+        depositWithoutAmount.put("extras", Map.of("deposit", Map.of("cadence", "once")));
         var tooManyMonths = house("Bad", 12.9, 77.6, null);
-        tooManyMonths.put("cost", Map.of("lockInMonths", 121));
+        tooManyMonths.put("extras", Map.of("lockInMonths", 121));
         var badDateShape = house("Bad", 12.9, 77.6, null);
-        badDateShape.put("cost", Map.of("availableFrom", "15/10/2026"));
+        badDateShape.put("extras", Map.of("availableFrom", "15/10/2026"));
         var noSuchDay = house("Bad", 12.9, 77.6, null);
-        noSuchDay.put("cost", Map.of("availableFrom", "2026-02-30"));
+        noSuchDay.put("extras", Map.of("availableFrom", "2026-02-30"));
+        var badUnknownId = house("Bad", 12.9, 77.6, null);
+        badUnknownId.put("extras", Map.of("Not-an-id", 1));
+        var unknownList = house("Bad", 12.9, 77.6, null);
+        unknownList.put("extras", Map.of("fromNewerApp", List.of(1, 2)));
 
-        for (var body : List.of(badSource, badArea, negativeDeposit, tooManyMonths, badDateShape, noSuchDay)) {
+        for (var body : List.of(badSource, noKind, badKind, yearlyRent, noCadence, negativePrice, badArea,
+                negativeDeposit, monthlyDeposit, depositWithoutAmount, tooManyMonths, badDateShape, noSuchDay,
+                badUnknownId, unknownList)) {
             assertThat(status(() -> put(id, body))).as("%s", body).isEqualTo(400);
         }
         assertThatThrownBy(() -> put(id, negativeDeposit)).isInstanceOfSatisfying(RestClientResponseException.class,
-                e -> assertThat(e.getResponseBodyAsString()).contains("cost.deposit"));
+                e -> assertThat(e.getResponseBodyAsString()).contains("extras.deposit.amount"));
+        assertThatThrownBy(() -> put(id, noKind)).isInstanceOfSatisfying(RestClientResponseException.class,
+                e -> assertThat(e.getResponseBodyAsString()).contains("kind"));
+        assertThatThrownBy(() -> put(id, yearlyRent)).isInstanceOfSatisfying(RestClientResponseException.class,
+                e -> assertThat(e.getResponseBodyAsString()).contains("money.cadence must be month (a rent) or once"));
         assertThatThrownBy(() -> put(id, noSuchDay)).isInstanceOfSatisfying(RestClientResponseException.class,
-                e -> assertThat(e.getResponseBodyAsString()).contains("availableFrom must be a calendar date"));
-        assertThat(status(() -> api.get().uri("/api/houses/{id}", id).retrieve().body(MAP))).isEqualTo(404);
+                e -> assertThat(e.getResponseBodyAsString()).contains("extras must hold valid values"));
+        assertThat(status(() -> api.get().uri("/api/candidates/{id}", id).retrieve().body(MAP))).isEqualTo(404);
     }
 
     @Test
     void nearbyRejectsOutOfRangeParameters() {
-        assertThat(status(() -> api.get().uri("/api/houses/nearby?lat=95&lon=77.6").retrieve().body(String.class)))
+        assertThat(status(() -> api.get().uri("/api/candidates/nearby?lat=95&lon=77.6").retrieve().body(String.class)))
                 .isEqualTo(400);
-        assertThat(status(() -> api.get().uri("/api/houses/nearby?lat=12&lon=77.6&radius=-1").retrieve()
+        assertThat(status(() -> api.get().uri("/api/candidates/nearby?lat=12&lon=77.6&radius=-1").retrieve()
                 .body(String.class))).isEqualTo(400);
     }
 
@@ -542,17 +591,17 @@ class ApiIntegrationTest {
 
     @Test
     void syncReturnsChangesIncludingDeletions() {
-        long cursor = maxVersion("/api/houses");
+        long cursor = maxVersion("/api/candidates");
         var id = UUID.randomUUID();
         put(id, house("To delete", 12.9, 77.6, null));
-        api.delete().uri("/api/houses/{id}", id).retrieve().toBodilessEntity();
+        api.delete().uri("/api/candidates/{id}", id).retrieve().toBodilessEntity();
 
-        var changes = api.get().uri("/api/houses?since={c}", cursor).retrieve().body(LIST);
+        var changes = api.get().uri("/api/candidates?since={c}", cursor).retrieve().body(LIST);
         assertThat(changes).anySatisfy(h -> {
             assertThat(h.get("id")).isEqualTo(id.toString());
             assertThat(h.get("deleted")).isEqualTo(true);
         });
-        var live = api.get().uri("/api/houses").retrieve().body(LIST);
+        var live = api.get().uri("/api/candidates").retrieve().body(LIST);
         assertThat(live).noneMatch(h -> h.get("id").equals(id.toString()));
     }
 
@@ -563,9 +612,10 @@ class ApiIntegrationTest {
         var body = house("Private notes house", 12.9, 77.6, "Secret Street");
         body.put("notes", "landlord is rude");
         body.put("contactPhone", "+91 98450 12345");
-        body.put("areaSqft", 1150);
+        body.put("money", money(32000, "month"));
         body.put("locationSource", "GPS");
-        body.put("cost", Map.of("deposit", 64000, "myOffer", 30000));
+        body.put("extras", Map.of("areaSqft", 1150, "deposit", money(64000, "once"), "myOffer", money(30000, "month"),
+                "fromNewerApp", "kept until the delete"));
         body.put("brokerId", "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
         body.put("rooms", List.of(room("c1", "BEDROOM", 0)));
         body.put("answers", List.of(answer("a1", "ANSWERED", 0)));
@@ -573,23 +623,24 @@ class ApiIntegrationTest {
         var photoId = uploadPhoto(id, ImageSanitizerTest.jpegWithExif());
         var visitId = UUID.randomUUID();
         api.put().uri("/api/visits/{id}", visitId).contentType(MediaType.APPLICATION_JSON)
-                .body(Map.of("houseId", id.toString(), "lat", 12.9, "lon", 77.6,
+                .body(Map.of("candidateId", id.toString(), "lat", 12.9, "lon", 77.6,
                         "arrivedAt", Instant.now().minus(Duration.ofHours(1)).toString(), "source", "AUTO"))
                 .retrieve().body(MAP);
-        long cursor = maxVersion("/api/houses");
+        long cursor = maxVersion("/api/candidates");
 
         // The Android app deletes with PUT deleted=true; the web app with DELETE. Both must purge.
         var tombstone = house("Private notes house", 12.9, 77.6, "Secret Street");
         tombstone.put("deleted", true);
         put(id, tombstone);
 
-        var changed = api.get().uri("/api/houses?since={c}", cursor - 1).retrieve().body(LIST).stream()
+        var changed = api.get().uri("/api/candidates?since={c}", cursor - 1).retrieve().body(LIST).stream()
                 .filter(h -> h.get("id").equals(id.toString())).findFirst().orElseThrow();
         assertThat(changed.get("deleted")).isEqualTo(true);
         assertThat(changed.get("notes")).isNull();
-        assertThat(changed.get("areaSqft")).isNull();
+        assertThat(changed.get("kind")).as("the tombstone keeps its kind").isEqualTo("house");
+        assertThat(changed.get("money")).isNull();
         assertThat(changed.get("locationSource")).isNull();
-        assertThat(changed.get("cost")).isNull();
+        assertThat(changed.get("extras")).as("the tombstone keeps no extra, an unknown one included").isNull();
         assertThat(changed.get("brokerId")).as("the tombstone names no broker").isNull();
         assertThat(changed.get("rooms")).as("the tombstone keeps no room notes").isNull();
         assertThat(changed.get("answers")).as("the tombstone keeps no answer text").isNull();
@@ -601,17 +652,17 @@ class ApiIntegrationTest {
                 .isEqualTo(404);
         var visit = api.get().uri("/api/visits?since=0").retrieve().body(LIST).stream()
                 .filter(v -> v.get("id").equals(visitId.toString())).findFirst().orElseThrow();
-        assertThat(visit.get("houseId")).isNull();
+        assertThat(visit.get("candidateId")).isNull();
     }
 
     /*
      * Undelete after a synced delete. Android 1.14 (android/shared/README.md section 8, twelfth round; device check
      * 10b) brings a house back from a backup on a phone that has already pulled the server's tombstone. It relies on
      * exactly the server behaviour pinned below, and nothing else caught a regression of it before these tests:
-     *   - PUT /api/houses/{id} with deleted=false and a newer updatedAt over the purged tombstone makes the house live
+     *   - PUT /api/candidates/{id} with deleted=false and a newer updatedAt over the purged tombstone makes the house live
      *     again under its own id and createdAt; an older updatedAt leaves the tombstone as it is and syncs nothing;
      *   - restoring the house does not undo the purge: its visits stay unlinked and its photos stay tombstones;
-     *   - a visit is relinked by a PUT with houseId set whose updatedAt beats the unlink stamp (server time of the
+     *   - a visit is relinked by a PUT with candidateId set whose updatedAt beats the unlink stamp (server time of the
      *     delete, not the house tombstone's updatedAt), which is why Android stamps max(now, own + 1 ms);
      *   - a photo upload under the old, tombstoned id answers 200 with that id and stores nothing ("a deleted photo
      *     is never resurrected", PhotoService.upload), while a fresh id is stored, which is why Android gives the
@@ -656,8 +707,8 @@ class ApiIntegrationTest {
             body.put("updatedAt", Instant.now().minus(Duration.ofMinutes(5)).truncatedTo(ChronoUnit.MILLIS).toString());
             tombstone = put(id, body);
         } else {
-            api.delete().uri("/api/houses/{id}", id).retrieve().toBodilessEntity();
-            tombstone = api.get().uri("/api/houses/{id}", id).retrieve().body(MAP);
+            api.delete().uri("/api/candidates/{id}", id).retrieve().toBodilessEntity();
+            tombstone = api.get().uri("/api/candidates/{id}", id).retrieve().body(MAP);
         }
         assertThat(tombstone).containsEntry("deleted", true).containsEntry("label", "");
         long cursor = version(tombstone);
@@ -665,7 +716,7 @@ class ApiIntegrationTest {
         // What the phone pulled: the unlinked visit and the photo tombstone carry the tombstone's version.
         var unlinked = row(changes("/api/visits", cursor - 1), visitId);
         assertThat(unlinked).isNotNull();
-        assertThat(unlinked.get("houseId")).isNull();
+        assertThat(unlinked.get("candidateId")).isNull();
         var unlinkedAt = instant(unlinked, "updatedAt");
         assertThat(row(changes("/api/photos", cursor - 1), oldPhotoId)).isNotNull().containsEntry("deleted", true);
 
@@ -673,8 +724,8 @@ class ApiIntegrationTest {
         var stale = house("Bring me back", 12.9, 77.6, street);
         stale.put("updatedAt", tombstonedAt.minus(Duration.ofMinutes(1)).toString());
         assertThat(put(id, stale)).containsEntry("deleted", true).containsEntry("label", "");
-        assertThat(row(changes("/api/houses", cursor), id)).isNull();
-        assertThat(api.get().uri("/api/houses").retrieve().body(LIST))
+        assertThat(row(changes("/api/candidates", cursor), id)).isNull();
+        assertThat(api.get().uri("/api/candidates").retrieve().body(LIST))
                 .noneMatch(h -> id.toString().equals(h.get("id")));
 
         // 3. The undelete: same id, deleted=false, updatedAt newer than the tombstone.
@@ -688,14 +739,14 @@ class ApiIntegrationTest {
         assertThat(instant(restored, "createdAt")).isEqualTo(createdAt);
         assertThat(version(restored)).isGreaterThan(cursor);
         // Bringing the house back does not undo the purge.
-        assertThat(api.get().uri("/api/visits?houseId={h}", id).retrieve().body(LIST)).isEmpty();
-        assertThat(api.get().uri("/api/houses/{id}/photos", id).retrieve().body(List.class)).isEmpty();
+        assertThat(api.get().uri("/api/visits?candidateId={h}", id).retrieve().body(LIST)).isEmpty();
+        assertThat(api.get().uri("/api/candidates/{id}/photos", id).retrieve().body(List.class)).isEmpty();
 
         // 4. Visits: a relink has to beat the server's unlink stamp; being newer than the house delete is not enough.
-        assertThat(putVisit(visitId, visit(id, arrivedAt, unlinkedAt.minusMillis(1))).get("houseId")).isNull();
+        assertThat(putVisit(visitId, visit(id, arrivedAt, unlinkedAt.minusMillis(1))).get("candidateId")).isNull();
         assertThat(putVisit(visitId, visit(id, arrivedAt, later(Instant.now(), unlinkedAt))))
-                .containsEntry("houseId", id.toString()).containsEntry("deleted", false);
-        assertThat(api.get().uri("/api/visits?houseId={h}", id).retrieve().body(LIST))
+                .containsEntry("candidateId", id.toString()).containsEntry("deleted", false);
+        assertThat(api.get().uri("/api/visits?candidateId={h}", id).retrieve().body(LIST))
                 .singleElement().satisfies(v -> assertThat(v.get("id")).isEqualTo(visitId.toString()));
 
         // 5. Photos: an upload under the tombstoned id is accepted and ignored; a fresh id is stored.
@@ -703,26 +754,26 @@ class ApiIntegrationTest {
         assertThat(status(() -> api.get().uri("/api/photos/{id}", oldPhotoId).retrieve().body(byte[].class)))
                 .isEqualTo(404);
         var freshPhotoId = uploadPhoto(id, UUID.randomUUID(), jpeg);
-        assertThat(api.get().uri("/api/houses/{id}/photos", id).retrieve().body(List.class))
+        assertThat(api.get().uri("/api/candidates/{id}/photos", id).retrieve().body(List.class))
                 .containsExactly(freshPhotoId.toString());
         assertThat(api.get().uri("/api/photos/{id}", freshPhotoId).retrieve().body(byte[].class)).isNotEmpty();
 
         // 6. The next pull from the tombstone's version brings every other device the restored state.
-        assertThat(row(changes("/api/houses", cursor), id)).isNotNull()
+        assertThat(row(changes("/api/candidates", cursor), id)).isNotNull()
                 .containsEntry("deleted", false).containsEntry("label", "Bring me back");
         assertThat(row(changes("/api/visits", cursor), visitId)).isNotNull()
-                .containsEntry("houseId", id.toString()).containsEntry("deleted", false);
+                .containsEntry("candidateId", id.toString()).containsEntry("deleted", false);
         var photoChanges = changes("/api/photos", cursor);
         assertThat(row(photoChanges, freshPhotoId)).isNotNull()
-                .containsEntry("houseId", id.toString()).containsEntry("deleted", false);
+                .containsEntry("candidateId", id.toString()).containsEntry("deleted", false);
         assertThat(row(photoChanges, oldPhotoId)).isNull();
-        assertThat(api.get().uri("/api/houses").retrieve().body(LIST))
+        assertThat(api.get().uri("/api/candidates").retrieve().body(LIST))
                 .anyMatch(h -> id.toString().equals(h.get("id")));
     }
 
     private Map<String, Object> visit(UUID houseId, Instant arrivedAt, Instant updatedAt) {
         var body = new HashMap<String, Object>();
-        body.put("houseId", houseId.toString());
+        body.put("candidateId", houseId.toString());
         body.put("lat", 12.9);
         body.put("lon", 77.6);
         body.put("arrivedAt", arrivedAt.toString());
@@ -765,7 +816,7 @@ class ApiIntegrationTest {
     void photoUploadStripsMetadataAndDeletesSyncAsTombstones() {
         var houseId = UUID.randomUUID();
         put(houseId, house("Photo house", 12.9, 77.6, null));
-        long cursor = maxVersion("/api/houses");
+        long cursor = maxVersion("/api/candidates");
 
         var photoId = uploadPhoto(houseId, ImageSanitizerTest.jpegWithExif());
         var stored = api.get().uri("/api/photos/{id}", photoId).retrieve().toEntity(byte[].class);
@@ -781,9 +832,9 @@ class ApiIntegrationTest {
                 return "photo.jpg";
             }
         });
-        api.post().uri("/api/houses/{id}/photos", houseId).contentType(MediaType.MULTIPART_FORM_DATA)
+        api.post().uri("/api/candidates/{id}/photos", houseId).contentType(MediaType.MULTIPART_FORM_DATA)
                 .body(form).retrieve().body(MAP);
-        assertThat(api.get().uri("/api/houses/{id}/photos", houseId).retrieve().body(List.class)).hasSize(1);
+        assertThat(api.get().uri("/api/candidates/{id}/photos", houseId).retrieve().body(List.class)).hasSize(1);
 
         api.delete().uri("/api/photos/{id}", photoId).retrieve().toBodilessEntity();
         var changes = api.get().uri("/api/photos?since={c}", cursor).retrieve().body(LIST);
@@ -791,7 +842,7 @@ class ApiIntegrationTest {
             assertThat(p.get("id")).isEqualTo(photoId.toString());
             assertThat(p.get("deleted")).isEqualTo(true);
         });
-        assertThat(api.get().uri("/api/houses/{id}/photos", houseId).retrieve().body(List.class)).isEmpty();
+        assertThat(api.get().uri("/api/candidates/{id}/photos", houseId).retrieve().body(List.class)).isEmpty();
 
         // Not an image -> 400; more than max-photos-per-house (3 in this test) -> 409.
         assertThat(status(() -> uploadPhoto(houseId, "<svg onload=alert(1)>".getBytes()))).isEqualTo(400);
@@ -817,7 +868,7 @@ class ApiIntegrationTest {
     @Test
     void rejectsOversizedJsonBodies() {
         var big = "{\"label\":\"Big\",\"lat\":12.9,\"lon\":77.6,\"notes\":\"" + "x".repeat(300_000) + "\"}";
-        assertThat(status(() -> api.put().uri("/api/houses/{id}", UUID.randomUUID())
+        assertThat(status(() -> api.put().uri("/api/candidates/{id}", UUID.randomUUID())
                 .contentType(MediaType.APPLICATION_JSON).body(big).retrieve().body(String.class))).isIn(400, 413);
     }
 
@@ -827,10 +878,10 @@ class ApiIntegrationTest {
         put(houseId, house("Visited", 12.9, 77.6, "MG Road"));
         var visitId = UUID.randomUUID();
         api.put().uri("/api/visits/{id}", visitId).contentType(MediaType.APPLICATION_JSON)
-                .body(Map.of("houseId", houseId.toString(), "lat", 12.9, "lon", 77.6,
+                .body(Map.of("candidateId", houseId.toString(), "lat", 12.9, "lon", 77.6,
                         "arrivedAt", "2026-09-01T10:00:00Z", "source", "AUTO"))
                 .retrieve().body(MAP);
-        var visits = api.get().uri("/api/visits?houseId={h}", houseId).retrieve().body(LIST);
+        var visits = api.get().uri("/api/visits?candidateId={h}", houseId).retrieve().body(LIST);
         assertThat(visits).hasSize(1);
         var stats = api.get().uri("/api/stats").retrieve().body(MAP);
         assertThat(((Number) stats.get("visits")).longValue()).isGreaterThanOrEqualTo(1);
@@ -845,11 +896,11 @@ class ApiIntegrationTest {
     void statsCarryTheHighestSyncVersion() {
         var houseId = UUID.randomUUID();
         var house = put(houseId, house("Versioned", 12.9, 77.6, null));
-        var visit = putVisit(UUID.randomUUID(), Map.of("houseId", houseId.toString(), "lat", 12.9, "lon", 77.6,
+        var visit = putVisit(UUID.randomUUID(), Map.of("candidateId", houseId.toString(), "lat", 12.9, "lon", 77.6,
                 "arrivedAt", "2026-09-01T10:00:00Z", "source", "MANUAL"));
         var first = maxSyncVersion();
         assertThat(first).isGreaterThanOrEqualTo(Math.max(version(house), version(visit)))
-                .isGreaterThanOrEqualTo(maxVersion("/api/houses"))
+                .isGreaterThanOrEqualTo(maxVersion("/api/candidates"))
                 .isGreaterThanOrEqualTo(maxVersion("/api/visits"))
                 .isGreaterThanOrEqualTo(maxVersion("/api/photos"));
         var again = put(houseId, house("Versioned again", 12.9, 77.6, null));
@@ -888,8 +939,8 @@ class ApiIntegrationTest {
 
         put(UUID.randomUUID(), house("Soon gone", 12.9, 77.6, null));
         api.delete().uri("/api/data").header("X-Confirm-Delete", "DELETE-ALL-MY-DATA").retrieve().toBodilessEntity();
-        assertThat(api.get().uri("/api/houses").retrieve().body(LIST)).isEmpty();
-        assertThat(api.get().uri("/api/houses?since=0").retrieve().body(LIST)).isEmpty();
+        assertThat(api.get().uri("/api/candidates").retrieve().body(LIST)).isEmpty();
+        assertThat(api.get().uri("/api/candidates?since=0").retrieve().body(LIST)).isEmpty();
     }
 
     @Test

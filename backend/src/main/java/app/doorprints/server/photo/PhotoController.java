@@ -32,8 +32,9 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * HTTP endpoints for house photos: list, upload, fetch bytes, edit metadata, delete, and the metadata change feed
- * that offline clients sync from.
+ * HTTP endpoints for a candidate's photos: list, upload, fetch bytes, edit metadata, delete, and the metadata change
+ * feed that offline clients sync from. A candidate's photos sit under {@code /api/candidates/{id}/photos} since the
+ * format reset (S4b-BL-206).
  */
 @RestController
 @RequestMapping("/api")
@@ -45,8 +46,8 @@ public class PhotoController {
         this.service = service;
     }
 
-    /** Live photo ids of a house. */
-    @GetMapping("/houses/{houseId}/photos")
+    /** Live photo ids of a candidate. */
+    @GetMapping("/candidates/{houseId}/photos")
     public List<UUID> list(@PathVariable UUID houseId) {
         return service.liveIds(houseId);
     }
@@ -61,7 +62,7 @@ public class PhotoController {
      * The client picks the photo id so an upload retried after a dropped connection isn't stored twice. The type is
      * detected from the bytes and location metadata is stripped (see {@link ImageSanitizer}).
      */
-    @PostMapping(path = "/houses/{houseId}/photos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(path = "/candidates/{houseId}/photos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public Map<String, UUID> upload(@PathVariable UUID houseId,
                                     @RequestParam(required = false) UUID id,
                                     @RequestParam("file") MultipartFile file) throws IOException {

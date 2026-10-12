@@ -32,7 +32,7 @@ import java.util.UUID;
  * readable HTML copy). The server speaks the {@code data.json} half of it: {@code GET /api/export} returns exactly
  * that object and {@code POST /api/import} accepts exactly that object, so a backup made on a phone or in a browser
  * can be restored to a server and back again without a converter. Photo bytes are not JSON: on the server they are
- * uploaded and fetched through {@code /api/houses/{id}/photos} and {@code /api/photos/{id}}, and
+ * uploaded and fetched through {@code /api/candidates/{id}/photos} and {@code /api/photos/{id}}, and
  * {@link BackupPhoto#fileName()} still names the entry a ZIP copy of the same data would use.
  */
 public final class BackupFormat {

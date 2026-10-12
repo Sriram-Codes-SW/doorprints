@@ -19,11 +19,8 @@
 package app.doorprints.server.backup;
 
 import app.doorprints.server.house.House;
-import app.doorprints.server.house.HouseAnswer;
-import app.doorprints.server.house.HouseMoveIn;
+import app.doorprints.server.house.HouseDto;
 import app.doorprints.server.house.HouseStatus;
-import app.doorprints.server.house.HouseCost;
-import app.doorprints.server.house.HouseRoom;
 import app.doorprints.server.photo.PhotoDto;
 import app.doorprints.server.photo.PhotoMeta;
 import app.doorprints.server.record.Record;
@@ -447,15 +444,19 @@ final class BackupMapper {
     }
 
     /**
-     * The house as a backup row: the stored JSON parts parsed, the checklist sorted, times in epoch milliseconds.
+     * The house as a backup row: the stored JSON parts parsed, the checklist sorted, times in epoch milliseconds. The
+     * backup format is still today's (S4b-BL-206 resets it with the apps), so the money and the house's extras are
+     * written back as {@code price}, {@code priceType}, {@code bedrooms}, {@code areaSqft}, {@code floor} and
+     * {@code cost} through {@link HouseDto}'s readers; an extra this server keeps but does not know has no place in
+     * that format and is left out.
      */
     private static BackupHouse house(House h) {
+        var d = HouseDto.from(h);
         return new BackupHouse(h.getId(), h.getLabel(), h.getAddress(), h.getStreet(), h.getLocality(),
-                h.getLat(), h.getLon(), h.getStatus(), h.getPrice(), h.getPriceType(), h.getBedrooms(),
+                h.getLat(), h.getLon(), h.getStatus(), d.price(), d.priceType(), d.bedrooms(),
                 h.getRating(), h.getContactName(), h.getContactPhone(), h.getListingUrl(), h.getNotes(),
-                h.getAreaSqft(), h.getLocationSource(), HouseCost.parse(h.getCost()), HouseRoom.parse(h.getRooms()),
-                HouseAnswer.parse(h.getAnswers()), HouseMoveIn.parse(h.getMoveIn()), h.getFloor(), h.getBrokerId(),
-                sortedChecklist(h.getChecklist()), millis(h.getCreatedAt()), millis(h.getUpdatedAt()));
+                d.areaSqft(), h.getLocationSource(), d.cost(), d.rooms(), d.answers(), d.moveIn(), d.floor(),
+                h.getBrokerId(), sortedChecklist(h.getChecklist()), millis(h.getCreatedAt()), millis(h.getUpdatedAt()));
     }
 
     private static BackupVisit visit(Visit v) {

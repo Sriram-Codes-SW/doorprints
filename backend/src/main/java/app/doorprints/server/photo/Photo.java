@@ -51,7 +51,7 @@ public class Photo {
     private boolean deleted;
     @Column(nullable = false)
     private long syncVersion;
-    /* Slice 5 (V12): what the person says about the photo; all blank on a tombstone. */
+    /* Slice 5: what the person says about the photo; all blank on a tombstone. */
     private String roomId;
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")

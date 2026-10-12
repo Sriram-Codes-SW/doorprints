@@ -119,8 +119,8 @@ class BackupApiTest {
      */
     @Test
     void deleteAllKeepsTheHighestSyncVersion() {
-        var saved = api.put().uri("/api/houses/{id}", UUID.randomUUID()).contentType(MediaType.APPLICATION_JSON)
-                .body(Map.of("label", "Before the wipe", "lat", 12.9, "lon", 77.6)).retrieve().body(MAP);
+        var saved = api.put().uri("/api/candidates/{id}", UUID.randomUUID()).contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of("kind", "house", "label", "Before the wipe", "lat", 12.9, "lon", 77.6)).retrieve().body(MAP);
         var cursor = ((Number) saved.get("syncVersion")).longValue();
         api.delete().uri("/api/data").header("X-Confirm-Delete", "DELETE-ALL-MY-DATA").retrieve().toBodilessEntity();
         var stats = api.get().uri("/api/stats").retrieve().body(MAP);
@@ -277,10 +277,47 @@ class BackupApiTest {
     }
 
     /** The sample's row as an API body: same fields, but the sync DTOs take ISO-8601 instants. */
+    /**
+     * A backup row as the sync API takes it. Since the format reset of the sync API (S4b-BL-206; the backup format
+     * follows with the apps) a house's {@code price}, {@code priceType}, {@code bedrooms}, {@code areaSqft},
+     * {@code floor} and {@code cost} are its {@code kind}, {@code money} and {@code extras}, and a visit's
+     * {@code houseId} is its {@code candidateId}: the mapping of docs/schemas/kinds/house.json, written out here by
+     * hand so that the export test checks the server's own mapping against it.
+     */
     private static String asApiBody(JSONObject row, String... timeFields) throws JSONException {
         var copy = new JSONObject(row.toString());
         for (var field : timeFields) {
             if (copy.has(field)) copy.put(field, Instant.ofEpochMilli(copy.getLong(field)).toString());
+        }
+        if (copy.has("houseId")) copy.put("candidateId", copy.remove("houseId"));
+        if (copy.has("label")) {
+            copy.put("kind", "house");
+            var price = copy.remove("price");
+            var type = copy.remove("priceType");
+            var cadence = "SALE".equals(type) ? "once" : "month";
+            if (price != null || type != null) {
+                var money = new JSONObject().put("cadence", cadence);
+                if (price != null) money.put("amount", price);
+                copy.put("money", money);
+            }
+            var extras = new JSONObject();
+            for (var id : List.of("bedrooms", "areaSqft", "floor")) {
+                if (copy.has(id)) extras.put(id, copy.remove(id));
+            }
+            var cost = (JSONObject) copy.remove("cost");
+            if (cost != null) {
+                for (var it = cost.keys(); it.hasNext(); ) {
+                    var id = (String) it.next();
+                    var value = cost.get(id);
+                    switch (id) {
+                        case "deposit", "brokerage" -> extras.put(id, new JSONObject().put("amount", value).put("cadence", "once"));
+                        case "maintenance" -> extras.put(id, new JSONObject().put("amount", value).put("cadence", "month"));
+                        case "myOffer", "agreedPrice" -> extras.put(id, new JSONObject().put("amount", value).put("cadence", cadence));
+                        default -> extras.put(id, value);
+                    }
+                }
+            }
+            if (extras.length() > 0) copy.put("extras", extras);
         }
         return copy.toString();
     }
@@ -304,7 +341,7 @@ class BackupApiTest {
         var houses = sample.getJSONArray("houses");
         for (int i = 0; i < houses.length(); i++) {
             var row = houses.getJSONObject(i);
-            api.put().uri("/api/houses/{id}", row.getString("id")).contentType(MediaType.APPLICATION_JSON)
+            api.put().uri("/api/candidates/{id}", row.getString("id")).contentType(MediaType.APPLICATION_JSON)
                     .body(asApiBody(row, "createdAt", "updatedAt")).retrieve().toBodilessEntity();
         }
         var visits = sample.getJSONArray("visits");
@@ -338,7 +375,7 @@ class BackupApiTest {
                     return "photo.jpg";
                 }
             });
-            api.post().uri("/api/houses/{id}/photos", photo.getString("houseId"))
+            api.post().uri("/api/candidates/{id}/photos", photo.getString("houseId"))
                     .contentType(MediaType.MULTIPART_FORM_DATA).body(form).retrieve().toBodilessEntity();
             if (photo.has("metaUpdatedAt")) putPhotoMeta(photo);
         }
@@ -379,7 +416,7 @@ class BackupApiTest {
         assertThat(brokerRecords()).as("dry run writes no broker").isEmpty();
         assertThat(count(preview, "visits", "created")).isEqualTo(3);
         assertThat(count(preview, "photos", "skipped")).isEqualTo(2);
-        assertThat(api.get().uri("/api/houses").retrieve().body(LIST)).as("dry run writes nothing").isEmpty();
+        assertThat(api.get().uri("/api/candidates").retrieve().body(LIST)).as("dry run writes nothing").isEmpty();
 
         var applied = postImport(SAMPLE, false);
         assertThat(applied).containsEntry("dryRun", false);
@@ -474,7 +511,7 @@ class BackupApiTest {
                 exported.getJSONArray("brokers").toString(), JSONCompareMode.LENIENT);
         assertThat(exported.getJSONArray("brokers").getJSONObject(0).getString("id")).isEqualTo(ravi);
         assertThat(exported.getJSONArray("houses").getJSONObject(0).getString("brokerId")).isEqualTo(meena);
-        assertThat(api.get().uri("/api/houses/{id}", houseId).retrieve().body(MAP)).containsEntry("brokerId", meena);
+        assertThat(api.get().uri("/api/candidates/{id}", houseId).retrieve().body(MAP)).containsEntry("brokerId", meena);
 
         // Last write wins; an equal updatedAt writes nothing (no sync version burned).
         long version = ((Number) brokerRecords().stream().filter(r -> ravi.equals(r.get("id"))).findFirst()
@@ -519,10 +556,10 @@ class BackupApiTest {
                 "\"status\":\"NEW\"," + rooms), "").replace(BackupFormat.ID, BackupFormat.ID_WITH_BROKERS);
 
         assertThat(postImport(file, true)).containsEntry("format", BackupFormat.ID_WITH_BROKERS);
-        assertThat(api.get().uri("/api/houses").retrieve().body(LIST)).as("dry run writes nothing").isEmpty();
+        assertThat(api.get().uri("/api/candidates").retrieve().body(LIST)).as("dry run writes nothing").isEmpty();
         assertThat(count(postImport(file, false), "houses", "created")).isEqualTo(1);
 
-        var stored = api.get().uri("/api/houses/{id}", id).retrieve().body(MAP);
+        var stored = api.get().uri("/api/candidates/{id}", id).retrieve().body(MAP);
         assertThat((List<?>) stored.get("rooms")).hasSize(2);
         var exported = new JSONObject(export());
         assertThat(exported.getString("format")).isEqualTo(BackupFormat.ID_WITH_BROKERS);
@@ -540,14 +577,14 @@ class BackupApiTest {
         // A newer file without rooms replaces the house as a whole: the rooms go, and the copy is /1 again.
         var newer = backup(houseRow(id, "No rooms now", now.plusSeconds(60)), "");
         assertThat(count(postImport(newer, false), "houses", "updated")).isEqualTo(1);
-        assertThat(api.get().uri("/api/houses/{id}", id).retrieve().body(MAP).get("rooms")).isNull();
+        assertThat(api.get().uri("/api/candidates/{id}", id).retrieve().body(MAP).get("rooms")).isNull();
         assertThat(new JSONObject(export()).getString("format")).isEqualTo(BackupFormat.ID);
 
         // An empty array in a file is no rooms.
         var emptied = backup(houseRow(id, "Empty list", now.plusSeconds(120)).replace("\"status\":\"NEW\"",
                 "\"status\":\"NEW\",\"rooms\":[]"), "");
         assertThat(count(postImport(emptied, false), "houses", "updated")).isEqualTo(1);
-        assertThat(api.get().uri("/api/houses/{id}", id).retrieve().body(MAP).get("rooms")).isNull();
+        assertThat(api.get().uri("/api/candidates/{id}", id).retrieve().body(MAP).get("rooms")).isNull();
     }
 
     /** Slice 1c: a bad room refuses the whole file and writes nothing, the good house in the same file included. */
@@ -582,7 +619,7 @@ class BackupApiTest {
         assertThat(errorBody(() -> postImport(many, false))).contains("houses[0].rooms has more than 30 rooms");
         var twins = backup(bad.replace("\"status\":\"NEW\"", "\"status\":\"NEW\",\"rooms\":[" + good + "," + good + "]"), "");
         assertThat(errorBody(() -> postImport(twins, false))).contains("houses[0].rooms[1].id is repeated");
-        assertThat(api.get().uri("/api/houses?since=0").retrieve().body(LIST)).isEmpty();
+        assertThat(api.get().uri("/api/candidates?since=0").retrieve().body(LIST)).isEmpty();
     }
 
     /** A bad broker refuses the whole file and writes nothing, house rows in the same file included. */
@@ -622,7 +659,7 @@ class BackupApiTest {
         assertThat(errorBody(() -> postImport(backupWithBrokers(house, "null"), false))).contains("brokers[0]");
         assertThat(errorBody(() -> postImport(backup(house.replace("\"status\":\"NEW\"",
                 "\"status\":\"NEW\",\"brokerId\":\"a b\""), ""), false))).contains("houses[0].brokerId");
-        assertThat(api.get().uri("/api/houses?since=0").retrieve().body(LIST)).isEmpty();
+        assertThat(api.get().uri("/api/candidates?since=0").retrieve().body(LIST)).isEmpty();
         assertThat(brokerRecords()).isEmpty();
         assertThat(status(() -> postImport(backupWithBrokers(house, good), false))).isEqualTo(200);
     }
@@ -687,7 +724,7 @@ class BackupApiTest {
 
     private Object houseIdOfVisit(UUID visitId) {
         return api.get().uri("/api/visits?since=0").retrieve().body(LIST).stream()
-                .filter(v -> visitId.toString().equals(v.get("id"))).findFirst().orElseThrow().get("houseId");
+                .filter(v -> visitId.toString().equals(v.get("id"))).findFirst().orElseThrow().get("candidateId");
     }
 
     /**
@@ -704,7 +741,7 @@ class BackupApiTest {
         var visitId = UUID.randomUUID();
         var created = Instant.now().minus(Duration.ofHours(1));
         postImport(backup(houseRow(id, "Gone", created, created), visitRow(visitId, id, created, created)), false);
-        api.delete().uri("/api/houses/{id}", id).retrieve().toBodilessEntity();
+        api.delete().uri("/api/candidates/{id}", id).retrieve().toBodilessEntity();
         assertThat(houseIdOfVisit(visitId)).as("the delete unlinked the visit").isNull();
 
         var afterDelete = Instant.now().plus(Duration.ofSeconds(30)); // inside the 300 s clock-skew allowance
@@ -740,7 +777,7 @@ class BackupApiTest {
             rows.append(houseRow(id, "House " + i, created, created));
         }
         postImport(backup(rows.toString(), ""), false);
-        for (var id : ids) api.delete().uri("/api/houses/{id}", id).retrieve().toBodilessEntity();
+        for (var id : ids) api.delete().uri("/api/candidates/{id}", id).retrieve().toBodilessEntity();
 
         var afterDelete = Instant.now().plus(Duration.ofSeconds(30));
         var again = new StringBuilder();
@@ -841,7 +878,7 @@ class BackupApiTest {
         assertThat(errorBody(() -> postImport(noSuchDay, false)))
                 .contains("houses[0].cost.availableFrom is out of range");
         assertThat(errorBody(() -> postImport(badFloor, false))).contains("houses[0].floor must be -5..200");
-        assertThat(api.get().uri("/api/houses?since=0").retrieve().body(LIST)).isEmpty();
+        assertThat(api.get().uri("/api/candidates?since=0").retrieve().body(LIST)).isEmpty();
     }
 
     /** A {@code cost} of {@code {}} in a file is read as no cost, so the export leaves it out (never writes {}). */
@@ -856,7 +893,8 @@ class BackupApiTest {
         assertThat(exported.getInt("areaSqft")).isEqualTo(900);
         assertThat(exported.getString("locationSource")).isEqualTo("MAP");
         assertThat(exported.has("cost")).isFalse();
-        assertThat(api.get().uri("/api/houses/{id}", id).retrieve().body(MAP).get("cost")).isNull();
+        assertThat(api.get().uri("/api/candidates/{id}", id).retrieve().body(MAP).get("extras"))
+                .isEqualTo(Map.of("areaSqft", 900));
     }
 
     /** S4b-BL-87: a floor of 0 (the ground floor) is imported, kept and written back, and makes the export a /2 copy. */
@@ -869,7 +907,8 @@ class BackupApiTest {
         var exported = new JSONObject(export());
         assertThat(exported.getString("format")).isEqualTo("doorprints-backup/2");
         assertThat(exported.getJSONArray("houses").getJSONObject(0).getInt("floor")).isEqualTo(0);
-        assertThat(api.get().uri("/api/houses/{id}", id).retrieve().body(MAP).get("floor")).isEqualTo(0);
+        assertThat(api.get().uri("/api/candidates/{id}", id).retrieve().body(MAP).get("extras"))
+                .isEqualTo(Map.of("floor", 0));
     }
 
     /**
@@ -940,7 +979,7 @@ class BackupApiTest {
         var hugeNotes = backup(houseRow(UUID.randomUUID(), "Big", now)
                 .replace("\"checklist\":{}", "\"notes\":\"" + "x".repeat(20_000) + "\",\"checklist\":{}"), "");
         assertThat(status(() -> postImport(hugeNotes, false))).isIn(400, 413);
-        assertThat(api.get().uri("/api/houses?since=0").retrieve().body(LIST)).isEmpty();
+        assertThat(api.get().uri("/api/candidates?since=0").retrieve().body(LIST)).isEmpty();
     }
 
     @Test
@@ -948,7 +987,7 @@ class BackupApiTest {
         var body = backup(houseRow(UUID.randomUUID(), "Sneaky", Instant.now()), "");
         assertThat(status(() -> anonymous.post().uri("/api/import").contentType(MediaType.APPLICATION_JSON)
                 .body(body).retrieve().body(String.class))).isEqualTo(401);
-        assertThat(api.get().uri("/api/houses?since=0").retrieve().body(LIST)).isEmpty();
+        assertThat(api.get().uri("/api/candidates?since=0").retrieve().body(LIST)).isEmpty();
     }
 
     /** Slice 2: criteria and preferences import into the record table like brokers and export back /2. */
@@ -962,7 +1001,7 @@ class BackupApiTest {
         // Put sample data on the server
         for (int i = 0; i < houses.length(); i++) {
             var row = houses.getJSONObject(i);
-            api.put().uri("/api/houses/{id}", row.getString("id")).contentType(MediaType.APPLICATION_JSON)
+            api.put().uri("/api/candidates/{id}", row.getString("id")).contentType(MediaType.APPLICATION_JSON)
                     .body(asApiBody(row, "createdAt", "updatedAt")).retrieve().toBodilessEntity();
         }
         for (int i = 0; i < criteria.length(); i++) putCriterion(criteria.getJSONObject(i));
@@ -1001,7 +1040,7 @@ class BackupApiTest {
             assertThat(status(() -> postImport(body, false))).as("import of bad criterion").isEqualTo(400);
             assertThat(status(() -> postImport(body, true))).as("dry run validates").isEqualTo(400);
         }
-        assertThat(api.get().uri("/api/houses?since=0").retrieve().body(LIST)).isEmpty();
+        assertThat(api.get().uri("/api/candidates?since=0").retrieve().body(LIST)).isEmpty();
         assertThat(criterionRecords()).isEmpty();
     }
 
@@ -1042,9 +1081,9 @@ class BackupApiTest {
     @Test
     void builtInKeysNeverExportLabel() throws JSONException {
         var now = Instant.now().minus(Duration.ofMinutes(1));
-        api.put().uri("/api/houses/{id}", UUID.randomUUID())
+        api.put().uri("/api/candidates/{id}", UUID.randomUUID())
                 .contentType(MediaType.APPLICATION_JSON)
-                .body("{\"label\":\"Test\",\"lat\":12.9,\"lon\":77.6,\"status\":\"NEW\",\"createdAt\":\""
+                .body("{\"kind\":\"house\",\"label\":\"Test\",\"lat\":12.9,\"lon\":77.6,\"status\":\"NEW\",\"createdAt\":\""
                     + now + "\",\"updatedAt\":\"" + now + "\"}").retrieve().toBodilessEntity();
 
         // Put a built-in criterion
@@ -1165,7 +1204,7 @@ class BackupApiTest {
         var error = errorBody(() -> postImport(body, false));
         assertThat(error).contains(message);
         if (userText != null) assertThat(error).doesNotContain(userText);
-        assertThat(api.get().uri("/api/houses?since=0").retrieve().body(LIST)).as("no house written").isEmpty();
+        assertThat(api.get().uri("/api/candidates?since=0").retrieve().body(LIST)).as("no house written").isEmpty();
         assertThat(questionRecords()).as("no question written").isEmpty();
         assertThat(viewingRecords()).as("no viewing written").isEmpty();
         for (var type : SMALL_TYPES.values()) assertThat(smallRecords(type)).as("no " + type + " written").isEmpty();
@@ -1297,10 +1336,10 @@ class BackupApiTest {
                 .replace(BackupFormat.ID, BackupFormat.ID_WITH_BROKERS);
 
         assertThat(postImport(file, true)).containsEntry("format", BackupFormat.ID_WITH_BROKERS);
-        assertThat(api.get().uri("/api/houses").retrieve().body(LIST)).as("dry run writes nothing").isEmpty();
+        assertThat(api.get().uri("/api/candidates").retrieve().body(LIST)).as("dry run writes nothing").isEmpty();
         assertThat(count(postImport(file, false), "houses", "created")).isEqualTo(1);
 
-        assertThat((List<?>) api.get().uri("/api/houses/{id}", id).retrieve().body(MAP).get("answers")).hasSize(2);
+        assertThat((List<?>) api.get().uri("/api/candidates/{id}", id).retrieve().body(MAP).get("answers")).hasSize(2);
         var exported = new JSONObject(export());
         assertThat(exported.getString("format")).isEqualTo(BackupFormat.ID_WITH_BROKERS);
         assertThat(exported.has("questions")).isFalse();
@@ -1314,13 +1353,13 @@ class BackupApiTest {
         // A newer file without answers replaces the house as a whole: the answers go, and the copy is /1 again.
         var newer = backup(houseRow(id, "No answers now", now.plusSeconds(60)), "");
         assertThat(count(postImport(newer, false), "houses", "updated")).isEqualTo(1);
-        assertThat(api.get().uri("/api/houses/{id}", id).retrieve().body(MAP).get("answers")).isNull();
+        assertThat(api.get().uri("/api/candidates/{id}", id).retrieve().body(MAP).get("answers")).isNull();
         assertThat(new JSONObject(export()).getString("format")).isEqualTo(BackupFormat.ID);
 
         // An empty array in a file is no answers.
         var emptied = backup(houseWithAnswers(id, "Empty list", now.plusSeconds(120), ""), "");
         assertThat(count(postImport(emptied, false), "houses", "updated")).isEqualTo(1);
-        assertThat(api.get().uri("/api/houses/{id}", id).retrieve().body(MAP).get("answers")).isNull();
+        assertThat(api.get().uri("/api/candidates/{id}", id).retrieve().body(MAP).get("answers")).isNull();
     }
 
     /** A copy made without contact details keeps questions and answers: the file is the person's own data. */
@@ -1476,16 +1515,16 @@ class BackupApiTest {
     // ---- small readers ------------------------------------------------------------------------------------------
 
     private String label(UUID id) {
-        return (String) api.get().uri("/api/houses/{id}", id).retrieve().body(MAP).get("label");
+        return (String) api.get().uri("/api/candidates/{id}", id).retrieve().body(MAP).get("label");
     }
 
     @SuppressWarnings("unchecked")
     private Map<String, Object> checklist(UUID id) {
-        return (Map<String, Object>) api.get().uri("/api/houses/{id}", id).retrieve().body(MAP).get("checklist");
+        return (Map<String, Object>) api.get().uri("/api/candidates/{id}", id).retrieve().body(MAP).get("checklist");
     }
 
     private long syncVersion(UUID id) {
-        return ((Number) api.get().uri("/api/houses/{id}", id).retrieve().body(MAP).get("syncVersion")).longValue();
+        return ((Number) api.get().uri("/api/candidates/{id}", id).retrieve().body(MAP).get("syncVersion")).longValue();
     }
 
     // ---- slice 3b-1: viewings ---------------------------------------------------------------------------------------
@@ -2172,10 +2211,10 @@ class BackupApiTest {
         var file = v2(backup(houseWithMoveIn(id, "Taken", now, GOOD_MOVE_IN), ""));
 
         assertThat(postImport(file, true)).containsEntry("format", BackupFormat.ID_WITH_BROKERS);
-        assertThat(api.get().uri("/api/houses").retrieve().body(LIST)).as("dry run writes nothing").isEmpty();
+        assertThat(api.get().uri("/api/candidates").retrieve().body(LIST)).as("dry run writes nothing").isEmpty();
         assertThat(count(postImport(file, false), "houses", "created")).isEqualTo(1);
 
-        var house = api.get().uri("/api/houses/{id}", id).retrieve().body(MAP);
+        var house = api.get().uri("/api/candidates/{id}", id).retrieve().body(MAP);
         assertThat(house).containsEntry("status", "TAKEN");
         assertThat((Map<String, Object>) house.get("moveIn")).containsEntry("notes", "Keys handed over");
         var exported = new JSONObject(export());
@@ -2190,13 +2229,13 @@ class BackupApiTest {
         // A newer file without a move-in replaces the house as a whole: the move-in goes, and the copy is /1 again.
         assertThat(count(postImport(backup(houseRow(id, "No move-in now", now.plusSeconds(60)), ""), false), "houses",
                 "updated")).isEqualTo(1);
-        assertThat(api.get().uri("/api/houses/{id}", id).retrieve().body(MAP).get("moveIn")).isNull();
+        assertThat(api.get().uri("/api/candidates/{id}", id).retrieve().body(MAP).get("moveIn")).isNull();
         assertThat(new JSONObject(export()).getString("format")).isEqualTo(BackupFormat.ID);
 
         // An empty object in a file is no move-in.
         var emptied = v2(backup(houseWithMoveIn(id, "Empty object", now.plusSeconds(120), "{}"), ""));
         assertThat(count(postImport(emptied, false), "houses", "updated")).isEqualTo(1);
-        assertThat(api.get().uri("/api/houses/{id}", id).retrieve().body(MAP).get("moveIn")).isNull();
+        assertThat(api.get().uri("/api/candidates/{id}", id).retrieve().body(MAP).get("moveIn")).isNull();
     }
 
     @Test
@@ -2205,13 +2244,13 @@ class BackupApiTest {
         var taken = UUID.randomUUID();
         postImport(v2(backup(houseRow(taken, "Taken", now).replace("\"NEW\"", "\"TAKEN\""), "")), false);
         assertThat(new JSONObject(export()).getString("format")).isEqualTo(BackupFormat.ID_WITH_BROKERS);
-        assertThat(api.get().uri("/api/houses/{id}", taken).retrieve().body(MAP)).containsEntry("status", "TAKEN");
+        assertThat(api.get().uri("/api/candidates/{id}", taken).retrieve().body(MAP)).containsEntry("status", "TAKEN");
 
         api.delete().uri("/api/data").header("X-Confirm-Delete", "DELETE-ALL-MY-DATA").retrieve().toBodilessEntity();
         var left = UUID.randomUUID();
         postImport(v2(backup(houseRow(left, "Left", now).replace("\"NEW\"", "\"NOT_CHOSEN\""), "")), false);
         assertThat(new JSONObject(export()).getString("format")).isEqualTo(BackupFormat.ID_WITH_BROKERS);
-        assertThat(api.get().uri("/api/houses/{id}", left).retrieve().body(MAP)).containsEntry("status", "NOT_CHOSEN");
+        assertThat(api.get().uri("/api/candidates/{id}", left).retrieve().body(MAP)).containsEntry("status", "NOT_CHOSEN");
     }
 
     private void assertMoveInRefused(String moveIn, String message, String userText) {
@@ -2252,7 +2291,7 @@ class BackupApiTest {
                 return "photo.jpg";
             }
         });
-        api.post().uri("/api/houses/{id}/photos", houseId).contentType(MediaType.MULTIPART_FORM_DATA).body(form)
+        api.post().uri("/api/candidates/{id}/photos", houseId).contentType(MediaType.MULTIPART_FORM_DATA).body(form)
                 .retrieve().toBodilessEntity();
         return houseId;
     }

@@ -1,0 +1,74 @@
+{
+  "spec": ["backend/src/test/java/app/doorprints/server/house/CandidateExtrasTest.java", "backend/src/test/java/app/doorprints/server/ai/eval/FixtureSeedingTest.java"],
+  "maven": [
+    "-Dtest=CandidateExtrasTest,FixtureSeedingTest"
+  ],
+  "mutations": [
+    {
+      "file": "backend/src/main/java/app/doorprints/server/house/CandidateExtras.java",
+      "find": "            if (!ID.matcher(entry.getKey()).matches() || KNOWN.contains(entry.getKey()) || !isExtraValue(entry.getValue())) {",
+      "replace": "            if (!ID.matcher(entry.getKey()).matches() || KNOWN.contains(entry.getKey())) {",
+      "expect": "anUnknownIdIsKeptOnlyAsAFieldIdWithAValueOfAnExtrasType"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/house/CandidateExtras.java",
+      "find": "        if (other.size() > MAX_OTHER) out.add(\"extras\");",
+      "replace": "",
+      "expect": "anUnknownIdIsKeptOnlyAsAFieldIdWithAValueOfAnExtrasType"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/house/CandidateExtras.java",
+      "find": "        if (m != null && (m.amount() == null || (ranges && !m.isValid()) || !cadence.equals(m.cadence()))) out.add(id);",
+      "replace": "        if (m != null && (m.amount() == null || (ranges && !m.isValid()))) out.add(id);",
+      "expect": "problemsNameEveryKnownExtraThatBreaksTheHouseKind"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/house/CandidateExtras.java",
+      "find": "        return problems(false).isEmpty();",
+      "replace": "        return problems(true).isEmpty();",
+      "expect": "theSyncApiNamesEachBrokenRuleOnce"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/house/CandidateExtras.java",
+      "find": "            e.maintenance = money(cost.maintenance(), \"month\");",
+      "replace": "            e.maintenance = money(cost.maintenance(), \"once\");",
+      "expect": "theHousesTodayValuesBecomeExtrasWithTheCadencesOfTheKindFile"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/house/CandidateExtras.java",
+      "find": "            var follows = offerCadence == null ? \"month\" : offerCadence;",
+      "replace": "            var follows = \"month\";",
+      "expect": "theHousesTodayValuesBecomeExtrasWithTheCadencesOfTheKindFile"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/house/HouseDto.java",
+      "find": "|| Money.HOUSE_CADENCES.contains(money.cadence());",
+      "replace": "|| Money.CADENCES.contains(money.cadence());",
+      "expect": "theKindIsRequiredAndAHousesMoneyIsARentOrASale"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/house/House.java",
+      "find": "        moneyCadence = null;\n",
+      "replace": "",
+      "expect": "theEntityRoundTripsTheCandidateAndTheTombstoneDropsTheContent"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/house/House.java",
+      "find": "        extras = null;\n",
+      "replace": "",
+      "expect": "theEntityRoundTripsTheCandidateAndTheTombstoneDropsTheContent"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/house/Money.java",
+      "find": "        if (\"SALE\".equals(priceType)) return \"once\";",
+      "replace": "",
+      "expect": "moneyMapsTodaysPriceTypeBothWays"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/FixtureSeeding.java",
+      "find": "        if (houseId != null) body.put(\"candidateId\", houseId);",
+      "replace": "        if (houseId != null) body.put(\"houseId\", houseId);",
+      "expect": "seedBodySendsTheHouseAsACandidateOfTheHouseKind"
+    }
+  ]
+}

@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Operations runbook |
-| Version | 0.31 |
-| Date | 2026-10-09 |
+| Version | 0.32 |
+| Date | 2026-10-12 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -43,6 +43,7 @@
 | 0.29 | 2026-10-09 | Claude (Code) | §4: renew the Docker Hub token before it expires; §5.2: rotating it (S4b-BL-197, [07](07-secure-build-and-deploy.md) §7.3). |
 | 0.30 | 2026-10-09 | Claude (Code) | §1.1: Ask finds the visited houses for a question about visits (S4b-BL-194); no re-index is needed after this upgrade, because the document text did not change. |
 | 0.31 | 2026-10-10 | Claude (Code), engineer | New §1.3: the iPhone app and a self-hosted server on plain `http://` (App Transport Security; S4b-BL-59). |
+| 0.32 | 2026-10-12 | Claude (Code), engineer | New §1.4: the one-time format reset (S4b-BL-206): an old database is dropped and created again, `/api/candidates`; §6.2 names the new path. |
 
 Related: [Build and deploy](07-secure-build-and-deploy.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Google Drive design](15-google-drive-backup-and-sharing.md)
 
@@ -88,6 +89,10 @@ The three per-address limiters (the general limit, 600 requests a minute with a 
 ### 1.3 The iPhone app and a server on plain `http://` (S4b-BL-59)
 
 App Transport Security, at its default in the iPhone app, refuses plain `http://` to a host with a domain name, so a self-hosted server must be reached over `https://` (the supported set-up: Tailscale's `https://` address, [the server guide](../guide/docs/set-up-a-server.md)). A server on a LAN IP address or a `.local` name is outside ATS and connects without TLS, after iOS asks for local network access; that is as on Android, and the traffic is readable on that network. Loopback is the only plain `http://` exception for the AI provider ([03](03-design.md), the local-address rule of the AI providers).
+
+### 1.4 The one-time format reset (S4b-BL-206, 2026-10-12)
+
+The kinds step 2 squashed the fourteen Flyway migrations into one `V1__init.sql`, put `kind`, the money and the extras on the candidate and renamed the sync API to `/api/candidates` (`candidateId` on visits and photos; [03](03-design.md) §9). Nothing is migrated: no server had real data. A database made by the old migrations is refused by Flyway at start-up (the checksum of version 1 and the missing versions 2..14 differ), so drop it and let the server create it again (`docker compose down -v`, or `DROP DATABASE doorprints; CREATE DATABASE doorprints;`), then sync the apps again. Take a `GET /api/export` copy first if anything on it matters: the backup format is unchanged by this step and imports into the new server. Until the web and phone steps of S4b-BL-206 land, the apps cannot sync with a server of this version (they still call `/api/houses`).
 
 ## 2. Monitoring
 
@@ -275,7 +280,7 @@ its photos as missing from the file. A full export for migration is the encrypte
 
 | Scope | Procedure (SQL on the prod DB, admin role, **take a backup first**) |
 |---|---|
-| One house | Delete it in the app (or `DELETE /api/houses/<id>`). The server blanks its content, deletes its photo bytes, unlinks its visits and keeps a content-free tombstone so other devices delete their copy; the tombstone is purged automatically after 90 days. |
+| One house | Delete it in the app (or `DELETE /api/candidates/<id>`). The server blanks its content, deletes its photo bytes, unlinks its visits and keeps a content-free tombstone so other devices delete their copy; the tombstone is purged automatically after 90 days. |
 | Purge tombstones | Automatic, daily at 03:30 (`DataService.purgeTombstones`, `TOMBSTONE_RETENTION_DAYS`, default 90). A device that has not synced for longer than that keeps its local copy of rows deleted elsewhere. |
 | Old visits (retention, PRV-006) | `delete from visit where arrived_at < now() - interval '6 months';` (devices keep their copies until the app's data is cleared) |
 | Everything (end of hunt) | 1) Export if wanted. 2) `curl -X DELETE -H "X-API-Key: $KEY" -H "X-Confirm-Delete: DELETE-ALL-MY-DATA" "$API/api/data"` (hard-deletes houses, visits, photos and AI index rows; 428 without the exact header), or delete the DB project. 3) Delete the API service. 4) Delete the backup artifacts / R2 objects. 5) Android: Settings → Apps → Doorprints → Storage → Clear storage, then uninstall. A test build from before the rename (app name "House Hunt", `com.househunt.app`) is a separate app with its own local copy: clear and uninstall it too. 6) Web: Connect → Disconnect, and clear site data. 7) If AI was used: delete the embeddings (same DB) and check the LLM provider's retention/deletion options. |
@@ -569,7 +574,7 @@ There is no public server yet, so this is documented rather than made backward c
 | MCP tool | `askHouseHunt` | `askDoorprints` | An MCP client picks the new name from `tools/list` on its next connection; a saved prompt or allow-list that names the old tool is updated by hand ([ai/ai-design.md](ai/ai-design.md) section 12) |
 | Image tags in the examples | `house-hunt-api`, `house-hunt-db` | `doorprints-api`, `doorprints-db` | Only a local tag; rebuild or retag |
 | Maven coordinates, Java packages | `com.househunt:house-hunt-api`, `com.househunt.*` | `app.doorprints:doorprints-api`, `app.doorprints.server.*` | Nothing (the image copies `target/*.jar`); log filters that match on the logger name `com.househunt` change to `app.doorprints.server` |
-| Flyway migrations | V1-V3 | unchanged, not edited | Nothing: their checksums stay the same |
+| Flyway migrations | V1-V3 | unchanged, not edited | Nothing: their checksums stay the same (until the format reset of 2026-10-12, §1.4, which replaced them all) |
 
 **Carry a local compose database over: mandatory** for a server that phones or the web app have synced with. Do
 not start the new, empty database in its place. The clients do not send everything again to an empty server: each
