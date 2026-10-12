@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.165 |
+| Version | 0.166 |
 | Date | 2026-10-10 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..183); this file lists the lead-level items and points to the rest. |
@@ -173,6 +173,7 @@
 | 0.163 | 2026-10-10 | Claude (Code), engineer | **§11: the state at the end of the long session of 2026-10-10** (what merged, what is open, what the live runs showed, the decisions that wait for the owner, how to resume). Docs only. |
 | 0.164 | 2026-10-12 | Claude (Code), engineer | **§11.4 items 1-4 decided** (S4b-BL-241): sale-and-rent gives a null price and type with both amounts in the notes; the Ask document names the first visit; the Vertex spend is Rs 4,339 and the eval code stays; the AI Studio key is to be replaced by a free-tier key (owner action). |
 | 0.165 | 2026-10-12 | Claude (Code), engineer | §11.4 item 4 done: the free-tier `AI_API_KEY` passed `key-check` and `on-device` (TC-U-88). |
+| 0.166 | 2026-10-12 | Claude (Code), engineer | §7: a web UI change runs the layout gate (`tools/check.sh`, `web.yml`); the owner accepts a map-layout change on a real phone (S4b-BL-245). |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 
@@ -517,6 +518,9 @@ suite runs in a cloud session; CI is the second check, never the first:
    `backend.yml`); `python3 .github/scripts/licence-headers.py --fix` (new files: `git add -N` first); the guide with
    `mkdocs build --strict` **and read its output for WARNING lines** (an anchor warning once passed locally and failed
    CI).
+   **Web UI changes run the layout gate** (`tools/check.sh` runs `tools/live-ui/layout-gate.js` for a web change; `web.yml` runs it
+   as the job *Phone layout gate*; TC-S-46, S4b-BL-245): the map and the app on 320x568, 360x640 and 390x664 phones, offline. It catches a
+   runaway map; it is not a look at a real phone, so **ask the owner to accept a map-layout change on a real phone** before calling it done.
    **Tests that cannot fail** (found 2026-10-06: two specs re-implemented the code under test, so every mutation survived):
    `node tools/check-specs.mjs` fails a spec that imports no production code or uses none of what it imports, and
    `node tools/mutate.mjs tools/mutations/<ticket>.json` applies a ticket's listed one-line mutations one at a time and
