@@ -34,7 +34,8 @@ import kotlinx.serialization.json.put
  * Gemini called straight from this phone with the person's own key (docs/03 §13.1, ADR-26): the native
  * `generateContent` API with a system instruction, one user message and a JSON response schema. The key goes only in
  * the `x-goog-api-key` header (never in the URL) and only to Google. Failures are [ApiException]s the screens already
- * word: 429 is [ApiException.Kind.RATE_LIMITED] ("out of free quota"), a refused key
+ * word: 429 is [ApiException.Kind.RATE_LIMITED] (a wait of a minute), unless the key's quota or credit is used up
+ * ([ApiException.Kind.AI_QUOTA_EXHAUSTED]: a 402 or a `PerDay` quota id, [AiQuota]), a refused key
  * [ApiException.Kind.AI_KEY_REJECTED], anything else from Google, a timeout or no connection (code 0, as for the OpenAI-compatible adapter; [postAiJson])
  * [ApiException.Kind.AI_UNAVAILABLE].
  * Neither prompts nor answers are logged.
@@ -108,6 +109,7 @@ class GeminiClient(
     }
 
     private fun failure(status: Int, body: String): ApiException = when {
+        AiQuota.isExhausted(status, body) -> ApiException(ApiException.Kind.AI_QUOTA_EXHAUSTED, status)
         status == 429 -> ApiException(ApiException.Kind.RATE_LIMITED, 429, retryAfterSeconds = 60)
         status == 403 || (status == 400 && ("API_KEY_INVALID" in body || "API key not valid" in body)) ->
             ApiException(ApiException.Kind.AI_KEY_REJECTED, status)

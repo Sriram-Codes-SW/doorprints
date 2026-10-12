@@ -39,7 +39,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const FAMILY = (p) => (/\/chat\/completions$/.test(p) ? 'openai' : p === '/v1/messages' ? 'anthropic' : /^\/v1beta\/models\/[^/]+:generateContent$/.test(p) ? 'gemini' : null);
-const TYPES = { 400: 'invalid_request_error', 401: 'authentication_error', 403: 'permission_error', 404: 'not_found_error', 429: 'rate_limit_error', 500: 'api_error', 529: 'overloaded_error' };
+const TYPES = { 400: 'invalid_request_error', 401: 'authentication_error', 402: 'billing_error', 403: 'permission_error', 404: 'not_found_error', 429: 'rate_limit_error', 500: 'api_error', 529: 'overloaded_error' };
 const GOOGLE = { 400: 'INVALID_ARGUMENT', 403: 'PERMISSION_DENIED', 404: 'NOT_FOUND', 429: 'RESOURCE_EXHAUSTED', 500: 'INTERNAL', 503: 'UNAVAILABLE' };
 // Modes that answer with an error whatever the (valid) request says: [status, extra headers, message].
 const ERRORS = {
@@ -49,6 +49,7 @@ const ERRORS = {
   'server-error': [500, {}, 'The server had an error.'], overloaded: [529, {}, 'Overloaded'],
   'rate-limit': [429, { 'retry-after': '7' }, 'Rate limit reached.'], 'groq-rate-limit': [429, { 'retry-after': '7' }, 'Rate limit reached for model.'], // Retry-After on Groq assumed
   'bad-key': [400, {}, 'API key not valid. Please pass a valid API key.'],
+  'payment-required': [402, {}, 'Payment required.'], // S4b-BL-243: any provider, a spent balance or an unpaid account
 };
 // CORS allow-lists for cors 'vendor-like'. OpenAI-style: Ollama's list is sourced (routes.go); the other vendors' lists
 // are assumed (no source states them): a browser call needs only the headers the adapter documents.
@@ -151,6 +152,10 @@ function problem(fam, mode, req, b, state) {
 }
 
 function errorBody(fam, mode, status, message) {
+  // S4b-BL-243 'quota-spent': the key's quota or credit is used up, in each vendor's own shape (Anthropic billing_error 402,
+  // Gemini 429 RESOURCE_EXHAUSTED with a PerDay quotaId, OpenAI insufficient_quota 429).
+  if (mode === 'quota-spent' && fam === 'gemini') return { error: { code: 429, message, status: 'RESOURCE_EXHAUSTED', details: [{ '@type': 'type.googleapis.com/google.rpc.QuotaFailure', violations: [{ quotaId: 'GenerateRequestsPerDayPerProjectPerModel-FreeTier' }] }] } };
+  if (mode === 'quota-spent' && fam === 'openai') return { error: { message, type: 'insufficient_quota', param: null, code: 'insufficient_quota' } };
   if (fam === 'anthropic') return { type: 'error', error: { type: TYPES[status] ?? 'api_error', message }, request_id: 'req_fake' };
   if (fam === 'gemini') { // assumed: Google's standard error model, with the key-invalid reason the app looks for
     const keyBad = /API key not valid/.test(message);
@@ -211,6 +216,7 @@ export function start({ port = 0, golden = null, staticDir = null } = {}) {
     if (req.method !== 'POST') return fail(405, 'POST only');
     const wrong = problem(fam, mode, req, body, state);
     if (wrong) return fail(...wrong);
+    if (mode === 'quota-spent') return fail(fam === 'anthropic' ? 402 : 429, 'You exceeded your current quota, please check your plan and billing details.');
     if (ERRORS[mode]) return fail(ERRORS[mode][0], ERRORS[mode][2], ERRORS[mode][1]);
     if (mode === 'redirect') { res.writeHead(302, { ...cors, location: '/__redirected' }); return res.end(); }
     if (mode === 'openrouter-200-error') return json(200, { error: { code: 502, message: 'Provider returned error' }, id: 'gen-fake' }, cors);

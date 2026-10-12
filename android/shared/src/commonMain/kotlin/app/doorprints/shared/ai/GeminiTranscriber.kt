@@ -130,7 +130,7 @@ class GeminiTranscriber(
             if (status == 400 && ("API_KEY_INVALID" in body || "API key not valid" in body)) {
                 ApiException(ApiException.Kind.AI_KEY_REJECTED, status)
             } else {
-                aiFailure(status, retryAfter)
+                aiFailure(status, retryAfter, body)
             }
     }
 }

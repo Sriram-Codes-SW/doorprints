@@ -193,6 +193,9 @@ class FakeProviderWireTest {
                 Triple("not-found", ApiException.Kind.AI_MODEL_NOT_FOUND, 404),
                 Triple("server-error", ApiException.Kind.AI_UNAVAILABLE, 500),
                 Triple("overloaded", ApiException.Kind.AI_UNAVAILABLE, 529),
+                Triple("payment-required", ApiException.Kind.AI_QUOTA_EXHAUSTED, 402),
+                // S4b-BL-243: OpenAI insufficient_quota and Gemini PerDay are 429s, Anthropic's billing_error a 402.
+                Triple("quota-spent", ApiException.Kind.AI_QUOTA_EXHAUSTED, if (name == "anthropic") 402 else 429),
             )) {
                 if (name == "gemini" && m == "not-found") continue // Gemini's own client has no model-not-found kind (ADR-26)
                 mode(m)

@@ -30,13 +30,15 @@ import {
 } from './ai-core';
 import { type AiQuality, geminiThinkingLevel } from './ai-quality';
 import { geminiBlocked } from './ai-blocked';
+import { isQuotaExhausted } from './ai-quota';
 import type { JsonChatModel } from './json-chat-model';
 
 /**
  * `modelNotFound` and `unreachable` come from an OpenAI-compatible provider (docs/03 §13.2); Gemini never raises them.
  * `blocked` is the provider's own safety system declining the text (S4b-BL-232): never retried, its words never kept.
+ * `quotaExhausted` is the key's free quota or credit used up (S4b-BL-243): not a wait of a minute, so not `rateLimited`.
  */
-export type OnDeviceAiErrorKind = 'rateLimited' | 'keyRejected' | 'unavailable' | 'modelNotFound' | 'unreachable' | 'blocked';
+export type OnDeviceAiErrorKind = 'rateLimited' | 'keyRejected' | 'unavailable' | 'modelNotFound' | 'unreachable' | 'blocked' | 'quotaExhausted';
 
 /** Why an on-device AI request failed, in the words the screens use (see `aiErrorMsg`). */
 export class OnDeviceAiError extends Error {
@@ -152,7 +154,8 @@ export class GeminiChatModel implements JsonChatModel {
       );
     } catch (e) {
       if (e instanceof HttpErrorResponse) {
-        const text = JSON.stringify(e.error ?? '');
+        const text = typeof e.error === 'string' ? e.error : JSON.stringify(e.error ?? '');
+        if (isQuotaExhausted(e.status, text)) throw new OnDeviceAiError('quotaExhausted');
         if (e.status === 429) throw new OnDeviceAiError('rateLimited');
         if (e.status === 403 || (e.status === 400 && (text.includes('API_KEY_INVALID') || text.includes('API key not valid')))) {
           throw new OnDeviceAiError('keyRejected');

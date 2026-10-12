@@ -68,6 +68,7 @@
 | v0.64   | 2026-10-12 | Claude (Code), engineer       | **8.6: hard set v0.2, the injection split in the web summary** (S4b-BL-240, [10](../10-sprint-log.md) v0.262). `hard-ask-01` expects only the Kakkanad flat (the Adyar flat is Rs 28,000 but its notes have no parking; it may be cited), `hard-ask-03` asks whether the Blue gate house and the Corner flat were visited on the same day (the Ask document shows only the date of the last visit, both fixture visits are 2026-09-14), `hard-extract-03` is labelled a known gap (S4b-BL-174b). The web job summary adds the rows `prompt-injection, model-dependent` and `prompt-injection, pipeline-guarded` (`ai-eval-layers.ts`; a case is pipeline only if `injection-layers.json` lists it). Informational. |
 | v0.65   | 2026-10-12 | Claude (Code), engineer       | **Extract: sale and rent both offered; Ask: the first visit date** (S4b-BL-241, [10](../10-sprint-log.md) v0.263). Owner decisions: the Extract prompt's `priceType` line now ends "If the listing offers both, leave price and priceType null and put both amounts in notes." (schema description unchanged); the Ask document names the first visit date when a house has several visits. Hard set v0.3. **2.1:** the AI Studio key answers 402 and will not be topped up (zero-cost rule); replacing `AI_API_KEY` with a free-tier key from a project without billing and dispatching *AI evals* (`key-check`, then `on-device`) is an open owner action. Actual spend on `doorprints-ai`: Rs 4,339. |
 | v0.66   | 2026-10-12 | Claude (Code), engineer       | **8.2 seeding on the new sync API** (S4b-BL-206, kinds step 2, the server part): the eval seeds through `/api/candidates`, a fixture house as a candidate (`money`, `extras.bedrooms`) and a visit with `candidateId`. The golden set, the prompts and the AI documents are unchanged. |
+| v0.67   | 2026-10-12 | Claude (Code), engineer       | **A spent quota or credit is its own error** (S4b-BL-243; `feat/ai-quota-exhausted-error`): 2.1 (key origin for the live test) and 13.1 (the error table). With the person's own key, an HTTP 402, a Gemini 429 whose `quotaId` holds `PerDay`, an OpenAI-compatible `insufficient_quota` and an Anthropic `billing_error` (or a 400 saying the credit balance is too low) are the new failure `quotaExhausted` (`AI_QUOTA_EXHAUSTED` on the phones), worded "Your key's free quota or credit is used up. Check usage and billing with your provider; the app works without AI." in en, hi, ta and te (the last three under review), instead of "unavailable or out of free quota" and, on Android Gemini, instead of "Try again in 60 s". A per-minute 429 is still a wait. New shared vectors `quotaResponses` (19 replies), `ai-quota.ts` / `AiQuota.kt` read named fields only. The server's own path is S4b-BL-244. |
 
 Status: implemented in `backend/` (package `app.doorprints.server.ai`), **off by default**. Not yet compiled in this
 sandbox (no Maven Central access) — CI compiles and runs the tests. Provider: AI Studio by default, Vertex AI with
@@ -205,6 +206,14 @@ so the first run must be small and checked in the billing report before the eval
 days and after it every call costs money, so budget alerts are part of the setup; (2) Vertex embeddings cost one HTTP
 call per house (AI Studio batches 100), which is fine at a personal scale (tens of houses) but is why the eval now
 skips per-save indexing. Keeping AI Studio costs little: it is the default, its tests still run in every build.
+
+**Key origin for the live test (S4b-BL-243).** The key for the real-provider checks (`AI_API_KEY`, the `own-provider` and
+`on-device` suites) should come from a Google project **without billing**. A project with billing turns a used-up free
+quota into charges, and then the daily-quota answer below never appears; a project without it answers HTTP 429
+`RESOURCE_EXHAUSTED` with a `quotaId` such as `GenerateRequestsPerDayPerProjectPerModel-FreeTier`, which the apps word as
+"Your key's free quota or credit is used up" (`quotaExhausted`) instead of a wait. The per-minute quota ids (`...PerMinute...`)
+keep the wait wording. The same kind covers a user's own key at any provider: 402, OpenAI `insufficient_quota`, Anthropic
+`billing_error` (rules and sources in `ai-quota.ts` and `AiQuota.kt`; vectors `quotaResponses`).
 
 ## 3. Verified dependency coordinates (Spring AI 2.0.1)
 
@@ -1623,7 +1632,7 @@ No body. Response `{ "indexed": 42 }`. Admin/maintenance action (e.g. a button i
 | `extract-listing` | New-house form, "Import from listing text" (`pages/house-detail`): fills only fields the listing provided, appends amenities to notes, lists `warnings`, never saves | `HouseEditScreen` → `PasteListingDialog`, same merge rules (`mergeDraft`) |
 | `ask` | `pages/ask`: optional filters (status, max price, min BHK); `[house:<id>]` markers become numbered links with accessible names; sources listed; `grounded=false` notice | `AssistantScreen` Ask tab: markers removed from the text, cited houses as cards that open the house |
 | `plan-visits` | `pages/plan`: start from device location, a draggable marker or typed coordinates; `maxStops` 1–8; ordered list + numbered MapLibre markers and a straight-line route; `fallback` notice | `AssistantScreen` Plan tab: start from the current location; ordered cards with leg distance and walking time |
-| Errors | `aiErrorMsg`: 429 → "try again in {s} seconds" (from `Retry-After`), 503 → provider unavailable/quota, 404 → AI off | `aiErrorText`: same mapping; AI POSTs are never retried automatically |
+| Errors | `aiErrorMsg`: 429 → "try again in {s} seconds" (from `Retry-After`), 503 → provider unavailable/quota, 404 → AI off; with the person's own key also `quotaExhausted` (402, Gemini `PerDay`, `insufficient_quota`, Anthropic `billing_error`) → "Your key's free quota or credit is used up. Check usage and billing with your provider; the app works without AI." (S4b-BL-243) | `aiErrorText`: same mapping (`AiFailure.QuotaExhausted`); AI POSTs are never retried automatically |
 | Disclosure (AI-010) | "The text is sent to the AI provider set up on your server…" under each input | Same text in the Assistant and the paste dialog |
 
 ### 13.2 The own-key Gemini request and the *AI speed and cost* setting (S4b-BL-198 step 2)
