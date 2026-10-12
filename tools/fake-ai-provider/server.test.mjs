@@ -118,6 +118,13 @@ describe('OpenAI-style /chat/completions', () => {
     }
     assert.equal((await oa(oaBody(null), 'rate-limit')).headers.get('retry-after'), '7');
   });
+  it('answers a spent quota as OpenAI does (429 insufficient_quota, no Retry-After) and a 402 for payment required', async () => {
+    const q = await oa(oaBody(null), 'quota-spent');
+    assert.equal(q.status, 429);
+    assert.equal((await q.json()).error.code, 'insufficient_quota');
+    assert.equal(q.headers.get('retry-after'), null);
+    assert.equal((await oa(oaBody(null), 'payment-required')).status, 402);
+  });
   it('words errors as each vendor documents: OpenAI code, Groq message and type only, OpenRouter 200 with only error', async () => {
     assert.equal((await (await oa(oaBody(null), 'not-found')).json()).error.code, 'model_not_found');
     const groq = (await (await oa(oaBody(null), 'groq-rate-limit')).json()).error;
@@ -195,6 +202,13 @@ describe('Anthropic /v1/messages', () => {
     }
     assert.equal((await an(anBody(), 'rate-limit')).headers.get('retry-after'), '7');
   });
+  it('answers a spent credit as a 402 billing_error', async () => {
+    for (const mode of ['quota-spent', 'payment-required']) {
+      const r = await an(anBody(), mode);
+      assert.equal(r.status, 402, mode);
+      assert.equal((await r.json()).error.type, 'billing_error', mode);
+    }
+  });
   it('refuses a browser (an Origin) that lacks anthropic-dangerous-direct-browser-access', async () => {
     const r = await an(anBody(), undefined, { ...anHeaders, origin: 'http://page.test' });
     assert.equal(r.status, 400);
@@ -219,6 +233,12 @@ describe('Gemini generateContent', () => {
     const q = await gm(gmBody, 'rate-limit');
     assert.equal(q.status, 429);
     assert.equal((await q.json()).error.status, 'RESOURCE_EXHAUSTED');
+  });
+  it('words a spent daily quota with a PerDay quotaId, and a payment-required stop as 402', async () => {
+    const day = await gm(gmBody, 'quota-spent');
+    assert.equal(day.status, 429);
+    assert.match(JSON.stringify(await day.json()), /"quotaId":"[^"]*PerDay/);
+    assert.equal((await gm(gmBody, 'payment-required')).status, 402);
   });
 });
 

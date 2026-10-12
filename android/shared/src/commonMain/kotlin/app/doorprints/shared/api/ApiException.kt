@@ -41,6 +41,8 @@ class ApiException(
         AI_MODEL_NOT_FOUND,
         /** The AI provider's own safety system declined the text; never retried, its words never shown (S4b-BL-232). */
         AI_BLOCKED,
+        /** The person's own key has no free quota or credit left: HTTP 402, a daily Gemini quota, `insufficient_quota`, a billing error (S4b-BL-243). */
+        AI_QUOTA_EXHAUSTED,
     }
 
     companion object {

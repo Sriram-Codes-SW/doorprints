@@ -80,7 +80,7 @@ class OpenAiCompatClient(
         val response = post(body)
         val status = response.status
         if (AiBlocked.openAi(status, response.body)) throw AiBlocked.failure(status)
-        if (status !in 200..299) throw failure(status, response.retryAfter)
+        if (status !in 200..299) throw failure(status, response.retryAfter, response.body)
         contentOf(response.body)
     }
 
@@ -109,13 +109,13 @@ class OpenAiCompatClient(
         }
 
         internal fun next(tier: Int, status: Int, body: String, retryAfter: String?): Step {
-            if (status == 400 && tier < 3 && body.lowercase().let { text -> TRIGGERS.getValue(tier).any { it in text } }) {
+            if (status == 400 && tier < 3 && !AiQuota.isExhausted(status, body) && body.lowercase().let { text -> TRIGGERS.getValue(tier).any { it in text } }) {
                 return Step.Down(tier + 1)
             }
-            return Step.Fail(failure(status, retryAfter))
+            return Step.Fail(failure(status, retryAfter, body))
         }
 
-        internal fun failure(status: Int, retryAfter: String?): ApiException = aiFailure(status, retryAfter)
+        internal fun failure(status: Int, retryAfter: String?, body: String = ""): ApiException = aiFailure(status, retryAfter, body)
 
         /**
          * The request body for [tier] (docs/03 §13.2): 1 asks for the strict schema, 2 for a JSON object with the schema

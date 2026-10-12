@@ -5370,5 +5370,158 @@
       "blocked" : false
     },
     "note" : "529"
+  } ],
+  "quotaResponses" : [ {
+    "provider" : "gemini",
+    "status" : 429,
+    "body" : "{\"error\":{\"code\":429,\"message\":\"You exceeded your current quota, please check your plan and billing details.\",\"status\":\"RESOURCE_EXHAUSTED\",\"details\":[{\"@type\":\"type.googleapis.com/google.rpc.QuotaFailure\",\"violations\":[{\"quotaMetric\":\"generativelanguage.googleapis.com/generate_content_free_tier_requests\",\"quotaId\":\"GenerateRequestsPerDayPerProjectPerModel-FreeTier\",\"quotaDimensions\":{\"model\":\"gemini-3.5-flash\"},\"quotaValue\":\"250\"}]},{\"@type\":\"type.googleapis.com/google.rpc.RetryInfo\",\"retryDelay\":\"21s\"}]}}",
+    "expected" : {
+      "quota" : true
+    },
+    "note" : "Gemini 429 with a PerDay quotaId"
+  }, {
+    "provider" : "gemini",
+    "status" : 429,
+    "body" : "{\"error\":{\"code\":429,\"message\":\"You exceeded your current quota, please check your plan and billing details.\",\"status\":\"RESOURCE_EXHAUSTED\",\"details\":[{\"@type\":\"type.googleapis.com/google.rpc.QuotaFailure\",\"violations\":[{\"quotaMetric\":\"generativelanguage.googleapis.com/generate_content_free_tier_requests\",\"quotaId\":\"GenerateRequestsPerMinutePerProjectPerModel-FreeTier\",\"quotaDimensions\":{\"model\":\"gemini-3.5-flash\"},\"quotaValue\":\"250\"}]},{\"@type\":\"type.googleapis.com/google.rpc.RetryInfo\",\"retryDelay\":\"21s\"}]}}",
+    "expected" : {
+      "quota" : false
+    },
+    "note" : "Gemini 429 with a PerMinute quotaId waits"
+  }, {
+    "provider" : "gemini",
+    "status" : 429,
+    "body" : "{\"error\":{\"code\":429,\"status\":\"RESOURCE_EXHAUSTED\",\"message\":\"Resource exhausted\"}}",
+    "expected" : {
+      "quota" : false
+    },
+    "note" : "Gemini 429 without details waits"
+  }, {
+    "provider" : "gemini",
+    "status" : 429,
+    "body" : "{\"error\":{\"code\":429,\"message\":\"echoed GenerateRequestsPerDay in the message only\",\"status\":\"RESOURCE_EXHAUSTED\"}}",
+    "expected" : {
+      "quota" : false
+    },
+    "note" : "PerDay in free text is not read"
+  }, {
+    "provider" : "gemini",
+    "status" : 400,
+    "body" : "{\"error\":{\"code\":400,\"message\":\"API key not valid. Please pass a valid API key.\",\"status\":\"INVALID_ARGUMENT\"}}",
+    "expected" : {
+      "quota" : false
+    },
+    "note" : "Gemini 400 invalid key"
+  }, {
+    "provider" : "openai",
+    "status" : 429,
+    "body" : "{\"error\":{\"message\":\"You exceeded your current quota, please check your plan and billing details.\",\"type\":\"insufficient_quota\",\"param\":null,\"code\":\"insufficient_quota\"}}",
+    "expected" : {
+      "quota" : true
+    },
+    "note" : "OpenAI insufficient_quota (code and type)"
+  }, {
+    "provider" : "openai",
+    "status" : 429,
+    "body" : "{\"error\":{\"message\":\"Quota\",\"type\":\"insufficient_quota\"}}",
+    "expected" : {
+      "quota" : true
+    },
+    "note" : "type alone"
+  }, {
+    "provider" : "openai",
+    "status" : 429,
+    "body" : "{\"error\":{\"message\":\"Rate limit reached for gpt in organization\",\"type\":\"requests\",\"code\":\"rate_limit_exceeded\"}}",
+    "expected" : {
+      "quota" : false
+    },
+    "note" : "OpenAI rate_limit_exceeded waits"
+  }, {
+    "provider" : "openai",
+    "status" : 429,
+    "body" : "{\"error\":{\"message\":\"You exceeded your current quota\"}}",
+    "expected" : {
+      "quota" : false
+    },
+    "note" : "quota words without a code wait"
+  }, {
+    "provider" : "openai",
+    "status" : 402,
+    "body" : "{\"error\":{\"message\":\"Insufficient credits\",\"code\":402}}",
+    "expected" : {
+      "quota" : true
+    },
+    "note" : "OpenAI-compatible 402 (OpenRouter style)"
+  }, {
+    "provider" : "openai",
+    "status" : 402,
+    "body" : "",
+    "expected" : {
+      "quota" : true
+    },
+    "note" : "402 with no body"
+  }, {
+    "provider" : "openai",
+    "status" : 500,
+    "body" : "{\"error\":{\"code\":\"insufficient_quota\"}}",
+    "expected" : {
+      "quota" : false
+    },
+    "note" : "only 400, 402 and 429 are read"
+  }, {
+    "provider" : "anthropic",
+    "status" : 402,
+    "body" : "{\"type\":\"error\",\"error\":{\"type\":\"billing_error\",\"message\":\"There is an issue with your billing or payment information.\"}}",
+    "expected" : {
+      "quota" : true
+    },
+    "note" : "Anthropic billing_error 402"
+  }, {
+    "provider" : "anthropic",
+    "status" : 400,
+    "body" : "{\"type\":\"error\",\"error\":{\"type\":\"billing_error\",\"message\":\"billing problem\"}}",
+    "expected" : {
+      "quota" : true
+    },
+    "note" : "billing_error type on its own"
+  }, {
+    "provider" : "anthropic",
+    "status" : 400,
+    "body" : "{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"}}",
+    "expected" : {
+      "quota" : true
+    },
+    "note" : "Anthropic low credit 400"
+  }, {
+    "provider" : "anthropic",
+    "status" : 400,
+    "body" : "{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"tool_choice is not supported\"}}",
+    "expected" : {
+      "quota" : false
+    },
+    "note" : "Anthropic other 400"
+  }, {
+    "provider" : "anthropic",
+    "status" : 429,
+    "body" : "{\"type\":\"error\",\"error\":{\"type\":\"rate_limit_error\",\"message\":\"slow down\"}}",
+    "expected" : {
+      "quota" : false
+    },
+    "note" : "Anthropic 429 waits"
+  }, {
+    "provider" : "anthropic",
+    "status" : 529,
+    "body" : "{\"type\":\"error\",\"error\":{\"type\":\"overloaded_error\",\"message\":\"busy\"}}",
+    "expected" : {
+      "quota" : false
+    },
+    "note" : "Anthropic 529"
+  }, {
+    "provider" : "openai",
+    "status" : 429,
+    "body" : "not json",
+    "expected" : {
+      "quota" : false
+    },
+    "note" : "a 429 page that is not JSON waits"
   } ]
 }

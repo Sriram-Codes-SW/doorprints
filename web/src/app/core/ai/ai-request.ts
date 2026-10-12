@@ -16,6 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { isQuotaExhausted } from './ai-quota';
 import { OnDeviceAiError, type OnDeviceAiErrorKind } from './on-device-ai.service';
 
 /**
@@ -103,12 +104,14 @@ export function retryAfterSeconds(header: string | null | undefined): number | n
 }
 
 /**
- * Status 0 is the network; 401 and 403 a refused key; 404 an unknown model; 429 a rate limit with the seconds of
- * `Retry-After`; anything else (a 400, a 5xx, Anthropic's 529 overloaded, a 3xx) `unavailable`.
+ * Status 0 is the network; 401 and 403 a refused key; a 402, or a body that says the key's quota or credit is used up
+ * ({@link isQuotaExhausted}), `quotaExhausted`; 404 an unknown model; 429 a rate limit with the seconds of `Retry-After`;
+ * anything else (a 400, a 5xx, Anthropic's 529 overloaded, a 3xx) `unavailable`.
  */
-export function classifyStatus(status: number, retryAfter: string | null = null): ErrorAction {
+export function classifyStatus(status: number, retryAfter: string | null = null, body = ''): ErrorAction {
   if (status === 0) return { action: 'error', kind: 'unreachable' };
   if (status === 401 || status === 403) return { action: 'error', kind: 'keyRejected' };
+  if (isQuotaExhausted(status, body)) return { action: 'error', kind: 'quotaExhausted' };
   if (status === 404) return { action: 'error', kind: 'modelNotFound' };
   if (status === 429) return { action: 'error', kind: 'rateLimited', retryAfterSeconds: retryAfterSeconds(retryAfter) };
   return { action: 'error', kind: 'unavailable' };

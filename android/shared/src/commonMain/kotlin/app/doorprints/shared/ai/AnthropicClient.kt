@@ -63,7 +63,7 @@ class AnthropicClient(
                 forceTool = false
                 continue
             }
-            if (response.status !in 200..299) throw failure(response.status, response.retryAfter)
+            if (response.status !in 200..299) throw failure(response.status, response.retryAfter, response.body)
             return contentOf(response.body)
         }
     }
@@ -73,7 +73,7 @@ class AnthropicClient(
         val body = requestBody("ping", model, "Reply with {\"ok\": true}.", "ping", 0.0, schema = null, maxTokens = 5)
         val response = post(body)
         if (AiBlocked.anthropic(response.status, response.body)) throw AiBlocked.failure(response.status)
-        if (response.status !in 200..299) throw failure(response.status, response.retryAfter)
+        if (response.status !in 200..299) throw failure(response.status, response.retryAfter, response.body)
         pingAnswered(response.body)
     }
 
@@ -92,7 +92,7 @@ class AnthropicClient(
         private const val TOOL_DESCRIPTION = "Reply by calling this tool with the answer."
         private val json = Json { ignoreUnknownKeys = true }
 
-        internal fun failure(status: Int, retryAfter: String?): ApiException = aiFailure(status, retryAfter)
+        internal fun failure(status: Int, retryAfter: String?, body: String = ""): ApiException = aiFailure(status, retryAfter, body)
 
         /**
          * The request body (docs/03 §13.2): the prompts, and for a [schema] one tool named [name] with its strict schema
