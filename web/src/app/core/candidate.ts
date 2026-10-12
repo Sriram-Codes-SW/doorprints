@@ -172,7 +172,7 @@ export function houseOf(c: CandidateDto): HouseDto {
   for (const field of COST_FIELDS) {
     const raw = extras[field];
     const cadence = MONEY_EXTRAS[field];
-    const value = cadence === undefined ? plain(field, raw) : extraAmount(raw, cadence === 'follows' ? null : cadence);
+    const value = cadence === undefined ? plain(field, raw) : extraAmount(raw);
     if (value !== null) cost[field] = value;
   }
   const other = cleanOtherExtras(Object.fromEntries(Object.entries(extras).filter(([id]) => !HOUSE_EXTRAS.includes(id))));
@@ -236,11 +236,15 @@ function moneyValue(raw: unknown): Money | null {
   return amount === null ? { cadence: m['cadence'] as Cadence } : { amount, cadence: m['cadence'] as Cadence };
 }
 
-/** A money extra's amount, when its value is a money object with an amount (and, when fixed, the field's cadence). */
-function extraAmount(raw: unknown, cadence: Cadence | null): number | null {
+/**
+ * A money extra's amount, when its value is a money object with an amount. Its cadence is not checked here: a deposit
+ * another writer stored as paid monthly keeps its amount, so the next write does not lose it (the house model has no
+ * place for that cadence, so the field's own one is written back). A backup file is held to the cadences
+ * (`backup-family.ts`).
+ */
+function extraAmount(raw: unknown): number | null {
   const money = moneyValue(raw);
-  if (!money || money.amount === undefined) return null;
-  return cadence === null || money.cadence === cadence ? money.amount : null;
+  return !money || money.amount === undefined ? null : money.amount;
 }
 
 /** A plain cost value of the type its field has: a boolean for `maintenanceIncluded`, a date text, else a number. */
