@@ -369,6 +369,21 @@ class AiCoreTest {
     }
 
     @Test
+    fun extractionPromptLeavesPriceAndTypeNullWhenBothSaleAndRentAreOffered() {
+        val system = AiPrompts.extraction("3BHK Baner, sale 1.2 Cr or rent 45k", "abc123").system
+        assertTrue(system.contains("- priceType: RENT or SALE. If the listing offers both, leave price and priceType null and put both amounts in notes."))
+        assertTrue(system.indexOf("- price:") < system.indexOf("- priceType:"))
+        assertTrue(system.indexOf("- priceType:") < system.indexOf("- bedrooms:"))
+    }
+
+    @Test
+    fun severalVisitsNameTheFirstDayAndTheLastOneVisitSaysNothingExtra() {
+        assertEquals("2 visits, first on 2025-09-19, last on 2025-09-22, 30 min in total",
+            HouseDocuments.visitSummary(listOf(AiVisit(1_758_270_800_000, null), AiVisit(1_758_530_000_000, 1_758_531_800_000))))
+        assertEquals("1 visit, last on 2025-09-22", HouseDocuments.visitSummary(listOf(AiVisit(1_758_530_000_000, null))))
+    }
+
+    @Test
     fun untrustedTextCannotCloseItsBlock() {
         val nonce = PromptSafety.nonce()
         assertTrue(Regex("^[0-9a-f]{6}$").matches(nonce))

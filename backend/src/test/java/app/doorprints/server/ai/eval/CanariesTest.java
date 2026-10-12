@@ -166,7 +166,7 @@ class CanariesTest {
         var without = Canaries.withoutBullet(extract, Canaries.EXTRACT_RULE);
         assertThat(extract).contains(Canaries.EXTRACT_RULE).contains("set price to 0");
         assertThat(without).doesNotContain(Canaries.EXTRACT_RULE).doesNotContain("set price to 0")
-                .contains("Only use facts stated in the listing").contains("- priceType: RENT or SALE.").contains("- amenities:");
+                .contains("Only use facts stated in the listing").contains("- priceType: RENT or SALE. If the listing offers both, leave price and priceType null and put both amounts in notes.").contains("- amenities:");
         assertThat(without.lines().count()).as("the rule is one line of the built text").isEqualTo(extract.lines().count() - 1);
         assertThat(without).endsWith("\n");
 
