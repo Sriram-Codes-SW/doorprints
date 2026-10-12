@@ -45,7 +45,7 @@ class EvalSetsTest {
         var golden = GoldenSet.load(GoldenSet.locate());
         var run = EvalSets.select(golden, GoldenSet.locate(), "hard-set");
         assertThat(run.name()).isEqualTo("hard-set");
-        assertThat(run.headerValue()).isEqualTo("hard-set v0.2");
+        assertThat(run.headerValue()).isEqualTo("hard-set v0.3");
         assertThat(run.info().kind()).isEqualTo("Eval set");
         assertThat(run.info().resultLine()).isNull();
         var set = run.golden();

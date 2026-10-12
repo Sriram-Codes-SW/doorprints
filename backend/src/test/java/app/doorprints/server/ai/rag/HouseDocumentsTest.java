@@ -353,6 +353,16 @@ class HouseDocumentsTest {
     }
 
     @Test
+    void severalVisitsNameTheFirstDayAndTheLast() {
+        var a = new VisitDto(UUID.randomUUID(), id, 12.97, 77.64, "MG Road",
+                Instant.parse("2026-09-01T10:00:00Z"), null, VisitSource.AUTO, null, false, 1);
+        var b = new VisitDto(UUID.randomUUID(), id, 12.97, 77.64, "MG Road",
+                Instant.parse("2026-09-14T10:00:00Z"), null, VisitSource.AUTO, null, false, 1);
+        assertThat(HouseDocuments.visitSummary(List.of(b, a))).isEqualTo("2 visits, first on 2026-09-01, last on 2026-09-14");
+        assertThat(HouseDocuments.visitSummary(List.of(a))).isEqualTo("1 visit, last on 2026-09-01");
+    }
+
+    @Test
     void metadataSkipsNullsAndNotesAreCapped() {
         var bare = new HouseDto(id, "Plot", null, null, null, 0, 0, null, null, null, null, null, null, null, null,
                 "n".repeat(10_000), null, null, null, null, null, null, null, null, Map.of(), null, null, false, 1, null);

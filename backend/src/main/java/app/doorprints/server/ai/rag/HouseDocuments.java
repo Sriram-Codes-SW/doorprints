@@ -338,17 +338,18 @@ public final class HouseDocuments {
     }
 
     /**
-     * One-line visit history for a house document: count, date of the latest visit and total minutes where departures
+     * One-line visit history for a house document: count, dates of the first (when there are several) and the latest visit and total minutes where departures
      * are known; "not visited yet" when there are none.
      */
     static String visitSummary(List<VisitDto> visits) {
         if (visits == null || visits.isEmpty()) return "not visited yet";
         var last = visits.stream().map(VisitDto::arrivedAt).max(java.util.Comparator.naturalOrder()).orElseThrow();
+        var first = visits.stream().map(VisitDto::arrivedAt).min(java.util.Comparator.naturalOrder()).orElseThrow();
         long totalMinutes = visits.stream()
                 .filter(v -> v.leftAt() != null && v.leftAt().isAfter(v.arrivedAt()))
                 .mapToLong(v -> Duration.between(v.arrivedAt(), v.leftAt()).toMinutes())
                 .sum();
-        return visits.size() + (visits.size() == 1 ? " visit" : " visits") + ", last on " + DAY.format(last)
+        return visits.size() + (visits.size() == 1 ? " visit" : " visits") + (visits.size() > 1 ? ", first on " + DAY.format(first) : "") + ", last on " + DAY.format(last)
                 + (totalMinutes > 0 ? ", " + totalMinutes + " min in total" : "");
     }
 

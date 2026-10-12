@@ -216,16 +216,17 @@ object HouseDocuments {
     fun label(h: AiHouse): String = ContactRedactor.forContact(h.contactName, h.contactPhone).freeText(h.label) ?: ""
 
     /**
-      * One line on the visits: how many, the last day (UTC), and the minutes spent where both arrival and departure are
+      * One line on the visits: how many, the first day (when several), the last day (UTC), and the minutes spent where both arrival and departure are
       * known.
      */
     fun visitSummary(visits: List<AiVisit>): String {
         if (visits.isEmpty()) return "not visited yet"
         val last = visits.maxOf { it.arrivedAt }
+        val first = visits.minOf { it.arrivedAt }
         val totalMinutes = visits.filter { it.leftAt != null && it.leftAt > it.arrivedAt }
             .sumOf { (it.leftAt!! - it.arrivedAt) / 60_000 }
         val day = utcDate(last)
-        return "${visits.size}${if (visits.size == 1) " visit" else " visits"}, last on $day" +
+        return "${visits.size}${if (visits.size == 1) " visit" else " visits"}${if (visits.size > 1) ", first on ${utcDate(first)}" else ""}, last on $day" +
             if (totalMinutes > 0) ", $totalMinutes min in total" else ""
     }
 
