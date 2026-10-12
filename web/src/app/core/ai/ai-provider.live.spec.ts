@@ -21,6 +21,8 @@ import { describe, expect, it } from 'vitest';
 import { LocalStore } from '../../data/local-store.service';
 import golden from '../../../../../docs/ai/evals/golden-set.json';
 import variants from '../../../../../docs/ai/evals/address-variants.json';
+import layers from '../../../../../docs/ai/evals/injection-layers.json';
+import { pipelineIds } from './ai-eval-layers';
 import { type GoldenLike, type VariantsFile, addressRunHeader, selectAddressRun } from './address-variants';
 import { type CaseResult, type GoldenCase, type Outcome, evalSetup, formatSummary, scoreCase } from './ai-eval';
 import { aiHostOf } from './ai-provider-config';
@@ -106,7 +108,7 @@ describe.skipIf(setup.status === 'skip')('Golden set through the chosen provider
     const address = addressRun
       ? { set: addressRun.set, header: addressRunHeader(addressRun), applicable: addressRun.golden.cases.length, total: addressRun.total, notApplicable: addressRun.notApplicable }
       : undefined;
-    const text = formatSummary({ kind: setup.kind, host: aiHostOf(config), model: setup.model }, results, stopped, setup.key, address);
+    const text = formatSummary({ kind: setup.kind, host: aiHostOf(config), model: setup.model }, results, stopped, setup.key, address, pipelineIds(layers));
     console.log(text);
     const file = proc?.env?.['DOORPRINTS_EVAL_SUMMARY'];
     if (file && proc?.getBuiltinModule) proc.getBuiltinModule('node:fs').writeFileSync(file, text);

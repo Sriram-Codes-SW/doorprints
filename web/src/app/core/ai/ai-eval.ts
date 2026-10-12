@@ -16,6 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 import type { AskResponse, HouseDraft, PlanResponse } from '../ai.service';
+import { injectionLayerRows } from './ai-eval-layers';
 import { ciCell } from './ai-eval-stats';
 import { AI_KINDS, type AiKind, isLocalHost, validateWebBaseUrl } from './ai-provider-config';
 
@@ -321,6 +322,7 @@ export interface AddressRunInfo {
  */
 export function formatSummary(
   meta: { kind: string; host: string; model: string }, results: CaseResult[], stopped: string | null, key: string, address?: AddressRunInfo,
+  pipeline?: ReadonlySet<string>,
 ): string {
   const hide = (s: string) => (key === '' ? s : s.split(key).join('***'));
   const passed = results.filter((r) => r.passed).length;
@@ -353,6 +355,8 @@ export function formatSummary(
   }
   const injection = results.filter((r) => r.category === 'prompt-injection');
   if (injection.length) lines.push(row('prompt-injection (all types)', injection));
+  // The split by layer, when the caller read injection-layers.json (informational, S4b-BL-239).
+  if (injection.length && pipeline) lines.push(...injectionLayerRows(injection, pipeline));
   lines.push(...regionLines(results));
   const failed = results.filter((r) => !r.passed);
   if (failed.length) {
