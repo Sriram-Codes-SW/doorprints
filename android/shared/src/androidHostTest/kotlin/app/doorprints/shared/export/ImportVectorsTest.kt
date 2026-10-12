@@ -63,7 +63,8 @@ class ImportVectorsTest {
 
     /** The `data.json` checks: decoding, then [BackupValidation.checkData]; a row that does not decode is BROKEN_DATA. */
     private fun check(data: JsonObject): BackupProblem? {
-        val decoded = runCatching { BackupFormat.json.decodeFromJsonElement(BackupData.serializer(), data) }
+        // Through the reader of both backup families (kinds step 3, BackupWire), as every import reads a file.
+        val decoded = runCatching { BackupWire.decodeData(data) }
             .getOrElse { return BackupProblem.BROKEN_DATA }
         return BackupValidation.checkData(decoded)
     }
@@ -79,7 +80,7 @@ class ImportVectorsTest {
     fun everyMergePreviewCountsTheSame() {
         for (c in cases("merges")) {
             val name = c.name()
-            val data = BackupFormat.json.decodeFromJsonElement(BackupData.serializer(), c.getValue("data"))
+            val data = BackupWire.decodeData(c.getValue("data").jsonObject)
             assertNull(name, BackupValidation.checkData(data))
             val local = c.getValue("local").jsonObject
             fun versions(key: String) = local.getValue(key).jsonObject.mapValues { it.value.jsonPrimitive.long }

@@ -92,7 +92,8 @@ class BackupRoundTripTest {
         val opened = BackupReader.open(writeBackup())
         assertTrue("open failed: $opened", opened is BackupOpen.Ok)
         (opened as BackupOpen.Ok).reader.use { reader ->
-            assertEquals(BackupFormat.ID, reader.data.format)
+            // Kinds step 3: written as the new family's `/1` (`candidates`), read back as the rows of a `/2` copy.
+            assertEquals(BackupFormat.ID_2, reader.data.format)
             assertEquals(listOf(house.toExport()), reader.data.houses)
             assertEquals(listOf(visit.toExport()), reader.data.visits)
             val manifest = reader.manifest

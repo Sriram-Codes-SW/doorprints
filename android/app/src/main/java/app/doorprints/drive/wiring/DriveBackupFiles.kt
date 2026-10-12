@@ -26,7 +26,7 @@ import app.doorprints.drive.backup.BackupSource
 import app.doorprints.drive.backup.StagingSink
 import app.doorprints.export.ExportBuilder
 import app.doorprints.export.Exporters
-import app.doorprints.shared.export.BackupData
+import app.doorprints.shared.export.BackupWire
 import app.doorprints.shared.export.ExportFormat
 import app.doorprints.shared.export.PhotoScope
 import kotlinx.coroutines.Dispatchers
@@ -52,7 +52,8 @@ class AndroidDriveBackupSource(
         dir.mkdirs()
         val options = ExportBuilder.defaults(context).copy(photos = PhotoScope.NONE)
         val bundle = ExportBuilder.bundle(repository, options)
-        val format = BackupData.of(bundle).format
+        // The Drive payload is a copy of the new backup family (kinds step 3, `BackupWire`): always `/1`.
+        val format = BackupWire.CURRENT_FORMAT
         val file = File(dir, "backup-${UUID.randomUUID()}.zip")
         try {
             BufferedOutputStream(FileOutputStream(file)).use { out ->

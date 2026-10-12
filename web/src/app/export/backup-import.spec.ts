@@ -92,15 +92,18 @@ describe('backup import (shared vectors)', () => {
       const local = localOf(m.local);
       const flags = { mode: m.mode, restoreDeleted: m.restoreDeleted, skipUpdates: m.skipUpdates, applyDeletions: m.update };
       const entries = new Set(m.photoEntries);
-      expect(checkData(m.data).ok).toBe(true);
-      const p = preview(m.data, entries, local, flags);
+      // The rows as the reader hands them on (kinds step 3: a file of the new family is read as the family before).
+      const checked = checkData(m.data);
+      if (!checked.ok) throw new Error(`refused: ${checked.problem}`);
+      const data = checked.data;
+      const p = preview(data, entries, local, flags);
       for (const [key, value] of Object.entries(m.expect)) expect(p[key as keyof typeof p], key).toBe(value);
       let n = 0;
-      const actions = plan(m.data, entries, local, flags, () => `n${n++}`);
+      const actions = plan(data, entries, local, flags, () => `n${n++}`);
       expect(actions.removedHouseIds.length).toBe(p.removedHouses);
       expect(actions.houses.length).toBe(p.newHouses + p.updatedHouses + p.restoredHouses);
       expect(actions.photos.length).toBe(p.newPhotos);
-      if (m.duplicates !== undefined) expect(copyDuplicates(m.data, local)).toBe(m.duplicates);
+      if (m.duplicates !== undefined) expect(copyDuplicates(data, local)).toBe(m.duplicates);
     });
   }
 

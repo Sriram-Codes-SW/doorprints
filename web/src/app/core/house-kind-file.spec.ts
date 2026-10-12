@@ -34,6 +34,7 @@ import schemaJson from '../../../../docs/schemas/kinds/kind.schema.json';
 import houseJson from '../../../../docs/schemas/kinds/house.json';
 import vectorsJson from '../../../../docs/schemas/kinds/kind-vectors.json';
 import sampleJson from '../../../../docs/schemas/backup-sample.json';
+import { legacyOf } from '../export/backup-family';
 
 interface Label { web: string | null; android: string | null; byCadence?: Record<string, { web?: string; android?: string }> }
 interface Field { id: string; section: string; order: number; label: Label; type?: string; min?: number; max?: number; was?: string; cadences?: unknown[] }
@@ -121,12 +122,24 @@ describe('the kind file for houses (docs/schemas/kinds)', () => {
     }
   });
 
-  it('every key of a backup house today has a place in the kind file, and nothing else does', () => {
-    // The sample's first house carries every key (backup-fields.spec.ts); nested lists and stamps are not fields.
+  it('every key of a backup house of the family before has a place in the kind file (`was`), and nothing else does', () => {
+    // The sample's first candidate carries every key (backup-fields.spec.ts), read as the family before holds it
+    // (kinds step 3: a file of that family is still read); nested lists and stamps are not fields.
+    const legacy = (legacyOf(sampleJson as unknown as Record<string, unknown>)['houses'] as Record<string, unknown>[])[0];
     const nested = ['id', 'cost', 'rooms', 'answers', 'moveIn', 'checklist', 'createdAt', 'updatedAt'];
-    const wire = Object.keys(sampleJson.houses[0]).filter((k) => !nested.includes(k));
+    const wire = Object.keys(legacy).filter((k) => !nested.includes(k));
     const placed = [...house.core, ...house.extras].flatMap((f) => (f.was ?? f.id).split(', ')).filter((w) => !w.startsWith('cost.'));
     expect(placed.sort()).toEqual(wire.sort());
+  });
+
+  it('every key of a candidate in the backup is a core field, `kind` or `extras`, and every extra is the kind file\'s, in its order', () => {
+    const first = sampleJson.candidates[0] as Record<string, unknown>;
+    const nested = ['id', 'kind', 'extras', 'rooms', 'answers', 'moveIn', 'checklist', 'createdAt', 'updatedAt'];
+    const core = house.core.flatMap((f) => (f.id === 'location' ? ['lat', 'lon'] : [f.id]));
+    expect(Object.keys(first).filter((k) => !nested.includes(k)).every((k) => core.includes(k))).toBe(true);
+    const keys = Object.keys(first['extras'] as object);
+    expect(keys).toEqual(house.extras.map((f) => f.id).filter((id) => keys.includes(id)));
+    expect(keys.length).toBeGreaterThan(10);
   });
 
   it('search reads exactly the fields the kind file names (searchText, the list on the Map page)', () => {

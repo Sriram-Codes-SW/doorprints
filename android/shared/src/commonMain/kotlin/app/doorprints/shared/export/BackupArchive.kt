@@ -112,7 +112,7 @@ class BackupArchive private constructor(
             val manifestBytes = zip.readAtMost(manifestEntry, MAX_MANIFEST_BYTES, tools)
                 ?: return ArchiveOpen.Failed(BackupProblem.TOO_LARGE)
             val manifest = runCatching {
-                BackupFormat.json.decodeFromString(BackupManifest.serializer(), manifestBytes.decodeToString())
+                BackupWire.decodeManifest(manifestBytes.decodeToString())
             }.getOrNull() ?: return ArchiveOpen.Failed(BackupProblem.NOT_A_BACKUP)
             BackupValidation.checkManifest(manifest)?.let { return ArchiveOpen.Failed(it) }
             manifest.files.firstOrNull { it.path == BackupFormat.DATA_ENTRY }?.let { listed ->
@@ -121,7 +121,7 @@ class BackupArchive private constructor(
                 }
             }
             val data = runCatching {
-                BackupFormat.json.decodeFromString(BackupData.serializer(), dataBytes.decodeToString())
+                BackupWire.decodeData(dataBytes.decodeToString())
             }.getOrElse { return ArchiveOpen.Failed(BackupProblem.BROKEN_DATA) }
             BackupValidation.checkData(data)?.let { return ArchiveOpen.Failed(it) }
             val photos = zip.entries.map { it.name }.filter { BackupValidation.isPhotoEntry(it) }.toSet()
@@ -146,7 +146,7 @@ class BackupArchive private constructor(
                     if (format.startsWith(FORMAT_FAMILY)) BackupProblem.UNSUPPORTED_VERSION else BackupProblem.NOT_A_BACKUP,
                 )
             }
-            val data = runCatching { BackupFormat.json.decodeFromJsonElement(BackupData.serializer(), root) }
+            val data = runCatching { BackupWire.decodeData(root) }
                 .getOrElse { return ArchiveOpen.Failed(BackupProblem.BROKEN_DATA) }
             BackupValidation.checkData(data)?.let { return ArchiveOpen.Failed(it) }
             return ArchiveOpen.Ok(BackupArchive(null, tools, null, data, emptySet(), size))

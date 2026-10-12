@@ -44,19 +44,36 @@ final class CanonicalSample {
     private CanonicalSample() {
     }
 
-    /** The sample as written, without the trailing newline. */
+    /** The sample as written (the new family since kinds step 3: {@code candidates}), without the trailing newline. */
+    static String text() {
+        return read("docs/schemas/backup-sample.json").strip();
+    }
+
+    /**
+     * The sample as this server's rows of the family before hold it ({@code houses}, {@code houseId}, a {@code /2} copy):
+     * read through {@link BackupWire#legacyOf}, which is how {@code POST /api/import} reads it. The suites that build the
+     * server's data from the sample and compare exports with it work in this shape; {@code BackupWireTest} pins that it is
+     * exactly {@code backup-sample-houses.json}, the sample before the reset, and {@code BackupApiTest} that the export is
+     * the new family.
+     */
     static String json() {
-        return read().strip();
+        var mapper = tools.jackson.databind.json.JsonMapper.builder().build();
+        return mapper.writeValueAsString(BackupWire.legacyOf(mapper.readTree(text())));
+    }
+
+    /** The sample of the family before, as it was before the reset ({@code docs/schemas/backup-sample-houses.json}). */
+    static String houses() {
+        return read("docs/schemas/backup-sample-houses.json").strip();
     }
 
     /**
      * Walks up from the working directory (Surefire starts in {@code backend/}) until the repository's
      * {@code docs/schemas/backup-sample.json} turns up, so the test does not care where it is started from.
      */
-    private static String read() {
+    private static String read(String file) {
         var dir = Path.of("").toAbsolutePath();
         for (int up = 0; up < 5 && dir != null; up++, dir = dir.getParent()) {
-            var candidate = dir.resolve("docs/schemas/backup-sample.json");
+            var candidate = dir.resolve(file);
             if (Files.isRegularFile(candidate)) {
                 try {
                     return Files.readString(candidate, StandardCharsets.UTF_8);
@@ -65,7 +82,7 @@ final class CanonicalSample {
                 }
             }
         }
-        throw new IllegalStateException("docs/schemas/backup-sample.json not found above "
+        throw new IllegalStateException(file + " not found above "
                 + Path.of("").toAbsolutePath());
     }
 

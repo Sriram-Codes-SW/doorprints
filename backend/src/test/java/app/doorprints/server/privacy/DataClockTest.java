@@ -49,7 +49,7 @@ class DataClockTest {
         // 20:30 UTC on 5 March is already 6 March in India: the name keeps the UTC date, like the device exporters.
         var instant = Instant.parse("2026-03-05T20:30:00Z");
         var controller = new DataController(mock(DataService.class), mock(BackupService.class),
-                Clock.fixed(instant, ZoneOffset.ofHoursMinutes(5, 30)));
+                Clock.fixed(instant, ZoneOffset.ofHoursMinutes(5, 30)), tools.jackson.databind.json.JsonMapper.builder().build());
 
         var response = controller.export();
 

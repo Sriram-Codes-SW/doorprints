@@ -18,8 +18,8 @@
 
 package app.doorprints.server.privacy;
 
-import app.doorprints.server.backup.BackupData;
 import app.doorprints.server.backup.BackupService;
+import app.doorprints.server.backup.BackupWire;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -29,6 +29,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 import java.time.Clock;
 import java.time.LocalDate;
@@ -53,20 +55,23 @@ public class DataController {
     private final DataService service;
     private final BackupService backups;
     private final Clock clock;
+    private final ObjectMapper json;
 
-    public DataController(DataService service, BackupService backups, Clock clock) {
+    public DataController(DataService service, BackupService backups, Clock clock, ObjectMapper json) {
         this.service = service;
         this.backups = backups;
         this.clock = clock;
+        this.json = json;
     }
 
     /** File name matches the device exporters: {@code Doorprints-backup-<UTC date>.zip} there, {@code .json} here. */
     @GetMapping("/export")
-    public ResponseEntity<BackupData> export() {
+    public ResponseEntity<JsonNode> export() {
         var name = "Doorprints-backup-" + LocalDate.now(clock.withZone(ZoneOffset.UTC)) + ".json";
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + name + "\"")
-                .body(backups.export());
+                // The new backup family (kinds step 3, BackupWire): `/1`, `search`, `candidates`, `candidateId`.
+                .body(BackupWire.currentOf(json.valueToTree(backups.export())));
     }
 
     /**

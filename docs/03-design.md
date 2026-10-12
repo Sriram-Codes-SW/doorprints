@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.110 |
+| Version | 0.111 |
 | Date | 2026-10-12 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -121,6 +121,7 @@
 | 0.108 | 2026-10-10 | Claude (Code), engineer | **ADR-36 and new §18: kinds, one candidate concept described by a kind file** (kinds PR 1, S4b-BL-205; [14](14-lead-backlog-and-handoff.md) N21; [10](10-sprint-log.md) v0.254, [06](06-test-plan.md) TC-U-198 and TC-U-199). The decision, the container named *Search* (owner-approved 2026-10-10), the deletion test applied before any code, the kind file (`docs/schemas/kinds/`), the eleven one-way doors with alternatives, reasons and reversal costs, the second pass against `kind-vectors.json`, and the file-size budget. Voice input stays ADR-37 (S4b-BL-218). Nothing reads the kind file at run time yet. |
 | 0.109 | 2026-10-12 | Claude (Code), engineer | **Kinds step 2, the server part** (S4b-BL-206; [10](10-sprint-log.md) v0.265): §9 lists `/api/candidates` and the candidate's `kind`, `money` and `extras`, `candidateId` on visits and photos; §18.4 door 7 and §18.5 record the finding that a house's own money may have a cadence and no amount (a rent not known yet), with the server's rules for unknown extras. The backup format is unchanged until the apps move. |
 | 0.110 | 2026-10-12 | Claude (Code), engineer | **Kinds step 3, the web part 1** (S4b-BL-206; [10](10-sprint-log.md) v0.267): §18.5 records that the website's IndexedDB moves to version 4, not 1 (a browser cannot open a lower version than it holds), rewriting every stored house as a candidate in place, and that the screens still read a house through one mapping at the store and at the server client. |
+| 0.111 | 2026-10-12 | Claude (Code), engineer | **Kinds step 3, the backup format** (S4b-BL-206; [10](10-sprint-log.md) v0.268, [schemas README](schemas/README.md) v1.33): §18.4 door 1 changed, **an old-family file is read, not refused** (lead's instruction for this step; the owner confirms or reverts, [14](14-lead-backlog-and-handoff.md) §11.4 item 6); §18.5 records the one mapping per stack between the two families and the lossless check against `backup-sample-houses.json`. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -2031,7 +2032,7 @@ new format id and a reader for the old one kept for ever. The second pass (§18.
 
 | # | Door | Choice | Alternatives | Why | Reversal cost after a release |
 |---|---|---|---|---|---|
-| 1 | **Backup format id** | **Decision (owner-approved 2026-10-10):** restart at `doorprints-backup/1` (N21). The new reader requires `candidates`; a file of the old family (it has `houses`) is refused with "made by an older Doorprints, export it again", never half-read | `doorprints-backup/4` (continue the numbering, no reused id); a new family name `doorprints-data/1` | No backup outside the owner's test devices exists; one number line from 1 is the simplest story for the guide and the threat model. The reused id is the trade-off: an old `/1` file on a test device is refused by shape, not by id | A new id and a second reader for ever |
+| 1 | **Backup format id** | **Decision (owner-approved 2026-10-10):** restart at `doorprints-backup/1` (N21). The new family has `candidates`; a file of the old family (it has `houses`) was to be refused with "made by an older Doorprints, export it again", never half-read. **Changed in kinds step 3 (2026-10-12, S4b-BL-206, at the lead's instruction "keep old backups importable"; the owner confirms or reverts, [14](14-lead-backlog-and-handoff.md) §11.4 item 6): a file of the old family is read whole, as it always was, and its houses become candidates; one with both lists is refused** | `doorprints-backup/4` (continue the numbering, no reused id); a new family name `doorprints-data/1` | No backup outside the owner's test devices exists; one number line from 1 is the simplest story for the guide and the threat model. The reused id is the trade-off: an old `/1` file on a test device is refused by shape, not by id | A new id and a second reader for ever |
 | 2 | **Wire and backup JSON names** | `candidates` (the backup list, the sync file list, `/api/candidates`); **Decision (owner-approved 2026-10-10):** `houseId` becomes `candidateId` on visits, photos and viewings in the same reset; `data.json` keeps its name | Keep `houseId` (fewer edits now; a school's visits say "house" on the wire for ever); `items`, `places` (`places` is already the saved places) | Public surfaces are renamed once, in the reset, or never; `candidate` is the word for one thing being compared, whatever it is | A format bump and a rename on three stacks |
 | 3 | **The candidate's new fields** | `kind` (the kind id, required, `^[a-z][a-z0-9_]{1,31}$`); `money` (`{ "amount": ..., "cadence": ... }`, absent when unknown); `extras` (an object keyed by extra id, absent when empty, never `{}`) | `type`, `category`; `fields`, `attributes`, `custom`; keeping `price` and `priceType` | `kind` reads plainly in the four languages' docs. A viewing already has a `kind` (FIRST or SECOND): a different object, so no clash on the wire, but writers must not confuse the two | Format bump |
 | 4 | **The kind schema and its `version`** | `format: "doorprints-kind/1"` names the file format; `version` (integer 1..1000) is the kind's own revision, raised when a field's type, unit or cadence changes, never for a label key. A reader refuses an unknown format and reads a lower or equal `version` | A semver string; one number for both; no version | Two questions, two numbers: "can I parse this file?" and "is this the house I know?". Built-in kinds ship inside the build, so today they always match | Cheap while kinds are built in; costly once packs are imported |
@@ -2064,6 +2065,17 @@ changed:
 - **The format id restart reuses `/1`** (door 1): guarded by shape; owner-approved 2026-10-10.
 - **Every key of a backup house today has exactly one place** in the kind file (`was`): the website, Android and the
   server each check it against their own model (`house-kind-file.spec.ts`, `HouseKindFileTest` twice).
+- **Found in kinds step 3 (S4b-BL-206, the backup format, 2026-10-12): one mapping per stack between the two
+  families.** The rows every writer builds and every reader checks are still those of the family before (the phone's
+  `BackupData`, the server's `BackupHouse`, the website's `BackupData`), so each stack has one mapping at its edge (Java
+  `BackupWire`, Kotlin `BackupWire`, web `backup-family.ts`): a writer's rows are written as the new family, and a file of
+  the new family is checked for what only it has (the kind id, money and its cadences, the money extras, the unknown
+  extras) and read back as the family before, so one reader of rows, ranges and ids serves both families and an older
+  Doorprints' file keeps importing (door 1 as changed). The mapping is lossless: the canonical sample read as the family
+  before is `backup-sample-houses.json` (the sample as it was) byte for byte, and back, on the three stacks. The phone and
+  the server do not keep an extra a newer app wrote (they have nowhere to store it until the Room step); the website
+  does. The format number of a copy is `/1` whatever it holds; inside, a read file is a `/2` copy (`/3` with deletions)
+  of the family before.
 - **Found in kinds step 3 (S4b-BL-206, the web part, 2026-10-12): the website's IndexedDB cannot restart at
   version 1.** A browser refuses to open a database at a lower version than it holds (`VersionError`), so the plan's
   "IndexedDB `DB_VERSION` 1" is **version 4**: its step rewrites every row of `houses` as a candidate (`kind`, `money`,

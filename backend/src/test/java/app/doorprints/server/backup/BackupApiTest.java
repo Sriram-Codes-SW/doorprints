@@ -220,8 +220,22 @@ class BackupApiTest {
         }
     }
 
+    @Autowired
+    tools.jackson.databind.ObjectMapper objectMapper;
+
+    /**
+     * What {@code GET /api/export} is made from: the rows of the family before as {@link BackupService#export()} builds
+     * them (with the lowest number that holds them), the shape {@link CanonicalSample#json()} has. Since kinds step 3
+     * the endpoint writes them as the new family ({@link BackupWire#currentOf}); {@link #exportIsTheNewBackupFamily}
+     * checks the file itself, and that it reads back as these rows.
+     */
     private String export() {
-        return api.get().uri("/api/export").retrieve().body(String.class);
+        return objectMapper.writeValueAsString(backupService.export());
+    }
+
+    private static String legacy(String file) {
+        var mapper = tools.jackson.databind.json.JsonMapper.builder().build();
+        return mapper.writeValueAsString(BackupWire.legacyOf(mapper.readTree(file)));
     }
 
     private Map<String, Object> postImport(String body, boolean dryRun) {
@@ -394,6 +408,36 @@ class BackupApiTest {
         assertThat(response.getHeaders().getFirst("Content-Disposition"))
                 .matches("attachment; filename=\"Doorprints-backup-\\d{4}-\\d{2}-\\d{2}\\.json\"");
         assertThat(response.getBody()).startsWith("{\"format\":\"" + BackupFormat.ID + "\"");
+    }
+
+    /**
+     * Kinds step 3 (S4b-BL-206): a file of the new backup family ({@code candidates}, the sample as written) imports, and
+     * the export is that family again, keys in the sample's order; the file of the family before keeps importing
+     * ({@link #importRestoresTheCanonicalSample} posts the sample read as that family).
+     */
+    @Test
+    void exportIsTheNewBackupFamily() throws JSONException {
+        var applied = postImport(CanonicalSample.text(), false);
+        assertThat(applied).containsEntry("format", BackupFormat.ID_WITH_BROKERS);
+        assertThat(count(applied, "houses", "created")).isEqualTo(3);
+        var raw = api.get().uri("/api/export").retrieve().body(String.class);
+        assertThat(raw).startsWith("{\"format\":\"" + BackupWire.CURRENT_FORMAT + "\",\"exportedAt\":")
+                .contains("\"search\":{\"kind\":\"house\"},\"candidates\":[{\"id\":\"11111111-1111-4111-8111-111111111111\",\"kind\":\"house\"")
+                .contains("\"candidateId\":").doesNotContain("\"houseId\"").doesNotContain("\"houses\"");
+        var mapper = tools.jackson.databind.json.JsonMapper.builder().build();
+        var expected = (tools.jackson.databind.node.ObjectNode) mapper.readTree(CanonicalSample.text());
+        expected.set("photos", mapper.createArrayNode());
+        assertThat(CanonicalSample.keysInOrder(raw)).isEqualTo(CanonicalSample.keysInOrder(mapper.writeValueAsString(expected)));
+        assertExportEquals(new JSONObject(SAMPLE).put("photos", new JSONArray()).toString(), legacy(raw));
+    }
+
+    /** A file of the new family that breaks what only it has (a deposit paid every month) is a 400 and writes nothing. */
+    @Test
+    void aBrokenFileOfTheNewFamilyIsRefused() {
+        var body = CanonicalSample.text().replace("\"cadence\":\"once\"},\"maintenance\"", "\"cadence\":\"month\"},\"maintenance\"");
+        assertThat(body).isNotEqualTo(CanonicalSample.text());
+        assertThat(status(() -> postImport(body, false))).isEqualTo(400);
+        assertThat(api.get().uri("/api/candidates").retrieve().body(LIST)).isEmpty();
     }
 
     // ---- import ------------------------------------------------------------------------------------------------

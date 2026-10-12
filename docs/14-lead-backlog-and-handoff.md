@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.164 |
+| Version | 0.165 |
 | Date | 2026-10-10 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..183); this file lists the lead-level items and points to the rest. |
@@ -172,6 +172,7 @@
 | 0.162 | 2026-10-10 | Claude (Code), engineer | §2 N21: **kinds PR 1 (S4b-BL-205) in review** on `feat/kinds-pr1-adr-schema`: ADR-36 and [03](03-design.md) §18, the kind files, the file-size budget; the three one-way-door choices of §18.4 owner-approved 2026-10-10. |
 | 0.163 | 2026-10-10 | Claude (Code), engineer | **§11: the state at the end of the long session of 2026-10-10** (what merged, what is open, what the live runs showed, the decisions that wait for the owner, how to resume). Docs only. |
 | 0.164 | 2026-10-12 | Claude (Code), engineer | **§11.4 items 1-4 decided** (S4b-BL-241): sale-and-rent gives a null price and type with both amounts in the notes; the Ask document names the first visit; the Vertex spend is Rs 4,339 and the eval code stays; the AI Studio key is to be replaced by a free-tier key (owner action). |
+| 0.165 | 2026-10-12 | Claude (Code), engineer | **§11.4 item 6**: kinds step 3 reads an old-family backup instead of refusing it (ADR-36 door 1 changed at the lead's instruction); the owner confirms or reverts. |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 
@@ -1005,6 +1006,7 @@ Golden set 75/75 twice (zero discordant cases: the eval repeats). Plan x5 on the
 3. **Billing: read.** The actual spend on the Google Cloud project `doorprints-ai` is Rs 4,339 (the plan estimated Rs 455-600). The owner keeps `VERTEX_EVAL_ENABLED` and the eval code for now.
 4. **The AI Studio key (`AI_API_KEY`) answers HTTP 402: open owner action.** The owner will not top up AI Studio (zero-cost rule). Replace `AI_API_KEY` with a free-tier key from a project without billing, then dispatch `ai-evals.yml` with suite `key-check`, then `on-device`. Recorded in [06](06-test-plan.md) TC-U-88 and [ai-design](ai/ai-design.md) 2.1. Vertex is unaffected.
 5. The owner's own to-dos (devices, accounts, native-speaker review, manual TC-M checks, the Survey of India items) were left alone on purpose.
+6. **Old backups after the format reset: open, owner to confirm (kinds step 3, S4b-BL-206, 2026-10-12).** ADR-36 door 1 (owner-approved 2026-10-10) said a file of the old backup family (`houses`) is refused with "made by an older Doorprints, export it again". Kinds step 3 was asked to keep old backups importable, so every reader now reads an old-family file whole and its houses become candidates; a file with both lists is refused ([03](03-design.md) §18.4 door 1, [schemas README](schemas/README.md) §1.1). Keeping it costs one mapping per stack and the old import cases in `import-vectors.json`; reverting it is a refusal in that mapping on three stacks and an OLD_FORMAT sentence in four languages.
 
 ### 11.5 Next, in order
 

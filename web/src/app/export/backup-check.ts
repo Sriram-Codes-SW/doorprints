@@ -25,6 +25,7 @@ import { MAX_QUESTIONS, MAX_QUESTION_TEXT } from '../shared/question';
 import { BUILT_IN_KEYS, MAX_CRITERIA, MAX_CRITERION_LABEL, MAX_PREFERENCE_VALUE } from '../shared/scoring';
 import { MAX_DURATION_MIN, MAX_ID_LENGTH, MAX_VIEWINGS, MAX_VIEWING_NOTES, MAX_WITH_WHOM, MIN_DURATION_MIN, REMIND_OPTIONS, VIEWING_KINDS, VIEWING_STATUSES } from '../shared/viewing';
 import { BACKUP_FORMATS_READ } from './backup-export';
+import { BrokenFamily, isCurrentFamily, legacyOf } from './backup-family';
 import type { BackupData } from './backup-export';
 
 /*
@@ -143,9 +144,11 @@ const validPoint = (lat: number, lon: number): boolean => lat >= -90 && lat <= 9
 /** Checks a parsed `data.json` the way every reader does; on success the rows are the file's own objects. */
 export function checkData(raw: unknown): CheckedData {
   try {
-    return check(object(raw));
+    // The new family (kinds step 3, `backup-family.ts`) is checked for what only it has and read as the family before;
+    // a file of the family before is read as it always was.
+    return check(isCurrentFamily(raw) ? legacyOf(raw as Obj) : object(raw));
   } catch (e) {
-    if (e instanceof Broken) return { ok: false, problem: 'BROKEN_DATA' };
+    if (e instanceof Broken || e instanceof BrokenFamily) return { ok: false, problem: 'BROKEN_DATA' };
     throw e;
   }
 }

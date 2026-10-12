@@ -24,6 +24,7 @@ import app.doorprints.shared.export.BackupData
 import app.doorprints.shared.export.BackupFormat
 import app.doorprints.shared.export.BackupProblem
 import app.doorprints.shared.export.BackupValidation
+import app.doorprints.shared.export.BackupWire
 import app.doorprints.shared.export.ExportBundle
 import app.doorprints.shared.export.ExportOptions
 import app.doorprints.shared.export.ExportRows
@@ -72,10 +73,11 @@ class CanonicalSampleTest {
 
     @Test
     fun theKotlinReaderAcceptsTheCanonicalSample() {
-        val data = BackupFormat.json.decodeFromString(BackupData.serializer(), sampleText)
+        // Kinds step 3: the sample is the new family (`candidates`), read through the reader of both families.
+        val data = BackupWire.decodeData(sampleText)
         assertNull(BackupValidation.checkData(data))
         assertEquals(listOf(3, 3, 2, 2), listOf(data.houses.size, data.visits.size, data.photos.size, data.brokerRows.size))
-        // Slice 1b: houses 1 and 3 name a broker of the file, and the sample is a `/2` document.
+        // Slice 1b: houses 1 and 3 name a broker of the file; the sample (the new family's `/1`) reads as a `/2` document.
         assertEquals("doorprints-backup/2", data.format)
         assertEquals(listOf("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", null, "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"), data.houses.map { it.brokerId })
         // Slice 1c: house 1 has two rooms, in the order shown, with every key the format has on the first.
@@ -139,7 +141,7 @@ class CanonicalSampleTest {
 
     @Test
     fun theKotlinWriterProducesTheCanonicalDocument() {
-        val sample = BackupFormat.json.decodeFromString(BackupData.serializer(), sampleText)
+        val sample = BackupWire.decodeData(sampleText)
         val bundle = ExportBundle.build(
             ExportOptions(exportedAtMillis = sample.exportedAt),
             houses = sample.houses.reversed().map { house ->
@@ -160,7 +162,7 @@ class CanonicalSampleTest {
         assertNotEquals(sample.visits.map { it.id }, bundle.visits.map { it.id })
         assertNotEquals(sample.photos.map { it.id }, bundle.photos.map { it.id })
 
-        val written = BackupFormat.json.encodeToString(BackupData.serializer(), BackupData.of(bundle))
+        val written = BackupWire.encodeData(BackupData.of(bundle))
         assertFalse("writers never emit null (section 4.1)", written.contains(":null"))
         assertEquals(canonical(Json.parseToJsonElement(sampleText)), canonical(Json.parseToJsonElement(written)))
     }

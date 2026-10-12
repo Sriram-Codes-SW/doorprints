@@ -1,0 +1,22 @@
+{
+  "spec": [
+    "web/src/app/export/backup-family.spec.ts",
+    "web/src/app/export/backup-import.spec.ts"
+  ],
+  "mutations": [
+    {"file": "web/src/app/export/backup-family.ts", "find": "  if ('houses' in root) throw new BrokenFamily('candidates and houses');", "replace": "", "expect": "refuses what only the new family can break"},
+    {"file": "web/src/app/export/backup-family.ts", "find": "  if (kind === 'house' && m.cadence !== 'month' && m.cadence !== 'once') throw new BrokenFamily('money.cadence');", "replace": "", "expect": "money by the year is not a cadence of a house"},
+    {"file": "web/src/app/export/backup-family.ts", "find": "      if (fixed !== null && m.cadence !== fixed) throw new BrokenFamily(`extras.${id}`);", "replace": "", "expect": "a deposit paid every month"},
+    {"file": "web/src/app/export/backup-family.ts", "find": "    if (amountRequired) throw new BrokenFamily('money.amount');", "replace": "", "expect": "a deposit with no amount"},
+    {"file": "web/src/app/export/backup-family.ts", "find": "  if (Object.keys(other).length > MAX_OTHER_EXTRAS) throw new BrokenFamily('extras');", "replace": "", "expect": "refuses what only the new family can break"},
+    {"file": "web/src/app/export/backup-family.ts", "find": "  if (typeof v === 'string') return v.length <= MAX_EXTRA_TEXT;", "replace": "  if (typeof v === 'string') return true;", "expect": "refuses what only the new family can break"},
+    {"file": "web/src/app/export/backup-family.ts", "find": "  if (typeof kind !== 'string' || !KIND_PATTERN.test(kind)) throw new BrokenFamily('kind');", "replace": "  if (typeof kind !== 'string') throw new BrokenFamily('kind');", "expect": "a kind that is not a kind id"},
+    {"file": "web/src/app/export/backup-family.ts", "find": "(deleted != null ? 'doorprints-backup/3' : 'doorprints-backup/2')", "replace": "'doorprints-backup/2'", "expect": "reads the update sample as a /3 file"},
+    {"file": "web/src/app/export/backup-family.ts", "find": "format.startsWith(FAMILY) ? NEWER_FORMAT : format", "replace": "format.startsWith(FAMILY) ? format : format", "expect": "reads a newer number of the new family as newer"},
+    {"file": "web/src/app/export/backup-family.ts", "find": "    if (id in MONEY_EXTRAS) out[id] = { amount: value, cadence: MONEY_EXTRAS[id] ?? ownCadence };", "replace": "    if (id in MONEY_EXTRAS) out[id] = { amount: value, cadence: MONEY_EXTRAS[id] ?? 'month' };", "expect": "is a lossless re-shape"},
+    {"file": "web/src/app/export/backup-family.ts", "find": "  return ordered(out, CANDIDATE_ORDER);", "replace": "  return out;", "expect": "is a lossless re-shape"},
+    {"file": "web/src/app/export/backup-family.ts", "find": "    else if (key === 'deleted') out[key] = rows(value).map((d) => (d['kind'] === 'house' ? { ...d, kind: 'candidate' } : d));", "replace": "", "expect": "reads the update sample as a /3 file"},
+    {"file": "web/src/app/export/backup-family.ts", "find": "  for (const id of Object.keys(other).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))) out[id] = other[id];", "replace": "", "expect": "keeps the extras a newer app wrote"},
+    {"file": "web/src/app/export/backup-family.ts", "find": "  return { ...m, counts: rename(counts, 'candidates', 'houses') };", "replace": "  return m;", "expect": "counts candidates in the manifest"}
+  ]
+}

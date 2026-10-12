@@ -22,6 +22,7 @@ import kotlinx.serialization.descriptors.elementNames
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -46,13 +47,31 @@ class BackupFieldsTest {
         error("$relative not found above ${File("").absolutePath}")
     }
 
-    private val sample = Json.parseToJsonElement(repoFile("docs/schemas/backup-sample.json").readText()).jsonObject
+    /**
+     * The sample as the phone's model holds it: read through the reader of both backup families (kinds step 3,
+     * [BackupWire.legacyOf]), so `houses`, `houseId` and the format `/2`. The new family's own key order is pinned byte
+     * for byte by `CanonicalSampleTest` and [theSampleReadsBackAsTheFamilyBeforeAndIsWrittenAgainUnchanged].
+     */
+    private val raw = Json.parseToJsonElement(repoFile("docs/schemas/backup-sample.json").readText()).jsonObject
+    private val sample = BackupWire.legacyOf(raw)
 
     private fun keysOf(list: String) = sample.getValue(list).jsonArray.first().jsonObject.keys.toList()
 
     @Test
     fun theSampleHouseHasExactlyTheModelsFields() =
         assertEquals(ExportHouse.serializer().descriptor.elementNames.toList(), keysOf("houses"))
+
+    @Test
+    fun theSampleReadsBackAsTheFamilyBeforeAndIsWrittenAgainUnchanged() {
+        assertTrue("candidates" in raw && "houses" !in raw)
+        assertEquals(BackupWire.CURRENT_FORMAT, raw.getValue("format").jsonPrimitive.content)
+        assertEquals(raw, BackupWire.currentOf(sample))
+        assertEquals(raw.toString(), BackupWire.currentOf(sample).toString())
+        // A lossless re-shape: read as the family before, the sample is that family's sample (before the reset), byte for byte.
+        val houses = Json.parseToJsonElement(repoFile("docs/schemas/backup-sample-houses.json").readText()).jsonObject
+        assertEquals(houses.toString(), sample.toString())
+        assertEquals(raw.toString(), BackupWire.currentOf(houses).toString())
+    }
 
     @Test
     fun theSampleVisitHasExactlyTheModelsFields() =
@@ -187,10 +206,10 @@ class BackupFieldsTest {
     @Test
     fun theUpdateSampleIsWhatThisWriterWritesAndPassesTheCheck() {
         val text = repoFile("docs/schemas/update-sample.json").readText().trimEnd()
-        val data = BackupFormat.json.decodeFromString(BackupData.serializer(), text)
+        val data = BackupWire.decodeData(text)
         assertEquals(BackupFormat.ID_3, data.format)
         assertEquals(null, BackupValidation.checkData(data))
-        assertEquals(text, BackupFormat.json.encodeToString(BackupData.serializer(), data))
+        assertEquals(text, BackupWire.encodeData(data))
         assertEquals("deleted", Json.parseToJsonElement(text).jsonObject.keys.last())
         assertEquals(ExportDeletion.serializer().descriptor.elementNames.toList(), Json.parseToJsonElement(text).jsonObject
             .getValue("deleted").jsonArray.first().jsonObject.keys.toList())

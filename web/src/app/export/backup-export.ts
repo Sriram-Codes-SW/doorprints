@@ -16,8 +16,9 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { CURRENT_FORMAT, currentManifestOf, currentOf } from './backup-family';
 import { COST_FIELDS } from '../core/models';
-import type { HouseAnswer, HouseCost, HouseRoom, MoveIn } from '../core/models';
+import type { HouseAnswer, HouseCost, HouseDto, HouseRoom, MoveIn } from '../core/models';
 import { cleanAnswers, cleanCost, cleanMoveIn, cleanRooms, photoMetaOf } from '../data/records';
 import type { PhotoRecord } from '../data/records';
 import { hasMeta } from '../shared/photo-tags';
@@ -133,6 +134,8 @@ export interface BackupHouse {
   checklist: Record<string, number>;
   createdAt: number;
   updatedAt: number;
+  /** The extras a newer app wrote, kept (kinds step 3); in the file they are part of `extras` (`backup-family.ts`). */
+  extrasOther?: HouseDto['extrasOther'];
 }
 
 /** The eleven cost fields, only the set ones, in `COST_FIELDS` order; the object itself is left out when empty. */
@@ -503,6 +506,8 @@ function backupHouse({ house }: BundleHouse): BackupHouse {
     checklist: sortedChecklist(house.checklist),
     createdAt: millisOf(house.createdAt),
     updatedAt: millisOf(house.updatedAt),
+    // The extras a newer app wrote (kinds step 3): `currentOf` writes them after the known ones, never on their own.
+    ...(house.extrasOther ? { extrasOther: house.extrasOther } : {}),
   };
 }
 
@@ -568,13 +573,15 @@ export function buildBackupZip(
   modifiedAt: Date,
 ): Uint8Array {
   const data = buildBackupData(bundle);
+  // Written in the new family (kinds step 3): `/1`, `search`, `candidates` with `kind`, `money` and `extras`.
+  const current = currentOf(data as unknown as Record<string, unknown>);
   // `Doorprints-copy-<date>.html`, the same name as the HTML download. Only the readers' *view* of a backup: no
   // importer reads this entry (Android's `BackupValidation` only checks that its path is safe), so the rename from
   // `Doorprints-<date>.html` cannot break an import either way; Android's `ExportFormat.HTML` follows it (handover).
   const htmlName = htmlCopyName(bundle.exportedAt);
 
   const contents: ZipEntry[] = [
-    { path: DATA_ENTRY, data: utf8(backupJson(data)) },
+    { path: DATA_ENTRY, data: utf8(backupJson(current)) },
     { path: htmlName, data: utf8(html) },
   ];
   // Photos in the bundle's own order; a photo whose bytes this browser does not have is simply not written, and
@@ -585,7 +592,7 @@ export function buildBackupZip(
   }
 
   const manifest: BackupManifest = {
-    format: data.format,
+    format: CURRENT_FORMAT,
     app: BACKUP_APP,
     appVersion: BACKUP_APP_VERSION,
     createdAt: isoUtc(bundle.exportedAt),
@@ -614,7 +621,12 @@ export function buildBackupZip(
     })),
   };
 
-  return zip([...contents, { path: MANIFEST_ENTRY, data: utf8(backupJson(manifest)) }], modifiedAt);
+  return zip([...contents, { path: MANIFEST_ENTRY, data: utf8(backupJson(currentManifestOf(manifest))) }], modifiedAt);
+}
+
+/** `data.json` of a copy as the file holds it: the rows of {@link buildBackupData} in the new family (`backup-family.ts`). */
+export function backupDataJson(bundle: ExportBundle): string {
+  return backupJson(currentOf(buildBackupData(bundle) as unknown as Record<string, unknown>));
 }
 
 /**

@@ -165,7 +165,7 @@
     "section": { "$ref": "#/$defs/sectionId" },
     "order": { "type": "integer", "minimum": 0, "maximum": 10000 },
     "visible": { "type": "boolean", "default": true },
-    "was": { "type": "string", "description": "Where the value lives in the format before the reset (dropped by S4b-BL-206)." }
+    "was": { "type": "string", "description": "Where the value lives in the backup family before the reset (S4b-BL-206), which every reader still reads." }
    }
   },
   "cadence": {
