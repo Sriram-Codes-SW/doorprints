@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Test plan (functional, security, accessibility, i18n, AI) |
-| Version | 0.211 |
+| Version | 0.212 |
 | Date | 2026-10-12 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -220,6 +220,7 @@
 | 0.208 | 2026-10-12 | Claude (Code), engineer | **TC-AI-45** (S4b-BL-241): the Extract prompt's `priceType` line (sale and rent both offered gives null) and the Ask document's `first on` visit date, one test per stack (`ExtractionPromptsTest`, `HouseDocumentsTest`, `AiCoreTest`, `ai-core.spec.ts`). **TC-U-88:** open owner action, the AI Studio key answers 402 and the owner will not top it up (zero-cost rule): replace `AI_API_KEY` with a free-tier key from a project without billing, then dispatch *AI evals* with suite `key-check`, then `on-device`. |
 | 0.210 | 2026-10-12 | Claude (Code), engineer | **TC-U-201 and TC-I-51** (S4b-BL-206, kinds step 2, the server part): the candidate's money and extras as types and on the sync API. |
 | 0.211 | 2026-10-12 | Claude (Code), engineer | **TC-AI-46** (S4b-BL-243; `feat/ai-quota-exhausted-error`): a spent quota or credit is the error `quotaExhausted`, not a wait and not "unavailable". |
+| 0.212 | 2026-10-12 | Claude (Code), engineer | TC-U-88 run with the owner's free-tier key (run 38311738065): passed on the second attempt; the first stopped on a transient provider HTTP 503. `key-check` 200 for `gemini-3.5-flash` and `-flash-lite`. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Design](03-design.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
