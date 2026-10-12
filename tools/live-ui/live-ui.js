@@ -486,6 +486,15 @@ function mobileAudit() {
       if (parts.some((r) => Math.min(r.right, b.right) - Math.max(r.left, b.left) > 1 && Math.min(r.bottom, b.bottom) - Math.max(r.top, b.top) > 1)) out.push(`a map control overlaps ${name(el)}`);
     }
   }
+  // The map fits the screen and its canvas matches its box. A runaway layout once made the map 22,000px tall (and its canvas
+  // 4,096px, the texture limit) on phones under 700px tall, with the page itself still the right size (2026-10-12).
+  const mapEl = document.querySelector('.maplibregl-map');
+  if (mapEl && shown(mapEl)) {
+    const mh = mapEl.getBoundingClientRect().height;
+    if (mh > H + 1) out.push(`the map is taller than the screen: ${Math.round(mh)}px of ${H}px`);
+    const cv = mapEl.querySelector('canvas');
+    if (cv && cv.height >= 4096) out.push(`the map canvas is at the texture limit (${cv.width}x${cv.height})`);
+  }
   // The skip link stays out of sight until it has focus, however many lines its label wraps to.
   const skip = document.querySelector('.skip-link');
   if (skip && document.activeElement !== skip && skip.getBoundingClientRect().bottom > 0) out.push(`skip link showing without focus (bottom ${Math.round(skip.getBoundingClientRect().bottom)}px)`);
