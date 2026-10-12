@@ -431,12 +431,21 @@ class BackupApiTest {
         assertExportEquals(new JSONObject(SAMPLE).put("photos", new JSONArray()).toString(), legacy(raw));
     }
 
-    /** A file of the new family that breaks what only it has (a deposit paid every month) is a 400 and writes nothing. */
+    /**
+     * A file of the new family that breaks what only it has (money with neither key) is a 400 and writes nothing; one
+     * with a cadence this server does not support (a deposit paid every month) is a 400 that asks to update the app.
+     */
     @Test
     void aBrokenFileOfTheNewFamilyIsRefused() {
-        var body = CanonicalSample.text().replace("\"cadence\":\"once\"},\"maintenance\"", "\"cadence\":\"month\"},\"maintenance\"");
-        assertThat(body).isNotEqualTo(CanonicalSample.text());
-        assertThat(status(() -> postImport(body, false))).isEqualTo(400);
+        var broken = CanonicalSample.text().replace("\"money\":{\"amount\":32000,\"cadence\":\"month\"}", "\"money\":{}");
+        assertThat(broken).isNotEqualTo(CanonicalSample.text());
+        assertThat(status(() -> postImport(broken, false))).isEqualTo(400);
+        var newer = CanonicalSample.text().replace("\"cadence\":\"once\"},\"maintenance\"", "\"cadence\":\"month\"},\"maintenance\"");
+        assertThat(newer).isNotEqualTo(CanonicalSample.text());
+        assertThatThrownBy(() -> postImport(newer, false)).isInstanceOfSatisfying(RestClientResponseException.class, e -> {
+            assertThat(e.getStatusCode().value()).isEqualTo(400);
+            assertThat(e.getResponseBodyAsString()).contains("update the app");
+        });
         assertThat(api.get().uri("/api/candidates").retrieve().body(LIST)).isEmpty();
     }
 

@@ -1,6 +1,6 @@
 {
  "format": "doorprints-import-vectors/1",
- "note": "Shared by android/shared ImportVectorsTest, android/app BackupReaderParityTest and web backup-import.spec.ts (docs/schemas/README.md section 6.1). Stamps are in the past (2026-05-28). Since the format reset of S4b-BL-206 (kinds step 3) a writer writes doorprints-backup/1 with search and candidates (kind, money, extras) and candidateId; a reader reads that family and still reads the family before it (houses, /1 to /3) as it always did, told apart by shape, not number. The cases named \"the family before (houses): ...\" are the cases of that family, unchanged.",
+ "note": "Shared by android/shared ImportVectorsTest, android/app BackupReaderParityTest and web backup-import.spec.ts (docs/schemas/README.md section 6.1). Stamps are in the past (2026-05-28). Since the format reset of S4b-BL-206 (kinds step 3) a writer writes doorprints-backup/1 with search and candidates (kind, money, extras) and candidateId; a reader reads that family and still reads the family before it (houses, /1 to /3) as it always did, told apart by shape, not number. The cases named \"the family before (houses): ...\" are the cases of that family, unchanged. Since 2026-10-12 (owner) a price without a type is money with an amount and no cadence; a well-formed file with a cadence this reader does not support (one it does not know, or one a house's money or a fixed money extra may not have) is UNSUPPORTED_VERSION, a newer app's file, not BROKEN_DATA.",
  "checks": [
   {
    "name": "a file with one candidate",
@@ -651,6 +651,154 @@
    "problem": null
   },
   {
+   "name": "a price without a type: money with an amount and no cadence, read as no type (never a monthly rent)",
+   "data": {
+    "format": "doorprints-backup/1",
+    "exportedAt": 1780000000000,
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [
+     {
+      "id": "h1",
+      "kind": "house",
+      "label": "House h1",
+      "lat": 12.97,
+      "lon": 77.59,
+      "status": "NEW",
+      "money": {
+       "amount": 12000000
+      },
+      "checklist": {},
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000000
+     }
+    ],
+    "visits": [],
+    "photos": []
+   },
+   "problem": null
+  },
+  {
+   "name": "money with neither an amount nor a cadence",
+   "data": {
+    "format": "doorprints-backup/1",
+    "exportedAt": 1780000000000,
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [
+     {
+      "id": "h1",
+      "kind": "house",
+      "label": "House h1",
+      "lat": 12.97,
+      "lon": 77.59,
+      "status": "NEW",
+      "money": {},
+      "checklist": {},
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000000
+     }
+    ],
+    "visits": [],
+    "photos": []
+   },
+   "problem": "BROKEN_DATA"
+  },
+  {
+   "name": "a cadence this reader does not know is a newer file",
+   "data": {
+    "format": "doorprints-backup/1",
+    "exportedAt": 1780000000000,
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [
+     {
+      "id": "h1",
+      "kind": "house",
+      "label": "House h1",
+      "lat": 12.97,
+      "lon": 77.59,
+      "status": "NEW",
+      "money": {
+       "amount": 25000,
+       "cadence": "fortnight"
+      },
+      "checklist": {},
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000000
+     }
+    ],
+    "visits": [],
+    "photos": []
+   },
+   "problem": "UNSUPPORTED_VERSION"
+  },
+  {
+   "name": "an offer with a cadence this reader does not know is a newer file",
+   "data": {
+    "format": "doorprints-backup/1",
+    "exportedAt": 1780000000000,
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [
+     {
+      "id": "h1",
+      "kind": "house",
+      "label": "House h1",
+      "lat": 12.97,
+      "lon": 77.59,
+      "status": "NEW",
+      "extras": {
+       "agreedPrice": {
+        "amount": 24000,
+        "cadence": "fortnight"
+       }
+      },
+      "checklist": {},
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000000
+     }
+    ],
+    "visits": [],
+    "photos": []
+   },
+   "problem": "UNSUPPORTED_VERSION"
+  },
+  {
+   "name": "a cadence that is not a text",
+   "data": {
+    "format": "doorprints-backup/1",
+    "exportedAt": 1780000000000,
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [
+     {
+      "id": "h1",
+      "kind": "house",
+      "label": "House h1",
+      "lat": 12.97,
+      "lon": 77.59,
+      "status": "NEW",
+      "money": {
+       "amount": 25000,
+       "cadence": 30
+      },
+      "checklist": {},
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000000
+     }
+    ],
+    "visits": [],
+    "photos": []
+   },
+   "problem": "BROKEN_DATA"
+  },
+  {
    "name": "money by the year is not a cadence of a house",
    "data": {
     "format": "doorprints-backup/1",
@@ -678,7 +826,7 @@
     "visits": [],
     "photos": []
    },
-   "problem": "BROKEN_DATA"
+   "problem": "UNSUPPORTED_VERSION"
   },
   {
    "name": "money with a fractional amount",
@@ -740,7 +888,7 @@
     "visits": [],
     "photos": []
    },
-   "problem": "BROKEN_DATA"
+   "problem": "UNSUPPORTED_VERSION"
   },
   {
    "name": "a deposit with no amount",

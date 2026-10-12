@@ -73,10 +73,13 @@ describe('the backup family (kinds step 3)', () => {
     const c = (currentOf(legacy)['candidates'] as Obj[])[0];
     expect(Object.keys(c)).toEqual(['id', 'kind', 'label', 'lat', 'lon', 'status', 'money', 'notes', 'locationSource', 'extras', 'rooms', 'checklist', 'createdAt', 'updatedAt']);
     expect(c['extras']).toEqual({ bedrooms: 1, floor: 2, deposit: { amount: 45000, cadence: 'once' }, myOffer: { amount: 14000, cadence: 'month' } });
-    // A rent not known yet keeps its cadence; a price without a type is monthly; neither writes no money.
+    // A rent not known yet keeps its cadence; a price without a type keeps none (owner, 2026-10-12); neither writes no money.
     const money = (h: Obj) => (currentOf({ houses: [{ id: 'x', ...h, checklist: {} }] })['candidates'] as Obj[])[0]['money'];
     expect(money({ priceType: 'SALE' })).toEqual({ cadence: 'once' });
-    expect(money({ price: 9000 })).toEqual({ amount: 9000, cadence: 'month' });
+    expect(money({ price: 9000 })).toEqual({ amount: 9000 });
+    // ...and reads back as a price without a type.
+    const typeless = legacyOf({ format: CURRENT_FORMAT, exportedAt: 1, candidates: [{ id: 'x', kind: 'house', money: { amount: 9000 }, checklist: {} }] });
+    expect((typeless['houses'] as Obj[])[0]).toEqual({ id: 'x', price: 9000, checklist: {} });
     expect(money({})).toBeUndefined();
   });
 
@@ -96,16 +99,25 @@ describe('the backup family (kinds step 3)', () => {
     expect(checkData({ ...sample, format: 'doorprints-backup/2' })).toEqual({ ok: false, problem: 'UNSUPPORTED_VERSION' });
   });
 
+  it('reads a well-formed file with a cadence it does not support as a newer file, not as broken data', () => {
+    const one = (c: Obj): unknown => checkData({ format: CURRENT_FORMAT, exportedAt: 1, search: { kind: 'house' }, candidates: [{ id: 'h1', kind: 'house', label: '', lat: 0, lon: 0, status: 'NEW', checklist: {}, createdAt: 1, updatedAt: 1, ...c }], visits: [], photos: [] });
+    const newer = { ok: false, problem: 'UNSUPPORTED_VERSION' };
+    expect(one({ money: { amount: 5, cadence: 'week' } })).toEqual(newer);
+    expect(one({ money: { amount: 5, cadence: 'fortnight' } })).toEqual(newer);
+    expect(one({ extras: { maintenance: { amount: 2500, cadence: 'once' } } })).toEqual(newer);
+    expect(one({ extras: { deposit: { amount: 2500, cadence: 'month' } } })).toEqual(newer);
+  });
+
   it('refuses what only the new family can break', () => {
     const one = (c: Obj): unknown => checkData({ format: CURRENT_FORMAT, exportedAt: 1, search: { kind: 'house' }, candidates: [{ id: 'h1', kind: 'house', label: '', lat: 0, lon: 0, status: 'NEW', checklist: {}, createdAt: 1, updatedAt: 1, ...c }], visits: [], photos: [] });
     const broken = { ok: false, problem: 'BROKEN_DATA' };
     expect(one({ kind: undefined })).toEqual(broken);
-    expect(one({ money: { amount: 5, cadence: 'week' } })).toEqual(broken);
     expect(one({ money: { amount: -1, cadence: 'month' } })).toEqual(broken);
     expect(one({ money: 25000 })).toEqual(broken);
+    expect(one({ money: {} })).toEqual(broken);
     expect(one({ extras: [] })).toEqual(broken);
-    expect(one({ extras: { maintenance: { amount: 2500, cadence: 'once' } } })).toEqual(broken);
     expect(one({ extras: { myOffer: { cadence: 'month' } } })).toEqual(broken);
+    expect(one({ extras: { deposit: { amount: 1 } } })).toEqual(broken);
     expect(one({ extras: { Bad: 1 } })).toEqual(broken);
     expect(one({ extras: { note: 'a'.repeat(2001) } })).toEqual(broken);
     expect(one({ extras: Object.fromEntries(Array.from({ length: 31 }, (_, i) => [`x${i}`, i])) })).toEqual(broken);

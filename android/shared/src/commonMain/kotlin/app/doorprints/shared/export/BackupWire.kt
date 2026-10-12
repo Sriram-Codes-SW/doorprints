@@ -158,14 +158,14 @@ object BackupWire {
         return JsonObject(out)
     }
 
-    /** The server's `Money.of`: absent when neither is known, a price without a type monthly. */
+    /** The server's `Money.of`: absent when neither is known; a price without a type keeps no cadence (owner, 2026-10-12). */
     private fun moneyOf(price: JsonElement?, priceType: String?): JsonObject? {
         val cadence = when (priceType) { "RENT" -> "month"; "SALE" -> "once"; else -> null }
         val amount = (price as? JsonPrimitive)?.takeIf { !it.isString && it !is JsonNull }
         if (amount == null && cadence == null) return null
         val out = LinkedHashMap<String, JsonElement>()
         if (amount != null) out["amount"] = amount
-        out["cadence"] = JsonPrimitive(cadence ?: "month")
+        if (cadence != null) out["cadence"] = JsonPrimitive(cadence)
         return JsonObject(out)
     }
 
@@ -189,8 +189,24 @@ object BackupWire {
      * A `data.json` of the new family as the family before holds it, after the new family's own checks (a kind id,
      * money of whole rupees with a cadence of the vocabulary, a house's `month` or `once`, a money extra's amount and
      * cadence, an unknown extra as a field id with a value of an extras type and at most 30 of them); a broken one throws.
+     * A well-formed file with a cadence this reader does not support (one it does not know, or one a house's money or a
+     * fixed money extra may not have) reads as a newer file ([NEWER_FORMAT]): "update the app", not broken data.
      */
-    fun legacyOf(root: JsonObject): JsonObject {
+    fun legacyOf(root: JsonObject): JsonObject = try {
+        legacyRows(root)
+    } catch (_: Newer) {
+        JsonObject(
+            mapOf(
+                "format" to JsonPrimitive(NEWER_FORMAT), "exportedAt" to (root["exportedAt"] ?: JsonNull),
+                "houses" to JsonArray(emptyList()), "visits" to JsonArray(emptyList()), "photos" to JsonArray(emptyList()),
+            ),
+        )
+    }
+
+    /** A well-formed value this reader does not support: the file is a newer app's. */
+    private class Newer : Exception()
+
+    private fun legacyRows(root: JsonObject): JsonObject {
         if ("houses" in root) broken("candidates and houses")
         val format = root.str("format")
         val out = LinkedHashMap<String, JsonElement>()
@@ -238,8 +254,8 @@ object BackupWire {
 
     private fun legacyMoney(value: JsonElement, kind: String): Map<String, JsonElement> {
         if (value is JsonNull) return emptyMap()
-        val (amount, cadence) = money(value, amountRequired = false)
-        if (kind == "house" && cadence != "month" && cadence != "once") broken("money.cadence")
+        val (amount, cadence) = money(value, amountRequired = false, cadenceRequired = false)
+        if (kind == "house" && cadence != null && cadence != "month" && cadence != "once") throw Newer()
         val out = LinkedHashMap<String, JsonElement>()
         if (amount != null) out["price"] = JsonPrimitive(amount)
         when (cadence) {
@@ -260,9 +276,9 @@ object BackupWire {
                 id in VALUES -> out[id] = v
                 id in MONEY -> {
                     if (v is JsonNull) continue
-                    val (amount, cadence) = money(v, amountRequired = true)
+                    val (amount, cadence) = money(v, amountRequired = true, cadenceRequired = true)
                     val fixed = MONEY[id]
-                    if (fixed != null && cadence != fixed) broken("extras.$id")
+                    if (fixed != null && cadence != fixed) throw Newer()
                     cost[id] = JsonPrimitive(amount)
                 }
                 id in COST -> cost[id] = v
@@ -277,17 +293,20 @@ object BackupWire {
         return out
     }
 
-    /** A money object: an amount of whole rupees (required for a money extra) and a cadence of the vocabulary. */
-    private fun money(value: JsonElement, amountRequired: Boolean): Pair<Long?, String> {
+    /**
+     * A money object: an amount of whole rupees and a cadence (a text; one this reader does not know is a newer file's),
+     * each required for a money extra, at least one of the two for the candidate's own money.
+     */
+    private fun money(value: JsonElement, amountRequired: Boolean, cadenceRequired: Boolean): Pair<Long?, String?> {
         if (value !is JsonObject) broken("money")
-        val cadence = value.str("cadence")
-        if (cadence == null || cadence !in CADENCES) broken("money.cadence")
-        val raw = value["amount"]
-        if (raw == null || raw is JsonNull) {
-            if (amountRequired) broken("money.amount")
-            return null to cadence
-        }
-        return (amountOf(raw) ?: broken("money.amount")) to cadence
+        val rawCadence = value["cadence"]?.takeIf { it !is JsonNull }
+        val cadence = rawCadence?.let { (it as? JsonPrimitive)?.takeIf { p -> p.isString }?.content ?: broken("money.cadence") }
+        if (cadence == null && cadenceRequired) broken("money.cadence")
+        val raw = value["amount"]?.takeIf { it !is JsonNull }
+        val amount = raw?.let { amountOf(it) ?: broken("money.amount") }
+        if (amount == null && (amountRequired || cadence == null)) broken("money.amount")
+        if (cadence != null && cadence !in CADENCES) throw Newer()
+        return amount to cadence
     }
 
     /** A value of one of the six extras types as the wire spells it (door 5). */

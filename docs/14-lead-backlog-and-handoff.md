@@ -175,7 +175,7 @@
 | 0.165 | 2026-10-12 | Claude (Code), engineer | §11.4 item 4 done: the free-tier `AI_API_KEY` passed `key-check` and `on-device` (TC-U-88). |
 | 0.166 | 2026-10-12 | Claude (Code), engineer | §7: a web UI change runs the layout gate (`tools/check.sh`, `web.yml`); the owner accepts a map-layout change on a real phone (S4b-BL-245). |
 | 0.167 | 2026-10-12 | Claude (Code), engineer | **§11.4 item 6**: owner decision, a price without a type is not read as a monthly rent (kinds step 3). |
-| 0.168 | 2026-10-12 | Claude (Code), engineer | **§11.4 item 6**: kinds step 3 reads an old-family backup instead of refusing it (ADR-36 door 1 changed at the lead's instruction); the owner confirms or reverts. |
+| 0.168 | 2026-10-12 | Claude (Code), engineer | **§11.4 item 7**: owner confirmed, old-family backups are read, not refused (the final text of ADR-36 door 1, kinds step 3). |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 

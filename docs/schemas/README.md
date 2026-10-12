@@ -163,12 +163,14 @@ family at the end; a reader checks what only the new family has and reads it bac
 of rows, ranges and ids serves both. The mapping is lossless (section 8): the sample read as the family before is
 [`backup-sample-houses.json`](backup-sample-houses.json) byte for byte, and that file written as the new family is the
 sample, on the three stacks. What only the new family can break is `BROKEN_DATA`: a candidate without a kind id
-(`^[a-z][a-z0-9_]{1,31}$`); `money` that is not an object with a cadence of the vocabulary (`once`, `day`, `week`,
-`month`, `quarter`, `year`; a house's `month` or `once`) and, when present, an amount of whole rupees 0..10¹²; a money
-extra without its amount, or `deposit` or `brokerage` not `once`, or `maintenance` not `month`; `extras` that is not an
+(`^[a-z][a-z0-9_]{1,31}$`); `money` that is not an object, has neither an amount nor a cadence, a cadence that is not a
+text or an amount that is not whole rupees 0..10¹²; a money extra without its amount or its cadence; `extras` that is not an
 object; an extra this reader does not know whose id is not a field id (`^[a-z][A-Za-z0-9]{0,39}$`) or whose value is
 not of an extras type (a finite number, a text of at most 2,000 characters, a boolean, or a money object of exactly
-an amount and a cadence), or more than 30 of them. A known extra's value of the wrong type is refused as the field of
+an amount and a cadence), or more than 30 of them. **A well-formed file with a cadence this reader does not support** (one
+outside the vocabulary `once`, `day`, `week`, `month`, `quarter`, `year`; a house's money that is not `month` or `once`;
+`deposit` or `brokerage` not `once`, `maintenance` not `month`) is `UNSUPPORTED_VERSION`, a newer app's file ("update the
+app"), not `BROKEN_DATA`. A known extra's value of the wrong type is refused as the field of
 the family before was (section 4.4); an out-of-range one is read as before (`floorsLeftBlank`). An unknown extra of an
 extras type is read; the website keeps it and writes it back after the known ones, the phone and the server do not
 keep it yet.
@@ -220,7 +222,7 @@ answers, moveIn, brokerId, checklist, createdAt, updatedAt`.
 | Field | Type | Always present | Notes |
 |---|---|---|---|
 | `kind` | string | yes | The kind id; `house` for every candidate today (one kind per data set). |
-| `money` | object | no | `{amount?, cadence}`: whole rupees and how often (`month` for a rent, `once` for a sale). `price` and `priceType` of the family before: `RENT` is `month`, `SALE` `once`, a price without a type `month`. `amount` is left out while unknown (a rent not known yet); absent when neither is known. |
+| `money` | object | no | `{amount?, cadence?}`: whole rupees and how often (`month` for a rent, `once` for a sale). `price` and `priceType` of the family before: `RENT` is `month`, `SALE` `once`, and a price without a type has no cadence (owner, 2026-10-12: never a monthly rent). Each key is left out while unknown (a rent not known yet has no `amount`, a price of type *Not set* no `cadence`); a money with neither is refused; absent when neither is known. |
 | `extras` | object | no | Keyed by extra id, in the kind file's order: `bedrooms`, `areaSqft`, `floor`, then the eleven cost fields; `deposit` and `brokerage` are money `once`, `maintenance` money `month`, `myOffer` and `agreedPrice` money as often as the candidate's own money (`month` when it has none), the others as in `cost`. Then an extra a newer app wrote, by id. Absent when empty, never `{}` (a `{}` read is none). |
 
 | Field | Type | Meaning |

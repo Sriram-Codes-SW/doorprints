@@ -75,9 +75,9 @@ class BackupWireTest {
     @Test
     void whatOnlyTheNewFamilyCanBreakIsRefused() {
         assertBroken("\"kind\":\"house\",\"label\":\"x\"", "\"label\":\"x\"");
-        assertBroken("\"money\":{\"amount\":1,\"cadence\":\"once\"}", "\"money\":{\"amount\":1,\"cadence\":\"year\"}");
         assertBroken("\"money\":{\"amount\":1,\"cadence\":\"once\"}", "\"money\":{\"amount\":1.5,\"cadence\":\"once\"}");
-        assertBroken("\"extras\":{\"floor\":1}", "\"extras\":{\"deposit\":{\"amount\":5,\"cadence\":\"month\"}}");
+        assertBroken("\"money\":{\"amount\":1,\"cadence\":\"once\"}", "\"money\":{}");
+        assertBroken("\"extras\":{\"floor\":1}", "\"extras\":{\"deposit\":{\"amount\":5}}");
         assertBroken("\"extras\":{\"floor\":1}", "\"extras\":{\"myOffer\":{\"cadence\":\"month\"}}");
         assertBroken("\"extras\":{\"floor\":1}", "\"extras\":{\"from-newer\":1}");
         assertBroken("\"extras\":{\"floor\":1}", "\"extras\":{\"fromNewer\":[1]}");
@@ -86,6 +86,29 @@ class BackupWireTest {
         var house = BackupWire.legacyOf(tree(ok)).get("houses").get(0);
         assertThat(house.get("price").asLong()).isEqualTo(90000);
         assertThat(house.has("priceType")).isFalse();
+    }
+
+    /** Well formed, but a cadence this reader does not support: a newer file ("update the app"), not a broken one. */
+    @Test
+    void anUnsupportedCadenceReadsAsANewerFile() {
+        for (var candidate : new String[] {
+                "\"kind\":\"house\",\"label\":\"x\",\"money\":{\"amount\":1,\"cadence\":\"year\"}",
+                "\"kind\":\"house\",\"label\":\"x\",\"money\":{\"amount\":1,\"cadence\":\"fortnight\"}",
+                "\"kind\":\"house\",\"label\":\"x\",\"extras\":{\"deposit\":{\"amount\":5,\"cadence\":\"month\"}}"}) {
+            assertThat(BackupFormat.isNewer(BackupWire.legacyOf(tree(one(candidate))).get("format").asString())).as(candidate).isTrue();
+        }
+    }
+
+    /** A price without a type: an amount and no cadence, read as a price with no type (owner, 2026-10-12). */
+    @Test
+    void aPriceWithoutATypeReadsAsNoType() {
+        var house = BackupWire.legacyOf(tree(one("\"kind\":\"house\",\"label\":\"x\",\"money\":{\"amount\":12000000}"))).get("houses").get(0);
+        assertThat(house.get("price").asLong()).isEqualTo(12_000_000L);
+        assertThat(house.has("priceType")).isFalse();
+        var legacy = (ObjectNode) tree(CanonicalSample.houses());
+        ((ObjectNode) legacy.get("houses").get(0)).remove("priceType");
+        var written = BackupWire.currentOf(legacy).get("candidates").get(0).get("money");
+        assertThat(written.toString()).isEqualTo("{\"amount\":32000}");
     }
 
     private static void assertBroken(String good, String bad) {

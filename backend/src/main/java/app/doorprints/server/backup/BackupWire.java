@@ -106,20 +106,20 @@ public final class BackupWire {
         var row = NODES.objectNode();
         row.set("kind", h.has("kind") && h.get("kind").isString() ? h.get("kind") : NODES.stringNode(House.HOUSE_KIND));
         if (money != null) row.set("money", money);
-        var extras = extrasOf(h, money == null ? "month" : money.get("cadence").asString());
+        var extras = extrasOf(h, money == null || !money.has("cadence") ? "month" : money.get("cadence").asString());
         if (extras != null) row.set("extras", extras);
         for (var e : h.properties()) if (!MOVED.contains(e.getKey())) row.set(e.getKey(), e.getValue());
         return ordered(row, CANDIDATE_ORDER);
     }
 
-    /** {@link Money#of}: absent when neither is known, a price without a type monthly. */
+    /** {@link Money#of}: absent when neither is known; a price without a type keeps no cadence (owner, 2026-10-12). */
     private static ObjectNode moneyOf(JsonNode price, String priceType) {
         var cadence = Money.cadenceOf(priceType);
         var amount = price != null && price.isNumber() ? price : null;
         if (amount == null && cadence == null) return null;
         var out = NODES.objectNode();
         if (amount != null) out.set("amount", amount);
-        out.put("cadence", cadence == null ? "month" : cadence);
+        if (cadence != null) out.put("cadence", cadence);
         return out;
     }
 
@@ -153,11 +153,33 @@ public final class BackupWire {
      * {@code month} or {@code once}; a money extra's amount and cadence; an unknown extra as a field id with a value of an
      * extras type, at most 30), a file of the family before as it came.
      *
+     * A well-formed file with a cadence this reader does not support (one it does not know, or one a house's money or
+     * a fixed money extra may not have) reads as a newer file ({@link #NEWER_FORMAT}): "update the app", not a broken file.
+     *
      * @throws BadRequestException (a 400) for a file of the new family that breaks those rules
      */
     public static JsonNode legacyOf(JsonNode body) {
         if (!isCurrentFamily(body)) return body;
-        var root = (ObjectNode) body;
+        try {
+            return legacyRows((ObjectNode) body);
+        } catch (Newer e) {
+            var out = NODES.objectNode().put("format", NEWER_FORMAT);
+            out.set("exportedAt", body.get("exportedAt"));
+            out.set("houses", NODES.arrayNode());
+            out.set("visits", NODES.arrayNode());
+            out.set("photos", NODES.arrayNode());
+            return out;
+        }
+    }
+
+    /** A well-formed value this reader does not support: the file is a newer app's. */
+    private static final class Newer extends RuntimeException {
+        Newer() {
+            super(null, null, false, false);
+        }
+    }
+
+    private static JsonNode legacyRows(ObjectNode root) {
         if (root.has("houses")) throw broken("candidates and houses");
         var format = text(root, "format");
         var out = NODES.objectNode();
@@ -218,9 +240,9 @@ public final class BackupWire {
 
     private static void legacyMoney(ObjectNode row, JsonNode value, String kind) {
         if (value.isNull()) return;
-        var amount = amount(value, false);
+        var amount = amount(value, false, false);
         var cadence = text(value, "cadence");
-        if (House.HOUSE_KIND.equals(kind) && !Money.HOUSE_CADENCES.contains(cadence)) throw broken("money.cadence");
+        if (House.HOUSE_KIND.equals(kind) && cadence != null && !Money.HOUSE_CADENCES.contains(cadence)) throw new Newer();
         if (amount != null) row.put("price", amount);
         if ("month".equals(cadence)) row.put("priceType", "RENT");
         else if ("once".equals(cadence)) row.put("priceType", "SALE");
@@ -238,9 +260,9 @@ public final class BackupWire {
                 row.set(id, v);
             } else if (MONEY.contains(id)) {
                 if (v.isNull()) continue;
-                var amount = amount(v, true);
+                var amount = amount(v, true, true);
                 var fixed = FIXED.get(id);
-                if (fixed != null && !fixed.equals(text(v, "cadence"))) throw broken("extras." + id);
+                if (fixed != null && !fixed.equals(text(v, "cadence"))) throw new Newer();
                 cost.put(id, amount);
             } else if (COST.contains(id)) {
                 cost.set(id, v);
@@ -253,18 +275,25 @@ public final class BackupWire {
         if (!cost.isEmpty()) row.set("cost", cost);
     }
 
-    /** A money object's amount (null when it has none and none is required), after checking its cadence. */
-    private static Long amount(JsonNode value, boolean required) {
+    /**
+     * A money object's amount (null when it has none and none is required), after checking its cadence: a text, one this
+     * reader does not know being a newer file's; each required for a money extra, at least one of the two otherwise.
+     */
+    private static Long amount(JsonNode value, boolean required, boolean cadenceRequired) {
         if (!(value instanceof ObjectNode m)) throw broken("money");
-        var cadence = text(m, "cadence");
-        if (cadence == null || !Money.CADENCES.contains(cadence)) throw broken("money.cadence");
+        var c = m.get("cadence");
+        var hasCadence = c != null && !c.isNull();
+        if (hasCadence && !c.isString()) throw broken("money.cadence");
+        if (!hasCadence && cadenceRequired) throw broken("money.cadence");
         var a = m.get("amount");
-        if (a == null || a.isNull()) {
-            if (required) throw broken("money.amount");
-            return null;
+        Long amount = null;
+        if (a != null && !a.isNull()) {
+            if (!(a.isInt() || a.isLong()) || a.asLong() < 0 || a.asLong() > Money.MAX_RUPEES) throw broken("money.amount");
+            amount = a.asLong();
         }
-        if (!(a.isInt() || a.isLong()) || a.asLong() < 0 || a.asLong() > Money.MAX_RUPEES) throw broken("money.amount");
-        return a.asLong();
+        if (amount == null && (required || !hasCadence)) throw broken("money.amount");
+        if (hasCadence && !Money.CADENCES.contains(c.asString())) throw new Newer();
+        return amount;
     }
 
     /** A value of one of the six extras types as the wire spells it (door 5; {@code CandidateExtras.isExtraValue}). */

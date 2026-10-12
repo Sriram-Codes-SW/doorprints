@@ -48,6 +48,13 @@ type Obj = Record<string, unknown>;
 /** A file the new family's rules refuse: the shape is not one any writer of the format produces. */
 export class BrokenFamily extends Error {}
 
+/**
+ * A file of the new family that is well formed but holds a value this reader does not support: a cadence it does not
+ * know, or one of the vocabulary that a house's money or a fixed money extra may not have here. A newer app may write
+ * it, so it reads as a newer file ("update the app"), not as broken data.
+ */
+class NewerFamily extends Error {}
+
 /** True for a `data.json` of the new family: it lists `candidates` (the family before listed `houses`). */
 export function isCurrentFamily(root: unknown): boolean {
   return isObj(root) && 'candidates' in root;
@@ -100,12 +107,15 @@ function candidateOfHouse(h: Obj): Obj {
   return ordered(out, CANDIDATE_ORDER);
 }
 
-/** The server's `Money.of`: absent when neither is known, a price without a type monthly. */
-function moneyOf(price: unknown, priceType: unknown): { amount?: number; cadence: Cadence } | null {
+/**
+ * The server's `Money.of`: absent when neither is known; a price without a type keeps no cadence (owner, 2026-10-12:
+ * never a monthly rent).
+ */
+function moneyOf(price: unknown, priceType: unknown): { amount?: number; cadence?: Cadence } | null {
   const cadence: Cadence | null = priceType === 'RENT' ? 'month' : priceType === 'SALE' ? 'once' : null;
   const amount = typeof price === 'number' ? price : null;
   if (amount === null && cadence === null) return null;
-  return amount === null ? { cadence: cadence ?? 'month' } : { amount, cadence: cadence ?? 'month' };
+  return { ...(amount !== null ? { amount } : {}), ...(cadence !== null ? { cadence } : {}) };
 }
 
 /** The extras of a house of the family before, in the kind file's order, then the unknown ones it kept by id. */
@@ -131,12 +141,24 @@ function extrasOf(h: Obj, ownCadence: Cadence): Obj | null {
  * `houseId`, a deletion of `house`. The format reads as `/3` for a file with deletions, `/2` otherwise, and a newer
  * number of the new family as {@link NEWER_FORMAT}.
  *
+ * A well-formed file with a value this reader does not support (a cadence it does not know, or one a house's money or
+ * a fixed money extra may not have) reads as a newer file: {@link NEWER_FORMAT}, so the reader asks to update the app.
+ *
  * @throws BrokenFamily for what only the new family has and breaks its rules: a candidate without a kind id, money
- *   that is not an amount of whole rupees with a cadence of the vocabulary (a house's: `month` or `once`), a money
- *   extra without its amount or with a cadence it may not have, an unknown extra that is not a field id with a value of
+ *   that is not an object, has neither an amount nor a cadence, a cadence that is not a text or an amount that is not
+ *   whole rupees, a money extra without its amount or cadence, an unknown extra that is not a field id with a value of
  *   an extras type, more than 30 of them, extras that are not an object, or both `candidates` and `houses`.
  */
 export function legacyOf(root: Obj): Obj {
+  try {
+    return legacyRows(root);
+  } catch (e) {
+    if (!(e instanceof NewerFamily)) throw e;
+    return { format: NEWER_FORMAT, exportedAt: root['exportedAt'], houses: [], visits: [], photos: [] };
+  }
+}
+
+function legacyRows(root: Obj): Obj {
   if ('houses' in root) throw new BrokenFamily('candidates and houses');
   const format = root['format'];
   const deleted = root['deleted'];
@@ -184,11 +206,14 @@ function ordered(row: Obj, order: readonly string[]): Obj {
   return out;
 }
 
-/** `money` as `price` and `priceType`: an amount of whole rupees (or none) and a cadence of the vocabulary. */
+/**
+ * `money` as `price` and `priceType`: an amount of whole rupees, a cadence, or both (none is broken); a house's cadence,
+ * when there is one, is `month` or `once` (another is a newer file's), and no cadence is no type.
+ */
 function legacyMoney(value: unknown, kind: string): Obj {
   if (value == null) return {};
-  const m = moneyValue(value, false);
-  if (kind === 'house' && m.cadence !== 'month' && m.cadence !== 'once') throw new BrokenFamily('money.cadence');
+  const m = moneyValue(value, false, false);
+  if (kind === 'house' && m.cadence !== undefined && m.cadence !== 'month' && m.cadence !== 'once') throw new NewerFamily('money.cadence');
   const out: Obj = {};
   if (m.amount !== undefined) out['price'] = m.amount;
   if (m.cadence === 'month') out['priceType'] = 'RENT';
@@ -207,9 +232,9 @@ function legacyExtras(value: unknown): Obj {
     if (VALUES.includes(id)) out[id] = v;
     else if (id in MONEY_EXTRAS) {
       if (v == null) continue;
-      const m = moneyValue(v, true);
+      const m = moneyValue(v, true, true);
       const fixed = MONEY_EXTRAS[id];
-      if (fixed !== null && m.cadence !== fixed) throw new BrokenFamily(`extras.${id}`);
+      if (fixed !== null && m.cadence !== fixed) throw new NewerFamily(`extras.${id}`);
       cost[id] = m.amount;
     } else if ((COST_FIELDS as readonly string[]).includes(id)) cost[id] = v;
     else {
@@ -223,18 +248,22 @@ function legacyExtras(value: unknown): Obj {
   return out;
 }
 
-/** A money object: a cadence of the vocabulary and an amount of whole rupees, required for a money extra. */
-function moneyValue(value: unknown, amountRequired: boolean): { amount?: number; cadence: Cadence } {
+/**
+ * A money object: an amount of whole rupees and a cadence (a text; one this reader does not know is a newer file's),
+ * each required for a money extra, at least one of the two for the candidate's own money.
+ */
+function moneyValue(value: unknown, amountRequired: boolean, cadenceRequired: boolean): { amount?: number; cadence?: Cadence } {
   if (!isObj(value)) throw new BrokenFamily('money');
   const cadence = value['cadence'];
-  if (typeof cadence !== 'string' || !CADENCES.includes(cadence as Cadence)) throw new BrokenFamily('money.cadence');
   const amount = value['amount'];
+  if (cadence == null) {
+    if (cadenceRequired) throw new BrokenFamily('money.cadence');
+  } else if (typeof cadence !== 'string') throw new BrokenFamily('money.cadence');
   if (amount == null) {
-    if (amountRequired) throw new BrokenFamily('money.amount');
-    return { cadence: cadence as Cadence };
-  }
-  if (!isAmount(amount)) throw new BrokenFamily('money.amount');
-  return { amount: amount as number, cadence: cadence as Cadence };
+    if (amountRequired || cadence == null) throw new BrokenFamily('money.amount');
+  } else if (!isAmount(amount)) throw new BrokenFamily('money.amount');
+  if (typeof cadence === 'string' && !CADENCES.includes(cadence as Cadence)) throw new NewerFamily('money.cadence');
+  return { ...(amount != null ? { amount: amount as number } : {}), ...(cadence != null ? { cadence: cadence as Cadence } : {}) };
 }
 
 /** A value of one of the six extras types as the wire spells it (door 5). */
