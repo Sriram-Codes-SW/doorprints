@@ -53,11 +53,21 @@ function layoutAudit() {
   if (window.innerWidth > screen.width + 1) out.push(`page laid out ${window.innerWidth}px wide on a ${screen.width}px screen (zoomed out)`);
   const main = document.querySelector('main');
   const shown = (el) => { if (el.checkVisibility && !el.checkVisibility()) return false; const s = getComputedStyle(el); if (s.visibility === 'hidden' || s.display === 'none') return false; const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+  const hidden = (el) => el.closest('.sr-only, [aria-hidden="true"], .skip-link') !== null;
   const name = (el) => { const t = (el.getAttribute('aria-label') || el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 30); return `${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''}${el.classList.length ? '.' + [...el.classList].slice(0, 2).join('.') : ''}${t ? ` "${t}"` : ''}`; };
   // Sideways scroll: the document, and <main> (the app's page scroller, which the document check does not see).
   const doc = document.scrollingElement.scrollWidth - W;
   if (doc > 1) out.push(`page scrolls sideways by ${doc}px`);
   if (main && main.scrollWidth - main.clientWidth > 1) out.push(`main scrolls sideways by ${main.scrollWidth - main.clientWidth}px`);
+  // Scrolled to the end, nothing is left under the fixed bottom bar.
+  const bar = document.querySelector('nav.nav');
+  if (main && bar && getComputedStyle(bar).position === 'fixed' && shown(bar)) {
+    const top = main.scrollTop; main.scrollTop = main.scrollHeight;
+    const barTop = bar.getBoundingClientRect().top;
+    const under = [...main.querySelectorAll('button, a[href], input, select, textarea, p, li, h2, h3')].filter((el) => shown(el) && !hidden(el) && el.getBoundingClientRect().bottom > barTop + 1);
+    if (under.length) out.push(`under the bottom bar at the end of the page: ${under.slice(0, 3).map((el) => `${name(el)} by ${Math.round(el.getBoundingClientRect().bottom - barTop)}px`).join(', ')}`);
+    main.scrollTop = top;
+  }
   // MapLibre's controls stay inside the map and clear of the page's legend, buttons and hint.
   const ctrl = document.querySelector('.map-wrap .maplibregl-ctrl-bottom-right, .map-wrap .maplibregl-ctrl-top-right');
   const wrap = document.querySelector('.map-wrap');

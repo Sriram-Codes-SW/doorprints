@@ -437,7 +437,6 @@ function mobileAudit() {
   const shown = (el) => { if (el.checkVisibility && !el.checkVisibility()) return false; const s = getComputedStyle(el); if (s.visibility === 'hidden' || s.display === 'none') return false; const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
   const hidden = (el) => el.closest('.sr-only, [aria-hidden="true"], .skip-link') !== null;
   const name = (el) => { const t = (el.getAttribute('aria-label') || el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 30); return `${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''}${el.classList.length ? '.' + [...el.classList].slice(0, 2).join('.') : ''}${t ? ` "${t}"` : ''}`; };
-  const main = document.querySelector('main');
   // Touch targets: 44x44 CSS px (UX-007). An input inside a label counts by its label; links inside running text
   // (WCAG 2.5.8's inline exception), MapLibre's credits (a 24px (i) and links in its text) and the house form's
   // draggable pin (27x41; the map tap, "Use my location" and the typed coordinates do the same, 2.5.8's equivalent
@@ -456,15 +455,6 @@ function mobileAudit() {
   const tiny = [...document.querySelectorAll('input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=hidden]), select, textarea')]
     .filter((el) => shown(el) && !hidden(el) && parseFloat(getComputedStyle(el).fontSize) < 16).map((el) => `${name(el)} ${getComputedStyle(el).fontSize}`);
   if (tiny.length) out.push(`fields under 16px text: ${tiny.slice(0, 3).join(', ')}`);
-  // Scrolled to the end, nothing is left under the fixed bottom bar.
-  const bar = document.querySelector('nav.nav');
-  if (main && bar && getComputedStyle(bar).position === 'fixed' && shown(bar)) {
-    const top = main.scrollTop; main.scrollTop = main.scrollHeight;
-    const barTop = bar.getBoundingClientRect().top;
-    const under = [...main.querySelectorAll('button, a[href], input, select, textarea, p, li, h2, h3')].filter((el) => shown(el) && !hidden(el) && el.getBoundingClientRect().bottom > barTop + 1);
-    if (under.length) out.push(`under the bottom bar at the end of the page: ${under.slice(0, 3).map((el) => `${name(el)} by ${Math.round(el.getBoundingClientRect().bottom - barTop)}px`).join(', ')}`);
-    main.scrollTop = top;
-  }
   // The skip link stays out of sight until it has focus, however many lines its label wraps to.
   const skip = document.querySelector('.skip-link');
   if (skip && document.activeElement !== skip && skip.getBoundingClientRect().bottom > 0) out.push(`skip link showing without focus (bottom ${Math.round(skip.getBoundingClientRect().bottom)}px)`);

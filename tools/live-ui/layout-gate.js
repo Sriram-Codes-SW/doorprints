@@ -22,8 +22,8 @@
 // Usage: node layout-gate.js [distDir | baseUrl]   (default ../../web/dist/web/browser, served by a tiny static server here;
 // CHROMIUM=<path> for a local Chromium build). Exits 1 when any check fails.
 // For 320x568, 360x640 and 390x664 phones, in English and the light theme, on every route live-ui.js visits, at normal text
-// and again at 130% text: the shared layoutAudit (live-ui.js's mobile pass): the map no taller than the screen, its canvas
-// under 4,096px, the app no taller than the screen, no sideways scroll, no map control over the page's own controls; plus
+// and again at 130% text (and the owner's 384x615 phone at 130%): the shared layoutAudit (live-ui.js's mobile pass): the map no taller than the screen, its canvas
+// under 4,096px, the app no taller than the screen, nothing left under the bottom bar at the end of a page, no sideways scroll, no map control over the page's own controls; plus
 // that the Map page has a map and a canvas at all (so the checks cannot pass for want of a map).
 // Offline and deterministic: every request that is not to the local server is answered by this script (MapLibre's style
 // URL with an empty valid style, anything else aborted), so the map's container and canvas exist but nothing depends on a
@@ -35,6 +35,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const VIEWPORTS = [{ width: 320, height: 568 }, { width: 360, height: 640 }, { width: 390, height: 664 }];
+const OWNER_PHONE = { width: 384, height: 615 }; // the owner's phone (S4b-BL-49): its text size is 130%, as live-ui.js's owner384-text130
 const LARGE_TEXT = 130; // percent: the root font size, as live-ui.js's text-scale hook sets it
 const STYLE_URL = /^https:\/\/tiles\.openfreemap\.org\/styles\/liberty(\?|$)/; // MAP_STYLE_URL in web/src/app/shared/map-style-url.ts
 const EMPTY_STYLE = { version: 8, name: 'empty', sources: {}, layers: [] };
@@ -78,12 +79,12 @@ async function run() {
   const failures = [];
   let checks = 0;
   const check = (tag, ok, detail) => { checks++; if (!ok) { failures.push(`${tag}: ${detail}`); console.log(`FAIL ${tag}: ${detail}`); } };
-  const pass = async (viewport, text) => {
-    const { ctx } = await phoneContext(browser, devices, { device: 'Pixel 7', viewport, text });
+  const pass = async (viewport, text, lang = 'en') => {
+    const { ctx } = await phoneContext(browser, devices, { device: 'Pixel 7', viewport, text, lang });
     await offline(ctx, base);
     const page = await ctx.newPage();
     for (const route of ROUTES) {
-      const tag = `${viewport.width}x${viewport.height}${text ? ` text ${text}%` : ''} ${route}`;
+      const tag = `${viewport.width}x${viewport.height}${text ? ` text ${text}%` : ''}${lang === 'en' ? '' : ` ${lang}`} ${route}`;
       try {
         const resp = await page.goto(base + route, { waitUntil: 'load', timeout: 30000 });
         check(`${tag}: loads`, !!resp && (resp.status() < 400 || route === '/does-not-exist'), resp && resp.status());
@@ -100,7 +101,7 @@ async function run() {
     await ctx.close();
   };
   try {
-    await Promise.all([...VIEWPORTS.map((v) => pass(v)), ...VIEWPORTS.map((v) => pass(v, LARGE_TEXT))]);
+    await Promise.all([...VIEWPORTS.map((v) => pass(v)), ...VIEWPORTS.map((v) => pass(v, LARGE_TEXT)), pass(OWNER_PHONE, LARGE_TEXT)]);
   } finally {
     await browser.close();
     if (local) local.server.close();
