@@ -147,7 +147,7 @@ export class AnthropicChatModel implements JsonChatModel {
         unforced.add(cacheKey);
         continue;
       }
-      if (res.status < 200 || res.status >= 300) throw failure(classifyStatus(res.status, res.retryAfter));
+      if (res.status < 200 || res.status >= 300) throw failure(classifyStatus(res.status, res.retryAfter, res.body));
       const text = anthropicInput(res.body);
       if (text === null) throw new OnDeviceAiError('unavailable');
       return text;
@@ -159,7 +159,7 @@ export class AnthropicChatModel implements JsonChatModel {
     const body = anthropicBody('ping', this.settings.model, PING_SYSTEM, 'ping', 0, null, PING_MAX_TOKENS);
     const res = await this.post(body);
     if (anthropicBlocked(res.status, parseBody(res.body))) throw new OnDeviceAiError('blocked');
-    if (res.status < 200 || res.status >= 300) throw failure(classifyStatus(res.status, res.retryAfter));
+    if (res.status < 200 || res.status >= 300) throw failure(classifyStatus(res.status, res.retryAfter, res.body));
     if (!anthropicPingAnswered(res.body)) throw new OnDeviceAiError('unavailable');
   }
 

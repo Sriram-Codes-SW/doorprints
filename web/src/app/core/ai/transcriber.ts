@@ -206,7 +206,7 @@ export function geminiTranscribeBody(audioBase64: string, mime: string, langHint
 /** A failed Gemini call: `classifyStatus`, and a 400 that names an invalid key is a refused key (as `GeminiChatModel`). */
 function geminiFailure(status: number, body: string, retryAfter: string | null): OnDeviceAiError {
   if (status === 400 && (body.includes('API_KEY_INVALID') || body.includes('API key not valid'))) return new OnDeviceAiError('keyRejected');
-  return failure(classifyStatus(status, retryAfter));
+  return failure(classifyStatus(status, retryAfter, body));
 }
 
 /** What a Gemini answer means (the `transcribeContent` vectors, provider `gemini`). */
@@ -273,7 +273,7 @@ export function openAiTranscribeHeaders(apiKey: string): Record<string, string> 
 
 /** What an OpenAI-compatible answer means (the `transcribeContent` vectors, provider `openai`). */
 export function openAiTranscript(status: number, body: string, retryAfter: string | null, langHint: string | null | undefined): Transcript {
-  if (status < 200 || status >= 300) throw failure(classifyStatus(status, retryAfter));
+  if (status < 200 || status >= 300) throw failure(classifyStatus(status, retryAfter, body));
   const answer = parseJson(body);
   if (!isObject(answer) || typeof answer['text'] !== 'string') throw new OnDeviceAiError('unavailable');
   return { text: answer['text'].trim(), language: transcriptLanguage(null, langHint) };

@@ -73,13 +73,13 @@ class OpenAiAudioTranscriber(
 
         /** What an answer means (the `transcribeContent` vectors, provider `openai`): a 2xx JSON object with a string `text`. */
         internal fun transcriptOf(status: Int, body: String, retryAfter: String?, langHint: String?): Transcript {
-            if (status !in 200..299) throw failure(status, retryAfter)
+            if (status !in 200..299) throw failure(status, retryAfter, body)
             val answer = runCatching { json.parseToJsonElement(body).jsonObject }.getOrNull() ?: throw noTranscript()
             val text = answer["text"] as? JsonPrimitive
             if (text == null || !text.isString) throw noTranscript()
             return Transcript(text.content.trim(), transcriptLanguage(null, langHint))
         }
 
-        internal fun failure(status: Int, retryAfter: String?): ApiException = aiFailure(status, retryAfter)
+        internal fun failure(status: Int, retryAfter: String?, body: String = ""): ApiException = aiFailure(status, retryAfter, body)
     }
 }

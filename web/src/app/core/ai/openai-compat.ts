@@ -21,6 +21,7 @@ import { ANSWER_SCHEMA, LISTING_SCHEMA, OnDeviceAiError, PLAN_SCHEMA } from './o
 import { validateWebBaseUrl } from './ai-provider-config';
 import { schemaTrailer, toStrictSchema } from './schema-dialect';
 import { openAiBlocked, parseBody } from './ai-blocked';
+import { isQuotaExhausted } from './ai-quota';
 import { type ErrorAction, type FetchLike, REQUEST_TIMEOUT_MS, classifyStatus, failure, postAiJson } from './ai-request';
 
 /**
@@ -82,11 +83,11 @@ const TIER_2_WORDS = ['response_format', 'json_object'];
  * any 400 at tier 3, is `unavailable`; every other status is {@link classifyStatus}'s.
  */
 export function classifyError(tier: Tier, status: number, body: string, retryAfter: string | null = null): ErrorAction {
-  if (status === 400 && tier < 3) {
+  if (status === 400 && tier < 3 && !isQuotaExhausted(status, body)) {
     const text = body.toLowerCase();
     if ((tier === 1 ? TIER_1_WORDS : TIER_2_WORDS).some((w) => text.includes(w))) return { action: 'nextTier', tier: (tier + 1) as Tier };
   }
-  return classifyStatus(status, retryAfter);
+  return classifyStatus(status, retryAfter, body);
 }
 
 /** The model's text: surrounding whitespace and one Markdown code fence removed. */

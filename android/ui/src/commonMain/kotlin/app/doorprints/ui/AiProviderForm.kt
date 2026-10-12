@@ -208,6 +208,8 @@ sealed interface AiFailure {
     data object ModelNotFound : AiFailure
     /** The provider's own safety system declined the text (S4b-BL-232); its words are never shown. */
     data object Blocked : AiFailure
+    /** The key's free quota or credit is used up (S4b-BL-243): not a wait, so no seconds; the app works without AI. */
+    data object QuotaExhausted : AiFailure
     /** The service asked to wait; [seconds] is its answer, or a minute when it gave none. */
     data class RateLimited(val seconds: Long) : AiFailure
     /**
@@ -230,6 +232,7 @@ sealed interface AiFailure {
                 ApiException.Kind.AI_KEY_REJECTED -> KeyRejected(host)
                 ApiException.Kind.AI_MODEL_NOT_FOUND -> ModelNotFound
                 ApiException.Kind.AI_BLOCKED -> Blocked
+                ApiException.Kind.AI_QUOTA_EXHAUSTED -> QuotaExhausted
                 ApiException.Kind.RATE_LIMITED -> RateLimited(e.retryAfterSeconds ?: 60L)
                 // A network failure is code 0 (OpenAiCompatClient.UNREACHABLE).
                 ApiException.Kind.AI_UNAVAILABLE ->
