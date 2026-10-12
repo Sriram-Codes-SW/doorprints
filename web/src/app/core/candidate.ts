@@ -38,11 +38,12 @@ export const CADENCES: readonly Cadence[] = ['once', 'day', 'week', 'month', 'qu
 
 /**
  * An amount of whole rupees and how often it is paid (door 7). The candidate's own money may have a cadence and no
- * amount (a house marked as a rent before the rent is known); a money extra always has both.
+ * amount (a house marked as a rent before the rent is known) or an amount and no cadence (a price whose type is *Not
+ * set*: owner decision of 2026-10-12, never read as a monthly rent), never neither; a money extra always has both.
  */
 export interface Money {
   amount?: number;
-  cadence: Cadence;
+  cadence?: Cadence;
 }
 
 /** A value of one of the six extras types as the wire spells it: a number, a text (or enum id, or date), a bool, money. */
@@ -118,14 +119,14 @@ export function priceTypeOf(cadence: Cadence | null | undefined): PriceType | nu
 }
 
 /**
- * The house's money from its two values: absent when neither is known, a price without a type as monthly (the
- * server's `Money.of`).
+ * The house's money from its two values (the server's `Money.of`): absent when neither is known; a price without a
+ * type keeps no cadence (owner, 2026-10-12: a 1.2 crore price of type *Not set* is not "per month").
  */
 export function moneyOf(price: number | null | undefined, priceType: PriceType | null | undefined): Money | null {
   const amount = typeof price === 'number' && Number.isFinite(price) ? rupees(Math.round(price)) : null;
   const cadence = cadenceOf(priceType);
   if (amount === null && cadence === null) return null;
-  return amount === null ? { cadence: cadence ?? 'month' } : { amount, cadence: cadence ?? 'month' };
+  return { ...(amount !== null ? { amount } : {}), ...(cadence !== null ? { cadence } : {}) };
 }
 
 /** The candidate a house is on the wire and in the store: `kind`, `money` and `extras`, keys in the format's order. */
@@ -227,13 +228,17 @@ function extrasOf(h: HouseDto, ownCadence: Cadence | null): CandidateExtras | nu
   return Object.keys(out).length === 0 ? null : out;
 }
 
-/** A money object of the vocabulary: a cadence, and an amount when one is given; null for anything else. */
+/**
+ * A money object: an amount of whole rupees and a cadence of the vocabulary, each when given and valid; null when
+ * neither is left.
+ */
 function moneyValue(raw: unknown): Money | null {
   if (!isObject(raw)) return null;
   const m = raw as Record<string, unknown>;
-  if (typeof m['cadence'] !== 'string' || !CADENCES.includes(m['cadence'] as Cadence)) return null;
+  const cadence = typeof m['cadence'] === 'string' && CADENCES.includes(m['cadence'] as Cadence) ? (m['cadence'] as Cadence) : null;
   const amount = rupees(m['amount'] as number);
-  return amount === null ? { cadence: m['cadence'] as Cadence } : { amount, cadence: m['cadence'] as Cadence };
+  if (amount === null && cadence === null) return null;
+  return { ...(amount !== null ? { amount } : {}), ...(cadence !== null ? { cadence } : {}) };
 }
 
 /**

@@ -82,10 +82,15 @@ describe('the candidate of a house (kinds step 3)', () => {
     expect(houseOf(c).price).toBeNull();
   });
 
-  it('reads a price without a type as monthly, and writes no money when neither is known (the server\'s Money.of)', () => {
-    expect(moneyOf(18000, null)).toEqual({ amount: 18000, cadence: 'month' });
+  it('keeps a price without a type typeless, never as a monthly rent, and writes no money when neither is known (owner, 2026-10-12)', () => {
+    expect(moneyOf(1_20_00_000, null)).toEqual({ amount: 1_20_00_000 });
     expect(moneyOf(null, null)).toBeNull();
     expect(moneyOf(null, 'SALE')).toEqual({ cadence: 'once' });
+    const typeless = { ...ADYAR, price: 1_20_00_000, priceType: null, cost: null, bedrooms: null, areaSqft: null, floor: null };
+    const c = candidateOf(typeless);
+    expect(c.money).toEqual({ amount: 1_20_00_000 });
+    expect([houseOf(c).price, houseOf(c).priceType]).toEqual([1_20_00_000, null]);
+    expect(houseOf({ ...ADYAR_CANDIDATE, money: {} } as unknown as CandidateDto).price).toBeNull();
     // An offer follows the money's cadence, or a month when the house has none.
     expect(candidateOf({ ...ADYAR, price: null, priceType: null, cost: { myOffer: 9000 } }).extras).toEqual({ bedrooms: 2, areaSqft: 1150, floor: 3, myOffer: { amount: 9000, cadence: 'month' } });
   });

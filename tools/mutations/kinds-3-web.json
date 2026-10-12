@@ -8,7 +8,7 @@
   ],
   "mutations": [
     {"file": "web/src/app/core/candidate.ts", "find": "  return priceType === 'RENT' ? 'month' : priceType === 'SALE' ? 'once' : null;", "replace": "  return priceType === 'RENT' ? 'month' : null;", "expect": "a sale in Guwahati"},
-    {"file": "web/src/app/core/candidate.ts", "find": "{ cadence: cadence ?? 'month' } : { amount, cadence: cadence ?? 'month' };", "replace": "{ cadence: cadence ?? 'once' } : { amount, cadence: cadence ?? 'once' };", "expect": "reads a price without a type as monthly"},
+    {"file": "web/src/app/core/candidate.ts", "find": "  return { ...(amount !== null ? { amount } : {}), ...(cadence !== null ? { cadence } : {}) };\n}\n\n/** The candidate a house", "replace": "  return { ...(amount !== null ? { amount } : {}), cadence: cadence ?? 'month' };\n}\n\n/** The candidate a house", "expect": "keeps a price without a type typeless"},
     {"file": "web/src/app/core/candidate.ts", "find": "  maintenance: 'month',\n", "replace": "  maintenance: 'once',\n", "expect": "moves price and priceType to money"},
     {"file": "web/src/app/core/candidate.ts", "find": "cadence: cadence === 'follows' ? (ownCadence ?? 'month') : cadence", "replace": "cadence: cadence === 'follows' ? 'month' : cadence", "expect": "a sale in Guwahati"},
     {"file": "web/src/app/core/candidate.ts", "find": "  return !money || money.amount === undefined ? null : money.amount;", "replace": "  return !money ? null : (money.amount ?? 0);", "expect": "drops a money extra that is not a money object"},

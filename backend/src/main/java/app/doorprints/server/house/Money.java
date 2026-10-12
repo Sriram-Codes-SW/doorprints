@@ -21,9 +21,9 @@ package app.doorprints.server.house;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 
 import java.util.List;
@@ -35,16 +35,16 @@ import java.util.Set;
  * the wire {@code {"amount": 32000, "cadence": "month"}}. It replaces the house's {@code price} and {@code priceType}:
  * {@code RENT} is {@code month} and {@code SALE} is {@code once} ({@link #of}, {@link #priceType}).
  *
- * <p>The candidate's own money may carry a cadence and no amount: a house the person marked as a rent before the
- * rent is known (the form's toggle and the question scopes read it). A money extra ({@code deposit}, {@code myOffer}
- * ...) always has its amount ({@link CandidateExtras}). {@code amount} is left out when unknown; {@code cadence} is
- * always written.
+ * <p>The candidate's own money may carry a cadence and no amount (a house marked as a rent before the rent is known:
+ * the form's toggle and the question scopes read it), or an amount and no cadence (a price whose type is *Not set*:
+ * owner decision of 2026-10-12, never read as a monthly rent). It has at least one of the two. A money extra
+ * ({@code deposit}, {@code myOffer} ...) always has both ({@link CandidateExtras}). Each is left out when unknown.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({"amount", "cadence"})
 public record Money(
         @Min(0) @Max(MAX_RUPEES) Long amount,
-        @NotNull @Pattern(regexp = CADENCE_PATTERN) String cadence
+        @Pattern(regexp = CADENCE_PATTERN) String cadence
 ) {
     /** One lakh crore, as {@link HouseCost#MAX_RUPEES}: more than any house in the country costs. */
     public static final long MAX_RUPEES = HouseCost.MAX_RUPEES;
@@ -54,11 +54,14 @@ public record Money(
     /** The cadences of a house's own money ({@code docs/schemas/kinds/house.json}): a rent or a sale. */
     public static final Set<String> HOUSE_CADENCES = Set.of("month", "once");
 
-    /** The house's money from today's two values: {@code null} when neither is known. */
+    /**
+     * The house's money from today's two values: {@code null} when neither is known; a price without a type keeps no
+     * cadence (it is not a monthly rent; owner decision of 2026-10-12).
+     */
     public static Money of(Long amount, String priceType) {
         var cadence = cadenceOf(priceType);
         if (amount == null && cadence == null) return null;
-        return new Money(amount, cadence == null ? "month" : cadence);
+        return new Money(amount, cadence);
     }
 
     /** {@code RENT} as {@code month}, {@code SALE} as {@code once}, anything else as {@code null}. */
@@ -76,9 +79,17 @@ public record Money(
         return null;
     }
 
-    /** True for an amount in range (or none) and a cadence of the vocabulary. */
+    /** True for an amount in range (or none) and a cadence of the vocabulary (or none), one of the two given. */
     @JsonIgnore
     public boolean isValid() {
-        return (amount == null || (amount >= 0 && amount <= MAX_RUPEES)) && cadence != null && CADENCES.contains(cadence);
+        return (amount == null || (amount >= 0 && amount <= MAX_RUPEES)) && (cadence == null || CADENCES.contains(cadence))
+                && isKnown();
+    }
+
+    /** A money with neither an amount nor a cadence says nothing: it is written absent, and refused on the way in. */
+    @JsonIgnore
+    @AssertTrue(message = "money must have an amount, a cadence or both")
+    public boolean isKnown() {
+        return amount != null || cadence != null;
     }
 }

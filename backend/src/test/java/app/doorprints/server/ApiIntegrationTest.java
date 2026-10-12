@@ -510,7 +510,7 @@ class ApiIntegrationTest {
         var yearlyRent = house("Bad", 12.9, 77.6, null);
         yearlyRent.put("money", money(400000, "year"));
         var noCadence = house("Bad", 12.9, 77.6, null);
-        noCadence.put("money", Map.of("amount", 32000));
+        noCadence.put("money", Map.of());
         var negativePrice = house("Bad", 12.9, 77.6, null);
         negativePrice.put("money", money(-1, "month"));
         var badArea = house("Bad", 12.9, 77.6, null);
