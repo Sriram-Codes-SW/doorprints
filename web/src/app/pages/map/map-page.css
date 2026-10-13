@@ -79,7 +79,6 @@
   padding: var(--space-2) var(--space-3);
   max-width: 32rem;
   background: var(--overlay);
-  color: var(--text);
   border-radius: 8px;
   box-shadow: var(--shadow-lg);
   font-size: var(--text-sm);
@@ -147,7 +146,6 @@
   gap: var(--space-1) var(--space-3);
   padding: var(--space-1) var(--space-3);
   background: var(--overlay);
-  color: var(--text);
   border-radius: 8px;
   font-size: var(--text-xs);
   font-weight: 600;
@@ -238,12 +236,10 @@
   margin: 0;
   font-size: var(--text-lg);
   font-weight: 700;
-  color: var(--text);
 }
 
 .stats dt {
   font-size: var(--text-xs);
-  color: var(--text);
   /* Breaks only a word that cannot fit at all: Tamil and Telugu words are not cut in the middle otherwise. */
   overflow-wrap: break-word;
   hyphens: auto;
@@ -504,8 +500,7 @@
    */
   .legend {
     grid-area: 1 / 1;
-    align-self: end;
-    justify-self: start;
+    place-self: end start;
     position: static;
     margin: 0 0 var(--space-2) var(--space-3);
     max-width: calc(100% - var(--space-3) - var(--space-2) - 54px);
@@ -521,10 +516,8 @@
   }
 
   .map-actions {
-    grid-row: 3;
-    grid-column: 1;
+    grid-area: 3 / 1;
     position: static;
-    flex-wrap: wrap;
     justify-content: flex-end;
     align-items: center;
     padding: var(--space-2) var(--space-3);
@@ -614,18 +607,18 @@
    * tile source's, and a box that grew to the left would move at each) and growing down into the corner reserved above:
    * only its height changes, which moves nothing. The button stays at the right, as folded, with the text to its left.
    */
-  :host ::ng-deep .maplibregl-ctrl-bottom-right .maplibregl-ctrl-attrib.maplibregl-compact-show {
+  :host ::ng-deep .maplibregl-ctrl-attrib.maplibregl-compact-show {
     padding: 2px 24px 2px 0;
     background: none; /* the open credits have their own */
   }
 
-  :host ::ng-deep .maplibregl-ctrl-bottom-right .maplibregl-ctrl-attrib-button {
+  :host ::ng-deep .maplibregl-ctrl-attrib-button {
     left: auto;
     right: 0;
     z-index: 1;
   }
 
-  :host ::ng-deep .maplibregl-ctrl-bottom-right .maplibregl-compact-show .maplibregl-ctrl-attrib-inner {
+  :host ::ng-deep .maplibregl-compact-show .maplibregl-ctrl-attrib-inner {
     position: absolute;
     top: 0;
     right: 0;
@@ -641,7 +634,7 @@
    * the card showed round their edge as a second popup. The card is hidden, not removed, while they are open (a few
    * seconds, or until the button is tapped again): nothing moves.
    */
-  :host ::ng-deep .map-wrap:has(.maplibregl-ctrl-attrib.maplibregl-compact-show) .legend {
+  .map-wrap:has(.maplibregl-compact-show) .legend {
     visibility: hidden;
   }
 
