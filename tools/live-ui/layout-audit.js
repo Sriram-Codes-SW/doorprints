@@ -39,7 +39,16 @@ async function phoneContext(browser, devices, { device, viewport: own, theme = '
         localStorage.setItem('doorprints.lang', lang);
       }
     } catch { /* storage blocked: the app starts in its default language */ }
-    if (text) document.addEventListener('DOMContentLoaded', () => { document.documentElement.style.fontSize = `${text}%`; });
+    if (!text) return;
+    // From the first paint, as a phone's text size is: set once DOMContentLoaded came, the static first screen in
+    // index.html was laid out at 100% and moved (a layout shift of 0.5-0.9 that no phone has; TC-S-46's CLS check).
+    const apply = () => { if (document.documentElement) document.documentElement.style.fontSize = `${text}%`; };
+    apply();
+    if (!document.documentElement) {
+      const seen = new MutationObserver(() => { if (document.documentElement) { apply(); seen.disconnect(); } });
+      seen.observe(document, { childList: true });
+    }
+    document.addEventListener('DOMContentLoaded', apply);
   }, [lang, text]);
   return { ctx, viewport };
 }

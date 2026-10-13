@@ -1,0 +1,41 @@
+{
+  "spec": "web/src/app/pages/map/map-page.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/pages/map/map-page.css",
+      "find": "    grid-area: 1 / 1 / 2 / 2;",
+      "replace": "    grid-area: 1 / 1;",
+      "expect": "places the map and its overlays in the map row"
+    },
+    {
+      "file": "web/src/app/pages/map/map-page.css",
+      "find": "    min-height: max(var(--map-floor), calc(100cqh - var(--map-peek)));",
+      "replace": "    min-height: calc(var(--map-stack-h, 0px) + 196px + 2 * var(--space-2));",
+      "expect": "reads no map size a script writes"
+    },
+    {
+      "file": "web/src/app/pages/map/map-page.css",
+      "find": "    grid-template-rows: minmax(var(--map-floor), 1fr) auto auto;",
+      "replace": "    grid-template-rows: 1fr auto auto;",
+      "expect": "never goes under the control column"
+    },
+    {
+      "file": "web/src/app/pages/map/map-page.css",
+      "find": "    grid-row: 3;\n    grid-column: 1;\n    position: static;",
+      "replace": "    position: absolute;",
+      "expect": "never positions the bottom row"
+    },
+    {
+      "file": "web/src/app/pages/map/map-page.ts",
+      "find": "'[class.drawn]': 'true'",
+      "replace": "'[class.drawn]': 'false'",
+      "expect": "is not painted before its first update pass"
+    },
+    {
+      "file": "web/src/app/pages/map/map-page.html",
+      "find": "    } @else if (!error()) {",
+      "replace": "    } @else if (false) {",
+      "expect": "keeps the counters place while they are read"
+    }
+  ]
+}

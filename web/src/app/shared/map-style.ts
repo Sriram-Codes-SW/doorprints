@@ -210,8 +210,8 @@ export function createMlMap(
     foldAttributionLater(map);
     map.on('style.load', () => applyIndiaBoundaries(boundaryTarget(map), inBoundariesUrl(document.baseURI)));
     // Re-measure the canvas once the layout has settled, and again when the style loads. A map made while its
-    // container is still being sized — the Map page's map, on a phone, is sized from container-query units and the
-    // JS-written --map-peek/--map-stack-h — otherwise keeps the size it was born with and draws only its background
+    // container is still being sized — the Map page's map, on a phone, is sized from container-query units and its
+    // grid's rows (map-page.css) — otherwise keeps the size it was born with and draws only its background
     // layer (owner report 2026-10-12: the map stayed a flat colour on a phone while the desktop map drew).
     requestAnimationFrame(() => map.resize());
     map.on('style.load', () => map.resize());

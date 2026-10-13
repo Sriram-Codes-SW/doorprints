@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.113 |
+| Version | 0.114 |
 | Date | 2026-10-13 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -124,6 +124,7 @@
 | 0.111 | 2026-10-12 | Claude (Code), engineer | **§18.4 door 7: a price without a type has no cadence** (owner decision of 2026-10-12, S4b-BL-206; [10](10-sprint-log.md) v0.270): money may carry an amount and no cadence, the symmetric case of a cadence and no amount, and is never read as a monthly rent; a money with neither is refused. Server `Money`, web `core/candidate.ts`. |
 | 0.112 | 2026-10-12 | Claude (Code), engineer | **Kinds step 3, the backup format** (S4b-BL-206; [10](10-sprint-log.md) v0.270, [schemas README](schemas/README.md) v1.33): §18.4 door 1 changed, **an old-family file is read, not refused** (owner confirmed 2026-10-12 as the final text, [14](14-lead-backlog-and-handoff.md) §11.4 item 7); a well-formed file with a cadence this reader does not support reads as a newer file, not broken data; §18.5 records the one mapping per stack between the two families and the lossless check against `backup-sample-houses.json`. |
 | 0.113 | 2026-10-13 | Claude (Code), engineer | **Kinds step 4, the phone** (S4b-BL-206; `feat/kinds-4-android`; [10](10-sprint-log.md) v0.272, [06](06-test-plan.md) v0.217 TC-U-204, [schemas README](schemas/README.md) v1.34): new §6.2 *Room 12* (every house rewritten in place as a candidate, `HouseEntity` keeps the house's values so no screen moves) and a §18.5 finding: Room version 12 rather than 1, `/api/candidates` and `candidateId` in `ApiClient`, the Drive `sync/1` file's `candidates` and `candidateId` read in both shapes on both stacks, the unknown extras kept on the phone, a typeless price never a monthly rent in the cost summary. Left: the viewing payload (S4b-BL-247), the website's sync writer (S4b-BL-246), the phone's backup of an unknown extra (S4b-BL-248). |
+| 0.114 | 2026-10-13 | Claude (Code), engineer | FR-24's *Small phones* note follows S4b-BL-49: the phone map's actions are a row under the map, sized in CSS (no `--map-stack-h`). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -736,7 +737,7 @@ FR-24 (the check: its web twin lands **after** the web trace; `placeCheck` itsel
   *You are here* / *This house* / *This spot*). Every page layer is added with `beforeId: 'houses-circles'`; nothing calls `moveLayer`, `setFilter` or `setLayoutProperty`
   on a boundary layer. The ring is a DOM marker, a hollow ring with a centre cross in inline SVG (28 px), a different form from the `APPROX` ring of `house-markers.ts`.
   **TC-M-25 is re-run once** for the new layers.
-- **Small phones.** The check adds one 44 px button to the action column (label hidden as `OfflineSave` does); `--map-stack-h` and the map's `min-height` grow with it
+- **Small phones.** The check adds one 44 px button to the action column (label hidden as `OfflineSave` does); the actions row grows with it (since S4b-BL-49, 2026-10-13, a row under the map, so the map's own height does not)
   (measured on the 360x640 profile of the live-ui mobile pass). Pick mode disables cooperative gestures as add mode does. The result panel sits at the top of the list section,
   and *Show on map* fits with `fitPadding(...)`.
 - **Geolocation.** *Here* goes through `shared/locate-once.ts` as a **15 s best-fix watch**: `watchPosition` with `{ enableHighAccuracy: true, maximumAge: 0 }`, `clearWatch` at the first

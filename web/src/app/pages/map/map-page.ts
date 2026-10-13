@@ -89,7 +89,6 @@ import type { PlaceKind } from '../../shared/trace-place-text';
 import { TRACK_COLOR, TRACK_REPEAT_COLOR, legendDashArray } from '../../shared/trace-style';
 import type { GeoBounds } from '../../offline/offline-tiles';
 import { NO_COST_FILTER, activeCostFilters, costFilterMatches, type CostFilter } from '../../shared/cost-filter';
-import { listPeek } from './list-peek';
 import { fitPadding } from './fit-padding';
 import { HOUSE_PAINT, houseFeatures } from './house-markers';
 import { RunResult, nextRunResult, runResult } from '../../shared/run-result';
@@ -141,7 +140,9 @@ let fittedThisSession = false;
   imports: [RouterLink, TPipe, OfflineSave, TraceCard, WalkEndSheet, PlaceCheck, PlaceCheckPanel],
   templateUrl: './map-page.html',
   styleUrl: './map-page.css',
-  host: { '(document:keydown.escape)': 'onEscape()' },
+  // `drawn` comes with the first update pass: until then the page is the template's bare elements (no text, no @if
+  // blocks), which a slow phone painted for a frame, so everything under the map then jumped (map-page.css).
+  host: { '(document:keydown.escape)': 'onEscape()', '[class.drawn]': 'true' },
 })
 export class MapPage implements AfterViewInit, OnDestroy {
   private readonly api = inject(LocalDataService);
@@ -277,15 +278,11 @@ export class MapPage implements AfterViewInit, OnDestroy {
   });
 
   private readonly mapEl = viewChild.required<ElementRef<HTMLDivElement>>('mapEl');
-  private readonly wrap = viewChild.required<ElementRef<HTMLElement>>('wrap');
-  private readonly stack = viewChild.required<ElementRef<HTMLElement>>('stack');
-  private readonly panel = viewChild.required<ElementRef<HTMLElement>>('panel');
   private map: MlMap | null = null;
   private controls: IControl[] = [];
   private controlPosition: ControlPosition = 'top-right';
   private controlsQuery: MediaQueryList | null = null;
   private onControlsQuery: (() => void) | null = null;
-  private stackObserver: ResizeObserver | null = null;
   private popup: Popup | null = null;
   private popupHouse: HouseDto | null = null;
   private resizeObserver: ResizeObserver | null = null;
@@ -415,7 +412,6 @@ export class MapPage implements AfterViewInit, OnDestroy {
     const saved = loadMapView();
     this.hadSavedView = saved !== null;
     const view = saved ?? COUNTRY_VIEW;
-    this.watchStack();
     // On a phone the map is 55vh of a page that scrolls: createMlMap turns on cooperative gestures there (one finger
     // scrolls the page, two move the map; UX-007), as for every other map in the app.
     const map = createMlMap(this.i18n, {
@@ -512,7 +508,6 @@ export class MapPage implements AfterViewInit, OnDestroy {
     clearTimeout(this.searchTimer);
     this.styleWatch?.dispose();
     this.resizeObserver?.disconnect();
-    this.stackObserver?.disconnect();
     if (this.controlsQuery && this.onControlsQuery) {
       this.controlsQuery.removeEventListener('change', this.onControlsQuery);
     }
@@ -876,14 +871,14 @@ export class MapPage implements AfterViewInit, OnDestroy {
   }
 
   /**
-   * On a phone the bottom row (legend, actions) and MapLibre's control column are drawn over the map: a framed box is kept
-   * out from under them. The row is measured the same way watchStack() measures it for --map-stack-h.
+   * On a phone MapLibre's control column is drawn over the map: a framed box is kept out from under it. The bottom row
+   * (legend, actions) is under the map, not over it (map-page.css), so nothing is measured for it.
    */
   private mapPadding() {
     const container = this.map!.getContainer();
     return fitPadding(
       this.wantedControlPosition() === 'bottom-right',
-      this.stack().nativeElement.getBoundingClientRect().height,
+      0,
       container.clientWidth,
       container.clientHeight,
     );
@@ -921,31 +916,6 @@ export class MapPage implements AfterViewInit, OnDestroy {
     query.addEventListener('change', onChange);
     this.controlsQuery = query;
     this.onControlsQuery = onChange;
-  }
-
-  /**
-   * The phone layout's bottom row (legend and actions) is measured into `--map-stack-h` on the map region, so
-   * MapLibre's bottom-right controls and the offline message sit above it whatever its height (a two-row legend in
-   * Tamil, two stacked buttons, 200% text). On wider screens the row has no box and measures 0, which nothing uses.
-   * The list's heading and counters are measured into `--map-peek` the same way (used by the phone layout only).
-   */
-  private watchStack(): void {
-    if (typeof ResizeObserver === 'undefined') return;
-    const wrap = this.wrap().nativeElement;
-    const stack = this.stack().nativeElement;
-    const panel = this.panel().nativeElement;
-    const update = () => {
-      wrap.style.setProperty('--map-stack-h', `${Math.ceil(stack.getBoundingClientRect().height)}px`);
-      // The phone map leaves room under it for the list's heading and counters (listPeek, map-page.css).
-      const head = panel.querySelector('.panel-head');
-      const stats = panel.querySelector('.stats');
-      if (head) wrap.style.setProperty('--map-peek', `${listPeek(head.getBoundingClientRect(), stats?.getBoundingClientRect() ?? null)}px`);
-    };
-    this.stackObserver = new ResizeObserver(update);
-    this.stackObserver.observe(stack);
-    // The panel changes size when the counters first appear, and with the text size or the language.
-    this.stackObserver.observe(panel);
-    update();
   }
 
   /** After a language switch: MapLibre's controls and the open popup in the new language. */

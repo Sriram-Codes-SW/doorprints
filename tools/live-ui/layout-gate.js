@@ -22,9 +22,13 @@
 // Usage: node layout-gate.js [distDir | baseUrl]   (default ../../web/dist/web/browser, served by a tiny static server here;
 // CHROMIUM=<path> for a local Chromium build). Exits 1 when any check fails.
 // For 320x568, 360x640 and 390x664 phones, in English and the light theme, on every route live-ui.js visits, at normal text
-// and again at 130% text (and the owner's 384x615 phone at 130%): the shared layoutAudit (live-ui.js's mobile pass): the map no taller than the screen, its canvas
+// and again at 130% text (and the owner's 384x615 phone at 130%, an iPhone SE in landscape at 568x320, and a 360x740 phone
+// in Tamil at 200% text): the shared layoutAudit (live-ui.js's mobile pass): the map no taller than the screen, its canvas
 // under 4,096px, the app no taller than the screen, nothing left under the bottom bar at the end of a page, no sideways scroll, no map control over the page's own controls; plus
-// that the Map page has a map and a canvas at all (so the checks cannot pass for want of a map).
+// that the Map page has a map and a canvas at all (so the checks cannot pass for want of a map), that it loads
+// with a layout shift of at most 0.05 (S4b-BL-49: the map jumped by 0.15-0.24 on short phones when a script wrote its
+// height after the first paint), and, at normal text and on the owner's phone, that the Map page shows the list's
+// heading and every counter above the bottom bar before any scrolling (S4b-BL-49, owner report 2026-09-24).
 // Offline and deterministic: every request that is not to the local server is answered by this script (MapLibre's style
 // URL with an empty valid style, anything else aborted), so the map's container and canvas exist but nothing depends on a
 // network. Not a replacement for tools/live-ui after the deploy, and not for a real phone.
@@ -37,6 +41,10 @@ const path = require('node:path');
 const VIEWPORTS = [{ width: 320, height: 568 }, { width: 360, height: 640 }, { width: 390, height: 664 }];
 const OWNER_PHONE = { width: 384, height: 615 }; // the owner's phone (S4b-BL-49): its text size is 130%, as live-ui.js's owner384-text130
 const LARGE_TEXT = 130; // percent: the root font size, as live-ui.js's text-scale hook sets it
+// Where live-ui.js found the map taller than the screen on main (2026-10-13): iPhone SE in landscape, and Tamil at 200%.
+const LANDSCAPE_SE = { width: 568, height: 320 };
+const TALL_TAMIL = { width: 360, height: 740 };
+const MAX_CLS = 0.05; // web.dev's "good" is 0.1; the Map page measured 0.000-0.003 after S4b-BL-49 (TC-S-46)
 const STYLE_URL = /^https:\/\/tiles\.openfreemap\.org\/styles\/liberty(\?|$)/; // MAP_STYLE_URL in web/src/app/shared/map-style-url.ts
 const EMPTY_STYLE = { version: 8, name: 'empty', sources: {}, layers: [] };
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.geojson': 'application/geo+json', '.webmanifest': 'application/manifest+json', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.pbf': 'application/x-protobuf', '.txt': 'text/plain', '.xml': 'application/xml' };
@@ -56,6 +64,41 @@ function serve(dir) {
     res.end(inBase ? fs.readFileSync(send) : '');
   });
   return new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve({ server, base: `http://127.0.0.1:${server.address().port}${prefix}` })));
+}
+
+/**
+ * In the page, before anything else: the layout shift as web-vitals counts it (the largest burst of shifts less than 1s
+ * apart and at most 5s long; a shift right after an input does not count). Read back with window.__cls().
+ */
+function watchShifts() {
+  let cls = 0, burst = 0, first = 0, last = 0;
+  window.__cls = () => cls;
+  try {
+    new PerformanceObserver((list) => {
+      for (const e of list.getEntries()) {
+        if (e.hadRecentInput) continue;
+        if (burst && e.startTime - last < 1000 && e.startTime - first < 5000) burst += e.value;
+        else { burst = e.value; first = e.startTime; }
+        last = e.startTime;
+        cls = Math.max(cls, burst);
+      }
+    }).observe({ type: 'layout-shift', buffered: true });
+  } catch { /* no Layout Instability API: nothing is counted */ }
+}
+
+/** In the page: what of the Map page's list heading and counters is under the fixed bottom bar at the top (null: none). */
+function countersUnderBar() {
+  const main = document.querySelector('main');
+  const bar = document.querySelector('nav.nav');
+  const head = document.querySelector('.panel-head');
+  if (!main || !bar || !head || getComputedStyle(bar).position !== 'fixed') return null;
+  const top = main.scrollTop;
+  main.scrollTop = 0;
+  const barTop = bar.getBoundingClientRect().top;
+  const stats = document.querySelector('.stats');
+  const bottom = Math.max(head.getBoundingClientRect().bottom, stats ? stats.getBoundingClientRect().bottom : 0);
+  main.scrollTop = top;
+  return bottom > barTop + 1 ? `the list's heading and counters end ${Math.round(bottom - barTop)}px under the bottom bar before scrolling` : null;
 }
 
 /** Everything but the local server is answered here: the style with an empty one, the rest not at all. */
@@ -79,9 +122,10 @@ async function run() {
   const failures = [];
   let checks = 0;
   const check = (tag, ok, detail) => { checks++; if (!ok) { failures.push(`${tag}: ${detail}`); console.log(`FAIL ${tag}: ${detail}`); } };
-  const pass = async (viewport, text, lang = 'en') => {
+  const pass = async (viewport, text, lang = 'en', { counters = false } = {}) => {
     const { ctx } = await phoneContext(browser, devices, { device: 'Pixel 7', viewport, text, lang });
     await offline(ctx, base);
+    await ctx.addInitScript(watchShifts);
     const page = await ctx.newPage();
     for (const route of ROUTES) {
       const tag = `${viewport.width}x${viewport.height}${text ? ` text ${text}%` : ''}${lang === 'en' ? '' : ` ${lang}`} ${route}`;
@@ -94,6 +138,15 @@ async function run() {
           check(`${tag}: the Map page has a map with a canvas`, drawn, 'no .maplibregl-map canvas (WebGL missing, or the map did not start)');
           await page.waitForTimeout(2000); // the map's resize observers and the layout settle
         } else await page.waitForTimeout(400);
+        // The Map page only: /data and /connect still shift on load (S4b-BL-249), which the gate does not hold yet.
+        if (route === '/') {
+          const cls = await page.evaluate(() => window.__cls());
+          check(`${tag}: layout shift on load`, cls <= MAX_CLS, `${cls.toFixed(3)} (at most ${MAX_CLS})`);
+        }
+        if (route === '/' && counters) {
+          const under = await page.evaluate(countersUnderBar);
+          check(`${tag}: counters above the bottom bar`, under === null, under);
+        }
         const found = await page.evaluate(layoutAudit);
         check(`${tag}: layout`, found.length === 0, found.join(' ; '));
       } catch (e) { check(`${tag}: ran`, false, e.message.split('\n')[0]); }
@@ -101,7 +154,13 @@ async function run() {
     await ctx.close();
   };
   try {
-    await Promise.all([...VIEWPORTS.map((v) => pass(v)), ...VIEWPORTS.map((v) => pass(v, LARGE_TEXT)), pass(OWNER_PHONE, LARGE_TEXT)]);
+    await Promise.all([
+      ...VIEWPORTS.map((v) => pass(v, undefined, 'en', { counters: true })),
+      ...VIEWPORTS.map((v) => pass(v, LARGE_TEXT)),
+      pass(OWNER_PHONE, LARGE_TEXT, 'en', { counters: true }),
+      pass(LANDSCAPE_SE),
+      pass(TALL_TAMIL, 200, 'ta'),
+    ]);
   } finally {
     await browser.close();
     if (local) local.server.close();
