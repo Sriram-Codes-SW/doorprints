@@ -115,10 +115,10 @@
     <div class="grid" (input)="markDirty()" (change)="markDirty()">
       <!-- Main details -->
       <section class="card" aria-labelledby="details-heading">
-        <h2 id="details-heading">{{ 'house.details' | t }}</h2>
+        <h2 id="details-heading">{{ L.section('details') | t }}</h2>
         <div class="title-row">
           <div class="field grow">
-            <label for="house-name">{{ 'house.name' | t }} <span class="req" aria-hidden="true">*</span></label>
+            <label for="house-name">{{ L.field('label') | t }} <span class="req" aria-hidden="true">*</span></label>
             <input
               id="house-name"
               type="text"
@@ -141,7 +141,7 @@
         </div>
 
         <fieldset>
-          <legend>{{ 'house.status' | t }}</legend>
+          <legend>{{ L.field('status') | t }}</legend>
           <div class="options">
             @for (s of statuses; track s) {
               <label [class]="'option status-' + s">
@@ -153,7 +153,7 @@
         </fieldset>
 
         <fieldset>
-          <legend>{{ 'house.rating' | t }}</legend>
+          <legend>{{ L.field('rating') | t }}</legend>
           <div class="rating-row">
             <div class="options stars">
               @for (n of starValues; track n) {
@@ -181,54 +181,33 @@
           </div>
         </fieldset>
 
+        <!-- The price and its type, then the Details extras (kinds PR 4, S4b-BL-208: BHK, area and floor, drawn by the
+             `extra` template below from the kind file); a level's Basement switch (S4b-BL-104 c) follows the row. -->
         <div class="row">
           <div class="field">
-            <label for="house-price">{{ 'house.price' | t }}</label>
+            <label for="house-price">{{ L.field('money') | t }}</label>
             <input id="house-price" type="number" min="0" step="1" inputmode="numeric" [(ngModel)]="d.price" />
           </div>
           <div class="field narrow">
             <label for="house-price-type">{{ 'house.priceType' | t }}</label>
             <select id="house-price-type" [(ngModel)]="d.priceType">
-              <option [ngValue]="'RENT'">{{ 'price.rent' | t }}</option>
-              <option [ngValue]="'SALE'">{{ 'price.sale' | t }}</option>
+              <option [ngValue]="'RENT'">{{ L.ref('cadence.month') | t }}</option>
+              <option [ngValue]="'SALE'">{{ L.ref('cadence.once') | t }}</option>
               <option [ngValue]="null">{{ 'common.notSet' | t }}</option>
             </select>
           </div>
-          <div class="field narrow">
-            <label for="house-bhk">{{ 'house.bhk' | t }}</label>
-            <input id="house-bhk" type="number" min="0" step="1" inputmode="numeric" [(ngModel)]="d.bedrooms" />
-          </div>
-          <div class="field narrow">
-            <label for="house-area">{{ 'house.areaSqft' | t }}</label>
-            <input id="house-area" type="number" min="1" max="100000" step="1" inputmode="numeric" [(ngModel)]="d.areaSqft" />
-          </div>
-          <!-- S4b-BL-87: the floor. S4b-BL-104 (c): the field holds the number and the Basement switch below the sign, so a
-               basement needs no minus key (a numeric keypad may have none); a minus typed anyway turns the switch on. -->
-          <div class="field narrow">
-            <label for="house-floor">{{ 'house.floor' | t }}</label>
-            <input
-              id="house-floor"
-              type="number"
-              min="0"
-              max="200"
-              step="1"
-              inputmode="numeric"
-              [ngModel]="floor.shown(d)"
-              (ngModelChange)="floor.type(d, $event)"
-              [attr.aria-invalid]="floor.invalid(d) ? 'true' : null"
-              [attr.aria-describedby]="floor.invalid(d) ? 'house-floor-error' : 'house-floor-hint'"
-            />
-            @if (floor.invalid(d)) {
-              <span id="house-floor-error" class="field-error" role="alert">{{ (floor.basement(d) ? 'house.floorBasementInvalid' : 'house.floorInvalid') | t }}</span>
-            } @else {
-              <span id="house-floor-hint" class="field-hint">{{ (floor.basement(d) ? 'house.floorBasementHint' : 'house.floorHint') | t }}</span>
-            }
-          </div>
+          @for (f of extras.of(moneySection, d); track f.id) {
+            <ng-container *ngTemplateOutlet="extra; context: { $implicit: f, d }" />
+          }
         </div>
-        <div class="field checkbox">
-          <input id="house-floor-basement" type="checkbox" role="switch" [checked]="floor.basement(d)" (change)="floor.setBasement(d, $event)" />
-          <label for="house-floor-basement">{{ 'house.floorBasementToggle' | t }}</label>
-        </div>
+        @for (f of extras.of(moneySection, d); track f.id) {
+          @if (f.switchId) {
+            <div class="field checkbox">
+              <input [id]="f.switchId" type="checkbox" role="switch" [checked]="floor.basement(d)" (change)="floor.setBasement(d, $event)" />
+              <label [for]="f.switchId">{{ 'house.floorBasementToggle' | t }}</label>
+            </div>
+          }
+        }
         <!-- S4b-BL-85: another house within about 30 m with the same bedrooms and floor; a warning, never a block. -->
         <div role="status">
           @if (sameFlatLine(d); as same) {
@@ -237,27 +216,27 @@
         </div>
 
         <div class="field">
-          <label for="house-address">{{ 'house.address' | t }}</label>
+          <label for="house-address">{{ L.field('address') | t }}</label>
           <input id="house-address" type="text" [(ngModel)]="d.address" maxlength="500" autocomplete="off" />
         </div>
         <div class="row">
           <div class="field">
-            <label for="house-street">{{ 'house.street' | t }}</label>
+            <label for="house-street">{{ L.field('street') | t }}</label>
             <input id="house-street" type="text" [(ngModel)]="d.street" maxlength="200" autocomplete="off" />
           </div>
           <div class="field">
-            <label for="house-locality">{{ 'house.locality' | t }}</label>
+            <label for="house-locality">{{ L.field('locality') | t }}</label>
             <input id="house-locality" type="text" [(ngModel)]="d.locality" maxlength="200" autocomplete="off" />
           </div>
         </div>
 
         <div class="row">
           <div class="field">
-            <label for="house-contact">{{ 'house.contactName' | t }}</label>
+            <label for="house-contact">{{ L.field('contactName') | t }}</label>
             <input id="house-contact" type="text" [(ngModel)]="d.contactName" maxlength="200" autocomplete="off" [readOnly]="!!linkedBroker()" />
           </div>
           <div class="field">
-            <label for="house-phone">{{ 'house.contactPhone' | t }}</label>
+            <label for="house-phone">{{ L.field('contactPhone') | t }}</label>
             <div class="inline">
               <input id="house-phone" type="tel" [(ngModel)]="d.contactPhone" maxlength="50" autocomplete="off" [readOnly]="!!linkedBroker()" />
               @if (d.contactPhone) {
@@ -272,7 +251,7 @@
         <!-- Broker (slice 1b, docs/11 5.25): choosing one fills the contact above from it. A phone typed with no broker
              chosen is linked to the broker with that number, or makes one, when the house is saved. -->
         <div class="field">
-          <label for="house-broker">{{ 'house.broker' | t }}</label>
+          <label for="house-broker">{{ L.field('brokerId') | t }}</label>
           <div class="inline">
             <select id="house-broker" [ngModel]="d.brokerId ?? ''" (ngModelChange)="pickBroker($event)">
               <option value="">{{ 'house.brokerNone' | t }}</option>
@@ -291,7 +270,7 @@
         </div>
 
         <div class="field">
-          <label for="house-listing">{{ 'house.listingUrl' | t }}</label>
+          <label for="house-listing">{{ L.field('listingUrl') | t }}</label>
           <div class="inline">
             <input id="house-listing" type="url" inputmode="url" [(ngModel)]="d.listingUrl" maxlength="1000" placeholder="https://…" />
             @if (d.listingUrl && listingHref(d.listingUrl); as href) {
@@ -309,75 +288,28 @@
         </div>
 
         <div class="field">
-          <label for="house-notes">{{ 'house.notes' | t }}</label>
+          <label for="house-notes">{{ L.field('notes') | t }}</label>
           <textarea id="house-notes" rows="5" [(ngModel)]="d.notes" maxlength="20000"></textarea>
         </div>
       </section>
 
-      <!-- Cost (slice 1a, docs/11 5.21): what the house really costs. The rent-only fields (deposit, maintenance,
-           lock-in, notice) hide for a sale; the line under the fields is computed by costSummary, as on Android. -->
-      @if (d.cost; as c) {
+      <!-- Cost (slice 1a, docs/11 5.21): what the house really costs, drawn from the kind file (kinds PR 4, S4b-BL-208):
+           the rent-only fields (deposit, maintenance, lock-in, notice) hide for a sale (`forCadences`); the line under
+           the fields is computed by costSummary, as on Android. -->
+      @if (d.cost) {
         <section class="card" aria-labelledby="cost-heading">
-          <h2 id="cost-heading">{{ 'house.cost' | t }}</h2>
-          @if (d.priceType !== 'SALE') {
-            <div class="row">
-              <div class="field">
-                <label for="cost-deposit">{{ 'cost.deposit' | t }} (₹)</label>
-                <input id="cost-deposit" type="number" min="0" step="1" inputmode="numeric" [(ngModel)]="c.deposit" />
+          <h2 id="cost-heading">{{ L.section('cost') | t }}</h2>
+          @for (row of extras.rows('cost', d); track row[0].id) {
+            @if (row.length > 1) {
+              <div class="row">
+                @for (f of row; track f.id) {
+                  <ng-container *ngTemplateOutlet="extra; context: { $implicit: f, d }" />
+                }
               </div>
-              <div class="field">
-                <label for="cost-deposit-months">{{ 'cost.depositMonths' | t }}</label>
-                <input id="cost-deposit-months" type="number" min="0" max="120" step="1" inputmode="numeric" [(ngModel)]="c.depositMonths" />
-              </div>
-            </div>
-            <div class="row">
-              <div class="field">
-                <label for="cost-maintenance">{{ 'cost.maintenance' | t }} (₹)</label>
-                <input id="cost-maintenance" type="number" min="0" step="1" inputmode="numeric" [(ngModel)]="c.maintenance" />
-              </div>
-              <div class="field checkbox">
-                <input id="cost-maintenance-included" type="checkbox" role="switch" [checked]="c.maintenanceIncluded === true" (change)="setIncluded($event)" />
-                <label for="cost-maintenance-included">{{ 'cost.maintenanceIncluded' | t }}</label>
-              </div>
-            </div>
+            } @else {
+              <ng-container *ngTemplateOutlet="extra; context: { $implicit: row[0], d }" />
+            }
           }
-          <div class="row">
-            <div class="field">
-              <label for="cost-brokerage">{{ 'cost.brokerage' | t }} (₹)</label>
-              <input id="cost-brokerage" type="number" min="0" step="1" inputmode="numeric" [(ngModel)]="c.brokerage" />
-            </div>
-            <div class="field">
-              <label for="cost-brokerage-months">{{ 'cost.brokerageMonths' | t }}</label>
-              <input id="cost-brokerage-months" type="number" min="0" max="120" step="1" inputmode="numeric" [(ngModel)]="c.brokerageMonths" />
-            </div>
-          </div>
-          @if (d.priceType !== 'SALE') {
-            <div class="row">
-              <div class="field">
-                <label for="cost-lock-in">{{ 'cost.lockInMonths' | t }}</label>
-                <input id="cost-lock-in" type="number" min="0" max="120" step="1" inputmode="numeric" [(ngModel)]="c.lockInMonths" />
-              </div>
-              <div class="field">
-                <label for="cost-notice">{{ 'cost.noticeMonths' | t }}</label>
-                <input id="cost-notice" type="number" min="0" max="120" step="1" inputmode="numeric" [(ngModel)]="c.noticeMonths" />
-              </div>
-            </div>
-          }
-          <div class="field">
-            <label for="cost-available">{{ 'cost.availableFrom' | t }}</label>
-            <!-- A calendar date with the platform's picker, shown in the person's locale; the value is YYYY-MM-DD. -->
-            <input id="cost-available" type="date" [(ngModel)]="c.availableFrom" />
-          </div>
-          <div class="row">
-            <div class="field">
-              <label for="cost-offer">{{ 'cost.myOffer' | t }} (₹)</label>
-              <input id="cost-offer" type="number" min="0" step="1" inputmode="numeric" [(ngModel)]="c.myOffer" />
-            </div>
-            <div class="field">
-              <label for="cost-agreed">{{ 'cost.agreedPrice' | t }} (₹)</label>
-              <input id="cost-agreed" type="number" min="0" step="1" inputmode="numeric" [(ngModel)]="c.agreedPrice" />
-            </div>
-          </div>
           @if (costLine(d); as line) {
             <p class="cost-line" role="status">{{ line }}</p>
           }
@@ -387,7 +319,7 @@
       <!-- Rooms (slice 1c, docs/11 5.6): a card per room. Sizes are stored in centimetres; the Length units setting
            (Your data) only changes how they are typed and shown. Every control's name says which room it belongs to. -->
       <section class="card" aria-labelledby="rooms-heading">
-        <h2 id="rooms-heading">{{ 'rooms.heading' | t }}</h2>
+        <h2 id="rooms-heading">{{ L.section('rooms') | t }}</h2>
         @for (r of rooms.list(d); track r.id; let i = $index) {
           @let title = rooms.title(r, i);
           <div class="room" role="group" [attr.aria-label]="title">
@@ -552,7 +484,7 @@
       <!-- Questions to ask (slice 3a, docs/11 5.5): a card per question, open ones first. Typing an answer marks it
            Answered, clearing it Open; Skip is a toggle; Remove only takes the question off this house. -->
       <section class="card" aria-labelledby="questions-heading">
-        <h2 id="questions-heading">{{ 'questions.title' | t }}</h2>
+        <h2 id="questions-heading">{{ L.section('questions') | t }}</h2>
         @if ((d.answers ?? []).length > 0) {
           <p id="questions-summary" class="muted" role="status">{{ answeredSummary(d) }}</p>
         }
@@ -682,7 +614,7 @@
 
       <!-- Location -->
       <section class="card" aria-labelledby="location-heading">
-        <h2 id="location-heading">{{ 'house.location' | t }}</h2>
+        <h2 id="location-heading">{{ L.section('location') | t }}</h2>
         @if (!position.placed()) {
           <!-- A new house with no position yet (share target, bookmark): the pin is only a starting guess. -->
           <p id="location-unset" [class]="position.required() ? 'error' : 'warn-box'">{{ 'house.locationUnset' | t }}</p>
@@ -777,7 +709,7 @@
             (change)="position.setApprox($event)"
             aria-describedby="approx-hint"
           />
-          <label for="house-approx">{{ 'house.approx' | t }}</label>
+          <label for="house-approx">{{ L.field('locationSource') | t }}</label>
           <p id="approx-hint" class="muted small">{{ 'house.approxHint' | t }}</p>
         </div>
         <!-- Why "Use my location" or "Fill address from map" did not work, right under them. Kept, dimmed, while
@@ -815,7 +747,7 @@
 
       <!-- Checklist -->
       <section class="card" aria-labelledby="checklist-heading">
-        <h2 id="checklist-heading">{{ 'house.checklist' | t }}</h2>
+        <h2 id="checklist-heading">{{ L.section('checklist') | t }}</h2>
         <p class="muted small">{{ 'house.checklistHint' | t }} <a routerLink="/criteria">{{ 'house.criteriaLink' | t }}</a></p>
         @let scored = result(d);
         @if (scored.coverage !== null) {
@@ -871,7 +803,7 @@
       <!-- Visits -->
       <section class="card" aria-labelledby="visits-heading">
         <div class="section-head">
-          <h2 id="visits-heading" tabindex="-1">{{ 'house.visits' | t }}</h2>
+          <h2 id="visits-heading" tabindex="-1">{{ L.section('visits') | t }}</h2>
           <button
             type="button"
             class="btn btn-sm"
@@ -921,7 +853,7 @@
       <!-- Photos -->
       <section class="card" aria-labelledby="photos-heading">
         <div class="section-head">
-          <h2 id="photos-heading" tabindex="-1">{{ 'house.photos' | t }}</h2>
+          <h2 id="photos-heading" tabindex="-1">{{ L.section('photos') | t }}</h2>
           @if (!isNew()) {
             <label class="btn btn-sm upload">
               @if (photos.uploading() > 0) {
@@ -1044,6 +976,64 @@
   }
   }
 </div>
+
+<!-- One typed extra (kinds PR 4, S4b-BL-208; kind-extras.ts): a switch, a calendar date (the platform's picker, the
+     value YYYY-MM-DD), a floor (S4b-BL-87; S4b-BL-104 (c): the field holds the number and the Basement switch after the
+     row the sign, so a basement needs no minus key, and a minus typed anyway turns the switch on), or a whole number
+     (whole rupees for money). -->
+<ng-template #extra let-f let-d="d">
+  @switch (f.control) {
+    @case ('bool') {
+      <div class="field checkbox">
+        <input [id]="f.domId" type="checkbox" role="switch" [checked]="extras.value(d, f) === true" (change)="extras.setBool(d, f, $event)" />
+        <label [for]="f.domId">{{ f.label | t }}</label>
+      </div>
+    }
+    @case ('date') {
+      <div class="field">
+        <label [for]="f.domId">{{ f.label | t }}</label>
+        <input [id]="f.domId" type="date" [ngModel]="extras.value(d, f)" (ngModelChange)="extras.set(d, f, $event)" />
+      </div>
+    }
+    @case ('level') {
+      <div class="field narrow">
+        <label [for]="f.domId">{{ f.label | t }}</label>
+        <input
+          [id]="f.domId"
+          type="number"
+          [attr.min]="f.min"
+          [attr.max]="f.max"
+          step="1"
+          inputmode="numeric"
+          [ngModel]="floor.shown(d)"
+          (ngModelChange)="floor.type(d, $event)"
+          [attr.aria-invalid]="floor.invalid(d) ? 'true' : null"
+          [attr.aria-describedby]="f.domId + (floor.invalid(d) ? '-error' : '-hint')"
+        />
+        @if (floor.invalid(d)) {
+          <span [id]="f.domId + '-error'" class="field-error" role="alert">{{ (floor.basement(d) ? 'house.floorBasementInvalid' : 'house.floorInvalid') | t }}</span>
+        } @else {
+          <span [id]="f.domId + '-hint'" class="field-hint">{{ (floor.basement(d) ? 'house.floorBasementHint' : 'house.floorHint') | t }}</span>
+        }
+      </div>
+    }
+    @default {
+      <div class="field" [class.narrow]="f.narrow">
+        <label [for]="f.domId">{{ f.label | t }}{{ f.suffix }}</label>
+        <input
+          [id]="f.domId"
+          type="number"
+          [attr.min]="f.min"
+          [attr.max]="f.max"
+          step="1"
+          inputmode="numeric"
+          [ngModel]="extras.value(d, f)"
+          (ngModelChange)="extras.set(d, f, $event)"
+        />
+      </div>
+    }
+  }
+</ng-template>
 
 <dialog #viewer class="lightbox" [attr.aria-label]="'photo.viewer' | t" (close)="closePhoto()" (click)="onViewerClick($event)">
   @if (lightbox(); as p) {

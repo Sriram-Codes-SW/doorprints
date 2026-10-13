@@ -140,6 +140,33 @@ export const HOUSE_LABELS = new KindLabels({
   },
 });
 
+/**
+ * A kind's keys for a screen's own places, as templates read them (`L.field('label')`, `L.section('cost')`,
+ * `L.ref('cadence.month')`; kinds PR 4, S4b-BL-255): the field and section labels of the house page come from the kind
+ * through these. A place the kind does not label throws: a screen asks only for the places it draws.
+ */
+export class KindKeys {
+  constructor(private readonly labels: KindLabels) {}
+
+  /** The key of any ref. */
+  ref(ref: string, cadence?: string | null): TKey {
+    const key = this.labels.resolve(ref, cadence)?.key;
+    if (!key) throw new Error(`${this.labels.kind} has no text for ${ref}`);
+    return key;
+  }
+
+  field(id: string, cadence?: string | null): TKey {
+    return this.ref(`field.${id}`, cadence);
+  }
+
+  section(id: string): TKey {
+    return this.ref(`section.${id}`);
+  }
+}
+
+/** The house's keys for templates. */
+export const HOUSE_KEYS = new KindKeys(HOUSE_LABELS);
+
 /** The built-in kind with this id, `undefined` for one this build does not have. */
 export function kindLabels(kind: string): KindLabels | undefined {
   return kind === HOUSE_LABELS.kind ? HOUSE_LABELS : undefined;

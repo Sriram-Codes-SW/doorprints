@@ -24,6 +24,7 @@ import { Announcer } from '../../core/announcer.service';
 import { errorMsg } from '../../core/format';
 import { LocalDataService } from '../../core/local-data.service';
 import { TPipe } from '../../i18n/t.pipe';
+import { HOUSE_KEYS } from '../../core/kind-labels';
 import { Msg } from '../../i18n/translation.service';
 import { MAX_NOTE_TEXT, areasReaching, distancesToPlaces, notesReaching } from '../../shared/area';
 import type { Area, AreaNoteRow, HousePoint, Place } from '../../shared/area';
@@ -42,7 +43,7 @@ type NoteForm = 'street' | 'area' | null;
   imports: [FormsModule, RouterLink, TPipe],
   template: `
     <section class="card" aria-labelledby="house-area-notes-heading">
-      <h2 id="house-area-notes-heading">{{ 'areaNotes.heading' | t }}</h2>
+      <h2 id="house-area-notes-heading">{{ L.section('areaNotes') | t }}</h2>
       @if (failure(); as f) {
         <p class="error small" role="alert">{{ f.key | t: f.params }}</p>
       }
@@ -155,6 +156,8 @@ type NoteForm = 'street' | 'area' | null;
   `,
 })
 export class HouseAreaNotesCard {
+  /** The kind's section heading (S4b-BL-255). */
+  protected readonly L = HOUSE_KEYS;
   private readonly api = inject(LocalDataService);
   private readonly announcer = inject(Announcer);
 
@@ -268,7 +271,7 @@ export class HouseAreaNotesCard {
   template: `
     @if (rows().length) {
       <section class="card" aria-labelledby="house-distances-heading">
-        <h2 id="house-distances-heading">{{ 'distances.heading' | t }}</h2>
+        <h2 id="house-distances-heading">{{ L.section('distances') | t }}</h2>
         <ul class="distances">
           @for (d of rows(); track d.place.id) {
             <li>{{ 'distances.row' | t: { name: d.place.name, km: d.km, min: d.minutes } }}</li>
@@ -289,6 +292,8 @@ export class HouseAreaNotesCard {
   `,
 })
 export class HouseDistancesCard {
+  /** The kind's section heading (S4b-BL-255). */
+  protected readonly L = HOUSE_KEYS;
   private readonly api = inject(LocalDataService);
 
   readonly house = input.required<HousePoint>();

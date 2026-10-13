@@ -29,6 +29,7 @@ import { ConfirmService } from '../../core/confirm.service';
 import { TraceStore } from '../../data/trace-store';
 import type { SavedWalkRow } from '../../data/trace-store';
 import { TPipe } from '../../i18n/t.pipe';
+import { HOUSE_KEYS } from '../../core/kind-labels';
 import { TranslationService } from '../../i18n/translation.service';
 import type { MapOverlay } from '../../shared/location-map';
 import type { TraceWalk } from '../../shared/trace-geo';
@@ -65,7 +66,7 @@ export function walkBounds(walk: TraceWalk): [[number, number], [number, number]
   template: `
     @if (!isNew()) {
       <section class="card" aria-labelledby="walks-heading">
-        <h2 id="walks-heading" tabindex="-1">{{ 'trace.house.title' | t }}</h2>
+        <h2 id="walks-heading" tabindex="-1">{{ L.section('walks') | t }}</h2>
         @if (loading()) {
           <p class="muted" role="status">{{ 'common.loading' | t }}</p>
         } @else if (failed()) {
@@ -73,7 +74,7 @@ export function walkBounds(walk: TraceWalk): [[number, number], [number, number]
         } @else if (rows().length === 0) {
           <p class="muted" id="walks-empty">{{ 'trace.house.empty' | t }}</p>
         } @else {
-          <ul class="walks" [attr.aria-label]="'trace.house.title' | t">
+          <ul class="walks" [attr.aria-label]="L.section('walks') | t">
             @for (row of rows(); track row.id) {
               <li>
                 <span class="row-text" [id]="'walk-' + row.id">
@@ -117,6 +118,8 @@ export function walkBounds(walk: TraceWalk): [[number, number], [number, number]
   `,
 })
 export class HouseWalksCard {
+  /** The kind's section heading (S4b-BL-255). */
+  protected readonly L = HOUSE_KEYS;
   protected readonly i18n = inject(TranslationService);
   private readonly store = inject(TraceStore);
   private readonly confirm = inject(ConfirmService);
