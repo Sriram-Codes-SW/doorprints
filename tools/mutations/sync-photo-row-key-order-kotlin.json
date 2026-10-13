@@ -1,0 +1,28 @@
+{
+  "spec": "android/shared/src/androidHostTest/kotlin/app/doorprints/shared/sync/SyncVectorsTest.kt",
+  "gradle": [
+    ":shared:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.shared.sync.SyncVectorsTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/drive/sync/DriveSyncBackend.kt",
+      "find": "            for ((k, v) in row.json) put(k, v)\n            put(\"driveFileId\", JsonPrimitive(ref.driveFileId))\n            put(\"sha256\", JsonPrimitive(ref.sha256))",
+      "replace": "            put(\"driveFileId\", JsonPrimitive(ref.driveFileId))\n            put(\"sha256\", JsonPrimitive(ref.sha256))\n            for ((k, v) in row.json) put(k, v)",
+      "expect": "aFileTheWebsiteWritesReadsAsTheRowsItWasMadeOf"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/drive/sync/DriveSyncBackend.kt",
+      "find": "            put(\"driveFileId\", JsonPrimitive(ref.driveFileId))\n            put(\"sha256\", JsonPrimitive(ref.sha256))",
+      "replace": "            put(\"sha256\", JsonPrimitive(ref.sha256))\n            put(\"driveFileId\", JsonPrimitive(ref.driveFileId))",
+      "expect": "aFileTheWebsiteWritesReadsAsTheRowsItWasMadeOf"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/drive/sync/DriveSyncBackend.kt",
+      "find": "return if (ref == null) base else withRef(base, ref)",
+      "replace": "return base",
+      "expect": "aFileTheWebsiteWritesReadsAsTheRowsItWasMadeOf"
+    }
+  ]
+}

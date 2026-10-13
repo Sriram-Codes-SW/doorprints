@@ -19,6 +19,7 @@
 package app.doorprints.shared.sync
 
 import app.doorprints.data.toEntity
+import app.doorprints.drive.photo.PhotoRef
 import app.doorprints.drive.sync.SyncRows
 import app.doorprints.shared.api.HouseDto
 import app.doorprints.shared.api.PhotoChangeDto
@@ -182,7 +183,12 @@ class SyncVectorsTest {
             }
             for ((row, before) in file.rows(SyncKind.PHOTOS).zip(rows(SyncKind.PHOTOS), ::Pair)) {
                 assertFalse(c.name(), "houseId" in row.json)
-                assertEquals(c.name(), read(PhotoChangeDto.serializer(), before), read(PhotoChangeDto.serializer(), row.json))
+                val photo = read(PhotoChangeDto.serializer(), row.json)
+                assertEquals(c.name(), read(PhotoChangeDto.serializer(), before), photo)
+                // Byte for byte, key order too: `by`, then the Drive file and its SHA-256 when the photo has one.
+                val ref = c["photoRefs"]?.jsonObject?.get(row.key)?.jsonObject?.let { PhotoRef(it.str("driveFileId")!!, it.str("sha256")!!) }
+                assertEquals("${c.name()}: ${row.key}", row.json.toString(), SyncRows.photo(photo, row.stamp.by, ref).json.toString())
+                assertEquals("${c.name()}: ${row.key}", ref != null, "driveFileId" in row.json)
             }
         }
         // The first written case, as the phone keeps it: a sale with its cost and a newer app's extras, a price without a type.
