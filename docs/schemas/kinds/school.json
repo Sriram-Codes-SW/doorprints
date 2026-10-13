@@ -1,0 +1,83 @@
+{
+ "format": "doorprints-kind/1",
+ "id": "school",
+ "version": 1,
+ "note": "The kind file for schools (docs/03 ADR-36 and §18.9; kinds PR 5, S4b-BL-209): the second built-in kind, hidden behind a developer flag (web: a development build with localStorage `doorprints.dev.kinds` = `school`; the phone: a debug build made with `-Pdoorprints.devKinds=true`), so no release shows it. It proves the model with labels, hidden sections and core fields, and typed extras only: no screen of its own. The school's own money is hidden (the fees are extras with fixed cadences: `year`, the figure schools quote, and `once` for the admission fee), and so are the broker, the rooms, the questions, the viewings, moving in and the checklist. Its question seed is the shared bank, unused while `questions` is hidden. Labels are keys (web: web/src/app/i18n, Android: android/ui/src/commonMain/composeResources); school-vectors.json pins what they resolve to in en, hi, ta and te. No `was`: no school was ever stored in the backup family before the reset.",
+ "labels": {
+  "new": { "web": "school.newTitle", "android": "school_new_title" },
+  "many": { "web": "school.many", "android": "schools_title" },
+  "delete": { "web": "school.delete", "android": "school_delete" }
+ },
+ "statuses": [
+  { "id": "NEW", "label": { "web": "status.NEW", "android": "status_NEW" } },
+  { "id": "SHORTLISTED", "label": { "web": "status.SHORTLISTED", "android": "status_SHORTLISTED" } },
+  { "id": "REJECTED", "label": { "web": "status.REJECTED", "android": "status_REJECTED" } },
+  { "id": "TAKEN", "label": { "web": "status.TAKEN", "android": "status_TAKEN" } },
+  { "id": "NOT_CHOSEN", "label": { "web": "status.NOT_CHOSEN", "android": "status_NOT_CHOSEN" } }
+ ],
+ "sections": [
+  { "id": "details", "label": { "web": "house.details", "android": null } },
+  { "id": "cost", "label": { "web": "school.fees", "android": "school_fees_heading" } },
+  { "id": "areaNotes", "label": { "web": "areaNotes.heading", "android": "notes_heading" } },
+  { "id": "distances", "label": { "web": "distances.heading", "android": "house_distances" } },
+  { "id": "location", "label": { "web": "house.location", "android": "house_location_heading" } },
+  { "id": "walks", "label": { "web": "trace.house.title", "android": "trace_house_title" } },
+  { "id": "visits", "label": { "web": "house.visits", "android": "house_visits" } },
+  { "id": "photos", "label": { "web": "house.photos", "android": "house_photos" } }
+ ],
+ "core": [
+  { "id": "label", "section": "details", "order": 10, "label": { "web": "school.name", "android": "school_name" } },
+  { "id": "status", "section": "details", "order": 20, "label": { "web": "house.status", "android": "house_status" } },
+  { "id": "rating", "section": "details", "order": 30, "label": { "web": "house.rating", "android": "house_rating" } },
+  { "id": "address", "section": "details", "order": 80, "label": { "web": "house.address", "android": "house_address" } },
+  { "id": "street", "section": "details", "order": 90, "label": { "web": "house.street", "android": "house_street" } },
+  { "id": "locality", "section": "details", "order": 100, "label": { "web": "house.locality", "android": "house_locality" } },
+  { "id": "contactName", "section": "details", "order": 110, "label": { "web": "house.contactName", "android": "school_contact_name" } },
+  { "id": "contactPhone", "section": "details", "order": 120, "label": { "web": "house.contactPhone", "android": "house_phone" } },
+  { "id": "listingUrl", "section": "details", "order": 140, "label": { "web": "school.website", "android": "school_website" } },
+  { "id": "notes", "section": "details", "order": 150, "label": { "web": "house.notes", "android": "house_notes" } },
+  { "id": "location", "section": "location", "order": 10, "label": { "web": "house.location", "android": "house_location_heading" } },
+  { "id": "locationSource", "section": "location", "order": 20, "label": { "web": "house.approx", "android": "house_approx" } }
+ ],
+ "extras": [
+  {
+   "id": "board", "type": "enum", "section": "details", "order": 50, "label": { "web": "school.board", "android": "school_board" },
+   "options": [
+    { "id": "CBSE", "label": { "web": "school.board.CBSE", "android": "school_board_CBSE" } },
+    { "id": "ICSE", "label": { "web": "school.board.ICSE", "android": "school_board_ICSE" } },
+    { "id": "STATE", "label": { "web": "school.board.STATE", "android": "school_board_STATE" } },
+    { "id": "IB", "label": { "web": "school.board.IB", "android": "school_board_IB" } },
+    { "id": "IGCSE", "label": { "web": "school.board.IGCSE", "android": "school_board_IGCSE" } },
+    { "id": "OTHER", "label": { "web": "school.option.OTHER", "android": "school_option_OTHER" } }
+   ]
+  },
+  {
+   "id": "medium", "type": "enum", "section": "details", "order": 60, "label": { "web": "school.medium", "android": "school_medium" },
+   "options": [
+    { "id": "ENGLISH", "label": { "web": "school.medium.ENGLISH", "android": "school_medium_ENGLISH" } },
+    { "id": "HINDI", "label": { "web": "school.medium.HINDI", "android": "school_medium_HINDI" } },
+    { "id": "REGIONAL", "label": { "web": "school.medium.REGIONAL", "android": "school_medium_REGIONAL" } },
+    { "id": "OTHER", "label": { "web": "school.option.OTHER", "android": "school_option_OTHER" } }
+   ]
+  },
+  { "id": "grades", "type": "text", "maxLength": 40, "section": "details", "order": 70, "label": { "web": "school.grades", "android": "school_grades" } },
+  { "id": "commuteMinutes", "type": "number", "integer": true, "min": 0, "max": 300, "unit": "minute", "section": "details", "order": 72, "label": { "web": "school.commuteMinutes", "android": "school_commute" } },
+  { "id": "busService", "type": "bool", "section": "details", "order": 74, "label": { "web": "school.busService", "android": "school_bus" } },
+  { "id": "fees", "type": "money", "max": 1000000000000, "cadences": ["year"], "section": "cost", "order": 10, "label": { "web": "school.feesPerYear", "android": "school_fees" } },
+  { "id": "admissionFee", "type": "money", "max": 1000000000000, "cadences": ["once"], "section": "cost", "order": 20, "label": { "web": "school.admissionFee", "android": "school_admission_fee" } }
+ ],
+ "checklist": [],
+ "questions": {
+  "seed": "docs/schemas/default-questions.json",
+  "scopes": [
+   { "id": "BOTH", "cadences": ["year", "once"] }
+  ]
+ },
+ "search": ["label", "address", "street", "locality", "notes", "contactName", "areaNotes"],
+ "ai": {
+  "extract": [],
+  "ask": ["label", "address", "street", "locality", "status", "rating", "notes"],
+  "plan": ["label", "status", "rating", "locality"],
+  "never": ["contactName", "contactPhone"]
+ }
+}

@@ -421,6 +421,8 @@ public class BackupService {
         // createdAt as well: the export is ordered by it, and keeping the server's would make a restore re-order
         // the very file it came from.
         house.setCreatedAt(clock.accept(Instant.ofEpochMilli(row.createdAt()), "houses.createdAt"));
+        // A kind other than the house is kept as the file says (S4b-BL-209; BackupWire checked its pattern).
+        house.setKind(row.kind() != null && row.kind().matches(House.KIND_PATTERN) ? row.kind() : House.HOUSE_KIND);
         house.setLabel(row.label());
         house.setAddress(row.address());
         house.setStreet(row.street());

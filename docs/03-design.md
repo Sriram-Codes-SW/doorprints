@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.121 |
+| Version | 0.122 |
 | Date | 2026-10-13 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -131,7 +131,8 @@
 | 0.118 | 2026-10-13 | Claude (Code), engineer | New §18.7: **the label and visibility resolver** (kinds PR 3, S4b-BL-207; [06](06-test-plan.md) TC-U-209): `KindLabels` in `:shared` (the phone and the iPhone) and its twin `core/kind-labels.ts` on the website, a copy of `house.json`'s keys checked against the file, pinned by the new `docs/schemas/kinds/kind-label-vectors.json`; the status and checklist tables the screens read go through it, nothing visible changes. The other call sites move with the renderer (S4b-BL-255, with S4b-BL-208). |
 | 0.119 | 2026-10-13 | Claude (Code), engineer | New §18.8: **the typed-extras renderer, the website** (kinds PR 4, S4b-BL-208, first of two stacked pull requests; `feat/kinds-6-typed-extras-renderer`; [06](06-test-plan.md) TC-U-210, [schemas README](schemas/README.md) v1.39 §8.4): the house page draws the BHK, area, floor and cost fields from the kind's fields (`KindFields`, `kind-extras.ts`, one `extra` template), with the element ids, attributes, rows and labels the hand-written fields had; the rent-only rule is kind data (`forCadences`, §18.3); the page's field and section labels read the kind (`KindKeys`, S4b-BL-255). Safety test first: the form's golden file in four languages and the shared `kind-field-vectors.json`, written on main before the switch. §18.5's per-stack order item closed. The phone follows in the stacked pull request. |
 | 0.120 | 2026-10-13 | Claude (Code), engineer | §18.8 and §18.6: **the typed-extras renderer, the phone** (kinds PR 4, S4b-BL-208, the second stacked pull request; `feat/kinds-6b-typed-extras-android`; [06](06-test-plan.md) TC-U-210): `KindFields` in `:shared` and `KindExtrasFields` in `:ui` (the phone and the iPhone) draw the BHK, area, floor and cost fields of `HouseEditScreen` in the rows the hand-written fields had, every value written through the candidate's extras; the form's labels and its sections' headings read the kind (S4b-BL-255). Safety test first: `HouseFormFieldsTest` and its golden file (the form's semantics in four languages) and the phone's half of `kind-field-vectors.json`, written on main before the switch; the Roborazzi baselines are unchanged. `HouseEditScreen.kt` 1,773 to 1,588 lines. |
-| 0.121 | 2026-10-13 | Claude (Code), engineer | New §16.5: **why the Indic web fonts are `font-display: optional`** (S4b-BL-263; `fix/indic-fonts-display-optional`). |
+| 0.121 | 2026-10-13 | Claude (Code), engineer | New §18.9: **the hidden schools kind** (kinds PR 5, S4b-BL-209, the first of two stacked pull requests: the website and the server; `feat/kinds-7-schools-kind`; [06](06-test-plan.md) TC-U-211): `docs/schemas/kinds/school.json` (labels, five hidden sections, a hidden money and broker, seven typed extras with fixed-cadence fees) and `school-vectors.json`; the developer flag (`core/dev-kinds.ts`: a development build and localStorage `doorprints.dev.kinds` = `school`; off otherwise, and nothing changes); the renderer's `text` and `enum` controls and the hiding of sections and core fields a kind leaves out (S4b-BL-257 items 1 and 4); the server's backup rows keep a candidate's kind (`BackupHouse.kind`). The phone is the second pull request. |
+| 0.122 | 2026-10-13 | Claude (Code), engineer | New §16.5: **why the Indic web fonts are `font-display: optional`** (S4b-BL-263; `fix/indic-fonts-display-optional`). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -2287,3 +2288,67 @@ hand-written fields had (`house-bhk`, `cost-deposit`, ...; a later kind's extra 
 so after the label (*Deposit (₹)*), and the floor's Basement switch, which is the house's `HouseFloor` and reads `floor`
 (a level extra placed anywhere else is refused at start). Sections and core fields a kind hides are not hidden by the
 renderer yet; that is the work of the hidden `schools` kind (PR 5, S4b-BL-209). The limits are S4b-BL-257.
+
+### 18.9 The hidden schools kind (kinds PR 5, S4b-BL-209)
+
+**What it is.** The second built-in kind, `docs/schemas/kinds/school.json`, there to prove the model before anything
+reads kinds more widely (search and copies are PR 6, the AI PR 7, Settings PR 8). It needs nothing but labels, hidden
+sections and core fields, and typed extras, so the stop criterion of the row (no new screens) holds: one candidate page
+draws both kinds. A school shows the details, *Fees* (the house's `cost` section with the school's heading), area notes,
+distances, location, saved walks, visits and photos; it hides the rooms, the questions, the viewings, moving in and the
+checklist (and so the score), and its core `money` and `brokerId`. Its extras: `board` and `medium` (enums: CBSE, ICSE,
+State board, IB, Cambridge (IGCSE), Other; English, Hindi, State language, Other), `grades` (text, at most 40
+characters), `commuteMinutes` (a number, 0 to 300, unit `minute`), `busService` (a switch), `fees` (money, fixed cadence
+`year`) and `admissionFee` (money, `once`). The labels are keys, as for the house (door 11): 23 new web keys and 24
+Android keys in en, hi, ta and te (hi, ta and te marked *under review*); the places it shares with the house read the
+house's keys. `school-vectors.json` (format `doorprints-school-vectors/1`) pins what the file resolves to (the shape of
+`kind-vectors.json`), the renderer's controls and rows per stack (the shape of `kind-field-vectors.json`), and one school
+in a backup and on the wire. The house's files, vectors, samples, golden files and baselines are unchanged.
+
+**Why the fees are extras, not the school's own money.** A house's own money is a rent or a sale and every screen,
+filter, copy and the cost summary reads it as `price` and `priceType`. A school's fee per year would need the price
+and its type written out for another cadence on both stacks (S4b-BL-257 (5)); fixed-cadence money extras need no new
+code, and the core `money` is hidden. `term` is not in the cadence vocabulary (door 7: `once`, `day`, `week`, `month`,
+`quarter`, `year`); adding one is a one-way door, so the school quotes the yearly fee and a choice of cadence per fee
+waits for a kind that needs it (S4b-BL-261).
+
+**The developer flag.** Off by default and not reachable in a release by accident. The website: `core/dev-kinds.ts`,
+`devKindsOn()` is true only in a development build (`ng serve`; Angular's `isDevMode()`, false in the deployed
+production build) **and** with localStorage `doorprints.dev.kinds` set to `school` by hand; any doubt (no storage, a
+throwing one, another value) is off. The phone: a `BuildConfig` field that only a debug build made with
+`-Pdoorprints.devKinds=true` turns on (the second pull request; the iPhone follows `:shared`). While the flag is on, a
+new candidate's page offers a kind picker (*New house*, *New school*; `dev-kind-picker.ts`), one kind per data set being
+Settings' later (S4b-BL-212). **With the flag off nothing changes**: the picker is not drawn, a new candidate is a house,
+`kindLabels('school')` and `kindFields('school')` still answer nothing (the resolver's pinned case "a kind that is not
+built in"), and a school row that reaches the device (synced from one with the flag on) is drawn as a house is today,
+its extras kept unread and written back (`HouseDto.extrasOther`, §18.5). The house's golden file, `kind-field-vectors.json`,
+`kind-label-vectors.json` and the layout gate (253 of 253) pass unchanged.
+
+**What the renderer learnt (S4b-BL-257 items 1 and 4).** `text` (a line of text with its `maxLength`) and `enum` (a
+select of the options, *Not set* first) have a control. A section or core field the kind leaves out is not drawn: the
+page asks the kind (`shows('section.rooms')`, `shows('field.brokerId')`) around each card and around the price, the
+broker and the score; for the house every answer is yes, so its page is the same element for element. When the kind
+hides its money, the Details extras are not in the price's row (there is none) but in rows of their own, two side by
+side (`extraRows`, the Cost card's rule). An extra with no `was` (no place on the house model) is one of the
+candidate's other extras (`extrasOther.<id>`), written in the extras' shape (money as `{amount, cadence}` with the
+extra's fixed cadence, an option id only when the kind offers it, an empty text as none) and shown only when the stored
+value has the extra's type. *Fill in from listing text* is offered only for a kind whose `ai.extract` is not empty
+(`BuiltInKind.extracts`), and the page's title and delete button read the kind's `kind.new` and `kind.delete`. To stay
+within the file-size budget the template lost a few one-attribute-per-line wraps and `sharedFromNavigation` and
+`sortBrokers` moved to `house-page-input.ts` (`house-detail-page.html` 1,045 lines, `house-detail-page.ts` 1,205).
+
+**The server.** Nothing in its validation had to change: a candidate's kind is any id of the pattern, a kind other
+than the house may give its own money any cadence of the vocabulary (`HouseDto.isMoneyOfTheKind`), and the school's
+extras are ids the house does not know with values of the six types, which `CandidateExtras` keeps (S4b-BL-248). One gap
+was found by the shared sample: the backup rows of the family before had no place for a kind, so a school imported
+from a backup was stored and exported as a house. `BackupHouse.kind` (last, absent for a house; never a key of a file
+of the family before) is now read out of a candidate by `BackupWire`, stored by `BackupService` and written by
+`BackupMapper`, so the sample's school is exported byte for byte (`SchoolKindTest`, `SchoolCandidateApiTest` with
+PostGIS). The website already kept it (`HouseDto.kind`).
+
+**Left on purpose** (rows in [10](10-sprint-log.md)): the school's extras in search, filters and the readable copies
+(S4b-BL-210, whose search tests follow the owner's rule; today search reads a school's name, places, notes and contact,
+pinned in `school-kind.spec.ts`); the house's helper words still on a school's page and the list's title
+(S4b-BL-256, S4b-BL-259); a school's phone making a broker, and the backup's `search` object written as the house
+(S4b-BL-260, S4b-BL-212); a cadence per fee, the range of an other extra on save, and a school's own questions and
+checklist (S4b-BL-261). A layout review of the batch precedes PR 6 (the row's condition).

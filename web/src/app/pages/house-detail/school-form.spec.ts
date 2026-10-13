@@ -1,0 +1,206 @@
+/*
+ * Copyright 2026 Sriram (Sriram-Codes-SW)
+ *
+ * This file is part of Doorprints.
+ *
+ * Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+ * Public License as published by the Free Software Foundation, version 3 of the License.
+ *
+ * Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+ * the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+// The hidden schools kind on the candidate page (kinds PR 5, S4b-BL-209; docs/03 §18.9). With the developer flag on, a
+// school is drawn from its kind file: `school-form.golden.json` pins every control of its Details and Fees cards (element,
+// id, attributes, rows, label in en, hi, ta and te), their element tree and the page's section headings; it was written
+// once from this page and read by eye, and a change to it is a visible change of the form. With the flag off nothing
+// changes: no kind picker, a new candidate is a house, and a school row is drawn as a house is today, its extras kept.
+import { signal } from '@angular/core';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { of } from 'rxjs';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { AiService } from '../../core/ai.service';
+import { DEV_KINDS_KEY } from '../../core/dev-kinds';
+import { GeocodeService } from '../../core/geocode.service';
+import { LocalDataService } from '../../core/local-data.service';
+import type { HouseDto } from '../../core/models';
+import { LocalStore } from '../../data/local-store.service';
+import type { Lang } from '../../i18n/languages';
+import { TranslationService } from '../../i18n/translation.service';
+import { DEFAULT_SCORING } from '../../shared/scoring';
+import { controls, headings, split, structure, text } from '../../shared/testing/form-lines';
+import { HouseDetailPage } from './house-detail-page';
+import golden from './school-form.golden.json';
+
+/** A saved school (school-vectors.json's, as the page reads it) in Guwahati. */
+const SCHOOL: HouseDto = {
+  id: '55555555-5555-4555-8555-000000000209',
+  kind: 'school',
+  label: 'Pine Hill School',
+  address: 'GS Road, Dispur',
+  street: 'GS Road',
+  locality: 'Dispur',
+  lat: 26.1433,
+  lon: 91.7898,
+  status: 'SHORTLISTED',
+  rating: 4,
+  priceType: null,
+  checklist: {},
+  extrasOther: {
+    admissionFee: { amount: 25000, cadence: 'once' }, board: 'CBSE', busService: true, commuteMinutes: 25,
+    fees: { amount: 96000, cadence: 'year' }, grades: 'Nursery to 12', medium: 'ENGLISH',
+  },
+  deleted: false,
+  createdAt: '2026-09-20T10:00:00.000Z',
+  updatedAt: '2026-09-20T10:00:00.000Z',
+  syncVersion: 0,
+};
+
+const saveHouse = vi.fn((h: HouseDto) => of(h));
+
+async function open(house: HouseDto | null, lang: Lang, flag: boolean): Promise<{ fixture: ComponentFixture<HouseDetailPage>; host: HTMLElement }> {
+  if (flag) localStorage.setItem(DEV_KINDS_KEY, 'school');
+  TestBed.configureTestingModule({
+    imports: [HouseDetailPage],
+    providers: [
+      provideRouter([{ path: '**', children: [] }]),
+      {
+        provide: LocalDataService,
+        useValue: {
+          houses: () => of([]), brokers: () => of([]), scoring: () => of(DEFAULT_SCORING), questions: () => of([]),
+          house: () => of(house), visits: () => of([]), viewingsOf: () => of([]), areas: () => of([]),
+          areaNotes: () => of([]), places: () => of([]), settled: signal(0), photos: () => of([]), conditionPhotos: () => of([]), saveHouse,
+        },
+      },
+      { provide: LocalStore, useValue: { lengthUnit: () => Promise.resolve('FT') } },
+      {
+        provide: ActivatedRoute,
+        useValue: { snapshot: { paramMap: convertToParamMap(house ? { id: house.id } : {}), queryParamMap: convertToParamMap(house ? {} : { lat: '26.1433', lon: '91.7898' }) } },
+      },
+      { provide: GeocodeService, useValue: { reverse: () => of({}), search: () => of(null) } },
+      { provide: AiService, useValue: { enabled: signal(true), usesOwnKey: signal(false), ownHost: signal(''), extractListing: () => of() } },
+    ],
+  });
+  await TestBed.inject(TranslationService).setLang(lang);
+  const fixture = TestBed.createComponent(HouseDetailPage);
+  fixture.detectChanges();
+  await fixture.whenStable();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  fixture.detectChanges();
+  return { fixture, host: fixture.nativeElement as HTMLElement };
+}
+
+async function settle(fixture: ComponentFixture<HouseDetailPage>): Promise<void> {
+  fixture.detectChanges();
+  await fixture.whenStable();
+  fixture.detectChanges();
+}
+
+const draft = (fixture: ComponentFixture<HouseDetailPage>): HouseDto => (fixture.componentInstance as unknown as { draft: () => HouseDto }).draft();
+const LANGS: Lang[] = ['en', 'hi', 'ta', 'te'];
+interface Golden { controls: string[]; structure: string[]; labels: Record<string, string[]>; headings: Record<string, string[]> }
+const GOLDEN = golden as unknown as Golden;
+
+afterEach(() => {
+  localStorage.clear();
+  sessionStorage.clear();
+  saveHouse.mockClear();
+});
+
+describe('a school on the candidate page, with the developer flag on (school-form.golden.json)', () => {
+  for (const lang of LANGS) {
+    it(`in ${lang}: the golden file's controls, attributes, rows and labels, and its section headings`, async () => {
+      const { host } = await open(SCHOOL, lang, true);
+      const lines = controls(host);
+      if (lang === 'en') {
+        expect(lines).toEqual(GOLDEN.controls);
+        expect(structure(host)).toEqual(GOLDEN.structure);
+      }
+      expect(lines.map((l) => split(l)[0])).toEqual(GOLDEN.controls.map((l) => split(l)[0]));
+      expect(lines.map((l) => split(l)[1])).toEqual(GOLDEN.labels[lang]);
+      expect(headings(host)).toEqual(GOLDEN.headings[lang]);
+    });
+  }
+
+  it('shows the stored values in their fields, and hides what the kind hides', async () => {
+    const { host } = await open(SCHOOL, 'en', true);
+    const value = (id: string) => host.querySelector<HTMLInputElement>(`#${id}`)!;
+    const chosen = (id: string) => text(host.querySelector<HTMLSelectElement>(`#${id}`)!.selectedOptions[0]);
+    expect([chosen('extra-board'), chosen('extra-medium')]).toEqual(['CBSE', 'English']);
+    expect([value('extra-grades').value, value('extra-commuteMinutes').value, value('extra-fees').value]).toEqual(['Nursery to 12', '25', '96000']);
+    expect((value('extra-busService') as HTMLInputElement).checked).toBe(true);
+    for (const gone of ['#house-price', '#house-price-type', '#house-broker', '#rooms-heading', '#questions-heading', '#checklist-heading', '.score']) {
+      expect(host.querySelector(gone), gone).toBeNull();
+    }
+    expect(host.querySelector('app-house-viewings-card')).toBeNull();
+    expect(host.querySelector('app-dev-kind-picker')).toBeNull();
+    expect(text(host.querySelector('.danger-zone .btn-danger'))).toBe('Delete school');
+  });
+
+  it('a new candidate offers the kind picker; choosing School draws the school, and Save stores a school with its extras', async () => {
+    const { fixture, host } = await open(null, 'en', true);
+    expect([...host.querySelectorAll('app-dev-kind-picker label')].map((l) => text(l))).toEqual(['New house', 'New school']);
+    expect(host.querySelector('app-house-listing-card')).not.toBeNull();
+    host.querySelector<HTMLInputElement>('#dev-kind-school')!.click();
+    await settle(fixture);
+    expect(text(host.querySelector('#house-title'))).toBe('New school');
+    expect(host.querySelector('#house-price')).toBeNull();
+    expect(host.querySelector('app-house-listing-card')).toBeNull();
+    const type = async (id: string, v: string, event = 'input') => {
+      const el = host.querySelector<HTMLInputElement>(`#${id}`)!;
+      el.value = v;
+      el.dispatchEvent(new Event(event));
+      await settle(fixture);
+    };
+    await type('house-name', 'Sunbeam School');
+    const board = host.querySelector<HTMLSelectElement>('#extra-board')!;
+    board.selectedIndex = [...board.options].findIndex((o) => o.textContent?.trim() === 'State board');
+    board.dispatchEvent(new Event('change'));
+    await settle(fixture);
+    await type('extra-fees', '72000');
+    await type('extra-grades', 'Class 1 to 8');
+    expect(draft(fixture).kind).toBe('school');
+    expect(draft(fixture).priceType).toBeNull();
+    expect(draft(fixture).extrasOther).toEqual({ board: 'STATE', fees: { amount: 72000, cadence: 'year' }, grades: 'Class 1 to 8' });
+    host.querySelector<HTMLButtonElement>('.toolbar .btn-primary')!.click();
+    await settle(fixture);
+    expect(saveHouse).toHaveBeenCalledTimes(1);
+    const saved = saveHouse.mock.calls[0][0];
+    expect([saved.kind, saved.label, saved.price ?? null, saved.priceType]).toEqual(['school', 'Sunbeam School', null, null]);
+    expect(saved.extrasOther).toEqual({ board: 'STATE', fees: { amount: 72000, cadence: 'year' }, grades: 'Class 1 to 8' });
+    // Back to the house: a house again, with a price type.
+    host.querySelector<HTMLInputElement>('#dev-kind-house')!.click();
+    await settle(fixture);
+    expect([draft(fixture).kind ?? null, draft(fixture).priceType]).toEqual([null, 'RENT']);
+    expect(host.querySelector('#house-price')).not.toBeNull();
+  });
+});
+
+describe('with the developer flag off, nothing changes (S4b-BL-209)', () => {
+  it('a new candidate is a house, with no kind picker', async () => {
+    const { host, fixture } = await open(null, 'en', false);
+    expect(host.querySelector('app-dev-kind-picker')).toBeNull();
+    expect(text(host.querySelector('#house-title'))).toBe('New house');
+    expect(host.querySelector('#house-price')).not.toBeNull();
+    expect(draft(fixture).kind ?? null).toBeNull();
+  });
+
+  it('a school row (from a device with the flag on) is drawn as a house, and its extras are kept through a save', async () => {
+    const { fixture, host } = await open(SCHOOL, 'en', false);
+    for (const id of ['#house-price', '#house-broker', '#rooms-heading', '#checklist-heading']) expect(host.querySelector(id), id).not.toBeNull();
+    expect(host.querySelector('[id^="extra-"]')).toBeNull();
+    expect(text(host.querySelector('label[for="house-name"]'))).toContain('Name');
+    expect(text(host.querySelector('#cost-heading'))).toBe('Cost');
+    host.querySelector<HTMLButtonElement>('.toolbar .btn-primary')!.click();
+    await settle(fixture);
+    expect(saveHouse).toHaveBeenCalledTimes(1);
+    expect([saveHouse.mock.calls[0][0].kind, saveHouse.mock.calls[0][0].extrasOther]).toEqual(['school', SCHOOL.extrasOther]);
+  });
+});
