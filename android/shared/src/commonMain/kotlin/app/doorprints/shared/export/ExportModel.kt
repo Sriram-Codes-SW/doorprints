@@ -446,6 +446,12 @@ data class ExportOptions(
      * (`units.length`), not an export option and not in the manifest. Ignored by a backup's `data.json` (centimetres).
      */
     val lengthUnit: LengthUnit = LengthUnit.FT,
+    /**
+     * Whether the developer flag of the hidden kinds is on (`BuildConfig.DEV_KINDS`, set by `ExportBuilder`; never in a
+     * release, never on the iPhone): only then is a candidate of another kind copied with its typed extras ([KindCopy],
+     * S4b-BL-210); otherwise it is copied as a house is. Not an export option, not in the manifest.
+     */
+    val devKinds: Boolean = false,
 ) {
     /** True for an update file (5.28), whose name is `Doorprints-updates-<date>` and whose manifest says who it is for. */
     val isUpdate: Boolean get() = since != null || sharedTo != null
@@ -608,6 +614,14 @@ data class ExportBundle(
 
     /** `Doorprints-2026-09-22`, the stem every file name is built on (local date of the export). */
     val fileStem: String = ExportFormat.stem(options)
+
+    private val extras: Map<String, List<KindCopy.Extra>> = houses.associate { it.id to KindCopy.extrasOf(it, options) }
+
+    /** A candidate's typed extras in the copy (kinds PR 6, S4b-BL-210), in its kind's order; none for a house. */
+    fun extrasOf(house: ExportHouse): List<KindCopy.Extra> = extras[house.id].orEmpty()
+
+    /** The Houses table's columns for typed extras, after the floor; none in a copy of houses only. */
+    val extraColumns: List<KindCopy.Column> = KindCopy.columnsOf(houses, options)
 
     companion object {
         /**

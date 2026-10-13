@@ -183,6 +183,8 @@ object PdfExporter {
             body,
         )
         house.listingUrl?.takeIf { it.isNotEmpty() }?.let { sheet.labelled(s["col.listingUrl"], it, body) }
+        // Kinds PR 6 (S4b-BL-210): the kind's typed extras, labelled by the kind; a house has none.
+        for (e in bundle.extrasOf(house)) sheet.labelled(e.label, e.text, body)
         sheet.labelled(s["col.createdAt"], ExportTime.dateTime(house.createdAt, o.utcOffsetMinutes), body)
         sheet.labelled(s["col.updatedAt"], ExportTime.dateTime(house.updatedAt, o.utcOffsetMinutes), body)
 

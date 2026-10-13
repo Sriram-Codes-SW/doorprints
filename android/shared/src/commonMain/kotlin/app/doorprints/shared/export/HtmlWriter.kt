@@ -152,6 +152,8 @@ object HtmlWriter {
         if (h.locationSource == "APPROX") row(out, s["house.approx"], s["yes"])
         // The link is shown as text, never as <a href>: the copy must not be a way to reach the network.
         if (!h.listingUrl.isNullOrEmpty()) row(out, s["col.listingUrl"], h.listingUrl)
+        // Kinds PR 6 (S4b-BL-210): the kind's typed extras, labelled by the kind; a house has none.
+        for (e in bundle.extrasOf(h)) row(out, e.label, e.text)
         row(out, s["col.createdAt"], ExportTime.dateTime(h.createdAt, o.utcOffsetMinutes))
         row(out, s["col.updatedAt"], ExportTime.dateTime(h.updatedAt, o.utcOffsetMinutes))
         out.append("</dl>\n")

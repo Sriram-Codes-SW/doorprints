@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.123 |
+| Version | 0.124 |
 | Date | 2026-10-13 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -134,6 +134,7 @@
 | 0.121 | 2026-10-13 | Claude (Code), engineer | New §18.9: **the hidden schools kind** (kinds PR 5, S4b-BL-209, the first of two stacked pull requests: the website and the server; `feat/kinds-7-schools-kind`; [06](06-test-plan.md) TC-U-211): `docs/schemas/kinds/school.json` (labels, five hidden sections, a hidden money and broker, seven typed extras with fixed-cadence fees) and `school-vectors.json`; the developer flag (`core/dev-kinds.ts`: a development build and localStorage `doorprints.dev.kinds` = `school`; off otherwise, and nothing changes); the renderer's `text` and `enum` controls and the hiding of sections and core fields a kind leaves out (S4b-BL-257 items 1 and 4); the server's backup rows keep a candidate's kind (`BackupHouse.kind`). The phone is the second pull request. |
 | 0.122 | 2026-10-13 | Claude (Code), engineer | New §16.5: **why the Indic web fonts are `font-display: optional`** (S4b-BL-263; `fix/indic-fonts-display-optional`). |
 | 0.123 | 2026-10-13 | Claude (Code), engineer | §18.9: **the hidden schools kind on the phone and the iPhone** (kinds PR 5, S4b-BL-209, the second stacked pull request; `feat/kinds-7b-schools-android`): `SchoolKind` and `DevKinds` in `:shared`, the debug-only `BuildConfig.DEV_KINDS` handed to the screens as `LocalDevKinds`, the form reading the candidate's kind (labels, extras, hidden places, a kind picker), text and enum controls, the rotation saver keeping the kind and other extras, and `ExportHouse.kind`. |
+| 0.124 | 2026-10-13 | Claude (Code), engineer | New §18.10: **typed extras in search and the copies** (kinds PR 6, S4b-BL-210; `feat/kinds-8-extras-search-copies`): `KindFields.others()` and `search` on both stacks, one reader by type (`kindValues`, `KindValues`), the words search adds, the copies' rows and columns (`kind-copy.ts`, `KindCopy`), the phone's `KindWords`, the flag (`CopyKinds`, `ExportOptions.devKinds`), the safety test written first (`house-pins.spec.ts`, `HouseCopyPinsTest`) and `kind-search-vectors.json`; no filter (S4b-BL-265), the rest S4b-BL-266 and S4b-BL-267. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -2368,3 +2369,56 @@ pinned in `school-kind.spec.ts`); the house's helper words still on a school's p
 (S4b-BL-256, S4b-BL-259); a school's phone making a broker, and the backup's `search` object written as the house
 (S4b-BL-260, S4b-BL-212); a cadence per fee, the range of an other extra on save, and a school's own questions and
 checklist (S4b-BL-261). A layout review of the batch precedes PR 6 (the row's condition).
+
+### 18.10 Typed extras in search and the copies (kinds PR 6, S4b-BL-210)
+
+**What it is.** The list search and the readable copies (CSV, XLSX, HTML, Markdown and the phone's PDF) read a
+candidate's typed extras through its kind, not through a branch per kind: `KindFields.others()` (both stacks) is the
+kind's extras that have no `was`, the candidate's other extras, and `KindFields.search` is the kind file's `search`
+list, so search reads the others it names. A house has none: every house extra has a `was` and is written by hand in
+search (the floor) and in every copy as before, so for a house nothing reads them and nothing changes. `school.json`'s
+`search` now names its seven extras (the kind's `version` stays 1: door 4 is a field's type, unit or cadence).
+
+**One reader, by type.** `kindValues` (website `shared/kind-values.ts`) and `KindValues` (`:shared`
+`model/KindValues.kt`) hold each stored value to its extra's type, as the page and the form do: a number, a money object
+with an amount, a switch, an option the kind offers, a non-empty text or a date; a wrong value is no value.
+
+- **Search** (`searchText` in `pages/map/map-list.ts`, `HouseEntity.searchFields` in `:ui` `HouseListSearch.kt`): after
+  every word it had, an option's and a switch's label (only when it is on) in English and, when the app's language is
+  another and its words differ, in that language too (as the floor, S4b-BL-104 b); a number's digits; a text as typed;
+  money as its digits and as rupees (`96000`, `₹96,000`). The kind is the one the list draws: `builtInKind(kind,
+  devKindsOn())` on the website, `DevKinds.of(kind, LocalDevKinds.current)` on the phone; with the flag off a school is
+  searched as a house, as it is drawn.
+- **The copies** (`export/kind-copy.ts`, `:shared` `export/KindCopy.kt`): each extra with a value, labelled with the
+  kind's key in the copy's language, on the Details block before *Added* (HTML, Markdown, and the phone's PDF, which no JVM test can draw), and in the
+  Houses table (CSV, XLSX) a column per extra of each kind the copy has a candidate of, right after *Floor*. Money is
+  rupees in a readable copy (`₹96,000`) and a number in a table (the workbook's rupee format); a switch is the copy's
+  *Yes* or *No* (`ExportStrings` `yes`/`no`, the four languages); an option its label; a number its digits. The fees'
+  cadence is the label's (*Fees per year*): both school money extras fix one cadence. A copy reads the kind the screens
+  draw: the website passes `CopyKinds` (the kind of each candidate under the flag, and the app's dictionary in the copy's
+  language) to `collect`; the phone's `ExportOptions.devKinds`, set from `BuildConfig.DEV_KINDS` by `ExportBuilder`
+  (false on the iPhone and in every release). A copy with no candidate of another kind has no extra column.
+
+**Labels per stack, as door 11 says.** The label is the kind's key: on the website the app's dictionary in the copy's
+language, so a fee reads *Fees per year*, as its form label before the rupee suffix; on the phone `:shared` cannot reach
+`:ui`'s Compose strings, so `KindWords` holds the school's Android keys (its extras' labels and options) in the four
+languages, as `ExportStrings` holds the copies' words, and `KindSearchVectorsTest` holds it to `school-vectors.json`'s
+Android words, which `SchoolKindScreensTest` holds the Compose strings to; a fee reads *Fees per year (₹)*, as its form
+label. No new user-visible string.
+
+**The safety test, written first** (from main at d425cf9d, before any of this): `house-pins.spec.ts` with
+`golden/house-pins.golden.ts` (the SHA-256 of every CSV table, the Markdown, the HTML and the XLSX workbook of the export
+fixture in en, hi, ta and te; the Houses sheet as the website's first XLSX golden; each fixture house's search text in
+the four languages), `HouseCopyPinsTest` (`:shared`, the same hashes of a house copy on the phone, every XLSX part
+included) and `HouseListSearchTest.aHouseIsSearchedByWhatMainSearchedInEveryLanguage` (`:ui`). They pass unchanged, and
+so do the export goldens, `house-form.golden.*`, `kind-field-vectors.json`, `kind-label-vectors.json`, the Roborazzi
+baselines and the layout gate (253 of 253). Then the school's expectations: `docs/schemas/kinds/kind-search-vectors.json`
+(format `doorprints-kind-search-vectors/1`, [schemas README](schemas/README.md) §8.4), read by `kind-search.spec.ts` and
+`KindSearchVectorsTest`: the words in each language, the copies' text, cell and workbook type per extra, a wrong value,
+the flag off ([06](06-test-plan.md) TC-U-212).
+
+**Filter: not in this pull request.** The row names a filter without saying which; the list's filters (status, cost,
+*Imported*) read core fields a school hides or shares, one kind per data set (§18.1) makes a filter by kind empty, and a
+filter by a typed extra (a board, the bus) needs its own controls and words on both stacks. It is S4b-BL-265, with the
+other things left: the copies' extras in sections of their own and the copies' hand-written house labels (S4b-BL-266,
+with S4b-BL-256), and the walk-end sheet's house picker, which searches without the app's words (S4b-BL-267).

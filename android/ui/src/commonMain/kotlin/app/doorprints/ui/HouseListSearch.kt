@@ -19,7 +19,9 @@
 package app.doorprints.ui
 
 import app.doorprints.data.HouseEntity
+import app.doorprints.shared.model.DevKinds
 import app.doorprints.shared.model.HouseSearch
+import app.doorprints.shared.model.KindValues
 
 /**
  * What the house list's search reads of [this] house ([HouseSearch], the website's `searchText`): the contact's name
@@ -27,10 +29,12 @@ import app.doorprints.shared.model.HouseSearch
  * 1c, the questions asked and their answers since slice 3a, the floor in the app's [language] too since S4b-BL-104, and
  * the area notes that reach it ([noteTexts]). Since kinds step 4 (S4b-BL-206) the house is stored as a candidate; its
  * values are read back out of the candidate's extras, so the search sees the same values, and never an extra this app
- * does not know.
+ * does not know. Since kinds PR 6 (S4b-BL-210) the typed extras its kind's `search` names come last
+ * ([KindValues.searchWords]), read through the kind the list draws it as: its own while [devKinds] allows it, else the
+ * house, which adds none.
  */
-internal fun HouseEntity.searchFields(brokerText: String?, language: String, noteTexts: List<String>): List<String> =
+internal fun HouseEntity.searchFields(brokerText: String?, language: String, noteTexts: List<String>, devKinds: Boolean = false): List<String> =
     HouseSearch.fields(
         label, address, street, locality, notes, contactName, brokerText = brokerText, rooms = rooms, answers = answers,
         noteTexts = noteTexts, moveIn = moveIn, floor = floor, language = language,
-    )
+    ) + KindValues.searchWords(DevKinds.of(kind, devKinds).fields, extrasOther, language)

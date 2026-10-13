@@ -223,9 +223,13 @@ describe('a school candidate goes through every store, sync and backup of the we
     expect(JSON.stringify(syncJsonOf('houses', asBefore))).toBe(JSON.stringify({ ...row, by }));
   });
 
-  it('search reads a school’s name, places and notes, not its extras yet (typed extras in search: S4b-BL-210)', () => {
-    const text = searchText(tryHouseFromDto(houseOf(candidate))!).toLowerCase();
-    for (const token of ['pine hill school', 'gs road', 'dispur', 'waiting list', 'admissions office']) expect(text, token).toContain(token);
-    for (const token of ['cbse', 'nursery', 'english']) expect(text, token).not.toContain(token);
+  it('search reads a school’s name, places and notes, and its extras through its kind (S4b-BL-210, kind-search.spec.ts)', () => {
+    const h = tryHouseFromDto(houseOf(candidate))!;
+    const text = searchText(h, '', [], undefined, (key) => en[key], SCHOOL_FIELDS);
+    for (const token of ['pine hill school', 'gs road', 'dispur', 'waiting list', 'admissions office', 'cbse', 'nursery', 'english']) {
+      expect(text, token).toContain(token);
+    }
+    // While the developer flag is off the school is searched as a house: no extra is read.
+    for (const token of ['cbse', 'nursery']) expect(searchText(h, '', [], undefined, (key) => en[key]), token).not.toContain(token);
   });
 });

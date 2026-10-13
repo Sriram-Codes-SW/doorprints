@@ -79,7 +79,19 @@ export class KindFields {
   constructor(
     readonly labels: KindLabels,
     private readonly all: readonly KindExtra[],
+    /** What the list search reads (the kind file's `search`: core fields, related records and extra ids). */
+    readonly search: readonly string[] = [],
   ) {}
+
+  /**
+   * The extras the list search and the readable copies read through the kind (kinds PR 6, S4b-BL-210): those with no
+   * `was`, the candidate's other extras, in the kind file's order. A house has none: its extras are hand-written in
+   * search (the floor) and in every copy, so its words and copies stay as they were. `searched` keeps those the kind
+   * file's `search` names.
+   */
+  others(searched = false): KindExtra[] {
+    return this.all.filter((f) => !f.was && (!searched || this.search.includes(f.id)));
+  }
 
   get kind(): string {
     return this.labels.kind;
@@ -126,7 +138,7 @@ export const HOUSE_FIELDS = new KindFields(HOUSE_LABELS, [
   { id: 'availableFrom', type: 'date', section: 'cost', order: 90, was: 'cost.availableFrom' },
   { id: 'myOffer', type: 'money', max: MONEY_MAX, cadenceFrom: 'money', section: 'cost', order: 100, was: 'cost.myOffer' },
   { id: 'agreedPrice', type: 'money', max: MONEY_MAX, cadenceFrom: 'money', section: 'cost', order: 110, was: 'cost.agreedPrice' },
-]);
+], ['label', 'address', 'street', 'locality', 'notes', 'contactName', 'brokerId', 'rooms', 'questions', 'areaNotes', 'moveIn', 'floor']);
 
 /**
  * The built-in kind with this id, `undefined` for one this build does not have. The schools kind is not here: it is

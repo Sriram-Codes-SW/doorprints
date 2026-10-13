@@ -28,6 +28,8 @@ import type { Area, AreaNoteRow, AreaRow, PlaceDistance, PlaceRow } from '../sha
 import { compareRanked, evaluateScore, scoringOf } from '../shared/scoring';
 import type { CriterionRow, PreferenceRow, ScoreResult, Scoring } from '../shared/scoring';
 import type { LengthUnit } from '../shared/room-sizes';
+import { ExportStrings } from './export-strings';
+import { extraColumnsOf, extrasOf, type CopyKinds, type ExportExtra, type ExportExtraColumn } from './kind-copy';
 
 /** The six deterministic formats of docs/11 §5.2. */
 export type ExportFormat = 'html' | 'pdf' | 'csv' | 'xlsx' | 'markdown' | 'backup';
@@ -82,6 +84,8 @@ export interface ExportHouse {
   areaNotes: readonly ExportAreaNote[];
   /** The distances from the house to my places (slice 4a), nearest first; empty for a house with no point. */
   distances: readonly PlaceDistance[];
+  /** The typed extras its kind reads through the kind file (kinds PR 6, S4b-BL-210); none for a house. */
+  extras?: readonly ExportExtra[];
 }
 
 /** An area note that reaches a house, with where it comes from: the area's name or the street. */
@@ -148,6 +152,8 @@ export interface ExportBundle {
    * preference, so it is not one of the {@link ExportOptions} that are remembered with the export choices.
    */
   lengthUnit: LengthUnit;
+  /** The Houses table's columns for typed extras (kinds PR 6, S4b-BL-210): none in a copy of houses only. */
+  extraColumns?: readonly ExportExtraColumn[];
 }
 
 /** The contact fields; they are blanked rather than removed so every export has the same shape. */
@@ -174,6 +180,8 @@ export interface CollectInput {
   areaNotes?: readonly AreaNoteRow[];
   /** The length preference of this device; feet when left out. */
   lengthUnit?: LengthUnit;
+  /** How the candidates' kinds are read (S4b-BL-210); left out, every candidate is copied as a house is. */
+  kinds?: CopyKinds;
   exportedAt: string;
   options: ExportOptions;
 }
@@ -234,11 +242,14 @@ export function collect(input: CollectInput): ExportBundle {
   const areaNotes = byEdit(input.areaNotes ?? []);
   const liveAreas: Area[] = areas.map((r) => r.area);
   const areaNames = new Map(liveAreas.map((a) => [a.id, a.name]));
+  const kinds = input.kinds;
+  const words = ExportStrings.of(options.lang);
 
   const houses: ExportHouse[] = chosen.map((house) => {
     const wantPhotos =
       options.photos === 'all' || (options.photos === 'shortlisted' && house.status === 'SHORTLISTED');
     const result = evaluateScore(house.checklist, house.rating, scoring);
+    const extras = kinds ? extrasOf(house, kinds, words) : [];
     return {
       house,
       score: result.overall,
@@ -256,8 +267,10 @@ export function collect(input: CollectInput): ExportBundle {
         source: row.note.areaId !== undefined ? (areaNames.get(row.note.areaId) ?? '') : (row.note.street ?? ''),
       })),
       distances: nearestFirst(distancesToPlaces(house, places.map((r) => r.place))),
+      ...(extras.length ? { extras } : {}),
     };
   });
+  const extraColumns = kinds ? extraColumnsOf(chosen, kinds) : [];
 
   return {
     exportedAt: input.exportedAt,
@@ -274,6 +287,7 @@ export function collect(input: CollectInput): ExportBundle {
     areaNotes,
     brokers: options.includeContacts ? collectBrokers(input.brokers ?? [], houses, options.scope === 'all') : [],
     lengthUnit: input.lengthUnit ?? 'FT',
+    ...(extraColumns.length ? { extraColumns } : {}),
     counts: {
       houses: houses.length,
       visits: houses.reduce((n, h) => n + h.visits.length, 0),

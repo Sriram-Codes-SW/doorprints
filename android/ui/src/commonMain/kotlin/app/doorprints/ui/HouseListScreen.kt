@@ -458,8 +458,8 @@ fun HouseListScreen(
         }
     }
 
-    // The floor is found by the app language's words as well as English (S4b-BL-104 b).
-    val language = uiLanguage()
+    val devKinds = LocalDevKinds.current // a kind's extras are searched while the flag allows its kind (S4b-BL-210)
+    val language = uiLanguage() // the floor and those extras are found by the app language's words too (S4b-BL-104 b)
     val shown = houses
         .filter { !onlyImported || importedIds?.contains(it.id) == true }
         .filter { filter == null || it.status == filter }
@@ -469,7 +469,7 @@ fun HouseListScreen(
         // since slice 3a, the floor in the app's language too since S4b-BL-104).
         .filter {
             val noteTexts = if (areaNotes.isEmpty()) emptyList() else AreaNotes.reaching(it.point(), areas, areaNotes).map { n -> n.text }
-            HouseSearch.matches(query, it.searchFields(it.brokerId?.let(brokerText::get), language, noteTexts))
+            HouseSearch.matches(query, it.searchFields(it.brokerId?.let(brokerText::get), language, noteTexts, devKinds))
         }
         .let { list ->
             when (sort) {

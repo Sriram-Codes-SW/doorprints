@@ -71,8 +71,20 @@ data class KindExtra(
  * the candidate's money cadence, in the kind file's order, labelled through [KindLabels]. It holds a copy of the kind
  * file's `extras`, as [KindLabels] holds its labels; `KindFieldsVectorsTest` reads `house.json`, so it cannot drift.
  */
-class KindFields internal constructor(val labels: KindLabels, val extras: List<KindExtra>) {
+class KindFields internal constructor(
+    val labels: KindLabels,
+    val extras: List<KindExtra>,
+    /** What the list search reads (the kind file's `search`: core fields, related records and extra ids). */
+    val search: List<String> = emptyList(),
+) {
     val kind: String get() = labels.kind
+
+    /**
+     * The extras search and the readable copies read through the kind (kinds PR 6, S4b-BL-210): those with no `was`, the
+     * candidate's other extras, in the kind file's order; with [searched], only those [search] names. A house has none:
+     * its extras are written by hand in search (the floor) and in every copy, so its words and copies stay as they were.
+     */
+    fun others(searched: Boolean = false): List<KindExtra> = extras.filter { it.was == null && (!searched || it.id in search) }
 
     /** The extras of [section] shown for a candidate whose money has [cadence], by `order`. */
     fun shown(section: String, cadence: String?): List<KindExtra> = extras
@@ -114,6 +126,7 @@ class KindFields internal constructor(val labels: KindLabels, val extras: List<K
                 money("myOffer", 100),
                 money("agreedPrice", 110),
             ),
+            listOf("label", "address", "street", "locality", "notes", "contactName", "brokerId", "rooms", "questions", "areaNotes", "moveIn", "floor"),
         )
 
         /**

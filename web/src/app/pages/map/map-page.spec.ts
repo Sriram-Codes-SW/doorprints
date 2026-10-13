@@ -151,6 +151,21 @@ describe('MapPage: searching the text of area notes (slice 4a)', () => {
   });
 });
 
+/** Kinds PR 6 (S4b-BL-210): the list search reads a kind's typed extras, only while the developer flag allows the kind. */
+describe('MapPage: searching a school’s extras (S4b-BL-210)', () => {
+  const school = house('k', 'Pine Hill School', { kind: 'school', extrasOther: { board: 'CBSE', busService: true } });
+  const stub = { houses: () => of([school, PLAIN]) };
+
+  it('finds the school by its board and its bus in the app’s words with the flag on, and not with it off', async () => {
+    expect(rows(await render({ q: 'cbse' }, stub))).toHaveLength(0);
+    TestBed.resetTestingModule();
+    localStorage.setItem('doorprints.dev.kinds', 'school');
+    const found = rows(await render({ q: 'school bus' }, stub));
+    expect(found).toHaveLength(1);
+    expect(found[0]).toContain('Pine Hill School');
+  });
+});
+
 /** S4b-BL-84: the filters over the cost numbers, on top of the status and the search, read from and kept in the URL. */
 describe('MapPage: the cost filters', () => {
   it('keeps only the houses whose monthly cost is in the range, and says how many ranges are set', async () => {

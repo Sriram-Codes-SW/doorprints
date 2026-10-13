@@ -255,13 +255,13 @@ export class MapPage implements AfterViewInit, OnDestroy {
   protected readonly items = computed<ListItem[]>(() => {
     const q = this.search().trim().toLowerCase();
     const status = this.statusFilter();
-    // The floor in the app's language as well as in English (S4b-BL-104 b); reading `t` here tracks the language.
+    // The floor and a kind's extras in the app's language too (S4b-BL-104 b, S4b-BL-210); reading `t` tracks it.
     const t = this.i18n.t.bind(this.i18n);
     const localFloor = this.i18n.lang() === 'en' ? undefined : (floor: number) => floorLocalSearchText(t, floor);
     const list = this.houses()
       .filter((h) => status === 'ALL' || h.status === status)
       .filter((h) => costFilterMatches(this.costFilter(), h))
-      .filter((h) => !q || searchText(h, this.brokerWords().get(h.brokerId ?? ''), this.noteWords().get(h.id), localFloor).includes(q))
+      .filter((h) => !q || searchText(h, this.brokerWords().get(h.brokerId ?? ''), this.noteWords().get(h.id), localFloor, t).includes(q))
       .map((house) => {
         const result = evaluateScore(house.checklist, house.rating, this.scoring());
         return { house, score: result.overall, result };

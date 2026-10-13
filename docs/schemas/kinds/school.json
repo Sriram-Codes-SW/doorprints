@@ -73,7 +73,7 @@
    { "id": "BOTH", "cadences": ["year", "once"] }
   ]
  },
- "search": ["label", "address", "street", "locality", "notes", "contactName", "areaNotes"],
+ "search": ["label", "address", "street", "locality", "notes", "contactName", "areaNotes", "board", "medium", "grades", "commuteMinutes", "busService", "fees", "admissionFee"],
  "ai": {
   "extract": [],
   "ask": ["label", "address", "street", "locality", "status", "rating", "notes"],

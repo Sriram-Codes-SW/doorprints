@@ -72,7 +72,7 @@ describe('a house is searched by what main searched (the safety test of S4b-BL-2
       const local = lang === 'en' ? undefined : (floor: number) => floorLocalSearchText(t, floor);
       const words = FIXTURE_HOUSES.map((h) => {
         const broker = FIXTURE_BROKERS.find((b) => b.id === h.brokerId);
-        return searchText(h, broker ? brokerSearchText(broker.broker) : '', ['a note'], local);
+        return searchText(h, broker ? brokerSearchText(broker.broker) : '', ['a note'], local, t);
       });
       expect(words).toEqual(HOUSE_SEARCH_TEXT[lang]);
     });

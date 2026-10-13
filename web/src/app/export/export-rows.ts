@@ -25,6 +25,7 @@ import { CHECKLIST } from '../core/models';
 import { fixed, rupees } from './deterministic';
 import type { ExportBundle, ExportHouse } from './export-model';
 import { ExportStrings } from './export-strings';
+import type { ExportExtra } from './kind-copy';
 import { photoFileName } from './photo-names';
 import { brokerLine } from '../shared/broker';
 import { isBuiltInKey } from '../shared/scoring';
@@ -160,6 +161,7 @@ export function rankOf(bundle: ExportBundle, houseId: string): number {
 export function housesTable(bundle: ExportBundle): ExportTable {
   const s = stringsOf(bundle);
   const contacts = bundle.options.includeContacts;
+  const extraColumns = bundle.extraColumns ?? [];
   const columns = [
     s.get('col.rank'),
     s.get('col.label'),
@@ -201,6 +203,8 @@ export function housesTable(bundle: ExportBundle): ExportTable {
     // S4b-BL-87: the floor after it.
     s.get('col.rooms'),
     s.get('col.floor'),
+    // Kinds PR 6 (S4b-BL-210): a kind's typed extras after the floor; none in a copy of houses only.
+    ...extraColumns.map((c) => c.label),
     s.get('col.visits'),
     s.get('col.photos'),
     s.get('col.createdAt'),
@@ -248,6 +252,7 @@ export function housesTable(bundle: ExportBundle): ExportTable {
       // Blank for a house with no rooms, not 0 (Kotlin: `rooms?.takeIf { it.isNotEmpty() }`).
       entry.rooms.length ? cellCount(entry.rooms.length) : BLANK,
       maybeCount(h.floor),
+      ...extraColumns.map((c) => extraCell(entry.extras, c.key)),
       cellCount(entry.visits.length),
       cellCount(entry.photos.length),
       maybeStamp(h.createdAt),
@@ -256,6 +261,11 @@ export function housesTable(bundle: ExportBundle): ExportTable {
     ];
   });
   return { name: 'houses', title: s.get('table.houses'), columns, rows };
+}
+
+/** The cell of an extra's column (`kind-copy.ts`) in a row of the Houses table: blank where the candidate has no value. */
+function extraCell(extras: readonly ExportExtra[] | undefined, key: string): Cell {
+  return extras?.find((e) => e.key === key)?.cell ?? BLANK;
 }
 
 /** The broker's name plus " (agency)" when it has one, for a house linked to a broker of the copy; else nothing. */

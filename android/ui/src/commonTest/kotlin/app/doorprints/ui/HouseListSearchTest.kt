@@ -66,6 +66,20 @@ class HouseListSearchTest {
         for ((language, floor) in local) assertEquals(words + floor, house.searchFields("Ravi, Ravi Estates", language, listOf("Water cuts")), language)
     }
 
+    /**
+     * Kinds PR 6 (S4b-BL-210): a school's extras come last, in English and the app's language, only while the developer
+     * flag lets the list draw it as a school (`kind-search-vectors.json`, `KindSearchVectorsTest`); off, as a house.
+     */
+    @Test
+    fun aSchoolIsFoundByItsExtrasOnlyWhileTheFlagAllowsTheKind() {
+        val school = house.copy(kind = "school", extrasOther = buildJsonObject { put("board", "CBSE"); put("busService", true) })
+        val before = school.searchFields(null, "hi", emptyList())
+        assertEquals(before + listOf("CBSE", "School bus", "स्कूल बस"), school.searchFields(null, "hi", emptyList(), devKinds = true))
+        assertTrue(HouseSearch.matches("school bus", school.searchFields(null, "en", emptyList(), devKinds = true)))
+        assertFalse(HouseSearch.matches("cbse", before))
+        assertEquals(house.searchFields(null, "ta", emptyList()), house.searchFields(null, "ta", emptyList(), devKinds = true))
+    }
+
     @Test
     fun anExtraThisAppDoesNotKnowIsNeverSearched() {
         val dto: HouseDto = house.toDto()

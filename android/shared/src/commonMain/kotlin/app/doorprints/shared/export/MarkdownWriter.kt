@@ -90,6 +90,8 @@ object MarkdownWriter {
                 add(s["col.lon"] to ExportRows.fixed(h.lon, 6))
                 if (h.locationSource == "APPROX") add(s["house.approx"] to s["yes"])
                 if (!h.listingUrl.isNullOrEmpty()) add(s["col.listingUrl"] to h.listingUrl)
+                // Kinds PR 6 (S4b-BL-210): the kind's typed extras, labelled by the kind; a house has none.
+                for (e in bundle.extrasOf(h)) add(e.label to e.text)
                 add(s["col.createdAt"] to ExportTime.dateTime(h.createdAt, o.utcOffsetMinutes))
                 add(s["col.updatedAt"] to ExportTime.dateTime(h.updatedAt, o.utcOffsetMinutes))
             }
