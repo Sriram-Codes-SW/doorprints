@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.118 |
+| Version | 0.119 |
 | Date | 2026-10-13 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -129,6 +129,7 @@
 | 0.116 | 2026-10-13 | Claude (Code), engineer | §13.1: **the AI services refuse while AI is off** (S4b-BL-251, [10](10-sprint-log.md) v0.281, [06](06-test-plan.md) TC-U-207). `AiService` (web) and `AiStore` (phones) check the one source of truth for "AI is on" (`offReason()`, `off`) before they send anything, so a caller that forgets the screens' check cannot send a listing or a question out; the setup tests (*Test key*, *Test*) are not guarded. |
 | 0.117 | 2026-10-13 | Claude (Code), engineer | §18.4 door 2 and §18.5: **the viewing payload says `candidateId`** (S4b-BL-247; `feat/kinds-4c-viewing-candidate-id`; [10](10-sprint-log.md) v0.283, [06](06-test-plan.md) TC-U-208, [schemas README](schemas/README.md) v1.37 §6.6). Every writer writes a viewing record's candidate as `candidateId`; every reader reads `houseId` too (a payload stored on a device, in a Drive file or on a server before), so nothing becomes invisible; a payload with both keys is a bad row. The server reads both keys in its one query (`coalesce`) instead of a Flyway migration, so no stored row is rewritten. |
 | 0.118 | 2026-10-13 | Claude (Code), engineer | New §18.7: **the label and visibility resolver** (kinds PR 3, S4b-BL-207; [06](06-test-plan.md) TC-U-209): `KindLabels` in `:shared` (the phone and the iPhone) and its twin `core/kind-labels.ts` on the website, a copy of `house.json`'s keys checked against the file, pinned by the new `docs/schemas/kinds/kind-label-vectors.json`; the status and checklist tables the screens read go through it, nothing visible changes. The other call sites move with the renderer (S4b-BL-255, with S4b-BL-208). |
+| 0.119 | 2026-10-13 | Claude (Code), engineer | New §18.8: **the typed-extras renderer, the website** (kinds PR 4, S4b-BL-208, first of two stacked pull requests; `feat/kinds-6-typed-extras-renderer`; [06](06-test-plan.md) TC-U-210, [schemas README](schemas/README.md) v1.39 §8.4): the house page draws the BHK, area, floor and cost fields from the kind's fields (`KindFields`, `kind-extras.ts`, one `extra` template), with the element ids, attributes, rows and labels the hand-written fields had; the rent-only rule is kind data (`forCadences`, §18.3); the page's field and section labels read the kind (`KindKeys`, S4b-BL-255). Safety test first: the form's golden file in four languages and the shared `kind-field-vectors.json`, written on main before the switch. §18.5's per-stack order item closed. The phone follows in the stacked pull request. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -2051,7 +2052,8 @@ to ([schemas README](schemas/README.md) §8.4). In short:
   `locationSource`), each with the kind's label and placement (`section`, `order`, `visible`). A core field the kind
   leaves out is hidden, its value still kept and synced. `label` and `location` must be listed.
 - **`extras`**: the kind's typed fields, `extras.<id>` on the wire (§18.4 door 5). For houses: `bedrooms`, `areaSqft`,
-  `floor` and the eleven cost fields of today.
+  `floor` and the eleven cost fields of today. A placement may carry `forCadences` (since PR 4, §18.8): the field shows
+  only while the candidate's money has one of those cadences, or none (the house's rent-only cost fields).
 - **`sections`**: the page's sections in display order, from a fixed list (details, cost, rooms, questions, viewings,
   moveIn, areaNotes, distances, location, walks, checklist, visits, photos); one left out is hidden for the kind.
 - **`statuses`**: the five fixed names, each with the kind's label. **`checklist`**: the built-in criteria and labels.
@@ -2088,7 +2090,10 @@ changed:
   `byCadence`. Merging them is a visible change for PR 3, not this one.
 - **The form order differs between the stacks** (on reading `HouseEditScreen.kt`: Android puts the cost card before
   the address, the notes, contact and listing link after the location, and has a *Contact* heading the website lacks). The kind file records the website's order; PR 4 either adds a
-  per-stack order or records the Android difference as an explained screenshot diff. Open for PR 4.
+  per-stack order or records the Android difference as an explained screenshot diff. **Closed in PR 4 (S4b-BL-208,
+  §18.8):** the renderer draws only the typed extras, in the kind file's order within their section, and each stack keeps
+  its own place for the sections and core fields around them, so neither form moves; the rows the extras are drawn in
+  per stack are pinned by `kind-field-vectors.json`.
 - **Some labels are templates** (*Visits (%1$d)*): the resolver passes the same arguments as the screens do today.
 - **`priceType` drives the question scopes** (`appliesTo` `RENT`/`SALE`): mapped to cadences in `questions.scopes`.
 - **`myOffer` never goes to a provider** today (the server's `HouseDocuments`): it is in `ai.never`, not in `ask`.
@@ -2214,3 +2219,49 @@ hand-written call site that the renderer of PR 4 (S4b-BL-208) replaces; moving t
 with it (S4b-BL-255). No string, screenshot baseline or `dictionaries.spec` case changed. The two stacks' different words
 for one field (*Price (₹)* and *Price ₹*) stay as they are (§18.5): merging them is a visible change for later, not for
 this pull request.
+
+### 18.8 The typed-extras renderer (kinds PR 4, S4b-BL-208)
+
+**What it is.** The house page draws its typed extras (the BHK, the carpet area and the floor in *Details*, the eleven
+cost fields in *Cost*) from the kind's fields instead of writing each one out. `KindFields` (`core/kind-fields.ts` on the
+website) holds a copy of the kind file's `extras` (type, range, unit, cadences, section, `order`, `was`) and answers a
+section's extras for the candidate's money cadence, in order, with their labels from `KindLabels` (§18.7). Each type has
+one control, the same on both stacks: `number` (an integer field), `level` (a `number` whose unit is `level`: the
+floor, its field holding the level and a *Basement* switch the sign, S4b-BL-104 c), `money` (whole rupees), `bool` (a
+switch) and `date` (YYYY-MM-DD with the platform's picker). `text` and `enum` have no control yet, because no built-in
+kind has one (S4b-BL-257). The website's form (`pages/house-detail/kind-extras.ts` and one `extra` template in
+`house-detail-page.html`) keeps the element ids, attributes and rows the hand-written fields had: in *Details* the extras
+share the price's row; elsewhere two fields stand side by side and a date stands alone. The phone's form follows in the
+stacked second pull request of S4b-BL-208.
+
+**One rule from the kind file, not a branch: `forCadences`.** The hand-written Cost card hid the deposit, maintenance,
+*Included in the rent*, lock-in and notice fields for a sale. That rule is now data: an extra's placement may carry
+`forCadences` (`kind.schema.json`), the cadences of the candidate's own money for which it is shown, and with none it is
+shown too (a price of type *Not set* shows them, as before). `house.json` gives the six rent-only fields
+`"forCadences": ["month"]`. The kind's `version` stays 1: door 4 raises it for a change of a field's type, unit or cadence,
+and this is where a field is shown. The resolver's visibility (§18.7) is unchanged: `forCadences` is the renderer's.
+
+**The safety test, written first.** Before the screen changed: `house-form-fields.spec.ts` with
+`house-form.golden.json`, taken from main at 7fbde93c (every control of the *Details* and *Cost* cards in page order with
+its element, id, input attributes, place in the rows and label, for a rent, a sale, a price with no type and a house that
+is Taken, in en, hi, ta and te; the element tree of the two cards; every section heading of the page), typing into each
+extra (the value lands where the house keeps it, the floor with its sign), the list search finding every searched value
+typed into the form (the search rule: no value changed, so search is untouched), and the shared
+`docs/schemas/kinds/kind-field-vectors.json` (format `doorprints-kind-field-vectors/1`: each extra's control, its web
+element id, label key, suffix and input attributes, its phone label key, keyboard and digits, and the rows of each
+section per stack and cadence) checked against that page. The renderer was then switched in, and the golden file, the
+vectors and every existing page spec, the layout gate and the accessibility sweep pass unchanged; no string was added.
+
+**The labels with it (S4b-BL-255, the house page).** The page's field and section labels (the name, status, rating,
+price, address, street, locality, contact, phone, broker, listing link, notes and *Approximate location* fields; the
+*Details*, *Cost*, *Rooms*, *Questions to ask*, *Location*, *Checklist*, *Visits* and *Photos* headings; the headings of
+the *Viewings*, *Moving in*, *Area notes*, *Distances* and *Saved walks* cards; the price type's *Rent* and *Sale*) now
+come from the kind through `KindKeys` (`HOUSE_KEYS.field('label')`, `.section('cost')`, `.ref('cadence.month')`), which
+throws for a place the kind has no text for. The words are the same keys as before. The list's title, Compare, the
+readable copies, the listing fill, the Ask page, the import preview and the map's status names are S4b-BL-256.
+
+**What it costs and what is left.** Three small tables are the website's own, not the kind file's: the element ids the
+hand-written fields had (`house-bhk`, `cost-deposit`, ...; a later kind's extra gets `extra-<id>`), whole rupees saying
+so after the label (*Deposit (₹)*), and the floor's Basement switch, which is the house's `HouseFloor` and reads `floor`
+(a level extra placed anywhere else is refused at start). Sections and core fields a kind hides are not hidden by the
+renderer yet; that is the work of the hidden `schools` kind (PR 5, S4b-BL-209). The limits are S4b-BL-257.

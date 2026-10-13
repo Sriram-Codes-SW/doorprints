@@ -30,7 +30,7 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
-import { Location } from '@angular/common';
+import { Location, NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -64,6 +64,8 @@ import { PhotoMetaEditor } from './photo-meta-editor';
 import { HousePhotos, isStorageFull } from './house-photos';
 import { HouseRooms } from './house-rooms';
 import { HouseFloor, floorOf } from './house-floor';
+import { KindExtras, MONEY_SECTION } from './kind-extras';
+import { HOUSE_KEYS } from '../../core/kind-labels';
 import { QUESTION_CATEGORIES } from '../../shared/question';
 import type { Question, QuestionCategory } from '../../shared/question';
 import { HouseViewingsCard } from '../viewings/house-viewings-card';
@@ -122,6 +124,7 @@ const DRAFT_SAVE_MS = 500;
   selector: 'app-house-detail-page',
   imports: [
     FormsModule,
+    NgTemplateOutlet,
     RouterLink,
     LocationMap,
     AuthImage,
@@ -172,6 +175,11 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   });
   /** The floor of this house: the level, the Basement switch and whether it is a floor (house-floor.ts). */
   protected readonly floor = new HouseFloor({ patch: (changes) => this.patch(changes) });
+  /** The typed extras of the Details and Cost cards, drawn from the kind file (kind-extras.ts, S4b-BL-208). */
+  protected readonly extras = new KindExtras({ patch: (changes) => this.patch(changes) });
+  protected readonly moneySection = MONEY_SECTION;
+  /** The kind's keys for the page's field and section labels (S4b-BL-255). */
+  protected readonly L = HOUSE_KEYS;
   /** The brokers the Broker select offers (slice 1b), by name. */
   protected readonly brokers = signal<BrokerRow[]>([]);
   /** Every house in this browser, for the duplicate-flat warning under the floor (S4b-BL-85). */
@@ -591,13 +599,6 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     if (!d || this.isNew()) return;
     const name: Msg | string = d.label.trim() || { key: 'common.untitled' };
     this.pageTitle.message.set({ key: 'title.houseNamed', params: { name } });
-  }
-
-  /** The *Included in the rent* switch of the Cost section. */
-  protected setIncluded(event: Event): void {
-    const d = this.draft();
-    if (!d) return;
-    this.patch({ cost: { ...d.cost, maintenanceIncluded: (event.target as HTMLInputElement).checked } });
   }
 
   /**

@@ -1,0 +1,92 @@
+{
+  "spec": [
+    "web/src/app/core/kind-fields.spec.ts",
+    "web/src/app/pages/house-detail/house-form-fields.spec.ts"
+  ],
+  "mutations": [
+    {
+      "file": "web/src/app/core/kind-fields.ts",
+      "find": "      .filter((f) => !cadence || !f.forCadences || f.forCadences.includes(cadence))",
+      "replace": "      .filter((f) => !f.forCadences || f.forCadences.includes(cadence ?? 'month') || true)",
+      "expect": "a rent-only one only for a rent or no cadence"
+    },
+    {
+      "file": "web/src/app/core/kind-fields.ts",
+      "find": "      .sort((a, b) => a.order - b.order);",
+      "replace": "      .sort((a, b) => b.order - a.order);",
+      "expect": "shows a section’s extras by order"
+    },
+    {
+      "file": "web/src/app/core/kind-fields.ts",
+      "find": "      return f.unit === 'level' ? 'level' : 'number';",
+      "replace": "      return 'number';",
+      "expect": "a level is a floor"
+    },
+    {
+      "file": "web/src/app/core/kind-fields.ts",
+      "find": "  { id: 'areaSqft', type: 'number', integer: true, min: 1, max: 100000, unit: 'sqft', section: 'details', order: 60, was: 'areaSqft' },",
+      "replace": "  { id: 'areaSqft', type: 'number', integer: true, min: 0, max: 100000, unit: 'sqft', section: 'details', order: 60, was: 'areaSqft' },",
+      "expect": "a copy of house.json"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/kind-extras.ts",
+      "find": "    suffix: control === 'money' ? ' (₹)' : '',",
+      "replace": "    suffix: '',",
+      "expect": "the same controls, attributes, rows and labels"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/kind-extras.ts",
+      "find": "    min: control === 'money' || control === 'level' ? '0' : control === 'number' ? bound(f.min) : null,",
+      "replace": "    min: control === 'number' || control === 'level' ? bound(f.min) : '0',",
+      "expect": "the same controls, attributes, rows and labels"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/kind-extras.ts",
+      "find": "    max: control === 'number' || control === 'level' ? bound(f.max) : null,",
+      "replace": "    max: bound(f.max),",
+      "expect": "the same controls, attributes, rows and labels"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/kind-extras.ts",
+      "find": "      if (f.control !== 'date' && last && last.length === 1 && last[0].control !== 'date') last.push(f);",
+      "replace": "      if (last && last.length === 1) last.push(f);",
+      "expect": "lays the cost extras out in the vector’s rows"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/kind-extras.ts",
+      "find": "    if (section === MONEY_SECTION) return shown.length ? [shown] : [];",
+      "replace": "    if (section === MONEY_SECTION) return [shown];",
+      "expect": "puts the money’s section where the kind file places the money"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/kind-extras.ts",
+      "find": "    if (holder) holder[f.path[f.path.length - 1]] = value;",
+      "replace": "    if (holder) holder[f.path[0]] = value;",
+      "expect": "puts each typed value where the house keeps it"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/kind-extras.ts",
+      "find": "    if (f.path.length === 1) this.deps.patch({ [key]: on } as Partial<HouseDto>);",
+      "replace": "    if (f.path.length === 1) this.deps.patch({ [key]: !on } as Partial<HouseDto>);",
+      "expect": "a switch through patch"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/kind-extras.ts",
+      "find": "  if (control === 'level' && f.was !== 'floor') throw new Error(`the level extra ${f.id} is not the floor`);",
+      "replace": "",
+      "expect": "refuses a level that is not the floor"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/kind-extras.ts",
+      "find": "  const domId = DOM_IDS[f.id] ?? `extra-${f.id}`;",
+      "replace": "  const domId = DOM_IDS[f.id] ?? f.id;",
+      "expect": "an id of its own"
+    },
+    {
+      "file": "web/src/app/core/kind-labels.ts",
+      "find": "    if (!key) throw new Error(`${this.labels.kind} has no text for ${ref}`);",
+      "replace": "    if (!key) return 'house.name';",
+      "expect": "throw for a place the kind has no text for"
+    }
+  ]
+}

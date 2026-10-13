@@ -165,6 +165,10 @@
     "section": { "$ref": "#/$defs/sectionId" },
     "order": { "type": "integer", "minimum": 0, "maximum": 10000 },
     "visible": { "type": "boolean", "default": true },
+    "forCadences": {
+     "description": "Shown only while the candidate's own money has one of these cadences, or none (kinds PR 4, S4b-BL-208: a house's rent-only cost fields hide for a sale). The value is kept and synced whatever the cadence.",
+     "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/cadence" }
+    },
     "was": { "type": "string", "description": "Where the value lives in the backup family before the reset (S4b-BL-206), which every reader still reads." }
    }
   },
