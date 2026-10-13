@@ -1,0 +1,52 @@
+{
+  "spec": "android/shared/src/androidHostTest/kotlin/app/doorprints/shared/model/SchoolKindVectorsTest.kt",
+  "gradle": [
+    ":shared:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.shared.model.SchoolKindVectorsTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/SchoolKind.kt",
+      "find": "    fun creatable(on: Boolean): List<BuiltInKind> = if (on) listOf(BuiltInKind.HOUSE, SCHOOL) else listOf(BuiltInKind.HOUSE)",
+      "replace": "    fun creatable(on: Boolean): List<BuiltInKind> = listOf(BuiltInKind.HOUSE, SCHOOL)",
+      "expect": "theFlagOffOffersAndDrawsOnlyTheHouse"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/SchoolKind.kt",
+      "find": "    private val SCHOOL = BuiltInKind(SchoolKind.LABELS, SchoolKind.FIELDS, extracts = false)",
+      "replace": "    private val SCHOOL = BuiltInKind(SchoolKind.LABELS, SchoolKind.FIELDS, extracts = true)",
+      "expect": "theFlagOffOffersAndDrawsOnlyTheHouse"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/SchoolKind.kt",
+      "find": "        \"contactPhone\" to \"house_phone\", \"listingUrl\" to \"school_website\", \"notes\" to \"house_notes\",",
+      "replace": "        \"contactPhone\" to \"house_phone\", \"listingUrl\" to \"house_listing\", \"notes\" to \"house_notes\",",
+      "expect": "theCopyIsTheKindFilesAndroidKeysAndExtras"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/SchoolKind.kt",
+      "find": "            KindExtra(\"grades\", \"text\", \"details\", 70, maxLength = 40),",
+      "replace": "            KindExtra(\"grades\", \"text\", \"details\", 70, maxLength = 80),",
+      "expect": "theCopyIsTheKindFilesAndroidKeysAndExtras"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/ExportMappers.kt",
+      "find": "    kind = kind.takeIf { it != Candidates.HOUSE_KIND },",
+      "replace": "    kind = null,",
+      "expect": "aSchoolInABackupGoesThroughTheStoreAndIsWrittenBackByteForByte"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/ExportMappers.kt",
+      "find": "    kind = kind?.takeIf { Candidates.KIND_PATTERN.matches(it) } ?: Candidates.HOUSE_KIND,",
+      "replace": "    kind = Candidates.HOUSE_KIND,",
+      "expect": "aSchoolInABackupGoesThroughTheStoreAndIsWrittenBackByteForByte"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindFields.kt",
+      "find": "            \"enum\" -> ExtraControl.ENUM",
+      "replace": "            \"enum\" -> ExtraControl.TEXT",
+      "expect": "theHiddenPlacesResolveToNothingAndTheRendererShowsTheVectorsRows"
+    }
+  ]
+}

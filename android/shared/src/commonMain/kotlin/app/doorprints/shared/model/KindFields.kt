@@ -20,10 +20,13 @@ package app.doorprints.shared.model
 
 /**
  * The control a typed extra is drawn with, the same on both stacks (`docs/schemas/kinds/kind-field-vectors.json`): an
- * integer field, a level (a floor: the field holds the level, a Basement switch its sign), whole rupees, a switch or a
- * calendar date. `text` and `enum` extras have no control yet: no built-in kind has one (S4b-BL-257).
+ * integer field, a level (a floor: the field holds the level, a Basement switch its sign), whole rupees, a switch, a
+ * calendar date, a line of text or a choice of options (text and enum since the schools kind, S4b-BL-209).
  */
-enum class ExtraControl { NUMBER, LEVEL, MONEY, BOOL, DATE }
+enum class ExtraControl { NUMBER, LEVEL, MONEY, BOOL, DATE, TEXT, ENUM }
+
+/** One option of an enum extra: its id (`UPPER_SNAKE`, what the candidate stores) and the Compose string it shows. */
+data class KindOption(val id: String, val label: String)
 
 /** One typed extra of a kind, as the kind file places it (`extras` of `docs/schemas/kinds/<kind>.json`). */
 data class KindExtra(
@@ -40,8 +43,15 @@ data class KindExtra(
     val cadenceFrom: String? = null,
     /** Shown only while the candidate's money has one of these cadences, or none. */
     val forCadences: List<String>? = null,
-    /** Where the value lives in the backup family before the reset. */
-    val was: String,
+    /**
+     * Where the value lives in the backup family before the reset; `null` for a kind that was never stored there (the
+     * schools kind, S4b-BL-209), whose values are the candidate's extras the house model does not know.
+     */
+    val was: String? = null,
+    /** A text's most characters. */
+    val maxLength: Int? = null,
+    /** An enum's options, in the kind file's order. */
+    val options: List<KindOption> = emptyList(),
 ) {
     val control: ExtraControl
         get() = when (type) {
@@ -49,6 +59,8 @@ data class KindExtra(
             "money" -> ExtraControl.MONEY
             "bool" -> ExtraControl.BOOL
             "date" -> ExtraControl.DATE
+            "text" -> ExtraControl.TEXT
+            "enum" -> ExtraControl.ENUM
             else -> error("no control for the $type extra $id")
         }
 }
@@ -104,7 +116,10 @@ class KindFields internal constructor(val labels: KindLabels, val extras: List<K
             ),
         )
 
-        /** The built-in kind with this id, `null` for one this build does not have. */
+        /**
+         * The built-in kind with this id, `null` for one this build does not have. The schools kind is not here: it is
+         * reached only through the developer flag ([DevKinds], S4b-BL-209).
+         */
         fun of(kind: String): KindFields? = if (kind == HOUSE.kind) HOUSE else null
     }
 }

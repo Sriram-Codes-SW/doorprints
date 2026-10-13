@@ -1663,4 +1663,30 @@
     <string name="settings_ai_sends">మీ ప్రశ్న, సరిపోయే ఇంటి నోట్స్ మీరు ఎంచుకున్న సేవకు వెళ్తాయి; సేవ్ చేసిన కాంటాక్ట్ పేర్లు, ఫోన్ నంబర్లు, ఈమెయిళ్లను ముందుగా, మా వల్ల అయినంత వరకు, మారుస్తాము. పేస్ట్ చేసిన ప్రకటన పేస్ట్ చేసినట్లే పంపబడుతుంది.</string>
     <string name="settings_ai_guide">AI నాకు ఉపయోగమా? గైడ్ చదవండి</string>
     <string name="settings_ai_guide_desc">AI నాకు ఉపయోగమా? యూజర్ గైడ్ బ్రౌజర్‌లో తెరుచుకుంటుంది</string>
+    <!-- S4b-BL-209 (2026-10-13): the hidden schools kind, developer flag only. Under review (owner rule: hi/ta/te ship marked under review). -->
+    <string name="kind_picker">మీరు ఏమి సేవ్ చేస్తున్నారు? (డెవలపర్ ప్రివ్యూ)</string>
+    <string name="school_new_title">పాఠశాలను సేవ్ చేయండి</string>
+    <string name="schools_title">పాఠశాలలు</string>
+    <string name="school_delete">పాఠశాలను తొలగించు</string>
+    <string name="school_name">పాఠశాల పేరు</string>
+    <string name="school_website">వెబ్‌సైట్</string>
+    <string name="school_contact_name">సంప్రదించవలసిన వ్యక్తి పేరు</string>
+    <string name="school_fees_heading">ఫీజు</string>
+    <string name="school_fees">సంవత్సర ఫీజు (₹)</string>
+    <string name="school_admission_fee">ప్రవేశ ఫీజు (₹)</string>
+    <string name="school_board">బోర్డు</string>
+    <string name="school_board_CBSE">CBSE</string>
+    <string name="school_board_ICSE">ICSE</string>
+    <string name="school_board_STATE">రాష్ట్ర బోర్డు</string>
+    <string name="school_board_IB">IB</string>
+    <string name="school_board_IGCSE">కేంబ్రిడ్జ్ (IGCSE)</string>
+    <string name="school_option_OTHER">ఇతర</string>
+    <string name="school_medium">బోధనా మాధ్యమం</string>
+    <string name="school_medium_ENGLISH">ఇంగ్లీష్</string>
+    <string name="school_medium_HINDI">హిందీ</string>
+    <string name="school_medium_REGIONAL">రాష్ట్ర భాష</string>
+    <string name="school_grades">తరగతులు</string>
+    <string name="school_commute">ప్రయాణ సమయం (నిమిషాలు)</string>
+    <string name="school_bus">స్కూల్ బస్సు</string>
+    <string name="kind_option_not_set">సెట్ చేయలేదు</string>
 </resources>

@@ -1662,4 +1662,30 @@
     <string name="settings_ai_sends">Your question and the matching house notes go to the service you chose, with saved contact names, phones and emails replaced first as far as we can. A pasted ad is sent as pasted.</string>
     <string name="settings_ai_guide">Is AI worth it for me? Read the guide</string>
     <string name="settings_ai_guide_desc">Is AI worth it for me? Opens the user guide in the browser</string>
+    <!-- S4b-BL-209 (2026-10-13): the hidden schools kind (kinds PR 5), shown only with the developer flag. -->
+    <string name="kind_picker">What are you saving? (developer preview)</string>
+    <string name="school_new_title">Save a school</string>
+    <string name="schools_title">Schools</string>
+    <string name="school_delete">Delete school</string>
+    <string name="school_name">School name</string>
+    <string name="school_website">Website</string>
+    <string name="school_contact_name">Contact name</string>
+    <string name="school_fees_heading">Fees</string>
+    <string name="school_fees">Fees per year (₹)</string>
+    <string name="school_admission_fee">Admission fee (₹)</string>
+    <string name="school_board">Board</string>
+    <string name="school_board_CBSE">CBSE</string>
+    <string name="school_board_ICSE">ICSE</string>
+    <string name="school_board_STATE">State board</string>
+    <string name="school_board_IB">IB</string>
+    <string name="school_board_IGCSE">Cambridge (IGCSE)</string>
+    <string name="school_option_OTHER">Other</string>
+    <string name="school_medium">Medium of instruction</string>
+    <string name="school_medium_ENGLISH">English</string>
+    <string name="school_medium_HINDI">Hindi</string>
+    <string name="school_medium_REGIONAL">State language</string>
+    <string name="school_grades">Grades offered</string>
+    <string name="school_commute">Commute (minutes)</string>
+    <string name="school_bus">School bus</string>
+    <string name="kind_option_not_set">Not set</string>
 </resources>

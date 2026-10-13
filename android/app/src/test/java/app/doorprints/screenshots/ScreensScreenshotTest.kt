@@ -19,6 +19,7 @@
 package app.doorprints.screenshots
 
 import android.app.KeyguardManager
+import app.doorprints.SchoolSample
 import android.graphics.Bitmap
 import androidx.arch.core.executor.ArchTaskExecutor
 import androidx.arch.core.executor.DefaultTaskExecutor
@@ -380,6 +381,22 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
     @Test fun houseNew() {
         assumeTrue(lang == "en" || (lang == "hi" && !dark))
         shoot("house_new", STATIC) { HouseEditScreen(houseId = null, newLat = 12.9716, newLon = 77.5946, visitId = null, onDone = {}) }
+    }
+    /**
+     * The hidden schools kind's form (kinds PR 5, S4b-BL-209), with its developer flag on: the saved school of
+     * `docs/schemas/kinds/school-vectors.json`, its Details and Fees down to the location, in one shot. English light
+     * and Tamil dark only (the longest words, the other theme), to keep the image set small; no house baseline changes.
+     */
+    @Test fun schoolEdit() {
+        assumeTrue((lang == "en" && !dark) || (lang == "ta" && dark))
+        RuntimeEnvironment.setQualifiers("+h1500dp")
+        val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
+        runBlocking { repo.saveHouse(SchoolSample.entity()) }
+        shoot("school_edit", readyText = "Pine Hill School") {
+            CompositionLocalProvider(app.doorprints.ui.LocalDevKinds provides true) {
+                HouseEditScreen(houseId = SchoolSample.ID, newLat = null, newLon = null, visitId = null, onDone = {})
+            }
+        }
     }
     @Test fun settings() = shoot("settings", STATIC) { SettingsScreen() }
 

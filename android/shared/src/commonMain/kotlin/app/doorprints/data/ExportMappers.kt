@@ -45,6 +45,7 @@ fun HouseEntity.toExport() = ExportHouse(
     areaSqft = areaSqft, locationSource = locationSource, cost = cost?.orNull(), rooms = rooms?.takeIf { it.isNotEmpty() },
     answers = answers?.takeIf { it.isNotEmpty() }, moveIn = MoveIn.coerced(moveIn), floor = floor, brokerId = brokerId,
     checklist = checklist, createdAt = createdAt, updatedAt = updatedAt, extrasOther = extrasOther,
+    kind = kind.takeIf { it != Candidates.HOUSE_KIND },
 )
 
 /**
@@ -65,6 +66,8 @@ fun ExportHouse.toEntity(dirty: Boolean = true) = HouseEntity(
     deleted = false, dirty = dirty,
     // A newer app's extras, kept by the server's and the website's rules (S4b-BL-248).
     extrasOther = Candidates.cleanOtherExtras(extrasOther),
+    // A kind other than the house is kept as the file says (S4b-BL-209; BackupWire checked its pattern).
+    kind = kind?.takeIf { Candidates.KIND_PATTERN.matches(it) } ?: Candidates.HOUSE_KIND,
 )
 
 fun VisitEntity.toExport() = ExportVisit(
