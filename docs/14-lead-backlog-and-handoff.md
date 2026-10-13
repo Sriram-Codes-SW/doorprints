@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.170 |
+| Version | 0.171 |
 | Date | 2026-10-13 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..183); this file lists the lead-level items and points to the rest. |
@@ -178,6 +178,7 @@
 | 0.168 | 2026-10-12 | Claude (Code), engineer | **§11.4 item 7**: owner confirmed, old-family backups are read, not refused (the final text of ADR-36 door 1, kinds step 3). |
 | 0.169 | 2026-10-13 | Claude (Code), engineer | **§11.2: kinds step 4, the phone** (S4b-BL-206, `feat/kinds-4-android`): Room version 12 (every house a candidate, migrated in place), `/api/candidates` and `candidateId` in `ApiClient`, the Drive `sync/1` file in both shapes on both stacks. Left of the reset: S4b-BL-246 (the website's sync writer), S4b-BL-247 (the viewing payload's `houseId`, three stacks), S4b-BL-248 (the phone's backup of an unknown extra), the guide and the CHANGELOG release entry. |
 | 0.170 | 2026-10-13 | Claude (Code), engineer | **§11.1**: the Map page's short-screen layout and first-load shift (S4b-BL-49) are fixed on `fix/map-short-screen-layout`, in review; the owner's look on a real phone is outstanding. |
+| 0.171 | 2026-10-13 | Claude (Code), engineer | S4b-BL-49 closed: the owner accepted the Map page layout on a phone (#289, #290). |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 
