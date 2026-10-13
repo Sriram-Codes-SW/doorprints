@@ -73,11 +73,11 @@ describe('the kind fields (HOUSE_FIELDS), a copy of house.json’s extras', () =
     expect(() => fields.label({ id: 'zz', type: 'bool', section: 's', order: 1, was: 'zz' })).toThrow();
   });
 
-  it('draws each type with its control; a level is a floor; text and enum have none yet', () => {
+  it('draws each type with its control; a level is a floor; text and enum since the schools kind (S4b-BL-209)', () => {
     const f = (type: KindExtra['type'], unit?: string): KindExtra => ({ id: 'x', type, unit, section: 'cost', order: 1, was: 'x' });
     expect([f('number', 'count'), f('number', 'level'), f('money'), f('bool'), f('date')].map(controlOf)).toEqual(['number', 'level', 'money', 'bool', 'date']);
-    expect(() => controlOf(f('text'))).toThrow();
-    expect(() => controlOf(f('enum'))).toThrow();
+    expect(controlOf(f('text'))).toBe('text');
+    expect(controlOf(f('enum'))).toBe('enum');
   });
 
   it('reads a price type as its cadence, and knows only the house', () => {

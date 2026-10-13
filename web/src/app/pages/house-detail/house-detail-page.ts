@@ -64,8 +64,11 @@ import { PhotoMetaEditor } from './photo-meta-editor';
 import { HousePhotos, isStorageFull } from './house-photos';
 import { HouseRooms } from './house-rooms';
 import { HouseFloor, floorOf } from './house-floor';
-import { KindExtras, MONEY_SECTION } from './kind-extras';
-import { HOUSE_KEYS } from '../../core/kind-labels';
+import { type KindExtras, MONEY_SECTION, extrasFor } from './kind-extras';
+import type { KindKeys } from '../../core/kind-labels';
+import { builtInKind, creatableKinds, devKindsOn } from '../../core/dev-kinds';
+import { DevKindPicker } from './dev-kind-picker';
+import { sharedFromNavigation, sortBrokers } from './house-page-input';
 import { QUESTION_CATEGORIES } from '../../shared/question';
 import type { Question, QuestionCategory } from '../../shared/question';
 import { HouseViewingsCard } from '../viewings/house-viewings-card';
@@ -136,6 +139,7 @@ const DRAFT_SAVE_MS = 500;
     HouseCheckCard,
     HouseWalksCard,
     PhotoMetaEditor,
+    DevKindPicker,
   ],
   templateUrl: './house-detail-page.html',
   styleUrl: './house-detail-page.css',
@@ -175,11 +179,17 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   });
   /** The floor of this house: the level, the Basement switch and whether it is a floor (house-floor.ts). */
   protected readonly floor = new HouseFloor({ patch: (changes) => this.patch(changes) });
+  /** The kinds a new candidate may be, and its kind: the house, or the school while the developer flag is on (S4b-BL-209). */
+  private readonly devKinds = devKindsOn();
+  protected readonly kinds = creatableKinds(this.devKinds);
+  protected readonly kind = computed(() => builtInKind(this.draft()?.kind, this.devKinds));
+  private readonly extrasOf = extrasFor({ patch: (changes) => this.patch(changes) });
   /** The typed extras of the Details and Cost cards, drawn from the kind file (kind-extras.ts, S4b-BL-208). */
-  protected readonly extras = new KindExtras({ patch: (changes) => this.patch(changes) });
+  protected get extras(): KindExtras { return this.extrasOf(this.kind().fields); }
   protected readonly moneySection = MONEY_SECTION;
-  /** The kind's keys for the page's field and section labels (S4b-BL-255). */
-  protected readonly L = HOUSE_KEYS;
+  /** The kind's keys for the page's field and section labels (S4b-BL-255), and whether it shows a place (S4b-BL-209). */
+  protected get L(): KindKeys { return this.kind().keys; }
+  protected readonly shows = (ref: string): boolean => this.kind().labels.isVisible(ref);
   /** The brokers the Broker select offers (slice 1b), by name. */
   protected readonly brokers = signal<BrokerRow[]>([]);
   /** Every house in this browser, for the duplicate-flat warning under the floor (S4b-BL-85). */
@@ -852,6 +862,12 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     this.patch({ status });
   }
 
+  /** The developer's kind picker (S4b-BL-209): a new candidate's kind; a kind that hides the money starts with no price type. */
+  protected pickKind(id: string): void {
+    const money = builtInKind(id, this.devKinds).labels.isVisible('field.money');
+    this.patch({ kind: id === 'house' ? null : id, priceType: money ? (this.draft()?.priceType ?? 'RENT') : null });
+  }
+
   /** The Moving in card changed the date, notes or items; saved with the house. */
   protected setMoveIn(moveIn: MoveIn | null): void {
     this.patch({ moveIn });
@@ -1186,27 +1202,4 @@ function blankToNull(s: string | null | undefined): string | null {
 function toWholeNumber(n: number | null | undefined): number | null {
   if (n === null || n === undefined || typeof n !== 'number' || !Number.isFinite(n)) return null;
   return Math.max(0, Math.round(n));
-}
-
-/**
- * The listing text the share target handed over, from the navigation state.
- *
- * `Router.currentNavigation()` is only non-null while a navigation is in flight, which it is **not** any more by the
- * target component's `ngOnInit` (the zoneless scheduler runs the first change detection in a later task); the last
- * successful navigation is the same navigation by then. `history.state` covers a restored or re-entered route. All
- * are read defensively because anything can be in `history.state`.
- */
-export function sharedFromNavigation(router: Router): string | null {
-  const fromNavigation = (router.currentNavigation() ?? router.lastSuccessfulNavigation())?.extras.state;
-  const state: unknown = fromNavigation ?? (typeof history === 'undefined' ? null : history.state);
-  if (!state || typeof state !== 'object') return null;
-  const shared = (state as { shared?: unknown }).shared;
-  return typeof shared === 'string' && shared !== '' ? shared : null;
-}
-
-/** Brokers by name for the select, then by id, so equal names keep a fixed order. */
-export function sortBrokers(rows: readonly BrokerRow[]): BrokerRow[] {
-  return [...rows].sort(
-    (a, b) => a.broker.name.localeCompare(b.broker.name) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
-  );
 }
