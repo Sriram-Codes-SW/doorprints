@@ -636,6 +636,15 @@
     border-radius: 12px;
   }
 
+  /*
+   * While the credits are open they are drawn over the legend card (same corner) and are 2px shorter and wider than it, so
+   * the card showed round their edge as a second popup. The card is hidden, not removed, while they are open (a few
+   * seconds, or until the button is tapped again): nothing moves.
+   */
+  :host ::ng-deep .map-wrap:has(.maplibregl-ctrl-attrib.maplibregl-compact-show) .legend {
+    visibility: hidden;
+  }
+
   /* The offline message is centred in the map; the bottom row is under the map now, not over its foot. */
   .map-offline {
     padding: var(--space-4);
