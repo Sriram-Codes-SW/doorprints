@@ -21,7 +21,7 @@
 On a phone, the same page puts the map above the list. The menu moves to a bar at the bottom: **Map**, **Compare**
 and **Your data**. **Connect** is inside **Your data**.
 
-<img src="images/web-phone-map.png" width="300" alt="The Doorprints website on a phone: the map with pins, zoom buttons, Add house and Show all, the legend, the counts, and the bottom bar with Map, Compare and Your data">
+<img src="images/web-phone-map.png" width="300" alt="The Doorprints website on a phone: the map with its zoom and location buttons and the legend in its corner, a row of buttons under the map starting with Add house, the counts, and the bottom bar with Map, Compare and Your data">
 
 ## Android
 
