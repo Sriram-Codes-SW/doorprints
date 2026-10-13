@@ -17,6 +17,7 @@
  */
 
 import type { TKey } from '../i18n/en';
+import { HOUSE_LABELS } from './kind-labels';
 import { evaluateScore } from '../shared/scoring';
 import type { Scoring } from '../shared/scoring';
 
@@ -310,31 +311,21 @@ export interface ChecklistItem {
   labelKey: TKey;
 }
 
-/** Same keys as the Android app. Each item is scored 0 (bad) to 5 (great). */
-export const CHECKLIST: readonly ChecklistItem[] = [
-  { key: 'water', labelKey: 'check.water' },
-  { key: 'power', labelKey: 'check.power' },
-  { key: 'parking', labelKey: 'check.parking' },
-  { key: 'sunlight', labelKey: 'check.sunlight' },
-  { key: 'ventilation', labelKey: 'check.ventilation' },
-  { key: 'noise', labelKey: 'check.noise' },
-  { key: 'security', labelKey: 'check.security' },
-  { key: 'maintenance', labelKey: 'check.maintenance' },
-  { key: 'neighbourhood', labelKey: 'check.neighbourhood' },
-  { key: 'commute', labelKey: 'check.commute' },
-];
+/**
+ * Same keys as the Android app. Each item is scored 0 (bad) to 5 (great). The labels are the house kind's, through the
+ * resolver (kinds PR 3, S4b-BL-207).
+ */
+export const CHECKLIST: readonly ChecklistItem[] = (
+  ['water', 'power', 'parking', 'sunlight', 'ventilation', 'noise', 'security', 'maintenance', 'neighbourhood', 'commute']
+).map((key) => ({ key, labelKey: HOUSE_LABELS.check(key)! }));
 
 export const STATUSES: readonly HouseStatus[] = ['NEW', 'SHORTLISTED', 'REJECTED', 'TAKEN', 'NOT_CHOSEN'];
 export const LOCATION_SOURCES: readonly LocationSource[] = ['GPS', 'MAP', 'APPROX'];
 
-/** Translation key for each status label. */
-export const STATUS_KEY: Readonly<Record<HouseStatus, TKey>> = {
-  NEW: 'status.NEW',
-  SHORTLISTED: 'status.SHORTLISTED',
-  REJECTED: 'status.REJECTED',
-  TAKEN: 'status.TAKEN',
-  NOT_CHOSEN: 'status.NOT_CHOSEN',
-};
+/** Translation key for each status label: the house kind's, through the resolver (kinds PR 3, S4b-BL-207). */
+export const STATUS_KEY: Readonly<Record<HouseStatus, TKey>> = Object.fromEntries(
+  STATUSES.map((s) => [s, HOUSE_LABELS.status(s)]),
+) as Record<HouseStatus, TKey>;
 
 /** Icon shown next to the status text, so status is never conveyed by colour alone (WCAG 1.4.1). */
 export const STATUS_ICON: Readonly<Record<HouseStatus, string>> = {
