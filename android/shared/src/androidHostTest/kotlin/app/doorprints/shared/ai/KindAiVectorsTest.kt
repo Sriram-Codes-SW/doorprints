@@ -112,9 +112,12 @@ class KindAiVectorsTest {
             val on = c["devKinds"]!!.jsonPrimitive.boolean
             assertEquals(c["expected"]!!.jsonPrimitive.content, KindAi.aiText(KindAi.askView(aiHouse(c["candidate"]!!), on), on), c["name"].toString())
         }
-        val ask = v["ask"]!!.jsonObject
-        val docs = ask["documents"]!!.jsonArray.map { i -> aiHouse(doc(i.jsonPrimitive.int)["candidate"]!!).let { it.id to KindAi.aiText(KindAi.askView(it, true), true) } }
-        assertEquals(ask["user"]!!.jsonPrimitive.content, AiPrompts.ask(ask["question"]!!.jsonPrimitive.content, docs, ask["nonce"]!!.jsonPrimitive.content).user)
+        // `askTag`: a value that is exactly the Ask block's closing tag (review of #313).
+        for (name in listOf("ask", "askTag")) {
+            val ask = v[name]!!.jsonObject
+            val docs = ask["documents"]!!.jsonArray.map { i -> aiHouse(doc(i.jsonPrimitive.int)["candidate"]!!).let { it.id to KindAi.aiText(KindAi.askView(it, true), true) } }
+            assertEquals(ask["user"]!!.jsonPrimitive.content, AiPrompts.ask(ask["question"]!!.jsonPrimitive.content, docs, ask["nonce"]!!.jsonPrimitive.content).user, name)
+        }
     }
 
     @Test

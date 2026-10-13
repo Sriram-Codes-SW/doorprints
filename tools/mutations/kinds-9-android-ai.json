@@ -73,6 +73,18 @@
       "find": "    private val SCHOOL = BuiltInKind(SchoolKind.LABELS, SchoolKind.FIELDS, extracts = true)",
       "replace": "    private val SCHOOL = BuiltInKind(SchoolKind.LABELS, SchoolKind.FIELDS, extracts = false)",
       "expect": "theFlagOffOffersAndDrawsOnlyTheHouse"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/KindAi.kt",
+      "find": "            if (made.length > DraftSanitizer.LABEL_MAX) warnings += \"label: truncated to ${DraftSanitizer.LABEL_MAX} characters\"",
+      "replace": "",
+      "expect": "theSchoolsExtractPromptSchemaAndDraftsAreTheVectors"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/PromptSafety.kt",
+      "find": "        return Regex(\"</?\\\\s*${Regex.escape(tagName)}[^>]*>\", RegexOption.IGNORE_CASE).replace(dropControls(text), \"\")",
+      "replace": "        return Regex(\"<\\\\s*${Regex.escape(tagName)}[^>]*>\", RegexOption.IGNORE_CASE).replace(dropControls(text), \"\")",
+      "expect": "everyDocumentHasTheVectorsLinesAndTheAskPromptStripsATag"
     }
   ]
 }

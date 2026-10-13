@@ -303,7 +303,10 @@ object KindAi {
         val label = cleaned("label") ?: run {
             val where = locality ?: street
             warnings += "label: generated because the model returned none"
-            (if (where == null) k.noun else "${k.noun} in $where").take(DraftSanitizer.LABEL_MAX)
+            val made = if (where == null) k.noun else "${k.noun} in $where"
+            // A long place makes a long name: cut with the warning every other field gives (review of #313).
+            if (made.length > DraftSanitizer.LABEL_MAX) warnings += "label: truncated to ${DraftSanitizer.LABEL_MAX} characters"
+            made.take(DraftSanitizer.LABEL_MAX)
         }
         return HouseDraftDto(
             label = label, address = address, street = street, locality = locality, contactName = contactName,
