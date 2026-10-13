@@ -234,6 +234,10 @@ describe('MapPage: the phone layout is sized in CSS (S4b-BL-49)', () => {
     expect(phone).toContain('--map-floor: calc(216px + var(--space-2));');
   });
 
+  it('hides the legend card while the credits are open over it, so it does not show as a second popup', () => {
+    expect(phone).toMatch(/\.map-wrap:has\(\.maplibregl-ctrl-attrib\.maplibregl-compact-show\) \.legend\s*\{\s*visibility: hidden;/);
+  });
+
   it('places the map and its overlays in the map row, so the crosshair stays on the map centre', () => {
     expect(phone).toMatch(/\.map,\s*\.map-offline,\s*\.crosshair,\s*\.add-hint\s*\{\s*grid-area: 1 \/ 1 \/ 2 \/ 2;/);
   });

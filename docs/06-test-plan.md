@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Test plan (functional, security, accessibility, i18n, AI) |
-| Version | 0.219 |
+| Version | 0.220 |
 | Date | 2026-10-13 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -228,6 +228,7 @@
 | 0.217 | 2026-10-13 | Claude (Code), engineer | **TC-U-204** (S4b-BL-206, kinds step 4, the phone): Room version 12 and its migration, `/api/candidates` and `candidateId` in `ApiClient`, the Drive `sync/1` file in both shapes on both stacks, the search over a house read from its candidate, a typeless price never a monthly rent. |
 | 0.218 | 2026-10-13 | Claude (Code), engineer | **TC-S-46** (S4b-BL-49): the gate also runs an iPhone SE in landscape (568x320) and a 360x740 phone in Tamil at 200%, fails a Map page whose first load shifts by more than 0.05, and, at normal text and on the owner's phone, one whose list heading or counters are under the bottom bar before scrolling; the text-size hook acts before the first paint. **TC-U-77**: `list-peek.spec.ts` (4 cases) is replaced by `map-page.spec.ts` *the phone layout is sized in CSS* (6 cases) and its mutation list. |
 | 0.219 | 2026-10-13 | Claude (Code), engineer | **TC-S-46** (S4b-BL-49 follow-up; [10](10-sprint-log.md) v0.274): the gate answers MapLibre's style and its TileJSON (delayed 1.5 s) with a small copy of OpenFreeMap's with the credits, waits for the credits, and names the element and its rectangles when the first load shifts (`GATE_VERBOSE=1` prints them always); 193 checks. **TC-U-77**: `map-page.spec.ts` gains a case, the control corner reserved from the first frame (7 cases). |
+| 0.220 | 2026-10-13 | Claude (Code), engineer | TC-U-77: a case pins that the legend card is hidden while the map credits are open over it (one popup, not two). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Design](03-design.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
