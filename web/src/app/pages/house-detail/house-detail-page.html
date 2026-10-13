@@ -33,7 +33,7 @@
     }
     <h1 id="house-title" class="page-title" tabindex="-1">
       @if (isNew()) {
-        {{ 'house.newTitle' | t }}
+        {{ L.ref('kind.new') | t }}
       } @else {
         {{ draft()?.label || ('common.untitled' | t) }}
       }
@@ -58,13 +58,8 @@
            aria-busy says the save is running; the label does not change, so the button keeps its width. "Saving…"
            is spoken through the app's announcer when the save starts (save()), as Android's Save button says it; a
            failure cancels it if it is still pending, so the "Could not save…" alert is not followed by "Saving…". -->
-      <button
-        type="button"
-        class="btn btn-primary"
-        [attr.aria-disabled]="!draft() || saving() ? 'true' : null"
-        [attr.aria-busy]="saving() ? 'true' : null"
-        (click)="save()"
-      >
+      <button type="button" class="btn btn-primary" [attr.aria-disabled]="!draft() || saving() ? 'true' : null"
+        [attr.aria-busy]="saving() ? 'true' : null" (click)="save()">
         {{ (isNew() ? 'house.create' : 'house.save') | t }}
       </button>
     </div>
@@ -108,7 +103,9 @@
         <button type="button" class="btn btn-sm" (click)="discardRestored()">{{ 'house.draftDiscard' | t }}</button>
       </div>
     }
-    @if (isNew() && ai.enabled()) {
+    <!-- The developer's kind picker (S4b-BL-209, dev-kinds.ts): never drawn while the flag is off. -->
+    @if (isNew() && kinds.length > 1) { <app-dev-kind-picker [kinds]="kinds" [current]="kind().id" (picked)="pickKind($event)" /> }
+    @if (isNew() && ai.enabled() && kind().extracts) {
       <!-- The listing card (house-listing-card.ts, S4b-BL-238): Fill in, Undo fill, the marks and the warnings. -->
       <app-house-listing-card [listing]="listing" />
     }
@@ -134,10 +131,10 @@
               <span id="name-error" class="field-error">{{ 'house.nameRequired' | t }}</span>
             }
           </div>
-          <div class="score" role="img" [attr.aria-label]="'common.scoreOutOf' | t: { score: i18n.score(score(d)) }">
+          @if (shows('section.checklist')) { <div class="score" role="img" [attr.aria-label]="'common.scoreOutOf' | t: { score: i18n.score(score(d)) }">
             <b aria-hidden="true">{{ i18n.score(score(d)) }}</b>
             <span aria-hidden="true">{{ 'house.scoreShort' | t }}</span>
-          </div>
+          </div> }
         </div>
 
         <fieldset>
@@ -182,8 +179,9 @@
         </fieldset>
 
         <!-- The price and its type, then the Details extras (kinds PR 4, S4b-BL-208: BHK, area and floor, drawn by the
-             `extra` template below from the kind file); a level's Basement switch (S4b-BL-104 c) follows the row. -->
-        <div class="row">
+             `extra` template below from the kind file); a level's Basement switch (S4b-BL-104 c) follows the row. A
+             kind that hides the money (S4b-BL-209) draws its Details extras in rows of their own. -->
+        @if (shows('field.money')) { <div class="row">
           <div class="field">
             <label for="house-price">{{ L.field('money') | t }}</label>
             <input id="house-price" type="number" min="0" step="1" inputmode="numeric" [(ngModel)]="d.price" />
@@ -199,7 +197,7 @@
           @for (f of extras.of(moneySection, d); track f.id) {
             <ng-container *ngTemplateOutlet="extra; context: { $implicit: f, d }" />
           }
-        </div>
+        </div> } @else { <ng-container *ngTemplateOutlet="extraRows; context: { $implicit: extras.rows(moneySection, d), d }" /> }
         @for (f of extras.of(moneySection, d); track f.id) {
           @if (f.switchId) {
             <div class="field checkbox">
@@ -250,7 +248,7 @@
 
         <!-- Broker (slice 1b, docs/11 5.25): choosing one fills the contact above from it. A phone typed with no broker
              chosen is linked to the broker with that number, or makes one, when the house is saved. -->
-        <div class="field">
+        @if (shows('field.brokerId')) { <div class="field">
           <label for="house-broker">{{ L.field('brokerId') | t }}</label>
           <div class="inline">
             <select id="house-broker" [ngModel]="d.brokerId ?? ''" (ngModelChange)="pickBroker($event)">
@@ -267,7 +265,7 @@
               <a [routerLink]="['/brokers', b.id]">{{ 'house.brokerOpen' | t }}</a>
             </p>
           }
-        </div>
+        </div> }
 
         <div class="field">
           <label for="house-listing">{{ L.field('listingUrl') | t }}</label>
@@ -293,23 +291,12 @@
         </div>
       </section>
 
-      <!-- Cost (slice 1a, docs/11 5.21): what the house really costs, drawn from the kind file (kinds PR 4, S4b-BL-208):
-           the rent-only fields (deposit, maintenance, lock-in, notice) hide for a sale (`forCadences`); the line under
-           the fields is computed by costSummary, as on Android. -->
+      <!-- Cost (slice 1a, docs/11 5.21), drawn from the kind file (S4b-BL-208): the rent-only fields hide for a sale
+           (`forCadences`); the line under the fields is computed by costSummary, as on Android. -->
       @if (d.cost) {
         <section class="card" aria-labelledby="cost-heading">
           <h2 id="cost-heading">{{ L.section('cost') | t }}</h2>
-          @for (row of extras.rows('cost', d); track row[0].id) {
-            @if (row.length > 1) {
-              <div class="row">
-                @for (f of row; track f.id) {
-                  <ng-container *ngTemplateOutlet="extra; context: { $implicit: f, d }" />
-                }
-              </div>
-            } @else {
-              <ng-container *ngTemplateOutlet="extra; context: { $implicit: row[0], d }" />
-            }
-          }
+          <ng-container *ngTemplateOutlet="extraRows; context: { $implicit: extras.rows('cost', d), d }" />
           @if (costLine(d); as line) {
             <p class="cost-line" role="status">{{ line }}</p>
           }
@@ -318,7 +305,7 @@
 
       <!-- Rooms (slice 1c, docs/11 5.6): a card per room. Sizes are stored in centimetres; the Length units setting
            (Your data) only changes how they are typed and shown. Every control's name says which room it belongs to. -->
-      <section class="card" aria-labelledby="rooms-heading">
+      @if (shows('section.rooms')) { <section class="card" aria-labelledby="rooms-heading">
         <h2 id="rooms-heading">{{ L.section('rooms') | t }}</h2>
         @for (r of rooms.list(d); track r.id; let i = $index) {
           @let title = rooms.title(r, i);
@@ -479,11 +466,11 @@
             <span id="rooms-max" class="muted">{{ 'rooms.max' | t }}</span>
           }
         </div>
-      </section>
+      </section> }
 
       <!-- Questions to ask (slice 3a, docs/11 5.5): a card per question, open ones first. Typing an answer marks it
            Answered, clearing it Open; Skip is a toggle; Remove only takes the question off this house. -->
-      <section class="card" aria-labelledby="questions-heading">
+      @if (shows('section.questions')) { <section class="card" aria-labelledby="questions-heading">
         <h2 id="questions-heading">{{ L.section('questions') | t }}</h2>
         @if ((d.answers ?? []).length > 0) {
           <p id="questions-summary" class="muted" role="status">{{ answeredSummary(d) }}</p>
@@ -591,13 +578,13 @@
             </button>
           </div>
         }
-      </section>
+      </section> }
 
       <!-- Viewings (slice 3b-1, docs/11 5.8): the next planned viewing, Plan a viewing, Mark viewing done. -->
-      <app-house-viewings-card [houseId]="draft()?.id ?? ''" [houseName]="draft()?.label ?? ''" [isNew]="isNew()" />
+      @if (shows('section.viewings')) { <app-house-viewings-card [houseId]="draft()?.id ?? ''" [houseName]="draft()?.label ?? ''" [isNew]="isNew()" /> }
 
       <!-- Moving in (slice 5, docs/11 5.24): only for the house that is Taken. -->
-      @if (d.status === 'TAKEN') {
+      @if (d.status === 'TAKEN' && shows('section.moveIn')) {
         <app-house-move-in-card
           [house]="d"
           [isNew]="isNew()"
@@ -609,8 +596,8 @@
       }
 
       <!-- Area notes and Distances (slice 4a, docs/11 5.22, 5.23): the notes that reach the house and its distance to my places. -->
-      <app-house-area-notes-card [house]="d" />
-      <app-house-distances-card [house]="d" />
+      @if (shows('section.areaNotes')) { <app-house-area-notes-card [house]="d" /> }
+      @if (shows('section.distances')) { <app-house-distances-card [house]="d" /> }
 
       <!-- Location -->
       <section class="card" aria-labelledby="location-heading">
@@ -743,10 +730,10 @@
       <app-house-check-card [house]="d" [isNew]="isNew()" [locationSet]="position.placed()" (overlay)="showOverlay($event)" />
 
       <!-- Saved walks (docs/11 5.27.6): the walks linked to this house; Show on map draws on the map above. -->
-      <app-house-walks-card [houseId]="d.id" [isNew]="isNew()" (overlay)="showOverlay($event)" />
+      @if (shows('section.walks')) { <app-house-walks-card [houseId]="d.id" [isNew]="isNew()" (overlay)="showOverlay($event)" /> }
 
       <!-- Checklist -->
-      <section class="card" aria-labelledby="checklist-heading">
+      @if (shows('section.checklist')) { <section class="card" aria-labelledby="checklist-heading">
         <h2 id="checklist-heading">{{ L.section('checklist') | t }}</h2>
         <p class="muted small">{{ 'house.checklistHint' | t }} <a routerLink="/criteria">{{ 'house.criteriaLink' | t }}</a></p>
         @let scored = result(d);
@@ -796,12 +783,12 @@
             </div>
           </fieldset>
         }
-      </section>
+      </section> }
     </div>
 
     <div class="grid">
       <!-- Visits -->
-      <section class="card" aria-labelledby="visits-heading">
+      @if (shows('section.visits')) { <section class="card" aria-labelledby="visits-heading">
         <div class="section-head">
           <h2 id="visits-heading" tabindex="-1">{{ L.section('visits') | t }}</h2>
           <button
@@ -848,10 +835,10 @@
             }
           </ul>
         }
-      </section>
+      </section> }
 
       <!-- Photos -->
-      <section class="card" aria-labelledby="photos-heading">
+      @if (shows('section.photos')) { <section class="card" aria-labelledby="photos-heading">
         <div class="section-head">
           <h2 id="photos-heading" tabindex="-1">{{ L.section('photos') | t }}</h2>
           @if (!isNew()) {
@@ -950,7 +937,7 @@
             }
           </ul>
         }
-      </section>
+      </section> }
     </div>
 
     <div class="danger-zone">
@@ -962,7 +949,7 @@
         }
       </div>
       <button type="button" class="btn btn-danger" (click)="deleteHouse()">
-        {{ (isNew() ? 'house.discard' : 'house.delete') | t }}
+        {{ (isNew() ? 'house.discard' : L.ref('kind.delete')) | t }}
       </button>
     </div>
   } @else {
@@ -977,10 +964,25 @@
   }
 </div>
 
+<!-- A section's extras in their rows (KindExtras.rows): two side by side, or one alone. -->
+<ng-template #extraRows let-rows let-d="d">
+  @for (row of rows; track row[0].id) {
+    @if (row.length > 1) {
+      <div class="row">
+        @for (f of row; track f.id) {
+          <ng-container *ngTemplateOutlet="extra; context: { $implicit: f, d }" />
+        }
+      </div>
+    } @else {
+      <ng-container *ngTemplateOutlet="extra; context: { $implicit: row[0], d }" />
+    }
+  }
+</ng-template>
+
 <!-- One typed extra (kinds PR 4, S4b-BL-208; kind-extras.ts): a switch, a calendar date (the platform's picker, the
      value YYYY-MM-DD), a floor (S4b-BL-87; S4b-BL-104 (c): the field holds the number and the Basement switch after the
-     row the sign, so a basement needs no minus key, and a minus typed anyway turns the switch on), or a whole number
-     (whole rupees for money). -->
+     row the sign, so a basement needs no minus key, and a minus typed anyway turns the switch on), a line of text, a
+     choice of options (S4b-BL-209), or a whole number (whole rupees for money). -->
 <ng-template #extra let-f let-d="d">
   @switch (f.control) {
     @case ('bool') {
@@ -995,21 +997,27 @@
         <input [id]="f.domId" type="date" [ngModel]="extras.value(d, f)" (ngModelChange)="extras.set(d, f, $event)" />
       </div>
     }
+    @case ('text') {
+      <div class="field">
+        <label [for]="f.domId">{{ f.label | t }}</label>
+        <input [id]="f.domId" type="text" [attr.maxlength]="f.maxLength" autocomplete="off" [ngModel]="extras.value(d, f)" (ngModelChange)="extras.set(d, f, $event)" />
+      </div>
+    }
+    @case ('enum') {
+      <div class="field">
+        <label [for]="f.domId">{{ f.label | t }}</label>
+        <select [id]="f.domId" [ngModel]="extras.value(d, f)" (ngModelChange)="extras.set(d, f, $event)">
+          <option [ngValue]="null">{{ 'common.notSet' | t }}</option>
+          @for (o of f.options; track o.id) { <option [ngValue]="o.id">{{ o.label | t }}</option> }
+        </select>
+      </div>
+    }
     @case ('level') {
       <div class="field narrow">
         <label [for]="f.domId">{{ f.label | t }}</label>
-        <input
-          [id]="f.domId"
-          type="number"
-          [attr.min]="f.min"
-          [attr.max]="f.max"
-          step="1"
-          inputmode="numeric"
-          [ngModel]="floor.shown(d)"
-          (ngModelChange)="floor.type(d, $event)"
-          [attr.aria-invalid]="floor.invalid(d) ? 'true' : null"
-          [attr.aria-describedby]="f.domId + (floor.invalid(d) ? '-error' : '-hint')"
-        />
+        <input [id]="f.domId" type="number" [attr.min]="f.min" [attr.max]="f.max" step="1" inputmode="numeric" [ngModel]="floor.shown(d)"
+          (ngModelChange)="floor.type(d, $event)" [attr.aria-invalid]="floor.invalid(d) ? 'true' : null"
+          [attr.aria-describedby]="f.domId + (floor.invalid(d) ? '-error' : '-hint')" />
         @if (floor.invalid(d)) {
           <span [id]="f.domId + '-error'" class="field-error" role="alert">{{ (floor.basement(d) ? 'house.floorBasementInvalid' : 'house.floorInvalid') | t }}</span>
         } @else {
@@ -1020,16 +1028,8 @@
     @default {
       <div class="field" [class.narrow]="f.narrow">
         <label [for]="f.domId">{{ f.label | t }}{{ f.suffix }}</label>
-        <input
-          [id]="f.domId"
-          type="number"
-          [attr.min]="f.min"
-          [attr.max]="f.max"
-          step="1"
-          inputmode="numeric"
-          [ngModel]="extras.value(d, f)"
-          (ngModelChange)="extras.set(d, f, $event)"
-        />
+        <input [id]="f.domId" type="number" [attr.min]="f.min" [attr.max]="f.max" step="1" inputmode="numeric"
+          [ngModel]="extras.value(d, f)" (ngModelChange)="extras.set(d, f, $event)" />
       </div>
     }
   }

@@ -1,0 +1,29 @@
+{
+  "spec": [
+    "backend/src/test/java/app/doorprints/server/house/SchoolKindTest.java",
+    "backend/src/test/java/app/doorprints/server/backup/SchoolCandidateApiTest.java"
+  ],
+  "maven": [
+    "-Dtest=SchoolKindTest,SchoolCandidateApiTest"
+  ],
+  "mutations": [
+    {
+      "file": "backend/src/main/java/app/doorprints/server/backup/BackupMapper.java",
+      "find": "                House.HOUSE_KIND.equals(h.getKind()) ? null : h.getKind());",
+      "replace": "                null);",
+      "expect": "aSchoolInABackupIsImportedKeptAsASchoolAndExportedBackTheSame"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/backup/BackupService.java",
+      "find": "        house.setKind(row.kind() != null && row.kind().matches(House.KIND_PATTERN) ? row.kind() : House.HOUSE_KIND);",
+      "replace": "        house.setKind(House.HOUSE_KIND);",
+      "expect": "aSchoolInABackupIsImportedKeptAsASchoolAndExportedBackTheSame"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/house/HouseDto.java",
+      "find": "        return money == null || money.cadence() == null || !House.HOUSE_KIND.equals(kind)",
+      "replace": "        return money == null || money.cadence() == null",
+      "expect": "aSchoolsMoneyMayHaveAnyCadenceOfTheVocabularyAndAHousesMayNot"
+    }
+  ]
+}

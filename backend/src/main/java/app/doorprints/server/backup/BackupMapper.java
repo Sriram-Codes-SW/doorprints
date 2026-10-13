@@ -459,7 +459,8 @@ final class BackupMapper {
                 h.getRating(), h.getContactName(), h.getContactPhone(), h.getListingUrl(), h.getNotes(),
                 d.areaSqft(), h.getLocationSource(), d.cost(), d.rooms(), d.answers(), d.moveIn(), d.floor(),
                 h.getBrokerId(), sortedChecklist(h.getChecklist()), millis(h.getCreatedAt()), millis(h.getUpdatedAt()),
-                d.extras() == null || d.extras().other().isEmpty() ? null : new TreeMap<>(d.extras().other()));
+                d.extras() == null || d.extras().other().isEmpty() ? null : new TreeMap<>(d.extras().other()),
+                House.HOUSE_KIND.equals(h.getKind()) ? null : h.getKind());
     }
 
     private static BackupVisit visit(Visit v) {

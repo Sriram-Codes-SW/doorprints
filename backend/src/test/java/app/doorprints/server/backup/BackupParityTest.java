@@ -131,6 +131,8 @@ class BackupParityTest {
         // a candidate's extras), so no sample house carries it.
         var houseKeys = new java.util.ArrayList<>(keysOf(root, "houses"));
         houseKeys.add("extrasOther");
+        // Then kind (S4b-BL-209): a kind other than the house, read out of a candidate the same way.
+        houseKeys.add("kind");
         assertThat(houseKeys).isEqualTo(components(BackupHouse.class));
         // Slice 1c: the rooms nested in the fullest house carry exactly the components of HouseRoom, in order.
         var rooms = new java.util.ArrayList<String>();

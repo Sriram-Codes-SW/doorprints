@@ -38,6 +38,7 @@ import { DEFAULT_SCORING } from '../../shared/scoring';
 import { HouseDetailPage } from './house-detail-page';
 import golden from './house-form.golden.json';
 import fieldVectors from '../../../../../docs/schemas/kinds/kind-field-vectors.json';
+import { controls, headings, split, structure, text } from '../../shared/testing/form-lines';
 
 const SAVED: HouseDto = {
   id: '5b1f3c1e-8d0a-4c55-9a51-0d2a6f7e9b10',
@@ -87,72 +88,6 @@ async function open(house: HouseDto, lang: Lang): Promise<{ fixture: ComponentFi
   await new Promise((resolve) => setTimeout(resolve, 0));
   fixture.detectChanges();
   return { fixture, host: fixture.nativeElement as HTMLElement };
-}
-
-const ATTRS = ['type', 'min', 'max', 'step', 'inputmode', 'maxlength', 'role', 'required', 'readonly', 'autocomplete', 'placeholder', 'rows', 'name', 'aria-label', 'aria-describedby', 'aria-invalid'];
-const text = (el: Element | null | undefined): string => (el?.textContent ?? '').replace(/\s+/g, ' ').trim();
-
-/** Where a control sits under its card: the classes of the elements between them, outermost first. */
-function place(el: Element, card: Element): string {
-  const chain: string[] = [];
-  for (let p = el.parentElement; p && p !== card; p = p.parentElement) {
-    const at = p.parentElement ? [...p.parentElement.children].indexOf(p) : 0;
-    chain.unshift(`${p.tagName.toLowerCase()}.${[...p.classList].join('.')}[${at}]`);
-  }
-  return chain.join('>');
-}
-
-/** The name a control is given on screen: its `<label for>`, else the label around it, else its fieldset's legend. */
-function labelOf(el: Element, host: HTMLElement): string {
-  const id = el.getAttribute('id');
-  const forLabel = id ? host.querySelector(`label[for="${id}"]`) : null;
-  if (forLabel) return text(forLabel);
-  const around = el.closest('label');
-  if (around) return `${text(el.closest('fieldset')?.querySelector('legend'))} / ${text(around)}`;
-  return `aria-label=${el.getAttribute('aria-label') ?? ''}`;
-}
-
-/** One line per control of the Details and Cost cards, in page order. */
-function controls(host: HTMLElement): string[] {
-  const lines: string[] = [];
-  for (const card of ['details-heading', 'cost-heading']) {
-    const section = host.querySelector(`section[aria-labelledby="${card}"]`);
-    if (!section) continue;
-    for (const el of section.querySelectorAll('input, select, textarea')) {
-      const attrs = ATTRS.filter((a) => el.hasAttribute(a)).map((a) => `${a}=${el.getAttribute(a)}`).join(' ');
-      const options = el instanceof HTMLSelectElement ? ` [${[...el.options].map((o) => text(o)).join('|')}]` : '';
-      lines.push(`${card.replace('-heading', '')} ${el.tagName.toLowerCase()}#${el.id || '-'} ${attrs} @${place(el, section)} "${labelOf(el, host)}"${options}`);
-    }
-  }
-  return lines;
-}
-
-/** The element tree of the Details and Cost cards: every element's depth, tag, id, classes, role and aria-* names. */
-function structure(host: HTMLElement): string[] {
-  const lines: string[] = [];
-  const walk = (el: Element, depth: number): void => {
-    const aria = [...el.attributes].filter((a) => a.name === 'role' || a.name.startsWith('aria-')).map((a) => `${a.name}=${a.value}`);
-    lines.push(`${depth} ${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''}${[...el.classList].map((c) => '.' + c).join('')} ${aria.join(' ')}`.trim());
-    for (const child of el.children) walk(child, depth + 1);
-  };
-  for (const card of ['details-heading', 'cost-heading']) {
-    const section = host.querySelector(`section[aria-labelledby="${card}"]`);
-    if (section) walk(section, 0);
-  }
-  return lines;
-}
-
-/** Every section heading of the page, in page order, with the id it is named by. */
-function headings(host: HTMLElement): string[] {
-  return [...host.querySelectorAll('h2')].map((h) => `${h.id || '-'} "${text(h)}"`);
-}
-
-/** A control line split into its shape (the same in every language) and its words (label, options, placeholder). */
-function split(line: string): [string, string] {
-  const m = / "(.*)"( \[.*\])?$/.exec(line)!;
-  const head = line.slice(0, m.index);
-  const ph = / placeholder=(.*?) @/.exec(head);
-  return [head.replace(/ placeholder=(.*?) @/, ' placeholder @'), m[1] + (m[2] ?? '') + (ph ? ` placeholder=${ph[1]}` : '')];
 }
 
 const LANGS: Lang[] = ['en', 'hi', 'ta', 'te'];

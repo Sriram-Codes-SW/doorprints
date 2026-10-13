@@ -67,7 +67,8 @@ import java.util.UUID;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({"id", "label", "address", "street", "locality", "lat", "lon", "status", "price", "priceType",
         "bedrooms", "rating", "contactName", "contactPhone", "listingUrl", "notes", "areaSqft", "locationSource",
-        "cost", "rooms", "answers", "moveIn", "floor", "brokerId", "checklist", "createdAt", "updatedAt", "extrasOther"})
+        "cost", "rooms", "answers", "moveIn", "floor", "brokerId", "checklist", "createdAt", "updatedAt", "extrasOther",
+        "kind"})
 public record BackupHouse(
         UUID id,
         String label,
@@ -110,6 +111,9 @@ public record BackupHouse(
         /* S4b-BL-248: the extras a newer app wrote that this server does not know, by id. Never a key of a file of the
            family before: BackupWire reads them out of a candidate's extras and writes them back there, after the known
            ones; BackupService keeps them by CandidateExtras.keptOther's rules. Absent when there are none. */
-        Map<String, JsonNode> extrasOther
+        Map<String, JsonNode> extrasOther,
+        /* S4b-BL-209: the candidate's kind when it is not the house (the hidden schools kind), as BackupWire reads it
+           out of a candidate and writes it back there; absent for a house. Never a key of a file of the family before. */
+        String kind
 ) {
 }

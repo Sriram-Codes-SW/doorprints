@@ -40,28 +40,28 @@ export interface KindExtra {
   readonly cadenceFrom?: 'money';
   /** Shown only while the candidate's money has one of these cadences, or none. */
   readonly forCadences?: readonly Cadence[];
-  /** Where the value lives on a house of the family before the reset, which the website's form still edits. */
-  readonly was: string;
+  /** A text's most characters. */
+  readonly maxLength?: number;
+  /** An enum's options, in the kind file's order, each with its label key. */
+  readonly options?: readonly { readonly id: string; readonly label: TKey }[];
+  /**
+   * Where the value lives on a house of the family before the reset, which the website's form still edits. A kind with
+   * no such place (a school, S4b-BL-209) leaves it out: its values are the candidate's extras the house model does not
+   * know (`HouseDto.extrasOther`, kept and written back by `core/candidate.ts`).
+   */
+  readonly was?: string;
 }
 
 /**
  * The control a typed extra is drawn with, the same on both stacks (`docs/schemas/kinds/kind-field-vectors.json`): an
- * integer field, a level (a floor: the field holds the level, a Basement switch its sign), whole rupees, a switch or a
- * calendar date. `text` and `enum` have no control yet: no built-in kind has one (S4b-BL-256).
+ * integer field, a level (a floor: the field holds the level, a Basement switch its sign), whole rupees, a switch, a
+ * calendar date, a line of text or a choice of options (text and enum since the schools kind, S4b-BL-209).
  */
-export type ExtraControl = 'number' | 'level' | 'money' | 'bool' | 'date';
+export type ExtraControl = 'number' | 'level' | 'money' | 'bool' | 'date' | 'text' | 'enum';
 
 export function controlOf(f: KindExtra): ExtraControl {
-  switch (f.type) {
-    case 'number':
-      return f.unit === 'level' ? 'level' : 'number';
-    case 'money':
-    case 'bool':
-    case 'date':
-      return f.type;
-    default:
-      throw new Error(`no control for the ${f.type} extra ${f.id}`);
-  }
+  if (f.type === 'number') return f.unit === 'level' ? 'level' : 'number';
+  return f.type;
 }
 
 /** The cadence of a house's price type (`RENT` is `month`, `SALE` is `once`, none is none; door 7). */
@@ -128,7 +128,10 @@ export const HOUSE_FIELDS = new KindFields(HOUSE_LABELS, [
   { id: 'agreedPrice', type: 'money', max: MONEY_MAX, cadenceFrom: 'money', section: 'cost', order: 110, was: 'cost.agreedPrice' },
 ]);
 
-/** The built-in kind with this id, `undefined` for one this build does not have. */
+/**
+ * The built-in kind with this id, `undefined` for one this build does not have. The schools kind is not here: it is
+ * reached only through the developer flag (`core/dev-kinds.ts`, S4b-BL-209).
+ */
 export function kindFields(kind: string): KindFields | undefined {
   return kind === HOUSE_FIELDS.kind ? HOUSE_FIELDS : undefined;
 }

@@ -1,0 +1,894 @@
+{
+ "format": "doorprints-school-vectors/1",
+ "note": "The hidden schools kind (kinds PR 5, S4b-BL-209; docs/03 ADR-36 §18.9): what docs/schemas/kinds/school.json resolves to, in the shape of kind-vectors.json (`kind`); what the typed-extras renderer draws for it per stack, in the shape of kind-field-vectors.json (`fields`, `rows`; a school has no money of its own, so its Details extras have rows of their own instead of the price's); and one school candidate that every stack keeps unchanged through its stores, its sync and its backups: `backup` is a doorprints-backup/1 file whose `candidates` each stack reads and writes back byte for byte, and `candidate` is the same school on the wire (`/api/candidates`, the Drive sync file, the website's IndexedDB) that each stack's mapping writes back as it came. The house's vectors and samples are unchanged. Written from school.json and the dictionaries on the branch feat/kinds-7-schools-kind; hi, ta and te are under review. Readers: web school-kind.spec.ts and school-kind-file.spec.ts, the server's SchoolKindTest and SchoolCandidateApiTest, and the phone's SchoolKindVectorsTest (:shared), SchoolKindScreensTest (:ui) and SchoolSampleTest (:app). Change a case only with the change it pins.",
+ "kind": {
+  "id": "school",
+  "version": 1,
+  "statuses": [
+   "NEW",
+   "SHORTLISTED",
+   "REJECTED",
+   "TAKEN",
+   "NOT_CHOSEN"
+  ],
+  "sections": [
+   "details",
+   "cost",
+   "areaNotes",
+   "distances",
+   "location",
+   "walks",
+   "visits",
+   "photos"
+  ],
+  "hidden": {
+   "sections": [
+    "rooms",
+    "questions",
+    "viewings",
+    "moveIn",
+    "checklist"
+   ],
+   "fields": [
+    "money",
+    "brokerId"
+   ]
+  },
+  "core": [
+   "label",
+   "status",
+   "rating",
+   "address",
+   "street",
+   "locality",
+   "contactName",
+   "contactPhone",
+   "listingUrl",
+   "notes",
+   "location",
+   "locationSource"
+  ],
+  "extras": [
+   {
+    "id": "board",
+    "type": "enum",
+    "options": [
+     "CBSE",
+     "ICSE",
+     "STATE",
+     "IB",
+     "IGCSE",
+     "OTHER"
+    ]
+   },
+   {
+    "id": "medium",
+    "type": "enum",
+    "options": [
+     "ENGLISH",
+     "HINDI",
+     "REGIONAL",
+     "OTHER"
+    ]
+   },
+   {
+    "id": "grades",
+    "type": "text",
+    "maxLength": 40
+   },
+   {
+    "id": "commuteMinutes",
+    "type": "number",
+    "integer": true,
+    "unit": "minute",
+    "min": 0,
+    "max": 300
+   },
+   {
+    "id": "busService",
+    "type": "bool"
+   },
+   {
+    "id": "fees",
+    "type": "money",
+    "max": 1000000000000,
+    "cadences": [
+     "year"
+    ]
+   },
+   {
+    "id": "admissionFee",
+    "type": "money",
+    "max": 1000000000000,
+    "cadences": [
+     "once"
+    ]
+   }
+  ],
+  "layout": {
+   "details": [
+    "label",
+    "status",
+    "rating",
+    "board",
+    "medium",
+    "grades",
+    "commuteMinutes",
+    "busService",
+    "address",
+    "street",
+    "locality",
+    "contactName",
+    "contactPhone",
+    "listingUrl",
+    "notes"
+   ],
+   "cost": [
+    "fees",
+    "admissionFee"
+   ],
+   "location": [
+    "location",
+    "locationSource"
+   ]
+  },
+  "checklist": [],
+  "questionScopes": {
+   "BOTH": [
+    "year",
+    "once"
+   ]
+  },
+  "search": [
+   "address",
+   "areaNotes",
+   "contactName",
+   "label",
+   "locality",
+   "notes",
+   "street"
+  ],
+  "notSearched": [
+   "admissionFee",
+   "board",
+   "busService",
+   "commuteMinutes",
+   "contactPhone",
+   "fees",
+   "grades",
+   "listingUrl",
+   "location",
+   "locationSource",
+   "medium",
+   "rating",
+   "status"
+  ],
+  "ai": {
+   "extract": [],
+   "ask": [
+    "label",
+    "address",
+    "street",
+    "locality",
+    "status",
+    "rating",
+    "notes"
+   ],
+   "plan": [
+    "label",
+    "status",
+    "rating",
+    "locality"
+   ],
+   "never": [
+    "contactName",
+    "contactPhone"
+   ]
+  },
+  "labels": {
+   "web": {
+    "en": {
+     "kind.new": "New school",
+     "kind.many": "Schools",
+     "kind.delete": "Delete school",
+     "status.NEW": "New",
+     "status.SHORTLISTED": "Shortlisted",
+     "status.REJECTED": "Rejected",
+     "status.TAKEN": "Taken",
+     "status.NOT_CHOSEN": "Not chosen",
+     "section.details": "Details",
+     "section.cost": "Fees",
+     "section.areaNotes": "Area notes",
+     "section.distances": "Distances",
+     "section.location": "Location",
+     "section.walks": "Saved walks",
+     "section.visits": "Visits",
+     "section.photos": "Photos",
+     "field.label": "School name",
+     "field.status": "Status",
+     "field.rating": "Your rating",
+     "field.address": "Address",
+     "field.street": "Street",
+     "field.locality": "Locality",
+     "field.contactName": "Contact name",
+     "field.contactPhone": "Contact phone",
+     "field.listingUrl": "Website",
+     "field.notes": "Notes",
+     "field.location": "Location",
+     "field.locationSource": "Approximate location",
+     "field.board": "Board",
+     "option.board.CBSE": "CBSE",
+     "option.board.ICSE": "ICSE",
+     "option.board.STATE": "State board",
+     "option.board.IB": "IB",
+     "option.board.IGCSE": "Cambridge (IGCSE)",
+     "option.board.OTHER": "Other",
+     "field.medium": "Medium of instruction",
+     "option.medium.ENGLISH": "English",
+     "option.medium.HINDI": "Hindi",
+     "option.medium.REGIONAL": "State language",
+     "option.medium.OTHER": "Other",
+     "field.grades": "Grades offered",
+     "field.commuteMinutes": "Commute (minutes)",
+     "field.busService": "School bus",
+     "field.fees": "Fees per year",
+     "field.admissionFee": "Admission fee"
+    },
+    "hi": {
+     "kind.new": "नया स्कूल",
+     "kind.many": "स्कूल",
+     "kind.delete": "स्कूल हटाएँ",
+     "status.NEW": "नया",
+     "status.SHORTLISTED": "चुना गया",
+     "status.REJECTED": "अस्वीकृत",
+     "status.TAKEN": "ले लिया",
+     "status.NOT_CHOSEN": "नहीं चुना",
+     "section.details": "विवरण",
+     "section.cost": "फ़ीस",
+     "section.areaNotes": "इलाके के नोट",
+     "section.distances": "दूरियाँ",
+     "section.location": "जगह",
+     "section.walks": "सहेजी हुई सैरें",
+     "section.visits": "दौरे",
+     "section.photos": "तस्वीरें",
+     "field.label": "स्कूल का नाम",
+     "field.status": "स्थिति",
+     "field.rating": "आपकी रेटिंग",
+     "field.address": "पता",
+     "field.street": "सड़क",
+     "field.locality": "इलाका",
+     "field.contactName": "संपर्क का नाम",
+     "field.contactPhone": "संपर्क फ़ोन",
+     "field.listingUrl": "वेबसाइट",
+     "field.notes": "नोट",
+     "field.location": "जगह",
+     "field.locationSource": "अनुमानित स्थान",
+     "field.board": "बोर्ड",
+     "option.board.CBSE": "CBSE",
+     "option.board.ICSE": "ICSE",
+     "option.board.STATE": "राज्य बोर्ड",
+     "option.board.IB": "IB",
+     "option.board.IGCSE": "कैम्ब्रिज (IGCSE)",
+     "option.board.OTHER": "अन्य",
+     "field.medium": "पढ़ाई का माध्यम",
+     "option.medium.ENGLISH": "अंग्रेज़ी",
+     "option.medium.HINDI": "हिन्दी",
+     "option.medium.REGIONAL": "राज्य की भाषा",
+     "option.medium.OTHER": "अन्य",
+     "field.grades": "कक्षाएँ",
+     "field.commuteMinutes": "आने-जाने का समय (मिनट)",
+     "field.busService": "स्कूल बस",
+     "field.fees": "सालाना फ़ीस",
+     "field.admissionFee": "दाख़िला फ़ीस"
+    },
+    "ta": {
+     "kind.new": "புதிய பள்ளி",
+     "kind.many": "பள்ளிகள்",
+     "kind.delete": "பள்ளியை நீக்கு",
+     "status.NEW": "புதியது",
+     "status.SHORTLISTED": "தேர்வானது",
+     "status.REJECTED": "நிராகரிக்கப்பட்டது",
+     "status.TAKEN": "எடுத்தது",
+     "status.NOT_CHOSEN": "தேர்ந்தெடுக்கவில்லை",
+     "section.details": "விவரங்கள்",
+     "section.cost": "கட்டணம்",
+     "section.areaNotes": "பகுதிக் குறிப்புகள்",
+     "section.distances": "தூரங்கள்",
+     "section.location": "இருப்பிடம்",
+     "section.walks": "சேமித்த நடைகள்",
+     "section.visits": "வருகைகள்",
+     "section.photos": "படங்கள்",
+     "field.label": "பள்ளியின் பெயர்",
+     "field.status": "நிலை",
+     "field.rating": "உங்கள் மதிப்பீடு",
+     "field.address": "முகவரி",
+     "field.street": "தெரு",
+     "field.locality": "பகுதி",
+     "field.contactName": "தொடர்பு நபர் பெயர்",
+     "field.contactPhone": "தொடர்பு தொலைபேசி",
+     "field.listingUrl": "இணையதளம்",
+     "field.notes": "குறிப்புகள்",
+     "field.location": "இருப்பிடம்",
+     "field.locationSource": "தோராயமான இருப்பிடம்",
+     "field.board": "கல்வி வாரியம்",
+     "option.board.CBSE": "CBSE",
+     "option.board.ICSE": "ICSE",
+     "option.board.STATE": "மாநில வாரியம்",
+     "option.board.IB": "IB",
+     "option.board.IGCSE": "கேம்பிரிட்ஜ் (IGCSE)",
+     "option.board.OTHER": "மற்றவை",
+     "field.medium": "பயிற்று மொழி",
+     "option.medium.ENGLISH": "ஆங்கிலம்",
+     "option.medium.HINDI": "இந்தி",
+     "option.medium.REGIONAL": "மாநில மொழி",
+     "option.medium.OTHER": "மற்றவை",
+     "field.grades": "வகுப்புகள்",
+     "field.commuteMinutes": "பயண நேரம் (நிமிடங்கள்)",
+     "field.busService": "பள்ளிப் பேருந்து",
+     "field.fees": "ஆண்டுக் கட்டணம்",
+     "field.admissionFee": "சேர்க்கைக் கட்டணம்"
+    },
+    "te": {
+     "kind.new": "కొత్త పాఠశాల",
+     "kind.many": "పాఠశాలలు",
+     "kind.delete": "పాఠశాలను తొలగించు",
+     "status.NEW": "కొత్తది",
+     "status.SHORTLISTED": "ఎంపికైంది",
+     "status.REJECTED": "తిరస్కరించబడింది",
+     "status.TAKEN": "తీసుకున్నది",
+     "status.NOT_CHOSEN": "ఎంచుకోలేదు",
+     "section.details": "వివరాలు",
+     "section.cost": "ఫీజు",
+     "section.areaNotes": "ప్రాంత గమనికలు",
+     "section.distances": "దూరాలు",
+     "section.location": "స్థానం",
+     "section.walks": "సేవ్ చేసిన నడకలు",
+     "section.visits": "సందర్శనలు",
+     "section.photos": "ఫోటోలు",
+     "field.label": "పాఠశాల పేరు",
+     "field.status": "స్థితి",
+     "field.rating": "మీ రేటింగ్",
+     "field.address": "చిరునామా",
+     "field.street": "వీధి",
+     "field.locality": "ప్రాంతం",
+     "field.contactName": "సంప్రదించాల్సిన వ్యక్తి పేరు",
+     "field.contactPhone": "సంప్రదింపు ఫోన్",
+     "field.listingUrl": "వెబ్‌సైట్",
+     "field.notes": "గమనికలు",
+     "field.location": "స్థానం",
+     "field.locationSource": "సుమారు స్థానం",
+     "field.board": "బోర్డు",
+     "option.board.CBSE": "CBSE",
+     "option.board.ICSE": "ICSE",
+     "option.board.STATE": "రాష్ట్ర బోర్డు",
+     "option.board.IB": "IB",
+     "option.board.IGCSE": "కేంబ్రిడ్జ్ (IGCSE)",
+     "option.board.OTHER": "ఇతర",
+     "field.medium": "బోధనా మాధ్యమం",
+     "option.medium.ENGLISH": "ఇంగ్లీష్",
+     "option.medium.HINDI": "హిందీ",
+     "option.medium.REGIONAL": "రాష్ట్ర భాష",
+     "option.medium.OTHER": "ఇతర",
+     "field.grades": "తరగతులు",
+     "field.commuteMinutes": "ప్రయాణ సమయం (నిమిషాలు)",
+     "field.busService": "స్కూల్ బస్సు",
+     "field.fees": "సంవత్సర ఫీజు",
+     "field.admissionFee": "ప్రవేశ ఫీజు"
+    }
+   },
+   "android": {
+    "en": {
+     "kind.new": "Save a school",
+     "kind.many": "Schools",
+     "kind.delete": "Delete school",
+     "status.NEW": "New",
+     "status.SHORTLISTED": "Shortlisted",
+     "status.REJECTED": "Rejected",
+     "status.TAKEN": "Taken",
+     "status.NOT_CHOSEN": "Not chosen",
+     "section.details": null,
+     "section.cost": "Fees",
+     "section.areaNotes": "Area notes",
+     "section.distances": "Distances",
+     "section.location": "Location",
+     "section.walks": "Saved walks",
+     "section.visits": "Visits (%1$d)",
+     "section.photos": "Photos",
+     "field.label": "School name",
+     "field.status": "Status",
+     "field.rating": "Your rating",
+     "field.address": "Address",
+     "field.street": "Street",
+     "field.locality": "Locality",
+     "field.contactName": "Contact name",
+     "field.contactPhone": "Phone",
+     "field.listingUrl": "Website",
+     "field.notes": "Notes",
+     "field.location": "Location",
+     "field.locationSource": "Approximate location",
+     "field.board": "Board",
+     "option.board.CBSE": "CBSE",
+     "option.board.ICSE": "ICSE",
+     "option.board.STATE": "State board",
+     "option.board.IB": "IB",
+     "option.board.IGCSE": "Cambridge (IGCSE)",
+     "option.board.OTHER": "Other",
+     "field.medium": "Medium of instruction",
+     "option.medium.ENGLISH": "English",
+     "option.medium.HINDI": "Hindi",
+     "option.medium.REGIONAL": "State language",
+     "option.medium.OTHER": "Other",
+     "field.grades": "Grades offered",
+     "field.commuteMinutes": "Commute (minutes)",
+     "field.busService": "School bus",
+     "field.fees": "Fees per year (₹)",
+     "field.admissionFee": "Admission fee (₹)"
+    },
+    "hi": {
+     "kind.new": "स्कूल सहेजें",
+     "kind.many": "स्कूल",
+     "kind.delete": "स्कूल हटाएँ",
+     "status.NEW": "नया",
+     "status.SHORTLISTED": "चुना गया",
+     "status.REJECTED": "अस्वीकृत",
+     "status.TAKEN": "ले लिया",
+     "status.NOT_CHOSEN": "नहीं चुना",
+     "section.details": null,
+     "section.cost": "फ़ीस",
+     "section.areaNotes": "इलाक़े के नोट",
+     "section.distances": "दूरियाँ",
+     "section.location": "जगह",
+     "section.walks": "सहेजी गई सैर",
+     "section.visits": "दौरे (%1$d)",
+     "section.photos": "तस्वीरें",
+     "field.label": "स्कूल का नाम",
+     "field.status": "स्थिति",
+     "field.rating": "आपकी रेटिंग",
+     "field.address": "पता",
+     "field.street": "सड़क",
+     "field.locality": "इलाका",
+     "field.contactName": "संपर्क व्यक्ति का नाम",
+     "field.contactPhone": "फ़ोन",
+     "field.listingUrl": "वेबसाइट",
+     "field.notes": "नोट",
+     "field.location": "जगह",
+     "field.locationSource": "अनुमानित जगह",
+     "field.board": "बोर्ड",
+     "option.board.CBSE": "CBSE",
+     "option.board.ICSE": "ICSE",
+     "option.board.STATE": "राज्य बोर्ड",
+     "option.board.IB": "IB",
+     "option.board.IGCSE": "कैम्ब्रिज (IGCSE)",
+     "option.board.OTHER": "अन्य",
+     "field.medium": "पढ़ाई का माध्यम",
+     "option.medium.ENGLISH": "अंग्रेज़ी",
+     "option.medium.HINDI": "हिन्दी",
+     "option.medium.REGIONAL": "राज्य की भाषा",
+     "option.medium.OTHER": "अन्य",
+     "field.grades": "कक्षाएँ",
+     "field.commuteMinutes": "आने-जाने का समय (मिनट)",
+     "field.busService": "स्कूल बस",
+     "field.fees": "सालाना फ़ीस (₹)",
+     "field.admissionFee": "दाख़िला फ़ीस (₹)"
+    },
+    "ta": {
+     "kind.new": "பள்ளியைச் சேமிக்கவும்",
+     "kind.many": "பள்ளிகள்",
+     "kind.delete": "பள்ளியை நீக்கு",
+     "status.NEW": "புதியது",
+     "status.SHORTLISTED": "தேர்வானது",
+     "status.REJECTED": "நிராகரிக்கப்பட்டது",
+     "status.TAKEN": "எடுக்கப்பட்டது",
+     "status.NOT_CHOSEN": "தேர்ந்தெடுக்கப்படவில்லை",
+     "section.details": null,
+     "section.cost": "கட்டணம்",
+     "section.areaNotes": "பகுதிக் குறிப்புகள்",
+     "section.distances": "தூரங்கள்",
+     "section.location": "இருப்பிடம்",
+     "section.walks": "சேமித்த நடைகள்",
+     "section.visits": "வருகைகள் (%1$d)",
+     "section.photos": "படங்கள்",
+     "field.label": "பள்ளியின் பெயர்",
+     "field.status": "நிலை",
+     "field.rating": "உங்கள் மதிப்பீடு",
+     "field.address": "முகவரி",
+     "field.street": "தெரு",
+     "field.locality": "பகுதி",
+     "field.contactName": "தொடர்பு நபரின் பெயர்",
+     "field.contactPhone": "தொலைபேசி",
+     "field.listingUrl": "இணையதளம்",
+     "field.notes": "குறிப்புகள்",
+     "field.location": "இருப்பிடம்",
+     "field.locationSource": "தோராயமான இருப்பிடம்",
+     "field.board": "கல்வி வாரியம்",
+     "option.board.CBSE": "CBSE",
+     "option.board.ICSE": "ICSE",
+     "option.board.STATE": "மாநில வாரியம்",
+     "option.board.IB": "IB",
+     "option.board.IGCSE": "கேம்பிரிட்ஜ் (IGCSE)",
+     "option.board.OTHER": "மற்றவை",
+     "field.medium": "பயிற்று மொழி",
+     "option.medium.ENGLISH": "ஆங்கிலம்",
+     "option.medium.HINDI": "இந்தி",
+     "option.medium.REGIONAL": "மாநில மொழி",
+     "option.medium.OTHER": "மற்றவை",
+     "field.grades": "வகுப்புகள்",
+     "field.commuteMinutes": "பயண நேரம் (நிமிடங்கள்)",
+     "field.busService": "பள்ளிப் பேருந்து",
+     "field.fees": "ஆண்டுக் கட்டணம் (₹)",
+     "field.admissionFee": "சேர்க்கைக் கட்டணம் (₹)"
+    },
+    "te": {
+     "kind.new": "పాఠశాలను సేవ్ చేయండి",
+     "kind.many": "పాఠశాలలు",
+     "kind.delete": "పాఠశాలను తొలగించు",
+     "status.NEW": "కొత్తది",
+     "status.SHORTLISTED": "ఎంపికైంది",
+     "status.REJECTED": "తిరస్కరించబడింది",
+     "status.TAKEN": "తీసుకున్నాం",
+     "status.NOT_CHOSEN": "ఎంచుకోలేదు",
+     "section.details": null,
+     "section.cost": "ఫీజు",
+     "section.areaNotes": "ప్రాంత గమనికలు",
+     "section.distances": "దూరాలు",
+     "section.location": "స్థానం",
+     "section.walks": "సేవ్ చేసిన నడకలు",
+     "section.visits": "సందర్శనలు (%1$d)",
+     "section.photos": "ఫోటోలు",
+     "field.label": "పాఠశాల పేరు",
+     "field.status": "స్థితి",
+     "field.rating": "మీ రేటింగ్",
+     "field.address": "చిరునామా",
+     "field.street": "వీధి",
+     "field.locality": "ప్రాంతం",
+     "field.contactName": "సంప్రదించవలసిన వ్యక్తి పేరు",
+     "field.contactPhone": "ఫోన్",
+     "field.listingUrl": "వెబ్‌సైట్",
+     "field.notes": "గమనికలు",
+     "field.location": "స్థానం",
+     "field.locationSource": "సుమారు స్థానం",
+     "field.board": "బోర్డు",
+     "option.board.CBSE": "CBSE",
+     "option.board.ICSE": "ICSE",
+     "option.board.STATE": "రాష్ట్ర బోర్డు",
+     "option.board.IB": "IB",
+     "option.board.IGCSE": "కేంబ్రిడ్జ్ (IGCSE)",
+     "option.board.OTHER": "ఇతర",
+     "field.medium": "బోధనా మాధ్యమం",
+     "option.medium.ENGLISH": "ఇంగ్లీష్",
+     "option.medium.HINDI": "హిందీ",
+     "option.medium.REGIONAL": "రాష్ట్ర భాష",
+     "option.medium.OTHER": "ఇతర",
+     "field.grades": "తరగతులు",
+     "field.commuteMinutes": "ప్రయాణ సమయం (నిమిషాలు)",
+     "field.busService": "స్కూల్ బస్సు",
+     "field.fees": "సంవత్సర ఫీజు (₹)",
+     "field.admissionFee": "ప్రవేశ ఫీజు (₹)"
+    }
+   }
+  }
+ },
+ "fields": [
+  {
+   "id": "board",
+   "section": "details",
+   "control": "enum",
+   "web": {
+    "id": "extra-board",
+    "label": "school.board",
+    "suffix": null,
+    "input": {
+     "tag": "select",
+     "options": [
+      null,
+      "CBSE",
+      "ICSE",
+      "STATE",
+      "IB",
+      "IGCSE",
+      "OTHER"
+     ]
+    }
+   },
+   "android": {
+    "label": "school_board",
+    "keyboard": null,
+    "digits": null,
+    "options": [
+     "school_board_CBSE",
+     "school_board_ICSE",
+     "school_board_STATE",
+     "school_board_IB",
+     "school_board_IGCSE",
+     "school_option_OTHER"
+    ]
+   }
+  },
+  {
+   "id": "medium",
+   "section": "details",
+   "control": "enum",
+   "web": {
+    "id": "extra-medium",
+    "label": "school.medium",
+    "suffix": null,
+    "input": {
+     "tag": "select",
+     "options": [
+      null,
+      "ENGLISH",
+      "HINDI",
+      "REGIONAL",
+      "OTHER"
+     ]
+    }
+   },
+   "android": {
+    "label": "school_medium",
+    "keyboard": null,
+    "digits": null,
+    "options": [
+     "school_medium_ENGLISH",
+     "school_medium_HINDI",
+     "school_medium_REGIONAL",
+     "school_option_OTHER"
+    ]
+   }
+  },
+  {
+   "id": "grades",
+   "section": "details",
+   "control": "text",
+   "web": {
+    "id": "extra-grades",
+    "label": "school.grades",
+    "suffix": null,
+    "input": {
+     "tag": "input",
+     "type": "text",
+     "maxlength": "40",
+     "autocomplete": "off"
+    }
+   },
+   "android": {
+    "label": "school_grades",
+    "keyboard": "Text",
+    "digits": null
+   }
+  },
+  {
+   "id": "commuteMinutes",
+   "section": "details",
+   "control": "number",
+   "web": {
+    "id": "extra-commuteMinutes",
+    "label": "school.commuteMinutes",
+    "suffix": null,
+    "input": {
+     "tag": "input",
+     "type": "number",
+     "min": "0",
+     "max": "300",
+     "step": "1",
+     "inputmode": "numeric"
+    }
+   },
+   "android": {
+    "label": "school_commute",
+    "keyboard": "Number",
+    "digits": 3
+   }
+  },
+  {
+   "id": "busService",
+   "section": "details",
+   "control": "bool",
+   "web": {
+    "id": "extra-busService",
+    "label": "school.busService",
+    "suffix": null,
+    "input": {
+     "tag": "input",
+     "type": "checkbox",
+     "role": "switch"
+    }
+   },
+   "android": {
+    "label": "school_bus",
+    "keyboard": null,
+    "digits": null
+   }
+  },
+  {
+   "id": "fees",
+   "section": "cost",
+   "control": "money",
+   "web": {
+    "id": "extra-fees",
+    "label": "school.feesPerYear",
+    "suffix": " (₹)",
+    "input": {
+     "tag": "input",
+     "type": "number",
+     "min": "0",
+     "step": "1",
+     "inputmode": "numeric"
+    }
+   },
+   "android": {
+    "label": "school_fees",
+    "keyboard": "Number",
+    "digits": 13
+   },
+   "stored": {
+    "cadence": "year"
+   }
+  },
+  {
+   "id": "admissionFee",
+   "section": "cost",
+   "control": "money",
+   "web": {
+    "id": "extra-admissionFee",
+    "label": "school.admissionFee",
+    "suffix": " (₹)",
+    "input": {
+     "tag": "input",
+     "type": "number",
+     "min": "0",
+     "step": "1",
+     "inputmode": "numeric"
+    }
+   },
+   "android": {
+    "label": "school_admission_fee",
+    "keyboard": "Number",
+    "digits": 13
+   },
+   "stored": {
+    "cadence": "once"
+   }
+  }
+ ],
+ "rows": [
+  {
+   "stack": "web",
+   "section": "details",
+   "rows": [
+    [
+     "board",
+     "medium"
+    ],
+    [
+     "grades",
+     "commuteMinutes"
+    ],
+    [
+     "busService"
+    ]
+   ]
+  },
+  {
+   "stack": "web",
+   "section": "cost",
+   "rows": [
+    [
+     "fees",
+     "admissionFee"
+    ]
+   ]
+  },
+  {
+   "stack": "android",
+   "section": "details",
+   "rows": [
+    [
+     "board",
+     "medium"
+    ],
+    [
+     "grades"
+    ],
+    [
+     "commuteMinutes"
+    ],
+    [
+     "busService"
+    ]
+   ]
+  },
+  {
+   "stack": "android",
+   "section": "cost",
+   "rows": [
+    [
+     "fees",
+     "admissionFee"
+    ]
+   ]
+  }
+ ],
+ "backup": {
+  "format": "doorprints-backup/1",
+  "exportedAt": 1780000200000,
+  "search": {
+   "kind": "school"
+  },
+  "candidates": [
+   {
+    "id": "55555555-5555-4555-8555-000000000209",
+    "kind": "school",
+    "label": "Pine Hill School",
+    "address": "GS Road, Dispur",
+    "street": "GS Road",
+    "locality": "Dispur",
+    "lat": 26.1433,
+    "lon": 91.7898,
+    "status": "SHORTLISTED",
+    "rating": 4,
+    "contactName": "Admissions office",
+    "contactPhone": "+91 361 223 4567",
+    "listingUrl": "https://example.com/schools/pine-hill",
+    "notes": "Asked about the bus route & the waiting list.",
+    "locationSource": "MAP",
+    "extras": {
+     "admissionFee": {
+      "amount": 25000,
+      "cadence": "once"
+     },
+     "board": "CBSE",
+     "busService": true,
+     "commuteMinutes": 25,
+     "fees": {
+      "amount": 96000,
+      "cadence": "year"
+     },
+     "grades": "Nursery to 12",
+     "medium": "ENGLISH"
+    },
+    "checklist": {},
+    "createdAt": 1780000000000,
+    "updatedAt": 1780000100000
+   }
+  ],
+  "visits": [],
+  "photos": []
+ },
+ "candidate": {
+  "id": "55555555-5555-4555-8555-000000000209",
+  "kind": "school",
+  "label": "Pine Hill School",
+  "address": "GS Road, Dispur",
+  "street": "GS Road",
+  "locality": "Dispur",
+  "lat": 26.1433,
+  "lon": 91.7898,
+  "status": "SHORTLISTED",
+  "rating": 4,
+  "contactName": "Admissions office",
+  "contactPhone": "+91 361 223 4567",
+  "listingUrl": "https://example.com/schools/pine-hill",
+  "notes": "Asked about the bus route & the waiting list.",
+  "locationSource": "MAP",
+  "extras": {
+   "admissionFee": {
+    "amount": 25000,
+    "cadence": "once"
+   },
+   "board": "CBSE",
+   "busService": true,
+   "commuteMinutes": 25,
+   "fees": {
+    "amount": 96000,
+    "cadence": "year"
+   },
+   "grades": "Nursery to 12",
+   "medium": "ENGLISH"
+  },
+  "checklist": {},
+  "createdAt": "2026-05-28T20:26:40Z",
+  "updatedAt": "2026-05-28T20:28:20Z",
+  "deleted": false,
+  "syncVersion": 7
+ }
+}
