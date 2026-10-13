@@ -25,6 +25,7 @@ import app.doorprints.server.house.HouseMoveIn;
 import app.doorprints.server.house.HouseCost;
 import app.doorprints.server.house.HouseRoom;
 import app.doorprints.server.house.HouseStatus;
+import tools.jackson.databind.JsonNode;
 
 import java.util.List;
 import java.util.Map;
@@ -66,7 +67,7 @@ import java.util.UUID;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({"id", "label", "address", "street", "locality", "lat", "lon", "status", "price", "priceType",
         "bedrooms", "rating", "contactName", "contactPhone", "listingUrl", "notes", "areaSqft", "locationSource",
-        "cost", "rooms", "answers", "moveIn", "floor", "brokerId", "checklist", "createdAt", "updatedAt"})
+        "cost", "rooms", "answers", "moveIn", "floor", "brokerId", "checklist", "createdAt", "updatedAt", "extrasOther"})
 public record BackupHouse(
         UUID id,
         String label,
@@ -105,6 +106,10 @@ public record BackupHouse(
            comment. */
         Map<String, Integer> checklist,
         Long createdAt,
-        Long updatedAt
+        Long updatedAt,
+        /* S4b-BL-248: the extras a newer app wrote that this server does not know, by id. Never a key of a file of the
+           family before: BackupWire reads them out of a candidate's extras and writes them back there, after the known
+           ones; BackupService keeps them by CandidateExtras.keptOther's rules. Absent when there are none. */
+        Map<String, JsonNode> extrasOther
 ) {
 }

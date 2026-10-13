@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.114 |
+| Version | 0.115 |
 | Date | 2026-10-13 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -125,6 +125,7 @@
 | 0.112 | 2026-10-12 | Claude (Code), engineer | **Kinds step 3, the backup format** (S4b-BL-206; [10](10-sprint-log.md) v0.270, [schemas README](schemas/README.md) v1.33): §18.4 door 1 changed, **an old-family file is read, not refused** (owner confirmed 2026-10-12 as the final text, [14](14-lead-backlog-and-handoff.md) §11.4 item 7); a well-formed file with a cadence this reader does not support reads as a newer file, not broken data; §18.5 records the one mapping per stack between the two families and the lossless check against `backup-sample-houses.json`. |
 | 0.113 | 2026-10-13 | Claude (Code), engineer | **Kinds step 4, the phone** (S4b-BL-206; `feat/kinds-4-android`; [10](10-sprint-log.md) v0.272, [06](06-test-plan.md) v0.217 TC-U-204, [schemas README](schemas/README.md) v1.34): new §6.2 *Room 12* (every house rewritten in place as a candidate, `HouseEntity` keeps the house's values so no screen moves) and a §18.5 finding: Room version 12 rather than 1, `/api/candidates` and `candidateId` in `ApiClient`, the Drive `sync/1` file's `candidates` and `candidateId` read in both shapes on both stacks, the unknown extras kept on the phone, a typeless price never a monthly rent in the cost summary. Left: the viewing payload (S4b-BL-247), the website's sync writer (S4b-BL-246), the phone's backup of an unknown extra (S4b-BL-248). |
 | 0.114 | 2026-10-13 | Claude (Code), engineer | FR-24's *Small phones* note follows S4b-BL-49: the phone map's actions are a row under the map, sized in CSS (no `--map-stack-h`). |
+| 0.115 | 2026-10-13 | Claude (Code), engineer | **The website writes its Drive sync file in the candidate shape, and a phone backup keeps a newer app's extras** (S4b-BL-246, S4b-BL-248; `feat/kinds-4b-sync-and-extras`; [10](10-sprint-log.md) v0.279, [06](06-test-plan.md) v0.222 TC-U-206, [schemas README](schemas/README.md) v1.35): §18.5's kinds step 4 finding brought up to date: the website's `sync/1` writer writes `candidates` and `candidateId` as the phone does (a row taken from another device's file keeps its shape on both stacks), and the phone's and the server's backups keep an unknown extra (`ExportHouse.extrasOther`, `BackupHouse.extrasOther`, read out of a candidate's `extras` and written back there after the known ones). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -2119,13 +2120,19 @@ changed:
   rewrites every house in place as a candidate (`kind`, `money_amount`, `money_cadence`, `extras`), and `HouseEntity`
   derives the candidate from the house's values and reads them back out, so no screen, rule or copy changes, and the
   search reads the same values (`HouseListSearchTest`). An extra a newer app wrote is now kept on the phone too (Room,
-  `/api/candidates`, Drive) and written back after the known ones; a backup made on the phone still leaves it out
-  (the backup rows have no place for it, S4b-BL-248). `ApiClient` calls `/api/candidates` and sends and reads
+  `/api/candidates`, Drive) and written back after the known ones; a backup made on the phone left it out at first
+  (the backup rows had no place for it) and keeps it since S4b-BL-248 (`ExportHouse.extrasOther`, and on the server
+  `BackupHouse.extrasOther`: read out of a candidate's `extras` by the rules of the website's `cleanOtherExtras`, at
+  most 30, and written back there after the known ones, by id; never a key of a file of the family before, so the
+  lossless check against `backup-sample-houses.json` is unchanged; `import-vectors.json` `candidatesWrittenBack`). `ApiClient` calls `/api/candidates` and sends and reads
   `candidateId` (`/nearby` and `/street` are not called by the phone, so nothing changes there). **The Drive `sync/1`
   file** keeps its format number: the phone writes `candidates` (rows in the candidate shape) and `candidateId` on
   visits and photos, and both stacks read either shape, a house row without `kind` as the house it is, and refuse a
-  file or row with both names (`sync-vectors.json`, `sync-1.schema.json`). The website's reader changed with it, its
-  writer not yet (S4b-BL-246), so the website and the phone keep syncing through Drive in both directions. The
+  file or row with both names (`sync-vectors.json`, `sync-1.schema.json`). The website's reader changed with it and
+  its writer since S4b-BL-246 (`syncJsonOf` in `sync-file.ts`: this device's rows as candidates and `candidateId`,
+  the list as `candidates`), so the website and the phone keep syncing through Drive in both directions and a file of
+  either shape still loads. On both stacks only this device's own rows are made in the new shape; a row taken from
+  another device's file is written on as it came, which both readers read. The
   viewing payload's `houseId` (the records layer, read by the server's AI and export) is S4b-BL-247: three stacks,
   its own pull request. The cost summary reads a price without a type as no rent (`CostSummary.of`, as the
   website's `costSummary`); `Formats.price` already showed *per month* for `RENT` only.

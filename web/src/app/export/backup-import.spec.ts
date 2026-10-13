@@ -20,6 +20,7 @@ import { describe, expect, it } from 'vitest';
 import vectorsJson from '../../../../docs/schemas/import-vectors.json';
 import updateSample from '../../../../docs/schemas/update-sample.json';
 import { checkData } from './backup-check';
+import { currentOf } from './backup-family';
 import type { BackupData } from './backup-export';
 import { isUpdate, openBackup } from './backup-reader';
 import { EMPTY_LOCAL, copyDuplicates, plan, preview } from './import-plan';
@@ -28,7 +29,7 @@ import { inflateRaw } from './zip-read';
 
 interface Vectors {
   format: string;
-  checks: { name: string; data: unknown; problem: string | null }[];
+  checks: { name: string; data: unknown; problem: string | null; candidatesWrittenBack?: unknown[] }[];
   merges: {
     name: string;
     mode: ImportMode;
@@ -86,6 +87,17 @@ describe('backup import (shared vectors)', () => {
       expect(checked.ok ? null : checked.problem).toBe(c.problem);
     });
   }
+
+  it('keeps a newer app\'s extras through a read and writes them back after the known ones, byte for byte (S4b-BL-248)', () => {
+    const kept = vectors.checks.filter((c) => c.candidatesWrittenBack);
+    expect(kept.length).toBeGreaterThan(0);
+    for (const c of kept) {
+      const checked = checkData(c.data);
+      if (!checked.ok) throw new Error(`${c.name}: ${checked.problem}`);
+      const written = currentOf(checked.data as unknown as Record<string, unknown>);
+      expect(JSON.stringify(written['candidates']), c.name).toBe(JSON.stringify(c.candidatesWrittenBack));
+    }
+  });
 
   for (const m of vectors.merges) {
     it(`merges: ${m.name}`, () => {

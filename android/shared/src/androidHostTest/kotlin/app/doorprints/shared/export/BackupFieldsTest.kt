@@ -57,9 +57,13 @@ class BackupFieldsTest {
 
     private fun keysOf(list: String) = sample.getValue(list).jsonArray.first().jsonObject.keys.toList()
 
+    /**
+     * The sample's first house, then `extrasOther` (S4b-BL-248): the extras a newer app wrote, which a file of the family
+     * before never holds as a key (they travel in a candidate's `extras`), so no sample house carries it.
+     */
     @Test
     fun theSampleHouseHasExactlyTheModelsFields() =
-        assertEquals(ExportHouse.serializer().descriptor.elementNames.toList(), keysOf("houses"))
+        assertEquals(ExportHouse.serializer().descriptor.elementNames.toList(), keysOf("houses") + "extrasOther")
 
     @Test
     fun theSampleReadsBackAsTheFamilyBeforeAndIsWrittenAgainUnchanged() {

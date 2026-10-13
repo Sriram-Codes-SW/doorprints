@@ -429,8 +429,8 @@ public class BackupService {
         house.setStatus(row.status() == null ? HouseStatus.NEW : row.status());
         var money = Money.of(row.price(), row.priceType()); // this format's values as money and extras (S4b-BL-206)
         house.setMoney(money);
-        house.setExtras(CandidateExtras.write(CandidateExtras.of(row.bedrooms(), row.areaSqft(), row.floor(),
-                row.cost(), money == null ? null : money.cadence()))); // offers at the money's cadence; {} is none
+        house.setExtras(CandidateExtras.write(CandidateExtras.of(row.bedrooms(), row.areaSqft(), row.floor(), row.cost(),
+                money == null ? null : money.cadence(), row.extrasOther()))); // offers at the money's cadence; {} is none
         house.setRating(row.rating());
         house.setContactName(row.contactName());
         house.setContactPhone(row.contactPhone());

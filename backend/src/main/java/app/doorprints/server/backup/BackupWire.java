@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.regex.Pattern;
 
 /**
@@ -71,7 +72,7 @@ public final class BackupWire {
     private static final List<String> HOUSE_ORDER = List.of("id", "kind", "label", "address", "street", "locality", "lat",
             "lon", "status", "price", "priceType", "bedrooms", "rating", "contactName", "contactPhone", "listingUrl",
             "notes", "areaSqft", "locationSource", "cost", "rooms", "answers", "moveIn", "floor", "brokerId", "checklist",
-            "createdAt", "updatedAt");
+            "createdAt", "updatedAt", "extrasOther");
 
     private static final JsonNodeFactory NODES = JsonNodeFactory.instance;
 
@@ -136,6 +137,10 @@ public final class BackupWire {
             } else {
                 out.set(id, value);
             }
+        }
+        // A newer app's extras (S4b-BL-248), after the known ones, by id.
+        if (h.get("extrasOther") instanceof ObjectNode other) {
+            for (var id : new TreeSet<>(other.propertyNames())) out.set(id, other.get(id));
         }
         return out.isEmpty() ? null : out;
     }
@@ -252,7 +257,7 @@ public final class BackupWire {
         if (value.isNull()) return;
         if (!(value instanceof ObjectNode extras)) throw broken("extras");
         var cost = NODES.objectNode();
-        int other = 0;
+        var other = NODES.objectNode();
         for (var e : extras.properties()) {
             var id = e.getKey();
             var v = e.getValue();
@@ -268,11 +273,12 @@ public final class BackupWire {
                 cost.set(id, v);
             } else {
                 if (!EXTRA_ID.matcher(id).matches() || !isExtraValue(v)) throw broken("extras." + id);
-                other++;
+                other.set(id, v);
             }
         }
-        if (other > CandidateExtras.MAX_OTHER) throw broken("extras");
+        if (other.size() > CandidateExtras.MAX_OTHER) throw broken("extras");
         if (!cost.isEmpty()) row.set("cost", cost);
+        if (!other.isEmpty()) row.set("extrasOther", other); // a newer app's extras, kept (S4b-BL-248)
     }
 
     /**

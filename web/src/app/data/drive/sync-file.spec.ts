@@ -17,7 +17,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { encodeSyncFile, nestingDepth, parseSyncFile, SYNC_MAX_BYTES, SYNC_MAX_ROWS, SYNC_MAX_ROWS_OF, SyncFileError, syncFile, utf8Length } from './sync-file';
+import { encodeSyncFile, nestingDepth, parseSyncFile, SYNC_MAX_BYTES, SYNC_MAX_ROWS, SYNC_MAX_ROWS_OF, SyncFileError, syncFile, syncJsonOf, utf8Length } from './sync-file';
 import type { SyncFileProblem, SyncRow } from './sync-file';
 import { simRow } from './sync-sim';
 
@@ -51,8 +51,9 @@ describe('sync file', () => {
     };
     const text = encodeSyncFile(syncFile(a, 7, now, rows));
     const root = JSON.parse(text) as Record<string, Record<string, string>[]>;
-    expect(Object.keys(root)).toEqual(['format', 'deviceId', 'seq', 'writtenAt', 'houses', 'visits', 'records', 'photos']);
-    expect(root['houses'].map((r) => r['id'])).toEqual(['h1', 'h2']);
+    // The houses' list is `candidates` since the format reset (S4b-BL-246), as the phone writes it.
+    expect(Object.keys(root)).toEqual(['format', 'deviceId', 'seq', 'writtenAt', 'candidates', 'visits', 'records', 'photos']);
+    expect(root['candidates'].map((r) => r['id'])).toEqual(['h1', 'h2']);
     expect(root['records'].map((r) => r['type'])).toEqual(['area', 'note']);
     const back = parseSyncFile(text, a);
     expect(back.seq).toBe(7);
@@ -60,6 +61,26 @@ describe('sync file', () => {
     expect(back.rows.houses.map((r) => r.key)).toEqual(['h1', 'h2']);
     expect(back.rows.houses[0].stamp).toEqual({ updatedAt: now - 1, by: a, deleted: true });
     expect(encodeSyncFile(back)).toBe(text);
+  });
+
+  it('writes a house of this device as its candidate and a visit\'s or photo\'s house as candidateId (S4b-BL-246)', () => {
+    const house = syncJsonOf('houses', {
+      id: 'h1', label: 'Banjara Hills 2BHK', lat: 17.41, lon: 78.44, status: 'NEW', price: 42000, priceType: 'RENT', bedrooms: 2,
+      areaSqft: null, cost: { maintenance: 3000, myOffer: 40000 }, floor: 0, extrasOther: { gymOpens: '06:00' }, checklist: {},
+      updatedAt: '2026-10-13T10:00:00.000Z', deleted: false, syncVersion: 3, by: a,
+    });
+    expect(house).toEqual({
+      id: 'h1', kind: 'house', label: 'Banjara Hills 2BHK', lat: 17.41, lon: 78.44, status: 'NEW', money: { amount: 42000, cadence: 'month' },
+      extras: { bedrooms: 2, floor: 0, maintenance: { amount: 3000, cadence: 'month' }, myOffer: { amount: 40000, cadence: 'month' }, gymOpens: '06:00' },
+      checklist: {}, updatedAt: '2026-10-13T10:00:00.000Z', deleted: false, by: a,
+    });
+    expect(Object.keys(house).at(-1)).toBe('by');
+    expect(Object.keys(syncJsonOf('visits', { id: 'v1', houseId: 'h1', lat: 1, by: a }))).toEqual(['id', 'candidateId', 'lat', 'by']);
+    expect(syncJsonOf('photos', { id: 'p1', houseId: 'h1', by: a })).toEqual({ id: 'p1', candidateId: 'h1', by: a });
+    // A visit with no house stays without one; a row already in the shape, and a record, stay as they are.
+    expect(syncJsonOf('visits', { id: 'v2', houseId: null, by: a })).toEqual({ id: 'v2', candidateId: null, by: a });
+    expect(syncJsonOf('visits', { id: 'v3', candidateId: 'h1', by: a })).toEqual({ id: 'v3', candidateId: 'h1', by: a });
+    expect(syncJsonOf('records', { type: 'viewing', id: 'r1', payload: { houseId: 'h1' }, by: a })).toEqual({ type: 'viewing', id: 'r1', payload: { houseId: 'h1' }, by: a });
   });
 
   it('refuses to write what a reader would refuse', () => {

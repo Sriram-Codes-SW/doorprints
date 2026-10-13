@@ -39,7 +39,8 @@ import kotlinx.serialization.json.longOrNull
  * the new family; every reader decodes through [decodeData], which reads a file of the new family (it has `candidates`)
  * back as the family before after the new family's own checks, and **reads a file of the family before as it always
  * did**, so an older Doorprints' backup still imports. The two `/1` are told apart by their shape, not their number.
- * An extra this phone does not know is checked and then not kept (the phone has nowhere to store it yet).
+ * An extra this phone does not know is checked and kept (S4b-BL-248): read into [ExportHouse.extrasOther] and written
+ * back after the known extras, by id, as the website and the server do.
  */
 object BackupWire {
     /** The format id of the new family: one so far, for a full copy and an update file alike. */
@@ -72,7 +73,7 @@ object BackupWire {
     private val HOUSE_ORDER = listOf(
         "id", "kind", "label", "address", "street", "locality", "lat", "lon", "status", "price", "priceType", "bedrooms",
         "rating", "contactName", "contactPhone", "listingUrl", "notes", "areaSqft", "locationSource", "cost", "rooms",
-        "answers", "moveIn", "floor", "brokerId", "checklist", "createdAt", "updatedAt",
+        "answers", "moveIn", "floor", "brokerId", "checklist", "createdAt", "updatedAt", "extrasOther",
     )
     private val MOVED = setOf("price", "priceType", "bedrooms", "areaSqft", "floor", "cost", "extrasOther", "kind")
     private val ROWS_WITH_HOUSE = setOf("visits", "photos", "viewings")
@@ -277,7 +278,7 @@ object BackupWire {
         if (value !is JsonObject) broken("extras")
         val out = LinkedHashMap<String, JsonElement>()
         val cost = LinkedHashMap<String, JsonElement>()
-        var other = 0
+        val other = LinkedHashMap<String, JsonElement>()
         for ((id, v) in value) {
             when {
                 id in VALUES -> out[id] = v
@@ -291,12 +292,14 @@ object BackupWire {
                 id in COST -> cost[id] = v
                 else -> {
                     if (!EXTRA_ID.matches(id) || !isExtraValue(v)) broken("extras.$id")
-                    other++
+                    other[id] = v
                 }
             }
         }
-        if (other > MAX_OTHER) broken("extras")
+        if (other.size > MAX_OTHER) broken("extras")
         if (cost.isNotEmpty()) out["cost"] = JsonObject(cost)
+        // A newer app's extras, kept (S4b-BL-248): `ExportHouse.extrasOther`, written back by [extrasOf].
+        if (other.isNotEmpty()) out["extrasOther"] = JsonObject(other)
         return out
     }
 

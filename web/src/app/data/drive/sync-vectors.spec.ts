@@ -21,7 +21,9 @@ import schemaJson from '../../../../../docs/schemas/sync-1.schema.json';
 import vectorsJson from '../../../../../docs/schemas/sync-vectors.json';
 import { MAX_AHEAD_MS, nextStamp, planMerge, SHRINK_MIN_HOUSES, takesIncoming } from './drive-merge';
 import type { MergePlan } from './drive-merge';
+import { syncRowOf } from './drive-sync-backend';
 import {
+  encodeSyncFile,
   parseSyncFile,
   SYNC_EARLIEST_MS,
   SYNC_FORMAT,
@@ -33,6 +35,8 @@ import {
   SYNC_MAX_SEQ,
   SYNC_MAX_VERSION,
   SyncFileError,
+  syncFile,
+  syncRowAsBefore,
   syncTime,
 } from './sync-file';
 import type { SyncKind, SyncRow, SyncStamp } from './sync-file';
@@ -51,7 +55,7 @@ const vectors = vectorsJson as unknown as {
   times: { text: string; ms: number | null }[];
   stamps: { name: string; now: number; previous: number | null; stamp: number }[];
   order: { name: string; local: SyncStamp | null; incoming: SyncStamp; takes: boolean }[];
-  files: (Case & { expectedDeviceId: string; file?: Obj; text?: string; problem: string | null; counts?: Record<SyncKind, number>; keys?: Record<string, string[]> })[];
+  files: (Case & { expectedDeviceId: string; file?: Obj; text?: string; problem: string | null; counts?: Record<SyncKind, number>; keys?: Record<string, string[]>; from?: Record<SyncKind, Obj[]> })[];
   converge: (Case & { now: number; local: LocalRow[]; files: Obj[]; final: Record<string, string> })[];
   plans: (Case & { now: number; local: LocalRow[]; steps: Step[]; final: Record<string, string> })[];
   random: { base: number; devices: string[]; skewsMs: number[]; steps: number; keys: string[]; cases: { seed: number; digest: string }[] };
@@ -153,6 +157,31 @@ describe('the shared sync vectors', () => {
         for (const [kind, keys] of Object.entries(c.keys ?? {})) {
           same(parsed.rows[kind as SyncKind].map((r) => r.key), keys);
         }
+      }
+    }
+  });
+
+  it('writes the file of a written case byte for byte from the rows it was made of, and reads them back (S4b-BL-246)', () => {
+    const written = vectors.files.filter((c) => c.from);
+    expect(written.length).toBeGreaterThan(0);
+    for (const c of written) {
+      const file = c.file!;
+      const rows: Partial<Record<SyncKind, SyncRow[]>> = {};
+      for (const kind of SYNC_KINDS) {
+        rows[kind] = c.from![kind].map((r) => {
+          const { by, ...dto } = r;
+          return syncRowOf(kind, dto, by as string);
+        });
+      }
+      const text = encodeSyncFile(syncFile(file['deviceId'] as string, file['seq'] as number, syncTime(file['writtenAt'] as string)!, rows));
+      expect(text, c.name).toBe(JSON.stringify(file));
+      // Read back, each row is the one it was made of: the house's values, the visit's and photo's house.
+      const back = parseSyncFile(text, c.expectedDeviceId);
+      for (const kind of SYNC_KINDS) {
+        back.rows[kind].forEach((row, i) => {
+          const read = syncRowAsBefore(row);
+          for (const [key, value] of Object.entries(c.from![kind][i])) expect(read[key], `${c.name}: ${kind}/${row.key}.${key}`).toEqual(value);
+        });
       }
     }
   });

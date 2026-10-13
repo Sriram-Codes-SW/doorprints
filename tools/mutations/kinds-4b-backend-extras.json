@@ -1,0 +1,35 @@
+{
+  "spec": [
+    "backend/src/test/java/app/doorprints/server/backup/BackupWireTest.java",
+    "backend/src/test/java/app/doorprints/server/house/CandidateExtrasTest.java"
+  ],
+  "maven": [
+    "-Dtest=BackupWireTest,CandidateExtrasTest"
+  ],
+  "mutations": [
+    {
+      "file": "backend/src/main/java/app/doorprints/server/backup/BackupWire.java",
+      "find": "        if (!other.isEmpty()) row.set(\"extrasOther\", other);",
+      "replace": "",
+      "expect": "aNewerAppsExtrasAreKeptThroughTheRowsAndWrittenBack"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/backup/BackupWire.java",
+      "find": "for (var id : new TreeSet<>(other.propertyNames())) out.set(id, other.get(id));",
+      "replace": "for (var id : other.propertyNames()) out.set(id, other.get(id));",
+      "expect": "aNewerAppsExtrasAreKeptThroughTheRowsAndWrittenBack"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/house/CandidateExtras.java",
+      "find": "            if (out.size() >= MAX_OTHER) break;",
+      "replace": "            if (out.size() > MAX_OTHER) break;",
+      "expect": "anImportKeepsTheUnknownExtrasByTheRulesAndAtMostThirty"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/house/CandidateExtras.java",
+      "find": "ID.matcher(id).matches() && !KNOWN.contains(id) && isExtraValue(value)",
+      "replace": "ID.matcher(id).matches() && isExtraValue(value)",
+      "expect": "anImportKeepsTheUnknownExtrasByTheRulesAndAtMostThirty"
+    }
+  ]
+}

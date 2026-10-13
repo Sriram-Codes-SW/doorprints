@@ -111,6 +111,39 @@ class BackupWireTest {
         assertThat(written.toString()).isEqualTo("{\"amount\":32000}");
     }
 
+    /**
+     * S4b-BL-248: a newer app's extras are kept through an import's rows ({@link BackupData}) and written back after the
+     * known ones, by id: the candidates are the import vectors' {@code candidatesWrittenBack}, byte for byte, as on the
+     * website ({@code backup-import.spec.ts}) and the phone ({@code ImportVectorsTest}).
+     */
+    @Test
+    void aNewerAppsExtrasAreKeptThroughTheRowsAndWrittenBack() throws Exception {
+        var kept = 0;
+        for (var c : JSON.readTree(repoFile("docs/schemas/import-vectors.json")).get("checks")) {
+            if (!c.has("candidatesWrittenBack")) continue;
+            kept++;
+            var data = JSON.treeToValue(BackupWire.legacyOf(c.get("data")), BackupData.class);
+            var written = BackupWire.currentOf(JSON.valueToTree(data));
+            assertThat(JSON.writeValueAsString(written.get("candidates")))
+                    .as(c.get("name").asString()).isEqualTo(JSON.writeValueAsString(c.get("candidatesWrittenBack")));
+        }
+        assertThat(kept).isPositive();
+        // Read, they are the house's extrasOther, in a candidate's order; more than 30 is refused, as on the apps.
+        var house = BackupWire.legacyOf(tree(one("\"kind\":\"house\",\"label\":\"x\",\"extras\":{\"zLast\":\"a\",\"bedrooms\":1,\"fromNewerApp\":4}")))
+                .get("houses").get(0);
+        assertThat(house.get("extrasOther").toString()).isEqualTo("{\"zLast\":\"a\",\"fromNewerApp\":4}");
+        assertThat(house.get("bedrooms").asInt()).isEqualTo(1);
+    }
+
+    private static String repoFile(String relative) throws Exception {
+        var dir = Path.of("").toAbsolutePath();
+        for (int up = 0; up < 5 && dir != null; up++, dir = dir.getParent()) {
+            var file = dir.resolve(relative);
+            if (Files.isRegularFile(file)) return Files.readString(file);
+        }
+        throw new IllegalStateException(relative + " not found");
+    }
+
     private static void assertBroken(String good, String bad) {
         var base = one("\"kind\":\"house\",\"label\":\"x\",\"money\":{\"amount\":1,\"cadence\":\"once\"},\"extras\":{\"floor\":1}");
         assertThat(BackupWire.legacyOf(tree(base)).get("houses").get(0).get("floor").asInt()).isEqualTo(1);
