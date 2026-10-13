@@ -21,7 +21,7 @@
     },
     {
       "file": "web/src/app/pages/map/map-page.css",
-      "find": "    grid-row: 3;\n    grid-column: 1;\n    position: static;",
+      "find": "    grid-area: 3 / 1;\n    position: static;",
       "replace": "    position: absolute;",
       "expect": "never positions the bottom row"
     },

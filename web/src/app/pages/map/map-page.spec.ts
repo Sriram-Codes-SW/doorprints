@@ -235,7 +235,7 @@ describe('MapPage: the phone layout is sized in CSS (S4b-BL-49)', () => {
   });
 
   it('hides the legend card while the credits are open over it, so it does not show as a second popup', () => {
-    expect(phone).toMatch(/\.map-wrap:has\(\.maplibregl-ctrl-attrib\.maplibregl-compact-show\) \.legend\s*\{\s*visibility: hidden;/);
+    expect(phone).toMatch(/\.map-wrap:has\(\.maplibregl-compact-show\) \.legend\s*\{\s*visibility: hidden;/);
   });
 
   it('places the map and its overlays in the map row, so the crosshair stays on the map centre', () => {
@@ -244,7 +244,7 @@ describe('MapPage: the phone layout is sized in CSS (S4b-BL-49)', () => {
 
   it('never positions the bottom row: the legend and the actions are grid items, not placed over the map', () => {
     expect(phone).not.toMatch(/\.map-stack[^{,]*\{[^}]*position/);
-    expect(phone).toMatch(/\.map-actions\s*\{[^}]*grid-row: 3;/);
+    expect(phone).toMatch(/\.map-actions\s*\{[^}]*grid-area: 3 \/ 1;/);
   });
 
   it('is not painted before its first update pass, and is drawn after it', async () => {
