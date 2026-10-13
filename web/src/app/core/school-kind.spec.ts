@@ -142,7 +142,9 @@ describe('the developer flag (dev-kinds.ts): off unless a development build has 
   it('while on, the school is offered after the house and drawn with its own labels and fields', () => {
     expect(creatableKinds(true).map((k) => k.id)).toEqual(['house', 'school']);
     const k = builtInKind('school', true);
-    expect([k.labels, k.keys, k.fields, k.extracts]).toEqual([SCHOOL_LABELS, SCHOOL_KEYS, SCHOOL_FIELDS, false]);
+    // The listing extract fills a school since kinds PR 7 (S4b-BL-211): the kind file's `ai.extract` is not empty.
+    expect([k.labels, k.keys, k.fields, k.extracts]).toEqual([SCHOOL_LABELS, SCHOOL_KEYS, SCHOOL_FIELDS, schoolJson.ai.extract.length > 0]);
+    expect(k.extracts).toBe(true);
     expect(builtInKind('clinic', true)).toBe(HOUSE);
     expect(HOUSE.extracts).toBe(true);
   });

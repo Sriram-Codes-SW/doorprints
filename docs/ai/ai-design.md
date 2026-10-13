@@ -71,6 +71,7 @@
 | v0.67   | 2026-10-12 | Claude (Code), engineer       | **A spent quota or credit is its own error** (S4b-BL-243; `feat/ai-quota-exhausted-error`): 2.1 (key origin for the live test) and 13.1 (the error table). With the person's own key, an HTTP 402, a Gemini 429 whose `quotaId` holds `PerDay`, an OpenAI-compatible `insufficient_quota` and an Anthropic `billing_error` (or a 400 saying the credit balance is too low) are the new failure `quotaExhausted` (`AI_QUOTA_EXHAUSTED` on the phones), worded "Your key's free quota or credit is used up. Check usage and billing with your provider; the app works without AI." in en, hi, ta and te (the last three under review), instead of "unavailable or out of free quota" and, on Android Gemini, instead of "Try again in 60 s". A per-minute 429 is still a wait. New shared vectors `quotaResponses` (19 replies), `ai-quota.ts` / `AiQuota.kt` read named fields only. The server's own path is S4b-BL-244. |
 | v0.68   | 2026-10-12 | Claude (Code), engineer       | 2.1: the owner's free-tier `AI_API_KEY` works: `key-check` 200 for the pinned `gemini-3.5-flash` and `-flash-lite`; `on-device` passed on the second attempt after one transient provider 503 (TC-U-88 run recorded). |
 | v0.69   | 2026-10-13 | Claude (Code), engineer       | New section 16: **kind-aware AI** (kinds PR 7, S4b-BL-211; `feat/kinds-9-kind-aware-ai`, the server first): a candidate of a built-in kind other than the house is read through its kind file's `ai` slots while the developer flag is on (`AI_DEV_KINDS` on the server, 11); `POST /api/ai/extract-listing` takes an optional `kind` (13); the school's Ask lines, Plan view and Extract prompt, schema and checks; a house's prompts, document lines, request bodies and parity vectors unchanged (house pins first). |
+| v0.70   | 2026-10-13 | Claude (Code), engineer       | 16: **the website's on-device AI is kind-aware** (S4b-BL-211, the second stacked pull request; `feat/kinds-9b-kind-aware-ai-web`): `core/ai/kind-ai.ts` (the school's Ask lines, Ask and Plan views, Extract prompt, schema and checks) under `devKindsOn()`; the extract request names the kind only for a kind the extract fills; the website's house pins (`house-ai-pins.spec.ts`) first and unchanged. Review follow-ups of #313: a generated school name over 200 characters is cut with a warning on the server and the website (16.3); `kind-ai-vectors.json` gains a school whose grades and notes are exactly the Ask block's closing tag (`askTag`). |
 
 Status: implemented in `backend/` (package `app.doorprints.server.ai`), **off by default**. Not yet compiled in this
 sandbox (no Maven Central access) — CI compiles and runs the tests. Provider: AI Studio by default, Vertex AI with
@@ -1883,7 +1884,9 @@ filters, the request and response bodies, and every section of `docs/ai/evals/pa
 not routed through the slots at all: the kind is decided first and only another kind takes the new path. *Safety test
 first*: the server's house pins (`HouseAskPinsTest`, `HousePlanPinsTest`, `HouseExtractPinsTest`: SHA-256 of each output
 for the golden set's 30 fixture houses and one house with every field), committed from main before the code and green
-after it; the website and the phone pin theirs the same way in their pull requests.
+after it. The website pins its own the same way (`core/ai/house-ai-pins.spec.ts` with `golden/house-ai-pins.golden.ts`:
+each fixture house's document and label, the Ask selection per filter, the three prompts, the Plan candidates, the
+parity vectors' drafts and the three Gemini request bodies); the phone in its pull request.
 
 ### 16.2 The slots are the per-field AI flag
 
@@ -1909,7 +1912,7 @@ warning, the phone and the link only when the listing holds them (and the two-li
 by its id or English words (`state board` is `STATE`), *yes*/*no* (also `y`, `true`, `n`, `false`), a text clamped to its
 `maxLength` (grades: 40), money read as the house's price (`96,000`, `25k`, `1.2 lakh`) with the extra's cadence; a
 value that cannot be read is dropped with a warning that names the field. A missing name becomes `School` or `School in
-<locality>`. Nothing the slot does not name is read, whatever the model returns (a price, a BHK, the commute, a field it
+<locality>`, cut at 200 characters with the warning `label: truncated to 200 characters` (review of #313). Nothing the slot does not name is read, whatever the model returns (a price, a BHK, the commute, a field it
 made up). The draft never fills the school's hidden money.
 
 ### 16.4 Ask for a school

@@ -229,6 +229,19 @@ describe('AiService against the server', () => {
       expect(await result).toEqual(DRAFT);
     });
 
+    it('extractListing with a kind (kinds PR 7) posts { text, kind }; without one the body is the text alone', async () => {
+      const ai = ready();
+      const result = firstValueFrom(ai.extractListing('Pine Hill School, CBSE', 'school'));
+      const req = http.expectOne('/api/ai/extract-listing');
+      expect(req.request.body).toEqual({ text: 'Pine Hill School, CBSE', kind: 'school' });
+      req.flush(DRAFT);
+      expect(await result).toEqual(DRAFT);
+      ai.extractListing('2BHK').subscribe();
+      const house = http.expectOne('/api/ai/extract-listing');
+      expect(Object.keys(house.request.body)).toEqual(['text']);
+      house.flush(DRAFT);
+    });
+
     it('ask without filters posts { question } alone, with no filters key', async () => {
       const ai = ready();
       const result = firstValueFrom(ai.ask('Which is quietest?'));

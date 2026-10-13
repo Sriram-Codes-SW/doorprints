@@ -128,6 +128,12 @@
       "find": "        @JsonInclude(JsonInclude.Include.NON_NULL) Map<String, Object> extras) {",
       "replace": "        Map<String, Object> extras) {",
       "expect": "aHouseDraftHasNoExtrasKeyAndAHousesRequestIsTheTextAlone"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/extract/KindDraftSanitizer.java",
+      "find": "                warnings.add(\"label: truncated to \" + DraftSanitizer.LABEL_MAX + \" characters\");",
+      "replace": "",
+      "expect": "everyRawAnswerGivesTheVectorsDraft"
     }
   ]
 }

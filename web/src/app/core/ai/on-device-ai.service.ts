@@ -29,6 +29,8 @@ import {
   candidateLines, citations, cleanAnswer, extractionPrompt, nonce, planPrompt, sanitizeDraft, selectForAsk, selectForPlan,
 } from './ai-core';
 import { type AiQuality, geminiThinkingLevel } from './ai-quality';
+import { devKindsOn } from '../dev-kinds';
+import { SCHOOL_LISTING_SCHEMA, aiKindOf, aiText, askView, kindExtractionPrompt, planView, sanitizeKindDraft } from './kind-ai';
 import { geminiBlocked } from './ai-blocked';
 import { isQuotaExhausted } from './ai-quota';
 import type { JsonChatModel } from './json-chat-model';
@@ -247,7 +249,7 @@ export class OnDeviceAiService {
       areaNotes: notesReaching(h, areas, noteRows).map((n) => ({ id: n.id, text: n.note.text, updatedAt: Date.parse(n.updatedAt ?? '') || 0 })),
       distances: distancesToPlaces(h, places).map((d) => ({ name: d.place.name, meters: d.meters })),
       contactName: h.contactName, contactPhone: h.contactPhone, listingUrl: h.listingUrl, notes: h.notes,
-      checklist: h.checklist, visits: byHouse.get(h.id) ?? [],
+      checklist: h.checklist, visits: byHouse.get(h.id) ?? [], kind: h.kind, extras: h.extrasOther,
     }));
   }
 
@@ -255,9 +257,16 @@ export class OnDeviceAiService {
    * Reads pasted listing text into a draft for the form. Empty or too long text throws; the model's answer always goes
    * through {@link sanitizeDraft}.
    */
-  async extractListing(via: ModelRef, text: string): Promise<HouseDraft> {
+  async extractListing(via: ModelRef, text: string, kind?: string): Promise<HouseDraft> {
     if (!text.trim() || text.length > MAX_INPUT_CHARS) throw new Error('listing text is empty or too long');
+    // Kinds PR 7 (S4b-BL-211): a school's listing (developer flag on) gets the school's prompt, schema and checks.
+    const k = kind ? aiKindOf(kind, devKindsOn()) : null;
+    if (kind && (!k || !k.extract.length)) throw new Error(`kind ${kind} has no listing extract`);
     this.admit();
+    if (k) {
+      const kp = kindExtractionPrompt(k, text, nonce());
+      return sanitizeKindDraft(k, this.parse<Record<string, unknown>>(await this.model(via).generateJson(kp.system, kp.user, SCHOOL_LISTING_SCHEMA, 0)), text);
+    }
     const p = extractionPrompt(text, nonce());
     return sanitizeDraft(this.parse<RawListing>(await this.model(via).generateJson(p.system, p.user, LISTING_SCHEMA, 0)), text);
   }
@@ -268,7 +277,9 @@ export class OnDeviceAiService {
    */
   async ask(via: ModelRef, question: string, filters?: AskFilterValues): Promise<AskResponse> {
     if (!question.trim() || question.length > MAX_QUESTION_CHARS) throw new Error('question is empty or too long');
-    const docs = selectForAsk(await this.houses(), question, filters);
+    // A candidate of another kind is read through its kind's slots while the developer flag is on (kinds PR 7).
+    const dev = devKindsOn();
+    const docs = selectForAsk((await this.houses()).map((h) => askView(h, dev)), question, filters, (h) => aiText(h, dev));
     if (!docs.length) return { answer: I_DONT_KNOW, citations: [], grounded: false, retrieved: 0 };
     this.admit();
     const p = askPrompt(question, docs, nonce());
@@ -288,7 +299,8 @@ export class OnDeviceAiService {
     // The server's PlanRequest bounds (docs/ai/ai-design.md 9): a point that is not on Earth (or NaN) is refused here too.
     if (!(Math.abs(request.startLat) <= 90) || !(Math.abs(request.startLon) <= 180)) throw new Error('the start point is not on Earth');
     const maxStops = Math.max(1, Math.min(request.maxStops ?? MAX_STOPS, MAX_STOPS));
-    const candidates = selectForPlan(await this.houses(), request.startLat, request.startLon);
+    const dev = devKindsOn();
+    const candidates = selectForPlan((await this.houses()).map((h) => planView(h, dev)), request.startLat, request.startLon);
     const seen = new Map<string, PlanCandidate>(candidates.map((c) => [c.id, c]));
     if (!candidates.length) return assemblePlan({ stops: [] }, seen, request.startLat, request.startLon, maxStops);
     this.admit();
