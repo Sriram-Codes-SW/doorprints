@@ -118,15 +118,32 @@ function optionalText(value: unknown, max: number): string | undefined {
   return typeof value === 'string' && value.trim() !== '' && value.length <= max ? value : undefined;
 }
 
+/** The payload key that names the viewing's candidate since S4b-BL-247; every writer writes it. */
+export const VIEWING_CANDIDATE_KEY = 'candidateId';
+/** The key before S4b-BL-247, still read: a payload stored or synced before names its house so. */
+export const VIEWING_OLD_HOUSE_KEY = 'houseId';
+
 /**
- * Reads a record payload as a viewing. A blank or missing `houseId`, a missing or non-positive `startsAt`, or an id
- * outside the record-id pattern is untrusted, so the row is `null` and the caller skips it. An unknown kind is FIRST
- * and an unknown status PLANNED, a duration outside 5..480 is 30, a reminder not in the list 60; an over-long or
- * blank `withWhom`, `notes` or `visitId` is left out. Kotlin: `Viewings.fromPayload`.
+ * The candidate a viewing payload names under exactly one of `candidateId` and `houseId` (the key before S4b-BL-247),
+ * as text; undefined when it has neither or both (a payload with both, whatever their values, is a bad row).
+ * `docs/schemas/viewing-payload-vectors.json`; Kotlin `ViewingPayloadSerializer`, Java `ViewingPayload.candidateOf`.
+ */
+function candidateOfPayload(payload: Record<string, unknown>): unknown {
+  const hasKey = VIEWING_CANDIDATE_KEY in payload;
+  if (hasKey === (VIEWING_OLD_HOUSE_KEY in payload)) return undefined;
+  return payload[hasKey ? VIEWING_CANDIDATE_KEY : VIEWING_OLD_HOUSE_KEY];
+}
+
+/**
+ * Reads a record payload as a viewing. A blank or missing `candidateId` (or `houseId`, the key before S4b-BL-247; both
+ * keys is a bad row), a missing or non-positive `startsAt`, or an id outside the record-id pattern is untrusted, so the
+ * row is `null` and the caller skips it. An unknown kind is FIRST and an unknown status PLANNED, a duration outside
+ * 5..480 is 30, a reminder not in the list 60; an over-long or blank `withWhom`, `notes` or `visitId` is left out.
+ * Kotlin: `Viewings.fromPayload`.
  */
 export function viewingFromPayload(id: string, payload: Record<string, unknown> | null | undefined): Viewing | null {
   if (!isViewingId(id) || !payload || typeof payload !== 'object') return null;
-  const houseId = payload['houseId'];
+  const houseId = candidateOfPayload(payload);
   if (typeof houseId !== 'string' || houseId.trim() === '' || houseId.length > MAX_ID_LENGTH) return null;
   const startsAt = payload['startsAt'];
   if (typeof startsAt !== 'number' || !Number.isSafeInteger(startsAt) || startsAt <= 0) return null;
@@ -154,10 +171,13 @@ export function viewingFromPayload(id: string, payload: Record<string, unknown> 
   return out;
 }
 
-/** The payload keys in the contract's order: houseId, startsAt, durationMin, kind, status, remindMin, then the optional ones. */
+/**
+ * The payload keys in the contract's order: candidateId (S4b-BL-247; never `houseId`), startsAt, durationMin, kind,
+ * status, remindMin, then the optional ones.
+ */
 export function viewingToPayload(v: Viewing): Record<string, unknown> {
   const out: Record<string, unknown> = {
-    houseId: v.houseId,
+    [VIEWING_CANDIDATE_KEY]: v.houseId,
     startsAt: v.startsAt,
     durationMin: v.durationMin,
     kind: v.kind,

@@ -131,7 +131,7 @@ class ViewingsRepositoryTest {
         val row = db.records().get(ViewingType.name, id)!!
         assertTrue("a saved viewing is pushed on the next sync", row.dirty)
         assertEquals(
-            """{"houseId":"h1","startsAt":$at,"durationMin":30,"kind":"FIRST","status":"PLANNED","remindMin":60,"withWhom":"Ravi"}""",
+            """{"candidateId":"h1","startsAt":$at,"durationMin":30,"kind":"FIRST","status":"PLANNED","remindMin":60,"withWhom":"Ravi"}""",
             row.payload,
         )
         // The same values again: no write, the stamp stays.
@@ -201,6 +201,31 @@ class ViewingsRepositoryTest {
         db.records().upsert(kept.copy(id = "v_00000005", deleted = true))
         assertNull(repo.getViewing("v_00000005"))
         assertEquals(listOf("v_00000001"), repo.localRows().toBundle(ExportOptions(exportedAtMillis = at)).viewings.map { it.id })
+    }
+
+    /**
+     * S4b-BL-247: a row stored or synced before names its house `houseId` and reads, backs up and is found by its house
+     * like a new one; saving it again writes `candidateId` only; a row with both keys is a bad row, left out everywhere.
+     */
+    @Test
+    fun aRowOfTheKeyBeforeIsReadAndRewrittenWithCandidateIdAndOneWithBothKeysIsSkipped(): Unit = runBlocking {
+        house()
+        db.records().upsert(RecordEntity(ViewingType.name, "v_00000001",
+            """{"houseId":"h1","startsAt":$at,"durationMin":45,"kind":"SECOND","status":"PLANNED","remindMin":30}""", at))
+        db.records().upsert(RecordEntity(ViewingType.name, "v_00000002",
+            """{"candidateId":"h1","houseId":"h1","startsAt":$at}""", at))
+        assertEquals(listOf("v_00000001"), repo.viewings().map { it.id })
+        val old = repo.getViewing("v_00000001")!!
+        assertEquals(listOf("h1", "45", "SECOND"), listOf(old.houseId, old.durationMin.toString(), old.kind))
+        assertNull(repo.getViewing("v_00000002"))
+        val backup = repo.localRows().toBundle(ExportOptions(exportedAtMillis = at)).viewings
+        assertEquals(listOf("v_00000001" to "h1"), backup.map { it.id to it.houseId })
+
+        repo.markViewingDone("v_00000001")
+        assertEquals(
+            """{"candidateId":"h1","startsAt":$at,"durationMin":45,"kind":"SECOND","status":"DONE","remindMin":30}""",
+            db.records().get(ViewingType.name, "v_00000001")!!.payload,
+        )
     }
 
     @Test

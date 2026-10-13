@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | `doorprints-backup/1` — the one backup format for server, Android and web |
-| Version | 1.36 |
+| Version | 1.37 |
 | Date | 2026-10-13 |
 | Date | 2026-10-06 |
 | Author | Claude (Cowork) – Backend team |
@@ -44,6 +44,7 @@
 | 1.34 | 2026-10-13 | Claude (Code), engineer | **Kinds step 4, the phone** (S4b-BL-206): new §6.5, the Drive sync file after the reset: `sync-1.schema.json` describes `candidates` and `candidateId` beside `houses` and `houseId` (never both), `sync-vectors.json` has eight new cases (a file of the new shape is read, both names refused, a `candidateId` that is a path or a number refused, a null one is no house). §3.0: the phone now keeps an unknown extra in Room and on the wire; its backup still leaves it out (S4b-BL-248). The backup format itself is unchanged. |
 | 1.35 | 2026-10-13 | Claude (Code), engineer | **The website writes the sync file in the candidate shape; a backup keeps a newer app's extras** (S4b-BL-246, S4b-BL-248; `feat/kinds-4b-sync-and-extras`): §6.5 (the website's writer as the phone's, a row taken from another device's file keeps its shape; `sync-1.schema.json`'s `candidates` items allow such a row; a `sync-vectors.json` case with `from`, the rows a written file was made of), §3.0 `extras` (kept through a backup on every stack), §6.1 (`candidatesWrittenBack`, the same bytes on the website, the phone and the server). |
 | 1.36 | 2026-10-13 | Claude (Code), engineer | **Photo row key order in the sync file** (S4b-BL-252): §6.5 says the order, and the written case of `sync-vectors.json` holds a photo with a Drive file and one without, compared byte for byte by both stacks. |
+| 1.37 | 2026-10-13 | Claude (Code), engineer | **The viewing payload says `candidateId`** (S4b-BL-247; `feat/kinds-4c-viewing-candidate-id`): new §6.6 and [`viewing-payload-vectors.json`](viewing-payload-vectors.json) (format `doorprints-viewing-payload-vectors/1`, 14 cases): a viewing record's payload names its candidate `candidateId`; one stored, synced or kept on a server before names it `houseId` and is read the same on the three stacks; both keys is a bad row; what each stack writes back says `candidateId`, byte for byte. §3.10: the backup row of the family before keeps `houseId` (the new family says `candidateId`, as before). |
 | 1.5 | 2026-09-23 | Claude (Cowork), Docs team | **Device note under section 6 rule 6** (Android handover item 19, `android/shared/README.md` §9; it was addressed to Backend, and the Docs team, which owns `docs/**`, applied it so that it lands before the first deploy; [10](../10-sprint-log.md) §11.5 row 19). Rule 6 describes the server import. The note records where the Android device import goes further when it writes a house over a tombstone that has reached the server: it relinks the visits the purge unlinked and re-adds the photos from the backup's bytes under fresh ids, so a device import says the photos **come back**. It also records the one exception (a tombstone not yet pushed was never purged) and that the web importer (S4b-00a) follows the same rule. Nothing else in this file changed; the server's behaviour and wording are unchanged. |
 | 1.4 | 2026-09-23 | Claude (Cowork), Docs team | **New section 0, "What an import is"** (Docs team; nothing else in this file changed): the import product definition the owner approved on 2026-09-23 for Sprint 4b story S4b-00 — what an import is, the only two accepted files, what a backup can contain, what an import never contains or changes, the behaviour (with pointers to sections 6 and 7 here), and what is out of scope. Requirements [01](../01-requirements.md) FR-089..FR-097; vocabulary [12](../12-brand-and-naming.md) section G. Sections 1–9 are unchanged and remain the Backend team's. |
 | 1.3 | 2026-09-22 | Claude (Cowork) – Backend team | **Three review items closed, and the handover table brought up to date.** (1) **`checklist` is the one lenient always-present field** (sections 3.1 and 4.4). Section 4.4 said an omitted always-present field is refused, while the server's `BackupHouse` and the Android reader both read a missing checklist as `{}` — so an import could clear a house's scores in silence. The format now says what the readers do (absent or `null` → no scores), because "no scores" is a true statement about a house where a defaulted `0, 0` is not; and the server no longer does it silently: `BackupHouse` keeps the `null` (its compact-constructor default is gone), and when a written row has no checklist but the server's copy has scores, the report names the house and the number of scores cleared, in the preview too. Server test `BackupApiTest.aMissingChecklistReadsAsNoScoresAndTheReportSaysWhatItClears`. The Android reader still refuses an explicit `null` there — new ticket **S4-00/g**. (2) **One `data.json` cap: 16 MiB** (section 7, closing [10](../10-sprint-log.md) §11.3 row 7). It was 64 MiB here and in `BackupFormat`, 16 MiB in `:shared` and the web mirror, and 8 MiB effective on the server. 16 MiB is what [01](../01-requirements.md) SEC-041, [02](../02-threat-model.md) T-T8, `:shared` and the web mirror already say, so the server moved: `BackupFormat.MAX_DATA_JSON_BYTES` is 16 MiB and `app.limits.max-import-bytes` defaults to it (`AppProperties`, `application.yml`, `docker-compose.yml`), so any backup a device accepts restores to a server. New backend test `BackupParityTest` pins all six copies, reading the two client constants as source text, and also checks that the web byte golden is still an exact copy of `backup-sample.json`. (3) New ticket **S4-00/f** (AI): `GoldenSetEvalTest` writes to the shared test database without `@ResourceLock("database")`. Section 9 gains a *State* column: S4-00/a and /b are done in the working tree (Android `CanonicalSampleTest` and a grouping `BackupData.of`; the web golden regenerated and byte-identical), so the "known divergence" of section 5 is closed and S4-00/e is reworded — the client coverage it asked Docs to stop claiming now exists. New ticket **S4-00/h** (Docs) carries the cap change into 01/02/10, and S4-00/d gains the extra paths the new test reads. |
@@ -346,6 +347,8 @@ One row per viewing; `viewings` follows `questions`, ordered by `updatedAt` then
 `notes` (0..2000, only when non-empty), `visitId` (at most 64 characters, only when set), `updatedAt`. A file with a bad value, an unknown `kind` or `status`, a repeated id or more than the row cap is refused whole;
 a missing `durationMin`, `kind`, `status` or `remindMin` reads as its default (30, `FIRST`, `PLANNED`, 60). A stored record is coerced on read (a bad value becomes the default, a row with no house or time is skipped).
 Merge by `id`, newest `updatedAt` wins, an import never deletes, and a newer row brings a deleted viewing back. "Missed" is never stored: a PLANNED viewing that ended more than two hours ago is shown as missed.
+This row is the family before; a file of the new family names the house `candidateId` (§1.1). The viewing *record* that
+an import writes (the payload, without `id` and `updatedAt`) names it `candidateId` too since S4b-BL-247 (§6.6).
 
 ### 3.11 `viewing-sample.ics`
 
@@ -659,6 +662,25 @@ phone). The schema (JSON Schema) does not fix key order, so this note and the ve
 without its Drive file and `photoRefs` the Drive file by photo id; the website writes the row with `syncRowOf` and `withRef`,
 the phone with `SyncRows.photo(dto, by, ref)`, and each compares the photo rows byte for byte, as it does the houses and visits.
 A row taken from another device's file keeps the order it came in; both readers read either.
+
+### 6.6 The viewing payload (`viewing-payload-vectors.json`)
+
+Not part of the backup format: the payload of a record of type `viewing` (a device's records table, a Drive sync file's
+`records`, the server's `record` table and `/api/records`). **Since S4b-BL-247** (2026-10-13) every writer names the
+viewing's candidate `candidateId`: the website's `viewingToPayload`, the phone's and the iPhone's `ViewingType`
+(`ViewingPayloadSerializer` in `:shared`) and the server's backup import (`BackupViewing.toPayload`). The keys
+are, in this order, `candidateId`, `startsAt`, `durationMin`, `kind`, `status`, `remindMin`, then `huntReminder` (only
+when true), `withWhom`, `notes` and `visitId` (each only when set). **A payload written before names it `houseId`, and
+every reader reads it the same**: the apps' stores (so the screens, reminders, copies, search and the AI on the device),
+the server's AI (`ViewingLine`, and `RecordRepository.findLiveViewingsOfHouse`, which compares
+`coalesce(payload ->> 'candidateId', payload ->> 'houseId')`) and its backup export (`BackupMapper`). **No stored row
+is rewritten**: there is no Flyway migration (the server keeps its one squashed `V1`, and reading both keys costs one
+`coalesce` in one query), and a device rewrites a row only when it is next saved there (then with `candidateId`). A
+payload with **both** keys, whatever their values (a `null` too), is a bad row: skipped by every reader, like one with
+no start. Each case of `reads` gives a stored payload, the candidate read (`null`: skipped) and, when read, the payload
+the stack writes back (`written`), byte for byte; the web's `viewing-payload-vectors.spec.ts`, the phone's
+`ViewingPayloadVectorsTest` and the server's `ViewingPayloadVectorsTest` (with `HouseDocumentsTest` for the AI line) read
+it. A record's payload stays opaque to the sync file, `/api/records` and `sync-1.schema.json`, which therefore do not change.
 
 ## 7. Limits
 

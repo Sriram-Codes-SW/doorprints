@@ -24,6 +24,7 @@ import app.doorprints.server.house.HouseStatus;
 import app.doorprints.server.photo.PhotoDto;
 import app.doorprints.server.photo.PhotoMeta;
 import app.doorprints.server.record.Record;
+import app.doorprints.server.record.ViewingPayload;
 import app.doorprints.server.visit.Visit;
 
 import java.time.Instant;
@@ -302,20 +303,21 @@ final class BackupMapper {
 
     /**
      * A viewing record as a backup row. The server never reads inside a record, so a client may have stored anything:
-     * a payload without a usable house or start time is left out, and a field of the wrong type or outside its range
+     * a payload without a usable house (its {@code candidateId}, or {@code houseId} before S4b-BL-247, never both:
+     * {@link ViewingPayload}) or start time is left out, and a field of the wrong type or outside its range
      * is read as the clients read it (duration 30, kind FIRST, status PLANNED, reminder 60; a text past its limit is
      * dropped), so that the export always imports again.
      */
-    private static BackupViewing viewing(Record r, ObjectMapper json) {
+    static BackupViewing viewing(Record r, ObjectMapper json) {
         JsonNode p;
         try {
             p = json.readTree(r.getPayload());
         } catch (RuntimeException e) {
             return null;
         }
-        var houseId = text(p, "houseId", BackupViewing.MAX_REF);
+        var houseId = ViewingPayload.candidateOf(p);
         var startsAt = p.path("startsAt");
-        if (houseId == null || houseId.isBlank() || !startsAt.isIntegralNumber() || startsAt.asLong() <= 0) return null;
+        if (houseId == null || !startsAt.isIntegralNumber() || startsAt.asLong() <= 0) return null;
         var duration = p.path("durationMin");
         var kind = p.path("kind");
         var status = p.path("status");

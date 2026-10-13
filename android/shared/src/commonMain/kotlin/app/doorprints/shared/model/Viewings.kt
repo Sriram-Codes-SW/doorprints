@@ -22,14 +22,20 @@ import app.doorprints.shared.records.RecordRules
 import app.doorprints.shared.records.RecordType
 import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.Transient
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonTransformingSerializer
 import kotlin.math.abs
 import kotlin.random.Random
 
 /**
  * A planned, done or cancelled viewing of a house (docs/11 5.8, slice 3b-1 of 5.30): a record of type `viewing` whose
- * id is [id], `v_` + 8 lowercase hex when the app makes it. The payload keys are, in this order, [houseId], [startsAt],
+ * id is [id], `v_` + 8 lowercase hex when the app makes it. The payload keys are, in this order, [houseId] (written
+ * `candidateId` since S4b-BL-247, a payload of `houseId` still read: [ViewingPayloadSerializer]), [startsAt],
  * [durationMin], [kind], [status], [remindMin], [huntReminder] (only when true), [withWhom], [notes] and [visitId] (each
  * only when set). The house may be gone (a deleted house keeps its viewings, shown as "a house that is gone"). The
  * TypeScript twin is `Viewing` in `web/src/app/shared/viewing.ts`; the server stores the same keys in its `record` table.
@@ -39,8 +45,8 @@ import kotlin.random.Random
 data class Viewing(
     /** The record id, not part of the payload. */
     @Transient val id: String = "",
-    /** The house's id; required, may name a house that is gone. */
-    val houseId: String = "",
+    /** The house's id; required, may name a house that is gone. `candidateId` in the payload (S4b-BL-247). */
+    @SerialName(ViewingPayloadSerializer.KEY) val houseId: String = "",
     /** Epoch ms of the start; required, > 0. */
     val startsAt: Long = 0L,
     /** [MIN_DURATION]..[MAX_DURATION] minutes. */
@@ -132,8 +138,28 @@ data class Viewing(
     }
 }
 
+/**
+ * The payload of a viewing record (S4b-BL-247): written with `candidateId`; a payload stored or synced before names its
+ * house `houseId` and is read the same; one with both keys, whatever their values, does not decode, so the row is
+ * skipped as a bad one (`docs/schemas/viewing-payload-vectors.json`; the web's `viewingFromPayload`, the server's
+ * `ViewingPayload.candidateOf`). No stored row is rewritten until it is next saved.
+ */
+object ViewingPayloadSerializer : JsonTransformingSerializer<Viewing>(Viewing.serializer()) {
+    /** The key every writer writes since S4b-BL-247. */
+    const val KEY = "candidateId"
+
+    /** The key before S4b-BL-247, still read. */
+    const val OLD_KEY = "houseId"
+
+    override fun transformDeserialize(element: JsonElement): JsonElement {
+        if (element !is JsonObject || OLD_KEY !in element) return element
+        if (KEY in element) throw SerializationException("a viewing payload names its candidate under both keys")
+        return JsonObject(element.entries.associate { (key, value) -> (if (key == OLD_KEY) KEY else key) to value })
+    }
+}
+
 /** The `viewing` record type of the `records` table (slice 3b-1). */
-val ViewingType: RecordType<Viewing> = RecordType("viewing", Viewing.serializer())
+val ViewingType: RecordType<Viewing> = RecordType("viewing", ViewingPayloadSerializer)
 
 /** First look, a second viewing, or a follow-up. Stored and sent by name. */
 enum class ViewingKind {

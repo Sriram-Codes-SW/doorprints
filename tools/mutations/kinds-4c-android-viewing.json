@@ -1,0 +1,28 @@
+{
+  "spec": "android/shared/src/androidHostTest/kotlin/app/doorprints/shared/model/ViewingPayloadVectorsTest.kt",
+  "gradle": [
+    ":shared:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.shared.model.ViewingPayloadVectorsTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/Viewings.kt",
+      "find": "        if (KEY in element) throw SerializationException(\"a viewing payload names its candidate under both keys\")",
+      "replace": "",
+      "expect": "everyStoredPayloadNamesTheVectorsCandidateAndIsWrittenBackWithCandidateId"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/Viewings.kt",
+      "find": "(if (key == OLD_KEY) KEY else key) to value",
+      "replace": "key to value",
+      "expect": "everyStoredPayloadNamesTheVectorsCandidateAndIsWrittenBackWithCandidateId"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/Viewings.kt",
+      "find": "    @SerialName(ViewingPayloadSerializer.KEY) val houseId: String = \"\",",
+      "replace": "    val houseId: String = \"\",",
+      "expect": "everyStoredPayloadNamesTheVectorsCandidateAndIsWrittenBackWithCandidateId"
+    }
+  ]
+}

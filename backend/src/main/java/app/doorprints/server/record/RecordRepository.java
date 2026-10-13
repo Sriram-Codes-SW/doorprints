@@ -42,11 +42,13 @@ public interface RecordRepository extends JpaRepository<Record, RecordKey> {
     List<Record> findByKeyTypeAndDeletedFalse(String type);
 
     /**
-     * The live {@code viewing} rows whose payload names the house (the {@code houseId} key, compared as text), chosen
-     * in the database so a save of one house does not read the viewings of the others (S4b-BL-162).
+     * The live {@code viewing} rows whose payload names the house (the {@code candidateId} key, or {@code houseId} in a
+     * payload stored before S4b-BL-247, compared as text), chosen in the database so a save of one house does not read
+     * the viewings of the others (S4b-BL-162). Both keys are read here, so no stored row needs rewriting; a row with
+     * both is returned and then skipped by its reader ({@link ViewingPayload}).
      */
-    @Query(value = "select * from record where type = 'viewing' and deleted = false and payload ->> 'houseId' = :houseId",
-            nativeQuery = true)
+    @Query(value = "select * from record where type = 'viewing' and deleted = false"
+            + " and coalesce(payload ->> 'candidateId', payload ->> 'houseId') = :houseId", nativeQuery = true)
     List<Record> findLiveViewingsOfHouse(@Param("houseId") String houseId);
 
     /** Live rows of one kind, for the per-type cap. */

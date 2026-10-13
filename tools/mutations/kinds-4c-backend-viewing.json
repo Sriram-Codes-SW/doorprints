@@ -1,0 +1,54 @@
+{
+  "spec": [
+    "backend/src/test/java/app/doorprints/server/backup/ViewingPayloadVectorsTest.java",
+    "backend/src/test/java/app/doorprints/server/ai/rag/HouseDocumentsTest.java",
+    "backend/src/test/java/app/doorprints/server/record/RecordApiTest.java"
+  ],
+  "maven": [
+    "-Dtest=ViewingPayloadVectorsTest,HouseDocumentsTest,RecordApiTest"
+  ],
+  "mutations": [
+    {
+      "file": "backend/src/main/java/app/doorprints/server/record/ViewingPayload.java",
+      "find": "        if (hasKey == payload.has(OLD_KEY)) return null;",
+      "replace": "        if (!hasKey && !payload.has(OLD_KEY)) return null;",
+      "expect": "everyStoredPayloadNamesTheVectorsCandidateAndIsWrittenBackWithCandidateId"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/record/ViewingPayload.java",
+      "find": "        var node = payload.get(hasKey ? KEY : OLD_KEY);",
+      "replace": "        var node = payload.get(KEY);",
+      "expect": "everyStoredPayloadNamesTheVectorsCandidateAndIsWrittenBackWithCandidateId"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/record/ViewingPayload.java",
+      "find": "        return id.isBlank() || id.length() > MAX_REF ? null : id;",
+      "replace": "        return id.isBlank() ? null : id;",
+      "expect": "theViewingLineOfEveryVectorPayloadNamesItsCandidate"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/backup/BackupViewing.java",
+      "find": "        payload.put(ViewingPayload.KEY, houseId);",
+      "replace": "        payload.put(ViewingPayload.OLD_KEY, houseId);",
+      "expect": "anImportWritesOnlyCandidateId"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/ViewingLine.java",
+      "find": "        var houseId = ViewingPayload.candidateOf(p);",
+      "replace": "        var houseId = p.path(\"houseId\").isString() && !p.path(\"houseId\").asString().isBlank() ? p.path(\"houseId\").asString() : null;",
+      "expect": "theViewingLineOfEveryVectorPayloadNamesItsCandidate"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/record/RecordRepository.java",
+      "find": "            + \" and coalesce(payload ->> 'candidateId', payload ->> 'houseId') = :houseId\", nativeQuery = true)",
+      "replace": "            + \" and payload ->> 'houseId' = :houseId\", nativeQuery = true)",
+      "expect": "findLiveViewingsOfHouseSelectsInTheDatabaseByTheHouseIdInThePayload"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/record/RecordController.java",
+      "find": "            var houseId = ViewingPayload.candidateOf(json.readTree(payload));",
+      "replace": "            var houseId = json.readTree(payload).path(\"houseId\").isString() ? json.readTree(payload).path(\"houseId\").asString() : null;",
+      "expect": "aViewingRefreshesTheAiDocumentOfItsHouseAndOfTheHouseItLeft"
+    }
+  ]
+}

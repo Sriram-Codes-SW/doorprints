@@ -551,16 +551,22 @@ describe('SyncService', () => {
       await sync.syncNow(true);
       expect(api.pushedRecords.map((r) => [r.type, r.id, r.deleted])).toEqual([['viewing', 'v_0a1b2c3d', false]]);
       expect(api.pushedRecords[0].payload).toEqual({
-        houseId: 'h-1', startsAt: 1790501400000, durationMin: 45, kind: 'SECOND', status: 'PLANNED', remindMin: 30, notes: 'Bring a tape',
+        candidateId: 'h-1', startsAt: 1790501400000, durationMin: 45, kind: 'SECOND', status: 'PLANNED', remindMin: 30, notes: 'Bring a tape',
       });
       expect(await store.records.dirty()).toEqual([]);
+      // S4b-BL-247: a row the server kept from before names its house `houseId` and reads the same as a new one.
       await store.records.putFromServer({
         type: 'viewing', id: 'v_ffffffff', payload: { houseId: 'h-2', startsAt: 1790000000000, status: 'DONE' },
         updatedAt: '2026-09-02T00:00:00.000Z', deleted: false, syncVersion: 4,
       });
-      expect((await store.viewings.all()).map((v) => [v.id, v.status, v.durationMin, v.kind])).toEqual([
-        ['v_ffffffff', 'DONE', 30, 'FIRST'],
-        ['v_0a1b2c3d', 'PLANNED', 45, 'SECOND'],
+      await store.records.putFromServer({
+        type: 'viewing', id: 'v_eeeeeeee', payload: { candidateId: 'h-3', startsAt: 1789000000000, status: 'CANCELLED' },
+        updatedAt: '2026-09-02T00:00:00.000Z', deleted: false, syncVersion: 5,
+      });
+      expect((await store.viewings.all()).map((v) => [v.id, v.houseId, v.status, v.durationMin, v.kind])).toEqual([
+        ['v_eeeeeeee', 'h-3', 'CANCELLED', 30, 'FIRST'],
+        ['v_ffffffff', 'h-2', 'DONE', 30, 'FIRST'],
+        ['v_0a1b2c3d', 'h-1', 'PLANNED', 45, 'SECOND'],
       ]);
     });
 

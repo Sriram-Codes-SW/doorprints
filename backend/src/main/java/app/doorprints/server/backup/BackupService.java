@@ -39,6 +39,7 @@ import app.doorprints.server.record.RecordController;
 import app.doorprints.server.record.RecordDto;
 import app.doorprints.server.record.RecordKey;
 import app.doorprints.server.record.RecordRepository;
+import app.doorprints.server.record.ViewingPayload;
 import app.doorprints.server.sync.ClientClock;
 import app.doorprints.server.sync.SyncVersions;
 import app.doorprints.server.visit.Visit;
@@ -616,27 +617,16 @@ public class BackupService {
         houseOf(row.houseId(), changedHouses);
         if (existing != null && !existing.isDeleted()) {
             try {
-                var before = json.readTree(existing.getPayload()).path("houseId");
-                if (before.isString()) houseOf(before.asString(), changedHouses);
+                var before = ViewingPayload.candidateOf(json.readTree(existing.getPayload()));
+                if (before != null) houseOf(before, changedHouses);
             } catch (RuntimeException e) {
                 // A stored payload that does not read names no house.
             }
         }
         if (dryRun) return outcome;
 
-        var payload = json.createObjectNode();
-        payload.put("houseId", row.houseId());
-        payload.put("startsAt", row.startsAt());
-        payload.put("durationMin", row.durationMin() == null ? BackupViewing.DEFAULT_DURATION : row.durationMin());
-        payload.put("kind", row.kind() == null ? "FIRST" : row.kind());
-        payload.put("status", row.status() == null ? "PLANNED" : row.status());
-        payload.put("remindMin", row.remindMin() == null ? 60 : row.remindMin());
-        if (Boolean.TRUE.equals(row.huntReminder())) payload.put("huntReminder", true);
-        if (row.withWhom() != null && !row.withWhom().isEmpty()) payload.put("withWhom", row.withWhom());
-        if (row.notes() != null && !row.notes().isEmpty()) payload.put("notes", row.notes());
-        if (row.visitId() != null && !row.visitId().isEmpty()) payload.put("visitId", row.visitId());
         var record = existing == null ? new Record(key) : existing;
-        record.setPayload(payload.toString());
+        record.setPayload(row.toPayload(json));
         record.setDeleted(false);
         record.setUpdatedAt(inFile.truncatedTo(java.time.temporal.ChronoUnit.MICROS));
         record.setSyncVersion(versions.next());
