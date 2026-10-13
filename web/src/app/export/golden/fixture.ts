@@ -24,6 +24,7 @@ import type { ViewingRow } from '../../shared/viewing';
 import type { AreaNoteRow, AreaRow, PlaceRow } from '../../shared/area';
 import { DEFAULT_EXPORT_OPTIONS, collect } from '../export-model';
 import type { ExportBundle, ExportOptions } from '../export-model';
+import type { CopyKinds } from '../kind-copy';
 
 /**
  * The fixture behind the golden-file tests (docs/06 test plan; docs/11 §5.2 "deterministic").
@@ -516,9 +517,14 @@ export const FIXTURE_PLAIN_PHOTOS: PhotoRecord[] = FIXTURE_PHOTOS.map(
   ({ roomId: _r, tags: _t, caption: _c, metaUpdatedAt: _m, metaDirty: _d, ...photo }) => photo,
 );
 
-export function fixtureBundle(options: Partial<ExportOptions> = {}, houses: readonly HouseRecord[] = FIXTURE_HOUSES): ExportBundle {
+export function fixtureBundle(
+  options: Partial<ExportOptions> = {},
+  houses: readonly HouseRecord[] = FIXTURE_HOUSES,
+  kinds?: CopyKinds,
+): ExportBundle {
   return collect({
     houses,
+    kinds,
     visits: FIXTURE_VISITS,
     photos: FIXTURE_PHOTOS,
     brokers: FIXTURE_BROKERS,

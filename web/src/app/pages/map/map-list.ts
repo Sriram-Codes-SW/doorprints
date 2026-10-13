@@ -19,6 +19,9 @@
 import { HouseDto, HouseStatus, STATUSES } from '../../core/models';
 import type { Broker } from '../../shared/broker';
 import { floorSearchText } from '../../shared/house-floor';
+import type { KindFields } from '../../core/kind-fields';
+import { builtInKind, devKindsOn } from '../../core/dev-kinds';
+import { kindSearchWords, type Words } from '../../shared/kind-values';
 import { NO_COST_FILTER, type CostFilter, type CostRange } from '../../shared/cost-filter';
 
 /**
@@ -137,13 +140,17 @@ function priceGroup(h: HouseDto): number {
  * the area notes that reach the house (`noteTexts`, slice 4a: `notesReaching`), and the move-in notes and checklist
  * item texts (slice 5), and the floor as `floorSearchText` words it (S4b-BL-87) and, when given, as `localFloor` words it
  * in the app's language (`floorLocalSearchText`, S4b-BL-104 b), so "भूतल" finds a ground floor as "ground floor" does. Photo captions and tags are not matched: the list holds no photos (reading them would read
- * every photo of the store).
+ * every photo of the store). Since kinds PR 6 (S4b-BL-210), given the app's words `t`, the typed extras the kind file's
+ * `search` names, after everything else (`kindSearchWords`): `fields` are the candidate's kind's, as the page draws it
+ * (the house unless the developer flag allows its kind, `builtInKind`), and a house adds none.
  */
 export function searchText(
   h: HouseDto,
   brokerText = '',
   noteTexts: readonly string[] = [],
   localFloor?: (floor: number) => string,
+  t?: Words,
+  fields: KindFields = builtInKind(h.kind, devKindsOn()).fields,
 ): string {
   const parts = [h.label, h.address, h.street, h.locality, h.notes, h.contactName, brokerText]
     .filter((x) => !!x);
@@ -172,6 +179,7 @@ export function searchText(
     parts.push(floorSearchText(h.floor));
     if (localFloor) parts.push(localFloor(h.floor));
   }
+  if (t) parts.push(...kindSearchWords(fields, h, t));
   return parts.join(' ')
     .toLowerCase();
 }

@@ -19,6 +19,7 @@
 package app.doorprints.export
 
 import android.content.Context
+import app.doorprints.BuildConfig
 import app.doorprints.data.Repository
 import app.doorprints.data.toBundle
 import app.doorprints.i18n.AppLocale
@@ -41,7 +42,9 @@ object ExportBuilder {
         build(repository.localRows(), options)
 
     /** The bundle from rows already read ([toBundle], common since CMP-6 P6b; the Export screen's count uses it too). */
-    fun build(rows: Repository.LocalRows, options: ExportOptions): ExportBundle = rows.toBundle(options)
+    fun build(rows: Repository.LocalRows, options: ExportOptions): ExportBundle =
+        // A candidate of a hidden kind is copied with its typed extras only in a debug build with the flag (S4b-BL-210).
+        rows.toBundle(options.copy(devKinds = BuildConfig.DEV_KINDS))
 
     /**
      * The app's own version, for the backup manifest. Read from the package manager rather than `BuildConfig`,

@@ -103,6 +103,8 @@ object ExportRows {
             addAll(COST_COLUMN_KEYS.map { s[it] })
             // Slice 1c: the number of rooms, right after the cost per sq ft; S4b-BL-87: the floor after it.
             add(s["col.rooms"]); add(s["col.floor"])
+            // Kinds PR 6 (S4b-BL-210): a kind's typed extras after the floor ([KindCopy]); none in a copy of houses only.
+            addAll(bundle.extraColumns.map { it.label })
             add(s["col.visits"]); add(s["col.photos"])
             add(s["col.createdAt"]); add(s["col.updatedAt"]); add(s["col.id"])
         }
@@ -125,6 +127,8 @@ object ExportRows {
                 addAll(costCells(h, s))
                 add(h.rooms?.takeIf { it.isNotEmpty() }?.let { Cell.Count(it.size.toLong()) } ?: Cell.Blank)
                 add(h.floor?.let { Cell.Count(it.toLong()) } ?: Cell.Blank)
+                val extras = bundle.extrasOf(h)
+                addAll(bundle.extraColumns.map { c -> extras.firstOrNull { it.key == c.key }?.cell ?: Cell.Blank })
                 add(Cell.Count(bundle.visitsOf(h).size.toLong()))
                 add(Cell.Count(bundle.photosOf(h).size.toLong()))
                 add(Cell.Stamp(h.createdAt)); add(Cell.Stamp(h.updatedAt))

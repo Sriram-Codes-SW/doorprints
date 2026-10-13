@@ -139,6 +139,8 @@ function houseSection(entry: ExportHouse, position: number, bundle: ExportBundle
     const broker = bundle.brokers.find((b) => b.id === house.brokerId);
     push('house.broker', broker ? brokerLine(broker.broker) : '');
   }
+  // Kinds PR 6 (S4b-BL-210): the kind's typed extras, labelled by the kind; a house has none.
+  for (const e of entry.extras ?? []) facts.push([e.label, e.text]);
   push('exp.fieldSaved', formatDate(house.createdAt));
 
   if (facts.length) {

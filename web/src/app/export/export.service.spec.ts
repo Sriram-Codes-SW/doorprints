@@ -32,7 +32,11 @@ import { DEFAULT_EXPORT_OPTIONS } from './export-model';
 import { ExportService, MAX_EXPORT_PHOTO_BYTES, approximateSize, checkPhotoBudget, isAbortError } from './export.service';
 import type { ExportResult } from './export.service';
 import { FIXTURE_BROKERS, FIXTURE_HOUSES, FIXTURE_PHOTOS, FIXTURE_VISITS, fixtureBundle } from './golden/fixture';
-import type { PhotoRecord } from '../data/records';
+import { tryHouseFromDto, type PhotoRecord } from '../data/records';
+import schoolVectors from '../../../../docs/schemas/kinds/school-vectors.json';
+import { houseOf, type CandidateDto } from '../core/candidate';
+import { DEV_KINDS_KEY } from '../core/dev-kinds';
+import { SCHOOL_FIELDS } from '../core/school-kind';
 
 /**
  * The two failure paths S4-03 has that CI cannot see by building a file: a print view the browser refuses to
@@ -304,5 +308,24 @@ describe('lengthUnit (slice 1c)', () => {
     // Room sizes in metres: 396cm = 3.96 m, 366cm = 3.66 m (two decimals in CSV)
     expect(csvContent).toMatch(/3\.96/);
     expect(csvContent).toMatch(/3\.66/);
+  });
+});
+
+describe('the copies read each candidate as its page draws it (kinds PR 6, S4b-BL-210)', () => {
+  const school = () => tryHouseFromDto(houseOf((schoolVectors as unknown as { candidate: CandidateDto }).candidate))!;
+  afterEach(() => localStorage.removeItem(DEV_KINDS_KEY));
+
+  it('a school is copied with its extras only while the developer flag is on; the houses as they were', async () => {
+    TestBed.resetTestingModule();
+    const store = { ...fakeStore([]), allHouses: () => Promise.resolve([...FIXTURE_HOUSES.map((h) => ({ ...h })), school()]) };
+    TestBed.configureTestingModule({ providers: [{ provide: LocalStore, useValue: store }] });
+    const service = TestBed.inject(ExportService);
+    const off = await service.bundle(OPTIONS);
+    expect([off.extraColumns, off.houses.every((h) => h.extras === undefined)]).toEqual([undefined, true]);
+    localStorage.setItem(DEV_KINDS_KEY, 'school');
+    const on = await service.bundle({ ...OPTIONS, lang: 'hi' });
+    expect(on.extraColumns?.map((c) => c.key)).toEqual(SCHOOL_FIELDS.others().map((f) => `school.${f.id}`));
+    expect(on.extraColumns?.[0].label).toBe('बोर्ड');
+    expect(on.houses.filter((h) => h.extras).map((h) => h.house.kind)).toEqual(['school']);
   });
 });

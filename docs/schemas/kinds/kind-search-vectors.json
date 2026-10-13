@@ -1,0 +1,269 @@
+{
+ "format": "doorprints-kind-search-vectors/1",
+ "note": "Typed extras in search and in the readable copies (kinds PR 6, S4b-BL-210; docs/03 ADR-36 §18.10), read by both stacks: the website's kind-search.spec.ts and the phone's KindSearchVectorsTest (:shared) and HouseListSearchTest (:ui). The candidate is school-vectors.json's `candidate` (a school with all seven extras). `searched`: the extras school.json's `search` names (the house's search list is unchanged and its extras all have a `was`, so a house gains no word). `search.<lang>`: the words a school's extras add to the list search, in order, after every word it had before (the kind file's order of extras; an enum's option and a switch's label in English, then in the app's language when that is not English and the words differ; a number's digits; a text as typed; money as its digits and as rupees). `invalid`: extras of the wrong type or out of the kind's options add no word and no copy row, and a switch that is off adds no word but is written as the copy's *No* (`invalid.copies`, in English). `flagOff`: with the developer flag off a school is drawn, searched and copied as a house, so it adds no word and no copy row or column. `copies.<lang>`: each extra with a value, in the kind file's order, as the readable copies (HTML, Markdown, the phone's PDF) write it (`text`, on the Details block before *Added*), as the CSV writes it (`cell`, a column per extra of each kind in the copy, after *Floor*) and the XLSX cell type (`xlsx`: text, number, or money with the rupee format). The label of a row and a column is the field's label in the copy's language, per stack: school-vectors.json `kind.labels.<stack>.<lang>[\"field.<id>\"]`. A copy with no school has no extra column (the house copies are pinned by house-pins.golden.ts and HouseCopyPinsTest). Change a case only with the change it pins; hi, ta and te are under review.",
+ "candidate": "school-vectors.json#/candidate",
+ "searched": [
+  "board",
+  "medium",
+  "grades",
+  "commuteMinutes",
+  "busService",
+  "fees",
+  "admissionFee"
+ ],
+ "search": {
+  "en": [
+   "CBSE",
+   "English",
+   "Nursery to 12",
+   "25",
+   "School bus",
+   "96000",
+   "₹96,000",
+   "25000",
+   "₹25,000"
+  ],
+  "hi": [
+   "CBSE",
+   "English",
+   "अंग्रेज़ी",
+   "Nursery to 12",
+   "25",
+   "School bus",
+   "स्कूल बस",
+   "96000",
+   "₹96,000",
+   "25000",
+   "₹25,000"
+  ],
+  "ta": [
+   "CBSE",
+   "English",
+   "ஆங்கிலம்",
+   "Nursery to 12",
+   "25",
+   "School bus",
+   "பள்ளிப் பேருந்து",
+   "96000",
+   "₹96,000",
+   "25000",
+   "₹25,000"
+  ],
+  "te": [
+   "CBSE",
+   "English",
+   "ఇంగ్లీష్",
+   "Nursery to 12",
+   "25",
+   "School bus",
+   "స్కూల్ బస్సు",
+   "96000",
+   "₹96,000",
+   "25000",
+   "₹25,000"
+  ]
+ },
+ "invalid": {
+  "extras": {
+   "board": "NIOS",
+   "medium": 7,
+   "grades": "",
+   "commuteMinutes": "far",
+   "busService": false,
+   "fees": 96000,
+   "admissionFee": "25000"
+  },
+  "words": [],
+  "copies": [
+   {
+    "id": "busService",
+    "text": "No",
+    "cell": "No",
+    "xlsx": "text"
+   }
+  ]
+ },
+ "flagOff": {
+  "words": [],
+  "copies": [],
+  "columns": 0
+ },
+ "copies": {
+  "en": [
+   {
+    "id": "board",
+    "text": "CBSE",
+    "cell": "CBSE",
+    "xlsx": "text"
+   },
+   {
+    "id": "medium",
+    "text": "English",
+    "cell": "English",
+    "xlsx": "text"
+   },
+   {
+    "id": "grades",
+    "text": "Nursery to 12",
+    "cell": "Nursery to 12",
+    "xlsx": "text"
+   },
+   {
+    "id": "commuteMinutes",
+    "text": "25",
+    "cell": "25",
+    "xlsx": "number"
+   },
+   {
+    "id": "busService",
+    "text": "Yes",
+    "cell": "Yes",
+    "xlsx": "text"
+   },
+   {
+    "id": "fees",
+    "text": "₹96,000",
+    "cell": "96000",
+    "xlsx": "money"
+   },
+   {
+    "id": "admissionFee",
+    "text": "₹25,000",
+    "cell": "25000",
+    "xlsx": "money"
+   }
+  ],
+  "hi": [
+   {
+    "id": "board",
+    "text": "CBSE",
+    "cell": "CBSE",
+    "xlsx": "text"
+   },
+   {
+    "id": "medium",
+    "text": "अंग्रेज़ी",
+    "cell": "अंग्रेज़ी",
+    "xlsx": "text"
+   },
+   {
+    "id": "grades",
+    "text": "Nursery to 12",
+    "cell": "Nursery to 12",
+    "xlsx": "text"
+   },
+   {
+    "id": "commuteMinutes",
+    "text": "25",
+    "cell": "25",
+    "xlsx": "number"
+   },
+   {
+    "id": "busService",
+    "text": "हाँ",
+    "cell": "हाँ",
+    "xlsx": "text"
+   },
+   {
+    "id": "fees",
+    "text": "₹96,000",
+    "cell": "96000",
+    "xlsx": "money"
+   },
+   {
+    "id": "admissionFee",
+    "text": "₹25,000",
+    "cell": "25000",
+    "xlsx": "money"
+   }
+  ],
+  "ta": [
+   {
+    "id": "board",
+    "text": "CBSE",
+    "cell": "CBSE",
+    "xlsx": "text"
+   },
+   {
+    "id": "medium",
+    "text": "ஆங்கிலம்",
+    "cell": "ஆங்கிலம்",
+    "xlsx": "text"
+   },
+   {
+    "id": "grades",
+    "text": "Nursery to 12",
+    "cell": "Nursery to 12",
+    "xlsx": "text"
+   },
+   {
+    "id": "commuteMinutes",
+    "text": "25",
+    "cell": "25",
+    "xlsx": "number"
+   },
+   {
+    "id": "busService",
+    "text": "ஆம்",
+    "cell": "ஆம்",
+    "xlsx": "text"
+   },
+   {
+    "id": "fees",
+    "text": "₹96,000",
+    "cell": "96000",
+    "xlsx": "money"
+   },
+   {
+    "id": "admissionFee",
+    "text": "₹25,000",
+    "cell": "25000",
+    "xlsx": "money"
+   }
+  ],
+  "te": [
+   {
+    "id": "board",
+    "text": "CBSE",
+    "cell": "CBSE",
+    "xlsx": "text"
+   },
+   {
+    "id": "medium",
+    "text": "ఇంగ్లీష్",
+    "cell": "ఇంగ్లీష్",
+    "xlsx": "text"
+   },
+   {
+    "id": "grades",
+    "text": "Nursery to 12",
+    "cell": "Nursery to 12",
+    "xlsx": "text"
+   },
+   {
+    "id": "commuteMinutes",
+    "text": "25",
+    "cell": "25",
+    "xlsx": "number"
+   },
+   {
+    "id": "busService",
+    "text": "అవును",
+    "cell": "అవును",
+    "xlsx": "text"
+   },
+   {
+    "id": "fees",
+    "text": "₹96,000",
+    "cell": "96000",
+    "xlsx": "money"
+   },
+   {
+    "id": "admissionFee",
+    "text": "₹25,000",
+    "cell": "25000",
+    "xlsx": "money"
+   }
+  ]
+ }
+}

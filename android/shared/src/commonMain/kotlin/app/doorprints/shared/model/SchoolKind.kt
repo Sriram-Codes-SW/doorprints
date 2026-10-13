@@ -92,5 +92,8 @@ internal object SchoolKind {
             KindExtra("fees", "money", "cost", 10, max = HouseCost.MAX_RUPEES, cadences = listOf("year")),
             KindExtra("admissionFee", "money", "cost", 20, max = HouseCost.MAX_RUPEES, cadences = listOf("once")),
         ),
+        // Every extra is searched (kinds PR 6, S4b-BL-210).
+        listOf("label", "address", "street", "locality", "notes", "contactName", "areaNotes") +
+            listOf("board", "medium", "grades", "commuteMinutes", "busService", "fees", "admissionFee"),
     )
 }

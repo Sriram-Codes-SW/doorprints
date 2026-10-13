@@ -1,0 +1,94 @@
+{
+  "spec": "android/shared/src/androidHostTest/kotlin/app/doorprints/shared/model/KindSearchVectorsTest.kt",
+  "gradle": [
+    ":shared:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.shared.model.KindSearchVectorsTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindValues.kt",
+      "find": "            KindWords.of(key, language)?.takeIf { it != en }?.let(::add)",
+      "replace": "            KindWords.of(key, language)?.let(::add)",
+      "expect": "aSchoolAddsTheVectorsWordsToTheSearchInEveryLanguage"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindValues.kt",
+      "find": "                is KindValue.Bool -> if (v.value) both(fields.label(v.field))",
+      "replace": "                is KindValue.Bool -> both(fields.label(v.field))",
+      "expect": "aWrongValueAnOptionNotOfferedAnEmptyTextAndASwitchThatIsOffAddNoWord"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindValues.kt",
+      "find": "                is KindValue.Money -> addAll(listOf(v.amount.toString(), ExportRows.rupees(v.amount)))",
+      "replace": "                is KindValue.Money -> add(v.amount.toString())",
+      "expect": "aSchoolAddsTheVectorsWordsToTheSearchInEveryLanguage"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindValues.kt",
+      "find": "            \"enum\" -> f.options.firstOrNull { it.id == text }?.let { KindValue.Option(f, it.label) }",
+      "replace": "            \"enum\" -> f.options.firstOrNull()?.let { KindValue.Option(f, it.label) }",
+      "expect": "aWrongValueAnOptionNotOfferedAnEmptyTextAndASwitchThatIsOffAddNoWord"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindValues.kt",
+      "find": "            else -> text?.takeIf { it.isNotEmpty() }?.let { KindValue.Text(f, it) }",
+      "replace": "            else -> text?.let { KindValue.Text(f, it) }",
+      "expect": "aWrongValueAnOptionNotOfferedAnEmptyTextAndASwitchThatIsOffAddNoWord"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindFields.kt",
+      "find": "    fun others(searched: Boolean = false): List<KindExtra> = extras.filter { it.was == null && (!searched || it.id in search) }",
+      "replace": "    fun others(searched: Boolean = false): List<KindExtra> = extras.filter { !searched || it.id in search }",
+      "expect": "theKindFilesNameWhatSearchReadsAndTheWordsAreTheVectors"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/export/KindCopy.kt",
+      "find": "        is KindValue.Bool -> Cell.Text(s[if (v.value) \"yes\" else \"no\"])",
+      "replace": "        is KindValue.Bool -> Cell.Text(s[\"yes\"])",
+      "expect": "withTheFlagOffASchoolIsCopiedAsAHouseAndAHouseBesideASchoolHasBlankCells"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/export/KindCopy.kt",
+      "find": "        is KindValue.Option -> Cell.Text(KindWords.of(v.label, options.language) ?: v.label)",
+      "replace": "        is KindValue.Option -> Cell.Text(v.label)",
+      "expect": "aSchoolsExtrasAreInEveryCopyWithItsLabelsAndTheirTypesForm"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/export/KindCopy.kt",
+      "find": "    private fun fieldsOf(h: ExportHouse, options: ExportOptions): KindFields = DevKinds.of(h.kind, options.devKinds).fields",
+      "replace": "    private fun fieldsOf(h: ExportHouse, options: ExportOptions): KindFields = DevKinds.of(h.kind, true).fields",
+      "expect": "withTheFlagOffASchoolIsCopiedAsAHouseAndAHouseBesideASchoolHasBlankCells"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/export/KindCopy.kt",
+      "find": "            val text = if (cell is Cell.Money) ExportRows.rupees(cell.amount) else ExportRows.plain(cell, options)",
+      "replace": "            val text = ExportRows.plain(cell, options)",
+      "expect": "aSchoolsExtrasAreInEveryCopyWithItsLabelsAndTheirTypesForm"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/export/ExportRows.kt",
+      "find": "            addAll(bundle.extraColumns.map { it.label })",
+      "replace": "",
+      "expect": "aSchoolsExtrasAreInEveryCopyWithItsLabelsAndTheirTypesForm"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/export/ExportRows.kt",
+      "find": "                addAll(bundle.extraColumns.map { c -> extras.firstOrNull { it.key == c.key }?.cell ?: Cell.Blank })",
+      "replace": "                addAll(bundle.extraColumns.map { extras.firstOrNull()?.cell ?: Cell.Blank })",
+      "expect": "aSchoolsExtrasAreInEveryCopyWithItsLabelsAndTheirTypesForm"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/export/HtmlWriter.kt",
+      "find": "        for (e in bundle.extrasOf(h)) row(out, e.label, e.text)",
+      "replace": "",
+      "expect": "aSchoolsExtrasAreInEveryCopyWithItsLabelsAndTheirTypesForm"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/export/MarkdownWriter.kt",
+      "find": "                for (e in bundle.extrasOf(h)) add(e.label to e.text)",
+      "replace": "",
+      "expect": "aSchoolsExtrasAreInEveryCopyWithItsLabelsAndTheirTypesForm"
+    }
+  ]
+}

@@ -19,6 +19,9 @@ package app.doorprints
 
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import kotlinx.coroutines.flow.first
@@ -34,6 +37,7 @@ import androidx.test.core.app.ApplicationProvider
 import app.doorprints.BuildConfig
 import app.doorprints.screenshots.ScreenshotTestApp
 import app.doorprints.ui.HouseEditScreen
+import app.doorprints.ui.HouseListScreen
 import app.doorprints.ui.LocalDevKinds
 import app.doorprints.ui.ProvideAppServices
 import kotlinx.coroutines.runBlocking
@@ -155,5 +159,20 @@ class SchoolFormTest {
         val saved = runBlocking { repo.getHouse(SchoolSample.ID) }!!
         assertEquals("school", saved.kind)
         assertEquals(SchoolSample.entity().extrasOther, saved.extrasOther)
+    }
+
+    /** Kinds PR 6 (S4b-BL-210): the list's search reads a school's extras only while the flag draws it as a school. */
+    @Test
+    fun theListSearchFindsASchoolByItsBoardOnlyWithTheFlagOn() {
+        runBlocking { repo.saveHouse(SchoolSample.entity()) }
+        var flag by mutableStateOf(false)
+        compose.setContent {
+            ProvideAppServices { CompositionLocalProvider(LocalDevKinds provides flag) { HouseListScreen(onOpenHouse = {}) } }
+        }
+        compose.waitUntil(15_000) { shows("Pine Hill School") }
+        compose.onNodeWithText("Search name, street, notes").performTextInput("cbse")
+        compose.waitUntil(15_000) { !shows("Pine Hill School") }
+        flag = true
+        compose.waitUntil(15_000) { shows("Pine Hill School") }
     }
 }

@@ -60,6 +60,8 @@ export const SCHOOL_LABELS = new KindLabels({
 export const SCHOOL_KEYS = new KindKeys(SCHOOL_LABELS);
 
 const MONEY_MAX = 1_000_000_000_000;
+/** Every extra is searched (kinds PR 6, S4b-BL-210: school.json's `search`). */
+const EXTRA_IDS = ['board', 'medium', 'grades', 'commuteMinutes', 'busService', 'fees', 'admissionFee'];
 const OTHER = { id: 'OTHER', label: 'school.option.OTHER' } as const;
 const option = <K extends string>(prefix: string, id: K) => ({ id, label: `${prefix}.${id}` as TKey });
 
@@ -74,4 +76,4 @@ export const SCHOOL_FIELDS = new KindFields(SCHOOL_LABELS, [
   { id: 'busService', type: 'bool', section: 'details', order: 74 },
   { id: 'fees', type: 'money', max: MONEY_MAX, cadences: ['year'], section: 'cost', order: 10 },
   { id: 'admissionFee', type: 'money', max: MONEY_MAX, cadences: ['once'], section: 'cost', order: 20 },
-]);
+], ['label', 'address', 'street', 'locality', 'notes', 'contactName', 'areaNotes', ...EXTRA_IDS]);

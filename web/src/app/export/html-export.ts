@@ -208,6 +208,8 @@ function houseSection(
     const broker = bundle.brokers.find((b) => b.id === house.brokerId);
     add('house.broker', broker ? escapeHtml(brokerLine(broker.broker)) : '');
   }
+  // Kinds PR 6 (S4b-BL-210): the kind's typed extras, labelled by the kind; a house has none.
+  for (const e of entry.extras ?? []) rows.push(`<tr><th scope="row">${escapeHtml(e.label)}</th><td>${escapeHtml(e.text)}</td></tr>`);
   add('exp.fieldSaved', escapeHtml(formatDate(house.createdAt)));
 
   const costRows = costEntries(house, dict).map(

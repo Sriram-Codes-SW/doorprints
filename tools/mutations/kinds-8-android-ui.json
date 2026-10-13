@@ -1,0 +1,22 @@
+{
+  "spec": "android/ui/src/commonTest/kotlin/app/doorprints/ui/HouseListSearchTest.kt",
+  "gradle": [
+    ":ui:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.ui.HouseListSearchTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/HouseListSearch.kt",
+      "find": "    ) + KindValues.searchWords(DevKinds.of(kind, devKinds).fields, extrasOther, language)",
+      "replace": "    ) + KindValues.searchWords(DevKinds.of(kind, true).fields, extrasOther, language)",
+      "expect": "aSchoolIsFoundByItsExtrasOnlyWhileTheFlagAllowsTheKind"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/HouseListSearch.kt",
+      "find": "    ) + KindValues.searchWords(DevKinds.of(kind, devKinds).fields, extrasOther, language)",
+      "replace": "    ) + KindValues.searchWords(DevKinds.of(kind, devKinds).fields, extrasOther, \"en\")",
+      "expect": "aSchoolIsFoundByItsExtrasOnlyWhileTheFlagAllowsTheKind"
+    }
+  ]
+}
