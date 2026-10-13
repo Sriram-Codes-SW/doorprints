@@ -34,7 +34,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
@@ -74,7 +73,6 @@ import app.doorprints.shared.ai.ListingCut
 import app.doorprints.shared.listing.ListingText
 import app.doorprints.shared.model.Scoring
 import app.doorprints.shared.model.Broker
-import app.doorprints.shared.model.CalendarDate
 import app.doorprints.shared.model.CostSummary
 import app.doorprints.shared.model.HouseCost
 import app.doorprints.shared.model.HouseAnswers
@@ -84,7 +82,7 @@ import app.doorprints.shared.model.ViewingKind
 import app.doorprints.shared.model.LengthUnit
 import app.doorprints.shared.model.HouseStatus
 import app.doorprints.shared.model.DuplicateFlat
-import app.doorprints.shared.model.HouseValues
+import app.doorprints.shared.model.KindFields
 import app.doorprints.shared.model.LocationSource
 import app.doorprints.shared.model.MoveIn
 import kotlinx.coroutines.Job
@@ -98,7 +96,6 @@ import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
-import kotlin.math.abs
 import kotlin.math.roundToLong
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -738,7 +735,7 @@ fun HouseEditScreen(
                         Spacer(Modifier.height(12.dp))
                     }
                     OutlinedTextField(d.label, { v -> update { it.copy(label = v) } },
-                        label = { Text(stringResource(Res.string.house_name)) },
+                        label = { Text(stringResource(kindField("label"))) },
                         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
                         singleLine = true, modifier = Modifier.fillMaxWidth())
                     LiveMessage {
@@ -755,7 +752,7 @@ fun HouseEditScreen(
 
                 // Status: three whole-row radios (whole-app audit). The segmented row broke "நிராகரிக்கப்பட்டது" and
                 // "తిరస్కరించబడింది" mid-word at 100 %; rows wrap in every script. The glyph (UX-002) is not read out.
-                SectionHeading(stringResource(Res.string.house_status))
+                SectionHeading(stringResource(kindField("status")))
                 Column(Modifier.selectableGroup()) {
                     HouseStatus.entries.forEach { s ->
                         val text = stringResource(s.labelResource)
@@ -783,7 +780,7 @@ fun HouseEditScreen(
                     }
                 }
 
-                SectionHeading(stringResource(Res.string.house_rating))
+                SectionHeading(stringResource(kindField("rating")))
                 // The stars, then Clear rating (the web's `house.clearRating`), always there so nothing jumps when a star
                 // is picked; disabled while there is no rating. Tap-again on the chosen star still clears it too.
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -801,46 +798,27 @@ fun HouseEditScreen(
                     SegmentedButton(
                         selected = rent, onClick = { update { it.copy(priceType = "RENT") } },
                         shape = SegmentedButtonDefaults.itemShape(0, 2),
-                    ) { Text(stringResource(Res.string.house_rent)) }
+                    ) { Text(stringResource(kindRef("cadence.month"))) }
                     SegmentedButton(
                         selected = !rent, onClick = { update { it.copy(priceType = "SALE") } },
                         shape = SegmentedButtonDefaults.itemShape(1, 2),
-                    ) { Text(stringResource(Res.string.house_buy)) }
+                    ) { Text(stringResource(kindRef("cadence.once"))) }
                 }
                 // The amount as the app shows it, live, in the app language: ₹1,00,00,000 or ₹25,000 / month, so a
                 // missing or extra zero is visible while typing. Always there (empty at first), so the row does not grow.
                 val preview = priceText(d.price, d.priceType).orEmpty()
                 OutlinedTextField(
                     d.price?.toString() ?: "", { v -> update { it.copy(price = v.filter(Char::isDigit).take(12).toLongOrNull()) } },
-                    label = { Text(stringResource(if (d.priceType == "SALE") Res.string.house_price_sale else Res.string.house_price_rent)) },
+                    label = { Text(stringResource(kindField("money", if (d.priceType == "SALE") "once" else "month"))) },
                     supportingText = { Text(preview) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                // BHK beside the carpet area (slice 1a): the price has the row above to itself, with its preview.
-                PairOrStack(
-                    first = { m ->
-                        OutlinedTextField(
-                            d.bedrooms?.toString() ?: "", { v -> update { it.copy(bedrooms = v.filter(Char::isDigit).take(2).toIntOrNull()) } },
-                            label = { Text(stringResource(Res.string.house_bhk)) },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
-                            singleLine = true, modifier = m,
-                        )
-                    },
-                    second = { m ->
-                        OutlinedTextField(
-                            d.areaSqft?.toString() ?: "",
-                            { v -> update { it.copy(areaSqft = HouseValues.areaSqft(v.filter(Char::isDigit).take(6).toIntOrNull())) } },
-                            label = { Text(stringResource(Res.string.house_area)) },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
-                            singleLine = true, modifier = m,
-                        )
-                    },
-                )
-
-                // The floor (S4b-BL-87) under BHK and area, with the Basement switch for a keyboard without a minus (S4b-BL-104 c).
-                FloorField(d.id, d.floor) { f -> update { it.copy(floor = f) } }
+                // The Details extras (kinds PR 4, S4b-BL-208): BHK beside the carpet area (slice 1a), the price having the
+                // row above to itself with its preview, then the floor (S4b-BL-87) with its Basement switch (S4b-BL-104 c),
+                // drawn from the kind file (KindExtrasFields.kt).
+                KindExtrasFields(KindFields.HOUSE, "details", d, ::update)
                 // Non-blocking: another house within about 30 m with the same bedrooms and floor (docs/11 5.25).
                 val sameFlat = remember(d.id, d.lat, d.lon, d.locationSource, d.bedrooms, d.rooms, d.floor, allHouses) {
                     DuplicateFlat.of(d.flatFacts(), allHouses.map { it.flatFacts() })
@@ -849,7 +827,7 @@ fun HouseEditScreen(
                 DuplicateFlatWarning(sameFlat)
 
                 // The real cost of the house (docs/11 5.21, slice 1a): the fields, then what they add up to.
-                SectionHeading(stringResource(Res.string.house_cost))
+                SectionHeading(stringResource(kindSection("cost")))
                 CostSection(d, ::update)
 
                 // The rooms with their sizes and condition (docs/11 5.6, slice 1c), after the cost.
@@ -861,19 +839,19 @@ fun HouseEditScreen(
                 }
 
                 OutlinedTextField(d.address ?: "", { v -> update { it.copy(address = v) } },
-                    label = { Text(stringResource(Res.string.house_address)) },
+                    label = { Text(stringResource(kindField("address"))) },
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
                     modifier = Modifier.fillMaxWidth())
                 PairOrStack(
                     first = { m ->
                         OutlinedTextField(d.street ?: "", { v -> update { it.copy(street = v.ifBlank { null }) } },
-                            label = { Text(stringResource(Res.string.house_street)) },
+                            label = { Text(stringResource(kindField("street"))) },
                             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
                             singleLine = true, modifier = m)
                     },
                     second = { m ->
                         OutlinedTextField(d.locality ?: "", { v -> update { it.copy(locality = v.ifBlank { null }) } },
-                            label = { Text(stringResource(Res.string.house_locality)) },
+                            label = { Text(stringResource(kindField("locality"))) },
                             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
                             singleLine = true, modifier = m)
                     },
@@ -883,7 +861,7 @@ fun HouseEditScreen(
                 // location", WCAG 2.5.7): a house saved from a stale fix or a stray long-press is no longer stuck there.
                 // Right after the address (round 3), in the web's order: Details, then Location. A mini-map with a
                 // draggable pin is a Sprint 4b item (README section 8).
-                SectionHeading(stringResource(Res.string.house_location_heading))
+                SectionHeading(stringResource(kindSection("location")))
                 OutlinedButton(
                     onClick = { useMyLocation() },
                     enabled = !locating,
@@ -957,7 +935,7 @@ fun HouseEditScreen(
                 // source the point had before (the map's when it had none).
                 val approx = d.locationSource == LocationSource.APPROX
                 SwitchRow(
-                    text = stringResource(Res.string.house_approx),
+                    text = stringResource(kindField("locationSource")),
                     hint = stringResource(Res.string.house_approx_hint),
                     checked = approx,
                     horizontalPadding = 0.dp,
@@ -988,7 +966,7 @@ fun HouseEditScreen(
 
                 // Multi-line: the Enter key starts a new line here, so no Next action; sentences start with a capital.
                 OutlinedTextField(d.notes ?: "", { v -> update { it.copy(notes = v) } },
-                    label = { Text(stringResource(Res.string.house_notes)) },
+                    label = { Text(stringResource(kindField("notes"))) },
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                     minLines = 3, modifier = Modifier.fillMaxWidth())
 
@@ -997,13 +975,13 @@ fun HouseEditScreen(
                 // edited on the broker's page, or the broker is set to None here.
                 val linkedBroker = d.brokerId != null && brokers.any { it.first == d.brokerId }
                 OutlinedTextField(d.contactName ?: "", { v -> update { it.copy(contactName = v) } },
-                    label = { Text(stringResource(Res.string.house_contact_name)) },
+                    label = { Text(stringResource(kindField("contactName"))) },
                     readOnly = linkedBroker,
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
                     singleLine = true, modifier = Modifier.fillMaxWidth())
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(d.contactPhone ?: "", { v -> update { it.copy(contactPhone = v) } },
-                        label = { Text(stringResource(Res.string.house_phone)) },
+                        label = { Text(stringResource(kindField("contactPhone"))) },
                         readOnly = linkedBroker,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Next),
                         singleLine = true, modifier = Modifier.weight(1f))
@@ -1021,7 +999,7 @@ fun HouseEditScreen(
                 // The last text field: Done closes the keyboard. *Open* (the web's "Open the listing") when it is a link.
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(d.listingUrl ?: "", { v -> update { it.copy(listingUrl = v) } },
-                        label = { Text(stringResource(Res.string.house_listing)) },
+                        label = { Text(stringResource(kindField("listingUrl"))) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
                         singleLine = true, modifier = Modifier.weight(1f))
@@ -1079,7 +1057,7 @@ fun HouseEditScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     itemVerticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(stringResource(Res.string.house_visits, visits.size), fontWeight = FontWeight.SemiBold,
+                    Text(stringResource(kindSection("visits"), visits.size), fontWeight = FontWeight.SemiBold,
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.semantics { heading() })
                     if (saved != null) {
@@ -1387,110 +1365,15 @@ internal fun PairOrStack(
     }
 }
 
-/** The floor typed in the form (S4b-BL-87): an optional "-" and up to three digits, null outside -5..200 or when blank. */
-internal fun floorOf(text: String): Int? = text.trim().takeIf { Regex("-?\\d{1,3}").matches(it) }?.toIntOrNull()?.let(HouseValues::floor)
-
 /**
- * The floor from the field and the **Basement** switch (S4b-BL-104 c; the website's `typeFloor`): with the switch off, as
- * [floorOf]; with it on, the digits are the level below the ground, 1 to 5, so "2" is -2, without typing a minus that
- * some number keyboards do not have. Null when blank or out of range (a basement 0 included).
- */
-internal fun floorOf(text: String, basement: Boolean): Int? {
-    if (!basement) return floorOf(text)
-    val level = text.trim().removePrefix("-").takeIf { Regex("\\d{1,3}").matches(it) }?.toIntOrNull() ?: return null
-    return if (level >= 1) HouseValues.floor(-level) else null
-}
-
-/**
- * The house's **Floor** (S4b-BL-87) and, under it, the **Basement** switch (S4b-BL-104 c): the field holds the digits,
- * the switch the sign, so a basement needs no minus key; a "-" typed anyway turns the switch on. Both follow [floor]
- * when it changes elsewhere; text that is not a floor (or a basement level 1 to 5) says so and leaves the floor unknown.
- */
-@Composable
-private fun FloorField(houseId: String, floor: Int?, onChange: (Int?) -> Unit) {
-    var basement by rememberSaveable(houseId) { mutableStateOf(floor != null && floor < 0) }
-    var text by rememberSaveable(houseId) { mutableStateOf(floor?.let { abs(it).toString() } ?: "") }
-    LaunchedEffect(floor) {
-        if (floorOf(text, basement) != floor) {
-            basement = floor != null && floor < 0
-            text = floor?.let { abs(it).toString() } ?: ""
-        }
-    }
-    val invalid = text.isNotBlank() && floorOf(text, basement) == null
-    OutlinedTextField(
-        text,
-        { v ->
-            if ('-' in v) basement = true
-            text = v.filter { it.isDigit() }.take(3)
-            onChange(floorOf(text, basement))
-        },
-        label = { Text(stringResource(Res.string.house_floor)) },
-        supportingText = {
-            Text(
-                stringResource(
-                    when {
-                        invalid && basement -> Res.string.house_floor_basement_invalid
-                        invalid -> Res.string.house_floor_invalid
-                        basement -> Res.string.house_floor_basement_hint
-                        else -> Res.string.house_floor_hint
-                    },
-                ),
-            )
-        },
-        isError = invalid,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
-        singleLine = true,
-        modifier = Modifier.fillMaxWidth(),
-    )
-    SwitchRow(
-        text = stringResource(Res.string.house_floor_basement),
-        hint = null,
-        checked = basement,
-        horizontalPadding = 0.dp,
-    ) { on ->
-        basement = on
-        onChange(floorOf(text, basement))
-    }
-}
-
-/**
- * The **Cost** section of the form (docs/11 5.21, slice 1a): two fields per row where they pair, the rent-only ones
- * (deposit, maintenance, lock-in, notice) hidden for a sale, *Available from* as a `YYYY-MM-DD` field with the
- * platform's date picker, and under them one line of what it adds up to ([CostSummary]) when something computes.
+ * The **Cost** section of the form (docs/11 5.21, slice 1a): the fields from the kind file (kinds PR 4, S4b-BL-208;
+ * [KindExtrasFields]: two per row where they pair, the rent-only ones hidden for a sale by their `forCadences`,
+ * *Available from* as a `YYYY-MM-DD` field with the platform's date picker), and under them one line of what it adds
+ * up to ([CostSummary]) when something computes.
  */
 @Composable
 private fun CostSection(d: HouseEntity, update: ((HouseEntity) -> HouseEntity) -> Unit) {
-    val rent = d.priceType != "SALE"
-    fun cost(transform: (HouseCost) -> HouseCost) = update { it.copy(cost = transform(it.cost ?: HouseCost()).orNull()) }
-    val c = d.cost ?: HouseCost()
-    if (rent) {
-        PairOrStack(
-            first = { m -> RupeeField(c.deposit, Res.string.house_deposit, m) { v -> cost { it.copy(deposit = v) } } },
-            second = { m -> MonthsField(c.depositMonths, Res.string.house_deposit_months, m) { v -> cost { it.copy(depositMonths = v) } } },
-        )
-        RupeeField(c.maintenance, Res.string.house_maintenance, Modifier.fillMaxWidth()) { v -> cost { it.copy(maintenance = v) } }
-        SwitchRow(
-            text = stringResource(Res.string.house_maintenance_included),
-            hint = null,
-            checked = c.maintenanceIncluded == true,
-            horizontalPadding = 0.dp,
-        ) { on -> cost { it.copy(maintenanceIncluded = on) } }
-    }
-    PairOrStack(
-        first = { m -> RupeeField(c.brokerage, Res.string.house_brokerage, m) { v -> cost { it.copy(brokerage = v) } } },
-        second = { m -> MonthsField(c.brokerageMonths, Res.string.house_brokerage_months, m) { v -> cost { it.copy(brokerageMonths = v) } } },
-    )
-    if (rent) {
-        PairOrStack(
-            first = { m -> MonthsField(c.lockInMonths, Res.string.house_lock_in, m) { v -> cost { it.copy(lockInMonths = v) } } },
-            second = { m -> MonthsField(c.noticeMonths, Res.string.house_notice, m) { v -> cost { it.copy(noticeMonths = v) } } },
-        )
-    }
-    AvailableFromField(c.availableFrom) { v -> cost { it.copy(availableFrom = v) } }
-    PairOrStack(
-        first = { m -> RupeeField(c.myOffer, Res.string.house_my_offer, m) { v -> cost { it.copy(myOffer = v) } } },
-        second = { m -> RupeeField(c.agreedPrice, Res.string.house_agreed_price, m) { v -> cost { it.copy(agreedPrice = v) } } },
-    )
+    KindExtrasFields(KindFields.HOUSE, "cost", d, update)
     // "Monthly cost ₹34,500 · To move in ₹1,28,000 · ₹27 per sq ft": only the parts that compute, none when none does.
     val summary = CostSummary.of(d.price, d.priceType, d.areaSqft, d.cost)
     val parts = listOfNotNull(
@@ -1502,74 +1385,6 @@ private fun CostSection(d: HouseEntity, update: ((HouseEntity) -> HouseEntity) -
         if (parts.isNotEmpty()) {
             Text(parts.joinToString(" · "), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
         }
-    }
-}
-
-/** A whole-rupee field: digits only, at most 13 (the format's 10^12 cap), empty for unknown. */
-@Composable
-private fun RupeeField(value: Long?, label: StringResource, modifier: Modifier, onChange: (Long?) -> Unit) {
-    OutlinedTextField(
-        value?.toString() ?: "",
-        { v -> onChange(v.filter(Char::isDigit).take(13).toLongOrNull()?.takeIf { it <= HouseCost.MAX_RUPEES }) },
-        label = { Text(stringResource(label)) },
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
-        singleLine = true, modifier = modifier,
-    )
-}
-
-/** A months field: 0..120, empty for unknown. */
-@Composable
-private fun MonthsField(value: Int?, label: StringResource, modifier: Modifier, onChange: (Int?) -> Unit) {
-    OutlinedTextField(
-        value?.toString() ?: "",
-        { v -> onChange(v.filter(Char::isDigit).take(3).toIntOrNull()?.takeIf { it <= HouseCost.MAX_MONTHS }) },
-        label = { Text(stringResource(label)) },
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
-        singleLine = true, modifier = modifier,
-    )
-}
-
-/**
- * *Available from*: a `YYYY-MM-DD` text field (the format's calendar date, no time zone) whose trailing button opens
- * Material's date picker in the person's locale. What is typed stays on screen while it is not a date yet; the
- * draft takes only a valid date, or nothing when the field is cleared.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun AvailableFromField(value: String?, onChange: (String?) -> Unit) {
-    var text by rememberSaveable(value) { mutableStateOf(value ?: "") }
-    var showPicker by rememberSaveable { mutableStateOf(false) }
-    val invalid = text.isNotBlank() && !CalendarDate.isValid(text.trim())
-    OutlinedTextField(
-        text,
-        { v ->
-            text = v
-            val trimmed = v.trim()
-            if (trimmed.isEmpty()) onChange(null) else if (CalendarDate.isValid(trimmed)) onChange(trimmed)
-        },
-        label = { Text(stringResource(Res.string.house_available_from)) },
-        isError = invalid,
-        supportingText = { Text(stringResource(Res.string.house_available_format)) },
-        trailingIcon = {
-            IconButton(onClick = { showPicker = true }, modifier = Modifier.size(48.dp)) {
-                Icon(Icons.Default.DateRange, contentDescription = stringResource(Res.string.house_available_pick))
-            }
-        },
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
-        singleLine = true, modifier = Modifier.fillMaxWidth(),
-    )
-    if (showPicker) {
-        val state = rememberDatePickerState(initialSelectedDateMillis = value?.let(CalendarDate::toEpochMillis))
-        DatePickerDialog(
-            onDismissRequest = { showPicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    state.selectedDateMillis?.let { onChange(CalendarDate.fromEpochMillis(it)) }
-                    showPicker = false
-                }) { Text(stringResource(Res.string.common_ok)) }
-            },
-            dismissButton = { TextButton(onClick = { showPicker = false }) { Text(stringResource(Res.string.common_cancel)) } },
-        ) { DatePicker(state = state) }
     }
 }
 
@@ -1697,7 +1512,7 @@ private fun BrokerSection(
     onCreate: (Broker) -> Unit,
 ) {
     val none = stringResource(Res.string.house_broker_none)
-    val label = stringResource(Res.string.house_broker)
+    val label = stringResource(kindField("brokerId"))
     val current = brokerId?.let { id -> brokers.firstOrNull { it.first == id } }
     val currentText = current?.second?.label ?: none
     var open by remember { mutableStateOf(false) }

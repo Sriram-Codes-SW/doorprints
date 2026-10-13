@@ -1,0 +1,46 @@
+{
+  "spec": "android/shared/src/androidHostTest/kotlin/app/doorprints/shared/model/KindFieldsVectorsTest.kt",
+  "gradle": [
+    ":shared:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.shared.model.KindFieldsVectorsTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindFields.kt",
+      "find": "        .filter { cadence == null || it.forCadences == null || cadence in it.forCadences }",
+      "replace": "        .filter { it.forCadences == null || it.forCadences.isNotEmpty() }",
+      "expect": "aSectionShowsItsExtrasPerCadenceAsTheVectorsLayThemOut"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindFields.kt",
+      "find": "        .sortedBy { it.order }",
+      "replace": "        .sortedByDescending { it.order }",
+      "expect": "aSectionShowsItsExtrasPerCadenceAsTheVectorsLayThemOut"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindFields.kt",
+      "find": "        .filter { it.section == section && labels.isVisible(\"field.${it.id}\") }",
+      "replace": "        .filter { it.section == section }",
+      "expect": "aHiddenExtraOrSectionIsNotShownAndTextHasNoControl"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindFields.kt",
+      "find": "            \"number\" -> if (unit == \"level\") ExtraControl.LEVEL else ExtraControl.NUMBER",
+      "replace": "            \"number\" -> ExtraControl.NUMBER",
+      "expect": "eachExtraHasTheVectorsControlLabelAndCadences"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindFields.kt",
+      "find": "                months(\"lockInMonths\", 70, RENT_ONLY),",
+      "replace": "                months(\"lockInMonths\", 70),",
+      "expect": "theCopyIsTheKindFilesExtras"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindFields.kt",
+      "find": "        fun of(kind: String): KindFields? = if (kind == HOUSE.kind) HOUSE else null",
+      "replace": "        fun of(kind: String): KindFields? = HOUSE",
+      "expect": "aHiddenExtraOrSectionIsNotShownAndTextHasNoControl"
+    }
+  ]
+}

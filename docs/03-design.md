@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.119 |
+| Version | 0.120 |
 | Date | 2026-10-13 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -130,6 +130,7 @@
 | 0.117 | 2026-10-13 | Claude (Code), engineer | §18.4 door 2 and §18.5: **the viewing payload says `candidateId`** (S4b-BL-247; `feat/kinds-4c-viewing-candidate-id`; [10](10-sprint-log.md) v0.283, [06](06-test-plan.md) TC-U-208, [schemas README](schemas/README.md) v1.37 §6.6). Every writer writes a viewing record's candidate as `candidateId`; every reader reads `houseId` too (a payload stored on a device, in a Drive file or on a server before), so nothing becomes invisible; a payload with both keys is a bad row. The server reads both keys in its one query (`coalesce`) instead of a Flyway migration, so no stored row is rewritten. |
 | 0.118 | 2026-10-13 | Claude (Code), engineer | New §18.7: **the label and visibility resolver** (kinds PR 3, S4b-BL-207; [06](06-test-plan.md) TC-U-209): `KindLabels` in `:shared` (the phone and the iPhone) and its twin `core/kind-labels.ts` on the website, a copy of `house.json`'s keys checked against the file, pinned by the new `docs/schemas/kinds/kind-label-vectors.json`; the status and checklist tables the screens read go through it, nothing visible changes. The other call sites move with the renderer (S4b-BL-255, with S4b-BL-208). |
 | 0.119 | 2026-10-13 | Claude (Code), engineer | New §18.8: **the typed-extras renderer, the website** (kinds PR 4, S4b-BL-208, first of two stacked pull requests; `feat/kinds-6-typed-extras-renderer`; [06](06-test-plan.md) TC-U-210, [schemas README](schemas/README.md) v1.39 §8.4): the house page draws the BHK, area, floor and cost fields from the kind's fields (`KindFields`, `kind-extras.ts`, one `extra` template), with the element ids, attributes, rows and labels the hand-written fields had; the rent-only rule is kind data (`forCadences`, §18.3); the page's field and section labels read the kind (`KindKeys`, S4b-BL-255). Safety test first: the form's golden file in four languages and the shared `kind-field-vectors.json`, written on main before the switch. §18.5's per-stack order item closed. The phone follows in the stacked pull request. |
+| 0.120 | 2026-10-13 | Claude (Code), engineer | §18.8 and §18.6: **the typed-extras renderer, the phone** (kinds PR 4, S4b-BL-208, the second stacked pull request; `feat/kinds-6b-typed-extras-android`; [06](06-test-plan.md) TC-U-210): `KindFields` in `:shared` and `KindExtrasFields` in `:ui` (the phone and the iPhone) draw the BHK, area, floor and cost fields of `HouseEditScreen` in the rows the hand-written fields had, every value written through the candidate's extras; the form's labels and its sections' headings read the kind (S4b-BL-255). Safety test first: `HouseFormFieldsTest` and its golden file (the form's semantics in four languages) and the phone's half of `kind-field-vectors.json`, written on main before the switch; the Roborazzi baselines are unchanged. `HouseEditScreen.kt` 1,773 to 1,588 lines. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -2182,7 +2183,9 @@ day's size (among them `HouseEditScreen.kt` 1,779, `MapScreen.kt` 1,519, `Common
 `house-detail-page.ts` 1,214) and may not grow; a shrunk file is asked to lower its entry. The floor guard
 (`tools/check-floor.mjs`) reports a raised or added entry, a raised limit or a new table as a loosening. It runs in
 `tools/check.sh` on every branch and in the *Security* workflow on every pull request ([06](06-test-plan.md) TC-U-199).
-PR 4 shrinks the four big files and lowers their entries.
+PR 4 shrinks the four big files and lowers their entries. **Done in PR 4 (S4b-BL-208):** `HouseEditScreen.kt` 1,773
+lines to 1,588, `house-detail-page.html` 1,055 to 1,045 and `house-detail-page.ts` 1,214 to 1,212, each entry lowered to
+its new size; `MapScreen.kt` and `CommonRepository.kt` hold no typed extras and were not touched.
 
 ### 18.7 The label and visibility resolver (kinds PR 3, S4b-BL-207)
 
@@ -2231,8 +2234,22 @@ floor, its field holding the level and a *Basement* switch the sign, S4b-BL-104 
 switch) and `date` (YYYY-MM-DD with the platform's picker). `text` and `enum` have no control yet, because no built-in
 kind has one (S4b-BL-257). The website's form (`pages/house-detail/kind-extras.ts` and one `extra` template in
 `house-detail-page.html`) keeps the element ids, attributes and rows the hand-written fields had: in *Details* the extras
-share the price's row; elsewhere two fields stand side by side and a date stands alone. The phone's form follows in the
-stacked second pull request of S4b-BL-208.
+share the price's row; elsewhere two fields stand side by side and a date stands alone.
+
+**On the phone** (the second, stacked pull request): `KindFields` in `:shared` (`model/KindFields.kt`, the same copy of
+the kind file's extras) and `KindExtrasFields` in `:ui` (`KindExtrasFields.kt`, so the iPhone has it too) draw the
+*Details* extras under the price and the *Cost* fields of `HouseEditScreen`. The phone's rows: two fields side by side
+(`PairOrStack`), but a switch, a date and a level take a row of their own and a field before one of them does too, so
+*Maintenance* stands alone above *Included in the rent* as before. A number keeps the digits of its `max` (two for a count
+without one, the BHK) and a value outside its range reads as unknown, as the hand-written fields did. Every value is
+written the one way, through the candidate's extras (`withExtra`: `Candidates.houseExtrasOf` reads the house's values back
+out), instead of one `copy` per field. The form's field labels and its sections' headings (Rooms, Questions to ask,
+Viewings, Moving in, Area notes, Distances, Location, Saved walks, Checklist, Visits, Photos) come from the kind
+(`kindField`, `kindSection`, `kindRef` in `ModelLabels.kt`). Safety test first: `HouseFormFieldsTest` (`:app`) with
+`src/test/house-form.golden.txt`, taken from main at 7fbde93c: every control and heading of the form in screen order with
+its role, label, value, state, error, IME action and shared row, for a rent, a sale and no price type, in en, hi, ta and
+te; the digits each field keeps and where a typed value lands; and the phone's half of `kind-field-vectors.json` against
+that form. They pass unchanged after the switch, and so do the Roborazzi baselines (`-Proborazzi.test.verify=true`).
 
 **One rule from the kind file, not a branch: `forCadences`.** The hand-written Cost card hid the deposit, maintenance,
 *Included in the rent*, lock-in and notice fields for a sale. That rule is now data: an extra's placement may carry

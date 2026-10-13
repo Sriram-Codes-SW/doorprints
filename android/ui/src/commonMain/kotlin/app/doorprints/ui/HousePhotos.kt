@@ -358,7 +358,7 @@ internal fun HousePhotosSection(
     if (!photos.canAdd && photos.all.isEmpty()) return
     val form = LocalAppServices.current.houseForm
     HorizontalDivider()
-    SectionHeading(stringResource(Res.string.house_photos))
+    SectionHeading(stringResource(kindSection("photos")))
     if (!isSaved) {
         // A new house: its photos belong to a saved row.
         if (isNew && photos.canAdd) {

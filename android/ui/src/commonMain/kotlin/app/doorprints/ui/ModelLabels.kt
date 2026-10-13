@@ -48,6 +48,20 @@ import org.jetbrains.compose.resources.stringResource
 fun kindStringResource(key: String): StringResource =
     Res.allStringResources[key] ?: error("No Compose string '$key' for a kind label")
 
+/**
+ * The house kind's string for a field (`field.<id>`, with the money [cadence] where it matters) or a section heading
+ * (`section.<id>`), as the form and its sections read them (kinds PR 4, S4b-BL-255). A place the kind gives no text
+ * fails at once: a screen asks only for the places it draws.
+ */
+fun kindField(id: String, cadence: String? = null): StringResource =
+    kindStringResource(checkNotNull(KindLabels.HOUSE.field(id, cadence)?.key) { "house has no text for field.$id" })
+
+fun kindSection(id: String): StringResource =
+    kindStringResource(checkNotNull(KindLabels.HOUSE.section(id)?.key) { "house has no text for section.$id" })
+
+fun kindRef(ref: String): StringResource =
+    kindStringResource(checkNotNull(KindLabels.HOUSE.resolve(ref)?.key) { "house has no text for $ref" })
+
 private val STATUS_RESOURCES: Map<HouseStatus, StringResource> by lazy {
     HouseStatus.entries.associateWith { kindStringResource(KindLabels.HOUSE.status(it)) }
 }

@@ -826,7 +826,7 @@ fun HouseAreaNotesSection(house: HouseEntity) {
     val street = house.street?.trim()?.takeIf { it.isNotEmpty() }
     var adding by rememberSaveable { mutableStateOf<String?>(null) }
     HorizontalDivider()
-    SectionHeading(stringResource(Res.string.notes_heading))
+    SectionHeading(stringResource(kindSection("areaNotes")))
     if (reaching.isEmpty()) Text(stringResource(Res.string.house_area_notes_none), style = MaterialTheme.typography.bodyMedium)
     reaching.forEach { note ->
         Column(Modifier.fillMaxWidth()) {
@@ -866,7 +866,7 @@ fun HouseDistancesSection(house: HouseEntity) {
     val distances = Distances.toPlaces(house.point(), places)
     if (distances.isEmpty()) return
     HorizontalDivider()
-    SectionHeading(stringResource(Res.string.house_distances))
+    SectionHeading(stringResource(kindSection("distances")))
     distances.forEach { d ->
         Row(Modifier.fillMaxWidth().heightIn(min = 32.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(d.place.name, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
