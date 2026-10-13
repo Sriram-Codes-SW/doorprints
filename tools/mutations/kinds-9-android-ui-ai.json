@@ -1,0 +1,28 @@
+{
+  "spec": "android/ui/src/commonTest/kotlin/app/doorprints/ui/KindListingMergeTest.kt",
+  "gradle": [
+    ":ui:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.ui.KindListingMergeTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/HouseFormRules.kt",
+      "find": "            now == null -> { next[f.id] = v; filled += f.id }",
+      "replace": "            true -> { next[f.id] = v; filled += f.id }",
+      "expect": "emptyExtrasAreFilledASetOneIsKeptAndNamedAndNothingTheKindDoesNotHave"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/HouseFormRules.kt",
+      "find": "    for (f in fields.others()) {",
+      "replace": "    for (f in fields.others() + app.doorprints.shared.model.KindExtra(\"unknownThing\", \"text\", \"details\", 0)) {",
+      "expect": "emptyExtrasAreFilledASetOneIsKeptAndNamedAndNothingTheKindDoesNotHave"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/HouseFormRules.kt",
+      "find": "    val incoming = a.extras ?: return m",
+      "replace": "    val incoming = a.extras ?: return m.copy()",
+      "expect": "aHousesDraftHasNoExtrasSoItsFillIsTheHousesAlone"
+    }
+  ]
+}

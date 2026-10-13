@@ -21,6 +21,10 @@ package app.doorprints.ui
 import app.doorprints.data.HouseEntity
 import app.doorprints.location.Place
 import app.doorprints.shared.api.HouseDraftDto
+import app.doorprints.shared.model.KindFields
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import app.doorprints.shared.listing.ListingText
 
 /*
@@ -129,12 +133,40 @@ fun priceDisagreement(text: String, draft: HouseDraftDto): Pair<Long, Long>? {
     return if (parsed == ai) null else parsed to ai
 }
 
-/** What a listing fill did: the new draft, the fields it filled, and those it left because the user had typed them. */
+/**
+ * What a listing fill did: the new draft, the fields it filled, and those it left because the user had typed them; for a
+ * kind's typed extras (kinds PR 7, S4b-BL-211) the ids it filled and kept ([extrasFilled], [extrasKept]).
+ */
 data class ListingMerge(
     val house: HouseEntity,
     val filled: List<ListingField>,
     val kept: List<ListingField>,
+    val extrasFilled: List<String> = emptyList(),
+    val extrasKept: List<String> = emptyList(),
 )
+
+/**
+ * A listing's extras (kinds PR 7, S4b-BL-211) put into [m]'s draft by the house's rule (AI-004): only an **empty** extra of
+ * the kind's own ([KindFields.others]) is filled; one the person set keeps its value and is named in
+ * [ListingMerge.extrasKept]. A house's draft has no extras, so for a house [m] comes back as it is.
+ */
+fun mergeListingExtras(m: ListingMerge, a: HouseDraftDto, fields: KindFields): ListingMerge {
+    val incoming = a.extras ?: return m
+    val current = m.house.extrasOther ?: JsonObject(emptyMap())
+    val next = current.toMutableMap()
+    val filled = mutableListOf<String>()
+    val kept = mutableListOf<String>()
+    for (f in fields.others()) {
+        val v = incoming[f.id]?.takeUnless { it is JsonNull } ?: continue
+        val now = current[f.id]?.takeUnless { it is JsonNull || (it is JsonPrimitive && it.isString && it.content.isBlank()) }
+        when {
+            now == null -> { next[f.id] = v; filled += f.id }
+            now != v -> kept += f.id
+        }
+    }
+    if (filled.isEmpty() && kept.isEmpty()) return m
+    return m.copy(house = if (filled.isEmpty()) m.house else m.house.copy(extrasOther = JsonObject(next)), extrasFilled = filled, extrasKept = kept)
+}
 
 /**
  * Copies the AI suggestion [a] into the form [h], **only into empty fields** (UX review, whole-app audit): a

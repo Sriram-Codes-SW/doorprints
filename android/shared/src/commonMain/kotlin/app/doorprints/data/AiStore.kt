@@ -57,6 +57,8 @@ internal class AiStore(
     private val anthropicFor: ((baseUrl: String, model: String, apiKey: String) -> JsonChatModel)?,
     private val emulatorHostAllowed: Boolean,
     private val houses: suspend () -> List<AiHouse>,
+    /** The developer flag of the hidden kinds (kinds PR 7): handed to [OnDeviceAi]; false on the iPhone and in a release. */
+    private val devKinds: Boolean = false,
 ) {
     private val _enabled = MutableStateFlow(false)
     val enabled: StateFlow<Boolean> = _enabled.asStateFlow()
@@ -192,7 +194,7 @@ internal class AiStore(
         val quality = if (s.aiProviderConfig.kind == AiKind.GEMINI) s.aiQuality else AiQuality.DEFAULT
         val key = Triple(s.aiProviderConfig, s.geminiKey, quality)
         onDevice?.let { (saved, ai) -> if (saved == key) return ai }
-        return OnDeviceAi(chatModel(s.aiProviderConfig, s.geminiKey, quality)!!, houses).also { onDevice = key to it }
+        return OnDeviceAi(chatModel(s.aiProviderConfig, s.geminiKey, quality)!!, houses, devKinds = devKinds).also { onDevice = key to it }
     }
 
     /**
@@ -218,6 +220,12 @@ internal class AiStore(
     suspend fun extractListing(text: String): HouseDraftDto {
         requireOn()
         return ownKeyAi()?.let { withContext(Dispatchers.IO) { it.extractListing(text) } } ?: withApi { it.extractListing(text) }
+    }
+
+    /** As above for a candidate of another kind the extract fills (kinds PR 7): the kind goes with the text. */
+    suspend fun extractListing(text: String, kind: String): HouseDraftDto {
+        requireOn()
+        return ownKeyAi()?.let { withContext(Dispatchers.IO) { it.extractListing(text, kind) } } ?: withApi { it.extractListing(text, kind) }
     }
 
     suspend fun ask(question: String): AskResponseDto {

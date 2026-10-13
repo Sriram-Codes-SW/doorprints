@@ -22,6 +22,7 @@ import app.doorprints.shared.model.HouseAnswer
 import app.doorprints.shared.model.HouseCost
 import app.doorprints.shared.model.HouseRoom
 import app.doorprints.shared.model.MoveIn
+import kotlinx.serialization.json.JsonObject
 
 /**
  * A saved house as on-device AI sees it (docs/03 §13.1): the fields the server's `HouseDto` gives its AI code, from
@@ -68,6 +69,9 @@ data class AiHouse(
     val areaNotes: List<AiAreaNote> = emptyList(),
     /** The straight-line distance to each of my places (slice 4a), in any order; never a place's coordinates. */
     val distances: List<AiDistance> = emptyList(),
+    /** Kinds PR 7 (S4b-BL-211): the candidate's kind and its other extras, read only by [KindAi], never by [HouseDocuments]. */
+    val kind: String? = null,
+    val extras: JsonObject? = null,
 )
 
 /** An area note as the AI sees it (slice 4a): its id, text and last edit (epoch ms), for the newest-first order. */

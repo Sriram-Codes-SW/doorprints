@@ -474,6 +474,9 @@ interface Repository {
     /** Redeems a connect link's invite and returns the device key; an [ApiException] with code 410 when it was used. */
     suspend fun redeemInvite(link: ConnectLink, deviceName: String): String
     suspend fun extractListing(text: String): HouseDraftDto
+
+    /** As above for a candidate of another kind the extract fills (kinds PR 7, S4b-BL-211); a house's call is the one above. */
+    suspend fun extractListing(text: String, kind: String): HouseDraftDto = extractListing(text)
     suspend fun ask(question: String): AskResponseDto
     suspend fun planVisits(request: PlanRequest): PlanResponseDto
 

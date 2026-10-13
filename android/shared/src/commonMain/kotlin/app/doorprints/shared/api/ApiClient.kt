@@ -292,6 +292,9 @@ class ApiClient(
     /** The server's AI reads [text] into a draft; nothing is saved. */
     suspend fun extractListing(text: String): HouseDraftDto =
         send(HttpMethod.Post, "/api/ai/extract-listing", ExtractListingRequest(text))
+    /** As above for a candidate of another kind the extract fills (kinds PR 7, S4b-BL-211): the body names the kind. */
+    suspend fun extractListing(text: String, kind: String): HouseDraftDto =
+        send(HttpMethod.Post, "/api/ai/extract-listing", KindExtractListingRequest(text, kind))
     /** The server's AI answers [question] from the saved houses, with citations. */
     suspend fun ask(question: String): AskResponseDto = send(HttpMethod.Post, "/api/ai/ask", AskRequest(question))
     /** The server's AI plans a walking route over the saved houses. */

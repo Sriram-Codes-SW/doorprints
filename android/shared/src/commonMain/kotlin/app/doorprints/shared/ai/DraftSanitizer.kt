@@ -159,11 +159,11 @@ object DraftSanitizer {
     }
 
     /** "25,000", "₹ 25000/month", "25k", "1.2 Cr", "85 lakh" -> whole rupees (the fraction truncated, as `BigDecimal`). */
-    fun price(value: String?, warnings: MutableList<String>): Long? {
+    fun price(value: String?, warnings: MutableList<String>, field: String = "price"): Long? {
         if (value.isNullOrBlank()) return null
         val m = PRICE.find(value.replace(",", "").replace("_", ""))
         if (m == null) {
-            warnings += "price: could not read '${abbreviate(value)}', dropped"
+            warnings += "$field: could not read '${abbreviate(value)}', dropped"
             return null
         }
         val multiplier = when (m.groupValues[2].lowercase()) {
@@ -178,7 +178,7 @@ object DraftSanitizer {
         val fraction = number.substringAfter('.', "")
         // More digits than a Long holds is certainly out of range.
         if (whole.length > 15) {
-            warnings += "price: $number is out of range, dropped"
+            warnings += "$field: $number is out of range, dropped"
             return null
         }
         var rupees = whole.toLong() * multiplier
@@ -193,7 +193,7 @@ object DraftSanitizer {
             rupees += frac * multiplier / scale
         }
         if (rupees < 0 || rupees > PRICE_MAX) {
-            warnings += "price: $rupees is out of range, dropped"
+            warnings += "$field: $rupees is out of range, dropped"
             return null
         }
         return rupees
@@ -292,7 +292,7 @@ object DraftSanitizer {
         return (if (where == null) what else "$what in $where").take(LABEL_MAX)
     }
 
-    private fun abbreviate(s: String): String {
+    internal fun abbreviate(s: String): String {
         val t = s.replace(WS, " ").trim()
         return if (t.length <= 40) t else t.take(40) + "…"
     }

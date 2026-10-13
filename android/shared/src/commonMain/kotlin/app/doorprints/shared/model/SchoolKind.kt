@@ -37,7 +37,8 @@ data class BuiltInKind(val labels: KindLabels, val fields: KindFields, val extra
  * the flag on) is drawn as a house is today, its extras kept and written back unread (`HouseEntity.extrasOther`).
  */
 object DevKinds {
-    private val SCHOOL = BuiltInKind(SchoolKind.LABELS, SchoolKind.FIELDS, extracts = false)
+    // The listing extract fills a school since kinds PR 7 (S4b-BL-211): its kind file's `ai.extract` is not empty.
+    private val SCHOOL = BuiltInKind(SchoolKind.LABELS, SchoolKind.FIELDS, extracts = true)
 
     /** The kinds a new candidate may be: the house, and the school while the flag is on. */
     fun creatable(on: Boolean): List<BuiltInKind> = if (on) listOf(BuiltInKind.HOUSE, SCHOOL) else listOf(BuiltInKind.HOUSE)

@@ -233,6 +233,10 @@ data class DeviceKeyDto(val deviceKey: String)
 @Serializable
 data class ExtractListingRequest(val text: String)
 
+/** Kinds PR 7 (S4b-BL-211): the listing of a candidate of another kind, with that kind; a house's request has no kind. */
+@Serializable
+data class KindExtractListingRequest(val text: String, val kind: String)
+
 /** A suggestion only: nothing is saved until the user saves the form. */
 @Serializable
 data class HouseDraftDto(
@@ -251,6 +255,8 @@ data class HouseDraftDto(
     val warnings: List<String> = emptyList(),
     /** The carpet area in sq ft when the text says it (slice 1a; the no-AI parser fills it, `ListingText`). */
     val areaSqft: Int? = null,
+    /** Kinds PR 7 (S4b-BL-211): a kind's typed extras the listing filled, in the wire's shape; never for a house. */
+    val extras: JsonObject? = null,
 )
 
 /** A question about the saved houses. */
