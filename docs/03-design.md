@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.126 |
+| Version | 0.127 |
 | Date | 2026-10-13 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -137,6 +137,7 @@
 | 0.124 | 2026-10-13 | Claude (Code), engineer | New §18.10: **typed extras in search and the copies** (kinds PR 6, S4b-BL-210; `feat/kinds-8-extras-search-copies`): `KindFields.others()` and `search` on both stacks, one reader by type (`kindValues`, `KindValues`), the words search adds, the copies' rows and columns (`kind-copy.ts`, `KindCopy`), the phone's `KindWords`, the flag (`CopyKinds`, `ExportOptions.devKinds`), the safety test written first (`house-pins.spec.ts`, `HouseCopyPinsTest`) and `kind-search-vectors.json`; no filter (S4b-BL-265), the rest S4b-BL-266 and S4b-BL-267. |
 | 0.125 | 2026-10-13 | Claude (Code), engineer | New §18.11: **kind-aware AI** (kinds PR 7, S4b-BL-211; `feat/kinds-9-kind-aware-ai`, the server; the website and the phone in two stacked pull requests): the three AI stacks read a candidate of a built-in kind other than the house through its kind file's `ai` slots while the developer flag is on (the server's `app.ai.dev-kinds`); for a house nothing changes, pinned byte for byte first (`HouseAskPinsTest`, `HousePlanPinsTest`, `HouseExtractPinsTest`); `school.json`'s slots filled; `docs/schemas/kinds/kind-ai-vectors.json`. |
 | 0.126 | 2026-10-13 | Claude (Code), engineer | §18.11: **kind-aware AI on the website** (kinds PR 7, S4b-BL-211, the second stacked pull request; `feat/kinds-9b-kind-aware-ai-web`): `core/ai/kind-ai.ts`, the on-device AI and the server request read a school through its kind's slots under the developer flag; *Fill in from listing text* fills a school's empty extras; the website's house pins first and unchanged. |
+| 0.127 | 2026-10-13 | Claude (Code), engineer | §18.11: **kind-aware AI on the phones** (kinds PR 7, S4b-BL-211, the third stacked pull request; `feat/kinds-9c-kind-aware-ai-phone`): `KindAi` in `:shared`, the flag from `BuildConfig.DEV_KINDS` through the repository, *Paste listing text* for a school; the phones' house pins first and unchanged. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -2503,7 +2504,20 @@ each fixture house's document and label, the Ask selection per filter, the three
 parity vectors' drafts and the three Gemini request bodies), committed before the code and unchanged after it; the
 parity vectors, the layout gate (253 of 253) and every existing spec pass unchanged. No new string.
 
-**The phones** follow in a stacked pull request, with their own house pins first (`:shared`).
+**The phones** (the third pull request, `feat/kinds-9c-kind-aware-ai-phone`, stacked on the website's; Android, and the iPhone through
+`:shared` and `:ui`): `KindAi` in `:shared` (`shared/ai/KindAi.kt`) holds the school's copy (`KindAi.SCHOOL`, an
+`AiKindSlots`; `AiKind` is already the provider's kind there) and the same readers as the website (`aiText`, `askView`,
+`planView`, `extractionPrompt`, `SCHOOL_LISTING_SCHEMA`, `sanitize`). `OnDeviceAi` takes the flag (`devKinds`, false by
+default) and `AiStore` hands it on from `CommonRepository`'s new `devKinds` (Android's `AndroidRepository` passes
+`BuildConfig.DEV_KINDS`; the iPhone's repository passes nothing, so false); the repository gives the AI each candidate's
+kind and other extras (`AiHouse.kind`, `AiHouse.extras`). `Repository.extractListing(text, kind)` sends `{ text, kind }`
+(`KindExtractListingRequest`) to the server or the kind to the own-key extract; the house's call and body are as before.
+*Paste listing text* is offered for a school (`BuiltInKind.extracts`), passes the kind, and fills its empty extras
+(`mergeListingExtras` in `HouseFormRules.kt`), keeping one the person set. *Safety test first:* `HouseAiPinsTest`
+(`:shared`, `src/androidHostTest/house-ai-pins.json`), committed before the code and unchanged after it (its only edit:
+the draft's pinned text leaves out the new `extras` field, which is null for a house, so the hashes are the same);
+`HouseEditScreen.kt` stays at 1,517 lines and `CommonRepository.kt` at 1,302. The Roborazzi baselines, the parity vectors
+and every other test pass unchanged.
 
 **Not done, on purpose** (rows in [10](10-sprint-log.md)). The row's safety-test clause said the parity `prompts` would
 be regenerated once; they are not, because no prompt changed for a house and a school's are pinned in the new file

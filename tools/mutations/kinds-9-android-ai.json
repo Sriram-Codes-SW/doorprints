@@ -1,0 +1,78 @@
+{
+  "spec": "android/shared/src/androidHostTest/kotlin/app/doorprints/shared/ai/KindAiVectorsTest.kt",
+  "gradle": [
+    ":shared:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.shared.ai.KindAiVectorsTest",
+    "--tests",
+    "app.doorprints.shared.model.SchoolKindVectorsTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/KindAi.kt",
+      "find": "    fun of(kind: String?, devKinds: Boolean): AiKindSlots? = if (devKinds && kind != null) BUILT_IN[kind] else null",
+      "replace": "    fun of(kind: String?, devKinds: Boolean): AiKindSlots? = if (kind != null) BUILT_IN[kind] else null",
+      "expect": "withTheFlagOffForTheHouseAndForAKindNotBuiltInTheAiReadsAHouse"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/KindAi.kt",
+      "find": "            if (id in k.never) continue",
+      "replace": "",
+      "expect": "neverWinsOverAskAndAValueOutsideItsTypeIsNoLine"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/KindAi.kt",
+      "find": "                if (s.length > (e.maxLength ?: 0)) return null",
+      "replace": "",
+      "expect": "everyDocumentHasTheVectorsLinesAndTheAskPromptStripsATag"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/KindAi.kt",
+      "find": "                r.freeText(s.trim())?.split(WHITE_SPACE)?.filter { it.isNotEmpty() }?.joinToString(\" \")?.ifEmpty { null }",
+      "replace": "                s.trim()",
+      "expect": "everyDocumentHasTheVectorsLinesAndTheAskPromptStripsATag"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/KindAi.kt",
+      "find": "                if (cadence != e.cadence) return null",
+      "replace": "",
+      "expect": "neverWinsOverAskAndAValueOutsideItsTypeIsNoLine"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/KindAi.kt",
+      "find": "            price = h.price.takeIf { has(\"money\") }, priceType = h.priceType.takeIf { has(\"money\") },",
+      "replace": "            price = h.price, priceType = h.priceType,",
+      "expect": "anAskFilterOnAFieldTheKindHidesNeverKeepsTheSchool"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/KindAi.kt",
+      "find": "                e.options.entries.firstOrNull { it.key.equals(v, true) || it.value.equals(v, true) }?.let { JsonPrimitive(it.key) }",
+      "replace": "                e.options.entries.firstOrNull { it.key.equals(v, true) }?.let { JsonPrimitive(it.key) }",
+      "expect": "theSchoolsExtractPromptSchemaAndDraftsAreTheVectors"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/KindAi.kt",
+      "find": "            \"text\" -> DraftSanitizer.clean(value, e.maxLength ?: 0, e.id, warnings)?.let { JsonPrimitive(it) }",
+      "replace": "            \"text\" -> DraftSanitizer.clean(value, 2000, e.id, warnings)?.let { JsonPrimitive(it) }",
+      "expect": "theSchoolsExtractPromptSchemaAndDraftsAreTheVectors"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OnDeviceAi.kt",
+      "find": "        val docs = OnDeviceSelection.forAsk(houses().map { KindAi.askView(it, devKinds) }, question, filters) { KindAi.aiText(it, devKinds) }",
+      "replace": "        val docs = OnDeviceSelection.forAsk(houses(), question, filters)",
+      "expect": "onDeviceAskSendsASchoolsLinesOnlyWithTheFlagAndNeverAnUnknownExtra"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OnDeviceAi.kt",
+      "find": "        require(kind == null || (k != null && k.extract.isNotEmpty())) { \"kind $kind has no listing extract\" }",
+      "replace": "",
+      "expect": "onDeviceExtractReadsASchoolListingWithTheFlagAndRefusesTheKindWithout"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/SchoolKind.kt",
+      "find": "    private val SCHOOL = BuiltInKind(SchoolKind.LABELS, SchoolKind.FIELDS, extracts = true)",
+      "replace": "    private val SCHOOL = BuiltInKind(SchoolKind.LABELS, SchoolKind.FIELDS, extracts = false)",
+      "expect": "theFlagOffOffersAndDrawsOnlyTheHouse"
+    }
+  ]
+}

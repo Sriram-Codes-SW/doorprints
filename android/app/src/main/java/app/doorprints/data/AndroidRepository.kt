@@ -19,6 +19,7 @@
 package app.doorprints.data
 
 import android.content.Context
+import app.doorprints.BuildConfig
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
@@ -59,6 +60,7 @@ class AndroidRepository(
     openAiFor = Api::openAi,
     anthropicFor = Api::anthropic,
     emulatorHostAllowed = true,
+    devKinds = BuildConfig.DEV_KINDS,
 ) {
     /** The folder holding every photo file, for the exporters and the backup. */
     fun photoDir() = File(photoDirPath().toString())

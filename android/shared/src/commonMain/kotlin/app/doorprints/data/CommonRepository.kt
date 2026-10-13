@@ -142,6 +142,7 @@ open class CommonRepository(
     anthropicFor: ((baseUrl: String, model: String, apiKey: String) -> JsonChatModel)? = null,
     /** True on Android only: the emulator's name for its computer, `10.0.2.2`, may be an http base URL ([BaseUrlValidator]). */
     emulatorHostAllowed: Boolean = false,
+    devKinds: Boolean = false, // the hidden kinds' developer flag (kinds PR 7): BuildConfig.DEV_KINDS on Android, false on the iPhone
 ) : Repository {
     private val syncBackendFor: suspend (AppSettings) -> SyncBackend? = syncBackendFor
         ?: { s -> if (s.serverConfigured) ServerSyncBackend(apiFor(s.serverUrl, s.apiKey)) else null }
@@ -456,7 +457,7 @@ open class CommonRepository(
 
     // ---- AI features (optional; hidden unless the server reports enabled = true): AiStore (S4b-BL-168) ----
 
-    private val ai = AiStore(settings, apiFor, geminiFor, openAiFor, anthropicFor, emulatorHostAllowed, ::aiHouses)
+    private val ai = AiStore(settings, apiFor, geminiFor, openAiFor, anthropicFor, emulatorHostAllowed, ::aiHouses, devKinds)
 
     override val aiEnabled: StateFlow<Boolean> = ai.enabled
     override val aiOff: StateFlow<AiOff?> = ai.off
@@ -497,15 +498,14 @@ open class CommonRepository(
                 visits = visits[h.id].orEmpty().map { AiVisit(it.arrivedAt, it.leftAt) },
                 viewings = viewings[h.id].orEmpty().map { AiViewing(it.id, it.startsAt, it.kind, it.status, it.notes) },
                 areaNotes = AreaNotes.reaching(point, areas, notes).map { AiAreaNote(it.id, it.text, it.updatedAt) },
-                distances = Distances.toPlaces(point, places).map { AiDistance(it.place.name, it.meters) },
+                distances = Distances.toPlaces(point, places).map { AiDistance(it.place.name, it.meters) }, kind = h.kind, extras = h.extrasOther,
             )
         }
     }
 
     override suspend fun extractListing(text: String): HouseDraftDto = ai.extractListing(text)
-
+    override suspend fun extractListing(text: String, kind: String): HouseDraftDto = ai.extractListing(text, kind)
     override suspend fun ask(question: String): AskResponseDto = ai.ask(question)
-
     override suspend fun planVisits(request: PlanRequest): PlanResponseDto = ai.planVisits(request)
 
     // ---- Pairing (docs/03 §12.1): no key yet, so the client is made without one ----

@@ -129,7 +129,10 @@ class HouseAiPinsTest {
         val lenient = Json { ignoreUnknownKeys = true }
         json("docs/ai/evals/parity-vectors.json")["sanitize"]!!.jsonArray.forEachIndexed { i, c ->
             val raw = c.jsonObject["raw"]!!.let { if (it is JsonNull) null else lenient.decodeFromJsonElement(RawListing.serializer(), it) }
-            out["draft.$i"] = DraftSanitizer.sanitize(raw, c.jsonObject.str("source")).toString()
+            val draft = DraftSanitizer.sanitize(raw, c.jsonObject.str("source"))
+            // Kinds PR 7 added `extras` to the draft, null for a house: the pin is the draft's text without that field.
+            check(draft.extras == null)
+            out["draft.$i"] = draft.toString().replace(", extras=null)", ")")
         }
         out["schema.listing"] = OnDeviceAi.LISTING_SCHEMA.toString()
         out["body.listing"] = GeminiClient.requestBody(extract.system, extract.user, OnDeviceAi.LISTING_SCHEMA, 0.0).toString()

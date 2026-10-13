@@ -72,6 +72,7 @@
 | v0.68   | 2026-10-12 | Claude (Code), engineer       | 2.1: the owner's free-tier `AI_API_KEY` works: `key-check` 200 for the pinned `gemini-3.5-flash` and `-flash-lite`; `on-device` passed on the second attempt after one transient provider 503 (TC-U-88 run recorded). |
 | v0.69   | 2026-10-13 | Claude (Code), engineer       | New section 16: **kind-aware AI** (kinds PR 7, S4b-BL-211; `feat/kinds-9-kind-aware-ai`, the server first): a candidate of a built-in kind other than the house is read through its kind file's `ai` slots while the developer flag is on (`AI_DEV_KINDS` on the server, 11); `POST /api/ai/extract-listing` takes an optional `kind` (13); the school's Ask lines, Plan view and Extract prompt, schema and checks; a house's prompts, document lines, request bodies and parity vectors unchanged (house pins first). |
 | v0.70   | 2026-10-13 | Claude (Code), engineer       | 16: **the website's on-device AI is kind-aware** (S4b-BL-211, the second stacked pull request; `feat/kinds-9b-kind-aware-ai-web`): `core/ai/kind-ai.ts` (the school's Ask lines, Ask and Plan views, Extract prompt, schema and checks) under `devKindsOn()`; the extract request names the kind only for a kind the extract fills; the website's house pins (`house-ai-pins.spec.ts`) first and unchanged. |
+| v0.71   | 2026-10-13 | Claude (Code), engineer       | 16: **the phones' on-device AI is kind-aware** (S4b-BL-211, the third stacked pull request; `feat/kinds-9c-kind-aware-ai-phone`): `KindAi` in `:shared` under `OnDeviceAi(devKinds)`, the flag from `BuildConfig.DEV_KINDS`; the extract request names the kind only for a kind the extract fills; the phones' house pins (`HouseAiPinsTest`) first and unchanged. |
 
 Status: implemented in `backend/` (package `app.doorprints.server.ai`), **off by default**. Not yet compiled in this
 sandbox (no Maven Central access) — CI compiles and runs the tests. Provider: AI Studio by default, Vertex AI with
@@ -1886,7 +1887,8 @@ first*: the server's house pins (`HouseAskPinsTest`, `HousePlanPinsTest`, `House
 for the golden set's 30 fixture houses and one house with every field), committed from main before the code and green
 after it. The website pins its own the same way (`core/ai/house-ai-pins.spec.ts` with `golden/house-ai-pins.golden.ts`:
 each fixture house's document and label, the Ask selection per filter, the three prompts, the Plan candidates, the
-parity vectors' drafts and the three Gemini request bodies); the phone in its pull request.
+parity vectors' drafts and the three Gemini request bodies), and so do the phones (`:shared` `HouseAiPinsTest` with
+`src/androidHostTest/house-ai-pins.json`, the same outputs and the listing schema).
 
 ### 16.2 The slots are the per-field AI flag
 

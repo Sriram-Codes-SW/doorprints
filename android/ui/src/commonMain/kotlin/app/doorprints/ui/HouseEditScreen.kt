@@ -1333,13 +1333,13 @@ fun HouseEditScreen(
 
     if (showPaste) {
         PasteListingDialog(
-            onDismiss = { showPaste = false },
+            onDismiss = { showPaste = false }, kind = kind.id.takeIf { it != "house" && kind.extracts },
             onDraft = { draftFromAi, warnings ->
                 draft?.let { current ->
                     // The name is still the form's own (the default, or the geocoder's "House on …") on a new house.
                     val placeholder = current.label.isBlank() || current.label == defaultLabel ||
                         (isNew && current.label == baseline?.label)
-                    val merged = mergeListing(current, draftFromAi, labelIsPlaceholder = placeholder)
+                    val merged = mergeListingExtras(mergeListing(current, draftFromAi, labelIsPlaceholder = placeholder), draftFromAi, kind.fields)
                     draft = merged.house.also { fill.record(current, merged) }
                     // Compose resources are read with a suspend call outside composition (cached after the first read),
                     // so the summary lands one dispatch after the fields; if the screen is recreated in between, the
@@ -1442,7 +1442,7 @@ private suspend fun pasteResultText(merge: ListingMerge, warnings: List<String>)
  * the error are in a live region that is there before either appears.
  */
 @Composable
-private fun PasteListingDialog(onDismiss: () -> Unit, onDraft: (HouseDraftDto, List<String>) -> Unit) {
+private fun PasteListingDialog(onDismiss: () -> Unit, onDraft: (HouseDraftDto, List<String>) -> Unit, kind: String? = null) {
     val repo = LocalAppServices.current.repository
     val scope = rememberCoroutineScope()
     var text by rememberSaveable { mutableStateOf("") }
@@ -1481,7 +1481,7 @@ private fun PasteListingDialog(onDismiss: () -> Unit, onDraft: (HouseDraftDto, L
                     busy = true
                     error = null
                     // Extract reads the first MAX_INPUT_CHARS characters; PasteListingText says how many are left out (S4b-BL-182).
-                    val result = runCatching { repo.extractListing(ListingCut.of(text).text) }
+                    val result = runCatching { ListingCut.of(text).text.let { if (kind != null) repo.extractListing(it, kind) else repo.extractListing(it) } }
                     // Cancelled: the dialog is closing, so neither a draft nor an error.
                     ensureActive()
                     result.onSuccess { onDraft(it, it.warnings + priceWarning(text, it)) }.onFailure { error = errorText(it) }

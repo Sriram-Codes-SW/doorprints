@@ -153,7 +153,9 @@ class SchoolKindVectorsTest {
         assertEquals(listOf("house", "school"), DevKinds.creatable(true).map { it.id })
         val on = DevKinds.of("school", true)
         assertEquals(SchoolKind.LABELS, on.labels)
-        assertFalse(on.extracts)
+        // The listing extract fills a school since kinds PR 7 (S4b-BL-211): the kind file's `ai.extract` is not empty.
+        assertEquals(school["ai"]!!.jsonObject["extract"]!!.jsonArray.isNotEmpty(), on.extracts)
+        assertTrue(on.extracts)
         assertTrue(BuiltInKind.HOUSE.extracts)
     }
 

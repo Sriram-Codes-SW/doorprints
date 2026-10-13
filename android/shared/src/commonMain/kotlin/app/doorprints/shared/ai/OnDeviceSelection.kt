@@ -40,17 +40,17 @@ object OnDeviceSelection {
       * The documents to send for [question]: the houses that pass [filters], all of them up to [MAX_HOUSES], else the
       * best matching ones.
      */
-    fun forAsk(houses: List<AiHouse>, question: String, filters: AskFilters? = null): List<AskDocument> {
+    fun forAsk(houses: List<AiHouse>, question: String, filters: AskFilters? = null, text: (AiHouse) -> String = HouseDocuments::text): List<AskDocument> {
         val kept = houses.filter { matches(it, filters) }
         val chosen = if (kept.size <= MAX_HOUSES) kept else {
             val q = AskChecks.words(question)
             kept.withIndex()
-                .sortedWith(compareByDescending<IndexedValue<AiHouse>> { (_, h) -> AskChecks.words(HouseDocuments.text(h)).count { it in q } }
+                .sortedWith(compareByDescending<IndexedValue<AiHouse>> { (_, h) -> AskChecks.words(text(h)).count { it in q } }
                     .thenBy { it.index })
                 .take(MAX_HOUSES)
                 .map { it.value }
         }
-        return chosen.map { AskDocument(it.id, HouseDocuments.text(it), HouseDocuments.label(it)) }
+        return chosen.map { AskDocument(it.id, text(it), HouseDocuments.label(it)) }
     }
 
     private fun matches(h: AiHouse, f: AskFilters?): Boolean {
