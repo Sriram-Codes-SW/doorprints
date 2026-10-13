@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Design of Google sign-in for backup, automatic sync, deletion and sharing through each person's own Google Drive (N13 3b, D-28) |
-| Version | 0.33 |
-| Date | 2026-10-07 |
+| Version | 0.34 |
+| Date | 2026-10-13 |
 | Author | Claude (Code), lead |
 | Status | **Decided by the owner on 2026-10-02** (§6, §6.1: "Let us implement it. After real world use, we can change as needed."); [03](03-design.md) ADR-33. Built so far: S4b-BL-70, S4b-BL-115, S4b-BL-125, S4b-BL-124 (the runbook incidents, [08](08-operations-runbook.md) IR-11..IR-13), and the **website** version 1 cards (draft PR #118): connect, backups, sync, photos on Wi-Fi, L1 on the site, L2/L3 only with a PRF-sealed passkey whose proof is an HMAC, 8-digit pairing and QR enrolment (paste, or the camera when the browser can scan), non-extractable folder keys, `config.js` from the repository variable `GOOGLE_OAUTH_WEB_CLIENT_ID`. **Android** (PR #142, branch `feat/android-drive`): the phones' Drive screens, the controller, the Keystore device key, the device check, enrolment by pasted `dp1.` offer, the Drive route for sync and the background run are built and tested on the JVM; **real-phone checks are open** ([ops/manual-test-checklist.md](ops/manual-test-checklist.md) §14); **the iPhone** (branch `feat/ios-drive`): the Drive wiring is built on the same common code, with the Secure Enclave device key, the Keychain refresh token and `ASWebAuthenticationSession` with PKCE, the Keychain-guarded HMAC proof, the Drive section in Settings with the iPhone scanner, and the triggers of §9.11; it is **compiled for the iOS Simulator and logic-tested on the host and, in CI, the simulator, and no iPhone and no Google round trip has run it** ([ops/manual-test-checklist.md](ops/manual-test-checklist.md) §14, MT-86..MT-92). Version 1 is §1.6; the tickets are S4b-BL-70, -73, -115..119, -121, -122, -124..128 and -130 ([10](10-sprint-log.md) §12.7), deferred S4b-BL-120 and -129; the phones' camera scan (S4b-BL-136) and the Android half of the phones' HMAC proof (S4b-BL-135) are built on `feat/qr-scanner-and-backlog` (draft PR #145) with their real-device checks open, the iPhone's scanner and HMAC proof are wired in the iPhone's Drive (§9.11); the order is §7 and [14](14-lead-backlog-and-handoff.md) N17 |
 
@@ -45,6 +45,7 @@
 | 0.31 | 2026-10-07 | Claude (Code), lead | **The iPhone's Google Drive wiring built on `feat/ios-drive`, reusing the common code Android uses; compiled and logic-tested, no iPhone and no Google round trip yet.** New **§9.11** (what the iPhone built, what it decided, what is not verified). **§9.5 i:** the iPhone scanner is wired into the Drive screens, its five labels come from the Compose strings in four languages (S4b-BL-142); the *denied* case is still S4b-BL-141. **§9.10, §10.2, §10.4:** the iPhone's deletion proof is the HMAC under a Keychain secret that the system releases only after Face ID, Touch ID or the passcode on every read (S4b-BL-135, iPhone half). **§1.3:** the iPhone's triggers as built (the start, each return to the app, 30 minutes in front, after a change; no `BGTaskScheduler`, and why). **Moved from `:app` to `:shared` commonMain, same packages:** the sign-in contracts and `DriveTokenProvider` (was `AndroidDriveTokenProvider`), `Pkce`, `BrowserRedirect`, `BrowserGoogleAuthorizer`, the token endpoint's reading, the device-key and lock rules, the state stores over a `StateFile` seam, `DriveAssembly`, the runner, the decisions, the cadence, `RoomSyncRows`; `CommonRepository.syncBackendFor` suspends so the Drive route is a coroutine-context element. |
 | 0.32 | 2026-10-07 | Claude (Code), lead | **A distinct *timed out* device check and the iPhone scanner's *denied* case** (S4b-BL-140, S4b-BL-141). **§10.2, §10.4:** `AuthResult.TIMED_OUT` from Android's `BIOMETRIC_ERROR_TIMEOUT` to its own reason and words; the iPhone and the website cannot tell a timeout from a cancel (and why). **§9.5 i:** `QrScan.Denied` and the *Open settings* button on the iPhone. Not run on a phone or an iPhone. |
 | 0.33 | 2026-10-10 | Claude (Code), engineer | **§9.5: the platform byte in the `dp1.` offer** (S4b-BL-144, `feat/ios-drive-followups`). The offer is `pk_new (65) ‖ s (32) ‖ platform (1)`; an older 97-byte offer still reads, as platform unknown. §9.10: the iPhone provider's file vectors run on the simulator (S4b-BL-131, `IosCryptoVectorsTest`); no CryptoKit shim exists. §10.3: the iPhone posts a local notice when a pass finds the passcode gone (S4b-BL-145). Compiled and run nowhere in this session. |
+| 0.34 | 2026-10-13 | Claude (Code), engineer | **§5.1: the sync file after the format reset** (kinds step 4, S4b-BL-206, `feat/kinds-4-android`): the phone writes `candidates` and `candidateId` within `sync/1`, both stacks read either shape and refuse both names at once; the website's writer follows (S4b-BL-246). |
 
 **The owner's words (2026-10-02).** "Google Sign-In is to make a secure backup and restore drive and if possible to
 make it shareable to others using the same app/website. The backup can be time synced or manual with possibility of
@@ -431,6 +432,12 @@ My Drive/
   `modifiedTime`, `appProperties`), reads the other devices' files whose checksum changed since last time, validates
   each like an import (docs/schemas §6: every Drive file is untrusted input) and merges row by row. The cursor is the
   map of device id to checksum.
+- **Since the format reset** (kinds step 4, S4b-BL-206, 2026-10-13) the phone writes the houses as candidates
+  (`kind`, `money`, `extras`) under `candidates` and names a visit's or photo's house `candidateId`, still `sync/1`;
+  the phone and the website read a file of either shape (a house row without `kind` is the house it is) and refuse a
+  file with both `candidates` and `houses`, or a row with both `candidateId` and `houseId`
+  (`docs/schemas/sync-1.schema.json`, `sync-vectors.json`). The website still writes `houses` and `houseId`
+  (S4b-BL-246), so the two keep syncing in both directions.
 - **The Drive merge rule is last-write-wins on `updatedAt`, ties broken by the writing device's id, with tombstones
   compared the same way** (a delete wins over an older edit and loses to a newer one). It is **not**
   `SyncRules.keepLocal`, the server sync's rule, which lets any incoming row overwrite a clean local row: with the

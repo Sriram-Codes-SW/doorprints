@@ -18,12 +18,17 @@
 
 package app.doorprints.shared.api
 
+import app.doorprints.shared.model.Candidates
 import app.doorprints.shared.model.HouseAnswer
-import app.doorprints.shared.model.HouseCost
 import app.doorprints.shared.model.HouseRoom
+import app.doorprints.shared.model.Money
 import app.doorprints.shared.model.MoveIn
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonNames
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
@@ -39,13 +44,19 @@ import kotlinx.serialization.json.JsonObject
 // strings (see IsoTime); the apps store epoch milliseconds.
 
 /**
-  * A house on the wire (`/api/houses`), also the form the Drive sync file stores. Times are ISO-8601 text; [deleted]
-  * marks a
- * tombstone and [syncVersion] is the server's position of the row (0 where none applies).
+ * A candidate on the wire (`/api/candidates`, since kinds step 4; S4b-BL-206), also the form the Drive sync file's
+ * `candidates` store: the house with [kind], [money] and [extras] in place of its price, type, bedrooms, area, floor and
+ * cost (docs/03 ADR-36 §18.4 doors 3, 5 and 7; the server's `HouseDto`). The internal name stays `HouseDto`, as the
+ * website keeps its house model. Times are ISO-8601 text; [deleted] marks a tombstone and [syncVersion] is the server's
+ * position of the row (0 where none applies).
  */
 @Serializable
 data class HouseDto(
     val id: String,
+    /** The kind id, required by the server: always written, even at its default. */
+    @OptIn(ExperimentalSerializationApi::class)
+    @EncodeDefault
+    val kind: String = Candidates.HOUSE_KIND,
     val label: String,
     val address: String? = null,
     val street: String? = null,
@@ -53,27 +64,23 @@ data class HouseDto(
     val lat: Double,
     val lon: Double,
     val status: String? = "NEW",
-    val price: Long? = null,
-    val priceType: String? = null,
-    val bedrooms: Int? = null,
+    /** `{amount?, cadence?}`: whole rupees and how often (`month` a rent, `once` a sale); absent when neither is known. */
+    val money: Money? = null,
     val rating: Int? = null,
     val contactName: String? = null,
     val contactPhone: String? = null,
     val listingUrl: String? = null,
     val notes: String? = null,
-    /** HouseDto v2 (docs/11 5.30 item 1, slice 1a): the three optional values, in the format's order, before `checklist`. */
-    val areaSqft: Int? = null,
     /** `GPS`, `MAP` or `APPROX` (`LocationSource`); absent for a house saved before slice 1a. */
     val locationSource: String? = null,
-    val cost: HouseCost? = null,
-    /** The rooms (slice 1c), at most 30, after `cost`; absent for none (never `[]`), and `[]` read is none too. */
+    /** Keyed by extra id: the bedrooms, area, floor and the eleven cost fields, then any a newer app wrote; absent when none. */
+    val extras: JsonObject? = null,
+    /** The rooms (slice 1c), at most 30, after `extras`; absent for none (never `[]`), and `[]` read is none too. */
     val rooms: List<HouseRoom>? = null,
     /** The questions asked (slice 3a), at most 60, after `rooms`; absent for none (never `[]`), and `[]` read is none too. */
     val answers: List<HouseAnswer>? = null,
     /** Moving in (slice 5), after `answers`; absent when it has no date, notes or items. */
     val moveIn: MoveIn? = null,
-    /** The floor (S4b-BL-87), -5..200 with 0 the ground floor, after `moveIn`; absent when unknown. */
-    val floor: Int? = null,
     /** The broker's record id (slice 1b); the server keeps no foreign key, a dangling id reads as no broker. */
     val brokerId: String? = null,
     val checklist: Map<String, Int> = emptyMap(),
@@ -83,10 +90,16 @@ data class HouseDto(
     val syncVersion: Long = 0,
 )
 
-/** A visit on the wire (`/api/visits`): where and when the person arrived and left; a visit may be tied to a house. */
+/**
+ * A visit on the wire (`/api/visits`): where and when the person arrived and left; a visit may be tied to a house, named
+ * `candidateId` on the wire since the format reset (S4b-BL-206). `houseId`, the name before, is still read (a Drive
+ * sync file an older app wrote).
+ */
+@OptIn(ExperimentalSerializationApi::class)
 @Serializable
 data class VisitDto(
     val id: String,
+    @SerialName("candidateId") @JsonNames("houseId")
     val houseId: String? = null,
     val lat: Double,
     val lon: Double,
@@ -102,11 +115,14 @@ data class VisitDto(
 /**
  * One row of `GET /api/photos?since=`: a new photo, a delete tombstone (no bytes) or, since slice 5, a change of a
  * photo's metadata (docs/11 5.7): its room, tags and caption and when they were last edited ([metaUpdatedAt], epoch ms,
- * 0 or absent = never). Also the answer of `PUT /api/photos/{id}/meta`, which is the photo's current meta.
+ * 0 or absent = never). Also the answer of `PUT /api/photos/{id}/meta`, which is the photo's current meta. Its house
+ * is `candidateId` on the wire since the format reset (S4b-BL-206); `houseId` is still read, as for a visit.
  */
+@OptIn(ExperimentalSerializationApi::class)
 @Serializable
 data class PhotoChangeDto(
     val id: String,
+    @SerialName("candidateId") @JsonNames("houseId")
     val houseId: String,
     val contentType: String? = null,
     val sizeBytes: Int? = null,

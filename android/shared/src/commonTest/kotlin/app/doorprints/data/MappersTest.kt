@@ -26,6 +26,7 @@ import app.doorprints.shared.model.HouseAnswer
 import app.doorprints.shared.model.HouseCost
 import app.doorprints.shared.model.HouseRoom
 import app.doorprints.shared.model.HouseStatus
+import app.doorprints.shared.model.Money
 import app.doorprints.shared.model.MoveIn
 import app.doorprints.shared.model.MoveInItem
 import app.doorprints.shared.model.PhotoMeta
@@ -34,6 +35,12 @@ import app.doorprints.shared.api.PhotoMetaDto
 import app.doorprints.shared.export.ExportPhoto
 import app.doorprints.shared.model.VisitSource
 import app.doorprints.shared.sync.SyncRules
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -81,12 +88,60 @@ class MappersTest {
         assertEquals("h1", dto.id); assertEquals("Flat", dto.label); assertEquals("12, 5th Cross", dto.address)
         assertEquals("5th Cross", dto.street); assertEquals("Indiranagar", dto.locality)
         assertEquals(12.978321, dto.lat); assertEquals(77.640812, dto.lon)
-        assertEquals(32_000L, dto.price); assertEquals("RENT", dto.priceType); assertEquals(2, dto.bedrooms)
+        // Kinds step 4 (S4b-BL-206): the price is money with its cadence, the values are extras in the kind file's order.
+        assertEquals("house", dto.kind); assertEquals(Money(32_000, "month"), dto.money)
+        assertEquals(
+            """{"bedrooms":2,"areaSqft":1150,"deposit":{"amount":64000,"cadence":"once"},"depositMonths":2,""" +
+                """"maintenance":{"amount":2500,"cadence":"month"},"maintenanceIncluded":false,""" +
+                """"brokerage":{"amount":16000,"cadence":"once"},"brokerageMonths":1,"lockInMonths":11,"noticeMonths":3,""" +
+                """"availableFrom":"2026-10-15","myOffer":{"amount":30000,"cadence":"month"},""" +
+                """"agreedPrice":{"amount":31000,"cadence":"month"}}""",
+            dto.extras.toString(),
+        )
         assertEquals(4, dto.rating); assertEquals("Owner", dto.contactName); assertEquals("+91 98450 00000", dto.contactPhone)
         assertEquals("https://example.com/l/1", dto.listingUrl); assertEquals("Water 24x7", dto.notes)
         assertEquals(mapOf("water" to 5, "noise" to 2), dto.checklist); assertFalse(dto.deleted)
-        assertEquals(1150, dto.areaSqft); assertEquals("GPS", dto.locationSource); assertEquals(house.cost, dto.cost)
+        assertEquals("GPS", dto.locationSource)
         assertEquals(house.rooms, dto.rooms); assertEquals(house.rooms, house.toExport().rooms)
+    }
+
+    @Test
+    fun aCandidatesMoneyFollowsThePriceType() {
+        // A sale is `once` and its offers follow it; a price without a type has no cadence (owner, 2026-10-12) and its
+        // offers fall back to `month`; a rent with no amount yet keeps its cadence; neither is no money at all.
+        val sale = house.copy(priceType = "SALE", cost = HouseCost(myOffer = 9_000_000)).toDto()
+        assertEquals(Money(32_000, "once"), sale.money)
+        assertEquals("""{"bedrooms":2,"areaSqft":1150,"myOffer":{"amount":9000000,"cadence":"once"}}""", sale.extras.toString())
+        val typeless = house.copy(price = 1_20_00_000, priceType = null, cost = HouseCost(agreedPrice = 1_10_00_000)).toDto()
+        assertEquals(Money(amount = 1_20_00_000), typeless.money)
+        assertEquals("""{"bedrooms":2,"areaSqft":1150,"agreedPrice":{"amount":11000000,"cadence":"month"}}""", typeless.extras.toString())
+        assertNull(typeless.toEntity().priceType)
+        assertEquals(Money(cadence = "month"), house.copy(price = null).toDto().money)
+        assertNull(house.copy(price = null, priceType = null).toDto().money)
+        val bare = house.copy(bedrooms = null, areaSqft = null, cost = null, floor = null)
+        assertNull(bare.toDto().extras)
+        assertEquals(0, house.copy(floor = 0).toDto().extras!!["floor"].toString().toInt())
+    }
+
+    @Test
+    fun anExtraANewerAppWroteIsKeptAndWrittenBackAfterTheKnownOnes() {
+        // Door 5: a field id with a value of an extras type is kept (texts of at most 2,000 characters, at most 30, by id);
+        // anything else is dropped, and a known extra of the wrong type reads as unknown.
+        val other = buildJsonObject {
+            put("parkingSlots", 2); put("gated", true); put("facing", "EAST"); put("fee", buildJsonObject { put("amount", 500); put("cadence", "year") })
+            put("Bad-id", 1); put("list", JsonArray(listOf(JsonPrimitive(1)))); put("long", "x".repeat(2001)); put("nothing", JsonNull)
+            put("bedrooms", "two")
+        }
+        val dto = house.toDto().copy(extras = JsonObject(house.toDto().extras!! + other))
+        val entity = dto.toEntity()
+        assertNull(entity.bedrooms)
+        assertEquals(listOf("facing", "fee", "gated", "parkingSlots"), entity.extrasOther!!.keys.toList())
+        assertEquals(listOf("areaSqft", "deposit"), entity.toDto().extras!!.keys.take(2))
+        assertEquals(listOf("facing", "fee", "gated", "parkingSlots"), entity.toDto().extras!!.keys.toList().takeLast(4))
+        val many = JsonObject((1..40).associate { "f${it.toString().padStart(2, '0')}" to JsonPrimitive(it) })
+        assertEquals(30, house.toDto().copy(extras = many).toEntity().extrasOther!!.size)
+        assertEquals("f30", house.toDto().copy(extras = many).toEntity().extrasOther!!.keys.last())
+        assertEquals(2000, house.toDto().copy(extras = buildJsonObject { put("t", "x".repeat(2000)) }).toEntity().extrasOther!!["t"].toString().length - 2)
     }
 
     @Test
@@ -195,14 +250,19 @@ class MappersTest {
     @Test
     fun aPulledRowsValuesAreCoercedNotRefused() {
         // Slice 1a: a field outside its range reads as unknown, an empty cost as none, the rest of the house stays.
-        val odd = house.toDto().copy(areaSqft = 0, locationSource = "somewhere", cost = HouseCost(deposit = -5, noticeMonths = 2))
+        val odd = house.toDto().copy(
+            locationSource = "somewhere",
+            extras = buildJsonObject {
+                put("areaSqft", 0); put("deposit", buildJsonObject { put("amount", -5); put("cadence", "once") }); put("noticeMonths", 2)
+            },
+        )
         val entity = odd.toEntity()
         assertNull(entity.areaSqft); assertNull(entity.locationSource)
         assertEquals(HouseCost(noticeMonths = 2), entity.cost)
         assertEquals("Flat", entity.label)
-        assertNull(house.toDto().copy(cost = HouseCost()).toEntity().cost)
+        assertNull(house.toDto().copy(extras = JsonObject(emptyMap())).toEntity().cost)
         // An empty cost on this phone is written absent, never as {}.
-        assertNull(house.copy(cost = HouseCost()).toDto().cost)
+        assertNull(house.copy(cost = HouseCost(), bedrooms = null, areaSqft = null).toDto().extras)
         assertNull(house.copy(cost = HouseCost()).toExport().cost)
         assertEquals(house.copy(dirty = false), house.toExport().toEntity(dirty = false))
         assertNull(house.toExport().copy(areaSqft = 100_001, cost = HouseCost(availableFrom = "soon")).toEntity().areaSqft)

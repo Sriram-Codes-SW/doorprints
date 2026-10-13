@@ -1,0 +1,28 @@
+{
+  "spec": "AppDatabaseMigrationTest",
+  "gradle": [
+    ":app:testDebugUnitTest",
+    "--tests",
+    "app.doorprints.AppDatabaseMigrationTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AppDatabase.kt",
+      "find": "            \"createdAt\", \"updatedAt\", \"deleted\", \"dirty\",\n        )",
+      "replace": "            \"createdAt\", \"updatedAt\", \"deleted\",\n        )",
+      "expect": "migration11To12RewritesEveryHouseAsACandidateInPlace"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AppDatabase.kt",
+      "find": "Candidates.extrasOf(int(3), int(4), int(5), cost.orNull(), money?.cadence, null)",
+      "replace": "Candidates.extrasOf(int(3), int(4), int(5), cost.orNull(), null, null)",
+      "expect": "migration11To12RewritesEveryHouseAsACandidateInPlace"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AppDatabase.kt",
+      "find": "                        if (money == null && extras == null) continue\n",
+      "replace": "                        if (extras == null) continue\n",
+      "expect": "migration11To12RewritesEveryHouseAsACandidateInPlace"
+    }
+  ]
+}

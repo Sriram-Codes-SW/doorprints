@@ -76,6 +76,25 @@ describe('LocalRowsAdapter', () => {
     expect(imported?.dirty).toBe(false);
   });
 
+  it('applyRemote stores a candidate, a visit and a photo the phone wrote as the house, visit and photo they are (S4b-BL-206)', async () => {
+    const at = '2026-10-13T10:00:00Z';
+    const stamp = { updatedAt: new Date(at).getTime(), by: 'device-phone1', deleted: false };
+    await adapter.applyRemote([
+      { kind: 'houses', key: 'h-c', stamp, json: {
+        id: 'h-c', kind: 'house', label: 'Zoo Road 1BHK', lat: 26.17, lon: 91.77, status: 'NEW', checklist: {}, updatedAt: at,
+        money: { amount: 18000, cadence: 'month' }, extras: { bedrooms: 1, floor: -1, maintenance: { amount: 1500, cadence: 'month' } },
+      } },
+      { kind: 'visits', key: 'v-c', stamp, json: { id: 'v-c', candidateId: 'h-c', lat: 26.17, lon: 91.77, arrivedAt: at, source: 'MANUAL', updatedAt: at } },
+      { kind: 'photos', key: 'p-c', stamp, json: { id: 'p-c', candidateId: 'h-c', contentType: 'image/jpeg', sizeBytes: 3, updatedAt: at } },
+    ]);
+    const house = (await store.allHouses()).find((h) => h.id === 'h-c')!;
+    expect([house.price, house.priceType, house.bedrooms, house.floor, house.cost?.maintenance]).toEqual([18000, 'RENT', 1, -1, 1500]);
+    expect((await store.allVisits()).find((v) => v.id === 'v-c')?.houseId).toBe('h-c');
+    const photo = await store.photos.get('p-c');
+    expect(photo?.houseId).toBe('h-c');
+    expect(photo && 'candidateId' in photo).toBe(false);
+  });
+
   it('markSynced() marks rows clean', async () => {
     const house: HouseDto = { id: 'h1', label: 'Clean', lat: 13, lon: 80, status: 'NEW', checklist: {}, deleted: false, syncVersion: 1 };
     await store.putHouseFromServer(house);

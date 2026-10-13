@@ -50,8 +50,9 @@ class SyncFileTest {
         )
         val text = SyncFiles.encode(file(rows, seq = 7))
         val root = Json.parseToJsonElement(text).jsonObject
-        assertEquals(listOf("format", "deviceId", "seq", "writtenAt", "houses", "visits", "records", "photos"), root.keys.toList())
-        assertEquals(listOf("h1", "h2"), root.getValue("houses").jsonArray.map { it.jsonObject.getValue("id").jsonPrimitive.content })
+        // Since the format reset (S4b-BL-206) the houses are written as `candidates`.
+        assertEquals(listOf("format", "deviceId", "seq", "writtenAt", "candidates", "visits", "records", "photos"), root.keys.toList())
+        assertEquals(listOf("h1", "h2"), root.getValue("candidates").jsonArray.map { it.jsonObject.getValue("id").jsonPrimitive.content })
         assertEquals(listOf("area", "note"), root.getValue("records").jsonArray.map { it.jsonObject.getValue("type").jsonPrimitive.content })
         val back = SyncFiles.parse(text, a)
         assertEquals(7L, back.seq)

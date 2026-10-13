@@ -25,7 +25,9 @@ import { DriveSyncNotYet, FolderSession, KIND_SYNC, reportOf, skippedReasons } f
 import type { SyncPassResult } from './drive-sync-seams';
 import { DriveFaults } from './fake-drive-faults';
 import { houseRow, newGuard, SyncWorld } from './drive-sync-test-world';
+import { syncRow } from './sync-file';
 import type { SyncRow } from './sync-file';
+import type { HouseDto, VisitDto } from '../../core/models';
 import type { TestDevice } from './drive-sync-test-world';
 
 /** TC-U: the Drive sync engine over the fake Drive and the real encryption core (S4b-BL-118; Kotlin `DriveSyncEngineTest`). */
@@ -357,6 +359,31 @@ describe('DriveSyncEngine', () => {
     // Without a photo service the photo calls keep their old answer (S4b-BL-128 wires it).
     await expect(new Promise((res, rej) => backend.downloadPhoto('p').subscribe({ next: res, error: rej }))).rejects.toBeInstanceOf(DriveSyncNotYet);
     expect(() => backend.uploadPhoto('h', new Blob(['x']), 'p')).toThrow(DriveSyncNotYet);
+  });
+
+  it('hands out a candidate the phone wrote as the house it is, and a visit\'s candidateId as its houseId (S4b-BL-206)', async () => {
+    const w = new SyncWorld();
+    const a = await w.add('A'); const b = await w.add('B');
+    const at = new Date(a.now()).toISOString();
+    // What the phone writes since kinds step 4: a candidate row and a visit naming its house as candidateId.
+    a.local.put(syncRow('houses', {
+      id: 'h1', kind: 'house', label: 'Kakkanad 2BHK', lat: 10.01, lon: 76.34, status: 'NEW',
+      money: { amount: 32000, cadence: 'month' },
+      extras: { bedrooms: 2, floor: 3, deposit: { amount: 64000, cadence: 'once' }, gateName: 'Peacock Gate' },
+      checklist: {}, updatedAt: at, deleted: false, by: a.id,
+    }), true);
+    a.local.put(syncRow('visits', { id: 'v1', candidateId: 'h1', lat: 10.01, lon: 76.34, arrivedAt: at, updatedAt: at, deleted: false, by: a.id }), true);
+    await a.sync();
+    const backend = new DriveSyncBackend(b.engine(), b.local, () => b.now(), b.id);
+    await new Promise<void>((res, rej) => backend.commitPushes().subscribe({ complete: res, error: rej }));
+    const houses = await new Promise<HouseDto[]>((res, rej) => backend.housesSince(0).subscribe({ next: res, error: rej }));
+    const h = houses[0];
+    expect([h.price, h.priceType, h.bedrooms, h.floor, h.cost?.deposit]).toEqual([32000, 'RENT', 2, 3, 64000]);
+    expect(h.extrasOther).toEqual({ gateName: 'Peacock Gate' });
+    expect('money' in h || 'extras' in h).toBe(false);
+    const visits = await new Promise<VisitDto[]>((res, rej) => backend.visitsSince(0).subscribe({ next: res, error: rej }));
+    expect(visits[0].houseId).toBe('h1');
+    expect('candidateId' in visits[0]).toBe(false);
   });
 
   it('if applyRemote throws, the next pass retries the rows and cursor is not advanced', async () => {

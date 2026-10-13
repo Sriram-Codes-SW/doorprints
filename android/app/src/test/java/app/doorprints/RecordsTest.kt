@@ -256,7 +256,7 @@ class RecordsTest {
         val tombstone = server.putBodies.first { it.contains("\"id\":\"p2\"") }
         assertTrue(tombstone, tombstone.contains("\"deleted\":true") && !tombstone.contains("\"name\""))
         assertTrue(db.records().dirty().isEmpty())
-        assertEquals(listOf("GET /api/houses?since=0", "GET /api/visits?since=0", "GET /api/records?since=0", "GET /api/photos?since=0"),
+        assertEquals(listOf("GET /api/candidates?since=0", "GET /api/visits?since=0", "GET /api/records?since=0", "GET /api/photos?since=0"),
             server.seen.filter { it.contains("since=") })
     }
 

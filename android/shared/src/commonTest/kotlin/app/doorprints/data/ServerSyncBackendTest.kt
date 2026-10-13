@@ -145,6 +145,6 @@ class ServerSyncBackendTest {
         server.backend.visitsSince(7)
         server.backend.recordsSince(7)
         server.backend.photoChangesSince(7)
-        assertEquals(listOf("GET /api/houses", "GET /api/visits", "GET /api/records", "GET /api/photos"), server.seen)
+        assertEquals(listOf("GET /api/candidates", "GET /api/visits", "GET /api/records", "GET /api/photos"), server.seen)
     }
 }

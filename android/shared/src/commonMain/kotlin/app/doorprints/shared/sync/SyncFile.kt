@@ -33,9 +33,12 @@ import kotlinx.serialization.json.put
 /**
  * The four lists of a `sync/1` file (S4b-BL-130, docs/15 §5.1), in the order they are written and merged, with the most
  * rows each may hold (tombstones included, they are kept for ever). A row's key is its `id`; a record's is `type/id`.
+ * [key] is the list's internal name (the merge's and the vectors' `houses/h1`); [fileKey] is its name in the file, and
+ * [formerFileKey] the name a file written before the format reset gives it (kinds step 4, S4b-BL-206: `candidates`,
+ * read as `houses` too).
  */
-enum class SyncKind(val key: String, val maxRows: Int) {
-    HOUSES("houses", 20_000),
+enum class SyncKind(val key: String, val maxRows: Int, val fileKey: String = key, val formerFileKey: String? = null) {
+    HOUSES("houses", 20_000, fileKey = "candidates", formerFileKey = "houses"),
     VISITS("visits", 50_000),
     RECORDS("records", 50_000),
     PHOTOS("photos", 50_000),
@@ -90,6 +93,12 @@ data class SyncStamp(val updatedAt: Long, val by: String, val deleted: Boolean) 
  */
 class SyncRow private constructor(val kind: SyncKind, val key: String, val stamp: SyncStamp, val json: JsonObject) {
     companion object {
+        /** The key of a visit's or photo's house since the format reset (S4b-BL-206). */
+        const val HOUSE_REF = "candidateId"
+
+        /** The same key in a file written before the reset, still read. */
+        const val FORMER_HOUSE_REF = "houseId"
+
         /** [json] as a row of [kind]; throws [SyncFileException] (`BAD_ROW`) when a field the merge needs is wrong. */
         fun of(kind: SyncKind, json: JsonObject): SyncRow {
             fun bad(what: String): Nothing = throw SyncFileException(SyncFileProblem.BAD_ROW, "${kind.key}: $what")
@@ -104,13 +113,19 @@ class SyncRow private constructor(val kind: SyncKind, val key: String, val stamp
                 ?: bad("updatedAt of $key")
             val by = json.string("by")?.takeIf(SyncFiles::isDeviceId) ?: bad("by of $key")
             val deleted = json.boolean("deleted") ?: bad("deleted of $key")
+            // A visit's or photo's house is `candidateId` since the format reset, `houseId` in a file from before; a row
+            // with both cannot say which it means.
+            if ((kind == SyncKind.PHOTOS || kind == SyncKind.VISITS) && HOUSE_REF in json && FORMER_HOUSE_REF in json) {
+                bad("candidateId and houseId of $key")
+            }
+            val ref = if (HOUSE_REF in json) HOUSE_REF else FORMER_HOUSE_REF
             if (kind == SyncKind.PHOTOS) {
-                json.string("houseId")?.takeIf(RecordRules::isValidId) ?: bad("houseId of $key")
+                json.string(ref)?.takeIf(RecordRules::isValidId) ?: bad("$ref of $key")
                 if ("driveFileId" in json) json.string("driveFileId")?.takeIf(SyncFiles::isDriveFileId) ?: bad("driveFileId of $key")
                 if ("sha256" in json) json.string("sha256")?.takeIf(SyncFiles::isSha256) ?: bad("sha256 of $key")
             }
-            if (kind == SyncKind.VISITS && "houseId" in json && json["houseId"] !is JsonNull) {
-                json.string("houseId")?.takeIf(RecordRules::isValidId) ?: bad("houseId of $key")
+            if (kind == SyncKind.VISITS && ref in json && json[ref] !is JsonNull) {
+                json.string(ref)?.takeIf(RecordRules::isValidId) ?: bad("$ref of $key")
             }
             return SyncRow(kind, key, SyncStamp(updatedAt, by, deleted), json)
         }
@@ -198,7 +213,11 @@ object SyncFiles {
         val seq = root.integer("seq")?.takeIf { it in 1..MAX_SEQ } ?: bad("seq")
         val writtenAt = root.string("writtenAt")?.let(SyncTime::parse)?.takeIf { it >= SyncTime.EARLIEST_MS } ?: bad("writtenAt")
         val lists = SyncKind.entries.associateWith { kind ->
-            val list = root[kind.key] as? JsonArray ?: bad(kind.key)
+            // The list under its name, or under the name a file from before the format reset gives it; never both.
+            val former = kind.formerFileKey?.takeIf { it in root }
+            if (former != null && kind.fileKey in root) bad("${kind.fileKey} and $former")
+            val name = former ?: kind.fileKey
+            val list = root[name] as? JsonArray ?: bad(name)
             if (list.size > kind.maxRows) throw SyncFileException(SyncFileProblem.TOO_LARGE, "${kind.key} over ${kind.maxRows}")
             list
         }
@@ -236,7 +255,7 @@ object SyncFiles {
             put("deviceId", file.deviceId)
             put("seq", file.seq)
             put("writtenAt", IsoTime.format(file.writtenAt))
-            for (kind in SyncKind.entries) put(kind.key, JsonArray(file.rows(kind).map { it.json }))
+            for (kind in SyncKind.entries) put(kind.fileKey, JsonArray(file.rows(kind).map { it.json }))
         }.toString()
         if (utf8Length(text) > MAX_BYTES) throw SyncFileException(SyncFileProblem.TOO_LARGE, "over $MAX_BYTES bytes")
         return text

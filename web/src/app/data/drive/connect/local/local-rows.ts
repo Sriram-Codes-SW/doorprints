@@ -27,7 +27,7 @@ import type { HouseRecord, PhotoRecord, RecordRecord, VisitRecord } from '../../
 import { houseFromDto, recordFromDto, visitFromDto } from '../../../records';
 import type { LocalRows } from '../../drive-sync-seams';
 import type { SyncKind, SyncRow } from '../../sync-file';
-import { SYNC_EARLIEST_MS, syncRow } from '../../sync-file';
+import { SYNC_EARLIEST_MS, syncRow, syncRowAsBefore } from '../../sync-file';
 
 /**
  * Presents the local store's houses, visits, records and photo metadata as sync rows and applies merged remote rows back, so the sync engine does not know about IndexedDB.
@@ -112,7 +112,8 @@ export class LocalRowsAdapter implements LocalRows {
   async applyRemote(rows: readonly SyncRow[]): Promise<void> {
     const imported = { houses: [] as HouseRecord[], visits: [] as VisitRecord[], records: [] as RecordRecord[], photos: [] as PhotoRecord[] };
     for (const row of rows) {
-      const json = row.json as Record<string, unknown>;
+      // A row the phone wrote since the format reset is read as the house, visit or photo it is (S4b-BL-206).
+      const json = syncRowAsBefore(row);
       switch (row.kind) {
         case 'houses': {
           const dto = { ...json, syncVersion: 1, deleted: row.stamp.deleted } as HouseDto;

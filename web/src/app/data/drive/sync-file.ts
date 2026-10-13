@@ -16,6 +16,9 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { houseOf } from '../../core/candidate';
+import type { CandidateDto } from '../../core/candidate';
+
 /**
  * The `sync/1` inner format (S4b-BL-130, docs/15 §5.1; schema `docs/schemas/sync-1.schema.json`, vectors
  * `docs/schemas/sync-vectors.json`; Kotlin: `SyncFiles` in `android/shared`, `app.doorprints.shared.sync`). One file per
@@ -32,6 +35,11 @@ export const SYNC_KINDS: readonly SyncKind[] = ['houses', 'visits', 'records', '
 
 /** The most rows each list may hold (tombstones included, they are kept for ever). */
 export const SYNC_MAX_ROWS_OF: Readonly<Record<SyncKind, number>> = { houses: 20_000, visits: 50_000, records: 50_000, photos: 50_000 };
+
+/** The key of a visit's or photo's house in a row the phone writes since the format reset (S4b-BL-206). */
+export const HOUSE_REF = 'candidateId';
+/** The same key in a row from before the reset, and in the rows this website writes. */
+export const FORMER_HOUSE_REF = 'houseId';
 
 /** The format tag of a sync file, version 1. */
 export const SYNC_FORMAT = 'doorprints-sync/1';
@@ -167,6 +175,22 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+/**
+ * A row the phone wrote since the format reset (S4b-BL-206, kinds step 4) as this website's sync loop reads it: a
+ * candidate (it has a `kind`) as the house it is (`core/candidate.ts`), a visit's or photo's `candidateId` as `houseId`.
+ * A row of the shape before is read as it is. Used where a taken row reaches the sync loop or the store
+ * (`DriveSyncBackend`, `LocalRowsAdapter.applyRemote`).
+ */
+export function syncRowAsBefore(row: SyncRow): Record<string, unknown> {
+  const json = row.json as Record<string, unknown>;
+  if (row.kind === 'houses') return 'kind' in json ? (houseOf(json as unknown as CandidateDto) as unknown as Record<string, unknown>) : json;
+  if ((row.kind === 'visits' || row.kind === 'photos') && HOUSE_REF in json) {
+    const { [HOUSE_REF]: ref, ...rest } = json;
+    return { ...rest, [FORMER_HOUSE_REF]: ref };
+  }
+  return json;
+}
+
 /** [json] as a row of [kind] (Kotlin: `SyncRow.of`); throws {@link SyncFileError} `BAD_ROW` when a merge field is wrong. */
 export function syncRow(kind: SyncKind, json: Readonly<Record<string, unknown>>): SyncRow {
   const bad = (what: string): never => {
@@ -187,8 +211,14 @@ export function syncRow(kind: SyncKind, json: Readonly<Record<string, unknown>>)
   if (!isDeviceId(by)) return bad(`by of ${key}`);
   const deleted = own(json, 'deleted');
   if (typeof deleted !== 'boolean') return bad(`deleted of ${key}`);
+  // A visit's or photo's house is `candidateId` in a file the phone writes since the format reset (S4b-BL-206, kinds
+  // step 4), `houseId` in one from before or from this website; a row with both cannot say which it means.
+  if ((kind === 'photos' || kind === 'visits') && has(json, HOUSE_REF) && has(json, FORMER_HOUSE_REF)) {
+    bad(`candidateId and houseId of ${key}`);
+  }
+  const ref = has(json, HOUSE_REF) ? HOUSE_REF : FORMER_HOUSE_REF;
   if (kind === 'photos') {
-    if (!isSyncId(own(json, 'houseId'))) bad(`houseId of ${key}`);
+    if (!isSyncId(own(json, ref))) bad(`${ref} of ${key}`);
     if (has(json, 'driveFileId')) {
       const v = own(json, 'driveFileId');
       if (typeof v !== 'string' || !DRIVE_FILE_ID.test(v)) bad(`driveFileId of ${key}`);
@@ -198,8 +228,8 @@ export function syncRow(kind: SyncKind, json: Readonly<Record<string, unknown>>)
       if (typeof v !== 'string' || !SHA256.test(v)) bad(`sha256 of ${key}`);
     }
   }
-  if (kind === 'visits' && has(json, 'houseId') && own(json, 'houseId') !== null && !isSyncId(own(json, 'houseId'))) {
-    bad(`houseId of ${key}`);
+  if (kind === 'visits' && has(json, ref) && own(json, ref) !== null && !isSyncId(own(json, ref))) {
+    bad(`${ref} of ${key}`);
   }
   return { kind, key, stamp: { updatedAt, by, deleted }, json };
 }
@@ -250,8 +280,11 @@ export function parseSyncFile(text: string, expectedDeviceId: string): SyncFile 
   const lists = {} as Record<SyncKind, readonly unknown[]>;
   let total = 0;
   for (const kind of SYNC_KINDS) {
-    const list = own(root, kind);
-    if (!Array.isArray(list)) return bad(kind);
+    // The houses are `candidates` in a file the phone writes since the format reset (S4b-BL-206), `houses` before; never both.
+    const name = kind === 'houses' && has(root, 'candidates') ? 'candidates' : kind;
+    if (name === 'candidates' && has(root, 'houses')) return bad('candidates and houses');
+    const list = own(root, name);
+    if (!Array.isArray(list)) return bad(name);
     if (list.length > SYNC_MAX_ROWS_OF[kind]) throw new SyncFileError('TOO_LARGE', `${kind} over ${SYNC_MAX_ROWS_OF[kind]}`);
     lists[kind] = list;
     total += list.length;

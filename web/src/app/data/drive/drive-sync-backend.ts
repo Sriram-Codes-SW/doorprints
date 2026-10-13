@@ -30,7 +30,7 @@ import { withRef } from './drive-photo-seams';
 import type { SkippedPhoto } from './drive-photo-seams';
 import { DriveSyncNotYet } from './drive-sync-seams';
 import type { LocalRows, SyncPassResult } from './drive-sync-seams';
-import { syncRow, syncTime } from './sync-file';
+import { syncRow, syncRowAsBefore, syncTime } from './sync-file';
 import type { SyncKind, SyncRow } from './sync-file';
 
 /**
@@ -185,7 +185,7 @@ export class DriveSyncBackend implements SyncBackend {
 
   private since<T>(kind: SyncKind, cursor: number): T[] {
     if (this.generation <= cursor) return [];
-    return this.taken.filter((r) => r.kind === kind).map((r) => ({ ...r.json, syncVersion: this.generation }) as T);
+    return this.taken.filter((r) => r.kind === kind).map((r) => ({ ...syncRowAsBefore(r), syncVersion: this.generation }) as T);
   }
 }
 
