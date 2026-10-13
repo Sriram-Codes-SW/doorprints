@@ -88,6 +88,20 @@ public final class HouseAiPins {
         return v == null || v.isNull() ? null : v.asInt();
     }
 
+    /** {@code docs/schemas/kinds/kind-ai-vectors.json}, the kind-aware AI's shared vectors (S4b-BL-211). */
+    public static JsonNode kindAiVectors() {
+        try {
+            return JSON.readTree(Files.readString(repoFile("docs/schemas/kinds/kind-ai-vectors.json")));
+        } catch (java.io.IOException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    /** A candidate of the vectors, on the wire, as the server reads it. */
+    public static HouseDto candidate(JsonNode wire) {
+        return JSON.treeToValue(wire, HouseDto.class);
+    }
+
     /** The golden set's fixture houses, in the file's order, as the eval seeds them (no cost, rooms or questions). */
     public static List<HouseDto> fixtureHouses() {
         var out = new ArrayList<HouseDto>();

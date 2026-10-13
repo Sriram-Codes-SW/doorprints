@@ -21,6 +21,7 @@ package app.doorprints.server.ai.rag;
 import app.doorprints.server.ai.ContactRedactor;
 import app.doorprints.server.ai.PromptSafety;
 import app.doorprints.server.ai.agent.RouteOptimizer;
+import app.doorprints.server.ai.kind.AiKinds;
 import app.doorprints.server.house.HouseAnswer;
 import app.doorprints.server.house.HouseMoveIn;
 import app.doorprints.server.house.HouseCost;
@@ -75,6 +76,18 @@ public final class HouseDocuments {
     /** As above, with the areas, places and area notes of slice 4a. */
     static Document toDocument(HouseDto h, List<VisitDto> visits, List<ViewingLine> viewings, AreaLines.All areas) {
         return new Document(h.id().toString(), text(h, visits, viewings, areas), metadata(h, visits));
+    }
+
+    /**
+     * As above, read as {@code kinds} says (kinds PR 7, S4b-BL-211): a candidate of a built-in kind other than the house,
+     * while the flag allows it, through its kind's {@code ai.ask} slot ({@link KindDocuments}); anything else exactly as
+     * a house is today.
+     */
+    static Document toDocument(HouseDto h, List<VisitDto> visits, List<ViewingLine> viewings, AreaLines.All areas,
+                               AiKinds kinds) {
+        var k = kinds.of(h.kind());
+        if (k == null) return toDocument(h, visits, viewings, areas);
+        return new Document(h.id().toString(), KindDocuments.text(h, visits, areas, k), KindDocuments.metadata(h, visits, k));
     }
 
     /** Stable, labelled plain text; the labels double as grounding cues for the model. No contact name or phone. */
@@ -353,7 +366,7 @@ public final class HouseDocuments {
                 + (totalMinutes > 0 ? ", " + totalMinutes + " min in total" : "");
     }
 
-    private static void line(StringBuilder sb, String key, String value) {
+    static void line(StringBuilder sb, String key, String value) {
         if (value != null && !value.isBlank()) sb.append(key).append(": ").append(value.strip()).append('\n');
     }
 }

@@ -19,10 +19,13 @@
 package app.doorprints.server.ai.agent;
 
 import app.doorprints.server.ai.ContactRedactor;
+import app.doorprints.server.ai.kind.AiKind;
+import app.doorprints.server.ai.kind.AiKinds;
 import app.doorprints.server.common.BadRequestException;
 import app.doorprints.server.house.HouseDto;
 import app.doorprints.server.house.HouseService;
 import app.doorprints.server.house.HouseStatus;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -66,9 +69,33 @@ public class HouseSearchService {
             .thenComparing(HouseDto::id);
 
     private final HouseService houses;
+    private final AiKinds kinds;
 
     public HouseSearchService(HouseService houses) {
+        this(houses, AiKinds.OFF);
+    }
+
+    @Autowired
+    public HouseSearchService(HouseService houses, AiKinds kinds) {
         this.houses = houses;
+        this.kinds = kinds;
+    }
+
+    /**
+     * The candidate as the Plan tools see it (kinds PR 7, S4b-BL-211): a house as it is; a candidate of a built-in kind
+     * other than the house, while the server's developer flag allows it, only with what its kind's {@code ai.plan} slot
+     * names ({@link AiKind#view}), so a filter on a field the kind does not show (a school's hidden price, its BHK)
+     * never keeps it and its summary has none.
+     */
+    HouseDto forPlan(HouseDto h) {
+        var k = kinds.of(h.kind());
+        return k == null ? h : k.view(h, k.plan());
+    }
+
+    /** As {@link #forPlan}, through the {@code ai.ask} slot: what {@code houseDetails} may give a model of a candidate. */
+    HouseDto forDetails(HouseDto h) {
+        var k = kinds.of(h.kind());
+        return k == null ? h : k.view(h, k.ask());
     }
 
     /**
@@ -102,6 +129,7 @@ public class HouseSearchService {
     public List<HouseSummary> search(Criteria c) {
         int limit = c == null || c.limit() == null ? DEFAULT_RESULTS : Math.clamp(c.limit(), 1, MAX_RESULTS);
         return houses.list(null).stream()
+                .map(this::forPlan)
                 .filter(h -> matches(h, c))
                 .sorted(NEWEST_FIRST)
                 .limit(limit)
@@ -115,7 +143,8 @@ public class HouseSearchService {
      */
     public List<HouseSummary> nearby(double lat, double lon, double radiusMeters) {
         if (!(lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180)) throw new BadRequestException("invalid coordinates");
-        return houses.nearby(lat, lon, Math.clamp(radiusMeters, 1, 5000)).stream().sorted(NEAREST_FIRST).map(HouseSummary::of).toList();
+        return houses.nearby(lat, lon, Math.clamp(radiusMeters, 1, 5000)).stream().sorted(NEAREST_FIRST).map(this::forPlan)
+                .map(HouseSummary::of).toList();
     }
 
     public HouseDto details(UUID id) {

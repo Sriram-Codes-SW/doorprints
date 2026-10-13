@@ -20,6 +20,7 @@ package app.doorprints.server.ai.rag;
 
 import app.doorprints.server.ai.ProviderErrors;
 import app.doorprints.server.ai.config.AiProperties;
+import app.doorprints.server.ai.kind.AiKinds;
 import app.doorprints.server.house.HouseChangedEvent;
 import app.doorprints.server.house.House;
 import app.doorprints.server.house.HouseDto;
@@ -74,6 +75,15 @@ public class HouseIndexer {
     /** Where the viewings come from (records of type {@code viewing}); null in a unit test that has none. */
     private final RecordRepository records;
     private final ObjectMapper json;
+    /** How each candidate is read (kinds PR 7, S4b-BL-211): as a house unless the server's developer flag allows its kind. */
+    private AiKinds kinds = AiKinds.OFF;
+
+    /** As the Spring constructor, for a test that sets the kinds flag. */
+    HouseIndexer(HouseRepository houses, VisitRepository visits, VectorStore vectorStore, RecordRepository records,
+                 ObjectMapper json, AiKinds kinds) {
+        this(houses, visits, vectorStore, true, records, json);
+        this.kinds = kinds;
+    }
 
     public HouseIndexer(HouseRepository houses, VisitRepository visits, VectorStore vectorStore) {
         this(houses, visits, vectorStore, true, null, null);
@@ -81,8 +91,9 @@ public class HouseIndexer {
 
     @Autowired
     public HouseIndexer(HouseRepository houses, VisitRepository visits, VectorStore vectorStore, AiProperties props,
-                        RecordRepository records, ObjectMapper json) {
+                        RecordRepository records, ObjectMapper json, AiKinds kinds) {
         this(houses, visits, vectorStore, props.indexOnChange(), records, json);
+        this.kinds = kinds;
     }
 
     HouseIndexer(HouseRepository houses, VisitRepository visits, VectorStore vectorStore, boolean indexOnChange) {
@@ -174,7 +185,7 @@ public class HouseIndexer {
             return;
         }
         vectorStore.add(List.of(HouseDocuments.toDocument(HouseDto.from(house), visitsOf(houseId),
-                viewingsOf(houseId), areaData())));
+                viewingsOf(houseId), areaData(), kinds)));
     }
 
     /**
@@ -209,7 +220,7 @@ public class HouseIndexer {
                 for (var house : slice) {
                     docs.add(HouseDocuments.toDocument(HouseDto.from(house),
                             visitsByHouse.getOrDefault(house.getId(), List.of()),
-                            viewingsByHouse.getOrDefault(house.getId().toString(), List.of()), areaData));
+                            viewingsByHouse.getOrDefault(house.getId().toString(), List.of()), areaData, kinds));
                 }
                 vectorStore.add(docs);
                 indexed += slice.size();

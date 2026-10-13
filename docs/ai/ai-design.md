@@ -70,6 +70,7 @@
 | v0.66   | 2026-10-12 | Claude (Code), engineer       | **8.2 seeding on the new sync API** (S4b-BL-206, kinds step 2, the server part): the eval seeds through `/api/candidates`, a fixture house as a candidate (`money`, `extras.bedrooms`) and a visit with `candidateId`. The golden set, the prompts and the AI documents are unchanged. |
 | v0.67   | 2026-10-12 | Claude (Code), engineer       | **A spent quota or credit is its own error** (S4b-BL-243; `feat/ai-quota-exhausted-error`): 2.1 (key origin for the live test) and 13.1 (the error table). With the person's own key, an HTTP 402, a Gemini 429 whose `quotaId` holds `PerDay`, an OpenAI-compatible `insufficient_quota` and an Anthropic `billing_error` (or a 400 saying the credit balance is too low) are the new failure `quotaExhausted` (`AI_QUOTA_EXHAUSTED` on the phones), worded "Your key's free quota or credit is used up. Check usage and billing with your provider; the app works without AI." in en, hi, ta and te (the last three under review), instead of "unavailable or out of free quota" and, on Android Gemini, instead of "Try again in 60 s". A per-minute 429 is still a wait. New shared vectors `quotaResponses` (19 replies), `ai-quota.ts` / `AiQuota.kt` read named fields only. The server's own path is S4b-BL-244. |
 | v0.68   | 2026-10-12 | Claude (Code), engineer       | 2.1: the owner's free-tier `AI_API_KEY` works: `key-check` 200 for the pinned `gemini-3.5-flash` and `-flash-lite`; `on-device` passed on the second attempt after one transient provider 503 (TC-U-88 run recorded). |
+| v0.69   | 2026-10-13 | Claude (Code), engineer       | New section 16: **kind-aware AI** (kinds PR 7, S4b-BL-211; `feat/kinds-9-kind-aware-ai`, the server first): a candidate of a built-in kind other than the house is read through its kind file's `ai` slots while the developer flag is on (`AI_DEV_KINDS` on the server, 11); `POST /api/ai/extract-listing` takes an optional `kind` (13); the school's Ask lines, Plan view and Extract prompt, schema and checks; a house's prompts, document lines, request bodies and parity vectors unchanged (house pins first). |
 
 Status: implemented in `backend/` (package `app.doorprints.server.ai`), **off by default**. Not yet compiled in this
 sandbox (no Maven Central access) — CI compiles and runs the tests. Provider: AI Studio by default, Vertex AI with
@@ -1479,6 +1480,7 @@ unchanged.
 | `AI_VERTEX_EMBEDDING_LOCATION` | = `GCP_LOCATION` | Vertex only: location for the embedding model, if it is not offered in `GCP_LOCATION` |
 | `AI_VERTEX_ENDPOINT` / `AI_VERTEX_API_VERSION` | derived / `v1beta1` | Vertex only: base URL override (tests, Private Service Connect) and REST API version |
 | `AI_INDEX_ON_CHANGE` | `true` | Embed a house after each save; `false` = only `POST /api/ai/reindex` embeds |
+| `AI_DEV_KINDS` | `false` | Developer flag of kinds PR 7 (16): `true` reads a candidate of a built-in kind other than the house (the hidden schools kind) through its kind file's `ai` slots; off, every candidate is read as a house |
 | `GOOGLE_APPLICATION_CREDENTIALS` | – | Standard ADC variable (set by `google-github-actions/auth`); not needed on Cloud Run or after `gcloud auth application-default login` |
 
 Optional: Gemini "thinking" can be reduced with `SPRING_AI_OPENAI_CHAT_REASONING_EFFORT=low` (compat endpoint
@@ -1566,6 +1568,8 @@ Response — a draft; nothing is saved. Map straight into the "new house" form; 
   "warnings": []
 }
 ```
+Optional `kind` (kinds PR 7, section 16): absent or `house` is the call above; `school` (while `AI_DEV_KINDS` is on) reads a school listing and the draft has no `price`, `priceType` or `bedrooms` but an `extras` object in the candidate's wire shape (`{"board": "CBSE", "busService": true, "fees": {"amount": 96000, "cadence": "year"}}`); any other kind is a 400. A house's request and response bodies are unchanged (no `extras` key).
+
 Any field may be null except `label`, `amenities`, `warnings`. Show `warnings` to the user. When the text holds two or more different http(s) links and `listingUrl` is set, `warnings` has `listingUrl: the text has N links, check this is the right one`. A client that lets the person paste more than the limit cuts the text itself and says how much was left out (the apps do: S4b-BL-182). Put `amenities` into
 notes or checklist as you see fit (the house model has no amenities field).
 
@@ -1864,6 +1868,81 @@ with `code` `content_filter` for a filtered prompt ([Z1], scenario 3). Both code
 (read 2026-10-10); [Z1] https://learn.microsoft.com/azure/ai-foundry/openai/concepts/content-filter (scenarios 2, 3 and 5, read
 2026-10-10); [O1] OpenAI's `chat.completions` types list `content_filter` among the finish reasons (the reference page itself
 was not reachable on 2026-10-10, so this is read through the SDK type definitions).
+
+## 16. Kind-aware AI (kinds PR 7, S4b-BL-211, 2026-10-13)
+
+The design is [03](../03-design.md) ADR-36 §18.11; this section is what the AI code does. A candidate of a built-in kind
+other than the house (today only the hidden schools kind, `docs/schemas/kinds/school.json`) is read through its kind
+file's `ai` slots **while the developer flag is on**: the server's `AI_DEV_KINDS` (11), the website's `devKindsOn()`, the
+phone's `BuildConfig.DEV_KINDS`. With the flag off, for a house, and for a kind that is not built in, nothing changes.
+
+### 16.1 What stays byte-identical for a house
+
+The Extract, Ask and Plan prompts, the house document lines and their metadata, the Plan tools' summaries, details and
+filters, the request and response bodies, and every section of `docs/ai/evals/parity-vectors.json`. A house's AI code is
+not routed through the slots at all: the kind is decided first and only another kind takes the new path. *Safety test
+first*: the server's house pins (`HouseAskPinsTest`, `HousePlanPinsTest`, `HouseExtractPinsTest`: SHA-256 of each output
+for the golden set's 30 fixture houses and one house with every field), committed from main before the code and green
+after it; the website and the phone pin theirs the same way in their pull requests.
+
+### 16.2 The slots are the per-field AI flag
+
+| Slot | The school's | What reads it |
+|---|---|---|
+| `extract` | label, address, street, locality, contactName, contactPhone, listingUrl, notes, board, medium, grades, busService, fees, admissionFee | the school's Extract schema and its sanitizer (16.3) |
+| `ask` | label, address, street, locality, board, medium, grades, commuteMinutes, busService, fees, admissionFee, areaNotes, distances, status, rating, visits, notes | the Ask document lines, in that order, and their metadata (16.4) |
+| `plan` | label, status, rating, locality, street | the Plan tools' view of the candidate (16.5) |
+| `never` | contactName, contactPhone | wins over the others |
+
+An extra the kind file does not name, and every extra a newer app wrote that the kind does not know (`extrasOther`,
+`CandidateExtras.other`), never reaches a provider. Each stack holds a copy of the slots and extras, checked against the
+kind file by a test.
+
+### 16.3 Extract for a school
+
+`POST /api/ai/extract-listing {text, kind: "school"}` (13): the school's system text (`AiKinds.SCHOOL.extractSystem`;
+the house's rules that the listing is data between the nonce's tags and that phone numbers, links, fees and addresses
+are never guessed; the school's field rules), the user text `Extract the listing below.` and the wrapped listing as for
+a house, and the schema `RawSchoolListing` (every field a string). `KindDraftSanitizer` keeps `DraftSanitizer`'s rules
+(9): control characters dropped, spaces collapsed, `null`/`n/a`/`unknown` read as none, a text over its limit cut with a
+warning, the phone and the link only when the listing holds them (and the two-links warning). Then by type: an option
+by its id or English words (`state board` is `STATE`), *yes*/*no* (also `y`, `true`, `n`, `false`), a text clamped to its
+`maxLength` (grades: 40), money read as the house's price (`96,000`, `25k`, `1.2 lakh`) with the extra's cadence; a
+value that cannot be read is dropped with a warning that names the field. A missing name becomes `School` or `School in
+<locality>`. Nothing the slot does not name is read, whatever the model returns (a price, a BHK, the commute, a field it
+made up). The draft never fills the school's hidden money.
+
+### 16.4 Ask for a school
+
+`School: <name>`, `Address`, `Street`, `Locality`, then each extra as `<words>: <value>` (*Board: CBSE*, *Medium of
+instruction: English*, *Grades offered: Nursery to 12*, *Commute (minutes): 25*, *School bus: yes*, *Fees per year: Rs
+96000*, *Admission fee: Rs 25000*), then `Area note`, `Distance to`, `Status`, `My rating`, `Visits` and `Notes` as for a
+house. A value of the wrong type or out of range is no line. A text extra goes through the contact redactor (9.1) and
+loses its line breaks; the nonce block of the Ask prompt strips a tag written into it. The metadata has the id, label,
+locality, status, rating and the visit keys, never a price, price type or BHK, so an Ask filter on them never keeps a
+school. The Ask system prompt is the house's, unchanged (S4b-BL-269).
+
+### 16.5 Plan for a school
+
+The tools give a school's summary with only what `plan` names (no price, type or BHK) and filter on that view, so
+`maxPrice` or `minBedrooms` never keeps a school and the text filter reads its label, street and locality;
+`houseDetails` gives what `ask` names. The planner's system prompt is unchanged. On the devices the candidate line of a
+school reads `price: -` and `bedrooms: -`.
+
+### 16.6 Injection and privacy
+
+Every new text from a person's data goes through the existing paths: `ContactRedactor` (`freeText` for a text extra,
+`place` for the place lines), the nonce wrapping and `PromptSafety.neutralize` of the Ask and Extract prompts, and
+`DraftSanitizer`'s checks for Extract. `docs/schemas/kinds/kind-ai-vectors.json` pins a school whose grades hold a
+closing tag and a fake `Status:` line, whose address and notes hold the contact's name and phone and an instruction,
+whose hidden money and checklist must not show, and which carries two unknown extras (one with a phone number) that must
+never reach the document.
+
+### 16.7 Not done here
+
+No live eval (zero cost; no Vertex run): a school set for the evals and the keyless injection run are S4b-BL-268. The
+prompts still speak of houses for every kind (S4b-BL-269), and S4b-BL-234's rule waits for the same re-pin. The Plan
+tools carry no kind extras (S4b-BL-270). `house.json`'s slots describe less than the house's AI code reads (S4b-BL-271).
 
 ## Sources
 
