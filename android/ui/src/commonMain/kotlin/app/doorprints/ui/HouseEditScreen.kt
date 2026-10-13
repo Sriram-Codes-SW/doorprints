@@ -83,6 +83,10 @@ import app.doorprints.shared.model.LengthUnit
 import app.doorprints.shared.model.HouseStatus
 import app.doorprints.shared.model.DuplicateFlat
 import app.doorprints.shared.model.KindFields
+import app.doorprints.shared.model.Candidates
+import app.doorprints.shared.model.DevKinds
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import app.doorprints.shared.model.LocationSource
 import app.doorprints.shared.model.MoveIn
 import kotlinx.coroutines.Job
@@ -152,8 +156,9 @@ private val HouseDraftSaver = Saver<HouseEntity?, Any>(
                 HouseAnswers.encode(it.answers),
                 // Slice 5: the move-in, as the JSON text Room keeps it in (null for none).
                 MoveIn.encode(it.moveIn),
-                // S4b-BL-87: the floor (null when unknown).
-                it.floor,
+                // S4b-BL-87: the floor (null when unknown). S4b-BL-209: the kind, and the extras the house model does
+                // not know as JSON text (a school's values, a newer app's extras), so a rotation keeps them too.
+                it.floor, it.kind, it.extrasOther?.toString(),
             )
         }
     },
@@ -209,6 +214,9 @@ private fun restoreDraft(v: List<*>): HouseEntity? = runCatching {
         moveIn = MoveIn.decode(v.getOrNull(37) as String?),
         // Absent before S4b-BL-87: no floor.
         floor = v.getOrNull(38) as Int?,
+        // Absent before S4b-BL-209: a house, with no extras it does not know.
+        kind = v.getOrNull(39) as String? ?: Candidates.HOUSE_KIND,
+        extrasOther = (v.getOrNull(40) as String?)?.let { Json.parseToJsonElement(it) as? JsonObject },
     )
 }.getOrNull()
 
@@ -346,6 +354,10 @@ fun HouseEditScreen(
     val dirty = draft != null && baseline != null && draft != baseline && !removed
     // A newer version arrived while there were unsaved changes: the user chooses (see the KDoc).
     val conflict = !isNew && !busy && dirty && saved != null && saved.updatedAt > seenUpdatedAt
+    // The candidate's kind (kinds PR 5, S4b-BL-209): the house, or the school while the developer flag is on.
+    val devKinds = LocalDevKinds.current
+    val kind = DevKinds.of(draft?.kind, devKinds)
+    val L = kind.labels
 
     // The typed latitude / longitude while it differs from the draft's (null: show the draft's value). Cleared
     // wherever the draft is replaced from a stored row.
@@ -604,7 +616,7 @@ fun HouseEditScreen(
                         stringResource(
                             when {
                                 notFound -> Res.string.house_not_found_title
-                                isNew -> Res.string.house_new_title
+                                isNew -> L.refText("kind.new")
                                 else -> Res.string.house_details_title
                             },
                         ),
@@ -621,7 +633,7 @@ fun HouseEditScreen(
                     // No Save or Delete for a house that is not on this phone.
                     if (!notFound) {
                         if (!isNew) IconButton(onClick = { confirmDelete = true }, enabled = !busy && !removed) {
-                            Icon(Icons.Default.Delete, contentDescription = stringResource(Res.string.house_delete))
+                            Icon(Icons.Default.Delete, contentDescription = stringResource(L.refText("kind.delete")))
                         }
                         TextButton(
                             onClick = { save() },
@@ -723,7 +735,9 @@ fun HouseEditScreen(
                             }
                         }
                     }
-                    if (aiEnabled) {
+                    // The developer's kind picker (S4b-BL-209): never drawn while the flag is off.
+                    if (isNew && devKinds) DevKindPicker(DevKinds.creatable(true), kind.id) { k -> update { it.forKind(k) } }
+                    if (aiEnabled && kind.extracts) {
                         // The entry point's one name, as on the web and in docs/12 G.1: not "Paste listing".
                         OutlinedButton(
                             onClick = { showPaste = true },
@@ -735,7 +749,7 @@ fun HouseEditScreen(
                         Spacer(Modifier.height(12.dp))
                     }
                     OutlinedTextField(d.label, { v -> update { it.copy(label = v) } },
-                        label = { Text(stringResource(kindField("label"))) },
+                        label = { Text(stringResource(L.fieldText("label"))) },
                         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
                         singleLine = true, modifier = Modifier.fillMaxWidth())
                     LiveMessage {
@@ -752,7 +766,7 @@ fun HouseEditScreen(
 
                 // Status: three whole-row radios (whole-app audit). The segmented row broke "நிராகரிக்கப்பட்டது" and
                 // "తిరస్కరించబడింది" mid-word at 100 %; rows wrap in every script. The glyph (UX-002) is not read out.
-                SectionHeading(stringResource(kindField("status")))
+                SectionHeading(stringResource(L.fieldText("status")))
                 Column(Modifier.selectableGroup()) {
                     HouseStatus.entries.forEach { s ->
                         val text = stringResource(s.labelResource)
@@ -780,7 +794,7 @@ fun HouseEditScreen(
                     }
                 }
 
-                SectionHeading(stringResource(kindField("rating")))
+                SectionHeading(stringResource(L.fieldText("rating")))
                 // The stars, then Clear rating (the web's `house.clearRating`), always there so nothing jumps when a star
                 // is picked; disabled while there is no rating. Tap-again on the chosen star still clears it too.
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -792,33 +806,36 @@ fun HouseEditScreen(
                     ) { ButtonLabel(stringResource(Res.string.house_clear_rating)) }
                 }
 
-                // Rent or buy: one of two short labels, so the single-choice segmented row stays (round 21).
-                val rent = d.priceType != "SALE"
-                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                    SegmentedButton(
-                        selected = rent, onClick = { update { it.copy(priceType = "RENT") } },
-                        shape = SegmentedButtonDefaults.itemShape(0, 2),
-                    ) { Text(stringResource(kindRef("cadence.month"))) }
-                    SegmentedButton(
-                        selected = !rent, onClick = { update { it.copy(priceType = "SALE") } },
-                        shape = SegmentedButtonDefaults.itemShape(1, 2),
-                    ) { Text(stringResource(kindRef("cadence.once"))) }
+                // Rent or buy: one of two short labels, so the single-choice segmented row stays (round 21). Not for a
+                // kind that hides its own money (S4b-BL-209: a school's fees are extras).
+                if (L.isVisible("field.money")) {
+                    val rent = d.priceType != "SALE"
+                    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                        SegmentedButton(
+                            selected = rent, onClick = { update { it.copy(priceType = "RENT") } },
+                            shape = SegmentedButtonDefaults.itemShape(0, 2),
+                        ) { Text(stringResource(L.refText("cadence.month"))) }
+                        SegmentedButton(
+                            selected = !rent, onClick = { update { it.copy(priceType = "SALE") } },
+                            shape = SegmentedButtonDefaults.itemShape(1, 2),
+                        ) { Text(stringResource(L.refText("cadence.once"))) }
+                    }
+                    // The amount as the app shows it, live, in the app language: ₹1,00,00,000 or ₹25,000 / month, so a
+                    // missing or extra zero is visible while typing. Always there (empty at first), so the row does not grow.
+                    val preview = priceText(d.price, d.priceType).orEmpty()
+                    OutlinedTextField(
+                        d.price?.toString() ?: "", { v -> update { it.copy(price = v.filter(Char::isDigit).take(12).toLongOrNull()) } },
+                        label = { Text(stringResource(L.fieldText("money", if (d.priceType == "SALE") "once" else "month"))) },
+                        supportingText = { Text(preview) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
-                // The amount as the app shows it, live, in the app language: ₹1,00,00,000 or ₹25,000 / month, so a
-                // missing or extra zero is visible while typing. Always there (empty at first), so the row does not grow.
-                val preview = priceText(d.price, d.priceType).orEmpty()
-                OutlinedTextField(
-                    d.price?.toString() ?: "", { v -> update { it.copy(price = v.filter(Char::isDigit).take(12).toLongOrNull()) } },
-                    label = { Text(stringResource(kindField("money", if (d.priceType == "SALE") "once" else "month"))) },
-                    supportingText = { Text(preview) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
                 // The Details extras (kinds PR 4, S4b-BL-208): BHK beside the carpet area (slice 1a), the price having the
                 // row above to itself with its preview, then the floor (S4b-BL-87) with its Basement switch (S4b-BL-104 c),
                 // drawn from the kind file (KindExtrasFields.kt).
-                KindExtrasFields(KindFields.HOUSE, "details", d, ::update)
+                KindExtrasFields(kind.fields, "details", d, ::update)
                 // Non-blocking: another house within about 30 m with the same bedrooms and floor (docs/11 5.25).
                 val sameFlat = remember(d.id, d.lat, d.lon, d.locationSource, d.bedrooms, d.rooms, d.floor, allHouses) {
                     DuplicateFlat.of(d.flatFacts(), allHouses.map { it.flatFacts() })
@@ -827,31 +844,31 @@ fun HouseEditScreen(
                 DuplicateFlatWarning(sameFlat)
 
                 // The real cost of the house (docs/11 5.21, slice 1a): the fields, then what they add up to.
-                SectionHeading(stringResource(kindSection("cost")))
-                CostSection(d, ::update)
+                SectionHeading(stringResource(L.sectionText("cost")))
+                CostSection(d, ::update, kind.fields)
 
                 // The rooms with their sizes and condition (docs/11 5.6, slice 1c), after the cost.
-                RoomsSection(d.rooms, lengthUnit) { rooms -> update { it.copy(rooms = rooms) } }
+                if (L.isVisible("section.rooms")) RoomsSection(d.rooms, lengthUnit) { rooms -> update { it.copy(rooms = rooms) } }
 
                 // The questions to ask at the viewing (docs/11 5.5, slice 3a), after the rooms.
-                QuestionsSection(d.answers, questionBank, d.priceType, d.cost, Modifier.bringIntoViewRequester(questionsView)) { answers ->
+                if (L.isVisible("section.questions")) QuestionsSection(d.answers, questionBank, d.priceType, d.cost, Modifier.bringIntoViewRequester(questionsView)) { answers ->
                     update { it.copy(answers = answers) }
                 }
 
                 OutlinedTextField(d.address ?: "", { v -> update { it.copy(address = v) } },
-                    label = { Text(stringResource(kindField("address"))) },
+                    label = { Text(stringResource(L.fieldText("address"))) },
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
                     modifier = Modifier.fillMaxWidth())
                 PairOrStack(
                     first = { m ->
                         OutlinedTextField(d.street ?: "", { v -> update { it.copy(street = v.ifBlank { null }) } },
-                            label = { Text(stringResource(kindField("street"))) },
+                            label = { Text(stringResource(L.fieldText("street"))) },
                             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
                             singleLine = true, modifier = m)
                     },
                     second = { m ->
                         OutlinedTextField(d.locality ?: "", { v -> update { it.copy(locality = v.ifBlank { null }) } },
-                            label = { Text(stringResource(kindField("locality"))) },
+                            label = { Text(stringResource(L.fieldText("locality"))) },
                             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
                             singleLine = true, modifier = m)
                     },
@@ -861,7 +878,7 @@ fun HouseEditScreen(
                 // location", WCAG 2.5.7): a house saved from a stale fix or a stray long-press is no longer stuck there.
                 // Right after the address (round 3), in the web's order: Details, then Location. A mini-map with a
                 // draggable pin is a Sprint 4b item (README section 8).
-                SectionHeading(stringResource(kindSection("location")))
+                SectionHeading(stringResource(L.sectionText("location")))
                 OutlinedButton(
                     onClick = { useMyLocation() },
                     enabled = !locating,
@@ -935,7 +952,7 @@ fun HouseEditScreen(
                 // source the point had before (the map's when it had none).
                 val approx = d.locationSource == LocationSource.APPROX
                 SwitchRow(
-                    text = stringResource(kindField("locationSource")),
+                    text = stringResource(L.fieldText("locationSource")),
                     hint = stringResource(Res.string.house_approx_hint),
                     checked = approx,
                     horizontalPadding = 0.dp,
@@ -959,14 +976,14 @@ fun HouseEditScreen(
                         Spacer(Modifier.width(ButtonDefaults.IconSpacing))
                         ButtonLabel(stringResource(Res.string.trace_here_button_house))
                     }
-                    SavedWalksCard(id, onShowOnMap)
+                    if (L.isVisible("section.walks")) SavedWalksCard(id, onShowOnMap)
                 }
 
-                ChecklistSection(d.checklist, d.rating, scoring) { m -> update { it.copy(checklist = m) } }
+                if (L.isVisible("section.checklist")) ChecklistSection(d.checklist, d.rating, scoring) { m -> update { it.copy(checklist = m) } }
 
                 // Multi-line: the Enter key starts a new line here, so no Next action; sentences start with a capital.
                 OutlinedTextField(d.notes ?: "", { v -> update { it.copy(notes = v) } },
-                    label = { Text(stringResource(kindField("notes"))) },
+                    label = { Text(stringResource(L.fieldText("notes"))) },
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                     minLines = 3, modifier = Modifier.fillMaxWidth())
 
@@ -975,13 +992,13 @@ fun HouseEditScreen(
                 // edited on the broker's page, or the broker is set to None here.
                 val linkedBroker = d.brokerId != null && brokers.any { it.first == d.brokerId }
                 OutlinedTextField(d.contactName ?: "", { v -> update { it.copy(contactName = v) } },
-                    label = { Text(stringResource(kindField("contactName"))) },
+                    label = { Text(stringResource(L.fieldText("contactName"))) },
                     readOnly = linkedBroker,
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
                     singleLine = true, modifier = Modifier.fillMaxWidth())
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(d.contactPhone ?: "", { v -> update { it.copy(contactPhone = v) } },
-                        label = { Text(stringResource(kindField("contactPhone"))) },
+                        label = { Text(stringResource(L.fieldText("contactPhone"))) },
                         readOnly = linkedBroker,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Next),
                         singleLine = true, modifier = Modifier.weight(1f))
@@ -999,7 +1016,7 @@ fun HouseEditScreen(
                 // The last text field: Done closes the keyboard. *Open* (the web's "Open the listing") when it is a link.
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(d.listingUrl ?: "", { v -> update { it.copy(listingUrl = v) } },
-                        label = { Text(stringResource(kindField("listingUrl"))) },
+                        label = { Text(stringResource(L.fieldText("listingUrl"))) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
                         singleLine = true, modifier = Modifier.weight(1f))
@@ -1017,7 +1034,7 @@ fun HouseEditScreen(
                 }
 
                 // The broker (docs/11 5.25, slice 1b) right after the contact: pick one, or none, or make a new one.
-                BrokerSection(
+                if (L.isVisible("field.brokerId")) BrokerSection(
                     brokerId = d.brokerId,
                     brokers = brokers,
                     onPick = { picked ->
@@ -1057,7 +1074,7 @@ fun HouseEditScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     itemVerticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(stringResource(kindSection("visits"), visits.size), fontWeight = FontWeight.SemiBold,
+                    Text(stringResource(L.sectionText("visits"), visits.size), fontWeight = FontWeight.SemiBold,
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.semantics { heading() })
                     if (saved != null) {
@@ -1113,19 +1130,19 @@ fun HouseEditScreen(
 
                 // The Viewings card (docs/11 5.8, slice 3b-1), once the house is saved: a viewing names a stored house.
                 if (saved != null) {
-                    ViewingsCard(
+                    if (L.isVisible("section.viewings")) ViewingsCard(
                         houseId = id, visits = visits,
                         onPlan = { kind -> onPlanViewing(id, kind) },
                         onOpenAll = { onOpenViewings(id) },
                     )
                     // The area notes that reach the house and its distances to my places (docs/11 slice 4a), from the
                     // saved point and street.
-                    HouseAreaNotesSection(saved)
-                    HouseDistancesSection(saved)
+                    if (L.isVisible("section.areaNotes")) HouseAreaNotesSection(saved)
+                    if (L.isVisible("section.distances")) HouseDistancesSection(saved)
                 }
 
                 // Moving in (docs/11 5.24, slice 5): the card of a TAKEN house, after the Viewings.
-                if (d.status == HouseStatus.TAKEN) {
+                if (d.status == HouseStatus.TAKEN && L.isVisible("section.moveIn")) {
                     MovingInCard(
                         moveIn = d.moveIn,
                         onChange = { m -> update { it.copy(moveIn = m) } },
@@ -1372,8 +1389,8 @@ internal fun PairOrStack(
  * up to ([CostSummary]) when something computes.
  */
 @Composable
-private fun CostSection(d: HouseEntity, update: ((HouseEntity) -> HouseEntity) -> Unit) {
-    KindExtrasFields(KindFields.HOUSE, "cost", d, update)
+private fun CostSection(d: HouseEntity, update: ((HouseEntity) -> HouseEntity) -> Unit, fields: KindFields) {
+    KindExtrasFields(fields, "cost", d, update)
     // "Monthly cost ₹34,500 · To move in ₹1,28,000 · ₹27 per sq ft": only the parts that compute, none when none does.
     val summary = CostSummary.of(d.price, d.priceType, d.areaSqft, d.cost)
     val parts = listOfNotNull(
@@ -1496,93 +1513,5 @@ internal fun RatingRow(rating: Int?, onPick: (Int) -> Unit) {
                 Text(if ((rating ?: 0) >= star) "★" else "☆", style = MaterialTheme.typography.headlineSmall, color = starColor)
             }
         }
-    }
-}
-
-/**
- * The house form's Broker section (docs/11 5.25, slice 1b): the chosen broker (or *None*) as a menu of the brokers by
- * name, and *New broker*, a small dialog for a name, phone and agency. Choosing one fills the contact name and phone
- * from it ([onPick] with the broker; null for *None*); a new one is saved at once ([onCreate]) and chosen.
- */
-@Composable
-private fun BrokerSection(
-    brokerId: String?,
-    brokers: List<Pair<String, Broker>>,
-    onPick: (Pair<String, Broker>?) -> Unit,
-    onCreate: (Broker) -> Unit,
-) {
-    val none = stringResource(Res.string.house_broker_none)
-    val label = stringResource(kindField("brokerId"))
-    val current = brokerId?.let { id -> brokers.firstOrNull { it.first == id } }
-    val currentText = current?.second?.label ?: none
-    var open by remember { mutableStateOf(false) }
-    var creating by rememberSaveable { mutableStateOf(false) }
-    SectionHeading(label)
-    Box {
-        OutlinedButton(
-            onClick = { open = true },
-            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics {
-                contentDescription = label
-                stateDescription = currentText
-                role = Role.DropdownList
-            },
-        ) {
-            Text(currentText, modifier = Modifier.weight(1f, fill = false), maxLines = 2)
-            Icon(Icons.Default.ArrowDropDown, contentDescription = null)
-        }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }, modifier = Modifier.selectableGroup()) {
-            (listOf<Pair<String, Broker>?>(null) + brokers).forEach { option ->
-                val isCurrent = option?.first == current?.first
-                DropdownMenuItem(
-                    text = { Text(option?.second?.label ?: none) },
-                    onClick = {
-                        open = false
-                        if (!isCurrent) onPick(option)
-                    },
-                    leadingIcon = { RadioButton(selected = isCurrent, onClick = null) },
-                    modifier = Modifier.semantics {
-                        selected = isCurrent
-                        role = Role.RadioButton
-                    },
-                )
-            }
-        }
-    }
-    Text(stringResource(Res.string.house_broker_hint), style = MaterialTheme.typography.bodySmall)
-    TextButton(onClick = { creating = true }, modifier = Modifier.heightIn(min = 48.dp)) {
-        ButtonLabel(stringResource(Res.string.house_broker_new))
-    }
-    if (creating) {
-        var name by rememberSaveable { mutableStateOf("") }
-        var phone by rememberSaveable { mutableStateOf("") }
-        var agency by rememberSaveable { mutableStateOf("") }
-        val close = { creating = false; name = ""; phone = ""; agency = "" }
-        AlertDialog(
-            onDismissRequest = close,
-            title = { Text(stringResource(Res.string.house_broker_new)) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(name, { name = it.take(Broker.MAX_NAME) }, label = { Text(stringResource(Res.string.broker_name)) },
-                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
-                        singleLine = true)
-                    OutlinedTextField(phone, { phone = it.take(Broker.MAX_PHONE) }, label = { Text(stringResource(Res.string.broker_phone)) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Next),
-                        singleLine = true)
-                    OutlinedTextField(agency, { agency = it.take(Broker.MAX_AGENCY) }, label = { Text(stringResource(Res.string.broker_agency)) },
-                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Done),
-                        singleLine = true)
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        onCreate(Broker(name = name.trim(), phone = phone.ifBlank { null }, agency = agency.ifBlank { null }))
-                        close()
-                    },
-                    enabled = name.isNotBlank(),
-                ) { Text(stringResource(Res.string.common_save)) }
-            },
-            dismissButton = { TextButton(onClick = close) { Text(stringResource(Res.string.common_cancel)) } },
-        )
     }
 }

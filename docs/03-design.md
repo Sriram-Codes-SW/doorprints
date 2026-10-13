@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.122 |
+| Version | 0.123 |
 | Date | 2026-10-13 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -133,6 +133,7 @@
 | 0.120 | 2026-10-13 | Claude (Code), engineer | §18.8 and §18.6: **the typed-extras renderer, the phone** (kinds PR 4, S4b-BL-208, the second stacked pull request; `feat/kinds-6b-typed-extras-android`; [06](06-test-plan.md) TC-U-210): `KindFields` in `:shared` and `KindExtrasFields` in `:ui` (the phone and the iPhone) draw the BHK, area, floor and cost fields of `HouseEditScreen` in the rows the hand-written fields had, every value written through the candidate's extras; the form's labels and its sections' headings read the kind (S4b-BL-255). Safety test first: `HouseFormFieldsTest` and its golden file (the form's semantics in four languages) and the phone's half of `kind-field-vectors.json`, written on main before the switch; the Roborazzi baselines are unchanged. `HouseEditScreen.kt` 1,773 to 1,588 lines. |
 | 0.121 | 2026-10-13 | Claude (Code), engineer | New §18.9: **the hidden schools kind** (kinds PR 5, S4b-BL-209, the first of two stacked pull requests: the website and the server; `feat/kinds-7-schools-kind`; [06](06-test-plan.md) TC-U-211): `docs/schemas/kinds/school.json` (labels, five hidden sections, a hidden money and broker, seven typed extras with fixed-cadence fees) and `school-vectors.json`; the developer flag (`core/dev-kinds.ts`: a development build and localStorage `doorprints.dev.kinds` = `school`; off otherwise, and nothing changes); the renderer's `text` and `enum` controls and the hiding of sections and core fields a kind leaves out (S4b-BL-257 items 1 and 4); the server's backup rows keep a candidate's kind (`BackupHouse.kind`). The phone is the second pull request. |
 | 0.122 | 2026-10-13 | Claude (Code), engineer | New §16.5: **why the Indic web fonts are `font-display: optional`** (S4b-BL-263; `fix/indic-fonts-display-optional`). |
+| 0.123 | 2026-10-13 | Claude (Code), engineer | §18.9: **the hidden schools kind on the phone and the iPhone** (kinds PR 5, S4b-BL-209, the second stacked pull request; `feat/kinds-7b-schools-android`): `SchoolKind` and `DevKinds` in `:shared`, the debug-only `BuildConfig.DEV_KINDS` handed to the screens as `LocalDevKinds`, the form reading the candidate's kind (labels, extras, hidden places, a kind picker), text and enum controls, the rotation saver keeping the kind and other extras, and `ExportHouse.kind`. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -2345,6 +2346,21 @@ from a backup was stored and exported as a house. `BackupHouse.kind` (last, abse
 of the family before) is now read out of a candidate by `BackupWire`, stored by `BackupService` and written by
 `BackupMapper`, so the sample's school is exported byte for byte (`SchoolKindTest`, `SchoolCandidateApiTest` with
 PostGIS). The website already kept it (`HouseDto.kind`).
+
+**On the phone and the iPhone** (the second, stacked pull request, `feat/kinds-7b-schools-android`). `:shared` holds the
+school's copy (`SchoolKind`, Android keys) and `DevKinds` (the kinds the flag allows, `BuiltInKind` with `extracts`);
+`KindLabels.of` and `KindFields.of` still know only the house. The flag is `BuildConfig.DEV_KINDS`: false in every build,
+true only in a debug build made with `-Pdoorprints.devKinds=true`, handed to the screens as `LocalDevKinds` (`:ui`,
+default false, so the iPhone app never has it). The form (`HouseEditScreen`) reads the candidate's kind: its labels
+(`KindLabels.fieldText`, `sectionText`, `refText`), its extras, the title and delete label, and it leaves out what the
+kind hides (the price and its type, the broker, the rooms, questions, viewings, moving in, checklist, the area notes,
+distances and walks cards when a kind hides them); `KindExtrasFields` gained a text field and an option menu (*Not set*
+first, as the broker menu), and pairs them two per row like numbers. A new candidate's form offers a kind picker
+(`DevKindPicker`) while the flag is on. The form's rotation saver now keeps the kind and the extras the house model does
+not know (before, a rotation dropped a newer app's extras from the draft). The phone's backup row gained `kind` as the
+server's did (`ExportHouse.kind`; a school read from a backup came back a house). `BrokerSection` moved to its own file
+for the budget (`HouseEditScreen.kt` 1,588 to 1,517 lines). New Roborazzi baselines `school_edit_en_light` and
+`school_edit_ta_dark` only; every house baseline and `house-form.golden.txt` are unchanged.
 
 **Left on purpose** (rows in [10](10-sprint-log.md)): the school's extras in search, filters and the readable copies
 (S4b-BL-210, whose search tests follow the owner's rule; today search reads a school's name, places, notes and contact,

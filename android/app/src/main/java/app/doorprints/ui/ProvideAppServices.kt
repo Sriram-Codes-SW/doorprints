@@ -21,6 +21,7 @@ package app.doorprints.ui
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalContext
+import app.doorprints.BuildConfig
 import app.doorprints.DoorprintsApp
 
 /**
@@ -32,6 +33,7 @@ import app.doorprints.DoorprintsApp
 fun ProvideAppServices(content: @Composable () -> Unit) {
     val services = (LocalContext.current.applicationContext as DoorprintsApp).container.services
     ProvidePlatformServices {
-        CompositionLocalProvider(LocalAppServices provides services, content = content)
+        // The hidden schools kind's developer flag (S4b-BL-209): false unless a debug build was made with -Pdoorprints.devKinds=true.
+        CompositionLocalProvider(LocalAppServices provides services, LocalDevKinds provides BuildConfig.DEV_KINDS, content = content)
     }
 }

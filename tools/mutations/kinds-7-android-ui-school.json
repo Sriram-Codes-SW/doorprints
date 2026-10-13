@@ -1,0 +1,22 @@
+{
+  "spec": "android/ui/src/androidHostTest/kotlin/app/doorprints/ui/SchoolKindScreensTest.kt",
+  "gradle": [
+    ":ui:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.ui.SchoolKindScreensTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/KindExtrasFields.kt",
+      "find": "    else copy(kind = kind.id, priceType = null, price = null)",
+      "replace": "    else copy(kind = kind.id)",
+      "expect": "eachValueLandsAsOneOfTheCandidatesOtherExtras"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/KindExtrasFields.kt",
+      "find": "    if (kind.labels.isVisible(\"field.money\")) copy(kind = kind.id, priceType = priceType ?: \"RENT\")",
+      "replace": "    if (kind.labels.isVisible(\"field.money\")) copy(kind = kind.id)",
+      "expect": "eachValueLandsAsOneOfTheCandidatesOtherExtras"
+    }
+  ]
+}

@@ -63,6 +63,9 @@ android {
         val googleClientId = (providers.gradleProperty("GOOGLE_ANDROID_CLIENT_ID").orElse(providers.environmentVariable("GOOGLE_ANDROID_CLIENT_ID")).orNull ?: "")
             .trim().takeIf { Regex("[A-Za-z0-9._-]+").matches(it) } ?: ""
         buildConfigField("String", "GOOGLE_ANDROID_CLIENT_ID", "\"$googleClientId\"")
+        // The hidden schools kind (kinds PR 5, S4b-BL-209; docs/03 §18.9): off in every build; only the debug build
+        // below turns it on, and only when made with -Pdoorprints.devKinds=true. A release never has it.
+        buildConfigField("boolean", "DEV_KINDS", "false")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         testInstrumentationRunnerArguments["useTestStorageService"] = "true"
     }
@@ -80,6 +83,9 @@ android {
     }
 
     buildTypes {
+        debug {
+            buildConfigField("boolean", "DEV_KINDS", (providers.gradleProperty("doorprints.devKinds").orNull == "true").toString())
+        }
         release {
             // R8 stays off for now: kotlinx.serialization, Room (KSP-generated code), MapLibre (JNI) and
             // WorkManager (reflective worker creation) need keep rules that are not written or tested yet, and

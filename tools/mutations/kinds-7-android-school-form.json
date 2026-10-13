@@ -1,0 +1,46 @@
+{
+  "spec": "android/app/src/test/java/app/doorprints/SchoolFormTest.kt",
+  "gradle": [
+    ":app:testDebugUnitTest",
+    "--tests",
+    "app.doorprints.SchoolFormTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/HouseEditScreen.kt",
+      "find": "    val kind = DevKinds.of(draft?.kind, devKinds)",
+      "replace": "    val kind = DevKinds.of(draft?.kind, true)",
+      "expect": "withTheFlagOffASchoolRowIsDrawnAsAHouseAndKeepsItsKindAndExtras"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/HouseEditScreen.kt",
+      "find": "                    if (isNew && devKinds) DevKindPicker(",
+      "replace": "                    if (isNew) DevKindPicker(",
+      "expect": "withTheFlagOffANewCandidateIsAHouseWithNoPicker"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/HouseEditScreen.kt",
+      "find": "                if (L.isVisible(\"field.money\")) {",
+      "replace": "                if (true) {",
+      "expect": "withTheFlagOnASchoolIsDrawnFromItsKindAndItsValuesAreSavedAsItsExtras"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/HouseEditScreen.kt",
+      "find": "                if (L.isVisible(\"section.rooms\")) RoomsSection(",
+      "replace": "                if (true) RoomsSection(",
+      "expect": "withTheFlagOnASchoolIsDrawnFromItsKindAndItsValuesAreSavedAsItsExtras"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/HouseEditScreen.kt",
+      "find": "                if (L.isVisible(\"field.brokerId\")) BrokerSection(",
+      "replace": "                if (true) BrokerSection(",
+      "expect": "withTheFlagOnASchoolIsDrawnFromItsKindAndItsValuesAreSavedAsItsExtras"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/KindExtrasFields.kt",
+      "find": "                            if (!isCurrent) onPick(option?.id)",
+      "replace": "                            if (!isCurrent) onPick(null)",
+      "expect": "withTheFlagOnASchoolIsDrawnFromItsKindAndItsValuesAreSavedAsItsExtras"
+    }
+  ]
+}

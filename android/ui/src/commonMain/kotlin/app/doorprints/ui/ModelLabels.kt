@@ -19,6 +19,7 @@
 package app.doorprints.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.staticCompositionLocalOf
 import app.doorprints.shared.model.Checklist
 import app.doorprints.shared.model.Criterion
 import app.doorprints.shared.model.HouseStatus
@@ -53,14 +54,28 @@ fun kindStringResource(key: String): StringResource =
  * (`section.<id>`), as the form and its sections read them (kinds PR 4, S4b-BL-255). A place the kind gives no text
  * fails at once: a screen asks only for the places it draws.
  */
-fun kindField(id: String, cadence: String? = null): StringResource =
-    kindStringResource(checkNotNull(KindLabels.HOUSE.field(id, cadence)?.key) { "house has no text for field.$id" })
+fun kindField(id: String, cadence: String? = null): StringResource = KindLabels.HOUSE.fieldText(id, cadence)
 
-fun kindSection(id: String): StringResource =
-    kindStringResource(checkNotNull(KindLabels.HOUSE.section(id)?.key) { "house has no text for section.$id" })
+fun kindSection(id: String): StringResource = KindLabels.HOUSE.sectionText(id)
 
-fun kindRef(ref: String): StringResource =
-    kindStringResource(checkNotNull(KindLabels.HOUSE.resolve(ref)?.key) { "house has no text for $ref" })
+fun kindRef(ref: String): StringResource = KindLabels.HOUSE.refText(ref)
+
+/** The same for any kind (the form draws the candidate's own kind since kinds PR 5, S4b-BL-209). */
+fun KindLabels.fieldText(id: String, cadence: String? = null): StringResource =
+    kindStringResource(checkNotNull(field(id, cadence)?.key) { "$kind has no text for field.$id" })
+
+fun KindLabels.sectionText(id: String): StringResource =
+    kindStringResource(checkNotNull(section(id)?.key) { "$kind has no text for section.$id" })
+
+fun KindLabels.refText(ref: String): StringResource =
+    kindStringResource(checkNotNull(resolve(ref)?.key) { "$kind has no text for $ref" })
+
+/**
+ * The developer flag of the hidden schools kind (kinds PR 5, S4b-BL-209; `DevKinds` in `:shared`): false unless the app
+ * provides true, which only an Android debug build made with `-Pdoorprints.devKinds=true` does (`BuildConfig.DEV_KINDS`);
+ * the iPhone app never does. With it false nothing changes: no kind picker, a new candidate is a house.
+ */
+val LocalDevKinds = staticCompositionLocalOf { false }
 
 private val STATUS_RESOURCES: Map<HouseStatus, StringResource> by lazy {
     HouseStatus.entries.associateWith { kindStringResource(KindLabels.HOUSE.status(it)) }

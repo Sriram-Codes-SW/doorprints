@@ -18,17 +18,27 @@
 
 package app.doorprints.ui
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
@@ -36,13 +46,23 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import app.doorprints.data.HouseEntity
+import app.doorprints.shared.model.BuiltInKind
 import app.doorprints.shared.model.CalendarDate
 import app.doorprints.shared.model.Candidates
 import app.doorprints.shared.model.ExtraControl
@@ -59,6 +79,8 @@ import app.doorprints.ui.res.house_floor_basement_hint
 import app.doorprints.ui.res.house_floor_basement_invalid
 import app.doorprints.ui.res.house_floor_hint
 import app.doorprints.ui.res.house_floor_invalid
+import app.doorprints.ui.res.kind_option_not_set
+import app.doorprints.ui.res.kind_picker
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -180,6 +202,14 @@ private fun ExtraField(
         ExtraControl.DATE -> DateField((d.extraValue(f) as? JsonPrimitive)?.content, label) { v ->
             update { it.withExtra(f, v?.let(::JsonPrimitive)) }
         }
+        ExtraControl.TEXT -> OutlinedTextField(
+            (d.extraValue(f) as? JsonPrimitive)?.takeIf { it.isString }?.content ?: "",
+            { v -> update { it.withExtra(f, v.take(f.maxLength ?: v.length).takeIf(String::isNotEmpty)?.let(::JsonPrimitive)) } },
+            label = { Text(stringResource(label)) },
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Next),
+            singleLine = true, modifier = modifier,
+        )
+        ExtraControl.ENUM -> OptionField(f, label, d, modifier) { id -> update { it.withExtra(f, id?.let(::JsonPrimitive)) } }
         ExtraControl.NUMBER, ExtraControl.MONEY -> OutlinedTextField(
             d.extraValue(f).number()?.toString() ?: "",
             { v -> update { it.withNumber(f, v) } },
@@ -187,6 +217,80 @@ private fun ExtraField(
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
             singleLine = true, modifier = modifier,
         )
+    }
+}
+
+/**
+ * An enum extra (kinds PR 5, S4b-BL-209: a school's board, its medium): its label, then the chosen option (or *Not
+ * set*) as a button that opens the options as radio rows, as the Broker menu does. A stored id the kind does not offer
+ * reads as not set.
+ */
+@Composable
+private fun OptionField(f: KindExtra, label: StringResource, d: HouseEntity, modifier: Modifier, onPick: (String?) -> Unit) {
+    val stored = (d.extraValue(f) as? JsonPrimitive)?.takeIf { it.isString }?.content
+    val current = f.options.firstOrNull { it.id == stored }
+    val none = stringResource(Res.string.kind_option_not_set)
+    val name = stringResource(label)
+    val currentText = current?.let { stringResource(kindStringResource(it.label)) } ?: none
+    var open by remember { mutableStateOf(false) }
+    Column(modifier) {
+        Text(name, style = MaterialTheme.typography.bodySmall)
+        Box {
+            OutlinedButton(
+                onClick = { open = true },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics {
+                    contentDescription = name
+                    stateDescription = currentText
+                    role = Role.DropdownList
+                },
+            ) {
+                Text(currentText, modifier = Modifier.weight(1f, fill = false), maxLines = 2)
+                Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+            }
+            DropdownMenu(expanded = open, onDismissRequest = { open = false }, modifier = Modifier.selectableGroup()) {
+                (listOf(null) + f.options).forEach { option ->
+                    val isCurrent = option?.id == current?.id
+                    DropdownMenuItem(
+                        text = { Text(option?.let { stringResource(kindStringResource(it.label)) } ?: none) },
+                        onClick = {
+                            open = false
+                            if (!isCurrent) onPick(option?.id)
+                        },
+                        leadingIcon = { RadioButton(selected = isCurrent, onClick = null) },
+                        modifier = Modifier.semantics {
+                            selected = isCurrent
+                            role = Role.RadioButton
+                        },
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * The draft as a new candidate of [kind] (the developer's kind picker, S4b-BL-209): a kind that hides its own money
+ * starts with no price type (a school's fees are extras), and the house gets its default rent back.
+ */
+internal fun HouseEntity.forKind(kind: BuiltInKind): HouseEntity =
+    if (kind.labels.isVisible("field.money")) copy(kind = kind.id, priceType = priceType ?: "RENT")
+    else copy(kind = kind.id, priceType = null, price = null)
+
+/**
+ * The developer's kind picker on a new candidate's form (kinds PR 5, S4b-BL-209): *Save a house* or *Save a school*,
+ * each the kind's own `kind.new` label, as radio rows. Drawn only while [LocalDevKinds] is true, so no release shows it;
+ * one kind per data set, chosen in Settings, is S4b-BL-212's.
+ */
+@Composable
+internal fun DevKindPicker(kinds: List<BuiltInKind>, current: String, onPick: (BuiltInKind) -> Unit) {
+    SectionHeading(stringResource(Res.string.kind_picker))
+    Column(Modifier.selectableGroup()) {
+        kinds.forEach { k ->
+            val text = stringResource(k.labels.refText("kind.new"))
+            RadioRow(label = AnnotatedString(text), hint = null, selected = current == k.id, horizontalPadding = 0.dp, spokenLabel = text) {
+                if (current != k.id) onPick(k)
+            }
+        }
     }
 }
 
