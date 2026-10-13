@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.169 |
+| Version | 0.170 |
 | Date | 2026-10-13 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..183); this file lists the lead-level items and points to the rest. |
@@ -177,6 +177,7 @@
 | 0.167 | 2026-10-12 | Claude (Code), engineer | **§11.4 item 6**: owner decision, a price without a type is not read as a monthly rent (kinds step 3). |
 | 0.168 | 2026-10-12 | Claude (Code), engineer | **§11.4 item 7**: owner confirmed, old-family backups are read, not refused (the final text of ADR-36 door 1, kinds step 3). |
 | 0.169 | 2026-10-13 | Claude (Code), engineer | **§11.2: kinds step 4, the phone** (S4b-BL-206, `feat/kinds-4-android`): Room version 12 (every house a candidate, migrated in place), `/api/candidates` and `candidateId` in `ApiClient`, the Drive `sync/1` file in both shapes on both stacks. Left of the reset: S4b-BL-246 (the website's sync writer), S4b-BL-247 (the viewing payload's `houseId`, three stacks), S4b-BL-248 (the phone's backup of an unknown extra), the guide and the CHANGELOG release entry. |
+| 0.170 | 2026-10-13 | Claude (Code), engineer | **§11.1**: the Map page's short-screen layout and first-load shift (S4b-BL-49) are fixed on `fix/map-short-screen-layout`, in review; the owner's look on a real phone is outstanding. |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 
@@ -994,7 +995,7 @@ Written so a new session can continue without this one's memory. Backlog ids and
 - **AI evals:** address sets (#252, #253), agreement metrics (#255), validity work: Wilson intervals, paired verdict, field-level agreement, canaries, hard set (#270), injection scoring fix, report split and the `no-wrapping` canary (#274).
 - **Other batch items** (#268 integration of #251, #254, #256-#262, #265; then #266, #267, #269, #272): backup texts, map chrome, web fixes and cache headers, Android test hardening, ZAP retry, status corrections, the gitleaks ignore for the Android crypto vector copies, the iPhone and Drive follow-ups (BL-57(2), 59, 131, 144, 145), the portrait-only legend, the longer `AreasScreenTest` waits.
 - Main is green; the full live UI test passed on the deployed site (all sections, 1,687 s).
-- **An incident of my own making, fixed the same day (#277, 2026-10-12):** the short-phone Map layout of BL-49 (#258, #269) made the map 14,000-21,000px tall and blank on phones under 700px tall (iPhone SE, iPhone 14 in Safari, 360x640), which the owner saw as the phone UI glitching. The web part was reverted (BL-49 is open again) and the live UI test now fails when the map is taller than the screen or its canvas is at the texture limit. Measured after the deploy: map 438, 429 and 379px tall on those phones. The owner's own patch #276 (re-measure the map) stays. Remaining: first-load layout shift of 0.15-0.24 on those phones (the CSS values `--map-peek` and `--map-stack-h` are written by JavaScript after the first render); not fixed, may look like a jump.
+- **An incident of my own making, fixed the same day (#277, 2026-10-12):** the short-phone Map layout of BL-49 (#258, #269) made the map 14,000-21,000px tall and blank on phones under 700px tall (iPhone SE, iPhone 14 in Safari, 360x640), which the owner saw as the phone UI glitching. The web part was reverted (BL-49 is open again) and the live UI test now fails when the map is taller than the screen or its canvas is at the texture limit. Measured after the deploy: map 438, 429 and 379px tall on those phones. The owner's own patch #276 (re-measure the map) stays. Remaining: first-load layout shift of 0.15-0.24 on those phones (the CSS values `--map-peek` and `--map-stack-h` are written by JavaScript after the first render); not fixed, may look like a jump. **Update 2026-10-13 (S4b-BL-49 In review, `fix/map-short-screen-layout`):** the phone map region is sized in CSS (no script-written height), the map fits the screen on every measured phone including 568x320 and Tamil at 200%, and the first-load shift is 0.000-0.003; the layout gate checks both. The owner accepts it on a real phone before BL-49 is closed.
 
 ### 11.2 Open
 

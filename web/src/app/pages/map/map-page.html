@@ -18,7 +18,6 @@
 
 <div class="layout">
   <section
-    #wrap
     class="map-wrap"
     role="region"
     [attr.aria-label]="'map.regionLabel' | t"
@@ -91,11 +90,10 @@
     <!--
       The legend and the actions share one container, so they can never cover each other or the hint whatever a
       translation's length: on wider screens it lays nothing out (the actions sit top-left, the legend bottom-left);
-      on phones it is one bottom row, the legend at the start and the actions in a column at the end, within thumb
-      reach, the primary action last (Android MapScreen: zoom, my location, then "Save here"). Its measured height
-      lifts MapLibre's bottom-right controls above it.
+      on phones it is one row under the map (map-page.css), the legend at the start and the actions at the end, within
+      thumb reach, the primary action last (Android MapScreen: zoom, my location, then "Save here").
     -->
-    <div #stack class="map-stack" [class.with-legend]="mapUsable() && !picking()">
+    <div class="map-stack">
       <!-- Not needed while a pin is being placed, and it would crowd the hint and the crosshair. -->
       @if (mapUsable() && !picking()) {
         <div class="legend" role="group" [attr.aria-label]="'map.legend' | t">
@@ -166,7 +164,7 @@
     </div>
   </section>
 
-  <section #panel class="panel" aria-labelledby="houses-heading">
+  <section class="panel" aria-labelledby="houses-heading">
     <app-place-check-panel [mapUsable]="mapUsable()" />
     <app-walk-end-sheet [houses]="houses()" />
     <div class="panel-head">
@@ -181,6 +179,9 @@
         <div><dt>{{ 'map.stats.visits' | t }}</dt><dd>{{ i18n.number(s.visits) }}</dd></div>
         <div><dt>{{ 'map.stats.streets' | t }}</dt><dd>{{ i18n.number(s.streets) }}</dd></div>
       </dl>
+    } @else if (!error()) {
+      <!-- Their place while they are read, so the trace card and the search below do not jump down when they come. -->
+      <div class="stats stats-pending" aria-hidden="true"></div>
     }
 
     <!-- Below the counters: on a portrait phone "Your houses" and every counter stay above the bottom bar (owner rule 2026-09-24). -->

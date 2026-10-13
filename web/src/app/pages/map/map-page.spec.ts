@@ -19,7 +19,7 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { NEVER, of } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { LocalDataService } from '../../core/local-data.service';
 import { newHouse } from '../../core/models';
@@ -29,6 +29,7 @@ import { TranslationService } from '../../i18n/translation.service';
 import { scoringOf } from '../../shared/scoring';
 import type { CriterionRow } from '../../shared/scoring';
 import { MapPage } from './map-page';
+import mapCss from './map-page.css' with { loader: 'text' };
 
 /**
  * The house list of the map page under the person's criteria (slice 2, docs/11 5.4): "Best score" is the ranking
@@ -79,9 +80,9 @@ async function render(query: Record<string, string>, extra: Record<string, unkno
           brokers: () => of([]),
           areas: () => of([]),
           areaNotes: () => of([]),
-          ...extra,
           scoring: () => of(scoringOf([SECURITY_MUST], [])),
           stats: () => of({ houses: 3, shortlisted: 0, rejected: 0, visits: 0, streets: 0 }),
+          ...extra,
         },
       },
       { provide: SyncService, useValue: { migration: signal('done'), enabled: signal(false), downloadToThisBrowser: vi.fn() } },
@@ -201,5 +202,53 @@ describe('MapPage: the panel shown when the map has no tiles', () => {
     lastFixture!.detectChanges();
     expect(host.querySelector('.map-offline')?.textContent).toContain('The map could not start its helper');
     expect(retryButton(host)).toBeUndefined();
+  });
+});
+
+/**
+ * The phone layout of the Map page (S4b-BL-49, 2026-10-13). #258 and #269 sized the map from heights a script measured
+ * (`--map-stack-h`, `--map-peek`) and the map ran away to 14,000-21,000px on phones under 700px tall; the layout they
+ * reverted to still made the map taller than the screen in landscape and at 200% text, and jumped after the first
+ * paint. These pin what keeps it right: every size comes from CSS, and the page is not painted half made.
+ */
+describe('MapPage: the phone layout is sized in CSS (S4b-BL-49)', () => {
+  const phone = mapCss.slice(mapCss.indexOf('@media (max-width: 760px) {'));
+
+  it('reads no map size a script writes: every --map-* property it uses is defined in the stylesheet', () => {
+    const used = new Set([...mapCss.matchAll(/var\((--map-[a-z-]+)/g)].map((m) => m[1]));
+    expect(used.size).toBeGreaterThan(0);
+    for (const name of used) expect(mapCss, name).toContain(`${name}: `);
+    expect(mapCss).not.toContain('--map-stack-h');
+  });
+
+  it('fills the visible page area less the list heading and counters, and never goes under the control column', () => {
+    expect(phone).toContain('--map-floor: calc(196px + 2 * var(--space-2));');
+    expect(phone).toContain('min-height: max(var(--map-floor), calc(100cqh - var(--map-peek)));');
+    expect(phone).toContain('grid-template-rows: minmax(var(--map-floor), 1fr) auto auto;');
+  });
+
+  it('places the map and its overlays in the map row, so the crosshair stays on the map centre', () => {
+    expect(phone).toMatch(/\.map,\s*\.map-offline,\s*\.crosshair,\s*\.add-hint\s*\{\s*grid-area: 1 \/ 1 \/ 2 \/ 2;/);
+  });
+
+  it('never positions the bottom row: the legend and the actions are grid items, not placed over the map', () => {
+    expect(phone).not.toMatch(/\.map-stack[^{,]*\{[^}]*position/);
+    expect(phone).toMatch(/\.map-actions\s*\{[^}]*grid-row: 3;/);
+  });
+
+  it('is not painted before its first update pass, and is drawn after it', async () => {
+    expect(mapCss).toMatch(/:host:not\(\.drawn\)\s*\{\s*visibility: hidden;/);
+    const host = await render({});
+    expect(host.classList.contains('drawn')).toBe(true);
+  });
+
+  it('keeps the counters place while they are read, and gives it to the counters when they come', async () => {
+    const waiting = await render({}, { stats: () => NEVER });
+    expect(waiting.querySelector('.stats-pending')?.getAttribute('aria-hidden')).toBe('true');
+    expect(waiting.querySelector('dl.stats')).toBeNull();
+    TestBed.resetTestingModule();
+    const read = await render({});
+    expect(read.querySelector('dl.stats')).not.toBeNull();
+    expect(read.querySelector('.stats-pending')).toBeNull();
   });
 });

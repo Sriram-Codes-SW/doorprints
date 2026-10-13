@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | 05 UX, accessibility and i18n |
-| Version | 0.33 |
-| Date | 2026-10-10 |
+| Version | 0.34 |
+| Date | 2026-10-13 |
 | Author | Claude (Cowork) – Design team |
 | Status | Draft |
 | Scope | Web app (`web/`) and Android app (`android/`), both implemented |
@@ -46,6 +46,7 @@
 | 0.31 | 2026-10-09 | Claude (Code), engineer | Component inventory: the *AI speed and cost* group on the Connect page (S4b-BL-198 step 2; [10](10-sprint-log.md) v0.226): a labelled radio group, hidden unless AI is on and the service is Gemini. |
 | 0.32 | 2026-10-10 | Claude (Code), engineer | Component inventory: the *AI speed and cost* group in the phones' Settings > AI features (S4b-BL-198 step 2; [10](10-sprint-log.md) v0.228): a radio group under a heading, hidden unless AI is on, the own AI answers and the service is Gemini. |
 | 0.33 | 2026-10-10 | Claude (Code), engineer | Component inventory: the three sentences and the guide link under the AI features switch, on the Connect page and in the phones' Settings (S4b-BL-215; [10](10-sprint-log.md) v0.241). |
+| 0.34 | 2026-10-13 | Claude (Code), engineer | Size to what is visible (S4b-BL-49): the phone map region is sized in CSS (`100cqh` less the counters' rem height, a 212 px floor for the map row), the actions sit under the map and the legend in its corner; nothing is measured by a script. |
 
 ---
 
@@ -317,7 +318,7 @@ browser). Fixed in the same change (`web/README.md` row *Phone display fixes*); 
 
 | Rule | How |
 |---|---|
-| Size to what is visible | Heights use the visible page area, not `vh` (the viewport without the address bar): `100dvh` for the shell and the photo viewer, `100cqh` of `<main>` (a size container) for the phone map, which fills it less the list's heading and counters (`--map-peek`, measured by `listPeek`), at least 256 px and never shorter than MapLibre's control column |
+| Size to what is visible | Heights use the visible page area, not `vh` (the viewport without the address bar): `100dvh` for the shell and the photo viewer, `100cqh` of `<main>` (a size container) for the phone map region, which fills it less the list's heading and counters (`--map-peek`, two rows of counters in rem, not measured), its map row never shorter than MapLibre's control column (212 px) and the actions under the map (S4b-BL-49, 2026-10-13) |
 | Targets | 44 x 44 CSS px on touch screens, the brand link included (it was 28 px wide where its name is hidden) |
 | Map credits | Shown for 5 s after the style first loads, then folded into the (i) button (`foldAttribution`, `ATTRIBUTION_SHOW_MS`), sooner at the first zoom or move, on maps up to 640 px wide; the (i) opens them in full (nothing hides the credit, R5) |
 | Legend and map buttons | The legend moves to its own row above the actions when its widest item does not fit beside them; the actions keep one-line width. A label wider than that row (Tamil "Not chosen" at 200% text on a 360px phone) wraps inside the legend. The whole label stays readable: it is not cut off, and the page does not scroll sideways. The two-finger hint stays off those labels: it is hidden until a one-finger pan is blocked, and then the sentence sits in the map above the legend, in either theme. Up to 384 px each counter is one line ("0 Houses"), a long caption wrapping in its cell |
