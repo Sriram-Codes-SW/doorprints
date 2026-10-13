@@ -291,8 +291,13 @@ export function sanitizeKindDraft(k: AiKind, raw: Record<string, unknown> | null
   let label = cleaned('label');
   if (label == null) {
     const where = locality ?? street;
-    label = (where == null ? k.noun : `${k.noun} in ${where}`).slice(0, LIMITS['label']);
+    label = where == null ? k.noun : `${k.noun} in ${where}`;
     warnings.push('label: generated because the model returned none');
+    // A long place makes a long name: cut with the warning every other field gives (review of #313).
+    if (label.length > LIMITS['label']) {
+      label = label.slice(0, LIMITS['label']);
+      warnings.push(`label: truncated to ${LIMITS['label']} characters`);
+    }
   }
   return { ...empty, label, address, street, locality, contactName, contactPhone, listingUrl, notes, warnings, ...(Object.keys(extras).length ? { extras } : {}) };
 }
