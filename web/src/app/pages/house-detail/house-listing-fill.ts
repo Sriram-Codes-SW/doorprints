@@ -34,6 +34,8 @@ import { runResult } from '../../shared/run-result';
 import type { RunResult } from '../../shared/run-result';
 import { priceDisagreement } from '../../shared/listing-price-check';
 import { FIELD_LABEL, mergeListingDraft, same } from './house-draft-merge';
+import { builtInKind, devKindsOn } from '../../core/dev-kinds';
+import { mergeKindExtras, shownExtra } from './kind-draft-merge';
 import type { FillField } from './house-draft-merge';
 
 /** A field the last fill wrote, with the value it wrote: the "from the listing" mark stays while the field still holds it. */
@@ -135,7 +137,10 @@ export class HouseListingFill {
     // The last failure stays, drawn as being updated, until this read ends and replaces or removes it (S4b-BL-2).
     this.warnings.set([]);
     this.kept.set([]);
-    this.request = this.deps.ai.extractListing(text).subscribe({
+    // Kinds PR 7 (S4b-BL-211): a candidate of another kind the extract fills (developer flag on) names its kind.
+    const kind = builtInKind(this.deps.draft()?.kind, devKindsOn());
+    const read = kind.id !== 'house' && kind.extracts ? this.deps.ai.extractListing(text, kind.id) : this.deps.ai.extractListing(text);
+    this.request = read.subscribe({
       next: (draft) => {
         this.request = null;
         this.error.set(null);
@@ -169,17 +174,24 @@ export class HouseListingFill {
     const d = this.deps.draft();
     if (!d) return;
     const result = mergeListingDraft(d, a);
+    // A kind's typed extras (kinds PR 7): empty ones filled, set ones kept; a house's draft has none.
+    const fields = builtInKind(d.kind, devKindsOn()).fields;
+    const extras = mergeKindExtras(d, a, fields);
     // The snapshot for Undo fill is the form before this fill, the fields a fill can touch (S4b-BL-238).
     const before: Partial<HouseDto> = {};
     for (const f of SNAPSHOT_FIELDS) (before as Record<string, unknown>)[f] = d[f] ?? null;
+    if (extras.extrasOther) before.extrasOther = d.extrasOther ?? null;
     this.before.set(before);
     this.written.set(result.filled.map((field) => ({ field, value: result.changes[field] as string | number })));
-    this.deps.patch(result.changes);
+    this.deps.patch(extras.extrasOther ? { ...result.changes, extrasOther: extras.extrasOther } : result.changes);
     this.kept.set(
-      result.kept.map((k) => ({
+      result.kept.map((k): Msg => ({
         key: 'listingFill.kept',
         params: { field: { key: FIELD_LABEL[k.field] }, value: this.shown(k.field, k.incoming) },
-      })),
+      })).concat(extras.kept.map((k): Msg => ({
+        key: 'listingFill.kept',
+        params: { field: { key: fields.label(k.field) }, value: shownExtra(k.field, k.incoming, this.deps.i18n) },
+      }))),
     );
   }
 

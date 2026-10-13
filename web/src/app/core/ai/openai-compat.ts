@@ -18,6 +18,7 @@
 
 import type { JsonChatModel } from './json-chat-model';
 import { ANSWER_SCHEMA, LISTING_SCHEMA, OnDeviceAiError, PLAN_SCHEMA } from './on-device-ai.service';
+import { SCHOOL_LISTING_SCHEMA } from './kind-ai';
 import { validateWebBaseUrl } from './ai-provider-config';
 import { schemaTrailer, toStrictSchema } from './schema-dialect';
 import { openAiBlocked, parseBody } from './ai-blocked';
@@ -69,7 +70,7 @@ export function openAiBody(
 
 /** The `json_schema` name of one of the three schemas. */
 export function schemaName(schema: object): string {
-  if (schema === LISTING_SCHEMA) return 'listing';
+  if (schema === LISTING_SCHEMA || schema === SCHOOL_LISTING_SCHEMA) return 'listing';
   if (schema === ANSWER_SCHEMA) return 'answer';
   if (schema === PLAN_SCHEMA) return 'plan';
   return 'response';

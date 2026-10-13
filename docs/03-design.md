@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.125 |
+| Version | 0.126 |
 | Date | 2026-10-13 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -136,6 +136,7 @@
 | 0.123 | 2026-10-13 | Claude (Code), engineer | §18.9: **the hidden schools kind on the phone and the iPhone** (kinds PR 5, S4b-BL-209, the second stacked pull request; `feat/kinds-7b-schools-android`): `SchoolKind` and `DevKinds` in `:shared`, the debug-only `BuildConfig.DEV_KINDS` handed to the screens as `LocalDevKinds`, the form reading the candidate's kind (labels, extras, hidden places, a kind picker), text and enum controls, the rotation saver keeping the kind and other extras, and `ExportHouse.kind`. |
 | 0.124 | 2026-10-13 | Claude (Code), engineer | New §18.10: **typed extras in search and the copies** (kinds PR 6, S4b-BL-210; `feat/kinds-8-extras-search-copies`): `KindFields.others()` and `search` on both stacks, one reader by type (`kindValues`, `KindValues`), the words search adds, the copies' rows and columns (`kind-copy.ts`, `KindCopy`), the phone's `KindWords`, the flag (`CopyKinds`, `ExportOptions.devKinds`), the safety test written first (`house-pins.spec.ts`, `HouseCopyPinsTest`) and `kind-search-vectors.json`; no filter (S4b-BL-265), the rest S4b-BL-266 and S4b-BL-267. |
 | 0.125 | 2026-10-13 | Claude (Code), engineer | New §18.11: **kind-aware AI** (kinds PR 7, S4b-BL-211; `feat/kinds-9-kind-aware-ai`, the server; the website and the phone in two stacked pull requests): the three AI stacks read a candidate of a built-in kind other than the house through its kind file's `ai` slots while the developer flag is on (the server's `app.ai.dev-kinds`); for a house nothing changes, pinned byte for byte first (`HouseAskPinsTest`, `HousePlanPinsTest`, `HouseExtractPinsTest`); `school.json`'s slots filled; `docs/schemas/kinds/kind-ai-vectors.json`. |
+| 0.126 | 2026-10-13 | Claude (Code), engineer | §18.11: **kind-aware AI on the website** (kinds PR 7, S4b-BL-211, the second stacked pull request; `feat/kinds-9b-kind-aware-ai-web`): `core/ai/kind-ai.ts`, the on-device AI and the server request read a school through its kind's slots under the developer flag; *Fill in from listing text* fills a school's empty extras; the website's house pins first and unchanged. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -2486,8 +2487,23 @@ text, the contact's name and phone and a tag in the fields; a hidden money; two 
 off; a kind that is not built in), the Ask prompt, the Ask and Plan filters, the Plan summary and line, and the school's
 Extract prompt, schema and drafts ([06](06-test-plan.md) TC-U-213).
 
-**The website and the phones** follow in two stacked pull requests, each with its own house pins first (the website's
-`core/ai`, the phones' `:shared`).
+**The website** (the second pull request, `feat/kinds-9b-kind-aware-ai-web`, stacked on the server's): `core/ai/kind-ai.ts` holds the
+school's copy (`SCHOOL_AI`: the slots, the extras, their English words, which `kind-ai.spec.ts` holds to `school.json`,
+the vectors and the English dictionary) and the readers: `aiText` (the house's `houseText`, or the kind's `kindText`),
+`askView` and `planView` (what Ask filters and Plan's candidates see), `kindExtractionPrompt`, `SCHOOL_LISTING_SCHEMA`
+(named `listing` for the OpenAI-compatible and Anthropic requests) and `sanitizeKindDraft`. `OnDeviceAiService` reads the
+flag (`devKindsOn()`) at each call and hands each candidate's kind and other extras to the AI (`AiHouse.kind`,
+`AiHouse.extras`, which `houseText` never reads); `selectForAsk` takes the document function as an argument, `houseText`
+by default. `AiService.extractListing(text, kind)` posts `{ text, kind }` only for a kind the extract fills (a house's body
+is `{ text }`), and with the person's own key calls the on-device extract with the kind. *Fill in from listing text* is
+offered for a school (`BuiltInKind.extracts`, from the kind file's `ai.extract`), sends its kind, and fills a school's
+empty extras (`kind-draft-merge.ts`), keeping and naming one the person set (*Kept your Board; the listing says "CBSE".*);
+*Undo fill* puts them back. *Safety test first:* `house-ai-pins.spec.ts` with `golden/house-ai-pins.golden.ts` (SHA-256 of
+each fixture house's document and label, the Ask selection per filter, the three prompts, the Plan candidates, the
+parity vectors' drafts and the three Gemini request bodies), committed before the code and unchanged after it; the
+parity vectors, the layout gate (253 of 253) and every existing spec pass unchanged. No new string.
+
+**The phones** follow in a stacked pull request, with their own house pins first (`:shared`).
 
 **Not done, on purpose** (rows in [10](10-sprint-log.md)). The row's safety-test clause said the parity `prompts` would
 be regenerated once; they are not, because no prompt changed for a house and a school's are pinned in the new file

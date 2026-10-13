@@ -26,7 +26,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { AiService } from '../../core/ai.service';
+import { AiService, type HouseDraft } from '../../core/ai.service';
 import { DEV_KINDS_KEY } from '../../core/dev-kinds';
 import { GeocodeService } from '../../core/geocode.service';
 import { LocalDataService } from '../../core/local-data.service';
@@ -64,6 +64,14 @@ const SCHOOL: HouseDto = {
 };
 
 const saveHouse = vi.fn((h: HouseDto) => of(h));
+/** The listing extract (kinds PR 7): answers the school's draft of kind-ai-vectors.json's first listing. */
+const extractListing = vi.fn((_text: string, _kind?: string) => of(LISTING_DRAFT));
+const LISTING_DRAFT: HouseDraft = {
+  label: 'Pine Hill School', address: 'GS Road, Dispur, Guwahati', street: 'GS Road', locality: 'Dispur', price: null,
+  priceType: null, bedrooms: null, areaSqft: null, contactName: 'Admissions office', contactPhone: '+91 361 223 4567',
+  listingUrl: null, notes: null, amenities: [], warnings: [],
+  extras: { board: 'CBSE', medium: 'REGIONAL', busService: true, fees: { amount: 96000, cadence: 'year' } },
+};
 
 async function open(house: HouseDto | null, lang: Lang, flag: boolean): Promise<{ fixture: ComponentFixture<HouseDetailPage>; host: HTMLElement }> {
   if (flag) localStorage.setItem(DEV_KINDS_KEY, 'school');
@@ -85,7 +93,7 @@ async function open(house: HouseDto | null, lang: Lang, flag: boolean): Promise<
         useValue: { snapshot: { paramMap: convertToParamMap(house ? { id: house.id } : {}), queryParamMap: convertToParamMap(house ? {} : { lat: '26.1433', lon: '91.7898' }) } },
       },
       { provide: GeocodeService, useValue: { reverse: () => of({}), search: () => of(null) } },
-      { provide: AiService, useValue: { enabled: signal(true), usesOwnKey: signal(false), ownHost: signal(''), extractListing: () => of() } },
+      { provide: AiService, useValue: { enabled: signal(true), usesOwnKey: signal(false), ownHost: signal(''), extractListing } },
     ],
   });
   await TestBed.inject(TranslationService).setLang(lang);
@@ -112,6 +120,7 @@ afterEach(() => {
   localStorage.clear();
   sessionStorage.clear();
   saveHouse.mockClear();
+  extractListing.mockClear();
 });
 
 describe('a school on the candidate page, with the developer flag on (school-form.golden.json)', () => {
@@ -152,7 +161,8 @@ describe('a school on the candidate page, with the developer flag on (school-for
     await settle(fixture);
     expect(text(host.querySelector('#house-title'))).toBe('New school');
     expect(host.querySelector('#house-price')).toBeNull();
-    expect(host.querySelector('app-house-listing-card')).toBeNull();
+    // Since kinds PR 7 (S4b-BL-211) the listing extract fills a school too.
+    expect(host.querySelector('app-house-listing-card')).not.toBeNull();
     const type = async (id: string, v: string, event = 'input') => {
       const el = host.querySelector<HTMLInputElement>(`#${id}`)!;
       el.value = v;
@@ -180,6 +190,43 @@ describe('a school on the candidate page, with the developer flag on (school-for
     await settle(fixture);
     expect([draft(fixture).kind ?? null, draft(fixture).priceType]).toEqual([null, 'RENT']);
     expect(host.querySelector('#house-price')).not.toBeNull();
+  });
+});
+
+describe('Fill in from listing text for a school (kinds PR 7, S4b-BL-211)', () => {
+  it('sends the school\'s kind, fills the empty extras, keeps a typed one and names it, and Undo fill puts it back', async () => {
+    const { fixture, host } = await open(null, 'en', true);
+    host.querySelector<HTMLInputElement>('#dev-kind-school')!.click();
+    await settle(fixture);
+    const board = host.querySelector<HTMLSelectElement>('#extra-board')!;
+    board.selectedIndex = [...board.options].findIndex((o) => o.textContent?.trim() === 'State board');
+    board.dispatchEvent(new Event('change'));
+    await settle(fixture);
+    const box = host.querySelector<HTMLTextAreaElement>('#listing-text')!;
+    box.value = 'Pine Hill School, GS Road, Dispur. CBSE. Bus. Fees 96,000 a year.';
+    box.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    host.querySelector<HTMLButtonElement>('#listing-fill-submit')!.click();
+    await settle(fixture);
+    expect(extractListing).toHaveBeenCalledWith('Pine Hill School, GS Road, Dispur. CBSE. Bus. Fees 96,000 a year.', 'school');
+    expect(draft(fixture).extrasOther).toEqual({ board: 'STATE', medium: 'REGIONAL', busService: true, fees: { amount: 96000, cadence: 'year' } });
+    expect([draft(fixture).label, draft(fixture).price ?? null, draft(fixture).priceType]).toEqual(['Pine Hill School', null, null]);
+    expect(text(host.querySelector('.listing-fill'))).toContain('Kept your Board; the listing says “CBSE”.');
+    expect(host.querySelector<HTMLSelectElement>('#extra-medium')!.selectedOptions[0].textContent?.trim()).toBe('State language');
+    host.querySelector<HTMLButtonElement>('.listing-undo')!.click();
+    await settle(fixture);
+    expect(draft(fixture).extrasOther).toEqual({ board: 'STATE' });
+  });
+
+  it('a house\'s fill sends the text alone, as before', async () => {
+    const { fixture, host } = await open(null, 'en', true);
+    const box = host.querySelector<HTMLTextAreaElement>('#listing-text')!;
+    box.value = '2BHK in Dispur';
+    box.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    host.querySelector<HTMLButtonElement>('#listing-fill-submit')!.click();
+    await settle(fixture);
+    expect(extractListing.mock.calls[0]).toEqual(['2BHK in Dispur']);
   });
 });
 

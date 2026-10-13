@@ -68,6 +68,8 @@ export interface HouseDraft {
   notes: string | null;
   amenities: string[];
   warnings: string[];
+  /** Kinds PR 7 (S4b-BL-211): a kind's typed extras the listing filled, in the wire's shape; never for a house. */
+  extras?: Record<string, unknown>;
 }
 
 export interface AskFilters {
@@ -319,11 +321,17 @@ export class AiService {
   }
 
   // The same three calls, answered by the server or in this browser (ADR-26): the pages do not know which.
-  extractListing(text: string): Observable<HouseDraft> {
+  /**
+   * `kind` (kinds PR 7, S4b-BL-211): only for a candidate of a built-in kind other than the house that the listing extract
+   * fills, while the developer flag is on; a house's request is the text alone, as before.
+   */
+  extractListing(text: string, kind?: string): Observable<HouseDraft> {
     const off = this.guard();
     if (off) return off;
-    if (this.usesOwnKey()) return defer(() => this.onDevice.extractListing(this.ownModel(), text));
-    return this.http.post<HouseDraft>('/api/ai/extract-listing', { text });
+    if (this.usesOwnKey()) {
+      return defer(() => (kind ? this.onDevice.extractListing(this.ownModel(), text, kind) : this.onDevice.extractListing(this.ownModel(), text)));
+    }
+    return this.http.post<HouseDraft>('/api/ai/extract-listing', kind ? { text, kind } : { text });
   }
 
   ask(question: string, filters?: AskFilters): Observable<AskResponse> {

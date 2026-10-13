@@ -53,7 +53,8 @@ export interface BuiltInKind {
 }
 
 export const HOUSE: BuiltInKind = { id: 'house', labels: HOUSE_LABELS, keys: HOUSE_KEYS, fields: HOUSE_FIELDS, extracts: true };
-const SCHOOL: BuiltInKind = { id: 'school', labels: SCHOOL_LABELS, keys: SCHOOL_KEYS, fields: SCHOOL_FIELDS, extracts: false };
+// The school's `ai.extract` is filled since kinds PR 7 (S4b-BL-211): its listing is read into its fields.
+const SCHOOL: BuiltInKind = { id: 'school', labels: SCHOOL_LABELS, keys: SCHOOL_KEYS, fields: SCHOOL_FIELDS, extracts: true };
 
 /** The kinds a new candidate may be: the house, and the school while the flag is on. */
 export function creatableKinds(on: boolean): readonly BuiltInKind[] {

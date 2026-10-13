@@ -276,6 +276,9 @@ export interface AiHouse {
   floor?: number | null;
   checklist?: Record<string, number>;
   visits?: AiVisit[];
+  /** Kinds PR 7 (S4b-BL-211): the candidate's kind and its other extras, read only by `kind-ai.ts`, never by {@link houseText}. */
+  kind?: string | null;
+  extras?: Readonly<Record<string, unknown>> | null;
 }
 
 /** The cost lines a house document carries (slice 1a): all but `myOffer`, a negotiation being the person's own. */
@@ -472,7 +475,7 @@ export function km1(meters: number): string {
  * at most 5 lines, newest first (then id), `Area note: <text>` through the contact redactor, whitespace and line breaks
  * collapsed to single spaces so a note can never start a line of its own.
  */
-function areaNoteLines(notes: AiAreaNote[] | null | undefined, r: Redactor): string[] {
+export function areaNoteLines(notes: AiAreaNote[] | null | undefined, r: Redactor): string[] {
   if (!notes?.length) return [];
   const sorted = [...notes].sort((a, b) => b.updatedAt - a.updatedAt || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   return sorted
@@ -486,7 +489,7 @@ function areaNoteLines(notes: AiAreaNote[] | null | undefined, r: Redactor): str
  * The distances from a house to my places (slice 4a): at most 10 lines, nearest first (then name),
  * `Distance to <place name>: <km> km` with the name through the redactor; never the coordinates.
  */
-function distanceLines(distances: AiDistance[] | null | undefined, r: Redactor): string[] {
+export function distanceLines(distances: AiDistance[] | null | undefined, r: Redactor): string[] {
   if (!distances?.length) return [];
   const sorted = [...distances].sort((a, b) => a.meters - b.meters || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
   return sorted.slice(0, DISTANCE_LINES_MAX).map((d) => {
@@ -544,7 +547,7 @@ const PRICE_MAX = 1_000_000_000_000;
 const PRICE = /(\d+(?:\.\d+)?)\s*(k|thousand|l|lac|lakh|lakhs|lacs|cr|crore|crores|m|mn|million)?\b/i;
 const HTTP_URL = /^https?:\/\/[^\s/?#]+(?:[/?#]\S*)?$/i;
 
-function abbreviate(s: string): string {
+export function abbreviate(s: string): string {
   const t = s.replace(/\s+/gu, ' ').trim();
   return t.length <= 40 ? t : t.slice(0, 40) + '…';
 }
@@ -578,11 +581,11 @@ function priceType(value: string | null | undefined, warnings: string[]): 'RENT'
  * Reads an amount as written ("25,000", "1.2 Cr", "85 lakh") into rupees with exact integer arithmetic, so the result
  * equals the server's BigDecimal one. Unreadable or out-of-range amounts become null with a warning.
  */
-function price(value: string | null | undefined, warnings: string[]): number | null {
+export function price(value: string | null | undefined, warnings: string[], field = 'price'): number | null {
   if (!value || !value.trim()) return null;
   const m = PRICE.exec(value.replace(/,/g, '').replace(/_/g, ''));
   if (!m) {
-    warnings.push(`price: could not read '${abbreviate(value)}', dropped`);
+    warnings.push(`${field}: could not read '${abbreviate(value)}', dropped`);
     return null;
   }
   const unit = (m[2] ?? '').toLowerCase();
@@ -593,7 +596,7 @@ function price(value: string | null | undefined, warnings: string[]): number | n
   const [whole, fraction = ''] = m[1].split('.');
   const w = whole.replace(/^0+/, '') || '0';
   if (w.length > 15) {
-    warnings.push(`price: ${m[1]} is out of range, dropped`);
+    warnings.push(`${field}: ${m[1]} is out of range, dropped`);
     return null;
   }
   // BigInt, so the fraction is truncated exactly as the server's BigDecimal does.
@@ -603,7 +606,7 @@ function price(value: string | null | undefined, warnings: string[]): number | n
     rupees += (BigInt(f) * BigInt(multiplier)) / 10n ** BigInt(f.length);
   }
   if (rupees < 0n || rupees > BigInt(PRICE_MAX)) {
-    warnings.push(`price: ${rupees} is out of range, dropped`);
+    warnings.push(`${field}: ${rupees} is out of range, dropped`);
     return null;
   }
   return Number(rupees);
@@ -630,7 +633,7 @@ function bedrooms(value: string | null | undefined, warnings: string[]): number 
  * Keeps a phone number only if it has 7 to 15 digits and its last ten digits occur in the listing text: a number the
  * model made up is dropped with a warning.
  */
-function phone(value: string | null | undefined, source: string, warnings: string[]): string | null {
+export function phone(value: string | null | undefined, source: string, warnings: string[]): string | null {
   if (!value || !value.trim()) return null;
   const kept = value.replace(/[^0-9+()\- ]/g, '').trim();
   const digits = kept.replace(/\D/g, '');
@@ -649,7 +652,7 @@ function phone(value: string | null | undefined, source: string, warnings: strin
  * Keeps a link only if it is http(s), at most 1000 characters and written in the listing text itself, so the model
  * cannot invent a link.
  */
-function url(value: string | null | undefined, source: string, warnings: string[]): string | null {
+export function url(value: string | null | undefined, source: string, warnings: string[]): string | null {
   if (!value || !value.trim()) return null;
   const v = value.trim();
   if (!HTTP_URL.test(v)) {
@@ -936,7 +939,7 @@ export interface AskFilterValues {
  * Picks the houses the model may see for a question: the ones that pass the filters and, if more than
  * {@link MAX_HOUSES} remain, the ones whose text shares most words with the question (stable on ties).
  */
-export function selectForAsk(houses: AiHouse[], question: string, f?: AskFilterValues): AskDocument[] {
+export function selectForAsk(houses: AiHouse[], question: string, f?: AskFilterValues, text = houseText): AskDocument[] {
   const kept = houses.filter((h) =>
     (!f?.status || h.status === f.status) && (!f?.priceType || h.priceType === f.priceType) &&
     (f?.maxPrice == null || (h.price != null && h.price <= f.maxPrice)) &&
@@ -945,10 +948,10 @@ export function selectForAsk(houses: AiHouse[], question: string, f?: AskFilterV
   let chosen = kept;
   if (kept.length > MAX_HOUSES) {
     const q = words(question);
-    chosen = kept.map((h, index) => ({ h, index, score: [...words(houseText(h))].filter((w) => q.has(w)).length }))
+    chosen = kept.map((h, index) => ({ h, index, score: [...words(text(h))].filter((w) => q.has(w)).length }))
       .sort((a, b) => b.score - a.score || a.index - b.index).slice(0, MAX_HOUSES).map((x) => x.h);
   }
-  return chosen.map((h) => ({ id: h.id, text: houseText(h), label: houseLabel(h) }));
+  return chosen.map((h) => ({ id: h.id, text: text(h), label: houseLabel(h) }));
 }
 
 /**
