@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.171 |
+| Version | 0.172 |
 | Date | 2026-10-13 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..183); this file lists the lead-level items and points to the rest. |
@@ -179,6 +179,7 @@
 | 0.169 | 2026-10-13 | Claude (Code), engineer | **§11.2: kinds step 4, the phone** (S4b-BL-206, `feat/kinds-4-android`): Room version 12 (every house a candidate, migrated in place), `/api/candidates` and `candidateId` in `ApiClient`, the Drive `sync/1` file in both shapes on both stacks. Left of the reset: S4b-BL-246 (the website's sync writer), S4b-BL-247 (the viewing payload's `houseId`, three stacks), S4b-BL-248 (the phone's backup of an unknown extra), the guide and the CHANGELOG release entry. |
 | 0.170 | 2026-10-13 | Claude (Code), engineer | **§11.1**: the Map page's short-screen layout and first-load shift (S4b-BL-49) are fixed on `fix/map-short-screen-layout`, in review; the owner's look on a real phone is outstanding. |
 | 0.171 | 2026-10-13 | Claude (Code), engineer | S4b-BL-49 closed: the owner accepted the Map page layout on a phone (#289, #290). |
+| 0.172 | 2026-10-13 | Claude (Code), engineer | **§11.2: S4b-BL-246 and -248 In review** (`feat/kinds-4b-sync-and-extras`): the website writes its Drive sync file in the candidate shape, and a backup made on the phone or the server keeps a newer app's extras. Left of the reset: S4b-BL-247 (the viewing payload's `houseId`), the guide and the CHANGELOG release entry. |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 
@@ -1000,7 +1001,7 @@ Written so a new session can continue without this one's memory. Backlog ids and
 
 ### 11.2 Open
 
-- **Update of 2026-10-13: the format reset (S4b-BL-206).** Merged: the server (#281), the website's store (#284), the backup format (#285). Built on `feat/kinds-4-android`: the phone (Room version 12, every house migrated in place as a candidate; `/api/candidates` and `candidateId`; the Drive `sync/1` file read in both shapes on both stacks). Left of the reset: S4b-BL-246, -247 (the viewing payload's `houseId`, three stacks), -248, the guide and the CHANGELOG release entry. The item on #264 below is history.
+- **Update of 2026-10-13: the format reset (S4b-BL-206).** Merged: the server (#281), the website's store (#284), the backup format (#285). Built on `feat/kinds-4-android`: the phone (Room version 12, every house migrated in place as a candidate; `/api/candidates` and `candidateId`; the Drive `sync/1` file read in both shapes on both stacks). Left of the reset: S4b-BL-247 (the viewing payload's `houseId`, three stacks), the guide and the CHANGELOG release entry; S4b-BL-246 and -248 are In review (`feat/kinds-4b-sync-and-extras`). The item on #264 below is history.
 - **#264, kinds step 2 (the one-time format reset)** is NOT done: only the shared schema files in `docs/schemas` were moved to the new shape. The half-built server part (`Money`, `CandidateExtras`, the Flyway squash start) was reverted to keep the branch compiling and is saved as a patch on the remote branch `wip/kinds-pr2-backend-patch` (`wip/kinds-pr2-backend.patch`). The web, Android and iPhone parts were never started. Known contradiction with ADR-36 door 7: a house's money must allow a cadence with no amount. Redo from the ADR, in stacked pull requests (server and schemas, web, Android and iPhone-common).
 - **Kinds steps 3-9** (labels, renderer, hidden `schools` kind, search and copies, kind-aware AI, Settings and guide, security gate) and **voice steps 3-7** (spoken-style cases, web, Android, iPhone, Sarvam and clip suite): unstarted. The voice screens come after kinds step 5.
 - **Dependabot** #209, #210, #211.

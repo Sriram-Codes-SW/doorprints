@@ -30,7 +30,7 @@ import { withRef } from './drive-photo-seams';
 import type { SkippedPhoto } from './drive-photo-seams';
 import { DriveSyncNotYet } from './drive-sync-seams';
 import type { LocalRows, SyncPassResult } from './drive-sync-seams';
-import { syncRow, syncRowAsBefore, syncTime } from './sync-file';
+import { syncJsonOf, syncRow, syncRowAsBefore, syncTime } from './sync-file';
 import type { SyncKind, SyncRow } from './sync-file';
 
 /**
@@ -189,10 +189,13 @@ export class DriveSyncBackend implements SyncBackend {
   }
 }
 
-/** Builds the {@link SyncRow} the platform's `LocalRows` returns from a sync DTO of its stores (Kotlin `SyncRows`). */
+/**
+ * Builds the {@link SyncRow} the platform's `LocalRows` returns from a sync DTO of its stores (Kotlin `SyncRows`), in
+ * the candidate shape ({@link syncJsonOf}: a house as its candidate, a visit's or photo's house as `candidateId`).
+ */
 export function syncRowOf(kind: SyncKind, dto: object, by: string): SyncRow {
   const json: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(dto)) if (k !== 'syncVersion' && v !== null && v !== undefined) json[k] = v;
   json['by'] = by;
-  return syncRow(kind, json);
+  return syncRow(kind, syncJsonOf(kind, json));
 }

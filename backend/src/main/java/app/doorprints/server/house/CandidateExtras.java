@@ -38,6 +38,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.stream.Stream;
 
 /**
@@ -122,6 +123,14 @@ public final class CandidateExtras {
             e.myOffer = money(cost.myOffer(), follows);
             e.agreedPrice = money(cost.agreedPrice(), follows);
         }
+        return e;
+    }
+
+    /** {@link #of} with the extras a newer app wrote that a file carried, kept by {@link #keptOther} (S4b-BL-248). */
+    public static CandidateExtras of(Integer bedrooms, Integer areaSqft, Integer floor, HouseCost cost, String offerCadence,
+            Map<String, JsonNode> other) {
+        var e = of(bedrooms, areaSqft, floor, cost, offerCadence);
+        keptOther(other).forEach(e::put);
         return e;
     }
 
@@ -253,6 +262,22 @@ public final class CandidateExtras {
                     && Money.CADENCES.contains(cadence.asString());
         }
         return false;
+    }
+
+    /**
+     * The extras this server does not know, as kept from a file (S4b-BL-248; the website's {@code cleanOtherExtras},
+     * Kotlin's {@code Candidates.cleanOtherExtras}): a field id that is not one of the house kind's, with a value of an
+     * extras type ({@link #isExtraValue}); at most {@value #MAX_OTHER}, the first by id. Empty for none.
+     */
+    public static Map<String, JsonNode> keptOther(Map<String, JsonNode> raw) {
+        var out = new TreeMap<String, JsonNode>();
+        if (raw == null) return out;
+        for (var id : new TreeSet<>(raw.keySet())) {
+            if (out.size() >= MAX_OTHER) break;
+            var value = raw.get(id);
+            if (ID.matcher(id).matches() && !KNOWN.contains(id) && isExtraValue(value)) out.put(id, value);
+        }
+        return out;
     }
 
     /** The entity's text: compact JSON with the set extras in the kind file's order, or {@code null} for none. */

@@ -50,6 +50,25 @@ describe('LocalRowsAdapter', () => {
     expect(visitRow?.stamp.by).toBe(deviceId);
   });
 
+  it('all() writes a house as its candidate and a visit\'s house as candidateId, nothing local or empty (S4b-BL-246)', async () => {
+    const house: HouseDto = {
+      id: 'h1', label: 'Shimla cottage', lat: 31.1, lon: 77.17, status: 'NEW', price: 21000, priceType: 'RENT', bedrooms: 1,
+      cost: { deposit: 42000 }, checklist: {}, deleted: false, syncVersion: 1,
+    };
+    await store.putHouseFromServer(house);
+    await store.putVisitFromServer({ id: 'v1', houseId: 'h1', lat: 31.1, lon: 77.17, arrivedAt: '2026-10-02T14:30:00Z', source: 'MANUAL', deleted: false, syncVersion: 1 });
+    const rows = await adapter.all();
+    const json = rows.find((r) => r.kind === 'houses')!.json;
+    expect(json['kind']).toBe('house');
+    expect(json['money']).toEqual({ amount: 21000, cadence: 'month' });
+    expect(json['extras']).toEqual({ bedrooms: 1, deposit: { amount: 42000, cadence: 'once' } });
+    for (const key of ['price', 'priceType', 'bedrooms', 'cost', 'dirty', 'syncVersion']) expect(key in json, key).toBe(false);
+    expect(Object.values(json).includes(null)).toBe(false);
+    expect(json['by']).toBe(deviceId);
+    const visit = rows.find((r) => r.kind === 'visits')!.json;
+    expect([visit['candidateId'], 'houseId' in visit]).toEqual(['h1', false]);
+  });
+
   it('different device ids produce different by values', async () => {
     const adapter2 = new LocalRowsAdapter(store, 'device-456def');
     const house: HouseDto = { id: 'h1', label: 'Test', lat: 13, lon: 80, status: 'NEW', checklist: {}, deleted: false, syncVersion: 1 };

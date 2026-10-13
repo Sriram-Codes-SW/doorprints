@@ -18,6 +18,13 @@
 
 package app.doorprints.shared.sync
 
+import app.doorprints.data.toEntity
+import app.doorprints.shared.api.HouseDto
+import app.doorprints.shared.api.PhotoChangeDto
+import app.doorprints.shared.api.VisitDto
+import app.doorprints.shared.export.BackupWire
+import app.doorprints.shared.model.HouseCost
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
@@ -30,7 +37,9 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
 import kotlinx.serialization.json.longOrNull
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
 import java.io.File
@@ -140,6 +149,45 @@ class SyncVectorsTest {
                 assertEquals(c.name(), keys.jsonArray.map { it.jsonPrimitive.content }, parsed.rows(k).map { it.key })
             }
         }
+    }
+
+    /**
+     * S4b-BL-246: a file the website writes (the cases with `from`, the rows it was made of in the shape before) is read
+     * here as those rows: each candidate as the house its row of before reads as, each visit's and photo's
+     * `candidateId` as its house. The website writes the same file byte for byte from `from` (`sync-vectors.spec.ts`).
+     */
+    @Test
+    fun aFileTheWebsiteWritesReadsAsTheRowsItWasMadeOf() {
+        val dto = Json { ignoreUnknownKeys = true }
+        fun <T> read(serializer: KSerializer<T>, json: JsonObject): T = dto.decodeFromJsonElement(serializer, json)
+        val written = cases("files").filter { "from" in it }
+        assertTrue(written.isNotEmpty())
+        for (c in written) {
+            val file = SyncFiles.parse(c.getValue("file").toString(), c.getValue("expectedDeviceId").jsonPrimitive.content)
+            val from = c.getValue("from").jsonObject
+            fun rows(kind: SyncKind) = from.getValue(kind.key).jsonArray.map { it.jsonObject }
+            for ((row, before) in file.rows(SyncKind.HOUSES).zip(rows(SyncKind.HOUSES), ::Pair)) {
+                assertTrue(c.name(), "kind" in row.json)
+                assertEquals(c.name(), read(HouseDto.serializer(), BackupWire.candidateOfHouse(before)), read(HouseDto.serializer(), row.json))
+            }
+            for ((row, before) in file.rows(SyncKind.VISITS).zip(rows(SyncKind.VISITS), ::Pair)) {
+                assertFalse(c.name(), "houseId" in row.json)
+                assertEquals(c.name(), read(VisitDto.serializer(), before), read(VisitDto.serializer(), row.json))
+            }
+            for ((row, before) in file.rows(SyncKind.PHOTOS).zip(rows(SyncKind.PHOTOS), ::Pair)) {
+                assertFalse(c.name(), "houseId" in row.json)
+                assertEquals(c.name(), read(PhotoChangeDto.serializer(), before), read(PhotoChangeDto.serializer(), row.json))
+            }
+        }
+        // The first written case, as the phone keeps it: a sale with its cost and a newer app's extras, a price without a type.
+        val houses = SyncFiles.parse(written.first().getValue("file").toString(), "device-a01").rows(SyncKind.HOUSES)
+        val salt = read(HouseDto.serializer(), houses[0].json).toEntity()
+        assertEquals(listOf<Any?>(9_500_000L, "SALE", 3, 1450, 4), listOf(salt.price, salt.priceType, salt.bedrooms, salt.areaSqft, salt.floor))
+        assertEquals(HouseCost(deposit = 50_000, maintenance = 3_500, myOffer = 9_000_000), salt.cost)
+        assertEquals(setOf("gateName", "liftCount"), salt.extrasOther?.keys)
+        val typeless = read(HouseDto.serializer(), houses[1].json).toEntity()
+        assertEquals(18_000L, typeless.price)
+        assertNull(typeless.priceType)
     }
 
     /** A device holding the case's `local` rows (stamps only: the merge reads nothing else). */

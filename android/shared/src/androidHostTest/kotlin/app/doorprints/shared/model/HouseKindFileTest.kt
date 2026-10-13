@@ -136,7 +136,8 @@ class HouseKindFileTest {
             HouseCost.serializer().descriptor.elementNames.map { "cost.$it" },
             kind.list("extras").filter { it.str("section") == "cost" }.map { it.str("was") },
         )
-        val nested = setOf("id", "cost", "rooms", "answers", "moveIn", "checklist", "createdAt", "updatedAt")
+        // `extrasOther` (S4b-BL-248) holds the extras the kind file does not name (a newer app's), by definition.
+        val nested = setOf("id", "cost", "rooms", "answers", "moveIn", "checklist", "createdAt", "updatedAt", "extrasOther")
         assertEquals(
             ExportHouse.serializer().descriptor.elementNames.filterNot { it in nested }.sorted(),
             was.filterNot { it.startsWith("cost.") }.sorted(),

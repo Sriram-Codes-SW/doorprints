@@ -37,6 +37,30 @@ class CandidateExtrasTest {
         return CandidateExtras.parse(json);
     }
 
+    /**
+     * S4b-BL-248: what an import keeps of a newer app's extras (the website's {@code cleanOtherExtras}): a field id that
+     * is not a house extra, a value of an extras type, at most 30, the first by id.
+     */
+    @Test
+    void anImportKeepsTheUnknownExtrasByTheRulesAndAtMostThirty() {
+        var json = tools.jackson.databind.json.JsonMapper.builder().build();
+        var raw = new java.util.LinkedHashMap<String, tools.jackson.databind.JsonNode>();
+        raw.put("zLast", json.readTree("\"a\""));
+        raw.put("bedrooms", json.readTree("2"));
+        raw.put("Bad", json.readTree("1"));
+        raw.put("aList", json.readTree("[1]"));
+        raw.put("longText", json.readTree("\"" + "a".repeat(2001) + "\""));
+        raw.put("yearlyFee", json.readTree("{\"amount\":12000,\"cadence\":\"year\"}"));
+        raw.put("hasLift", json.readTree("true"));
+        assertThat(CandidateExtras.keptOther(raw).keySet()).containsExactly("hasLift", "yearlyFee", "zLast");
+        assertThat(CandidateExtras.keptOther(null)).isEmpty();
+        var many = new java.util.HashMap<String, tools.jackson.databind.JsonNode>();
+        for (int i = 0; i < 31; i++) many.put("x" + (char) ('a' + i / 26) + (char) ('a' + i % 26), json.readTree(String.valueOf(i)));
+        var kept = CandidateExtras.keptOther(many);
+        assertThat(kept).hasSize(30);
+        assertThat(kept).doesNotContainKey("xbe");
+    }
+
     @Test
     void noExtrasAreWrittenAbsentAndAnEmptyObjectReadsAsNone() {
         assertThat(CandidateExtras.write(null)).isNull();

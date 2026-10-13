@@ -38,6 +38,7 @@ import app.doorprints.shared.model.Area
 import app.doorprints.shared.model.AreaNote
 import app.doorprints.shared.model.AreaNotes
 import app.doorprints.shared.model.Distances
+import kotlinx.serialization.json.JsonObject
 import app.doorprints.shared.model.HousePoint
 import app.doorprints.shared.model.Place
 import app.doorprints.shared.model.PlaceDistance
@@ -129,6 +130,13 @@ data class ExportHouse(
     val checklist: Map<String, Int> = emptyMap(),
     val createdAt: Long,
     val updatedAt: Long,
+    /**
+     * The extras a newer app wrote that this one does not know (S4b-BL-248; `HouseEntity.extrasOther`), kept so a
+     * backup made here holds them: never a key of a file of the family before ([BackupWire] reads them out of a
+     * candidate's `extras` and writes them back there, after the known ones, by id); cleaned on import by the rules of
+     * `Candidates.cleanOtherExtras` (a field id, a value of an extras type, text of at most 2,000 characters, at most 30).
+     */
+    val extrasOther: JsonObject? = null,
 ) {
     /** The score under [scoring], exactly the one the app screens show ([HouseScore.evaluate]); see [ExportBundle.scoreOf]. */
     fun scoreResult(scoring: Scoring): ScoreResult = HouseScore.evaluate(checklist, rating, scoring)

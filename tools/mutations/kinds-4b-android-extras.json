@@ -1,0 +1,30 @@
+{
+  "spec": "ImportVectorsTest, BackupFieldsTest",
+  "gradle": [
+    ":shared:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.shared.export.ImportVectorsTest",
+    "--tests",
+    "app.doorprints.shared.export.BackupFieldsTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/export/BackupWire.kt",
+      "find": "        if (other.isNotEmpty()) out[\"extrasOther\"] = JsonObject(other)\n",
+      "replace": "",
+      "expect": "aNewerAppsExtrasAreKeptThroughTheStoreAndWrittenBack"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/ExportMappers.kt",
+      "find": "updatedAt = updatedAt, extrasOther = extrasOther,",
+      "replace": "updatedAt = updatedAt,",
+      "expect": "aNewerAppsExtrasAreKeptThroughTheStoreAndWrittenBack"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/ExportMappers.kt",
+      "find": "    extrasOther = Candidates.cleanOtherExtras(extrasOther),",
+      "replace": "    extrasOther = null,",
+      "expect": "aNewerAppsExtrasAreKeptThroughTheStoreAndWrittenBack"
+    }
+  ]
+}
