@@ -94,14 +94,19 @@ class RecordApiTest {
     void findLiveViewingsOfHouseSelectsInTheDatabaseByTheHouseIdInThePayload() {
         var mine = UUID.randomUUID();
         var other = UUID.randomUUID();
-        put("viewing", "v_a", "{\"houseId\":\"" + mine + "\",\"startsAt\":1790501400000}", null, false);
-        put("viewing", "v_b", "{\"houseId\":\"" + other + "\",\"startsAt\":1790501400000}", null, false);
+        put("viewing", "v_a", "{\"candidateId\":\"" + mine + "\",\"startsAt\":1790501400000}", null, false);
+        put("viewing", "v_b", "{\"candidateId\":\"" + other + "\",\"startsAt\":1790501400000}", null, false);
+        // S4b-BL-247: a payload stored before names the house houseId; the query reads both keys, no row is migrated.
         put("viewing", "v_c", "{\"houseId\":\"" + mine + "\",\"startsAt\":1790501500000}", null, false);
-        put("viewing", "v_d", "{\"houseId\":\"" + mine + "\",\"startsAt\":1790501600000}", null, true);
-        put("note", "x_1", "{\"houseId\":\"" + mine + "\"}", null, false);
+        put("viewing", "v_d", "{\"candidateId\":\"" + mine + "\",\"startsAt\":1790501600000}", null, true);
+        put("viewing", "v_e", "{\"houseId\":\"" + other + "\",\"startsAt\":1790501700000}", null, false);
+        put("note", "x_1", "{\"candidateId\":\"" + mine + "\"}", null, false);
+        put("note", "x_2", "{\"houseId\":\"" + mine + "\"}", null, false);
 
         assertThat(repo.findLiveViewingsOfHouse(mine.toString())).extracting(r -> r.getKey().id())
                 .containsExactlyInAnyOrder("v_a", "v_c");
+        assertThat(repo.findLiveViewingsOfHouse(other.toString())).extracting(r -> r.getKey().id())
+                .containsExactlyInAnyOrder("v_b", "v_e");
         assertThat(repo.findLiveViewingsOfHouse(UUID.randomUUID().toString())).isEmpty();
     }
 
@@ -131,9 +136,9 @@ class RecordApiTest {
         var b = UUID.randomUUID();
         CHANGED.clear();
         put("viewing", "v_00000001", "{\"houseId\":\"" + a + "\",\"startsAt\":1}", null, false);
-        assertThat(CHANGED).containsExactly(a);
+        assertThat(CHANGED).as("a payload of the key before S4b-BL-247").containsExactly(a);
         CHANGED.clear();
-        put("viewing", "v_00000001", "{\"houseId\":\"" + b + "\",\"startsAt\":1}", null, false);
+        put("viewing", "v_00000001", "{\"candidateId\":\"" + b + "\",\"startsAt\":1}", null, false);
         assertThat(CHANGED).as("moved to another house: both documents change").containsExactly(a, b);
         CHANGED.clear();
         api.delete().uri("/api/records/viewing/v_00000001").retrieve().toBodilessEntity();
@@ -142,7 +147,8 @@ class RecordApiTest {
         // Other record types, and a viewing whose house is not an id, publish nothing.
         put("broker", "b1", "{\"name\":\"Ravi\"}", null, false);
         put("viewing", "v_00000002", "{\"houseId\":\"not-a-uuid\"}", null, false);
-        assertThat(CHANGED).isEmpty();
+        put("viewing", "v_00000003", "{\"candidateId\":\"" + a + "\",\"houseId\":\"" + a + "\",\"startsAt\":1}", null, false);
+        assertThat(CHANGED).as("not an id, or both keys (a bad row)").isEmpty();
     }
 
     @Test

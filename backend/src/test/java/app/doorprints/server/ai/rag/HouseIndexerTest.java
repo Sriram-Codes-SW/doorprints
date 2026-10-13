@@ -212,7 +212,8 @@ class HouseIndexerTest {
             when(repo.findLiveViewingsOfHouse(anyString())).thenAnswer(inv -> {
                 String houseId = inv.getArgument(0);
                 var out = rows.stream().filter(r -> r.getKey().type().equals("viewing")
-                        && r.getPayload().contains("\"houseId\":\"" + houseId + "\"")).toList();
+                        && (r.getPayload().contains("\"candidateId\":\"" + houseId + "\"")
+                        || r.getPayload().contains("\"houseId\":\"" + houseId + "\""))).toList();
                 count("viewing-of-house", out.size());
                 return out;
             });
@@ -234,7 +235,7 @@ class HouseIndexerTest {
         }
 
         void viewing(String id, UUID house, String notes) {
-            add("viewing", id, "{\"houseId\":\"" + house + "\",\"startsAt\":1790501400000,\"kind\":\"SECOND\","
+            add("viewing", id, "{\"candidateId\":\"" + house + "\",\"startsAt\":1790501400000,\"kind\":\"SECOND\","
                     + "\"status\":\"PLANNED\",\"notes\":\"" + notes + "\"}");
         }
     }

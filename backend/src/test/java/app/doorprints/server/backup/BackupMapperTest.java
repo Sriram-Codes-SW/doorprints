@@ -448,7 +448,7 @@ class BackupMapperTest {
     void viewingsAreOrderedByUpdatedAtThenIdAndOptionalKeysOnlyWhenSet() {
         var early = EXPORTED_AT.minusSeconds(60);
         var data = withViewings(
-                viewing("v_b", "{\"houseId\":\"h1\",\"startsAt\":2000,\"durationMin\":45,\"kind\":\"SECOND\","
+                viewing("v_b", "{\"candidateId\":\"h1\",\"startsAt\":2000,\"durationMin\":45,\"kind\":\"SECOND\","
                         + "\"status\":\"DONE\",\"remindMin\":30,\"huntReminder\":true,\"withWhom\":\"Ravi\","
                         + "\"notes\":\"Tape\",\"visitId\":\"vis\"}", EXPORTED_AT, false),
                 viewing("v_a", "{\"houseId\":\"h1\",\"startsAt\":1000,\"durationMin\":30,\"kind\":\"FIRST\","

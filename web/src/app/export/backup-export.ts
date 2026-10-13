@@ -449,9 +449,13 @@ function backupAreaNote(row: AreaNoteRow): BackupAreaNote {
   return { id: row.id, ...(areaNoteToPayload(row.note) as Omit<BackupAreaNote, 'id' | 'updatedAt'>), updatedAt: millisOf(row.updatedAt) };
 }
 
-/** `id`, then the set payload keys in the contract's order (`viewingToPayload`), then `updatedAt`. */
+/**
+ * `id`, then the set payload keys in the contract's order (`viewingToPayload`), then `updatedAt`. The row is of the
+ * family before, so the payload's `candidateId` is its `houseId` here (`backup-family.ts` writes it as `candidateId`).
+ */
 function backupViewing(row: ViewingRow): BackupViewing {
-  return { id: row.id, ...(viewingToPayload(row.viewing) as Omit<BackupViewing, 'id' | 'updatedAt'>), updatedAt: millisOf(row.updatedAt) };
+  const { candidateId, ...rest } = viewingToPayload(row.viewing);
+  return { id: row.id, houseId: candidateId as string, ...(rest as Omit<BackupViewing, 'id' | 'houseId' | 'updatedAt'>), updatedAt: millisOf(row.updatedAt) };
 }
 
 /** `id`, then the payload keys in the contract's order (`questionToPayload`), then `updatedAt`. */

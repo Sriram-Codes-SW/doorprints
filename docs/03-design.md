@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.116 |
+| Version | 0.117 |
 | Date | 2026-10-13 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -127,6 +127,7 @@
 | 0.114 | 2026-10-13 | Claude (Code), engineer | FR-24's *Small phones* note follows S4b-BL-49: the phone map's actions are a row under the map, sized in CSS (no `--map-stack-h`). |
 | 0.115 | 2026-10-13 | Claude (Code), engineer | **The website writes its Drive sync file in the candidate shape, and a phone backup keeps a newer app's extras** (S4b-BL-246, S4b-BL-248; `feat/kinds-4b-sync-and-extras`; [10](10-sprint-log.md) v0.279, [06](06-test-plan.md) v0.222 TC-U-206, [schemas README](schemas/README.md) v1.35): §18.5's kinds step 4 finding brought up to date: the website's `sync/1` writer writes `candidates` and `candidateId` as the phone does (a row taken from another device's file keeps its shape on both stacks), and the phone's and the server's backups keep an unknown extra (`ExportHouse.extrasOther`, `BackupHouse.extrasOther`, read out of a candidate's `extras` and written back there after the known ones). |
 | 0.116 | 2026-10-13 | Claude (Code), engineer | §13.1: **the AI services refuse while AI is off** (S4b-BL-251, [10](10-sprint-log.md) v0.281, [06](06-test-plan.md) TC-U-207). `AiService` (web) and `AiStore` (phones) check the one source of truth for "AI is on" (`offReason()`, `off`) before they send anything, so a caller that forgets the screens' check cannot send a listing or a question out; the setup tests (*Test key*, *Test*) are not guarded. |
+| 0.117 | 2026-10-13 | Claude (Code), engineer | §18.4 door 2 and §18.5: **the viewing payload says `candidateId`** (S4b-BL-247; `feat/kinds-4c-viewing-candidate-id`; [10](10-sprint-log.md) v0.283, [06](06-test-plan.md) TC-U-208, [schemas README](schemas/README.md) v1.37 §6.6). Every writer writes a viewing record's candidate as `candidateId`; every reader reads `houseId` too (a payload stored on a device, in a Drive file or on a server before), so nothing becomes invisible; a payload with both keys is a bad row. The server reads both keys in its one query (`coalesce`) instead of a Flyway migration, so no stored row is rewritten. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -2064,7 +2065,7 @@ new format id and a reader for the old one kept for ever. The second pass (§18.
 | # | Door | Choice | Alternatives | Why | Reversal cost after a release |
 |---|---|---|---|---|---|
 | 1 | **Backup format id** | **Decision (owner-approved 2026-10-10):** restart at `doorprints-backup/1` (N21). The new family has `candidates`; a file of the old family (it has `houses`) was to be refused with "made by an older Doorprints, export it again", never half-read. **Final text (kinds step 3, 2026-10-12, S4b-BL-206; owner confirmed, [14](14-lead-backlog-and-handoff.md) §11.4 item 7): old-family backups are read, not refused: a file of the old family is read whole, as it always was, and its houses become candidates; one with both lists is refused** | `doorprints-backup/4` (continue the numbering, no reused id); a new family name `doorprints-data/1` | No backup outside the owner's test devices exists; one number line from 1 is the simplest story for the guide and the threat model. The reused id is the trade-off: an old `/1` file on a test device is refused by shape, not by id | A new id and a second reader for ever |
-| 2 | **Wire and backup JSON names** | `candidates` (the backup list, the sync file list, `/api/candidates`); **Decision (owner-approved 2026-10-10):** `houseId` becomes `candidateId` on visits, photos and viewings in the same reset; `data.json` keeps its name | Keep `houseId` (fewer edits now; a school's visits say "house" on the wire for ever); `items`, `places` (`places` is already the saved places) | Public surfaces are renamed once, in the reset, or never; `candidate` is the word for one thing being compared, whatever it is | A format bump and a rename on three stacks |
+| 2 | **Wire and backup JSON names** | `candidates` (the backup list, the sync file list, `/api/candidates`); **Decision (owner-approved 2026-10-10):** `houseId` becomes `candidateId` on visits, photos and viewings in the same reset; `data.json` keeps its name. **Done on the wire, in backups and in the Drive sync file by kinds step 4 (S4b-BL-206), and in the viewing record's payload by S4b-BL-247 (2026-10-13): written as `candidateId`, `houseId` still read, both keys a bad row (§18.5)** | Keep `houseId` (fewer edits now; a school's visits say "house" on the wire for ever); `items`, `places` (`places` is already the saved places) | Public surfaces are renamed once, in the reset, or never; `candidate` is the word for one thing being compared, whatever it is | A format bump and a rename on three stacks |
 | 3 | **The candidate's new fields** | `kind` (the kind id, required, `^[a-z][a-z0-9_]{1,31}$`); `money` (`{ "amount": ..., "cadence": ... }`, absent when unknown); `extras` (an object keyed by extra id, absent when empty, never `{}`) | `type`, `category`; `fields`, `attributes`, `custom`; keeping `price` and `priceType` | `kind` reads plainly in the four languages' docs. A viewing already has a `kind` (FIRST or SECOND): a different object, so no clash on the wire, but writers must not confuse the two | Format bump |
 | 4 | **The kind schema and its `version`** | `format: "doorprints-kind/1"` names the file format; `version` (integer 1..1000) is the kind's own revision, raised when a field's type, unit or cadence changes, never for a label key. A reader refuses an unknown format and reads a lower or equal `version` | A semver string; one number for both; no version | Two questions, two numbers: "can I parse this file?" and "is this the house I know?". Built-in kinds ship inside the build, so today they always match | Cheap while kinds are built in; costly once packs are imported |
 | 5 | **How extras are typed** | Six types: `number` (`integer`, `min`, `max`, `unit` required), `money`, `text` (`maxLength`), `enum` (option ids `UPPER_SNAKE`), `date` (`YYYY-MM-DD`, no time zone, as `availableFrom` today), `bool`. On the wire: a JSON number, a money object, a string, the option id, the date string, `true`/`false`. A reader keeps and round-trips an extra id it does not know (a newer app's field survives an older device's sync) without showing it; a known id with a value of the wrong type or out of range reads as unknown (today's coercion rule) | Free-form values; a `phone` or `url` type (those are core fields); dropping unknown extras (the data loss that drove the superseded plan) | Exactly what the house needs today plus the B-rated use cases of N21 (a yes/no, a date); a seventh type is additive | Adding a type: cheap. Renaming or re-meaning one: format bump |
@@ -2137,9 +2138,21 @@ changed:
   the list as `candidates`), so the website and the phone keep syncing through Drive in both directions and a file of
   either shape still loads. On both stacks only this device's own rows are made in the new shape; a row taken from
   another device's file is written on as it came, which both readers read. The
-  viewing payload's `houseId` (the records layer, read by the server's AI and export) is S4b-BL-247: three stacks,
-  its own pull request. The cost summary reads a price without a type as no rent (`CostSummary.of`, as the
+  viewing payload's `houseId` (the records layer, read by the server's AI and export) moved in S4b-BL-247 (below). The cost summary reads a price without a type as no rent (`CostSummary.of`, as the
   website's `costSummary`); `Formats.price` already showed *per month* for `RENT` only.
+- **Found in S4b-BL-247 (2026-10-13): the viewing record's payload, on three stacks, without a migration.** A viewing
+  is a record whose payload named its house `houseId`; the server reads inside it (its AI's viewing lines, the one query
+  that picks a house's viewings, the backup export), and so do both apps. Every writer now writes `candidateId` (the
+  website's `viewingToPayload`, `ViewingPayloadSerializer` in `:shared` for the phone and the iPhone, the server's
+  backup import), and every reader reads either key, so a payload written before (on a device, in a Drive file, in a
+  server's `record` table) is never invisible to the apps or the server's AI; a payload with both keys, whatever their
+  values, is a bad row on every stack (`docs/schemas/viewing-payload-vectors.json`, [schemas README](schemas/README.md)
+  §6.6). **On the server, reading both keys, not a Flyway V2**: the query compares
+  `coalesce(payload ->> 'candidateId', payload ->> 'houseId')` and the Java readers go through one helper
+  (`ViewingPayload.candidateOf`); a migration would have rewritten opaque client payloads for a server with no users,
+  and the clients still need to read `houseId` from Drive files and from each other anyway. A device rewrites an old
+  row only when it next saves it. The backup row of the family before keeps `houseId` (its new family already said
+  `candidateId`); the Drive sync file and `/api/records` carry the payload as it is, so neither changed.
 - **Found in kinds PR 2 (S4b-BL-206, the server part, 2026-10-12): a house's money may have a cadence and no
   amount.** A house is marked as a rent before its rent is known (the form's toggle; the question scopes `RENT` and
   `SALE` read it), so door 7's "both keys always written" holds for a money extra only; the candidate's own `money`

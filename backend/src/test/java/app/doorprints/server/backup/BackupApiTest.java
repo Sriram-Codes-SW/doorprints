@@ -373,7 +373,9 @@ class BackupApiTest {
         var questions = sample.getJSONArray("questions");
         for (int i = 0; i < questions.length(); i++) putQuestion(questions.getJSONObject(i));
         var viewings = sample.getJSONArray("viewings");
-        for (int i = 0; i < viewings.length(); i++) putViewing(viewings.getJSONObject(i));
+        // S4b-BL-247: one viewing stored with the key before (houseId), the other with candidateId; both export alike.
+        assertThat(viewings.length()).isGreaterThanOrEqualTo(2);
+        for (int i = 0; i < viewings.length(); i++) putViewing(viewings.getJSONObject(i), i % 2 == 1);
         for (var list : List.of("areas", "places", "areaNotes")) {
             var rows = sample.getJSONArray(list);
             for (int i = 0; i < rows.length(); i++) putSmallRecord(SMALL_TYPES.get(list), rows.getJSONObject(i));
@@ -1604,10 +1606,15 @@ class BackupApiTest {
     @Autowired
     app.doorprints.server.record.RecordRepository recordRepository;
 
-    private void putViewing(JSONObject row) throws JSONException {
+    /**
+     * Stores a backup row (the family before) as a viewing record; {@code newKey} names its house {@code candidateId}
+     * as every writer does since S4b-BL-247, otherwise {@code houseId} as a payload stored before it.
+     */
+    private void putViewing(JSONObject row, boolean newKey) throws JSONException {
         var payload = new JSONObject(row.toString());
         var id = payload.remove("id");
         var updatedAt = payload.remove("updatedAt");
+        if (newKey) payload.put("candidateId", payload.remove("houseId"));
         var body = new JSONObject().put("type", "viewing").put("id", id).put("payload", payload)
                 .put("updatedAt", Instant.ofEpochMilli(((Number) updatedAt).longValue()).toString());
         api.put().uri("/api/records/viewing/{id}", id.toString()).contentType(MediaType.APPLICATION_JSON)
@@ -1664,6 +1671,42 @@ class BackupApiTest {
         var exported = new JSONObject(export());
         assertThat(exported.getString("format")).isEqualTo(BackupFormat.ID_WITH_BROKERS);
         assertThat(exported.getJSONArray("viewings").length()).isEqualTo(1);
+    }
+
+    /**
+     * S4b-BL-247: an import writes a viewing's payload with {@code candidateId} only; a row stored with the key before
+     * ({@code houseId}) still exports and is rewritten with {@code candidateId} when an import updates it; a row with
+     * both keys is a bad row and is left out of the export.
+     */
+    @Test
+    void viewingPayloadsSayCandidateIdAndPayloadsOfTheKeyBeforeStillExport() throws JSONException {
+        var now = Instant.now().minus(Duration.ofMinutes(5));
+        postImport(backupWithViewings("", viewingRow("v_0000cccc", SOME_HOUSE, 1_790_000_000_000L, now)), false);
+        assertThat(viewingPayload("v_0000cccc")).containsEntry("candidateId", SOME_HOUSE).doesNotContainKey("houseId");
+
+        putViewing(new JSONObject(viewingRow("v_0000dddd", SOME_HOUSE, 1_790_000_100_000L, now)), false);
+        assertThat(viewingPayload("v_0000dddd")).containsEntry("houseId", SOME_HOUSE).doesNotContainKey("candidateId");
+        putViewing(new JSONObject(viewingRow("v_0000eeee", SOME_HOUSE, 1_790_000_200_000L, now))
+                .put("candidateId", SOME_HOUSE), false);
+        var rows = new JSONObject(export()).getJSONArray("viewings");
+        var exported = new ArrayList<String>();
+        for (int i = 0; i < rows.length(); i++) {
+            exported.add(rows.getJSONObject(i).getString("id"));
+            assertThat(rows.getJSONObject(i).getString("houseId")).isEqualTo(SOME_HOUSE);
+        }
+        assertThat(exported).containsExactlyInAnyOrder("v_0000cccc", "v_0000dddd");
+
+        var newer = viewingRow("v_0000dddd", SOME_HOUSE, 1_790_000_100_000L, now.plusSeconds(30))
+                .replace("\"PLANNED\"", "\"DONE\"");
+        assertThat(count(postImport(backupWithViewings("", newer), false), "viewings", "updated")).isEqualTo(1);
+        assertThat(viewingPayload("v_0000dddd")).containsEntry("candidateId", SOME_HOUSE).containsEntry("status", "DONE")
+                .doesNotContainKey("houseId");
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> viewingPayload(String id) {
+        return (Map<String, Object>) viewingRecords().stream().filter(r -> id.equals(r.get("id"))).findFirst()
+                .orElseThrow().get("payload");
     }
 
     /** Viewings are records of type viewing: merged by id, last write wins, exported back in payload order. */

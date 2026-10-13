@@ -74,12 +74,15 @@ public class RecordController {
     /** The record type a house's AI document reads (S4b-BL-92d). */
     static final String VIEWING_TYPE = "viewing";
 
-    /** The house a viewing payload names, or null (another type, no house, not a UUID). */
+    /**
+     * The house a viewing payload names ({@code candidateId}, or {@code houseId} before S4b-BL-247), or null (another
+     * type, no house, both keys, not a UUID).
+     */
     private UUID viewingHouse(String type, String payload) {
         if (!VIEWING_TYPE.equals(type) || payload == null) return null;
         try {
-            var houseId = json.readTree(payload).path("houseId");
-            return houseId.isString() ? UUID.fromString(houseId.asString()) : null;
+            var houseId = ViewingPayload.candidateOf(json.readTree(payload));
+            return houseId == null ? null : UUID.fromString(houseId);
         } catch (RuntimeException e) {
             return null;
         }

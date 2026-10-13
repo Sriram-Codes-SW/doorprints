@@ -327,14 +327,47 @@ class HouseDocumentsTest {
     void aViewingRecordIsReadWithTheClientDefaultsAndWithoutWithWhom() {
         var mapper = tools.jackson.databind.json.JsonMapper.builder().build();
         var record = new app.doorprints.server.record.Record(new app.doorprints.server.record.RecordKey("viewing", "v_1"));
-        record.setPayload("{\"houseId\":\"h\",\"startsAt\":1790000000000,\"kind\":\"THIRD\",\"status\":\"MISSED\","
+        record.setPayload("{\"candidateId\":\"h\",\"startsAt\":1790000000000,\"kind\":\"THIRD\",\"status\":\"MISSED\","
                 + "\"withWhom\":\"Ravi\",\"notes\":\"Tape\"}");
         var line = ViewingLine.from(record, mapper);
         assertThat(line).isEqualTo(new ViewingLine("v_1", "h", 1_790_000_000_000L, "FIRST", "PLANNED", "Tape"));
-        record.setPayload("{\"houseId\":\"\",\"startsAt\":1}");
+        // A payload stored before S4b-BL-247 names its house houseId and reads the same.
+        record.setPayload("{\"houseId\":\"h\",\"startsAt\":1790000000000,\"kind\":\"THIRD\",\"status\":\"MISSED\","
+                + "\"withWhom\":\"Ravi\",\"notes\":\"Tape\"}");
+        assertThat(ViewingLine.from(record, mapper)).isEqualTo(line);
+        record.setPayload("{\"candidateId\":\"\",\"startsAt\":1}");
         assertThat(ViewingLine.from(record, mapper)).isNull();
-        record.setPayload("{\"houseId\":\"h\",\"startsAt\":0}");
+        record.setPayload("{\"candidateId\":\"h\",\"startsAt\":0}");
         assertThat(ViewingLine.from(record, mapper)).isNull();
+        record.setPayload("{\"candidateId\":\"h\",\"houseId\":\"h\",\"startsAt\":1}");
+        assertThat(ViewingLine.from(record, mapper)).as("both keys: a bad row").isNull();
+    }
+
+    /** The shared viewing payload vectors (S4b-BL-247): the AI's viewing line names the vectors' candidate, or is skipped. */
+    @Test
+    void theViewingLineOfEveryVectorPayloadNamesItsCandidate() throws Exception {
+        var mapper = tools.jackson.databind.json.JsonMapper.builder().build();
+        var dir = java.nio.file.Path.of("").toAbsolutePath();
+        while (dir != null && !java.nio.file.Files.isRegularFile(dir.resolve("docs/schemas/viewing-payload-vectors.json"))) {
+            dir = dir.getParent();
+        }
+        assertThat(dir).as("docs/schemas/viewing-payload-vectors.json").isNotNull();
+        var vectors = mapper.readTree(java.nio.file.Files.readString(dir.resolve("docs/schemas/viewing-payload-vectors.json")));
+        int read = 0;
+        for (var c : vectors.get("reads")) {
+            var record = new app.doorprints.server.record.Record(
+                    new app.doorprints.server.record.RecordKey("viewing", c.get("id").asString()));
+            record.setPayload(c.get("payload").toString());
+            var line = ViewingLine.from(record, mapper);
+            if (c.get("candidateId").isNull()) {
+                assertThat(line).as(c.get("name").asString()).isNull();
+            } else {
+                assertThat(line).as(c.get("name").asString()).isNotNull();
+                assertThat(line.houseId()).as(c.get("name").asString()).isEqualTo(c.get("candidateId").asString());
+                read++;
+            }
+        }
+        assertThat(read).isGreaterThanOrEqualTo(4);
     }
 
     @Test

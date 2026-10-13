@@ -898,7 +898,7 @@ describe('ViewingStore (LocalStore.viewings)', () => {
   it('saves a viewing as a dirty record of type viewing with the payload keys in the contract order', async () => {
     await store.viewings.save(viewing('v_00000001', { notes: 'Bring a tape', withWhom: 'Meena' }), T1);
     const record = await store.records.get('viewing', 'v_00000001');
-    expect(Object.keys(record!.payload)).toEqual(['houseId', 'startsAt', 'durationMin', 'kind', 'status', 'remindMin', 'withWhom', 'notes']);
+    expect(Object.keys(record!.payload)).toEqual(['candidateId', 'startsAt', 'durationMin', 'kind', 'status', 'remindMin', 'withWhom', 'notes']);
     expect(record).toMatchObject({ dirty: true, deleted: false });
     expect(await store.viewings.all()).toEqual([viewing('v_00000001', { notes: 'Bring a tape', withWhom: 'Meena' })]);
   });
