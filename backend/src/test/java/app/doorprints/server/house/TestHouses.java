@@ -49,4 +49,11 @@ public final class TestHouses {
                 contactName, contactPhone, listingUrl, notes, locationSource, extras, rooms, answers, moveIn, brokerId,
                 checklist, createdAt, updatedAt, deleted, syncVersion, distanceMeters);
     }
+
+    /** The row a candidate is stored as, with its id (the sync API's {@code applyTo}). */
+    public static House entity(HouseDto dto) {
+        var house = new House(dto.id());
+        dto.applyTo(house);
+        return house;
+    }
 }

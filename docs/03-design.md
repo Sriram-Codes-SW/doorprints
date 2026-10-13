@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.124 |
+| Version | 0.125 |
 | Date | 2026-10-13 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -135,6 +135,7 @@
 | 0.122 | 2026-10-13 | Claude (Code), engineer | New §16.5: **why the Indic web fonts are `font-display: optional`** (S4b-BL-263; `fix/indic-fonts-display-optional`). |
 | 0.123 | 2026-10-13 | Claude (Code), engineer | §18.9: **the hidden schools kind on the phone and the iPhone** (kinds PR 5, S4b-BL-209, the second stacked pull request; `feat/kinds-7b-schools-android`): `SchoolKind` and `DevKinds` in `:shared`, the debug-only `BuildConfig.DEV_KINDS` handed to the screens as `LocalDevKinds`, the form reading the candidate's kind (labels, extras, hidden places, a kind picker), text and enum controls, the rotation saver keeping the kind and other extras, and `ExportHouse.kind`. |
 | 0.124 | 2026-10-13 | Claude (Code), engineer | New §18.10: **typed extras in search and the copies** (kinds PR 6, S4b-BL-210; `feat/kinds-8-extras-search-copies`): `KindFields.others()` and `search` on both stacks, one reader by type (`kindValues`, `KindValues`), the words search adds, the copies' rows and columns (`kind-copy.ts`, `KindCopy`), the phone's `KindWords`, the flag (`CopyKinds`, `ExportOptions.devKinds`), the safety test written first (`house-pins.spec.ts`, `HouseCopyPinsTest`) and `kind-search-vectors.json`; no filter (S4b-BL-265), the rest S4b-BL-266 and S4b-BL-267. |
+| 0.125 | 2026-10-13 | Claude (Code), engineer | New §18.11: **kind-aware AI** (kinds PR 7, S4b-BL-211; `feat/kinds-9-kind-aware-ai`, the server; the website and the phone in two stacked pull requests): the three AI stacks read a candidate of a built-in kind other than the house through its kind file's `ai` slots while the developer flag is on (the server's `app.ai.dev-kinds`); for a house nothing changes, pinned byte for byte first (`HouseAskPinsTest`, `HousePlanPinsTest`, `HouseExtractPinsTest`); `school.json`'s slots filled; `docs/schemas/kinds/kind-ai-vectors.json`. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -2422,3 +2423,76 @@ the flag off ([06](06-test-plan.md) TC-U-212).
 filter by a typed extra (a board, the bus) needs its own controls and words on both stacks. It is S4b-BL-265, with the
 other things left: the copies' extras in sections of their own and the copies' hand-written house labels (S4b-BL-266,
 with S4b-BL-256), and the walk-end sheet's house picker, which searches without the app's words (S4b-BL-267).
+
+### 18.11 Kind-aware AI (kinds PR 7, S4b-BL-211)
+
+**What it is.** The three AI stacks that share the prompts (the server's `/api/ai`, the website's on-device AI in
+`core/ai`, the phones' `:shared` `ai` package) read a candidate of a built-in kind other than the house through its
+kind file's `ai` slots (§18.4 door 10) while the developer flag is on: `extract` is what *Fill in from listing text*
+fills, `ask` is every line of an Ask document in its order, `plan` is what the Plan tools show and filter on, and
+`never` wins over the other three. **For a house nothing changes**: its AI code is today's and is not routed through
+the slots, and its Extract, Ask and Plan output is pinned byte for byte on each stack (below). A school with the flag
+off, and a candidate of a kind that is not built in, is read exactly as a house is today, its extras unread.
+
+**The per-field AI flag is the slot.** No new schema key was needed: an extra reaches a provider only when a slot names
+it and `ai.never` does not, and an extra the kind does not know (a newer app's, kept as `extrasOther` on the website and
+the phone and `CandidateExtras.other` on the server) is never named, so it is never read, as [02](02-threat-model.md) A4
+and [04](04-data-flow-diagrams.md) §8 say. `school.json`'s slots: `extract` the label, address, street, locality, the
+contact's name and phone, the listing link, the notes, the board, medium, grades, bus, fees and admission fee (not the
+commute: it is the person's own measure, which no listing states); `ask` the place, the seven extras, the area notes,
+the distances, the status, the rating, the visits and the notes; `plan` the label, status, rating, locality and street;
+`never` the contact's name and phone. Each stack holds a copy of the slots and the school's extras, checked against the
+file (the server's `AiKindFileTest`).
+
+**The Ask lines.** `School: <name>`, the place lines, then `<words>: <value>` for each extra in the slot's order, with
+the kind's English words (the website's English labels: *Board*, *Medium of instruction*, *Grades offered*, *Commute
+(minutes)*, *School bus*, *Fees per year*, *Admission fee*), then the house's own area-note, distance, status, rating,
+visit and notes lines. A value is read only when it keeps to its extra's type and range: an option the kind offers (its
+words), a text of at most `maxLength` characters, a whole number within `min..max`, a switch (*yes*, *no*), money with
+the extra's one cadence (`Rs 96000`); anything else is no line. A text goes through `ContactRedactor.freeText` and
+loses its line breaks, as notes do, so it cannot start a line of its own, and the Ask prompt's nonce block strips a tag
+in it (`PromptSafety.neutralize`). A school's document metadata has no price, price type or BHK (its money is hidden),
+so an Ask filter on them never keeps a school.
+
+**Extract.** `POST /api/ai/extract-listing` takes an optional `kind`; none or `house` is today's call and body.
+`school`, while the flag is on, gets the school's system text (the house's data-not-instructions and never-guess rules,
+the school's field rules), its schema (`RawSchoolListing`) and `KindDraftSanitizer`, which keeps `DraftSanitizer`'s
+rules: every text cleaned and clamped with a warning, the phone and the link kept only when the listing holds them; an
+option read by its id or English words, *yes* or *no*, a text clamped to its `maxLength`, money read as the house's
+price is ("96,000", "1.2 lakh") with the extra's cadence; a value that cannot be read is dropped with a warning. The
+draft has the house draft's shape with no price, type or BHK and an `extras` object in the wire's shape (absent for a
+house, so a house's response is the same bytes). Any other kind is a 400, never read as a house. The forms merge it as
+they merge a house's: an empty field or extra is filled, a typed one is never overwritten and the difference is named.
+
+**Plan.** The Plan tools (`searchHouses`, `nearbyHouses`, the wrap-up notice; the MCP server's `searchHouses` and
+`nearbyHouses` too) read a school through `ai.plan` (`AiKind.view`): its summary has no price, type or BHK, and a filter
+on them never keeps it; the text filter reads its label, street and locality. `houseDetails` gives what `ai.ask` names
+(no price, checklist or listing link). The prompts are unchanged; the on-device Plan line of a school says `price: -`
+and `bedrooms: -`.
+
+**The flag on the server.** `app.ai.dev-kinds` (`AI_DEV_KINDS`, default false; `AiKinds`) is the server's twin of the
+apps' developer flag (§18.9): off, every candidate is read as a house.
+
+**The safety test, written first** (from main at 165c0088, before any of this): the server's house pins
+(`HouseAskPinsTest`, `HousePlanPinsTest`, `HouseExtractPinsTest`, files under `backend/src/test/resources/house-ai-pins/`):
+a SHA-256 of every output for the golden set's 30 fixture houses with their visits and one house with every field (the
+cost, rooms, questions, moving in, floor, a contact typed into its fields and an instruction in its notes): the Ask
+documents, metadata, prompt and pgvector filters; the Plan summaries, details, filters, wrap-up notice and system text;
+the Extract prompt, schema and the drafts of the parity vectors' listings. They pass unchanged after the change, and so
+do the parity vectors (`docs/ai/evals/parity-vectors.json`, untouched) and every other AI test. Then the school's
+expectations, shared by the three stacks: `docs/schemas/kinds/kind-ai-vectors.json` (format
+`doorprints-kind-ai-vectors/1`, [schemas README](schemas/README.md) §8.4): the documents (every extra; instruction-like
+text, the contact's name and phone and a tag in the fields; a hidden money; two unknown extras; wrong values; the flag
+off; a kind that is not built in), the Ask prompt, the Ask and Plan filters, the Plan summary and line, and the school's
+Extract prompt, schema and drafts ([06](06-test-plan.md) TC-U-213).
+
+**The website and the phones** follow in two stacked pull requests, each with its own house pins first (the website's
+`core/ai`, the phones' `:shared`).
+
+**Not done, on purpose** (rows in [10](10-sprint-log.md)). The row's safety-test clause said the parity `prompts` would
+be regenerated once; they are not, because no prompt changed for a house and a school's are pinned in the new file
+(the lead's constraint of 2026-10-13: a house's prompts, document lines and parity vectors stay byte-identical). For the
+same reason S4b-BL-234 (no abusive words in the answers) does not ride this step. No live eval was run (zero cost): the
+golden set's `schools-*` section and the keyless injection run are S4b-BL-268; the prompts' house words for every kind
+are S4b-BL-269; a kind's extras in the Plan tools are S4b-BL-270; and `house.json`'s slots, which describe less than the
+house's hand-written AI code reads, are S4b-BL-271.

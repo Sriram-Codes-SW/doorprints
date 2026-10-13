@@ -209,6 +209,10 @@ app:
     # Embed a house right after each save (async). false = only POST /api/ai/reindex embeds (fewer provider calls).
     index-on-change: ${AI_INDEX_ON_CHANGE:true}
     max-input-chars: ${AI_MAX_INPUT_CHARS:8000}
+    # Developer flag of kinds PR 7 (S4b-BL-211), the server's twin of the apps' dev-kinds flag: true reads a candidate of
+    # a built-in kind other than the house (the hidden schools kind) through its kind file's ai slots. Off by default:
+    # every candidate is then read as a house, as before.
+    dev-kinds: ${AI_DEV_KINDS:false}
     max-question-chars: ${AI_MAX_QUESTION_CHARS:1000}
     # Answer budget per call. On Gemini 3.x it also covers the hidden thinking tokens, so keep it well above the
     # visible answer (about 130 to 350 tokens); 2048 cut the JSON off on the injection cases (S4b-BL-194).

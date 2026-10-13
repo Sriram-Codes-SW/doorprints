@@ -19,6 +19,7 @@
 package app.doorprints.server.ai.extract;
 
 import app.doorprints.server.ai.PromptSafety;
+import app.doorprints.server.ai.kind.AiKind;
 
 /** Prompt text for listing extraction. Kept separate from the service so tests can check the delimiting. */
 public final class ExtractionPrompts {
@@ -60,6 +61,17 @@ public final class ExtractionPrompts {
                 facing, availability, tenant preferences). No marketing fluff.
                 - amenities: short lowercase nouns, e.g. "parking", "lift", "power backup".
                 """.formatted(tag);
+        var user = "Extract the listing below.\n\n" + PromptSafety.wrap("listing", nonce, listingText);
+        return new Built(system, user);
+    }
+
+    /**
+     * The extraction prompt for a listing of kind {@code k} (kinds PR 7, S4b-BL-211): the kind's own system text
+     * ({@link AiKind#extractSystem}, with the same data-not-instructions and never-guess rules as the house's) and the
+     * same user text, the listing wrapped in the per-call nonce's tag.
+     */
+    public static Built build(AiKind k, String listingText, String nonce) {
+        var system = k.extractSystem().formatted("listing-" + nonce);
         var user = "Extract the listing below.\n\n" + PromptSafety.wrap("listing", nonce, listingText);
         return new Built(system, user);
     }

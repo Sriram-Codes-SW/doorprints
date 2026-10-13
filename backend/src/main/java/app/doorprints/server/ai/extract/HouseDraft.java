@@ -18,7 +18,10 @@
 
 package app.doorprints.server.ai.extract;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 import java.util.List;
+import java.util.Map;
 
 /**
  * A validated, clamped suggestion for a new house. Field names and limits match {@code HouseDto}, so clients can
@@ -38,5 +41,16 @@ public record HouseDraft(
         String listingUrl,
         String notes,
         List<String> amenities,
-        List<String> warnings) {
+        List<String> warnings,
+        /* Kinds PR 7 (S4b-BL-211): a kind's typed extras the listing filled, in the wire's shape (`extras` of a
+           candidate), only for a kind other than the house; absent for a house, so its body is as before. */
+        @JsonInclude(JsonInclude.Include.NON_NULL) Map<String, Object> extras) {
+
+    /** A house's draft: no extras. */
+    public HouseDraft(String label, String address, String street, String locality, Long price, String priceType,
+                      Integer bedrooms, String contactName, String contactPhone, String listingUrl, String notes,
+                      List<String> amenities, List<String> warnings) {
+        this(label, address, street, locality, price, priceType, bedrooms, contactName, contactPhone, listingUrl, notes,
+                amenities, warnings, null);
+    }
 }

@@ -1,0 +1,133 @@
+{
+  "spec": [
+    "backend/src/test/java/app/doorprints/server/ai/kind/AiKindFileTest.java",
+    "backend/src/test/java/app/doorprints/server/ai/rag/KindAskVectorsTest.java",
+    "backend/src/test/java/app/doorprints/server/ai/agent/KindPlanVectorsTest.java",
+    "backend/src/test/java/app/doorprints/server/ai/extract/KindExtractVectorsTest.java"
+  ],
+  "maven": [
+    "-Dtest=AiKindFileTest,KindAskVectorsTest,KindPlanVectorsTest,KindExtractVectorsTest"
+  ],
+  "mutations": [
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/kind/AiKinds.java",
+      "find": "        return devKinds && kind != null ? BUILT_IN.get(kind) : null;",
+      "replace": "        return kind != null ? BUILT_IN.get(kind) : null;",
+      "expect": "withTheFlagOffOrAnUnknownKindEveryCandidateIsAHouse"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/KindDocuments.java",
+      "find": "            if (k.never().contains(id)) continue;",
+      "replace": "",
+      "expect": "anIdThatNeverNamesIsNeverWrittenWhateverAskSays"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/KindDocuments.java",
+      "find": "                if (!v.isString() || v.asString().length() > e.maxLength()) yield null;",
+      "replace": "                if (!v.isString()) yield null;",
+      "expect": "everyDocumentHasTheLinesOfTheVectors"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/KindDocuments.java",
+      "find": "                var t = r.freeText(v.asString().strip());",
+      "replace": "                var t = v.asString().strip();",
+      "expect": "everyDocumentHasTheLinesOfTheVectors"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/KindDocuments.java",
+      "find": "                yield t == null ? null : t.replaceAll(\"\\\\s+\", \" \").strip();",
+      "replace": "                yield t;",
+      "expect": "everyDocumentHasTheLinesOfTheVectors"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/KindDocuments.java",
+      "find": "                if (!v.isObject() || !v.path(\"cadence\").isString() || !e.cadence().equals(v.path(\"cadence\").asString())) {",
+      "replace": "                if (!v.isObject()) {",
+      "expect": "everyDocumentHasTheLinesOfTheVectors"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/KindDocuments.java",
+      "find": "        if (k.allows(k.ask(), \"money\")) {",
+      "replace": "        if (true) {",
+      "expect": "anAskFilterOnAFieldTheKindHidesNeverKeepsIt"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/HouseIndexer.java",
+      "find": "                viewingsOf(houseId), areaData(), kinds)));",
+      "replace": "                viewingsOf(houseId), areaData())));",
+      "expect": "theIndexerReadsASchoolThroughItsKindOnlyWithTheFlag"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/HouseIndexer.java",
+      "find": "                            viewingsByHouse.getOrDefault(house.getId().toString(), List.of()), areaData, kinds));",
+      "replace": "                            viewingsByHouse.getOrDefault(house.getId().toString(), List.of()), areaData));",
+      "expect": "theIndexerReadsASchoolThroughItsKindOnlyWithTheFlag"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/HouseSearchService.java",
+      "find": "                .map(this::forPlan)\n                .filter(h -> matches(h, c))",
+      "replace": "                .filter(h -> matches(h, c))",
+      "expect": "aFilterOnAFieldTheKindDoesNotShowNeverKeepsIt"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/HouseSearchService.java",
+      "find": ".stream().sorted(NEAREST_FIRST).map(this::forPlan)",
+      "replace": ".stream().sorted(NEAREST_FIRST)",
+      "expect": "aSummaryHasOnlyWhatThePlanSlotNames"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/HouseQueries.java",
+      "find": "        return HouseDetails.of(search.forDetails(h));",
+      "replace": "        return HouseDetails.of(h);",
+      "expect": "theDetailsToolGivesWhatTheAskSlotNames"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/kind/AiKind.java",
+      "find": "        return slot.contains(id) && !never.contains(id);",
+      "replace": "        return slot.contains(id);",
+      "expect": "anIdThatNeverNamesIsNeverWrittenWhateverAskSays"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/extract/KindDraftSanitizer.java",
+      "find": "                    if (o.getKey().equalsIgnoreCase(v) || o.getValue().equalsIgnoreCase(v)) yield o.getKey();",
+      "replace": "                    if (o.getKey().equalsIgnoreCase(v)) yield o.getKey();",
+      "expect": "everyRawAnswerGivesTheVectorsDraft"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/extract/KindDraftSanitizer.java",
+      "find": "            case \"text\" -> DraftSanitizer.clean(value, e.maxLength(), e.id(), warnings);",
+      "replace": "            case \"text\" -> DraftSanitizer.clean(value, DraftSanitizer.NOTES_MAX, e.id(), warnings);",
+      "expect": "everyRawAnswerGivesTheVectorsDraft"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/extract/KindDraftSanitizer.java",
+      "find": "        var phone = slot.contains(\"contactPhone\") ? DraftSanitizer.phone(raw.get(\"contactPhone\"), source, warnings) : null;",
+      "replace": "        var phone = raw.get(\"contactPhone\");",
+      "expect": "everyRawAnswerGivesTheVectorsDraft"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/extract/KindDraftSanitizer.java",
+      "find": "        return new HouseDraft(label, address, street, locality, null, null, null, contactName, phone, url, notes,",
+      "replace": "        return new HouseDraft(label, address, street, locality, 1L, \"RENT\", 3, contactName, phone, url, notes,",
+      "expect": "everyRawAnswerGivesTheVectorsDraft"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/extract/ExtractionPrompts.java",
+      "find": "        var system = k.extractSystem().formatted(\"listing-\" + nonce);",
+      "replace": "        var system = k.extractSystem().formatted(\"listing\");",
+      "expect": "theSchoolsPromptIsTheVectorsWordForWord"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/extract/ListingExtractionService.java",
+      "find": "        if (k == null || k.extract().isEmpty() || k != AiKinds.SCHOOL) {",
+      "replace": "        if (k != null && k != AiKinds.SCHOOL) {",
+      "expect": "aSchoolNeedsTheFlagAndAnyOtherKindIsRefused"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/extract/HouseDraft.java",
+      "find": "        @JsonInclude(JsonInclude.Include.NON_NULL) Map<String, Object> extras) {",
+      "replace": "        Map<String, Object> extras) {",
+      "expect": "aHouseDraftHasNoExtrasKeyAndAHousesRequestIsTheTextAlone"
+    }
+  ]
+}

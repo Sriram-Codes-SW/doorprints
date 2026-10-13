@@ -27,8 +27,10 @@ import app.doorprints.server.ai.rag.AskModels.AskRequest;
 import app.doorprints.server.ai.rag.AskModels.AskResponse;
 import app.doorprints.server.ai.rag.HouseIndexer;
 import app.doorprints.server.ai.rag.RagService;
+import app.doorprints.server.house.House;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBooleanProperty;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -48,7 +50,13 @@ import java.util.Map;
 public class AiController {
 
     /** Hard cap for the JSON body field; the configurable, smaller limit is enforced in the service. */
-    public record ExtractRequest(@NotBlank @Size(max = 20000) String text) {
+    public record ExtractRequest(@NotBlank @Size(max = 20000) String text,
+                                 /* Kinds PR 7 (S4b-BL-211): the candidate's kind; absent (a house) as before. */
+                                 @Pattern(regexp = House.KIND_PATTERN) String kind) {
+        /** A house's request: the text alone. */
+        public ExtractRequest(String text) {
+            this(text, null);
+        }
     }
 
     private final ListingExtractionService extraction;
@@ -69,7 +77,7 @@ public class AiController {
      */
     @PostMapping("/extract-listing")
     public HouseDraft extractListing(@Valid @RequestBody ExtractRequest body) {
-        return extraction.extract(body.text());
+        return extraction.extract(body.text(), body.kind());
     }
 
     /**

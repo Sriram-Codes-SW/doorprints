@@ -1,0 +1,81 @@
+/*
+ * Copyright 2026 Sriram (Sriram-Codes-SW)
+ *
+ * This file is part of Doorprints.
+ *
+ * Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+ * Public License as published by the Free Software Foundation, version 3 of the License.
+ *
+ * Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+ * the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+package app.doorprints.server.ai.kind;
+
+import app.doorprints.server.house.HouseDto;
+
+import java.util.List;
+import java.util.Map;
+
+/**
+ * A built-in kind other than the house as the AI reads it (kinds PR 7, S4b-BL-211; docs/03 ADR-36 §18.11): a copy of
+ * its kind file's {@code ai} slots (§18.4 door 10) and of the typed extras those slots name, with the English words a
+ * document line gives each (the website's English labels, {@code docs/schemas/kinds/kind-ai-vectors.json}). A house is
+ * never one of these: its AI code is today's, unchanged. {@code AiKindFileTest} holds the copy to the kind file.
+ *
+ * @param noun          the first line's key of a document ({@code School: <name>})
+ * @param extract       what the listing extract fills (core field ids and extra ids)
+ * @param ask           what an Ask document line carries, in line order: core field ids, extra ids, and the sections
+ *                      {@code areaNotes}, {@code distances} and {@code visits}
+ * @param plan          what the Plan tools show and filter on
+ * @param never         what a saved candidate never sends to a provider, whatever the other slots say
+ * @param extras        the kind's typed extras that a slot names, in the kind file's order
+ * @param extractSystem the Extract system text, {@code %1$s} the listing's tag
+ */
+public record AiKind(String id, String noun, List<String> extract, List<String> ask, List<String> plan,
+                     List<String> never, List<Extra> extras, String extractSystem) {
+
+    /**
+     * One typed extra (door 5): its type, the range a value must keep to be read at all, and its English words.
+     *
+     * @param options the option ids and their words, in the kind file's order (an {@code enum})
+     * @param cadence the one cadence a {@code money} extra has
+     */
+    public record Extra(String id, String type, String words, Map<String, String> options, Long min, Long max,
+                        Integer maxLength, String cadence) {
+    }
+
+    /** Whether a provider may see {@code id} for {@code slot}: the slot names it and {@code never} does not. */
+    public boolean allows(List<String> slot, String id) {
+        return slot.contains(id) && !never.contains(id);
+    }
+
+    /** The extra of that id, or null. */
+    public Extra extra(String id) {
+        return extras.stream().filter(e -> e.id().equals(id)).findFirst().orElse(null);
+    }
+
+    /**
+     * The candidate as {@code slot} lets a provider see it: the core fields the slot does not name are left out and so
+     * are all its extras (a Plan summary and a tool's details have no place for a kind's extras; an Ask document
+     * reads them through {@code KindDocuments}). The contact name and phone stay, only so that the contact redactor
+     * can take them out of the other fields: no view writes them. Never used for a house.
+     */
+    public HouseDto view(HouseDto h, List<String> slot) {
+        return new HouseDto(h.id(), h.kind(), allows(slot, "label") ? h.label() : "",
+                allows(slot, "address") ? h.address() : null, allows(slot, "street") ? h.street() : null,
+                allows(slot, "locality") ? h.locality() : null, h.lat(), h.lon(),
+                allows(slot, "status") ? h.status() : null, allows(slot, "money") ? h.money() : null,
+                allows(slot, "rating") ? h.rating() : null, h.contactName(), h.contactPhone(),
+                allows(slot, "listingUrl") ? h.listingUrl() : null, allows(slot, "notes") ? h.notes() : null,
+                h.locationSource(), null, allows(slot, "rooms") ? h.rooms() : null,
+                allows(slot, "questions") ? h.answers() : null, allows(slot, "moveIn") ? h.moveIn() : null, null,
+                allows(slot, "checklist") ? h.checklist() : Map.of(), h.createdAt(), h.updatedAt(), h.deleted(),
+                h.syncVersion(), h.distanceMeters());
+    }
+}

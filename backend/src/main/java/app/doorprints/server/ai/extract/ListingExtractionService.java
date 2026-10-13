@@ -22,9 +22,12 @@ import app.doorprints.server.ai.PromptSafety;
 import app.doorprints.server.ai.config.AiProperties;
 import app.doorprints.server.ai.web.AiUnavailableException;
 import app.doorprints.server.ai.web.AiUsageLogger;
+import app.doorprints.server.ai.kind.AiKinds;
 import app.doorprints.server.common.BadRequestException;
+import app.doorprints.server.house.House;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.prompt.ChatOptions;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBooleanProperty;
 import org.springframework.stereotype.Service;
 
@@ -55,10 +58,50 @@ public class ListingExtractionService {
 
     private final ChatClient chat;
     private final AiProperties props;
+    private final AiKinds kinds;
 
     public ListingExtractionService(ChatClient chat, AiProperties props) {
+        this(chat, props, AiKinds.OFF);
+    }
+
+    @Autowired
+    public ListingExtractionService(ChatClient chat, AiProperties props, AiKinds kinds) {
         this.chat = chat;
         this.props = props;
+        this.kinds = kinds;
+    }
+
+    /**
+     * As {@link #extract(String)}, for a candidate of {@code kind} (kinds PR 7, S4b-BL-211): none or {@code house} is
+     * the house's extract, unchanged; a built-in kind whose {@code ai.extract} slot is not empty, while the server's
+     * developer flag allows it ({@link AiKinds}), gets its kind's prompt, schema and checks
+     * ({@link KindDraftSanitizer}); any other kind is a 400, never read as a house.
+     */
+    public HouseDraft extract(String text, String kind) {
+        if (kind == null || House.HOUSE_KIND.equals(kind)) return extract(text);
+        var k = kinds.of(kind);
+        // The schools kind is the one built-in kind with an extract besides the house: its raw listing is RawSchoolListing.
+        if (k == null || k.extract().isEmpty() || k != AiKinds.SCHOOL) {
+            throw new BadRequestException("kind " + kind + " has no listing extract");
+        }
+        if (text == null || text.isBlank()) throw new BadRequestException("text must not be blank");
+        if (text.length() > props.maxInputChars()) {
+            throw new BadRequestException("text is longer than " + props.maxInputChars() + " characters");
+        }
+        var prompt = ExtractionPrompts.build(k, text, PromptSafety.nonce());
+        long started = System.nanoTime();
+        try {
+            var result = chat.prompt()
+                    .system(prompt.system())
+                    .user(prompt.user())
+                    .options(ChatOptions.builder().temperature(0.0).maxTokens(props.maxOutputTokens()))
+                    .call()
+                    .responseEntity(RawSchoolListing.class);
+            AiUsageLogger.log("extract-listing", result.response(), started);
+            return KindDraftSanitizer.sanitize(k, KindDraftSanitizer.fields(result.entity()), text);
+        } catch (RuntimeException e) {
+            throw new AiUnavailableException("Listing extraction failed", e);
+        }
     }
 
     /**

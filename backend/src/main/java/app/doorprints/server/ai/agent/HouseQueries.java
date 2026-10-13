@@ -113,7 +113,7 @@ public class HouseQueries {
     public HouseDetails houseDetails(String houseId) {
         var h = search.details(parseId(houseId));
         if (h.deleted()) throw new NotFoundException("House " + houseId + " not found");
-        return HouseDetails.of(h);
+        return HouseDetails.of(search.forDetails(h));
     }
 
     /**

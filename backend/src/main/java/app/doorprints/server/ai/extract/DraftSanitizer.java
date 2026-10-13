@@ -143,10 +143,15 @@ public final class DraftSanitizer {
 
     /** Parses "25,000", "₹ 25000/month", "25k", "1.2 Cr", "85 lakh" into whole rupees. */
     static Long price(String value, List<String> warnings) {
+        return price(value, warnings, "price");
+    }
+
+    /** As {@link #price(String, List)}, the warnings naming {@code field} (a kind's money extra, S4b-BL-211). */
+    static Long price(String value, List<String> warnings, String field) {
         if (value == null || value.isBlank()) return null;
         var m = PRICE.matcher(value.replace(",", "").replace("_", ""));
         if (!m.find()) {
-            warnings.add("price: could not read '" + abbreviate(value) + "', dropped");
+            warnings.add(field + ": could not read '" + abbreviate(value) + "', dropped");
             return null;
         }
         try {
@@ -161,12 +166,12 @@ public final class DraftSanitizer {
             };
             var rupees = number.multiply(BigDecimal.valueOf(multiplier)).longValue();
             if (rupees < 0 || rupees > PRICE_MAX) {
-                warnings.add("price: " + rupees + " is out of range, dropped");
+                warnings.add(field + ": " + rupees + " is out of range, dropped");
                 return null;
             }
             return rupees;
         } catch (NumberFormatException | ArithmeticException e) {
-            warnings.add("price: could not read '" + abbreviate(value) + "', dropped");
+            warnings.add(field + ": could not read '" + abbreviate(value) + "', dropped");
             return null;
         }
     }
@@ -269,7 +274,7 @@ public final class DraftSanitizer {
         return label.length() > LABEL_MAX ? label.substring(0, LABEL_MAX) : label;
     }
 
-    private static String abbreviate(String s) {
+    static String abbreviate(String s) {
         var t = WS.matcher(s).replaceAll(" ").strip();
         return t.length() <= 40 ? t : t.substring(0, 40) + "…";
     }
