@@ -268,7 +268,8 @@ export function sanitizeKindDraft(k: AiKind, raw: Record<string, unknown> | null
   if (raw == null) return { label: 'Untitled listing', ...empty, warnings: ['Model returned nothing usable'] };
   const warnings: string[] = [];
   const source = sourceText ?? '';
-  const text = (id: string) => (k.extract.includes(id) && typeof raw[id] === 'string' ? (raw[id] as string) : null);
+  // A number or a switch the model wrote as JSON is read as its text, as the server's Jackson reads it into a string.
+  const text = (id: string) => (k.extract.includes(id) && ['string', 'number', 'boolean'].includes(typeof raw[id]) ? String(raw[id]) : null);
   const cleaned = (id: string) => clean(text(id), LIMITS[id], id, warnings);
   const address = cleaned('address');
   const street = cleaned('street');
@@ -284,7 +285,7 @@ export function sanitizeKindDraft(k: AiKind, raw: Record<string, unknown> | null
   const extras: Record<string, unknown> = {};
   for (const e of k.extras) {
     if (!k.extract.includes(e.id)) continue;
-    const v = extraOf(e, raw[e.id], warnings);
+    const v = extraOf(e, text(e.id), warnings);
     if (v != null) extras[e.id] = v;
   }
   let label = cleaned('label');
