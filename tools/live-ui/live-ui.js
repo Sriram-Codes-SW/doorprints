@@ -507,13 +507,17 @@ async function mobile(browser) {
         // Portrait phones up to 130% text: "Your houses" and every counter, number and caption, are on screen above
         // the bottom bar before any scrolling (owner report 2026-09-24). The one exception is the map-page rule that
         // MapLibre's controls must fit above the legend row: when the map is at that minimum height (map-page.css,
-        // min-height), the controls win, as with Tamil at 130% on a 384x615 phone, and the counters start below.
+        // --map-floor), the controls win, as with Tamil at 130% on a 384x615 phone, and the counters start below.
         if (viewport.height >= 560 && viewport.height > viewport.width && viewport.width <= 760 && (phone.text || 100) <= 130) {
           const peek = await page.evaluate(() => {
             const bar = document.querySelector('nav.nav'), limit = bar && getComputedStyle(bar).position === 'fixed' ? bar.getBoundingClientRect().top : innerHeight;
             const parts = [...document.querySelectorAll('#houses-heading, .stats dt, .stats dd')];
-            const wrap = document.querySelector('.map-wrap');
-            const atControlsMin = !!wrap && wrap.getBoundingClientRect().height <= parseFloat(getComputedStyle(wrap).minHeight) + 1;
+            // The map row at its floor (--map-floor, map-page.css; since S4b-BL-49's grid the .map-wrap also holds the legend and
+            // the actions, so its own min-height is no longer the floor): measure the floor through a probe, the map against it.
+            const wrap = document.querySelector('.map-wrap'), mapEl = document.querySelector('.maplibregl-map');
+            let floor = NaN;
+            if (wrap) { const probe = document.createElement('div'); probe.style.cssText = 'position:absolute;visibility:hidden;height:var(--map-floor)'; wrap.appendChild(probe); floor = probe.getBoundingClientRect().height; probe.remove(); }
+            const atControlsMin = !!mapEl && floor > 0 && mapEl.getBoundingClientRect().height <= floor + 1;
             return { limit: Math.round(limit), n: parts.length, lowest: Math.round(Math.max(...parts.map((e) => e.getBoundingClientRect().bottom))), atControlsMin };
           });
           check('mobile', `${tag}: heading and counters above the bottom bar`, peek.n >= 11 && (peek.lowest <= peek.limit || peek.atControlsMin), JSON.stringify(peek));
