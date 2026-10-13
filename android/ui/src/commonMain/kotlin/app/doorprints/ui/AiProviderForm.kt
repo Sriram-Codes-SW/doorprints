@@ -210,6 +210,8 @@ sealed interface AiFailure {
     data object Blocked : AiFailure
     /** The key's free quota or credit is used up (S4b-BL-243): not a wait, so no seconds; the app works without AI. */
     data object QuotaExhausted : AiFailure
+    /** AI is off, so the call was refused and nothing was sent (S4b-BL-251); the Assistant's "off" line is its words. */
+    data object Off : AiFailure
     /** The service asked to wait; [seconds] is its answer, or a minute when it gave none. */
     data class RateLimited(val seconds: Long) : AiFailure
     /**
@@ -233,6 +235,7 @@ sealed interface AiFailure {
                 ApiException.Kind.AI_MODEL_NOT_FOUND -> ModelNotFound
                 ApiException.Kind.AI_BLOCKED -> Blocked
                 ApiException.Kind.AI_QUOTA_EXHAUSTED -> QuotaExhausted
+                ApiException.Kind.AI_OFF -> Off
                 ApiException.Kind.RATE_LIMITED -> RateLimited(e.retryAfterSeconds ?: 60L)
                 // A network failure is code 0 (OpenAiCompatClient.UNREACHABLE).
                 ApiException.Kind.AI_UNAVAILABLE ->

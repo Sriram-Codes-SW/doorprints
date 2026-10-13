@@ -30,6 +30,7 @@ import app.doorprints.shared.ai.AiQuality
 import app.doorprints.shared.ai.AnthropicClient
 import app.doorprints.shared.ai.GeminiClient
 import app.doorprints.shared.ai.OpenAiCompatClient
+import app.doorprints.shared.api.ApiException
 import app.doorprints.shared.api.ApiHttp
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -108,7 +109,14 @@ class AiProviderRepositoryTest {
         MemorySecrets("serverKey"), geminiSecrets = MemorySecrets("aiKey"),
     )
 
-    private fun repository(emulator: Boolean = false) = CommonRepository(
+    // The calls are refused while AI is off (S4b-BL-251), and this phone's switch is off until the person turns it on: these tests are
+    // about which provider answers, so the switch is on in the saved settings.
+    private fun repository(emulator: Boolean = false): CommonRepository {
+        runBlocking { settings.saveAiFeatures(true) }
+        return newRepository(emulator)
+    }
+
+    private fun newRepository(emulator: Boolean) = CommonRepository(
         db, settings,
         photoDir = File(tmp.root, "photos").path,
         syncSoon = {},
@@ -287,7 +295,7 @@ class AiProviderRepositoryTest {
         assertEquals(AiProviderChoice.SERVER, settings.current().aiProvider)
         assertFalse(settings.current().toString().contains("localhost"))
         val e = runCatching { repo.extractListing("x") }.exceptionOrNull()
-        assertTrue("with nothing on the device AI asks the server, which this test does not have: $e", e != null)
+        assertEquals("with nothing on the device and no server, AI is off and the call is refused", ApiException.Kind.AI_OFF, (e as ApiException).kind)
         assertTrue(openAiCalls.isEmpty())
     }
 }

@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.114 |
+| Version | 0.115 |
 | Date | 2026-10-13 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -125,6 +125,7 @@
 | 0.112 | 2026-10-12 | Claude (Code), engineer | **Kinds step 3, the backup format** (S4b-BL-206; [10](10-sprint-log.md) v0.270, [schemas README](schemas/README.md) v1.33): §18.4 door 1 changed, **an old-family file is read, not refused** (owner confirmed 2026-10-12 as the final text, [14](14-lead-backlog-and-handoff.md) §11.4 item 7); a well-formed file with a cadence this reader does not support reads as a newer file, not broken data; §18.5 records the one mapping per stack between the two families and the lossless check against `backup-sample-houses.json`. |
 | 0.113 | 2026-10-13 | Claude (Code), engineer | **Kinds step 4, the phone** (S4b-BL-206; `feat/kinds-4-android`; [10](10-sprint-log.md) v0.272, [06](06-test-plan.md) v0.217 TC-U-204, [schemas README](schemas/README.md) v1.34): new §6.2 *Room 12* (every house rewritten in place as a candidate, `HouseEntity` keeps the house's values so no screen moves) and a §18.5 finding: Room version 12 rather than 1, `/api/candidates` and `candidateId` in `ApiClient`, the Drive `sync/1` file's `candidates` and `candidateId` read in both shapes on both stacks, the unknown extras kept on the phone, a typeless price never a monthly rent in the cost summary. Left: the viewing payload (S4b-BL-247), the website's sync writer (S4b-BL-246), the phone's backup of an unknown extra (S4b-BL-248). |
 | 0.114 | 2026-10-13 | Claude (Code), engineer | FR-24's *Small phones* note follows S4b-BL-49: the phone map's actions are a row under the map, sized in CSS (no `--map-stack-h`). |
+| 0.115 | 2026-10-13 | Claude (Code), engineer | §13.1: **the AI services refuse while AI is off** (S4b-BL-251, [10](10-sprint-log.md) v0.279, [06](06-test-plan.md) TC-U-206). `AiService` (web) and `AiStore` (phones) check the one source of truth for "AI is on" (`offReason()`, `off`) before they send anything, so a caller that forgets the screens' check cannot send a listing or a question out; the setup tests (*Test key*, *Test*) are not guarded. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -1509,7 +1510,10 @@ the apps (Ask, Plan, the Assistant, *Fill in from listing text*) goes through on
 | Finding houses for Ask | pgvector search over the server's index (top 6, similarity ≥ 0.25) | On the device: the filters, then every house when there are at most 40, else the 40 that share the most words with the question (no embeddings: nothing to index or store, and a house hunt is tens to a few hundred houses) |
 | Plan | A tool-calling agent on the server (`VisitPlannerService`, tools read-only) | One structured call: the non-rejected candidates (the same summaries the server's `searchHouses` returns, at most 40, nearest the start first) and the request; the model picks the stops and reasons; the route is ordered on the device |
 
-**Common to both, written once per platform:** the screens; the *AI features* switch, off until turned on, and its
+**Common to both, written once per platform:** the screens; **the refusal while AI is off** (S4b-BL-251: the three calls of
+`AiService` on the website and of `AiStore` on the phones check the same state the screens read, `offReason()` and `off`, and
+refuse before anything is sent, with an error that words the reason the way the off notice does; the setup tests are not
+guarded, so a key can be tested while AI is off); the *AI features* switch, off until turned on, and its
 note on what is sent (it names the provider: "to your server, which sends it to Google Gemini" or "straight to Google
 Gemini from this phone"); the local limit of 10 AI requests a minute. **Moved from the server into common code for
 on-device AI, with the server's behaviour as the specification:** `PromptSafety` (nonce-tagged delimiters, stripped

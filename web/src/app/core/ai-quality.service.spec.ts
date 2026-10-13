@@ -22,7 +22,7 @@ import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AiService } from './ai.service';
 import { GEMINI_URL, GeminiChatModel, OnDeviceAiService } from './ai/on-device-ai.service';
-import { AI_KIND_KEY, AI_OPT_IN_KEY, AI_PROVIDER_KEY, AI_QUALITY_KEY, GEMINI_KEY_KEY } from './storage-keys';
+import { AI_KIND_KEY, AI_PROVIDER_KEY, AI_QUALITY_KEY, GEMINI_KEY_KEY } from './storage-keys';
 
 /**
  * TC-U-190 (docs/06): how `AiService` keeps and uses the *AI speed and cost* setting (S4b-BL-198 step 2): saved on this
@@ -80,7 +80,7 @@ describe('AiService: AI speed and cost', () => {
   it('gives the plain key to the adapter with Quality, so nothing changes for anyone who does not touch the setting', async () => {
     const onDevice = { ask: vi.fn(async () => ({ answer: 'a', citations: [], grounded: false, retrieved: 0 })) };
     const ai = create(onDevice);
-    localStorage.setItem(AI_OPT_IN_KEY, '1');
+    ai.setOptIn(true);
     ai.saveGeminiKey('AIzaTestKey1234', false);
     await new Promise<void>((resolve) => ai.ask('Quiet?').subscribe(() => resolve()));
     expect(onDevice.ask).toHaveBeenCalledWith('AIzaTestKey1234', 'Quiet?', undefined);
@@ -89,6 +89,7 @@ describe('AiService: AI speed and cost', () => {
   it('gives a Gemini adapter with the choice to the own-key calls when the choice is not Quality', async () => {
     const onDevice = { ask: vi.fn(async () => ({ answer: 'a', citations: [], grounded: false, retrieved: 0 })) };
     const ai = create(onDevice);
+    ai.setOptIn(true);
     ai.saveGeminiKey('AIzaTestKey1234', false);
     ai.setAiQuality('economy');
     await new Promise<void>((resolve) => ai.ask('Quiet?').subscribe(() => resolve()));
