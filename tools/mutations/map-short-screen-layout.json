@@ -21,6 +21,12 @@
     },
     {
       "file": "web/src/app/pages/map/map-page.css",
+      "find": " + 0.75rem * 1.7 + 3px);",
+      "replace": " + 3px);",
+      "expect": "reserves in Hindi, Tamil and Telugu one more caption line"
+    },
+    {
+      "file": "web/src/app/pages/map/map-page.css",
       "find": "    grid-area: 3 / 1;\n    position: static;",
       "replace": "    position: absolute;",
       "expect": "never positions the bottom row"

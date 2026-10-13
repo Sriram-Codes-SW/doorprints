@@ -28,7 +28,10 @@
 // that the Map page has a map and a canvas at all (so the checks cannot pass for want of a map), that it loads
 // with a layout shift of at most 0.05 (S4b-BL-49: the map jumped by 0.15-0.24 on short phones when a script wrote its
 // height after the first paint), and, at normal text and on the owner's phone, that the Map page shows the list's
-// heading and every counter above the bottom bar before any scrolling (S4b-BL-49, owner report 2026-09-24).
+// heading and every counter above the bottom bar before any scrolling (S4b-BL-49, owner report 2026-09-24), unless the map
+// is at its floor (--map-floor: MapLibre's controls win, as live-ui.js's rule). That last check also runs in Tamil and
+// Telugu, on the Map page only, at those sizes and on a 360x740 phone: Tamil captions wrap under their numbers in the
+// 3 + 2 strip, and on 2026-10-13 the live test found the counters 10px under the bar there (S4b-BL-245).
 // Offline and deterministic: every request that is not to the local server is answered by this script (MapLibre's style
 // URL with a small valid style that has credits, anything else aborted), so the map's container and canvas exist but nothing depends on a
 // network. Not a replacement for tools/live-ui after the deploy, and not for a real phone.
@@ -115,6 +118,16 @@ function countersUnderBar() {
   const bar = document.querySelector('nav.nav');
   const head = document.querySelector('.panel-head');
   if (!main || !bar || !head || getComputedStyle(bar).position !== 'fixed') return null;
+  // The map at its floor: its controls need the room, so the counters may start below the bar (as live-ui.js).
+  const wrap = document.querySelector('.map-wrap'), map = document.querySelector('.maplibregl-map');
+  if (wrap && map) {
+    const probe = document.createElement('div');
+    probe.style.cssText = 'position:absolute;visibility:hidden;height:var(--map-floor)';
+    wrap.appendChild(probe);
+    const floor = probe.getBoundingClientRect().height;
+    probe.remove();
+    if (floor > 0 && map.getBoundingClientRect().height <= floor + 1) return null;
+  }
   const top = main.scrollTop;
   main.scrollTop = 0;
   const barTop = bar.getBoundingClientRect().top;
@@ -150,12 +163,12 @@ async function run() {
   let checks = 0;
   let worstShift = 0;
   const check = (tag, ok, detail) => { checks++; if (!ok) { failures.push(`${tag}: ${detail}`); console.log(`FAIL ${tag}: ${detail}`); } };
-  const pass = async (viewport, text, lang = 'en', { counters = false } = {}) => {
+  const pass = async (viewport, text, lang = 'en', { counters = false, routes = ROUTES } = {}) => {
     const { ctx } = await phoneContext(browser, devices, { device: 'Pixel 7', viewport, text, lang });
     await offline(ctx, base);
     await ctx.addInitScript(watchShifts);
     const page = await ctx.newPage();
-    for (const route of ROUTES) {
+    for (const route of routes) {
       const tag = `${viewport.width}x${viewport.height}${text ? ` text ${text}%` : ''}${lang === 'en' ? '' : ` ${lang}`} ${route}`;
       try {
         const resp = await page.goto(base + route, { waitUntil: 'load', timeout: 30000 });
@@ -194,6 +207,9 @@ async function run() {
       pass(OWNER_PHONE, LARGE_TEXT, 'en', { counters: true }),
       pass(LANDSCAPE_SE),
       pass(TALL_TAMIL, 200, 'ta'),
+      // The counters in the Indic languages whose captions are longest: the Map page only, so the gate stays about a minute.
+      ...['ta', 'te'].flatMap((lang) => [...VIEWPORTS, TALL_TAMIL].map((v) => pass(v, undefined, lang, { counters: true, routes: ['/'] }))),
+      ...['ta', 'te'].map((lang) => pass(OWNER_PHONE, LARGE_TEXT, lang, { counters: true, routes: ['/'] })),
     ]);
   } finally {
     await browser.close();
