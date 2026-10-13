@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.122 |
+| Version | 0.123 |
 | Date | 2026-10-13 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -132,7 +132,8 @@
 | 0.119 | 2026-10-13 | Claude (Code), engineer | New §18.8: **the typed-extras renderer, the website** (kinds PR 4, S4b-BL-208, first of two stacked pull requests; `feat/kinds-6-typed-extras-renderer`; [06](06-test-plan.md) TC-U-210, [schemas README](schemas/README.md) v1.39 §8.4): the house page draws the BHK, area, floor and cost fields from the kind's fields (`KindFields`, `kind-extras.ts`, one `extra` template), with the element ids, attributes, rows and labels the hand-written fields had; the rent-only rule is kind data (`forCadences`, §18.3); the page's field and section labels read the kind (`KindKeys`, S4b-BL-255). Safety test first: the form's golden file in four languages and the shared `kind-field-vectors.json`, written on main before the switch. §18.5's per-stack order item closed. The phone follows in the stacked pull request. |
 | 0.120 | 2026-10-13 | Claude (Code), engineer | §18.8 and §18.6: **the typed-extras renderer, the phone** (kinds PR 4, S4b-BL-208, the second stacked pull request; `feat/kinds-6b-typed-extras-android`; [06](06-test-plan.md) TC-U-210): `KindFields` in `:shared` and `KindExtrasFields` in `:ui` (the phone and the iPhone) draw the BHK, area, floor and cost fields of `HouseEditScreen` in the rows the hand-written fields had, every value written through the candidate's extras; the form's labels and its sections' headings read the kind (S4b-BL-255). Safety test first: `HouseFormFieldsTest` and its golden file (the form's semantics in four languages) and the phone's half of `kind-field-vectors.json`, written on main before the switch; the Roborazzi baselines are unchanged. `HouseEditScreen.kt` 1,773 to 1,588 lines. |
 | 0.121 | 2026-10-13 | Claude (Code), engineer | New §18.9: **the hidden schools kind** (kinds PR 5, S4b-BL-209, the first of two stacked pull requests: the website and the server; `feat/kinds-7-schools-kind`; [06](06-test-plan.md) TC-U-211): `docs/schemas/kinds/school.json` (labels, five hidden sections, a hidden money and broker, seven typed extras with fixed-cadence fees) and `school-vectors.json`; the developer flag (`core/dev-kinds.ts`: a development build and localStorage `doorprints.dev.kinds` = `school`; off otherwise, and nothing changes); the renderer's `text` and `enum` controls and the hiding of sections and core fields a kind leaves out (S4b-BL-257 items 1 and 4); the server's backup rows keep a candidate's kind (`BackupHouse.kind`). The phone is the second pull request. |
-| 0.122 | 2026-10-13 | Claude (Code), engineer | §18.9: **the hidden schools kind on the phone and the iPhone** (kinds PR 5, S4b-BL-209, the second stacked pull request; `feat/kinds-7b-schools-android`): `SchoolKind` and `DevKinds` in `:shared`, the debug-only `BuildConfig.DEV_KINDS` handed to the screens as `LocalDevKinds`, the form reading the candidate's kind (labels, extras, hidden places, a kind picker), text and enum controls, the rotation saver keeping the kind and other extras, and `ExportHouse.kind`. |
+| 0.122 | 2026-10-13 | Claude (Code), engineer | New §16.5: **why the Indic web fonts are `font-display: optional`** (S4b-BL-263; `fix/indic-fonts-display-optional`). |
+| 0.123 | 2026-10-13 | Claude (Code), engineer | §18.9: **the hidden schools kind on the phone and the iPhone** (kinds PR 5, S4b-BL-209, the second stacked pull request; `feat/kinds-7b-schools-android`): `SchoolKind` and `DevKinds` in `:shared`, the debug-only `BuildConfig.DEV_KINDS` handed to the screens as `LocalDevKinds`, the form reading the candidate's kind (labels, extras, hidden places, a kind picker), text and enum controls, the rotation saver keeping the kind and other extras, and `ExportHouse.kind`. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -1974,6 +1975,10 @@ flowchart LR
   link); the service worker precache makes that cheap. A long `max-age` or `immutable` rule must not come back
   unless the rewrite is first narrowed, because the `**` rewrite answers a missing old chunk with the HTML shell and
   status 200 and header rules match the request path ([07](07-secure-build-and-deploy.md) §6.3).
+
+### 16.5 The Indic web fonts: `font-display: optional` (S4b-BL-263)
+
+The website self-hosts Noto Sans Devanagari, Tamil and Telugu (`web/public/fonts`, `@font-face` in `styles.css`) for devices with no font for those scripts; the font stack reaches them only for code points the system's own fonts lack. The faces were `font-display: swap`, which draws text in a fallback and swaps the web font in when it arrives; a late font then reflowed the page (the tour offer, S4b-BL-262, and the Map page's legend and panel at 130% text, a layout shift of 0.085-0.214, S4b-BL-263). They are now `optional`: the browser waits a short block period, uses the web font if it is ready and otherwise keeps the fallback for that page load, still downloading the font into the cache. **Result:** the service worker precaches every file in `dist` (`web/scripts/sw-precache.mjs`), so a repeat visit uses the web font inside the block period; a first visit on a slow network shows the system's Indic font for that page load and the web font from the next. No preload (it would spend the first visit's bandwidth on a font the system may already have), and the Map page's `drawn` logic is untouched. Measured numbers: [10](10-sprint-log.md) S4b-BL-263, test: [06](06-test-plan.md) TC-S-46.
 
 ## 17. Decisions of the finishing batch (2026-10-01)
 

@@ -39,7 +39,7 @@
 // after 1.6 s and the tour offer, drawn in the fallback font, grew and jumped (0.065, S4b-BL-262), which no local run showed.
 // So a pass whose only failures are layout shifts runs once more, and the output says so; a second failure fails the gate.
 // GATE_FONT_DELAY_MS=<ms> makes the local server send the web fonts (the Indic Noto Sans) that late, as a slow network
-// does, to see what a late font moves (not set in CI: the Map page itself still reflows then, S4b-BL-263).
+// does, to see what a late font moves (not set in CI; the Indic fonts are font-display: optional since S4b-BL-263, so a late font is not swapped in; the shift-only rerun may go one release after that).
 const { chromium, devices } = require('playwright');
 const { ROUTES, phoneContext, layoutAudit } = require('./layout-audit');
 const http = require('node:http');
