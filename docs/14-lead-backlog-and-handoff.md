@@ -183,7 +183,7 @@
 | 0.173 | 2026-10-13 | Claude (Code), engineer | §7 *Things that are easy to get wrong*: update the test phone before the website deploys a change to the sync file's shape (review follow-up of #295; `docs/kinds-4b-review-followups`). |
 | 0.174 | 2026-10-13 | Claude (Code), engineer | §11.2: **S4b-BL-247 In review** (`feat/kinds-4c-viewing-candidate-id`): the viewing payload says `candidateId` on the three stacks, `houseId` still read everywhere (no Flyway migration: the server's query reads both keys); left of the reset: the guide and the CHANGELOG release entry. |
 | 0.175 | 2026-10-13 | Claude (Code), engineer | §11.2: **S4b-BL-207 In review** (`feat/kinds-5-label-resolver`): kinds PR 3, the label and visibility resolver `KindLabels` (`:shared`, website twin), pinned by `kind-label-vectors.json`; the status and checklist tables read it; the field and section call sites are S4b-BL-255, with the renderer. |
-| 0.176 | 2026-10-13 | Claude (Code), engineer | §11.2: **S4b-BL-209 In progress, kinds PR 5** (the hidden schools kind; the website and the server In review on `feat/kinds-7-schools-kind`, the phone next, stacked; [03](03-design.md) §18.9, [10](10-sprint-log.md) v0.291). |
+| 0.176 | 2026-10-13 | Claude (Code), engineer | §11.2: **S4b-BL-209 In progress, kinds PR 5** (the hidden schools kind; the website and the server In review on `feat/kinds-7-schools-kind`, the phone next, stacked; [03](03-design.md) §18.9, [10](10-sprint-log.md) v0.293). |
 | 0.177 | 2026-10-13 | Claude (Code), engineer | §11.2: **S4b-BL-209 In review, the phone** (`feat/kinds-7b-schools-android`, stacked on #307). |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
