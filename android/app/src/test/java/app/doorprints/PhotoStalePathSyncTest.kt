@@ -87,7 +87,7 @@ class PhotoStalePathSyncTest {
         }
     }
 
-    /** The fake server: `GET /api/photos` answers [photoChanges]; every request it saw ("POST /api/houses/h1/photos"). */
+    /** The fake server: `GET /api/photos` answers [photoChanges]; every request it saw ("POST /api/candidates/h1/photos"). */
     private class Server {
         var photoChanges = "[]"
         val seen = mutableListOf<String>()
@@ -151,7 +151,7 @@ class PhotoStalePathSyncTest {
 
         repo.sync(photosAllowed = true)
 
-        assertTrue(server.seen.contains("POST /api/houses/h1/photos"))
+        assertTrue(server.seen.contains("POST /api/candidates/h1/photos"))
         assertEquals(true, db.photos().get("p9")?.uploaded)
         assertTrue(db.photos().pendingUpload().isEmpty())
     }
@@ -160,7 +160,7 @@ class PhotoStalePathSyncTest {
     fun aServerTombstoneDeletesTheCurrentFolderFileOfAStalePathRow(): Unit = runBlocking {
         val file = repo.photoFile("p9").apply { writeBytes(byteArrayOf(1, 2, 3)) }
         db.photos().upsert(PhotoEntity("p9", "h1", stalePath("p9"), uploaded = true, createdAt = at))
-        server.photoChanges = "[{\"id\":\"p9\",\"houseId\":\"h1\",\"deleted\":true,\"syncVersion\":5}]"
+        server.photoChanges = "[{\"id\":\"p9\",\"candidateId\":\"h1\",\"deleted\":true,\"syncVersion\":5}]"
 
         repo.sync(photosAllowed = true)
 

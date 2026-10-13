@@ -29,6 +29,7 @@ import app.doorprints.shared.api.PhotoChangeDto
 import app.doorprints.shared.api.PhotoMetaDto
 import app.doorprints.shared.api.RecordDto
 import app.doorprints.shared.api.VisitDto
+import app.doorprints.shared.export.BackupWire
 import app.doorprints.shared.sync.DriveMerge
 import app.doorprints.shared.sync.MergeRule
 import app.doorprints.shared.sync.SyncKind
@@ -192,7 +193,10 @@ class DriveSyncBackend(
         return taken.filter { it.kind == kind }.mapNotNull { row ->
             // A row the DTO cannot hold is skipped, like any pulled row the loop cannot use; the loop validates the rest.
             try {
-                withVersion(JSON.decodeFromJsonElement(serializer, row.json))
+                // A house row of a file written before the format reset (no `kind`) is read as the candidate it is
+                // (S4b-BL-206); a visit's or photo's `houseId` is read by the DTO's alternative name.
+                val json = if (kind == SyncKind.HOUSES && "kind" !in row.json) BackupWire.candidateOfHouse(row.json) else row.json
+                withVersion(JSON.decodeFromJsonElement(serializer, json))
             } catch (_: SerializationException) {
                 null
             } catch (_: IllegalArgumentException) {

@@ -140,6 +140,13 @@ object BackupWire {
         return JsonObject(out)
     }
 
+    /**
+     * A house row of the family before (`price`, `priceType`, `bedrooms`, `areaSqft`, `floor`, `cost`) as the candidate
+     * it is, its other keys kept after the candidate's: also how a Drive sync file from before the reset is read
+     * (`DriveSyncBackend`, kinds step 4).
+     */
+    internal fun candidateOfHouse(h: JsonObject): JsonObject = candidateOf(h)
+
     private fun candidateOf(h: JsonObject): JsonObject {
         val money = moneyOf(h["price"], h.str("priceType"))
         val out = LinkedHashMap<String, JsonElement>()

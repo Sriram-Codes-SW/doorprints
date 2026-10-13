@@ -468,19 +468,8 @@ fun HouseListScreen(
         // linked broker since slice 1b, the rooms' names and notes since slice 1c, the questions asked and their answers
         // since slice 3a, the floor in the app's language too since S4b-BL-104).
         .filter {
-            HouseSearch.matches(
-                query,
-                HouseSearch.fields(
-                    it.label, it.address, it.street, it.locality, it.notes, it.contactName,
-                    brokerText = it.brokerId?.let(brokerText::get),
-                    rooms = it.rooms,
-                    answers = it.answers,
-                    moveIn = it.moveIn,
-                    floor = it.floor,
-                    language = language,
-                    noteTexts = if (areaNotes.isEmpty()) emptyList() else AreaNotes.reaching(it.point(), areas, areaNotes).map { n -> n.text },
-                ),
-            )
+            val noteTexts = if (areaNotes.isEmpty()) emptyList() else AreaNotes.reaching(it.point(), areas, areaNotes).map { n -> n.text }
+            HouseSearch.matches(query, it.searchFields(it.brokerId?.let(brokerText::get), language, noteTexts))
         }
         .let { list ->
             when (sort) {

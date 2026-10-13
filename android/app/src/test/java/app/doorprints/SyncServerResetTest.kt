@@ -92,7 +92,7 @@ class SyncServerResetTest {
         }
     }
 
-    /** The fake server: its answers, and every request it saw ("GET /api/houses?since=0", "PUT /api/houses/h1"). */
+    /** The fake server: its answers, and every request it saw ("GET /api/candidates?since=0", "PUT /api/candidates/h1"). */
     private class Server {
         /** `maxSyncVersion` in `GET /api/stats`; null leaves the field out, as an older server does. */
         var maxSyncVersion: Long? = null
@@ -172,10 +172,10 @@ class SyncServerResetTest {
 
     private fun assertEverythingSentAgainAndPulledFromZero(outcome: SyncOutcome) {
         assertTrue(outcome.remoteReset)
-        assertTrue(server.seen.contains("PUT /api/houses/h1"))
+        assertTrue(server.seen.contains("PUT /api/candidates/h1"))
         assertTrue(server.seen.contains("PUT /api/visits/v1"))
-        assertTrue(server.seen.contains("POST /api/houses/h1/photos"))
-        assertEquals(listOf("GET /api/houses?since=0", "GET /api/visits?since=0", "GET /api/records?since=0", "GET /api/photos?since=0"), pulls())
+        assertTrue(server.seen.contains("POST /api/candidates/h1/photos"))
+        assertEquals(listOf("GET /api/candidates?since=0", "GET /api/visits?since=0", "GET /api/records?since=0", "GET /api/photos?since=0"), pulls())
         runBlocking {
             assertEquals(SettingsStore.Cursors(0, 0, 0, 0), settings.cursors())
             assertTrue(db.houses().dirty().isEmpty())
@@ -199,7 +199,7 @@ class SyncServerResetTest {
         val outcome = sync()
         assertFalse(outcome.remoteReset)
         assertEquals(0, outcome.pushed)
-        assertEquals(listOf("GET /api/houses?since=250", "GET /api/visits?since=240", "GET /api/records?since=235", "GET /api/photos?since=230"), pulls())
+        assertEquals(listOf("GET /api/candidates?since=250", "GET /api/visits?since=240", "GET /api/records?since=235", "GET /api/photos?since=230"), pulls())
     }
 
     @Test
@@ -207,7 +207,7 @@ class SyncServerResetTest {
         server.maxSyncVersion = null
         val outcome = sync()
         assertFalse(outcome.remoteReset)
-        assertEquals(listOf("GET /api/houses?since=250", "GET /api/visits?since=240", "GET /api/records?since=235", "GET /api/photos?since=230"), pulls())
+        assertEquals(listOf("GET /api/candidates?since=250", "GET /api/visits?since=240", "GET /api/records?since=235", "GET /api/photos?since=230"), pulls())
     }
 
     @Test
@@ -217,9 +217,9 @@ class SyncServerResetTest {
         db.houses().upsert(HouseEntity(id = "h2", label = "New house", lat = 12.9, lon = 77.6, createdAt = at + 5, updatedAt = at + 5))
         val outcome = sync()
         assertEverythingSentAgainAndPulledFromZero(outcome)
-        assertTrue(server.seen.contains("PUT /api/houses/h2"))
+        assertTrue(server.seen.contains("PUT /api/candidates/h2"))
         // h2 went twice (the first answer showed the reset before it counted); h1, h2, v1 and p1 were pushed.
-        assertEquals(2, server.seen.count { it == "PUT /api/houses/h2" })
+        assertEquals(2, server.seen.count { it == "PUT /api/candidates/h2" })
         assertEquals(4, outcome.pushed)
     }
 
@@ -232,6 +232,6 @@ class SyncServerResetTest {
         val outcome = sync()
         assertFalse(outcome.remoteReset)
         assertEquals(1, server.seen.count { it.startsWith("PUT ") })
-        assertEquals(listOf("GET /api/houses?since=250", "GET /api/visits?since=240", "GET /api/records?since=235", "GET /api/photos?since=230"), pulls())
+        assertEquals(listOf("GET /api/candidates?since=250", "GET /api/visits?since=240", "GET /api/records?since=235", "GET /api/photos?since=230"), pulls())
     }
 }

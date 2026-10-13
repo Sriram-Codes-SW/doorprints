@@ -2,9 +2,13 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://doorprints.web.app/schemas/sync-1.schema.json",
   "title": "Doorprints sync file, doorprints-sync/1",
-  "description": "The inner format of a device's sync file in Google Drive (S4b-BL-130, docs/15 §5.1), inside the dpx/1 envelope and gzipped. One file per device holds that device's whole state, tombstones included and kept for ever. The readers are SyncFiles.parse (android/shared, app.doorprints.shared.sync) and parseSyncFile (web/src/app/data/drive/sync-file.ts); they also check what a schema cannot: the whole file is at most 16 MiB of UTF-8, all four lists together hold at most 100000 rows, a key appears once per list, deviceId is the writer the envelope authenticated, and times are real calendar instants from 2000-01-01T00:00:00Z on. Unknown properties are ignored (a newer writer within /1). Rows carry the sync DTOs' other fields, which the sync loop validates like a server row.",
+  "description": "The inner format of a device's sync file in Google Drive (S4b-BL-130, docs/15 §5.1), inside the dpx/1 envelope and gzipped. One file per device holds that device's whole state, tombstones included and kept for ever. The readers are SyncFiles.parse (android/shared, app.doorprints.shared.sync) and parseSyncFile (web/src/app/data/drive/sync-file.ts); they also check what a schema cannot: the whole file is at most 16 MiB of UTF-8, all four lists together hold at most 100000 rows, a key appears once per list, deviceId is the writer the envelope authenticated, and times are real calendar instants from 2000-01-01T00:00:00Z on. Unknown properties are ignored (a newer writer within /1). Rows carry the sync DTOs' other fields, which the sync loop validates like a server row. Since the format reset (S4b-BL-206, kinds step 4) the phone writes the houses as candidates (kind, money, extras) under candidates and names a visit's or photo's house candidateId; a file from before, or from a writer that has not moved yet (houses, houseId), is still read, a house row without kind as the house it is, and a file or row with both names is refused.",
   "type": "object",
-  "required": ["format", "deviceId", "seq", "writtenAt", "houses", "visits", "records", "photos"],
+  "required": ["format", "deviceId", "seq", "writtenAt", "visits", "records", "photos"],
+  "oneOf": [
+    { "required": ["candidates"], "not": { "required": ["houses"] } },
+    { "required": ["houses"], "not": { "required": ["candidates"] } }
+  ],
   "properties": {
     "format": { "const": "doorprints-sync/1" },
     "deviceId": { "$ref": "#/$defs/deviceId" },
@@ -15,7 +19,13 @@
       "maximum": 9007199254740991
     },
     "writtenAt": { "$ref": "#/$defs/time" },
-    "houses": { "type": "array", "maxItems": 20000, "items": { "$ref": "#/$defs/house" } },
+    "candidates": { "type": "array", "maxItems": 20000, "items": { "$ref": "#/$defs/candidate" } },
+    "houses": {
+      "description": "The same list under its name before the format reset.",
+      "type": "array",
+      "maxItems": 20000,
+      "items": { "$ref": "#/$defs/house" }
+    },
     "visits": { "type": "array", "maxItems": 50000, "items": { "$ref": "#/$defs/visit" } },
     "records": { "type": "array", "maxItems": 50000, "items": { "$ref": "#/$defs/record" } },
     "photos": { "type": "array", "maxItems": 50000, "items": { "$ref": "#/$defs/photo" } }
@@ -43,8 +53,17 @@
         "by": { "$ref": "#/$defs/deviceId" }
       }
     },
+    "candidate": {
+      "description": "HouseDto (the candidate of /api/candidates) plus by.",
+      "allOf": [{ "$ref": "#/$defs/version" }],
+      "required": ["id", "kind"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": { "type": "string", "pattern": "^[a-z][a-z0-9_]{1,31}$" }
+      }
+    },
     "house": {
-      "description": "HouseDto plus by.",
+      "description": "A house row before the format reset (price, priceType, bedrooms, areaSqft, floor, cost) plus by; read as the candidate it is.",
       "allOf": [{ "$ref": "#/$defs/version" }],
       "required": ["id"],
       "properties": { "id": { "$ref": "#/$defs/id" } }
@@ -55,8 +74,10 @@
       "required": ["id"],
       "properties": {
         "id": { "$ref": "#/$defs/id" },
-        "houseId": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/id" }] }
-      }
+        "candidateId": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/id" }] },
+        "houseId": { "description": "candidateId before the format reset.", "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/id" }] }
+      },
+      "not": { "required": ["candidateId", "houseId"] }
     },
     "record": {
       "description": "RecordDto plus by; keyed by type and id.",
@@ -70,10 +91,12 @@
     "photo": {
       "description": "PhotoChangeDto plus by, and the Drive file of its bytes with their SHA-256.",
       "allOf": [{ "$ref": "#/$defs/version" }],
-      "required": ["id", "houseId"],
+      "required": ["id"],
+      "oneOf": [{ "required": ["candidateId"] }, { "required": ["houseId"] }],
       "properties": {
         "id": { "$ref": "#/$defs/id" },
-        "houseId": { "$ref": "#/$defs/id" },
+        "candidateId": { "$ref": "#/$defs/id" },
+        "houseId": { "description": "candidateId before the format reset.", "$ref": "#/$defs/id" },
         "driveFileId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,128}$" },
         "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
       }

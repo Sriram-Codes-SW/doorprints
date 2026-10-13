@@ -19,7 +19,9 @@
 package app.doorprints.shared.api
 
 import app.doorprints.shared.api.RecordedResponses as R
+import app.doorprints.data.toEntity
 import app.doorprints.shared.model.HouseStatus
+import app.doorprints.shared.model.Money
 import app.doorprints.shared.model.VisitSource
 import app.doorprints.shared.sync.SyncOutcome
 import io.ktor.client.engine.mock.MockEngine
@@ -136,13 +138,19 @@ class ApiClientContractTest {
     fun housesSinceParsesRecordedPayloadAndIgnoresServerOnlyFields() = runTest {
         val server = FakeServer(json(200, R.HOUSES_SINCE))
         val houses = server.api().housesSince(40)
-        assertEquals("$BASE/api/houses?since=40", server.seen.single().url)
+        assertEquals("$BASE/api/candidates?since=40", server.seen.single().url)
         assertEquals(2, houses.size)
 
         val flat = houses[0]
         assertEquals("5b1f3c1e-8d0a-4c55-9a51-0d2a6f7e9b10", flat.id)
         assertEquals("SHORTLISTED", flat.status)
-        assertEquals(32_000L, flat.price)
+        // The candidate shape (kinds step 2 on the server, step 4 here): kind, money with its cadence, extras by id.
+        assertEquals("house", flat.kind)
+        assertEquals(Money(32_000, "month"), flat.money)
+        assertEquals(listOf("bedrooms", "deposit", "parkingSlots"), flat.extras!!.keys.toList())
+        assertEquals(2, flat.toEntity().bedrooms)
+        assertEquals(64_000L, flat.toEntity().cost?.deposit)
+        assertEquals("RENT", flat.toEntity().priceType)
         assertEquals(mapOf("water" to 5, "parking" to 4, "noise" to 2), flat.checklist)
         assertNull(flat.contactName)
         assertEquals(41L, flat.syncVersion)
@@ -162,11 +170,13 @@ class ApiClientContractTest {
         val api = server.api()
         val visit = api.visitsSince(0).single()
         assertEquals(VisitSource.AUTO, VisitSource.fromWire(visit.source))
+        assertEquals("5b1f3c1e-8d0a-4c55-9a51-0d2a6f7e9b10", visit.houseId) // `candidateId` on the wire
         assertEquals(IsoTime.parseMillis("2026-09-21T11:05:00.250Z"), IsoTime.parseMillis(visit.arrivedAt))
 
         val photos = api.photoChangesSince(6)
         assertEquals(listOf(false, true), photos.map { it.deleted })
         assertEquals(listOf(7L, 8L), photos.map { it.syncVersion })
+        assertEquals(setOf("5b1f3c1e-8d0a-4c55-9a51-0d2a6f7e9b10"), photos.map { it.houseId }.toSet())
         assertEquals(listOf("$BASE/api/visits?since=0", "$BASE/api/photos?since=6"), server.seen.map { it.url })
     }
 
@@ -175,19 +185,21 @@ class ApiClientContractTest {
         val server = FakeServer(json(200, R.HOUSE_PUT_ECHO))
         val dto = HouseDto(
             id = "h-1", label = "Flat", street = "MG Road", lat = 12.97, lon = 77.59, status = "NEW",
-            priceType = "RENT", checklist = mapOf("water" to 3),
+            money = Money(cadence = "month"), checklist = mapOf("water" to 3),
             createdAt = IsoTime.format(1_790_072_130_000), updatedAt = IsoTime.format(1_790_072_130_120),
         )
         val echo = server.api().putHouse(dto)
         assertEquals(43L, echo.syncVersion)
+        assertEquals(Money(cadence = "month"), echo.money)
 
         val request = server.seen.single()
         assertEquals("PUT", request.method)
-        assertEquals("$BASE/api/houses/h-1", request.url)
+        assertEquals("$BASE/api/candidates/h-1", request.url)
         assertEquals("application/json; charset=utf-8", request.contentType?.lowercase())
-        // Same Json settings as v0.1: nulls and default values (status NEW, deleted false, syncVersion 0) are omitted.
+        // Same Json settings as v0.1: nulls and default values (status NEW, deleted false, syncVersion 0) are omitted,
+        // except the kind, which the server requires (kinds step 4).
         assertEquals(
-            """{"id":"h-1","label":"Flat","street":"MG Road","lat":12.97,"lon":77.59,"priceType":"RENT",""" +
+            """{"id":"h-1","kind":"house","label":"Flat","street":"MG Road","lat":12.97,"lon":77.59,"money":{"cadence":"month"},""" +
                 """"checklist":{"water":3},"createdAt":"2026-09-22T10:15:30Z","updatedAt":"2026-09-22T10:15:30.120Z"}""",
             request.text,
         )
@@ -203,7 +215,7 @@ class ApiClientContractTest {
         server.api().putVisit(dto)
         assertEquals("$BASE/api/visits/v-1", server.seen.single().url)
         assertEquals(
-            """{"id":"v-1","houseId":"h-1","lat":1.5,"lon":2.5,"arrivedAt":"2026-09-22T10:15:30Z","source":"AUTO",""" +
+            """{"id":"v-1","candidateId":"h-1","lat":1.5,"lon":2.5,"arrivedAt":"2026-09-22T10:15:30Z","source":"AUTO",""" +
                 """"updatedAt":"2026-09-22T10:15:30.001Z"}""",
             server.seen.single().text,
         )
@@ -266,7 +278,7 @@ class ApiClientContractTest {
 
         val request = server.seen.single()
         assertEquals("POST", request.method)
-        assertEquals("$BASE/api/houses/h-1/photos", request.url)
+        assertEquals("$BASE/api/candidates/h-1/photos", request.url)
         assertTrue(request.contentType!!.startsWith("multipart/form-data; boundary="), request.contentType)
         val body = request.body.decodeToString(0, request.body.size, throwOnInvalidSequence = false).lowercase()
         assertTrue("content-disposition: form-data; name=\"id\"" in body, body)
@@ -501,7 +513,7 @@ class ApiClientContractTest {
     fun redirectsAreNeverFollowed() = runTest {
         val server = FakeServer(
             html(302, "", "Location" to "http://10.10.0.1/login"),
-            empty(307, "Location" to "https://evil.example/api/houses/h-1"),
+            empty(307, "Location" to "https://evil.example/api/candidates/h-1"),
         )
         val api = server.api()
         val get = assertFailsWith<ApiException> { api.stats() }
@@ -511,7 +523,7 @@ class ApiClientContractTest {
         assertEquals(ApiException.Kind.CAPTIVE_PORTAL, put.kind)
         assertEquals(307, put.code)
         // Only the two original requests: the API key never went to the redirect target.
-        assertEquals(listOf("$BASE/api/stats", "$BASE/api/houses/h-1"), server.seen.map { it.url })
+        assertEquals(listOf("$BASE/api/stats", "$BASE/api/candidates/h-1"), server.seen.map { it.url })
     }
 
     @Test

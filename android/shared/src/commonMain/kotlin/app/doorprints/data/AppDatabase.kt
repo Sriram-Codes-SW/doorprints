@@ -33,6 +33,9 @@ import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import app.doorprints.shared.model.Candidates
+import app.doorprints.shared.model.HouseCost
 
 /**
  * Room's converters from the model's structured values (checklist, rooms, answers, move-in, photo tags) to JSON
@@ -72,6 +75,16 @@ class Converters {
     /** Coerced on the way out, like the rooms: text that does not decode reads as no move-in, not a crash. */
     @TypeConverter
     fun jsonToMoveIn(json: String?): MoveIn? = MoveIn.coerced(MoveIn.decode(json))
+
+    /** A candidate's extras (Room version 12) as compact JSON in their order; null for none, never `{}`. */
+    @TypeConverter
+    fun extrasToJson(extras: JsonObject?): String? = extras?.takeIf { it.isNotEmpty() }?.toString()
+
+    /** Read leniently: text that is not a JSON object (never written here) reads as no extras, not a crash. */
+    @TypeConverter
+    fun jsonToExtras(json: String?): JsonObject? =
+        json?.takeIf { it.isNotBlank() }?.let { runCatching { Json.parseToJsonElement(it) as? JsonObject }.getOrNull() }
+            ?.takeIf { it.isNotEmpty() }
 
     private val tagsSerializer = ListSerializer(String.serializer())
 
@@ -437,7 +450,7 @@ interface RecordDao {
         HouseEntity::class, VisitEntity::class, PhotoEntity::class, TrackPointEntity::class, RecordEntity::class,
         SavedWalkEntity::class,
     ],
-    version = 11,
+    version = 12,
     exportSchema = true,
 )
 /**
@@ -590,13 +603,88 @@ abstract class AppDatabase : RoomDatabase() {
         }
 
         /**
+         * v12 (kinds step 4, S4b-BL-206; docs/03 ADR-36 §18.4 doors 3, 5 and 7): every house is rewritten in place as a
+         * candidate. The table is made again in `12.json`'s layout (SQLite cannot drop a column on every Android this
+         * app runs on): `kind` (`house`), `money_amount` and `money_cadence` from `price` and `priceType` (`RENT` is
+         * `month`, `SALE` `once`, no type no cadence), and `extras` from the bedrooms, area, floor and the eleven
+         * `cost_*` columns ([Candidates.extrasOf]); every other column is copied as it is, the dirty flag included, so
+         * nothing is sent again and nothing is lost. Room runs a migration in one transaction: a failure leaves version 11.
+         */
+        val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(connection: SQLiteConnection) {
+                connection.execSQL(HOUSES_V12.replace("`houses`", "`houses_v12`"))
+                val kept = HOUSE_COLUMNS_KEPT.joinToString(", ") { "`$it`" }
+                connection.execSQL("INSERT INTO `houses_v12` ($kept, `kind`) SELECT $kept, '${Candidates.HOUSE_KIND}' FROM `houses`")
+                val read = connection.prepare(
+                    "SELECT `id`, `price`, `priceType`, `bedrooms`, `areaSqft`, `floor`, " +
+                        HOUSE_COST_COLUMNS.joinToString(", ") { "`cost_$it`" } + " FROM `houses`",
+                )
+                val write = connection.prepare(
+                    "UPDATE `houses_v12` SET `money_amount` = ?, `money_cadence` = ?, `extras` = ? WHERE `id` = ?",
+                )
+                try {
+                    while (read.step()) {
+                        fun long(i: Int): Long? = if (read.isNull(i)) null else read.getLong(i)
+                        fun int(i: Int): Int? = long(i)?.toInt()
+                        val priceType = if (read.isNull(2)) null else read.getText(2)
+                        val money = Candidates.moneyOf(long(1), priceType)
+                        val cost = HouseCost(
+                            deposit = long(6), depositMonths = int(7), maintenance = long(8),
+                            maintenanceIncluded = long(9)?.let { it != 0L }, brokerage = long(10), brokerageMonths = int(11),
+                            lockInMonths = int(12), noticeMonths = int(13),
+                            availableFrom = if (read.isNull(14)) null else read.getText(14), myOffer = long(15),
+                            agreedPrice = long(16),
+                        )
+                        val extras = Candidates.extrasOf(int(3), int(4), int(5), cost.orNull(), money?.cadence, null)
+                        if (money == null && extras == null) continue
+                        write.reset()
+                        money?.amount?.let { write.bindLong(1, it) } ?: write.bindNull(1)
+                        money?.cadence?.let { write.bindText(2, it) } ?: write.bindNull(2)
+                        extras?.let { write.bindText(3, it.toString()) } ?: write.bindNull(3)
+                        write.bindText(4, read.getText(0))
+                        write.step()
+                    }
+                } finally {
+                    read.close()
+                    write.close()
+                }
+                connection.execSQL("DROP TABLE `houses`")
+                connection.execSQL("ALTER TABLE `houses_v12` RENAME TO `houses`")
+                connection.execSQL("CREATE INDEX IF NOT EXISTS `index_houses_street` ON `houses` (`street`)")
+            }
+        }
+
+        /** The `houses` table of version 12, Room's own SQL from `12.json`. */
+        private const val HOUSES_V12 =
+            "CREATE TABLE IF NOT EXISTS `houses` (`id` TEXT NOT NULL, `label` TEXT NOT NULL, `address` TEXT, " +
+                "`street` TEXT, `locality` TEXT, `lat` REAL NOT NULL, `lon` REAL NOT NULL, `status` TEXT NOT NULL, " +
+                "`rating` INTEGER, `contactName` TEXT, `contactPhone` TEXT, `listingUrl` TEXT, `notes` TEXT, " +
+                "`locationSource` TEXT, `rooms` TEXT, `answers` TEXT, `moveIn` TEXT, `brokerId` TEXT, " +
+                "`checklist` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, " +
+                "`deleted` INTEGER NOT NULL, `dirty` INTEGER NOT NULL, `kind` TEXT NOT NULL, `extras` TEXT, " +
+                "`money_amount` INTEGER, `money_cadence` TEXT, PRIMARY KEY(`id`))"
+
+        /** The columns version 12 keeps from version 11, copied as they are. */
+        private val HOUSE_COLUMNS_KEPT = listOf(
+            "id", "label", "address", "street", "locality", "lat", "lon", "status", "rating", "contactName",
+            "contactPhone", "listingUrl", "notes", "locationSource", "rooms", "answers", "moveIn", "brokerId", "checklist",
+            "createdAt", "updatedAt", "deleted", "dirty",
+        )
+
+        /** Version 11's eleven `cost_*` columns, in [HouseCost]'s order (the migration reads them by position). */
+        private val HOUSE_COST_COLUMNS = listOf(
+            "deposit", "depositMonths", "maintenance", "maintenanceIncluded", "brokerage", "brokerageMonths",
+            "lockInMonths", "noticeMonths", "availableFrom", "myOffer", "agreedPrice",
+        )
+
+        /**
          * Every migration, in order, for the three builders (Android's `AppDatabaseFactory`, iOS's `AppDatabaseIos`,
          * the tests): a new version adds its migration here once (readiness review 2026-09-29, docs/14 §8 finding 6)
          * and pins its `<version>.json` in `RoomSchemaTest`.
          */
         val MIGRATIONS: Array<Migration> = arrayOf(
             MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8,
-            MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11,
+            MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12,
         )
     }
 }

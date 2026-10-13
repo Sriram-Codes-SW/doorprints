@@ -109,7 +109,7 @@ class PhotoMetaAndMoveInRepositoryTest {
             val body = when {
                 path == "/api/stats" -> "{\"houses\":1,\"shortlisted\":0,\"rejected\":0,\"visits\":0,\"streets\":0}"
                 method == "GET" && path == "/api/photos" -> photoChanges
-                meta -> metaAnswer ?: bodies.last().let { "{\"id\":\"p1\",\"houseId\":\"h1\"," + it.removePrefix("{") }
+                meta -> metaAnswer ?: bodies.last().let { "{\"id\":\"p1\",\"candidateId\":\"h1\"," + it.removePrefix("{") }
                 method == "PUT" -> bodies.last()
                 method == "POST" -> "{}"
                 else -> "[]"
@@ -195,7 +195,7 @@ class PhotoMetaAndMoveInRepositoryTest {
         repo.photoFile("p1").writeBytes(byteArrayOf(1, 2, 3))
         db.photos().upsert(PhotoEntity("p1", "h1", "/x", uploaded = false, createdAt = at).withMeta(PhotoMeta(tags = listOf("MOVE_IN"), metaUpdatedAt = 50), dirty = true))
         repo.sync(photosAllowed = true)
-        val upload = server.seen.indexOf("POST /api/houses/h1/photos")
+        val upload = server.seen.indexOf("POST /api/candidates/h1/photos")
         val meta = server.seen.indexOf("PUT /api/photos/p1/meta")
         assertTrue(server.seen.toString(), upload >= 0 && meta > upload)
         assertTrue(server.bodies.any { it == "{\"tags\":[\"MOVE_IN\"],\"metaUpdatedAt\":50}" || it.contains("\"tags\":[\"MOVE_IN\"]") && it.contains("\"metaUpdatedAt\":50") })
@@ -205,7 +205,7 @@ class PhotoMetaAndMoveInRepositoryTest {
     @Test
     fun aNewerMetaOnTheServerWinsOverTheEditSentAndA404ClearsTheFlag(): Unit = runBlocking {
         db.photos().upsert(PhotoEntity("p1", "h1", "/x", uploaded = true, createdAt = at).withMeta(PhotoMeta(caption = "Mine", metaUpdatedAt = 50), dirty = true))
-        server.metaAnswer = "{\"id\":\"p1\",\"houseId\":\"h1\",\"caption\":\"Theirs\",\"tags\":[\"LEAK\"],\"metaUpdatedAt\":60}"
+        server.metaAnswer = "{\"id\":\"p1\",\"candidateId\":\"h1\",\"caption\":\"Theirs\",\"tags\":[\"LEAK\"],\"metaUpdatedAt\":60}"
         repo.sync(photosAllowed = true)
         val p = db.photos().get("p1")!!
         assertEquals(PhotoMeta(null, listOf("LEAK"), "Theirs", 60), p.meta)
@@ -222,10 +222,10 @@ class PhotoMetaAndMoveInRepositoryTest {
     @Test
     fun aPulledMetaChangeWinsOnlyWhenItIsNewer(): Unit = runBlocking {
         db.photos().upsert(PhotoEntity("p1", "h1", "/x", uploaded = true, createdAt = at).withMeta(PhotoMeta(caption = "Here", metaUpdatedAt = 50), dirty = false))
-        server.photoChanges = "[{\"id\":\"p1\",\"houseId\":\"h1\",\"caption\":\"Old\",\"metaUpdatedAt\":40,\"syncVersion\":3}]"
+        server.photoChanges = "[{\"id\":\"p1\",\"candidateId\":\"h1\",\"caption\":\"Old\",\"metaUpdatedAt\":40,\"syncVersion\":3}]"
         repo.sync(photosAllowed = true)
         assertEquals("Here", db.photos().get("p1")!!.caption)
-        server.photoChanges = "[{\"id\":\"p1\",\"houseId\":\"h1\",\"roomId\":\"r9\",\"caption\":\"New\",\"metaUpdatedAt\":90,\"syncVersion\":4}]"
+        server.photoChanges = "[{\"id\":\"p1\",\"candidateId\":\"h1\",\"roomId\":\"r9\",\"caption\":\"New\",\"metaUpdatedAt\":90,\"syncVersion\":4}]"
         settings.savePhotoCursor(0)
         repo.sync(photosAllowed = true)
         val p = db.photos().get("p1")!!

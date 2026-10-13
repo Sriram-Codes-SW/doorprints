@@ -26,6 +26,7 @@ import app.doorprints.shared.records.RecordRules
 import app.doorprints.shared.records.decode
 import app.doorprints.shared.model.Broker
 import app.doorprints.shared.model.BrokerType
+import app.doorprints.shared.model.Candidates
 import app.doorprints.shared.model.HouseAnswers
 import app.doorprints.shared.model.HouseRooms
 import app.doorprints.shared.model.HouseStatus
@@ -45,32 +46,40 @@ import kotlinx.serialization.json.JsonObject
 
 // Named arguments on purpose (readiness review 2026-09-29, docs/14 §8 finding 4): Sprint 4c adds eight same-typed
 // numbers to the house, and a positional call would let a swapped pair compile and mis-map in silence.
+// The candidate on the wire since kinds step 4 (S4b-BL-206): the entity already holds its `money` and `extras` (the
+// house's values in the kind file's order, then the extras a newer app wrote), so they go out as stored.
 fun HouseEntity.toDto() = HouseDto(
-    id = id, label = label, address = address, street = street, locality = locality, lat = lat, lon = lon,
-    status = status.name, price = price, priceType = priceType, bedrooms = bedrooms, rating = rating,
+    id = id, kind = kind, label = label, address = address, street = street, locality = locality, lat = lat, lon = lon,
+    status = status.name, money = money, rating = rating,
     contactName = contactName, contactPhone = contactPhone, listingUrl = listingUrl, notes = notes,
-    areaSqft = areaSqft, locationSource = locationSource, cost = cost?.orNull(), rooms = rooms?.takeIf { it.isNotEmpty() },
-    answers = answers?.takeIf { it.isNotEmpty() }, moveIn = MoveIn.coerced(moveIn), floor = floor, brokerId = brokerId, checklist = checklist,
+    locationSource = locationSource, extras = extras, rooms = rooms?.takeIf { it.isNotEmpty() },
+    answers = answers?.takeIf { it.isNotEmpty() }, moveIn = MoveIn.coerced(moveIn), brokerId = brokerId, checklist = checklist,
     createdAt = IsoTime.format(createdAt), updatedAt = IsoTime.format(updatedAt),
     deleted = deleted,
 )
 
 // A pulled row's values are coerced, not refused (slice 1a): a field outside its range becomes unknown and the rest
-// of the house is kept, as the web's reader does; the server refuses such a row on its own PUT.
+// of the house is kept, as the web's reader does; the server refuses such a row on its own PUT. A candidate's money and
+// extras are read by type first (`Candidates`, the website's `houseOf`), an unknown extra kept when it is well formed.
 
-fun HouseDto.toEntity() = HouseEntity(
-    id = id, label = label, address = address, street = street, locality = locality, lat = lat, lon = lon,
-    status = HouseStatus.fromWire(status),
-    price = price, priceType = priceType, bedrooms = bedrooms, rating = rating, contactName = contactName,
-    contactPhone = contactPhone, listingUrl = listingUrl, notes = notes,
-    areaSqft = HouseValues.areaSqft(areaSqft), locationSource = LocationSource.orNull(locationSource),
-    cost = cost?.coerced(), rooms = HouseRooms.coerced(rooms), answers = HouseAnswers.coerced(answers),
-    moveIn = MoveIn.coerced(moveIn), floor = HouseValues.floor(floor),
-    brokerId = brokerId?.takeIf(RecordRules::isValidId),
-    checklist = checklist, createdAt = createdAt?.let(IsoTime::parseMillis) ?: IsoTime.nowMillis(),
-    updatedAt = updatedAt?.let(IsoTime::parseMillis) ?: IsoTime.nowMillis(),
-    deleted = deleted, dirty = false,
-)
+fun HouseDto.toEntity(): HouseEntity {
+    val m = Candidates.moneyValue(money)
+    val values = Candidates.houseExtrasOf(extras)
+    return HouseEntity(
+        id = id, label = label, address = address, street = street, locality = locality, lat = lat, lon = lon,
+        status = HouseStatus.fromWire(status),
+        price = m?.amount, priceType = Candidates.priceTypeOf(m?.cadence), bedrooms = values.bedrooms, rating = rating,
+        contactName = contactName, contactPhone = contactPhone, listingUrl = listingUrl, notes = notes,
+        areaSqft = HouseValues.areaSqft(values.areaSqft), locationSource = LocationSource.orNull(locationSource),
+        cost = values.cost?.coerced(), rooms = HouseRooms.coerced(rooms), answers = HouseAnswers.coerced(answers),
+        moveIn = MoveIn.coerced(moveIn), floor = HouseValues.floor(values.floor),
+        brokerId = brokerId?.takeIf(RecordRules::isValidId),
+        checklist = checklist, createdAt = createdAt?.let(IsoTime::parseMillis) ?: IsoTime.nowMillis(),
+        updatedAt = updatedAt?.let(IsoTime::parseMillis) ?: IsoTime.nowMillis(),
+        deleted = deleted, dirty = false,
+        kind = kind.takeIf { Candidates.KIND_PATTERN.matches(it) } ?: Candidates.HOUSE_KIND, extrasOther = values.other,
+    )
+}
 
 fun VisitEntity.toDto() = VisitDto(
     id = id, houseId = houseId, lat = lat, lon = lon, street = street, arrivedAt = IsoTime.format(arrivedAt),

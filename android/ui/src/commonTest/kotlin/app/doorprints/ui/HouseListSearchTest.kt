@@ -1,0 +1,67 @@
+/*
+ * Copyright 2026 Sriram (Sriram-Codes-SW)
+ *
+ * This file is part of Doorprints.
+ *
+ * Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+ * Public License as published by the Free Software Foundation, version 3 of the License.
+ *
+ * Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+ * the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+package app.doorprints.ui
+
+import app.doorprints.data.HouseEntity
+import app.doorprints.data.toDto
+import app.doorprints.data.toEntity
+import app.doorprints.shared.api.HouseDto
+import app.doorprints.shared.model.HouseRoom
+import app.doorprints.shared.model.HouseSearch
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
+
+/**
+ * The house list's search after kinds step 4 (S4b-BL-206, TC-U-204; CLAUDE.md "search grows with the house values"):
+ * a house read from its candidate (the server, a Drive file, the Room row) is found by the same values as the house
+ * it was, the floor included (now an extra), and never by an extra this app does not know. The twin of the website's
+ * `map-list.spec.ts` case of TC-U-202.
+ */
+class HouseListSearchTest {
+    private val house = HouseEntity(
+        id = "h1", label = "Gulmohar Residency", address = "Plot 7, Sector 62", locality = "Noida", lat = 28.62, lon = 77.36,
+        notes = "Corner flat", contactName = "Anita", price = 28_000, priceType = "RENT", bedrooms = 2, floor = 4,
+        rooms = listOf(HouseRoom("r1", "BEDROOM", "Balcony room", sort = 0)), createdAt = 1, updatedAt = 2,
+    )
+
+    private fun found(query: String, h: HouseEntity) = HouseSearch.matches(query, h.searchFields(null, "en", emptyList()))
+
+    @Test
+    fun aHouseReadFromItsCandidateIsFoundByTheSameValues() {
+        val candidate = house.toDto()
+        val read = candidate.toEntity()
+        assertEquals(house.searchFields("Ravi, Ravi Estates", "hi", listOf("Water cuts")), read.searchFields("Ravi, Ravi Estates", "hi", listOf("Water cuts")))
+        for (q in listOf("gulmohar", "sector 62", "noida", "corner", "anita", "balcony", "floor 4")) assertTrue(found(q, read), q)
+        assertFalse(found("floor 5", read))
+    }
+
+    @Test
+    fun anExtraThisAppDoesNotKnowIsNeverSearched() {
+        val dto: HouseDto = house.toDto()
+        val withOther = dto.copy(extras = buildJsonObject { dto.extras!!.forEach { (k, v) -> put(k, v) }; put("gateName", "Peacock Gate") })
+        val read = withOther.toEntity()
+        assertEquals("Peacock Gate", read.extrasOther!!["gateName"]!!.toString().trim('"'))
+        assertFalse(found("peacock", read))
+        assertTrue(found("floor 4", read))
+    }
+}

@@ -129,7 +129,9 @@ data class CostSummary(
 ) {
     companion object {
         fun of(price: Long?, priceType: String?, areaSqft: Int?, cost: HouseCost?): CostSummary {
-            val rent = priceType != "SALE"
+            // A rent only: a price without a type is not read as a monthly rent (owner, 2026-10-12; S4b-BL-206), as on
+            // the website (`house.priceType !== 'RENT'`).
+            val rent = priceType == "RENT"
             val effective = cost?.agreedPrice ?: price
             val monthly = if (rent && price != null) {
                 price + (if (cost?.maintenanceIncluded == true) 0L else cost?.maintenance ?: 0L)

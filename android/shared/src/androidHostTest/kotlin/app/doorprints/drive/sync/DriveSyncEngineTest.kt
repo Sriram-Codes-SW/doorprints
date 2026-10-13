@@ -24,8 +24,17 @@ import app.doorprints.drive.DriveFault
 import app.doorprints.drive.DriveLayout
 import app.doorprints.drive.DriveOp
 import app.doorprints.drive.NewFile
+import app.doorprints.data.toDto
+import app.doorprints.data.toEntity
+import app.doorprints.shared.api.IsoTime
+import app.doorprints.shared.model.HouseCost
+import app.doorprints.shared.model.Money
 import app.doorprints.shared.sync.SyncKind
+import app.doorprints.shared.sync.SyncRow
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -377,5 +386,57 @@ class DriveSyncEngineTest {
         assertEquals(0L, backend.pushHouse(houses.single()).syncVersion)
         try { backend.downloadPhoto("x"); fail() } catch (e: DriveSyncNotYet) { assertEquals("S4b-BL-128", e.ticket) }
         try { backend.uploadPhoto("h", "p", "f", 1) { throw AssertionError() }; fail() } catch (e: DriveSyncNotYet) { }
+    }
+
+    /**
+     * Kinds step 4 (S4b-BL-206, TC-U-204): a device that has not moved to the candidate shape (an older phone, the
+     * website) writes a house row with its price, type, bedrooms and cost and a visit's `houseId`; this phone reads the
+     * house as the candidate it is and the visit's house, and writes both back in the new shape.
+     */
+    @Test
+    fun aHouseRowFromBeforeTheFormatResetIsReadAsTheCandidateItIs() = runTest {
+        val w = SyncWorld()
+        val a = w.add("A"); val b = w.add("B")
+        val at = IsoTime.format(a.now())
+        a.local.put(
+            SyncRow.of(
+                SyncKind.HOUSES,
+                buildJsonObject {
+                    put("id", "h1"); put("label", "Salt Lake flat"); put("lat", 22.58); put("lon", 88.41)
+                    put("price", 9_500_000); put("priceType", "SALE"); put("bedrooms", 3)
+                    put("cost", buildJsonObject { put("deposit", 50_000); put("myOffer", 9_000_000) })
+                    put("updatedAt", at); put("deleted", false); put("by", a.id)
+                },
+            ),
+            true,
+        )
+        a.local.put(
+            SyncRow.of(
+                SyncKind.VISITS,
+                buildJsonObject {
+                    put("id", "v1"); put("houseId", "h1"); put("lat", 22.58); put("lon", 88.41); put("arrivedAt", at)
+                    put("updatedAt", at); put("deleted", false); put("by", a.id)
+                },
+            ),
+            true,
+        )
+        a.sync()
+        val backend = DriveSyncBackend(b.engine(), b.local, b::now, b.id)
+        backend.commitPushes()
+        val house = backend.housesSince(0).single()
+        assertEquals(Money(9_500_000, "once"), house.money)
+        val entity = house.toEntity()
+        assertEquals(9_500_000L, entity.price); assertEquals("SALE", entity.priceType); assertEquals(3, entity.bedrooms)
+        assertEquals(HouseCost(deposit = 50_000, myOffer = 9_000_000), entity.cost)
+        val visit = backend.visitsSince(0).single()
+        assertEquals("h1", visit.houseId)
+        // What this phone writes for them: a candidate, and the visit's house as `candidateId`.
+        val written = SyncRows.house(entity.toDto(), b.id).json
+        assertEquals("house", written.getValue("kind").jsonPrimitive.content)
+        assertFalse("price" in written || "priceType" in written || "cost" in written || "bedrooms" in written)
+        assertEquals("""{"amount":9500000,"cadence":"once"}""", written.getValue("money").toString())
+        val visitRow = SyncRows.visit(visit, b.id).json
+        assertEquals("h1", visitRow.getValue("candidateId").jsonPrimitive.content)
+        assertFalse("houseId" in visitRow)
     }
 }

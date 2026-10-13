@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.112 |
-| Date | 2026-10-12 |
+| Version | 0.113 |
+| Date | 2026-10-13 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -123,6 +123,7 @@
 | 0.110 | 2026-10-12 | Claude (Code), engineer | **Kinds step 3, the web part 1** (S4b-BL-206; [10](10-sprint-log.md) v0.269): §18.5 records that the website's IndexedDB moves to version 4, not 1 (a browser cannot open a lower version than it holds), rewriting every stored house as a candidate in place, and that the screens still read a house through one mapping at the store and at the server client. |
 | 0.111 | 2026-10-12 | Claude (Code), engineer | **§18.4 door 7: a price without a type has no cadence** (owner decision of 2026-10-12, S4b-BL-206; [10](10-sprint-log.md) v0.270): money may carry an amount and no cadence, the symmetric case of a cadence and no amount, and is never read as a monthly rent; a money with neither is refused. Server `Money`, web `core/candidate.ts`. |
 | 0.112 | 2026-10-12 | Claude (Code), engineer | **Kinds step 3, the backup format** (S4b-BL-206; [10](10-sprint-log.md) v0.270, [schemas README](schemas/README.md) v1.33): §18.4 door 1 changed, **an old-family file is read, not refused** (owner confirmed 2026-10-12 as the final text, [14](14-lead-backlog-and-handoff.md) §11.4 item 7); a well-formed file with a cadence this reader does not support reads as a newer file, not broken data; §18.5 records the one mapping per stack between the two families and the lossless check against `backup-sample-houses.json`. |
+| 0.113 | 2026-10-13 | Claude (Code), engineer | **Kinds step 4, the phone** (S4b-BL-206; `feat/kinds-4-android`; [10](10-sprint-log.md) v0.272, [06](06-test-plan.md) v0.217 TC-U-204, [schemas README](schemas/README.md) v1.34): new §6.2 *Room 12* (every house rewritten in place as a candidate, `HouseEntity` keeps the house's values so no screen moves) and a §18.5 finding: Room version 12 rather than 1, `/api/candidates` and `candidateId` in `ApiClient`, the Drive `sync/1` file's `candidates` and `candidateId` read in both shapes on both stacks, the unknown extras kept on the phone, a typeless price never a monthly rent in the cost summary. Left: the viewing payload (S4b-BL-247), the website's sync writer (S4b-BL-246), the phone's backup of an unknown extra (S4b-BL-248). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -767,6 +768,29 @@ FR-24 (the check: its web twin lands **after** the web trace; `placeCheck` itsel
   carries the exception marker `// check-specs: allow-no-production-import (a source test)`. The behaviour test runs the check with `fetch` and `XMLHttpRequest` replaced by
   throwing stubs; a grep finds `placeCheck(` only in the panel and control files.
 - **Tests.** Specs beside the code; the vectors specs import the JSON module as `data/drive/drive-vectors.spec.ts` does; `tools/check-specs.mjs` accepts `it.each`.
+
+#### Room 12 (kinds step 4, S4b-BL-206): every house a candidate
+
+`MIGRATION_11_12` and `12.json` (identity hash `a3a45fa452d35b5397c9255e96f24816`), Room's own SQL, validated by
+`AppDatabaseMigrationTest` and `RoomSchemaTest` ([06](06-test-plan.md) TC-U-204). The `houses` table holds the
+candidate of §18.4 doors 3, 5 and 7:
+
+| Change | Detail |
+|---|---|
+| `kind` (new) | `TEXT NOT NULL`: the kind id, `house` for every row |
+| `money_amount`, `money_cadence` (new) | `@Embedded(prefix = "money_") Money`: whole rupees and `month` (a rent), `once` (a sale) or none (a price of type *Not set*, owner 2026-10-12); both null is no money |
+| `extras` (new) | `TEXT`, JSON: the bedrooms, area, floor and the eleven cost fields keyed by extra id in the kind file's order (`deposit`, `brokerage` money `once`, `maintenance` money `month`, `myOffer`, `agreedPrice` money as often as the candidate's money or `month`), then an extra a newer app wrote (a field id with a value of an extras type, at most 30, texts of at most 2,000 characters), kept and written back; null for none, never `{}` |
+| Gone | `price`, `priceType`, `bedrooms`, `areaSqft`, `floor` and the eleven `cost_*` columns |
+| The migration | The table is made again (SQLite before 3.35 cannot drop a column): every other column is copied as it is, the dirty flag and tombstones included, so nothing is sent again and nothing is lost; `money` and `extras` are computed by `Candidates` (the same code as every later write), one `UPDATE` per house that has a value. In Room's one migration transaction |
+
+**Why not Room version 1** (the plan of S4b-BL-206): an installed app cannot open a database whose version is lower
+than the one on the device without wiping it, the IndexedDB finding of §18.5 on the phone; the owner's test devices keep
+their houses. **The screens did not move:** `HouseEntity` keeps the house's values as properties of its primary
+constructor (which Room ignores) and derives `money` and `extras` from them; Room reads a row through a second
+constructor, which reads them back out (`Candidates.houseExtrasOf`, by type, not by range). So every reader of a house
+(the list and its search, the form, the cost summary, the copies, the AI) reads the same values as before, the twin of
+the website's `data/candidate-rows.ts`. `CommonRepository` and the DAOs are unchanged; the internal names (`houses`,
+`houseId`) stay, as on the website.
 
 ### 6.3 Derived values
 
@@ -2089,6 +2113,21 @@ changed:
   read a house (`HouseDto`); `core/candidate.ts` is the one mapping, used at the store and at the server client
   (`/api/candidates`), the twin of the server's `Money.of`, `CandidateExtras.of` and its `HouseDto` readers. An extra a
   newer app wrote is kept (`extrasOther`) and written back after the known ones, never shown or searched.
+- **Found in kinds step 4 (S4b-BL-206, the phone, 2026-10-13): Room cannot restart at version 1 either, and the
+  phone's houses must not move above the store.** Room goes to **version 12** (§6.2 *Room 12*): `MIGRATION_11_12`
+  rewrites every house in place as a candidate (`kind`, `money_amount`, `money_cadence`, `extras`), and `HouseEntity`
+  derives the candidate from the house's values and reads them back out, so no screen, rule or copy changes, and the
+  search reads the same values (`HouseListSearchTest`). An extra a newer app wrote is now kept on the phone too (Room,
+  `/api/candidates`, Drive) and written back after the known ones; a backup made on the phone still leaves it out
+  (the backup rows have no place for it, S4b-BL-248). `ApiClient` calls `/api/candidates` and sends and reads
+  `candidateId` (`/nearby` and `/street` are not called by the phone, so nothing changes there). **The Drive `sync/1`
+  file** keeps its format number: the phone writes `candidates` (rows in the candidate shape) and `candidateId` on
+  visits and photos, and both stacks read either shape, a house row without `kind` as the house it is, and refuse a
+  file or row with both names (`sync-vectors.json`, `sync-1.schema.json`). The website's reader changed with it, its
+  writer not yet (S4b-BL-246), so the website and the phone keep syncing through Drive in both directions. The
+  viewing payload's `houseId` (the records layer, read by the server's AI and export) is S4b-BL-247: three stacks,
+  its own pull request. The cost summary reads a price without a type as no rent (`CostSummary.of`, as the
+  website's `costSummary`); `Formats.price` already showed *per month* for `RENT` only.
 - **Found in kinds PR 2 (S4b-BL-206, the server part, 2026-10-12): a house's money may have a cadence and no
   amount.** A house is marked as a rent before its rent is known (the form's toggle; the question scopes `RENT` and
   `SALE` read it), so door 7's "both keys always written" holds for a money extra only; the candidate's own `money`

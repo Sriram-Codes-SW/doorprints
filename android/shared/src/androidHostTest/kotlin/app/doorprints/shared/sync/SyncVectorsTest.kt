@@ -88,7 +88,10 @@ class SyncVectorsTest {
         val props = schema.getValue("properties").jsonObject
         assertEquals(SyncFiles.FORMAT, props.getValue("format").jsonObject.str("const"))
         for (kind in SyncKind.entries) {
-            assertEquals(kind.key, kind.maxRows, props.getValue(kind.key).jsonObject.getValue("maxItems").jsonPrimitive.int)
+            // The list under its name in the file and, for the houses, under its name before the format reset (S4b-BL-206).
+            for (name in listOfNotNull(kind.fileKey, kind.formerFileKey)) {
+                assertEquals(name, kind.maxRows, props.getValue(name).jsonObject.getValue("maxItems").jsonPrimitive.int)
+            }
         }
         assertEquals(SyncFiles.MAX_SEQ, props.getValue("seq").jsonObject.getValue("maximum").jsonPrimitive.long)
     }

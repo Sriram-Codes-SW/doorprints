@@ -200,10 +200,10 @@ class ApiClient(
     /** The server's counts, including the highest sync version it has handed out. */
     suspend fun stats(): StatsDto = get("/api/stats")
 
-    /** The houses the server changed after sync version [version], tombstones included. */
-    suspend fun housesSince(version: Long): List<HouseDto> = get("/api/houses?since=$version")
+    /** The candidates the server changed after sync version [version], tombstones included (S4b-BL-206). */
+    suspend fun housesSince(version: Long): List<HouseDto> = get("/api/candidates?since=$version")
     /** Sends [h]; the answer is the server's row with its sync version. */
-    suspend fun putHouse(h: HouseDto): HouseDto = send(HttpMethod.Put, "/api/houses/${h.id}", h)
+    suspend fun putHouse(h: HouseDto): HouseDto = send(HttpMethod.Put, "/api/candidates/${h.id}", h)
 
     /** The visits the server changed after sync version [version], tombstones included. */
     suspend fun visitsSince(version: Long): List<VisitDto> = get("/api/visits?since=$version")
@@ -243,7 +243,7 @@ class ApiClient(
     suspend fun uploadPhoto(houseId: String, photoId: String, fileName: String, size: Long, open: () -> Source) {
         val quotedName = "\"" + fileName.replace("\"", "") + "\""
         call(
-            HttpMethod.Post, "/api/houses/$houseId/photos", markedIdempotent = true,
+            HttpMethod.Post, "/api/candidates/$houseId/photos", markedIdempotent = true,
             body = BodyFactory {
                 MultiPartFormDataContent(
                     formData {
