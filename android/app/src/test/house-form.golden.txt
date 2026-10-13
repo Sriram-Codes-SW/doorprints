@@ -1,0 +1,864 @@
+## rent.en
+field "Name (e.g. “Blue gate, 2nd floor”)" value="Lake view flat" ime=Next settext
+heading "Status"
+RadioButton "" desc="New" selected=true
+RadioButton "" desc="Shortlisted" selected=false
+RadioButton "" desc="Rejected" selected=false
+RadioButton "" desc="Taken" selected=false
+RadioButton "" desc="Not chosen" selected=false
+heading "Your rating"
+RadioButton "☆" desc="1 out of 5 stars" selected=false
+RadioButton "☆" desc="2 out of 5 stars" selected=false
+RadioButton "☆" desc="3 out of 5 stars" selected=false
+RadioButton "☆" desc="4 out of 5 stars" selected=false
+RadioButton "☆" desc="5 out of 5 stars" selected=false
+Button "Clear rating" disabled
+RadioButton "Buy" selected=false
+RadioButton "Rent" selected=true
+field "Rent ₹/month | " value="" ime=Next settext
+field "BHK" value="" ime=Next settext
+~ field "Carpet area (sq ft)" value="" ime=Next settext
+field "Floor | 0 is the ground floor, -1 a basement" value="" ime=Next settext
+Switch "Basement" state=Off
+heading "Cost"
+field "Deposit (₹)" value="" ime=Next settext
+~ field "Deposit (months)" value="" ime=Next settext
+field "Maintenance (₹ per month)" value="" ime=Next settext
+Switch "Included in the rent" state=Off
+field "Brokerage (₹)" value="" ime=Next settext
+~ field "Brokerage (months)" value="" ime=Next settext
+field "Lock-in (months)" value="" ime=Next settext
+~ field "Notice (months)" value="" ime=Next settext
+field "Available from | YYYY-MM-DD" value="" ime=Next settext
+Button "" desc="Pick a date"
+field "My offer (₹)" value="" ime=Next settext
+~ field "Agreed price (₹)" value="" ime=Next settext
+heading "Rooms"
+Button "Add room"
+heading "Questions to ask"
+Button "Add the usual questions" disabled
+Button "Add a question"
+field "Address" value="" ime=Next settext
+field "Street" value="" ime=Next settext
+~ field "Locality" value="" ime=Next settext
+heading "Location"
+Button "Use my current location"
+field "Latitude" value="26.144500" ime=Next settext
+~ field "Longitude" value="91.736200" ime=Next settext
+Switch "Approximate location | The marker shows a ring; Hunt mode will not alert here." state=Off
+Button "Did I walk past this house?"
+heading "Saved walks"
+heading "Checklist (0 = bad, 5 = great)"
+field "Notes" value="" ime=Default settext
+heading "Contact"
+field "Owner or broker name" value="" ime=Next settext
+field "Phone" value="" ime=Next settext
+field "Listing link" value="" ime=Done settext
+heading "Broker"
+DropdownList "None" desc="Broker"
+Button "New broker"
+heading "Photos"
+Button "Take photo"
+Button "From gallery"
+heading "Visits (0)"
+Button "I am here now"
+heading "Viewings"
+Button "Plan a viewing"
+Button "All viewings of this house"
+heading "Area notes"
+Button "Add a note for an area"
+Button "Save"
+Button "" desc="Back"
+Button "" desc="Delete house"
+Button "Save"
+
+## sale.en
+field "Name (e.g. “Blue gate, 2nd floor”)" value="Lake view flat" ime=Next settext
+heading "Status"
+RadioButton "" desc="New" selected=true
+RadioButton "" desc="Shortlisted" selected=false
+RadioButton "" desc="Rejected" selected=false
+RadioButton "" desc="Taken" selected=false
+RadioButton "" desc="Not chosen" selected=false
+heading "Your rating"
+RadioButton "☆" desc="1 out of 5 stars" selected=false
+RadioButton "☆" desc="2 out of 5 stars" selected=false
+RadioButton "☆" desc="3 out of 5 stars" selected=false
+RadioButton "☆" desc="4 out of 5 stars" selected=false
+RadioButton "☆" desc="5 out of 5 stars" selected=false
+Button "Clear rating" disabled
+RadioButton "Rent" selected=false
+RadioButton "Buy" selected=true
+field "Price ₹ | " value="" ime=Next settext
+field "BHK" value="" ime=Next settext
+~ field "Carpet area (sq ft)" value="" ime=Next settext
+field "Floor | 0 is the ground floor, -1 a basement" value="" ime=Next settext
+Switch "Basement" state=Off
+heading "Cost"
+field "Brokerage (₹)" value="" ime=Next settext
+~ field "Brokerage (months)" value="" ime=Next settext
+field "Available from | YYYY-MM-DD" value="" ime=Next settext
+Button "" desc="Pick a date"
+field "My offer (₹)" value="" ime=Next settext
+~ field "Agreed price (₹)" value="" ime=Next settext
+heading "Rooms"
+Button "Add room"
+heading "Questions to ask"
+Button "Add the usual questions" disabled
+Button "Add a question"
+field "Address" value="" ime=Next settext
+field "Street" value="" ime=Next settext
+~ field "Locality" value="" ime=Next settext
+heading "Location"
+Button "Use my current location"
+field "Latitude" value="26.144500" ime=Next settext
+~ field "Longitude" value="91.736200" ime=Next settext
+Switch "Approximate location | The marker shows a ring; Hunt mode will not alert here." state=Off
+Button "Did I walk past this house?"
+heading "Saved walks"
+heading "Checklist (0 = bad, 5 = great)"
+field "Notes" value="" ime=Default settext
+heading "Contact"
+field "Owner or broker name" value="" ime=Next settext
+field "Phone" value="" ime=Next settext
+field "Listing link" value="" ime=Done settext
+heading "Broker"
+DropdownList "None" desc="Broker"
+Button "New broker"
+heading "Photos"
+Button "Take photo"
+Button "From gallery"
+heading "Visits (0)"
+Button "I am here now"
+heading "Viewings"
+Button "Plan a viewing"
+Button "All viewings of this house"
+heading "Area notes"
+Button "Add a note for an area"
+Button "Save"
+Button "" desc="Back"
+Button "" desc="Delete house"
+Button "Save"
+
+## untyped.en
+field "Name (e.g. “Blue gate, 2nd floor”)" value="Lake view flat" ime=Next settext
+heading "Status"
+RadioButton "" desc="New" selected=true
+RadioButton "" desc="Shortlisted" selected=false
+RadioButton "" desc="Rejected" selected=false
+RadioButton "" desc="Taken" selected=false
+RadioButton "" desc="Not chosen" selected=false
+heading "Your rating"
+RadioButton "☆" desc="1 out of 5 stars" selected=false
+RadioButton "☆" desc="2 out of 5 stars" selected=false
+RadioButton "☆" desc="3 out of 5 stars" selected=false
+RadioButton "☆" desc="4 out of 5 stars" selected=false
+RadioButton "☆" desc="5 out of 5 stars" selected=false
+Button "Clear rating" disabled
+RadioButton "Buy" selected=false
+RadioButton "Rent" selected=true
+field "Rent ₹/month | " value="" ime=Next settext
+field "BHK" value="" ime=Next settext
+~ field "Carpet area (sq ft)" value="" ime=Next settext
+field "Floor | 0 is the ground floor, -1 a basement" value="" ime=Next settext
+Switch "Basement" state=Off
+heading "Cost"
+field "Deposit (₹)" value="" ime=Next settext
+~ field "Deposit (months)" value="" ime=Next settext
+field "Maintenance (₹ per month)" value="" ime=Next settext
+Switch "Included in the rent" state=Off
+field "Brokerage (₹)" value="" ime=Next settext
+~ field "Brokerage (months)" value="" ime=Next settext
+field "Lock-in (months)" value="" ime=Next settext
+~ field "Notice (months)" value="" ime=Next settext
+field "Available from | YYYY-MM-DD" value="" ime=Next settext
+Button "" desc="Pick a date"
+field "My offer (₹)" value="" ime=Next settext
+~ field "Agreed price (₹)" value="" ime=Next settext
+heading "Rooms"
+Button "Add room"
+heading "Questions to ask"
+Button "Add the usual questions" disabled
+Button "Add a question"
+field "Address" value="" ime=Next settext
+field "Street" value="" ime=Next settext
+~ field "Locality" value="" ime=Next settext
+heading "Location"
+Button "Use my current location"
+field "Latitude" value="26.144500" ime=Next settext
+~ field "Longitude" value="91.736200" ime=Next settext
+Switch "Approximate location | The marker shows a ring; Hunt mode will not alert here." state=Off
+Button "Did I walk past this house?"
+heading "Saved walks"
+heading "Checklist (0 = bad, 5 = great)"
+field "Notes" value="" ime=Default settext
+heading "Contact"
+field "Owner or broker name" value="" ime=Next settext
+field "Phone" value="" ime=Next settext
+field "Listing link" value="" ime=Done settext
+heading "Broker"
+DropdownList "None" desc="Broker"
+Button "New broker"
+heading "Photos"
+Button "Take photo"
+Button "From gallery"
+heading "Visits (0)"
+Button "I am here now"
+heading "Viewings"
+Button "Plan a viewing"
+Button "All viewings of this house"
+heading "Area notes"
+Button "Add a note for an area"
+Button "Save"
+Button "" desc="Back"
+Button "" desc="Delete house"
+Button "Save"
+
+## rent.hi
+field "नाम (जैसे “नीला गेट, दूसरी मंज़िल”)" value="Lake view flat" ime=Next settext
+heading "स्थिति"
+RadioButton "" desc="नया" selected=true
+RadioButton "" desc="चुना गया" selected=false
+RadioButton "" desc="अस्वीकृत" selected=false
+RadioButton "" desc="ले लिया" selected=false
+RadioButton "" desc="नहीं चुना" selected=false
+heading "आपकी रेटिंग"
+RadioButton "☆" desc="5 में से 1 स्टार" selected=false
+RadioButton "☆" desc="5 में से 2 स्टार" selected=false
+RadioButton "☆" desc="5 में से 3 स्टार" selected=false
+RadioButton "☆" desc="5 में से 4 स्टार" selected=false
+RadioButton "☆" desc="5 में से 5 स्टार" selected=false
+Button "रेटिंग हटाएँ" disabled
+RadioButton "खरीद" selected=false
+RadioButton "किराया" selected=true
+field "किराया ₹/माह | " value="" ime=Next settext
+field "BHK" value="" ime=Next settext
+~ field "कारपेट क्षेत्र (वर्ग फ़ुट)" value="" ime=Next settext
+field "मंज़िल | 0 भूतल है, -1 बेसमेंट" value="" ime=Next settext
+Switch "बेसमेंट" state=Off
+heading "लागत"
+field "जमा राशि (₹)" value="" ime=Next settext
+~ field "जमा (महीने)" value="" ime=Next settext
+field "रखरखाव (₹ प्रति माह)" value="" ime=Next settext
+Switch "किराये में शामिल" state=Off
+field "दलाली (₹)" value="" ime=Next settext
+~ field "दलाली (महीने)" value="" ime=Next settext
+field "लॉक-इन (महीने)" value="" ime=Next settext
+~ field "नोटिस (महीने)" value="" ime=Next settext
+field "कब से उपलब्ध | YYYY-MM-DD" value="" ime=Next settext
+Button "" desc="तारीख़ चुनें"
+field "मेरा प्रस्ताव (₹)" value="" ime=Next settext
+~ field "तय कीमत (₹)" value="" ime=Next settext
+heading "कमरे"
+Button "कमरा जोड़ें"
+heading "पूछने के सवाल"
+Button "आम सवाल जोड़ें" disabled
+Button "एक सवाल जोड़ें"
+field "पता" value="" ime=Next settext
+field "सड़क" value="" ime=Next settext
+~ field "इलाका" value="" ime=Next settext
+heading "जगह"
+Button "मेरी अभी की जगह का उपयोग करें"
+field "अक्षांश" value="26.144500" ime=Next settext
+~ field "देशांतर" value="91.736200" ime=Next settext
+Switch "अनुमानित जगह | मार्कर एक घेरा दिखाएगा; हंट मोड यहाँ सूचना नहीं देगा।" state=Off
+Button "क्या मैं इस मकान के पास से गुज़रा?"
+heading "सहेजी गई सैर"
+heading "जाँच सूची (0 = खराब, 5 = बहुत अच्छा)"
+field "नोट" value="" ime=Default settext
+heading "संपर्क"
+field "मालिक या ब्रोकर का नाम" value="" ime=Next settext
+field "फ़ोन" value="" ime=Next settext
+field "लिस्टिंग लिंक" value="" ime=Done settext
+heading "ब्रोकर"
+DropdownList "कोई नहीं" desc="ब्रोकर"
+Button "नया ब्रोकर"
+heading "तस्वीरें"
+Button "फ़ोटो लें"
+Button "गैलरी से"
+heading "दौरे (0)"
+Button "मैं अभी यहाँ हूँ"
+heading "मकान देखना"
+Button "देखने का समय तय करें"
+Button "इस मकान के सभी देखना"
+heading "इलाक़े के नोट"
+Button "किसी इलाक़े के लिए नोट जोड़ें"
+Button "सहेजें"
+Button "" desc="वापस"
+Button "" desc="मकान हटाएँ"
+Button "सहेजें"
+
+## sale.hi
+field "नाम (जैसे “नीला गेट, दूसरी मंज़िल”)" value="Lake view flat" ime=Next settext
+heading "स्थिति"
+RadioButton "" desc="नया" selected=true
+RadioButton "" desc="चुना गया" selected=false
+RadioButton "" desc="अस्वीकृत" selected=false
+RadioButton "" desc="ले लिया" selected=false
+RadioButton "" desc="नहीं चुना" selected=false
+heading "आपकी रेटिंग"
+RadioButton "☆" desc="5 में से 1 स्टार" selected=false
+RadioButton "☆" desc="5 में से 2 स्टार" selected=false
+RadioButton "☆" desc="5 में से 3 स्टार" selected=false
+RadioButton "☆" desc="5 में से 4 स्टार" selected=false
+RadioButton "☆" desc="5 में से 5 स्टार" selected=false
+Button "रेटिंग हटाएँ" disabled
+RadioButton "किराया" selected=false
+RadioButton "खरीद" selected=true
+field "कीमत ₹ | " value="" ime=Next settext
+field "BHK" value="" ime=Next settext
+~ field "कारपेट क्षेत्र (वर्ग फ़ुट)" value="" ime=Next settext
+field "मंज़िल | 0 भूतल है, -1 बेसमेंट" value="" ime=Next settext
+Switch "बेसमेंट" state=Off
+heading "लागत"
+field "दलाली (₹)" value="" ime=Next settext
+~ field "दलाली (महीने)" value="" ime=Next settext
+field "कब से उपलब्ध | YYYY-MM-DD" value="" ime=Next settext
+Button "" desc="तारीख़ चुनें"
+field "मेरा प्रस्ताव (₹)" value="" ime=Next settext
+~ field "तय कीमत (₹)" value="" ime=Next settext
+heading "कमरे"
+Button "कमरा जोड़ें"
+heading "पूछने के सवाल"
+Button "आम सवाल जोड़ें" disabled
+Button "एक सवाल जोड़ें"
+field "पता" value="" ime=Next settext
+field "सड़क" value="" ime=Next settext
+~ field "इलाका" value="" ime=Next settext
+heading "जगह"
+Button "मेरी अभी की जगह का उपयोग करें"
+field "अक्षांश" value="26.144500" ime=Next settext
+~ field "देशांतर" value="91.736200" ime=Next settext
+Switch "अनुमानित जगह | मार्कर एक घेरा दिखाएगा; हंट मोड यहाँ सूचना नहीं देगा।" state=Off
+Button "क्या मैं इस मकान के पास से गुज़रा?"
+heading "सहेजी गई सैर"
+heading "जाँच सूची (0 = खराब, 5 = बहुत अच्छा)"
+field "नोट" value="" ime=Default settext
+heading "संपर्क"
+field "मालिक या ब्रोकर का नाम" value="" ime=Next settext
+field "फ़ोन" value="" ime=Next settext
+field "लिस्टिंग लिंक" value="" ime=Done settext
+heading "ब्रोकर"
+DropdownList "कोई नहीं" desc="ब्रोकर"
+Button "नया ब्रोकर"
+heading "तस्वीरें"
+Button "फ़ोटो लें"
+Button "गैलरी से"
+heading "दौरे (0)"
+Button "मैं अभी यहाँ हूँ"
+heading "मकान देखना"
+Button "देखने का समय तय करें"
+Button "इस मकान के सभी देखना"
+heading "इलाक़े के नोट"
+Button "किसी इलाक़े के लिए नोट जोड़ें"
+Button "सहेजें"
+Button "" desc="वापस"
+Button "" desc="मकान हटाएँ"
+Button "सहेजें"
+
+## untyped.hi
+field "नाम (जैसे “नीला गेट, दूसरी मंज़िल”)" value="Lake view flat" ime=Next settext
+heading "स्थिति"
+RadioButton "" desc="नया" selected=true
+RadioButton "" desc="चुना गया" selected=false
+RadioButton "" desc="अस्वीकृत" selected=false
+RadioButton "" desc="ले लिया" selected=false
+RadioButton "" desc="नहीं चुना" selected=false
+heading "आपकी रेटिंग"
+RadioButton "☆" desc="5 में से 1 स्टार" selected=false
+RadioButton "☆" desc="5 में से 2 स्टार" selected=false
+RadioButton "☆" desc="5 में से 3 स्टार" selected=false
+RadioButton "☆" desc="5 में से 4 स्टार" selected=false
+RadioButton "☆" desc="5 में से 5 स्टार" selected=false
+Button "रेटिंग हटाएँ" disabled
+RadioButton "खरीद" selected=false
+RadioButton "किराया" selected=true
+field "किराया ₹/माह | " value="" ime=Next settext
+field "BHK" value="" ime=Next settext
+~ field "कारपेट क्षेत्र (वर्ग फ़ुट)" value="" ime=Next settext
+field "मंज़िल | 0 भूतल है, -1 बेसमेंट" value="" ime=Next settext
+Switch "बेसमेंट" state=Off
+heading "लागत"
+field "जमा राशि (₹)" value="" ime=Next settext
+~ field "जमा (महीने)" value="" ime=Next settext
+field "रखरखाव (₹ प्रति माह)" value="" ime=Next settext
+Switch "किराये में शामिल" state=Off
+field "दलाली (₹)" value="" ime=Next settext
+~ field "दलाली (महीने)" value="" ime=Next settext
+field "लॉक-इन (महीने)" value="" ime=Next settext
+~ field "नोटिस (महीने)" value="" ime=Next settext
+field "कब से उपलब्ध | YYYY-MM-DD" value="" ime=Next settext
+Button "" desc="तारीख़ चुनें"
+field "मेरा प्रस्ताव (₹)" value="" ime=Next settext
+~ field "तय कीमत (₹)" value="" ime=Next settext
+heading "कमरे"
+Button "कमरा जोड़ें"
+heading "पूछने के सवाल"
+Button "आम सवाल जोड़ें" disabled
+Button "एक सवाल जोड़ें"
+field "पता" value="" ime=Next settext
+field "सड़क" value="" ime=Next settext
+~ field "इलाका" value="" ime=Next settext
+heading "जगह"
+Button "मेरी अभी की जगह का उपयोग करें"
+field "अक्षांश" value="26.144500" ime=Next settext
+~ field "देशांतर" value="91.736200" ime=Next settext
+Switch "अनुमानित जगह | मार्कर एक घेरा दिखाएगा; हंट मोड यहाँ सूचना नहीं देगा।" state=Off
+Button "क्या मैं इस मकान के पास से गुज़रा?"
+heading "सहेजी गई सैर"
+heading "जाँच सूची (0 = खराब, 5 = बहुत अच्छा)"
+field "नोट" value="" ime=Default settext
+heading "संपर्क"
+field "मालिक या ब्रोकर का नाम" value="" ime=Next settext
+field "फ़ोन" value="" ime=Next settext
+field "लिस्टिंग लिंक" value="" ime=Done settext
+heading "ब्रोकर"
+DropdownList "कोई नहीं" desc="ब्रोकर"
+Button "नया ब्रोकर"
+heading "तस्वीरें"
+Button "फ़ोटो लें"
+Button "गैलरी से"
+heading "दौरे (0)"
+Button "मैं अभी यहाँ हूँ"
+heading "मकान देखना"
+Button "देखने का समय तय करें"
+Button "इस मकान के सभी देखना"
+heading "इलाक़े के नोट"
+Button "किसी इलाक़े के लिए नोट जोड़ें"
+Button "सहेजें"
+Button "" desc="वापस"
+Button "" desc="मकान हटाएँ"
+Button "सहेजें"
+
+## rent.ta
+field "பெயர் (எ.கா. “நீல கேட், 2வது மாடி”)" value="Lake view flat" ime=Next settext
+heading "நிலை"
+RadioButton "" desc="புதியது" selected=true
+RadioButton "" desc="தேர்வானது" selected=false
+RadioButton "" desc="நிராகரிக்கப்பட்டது" selected=false
+RadioButton "" desc="எடுக்கப்பட்டது" selected=false
+RadioButton "" desc="தேர்ந்தெடுக்கப்படவில்லை" selected=false
+heading "உங்கள் மதிப்பீடு"
+RadioButton "☆" desc="5-இல் 1 நட்சத்திரங்கள்" selected=false
+RadioButton "☆" desc="5-இல் 2 நட்சத்திரங்கள்" selected=false
+RadioButton "☆" desc="5-இல் 3 நட்சத்திரங்கள்" selected=false
+RadioButton "☆" desc="5-இல் 4 நட்சத்திரங்கள்" selected=false
+RadioButton "☆" desc="5-இல் 5 நட்சத்திரங்கள்" selected=false
+Button "மதிப்பீட்டை அழி" disabled
+RadioButton "வாங்க" selected=false
+RadioButton "வாடகை" selected=true
+field "வாடகை ₹/மாதம் | " value="" ime=Next settext
+field "BHK" value="" ime=Next settext
+~ field "கார்பெட் பரப்பு (சதுர அடி)" value="" ime=Next settext
+field "தளம் | 0 என்பது தரைத்தளம், -1 அடித்தளம்" value="" ime=Next settext
+Switch "அடித்தளம்" state=Off
+heading "செலவு"
+field "முன்பணம் (₹)" value="" ime=Next settext
+~ field "முன்பணம் (மாதங்கள்)" value="" ime=Next settext
+field "பராமரிப்பு (₹ மாதத்திற்கு)" value="" ime=Next settext
+Switch "வாடகையில் அடங்கும்" state=Off
+field "தரகு (₹)" value="" ime=Next settext
+~ field "தரகு (மாதங்கள்)" value="" ime=Next settext
+field "லாக்-இன் (மாதங்கள்)" value="" ime=Next settext
+~ field "நோட்டீஸ் (மாதங்கள்)" value="" ime=Next settext
+field "எப்போதிலிருந்து கிடைக்கும் | YYYY-MM-DD" value="" ime=Next settext
+Button "" desc="தேதியைத் தேர்வுசெய்"
+field "என் சலுகை (₹)" value="" ime=Next settext
+~ field "ஒப்புக்கொண்ட விலை (₹)" value="" ime=Next settext
+heading "அறைகள்"
+Button "அறையைச் சேர்"
+heading "கேட்க வேண்டிய கேள்விகள்"
+Button "வழக்கமான கேள்விகளைச் சேர்" disabled
+Button "ஒரு கேள்வியைச் சேர்"
+field "முகவரி" value="" ime=Next settext
+field "தெரு" value="" ime=Next settext
+~ field "பகுதி" value="" ime=Next settext
+heading "இருப்பிடம்"
+Button "என் தற்போதைய இருப்பிடத்தைப் பயன்படுத்து"
+field "அட்சரேகை" value="26.144500" ime=Next settext
+~ field "தீர்க்கரேகை" value="91.736200" ime=Next settext
+Switch "தோராயமான இருப்பிடம் | குறி ஒரு வளையமாகக் காட்டப்படும்; ஹன்ட் முறை இங்கே எச்சரிக்காது." state=Off
+Button "இந்த வீட்டைக் கடந்து நடந்தேனா?"
+heading "சேமித்த நடைகள்"
+heading "சரிபார்ப்புப் பட்டியல் (0 = மோசம், 5 = மிகச் சிறப்பு)"
+field "குறிப்புகள்" value="" ime=Default settext
+heading "தொடர்பு"
+field "உரிமையாளர் அல்லது தரகர் பெயர்" value="" ime=Next settext
+field "தொலைபேசி" value="" ime=Next settext
+field "விளம்பர இணைப்பு" value="" ime=Done settext
+heading "தரகர்"
+DropdownList "யாருமில்லை" desc="தரகர்"
+Button "புதிய தரகர்"
+heading "படங்கள்"
+Button "படம் எடு"
+Button "கேலரியிலிருந்து"
+heading "வருகைகள் (0)"
+Button "நான் இப்போது இங்கே இருக்கிறேன்"
+heading "வீடு பார்வையிடல்"
+Button "பார்வையிடலைத் திட்டமிடு"
+Button "இந்த வீட்டின் அனைத்துப் பார்வையிடல்கள்"
+heading "பகுதிக் குறிப்புகள்"
+Button "ஒரு பகுதிக்குக் குறிப்பு சேர்"
+Button "சேமி"
+Button "" desc="பின்செல்"
+Button "" desc="வீட்டை நீக்கு"
+Button "சேமி"
+
+## sale.ta
+field "பெயர் (எ.கா. “நீல கேட், 2வது மாடி”)" value="Lake view flat" ime=Next settext
+heading "நிலை"
+RadioButton "" desc="புதியது" selected=true
+RadioButton "" desc="தேர்வானது" selected=false
+RadioButton "" desc="நிராகரிக்கப்பட்டது" selected=false
+RadioButton "" desc="எடுக்கப்பட்டது" selected=false
+RadioButton "" desc="தேர்ந்தெடுக்கப்படவில்லை" selected=false
+heading "உங்கள் மதிப்பீடு"
+RadioButton "☆" desc="5-இல் 1 நட்சத்திரங்கள்" selected=false
+RadioButton "☆" desc="5-இல் 2 நட்சத்திரங்கள்" selected=false
+RadioButton "☆" desc="5-இல் 3 நட்சத்திரங்கள்" selected=false
+RadioButton "☆" desc="5-இல் 4 நட்சத்திரங்கள்" selected=false
+RadioButton "☆" desc="5-இல் 5 நட்சத்திரங்கள்" selected=false
+Button "மதிப்பீட்டை அழி" disabled
+RadioButton "வாடகை" selected=false
+RadioButton "வாங்க" selected=true
+field "விலை ₹ | " value="" ime=Next settext
+field "BHK" value="" ime=Next settext
+~ field "கார்பெட் பரப்பு (சதுர அடி)" value="" ime=Next settext
+field "தளம் | 0 என்பது தரைத்தளம், -1 அடித்தளம்" value="" ime=Next settext
+Switch "அடித்தளம்" state=Off
+heading "செலவு"
+field "தரகு (₹)" value="" ime=Next settext
+~ field "தரகு (மாதங்கள்)" value="" ime=Next settext
+field "எப்போதிலிருந்து கிடைக்கும் | YYYY-MM-DD" value="" ime=Next settext
+Button "" desc="தேதியைத் தேர்வுசெய்"
+field "என் சலுகை (₹)" value="" ime=Next settext
+~ field "ஒப்புக்கொண்ட விலை (₹)" value="" ime=Next settext
+heading "அறைகள்"
+Button "அறையைச் சேர்"
+heading "கேட்க வேண்டிய கேள்விகள்"
+Button "வழக்கமான கேள்விகளைச் சேர்" disabled
+Button "ஒரு கேள்வியைச் சேர்"
+field "முகவரி" value="" ime=Next settext
+field "தெரு" value="" ime=Next settext
+~ field "பகுதி" value="" ime=Next settext
+heading "இருப்பிடம்"
+Button "என் தற்போதைய இருப்பிடத்தைப் பயன்படுத்து"
+field "அட்சரேகை" value="26.144500" ime=Next settext
+~ field "தீர்க்கரேகை" value="91.736200" ime=Next settext
+Switch "தோராயமான இருப்பிடம் | குறி ஒரு வளையமாகக் காட்டப்படும்; ஹன்ட் முறை இங்கே எச்சரிக்காது." state=Off
+Button "இந்த வீட்டைக் கடந்து நடந்தேனா?"
+heading "சேமித்த நடைகள்"
+heading "சரிபார்ப்புப் பட்டியல் (0 = மோசம், 5 = மிகச் சிறப்பு)"
+field "குறிப்புகள்" value="" ime=Default settext
+heading "தொடர்பு"
+field "உரிமையாளர் அல்லது தரகர் பெயர்" value="" ime=Next settext
+field "தொலைபேசி" value="" ime=Next settext
+field "விளம்பர இணைப்பு" value="" ime=Done settext
+heading "தரகர்"
+DropdownList "யாருமில்லை" desc="தரகர்"
+Button "புதிய தரகர்"
+heading "படங்கள்"
+Button "படம் எடு"
+Button "கேலரியிலிருந்து"
+heading "வருகைகள் (0)"
+Button "நான் இப்போது இங்கே இருக்கிறேன்"
+heading "வீடு பார்வையிடல்"
+Button "பார்வையிடலைத் திட்டமிடு"
+Button "இந்த வீட்டின் அனைத்துப் பார்வையிடல்கள்"
+heading "பகுதிக் குறிப்புகள்"
+Button "ஒரு பகுதிக்குக் குறிப்பு சேர்"
+Button "சேமி"
+Button "" desc="பின்செல்"
+Button "" desc="வீட்டை நீக்கு"
+Button "சேமி"
+
+## untyped.ta
+field "பெயர் (எ.கா. “நீல கேட், 2வது மாடி”)" value="Lake view flat" ime=Next settext
+heading "நிலை"
+RadioButton "" desc="புதியது" selected=true
+RadioButton "" desc="தேர்வானது" selected=false
+RadioButton "" desc="நிராகரிக்கப்பட்டது" selected=false
+RadioButton "" desc="எடுக்கப்பட்டது" selected=false
+RadioButton "" desc="தேர்ந்தெடுக்கப்படவில்லை" selected=false
+heading "உங்கள் மதிப்பீடு"
+RadioButton "☆" desc="5-இல் 1 நட்சத்திரங்கள்" selected=false
+RadioButton "☆" desc="5-இல் 2 நட்சத்திரங்கள்" selected=false
+RadioButton "☆" desc="5-இல் 3 நட்சத்திரங்கள்" selected=false
+RadioButton "☆" desc="5-இல் 4 நட்சத்திரங்கள்" selected=false
+RadioButton "☆" desc="5-இல் 5 நட்சத்திரங்கள்" selected=false
+Button "மதிப்பீட்டை அழி" disabled
+RadioButton "வாங்க" selected=false
+RadioButton "வாடகை" selected=true
+field "வாடகை ₹/மாதம் | " value="" ime=Next settext
+field "BHK" value="" ime=Next settext
+~ field "கார்பெட் பரப்பு (சதுர அடி)" value="" ime=Next settext
+field "தளம் | 0 என்பது தரைத்தளம், -1 அடித்தளம்" value="" ime=Next settext
+Switch "அடித்தளம்" state=Off
+heading "செலவு"
+field "முன்பணம் (₹)" value="" ime=Next settext
+~ field "முன்பணம் (மாதங்கள்)" value="" ime=Next settext
+field "பராமரிப்பு (₹ மாதத்திற்கு)" value="" ime=Next settext
+Switch "வாடகையில் அடங்கும்" state=Off
+field "தரகு (₹)" value="" ime=Next settext
+~ field "தரகு (மாதங்கள்)" value="" ime=Next settext
+field "லாக்-இன் (மாதங்கள்)" value="" ime=Next settext
+~ field "நோட்டீஸ் (மாதங்கள்)" value="" ime=Next settext
+field "எப்போதிலிருந்து கிடைக்கும் | YYYY-MM-DD" value="" ime=Next settext
+Button "" desc="தேதியைத் தேர்வுசெய்"
+field "என் சலுகை (₹)" value="" ime=Next settext
+~ field "ஒப்புக்கொண்ட விலை (₹)" value="" ime=Next settext
+heading "அறைகள்"
+Button "அறையைச் சேர்"
+heading "கேட்க வேண்டிய கேள்விகள்"
+Button "வழக்கமான கேள்விகளைச் சேர்" disabled
+Button "ஒரு கேள்வியைச் சேர்"
+field "முகவரி" value="" ime=Next settext
+field "தெரு" value="" ime=Next settext
+~ field "பகுதி" value="" ime=Next settext
+heading "இருப்பிடம்"
+Button "என் தற்போதைய இருப்பிடத்தைப் பயன்படுத்து"
+field "அட்சரேகை" value="26.144500" ime=Next settext
+~ field "தீர்க்கரேகை" value="91.736200" ime=Next settext
+Switch "தோராயமான இருப்பிடம் | குறி ஒரு வளையமாகக் காட்டப்படும்; ஹன்ட் முறை இங்கே எச்சரிக்காது." state=Off
+Button "இந்த வீட்டைக் கடந்து நடந்தேனா?"
+heading "சேமித்த நடைகள்"
+heading "சரிபார்ப்புப் பட்டியல் (0 = மோசம், 5 = மிகச் சிறப்பு)"
+field "குறிப்புகள்" value="" ime=Default settext
+heading "தொடர்பு"
+field "உரிமையாளர் அல்லது தரகர் பெயர்" value="" ime=Next settext
+field "தொலைபேசி" value="" ime=Next settext
+field "விளம்பர இணைப்பு" value="" ime=Done settext
+heading "தரகர்"
+DropdownList "யாருமில்லை" desc="தரகர்"
+Button "புதிய தரகர்"
+heading "படங்கள்"
+Button "படம் எடு"
+Button "கேலரியிலிருந்து"
+heading "வருகைகள் (0)"
+Button "நான் இப்போது இங்கே இருக்கிறேன்"
+heading "வீடு பார்வையிடல்"
+Button "பார்வையிடலைத் திட்டமிடு"
+Button "இந்த வீட்டின் அனைத்துப் பார்வையிடல்கள்"
+heading "பகுதிக் குறிப்புகள்"
+Button "ஒரு பகுதிக்குக் குறிப்பு சேர்"
+Button "சேமி"
+Button "" desc="பின்செல்"
+Button "" desc="வீட்டை நீக்கு"
+Button "சேமி"
+
+## rent.te
+field "పేరు (ఉదా. “నీలం గేటు, 2వ అంతస్తు”)" value="Lake view flat" ime=Next settext
+heading "స్థితి"
+RadioButton "" desc="కొత్తది" selected=true
+RadioButton "" desc="ఎంపికైంది" selected=false
+RadioButton "" desc="తిరస్కరించబడింది" selected=false
+RadioButton "" desc="తీసుకున్నాం" selected=false
+RadioButton "" desc="ఎంచుకోలేదు" selected=false
+heading "మీ రేటింగ్"
+RadioButton "☆" desc="5లో 1 నక్షత్రాలు" selected=false
+RadioButton "☆" desc="5లో 2 నక్షత్రాలు" selected=false
+RadioButton "☆" desc="5లో 3 నక్షత్రాలు" selected=false
+RadioButton "☆" desc="5లో 4 నక్షత్రాలు" selected=false
+RadioButton "☆" desc="5లో 5 నక్షత్రాలు" selected=false
+Button "రేటింగ్ తీసివేయండి" disabled
+RadioButton "కొనుగోలు" selected=false
+RadioButton "అద్దె" selected=true
+field "అద్దె ₹/నెల | " value="" ime=Next settext
+field "BHK" value="" ime=Next settext
+~ field "కార్పెట్ వైశాల్యం (చ. అడుగులు)" value="" ime=Next settext
+field "అంతస్తు | 0 అంటే నేల అంతస్తు, -1 బేస్‌మెంట్" value="" ime=Next settext
+Switch "బేస్‌మెంట్" state=Off
+heading "ఖర్చు"
+field "డిపాజిట్ (₹)" value="" ime=Next settext
+~ field "డిపాజిట్ (నెలలు)" value="" ime=Next settext
+field "నిర్వహణ (₹ నెలకు)" value="" ime=Next settext
+Switch "అద్దెలో కలిపి" state=Off
+field "బ్రోకరేజ్ (₹)" value="" ime=Next settext
+~ field "బ్రోకరేజ్ (నెలలు)" value="" ime=Next settext
+field "లాక్-ఇన్ (నెలలు)" value="" ime=Next settext
+~ field "నోటీసు (నెలలు)" value="" ime=Next settext
+field "ఎప్పటి నుంచి అందుబాటులో | YYYY-MM-DD" value="" ime=Next settext
+Button "" desc="తేదీని ఎంచుకోండి"
+field "నా ఆఫర్ (₹)" value="" ime=Next settext
+~ field "అంగీకరించిన ధర (₹)" value="" ime=Next settext
+heading "గదులు"
+Button "గది జోడించండి"
+heading "అడగాల్సిన ప్రశ్నలు"
+Button "సాధారణ ప్రశ్నలు జోడించండి" disabled
+Button "ఒక ప్రశ్న జోడించండి"
+field "చిరునామా" value="" ime=Next settext
+field "వీధి" value="" ime=Next settext
+~ field "ప్రాంతం" value="" ime=Next settext
+heading "స్థానం"
+Button "నా ప్రస్తుత స్థానాన్ని వాడండి"
+field "అక్షాంశం" value="26.144500" ime=Next settext
+~ field "రేఖాంశం" value="91.736200" ime=Next settext
+Switch "సుమారు స్థానం | మార్కర్ ఒక వలయంగా కనిపిస్తుంది; హంట్ మోడ్ ఇక్కడ హెచ్చరించదు." state=Off
+Button "నేను ఈ ఇంటి పక్కగా నడిచానా?"
+heading "సేవ్ చేసిన నడకలు"
+heading "తనిఖీ జాబితా (0 = బాగాలేదు, 5 = చాలా బాగుంది)"
+field "గమనికలు" value="" ime=Default settext
+heading "సంప్రదింపు"
+field "యజమాని లేదా బ్రోకర్ పేరు" value="" ime=Next settext
+field "ఫోన్" value="" ime=Next settext
+field "లిస్టింగ్ లింక్" value="" ime=Done settext
+heading "బ్రోకర్"
+DropdownList "ఎవరూ లేరు" desc="బ్రోకర్"
+Button "కొత్త బ్రోకర్"
+heading "ఫోటోలు"
+Button "ఫోటో తీయండి"
+Button "గ్యాలరీ నుండి"
+heading "సందర్శనలు (0)"
+Button "నేను ఇప్పుడు ఇక్కడ ఉన్నాను"
+heading "ఇంటి పరిశీలన"
+Button "పరిశీలనను ప్లాన్ చేయండి"
+Button "ఈ ఇంటి అన్ని పరిశీలనలు"
+heading "ప్రాంత గమనికలు"
+Button "ఒక ప్రాంతానికి గమనిక జోడించు"
+Button "సేవ్ చేయండి"
+Button "" desc="వెనుకకు"
+Button "" desc="ఇల్లు తొలగించండి"
+Button "సేవ్ చేయండి"
+
+## sale.te
+field "పేరు (ఉదా. “నీలం గేటు, 2వ అంతస్తు”)" value="Lake view flat" ime=Next settext
+heading "స్థితి"
+RadioButton "" desc="కొత్తది" selected=true
+RadioButton "" desc="ఎంపికైంది" selected=false
+RadioButton "" desc="తిరస్కరించబడింది" selected=false
+RadioButton "" desc="తీసుకున్నాం" selected=false
+RadioButton "" desc="ఎంచుకోలేదు" selected=false
+heading "మీ రేటింగ్"
+RadioButton "☆" desc="5లో 1 నక్షత్రాలు" selected=false
+RadioButton "☆" desc="5లో 2 నక్షత్రాలు" selected=false
+RadioButton "☆" desc="5లో 3 నక్షత్రాలు" selected=false
+RadioButton "☆" desc="5లో 4 నక్షత్రాలు" selected=false
+RadioButton "☆" desc="5లో 5 నక్షత్రాలు" selected=false
+Button "రేటింగ్ తీసివేయండి" disabled
+RadioButton "అద్దె" selected=false
+RadioButton "కొనుగోలు" selected=true
+field "ధర ₹ | " value="" ime=Next settext
+field "BHK" value="" ime=Next settext
+~ field "కార్పెట్ వైశాల్యం (చ. అడుగులు)" value="" ime=Next settext
+field "అంతస్తు | 0 అంటే నేల అంతస్తు, -1 బేస్‌మెంట్" value="" ime=Next settext
+Switch "బేస్‌మెంట్" state=Off
+heading "ఖర్చు"
+field "బ్రోకరేజ్ (₹)" value="" ime=Next settext
+~ field "బ్రోకరేజ్ (నెలలు)" value="" ime=Next settext
+field "ఎప్పటి నుంచి అందుబాటులో | YYYY-MM-DD" value="" ime=Next settext
+Button "" desc="తేదీని ఎంచుకోండి"
+field "నా ఆఫర్ (₹)" value="" ime=Next settext
+~ field "అంగీకరించిన ధర (₹)" value="" ime=Next settext
+heading "గదులు"
+Button "గది జోడించండి"
+heading "అడగాల్సిన ప్రశ్నలు"
+Button "సాధారణ ప్రశ్నలు జోడించండి" disabled
+Button "ఒక ప్రశ్న జోడించండి"
+field "చిరునామా" value="" ime=Next settext
+field "వీధి" value="" ime=Next settext
+~ field "ప్రాంతం" value="" ime=Next settext
+heading "స్థానం"
+Button "నా ప్రస్తుత స్థానాన్ని వాడండి"
+field "అక్షాంశం" value="26.144500" ime=Next settext
+~ field "రేఖాంశం" value="91.736200" ime=Next settext
+Switch "సుమారు స్థానం | మార్కర్ ఒక వలయంగా కనిపిస్తుంది; హంట్ మోడ్ ఇక్కడ హెచ్చరించదు." state=Off
+Button "నేను ఈ ఇంటి పక్కగా నడిచానా?"
+heading "సేవ్ చేసిన నడకలు"
+heading "తనిఖీ జాబితా (0 = బాగాలేదు, 5 = చాలా బాగుంది)"
+field "గమనికలు" value="" ime=Default settext
+heading "సంప్రదింపు"
+field "యజమాని లేదా బ్రోకర్ పేరు" value="" ime=Next settext
+field "ఫోన్" value="" ime=Next settext
+field "లిస్టింగ్ లింక్" value="" ime=Done settext
+heading "బ్రోకర్"
+DropdownList "ఎవరూ లేరు" desc="బ్రోకర్"
+Button "కొత్త బ్రోకర్"
+heading "ఫోటోలు"
+Button "ఫోటో తీయండి"
+Button "గ్యాలరీ నుండి"
+heading "సందర్శనలు (0)"
+Button "నేను ఇప్పుడు ఇక్కడ ఉన్నాను"
+heading "ఇంటి పరిశీలన"
+Button "పరిశీలనను ప్లాన్ చేయండి"
+Button "ఈ ఇంటి అన్ని పరిశీలనలు"
+heading "ప్రాంత గమనికలు"
+Button "ఒక ప్రాంతానికి గమనిక జోడించు"
+Button "సేవ్ చేయండి"
+Button "" desc="వెనుకకు"
+Button "" desc="ఇల్లు తొలగించండి"
+Button "సేవ్ చేయండి"
+
+## untyped.te
+field "పేరు (ఉదా. “నీలం గేటు, 2వ అంతస్తు”)" value="Lake view flat" ime=Next settext
+heading "స్థితి"
+RadioButton "" desc="కొత్తది" selected=true
+RadioButton "" desc="ఎంపికైంది" selected=false
+RadioButton "" desc="తిరస్కరించబడింది" selected=false
+RadioButton "" desc="తీసుకున్నాం" selected=false
+RadioButton "" desc="ఎంచుకోలేదు" selected=false
+heading "మీ రేటింగ్"
+RadioButton "☆" desc="5లో 1 నక్షత్రాలు" selected=false
+RadioButton "☆" desc="5లో 2 నక్షత్రాలు" selected=false
+RadioButton "☆" desc="5లో 3 నక్షత్రాలు" selected=false
+RadioButton "☆" desc="5లో 4 నక్షత్రాలు" selected=false
+RadioButton "☆" desc="5లో 5 నక్షత్రాలు" selected=false
+Button "రేటింగ్ తీసివేయండి" disabled
+RadioButton "కొనుగోలు" selected=false
+RadioButton "అద్దె" selected=true
+field "అద్దె ₹/నెల | " value="" ime=Next settext
+field "BHK" value="" ime=Next settext
+~ field "కార్పెట్ వైశాల్యం (చ. అడుగులు)" value="" ime=Next settext
+field "అంతస్తు | 0 అంటే నేల అంతస్తు, -1 బేస్‌మెంట్" value="" ime=Next settext
+Switch "బేస్‌మెంట్" state=Off
+heading "ఖర్చు"
+field "డిపాజిట్ (₹)" value="" ime=Next settext
+~ field "డిపాజిట్ (నెలలు)" value="" ime=Next settext
+field "నిర్వహణ (₹ నెలకు)" value="" ime=Next settext
+Switch "అద్దెలో కలిపి" state=Off
+field "బ్రోకరేజ్ (₹)" value="" ime=Next settext
+~ field "బ్రోకరేజ్ (నెలలు)" value="" ime=Next settext
+field "లాక్-ఇన్ (నెలలు)" value="" ime=Next settext
+~ field "నోటీసు (నెలలు)" value="" ime=Next settext
+field "ఎప్పటి నుంచి అందుబాటులో | YYYY-MM-DD" value="" ime=Next settext
+Button "" desc="తేదీని ఎంచుకోండి"
+field "నా ఆఫర్ (₹)" value="" ime=Next settext
+~ field "అంగీకరించిన ధర (₹)" value="" ime=Next settext
+heading "గదులు"
+Button "గది జోడించండి"
+heading "అడగాల్సిన ప్రశ్నలు"
+Button "సాధారణ ప్రశ్నలు జోడించండి" disabled
+Button "ఒక ప్రశ్న జోడించండి"
+field "చిరునామా" value="" ime=Next settext
+field "వీధి" value="" ime=Next settext
+~ field "ప్రాంతం" value="" ime=Next settext
+heading "స్థానం"
+Button "నా ప్రస్తుత స్థానాన్ని వాడండి"
+field "అక్షాంశం" value="26.144500" ime=Next settext
+~ field "రేఖాంశం" value="91.736200" ime=Next settext
+Switch "సుమారు స్థానం | మార్కర్ ఒక వలయంగా కనిపిస్తుంది; హంట్ మోడ్ ఇక్కడ హెచ్చరించదు." state=Off
+Button "నేను ఈ ఇంటి పక్కగా నడిచానా?"
+heading "సేవ్ చేసిన నడకలు"
+heading "తనిఖీ జాబితా (0 = బాగాలేదు, 5 = చాలా బాగుంది)"
+field "గమనికలు" value="" ime=Default settext
+heading "సంప్రదింపు"
+field "యజమాని లేదా బ్రోకర్ పేరు" value="" ime=Next settext
+field "ఫోన్" value="" ime=Next settext
+field "లిస్టింగ్ లింక్" value="" ime=Done settext
+heading "బ్రోకర్"
+DropdownList "ఎవరూ లేరు" desc="బ్రోకర్"
+Button "కొత్త బ్రోకర్"
+heading "ఫోటోలు"
+Button "ఫోటో తీయండి"
+Button "గ్యాలరీ నుండి"
+heading "సందర్శనలు (0)"
+Button "నేను ఇప్పుడు ఇక్కడ ఉన్నాను"
+heading "ఇంటి పరిశీలన"
+Button "పరిశీలనను ప్లాన్ చేయండి"
+Button "ఈ ఇంటి అన్ని పరిశీలనలు"
+heading "ప్రాంత గమనికలు"
+Button "ఒక ప్రాంతానికి గమనిక జోడించు"
+Button "సేవ్ చేయండి"
+Button "" desc="వెనుకకు"
+Button "" desc="ఇల్లు తొలగించండి"
+Button "సేవ్ చేయండి"
+
