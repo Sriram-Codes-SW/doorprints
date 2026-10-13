@@ -222,9 +222,16 @@ describe('MapPage: the phone layout is sized in CSS (S4b-BL-49)', () => {
   });
 
   it('fills the visible page area less the list heading and counters, and never goes under the control column', () => {
-    expect(phone).toContain('--map-floor: calc(196px + 2 * var(--space-2));');
+    expect(phone).toContain('--map-floor: calc(216px + var(--space-2));');
     expect(phone).toContain('min-height: max(var(--map-floor), calc(100cqh - var(--map-peek)));');
     expect(phone).toContain('grid-template-rows: minmax(var(--map-floor), 1fr) auto auto;');
+  });
+
+  it('reserves the control corner, credits open, from the first frame (no shift when the style\'s credits arrive)', () => {
+    expect(phone).toMatch(/\.maplibregl-ctrl-bottom-right\s*\{\s*left: 0;\s*\}/);
+    expect(phone).toMatch(/@media \(min-height: 501px\) \{\s*:host ::ng-deep \.maplibregl-ctrl-bottom-right\s*\{\s*min-height: 216px;/);
+    // The floor holds the corner: 216px is zoom in, zoom out and my location (44px each), their margins, and 44px of credits, with --space-2 above.
+    expect(phone).toContain('--map-floor: calc(216px + var(--space-2));');
   });
 
   it('places the map and its overlays in the map row, so the crosshair stays on the map centre', () => {

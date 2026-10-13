@@ -449,9 +449,9 @@
    * bottom bar before any scrolling where the screen has room for them. 55vh is for a browser without container units.
    *
    * The map row never goes under --map-floor: MapLibre's control column (zoom in, zoom out, my location: 44px each, their
-   * 10px margins and the 24px credits button: 196px, measured) with --space-2 above and below it. With the bottom row
+   * 10px margins and the credits, 44px with the credits open on two lines: 216px, measured, the last margin included) with --space-2 above it. With the bottom row
    * out of the map, nothing else needs room inside it. Where the floor and the bottom row are more than the visible area
-   * (landscape, or 200% text) the page scrolls; the map itself is then 212px, inside the screen.
+   * (landscape, or 200% text) the page scrolls; the map itself is then 224px, inside the screen.
    *
    * The overlays that belong to the map (the map, the offline message, the crosshair, the add-mode hint) are absolutely
    * placed in the first row (grid-area: 1 / 1 / 2 / 2: an absolutely placed item's missing end line would be the
@@ -459,7 +459,7 @@
    * house.
    */
   .map-wrap {
-    --map-floor: calc(196px + 2 * var(--space-2));
+    --map-floor: calc(216px + var(--space-2));
     /*
      * The heading (its 0.75rem padding and one line of --text-xl) and the counters (0.75rem above, two rows of a
      * --text-lg number with its caption on one line, 0.5rem above and below each, and three 1px rules), in rem so it
@@ -588,16 +588,52 @@
 
   /*
    * Where MapLibre's controls are bottom-right (MapPage's BOTTOM_CONTROLS_QUERY), the corner has the column's full height
-   * (196px, as --map-floor) from the first frame, its controls at the top: the credits button comes under "My location"
-   * when the style loads, and the column used to grow upward then, moving the zoom buttons (a layout shift). It is as
-   * wide as the map (MapLibre leaves a corner click-through), so the credits opening and folding up do not move its box
-   * either. Elements made by MapLibre, outside this component's view, hence ::ng-deep.
+   * (216px, as --map-floor) from the first frame, its controls at the top: the credits come under "My location" when the
+   * style's TileJSON arrives, and the column used to grow upward then, moving the zoom buttons (a layout shift). 216px is
+   * the column with the credits open on a phone: the open credits wrap to a second line (a 44px row, not the 24px button),
+   * which the live site showed as a shift of 0.129 at 390x664 once the real style loaded (S4b-BL-49 follow-up; the layout
+   * gate answers the style with credits and a delayed TileJSON to hold it). The container is as wide as the map
+   * (MapLibre leaves a corner click-through), so the credits opening and folding up do not move its box either, at any
+   * height. Elements made by MapLibre, outside this component's view, hence ::ng-deep.
    */
+  :host ::ng-deep .maplibregl-ctrl-bottom-right {
+    left: 0;
+  }
+
   @media (min-height: 501px) {
     :host ::ng-deep .maplibregl-ctrl-bottom-right {
-      left: 0;
-      min-height: 196px;
+      min-height: 216px;
     }
+  }
+
+  /*
+   * The credits open for a few seconds when the style's sources arrive (ATTRIBUTION_SHOW_MS), and in MapLibre's own CSS the
+   * control then grows from the 24px button to the full line, its left edge moving: a layout shift, which the live site
+   * showed. Here the control keeps the button's box, open or folded, and the open credits are drawn over it from the
+   * button's right edge, as wide as the map from the first frame (the credits come in two steps, "Natural Earth", then the
+   * tile source's, and a box that grew to the left would move at each) and growing down into the corner reserved above:
+   * only its height changes, which moves nothing. The button stays at the right, as folded, with the text to its left.
+   */
+  :host ::ng-deep .maplibregl-ctrl-bottom-right .maplibregl-ctrl-attrib.maplibregl-compact-show {
+    padding: 2px 24px 2px 0;
+    background: none; /* the open credits have their own */
+  }
+
+  :host ::ng-deep .maplibregl-ctrl-bottom-right .maplibregl-ctrl-attrib-button {
+    left: auto;
+    right: 0;
+    z-index: 1;
+  }
+
+  :host ::ng-deep .maplibregl-ctrl-bottom-right .maplibregl-compact-show .maplibregl-ctrl-attrib-inner {
+    position: absolute;
+    top: 0;
+    right: 0;
+    box-sizing: border-box;
+    width: calc(100cqw - 20px);
+    padding: 2px 28px 2px 8px;
+    background: #fff;
+    border-radius: 12px;
   }
 
   /* The offline message is centred in the map; the bottom row is under the map now, not over its foot. */

@@ -30,7 +30,7 @@
 // height after the first paint), and, at normal text and on the owner's phone, that the Map page shows the list's
 // heading and every counter above the bottom bar before any scrolling (S4b-BL-49, owner report 2026-09-24).
 // Offline and deterministic: every request that is not to the local server is answered by this script (MapLibre's style
-// URL with an empty valid style, anything else aborted), so the map's container and canvas exist but nothing depends on a
+// URL with a small valid style that has credits, anything else aborted), so the map's container and canvas exist but nothing depends on a
 // network. Not a replacement for tools/live-ui after the deploy, and not for a real phone.
 const { chromium, devices } = require('playwright');
 const { ROUTES, phoneContext, layoutAudit } = require('./layout-audit');
@@ -46,7 +46,22 @@ const LANDSCAPE_SE = { width: 568, height: 320 };
 const TALL_TAMIL = { width: 360, height: 740 };
 const MAX_CLS = 0.05; // web.dev's "good" is 0.1; the Map page measured 0.000-0.003 after S4b-BL-49 (TC-S-46)
 const STYLE_URL = /^https:\/\/tiles\.openfreemap\.org\/styles\/liberty(\?|$)/; // MAP_STYLE_URL in web/src/app/shared/map-style-url.ts
-const EMPTY_STYLE = { version: 8, name: 'empty', sources: {}, layers: [] };
+// The style the app really loads has vector sources whose TileJSON carries the credits (OpenFreeMap, OpenMapTiles,
+// OpenStreetMap); MapLibre adds them to its attribution control when the source arrives, which made the bottom-right
+// control column taller after the first paint (S4b-BL-49 follow-up). So the gate answers with the same kind of style and
+// TileJSON, an empty style would hide it. Tiles themselves are still aborted.
+const TILEJSON_URL = /^https:\/\/tiles\.openfreemap\.org\/planet(\?|$)/;
+const CREDITS = '<a href="https://openfreemap.org" target="_blank">OpenFreeMap</a> <a href="https://www.openmaptiles.org/" target="_blank">&copy; OpenMapTiles</a> Data from <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>';
+const STYLE = {
+  version: 8, name: 'liberty-like',
+  sources: { openmaptiles: { type: 'vector', url: 'https://tiles.openfreemap.org/planet' } },
+  layers: [
+    { id: 'background', type: 'background', paint: { 'background-color': '#f8f4f0' } },
+    { id: 'water', type: 'fill', source: 'openmaptiles', 'source-layer': 'water', paint: { 'fill-color': '#9ecae1' } },
+  ],
+};
+const TILEJSON_DELAY_MS = 1500;
+const TILEJSON = { tilejson: '3.0.0', name: 'planet', attribution: CREDITS, minzoom: 0, maxzoom: 14, tiles: ['https://tiles.openfreemap.org/planet/20260101_000000_pt/{z}/{x}/{y}.pbf'] };
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.geojson': 'application/geo+json', '.webmanifest': 'application/manifest+json', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.pbf': 'application/x-protobuf', '.txt': 'text/plain', '.xml': 'application/xml' };
 
 /** Serves [dir] under the app's base href (read from its index.html), index.html for any path that is not a file. */
@@ -72,11 +87,19 @@ function serve(dir) {
  */
 function watchShifts() {
   let cls = 0, burst = 0, first = 0, last = 0;
+  const moved = []; // what moved, so a failure names the element (a layout shift's sources)
   window.__cls = () => cls;
+  window.__shifted = () => moved.join(' ; ');
   try {
     new PerformanceObserver((list) => {
       for (const e of list.getEntries()) {
         if (e.hadRecentInput) continue;
+        const box = (r) => (r ? `y=${Math.round(r.y)},h=${Math.round(r.height)}` : '?');
+        for (const s of e.sources || []) {
+          const n = s.node;
+          const name = n && n.nodeType === 1 ? `${n.tagName}${n.className && typeof n.className === 'string' ? '.' + n.className.trim().split(/\s+/).join('.') : ''}` : '(removed element)';
+          moved.push(`${name} ${box(s.previousRect)} -> ${box(s.currentRect)} (${e.value.toFixed(3)} at ${Math.round(e.startTime)} ms)`);
+        }
         if (burst && e.startTime - last < 1000 && e.startTime - first < 5000) burst += e.value;
         else { burst = e.value; first = e.startTime; }
         last = e.startTime;
@@ -101,13 +124,17 @@ function countersUnderBar() {
   return bottom > barTop + 1 ? `the list's heading and counters end ${Math.round(bottom - barTop)}px under the bottom bar before scrolling` : null;
 }
 
-/** Everything but the local server is answered here: the style with an empty one, the rest not at all. */
+/** Everything but the local server is answered here: the style and its TileJSON with a small copy of the real ones (credits included), the rest not at all. */
 async function offline(ctx, base) {
   const origin = new URL(base).origin;
-  await ctx.route('**/*', (route) => {
+  await ctx.route('**/*', async (route) => {
     const url = route.request().url();
     if (url.startsWith(origin + '/') || url.startsWith('data:') || url.startsWith('blob:')) return route.continue();
-    if (STYLE_URL.test(url)) return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(EMPTY_STYLE) });
+    if (STYLE_URL.test(url)) return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(STYLE) });
+    if (TILEJSON_URL.test(url)) {
+      await new Promise((r) => setTimeout(r, TILEJSON_DELAY_MS)); // the network: the credits come after the first paint, as on the live site
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(TILEJSON) });
+    }
     return route.abort();
   });
 }
@@ -121,6 +148,7 @@ async function run() {
   const t0 = Date.now();
   const failures = [];
   let checks = 0;
+  let worstShift = 0;
   const check = (tag, ok, detail) => { checks++; if (!ok) { failures.push(`${tag}: ${detail}`); console.log(`FAIL ${tag}: ${detail}`); } };
   const pass = async (viewport, text, lang = 'en', { counters = false } = {}) => {
     const { ctx } = await phoneContext(browser, devices, { device: 'Pixel 7', viewport, text, lang });
@@ -136,12 +164,18 @@ async function run() {
         if (route === '/') {
           const drawn = await page.waitForSelector('.maplibregl-map canvas', { timeout: 15000 }).then(() => true, () => false);
           check(`${tag}: the Map page has a map with a canvas`, drawn, 'no .maplibregl-map canvas (WebGL missing, or the map did not start)');
+          // The style's credits come with its TileJSON (delayed above): wait for them, so a shift they cause is in the count.
+          const credits = await page.waitForFunction(() => /OpenMapTiles/.test(document.querySelector('.maplibregl-ctrl-attrib')?.textContent || ''), null, { timeout: 15000 }).then(() => true, () => false);
+          check(`${tag}: the map shows the style's credits`, credits, 'no OpenMapTiles credit in the attribution control (the style or its TileJSON did not load)');
           await page.waitForTimeout(2000); // the map's resize observers and the layout settle
         } else await page.waitForTimeout(400);
         // The Map page only: /data and /connect still shift on load (S4b-BL-249), which the gate does not hold yet.
         if (route === '/') {
           const cls = await page.evaluate(() => window.__cls());
-          check(`${tag}: layout shift on load`, cls <= MAX_CLS, `${cls.toFixed(3)} (at most ${MAX_CLS})`);
+          worstShift = Math.max(worstShift, cls);
+          const shifted = cls > MAX_CLS || process.env.GATE_VERBOSE ? await page.evaluate(() => window.__shifted()) : '';
+          if (process.env.GATE_VERBOSE) console.log(`${tag}: shift ${cls.toFixed(3)}; moved: ${shifted || 'nothing'}`);
+          check(`${tag}: layout shift on load`, cls <= MAX_CLS, `${cls.toFixed(3)} (at most ${MAX_CLS}); moved: ${shifted || 'unknown'}`);
         }
         if (route === '/' && counters) {
           const under = await page.evaluate(countersUnderBar);
@@ -165,7 +199,7 @@ async function run() {
     await browser.close();
     if (local) local.server.close();
   }
-  console.log(`layout gate: ${checks - failures.length}/${checks} checks passed on ${base} in ${Math.round((Date.now() - t0) / 1000)} s`);
+  console.log(`layout gate: ${checks - failures.length}/${checks} checks passed (largest Map page layout shift ${worstShift.toFixed(3)}) on ${base} in ${Math.round((Date.now() - t0) / 1000)} s`);
   process.exitCode = failures.length ? 1 : 0;
 }
 run().catch((e) => { console.error(e); process.exit(1); });
