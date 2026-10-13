@@ -447,8 +447,8 @@ final class BackupMapper {
      * The house as a backup row: the stored JSON parts parsed, the checklist sorted, times in epoch milliseconds. The
      * backup format is still today's (S4b-BL-206 resets it with the apps), so the money and the house's extras are
      * written back as {@code price}, {@code priceType}, {@code bedrooms}, {@code areaSqft}, {@code floor} and
-     * {@code cost} through {@link HouseDto}'s readers; an extra this server keeps but does not know has no place in
-     * that format and is left out.
+     * {@code cost} through {@link HouseDto}'s readers, and an extra this server keeps but does not know as
+     * {@code extrasOther} (S4b-BL-248), which {@link BackupWire} writes back into the candidate's {@code extras}.
      */
     private static BackupHouse house(House h) {
         var d = HouseDto.from(h);
@@ -456,7 +456,8 @@ final class BackupMapper {
                 h.getLat(), h.getLon(), h.getStatus(), d.price(), d.priceType(), d.bedrooms(),
                 h.getRating(), h.getContactName(), h.getContactPhone(), h.getListingUrl(), h.getNotes(),
                 d.areaSqft(), h.getLocationSource(), d.cost(), d.rooms(), d.answers(), d.moveIn(), d.floor(),
-                h.getBrokerId(), sortedChecklist(h.getChecklist()), millis(h.getCreatedAt()), millis(h.getUpdatedAt()));
+                h.getBrokerId(), sortedChecklist(h.getChecklist()), millis(h.getCreatedAt()), millis(h.getUpdatedAt()),
+                d.extras() == null || d.extras().other().isEmpty() ? null : new TreeMap<>(d.extras().other()));
     }
 
     private static BackupVisit visit(Visit v) {

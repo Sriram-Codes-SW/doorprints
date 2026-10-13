@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Threat model (STRIDE) |
-| Version | 0.70 |
+| Version | 0.71 |
 | Date | 2026-10-10 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -81,6 +81,7 @@
 | 0.68 | 2026-10-09 | Claude (Code) | **T-S8:** the caps on open pairing requests are settings (`PAIRING_MAX_OPEN`, `PAIRING_MAX_PER_SOURCE`, defaults 50 and 5 unchanged) so the release gate's API scan can lift them: the fixed caps made `/api/pair/start` answer 429 to the scanner, which ZAP read as a SQL injection on `deviceName` (a false positive; S4b-BL-191, #205). Test TC-S-49. |
 | 0.69 | 2026-10-10 | Claude (Code), engineer | **New section 11, voice input (planned, [03](03-design.md) ADR-37, S4b-BL-218, [ai/voice-input](ai/voice-input.md)):** T-I45 (audio to the provider, the new data flow DF-49), T-I46 (spoken personal data cannot be redacted before transcription), T-T20 (prompt injection by speech), T-I47 (accidental activation), T-D14 (cost surprise), T-I48 (audio never stored: a testable control), AB-17 and RR-33 (proposed). All Planned, nothing is built. |
 | 0.70 | 2026-10-10 | Claude (Code), engineer | **AB-12, provider safety blocks and abusive text** (S4b-BL-232, [ai/ai-design](ai/ai-design.md) 15): the owner decision that the app does not filter or censor what people type or say, and why; the provider's own block is handled as a distinct failure with no provider text kept. |
+| 0.71 | 2026-10-13 | Claude (Code), engineer | **A house's extras in the assets** (review follow-up of #295, S4b-BL-246 and -248; `docs/kinds-4b-review-followups`): A4 names the extras (the BHK, area, floor and cost values, and a newer app's unknown extras: at most 30, text of at most 2,000 characters) and where they rest (device, Drive sync file, backup, self-hosted server `jsonb`); a note says why `ContactRedactor` does not cover them: they are never sent to an AI provider, and which code paths make that so. No new threat row. |
 
 Related: [Requirements](01-requirements.md) · [DFDs](04-data-flow-diagrams.md) · [Design](03-design.md) · [Test plan](06-test-plan.md) · [AI docs](ai/)
 
@@ -101,10 +102,12 @@ Related: [Requirements](01-requirements.md) · [DFDs](04-data-flow-diagrams.md) 
 | A1 Location data: house points, visits (stay points with times), streets walked | Shows the user's movements, routines and where they will live | Restricted |
 | A2 API key | Gives full read/write access to everything | Restricted |
 | A3 Third-party contact data (landlord/agent names and phones) | Other people's personal data (DPDP) | Confidential |
-| A4 Notes, ratings, prices, photos | Private opinions, and interiors of homes (may include people) | Confidential |
+| A4 Notes, ratings, prices, photos, and a house's extras (the BHK, area, floor and cost values, and a newer app's unknown extras: at most 30, text of at most 2,000 characters) | Private opinions, and interiors of homes (may include people); an unknown extra is free text a newer app wrote, so it may hold anything a note can | Confidential |
 | A5 Service availability and free-tier quota | Losing it costs time. Paid overage is not allowed (CON-01). | Internal |
 | A6 Build pipeline, signing keystore, GitHub PAT | Can be used to ship a malicious APK or backend | Restricted |
 | A7 LLM provider key and quota (planned) | Abuse costs quota and can leak data | Restricted |
+
+**A house's extras at rest** (A4; kinds, [03](03-design.md) ADR-36 §18.5, S4b-BL-206, -246, -248): on the device (Room `houses.extras`, IndexedDB `houses`), in each device's Drive sync file (`sync/1`, encrypted, §10), in every backup and readable copy that holds the house (`doorprints-backup/1` `candidates[].extras`), and on a self-hosted server (`house.extras`, `jsonb`, D4). **`ContactRedactor` does not cover them, because they are never sent to an AI provider:** the AI documents and prompts are built only from typed fields that have no place for an unknown extra: the server's `HouseDocuments` (Ask, the embeddings of DF-32) and `HouseQueries`, `HouseSearchService` and `VisitPlannerService` read a house through `HouseDto`'s typed readers (`price`, `priceType`, `bedrooms`, `areaSqft`, `floor`, `cost`), never `CandidateExtras.other()`; the phone's and the iPhone's `AiHouse` (`android/shared/.../shared/ai/AiHouse.kt`) and the website's `AiHouse` (`web/src/app/core/ai/ai-core.ts`) have no extras field at all, and no file under the three AI packages reads `extras` or `extrasOther` (checked 2026-10-13). The known extras reach the AI only as those typed numbers and dates (no contact can be in them); a change that sends an unknown extra to a provider must add it to the redactor's input first.
 
 ## 2. System view and trust boundaries
 

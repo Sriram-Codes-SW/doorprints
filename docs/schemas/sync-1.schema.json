@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://doorprints.web.app/schemas/sync-1.schema.json",
   "title": "Doorprints sync file, doorprints-sync/1",
-  "description": "The inner format of a device's sync file in Google Drive (S4b-BL-130, docs/15 §5.1), inside the dpx/1 envelope and gzipped. One file per device holds that device's whole state, tombstones included and kept for ever. The readers are SyncFiles.parse (android/shared, app.doorprints.shared.sync) and parseSyncFile (web/src/app/data/drive/sync-file.ts); they also check what a schema cannot: the whole file is at most 16 MiB of UTF-8, all four lists together hold at most 100000 rows, a key appears once per list, deviceId is the writer the envelope authenticated, and times are real calendar instants from 2000-01-01T00:00:00Z on. Unknown properties are ignored (a newer writer within /1). Rows carry the sync DTOs' other fields, which the sync loop validates like a server row. Since the format reset (S4b-BL-206, kinds step 4) the phone writes the houses as candidates (kind, money, extras) under candidates and names a visit's or photo's house candidateId; a file from before, or from a writer that has not moved yet (houses, houseId), is still read, a house row without kind as the house it is, and a file or row with both names is refused.",
+  "description": "The inner format of a device's sync file in Google Drive (S4b-BL-130, docs/15 §5.1), inside the dpx/1 envelope and gzipped. One file per device holds that device's whole state, tombstones included and kept for ever. The readers are SyncFiles.parse (android/shared, app.doorprints.shared.sync) and parseSyncFile (web/src/app/data/drive/sync-file.ts); they also check what a schema cannot: the whole file is at most 16 MiB of UTF-8, all four lists together hold at most 100000 rows, a key appears once per list, deviceId is the writer the envelope authenticated, and times are real calendar instants from 2000-01-01T00:00:00Z on. Unknown properties are ignored (a newer writer within /1). Rows carry the sync DTOs' other fields, which the sync loop validates like a server row. Since the format reset the phone (S4b-BL-206, kinds step 4) and the website (S4b-BL-246) write the houses as candidates (kind, money, extras) under candidates and name a visit's or photo's house candidateId; only a device's own rows are made in that shape, a row taken from another device's file is written on as it came. A file from before (houses, houseId) is still read, a house row without kind as the house it is, and a file or row with both names is refused.",
   "type": "object",
   "required": ["format", "deviceId", "seq", "writtenAt", "visits", "records", "photos"],
   "oneOf": [
@@ -19,7 +19,12 @@
       "maximum": 9007199254740991
     },
     "writtenAt": { "$ref": "#/$defs/time" },
-    "candidates": { "type": "array", "maxItems": 20000, "items": { "$ref": "#/$defs/candidate" } },
+    "candidates": {
+      "description": "The houses as candidates; a row taken from another device's file of before keeps its shape (a house row without kind).",
+      "type": "array",
+      "maxItems": 20000,
+      "items": { "anyOf": [{ "$ref": "#/$defs/candidate" }, { "$ref": "#/$defs/house" }] }
+    },
     "houses": {
       "description": "The same list under its name before the format reset.",
       "type": "array",

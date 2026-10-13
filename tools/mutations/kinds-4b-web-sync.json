@@ -1,0 +1,46 @@
+{
+  "spec": [
+    "web/src/app/data/drive/sync-file.spec.ts",
+    "web/src/app/data/drive/sync-vectors.spec.ts",
+    "web/src/app/data/drive/drive-sync-engine.spec.ts",
+    "web/src/app/data/drive/connect/local/local-rows.spec.ts"
+  ],
+  "mutations": [
+    {
+      "file": "web/src/app/data/drive/sync-file.ts",
+      "find": "out[kind === 'houses' ? CANDIDATES_LIST : kind] = file.rows[kind]",
+      "replace": "out[kind] = file.rows[kind]",
+      "expect": "is written canonically and reads back"
+    },
+    {
+      "file": "web/src/app/data/drive/sync-file.ts",
+      "find": "    return Object.fromEntries(Object.entries(json).map(([k, v]) => [k === FORMER_HOUSE_REF ? HOUSE_REF : k, v]));",
+      "replace": "    return { ...json };",
+      "expect": "writes a house of this device as its candidate"
+    },
+    {
+      "file": "web/src/app/data/drive/sync-file.ts",
+      "find": "if (k !== 'syncVersion' && k !== 'distanceMeters' && v !== null && v !== undefined) out[k] = v;",
+      "replace": "if (k !== 'distanceMeters' && v !== null && v !== undefined) out[k] = v;",
+      "expect": "writes a house of this device as its candidate"
+    },
+    {
+      "file": "web/src/app/data/drive/sync-file.ts",
+      "find": "    for (const [k, v] of Object.entries(candidateOf(house as unknown as HouseDto))) {",
+      "replace": "    for (const [k, v] of Object.entries(house)) {",
+      "expect": "writes the file of a written case byte for byte"
+    },
+    {
+      "file": "web/src/app/data/drive/connect/local/local-rows.ts",
+      "find": "    return syncRow(kind, syncJsonOf(kind, { ...shared, updatedAt, by: this.deviceId, deleted }));",
+      "replace": "    return syncRow(kind, { ...shared, updatedAt, by: this.deviceId, deleted });",
+      "expect": "all() writes a house as its candidate"
+    },
+    {
+      "file": "web/src/app/data/drive/drive-sync-backend.ts",
+      "find": "  return syncRow(kind, syncJsonOf(kind, json));",
+      "replace": "  return syncRow(kind, json);",
+      "expect": "writes the file of a written case byte for byte"
+    }
+  ]
+}

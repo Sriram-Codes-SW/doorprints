@@ -386,6 +386,34 @@ describe('DriveSyncEngine', () => {
     expect('candidateId' in visits[0]).toBe(false);
   });
 
+  it('writes its houses as candidates and its visits with candidateId, read back on another browser as what they were (S4b-BL-246)', async () => {
+    const w = new SyncWorld();
+    const a = await w.add('A'); const b = await w.add('B');
+    const at = new Date(a.now()).toISOString();
+    const house = {
+      id: 'h1', label: 'Anna Nagar 2BHK', lat: 13.08, lon: 80.21, status: 'SHORTLISTED', price: 28000, priceType: 'RENT', bedrooms: 2,
+      areaSqft: 1100, floor: 2, cost: { deposit: 150000, maintenanceIncluded: true, myOffer: 26000 }, extrasOther: { gateName: 'Second Avenue' },
+      checklist: { light: 4 }, updatedAt: at, deleted: false, syncVersion: 2,
+    } as HouseDto;
+    a.local.put(syncRowOf('houses', house, a.id), true);
+    a.local.put(syncRowOf('visits', { id: 'v1', houseId: 'h1', lat: 13.08, lon: 80.21, arrivedAt: at, source: 'MANUAL', updatedAt: at, deleted: false }, a.id), true);
+    const written = a.local.rows.get('houses\u0000h1')!.json;
+    expect(written['kind']).toBe('house');
+    expect(written['money']).toEqual({ amount: 28000, cadence: 'month' });
+    expect('price' in written || 'priceType' in written || 'cost' in written || 'syncVersion' in written).toBe(false);
+    expect('houseId' in a.local.rows.get('visits\u0000v1')!.json).toBe(false);
+    await a.sync();
+    const backend = new DriveSyncBackend(b.engine(), b.local, () => b.now(), b.id);
+    await new Promise<void>((res, rej) => backend.commitPushes().subscribe({ complete: res, error: rej }));
+    const h = (await new Promise<HouseDto[]>((res, rej) => backend.housesSince(0).subscribe({ next: res, error: rej })))[0];
+    expect([h.label, h.status, h.price, h.priceType, h.bedrooms, h.areaSqft, h.floor]).toEqual(['Anna Nagar 2BHK', 'SHORTLISTED', 28000, 'RENT', 2, 1100, 2]);
+    expect(h.cost).toEqual({ deposit: 150000, maintenanceIncluded: true, myOffer: 26000 });
+    expect(h.extrasOther).toEqual({ gateName: 'Second Avenue' });
+    expect(h.checklist).toEqual({ light: 4 });
+    const visits = await new Promise<VisitDto[]>((res, rej) => backend.visitsSince(0).subscribe({ next: res, error: rej }));
+    expect(visits[0].houseId).toBe('h1');
+  });
+
   it('if applyRemote throws, the next pass retries the rows and cursor is not advanced', async () => {
     const w = new SyncWorld();
     const a = await w.add('A'); const b = await w.add('B');

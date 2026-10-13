@@ -1,6 +1,6 @@
 {
  "format": "doorprints-import-vectors/1",
- "note": "Shared by android/shared ImportVectorsTest, android/app BackupReaderParityTest and web backup-import.spec.ts (docs/schemas/README.md section 6.1). Stamps are in the past (2026-05-28). Since the format reset of S4b-BL-206 (kinds step 3) a writer writes doorprints-backup/1 with search and candidates (kind, money, extras) and candidateId; a reader reads that family and still reads the family before it (houses, /1 to /3) as it always did, told apart by shape, not number. The cases named \"the family before (houses): ...\" are the cases of that family, unchanged. Since 2026-10-12 (owner) a price without a type is money with an amount and no cadence; a well-formed file with a cadence this reader does not support (one it does not know, or one a house's money or a fixed money extra may not have) is UNSUPPORTED_VERSION, a newer app's file, not BROKEN_DATA.",
+ "note": "Shared by android/shared ImportVectorsTest, android/app BackupReaderParityTest and web backup-import.spec.ts (docs/schemas/README.md section 6.1). Stamps are in the past (2026-05-28). Since the format reset of S4b-BL-206 (kinds step 3) a writer writes doorprints-backup/1 with search and candidates (kind, money, extras) and candidateId; a reader reads that family and still reads the family before it (houses, /1 to /3) as it always did, told apart by shape, not number. The cases named \"the family before (houses): ...\" are the cases of that family, unchanged. Since 2026-10-12 (owner) a price without a type is money with an amount and no cadence; a well-formed file with a cadence this reader does not support (one it does not know, or one a house's money or a fixed money extra may not have) is UNSUPPORTED_VERSION, a newer app's file, not BROKEN_DATA. A case with candidatesWrittenBack (S4b-BL-248) is also read into each stack's model and written again: the candidates must be those, byte for byte (the website, Android and the server's BackupWireTest).",
  "checks": [
   {
    "name": "a file with one candidate",
@@ -956,6 +956,83 @@
     "photos": []
    },
    "problem": null
+  },
+  {
+   "name": "an extra a newer app wrote is kept through an import and written back after the known ones, by id (S4b-BL-248)",
+   "data": {
+    "format": "doorprints-backup/1",
+    "exportedAt": 1780000000000,
+    "search": {
+     "kind": "house"
+    },
+    "candidates": [
+     {
+      "id": "6f1d1c2e-0000-4000-8000-000000000248",
+      "kind": "house",
+      "label": "Vashi 1BHK",
+      "lat": 19.07,
+      "lon": 72.99,
+      "status": "NEW",
+      "money": {
+       "amount": 15000,
+       "cadence": "month"
+      },
+      "extras": {
+       "yearlyFee": {
+        "amount": 12000,
+        "cadence": "year"
+       },
+       "bedrooms": 2,
+       "hasLift": true,
+       "deposit": {
+        "amount": 30000,
+        "cadence": "once"
+       },
+       "gymOpens": "06:00",
+       "ceilingMetres": 2.75,
+       "fromNewerApp": 4
+      },
+      "checklist": {},
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000000
+     }
+    ],
+    "visits": [],
+    "photos": []
+   },
+   "problem": null,
+   "candidatesWrittenBack": [
+    {
+     "id": "6f1d1c2e-0000-4000-8000-000000000248",
+     "kind": "house",
+     "label": "Vashi 1BHK",
+     "lat": 19.07,
+     "lon": 72.99,
+     "status": "NEW",
+     "money": {
+      "amount": 15000,
+      "cadence": "month"
+     },
+     "extras": {
+      "bedrooms": 2,
+      "deposit": {
+       "amount": 30000,
+       "cadence": "once"
+      },
+      "ceilingMetres": 2.75,
+      "fromNewerApp": 4,
+      "gymOpens": "06:00",
+      "hasLift": true,
+      "yearlyFee": {
+       "amount": 12000,
+       "cadence": "year"
+      }
+     },
+     "checklist": {},
+     "createdAt": 1779999999000,
+     "updatedAt": 1780000000000
+    }
+   ]
   },
   {
    "name": "an unknown extra whose value is a list",

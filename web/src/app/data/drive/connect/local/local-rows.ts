@@ -27,7 +27,7 @@ import type { HouseRecord, PhotoRecord, RecordRecord, VisitRecord } from '../../
 import { houseFromDto, recordFromDto, visitFromDto } from '../../../records';
 import type { LocalRows } from '../../drive-sync-seams';
 import type { SyncKind, SyncRow } from '../../sync-file';
-import { SYNC_EARLIEST_MS, syncRow, syncRowAsBefore } from '../../sync-file';
+import { SYNC_EARLIEST_MS, syncJsonOf, syncRow, syncRowAsBefore } from '../../sync-file';
 
 /**
  * Presents the local store's houses, visits, records and photo metadata as sync rows and applies merged remote rows back, so the sync engine does not know about IndexedDB.
@@ -139,8 +139,10 @@ export class LocalRowsAdapter implements LocalRows {
   }
 
   /**
-   * One row as the sync file holds it: the record's own fields plus `by` and `deleted`, built by the schema's row
-   * builder so what we write is what `parseSyncFile` accepts. Local-only bookkeeping (`dirty`) never leaves the device.
+   * One row as the sync file holds it: the record's own fields plus `by` and `deleted`, in the candidate shape
+   * (`syncJsonOf`, S4b-BL-246: a house as its candidate, a visit's or photo's house as `candidateId`), built by the
+   * schema's row builder so what we write is what `parseSyncFile` accepts. Local-only bookkeeping (`dirty`) never
+   * leaves the device.
    */
   private toSyncRow(kind: SyncKind, _key: string, _updatedAt: string | null | undefined, deleted: boolean, json: Record<string, unknown>): SyncRow {
     const { dirty: _dirty, ...shared } = json;
@@ -148,7 +150,7 @@ export class LocalRowsAdapter implements LocalRows {
     // then to the earliest time the schema allows (it then loses every merge, which is the safe side).
     const usable = (v: unknown): v is string => typeof v === 'string' && Date.parse(v) >= SYNC_EARLIEST_MS;
     const updatedAt = usable(shared['updatedAt']) ? shared['updatedAt'] : usable(shared['createdAt']) ? shared['createdAt'] : new Date(SYNC_EARLIEST_MS).toISOString();
-    return syncRow(kind, { ...shared, updatedAt, by: this.deviceId, deleted });
+    return syncRow(kind, syncJsonOf(kind, { ...shared, updatedAt, by: this.deviceId, deleted }));
   }
 
   private collectRecordTypes(): string[] {

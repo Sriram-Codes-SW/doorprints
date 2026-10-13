@@ -23,6 +23,7 @@ import app.doorprints.shared.export.ExportHouse
 import app.doorprints.shared.export.ExportOptions
 import app.doorprints.shared.export.ExportPhoto
 import app.doorprints.shared.export.ExportVisit
+import app.doorprints.shared.model.Candidates
 import app.doorprints.shared.model.HouseAnswers
 import app.doorprints.shared.model.HouseRooms
 import app.doorprints.shared.model.HouseStatus
@@ -43,7 +44,7 @@ fun HouseEntity.toExport() = ExportHouse(
     contactName = contactName, contactPhone = contactPhone, listingUrl = listingUrl, notes = notes,
     areaSqft = areaSqft, locationSource = locationSource, cost = cost?.orNull(), rooms = rooms?.takeIf { it.isNotEmpty() },
     answers = answers?.takeIf { it.isNotEmpty() }, moveIn = MoveIn.coerced(moveIn), floor = floor, brokerId = brokerId,
-    checklist = checklist, createdAt = createdAt, updatedAt = updatedAt,
+    checklist = checklist, createdAt = createdAt, updatedAt = updatedAt, extrasOther = extrasOther,
 )
 
 /**
@@ -62,6 +63,8 @@ fun ExportHouse.toEntity(dirty: Boolean = true) = HouseEntity(
     brokerId = brokerId?.takeIf(RecordRules::isValidId),
     checklist = checklist, createdAt = createdAt, updatedAt = updatedAt,
     deleted = false, dirty = dirty,
+    // A newer app's extras, kept by the server's and the website's rules (S4b-BL-248).
+    extrasOther = Candidates.cleanOtherExtras(extrasOther),
 )
 
 fun VisitEntity.toExport() = ExportVisit(

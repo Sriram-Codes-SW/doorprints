@@ -950,6 +950,25 @@ class BackupApiTest {
                 .isEqualTo(Map.of("areaSqft", 900));
     }
 
+    /**
+     * S4b-BL-248: the extras a newer app wrote, in a file of the new family, are stored with the candidate and written
+     * back in the next export, after the known ones, by id (the import vectors' {@code candidatesWrittenBack} rule).
+     */
+    @Test
+    void aNewerAppsExtrasAreImportedKeptAndExportedBack() {
+        var id = UUID.randomUUID();
+        var at = Instant.now().toEpochMilli();
+        var file = "{\"format\":\"doorprints-backup/1\",\"exportedAt\":" + at + ",\"search\":{\"kind\":\"house\"},"
+                + "\"candidates\":[{\"id\":\"" + id + "\",\"kind\":\"house\",\"label\":\"Vashi 1BHK\",\"lat\":19.07,"
+                + "\"lon\":72.99,\"status\":\"NEW\",\"extras\":{\"zLast\":\"a\",\"bedrooms\":2,\"hasLift\":true},"
+                + "\"checklist\":{},\"createdAt\":" + at + ",\"updatedAt\":" + at + "}],\"visits\":[],\"photos\":[]}";
+        assertThat(count(postImport(file, false), "houses", "created")).isEqualTo(1);
+        assertThat(api.get().uri("/api/candidates/{id}", id).retrieve().body(MAP).get("extras"))
+                .isEqualTo(Map.of("bedrooms", 2, "hasLift", true, "zLast", "a"));
+        var raw = api.get().uri("/api/export").retrieve().body(String.class);
+        assertThat(raw).contains("\"extras\":{\"bedrooms\":2,\"hasLift\":true,\"zLast\":\"a\"}").doesNotContain("extrasOther");
+    }
+
     /** S4b-BL-87: a floor of 0 (the ground floor) is imported, kept and written back, and makes the export a /2 copy. */
     @Test
     void aGroundFloorIsImportedAndWrittenBack() throws JSONException {
