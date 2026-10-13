@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | `doorprints-backup/1` — the one backup format for server, Android and web |
-| Version | 1.32 |
-| Date | 2026-10-10 |
+| Version | 1.33 |
+| Date | 2026-10-12 |
 | Date | 2026-10-06 |
 | Author | Claude (Cowork) – Backend team |
 | Status | Pinned by story S4-00 (Sprint 4a). Changing anything here changes all three implementations at once. |
@@ -40,6 +40,7 @@
 | 1.30 | 2026-10-08 | Claude (Code), lead | **`india-place-vectors.json`** (format `doorprints-india-place-vectors/1`, S4b-BL-174) and 20 more cases in `listing-fixtures.json` (§8.2, §8.2a): places across India with whether the held areas' polygon holds them, read by the website's `india-boundaries.spec.ts` and the Android `IndiaBoundaryDataTest`; share texts from the north-east, the hills, the islands and the coasts, with landlines, capitals-only forwards and `2.5 BHK`. |
 | 1.31 | 2026-10-10 | Claude (Code), engineer | **The kind files, `kinds/`** (§8.4; S4b-BL-205, [03](../03-design.md) ADR-36 §18): `kind.schema.json` (format `doorprints-kind/1`), `house.json` (today's house as a kind) and `kind-vectors.json` (format `doorprints-kind-vectors/1`, what it resolves to). Nothing in the backup format changes here; the reset of S4b-BL-206 will. |
 | 1.32 | 2026-10-10 | Claude (Code), engineer | **`qr-enrol-vectors.json` carries the platform byte** (S4b-BL-144, §6.3): the offer is `pk_new ‖ s ‖ platform`; each `valid` row names its `platform` (`unknown` for the 97-byte form), four new `valid` rows with the byte, `unassignedPlatform` (byte 0, 4 and 255: read as unknown, read only), two `forms`, and `invalid` rows for 99 bytes and for a platform offer with a wrong first byte, padding, two characters missing and a non-canonical last character (the 98-byte row of the old file is valid now). Not a backup, sync or `keys.json` change. |
+| 1.33 | 2026-10-12 | Claude (Code), engineer | **The format reset, kinds step 3** (S4b-BL-206; [03](../03-design.md) ADR-36 §18.4 doors 1 and 2): a writer writes `doorprints-backup/1` with `search` and `candidates` (`kind`, `money` with its cadence, `extras`) and `candidateId` on visits, photos and viewings, the manifest counting `candidates` (§1.1, §2, §3.0); a reader reads that family and **still reads the family before it** (`houses`, `/1` to `/3`), told apart by shape; one mapping per stack (`BackupWire`, `backup-family.ts`). `backup-sample.json` and `update-sample.json` are the new family; `backup-sample-houses.json` is the sample as it was, which the new one reads back as byte for byte on the three stacks (§8); `import-vectors.json` has the new family's cases and keeps the old ones as "the family before (houses): ..." (§6.1). `kinds/house.json`'s `was` stays: it names the place of each value in the family before. |
 | 1.5 | 2026-09-23 | Claude (Cowork), Docs team | **Device note under section 6 rule 6** (Android handover item 19, `android/shared/README.md` §9; it was addressed to Backend, and the Docs team, which owns `docs/**`, applied it so that it lands before the first deploy; [10](../10-sprint-log.md) §11.5 row 19). Rule 6 describes the server import. The note records where the Android device import goes further when it writes a house over a tombstone that has reached the server: it relinks the visits the purge unlinked and re-adds the photos from the backup's bytes under fresh ids, so a device import says the photos **come back**. It also records the one exception (a tombstone not yet pushed was never purged) and that the web importer (S4b-00a) follows the same rule. Nothing else in this file changed; the server's behaviour and wording are unchanged. |
 | 1.4 | 2026-09-23 | Claude (Cowork), Docs team | **New section 0, "What an import is"** (Docs team; nothing else in this file changed): the import product definition the owner approved on 2026-09-23 for Sprint 4b story S4b-00 — what an import is, the only two accepted files, what a backup can contain, what an import never contains or changes, the behaviour (with pointers to sections 6 and 7 here), and what is out of scope. Requirements [01](../01-requirements.md) FR-089..FR-097; vocabulary [12](../12-brand-and-naming.md) section G. Sections 1–9 are unchanged and remain the Backend team's. |
 | 1.3 | 2026-09-22 | Claude (Cowork) – Backend team | **Three review items closed, and the handover table brought up to date.** (1) **`checklist` is the one lenient always-present field** (sections 3.1 and 4.4). Section 4.4 said an omitted always-present field is refused, while the server's `BackupHouse` and the Android reader both read a missing checklist as `{}` — so an import could clear a house's scores in silence. The format now says what the readers do (absent or `null` → no scores), because "no scores" is a true statement about a house where a defaulted `0, 0` is not; and the server no longer does it silently: `BackupHouse` keeps the `null` (its compact-constructor default is gone), and when a written row has no checklist but the server's copy has scores, the report names the house and the number of scores cleared, in the preview too. Server test `BackupApiTest.aMissingChecklistReadsAsNoScoresAndTheReportSaysWhatItClears`. The Android reader still refuses an explicit `null` there — new ticket **S4-00/g**. (2) **One `data.json` cap: 16 MiB** (section 7, closing [10](../10-sprint-log.md) §11.3 row 7). It was 64 MiB here and in `BackupFormat`, 16 MiB in `:shared` and the web mirror, and 8 MiB effective on the server. 16 MiB is what [01](../01-requirements.md) SEC-041, [02](../02-threat-model.md) T-T8, `:shared` and the web mirror already say, so the server moved: `BackupFormat.MAX_DATA_JSON_BYTES` is 16 MiB and `app.limits.max-import-bytes` defaults to it (`AppProperties`, `application.yml`, `docker-compose.yml`), so any backup a device accepts restores to a server. New backend test `BackupParityTest` pins all six copies, reading the two client constants as source text, and also checks that the web byte golden is still an exact copy of `backup-sample.json`. (3) New ticket **S4-00/f** (AI): `GoldenSetEvalTest` writes to the shared test database without `@ResourceLock("database")`. Section 9 gains a *State* column: S4-00/a and /b are done in the working tree (Android `CanonicalSampleTest` and a grouping `BackupData.of`; the web golden regenerated and byte-identical), so the "known divergence" of section 5 is closed and S4-00/e is reworded — the client coverage it asked Docs to stop claiming now exists. New ticket **S4-00/h** (Docs) carries the cap change into 01/02/10, and S4-00/d gains the extra paths the new test reads. |
@@ -122,7 +123,8 @@ One format, three implementations, no converters:
 | Android | `android/shared/src/commonMain/kotlin/app/doorprints/shared/export/Backup.kt` and `ExportModel.kt` |
 | Web / PWA | `web/src/app/export/backup-export.ts` (writer); `backup-reader.ts`, `backup-check.ts`, `import-plan.ts` and `import.service.ts` (reader, S4b-BL-75) |
 | The numbers a reader accepts | Kotlin `BackupFormat.READ_IDS`, Java `BackupFormat.READ_IDS`, web `BACKUP_FORMATS_READ` (one constant per stack, section 1.1) |
-| Canonical sample | [`backup-sample.json`](backup-sample.json) in this folder; [`update-sample.json`](update-sample.json) for an update file's `/3` |
+| Canonical sample | [`backup-sample.json`](backup-sample.json) in this folder; [`update-sample.json`](update-sample.json) for an update file; [`backup-sample-houses.json`](backup-sample-houses.json), the same sample in the family before the reset (section 1.1) |
+| The two families (kinds step 3) | Java `BackupWire` (at `POST /api/import` and `GET /api/export`), Kotlin `BackupWire` (`android/shared`, every reader and writer), web `backup-family.ts` (`backup-check.ts`, `backup-reader.ts`, `backup-export.ts`) |
 | Shared import vectors | [`import-vectors.json`](import-vectors.json) (section 6.1): Kotlin `ImportVectorsTest` and `BackupReaderParityTest`, web `backup-import.spec.ts` |
 | Shared Drive vectors | [`drive-vectors.json`](drive-vectors.json) (section 6.2): Kotlin `DriveVectorsTest`, web `drive-vectors.spec.ts` |
 | Encryption vectors | [`hpke-vectors.json`](hpke-vectors.json) and [`dpx-vectors.json`](dpx-vectors.json) (section 6.3): Kotlin `PrimitivesTest`, `HpkeVectorsTest`, `CryptoVectorsTest`, web `hpke-vectors.spec.ts`, `crypto-vectors.spec.ts` |
@@ -147,6 +149,32 @@ the new lists is the same document as `/1`. `MAX` is 3 since 2026-10-01: an upda
 S4b-BL-82) is a new list, and its loss would keep a house the sender deleted, so an older app refuses such a file with
 "update the app" instead; only an update file that carries a deletion is `/3`. The path trace is never in a backup.
 
+**The format reset (2026-10-12, kinds step 3, S4b-BL-206; [03](../03-design.md) ADR-36 §18.4 doors 1 and 2).** The
+family restarts at `doorprints-backup/1`, written for every copy, a full one and an update file alike: `search`
+(`{"kind":"house"}`, the data set's own object, door 10) after `exportedAt`, the list `candidates` in place of `houses`
+(each with `kind`, `money` and `extras`, section 3.0), `candidateId` in place of `houseId` on visits, photos and
+viewings, a deletion of kind `candidate` in place of `house`, and `candidates` in place of `houses` in the manifest's
+counts. **A reader still reads every file of the family before** (`houses`, `/1` to `/3`), exactly as it did: an older
+Doorprints' backup keeps importing, and its houses become candidates in the store. The two `/1` are told apart by
+shape: a file with `candidates` is the new family, one with `houses` the family before, one with both is
+`BROKEN_DATA`; a file of the new family with a number above `/1` is `UNSUPPORTED_VERSION`. Each stack does this in one
+place (section 1, *The two families*): a writer builds the rows it always built and the mapping writes them as the new
+family at the end; a reader checks what only the new family has and reads it back as the family before, so one reader
+of rows, ranges and ids serves both. The mapping is lossless (section 8): the sample read as the family before is
+[`backup-sample-houses.json`](backup-sample-houses.json) byte for byte, and that file written as the new family is the
+sample, on the three stacks. What only the new family can break is `BROKEN_DATA`: a candidate without a kind id
+(`^[a-z][a-z0-9_]{1,31}$`); `money` that is not an object, has neither an amount nor a cadence, a cadence that is not a
+text or an amount that is not whole rupees 0..10¹²; a money extra without its amount or its cadence; `extras` that is not an
+object; an extra this reader does not know whose id is not a field id (`^[a-z][A-Za-z0-9]{0,39}$`) or whose value is
+not of an extras type (a finite number, a text of at most 2,000 characters, a boolean, or a money object of exactly
+an amount and a cadence), or more than 30 of them. **A well-formed file with a cadence this reader does not support** (one
+outside the vocabulary `once`, `day`, `week`, `month`, `quarter`, `year`; a house's money that is not `month` or `once`;
+`deposit` or `brokerage` not `once`, `maintenance` not `month`) is `UNSUPPORTED_VERSION`, a newer app's file ("update the
+app"), not `BROKEN_DATA`. A known extra's value of the wrong type is refused as the field of
+the family before was (section 4.4); an out-of-range one is read as before (`floorsLeftBlank`). An unknown extra of an
+extras type is read; the website keeps it and writes it back after the known ones, the phone and the server do not
+keep it yet.
+
 ## 2. The container
 
 A device backup is a ZIP; the server speaks its `data.json` half over HTTP.
@@ -163,10 +191,10 @@ Doorprints-backup-<UTC date>.zip
 |---|---|---|
 | Write | Android `ExportWorker`, web `export.service.ts` | `GET /api/export` → `data.json` as the response body, `Content-Disposition: attachment; filename="Doorprints-backup-<UTC date>.json"` |
 | Read | Android/web importer | `POST /api/import` (body = `data.json`), `?dryRun=true` for the preview |
-| Photo bytes | `photos/<id>.jpg` in the ZIP | `GET /api/photos/{id}`, uploaded with `POST /api/houses/{id}/photos` |
+| Photo bytes | `photos/<id>.jpg` in the ZIP | `GET /api/photos/{id}`, uploaded with `POST /api/candidates/{id}/photos` (since #281) |
 
 `manifest.json` (device only) carries `format`, `app`, `appVersion`, `createdAt` (ISO-8601), `language`, `scope`,
-`includeRejected`, `photoScope`, `includeContacts`, `counts {houses, visits, photos}` (and `brokers` in a `/2` file) and
+`includeRejected`, `photoScope`, `includeContacts`, `counts {candidates, visits, photos}` (`houses` in the family before; and `brokers` and the other lists when they are in the file) and
 `files[] {path, sizeBytes, sha256}` (and `deleted` in a `/3` update file, section 3.13). The server has no options and no ZIP, so it writes no manifest; an importer
 must not require one when it is handed a bare `data.json`. Since 1.7 an **update file** (sharing updates,
 [11](../11-feature-parity-and-export-spec.md) 5.28) may add `sharedSince` (ISO-8601: only rows changed after it are
@@ -176,8 +204,26 @@ and the import are exactly a backup's, and a reader uses the two fields for its 
 ## 3. `data.json`
 
 ```json
-{"format":"doorprints-backup/1","exportedAt":1790072130000,"houses":[…],"visits":[…],"photos":[…]}
+{"format":"doorprints-backup/1","exportedAt":1790072130000,"search":{"kind":"house"},"candidates":[…],"visits":[…],"photos":[…]}
 ```
+
+Since the reset (section 1.1) the rows of houses are `candidates` (section 3.0) and a visit, photo or viewing names its
+house as `candidateId`; the tables below describe each row of **the family before** (`houses`, `houseId`), which every
+reader still reads. Each field of section 3.1 has one place in a candidate, named by `was` in
+[`kinds/house.json`](kinds/house.json).
+
+### 3.0 Candidate (since the reset, kinds step 3)
+
+The house of section 3.1 with `kind` after `id`, `money` where `price` was, and `extras` after `locationSource`;
+`bedrooms`, `areaSqft`, `floor` and `cost` are gone from the row. Key order: `id, kind, label, address, street,
+locality, lat, lon, status, money, rating, contactName, contactPhone, listingUrl, notes, locationSource, extras, rooms,
+answers, moveIn, brokerId, checklist, createdAt, updatedAt`.
+
+| Field | Type | Always present | Notes |
+|---|---|---|---|
+| `kind` | string | yes | The kind id; `house` for every candidate today (one kind per data set). |
+| `money` | object | no | `{amount?, cadence?}`: whole rupees and how often (`month` for a rent, `once` for a sale). `price` and `priceType` of the family before: `RENT` is `month`, `SALE` `once`, and a price without a type has no cadence (owner, 2026-10-12: never a monthly rent). Each key is left out while unknown (a rent not known yet has no `amount`, a price of type *Not set* no `cadence`); a money with neither is refused; absent when neither is known. |
+| `extras` | object | no | Keyed by extra id, in the kind file's order: `bedrooms`, `areaSqft`, `floor`, then the eleven cost fields; `deposit` and `brokerage` are money `once`, `maintenance` money `month`, `myOffer` and `agreedPrice` money as often as the candidate's own money (`month` when it has none), the others as in `cost`. Then an extra a newer app wrote, by id. Absent when empty, never `{}` (a `{}` read is none). |
 
 | Field | Type | Meaning |
 |---|---|---|
@@ -490,7 +536,9 @@ only photo belonged to house 1 — agrees with both rules by accident and pins n
 [`import-vectors.json`](import-vectors.json) (format `doorprints-import-vectors/1`) holds what every device reader must answer
 alike: `checks` (a `data.json` and the problem it gets, or none), `merges` (a file, what is here, the mode and flags, and the
 preview's counts, deletions of an update file included) and `archives` (a whole file as base64, stored and deflated ZIPs, a
-bare `data.json`, and the refusals of sections 6 and 7). `android/shared`'s `ImportVectorsTest` runs them through the common
+bare `data.json`, and the refusals of sections 6 and 7). Since the reset (section 1.1) the cases are files of the new family,
+including what only it can refuse; the cases named "the family before (houses): ..." are the earlier cases unchanged, so
+every reader is held to reading an older Doorprints' file as before. `android/shared`'s `ImportVectorsTest` runs them through the common
 reader and `ImportPlan`, `android/app`'s `BackupReaderParityTest` through Android's `java.util.zip` reader, and the website's
 `backup-import.spec.ts` through its reader and `import-plan.ts`. A new rule is a new case here first. The stamps are in the
 past (2026-05-28); the photo is 300 bytes whose byte *i* is *i* × 31 mod 256.
@@ -610,7 +658,11 @@ without a red build.
 ## 8. The canonical sample
 
 [`backup-sample.json`](backup-sample.json) is one line of JSON: exactly what the web writer produces for the
-shared fixture (section 8.1 says why that writer and not another). Three live houses — one full (since slice 5 TAKEN, with a move-in record, floor 3), one nearly empty with a `=SUM(...)` label and a Tamil name, one rejected
+shared fixture (section 8.1 says why that writer and not another). Since the reset (section 1.1) it is the new family;
+[`backup-sample-houses.json`](backup-sample-houses.json) is the same sample in the family before (the file as it was up
+to 2026-10-12, a `/2` copy), and each stack checks that one reads back as the other, byte for byte, both ways (web
+`backup-family.spec.ts`, Kotlin `BackupFieldsTest.theSampleReadsBackAsTheFamilyBeforeAndIsWrittenAgainUnchanged`, Java
+`BackupWireTest`). Three live houses — one full (since slice 5 TAKEN, with a move-in record, floor 3), one nearly empty with a `=SUM(...)` label and a Tamil name, one rejected
 with an empty label (floor 0). Photo 1 carries room, tags (two fixed keys and an own one), a caption and `metaUpdatedAt` 1790000000000, a time in the past. Three visits: two on house 1, of which the second is still open, and one on house 3 that
 *arrives between them*. Two photos: one on house 1 and one on house 3 that was *created before it*. A deleted
 house and a deleted visit must **not** appear. The two interleaving rows are what make the ordering rule of
@@ -666,8 +718,8 @@ portal shape is a new case here first. Since 1.30 the file also has share texts 
 
 ## 8.3 The update sample
 
-[`update-sample.json`](update-sample.json) is the `data.json` of a `/3` update file: one changed house and one deletion
-(section 3.13). Kotlin's writer writes it byte for byte (`BackupFieldsTest.theUpdateSampleIsWhatThisWriterWritesAndPassesTheCheck`;
+[`update-sample.json`](update-sample.json) is the `data.json` of an update file: one changed candidate and one deletion
+of kind `candidate` (section 3.13), in the new family (section 1.1; it reads as a `/3` file of the family before). Kotlin's writer writes it byte for byte (`BackupFieldsTest.theUpdateSampleIsWhatThisWriterWritesAndPassesTheCheck`;
 no whole-number coordinate in it, section 8.1) and the website reads it (`backup-import.spec.ts`). The web writer writes no
 update file yet.
 
@@ -681,9 +733,9 @@ keys into each stack's dictionaries and `was` naming where each value lives in t
 that file resolves to: the labels per stack in the four languages, the field lists, the layout, the visibility, the
 search fields and the AI slots. It was written once from the dictionaries and is not regenerated: a change to a vector
 belongs with the change it pins. Read by the website's `house-kind-file.spec.ts` (which validates the file against the
-schema with Ajv, already in the tree), Android's `HouseKindFileTest` and the server's `HouseKindFileTest`. Nothing in
-`doorprints-backup/1`..`/3` changes here; the format reset (S4b-BL-206) moves the values to `kind`, `money` and
-`extras`.
+schema with Ajv, already in the tree), Android's `HouseKindFileTest` and the server's `HouseKindFileTest`. The format reset
+(S4b-BL-206, section 1.1) moved the values to `kind`, `money` and `extras`; `was` stays, since the family before is still
+read, and names where each value lives there.
 
 ## 9. Open items (handovers)
 

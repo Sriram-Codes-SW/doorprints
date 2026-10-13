@@ -356,7 +356,9 @@ private suspend fun copiesCheck(): Result {
             val opened = BackupArchive.open(source, iosArchiveTools)
             if (opened !is ArchiveOpen.Ok) return Result.Fail("the backup did not open (${(opened as ArchiveOpen.Failed).problem})")
             val archive = opened.archive
-            if (archive.data != BackupData.of(bundle)) return Result.Fail("the rows read back differ")
+            // The copy is the new backup family (kinds step 3), read back as the rows of the family before: only the
+            // format number of those rows differs from what was built.
+            if (archive.data != BackupData.of(bundle).copy(format = archive.data.format)) return Result.Fail("the rows read back differ")
             if (!archive.photoBytes("photos/p_selfcheck.jpg").contentEquals(photo)) return Result.Fail("the photo read back differs")
             val check = ArchiveImports.preview(IosAppContainer.repository, archive, path, null) { NSUUID().UUIDString.lowercase() }
             if (check.copy.newHouses != 1) return Result.Fail("the preview has ${check.copy.newHouses} new houses, not 1")

@@ -80,7 +80,8 @@ class IosArchiveTest {
         }
         PosixFileSource(path).use { source ->
             val archive = (BackupArchive.open(source, iosArchiveTools) as ArchiveOpen.Ok).archive
-            assertEquals(BackupData.of(bundle), archive.data)
+            // Kinds step 3: the file is the new family's `/1`, read back as the rows of a `/2` copy.
+            assertEquals(BackupData.of(bundle).copy(format = BackupFormat.ID_2), archive.data)
             assertContentEquals(photo, archive.photoBytes("photos/p1.jpg"))
             assertTrue(archive.manifest!!.files.all { it.sha256.length == 64 })
         }

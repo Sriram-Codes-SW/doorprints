@@ -115,7 +115,7 @@ class BackupParityTest {
         from += start.length();
         int to = source.indexOf("`;", from);
         assertThat(to).as("%s: unterminated template literal", path).isGreaterThan(from);
-        assertThat(templateLiteral(source.substring(from, to), path)).isEqualTo(CanonicalSample.json());
+        assertThat(templateLiteral(source.substring(from, to), path)).isEqualTo(CanonicalSample.text());
     }
 
     /**

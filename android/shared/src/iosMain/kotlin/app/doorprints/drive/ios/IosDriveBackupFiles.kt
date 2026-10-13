@@ -25,7 +25,7 @@ import app.doorprints.drive.backup.BackupPayload
 import app.doorprints.drive.backup.BackupSource
 import app.doorprints.drive.backup.StagingSink
 import app.doorprints.shared.api.IsoTime
-import app.doorprints.shared.export.BackupData
+import app.doorprints.shared.export.BackupWire
 import app.doorprints.shared.export.CopyPhotos
 import app.doorprints.shared.export.CopyWriter
 import app.doorprints.shared.export.ExportFormat
@@ -112,7 +112,8 @@ class IosDriveBackupSource(
     override suspend fun open(): BackupPayload = withContext(Dispatchers.Default) {
         val options = ExportOptions(photos = PhotoScope.NONE, language = language(), utcOffsetMinutes = 0, exportedAtMillis = now())
         val bundle = repository.localRows().toBundle(options)
-        val format = BackupData.of(bundle).format
+        // The Drive payload is a copy of the new backup family (kinds step 3, `BackupWire`): always `/1`.
+        val format = BackupWire.CURRENT_FORMAT
         val path = "$folder/backup-${Uuid.random()}.zip"
         try {
             PosixFileSink(path).use { sink -> CopyWriter.write(bundle, ExportFormat.BACKUP, sink, NoPhotos, iosArchiveTools, appVersion()) }

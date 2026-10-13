@@ -168,7 +168,10 @@ class ArchiveTest {
         val opened = open(zip)
         assertTrue("open failed: $opened", opened is ArchiveOpen.Ok)
         val archive = (opened as ArchiveOpen.Ok).archive
-        assertEquals(BackupData.of(bundle), archive.data)
+        // Kinds step 3: the file is the new family's `/1` (`candidates`), read back as the rows of a `/2` copy.
+        assertTrue(read.getValue(BackupFormat.DATA_ENTRY).decodeToString().startsWith("{\"format\":\"doorprints-backup/1\",\"exportedAt\":"))
+        assertEquals(BackupFormat.ID_2, archive.data.format)
+        assertEquals(BackupData.of(bundle).copy(format = BackupFormat.ID_2), archive.data)
         assertEquals(setOf("photos/p1.jpg"), archive.photoEntries)
         assertArrayEquals(photoBytes, archive.photoBytes("photos/p1.jpg"))
         val manifest = archive.manifest!!
@@ -207,7 +210,7 @@ class ArchiveTest {
     fun aDeflatedBackupAsAndroidWritesItReadsTheSame() {
         val bundle = ExportFixture.bundle()
         val archive = (open(deflated(entries(write(ExportFormat.BACKUP, bundle)))) as ArchiveOpen.Ok).archive
-        assertEquals(BackupData.of(bundle), archive.data)
+        assertEquals(BackupData.of(bundle).copy(format = BackupFormat.ID_2), archive.data)
         assertArrayEquals(photoBytes, archive.photoBytes("photos/p1.jpg"))
     }
 

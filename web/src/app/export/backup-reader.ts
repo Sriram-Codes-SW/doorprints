@@ -16,6 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { legacyManifestOf } from './backup-family';
 import { BACKUP_FORMATS_READ, BACKUP_LIMITS, DATA_ENTRY, MANIFEST_ENTRY } from './backup-export';
 import type { BackupData, BackupManifest } from './backup-export';
 import { checkData } from './backup-check';
@@ -155,7 +156,10 @@ async function openBareData(source: Blob): Promise<ArchiveOpen> {
 /** The manifest as Kotlin's decoder takes it, or `null`: `format`, `createdAt` and the three counts must be there. */
 function readManifest(bytes: Uint8Array): BackupManifest | null {
   try {
-    const m = JSON.parse(new TextDecoder('utf-8').decode(bytes)) as Record<string, unknown>;
+    const parsed = JSON.parse(new TextDecoder('utf-8').decode(bytes)) as Record<string, unknown>;
+    if (typeof parsed !== 'object' || parsed === null) return null;
+    // The new family counts `candidates` where the family before counted `houses` (`backup-family.ts`).
+    const m = legacyManifestOf(parsed);
     if (typeof m !== 'object' || m === null || typeof m['format'] !== 'string' || typeof m['createdAt'] !== 'string') return null;
     const counts = m['counts'] as Record<string, unknown> | null;
     if (typeof counts !== 'object' || counts === null) return null;

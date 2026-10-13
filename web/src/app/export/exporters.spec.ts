@@ -22,7 +22,7 @@ import { DICTIONARIES } from '../i18n/all-dictionaries';
 import { buildCsvTables } from './csv-export';
 import { buildMarkdown } from './markdown-export';
 import { buildHtml } from './html-export';
-import { BACKUP_APP, BACKUP_FORMAT, BACKUP_FORMAT_V2, BACKUP_FORMATS_READ, BACKUP_LIMITS, backupJson, buildBackupData, buildBackupZip } from './backup-export';
+import { BACKUP_APP, BACKUP_FORMAT, BACKUP_FORMAT_V2, BACKUP_FORMATS_READ, BACKUP_LIMITS, backupDataJson, backupJson, buildBackupData, buildBackupZip } from './backup-export';
 import { buildXlsx } from './xlsx-export';
 import { buildWorkbook } from './xlsx-sheets';
 import { display, exportTables, plain } from './export-rows';
@@ -358,10 +358,10 @@ describe('JSON backup', () => {
   });
 
   it('matches the golden data.json', () => {
-    const json = backupJson(buildBackupData(fixtureBundle()));
+    const json = backupDataJson(fixtureBundle());
     expect(json).toBe(GOLDEN_BACKUP_DATA_JSON);
     // The byte count the golden's comment states, so a silent re-generation cannot quietly shrink the contract.
-    expect(new TextEncoder().encode(json).length).toBe(6303);
+    expect(new TextEncoder().encode(json).length).toBe(6600);
   });
 
   /**
@@ -419,13 +419,14 @@ describe('JSON backup', () => {
     expect(json).toContain('"rooms"');
   });
 
-  it('counts the brokers in the manifest of a /2 copy only', () => {
+  it('counts the candidates and the brokers in the manifest of a /1 copy of the new family (kinds step 3)', () => {
     const withBrokers = new TextDecoder().decode(buildBackupZip(fixtureBundle(), FIXTURE_PHOTO_MAP, 'x', MODIFIED_AT));
-    expect(withBrokers).toContain('"format":"doorprints-backup/2"');
-    expect(withBrokers).toContain('"counts":{"houses":3,"visits":3,"photos":2,"brokers":2,"criteria":3,"preferences":1,"questions":3,"viewings":2,"areas":2,"places":2,"areaNotes":2}');
+    expect(withBrokers).toContain('{"format":"doorprints-backup/1","app"');
+    expect(withBrokers).toContain('"counts":{"candidates":3,"visits":3,"photos":2,"brokers":2,"criteria":3,"preferences":1,"questions":3,"viewings":2,"areas":2,"places":2,"areaNotes":2}');
+    expect(withBrokers).not.toContain('doorprints-backup/2');
     const without = new TextDecoder().decode(buildBackupZip(fixtureBundle({ includeContacts: false }), FIXTURE_PHOTO_MAP, 'x', MODIFIED_AT));
     // Criteria and preferences are not contacts: a copy without contact details keeps them, and their counts.
-    expect(without).toContain('"counts":{"houses":3,"visits":3,"photos":2,"criteria":3,"preferences":1,"questions":3,"viewings":2,"areas":2,"places":2,"areaNotes":2}');
+    expect(without).toContain('"counts":{"candidates":3,"visits":3,"photos":2,"criteria":3,"preferences":1,"questions":3,"viewings":2,"areas":2,"places":2,"areaNotes":2}');
   });
 
   it('writes the manifest last, with a SHA-256 for every other entry', () => {

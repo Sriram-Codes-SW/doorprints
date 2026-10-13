@@ -24,6 +24,7 @@ import app.doorprints.shared.export.BackupData
 import app.doorprints.shared.export.BackupFile
 import app.doorprints.shared.export.BackupFormat
 import app.doorprints.shared.export.BackupManifest
+import app.doorprints.shared.export.BackupWire
 import app.doorprints.shared.export.CsvWriter
 import app.doorprints.shared.export.ExportBundle
 import app.doorprints.shared.export.ExportFormat
@@ -172,7 +173,7 @@ object Exporters {
 
             // Built once: the manifest counts the rows data.json actually holds (unlinked visits included).
             val rows = BackupData.of(bundle)
-            val data = BackupFormat.json.encodeToString(BackupData.serializer(), rows)
+            val data = BackupWire.encodeData(rows)
             files += hashed(zip, BackupFormat.DATA_ENTRY) { target -> writing(target) { it.write(data) } }
             onProgress(++done, total)
 
@@ -221,7 +222,7 @@ object Exporters {
             )
             zip.text(
                 BackupFormat.MANIFEST_ENTRY,
-                BackupFormat.json.encodeToString(BackupManifest.serializer(), manifest),
+                BackupWire.encodeManifest(manifest),
             )
             onProgress(total, total)
             zip.finish()

@@ -924,9 +924,10 @@ class ApiIntegrationTest {
         var response = api.get().uri("/api/export").retrieve().toEntity(MAP);
         assertThat(response.getHeaders().getFirst("Content-Disposition")).startsWith("attachment")
                 .matches("attachment; filename=\"Doorprints-backup-\\d{4}-\\d{2}-\\d{2}\\.json\"");
-        // /1 or /2: other tests in this class leave houses with rooms behind, and a copy that holds a room is /2.
-        assertThat(response.getBody().get("format")).isIn("doorprints-backup/1", "doorprints-backup/2");
-        assertThat((List<?>) response.getBody().get("houses"))
+        // Kinds step 3: the export is the new backup family, one number whatever it holds, its rows `candidates`.
+        assertThat(response.getBody().get("format")).isEqualTo("doorprints-backup/1");
+        assertThat(response.getBody().get("search")).isEqualTo(Map.of("kind", "house"));
+        assertThat((List<?>) response.getBody().get("candidates"))
                 .anySatisfy(h -> assertThat(((Map<?, ?>) h).get("id")).isEqualTo(id.toString()));
         assertThat(response.getBody()).containsKeys("visits", "photos", "exportedAt");
     }

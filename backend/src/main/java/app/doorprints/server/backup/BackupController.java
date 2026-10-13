@@ -27,6 +27,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * {@code POST /api/import}: restore a {@code doorprints-backup/1} or {@code /2} file (its {@code data.json}) onto this server.
@@ -47,10 +50,12 @@ public class BackupController {
     public static final String IMPORT_PATH = "/api/import";
 
     private final BackupService service;
+    private final ObjectMapper json;
     private final int maxRows;
 
-    public BackupController(BackupService service, AppProperties props) {
+    public BackupController(BackupService service, AppProperties props, ObjectMapper json) {
         this.service = service;
+        this.json = json;
         this.maxRows = props.limits().maxImportRows();
     }
 
@@ -59,8 +64,16 @@ public class BackupController {
      * validation; a bad file is a 400 from the service.
      */
     @PostMapping("/import")
-    public ResponseEntity<?> importBackup(@RequestBody BackupData body,
+    public ResponseEntity<?> importBackup(@RequestBody JsonNode file,
                                           @RequestParam(name = "dryRun", defaultValue = "false") boolean dryRun) {
+        // Either backup family (kinds step 3, BackupWire): the new one is checked and read as the rows of the one before.
+        BackupData body;
+        try {
+            body = json.treeToValue(BackupWire.legacyOf(file), BackupData.class);
+        } catch (JacksonException e) {
+            throw new IllegalArgumentException("unreadable backup", e);
+        }
+        if (body == null) throw new IllegalArgumentException("empty backup");
         if (body.rowCount() > maxRows) {
             var problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONTENT_TOO_LARGE,
                     "Backup has " + body.rowCount() + " rows (max " + maxRows + " per import)");
