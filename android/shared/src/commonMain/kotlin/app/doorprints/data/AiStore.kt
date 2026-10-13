@@ -29,6 +29,7 @@ import app.doorprints.shared.ai.GeminiClient
 import app.doorprints.shared.ai.JsonChatModel
 import app.doorprints.shared.ai.OnDeviceAi
 import app.doorprints.shared.api.ApiClient
+import app.doorprints.shared.api.ApiException
 import app.doorprints.shared.api.AskResponseDto
 import app.doorprints.shared.api.HouseDraftDto
 import app.doorprints.shared.api.PlanRequest
@@ -204,13 +205,28 @@ internal class AiStore(
         block(apiFor(s.serverUrl, s.apiKey))
     }
 
+    /**
+     * The guard of the three calls (S4b-BL-251): while [off] says AI is off nothing is sent, whoever calls, so a caller that
+     * forgets the screens' check on [enabled] cannot send a listing out. [ApiException.Kind.AI_OFF]; the *Test* of a provider
+     * ([testProvider]) is the setup and is not guarded.
+     */
+    private fun requireOn() {
+        if (_off.value != null) throw ApiException(ApiException.Kind.AI_OFF)
+    }
+
     // The same three calls, answered by the server or on this device (ADR-26): the screens do not know which.
-    suspend fun extractListing(text: String): HouseDraftDto =
-        ownKeyAi()?.let { withContext(Dispatchers.IO) { it.extractListing(text) } } ?: withApi { it.extractListing(text) }
+    suspend fun extractListing(text: String): HouseDraftDto {
+        requireOn()
+        return ownKeyAi()?.let { withContext(Dispatchers.IO) { it.extractListing(text) } } ?: withApi { it.extractListing(text) }
+    }
 
-    suspend fun ask(question: String): AskResponseDto =
-        ownKeyAi()?.let { withContext(Dispatchers.IO) { it.ask(question) } } ?: withApi { it.ask(question) }
+    suspend fun ask(question: String): AskResponseDto {
+        requireOn()
+        return ownKeyAi()?.let { withContext(Dispatchers.IO) { it.ask(question) } } ?: withApi { it.ask(question) }
+    }
 
-    suspend fun planVisits(request: PlanRequest): PlanResponseDto =
-        ownKeyAi()?.let { withContext(Dispatchers.IO) { it.planVisits(request) } } ?: withApi { it.planVisits(request) }
+    suspend fun planVisits(request: PlanRequest): PlanResponseDto {
+        requireOn()
+        return ownKeyAi()?.let { withContext(Dispatchers.IO) { it.planVisits(request) } } ?: withApi { it.planVisits(request) }
+    }
 }

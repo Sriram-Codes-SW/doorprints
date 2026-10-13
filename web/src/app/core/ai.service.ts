@@ -18,7 +18,7 @@
 
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { Observable, defer } from 'rxjs';
+import { Observable, defer, throwError } from 'rxjs';
 import type { Msg } from '../i18n/translation.service';
 import { ConfigService } from './config.service';
 import { AI_OPT_IN_KEY, AI_PROVIDER_KEY, GEMINI_KEY_KEY } from './storage-keys';
@@ -27,7 +27,7 @@ import { type AiQuality, clearAiQuality, readAiQuality, saveAiQuality } from './
 import { AnthropicChatModel } from './ai/anthropic';
 import { OpenAiCompatibleChatModel } from './ai/openai-compat';
 import { GeminiChatModel, type ModelRef, OnDeviceAiError, OnDeviceAiService } from './ai/on-device-ai.service';
-import { errorMsg } from './format';
+import { errorMsg, retryAfterSeconds } from './format';
 import type { HouseStatus, PriceType } from './models';
 
 // Types follow docs/ai/ai-design.md section 13 and the backend records in app.doorprints.server.ai.*
@@ -123,6 +123,14 @@ export interface PlanResponse {
 /** Same limits as the server defaults (app.ai.max-input-chars / max-question-chars). */
 export const AI_MAX_LISTING_CHARS = 8000;
 export const AI_MAX_QUESTION_CHARS = 1000;
+
+/** A call refused because AI is off ({@link AiOffReason}); nothing was sent. {@link aiErrorMsg} words it like the pages' own off notice. */
+export class AiOffError extends Error {
+  constructor(readonly reason: AiOffReason) {
+    super(`AI is off (${reason})`);
+    this.name = 'AiOffError';
+  }
+}
 
 /**
  * Optional AI features. Everything AI in the UI is hidden unless GET /api/ai/status says `enabled` (it is off by
@@ -300,18 +308,34 @@ export class AiService {
     return this.modelFor(this.aiConfigState(), this.geminiKeyState());
   }
 
+  /**
+   * The guard of the three calls (S4b-BL-251): nothing is sent while {@link offReason} says AI is off, whoever calls, so
+   * a caller that forgets the pages' `@if (ai.enabled())` cannot send a listing out. The Observable errors with an
+   * {@link AiOffError} when subscribed; the setup tests ({@link testGeminiKey}, {@link testProvider}) are not guarded.
+   */
+  private guard(): Observable<never> | null {
+    const reason = this.offReason();
+    return reason === null ? null : throwError(() => new AiOffError(reason));
+  }
+
   // The same three calls, answered by the server or in this browser (ADR-26): the pages do not know which.
   extractListing(text: string): Observable<HouseDraft> {
+    const off = this.guard();
+    if (off) return off;
     if (this.usesOwnKey()) return defer(() => this.onDevice.extractListing(this.ownModel(), text));
     return this.http.post<HouseDraft>('/api/ai/extract-listing', { text });
   }
 
   ask(question: string, filters?: AskFilters): Observable<AskResponse> {
+    const off = this.guard();
+    if (off) return off;
     if (this.usesOwnKey()) return defer(() => this.onDevice.ask(this.ownModel(), question, filters));
     return this.http.post<AskResponse>('/api/ai/ask', filters ? { question, filters } : { question });
   }
 
   planVisits(request: PlanRequest): Observable<PlanResponse> {
+    const off = this.guard();
+    if (off) return off;
     if (this.usesOwnKey()) return defer(() => this.onDevice.planVisits(this.ownModel(), request));
     return this.http.post<PlanResponse>('/api/ai/plan-visits', request);
   }
@@ -322,6 +346,7 @@ export class AiService {
  * the own AI's host when the caller knows it (the Connect page tests what is typed); otherwise the saved provider's.
  */
 export function aiErrorMsg(err: unknown, host?: string): Msg {
+  if (err instanceof AiOffError) return aiOffMsg(err.reason);
   if (err instanceof OnDeviceAiError) {
     const where = host ?? savedCompatHost();
     if (err.kind === 'rateLimited') return { key: 'ai.rateLimited', params: { s: err.retryAfter } };
@@ -336,8 +361,7 @@ export function aiErrorMsg(err: unknown, host?: string): Msg {
   }
   if (err instanceof HttpErrorResponse) {
     if (err.status === 429) {
-      const seconds = Number.parseInt(err.headers.get('Retry-After') ?? '', 10);
-      return { key: 'ai.rateLimited', params: { s: Number.isFinite(seconds) ? seconds : 60 } };
+      return { key: 'ai.rateLimited', params: { s: retryAfterSeconds(err) ?? 60 } };
     }
     if (err.status === 503) return { key: 'ai.providerDown' };
     if (err.status === 403) {

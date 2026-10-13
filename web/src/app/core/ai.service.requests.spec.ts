@@ -19,9 +19,9 @@
 import { HttpErrorResponse, HttpHeaders, provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { firstValueFrom } from 'rxjs';
+import { type Observable, firstValueFrom } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { AI_MAX_LISTING_CHARS, AI_MAX_QUESTION_CHARS, AiService, aiErrorMsg, aiOffMsg, splitCitations } from './ai.service';
+import { AI_MAX_LISTING_CHARS, AI_MAX_QUESTION_CHARS, AiOffError, AiService, aiErrorMsg, aiOffMsg, splitCitations } from './ai.service';
 import type { AskResponse, HouseDraft, PlanRequest, PlanResponse } from './ai.service';
 import { OnDeviceAiError, OnDeviceAiService } from './ai/on-device-ai.service';
 import { ConfigService } from './config.service';
@@ -135,6 +135,86 @@ describe('AiService against the server', () => {
     });
   });
 
+  describe('the three calls refuse while AI is off (S4b-BL-251): nothing is sent, the Observable errors', () => {
+    const calls: [string, (ai: AiService) => Observable<unknown>][] = [
+      ['extractListing', (ai) => ai.extractListing('2BHK, call 98450 12345')],
+      ['ask', (ai) => ai.ask('Quiet?', { maxPrice: 20000 })],
+      ['planVisits', (ai) => ai.planVisits(PLAN_REQUEST)],
+    ];
+
+    async function refusal(ai: AiService, call: (ai: AiService) => Observable<unknown>): Promise<unknown> {
+      return firstValueFrom(call(ai)).then(
+        () => null,
+        (err: unknown) => err,
+      );
+    }
+
+    for (const [name, call] of calls) {
+      it(`${name}: off by this browser's switch`, async () => {
+        const ai = create(true, false);
+        http.expectOne('/api/ai/status').flush(ON);
+        const e = await refusal(ai, call);
+        expect(e).toBeInstanceOf(AiOffError);
+        expect((e as AiOffError).reason).toBe('optIn');
+        expect(aiErrorMsg(e)).toEqual({ key: 'ai.optInNeeded' });
+        http.expectNone(() => true);
+      });
+
+      it(`${name}: off for no key (switch on, no server, no own key)`, async () => {
+        const ai = create(false, true);
+        const e = await refusal(ai, call);
+        expect((e as AiOffError).reason).toBe('noKey');
+        expect(aiErrorMsg(e)).toEqual({ key: 'ai.noKey' });
+        http.expectNone(() => true);
+      });
+
+      it(`${name}: off for no server (switch off, no server, no own key)`, async () => {
+        const ai = create(false, false);
+        const e = await refusal(ai, call);
+        expect((e as AiOffError).reason).toBe('noServer');
+        expect(aiErrorMsg(e)).toEqual({ key: 'ai.noServer' });
+        http.expectNone(() => true);
+      });
+
+      it(`${name}: off on the server, and before its status has come back`, async () => {
+        const ai = create(true);
+        expect(((await refusal(ai, call)) as AiOffError).reason).toBe('server');
+        http.expectOne('/api/ai/status').flush({ ...ON, enabled: false });
+        expect(((await refusal(ai, call)) as AiOffError).reason).toBe('server');
+        http.expectNone(() => true);
+      });
+
+      it(`${name}: off for this device`, async () => {
+        const ai = create(true);
+        http.expectOne('/api/ai/status').flush({ ...ON, offForDevice: true });
+        const e = await refusal(ai, call);
+        expect((e as AiOffError).reason).toBe('device');
+        expect(aiErrorMsg(e)).toEqual({ key: 'ai.offForDevice' });
+        http.expectNone(() => true);
+      });
+
+      it(`${name}: on, it sends`, () => {
+        const ai = ready();
+        call(ai).subscribe();
+        const sent = http.expectOne((r) => r.url.startsWith('/api/ai/') && r.method === 'POST');
+        sent.flush({});
+      });
+    }
+
+    it('the setup tests are not guarded: a key can be tested while AI is off', async () => {
+      const onDevice = { test: vi.fn(async () => undefined) };
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        providers: [provideHttpClient(), provideHttpClientTesting(), { provide: OnDeviceAiService, useValue: onDevice }],
+      });
+      const ai = create(false, false);
+      expect(ai.enabled()).toBe(false);
+      await ai.testGeminiKey(' AIzaTestKey1234 ');
+      await ai.testProvider({ kind: 'gemini', baseUrl: '', model: '' }, 'AIzaTestKey1234');
+      expect(onDevice.test).toHaveBeenCalledTimes(2);
+    });
+  });
+
   describe('request shapes', () => {
     it('extractListing posts { text } to /api/ai/extract-listing, as typed, and returns the draft', async () => {
       const ai = ready();
@@ -220,6 +300,15 @@ describe('AiService against the server', () => {
       expect(aiErrorMsg(await failure(ai, 429))).toEqual({ key: 'ai.rateLimited', params: { s: 60 } });
       expect(aiErrorMsg(await failure(ai, 429, {}, { 'Retry-After': 'soon' }))).toEqual({ key: 'ai.rateLimited', params: { s: 60 } });
       expect(aiErrorMsg(await failure(ai, 429, {}, { 'Retry-After': '0' }))).toEqual({ key: 'ai.rateLimited', params: { s: 0 } });
+      // An HTTP-date (RFC 9110) is read as the seconds until then, as everywhere else (retryAfterSeconds).
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-10-13T10:00:00Z'));
+      try {
+        const date = await failure(ai, 429, {}, { 'Retry-After': 'Tue, 13 Oct 2026 10:00:30 GMT' });
+        expect(aiErrorMsg(date)).toEqual({ key: 'ai.rateLimited', params: { s: 30 } });
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it('503 says the AI service is down, whatever the body (AI_UNAVAILABLE or none)', async () => {

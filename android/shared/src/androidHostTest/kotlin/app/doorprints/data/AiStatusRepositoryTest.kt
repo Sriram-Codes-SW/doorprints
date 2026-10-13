@@ -268,6 +268,9 @@ class AiStatusRepositoryTest {
     fun theThreeCallsGoToTheOwnKeyWhenThereIsOneAndToTheServerWhenThereIsNot() = runBlocking {
         settings.saveServer("https://sync.example", "test-key")
         val repo = repository()
+        repo.setAiFeatures(true)
+        assertTrue(repo.refreshAiStatus())
+        serverCalls.clear()
         assertEquals("from the server", repo.ask("Which house is quiet?").answer)
         assertEquals("server plan", repo.planVisits(PlanRequest("Plan", 12.97, 77.59)).summary)
         assertEquals("From the server", repo.extractListing("2BHK in Indiranagar").label)
@@ -284,17 +287,61 @@ class AiStatusRepositoryTest {
         assertEquals("nothing more went to the server", 3, serverCalls.size)
     }
 
+    /** The three calls, each with its own arguments, as the screens make them. */
+    private fun calls(repo: Repository): List<Pair<String, suspend () -> Any>> = listOf(
+        "ask" to { repo.ask("Which house is quiet?") },
+        "planVisits" to { repo.planVisits(PlanRequest("Plan", 12.97, 77.59)) },
+        "extractListing" to { repo.extractListing("2BHK, call 98450 12345") },
+    )
+
+    private fun assertRefused(name: String, call: suspend () -> Any) {
+        val e = assertThrows(name, ApiException::class.java) { runBlocking { call() } }
+        assertEquals(name, ApiException.Kind.AI_OFF, e.kind)
+    }
+
     @Test
-    fun withNeitherAServerNorAKeyTheCallsSayTheServerIsNotSet() {
-        val repo = repository(withServer = false)
-        for (call in listOf<suspend () -> Any>(
-            { repo.ask("Which house is quiet?") },
-            { repo.planVisits(PlanRequest("Plan", 12.97, 77.59)) },
-            { repo.extractListing("2BHK") },
-        )) {
-            val e = assertThrows(IllegalStateException::class.java) { runBlocking { call() } }
-            assertEquals("Server not configured", e.message)
-        }
+    fun withNeitherAServerNorAKeyTheThreeCallsAreRefusedAndNothingIsSent() {
+        val repo = repository()
+        for ((name, call) in calls(repo)) assertRefused(name, call)
+        assertTrue(serverCalls.isEmpty())
+        assertTrue(geminiBodies.isEmpty())
+    }
+
+    @Test
+    fun theThreeCallsAreRefusedWhileAnySwitchIsOffAndNothingIsSent() = runBlocking {
+        settings.saveServer("https://sync.example", "test-key")
+        val repo = repository()
+        // The server offers AI but this phone's switch is off.
+        assertFalse(repo.refreshAiStatus())
+        assertEquals(AiOff.OPT_IN, repo.aiOff.value)
+        for ((name, call) in calls(repo)) assertRefused(name, call)
+        repo.setAiFeatures(true)
+        // Off at the server, then off for this device only.
+        statusBody = """{"enabled":false}"""
+        repo.refreshAiStatus()
+        for ((name, call) in calls(repo)) assertRefused(name, call)
+        statusBody = """{"enabled":true,"offForDevice":true}"""
+        repo.refreshAiStatus()
+        for ((name, call) in calls(repo)) assertRefused(name, call)
+        assertEquals("only the status was asked", listOf("/api/ai/status", "/api/ai/status", "/api/ai/status"), serverCalls)
+        // The own key with this phone's switch off: nothing goes to the provider.
+        repo.setAiFeatures(false)
+        repo.saveGeminiKey("AIzaOwnKeyForTests1234")
+        assertEquals(AiOff.OPT_IN, repo.aiOff.value)
+        for ((name, call) in calls(repo)) assertRefused(name, call)
+        assertTrue(geminiBodies.isEmpty())
+        // On again: the calls are sent.
+        repo.setAiFeatures(true)
+        assertEquals("From Gemini", repo.extractListing("2BHK").label)
+        assertEquals(1, geminiBodies.size)
+    }
+
+    @Test
+    fun theProviderTestIsTheSetupAndRunsWhileAiIsOff() = runBlocking {
+        val repo = repository()
+        assertFalse(repo.aiEnabled.value)
+        assertTrue(repo.testGeminiKey("AIzaOwnKeyForTests1234").isSuccess)
+        assertEquals(1, geminiBodies.size)
     }
 
     @Test
@@ -302,6 +349,7 @@ class AiStatusRepositoryTest {
         val repo = repository()
         repo.saveGeminiKey("AIzaOwnKeyForTests1234")
         repo.setAiProvider(AiProviderChoice.DEVICE)
+        repo.setAiFeatures(true)
         repeat(10) { repo.extractListing("listing $it") }
         val limited = runCatching { repo.extractListing("one more") }.exceptionOrNull()
         assertEquals(ApiException.Kind.RATE_LIMITED, (limited as ApiException).kind)
@@ -316,6 +364,7 @@ class AiStatusRepositoryTest {
         val repo = repository()
         repo.saveGeminiKey("AIzaOwnKeyForTests1234")
         repo.setAiProvider(AiProviderChoice.DEVICE)
+        repo.setAiFeatures(true)
         db.houses().upsert(house("old", "Alpha oldest flat", at))
         db.houses().upsert(house("new", "Bravo newest flat", at + 5_000))
         db.houses().upsert(house("gone", "Charlie deleted flat", at + 9_000))
