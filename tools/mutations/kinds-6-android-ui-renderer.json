@@ -1,0 +1,46 @@
+{
+  "spec": "android/ui/src/androidHostTest/kotlin/app/doorprints/ui/KindExtrasLayoutTest.kt",
+  "gradle": [
+    ":ui:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.ui.KindExtrasLayoutTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/KindExtrasFields.kt",
+      "find": "    fun alone(f: KindExtra) = f.control == ExtraControl.BOOL || f.control == ExtraControl.DATE || f.control == ExtraControl.LEVEL",
+      "replace": "    fun alone(f: KindExtra) = f.control == ExtraControl.DATE || f.control == ExtraControl.LEVEL",
+      "expect": "theExtrasAreLaidOutInTheVectorsRows"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/KindExtrasFields.kt",
+      "find": "        if (!alone(f) && next != null && !alone(next)) {",
+      "replace": "        if (!alone(f) && next != null) {",
+      "expect": "theExtrasAreLaidOutInTheVectorsRows"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/KindExtrasFields.kt",
+      "find": "    ExtraControl.NUMBER, ExtraControl.LEVEL, ExtraControl.MONEY -> f.max?.toString()?.length ?: 2",
+      "replace": "    ExtraControl.NUMBER, ExtraControl.LEVEL, ExtraControl.MONEY -> f.max?.toString()?.length ?: 3",
+      "expect": "eachFieldKeepsTheVectorsDigitsAndHasItsComposeLabel"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/KindExtrasFields.kt",
+      "find": "    if (value == null) next.remove(f.id) else next[f.id] = value",
+      "replace": "    if (value != null) next[f.id] = value",
+      "expect": "eachValueLandsWhereTheHouseKeepsIt"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/KindExtrasFields.kt",
+      "find": "    return copy(bedrooms = v.bedrooms, areaSqft = v.areaSqft, floor = v.floor, cost = v.cost, extrasOther = v.other)",
+      "replace": "    return copy(bedrooms = v.bedrooms, areaSqft = v.areaSqft, floor = v.floor, extrasOther = v.other)",
+      "expect": "eachValueLandsWhereTheHouseKeepsIt"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/ModelLabels.kt",
+      "find": "    kindStringResource(checkNotNull(KindLabels.HOUSE.field(id, cadence)?.key) { \"house has no text for field.$id\" })",
+      "replace": "    kindStringResource(checkNotNull(KindLabels.HOUSE.field(id)?.key) { \"house has no text for field.$id\" })",
+      "expect": "eachValueLandsWhereTheHouseKeepsIt"
+    }
+  ]
+}

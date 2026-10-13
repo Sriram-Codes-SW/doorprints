@@ -62,7 +62,7 @@ import org.jetbrains.compose.resources.stringResource
  */
 @Composable
 internal fun ChecklistSection(checklist: Map<String, Int>, rating: Int?, scoring: Scoring, onChange: (Map<String, Int>) -> Unit) {
-    SectionHeading(stringResource(Res.string.house_checklist))
+    SectionHeading(stringResource(kindSection("checklist")))
     // The criteria that are not archived, in their order (slice 2); one set to Ignore says it is not counted.
     // An archived criterion is hidden, and its score on the house stays as it is.
     scoring.criteria.filter { !it.archived }.forEach { c ->

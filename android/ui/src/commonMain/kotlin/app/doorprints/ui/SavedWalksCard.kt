@@ -47,7 +47,6 @@ import app.doorprints.ui.res.trace_house_empty
 import app.doorprints.ui.res.trace_house_local
 import app.doorprints.ui.res.trace_house_row
 import app.doorprints.ui.res.trace_house_show
-import app.doorprints.ui.res.trace_house_title
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 
@@ -64,7 +63,7 @@ fun SavedWalksCard(houseId: String, onShowOnMap: () -> Unit) {
     val walks by repo.savedWalksOf(houseId).collectAsStateWithLifecycle(initialValue = emptyList())
     var confirm by remember { mutableStateOf<SavedWalkSummary?>(null) }
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        SectionHeading(stringResource(Res.string.trace_house_title))
+        SectionHeading(stringResource(kindSection("walks")))
         if (walks.isEmpty()) {
             Text(stringResource(Res.string.trace_house_empty), style = MaterialTheme.typography.bodyMedium)
         }

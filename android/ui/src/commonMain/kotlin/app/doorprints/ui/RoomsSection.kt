@@ -91,7 +91,7 @@ import kotlin.uuid.Uuid
 @Composable
 fun RoomsSection(rooms: List<HouseRoom>?, unit: LengthUnit, onChange: (List<HouseRoom>?) -> Unit) {
     val list = rooms.orEmpty().sortedWith(HouseRooms.ORDER)
-    SectionHeading(stringResource(Res.string.house_rooms))
+    SectionHeading(stringResource(kindSection("rooms")))
     if (list.isEmpty()) Text(stringResource(Res.string.house_rooms_empty), style = MaterialTheme.typography.bodySmall)
     list.forEachIndexed { index, room ->
         key(room.id) {

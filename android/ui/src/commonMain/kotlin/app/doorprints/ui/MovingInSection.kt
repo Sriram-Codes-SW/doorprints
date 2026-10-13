@@ -161,7 +161,7 @@ fun MovingInCard(
     OutlinedCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
-                stringResource(Res.string.movein_title), style = MaterialTheme.typography.titleMedium,
+                stringResource(kindSection("moveIn")), style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() },
             )
             Text(stringResource(Res.string.movein_intro), style = MaterialTheme.typography.bodySmall)

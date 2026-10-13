@@ -404,7 +404,7 @@ fun ViewingsCard(
     var secondFor by rememberSaveable { mutableStateOf(false) }
 
     HorizontalDivider()
-    SectionHeading(stringResource(Res.string.viewings_cardHeading))
+    SectionHeading(stringResource(kindSection("viewings")))
     Text(
         next?.let { stringResource(Res.string.viewings_next, it.startsAt.dateText(), stringResource(it.viewingKind.labelResource)) }
             ?: stringResource(Res.string.viewings_none),

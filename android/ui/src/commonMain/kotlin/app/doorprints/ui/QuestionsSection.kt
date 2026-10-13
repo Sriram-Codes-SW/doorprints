@@ -92,7 +92,7 @@ fun QuestionsSection(
     val list = answers.orEmpty()
     val words = answerWords()
     var picking by rememberSaveable { mutableStateOf(false) }
-    SectionHeading(stringResource(Res.string.house_questions), headingModifier)
+    SectionHeading(stringResource(kindSection("questions")), headingModifier)
     if (list.isEmpty()) {
         Text(stringResource(Res.string.house_questions_empty), style = MaterialTheme.typography.bodySmall)
     } else {

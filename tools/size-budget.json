@@ -28,7 +28,7 @@
  },
  "allow": {
   "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt": 1302,
-  "android/ui/src/commonMain/kotlin/app/doorprints/ui/HouseEditScreen.kt": 1779,
+  "android/ui/src/commonMain/kotlin/app/doorprints/ui/HouseEditScreen.kt": 1588,
   "android/ui/src/commonMain/kotlin/app/doorprints/ui/HouseListScreen.kt": 1022,
   "android/ui/src/commonMain/kotlin/app/doorprints/ui/ImportScreen.kt": 1014,
   "android/ui/src/commonMain/kotlin/app/doorprints/ui/MapScreen.kt": 1519,
