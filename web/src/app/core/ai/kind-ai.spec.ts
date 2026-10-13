@@ -35,7 +35,6 @@ import {
 import { GEMINI_URL, OnDeviceAiService } from './on-device-ai.service';
 import { schemaName } from './openai-compat';
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 const V = vectorsJson as any;
 
 /** A wire candidate as the store gives it and the on-device AI reads it (`OnDeviceAiService.houses`). */
