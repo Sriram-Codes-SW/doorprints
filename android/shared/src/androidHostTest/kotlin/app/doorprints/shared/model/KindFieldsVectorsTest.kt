@@ -119,8 +119,10 @@ class KindFieldsVectorsTest {
         val hiddenSection = KindLabels("test", mapOf("field.a" to "house_bhk", "section.s" to "house_cost"), emptyMap(), mapOf("a" to "s"), setOf("section.s"))
         assertEquals(emptyList<KindExtra>(), KindFields(hiddenSection, extras).shown("s", null))
         assertThrows(IllegalStateException::class.java) { KindFields(labels, extras).label(KindExtra("zz", "bool", "s", 1, was = "zz")) }
-        assertThrows(IllegalStateException::class.java) { KindExtra("x", "text", "s", 1, was = "x").control }
-        assertThrows(IllegalStateException::class.java) { KindExtra("x", "enum", "s", 1, was = "x").control }
+        // Text and enum have a control since the schools kind (S4b-BL-209); an unknown type still has none.
+        assertEquals(ExtraControl.TEXT, KindExtra("x", "text", "s", 1, was = "x").control)
+        assertEquals(ExtraControl.ENUM, KindExtra("x", "enum", "s", 1, was = "x").control)
+        assertThrows(IllegalStateException::class.java) { KindExtra("x", "colour", "s", 1, was = "x").control }
         assertEquals(ExtraControl.LEVEL, KindExtra("x", "number", "s", 1, unit = "level", was = "x").control)
         assertEquals(KindFields.HOUSE, KindFields.of("house"))
         assertNull(KindFields.of("school"))

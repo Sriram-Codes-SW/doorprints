@@ -1663,4 +1663,30 @@
     <string name="settings_ai_sends">आपका सवाल और मिलते-जुलते मकानों के नोट्स आपकी चुनी सेवा को जाते हैं; सहेजे गए संपर्क के नाम, फ़ोन और ईमेल पहले, जहाँ तक हम कर सकते हैं, बदल दिए जाते हैं। चिपकाया हुआ विज्ञापन जैसा है वैसा ही भेजा जाता है।</string>
     <string name="settings_ai_guide">क्या AI मेरे लिए ठीक है? गाइड पढ़ें</string>
     <string name="settings_ai_guide_desc">क्या AI मेरे लिए ठीक है? उपयोगकर्ता गाइड ब्राउज़र में खुलती है</string>
+    <!-- S4b-BL-209 (2026-10-13): the hidden schools kind, developer flag only. Under review (owner rule: hi/ta/te ship marked under review). -->
+    <string name="kind_picker">आप क्या सहेज रहे हैं? (डेवलपर पूर्वावलोकन)</string>
+    <string name="school_new_title">स्कूल सहेजें</string>
+    <string name="schools_title">स्कूल</string>
+    <string name="school_delete">स्कूल हटाएँ</string>
+    <string name="school_name">स्कूल का नाम</string>
+    <string name="school_website">वेबसाइट</string>
+    <string name="school_contact_name">संपर्क व्यक्ति का नाम</string>
+    <string name="school_fees_heading">फ़ीस</string>
+    <string name="school_fees">सालाना फ़ीस (₹)</string>
+    <string name="school_admission_fee">दाख़िला फ़ीस (₹)</string>
+    <string name="school_board">बोर्ड</string>
+    <string name="school_board_CBSE">CBSE</string>
+    <string name="school_board_ICSE">ICSE</string>
+    <string name="school_board_STATE">राज्य बोर्ड</string>
+    <string name="school_board_IB">IB</string>
+    <string name="school_board_IGCSE">कैम्ब्रिज (IGCSE)</string>
+    <string name="school_option_OTHER">अन्य</string>
+    <string name="school_medium">पढ़ाई का माध्यम</string>
+    <string name="school_medium_ENGLISH">अंग्रेज़ी</string>
+    <string name="school_medium_HINDI">हिन्दी</string>
+    <string name="school_medium_REGIONAL">राज्य की भाषा</string>
+    <string name="school_grades">कक्षाएँ</string>
+    <string name="school_commute">आने-जाने का समय (मिनट)</string>
+    <string name="school_bus">स्कूल बस</string>
+    <string name="kind_option_not_set">तय नहीं</string>
 </resources>

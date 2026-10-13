@@ -1663,4 +1663,30 @@
     <string name="settings_ai_sends">உங்கள் கேள்வியும் பொருந்தும் வீட்டுக் குறிப்புகளும் நீங்கள் தேர்ந்தெடுத்த சேவைக்குச் செல்லும்; சேமித்த தொடர்புப் பெயர்கள், தொலைபேசி எண்கள், மின்னஞ்சல்கள் முதலில், எங்களால் முடிந்தவரை, மாற்றப்படும். ஒட்டிய விளம்பரம் ஒட்டியபடியே அனுப்பப்படும்.</string>
     <string name="settings_ai_guide">AI எனக்குப் பயனளிக்குமா? வழிகாட்டியைப் படிக்கவும்</string>
     <string name="settings_ai_guide_desc">AI எனக்குப் பயனளிக்குமா? பயனர் வழிகாட்டி உலாவியில் திறக்கும்</string>
+    <!-- S4b-BL-209 (2026-10-13): the hidden schools kind, developer flag only. Under review (owner rule: hi/ta/te ship marked under review). -->
+    <string name="kind_picker">நீங்கள் எதைச் சேமிக்கிறீர்கள்? (டெவலப்பர் முன்னோட்டம்)</string>
+    <string name="school_new_title">பள்ளியைச் சேமிக்கவும்</string>
+    <string name="schools_title">பள்ளிகள்</string>
+    <string name="school_delete">பள்ளியை நீக்கு</string>
+    <string name="school_name">பள்ளியின் பெயர்</string>
+    <string name="school_website">இணையதளம்</string>
+    <string name="school_contact_name">தொடர்பு நபரின் பெயர்</string>
+    <string name="school_fees_heading">கட்டணம்</string>
+    <string name="school_fees">ஆண்டுக் கட்டணம் (₹)</string>
+    <string name="school_admission_fee">சேர்க்கைக் கட்டணம் (₹)</string>
+    <string name="school_board">கல்வி வாரியம்</string>
+    <string name="school_board_CBSE">CBSE</string>
+    <string name="school_board_ICSE">ICSE</string>
+    <string name="school_board_STATE">மாநில வாரியம்</string>
+    <string name="school_board_IB">IB</string>
+    <string name="school_board_IGCSE">கேம்பிரிட்ஜ் (IGCSE)</string>
+    <string name="school_option_OTHER">மற்றவை</string>
+    <string name="school_medium">பயிற்று மொழி</string>
+    <string name="school_medium_ENGLISH">ஆங்கிலம்</string>
+    <string name="school_medium_HINDI">இந்தி</string>
+    <string name="school_medium_REGIONAL">மாநில மொழி</string>
+    <string name="school_grades">வகுப்புகள்</string>
+    <string name="school_commute">பயண நேரம் (நிமிடங்கள்)</string>
+    <string name="school_bus">பள்ளிப் பேருந்து</string>
+    <string name="kind_option_not_set">அமைக்கப்படவில்லை</string>
 </resources>

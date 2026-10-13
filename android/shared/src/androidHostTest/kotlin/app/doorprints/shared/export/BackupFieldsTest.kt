@@ -63,7 +63,7 @@ class BackupFieldsTest {
      */
     @Test
     fun theSampleHouseHasExactlyTheModelsFields() =
-        assertEquals(ExportHouse.serializer().descriptor.elementNames.toList(), keysOf("houses") + "extrasOther")
+        assertEquals(ExportHouse.serializer().descriptor.elementNames.toList(), keysOf("houses") + "extrasOther" + "kind")
 
     @Test
     fun theSampleReadsBackAsTheFamilyBeforeAndIsWrittenAgainUnchanged() {

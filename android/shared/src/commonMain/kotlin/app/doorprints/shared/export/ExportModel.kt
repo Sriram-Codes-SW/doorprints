@@ -137,6 +137,11 @@ data class ExportHouse(
      * `Candidates.cleanOtherExtras` (a field id, a value of an extras type, text of at most 2,000 characters, at most 30).
      */
     val extrasOther: JsonObject? = null,
+    /**
+     * The candidate's kind when it is not the house (S4b-BL-209: the hidden schools kind), as [BackupWire] reads it out
+     * of a candidate and writes it back there; absent for a house. Never a key of a file of the family before.
+     */
+    val kind: String? = null,
 ) {
     /** The score under [scoring], exactly the one the app screens show ([HouseScore.evaluate]); see [ExportBundle.scoreOf]. */
     fun scoreResult(scoring: Scoring): ScoreResult = HouseScore.evaluate(checklist, rating, scoring)
