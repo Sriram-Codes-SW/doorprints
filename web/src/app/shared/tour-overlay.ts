@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { Component, DestroyRef, ElementRef, effect, inject, signal, untracked, viewChild } from '@angular/core';
+import { Component, DestroyRef, ElementRef, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router } from '@angular/router';
 import { filter } from 'rxjs';
@@ -41,6 +41,8 @@ const GAP = 12;
 const CLEAR = 6;
 /** The least room the card is squeezed to (its buttons stay in view; the text scrolls). */
 const MIN_CARD = 160;
+/** The longest the offer waits for the web font of its language (a font that never comes must not hide it for good). */
+export const OFFER_FONT_WAIT_MS = 5000;
 
 /**
  * The first-visit offer and the guided tour itself (S4b-FR-38). The tour is not modal: the highlight ignores the pointer,
@@ -48,12 +50,14 @@ const MIN_CARD = 160;
  * when a step appears, Escape skips, and the whole thing is a few fixed boxes, so it adds nothing to the pages.
  * The card sits below the highlight (above the phone's bottom bar) when it fits there, else above it, else on the side
  * with more room, its text scrolling and its buttons staying in view, so it never covers what it points at.
+ * The offer is shown once the web font its text needs is ready (S4b-BL-262): shown in a fallback font, it grew by a line
+ * when Noto Sans Tamil arrived and moved up by 26px (a layout shift of 0.065 on a 320x568 phone).
  */
 @Component({
   selector: 'app-tour',
   imports: [TPipe],
   template: `
-    @if (tour.offered(url())) {
+    @if (tour.offered(url()) && fontReady() === offerText()) {
       <section class="offer" aria-labelledby="tour-offer-title">
         <h2 id="tour-offer-title">{{ 'tour.offer.title' | t }}</h2>
         <p>{{ 'tour.offer.body' | t }}</p>
@@ -199,6 +203,11 @@ export class TourOverlay {
   protected readonly maxHeight = signal(0);
   private timer: ReturnType<typeof setTimeout> | undefined;
   private target: Element | null = null;
+  /** The offer's words in the current language, and the last of them whose font is ready (or waited for long enough). */
+  protected readonly offerText = computed(() =>
+    (['tour.offer.title', 'tour.offer.body', 'tour.offer.start', 'tour.offer.skip'] as const).map((k) => this.i18n.t(k)).join(' '),
+  );
+  protected readonly fontReady = signal<string | null>(null);
 
   constructor() {
     this.router.events.pipe(filter((e) => e instanceof NavigationEnd), takeUntilDestroyed()).subscribe(() => this.url.set(this.router.url));
@@ -220,6 +229,29 @@ export class TourOverlay {
         this.spot.set(null);
         if (step) this.find(step.route, step.target, url, 0);
       });
+    });
+    // The offer waits for its font: the faces of the page's font list that cover its text (Indic web fonts, font-display:
+    // swap), at most OFFER_FONT_WAIT_MS. Without the Font Loading API (or with the font already there) it shows at once.
+    effect(() => {
+      const text = this.offerText();
+      const fonts = document.fonts as FontFaceSet | undefined; // jsdom has none
+      const font = `1rem ${getComputedStyle(document.body).fontFamily}`;
+      let ready = true;
+      try {
+        ready = !fonts || fonts.check(font, text);
+      } catch {
+        // a font list the API cannot parse: nothing to wait for
+      }
+      if (ready) {
+        this.fontReady.set(text);
+        return;
+      }
+      const show = () => {
+        clearTimeout(wait);
+        if (untracked(this.offerText) === text) this.fontReady.set(text);
+      };
+      const wait = setTimeout(show, OFFER_FONT_WAIT_MS);
+      fonts!.load(font, text).then(show, show);
     });
     effect(() => {
       this.tour.step();
