@@ -43,6 +43,8 @@ class ApiException(
         AI_BLOCKED,
         /** The person's own key has no free quota or credit left: HTTP 402, a daily Gemini quota, `insufficient_quota`, a billing error (S4b-BL-243). */
         AI_QUOTA_EXHAUSTED,
+        /** AI is off here (the phone's switch, no server or key, the server or the owner's switch); the call was refused and nothing was sent (S4b-BL-251). */
+        AI_OFF,
     }
 
     companion object {

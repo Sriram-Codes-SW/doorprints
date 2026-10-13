@@ -1,0 +1,18 @@
+{
+  "spec": [
+    "web/src/app/core/ai.service.requests.spec.ts",
+    "web/src/app/core/ai-quality.service.spec.ts"
+  ],
+  "mutations": [
+    { "file": "web/src/app/core/ai.service.ts", "find": "return reason === null ? null : throwError(() => new AiOffError(reason));", "replace": "return null;", "expect": "extractListing: off by this browser's switch" },
+    { "file": "web/src/app/core/ai.service.ts", "find": "const reason = this.offReason();\n    return reason", "replace": "const reason = this.optInState() ? null : 'optIn';\n    return reason", "expect": "off on the server" },
+    { "file": "web/src/app/core/ai.service.ts", "find": "throwError(() => new AiOffError(reason))", "replace": "throwError(() => new AiOffError('server'))", "expect": "off by this browser's switch" },
+    { "file": "web/src/app/core/ai.service.ts", "find": "  if (err instanceof AiOffError) return aiOffMsg(err.reason);\n", "replace": "", "expect": "off by this browser's switch" },
+    { "file": "web/src/app/core/ai.service.ts", "find": "    const off = this.guard();\n    if (off) return off;\n    if (this.usesOwnKey()) return defer(() => this.onDevice.extractListing", "replace": "    if (this.usesOwnKey()) return defer(() => this.onDevice.extractListing", "expect": "extractListing: off by this browser's switch" },
+    { "file": "web/src/app/core/ai.service.ts", "find": "    const off = this.guard();\n    if (off) return off;\n    if (this.usesOwnKey()) return defer(() => this.onDevice.ask", "replace": "    if (this.usesOwnKey()) return defer(() => this.onDevice.ask", "expect": "ask: off by this browser's switch" },
+    { "file": "web/src/app/core/ai.service.ts", "find": "    const off = this.guard();\n    if (off) return off;\n    if (this.usesOwnKey()) return defer(() => this.onDevice.planVisits", "replace": "    if (this.usesOwnKey()) return defer(() => this.onDevice.planVisits", "expect": "planVisits: off by this browser's switch" },
+    { "file": "web/src/app/core/ai.service.ts", "find": "return this.onDevice.test(this.geminiRef(key.trim()));", "replace": "if (!this.enabled()) return Promise.reject(new Error('off'));\n    return this.onDevice.test(this.geminiRef(key.trim()));", "expect": "the setup tests are not guarded" },
+    { "file": "web/src/app/core/ai.service.ts", "find": "return this.onDevice.test(this.modelFor(config, key.trim()));", "replace": "if (!this.enabled()) return Promise.reject(new Error('off'));\n    return this.onDevice.test(this.modelFor(config, key.trim()));", "expect": "the setup tests are not guarded" },
+    { "file": "web/src/app/core/ai.service.ts", "find": "retryAfterSeconds(err) ?? 60", "replace": "(Number.parseInt(err.headers.get('Retry-After') ?? '', 10) || 60)", "expect": "429 says to wait" }
+  ]
+}

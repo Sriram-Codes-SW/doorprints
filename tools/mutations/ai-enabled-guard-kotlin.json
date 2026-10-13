@@ -1,0 +1,16 @@
+{
+  "spec": "AiStatusRepositoryTest",
+  "gradle": [
+    ":shared:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.data.AiStatusRepositoryTest"
+  ],
+  "mutations": [
+    { "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt", "find": "if (_off.value != null) throw ApiException(ApiException.Kind.AI_OFF)", "replace": "if (false) throw ApiException(ApiException.Kind.AI_OFF)", "expect": "AreRefused" },
+    { "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt", "find": "if (_off.value != null) throw ApiException(ApiException.Kind.AI_OFF)", "replace": "if (_off.value == AiOff.NO_SERVER) throw ApiException(ApiException.Kind.AI_OFF)", "expect": "theThreeCallsAreRefusedWhileAnySwitchIsOff" },
+    { "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt", "find": "requireOn()\n        return ownKeyAi()?.let { withContext(Dispatchers.IO) { it.extractListing(text) } }", "replace": "return ownKeyAi()?.let { withContext(Dispatchers.IO) { it.extractListing(text) } }", "expect": "AreRefused" },
+    { "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt", "find": "requireOn()\n        return ownKeyAi()?.let { withContext(Dispatchers.IO) { it.ask(question) } }", "replace": "return ownKeyAi()?.let { withContext(Dispatchers.IO) { it.ask(question) } }", "expect": "AreRefused" },
+    { "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt", "find": "requireOn()\n        return ownKeyAi()?.let { withContext(Dispatchers.IO) { it.planVisits(request) } }", "replace": "return ownKeyAi()?.let { withContext(Dispatchers.IO) { it.planVisits(request) } }", "expect": "AreRefused" },
+    { "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt", "find": "runCatching {\n            val client = chatModel(", "replace": "runCatching {\n            requireOn()\n            val client = chatModel(", "expect": "theProviderTestIsTheSetupAndRunsWhileAiIsOff" }
+  ]
+}
