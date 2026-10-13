@@ -258,6 +258,10 @@ async function pageMatrix(browser) {
       const resp = await gotoRetry(page, BASE + route);
       await settle(page);
       check('pages', `${tag}: loads`, !!resp && resp.status() < 400, resp && resp.status());
+      // The page's first heading can come a moment after `settle` on a slow load (the full runs of 2026-10-13 each lost one
+      // 'one h1' check in a different language, with the other checks of the same page passing): wait for one, up to 10 s;
+      // a page that really has none still fails below.
+      await page.waitForFunction(() => [...document.querySelectorAll('h1')].some((h) => h.textContent.trim()), null, { timeout: 10000 }).catch(() => {});
       const info = await page.evaluate(() => ({
         lang: document.documentElement.lang, title: document.title,
         h1: [...document.querySelectorAll('h1')].map((h) => h.textContent.trim()).filter(Boolean),
