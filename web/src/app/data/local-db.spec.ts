@@ -18,7 +18,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { BatchGuardError, DB_VERSION, MemoryDb, STORE_INDEXES, STORE_KEY_PATH, STORE_NAMES, openLocalDb, upgradeLocalDb } from './local-db';
-import type { UpgradeDb, UpgradeStore, UpgradeTx } from './local-db';
+import type { UpgradeDb, UpgradeRequest, UpgradeRowStore, UpgradeStore, UpgradeTx } from './local-db';
 import {
   MAX_RECORD_PAYLOAD_BYTES,
   cleanCost,
@@ -122,10 +122,21 @@ describe('MemoryDb', () => {
  * IndexedDB and no new dependency is allowed, and what matters is *which* stores and indexes each step creates.
  */
 describe('upgradeLocalDb', () => {
-  class FakeStore implements UpgradeStore {
+  class FakeStore implements UpgradeRowStore {
     readonly indexes: { name: string; keyPath: string }[] = [];
+    /** The rows, by id; a request's `onsuccess` runs at once, as a versionchange transaction runs it before it ends. */
+    readonly rows = new Map<string, unknown>();
     createIndex(name: string, keyPath: string): unknown {
       this.indexes.push({ name, keyPath });
+      return undefined;
+    }
+    getAll(): UpgradeRequest<unknown[]> {
+      const request: UpgradeRequest<unknown[]> = { result: [...this.rows.values()], onsuccess: null };
+      queueMicrotask(() => request.onsuccess?.(new Event('success')));
+      return request;
+    }
+    put(value: unknown): unknown {
+      this.rows.set((value as { id: string }).id, value);
       return undefined;
     }
   }
@@ -139,7 +150,7 @@ describe('upgradeLocalDb', () => {
       this.keyPaths.set(name, options.keyPath);
       return store;
     }
-    objectStore(name: string): UpgradeStore {
+    objectStore(name: string): FakeStore {
       const store = this.stores.get(name);
       if (!store) throw new Error(`NotFoundError: ${name}`);
       return store;
@@ -168,8 +179,8 @@ describe('upgradeLocalDb', () => {
     saved_walks: { keyPath: 'id', indexes: ['houseId'] },
   };
 
-  it('is at version 3 (the path trace, docs/11 5.27.8) and has seven stores, so clear() empties both new ones', () => {
-    expect(DB_VERSION).toBe(3);
+  it('is at version 4 (kinds step 3: the houses become candidates) and has seven stores, so clear() empties them all', () => {
+    expect(DB_VERSION).toBe(4);
     expect([...STORE_NAMES]).toEqual(['houses', 'visits', 'photos', 'settings', 'records', 'trace_points', 'saved_walks']);
   });
 
@@ -226,6 +237,56 @@ describe('upgradeLocalDb', () => {
     upgradeLocalDb(db, 0, db);
     upgradeLocalDb(db, DB_VERSION, db);
     expect(db.shape()).toEqual(VERSION_3);
+  });
+
+  it('rewrites every house of a version-3 database as a candidate, in place, and touches no other store or index', async () => {
+    const db = new FakeDb();
+    upgradeLocalDb(db, 0, db);
+    const houses = db.stores.get('houses')!;
+    // Two houses as a version-3 browser stored them: a full one, and a bare sale marked dirty.
+    houses.rows.set('h1', {
+      id: 'h1', label: 'Green View', lat: 13.006, lon: 80.2574, status: 'SHORTLISTED', price: 32000, priceType: 'RENT',
+      bedrooms: 2, areaSqft: 1150, floor: 3, cost: { deposit: 64000, maintenanceIncluded: false, myOffer: 30000 },
+      checklist: { water: 5 }, createdAt: '2026-09-01T10:00:00.000Z', updatedAt: '2026-09-02T10:00:00.000Z',
+      deleted: false, syncVersion: 7, dirty: false,
+    });
+    houses.rows.set('h2', { id: 'h2', label: '', lat: 0, lon: 0, status: 'NEW', priceType: 'SALE', checklist: {}, deleted: false, syncVersion: 0, dirty: true });
+    const visit = { id: 'v1', houseId: 'h1', lat: 1, lon: 2, arrivedAt: 'x', source: 'MANUAL', deleted: false, syncVersion: 0, dirty: false };
+    db.stores.get('visits')!.rows.set('v1', visit);
+    const shapeBefore = db.shape();
+
+    upgradeLocalDb(db, 3, db);
+    await Promise.resolve();
+
+    expect(houses.rows.get('h1')).toEqual({
+      id: 'h1', kind: 'house', label: 'Green View', lat: 13.006, lon: 80.2574, status: 'SHORTLISTED',
+      money: { amount: 32000, cadence: 'month' },
+      extras: { bedrooms: 2, areaSqft: 1150, floor: 3, deposit: { amount: 64000, cadence: 'once' }, maintenanceIncluded: false, myOffer: { amount: 30000, cadence: 'month' } },
+      checklist: { water: 5 }, createdAt: '2026-09-01T10:00:00.000Z', updatedAt: '2026-09-02T10:00:00.000Z',
+      deleted: false, syncVersion: 7, dirty: false,
+    });
+    // A sale with no price yet keeps its cadence; the dirty flag stays.
+    expect(houses.rows.get('h2')).toEqual({ id: 'h2', kind: 'house', label: '', lat: 0, lon: 0, status: 'NEW', money: { cadence: 'once' }, checklist: {}, deleted: false, syncVersion: 0, dirty: true });
+    expect(db.stores.get('visits')!.rows.get('v1')).toBe(visit);
+    expect(db.shape()).toEqual(shapeBefore);
+  });
+
+  it('leaves a fresh install and an already-upgraded row alone (the version-4 step reads no rows at version 0)', async () => {
+    const db = new FakeDb();
+    const reads: string[] = [];
+    const objectStore = db.objectStore.bind(db);
+    db.objectStore = (name) => {
+      reads.push(name);
+      return objectStore(name);
+    };
+    upgradeLocalDb(db, 0, db);
+    expect(reads).not.toContain('houses');
+    const houses = db.stores.get('houses')!;
+    const row = { id: 'h3', kind: 'house', label: 'x', lat: 0, lon: 0, status: 'NEW', money: { amount: 1, cadence: 'once' }, checklist: {}, deleted: false, syncVersion: 0, dirty: false };
+    houses.rows.set('h3', row);
+    upgradeLocalDb(db, 3, db);
+    await Promise.resolve();
+    expect(houses.rows.get('h3')).toBe(row);
   });
 
   it('indexes every store the way the wrapper expects: an index named after the property it is on', () => {

@@ -40,6 +40,8 @@
  * the trace as it was. {@link LocalDb.deleteAll} is the batch delete of one store (the 30-day prune).
  */
 
+import { upgradeHouseRow } from './candidate-rows';
+
 /**
  * The object stores of the browser database: the synced rows (houses, visits, photos, records), per-browser settings, and the path trace.
  */
@@ -77,11 +79,14 @@ export type StoreKey = string | readonly string[];
 // version 2 is slice 0 of the Sprint 4b data model (docs/11 5.30, ADR-28): the `records` store and the `houseId`
 // indexes (S4b-BL-66); version 3 is the path trace (docs/11 5.27.8, S4b-FR-17): the `trace_points` and `saved_walks`
 // stores. Slice 1 and slice 5 (the house's own new values, photo meta, `moveIn`) change no store and no index: a
-// house and a photo only gain fields, so they did not need a version.
+// house and a photo only gain fields, so they did not need a version. Version 4 is kinds step 3 (S4b-BL-206, docs/03
+// ADR-36): every row of `houses` is rewritten as a candidate, with `kind`, `money` and `extras` (`candidate-rows.ts`).
+// IndexedDB cannot open a database at a lower version than it holds, so the format reset's "version 1" is version 4
+// here: the rows move in place and nothing is lost.
 /** Name of the browser database that holds all of this browser's house data. */
 export const DB_NAME = 'doorprints';
 /** Current schema version; see the note above for what each version added. */
-export const DB_VERSION = 3;
+export const DB_VERSION = 4;
 
 /** One write of a {@link LocalDb.batch}: a put or a delete in any store. */
 export type WriteOp =
@@ -457,13 +462,23 @@ function idbKey(key: StoreKey): IDBValidKey {
 export interface UpgradeStore {
   createIndex(name: string, keyPath: string): unknown;
 }
+/** The part of an `IDBRequest` the version-4 step reads. */
+export interface UpgradeRequest<T> {
+  readonly result: T;
+  onsuccess: ((ev: Event) => void) | null;
+}
+/** The part of an existing `IDBObjectStore` an upgrade reads and writes rows through (version 4). */
+export interface UpgradeRowStore extends UpgradeStore {
+  getAll(): UpgradeRequest<unknown[]>;
+  put(value: unknown): unknown;
+}
 /** The part of an `IDBDatabase` a schema upgrade uses. */
 export interface UpgradeDb {
   createObjectStore(name: string, options: { keyPath: string | string[] }): UpgradeStore;
 }
 /** The part of an `IDBTransaction` a schema upgrade uses. */
 export interface UpgradeTx {
-  objectStore(name: string): UpgradeStore;
+  objectStore(name: string): UpgradeRowStore;
 }
 
 /**
@@ -492,6 +507,16 @@ export function upgradeLocalDb(db: UpgradeDb, oldVersion: number, tx: UpgradeTx)
     // Stores only: the existing ones are untouched, so a failed upgrade aborts and the database stays at version 2.
     db.createObjectStore('trace_points', { keyPath: 'id' }).createIndex('walk', 'walk');
     db.createObjectStore('saved_walks', { keyPath: 'id' }).createIndex('houseId', 'houseId');
+  }
+  if (oldVersion >= 1 && oldVersion < 4) {
+    // Version 4 (kinds step 3, S4b-BL-206): every stored house becomes a candidate (`kind`, `money`, `extras`), in the
+    // same versionchange transaction, so a failure aborts the upgrade and the database stays at its old version with
+    // its rows as they were. A fresh install has no rows. Visits, photos and the indexes are untouched.
+    const houses = tx.objectStore('houses');
+    const rows = houses.getAll();
+    rows.onsuccess = () => {
+      for (const row of rows.result) houses.put(upgradeHouseRow(row));
+    };
   }
 }
 

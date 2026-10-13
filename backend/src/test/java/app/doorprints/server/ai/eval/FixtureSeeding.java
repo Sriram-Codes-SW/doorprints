@@ -51,7 +51,9 @@ final class FixtureSeeding {
         if (price != null || type != null) {
             var money = new LinkedHashMap<String, Object>();
             if (price != null) money.put("amount", price);
-            money.put("cadence", "SALE".equals(type) ? "once" : "month");
+            // A price without a type keeps no cadence (owner, 2026-10-12: it is not a monthly rent).
+            var cadence = app.doorprints.server.house.Money.cadenceOf(type == null ? null : type.toString());
+            if (cadence != null) money.put("cadence", cadence);
             body.put("money", money);
         }
         var bedrooms = body.remove("bedrooms");

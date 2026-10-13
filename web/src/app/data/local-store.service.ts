@@ -19,6 +19,7 @@
 import { Injectable, signal } from '@angular/core';
 import type { HouseDto, StatsDto, VisitDto } from '../core/models';
 import { openLocalDb } from './local-db';
+import { withCandidateRows } from './candidate-rows';
 import type { LocalDb, OpenedDb, StorageProblem } from './local-db';
 import { deleteSavedWalksOfHouse } from './trace-rows';
 import { SETTING_KEYS, compareText, houseFromDto, isoNow, millis, sortByCreated, visitFromDto } from './records';
@@ -146,7 +147,8 @@ export class LocalStore {
   private rawDb(): Promise<LocalDb> {
     this.opened ??= openLocalDb(() => this.closedByNewerTab.set(true)).then((result: OpenedDb) => {
       this.storageProblem.set(result.problem);
-      return result.db;
+      // The `houses` store holds candidates (kinds step 3); everything here reads and writes houses.
+      return withCandidateRows(result.db);
     });
     return this.opened;
   }

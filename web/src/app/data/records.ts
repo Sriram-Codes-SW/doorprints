@@ -19,6 +19,7 @@
 import { LocalDataError } from '../core/local-error';
 import { cleanMeta } from '../shared/photo-tags';
 import type { PhotoMeta } from '../shared/photo-tags';
+import { HOUSE_KIND, KIND_PATTERN, cleanOtherExtras } from '../core/candidate';
 import { ANSWER_STATUSES, COST_FIELDS, LOCATION_SOURCES, ROOM_TYPES, STATUSES } from '../core/models';
 import type { AnswerStatus, HouseAnswer, HouseCost, HouseDto, HouseRoom, HouseStatus, MoveIn, MoveInItem, PriceType, RecordDto, RoomType, VisitDto, VisitSource } from '../core/models';
 
@@ -236,8 +237,16 @@ export function tryHouseFromDto(dto: HouseDto | null | undefined, dirty = false)
     updatedAt: nullable(dto.updatedAt),
     deleted: dto.deleted === true,
     syncVersion: finite(dto.syncVersion) ?? 0,
+    // A kind other than house, and the extras a newer app wrote, only when there are any (kinds step 3, S4b-BL-206).
+    ...(typeof dto.kind === 'string' && dto.kind !== HOUSE_KIND && KIND_PATTERN.test(dto.kind) ? { kind: dto.kind } : {}),
+    ...withOtherExtras(dto.extrasOther),
     dirty,
   };
+}
+
+function withOtherExtras(raw: unknown): Pick<HouseRecord, 'extrasOther'> {
+  const other = cleanOtherExtras(raw);
+  return other ? { extrasOther: other } : {};
 }
 
 /** @throws LocalDataError when the row has no usable id; see {@link tryVisitFromDto}. */

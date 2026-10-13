@@ -239,11 +239,26 @@ class FakeFactory {
       }
       if (this.version < version) {
         request.transaction = {
-          objectStore: (n: string) => ({ createIndex: (index: string) => void this.db.stores.get(n)!.indexes.push(index) }),
+          objectStore: (n: string) => {
+            const data = this.db.stores.get(n)!;
+            return {
+              createIndex: (index: string) => void data.indexes.push(index),
+              // The versionchange transaction's reads and writes (the version-4 step): the request answers at once.
+              getAll: () => {
+                const read = { result: [...data.rows.values()], onsuccess: null as (() => void) | null };
+                queueMicrotask(() => read.onsuccess?.());
+                return read;
+              },
+              put: (value: { id: string }) => void data.rows.set(value.id, structuredClone(value)),
+            };
+          },
         };
         this.upgrades.push(this.version);
         request.onupgradeneeded?.({ oldVersion: this.version });
         this.version = version;
+        // The open succeeds once the versionchange transaction has ended: after the upgrade's own requests.
+        queueMicrotask(() => request.onsuccess?.());
+        return;
       }
       request.onsuccess?.();
     });
@@ -291,22 +306,38 @@ describe('openLocalDb against a fake IndexedDB', () => {
     }
   });
 
-  it('upgrades a version-2 database by adding the two stores, and keeps the rows it holds', async () => {
+  it('upgrades a version-2 database by adding the two stores, and keeps the rows it holds (as candidates)', async () => {
     const factory = versionTwo();
     const opened = await open(factory);
     expect(factory.upgrades).toEqual([2]);
     expect(Object.keys(factory.db.shape()).slice(5)).toEqual(['trace_points', 'saved_walks']);
-    expect(await opened.db.get('houses', 'h1')).toEqual({ id: 'h1', label: 'Kept' });
+    expect(await opened.db.get('houses', 'h1')).toEqual({ id: 'h1', kind: 'house', label: 'Kept', checklist: {}, deleted: false, syncVersion: 0, dirty: false });
   });
 
-  it('does not upgrade a database that is already at version 3', async () => {
+  it('does not upgrade a database that is already at version 4', async () => {
     const factory = versionTwo();
     await open(factory);
     const again = new FakeFactory();
     again.db = factory.db;
-    again.version = 3;
+    again.version = 4;
     await open(again);
     expect(again.upgrades).toEqual([]);
+  });
+
+  it('upgrades a version-3 database in place: its houses become candidates before the open succeeds (kinds step 3)', async () => {
+    const factory = versionTwo();
+    await open(factory);
+    const houses = factory.db.stores.get('houses')!;
+    houses.rows.set('h1', { id: 'h1', label: 'Sea View', lat: 13.05, lon: 80.28, status: 'NEW', price: 1250000, priceType: 'SALE', bedrooms: 3, checklist: {}, deleted: false, syncVersion: 2, dirty: true });
+    const again = new FakeFactory();
+    again.db = factory.db;
+    again.version = 3;
+    const opened = await open(again);
+    expect(again.upgrades).toEqual([3]);
+    expect(await opened.db.get('houses', 'h1')).toEqual({
+      id: 'h1', kind: 'house', label: 'Sea View', lat: 13.05, lon: 80.28, status: 'NEW', money: { amount: 1250000, cadence: 'once' },
+      extras: { bedrooms: 3 }, checklist: {}, deleted: false, syncVersion: 2, dirty: true,
+    });
   });
 
   it('falls back to memory when the browser refuses to open (private browsing, site data off)', async () => {
