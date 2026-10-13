@@ -459,7 +459,9 @@
     /*
      * The heading (its 0.75rem padding and one line of --text-xl) and the counters (0.75rem above, two rows of a
      * --text-lg number with its caption on one line, 0.5rem above and below each, and three 1px rules), in rem so it
-     * follows the text size. Indic scripts have taller lines (--leading-indic); narrow pages wrap captions (below).
+     * follows the text size. Indic scripts have taller lines (--leading-indic) and longer captions: in Tamil a first-row
+     * caption (நிராகரித்தவை) does not fit beside its number in the 3 + 2 strip and goes under it (the strip 117px, not 96px,
+     * on 320-384px pages), so the Indic reserve holds one more caption line (--text-xs at 1.7), the same in hi, ta and te.
      */
     --map-peek: calc(0.75rem + 1.375rem * 1.25 + 0.75rem + 2 * (1rem + 1.125rem * 1.5) + 3px);
     display: grid;
@@ -470,7 +472,7 @@
   }
 
   .map-wrap:is(:lang(hi), :lang(ta), :lang(te)) {
-    --map-peek: calc(0.75rem + 1.375rem * 1.45 + 0.75rem + 2 * (1rem + 1.125rem * 1.7) + 3px);
+    --map-peek: calc(0.75rem + 1.375rem * 1.45 + 0.75rem + 2 * (1rem + 1.125rem * 1.7) + 0.75rem * 1.7 + 3px);
   }
 
   .map,

@@ -227,6 +227,11 @@ describe('MapPage: the phone layout is sized in CSS (S4b-BL-49)', () => {
     expect(phone).toContain('grid-template-rows: minmax(var(--map-floor), 1fr) auto auto;');
   });
 
+  it('reserves in Hindi, Tamil and Telugu one more caption line, as a Tamil caption wraps under its number', () => {
+    // Tamil, 360x740 (S4b-BL-245, 2026-10-13): the strip is 117px, not 96px; without the line the counters ended 10px under the bar.
+    expect(phone).toMatch(/\.map-wrap:is\(:lang\(hi\), :lang\(ta\), :lang\(te\)\) \{\s*--map-peek: calc\([^;]*\* 1\.7\) \+ 0\.75rem \* 1\.7 \+ 3px\);/);
+  });
+
   it('reserves the control corner, credits open, from the first frame (no shift when the style\'s credits arrive)', () => {
     expect(phone).toMatch(/\.maplibregl-ctrl-bottom-right\s*\{\s*left: 0;\s*\}/);
     expect(phone).toMatch(/@media \(min-height: 501px\) \{\s*:host ::ng-deep \.maplibregl-ctrl-bottom-right\s*\{\s*min-height: 216px;/);
