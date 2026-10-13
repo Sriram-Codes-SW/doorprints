@@ -22,6 +22,7 @@ import androidx.compose.runtime.Composable
 import app.doorprints.shared.model.Checklist
 import app.doorprints.shared.model.Criterion
 import app.doorprints.shared.model.HouseStatus
+import app.doorprints.shared.model.KindLabels
 import app.doorprints.shared.model.RoomType
 import app.doorprints.shared.model.AnswerStatus
 import app.doorprints.shared.model.QuestionCategory
@@ -40,15 +41,20 @@ import org.jetbrains.compose.resources.stringResource
  * (`HouseStatus.labelRes`) for the Hunt notification, with the same text (`StringParityTest`).
  */
 
-/** Translated label of a status (`status_*`). */
+/**
+ * The Compose string a kind label names (kinds PR 3, S4b-BL-207: [KindLabels] in `:shared` gives the key, as the kind
+ * file does). A key that is not a string of `:ui` fails at once (`KindLabelsScreensTest` checks every one).
+ */
+fun kindStringResource(key: String): StringResource =
+    Res.allStringResources[key] ?: error("No Compose string '$key' for a kind label")
+
+private val STATUS_RESOURCES: Map<HouseStatus, StringResource> by lazy {
+    HouseStatus.entries.associateWith { kindStringResource(KindLabels.HOUSE.status(it)) }
+}
+
+/** Translated label of a status (`status_*`): the house kind's, through the resolver (S4b-BL-207). */
 val HouseStatus.labelResource: StringResource
-    get() = when (this) {
-        HouseStatus.NEW -> Res.string.status_NEW
-        HouseStatus.SHORTLISTED -> Res.string.status_SHORTLISTED
-        HouseStatus.REJECTED -> Res.string.status_REJECTED
-        HouseStatus.TAKEN -> Res.string.status_TAKEN
-        HouseStatus.NOT_CHOSEN -> Res.string.status_NOT_CHOSEN
-    }
+    get() = STATUS_RESOURCES.getValue(this)
 
 /** Translated name of a room type (`room_type_*`, slice 1c): a room's name when it has none of its own. */
 val RoomType.labelResource: StringResource
@@ -138,20 +144,9 @@ val PHOTO_TAG_LABELS: Map<String, StringResource> = mapOf(
  */
 object ChecklistResources {
     val items: Map<String, StringResource> = Checklist.keys.associateWith { key ->
-        when (key) {
-            "water" -> Res.string.check_water
-            "power" -> Res.string.check_power
-            "parking" -> Res.string.check_parking
-            "sunlight" -> Res.string.check_sunlight
-            "ventilation" -> Res.string.check_ventilation
-            "noise" -> Res.string.check_noise
-            "security" -> Res.string.check_security
-            "maintenance" -> Res.string.check_maintenance
-            "neighbourhood" -> Res.string.check_neighbourhood
-            "commute" -> Res.string.check_commute
-            // A key added to :shared must get a translated label here first (ModelLabelsTest checks this).
-            else -> error("No label for checklist key '$key'")
-        }
+        // The house kind's label, through the resolver (S4b-BL-207). A key added to :shared must get a translated
+        // label in the kind first (ModelLabelsTest and KindLabelsScreensTest check this).
+        kindStringResource(KindLabels.HOUSE.check(key) ?: error("No label for checklist key '$key'"))
     }
 }
 

@@ -1,0 +1,46 @@
+{
+  "spec": "android/shared/src/androidHostTest/kotlin/app/doorprints/shared/model/KindLabelsVectorsTest.kt",
+  "gradle": [
+    ":shared:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.shared.model.KindLabelsVectorsTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindLabels.kt",
+      "find": "        if (ref !in keys) return null",
+      "replace": "",
+      "expect": "everyCaseResolvesToThePinnedKeyAndVisibility"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindLabels.kt",
+      "find": "        val key = cadence?.let { byCadence[\"$ref@$it\"] } ?: keys[ref]",
+      "replace": "        val key = keys[ref]",
+      "expect": "everyCaseResolvesToThePinnedKeyAndVisibility"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindLabels.kt",
+      "find": "        if (ref !in keys || ref in hidden) return false",
+      "replace": "        if (ref !in keys) return false",
+      "expect": "aHiddenSectionHidesItsFieldsAndAHiddenFieldKeepsItsLabel"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindLabels.kt",
+      "find": "        return section == null || isVisible(\"section.$section\")",
+      "replace": "        return true",
+      "expect": "aHiddenSectionHidesItsFieldsAndAHiddenFieldKeepsItsLabel"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindLabels.kt",
+      "find": "\"field.money\" to \"house_price_sale\"",
+      "replace": "\"field.money\" to \"house_buy\"",
+      "expect": "theResolvedLabelsShowTodaysWordsInTheFourLanguages"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindLabels.kt",
+      "find": "        fun of(kind: String): KindLabels? = if (kind == HOUSE.kind) HOUSE else null",
+      "replace": "        fun of(kind: String): KindLabels? = HOUSE",
+      "expect": "everyCaseResolvesToThePinnedKeyAndVisibility"
+    }
+  ]
+}

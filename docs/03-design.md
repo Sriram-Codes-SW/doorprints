@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.117 |
+| Version | 0.118 |
 | Date | 2026-10-13 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -128,6 +128,7 @@
 | 0.115 | 2026-10-13 | Claude (Code), engineer | **The website writes its Drive sync file in the candidate shape, and a phone backup keeps a newer app's extras** (S4b-BL-246, S4b-BL-248; `feat/kinds-4b-sync-and-extras`; [10](10-sprint-log.md) v0.279, [06](06-test-plan.md) v0.222 TC-U-206, [schemas README](schemas/README.md) v1.35): §18.5's kinds step 4 finding brought up to date: the website's `sync/1` writer writes `candidates` and `candidateId` as the phone does (a row taken from another device's file keeps its shape on both stacks), and the phone's and the server's backups keep an unknown extra (`ExportHouse.extrasOther`, `BackupHouse.extrasOther`, read out of a candidate's `extras` and written back there after the known ones). |
 | 0.116 | 2026-10-13 | Claude (Code), engineer | §13.1: **the AI services refuse while AI is off** (S4b-BL-251, [10](10-sprint-log.md) v0.281, [06](06-test-plan.md) TC-U-207). `AiService` (web) and `AiStore` (phones) check the one source of truth for "AI is on" (`offReason()`, `off`) before they send anything, so a caller that forgets the screens' check cannot send a listing or a question out; the setup tests (*Test key*, *Test*) are not guarded. |
 | 0.117 | 2026-10-13 | Claude (Code), engineer | §18.4 door 2 and §18.5: **the viewing payload says `candidateId`** (S4b-BL-247; `feat/kinds-4c-viewing-candidate-id`; [10](10-sprint-log.md) v0.283, [06](06-test-plan.md) TC-U-208, [schemas README](schemas/README.md) v1.37 §6.6). Every writer writes a viewing record's candidate as `candidateId`; every reader reads `houseId` too (a payload stored on a device, in a Drive file or on a server before), so nothing becomes invisible; a payload with both keys is a bad row. The server reads both keys in its one query (`coalesce`) instead of a Flyway migration, so no stored row is rewritten. |
+| 0.118 | 2026-10-13 | Claude (Code), engineer | New §18.7: **the label and visibility resolver** (kinds PR 3, S4b-BL-207; [06](06-test-plan.md) TC-U-209): `KindLabels` in `:shared` (the phone and the iPhone) and its twin `core/kind-labels.ts` on the website, a copy of `house.json`'s keys checked against the file, pinned by the new `docs/schemas/kinds/kind-label-vectors.json`; the status and checklist tables the screens read go through it, nothing visible changes. The other call sites move with the renderer (S4b-BL-255, with S4b-BL-208). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -1988,7 +1989,8 @@ the default unless the owner objects.
 ## 18. Kinds: one candidate concept described by a kind file (ADR-36)
 
 The decision of [14](14-lead-backlog-and-handoff.md) N21 (owner, 2026-10-10, revised the same day because there are
-no users yet), designed here before any code: kinds PR 1, S4b-BL-205. Nothing reads the kind file at run time yet.
+no users yet), designed here before any code: kinds PR 1, S4b-BL-205. Since kinds PR 3 (S4b-BL-207, §18.7) the apps
+read the kind's labels at run time through a resolver that holds a checked copy of the file.
 
 ### 18.1 The decision
 
@@ -2176,3 +2178,39 @@ day's size (among them `HouseEditScreen.kt` 1,779, `MapScreen.kt` 1,519, `Common
 (`tools/check-floor.mjs`) reports a raised or added entry, a raised limit or a new table as a loosening. It runs in
 `tools/check.sh` on every branch and in the *Security* workflow on every pull request ([06](06-test-plan.md) TC-U-199).
 PR 4 shrinks the four big files and lowers their entries.
+
+### 18.7 The label and visibility resolver (kinds PR 3, S4b-BL-207)
+
+**What it is.** `KindLabels` answers, for a kind, a *ref* and, where it matters, the candidate's money cadence, which
+string a screen shows and whether the kind shows that place at all: `resolve("field.money", "month")` is the phone's
+*Rent ₹/month* (`house_price_rent`), `section("details")` is the website's *Details* and no text on the phone, a field in
+a section the kind hides is hidden, and a ref the kind does not have resolves to nothing (the caller shows nothing). A ref
+is `kind.<id>`, `status.<NAME>`, `section.<id>`, `field.<id>`, `cadence.<id>` or `check.<key>`, the ids of
+`kind-vectors.json`; a cadence is an argument, never part of the ref. One class in `:shared` (`model/KindLabels.kt`, the
+Android keys; the iPhone app reads it through `:ui`) and its twin on the website (`core/kind-labels.ts`, the web keys,
+typed as translation keys). The house is the only kind (`KindLabels.of("house")`, `kindLabels('house')`; any other id is
+none).
+
+**Where the data comes from.** Each stack holds a copy of `house.json`'s keys, cadence keys, sections and hidden places,
+as the default questions are copied (§18.1: built in, one test per stack reads the file): `KindLabelsVectorsTest` and
+`kind-labels.spec.ts` fail when the copy and the file differ. Reading the JSON file at run time was the alternative; it
+would put a JSON parse and a file into the iPhone and website bundles for no gain while kinds are built in, and the
+copies cannot drift.
+
+**The safety test, written first.** `docs/schemas/kinds/kind-label-vectors.json` (format
+`doorprints-kind-label-vectors/1`, 75 cases) pins, per case, the web key, the Android key and the visibility, and names the
+label of `kind-vectors.json` whose words in en, hi, ta and te the key must show; the keys were checked one by one
+against the call sites on main (each is the key a screen or copy reads today). It was committed with two tests before
+the resolver existed: the website's dictionaries and status and checklist tables (`kind-labels.spec.ts`) and `:ui`'s
+Compose strings, `HouseStatus.labelResource` and `ChecklistResources` (`KindLabelsScreensTest`) against it.
+
+**What reads it (the minimal wiring).** The four tables every screen reads statuses and checklist criteria through: the
+website's `STATUS_KEY` and `CHECKLIST` (`core/models.ts`), the phone's `HouseStatus.labelResource` and
+`ChecklistResources` (`:ui` `ModelLabels.kt`, through `kindStringResource`, which finds the Compose string by name in the
+generated `Res.allStringResources`). The map, the list and its filters, the house page and form, Compare, the copies and
+the Ask page therefore show the kind's words, the same ones as before. **Not moved here**, on purpose: the field and
+section labels written into the form, the house page, Compare, the copies and the import preview. Each is a
+hand-written call site that the renderer of PR 4 (S4b-BL-208) replaces; moving them twice would be churn, so they move
+with it (S4b-BL-255). No string, screenshot baseline or `dictionaries.spec` case changed. The two stacks' different words
+for one field (*Price (₹)* and *Price ₹*) stay as they are (§18.5): merging them is a visible change for later, not for
+this pull request.

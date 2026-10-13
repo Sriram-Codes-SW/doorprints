@@ -1,0 +1,146 @@
+/*
+ * Copyright 2026 Sriram (Sriram-Codes-SW)
+ *
+ * This file is part of Doorprints.
+ *
+ * Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+ * Public License as published by the Free Software Foundation, version 3 of the License.
+ *
+ * Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+ * the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+import type { TKey } from '../i18n/en';
+
+/** One place a kind labels: the translation key (`null`: the website shows no text there) and whether the kind shows it. */
+export interface KindLabel {
+  readonly key: TKey | null;
+  readonly visible: boolean;
+}
+
+/** What a kind file says about its labels, as {@link KindLabels} reads it. */
+export interface KindLabelTable {
+  /** The kind id (`house`). */
+  readonly kind: string;
+  /** Every ref of the kind and its key (`null`: no text on the website). */
+  readonly keys: Readonly<Record<string, TKey | null>>;
+  /** `field.<id>@<cadence>` to the key a field shows while the candidate's money has that cadence. */
+  readonly byCadence: Readonly<Record<string, TKey>>;
+  /** Each field's section id. */
+  readonly sections: Readonly<Record<string, string>>;
+  /** The refs the kind keeps but hides (`visible: false` in the kind file). */
+  readonly hidden?: readonly string[];
+}
+
+const FIELD = 'field.';
+const has = (o: object, k: string): boolean => Object.prototype.hasOwnProperty.call(o, k);
+
+/**
+ * The label and visibility resolver of a kind (kinds PR 3, S4b-BL-207; docs/03 ADR-36 §18.7), the twin of `:shared`'s
+ * `KindLabels`: which translation key a screen shows for a place of the candidate, and whether the kind shows that
+ * place. A place is a ref, as `docs/schemas/kinds/kind-vectors.json` names them (`kind.new`, `status.NEW`,
+ * `section.cost`, `field.money`, `cadence.month`, `check.water`); a money cadence is an argument. A ref the kind does not
+ * have resolves to `undefined`, and the caller shows nothing. `kind-labels.spec.ts` reads `house.json` and
+ * `kind-label-vectors.json`, so the copy below cannot drift.
+ */
+export class KindLabels {
+  private readonly hidden: ReadonlySet<string>;
+
+  constructor(private readonly table: KindLabelTable) {
+    this.hidden = new Set(table.hidden ?? []);
+  }
+
+  get kind(): string {
+    return this.table.kind;
+  }
+
+  /** Every ref the kind labels. */
+  get refs(): string[] {
+    return Object.keys(this.table.keys);
+  }
+
+  /** The label of `ref`, the `cadence`'s one where the kind has it; `undefined` when the kind has no such place. */
+  resolve(ref: string, cadence?: string | null): KindLabel | undefined {
+    if (!has(this.table.keys, ref)) return undefined;
+    const alt = cadence ? `${ref}@${cadence}` : '';
+    const key = alt && has(this.table.byCadence, alt) ? this.table.byCadence[alt] : this.table.keys[ref];
+    return { key, visible: this.isVisible(ref) };
+  }
+
+  /** Whether the kind shows `ref`: a place it has and does not hide, and for a field, in a section it shows. */
+  isVisible(ref: string): boolean {
+    if (!has(this.table.keys, ref) || this.hidden.has(ref)) return false;
+    const id = ref.startsWith(FIELD) ? ref.slice(FIELD.length) : '';
+    return !id || !has(this.table.sections, id) || this.isVisible(`section.${this.table.sections[id]}`);
+  }
+
+  /** A field's label (`field.<id>`), with the money cadence when the screen knows it. */
+  field(id: string, cadence?: string | null): KindLabel | undefined {
+    return this.resolve(FIELD + id, cadence);
+  }
+
+  /** A section's heading (`section.<id>`). */
+  section(id: string): KindLabel | undefined {
+    return this.resolve(`section.${id}`);
+  }
+
+  /** A status's label: every kind labels the five fixed names (door 8), so this always has a key. */
+  status(status: string): TKey {
+    const key = has(this.table.keys, `status.${status}`) ? this.table.keys[`status.${status}`] : null;
+    if (!key) throw new Error(`${this.kind} labels no ${status}`);
+    return key;
+  }
+
+  /** A built-in checklist criterion's label, `undefined` for a key the kind does not have. */
+  check(key: string): TKey | undefined {
+    return (has(this.table.keys, `check.${key}`) && this.table.keys[`check.${key}`]) || undefined;
+  }
+}
+
+const COST_FIELDS = ['deposit', 'depositMonths', 'maintenance', 'maintenanceIncluded', 'brokerage', 'brokerageMonths',
+  'lockInMonths', 'noticeMonths', 'availableFrom', 'myOffer', 'agreedPrice'] as const;
+const DETAIL_FIELDS = ['label', 'status', 'rating', 'money', 'bedrooms', 'areaSqft', 'floor', 'address', 'street',
+  'locality', 'contactName', 'contactPhone', 'brokerId', 'listingUrl', 'notes'];
+const CHECKS = ['water', 'power', 'parking', 'sunlight', 'ventilation', 'noise', 'security', 'maintenance',
+  'neighbourhood', 'commute'] as const;
+
+/** Houses, the first and so far only kind (`docs/schemas/kinds/house.json`, web keys). */
+export const HOUSE_LABELS = new KindLabels({
+  kind: 'house',
+  keys: {
+    'kind.new': 'house.newTitle', 'kind.many': 'map.stats.houses', 'kind.delete': 'house.delete',
+    'status.NEW': 'status.NEW', 'status.SHORTLISTED': 'status.SHORTLISTED', 'status.REJECTED': 'status.REJECTED',
+    'status.TAKEN': 'status.TAKEN', 'status.NOT_CHOSEN': 'status.NOT_CHOSEN',
+    'section.details': 'house.details', 'section.cost': 'house.cost', 'section.rooms': 'rooms.heading',
+    'section.questions': 'questions.title', 'section.viewings': 'viewings.cardHeading', 'section.moveIn': 'movein.heading',
+    'section.areaNotes': 'areaNotes.heading', 'section.distances': 'distances.heading', 'section.location': 'house.location',
+    'section.walks': 'trace.house.title', 'section.checklist': 'house.checklist', 'section.visits': 'house.visits',
+    'section.photos': 'house.photos',
+    'field.label': 'house.name', 'field.status': 'house.status', 'field.rating': 'house.rating', 'field.money': 'house.price',
+    'field.address': 'house.address', 'field.street': 'house.street', 'field.locality': 'house.locality',
+    'field.contactName': 'house.contactName', 'field.contactPhone': 'house.contactPhone', 'field.brokerId': 'house.broker',
+    'field.listingUrl': 'house.listingUrl', 'field.notes': 'house.notes', 'field.location': 'house.location',
+    'field.locationSource': 'house.approx', 'field.bedrooms': 'house.bhk', 'field.areaSqft': 'house.areaSqft',
+    'field.floor': 'house.floor',
+    ...Object.fromEntries(COST_FIELDS.map((f) => [`field.${f}`, `cost.${f}` as const])),
+    'cadence.month': 'price.rent', 'cadence.once': 'price.sale',
+    ...Object.fromEntries(CHECKS.map((c) => [`check.${c}`, `check.${c}` as const])),
+  },
+  byCadence: {},
+  sections: {
+    ...Object.fromEntries(DETAIL_FIELDS.map((f) => [f, 'details'])),
+    ...Object.fromEntries(COST_FIELDS.map((f) => [f, 'cost'])),
+    location: 'location', locationSource: 'location',
+  },
+});
+
+/** The built-in kind with this id, `undefined` for one this build does not have. */
+export function kindLabels(kind: string): KindLabels | undefined {
+  return kind === HOUSE_LABELS.kind ? HOUSE_LABELS : undefined;
+}
