@@ -55,6 +55,17 @@ class HouseListSearchTest {
         assertFalse(found("floor 5", read))
     }
 
+    /**
+     * The safety test of kinds PR 6 (S4b-BL-210), written before typed extras reached search: a house's search values,
+     * in order and in every language, are exactly main's (the twin of the website's `house-pins.spec.ts`).
+     */
+    @Test
+    fun aHouseIsSearchedByWhatMainSearchedInEveryLanguage() {
+        val words = listOf("Gulmohar Residency", "Plot 7, Sector 62", "Noida", "Corner flat", "Anita", "Ravi, Ravi Estates", "Balcony room", "Water cuts", "floor 4")
+        val local = mapOf("en" to emptyList(), "hi" to listOf("मंज़िल 4"), "ta" to listOf("தளம் 4"), "te" to listOf("అంతస్తు 4"))
+        for ((language, floor) in local) assertEquals(words + floor, house.searchFields("Ravi, Ravi Estates", language, listOf("Water cuts")), language)
+    }
+
     @Test
     fun anExtraThisAppDoesNotKnowIsNeverSearched() {
         val dto: HouseDto = house.toDto()
