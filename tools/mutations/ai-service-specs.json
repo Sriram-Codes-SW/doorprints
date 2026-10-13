@@ -1,0 +1,41 @@
+{
+  "spec": [
+    "web/src/app/core/ai.service.requests.spec.ts",
+    "web/src/app/core/ai.service.spec.ts"
+  ],
+  "mutations": [
+    { "file": "web/src/app/core/ai.service.ts", "find": "'/api/ai/status'", "replace": "'/api/ai/state'", "expect": "reads /api/ai/status once" },
+    { "file": "web/src/app/core/ai.service.ts", "find": "      error: () => this.status.set(null),", "replace": "      error: () => undefined,", "expect": "a status that fails" },
+    { "file": "web/src/app/core/ai.service.ts", "find": "      this.status.set(null);\n      return;", "replace": "      return;", "expect": "disconnecting forgets it" },
+    { "file": "web/src/app/core/ai.service.ts", "find": "'/api/ai/extract-listing'", "replace": "'/api/ai/extract'", "expect": "extractListing posts" },
+    { "file": "web/src/app/core/ai.service.ts", "find": "'/api/ai/extract-listing', { text })", "replace": "'/api/ai/extract-listing', { text: text.trim().slice(0, 40) })", "expect": "extractListing posts" },
+    { "file": "web/src/app/core/ai.service.ts", "find": "'/api/ai/ask'", "replace": "'/api/ai/asks'", "expect": "ask without filters" },
+    { "file": "web/src/app/core/ai.service.ts", "find": "filters ? { question, filters } : { question }", "replace": "{ question, filters }", "expect": "ask without filters" },
+    { "file": "web/src/app/core/ai.service.ts", "find": "filters ? { question, filters } : { question }", "replace": "{ question }", "expect": "ask with filters" },
+    { "file": "web/src/app/core/ai.service.ts", "find": "'/api/ai/plan-visits'", "replace": "'/api/ai/plan'", "expect": "planVisits posts" },
+    { "file": "web/src/app/core/ai.service.ts", "find": "'/api/ai/plan-visits', request)", "replace": "'/api/ai/plan-visits', { ...request, maxStops: 8 })", "expect": "planVisits posts" },
+    { "file": "web/src/app/core/ai.service.ts", "find": "    if (s?.offForDevice) return 'device';\n", "replace": "", "expect": "says when the owner has not turned AI on for this device" },
+    { "file": "web/src/app/core/ai.service.ts", "find": "    if (!s?.enabled) return 'server';\n    return this.optInState() ? null : 'optIn';", "replace": "    if (!s?.enabled) return 'server';\n    return null;", "expect": "with the browser switch off" },
+    { "file": "web/src/app/core/ai.service.ts", "find": "if (this.usesOwnKey()) return defer(() => this.onDevice.extractListing(this.ownModel(), text));", "replace": "if (!this.usesOwnKey()) return defer(() => this.onDevice.extractListing(this.ownModel(), text));", "expect": "extract and plan go to this browser" },
+    { "file": "web/src/app/core/ai.service.ts", "find": "if (this.usesOwnKey()) return defer(() => this.onDevice.planVisits(this.ownModel(), request));", "replace": "if (!this.usesOwnKey()) return defer(() => this.onDevice.planVisits(this.ownModel(), request));", "expect": "extract and plan go to this browser" },
+    { "file": "web/src/app/core/ai.service.ts", "find": "defer(() => this.onDevice.ask(this.ownModel(), question, filters))", "replace": "defer(() => this.onDevice.ask(this.ownModel(), question, undefined))", "expect": "ask passes its filters on" },
+    { "file": "web/src/app/core/ai.service.ts", "find": "    if (err.status === 503) return { key: 'ai.providerDown' };\n", "replace": "", "expect": "503 says the AI service is down" },
+    { "file": "web/src/app/core/ai.service.ts", "find": "    if (err.status === 404) return { key: 'ai.disabled' };\n", "replace": "", "expect": "404 (an older server" },
+    { "file": "web/src/app/core/ai.service.ts", "find": "Number.isFinite(seconds) ? seconds : 60", "replace": "seconds", "expect": "429 says to wait" },
+    { "file": "web/src/app/core/ai.service.ts", "find": "err.headers.get('Retry-After')", "replace": "err.headers.get('Retry-After-Seconds')", "expect": "429 says to wait" },
+    { "file": "web/src/app/core/ai.service.ts", "find": "      if (code === 'AI_OFF_FOR_DEVICE') return { key: 'ai.offForDevice' };\n", "replace": "", "expect": "403 with the owner" },
+    { "file": "web/src/app/core/ai.service.ts", "find": "      if (code === 'AI_PAUSED') return { key: 'ai.disabled' };\n", "replace": "", "expect": "403 with the owner" },
+    { "file": "web/src/app/core/ai.service.ts", "find": "    if (err.kind === 'rateLimited') return { key: 'ai.rateLimited', params: { s: err.retryAfter } };\n", "replace": "", "expect": "has words for each kind" },
+    { "file": "web/src/app/core/ai.service.ts", "find": "    if (err.kind === 'modelNotFound') return { key: 'ai.modelNotFound' };\n", "replace": "", "expect": "has words for each kind" },
+    { "file": "web/src/app/core/ai.service.ts", "find": "    if (err.kind === 'blocked') return { key: 'ai.blocked' };\n", "replace": "", "expect": "has words for each kind" },
+    { "file": "web/src/app/core/ai.service.ts", "find": "    if (err.kind === 'quotaExhausted') return { key: 'ai.quotaExhausted' };\n", "replace": "", "expect": "has words for each kind" },
+    { "file": "web/src/app/core/ai.service.ts", "find": "if (err.kind === 'keyRejected') return where ? { key: 'ai.keyRejectedHost', params: { host: where } } : { key: 'ai.keyRejected' };", "replace": "if (err.kind === 'keyRejected') return { key: 'ai.keyRejected' };", "expect": "a rejected key names the saved host" },
+    { "file": "web/src/app/core/ai.service.ts", "find": "return config.kind === 'gemini' ? '' : aiHostOf(config);", "replace": "return aiHostOf(config);", "expect": "is the AI being down, not a host" },
+    { "file": "web/src/app/core/ai.service.ts", "find": "    case 'device':\n      return { key: 'ai.offForDevice' };\n", "replace": "", "expect": "has words for every reason" },
+    { "file": "web/src/app/core/ai.service.ts", "find": "[0-9a-fA-F-]{36}", "replace": "[0-9a-fA-F-]{3,40}", "expect": "only a full 36-character id" },
+    { "file": "web/src/app/core/ai.service.ts", "find": "[0-9a-fA-F-]{36}", "replace": "[0-9a-f-]{36}", "expect": "cuts an answer at each" },
+    { "file": "web/src/app/core/ai.service.ts", "find": "if (m.index > last)", "replace": "if (m.index >= last)", "expect": "two markers in a row" },
+    { "file": "web/src/app/core/ai.service.ts", "find": "if (last < answer.length)", "replace": "if (last <= answer.length)", "expect": "a marker alone" },
+    { "file": "web/src/app/core/ai.service.ts", "find": "last = m.index + m[0].length;", "replace": "last = m.index + m[0].length - 1;", "expect": "cuts an answer at each" }
+  ]
+}
