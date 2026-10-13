@@ -19,6 +19,7 @@
 package app.doorprints.shared.sync
 
 import app.doorprints.data.toEntity
+import app.doorprints.drive.sync.SyncRows
 import app.doorprints.shared.api.HouseDto
 import app.doorprints.shared.api.PhotoChangeDto
 import app.doorprints.shared.api.VisitDto
@@ -168,11 +169,16 @@ class SyncVectorsTest {
             fun rows(kind: SyncKind) = from.getValue(kind.key).jsonArray.map { it.jsonObject }
             for ((row, before) in file.rows(SyncKind.HOUSES).zip(rows(SyncKind.HOUSES), ::Pair)) {
                 assertTrue(c.name(), "kind" in row.json)
-                assertEquals(c.name(), read(HouseDto.serializer(), BackupWire.candidateOfHouse(before)), read(HouseDto.serializer(), row.json))
+                val house = read(HouseDto.serializer(), row.json)
+                assertEquals(c.name(), read(HouseDto.serializer(), BackupWire.candidateOfHouse(before)), house)
+                // This phone's writer gives the website's row byte for byte (review follow-up of #295).
+                assertEquals("${c.name()}: ${row.key}", row.json.toString(), SyncRows.house(house, row.stamp.by).json.toString())
             }
             for ((row, before) in file.rows(SyncKind.VISITS).zip(rows(SyncKind.VISITS), ::Pair)) {
                 assertFalse(c.name(), "houseId" in row.json)
-                assertEquals(c.name(), read(VisitDto.serializer(), before), read(VisitDto.serializer(), row.json))
+                val visit = read(VisitDto.serializer(), row.json)
+                assertEquals(c.name(), read(VisitDto.serializer(), before), visit)
+                assertEquals("${c.name()}: ${row.key}", row.json.toString(), SyncRows.visit(visit, row.stamp.by).json.toString())
             }
             for ((row, before) in file.rows(SyncKind.PHOTOS).zip(rows(SyncKind.PHOTOS), ::Pair)) {
                 assertFalse(c.name(), "houseId" in row.json)
@@ -188,6 +194,10 @@ class SyncVectorsTest {
         val typeless = read(HouseDto.serializer(), houses[1].json).toEntity()
         assertEquals(18_000L, typeless.price)
         assertNull(typeless.priceType)
+        // A rent with no amount yet: money with its cadence alone, read as a rent without a price.
+        val rentSoon = read(HouseDto.serializer(), houses[3].json).toEntity()
+        assertNull(rentSoon.price)
+        assertEquals("RENT", rentSoon.priceType)
     }
 
     /** A device holding the case's `local` rows (stamps only: the merge reads nothing else). */
