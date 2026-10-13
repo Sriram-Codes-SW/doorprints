@@ -60,11 +60,13 @@ class KindAskVectorsTest {
 
     @Test
     void theAskPromptNeutralisesATagInAValueOrTheQuestion() {
-        var ask = V.get("ask");
-        var docs = new ArrayList<Document>();
-        for (var i : ask.get("documents")) docs.add(doc(V.get("documents").get(i.asInt())));
-        var built = AskPrompts.build(ask.get("question").asString(), docs, ask.get("nonce").asString());
-        assertThat(built.user()).isEqualTo(ask.get("user").asString());
+        for (var name : List.of("ask", "askTag")) {
+            var ask = V.get(name);
+            var docs = new ArrayList<Document>();
+            for (var i : ask.get("documents")) docs.add(doc(V.get("documents").get(i.asInt())));
+            var built = AskPrompts.build(ask.get("question").asString(), docs, ask.get("nonce").asString());
+            assertThat(built.user()).as(name).isEqualTo(ask.get("user").asString());
+        }
     }
 
     /** The pgvector filter of an Ask request, read over one document's metadata as the store compares it. */

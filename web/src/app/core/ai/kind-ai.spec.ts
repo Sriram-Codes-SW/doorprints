@@ -88,6 +88,11 @@ describe('kind-aware AI on the website (kinds PR 7, S4b-BL-211; kind-ai-vectors.
       return { id: h.id, text: aiText(askView(h, true), true) };
     });
     expect(askPrompt(V.ask.question, docs, V.ask.nonce).user).toBe(V.ask.user);
+    const tagged = V.askTag.documents.map((i: number) => {
+      const h = aiHouse(docCase(i).candidate);
+      return { id: h.id, text: aiText(askView(h, true), true) };
+    });
+    expect(askPrompt(V.askTag.question, tagged, V.askTag.nonce).user).toBe(V.askTag.user);
   });
 
   it('an Ask filter on a field the kind hides never keeps the school; with the flag off it is a house', () => {

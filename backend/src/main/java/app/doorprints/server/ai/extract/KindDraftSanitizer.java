@@ -96,8 +96,12 @@ public final class KindDraftSanitizer {
         if (label == null) {
             var where = locality != null ? locality : street;
             label = where == null ? k.noun() : k.noun() + " in " + where;
-            if (label.length() > DraftSanitizer.LABEL_MAX) label = label.substring(0, DraftSanitizer.LABEL_MAX);
             warnings.add("label: generated because the model returned none");
+            // A long place makes a long name: cut with the warning every other field gives (review of #313).
+            if (label.length() > DraftSanitizer.LABEL_MAX) {
+                label = label.substring(0, DraftSanitizer.LABEL_MAX);
+                warnings.add("label: truncated to " + DraftSanitizer.LABEL_MAX + " characters");
+            }
         }
         return new HouseDraft(label, address, street, locality, null, null, null, contactName, phone, url, notes,
                 List.of(), List.copyOf(warnings), extras.isEmpty() ? null : extras);

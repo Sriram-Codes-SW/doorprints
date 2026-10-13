@@ -100,6 +100,12 @@
       "find": "const SCHOOL: BuiltInKind = { id: 'school', labels: SCHOOL_LABELS, keys: SCHOOL_KEYS, fields: SCHOOL_FIELDS, extracts: true };",
       "replace": "const SCHOOL: BuiltInKind = { id: 'school', labels: SCHOOL_LABELS, keys: SCHOOL_KEYS, fields: SCHOOL_FIELDS, extracts: false };",
       "expect": "sends the school"
+    },
+    {
+      "file": "web/src/app/core/ai/kind-ai.ts",
+      "find": "      warnings.push(`label: truncated to ${LIMITS['label']} characters`);",
+      "replace": "",
+      "expect": "Extract prompt, schema and drafts"
     }
   ]
 }
