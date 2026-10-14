@@ -250,8 +250,8 @@ CI workflows (`.github/workflows/`): `backend.yml` (tests on PostGIS, SBOM, imag
 audit, Android dependency graph, manual ZAP), `shared-ios.yml` (`:shared` iOS compile on macOS), `codeql.yml`
 (CodeQL SAST) and `ai-evals.yml` (manual AI evaluation against a real model). Since 2026-09-23 the path-filtered
 workflows and `security.yml` run on a push to **any branch** and on pull requests to `main`; `codeql.yml` runs on a
-push to any branch (not on pull requests). Deploying and release signing stay on `main` (for signing, only while
-the workflow is unmodified until its secrets move to a `main`-only environment, [docs/07 §4](docs/07-secure-build-and-deploy.md#4-secrets-handling)).
+push to any branch (not on pull requests). Deploying and release signing stay on `main` (signing uses the `release`
+environment, restricted to `main` and tags, [docs/07 §4](docs/07-secure-build-and-deploy.md#4-secrets-handling)).
 Details: [docs/07 §1](docs/07-secure-build-and-deploy.md#1-pipeline-overview).
 
 ## Documentation
