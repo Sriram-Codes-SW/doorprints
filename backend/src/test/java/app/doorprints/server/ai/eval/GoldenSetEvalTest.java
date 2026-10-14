@@ -44,6 +44,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -146,6 +147,10 @@ class GoldenSetEvalTest {
     @Value("${app.ai.provider:aistudio}")
     String provider;
 
+    /** The kinds this server has available (KINDS_AVAILABLE; the house always): the school set needs {@code school} (S4b-BL-268). */
+    @Value("${app.kinds.available:house}")
+    List<String> kindsAvailable;
+
     @Value("${spring.ai.openai.base-url:unknown}")
     String baseUrl;
 
@@ -207,6 +212,17 @@ class GoldenSetEvalTest {
         var setName = env("AI_EVAL_SET", EvalSets.GOLDEN);
         evalSet = EvalSets.isGolden(setName) ? null : EvalSets.select(loaded, path, setName);
         if (evalSet != null) loaded = evalSet.golden();
+        // S4b-BL-268: a set of another kind is read by the server's kind-aware path, which only exists while the kind is
+        // available (KINDS_AVAILABLE=house,school). Without it every school would be refused or read as a house: a harness error.
+        boolean kindsRefused = false;
+        if (evalSet != null) {
+            var missing = evalSet.kinds().stream().filter(k -> !"house".equals(k) && !kindsAvailable.contains(k)).toList();
+            if (!missing.isEmpty()) {
+                kindsRefused = true;
+                errors.add("Eval set " + evalSet.name() + " needs the kinds " + String.join(", ", missing)
+                        + " in app.kinds.available (set KINDS_AVAILABLE=house," + String.join(",", missing) + "); this server has " + kindsAvailable);
+            }
+        }
         // AI_EVAL_CANARY (S4b-BL-237): one live canary of canaries.json; its eval-only seam is turned on here and off after
         // the test, the run is informational and the scorecard prints "CANARY: <name> expected drop seen / NOT seen".
         var canaryName = env("AI_EVAL_CANARY", Canaries.NONE);
@@ -250,7 +266,7 @@ class GoldenSetEvalTest {
         header.put("Time budget", budget.toMinutes() + " min");
 
         header.put("Golden set", "v" + loaded.version() + " (" + loaded.date() + "), " + path.normalize());
-        if (evalSet != null) header.put("Eval set", evalSet.headerValue() + " (fixtures of the golden set; not gated)");
+        if (evalSet != null) header.put("Eval set", evalSet.headerValue() + " (" + evalSet.fixturesNote() + ")");
         if (canary != null) {
             header.put("Canary", canary.name() + " (" + canary.kind() + "; not gated; types " + String.join(", ", canary.types())
                     + (canary.cases().isEmpty() ? "" : "; only " + canary.cases().size() + " cases: " + String.join(", ", canary.cases())) + ")");
@@ -288,7 +304,7 @@ class GoldenSetEvalTest {
             // A canary with a 'cases' key (no-wrapping) scores only the cases its seam can change.
             if (types.contains(type) && (canary == null || canary.runs(String.valueOf(testCase.get("id"))))) planned.add(testCase);
         }
-        if (canaryRefused) planned.clear(); // the seam was refused: nothing is run against it
+        if (canaryRefused || kindsRefused) planned.clear(); // the seam or the kinds were refused: nothing is run against it
         boolean timeStopped = false;
         try {
             writeReport(started, golden, results, new EvalScorer.Progress(0, planned.size(), false));
@@ -298,7 +314,7 @@ class GoldenSetEvalTest {
                 errors.add(addressRun.error());
                 planned.clear();
                 seeded = false;
-            } else if (!canaryRefused && (types.contains(ASK) || types.contains(PLAN))) seeded = seed(golden); // no calls for a refused canary
+            } else if (!canaryRefused && !kindsRefused && (types.contains(ASK) || types.contains(PLAN))) seeded = seed(golden); // no calls for a refused canary
             // Without fixtures and an index, ask/plan scores would only measure the seeding failure.
             if (!seeded) planned.removeIf(c -> !EXTRACT.equals(String.valueOf(c.get("type"))));
             // The scorecard is rewritten after every case, so a killed job still leaves one (S4b-BL-202).
@@ -425,6 +441,15 @@ class GoldenSetEvalTest {
         }
     }
 
+    /** The Extract request: the text, and the case's {@code kind} when it names one other than the house (S4b-BL-268). */
+    static Map<String, Object> extractBody(Map<String, Object> input) {
+        var body = new LinkedHashMap<String, Object>();
+        body.put("text", String.valueOf(input.get("text")));
+        var kind = input.get("kind");
+        if (kind != null && !"house".equals(String.valueOf(kind))) body.put("kind", String.valueOf(kind));
+        return body;
+    }
+
     private CaseResult run(Map<String, Object> testCase, GoldenSet golden) {
         var type = String.valueOf(testCase.get("type"));
         var input = GoldenSet.map(testCase.get("input"));
@@ -434,7 +459,7 @@ class GoldenSetEvalTest {
         long t0 = System.nanoTime();
         try {
             response = switch (type) {
-                case EXTRACT -> post("/api/ai/extract-listing", Map.of("text", String.valueOf(input.get("text"))));
+                case EXTRACT -> post("/api/ai/extract-listing", extractBody(input));
                 case ASK -> post("/api/ai/ask", input);
                 default -> post("/api/ai/plan-visits", input);
             };
