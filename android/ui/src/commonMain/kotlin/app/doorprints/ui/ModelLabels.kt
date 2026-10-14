@@ -70,6 +70,9 @@ fun KindLabels.sectionText(id: String): StringResource =
 fun KindLabels.refText(ref: String): StringResource =
     kindStringResource(checkNotNull(resolve(ref)?.key) { "$kind has no text for $ref" })
 
+/** A status's name in this kind's words (every kind labels the five fixed names): the screens that list statuses read it (S4b-BL-256). */
+fun KindLabels.statusText(status: HouseStatus): StringResource = kindStringResource(status(status))
+
 /**
  * The developer flag of the hidden schools kind (kinds PR 5, S4b-BL-209; `DevKinds` in `:shared`): false unless the app
  * provides true, which only an Android debug build made with `-Pdoorprints.devKinds=true` does (`BuildConfig.DEV_KINDS`);

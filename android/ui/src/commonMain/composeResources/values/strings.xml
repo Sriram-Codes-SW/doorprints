@@ -1767,4 +1767,31 @@
     <string name="delete_restore_aria">Restore %1$s</string>
     <string name="delete_deleted_on">Deleted %1$s</string>
     <string name="drive_delete_all_kinds">This deletes all kinds: houses, schools and every other space, not only the one you are in.</string>
+    <!-- S4b-BL-256, S4b-BL-259, S4b-BL-266, S4b-BL-277 (2026-10-14): the phone half of kinds PR 16: the house words left on a school's pages. The website's words where it has the key (school.titleDetails, school.notFound, school.saveFirstPhotos, school.walk*, school.areaNotesEmpty, school.placesEmpty), else the phone's house string with the school's noun. Hindi, Tamil and Telugu are under review. -->
+    <string name="school_details_title">School details</string>
+    <string name="school_not_found_title">School not found</string>
+    <string name="school_not_found">This school is no longer on this phone.</string>
+    <string name="school_default_label">New school</string>
+    <string name="school_default_label_street">School on %1$s</string>
+    <string name="school_discard_new_title">Discard this new school?</string>
+    <string name="school_delete_confirm_title">Delete this school?</string>
+    <string name="school_needs_precise">Placing this school needs precise location, or type the latitude and longitude.</string>
+    <string name="school_save_first_photos">Save the school first to add photos.</string>
+    <string name="school_walk_button">Did I walk past this school?</string>
+    <string name="school_walk_place">this school</string>
+    <string name="school_walk_label">This school</string>
+    <string name="school_walk_approx">This school has no exact spot yet, only an area. Place it on the map first, then check.</string>
+    <string name="school_walks_empty">No saved walks. When you finish a walk, you can link it to this school.</string>
+    <string name="school_ai_disclosure">Your question and the matching school notes are sent to the AI provider set up on your server.</string>
+    <string name="school_ai_disclosure_own_key_host">The text is sent from this phone straight to %1$s with your own key, together with the matching school notes.</string>
+    <string name="school_map_place_found">The map shows “%1$s”. Long-press the school’s spot to add it there.</string>
+    <string name="school_map_place_not_found">No place called “%1$s” was found in India. Move the map to the school yourself.</string>
+    <string name="school_compare_open">open school details</string>
+    <string name="school_areas_empty_body">Add the areas you are hunting in. A note on an area shows on every school inside it.</string>
+    <string name="school_notes_empty">No area notes yet. Add one from a school.</string>
+    <string name="school_area_delete_body">Its notes are kept, but no school shows them any more.</string>
+    <string name="school_place_delete_body">Schools stop showing how far it is.</string>
+    <string name="school_places_empty_body">Add your office or family home to see how far each school is.</string>
+    <string name="school_area_notes_none">No area notes reach this school yet.</string>
+    <string name="school_area_here">%1$s (this school is in it)</string>
 </resources>

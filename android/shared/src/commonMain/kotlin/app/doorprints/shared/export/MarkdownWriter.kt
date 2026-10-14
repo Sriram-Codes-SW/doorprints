@@ -70,34 +70,14 @@ object MarkdownWriter {
 
         // One section per house, in the copy's fixed order (createdAt, id).
         for (h in bundle.houses) {
+            val s = bundle.stringsOf(h)
             out.append("\n## ").append(text(h.label)).append("\n\n")
 
             out.append("### ").append(text(s["section.details"])).append("\n\n")
-            val details = buildList {
-                add(s["col.status"] to s.status(h.status))
-                add(s["col.score"] to (bundle.overallOf(h)?.let { ExportRows.fixed(it, 1) } ?: s["none"]))
-                addAll(ExportRows.scoringLines(h, bundle))
-                add(s["col.price"] to (h.price?.let { ExportRows.rupees(it) } ?: s["none"]))
-                if (h.price != null) add(s["col.priceType"] to s.priceType(h.priceType))
-                add(s["col.bedrooms"] to (h.bedrooms?.toString() ?: s["none"]))
-                if (h.areaSqft != null) add(s["col.areaSqft"] to h.areaSqft.toString())
-                if (h.floor != null) add(s["col.floor"] to s.floor(h.floor))
-                add(s["col.rating"] to (h.rating?.toString() ?: s["none"]))
-                add(s["col.address"] to (h.address ?: s["none"]))
-                add(s["col.street"] to (h.street ?: s["none"]))
-                add(s["col.locality"] to (h.locality ?: s["none"]))
-                add(s["col.lat"] to ExportRows.fixed(h.lat, 6))
-                add(s["col.lon"] to ExportRows.fixed(h.lon, 6))
-                if (h.locationSource == "APPROX") add(s["house.approx"] to s["yes"])
-                if (!h.listingUrl.isNullOrEmpty()) add(s["col.listingUrl"] to h.listingUrl)
-                // Kinds PR 6 (S4b-BL-210): the kind's typed extras, labelled by the kind; a house has none.
-                for (e in bundle.extrasOf(h)) add(e.label to e.text)
-                add(s["col.createdAt"] to ExportTime.dateTime(h.createdAt, o.utcOffsetMinutes))
-                add(s["col.updatedAt"] to ExportTime.dateTime(h.updatedAt, o.utcOffsetMinutes))
-            }
+            val details = listOf(s["col.status"] to s.status(h.status)) + ExportRows.detailLines(h, bundle)
             table(out, listOf("", ""), details.map { listOf(it.first, it.second) })
 
-            val cost = ExportRows.costLines(h, s)
+            val cost = ExportRows.costBlock(h, bundle)
             if (cost.isNotEmpty()) {
                 out.append("\n### ").append(text(s["section.cost"])).append("\n\n")
                 table(out, listOf("", ""), cost.map { listOf(it.first, it.second) })
@@ -135,7 +115,7 @@ object MarkdownWriter {
             }
 
             // Moving in (slice 5), after the distances and before the checklist: the date, the notes, the ticked list.
-            if (h.moveIn != null) {
+            if (h.moveIn != null && bundle.shows(h, "section.moveIn")) {
                 out.append("\n### ").append(text(s["section.movingIn"])).append("\n\n")
                 val lines = ExportRows.moveInLines(h, bundle)
                 if (lines.isNotEmpty()) table(out, listOf("", ""), lines.map { listOf(it.first, it.second) })
@@ -146,7 +126,7 @@ object MarkdownWriter {
                 }
             }
 
-            val keys = ExportRows.orderedChecklistKeys(h)
+            val keys = ExportRows.checklistKeys(h, bundle)
             if (keys.isNotEmpty()) {
                 out.append("\n### ").append(text(s["section.checklist"])).append("\n\n")
                 table(
@@ -204,7 +184,7 @@ object MarkdownWriter {
         }
 
         // The brokers (slice 1b), after the houses.
-        if (bundle.brokers.isNotEmpty()) {
+        if (bundle.brokers.isNotEmpty() && bundle.shows(null, "field.brokerId")) {
             out.append("\n## ").append(text(s["section.brokers"])).append("\n")
             for (b in bundle.brokers) {
                 out.append("\n### ").append(text(b.name)).append("\n\n")

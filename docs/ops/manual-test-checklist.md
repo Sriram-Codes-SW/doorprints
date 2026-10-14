@@ -968,8 +968,26 @@ Tamil and Telugu; light and dark; the largest text.
 
 Expected: no house word anywhere in 1 to 5. Record any line that still says house, with the language and the page.
 
+#### MT-101 TC-M-76: a school's pages on the phone by eye
+
+Needs an Android debug build made with `-Pdoorprints.devKinds=true`, **Experimental: more than houses** on in Settings, and
+a school or two saved. English, then one of Hindi, Tamil and Telugu; light and dark; the largest text.
+
+1. Open the **Schools** space. Each list row is the name, the status and the street, with no price, bedrooms or score. The
+   map's legend names the five statuses; the empty state and tips say school.
+2. Open a school: title *School details*, *Did I walk past this school?* (press it), *No saved walks ... this school*. Add a
+   new school on the map: the form starts as *New school*. Press Delete: *Delete this school?*.
+3. **Compare** two schools: the contact row is *Contact name*. Open **My areas** and **My places** from Settings: they speak
+   of schools.
+4. **Save a copy** of the school space as a web page, Markdown, CSV, spreadsheet and PDF: the cover says *Schools*; the fees
+   are under *Fees*; no price, score, bedrooms, cost, rooms, floor or broker column, no Scores sheet.
+5. Switch to the house space: every page and copy is what it was.
+
+Expected: no house word anywhere in 1 to 4. Record any line that still says house, with the language and the page.
+
 ### 20.1 Summary rows (add to §13 when the owner starts the run)
 
 | ID | Name | Who | Env | Pass | Notes |
 |---|---|---|---|---|---|
 | MT-100 | A school's pages and copies by eye | anyone | E4 | no | |
+| MT-101 | A school's pages on the phone by eye | owner | E4 | no | |
