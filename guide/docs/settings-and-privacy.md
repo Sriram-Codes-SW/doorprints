@@ -168,3 +168,9 @@ See [Back up to Google Drive](google-drive.md).
     On the free tier, Google may use what you send to improve its products, and people may read it. Keep personal
     details out of your notes, or turn on billing for the key in Google AI Studio (see
     [the paid tier](set-up-a-server.md#the-paid-tier-a-small-cost-more-privacy)).
+
+## More than houses (experimental) {#other-kinds}
+
+**Your data** on the website has one more section in a build that ships schools, **What you track**, with the switch
+**Experimental: more than houses**. It is off by default, the published site does not have it, and while it is off
+nothing in this guide changes. On, Doorprints can keep track of schools too: see [More than houses (experimental)](other-kinds.md).

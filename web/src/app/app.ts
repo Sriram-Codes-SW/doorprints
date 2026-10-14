@@ -43,7 +43,8 @@ import { LaunchFilesService } from './core/launch-files.service';
 import { PwaService } from './core/pwa.service';
 import { SyncService } from './data/sync.service';
 import { guideUrl } from './shared/help-link';
-import { hidesBottomBar, inDataSection, inMapSection, sectionCurrent } from './nav-section';
+import { hidesBottomBar, inDataSection, inMapSection, isSpaceHome, sectionCurrent } from './nav-section';
+import { SpaceService } from './core/space.service';
 
 /** How many pages' scroll positions are remembered for Back and Forward (older ones are dropped). */
 const SCROLL_MEMORY = 50;
@@ -80,6 +81,12 @@ const NAV_ICONS = {
         <img src="favicon.svg" alt="" width="28" height="28" />
         <span class="brand-name" aria-hidden="true">{{ 'app.name' | t }}</span>
       </a>
+      <!-- The current space (kinds PR 8, S4b-BL-212): only while two or more kinds are enabled; back to the chooser. -->
+      @if (space.multi() && !space.inChooser()) {
+        <button type="button" class="space-chip" [attr.aria-label]="'space.chip' | t: { name: spaceName() }" (click)="toChooser()">
+          <span aria-hidden="true">{{ spaceName() }} ▾</span>
+        </button>
+      }
       <!--
         Before the navigation in the DOM, so on a phone focus goes brand, language (both in the top row), then the
         bottom bar, then the page — not top, bottom, top (WCAG 2.4.3). On wider screens order: 1 keeps it visually at
@@ -125,15 +132,18 @@ const NAV_ICONS = {
           Map is also current on a house (/houses/:id, /houses/new): the house form is a child of the map, as on
           Android, and Back goes there. aria-current is "page" on the map itself and "true" on its child pages.
         -->
-        <a routerLink="/" [class.current]="mapSection()" [attr.aria-current]="mapCurrent()">
+        <a [routerLink]="space.home()" [class.current]="mapSection()" [attr.aria-current]="mapCurrent()">
           <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="24" height="24"><path [attr.d]="icons.map" /></svg></span>
           <span class="nav-label">{{ 'nav.map' | t }}</span>
         </a>
+        <!-- Compare, Ask and Plan read the house space only until they are scoped per space (S4b-BL-279). -->
+        @if (space.houseTools()) {
         <a routerLink="/compare" routerLinkActive="current" ariaCurrentWhenActive="page">
           <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="24" height="24"><path [attr.d]="icons.compare" /></svg></span>
           <span class="nav-label">{{ 'nav.compare' | t }}</span>
         </a>
-        @if (ai.enabled()) {
+        }
+        @if (ai.enabled() && space.houseTools()) {
           <a routerLink="/ask" routerLinkActive="current" ariaCurrentWhenActive="page">
             <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="24" height="24"><path [attr.d]="icons.ask" /></svg></span>
             <span class="nav-label">{{ 'nav.ask' | t }}</span>
@@ -232,6 +242,25 @@ const NAV_ICONS = {
       color: var(--on-header);
       box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
       z-index: 10;
+    }
+    .space-chip {
+      min-height: var(--target);
+      max-width: 12rem;
+      padding: 0 var(--space-3);
+      border: 1px solid var(--on-header);
+      border-radius: var(--radius-pill);
+      background: transparent;
+      color: var(--on-header);
+      font: inherit;
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .space-chip:focus-visible {
+      outline: 3px solid var(--focus);
+      outline-offset: 2px;
     }
     .brand {
       display: flex;
@@ -578,6 +607,14 @@ export class App {
   protected readonly i18n = inject(TranslationService);
   protected readonly announcer = inject(Announcer);
   protected readonly ai = inject(AiService);
+  protected readonly space = inject(SpaceService);
+  /** The current space's list noun (*Houses*, *Schools*), for its chip. */
+  protected readonly spaceName = computed(() => this.i18n.t(this.space.current().keys.ref('kind.many')));
+  private readonly spaceRouter = inject(Router);
+  /** The chip: back to the chooser, one history entry. */
+  protected toChooser(): void {
+    void this.spaceRouter.navigateByUrl('/');
+  }
   protected readonly icons = NAV_ICONS;
   protected readonly guideHref = computed(() => guideUrl(this.i18n.lang()));
   // Constructing it registers the service worker and starts listening for install and update events (S4-05).
@@ -599,7 +636,7 @@ export class App {
   private measureBar: () => void = () => undefined;
   /** The map and the pages under it (a house, a new house): Map is the current item there. */
   protected readonly mapSection = computed(() => inMapSection(this.path()));
-  protected readonly mapCurrent = computed(() => sectionCurrent(this.path() === '/', this.mapSection()));
+  protected readonly mapCurrent = computed(() => sectionCurrent(this.path() === '/' || isSpaceHome(this.path()), this.mapSection()));
   protected readonly dataSection = computed(() => inDataSection(this.path(), this.phone()));
   protected readonly dataCurrent = computed(() => sectionCurrent(this.path().startsWith('/data'), this.dataSection()));
   /**

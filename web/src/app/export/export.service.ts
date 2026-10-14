@@ -20,7 +20,7 @@ import { Injectable, inject } from '@angular/core';
 import { LocalStore } from '../data/local-store.service';
 import { LocalDataError } from '../core/local-error';
 import { loadDictionary } from '../i18n/languages';
-import { builtInKind, devKindsOn } from '../core/dev-kinds';
+import { defaultKind, drawnKind, enabledKinds } from '../core/kind-setting';
 import { resizeImage } from '../core/image-resize';
 import { buildBackupZip } from './backup-export';
 import { buildCsvTables } from './csv-export';
@@ -101,8 +101,10 @@ export class ExportService {
       places: await this.store.places.rows(),
       areaNotes: await this.store.areaNotes.rows(),
       lengthUnit: await this.store.lengthUnit(),
-      // Each candidate as its page draws it (S4b-BL-210): its kind only while the developer flag allows it, else a house.
-      kinds: { fieldsOf: (kind) => builtInKind(kind, devKindsOn()).fields, dict: await loadDictionary(options.lang) },
+      // Each candidate as its page draws it (S4b-BL-210): its own kind when built in (S4b-BL-212), else a house.
+      kinds: { fieldsOf: (kind) => drawnKind(kind).fields, dict: await loadDictionary(options.lang) },
+      // The backup's `search` says the kinds enabled and the default (Settings > Kinds, S4b-BL-212); the house alone as before.
+      spaces: { kinds: enabledKinds(), defaultKind: defaultKind() },
       exportedAt,
       options,
     });

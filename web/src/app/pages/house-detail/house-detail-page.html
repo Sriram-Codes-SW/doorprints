@@ -27,7 +27,7 @@
       </button>
     } @else {
       <!-- No page behind this one in the app (a bookmark, a reload): the list, with its last search and filter. -->
-      <a routerLink="/" [queryParams]="listReturn.queryParams()" class="btn btn-sm back">
+      <a [routerLink]="space.home()" [queryParams]="listReturn.queryParams()" class="btn btn-sm back">
         <span aria-hidden="true">←</span> <span class="back-text">{{ 'house.back' | t }}</span>
       </a>
     }
@@ -60,7 +60,7 @@
            failure cancels it if it is still pending, so the "Could not save…" alert is not followed by "Saving…". -->
       <button type="button" class="btn btn-primary" [attr.aria-disabled]="!draft() || saving() ? 'true' : null"
         [attr.aria-busy]="saving() ? 'true' : null" (click)="save()">
-        {{ (isNew() ? 'house.create' : 'house.save') | t }}
+        {{ (isNew() ? W.create : 'house.save') | t }}
       </button>
     </div>
   </div>
@@ -103,8 +103,6 @@
         <button type="button" class="btn btn-sm" (click)="discardRestored()">{{ 'house.draftDiscard' | t }}</button>
       </div>
     }
-    <!-- The developer's kind picker (S4b-BL-209, dev-kinds.ts): never drawn while the flag is off. -->
-    @if (isNew() && kinds.length > 1) { <app-dev-kind-picker [kinds]="kinds" [current]="kind().id" (picked)="pickKind($event)" /> }
     @if (isNew() && ai.enabled() && kind().extracts) {
       <!-- The listing card (house-listing-card.ts, S4b-BL-238): Fill in, Undo fill, the marks and the warnings. -->
       <app-house-listing-card [listing]="listing" />
@@ -596,7 +594,7 @@
       }
 
       <!-- Area notes and Distances (slice 4a, docs/11 5.22, 5.23): the notes that reach the house and its distance to my places. -->
-      @if (shows('section.areaNotes')) { <app-house-area-notes-card [house]="d" /> }
+      @if (shows('section.areaNotes')) { <app-house-area-notes-card [house]="d" [none]="W.areaNotesNone" /> }
       @if (shows('section.distances')) { <app-house-distances-card [house]="d" /> }
 
       <!-- Location -->
@@ -958,7 +956,7 @@
         <svg viewBox="0 0 24 24" width="40" height="40"><path [attr.d]="glyphs.home" /></svg>
       </span>
       <p>{{ 'house.notFound' | t }}</p>
-      <a class="btn" routerLink="/" [queryParams]="listReturn.queryParams()">{{ 'house.backToMap' | t }}</a>
+      <a class="btn" [routerLink]="space.home()" [queryParams]="listReturn.queryParams()">{{ 'house.backToMap' | t }}</a>
     </div>
   }
   }

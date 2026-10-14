@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { legacyManifestOf } from './backup-family';
+import { type SearchSpaces, legacyManifestOf, spacesOf } from './backup-family';
 import { BACKUP_FORMATS_READ, BACKUP_LIMITS, DATA_ENTRY, MANIFEST_ENTRY } from './backup-export';
 import type { BackupData, BackupManifest } from './backup-export';
 import { checkData } from './backup-check';
@@ -40,6 +40,8 @@ export interface BackupArchive {
   readonly photoEntries: ReadonlySet<string>;
   /** A photo's verified bytes, or `null` (missing, too large, or failing the manifest's SHA-256): skipped, never fatal. */
   photoBytes(entry: string): Promise<Uint8Array | null>;
+  /** The kinds and the default the file's `search` names (a hint, S4b-BL-212); null when it names none. */
+  readonly spaces?: SearchSpaces | null;
 }
 
 /** The result of opening a backup file: the checked archive, or the first problem found. */
@@ -109,6 +111,7 @@ async function openChecked(source: Blob): Promise<ArchiveOpen> {
     archive: {
       manifest,
       data: checked.data,
+      spaces: spacesOf((raw as Record<string, unknown>)['search']),
       photoEntries: photos,
       async photoBytes(entry: string): Promise<Uint8Array | null> {
         if (!isPhotoEntry(entry)) return null;
@@ -150,7 +153,7 @@ async function openBareData(source: Blob): Promise<ArchiveOpen> {
   }
   const checked = checkData(root);
   if (!checked.ok) return checked;
-  return { ok: true, archive: { manifest: null, data: checked.data, photoEntries: new Set(), photoBytes: async () => null } };
+  return { ok: true, archive: { manifest: null, data: checked.data, spaces: spacesOf((root as Record<string, unknown>)['search']), photoEntries: new Set(), photoBytes: async () => null } };
 }
 
 /** The manifest as Kotlin's decoder takes it, or `null`: `format`, `createdAt` and the three counts must be there. */
