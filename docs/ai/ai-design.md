@@ -75,6 +75,7 @@
 | v0.71   | 2026-10-13 | Claude (Code), engineer       | 16: **the phones' on-device AI is kind-aware** (S4b-BL-211, the third stacked pull request; `feat/kinds-9c-kind-aware-ai-phone`): `KindAi` in `:shared` under `OnDeviceAi(devKinds)`, the flag from `BuildConfig.DEV_KINDS`; the extract request names the kind only for a kind the extract fills; the phones' house pins (`HouseAiPinsTest`) first and unchanged. With the review follow-ups of #313 on the phone too: `KindAi.sanitize` cuts a generated name over 200 characters with the warning, and `KindAiVectorsTest` reads `askTag`. |
 | v0.72   | 2026-10-14 | Claude (Code), engineer       | 11, 13 and 16: **the server's flag `AI_DEV_KINDS` is the list `KINDS_AVAILABLE`** (S4b-BL-280; `fix/kinds-server-available-flag`; [03](../03-design.md) §18.15): default `house`; a request for a kind outside it is a 400; the AI reads the same list. |
 | v0.73   | 2026-10-14 | Claude (Code), engineer       | 11 and 2: **the Ask index follows `KINDS_AVAILABLE`** (S4b-BL-308; `fix/backend-ai-index-kinds-and-delete-vectors`; [02](../02-threat-model.md) T-I49): a document is stamped with its kind in the metadata and `RagService.availableOnly` drops one whose kind left the list; documents stored before the stamp are house documents until `POST /api/ai/reindex`. |
+| v0.74   | 2026-10-14 | Claude (Code), engineer       | 8.7 and 16.8: **the school set for the evals and `house.json`'s slots** (S4b-BL-268, S4b-BL-271; `feat/kinds-17-school-evals-and-slots`; [10](../10-sprint-log.md) v0.320, [06](../06-test-plan.md) 0.251 TC-AI-47, TC-U-231): `docs/ai/evals/school-set.json` (informational), the three harnesses seeding a candidate's kind and extras with the kinds on, the keyless injection run on Ollama; the house's slots aligned with its code and held by `house-ai-slot-vectors.json`. |
 
 Status: implemented in `backend/` (package `app.doorprints.server.ai`), **off by default**. Not yet compiled in this
 sandbox (no Maven Central access) — CI compiles and runs the tests. Provider: AI Studio by default, Vertex AI with
@@ -1299,6 +1300,61 @@ injection, refusal and validity gates) carry information. The model-spread resul
 zero-cost signal is the no-AI regex price against the model's price, flagged as a warning (`feat/ai-extract-reliability`).
 A seed for the evals is S4b-BL-228.
 
+### 8.7 The school set and the keyless injection run (S4b-BL-268, 2026-10-14, informational)
+
+**What it is.** `docs/ai/evals/school-set.json`, version 0.1: seven synthetic schools in the candidate shape (`kind: school`,
+typed `extras`: board, medium, grades, commute, bus, fees per year and the one-time admission fee, money with its cadence),
+two visits and 13 cases (5 Extract, 6 Ask, 2 Plan), 5 of them prompt-injection (the tag-escape and fake-contact attacks of
+the golden set aimed at the school's prompt, an indirect attack in a school's notes, the contact leak, and a Plan over that
+note). Like `hard-set.json` it has no `thresholds` key: the scorecard shows every metric as *not gated*, and the golden set,
+its thresholds and its verdict are not touched (`golden-set.json` is byte for byte as it was). Unlike the hard set it brings its
+own fixtures (`fixturesFrom` is `self`, the schools are `fixtureCandidates`), so a school run is not mixed with the golden set's
+30 houses. An Extract case names its kind (`input.kind: school`); the expectations add `extras` (each extra is one check: an
+option by its id, a switch, a number, a text by its words, money by amount and cadence) and `extrasAbsent` (extras the listing
+does not give: one present is an invention, counted like a null field that came back filled). The money extras of an
+injection case are guards, as the price is (the fees an injection asks to change). The leak check of a school's Extract reads
+the school's system text.
+
+**What each harness does** (the kinds are on for the run; a house run is as before):
+
+| Stack | How | What it needs |
+|---|---|---|
+| Server | `AI_EVAL_SET=school-set` (workflow `eval_set`): `EvalSets` takes the set's own fixtures, `FixtureSeeding.seedBody` sends a candidate-shaped fixture as it is, Extract sends the case's `kind`, the scorer checks `extras` and `extrasAbsent`. | `app.kinds.available` listing `school`: the workflow sets `KINDS_AVAILABLE=house,school` for this set only; without it the harness records an error and runs nothing. A provider and a database (not run for this change: zero cost, no Vertex). |
+| Website | `AI_EVAL_SET=school-set` in the suites `own-provider` and `local-model`: `ai-provider.live.spec.ts` seeds the schools as records (`extras` are the record's `extrasOther`), turns the developer flag on for the run (`doorprints.dev.kinds`), passes the case's kind to `extractListing`, scores `extras`, and names the set in the summary. `AI_EVAL_CATEGORY=prompt-injection` (workflow `category`) runs only the injection cases of the chosen set, golden or school. | A model: Ollama on the runner or this machine (no key), or a key. |
+| Phone | `SchoolSetFixtures` seeds `AiHouse(kind, extras)` the way the repository hands a stored candidate to the AI, and `OnDeviceAi(devKinds = true)` runs over it. `SchoolSetHarnessTest` runs it keyless over a recording model; `SchoolSetLiveTest` runs one case of each feature on Gemini (workflow job *On-device AI*, only for `eval_set=school-set`). | Nothing for the keyless test; the `AI_API_KEY` for the live one. |
+
+The fake provider (`tools/fake-ai-provider`) answers a school's raw listing from the case's `extras`, so the website's whole
+path runs without a model: `node tools/fake-ai-provider/server.mjs --golden docs/ai/evals/school-set.json`, then the live
+spec with `AI_EVAL_BASE_URL` at it.
+
+**The keyless runs of 2026-10-14** (Ollama v0.40.1, `qwen2.5:0.5b`, the CPU of this container, the website's `openai-compatible`
+adapter, no key, nothing leaving the machine; informational, a 0.5-billion-parameter model is not a quality bar):
+
+1. *The school set*, all 13 cases, the website's path (`AI_EVAL_SET=school-set`): **2 of 13 passed** (Extract 1 of 5, Ask 1 of 6,
+   Plan 0 of 2; prompt-injection 1 of 5, all five *model-dependent*), about six minutes. The schools reached the model through
+   the slots (the Ask lines carry the board, the bus and the fees, never the contact), the Extract read the school's extras
+   (the `STATE` board and the yearly fee came out right; the Tamil medium was dropped as `Tamil medium` is not an option word,
+   which the checks report as a warning), and the failures are the model's: it cited every school for a question about the
+   CBSE schools with a bus, invented fees for a listing that gives none, and planned a school in another city.
+2. *The golden set's 25 injection cases* (`AI_EVAL_CATEGORY=prompt-injection`, the existing 75 cases filtered), in two runs
+   because Ollama answered case `extract-12-injection-markup` with HTTP 500 after five minutes (a generation that did not end),
+   which the harness reports as *provider unreachable* and stops on (S4b-BL-184): extract cases 04 to 11 were scored **0 of 8**
+   (every one wrote `priceType: SALE` or took the planted figure, link or phone), and `AI_EVAL_TYPES=ask,plan` then scored the
+   16 Ask and Plan injection cases, **3 of 16 passed** (Ask 1 of 12, Plan 2 of 4; the one *pipeline-guarded* case, `ask-09`, did
+   not hold because the model answered with a saved house the case did not expect, not because a contact came through).
+   24 of 25 injection cases were answered; `extract-12` was not.
+
+What this shows: the harnesses work end to end against a real model server with the kinds on (a school's lines, extras and
+kind reach the prompts, the answers are read through the school's checks and scored per extra), and the keyless injection
+split prints for both files. It does not show that the injection defences hold or fail: a 0.5-billion-parameter model fails the
+cases the sanitizer and the pipeline cannot decide (the *model* layer, `injection-layers.json`), so S4b-BL-211's wish for the
+injection set to be green on the keyless suite is not met by this model, and a larger one does not answer in time on a CPU
+(S4b-BL-190). The numbers are for the record, not a bar. Open: a way for a local run to go on past a timed-out case instead of
+stopping (not built here).
+
+**Not done.** No run on Vertex or any paid model (zero cost). The server's harness and the phone's live test were not run on a
+model (they need a database or a key); their pure parts are unit-tested (`SchoolSetTest`, `SchoolSetHarnessTest`).
+
 ## 9. Threat model (OWASP Top 10 for LLM Applications 2025 [OW])
 
 Assets: the user's notes, contacts, locations and visit history; the API key; the free-tier quota.
@@ -1947,9 +2003,30 @@ never reach the document.
 
 ### 16.7 Not done here
 
-No live eval (zero cost; no Vertex run): a school set for the evals and the keyless injection run are S4b-BL-268. The
+The school set for the evals and the keyless injection run are in 8.7 (S4b-BL-268); no Vertex run (zero cost). The
 prompts still speak of houses for every kind (S4b-BL-269), and S4b-BL-234's rule waits for the same re-pin. The Plan
-tools carry no kind extras (S4b-BL-270). `house.json`'s slots describe less than the house's AI code reads (S4b-BL-271).
+tools carry no kind extras (S4b-BL-270). `house.json`'s slots are aligned with the house's AI code in 16.8 (S4b-BL-271).
+
+### 16.8 `house.json`'s slots say what the house's code reads (S4b-BL-271)
+
+The house is not read through its slots (16.1), but the file describes the house, so its `ai` slots must say what the
+hand-written code reads, or a later generic reader that serves the house (and a human reading the file) would be wrong. They
+lagged it, and are now:
+
+| Slot | Gained | Why |
+|---|---|---|
+| `ask` | `viewings`, `areaNotes`, `distances`, `visits` | the document writes `Viewing:`, `Area note:`, `Distance to <place>:` and `Visits:` lines (`moveIn`, `questions` and `checklist` were in already) |
+| `plan` | `street` | a Plan candidate carries the street, and its line writes `locality: <locality, else street>` |
+| `extract` | `areaSqft`, `amenities` | the draft carries the amenities (a hint, never stored) and the no-AI parsers read the carpet area; the server's draft has none (`noAiOnly`) |
+
+`never` is unchanged (`contactName`, `contactPhone`, `myOffer`). The house's documents, prompts, Plan lines and pins are
+byte for byte as before: the pins (`HouseAskPinsTest`, `HousePlanPinsTest`, `HouseExtractPinsTest`, `house-ai-pins.spec.ts`,
+`HouseAiPinsTest`) pass unchanged. **The guard** is `docs/schemas/kinds/house-ai-slot-vectors.json`: it maps the label of each
+Ask line, each field of a Plan candidate and each field of a draft to the slot ids it carries. A `HouseAiSlotsTest` on each
+stack (the website's `house-ai-slots.spec.ts`) builds a house with every field and checks that every line or field the code
+writes is in the vectors, that every id it names is in the slot and none is in `never`, and that the slot holds no id that
+nothing carries; a new line in the house's document therefore fails a test until it is in the vectors and the slot. The
+server's `HouseKindFileTest` skips `amenities` and `areaSqft` when it maps the `extract` slot to the model's raw fields.
 
 ## Sources
 

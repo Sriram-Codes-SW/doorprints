@@ -76,6 +76,10 @@
 # 2026-10-10 (S4b-BL-226): the input `address_set` (default `default`) picks a set of docs/ai/evals/address-variants.json for the
 # 2026-10-10 (S4b-BL-239): the `canary` input has a fourth live choice, `no-wrapping` (the nonce tag and the neutraliser off, one
 #   Ask rule removed, scored on six delimiter cases); its value is in the Validate-inputs regex below like the other three.
+# 2026-10-14 (S4b-BL-268): `eval_set` has a third choice, `school-set` (docs/ai/evals/school-set.json: its own schools in the candidate
+#   shape, informational). The golden-set job gives the server KINDS_AVAILABLE=house,school for it only; the own-provider and
+#   local-model jobs (the website) pass AI_EVAL_SET too and read it (golden-set or school-set; hard-set is the server's alone).
+#   The keyless injection run is the local-model suite: Ollama, no key, no secret, free.
 # 2026-10-10 (S4b-BL-236, S4b-BL-237): the inputs `eval_set` (golden-set | hard-set: the additive case file of docs/ai/evals,
 #   run against the golden set's fixtures, informational) and `canary` (none | a live canary of docs/ai/evals/canaries.json:
 #   an eval-only degraded configuration whose metric must drop, printed as "CANARY: ... seen / NOT seen", informational),
@@ -152,12 +156,20 @@ on:
           - messy
           - hostile
       eval_set:
-        description: "golden-set only (S4b-BL-236, docs/ai/ai-design.md 8.6): which case file runs. golden-set = the golden set, the only run with a verdict. hard-set = docs/ai/evals/hard-set.json, additive cases against the golden set's fixtures, informational (no thresholds, every metric 'not gated'). Not combined with address_set"
+        description: "golden-set, own-provider and local-model suites (S4b-BL-236, S4b-BL-268, docs/ai/ai-design.md 8.6 and 8.7): which case file runs. golden-set = the golden set, the only run with a verdict. hard-set (golden-set suite only) = docs/ai/evals/hard-set.json, additive cases against the golden set's fixtures, informational (no thresholds, every metric 'not gated'). school-set = docs/ai/evals/school-set.json, its own schools in the candidate shape with the kinds available on (the server: KINDS_AVAILABLE=house,school; the website: the developer flag), informational. Not combined with address_set"
         type: choice
         default: golden-set
         options:
           - golden-set
           - hard-set
+          - school-set
+      category:
+        description: "own-provider and local-model suites (S4b-BL-268): all = every case of the set; prompt-injection = only the prompt-injection cases (the keyless injection run on a local model; informational). The golden-set suite runs every case"
+        type: choice
+        default: all
+        options:
+          - all
+          - prompt-injection
       canary:
         description: "golden-set only (S4b-BL-237, docs/ai/ai-design.md 8.6): the canary suite. none = a normal run. A name turns on that eval-only degraded configuration of docs/ai/evals/canaries.json for this run (the seam is set by test code, never by configuration), runs only the canary's case types (no-wrapping: only its six listed cases), gates nothing and prints 'CANARY: <name> expected drop seen / NOT seen' with the characters it removed from each system text. The keyless canaries run in every build (CanariesTest), not here"
         type: choice
@@ -247,8 +259,8 @@ jobs:
           CHAT_MODEL_INPUT: ${{ inputs.chat_model }}
           EMBEDDING_MODEL_INPUT: ${{ inputs.embedding_model }}
         run: |
-          if ! [[ "$EVAL_SET" =~ ^(golden-set|hard-set)$ ]]; then
-            echo "::error::eval_set must be golden-set or hard-set (a file in docs/ai/evals)"
+          if ! [[ "$EVAL_SET" =~ ^(golden-set|hard-set|school-set)$ ]]; then
+            echo "::error::eval_set must be golden-set, hard-set or school-set (a file in docs/ai/evals)"
             exit 1
           fi
           if ! [[ "$CANARY" =~ ^(none|no-sanitizer|no-citation-filter|prompt-without-rules|no-wrapping)$ ]]; then
@@ -420,6 +432,9 @@ jobs:
           # environment, never interpolated into a script. Both are informational: the verdict stays the golden set's.
           AI_EVAL_SET: ${{ inputs.eval_set }}
           AI_EVAL_CANARY: ${{ inputs.canary }}
+          # S4b-BL-268: the school set is read by the server's kind-aware AI, which exists only while the kind is available.
+          # Any other run keeps the default (the house alone), so the golden set and the hard set are as before.
+          KINDS_AVAILABLE: ${{ inputs.eval_set == 'school-set' && 'house,school' || 'house' }}
           THINKING_LEVEL: ${{ inputs.thinking_level }}
           CHAT_MODEL_INPUT: ${{ inputs.chat_model }}
           EMBEDDING_MODEL_INPUT: ${{ inputs.embedding_model }}
@@ -567,6 +582,24 @@ jobs:
             echo "::error::The phones' live test failed (see the report artifact)"; exit 1
           fi
 
+      # S4b-BL-268: eval_set=school-set also runs the phone's school test (SchoolSetLiveTest: the set's own schools, the kinds on,
+      # one case of each feature). Any other value leaves this step out, so the job's quota use is as it was.
+      - name: School set on the phone (real key)
+        if: ${{ inputs.eval_set == 'school-set' }}
+        working-directory: android
+        env:
+          DOORPRINTS_LIVE_GEMINI_KEY: ${{ secrets.AI_API_KEY }}
+        run: |
+          ./gradlew --no-daemon :shared:testAndroidHostTest --tests 'app.doorprints.shared.ai.SchoolSetLiveTest' --rerun -i \
+            | grep -E '^School (extract|ask|plan):|SchoolSetLiveTest' || true
+          report=shared/build/test-results/testAndroidHostTest/TEST-app.doorprints.shared.ai.SchoolSetLiveTest.xml
+          test -f "$report" || { echo "::error::The phones' school test did not run"; exit 1; }
+          if grep -q '<skipped' "$report"; then echo "::error::The phones' school test was skipped (no key reached it)"; exit 1; fi
+          if grep -q '<failure' "$report"; then
+            grep -o 'message="[^"]*"' "$report" | head -3
+            echo "::error::The phones' school test failed (see the report)"; exit 1
+          fi
+
       - uses: actions/setup-node@v7
         with:
           node-version: "24"
@@ -652,6 +685,8 @@ jobs:
           AI_EVAL_TYPES: ${{ inputs.types }}
           AI_EVAL_DELAY_MS: ${{ inputs.delay_ms }}
           AI_EVAL_ADDRESS_SET: ${{ inputs.address_set }}
+          AI_EVAL_SET: ${{ inputs.eval_set }}
+          AI_EVAL_CATEGORY: ${{ inputs.category }}
         run: |
           export DOORPRINTS_EVAL_SUMMARY="$RUNNER_TEMP/ai-eval-summary.md"
           npx ng test --watch=false --include src/app/core/ai/ai-provider.live.spec.ts
@@ -785,6 +820,8 @@ jobs:
           AI_EVAL_TYPES: ${{ inputs.types }}
           AI_EVAL_DELAY_MS: "0"
           AI_EVAL_ADDRESS_SET: ${{ inputs.address_set }}
+          AI_EVAL_SET: ${{ inputs.eval_set }}
+          AI_EVAL_CATEGORY: ${{ inputs.category }}
           # 180 s a request instead of the app's 60 s; the harness honours it only for a server on this machine (S4b-BL-190).
           AI_EVAL_TIMEOUT_MS: "180000"
         run: |
