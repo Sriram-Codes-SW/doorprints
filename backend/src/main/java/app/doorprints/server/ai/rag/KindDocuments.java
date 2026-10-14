@@ -119,7 +119,7 @@ final class KindDocuments {
     }
 
     /**
-     * The metadata of such a document: the id, the label and locality (redacted) and the status and rating when the
+     * The metadata of such a document: the id, the kind, the label and locality (redacted) and the status and rating when the
      * slot names them, and the visit keys; the price, its type and the BHK only when the slot names the money or the
      * BHK (a school names neither, so an Ask filter on them never keeps a school).
      */
@@ -127,6 +127,8 @@ final class KindDocuments {
         var r = ContactRedactor.forHouse(h);
         var m = new HashMap<String, Object>();
         m.put("houseId", h.id().toString());
+        // The kind the text was written under: Ask drops the document once the kind leaves KINDS_AVAILABLE (S4b-BL-308).
+        m.put("kind", k.id());
         m.put("label", h.label() == null || !k.allows(k.ask(), "label") ? "" : r.freeText(h.label()));
         if (h.status() != null && k.allows(k.ask(), "status")) m.put("status", h.status().name());
         if (k.allows(k.ask(), "money")) {

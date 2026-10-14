@@ -18,6 +18,7 @@
 
 package app.doorprints.server.ai.rag;
 
+import app.doorprints.server.ai.kind.AiKinds;
 import app.doorprints.server.ai.AnswerText;
 import app.doorprints.server.ai.ContactRedactor;
 import app.doorprints.server.ai.PromptSafety;
@@ -39,6 +40,7 @@ import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBooleanProperty;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -85,12 +87,33 @@ public class RagService {
     private final VectorStore vectorStore;
     private final AiProperties props;
     private final HouseRepository houses;
+    /** The kinds this server has available now: a document written under another list is not read (S4b-BL-308). */
+    private final AiKinds kinds;
 
+    /** With the house alone available, as a test that names no list. */
     public RagService(ChatClient chat, VectorStore vectorStore, AiProperties props, HouseRepository houses) {
+        this(chat, vectorStore, props, houses, AiKinds.OFF);
+    }
+
+    @Autowired
+    public RagService(ChatClient chat, VectorStore vectorStore, AiProperties props, HouseRepository houses,
+                      AiKinds kinds) {
         this.chat = chat;
         this.vectorStore = vectorStore;
         this.props = props;
         this.houses = houses;
+        this.kinds = kinds;
+    }
+
+    /**
+     * The documents that may still be read: one written under a kind that has left {@code app.kinds.available}
+     * (its metadata {@code kind}, stamped by {@link KindDocuments#metadata}) is dropped, so a changed list never
+     * serves a school's fees or grades until {@code POST /api/ai/reindex} has rewritten it (S4b-BL-308, T-I49). A house
+     * document, or one stored before the stamp, has no kind and stays. Pure.
+     */
+    static List<Document> availableOnly(List<Document> docs, AiKinds kinds) {
+        if (docs == null) return null;
+        return docs.stream().filter(d -> !(d.getMetadata().get("kind") instanceof String k) || kinds.isAvailable(k)).toList();
     }
 
     /**
@@ -118,6 +141,7 @@ public class RagService {
                     .build();
             docs = vectorStore.similaritySearch(search);
             if (VisitQuestions.isAbout(question)) docs = withVisited(docs, visitedDocs(question, filters));
+            docs = availableOnly(docs, kinds);
             if (docs != null && !docs.isEmpty()) docs = redacted(docs, contactsOf(docs));
         } catch (RuntimeException e) {
             throw new AiUnavailableException("Search over your houses failed", e);

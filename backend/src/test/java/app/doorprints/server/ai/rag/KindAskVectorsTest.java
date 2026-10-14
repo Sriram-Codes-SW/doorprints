@@ -92,7 +92,7 @@ class KindAskVectorsTest {
     void aSchoolsMetadataHasNoPriceNoBhkAndNoContact() {
         var hill = HouseAiPins.candidate(V.get("documents").get(2).get("candidate"));
         var m = HouseDocuments.toDocument(hill, List.of(), List.of(), AreaLines.All.NONE, AiKinds.schools(true)).getMetadata();
-        assertThat(m).containsOnlyKeys("houseId", "label", "status", "rating", "locality", "visited")
+        assertThat(m).containsOnlyKeys("houseId", "kind", "label", "status", "rating", "locality", "visited")
                 .containsEntry("label", "[contact]'s pick: Hill View").containsEntry("locality", "Beltola");
         var asHouse = HouseDocuments.toDocument(hill, List.of(), List.of(), AreaLines.All.NONE, AiKinds.OFF).getMetadata();
         assertThat(asHouse).containsEntry("price", 5000L).containsEntry("priceType", "RENT");
