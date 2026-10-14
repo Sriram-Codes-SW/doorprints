@@ -23,7 +23,7 @@ import { TOUR_KEY } from '../core/storage-keys';
 import { TourService } from '../core/tour.service';
 import { en } from '../i18n/en';
 import { TranslationService } from '../i18n/translation.service';
-import { OFFER_FONT_WAIT_MS, TourOverlay } from './tour-overlay';
+import { TourOverlay } from './tour-overlay';
 
 beforeEach(() => localStorage.clear());
 afterEach(() => {
@@ -50,21 +50,6 @@ async function setup() {
   return { fixture, el, settle, tour: TestBed.inject(TourService) };
 }
 
-/**
- * A Font Loading API whose font is not there yet (jsdom has none): `load` settles when the test says so, or never.
- * The overlay is created but not yet drawn, so the test decides when its first change detection runs.
- */
-async function setupWaitingForFont() {
-  let arrive = () => undefined as void;
-  const load = vi.fn((_font: string, _text: string) => new Promise<FontFace[]>((resolve) => (arrive = () => resolve([]))));
-  Object.defineProperty(document, 'fonts', { configurable: true, value: { check: () => false, load } });
-  TestBed.configureTestingModule({ imports: [TourOverlay], providers: [provideRouter([{ path: '**', children: [] }])] });
-  await TestBed.inject(TranslationService).setLang('en');
-  await TestBed.inject(Router).navigateByUrl('/');
-  const fixture = TestBed.createComponent(TourOverlay);
-  return { fixture, el: fixture.nativeElement as HTMLElement, load, arrive: () => arrive() };
-}
-
 /** Moves the running tour to the step with this id. */
 function goTo(tour: TourService, id: string): void {
   while (tour.step()?.id !== id) tour.next();
@@ -80,33 +65,23 @@ describe('TourOverlay', () => {
     expect(localStorage.getItem(TOUR_KEY)).toBe('skipped');
   });
 
-  it('shows the offer only once the font its words need is ready, so it does not grow when the font arrives', async () => {
-    const { fixture, el, load, arrive } = await setupWaitingForFont();
+  // S4b-BL-264: the Indic faces are font-display: optional, so a font that is not ready is never swapped in later and the offer
+  // has nothing to wait for; a Font Loading API whose font never comes must not delay or hide it.
+  const offerAtOnce = async (lang: 'en' | 'ta') => {
+    const load = vi.fn(() => new Promise<FontFace[]>(() => undefined));
+    Object.defineProperty(document, 'fonts', { configurable: true, value: { check: () => false, load } });
+    TestBed.configureTestingModule({ imports: [TourOverlay], providers: [provideRouter([{ path: '**', children: [] }])] });
+    await TestBed.inject(TranslationService).setLang(lang);
+    await TestBed.inject(Router).navigateByUrl('/');
+    const fixture = TestBed.createComponent(TourOverlay);
     fixture.detectChanges();
-    await fixture.whenStable();
-    expect(el.querySelector('.offer')).toBeNull();
-    expect(load).toHaveBeenCalledTimes(1);
-    const [font, text] = load.mock.calls[0];
-    expect(font).toMatch(/^1rem /);
-    expect(text).toContain(en['tour.offer.title']);
-    expect(text).toContain(en['tour.offer.skip']);
-    arrive();
-    await fixture.whenStable();
-    fixture.detectChanges();
-    expect(el.querySelector('#tour-offer-title')?.textContent).toContain(en['tour.offer.title']);
-  });
+    expect(fixture.nativeElement.querySelector('#tour-offer-title')).not.toBeNull();
+    expect(load).not.toHaveBeenCalled();
+  };
 
-  it('shows the offer after OFFER_FONT_WAIT_MS when its font never comes', async () => {
-    const { fixture, el } = await setupWaitingForFont();
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
-    fixture.detectChanges();
-    await vi.advanceTimersByTimeAsync(OFFER_FONT_WAIT_MS - 1);
-    fixture.detectChanges();
-    expect(el.querySelector('.offer')).toBeNull();
-    await vi.advanceTimersByTimeAsync(1);
-    fixture.detectChanges();
-    expect(el.querySelector('.offer')).not.toBeNull();
-  });
+  it('shows the offer at once in English, whatever the Font Loading API says', () => offerAtOnce('en'));
+
+  it('shows the offer at once in Tamil, whatever the Font Loading API says', () => offerAtOnce('ta'));
 
   it('starts from the offer: a labelled dialog with the step, what to try, and focus on its heading', async () => {
     const { el, settle } = await setup();
