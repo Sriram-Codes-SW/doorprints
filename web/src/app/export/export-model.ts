@@ -52,6 +52,11 @@ export interface ExportOptions {
   lang: Lang;
   /** Length unit for room dimensions in readable copies: 'FT' (feet+inches) or 'M' (metres). */
   lengthUnit?: 'FT' | 'M';
+  /**
+   * The space the copy is of (kinds PR B, S4b-BL-279): only that space's candidates go in and the file name carries its
+   * plural noun. Left out, the copy holds every candidate, as it always did; a backup never has one.
+   */
+  space?: string;
 }
 
 /** Everything included, in English: what the export card starts with. */
@@ -187,6 +192,8 @@ export interface CollectInput {
   kinds?: CopyKinds;
   /** The kinds enabled and the default (S4b-BL-212), for the backup's `search`; left out for the house alone. */
   spaces?: SearchSpaces;
+  /** Whether a candidate is in the space of `options.space` (left out: every candidate is). */
+  inSpace?: (h: HouseRecord) => boolean;
   exportedAt: string;
   options: ExportOptions;
 }
@@ -204,6 +211,7 @@ export function collect(input: CollectInput): ExportBundle {
   const chosen = live
     .filter((h) => (options.scope === 'shortlisted' ? h.status === 'SHORTLISTED' : true))
     .filter((h) => (options.scope === 'selected' ? options.selectedIds.includes(h.id) : true))
+    .filter((h) => input.inSpace?.(h) ?? true)
     .filter((h) => options.includeRejected || h.status !== 'REJECTED')
     .map(stripContacts(options.includeContacts))
     .sort(byCreatedThenId);
@@ -231,8 +239,10 @@ export function collect(input: CollectInput): ExportBundle {
     .sort((a, b) => Date.parse(a.updatedAt ?? '') - Date.parse(b.updatedAt ?? '') || compare(a.id, b.id));
   const scoring = scoringOf(criteria, preferences);
   const chosenIds = new Set(chosen.map((h) => h.id));
+  // A copy of every candidate of every space carries what belongs to none; a copy of one space only what is its own.
+  const whole = options.scope === 'all' && !input.inSpace;
   const viewings = (input.viewings ?? [])
-    .filter((row) => options.scope === 'all' || chosenIds.has(row.viewing.houseId))
+    .filter((row) => whole || chosenIds.has(row.viewing.houseId))
     .map((row) => (options.includeContacts ? row : withoutWhom(row)))
     .sort((a, b) => Date.parse(a.updatedAt ?? '') - Date.parse(b.updatedAt ?? '') || compare(a.id, b.id));
   const viewingsByHouse = new Map<string, Viewing[]>();
@@ -290,7 +300,7 @@ export function collect(input: CollectInput): ExportBundle {
     areas,
     places,
     areaNotes,
-    brokers: options.includeContacts ? collectBrokers(input.brokers ?? [], houses, options.scope === 'all') : [],
+    brokers: options.includeContacts ? collectBrokers(input.brokers ?? [], houses, whole) : [],
     lengthUnit: input.lengthUnit ?? 'FT',
     ...(extraColumns.length ? { extraColumns } : {}),
     ...(input.spaces && !(input.spaces.kinds.length === 1 && input.spaces.kinds[0] === 'house') ? { spaces: input.spaces } : {}),

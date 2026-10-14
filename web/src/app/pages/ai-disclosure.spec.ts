@@ -47,7 +47,7 @@ describe('Ask and Plan: the disclosure names the host', () => {
       imports: [component],
       providers: [
         provideRouter([]),
-        { provide: AiService, useValue: { enabled: signal(true), usesOwnKey: signal(own), ownHost: signal(host) } },
+        { provide: AiService, useValue: { enabled: signal(true), enabledFor: () => true, usesOwnKey: signal(own), ownHost: signal(host) } },
         { provide: LocalDataService, useValue: { houses: () => of([]) } },
       ],
     });

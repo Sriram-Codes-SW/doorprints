@@ -30,6 +30,9 @@ import {
   splitCitations,
 } from '../../core/ai.service';
 import { AiSessionState } from '../../core/ai-session.state';
+import { SpaceService } from '../../core/space.service';
+import { toolWord } from '../../core/space-tool-words';
+import type { TKey } from '../../i18n/en';
 import { Announcer } from '../../core/announcer.service';
 import { ConfigService } from '../../core/config.service';
 import { HouseStatus, STATUSES, STATUS_KEY } from '../../core/models';
@@ -62,6 +65,16 @@ export class AskPage implements OnDestroy {
   protected readonly aiOffMsg = aiOffMsg;
   private readonly announcer = inject(Announcer);
   private readonly session = inject(AiSessionState);
+  /** Ask reads the space on screen only (kinds PR B, S4b-BL-279). */
+  protected readonly space = inject(SpaceService);
+  private readonly kind = this.space.kind();
+  /** The assistant is on and reads this space (the house whenever AI is on; another space on the person's own AI). */
+  protected readonly on = computed(() => this.ai.enabledFor(this.kind));
+  /** The price and BHK filters are the house's: a kind that hides its money has none. */
+  protected readonly moneyFilters = this.space.current().labels.isVisible('field.money');
+  protected w(key: TKey): TKey {
+    return toolWord(this.kind, key);
+  }
   private readonly injector = inject(Injector);
 
   protected readonly maxChars = AI_MAX_QUESTION_CHARS;
@@ -92,7 +105,7 @@ export class AskPage implements OnDestroy {
   protected readonly parts = computed(() => splitCitations(this.result()?.answer ?? ''));
 
   constructor() {
-    const saved = this.session.ask;
+    const saved = this.session.askOf(this.kind);
     if (saved) {
       this.question = saved.question;
       this.status = saved.status;
@@ -108,13 +121,13 @@ export class AskPage implements OnDestroy {
    */
   ngOnDestroy(): void {
     this.request?.unsubscribe();
-    this.session.ask = {
+    this.session.setAsk(this.kind, {
       question: this.question,
       status: this.status,
       maxPrice: this.maxPrice,
       minBedrooms: this.minBedrooms,
       result: this.result(),
-    };
+    });
   }
 
   protected labelOf(houseId: string): string {
@@ -150,7 +163,8 @@ export class AskPage implements OnDestroy {
     if (this.minBedrooms != null && this.minBedrooms > 0) filters.minBedrooms = Math.round(this.minBedrooms);
     // An earlier error stays in place while this run is busy (drawn as being updated); the run's end replaces it.
     this.busy.set(true);
-    this.request = this.ai.ask(q, Object.keys(filters).length ? filters : undefined).subscribe({
+    const f = Object.keys(filters).length ? filters : undefined;
+    this.request = (this.kind === 'house' ? this.ai.ask(q, f) : this.ai.ask(q, f, this.kind)).subscribe({
       next: (r) => {
         this.request = null;
         this.error.set(null);

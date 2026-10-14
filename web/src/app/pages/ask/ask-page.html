@@ -18,11 +18,11 @@
 
 <div class="page narrow">
   <header class="page-head">
-    <h1>{{ 'ask.title' | t }}</h1>
-    <p class="muted">{{ 'ask.intro' | t }}</p>
+    <h1>{{ w('ask.title') | t }}</h1>
+    <p class="muted">{{ w('ask.intro') | t }}</p>
   </header>
 
-  @if (!ai.enabled()) {
+  @if (!on()) {
     <!-- Why AI is off, in words that are true for this case (no server; off on the server; off for this device on
          the owner page; this browser's own switch), with a link where the fix is on the Connect page. -->
     @if (ai.offReason(); as reason) {
@@ -33,7 +33,7 @@
         }
       </p>
     } @else {
-      <p class="card">{{ 'ai.disabled' | t }}</p>
+      <p class="card">{{ (ai.enabled() ? 'ai.notHere' : 'ai.disabled') | t }}</p>
     }
   } @else {
     <form class="card" (ngSubmit)="submit()" novalidate>
@@ -46,7 +46,7 @@
           [(ngModel)]="question"
           (ngModelChange)="onQuestion($event)"
           [attr.maxlength]="maxChars"
-          [placeholder]="'ask.placeholder' | t"
+          [placeholder]="w('ask.placeholder') | t"
           [attr.aria-invalid]="questionMissing() ? 'true' : null"
           [attr.aria-describedby]="questionMissing() ? 'question-error ask-disclosure' : 'ask-disclosure'"
           required
@@ -68,6 +68,7 @@
               }
             </select>
           </div>
+          @if (moneyFilters) {
           <div class="field">
             <label for="f-price">{{ 'ask.maxPrice' | t }}</label>
             <input id="f-price" name="maxPrice" type="number" min="0" step="1000" inputmode="numeric" [(ngModel)]="maxPrice" />
@@ -76,6 +77,7 @@
             <label for="f-bhk">{{ 'ask.minBedrooms' | t }}</label>
             <input id="f-bhk" name="minBedrooms" type="number" min="0" max="20" inputmode="numeric" [(ngModel)]="minBedrooms" />
           </div>
+          }
         </div>
       </details>
 
@@ -120,21 +122,21 @@
               @if (p.kind === 'text') {
                 {{ p.text }}
               } @else {
-                <a class="cite" [routerLink]="['/houses', p.houseId]" [attr.aria-label]="'ask.citeAria' | t: { n: numberOf(p.houseId), name: labelOf(p.houseId) }"
+                <a class="cite" [routerLink]="space.detailLink(p.houseId, kind)" [attr.aria-label]="'ask.citeAria' | t: { n: numberOf(p.houseId), name: labelOf(p.houseId) }"
                   >[{{ numberOf(p.houseId) }}]</a
                 >
               }
             }
           </p>
           @if (!r.grounded) {
-            <p class="muted small">{{ 'ask.notGrounded' | t }}</p>
+            <p class="muted small">{{ w('ask.notGrounded') | t }}</p>
           }
           @if (r.citations.length > 0) {
-            <h3>{{ 'ask.sources' | t }}</h3>
+            <h3>{{ w('ask.sources') | t }}</h3>
             <ol class="sources">
               @for (c of r.citations; track c.houseId) {
                 <li>
-                  <a [routerLink]="['/houses', c.houseId]">{{ c.label || ('common.untitled' | t) }}</a>
+                  <a [routerLink]="space.detailLink(c.houseId, kind)">{{ c.label || ('common.untitled' | t) }}</a>
                   @if (c.snippet) {
                     <span class="muted small">{{ c.snippet }}</span>
                   }

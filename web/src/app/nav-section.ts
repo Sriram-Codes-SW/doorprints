@@ -23,7 +23,12 @@
 
 /** The map and the pages under it: a house and the new-house form (Back goes to the map; Android nests them too). */
 export function inMapSection(path: string): boolean {
-  return path === '/' || path === '/houses' || path.startsWith('/houses/') || path.startsWith('/k/');
+  return path === '/' || path === '/houses' || path.startsWith('/houses/') || (path.startsWith('/k/') && !isSpaceTool(path));
+}
+
+/** Compare, Ask or Plan of a space other than the house (`/k/<kind>/compare`, kinds PR B): tab destinations of their own. */
+export function isSpaceTool(path: string): boolean {
+  return /^\/k\/[a-z][a-z0-9_]{1,31}\/(?:compare|ask|plan)$/.test(path);
 }
 
 /** A space's own list and map (`/k/<kind>`, kinds PR 8), which is a tab destination as the map is. */
