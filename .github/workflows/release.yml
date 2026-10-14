@@ -82,8 +82,9 @@ jobs:
     runs-on: ubuntu-26.04
     timeout-minutes: 40
     permissions: {}
+    # No job output carries the file name: GitHub withholds a job output that contains a secret value (it did on the
+    # first dry run, "Skip output 'name' since it may contain secret"), so `publish` rebuilds the name from the tag.
     outputs:
-      name: ${{ steps.name.outputs.name }}
       fingerprint: ${{ steps.fingerprint.outputs.sha256 }}
     steps:
       - uses: actions/checkout@v7
@@ -181,9 +182,16 @@ jobs:
           apksigner="$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -n 1)apksigner"
           "$apksigner" verify --print-certs "$apk" > "$RUNNER_TEMP/certs.txt"
           cat "$RUNNER_TEMP/certs.txt"
-          [ "$(grep -c 'certificate SHA-256 digest:' "$RUNNER_TEMP/certs.txt")" = "1" ] \
+          # apksigner's line prefix depends on the build-tools version and the signature schemes ("Signer #1 certificate
+          # SHA-256 digest: ..." or "V2 Signer: certificate SHA-256 digest: ..."), and the hex may be in either case.
+          # So: match the label case-insensitively, keep the hex digits only, lower-case, and de-duplicate (one
+          # certificate may be listed once per scheme). Exactly one distinct 64-hex digest must remain.
+          digests="$(awk '{ l = tolower($0); k = "sha-256 digest:"; i = index(l, k) }
+                          l ~ /certificate/ && i { d = substr(l, i + length(k)); gsub(/[^0-9a-f]/, "", d); print d }' \
+            "$RUNNER_TEMP/certs.txt" | sort -u)"
+          [ -n "$digests" ] && [ "$(printf '%s\n' "$digests" | wc -l)" = "1" ] \
             || { echo "::error::Expected exactly one signer certificate."; exit 1; }
-          fingerprint="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$RUNNER_TEMP/certs.txt")"
+          fingerprint="$digests"
           printf '%s' "$fingerprint" | grep -Eq '^[0-9a-f]{64}$' \
             || { echo "::error::Could not read the signer certificate fingerprint."; exit 1; }
           echo "sha256=$fingerprint" >> "$GITHUB_OUTPUT"
@@ -235,9 +243,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
-          NAME: ${{ needs.build.outputs.name }}
         run: |
           set -eu
+          # The same name `build` gave the files (its `name` step, tag run): doorprints-<tag>. Not passed between jobs.
+          NAME="doorprints-$TAG"
           cd dist
           sha256sum -c "$NAME.apk.sha256"
           # --draft is not optional and not an input: this workflow never publishes. --verify-tag refuses a tag

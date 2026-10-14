@@ -196,7 +196,7 @@
 | 0.186 | 2026-10-14 | Claude (Code), engineer | §11.2: **S4b-BL-274 and S4b-BL-289, kinds PR C, spaces on the phones, In review** (two stacked pull requests, `feat/kinds-13-phones-spaces` and `feat/kinds-13b-phones-spaces-scoping`; [03](03-design.md) §18.14). |
 | 0.187 | 2026-10-14 | Claude (Code), engineer | §11.2: **S4b-BL-280 In review** (`fix/kinds-server-available-flag`): the server's `KINDS_AVAILABLE` list replaces `AI_DEV_KINDS`; the Java writer of the backup's `search`. |
 | 0.188 | 2026-10-14 | Claude (Code), engineer | §11.2: **C-02 In review** (`ci/release-workflow-draft`): `release.yml` exists; the owner must set the four `HH_*` secrets and push a tag. |
-| 0.189 | 2026-10-14 | Claude (Code), engineer | §11.2 note on C-02: merged (#331), the four `HH_*` secrets are set, first dry run pending. |
+| 0.189 | 2026-10-14 | Claude (Code), engineer | §11.2 note on C-02: merged (#331), the four `HH_*` secrets are set, second dry run pending (the first found two bugs, fixed in #332). |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 
