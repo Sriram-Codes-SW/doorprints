@@ -1,0 +1,152 @@
+{
+  "spec": [
+    "web/src/app/core/chunk-recovery.spec.ts",
+    "web/src/app/app.config.spec.ts"
+  ],
+  "mutations": [
+    {
+      "file": "web/src/app/core/chunk-recovery.ts",
+      "find": "export const CHUNK_RETRY_MS = 1000;",
+      "replace": "export const CHUNK_RETRY_MS = 2000;",
+      "expect": "again as a fresh document, once, after about a second"
+    },
+    {
+      "file": "web/src/app/core/chunk-recovery.ts",
+      "find": " || this.timer !== undefined) return;",
+      "replace": ") return;",
+      "expect": "counts two failures close together as one"
+    },
+    {
+      "file": "web/src/app/core/chunk-recovery.ts",
+      "find": "if (!isChunkLoadError(error.error)",
+      "replace": "if (false",
+      "expect": "leaves every other navigation error alone"
+    },
+    {
+      "file": "web/src/app/core/chunk-recovery.ts",
+      "find": "if (!freshLoadAllowedOnce(this.doc)) {",
+      "replace": "if (false) {",
+      "expect": "shows the message, and loads nothing"
+    },
+    {
+      "file": "web/src/app/core/chunk-recovery.ts",
+      "find": "if (!store || store.getItem(CHUNK_RELOAD_KEY)) return false;",
+      "replace": "if (!store) return false;",
+      "expect": "shows the message, and loads nothing"
+    },
+    {
+      "file": "web/src/app/core/chunk-recovery.ts",
+      "find": "store.setItem(CHUNK_RELOAD_KEY, '1');",
+      "replace": "",
+      "expect": "again as a fresh document, once, after about a second"
+    },
+    {
+      "file": "web/src/app/core/chunk-recovery.ts",
+      "find": "} catch {\n    return false;",
+      "replace": "} catch {\n    return true;",
+      "expect": "session storage cannot be used"
+    },
+    {
+      "file": "web/src/app/core/chunk-recovery.ts",
+      "find": "if (this.router.currentNavigation() || this.router.url !== from) return;",
+      "replace": "if (this.router.url !== from) return;",
+      "expect": "does not load over a navigation that is already running"
+    },
+    {
+      "file": "web/src/app/core/chunk-recovery.ts",
+      "find": "if (this.router.currentNavigation() || this.router.url !== from) return;",
+      "replace": "if (this.router.currentNavigation()) return;",
+      "expect": "does not pull the person back"
+    },
+    {
+      "file": "web/src/app/core/chunk-recovery.ts",
+      "find": "this.page.to(error.url);",
+      "replace": "this.page.to('/');",
+      "expect": "again as a fresh document, once, after about a second"
+    },
+    {
+      "file": "web/src/app/core/chunk-recovery.ts",
+      "find": "if (url !== null) this.page.to(url);",
+      "replace": "this.page.to(url!);",
+      "expect": "Try again does nothing while no message is shown"
+    },
+    {
+      "file": "web/src/app/core/chunk-recovery.ts",
+      "find": "this.page.reload();",
+      "replace": "",
+      "expect": "Try again loads the failed address afresh, and Reload"
+    },
+    {
+      "file": "web/src/app/core/chunk-recovery.ts",
+      "find": "if (e instanceof NavigationEnd) this.failed.set(null);",
+      "replace": "if (e instanceof NavigationEnd) return;",
+      "expect": "a page that loads hides the message"
+    },
+    {
+      "file": "web/src/app/core/chunk-recovery.ts",
+      "find": "dynamically imported module|Importing",
+      "replace": "Importing",
+      "expect": "knows the failed dynamic import of each browser"
+    },
+    {
+      "file": "web/src/app/core/chunk-recovery.ts",
+      "find": "|Importing a module script failed",
+      "replace": "",
+      "expect": "knows the failed dynamic import of each browser"
+    },
+    {
+      "file": "web/src/app/core/chunk-recovery.ts",
+      "find": "|ChunkLoadError|Loading chunk \\S+ failed",
+      "replace": "",
+      "expect": "knows the failed dynamic import of each browser"
+    },
+    {
+      "file": "web/src/app/core/chunk-recovery.ts",
+      "find": "location.prepareExternalUrl(url)",
+      "replace": "url",
+      "expect": "with the base href applied"
+    },
+    {
+      "file": "web/src/app/core/chunk-recovery.ts",
+      "find": "reload: () => doc.defaultView?.location.reload(),",
+      "replace": "reload: () => undefined,",
+      "expect": "reloads the current one"
+    },
+    {
+      "file": "web/src/app/shared/chunk-notice.ts",
+      "find": "<div class=\"notice\" role=\"alert\">",
+      "replace": "<div class=\"notice\" role=\"status\">",
+      "expect": "then an alert with Try again and Reload"
+    },
+    {
+      "file": "web/src/app/shared/chunk-notice.ts",
+      "find": "(click)=\"recovery.retry()\"",
+      "replace": "(click)=\"recovery.reload()\"",
+      "expect": "then an alert with Try again and Reload"
+    },
+    {
+      "file": "web/src/app/shared/chunk-notice.ts",
+      "find": "@if (recovery.failedUrl()) {",
+      "replace": "@if (true) {",
+      "expect": "is empty until a page failed twice"
+    },
+    {
+      "file": "web/src/app/shared/chunk-notice.ts",
+      "find": "{{ 'error.pageLoad' | t }}",
+      "replace": "{{ 'error.offline' | t }}",
+      "expect": "then an alert with Try again and Reload"
+    },
+    {
+      "file": "web/src/app/app.ts",
+      "find": "    <app-chunk-notice />\n",
+      "replace": "",
+      "expect": "has the message of a page that did not load"
+    },
+    {
+      "file": "web/src/app/app.config.ts",
+      "find": "withNavigationErrorHandler((error) => inject(ChunkRecovery).handle(error)),",
+      "replace": "withNavigationErrorHandler(() => undefined),",
+      "expect": "gives a navigation error to the chunk recovery"
+    }
+  ]
+}

@@ -544,6 +544,7 @@ export const te: Dict = {
   'nav.syncProblem': 'సింక్ సమస్య',
   'title.houseNamed': '{name} · Doorprints',
   'error.offline': 'మీరు ఆఫ్‌లైన్‌లో ఉన్నారు. కనెక్షన్ వచ్చాక మళ్లీ ప్రయత్నించండి.',
+  'error.pageLoad': 'ఈ పేజీ లోడ్ కాలేదు. మీ కనెక్షన్‌ను తనిఖీ చేయండి.',
   'error.notFoundLocal': 'ఈ బ్రౌజర్‌లో కనబడలేదు.',
   'list.two': '{a}, {b}',
   'list.three': '{a}, {b}, {c}',
