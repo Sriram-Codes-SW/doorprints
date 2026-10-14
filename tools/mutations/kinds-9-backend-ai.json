@@ -77,8 +77,8 @@
     },
     {
       "file": "backend/src/main/java/app/doorprints/server/ai/agent/HouseQueries.java",
-      "find": "        return HouseDetails.of(search.forDetails(h));",
-      "replace": "        return HouseDetails.of(h);",
+      "find": "        var viewed = search.forDetails(h);",
+      "replace": "        var viewed = h;",
       "expect": "theDetailsToolGivesWhatTheAskSlotNames"
     },
     {

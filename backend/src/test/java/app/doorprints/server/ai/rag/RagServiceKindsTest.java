@@ -95,4 +95,35 @@ class RagServiceKindsTest {
         assertThat(out).hasSize(1);
         assertThat(out.get(0).getText()).doesNotContain("Ramesh").doesNotContain("98765");
     }
+
+    /** S4b-BL-269: the system text and the user text the model gets are the school's when every retrieved document is a school's. */
+    @Test
+    void askSendsASchoolsPromptForSchoolDocumentsAndTheHousesWhenAHouseIsAmongThem() {
+        var props = new AiProperties(true, null, null, null, null, null, null, new AiProperties.Rag(20, null), null, null, null);
+        var none = new AskFilters(null, null, null, null, null);
+        var school = doc("school", "School: Pine Hill, fees Rs 96000");
+        var house = doc(null, "House: A");
+        for (var withHouse : List.of(false, true)) {
+            var store = mock(VectorStore.class);
+            when(store.similaritySearch(any(org.springframework.ai.vectorstore.SearchRequest.class)))
+                    .thenReturn(withHouse ? List.of(school, house) : List.of(school));
+            var spec = mock(ChatClient.ChatClientRequestSpec.class, org.mockito.Mockito.RETURNS_SELF);
+            when(spec.call()).thenThrow(new IllegalStateException("model down"));
+            var chat = mock(ChatClient.class);
+            when(chat.prompt()).thenReturn(spec);
+            var service = new RagService(chat, store, props, mock(HouseRepository.class), AiKinds.schools(true));
+            assertThatThrownBy(() -> service.ask("Which school has the lowest fees?", none)).isInstanceOf(AiUnavailableException.class);
+            var system = org.mockito.ArgumentCaptor.forClass(String.class);
+            var user = org.mockito.ArgumentCaptor.forClass(String.class);
+            org.mockito.Mockito.verify(spec).system(system.capture());
+            org.mockito.Mockito.verify(spec).user(user.capture());
+            if (withHouse) {
+                assertThat(system.getValue()).contains("ONE person's house hunt").doesNotContain("school search");
+                assertThat(user.getValue()).startsWith("<houses-");
+            } else {
+                assertThat(system.getValue()).contains("ONE person's school search").contains(AiKinds.SCHOOL.refusal());
+                assertThat(user.getValue()).startsWith("<schools-").contains("School: Pine Hill, fees Rs 96000");
+            }
+        }
+    }
 }

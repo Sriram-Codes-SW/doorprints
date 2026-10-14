@@ -200,4 +200,28 @@ class KindPlanVectorsTest {
         for (int i = s.indexOf(part); i >= 0; i = s.indexOf(part, i + part.length())) n++;
         return n;
     }
+
+    /** The view keeps of a candidate's extras only those the slot names, and a newer app's extras never (S4b-BL-270). */
+    @Test
+    void theViewKeepsOnlyTheExtrasTheSlotNames() {
+        var hill = HouseAiPins.candidate(V.get("documents").get(2).get("candidate"));
+        assertThat(hill.extras().other().keySet()).contains("admissionFee", "hostel", "secretNote", "board");
+        var k = app.doorprints.server.ai.kind.AiKinds.SCHOOL;
+        assertThat(k.view(hill, k.plan()).extras().other().keySet())
+                .containsExactlyInAnyOrder("board", "medium", "grades", "commuteMinutes", "busService", "fees");
+        assertThat(k.view(hill, k.ask()).extras().other().keySet()).contains("admissionFee").doesNotContain("hostel", "secretNote");
+        assertThat(k.view(hill, List.of("label")).extras()).isNull();
+    }
+
+    /** {@code ai.never} wins over the slot for an extra too: a kind that named an extra in both would never send it. */
+    @Test
+    void anExtraNeverNamesIsNotInARecordWhateverThePlanSlotSays() {
+        var k = app.doorprints.server.ai.kind.AiKinds.SCHOOL;
+        var strict = new app.doorprints.server.ai.kind.AiKind(k.id(), k.noun(), k.extract(), k.ask(), k.plan(),
+                List.of("contactName", "contactPhone", "board", "busService"), k.extras(), k.extractSystem(), k.records(),
+                k.refusal(), k.askSystem());
+        var pine = HouseAiPins.candidate(V.get("documents").get(0).get("candidate"));
+        assertThat(app.doorprints.server.ai.rag.KindDocuments.extras(pine, strict, strict.plan()).keySet())
+                .containsExactly("Medium of instruction", "Grades offered", "Commute (minutes)", "Fees per year");
+    }
 }

@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.136 |
+| Version | 0.137 |
 | Date | 2026-10-14 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -147,6 +147,7 @@
 | 0.134 | 2026-10-14 | Claude (Code), engineer | **§18.11: the school set for the AI evals and `house.json`'s `ai` slots** (S4b-BL-268, S4b-BL-271; `feat/kinds-17-school-evals-and-slots`; [10](10-sprint-log.md) v0.320, [06](06-test-plan.md) v0.251 TC-AI-47 and TC-U-231, [ai-design](ai/ai-design.md) 8.7 and 16.8): `docs/ai/evals/school-set.json` and the three eval harnesses seeding a candidate's kind and extras with the kinds on; the house's slots name what its hand-written AI code reads, a house's output unchanged. The release gate of §18.12 stays until S4b-BL-269 and -270 are done as well. |
 | 0.135 | 2026-10-14 | Claude (Code), engineer | LocationMap row: since maplibre-gl 6.13 the worker is self-contained, `angular.json` copies `maplibre-gl-worker.mjs` alone ([10](10-sprint-log.md) S4b-BL-310). |
 | 0.136 | 2026-10-14 | Claude (Code), engineer | **§18.9 The phones' half** (kinds PR 18; S4b-BL-256, S4b-BL-259, S4b-BL-266 and the phones' leftovers of S4b-BL-277; `feat/kinds-18-school-wording-phones`; [06](06-test-plan.md) TC-U-232, TC-M-76; [10](10-sprint-log.md) v0.320): the phone's form, list row, status names, Compare, Areas and Places, walk check and copies read the kind; a school's copies speak in the school's words and write each extra under its section (the fees under *Fees*); the iPhone has the same code. |
+| 0.137 | 2026-10-14 | Claude (Code), engineer | **§18.11: a school's own Ask and Plan words, and its extras in the Plan tools** (kinds PR 19; S4b-BL-269, S4b-BL-270; `feat/kinds-19-school-prompts`; [10](10-sprint-log.md) v0.323, [06](06-test-plan.md) v0.254 TC-U-233, TC-U-234, TC-AI-48, [ai-design](ai/ai-design.md) v0.75 16.9 and 16.10, [02](02-threat-model.md) v0.83 T-I50): the kind's AI copy holds its Ask and Plan system texts, block name and refusal (not kind-file keys); a prompt speaks in them only when every record sent is of the kind; `school.json`'s `ai.plan` names six extras, which the Plan summary, `houseDetails`, the wrap-up notice and the devices' candidate line carry; the house's prompts and records are byte for byte as before; S4b-BL-234 left. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -2535,8 +2536,8 @@ the phone and `CandidateExtras.other` on the server) is never named, so it is ne
 and [04](04-data-flow-diagrams.md) §8 say. `school.json`'s slots: `extract` the label, address, street, locality, the
 contact's name and phone, the listing link, the notes, the board, medium, grades, bus, fees and admission fee (not the
 commute: it is the person's own measure, which no listing states); `ask` the place, the seven extras, the area notes,
-the distances, the status, the rating, the visits and the notes; `plan` the label, status, rating, locality and street;
-`never` the contact's name and phone. Each stack holds a copy of the slots and the school's extras, checked against the
+the distances, the status, the rating, the visits and the notes; `plan` the label, status, rating, locality and street and
+(since S4b-BL-270) the board, medium, grades, commute, bus and fees; `never` the contact's name and phone. Each stack holds a copy of the slots and the school's extras, checked against the
 file (the server's `AiKindFileTest`).
 
 **The Ask lines.** `School: <name>`, the place lines, then `<words>: <value>` for each extra in the slot's order, with
@@ -2631,6 +2632,8 @@ amenities, so the slots say what the house's hand-written code reads; the code i
 documents, prompts, Plan lines and pins are byte for byte as before. The shared `kinds/house-ai-slot-vectors.json` and a
 `HouseAiSlotsTest` on each stack hold the two together. S4b-BL-269 (the prompts' house words) and S4b-BL-270 (a kind's extras
 in the Plan tools) are still open, and so is the release gate (§18.12).
+
+**Update of 2026-10-14 (S4b-BL-269, S4b-BL-270; kinds PR 19, `feat/kinds-19-school-prompts`).** *A school's own words.* The Ask and Plan prompts spoke of houses for every kind. A kind now has its own Ask system text, records' block name (`schools-<nonce>`) and refusal sentence, and on the devices its own planner text, as fields of the kind's AI copy beside the Extract text (the server's `AiKind`, the website's `AiKind`, the phones' `AiKindSlots`); the shared `kind-ai-vectors.json` `prompts` pins them on all three stacks. A prompt uses them only when every record sent is of that one built-in kind and the kind is available; a house, a mix, no records and a kind that is not built in get the house's prompt byte for byte, which the five house pins and `parity-vectors.json` hold unchanged. The records' markers `[house:<id>]`, the output fields and the schemas stay the same for every kind: they are the protocol the citations and plans are read by (S4b-BL-312). The server's Ask chooses by the documents it retrieved; its planner takes no kind and keeps its one prompt until S4b-BL-290. *A kind's extras in the Plan tools.* The extras `ai.plan` names ride in the server's `HouseSummary` and `HouseDetails` (`extras`, words to value, absent for a house) and in the devices' candidate line, typed, ranged and redacted as the Ask document is. *S4b-BL-234* (the rule on abusive words) is not in this change: it re-pins the house's prompts, which this change keeps byte-identical. [ai-design](ai/ai-design.md) 16.9 and 16.10 have the design and the injection analysis.
 
 ### 18.12 Spaces: the chooser and Settings > What you track (kinds PR 8, S4b-BL-212)
 
