@@ -36,6 +36,7 @@ import { tryHouseFromDto, type PhotoRecord } from '../data/records';
 import schoolVectors from '../../../../docs/schemas/kinds/school-vectors.json';
 import { houseOf, type CandidateDto } from '../core/candidate';
 import { DEV_KINDS_KEY } from '../core/dev-kinds';
+import { DEFAULT_KIND_KEY, ENABLED_KINDS_KEY, EXPERIMENTAL_KINDS_KEY } from '../core/kind-setting';
 import { SCHOOL_FIELDS } from '../core/school-kind';
 
 /**
@@ -315,17 +316,30 @@ describe('the copies read each candidate as its page draws it (kinds PR 6, S4b-B
   const school = () => tryHouseFromDto(houseOf((schoolVectors as unknown as { candidate: CandidateDto }).candidate))!;
   afterEach(() => localStorage.removeItem(DEV_KINDS_KEY));
 
-  it('a school is copied with its extras only while the developer flag is on; the houses as they were', async () => {
+  it('a stored school is copied with its extras whatever the switch says (S4b-BL-212); the houses as they were', async () => {
     TestBed.resetTestingModule();
     const store = { ...fakeStore([]), allHouses: () => Promise.resolve([...FIXTURE_HOUSES.map((h) => ({ ...h })), school()]) };
     TestBed.configureTestingModule({ providers: [{ provide: LocalStore, useValue: store }] });
     const service = TestBed.inject(ExportService);
-    const off = await service.bundle(OPTIONS);
-    expect([off.extraColumns, off.houses.every((h) => h.extras === undefined)]).toEqual([undefined, true]);
+    const off = await service.bundle({ ...OPTIONS, lang: 'hi' });
     localStorage.setItem(DEV_KINDS_KEY, 'school');
     const on = await service.bundle({ ...OPTIONS, lang: 'hi' });
-    expect(on.extraColumns?.map((c) => c.key)).toEqual(SCHOOL_FIELDS.others().map((f) => `school.${f.id}`));
-    expect(on.extraColumns?.[0].label).toBe('बोर्ड');
-    expect(on.houses.filter((h) => h.extras).map((h) => h.house.kind)).toEqual(['school']);
+    for (const b of [off, on]) {
+      expect(b.extraColumns?.map((c) => c.key)).toEqual(SCHOOL_FIELDS.others().map((f) => `school.${f.id}`));
+      expect(b.extraColumns?.[0].label).toBe('बोर्ड');
+      expect(b.houses.filter((h) => h.extras).map((h) => h.house.kind)).toEqual(['school']);
+    }
+  });
+
+  it('the bundle carries the enabled kinds and the default for the backup only when more than the house is on (S4b-BL-212)', async () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ providers: [{ provide: LocalStore, useValue: fakeStore([]) }] });
+    const service = TestBed.inject(ExportService);
+    localStorage.setItem(ENABLED_KINDS_KEY, '["house","school"]');
+    localStorage.setItem(DEFAULT_KIND_KEY, 'school');
+    expect((await service.bundle(OPTIONS)).spaces).toBeUndefined();
+    localStorage.setItem(EXPERIMENTAL_KINDS_KEY, '1');
+    expect((await service.bundle(OPTIONS)).spaces).toEqual({ kinds: ['house', 'school'], defaultKind: 'school' });
+    for (const k of [EXPERIMENTAL_KINDS_KEY, ENABLED_KINDS_KEY, DEFAULT_KIND_KEY]) localStorage.removeItem(k);
   });
 });

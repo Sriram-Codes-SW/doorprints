@@ -19,7 +19,8 @@
 import { ApplicationConfig, inject, provideAppInitializer } from '@angular/core';
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 import { TitleStrategy, provideRouter, withComponentInputBinding, withRouterConfig } from '@angular/router';
-import { routes } from './app.routes';
+import { routesFor } from './app.routes';
+import { spacesOn } from './core/kind-setting';
 import { apiInterceptor } from './core/api.interceptor';
 import { LocalStore } from './data/local-store.service';
 import { I18nTitleStrategy } from './i18n/i18n-title.strategy';
@@ -34,7 +35,8 @@ import { initialLang } from './i18n/translation.service';
 export const appConfig: ApplicationConfig = {
   providers: [
     provideRouter(
-      routes,
+      // Today's routes with one kind enabled; the chooser and the spaces with two or more (kinds PR 8, S4b-BL-212).
+      routesFor(spacesOn()),
       withComponentInputBinding(),
       // A Back (popstate) that a guard cancels — "Keep editing" in the house page's unsaved-changes dialog — must
       // leave history as it was. The default, 'replace', writes the house URL over the entry the browser had just

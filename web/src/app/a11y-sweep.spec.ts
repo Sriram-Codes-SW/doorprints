@@ -30,6 +30,7 @@ import { hi } from './i18n/hi';
 import { ta } from './i18n/ta';
 import { te } from './i18n/te';
 import { App } from './app';
+import { ChooserPage } from './pages/chooser/chooser-page';
 import { Announcer } from './core/announcer.service';
 import { AiService } from './core/ai.service';
 import { ConfirmDialog } from './shared/confirm-dialog';
@@ -326,7 +327,23 @@ function connectGemini(theme: 'light' | 'dark'): Case['render'] {
   };
 }
 
+/** Settings > Kinds with the school shown too (kinds PR 8, S4b-BL-212), then `render`. */
+function withKinds(render: Case['render'], dflt = 'house'): Case['render'] {
+  return async (lang) => {
+    localStorage.setItem('doorprints.kinds.experimental', '1');
+    localStorage.setItem('doorprints.kinds.enabled', '["house","school"]');
+    localStorage.setItem('doorprints.kinds.default', dflt);
+    return render(lang);
+  };
+}
+
 const CASES: Case[] = [
+  { name: 'Chooser (two kinds)', render: withKinds(page(ChooserPage)) },
+  { name: 'Map (a school space)', render: withKinds(async (lang) => {
+    vi.spyOn(MapPage.prototype, 'ngAfterViewInit').mockImplementation(() => undefined);
+    return page(MapPage, { api: EMPTY })(lang);
+  }, 'school') },
+  { name: 'Your data (Settings > Kinds on)', render: withKinds(plain(DataPage)) },
   { name: 'Map (empty)', render: async (lang) => {
     vi.spyOn(MapPage.prototype, 'ngAfterViewInit').mockImplementation(() => undefined);
     return page(MapPage, { api: EMPTY })(lang);

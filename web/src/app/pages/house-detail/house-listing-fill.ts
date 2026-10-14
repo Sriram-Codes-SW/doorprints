@@ -34,7 +34,8 @@ import { runResult } from '../../shared/run-result';
 import type { RunResult } from '../../shared/run-result';
 import { priceDisagreement } from '../../shared/listing-price-check';
 import { FIELD_LABEL, mergeListingDraft, same } from './house-draft-merge';
-import { builtInKind, devKindsOn } from '../../core/dev-kinds';
+import { builtInKind } from '../../core/dev-kinds';
+import { kindsOn } from '../../core/kind-setting';
 import { mergeKindExtras, shownExtra } from './kind-draft-merge';
 import type { FillField } from './house-draft-merge';
 
@@ -137,8 +138,8 @@ export class HouseListingFill {
     // The last failure stays, drawn as being updated, until this read ends and replaces or removes it (S4b-BL-2).
     this.warnings.set([]);
     this.kept.set([]);
-    // Kinds PR 7 (S4b-BL-211): a candidate of another kind the extract fills (developer flag on) names its kind.
-    const kind = builtInKind(this.deps.draft()?.kind, devKindsOn());
+    // Kinds PR 7 (S4b-BL-211): a candidate of another kind the extract fills (the developer flag or Settings' switch on) names its kind.
+    const kind = builtInKind(this.deps.draft()?.kind, kindsOn());
     const read = kind.id !== 'house' && kind.extracts ? this.deps.ai.extractListing(text, kind.id) : this.deps.ai.extractListing(text);
     this.request = read.subscribe({
       next: (draft) => {
@@ -175,7 +176,7 @@ export class HouseListingFill {
     if (!d) return;
     const result = mergeListingDraft(d, a);
     // A kind's typed extras (kinds PR 7): empty ones filled, set ones kept; a house's draft has none.
-    const fields = builtInKind(d.kind, devKindsOn()).fields;
+    const fields = builtInKind(d.kind, kindsOn()).fields;
     const extras = mergeKindExtras(d, a, fields);
     // The snapshot for Undo fill is the form before this fill, the fields a fill can touch (S4b-BL-238).
     const before: Partial<HouseDto> = {};

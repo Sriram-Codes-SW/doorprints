@@ -66,8 +66,9 @@ import { HouseRooms } from './house-rooms';
 import { HouseFloor, floorOf } from './house-floor';
 import { type KindExtras, MONEY_SECTION, extrasFor } from './kind-extras';
 import type { KindKeys } from '../../core/kind-labels';
-import { builtInKind, creatableKinds, devKindsOn } from '../../core/dev-kinds';
-import { DevKindPicker } from './dev-kind-picker';
+import { drawnKind, ofKind } from '../../core/kind-setting';
+import { SpaceService } from '../../core/space.service';
+import { type SpaceWords, spaceWords } from '../../core/space-words';
 import { sharedFromNavigation, sortBrokers } from './house-page-input';
 import { QUESTION_CATEGORIES } from '../../shared/question';
 import type { Question, QuestionCategory } from '../../shared/question';
@@ -139,7 +140,6 @@ const DRAFT_SAVE_MS = 500;
     HouseCheckCard,
     HouseWalksCard,
     PhotoMetaEditor,
-    DevKindPicker,
   ],
   templateUrl: './house-detail-page.html',
   styleUrl: './house-detail-page.css',
@@ -179,10 +179,11 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   });
   /** The floor of this house: the level, the Basement switch and whether it is a floor (house-floor.ts). */
   protected readonly floor = new HouseFloor({ patch: (changes) => this.patch(changes) });
-  /** The kinds a new candidate may be, and its kind: the house, or the school while the developer flag is on (S4b-BL-209). */
-  private readonly devKinds = devKindsOn();
-  protected readonly kinds = creatableKinds(this.devKinds);
-  protected readonly kind = computed(() => builtInKind(this.draft()?.kind, this.devKinds));
+  /** The candidate's kind: its own when built in (S4b-BL-209); a new one is of the data set's kind (Settings, S4b-BL-212). */
+  protected readonly kind = computed(() => drawnKind(this.draft()?.kind));
+  protected readonly space = inject(SpaceService);
+  /** The kind's words for the save button and the area-notes line (a school's, S4b-BL-212). */
+  protected get W(): SpaceWords { return spaceWords(this.kind().id); }
   private readonly extrasOf = extrasFor({ patch: (changes) => this.patch(changes) });
   /** The typed extras of the Details and Cost cards, drawn from the kind file (kind-extras.ts, S4b-BL-208). */
   protected get extras(): KindExtras { return this.extrasOf(this.kind().fields); }
@@ -500,7 +501,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
 
   /** To the list as the user left it (search, filter, sort), not the plain list: a bookmark, a reload. */
   private toList(): void {
-    void this.router.navigate(['/'], { queryParams: this.listReturn.queryParams() });
+    void this.router.navigate([this.space.home()], { queryParams: this.listReturn.queryParams() });
   }
 
   /**
@@ -513,7 +514,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
       this.location.back();
       return;
     }
-    void this.router.navigate(['/'], { queryParams: this.listReturn.queryParams(), replaceUrl: true });
+    void this.router.navigate([this.space.home()], { queryParams: this.listReturn.queryParams(), replaceUrl: true });
   }
 
   /**
@@ -521,7 +522,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
    * counts as edited.
    */
   private openDraft(lat: number, lon: number, shared: string, source: LocationSource | null = null): void {
-    const draft = withCost(newHouse(lat, lon, source));
+    const draft = withCost(ofKind(newHouse(lat, lon, source), this.space.newKind()));
     this.draft.set(draft);
     if (shared) {
       // The no-AI parser first (docs/11 5.29): the price, BHK, locality, link and phone the share text says, and the
@@ -862,12 +863,6 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     this.patch({ status });
   }
 
-  /** The developer's kind picker (S4b-BL-209): a new candidate's kind; a kind that hides the money starts with no price type. */
-  protected pickKind(id: string): void {
-    const money = builtInKind(id, this.devKinds).labels.isVisible('field.money');
-    this.patch({ kind: id === 'house' ? null : id, priceType: money ? (this.draft()?.priceType ?? 'RENT') : null });
-  }
-
   /** The Moving in card changed the date, notes or items; saved with the house. */
   protected setMoveIn(moveIn: MoveIn | null): void {
     this.patch({ moveIn });
@@ -1004,7 +999,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
       if (this.isNew()) {
         if (navigateAfterCreate) {
           // The form's history entry is replaced: its Back decision goes with it to the saved house's page.
-          void this.router.navigate(['/houses', saved.id], {
+          void this.router.navigate(this.space.detailLink(saved.id, this.kind().id), {
             replaceUrl: true,
             state: this.backToPrevious() ? { [HOUSE_BACK_STATE]: this.backKey() } : undefined,
           });

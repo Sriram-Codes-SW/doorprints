@@ -19,8 +19,9 @@
 // The hidden schools kind on the candidate page (kinds PR 5, S4b-BL-209; docs/03 §18.9). With the developer flag on, a
 // school is drawn from its kind file: `school-form.golden.json` pins every control of its Details and Fees cards (element,
 // id, attributes, rows, label in en, hi, ta and te), their element tree and the page's section headings; it was written
-// once from this page and read by eye, and a change to it is a visible change of the form. With the flag off nothing
-// changes: no kind picker, a new candidate is a house, and a school row is drawn as a house is today, its extras kept.
+// once from this page and read by eye, and a change to it is a visible change of the form. Since kinds PR 8 (S4b-BL-212)
+// a new candidate is of the default kind (Settings > Kinds) while the flag or the switch is on, and a house otherwise; the page
+// has no kind picker; a stored school row is drawn as a school whatever the switch says, its extras kept.
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
@@ -28,6 +29,14 @@ import { of } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AiService, type HouseDraft } from '../../core/ai.service';
 import { DEV_KINDS_KEY } from '../../core/dev-kinds';
+import { DEFAULT_KIND_KEY, ENABLED_KINDS_KEY, EXPERIMENTAL_KINDS_KEY } from '../../core/kind-setting';
+
+/** Settings > Kinds with the school alone shown, so it is the default kind (S4b-BL-212). */
+function schoolDefault(experimental = true): void {
+  if (experimental) localStorage.setItem(EXPERIMENTAL_KINDS_KEY, '1');
+  localStorage.setItem(ENABLED_KINDS_KEY, '["school"]');
+  localStorage.setItem(DEFAULT_KIND_KEY, 'school');
+}
 import { GeocodeService } from '../../core/geocode.service';
 import { LocalDataService } from '../../core/local-data.service';
 import type { HouseDto } from '../../core/models';
@@ -149,16 +158,15 @@ describe('a school on the candidate page, with the developer flag on (school-for
       expect(host.querySelector(gone), gone).toBeNull();
     }
     expect(host.querySelector('app-house-viewings-card')).toBeNull();
-    expect(host.querySelector('app-dev-kind-picker')).toBeNull();
+    expect(host.querySelector('[name="dev-kind"]')).toBeNull();
     expect(text(host.querySelector('.danger-zone .btn-danger'))).toBe('Delete school');
   });
 
-  it('a new candidate offers the kind picker; choosing School draws the school, and Save stores a school with its extras', async () => {
+  it('with School the default kind (Settings > Kinds, S4b-BL-212) a new candidate is a school, and Save stores a school with its extras', async () => {
+    schoolDefault();
     const { fixture, host } = await open(null, 'en', true);
-    expect([...host.querySelectorAll('app-dev-kind-picker label')].map((l) => text(l))).toEqual(['New house', 'New school']);
-    expect(host.querySelector('app-house-listing-card')).not.toBeNull();
-    host.querySelector<HTMLInputElement>('#dev-kind-school')!.click();
-    await settle(fixture);
+    // The page has no kind picker any more (the developer's of S4b-BL-209 is gone): the space or the default decides.
+    expect(host.querySelector('[name="dev-kind"]')).toBeNull();
     expect(text(host.querySelector('#house-title'))).toBe('New school');
     expect(host.querySelector('#house-price')).toBeNull();
     // Since kinds PR 7 (S4b-BL-211) the listing extract fills a school too.
@@ -185,19 +193,28 @@ describe('a school on the candidate page, with the developer flag on (school-for
     const saved = saveHouse.mock.calls[0][0];
     expect([saved.kind, saved.label, saved.price ?? null, saved.priceType]).toEqual(['school', 'Sunbeam School', null, null]);
     expect(saved.extrasOther).toEqual({ board: 'STATE', fees: { amount: 72000, cadence: 'year' }, grades: 'Class 1 to 8' });
-    // Back to the house: a house again, with a price type.
-    host.querySelector<HTMLInputElement>('#dev-kind-house')!.click();
-    await settle(fixture);
-    expect([draft(fixture).kind ?? null, draft(fixture).priceType]).toEqual([null, 'RENT']);
+  });
+
+  it('with two kinds shown and House the default, a new candidate is a house with a price type', async () => {
+    localStorage.setItem(EXPERIMENTAL_KINDS_KEY, '1');
+    localStorage.setItem(ENABLED_KINDS_KEY, '["house","school"]');
+    const { fixture, host } = await open(null, 'en', true);
+    expect([text(host.querySelector('#house-title')), draft(fixture).kind ?? null, draft(fixture).priceType]).toEqual(['New house', null, 'RENT']);
     expect(host.querySelector('#house-price')).not.toBeNull();
+  });
+
+  it('Settings’ switch alone, with no developer flag, makes a new candidate of the default kind', async () => {
+    localStorage.setItem(EXPERIMENTAL_KINDS_KEY, '1');
+    schoolDefault();
+    const { fixture, host } = await open(null, 'en', false);
+    expect([text(host.querySelector('#house-title')), draft(fixture).kind, draft(fixture).priceType]).toEqual(['New school', 'school', null]);
   });
 });
 
 describe('Fill in from listing text for a school (kinds PR 7, S4b-BL-211)', () => {
   it('sends the school\'s kind, fills the empty extras, keeps a typed one and names it, and Undo fill puts it back', async () => {
+    schoolDefault();
     const { fixture, host } = await open(null, 'en', true);
-    host.querySelector<HTMLInputElement>('#dev-kind-school')!.click();
-    await settle(fixture);
     const board = host.querySelector<HTMLSelectElement>('#extra-board')!;
     board.selectedIndex = [...board.options].findIndex((o) => o.textContent?.trim() === 'State board');
     board.dispatchEvent(new Event('change'));
@@ -230,21 +247,22 @@ describe('Fill in from listing text for a school (kinds PR 7, S4b-BL-211)', () =
   });
 });
 
-describe('with the developer flag off, nothing changes (S4b-BL-209)', () => {
-  it('a new candidate is a house, with no kind picker', async () => {
+describe('with the developer flag and the switch off, a house hunter’s page is as it was (S4b-BL-209, S4b-BL-212)', () => {
+  it('a new candidate is a house, with no kind picker, even with School stored as the default kind', async () => {
+    schoolDefault(false);
     const { host, fixture } = await open(null, 'en', false);
-    expect(host.querySelector('app-dev-kind-picker')).toBeNull();
+    expect(host.querySelector('[name="dev-kind"]')).toBeNull();
     expect(text(host.querySelector('#house-title'))).toBe('New house');
     expect(host.querySelector('#house-price')).not.toBeNull();
     expect(draft(fixture).kind ?? null).toBeNull();
   });
 
-  it('a school row (from a device with the flag on) is drawn as a house, and its extras are kept through a save', async () => {
+  it('a stored school row (synced from a device with the switch on) is still drawn as a school, and its extras are kept through a save', async () => {
     const { fixture, host } = await open(SCHOOL, 'en', false);
-    for (const id of ['#house-price', '#house-broker', '#rooms-heading', '#checklist-heading']) expect(host.querySelector(id), id).not.toBeNull();
-    expect(host.querySelector('[id^="extra-"]')).toBeNull();
-    expect(text(host.querySelector('label[for="house-name"]'))).toContain('Name');
-    expect(text(host.querySelector('#cost-heading'))).toBe('Cost');
+    for (const id of ['#house-price', '#house-broker', '#rooms-heading', '#checklist-heading']) expect(host.querySelector(id), id).toBeNull();
+    expect(host.querySelector('#extra-board')).not.toBeNull();
+    expect(text(host.querySelector('label[for="house-name"]'))).toContain('School name');
+    expect(text(host.querySelector('#cost-heading'))).toBe('Fees');
     host.querySelector<HTMLButtonElement>('.toolbar .btn-primary')!.click();
     await settle(fixture);
     expect(saveHouse).toHaveBeenCalledTimes(1);

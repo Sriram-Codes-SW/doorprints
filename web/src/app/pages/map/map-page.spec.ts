@@ -156,8 +156,8 @@ describe('MapPage: searching a school’s extras (S4b-BL-210)', () => {
   const school = house('k', 'Pine Hill School', { kind: 'school', extrasOther: { board: 'CBSE', busService: true } });
   const stub = { houses: () => of([school, PLAIN]) };
 
-  it('finds the school by its board and its bus in the app’s words with the flag on, and not with it off', async () => {
-    expect(rows(await render({ q: 'cbse' }, stub))).toHaveLength(0);
+  it('finds a stored school by its board and its bus in the app’s words, with the flag and the switch off too (S4b-BL-212)', async () => {
+    expect(rows(await render({ q: 'cbse' }, stub))).toHaveLength(1);
     TestBed.resetTestingModule();
     localStorage.setItem('doorprints.dev.kinds', 'school');
     const found = rows(await render({ q: 'school bus' }, stub));
@@ -281,5 +281,59 @@ describe('MapPage: the phone layout is sized in CSS (S4b-BL-49)', () => {
     const read = await render({});
     expect(read.querySelector('dl.stats')).not.toBeNull();
     expect(read.querySelector('.stats-pending')).toBeNull();
+  });
+});
+
+/** Spaces (kinds PR 8, S4b-BL-212; docs/06 TC-U-214): the list, the counters, the search and the words are the space's. */
+describe('MapPage: a space shows its own candidates in its own words (S4b-BL-212)', () => {
+  const SCHOOL = house('k', 'Pine Hill School', { kind: 'school', status: 'SHORTLISTED' });
+  const stub = { houses: () => of([SCHOOL, PLAIN, CHEAP]) };
+  const text = (el: Element | null) => el?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
+  function twoKinds(dflt: string): void {
+    localStorage.setItem('doorprints.kinds.experimental', '1');
+    localStorage.setItem('doorprints.kinds.enabled', '["house","school"]');
+    localStorage.setItem('doorprints.kinds.default', dflt);
+  }
+
+  it('the school space: only the school, its heading, counters, search, Add button and link; no cost filter or price sort', async () => {
+    twoKinds('school');
+    const host = await render({}, stub);
+    expect(rows(host)).toHaveLength(1);
+    expect(rows(host)[0]).toContain('Pine Hill School');
+    expect(text(host.querySelector('#houses-heading'))).toBe('Your schools');
+    const stats = [...host.querySelectorAll('dl.stats div')].map((d) => text(d));
+    expect(stats.slice(0, 3)).toEqual(['Schools1', 'Shortlisted1', 'Rejected0']);
+    expect(text(host.querySelector('label[for="house-search"]'))).toBe('Search schools');
+    expect(host.querySelector('ul.list')!.getAttribute('aria-label')).toBe('School list');
+    expect(host.textContent).toContain('Schools shown: 1 of 1');
+    expect(host.textContent).toContain('Add school');
+    expect(host.textContent).not.toContain('Add house');
+    expect(host.querySelector('details.cost-filters')).toBeNull();
+    expect([...host.querySelectorAll<HTMLOptionElement>('#house-sort option')].map((o) => o.value)).toEqual(['recent']);
+    expect(host.querySelector('ul.list a')!.getAttribute('href')).toBe('/k/school/k');
+  });
+
+  it('the house space of two: the houses only, in today’s words', async () => {
+    twoKinds('house');
+    const host = await render({}, stub);
+    expect(rows(host)).toHaveLength(2);
+    expect(text(host.querySelector('#houses-heading'))).toBe('Your houses');
+    expect([...host.querySelectorAll('dl.stats div')].map((d) => text(d))[0]).toBe('Houses2');
+    expect(host.querySelector('details.cost-filters')).not.toBeNull();
+    expect(host.querySelector('ul.list a')!.getAttribute('href')).toMatch(/^\/houses\//);
+  });
+
+  it('a school space with no schools says so in its words', async () => {
+    twoKinds('school');
+    const host = await render({}, { houses: () => of([PLAIN]) });
+    expect(host.textContent).toContain('No schools yet');
+    expect(host.textContent).toContain('Choose “Add school”, then pick the spot on the map to add your first school.');
+  });
+
+  it('with one kind enabled every candidate is listed, as before, in the house’s words', async () => {
+    const host = await render({}, stub);
+    expect(rows(host)).toHaveLength(3);
+    expect(text(host.querySelector('#houses-heading'))).toBe('Your houses');
+    expect([...host.querySelectorAll('dl.stats div')].map((d) => text(d))[0]).toBe('Houses3');
   });
 });

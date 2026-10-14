@@ -1,0 +1,218 @@
+{
+  "spec": [
+    "web/src/app/core/kind-setting.spec.ts",
+    "web/src/app/core/space.spec.ts",
+    "web/src/app/pages/chooser/chooser-page.spec.ts",
+    "web/src/app/pages/data/data-page-kinds.spec.ts",
+    "web/src/app/pages/map/map-page.spec.ts",
+    "web/src/app/pages/house-detail/school-form.spec.ts",
+    "web/src/app/export/export.service.spec.ts",
+    "web/src/app/core/ai/kind-ai.spec.ts"
+  ],
+  "mutations": [
+    {
+      "file": "web/src/app/core/kind-setting.ts",
+      "find": "  if (!flag) return HOUSE_ONLY;",
+      "replace": "  if (!flag) return BUILT_IN;",
+      "expect": "a production build lists only the house"
+    },
+    {
+      "file": "web/src/app/core/kind-setting.ts",
+      "find": "  return BUILT_IN.filter((id) => id === 'house' || listed.has(id));",
+      "replace": "  return BUILT_IN.filter((id) => listed.has(id));",
+      "expect": "a production build lists only the house"
+    },
+    {
+      "file": "web/src/app/core/kind-setting.ts",
+      "find": "  return read(storage, EXPERIMENTAL_KINDS_KEY) === '1';",
+      "replace": "  return read(storage, EXPERIMENTAL_KINDS_KEY) !== null;",
+      "expect": "answers the vectors for each build and stored setting"
+    },
+    {
+      "file": "web/src/app/core/kind-setting.ts",
+      "find": "  return available.filter((id) => RELEASED_KINDS.includes(id) || on);",
+      "replace": "  return available.filter(() => true || on);",
+      "expect": "answers the vectors for each build and stored setting"
+    },
+    {
+      "file": "web/src/app/core/kind-setting.ts",
+      "find": "  const ids = Array.isArray(stored) ? (stored as unknown[]) : ['house'];",
+      "replace": "  const ids = Array.isArray(stored) ? (stored as unknown[]) : ['house', 'school'];",
+      "expect": "answers the vectors for each build and stored setting"
+    },
+    {
+      "file": "web/src/app/core/kind-setting.ts",
+      "find": "  return list.length ? list : HOUSE_ONLY;",
+      "replace": "  return list;",
+      "expect": "answers the vectors for each build and stored setting"
+    },
+    {
+      "file": "web/src/app/core/kind-setting.ts",
+      "find": "  return stored !== null && enabled.includes(stored) ? stored : enabled[0];",
+      "replace": "  return stored ?? enabled[0];",
+      "expect": "answers the vectors for each build and stored setting"
+    },
+    {
+      "file": "web/src/app/core/kind-setting.ts",
+      "find": "  return enabledKinds(available, storage).length > 1;",
+      "replace": "  return enabledKinds(available, storage).length > 0;",
+      "expect": "with one kind enabled the router config equals today’s"
+    },
+    {
+      "file": "web/src/app/core/kind-setting.ts",
+      "find": "  if (!next.length) return;",
+      "replace": "",
+      "expect": "the last one stays"
+    },
+    {
+      "file": "web/src/app/core/kind-setting.ts",
+      "find": "  if (!next.includes(dflt)) setDefaultKind(next[0], available, storage);",
+      "replace": "",
+      "expect": "turning the default off makes the next enabled kind the default"
+    },
+    {
+      "file": "web/src/app/core/kind-setting.ts",
+      "find": "  if (!offered.includes(id)) return;\n  const now = enabledKinds(available, storage);\n  const next = offered.filter((k) => (k === id ? on : now.includes(k)));",
+      "replace": "  const now = enabledKinds(available, storage);\n  const next = [...now.filter((k) => k !== id), ...(on ? [id] : [])];",
+      "expect": "a kind the switch does not offer cannot be turned on"
+    },
+    {
+      "file": "web/src/app/core/kind-setting.ts",
+      "find": "  if (!spaces || read(storage, ENABLED_KINDS_KEY) !== null || read(storage, DEFAULT_KIND_KEY) !== null) return false;",
+      "replace": "  if (!spaces) return false;",
+      "expect": "a browser that never chose takes it, one that chose keeps its own"
+    },
+    {
+      "file": "web/src/app/export/backup-family.ts",
+      "find": "  if (!ok || (kinds.length === 1 && kinds[0] === 'house')) return { ...SEARCH };",
+      "replace": "  if (kinds.length === 1 && kinds[0] === 'house') return { ...SEARCH };",
+      "expect": "is written for the enabled kinds and the default"
+    },
+    {
+      "file": "web/src/app/export/backup-family.ts",
+      "find": "      out['search'] = searchOf(spaces);",
+      "replace": "      out['search'] = { ...SEARCH };",
+      "expect": "is written for the enabled kinds and the default"
+    },
+    {
+      "file": "web/src/app/export/backup-export.ts",
+      "find": "  const current = currentOf(data as unknown as Record<string, unknown>, bundle.spaces);",
+      "replace": "  const current = currentOf(data as unknown as Record<string, unknown>);",
+      "expect": "the backup ZIP and its data.json carry the bundle’s kinds"
+    },
+    {
+      "file": "web/src/app/export/export.service.ts",
+      "find": "      spaces: { kinds: enabledKinds(), defaultKind: defaultKind() },",
+      "replace": "      spaces: { kinds: ['house'], defaultKind: defaultKind() },",
+      "expect": "the bundle carries the enabled kinds and the default"
+    },
+    {
+      "file": "web/src/app/core/space.service.ts",
+      "find": "  return multi && available.includes(kind) ? kind : dflt;",
+      "replace": "  return available.includes(kind) ? kind : dflt;",
+      "expect": "a candidate is in its own kind’s space when that kind has one"
+    },
+    {
+      "file": "web/src/app/core/space.service.ts",
+      "find": "    !this.multi() || spaceOf(h, true, this.dflt(), this.available) === this.kind();",
+      "replace": "    true;",
+      "expect": "the school space: only the school"
+    },
+    {
+      "file": "web/src/app/core/space.service.ts",
+      "find": "    return this.multi() && kind !== 'house' ? ['/k', kind, id] : ['/houses', id];",
+      "replace": "    return ['/houses', id];",
+      "expect": "the school space: only the school"
+    },
+    {
+      "file": "web/src/app/core/space.service.ts",
+      "find": "    return m ? m[1] : this.dflt();",
+      "replace": "    return this.dflt();",
+      "expect": "the space from the address, its links and its candidates"
+    },
+    {
+      "file": "web/src/app/core/space.service.ts",
+      "find": "    if (was !== this.multi()) this.router.resetConfig(routesFor(this.multi()));",
+      "replace": "",
+      "expect": "refresh hands the router the other config"
+    },
+    {
+      "file": "web/src/app/core/space.service.ts",
+      "find": "  readonly hidden = computed(() => this.multi() && !this.enabled().includes(this.kind()));",
+      "replace": "  readonly hidden = computed(() => false);",
+      "expect": "still opens, marked hidden"
+    },
+    {
+      "file": "web/src/app/app.routes.ts",
+      "find": "  if (!spaces) return routes;",
+      "replace": "  if (!spaces) return [...routes];",
+      "expect": "with one kind enabled the router config equals today’s"
+    },
+    {
+      "file": "web/src/app/app.routes.ts",
+      "find": "    return kind && kind !== 'house' && availableKinds().includes(kind) ? router.createUrlTree(['/k', kind, id]) : true;",
+      "replace": "    return kind ? true : router.createUrlTree(['/k', 'house', id]);",
+      "expect": "of a school opens it in the school space"
+    },
+    {
+      "file": "web/src/app/pages/chooser/chooser-page.ts",
+      "find": "  const hidden = available.filter((id) => !enabled.includes(id) && (tally.get(id)?.count ?? 0) > 0);",
+      "replace": "  const hidden: string[] = [];",
+      "expect": "a kind turned off that still has entries is listed below"
+    },
+    {
+      "file": "web/src/app/pages/chooser/chooser-page.ts",
+      "find": "    if (h.deleted) continue;",
+      "replace": "",
+      "expect": "deleted entries do not count"
+    },
+    {
+      "file": "web/src/app/pages/chooser/chooser-page.ts",
+      "find": "  const order = [dflt, ...enabled.filter((id) => id !== dflt)];",
+      "replace": "  const order = [...enabled];",
+      "expect": "the default first"
+    },
+    {
+      "file": "web/src/app/pages/chooser/chooser-page.ts",
+      "find": "      localStorage.setItem(HINT_KEY, 'done');",
+      "replace": "",
+      "expect": "shows its one hint until it is dismissed"
+    },
+    {
+      "file": "web/src/app/pages/data/kinds-settings.ts",
+      "find": "[disabled]=\"r.on && shownCount() === 1\"",
+      "replace": "[disabled]=\"false\"",
+      "expect": "a row per kind with its count"
+    },
+    {
+      "file": "web/src/app/pages/data/kinds-settings.ts",
+      "find": "    this.space.refresh((multi) => routesFor(multi));",
+      "replace": "",
+      "expect": "the router gets them"
+    },
+    {
+      "file": "web/src/app/pages/map/map-page.ts",
+      "find": "        this.houses.set(list.filter((h) => !h.deleted && this.space.holds(h)));",
+      "replace": "        this.houses.set(list.filter((h) => !h.deleted));",
+      "expect": "the school space: only the school"
+    },
+    {
+      "file": "web/src/app/pages/map/map-page.html",
+      "find": "<h1 id=\"houses-heading\">{{ space.words().heading | t }}</h1>",
+      "replace": "<h1 id=\"houses-heading\">{{ 'map.heading' | t }}</h1>",
+      "expect": "the school space: only the school"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/house-detail-page.ts",
+      "find": "    const draft = withCost(ofKind(newHouse(lat, lon, source), this.space.newKind()));",
+      "replace": "    const draft = withCost(newHouse(lat, lon, source));",
+      "expect": "a new candidate is a school, and Save stores a school"
+    },
+    {
+      "file": "web/src/app/core/ai/on-device-ai.service.ts",
+      "find": "    const k = kind ? aiKindOf(kind, kindsOn()) : null;",
+      "replace": "    const k = kind ? aiKindOf(kind, false) : null;",
+      "expect": "Settings’ switch alone, with no developer flag, reads a school as a school"
+    }
+  ]
+}

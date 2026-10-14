@@ -40,6 +40,8 @@
 // So a pass whose only failures are layout shifts runs once more, and the output says so; a second failure fails the gate.
 // GATE_FONT_DELAY_MS=<ms> makes the local server send the web fonts (the Indic Noto Sans) that late, as a slow network
 // does, to see what a late font moves (not set in CI; the Indic fonts are font-display: optional since S4b-BL-263, so a late font is not swapped in; the shift-only rerun may go one release after that).
+// GATE_DEV_KINDS=1 adds the two-kind run (S4b-BL-212): the chooser, the chip and a school space at 320x568 (en, ta 130%) and
+// on the owner's phone (ta 130%), on a build made with --define DOORPRINTS_KINDS="'house,school'" (not set in CI).
 const { chromium, devices } = require('playwright');
 const { ROUTES, phoneContext, layoutAudit } = require('./layout-audit');
 const http = require('node:http');
@@ -162,23 +164,56 @@ async function offline(ctx, base) {
   });
 }
 
+/** Two kinds shown, the house the default, the tour done (S4b-BL-212): set before the app reads its storage. */
+function twoKinds() {
+  localStorage.setItem('doorprints.kinds.experimental', '1');
+  localStorage.setItem('doorprints.kinds.enabled', '["house","school"]');
+  localStorage.setItem('doorprints.tour', 'skipped');
+}
+
+/** One route of the two-kind run: the chooser at `/`, a school space with its chip, What you track on Your data. */
+async function kindsRoute(page, route, tag, check) {
+  try {
+    const resp = await page.goto(`${BASE_FOR_KINDS}${route}`, { waitUntil: 'load', timeout: 30000 });
+    check(`${tag}: loads`, !!resp && resp.status() < 400, resp && resp.status());
+    const ready = { '/': '#chooser-heading', '/k/school': '.space-chip', '/data': '#kind-rows' }[route];
+    if (ready) await page.waitForSelector(ready, { timeout: 15000 }).catch(() => null);
+    await page.waitForTimeout(route === '/k/school' ? 2000 : 400);
+    if (route === '/') check(`${tag}: the chooser`, (await page.locator('#chooser-heading').count()) === 1 && (await page.locator('button.space-card').count()) === 2, 'no chooser with two cards');
+    if (route === '/k/school') {
+      check(`${tag}: a school space`, (await page.locator('#houses-heading').count()) === 1 && (await page.locator('.space-chip').count()) === 1, 'no space heading or chip');
+    }
+    if (route === '/data') check(`${tag}: What you track`, (await page.locator('#kind-rows').count()) === 1, 'no rows on Your data');
+    const found = await page.evaluate(layoutAudit);
+    check(`${tag}: layout`, found.length === 0, found.join(' ; '));
+  } catch (e) { check(`${tag}: ran`, false, e.message.split('\n')[0]); }
+}
+
+let BASE_FOR_KINDS = '';
+
 async function run() {
   const arg = process.argv[2] || path.join(__dirname, '../../web/dist/web/browser');
   const remote = /^https?:\/\//.test(arg);
   const local = remote ? null : await serve(path.resolve(arg));
   const base = (remote ? arg : local.base).replace(/\/$/, '');
+  BASE_FOR_KINDS = base;
   const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined, args: ['--enable-unsafe-swiftshader', '--use-angle=swiftshader', '--ignore-gpu-blocklist'] });
   const t0 = Date.now();
   // One pass: a phone, a text size and a language over its routes. Returns its checks, its failures (a layout shift
   // marked as such) and its largest Map page shift; it prints nothing, the caller decides whether a failure is final.
-  const pass = async (viewport, text, lang = 'en', { counters = false, routes = ROUTES } = {}) => {
+  const pass = async (viewport, text, lang = 'en', { counters = false, routes = ROUTES, kinds = false } = {}) => {
     const out = { checks: 0, failures: [], worstShift: 0 };
     const check = (tag, ok, detail, shift = false) => { out.checks++; if (!ok) out.failures.push({ line: `${tag}: ${detail}`, shift }); };
     const { ctx } = await phoneContext(browser, devices, { device: 'Pixel 7', viewport, text, lang });
     await offline(ctx, base);
     await ctx.addInitScript(watchShifts);
+    if (kinds) await ctx.addInitScript(twoKinds);
     const page = await ctx.newPage();
     for (const route of routes) {
+      if (kinds) {
+        await kindsRoute(page, route, `${viewport.width}x${viewport.height}${text ? ` text ${text}%` : ''} ${lang} two kinds ${route}`, check);
+        continue;
+      }
       const tag = `${viewport.width}x${viewport.height}${text ? ` text ${text}%` : ''}${lang === 'en' ? '' : ` ${lang}`} ${route}`;
       try {
         const resp = await page.goto(base + route, { waitUntil: 'load', timeout: 30000 });
@@ -221,6 +256,13 @@ async function run() {
     ...['ta', 'te'].flatMap((lang) => [...VIEWPORTS, TALL_TAMIL].map((v) => [v, undefined, lang, { counters: true, routes: ['/'] }])),
     ...['ta', 'te'].map((lang) => [OWNER_PHONE, LARGE_TEXT, lang, { counters: true, routes: ['/'] }]),
   ];
+  // GATE_DEV_KINDS=1 (S4b-BL-212): the chooser, the space chip and a school space, on a build that ships the school
+  // (`ng build --define DOORPRINTS_KINDS="'house,school'"`). The checks above are unchanged and run first.
+  if (process.env.GATE_DEV_KINDS === '1') {
+    for (const [v, t, lang] of [[VIEWPORTS[0], undefined, 'en'], [VIEWPORTS[0], LARGE_TEXT, 'ta'], [OWNER_PHONE, LARGE_TEXT, 'ta']]) {
+      passes.push([v, t, lang, { kinds: true, routes: ['/', '/k/school', '/data'] }]);
+    }
+  }
   let results, retried = [];
   try {
     results = await Promise.all(passes.map((p) => pass(...p)));

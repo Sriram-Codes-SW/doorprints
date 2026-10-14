@@ -33,6 +33,9 @@ import type { TKey } from '../../i18n/en';
 import { TranslationService } from '../../i18n/translation.service';
 import type { Msg } from '../../i18n/translation.service';
 import { TPipe } from '../../i18n/t.pipe';
+import { routesFor } from '../../app.routes';
+import { adoptSpaces } from '../../core/kind-setting';
+import { SpaceService } from '../../core/space.service';
 
 /** One line of the preview: its label, its number, and whether the person loses something by it. */
 export interface PreviewLine {
@@ -84,6 +87,7 @@ type Phase = 'idle' | 'checking' | 'refused' | 'ready' | 'importing' | 'done';
   styleUrl: './import-backup.css',
 })
 export class ImportBackupCard {
+  private readonly space = inject(SpaceService);
   private readonly importer = inject(ImportService);
   private readonly announcer = inject(Announcer);
   protected readonly i18n = inject(TranslationService);
@@ -212,6 +216,8 @@ export class ImportBackupCard {
     this.failure.set(null);
     try {
       const done = await this.importer.apply(archive, this.flags());
+      // The file's kinds and default, for a browser that never chose (S4b-BL-212); the router follows.
+      if (adoptSpaces(archive.spaces)) this.space.refresh(routesFor);
       this.outcome.set(done);
       this.undo = done.undo && done.undo.houses.size + done.undo.visits.size + done.undo.records.size > 0 ? done.undo : null;
       this.announcer.announce({ key: 'imp.done', params: { houses: done.houses, visits: done.visits, photos: done.photos } });

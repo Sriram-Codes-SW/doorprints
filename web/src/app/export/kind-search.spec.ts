@@ -88,11 +88,12 @@ describe('a school is found by its extras (the list search)', () => {
     });
   }
 
-  it('reads the candidate’s kind as the page does: the school only while the developer flag is on', () => {
+  it('reads the candidate’s kind as the page does: a stored school by its kind, the flag and the switch on or off (S4b-BL-212)', () => {
     const h = school();
-    const before = searchText(h);
-    expect(searchText(h, '', [], undefined, wordsOf('hi'))).toBe(before);
+    const before = searchText(h, '', [], undefined, undefined, builtInKind(h.kind, false).fields);
+    expect(searchText(h, '', [], undefined, wordsOf('hi'), builtInKind(h.kind, false).fields)).toBe(before);
     expect(V.flagOff.words).toEqual([]);
+    expect(searchText(h, '', [], undefined, wordsOf('hi'))).toBe([before, ...V.search.hi].join(' ').toLowerCase());
     localStorage.setItem(DEV_KINDS_KEY, 'school');
     expect(searchText(h, '', [], undefined, wordsOf('hi'))).toBe([before, ...V.search.hi].join(' ').toLowerCase());
     expect(searchText(h).includes('cbse')).toBe(false);

@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.127 |
+| Version | 0.128 |
 | Date | 2026-10-13 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -138,6 +138,7 @@
 | 0.125 | 2026-10-13 | Claude (Code), engineer | New §18.11: **kind-aware AI** (kinds PR 7, S4b-BL-211; `feat/kinds-9-kind-aware-ai`, the server; the website and the phone in two stacked pull requests): the three AI stacks read a candidate of a built-in kind other than the house through its kind file's `ai` slots while the developer flag is on (the server's `app.ai.dev-kinds`); for a house nothing changes, pinned byte for byte first (`HouseAskPinsTest`, `HousePlanPinsTest`, `HouseExtractPinsTest`); `school.json`'s slots filled; `docs/schemas/kinds/kind-ai-vectors.json`. |
 | 0.126 | 2026-10-13 | Claude (Code), engineer | §18.11: **kind-aware AI on the website** (kinds PR 7, S4b-BL-211, the second stacked pull request; `feat/kinds-9b-kind-aware-ai-web`): `core/ai/kind-ai.ts`, the on-device AI and the server request read a school through its kind's slots under the developer flag; *Fill in from listing text* fills a school's empty extras; the website's house pins first and unchanged. |
 | 0.127 | 2026-10-13 | Claude (Code), engineer | §18.11: **kind-aware AI on the phones** (kinds PR 7, S4b-BL-211, the third stacked pull request; `feat/kinds-9c-kind-aware-ai-phone`): `KindAi` in `:shared`, the flag from `BuildConfig.DEV_KINDS` through the repository, *Paste listing text* for a school; the phones' house pins first and unchanged. |
+| 0.128 | 2026-10-14 | Claude (Code), engineer | New §18.12: **spaces, the chooser and Settings > What you track** (kinds PR 8, S4b-BL-212, `feat/kinds-10-settings-kind-guide`, the website; owner-approved design of 2026-10-14, superseding the first draft's "one kind per data set"): a kind is a space, a filter over the one store; `AVAILABLE_KINDS` and `RELEASED_KINDS`, *Experimental: more than houses*, enabled kinds and a default, device-local; the chooser, the chip, `/k/<kind>`, the deep-link redirect; the space's words; Compare, Ask and Plan hidden outside the house space; §18.1 and door 10 amended (`search.kinds`, `search.defaultKind`); §18.7's words rule; the guide. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -2015,8 +2016,9 @@ read the kind's labels at run time through a resolver that holds a checked copy 
 - **Built-in kinds only.** The kind files ship embedded in both apps and the server (the `default-questions.json`
   pattern: one test per stack reads the file). Importable packs wait for two built-in kinds and a trust model (a kind
   file feeds AI prompts, an injection surface). Runtime user-defined fields are a later layer over the same typed extras.
-- **One kind per data set.** No kind picker per search and no mixed list; Settings chooses the kind of a data set
-  (PR 8, S4b-BL-212).
+- **One kind per space; a data set may hold several kinds; Settings enables kinds and chooses a default** (amended by
+  PR 8, S4b-BL-212, §18.12; first written as "one kind per data set"). No kind picker per search and no mixed list: a
+  space is a filter over the one store, chosen in the chooser.
 - **A one-time format reset first** (PR 2, S4b-BL-206): `kind`, `money` and `extras` become first-class fields on the
   candidate (a Room column, a jsonb column, an IndexedDB field), not the records layer; the backup family restarts at
   `doorprints-backup/1`. Only public surfaces are renamed (§18.4); the internal `house` identifiers are renamed when a
@@ -2089,7 +2091,7 @@ new format id and a reader for the old one kept for ever. The second pass (§18.
 | 7 | **Money with cadence** | `amount`: whole rupees, an integer 0..1,000,000,000,000 (`MAX_RUPEES`); `cadence`: `once`, `day`, `week`, `month`, `quarter`, `year`; both keys always written for a money extra, while the candidate's own `money` may carry a cadence and no amount (a house marked as a rent before the rent is known: the form's toggle and the question scopes read it; found in kinds PR 2, §18.5), or an amount and no cadence (a price whose type is *Not set*, the website's form offers it: **owner decision of 2026-10-12**, a typeless price is never read as a monthly rent, since a 1.2 crore price would then show "per month"), so there each key is left out when unknown and a money with neither is refused; for a house a cadence that is present is `month` or `once`; no currency key (rupees, the India-only rule). Today's `RENT` is `month`, `SALE` is `once`. An extra money field either fixes its cadences (`deposit`: once, `maintenance`: month) or follows the candidate's own money (`cadenceFrom: "money"`: `myOffer`, `agreedPrice`) | Paise; decimals; an ISO currency code; keeping `priceType` beside a bare number | Whole rupees is what every stack stores today; a cadence covers school fees per year, a gym per month, a hall per day; a currency key can be added later as an optional field | Format bump |
 | 8 | **Status names** | The five names `NEW`, `SHORTLISTED`, `REJECTED`, `TAKEN`, `NOT_CHOSEN` stay for every kind (`HouseStatus.fromWire` never changes); a kind gives each its label (a school's `TAKEN` may read *Admitted*) | Statuses per kind | `HouseStatusRules`, the filters, the colours, the Plan filters and the AI all read the names | Very high: every stack and every file |
 | 9 | **Default-question and criterion ids** | Kept exactly: `qd_*` question ids and the ten checklist keys (`water` .. `commute`) are the house kind's; another kind adds its own ids with a kind prefix (`qd_school_*`, its own checklist keys). The `appliesTo` scopes stay `BOTH`, `RENT`, `SALE` for houses and are mapped to cadences in the kind file | Renaming to neutral ids; one shared list | Two devices seed the same records by id; one kind per data set means keys never meet another kind's | Seeds re-made on every device |
-| 10 | **Hunt-level fields and the AI contract slots** | The data set's own fields live in a `search` object (`{ "kind": "house" }` in the backup and the settings, PR 2), reserved for later fields of the container. The kind file's `ai` slots: `extract` (what the listing extract fills, today's `RawListing`), `ask` (the Ask document lines), `plan` (Plan's filters), `never` (never sent from a saved candidate: `contactName`, `contactPhone`, `myOffer`); read from PR 7 | Hard-coded per kind in the prompts; no slots until PR 7 | The prompts, the redaction and the parity vectors must change together on three stacks; naming the slots now lets PR 7 read data instead of growing branches | Moderate: a prompt change and the parity vectors |
+| 10 | **Hunt-level fields and the AI contract slots** | The data set's own fields live in a `search` object (`{ "kind": "house" }` in the backup and the settings, PR 2), reserved for later fields of the container. **Amended by PR 8 (S4b-BL-212, §18.12):** `search.kinds` (the enabled kinds) and `search.defaultKind` for anything but the house alone, which keeps `{ "kind": "house" }`; device-local settings, never synced; readers ignore it, and a browser that never chose takes it as a hint. The kind file's `ai` slots: `extract` (what the listing extract fills, today's `RawListing`), `ask` (the Ask document lines), `plan` (Plan's filters), `never` (never sent from a saved candidate: `contactName`, `contactPhone`, `myOffer`); read from PR 7 | Hard-coded per kind in the prompts; no slots until PR 7 | The prompts, the redaction and the parity vectors must change together on three stacks; naming the slots now lets PR 7 read data instead of growing branches | Moderate: a prompt change and the parity vectors |
 | 11 | **Labels are keys, per stack** | Keys into the existing dictionaries, one per stack, never inline text | Inline text in four languages in the kind file; one shared key set | Keeps the translation workflow, the parity tests and the *under review* marks in one place, keeps kind text out of AI prompts, and keeps today's per-stack words unchanged | Cheap |
 
 ### 18.5 The second pass, with the vectors
@@ -2199,6 +2201,9 @@ lines to 1,588, `house-detail-page.html` 1,055 to 1,045 and `house-detail-page.t
 its new size; `MapScreen.kt` and `CommonRepository.kt` hold no typed extras and were not touched.
 
 ### 18.7 The label and visibility resolver (kinds PR 3, S4b-BL-207)
+
+*Since kinds PR 8 (§18.12): the person never reads the words "kind" or "space"; what names a kind on screen is its
+`kind.many` noun (*Houses*, *Schools*), and counts are written *Saved: N*.*
 
 **What it is.** `KindLabels` answers, for a kind, a *ref* and, where it matters, the candidate's money cadence, which
 string a screen shows and whether the kind shows that place at all: `resolve("field.money", "month")` is the phone's
@@ -2323,7 +2328,7 @@ production build) **and** with localStorage `doorprints.dev.kinds` set to `schoo
 throwing one, another value) is off. The phone: a `BuildConfig` field that only a debug build made with
 `-Pdoorprints.devKinds=true` turns on (the second pull request; the iPhone follows `:shared`). While the flag is on, a
 new candidate's page offers a kind picker (*New house*, *New school*; `dev-kind-picker.ts`), one kind per data set being
-Settings' later (S4b-BL-212). **With the flag off nothing changes**: the picker is not drawn, a new candidate is a house,
+Settings' later (S4b-BL-212; the picker is gone since §18.12). **With the flag off nothing changes**: the picker is not drawn, a new candidate is a house,
 `kindLabels('school')` and `kindFields('school')` still answer nothing (the resolver's pinned case "a kind that is not
 built in"), and a school row that reaches the device (synced from one with the flag on) is drawn as a house is today,
 its extras kept unread and written back (`HouseDto.extrasOther`, §18.5). The house's golden file, `kind-field-vectors.json`,
@@ -2526,3 +2531,109 @@ same reason S4b-BL-234 (no abusive words in the answers) does not ride this step
 golden set's `schools-*` section and the keyless injection run are S4b-BL-268; the prompts' house words for every kind
 are S4b-BL-269; a kind's extras in the Plan tools are S4b-BL-270; and `house.json`'s slots, which describe less than the
 house's hand-written AI code reads, are S4b-BL-271.
+
+### 18.12 Spaces: the chooser and Settings > What you track (kinds PR 8, S4b-BL-212)
+
+**The decision (owner-approved 2026-10-14, after a Fable design pass; it supersedes this PR's first draft, "one kind
+per data set").** A kind is a **space**: a filter over the one candidate store, read from the address. No store, wire
+field, backup family or sync family is added; a candidate already carries its `kind` (§18.4 door 3). §18.1's bullet
+reads, amended: **one kind per space; a data set may hold several kinds; Settings enables kinds and chooses a default.**
+§18.2's verdict stands: there is no *Search* table; the space is a route filter. Door 10 is amended below.
+
+**Words the person sees.** Never "kind" or "space": the plural noun the resolver gives (`kind.many`: *Houses*,
+*Schools*), the chooser's **What are you looking for?**, and the Settings section **What you track** (§18.7, [12](12-brand-and-naming.md) G.1).
+Counts follow the dictionaries' rule (no plurals built from pieces): *Saved: 2*, not *2 houses*.
+
+**The house-only path is byte for byte today's.** With one kind enabled (the default, and always in a production build,
+which offers only the house) there is no chooser, no chip and no Settings section: `routesFor(false)` returns the very
+`routes` array (`space.spec.ts` pins its paths), `start_url './'`, the share target, every golden file, the layout gate
+(253 of 253) and the live UI test are unchanged, and the empty `<app-kinds-settings>` has no box (`display: contents`).
+
+**Which kinds a build offers** (`core/kind-setting.ts`). `availableKinds()`: a production build lists the house alone;
+a development build every built-in kind; a build made with `ng build --define "DOORPRINTS_KINDS='house,school'"` the
+kinds it names (the house always). `RELEASED_KINDS` is `['house']`: the owner opens a kind's release gate by adding it
+there, and must not before S4b-BL-268, -269, -270 and -271 are done. Any other available kind is offered only while the
+person turns on **Experimental: more than houses**, which is shown only in a build that ships such a kind. Enabled kinds
+(`doorprints.kinds.enabled`, a JSON list; absent is the house alone) and the default (`doorprints.kinds.default`;
+absent is the first enabled kind) are this browser's own: **device-local, never synced** (sync is kind-blind: a device
+with a kind turned off still receives and stores its rows, [15](15-google-drive-backup-and-sharing.md) §1.4). Every
+doubt (a blocked storage, a broken list, a kind the build does not offer) falls back to the house alone
+(`search-kind-vectors.json` `setting`). One kind always stays on; turning off the default makes the next enabled kind
+the default.
+
+**The router** (`app.routes.ts`, `SpaceService`). With two or more kinds enabled, `/` is the chooser and each offered
+kind has `/k/<kind>` (its list and map), `/k/<kind>/new` and `/k/<kind>/<id>`, one route each so that going from one
+space to another builds the page again; the house keeps `/houses/<id>`, `/compare`, `/ask` and `/plan` (its list is
+`/k/house`); `/houses/new`, the share target and notifications create a candidate of the **default** kind. A
+`/houses/<id>` of a candidate of another kind opens it in its own space (`toOwnSpace`, a redirect; a house, a missing
+row and a failed read open as before). Settings applies a change at once (`SpaceService.refresh` hands the router
+the other config). Turning every kind but houses off removes the chooser; the rows stay, and an old `/k/<kind>/...`
+address goes to the map, where those rows are listed (with one kind enabled every candidate is in its one space).
+
+**The chooser** (`pages/chooser`). `<h1>` *What are you looking for?* (focused on arrival by the shell, `tabindex=-1`),
+then one button per enabled kind, the default first and marked *Default*, each with *Saved: N* and *Last change:
+<date>* or *Nothing saved yet* in its visible text, which is its accessible name (label in name); counts are tallied
+once from the loaded list (no IndexedDB index, no version 5: S4b-BL-286). A kind turned off that still has entries is
+listed below under *Turned off in Your data*, muted, and still opens, with a note on its page: it is never hidden
+silently. The chooser is one history entry: choosing pushes the space, and Back from its first page comes back. One
+in-place hint (*Tap a card to switch. Your houses are unchanged.*, *Got it*) shows until dismissed; the tour runs in
+the house space unchanged and there is no second tour. A **chip** in the header (a button named *<Houses>: change
+what you are looking for*) is shown only while two or more kinds are enabled and returns to the chooser; there is no
+bottom-bar slot and no modal.
+
+**A space's first screen and page** (`core/space-words.ts`, `map-page`, `house-detail-page`, `house-area-cards`). The
+list and the map hold the space's candidates only (`holds`); the heading, the map's region and hint, the Add button
+and its hint, the search label, the list's name, *N shown*, the loading, empty and no-match lines, the counters'
+first word (the kind file's `kind.many`), the new candidate's save button and the area-notes line are the space's words
+(the house's keys as today; 15 school keys in four languages, hi, ta and te under review; S4b-BL-277, S4b-BL-259 and
+S4b-BL-256 for those places). The counters *Houses*, *Shortlisted* and *Rejected* count the space; *Visits* and
+*Streets* stay the store's. A kind that hides its money (a school) has no cost filter and sorts by the last change
+only. The kind file has no place for these words yet (its `labels` are `new`, `many`, `delete`), so `SPACE_WORDS` is the
+website's own table, as the renderer's element ids are (§18.8); moving it into the kind files with the phone's is
+S4b-BL-278. In a space other than the house, **Compare, Ask and Plan are not shown** (the header and the bottom bar):
+they read the house space only until PR B scopes them (S4b-BL-279). Walks, brokers, Settings, backups and Drive stay
+global; Hunt mode is the phone's and stays the house space's.
+
+**The AI reads one space at a time** once PR B scopes Ask and Plan; today the on-device AI and the listing fill read a
+candidate through its kind while `kindsOn()` (the developer flag, or a second kind offered). The server's switch
+stays `app.ai.dev-kinds` (`AI_DEV_KINDS`, now passed by `docker-compose.yml`); its rename to a list
+`app.kinds.available` that the AI reads too is S4b-BL-280.
+
+**Door 10, amended: the backup's `search` object.** The house alone writes `{ "kind": "house" }`, byte for byte the
+file before; anything else writes `{ "kinds": [...], "defaultKind": "..." }` (`searchOf`; a list that is not well formed
+writes the house's). Every reader ignores it as before: never a reason to refuse a file or change a candidate. It is a
+**hint** in one case only: a browser that never chose what it tracks (neither key stored) takes the file's list and
+default after *Import a backup* (`adoptSpaces`). The website writes it now; the phones' Kotlin writer and the server's
+Java writer write the same bytes in their pull requests (S4b-BL-274, S4b-BL-280); until then they write the house's,
+which every reader reads the same. Vectors: `docs/schemas/kinds/search-kind-vectors.json`, format
+`doorprints-search-kind-vectors/2` ([schemas README](schemas/README.md) §8.4).
+
+**Design and accessibility self-review.** The chooser's cards are 44 px buttons with a visible focus ring, the
+name, the badge and the meta in one accessible name; the hint is a `role=note` with a real button; the chip is a
+button with a full name; the What you track rows are a list of a *Show* checkbox (disabled for the last one on) and a
+*Default* radio (disabled for a kind not shown) per row, each labelled with the kind's noun; the a11y sweep covers the
+chooser, a school space and Your data with the section on (four languages); the two-kind layout run (`GATE_DEV_KINDS=1`
+on a `--define` build: the chooser, the chip, a school space and Your data at 320x568 in English and in Tamil at 130%,
+and on the owner's phone in Tamil at 130%) passes 27 of 27 beside the unchanged 253.
+
+**The guide.** One page, *More than houses (experimental)* (`other-kinds.md`, en, hi, ta, te; the translations under
+review): turning it on in What you track, the chooser, the chip, what a school has, turning it off, backups and the
+server's `AI_DEV_KINDS`. Of the 14 house pages, *Your houses* and *Compare and plan* carry an "About this page: written
+for houses" note and *Language, theme, privacy, offline maps* a short section; the other eleven describe the default
+app and are unchanged (S4b-BL-275).
+
+**Tests** ([06](06-test-plan.md) TC-U-214, TC-U-215, TC-M-69): `kind-setting.spec.ts` (the build's kinds, the vectors'
+`setting`, `write` and `read`, the setters' rules, the hint), `space.spec.ts` (the router config equals today's with one
+kind enabled; the spaces' routes; the space of an address and of a candidate; the words; the service's links, holds
+and `newKind`; the deep-link redirect), `chooser-page.spec.ts` (four languages, the default first, the names, *Nothing
+saved yet*, the hidden kinds, Back, the hint), `data-page-kinds.spec.ts`, `map-page.spec.ts` (a school space's list,
+counters, search, words, links; one kind as before), `school-form.spec.ts` (a new candidate of the default kind), the
+a11y sweep; the layout gate's two-kind run; the live UI test's *flow* (no section in a houses-only build; the chooser
+and a space on a build that ships the school). Mutation list `tools/mutations/kinds-10-web-settings.json`.
+
+**Left, with rows** ([10](10-sprint-log.md)): PR B, Compare, Ask, Plan and the copies per space, the share target's
+space chip (S4b-BL-279); PR C, the phones and the iPhone (a `Space` state beside `NavTab` in `Root.kt`, Roborazzi
+baselines for the chooser only) and the Kotlin writer (S4b-BL-274); the server's list and Java writer (S4b-BL-280);
+the chooser's review with a screen reader on real devices (S4b-BL-276); the space words in the kind files (S4b-BL-278);
+the AI's house words (S4b-BL-281); the product's public words (S4b-BL-282); deletion safeguards (S4b-BL-283, -284,
+-285); a `kind` index (S4b-BL-286); `delete-scope-vectors.json` (S4b-BL-287); the two-kind runs in CI (S4b-BL-288).

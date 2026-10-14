@@ -40,8 +40,40 @@ export const CURRENT_FORMAT = 'doorprints-backup/1';
 const FAMILY = 'doorprints-backup/';
 /** What a file of the new family with a newer number reads as, for the reader of rows: newer than any it knows. */
 export const NEWER_FORMAT = 'doorprints-backup/999';
-/** The `search` object of a data set (door 10): the kind of its candidates. */
+/**
+ * The `search` object of a data set (door 10, amended by kinds PR 8, S4b-BL-212): `{ "kind": "house" }` for the house
+ * alone, byte for byte the file before; with other kinds enabled, `{ "kinds": [...], "defaultKind": "..." }` (Settings >
+ * Kinds, this browser's). Every reader ignores it: it never refuses a file or changes a candidate.
+ */
 export const SEARCH = { kind: 'house' } as const;
+/** The kinds enabled and the default, as Settings > Kinds has them. */
+export interface SearchSpaces {
+  kinds: readonly string[];
+  defaultKind: string;
+}
+/** A kind id as door 3 allows it. */
+const KIND_ID = /^[a-z][a-z0-9_]{1,31}$/;
+
+/**
+ * The kinds and the default a file's `search` names, as a hint for a device that never chose (S4b-BL-212), or null: the
+ * house's `{ "kind": "house" }`, a first-version `{ "kind": ... }`, and anything not well formed name none.
+ */
+export function spacesOf(search: unknown): SearchSpaces | null {
+  if (!isObj(search) || !Array.isArray(search['kinds']) || typeof search['defaultKind'] !== 'string') return null;
+  const kinds = search['kinds'] as unknown[];
+  if (!kinds.every((k): k is string => typeof k === 'string')) return null;
+  const s = searchOf({ kinds, defaultKind: search['defaultKind'] });
+  return 'kinds' in s ? { kinds: s['kinds'] as string[], defaultKind: s['defaultKind'] as string } : null;
+}
+
+/** The `search` object for `spaces`: the house's when there are none or they are not well formed. */
+export function searchOf(spaces?: SearchSpaces | null): Obj {
+  if (!spaces) return { ...SEARCH };
+  const kinds = spaces.kinds;
+  const ok = kinds.length > 0 && kinds.every((k) => KIND_ID.test(k)) && new Set(kinds).size === kinds.length && kinds.includes(spaces.defaultKind);
+  if (!ok || (kinds.length === 1 && kinds[0] === 'house')) return { ...SEARCH };
+  return { kinds: [...kinds], defaultKind: spaces.defaultKind };
+}
 
 type Obj = Record<string, unknown>;
 
@@ -75,14 +107,14 @@ const MAX_AMOUNT = 1_000_000_000_000;
 
 // ---- Writing: the family before, as every writer builds it, to the new family ----
 
-/** A `data.json` of the family before as the new family writes it: `/1`, `search`, `candidates`, `candidateId`. */
-export function currentOf(legacy: Obj): Obj {
+/** A `data.json` of the family before as the new family writes it: `/1`, `search` (the data set's `kind`), `candidates`, `candidateId`. */
+export function currentOf(legacy: Obj, spaces?: SearchSpaces | null): Obj {
   const out: Obj = {};
   for (const [key, value] of Object.entries(legacy)) {
     if (key === 'format') out['format'] = CURRENT_FORMAT;
     else if (key === 'exportedAt') {
       out['exportedAt'] = value;
-      out['search'] = { ...SEARCH };
+      out['search'] = searchOf(spaces);
     } else if (key === 'houses') out['candidates'] = rows(value).map(candidateOfHouse);
     else if (key === 'visits' || key === 'photos' || key === 'viewings') out[key] = rows(value).map((r) => rename(r, 'houseId', 'candidateId'));
     else if (key === 'deleted') out[key] = rows(value).map((d) => (d['kind'] === 'house' ? { ...d, kind: 'candidate' } : d));
