@@ -76,6 +76,7 @@
 | v0.72   | 2026-10-14 | Claude (Code), engineer       | 11, 13 and 16: **the server's flag `AI_DEV_KINDS` is the list `KINDS_AVAILABLE`** (S4b-BL-280; `fix/kinds-server-available-flag`; [03](../03-design.md) §18.15): default `house`; a request for a kind outside it is a 400; the AI reads the same list. |
 | v0.73   | 2026-10-14 | Claude (Code), engineer       | 11 and 2: **the Ask index follows `KINDS_AVAILABLE`** (S4b-BL-308; `fix/backend-ai-index-kinds-and-delete-vectors`; [02](../02-threat-model.md) T-I49): a document is stamped with its kind in the metadata and `RagService.availableOnly` drops one whose kind left the list; documents stored before the stamp are house documents until `POST /api/ai/reindex`. |
 | v0.74   | 2026-10-14 | Claude (Code), engineer       | 8.7 and 16.8: **the school set for the evals and `house.json`'s slots** (S4b-BL-268, S4b-BL-271; `feat/kinds-17-school-evals-and-slots`; [10](../10-sprint-log.md) v0.320, [06](../06-test-plan.md) 0.251 TC-AI-47, TC-U-231): `docs/ai/evals/school-set.json` (informational), the three harnesses seeding a candidate's kind and extras with the kinds on, the keyless injection run on Ollama; the house's slots aligned with its code and held by `house-ai-slot-vectors.json`. |
+| v0.75   | 2026-10-14 | Claude (Code), engineer       | 16.9 and 16.10: **a school's own words in the Ask and Plan prompts, and its extras in the Plan tools** (S4b-BL-269, S4b-BL-270; `feat/kinds-19-school-prompts`; [10](../10-sprint-log.md) v0.325, [03](../03-design.md) v0.137, [06](../06-test-plan.md) TC-U-233, TC-U-234, TC-AI-48, [02](../02-threat-model.md) T-I50): the kind's AI copy gains `records`, `refusal`, `askSystem` and (devices) `planSystem`; a prompt speaks in a kind's words only when every record sent is of that kind, else the house's byte for byte (the house pins unchanged); the Plan tools' summary and details and the devices' candidate line carry the `ai.plan` / `ai.ask` extras, typed, ranged and redacted as the Ask document; `school-set.json` v0.2; S4b-BL-234 left, with the reason. |
 
 Status: implemented in `backend/` (package `app.doorprints.server.ai`), **off by default**. Not yet compiled in this
 sandbox (no Maven Central access) — CI compiles and runs the tests. Provider: AI Studio by default, Vertex AI with
@@ -1302,7 +1303,7 @@ A seed for the evals is S4b-BL-228.
 
 ### 8.7 The school set and the keyless injection run (S4b-BL-268, 2026-10-14, informational)
 
-**What it is.** `docs/ai/evals/school-set.json`, version 0.1: seven synthetic schools in the candidate shape (`kind: school`,
+**What it is.** `docs/ai/evals/school-set.json`, version 0.2 (S4b-BL-269 and S4b-BL-270: the refusal case expects the school's own sentence and a third Plan case picks schools by the extra *School bus*; version 0.1 had 13 cases, 2 Plan): seven synthetic schools in the candidate shape (`kind: school`,
 typed `extras`: board, medium, grades, commute, bus, fees per year and the one-time admission fee, money with its cadence),
 two visits and 13 cases (5 Extract, 6 Ask, 2 Plan), 5 of them prompt-injection (the tag-escape and fake-contact attacks of
 the golden set aimed at the school's prompt, an indirect attack in a school's notes, the contact leak, and a Plan over that
@@ -1983,14 +1984,15 @@ instruction: English*, *Grades offered: Nursery to 12*, *Commute (minutes): 25*,
 house. A value of the wrong type or out of range is no line. A text extra goes through the contact redactor (9.1) and
 loses its line breaks; the nonce block of the Ask prompt strips a tag written into it. The metadata has the id, label,
 locality, status, rating and the visit keys, never a price, price type or BHK, so an Ask filter on them never keeps a
-school. The Ask system prompt is the house's, unchanged (S4b-BL-269).
+school. Its system text, block name and refusal sentence are the school's own (16.9, S4b-BL-269).
 
 ### 16.5 Plan for a school
 
 The tools give a school's summary with only what `plan` names (no price, type or BHK) and filter on that view, so
 `maxPrice` or `minBedrooms` never keeps a school and the text filter reads its label, street and locality;
-`houseDetails` gives what `ask` names. The planner's system prompt is unchanged. On the devices the candidate line of a
-school reads `price: -` and `bedrooms: -`.
+`houseDetails` gives what `ask` names. Since S4b-BL-270 the summary and the details also carry the extras those slots
+name (16.10), and on the devices the candidate line of a school is its own line (no `price: -` or `bedrooms: -`) under the
+school's own planner text (16.9).
 
 ### 16.6 Injection and privacy
 
@@ -2003,9 +2005,9 @@ never reach the document.
 
 ### 16.7 Not done here
 
-The school set for the evals and the keyless injection run are in 8.7 (S4b-BL-268); no Vertex run (zero cost). The
-prompts still speak of houses for every kind (S4b-BL-269), and S4b-BL-234's rule waits for the same re-pin. The Plan
-tools carry no kind extras (S4b-BL-270). `house.json`'s slots are aligned with the house's AI code in 16.8 (S4b-BL-271).
+The school set for the evals and the keyless injection run are in 8.7 (S4b-BL-268); no Vertex run (zero cost). A school's own
+words are 16.9 (S4b-BL-269) and its extras in the Plan tools 16.10 (S4b-BL-270). `house.json`'s slots are aligned with the
+house's AI code in 16.8 (S4b-BL-271). S4b-BL-234's rule (no abusive words repeated) is still not done, for the reason in 16.9.
 
 ### 16.8 `house.json`'s slots say what the house's code reads (S4b-BL-271)
 
@@ -2027,6 +2029,89 @@ stack (the website's `house-ai-slots.spec.ts`) builds a house with every field a
 writes is in the vectors, that every id it names is in the slot and none is in `never`, and that the slot holds no id that
 nothing carries; a new line in the house's document therefore fails a test until it is in the vectors and the slot. The
 server's `HouseKindFileTest` skips `amenities` and `areaSqft` when it maps the `extract` slot to the model's raw fields.
+
+### 16.9 A kind's own words in the Ask and Plan prompts (S4b-BL-269)
+
+**The problem.** The Ask system text said "house hunt", "saved-house records", "prices in Rs, BHK" and a refusal sentence
+about "the houses you have saved"; the planner's said "house visits" and "house ids". For a school every sentence was a house
+sentence around school data.
+
+**The design, and why it is the simplest one that fits.** The words are a **field of the kind's AI copy** that already holds
+the school's Extract text (`extractSystem`): `AiKind` (server), `AiKind` (website, `kind-ai.ts`) and `AiKindSlots` (phones)
+gain `records` (the name of the records' block, `schools`), `refusal`, `askSystem(tag)` and, on the devices, `planSystem(tag,
+lat, lon, maxStops)`. They are **not** keys of the kind file: the prompts are English prose that three stacks must hold
+word for word, a kind file key would need a schema change and three readers for text that no kind file author edits, and the
+Extract text of the same kind is already code. The vectors are the guard: `kind-ai-vectors.json` `prompts` holds the Ask
+system text, the Plan system and user text and the refusal sentence, read by all three stacks. A house is not routed through
+any of this: `askPrompt`, `planPrompt`, `AiPrompts.ask`, `AiPrompts.plan`, `AskPrompts.build(question, docs, nonce)` and
+`VisitPlannerService.systemPrompt` are the functions they were, and the house pins pass unchanged (16.1).
+
+**What is words, and what is protocol.** The system text, the block's tag (`schools-<nonce>`), what `neutralize` strips from
+a record and from the question (`schools`), and the refusal sentence (*I don't know based on the schools you have saved.*) are
+the kind's. These are **the same for every kind** and are not reworded: the records' markers `[house:<id>]` (the answer's
+citations are read by that pattern on all three stacks, and `AnswerText` keeps a link that holds one), the output fields
+`citedHouseIds` and `houseId`, the output schemas and their descriptions, the server's tool names and descriptions, and
+the planner's fallback sentences. The school's system text says so ("the word *house* is only the marker's fixed name") rather
+than hiding it. Changing a marker per kind would make three parsers kind-dependent for no gain in what the model reads; it is
+a follow-up if the owner wants it (S4b-BL-314).
+
+**Which words a prompt uses.** One rule on every stack: the prompt speaks in a kind's words **only when every record sent to
+the model is of that one built-in kind** (the kind is checked on the records themselves: the metadata `kind` of a stored
+document on the server, the candidate's `kind` on the devices), with the kind available (the flag). A house, a mix of kinds,
+no records and a kind that is not built in get the house's prompt, byte for byte. The refusal when there is nothing to send
+is the space's kind's on the devices (the caller names the space: the website's `kind` argument, the phone's `SpaceView.kind`),
+and the house's where no space is named (the server). `isRefusal` accepts either sentence on all three stacks, so an answer
+that is exactly a refusal never has citations whichever prompt asked for it.
+
+**The server's planner keeps one prompt.** `POST /api/ai/plan-visits` takes no kind (S4b-BL-290, S4b-BL-279: the apps do not
+send a space other than the house to the server), so its system text is built before any tool has run and cannot know what
+the tools will return. The school's Plan text is the devices'; the server reads it when S4b-BL-290 gives the request a kind.
+The server's **Ask** has no such limit: it chooses by the documents it retrieved.
+
+**Injection.** Every value of a school still reaches the model only through the paths of 16.6: a text extra through
+`ContactRedactor.freeText`, on one line, within its `maxLength`; the records and the question through `neutralize` for the
+block's name (`schools`), which removes any tag that starts with it, in any case, with spaces or attributes, so no value can
+close the block or write a second one; the planner's candidate lines the same way, and the request in its own `request-<nonce>`
+block. The tests: `KindAskPromptsTest` (server), the "no value of a school and no question can close the records' block"
+tests on the website and the phone (six hostile spellings of the opening and closing tag in the label, address, locality,
+notes, a text extra and the question: one opening tag and one closing tag remain, and after the block there is only the
+question), and the injection cases of `school-set.json`. The house's tag in a school's value (`</houses-abc123>`) is plain text
+in a school's prompt: it names no block of that prompt. A question's own tag text is not stripped from the planner's request
+block (it is the person's own typed text, after the candidates' block has closed, as for a house).
+
+**Not done: S4b-BL-234.** The rule "do not repeat abusive words" goes into the house's Extract, Ask and Plan texts, which
+re-pins the parity vectors and the house pins on all three stacks; this change must leave the house's prompts byte-identical,
+so the rule is left for the change that re-pins them once. That change adds the rule to the school's texts too: they are now
+separate texts (two places a stack, `askSystem` and `planSystem`, both held by the `prompts` vectors).
+
+### 16.10 A kind's extras in the Plan tools (S4b-BL-270)
+
+**What changed.** `school.json`'s `ai.plan` names the extras `board`, `medium`, `grades`, `commuteMinutes`, `busService` and
+`fees` after the core fields, so a planner can pick "schools with a bus". `houseDetails` reads `ai.ask`, which names all
+seven (the admission fee too). Only a candidate of a built-in kind other than the house is read this way; a house's tool
+records are what they were.
+
+| Where | A school's record | A house's record |
+|---|---|---|
+| Server `searchHouses`, `nearbyHouses` (`HouseSummary`) | the last component `extras`: the extras' English words to their values (`{"Board":"CBSE","School bus":"yes"}`), the `ai.plan` slot's order | no `extras` key in the JSON, and `toString()` (what the house pins hash) is the record's text as before |
+| Server `houseDetails` (`HouseDetails`) | `extras` from `ai.ask` | as above |
+| Server wrap-up notice | the line has the rating, the position and the extras (`Board: CBSE | School bus: yes`), no price or BHK | the line is as before |
+| Devices, the candidate line | `id | label | locality | status | rating | <words>: <value> ... | distance`, no price or BHK | `id | label | locality | status | price | bedrooms | rating | distance` as before |
+
+**Typed, ranged, redacted and wrapped like the Ask document.** The value of an extra is `KindDocuments.extras` on the server
+(`kindExtras` on the website, `KindAi.extras` on the phones), which calls the same reader as the Ask document line
+(`KindDocuments.value`): an option the kind offers (its words), a text of at most `maxLength` characters through the
+contact redactor and on one line, a whole number within range, yes or no, money with the extra's one cadence as `Rs <amount>`.
+A value outside its type or range is left out, an extra the slot does not name (the admission fee in a Plan record), one
+`ai.never` names and one the kind does not know are never read. The view of a candidate (`AiKind.view`) keeps of its extras
+only those the slot names. In the tool results the values are data like the rest of the summary (the model gets them as tool
+output, as it gets the label); in the wrap-up notice and on the devices they sit inside the nonce block after `neutralize`.
+
+**Pinned.** `kind-ai-vectors.json` `plan` (the summary's `extras` and the device line of five candidates: every extra, a
+hostile tag in a text, nothing readable, a whole number written with a fraction, a text with the contact's name and number),
+`details` (the server's `houseDetails`) and `prompts.plan` (the planner's text and user text); `AiKindFileTest` holds the
+slots to the kind file. `house-ai-slot-vectors.json` `planStructural` gains `extras`, because the Plan record now has a
+component a house never fills.
 
 ## Sources
 

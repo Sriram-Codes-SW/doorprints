@@ -40,7 +40,7 @@ import java.util.Map;
  * The twin of the website's {@code core/ai/kind-ai.ts} and the phone's {@code KindDocuments};
  * {@code docs/schemas/kinds/kind-ai-vectors.json} holds the three to the same lines.
  */
-final class KindDocuments {
+public final class KindDocuments {
 
     private KindDocuments() {
     }
@@ -85,7 +85,7 @@ final class KindDocuments {
      * within {@code min..max} (a JSON number with no fraction); {@code yes} or {@code no}; money with a whole amount
      * within range and the extra's one cadence, as {@code Rs <amount>}.
      */
-    static String value(AiKind.Extra e, JsonNode v, ContactRedactor.Redactor r) {
+    public static String value(AiKind.Extra e, JsonNode v, ContactRedactor.Redactor r) {
         if (v == null || v.isNull()) return null;
         return switch (e.type()) {
             case "enum" -> v.isString() ? e.options().get(v.asString()) : null;
@@ -116,6 +116,26 @@ final class KindDocuments {
         if (v.isIntegralNumber()) return v.canConvertToLong() ? v.asLong() : null;
         double d = v.asDouble();
         return Double.isFinite(d) && d == Math.rint(d) && Math.abs(d) < 1e15 ? (long) d : null;
+    }
+
+    /**
+     * The kind's extras that {@code slot} names, for a Plan tool's record (S4b-BL-270): the extra's English words to its value
+     * as {@link #value} reads it (typed, in range, a text redacted and on one line), in the slot's order, an extra with no
+     * readable value left out. Never an extra the slot does not name, one {@code ai.never} names, or one the kind does not
+     * know. Non-null for a candidate of the kind (empty when it has no readable value), so a record carries the key; a
+     * house's record has none (the house is not read through this). {@code h} is the candidate as {@link AiKind#view}
+     * leaves it, so the contact it holds is only for the redactor.
+     */
+    public static Map<String, String> extras(HouseDto h, AiKind k, List<String> slot) {
+        var r = ContactRedactor.forHouse(h);
+        var out = new java.util.LinkedHashMap<String, String>();
+        for (var id : slot) {
+            var extra = k.extra(id);
+            if (extra == null || !k.allows(slot, id)) continue;
+            var v = value(extra, h.extras() == null ? null : h.extras().other().get(id), r);
+            if (v != null) out.put(extra.words(), v);
+        }
+        return out;
     }
 
     /**

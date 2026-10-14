@@ -55,9 +55,12 @@ object AskChecks {
         return ids.mapNotNull { id -> byId[id]?.let { CitationDto(id, it.label, snippet(it.text, question, 240)) } }
     }
 
-    /** The exact refusal sentence, trimmed, with curly single quotes folded. */
-    fun isRefusal(answer: String?): Boolean =
-        answer != null && AiPrompts.I_DONT_KNOW == answer.trim().replace('’', '\'').replace('‘', '\'')
+    /** The exact refusal sentence, the house's or a kind's (S4b-BL-269), trimmed, with curly single quotes folded. */
+    fun isRefusal(answer: String?): Boolean {
+        if (answer == null) return false
+        val a = answer.trim().replace('’', '\'').replace('‘', '\'')
+        return AiPrompts.I_DONT_KNOW == a || KindAi.isKindRefusal(a)
+    }
 
     /** The lower-case ids of the form `[house:<uuid>]` in [answer], in order and without repeats. */
     fun inlineIds(answer: String?): List<String> {

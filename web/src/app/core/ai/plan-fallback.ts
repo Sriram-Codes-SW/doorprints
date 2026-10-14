@@ -82,6 +82,27 @@ export interface PlanCandidate {
   id: string; label: string; locality: string | null; street: string | null; status: string | null;
   price: number | null; priceType: string | null; bedrooms: number | null; rating: number | null;
   lat: number; lon: number; distanceMeters: number;
+  /**
+   * A built-in kind's own details the kind's `ai.plan` slot names (S4b-BL-270): the extra's English words to its value as the
+   * Ask document writes it, in the slot's order. Absent for a house; present (possibly empty) for a candidate of the kind,
+   * whose line then has no price or bedrooms.
+   */
+  extras?: Record<string, string>;
+}
+
+/** The school's Ask refusal (S4b-BL-269), the kind's own words: `SCHOOL_AI.refusal` in `kind-ai.ts` is this. */
+export const SCHOOL_I_DONT_KNOW = "I don't know based on the schools you have saved.";
+
+/**
+ * A candidate of a built-in kind (it has `extras`, S4b-BL-270) has no price or bedrooms: its plan line is id, label,
+ * locality, status, rating, each detail as `<words>: <value>`, then the distance.
+ */
+export function kindCandidateLine(c: PlanCandidate): string {
+  return [
+    `id: ${c.id}`, `label: ${c.label}`, `locality: ${c.locality ?? c.street ?? '-'}`, `status: ${c.status ?? '-'}`,
+    `rating: ${c.rating != null ? `${c.rating}/5` : '-'}`, ...Object.entries(c.extras ?? {}).map(([words, value]) => `${words}: ${value}`),
+    `distance: ${c.distanceMeters} m`,
+  ].join(' | ');
 }
 
 export interface AgentPlan { summary?: string | null; stops?: { houseId?: string | null; reason?: string | null }[] | null }

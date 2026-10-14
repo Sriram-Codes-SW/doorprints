@@ -64,7 +64,7 @@ class KindAskVectorsTest {
             var ask = V.get(name);
             var docs = new ArrayList<Document>();
             for (var i : ask.get("documents")) docs.add(doc(V.get("documents").get(i.asInt())));
-            var built = AskPrompts.build(ask.get("question").asString(), docs, ask.get("nonce").asString());
+            var built = AskPrompts.build(ask.get("question").asString(), docs, ask.get("nonce").asString(), AiKinds.schools(true));
             assertThat(built.user()).as(name).isEqualTo(ask.get("user").asString());
         }
     }
@@ -137,12 +137,12 @@ class KindAskVectorsTest {
     void anIdThatNeverNamesIsNeverWrittenWhateverAskSays() {
         var k = app.doorprints.server.ai.kind.AiKinds.SCHOOL;
         var strict = new app.doorprints.server.ai.kind.AiKind(k.id(), k.noun(), k.extract(), k.ask(), k.plan(),
-                List.of("contactName", "contactPhone", "notes", "board"), k.extras(), k.extractSystem());
+                List.of("contactName", "contactPhone", "notes", "board"), k.extras(), k.extractSystem(), k.records(), k.refusal(), k.askSystem());
         var pine = HouseAiPins.candidate(V.get("documents").get(0).get("candidate"));
         var text = KindDocuments.text(pine, List.of(), AreaLines.All.NONE, strict);
         assertThat(text).doesNotContain("Notes:").doesNotContain("Board:").contains("Medium of instruction: English");
         assertThat(KindDocuments.metadata(pine, List.of(), new app.doorprints.server.ai.kind.AiKind(k.id(), k.noun(),
-                k.extract(), k.ask(), k.plan(), List.of("label", "status"), k.extras(), k.extractSystem())))
+                k.extract(), k.ask(), k.plan(), List.of("label", "status"), k.extras(), k.extractSystem(), k.records(), k.refusal(), k.askSystem())))
                 .containsEntry("label", "").doesNotContainKey("status");
     }
 }

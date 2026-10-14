@@ -45,7 +45,19 @@ data class PlanCandidate(
     val lat: Double,
     val lon: Double,
     val distanceMeters: Long,
-)
+    /**
+     * A built-in kind's own details its `ai.plan` slot names (S4b-BL-270): the extra's English words to its value as the Ask
+     * document writes it, in the slot's order. Null for a house; non-null (possibly empty) for a candidate of the kind, whose
+     * line then has no price or bedrooms.
+     */
+    val extras: Map<String, String>? = null,
+) {
+    /** The text the house pins hash: the data class's own while [extras] is null (a house), so a house's candidate reads as before. */
+    override fun toString(): String =
+        "PlanCandidate(id=$id, label=$label, locality=$locality, street=$street, status=$status, price=$price, " +
+            "priceType=$priceType, bedrooms=$bedrooms, rating=$rating, lat=$lat, lon=$lon, distanceMeters=$distanceMeters" +
+            (if (extras == null) "" else ", extras=$extras") + ")"
+}
 
 /**
  * The checks on a plan: the server's `VisitPlannerService.assemble`, ported (docs/03 §13.1). Stops are kept only if

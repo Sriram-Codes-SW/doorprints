@@ -56,7 +56,7 @@
   "notes": ["notes"],
   "amenities": ["amenities"]
  },
- "planStructural": ["id", "lat", "lon", "distanceMeters"],
+ "planStructural": ["id", "lat", "lon", "distanceMeters", "extras"],
  "extractStructural": ["warnings", "extras"],
  "noAiOnly": ["areaSqft"]
 }

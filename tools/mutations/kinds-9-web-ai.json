@@ -55,8 +55,8 @@
     },
     {
       "file": "web/src/app/core/ai/on-device-ai.service.ts",
-      "find": "    const docs = selectForAsk((await this.houses()).map((h) => askView(h, dev)), question, filters, (h) => aiText(h, dev));",
-      "replace": "    const docs = selectForAsk(await this.houses(), question, filters);",
+      "find": "    const docs = selectForAsk(viewed, question, filters, (h) => aiText(h, dev));",
+      "replace": "    const docs = selectForAsk(viewed, question, filters);",
       "expect": "Ask sends a school"
     },
     {

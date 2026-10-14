@@ -19,6 +19,8 @@
 package app.doorprints.server.ai.rag;
 
 import app.doorprints.server.ai.PromptSafety;
+import app.doorprints.server.ai.kind.AiKind;
+import app.doorprints.server.ai.kind.AiKinds;
 import app.doorprints.server.ai.rag.AskModels.AskFilters;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.filter.Filter;
@@ -80,6 +82,40 @@ public final class AskPrompts {
         var user = "<" + tag + ">\n" + context.toString().strip() + "\n</" + tag + ">\n\nQuestion: "
                 + PromptSafety.neutralize(question, "houses");
         return new Built(system, user);
+    }
+
+    /**
+     * As {@link #build(String, List, String)}, in the words of the kind every document belongs to (S4b-BL-269): when each
+     * document was written under the same built-in kind other than the house (its metadata {@code kind}, stamped by
+     * {@code KindDocuments.metadata}) that {@code kinds} has available, that kind's system text, block name and refusal; for a
+     * house, for documents of more than one kind and for none, today's prompt, byte for byte. The records' markers stay
+     * {@code [house:<id>]} for every kind, since the answer's citations are read by them.
+     */
+    public static Built build(String question, List<Document> docs, String nonce, AiKinds kinds) {
+        var k = kindOf(docs, kinds);
+        if (k == null) return build(question, docs, nonce);
+        var tag = k.records() + "-" + nonce;
+        var context = new StringBuilder();
+        for (var d : docs) {
+            context.append("[house:").append(d.getId()).append("]\n")
+                    .append(PromptSafety.neutralize(d.getText(), k.records())).append("\n\n");
+        }
+        var user = "<" + tag + ">\n" + context.toString().strip() + "\n</" + tag + ">\n\nQuestion: "
+                + PromptSafety.neutralize(question, k.records());
+        return new Built(k.askSystem().formatted(tag), user);
+    }
+
+    /** The one built-in kind other than the house that every document was written under, else null. */
+    static AiKind kindOf(List<Document> docs, AiKinds kinds) {
+        if (docs == null || docs.isEmpty() || kinds == null) return null;
+        AiKind found = null;
+        for (var d : docs) {
+            var id = d.getMetadata().get("kind");
+            var k = id instanceof String s ? kinds.of(s) : null;
+            if (k == null || (found != null && found != k)) return null;
+            found = k;
+        }
+        return found;
     }
 
     /** Builds the pgvector metadata filter, or null when no filter was given. */

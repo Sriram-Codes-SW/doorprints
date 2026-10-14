@@ -155,7 +155,7 @@ public class RagService {
         if (log.isDebugEnabled()) {
             log.debug("ask retrieved {} houses: {}", docs.size(), docs.stream().map(Document::getId).toList());
         }
-        var prompt = builtPrompt(question, docs, PromptSafety.nonce());
+        var prompt = builtPrompt(question, docs, PromptSafety.nonce(), kinds);
         ModelAnswer answer;
         try {
             var result = chat.prompt()
@@ -328,6 +328,12 @@ public class RagService {
         return canary == null ? AskPrompts.build(question, docs, nonce) : canary.apply(question, docs);
     }
 
+    /** As above, in the words of the docs' kind when they all have one ({@link AskPrompts#build(String, List, String, AiKinds)}). */
+    static AskPrompts.Built builtPrompt(String question, List<Document> docs, String nonce, AiKinds kinds) {
+        var canary = canaryPrompt;
+        return canary == null ? AskPrompts.build(question, docs, nonce, kinds) : canary.apply(question, docs);
+    }
+
     /** The system text as sent: the built one, unless a canary rewrites it. */
     static String systemText(String built) {
         var canary = canarySystemText;
@@ -335,12 +341,13 @@ public class RagService {
     }
 
     /**
-     * Whether the answer is the exact refusal sentence, after trimming and folding curly single quotes (U+2018, U+2019)
+     * Whether the answer is the exact refusal sentence (the house's or a kind's, S4b-BL-269), after trimming and folding curly single quotes (U+2018, U+2019)
      * to {@code '} so "I don\u2019t know ..." is recognised the same way the eval scorer recognises it.
      */
     static boolean isRefusal(String answer) {
         if (answer == null) return false;
-        return AskPrompts.I_DONT_KNOW.equals(foldApostrophes(answer.strip()));
+        var s = foldApostrophes(answer.strip());
+        return AskPrompts.I_DONT_KNOW.equals(s) || AiKinds.isKindRefusal(s);
     }
 
     private static String foldApostrophes(String s) {

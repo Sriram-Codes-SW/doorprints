@@ -58,8 +58,8 @@
     },
     {
       "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OnDeviceAi.kt",
-      "find": "        val docs = OnDeviceSelection.forAsk(houses().map { KindAi.askView(it, devKinds) }, question, filters) { KindAi.aiText(it, devKinds) }",
-      "replace": "        val docs = OnDeviceSelection.forAsk(houses(), question, filters)",
+      "find": "        val docs = OnDeviceSelection.forAsk(viewed, question, filters) { KindAi.aiText(it, devKinds) }",
+      "replace": "        val docs = OnDeviceSelection.forAsk(viewed, question, filters)",
       "expect": "onDeviceAskSendsASchoolsLinesOnlyWithTheFlagAndNeverAnUnknownExtra"
     },
     {

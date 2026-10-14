@@ -1,0 +1,131 @@
+{
+  "spec": [
+    "backend/src/test/java/app/doorprints/server/ai/rag/KindAskPromptsTest.java",
+    "backend/src/test/java/app/doorprints/server/ai/agent/KindPlanVectorsTest.java"
+  ],
+  "maven": [
+    "-Dtest=KindAskPromptsTest,KindPlanVectorsTest,KindAskVectorsTest,RagServiceKindsTest,HousePlanPinsTest,HouseAskPinsTest,HouseQueriesSearchTest"
+  ],
+  "mutations": [
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/AskPrompts.java",
+      "find": "            if (k == null || (found != null && found != k)) return null;",
+      "replace": "            if (found != null && found != k) return null;",
+      "expect": "theHousesPromptIsUsedForAHouseForMixedDocumentsForNoneAndWithTheKindsOff"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/AskPrompts.java",
+      "find": "                    .append(PromptSafety.neutralize(d.getText(), k.records())).append(\"\\n\\n\");",
+      "replace": "                    .append(d.getText()).append(\"\\n\\n\");",
+      "expect": "noValueOfASchoolAndNoQuestionCanCloseTheRecordsBlock"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/AskPrompts.java",
+      "find": "                + PromptSafety.neutralize(question, k.records());",
+      "replace": "                + question;",
+      "expect": "noValueOfASchoolAndNoQuestionCanCloseTheRecordsBlock"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/AskPrompts.java",
+      "find": "        var tag = k.records() + \"-\" + nonce;",
+      "replace": "        var tag = \"houses-\" + nonce;",
+      "expect": "aSchoolsAskSystemTextAndRefusalAreTheVectors"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/AskPrompts.java",
+      "find": "        return new Built(k.askSystem().formatted(tag), user);",
+      "replace": "        return new Built(k.askSystem().formatted(\"x\"), user);",
+      "expect": "aSchoolsAskSystemTextAndRefusalAreTheVectors"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/AskPrompts.java",
+      "find": "        var k = kindOf(docs, kinds);\n        if (k == null) return build(question, docs, nonce);",
+      "replace": "        AiKind k = null;\n        if (k == null) return build(question, docs, nonce);",
+      "expect": "aSchoolsAskSystemTextAndRefusalAreTheVectors"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/AskPrompts.java",
+      "find": "            context.append(\"[house:\").append(d.getId()).append(\"]\\n\")\n                    .append(PromptSafety.neutralize(d.getText(), k.records()))",
+      "replace": "            context.append(\"[school:\").append(d.getId()).append(\"]\\n\")\n                    .append(PromptSafety.neutralize(d.getText(), k.records()))",
+      "expect": "aSchoolsRecordsKeepTheHousesMarkerTheCitationsAreReadBy"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/RagService.java",
+      "find": "        return AskPrompts.I_DONT_KNOW.equals(s) || AiKinds.isKindRefusal(s);",
+      "replace": "        return AskPrompts.I_DONT_KNOW.equals(s);",
+      "expect": "theSchoolsRefusalSentenceIsARefusalToo"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/RagService.java",
+      "find": "        var prompt = builtPrompt(question, docs, PromptSafety.nonce(), kinds);",
+      "replace": "        var prompt = builtPrompt(question, docs, PromptSafety.nonce());",
+      "expect": "askSendsASchoolsPromptForSchoolDocumentsAndTheHousesWhenAHouseIsAmongThem"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/kind/AiKinds.java",
+      "find": "        return BUILT_IN.values().stream().anyMatch(k -> k.refusal().equals(sentence));",
+      "replace": "        return false;",
+      "expect": "theSchoolsRefusalSentenceIsARefusalToo"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/kind/AiKind.java",
+      "find": "            if (v != null && allows(slot, e.id())) kept.put(e.id(), v);",
+      "replace": "            if (v != null) kept.put(e.id(), v);",
+      "expect": "theViewKeepsOnlyTheExtrasTheSlotNames"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/KindDocuments.java",
+      "find": "            if (extra == null || !k.allows(slot, id)) continue;",
+      "replace": "            if (extra == null) continue;",
+      "expect": "anExtraNeverNamesIsNotInARecordWhateverThePlanSlotSays"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/KindDocuments.java",
+      "find": "            if (v != null) out.put(extra.words(), v);",
+      "replace": "            out.put(extra.words(), String.valueOf(v));",
+      "expect": "aSummaryHoldsNoValueThatBreaksItsTypeAndNoExtraTheSlotOmits"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/HouseSearchService.java",
+      "find": "        return k == null ? h : k.view(h, k.plan());",
+      "replace": "        return k == null ? h : k.view(h, k.ask());",
+      "expect": "aFilterOnAFieldTheKindDoesNotShowNeverKeepsIt"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/HouseSearchService.java",
+      "find": "        return k == null ? null : KindDocuments.extras(viewed, k, k.ask());",
+      "replace": "        return k == null ? null : KindDocuments.extras(viewed, k, k.plan());",
+      "expect": "theDetailsToolGivesTheAskSlotsExtras"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/HouseSearchService.java",
+      "find": "            return extras == null ? s + \"]\" : s + \", extras=\" + extras + \"]\";",
+      "replace": "            return s + \", extras=\" + extras + \"]\";",
+      "expect": "aHousesPlanSummariesDetailsAndFiltersAreThoseOfMain"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/HouseQueries.java",
+      "find": "            return extras == null ? s + \"]\" : s + \", extras=\" + extras + \"]\";",
+      "replace": "            return s + \", extras=\" + extras + \"]\";",
+      "expect": "aHousesPlanSummariesDetailsAndFiltersAreThoseOfMain"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/HouseSearchService.java",
+      "find": "                               @JsonInclude(JsonInclude.Include.NON_NULL) Map<String, String> extras) {",
+      "replace": "                               Map<String, String> extras) {",
+      "expect": "aHousesRecordsHaveNoExtrasKeyAndAKindsHaveIt"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/HouseQueries.java",
+      "find": "                               @JsonInclude(JsonInclude.Include.NON_NULL) Map<String, String> extras) {",
+      "replace": "                               Map<String, String> extras) {",
+      "expect": "aHousesRecordsHaveNoExtrasKeyAndAKindsHaveIt"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerService.java",
+      "find": "        if (h.extras() != null) {\n            var line",
+      "replace": "        if (h.extras() != null && h.extras().size() > 99) {\n            var line",
+      "expect": "theWrapUpNoticeCarriesASchoolsExtrasAsDataAndNoHostileTagEscapesTheBlock"
+    }
+  ]
+}
