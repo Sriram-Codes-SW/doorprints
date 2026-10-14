@@ -36,6 +36,7 @@ import { isLang } from './i18n/languages';
 import { AiService } from './core/ai.service';
 import { ConfirmDialog } from './shared/confirm-dialog';
 import { AppBanners } from './shared/app-banners';
+import { UndoSnackbar } from './shared/undo-snackbar';
 import { ReminderBanners } from './shared/reminder-banners';
 import { TourOverlay } from './shared/tour-overlay';
 import { ViewingReminderService } from './core/viewing-reminder.service';
@@ -73,7 +74,7 @@ const NAV_ICONS = {
  */
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, TPipe, ConfirmDialog, AppBanners, ReminderBanners, TourOverlay],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, TPipe, ConfirmDialog, UndoSnackbar, AppBanners, ReminderBanners, TourOverlay],
   template: `
     <a class="skip-link" href="#main" (click)="skipToMain($event)">{{ 'app.skip' | t }}</a>
     <header class="topbar">
@@ -178,6 +179,7 @@ const NAV_ICONS = {
     </header>
     <app-banners />
     <app-reminder-banners />
+    <app-undo-snackbar />
     <main id="main" #main class="content" tabindex="-1">
       <router-outlet />
     </main>

@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Data flow diagrams (DFD) and data dictionary |
-| Version | 0.20 |
-| Date | 2026-10-10 |
+| Version | 0.21 |
+| Date | 2026-10-14 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -32,6 +32,7 @@
 | 0.18 | 2026-10-10 | Claude (Code), engineer | **Voice input, planned** ([03](03-design.md) ADR-37, S4b-BL-218): a note after the AI client flows (section 6.1) and the data-dictionary row **DF-49** (audio to the person's configured provider, class C2, never stored). Nothing is built. |
 | 0.19 | 2026-10-13 | Claude (Code), engineer | **A house's extras in the data dictionary and the store inventory** (review follow-up of #295, S4b-BL-246 and -248; `docs/kinds-4b-review-followups`): DF-01, D1, D4, D8 and D9 name the extras (including a newer app's unknown extras, at most 30, text of at most 2,000 characters), §8 adds where else they rest (the Drive sync file) and why no AI flow (DF-21, DF-32) carries an unknown extra. |
 | 0.20 | 2026-10-13 | Claude (Code), engineer | **Kind-aware AI** (kinds PR 7, S4b-BL-211; `feat/kinds-9-kind-aware-ai`; [03](03-design.md) §18.11): §8 says which extras DF-21 and DF-32 may now carry (only those a built-in kind's `ai` slots name, while the developer flag is on, a text redacted) and that an unknown extra still never; DF-21 names the extract request's optional `kind`. |
+| 0.21 | 2026-10-14 | Claude (Code), engineer | **§5.2 Delete, Undo and Restore** (S4b-BL-283): the tombstone flow of one candidate on the website; no new data flow, store or trust boundary. |
 
 Related: [Threat model](02-threat-model.md) (uses these element IDs) · [Design](03-design.md) · [Requirements](01-requirements.md) · [AI docs](ai/)
 
@@ -275,6 +276,15 @@ flowchart LR
     OK -.->|"3xx or non-JSON body"| CP["Captive portal:<br/>stop, no key sent onward"]
     RI -.->|"all attempts failed"| WM["SyncWorker returns retry<br/>WorkManager backoff from 30 s"]
 ```
+
+### 5.2 Delete, Undo and Restore of one candidate (the website)
+
+No new data flow, store or boundary: everything below is P3 reading and writing the `houses`, `photos` and `saved_walks` stores of D3 and the existing change feed (DF-12).
+
+1. **Delete** writes the candidate's row as a tombstone (`deleted: true`, `dirty: true`, `updatedAt` now), drops the bytes of its photos (a photo the server has keeps a tombstone) and deletes its saved walks, which have no tombstone. Before this the page keeps copies of the photos in memory.
+2. **Undo** (10 s, same page session) writes the row again (`deleted: false`, `dirty: true`, `updatedAt` = the later of now and the tombstone's stamp + 1 ms) and puts the photos back from the copies under new ids, marked not uploaded.
+3. **Restore** (*Recently deleted*: this space's tombstones with `updatedAt` within 30 days) does the same flip for the row; photos come back only if their bytes are still stored, else the person is told.
+4. The next sync pushes the newer row; last write wins on the server and in Drive, so the restore reaches every device. Saved walks never come back. A per-candidate photo count is kept in the browser's settings store (never exported or synced) so the list can say photos were lost.
 
 ## 6. Level 2: AI / RAG (P6, built; off by default)
 
