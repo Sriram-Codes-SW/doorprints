@@ -53,6 +53,7 @@ jobs:
   # only the names of the missing secrets, never a value.
   check:
     name: Release signing secrets present?
+    environment: release
     runs-on: ubuntu-26.04
     timeout-minutes: 5
     permissions: {}
@@ -79,6 +80,7 @@ jobs:
     name: Signed release APK
     needs: [check]
     if: needs.check.outputs.present == 'true'
+    environment: release
     runs-on: ubuntu-26.04
     timeout-minutes: 40
     permissions: {}
