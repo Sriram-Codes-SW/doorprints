@@ -19,6 +19,7 @@
 import type { Dict, TKey } from '../i18n/en';
 import type { HouseDto } from '../core/models';
 import type { KindFields } from '../core/kind-fields';
+import { labelKey } from '../core/kind-labels';
 import { toolWord } from '../core/space-tool-words';
 import { kindValues, type KindValue } from '../shared/kind-values';
 import { tr } from './deterministic';
@@ -107,7 +108,7 @@ export function copyShows(voice: KindFields | undefined, ref: string): boolean {
  * the hand-written `house` key in a copy without a voice, which `house-pins.spec.ts` holds word for word.
  */
 export function copyField(voice: KindFields | undefined, ref: string, house: TKey): TKey {
-  return (voice && voice.labels.resolve(ref)?.key) || house;
+  return voice ? labelKey(voice.labels, ref, house) : house;
 }
 
 function cellOf(v: KindValue, dict: Dict, s: ExportStrings): Cell {

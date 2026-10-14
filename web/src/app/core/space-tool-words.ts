@@ -20,7 +20,9 @@ import type { TKey } from '../i18n/en';
 
 /**
  * The words of Compare, Ask, Plan, the copies and the share target in a space other than the house (kinds PR B,
- * S4b-BL-279; docs/03 §18.13). A page asks for its house key and gets the kind's own where the kind has one, so the
+ * S4b-BL-279; docs/03 §18.13), and since kinds PR 16 (S4b-BL-256, S4b-BL-259, S4b-BL-266, S4b-BL-277; §18.9) the house's
+ * words left on a school's page: tab titles, the name's placeholder, the walk check, the Areas and Places pages, the
+ * readable copy's cover. A page asks for its house key and gets the kind's own where the kind has one, so the
  * house's words are exactly the keys they were: `toolWord('house', 'compare.title')` is `'compare.title'`. The space's
  * list and map words are `core/space-words.ts` (S4b-BL-277); moving both into the kind files is S4b-BL-278.
  */
@@ -108,4 +110,10 @@ const TABLES: Readonly<Record<string, Readonly<Partial<Record<TKey, TKey>>>>> = 
 export function toolWord(kind: string | null | undefined, key: TKey): TKey {
   const table = kind && Object.prototype.hasOwnProperty.call(TABLES, kind) ? TABLES[kind] : undefined;
   return table?.[key] ?? key;
+}
+
+/** The house keys a kind words itself and the keys it reads instead, for the checks of the dictionaries (`school-words.spec.ts`). */
+export function toolWordPairs(kind: string): [TKey, TKey][] {
+  const table = Object.prototype.hasOwnProperty.call(TABLES, kind) ? TABLES[kind] : {};
+  return Object.entries(table) as [TKey, TKey][];
 }

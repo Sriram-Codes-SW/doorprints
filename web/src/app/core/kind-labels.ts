@@ -167,6 +167,15 @@ export class KindKeys {
 /** The house's keys for templates. */
 export const HOUSE_KEYS = new KindKeys(HOUSE_LABELS);
 
+/**
+ * The label key of `ref` on a screen that has a hand-written key of its own for the house (Compare's *Your rating*, the copies'
+ * *Price*): the house keeps that key word for word (the house's goldens pin it), any other kind reads its label through the
+ * resolver (S4b-BL-256, S4b-BL-266); a kind with no such label keeps the house's key.
+ */
+export function labelKey(labels: KindLabels, ref: string, house: TKey): TKey {
+  return labels.kind === HOUSE_LABELS.kind ? house : (labels.resolve(ref)?.key ?? house);
+}
+
 const STATUS_NAMES = ['NEW', 'SHORTLISTED', 'REJECTED', 'TAKEN', 'NOT_CHOSEN'] as const;
 const STATUS_KEYS = new WeakMap<KindLabels, Readonly<Record<string, TKey>>>();
 

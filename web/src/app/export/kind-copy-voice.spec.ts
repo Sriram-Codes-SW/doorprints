@@ -149,9 +149,13 @@ describe('a school’s tables (CSV and workbook) leave out what a school hides',
     it(`the Visits and Photos tables say School, not House, in ${lang}`, () => {
       const tables = exportTables(copyOf([rated()], lang, 'school'));
       const s = ExportStrings.of(lang, 'school');
+      // The nouns are written out here (the school’s, in the app’s dictionaries too), not read back from the overlay.
+      const SCHOOL: Record<Lang, [string, string]> = {
+        en: ['School', 'School id'], hi: ['स्कूल', 'स्कूल आईडी'], ta: ['பள்ளி', 'பள்ளி அடையாளம்'], te: ['పాఠశాల', 'పాఠశాల ఐడీ'],
+      };
       for (const t of tables.filter((x) => x.name === 'visits' || x.name === 'photos')) {
-        expect(t.columns, t.name).toContain(s.get('col.house'));
-        expect(t.columns, t.name).toContain(s.get('col.houseId'));
+        expect(t.columns, t.name).toContain(SCHOOL[lang][0]);
+        expect(t.columns, t.name).toContain(SCHOOL[lang][1]);
       }
       expect(tables.find((x) => x.name === 'houses')!.title).toBe(s.get('table.houses'));
       const house = ExportStrings.of(lang);

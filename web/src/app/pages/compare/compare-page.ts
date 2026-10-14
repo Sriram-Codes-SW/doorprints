@@ -24,7 +24,7 @@ import { LocalDataService } from '../../core/local-data.service';
 import { brokerLine } from '../../shared/broker';
 import { Announcer } from '../../core/announcer.service';
 import { HouseDto, STATUS_ICON } from '../../core/models';
-import { statusKeys } from '../../core/kind-labels';
+import { labelKey, statusKeys } from '../../core/kind-labels';
 import { errorMsg, telHref } from '../../core/format';
 import { Msg, TranslationService } from '../../i18n/translation.service';
 import { TPipe } from '../../i18n/t.pipe';
@@ -186,10 +186,12 @@ export class ComparePage {
     const scores = results.map((r) => r.overall);
     const kind = this.space.current();
     const shows = (ref: string) => kind.labels.isVisible(ref);
+    /** A row’s heading: Compare’s own word for the house, the kind’s label for another kind (S4b-BL-256). */
+    const heading = (ref: string, house: TKey) => i18n.t(labelKey(kind.labels, ref, house));
     const scored = shows('section.checklist');
     if (scored) rows.push({
       id: 'score',
-      label: i18n.t('compare.overall'),
+      label: heading('section.checklist', 'compare.overall'),
       cells: scores.map((s) => (s === null ? none : { text: i18n.score(s) })),
       best: bestOf(scores),
     });
@@ -198,7 +200,7 @@ export class ComparePage {
     if (scored && scoring.criteria.some((c) => c.mustHave && c.archived !== true)) {
       rows.push({
         id: 'mustHaves',
-        label: i18n.t('compare.mustHaves'),
+        label: heading('section.checklist', 'compare.mustHaves'),
         cells: results.map((r) =>
           r.failedMustHave.length > 0
             ? { text: '✕ ' + i18n.t('compare.mustHaveMissed', { names: named(r.failedMustHave) }) }
@@ -211,20 +213,20 @@ export class ComparePage {
     }
     if (shows('field.money')) rows.push({
       id: 'price',
-      label: i18n.t('compare.price'),
+      label: heading('field.money', 'compare.price'),
       cells: houses.map((h) => plain(h.price != null ? i18n.price(h.price, h.priceType) : null)),
       best: new Set<number>(),
     });
     if (shows('field.bedrooms')) rows.push({
       id: 'bhk',
-      label: i18n.t('compare.bhk'),
+      label: heading('field.bedrooms', 'compare.bhk'),
       cells: houses.map((h) => plain(h.bedrooms != null ? i18n.number(h.bedrooms) : null)),
       best: new Set<number>(),
     });
     // Slice 1a: the carpet area and what the house really costs (docs/11 5.21), the same arithmetic as the form.
     if (shows('field.areaSqft')) rows.push({
       id: 'area',
-      label: i18n.t('compare.area'),
+      label: heading('field.areaSqft', 'compare.area'),
       cells: houses.map((h) => plain(h.areaSqft != null ? i18n.t('common.sqft', { n: i18n.number(h.areaSqft) }) : null)),
       best: new Set<number>(),
     });
@@ -254,7 +256,7 @@ export class ComparePage {
     const unit = this.lengthUnit();
     if (shows('section.rooms')) rows.push({
       id: 'rooms',
-      label: i18n.t('compare.rooms'),
+      label: heading('section.rooms', 'compare.rooms'),
       cells: houses.map((h) => {
         const list = h.rooms ?? [];
         if (list.length === 0) return none;
@@ -281,7 +283,7 @@ export class ComparePage {
     const ratings = houses.map((h) => h.rating || null);
     rows.push({
       id: 'rating',
-      label: i18n.t('compare.rating'),
+      label: heading('field.rating', 'compare.rating'),
       cells: houses.map((h) =>
         h.rating
           ? {
@@ -294,7 +296,7 @@ export class ComparePage {
     });
     rows.push({
       id: 'visits',
-      label: i18n.t('compare.visits'),
+      label: heading('section.visits', 'compare.visits'),
       cells: houses.map((h) =>
         visits[h.id] === undefined ? { text: '…', srText: i18n.t('common.loading') } : { text: i18n.number(visits[h.id]) },
       ),
@@ -302,7 +304,7 @@ export class ComparePage {
     });
     rows.push({
       id: 'street',
-      label: i18n.t('compare.street'),
+      label: heading('field.street', 'compare.street'),
       cells: houses.map((h) => plain([h.street, h.locality].filter((x) => !!x).join(', ') || null)),
       best: new Set<number>(),
     });

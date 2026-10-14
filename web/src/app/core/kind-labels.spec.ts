@@ -27,7 +27,8 @@ import { te } from '../i18n/te';
 import labelVectorsJson from '../../../../docs/schemas/kinds/kind-label-vectors.json';
 import kindVectorsJson from '../../../../docs/schemas/kinds/kind-vectors.json';
 import houseJson from '../../../../docs/schemas/kinds/house.json';
-import { HOUSE_LABELS, KindLabels, kindLabels } from './kind-labels';
+import { HOUSE_LABELS, KindLabels, kindLabels, labelKey, statusKeys } from './kind-labels';
+import { SCHOOL_LABELS } from './school-kind';
 
 interface Label { web: string | null; byCadence?: Record<string, { web?: string }> }
 interface Placed { id: string; section: string; label: Label; visible?: boolean; cadences?: unknown[] }
@@ -162,5 +163,34 @@ describe('KindLabels, the label and visibility resolver', () => {
     expect(kind.field('toString')).toBeUndefined();
     expect(kind.isVisible('field.areaSqft')).toBe(false);
     expect(kind.isVisible('section.photos')).toBe(false);
+  });
+});
+
+// S4b-BL-256: the screens that list statuses read the kind's table (the map's legend, filter and rows; Compare; Ask; the page).
+describe('statusKeys (a kind’s status words by name)', () => {
+  it('is the house’s STATUS_KEY for the house, and the school’s own table for a school (the same five keys)', () => {
+    expect(statusKeys(HOUSE_LABELS)).toEqual(STATUS_KEY);
+    expect(statusKeys(SCHOOL_LABELS)).toEqual({
+      NEW: 'status.NEW', SHORTLISTED: 'status.SHORTLISTED', REJECTED: 'status.REJECTED', TAKEN: 'status.TAKEN', NOT_CHOSEN: 'status.NOT_CHOSEN',
+    });
+  });
+
+  it('is built once per kind', () => {
+    expect(statusKeys(HOUSE_LABELS)).toBe(statusKeys(HOUSE_LABELS));
+    expect(statusKeys(SCHOOL_LABELS)).not.toBe(statusKeys(HOUSE_LABELS));
+  });
+});
+
+describe('labelKey (a screen’s own word for the house, the kind’s label for another kind)', () => {
+  it('keeps the house’s hand-written key for the house, even where the kind has a label for the place', () => {
+    expect(labelKey(HOUSE_LABELS, 'field.money', 'compare.price')).toBe('compare.price');
+    expect(labelKey(HOUSE_LABELS, 'field.rating', 'compare.rating')).toBe('compare.rating');
+  });
+
+  it('reads a school’s label through the resolver, and keeps the house’s key where the school has none', () => {
+    expect(labelKey(SCHOOL_LABELS, 'field.listingUrl', 'house.listingUrl')).toBe('school.website');
+    expect(labelKey(SCHOOL_LABELS, 'section.cost', 'house.cost')).toBe('school.fees');
+    expect(labelKey(SCHOOL_LABELS, 'field.rating', 'compare.rating')).toBe('house.rating');
+    expect(labelKey(SCHOOL_LABELS, 'field.money', 'compare.price')).toBe('compare.price');
   });
 });

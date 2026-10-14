@@ -1,0 +1,95 @@
+{
+  "spec": [
+    "web/src/app/school-words.spec.ts",
+    "web/src/app/export/kind-copy-voice.spec.ts",
+    "web/src/app/export/kind-search.spec.ts",
+    "web/src/app/pages/house-detail/house-draft-merge.spec.ts",
+    "web/src/app/pages/house-detail/house-check-card.spec.ts"
+  ],
+  "mutations": [
+    {
+      "file": "web/src/app/core/space-tool-words.ts",
+      "find": "  'house.namePlaceholder': 'school.namePlaceholder',",
+      "replace": "  'house.namePlaceholder': 'house.namePlaceholder',",
+      "expect": "the name’s placeholder"
+    },
+    {
+      "file": "web/src/app/app.routes.ts",
+      "find": "{ ...detail, path: `k/${k}/new`, title: toolWord(k, 'title.newHouse') },",
+      "replace": "{ ...detail, path: `k/${k}/new`, title: 'title.newHouse' },",
+      "expect": "New school, School details and Schools"
+    },
+    {
+      "file": "web/src/app/pages/map/map-page.html",
+      "find": "(S4b-BL-277). -->\n                  @if (space.current().labels.isVisible('field.money')) {",
+      "replace": "(S4b-BL-277). -->\n                  @if (true) {",
+      "expect": "a school’s row is its name, status and place"
+    },
+    {
+      "file": "web/src/app/pages/data/data-page.html",
+      "find": "  @if (space.current().labels.isVisible('section.checklist')) {",
+      "replace": "  @if (true) {",
+      "expect": "Your data without criteria, questions and viewings"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/house-draft-merge.ts",
+      "find": "    if (isEmpty(incoming) || !labels.isVisible(FIELD_REF[field])) return;",
+      "replace": "    if (isEmpty(incoming)) return;",
+      "expect": "writes nothing into the price"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/house-draft-merge.ts",
+      "find": "(labels.field(FIELD_REF[field].slice('field.'.length))?.key ?? FIELD_LABEL[field])",
+      "replace": "FIELD_LABEL[field]",
+      "expect": "names a field by the kind’s label"
+    },
+    {
+      "file": "web/src/app/export/kind-copy.ts",
+      "find": "  return voice && voice.kind !== 'house' ? voice : undefined;",
+      "replace": "  return undefined;",
+      "expect": "a space of schools with no school at all is still a school copy"
+    },
+    {
+      "file": "web/src/app/export/export-rows.ts",
+      "find": "  const shown = cols.filter(([ref]) => ref === null || !voice || voice.labels.isVisible(ref));",
+      "replace": "  const shown = cols;",
+      "expect": "the Schools table"
+    },
+    {
+      "file": "web/src/app/export/export-rows.ts",
+      "find": "...(shows('section.checklist') ? [scoresTable(bundle)] : [])",
+      "replace": "...[scoresTable(bundle)]",
+      "expect": "no Scores table"
+    },
+    {
+      "file": "web/src/app/export/copy-facts.ts",
+      "find": "if (e.section !== 'cost') facts.push([e.label, e.text]);",
+      "replace": "facts.push([e.label, e.text]);",
+      "expect": "each extra with its label and its type"
+    },
+    {
+      "file": "web/src/app/export/copy-facts.ts",
+      "find": "  return { score: copyShows(bundle.voice, 'section.checklist'), price: copyShows(bundle.voice, 'field.money') };",
+      "replace": "  return { score: true, price: true };",
+      "expect": "a ranking of rank, school and status"
+    },
+    {
+      "file": "web/src/app/export/kind-export-words.ts",
+      "find": "    'col.house': 'School',",
+      "replace": "    'col.house': 'House',",
+      "expect": "the Visits and Photos tables say School"
+    },
+    {
+      "file": "web/src/app/pages/map/place-check-state.ts",
+      "find": "...(candidate && candidate !== 'house' ? { candidate } : {}), ",
+      "replace": "",
+      "expect": "a school’s card, question, answer and ring say school"
+    },
+    {
+      "file": "web/src/app/core/space-words.ts",
+      "find": "  areaInReach: 'school.areaNotesInReach',",
+      "replace": "  areaInReach: 'areaNotes.inReach',",
+      "expect": "a school’s are the school’s keys"
+    }
+  ]
+}

@@ -19,7 +19,9 @@
 import { describe, expect, it } from 'vitest';
 import type { HouseDraft } from '../../core/ai.service';
 import { HouseDto, newHouse } from '../../core/models';
-import { addressFill, mergeListingDraft, withListingBlock } from './house-draft-merge';
+import { SCHOOL_LABELS } from '../../core/school-kind';
+import { addressFill, fillLabel, mergeListingDraft, withListingBlock } from './house-draft-merge';
+import { HOUSE_LABELS } from '../../core/kind-labels';
 import { DRAFT_PREFIX, draftKey, parseStoredDraft } from './draft-store';
 
 function draft(partial: Partial<HouseDraft>): HouseDraft {
@@ -129,5 +131,38 @@ describe('the unsaved-draft store', () => {
     expect(parseStoredDraft(null)).toBeNull();
     expect(parseStoredDraft('{')).toBeNull();
     expect(parseStoredDraft(JSON.stringify({ draft: { label: 'x' } }))).toBeNull();
+  });
+});
+
+// S4b-BL-256: a listing fill reads the candidate's kind: its labels in "Kept your …", and no write into a place the kind hides.
+describe('"Fill in from listing text" for a school (S4b-BL-256)', () => {
+  it('names a field by the kind’s label: a school’s name and website, the house’s street and address', () => {
+    expect(fillLabel('label', SCHOOL_LABELS)).toBe('school.name');
+    expect(fillLabel('listingUrl', SCHOOL_LABELS)).toBe('school.website');
+    expect(fillLabel('street', SCHOOL_LABELS)).toBe('house.street');
+    expect(fillLabel('label', HOUSE_LABELS)).toBe('house.name');
+    expect(fillLabel('listingUrl', HOUSE_LABELS)).toBe('house.listingUrl');
+  });
+
+  it('the house’s label for every fill field is what it was (the kind’s key, or the house’s own for the price type)', () => {
+    const all = ['label', 'address', 'street', 'locality', 'price', 'priceType', 'bedrooms', 'areaSqft', 'contactName', 'contactPhone', 'listingUrl'] as const;
+    expect(all.map((f) => fillLabel(f, HOUSE_LABELS))).toEqual([
+      'house.name', 'house.address', 'house.street', 'house.locality', 'house.price', 'house.priceType', 'house.bhk', 'house.areaSqft',
+      'house.contactName', 'house.contactPhone', 'house.listingUrl',
+    ]);
+  });
+
+  it('writes nothing into the price, the type, the BHK or the area a school hides, and fills what it shows', () => {
+    const result = mergeListingDraft(
+      form({ kind: 'school', priceType: null }),
+      draft({ label: 'Pine Hill School', price: 96000, priceType: 'RENT', bedrooms: 2, areaSqft: 900, locality: 'Dispur', listingUrl: 'https://pine.example' }),
+      SCHOOL_LABELS,
+    );
+    expect(result.changes).toEqual({ label: 'Pine Hill School', locality: 'Dispur', listingUrl: 'https://pine.example' });
+    expect(result.filled).toEqual(['label', 'locality', 'listingUrl']);
+    expect(result.kept).toEqual([]);
+    // The house, with the same listing, takes all of it.
+    const house = mergeListingDraft(form(), draft({ label: 'X', price: 96000, priceType: 'RENT', bedrooms: 2, areaSqft: 900 }));
+    expect(house.filled).toEqual(['label', 'price', 'priceType', 'bedrooms', 'areaSqft']);
   });
 });
