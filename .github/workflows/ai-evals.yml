@@ -163,6 +163,13 @@ on:
           - golden-set
           - hard-set
           - school-set
+      category:
+        description: "own-provider and local-model suites (S4b-BL-268): all = every case of the set; prompt-injection = only the prompt-injection cases (the keyless injection run on a local model; informational). The golden-set suite runs every case"
+        type: choice
+        default: all
+        options:
+          - all
+          - prompt-injection
       canary:
         description: "golden-set only (S4b-BL-237, docs/ai/ai-design.md 8.6): the canary suite. none = a normal run. A name turns on that eval-only degraded configuration of docs/ai/evals/canaries.json for this run (the seam is set by test code, never by configuration), runs only the canary's case types (no-wrapping: only its six listed cases), gates nothing and prints 'CANARY: <name> expected drop seen / NOT seen' with the characters it removed from each system text. The keyless canaries run in every build (CanariesTest), not here"
         type: choice
@@ -575,6 +582,24 @@ jobs:
             echo "::error::The phones' live test failed (see the report artifact)"; exit 1
           fi
 
+      # S4b-BL-268: eval_set=school-set also runs the phone's school test (SchoolSetLiveTest: the set's own schools, the kinds on,
+      # one case of each feature). Any other value leaves this step out, so the job's quota use is as it was.
+      - name: School set on the phone (real key)
+        if: ${{ inputs.eval_set == 'school-set' }}
+        working-directory: android
+        env:
+          DOORPRINTS_LIVE_GEMINI_KEY: ${{ secrets.AI_API_KEY }}
+        run: |
+          ./gradlew --no-daemon :shared:testAndroidHostTest --tests 'app.doorprints.shared.ai.SchoolSetLiveTest' --rerun -i \
+            | grep -E '^School (extract|ask|plan):|SchoolSetLiveTest' || true
+          report=shared/build/test-results/testAndroidHostTest/TEST-app.doorprints.shared.ai.SchoolSetLiveTest.xml
+          test -f "$report" || { echo "::error::The phones' school test did not run"; exit 1; }
+          if grep -q '<skipped' "$report"; then echo "::error::The phones' school test was skipped (no key reached it)"; exit 1; fi
+          if grep -q '<failure' "$report"; then
+            grep -o 'message="[^"]*"' "$report" | head -3
+            echo "::error::The phones' school test failed (see the report)"; exit 1
+          fi
+
       - uses: actions/setup-node@v7
         with:
           node-version: "24"
@@ -661,6 +686,7 @@ jobs:
           AI_EVAL_DELAY_MS: ${{ inputs.delay_ms }}
           AI_EVAL_ADDRESS_SET: ${{ inputs.address_set }}
           AI_EVAL_SET: ${{ inputs.eval_set }}
+          AI_EVAL_CATEGORY: ${{ inputs.category }}
         run: |
           export DOORPRINTS_EVAL_SUMMARY="$RUNNER_TEMP/ai-eval-summary.md"
           npx ng test --watch=false --include src/app/core/ai/ai-provider.live.spec.ts
@@ -795,6 +821,7 @@ jobs:
           AI_EVAL_DELAY_MS: "0"
           AI_EVAL_ADDRESS_SET: ${{ inputs.address_set }}
           AI_EVAL_SET: ${{ inputs.eval_set }}
+          AI_EVAL_CATEGORY: ${{ inputs.category }}
           # 180 s a request instead of the app's 60 s; the harness honours it only for a server on this machine (S4b-BL-190).
           AI_EVAL_TIMEOUT_MS: "180000"
         run: |

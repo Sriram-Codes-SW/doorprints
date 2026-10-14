@@ -664,6 +664,25 @@ describe('the school set (S4b-BL-268)', () => {
     });
   });
 
+  describe('the category setting (AI_EVAL_CATEGORY): the keyless injection run', () => {
+    it.each([undefined, '', ' ', 'all'])('leaves the setup exactly as it was when the value is %j', (value) => {
+      expect(evalSetup({ ...gemini, AI_EVAL_CATEGORY: value })).toEqual(evalSetup(gemini));
+    });
+
+    it('carries prompt-injection, refuses any other name, and says so in the summary', () => {
+      expect(evalSetup({ ...gemini, AI_EVAL_CATEGORY: ' prompt-injection ' })).toMatchObject({ status: 'run', category: 'prompt-injection' });
+      expect(evalSetup({ ...gemini, AI_EVAL_CATEGORY: 'refusal' })).toEqual({ status: 'invalid', line: 'category must be all or prompt-injection' });
+      const text = formatSummary({ kind: 'gemini', host: '', model: '' }, [], null, 'k', undefined, undefined, undefined, 'prompt-injection');
+      expect(text).toContain('Cases: only the prompt-injection cases (informational).');
+    });
+
+    it('selects the injection cases of both files by their category', () => {
+      const injection = (set: { cases: { category?: string }[] }) => set.cases.filter((c) => c.category === 'prompt-injection').length;
+      expect(injection(golden)).toBe(25);
+      expect(injection(schoolSet)).toBe(5);
+    });
+  });
+
   describe('the file', () => {
     it('is informational and brings its own schools, whose ids the cases use', () => {
       expect(schoolSet).not.toHaveProperty('thresholds');

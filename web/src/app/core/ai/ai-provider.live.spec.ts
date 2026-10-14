@@ -87,7 +87,7 @@ describe.skipIf(setup.status === 'skip')('Golden set through the chosen provider
     const results: CaseResult[] = [];
     let stopped: string | null = null;
     let answered = 0;
-    for (const c of (used.cases as GoldenCase[]).filter((g) => setup.types.includes(g.type))) {
+    for (const c of (used.cases as GoldenCase[]).filter((g) => setup.types.includes(g.type) && (!setup.category || g.category === setup.category))) {
       let outcome: Outcome;
       try {
         if (c.type === 'extract') {
@@ -116,7 +116,7 @@ describe.skipIf(setup.status === 'skip')('Golden set through the chosen provider
       : undefined;
     if (own) localStorage.removeItem(DEV_KINDS_KEY);
     const text = formatSummary({ kind: setup.kind, host: aiHostOf(config), model: setup.model }, results, stopped, setup.key, address, pipelineIds(layers),
-      own ? `school-set v${schoolSet.version}` : undefined);
+      own ? `school-set v${schoolSet.version}` : undefined, setup.category);
     console.log(text);
     const file = proc?.env?.['DOORPRINTS_EVAL_SUMMARY'];
     if (file && proc?.getBuiltinModule) proc.getBuiltinModule('node:fs').writeFileSync(file, text);

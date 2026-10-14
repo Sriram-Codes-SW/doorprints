@@ -35,7 +35,7 @@ export type EvalType = (typeof EVAL_TYPES)[number];
 export type EvalSetup =
   | { status: 'skip'; line: string }
   | { status: 'invalid'; line: string }
-  | { status: 'run'; kind: AiKind; baseUrl: string; model: string; key: string; delayMs: number; timeoutMs: number; types: EvalType[]; addressSet?: string; evalSet?: EvalSetName };
+  | { status: 'run'; kind: AiKind; baseUrl: string; model: string; key: string; delayMs: number; timeoutMs: number; types: EvalType[]; addressSet?: string; evalSet?: EvalSetName; category?: EvalCategory };
 
 /**
  * The additive case file this run takes (S4b-BL-268): `school-set` is docs/ai/evals/school-set.json, with its own schools and the
@@ -43,6 +43,12 @@ export type EvalSetup =
  */
 export type EvalSetName = 'school-set';
 const EVAL_SETS: readonly EvalSetName[] = ['school-set'];
+
+/**
+ * Only the cases of one category (S4b-BL-268): `prompt-injection` runs the injection cases of the chosen set alone, the keyless
+ * injection run on a local model. Unset, blank or `all` is every case, as ever.
+ */
+export type EvalCategory = 'prompt-injection';
 
 /** A set name of docs/ai/evals/address-variants.json: lower-case words joined by hyphens (S4b-BL-226). */
 const ADDRESS_SET_NAME = /^[a-z]+(-[a-z]+)*$/;
@@ -112,10 +118,14 @@ export function evalSetup(env: Record<string, string | undefined>): EvalSetup {
   const additive = evalSet !== '' && evalSet !== 'default' && evalSet !== 'golden-set';
   if (additive && !EVAL_SETS.includes(evalSet as EvalSetName)) return invalid('eval set must be golden-set or school-set (hard-set runs on the server only)');
   if (additive && named) return invalid('eval set and address set cannot be combined (the address fingerprints are the golden set\'s)');
+  const category = (env['AI_EVAL_CATEGORY'] ?? '').trim();
+  const only = category !== '' && category !== 'all';
+  if (only && category !== 'prompt-injection') return invalid('category must be all or prompt-injection');
   return {
     status: 'run', kind: kind as AiKind, baseUrl, model: kind === 'gemini' ? '' : model, key, delayMs: Number(delay), timeoutMs, types: types as EvalType[],
     ...(named ? { addressSet } : {}),
     ...(additive ? { evalSet: evalSet as EvalSetName } : {}),
+    ...(only ? { category: category as EvalCategory } : {}),
   };
 }
 
@@ -362,7 +372,7 @@ export interface AddressRunInfo {
  */
 export function formatSummary(
   meta: { kind: string; host: string; model: string }, results: CaseResult[], stopped: string | null, key: string, address?: AddressRunInfo,
-  pipeline?: ReadonlySet<string>, evalSet?: string,
+  pipeline?: ReadonlySet<string>, evalSet?: string, category?: string,
 ): string {
   const hide = (s: string) => (key === '' ? s : s.split(key).join('***'));
   const passed = results.filter((r) => r.passed).length;
@@ -378,6 +388,7 @@ export function formatSummary(
   ];
   if (address) lines.push(`Address set: ${address.header}.`);
   if (evalSet) lines.push(`Eval set: ${evalSet} (its own fixtures, the kinds on; not gated).`);
+  if (category) lines.push(`Cases: only the ${category} cases (informational).`);
   lines.push(
     address
       ? `Result: ${passed} of ${results.length} cases passed. Address set: ${address.set} (not gated); reported, not gating.`

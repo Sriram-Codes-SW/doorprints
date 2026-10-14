@@ -75,6 +75,7 @@
 | v0.71   | 2026-10-13 | Claude (Code), engineer       | 16: **the phones' on-device AI is kind-aware** (S4b-BL-211, the third stacked pull request; `feat/kinds-9c-kind-aware-ai-phone`): `KindAi` in `:shared` under `OnDeviceAi(devKinds)`, the flag from `BuildConfig.DEV_KINDS`; the extract request names the kind only for a kind the extract fills; the phones' house pins (`HouseAiPinsTest`) first and unchanged. With the review follow-ups of #313 on the phone too: `KindAi.sanitize` cuts a generated name over 200 characters with the warning, and `KindAiVectorsTest` reads `askTag`. |
 | v0.72   | 2026-10-14 | Claude (Code), engineer       | 11, 13 and 16: **the server's flag `AI_DEV_KINDS` is the list `KINDS_AVAILABLE`** (S4b-BL-280; `fix/kinds-server-available-flag`; [03](../03-design.md) §18.15): default `house`; a request for a kind outside it is a 400; the AI reads the same list. |
 | v0.73   | 2026-10-14 | Claude (Code), engineer       | 11 and 2: **the Ask index follows `KINDS_AVAILABLE`** (S4b-BL-308; `fix/backend-ai-index-kinds-and-delete-vectors`; [02](../02-threat-model.md) T-I49): a document is stamped with its kind in the metadata and `RagService.availableOnly` drops one whose kind left the list; documents stored before the stamp are house documents until `POST /api/ai/reindex`. |
+| v0.74   | 2026-10-14 | Claude (Code), engineer       | 8.7 and 16.8: **the school set for the evals and `house.json`'s slots** (S4b-BL-268, S4b-BL-271; `feat/kinds-17-school-evals-and-slots`; [10](../10-sprint-log.md) v0.319, [06](../06-test-plan.md) 0.250 TC-AI-47, TC-U-230): `docs/ai/evals/school-set.json` (informational), the three harnesses seeding a candidate's kind and extras with the kinds on, the keyless injection run on Ollama; the house's slots aligned with its code and held by `house-ai-slot-vectors.json`. |
 
 Status: implemented in `backend/` (package `app.doorprints.server.ai`), **off by default**. Not yet compiled in this
 sandbox (no Maven Central access) — CI compiles and runs the tests. Provider: AI Studio by default, Vertex AI with
@@ -1947,9 +1948,30 @@ never reach the document.
 
 ### 16.7 Not done here
 
-No live eval (zero cost; no Vertex run): a school set for the evals and the keyless injection run are S4b-BL-268. The
+The school set for the evals and the keyless injection run are in 8.7 (S4b-BL-268); no Vertex run (zero cost). The
 prompts still speak of houses for every kind (S4b-BL-269), and S4b-BL-234's rule waits for the same re-pin. The Plan
-tools carry no kind extras (S4b-BL-270). `house.json`'s slots describe less than the house's AI code reads (S4b-BL-271).
+tools carry no kind extras (S4b-BL-270). `house.json`'s slots are aligned with the house's AI code in 16.8 (S4b-BL-271).
+
+### 16.8 `house.json`'s slots say what the house's code reads (S4b-BL-271)
+
+The house is not read through its slots (16.1), but the file describes the house, so its `ai` slots must say what the
+hand-written code reads, or a later generic reader that serves the house (and a human reading the file) would be wrong. They
+lagged it, and are now:
+
+| Slot | Gained | Why |
+|---|---|---|
+| `ask` | `viewings`, `areaNotes`, `distances`, `visits` | the document writes `Viewing:`, `Area note:`, `Distance to <place>:` and `Visits:` lines (`moveIn`, `questions` and `checklist` were in already) |
+| `plan` | `street` | a Plan candidate carries the street, and its line writes `locality: <locality, else street>` |
+| `extract` | `areaSqft`, `amenities` | the draft carries the amenities (a hint, never stored) and the no-AI parsers read the carpet area; the server's draft has none (`noAiOnly`) |
+
+`never` is unchanged (`contactName`, `contactPhone`, `myOffer`). The house's documents, prompts, Plan lines and pins are
+byte for byte as before: the pins (`HouseAskPinsTest`, `HousePlanPinsTest`, `HouseExtractPinsTest`, `house-ai-pins.spec.ts`,
+`HouseAiPinsTest`) pass unchanged. **The guard** is `docs/schemas/kinds/house-ai-slot-vectors.json`: it maps the label of each
+Ask line, each field of a Plan candidate and each field of a draft to the slot ids it carries. A `HouseAiSlotsTest` on each
+stack (the website's `house-ai-slots.spec.ts`) builds a house with every field and checks that every line or field the code
+writes is in the vectors, that every id it names is in the slot and none is in `never`, and that the slot holds no id that
+nothing carries; a new line in the house's document therefore fails a test until it is in the vectors and the slot. The
+server's `HouseKindFileTest` skips `amenities` and `areaSqft` when it maps the `extract` slot to the model's raw fields.
 
 ## Sources
 
