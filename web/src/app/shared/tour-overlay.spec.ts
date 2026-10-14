@@ -28,6 +28,7 @@ import { TourOverlay } from './tour-overlay';
 beforeEach(() => localStorage.clear());
 afterEach(() => {
   vi.useRealTimers();
+  delete (document as { fonts?: unknown }).fonts;
   TestBed.resetTestingModule();
   localStorage.clear();
   document.getElementById('add-toggle')?.remove();
@@ -63,6 +64,24 @@ describe('TourOverlay', () => {
     expect(el.querySelector('.offer')).toBeNull();
     expect(localStorage.getItem(TOUR_KEY)).toBe('skipped');
   });
+
+  // S4b-BL-264: the Indic faces are font-display: optional, so a font that is not ready is never swapped in later and the offer
+  // has nothing to wait for; a Font Loading API whose font never comes must not delay or hide it.
+  const offerAtOnce = async (lang: 'en' | 'ta') => {
+    const load = vi.fn(() => new Promise<FontFace[]>(() => undefined));
+    Object.defineProperty(document, 'fonts', { configurable: true, value: { check: () => false, load } });
+    TestBed.configureTestingModule({ imports: [TourOverlay], providers: [provideRouter([{ path: '**', children: [] }])] });
+    await TestBed.inject(TranslationService).setLang(lang);
+    await TestBed.inject(Router).navigateByUrl('/');
+    const fixture = TestBed.createComponent(TourOverlay);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('#tour-offer-title')).not.toBeNull();
+    expect(load).not.toHaveBeenCalled();
+  };
+
+  it('shows the offer at once in English, whatever the Font Loading API says', () => offerAtOnce('en'));
+
+  it('shows the offer at once in Tamil, whatever the Font Loading API says', () => offerAtOnce('ta'));
 
   it('starts from the offer: a labelled dialog with the step, what to try, and focus on its heading', async () => {
     const { el, settle } = await setup();
