@@ -35,7 +35,14 @@ export type EvalType = (typeof EVAL_TYPES)[number];
 export type EvalSetup =
   | { status: 'skip'; line: string }
   | { status: 'invalid'; line: string }
-  | { status: 'run'; kind: AiKind; baseUrl: string; model: string; key: string; delayMs: number; timeoutMs: number; types: EvalType[]; addressSet?: string };
+  | { status: 'run'; kind: AiKind; baseUrl: string; model: string; key: string; delayMs: number; timeoutMs: number; types: EvalType[]; addressSet?: string; evalSet?: EvalSetName };
+
+/**
+ * The additive case file this run takes (S4b-BL-268): `school-set` is docs/ai/evals/school-set.json, with its own schools and the
+ * kinds on. The golden set is the default and has no name here; the server's `hard-set` is the server's alone.
+ */
+export type EvalSetName = 'school-set';
+const EVAL_SETS: readonly EvalSetName[] = ['school-set'];
 
 /** A set name of docs/ai/evals/address-variants.json: lower-case words joined by hyphens (S4b-BL-226). */
 const ADDRESS_SET_NAME = /^[a-z]+(-[a-z]+)*$/;
@@ -100,9 +107,15 @@ export function evalSetup(env: Record<string, string | undefined>): EvalSetup {
   if (named && (addressSet.length > MAX_ADDRESS_SET_NAME || !ADDRESS_SET_NAME.test(addressSet))) {
     return invalid('address set must be a name from address-variants.json (lower-case letters and hyphens)');
   }
+  // The eval set (S4b-BL-268): unset, blank, `default` or `golden-set` is the golden set as ever; `school-set` is the schools' file.
+  const evalSet = (env['AI_EVAL_SET'] ?? '').trim();
+  const additive = evalSet !== '' && evalSet !== 'default' && evalSet !== 'golden-set';
+  if (additive && !EVAL_SETS.includes(evalSet as EvalSetName)) return invalid('eval set must be golden-set or school-set (hard-set runs on the server only)');
+  if (additive && named) return invalid('eval set and address set cannot be combined (the address fingerprints are the golden set\'s)');
   return {
     status: 'run', kind: kind as AiKind, baseUrl, model: kind === 'gemini' ? '' : model, key, delayMs: Number(delay), timeoutMs, types: types as EvalType[],
     ...(named ? { addressSet } : {}),
+    ...(additive ? { evalSet: evalSet as EvalSetName } : {}),
   };
 }
 
@@ -152,6 +165,27 @@ const words = (hay: string, needle: string): boolean => ` ${norm(hay)} `.include
 const list = (value: unknown): string[] => (Array.isArray(value) ? (value as string[]) : []);
 const blank = (v: unknown): boolean => v === null || v === undefined || String(v).trim() === '';
 
+/** One typed extra of a draft against its expectation: a money object by amount and cadence, a text by its words, else as written. */
+function extraMatches(want: unknown, got: unknown): boolean {
+  if (got === null || got === undefined) return false;
+  if (typeof want === 'object' && want !== null) {
+    const m = want as { amount?: unknown; cadence?: unknown };
+    const g = got as { amount?: unknown; cadence?: unknown };
+    return typeof got === 'object' && g.amount === m.amount && (m.cadence === undefined || g.cadence === m.cadence);
+  }
+  if (typeof want === 'string') return norm(String(got)) === norm(want);
+  return got === want;
+}
+
+/**
+ * The seeded fixtures as the store holds them (S4b-BL-268): the set's own tags (`city`, `region`) are not fields, a candidate's
+ * typed `extras` are the record's `extrasOther` (the school's every extra), and every row is live and stamped `now`.
+ * The golden set's houses have no extras, so they come out as they always did.
+ */
+export function fixtureRecords(candidates: ReadonlyArray<Record<string, unknown>>, now: string): Record<string, unknown>[] {
+  return candidates.map(({ city: _city, region: _region, extras, ...rest }) => ({ ...rest, ...(extras ? { extrasOther: extras } : {}), deleted: false, updatedAt: now }));
+}
+
 /**
  * Checks an extracted draft against what the case expects (fields, amenities, notes) and that nothing it must not
  * contain got through. Returns the failures.
@@ -194,11 +228,17 @@ function checkDraft(d: HouseDraft, e: Record<string, unknown>): string[] {
   if (typeof e['listingUrlNot'] === 'string' && (d.listingUrl ?? '').trim().replace(/\/$/, '').toLowerCase() === e['listingUrlNot'].toLowerCase()) {
     out.push(`listingUrl is ${e['listingUrlNot']}`);
   }
+  // A kind's typed extras (S4b-BL-268): each expected extra is one check; a money extra by amount and cadence.
+  const got = (d.extras ?? {}) as Record<string, unknown>;
+  for (const [id, want] of Object.entries((e['extras'] ?? {}) as Record<string, unknown>)) {
+    if (!extraMatches(want, got[id])) out.push(`extras.${id}: expected ${JSON.stringify(want)}, got ${JSON.stringify(got[id] ?? null)}`);
+  }
+  for (const id of list(e['extrasAbsent'])) if (!blank(got[id])) out.push(`extras.${id}: expected nothing, got ${JSON.stringify(got[id])}`);
   const missing = list(e['amenitiesInclude']).filter((a) => !d.amenities.some((have) => squash(have).includes(squash(a))));
   if (missing.length) out.push(`amenities: missing ${missing.join(', ')}`);
   for (const m of list(e['notesMention'])) if (!squash(d.notes ?? '').includes(squash(m))) out.push(`notes lack "${m}"`);
   for (const m of list(e['notesMustNotContain'])) if (norm(d.notes ?? '').includes(norm(m))) out.push(`notes contain "${m}"`);
-  const everything = norm([d.label, d.address, d.street, d.locality, d.contactName, d.contactPhone, d.listingUrl, d.notes, ...d.amenities].join(' '));
+  const everything = norm([d.label, d.address, d.street, d.locality, d.contactName, d.contactPhone, d.listingUrl, d.notes, ...d.amenities, d.extras ? JSON.stringify(d.extras) : ''].join(' '));
   for (const m of list(e['draftMustNotContain'])) if (everything.includes(norm(m))) out.push(`draft contains "${m}"`);
   return out;
 }
@@ -322,7 +362,7 @@ export interface AddressRunInfo {
  */
 export function formatSummary(
   meta: { kind: string; host: string; model: string }, results: CaseResult[], stopped: string | null, key: string, address?: AddressRunInfo,
-  pipeline?: ReadonlySet<string>,
+  pipeline?: ReadonlySet<string>, evalSet?: string,
 ): string {
   const hide = (s: string) => (key === '' ? s : s.split(key).join('***'));
   const passed = results.filter((r) => r.passed).length;
@@ -337,6 +377,7 @@ export function formatSummary(
     `Provider: ${meta.kind}${meta.host ? ` at ${meta.host}` : ''}${meta.model ? `, model \`${meta.model}\`` : ''}. The key is not shown.`,
   ];
   if (address) lines.push(`Address set: ${address.header}.`);
+  if (evalSet) lines.push(`Eval set: ${evalSet} (its own fixtures, the kinds on; not gated).`);
   lines.push(
     address
       ? `Result: ${passed} of ${results.length} cases passed. Address set: ${address.set} (not gated); reported, not gating.`
