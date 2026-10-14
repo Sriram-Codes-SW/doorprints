@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.193 |
+| Version | 0.194 |
 | Date | 2026-10-14 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..183); this file lists the lead-level items and points to the rest. |
@@ -201,6 +201,7 @@
 | 0.191 | 2026-10-14 | Claude (Code), engineer | §11.2: **kinds PR 16, the website In review** (`feat/kinds-16-school-wording-web`; S4b-BL-256, S4b-BL-259, S4b-BL-266 and the website leftovers of S4b-BL-277; [03](03-design.md) §18.9, [10](10-sprint-log.md) v0.319): the phones' half follows in a later pull request (each row names its call sites). |
 | 0.192 | 2026-10-14 | Claude (Code), engineer | §1: **S4b-BL-268 and S4b-BL-271 In review** (`feat/kinds-17-school-evals-and-slots`; [10](10-sprint-log.md) v0.320): the school set for the AI evals and the keyless injection run on Ollama, and `house.json`'s slots aligned with the house's AI code. Two working notes in §7 terms: a local model (Ollama) can be fetched in a session without a key (the release tarball streamed through `zstd`, only the CPU libraries kept, about 60 MB, plus the 400 MB model), and the live spec's timeout for a loopback server (`AI_EVAL_TIMEOUT_MS`, up to 600,000) matters when the container is busy. |
 | 0.193 | 2026-10-14 | Claude (Code), engineer | §11.2: **S4b-BL-310 In review** (`chore/deps-angular-maplibre`): Angular 22.2.2 and maplibre-gl 6.13.0; the MapLibre worker is self-contained from 6.13, so the build, the PWA check and the live check follow the new layout ([10](10-sprint-log.md) v0.321). |
+| 0.194 | 2026-10-14 | Claude (Code), engineer | §11.2: **S4b-BL-311 In review** (`chore/deps-vitest5-jsdom30`): vitest 5.0.4 and jsdom 30.1.2; Vitest 5's on-disk module cache is turned off for the web tests ([10](10-sprint-log.md) v0.323). |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 
