@@ -134,6 +134,21 @@ describe('Recently deleted', () => {
     expect(document.activeElement).toBe(host.querySelector('button.restore'));
   });
 
+  it('after the last entry of several is restored, focus goes to the new last Restore', async () => {
+    await open();
+    for (const [id, days] of [['h1', 3], ['h2', 2], ['h3', 1]] as const) {
+      await store.saveHouse(house(id, { label: `Name ${id}` }), NOW - 9 * DAY);
+      await store.deleteHouse(id, NOW - days * DAY);
+    }
+    const { host, fixture } = await render();
+    const buttons = host.querySelectorAll<HTMLButtonElement>('button.restore');
+    expect([...buttons].map((b) => b.getAttribute('aria-label'))).toEqual(['Restore Name h3', 'Restore Name h2', 'Restore Name h1']);
+    buttons[2].click();
+    vi.useRealTimers();
+    await settle(fixture);
+    expect(document.activeElement?.getAttribute('aria-label')).toBe('Restore Name h2');
+  });
+
   it('after the last entry is restored, focus goes to the heading and the empty state shows', async () => {
     await open();
     await store.saveHouse(house('h1', { label: 'Blue gate' }), NOW - 9 * DAY);

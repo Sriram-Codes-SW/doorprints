@@ -91,7 +91,7 @@ Remember to choose **Save**.
 
 ![The checklist on the website: water supply, power backup, parking, sunlight, ventilation and quiet, each scored 0 to 5](images/web-house-checklist.png)
 
-**Delete house** removes a house with its notes, contact details and photos. Its visits stay in your history.
+**Delete house** removes a house with its notes, contact details and photos. Its visits stay in your history. On the website there is no question: a bar at the bottom says **Deleted** and offers **Undo** for 10 seconds (press Shift+Tab from the top of the page to reach it with the keyboard). If the house has saved walks, one question tells you how many go with it, because they cannot come back. Later, **Your data** > **Recently deleted** lists what you deleted in the last 30 days, and **Restore** brings it back; the photos of a house are not kept after the 10 seconds, and the page says so.
 
 ## Your areas and places
 

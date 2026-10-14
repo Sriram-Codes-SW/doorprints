@@ -1,0 +1,181 @@
+{
+  "spec": [
+    "web/src/app/data/house-bin.spec.ts",
+    "web/src/app/data/delete-scope-vectors.spec.ts",
+    "web/src/app/core/delete-undo.service.spec.ts",
+    "web/src/app/shared/undo-snackbar.spec.ts",
+    "web/src/app/pages/data/recently-deleted.spec.ts",
+    "web/src/app/pages/house-detail/house-walks-card.spec.ts",
+    "web/src/app/data/house-delete-pins.spec.ts"
+  ],
+  "mutations": [
+    {
+      "file": "web/src/app/data/house-bin.ts",
+      "find": "export const BIN_DAYS = 30;",
+      "replace": "export const BIN_DAYS = 31;",
+      "expect": "the 30th day to the millisecond"
+    },
+    {
+      "file": "web/src/app/data/house-bin.ts",
+      "find": "millis(row.updatedAt) > now - BIN_DAYS * DAY_MS",
+      "replace": "millis(row.updatedAt) >= now - BIN_DAYS * DAY_MS",
+      "expect": "the 30th day to the millisecond"
+    },
+    {
+      "file": "web/src/app/data/house-bin.ts",
+      "find": "return row.deleted === true &&",
+      "replace": "return true &&",
+      "expect": "is a tombstone younger than 30 days"
+    },
+    {
+      "file": "web/src/app/data/house-bin.ts",
+      "find": "(!space.multi || spaceOf(r, true, space.dflt, space.available) === space.kind)",
+      "replace": "true",
+      "expect": "lists this space only"
+    },
+    {
+      "file": "web/src/app/data/house-bin.ts",
+      "find": "(!space.multi ||",
+      "replace": "(space.multi ||",
+      "expect": "lists every tombstone when there is one space"
+    },
+    {
+      "file": "web/src/app/data/house-bin.ts",
+      "find": "millis(b.updatedAt) - millis(a.updatedAt)",
+      "replace": "millis(a.updatedAt) - millis(b.updatedAt)",
+      "expect": "newest first"
+    },
+    {
+      "file": "web/src/app/data/house-bin.ts",
+      "find": "isoNow(Math.max(now, millis(previous) + 1))",
+      "replace": "isoNow(now)",
+      "expect": "one millisecond past a stamp that is ahead"
+    },
+    {
+      "file": "web/src/app/data/house-bin.ts",
+      "find": "deleted: false, dirty: true, updatedAt: stamp };",
+      "replace": "deleted: false, dirty: false, updatedAt: stamp };",
+      "expect": "flips a tombstone back, dirty"
+    },
+    {
+      "file": "web/src/app/data/house-bin.ts",
+      "find": "if (!existing?.deleted) return undefined;",
+      "replace": "if (!existing) return undefined;",
+      "expect": "does nothing for a live house"
+    },
+    {
+      "file": "web/src/app/data/house-bin.ts",
+      "find": "deleted: false, uploaded: false, updatedAt: stamp, syncVersion: 0",
+      "replace": "deleted: false, uploaded: true, updatedAt: stamp, syncVersion: 0",
+      "expect": "to be uploaded again"
+    },
+    {
+      "file": "web/src/app/data/house-bin.ts",
+      "find": "if (stored.includes(p)) await db.delete('photos', p.id);",
+      "replace": "",
+      "expect": "removes the stale row"
+    },
+    {
+      "file": "web/src/app/data/house-bin.ts",
+      "find": "...(hasMeta ? { metaDirty: true } : {})",
+      "replace": "",
+      "expect": "to be uploaded again"
+    },
+    {
+      "file": "web/src/app/data/house-bin.ts",
+      "find": "if (count > 0) next[id] = count;",
+      "replace": "",
+      "expect": "sets, removes and prunes"
+    },
+    {
+      "file": "web/src/app/data/house-bin.ts",
+      "find": "filter(([k]) => k !== id && keep.has(k))",
+      "replace": "filter(([k]) => k !== id)",
+      "expect": "sets, removes and prunes"
+    },
+    {
+      "file": "web/src/app/core/delete-undo.service.ts",
+      "find": "export const UNDO_MS = 10_000;",
+      "replace": "export const UNDO_MS = 5_000;",
+      "expect": "lasts ten seconds"
+    },
+    {
+      "file": "web/src/app/core/delete-undo.service.ts",
+      "find": "if (!on) this.arm();",
+      "replace": "if (on) this.arm();",
+      "expect": "holds the time"
+    },
+    {
+      "file": "web/src/app/core/delete-undo.service.ts",
+      "find": "this.held = photos;",
+      "replace": "this.held = [];",
+      "expect": "brings back the candidate and its photos"
+    },
+    {
+      "file": "web/src/app/core/delete-undo.service.ts",
+      "find": "Math.max(entry.photos, result.photosBack + result.photosGone)",
+      "replace": "result.photosBack + result.photosGone",
+      "expect": "photo count"
+    },
+    {
+      "file": "web/src/app/core/delete-undo.service.ts",
+      "find": "    await this.note(entry.id, 0);\n    this.sync.syncSoon();\n    const had",
+      "replace": "    this.sync.syncSoon();\n    const had",
+      "expect": "Restore removes the entry"
+    },
+    {
+      "file": "web/src/app/core/delete-undo.service.ts",
+      "find": "    await this.note(offer.id, 0);\n    this.sync.syncSoon();",
+      "replace": "    await this.note(offer.id, 0);",
+      "expect": "brings back the candidate and its photos"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/house-detail-page.ts",
+      "find": "if (walks !== 0) {",
+      "replace": "if (walks > 0) {",
+      "expect": "without a number when the walks cannot be counted"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/house-detail-page.ts",
+      "find": "if (walks !== 0) {",
+      "replace": "if (false) {",
+      "expect": "names the number of saved walks"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/house-detail-page.ts",
+      "find": "n: this.i18n.number(walks)",
+      "replace": "n: ''",
+      "expect": "names the number of saved walks"
+    },
+    {
+      "file": "web/src/app/pages/data/recently-deleted.ts",
+      "find": "if (failed) this.error.set(failed);",
+      "replace": "",
+      "expect": "failed restore in an alert"
+    },
+    {
+      "file": "web/src/app/pages/data/recently-deleted.ts",
+      "find": "Math.min(Math.max(index, 0), buttons.length - 1)",
+      "replace": "0",
+      "expect": "focus goes to the new last Restore"
+    },
+    {
+      "file": "web/src/app/shared/undo-snackbar.ts",
+      "find": "(mouseenter)=\"undo.hold(true)\"",
+      "replace": "",
+      "expect": "holds the time for the pointer"
+    },
+    {
+      "file": "web/src/app/shared/undo-snackbar.ts",
+      "find": "role=\"status\" aria-atomic=\"true\"",
+      "replace": "aria-atomic=\"true\"",
+      "expect": "status region"
+    },
+    {
+      "file": "web/src/app/data/local-store.service.ts",
+      "find": "return (await this.rawHouses()).filter((h) => h.deleted);",
+      "replace": "return this.rawHouses();",
+      "expect": "lists the tombstones through deletedHouses"
+    }
+  ]
+}

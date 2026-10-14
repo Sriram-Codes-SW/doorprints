@@ -913,3 +913,7 @@ schools ship at all; these checks are for the owner's own test devices. TC-M-69 
 |---|---|---|---|---|---|
 | MT-93 | What you track, the chooser and the chip | anyone | E1 | no | |
 | MT-94 | A school space, its backup, a deep link, turning schools off | owner | E1 | no | |
+
+#### MT-95 TC-M-70: delete with Undo, and Recently deleted
+- **Steps:** (1) Delete a house with no saved walk: no dialog; the snackbar *Deleted <name>* with *Undo* shows for 10 s. (2) Press Shift+Tab from the top of the page: *Undo* is reached; Enter brings the house back with its photos. (3) With a screen reader the message is read out. (4) Put the pointer or the focus on the snackbar: it stays. (5) Delete a house that has saved walks: one question names the number of walks; *Cancel* deletes nothing. (6) Open *Your data* > *Recently deleted*: the entry shows its name and when it was deleted; *Restore* brings it back and focus moves to the next *Restore*, or to the heading when none is left. (7) With two kinds on (a development build), the card shows only the open space's entries, under that space's name. (8) Repeat in Tamil and at 130% text.
+- **Expected:** no step loses anything but the saved walks the question named; nothing in the other space changes.

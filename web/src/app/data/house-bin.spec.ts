@@ -128,6 +128,8 @@ describe('LocalStore.restoreHouse', () => {
     await store.photos.add('h1', jpeg(), 'p1', T1, { roomId: null, tags: ['kitchen'], caption: 'sink' });
     await store.photos.put({ ...(await store.photos.get('p1'))!, uploaded: true });
     await store.photos.add('h1', jpeg(), 'p2', T1);
+    await store.photos.markMetaClean('p1', (await store.photos.get('p1'))!.metaUpdatedAt ?? 0);
+    expect((await store.photos.get('p1'))!.metaDirty).toBeFalsy();
     const held = await store.photos.ofHouse('h1');
     await store.deleteHouse('h1', T1 + 1000);
     const result = await store.restoreHouse('h1', NOW, held);
