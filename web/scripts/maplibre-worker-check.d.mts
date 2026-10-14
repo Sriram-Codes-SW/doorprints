@@ -18,4 +18,6 @@
 
 export function extractMaplibreVersion(content: string): string | null;
 
-export function maplibreWorkerProblems(files: { worker: string | null; shared: string | null }): string[];
+export function relativeImportOf(content: string): string | null;
+
+export function maplibreWorkerProblems(files: { worker: string | null; expectedVersion?: string }): string[];
