@@ -182,8 +182,15 @@
         <div><dt>{{ 'map.stats.streets' | t }}</dt><dd>{{ i18n.number(s.streets) }}</dd></div>
       </dl>
     } @else if (!error()) {
-      <!-- Their place while they are read, so the trace card and the search below do not jump down when they come. -->
-      <div class="stats stats-pending" aria-hidden="true"></div>
+      <!-- Their place while they are read, so the trace card and the search below do not jump down when they come: the same cells
+           with the same captions, their words hidden, so it is as tall as the counters in every language, width and font (S4b-BL-258). -->
+      <dl class="stats stats-pending" aria-hidden="true">
+        <div><dt>{{ space.words().many | t }}</dt><dd>0</dd></div>
+        <div><dt>{{ 'map.stats.shortlisted' | t }}</dt><dd>0</dd></div>
+        <div><dt>{{ 'map.stats.rejected' | t }}</dt><dd>0</dd></div>
+        <div><dt>{{ 'map.stats.visits' | t }}</dt><dd>0</dd></div>
+        <div><dt>{{ 'map.stats.streets' | t }}</dt><dd>0</dd></div>
+      </dl>
     }
 
     <!-- Below the counters: on a portrait phone "Your houses" and every counter stay above the bottom bar (owner rule 2026-09-24). -->

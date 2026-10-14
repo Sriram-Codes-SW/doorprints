@@ -25,6 +25,7 @@ import { LocalDataService } from '../../core/local-data.service';
 import { newHouse } from '../../core/models';
 import type { HouseDto } from '../../core/models';
 import { SyncService } from '../../data/sync.service';
+import { en } from '../../i18n/en';
 import { TranslationService } from '../../i18n/translation.service';
 import { scoringOf } from '../../shared/scoring';
 import type { CriterionRow } from '../../shared/scoring';
@@ -276,10 +277,13 @@ describe('MapPage: the phone layout is sized in CSS (S4b-BL-49)', () => {
   it('keeps the counters place while they are read, and gives it to the counters when they come', async () => {
     const waiting = await render({}, { stats: () => NEVER });
     expect(waiting.querySelector('.stats-pending')?.getAttribute('aria-hidden')).toBe('true');
-    expect(waiting.querySelector('dl.stats')).toBeNull();
+    expect(waiting.querySelector('dl.stats:not(.stats-pending)')).toBeNull();
+    // the same five cells and captions as the counters, so it is as tall as they are in any language (S4b-BL-258)
+    expect(waiting.querySelectorAll('.stats-pending dt')).toHaveLength(5);
+    expect(waiting.querySelector('.stats-pending')?.textContent).toContain(en['map.stats.shortlisted']);
     TestBed.resetTestingModule();
     const read = await render({});
-    expect(read.querySelector('dl.stats')).not.toBeNull();
+    expect(read.querySelector('dl.stats:not(.stats-pending)')).not.toBeNull();
     expect(read.querySelector('.stats-pending')).toBeNull();
   });
 });
