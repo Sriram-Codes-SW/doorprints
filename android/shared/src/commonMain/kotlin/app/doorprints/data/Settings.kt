@@ -40,6 +40,8 @@ import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 import app.doorprints.shared.api.IsoTime
 import app.doorprints.shared.model.HuntReminders
+import app.doorprints.shared.model.KindSetting
+import app.doorprints.shared.model.KindSettingRules
 import app.doorprints.shared.model.LengthUnit
 import app.doorprints.shared.sync.SyncOutcome
 import app.doorprints.export.decodeGrants
@@ -219,6 +221,8 @@ class SettingsStore(
     private val secrets: SecretStore,
     /** Where the person's own Gemini key is kept (docs/03 §13.1); null where a platform has none (tests). */
     private val geminiSecrets: SecretStore? = null,
+    /** The kinds this build ships (kinds PR C, S4b-BL-274): a production build lists the house alone ([KindSettingRules.availableOf]). */
+    val availableKinds: List<String> = listOf(KindSettingRules.HOUSE),
     private val now: () -> Long = { IsoTime.nowMillis() },
 ) {
     companion object {
@@ -298,6 +302,12 @@ class SettingsStore(
         val areaWakeupOffNotice = booleanPreferencesKey("areas.wakeupOffNotice")
         /** How the guided tour ended, `done` or `skipped` ([TourEnd.wire]): this device's own choice, never exported, synced or backed up. */
         val tour = stringPreferencesKey("tour")
+        /** What this device tracks (kinds PR C, S4b-BL-274): the website's `doorprints.kinds.*`, the same values; device-local, never synced. */
+        val kindsExperimental = stringPreferencesKey("kinds.experimental")
+        val kindsEnabled = stringPreferencesKey("kinds.enabled")
+        val kindsDefault = stringPreferencesKey("kinds.default")
+        /** The chooser's one hint has been dismissed (`done`): the website's `doorprints.chooser.hint`. */
+        val chooserHint = stringPreferencesKey("chooser.hint")
     }
 
     /** When area [id] last notified (or was dismissed), a key per area (slice 4b): `areas.lastNotified.<id>`. */
@@ -425,6 +435,50 @@ class SettingsStore(
 
     /** Remembers how the tour ended; the offer does not come again. */
     suspend fun setTourEnd(end: TourEnd) = dataStore.edit { it[Keys.tour] = end.wire }
+
+    /**
+     * What this device tracks (*Settings > What you track*): the kinds the build ships ([availableKinds]) with the stored
+     * switch, list and default. Reads no secret; a file that cannot be read counts as the house alone, as every doubt does.
+     */
+    fun kindSetting(): Flow<KindSetting> = dataStore.data
+        .map { p -> KindSetting(availableKinds, p[Keys.kindsExperimental], p[Keys.kindsEnabled], p[Keys.kindsDefault]) }
+        .catch { emit(KindSetting(availableKinds)) }
+        .distinctUntilChanged()
+
+    /** Applies [change] to what is stored and stores the result (a null value removing its key): one atomic edit, so two taps never undo each other. */
+    suspend fun editKindSetting(change: (KindSetting) -> KindSetting) = dataStore.edit {
+        val next = change(KindSetting(availableKinds, it[Keys.kindsExperimental], it[Keys.kindsEnabled], it[Keys.kindsDefault]))
+        fun put(key: Preferences.Key<String>, value: String?) {
+            if (value == null) it.remove(key) else it[key] = value
+        }
+        put(Keys.kindsExperimental, next.experimental)
+        put(Keys.kindsEnabled, next.enabledText)
+        put(Keys.kindsDefault, next.defaultText)
+    }
+
+    /** Whether the chooser still shows its one hint (*Tap a card to switch*): until it is dismissed, once. A file that cannot be read shows none. */
+    fun chooserHintShown(): Flow<Boolean> = dataStore.data
+        .map { p -> p[Keys.chooserHint] != "done" }
+        .catch { emit(false) }
+        .distinctUntilChanged()
+
+    suspend fun dismissChooserHint() = dataStore.edit { it[Keys.chooserHint] = "done" }
+
+    /**
+     * Takes the kinds and default a backup names, only on a device that never chose (neither list nor default stored): a
+     * hint, never applied over a choice (S4b-BL-212). Returns whether it was taken.
+     */
+    suspend fun adoptKinds(kinds: List<String>, default: String): Boolean {
+        var taken = false
+        dataStore.edit {
+            if (it[Keys.kindsEnabled] == null && it[Keys.kindsDefault] == null) {
+                it[Keys.kindsEnabled] = KindSettingRules.listText(kinds)
+                it[Keys.kindsDefault] = default
+                taken = true
+            }
+        }
+        return taken
+    }
 
     /** Whether My areas still has to say once why the wake-up switched itself off. */
     fun areaWakeupOffNotice(): Flow<Boolean> = dataStore.data

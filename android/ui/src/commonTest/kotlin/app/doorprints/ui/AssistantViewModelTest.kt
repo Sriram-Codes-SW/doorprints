@@ -159,19 +159,20 @@ private class FakeRepository(private val hold: Boolean = false) : Repository {
     val questions = mutableListOf<String>()
     val plans = mutableListOf<PlanRequest>()
 
-    override suspend fun ask(question: String): AskResponseDto {
+    override suspend fun ask(question: String, space: app.doorprints.shared.model.SpaceView?): AskResponseDto {
         questions += question
         if (hold) CompletableDeferred<Unit>().await()
         return AskResponseDto(answer = "Green View", citations = listOf(CitationDto("a", "Green View")), grounded = true)
     }
 
-    override suspend fun planVisits(request: PlanRequest): PlanResponseDto {
+    override suspend fun planVisits(request: PlanRequest, space: app.doorprints.shared.model.SpaceView?): PlanResponseDto {
         plans += request
         return PlanResponseDto(summary = "Two stops", totalMeters = 1_250, totalWalkMinutes = 16)
     }
 
     override val aiEnabled: StateFlow<Boolean> = MutableStateFlow(true)
     override val aiOff: StateFlow<AiOff?> = MutableStateFlow(null)
+    override val aiOwnKey: StateFlow<Boolean> = MutableStateFlow(false)
     override suspend fun refreshAiStatus() = true
     override suspend fun setAiFeatures(on: Boolean) = TODO()
     override suspend fun saveGeminiKey(key: String) = TODO()

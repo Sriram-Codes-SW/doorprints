@@ -44,6 +44,11 @@ class BackupArchive private constructor(
     /** Names of the `photos/…` entries actually present in the archive. */
     val photoEntries: Set<String>,
     alreadyRead: Long,
+    /**
+     * The kinds on and the default the file's `search` object names (kinds PR C, S4b-BL-274): a hint for a phone that never chose
+     * what it tracks ([app.doorprints.export.ArchiveImports.adoptKinds]), never a reason to refuse a file or change a candidate.
+     */
+    val spaces: Pair<List<String>, String>? = null,
 ) {
     private val hashes: Map<String, String> = manifest?.files.orEmpty().associate { it.path to it.sha256.lowercase() }
 
@@ -120,13 +125,14 @@ class BackupArchive private constructor(
                     return ArchiveOpen.Failed(BackupProblem.CHECKSUM_MISMATCH)
                 }
             }
-            val data = runCatching {
-                BackupWire.decodeData(dataBytes.decodeToString())
-            }.getOrElse { return ArchiveOpen.Failed(BackupProblem.BROKEN_DATA) }
+            val root = runCatching { BackupFormat.json.parseToJsonElement(dataBytes.decodeToString()) as JsonObject }
+                .getOrElse { return ArchiveOpen.Failed(BackupProblem.BROKEN_DATA) }
+            val data = runCatching { BackupWire.decodeData(root) }
+                .getOrElse { return ArchiveOpen.Failed(BackupProblem.BROKEN_DATA) }
             BackupValidation.checkData(data)?.let { return ArchiveOpen.Failed(it) }
             val photos = zip.entries.map { it.name }.filter { BackupValidation.isPhotoEntry(it) }.toSet()
             return ArchiveOpen.Ok(
-                BackupArchive(zip, tools, manifest, data, photos, (dataBytes.size + manifestBytes.size).toLong()),
+                BackupArchive(zip, tools, manifest, data, photos, (dataBytes.size + manifestBytes.size).toLong(), BackupWire.spacesOf(root)),
             )
         }
 
@@ -149,7 +155,7 @@ class BackupArchive private constructor(
             val data = runCatching { BackupWire.decodeData(root) }
                 .getOrElse { return ArchiveOpen.Failed(BackupProblem.BROKEN_DATA) }
             BackupValidation.checkData(data)?.let { return ArchiveOpen.Failed(it) }
-            return ArchiveOpen.Ok(BackupArchive(null, tools, null, data, emptySet(), size))
+            return ArchiveOpen.Ok(BackupArchive(null, tools, null, data, emptySet(), size, BackupWire.spacesOf(root)))
         }
 
         /** A local file header, or the end record of an empty ZIP. */

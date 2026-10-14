@@ -32,7 +32,7 @@
   "android/ui/src/commonMain/kotlin/app/doorprints/ui/HouseListScreen.kt": 1022,
   "android/ui/src/commonMain/kotlin/app/doorprints/ui/ImportScreen.kt": 1014,
   "android/ui/src/commonMain/kotlin/app/doorprints/ui/MapScreen.kt": 1519,
-  "android/ui/src/commonMain/kotlin/app/doorprints/ui/SettingsScreen.kt": 948,
+  "android/ui/src/commonMain/kotlin/app/doorprints/ui/SettingsScreen.kt": 929,
   "backend/src/main/java/app/doorprints/server/backup/BackupService.java": 1241,
   "web/src/app/core/ai/ai-core.ts": 1053,
   "web/src/app/data/sync.service.ts": 1020,

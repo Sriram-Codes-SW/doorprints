@@ -38,6 +38,8 @@ import app.doorprints.shared.model.Area
 import app.doorprints.shared.model.AreaNote
 import app.doorprints.shared.model.AreaNotes
 import app.doorprints.shared.model.Distances
+import app.doorprints.shared.model.KindSettingRules
+import app.doorprints.shared.model.SpaceView
 import kotlinx.serialization.json.JsonObject
 import app.doorprints.shared.model.HousePoint
 import app.doorprints.shared.model.Place
@@ -452,6 +454,15 @@ data class ExportOptions(
      * S4b-BL-210); otherwise it is copied as a house is. Not an export option, not in the manifest.
      */
     val devKinds: Boolean = false,
+    /**
+     * The space a readable copy holds (kinds PR C, S4b-BL-289; docs/03 §18.13): with two or more kinds on, a copy holds
+     * one space's candidates, its viewings and brokers, and its file name carries the kind's plural before the date. Null
+     * (one kind on, and every backup, which stays whole) is the copy as it always was. Not an export option, not in the manifest.
+     */
+    val space: SpaceView? = null,
+    /** The kinds the phone has on and its default: a backup's `search` object names them ([BackupWire.encodeData]). */
+    val enabledKinds: List<String> = listOf(KindSettingRules.HOUSE),
+    val defaultKind: String = KindSettingRules.HOUSE,
 ) {
     /** True for an update file (5.28), whose name is `Doorprints-updates-<date>` and whose manifest says who it is for. */
     val isUpdate: Boolean get() = since != null || sharedTo != null
@@ -645,8 +656,9 @@ data class ExportBundle(
             deletedHouses: Map<String, Long> = emptyMap(),
         ): ExportBundle {
             val since = options.since
+            val space = options.space // a space's copy holds that space only (kinds PR C); null: every candidate, as always
             val inScope = houses.filter { house ->
-                when (options.scope) {
+                (space?.holds(house.kind) ?: true) && when (options.scope) {
                     ExportScope.ALL -> options.includeRejected || house.status != "REJECTED"
                     ExportScope.SHORTLISTED -> house.status == "SHORTLISTED"
                     ExportScope.SELECTED -> house.id in options.selectedIds
@@ -680,7 +692,7 @@ data class ExportBundle(
                 // A photo whose meta was edited since (slice 5) is a change too.
                 .filter { since == null || it.createdAt > since || (it.metaUpdatedAt ?: 0L) > since || it.houseId in changedIds }
                 .sortedWith(compareBy({ it.createdAt }, { it.id }))
-            val unlinked = if (options.scope == ExportScope.ALL) {
+            val unlinked = if (options.scope == ExportScope.ALL && space == null) {
                 visits.filter { it.houseId == null && (since == null || it.updatedAt > since) }
                     .sortedWith(compareBy({ it.arrivedAt }, { it.id }))
             } else {
@@ -691,7 +703,7 @@ data class ExportBundle(
             val brokerIds = kept.mapNotNullTo(HashSet()) { it.brokerId }
             val keptBrokers = when {
                 !options.includeContacts -> emptyList()
-                options.scope == ExportScope.ALL -> brokers.filter { since == null || it.updatedAt > since || it.id in brokerIds }
+                options.scope == ExportScope.ALL && space == null -> brokers.filter { since == null || it.updatedAt > since || it.id in brokerIds }
                 else -> brokers.filter { it.id in brokerIds }
             }.sortedWith(compareBy({ it.updatedAt }, { it.id }))
             // Criteria and preferences (slice 2): settings, not contacts, so a copy without contact details keeps them; an
@@ -708,7 +720,7 @@ data class ExportBundle(
             // Viewings (slice 3b-1): all of them for the whole set of houses (one of a house that is gone too), else
             // those of the kept houses; an update carries the ones changed since. `withWhom` is contact data.
             val keptViewings = viewings
-                .filter { options.scope == ExportScope.ALL || it.houseId in keptIds }
+                .filter { (options.scope == ExportScope.ALL && space == null) || it.houseId in keptIds }
                 .filter { since == null || it.updatedAt > since }
                 .map { if (options.includeContacts) it else it.copy(withWhom = null) }
                 .sortedWith(compareBy({ it.updatedAt }, { it.id }))

@@ -105,7 +105,7 @@ fun ExportPhoto.toEntity(path: String, id: String = this.id, houseId: String = t
  * on the main thread for every option tap. Common since ADR-23 CMP-6 P6b.
  */
 fun Repository.LocalRows.toBundle(options: ExportOptions): ExportBundle = ExportBundle.build(
-    options.copy(lengthUnit = lengthUnit),
+    options.copy(lengthUnit = lengthUnit, enabledKinds = kinds.enabled, defaultKind = kinds.default),
     houses.map { it.toExport() },
     visits.map { it.toExport() },
     photos.map { it.toExport() },

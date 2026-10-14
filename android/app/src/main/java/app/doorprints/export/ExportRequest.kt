@@ -25,6 +25,7 @@ import app.doorprints.shared.export.ExportOptions
 import app.doorprints.shared.export.ExportScope
 import app.doorprints.shared.export.ImportMode
 import app.doorprints.shared.export.PhotoScope
+import app.doorprints.shared.model.SpaceView
 
 /**
  * What the export worker is asked to do, packed into WorkManager's [Data] (which only holds primitives, so the
@@ -50,6 +51,10 @@ data class ExportRequest(
         KEY_AT to options.exportedAtMillis,
         KEY_SINCE to (options.since ?: -1L),
         KEY_SHARED_TO to options.sharedTo,
+        // A space's copy (kinds PR C, S4b-BL-289): the kind, the default and the kinds on, so the worker holds the same list.
+        KEY_SPACE to options.space?.kind,
+        KEY_SPACE_DEFAULT to options.space?.default,
+        KEY_SPACE_AVAILABLE to options.space?.available?.joinToString(","),
     )
 
     companion object {
@@ -66,6 +71,11 @@ data class ExportRequest(
         /** Sharing updates (docs/11 5.28): the "since" instant (-1: none) and the name the update is for. */
         const val KEY_SINCE = "since"
         const val KEY_SHARED_TO = "sharedTo"
+
+        /** A space's copy (kinds PR C): the space's kind (absent: every candidate, as always), the default kind and the kinds that are on. */
+        const val KEY_SPACE = "space"
+        const val KEY_SPACE_DEFAULT = "spaceDefault"
+        const val KEY_SPACE_AVAILABLE = "spaceAvailable"
 
         /** Progress and result keys, read by the screen. */
         const val KEY_DONE = "done"
@@ -119,6 +129,12 @@ data class ExportRequest(
                     exportedAtMillis = data.getLong(KEY_AT, 0L),
                     since = data.getLong(KEY_SINCE, -1L).takeIf { it >= 0 },
                     sharedTo = data.getString(KEY_SHARED_TO),
+                    space = data.getString(KEY_SPACE)?.let { kind ->
+                        SpaceView(
+                            kind, multi = true, default = data.getString(KEY_SPACE_DEFAULT) ?: kind,
+                            available = data.getString(KEY_SPACE_AVAILABLE)?.split(',')?.filter { it.isNotEmpty() } ?: listOf(kind),
+                        )
+                    },
                 ),
             )
         }

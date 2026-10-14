@@ -110,6 +110,8 @@ class ImportWorker(context: Context, params: WorkerParameters) : CoroutineWorker
                     } finally {
                         reporter.cancel()
                     }
+                    // The file's kinds and default are a hint for a phone that never chose what it tracks (kinds PR C, S4b-BL-274).
+                    ArchiveImports.adoptKinds(repository, reader.archive)
                     staged.delete()
                     // A copy can be undone for a day (UX review, round 16): its new ids go to a small private file,
                     // not to the output Data, which is capped at 10 KB. If the file cannot be written the import

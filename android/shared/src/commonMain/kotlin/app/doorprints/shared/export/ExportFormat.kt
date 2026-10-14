@@ -18,6 +18,9 @@
 
 package app.doorprints.shared.export
 
+import app.doorprints.shared.model.KindSettingRules
+import app.doorprints.shared.model.SpaceScope
+
 /**
  * The six offline copies of docs/11 section 5.2, with the file name and media type each one gets. Shared so the
  * Android and web apps hand the user identically named files.
@@ -65,8 +68,10 @@ enum class ExportFormat(val mimeType: String) {
          * `Doorprints-2026-09-22` — the stem every file name is built on, from the options alone. The export
          * screen needs it before the bundle exists, to suggest a name in the system "Save as" dialog.
          */
-        fun stem(options: ExportOptions): String =
+        fun stem(options: ExportOptions): String = SpaceScope.spaceFileName(
             (if (options.isUpdate) "Doorprints-updates-" else "Doorprints-") +
-                ExportTime.date(options.exportedAtMillis, options.utcOffsetMinutes)
+                ExportTime.date(options.exportedAtMillis, options.utcOffsetMinutes),
+            options.space?.kind, options.space?.let { KindSettingRules.pluralOf(it.kind) }.orEmpty(),
+        )
     }
 }

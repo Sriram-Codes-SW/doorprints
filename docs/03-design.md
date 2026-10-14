@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.129 |
+| Version | 0.130 |
 | Date | 2026-10-13 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -140,6 +140,7 @@
 | 0.127 | 2026-10-13 | Claude (Code), engineer | §18.11: **kind-aware AI on the phones** (kinds PR 7, S4b-BL-211, the third stacked pull request; `feat/kinds-9c-kind-aware-ai-phone`): `KindAi` in `:shared`, the flag from `BuildConfig.DEV_KINDS` through the repository, *Paste listing text* for a school; the phones' house pins first and unchanged. |
 | 0.128 | 2026-10-14 | Claude (Code), engineer | New §18.12: **spaces, the chooser and Settings > What you track** (kinds PR 8, S4b-BL-212, `feat/kinds-10-settings-kind-guide`, the website; owner-approved design of 2026-10-14, superseding the first draft's "one kind per data set"): a kind is a space, a filter over the one store; `AVAILABLE_KINDS` and `RELEASED_KINDS`, *Experimental: more than houses*, enabled kinds and a default, device-local; the chooser, the chip, `/k/<kind>`, the deep-link redirect; the space's words; Compare, Ask and Plan hidden outside the house space; §18.1 and door 10 amended (`search.kinds`, `search.defaultKind`); §18.7's words rule; the guide. |
 | 0.129 | 2026-10-14 | Claude (Code), engineer | **§18.13 Compare, Ask, Plan and the copies per space** (S4b-BL-279, kinds PR B, the website; `feat/kinds-11-spaces-scoping`): Compare, Ask and Plan read the space on screen (`/k/<kind>/compare`, `/ask`, `/plan`; the house keeps its three addresses); Compare refuses a pick of another space with one sentence; the copies of a space hold that space only and carry its plural noun in the file name, the backup stays whole; the share target chooses what a listing is; `space-scope-vectors.json`. §18.12 amended: Compare, Ask and Plan are no longer hidden outside the house space. |
+| 0.130 | 2026-10-14 | Claude (Code), engineer | **§18.14 Spaces on the phones** (S4b-BL-274 and S4b-BL-289, kinds PR C; two stacked branches, `feat/kinds-13-phones-spaces` and `feat/kinds-13b-phones-spaces-scoping`): the chooser, the header chip, Settings > What you track, a space's words, Hunt mode and the house-only Settings rows by kind, and the deep links (C1); Compare, Ask, Plan, the copies, the share target and the backup's `search` writer and hint, by the website's vectors (C2). The house-only app is byte for byte today's. §18.12 and §18.13 say where the phones' part now is. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -2603,8 +2604,8 @@ stays `app.ai.dev-kinds` (`AI_DEV_KINDS`, now passed by `docker-compose.yml`); i
 file before; anything else writes `{ "kinds": [...], "defaultKind": "..." }` (`searchOf`; a list that is not well formed
 writes the house's). Every reader ignores it as before: never a reason to refuse a file or change a candidate. It is a
 **hint** in one case only: a browser that never chose what it tracks (neither key stored) takes the file's list and
-default after *Import a backup* (`adoptSpaces`). The website writes it now; the phones' Kotlin writer and the server's
-Java writer write the same bytes in their pull requests (S4b-BL-274, S4b-BL-280); until then they write the house's,
+default after *Import a backup* (`adoptSpaces`). The website and the phones' Kotlin writer (§18.14) write it now; the server's
+Java writer writes the same bytes in its pull request (S4b-BL-280); until then it writes the house's,
 which every reader reads the same. Vectors: `docs/schemas/kinds/search-kind-vectors.json`, format
 `doorprints-search-kind-vectors/2` ([schemas README](schemas/README.md) §8.4).
 
@@ -2631,8 +2632,7 @@ counters, search, words, links; one kind as before), `school-form.spec.ts` (a ne
 a11y sweep; the layout gate's two-kind run; the live UI test's *flow* (no section in a houses-only build; the chooser
 and a space on a build that ships the school). Mutation list `tools/mutations/kinds-10-web-settings.json`.
 
-**Left, with rows** ([10](10-sprint-log.md)): PR B is §18.13 (S4b-BL-279); PR C, the phones and the iPhone (a `Space` state beside `NavTab` in `Root.kt`, Roborazzi
-baselines for the chooser only) and the Kotlin writer (S4b-BL-274); the server's list and Java writer (S4b-BL-280);
+**Left, with rows** ([10](10-sprint-log.md)): PR B is §18.13 (S4b-BL-279); PR C, the phones and the iPhone, with the Kotlin writer, is §18.14 (S4b-BL-274, S4b-BL-289); the server's list and Java writer (S4b-BL-280);
 the chooser's review with a screen reader on real devices (S4b-BL-276); the space words in the kind files (S4b-BL-278);
 the AI's house words (S4b-BL-281); the product's public words (S4b-BL-282); deletion safeguards (S4b-BL-283, -284,
 -285); a `kind` index (S4b-BL-286); `delete-scope-vectors.json` (S4b-BL-287); the two-kind runs in CI (S4b-BL-288).
@@ -2689,7 +2689,7 @@ school's copy (the house words in its cover and tables) stays S4b-BL-266.
 from listing text* uses its kind (the request's `kind`, or the on-device kind prompt). With one kind the page and the
 navigation are as before.
 
-**Not here, with rows:** the phones (S4b-BL-289), a server Ask and Plan that take a kind (S4b-BL-290), the backup's and the
+**Not here, with rows:** the phones are §18.14 (S4b-BL-289), a server Ask and Plan that take a kind (S4b-BL-290), the backup's and the
 copies' house words (S4b-BL-291), a space picker on *Your data* and a lower-is-better mark for a kind's numbers
 (S4b-BL-292).
 
@@ -2697,3 +2697,101 @@ copies' house words (S4b-BL-291), a space picker on *Your data* and a lower-is-b
 (navigation, on-device scoping, the Data page's words, the share choice), `space-copies.spec.ts`, `space.spec.ts`,
 `nav-section.spec.ts`, the pins above; the layout gate's two-kind run now also loads `/k/school/compare` and `/share`
 (292 of 292 beside the unchanged 253); mutation list `tools/mutations/kinds-11-web-spaces-scoping.json`.
+
+### 18.14 Spaces on the phones (kinds PR C, S4b-BL-274 and S4b-BL-289)
+
+**The rule.** The design of §18.12 and §18.13 is the phones' too: a kind is a **space**, a filter over the one candidate store;
+nothing is added to Room, the sync file or the backup's rows. The Android app and the iPhone share it through `:shared` and
+`:ui` (the iPhone follows with no code of its own: a build that ships the house alone, which the iPhone always is, has no
+chooser). The pure rules are in `:shared` and held to the **same vector files the website reads**:
+`KindSetting` and `KindSettingRules` (`search-kind-vectors.json` `setting`, `write` and `read`), `SpaceScope`
+(`space-scope-vectors.json`: `contains`, `compare`, `fileName`, `assistant`, `shareKind`) and `spaceCards` (the chooser's
+tally, a port of the website's `spaceCards`, with its own test). Where a rule had no vector the web differs from the phone
+nowhere: no vector case was added.
+
+**The house-only app is byte for byte today's.** With one kind on, which is every release (`BuildConfig.AVAILABLE_KINDS` is
+`house`), nothing is added to a screen: no chooser, no chip, no top bar, the start destination is the Map as before, the
+Settings rows are the same four with the same dividers, the list's tab is `nav_houses`, `repo.houses` is the very flow the
+screens read, and every export, name and backup byte is what it was (`SpacesRootTest.aBuildThatShipsTheHouseAloneIsTheAppItAlwaysWas`,
+`ExportFormatTest`, `HouseCopyPinsTest`, `BackupFieldsTest`, and every Roborazzi baseline of a house screen unchanged).
+
+**Which kinds a build offers.** `BuildConfig.AVAILABLE_KINDS` (a comma list, the house always): a release lists `house`; a debug
+build lists `house` unless made with `-Pdoorprints.devKinds=true` (then `house,school`) or `-Pdoorprints.kinds=house,school`;
+`DEV_KINDS` is true exactly when the list has more than the house, so the two never disagree. The list is handed to the
+settings store (`SettingsStore.availableKinds`, `SettingsStoreFactory`); the iPhone's store lists the house alone. Every
+other available kind is offered only while **Experimental: more than houses** is on, shown only in a build that ships such a
+kind. The three stored values are the device's own, in the settings store (`kinds.experimental`, `kinds.enabled`,
+`kinds.default`, the website's `doorprints.kinds.*` values), never synced, shared or put in a copy; every doubt falls back to
+the house alone (`KindSetting`, held to the vectors' `setting` cases). One kind always stays on; turning off the default makes
+the next enabled kind the default; a kind that is off keeps every entry.
+
+**The state** (`Space.kt`, `Root.kt`). `SpaceUi` is the space on screen (the kind, its labels and extras, its words, the
+scoping view); `LocalSpace` carries it; `Root` holds the choice (`rememberSaveable`) beside `NavTab`. With one kind on the
+space is the default's and holds every candidate (`SpaceView.ONE`); with two or more it is the chosen kind (the default until
+one is chosen). `rememberSpaceHouses` gives the screens `repo.houses` itself with one kind on and the space's candidates
+otherwise. The map, the list and Compare read it; the tabs a person left keep their own filters per space (the list and the map
+are keyed by the space's kind). A release knows its settings at once; a build with more waits a moment for the store.
+
+**The chooser** (`ChooserScreen`). With two or more kinds on, the graph's base is `chooser`, under the tabs: Back from the
+first tab comes back to it. A heading *What are you looking for?*, one hint (*Tap a card to switch*, *Got it*, remembered), one
+card per kind that is on (the default first and marked, *Saved: N*, *Last change: <date>* or *Nothing saved yet*; the visible
+words are the accessible name), a muted card for a kind that is off but has entries (*Hidden, N entries*) that still opens, and
+a link to Settings. A **chip** at the top of the tabs (a button named *<Houses>: change what you are looking for*, 48 dp)
+returns to it, only while two or more kinds are on; a space that is off says so in one line. Choosing a card drops the tabs'
+saved stacks and opens the space's Map (a form of another space must not stay under its tabs).
+
+**Settings > What you track** (`KindsSettingsSection`, drawn only when the build ships more than the house): the switch, then a
+row per kind the switch offers with *Show* (a checkbox, disabled for the last one on), *Default* (a radio, enabled for a kind
+that is shown) and *Saved: N*. Choices are one atomic edit (`SettingsStore.editKindSetting`). The rows that belong to what a
+kind has (`KindSettingRows`: Brokers, Criteria, Questions, Viewings with their reminders) follow the kind's file: a school has
+none of those places, so its Settings has none of those rows. Hunt mode (the Map's card and its switch) is the house space's.
+
+**A space's words** (`SpaceWords`): the list's tab and heading, search, count, empty and no-match lines, the Map's *Save here*
+button and tips, the new entry's save button (the kind's `kind.new`), Compare, the Assistant and the copies' scope words. The
+house's are the strings the house screens always read; a school's are `school_*` (en, hi, ta, te; hi, ta and te under review,
+the website's words where it has them). A school's list has no sort by score or price and no cost filter; its card has no
+score. A school's contact phone makes **no broker** (S4b-BL-260): `BrokerStore.linked` links only for a kind that shows
+`field.brokerId`.
+
+**Compare, Ask, Plan, the copies and the share target** (§18.13's rules, `SpaceScope`). Compare shows the space's candidates
+with the rows of the places the kind has and the kind's other extras in its file's order (a house's table is unchanged); a pick
+that names a live candidate of another space is left out with one sentence (*Compare works on the list you are looking at. Picks
+from another list were left out.*) and, when nothing of it remains, the best of this space is picked as on a first visit. Ask and
+Plan read one space on this phone's AI (`OnDeviceAi`'s `holds`); the server's Ask and Plan take no kind (S4b-BL-290), so a space
+other than the house has the Assistant tab only on the person's own AI (`SpaceScope.aiShownIn`, `Repository.aiOwnKey`) and says
+so; one Ask answer and one Plan route are kept per space. A readable copy holds the space on screen only (`ExportOptions.space`:
+its candidates, their visits and photos, the brokers of those candidates, no unlinked visits) with the kind's English plural in the
+file name before the date (`Doorprints-schools-2026-09-22-csv.zip`; the house's names unchanged); the Export screen says so in
+words, and **the full backup stays whole** (its options carry no space, so it is named and filled as before). A shared listing,
+with two or more kinds on, asks **Save it in** before the map asks where it is (`ShareKindDialog`, `SpaceScope.shareKind`).
+The AI card's first sentence is kind-neutral (*one list at a time*) while two or more kinds are on; with one kind on it is
+today's words, so the house screens' baselines stay byte for byte (the website changed it for everyone, S4b-BL-281).
+
+**Links and alerts** resolve the space from the candidate's kind: a link to a candidate of another kind opens its space; a
+Hunt alert makes a candidate of the **default** kind; *Start Hunt mode* from a reminder opens the house space; a new entry is of
+the space's kind (the developer's kind picker is only shown with one kind on).
+
+**The backup's `search` object** (door 10, §18.12). The Kotlin writer writes `{"kind":"house"}` for a house alone and
+`{"kinds":[...],"defaultKind":"..."}` otherwise, right after `exportedAt`, byte for byte `search-kind-vectors.json` `write`
+(`BackupWire.encodeData`; the kinds come with the rows, `LocalRows.kinds`, so every backup, the weekly one and Drive's included,
+names them). Every reader still ignores it; one case is a hint: a phone that never chose (neither `kinds.enabled` nor
+`kinds.default` stored) takes the file's list and default after **Import a backup** (`ArchiveImports.adoptKinds`). The server's
+Java writer is S4b-BL-280 (a separate change).
+
+**Design and accessibility self-review.** The chooser is a heading, a note with a real button, and cards that are 56 dp buttons
+whose accessible name is their visible words; the chip is a 48 dp button with a full name; the What you track rows are a 48 dp
+checkbox and a 48 dp radio per kind, each named with the kind's noun; the muted card says *Hidden* in words, not by colour
+alone. Roborazzi baselines for the new screens only (`chooser`, `chooser_hidden`, `settings_kinds`; English light and Tamil dark).
+The longest words (Tamil, Telugu) wrap; none is cut.
+
+**Tests** ([06](06-test-plan.md) TC-U-217, TC-U-218, TC-M-70): `SpaceScopeVectorsTest` and `KindSettingVectorsTest` (the vectors),
+`SpaceCardsTest`, `SpaceCopiesTest`, `OnDeviceAiSpaceTest`, `SpaceUiTest`, `SpacesRootTest` (the house-only pin, the chooser, a
+space, the chip, Settings, the links, the shared listing), the three new baselines; mutation list
+`tools/mutations/kinds-13-android-spaces.json`.
+
+**Left, with rows** ([10](10-sprint-log.md)): the iPhone has all of it through `:ui` and `:shared`, but no build of the iPhone ships a second
+kind, so nothing of it can be seen there until the owner opens a kind's release gate (S4b-BL-300); the map's location notes still
+say *house* in a school space (S4b-BL-301); the AI card's first sentence is kind-neutral for everyone, which re-records the settings
+baselines (S4b-BL-302); the list reads the space from Room (S4b-BL-303); a Hunt walk goes on after the person leaves the house space
+(S4b-BL-304); the share of updates and Drive keep the house's words (S4b-BL-291); the phone's copies' inner words for a school
+(S4b-BL-266); a server Ask and Plan that take a kind (S4b-BL-290); the chooser's review with TalkBack (S4b-BL-276).

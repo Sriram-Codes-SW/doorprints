@@ -114,6 +114,14 @@ object ArchiveImports {
     }
 
     /**
+     * A backup's kinds and default as a hint (kinds PR C, S4b-BL-274): taken only by a phone that never chose what it tracks
+     * (neither the list nor the default is stored), never applied over a choice, and never a reason to change a candidate.
+     * Called after a file was imported; returns whether the hint was taken.
+     */
+    suspend fun adoptKinds(repository: Repository, archive: BackupArchive): Boolean =
+        archive.spaces?.let { (kinds, default) -> repository.settings.adoptKinds(kinds, default) } ?: false
+
+    /**
      * Writes the confirmed import [request] from [archive] (a merge row by row, a copy all or nothing:
      * `Repository.applyImport`). [onProgress] is the stop point, as in Android's worker.
      */
@@ -125,4 +133,5 @@ object ArchiveImports {
         onProgress: (done: Int, total: Int) -> Unit,
     ): Repository.ImportResult =
         repository.applyImport(plan(repository, archive, request, newId), onProgress) { entry -> archive.photoBytes(entry) }
+            .also { adoptKinds(repository, archive) }
 }

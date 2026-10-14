@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | The complete manual test list for Doorprints before real-system testing starts and before Android/iOS development continues: every check a person redoes on real devices, whether or not an automated suite or a review session already covered it |
-| Version | 0.12 |
+| Version | 0.13 |
 | Date | 2026-10-14 |
 | Author | Claude, senior reviewer |
 | Status | Draft |
@@ -24,6 +24,7 @@
 | 0.10 | 2026-10-10 | Claude (Code), engineer | New section 16, **voice input (Planned)**: MT-82..MT-87 for what CI cannot test (a real microphone and the permission dialogs, the speak-review-send flow, Safari mp4, auto-stop, TalkBack and VoiceOver, no audio at rest), and the note that `firebase.json` `microphone=()` changes only in the web voice pull request ([03](../03-design.md) ADR-37, S4b-BL-218). |
 | 0.11 | 2026-10-10 | Claude (Code), engineer | New section 17, **a provider safety block** (MT-88, S4b-BL-232). |
 | 0.12 | 2026-10-14 | Claude (Code), engineer | New section 18, **More than houses: What you track and the chooser** (kinds PR 8, S4b-BL-212; TC-M-69): MT-93 (no section on the published site; the switch, the rows, the chooser, the chip, Back, in four languages, both themes, with a screen reader) and MT-94 (a school space, the default kind, the deep link, the backup's `search.kinds`, turning schools off, importing into a browser that never chose). |
+| 0.13 | 2026-10-14 | Claude (Code), engineer | New section 19, **More than houses on the phone** (kinds PR C, S4b-BL-274; TC-M-70): MT-95 (a release shows nothing; the switch, the chooser, the chip, Back, a school space's words, in four languages, both themes, with TalkBack) and MT-96 (the school space's tools, a copy, the backup's `search`, a shared listing, a link). |
 
 ## 1. How to use this list
 
@@ -913,3 +914,30 @@ schools ship at all; these checks are for the owner's own test devices. TC-M-69 
 |---|---|---|---|---|---|
 | MT-93 | What you track, the chooser and the chip | anyone | E1 | no | |
 | MT-94 | A school space, its backup, a deep link, turning schools off | owner | E1 | no | |
+
+## 19. More than houses on the phone (S4b-BL-274, S4b-BL-289)
+
+A release build offers houses alone; a second kind is seen only in a debug build made with `-Pdoorprints.devKinds=true`
+(`./gradlew :app:installDebug -Pdoorprints.devKinds=true`). The owner decides when a second kind is released; these checks are for the
+owner's own test phones. TC-M-70 of [06](../06-test-plan.md); the website's twin is §18.
+
+#### MT-95 What you track, the chooser and the chip on the phone
+- **Area:** Android (the iPhone has the same code, but no build of it ships a second kind: S4b-BL-300). **Who:** anyone. **Env:** E4 (the Android app): a phone with TalkBack, and a debug build that ships schools beside a release build.
+- **Steps:** (1) On the release build open *Settings*: there is no *What you track*, the Map is the first screen, the bar is Map, Houses, Compare, Settings. (2) On the debug build open *Settings*: *Experimental: more than houses*, off, no rows. (3) Turn it on: rows *Houses* (shown, *Default*) and *Schools* (not shown), each with *Saved: N*. (4) Turn on *Show Schools*, close the app and open it: *What are you looking for?* with two cards, *Houses* first and marked *Default*, each with *Saved: N* and *Last change*, and a hint with *Got it*. (5) Choose *Schools*: the bar says *Schools*, the Map has *Save school here* and no Hunt mode, the list says *Search schools* and has no sort or cost filter; the chip *Schools* is at the top. (6) Tap the chip: the chooser again; Back from a tab does the same. (7) In *Settings*: no *Brokers*, *Criteria*, *Questions* or *Viewings*. (8) Turn *Show Schools* off: the app opens on the Map; the schools are still there (turn it on again to see them). (9) Repeat 4 to 7 in Hindi, Tamil and Telugu, in both themes, at the largest text size and with TalkBack on: the heading is read first, each card as one item with its count, the chip as *Schools: change what you are looking for*.
+- **Expected:** a house hunter on the release build sees no change at all; the words never say "kind" or "space"; every word in the app's language (Hindi, Tamil and Telugu *under review*); nothing is cut at 200 % text; the hint shows once; the last shown row cannot be turned off; the choice is this phone's alone (never synced, shared or in a copy).
+- **Automated or reviewed by:** TC-U-217, TC-U-218 (`SpacesRootTest`, the three new baselines). Reviewer ran it: no.
+- Pass / Fail / Date: ____  by: ____
+
+#### MT-96 A school space's tools, a copy, a backup, a shared listing and a link
+- **Area:** Android. **Who:** owner (a test phone that may be wiped). **Env:** E4: the debug build that ships schools; Gemini or another own AI key for Ask and Plan.
+- **Steps:** (1) With houses and schools shown, in the school space save a school from the Map: the form says *Save a school*, has *Fees*, *Board* and the other school fields, no price, rooms or broker. (2) *Compare* shows schools only, with the school's rows; *Assistant* has no tab without your own AI key, and with it *Ask about your schools* answers from schools only. (3) *Save a copy*: the card says *This copy holds only Schools: N* and a CSV is named `Doorprints-schools-<date>-csv.zip`; choose the full backup: *A full backup holds everything you saved* and it is named `Doorprints-backup-<date>.zip`; open its `data.json`: `"search":{"kinds":["house","school"],"defaultKind":"house"}`. (4) Share a listing from a browser to Doorprints: *Add a shared listing* asks *Save it in*; choose *Schools* and the map offers *Save school here*. (5) Open a school from a notification or link while in the house space: its form opens, and Back lands in the school space. (6) Import that backup on a second phone that never chose what it tracks: it takes the kinds; on a phone that did choose, its own choice stays.
+- **Expected:** a space is a filter: no row is lost or moved; the house space and the full backup are exactly what they were; a school's phone number makes no broker.
+- **Automated or reviewed by:** TC-U-217, TC-U-218. Reviewer ran it: no.
+- Pass / Fail / Date: ____  by: ____
+
+### 19.1 Summary rows (add to §13 when the owner starts the run)
+
+| Id | Title | Who | Env | Reviewer ran it | Result |
+|---|---|---|---|---|---|
+| MT-95 | What you track, the chooser and the chip on the phone | anyone | E4 | no | |
+| MT-96 | A school space's tools, a copy, a backup, a shared listing, a link | owner | E4 | no | |
