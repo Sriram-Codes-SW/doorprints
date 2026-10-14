@@ -11,7 +11,7 @@
   "mutations": [
     {
       "file": "backend/src/main/java/app/doorprints/server/ai/kind/AiKinds.java",
-      "find": "        return devKinds && kind != null ? BUILT_IN.get(kind) : null;",
+      "find": "        return kind != null && available.contains(kind) ? BUILT_IN.get(kind) : null;",
       "replace": "        return kind != null ? BUILT_IN.get(kind) : null;",
       "expect": "withTheFlagOffOrAnUnknownKindEveryCandidateIsAHouse"
     },

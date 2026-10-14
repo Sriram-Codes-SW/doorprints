@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.131 |
+| Version | 0.132 |
 | Date | 2026-10-14 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -142,6 +142,7 @@
 | 0.129 | 2026-10-14 | Claude (Code), engineer | **§18.13 Compare, Ask, Plan and the copies per space** (S4b-BL-279, kinds PR B, the website; `feat/kinds-11-spaces-scoping`): Compare, Ask and Plan read the space on screen (`/k/<kind>/compare`, `/ask`, `/plan`; the house keeps its three addresses); Compare refuses a pick of another space with one sentence; the copies of a space hold that space only and carry its plural noun in the file name, the backup stays whole; the share target chooses what a listing is; `space-scope-vectors.json`. §18.12 amended: Compare, Ask and Plan are no longer hidden outside the house space. |
 | 0.130 | 2026-10-14 | Claude (Code), engineer | **§4.3 `ChunkRecovery` and `ChunkNotice`** (S4b-BL-305, `fix/web-lazy-chunk-recovery`): a lazy page whose chunk fails to load is loaded again as a new document once per session, then a message with *Try again* and *Reload*. |
 | 0.131 | 2026-10-14 | Claude (Code), engineer | **§18.14 Spaces on the phones** (S4b-BL-274 and S4b-BL-289, kinds PR C; two stacked branches, `feat/kinds-13-phones-spaces` and `feat/kinds-13b-phones-spaces-scoping`): the chooser, the header chip, Settings > What you track, a space's words, Hunt mode and the house-only Settings rows by kind, and the deep links (C1); Compare, Ask, Plan, the copies, the share target and the backup's `search` writer and hint, by the website's vectors (C2). The house-only app is byte for byte today's. §18.12 and §18.13 say where the phones' part now is. |
+| 0.132 | 2026-10-14 | Claude (Code), engineer | **§18.15 The server's list of kinds and its writer of `search`** (S4b-BL-280; `fix/kinds-server-available-flag`; [10](10-sprint-log.md) v0.307, [06](06-test-plan.md) v0.244 TC-U-222): `app.ai.dev-kinds` (`AI_DEV_KINDS`) is renamed `app.kinds.available` (`KINDS_AVAILABLE`, a list, default `house`); a request that names a kind outside it is a 400; `BackupWire.searchOf` writes the backup's `search` object as the website and the phones do (§18.12 door 10 amended, §18.11, §18.14 follow). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -2481,8 +2482,9 @@ on them never keeps it; the text filter reads its label, street and locality. `h
 (no price, checklist or listing link). The prompts are unchanged; the on-device Plan line of a school says `price: -`
 and `bedrooms: -`.
 
-**The flag on the server.** `app.ai.dev-kinds` (`AI_DEV_KINDS`, default false; `AiKinds`) is the server's twin of the
-apps' developer flag (§18.9): off, every candidate is read as a house.
+**The flag on the server.** `app.kinds.available` (`KINDS_AVAILABLE`, a comma-separated list, default `house`, the house
+always in it; `AiKinds`; it replaced `app.ai.dev-kinds` / `AI_DEV_KINDS` in S4b-BL-280, §18.15) is the server's twin of the
+apps' `AVAILABLE_KINDS` (§18.9): with the house alone every candidate is read as a house.
 
 **The safety test, written first** (from main at 165c0088, before any of this): the server's house pins
 (`HouseAskPinsTest`, `HousePlanPinsTest`, `HouseExtractPinsTest`, files under `backend/src/test/resources/house-ai-pins/`):
@@ -2599,16 +2601,16 @@ global; Hunt mode is the phone's and stays the house space's.
 
 **The AI reads one space at a time** (§18.13); before PR B the on-device AI and the listing fill read a
 candidate through its kind while `kindsOn()` (the developer flag, or a second kind offered). The server's switch
-stays `app.ai.dev-kinds` (`AI_DEV_KINDS`, now passed by `docker-compose.yml`); its rename to a list
-`app.kinds.available` that the AI reads too is S4b-BL-280.
+was `app.ai.dev-kinds` (`AI_DEV_KINDS`); S4b-BL-280 renamed it to the list `app.kinds.available`
+(`KINDS_AVAILABLE`, passed by `docker-compose.yml`, §18.15) that the AI reads too.
 
 **Door 10, amended: the backup's `search` object.** The house alone writes `{ "kind": "house" }`, byte for byte the
 file before; anything else writes `{ "kinds": [...], "defaultKind": "..." }` (`searchOf`; a list that is not well formed
 writes the house's). Every reader ignores it as before: never a reason to refuse a file or change a candidate. It is a
 **hint** in one case only: a browser that never chose what it tracks (neither key stored) takes the file's list and
-default after *Import a backup* (`adoptSpaces`). The website and the phones' Kotlin writer (§18.14) write it now; the server's
-Java writer writes the same bytes in its pull request (S4b-BL-280); until then it writes the house's,
-which every reader reads the same. Vectors: `docs/schemas/kinds/search-kind-vectors.json`, format
+default after *Import a backup* (`adoptSpaces`). The website, the phones' Kotlin writer (§18.14) and the server's Java
+writer (`BackupWire.searchOf`, §18.15) write the same bytes. The server is not told a device's kinds (the choice is per
+device and never synced), so `GET /api/export` writes the house's, which every reader reads the same. Vectors: `docs/schemas/kinds/search-kind-vectors.json`, format
 `doorprints-search-kind-vectors/2` ([schemas README](schemas/README.md) §8.4).
 
 **Design and accessibility self-review.** The chooser's cards are 44 px buttons with a visible focus ring, the
@@ -2621,7 +2623,7 @@ and on the owner's phone in Tamil at 130%) passes 27 of 27 beside the unchanged 
 
 **The guide.** One page, *More than houses (experimental)* (`other-kinds.md`, en, hi, ta, te; the translations under
 review): turning it on in What you track, the chooser, the chip, what a school has, turning it off, backups and the
-server's `AI_DEV_KINDS`. Of the 14 house pages, *Your houses* and *Compare and plan* carry an "About this page: written
+server's `AI_DEV_KINDS` (now `KINDS_AVAILABLE`, §18.15). Of the 14 house pages, *Your houses* and *Compare and plan* carry an "About this page: written
 for houses" note and *Language, theme, privacy, offline maps* a short section; the other eleven describe the default
 app and are unchanged (S4b-BL-275).
 
@@ -2634,7 +2636,7 @@ counters, search, words, links; one kind as before), `school-form.spec.ts` (a ne
 a11y sweep; the layout gate's two-kind run; the live UI test's *flow* (no section in a houses-only build; the chooser
 and a space on a build that ships the school). Mutation list `tools/mutations/kinds-10-web-settings.json`.
 
-**Left, with rows** ([10](10-sprint-log.md)): PR B is §18.13 (S4b-BL-279); PR C, the phones and the iPhone, with the Kotlin writer, is §18.14 (S4b-BL-274, S4b-BL-289); the server's list and Java writer (S4b-BL-280);
+**Left, with rows** ([10](10-sprint-log.md)): PR B is §18.13 (S4b-BL-279); PR C, the phones and the iPhone, with the Kotlin writer, is §18.14 (S4b-BL-274, S4b-BL-289); the server's list and Java writer are §18.15 (S4b-BL-280);
 the chooser's review with a screen reader on real devices (S4b-BL-276); the space words in the kind files (S4b-BL-278);
 the AI's house words (S4b-BL-281); the product's public words (S4b-BL-282); deletion safeguards (S4b-BL-283, -284,
 -285); a `kind` index (S4b-BL-286); `delete-scope-vectors.json` (S4b-BL-287); the two-kind runs in CI (S4b-BL-288).
@@ -2778,7 +2780,7 @@ the space's kind (the developer's kind picker is only shown with one kind on).
 (`BackupWire.encodeData`; the kinds come with the rows, `LocalRows.kinds`, so every backup, the weekly one and Drive's included,
 names them). Every reader still ignores it; one case is a hint: a phone that never chose (neither `kinds.enabled` nor
 `kinds.default` stored) takes the file's list and default after **Import a backup** (`ArchiveImports.adoptKinds`). The server's
-Java writer is S4b-BL-280 (a separate change).
+Java writer is `BackupWire.searchOf` (§18.15).
 
 **Design and accessibility self-review.** The chooser is a heading, a note with a real button, and cards that are 56 dp buttons
 whose accessible name is their visible words; the chip is a 48 dp button with a full name; the What you track rows are a 48 dp
@@ -2797,3 +2799,30 @@ say *house* in a school space (S4b-BL-301); the AI card's first sentence is kind
 baselines (S4b-BL-302); the list reads the space from Room (S4b-BL-303); a Hunt walk goes on after the person leaves the house space
 (S4b-BL-304); the share of updates and Drive keep the house's words (S4b-BL-291); the phone's copies' inner words for a school
 (S4b-BL-266); a server Ask and Plan that take a kind (S4b-BL-290); the chooser's review with TalkBack (S4b-BL-276).
+
+### 18.15 The server's list of kinds and its writer of `search` (S4b-BL-280)
+
+**The list.** `app.kinds.available` (`KINDS_AVAILABLE`, passed by `docker-compose.yml`; `application.yml`) is a
+comma-separated list of kind ids, default `house`, the house always in it (an id outside door 3's pattern, a blank and a
+repeat are dropped). It replaces `app.ai.dev-kinds` (`AI_DEV_KINDS`, a boolean) and is the server's twin of the apps'
+`AVAILABLE_KINDS`. `AiKinds` holds it: the AI reads a candidate of a built-in kind other than the house (the schools kind)
+through its kind file's `ai` slots only when the kind is in the list (§18.11); a kind that is listed but has no built-in
+file is read as a house. **A request that names a kind outside the list is a 400** (`kind <id> is not available`): today
+that is `POST /api/ai/extract-listing`'s optional `kind` (the house is always available; a listed kind with no extract is
+still a 400, `kind <id> has no listing extract`). The candidate calls keep accepting any kind of door 3's pattern, so a
+sync from a device that tracks more kinds than this server lists never fails and a backup keeps every row's kind. Ask and
+Plan take no `kind` yet (S4b-BL-290, which will use the same check).
+
+**The writer.** `BackupWire.searchOf(kinds, defaultKind)` writes the backup's `search` object as the website's
+`searchOf` and the phones' `KindSettingRules.searchOf` do: `{"kind":"house"}` for the house alone, else
+`{"kinds":[...],"defaultKind":"..."}`; an empty list, an id outside door 3's pattern, a repeat or a default that is not in
+the list writes the house's. `BackupWire.currentOf(legacy, kinds, defaultKind)` puts it right after `exportedAt`, the rest
+of the file unchanged. The server is not told what a device tracks (the choice is per device and never synced), so
+`GET /api/export` calls `currentOf(legacy)`, which writes the house's, byte for byte the file before; the writer is ready
+for the day a request tells it. Vectors: `docs/schemas/kinds/search-kind-vectors.json` `write`, read by `BackupWireTest`
+([06](06-test-plan.md) TC-U-222).
+
+**Tests.** `AiKindFileTest` (the list: the house always in, dropped ids, a listed kind without a file), `KindExtractVectorsTest`
+(a kind outside the list is a 400 with the house-only list and with the school listed), `BackupWireTest` (the vectors,
+in a file after `exportedAt`, the export unchanged); the AI vector tests and the house pins pass unchanged with
+`AiKinds.schools(on)`. `mvn verify` (JDK 25, PostGIS) runs on the pull request.

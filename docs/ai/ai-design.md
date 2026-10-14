@@ -73,6 +73,7 @@
 | v0.69   | 2026-10-13 | Claude (Code), engineer       | New section 16: **kind-aware AI** (kinds PR 7, S4b-BL-211; `feat/kinds-9-kind-aware-ai`, the server first): a candidate of a built-in kind other than the house is read through its kind file's `ai` slots while the developer flag is on (`AI_DEV_KINDS` on the server, 11); `POST /api/ai/extract-listing` takes an optional `kind` (13); the school's Ask lines, Plan view and Extract prompt, schema and checks; a house's prompts, document lines, request bodies and parity vectors unchanged (house pins first). |
 | v0.70   | 2026-10-13 | Claude (Code), engineer       | 16: **the website's on-device AI is kind-aware** (S4b-BL-211, the second stacked pull request; `feat/kinds-9b-kind-aware-ai-web`): `core/ai/kind-ai.ts` (the school's Ask lines, Ask and Plan views, Extract prompt, schema and checks) under `devKindsOn()`; the extract request names the kind only for a kind the extract fills; the website's house pins (`house-ai-pins.spec.ts`) first and unchanged. Review follow-ups of #313: a generated school name over 200 characters is cut with a warning on the server and the website (16.3); `kind-ai-vectors.json` gains a school whose grades and notes are exactly the Ask block's closing tag (`askTag`). |
 | v0.71   | 2026-10-13 | Claude (Code), engineer       | 16: **the phones' on-device AI is kind-aware** (S4b-BL-211, the third stacked pull request; `feat/kinds-9c-kind-aware-ai-phone`): `KindAi` in `:shared` under `OnDeviceAi(devKinds)`, the flag from `BuildConfig.DEV_KINDS`; the extract request names the kind only for a kind the extract fills; the phones' house pins (`HouseAiPinsTest`) first and unchanged. With the review follow-ups of #313 on the phone too: `KindAi.sanitize` cuts a generated name over 200 characters with the warning, and `KindAiVectorsTest` reads `askTag`. |
+| v0.72   | 2026-10-14 | Claude (Code), engineer       | 11, 13 and 16: **the server's flag `AI_DEV_KINDS` is the list `KINDS_AVAILABLE`** (S4b-BL-280; `fix/kinds-server-available-flag`; [03](../03-design.md) §18.15): default `house`; a request for a kind outside it is a 400; the AI reads the same list. |
 
 Status: implemented in `backend/` (package `app.doorprints.server.ai`), **off by default**. Not yet compiled in this
 sandbox (no Maven Central access) — CI compiles and runs the tests. Provider: AI Studio by default, Vertex AI with
@@ -1482,7 +1483,7 @@ unchanged.
 | `AI_VERTEX_EMBEDDING_LOCATION` | = `GCP_LOCATION` | Vertex only: location for the embedding model, if it is not offered in `GCP_LOCATION` |
 | `AI_VERTEX_ENDPOINT` / `AI_VERTEX_API_VERSION` | derived / `v1beta1` | Vertex only: base URL override (tests, Private Service Connect) and REST API version |
 | `AI_INDEX_ON_CHANGE` | `true` | Embed a house after each save; `false` = only `POST /api/ai/reindex` embeds |
-| `AI_DEV_KINDS` | `false` | Developer flag of kinds PR 7 (16): `true` reads a candidate of a built-in kind other than the house (the hidden schools kind) through its kind file's `ai` slots; off, every candidate is read as a house |
+| `KINDS_AVAILABLE` | `house` | The kinds this server has available (`app.kinds.available`, S4b-BL-280; it replaced `AI_DEV_KINDS`): a comma-separated list, the house always in it. Listing a built-in kind other than the house (`school`, the hidden schools kind) reads a candidate of it through its kind file's `ai` slots (16) and lets a request name it; a request for a kind outside the list is a 400; with the house alone every candidate is read as a house |
 | `GOOGLE_APPLICATION_CREDENTIALS` | – | Standard ADC variable (set by `google-github-actions/auth`); not needed on Cloud Run or after `gcloud auth application-default login` |
 
 Optional: Gemini "thinking" can be reduced with `SPRING_AI_OPENAI_CHAT_REASONING_EFFORT=low` (compat endpoint
@@ -1570,7 +1571,7 @@ Response — a draft; nothing is saved. Map straight into the "new house" form; 
   "warnings": []
 }
 ```
-Optional `kind` (kinds PR 7, section 16): absent or `house` is the call above; `school` (while `AI_DEV_KINDS` is on) reads a school listing and the draft has no `price`, `priceType` or `bedrooms` but an `extras` object in the candidate's wire shape (`{"board": "CBSE", "busService": true, "fees": {"amount": 96000, "cadence": "year"}}`); any other kind is a 400. A house's request and response bodies are unchanged (no `extras` key).
+Optional `kind` (kinds PR 7, section 16): absent or `house` is the call above; `school` (while it is in `KINDS_AVAILABLE`) reads a school listing and the draft has no `price`, `priceType` or `bedrooms` but an `extras` object in the candidate's wire shape (`{"board": "CBSE", "busService": true, "fees": {"amount": 96000, "cadence": "year"}}`); any other kind, and a kind outside `KINDS_AVAILABLE`, is a 400 (`kind <id> is not available`). A house's request and response bodies are unchanged (no `extras` key).
 
 Any field may be null except `label`, `amenities`, `warnings`. Show `warnings` to the user. When the text holds two or more different http(s) links and `listingUrl` is set, `warnings` has `listingUrl: the text has N links, check this is the right one`. A client that lets the person paste more than the limit cuts the text itself and says how much was left out (the apps do: S4b-BL-182). Put `amenities` into
 notes or checklist as you see fit (the house model has no amenities field).
@@ -1875,7 +1876,7 @@ was not reachable on 2026-10-10, so this is read through the SDK type definition
 
 The design is [03](../03-design.md) ADR-36 §18.11; this section is what the AI code does. A candidate of a built-in kind
 other than the house (today only the hidden schools kind, `docs/schemas/kinds/school.json`) is read through its kind
-file's `ai` slots **while the developer flag is on**: the server's `AI_DEV_KINDS` (11), the website's `devKindsOn()`, the
+file's `ai` slots **while the kind is available**: the server's `KINDS_AVAILABLE` (11), the website's `devKindsOn()`, the
 phone's `BuildConfig.DEV_KINDS`. With the flag off, for a house, and for a kind that is not built in, nothing changes.
 
 ### 16.1 What stays byte-identical for a house

@@ -116,10 +116,32 @@ class AiKindFileTest {
     @Test
     void withTheFlagOffOrAnUnknownKindEveryCandidateIsAHouse() {
         assertThat(AiKinds.OFF.of("school")).isNull();
-        assertThat(new AiKinds(false).of("school")).isNull();
-        assertThat(new AiKinds(true).of("school")).isSameAs(AiKinds.SCHOOL);
-        assertThat(new AiKinds(true).of("house")).isNull();
-        assertThat(new AiKinds(true).of("clinic")).isNull();
-        assertThat(new AiKinds(true).of(null)).isNull();
+        assertThat(AiKinds.schools(false).of("school")).isNull();
+        assertThat(AiKinds.schools(true).of("school")).isSameAs(AiKinds.SCHOOL);
+        assertThat(AiKinds.schools(true).of("house")).isNull();
+        assertThat(AiKinds.schools(true).of("clinic")).isNull();
+        assertThat(AiKinds.schools(true).of(null)).isNull();
+    }
+
+    /** {@code app.kinds.available} (S4b-BL-280): the house is always in it; a kind outside it is not available, a 400. */
+    @Test
+    void theAvailableKindsAreAListWithTheHouseAlwaysIn() {
+        assertThat(AiKinds.OFF.available()).containsExactly("house");
+        assertThat(new AiKinds(null).available()).containsExactly("house");
+        assertThat(new AiKinds(List.of(" school ", "house", "school", "", "Not A Kind")).available())
+                .containsExactly("house", "school");
+        var houseOnly = new AiKinds(List.of("house"));
+        assertThat(houseOnly.isAvailable(null)).isTrue();
+        assertThat(houseOnly.isAvailable("house")).isTrue();
+        assertThat(houseOnly.isAvailable("school")).isFalse();
+        houseOnly.require("house");
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> houseOnly.require("school"))
+                .isInstanceOf(app.doorprints.server.common.BadRequestException.class)
+                .hasMessage("kind school is not available");
+        // A kind that is listed but has no built-in file is available and read as a house.
+        var clinic = new AiKinds(List.of("house", "clinic"));
+        assertThat(clinic.isAvailable("clinic")).isTrue();
+        assertThat(clinic.of("clinic")).isNull();
+        assertThat(clinic.of("school")).isNull();
     }
 }
