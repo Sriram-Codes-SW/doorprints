@@ -54,6 +54,7 @@ import app.doorprints.shared.model.Broker
 import app.doorprints.shared.model.BrokerType
 import app.doorprints.shared.model.Checklist
 import app.doorprints.shared.model.Criterion
+import app.doorprints.shared.model.DeleteScope
 import app.doorprints.shared.model.CriterionType
 import app.doorprints.shared.model.Preference
 import app.doorprints.shared.model.PreferenceType
@@ -148,7 +149,7 @@ open class CommonRepository(
         ?: { s -> if (s.serverConfigured) ServerSyncBackend(apiFor(s.serverUrl, s.apiKey)) else null }
 
     /** The clock every local edit is stamped with. */
-    protected fun now(): Long = Clock.System.now().toEpochMilliseconds()
+    protected open fun now(): Long = Clock.System.now().toEpochMilliseconds()
 
     private val photoStore = PhotoStore(db, photoDir, ::now, syncSoon)
 
@@ -213,10 +214,16 @@ open class CommonRepository(
     override suspend fun saveHouse(house: HouseEntity) {
         // The rooms, answers and move-in as every reader keeps them (slices 1c, 3a, 5): the form's blank names and notes
         // go, a typed answer reads ANSWERED, the order is the one shown; a floor outside -5..200 is unknown (S4b-BL-87).
-        val row = brokerStore.linked(house).copy(
-            rooms = HouseRooms.coerced(house.rooms), answers = HouseAnswers.coerced(house.answers),
-            moveIn = MoveIn.coerced(house.moveIn), floor = HouseValues.floor(house.floor), updatedAt = now(), dirty = true,
+        putHouse(
+            brokerStore.linked(house).copy(
+                rooms = HouseRooms.coerced(house.rooms), answers = HouseAnswers.coerced(house.answers),
+                moveIn = MoveIn.coerced(house.moveIn), floor = HouseValues.floor(house.floor), updatedAt = now(), dirty = true,
+            ),
         )
+    }
+
+    /** Writes a stamped house row, and asks for a sync. The TAKEN rule is here, so a restore of a TAKEN house keeps it. */
+    private suspend fun putHouse(row: HouseEntity) {
         if (row.status == HouseStatus.TAKEN && !row.deleted) {
             // At most one house is TAKEN (slice 5, M1): the one that was returns to SHORTLISTED, in the same transaction.
             db.withImmediateTransaction {
@@ -237,6 +244,35 @@ open class CommonRepository(
         }
         syncSoon()
     }
+
+    override suspend fun deleteHouses(ids: List<String>): List<String> {
+        if (ids.isEmpty()) return emptyList()
+        val now = now()
+        val gone = db.withImmediateTransaction {
+            val live = readInChunks(ids) { db.houses().getMany(it) }.filter { !it.deleted }
+            for (h in live) db.houses().upsert(h.copy(deleted = true, dirty = true, updatedAt = DeleteScope.nextStamp(h.updatedAt, now)))
+            live.map { it.id }
+        }
+        if (gone.isNotEmpty()) syncSoon()
+        return gone
+    }
+
+    override suspend fun restoreHouse(id: String): Boolean = restoreHouses(listOf(id)).isNotEmpty()
+
+    override suspend fun restoreHouses(ids: List<String>): List<String> {
+        if (ids.isEmpty()) return emptyList()
+        val now = now()
+        val back = readInChunks(ids) { db.houses().getMany(it) }.filter { it.deleted }
+            .map { it.copy(deleted = false, dirty = true, updatedAt = DeleteScope.nextStamp(it.updatedAt, now)) }
+        // A TAKEN house goes through the TAKEN rule (putHouse); the rest are one transaction.
+        val (taken, plain) = back.partition { it.status == HouseStatus.TAKEN }
+        if (plain.isNotEmpty()) db.withImmediateTransaction { for (h in plain) db.houses().upsert(h) }
+        for (h in taken) putHouse(h)
+        if (plain.isNotEmpty()) syncSoon()
+        return back.map { it.id }
+    }
+
+    override fun observeDeletedHouses(): Flow<List<HouseEntity>> = db.houses().observeDeleted()
 
     override suspend fun markOthersNotChosen(takenId: String): Int {
         val count = db.withImmediateTransaction {
@@ -386,8 +422,7 @@ open class CommonRepository(
     override suspend fun deleteAreaNote(id: String) = areaStore.deleteNote(id)
 
     override suspend fun deleteHouse(id: String) {
-        val house = db.houses().get(id) ?: return
-        saveHouse(house.copy(deleted = true))
+        deleteHouses(listOf(id))
     }
 
     override suspend fun saveVisit(visit: VisitEntity) {

@@ -726,7 +726,10 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
         )
 
         // What you track (kinds PR C): only in a build that ships more than houses, and then with its own divider.
-        KindsSettingsSection()
+        KindsSettingsSection(onSaveCopy = onOpenExport)
+        // Recently deleted (deletion safeguards PR 3): this space's deleted entries from the last 30 days, with Restore.
+        HorizontalDivider()
+        RecentlyDeletedSection()
         HorizontalDivider()
         // AI features (docs/03 §12.1, §13.1): this phone's switch, and who answers: the server or the person's own key.
         AiSettingsSection(settings, aiOff)

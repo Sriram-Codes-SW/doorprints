@@ -66,6 +66,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import app.doorprints.crypto.encodeQr
@@ -729,6 +730,7 @@ private fun DeleteFlow(ui: DriveUiState, holder: DriveHolder, host: DriveHost) {
             Heading(t("driveDelete.planHeading"))
             d.plan?.let { PlanLines(it) }
             Text(t("driveDelete.planWarning"))
+            if (deleteAllKindsShown(d.choice)) Text(t("driveDelete.allKinds"), fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.error)
             TextButton(host.onSaveCopy, Modifier.heightIn(min = 48.dp)) { Text(t("driveDelete.saveCopyFirst")) }
             DriveButton(t("driveDelete.proceed"), holder::proceedToConfirm, enabled = !ui.busy, primary = true)
             DriveButton(stringResource(Res.string.common_cancel), holder::cancelDelete, enabled = !ui.busy)
