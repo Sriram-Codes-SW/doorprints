@@ -36,7 +36,14 @@ data class SpaceView(val kind: String, val multi: Boolean, val default: String, 
 }
 
 /** A candidate as Compare's rules read it: its id, kind (`null`: a house), status by name and whether it is deleted. */
-data class ScopedCandidate(val id: String, val kind: String? = null, val status: String? = null, val deleted: Boolean = false)
+data class ScopedCandidate(
+    val id: String,
+    val kind: String? = null,
+    val status: String? = null,
+    val deleted: Boolean = false,
+    /** When the row last changed (epoch ms): a tombstone's time of deletion, for [DeleteScope.binRows]. */
+    val updatedAt: Long = 0,
+)
 
 /** What Compare keeps of a pick in a space, and what it refuses (a live candidate of another space). */
 data class ComparePick(val kept: List<String>, val refused: List<String>)

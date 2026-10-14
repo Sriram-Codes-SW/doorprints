@@ -188,6 +188,13 @@ class DriveScreenStateTest {
         assertEquals("driveDelete.everything", deleteChoiceKey(DeleteChoice.EVERYTHING))
     }
 
+    @Test fun onlyDeleteEverythingSaysItTakesAllKinds() {
+        // Level 3 reaches every space, not the one on screen (deletion safeguards PR 3, docs/15 3.2); the backup levels say nothing of kinds.
+        assertEquals(listOf(false, false, true, false), DeleteChoice.entries.map { deleteAllKindsShown(it) })
+        assertEquals(false, deleteAllKindsShown(null))
+        assertEquals(true, deleteAllKindsShown(DeleteChoice.EVERYTHING))
+    }
+
     @Test fun aRunThatStoppedShowsWhatIsLeft() {
         assertEquals(DeleteResultLine.Done, deleteResultLine(true, 0, 9))
         assertEquals(DeleteResultLine.Left(4, 9), deleteResultLine(false, 4, 9))

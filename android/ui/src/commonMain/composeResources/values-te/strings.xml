@@ -1751,4 +1751,21 @@
         <item quantity="one">దాచినది, %1$d నమోదు</item>
         <item quantity="other">దాచినవి, %1$d నమోదులు</item>
     </plurals>
+    <!-- S4b-BL-285 (2026-10-14): deletion safeguards on the phones (PR 3): Delete all in this space, Recently deleted, Drive level 3 "all kinds"; the website's words (web i18n `delete.*`, `driveDelete.allKinds`). hi, ta and te are under review. -->
+    <string name="delete_space_button">ఈ స్థలంలో అన్నీ తొలగించు</string>
+    <string name="delete_space_button_aria">ఈ స్థలంలో అన్నీ తొలగించు: %1$s</string>
+    <string name="delete_space_confirm">%1$sలో భద్రపరచినవన్నీ తొలగించాలా: %2$s? ఈ స్థలం మాత్రమే తొలగిస్తుంది, మీ ఇతర స్థలాలను తాకదు. 10 సెకన్ల వరకు రద్దు చేయవచ్చు, 30 రోజుల వరకు ఇటీవల తొలగించినవి నుండి తిరిగి తీసుకురావచ్చు. వాటి భద్రపరచిన నడకలను తిరిగి తీసుకురాలేము.</string>
+    <string name="delete_space_do">అన్నీ తొలగించు</string>
+    <string name="delete_deleted_many">%1$s నుండి తొలగించినవి: %2$s</string>
+    <string name="delete_restored_many">%1$sలో పునరుద్ధరించినవి: %2$s</string>
+    <string name="delete_restored">%1$s పునరుద్ధరించబడింది</string>
+    <string name="delete_bulk_wait">ఇప్పుడే ఒక సామూహిక తొలగింపు జరిగింది. %1$d సెకన్లు ఆగి మళ్లీ ప్రయత్నించండి.</string>
+    <string name="delete_recently_deleted">ఇటీవల తొలగించినవి</string>
+    <string name="delete_bin_body">గత 30 రోజుల్లో మీరు తొలగించినవి ఇక్కడ ఉంటాయి, వాటిని పునరుద్ధరించవచ్చు. సేవ్ చేసిన నడకలు ఉంచబడవు.</string>
+    <string name="delete_bin_empty">గత 30 రోజుల్లో ఏదీ తొలగించలేదు.</string>
+    <string name="delete_bin_more">మరో %1$d 30 రోజుల పాటు ఉంచబడతాయి. తర్వాతిది చూడటానికి ఒకదాన్ని పునరుద్ధరించండి.</string>
+    <string name="delete_restore">పునరుద్ధరించు</string>
+    <string name="delete_restore_aria">%1$s ను పునరుద్ధరించు</string>
+    <string name="delete_deleted_on">తొలగించిన సమయం: %1$s</string>
+    <string name="drive_delete_all_kinds">ఇది అన్ని రకాలను తొలగిస్తుంది: ఇళ్లు, పాఠశాలలు మరియు ప్రతి ఇతర స్థలం, మీరు ఉన్నది మాత్రమే కాదు.</string>
 </resources>

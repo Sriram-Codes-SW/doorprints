@@ -160,6 +160,7 @@ web driveDelete.everything driveDelete.everything
 web driveDelete.oneBackup driveDelete.oneBackup
 web driveDelete.planHeading driveDelete.planHeading
 web driveDelete.planWarning driveDelete.planWarning
+web driveDelete.allKinds driveDelete.allKinds
 web driveDelete.proceed driveDelete.proceed
 web driveDelete.confirmHeading driveDelete.confirmHeading
 web driveDelete.confirmWarning driveDelete.confirmWarning

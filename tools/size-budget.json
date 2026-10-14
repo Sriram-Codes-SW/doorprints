@@ -27,7 +27,7 @@
   "android/shared/src/commonMain/kotlin/app/doorprints/shared/export/ExportStrings.kt": "the readable copies' words in four languages"
  },
  "allow": {
-  "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt": 1302,
+  "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt": 1295,
   "android/ui/src/commonMain/kotlin/app/doorprints/ui/HouseEditScreen.kt": 1517,
   "android/ui/src/commonMain/kotlin/app/doorprints/ui/HouseListScreen.kt": 1022,
   "android/ui/src/commonMain/kotlin/app/doorprints/ui/ImportScreen.kt": 1014,

@@ -482,7 +482,7 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
             val platform = LocalPlatformServices.current
             ConnectLinkDialog(link, repo, remember { platform.deviceName() }, onDone = { pendingConnect = null })
         }
-        CompositionLocalProvider(LocalTourRegistry provides tourRegistry, LocalSpace provides space) {
+        CompositionLocalProvider(LocalTourRegistry provides tourRegistry, LocalSpace provides space, LocalRootSnackbar provides rootSnackbar) {
             Box(Modifier.fillMaxSize()) {
                 Scaffold(
                     snackbarHost = { SnackbarHost(rootSnackbar) },
