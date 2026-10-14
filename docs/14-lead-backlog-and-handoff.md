@@ -498,7 +498,8 @@ self-audit table the lead checks, a stronger model for screens, migrations and a
   `-Proborazzi.test.verify=true`; the iOS klib compile on Linux; `mvn verify` with the PostGIS container for the backend).
 - **Batch per stream, one pull request per stream.** A stream is a set of changes that belong together (for example the kinds chooser,
   then scoping Compare/Ask/Plan/copies, then the phones). Builders chain their branches locally and open **no pull request until the
-  batch is ready**: an open pull request, a draft too, starts CI. CI then runs once per stream and its failures are fixed in one pass.
+  batch is ready**: an open pull request, a draft too, starts CI. **Push the branch after every local-green commit** (a branch push does
+  not start CI; only an open pull request does): work held only in a container is lost to a usage limit or a container loss. CI then runs once per stream and its failures are fixed in one pass.
   Never leave a stream's batch so large that one failure cannot be traced: split it at a natural seam (web, then phones).
 - **Own pull request, own CI run, when the change touches** a data migration (Room, IndexedDB, Flyway), the backup or sync format,
   security or privacy rules, what the AI sees, or the deploy. These are never folded into a batch.
