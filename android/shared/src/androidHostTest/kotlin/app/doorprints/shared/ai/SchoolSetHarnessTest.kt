@@ -67,7 +67,7 @@ class SchoolSetHarnessTest {
         assertTrue(houses.all { it.kind == "school" && it.extras != null })
         assertEquals(setOf("board", "medium", "grades", "commuteMinutes", "busService", "fees", "admissionFee"), houses[0].extras!!.keys)
         assertEquals(listOf(1, 0, 0, 0, 0, 0, 1), houses.map { it.visits.size })
-        assertEquals(13, SchoolSetFixtures.cases.size)
+        assertEquals(14, SchoolSetFixtures.cases.size)
         val ids = houses.map { it.id }.toSet()
         for (c in SchoolSetFixtures.cases) {
             val e = c["expected"]!!.jsonObject
@@ -139,13 +139,15 @@ class SchoolSetHarnessTest {
     }
 
     @Test
-    fun planShowsASchoolWithoutAPriceOrBedroomsAndOnlyAsSavedSchool() = runBlocking {
+    fun planShowsASchoolWithItsDetailsAndWithoutAPriceOrBedroomsAndOnlyAsSavedSchool() = runBlocking {
         val model = Recording { """{"summary":"Two schools.","stops":[{"houseId":"$pine","reason":"first"},{"houseId":"$lotus","reason":"second"}]}""" }
         val case = SchoolSetFixtures.case("school-plan-01-shortlisted-bengaluru")
         val input = case["input"]!!.jsonObject
         val plan = ai(model).planVisits(PlanRequest(input["question"]!!.jsonPrimitive.content, 12.94, 77.69, maxStops = input["maxStops"]!!.jsonPrimitive.int))
         assertEquals(listOf(pine, lotus), plan.stops.map { it.houseId })
         val sent = model.users.single()
-        assertTrue("label: Pine Hill School" in sent && "price: - | bedrooms: -" in sent)
+        // A school's own line (S4b-BL-270): its details after the rating, no price or bedrooms to print as dashes.
+        assertTrue("label: Pine Hill School" in sent && "School bus: yes" in sent && "Board: CBSE" in sent, sent)
+        assertFalse("price:" in sent || "bedrooms:" in sent, sent)
     }
 }

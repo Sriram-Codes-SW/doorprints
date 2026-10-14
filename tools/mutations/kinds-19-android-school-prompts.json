@@ -1,0 +1,138 @@
+{
+  "spec": "android/shared/src/androidHostTest/kotlin/app/doorprints/shared/ai/KindAiVectorsTest.kt",
+  "gradle": [
+    ":shared:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.shared.ai.KindAiVectorsTest",
+    "--tests",
+    "app.doorprints.shared.ai.HouseAiPinsTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/KindAi.kt",
+      "find": "            if (!k.allows(slot, id)) continue\n            extraValue(e, h.extras?.get(id), r)?.let { out[e.words] = it }",
+      "replace": "            extraValue(e, h.extras?.get(id), r)?.let { out[e.words] = it }",
+      "expect": "theDetailsOfACandidateAreInTheSlotsOrder"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/KindAi.kt",
+      "find": "            extraValue(e, h.extras?.get(id), r)?.let { out[e.words] = it }",
+      "replace": "            out[e.words] = extraValue(e, h.extras?.get(id), r) ?: \"\"",
+      "expect": "aPlanCandidateHasOnlyWhatThePlanSlotNames"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/KindAi.kt",
+      "find": "?.let { extras(h, it, it.plan) }",
+      "replace": "?.let { extras(h, it, it.ask) }",
+      "expect": "aPlanCandidateHasOnlyWhatThePlanSlotNames"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/KindAi.kt",
+      "find": "            val k = of(kindOf[id], devKinds) ?: return null\n            if (found != null && found != k) return null",
+      "replace": "            val k = of(kindOf[id], devKinds)\n            if (found != null && found != k) return null",
+      "expect": "thePromptSpeaksInAKindsWordsOnlyWhenEveryRecordIsOfThatKind"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/KindAi.kt",
+      "find": "fun refusalOf(kind: String?, devKinds: Boolean): String = of(kind, devKinds)?.refusal ?: AiPrompts.I_DONT_KNOW",
+      "replace": "fun refusalOf(kind: String?, devKinds: Boolean): String = of(kind, devKinds)?.refusal ?: SCHOOL_I_DONT_KNOW",
+      "expect": "thePromptSpeaksInAKindsWordsOnlyWhenEveryRecordIsOfThatKind"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/KindAi.kt",
+      "find": "append(PromptSafety.neutralize(text, k.records))",
+      "replace": "append(text)",
+      "expect": "noValueOfASchoolAndNoQuestionCanCloseTheRecordsBlock"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/KindAi.kt",
+      "find": "\"\\n</$tag>\\n\\nQuestion: \" + PromptSafety.neutralize(question, k.records)",
+      "replace": "\"\\n</$tag>\\n\\nQuestion: \" + question",
+      "expect": "noValueOfASchoolAndNoQuestionCanCloseTheRecordsBlock"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/KindAi.kt",
+      "find": "PromptSafety.neutralize(candidates, k.records)",
+      "replace": "candidates",
+      "expect": "noValueOfASchoolAndNoQuestionCanCloseTheRecordsBlock"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/KindAi.kt",
+      "find": "context.append(\"[house:\")",
+      "replace": "context.append(\"[school:\")",
+      "expect": "everyDocumentHasTheVectorsLinesAndTheAskPromptStripsATag"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/KindAi.kt",
+      "find": "reply exactly: \"$SCHOOL_I_DONT_KNOW\"",
+      "replace": "reply exactly: \"${AiPrompts.I_DONT_KNOW}\"",
+      "expect": "aSchoolsOwnWordsAreTheVectors"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/KindAi.kt",
+      "find": "AiPrompts.fixed6(startLat), AiPrompts.fixed6(startLon), maxStops)",
+      "replace": "AiPrompts.fixed6(startLat).take(4), AiPrompts.fixed6(startLon), maxStops)",
+      "expect": "aSchoolsOwnWordsAreTheVectors"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/KindAi.kt",
+      "find": "\"locality\", \"street\", \"board\", \"medium\", \"grades\", \"commuteMinutes\", \"busService\", \"fees\"),",
+      "replace": "\"locality\", \"street\", \"board\", \"medium\", \"grades\", \"commuteMinutes\", \"fees\"),",
+      "expect": "theCopyIsTheKindFilesSlotsAndTheVectorsWords"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OnDeviceSelection.kt",
+      "find": "        if (c.extras != null) return@joinToString (",
+      "replace": "        if (c.extras != null && c.extras.size > 99) return@joinToString (",
+      "expect": "aPlanCandidateHasOnlyWhatThePlanSlotNames"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OnDeviceSelection.kt",
+      "find": "                extras = extrasOf(h),",
+      "replace": "                extras = extrasOf(h) ?: emptyMap(),",
+      "expect": "aPlanCandidateHasOnlyWhatThePlanSlotNames"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AskChecks.kt",
+      "find": "        return AiPrompts.I_DONT_KNOW == a || KindAi.isKindRefusal(a)",
+      "replace": "        return AiPrompts.I_DONT_KNOW == a",
+      "expect": "thePromptSpeaksInAKindsWordsOnlyWhenEveryRecordIsOfThatKind"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OnDeviceAi.kt",
+      "find": "        val k = KindAi.promptKind(docs.map { it.id }, viewed, devKinds)",
+      "replace": "        val k: AiKindSlots? = null",
+      "expect": "onDeviceAskSpeaksInTheSchoolsWords"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OnDeviceAi.kt",
+      "find": "        val k = KindAi.promptKind(candidates.map { it.id }, viewed, devKinds)",
+      "replace": "        val k: AiKindSlots? = null",
+      "expect": "onDevicePlanSpeaksInTheSchoolsWords"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OnDeviceAi.kt",
+      "find": "AskResponseDto(KindAi.refusalOf(kind, devKinds), emptyList(), false, 0)",
+      "replace": "AskResponseDto(AiPrompts.I_DONT_KNOW, emptyList(), false, 0)",
+      "expect": "withNothingToSendOrAnUnusableAnswerTheRefusalIsTheSpacesKindsSentence"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OnDeviceAi.kt",
+      "find": "AskResponseDto(k?.refusal ?: AiPrompts.I_DONT_KNOW, emptyList(), false, docs.size)",
+      "replace": "AskResponseDto(AiPrompts.I_DONT_KNOW, emptyList(), false, docs.size)",
+      "expect": "withNothingToSendOrAnUnusableAnswerTheRefusalIsTheSpacesKindsSentence"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OnDeviceAi.kt",
+      "find": "request.startLat, request.startLon) { KindAi.planExtras(it, devKinds) }",
+      "replace": "request.startLat, request.startLon)",
+      "expect": "onDevicePlanSpeaksInTheSchoolsWords"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/PlanChecks.kt",
+      "find": "            (if (extras == null) \"\" else \", extras=$extras\") + \")\"",
+      "replace": "            \", extras=$extras)\"",
+      "expect": "aPlanCandidateHasOnlyWhatThePlanSlotNames"
+    }
+  ]
+}

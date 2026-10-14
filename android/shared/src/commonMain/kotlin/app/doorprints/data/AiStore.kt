@@ -240,7 +240,7 @@ internal class AiStore(
      */
     suspend fun ask(question: String, space: SpaceView? = null): AskResponseDto {
         requireOn()
-        return ownKeyAi()?.let { withContext(Dispatchers.IO) { it.ask(question, holds = space.holder()) } } ?: withApi { it.ask(question) }
+        return ownKeyAi()?.let { withContext(Dispatchers.IO) { it.ask(question, holds = space.holder(), kind = space?.kind) } } ?: withApi { it.ask(question) }
     }
 
     suspend fun planVisits(request: PlanRequest, space: SpaceView? = null): PlanResponseDto {
