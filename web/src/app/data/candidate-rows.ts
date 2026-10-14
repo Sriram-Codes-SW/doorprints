@@ -96,6 +96,10 @@ class CandidateRowsDb implements LocalDb {
     return this.db.count(store, index, value);
   }
 
+  countIndexed(store: StoreName, index: string): Promise<number> {
+    return this.db.countIndexed(store, index);
+  }
+
   put<T>(store: StoreName, value: T): Promise<void> {
     return this.db.put(store, this.in(store, value));
   }

@@ -63,7 +63,7 @@ export const STORE_KEY_PATH: Readonly<Record<StoreName, string | readonly string
 
 /** The indexes of each store; an index is named after the one property it is on, so `MemoryDb` can filter by it. */
 export const STORE_INDEXES: Readonly<Record<StoreName, readonly string[]>> = {
-  houses: [],
+  houses: ['kind'],
   visits: ['houseId'],
   photos: ['houseId'],
   settings: [],
@@ -82,11 +82,12 @@ export type StoreKey = string | readonly string[];
 // house and a photo only gain fields, so they did not need a version. Version 4 is kinds step 3 (S4b-BL-206, docs/03
 // ADR-36): every row of `houses` is rewritten as a candidate, with `kind`, `money` and `extras` (`candidate-rows.ts`).
 // IndexedDB cannot open a database at a lower version than it holds, so the format reset's "version 1" is version 4
-// here: the rows move in place and nothing is lost.
+// here: the rows move in place and nothing is lost. Version 5 is S4b-BL-286: an index on `houses.kind` and nothing else
+// (rows are not touched; a row without `kind` is simply not in the index, `LocalStore.houseRowCounts` counts those apart).
 /** Name of the browser database that holds all of this browser's house data. */
 export const DB_NAME = 'doorprints';
 /** Current schema version; see the note above for what each version added. */
-export const DB_VERSION = 4;
+export const DB_VERSION = 5;
 
 /** One write of a {@link LocalDb.batch}: a put or a delete in any store. */
 export type WriteOp =
@@ -141,6 +142,11 @@ export interface LocalDb {
   keys(store: StoreName): Promise<StoreKey[]>;
   /** How many rows a store holds, or how many have `index` equal to `value`, without reading them. */
   count(store: StoreName, index?: string, value?: string | number): Promise<number>;
+  /**
+   * How many rows of a store are in `index` at all: IndexedDB leaves a row out of an index whose property it lacks, so
+   * `count(store) - countIndexed(store, index)` is the number of rows without it (S4b-BL-286). Rejects when the index is missing.
+   */
+  countIndexed(store: StoreName, index: string): Promise<number>;
   put<T>(store: StoreName, value: T): Promise<void>;
   putAll<T>(store: StoreName, values: readonly T[]): Promise<void>;
   delete(store: StoreName, key: StoreKey): Promise<void>;
@@ -219,6 +225,10 @@ export class MemoryDb implements LocalDb {
     const rows = this.map(store);
     if (index === undefined) return Promise.resolve(rows.size);
     return Promise.resolve([...rows.values()].filter((row) => (row as Record<string, unknown>)[index] === value).length);
+  }
+
+  countIndexed(store: StoreName, index: string): Promise<number> {
+    return Promise.resolve([...this.map(store).values()].filter((row) => (row as Record<string, unknown>)[index] !== undefined).length);
   }
 
   put<T>(store: StoreName, value: T): Promise<void> {
@@ -330,6 +340,10 @@ class IdbDb implements LocalDb {
 
   count(store: StoreName, index?: string, value?: string | number): Promise<number> {
     return this.run(store, 'readonly', (s) => (index === undefined ? s.count() : s.index(index).count(value)));
+  }
+
+  countIndexed(store: StoreName, index: string): Promise<number> {
+    return this.run(store, 'readonly', (s) => s.index(index).count());
   }
 
   async put<T>(store: StoreName, value: T): Promise<void> {
@@ -517,6 +531,15 @@ export function upgradeLocalDb(db: UpgradeDb, oldVersion: number, tx: UpgradeTx)
     rows.onsuccess = () => {
       for (const row of rows.result) houses.put(upgradeHouseRow(row));
     };
+  }
+  if (oldVersion < 5) {
+    // Version 5 (S4b-BL-286): an index on `houses.kind`, so a space's rows are counted without reading them. It ADDS an
+    // index and nothing else: no row is read, written or deleted, so a failure (the browser throws, the transaction
+    // aborts) leaves the database at its old version with every row as it was; the open then falls back to memory and
+    // the next launch retries. IndexedDB builds the index from the rows in the same transaction (a v1..v3 database's
+    // rows get `kind` from the version-4 step above, queued first, so they are indexed as they are rewritten). A row
+    // without a string/number `kind` is left out of the index by IndexedDB itself; those rows are still in the store.
+    tx.objectStore('houses').createIndex('kind', 'kind');
   }
 }
 

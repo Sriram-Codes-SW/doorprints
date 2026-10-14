@@ -178,16 +178,20 @@ describe('upgradeLocalDb', () => {
     trace_points: { keyPath: 'id', indexes: ['walk'] },
     saved_walks: { keyPath: 'id', indexes: ['houseId'] },
   };
+  /** Version 5 (S4b-BL-286): the `kind` index on `houses`, and nothing else. */
+  const VERSION_5 = { ...VERSION_3, houses: { keyPath: 'id', indexes: ['kind'] } };
+  /** What a browser at version 3 or below holds of `houses`: no `kind` index (a test drops the one a fresh install made). */
+  const dropKindIndex = (db: FakeDb) => void (db.stores.get('houses')!.indexes.length = 0);
 
-  it('is at version 4 (kinds step 3: the houses become candidates) and has seven stores, so clear() empties them all', () => {
-    expect(DB_VERSION).toBe(4);
+  it('is at version 5 (kinds step 3: the houses become candidates; S4b-BL-286: the kind index) and has seven stores, so clear() empties them all', () => {
+    expect(DB_VERSION).toBe(5);
     expect([...STORE_NAMES]).toEqual(['houses', 'visits', 'photos', 'settings', 'records', 'trace_points', 'saved_walks']);
   });
 
   it('creates every store and index on a fresh install', () => {
     const db = new FakeDb();
     upgradeLocalDb(db, 0, db);
-    expect(db.shape()).toEqual(VERSION_3);
+    expect(db.shape()).toEqual(VERSION_5);
     // The wrapper's own tables of the stores agree with what the upgrade made.
     for (const name of STORE_NAMES) {
       expect(db.shape()[name].keyPath, name).toEqual(STORE_KEY_PATH[name]);
@@ -207,9 +211,10 @@ describe('upgradeLocalDb', () => {
     // ...and the version-3 stores are not there yet either.
     db.stores.delete('trace_points');
     db.stores.delete('saved_walks');
+    dropKindIndex(db);
 
     upgradeLocalDb(db, 1, db);
-    expect(db.shape()).toEqual(VERSION_3);
+    expect(db.shape()).toEqual(VERSION_5);
   });
 
   it('brings a version-2 database up by adding only the two path trace stores (one step per version)', () => {
@@ -219,6 +224,7 @@ describe('upgradeLocalDb', () => {
     db.stores.delete('saved_walks');
     db.keyPaths.delete('trace_points');
     db.keyPaths.delete('saved_walks');
+    dropKindIndex(db);
     expect(db.shape()).toEqual(VERSION_2);
 
     const created: string[] = [];
@@ -229,14 +235,14 @@ describe('upgradeLocalDb', () => {
     };
     upgradeLocalDb(db, 2, db);
     expect(created).toEqual(['trace_points', 'saved_walks']); // the existing stores are untouched
-    expect(db.shape()).toEqual(VERSION_3);
+    expect(db.shape()).toEqual(VERSION_5);
   });
 
   it('does nothing for a database already at the current version', () => {
     const db = new FakeDb();
     upgradeLocalDb(db, 0, db);
     upgradeLocalDb(db, DB_VERSION, db);
-    expect(db.shape()).toEqual(VERSION_3);
+    expect(db.shape()).toEqual(VERSION_5);
   });
 
   it('rewrites every house of a version-3 database as a candidate, in place, and touches no other store or index', async () => {
@@ -253,6 +259,7 @@ describe('upgradeLocalDb', () => {
     houses.rows.set('h2', { id: 'h2', label: '', lat: 0, lon: 0, status: 'NEW', priceType: 'SALE', checklist: {}, deleted: false, syncVersion: 0, dirty: true });
     const visit = { id: 'v1', houseId: 'h1', lat: 1, lon: 2, arrivedAt: 'x', source: 'MANUAL', deleted: false, syncVersion: 0, dirty: false };
     db.stores.get('visits')!.rows.set('v1', visit);
+    dropKindIndex(db); // a version-3 browser has no kind index
     const shapeBefore = db.shape();
 
     upgradeLocalDb(db, 3, db);
@@ -268,7 +275,8 @@ describe('upgradeLocalDb', () => {
     // A sale with no price yet keeps its cadence; the dirty flag stays.
     expect(houses.rows.get('h2')).toEqual({ id: 'h2', kind: 'house', label: '', lat: 0, lon: 0, status: 'NEW', money: { cadence: 'once' }, checklist: {}, deleted: false, syncVersion: 0, dirty: true });
     expect(db.stores.get('visits')!.rows.get('v1')).toBe(visit);
-    expect(db.shape()).toEqual(shapeBefore);
+    // Only the kind index is new (version 5); every other store and index is as it was.
+    expect(db.shape()).toEqual({ ...shapeBefore, houses: { keyPath: 'id', indexes: ['kind'] } });
   });
 
   it('leaves a fresh install and an already-upgraded row alone (the version-4 step reads no rows at version 0)', async () => {
@@ -276,14 +284,20 @@ describe('upgradeLocalDb', () => {
     const reads: string[] = [];
     const objectStore = db.objectStore.bind(db);
     db.objectStore = (name) => {
-      reads.push(name);
-      return objectStore(name);
+      const store = objectStore(name);
+      const getAll = store.getAll.bind(store);
+      store.getAll = () => {
+        reads.push(name);
+        return getAll();
+      };
+      return store;
     };
     upgradeLocalDb(db, 0, db);
-    expect(reads).not.toContain('houses');
+    expect(reads).toEqual([]); // no rows are read on a fresh install (the kind index is created without reading any)
     const houses = db.stores.get('houses')!;
     const row = { id: 'h3', kind: 'house', label: 'x', lat: 0, lon: 0, status: 'NEW', money: { amount: 1, cadence: 'once' }, checklist: {}, deleted: false, syncVersion: 0, dirty: false };
     houses.rows.set('h3', row);
+    dropKindIndex(db);
     upgradeLocalDb(db, 3, db);
     await Promise.resolve();
     expect(houses.rows.get('h3')).toBe(row);

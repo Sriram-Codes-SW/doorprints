@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.132 |
+| Version | 0.133 |
 | Date | 2026-10-14 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -143,6 +143,7 @@
 | 0.130 | 2026-10-14 | Claude (Code), engineer | **§4.3 `ChunkRecovery` and `ChunkNotice`** (S4b-BL-305, `fix/web-lazy-chunk-recovery`): a lazy page whose chunk fails to load is loaded again as a new document once per session, then a message with *Try again* and *Reload*. |
 | 0.131 | 2026-10-14 | Claude (Code), engineer | **§18.14 Spaces on the phones** (S4b-BL-274 and S4b-BL-289, kinds PR C; two stacked branches, `feat/kinds-13-phones-spaces` and `feat/kinds-13b-phones-spaces-scoping`): the chooser, the header chip, Settings > What you track, a space's words, Hunt mode and the house-only Settings rows by kind, and the deep links (C1); Compare, Ask, Plan, the copies, the share target and the backup's `search` writer and hint, by the website's vectors (C2). The house-only app is byte for byte today's. §18.12 and §18.13 say where the phones' part now is. |
 | 0.132 | 2026-10-14 | Claude (Code), engineer | **§18.15 The server's list of kinds and its writer of `search`** (S4b-BL-280; `fix/kinds-server-available-flag`; [10](10-sprint-log.md) v0.307, [06](06-test-plan.md) v0.244 TC-U-222): `app.ai.dev-kinds` (`AI_DEV_KINDS`) is renamed `app.kinds.available` (`KINDS_AVAILABLE`, a list, default `house`); a request that names a kind outside it is a 400; `BackupWire.searchOf` writes the backup's `search` object as the website and the phones do (§18.12 door 10 amended, §18.11, §18.14 follow). |
+| 0.133 | 2026-10-14 | Claude (Code), engineer | **§18.5: the website's IndexedDB version 5, an index on `houses.kind`** (S4b-BL-286; [10](10-sprint-log.md) v0.312, [06](06-test-plan.md) v0.248 TC-U-227): the migration only adds the index, what a row without `kind` counts as, why a count by index includes tombstones, and what is not yet wired (the chooser and What you track still read the list; S4b-BL-310). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -2146,6 +2147,21 @@ changed:
   read a house (`HouseDto`); `core/candidate.ts` is the one mapping, used at the store and at the server client
   (`/api/candidates`), the twin of the server's `Money.of`, `CandidateExtras.of` and its `HouseDto` readers. An extra a
   newer app wrote is kept (`extrasOther`) and written back after the known ones, never shown or searched.
+- **IndexedDB version 5: an index on `houses.kind` (S4b-BL-286, 2026-10-14).** `upgradeLocalDb` gains the step
+  `oldVersion < 5`: `createIndex('kind', 'kind')` on `houses`, in the upgrade transaction, and nothing else. **The
+  migration reads, writes and deletes no row**, so a failure (the browser throws, the transaction aborts) leaves the
+  database at its old version with every row, store and index as it was; the open then runs from memory with the usual
+  warning, and the next launch retries. A version 1 to 3 database runs the version-4 rewrite first (the rows then get
+  `kind` and are indexed as they are written), then this step; a fresh install runs every step. **Rows without a
+  usable `kind`** (an interrupted version-4 upgrade; IndexedDB leaves a row out of an index whose key is not a valid
+  key) are not backfilled: `LocalStore.houseRowCounts(kinds)` finds them as `count(houses) - countIndexed(houses, kind)`
+  and counts them as houses, as `houseOfRow` reads them; rows of a kind not asked for are `other`. If the index is
+  missing (`index()` throws `NotFoundError`) the same numbers are counted from the loaded list. **Counts include
+  tombstones:** a deleted candidate keeps its row and its `kind` for ever, and `deleted` is a boolean, which IndexedDB
+  cannot index, so an index count is the size of a space's store, not the number of live candidates; the chooser and
+  What you track show live counts and the chooser's *last change* needs `updatedAt`, so both still read the list until
+  a tombstone-aware count exists (S4b-BL-310). Known edge: a stored `kind` that is not a valid kind id counts as
+  `other` by the index and as a house by the list (the website reads it as a house).
 - **Found in kinds step 4 (S4b-BL-206, the phone, 2026-10-13): Room cannot restart at version 1 either, and the
   phone's houses must not move above the store.** Room goes to **version 12** (§6.2 *Room 12*): `MIGRATION_11_12`
   rewrites every house in place as a candidate (`kind`, `money_amount`, `money_cadence`, `extras`), and `HouseEntity`

@@ -17,6 +17,7 @@
  */
 
 import { Injectable, signal } from '@angular/core';
+import { HOUSE_KIND } from '../core/candidate';
 import type { HouseDto, StatsDto, VisitDto } from '../core/models';
 import { openLocalDb } from './local-db';
 import { withCandidateRows } from './candidate-rows';
@@ -57,6 +58,16 @@ const CURSOR_KEYS = [
   SETTING_KEYS.photoCursor,
   SETTING_KEYS.recordCursor,
 ] as const;
+
+/** The rows of the `houses` store by kind, as stored (tombstones included; a row without `kind` counted as a house); see {@link LocalStore.houseRowCounts}. */
+export interface HouseRowCounts {
+  readonly byKind: ReadonlyMap<string, number>;
+  /** Rows of a kind that was not asked for. */
+  readonly other: number;
+  readonly total: number;
+  /** Where the numbers came from: the index, or the loaded list when the index was missing. */
+  readonly source: 'index' | 'list';
+}
 
 /**
  * The primary store of the web app (S4-01, docs/11 §5.10).
@@ -199,6 +210,45 @@ export class LocalStore {
   /** Every house that is not deleted, in export order. */
   async liveHouses(): Promise<HouseRecord[]> {
     return sortByCreated((await this.rawHouses()).filter((h) => !h.deleted));
+  }
+
+  /**
+   * How many rows of `houses` each kind in `kinds` has, read from the `kind` index (IndexedDB version 5, S4b-BL-286)
+   * without loading a candidate. Rows are counted as stored, **tombstones included** (a deleted candidate keeps its row
+   * and its `kind`, and `deleted` is a boolean, which IndexedDB cannot index), so this is the size of a space's store, not
+   * its live count: a screen that shows live counts still reads the list. A row **without a usable `kind`** (one an
+   * interrupted version-4 upgrade left) is left out of the index by IndexedDB, so it is found as `total - indexed` and
+   * counted as a house, as {@link houseOfRow} reads it; `other` is the rows of a kind not in `kinds`. When the index is
+   * missing (a database a failed upgrade left at version 4) the same numbers are counted from the loaded list, so the
+   * answer never depends on the index being there.
+   */
+  async houseRowCounts(kinds: readonly string[]): Promise<HouseRowCounts> {
+    const db = await this.db();
+    const byKind = new Map<string, number>(kinds.map((k) => [k, 0]));
+    const add = (kind: string, n: number): boolean => {
+      if (!byKind.has(kind)) return false;
+      byKind.set(kind, (byKind.get(kind) ?? 0) + n);
+      return true;
+    };
+    try {
+      const total = await db.count('houses');
+      const indexed = await db.countIndexed('houses', 'kind');
+      let known = 0;
+      for (const kind of kinds) {
+        const n = await db.count('houses', 'kind', kind);
+        byKind.set(kind, n);
+        known += n;
+      }
+      const noKind = total - indexed;
+      const folded = noKind > 0 && add(HOUSE_KIND, noKind);
+      return { byKind, other: indexed - known + (folded ? 0 : noKind), total, source: 'index' };
+    } catch {
+      // Read through `withCandidateRows`: a house comes back without `kind`, a kind of another name with it.
+      const rows = await db.getAll<{ kind?: unknown }>('houses');
+      let other = 0;
+      for (const r of rows) if (!add(typeof r.kind === 'string' ? r.kind : HOUSE_KIND, 1)) other++;
+      return { byKind, other, total: rows.length, source: 'list' };
+    }
   }
 
   /** The stored houses with these ids, tombstones included, in one read; an unknown id adds nothing (the sync pull's merge). */

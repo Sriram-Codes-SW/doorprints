@@ -20,6 +20,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { errorMsg, isQuotaError } from '../core/format';
 import { BatchGuardError, DB_NAME, DB_VERSION, STORE_INDEXES, STORE_KEY_PATH, STORE_NAMES, openLocalDb } from './local-db';
 import type { OpenedDb } from './local-db';
+import { LocalStore } from './local-store.service';
 
 /**
  * The real IndexedDB code path of `local-db.ts` (`IdbDb`, `openLocalDb`), against a small fake of IndexedDB: jsdom has
@@ -166,12 +167,20 @@ class FakeObjectStore {
   }
 
   index(name: string) {
-    const rows = () => [...this.data.rows.values()] as Record<string, unknown>[];
+    if (!this.data.indexes.includes(name)) throw new DOMException(`The index ${name} does not exist`, 'NotFoundError');
+    // IndexedDB leaves a row out of an index whose property is not a valid key (absent, null, a boolean...).
+    const indexed = () => ([...this.data.rows.values()] as Record<string, unknown>[]).filter((r) => typeof r[name] === 'string' || typeof r[name] === 'number');
     return {
-      getAll: (value: unknown) => this.tx.run(() => ({ result: rows().filter((r) => r[name] === value) })),
-      count: (value: unknown) => this.tx.run(() => ({ result: rows().filter((r) => r[name] === value).length })),
+      getAll: (value: unknown) => this.tx.run(() => ({ result: indexed().filter((r) => r[name] === value) })),
+      count: (value?: unknown) => this.tx.run(() => ({ result: value === undefined ? indexed().length : indexed().filter((r) => r[name] === value).length })),
     };
   }
+}
+
+/** `IDBObjectStore.createIndex`: a second index of the same name is a `ConstraintError`. */
+function createIndexOn(data: StoreData, index: string): void {
+  if (data.indexes.includes(index)) throw new DOMException(`The index ${index} exists`, 'ConstraintError');
+  data.indexes.push(index);
 }
 
 class FakeDb {
@@ -191,7 +200,17 @@ class FakeDb {
   createObjectStore(name: string, options: { keyPath: string | string[] }) {
     const data: StoreData = { keyPath: options.keyPath, indexes: [], rows: new Map() };
     this.stores.set(name, data);
-    return { createIndex: (index: string) => void data.indexes.push(index) };
+    return { createIndex: (index: string) => createIndexOn(data, index) };
+  }
+
+  /** A deep copy of every store, to roll an aborted upgrade back to. */
+  snapshot(): Map<string, StoreData> {
+    return new Map([...this.stores].map(([n, d]) => [n, { keyPath: d.keyPath, indexes: [...d.indexes], rows: structuredClone(d.rows) }]));
+  }
+
+  restore(snap: Map<string, StoreData>): void {
+    this.stores.clear();
+    for (const [n, d] of snap) this.stores.set(n, d);
   }
 
   close(): void {
@@ -212,6 +231,8 @@ class FakeFactory {
   mode: OpenMode = 'ok';
   opened: { name: string; version: number }[] = [];
   upgrades: number[] = [];
+  /** A name (`createIndex:kind`, `put:houses`) whose upgrade call throws: the browser aborts the versionchange transaction. */
+  failUpgradeAt: string | null = null;
 
   open(name: string, version: number) {
     this.opened.push({ name, version });
@@ -238,26 +259,59 @@ class FakeFactory {
         return;
       }
       if (this.version < version) {
+        let aborted = false;
+        const before = this.db.snapshot();
+        const abort = (err: unknown): void => {
+          if (aborted) return;
+          aborted = true;
+          // The browser aborts the versionchange transaction: every store, index and row is as it was, the version is the old one.
+          this.db.restore(before);
+          request.error = err as DOMException;
+          request.onerror?.();
+        };
+        const fail = (what: string): void => {
+          if (this.failUpgradeAt === what) throw new DOMException(`injected failure at ${what}`, 'UnknownError');
+        };
         request.transaction = {
           objectStore: (n: string) => {
             const data = this.db.stores.get(n)!;
             return {
-              createIndex: (index: string) => void data.indexes.push(index),
+              createIndex: (index: string) => {
+                fail(`createIndex:${index}`);
+                createIndexOn(data, index);
+              },
               // The versionchange transaction's reads and writes (the version-4 step): the request answers at once.
               getAll: () => {
                 const read = { result: [...data.rows.values()], onsuccess: null as (() => void) | null };
-                queueMicrotask(() => read.onsuccess?.());
+                queueMicrotask(() => {
+                  try {
+                    read.onsuccess?.();
+                  } catch (err: unknown) {
+                    abort(err); // an exception in a request callback aborts the versionchange transaction
+                  }
+                });
                 return read;
               },
-              put: (value: { id: string }) => void data.rows.set(value.id, structuredClone(value)),
+              put: (value: { id: string }) => {
+                fail(`put:${n}`);
+                data.rows.set(value.id, structuredClone(value));
+              },
             };
           },
         };
         this.upgrades.push(this.version);
-        request.onupgradeneeded?.({ oldVersion: this.version });
-        this.version = version;
+        try {
+          request.onupgradeneeded?.({ oldVersion: this.version });
+        } catch (err: unknown) {
+          abort(err);
+          return;
+        }
         // The open succeeds once the versionchange transaction has ended: after the upgrade's own requests.
-        queueMicrotask(() => request.onsuccess?.());
+        queueMicrotask(() => {
+          if (aborted) return;
+          this.version = version;
+          request.onsuccess?.();
+        });
         return;
       }
       request.onsuccess?.();
@@ -314,12 +368,12 @@ describe('openLocalDb against a fake IndexedDB', () => {
     expect(await opened.db.get('houses', 'h1')).toEqual({ id: 'h1', kind: 'house', label: 'Kept', checklist: {}, deleted: false, syncVersion: 0, dirty: false });
   });
 
-  it('does not upgrade a database that is already at version 4', async () => {
+  it('does not upgrade a database that is already at version 5', async () => {
     const factory = versionTwo();
     await open(factory);
     const again = new FakeFactory();
     again.db = factory.db;
-    again.version = 4;
+    again.version = 5;
     await open(again);
     expect(again.upgrades).toEqual([]);
   });
@@ -328,6 +382,7 @@ describe('openLocalDb against a fake IndexedDB', () => {
     const factory = versionTwo();
     await open(factory);
     const houses = factory.db.stores.get('houses')!;
+    houses.indexes.length = 0; // a version-3 browser has no kind index; the upgrade adds it
     houses.rows.set('h1', { id: 'h1', label: 'Sea View', lat: 13.05, lon: 80.28, status: 'NEW', price: 1250000, priceType: 'SALE', bedrooms: 3, checklist: {}, deleted: false, syncVersion: 2, dirty: true });
     const again = new FakeFactory();
     again.db = factory.db;
@@ -541,5 +596,169 @@ describe('the IndexedDB wrapper: several stores, one transaction', () => {
     await expect(db.clear()).rejects.toThrow();
     expect(STORE_NAMES.map((n) => [n, [...factory.db.stores.get(n)!.rows.keys()]])).toEqual(before);
     expect(before.slice(0, 3).every(([, keys]) => keys.length > 0)).toBe(true);
+  });
+});
+
+/**
+ * Version 5 (S4b-BL-286): the `kind` index on `houses`. The migration only ADDS the index; these specs open a realistic
+ * version-4 database and prove every row of every store is byte-identical afterwards, that an upgrade that fails halfway
+ * loses nothing and is retried by the next open, and that the per-kind counts read from the index equal the list's.
+ */
+describe('the version-5 upgrade: an index on houses.kind', () => {
+  const house = (id: string, over: Record<string, unknown> = {}) => ({
+    id, kind: 'house', label: `H ${id}`, lat: 13, lon: 80, status: 'NEW', money: { amount: 1000, cadence: 'month' }, extras: { bedrooms: 2 },
+    checklist: {}, createdAt: '2026-09-01T10:00:00.000Z', updatedAt: '2026-09-02T10:00:00.000Z', deleted: false, syncVersion: 3, dirty: false, ...over,
+  });
+
+  /** A browser that holds the version-4 database (no kind index) with a bit of everything in every store. */
+  function versionFour(): FakeFactory {
+    const factory = new FakeFactory();
+    const db = factory.db;
+    db.createObjectStore('houses', { keyPath: 'id' });
+    db.createObjectStore('visits', { keyPath: 'id' }).createIndex('houseId');
+    db.createObjectStore('photos', { keyPath: 'id' }).createIndex('houseId');
+    db.createObjectStore('settings', { keyPath: 'key' });
+    db.createObjectStore('records', { keyPath: ['type', 'id'] }).createIndex('type');
+    db.createObjectStore('trace_points', { keyPath: 'id' }).createIndex('walk');
+    db.createObjectStore('saved_walks', { keyPath: 'id' }).createIndex('houseId');
+    const put = (store: string, key: string, row: unknown) => void db.stores.get(store)!.rows.set(key, row);
+    put('houses', 'h1', house('h1'));
+    put('houses', 'h2', house('h2', { kind: 'school', extras: { board: 'CBSE' } }));
+    put('houses', 'h3', house('h3', { deleted: true, dirty: true })); // a tombstone keeps its kind
+    put('houses', 'h4', house('h4', { kind: 'school', deleted: true }));
+    put('houses', 'h5', house('h5', { kind: 'school' }));
+    const { kind: _k, ...bare } = house('h6'); // a row stored without `kind` (an interrupted version-4 upgrade)
+    put('houses', 'h6', bare);
+    put('houses', 'h7', house('h7', { kind: 'garage' })); // a kind this build does not list
+    put('visits', 'v1', { id: 'v1', houseId: 'h1', lat: 1, lon: 2, arrivedAt: '2026-09-02T09:00:00.000Z', source: 'MANUAL', deleted: false, syncVersion: 0, dirty: false });
+    put('photos', 'p1', { id: 'p1', houseId: 'h1', blob: new Uint8Array([1, 2, 3, 255]), mime: 'image/jpeg', deleted: false, updatedAt: '2026-09-02T09:00:00.000Z' });
+    put('photos', 'p2', { id: 'p2', houseId: 'h3', blob: null, deleted: true, updatedAt: '2026-09-03T09:00:00.000Z' });
+    put('settings', 'cursor', { key: 'cursor', value: '42' });
+    put('records', 'broker\u0000b1', { type: 'broker', id: 'b1', payload: { name: 'Asha' }, deleted: false });
+    put('trace_points', '7-1', { id: '7-1', walk: 7, at: 1 });
+    put('saved_walks', 'w1', { id: 'w1', houseId: 'h1', points: [[1, 2], [3, 4]] });
+    factory.version = 4;
+    return factory;
+  }
+
+  /** Every store's rows, deep-copied, in key order: what "byte-identical" compares. */
+  const rowsOf = (factory: FakeFactory) =>
+    Object.fromEntries([...factory.db.stores].map(([name, d]) => [name, [...d.rows].sort(([a], [b]) => (a < b ? -1 : 1)).map(([k, v]) => [k, structuredClone(v)])]));
+  const bytes = (rows: unknown) => JSON.stringify(rows, (_k, v) => (v instanceof Uint8Array ? { u8: [...v] } : v));
+
+  it('adds the kind index to a version-4 database and changes no row of any store (houses, tombstones, photos, saved walks, rows without kind)', async () => {
+    const factory = versionFour();
+    const before = rowsOf(factory);
+    const shapeBefore = factory.db.shape();
+    const opened = await open(factory);
+    expect(opened.problem).toBeNull();
+    expect(factory.upgrades).toEqual([4]);
+    expect(factory.db.stores.get('houses')!.indexes).toEqual(['kind']);
+    const after = rowsOf(factory);
+    expect(after).toEqual(before);
+    expect(bytes(after)).toBe(bytes(before));
+    // The version-4 step did not run: the row without kind is still without kind.
+    expect('kind' in (factory.db.stores.get('houses')!.rows.get('h6') as object)).toBe(false);
+    // Nothing but that index differs in the shape.
+    expect(factory.db.shape()).toEqual({ ...shapeBefore, houses: { keyPath: 'id', indexes: ['kind'] } });
+  });
+
+  it('counts each kind from the index and equals the count from the loaded list, rows without kind and unknown kinds apart, tombstones included', async () => {
+    const factory = versionFour();
+    install(factory);
+    const store = new LocalStore();
+    await store.ready();
+    const viaIndex = await store.houseRowCounts(['house', 'school']);
+    expect(viaIndex.source).toBe('index');
+    expect(viaIndex).toMatchObject({ other: 1, total: 7 }); // h7 is a garage
+    expect([...viaIndex.byKind]).toEqual([['house', 3], ['school', 3]]); // h1, h3 (a tombstone), and h6 (no kind, read as a house)
+    // The same store with the index gone (a database a failed upgrade left at version 4): counted from the list.
+    factory.db.stores.get('houses')!.indexes.length = 0;
+    const viaList = await store.houseRowCounts(['house', 'school']);
+    expect(viaList.source).toBe('list');
+    expect({ ...viaList, source: 'index' }).toEqual(viaIndex);
+    // Live candidates: the rows minus the tombstones, as the list reads them.
+    const live = (await store.liveHouses()).map((h) => h.id).sort();
+    expect(live).toEqual(['h1', 'h2', 'h5', 'h6', 'h7']);
+  });
+
+  it('reads the same counts from the in-memory stand-in (no IndexedDB): the index path works there too', async () => {
+    vi.stubGlobal('indexedDB', undefined);
+    const store = new LocalStore();
+    await store.ready();
+    await store.saveHouse({ id: 'a', label: 'A', lat: 1, lon: 2, status: 'NEW', checklist: {}, deleted: false, syncVersion: 0 });
+    const counts = await store.houseRowCounts(['house', 'school']);
+    expect(counts).toMatchObject({ total: 1, other: 0, source: 'index' });
+    expect([...counts.byKind]).toEqual([['house', 1], ['school', 0]]);
+  });
+
+  it('an index that cannot be created aborts the whole upgrade: version, rows and stores stay as they were, and the next open retries', async () => {
+    const factory = versionFour();
+    const before = rowsOf(factory);
+    const shapeBefore = factory.db.shape();
+    factory.failUpgradeAt = 'createIndex:kind';
+    const opened = await open(factory);
+    expect(opened.db.kind).toBe('memory'); // the app runs from memory with its warning, as for any failed open
+    expect(opened.problem).toBe('blocked');
+    expect(factory.version).toBe(4);
+    expect(bytes(rowsOf(factory))).toBe(bytes(before));
+    expect(factory.db.shape()).toEqual(shapeBefore);
+    // The browser recovers (quota freed, the other tab gone): the next open upgrades, with every row still there.
+    factory.failUpgradeAt = null;
+    const retry = await open(factory);
+    expect(retry.db.kind).toBe('indexeddb');
+    expect(factory.version).toBe(5);
+    expect(factory.db.stores.get('houses')!.indexes).toEqual(['kind']);
+    expect(bytes(rowsOf(factory))).toBe(bytes(before));
+  });
+
+  it('a version-3 database that fails at the kind index loses nothing, not even the candidate rewrite it would have made', async () => {
+    const factory = versionFour();
+    const houses = factory.db.stores.get('houses')!;
+    houses.rows.clear();
+    houses.rows.set('h1', { id: 'h1', label: 'Old', lat: 1, lon: 2, status: 'NEW', price: 5, priceType: 'SALE', checklist: {}, deleted: false, syncVersion: 1, dirty: false });
+    factory.version = 3;
+    const before = rowsOf(factory);
+    factory.failUpgradeAt = 'createIndex:kind';
+    await open(factory);
+    expect(factory.version).toBe(3);
+    expect(bytes(rowsOf(factory))).toBe(bytes(before));
+    factory.failUpgradeAt = null;
+    const opened = await open(factory);
+    expect(opened.db.kind).toBe('indexeddb');
+    expect(factory.upgrades).toEqual([3, 3]);
+    // Both steps ran on the retry: the row is a candidate now and the index counts it.
+    expect(await opened.db.count('houses', 'kind', 'house')).toBe(1);
+  });
+
+  it('a failure while rewriting rows (version 3) also leaves the old version, rows and no index', async () => {
+    const factory = versionFour();
+    factory.version = 3;
+    const before = rowsOf(factory);
+    factory.failUpgradeAt = 'put:houses';
+    await open(factory);
+    expect(factory.version).toBe(3);
+    expect(bytes(rowsOf(factory))).toBe(bytes(before));
+    expect(factory.db.stores.get('houses')!.indexes).toEqual([]);
+  });
+
+  it('a fresh install has the index from the start and counts zero', async () => {
+    const factory = new FakeFactory();
+    const opened = await open(factory);
+    expect(factory.db.stores.get('houses')!.indexes).toEqual(['kind']);
+    expect(await opened.db.count('houses', 'kind', 'house')).toBe(0);
+    expect(await opened.db.countIndexed('houses', 'kind')).toBe(0);
+    await opened.db.put('houses', { id: 'x', kind: 'house' });
+    await opened.db.put('houses', { id: 'y' });
+    expect(await opened.db.count('houses')).toBe(2);
+    expect(await opened.db.countIndexed('houses', 'kind')).toBe(1); // a row without kind is not in the index
+  });
+
+  it('opening twice upgrades once: a second open at version 5 does not create the index again', async () => {
+    const factory = versionFour();
+    await open(factory);
+    const opened = await open(factory);
+    expect(opened.db.kind).toBe('indexeddb');
+    expect(factory.upgrades).toEqual([4]);
   });
 });

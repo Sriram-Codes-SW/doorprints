@@ -1,0 +1,38 @@
+{
+  "spec": [
+    "web/src/app/data/local-db-idb.spec.ts",
+    "web/src/app/data/local-db.spec.ts"
+  ],
+  "mutations": [
+    {
+      "file": "web/src/app/data/local-db.ts",
+      "find": "export const DB_VERSION = 5;",
+      "replace": "export const DB_VERSION = 4;",
+      "expect": "is at version 5"
+    },
+    {
+      "file": "web/src/app/data/local-db.ts",
+      "find": "  if (oldVersion < 5) {",
+      "replace": "  if (oldVersion < 4) {",
+      "expect": "adds the kind index to a version-4 database"
+    },
+    {
+      "file": "web/src/app/data/local-db.ts",
+      "find": "tx.objectStore('houses').createIndex('kind', 'kind');",
+      "replace": "tx.objectStore('houses').createIndex('kind', 'label');",
+      "expect": "indexes every store the way the wrapper expects"
+    },
+    {
+      "file": "web/src/app/data/local-store.service.ts",
+      "find": "const noKind = total - indexed;",
+      "replace": "const noKind = 0;",
+      "expect": "counts each kind from the index and equals the count from the loaded list"
+    },
+    {
+      "file": "web/src/app/data/local-store.service.ts",
+      "find": "return { byKind, other, total: rows.length, source: 'list' };",
+      "replace": "return { byKind, other: 0, total: rows.length, source: 'list' };",
+      "expect": "counts each kind from the index and equals the count from the loaded list"
+    }
+  ]
+}
