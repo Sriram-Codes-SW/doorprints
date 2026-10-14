@@ -95,7 +95,10 @@ fun PathTraceSection(settings: AppSettings) {
     val platform = LocalPlatformServices.current
     val features = LocalPlatformFeatures.current
     val scope = rememberCoroutineScope()
-    val track by repo.trackPoints.collectAsStateWithLifecycle(initialValue = emptyList())
+    // One flow for the section's lifetime: `trackPoints` builds a new query (and a new 30-day window) on each read, so
+    // reading it in the body would restart the query on every recomposition, including the one the clear itself causes.
+    val trackFlow = remember(repo) { repo.trackPoints }
+    val track by trackFlow.collectAsStateWithLifecycle(initialValue = emptyList())
     val savedCount by repo.savedWalkCount.collectAsStateWithLifecycle(initialValue = 0)
     var cleared by remember { mutableStateOf(false) }
     var confirmDeleteAll by remember { mutableStateOf(false) }

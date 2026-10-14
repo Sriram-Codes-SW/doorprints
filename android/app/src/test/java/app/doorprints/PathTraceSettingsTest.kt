@@ -26,6 +26,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOff
@@ -164,9 +165,16 @@ class PathTraceSettingsTest {
     @Test fun clearThePathClearsOnlyTheThirtyDayTraceAndSaysSo() {
         runBlocking { repo.saveTrackPoint(TrackPointEntity(at = System.currentTimeMillis(), lat = 12.97, lon = 77.64, accuracyM = 8f)) }
         show()
-        compose.onNodeWithText("Clears the walks kept for 30 days. Saved walks stay until you delete them.").performScrollTo().assertExists()
+        // The trace arrives from a Room query on its own thread: wait for it (the button and its hint show only while
+        // there is one) instead of asserting at once, then wait for the clear (a delete on that thread, then the
+        // confirmation in place of the button) with the same 5 s that every other wait in this class uses.
+        val hint = "Clears the walks kept for 30 days. Saved walks stay until you delete them."
+        waitFor(hint)
+        compose.onNodeWithText(hint).performScrollTo().assertExists()
         compose.onNodeWithText("Clear the path").performScrollTo().performClick()
         waitFor("The path is cleared.")
+        compose.onAllNodesWithText("Clear the path").assertCountEquals(0)
+        assertEquals(0, runBlocking { repo.trackPoints.first().size })
     }
 
     @Test fun theTransferNoteIsShownOnAndroid() {
