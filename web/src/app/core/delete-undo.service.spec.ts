@@ -105,6 +105,36 @@ describe('DeleteUndoService', () => {
       expect(said).toHaveBeenCalledWith({ key: 'delete.restored', params: { name: 'Blue gate' } });
     });
 
+    it('removeMany: many at once with one Undo that brings every one back with its photos', async () => {
+      await store.saveHouse(house('a'), T0 - DAY);
+      await store.saveHouse(house('b'), T0 - DAY);
+      await store.saveHouse(house('c'), T0 - DAY);
+      await store.photos.add('a', jpeg(), 'p1', T0 - DAY);
+      await store.photos.add('b', jpeg(), 'p2', T0 - DAY);
+      expect(await service.removeMany(['a', 'b'], 'Houses')).toBe(2);
+      expect((await store.liveHouses()).map((h) => h.id)).toEqual(['c']);
+      expect(service.offer()).toEqual({ id: 'a', name: '2', ids: ['a', 'b'], kindWords: 'Houses' });
+      expect(syncSoon).toHaveBeenCalledTimes(1);
+      vi.setSystemTime(T0 + 2000);
+      const said = vi.spyOn(TestBed.inject(Announcer), 'announce');
+      await service.undo();
+      expect((await store.liveHouses()).map((h) => h.id).sort()).toEqual(['a', 'b', 'c']);
+      expect(await store.photos.ofHouse('a')).toHaveLength(1);
+      expect(await store.photos.ofHouse('b')).toHaveLength(1);
+      expect(said).toHaveBeenCalledWith({ key: 'delete.restoredMany', params: { n: 2, kind: 'Houses' } });
+    });
+
+    it('removeMany of nothing live offers nothing, and after ten seconds the many stay in the list', async () => {
+      expect(await service.removeMany(['nope'], 'Houses')).toBe(0);
+      expect(service.offer()).toBeNull();
+      await store.saveHouse(house('a'), T0 - DAY);
+      await store.saveHouse(house('b'), T0 - DAY);
+      await service.removeMany(['a', 'b'], 'Houses');
+      await vi.advanceTimersByTimeAsync(UNDO_MS);
+      expect(service.offer()).toBeNull();
+      expect((await service.bin(T0 + UNDO_MS)).map((e) => e.id).sort()).toEqual(['a', 'b']);
+    });
+
     it('Undo after the time is up does nothing', async () => {
       await store.saveHouse(house('h1'), T0 - DAY);
       await service.remove('h1', 'Blue gate');

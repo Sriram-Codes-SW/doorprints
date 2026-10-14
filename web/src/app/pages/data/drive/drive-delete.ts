@@ -44,6 +44,8 @@ export class DriveDeleteCard implements OnInit {
   private readonly service = inject(DriveConnectService);
 
   protected readonly busy = signal(false);
+  /** The deletion in view is *everything*: it takes every kind, not only the space on screen (deletion safeguards PR 2). */
+  protected readonly allKinds = signal(false);
   protected readonly phase = signal<Phase>('menu');
   protected readonly tickBoxRequired = signal(false);
   protected readonly ticked = signal(false);
@@ -79,6 +81,7 @@ export class DriveDeleteCard implements OnInit {
     this.busy.set(true);
     this.error.set(null);
     this.currentAction = action;
+    this.allKinds.set(action.type === 'everything');
     try {
       const preflight = await this.service.deletePlan(action);
       if (!preflight.ok) {

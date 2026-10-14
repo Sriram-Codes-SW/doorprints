@@ -1,7 +1,7 @@
 {
  "format": "doorprints-delete-scope-vectors/1",
  "status": "proposed",
- "note": "The blast-radius invariant of deleting ONE candidate (deletion safeguards, docs/03 18.12, docs/02 T-D, S4b-BL-287): an action in one space (delete, undo, restore from Recently deleted, the list) writes only that candidate's row and never touches another row, whatever its kind. Each case seeds rows, runs steps and names the expected rows; 'unchanged' lists the rows that must be byte-identical before and after. 'at' is the injected clock (ISO); an action stamps updatedAt = max(at, previous updatedAt + 1 ms). The list ('bin') is deleted && updatedAt > now - 30 days, in the case's space (spaceOf: a row with no kind is a house, a kind with no space in 'available' is the default space's; with 'multi' false every tombstone is the one space's), newest updatedAt first, ties by id. Row fields: id, kind (absent = house), label, deleted, dirty, updatedAt. Read today by web delete-scope-vectors.spec.ts; the phones (CommonRepositoryTest) and the server (HouseServiceTest) read it in their own pull requests (S4b-BL-287).",
+ "note": "The blast-radius invariant of deleting ONE candidate (deletion safeguards, docs/03 18.12, docs/02 T-D, S4b-BL-287): an action in one space (delete, undo, restore from Recently deleted, the list, and 'deleteSpace': Delete all in this space, whose 'id' is the space's kind) writes only that candidate's row and never touches another row, whatever its kind. Each case seeds rows, runs steps and names the expected rows; 'unchanged' lists the rows that must be byte-identical before and after. 'at' is the injected clock (ISO); an action stamps updatedAt = max(at, previous updatedAt + 1 ms). The list ('bin') is deleted && updatedAt > now - 30 days, in the case's space (spaceOf: a row with no kind is a house, a kind with no space in 'available' is the default space's; with 'multi' false every tombstone is the one space's), newest updatedAt first, ties by id. Row fields: id, kind (absent = house), label, deleted, dirty, updatedAt. Read today by web delete-scope-vectors.spec.ts; the phones (CommonRepositoryTest) and the server (HouseServiceTest) read it in their own pull requests (S4b-BL-287).",
  "cases": [
   {
    "name": "delete a school: the other school and both houses are byte-identical",
@@ -716,6 +716,241 @@
      "h-nokind",
      "h-live",
      "s-live"
+    ]
+   }
+  },
+  {
+   "name": "delete all in the school space: only the live schools are tombstoned, in one batch; the houses, the clinic and the old school tombstone are byte-identical",
+   "space": "school",
+   "multi": true,
+   "default": "house",
+   "available": [
+    "house",
+    "school"
+   ],
+   "seed": [
+    {
+     "id": "h1",
+     "label": "h1",
+     "deleted": false,
+     "dirty": false,
+     "updatedAt": "2026-10-01T09:00:00.000Z"
+    },
+    {
+     "id": "h2",
+     "kind": "house",
+     "label": "h2",
+     "deleted": false,
+     "dirty": false,
+     "updatedAt": "2026-10-02T09:00:00.000Z"
+    },
+    {
+     "id": "s1",
+     "kind": "school",
+     "label": "s1",
+     "deleted": false,
+     "dirty": false,
+     "updatedAt": "2026-10-03T09:00:00.000Z"
+    },
+    {
+     "id": "s2",
+     "kind": "school",
+     "label": "s2",
+     "deleted": false,
+     "dirty": false,
+     "updatedAt": "2026-10-04T09:00:00.000Z"
+    },
+    {
+     "id": "s3",
+     "kind": "school",
+     "label": "s3",
+     "deleted": true,
+     "dirty": false,
+     "updatedAt": "2026-10-05T09:00:00.000Z"
+    },
+    {
+     "id": "c1",
+     "kind": "clinic",
+     "label": "c1",
+     "deleted": false,
+     "dirty": false,
+     "updatedAt": "2026-10-06T09:00:00.000Z"
+    }
+   ],
+   "steps": [
+    {
+     "op": "deleteSpace",
+     "id": "school",
+     "at": "2026-10-14T12:00:00.000Z"
+    }
+   ],
+   "expect": {
+    "rows": [
+     {
+      "id": "h1",
+      "kind": "house",
+      "deleted": false,
+      "dirty": false,
+      "updatedAt": "2026-10-01T09:00:00.000Z"
+     },
+     {
+      "id": "h2",
+      "kind": "house",
+      "deleted": false,
+      "dirty": false,
+      "updatedAt": "2026-10-02T09:00:00.000Z"
+     },
+     {
+      "id": "s1",
+      "kind": "school",
+      "deleted": true,
+      "dirty": true,
+      "updatedAt": "2026-10-14T12:00:00.000Z"
+     },
+     {
+      "id": "s2",
+      "kind": "school",
+      "deleted": true,
+      "dirty": true,
+      "updatedAt": "2026-10-14T12:00:00.000Z"
+     },
+     {
+      "id": "s3",
+      "kind": "school",
+      "deleted": true,
+      "dirty": false,
+      "updatedAt": "2026-10-05T09:00:00.000Z"
+     },
+     {
+      "id": "c1",
+      "kind": "clinic",
+      "deleted": false,
+      "dirty": false,
+      "updatedAt": "2026-10-06T09:00:00.000Z"
+     }
+    ],
+    "unchanged": [
+     "h1",
+     "h2",
+     "s3",
+     "c1"
+    ]
+   }
+  },
+  {
+   "name": "delete all in the house space: the houses and the clinic (a kind with no space belongs to the default space) go; the schools are byte-identical",
+   "space": "house",
+   "multi": true,
+   "default": "house",
+   "available": [
+    "house",
+    "school"
+   ],
+   "seed": [
+    {
+     "id": "h1",
+     "label": "h1",
+     "deleted": false,
+     "dirty": false,
+     "updatedAt": "2026-10-01T09:00:00.000Z"
+    },
+    {
+     "id": "h2",
+     "kind": "house",
+     "label": "h2",
+     "deleted": false,
+     "dirty": false,
+     "updatedAt": "2026-10-02T09:00:00.000Z"
+    },
+    {
+     "id": "s1",
+     "kind": "school",
+     "label": "s1",
+     "deleted": false,
+     "dirty": false,
+     "updatedAt": "2026-10-03T09:00:00.000Z"
+    },
+    {
+     "id": "s2",
+     "kind": "school",
+     "label": "s2",
+     "deleted": false,
+     "dirty": false,
+     "updatedAt": "2026-10-04T09:00:00.000Z"
+    },
+    {
+     "id": "s3",
+     "kind": "school",
+     "label": "s3",
+     "deleted": true,
+     "dirty": false,
+     "updatedAt": "2026-10-05T09:00:00.000Z"
+    },
+    {
+     "id": "c1",
+     "kind": "clinic",
+     "label": "c1",
+     "deleted": false,
+     "dirty": false,
+     "updatedAt": "2026-10-06T09:00:00.000Z"
+    }
+   ],
+   "steps": [
+    {
+     "op": "deleteSpace",
+     "id": "house",
+     "at": "2026-10-14T12:00:00.000Z"
+    }
+   ],
+   "expect": {
+    "rows": [
+     {
+      "id": "h1",
+      "kind": "house",
+      "deleted": true,
+      "dirty": true,
+      "updatedAt": "2026-10-14T12:00:00.000Z"
+     },
+     {
+      "id": "h2",
+      "kind": "house",
+      "deleted": true,
+      "dirty": true,
+      "updatedAt": "2026-10-14T12:00:00.000Z"
+     },
+     {
+      "id": "s1",
+      "kind": "school",
+      "deleted": false,
+      "dirty": false,
+      "updatedAt": "2026-10-03T09:00:00.000Z"
+     },
+     {
+      "id": "s2",
+      "kind": "school",
+      "deleted": false,
+      "dirty": false,
+      "updatedAt": "2026-10-04T09:00:00.000Z"
+     },
+     {
+      "id": "s3",
+      "kind": "school",
+      "deleted": true,
+      "dirty": false,
+      "updatedAt": "2026-10-05T09:00:00.000Z"
+     },
+     {
+      "id": "c1",
+      "kind": "clinic",
+      "deleted": true,
+      "dirty": true,
+      "updatedAt": "2026-10-14T12:00:00.000Z"
+     }
+    ],
+    "unchanged": [
+     "s1",
+     "s2",
+     "s3"
     ]
    }
   }

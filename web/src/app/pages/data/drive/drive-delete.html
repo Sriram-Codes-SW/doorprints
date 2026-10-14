@@ -48,6 +48,9 @@
     <div>
       <h3>{{ 'driveDelete.planHeading' | t }}</h3>
       <p>{{ 'driveDelete.planWarning' | t }}</p>
+      @if (allKinds()) {
+        <p id="drive-delete-all-kinds" class="warn-box">{{ 'driveDelete.allKinds' | t }}</p>
+      }
       <p><a href="#export-heading">{{ 'driveDelete.saveCopyFirst' | t }}</a></p>
       <div class="actions">
         <button type="button" class="btn btn-primary" (click)="proceedToConfirm()" [disabled]="busy()">
@@ -62,6 +65,9 @@
     <div class="confirm-box" role="dialog" aria-labelledby="delete-confirm-title">
       <h3 id="delete-confirm-title">{{ 'driveDelete.confirmHeading' | t }}</h3>
       <p>{{ 'driveDelete.confirmWarning' | t }}</p>
+      @if (allKinds()) {
+        <p class="warn-box">{{ 'driveDelete.allKinds' | t }}</p>
+      }
       <p><a href="#export-heading">{{ 'driveDelete.saveCopyFirst' | t }}</a></p>
       @if (tickBoxRequired()) {
         <label class="checkbox">

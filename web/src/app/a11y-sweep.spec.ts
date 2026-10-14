@@ -255,6 +255,21 @@ const confirmOpen: Case['render'] = async (lang) => {
   return { fixture: fixture as ComponentFixture<unknown>, page: false };
 };
 
+/** The confirm dialog of *Delete all in this space* over ten rows: the tick box, *Save a copy first*, Cancel and the danger button. */
+const confirmSpaceOpen: Case['render'] = async (lang) => {
+  TestBed.resetTestingModule();
+  TestBed.configureTestingModule({ imports: [ConfirmDialog], providers: [provideRouter([])] });
+  await TestBed.inject(TranslationService).setLang(lang);
+  const fixture = TestBed.createComponent(ConfirmDialog);
+  await settle(fixture as ComponentFixture<unknown>);
+  void TestBed.inject(ConfirmService).choose(
+    { key: 'delete.spaceConfirm', params: { n: '12', kind: 'Houses' } },
+    { confirmKey: 'delete.spaceDo', altKey: 'driveDelete.saveCopyFirst', danger: true, focusCancel: true, tickKey: 'driveDelete.confirmCheckbox' },
+  );
+  await settle(fixture as ComponentFixture<unknown>);
+  return { fixture: fixture as ComponentFixture<unknown>, page: false };
+};
+
 const boom = () => throwError(() => new Error('boom'));
 const EMPTY = fakeApi({ houses: () => of([]), brokers: () => of([]), viewings: () => of([]), viewingRows: () => of([]), viewingsOf: () => of([]) });
 const BROKEN = fakeApi({ houses: boom, brokers: boom, viewings: boom, scoring: boom, questions: boom, questionRows: boom, criterionRows: boom, stats: boom });
@@ -382,6 +397,7 @@ const CASES: Case[] = [
   { name: 'Offline maps card (areas saved)', render: offline(OfflineAreasCard, false) },
   { name: 'Offline maps dialog (open)', render: offline(OfflineSave, true) },
   { name: 'Confirm dialog (open)', render: confirmOpen },
+  { name: 'Confirm dialog (Delete all in this space, tick box)', render: confirmSpaceOpen },
   { name: 'Plan', render: page(PlanPage) },
   { name: 'Broker', render: page(BrokerPage, { params: { id: 'b1' } }) },
   { name: 'Map (list, filters)', render: async (lang) => {
@@ -625,6 +641,32 @@ describe('focus, language, announcements and the page shell (TC-U-WEB-A11Y-6)', 
     await settle(fixture as ComponentFixture<unknown>);
     expect(document.activeElement).toBe(opener);
     opener.remove();
+  });
+
+  it('the dialog of Delete all in this space starts on Cancel, and Delete all waits for the tick box', async () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ imports: [ConfirmDialog], providers: [provideRouter([])] });
+    await TestBed.inject(TranslationService).setLang('en');
+    const fixture = TestBed.createComponent(ConfirmDialog);
+    await settle(fixture as ComponentFixture<unknown>);
+    const answer = TestBed.inject(ConfirmService).choose(
+      { key: 'delete.spaceConfirm', params: { n: '12', kind: 'Houses' } },
+      { confirmKey: 'delete.spaceDo', altKey: 'driveDelete.saveCopyFirst', danger: true, focusCancel: true, tickKey: 'driveDelete.confirmCheckbox' },
+    );
+    await settle(fixture as ComponentFixture<unknown>);
+    const root = fixture.nativeElement as HTMLElement;
+    // With a safer button present, focus still starts on Cancel.
+    expect(document.activeElement?.textContent?.trim()).toBe('Cancel');
+    const buttons = [...root.querySelectorAll('button')];
+    expect(buttons.map((b) => b.textContent?.trim())).toEqual(['Cancel', 'Save a copy first', 'Delete all']);
+    const del = buttons[2];
+    const tick = q<HTMLInputElement>(root, 'input[type="checkbox"]');
+    expect(del.disabled).toBe(true);
+    tick.click();
+    await settle(fixture as ComponentFixture<unknown>);
+    expect(del.disabled).toBe(false);
+    del.click();
+    expect(await answer).toBe('confirm');
   });
 
   it('saving a house with a floor out of range keeps the page, shows the message and puts focus in the field', async () => {

@@ -34,6 +34,10 @@ export const UNDO_MS = 10_000;
 export interface UndoOffer {
   readonly id: string;
   readonly name: string;
+  /** Every id the delete took, when it was *Delete all in this space* (absent for one candidate). */
+  readonly ids?: readonly string[];
+  /** The words for the kind in the plural ("houses"), for the many-candidates message. */
+  readonly kindWords?: string;
 }
 
 /** One line of *Recently deleted*: a tombstone of this space, with what is known of its photos. */
@@ -90,17 +94,42 @@ export class DeleteUndoService {
     this.arm();
   }
 
-  /** Takes the last delete back: the candidate, and its photos from the copies. A no-op after the time is up. */
+  /**
+   * *Delete all in this space* (Settings > What you track): tombstones the given candidates in ONE batch and offers one
+   * *Undo* for all of them. The caller names the ids of that space only (the card's kind); this never reads another row.
+   * Returns how many were deleted.
+   */
+  async removeMany(ids: readonly string[], kindWords: string): Promise<number> {
+    const photos: PhotoRecord[] = [];
+    for (const id of ids) photos.push(...(await this.store.photos.ofHouse(id)));
+    const gone = await this.store.deleteHouses(ids);
+    if (!gone.length) return 0;
+    this.sync.syncSoon();
+    await this.noteMany(gone.map((id) => [id, photos.filter((p) => p.houseId === id).length] as const));
+    this.held = photos.filter((p) => gone.includes(p.houseId));
+    this.offer.set({ id: gone[0], name: String(gone.length), ids: gone, kindWords });
+    this.arm();
+    return gone.length;
+  }
+
+  /** Takes the last delete back: the candidate(s), and the photos from the copies. A no-op after the time is up. */
   async undo(): Promise<void> {
     const offer = this.offer();
     if (!offer) return;
     const held = this.held;
     this.dismiss();
-    const result = await this.store.restoreHouse(offer.id, Date.now(), held);
-    if (!result) return;
-    await this.note(offer.id, 0);
+    const ids = offer.ids ?? [offer.id];
+    let back = 0;
+    for (const id of ids) {
+      const result = await this.store.restoreHouse(id, Date.now(), held.filter((p) => p.houseId === id));
+      if (result) back++;
+    }
+    if (!back) return;
+    await this.noteMany(ids.map((id) => [id, 0] as const));
     this.sync.syncSoon();
-    this.announcer.announce({ key: 'delete.restored', params: { name: offer.name } });
+    this.announcer.announce(
+      offer.ids ? { key: 'delete.restoredMany', params: { n: back, kind: offer.kindWords ?? '' } } : { key: 'delete.restored', params: { name: offer.name } },
+    );
   }
 
   /** Hides the offer and drops the copies. */
@@ -140,6 +169,14 @@ export class DeleteUndoService {
     this.sync.syncSoon();
     const had = Math.max(entry.photos, result.photosBack + result.photosGone);
     return { name: entry.name, photosGone: had - result.photosBack };
+  }
+
+  /** {@link note} for many at once: one read and one write of the notes. */
+  private async noteMany(counts: readonly (readonly [string, number])[]): Promise<void> {
+    const keep = new Set((await this.store.deletedHouses()).map((h) => h.id));
+    let notes = parseNotes(await this.store.setting(SETTING_KEYS.binPhotos));
+    for (const [id, count] of counts) notes = withNote(notes, id, count, keep);
+    await this.store.setSetting(SETTING_KEYS.binPhotos, JSON.stringify(notes));
   }
 
   /** Remembers how many photos a deleted candidate had (0 forgets it), dropping the notes of tombstones that are gone. */

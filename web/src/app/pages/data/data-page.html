@@ -24,7 +24,7 @@
   </header>
 
   <section class="card" aria-labelledby="export-heading">
-    <h2 id="export-heading">{{ 'data.exportHeading' | t }}</h2>
+    <h2 id="export-heading" tabindex="-1">{{ 'data.exportHeading' | t }}</h2>
 
     @if (!started()) {
       <!-- Until the saved options are read and counted: a placeholder, not a form that flips to an empty state. -->
@@ -488,6 +488,9 @@
   <section class="card danger" aria-labelledby="clear-heading">
     <h2 id="clear-heading">{{ 'data.clearHeading' | t }}</h2>
     <p class="muted">{{ 'data.clearBody' | t }}</p>
+    @if (deviceSentence(); as list) {
+      <p id="clear-counts" class="muted">{{ list }}</p>
+    }
     <div class="actions">
       <button
         type="button"
