@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Test plan (functional, security, accessibility, i18n, AI) |
-| Version | 0.256 |
+| Version | 0.257 |
 | Date | 2026-10-14 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -264,6 +264,7 @@
 | 0.254 | 2026-10-14 | Claude (Code), engineer | **Vitest 5 module cache is off for the web unit tests** ([10](10-sprint-log.md) S4b-BL-311, v0.323): Vitest 5 caches transformed modules in `web/node_modules/.vitest-cache` by default, and under `@angular/build:unit-test` that cache served the previous run's source after an edit, so a mutated file passed its spec and `tools/mutate.mjs` reported every mutation as survived. `web/vitest.config.mjs` (`fsModuleCache: false`, named by `runnerConfig` in `angular.json`) turns it off; `tools/mutate.mjs tools/mutations/ai-answer-clean-web.json` kills 16 of 16 again. Test counts unchanged (4,826 passed, 2 skipped, as on `main`). |
 | 0.255 | 2026-10-15 | Claude (Code), engineer | **Screenshot tests and the clock** (S4b-BL-312): `ScreensScreenshotTest` `chooser` and `chooserHidden` pin the saved school's stamp to 2026-10-14 12:00 IST, so the *Last change* date in the baselines is a constant; a baseline must never show a date taken from the clock. |
 | 0.256 | 2026-10-14 | Claude (Code), engineer | **TC-U-233, TC-U-234 and TC-AI-48** (S4b-BL-269, S4b-BL-270; `feat/kinds-19-school-prompts`, [10](10-sprint-log.md) v0.325): a school's own Ask and Plan words, its extras in the Plan tools, and the injection tests that no value of a school escapes the records' block. TC-AI-47 notes school-set v0.2. |
+| 0.257 | 2026-10-14 | Claude (Code), engineer | **TC-U-149, a flake fixed** (S4b-BL-315, [10](10-sprint-log.md) v0.326): `PathTraceSettingsTest.clearThePathClearsOnlyTheThirtyDayTraceAndSaysSo` waits for the trace to show before it clicks *Clear the path*, then for *The path is cleared.*, and checks the button is gone and no point is kept; `PathTraceSection` keeps one trace flow per screen. A UI test that reads a Room result waits (`waitUntil`) for each step, never asserts at once after the first frame. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Design](03-design.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
