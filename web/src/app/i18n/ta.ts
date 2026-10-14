@@ -1782,6 +1782,9 @@ export const ta: Dict = {
   'data.previewKind': '{many}: {houses} · வருகைகள்: {visits} · புகைப்படங்கள்: {photos}',
   'data.spaceScope': 'இந்த நகலில் {many}: {n} மட்டுமே இருக்கும். முழு காப்புப்பிரதியில் நீங்கள் சேமித்த அனைத்தும் இருக்கும்.',
   'data.spaceScopeBackup': 'முழு காப்புப்பிரதியில் நீங்கள் சேமித்த அனைத்தும் இருக்கும், எல்லாப் பட்டியல்களிலும்.',
+  // S4b-BL-292 (2026-10-14): the space picker on Your data. Under review (owner rule: hi/ta/te ship marked under review).
+  'data.copyOf': 'இதன் நகலைச் சேமிக்கவும்',
+  'data.copyOfHint': 'எந்தப் பட்டியலின் நகல் உருவாகும். முழு காப்புப்பிரதியில் எப்போதும் எல்லாமும் இருக்கும்.',
   'share.kind': 'இதைச் சேமிக்கும் இடம்',
   'school.compareTitle': 'பள்ளிகளை ஒப்பிடு',
   'school.compareEmpty': 'ஒப்பிட இன்னும் பள்ளிகள் இல்லை. நிராகரித்த, தேர்ந்தெடுக்காத பள்ளிகள் சேர்க்கப்படுவதில்லை.',

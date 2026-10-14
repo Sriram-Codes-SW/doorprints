@@ -1782,6 +1782,9 @@ export const hi: Dict = {
   'data.previewKind': '{many}: {houses} · दौरे: {visits} · फ़ोटो: {photos}',
   'data.spaceScope': 'इस कॉपी में केवल {many}: {n} हैं। पूरे बैकअप में आपका सहेजा हुआ सब कुछ होता है।',
   'data.spaceScopeBackup': 'पूरे बैकअप में आपका सहेजा हुआ सब कुछ होता है, हर सूची का।',
+  // S4b-BL-292 (2026-10-14): the space picker on Your data. Under review (owner rule: hi/ta/te ship marked under review).
+  'data.copyOf': 'इसकी कॉपी सहेजें',
+  'data.copyOfHint': 'किस सूची की कॉपी बने। पूरे बैकअप में हमेशा सब कुछ होता है।',
   'share.kind': 'इसे यहाँ सहेजें',
   'school.compareTitle': 'स्कूलों की तुलना',
   'school.compareEmpty': 'तुलना के लिए अभी कोई स्कूल नहीं। अस्वीकृत और नहीं चुने गए स्कूल शामिल नहीं किए जाते।',

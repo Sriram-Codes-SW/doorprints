@@ -1782,6 +1782,9 @@ export const te: Dict = {
   'data.previewKind': '{many}: {houses} · సందర్శనలు: {visits} · ఫోటోలు: {photos}',
   'data.spaceScope': 'ఈ కాపీలో {many}: {n} మాత్రమే ఉంటాయి. పూర్తి బ్యాకప్‌లో మీరు సేవ్ చేసినవన్నీ ఉంటాయి.',
   'data.spaceScopeBackup': 'పూర్తి బ్యాకప్‌లో మీరు సేవ్ చేసినవన్నీ ఉంటాయి, ప్రతి జాబితాలోనివీ.',
+  // S4b-BL-292 (2026-10-14): the space picker on Your data. Under review (owner rule: hi/ta/te ship marked under review).
+  'data.copyOf': 'దీని కాపీని సేవ్ చేయండి',
+  'data.copyOfHint': 'ఏ జాబితా కాపీ తయారవుతుంది. పూర్తి బ్యాకప్‌లో ఎప్పుడూ అన్నీ ఉంటాయి.',
   'share.kind': 'దీన్ని ఇక్కడ సేవ్ చేయండి',
   'school.compareTitle': 'పాఠశాలలను పోల్చండి',
   'school.compareEmpty': 'పోల్చడానికి ఇంకా పాఠశాలలు లేవు. తిరస్కరించిన, ఎంచుకోని పాఠశాలలను చేర్చరు.',

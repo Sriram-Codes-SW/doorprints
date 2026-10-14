@@ -1787,6 +1787,8 @@ export const en = {
   'data.previewKind': '{many}: {houses} · Visits: {visits} · Photos: {photos}',
   'data.spaceScope': 'This copy holds only {many}: {n}. A full backup holds everything you saved.',
   'data.spaceScopeBackup': 'A full backup holds everything you saved, in every list.',
+  'data.copyOf': 'Save a copy of',
+  'data.copyOfHint': 'Which list a copy is made of. A full backup always holds all of them.',
   'share.kind': 'Save it in',
   'school.compareTitle': 'Compare schools',
   'school.compareEmpty': 'No schools to compare yet. Rejected and Not chosen schools are left out.',
