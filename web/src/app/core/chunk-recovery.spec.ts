@@ -16,14 +16,16 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { DOCUMENT } from '@angular/common';
+import { DOCUMENT, Location } from '@angular/common';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { NavigationEnd, NavigationError, Router } from '@angular/router';
+import { NavigationEnd, NavigationError, Router, provideRouter } from '@angular/router';
 import { Subject } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { App } from '../app';
 import { ChunkNotice } from '../shared/chunk-notice';
-import { CHUNK_RETRY_MS, ChunkRecovery, RELOAD_PAGE, isChunkLoadError } from './chunk-recovery';
+import { AiService } from './ai.service';
+import { CHUNK_RETRY_MS, ChunkRecovery, PAGE_LOADER, isChunkLoadError } from './chunk-recovery';
 import { CHUNK_RELOAD_KEY } from './storage-keys';
 
 const CHUNK = new TypeError('Failed to fetch dynamically imported module: https://doorprints.web.app/chunk-ABC.js');
@@ -45,8 +47,8 @@ describe('isChunkLoadError', () => {
 
 describe('ChunkRecovery', () => {
   let events: Subject<unknown>;
-  let router: { events: Subject<unknown>; url: string; currentNavigation: () => unknown; navigateByUrl: ReturnType<typeof vi.fn> };
-  let reload: ReturnType<typeof vi.fn>;
+  let router: { events: Subject<unknown>; url: string; currentNavigation: () => unknown };
+  let page: { to: ReturnType<typeof vi.fn>; reload: ReturnType<typeof vi.fn> };
   let store: Map<string, string>;
   let recovery: ChunkRecovery;
 
@@ -55,8 +57,8 @@ describe('ChunkRecovery', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     events = new Subject();
-    router = { events, url: '/', currentNavigation: () => null, navigateByUrl: vi.fn(() => Promise.resolve(true)) };
-    reload = vi.fn();
+    router = { events, url: '/', currentNavigation: () => null };
+    page = { to: vi.fn(), reload: vi.fn() };
     store = new Map();
     const sessionStorage = {
       getItem: (k: string) => store.get(k) ?? null,
@@ -66,7 +68,7 @@ describe('ChunkRecovery', () => {
       providers: [
         { provide: Router, useValue: router },
         { provide: DOCUMENT, useValue: { defaultView: { sessionStorage } } },
-        { provide: RELOAD_PAGE, useValue: reload },
+        { provide: PAGE_LOADER, useValue: page },
       ],
     });
     recovery = TestBed.inject(ChunkRecovery);
@@ -74,45 +76,31 @@ describe('ChunkRecovery', () => {
 
   afterEach(() => vi.useRealTimers());
 
-  it('retries the same address once, after about a second', () => {
+  it('loads the address that failed again as a fresh document, once, after about a second', () => {
     fail('/houses/new');
-    expect(router.navigateByUrl).not.toHaveBeenCalled();
-    vi.advanceTimersByTime(CHUNK_RETRY_MS - 1);
-    expect(router.navigateByUrl).not.toHaveBeenCalled();
+    expect(page.to).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(999);
+    expect(page.to).not.toHaveBeenCalled();
     vi.advanceTimersByTime(1);
-    expect(router.navigateByUrl).toHaveBeenCalledExactlyOnceWith('/houses/new');
-    expect(recovery.failedUrl()).toBeNull();
-    expect(reload).not.toHaveBeenCalled();
-  });
-
-  it('shows nothing more when the retry loads the page', () => {
-    fail();
-    vi.advanceTimersByTime(CHUNK_RETRY_MS);
-    events.next(new NavigationEnd(2, '/', '/'));
-    expect(recovery.failedUrl()).toBeNull();
-    expect(reload).not.toHaveBeenCalled();
-    expect(store.size).toBe(0);
-    // A later failure starts again with a fresh retry.
-    fail();
-    vi.advanceTimersByTime(CHUNK_RETRY_MS);
-    expect(router.navigateByUrl).toHaveBeenCalledTimes(2);
-  });
-
-  it('reloads the tab once when the retry fails too, and marks the session', () => {
-    fail();
-    vi.advanceTimersByTime(CHUNK_RETRY_MS);
-    fail();
-    expect(reload).toHaveBeenCalledTimes(1);
+    expect(page.to).toHaveBeenCalledExactlyOnceWith('/houses/new');
     expect(store.get(CHUNK_RELOAD_KEY)).toBe('1');
     expect(recovery.failedUrl()).toBeNull();
   });
 
-  it('shows the message instead of a second reload in the same session', () => {
+  it('counts two failures close together as one', () => {
+    fail('/data');
+    fail('/data');
+    vi.advanceTimersByTime(CHUNK_RETRY_MS * 3);
+    expect(page.to).toHaveBeenCalledTimes(1);
+    expect(recovery.failedUrl()).toBeNull();
+  });
+
+  it('shows the message, and loads nothing, when the fresh load was already done in this session', () => {
     store.set(CHUNK_RELOAD_KEY, '1');
     fail('/data');
-    vi.advanceTimersByTime(CHUNK_RETRY_MS);
-    fail('/data');
-    expect(reload).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(CHUNK_RETRY_MS * 3);
+    expect(page.to).not.toHaveBeenCalled();
+    expect(page.reload).not.toHaveBeenCalled();
     expect(recovery.failedUrl()).toBe('/data');
   });
 
@@ -121,30 +109,27 @@ describe('ChunkRecovery', () => {
       throw new Error('blocked');
     };
     fail();
-    vi.advanceTimersByTime(CHUNK_RETRY_MS);
-    fail();
-    expect(reload).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(CHUNK_RETRY_MS * 3);
+    expect(page.to).not.toHaveBeenCalled();
     expect(recovery.failedUrl()).toBe('/');
   });
 
-  it('Try again repeats the navigation now, hides the message, and brings it back if that fails too', () => {
+  it('Try again loads the failed address afresh, and Reload the current one', () => {
     store.set(CHUNK_RELOAD_KEY, '1');
     fail('/data');
-    vi.advanceTimersByTime(CHUNK_RETRY_MS);
-    fail('/data');
-    router.navigateByUrl.mockClear();
     recovery.retry();
-    expect(router.navigateByUrl).toHaveBeenCalledExactlyOnceWith('/data');
-    expect(recovery.failedUrl()).toBeNull();
-    fail('/data');
-    expect(recovery.failedUrl()).toBe('/data');
-    expect(reload).not.toHaveBeenCalled();
+    expect(page.to).toHaveBeenCalledExactlyOnceWith('/data');
+    recovery.reload();
+    expect(page.reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('Try again does nothing while no message is shown', () => {
+    recovery.retry();
+    expect(page.to).not.toHaveBeenCalled();
   });
 
   it('a page that loads hides the message', () => {
     store.set(CHUNK_RELOAD_KEY, '1');
-    fail();
-    vi.advanceTimersByTime(CHUNK_RETRY_MS);
     fail();
     events.next(new NavigationEnd(3, '/connect', '/connect'));
     expect(recovery.failedUrl()).toBeNull();
@@ -154,22 +139,22 @@ describe('ChunkRecovery', () => {
     fail('/data');
     router.url = '/connect';
     vi.advanceTimersByTime(CHUNK_RETRY_MS);
-    expect(router.navigateByUrl).not.toHaveBeenCalled();
+    expect(page.to).not.toHaveBeenCalled();
   });
 
-  it('does not start a retry over a navigation that is already running', () => {
+  it('does not load over a navigation that is already running', () => {
     fail('/data');
     router.currentNavigation = () => ({});
     vi.advanceTimersByTime(CHUNK_RETRY_MS);
-    expect(router.navigateByUrl).not.toHaveBeenCalled();
+    expect(page.to).not.toHaveBeenCalled();
   });
 
   it('leaves every other navigation error alone', () => {
     fail('/houses/x', new Error('Cannot match any routes'));
     fail('/houses/x', new TypeError('Failed to fetch'));
     vi.advanceTimersByTime(CHUNK_RETRY_MS * 3);
-    expect(router.navigateByUrl).not.toHaveBeenCalled();
-    expect(reload).not.toHaveBeenCalled();
+    expect(page.to).not.toHaveBeenCalled();
+    expect(store.size).toBe(0);
     expect(recovery.failedUrl()).toBeNull();
   });
 });
@@ -194,5 +179,46 @@ describe('ChunkNotice', () => {
     reload.click();
     expect(recovery.retry).toHaveBeenCalledTimes(1);
     expect(recovery.reload).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('the default page loader', () => {
+  it('loads an app address with the base href applied, and reloads the current one', () => {
+    const location = { assign: vi.fn(), reload: vi.fn() };
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: DOCUMENT, useValue: { defaultView: { location } } },
+        { provide: Location, useValue: { prepareExternalUrl: (u: string) => `/doorprints${u}` } },
+      ],
+    });
+    const loader = TestBed.inject(PAGE_LOADER);
+    loader.to('/houses/new');
+    expect(location.assign).toHaveBeenCalledExactlyOnceWith('/doorprints/houses/new');
+    loader.reload();
+    expect(location.reload).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('the shell', () => {
+  it('has the message of a page that did not load, as an alert, once the recovery has given up', async () => {
+    const failedUrl = signal<string | null>(null);
+    const ai = { enabled: signal(false), enabledFor: () => false, serverEnabled: signal(false), usesOwnKey: signal(false), refresh: () => undefined, offReason: signal('optOut') };
+    TestBed.configureTestingModule({
+      imports: [App],
+      providers: [
+        provideRouter([]),
+        { provide: ChunkRecovery, useValue: { failedUrl, retry: vi.fn(), reload: vi.fn() } },
+        { provide: AiService, useValue: ai },
+      ],
+    });
+    const fixture = TestBed.createComponent(App);
+    await fixture.whenStable();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('app-chunk-notice [role="alert"]')).toBeNull();
+    failedUrl.set('/data');
+    await fixture.whenStable();
+    expect(el.querySelector('app-chunk-notice [role="alert"]')).not.toBeNull();
+    // Above the page, under the header and the banners, so it is seen without scrolling.
+    expect(el.querySelector('app-chunk-notice')!.compareDocumentPosition(el.querySelector('main')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });

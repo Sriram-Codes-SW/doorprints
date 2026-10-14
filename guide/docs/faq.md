@@ -14,6 +14,8 @@ browsers may delete a website's data when space runs low. To protect it:
 [saved for offline](settings-and-privacy.md#save-an-area-of-the-map-for-offline). Your houses are still in the list. On the
 website you can still add a house offline with **Add at my location** or **Type latitude and longitude**.
 
+**A page stays blank, or says "This page could not be loaded".** On a weak connection a page of the website can fail to download. Doorprints tries once more by itself. If the message stays, check your connection and choose **Try again**, or **Reload**. Your houses are kept in the browser, so nothing is lost.
+
 **I don't see Ask, Plan or Assistant.** They appear once AI is turned on: with
 [the AI provider you chose](settings-and-privacy.md#ai-without-a-server), no server needed; or through
 [your own server](set-up-a-server.md). With a server, if AI is on but they still don't appear, see its

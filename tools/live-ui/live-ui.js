@@ -46,6 +46,7 @@
 const { chromium, devices } = require('playwright');
 const { ROUTES, phoneContext, layoutAudit } = require('./layout-audit');
 const { walkSteps, eastOf, nonTileRequests, todayWeekday } = require('./trace-helpers');
+const { dynamicImportUrl, isClearedImportError } = require('./transient-import');
 const fs = require('fs'), path = require('path');
 const ARGS = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 const WANT_TRACE = process.argv.includes('--trace');
@@ -126,7 +127,9 @@ function watch(page) {
   const cleared = new Set(); // URLs whose fault was transient: their console echoes are dropped too
   let cleared5xx = 0;
   let droppedNet = 0; // requests the network dropped (requestfailed), whose console echoes name no URL
-  errors.reset = () => { errors.length = 0; pending.length = 0; cleared.clear(); suspects.clear(); cleared5xx = 0; droppedNet = 0; };
+  let importFailures = 0; // lazy chunks that failed to load on this route (the app then loads the page afresh, ~1 s later)
+  errors.reset = () => { errors.length = 0; pending.length = 0; cleared.clear(); suspects.clear(); cleared5xx = 0; droppedNet = 0; importFailures = 0; };
+  errors.imports = () => importFailures;
   page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
   const suspects = new Set(); // one second fetch per URL and route
   /** Fetches [url] again; clears it as transient with [evidence], or records it as a real error. */
@@ -154,6 +157,16 @@ function watch(page) {
       const [, url, got] = refused;
       noteFault(page);
       classify(url, expectedType(url), { url, status: 'refused', type: got }, false, `wrong type '${got}' for ${url} (twice)`);
+    }
+    // A lazy route's chunk that did not load ("Failed to fetch dynamically imported module: <url>", seen in the runs of
+    // 2026-10-13 and -14 next to 502s of the host): the same second fetch decides. If the URL answers, the error is
+    // dropped like the other echoes of a transient fault and the app's own recovery (it loads the page afresh once,
+    // core/chunk-recovery.ts) is awaited by the page check; if not (a chunk that 404s twice), it stays a failure.
+    const chunk = dynamicImportUrl(m.text());
+    if (chunk && chunk.startsWith(BASE)) {
+      noteFault(page);
+      importFailures++;
+      classify(chunk, expectedType(chunk), { url: chunk, status: 'import failed', type: null }, false, `dynamic import failed for ${chunk} (twice)`);
     }
   });
   // A request the network dropped before any answer (a connection reset through this session's proxy, 2026-09-29):
@@ -197,7 +210,7 @@ function watch(page) {
     let dropNet = droppedNet - errors.filter((e) => / \(twice\)$/.test(e) && /ERR_/.test(e)).length;
     for (let i = errors.length - 1; i >= 0; i--) {
       const e = errors[i];
-      if ([...cleared].some((u) => e.includes(u))) errors.splice(i, 1);
+      if ([...cleared].some((u) => e.includes(u)) || isClearedImportError(e, cleared)) errors.splice(i, 1);
       else if (drop5xx > 0 && /status of 50[234]/.test(e)) { errors.splice(i, 1); drop5xx--; }
       else if (dropNet > 0 && /Failed to load resource: net::ERR_/.test(e)) { errors.splice(i, 1); dropNet--; }
     }
@@ -257,6 +270,9 @@ async function pageMatrix(browser) {
       errors.reset();
       const resp = await gotoRetry(page, BASE + route);
       await settle(page);
+      // A lazy chunk that failed: the app loads the page afresh about a second later (once per tab session), so the checks
+      // below wait for that to settle first; they run on the page that recovered, or fail on the one that did not.
+      if (errors.imports()) { await page.waitForTimeout(1800); await settle(page); }
       check('pages', `${tag}: loads`, !!resp && resp.status() < 400, resp && resp.status());
       // The page's first heading can come a moment after `settle` on a slow load (the full runs of 2026-10-13 each lost one
       // 'one h1' check in a different language, with the other checks of the same page passing): wait for one, up to 10 s;
