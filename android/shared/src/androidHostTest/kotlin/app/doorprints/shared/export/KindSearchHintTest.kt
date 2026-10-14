@@ -21,6 +21,7 @@ package app.doorprints.shared.export
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
+import app.doorprints.shared.model.KindSettingRules
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -60,6 +61,21 @@ class KindSearchHintTest {
             val fields = LinkedHashMap(sample)
             if (c["absent"] == null) fields["search"] = c.getValue("search") else fields.remove("search")
             assertEquals(c.text("name"), taken[c.text("name")], BackupWire.spacesOf(JsonObject(fields)))
+        }
+    }
+
+    @Test
+    fun aPhoneKeepsOfAFilesKindsOnlyTheBuiltInOnesOnceEachAndNeverMoreThanThereAreKinds() {
+        val sample = Json.parseToJsonElement(repoFile("docs/schemas/backup-sample.json").readText()).jsonObject
+        for (c in vectors.getValue("adopt").jsonArray.map { it.jsonObject }) {
+            val fields = LinkedHashMap(sample)
+            fields["search"] = c.getValue("search")
+            val hint = BackupWire.spacesOf(JsonObject(fields))
+            val taken = hint?.let { (kinds, default) -> KindSettingRules.knownSpaces(kinds, default) }
+            val want = c["taken"]?.takeIf { it !is JsonNull }?.jsonObject?.let { t ->
+                t.getValue("kinds").jsonArray.map { it.jsonPrimitive.content } to t.getValue("defaultKind").jsonPrimitive.content
+            }
+            assertEquals(c.text("name"), want, taken)
         }
     }
 }

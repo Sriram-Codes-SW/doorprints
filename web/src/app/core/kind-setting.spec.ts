@@ -29,7 +29,7 @@ import { FIXTURE_PHOTO_MAP, fixtureBundle } from '../export/golden/fixture';
 import { DEV_KINDS_KEY } from './dev-kinds';
 import {
   DEFAULT_KIND_KEY, ENABLED_KINDS_KEY, EXPERIMENTAL_KINDS_KEY, RELEASED_KINDS, adoptSpaces, availableKinds, defaultKind, drawnKind,
-  enabledKinds, experimentalKindsOn, kindsOn, offeredKinds, ofKind, setDefaultKind, setExperimentalKinds, setKindEnabled,
+  enabledKinds, experimentalKindsOn, kindsOn, knownSpaces, offeredKinds, ofKind, setDefaultKind, setExperimentalKinds, setKindEnabled,
   spacesOn, unreleasedKinds,
 } from './kind-setting';
 import { newHouse } from './models';
@@ -42,6 +42,7 @@ interface Setting {
 interface Vectors {
   format: string;
   setting: Setting[];
+  adopt: { name: string; search: unknown; taken: { kinds: string[]; defaultKind: string } | null }[];
   write: { name: string; kinds: string[]; defaultKind: string; search: string }[];
   read: { name: string; search?: unknown; absent?: boolean }[];
 }
@@ -196,5 +197,19 @@ describe('the backup’s search object (search-kind-vectors.json `write` and `re
     const s = store({ [EXPERIMENTAL_KINDS_KEY]: '1' });
     adoptSpaces(hints[2], s);
     expect([enabledKinds(BOTH, s), defaultKind(BOTH, s)]).toEqual([['house'], 'house']);
+  });
+
+  it('keeps of a hostile or newer file’s kinds only the built-in ones, once each, at most as many as there are kinds (S4b-BL-307)', () => {
+    for (const a of V.adopt) {
+      const spaces = spacesOf(a.search);
+      expect(knownSpaces(spaces), a.name).toEqual(a.taken);
+      const s = store();
+      expect(adoptSpaces(spaces, s), a.name).toBe(a.taken !== null);
+      expect([s.m.get(ENABLED_KINDS_KEY) ?? null, s.m.get(DEFAULT_KIND_KEY) ?? null], a.name).toEqual(
+        a.taken ? [JSON.stringify(a.taken.kinds), a.taken.defaultKind] : [null, null],
+      );
+    }
+    // A value that is no list at all, handed straight to the adopter, is no hint.
+    expect(knownSpaces({ kinds: 'school' as never, defaultKind: 'school' })).toBeNull();
   });
 });

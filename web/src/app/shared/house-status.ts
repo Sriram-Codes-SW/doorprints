@@ -27,24 +27,36 @@ import type { HouseStatus } from '../core/models';
 export interface StatusHouse {
   readonly id: string;
   readonly status: HouseStatus;
+  /** The candidate's kind; none is the house. The rules act within the chosen candidate's own kind (S4b-BL-306). */
+  readonly kind?: string | null;
 }
+
+/** The kind a rule compares: none is the house. */
+const kindOf = (h: Pick<StatusHouse, 'kind'>): string => h.kind ?? 'house';
 
 /**
  * `houses` after house `id` is given `status`. Choosing TAKEN returns the house that was TAKEN to SHORTLISTED, so at most
- * one house is TAKEN; any other status only changes that house. A house that is not in the list changes nothing.
+ * one house is TAKEN per kind (a TAKEN school never returns a TAKEN house, S4b-BL-306); any other status only changes that
+ * house. A house that is not in the list changes nothing.
  */
 export function choose<T extends StatusHouse>(houses: readonly T[], id: string, status: HouseStatus): T[] {
-  if (!houses.some((h) => h.id === id)) return [...houses];
+  const chosen = houses.find((h) => h.id === id);
+  if (!chosen) return [...houses];
   return houses.map((h) => {
     if (h.id === id) return h.status === status ? h : { ...h, status };
-    if (status === 'TAKEN' && h.status === 'TAKEN') return { ...h, status: 'SHORTLISTED' as const };
+    if (status === 'TAKEN' && h.status === 'TAKEN' && kindOf(h) === kindOf(chosen)) return { ...h, status: 'SHORTLISTED' as const };
     return h;
   });
 }
 
-/** The ids *Close this hunt* would mark NOT_CHOSEN: every house that is not the TAKEN one and not already REJECTED or NOT_CHOSEN. */
+/**
+ * The ids *Close this hunt* would mark NOT_CHOSEN: every house of the TAKEN one's own kind that is not the TAKEN one and
+ * not already REJECTED or NOT_CHOSEN (S4b-BL-306: a taken school never closes the houses). An unknown `takenId` closes nothing.
+ */
 export function closeTargets(houses: readonly StatusHouse[], takenId: string): string[] {
-  return houses.filter((h) => h.id !== takenId && inTheRunning(h.status)).map((h) => h.id);
+  const taken = houses.find((h) => h.id === takenId);
+  if (!taken) return [];
+  return houses.filter((h) => h.id !== takenId && kindOf(h) === kindOf(taken) && inTheRunning(h.status)).map((h) => h.id);
 }
 
 /**

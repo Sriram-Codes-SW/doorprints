@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | The manual part of the release security gate: the one-hour list per release, and the scope of the deep self-run pentest |
-| Version | 0.10 |
+| Version | 0.11 |
 | Date | 2026-10-10 |
 | Author | Claude (Code), lead |
 | Status | Draft. Written (story S4b-SEC-3); **not yet run on a release candidate**, which is the story's last acceptance item |
@@ -22,6 +22,7 @@
 | 0.8 | 2026-10-02 | Claude (Code), lead | I11 adds a list re-wrapped under another folder key (the review of S4b-BL-125: refused by the pin and the recovery anchor, TC-U-132). |
 | 0.9 | 2026-10-10 | Claude (Code), engineer | **Voice input, planned** ([03](03-design.md) ADR-37, S4b-BL-218): F11 (voice off by default, permissions asked at use, no audio at rest) and G4, the privacy note and Play data-safety answer to be done at voice pull request 5 (S4b-BL-222), a Planned note and not a claim. |
 | 0.10 | 2026-10-14 | Claude (Code), engineer | **Part J, kinds and spaces** (S4b-BL-216; [02](02-threat-model.md) v0.77 T-E13, T-T21, T-I49, T-D15): J1..J7, run on every release (web, Android, server) until the owner opens a kind's release gate, and again after it; the release record gains line J. |
+| 0.11 | 2026-10-14 | Claude (Code), engineer | **J1** notes the two unit tests that read the build config (S4b-BL-309: `release-kinds.spec.ts`, `ReleaseKindsTest`); the hand check stays for a workflow that adds a `--define` or a `-P` property. |
 
 ## 1. What this is, and when it runs
 
@@ -185,7 +186,7 @@ Run **AI evals** (`ai-evals.yml`, manual) on the release commit first. The golde
 
 | # | Check | Pass |
 |---|---|---|
-| J1 | **The gate is the build.** The website's build command has no `--define DOORPRINTS_KINDS`; opened in a private window, Settings shows no *Experimental: more than houses* and `/k/school` goes back to the home page. The release APK's `AVAILABLE_KINDS` is `"house"` and `DEV_KINDS` is `false` (`BuildConfig`, or `aapt`/`jadx` of the signed APK); the Settings screen has no *What you track* section. The server runs with `KINDS_AVAILABLE` unset or `house` | All true. A build that ships a kind is a deliberate decision of the owner, recorded in [10](10-sprint-log.md) |
+| J1 | **The gate is the build.** The website's build command has no `--define DOORPRINTS_KINDS`; opened in a private window, Settings shows no *Experimental: more than houses* and `/k/school` goes back to the home page. The release APK's `AVAILABLE_KINDS` is `"house"` and `DEV_KINDS` is `false` (`BuildConfig`, or `aapt`/`jadx` of the signed APK); the Settings screen has no *What you track* section. The server runs with `KINDS_AVAILABLE` unset or `house`. (Unit tests `release-kinds.spec.ts` and `ReleaseKindsTest` already fail on a changed default config; this check covers the workflow's command line and the signed artefact.) | All true. A build that ships a kind is a deliberate decision of the owner, recorded in [10](10-sprint-log.md) |
 | J2 | **A stored setting cannot open it.** In the release build set `doorprints.kinds.experimental` to `1`, `doorprints.kinds.enabled` to `["house","school"]` and `doorprints.dev.kinds` to `school` by hand (web), or import a file whose `search` names `school` | The app is still the house alone; nothing is listed, drawn or sent to the AI as a school |
 | J3 | **A hostile file.** Import a file with `search` of `{"kinds":["constructor","__proto__"],"defaultKind":"constructor"}`, a candidate of kind `constructor`, and an extra of the wrong type and out of range | The file imports or is refused for its usual reasons only; no error screen; the candidate is drawn as a house |
 | J4 | **No delete reaches another kind.** With two kinds in a development build: *Delete all in this space* in one, then look at the other; *Recently deleted* of each; one delete then *Undo* | The other space has every entry; each list shows its own space's deletions; the second bulk action within 10 seconds waits |

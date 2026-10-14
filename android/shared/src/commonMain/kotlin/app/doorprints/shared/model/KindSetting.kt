@@ -143,6 +143,16 @@ object KindSettingRules {
         return if (!ok || kinds == listOf(HOUSE)) HOUSE_SEARCH else "{\"kinds\":${listText(kinds)},\"defaultKind\":\"$default\"}"
     }
 
+    /**
+     * What of a backup's kinds a phone may keep (S4b-BL-307, T-T21): only the built-in kinds ([BUILT_IN]), once each and in
+     * their own order, so a hostile file cannot store more ids than there are kinds, or an id nothing knows. The [default]
+     * must be one of them; the house alone is no hint (`null`). The twin of the website's `knownSpaces`.
+     */
+    fun knownSpaces(kinds: List<String>, default: String): Pair<List<String>, String>? {
+        val known = BUILT_IN.filter { it in kinds }
+        return if (default !in known || known == listOf(HOUSE)) null else known to default
+    }
+
     /** The house's `search` object. */
     const val HOUSE_SEARCH = "{\"kind\":\"house\"}"
 

@@ -37,7 +37,7 @@ internal class HouseWriter(private val db: AppDatabase, private val now: () -> L
             db.withImmediateTransaction {
                 val others = db.houses().all().filter { it.id != row.id }
                 val chosen = HouseStatusRules.choose(
-                    others.map { StatusHouse(it.id, it.status) } + StatusHouse(row.id, row.status), row.id, HouseStatus.TAKEN,
+                    others.map { StatusHouse(it.id, it.status, it.kind) } + StatusHouse(row.id, row.status, row.kind), row.id, HouseStatus.TAKEN,
                 ).associate { it.id to it.status }
                 val stamp = row.updatedAt
                 for (h in others) {
