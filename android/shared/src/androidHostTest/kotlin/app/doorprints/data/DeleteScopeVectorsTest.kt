@@ -191,4 +191,12 @@ class DeleteScopeVectorsTest {
         assertEquals(listOf("a"), repo.restoreHouses(listOf("a", "b")).filter { it == "a" })
         assertTrue(repo.deleteHouses(emptyList()).isEmpty())
     }
+
+    @Test
+    fun aDeleteOnAClockThatIsBehindStillMovesTheStampPastTheLiveRow() = runBlocking {
+        db.houses().upsert(seed(Json.parseToJsonElement("""{"id":"f","label":"f","deleted":false,"dirty":false,"updatedAt":"2026-10-20T09:00:00.000Z"}""").jsonObject))
+        repo.clock = ms("2026-10-14T12:00:00.000Z")
+        repo.deleteHouses(listOf("f"))
+        assertEquals(ms("2026-10-20T09:00:00.000Z") + 1, db.houses().get("f")!!.updatedAt)
+    }
 }

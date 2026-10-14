@@ -1,0 +1,72 @@
+{
+  "spec": "DeleteScopeVectorsTest",
+  "gradle": [
+    ":shared:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.data.DeleteScopeVectorsTest",
+    "--tests",
+    "app.doorprints.shared.model.DeleteScopeTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/DeleteScope.kt",
+      "find": "fun nextStamp(previous: Long, now: Long): Long = max(now, previous + 1)",
+      "replace": "fun nextStamp(previous: Long, now: Long): Long = now",
+      "expect": "aStampIsNeverAtOrBeforeThePreviousOne"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/DeleteScope.kt",
+      "find": "rows.filter { !it.deleted && holds(it.kind) }.map { it.id }",
+      "replace": "rows.filter { !it.deleted }.map { it.id }",
+      "expect": "aSpaceDeleteTakesTheLiveRowsOfThatSpaceOnly"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/DeleteScope.kt",
+      "find": "row.deleted && row.updatedAt > now - BIN_DAYS * DAY_MS",
+      "replace": "row.deleted",
+      "expect": "theListHoldsThisSpacesTombstonesUnder30Days"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/DeleteScope.kt",
+      "find": "if (waitSeconds(now) > 0) return false",
+      "replace": "if (false) return false",
+      "expect": "oneBulkActionPerTenSeconds"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt",
+      "find": "val live = readInChunks(ids) { db.houses().getMany(it) }.filter { !it.deleted }",
+      "replace": "val live = readInChunks(ids) { db.houses().getMany(it) }",
+      "expect": "aRestoreOfARowThatIsNotDeletedIsRefusedAndABulkDeleteSkipsTheDeleted"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt",
+      "find": "val back = readInChunks(ids) { db.houses().getMany(it) }.filter { it.deleted }",
+      "replace": "val back = readInChunks(ids) { db.houses().getMany(it) }",
+      "expect": "aRestoreOfARowThatIsNotDeletedIsRefusedAndABulkDeleteSkipsTheDeleted"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt",
+      "find": "dirty = true, updatedAt = DeleteScope.nextStamp(h.updatedAt, now)))",
+      "replace": "dirty = true, updatedAt = now))",
+      "expect": "aDeleteOnAClockThatIsBehindStillMovesTheStamp"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt",
+      "find": ".map { it.copy(deleted = false, dirty = true, updatedAt = DeleteScope.nextStamp(it.updatedAt, now)) }",
+      "replace": ".map { it.copy(deleted = false, dirty = true, updatedAt = now) }",
+      "expect": "everyCaseWritesOnlyTheNamedRows"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt",
+      "find": ".map { it.copy(deleted = false, dirty = true, updatedAt = DeleteScope.nextStamp(it.updatedAt, now)) }",
+      "replace": ".map { it.copy(deleted = false, dirty = false, updatedAt = DeleteScope.nextStamp(it.updatedAt, now)) }",
+      "expect": "everyCaseWritesOnlyTheNamedRows"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt",
+      "find": "for (h in live) db.houses().upsert(h.copy(deleted = true, dirty = true,",
+      "replace": "for (h in live.take(1)) db.houses().upsert(h.copy(deleted = true, dirty = true,",
+      "expect": "everyCaseWritesOnlyTheNamedRows"
+    }
+  ]
+}

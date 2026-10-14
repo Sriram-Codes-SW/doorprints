@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Design of Google sign-in for backup, automatic sync, deletion and sharing through each person's own Google Drive (N13 3b, D-28) |
-| Version | 0.36 |
+| Version | 0.37 |
 | Date | 2026-10-13 |
 | Author | Claude (Code), lead |
 | Status | **Decided by the owner on 2026-10-02** (§6, §6.1: "Let us implement it. After real world use, we can change as needed."); [03](03-design.md) ADR-33. Built so far: S4b-BL-70, S4b-BL-115, S4b-BL-125, S4b-BL-124 (the runbook incidents, [08](08-operations-runbook.md) IR-11..IR-13), and the **website** version 1 cards (draft PR #118): connect, backups, sync, photos on Wi-Fi, L1 on the site, L2/L3 only with a PRF-sealed passkey whose proof is an HMAC, 8-digit pairing and QR enrolment (paste, or the camera when the browser can scan), non-extractable folder keys, `config.js` from the repository variable `GOOGLE_OAUTH_WEB_CLIENT_ID`. **Android** (PR #142, branch `feat/android-drive`): the phones' Drive screens, the controller, the Keystore device key, the device check, enrolment by pasted `dp1.` offer, the Drive route for sync and the background run are built and tested on the JVM; **real-phone checks are open** ([ops/manual-test-checklist.md](ops/manual-test-checklist.md) §14); **the iPhone** (branch `feat/ios-drive`): the Drive wiring is built on the same common code, with the Secure Enclave device key, the Keychain refresh token and `ASWebAuthenticationSession` with PKCE, the Keychain-guarded HMAC proof, the Drive section in Settings with the iPhone scanner, and the triggers of §9.11; it is **compiled for the iOS Simulator and logic-tested on the host and, in CI, the simulator, and no iPhone and no Google round trip has run it** ([ops/manual-test-checklist.md](ops/manual-test-checklist.md) §14, MT-86..MT-92). Version 1 is §1.6; the tickets are S4b-BL-70, -73, -115..119, -121, -122, -124..128 and -130 ([10](10-sprint-log.md) §12.7), deferred S4b-BL-120 and -129; the phones' camera scan (S4b-BL-136) and the Android half of the phones' HMAC proof (S4b-BL-135) are built on `feat/qr-scanner-and-backlog` (draft PR #145) with their real-device checks open, the iPhone's scanner and HMAC proof are wired in the iPhone's Drive (§9.11); the order is §7 and [14](14-lead-backlog-and-handoff.md) N17 |
@@ -48,6 +48,7 @@
 | 0.34 | 2026-10-13 | Claude (Code), engineer | **§5.1: the sync file after the format reset** (kinds step 4, S4b-BL-206, `feat/kinds-4-android`): the phone writes `candidates` and `candidateId` within `sync/1`, both stacks read either shape and refuse both names at once; the website's writer follows (S4b-BL-246). |
 | 0.35 | 2026-10-14 | Claude (Code), engineer | §1.4 item 10: **sync is kind-blind** (kinds PR 8, S4b-BL-212, `feat/kinds-10-settings-kind-guide`): the kinds a device shows and its default are device-local, never synced; a device with a kind turned off still stores and backs up its rows. |
 | 0.36 | 2026-10-14 | Claude (Code), engineer | **§3.2: level 3 says all kinds** (deletion safeguards PR 2, S4b-BL-284, the website): with spaces the deletion takes every kind, not the space on screen, and the plan and the confirmation now say so. |
+| 0.37 | 2026-10-14 | Claude (Code), engineer | **§3.2: level 3 says all kinds on the phones** (deletion safeguards PR 3, S4b-BL-285): the Android and iPhone plan for *Delete everything* shows the same sentence as the website. |
 
 **The owner's words (2026-10-02).** "Google Sign-In is to make a secure backup and restore drive and if possible to
 make it shareable to others using the same app/website. The backup can be time synced or manual with possibility of
@@ -309,7 +310,7 @@ largest one:
 - **Device authentication** after *Delete for good* for every L2 and L3 action (§10.1): *Delete all backups*, the
   last backup, *Stop sharing*, *Delete everything*. Cancelled or failed: "Nothing was deleted."
 - Never "Restore", never "Reset" on these buttons; *Delete* is the verb.
-- **With more than one kind (spaces), *Delete everything* says so** (S4b-BL-284): "This deletes all kinds: houses, schools and every other space, not only the one you are in." It is shown in the plan and again in the confirmation (website; the phones in their own pull request). Levels 1 and 2 are about backups and say nothing of kinds.
+- **With more than one kind (spaces), *Delete everything* says so** (S4b-BL-284): "This deletes all kinds: houses, schools and every other space, not only the one you are in." It is shown in the plan and again in the confirmation (website); the phones show it in the plan (S4b-BL-285). Levels 1 and 2 are about backups and say nothing of kinds.
 
 ### 3.3 How it deletes, honestly
 

@@ -25,8 +25,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.material3.AlertDialog
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.BasicAlertDialog
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -72,51 +78,69 @@ val DeviceBulkGuard = BulkGuard { nowMillis() }
  * a tick box when the space holds more than [DeleteScope.TICK_OVER], *Save a copy first*, and the first focus on *Cancel*
  * (a danger dialog never starts on the destructive button). The caller deletes only on [onConfirm].
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DeleteSpaceDialog(kindName: String, count: Int, onCancel: () -> Unit, onSaveCopy: () -> Unit, onConfirm: () -> Unit) {
-    val needsTick = count > DeleteScope.TICK_OVER
     var ticked by rememberSaveable { mutableStateOf(false) }
     val cancelFocus = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { cancelFocus.requestFocus() } }
-    AlertDialog(
-        onDismissRequest = onCancel,
-        title = { Text(stringResource(Res.string.delete_space_button), Modifier.semantics { heading() }) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(stringResource(Res.string.delete_space_confirm, kindName, count.toString()))
-                if (needsTick) {
-                    Row(
-                        Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(value = ticked, role = Role.Checkbox) { ticked = it },
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Checkbox(checked = ticked, onCheckedChange = null)
-                        Text(stringResource(Res.string.drive_delete_confirm_checkbox), Modifier.padding(start = 12.dp))
-                    }
+    BasicAlertDialog(onDismissRequest = onCancel) {
+        DeleteSpaceDialogCard(kindName, count, ticked, { ticked = it }, onCancel, onSaveCopy, onConfirm, cancelFocus)
+    }
+}
+
+/** The dialog's card, apart from its window, so a screenshot can draw it (the tick box state is the caller's). */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun DeleteSpaceDialogCard(
+    kindName: String,
+    count: Int,
+    ticked: Boolean,
+    onTicked: (Boolean) -> Unit,
+    onCancel: () -> Unit,
+    onSaveCopy: () -> Unit,
+    onConfirm: () -> Unit,
+    cancelFocus: FocusRequester = remember { FocusRequester() },
+) {
+    val needsTick = count > DeleteScope.TICK_OVER
+    Surface(shape = MaterialTheme.shapes.extraLarge, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+        Column(Modifier.padding(24.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(stringResource(Res.string.delete_space_button), style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
+            Text(stringResource(Res.string.delete_space_confirm, kindName, count.toString()), style = MaterialTheme.typography.bodyMedium)
+            if (needsTick) {
+                Row(
+                    Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(value = ticked, role = Role.Checkbox, onValueChange = onTicked),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Checkbox(checked = ticked, onCheckedChange = null)
+                    Text(stringResource(Res.string.drive_delete_confirm_checkbox), Modifier.padding(start = 12.dp))
                 }
             }
-        },
-        confirmButton = {
-            DangerButton(stringResource(Res.string.delete_space_do), onConfirm, enabled = !needsTick || ticked)
-        },
-        dismissButton = {
-            TextButton(onClick = onCancel, modifier = Modifier.heightIn(min = 48.dp).focusRequester(cancelFocus)) {
-                ButtonLabel(stringResource(Res.string.common_cancel))
+            FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                TextButton(onClick = onCancel, modifier = Modifier.heightIn(min = 48.dp).focusRequester(cancelFocus)) {
+                    ButtonLabel(stringResource(Res.string.common_cancel))
+                }
+                TextButton(onClick = onSaveCopy, modifier = Modifier.heightIn(min = 48.dp)) {
+                    ButtonLabel(stringResource(Res.string.drive_delete_save_copy_first))
+                }
+                DangerButton(stringResource(Res.string.delete_space_do), onConfirm, enabled = !needsTick || ticked)
             }
-            TextButton(onClick = onSaveCopy, modifier = Modifier.heightIn(min = 48.dp)) {
-                ButtonLabel(stringResource(Res.string.drive_delete_save_copy_first))
-            }
-        },
-    )
+        }
+    }
 }
 
 /** The newest rows *Recently deleted* draws; the rest stay kept for their 30 days and come into view as these are restored. */
 private const val BIN_SHOWN = 50
 
+/** One line of *Recently deleted*: the entry's id, the name it shows, and when it was deleted, already in words. */
+class BinLine(val id: String, val name: String, val deletedOn: String)
+
 /**
  * Settings > *Recently deleted* (deletion safeguards PR 3, docs/04 tombstone and restore, S4b-BL-285): this space's deleted
  * entries from the last 30 days, newest first, each with *Restore*. A delete is a tombstone that syncs, so *Restore* writes
- * the row back live with a newer `updatedAt` (`Repository.restoreHouse`); the phone never removed its photos or visits, so
- * they are back with it. The twin of the website's *Recently deleted* in *Your data*. Only this space's rows are read.
+ * the row back live with a newer `updatedAt` (`Repository.restoreHouse`); the phone does not remove a house's photos or
+ * visits when it deletes it, so they are back with it. The twin of the website's *Recently deleted* in *Your data*. Only
+ * this space's rows are read.
  */
 @Composable
 fun RecentlyDeletedSection() {
@@ -132,28 +156,34 @@ fun RecentlyDeletedSection() {
             .map { byId.getValue(it.id) }
     }
     val unnamed = stringResource(space.words.unnamed)
-    SectionHeading(stringResource(Res.string.delete_recently_deleted))
-    Text(stringResource(Res.string.delete_bin_body), style = MaterialTheme.typography.bodySmall)
-    if (bin.isEmpty()) {
-        Text(stringResource(Res.string.delete_bin_empty), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-    for (house in bin.take(BIN_SHOWN)) {
-        val name = house.label.ifBlank { unnamed }
-        val restoreLabel = stringResource(Res.string.delete_restore_aria, name)
-        Row(Modifier.fillMaxWidth().heightIn(min = 56.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Column(Modifier.weight(1f)) {
-                Text(name, style = MaterialTheme.typography.bodyLarge)
-                Text(stringResource(Res.string.delete_deleted_on, house.updatedAt.dateText()), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            TextButton(
-                onClick = {
-                    scope.launch {
-                        if (repo.restoreHouse(house.id)) snackbar?.showSnackbar(getString(Res.string.delete_restored, name))
-                    }
-                },
-                modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = restoreLabel },
-            ) { ButtonLabel(stringResource(Res.string.delete_restore)) }
+    val lines = bin.take(BIN_SHOWN).map { BinLine(it.id, it.label.ifBlank { unnamed }, stringResource(Res.string.delete_deleted_on, it.updatedAt.dateText())) }
+    RecentlyDeletedList(lines, hidden = bin.size - lines.size) { id ->
+        scope.launch {
+            val name = lines.first { it.id == id }.name
+            if (repo.restoreHouse(id)) snackbar?.showSnackbar(getString(Res.string.delete_restored, name))
         }
     }
-    if (bin.size > BIN_SHOWN) Text(stringResource(Res.string.delete_bin_more, bin.size - BIN_SHOWN), style = MaterialTheme.typography.bodySmall)
+}
+
+/** The heading, the sentence and the lines of *Recently deleted*, apart from where they come from (a screenshot draws it). */
+@Composable
+fun RecentlyDeletedList(lines: List<BinLine>, hidden: Int = 0, onRestore: (String) -> Unit) {
+    SectionHeading(stringResource(Res.string.delete_recently_deleted))
+    Text(stringResource(Res.string.delete_bin_body), style = MaterialTheme.typography.bodySmall)
+    if (lines.isEmpty()) {
+        Text(stringResource(Res.string.delete_bin_empty), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    for (line in lines) {
+        val restoreLabel = stringResource(Res.string.delete_restore_aria, line.name)
+        Row(Modifier.fillMaxWidth().heightIn(min = 56.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(Modifier.weight(1f)) {
+                Text(line.name, style = MaterialTheme.typography.bodyLarge)
+                Text(line.deletedOn, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            TextButton(onClick = { onRestore(line.id) }, modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = restoreLabel }) {
+                ButtonLabel(stringResource(Res.string.delete_restore))
+            }
+        }
+    }
+    if (hidden > 0) Text(stringResource(Res.string.delete_bin_more, hidden), style = MaterialTheme.typography.bodySmall)
 }

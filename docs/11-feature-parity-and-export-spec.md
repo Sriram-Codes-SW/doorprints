@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Feature parity and offline-copy export specification |
-| Version | 0.65 |
+| Version | 0.66 |
 | Date | 2026-10-14 |
 | Author | Claude (Cowork) – Product/Architecture |
 | Status | Draft: product-owner decisions D-01, D-02, D-03, D-08, D-21 (AI access) and D-23..D-25 (Sprint 4b reminders, hunting areas, location permissions) and D-26 (India's boundaries on the map, 2026-09-24) applied; ready for Sprint 4 planning |
@@ -77,6 +77,7 @@
 | 0.51 | 2026-10-01 | Claude (Code), lead | **The finishing batch built** (on stacked branches, [10](10-sprint-log.md) §13.29..§13.40): built notes for 5.2 (copies in UTC, the iPhone's copies and imports, the website's import), 5.6 (the floor, moving rooms), 5.7 (photo tags), 5.8 (the iPhone's calendar file, the reminder follow-ups), 5.17 and 5.18 (the iPhone wake-up), 5.19 (the emulator test, Hunt alerts with the app lock), 5.20 (offline maps on the website), 5.21 (the cost filters), 5.24 (moving in, the statuses Taken and Not chosen), 5.25 (the duplicate-flat warning), 5.28 (deletions in an update file, `/3`) and 5.29 (the locality lookup). |
 | 0.64 | 2026-10-14 | Claude (Code), engineer | **5.27.6 amended** (deletion safeguards PR 1, S4b-BL-283): "the website has no undo" is no longer true for the house; saved walks still have none, and the one remaining question says how many go. |
 | 0.65 | 2026-10-14 | Claude (Code), engineer | **5.27.6: Delete all in this space** (deletion safeguards PR 2, S4b-BL-284): the saved walks of every house of the space go with them, with no way back, and the question says so; *Remove all data* lists every kind's count and the saved walks. |
+| 0.66 | 2026-10-14 | Claude (Code), engineer | **5.27.6: the phones** (deletion safeguards PR 3, S4b-BL-285): *Delete all in this space* (Settings > What you track) and *Recently deleted* (Settings) on Android and iPhone; the phones' saved walks go at the end of the 10 s as for one house. |
 
 Related: [01 Requirements](01-requirements.md) · [02 Threat model](02-threat-model.md) · [03 Design](03-design.md) · [04 DFDs](04-data-flow-diagrams.md) · [05 UX/a11y/i18n](05-ux-accessibility-i18n.md) · [06 Test plan](06-test-plan.md) · [10 Sprint log](10-sprint-log.md) · [AI design](ai/ai-design.md)
 
@@ -1231,7 +1232,11 @@ for 10 s (and *Your data* > *Recently deleted* for 30 days); the one question th
 with the house, and it names their number (*Its saved walks (3) are deleted with it and cannot be brought back*), because a
 walk has no tombstone: `LocalStore.deleteHouse` deletes the house's saved walks in the same operation, and neither *Undo*
 nor *Restore* brings them back. The same holds for *Delete all in this space* (Settings > What you track): the question says that the saved walks of those candidates cannot be brought back, and *Remove all data* lists the saved walks with every kind's count. A house tombstone that arrives by
-sync or import (a delete on another device) is swept the same way; **a saved walk never outlives its house**. *Delete all
+sync or import (a delete on another device) is swept the same way; **the phones (S4b-BL-285) have the same two things**: *Delete all in this space* on a What you track card
+(that space only, tombstones in one batch with `deleteHouses`, a question that names the count and the kind, a tick box over 10 entries, *Save a copy first*,
+first focus on Cancel, an *Undo* in the snackbar for 10 s, one bulk action per 10 s per device) and Settings > *Recently deleted* (this space's tombstones under 30 days, newest first, *Restore* =
+`restoreHouse`: `deleted` false, `updatedAt` past the tombstone's, dirty). A phone never removes a house's photos or visits when it deletes it, so a restore on the phone brings them back, unless a sync has already carried the server's purge of them back; the saved walks are swept when the
+Undo time is over (as for one house) and are not restored. The phones have no *Remove all data* button (the system's *Clear storage* is the way), so its counts are the website's only; Google Drive level 3 says *all kinds* on the phones too; **a saved walk never outlives its house**. *Delete all
 my data* (phones) and *Remove all Doorprints data from this browser* (website) remove saved walks and the trace.
 
 **The 30-day prune** (`pruneTrack`, at each Hunt start and now also at the Map's opening and at each walk's end)
