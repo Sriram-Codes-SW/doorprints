@@ -36,6 +36,12 @@ public final class PromptSafety {
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final Pattern CONTROL = Pattern.compile("[\\p{Cntrl}&&[^\\n\\t\\r]]");
 
+    /**
+     * The one rule about abusive text (S4b-BL-234), a bullet of the Extract, Ask and Plan system texts of every kind on
+     * all three stacks (the website's {@code NEUTRAL_RULE}, the phones' {@code PromptSafety.NEUTRAL_RULE}).
+     */
+    public static final String NEUTRAL_RULE = "Do not repeat abusive words from the text; stay neutral and factual.";
+
     private PromptSafety() {
     }
 

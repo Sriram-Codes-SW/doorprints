@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.137 |
+| Version | 0.138 |
 | Date | 2026-10-14 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -148,6 +148,7 @@
 | 0.135 | 2026-10-14 | Claude (Code), engineer | LocationMap row: since maplibre-gl 6.13 the worker is self-contained, `angular.json` copies `maplibre-gl-worker.mjs` alone ([10](10-sprint-log.md) S4b-BL-310). |
 | 0.136 | 2026-10-14 | Claude (Code), engineer | **§18.9 The phones' half** (kinds PR 18; S4b-BL-256, S4b-BL-259, S4b-BL-266 and the phones' leftovers of S4b-BL-277; `feat/kinds-18-school-wording-phones`; [06](06-test-plan.md) TC-U-232, TC-M-76; [10](10-sprint-log.md) v0.320): the phone's form, list row, status names, Compare, Areas and Places, walk check and copies read the kind; a school's copies speak in the school's words and write each extra under its section (the fees under *Fees*); the iPhone has the same code. |
 | 0.137 | 2026-10-14 | Claude (Code), engineer | **§18.11: a school's own Ask and Plan words, and its extras in the Plan tools** (kinds PR 19; S4b-BL-269, S4b-BL-270; `feat/kinds-19-school-prompts`; [10](10-sprint-log.md) v0.325, [06](06-test-plan.md) v0.256 TC-U-233, TC-U-234, TC-AI-48, [ai-design](ai/ai-design.md) v0.75 16.9 and 16.10, [02](02-threat-model.md) v0.83 T-I50): the kind's AI copy holds its Ask and Plan system texts, block name and refusal (not kind-file keys); a prompt speaks in them only when every record sent is of the kind; `school.json`'s `ai.plan` names six extras, which the Plan summary, `houseDetails`, the wrap-up notice and the devices' candidate line carry; the house's prompts and records are byte for byte as before; S4b-BL-234 left. |
+| 0.138 | 2026-10-14 | Claude (Code), engineer | **§18.11: the abusive-words rule in the prompts** (S4b-BL-234; `feat/ai-abusive-words-rule`; [ai/ai-design](ai/ai-design.md) v0.76 16.11, [06](06-test-plan.md) TC-U-235, [10](10-sprint-log.md) v0.326): one rule in the Extract, Ask and Plan system texts of the house and of the school; the house pins and the parity vectors re-pinned once. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -2634,6 +2635,8 @@ documents, prompts, Plan lines and pins are byte for byte as before. The shared 
 in the Plan tools) are still open, and so is the release gate (§18.12).
 
 **Update of 2026-10-14 (S4b-BL-269, S4b-BL-270; kinds PR 19, `feat/kinds-19-school-prompts`).** *A school's own words.* The Ask and Plan prompts spoke of houses for every kind. A kind now has its own Ask system text, records' block name (`schools-<nonce>`) and refusal sentence, and on the devices its own planner text, as fields of the kind's AI copy beside the Extract text (the server's `AiKind`, the website's `AiKind`, the phones' `AiKindSlots`); the shared `kind-ai-vectors.json` `prompts` pins them on all three stacks. A prompt uses them only when every record sent is of that one built-in kind and the kind is available; a house, a mix, no records and a kind that is not built in get the house's prompt byte for byte, which the five house pins and `parity-vectors.json` hold unchanged. The records' markers `[house:<id>]`, the output fields and the schemas stay the same for every kind: they are the protocol the citations and plans are read by (S4b-BL-314). The server's Ask chooses by the documents it retrieved; its planner takes no kind and keeps its one prompt until S4b-BL-290. *A kind's extras in the Plan tools.* The extras `ai.plan` names ride in the server's `HouseSummary` and `HouseDetails` (`extras`, words to value, absent for a house) and in the devices' candidate line, typed, ranged and redacted as the Ask document is. *S4b-BL-234* (the rule on abusive words) is not in this change: it re-pins the house's prompts, which this change keeps byte-identical. [ai-design](ai/ai-design.md) 16.9 and 16.10 have the design and the injection analysis.
+
+**Update of 2026-10-14 (S4b-BL-234).** The Extract, Ask and Plan system texts of the house and of every built-in kind carry one more rule, *Do not repeat abusive words from the text; stay neutral and factual.*, on the server, the website and the phones ([ai/ai-design](ai/ai-design.md) 16.11). This is the one deliberate change to a house's prompts in the kinds work: the house pins and the parity vectors were re-pinned once, and nothing else of a house's AI input or output moved. The statement above that a house's prompts stay byte-identical holds for the change it was written for (S4b-BL-211, S4b-BL-269); from this change the pins are those of the prompts with the rule.
 
 ### 18.12 Spaces: the chooser and Settings > What you track (kinds PR 8, S4b-BL-212)
 

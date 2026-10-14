@@ -93,6 +93,17 @@ export interface PlanCandidate {
 /** The school's Ask refusal (S4b-BL-269), the kind's own words: `SCHOOL_AI.refusal` in `kind-ai.ts` is this. */
 export const SCHOOL_I_DONT_KNOW = "I don't know based on the schools you have saved.";
 
+/** The house's Ask refusal, exact (the golden set's refusal cases compare it). */
+export const I_DONT_KNOW = "I don't know based on the houses you have saved.";
+
+/** True when the answer is exactly an "I don't know" sentence, the house's or a kind's (curly quotes accepted). */
+export function isRefusal(answer: string | null | undefined): boolean {
+  return answer != null && [I_DONT_KNOW, SCHOOL_I_DONT_KNOW].includes(answer.trim().replace(/’/g, "'").replace(/‘/g, "'"));
+}
+
+/** The one rule about abusive text (S4b-BL-234), a bullet of the Extract, Ask and Plan system texts of every kind; the server's and the phones' `NEUTRAL_RULE` are this sentence. */
+export const NEUTRAL_RULE = 'Do not repeat abusive words from the text; stay neutral and factual.';
+
 /**
  * A candidate of a built-in kind (it has `extras`, S4b-BL-270) has no price or bedrooms: its plan line is id, label,
  * locality, status, rating, each detail as `<words>: <value>`, then the distance.

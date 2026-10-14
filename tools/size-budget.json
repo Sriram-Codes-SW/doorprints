@@ -34,7 +34,7 @@
   "android/ui/src/commonMain/kotlin/app/doorprints/ui/MapScreen.kt": 1515,
   "android/ui/src/commonMain/kotlin/app/doorprints/ui/SettingsScreen.kt": 929,
   "backend/src/main/java/app/doorprints/server/backup/BackupService.java": 1241,
-  "web/src/app/core/ai/ai-core.ts": 1053,
+  "web/src/app/core/ai/ai-core.ts": 1050,
   "web/src/app/data/sync.service.ts": 1020,
   "web/src/app/pages/house-detail/house-detail-page.html": 1043,
   "web/src/app/pages/house-detail/house-detail-page.ts": 1185,

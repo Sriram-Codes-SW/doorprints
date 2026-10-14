@@ -33,7 +33,7 @@
     },
     {
       "file": "backend/src/main/java/app/doorprints/server/ai/rag/AskPrompts.java",
-      "find": "        return new Built(k.askSystem().formatted(tag), user);",
+      "find": "        return new Built(k.askSystem().formatted(tag, PromptSafety.NEUTRAL_RULE), user);",
       "replace": "        return new Built(k.askSystem().formatted(\"x\"), user);",
       "expect": "aSchoolsAskSystemTextAndRefusalAreTheVectors"
     },
