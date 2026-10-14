@@ -54,7 +54,7 @@ class KindPlanVectorsTest {
         when(service.nearby(org.mockito.ArgumentMatchers.anyDouble(), org.mockito.ArgumentMatchers.anyDouble(),
                 org.mockito.ArgumentMatchers.anyDouble())).thenReturn(rows);
         if (!rows.isEmpty()) when(service.get(rows.getFirst().id())).thenReturn(rows.getFirst());
-        return new HouseSearchService(service, new AiKinds(on));
+        return new HouseSearchService(service, AiKinds.schools(on));
     }
 
     @Test

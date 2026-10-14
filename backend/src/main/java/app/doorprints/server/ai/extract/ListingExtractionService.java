@@ -74,11 +74,12 @@ public class ListingExtractionService {
     /**
      * As {@link #extract(String)}, for a candidate of {@code kind} (kinds PR 7, S4b-BL-211): none or {@code house} is
      * the house's extract, unchanged; a built-in kind whose {@code ai.extract} slot is not empty, while the server's
-     * developer flag allows it ({@link AiKinds}), gets its kind's prompt, schema and checks
-     * ({@link KindDraftSanitizer}); any other kind is a 400, never read as a house.
+     * server lists it in {@code app.kinds.available} ({@link AiKinds}), gets its kind's prompt, schema and checks
+     * ({@link KindDraftSanitizer}); a kind outside the list, or any other kind, is a 400, never read as a house.
      */
     public HouseDraft extract(String text, String kind) {
         if (kind == null || House.HOUSE_KIND.equals(kind)) return extract(text);
+        kinds.require(kind);
         var k = kinds.of(kind);
         // The schools kind is the one built-in kind with an extract besides the house: its raw listing is RawSchoolListing.
         if (k == null || k.extract().isEmpty() || k != AiKinds.SCHOOL) {

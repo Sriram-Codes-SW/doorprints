@@ -48,7 +48,7 @@ class KindAskVectorsTest {
 
     private static Document doc(JsonNode c) {
         return HouseDocuments.toDocument(HouseAiPins.candidate(c.get("candidate")), List.of(), List.of(),
-                AreaLines.All.NONE, new AiKinds(c.get("devKinds").asBoolean()));
+                AreaLines.All.NONE, AiKinds.schools(c.get("devKinds").asBoolean()));
     }
 
     @Test
@@ -83,7 +83,7 @@ class KindAskVectorsTest {
         for (var c : V.get("filters")) {
             var d = V.get("documents").get(c.get("candidate").asInt());
             var metadata = HouseDocuments.toDocument(HouseAiPins.candidate(d.get("candidate")), List.of(), List.of(),
-                    AreaLines.All.NONE, new AiKinds(c.get("devKinds").asBoolean())).getMetadata();
+                    AreaLines.All.NONE, AiKinds.schools(c.get("devKinds").asBoolean())).getMetadata();
             assertThat(keeps(metadata, c.get("filter"))).as(c.toString()).isEqualTo(c.get("matches").asBoolean());
         }
     }
@@ -91,7 +91,7 @@ class KindAskVectorsTest {
     @Test
     void aSchoolsMetadataHasNoPriceNoBhkAndNoContact() {
         var hill = HouseAiPins.candidate(V.get("documents").get(2).get("candidate"));
-        var m = HouseDocuments.toDocument(hill, List.of(), List.of(), AreaLines.All.NONE, new AiKinds(true)).getMetadata();
+        var m = HouseDocuments.toDocument(hill, List.of(), List.of(), AreaLines.All.NONE, AiKinds.schools(true)).getMetadata();
         assertThat(m).containsOnlyKeys("houseId", "label", "status", "rating", "locality", "visited")
                 .containsEntry("label", "[contact]'s pick: Hill View").containsEntry("locality", "Beltola");
         var asHouse = HouseDocuments.toDocument(hill, List.of(), List.of(), AreaLines.All.NONE, AiKinds.OFF).getMetadata();
@@ -105,7 +105,7 @@ class KindAskVectorsTest {
         var areas = new AreaLines.All(List.of(new AreaLines.Area("a1", "Beltola", 26.12, 91.8, 500)),
                 List.of(new AreaLines.Place("Ramesh's office", 26.13, 91.8)),
                 List.of(new AreaLines.Note("n1", "a1", null, "Ramesh says\nthe road floods; 98450 12345", 5L)));
-        var text = HouseDocuments.toDocument(hill, List.of(), List.of(), areas, new AiKinds(true)).getText();
+        var text = HouseDocuments.toDocument(hill, List.of(), List.of(), areas, AiKinds.schools(true)).getText();
         assertThat(text).contains("Fees per year: Rs 120000\nArea note: [contact] says the road floods; [phone]\n"
                 + "Distance to [contact]'s office: 1.1 km\nStatus: NEW").doesNotContain("Ramesh").doesNotContain("98450");
     }
@@ -120,7 +120,7 @@ class KindAskVectorsTest {
         when(houses.findDeletedIds()).thenReturn(List.of());
         for (var on : List.of(true, false)) {
             var store = mock(VectorStore.class);
-            var indexer = new HouseIndexer(houses, mock(VisitRepository.class), store, null, null, new AiKinds(on));
+            var indexer = new HouseIndexer(houses, mock(VisitRepository.class), store, null, null, AiKinds.schools(on));
             indexer.index(school.getId());
             indexer.reindexAll();
             var captor = org.mockito.ArgumentCaptor.forClass(List.class);

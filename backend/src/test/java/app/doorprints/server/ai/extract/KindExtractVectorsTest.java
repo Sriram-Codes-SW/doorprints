@@ -96,10 +96,14 @@ class KindExtractVectorsTest {
         var off = new ListingExtractionService(null, AiProperties.defaults());
         assertThatThrownBy(() -> off.extract("Pine Hill School", "school")).isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("school");
-        var on = new ListingExtractionService(null, AiProperties.defaults(), new AiKinds(true));
+        var on = new ListingExtractionService(null, AiProperties.defaults(), AiKinds.schools(true));
         for (var kind : List.of("clinic", "pg")) {
             assertThatThrownBy(() -> on.extract("Lake Clinic", kind)).isInstanceOf(BadRequestException.class);
         }
+        // A kind outside the list is refused as not available, before it is looked up.
+        assertThatThrownBy(() -> on.extract("Lake Clinic", "clinic")).hasMessage("kind clinic is not available");
+        var houseOnly = new ListingExtractionService(null, AiProperties.defaults(), new AiKinds(List.of("house")));
+        assertThatThrownBy(() -> houseOnly.extract("Pine Hill School", "school")).hasMessage("kind school is not available");
         assertThatThrownBy(() -> on.extract(" ", "school")).isInstanceOf(BadRequestException.class);
         assertThatThrownBy(() -> on.extract("x".repeat(8001), "school")).isInstanceOf(BadRequestException.class);
     }

@@ -200,6 +200,12 @@ app:
     # Deleted rows (tombstones) are kept this long so offline devices learn about deletes, then purged.
     tombstone-retention-days: ${TOMBSTONE_RETENTION_DAYS:90}
     purge-cron: "0 30 3 * * *"
+  # The kinds this server has available (S4b-BL-280, replacing app.ai.dev-kinds / AI_DEV_KINDS), the twin of the apps'
+  # AVAILABLE_KINDS: a comma-separated list, the house always in it. Listing a built-in kind other than the house
+  # (school, the hidden schools kind) reads a candidate of it through its kind file's ai slots and lets a request name
+  # it; a request for a kind outside the list is a 400. The default, house alone, reads every candidate as a house.
+  kinds:
+    available: ${KINDS_AVAILABLE:house}
   ai:
     # Master switch for /api/ai/** (extract-listing, ask, plan-visits, reindex). Off by default.
     enabled: ${APP_AI_ENABLED:false}
@@ -209,10 +215,6 @@ app:
     # Embed a house right after each save (async). false = only POST /api/ai/reindex embeds (fewer provider calls).
     index-on-change: ${AI_INDEX_ON_CHANGE:true}
     max-input-chars: ${AI_MAX_INPUT_CHARS:8000}
-    # Developer flag of kinds PR 7 (S4b-BL-211), the server's twin of the apps' dev-kinds flag: true reads a candidate of
-    # a built-in kind other than the house (the hidden schools kind) through its kind file's ai slots. Off by default:
-    # every candidate is then read as a house, as before.
-    dev-kinds: ${AI_DEV_KINDS:false}
     max-question-chars: ${AI_MAX_QUESTION_CHARS:1000}
     # Answer budget per call. On Gemini 3.x it also covers the hidden thinking tokens, so keep it well above the
     # visible answer (about 130 to 350 tokens); 2048 cut the JSON off on the injection cases (S4b-BL-194).

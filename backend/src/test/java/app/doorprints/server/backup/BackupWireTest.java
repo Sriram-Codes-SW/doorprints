@@ -135,6 +135,31 @@ class BackupWireTest {
         assertThat(house.get("bedrooms").asInt()).isEqualTo(1);
     }
 
+    /** The {@code search} object, byte for byte the vectors' {@code write} (the website's and the phone's twins; S4b-BL-280). */
+    @Test
+    void theSearchObjectIsWrittenAsTheSearchKindVectorsSay() throws Exception {
+        var vectors = JSON.readTree(repoFile("docs/schemas/kinds/search-kind-vectors.json"));
+        assertThat(vectors.get("format").asString()).isEqualTo("doorprints-search-kind-vectors/2");
+        var checked = 0;
+        for (var c : vectors.get("write")) {
+            var kinds = new java.util.ArrayList<String>();
+            c.get("kinds").forEach(k -> kinds.add(k.asString()));
+            var name = c.get("name").asString();
+            assertThat(JSON.writeValueAsString(BackupWire.searchOf(kinds, c.get("defaultKind").asString())))
+                    .as(name).isEqualTo(c.get("search").asString());
+            // In a file it sits right after exportedAt, the rest unchanged.
+            var written = BackupWire.currentOf(tree(CanonicalSample.houses()), kinds, c.get("defaultKind").asString());
+            assertThat(JSON.writeValueAsString(written)).as(name)
+                    .contains("\"exportedAt\":" + written.get("exportedAt") + ",\"search\":" + c.get("search").asString() + ",");
+            checked++;
+        }
+        assertThat(checked).isEqualTo(vectors.get("write").size()).isPositive();
+        // The export the server writes today (not told the kinds) is the house's.
+        assertThat(JSON.writeValueAsString(BackupWire.currentOf(tree(CanonicalSample.houses()))))
+                .isEqualTo(CanonicalSample.text());
+        assertThat(JSON.writeValueAsString(BackupWire.searchOf(null, null))).isEqualTo("{\"kind\":\"house\"}");
+    }
+
     private static String repoFile(String relative) throws Exception {
         var dir = Path.of("").toAbsolutePath();
         for (int up = 0; up < 5 && dir != null; up++, dir = dir.getParent()) {

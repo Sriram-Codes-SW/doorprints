@@ -17,26 +17,31 @@
  */
 package app.doorprints.server.ai.kind;
 
+import app.doorprints.server.common.BadRequestException;
+import app.doorprints.server.house.House;
 import app.doorprints.server.house.Money;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
- * Which kind the AI reads a candidate as (kinds PR 7, S4b-BL-211; docs/03 ADR-36 §18.11), the server's twin of the
- * apps' developer flag (the website's {@code devKindsOn()}, the phone's {@code BuildConfig.DEV_KINDS}): with
- * {@code app.ai.dev-kinds} off (the default, {@code AI_DEV_KINDS}) every candidate is read as a house is today, its
- * extras unread; with it on, a candidate of a built-in kind other than the house ({@link #SCHOOL}) is read through its
- * kind's {@code ai} slots ({@link AiKind}). An unknown kind is always read as a house.
+ * The kinds this server has available and which kind the AI reads a candidate as (kinds PR 7, S4b-BL-211; docs/03
+ * ADR-36 §18.11; renamed in S4b-BL-280), the server's twin of the apps' {@code AVAILABLE_KINDS}: {@code app.kinds.available}
+ * ({@code KINDS_AVAILABLE}, a comma-separated list, default {@code house}; the house is always in it). With the house
+ * alone every candidate is read as a house is today, its extras unread; with a built-in kind other than the house
+ * ({@link #SCHOOL}) in the list, a candidate of that kind is read through its kind's {@code ai} slots
+ * ({@link AiKind}). An unknown kind is always read as a house; a request that names a kind outside the list is a
+ * 400 ({@link #require}).
  */
 @Component
 public class AiKinds {
 
-    /** The flag off: what every caller that names no flag gets. */
-    public static final AiKinds OFF = new AiKinds(false);
+    /** The house alone: what every caller that names no list gets. */
+    public static final AiKinds OFF = new AiKinds(List.of());
 
     /** The schools kind's AI slots and words ({@code docs/schemas/kinds/school.json}, kind-ai-vectors.json). */
     public static final AiKind SCHOOL = new AiKind("school", "School",
@@ -86,15 +91,43 @@ public class AiKinds {
 
     private static final Map<String, AiKind> BUILT_IN = Map.of(SCHOOL.id(), SCHOOL);
 
-    private final boolean devKinds;
+    private final List<String> available;
 
-    public AiKinds(@Value("${app.ai.dev-kinds:false}") boolean devKinds) {
-        this.devKinds = devKinds;
+    public AiKinds(@Value("${app.kinds.available:house}") List<String> available) {
+        var list = new ArrayList<String>();
+        list.add(House.HOUSE_KIND);
+        if (available != null) {
+            for (var k : available) {
+                var id = k == null ? "" : k.trim();
+                if (id.matches(House.KIND_PATTERN) && !list.contains(id)) list.add(id);
+            }
+        }
+        this.available = List.copyOf(list);
     }
 
-    /** The AI kind of a candidate of {@code kind}, or null: read as a house (the flag off, the house, an unknown kind). */
+    /** A list of the house and, when {@code schools}, the schools kind (tests and callers that name a flag). */
+    public static AiKinds schools(boolean schools) {
+        return new AiKinds(schools ? List.of(House.HOUSE_KIND, SCHOOL.id()) : List.of());
+    }
+
+    /** The kinds available here, the house first. */
+    public List<String> available() {
+        return available;
+    }
+
+    /** Whether a request may name {@code kind}: none, or one in the list. */
+    public boolean isAvailable(String kind) {
+        return kind == null || available.contains(kind);
+    }
+
+    /** A 400 for a request that names a kind outside {@code app.kinds.available}. */
+    public void require(String kind) {
+        if (!isAvailable(kind)) throw new BadRequestException("kind " + kind + " is not available");
+    }
+
+    /** The AI kind of a candidate of {@code kind}, or null: read as a house (the house, an unavailable or unknown kind). */
     public AiKind of(String kind) {
-        return devKinds && kind != null ? BUILT_IN.get(kind) : null;
+        return kind != null && available.contains(kind) ? BUILT_IN.get(kind) : null;
     }
 
     private static Map<String, String> options(String... idsAndWords) {
