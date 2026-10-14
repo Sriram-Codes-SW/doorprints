@@ -8,6 +8,24 @@
   "many": { "web": "school.many", "android": "schools_title" },
   "delete": { "web": "school.delete", "android": "school_delete" }
  },
+ "words": {
+  "heading": { "web": "school.heading" },
+  "regionLabel": { "web": "school.regionLabel" },
+  "regionHint": { "web": "school.regionHint" },
+  "add": { "web": "school.add" },
+  "addHint": { "web": "school.addHint" },
+  "addHintShort": { "web": "school.addHintShort" },
+  "search": { "web": "school.search" },
+  "listLabel": { "web": "school.listLabel" },
+  "shown": { "web": "school.shown" },
+  "loading": { "web": "school.loading" },
+  "emptyTitle": { "web": "school.emptyTitle" },
+  "emptyBody": { "web": "school.emptyBody" },
+  "noMatch": { "web": "school.noMatch" },
+  "create": { "web": "school.create" },
+  "areaNotesNone": { "web": "school.areaNotesNone" },
+  "areaInReach": { "web": "school.areaNotesInReach" }
+ },
  "statuses": [
   { "id": "NEW", "label": { "web": "status.NEW", "android": "status_NEW" } },
   { "id": "SHORTLISTED", "label": { "web": "status.SHORTLISTED", "android": "status_SHORTLISTED" } },
