@@ -135,6 +135,9 @@ class SpaceUi(val setting: KindSetting, val kind: String) {
 
     val words: SpaceWords = SpaceWords.of(built.id)
 
+    /** The house words left on this kind's pages (kinds PR 16, phone half): titles, questions, the walk check, Areas and Places. */
+    val pages: PageWords = PageWords.of(built.id)
+
     /** Hunt mode is the house space's (docs/03 §18.12): its card and its switch are not offered elsewhere. */
     val huntHere: Boolean get() = built.id == KindSettingRules.HOUSE
 

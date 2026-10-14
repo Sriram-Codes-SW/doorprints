@@ -16,7 +16,6 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-
 package app.doorprints.shared.export
 
 import app.doorprints.shared.model.SpaceView
@@ -185,5 +184,25 @@ class SchoolCopyVoiceTest {
             // Everything the overlay does not name is the house's word, key for key.
             assertEquals(ExportStrings.of(language)["col.visits"], s["col.visits"])
         }
+    }
+
+    @Test
+    fun theOverlayIsTheWebsitesWordsForTheKeysItNamesAndTheKeysAreTheCopiesOwn() {
+        // The website's overlay (`export/kind-export-words.ts`) and dictionaries are read as they are, so the two cannot drift.
+        val overlay = repoFile("web/src/app/export/kind-export-words.ts").readText()
+        for (language in languages) {
+            val block = Regex("\n  $language: \\{(.*?)\n  \\},", RegexOption.DOT_MATCHES_ALL).find(overlay)!!.groupValues[1]
+            val web = Regex("'([A-Za-z.]+)': '((?:[^'\\\\]|\\\\.)*)',").findAll(block).associate { it.groupValues[1] to it.groupValues[2] }
+            val own = KindExportWords.of("school", language)!!
+            assertEquals("$language: the keys", web.keys + "section.cost", own.keys)
+            for ((key, text) in web) assertEquals("$language $key", text, own.getValue(key))
+            // The Cost block's heading is the website's *Fees* (`school.fees`).
+            val dictionary = repoFile("web/src/app/i18n/$language.ts").readText()
+            assertEquals(language, Regex("'school\\.fees': '([^']*)'").find(dictionary)!!.groupValues[1], own.getValue("section.cost"))
+            // Every key is one the copies have, in the house's words too.
+            for (key in own.keys) assertTrue("$language $key", key in ExportStrings.of(language).keys)
+        }
+        assertNull(KindExportWords.of("house", "en"))
+        assertNull(KindExportWords.of(null, "ta"))
     }
 }

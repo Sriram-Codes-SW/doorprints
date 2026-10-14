@@ -28,10 +28,10 @@
  },
  "allow": {
   "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt": 1295,
-  "android/ui/src/commonMain/kotlin/app/doorprints/ui/HouseEditScreen.kt": 1517,
-  "android/ui/src/commonMain/kotlin/app/doorprints/ui/HouseListScreen.kt": 1022,
+  "android/ui/src/commonMain/kotlin/app/doorprints/ui/HouseEditScreen.kt": 1509,
+  "android/ui/src/commonMain/kotlin/app/doorprints/ui/HouseListScreen.kt": 1018,
   "android/ui/src/commonMain/kotlin/app/doorprints/ui/ImportScreen.kt": 1014,
-  "android/ui/src/commonMain/kotlin/app/doorprints/ui/MapScreen.kt": 1519,
+  "android/ui/src/commonMain/kotlin/app/doorprints/ui/MapScreen.kt": 1515,
   "android/ui/src/commonMain/kotlin/app/doorprints/ui/SettingsScreen.kt": 929,
   "backend/src/main/java/app/doorprints/server/backup/BackupService.java": 1241,
   "web/src/app/core/ai/ai-core.ts": 1053,

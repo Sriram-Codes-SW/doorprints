@@ -91,6 +91,7 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.getString
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
 // A house's photos on the form (S4b-BL-168, slice 1): taking and picking, the strip of thumbnails, delete with Undo, the
@@ -354,6 +355,8 @@ internal fun HousePhotosSection(
     onSave: () -> Unit,
     name: String,
     rooms: List<HouseRoom>?,
+    /** The line above *Save and add photos* for the candidate's kind (the house's by default). */
+    savePhotosFirst: StringResource = Res.string.house_save_first_photos,
 ) {
     if (!photos.canAdd && photos.all.isEmpty()) return
     val form = LocalAppServices.current.houseForm
@@ -362,7 +365,7 @@ internal fun HousePhotosSection(
     if (!isSaved) {
         // A new house: its photos belong to a saved row.
         if (isNew && photos.canAdd) {
-            Text(stringResource(Res.string.house_save_first_photos), style = MaterialTheme.typography.bodySmall)
+            Text(stringResource(savePhotosFirst), style = MaterialTheme.typography.bodySmall)
             OutlinedButton(
                 onClick = onSave,
                 enabled = canSave,

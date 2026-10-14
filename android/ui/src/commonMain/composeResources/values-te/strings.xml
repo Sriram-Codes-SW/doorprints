@@ -1768,4 +1768,31 @@
     <string name="delete_restore_aria">%1$s ను పునరుద్ధరించు</string>
     <string name="delete_deleted_on">తొలగించిన సమయం: %1$s</string>
     <string name="drive_delete_all_kinds">ఇది అన్ని రకాలను తొలగిస్తుంది: ఇళ్లు, పాఠశాలలు మరియు ప్రతి ఇతర స్థలం, మీరు ఉన్నది మాత్రమే కాదు.</string>
+    <!-- S4b-BL-256, S4b-BL-259, S4b-BL-266, S4b-BL-277 (2026-10-14): under review (the website's school words where it has the key, else the house string with the school's noun). -->
+    <string name="school_details_title">పాఠశాల వివరాలు</string>
+    <string name="school_not_found_title">పాఠశాల కనబడలేదు</string>
+    <string name="school_not_found">ఈ పాఠశాల ఇకపై ఈ ఫోన్‌లో లేదు.</string>
+    <string name="school_default_label">కొత్త పాఠశాల</string>
+    <string name="school_default_label_street">%1$s లోని పాఠశాల</string>
+    <string name="school_discard_new_title">ఈ కొత్త పాఠశాలను వదిలేయాలా?</string>
+    <string name="school_delete_confirm_title">ఈ పాఠశాలను తొలగించాలా?</string>
+    <string name="school_needs_precise">ఈ పాఠశాల స్థానాన్ని గుర్తించడానికి ఖచ్చితమైన స్థానం అవసరం, లేదా అక్షాంశం, రేఖాంశం టైప్ చేయండి.</string>
+    <string name="school_save_first_photos">ఫోటోలు చేర్చడానికి ముందుగా పాఠశాలను సేవ్ చేయండి.</string>
+    <string name="school_walk_button">నేను ఈ పాఠశాల పక్కగా నడిచానా?</string>
+    <string name="school_walk_place">ఈ పాఠశాల</string>
+    <string name="school_walk_label">ఈ పాఠశాల</string>
+    <string name="school_walk_approx">ఈ పాఠశాలకు ఇంకా కచ్చితమైన చోటు లేదు, ఒక ప్రాంతం మాత్రమే ఉంది. ముందుగా మ్యాప్‌లో ఉంచండి, తర్వాత తనిఖీ చేయండి.</string>
+    <string name="school_walks_empty">సేవ్ చేసిన నడకలు లేవు. నడక ముగించినప్పుడు దాన్ని ఈ పాఠశాలకు లింక్ చేయవచ్చు.</string>
+    <string name="school_ai_disclosure">మీ ప్రశ్న, సరిపోలే పాఠశాల గమనికలు మీ సర్వర్‌లో సెట్ చేసిన AI సేవకు పంపబడతాయి.</string>
+    <string name="school_ai_disclosure_own_key_host">ఈ టెక్స్ట్, సరిపోలే పాఠశాల గమనికలతో కలిసి, మీ సొంత కీతో ఈ ఫోన్ నుండి నేరుగా %1$s కి పంపబడుతుంది.</string>
+    <string name="school_map_place_found">మ్యాప్ “%1$s”ను చూపుతోంది. పాఠశాలను అక్కడ చేర్చడానికి దాని స్థలాన్ని ఎక్కువసేపు నొక్కండి.</string>
+    <string name="school_map_place_not_found">భారతదేశంలో “%1$s” అనే స్థలం దొరకలేదు. మ్యాప్‌ను మీరే పాఠశాల వరకు జరపండి.</string>
+    <string name="school_compare_open">పాఠశాల వివరాలు తెరవండి</string>
+    <string name="school_areas_empty_body">మీరు పాఠశాల వెతుకుతున్న ప్రాంతాలను జోడించండి. ఒక ప్రాంతంపై గమనిక దానిలోని ప్రతి పాఠశాలపై కనిపిస్తుంది.</string>
+    <string name="school_notes_empty">ఇంకా గమనికలు లేవు. ఒక పాఠశాల నుండి జోడించండి.</string>
+    <string name="school_area_delete_body">దీని గమనికలు ఉంటాయి, కానీ ఇకపై ఏ పాఠశాలపైనా కనిపించవు.</string>
+    <string name="school_place_delete_body">ఇది ఎంత దూరమో పాఠశాలలు ఇకపై చూపవు.</string>
+    <string name="school_places_empty_body">ప్రతి పాఠశాల ఎంత దూరమో చూడటానికి మీ కార్యాలయం లేదా కుటుంబ ఇంటిని జోడించండి.</string>
+    <string name="school_area_notes_none">ఇంకా ఏ ప్రాంత గమనికా ఈ పాఠశాలకు వర్తించదు.</string>
+    <string name="school_area_here">%1$s (ఈ పాఠశాల ఇందులో ఉంది)</string>
 </resources>

@@ -712,7 +712,7 @@ private fun HouseList(
                     val n = houses.count { it.status == s }
                     StatusChip(
                         selected = filter == s, onClick = { onFilter(s) },
-                        label = stringResource(Res.string.status_filter, stringResource(s.labelResource), n),
+                        label = stringResource(Res.string.status_filter, stringResource(LocalSpace.current.built.labels.statusText(s)), n),
                     )
                 }
             }
@@ -970,6 +970,7 @@ private fun SortMenu(sort: Sort, onSort: (Sort) -> Unit, modifier: Modifier = Mo
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun HouseCard(h: HouseEntity, score: ScoreResult, visits: Int, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    val space = LocalSpace.current // the kind's words and what it shows: a school's row has no price, bedrooms or score (S4b-BL-256)
     // clickable merges the card's texts into one TalkBack item: "name, status, place, price, score, visits", and
     // (round 16) says what a double-tap does, "double-tap to open details", with the button role.
     OutlinedCard(
@@ -981,29 +982,24 @@ private fun HouseCard(h: HouseEntity, score: ScoreResult, visits: Int, modifier:
     ) {
         Column(Modifier.padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(h.label.ifBlank { stringResource(LocalSpace.current.words.unnamed) }, fontWeight = FontWeight.SemiBold,
+                Text(h.label.ifBlank { stringResource(space.words.unnamed) }, fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f))
                 // The status glyph (UX-002: ● ★ ✕, so the status is not colour alone), hidden from TalkBack, which
                 // reads the status text in the card's merged description.
-                Text(
-                    h.status.glyph + " ",
-                    color = h.status.color(),
-                    style = MaterialTheme.typography.labelLarge,
-                    modifier = Modifier.clearAndSetSemantics { },
-                )
-                Text(stringResource(h.status.labelResource), color = h.status.color(), style = MaterialTheme.typography.labelLarge)
+                Text(h.status.glyph + " ", color = h.status.color(), style = MaterialTheme.typography.labelLarge, modifier = Modifier.clearAndSetSemantics { })
+                Text(stringResource(space.built.labels.statusText(h.status)), color = h.status.color(), style = MaterialTheme.typography.labelLarge)
             }
             val place = listOfNotNull(h.street, h.locality).joinToString(", ")
             if (place.isNotBlank()) Text(place, style = MaterialTheme.typography.bodySmall)
             // FlowRow wraps at large font scales instead of clipping (A11Y-A03).
             FlowRow(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                priceText(h.price, h.priceType)?.let { Text(it, fontWeight = FontWeight.Medium) }
-                h.bedrooms?.let { Text(stringResource(Res.string.common_bhk, it)) }
-                if (LocalSpace.current.shows("section.checklist")) Text(stringResource(Res.string.common_score_value, score.overall.scoreText()))
+                if (space.shows("field.money")) priceText(h.price, h.priceType)?.let { Text(it, fontWeight = FontWeight.Medium) }
+                if (space.shows("field.bedrooms")) h.bedrooms?.let { Text(stringResource(Res.string.common_bhk, it)) }
+                if (space.shows("section.checklist")) Text(stringResource(Res.string.common_score_value, score.overall.scoreText()))
                 Text(stringResource(Res.string.common_visits_count, visits))
             }
             // A must-have scored below its minimum (slice 2): said in words, not by colour alone.
-            if (score.missedMustHave) MustHaveMissedChip(Modifier.padding(top = 6.dp))
+            if (score.missedMustHave && space.shows("section.checklist")) MustHaveMissedChip(Modifier.padding(top = 6.dp))
         }
     }
 }

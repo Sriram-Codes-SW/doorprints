@@ -550,12 +550,12 @@ private fun ServicePicker(current: AiService, onPick: (AiService) -> Unit) {
  * until the settings are loaded, and nothing while the own AI has no valid address yet (then AI is off anyway).
  */
 @Composable
-fun AiDisclosure(style: TextStyle, color: Color, modifier: Modifier = Modifier) {
+fun AiDisclosure(style: TextStyle, color: Color, modifier: Modifier = Modifier, pages: PageWords = PageWords.HOUSE) {
     val settings = LocalAppServices.current.repository.settings.settings.collectAsState(null).value ?: return
     val host = AiProviderForm.disclosureHost(settings, LocalPlatformFeatures.current.emulatorHost)
     when {
-        host == null -> Text(stringResource(Res.string.ai_disclosure), style = style, color = color, modifier = modifier)
-        host.isNotEmpty() -> Text(stringResource(Res.string.ai_disclosure_own_key_host, host), style = style, color = color, modifier = modifier)
+        host == null -> Text(stringResource(pages.aiDisclosure), style = style, color = color, modifier = modifier)
+        host.isNotEmpty() -> Text(stringResource(pages.aiDisclosureOwnKey, host), style = style, color = color, modifier = modifier)
     }
 }
 

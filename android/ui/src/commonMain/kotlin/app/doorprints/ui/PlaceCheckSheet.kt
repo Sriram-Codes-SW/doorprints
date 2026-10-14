@@ -54,9 +54,7 @@ import app.doorprints.ui.res.common_close
 import app.doorprints.ui.res.trace_house_show
 import app.doorprints.ui.res.trace_here_again
 import app.doorprints.ui.res.trace_here_and_more
-import app.doorprints.ui.res.trace_here_approx_house
 import app.doorprints.ui.res.trace_here_button
-import app.doorprints.ui.res.trace_here_button_house
 import app.doorprints.ui.res.trace_here_close
 import app.doorprints.ui.res.trace_here_denied
 import app.doorprints.ui.res.trace_here_empty
@@ -64,14 +62,12 @@ import app.doorprints.ui.res.trace_here_fuzzy
 import app.doorprints.ui.res.trace_here_imprecise
 import app.doorprints.ui.res.trace_here_invalid
 import app.doorprints.ui.res.trace_here_label_here
-import app.doorprints.ui.res.trace_here_label_house
 import app.doorprints.ui.res.trace_here_label_spot
 import app.doorprints.ui.res.trace_here_locating
 import app.doorprints.ui.res.trace_here_none
 import app.doorprints.ui.res.trace_here_none_saved
 import app.doorprints.ui.res.trace_here_only_recorded
 import app.doorprints.ui.res.trace_here_place_here
-import app.doorprints.ui.res.trace_here_place_house
 import app.doorprints.ui.res.trace_here_place_spot
 import app.doorprints.ui.res.trace_here_press_menu
 import app.doorprints.ui.res.trace_here_privacy
@@ -83,16 +79,16 @@ import app.doorprints.ui.res.trace_here_walked
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
-/** The sheet's title for [kind]: *Have I been here?*, *Did I walk past this house?*, *Did I walk here?*. */
-internal fun checkTitle(kind: PlaceKind): StringResource = when (kind) {
+/** The sheet's title for [kind]: *Have I been here?*, *Did I walk past this house?* (or school, [pages]), *Did I walk here?*. */
+internal fun checkTitle(kind: PlaceKind, pages: PageWords = PageWords.HOUSE): StringResource = when (kind) {
     PlaceKind.HERE -> Res.string.trace_here_button
-    PlaceKind.HOUSE -> Res.string.trace_here_button_house
+    PlaceKind.HOUSE -> pages.walkButton
     PlaceKind.SPOT -> Res.string.trace_here_press_menu
 }
 
-private fun placeWord(kind: PlaceKind): StringResource = when (kind) {
+private fun placeWord(kind: PlaceKind, pages: PageWords): StringResource = when (kind) {
     PlaceKind.HERE -> Res.string.trace_here_place_here
-    PlaceKind.HOUSE -> Res.string.trace_here_place_house
+    PlaceKind.HOUSE -> pages.walkPlace
     PlaceKind.SPOT -> Res.string.trace_here_place_spot
 }
 
@@ -107,8 +103,10 @@ fun PlaceCheckSheet(
     onShowOnMap: (CheckOverlay) -> Unit,
     onAgain: () -> Unit,
     onClose: () -> Unit,
+    /** The words of the checked candidate's kind (a house's by default). */
+    pages: PageWords = PageWords.HOUSE,
 ) {
-    ModalBottomSheet(onDismissRequest = onClose) { PlaceCheckSheetContent(state, onShowOnMap, onAgain, onClose) }
+    ModalBottomSheet(onDismissRequest = onClose) { PlaceCheckSheetContent(state, onShowOnMap, onAgain, onClose, pages) }
 }
 
 /**
@@ -123,17 +121,18 @@ fun PlaceCheckSheetContent(
     onShowOnMap: (CheckOverlay) -> Unit,
     onAgain: () -> Unit,
     onClose: () -> Unit,
+    pages: PageWords = PageWords.HOUSE,
 ) {
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
-    val place = stringResource(placeWord(state.kind))
+    val place = stringResource(placeWord(state.kind, pages))
     val tolerance = distanceText(CHECK_TOLERANCE_M)
     Column(
         Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).navigationBarsPadding(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(
-            stringResource(checkTitle(state.kind)),
+            stringResource(checkTitle(state.kind, pages)),
             style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.focusRequester(focus).focusable().semantics { heading() },
         )
@@ -145,7 +144,7 @@ fun PlaceCheckSheetContent(
                     stringResource(
                         when (state.reason) {
                             PlaceFailure.TIMEOUT -> Res.string.trace_here_timeout
-                            PlaceFailure.APPROX_HOUSE -> Res.string.trace_here_approx_house
+                            PlaceFailure.APPROX_HOUSE -> pages.walkApprox
                             PlaceFailure.DENIED -> Res.string.trace_here_denied
                         },
                     ),
@@ -159,7 +158,7 @@ fun PlaceCheckSheetContent(
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 16.dp)) {
             if (state is PlaceCheckState.Answer) {
-                val overlay = CheckOverlay.of(state.lat, state.lon, placeLabel(state.kind), state.result, state.walks)
+                val overlay = CheckOverlay.of(state.lat, state.lon, placeLabel(state.kind, pages), state.result, state.walks)
                 if (overlay.stretches.isNotEmpty()) {
                     Button(onClick = { onShowOnMap(overlay) }, modifier = Modifier.heightIn(min = 48.dp)) {
                         ButtonLabel(stringResource(Res.string.trace_house_show))
@@ -178,10 +177,10 @@ fun PlaceCheckSheetContent(
 
 /** The label the map shows at the checked place: Here, the house or the spot. */
 @Composable
-private fun placeLabel(kind: PlaceKind): String = stringResource(
+private fun placeLabel(kind: PlaceKind, pages: PageWords): String = stringResource(
     when (kind) {
         PlaceKind.HERE -> Res.string.trace_here_label_here
-        PlaceKind.HOUSE -> Res.string.trace_here_label_house
+        PlaceKind.HOUSE -> pages.walkLabel
         PlaceKind.SPOT -> Res.string.trace_here_label_spot
     },
 )

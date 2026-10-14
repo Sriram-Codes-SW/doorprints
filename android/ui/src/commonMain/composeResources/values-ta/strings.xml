@@ -1768,4 +1768,31 @@
     <string name="delete_restore_aria">%1$s ஐ மீட்கவும்</string>
     <string name="delete_deleted_on">நீக்கிய நேரம்: %1$s</string>
     <string name="drive_delete_all_kinds">இது எல்லா வகைகளையும் நீக்கும்: வீடுகள், பள்ளிகள் மற்றும் மற்ற எல்லா இடங்களும், நீங்கள் இருக்கும் இடம் மட்டுமல்ல.</string>
+    <!-- S4b-BL-256, S4b-BL-259, S4b-BL-266, S4b-BL-277 (2026-10-14): under review (the website's school words where it has the key, else the house string with the school's noun). -->
+    <string name="school_details_title">பள்ளி விவரங்கள்</string>
+    <string name="school_not_found_title">பள்ளி கிடைக்கவில்லை</string>
+    <string name="school_not_found">இந்தப் பள்ளி இனி இந்தத் தொலைபேசியில் இல்லை.</string>
+    <string name="school_default_label">புதிய பள்ளி</string>
+    <string name="school_default_label_street">%1$s-இல் உள்ள பள்ளி</string>
+    <string name="school_discard_new_title">இந்தப் புதிய பள்ளியைக் கைவிடவா?</string>
+    <string name="school_delete_confirm_title">இந்தப் பள்ளியை நீக்கவா?</string>
+    <string name="school_needs_precise">இந்தப் பள்ளியின் இடத்தைக் குறிக்கத் துல்லியமான இருப்பிடம் தேவை, அல்லது அட்சரேகையையும் தீர்க்கரேகையையும் தட்டச்சு செய்யவும்.</string>
+    <string name="school_save_first_photos">படங்களைச் சேர்க்க முதலில் பள்ளியைச் சேமிக்கவும்.</string>
+    <string name="school_walk_button">நான் இந்தப் பள்ளியைக் கடந்து நடந்திருக்கிறேனா?</string>
+    <string name="school_walk_place">இந்தப் பள்ளி</string>
+    <string name="school_walk_label">இந்தப் பள்ளி</string>
+    <string name="school_walk_approx">இந்தப் பள்ளிக்கு இன்னும் துல்லியமான இடம் இல்லை, ஒரு பகுதி மட்டுமே உள்ளது. முதலில் வரைபடத்தில் வைக்கவும், பிறகு சரிபார்க்கவும்.</string>
+    <string name="school_walks_empty">சேமித்த நடைகள் இல்லை. நடையை முடிக்கும்போது அதை இந்தப் பள்ளியுடன் இணைக்கலாம்.</string>
+    <string name="school_ai_disclosure">உங்கள் கேள்வியும் பொருந்தும் பள்ளிக் குறிப்புகளும் உங்கள் சர்வரில் அமைத்த AI சேவைக்கு அனுப்பப்படும்.</string>
+    <string name="school_ai_disclosure_own_key_host">இந்த உரை, பொருந்தும் பள்ளிக் குறிப்புகளுடன், உங்கள் சொந்த சாவியுடன் இந்தத் தொலைபேசியிலிருந்து நேரடியாக %1$s-க்கு அனுப்பப்படும்.</string>
+    <string name="school_map_place_found">வரைபடம் “%1$s”-ஐக் காட்டுகிறது. பள்ளியை அங்கே சேர்க்க, அதன் இடத்தை நீண்ட நேரம் அழுத்தவும்.</string>
+    <string name="school_map_place_not_found">இந்தியாவில் “%1$s” என்ற இடம் கிடைக்கவில்லை. வரைபடத்தை நீங்களே பள்ளிக்கு நகர்த்தவும்.</string>
+    <string name="school_compare_open">பள்ளி விவரங்களைத் திற</string>
+    <string name="school_areas_empty_body">நீங்கள் பள்ளி தேடும் பகுதிகளைச் சேர்க்கவும். ஒரு பகுதியின் குறிப்பு அதனுள் உள்ள ஒவ்வொரு பள்ளியிலும் தெரியும்.</string>
+    <string name="school_notes_empty">இன்னும் குறிப்புகள் இல்லை. ஒரு பள்ளியிலிருந்து சேர்க்கவும்.</string>
+    <string name="school_area_delete_body">இதன் குறிப்புகள் இருக்கும், ஆனால் இனி எந்தப் பள்ளியிலும் தெரியாது.</string>
+    <string name="school_place_delete_body">இது எவ்வளவு தூரம் என்பதைப் பள்ளிகள் இனி காட்டாது.</string>
+    <string name="school_places_empty_body">ஒவ்வொரு பள்ளியும் எவ்வளவு தூரம் என்று காண உங்கள் அலுவலகம் அல்லது குடும்ப வீட்டைச் சேர்க்கவும்.</string>
+    <string name="school_area_notes_none">இன்னும் எந்தப் பகுதிக் குறிப்பும் இந்தப் பள்ளிக்குப் பொருந்தவில்லை.</string>
+    <string name="school_area_here">%1$s (இந்தப் பள்ளி இதில் உள்ளது)</string>
 </resources>
