@@ -17,6 +17,10 @@
  */
 
 import { Component, computed, inject, signal } from '@angular/core';
+import { Announcer } from '../../core/announcer.service';
+import { BulkGuard } from '../../core/bulk-guard.service';
+import { ConfirmService } from '../../core/confirm.service';
+import { DeleteUndoService } from '../../core/delete-undo.service';
 import { routesFor } from '../../app.routes';
 import {
   availableKinds, defaultKind, enabledKinds, experimentalKindsOn, kindById, offeredKinds, setDefaultKind, setExperimentalKinds,
@@ -26,6 +30,9 @@ import { LocalDataService } from '../../core/local-data.service';
 import { SpaceService, spaceOf } from '../../core/space.service';
 import { TPipe } from '../../i18n/t.pipe';
 import { TranslationService } from '../../i18n/translation.service';
+
+/** A space with more rows than this wants a tick box before *Delete all in this space*. */
+export const TICK_OVER = 10;
 
 /** One row of Settings > Kinds: a kind offered here, whether it is shown, whether it is the default, its entries. */
 interface KindRow {
@@ -68,6 +75,13 @@ interface KindRow {
                   <input type="checkbox" [id]="'kind-on-' + r.id" [checked]="r.on" [disabled]="r.on && shownCount() === 1" (change)="setOn(r.id, $any($event.target).checked)" />
                   <label [for]="'kind-on-' + r.id">{{ 'kinds.show' | t: { kind: r.label } }}</label>
                 </div>
+                @if (r.count > 0) {
+                  <div class="field">
+                    <button type="button" class="btn btn-danger" [id]="'kind-delete-' + r.id" [attr.aria-label]="'delete.spaceButtonAria' | t: { kind: r.label }" (click)="deleteAll(r)">
+                      {{ 'delete.spaceButton' | t }}
+                    </button>
+                  </div>
+                }
                 <div class="field checkbox">
                   <input type="radio" name="defaultKind" [id]="'kind-default-' + r.id" [checked]="r.isDefault" [disabled]="!r.on" [attr.aria-label]="'kinds.defaultAria' | t: { kind: r.label }" (change)="setDefault(r.id)" />
                   <label [for]="'kind-default-' + r.id" aria-hidden="true">{{ 'kinds.default' | t }}</label>
@@ -86,18 +100,24 @@ interface KindRow {
     .rows { list-style: none; margin: var(--space-3) 0 0; padding: 0; display: grid; gap: var(--space-2); }
     .row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 var(--space-3); padding: var(--space-2) 0; border-top: 1px solid var(--border); }
     .name { margin: 0; overflow-wrap: anywhere; }
-    @media (min-width: 40rem) { .row { grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; } }
+    @media (min-width: 40rem) { .row { grid-template-columns: minmax(0, 1fr) auto auto auto; align-items: center; } }
   `,
 })
 export class KindsSettings {
   private readonly data = inject(LocalDataService);
   private readonly space = inject(SpaceService);
+  private readonly confirm = inject(ConfirmService);
+  private readonly undo = inject(DeleteUndoService);
+  private readonly bulk = inject(BulkGuard);
+  private readonly announcer = inject(Announcer);
   protected readonly i18n = inject(TranslationService);
   private readonly available = availableKinds();
   protected readonly unreleased = unreleasedKinds(this.available);
   /** Bumped after every change, so the rows read the settings again. */
   private readonly version = signal(0);
   private readonly counts = signal<ReadonlyMap<string, number>>(new Map());
+  /** The live candidates of each space (by id), the ids a card's *Delete all in this space* takes and no others. */
+  private readonly ids = signal<ReadonlyMap<string, readonly string[]>>(new Map());
 
   protected readonly experimental = computed(() => (this.version(), experimentalKindsOn()));
   protected readonly visible = computed(() => this.unreleased.length > 0 || this.available.length > 1);
@@ -118,16 +138,49 @@ export class KindsSettings {
   constructor() {
     this.data.houses().subscribe({
       next: (list) => {
-        const m = new Map<string, number>();
+        const m = new Map<string, string[]>();
         for (const h of list) {
           if (h.deleted) continue;
           const id = spaceOf(h, true, 'house', this.available);
-          m.set(id, (m.get(id) ?? 0) + 1);
+          m.set(id, [...(m.get(id) ?? []), h.id]);
         }
-        this.counts.set(m);
+        this.ids.set(m);
+        this.counts.set(new Map([...m].map(([k, v]) => [k, v.length])));
       },
-      error: () => this.counts.set(new Map()),
+      error: () => {
+        this.ids.set(new Map());
+        this.counts.set(new Map());
+      },
     });
+  }
+
+  /**
+   * *Delete all in this space* on one card (deletion safeguards PR 2, docs/02 T-D15): only this space's candidates, as
+   * tombstones in one batch, then the same ten seconds of *Undo* as one delete. The question names the count and the kind;
+   * over {@link TICK_OVER} rows it also wants a tick; *Save a copy first* goes to the copies instead of deleting. Focus
+   * starts on Cancel (a danger dialog). One bulk action per 10 seconds per device ({@link BulkGuard}).
+   */
+  protected async deleteAll(row: KindRow): Promise<void> {
+    const ids = this.ids().get(row.id) ?? [];
+    if (!ids.length) return;
+    const wait = this.bulk.waitSeconds();
+    if (wait > 0) {
+      this.announcer.announce({ key: 'delete.bulkWait', params: { n: wait } });
+      return;
+    }
+    const answer = await this.confirm.choose(
+      { key: 'delete.spaceConfirm', params: { n: this.i18n.number(ids.length), kind: row.label } },
+      { confirmKey: 'delete.spaceDo', altKey: 'driveDelete.saveCopyFirst', danger: true, focusCancel: true, tickKey: ids.length > TICK_OVER ? 'driveDelete.confirmCheckbox' : null },
+    );
+    if (answer === 'alt') {
+      document.getElementById('export-heading')?.scrollIntoView?.({ block: 'start' });
+      document.getElementById('export-heading')?.focus();
+      return;
+    }
+    if (answer !== 'confirm') return;
+    if (!this.bulk.tryStart()) return;
+    await this.undo.removeMany(ids, row.label);
+    document.getElementById('kinds-heading')?.focus();
   }
 
   protected setSwitch(on: boolean): void {

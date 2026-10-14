@@ -35,6 +35,13 @@ export interface ConfirmRequest {
   readonly altKey: TKey | null;
   /** Style the confirm button as destructive and put initial focus on Cancel. */
   readonly danger: boolean;
+  /**
+   * A tick box above the buttons that must be ticked before the main action works ("I understand this cannot be undone"),
+   * for a delete that takes many rows (deletion safeguards PR 2). Null when there is none.
+   */
+  readonly tickKey: TKey | null;
+  /** Initial focus on Cancel even when there is an `altKey` (a delete of many rows: the safest button, not a shortcut). */
+  readonly focusCancel: boolean;
 }
 
 interface Pending extends ConfirmRequest {
@@ -57,7 +64,7 @@ export class ConfirmService {
   }
 
   /** Like {@link ask}, with an optional third button (`altKey`) whose answer is `'alt'`. */
-  choose(message: Msg, options: { confirmKey?: TKey; altKey?: TKey | null; danger?: boolean } = {}): Promise<ConfirmAnswer> {
+  choose(message: Msg, options: { confirmKey?: TKey; altKey?: TKey | null; danger?: boolean; tickKey?: TKey | null; focusCancel?: boolean } = {}): Promise<ConfirmAnswer> {
     // A second request while one is open cancels the first.
     this.state()?.resolve('cancel');
     return new Promise<ConfirmAnswer>((resolve) =>
@@ -66,6 +73,8 @@ export class ConfirmService {
         confirmKey: options.confirmKey ?? 'confirm.ok',
         altKey: options.altKey ?? null,
         danger: options.danger ?? false,
+        tickKey: options.tickKey ?? null,
+        focusCancel: options.focusCancel ?? false,
         resolve,
       }),
     );

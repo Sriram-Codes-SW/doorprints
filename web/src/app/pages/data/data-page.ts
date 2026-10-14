@@ -64,6 +64,8 @@ import { RunResult, runResult } from '../../shared/run-result';
 import { LEGAL_NOTICE } from '../../shared/legal-notice';
 import { ImportBackupCard } from './import-backup';
 import { KindsSettings } from './kinds-settings';
+import { BulkGuard } from '../../core/bulk-guard.service';
+import { availableKinds, kindById } from '../../core/kind-setting';
 import { OfflineAreasCard } from './offline-areas';
 import { RecentlyDeleted } from './recently-deleted';
 import { DriveConnectComponent } from './drive-connect';
@@ -126,6 +128,9 @@ export class DataPage implements OnInit, OnDestroy {
   protected readonly savedWalks = signal(0);
   private readonly announcer = inject(Announcer);
   private readonly confirm = inject(ConfirmService);
+  private readonly bulk = inject(BulkGuard);
+  /** What this browser holds, per kind and the saved walks, in words ("Houses: 12, Schools: 3"); '' when it holds none. */
+  protected readonly deviceList = signal('');
   private readonly config = inject(ConfigService);
   private readonly ai = inject(AiService);
   private readonly aiSession = inject(AiSessionState);
@@ -387,6 +392,10 @@ export class DataPage implements OnInit, OnDestroy {
       { confirmKey: 'trace.settings.deleteAll', danger: true },
     );
     if (!ok) return;
+    if (!this.bulk.tryStart()) {
+      this.announcer.announce({ key: 'delete.bulkWait', params: { n: this.bulk.waitSeconds() } });
+      return;
+    }
     await this.traces.deleteAllSavedWalks();
     await this.refreshSavedWalks();
     this.announcer.announce({ key: 'trace.settings.deleted' });
@@ -416,7 +425,9 @@ export class DataPage implements OnInit, OnDestroy {
         this.recount = false;
         const bundle = await this.exporter.bundle(this.exportOptions());
         const scoped = this.scopedKind() !== null;
-        this.totalHouses.set((await this.store.liveHouses()).filter((h) => !scoped || this.space.holds(h)).length);
+        const live = await this.store.liveHouses();
+        this.totalHouses.set(live.filter((h) => !scoped || this.space.holds(h)).length);
+        this.deviceList.set(this.describeDevice(live));
         this.counts.set(bundle.counts);
       } while (this.recount);
     } catch {
@@ -426,6 +437,22 @@ export class DataPage implements OnInit, OnDestroy {
       this.counting = false;
     }
   }
+
+  /** "Houses: 12, Schools: 3": every kind this browser holds, none left out (Remove all data takes them all). */
+  private describeDevice(live: readonly { kind?: string | null }[]): string {
+    const per = new Map<string, number>();
+    for (const h of live) per.set(h.kind ?? 'house', (per.get(h.kind ?? 'house') ?? 0) + 1);
+    const known = availableKinds();
+    const ids = [...known.filter((k) => per.has(k)), ...[...per.keys()].filter((k) => !known.includes(k))];
+    const parts = ids.map((k) => `${known.includes(k) ? this.i18n.t(kindById(k).keys.ref('kind.many')) : k}: ${this.i18n.number(per.get(k) ?? 0)}`);
+    return parts.join(', ');
+  }
+
+  /** The sentence the Remove all data card and its question add, or '' when there is nothing. */
+  protected readonly deviceSentence = computed(() => {
+    const parts = [this.deviceList(), this.savedWalks() > 0 ? `${this.i18n.t('data.clearWalks')}: ${this.i18n.number(this.savedWalks())}` : ''].filter(Boolean);
+    return parts.length ? this.i18n.t('data.clearCounts', { counts: parts.join(', ') }) : '';
+  });
 
   /** Counts the changes waiting to be sent to the server; 0 when sync is off. */
   private async refreshPending(): Promise<void> {
@@ -753,10 +780,10 @@ export class DataPage implements OnInit, OnDestroy {
       const answer =
         unsynced > 0
           ? await this.confirm.choose(
-              { key: 'confirm.clearUnsynced', params: { n: unsynced } },
+              { key: 'confirm.clearUnsynced', params: { n: unsynced, list: this.deviceSentence() } },
               { confirmKey: 'data.clear', altKey: this.sync.paused() ? null : 'data.syncFirst', danger: true },
             )
-          : (await this.confirm.ask({ key: 'confirm.clearBrowser' }, { confirmKey: 'data.clear', danger: true }))
+          : (await this.confirm.ask({ key: 'confirm.clearBrowser', params: { list: this.deviceSentence() } }, { confirmKey: 'data.clear', danger: true }))
             ? 'confirm'
             : 'cancel';
       if (answer === 'cancel') return;
@@ -764,6 +791,10 @@ export class DataPage implements OnInit, OnDestroy {
       // "Sync first": send what is waiting, then ask again with the new count (0 when it all went through).
       await this.sync.syncNow(true);
       if (this.sync.lastError()) return; // the sync card shows why; nothing was removed
+    }
+    if (!this.bulk.tryStart()) {
+      this.announcer.announce({ key: 'delete.bulkWait', params: { n: this.bulk.waitSeconds() } });
+      return;
     }
     this.sync.cancel();
     this.config.clear();

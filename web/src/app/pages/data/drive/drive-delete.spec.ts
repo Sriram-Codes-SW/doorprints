@@ -94,6 +94,21 @@ describe('DriveDeleteCard', () => {
     expect(deleteBtn?.disabled).toBe(true);
   });
 
+  it('says all kinds for the everything level, in the plan and on confirm, and not for older backups', async () => {
+    const { component, fixture, host, i18n } = await render();
+    await component['startDeletion']({ type: 'olderBackups' });
+    fixture.detectChanges();
+    expect(host.textContent).not.toContain(i18n.t('driveDelete.allKinds'));
+    component['cancel']();
+    await component['startDeletion']({ type: 'everything' });
+    fixture.detectChanges();
+    expect(host.querySelector('#drive-delete-all-kinds')?.textContent).toContain(i18n.t('driveDelete.allKinds'));
+    expect(i18n.t('driveDelete.allKinds')).toContain('all kinds');
+    await component['proceedToConfirm']();
+    fixture.detectChanges();
+    expect(host.textContent).toContain(i18n.t('driveDelete.allKinds'));
+  });
+
   it('shows use-your-phone when L2 is refused without a passkey', async () => {
     const svc = fakeService({
       deletePlan: vi.fn().mockResolvedValue({ ok: false, reason: 'USE_PHONE' }),

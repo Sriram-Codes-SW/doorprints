@@ -34,7 +34,7 @@ import { TPipe } from '../i18n/t.pipe';
     <div class="undo-host" role="status" aria-atomic="true" (mouseenter)="undo.hold(true)" (mouseleave)="undo.hold(false)" (focusin)="undo.hold(true)" (focusout)="undo.hold(false)">
       @if (undo.offer(); as o) {
         <div class="snack">
-          <span class="msg">{{ 'delete.deleted' | t: { name: o.name } }}</span>
+          <span class="msg">{{ (o.ids ? 'delete.deletedMany' : 'delete.deleted') | t: { name: o.name, n: o.name, kind: o.kindWords ?? '' } }}</span>
           <button type="button" class="btn" (click)="run()">{{ 'delete.undo' | t }}</button>
         </div>
       }

@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { Component, ElementRef, afterRenderEffect, inject, viewChild } from '@angular/core';
+import { Component, ElementRef, afterRenderEffect, inject, signal, viewChild } from '@angular/core';
 import { ConfirmService } from '../core/confirm.service';
 import type { ConfirmAnswer } from '../core/confirm.service';
 import { TPipe } from '../i18n/t.pipe';
@@ -39,18 +39,22 @@ import { TPipe } from '../i18n/t.pipe';
     >
       @if (confirm.pending(); as p) {
         <p id="confirm-message">{{ p.message.key | t: p.message.params }}</p>
+        @if (p.tickKey) {
+          <label class="tick"><input type="checkbox" [checked]="ticked()" (change)="ticked.set(!ticked())" /> <span>{{ p.tickKey | t }}</span></label>
+        }
         <div class="actions">
-          <button type="button" class="btn" [attr.autofocus]="p.danger && !p.altKey ? '' : null" (click)="answer('cancel')">
+          <button type="button" class="btn" [attr.autofocus]="p.danger && (!p.altKey || p.focusCancel) ? '' : null" (click)="answer('cancel')">
             {{ 'common.cancel' | t }}
           </button>
           @if (p.altKey) {
             <!-- The safer way forward ("Sync first", "Save first") gets the initial focus, not the destructive one. -->
-            <button type="button" class="btn btn-primary" autofocus (click)="answer('alt')">{{ p.altKey | t }}</button>
+            <button type="button" class="btn btn-primary" [attr.autofocus]="p.focusCancel ? null : ''" (click)="answer('alt')">{{ p.altKey | t }}</button>
           }
           <button
             type="button"
             [class]="p.danger ? 'btn btn-danger' : p.altKey ? 'btn' : 'btn btn-primary'"
             [attr.autofocus]="p.danger || p.altKey ? null : ''"
+            [disabled]="p.tickKey !== null && !ticked()"
             (click)="answer('confirm')"
           >
             {{ p.confirmKey | t }}
@@ -76,6 +80,12 @@ import { TPipe } from '../i18n/t.pipe';
       font-size: var(--text-md);
       /* A message may list changes one per line ("Street: Temple Road → 5th Cross"). */
       white-space: pre-line;
+    }
+    .tick {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--space-2);
+      margin: 0 0 var(--space-4);
     }
     .actions {
       display: flex;
@@ -110,6 +120,8 @@ export class ConfirmDialog {
   private readonly dialog = viewChild.required<ElementRef<HTMLDialogElement>>('dlg');
   private opener: HTMLElement | null = null;
   private answered = false;
+  /** The tick box of a request that has one; cleared each time a dialog opens. */
+  protected readonly ticked = signal(false);
 
   constructor() {
     // After render, so the buttons exist when the dialog opens and takes focus.
@@ -119,6 +131,7 @@ export class ConfirmDialog {
       if (open && !dlg.open) {
         this.opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
         this.answered = false;
+        this.ticked.set(false);
         dlg.showModal();
         dlg.querySelector<HTMLElement>('[autofocus]')?.focus();
       } else if (!open && dlg.open) {

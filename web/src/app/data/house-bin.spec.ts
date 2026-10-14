@@ -164,3 +164,35 @@ describe('LocalStore.restoreHouse', () => {
     expect(await store.photos.ofHouse('h1')).toEqual([]);
   });
 });
+
+describe('LocalStore.deleteHouses (Delete all in this space)', () => {
+  let store: LocalStore;
+  beforeEach(async () => {
+    store = new LocalStore();
+    await store.ready();
+  });
+
+  it('tombstones the live rows in one batch, skips the deleted and the missing, and leaves every other row byte-identical', async () => {
+    await store.putImported({ houses: [row('s1', { kind: 'school', deleted: false }), row('s2', { kind: 'school', deleted: false }), row('s0', { kind: 'school', updatedAt: iso(NOW - 3 * DAY) }), row('h1', { deleted: false })] });
+    const before = new Map((await store.allHouses()).map((h) => [h.id, JSON.stringify(h)]));
+    const gone = await store.deleteHouses(['s1', 's2', 's0', 'nope'], NOW);
+    expect(gone).toEqual(['s1', 's2']);
+    const after = new Map((await store.allHouses()).map((h) => [h.id, h]));
+    for (const id of ['s1', 's2']) expect([after.get(id)!.deleted, after.get(id)!.dirty, after.get(id)!.updatedAt]).toEqual([true, true, iso(NOW)]);
+    for (const id of ['s0', 'h1']) expect(JSON.stringify(after.get(id))).toBe(before.get(id));
+  });
+
+  it('drops the photos of the rows it deletes and no other house\'s, and the tombstones come back with restoreHouse', async () => {
+    await store.putImported({ houses: [row('a', { deleted: false }), row('b', { deleted: false })] });
+    await store.photos.add('a', jpeg(), 'p1');
+    await store.photos.add('b', jpeg(), 'p2');
+    expect(await store.deleteHouses(['a'], NOW)).toEqual(['a']);
+    expect((await store.photos.ofHouse('a')).length).toBe(0);
+    expect((await store.photos.ofHouse('b')).length).toBe(1);
+    expect((await store.restoreHouse('a', NOW + 1000))?.house.deleted).toBe(false);
+  });
+
+  it('is a no-op for nothing to delete', async () => {
+    expect(await store.deleteHouses([], NOW)).toEqual([]);
+  });
+});

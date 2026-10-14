@@ -24,7 +24,7 @@ import type { LocalDb, OpenedDb, StorageProblem } from './local-db';
 import { deleteSavedWalksOfHouse } from './trace-rows';
 import { SETTING_KEYS, compareText, houseFromDto, isoNow, millis, sortByCreated, visitFromDto } from './records';
 import { PhotoStore } from './photo-store';
-import { restoreRows } from './house-bin';
+import { nextStamp, restoreRows } from './house-bin';
 import type { RestoreResult } from './house-bin';
 import { RecordStore } from './record-store';
 import { ViewingStore } from './viewing-store';
@@ -239,6 +239,25 @@ export class LocalStore {
     // A saved walk is the house's and never outlives it and has no tombstone (docs/11 5.27.6, PRV-030).
     await deleteSavedWalksOfHouse(db, id);
     this.touch();
+  }
+
+  /**
+   * Marks many houses deleted in ONE batch (*Delete all in this space*, deletion safeguards PR 2): the tombstones of the
+   * rows that are live, all or none, each stamped later than the row it replaces. Rows already deleted or missing are
+   * skipped (their tombstone and its time stay as they are). Then, as {@link deleteHouse}, the photos and the saved walks
+   * of those houses go. Returns the ids deleted.
+   */
+  async deleteHouses(ids: readonly string[], now: number = Date.now()): Promise<string[]> {
+    const db = await this.db();
+    const live = (await db.getMany<HouseRecord>('houses', ids)).filter((h) => !h.deleted);
+    if (!live.length) return [];
+    await db.batch(live.map((h) => ({ op: 'put' as const, store: 'houses' as const, value: { ...h, deleted: true, dirty: true, updatedAt: nextStamp(h.updatedAt, now) } })));
+    for (const h of live) {
+      for (const photo of await this.photos.ofHouse(h.id)) await this.photos.delete(photo.id, now);
+      await deleteSavedWalksOfHouse(db, h.id);
+    }
+    this.touch();
+    return live.map((h) => h.id);
   }
 
   /** Every tombstone, for *Recently deleted* (`house-bin.ts` picks this space's, younger than 30 days). */

@@ -25,6 +25,7 @@ import { LocalStore } from './local-store.service';
 import { StorageService } from './storage.service';
 import { SyncService } from './sync.service';
 import { binRows } from './house-bin';
+import { spaceOf } from '../core/space.service';
 import type { HouseRecord } from './records';
 
 /**
@@ -43,7 +44,7 @@ interface SeedRow {
   updatedAt: string;
 }
 interface Step {
-  op: 'delete' | 'undo' | 'restore';
+  op: 'delete' | 'undo' | 'restore' | 'deleteSpace';
   id: string;
   at: string;
 }
@@ -88,8 +89,8 @@ describe('the delete-scope vectors', () => {
     TestBed.resetTestingModule();
   });
 
-  it('holds nine cases', () => {
-    expect(cases).toHaveLength(9);
+  it('holds eleven cases', () => {
+    expect(cases).toHaveLength(11);
   });
 
   describe.each(cases)('$name', (c) => {
@@ -99,6 +100,11 @@ describe('the delete-scope vectors', () => {
       for (const step of c.steps) {
         vi.setSystemTime(Date.parse(step.at));
         if (step.op === 'delete') await service.remove(step.id, step.id);
+        else if (step.op === 'deleteSpace') {
+          // The card's rule (KindsSettings): the live rows whose space is this kind, nothing else.
+          const rows = (await store.allHouses()).filter((h) => !h.deleted && spaceOf(h, c.multi!, c.default!, c.available!) === step.id);
+          await service.removeMany(rows.map((h) => h.id), step.id);
+        }
         else if (step.op === 'undo') await service.undo();
         else await service.restore({ id: step.id, name: step.id, deletedAt: '', photos: 0 });
       }
