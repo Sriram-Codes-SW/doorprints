@@ -235,6 +235,31 @@ describe('Fill in from listing text for a school (kinds PR 7, S4b-BL-211)', () =
     expect(draft(fixture).extrasOther).toEqual({ board: 'STATE' });
   });
 
+  it('marks the extras the fill wrote as from the listing, not a kept one, and a mark goes when that extra is edited (S4b-BL-272)', async () => {
+    schoolDefault();
+    const { fixture, host } = await open(null, 'en', true);
+    const board = host.querySelector<HTMLSelectElement>('#extra-board')!;
+    board.selectedIndex = [...board.options].findIndex((o) => o.textContent?.trim() === 'State board');
+    board.dispatchEvent(new Event('change'));
+    await settle(fixture);
+    const box = host.querySelector<HTMLTextAreaElement>('#listing-text')!;
+    box.value = 'Pine Hill School, GS Road, Dispur. CBSE. Bus. Fees 96,000 a year.';
+    box.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    host.querySelector<HTMLButtonElement>('#listing-fill-submit')!.click();
+    await settle(fixture);
+    const chips = () => [...host.querySelectorAll('.listing-marks .chip')].map((c) => c.textContent?.trim());
+    expect(chips()).toEqual(['School name', 'Address', 'Street', 'Locality', 'Contact name', 'Contact phone', 'Medium of instruction', 'School bus', 'Fees per year']);
+    const medium = host.querySelector<HTMLSelectElement>('#extra-medium')!;
+    medium.selectedIndex = [...medium.options].findIndex((o) => o.textContent?.trim() === 'English');
+    medium.dispatchEvent(new Event('change', { bubbles: true }));
+    await settle(fixture);
+    expect(chips()).toEqual(['School name', 'Address', 'Street', 'Locality', 'Contact name', 'Contact phone', 'School bus', 'Fees per year']);
+    host.querySelector<HTMLButtonElement>('.listing-undo')!.click();
+    await settle(fixture);
+    expect(host.querySelector('.listing-marks')).toBeNull();
+  });
+
   it('a house\'s fill sends the text alone, as before', async () => {
     const { fixture, host } = await open(null, 'en', true);
     const box = host.querySelector<HTMLTextAreaElement>('#listing-text')!;
