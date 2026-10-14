@@ -21,10 +21,12 @@ package app.doorprints.server.ai.agent;
 import app.doorprints.server.ai.ContactRedactor;
 import app.doorprints.server.ai.kind.AiKind;
 import app.doorprints.server.ai.kind.AiKinds;
+import app.doorprints.server.ai.rag.KindDocuments;
 import app.doorprints.server.common.BadRequestException;
 import app.doorprints.server.house.HouseDto;
 import app.doorprints.server.house.HouseService;
 import app.doorprints.server.house.HouseStatus;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -32,6 +34,7 @@ import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -113,12 +116,49 @@ public class HouseSearchService {
      */
     public record HouseSummary(UUID id, String label, String locality, String street, HouseStatus status, Long price,
                                String priceType, Integer bedrooms, Integer rating, double lat, double lon,
-                               Double distanceMeters) {
+                               Double distanceMeters,
+                               @JsonInclude(JsonInclude.Include.NON_NULL) Map<String, String> extras) {
+        /** A house's summary: {@code extras} null, and then neither the JSON nor {@link #toString} has the key (S4b-BL-270). */
+        public HouseSummary(UUID id, String label, String locality, String street, HouseStatus status, Long price,
+                            String priceType, Integer bedrooms, Integer rating, double lat, double lon,
+                            Double distanceMeters) {
+            this(id, label, locality, street, status, price, priceType, bedrooms, rating, lat, lon, distanceMeters, null);
+        }
+
         public static HouseSummary of(HouseDto h) {
+            return of(h, null);
+        }
+
+        /**
+         * {@code extras}: the kind's extras its {@code ai.plan} slot names, as {@link KindDocuments#extras} reads them (words
+         * to value, at most the slot's), for a candidate of a built-in kind other than the house; null for a house.
+         */
+        public static HouseSummary of(HouseDto h, Map<String, String> extras) {
             var r = ContactRedactor.forHouse(h);
             return new HouseSummary(h.id(), r.freeText(h.label()), r.place(h.locality()), r.place(h.street()), h.status(),
-                    h.price(), h.priceType(), h.bedrooms(), h.rating(), h.lat(), h.lon(), h.distanceMeters());
+                    h.price(), h.priceType(), h.bedrooms(), h.rating(), h.lat(), h.lon(), h.distanceMeters(), extras);
         }
+
+        /** The text the house pins hash: today's record text while {@code extras} is null (a house). */
+        @Override
+        public String toString() {
+            var s = "HouseSummary[id=" + id + ", label=" + label + ", locality=" + locality + ", street=" + street
+                    + ", status=" + status + ", price=" + price + ", priceType=" + priceType + ", bedrooms=" + bedrooms
+                    + ", rating=" + rating + ", lat=" + lat + ", lon=" + lon + ", distanceMeters=" + distanceMeters;
+            return extras == null ? s + "]" : s + ", extras=" + extras + "]";
+        }
+    }
+
+    /** The summary of a candidate already seen through {@link #forPlan}: a kind's carries its {@code ai.plan} extras. */
+    HouseSummary summary(HouseDto viewed) {
+        var k = kinds.of(viewed.kind());
+        return k == null ? HouseSummary.of(viewed) : HouseSummary.of(viewed, KindDocuments.extras(viewed, k, k.plan()));
+    }
+
+    /** The extras {@code houseDetails} gives of a candidate seen through {@link #forDetails} (its {@code ai.ask} slot), null for a house. */
+    Map<String, String> detailsExtras(HouseDto viewed) {
+        var k = kinds.of(viewed.kind());
+        return k == null ? null : KindDocuments.extras(viewed, k, k.ask());
     }
 
     /**
@@ -133,7 +173,7 @@ public class HouseSearchService {
                 .filter(h -> matches(h, c))
                 .sorted(NEWEST_FIRST)
                 .limit(limit)
-                .map(HouseSummary::of)
+                .map(this::summary)
                 .toList();
     }
 
@@ -144,7 +184,7 @@ public class HouseSearchService {
     public List<HouseSummary> nearby(double lat, double lon, double radiusMeters) {
         if (!(lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180)) throw new BadRequestException("invalid coordinates");
         return houses.nearby(lat, lon, Math.clamp(radiusMeters, 1, 5000)).stream().sorted(NEAREST_FIRST).map(this::forPlan)
-                .map(HouseSummary::of).toList();
+                .map(this::summary).toList();
     }
 
     public HouseDto details(UUID id) {

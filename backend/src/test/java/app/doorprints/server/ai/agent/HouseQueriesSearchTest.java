@@ -82,10 +82,10 @@ class HouseQueriesSearchTest {
     }
 
     @Test
-    void theSummaryStillCarriesNoAddressNotesOrContactFields() {
+    void theSummaryStillCarriesNoAddressNotesOrContactFieldsAndOnlyAKindsExtrasAreNew() {
         var names = Arrays.stream(HouseSearchService.HouseSummary.class.getRecordComponents())
                 .map(RecordComponent::getName).toList();
         assertThat(names).containsExactly("id", "label", "locality", "street", "status", "price", "priceType",
-                "bedrooms", "rating", "lat", "lon", "distanceMeters");
+                "bedrooms", "rating", "lat", "lon", "distanceMeters", "extras");
     }
 }

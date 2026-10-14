@@ -26,6 +26,7 @@ import app.doorprints.server.common.NotFoundException;
 import app.doorprints.server.house.HouseDto;
 import app.doorprints.server.house.HouseStatus;
 import app.doorprints.server.visit.VisitRepository;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -59,10 +60,24 @@ public class HouseQueries {
      */
     public record HouseDetails(UUID id, String label, String address, String street, String locality, double lat,
                                double lon, HouseStatus status, Long price, String priceType, Integer bedrooms,
-                               Integer rating, Map<String, Integer> checklist, String listingUrl, String notes) {
+                               Integer rating, Map<String, Integer> checklist, String listingUrl, String notes,
+                               @JsonInclude(JsonInclude.Include.NON_NULL) Map<String, String> extras) {
         static final int NOTES_MAX = 2000;
 
+        /** A house's record: {@code extras} null, and then neither the JSON nor {@link #toString} has the key (S4b-BL-270). */
+        HouseDetails(UUID id, String label, String address, String street, String locality, double lat, double lon,
+                     HouseStatus status, Long price, String priceType, Integer bedrooms, Integer rating,
+                     Map<String, Integer> checklist, String listingUrl, String notes) {
+            this(id, label, address, street, locality, lat, lon, status, price, priceType, bedrooms, rating, checklist,
+                    listingUrl, notes, null);
+        }
+
         static HouseDetails of(HouseDto h) {
+            return of(h, null);
+        }
+
+        /** {@code extras}: a built-in kind's extras its {@code ai.ask} slot names (words to value), else null. */
+        static HouseDetails of(HouseDto h, Map<String, String> extras) {
             var r = ContactRedactor.forHouse(h);
             var notes = h.notes() == null || h.notes().length() <= NOTES_MAX ? h.notes()
                     : PromptSafety.clipUnits(h.notes(), NOTES_MAX) + " …";
@@ -74,7 +89,17 @@ public class HouseQueries {
             }
             return new HouseDetails(h.id(), r.freeText(h.label()), r.place(h.address()), r.place(h.street()),
                     r.place(h.locality()), h.lat(), h.lon(), h.status(), h.price(), h.priceType(), h.bedrooms(),
-                    h.rating(), checklist, r.freeText(h.listingUrl()), r.freeText(notes));
+                    h.rating(), checklist, r.freeText(h.listingUrl()), r.freeText(notes), extras);
+        }
+
+        /** The text the house pins hash: today's record text while {@code extras} is null (a house). */
+        @Override
+        public String toString() {
+            var s = "HouseDetails[id=" + id + ", label=" + label + ", address=" + address + ", street=" + street
+                    + ", locality=" + locality + ", lat=" + lat + ", lon=" + lon + ", status=" + status + ", price="
+                    + price + ", priceType=" + priceType + ", bedrooms=" + bedrooms + ", rating=" + rating
+                    + ", checklist=" + checklist + ", listingUrl=" + listingUrl + ", notes=" + notes;
+            return extras == null ? s + "]" : s + ", extras=" + extras + "]";
         }
     }
 
@@ -113,7 +138,8 @@ public class HouseQueries {
     public HouseDetails houseDetails(String houseId) {
         var h = search.details(parseId(houseId));
         if (h.deleted()) throw new NotFoundException("House " + houseId + " not found");
-        return HouseDetails.of(search.forDetails(h));
+        var viewed = search.forDetails(h);
+        return HouseDetails.of(viewed, search.detailsExtras(viewed));
     }
 
     /**

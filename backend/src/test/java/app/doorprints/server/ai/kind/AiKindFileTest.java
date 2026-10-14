@@ -144,4 +144,16 @@ class AiKindFileTest {
         assertThat(clinic.of("clinic")).isNull();
         assertThat(clinic.of("school")).isNull();
     }
+
+    /** S4b-BL-270: a Plan record carries an extra only when the file's {@code plan} slot names it, and the details tool (the {@code ask} slot) then does too. */
+    @Test
+    void everyExtraThePlanSlotNamesIsAKnownExtraTheAskSlotNamesToo() throws Exception {
+        var k = AiKinds.SCHOOL;
+        var planExtras = k.plan().stream().filter(id -> k.extra(id) != null).toList();
+        assertThat(planExtras).containsExactly("board", "medium", "grades", "commuteMinutes", "busService", "fees");
+        assertThat(k.ask()).containsAll(planExtras);
+        assertThat(k.plan()).doesNotContainAnyElementsOf(k.never()).doesNotContain("admissionFee");
+        // Every id in the slot is a core field a view keeps or an extra of the kind: nothing the Plan view would drop silently.
+        assertThat(k.plan()).allMatch(id -> k.extra(id) != null || CORE.contains(id));
+    }
 }

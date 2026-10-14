@@ -17,6 +17,7 @@
  */
 package app.doorprints.server.ai.kind;
 
+import app.doorprints.server.house.CandidateExtras;
 import app.doorprints.server.house.HouseDto;
 
 import java.util.List;
@@ -36,9 +37,14 @@ import java.util.Map;
  * @param never         what a saved candidate never sends to a provider, whatever the other slots say
  * @param extras        the kind's typed extras that a slot names, in the kind file's order
  * @param extractSystem the Extract system text, {@code %1$s} the listing's tag
+ * @param records       the name of the Ask records' block ({@code schools}: the tag is {@code schools-<nonce>}), the word
+ *                      {@code PromptSafety.neutralize} removes from a value (S4b-BL-269)
+ * @param refusal       the Ask refusal sentence of this kind (S4b-BL-269), exact: the answer that cites nothing
+ * @param askSystem     the Ask system text, {@code %1$s} the block's tag; it holds {@link #refusal} word for word
  */
 public record AiKind(String id, String noun, List<String> extract, List<String> ask, List<String> plan,
-                     List<String> never, List<Extra> extras, String extractSystem) {
+                     List<String> never, List<Extra> extras, String extractSystem, String records, String refusal,
+                     String askSystem) {
 
     /**
      * One typed extra (door 5): its type, the range a value must keep to be read at all, and its English words.
@@ -61,10 +67,11 @@ public record AiKind(String id, String noun, List<String> extract, List<String> 
     }
 
     /**
-     * The candidate as {@code slot} lets a provider see it: the core fields the slot does not name are left out and so
-     * are all its extras (a Plan summary and a tool's details have no place for a kind's extras; an Ask document
-     * reads them through {@code KindDocuments}). The contact name and phone stay, only so that the contact redactor
-     * can take them out of the other fields: no view writes them. Never used for a house.
+     * The candidate as {@code slot} lets a provider see it: the core fields the slot does not name are left out, and
+     * of its extras only those the slot names (S4b-BL-270: the Plan tools read them, as {@code KindDocuments.extras};
+     * an Ask document reads them through {@code KindDocuments.text}); an extra the kind does not know is never kept.
+     * The contact name and phone stay, only so that the contact redactor can take them out of the other fields: no view
+     * writes them. Never used for a house.
      */
     public HouseDto view(HouseDto h, List<String> slot) {
         return new HouseDto(h.id(), h.kind(), allows(slot, "label") ? h.label() : "",
@@ -73,9 +80,20 @@ public record AiKind(String id, String noun, List<String> extract, List<String> 
                 allows(slot, "status") ? h.status() : null, allows(slot, "money") ? h.money() : null,
                 allows(slot, "rating") ? h.rating() : null, h.contactName(), h.contactPhone(),
                 allows(slot, "listingUrl") ? h.listingUrl() : null, allows(slot, "notes") ? h.notes() : null,
-                h.locationSource(), null, allows(slot, "rooms") ? h.rooms() : null,
+                h.locationSource(), onlyNamed(h.extras(), slot), allows(slot, "rooms") ? h.rooms() : null,
                 allows(slot, "questions") ? h.answers() : null, allows(slot, "moveIn") ? h.moveIn() : null, null,
                 allows(slot, "checklist") ? h.checklist() : Map.of(), h.createdAt(), h.updatedAt(), h.deleted(),
                 h.syncVersion(), h.distanceMeters());
+    }
+
+    /** A copy of the extras holding only the kind's own extras that {@code slot} names (and {@code never} does not), or null. */
+    private CandidateExtras onlyNamed(CandidateExtras extras, List<String> slot) {
+        if (extras == null) return null;
+        var kept = new CandidateExtras();
+        for (var e : this.extras) {
+            var v = extras.other().get(e.id());
+            if (v != null && allows(slot, e.id())) kept.put(e.id(), v);
+        }
+        return CandidateExtras.orNull(kept);
     }
 }
