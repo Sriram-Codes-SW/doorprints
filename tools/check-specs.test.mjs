@@ -26,7 +26,7 @@ const QUIET = '// check-specs: allow-test-without-assertion (fixture)\n';
 
 const real = `import { describe, expect, it } from 'vitest';
 import { maplibreWorkerProblems } from '../../../scripts/maplibre-worker-check.mjs';
-describe('x', () => { it('y', () => { expect(maplibreWorkerProblems({ worker: null, shared: null })).not.toEqual([]); }); });`;
+describe('x', () => { it('y', () => { expect(maplibreWorkerProblems({ worker: null })).not.toEqual([]); }); });`;
 
 test('a spec that calls the code it imports is fine', () => {
   assert.deepEqual(specProblems(real), []);

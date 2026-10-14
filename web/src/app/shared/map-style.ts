@@ -98,11 +98,9 @@ function setText(root: HTMLElement, selector: string, text: string): void {
 
 /**
  * MapLibre GL 6 is ESM-only and no longer inlines its worker as a blob: URL. angular.json copies
- * `maplibre-gl-worker.mjs` and its `maplibre-gl-shared.mjs` chunk to the site root, so the worker is same-origin
- * (CSP `worker-src 'self'`, no `blob:` needed). `externalDependencies` (angular.json) keeps that shared chunk out of
- * the app's own MapLibre chunk, which imports the same `./maplibre-gl-shared.mjs` at run time: one copy (516 KB)
- * serves the page and the worker instead of two (S4b-BL-78). They sit side by side at the root because both import
- * it by that relative path.
+ * `maplibre-gl-worker.mjs` to the site root, so the worker is same-origin (CSP `worker-src 'self'`, no `blob:` needed).
+ * From maplibre-gl 6.13 the worker is self-contained (it carries its own copy of the shared code; the package's
+ * `maplibre-gl-shared.mjs` is an empty, deprecated stub that is not copied), so nothing else has to sit beside it.
  */
 let workerConfigured = false;
 

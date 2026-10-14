@@ -21,38 +21,45 @@ import fs from 'fs';
 import path from 'path';
 
 const WORKER = 'maplibre-gl-worker.mjs';
-const SHARED = 'maplibre-gl-shared.mjs';
 
-/** The MapLibre version a built file's banner names (`maplibre-gl-js/blob/v6.11.2/`), or null. */
+/** The MapLibre version a built file's banner names (`maplibre-gl-js/blob/v6.13.0/`), or null. */
 export function extractMaplibreVersion(content) {
   const match = content.match(/maplibre-gl-js\/blob\/v([\d.]+)\//);
   return match?.[1] || null;
 }
 
+/** The first relative module specifier the text imports (`from "./x"`, `import "./x"`, `import("./x")`), or null. */
+export function relativeImportOf(content) {
+  const match = content.match(/\b(?:from|import)\s*\(?\s*["'](\.{1,2}\/[^"']+)["']/);
+  return match?.[1] || null;
+}
+
 /**
- * The pure half (S4b-BL-54, S4b-BL-55): given the two built files' text (null = missing), say what is wrong.
- * Both must exist and be non-empty and start with the licence banner; the worker must import the shared file; and
- * their versions must be equal (both are copied from one maplibre-gl package, a mixed pair fails every tile).
- * The same rules run inline in web.yml's pwa-files job, which has no checkout; keep the two in step.
- * @param {{worker: string | null, shared: string | null}} files
+ * The pure half (S4b-BL-54, S4b-BL-55, reshaped for maplibre-gl 6.13): given the built worker's text (null = missing),
+ * say what is wrong. Up to 6.12 the worker imported `./maplibre-gl-shared.mjs` and the pair had to match; since 6.13
+ * (maplibre-gl-js #8621) the worker is self-contained and `maplibre-gl-shared.mjs` is an empty, deprecated stub, so
+ * angular.json copies the worker alone. The worker must exist, be non-empty, start with the licence banner and name its
+ * version, and it must import no sibling file (a sibling is not copied: the `**` rewrite would answer the import with
+ * index.html and the worker would fail on every tile). With `expectedVersion` (the installed package's version, known
+ * where there is a checkout) the worker's banner must be that version: a stale worker is what #8621 fixed upstream.
+ * The same rules run inline in web.yml's pwa-files job, which has no checkout (minus `expectedVersion`); keep the two in step.
+ * @param {{worker: string | null, expectedVersion?: string}} files
  * @returns {string[]} the problems, empty when fine
  */
-export function maplibreWorkerProblems({ worker, shared }) {
+export function maplibreWorkerProblems({ worker, expectedVersion }) {
   const errors = [];
-  for (const [name, text] of [[WORKER, worker], [SHARED, shared]]) {
-    if (text === null) errors.push(`missing ${name} (required by angular.json assets glob)`);
-    else if (text.length === 0) errors.push(`${name} is empty`);
-    else if (!text.startsWith('/**')) errors.push(`${name} does not start with license header comment (/** ...)`);
+  if (worker === null) errors.push(`missing ${WORKER} (required by angular.json assets glob)`);
+  else if (worker.length === 0) errors.push(`${WORKER} is empty`);
+  else if (!worker.startsWith('/**')) errors.push(`${WORKER} does not start with license header comment (/** ...)`);
+  if (!worker) return errors;
+  const sibling = relativeImportOf(worker);
+  if (sibling) {
+    errors.push(`${WORKER} imports "${sibling}", a sibling file angular.json does not copy (it must be self-contained)`);
   }
-  if (worker && !/from\s*["']\.\/maplibre-gl-shared\.mjs["']/.test(worker)) {
-    errors.push(`${WORKER} does not import from "./maplibre-gl-shared.mjs"`);
-  }
-  const workerVersion = worker ? extractMaplibreVersion(worker) : null;
-  const sharedVersion = shared ? extractMaplibreVersion(shared) : null;
-  if (worker && !workerVersion) errors.push(`${WORKER} has no version in header`);
-  if (shared && !sharedVersion) errors.push(`${SHARED} has no version in header`);
-  if (workerVersion && sharedVersion && workerVersion !== sharedVersion) {
-    errors.push(`MapLibre version mismatch: worker v${workerVersion} vs shared v${sharedVersion}`);
+  const version = extractMaplibreVersion(worker);
+  if (!version) errors.push(`${WORKER} has no version in header`);
+  else if (expectedVersion && version !== expectedVersion) {
+    errors.push(`MapLibre version mismatch: worker v${version} vs installed maplibre-gl v${expectedVersion}`);
   }
   return errors;
 }
@@ -68,9 +75,10 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     console.error('Usage: maplibre-worker-check.mjs <build-dir>');
     process.exit(1);
   }
+  const installed = readOrNull(new URL('../node_modules/maplibre-gl/package.json', import.meta.url).pathname);
   const errors = maplibreWorkerProblems({
     worker: readOrNull(path.join(buildDir, WORKER)),
-    shared: readOrNull(path.join(buildDir, SHARED)),
+    expectedVersion: installed ? JSON.parse(installed).version : undefined,
   });
   for (const e of errors) console.log(`::error::${e}`);
   if (errors.length > 0) {

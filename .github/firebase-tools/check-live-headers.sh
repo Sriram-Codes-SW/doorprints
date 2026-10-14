@@ -226,41 +226,37 @@ else
   fi
 fi
 
-# 5. MapLibre GL worker files (S4b-BL-54): deployed to /maplibre-gl-worker.mjs and /maplibre-gl-shared.mjs per
-#    angular.json assets output "/". The "**" rewrite would answer missing files with index.html and HTTP 200, so
-#    content-type proves the files themselves are served (not the app shell).
-for path in /maplibre-gl-worker.mjs /maplibre-gl-shared.mjs; do
-  name=$(printf '%s' "${path#/}" | tr -c '[:lower:]' '_')
-  status=$(fetch "$path" "$name")
-  ctype=$(header "${work}/${name}.h" content-type)
-  echo "--- ${base}${path} (HTTP ${status}): Content-Type: ${ctype:-(none)}"
-  if [ "$status" != "200" ]; then
-    fail "${path} answered HTTP ${status}, expected 200$(last_error "$name")"
-    continue
-  fi
+# 5. MapLibre GL worker file (S4b-BL-54; maplibre-gl 6.13 made it self-contained and left maplibre-gl-shared.mjs an empty,
+#    uncopied stub): deployed to /maplibre-gl-worker.mjs per angular.json assets output "/". The "**" rewrite would
+#    answer a missing file with index.html and HTTP 200, so content-type proves the file itself is served (not the app shell).
+path=/maplibre-gl-worker.mjs
+name=maplibre_gl_worker_mjs
+status=$(fetch "$path" "$name")
+ctype=$(header "${work}/${name}.h" content-type)
+echo "--- ${base}${path} (HTTP ${status}): Content-Type: ${ctype:-(none)}"
+if [ "$status" != "200" ]; then
+  fail "${path} answered HTTP ${status}, expected 200$(last_error "$name")"
+else
   printf '%s' "$ctype" | grep -qi 'javascript' || fail "${path}: Content-Type is '${ctype:-missing}', expected JavaScript (a missing file is answered with index.html)"
-done
+fi
 
-# 6. MapLibre worker and shared file versions match (S4b-BL-55): both are copied from the same maplibre-gl package.
-#    Mismatched versions break every tile. Extract version from each file's header and verify they match.
-# Section 5 already fetched both files (with its retries until the deadline) and left the bodies in ${work}; read the
-# banners from those, not from a second single try that a network blip could fail.
-worker_body="${work}/maplibre_gl_worker_mjs.b"
-shared_body="${work}/maplibre_gl_shared_mjs.b"
-worker_header=$(head -c 400 "$worker_body" 2>/dev/null || true)
-shared_header=$(head -c 400 "$shared_body" 2>/dev/null || true)
-worker_version=$(printf '%s' "$worker_header" | grep -oE 'maplibre-gl-js/blob/v[^/]+' | head -n 1 || true)
-shared_version=$(printf '%s' "$shared_header" | grep -oE 'maplibre-gl-js/blob/v[^/]+' | head -n 1 || true)
-echo "--- MapLibre versions: worker=${worker_version#maplibre-gl-js/blob/} shared=${shared_version#maplibre-gl-js/blob/}"
-# A file that did not arrive was reported in section 5; only a file that arrived can have a missing or odd banner.
-if [ -s "$worker_body" ] && [ -z "$worker_version" ]; then
-  fail "maplibre-gl-worker.mjs: no version found in header"
-fi
-if [ -s "$shared_body" ] && [ -z "$shared_version" ]; then
-  fail "maplibre-gl-shared.mjs: no version found in header"
-fi
-if [ -n "$worker_version" ] && [ -n "$shared_version" ] && [ "$worker_version" != "$shared_version" ]; then
-  fail "MapLibre version mismatch: worker ${worker_version#maplibre-gl-js/blob/} vs shared ${shared_version#maplibre-gl-js/blob/}"
+# 6. The live worker is this build's worker (S4b-BL-55, stricter than the old pair-of-versions check): same bytes as the
+#    build's copy, so a stale worker from an older release cannot sit next to a newer page, and it names a version and
+#    imports no sibling file (a sibling is not deployed). Section 5 fetched it (with its retries until the deadline) and left
+#    the body in ${work}. A worker that did not arrive was reported in section 5.
+worker_body="${work}/${name}.b"
+if [ -s "$worker_body" ]; then
+  worker_version=$(head -c 400 "$worker_body" | grep -oE 'maplibre-gl-js/blob/v[^/]+' | head -n 1 || true)
+  echo "--- MapLibre worker version: ${worker_version#maplibre-gl-js/blob/}"
+  [ -n "$worker_version" ] || fail "maplibre-gl-worker.mjs: no version found in header"
+  if grep -qE "(from|import)[[:space:]]*\(?[[:space:]]*[\"'](\./|\.\./)" "$worker_body"; then
+    fail "maplibre-gl-worker.mjs imports a sibling file, which is not deployed (it must be self-contained)"
+  fi
+  if [ -f "${build}${path}" ]; then
+    cmp -s "$worker_body" "${build}${path}" || fail "${path}: the live bytes differ from this build's copy"
+  else
+    fail "${path} is not in ${build}"
+  fi
 fi
 
 rm -rf "$work"
