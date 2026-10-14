@@ -41,8 +41,8 @@
         <span class="empty-glyph" aria-hidden="true">
           <svg viewBox="0 0 24 24" width="40" height="40"><path [attr.d]="icons.home" /></svg>
         </span>
-        <p>{{ 'data.empty' | t }}</p>
-        <a class="btn btn-primary" routerLink="/" [queryParams]="{ add: 1 }">{{ 'data.emptyAction' | t }}</a>
+        <p>{{ w('data.empty') | t }}</p>
+        <a class="btn btn-primary" [routerLink]="space.home()" [queryParams]="{ add: 1 }">{{ w('data.emptyAction') | t }}</a>
       </div>
     } @else {
       <!-- Disabled while a file is built: an option changed mid-build would leave a file that no longer matches the
@@ -77,12 +77,12 @@
 
         <!-- Segmented radios, like the status picker on the house page and Android's radio rows. -->
         <fieldset class="sub">
-          <legend>{{ 'data.scope' | t }}</legend>
+          <legend>{{ w('data.scope') | t }}</legend>
           <div class="options">
             @for (c of scopes; track c.id) {
               <label class="option">
                 <input type="radio" name="scope" [value]="c.id" [checked]="options().scope === c.id" (change)="setScope(c.id)" />
-                <span>{{ c.key | t }}</span>
+                <span>{{ w(c.key) | t }}</span>
               </label>
             }
           </div>
@@ -96,7 +96,7 @@
               @for (c of photoChoices; track c.id) {
                 <label class="option">
                   <input type="radio" name="photos" [value]="c.id" [checked]="options().photos === c.id" (change)="setPhotos(c.id)" />
-                  <span>{{ c.key | t }}</span>
+                  <span>{{ w(c.key) | t }}</span>
                 </label>
               }
             </div>
@@ -111,7 +111,7 @@
             [ngModel]="options().includeRejected"
             (ngModelChange)="setIncludeRejected($event)"
           />
-          <label for="includeRejected">{{ 'data.includeRejected' | t }}</label>
+          <label for="includeRejected">{{ w('data.includeRejected') | t }}</label>
         </div>
 
         <div class="field checkbox">
@@ -152,24 +152,27 @@
       <!-- The live region for what the file will contain (throttled chips, one sentence for screen readers). -->
       <div class="preview" role="status">
         @if (emptyReason() === 'shortlisted') {
-          <p class="muted">{{ 'data.noShortlisted' | t }}</p>
+          <p class="muted">{{ w('data.noShortlisted') | t }}</p>
         } @else if (emptyReason() === 'filtered') {
-          <p class="muted">{{ 'data.noneMatch' | t }}</p>
+          <p class="muted">{{ w('data.noneMatch') | t }}</p>
         } @else {
           @if (counts(); as c) {
-            <span class="sr-only">{{ 'data.preview' | t: { houses: c.houses, visits: c.visits, photos: c.photos } }}</span>
+            <span class="sr-only">{{ w('data.preview') | t: { houses: c.houses, visits: c.visits, photos: c.photos, many: many() } }}</span>
             <ul class="stats" aria-hidden="true">
-              <li>{{ 'data.countHouses' | t: { n: c.houses } }}</li>
+              <li>{{ w('data.countHouses') | t: { n: c.houses, many: many() } }}</li>
               <li>{{ 'data.countVisits' | t: { n: c.visits } }}</li>
               <li>{{ 'data.countPhotos' | t: { n: c.photos } }}</li>
             </ul>
           }
         }
       </div>
+      @if (scopeNote(); as note) {
+        <p class="muted small">{{ note.key | t: note.params }}</p>
+      }
       @if (emptyReason() === 'shortlisted') {
-        <button type="button" class="btn" (click)="setScope('all')">{{ 'data.scopeAll' | t }}</button>
+        <button type="button" class="btn" (click)="setScope('all')">{{ w('data.scopeAll') | t }}</button>
       } @else if (emptyReason() === 'filtered' && !options().includeRejected) {
-        <button type="button" class="btn" (click)="includeRejected()">{{ 'data.includeRejected' | t }}</button>
+        <button type="button" class="btn" (click)="includeRejected()">{{ w('data.includeRejected') | t }}</button>
       }
 
       <!-- Keyed on its run: the same failure twice in a row is a new node, so it is read again. -->

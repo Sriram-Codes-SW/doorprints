@@ -61,7 +61,7 @@ describe('the router config (S4b-BL-212)', () => {
 
   it('with two kinds: the chooser at /, a list, a new form and a page per kind, and every other page as today', () => {
     const r = routesFor(true, ['house', 'school']);
-    expect(paths(r)).toEqual(['connect', '', 'k/house', 'k/house/new', 'k/house/:id', 'k/school', 'k/school/new', 'k/school/:id', ...TODAY.slice(2)]);
+    expect(paths(r)).toEqual(['connect', '', 'k/house', 'k/house/new', 'k/house/:id', 'k/school', 'k/school/new', 'k/school/compare', 'k/school/ask', 'k/school/plan', 'k/school/:id', ...TODAY.slice(2)]);
     expect(r[1].title).toBe('title.chooser');
     expect(r.find((x) => x.path === 'k/school')!.loadComponent).toBe(routes[1].loadComponent);
     expect(r.find((x) => x.path === 'k/school/:id')!.canDeactivate).toBe(routes[3].canDeactivate);
@@ -99,7 +99,7 @@ describe('SpaceService', () => {
     const { space } = service(false);
     expect([space.multi(), space.kind(), space.home(), space.detailLink('a'), space.newLink(), space.newKind()])
       .toEqual([false, 'house', '/', ['/houses', 'a'], '/houses/new', 'house']);
-    expect([space.holds({ kind: 'school' }), space.holds({}), space.houseTools(), space.hidden()]).toEqual([true, true, true, false]);
+    expect([space.holds({ kind: 'school' }), space.holds({}), space.toolLink('compare'), space.hidden()]).toEqual([true, true, '/compare', false]);
   });
 
   it('with two kinds: the space from the address, its links and its candidates; Back from a space comes to the chooser', async () => {
@@ -107,10 +107,10 @@ describe('SpaceService', () => {
     const { space, router } = service(true);
     expect([space.multi(), space.inChooser(), space.kind()]).toEqual([true, true, 'school']);
     await router.navigateByUrl('/k/house');
-    expect([space.kind(), space.home(), space.newLink(), space.detailLink('a'), space.houseTools(), space.newKind()]).toEqual(['house', '/k/house', '/k/house/new', ['/houses', 'a'], true, 'house']);
+    expect([space.kind(), space.home(), space.newLink(), space.detailLink('a'), space.toolLink('ask'), space.newKind()]).toEqual(['house', '/k/house', '/k/house/new', ['/houses', 'a'], '/ask', 'house']);
     expect([space.holds({}), space.holds({ kind: 'school' }), space.holds({ kind: 'clinic' })]).toEqual([true, false, false]);
     await router.navigateByUrl('/k/school');
-    expect([space.kind(), space.newKind(), space.detailLink('a'), space.houseTools(), space.inChooser()]).toEqual(['school', 'school', ['/k', 'school', 'a'], false, false]);
+    expect([space.kind(), space.newKind(), space.detailLink('a'), space.toolLink('plan'), space.inChooser()]).toEqual(['school', 'school', ['/k', 'school', 'a'], '/k/school/plan', false]);
     expect([space.holds({ kind: 'school' }), space.holds({ kind: 'clinic' })]).toEqual([true, true]);
     // A page of no space keeps the last; `/houses/new` (a deep link, the share target) is the default kind's.
     await router.navigateByUrl('/data');

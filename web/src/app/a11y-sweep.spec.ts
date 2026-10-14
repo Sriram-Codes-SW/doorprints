@@ -144,6 +144,7 @@ function fakeApi(over: Record<string, unknown> = {}) {
 function fakeAi(on: boolean) {
   return {
     enabled: signal(on),
+    enabledFor: () => on,
     optedIn: signal(on),
     serverEnabled: signal(on),
     provider: signal('server'),
