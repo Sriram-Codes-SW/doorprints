@@ -33,6 +33,7 @@ import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -127,6 +128,14 @@ fun DeleteSpaceDialogCard(
             }
         }
     }
+}
+
+/** Settings > What you track, then *Recently deleted* (each draws its own divider or heading; the first is nothing in a release build). */
+@Composable
+fun KindsAndRecentlyDeleted(onSaveCopy: () -> Unit) {
+    KindsSettingsSection(onSaveCopy = onSaveCopy)
+    HorizontalDivider()
+    RecentlyDeletedSection()
 }
 
 /** The newest rows *Recently deleted* draws; the rest stay kept for their 30 days and come into view as these are restored. */

@@ -33,37 +33,37 @@
       "expect": "oneBulkActionPerTenSeconds"
     },
     {
-      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt",
-      "find": "val live = readInChunks(ids) { db.houses().getMany(it) }.filter { !it.deleted }",
-      "replace": "val live = readInChunks(ids) { db.houses().getMany(it) }",
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/HouseWriter.kt",
+      "find": "val live = read(ids).filter { !it.deleted }",
+      "replace": "val live = read(ids)",
       "expect": "aRestoreOfARowThatIsNotDeletedIsRefusedAndABulkDeleteSkipsTheDeleted"
     },
     {
-      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt",
-      "find": "val back = readInChunks(ids) { db.houses().getMany(it) }.filter { it.deleted }",
-      "replace": "val back = readInChunks(ids) { db.houses().getMany(it) }",
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/HouseWriter.kt",
+      "find": "val back = read(ids).filter { it.deleted }",
+      "replace": "val back = read(ids)",
       "expect": "aRestoreOfARowThatIsNotDeletedIsRefusedAndABulkDeleteSkipsTheDeleted"
     },
     {
-      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt",
-      "find": "dirty = true, updatedAt = DeleteScope.nextStamp(h.updatedAt, now)))",
-      "replace": "dirty = true, updatedAt = now))",
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/HouseWriter.kt",
+      "find": "dirty = true, updatedAt = DeleteScope.nextStamp(h.updatedAt, stamp)))",
+      "replace": "dirty = true, updatedAt = stamp))",
       "expect": "aDeleteOnAClockThatIsBehindStillMovesTheStamp"
     },
     {
-      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt",
-      "find": ".map { it.copy(deleted = false, dirty = true, updatedAt = DeleteScope.nextStamp(it.updatedAt, now)) }",
-      "replace": ".map { it.copy(deleted = false, dirty = true, updatedAt = now) }",
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/HouseWriter.kt",
+      "find": ".map { it.copy(deleted = false, dirty = true, updatedAt = DeleteScope.nextStamp(it.updatedAt, stamp)) }",
+      "replace": ".map { it.copy(deleted = false, dirty = true, updatedAt = stamp) }",
       "expect": "everyCaseWritesOnlyTheNamedRows"
     },
     {
-      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt",
-      "find": ".map { it.copy(deleted = false, dirty = true, updatedAt = DeleteScope.nextStamp(it.updatedAt, now)) }",
-      "replace": ".map { it.copy(deleted = false, dirty = false, updatedAt = DeleteScope.nextStamp(it.updatedAt, now)) }",
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/HouseWriter.kt",
+      "find": ".map { it.copy(deleted = false, dirty = true, updatedAt = DeleteScope.nextStamp(it.updatedAt, stamp)) }",
+      "replace": ".map { it.copy(deleted = false, dirty = false, updatedAt = DeleteScope.nextStamp(it.updatedAt, stamp)) }",
       "expect": "everyCaseWritesOnlyTheNamedRows"
     },
     {
-      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt",
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/HouseWriter.kt",
       "find": "for (h in live) db.houses().upsert(h.copy(deleted = true, dirty = true,",
       "replace": "for (h in live.take(1)) db.houses().upsert(h.copy(deleted = true, dirty = true,",
       "expect": "everyCaseWritesOnlyTheNamedRows"
