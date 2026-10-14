@@ -1,0 +1,74 @@
+{
+  "spec": "android/shared/src/androidHostTest/kotlin/app/doorprints/shared/export/SchoolCopyVoiceTest.kt",
+  "gradle": [
+    ":shared:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.shared.export.SchoolCopyVoiceTest",
+    "--tests",
+    "app.doorprints.shared.model.KindSearchVectorsTest",
+    "--tests",
+    "app.doorprints.shared.export.HouseCopyPinsTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/export/KindCopy.kt",
+      "find": "        return voice?.takeIf { it.kind != KindSettingRules.HOUSE }",
+      "replace": "        return null",
+      "expect": "aSpaceOfSchoolsWithNoSchoolIsStillASchoolCopy"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/export/ExportRows.kt",
+      "find": "        val shown = cols.filter { it.ref == null || bundle.shows(null, it.ref) }",
+      "replace": "        val shown = cols",
+      "expect": "theSchoolsTableHasTheSchoolsOwnColumns"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/export/ExportRows.kt",
+      "find": "        return listOf(houses(bundle)) + listOfNotNull(if (shows(\"section.checklist\")) scores(bundle) else null) +",
+      "replace": "        return listOf(houses(bundle)) + listOfNotNull(scores(bundle)) +",
+      "expect": "theSchoolsTableHasTheSchoolsOwnColumns"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/export/ExportRows.kt",
+      "find": "            bundle.extrasOf(h).filter { it.section == COST_SECTION }.map { it.label to it.text }",
+      "replace": "            emptyList()",
+      "expect": "aSchoolsExtrasAreInEveryCopy"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/export/ExportRows.kt",
+      "find": "            for (e in bundle.extrasOf(h)) if (e.section != COST_SECTION) add(e.label to e.text)",
+      "replace": "            for (e in bundle.extrasOf(h)) add(e.label to e.text)",
+      "expect": "aSchoolsExtrasAreInEveryCopy"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/export/ExportRows.kt",
+      "find": "            if (shows(\"field.money\")) {\n                add(s[\"col.price\"]",
+      "replace": "            if (true) {\n                add(s[\"col.price\"]",
+      "expect": "theCoverTheRankingAndTheFeesAreTheSchoolsInEnglish"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/export/ExportModel.kt",
+      "find": "    val strings: ExportStrings = ExportStrings.of(options.language, voice?.kind)",
+      "replace": "    val strings: ExportStrings = ExportStrings.of(options.language)",
+      "expect": "theVisitsAndPhotosTablesSaySchool"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/export/ExportModel.kt",
+      "find": "kindStrings.getOrPut(kind) { ExportStrings.of(options.language, kind) }",
+      "replace": "kindStrings.getOrPut(kind) { ExportStrings.of(options.language) }",
+      "expect": "aSchoolBesideAHouseKeepsTheHousesWords"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/export/KindExportWords.kt",
+      "find": "            \"section.cost\" to \"Fees\",",
+      "replace": "            \"section.cost\" to \"Cost\",",
+      "expect": "theOverlayIsTheWebsitesWords"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/export/ExportRows.kt",
+      "find": "            if (score && bundle.anyMissedMustHave) s[\"col.mustHaves\"] else null,\n            if (bundle.shows(null, \"field.money\")) s[\"col.price\"] else null",
+      "replace": "            if (score && bundle.anyMissedMustHave) s[\"col.mustHaves\"] else null,\n            s[\"col.price\"]",
+      "expect": "theCoverTheRankingAndTheFeesAreTheSchoolsInEnglish"
+    }
+  ]
+}

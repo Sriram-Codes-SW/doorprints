@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.133 |
+| Version | 0.134 |
 | Date | 2026-10-14 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -144,6 +144,7 @@
 | 0.131 | 2026-10-14 | Claude (Code), engineer | **§18.14 Spaces on the phones** (S4b-BL-274 and S4b-BL-289, kinds PR C; two stacked branches, `feat/kinds-13-phones-spaces` and `feat/kinds-13b-phones-spaces-scoping`): the chooser, the header chip, Settings > What you track, a space's words, Hunt mode and the house-only Settings rows by kind, and the deep links (C1); Compare, Ask, Plan, the copies, the share target and the backup's `search` writer and hint, by the website's vectors (C2). The house-only app is byte for byte today's. §18.12 and §18.13 say where the phones' part now is. |
 | 0.132 | 2026-10-14 | Claude (Code), engineer | **§18.15 The server's list of kinds and its writer of `search`** (S4b-BL-280; `fix/kinds-server-available-flag`; [10](10-sprint-log.md) v0.307, [06](06-test-plan.md) v0.244 TC-U-222): `app.ai.dev-kinds` (`AI_DEV_KINDS`) is renamed `app.kinds.available` (`KINDS_AVAILABLE`, a list, default `house`); a request that names a kind outside it is a 400; `BackupWire.searchOf` writes the backup's `search` object as the website and the phones do (§18.12 door 10 amended, §18.11, §18.14 follow). |
 | 0.133 | 2026-10-14 | Claude (Code), engineer | **§18.9 The house's words left on a school's pages, and a school's copies** (kinds PR 16, the website; S4b-BL-256, S4b-BL-259, S4b-BL-266 and the website leftovers of S4b-BL-277; `feat/kinds-16-school-wording-web`; [06](06-test-plan.md) TC-U-230, TC-M-75): the helper texts, tab titles, walk check, list rows, Your data cards, Areas and Places, listing fill and the readable copies read the kind; §18.10, §18.12 and §18.13 point to it. |
+| 0.134 | 2026-10-14 | Claude (Code), engineer | **§18.9 The phones' half** (kinds PR 18; S4b-BL-256, S4b-BL-259, S4b-BL-266 and the phones' leftovers of S4b-BL-277; `feat/kinds-18-school-wording-phones`; [06](06-test-plan.md) TC-U-231, TC-M-76; [10](10-sprint-log.md) v0.320): the phone's form, list row, status names, Compare, Areas and Places, walk check and copies read the kind; a school's copies speak in the school's words and write each extra under its section (the fees under *Fees*); the iPhone has the same code. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -2430,6 +2431,38 @@ S4b-BL-266, S4b-BL-277).** With a school space on screen, nothing a school page 
 - *Left, with rows.* The phones and the iPhone (S4b-BL-256, S4b-BL-259, S4b-BL-266 name their call sites and
   `:shared`'s copies); the import preview and the Full backup's words, which act on every space (S4b-BL-291); the
   Brokers card (S4b-BL-260); a server-rendered copy.
+
+**The phones' half (kinds PR 18; Android and iPhone, `:shared` and `:ui`).** The same rule: with a school on screen nothing
+a school page says names a house, with the website's words where the website has the key and the same two mechanisms.
+
+- *Page words.* The kind file's places are read through `KindLabels` (`statusText` for the list's chips and rows, the map's
+  legend, the form's status buttons and Compare's picker; `isVisible` around the list row's price, bedrooms, score and
+  must-have chip; Compare's *Contact name* for a school). The helper words the kind file has no place for are `PageWords`
+  (`:ui`), one table per kind beside `SpaceWords` (S4b-BL-278 moves both into the kind files): the form's title and a new
+  candidate's name (*School details*, *New school*, *School on {street}*), the delete, discard and not-found words, the
+  walk check and the saved-walks line, the photos line, the AI disclosure, the map's find-a-place lines, Compare's open
+  button and the Areas and Places lines; 26 school strings in four languages (hi, ta and te under review), 10 of them
+  the website's words character for character (`SchoolPageWordsTest` reads the website's dictionaries). Until a candidate
+  is loaded the form reads the space's kind, as the website does.
+- *The copies speak in a voice.* `ExportBundle.voice` (`KindCopy.voice`, the twin of `copyVoice`) is the kind of a copy of
+  one space, or of candidates that are all of one kind other than the house. A copy with a voice reads `ExportStrings.of(language,
+  kind)` (the overlay `KindExportWords`: the website's `kind-export-words.ts` words plus *Fees* for the Cost heading), leaves
+  out what the kind hides (the Houses table's score, price, bedrooms, cost, rooms, floor and broker columns, the ranking's
+  score and price, the Details rows, the Scores, Brokers, Rooms, Criteria, Answers and Viewings tables and the page sections
+  of a house), and writes each typed extra under its section (`KindCopy.Extra.section`: Details before *Added*, or the Cost
+  block headed *Fees*). A school beside a house keeps the copy's house words and has its own section words
+  (`ExportBundle.stringsOf`). One reader of the Details and Cost blocks (`ExportRows.detailLines`, `costBlock`) serves the
+  HTML and Markdown copies; the PDF applies the same rules. A house's copies are byte for byte what they were.
+- *The safety test.* `HouseCopyPinsTest`, the export goldens, `kind-label-vectors.json` and every house baseline pass
+  unchanged; the two `school_edit` baselines changed in words only (*School details*, *Did I walk past this school?*, the
+  saved-walks line). `KindSearchVectorsTest` now reads `section` (it moved with the website's: a school-only copy has the
+  school's columns, and the fees are under *Fees*).
+- *Twin rules found.* The website has no delete question on the page (it deletes from the list with an undo), so the phone's
+  *Delete this school?* has no website twin; the website writes its readable copies from the app dictionary (`exp.*`) and the
+  phone from `ExportStrings`, so the copy's title and counts differ for the house already (*my schools* on the phones, *your
+  schools* on the website). The phone's name field has no placeholder, so *e.g. St. Mary's School* has no place there.
+- *Left, with rows.* The import preview and the Full backup's words (S4b-BL-291); the walk-end sheet's house picker
+  (S4b-BL-267); the Brokers card (S4b-BL-260); a phone-side empty-copy line.
 
 ### 18.10 Typed extras in search and the copies (kinds PR 6, S4b-BL-210)
 
