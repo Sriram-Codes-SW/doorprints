@@ -794,6 +794,8 @@ export function cleanAnswer(text: string, context: string): string {
 // ---------------------------------------------------------------- Ask checks (RagService.citations, AskPrompts.snippet)
 
 export const I_DONT_KNOW = "I don't know based on the houses you have saved.";
+/** The school's Ask refusal (S4b-BL-269), the kind's own words: `SCHOOL_AI.refusal` in `kind-ai.ts` is this. */
+export const SCHOOL_I_DONT_KNOW = "I don't know based on the schools you have saved.";
 const INLINE_MARKER = /\[house:([^[\]\n]{1,400})]/gi;
 const UUID_TEXT = /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/g;
 
@@ -808,9 +810,11 @@ export interface ModelAnswer {
   citedHouseIds?: string[] | null;
 }
 
-/** True when the answer is exactly the "I don't know" sentence (curly quotes accepted). */
+/** True when the answer is exactly an "I don't know" sentence, the house's or a kind's (curly quotes accepted). */
 export function isRefusal(answer: string | null | undefined): boolean {
-  return answer != null && I_DONT_KNOW === answer.trim().replace(/’/g, "'").replace(/‘/g, "'");
+  if (answer == null) return false;
+  const a = answer.trim().replace(/’/g, "'").replace(/‘/g, "'");
+  return I_DONT_KNOW === a || SCHOOL_I_DONT_KNOW === a;
 }
 
 /** The house ids the answer cites inline as `[house:<id>]`, lower case, once each, in order. */
@@ -958,9 +962,10 @@ export function selectForAsk(houses: AiHouse[], question: string, f?: AskFilterV
  * Picks the {@link MAX_HOUSES} houses nearest to the start point as plan candidates, with contact details removed from
  * their text fields.
  */
-export function selectForPlan(houses: AiHouse[], lat: number, lon: number): PlanCandidate[] {
+export function selectForPlan(houses: AiHouse[], lat: number, lon: number, extrasOf?: (h: AiHouse) => Record<string, string> | undefined): PlanCandidate[] {
   return houses.map((h, index) => {
     const r = new Redactor(h.contactName, h.contactPhone);
+    const extras = extrasOf?.(h);
     return {
       index,
       c: {
@@ -968,14 +973,24 @@ export function selectForPlan(houses: AiHouse[], lat: number, lon: number): Plan
         street: (r.place(h.street) as string) ?? null, status: h.status ?? null, price: h.price ?? null,
         priceType: h.priceType ?? null, bedrooms: h.bedrooms ?? null, rating: h.rating ?? null, lat: h.lat, lon: h.lon,
         distanceMeters: roundHalfUp(haversineMeters(lat, lon, h.lat, h.lon)),
+        // A kind's own details (S4b-BL-270): the key is there only for a candidate of a kind, never for a house.
+        ...(extras ? { extras } : {}),
       } as PlanCandidate,
     };
   }).sort((a, b) => a.c.distanceMeters - b.c.distanceMeters || a.index - b.index).slice(0, MAX_HOUSES).map((x) => x.c);
 }
 
-/** One line per candidate for the plan prompt: id, label, locality, status, price, bedrooms, rating and distance. */
+/**
+ * One line per candidate for the plan prompt: id, label, locality, status, price, bedrooms, rating and distance. A candidate
+ * of a built-in kind (it has `extras`, S4b-BL-270) has no price or bedrooms: its line is id, label, locality, status,
+ * rating, each detail as `<words>: <value>`, then the distance.
+ */
 export function candidateLines(candidates: PlanCandidate[]): string {
-  return candidates.map((c) => [
+  return candidates.map((c) => c.extras ? [
+    `id: ${c.id}`, `label: ${c.label}`, `locality: ${c.locality ?? c.street ?? '-'}`, `status: ${c.status ?? '-'}`,
+    `rating: ${c.rating != null ? `${c.rating}/5` : '-'}`, ...Object.entries(c.extras).map(([words, value]) => `${words}: ${value}`),
+    `distance: ${c.distanceMeters} m`,
+  ].join(' | ') : [
     `id: ${c.id}`, `label: ${c.label}`, `locality: ${c.locality ?? c.street ?? '-'}`, `status: ${c.status ?? '-'}`,
     `price: ${c.price != null ? `Rs ${c.price}${c.priceType === 'RENT' ? ' per month' : c.priceType === 'SALE' ? ' (sale)' : ''}` : '-'}`,
     `bedrooms: ${c.bedrooms ?? '-'}`, `rating: ${c.rating != null ? `${c.rating}/5` : '-'}`, `distance: ${c.distanceMeters} m`,

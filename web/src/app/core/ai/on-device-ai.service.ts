@@ -31,7 +31,10 @@ import {
 import { type AiQuality, geminiThinkingLevel } from './ai-quality';
 import { availableKinds, defaultKind, kindsOn, spacesOn } from '../kind-setting';
 import { holdsFor } from '../space-scope';
-import { SCHOOL_LISTING_SCHEMA, aiKindOf, aiText, askView, kindExtractionPrompt, planView, sanitizeKindDraft } from './kind-ai';
+import {
+  SCHOOL_LISTING_SCHEMA, aiKindOf, aiText, askView, kindAskPrompt, kindExtractionPrompt, kindPlanPrompt, planExtras, planView, promptKind,
+  refusalOf, sanitizeKindDraft,
+} from './kind-ai';
 import { geminiBlocked } from './ai-blocked';
 import { isQuotaExhausted } from './ai-quota';
 import type { JsonChatModel } from './json-chat-model';
@@ -285,12 +288,16 @@ export class OnDeviceAiService {
     if (!question.trim() || question.length > MAX_QUESTION_CHARS) throw new Error('question is empty or too long');
     // A candidate of another kind is read through its kind's slots while the developer flag or the switch is on (kinds PR 7, 8).
     const dev = kindsOn();
-    const docs = selectForAsk((await this.houses(kind)).map((h) => askView(h, dev)), question, filters, (h) => aiText(h, dev));
-    if (!docs.length) return { answer: I_DONT_KNOW, citations: [], grounded: false, retrieved: 0 };
+    const viewed = (await this.houses(kind)).map((h) => askView(h, dev));
+    const docs = selectForAsk(viewed, question, filters, (h) => aiText(h, dev));
+    // The words of the prompt and of the refusal are the kind's when every record sent is of one built-in kind (S4b-BL-269); a
+    // house, a mix and the flag off keep the house's. With nothing to send the space's kind speaks, if the caller names one.
+    const k = promptKind(docs.map((d) => d.id), viewed, dev);
+    if (!docs.length) return { answer: refusalOf(kind, dev), citations: [], grounded: false, retrieved: 0 };
     this.admit();
-    const p = askPrompt(question, docs, nonce());
+    const p = k ? kindAskPrompt(k, question, docs, nonce()) : askPrompt(question, docs, nonce());
     const answer = this.parse<ModelAnswer>(await this.model(via).generateJson(p.system, p.user, ANSWER_SCHEMA, 0.1));
-    if (!answer?.answer?.trim()) return { answer: I_DONT_KNOW, citations: [], grounded: false, retrieved: docs.length };
+    if (!answer?.answer?.trim()) return { answer: k?.refusal ?? I_DONT_KNOW, citations: [], grounded: false, retrieved: docs.length };
     const text = cleanAnswer(answer.answer.trim(), docs.map((d) => d.text).join('\n'));
     const cited = citations({ ...answer, answer: text }, docs, question);
     return { answer: text, citations: cited, grounded: cited.length > 0, retrieved: docs.length };
@@ -306,11 +313,16 @@ export class OnDeviceAiService {
     if (!(Math.abs(request.startLat) <= 90) || !(Math.abs(request.startLon) <= 180)) throw new Error('the start point is not on Earth');
     const maxStops = Math.max(1, Math.min(request.maxStops ?? MAX_STOPS, MAX_STOPS));
     const dev = kindsOn();
-    const candidates = selectForPlan((await this.houses(kind)).map((h) => planView(h, dev)), request.startLat, request.startLon);
+    const viewed = (await this.houses(kind)).map((h) => planView(h, dev));
+    const candidates = selectForPlan(viewed, request.startLat, request.startLon, (h) => planExtras(h, dev));
     const seen = new Map<string, PlanCandidate>(candidates.map((c) => [c.id, c]));
     if (!candidates.length) return assemblePlan({ stops: [] }, seen, request.startLat, request.startLon, maxStops);
     this.admit();
-    const p = planPrompt(request.question, request.startLat, request.startLon, maxStops, candidateLines(candidates), nonce());
+    // As Ask: the kind's words when every candidate sent is of one built-in kind, else the house's (S4b-BL-269).
+    const k = promptKind(candidates.map((c) => c.id), viewed, dev);
+    const lines = candidateLines(candidates);
+    const p = k ? kindPlanPrompt(k, request.question, request.startLat, request.startLon, maxStops, lines, nonce())
+      : planPrompt(request.question, request.startLat, request.startLon, maxStops, lines, nonce());
     // As on the server: an unusable answer falls back to the candidates by distance; a failed request is reported.
     const plan = this.parse<AgentPlan>(await this.model(via).generateJson(p.system, p.user, PLAN_SCHEMA, 0.2));
     return assemblePlan(plan, seen, request.startLat, request.startLon, maxStops);

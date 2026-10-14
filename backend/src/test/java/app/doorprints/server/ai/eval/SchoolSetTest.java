@@ -66,7 +66,7 @@ class SchoolSetTest {
     void theSchoolSetBringsItsOwnSchoolsAndIsInformational() throws Exception {
         var run = run();
         assertThat(run.name()).isEqualTo("school-set");
-        assertThat(run.headerValue()).isEqualTo("school-set v0.1");
+        assertThat(run.headerValue()).isEqualTo("school-set v0.2");
         assertThat(run.ownFixtures()).isTrue();
         assertThat(run.kinds()).containsExactly("school");
         assertThat(run.fixturesNote()).contains("own fixtures").contains("school").contains("not gated");
@@ -119,7 +119,7 @@ class SchoolSetTest {
                 }
             }
         }
-        assertThat(counts).containsEntry("extract", 5).containsEntry("ask", 6).containsEntry("plan", 2);
+        assertThat(counts).containsEntry("extract", 5).containsEntry("ask", 6).containsEntry("plan", 3);
         assertThat(injection).isEqualTo(5);
     }
 

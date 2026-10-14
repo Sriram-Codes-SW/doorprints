@@ -82,6 +82,12 @@ export interface PlanCandidate {
   id: string; label: string; locality: string | null; street: string | null; status: string | null;
   price: number | null; priceType: string | null; bedrooms: number | null; rating: number | null;
   lat: number; lon: number; distanceMeters: number;
+  /**
+   * A built-in kind's own details the kind's `ai.plan` slot names (S4b-BL-270): the extra's English words to its value as the
+   * Ask document writes it, in the slot's order. Absent for a house; present (possibly empty) for a candidate of the kind,
+   * whose line then has no price or bedrooms.
+   */
+  extras?: Record<string, string>;
 }
 
 export interface AgentPlan { summary?: string | null; stops?: { houseId?: string | null; reason?: string | null }[] | null }
