@@ -202,8 +202,8 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
         AppLocale.applyDefault(ApplicationProvider.getApplicationContext())
         val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
         runBlocking {
-            repo.saveHouse(house("a", "Green View 2BHK", HouseStatus.SHORTLISTED, 28_000, 2, mapOf("water" to 5, "light" to 4), 1_760_000_000_000))
-            repo.saveHouse(house("b", "Lake Road flat", HouseStatus.NEW, 22_500, 1, mapOf("water" to 3), 1_760_000_100_000))
+            saveAtFixedTime(repo, house("a", "Green View 2BHK", HouseStatus.SHORTLISTED, 28_000, 2, mapOf("water" to 5, "light" to 4), 1_760_000_000_000), 1_760_000_000_000)
+            saveAtFixedTime(repo, house("b", "Lake Road flat", HouseStatus.NEW, 22_500, 1, mapOf("water" to 3), 1_760_000_100_000), 1_760_000_100_000)
         }
     }
 
@@ -214,6 +214,16 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
         ArchTaskExecutor.getInstance().setDelegate(null)
         TimeZone.setDefault(timeZone)
         LocaleList.setDefault(locales)
+    }
+
+    /**
+     * Saves [house], then puts its stamp back to [CHOOSER_FIXED_AT]: the repository stamps every save with the real clock, and the
+     * chooser shows "Last change: <date>", so a baseline recorded on one day failed from the next (S4b-BL-312).
+     */
+    private suspend fun saveAtFixedTime(repo: app.doorprints.data.CommonRepository, house: HouseEntity, at: Long = CHOOSER_FIXED_AT) {
+        repo.saveHouse(house)
+        val db = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.db
+        db.houses().get(house.id)?.let { db.houses().upsert(it.copy(updatedAt = at)) }
     }
 
     private fun house(id: String, label: String, status: HouseStatus, price: Long, bhk: Int, checklist: Map<String, Int>, at: Long) =
@@ -423,7 +433,7 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
     @Test fun chooser() {
         assumeTrue((lang == "en" && !dark) || (lang == "ta" && dark))
         val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
-        runBlocking { repo.saveHouse(SchoolSample.entity()) }
+        runBlocking { saveAtFixedTime(repo, SchoolSample.entity()) }
         val on = KindSetting(listOf("house", "school"), experimental = "1", enabledText = "[\"house\",\"school\"]")
         shoot("chooser", readyText = text(Res.string.chooser_heading)) {
             CompositionLocalProvider(LocalSpace provides SpaceUi(on, "house")) { ChooserScreen(onOpen = {}, onOpenSettings = {}) }
@@ -433,7 +443,7 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
     @Test fun chooserHidden() {
         assumeTrue((lang == "en" && !dark) || (lang == "ta" && dark))
         val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
-        runBlocking { repo.saveHouse(SchoolSample.entity()) }
+        runBlocking { saveAtFixedTime(repo, SchoolSample.entity()) }
         val off = KindSetting(listOf("house", "school"), experimental = "1", enabledText = "[\"house\"]")
         shoot("chooser_hidden", readyText = text(Res.string.chooser_hidden_heading)) {
             CompositionLocalProvider(LocalSpace provides SpaceUi(off, "house")) { ChooserScreen(onOpen = {}, onOpenSettings = {}) }
@@ -836,3 +846,6 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
         fun params(): List<Array<Any>> = listOf("en", "hi", "ta", "te").flatMap { l -> listOf(false, true).map { arrayOf<Any>(l, it) } }
     }
 }
+
+/** 2026-10-14 12:00 IST (06:30 UTC): the day the chooser baselines were recorded. */
+private const val CHOOSER_FIXED_AT = 1_791_959_400_000L
