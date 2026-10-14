@@ -24,6 +24,8 @@ import type { LocalDb, OpenedDb, StorageProblem } from './local-db';
 import { deleteSavedWalksOfHouse } from './trace-rows';
 import { SETTING_KEYS, compareText, houseFromDto, isoNow, millis, sortByCreated, visitFromDto } from './records';
 import { PhotoStore } from './photo-store';
+import { restoreRows } from './house-bin';
+import type { RestoreResult } from './house-bin';
 import { RecordStore } from './record-store';
 import { ViewingStore } from './viewing-store';
 import { AreaStore } from './area-store';
@@ -234,9 +236,21 @@ export class LocalStore {
     if (!existing) return;
     await db.put('houses', { ...existing, deleted: true, dirty: true, updatedAt: isoNow(now) });
     for (const photo of await this.photos.ofHouse(id)) await this.photos.delete(photo.id, now);
-    // A saved walk is the house's and never outlives it; the website has no undo (docs/11 5.27.6, PRV-030).
+    // A saved walk is the house's and never outlives it and has no tombstone (docs/11 5.27.6, PRV-030).
     await deleteSavedWalksOfHouse(db, id);
     this.touch();
+  }
+
+  /** Every tombstone, for *Recently deleted* (`house-bin.ts` picks this space's, younger than 30 days). */
+  async deletedHouses(): Promise<HouseRecord[]> {
+    return (await this.rawHouses()).filter((h) => h.deleted);
+  }
+
+  /** Flips one tombstone and its photos back (`house-bin.ts`); undefined when the row is not a tombstone. */
+  async restoreHouse(id: string, now: number = Date.now(), held: readonly PhotoRecord[] = []): Promise<RestoreResult | undefined> {
+    const result = await restoreRows(await this.db(), id, now, held);
+    if (result) this.touch();
+    return result;
   }
 
   /**

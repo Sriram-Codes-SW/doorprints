@@ -73,6 +73,12 @@ export const AI_QUALITY_KEY = `${STORAGE_PREFIX}ai-quality`;
 export const OFFLINE_AREAS_KEY = `${STORAGE_PREFIX}offlineAreas`;
 
 /**
+ * Set (sessionStorage, '1') once this tab has reloaded itself after a page's code failed to load twice, so that the
+ * recovery cannot loop (core/chunk-recovery.ts). Gone when the tab closes.
+ */
+export const CHUNK_RELOAD_KEY = `${STORAGE_PREFIX}chunk-reloaded`;
+
+/**
  * Stored names from before the rename, kept only so {@link migrateLegacyStorage} can find them: a key in this
  * list moves to the name beside it, and a key starting with {@link LEGACY_PREFIX} moves to the same suffix after
  * {@link STORAGE_PREFIX}.

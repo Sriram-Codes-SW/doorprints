@@ -10,7 +10,7 @@ android/.kotlin/
 *.keystore
 *.jks
 # Angular / Node
-web/node_modules/
+web/node_modules
 web/dist/
 web/.angular/
 # IDEs
@@ -21,7 +21,7 @@ web/.angular/
 .env
 # find_shared_stretches.py tile cache
 web/scripts/geo/.tilecache/
-tools/live-ui/node_modules/
+tools/live-ui/node_modules
 tools/live-ui/out/
 tools/guide-shots/out/
 

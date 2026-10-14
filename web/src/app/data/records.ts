@@ -152,6 +152,8 @@ export const SETTING_KEYS = {
   traceAlert: 'trace.alert',
   traceKeepAwake: 'trace.keepAwake',
   traceAskedUpTo: 'trace.askedUpTo',
+  /** How many photos each deleted candidate had, for *Recently deleted* (JSON `id: count`; this browser only, never synced or exported). */
+  binPhotos: 'bin.photos',
 } as const;
 
 /** Epoch milliseconds of an ISO-8601 instant; 0 when it is missing or unparseable. Mirrors IsoTime.parseMillis. */

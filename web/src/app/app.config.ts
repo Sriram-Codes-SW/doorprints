@@ -18,10 +18,17 @@
 
 import { ApplicationConfig, inject, provideAppInitializer } from '@angular/core';
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
-import { TitleStrategy, provideRouter, withComponentInputBinding, withRouterConfig } from '@angular/router';
+import {
+  TitleStrategy,
+  provideRouter,
+  withComponentInputBinding,
+  withNavigationErrorHandler,
+  withRouterConfig,
+} from '@angular/router';
 import { routesFor } from './app.routes';
 import { spacesOn } from './core/kind-setting';
 import { apiInterceptor } from './core/api.interceptor';
+import { ChunkRecovery } from './core/chunk-recovery';
 import { LocalStore } from './data/local-store.service';
 import { I18nTitleStrategy } from './i18n/i18n-title.strategy';
 import { initialLang } from './i18n/translation.service';
@@ -44,6 +51,9 @@ export const appConfig: ApplicationConfig = {
       // nothing in an installed app whose first entry was the map. 'computed' goes forward again with historyGo()
       // and leaves the previous entry alone (UX lead review 2026-09-22).
       withRouterConfig({ canceledNavigationResolution: 'computed' }),
+      // A lazy page whose script fails to load is tried again once, then the tab reloads once, then a message offers
+      // Try again; every other navigation error is left alone (core/chunk-recovery.ts).
+      withNavigationErrorHandler((error) => inject(ChunkRecovery).handle(error)),
     ),
     provideHttpClient(withFetch(), withInterceptors([apiInterceptor])),
     // Route titles below are translation keys; this strategy translates them and follows language changes.

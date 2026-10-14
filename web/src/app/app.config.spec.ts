@@ -17,9 +17,10 @@
  */
 
 import { TestBed } from '@angular/core/testing';
-import { ROUTER_CONFIGURATION } from '@angular/router';
-import { describe, expect, it } from 'vitest';
+import { NavigationError, ROUTER_CONFIGURATION, Router } from '@angular/router';
+import { describe, expect, it, vi } from 'vitest';
 import { appConfig } from './app.config';
+import { ChunkRecovery } from './core/chunk-recovery';
 
 describe('appConfig', () => {
   /*
@@ -30,5 +31,18 @@ describe('appConfig', () => {
   it('restores history with historyGo() when a guard cancels a Back, instead of overwriting the previous entry', () => {
     TestBed.configureTestingModule({ providers: appConfig.providers });
     expect(TestBed.inject(ROUTER_CONFIGURATION).canceledNavigationResolution).toBe('computed');
+  });
+
+  it('gives a navigation error to the chunk recovery, and still rejects the navigation as before', async () => {
+    const handle = vi.fn();
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ providers: [...appConfig.providers, { provide: ChunkRecovery, useValue: { handle } }] });
+    const router = TestBed.inject(Router);
+    const failure = new TypeError('Failed to fetch dynamically imported module: https://doorprints.web.app/chunk-X.js');
+    router.resetConfig([{ path: 'x', loadComponent: () => Promise.reject(failure) }]);
+    await expect(router.navigateByUrl('/x')).rejects.toBe(failure);
+    expect(handle).toHaveBeenCalledTimes(1);
+    expect(handle.mock.calls[0][0]).toBeInstanceOf(NavigationError);
+    expect(handle.mock.calls[0][0].error).toBe(failure);
   });
 });
