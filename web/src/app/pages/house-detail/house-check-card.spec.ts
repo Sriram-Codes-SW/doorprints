@@ -28,9 +28,13 @@ import { TranslationService } from '../../i18n/translation.service';
 import type { MapOverlay } from '../../shared/location-map';
 import { audit } from '../../shared/testing/a11y';
 import { FakeRecorder, settle } from '../../shared/testing/trace-fakes';
+import { en as EN } from '../../i18n/en';
+import { DICTIONARIES } from '../../i18n/all-dictionaries';
 import { PlaceCheckState } from '../map/place-check-state';
 import { HouseCheckCard } from './house-check-card';
 
+/** A word of the app's dictionary in `lang` (the expected words are the dictionaries', for the label of the map's ring). */
+const ta = (lang: Lang, key: keyof typeof EN): string => (DICTIONARIES[lang] as Record<string, string>)[key];
 const DEG = 1 / 111_194.9266;
 const NOW = Date.UTC(2026, 9, 6, 12, 0, 0);
 const WALK = NOW - 2 * 86_400_000;
@@ -48,7 +52,7 @@ describe('HouseCheckCard (Did I walk past this house?)', () => {
     localStorage.clear();
   });
 
-  async function render(opts: { lang?: Lang; house?: HouseDto; isNew?: boolean; locationSet?: boolean; walk?: boolean } = {}) {
+  async function render(opts: { lang?: Lang; house?: HouseDto; isNew?: boolean; locationSet?: boolean; walk?: boolean; kind?: string } = {}) {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [
@@ -61,6 +65,7 @@ describe('HouseCheckCard (Did I walk past this house?)', () => {
     if (opts.walk !== false) for (let i = 0; i < 11; i++) await store.putPoint({ lat: i * 20 * DEG, lon: 0, atMs: WALK + i * 30_000, walkId: WALK }, 10);
     const fixture = TestBed.createComponent(HouseCheckCard);
     fixture.componentRef.setInput('house', opts.house ?? house());
+    if (opts.kind) fixture.componentRef.setInput('kind', opts.kind);
     fixture.componentRef.setInput('isNew', opts.isNew ?? false);
     fixture.componentRef.setInput('locationSet', opts.locationSet ?? true);
     const overlays: (MapOverlay | null)[] = [];
@@ -241,5 +246,40 @@ describe('HouseCheckCard (Did I walk past this house?)', () => {
       expect(r.host.textContent).not.toContain('{');
       expect(audit(r.host)).toEqual([]);
     });
+  });
+
+  // S4b-BL-259: a school's page asks *Did I walk past this school?*, and its answer says *this school* in every language.
+  it('a school’s card, question, answer and ring say school, never house (en, hi, ta, te)', async () => {
+    const WORDS: Record<Lang, [RegExp, RegExp]> = {
+      en: [/school/, /house/i], hi: [/स्कूल/, /मकान/], ta: [/பள்ளி/, /வீடு|வீட்/], te: [/పాఠశాల/, /ఇల్లు|ఇంటి/],
+    };
+    for (const lang of ['en', 'hi', 'ta', 'te'] as const) {
+      const r = await render({ lang, kind: 'school', house: house({ kind: 'school' }) });
+      expect(r.$('#house-check-heading')!.textContent, lang).toMatch(WORDS[lang][0]);
+      expect(r.$('#house-check-open')!.textContent, lang).toMatch(WORDS[lang][0]);
+      await r.click('#house-check-open');
+      const text = r.host.textContent!;
+      expect(text, lang).toMatch(WORDS[lang][0]);
+      expect(text, lang).not.toMatch(WORDS[lang][1]);
+      expect(r.overlays.at(-1)!.ring!.label, lang).toBe(ta(lang, 'school.walkLabel'));
+    }
+    const en = await render({ kind: 'school', house: house({ kind: 'school' }) });
+    expect(en.$('#house-check-heading')!.textContent).toBe('Did I walk past this school?');
+    await en.click('#house-check-open');
+    expect(en.$('#check-headline')!.textContent).toContain('this school');
+  });
+
+  it('a school with only an area says it has no exact spot, in its words', async () => {
+    const r = await render({ kind: 'school', house: house({ kind: 'school', locationSource: 'APPROX' }) });
+    await r.click('#house-check-open');
+    expect(r.$('#check-headline')!.textContent).toBe('This school has no exact spot yet, only an area. Place it on the map first, then check.');
+    expect(r.$('#check-title')!.textContent).toBe('Did I walk past this school?');
+  });
+
+  it('a house keeps its words whatever the kind input says about other kinds', async () => {
+    const r = await render({ kind: 'house' });
+    expect(r.$('#house-check-heading')!.textContent).toBe('Did I walk past this house?');
+    await r.click('#house-check-open');
+    expect(r.$('#check-headline')!.textContent).toContain('this house');
   });
 });

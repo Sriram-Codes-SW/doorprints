@@ -17,10 +17,11 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import vectorsJson from '../../../../docs/schemas/kinds/status-scope-vectors.json';
 import type { HouseStatus } from '../core/models';
 import { HouseStatusRules, choose, closeTargets } from './house-status';
 
-const h = (id: string, status: HouseStatus) => ({ id, status });
+const h = (id: string, status: HouseStatus, kind?: string) => ({ id, status, ...(kind ? { kind } : {}) });
 const statuses = (list: readonly { status: HouseStatus }[]) => list.map((x) => x.status);
 
 /** The status rules of slice 5 (docs/11 5.24): the same vectors M1..M3 as Kotlin `HouseStatusRulesTest`. */
@@ -62,5 +63,27 @@ describe('HouseStatusRules', () => {
   it('exposes the rules as one object, the twin of Kotlin HouseStatusRules', () => {
     expect(HouseStatusRules.choose).toBe(choose);
     expect(HouseStatusRules.closeTargets).toBe(closeTargets);
+  });
+});
+
+type VHouse = { id: string; status: HouseStatus; kind?: string };
+const V = vectorsJson as unknown as {
+  format: string;
+  choose: { name: string; houses: VHouse[]; id: string; status: HouseStatus; after: HouseStatus[] }[];
+  close: { name: string; houses: VHouse[]; takenId: string; targets: string[] }[];
+};
+
+/** TAKEN and Close this hunt act within the chosen candidate's own kind (S4b-BL-306): docs/schemas/kinds/status-scope-vectors.json. */
+describe('the status-scope vectors (S4b-BL-306)', () => {
+  it('has the format the schemas README names', () => {
+    expect(V.format).toBe('doorprints-status-scope-vectors/1');
+  });
+
+  it('choosing a status returns the TAKEN candidate of the same kind only', () => {
+    for (const v of V.choose) expect(statuses(choose(v.houses, v.id, v.status)), v.name).toEqual(v.after);
+  });
+
+  it('Close this hunt marks the open candidates of the taken one’s kind only', () => {
+    for (const v of V.close) expect(closeTargets(v.houses, v.takenId), v.name).toEqual(v.targets);
   });
 });

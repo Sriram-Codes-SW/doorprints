@@ -140,14 +140,28 @@ export function setDefaultKind(id: string, available: readonly string[] = availa
 }
 
 /**
+ * What of a backup's `search` object a browser may keep (S4b-BL-307, T-T21): only the built-in kinds this build knows, once
+ * each and in their own order, so a hostile file cannot put more than `BUILT_IN.length` ids, or an id nothing knows, in
+ * the store. The default must be one of them, and the house alone is no hint (null).
+ */
+export function knownSpaces(spaces: { kinds: readonly string[]; defaultKind: string } | null | undefined): { kinds: string[]; defaultKind: string } | null {
+  if (!spaces || !Array.isArray(spaces.kinds)) return null;
+  const kinds = BUILT_IN.filter((id) => spaces.kinds.includes(id));
+  if (!kinds.includes(spaces.defaultKind) || (kinds.length === 1 && kinds[0] === 'house')) return null;
+  return { kinds, defaultKind: spaces.defaultKind };
+}
+
+/**
  * A backup's kinds and default (`search.kinds`, `search.defaultKind`), taken only by a browser that never chose its own
  * (neither key stored): a hint, never applied over a choice and never a reason to refuse or change a file (S4b-BL-212).
- * The kinds this build does not offer stay stored but unread, as any stored choice. Returns whether it was taken.
+ * Only the built-in kinds are taken (`knownSpaces`, S4b-BL-307); one this build does not offer is stored but unread, as
+ * any stored choice. Returns whether it was taken.
  */
 export function adoptSpaces(spaces: { kinds: readonly string[]; defaultKind: string } | null | undefined, storage: Store = localStore()): boolean {
-  if (!spaces || read(storage, ENABLED_KINDS_KEY) !== null || read(storage, DEFAULT_KIND_KEY) !== null) return false;
-  write(storage, ENABLED_KINDS_KEY, JSON.stringify(spaces.kinds));
-  write(storage, DEFAULT_KIND_KEY, spaces.defaultKind);
+  const known = knownSpaces(spaces);
+  if (!known || read(storage, ENABLED_KINDS_KEY) !== null || read(storage, DEFAULT_KIND_KEY) !== null) return false;
+  write(storage, ENABLED_KINDS_KEY, JSON.stringify(known.kinds));
+  write(storage, DEFAULT_KIND_KEY, known.defaultKind);
   return true;
 }
 

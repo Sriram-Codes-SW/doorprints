@@ -167,6 +167,32 @@ export class KindKeys {
 /** The house's keys for templates. */
 export const HOUSE_KEYS = new KindKeys(HOUSE_LABELS);
 
+/**
+ * The label key of `ref` on a screen that has a hand-written key of its own for the house (Compare's *Your rating*, the copies'
+ * *Price*): the house keeps that key word for word (the house's goldens pin it), any other kind reads its label through the
+ * resolver (S4b-BL-256, S4b-BL-266); a kind with no such label keeps the house's key.
+ */
+export function labelKey(labels: KindLabels, ref: string, house: TKey): TKey {
+  return labels.kind === HOUSE_LABELS.kind ? house : (labels.resolve(ref)?.key ?? house);
+}
+
+const STATUS_NAMES = ['NEW', 'SHORTLISTED', 'REJECTED', 'TAKEN', 'NOT_CHOSEN'] as const;
+const STATUS_KEYS = new WeakMap<KindLabels, Readonly<Record<string, TKey>>>();
+
+/**
+ * A kind's status words by status name (the five fixed names, door 8), for the screens that list statuses: the map's
+ * legend, filter and rows, Compare, Ask and the page's status buttons read the kind's table, not the house's (S4b-BL-256).
+ * Kept per kind, so a template's `statusKey()[s]` is a lookup.
+ */
+export function statusKeys(labels: KindLabels): Readonly<Record<string, TKey>> {
+  let keys = STATUS_KEYS.get(labels);
+  if (!keys) {
+    keys = Object.fromEntries(STATUS_NAMES.map((s) => [s, labels.status(s)]));
+    STATUS_KEYS.set(labels, keys);
+  }
+  return keys;
+}
+
 /** The built-in kind with this id, `undefined` for one this build does not have. */
 export function kindLabels(kind: string): KindLabels | undefined {
   return kind === HOUSE_LABELS.kind ? HOUSE_LABELS : undefined;

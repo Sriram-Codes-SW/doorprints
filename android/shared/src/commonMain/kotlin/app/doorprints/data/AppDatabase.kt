@@ -156,6 +156,10 @@ interface HouseDao {
     @Query("SELECT * FROM houses WHERE deleted = 1")
     suspend fun deleted(): List<HouseEntity>
 
+    /** The tombstones, newest first, for *Recently deleted* (the space and the 30 days are `DeleteScope.binRows`). */
+    @Query("SELECT * FROM houses WHERE deleted = 1 ORDER BY updatedAt DESC")
+    fun observeDeleted(): Flow<List<HouseEntity>>
+
     /**
      * The tombstones of [deletedIds] that have reached the server (pushed from here, or pulled from another device):
      * only those were purged there, so only their photos need fresh ids on a restore (Android review, round 13).

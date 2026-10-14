@@ -145,6 +145,8 @@ Policy: [docs/11](docs/11-feature-parity-and-export-spec.md) 5.13 (D-21, D-22), 
 3. Open Doorprints. It works right away without a server; to sync, go to **Settings**: server URL `https://…`, paste
    the API key, **Save and test**, then **Sync now**.
 
+**Signer certificate fingerprint of the release APK (SHA-256):** `ea23f3ca1175eaacef73f124449895537d6c16ff4f8de4da1e6d00d749be4381` (read by `release.yml` from the first draft release, v0.1.0, 2026-10-14). Compare it with `apksigner verify --print-certs` before installing a release APK, and check the APK against its `.sha256`. A different fingerprint means the APK is not signed with the Doorprints key.
+
 A signed release build cannot be installed over a debug build (different signer): sync first, uninstall, then
 install. Builds from before the rename (package `com.househunt.app`) are a separate app; sync them, install
 Doorprints (package `app.doorprints`), sync again, then uninstall the old one.
@@ -248,8 +250,8 @@ CI workflows (`.github/workflows/`): `backend.yml` (tests on PostGIS, SBOM, imag
 audit, Android dependency graph, manual ZAP), `shared-ios.yml` (`:shared` iOS compile on macOS), `codeql.yml`
 (CodeQL SAST) and `ai-evals.yml` (manual AI evaluation against a real model). Since 2026-09-23 the path-filtered
 workflows and `security.yml` run on a push to **any branch** and on pull requests to `main`; `codeql.yml` runs on a
-push to any branch (not on pull requests). Deploying and release signing stay on `main` (for signing, only while
-the workflow is unmodified until its secrets move to a `main`-only environment, [docs/07 §4](docs/07-secure-build-and-deploy.md#4-secrets-handling)).
+push to any branch (not on pull requests). Deploying and release signing stay on `main` (signing uses the `release`
+environment, restricted to `main` and tags, [docs/07 §4](docs/07-secure-build-and-deploy.md#4-secrets-handling)).
 Details: [docs/07 §1](docs/07-secure-build-and-deploy.md#1-pipeline-overview).
 
 ## Documentation

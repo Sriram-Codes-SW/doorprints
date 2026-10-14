@@ -30,11 +30,15 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
@@ -43,13 +47,19 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.doorprints.shared.model.DeleteScope
 import app.doorprints.shared.model.KindSetting
+import app.doorprints.shared.model.ScopedCandidate
+import app.doorprints.shared.model.SpaceScope
 import app.doorprints.shared.model.SpaceRow
 import app.doorprints.shared.model.spaceCounts
 import app.doorprints.ui.res.*
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
+
+/** A *Delete all in this space* waiting for its answer: the kind's name in words and the ids it would take. */
+private class DeleteAsk(val name: String, val ids: List<String>)
 
 /**
  * Settings > *What you track* (kinds PR C, S4b-BL-274; docs/03 §18.12), the twin of the website's *Your data* section:
@@ -58,9 +68,17 @@ import org.jetbrains.compose.resources.stringResource
  * nothing and the Settings screen is byte for byte what it was. One kind always stays on (its *Show* is disabled), the
  * default is one of the kinds that are shown, and turning a kind off hides nothing and deletes nothing: the chooser keeps
  * it as a muted card. The choice is this phone's own (the settings store), never synced, shared or put in a copy.
+ *
+ * Each kind with entries also has *Delete all in this space* (deletion safeguards PR 3, docs/02 T-D): a question naming the
+ * count and the kind, a tick box over 10 entries, *Save a copy first* and first focus on *Cancel*; it takes that space's
+ * entries only ([DeleteScope.liveIdsOf]), as tombstones in one batch, with 10 seconds of *Undo* and 30 days of *Recently
+ * deleted*; one bulk action per 10 seconds per device ([DeviceBulkGuard]).
  */
 @Composable
-fun KindsSettingsSection() {
+fun KindsSettingsSection(
+    /** *Save a copy first* in *Delete all in this space*: opens the copies screen (Settings > Your data > Save a copy). */
+    onSaveCopy: () -> Unit = {},
+) {
     val repo = LocalAppServices.current.repository
     val setting by rememberKindSetting(repo)
     val current = setting ?: return
@@ -69,6 +87,40 @@ fun KindsSettingsSection() {
     val rows: List<SpaceRow> by remember(repo) { repo.houses.map { list -> list.map { SpaceRow(it.kind, it.updatedAt) } } }
         .collectAsStateWithLifecycle(emptyList())
     val saved = spaceCounts(rows, current.default, current.available)
+    // The live candidates by id: the ids a card's *Delete all in this space* takes are this space's and no other's.
+    val live: List<ScopedCandidate> by remember(repo) { repo.houses.map { list -> list.map { ScopedCandidate(it.id, it.kind) } } }
+        .collectAsStateWithLifecycle(emptyList())
+    val snackbar = LocalRootSnackbar.current ?: remember { SnackbarHostState() }
+    var ask by remember { mutableStateOf<DeleteAsk?>(null) }
+    // Seconds the bulk pause still has to run, shown as a line (a snackbar would queue behind the Undo of the delete that started it).
+    var pause by remember { mutableIntStateOf(0) }
+    fun askDelete(kind: String, name: String) {
+        pause = DeviceBulkGuard.waitSeconds()
+        if (pause > 0) return
+        val ids = DeleteScope.liveIdsOf(live, SpaceScope.holdsFor(kind, true, current.default, current.available))
+        if (ids.isNotEmpty()) ask = DeleteAsk(name, ids)
+    }
+    ask?.let { a ->
+        DeleteSpaceDialog(
+            kindName = a.name, count = a.ids.size,
+            onCancel = { ask = null },
+            onSaveCopy = {
+                ask = null
+                onSaveCopy()
+            },
+            onConfirm = {
+                ask = null
+                scope.launch {
+                    if (!DeviceBulkGuard.tryStart()) {
+                        pause = DeviceBulkGuard.waitSeconds()
+                        return@launch
+                    }
+                    val gone = repo.deleteHouses(a.ids)
+                    if (gone.isNotEmpty()) offerSpaceDeleteUndo(snackbar, a.name, gone, restore = repo::restoreHouses, onFinal = repo::sweepWalksOfDeletedHouses)
+                }
+            },
+        )
+    }
     fun change(next: (KindSetting) -> KindSetting) {
         scope.launch { repo.settings.editKindSetting(next) }
     }
@@ -102,6 +154,14 @@ fun KindsSettingsSection() {
                         Checkbox(checked = on, onCheckedChange = null, enabled = !last)
                         Text(show, Modifier.padding(start = 12.dp), color = if (last) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface)
                     }
+                    val savedHere = saved[kind] ?: 0
+                    if (savedHere > 0) {
+                        val deleteLabel = stringResource(Res.string.delete_space_button_aria, name)
+                        DangerButton(
+                            stringResource(Res.string.delete_space_button), { askDelete(kind, name) },
+                            Modifier.fillMaxWidth().semantics { contentDescription = deleteLabel },
+                        )
+                    }
                     val makeDefault = stringResource(Res.string.kinds_default_aria, name)
                     Row(
                         Modifier.fillMaxWidth().heightIn(min = 48.dp)
@@ -113,6 +173,9 @@ fun KindsSettingsSection() {
                         Text(stringResource(Res.string.kinds_default), Modifier.padding(start = 12.dp), color = if (on) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
+            }
+            LiveMessage(assertive = true) {
+                if (pause > 0) Text(stringResource(Res.string.delete_bulk_wait, pause), color = MaterialTheme.colorScheme.error)
             }
             Text(
                 stringResource(Res.string.kinds_default_hint) + (if (enabled.size == 1) " " + stringResource(Res.string.kinds_last_on) else ""),

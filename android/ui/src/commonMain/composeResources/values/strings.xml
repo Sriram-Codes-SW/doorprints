@@ -1750,4 +1750,21 @@
         <item quantity="one">Hidden, %1$d entry</item>
         <item quantity="other">Hidden, %1$d entries</item>
     </plurals>
+    <!-- S4b-BL-285 (2026-10-14): deletion safeguards on the phones (PR 3): Delete all in this space, Recently deleted, Drive level 3 "all kinds"; the website's words (web i18n `delete.*`, `driveDelete.allKinds`). -->
+    <string name="delete_space_button">Delete all in this space</string>
+    <string name="delete_space_button_aria">Delete all in this space: %1$s</string>
+    <string name="delete_space_confirm">Delete everything saved in %1$s: %2$s? Only this space is deleted, your other spaces are not touched. You can undo for 10 seconds, and bring them back from Recently deleted for 30 days. Their saved walks cannot be brought back.</string>
+    <string name="delete_space_do">Delete all</string>
+    <string name="delete_deleted_many">Deleted from %1$s: %2$s</string>
+    <string name="delete_restored_many">Restored to %1$s: %2$s</string>
+    <string name="delete_restored">Restored %1$s</string>
+    <string name="delete_bulk_wait">A bulk delete just ran. Wait %1$d seconds and try again.</string>
+    <string name="delete_recently_deleted">Recently deleted</string>
+    <string name="delete_bin_body">What you deleted in the last 30 days stays here, and you can bring it back. Saved walks are not kept.</string>
+    <string name="delete_bin_empty">Nothing deleted in the last 30 days.</string>
+    <string name="delete_bin_more">%1$d more are kept for 30 days. Restore one to see the next.</string>
+    <string name="delete_restore">Restore</string>
+    <string name="delete_restore_aria">Restore %1$s</string>
+    <string name="delete_deleted_on">Deleted %1$s</string>
+    <string name="drive_delete_all_kinds">This deletes all kinds: houses, schools and every other space, not only the one you are in.</string>
 </resources>

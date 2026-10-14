@@ -108,6 +108,27 @@ interface Repository {
     /** Turns a house into a tombstone (see [saveHouse]); nothing when there is no such house. */
     suspend fun deleteHouse(id: String)
 
+    /**
+     * *Delete all in this space* (deletion safeguards PR 3, docs/02 T-D): tombstones the live houses among [ids] in ONE
+     * transaction, each stamped later than the row it replaces. The caller names the ids of one space; this reads no other
+     * row. A house that is already deleted or missing is skipped (its tombstone and its time stay as they are). Returns the
+     * ids deleted.
+     */
+    suspend fun deleteHouses(ids: List<String>): List<String>
+
+    /**
+     * Brings a tombstone back (*Undo*, *Recently deleted*): `deleted = false`, `updatedAt` moved past the tombstone's, dirty,
+     * so a sync carries it (last write wins). Its photos and visits were never removed by the delete. False when the house
+     * is missing or not deleted. Only this row is written.
+     */
+    suspend fun restoreHouse(id: String): Boolean
+
+    /** [restoreHouse] for many at once (*Undo* of *Delete all in this space*); returns the ids brought back. */
+    suspend fun restoreHouses(ids: List<String>): List<String>
+
+    /** Every tombstone, newest first, for *Recently deleted* (`DeleteScope.binRows` picks one space's, younger than 30 days). */
+    fun observeDeletedHouses(): Flow<List<HouseEntity>>
+
     /** Writes [visit] as a local edit (`updatedAt` now, dirty) and asks for a sync soon. */
     suspend fun saveVisit(visit: VisitEntity)
     suspend fun getVisit(id: String): VisitEntity?

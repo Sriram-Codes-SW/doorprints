@@ -17,8 +17,10 @@
  */
 
 // What the house page reads from outside its form: the listing text handed over in the navigation, and the brokers for
-// its select in a fixed order (moved out of house-detail-page.ts with kinds PR 5, S4b-BL-209, for the file-size budget).
+// its select in a fixed order, and the small pure helpers of its draft (moved out of house-detail-page.ts with kinds PR 5,
+// S4b-BL-209, and kinds PR 16, S4b-BL-259, for the file-size budget).
 import type { Router } from '@angular/router';
+import type { HouseDto } from '../../core/models';
 import type { BrokerRow } from '../../shared/broker';
 
 /**
@@ -42,4 +44,26 @@ export function sortBrokers(rows: readonly BrokerRow[]): BrokerRow[] {
   return [...rows].sort(
     (a, b) => a.broker.name.localeCompare(b.broker.name) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
   );
+}
+
+/** A deep copy by JSON, for the saved state kept to restore on Discard. */
+export function clone(h: HouseDto): HouseDto {
+  return JSON.parse(JSON.stringify(h)) as HouseDto;
+}
+
+/** The form binds the Cost fields to `cost.*`, so a draft always carries an object there (null on the wire). */
+export function withCost(h: HouseDto): HouseDto {
+  return h.cost ? h : { ...h, cost: {} };
+}
+
+/** Trims the text; blank becomes null. */
+export function blankToNull(s: string | null | undefined): string | null {
+  const t = (s ?? '').trim();
+  return t ? t : null;
+}
+
+/** A non-negative whole number, or null when the value is not a finite number. */
+export function toWholeNumber(n: number | null | undefined): number | null {
+  if (n === null || n === undefined || typeof n !== 'number' || !Number.isFinite(n)) return null;
+  return Math.max(0, Math.round(n));
 }

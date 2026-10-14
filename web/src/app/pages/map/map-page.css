@@ -212,15 +212,10 @@
   border-block: 1px solid var(--border);
 }
 
-/* The counters' place while they are read: one row of five (a --text-lg number over a --text-xs caption), two below. */
-.stats-pending {
-  --stats-line: 1.5;
-  height: calc(2 * var(--space-2) + (1.125rem + 0.75rem) * var(--stats-line));
-  background: var(--primary-soft);
-}
-
-.stats-pending:is(:lang(hi), :lang(ta), :lang(te)) {
-  --stats-line: 1.7;
+/* The counters' place while they are read: the counters' own cells, their words hidden (map-page.html), so the heights agree. */
+.stats-pending dt,
+.stats-pending dd {
+  visibility: hidden;
 }
 
 .stats div {
@@ -252,11 +247,6 @@
 @container (max-width: 24rem) {
   .stats {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  /* Two rows of a number and its caption on one line (below), and the 1px rule between them. */
-  .stats-pending {
-    height: calc(2 * (2 * var(--space-2) + 1.125rem * var(--stats-line)) + 1px);
   }
 
   /*

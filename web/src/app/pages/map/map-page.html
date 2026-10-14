@@ -99,7 +99,7 @@
         <div class="legend" role="group" [attr.aria-label]="'map.legend' | t">
           @for (s of statuses; track s) {
             <span class="legend-item">
-              <i [class]="'dot ' + s" aria-hidden="true"></i>{{ statusKey[s] | t }}
+              <i [class]="'dot ' + s" aria-hidden="true"></i>{{ statusKey()[s] | t }}
             </span>
           }
           <!-- FR-068: a house whose spot is only approximate is a hollow ring in its status colour. -->
@@ -149,7 +149,7 @@
               <span class="icon" aria-hidden="true">⌖</span> {{ 'map.placeCenter' | t }}
             </button>
           } @else if (items().length > 0 && mapUsable()) {
-            <button type="button" class="btn" [title]="'map.fitTitle' | t" (click)="fitAll()">{{ 'map.fit' | t }}</button>
+            <button type="button" class="btn" [title]="space.kindWord('map.fitTitle') | t" (click)="fitAll()">{{ 'map.fit' | t }}</button>
           }
           @if (!addMode()) {
             <!-- Offline maps (S4b-BL-79): the box on screen, saved in this browser. -->
@@ -182,8 +182,15 @@
         <div><dt>{{ 'map.stats.streets' | t }}</dt><dd>{{ i18n.number(s.streets) }}</dd></div>
       </dl>
     } @else if (!error()) {
-      <!-- Their place while they are read, so the trace card and the search below do not jump down when they come. -->
-      <div class="stats stats-pending" aria-hidden="true"></div>
+      <!-- Their place while they are read, so the trace card and the search below do not jump down when they come: the same cells
+           with the same captions, their words hidden, so it is as tall as the counters in every language, width and font (S4b-BL-258). -->
+      <dl class="stats stats-pending" aria-hidden="true">
+        <div><dt>{{ space.words().many | t }}</dt><dd>0</dd></div>
+        <div><dt>{{ 'map.stats.shortlisted' | t }}</dt><dd>0</dd></div>
+        <div><dt>{{ 'map.stats.rejected' | t }}</dt><dd>0</dd></div>
+        <div><dt>{{ 'map.stats.visits' | t }}</dt><dd>0</dd></div>
+        <div><dt>{{ 'map.stats.streets' | t }}</dt><dd>0</dd></div>
+      </dl>
     }
 
     <!-- Below the counters: on a portrait phone "Your houses" and every counter stay above the bottom bar (owner rule 2026-09-24). -->
@@ -317,19 +324,24 @@
                   <strong class="label">{{ item.house.label || ('common.untitled' | t) }}</strong>
                   <span [class]="'pill pill-' + item.house.status">
                     <span aria-hidden="true">{{ statusIcon[item.house.status] }}</span>
-                    {{ statusKey[item.house.status] | t }}
+                    {{ statusKey()[item.house.status] | t }}
                   </span>
                 </span>
                 <span class="item-meta">
-                  <span>{{ i18n.price(item.house.price, item.house.priceType) }}</span>
+                  <!-- A kind that hides its money or its checklist (a school) has no price and no score in its rows (S4b-BL-277). -->
+                  @if (space.current().labels.isVisible('field.money')) {
+                    <span>{{ i18n.price(item.house.price, item.house.priceType) }}</span>
+                  }
                   @if (item.house.bedrooms != null) {
                     <span>{{ 'common.bhk' | t: { n: item.house.bedrooms } }}</span>
                   }
-                  <span>
-                    <span class="star" aria-hidden="true">★</span>
-                    <span class="sr-only">{{ 'common.score' | t }}</span>
-                    {{ i18n.score(item.score) }}
-                  </span>
+                  @if (space.current().labels.isVisible('section.checklist')) {
+                    <span>
+                      <span class="star" aria-hidden="true">★</span>
+                      <span class="sr-only">{{ 'common.score' | t }}</span>
+                      {{ i18n.score(item.score) }}
+                    </span>
+                  }
                   @if (item.result.failedMustHave.length > 0) {
                     <!-- Words and a mark, not colour alone (WCAG 1.4.1). -->
                     <span class="pill pill-REJECTED"><span aria-hidden="true">✕</span> {{ 'criteria.missed' | t }}</span>

@@ -232,6 +232,12 @@ fun deleteChoiceKey(choice: DeleteChoice): String = when (choice) {
     DeleteChoice.ONE_BACKUP -> "driveDelete.oneBackup"
 }
 
+/**
+ * *Delete everything Doorprints keeps in Google Drive* is level 3 and reaches every space, not the one on screen, so its plan
+ * says "all kinds" (deletion safeguards PR 3, docs/15 3.2); the other choices are backups.
+ */
+fun deleteAllKindsShown(choice: DeleteChoice?): Boolean = choice == DeleteChoice.EVERYTHING
+
 /** The steps of a delete in order; PARTIAL is a run that stopped with files left, ERROR a failure before it ran. */
 enum class DeletePhase { MENU, PLAN, CONFIRM, RUNNING, PARTIAL, DONE, ERROR }
 

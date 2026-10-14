@@ -1751,4 +1751,21 @@
         <item quantity="one">छिपा हुआ, %1$d प्रविष्टि</item>
         <item quantity="other">छिपे हुए, %1$d प्रविष्टियाँ</item>
     </plurals>
+    <!-- S4b-BL-285 (2026-10-14): deletion safeguards on the phones (PR 3): Delete all in this space, Recently deleted, Drive level 3 "all kinds"; the website's words (web i18n `delete.*`, `driveDelete.allKinds`). hi, ta and te are under review. -->
+    <string name="delete_space_button">इस स्थान में सब हटाएँ</string>
+    <string name="delete_space_button_aria">इस स्थान में सब हटाएँ: %1$s</string>
+    <string name="delete_space_confirm">%1$s में सहेजा सब कुछ हटा दें: %2$s? सिर्फ़ यही स्थान हटेगा, आपके दूसरे स्थानों को छुआ नहीं जाएगा। 10 सेकंड तक पूर्ववत कर सकते हैं, और 30 दिन तक हाल में हटाए गए से वापस ला सकते हैं। इनकी सहेजी गई सैरें वापस नहीं आ सकतीं।</string>
+    <string name="delete_space_do">सब हटाएँ</string>
+    <string name="delete_deleted_many">%1$s से हटाए गए: %2$s</string>
+    <string name="delete_restored_many">%1$s में वापस लाए गए: %2$s</string>
+    <string name="delete_restored">%1$s वापस लाया गया</string>
+    <string name="delete_bulk_wait">अभी एक साथ कई हटाने का काम हुआ है। %1$d सेकंड रुककर फिर कोशिश करें।</string>
+    <string name="delete_recently_deleted">हाल में हटाए गए</string>
+    <string name="delete_bin_body">पिछले 30 दिनों में आपने जो हटाया, वह यहाँ रहता है और आप उसे वापस ला सकते हैं। सहेजी हुई सैरें नहीं रखी जातीं।</string>
+    <string name="delete_bin_empty">पिछले 30 दिनों में कुछ नहीं हटाया गया।</string>
+    <string name="delete_bin_more">30 दिन तक %1$d और रखे गए हैं। अगला देखने के लिए एक वापस लाएँ।</string>
+    <string name="delete_restore">वापस लाएँ</string>
+    <string name="delete_restore_aria">%1$s वापस लाएँ</string>
+    <string name="delete_deleted_on">हटाया गया: %1$s</string>
+    <string name="drive_delete_all_kinds">यह सभी प्रकार हटाता है: मकान, स्कूल और हर दूसरा स्थान, सिर्फ़ वह नहीं जिसमें आप हैं।</string>
 </resources>

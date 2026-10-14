@@ -45,6 +45,8 @@ export interface SpaceWords {
   noMatch: TKey;
   create: TKey;
   areaNotesNone: TKey;
+  /** The group of areas a candidate is in, in the area note composer (S4b-BL-256). */
+  areaInReach: TKey;
 }
 
 const HOUSE: Omit<SpaceWords, 'many'> = {
@@ -63,6 +65,7 @@ const HOUSE: Omit<SpaceWords, 'many'> = {
   noMatch: 'map.noMatch',
   create: 'house.create',
   areaNotesNone: 'areaNotes.none',
+  areaInReach: 'areaNotes.inReach',
 };
 
 const SCHOOL: Omit<SpaceWords, 'many'> = {
@@ -81,6 +84,7 @@ const SCHOOL: Omit<SpaceWords, 'many'> = {
   noMatch: 'school.noMatch',
   create: 'school.create',
   areaNotesNone: 'school.areaNotesNone',
+  areaInReach: 'school.areaNotesInReach',
 };
 
 const WORDS: Readonly<Record<string, Omit<SpaceWords, 'many'>>> = { house: HOUSE, school: SCHOOL };

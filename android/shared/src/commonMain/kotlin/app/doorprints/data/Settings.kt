@@ -466,14 +466,16 @@ class SettingsStore(
 
     /**
      * Takes the kinds and default a backup names, only on a device that never chose (neither list nor default stored): a
-     * hint, never applied over a choice (S4b-BL-212). Returns whether it was taken.
+     * hint, never applied over a choice (S4b-BL-212), and only the built-in kinds are kept (`KindSettingRules.knownSpaces`,
+     * S4b-BL-307). Returns whether it was taken.
      */
     suspend fun adoptKinds(kinds: List<String>, default: String): Boolean {
+        val (known, chosen) = KindSettingRules.knownSpaces(kinds, default) ?: return false
         var taken = false
         dataStore.edit {
             if (it[Keys.kindsEnabled] == null && it[Keys.kindsDefault] == null) {
-                it[Keys.kindsEnabled] = KindSettingRules.listText(kinds)
-                it[Keys.kindsDefault] = default
+                it[Keys.kindsEnabled] = KindSettingRules.listText(known)
+                it[Keys.kindsDefault] = chosen
                 taken = true
             }
         }

@@ -1751,4 +1751,21 @@
         <item quantity="one">மறைக்கப்பட்டது, %1$d பதிவு</item>
         <item quantity="other">மறைக்கப்பட்டவை, %1$d பதிவுகள்</item>
     </plurals>
+    <!-- S4b-BL-285 (2026-10-14): deletion safeguards on the phones (PR 3): Delete all in this space, Recently deleted, Drive level 3 "all kinds"; the website's words (web i18n `delete.*`, `driveDelete.allKinds`). hi, ta and te are under review. -->
+    <string name="delete_space_button">இந்த இடத்தில் அனைத்தையும் நீக்கு</string>
+    <string name="delete_space_button_aria">இந்த இடத்தில் அனைத்தையும் நீக்கு: %1$s</string>
+    <string name="delete_space_confirm">%1$s இல் சேமித்த அனைத்தையும் நீக்கவா: %2$s? இந்த இடம் மட்டும் நீக்கப்படும், உங்கள் மற்ற இடங்கள் தொடப்படாது. 10 விநாடிகள் செயல்தவிர்க்கலாம், 30 நாட்களுக்கு சமீபத்தில் நீக்கியவை பட்டியலிலிருந்து மீட்கலாம். அவற்றின் சேமித்த நடைகளை மீட்க முடியாது.</string>
+    <string name="delete_space_do">அனைத்தையும் நீக்கு</string>
+    <string name="delete_deleted_many">%1$s இலிருந்து நீக்கியவை: %2$s</string>
+    <string name="delete_restored_many">%1$s இல் மீட்டவை: %2$s</string>
+    <string name="delete_restored">%1$s மீட்கப்பட்டது</string>
+    <string name="delete_bulk_wait">இப்போது தான் ஒரு தொகுப்பு நீக்கம் நடந்தது. %1$d விநாடிகள் காத்திருந்து மீண்டும் முயலவும்.</string>
+    <string name="delete_recently_deleted">சமீபத்தில் நீக்கியவை</string>
+    <string name="delete_bin_body">கடந்த 30 நாட்களில் நீக்கியவை இங்கே இருக்கும்; அவற்றை மீட்கலாம். சேமித்த நடைகள் வைக்கப்படுவதில்லை.</string>
+    <string name="delete_bin_empty">கடந்த 30 நாட்களில் எதுவும் நீக்கப்படவில்லை.</string>
+    <string name="delete_bin_more">இன்னும் %1$d பதிவுகள் 30 நாட்களுக்கு வைக்கப்படும். அடுத்ததைப் பார்க்க ஒன்றை மீட்கவும்.</string>
+    <string name="delete_restore">மீட்கவும்</string>
+    <string name="delete_restore_aria">%1$s ஐ மீட்கவும்</string>
+    <string name="delete_deleted_on">நீக்கிய நேரம்: %1$s</string>
+    <string name="drive_delete_all_kinds">இது எல்லா வகைகளையும் நீக்கும்: வீடுகள், பள்ளிகள் மற்றும் மற்ற எல்லா இடங்களும், நீங்கள் இருக்கும் இடம் மட்டுமல்ல.</string>
 </resources>

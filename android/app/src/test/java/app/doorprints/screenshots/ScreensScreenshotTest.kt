@@ -23,12 +23,18 @@ import app.doorprints.SchoolSample
 import app.doorprints.TwoKinds
 import app.doorprints.shared.model.KindSetting
 import app.doorprints.ui.ChooserScreen
+import app.doorprints.ui.BinLine
+import app.doorprints.ui.DeleteSpaceDialogCard
 import app.doorprints.ui.KindsSettingsSection
+import app.doorprints.ui.RecentlyDeletedList
 import app.doorprints.ui.LocalSpace
 import app.doorprints.ui.SpaceUi
 import app.doorprints.ui.res.chooser_heading
 import app.doorprints.ui.res.chooser_hidden_heading
 import app.doorprints.ui.res.kinds_heading
+import app.doorprints.ui.res.delete_restore
+import app.doorprints.ui.res.delete_space_do
+import app.doorprints.ui.res.schools_title
 import android.graphics.Bitmap
 import androidx.arch.core.executor.ArchTaskExecutor
 import androidx.arch.core.executor.DefaultTaskExecutor
@@ -75,6 +81,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -447,6 +454,28 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
             compose.onNodeWithTag("kinds-shot").captureRoboImage(file("settings_kinds"))
         } finally {
             kinds.close()
+        }
+    }
+
+    /** *Delete all in this space* (deletion safeguards PR 3): the question for 12 schools, with the tick box and the three buttons. */
+    @Test fun deleteSpaceDialog() {
+        assumeTrue((lang == "en" && !dark) || (lang == "ta" && dark))
+        val kind = text(Res.string.schools_title)
+        shoot("delete_space_dialog", text(Res.string.delete_space_do)) {
+            Box(Modifier.padding(16.dp)) { DeleteSpaceDialogCard(kind, 12, ticked = true, onTicked = {}, onCancel = {}, onSaveCopy = {}, onConfirm = {}) }
+        }
+    }
+
+    /** *Recently deleted* (deletion safeguards PR 3): two entries and their dates (fixed words, so the shot does not move with the clock). */
+    @Test fun recentlyDeleted() {
+        assumeTrue((lang == "en" && !dark) || (lang == "ta" && dark))
+        shoot("recently_deleted", text(Res.string.delete_restore)) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                RecentlyDeletedList(
+                    listOf(BinLine("a", "Green View", "14 Oct 2026, 11:30"), BinLine("b", "Lake Road flat", "9 Oct 2026, 18:05")),
+                    hidden = 0, onRestore = {},
+                )
+            }
         }
     }
 

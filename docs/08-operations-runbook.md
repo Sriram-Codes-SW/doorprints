@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Operations runbook |
-| Version | 0.32 |
-| Date | 2026-10-12 |
+| Version | 0.33 |
+| Date | 2026-10-14 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -44,6 +44,7 @@
 | 0.30 | 2026-10-09 | Claude (Code) | §1.1: Ask finds the visited houses for a question about visits (S4b-BL-194); no re-index is needed after this upgrade, because the document text did not change. |
 | 0.31 | 2026-10-10 | Claude (Code), engineer | New §1.3: the iPhone app and a self-hosted server on plain `http://` (App Transport Security; S4b-BL-59). |
 | 0.32 | 2026-10-12 | Claude (Code), engineer | New §1.4: the one-time format reset (S4b-BL-206): an old database is dropped and created again, `/api/candidates`; §6.2 names the new path. |
+| 0.33 | 2026-10-14 | Claude (Code), engineer | §3 release checklist: the APK line names `release.yml` (merged, C-02), no longer "later". |
 
 Related: [Build and deploy](07-secure-build-and-deploy.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Google Drive design](15-google-drive-backup-and-sharing.md)
 
@@ -437,7 +438,7 @@ The account is closed, or the person can no longer sign in to it. Its Drive goes
 - [ ] Fresh backup taken (manual `backup.yml` run) within 24 h.
 - [ ] Deploy the API by image digest → health UP → smoke test (stats, create/delete a test house, then purge it).
 - [ ] Web deployed to Firebase Hosting (`web.yml` job `deploy-firebase` green, **including its security-header check**) → open `https://doorprints.web.app`: Connect and Map load, no CSP errors in the console; `APP_CORS_ORIGINS` on the API lists `https://doorprints.web.app` (no path); the release is in *Hosting → release history*.
-- [ ] Release APK built by the `android.yml` `release` job (`doorprints-release-apk`; later `release.yml`), `apksigner verify` fingerprint in the log matches the published one, SHA-256 published.
+- [ ] Release APK built by the `android.yml` `release` job (`doorprints-release-apk`), or a version tag `vX.Y.Z` pushed so that `release.yml` makes a **draft** GitHub Release with the signed APK, its `.sha256` and the signer fingerprint (a manual run of it is a dry run; the draft stays unapproved until the gate of [13](13-release-security-checklist.md) passes), `apksigner verify` fingerprint in the log matches the published one, SHA-256 published.
 - [ ] Install on the phone **after syncing**. Settings show the right server. Sync OK. Hunt mode starts and stops.
 - [ ] If AI changed: eval results attached and meet the thresholds. Flag default stays off unless approved.
 - [ ] Public repository: no secrets, personal data or unencrypted dumps in the commit, workflow logs or artifacts (section 10.1).

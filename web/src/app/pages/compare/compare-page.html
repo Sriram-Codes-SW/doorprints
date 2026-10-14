@@ -113,7 +113,7 @@
                   <a [routerLink]="space.detailLink(h.id)">{{ h.label || ('common.untitled' | t) }}<span aria-hidden="true"> →</span></a>
                   <div>
                     <span [class]="'pill pill-' + h.status">
-                      <span aria-hidden="true">{{ statusIcon[h.status] }}</span> {{ statusKey[h.status] | t }}
+                      <span aria-hidden="true">{{ statusIcon[h.status] }}</span> {{ statusKey()[h.status] | t }}
                     </span>
                   </div>
                 </th>

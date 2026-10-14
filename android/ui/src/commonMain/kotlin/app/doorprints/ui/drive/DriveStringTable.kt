@@ -118,6 +118,7 @@ import app.doorprints.ui.res.drive_sync_photo_error
 import app.doorprints.ui.res.drive_delete_heading
 import app.doorprints.ui.res.drive_delete_older_backups
 import app.doorprints.ui.res.drive_delete_all_backups
+import app.doorprints.ui.res.drive_delete_all_kinds
 import app.doorprints.ui.res.drive_delete_everything
 import app.doorprints.ui.res.drive_delete_one_backup
 import app.doorprints.ui.res.drive_delete_plan_heading
@@ -349,6 +350,7 @@ internal val DRIVE_STRINGS: Map<String, StringResource> = mapOf(
     "driveDelete.oneBackup" to Res.string.drive_delete_one_backup,
     "driveDelete.planHeading" to Res.string.drive_delete_plan_heading,
     "driveDelete.planWarning" to Res.string.drive_delete_plan_warning,
+    "driveDelete.allKinds" to Res.string.drive_delete_all_kinds,
     "driveDelete.proceed" to Res.string.drive_delete_proceed,
     "driveDelete.confirmHeading" to Res.string.drive_delete_confirm_heading,
     "driveDelete.confirmWarning" to Res.string.drive_delete_confirm_warning,

@@ -148,9 +148,12 @@ open class CommonRepository(
         ?: { s -> if (s.serverConfigured) ServerSyncBackend(apiFor(s.serverUrl, s.apiKey)) else null }
 
     /** The clock every local edit is stamped with. */
-    protected fun now(): Long = Clock.System.now().toEpochMilliseconds()
+    protected open fun now(): Long = Clock.System.now().toEpochMilliseconds()
 
     private val photoStore = PhotoStore(db, photoDir, ::now, syncSoon)
+
+    /** The writes of house rows: a stamped row (the TAKEN rule), a space's delete, the restore (`HouseWriter`). */
+    private val houseWriter = HouseWriter(db, ::now, syncSoon)
 
     protected fun photoDirPath(): Path = photoStore.dirPath()
 
@@ -213,35 +216,26 @@ open class CommonRepository(
     override suspend fun saveHouse(house: HouseEntity) {
         // The rooms, answers and move-in as every reader keeps them (slices 1c, 3a, 5): the form's blank names and notes
         // go, a typed answer reads ANSWERED, the order is the one shown; a floor outside -5..200 is unknown (S4b-BL-87).
-        val row = brokerStore.linked(house).copy(
-            rooms = HouseRooms.coerced(house.rooms), answers = HouseAnswers.coerced(house.answers),
-            moveIn = MoveIn.coerced(house.moveIn), floor = HouseValues.floor(house.floor), updatedAt = now(), dirty = true,
+        houseWriter.put(
+            brokerStore.linked(house).copy(
+                rooms = HouseRooms.coerced(house.rooms), answers = HouseAnswers.coerced(house.answers),
+                moveIn = MoveIn.coerced(house.moveIn), floor = HouseValues.floor(house.floor), updatedAt = now(), dirty = true,
+            ),
         )
-        if (row.status == HouseStatus.TAKEN && !row.deleted) {
-            // At most one house is TAKEN (slice 5, M1): the one that was returns to SHORTLISTED, in the same transaction.
-            db.withImmediateTransaction {
-                val others = db.houses().all().filter { it.id != row.id }
-                val chosen = HouseStatusRules.choose(
-                    others.map { StatusHouse(it.id, it.status) } + StatusHouse(row.id, row.status), row.id, HouseStatus.TAKEN,
-                ).associate { it.id to it.status }
-                val stamp = row.updatedAt
-                for (h in others) {
-                    if (chosen[h.id] != h.status) {
-                        db.houses().upsert(h.copy(status = chosen.getValue(h.id), updatedAt = stamp, dirty = true))
-                    }
-                }
-                db.houses().upsert(row)
-            }
-        } else {
-            db.houses().upsert(row)
-        }
-        syncSoon()
     }
+
+    override suspend fun deleteHouses(ids: List<String>): List<String> = houseWriter.deleteMany(ids)
+
+    override suspend fun restoreHouse(id: String): Boolean = houseWriter.restoreMany(listOf(id)).isNotEmpty()
+
+    override suspend fun restoreHouses(ids: List<String>): List<String> = houseWriter.restoreMany(ids)
+
+    override fun observeDeletedHouses(): Flow<List<HouseEntity>> = houseWriter.observeDeleted()
 
     override suspend fun markOthersNotChosen(takenId: String): Int {
         val count = db.withImmediateTransaction {
             val all = db.houses().all()
-            val targets = HouseStatusRules.closeTargets(all.map { StatusHouse(it.id, it.status) }, takenId).toHashSet()
+            val targets = HouseStatusRules.closeTargets(all.map { StatusHouse(it.id, it.status, it.kind) }, takenId).toHashSet()
             val stamp = now()
             for (h in all) if (h.id in targets) db.houses().upsert(h.copy(status = HouseStatus.NOT_CHOSEN, updatedAt = stamp, dirty = true))
             targets.size
@@ -251,7 +245,7 @@ open class CommonRepository(
     }
 
     override suspend fun closeTargetCount(takenId: String): Int =
-        HouseStatusRules.closeTargets(db.houses().all().map { StatusHouse(it.id, it.status) }, takenId).size
+        HouseStatusRules.closeTargets(db.houses().all().map { StatusHouse(it.id, it.status, it.kind) }, takenId).size
 
     override suspend fun savePhotoMeta(photoId: String, meta: PhotoMeta): Boolean = photoStore.saveMeta(photoId, meta)
 
@@ -386,8 +380,7 @@ open class CommonRepository(
     override suspend fun deleteAreaNote(id: String) = areaStore.deleteNote(id)
 
     override suspend fun deleteHouse(id: String) {
-        val house = db.houses().get(id) ?: return
-        saveHouse(house.copy(deleted = true))
+        deleteHouses(listOf(id))
     }
 
     override suspend fun saveVisit(visit: VisitEntity) {

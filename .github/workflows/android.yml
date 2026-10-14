@@ -212,6 +212,7 @@ jobs:
   release-signing-check:
     name: Release signing secrets present?
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    environment: release
     runs-on: ubuntu-26.04
     timeout-minutes: 5
     permissions: {}
@@ -239,6 +240,7 @@ jobs:
     name: Signed release APK
     needs: [build, release-signing-check]
     if: needs.release-signing-check.outputs.present == 'true'
+    environment: release
     runs-on: ubuntu-26.04
     timeout-minutes: 40
     permissions:

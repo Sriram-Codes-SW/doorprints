@@ -16,9 +16,11 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import type { Dict } from '../i18n/en';
+import type { Dict, TKey } from '../i18n/en';
 import type { HouseDto } from '../core/models';
 import type { KindFields } from '../core/kind-fields';
+import { labelKey } from '../core/kind-labels';
+import { toolWord } from '../core/space-tool-words';
 import { kindValues, type KindValue } from '../shared/kind-values';
 import { tr } from './deterministic';
 import { cellCount, cellMoney, cellText, display, type Cell } from './export-rows';
@@ -43,6 +45,8 @@ export interface CopyKinds {
 export interface ExportExtra {
   /** `<kind>.<extra id>`: two kinds may give one id two meanings. */
   readonly key: string;
+  /** The kind section the extra belongs to (`details`, `cost`): a readable copy writes it under that section's heading. */
+  readonly section: string;
   readonly label: string;
   readonly cell: Cell;
   readonly text: string;
@@ -59,7 +63,7 @@ export function extrasOf(h: Pick<HouseDto, 'kind' | 'extrasOther'>, kinds: CopyK
   const fields = kinds.fieldsOf(h.kind);
   return kindValues(fields, h).map((v) => {
     const cell = cellOf(v, kinds.dict, s);
-    return { key: `${fields.kind}.${v.field.id}`, label: tr(kinds.dict, fields.label(v.field)), cell, text: display(cell, s) };
+    return { key: `${fields.kind}.${v.field.id}`, section: v.field.section, label: tr(kinds.dict, fields.label(v.field)), cell, text: display(cell, s) };
   });
 }
 
@@ -74,6 +78,37 @@ export function extraColumnsOf(houses: readonly Pick<HouseDto, 'kind'>[], kinds:
     for (const f of fields.others()) out.push({ key: `${fields.kind}.${f.id}`, label: tr(kinds.dict, fields.label(f)) });
   }
   return out;
+}
+
+/**
+ * The kind a copy speaks in (S4b-BL-266): the kind of a copy of one space, or of candidates that are all of one kind, when
+ * that kind is not the house; `undefined` for a copy of houses or of several kinds, which is written as it always was
+ * (`house-pins.spec.ts`). Its words and hidden places shape the copy: see {@link copyWord}, {@link copyShows} and
+ * {@link copyField}.
+ */
+export function copyVoice(chosen: readonly Pick<HouseDto, 'kind'>[], kinds: CopyKinds, space?: string): KindFields | undefined {
+  const own = space ? kinds.fieldsOf(space) : undefined;
+  const all = new Set(chosen.map((h) => kinds.fieldsOf(h.kind)));
+  const voice = own ?? (all.size === 1 ? [...all][0] : undefined);
+  return voice && voice.kind !== 'house' ? voice : undefined;
+}
+
+/** A word of the app's dictionary in the copy's voice: the kind's own where it has one, else the house's key. */
+export function copyWord(voice: KindFields | undefined, key: TKey): TKey {
+  return toolWord(voice?.kind, key);
+}
+
+/** Whether the copy shows a place of its kind (`field.money`, `section.checklist`): every place, in a copy without a voice. */
+export function copyShows(voice: KindFields | undefined, ref: string): boolean {
+  return !voice || voice.labels.isVisible(ref);
+}
+
+/**
+ * The key of a field or section label in the copy: the kind's own through `KindLabels` (a school's *Website* and *Fees*),
+ * the hand-written `house` key in a copy without a voice, which `house-pins.spec.ts` holds word for word.
+ */
+export function copyField(voice: KindFields | undefined, ref: string, house: TKey): TKey {
+  return voice ? labelKey(voice.labels, ref, house) : house;
 }
 
 function cellOf(v: KindValue, dict: Dict, s: ExportStrings): Cell {
