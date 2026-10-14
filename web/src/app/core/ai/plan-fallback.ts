@@ -90,6 +90,21 @@ export interface PlanCandidate {
   extras?: Record<string, string>;
 }
 
+/** The school's Ask refusal (S4b-BL-269), the kind's own words: `SCHOOL_AI.refusal` in `kind-ai.ts` is this. */
+export const SCHOOL_I_DONT_KNOW = "I don't know based on the schools you have saved.";
+
+/**
+ * A candidate of a built-in kind (it has `extras`, S4b-BL-270) has no price or bedrooms: its plan line is id, label,
+ * locality, status, rating, each detail as `<words>: <value>`, then the distance.
+ */
+export function kindCandidateLine(c: PlanCandidate): string {
+  return [
+    `id: ${c.id}`, `label: ${c.label}`, `locality: ${c.locality ?? c.street ?? '-'}`, `status: ${c.status ?? '-'}`,
+    `rating: ${c.rating != null ? `${c.rating}/5` : '-'}`, ...Object.entries(c.extras ?? {}).map(([words, value]) => `${words}: ${value}`),
+    `distance: ${c.distanceMeters} m`,
+  ].join(' | ');
+}
+
 export interface AgentPlan { summary?: string | null; stops?: { houseId?: string | null; reason?: string | null }[] | null }
 
 export const FALLBACK_REASON = 'Found by the search; ordered by walking distance';

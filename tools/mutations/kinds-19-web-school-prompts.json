@@ -77,20 +77,20 @@
     },
     {
       "file": "web/src/app/core/ai/ai-core.ts",
-      "find": "  return candidates.map((c) => c.extras ? [",
-      "replace": "  return candidates.map((c) => c.extras && Object.keys(c.extras).length > 99 ? [",
+      "find": "  return candidates.map((c) => c.extras ? kindCandidateLine(c) : [",
+      "replace": "  return candidates.map((c) => c.extras && Object.keys(c.extras).length > 99 ? kindCandidateLine(c) : [",
       "expect": "a Plan candidate has only what the plan slot names"
     },
     {
       "file": "web/src/app/core/ai/ai-core.ts",
-      "find": "        ...(extras ? { extras } : {}),",
-      "replace": "        extras: extras ?? {},",
+      "find": "...(extrasOf?.(h) ? { extras: extrasOf(h) } : {}),",
+      "replace": "extras: extrasOf?.(h) ?? {},",
       "expect": "a Plan candidate has only what the plan slot names"
     },
     {
       "file": "web/src/app/core/ai/ai-core.ts",
-      "find": "  return I_DONT_KNOW === a || SCHOOL_I_DONT_KNOW === a;",
-      "replace": "  return I_DONT_KNOW === a;",
+      "find": "[I_DONT_KNOW, SCHOOL_I_DONT_KNOW].includes(",
+      "replace": "[I_DONT_KNOW].includes(",
       "expect": "the prompt speaks in a kind's words only when every record"
     },
     {
