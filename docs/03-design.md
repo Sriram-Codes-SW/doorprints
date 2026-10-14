@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.133 |
+| Version | 0.134 |
 | Date | 2026-10-14 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -144,6 +144,7 @@
 | 0.131 | 2026-10-14 | Claude (Code), engineer | **§18.14 Spaces on the phones** (S4b-BL-274 and S4b-BL-289, kinds PR C; two stacked branches, `feat/kinds-13-phones-spaces` and `feat/kinds-13b-phones-spaces-scoping`): the chooser, the header chip, Settings > What you track, a space's words, Hunt mode and the house-only Settings rows by kind, and the deep links (C1); Compare, Ask, Plan, the copies, the share target and the backup's `search` writer and hint, by the website's vectors (C2). The house-only app is byte for byte today's. §18.12 and §18.13 say where the phones' part now is. |
 | 0.132 | 2026-10-14 | Claude (Code), engineer | **§18.15 The server's list of kinds and its writer of `search`** (S4b-BL-280; `fix/kinds-server-available-flag`; [10](10-sprint-log.md) v0.307, [06](06-test-plan.md) v0.244 TC-U-222): `app.ai.dev-kinds` (`AI_DEV_KINDS`) is renamed `app.kinds.available` (`KINDS_AVAILABLE`, a list, default `house`); a request that names a kind outside it is a 400; `BackupWire.searchOf` writes the backup's `search` object as the website and the phones do (§18.12 door 10 amended, §18.11, §18.14 follow). |
 | 0.133 | 2026-10-14 | Claude (Code), engineer | **§18.9 The house's words left on a school's pages, and a school's copies** (kinds PR 16, the website; S4b-BL-256, S4b-BL-259, S4b-BL-266 and the website leftovers of S4b-BL-277; `feat/kinds-16-school-wording-web`; [06](06-test-plan.md) TC-U-230, TC-M-75): the helper texts, tab titles, walk check, list rows, Your data cards, Areas and Places, listing fill and the readable copies read the kind; §18.10, §18.12 and §18.13 point to it. |
+| 0.134 | 2026-10-14 | Claude (Code), engineer | LocationMap row: since maplibre-gl 6.13 the worker is self-contained, `angular.json` copies `maplibre-gl-worker.mjs` alone ([10](10-sprint-log.md) S4b-BL-310). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -471,7 +472,7 @@ is no Mac and no paid Apple account.
 | `GeocodeService` | `core/geocode.service.ts` | Nominatim reverse geocoding, only on button press |
 | `resizeImage` | `core/image-resize.ts` | 1600 px JPEG q0.8 via canvas (drops EXIF) |
 | `AuthImage` | `shared/auth-image.ts` | Fetches photos as blobs with the key header, then object URLs |
-| `LocationMap`, `MAP_STYLE_URL`, `createMap` | `shared/*` | MapLibre GL 6 with OpenFreeMap "liberty" style. MapLibre 6 is ESM-only and no longer builds its worker from a `blob:` URL: `angular.json` copies `maplibre-gl-worker.mjs` and `maplibre-gl-shared.mjs` to `/maplibre/`, `shared/map-style.ts` calls `setWorkerUrl`, so the CSP can use `worker-src 'self'`. No WebGL 2 → a translated `role="status"` message instead of the map. Popups use `setDOMContent` + `textContent` only (F-27). **India's boundaries (ADR-22):** `createMlMap` registers `applyIndiaBoundaries` (`shared/india-boundaries.ts`) on every `style.load`, before any page listener, so the first load and every reload by `watchMapStyle` get the five rules; the data is the same-origin `geo/in-boundaries.geojson`, resolved against the base href. |
+| `LocationMap`, `MAP_STYLE_URL`, `createMap` | `shared/*` | MapLibre GL 6 with OpenFreeMap "liberty" style. MapLibre 6 is ESM-only and no longer builds its worker from a `blob:` URL: `angular.json` copies `maplibre-gl-worker.mjs` (self-contained since maplibre-gl 6.13; the package's `maplibre-gl-shared.mjs` is an empty stub) to the site root, `shared/map-style.ts` calls `setWorkerUrl`, so the CSP can use `worker-src 'self'`. No WebGL 2 → a translated `role="status"` message instead of the map. Popups use `setDOMContent` + `textContent` only (F-27). **India's boundaries (ADR-22):** `createMlMap` registers `applyIndiaBoundaries` (`shared/india-boundaries.ts`) on every `style.load`, before any page listener, so the first load and every reload by `watchMapStyle` get the five rules; the data is the same-origin `geo/in-boundaries.geojson`, resolved against the base href. |
 | Pages | `pages/connect`, `map`, `house-detail`, `compare`, `ask`, `plan` | FR-024; `ask` and `plan` (FR-037, FR-039) are routed always but linked only when AI is on; `house-detail` has "Fill in from listing text" for new houses (FR-038; called "Import from listing text" until 2026-09-23, keys `listingFill.*`) |
 
 ## 5. Deployment (free tier)

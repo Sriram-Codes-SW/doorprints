@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.191 |
+| Version | 0.192 |
 | Date | 2026-10-14 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..183); this file lists the lead-level items and points to the rest. |
@@ -199,6 +199,7 @@
 | 0.189 | 2026-10-14 | Claude (Code), engineer | §11.2 note on C-02: merged (#331), the four `HH_*` secrets are set, second dry run pending (the first found two bugs, fixed in #332). |
 | 0.190 | 2026-10-14 | Claude (Code), engineer | §11.2 C-02 note: **C-02 and S4b-BL-8 done** (`release.yml` verified: the tag run of `v0.1.0`, run 38567647446, made the draft release; the `release` environment holds the four secrets, the repository secrets are deleted, and a dry run after that, run 38574720381, passed). The owner's draft release is not published until [docs/13](13-release-security-checklist.md) passes. [10](10-sprint-log.md) v0.318, [07](07-secure-build-and-deploy.md) v0.76, [02](02-threat-model.md) v0.82, [01](01-requirements.md) v0.52. |
 | 0.191 | 2026-10-14 | Claude (Code), engineer | §11.2: **kinds PR 16, the website In review** (`feat/kinds-16-school-wording-web`; S4b-BL-256, S4b-BL-259, S4b-BL-266 and the website leftovers of S4b-BL-277; [03](03-design.md) §18.9, [10](10-sprint-log.md) v0.319): the phones' half follows in a later pull request (each row names its call sites). |
+| 0.192 | 2026-10-14 | Claude (Code), engineer | §11.2: **S4b-BL-310 In review** (`chore/deps-angular-maplibre`): Angular 22.2.2 and maplibre-gl 6.13.0; the MapLibre worker is self-contained from 6.13, so the build, the PWA check and the live check follow the new layout ([10](10-sprint-log.md) v0.320). |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 
