@@ -18,11 +18,11 @@
 
 <div class="page">
   <header class="page-head">
-    <h1>{{ 'plan.title' | t }}</h1>
-    <p class="muted">{{ 'plan.intro' | t }}</p>
+    <h1>{{ w('plan.title') | t }}</h1>
+    <p class="muted">{{ w('plan.intro') | t }}</p>
   </header>
 
-  @if (!ai.enabled()) {
+  @if (!on()) {
     <!-- Why AI is off, in words that are true for this case (no server; off on the server; off for this device on
          the owner page; this browser's own switch), with a link where the fix is on the Connect page. -->
     @if (ai.offReason(); as reason) {
@@ -33,11 +33,11 @@
         }
       </p>
     } @else {
-      <p class="card">{{ 'ai.disabled' | t }}</p>
+      <p class="card">{{ (ai.enabled() ? 'ai.notHere' : 'ai.disabled') | t }}</p>
     }
   }
 
-  <div class="layout" [hidden]="!ai.enabled()">
+  <div class="layout" [hidden]="!on()">
     <div class="col">
       <form class="card" (ngSubmit)="submit()" novalidate>
         <div class="field">
@@ -49,7 +49,7 @@
             [(ngModel)]="question"
             (ngModelChange)="onQuestion($event)"
             [attr.maxlength]="maxChars"
-            [placeholder]="'plan.placeholder' | t"
+            [placeholder]="w('plan.placeholder') | t"
             [attr.aria-invalid]="questionMissing() ? 'true' : null"
             [attr.aria-describedby]="questionMissing() ? 'plan-question-error plan-disclosure' : 'plan-disclosure'"
             required
@@ -165,12 +165,12 @@
           }
           <p><strong>{{ 'plan.total' | t: { km: totalKm(), min: p.totalWalkMinutes } }}</strong></p>
           @if (stops().length === 0) {
-            <p>{{ 'plan.noStops' | t }}</p>
+            <p>{{ w('plan.noStops') | t }}</p>
           } @else {
             <ol class="stops">
               @for (s of stops(); track s.houseId) {
                 <li>
-                  <a [routerLink]="['/houses', s.houseId]">{{ s.label || ('common.untitled' | t) }}</a>
+                  <a [routerLink]="space.detailLink(s.houseId, kind)">{{ s.label || ('common.untitled' | t) }}</a>
                   <span class="muted small">{{ 'plan.leg' | t: { m: s.legMeters, min: s.walkMinutes } }}</span>
                   @if (s.reason) {
                     <span class="small">{{ s.reason }}</span>

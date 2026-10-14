@@ -21,6 +21,7 @@ import { GuardsCheckEnd, Router, type Routes } from '@angular/router';
 import type { BuiltInKind } from './dev-kinds';
 import { availableKinds, defaultKind, enabledKinds, kindById, spacesOn } from './kind-setting';
 import type { HouseDto } from './models';
+import { holdsFor } from './space-scope';
 import { type SpaceWords, spaceWords } from './space-words';
 
 /** The path of a space's own pages: `/k/<kind>`, `/k/<kind>/new`, `/k/<kind>/<id>`. */
@@ -40,6 +41,9 @@ export function spaceOf(h: Pick<HouseDto, 'kind'>, multi: boolean, dflt: string,
   const kind = h.kind ?? 'house';
   return multi && available.includes(kind) ? kind : dflt;
 }
+
+/** The tools that read one space: Compare, Ask and Plan (kinds PR B, S4b-BL-279). */
+export type SpaceTool = 'compare' | 'ask' | 'plan';
 
 /**
  * The current *space* (kinds PR 8, S4b-BL-212; docs/03 §18.12): the kind whose candidates the list, the map, the counters,
@@ -69,8 +73,6 @@ export class SpaceService {
   readonly words = computed<SpaceWords>(() => spaceWords(this.kind()));
   /** The space is one the person turned off (it still opens, with a note: its entries are never hidden). */
   readonly hidden = computed(() => this.multi() && !this.enabled().includes(this.kind()));
-  /** Compare, Ask and Plan read the house space only, until they are scoped per space (S4b-BL-279). */
-  readonly houseTools = computed(() => this.kind() === 'house');
 
   constructor() {
     // GuardsCheckEnd, not NavigationEnd: the new page is built before the navigation ends and reads its space at once.
@@ -99,6 +101,11 @@ export class SpaceService {
     return this.multi() ? `/k/${kind}/new` : '/houses/new';
   }
 
+  /** A tool's page in a space: the house keeps `/compare`, `/ask` and `/plan`, any other kind has `/k/<kind>/<tool>`. */
+  toolLink(tool: SpaceTool, kind: string = this.kind()): string {
+    return this.multi() && kind !== 'house' ? `/k/${kind}/${tool}` : `/${tool}`;
+  }
+
   /** The kind a new candidate is: the space's on `/k/<kind>/new`, else the default kind. */
   newKind(): string {
     const m = this.multi() ? SPACE_PATH.exec(this.path()) : null;
@@ -106,8 +113,7 @@ export class SpaceService {
   }
 
   /** Whether the current space shows candidate `h`. With one space it shows every candidate, as it always did. */
-  readonly holds = (h: Pick<HouseDto, 'kind'>): boolean =>
-    !this.multi() || spaceOf(h, true, this.dflt(), this.available) === this.kind();
+  readonly holds = (h: Pick<HouseDto, 'kind'>): boolean => holdsFor(this.kind(), this.multi(), this.dflt(), this.available)(h);
 
   /**
    * Reads the settings again after Settings > Kinds changed them; when spaces turn on or off the router gets the other

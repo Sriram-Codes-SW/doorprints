@@ -48,11 +48,28 @@ export interface PlanSession {
  */
 @Injectable({ providedIn: 'root' })
 export class AiSessionState {
-  ask: AskSession | null = null;
-  plan: PlanSession | null = null;
+  // One of each per space (kinds PR B, S4b-BL-279): Ask and Plan read one space, and Back shows that space's answer.
+  private readonly asks = new Map<string, AskSession>();
+  private readonly plans = new Map<string, PlanSession>();
+
+  askOf(kind: string): AskSession | null {
+    return this.asks.get(kind) ?? null;
+  }
+
+  setAsk(kind: string, session: AskSession): void {
+    this.asks.set(kind, session);
+  }
+
+  planOf(kind: string): PlanSession | null {
+    return this.plans.get(kind) ?? null;
+  }
+
+  setPlan(kind: string, session: PlanSession): void {
+    this.plans.set(kind, session);
+  }
 
   clear(): void {
-    this.ask = null;
-    this.plan = null;
+    this.asks.clear();
+    this.plans.clear();
   }
 }

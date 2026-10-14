@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.182 |
+| Version | 0.184 |
 | Date | 2026-10-13 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..183); this file lists the lead-level items and points to the rest. |
@@ -190,6 +190,8 @@
 | 0.180 | 2026-10-13 | Claude (Code), engineer | §11.2: **S4b-BL-211, the website In review** (`feat/kinds-9b-kind-aware-ai-web`, stacked). |
 | 0.181 | 2026-10-13 | Claude (Code), engineer | §11.2: **S4b-BL-211, the phone In review** (`feat/kinds-9c-kind-aware-ai-phone`, stacked). |
 | 0.182 | 2026-10-14 | Claude (Code), engineer | §11.2 and N21: **S4b-BL-212, kinds PR 8, spaces, PR A the website, In review** (`feat/kinds-10-settings-kind-guide`): the owner's spaces design (a kind is a space; Settings > What you track enables kinds and chooses a default; the chooser); PR B, PR C and the server follow (S4b-BL-279, -274, -280). |
+| 0.183 | 2026-10-14 | Claude (Code), engineer | §11.2 and N21: **S4b-BL-279, kinds PR B, the website, In review** (`feat/kinds-11-spaces-scoping`): Compare, Ask, Plan, the copies and the share target per space ([03](03-design.md) §18.13); the rules and vectors (`space-scope-vectors.json`) are what PR C (S4b-BL-289) must match on the phones. |
+| 0.184 | 2026-10-14 | Claude (Code), engineer | §7 **Delivery mode** (owner, 2026-10-14): local checks first, one batch and one pull request per stream, CI once per stream, own pull request for migrations, formats, security, AI input and deploy; `main` stays releasable; live UI only for the affected areas (`ONLY=...`); Sonnet by default, Haiku for mechanical work, Opus and Fable only where the risk is. CLAUDE.md: the two matching lines. |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 
@@ -489,6 +491,33 @@ tests) correctly, but only after being made to fill in a self-audit table (item,
 lead verified by running the suite and grepping every name; its first report called the unfinished screens "assigned to other
 builders", and it twice stopped to ask instead of starting the form. So: Haiku for precisely specified data-side work behind a
 self-audit table the lead checks, a stronger model for screens, migrations and anything open-ended.
+
+**Delivery mode (owner, 2026-10-14: "the fastest delivery": stick to local testing and test cases, keep the slow runs to later).**
+
+- **Local first, always.** Every change runs the full local set before it is pushed (`tools/check.sh`; the web layout gate
+  `node tools/live-ui/layout-gate.js web/dist/web/browser` for any web UI change, about 30 s; the Gradle command of CLAUDE.md with
+  `-Proborazzi.test.verify=true`; the iOS klib compile on Linux; `mvn verify` with the PostGIS container for the backend).
+- **Batch per stream, one pull request per stream.** A stream is a set of changes that belong together (for example the kinds chooser,
+  then scoping Compare/Ask/Plan/copies, then the phones). Builders chain their branches locally and open **no pull request until the
+  batch is ready**: an open pull request, a draft too, starts CI. **Push the branch after every local-green commit** (a branch push does
+  not start CI; only an open pull request does): work held only in a container is lost to a usage limit or a container loss. CI then runs once per stream and its failures are fixed in one pass.
+  Never leave a stream's batch so large that one failure cannot be traced: split it at a natural seam (web, then phones).
+- **Own pull request, own CI run, when the change touches** a data migration (Room, IndexedDB, Flyway), the backup or sync format,
+  security or privacy rules, what the AI sees, or the deploy. These are never folded into a batch.
+- **`main` stays releasable.** Nothing merges to `main` without every required check green (the Web deploy runs on `main`; the phone layout
+  gate failed on `main` on 2026-10-13 and stopped a bad deploy, as intended). Deferring CI is for branches only. CI does not count
+  against the model usage limit (GitHub's runners are separate); what saves usage is fewer fix cycles.
+- **What local runs cannot cover** (CI only): the three emulator smoke tests, the macOS iOS jobs, CodeQL, Semgrep, Trivy, gitleaks over the
+  history, the container image. A stream's one CI run is where these are first seen.
+- **Live UI after a web merge: only the affected areas** (`ONLY=mobile` for layout and CSS; `ONLY=pages,flows` for routing, Settings and the
+  chooser; `ONLY=pages` for strings and languages; nothing for docs-, backend- or phone-only merges). The full run only when the owner asks or
+  before a release.
+- **Models (owner, 2026-10-14: keep usage low).** Builders default to **Sonnet**; **Haiku** for mechanical work with a precise brief (docs
+  renumbering, merge conflicts, version rows, a self-audit table the lead checks); **Opus** only for design judgement or cross-stack
+  consistency that vectors do not yet pin (a new data format, a migration, a privacy rule); **Fable** only for a decision with real risk
+  (privacy and data-loss reviews), not for routine confirmation. Designs already written down (the kinds-as-spaces UX, the deletion
+  safeguards, the gap analysis, ADR-36 §18) are followed, not re-consulted. Every builder brief carries: *if you change a rule, find its twins
+  on the other stacks and update them in the same change*; a rule that exists on three stacks gets a shared vector first.
 
 **Order of work** is §2 N13 (then N10, then S4b-BL-63). Pick up open pull requests first.
 
@@ -1020,6 +1049,7 @@ Written so a new session can continue without this one's memory. Backlog ids and
 - **Update of 2026-10-13: kinds PR 6, typed extras in search and the copies (S4b-BL-210), In review** (`feat/kinds-8-extras-search-copies`, one pull request, the website and the phone): the list search and the CSV, XLSX, HTML, Markdown and phone PDF copies read a kind's extras through the kind file; a house's copies and search are pinned first and unchanged (`house-pins.spec.ts`, `HouseCopyPinsTest`); `docs/schemas/kinds/kind-search-vectors.json`; the filter is S4b-BL-265, the rest S4b-BL-266 and S4b-BL-267 ([03](03-design.md) §18.10).
 - **Update of 2026-10-13: kinds PR 7, kind-aware AI (S4b-BL-211), In review, three stacked pull requests** (the server `feat/kinds-9-kind-aware-ai`, the website `feat/kinds-9b-kind-aware-ai-web` stacked on it, and the phone `feat/kinds-9c-kind-aware-ai-phone` stacked on that): a candidate of a built-in kind other than the house is read through its kind file's `ai` slots while the developer flag is on (the server's `AI_DEV_KINDS`); a house's Extract, Ask and Plan output is pinned byte for byte first on each stack and unchanged; `docs/schemas/kinds/kind-ai-vectors.json`. Not done: the parity `prompts` re-pin and S4b-BL-234 (nothing changed for a house), live evals (S4b-BL-268); left: S4b-BL-269, -270, -271.
 - **Update of 2026-10-14: kinds PR 8, spaces, the chooser and Settings > What you track (S4b-BL-212), PR A the website, In review** (`feat/kinds-10-settings-kind-guide`). The owner approved the spaces design on 2026-10-14 (it supersedes "one kind per data set"): a kind is a space, a filter over the one store; *Experimental: more than houses* (off by default, shown only in a build that ships another kind; a production build offers the house alone); with two kinds shown, `/` is *What are you looking for?* and `/k/<kind>` a space; the house-only path is byte for byte today's. PR B (S4b-BL-279: Compare, Ask, Plan, copies per space), PR C (S4b-BL-274: the phones) and the server (S4b-BL-280) follow; the release gate (`RELEASED_KINDS`) waits for S4b-BL-268..271 and the owner ([03](03-design.md) §18.12).
+- **Update of 2026-10-14: kinds PR B, Compare, Ask, Plan and the copies per space (S4b-BL-279), the website, In review** (`feat/kinds-11-spaces-scoping`, [03](03-design.md) §18.13). Compare, Ask and Plan read the space on screen (`/k/<kind>/compare|ask|plan`; the house keeps its addresses); Compare refuses another space's pick with one sentence; the copies of a space hold that space only with its plural in the file name, the backup stays whole; the share target has *Save it in*; the assistant is shown in a space other than the house only on the person's own AI (the server's Ask and Plan take no kind: S4b-BL-290). **For PR C (S4b-BL-289) the exact rules are `docs/schemas/kinds/space-scope-vectors.json`** (`contains`, `compare`, `fileName`, `assistant`, `shareKind`), read by `space-scope.spec.ts`; the house-only outputs were pinned before the change and are unchanged; the layout gate's two-kind run is 292 of 292 beside the unchanged 253.
 - **Kinds steps 3-9** (labels, renderer, hidden `schools` kind, search and copies, kind-aware AI, Settings and guide, security gate) and **voice steps 3-7** (spoken-style cases, web, Android, iPhone, Sarvam and clip suite): unstarted. The voice screens come after kinds step 5.
 - **Dependabot** #209, #210, #211.
 

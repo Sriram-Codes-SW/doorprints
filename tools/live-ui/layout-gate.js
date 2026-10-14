@@ -260,7 +260,7 @@ async function run() {
   // (`ng build --define DOORPRINTS_KINDS="'house,school'"`). The checks above are unchanged and run first.
   if (process.env.GATE_DEV_KINDS === '1') {
     for (const [v, t, lang] of [[VIEWPORTS[0], undefined, 'en'], [VIEWPORTS[0], LARGE_TEXT, 'ta'], [OWNER_PHONE, LARGE_TEXT, 'ta']]) {
-      passes.push([v, t, lang, { kinds: true, routes: ['/', '/k/school', '/data'] }]);
+      passes.push([v, t, lang, { kinds: true, routes: ['/', '/k/school', '/k/school/compare', '/share', '/data'] }]);
     }
   }
   let results, retried = [];
