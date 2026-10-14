@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Secure build, CI/CD and deployment guide |
-| Version | 0.73 |
+| Version | 0.74 |
 | Date | 2026-10-09 |
 | Author | Claude (Cowork) |
 | Status | Draft |
