@@ -45,7 +45,7 @@ afterEach(() => {
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
-async function renderNotes(house: HousePoint = HOUSE, areas: Area[] = [ADYAR, FAR], notes: AreaNoteRow[] = NOTES, saveAreaNote = vi.fn((n: AreaNote) => of(n)), lang: 'en' | 'ta' = 'en') {
+async function renderNotes(house: HousePoint = HOUSE, areas: Area[] = [ADYAR, FAR], notes: AreaNoteRow[] = NOTES, saveAreaNote = vi.fn((n: AreaNote) => of(n)), lang: 'en' | 'ta' = 'en', words: Record<string, string> = {}) {
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({
     providers: [
@@ -59,6 +59,7 @@ async function renderNotes(house: HousePoint = HOUSE, areas: Area[] = [ADYAR, FA
   await TestBed.inject(TranslationService).setLang(lang);
   const fixture = TestBed.createComponent(HouseAreaNotesCard);
   fixture.componentRef.setInput('house', house);
+  for (const [k, v] of Object.entries(words)) fixture.componentRef.setInput(k, v);
   fixture.detectChanges();
   await fixture.whenStable();
   await flush();
@@ -115,6 +116,16 @@ describe('HouseAreaNotesCard', () => {
     expect(buttons(host)).toEqual(['Add a note for an area']);
     const none = await renderNotes({ ...HOUSE, street: null });
     expect(buttons(none.host)).toEqual(['Add a note for an area']);
+  });
+
+  // S4b-BL-256: a school's page words the group of areas it is in, and the empty line, with the space's words.
+  it('names the group of areas by the kind’s words: a school is in …', async () => {
+    const { host, settle } = await renderNotes(HOUSE, [ADYAR, FAR], NOTES, undefined, 'en', { inReachLabel: 'school.areaNotesInReach', none: 'school.areaNotesNone' });
+    clickButton(host, 'Add a note for an area');
+    await settle();
+    expect([...host.querySelectorAll('optgroup')].map((g) => g.getAttribute('label'))).toEqual(['Areas this school is in', 'Other areas']);
+    const none = await renderNotes({ lat: 0, lon: 0, street: '' }, [ADYAR], NOTES, undefined, 'en', { none: 'school.areaNotesNone' });
+    expect(none.host.querySelector('#house-area-notes-none')?.textContent?.trim()).toBe('No area notes reach this school.');
   });
 
   it('adds a note for an area, offering the areas the house is in first and then the others', async () => {

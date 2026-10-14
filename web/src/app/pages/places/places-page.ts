@@ -24,6 +24,7 @@ import { Announcer } from '../../core/announcer.service';
 import { ConfirmService } from '../../core/confirm.service';
 import { errorMsg } from '../../core/format';
 import { LocalDataService } from '../../core/local-data.service';
+import { SpaceService } from '../../core/space.service';
 import { TPipe } from '../../i18n/t.pipe';
 import { Msg } from '../../i18n/translation.service';
 import { MAX_PLACES, MAX_PLACE_NAME } from '../../shared/area';
@@ -51,6 +52,8 @@ interface PlaceForm {
 })
 export class PlacesPage {
   private readonly api = inject(LocalDataService);
+  /** The space on screen (the last one on this page): its words for the house words left on the page (S4b-BL-256). */
+  protected readonly space = inject(SpaceService);
   private readonly confirm = inject(ConfirmService);
   private readonly announcer = inject(Announcer);
 
@@ -150,7 +153,7 @@ export class PlacesPage {
   protected async remove(): Promise<void> {
     const f = this.form();
     if (!f || f.id === '') return;
-    const ok = await this.confirm.ask({ key: 'places.confirmDelete' }, { confirmKey: 'places.delete', danger: true });
+    const ok = await this.confirm.ask({ key: this.space.kindWord('places.confirmDelete') }, { confirmKey: 'places.delete', danger: true });
     if (!ok) return;
     try {
       await firstValueFrom(this.api.deletePlace(f.id));

@@ -20,7 +20,9 @@ import type { TKey } from '../i18n/en';
 
 /**
  * The words of Compare, Ask, Plan, the copies and the share target in a space other than the house (kinds PR B,
- * S4b-BL-279; docs/03 §18.13). A page asks for its house key and gets the kind's own where the kind has one, so the
+ * S4b-BL-279; docs/03 §18.13), and since kinds PR 16 (S4b-BL-256, S4b-BL-259, S4b-BL-266, S4b-BL-277; §18.9) the house's
+ * words left on a school's page: tab titles, the name's placeholder, the walk check, the Areas and Places pages, the
+ * readable copy's cover. A page asks for its house key and gets the kind's own where the kind has one, so the
  * house's words are exactly the keys they were: `toolWord('house', 'compare.title')` is `'compare.title'`. The space's
  * list and map words are `core/space-words.ts` (S4b-BL-277); moving both into the kind files is S4b-BL-278.
  */
@@ -56,6 +58,50 @@ const SCHOOL: Readonly<Partial<Record<TKey, TKey>>> = {
   'data.preview': 'data.previewKind',
   'share.create': 'school.shareCreate',
   'share.hint': 'school.shareHint',
+  // S4b-BL-259 and S4b-BL-277: a school's page, tab titles and walk check (the house's words left on them).
+  'title.newHouse': 'school.titleNew',
+  'title.house': 'school.titleDetails',
+  'title.map': 'school.titleMap',
+  'house.namePlaceholder': 'school.namePlaceholder',
+  'house.notFound': 'school.notFound',
+  'house.nameRequired': 'school.nameRequired',
+  'house.locationRequired': 'school.locationRequired',
+  'house.locationUnset': 'school.locationUnset',
+  'house.placeFound': 'school.placeFound',
+  'house.mapLabel': 'school.mapLabel',
+  'house.saveFirstVisits': 'school.saveFirstVisits',
+  'house.saveFirstPhotos': 'school.saveFirstPhotos',
+  'listingFill.hint': 'school.listingHint',
+  'ai.disclosure': 'school.aiDisclosure',
+  'ai.disclosureOwnKeyHost': 'school.aiDisclosureOwnKeyHost',
+  'map.fitTitle': 'school.fitTitle',
+  'trace.house.empty': 'school.walksEmpty',
+  'trace.here.buttonHouse': 'school.walkTitle',
+  'trace.here.titleHouse': 'school.walkTitle',
+  'trace.here.placeHouse': 'school.walkPlace',
+  'trace.here.labelHouse': 'school.walkLabel',
+  'trace.here.approxHouse': 'school.walkApprox',
+  // S4b-BL-256: the Areas and Places pages and the area cards, read in the space on screen.
+  'areas.intro': 'school.areasIntro',
+  'areas.dataBody': 'school.areasDataBody',
+  'areas.confirmDelete': 'school.areasConfirmDelete',
+  'areaNotes.empty': 'school.areaNotesEmpty',
+  'places.dataBody': 'school.placesDataBody',
+  'places.intro': 'school.placesIntro',
+  'places.empty': 'school.placesEmpty',
+  'places.confirmDelete': 'school.placesConfirmDelete',
+  // S4b-BL-256 and S4b-BL-266: the words of a school's readable copy (cover, options, ranking, empty line).
+  'exp.title': 'school.expTitle',
+  'exp.counts': 'school.expCounts',
+  'exp.scopeAll': 'school.expScopeAll',
+  'exp.scopeShortlisted': 'school.expScopeShortlisted',
+  'exp.scopeSelected': 'school.expScopeSelected',
+  'exp.rejectedIncluded': 'school.expRejectedIncluded',
+  'exp.rejectedLeftOut': 'school.expRejectedLeftOut',
+  'exp.photosAll': 'school.expPhotosAll',
+  'exp.photosShortlisted': 'school.expPhotosShortlisted',
+  'exp.colHouse': 'school.expColSchool',
+  'exp.noHouses': 'school.expNone',
 };
 
 const TABLES: Readonly<Record<string, Readonly<Partial<Record<TKey, TKey>>>>> = { school: SCHOOL };
@@ -64,4 +110,10 @@ const TABLES: Readonly<Record<string, Readonly<Partial<Record<TKey, TKey>>>>> = 
 export function toolWord(kind: string | null | undefined, key: TKey): TKey {
   const table = kind && Object.prototype.hasOwnProperty.call(TABLES, kind) ? TABLES[kind] : undefined;
   return table?.[key] ?? key;
+}
+
+/** The house keys a kind words itself and the keys it reads instead, for the checks of the dictionaries (`school-words.spec.ts`). */
+export function toolWordPairs(kind: string): [TKey, TKey][] {
+  const table = Object.prototype.hasOwnProperty.call(TABLES, kind) ? TABLES[kind] : {};
+  return Object.entries(table) as [TKey, TKey][];
 }

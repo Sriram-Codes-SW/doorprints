@@ -111,6 +111,13 @@ const HOUSE: HouseDto = {
   updatedAt: '2026-09-20T10:00:00.000Z',
 };
 const OTHER: HouseDto = { ...newHouse(12.95, 77.6), id: 'h2', label: 'Lake view', price: 5200000, priceType: 'SALE', areaSqft: 1450, createdAt: '2026-09-21T10:00:00.000Z' };
+/** Two schools for the cases of a school space (kinds PR 16, S4b-BL-256, S4b-BL-259, S4b-BL-277). */
+const SCHOOL: HouseDto = {
+  ...newHouse(26.1433, 91.7898), id: 's1', kind: 'school', label: 'Pine Hill School', status: 'SHORTLISTED', rating: 4, priceType: null,
+  street: 'GS Road', locality: 'Dispur', createdAt: '2026-09-20T10:00:00.000Z', updatedAt: '2026-09-20T10:00:00.000Z',
+  extrasOther: { board: 'CBSE', busService: true, fees: { amount: 96000, cadence: 'year' } },
+};
+const SCHOOL2: HouseDto = { ...SCHOOL, id: 's2', label: 'Oak Valley', extrasOther: { board: 'ICSE' } };
 const PHOTO: PhotoSummary = { id: 'p1', createdAt: '2026-10-01T06:00:00.000Z', roomId: 'r1', tags: ['MOVE_IN', 'DAMP'], caption: 'Corner', metaUpdatedAt: 5 };
 const VIEWING = { id: 'v1', houseId: 'h1', startsAt: Date.now() + 3_600_000, durationMin: 30, kind: 'FIRST', status: 'PLANNED', remindMin: 60 };
 
@@ -360,6 +367,13 @@ const CASES: Case[] = [
     return page(MapPage, { api: EMPTY })(lang);
   }, 'school') },
   { name: 'Your data (Settings > Kinds on)', render: withKinds(plain(DataPage)) },
+  { name: 'Your data (a school space)', render: withKinds(plain(DataPage), 'school') },
+  { name: 'House detail (a school)', render: withKinds(page(HouseDetailPage, { api: fakeApi({ house: () => of(SCHOOL), houses: () => of([SCHOOL, SCHOOL2]) }), params: { id: 's1' } }), 'school') },
+  { name: 'House detail (a new school)', render: withKinds(page(HouseDetailPage, { query: { lat: '26.14', lon: '91.79' } }), 'school') },
+  { name: 'Compare (schools)', render: withKinds(page(ComparePage, { api: fakeApi({ houses: () => of([SCHOOL, SCHOOL2]) }), query: { ids: 's1,s2' } }), 'school') },
+  { name: 'Ask (a school space)', render: withKinds(page(AskPage, { api: fakeApi({ houses: () => of([SCHOOL, SCHOOL2]) }) }), 'school') },
+  { name: 'Areas (a school space)', render: withKinds(page(AreasPage), 'school') },
+  { name: 'Places (a school space)', render: withKinds(page(PlacesPage), 'school') },
   { name: 'Map (empty)', render: async (lang) => {
     vi.spyOn(MapPage.prototype, 'ngAfterViewInit').mockImplementation(() => undefined);
     return page(MapPage, { api: EMPTY })(lang);

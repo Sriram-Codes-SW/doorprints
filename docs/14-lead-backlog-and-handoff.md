@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.191 |
+| Version | 0.192 |
 | Date | 2026-10-14 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..183); this file lists the lead-level items and points to the rest. |
@@ -198,7 +198,8 @@
 | 0.188 | 2026-10-14 | Claude (Code), engineer | §11.2: **C-02 In review** (`ci/release-workflow-draft`): `release.yml` exists; the owner must set the four `HH_*` secrets and push a tag. |
 | 0.189 | 2026-10-14 | Claude (Code), engineer | §11.2 note on C-02: merged (#331), the four `HH_*` secrets are set, second dry run pending (the first found two bugs, fixed in #332). |
 | 0.190 | 2026-10-14 | Claude (Code), engineer | §11.2 C-02 note: **C-02 and S4b-BL-8 done** (`release.yml` verified: the tag run of `v0.1.0`, run 38567647446, made the draft release; the `release` environment holds the four secrets, the repository secrets are deleted, and a dry run after that, run 38574720381, passed). The owner's draft release is not published until [docs/13](13-release-security-checklist.md) passes. [10](10-sprint-log.md) v0.318, [07](07-secure-build-and-deploy.md) v0.76, [02](02-threat-model.md) v0.82, [01](01-requirements.md) v0.52. |
-| 0.191 | 2026-10-14 | Claude (Code), engineer | §1: **S4b-BL-268 and S4b-BL-271 In review** (`feat/kinds-17-school-evals-and-slots`; [10](10-sprint-log.md) v0.319): the school set for the AI evals and the keyless injection run on Ollama, and `house.json`'s slots aligned with the house's AI code. Two working notes in §7 terms: a local model (Ollama) can be fetched in a session without a key (the release tarball streamed through `zstd`, only the CPU libraries kept, about 60 MB, plus the 400 MB model), and the live spec's timeout for a loopback server (`AI_EVAL_TIMEOUT_MS`, up to 600,000) matters when the container is busy. |
+| 0.191 | 2026-10-14 | Claude (Code), engineer | §11.2: **kinds PR 16, the website In review** (`feat/kinds-16-school-wording-web`; S4b-BL-256, S4b-BL-259, S4b-BL-266 and the website leftovers of S4b-BL-277; [03](03-design.md) §18.9, [10](10-sprint-log.md) v0.319): the phones' half follows in a later pull request (each row names its call sites). |
+| 0.192 | 2026-10-14 | Claude (Code), engineer | §1: **S4b-BL-268 and S4b-BL-271 In review** (`feat/kinds-17-school-evals-and-slots`; [10](10-sprint-log.md) v0.320): the school set for the AI evals and the keyless injection run on Ollama, and `house.json`'s slots aligned with the house's AI code. Two working notes in §7 terms: a local model (Ollama) can be fetched in a session without a key (the release tarball streamed through `zstd`, only the CPU libraries kept, about 60 MB, plus the 400 MB model), and the live spec's timeout for a loopback server (`AI_EVAL_TIMEOUT_MS`, up to 600,000) matters when the container is busy. |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 
@@ -1064,6 +1065,8 @@ Written so a new session can continue without this one's memory. Backlog ids and
 - **Update of 2026-10-14: C-02 `release.yml` and S4b-BL-8 (the `release` environment), Done** (`docs/release-done`; [07](07-secure-build-and-deploy.md) §5, [10](10-sprint-log.md) C-02 and S4b-BL-8). `release.yml` is verified end to end: the tag run of `v0.1.0` (run 38567647446) built the signed APK and created the draft GitHub Release `Doorprints v0.1.0 (draft)` with the APK and its `.sha256`; manual dry runs pass. The `release` environment (deployment rules `main`, `v*.*.*`) holds the four `HH_*` secrets, the repository secrets are deleted, and a dry run after that (run 38574720381) passed. The README carries the signer fingerprint (PR #334). **The draft is not published until [docs/13](13-release-security-checklist.md) passes** (the owner's step).
 - **Kinds steps 3-9** (labels, renderer, hidden `schools` kind, search and copies, kind-aware AI, Settings and guide, security gate) and **voice steps 3-7** (spoken-style cases, web, Android, iPhone, Sarvam and clip suite): unstarted. The voice screens come after kinds step 5.
 - **Dependabot** #209, #210, #211.
+
+- **Update of 2026-10-14: kinds PR 16, the school's words on the website (S4b-BL-256, S4b-BL-259, S4b-BL-266, S4b-BL-277), In review** (`feat/kinds-16-school-wording-web`, one pull request, the website only): a school's pages, tab titles, list rows, Your data, Areas and Places, walk check, listing fill and readable copies speak in the school's words ([03](03-design.md) §18.9). Shared files: `kind-search-vectors.json` gained a `section` on each `copies` entry (additive; the phones' `KindSearchVectorsTest` ignores it), `school-form.golden.json` changed in two words (website only), and no other vector or golden. **The phones' half is next** (one pull request after this merges): the same words in `HouseListScreen.kt`, `CompareScreen.kt`, `MapScreen.kt`, `AreasScreen.kt`, `HouseEditScreen.kt` and `:shared`'s copies, reading `section` and the school's overlay words; the import preview waits for S4b-BL-291.
 
 ### 11.3 What the live Vertex runs showed (model `gemini-3.5-flash`, location `global`)
 

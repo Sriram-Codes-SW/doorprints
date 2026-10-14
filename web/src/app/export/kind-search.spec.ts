@@ -47,7 +47,7 @@ import { FIXTURE_PHOTO_DATA_URIS } from './golden/fixture';
 import type { CopyKinds } from './kind-copy';
 import { ExportStrings } from './export-strings';
 
-interface CopyCase { id: string; text: string; cell: string; xlsx: 'text' | 'number' | 'money' }
+interface CopyCase { id: string; text: string; cell: string; xlsx: 'text' | 'number' | 'money'; section: 'details' | 'cost' }
 interface Vectors {
   format: string;
   searched: string[];
@@ -116,32 +116,39 @@ describe('a school’s extras in the copies', () => {
       const bundle = copyOf([school()], lang, true);
       const want = V.copies[lang];
       const labels = want.map((c) => LABELS[lang][`field.${c.id}`]);
-      expect(bundle.houses[0].extras!.map((e) => [e.label, e.text, plain(e.cell)])).toEqual(want.map((c, i) => [labels[i], c.text, c.cell]));
+      expect(bundle.houses[0].extras!.map((e) => [e.label, e.text, plain(e.cell), e.section])).toEqual(want.map((c, i) => [labels[i], c.text, c.cell, c.section]));
 
-      // A column per extra right after the floor, then the visits, as the house's columns were.
-      const s = ExportStrings.of(lang);
+      // A school’s copy speaks in the school’s words and leaves out what a school hides (S4b-BL-266): its extras are the
+      // columns right before the visits, and the floor, price, score and rooms columns are not there.
+      const s = ExportStrings.of(lang, 'school');
       const houses = exportTables(bundle)[0];
-      const start = houses.columns.indexOf(s.get('col.floor')) + 1;
-      expect(houses.columns.slice(start, start + labels.length + 1)).toEqual([...labels, s.get('col.visits')]);
-      expect(houses.columns.length).toBe(exportTables(copyOf([], lang, true))[0].columns.length + want.length);
+      const at = houses.columns.indexOf(s.get('col.visits'));
+      expect(houses.columns.slice(at - labels.length, at + 1)).toEqual([...labels, s.get('col.visits')]);
+      for (const hidden of ['col.floor', 'col.price', 'col.score', 'col.bedrooms', 'col.rooms', 'col.broker']) expect(houses.columns, hidden).not.toContain(s.get(hidden as 'col.floor'));
       const csv = buildCsvTables(bundle)['houses.csv'].replace('﻿', '').split('\r\n');
       expect(csv[0].split(',')).toEqual(houses.columns);
-      expect(houses.rows[0].slice(start, start + want.length).map(plain)).toEqual(want.map((c) => c.cell));
+      expect(houses.rows[0].slice(at - labels.length, at).map(plain)).toEqual(want.map((c) => c.cell));
       const sheet = buildWorkbook(bundle)[0];
-      expect(sheet.header.slice(start, start + labels.length)).toEqual(labels);
-      expect(sheet.rows[0].slice(start, start + want.length).map((c) => c.kind === 'text' ? 'text' : c.kind)).toEqual(want.map((c) => c.xlsx));
+      expect(sheet.header.slice(at - labels.length, at)).toEqual(labels);
+      expect(sheet.rows[0].slice(at - labels.length, at).map((c) => c.kind === 'text' ? 'text' : c.kind)).toEqual(want.map((c) => c.xlsx));
 
+      // Each extra under the heading of its own section: the Details block before *Saved on*, the Fees block for the fees.
       const html = buildHtml(bundle, DICTIONARIES[lang], FIXTURE_PHOTO_DATA_URIS);
       const md = buildMarkdown(bundle, DICTIONARIES[lang]);
       const saved = html.indexOf(`<th scope="row">${tr(DICTIONARIES[lang], 'exp.fieldSaved')}</th>`);
+      const fees = html.indexOf(`<h3>${tr(DICTIONARIES[lang], 'school.fees')}</h3>`);
+      expect(fees, 'the Fees heading').toBeGreaterThan(saved);
       let last = -1;
       for (const [i, c] of want.entries()) {
         const at = html.indexOf(`<tr><th scope="row">${labels[i]}</th><td>${c.text}</td></tr>`);
-        expect(at, c.id).toBeGreaterThan(last);
-        last = at;
+        expect(at, c.id).toBeGreaterThan(c.section === 'details' ? last : fees);
+        if (c.section === 'details') {
+          expect(at, c.id).toBeLessThan(saved);
+          last = at;
+        }
         expect(md, c.id).toContain(`| ${labels[i]} | ${c.text} |`);
       }
-      expect(saved).toBeGreaterThan(last);
+      expect(md.indexOf(`### ${tr(DICTIONARIES[lang], 'school.fees')}`)).toBeGreaterThan(md.indexOf(`| ${tr(DICTIONARIES[lang], 'exp.fieldSaved')} |`));
     });
   }
 
@@ -158,6 +165,7 @@ describe('a school’s extras in the copies', () => {
   it('a house beside a school has blank extra cells and no extra rows', () => {
     const mixed = copyOf([FIXTURE_HOUSES[0], school()], 'en', true);
     const table = exportTables(mixed)[0];
+    // A copy of a house beside a school has no voice: every house column, the extras right after the floor, blank for the house.
     const start = table.columns.indexOf(ExportStrings.of('en').get('col.floor')) + 1;
     const house = table.rows.find((r) => plain(r[table.columns.indexOf(ExportStrings.of('en').get('col.id'))]) === FIXTURE_HOUSES[0].id)!;
     expect(house.slice(start, start + V.copies.en.length).map(plain)).toEqual(V.copies.en.map(() => ''));

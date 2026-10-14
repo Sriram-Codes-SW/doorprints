@@ -27,6 +27,7 @@
 import { Component, ElementRef, afterNextRender, computed, inject, input, output, viewChild } from '@angular/core';
 import type { TKey } from '../../i18n/en';
 import { TPipe } from '../../i18n/t.pipe';
+import { toolWord } from '../../core/space-tool-words';
 import { PlaceCheckState } from './place-check-state';
 import type { CheckAnswer, LocateProblem } from './place-check-state';
 
@@ -134,7 +135,7 @@ export class CheckResultView {
   readonly closed = output<void>();
 
   private readonly title = viewChild.required<ElementRef<HTMLElement>>('title');
-  protected readonly titleKey = computed(() => TITLE_KEY[this.answer().kind]);
+  protected readonly titleKey = computed(() => toolWord(this.answer().candidate, TITLE_KEY[this.answer().kind]));
   protected readonly text = computed(() => this.state.text(this.answer()));
 
   constructor() {

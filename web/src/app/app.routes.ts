@@ -20,6 +20,7 @@ import { type CanActivateFn, type Route, Router, Routes } from '@angular/router'
 import { Injector, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { availableKinds } from './core/kind-setting';
+import { toolWord } from './core/space-tool-words';
 import { ConnectPage } from './pages/connect/connect-page';
 import type { HouseDetailPage } from './pages/house-detail/house-detail-page';
 import type { SharePage } from './pages/share/share-page';
@@ -167,11 +168,12 @@ export function routesFor(spaces: boolean, kinds: readonly string[] = availableK
     routes[0],
     { path: '', pathMatch: 'full', title: 'title.chooser', loadComponent: () => import('./pages/chooser/chooser-page').then((m) => m.ChooserPage) },
     ...kinds.flatMap((k): Routes => [
-      { ...map, path: `k/${k}`, data: undefined },
-      { ...detail, path: `k/${k}/new`, title: 'title.newHouse' },
+      // The tab titles are the kind's own (S4b-BL-259, S4b-BL-277): the house's keys for the house, a school's for a school.
+      { ...map, path: `k/${k}`, data: undefined, title: toolWord(k, 'title.map') },
+      { ...detail, path: `k/${k}/new`, title: toolWord(k, 'title.newHouse') },
       // Compare, Ask and Plan of a space other than the house (S4b-BL-279); the house keeps its own three. Before `:id`.
       ...(k === 'house' ? [] : TOOLS.map((t): Route => ({ ...routes.find((r) => r.path === t)!, path: `k/${k}/${t}` }))),
-      { ...detail, path: `k/${k}/:id` },
+      { ...detail, path: `k/${k}/:id`, title: toolWord(k, 'title.house') },
     ]),
     ...routes.slice(1).filter((r) => r !== map).map((r) => (r === detail ? { ...detail, canActivate: [toOwnSpace] } : r)),
   ];

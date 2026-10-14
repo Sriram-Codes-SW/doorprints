@@ -118,7 +118,7 @@
               id="house-name"
               type="text"
               [(ngModel)]="d.label"
-              [placeholder]="'house.namePlaceholder' | t"
+              [placeholder]="w('house.namePlaceholder') | t"
               maxlength="200"
               required
               autocomplete="off"
@@ -126,7 +126,7 @@
               [attr.aria-describedby]="nameError() ? 'name-error' : null"
             />
             @if (nameError()) {
-              <span id="name-error" class="field-error">{{ 'house.nameRequired' | t }}</span>
+              <span id="name-error" class="field-error">{{ w('house.nameRequired') | t }}</span>
             }
           </div>
           @if (shows('section.checklist')) { <div class="score" role="img" [attr.aria-label]="'common.scoreOutOf' | t: { score: i18n.score(score(d)) }">
@@ -141,7 +141,7 @@
             @for (s of statuses; track s) {
               <label [class]="'option status-' + s">
                 <input type="radio" name="status" [value]="s" [checked]="d.status === s" (change)="setStatus(s, $event)" />
-                <span><span aria-hidden="true">{{ statusIcon[s] }}</span> {{ statusKey[s] | t }}</span>
+                <span><span aria-hidden="true">{{ statusIcon[s] }}</span> {{ statusKey()[s] | t }}</span>
               </label>
             }
           </div>
@@ -594,7 +594,7 @@
       }
 
       <!-- Area notes and Distances (slice 4a, docs/11 5.22, 5.23): the notes that reach the house and its distance to my places. -->
-      @if (shows('section.areaNotes')) { <app-house-area-notes-card [house]="d" [none]="W.areaNotesNone" /> }
+      @if (shows('section.areaNotes')) { <app-house-area-notes-card [house]="d" [none]="W.areaNotesNone" [inReachLabel]="W.areaInReach" /> }
       @if (shows('section.distances')) { <app-house-distances-card [house]="d" /> }
 
       <!-- Location -->
@@ -602,14 +602,14 @@
         <h2 id="location-heading">{{ L.section('location') | t }}</h2>
         @if (!position.placed()) {
           <!-- A new house with no position yet (share target, bookmark): the pin is only a starting guess. -->
-          <p id="location-unset" [class]="position.required() ? 'error' : 'warn-box'">{{ 'house.locationUnset' | t }}</p>
+          <p id="location-unset" [class]="position.required() ? 'error' : 'warn-box'">{{ w('house.locationUnset') | t }}</p>
         }
         <app-location-map
           [lat]="d.lat"
           [lon]="d.lon"
           [zoom]="position.startZoom()"
           [color]="statusColor[d.status]"
-          [label]="'house.mapLabel' | t"
+          [label]="w('house.mapLabel') | t"
           [describedBy]="position.placed() ? 'location-hint' : 'location-unset location-hint'"
           [overlay]="overlay()"
           (moved)="position.onMoved($event)"
@@ -725,10 +725,10 @@
       </section>
 
       <!-- Did I walk past this house? (docs/11 5.27.13): one button; the answer in place and on the map above. Hidden for a new house. -->
-      <app-house-check-card [house]="d" [isNew]="isNew()" [locationSet]="position.placed()" (overlay)="showOverlay($event)" />
+      <app-house-check-card [house]="d" [kind]="kind().id" [isNew]="isNew()" [locationSet]="position.placed()" (overlay)="showOverlay($event)" />
 
       <!-- Saved walks (docs/11 5.27.6): the walks linked to this house; Show on map draws on the map above. -->
-      @if (shows('section.walks')) { <app-house-walks-card [houseId]="d.id" [isNew]="isNew()" (overlay)="showOverlay($event)" /> }
+      @if (shows('section.walks')) { <app-house-walks-card [houseId]="d.id" [kind]="kind().id" [isNew]="isNew()" (overlay)="showOverlay($event)" /> }
 
       <!-- Checklist -->
       @if (shows('section.checklist')) { <section class="card" aria-labelledby="checklist-heading">
@@ -806,7 +806,7 @@
           }
         </div>
         @if (isNew()) {
-          <p class="muted small">{{ 'house.saveFirstVisits' | t }}</p>
+          <p class="muted small">{{ w('house.saveFirstVisits') | t }}</p>
         } @else if (sortedVisits().length === 0) {
           <p class="muted small empty-inline"><span aria-hidden="true">🗓 </span>{{ 'house.noVisits' | t }}</p>
         } @else {
@@ -875,7 +875,7 @@
           }
         </div>
         @if (isNew()) {
-          <p class="muted small">{{ 'house.saveFirstPhotos' | t }}</p>
+          <p class="muted small">{{ w('house.saveFirstPhotos') | t }}</p>
         } @else if (photos.ids().length === 0) {
           <p class="muted small empty-inline"><span aria-hidden="true">📷 </span>{{ 'house.noPhotos' | t }}</p>
         } @else {
@@ -955,7 +955,7 @@
       <span class="empty-glyph" aria-hidden="true">
         <svg viewBox="0 0 24 24" width="40" height="40"><path [attr.d]="glyphs.home" /></svg>
       </span>
-      <p>{{ 'house.notFound' | t }}</p>
+      <p>{{ w('house.notFound') | t }}</p>
       <a class="btn" [routerLink]="space.home()" [queryParams]="listReturn.queryParams()">{{ 'house.backToMap' | t }}</a>
     </div>
   }

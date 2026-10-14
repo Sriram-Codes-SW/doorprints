@@ -33,9 +33,11 @@ import type { Msg, TranslationService } from '../../i18n/translation.service';
 import { runResult } from '../../shared/run-result';
 import type { RunResult } from '../../shared/run-result';
 import { priceDisagreement } from '../../shared/listing-price-check';
-import { FIELD_LABEL, mergeListingDraft, same } from './house-draft-merge';
+import { FIELD_LABEL, fillLabel, mergeListingDraft, same } from './house-draft-merge';
+import { toolWord } from '../../core/space-tool-words';
+import type { TKey } from '../../i18n/en';
 import { builtInKind } from '../../core/dev-kinds';
-import { kindsOn } from '../../core/kind-setting';
+import { drawnKind, kindsOn } from '../../core/kind-setting';
 import { mergeKindExtras, shownExtra } from './kind-draft-merge';
 import type { FillField } from './house-draft-merge';
 
@@ -174,9 +176,10 @@ export class HouseListingFill {
   apply(a: HouseDraft): void {
     const d = this.deps.draft();
     if (!d) return;
-    const result = mergeListingDraft(d, a);
+    const kind = builtInKind(d.kind, kindsOn());
+    const result = mergeListingDraft(d, a, kind.labels);
     // A kind's typed extras (kinds PR 7): empty ones filled, set ones kept; a house's draft has none.
-    const fields = builtInKind(d.kind, kindsOn()).fields;
+    const fields = kind.fields;
     const extras = mergeKindExtras(d, a, fields);
     // The snapshot for Undo fill is the form before this fill, the fields a fill can touch (S4b-BL-238).
     const before: Partial<HouseDto> = {};
@@ -188,7 +191,7 @@ export class HouseListingFill {
     this.kept.set(
       result.kept.map((k): Msg => ({
         key: 'listingFill.kept',
-        params: { field: { key: FIELD_LABEL[k.field] }, value: this.shown(k.field, k.incoming) },
+        params: { field: { key: fillLabel(k.field, kind.labels) }, value: this.shown(k.field, k.incoming) },
       })).concat(extras.kept.map((k): Msg => ({
         key: 'listingFill.kept',
         params: { field: { key: fields.label(k.field) }, value: shownExtra(k.field, k.incoming, this.deps.i18n) },
@@ -216,7 +219,13 @@ export class HouseListingFill {
 
   /** The names of the fields still carrying a "from the listing" mark, as one translated list. */
   markNames(): Msg[] {
-    return this.marks().map((m) => ({ key: FIELD_LABEL[m.field] }));
+    const labels = builtInKind(this.deps.draft()?.kind, kindsOn()).labels;
+    return this.marks().map((m) => ({ key: fillLabel(m.field, labels) }));
+  }
+
+  /** A word of the card in the candidate's kind (S4b-BL-259): the house's key for a house, a school's for a school. */
+  word(key: TKey): TKey {
+    return toolWord(drawnKind(this.deps.draft()?.kind).id, key);
   }
 
   /** Ends the read in flight (the page is going away). */

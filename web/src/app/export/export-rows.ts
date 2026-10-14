@@ -132,21 +132,23 @@ export interface ExportTable {
 
 /** The four tables of a copy, in file order, then brokers (slice 1b), rooms (1c), criteria (slice 2) answers (3a) and viewings (3b-1) when it has them. */
 export function exportTables(bundle: ExportBundle): ExportTable[] {
-  const tables = [housesTable(bundle), scoresTable(bundle), visitsTable(bundle), photosTable(bundle)];
-  if (bundle.brokers.length > 0) tables.push(brokersTable(bundle));
-  if (bundle.houses.some((h) => h.rooms?.length)) tables.push(roomsTable(bundle));
+  // A kind with no checklist (a school) has no Scores table: its rows would all be empty (S4b-BL-266).
+  const shows = (ref: string) => !bundle.voice || bundle.voice.labels.isVisible(ref);
+  const tables = [housesTable(bundle), ...(shows('section.checklist') ? [scoresTable(bundle)] : []), visitsTable(bundle), photosTable(bundle)];
+  if (bundle.brokers.length > 0 && shows('field.brokerId')) tables.push(brokersTable(bundle));
+  if (bundle.houses.some((h) => h.rooms?.length) && shows('section.rooms')) tables.push(roomsTable(bundle));
   // Slice 2: only a copy whose owner changed something has a criteria table (the records that exist).
-  if (bundle.criteria.length > 0) tables.push(criteriaTable(bundle));
+  if (bundle.criteria.length > 0 && shows('section.checklist')) tables.push(criteriaTable(bundle));
   // Slice 3a: the answers of the houses of the copy; the question bank is settings and travels in the backup only.
-  if (bundle.houses.some((h) => h.answers.length > 0)) tables.push(answersTable(bundle));
+  if (bundle.houses.some((h) => h.answers.length > 0) && shows('section.questions')) tables.push(answersTable(bundle));
   // Slice 3b-1: the viewings of the copy (a viewing of a house that is gone included in a copy of every house).
-  if (bundle.viewings.length > 0) tables.push(viewingsTable(bundle));
+  if (bundle.viewings.length > 0 && shows('section.viewings')) tables.push(viewingsTable(bundle));
   return tables;
 }
 
 /** Translated words for this export's language, independent of the language the app is being used in. */
 export function stringsOf(bundle: ExportBundle): ExportStrings {
-  return ExportStrings.of(bundle.options.lang);
+  return ExportStrings.of(bundle.options.lang, bundle.voice?.kind);
 }
 
 /** 1-based position in `bundle.ranking`; 0 for a house that is not in this copy (which cannot happen here). */
@@ -162,105 +164,81 @@ export function housesTable(bundle: ExportBundle): ExportTable {
   const s = stringsOf(bundle);
   const contacts = bundle.options.includeContacts;
   const extraColumns = bundle.extraColumns ?? [];
-  const columns = [
-    s.get('col.rank'),
-    s.get('col.label'),
-    s.get('col.status'),
-    s.get('col.score'),
-    s.get('col.price'),
-    s.get('col.priceType'),
-    s.get('col.bedrooms'),
-    s.get('col.rating'),
-    s.get('col.address'),
-    s.get('col.street'),
-    s.get('col.locality'),
-    s.get('col.lat'),
-    s.get('col.lon'),
+  const voice = bundle.voice;
+  /** One column: the kind ref it needs (`null`: always), its heading, and its cell. A copy leaves out a column its kind hides (S4b-BL-266). */
+  type Col = readonly [ref: string | null, head: string, cell: (e: ExportHouse) => Cell];
+  const cost = (key: keyof NonNullable<ExportHouse['house']['cost']>, kind: 'money' | 'count' | 'text'): ((e: ExportHouse) => Cell) =>
+    (e) => {
+      const v = e.house.cost?.[key] as number | string | null | undefined;
+      return kind === 'money' ? maybeMoney(v as number | null | undefined) : kind === 'count' ? maybeCount(v as number | null | undefined) : maybeText(v as string | null | undefined);
+    };
+  const summary = (e: ExportHouse) => costSummary(e.house);
+  const cols: Col[] = [
+    [null, s.get('col.rank'), (e) => cellCount(rankOf(bundle, e.house.id))],
+    [null, s.get('col.label'), (e) => cellText(e.house.label)],
+    ['field.status', s.get('col.status'), (e) => cellText(s.status(e.house.status))],
+    ['section.checklist', s.get('col.score'), (e) => (e.score === null ? BLANK : cellNum(e.score, 1))],
+    ['field.money', s.get('col.price'), (e) => (e.house.price === null || e.house.price === undefined ? BLANK : cellMoney(Math.round(e.house.price)))],
+    ['field.money', s.get('col.priceType'), (e) => (e.house.price === null || e.house.price === undefined ? BLANK : cellText(s.priceType(e.house.priceType)))],
+    ['field.bedrooms', s.get('col.bedrooms'), (e) => maybeCount(e.house.bedrooms)],
+    ['field.rating', s.get('col.rating'), (e) => maybeCount(e.house.rating)],
+    ['field.address', s.get('col.address'), (e) => maybeText(e.house.address)],
+    ['field.street', s.get('col.street'), (e) => maybeText(e.house.street)],
+    ['field.locality', s.get('col.locality'), (e) => maybeText(e.house.locality)],
+    ['field.location', s.get('col.lat'), (e) => cellNum(e.house.lat, 6)],
+    ['field.location', s.get('col.lon'), (e) => cellNum(e.house.lon, 6)],
     // The columns are left out entirely, not blanked: a file the user asked to have no contacts in should not
     // carry two empty columns headed "Phone". Same rule as the Kotlin writer.
-    ...(contacts ? [s.get('col.contactName'), s.get('col.contactPhone'), s.get('col.broker')] : []),
-    s.get('col.listingUrl'),
-    s.get('col.notes'),
+    ...(contacts
+      ? ([
+          ['field.contactName', s.get('col.contactName'), (e) => maybeText(e.house.contactName)],
+          ['field.contactPhone', s.get('col.contactPhone'), (e) => maybeText(e.house.contactPhone)],
+          ['field.brokerId', s.get('col.broker'), (e) => maybeText(brokerName(bundle, e.house.brokerId))],
+        ] as Col[])
+      : []),
+    ['field.listingUrl', s.get('col.listingUrl'), (e) => maybeText(e.house.listingUrl)],
+    ['field.notes', s.get('col.notes'), (e) => maybeText(e.house.notes)],
     // Slice 1a: the house values after the notes and before the counts and ids; the last three are computed
     // (`costSummary`, the same arithmetic as Kotlin `CostSummary`).
-    s.get('col.areaSqft'),
-    s.get('col.locationSource'),
-    s.get('col.deposit'),
-    s.get('col.depositMonths'),
-    s.get('col.maintenance'),
-    s.get('col.maintenanceIncluded'),
-    s.get('col.brokerage'),
-    s.get('col.brokerageMonths'),
-    s.get('col.lockInMonths'),
-    s.get('col.noticeMonths'),
-    s.get('col.availableFrom'),
-    s.get('col.myOffer'),
-    s.get('col.agreedPrice'),
-    s.get('col.monthlyCost'),
-    s.get('col.moveIn'),
-    s.get('col.perSqFt'),
+    ['field.areaSqft', s.get('col.areaSqft'), (e) => maybeCount(e.house.areaSqft)],
+    // The source is written as its enum word (GPS, MAP, APPROX), like a checklist key: a machine value.
+    ['field.locationSource', s.get('col.locationSource'), (e) => maybeText(e.house.locationSource)],
+    ['field.deposit', s.get('col.deposit'), cost('deposit', 'money')],
+    ['field.depositMonths', s.get('col.depositMonths'), cost('depositMonths', 'count')],
+    ['field.maintenance', s.get('col.maintenance'), cost('maintenance', 'money')],
+    ['field.maintenanceIncluded', s.get('col.maintenanceIncluded'), (e) => {
+      const v = e.house.cost?.maintenanceIncluded;
+      return typeof v === 'boolean' ? cellText(s.get(v ? 'yes' : 'no')) : BLANK;
+    }],
+    ['field.brokerage', s.get('col.brokerage'), cost('brokerage', 'money')],
+    ['field.brokerageMonths', s.get('col.brokerageMonths'), cost('brokerageMonths', 'count')],
+    ['field.lockInMonths', s.get('col.lockInMonths'), cost('lockInMonths', 'count')],
+    ['field.noticeMonths', s.get('col.noticeMonths'), cost('noticeMonths', 'count')],
+    ['field.availableFrom', s.get('col.availableFrom'), cost('availableFrom', 'text')],
+    ['field.myOffer', s.get('col.myOffer'), cost('myOffer', 'money')],
+    ['field.agreedPrice', s.get('col.agreedPrice'), cost('agreedPrice', 'money')],
+    ['field.money', s.get('col.monthlyCost'), (e) => maybeMoney(summary(e).monthlyCost)],
+    ['field.money', s.get('col.moveIn'), (e) => maybeMoney(summary(e).moveIn)],
+    ['field.money', s.get('col.perSqFt'), (e) => (summary(e).perSqFt === null ? BLANK : cellNum(summary(e).perSqFt as number, 1))],
     // Slice 1c: the number of rooms right after the cost per sq ft, as Kotlin `ExportRows` writes it (S4b-BL-104 a);
-    // S4b-BL-87: the floor after it.
-    s.get('col.rooms'),
-    s.get('col.floor'),
+    // blank for a house with no rooms, not 0 (Kotlin: `rooms?.takeIf { it.isNotEmpty() }`). S4b-BL-87: the floor after it.
+    ['section.rooms', s.get('col.rooms'), (e) => (e.rooms.length ? cellCount(e.rooms.length) : BLANK)],
+    ['field.floor', s.get('col.floor'), (e) => maybeCount(e.house.floor)],
     // Kinds PR 6 (S4b-BL-210): a kind's typed extras after the floor; none in a copy of houses only.
-    ...extraColumns.map((c) => c.label),
-    s.get('col.visits'),
-    s.get('col.photos'),
-    s.get('col.createdAt'),
-    s.get('col.updatedAt'),
-    s.get('col.id'),
+    ...extraColumns.map((c): Col => [null, c.label, (e) => extraCell(e.extras, c.key)]),
+    [null, s.get('col.visits'), (e) => cellCount(e.visits.length)],
+    [null, s.get('col.photos'), (e) => cellCount(e.photos.length)],
+    [null, s.get('col.createdAt'), (e) => maybeStamp(e.house.createdAt)],
+    [null, s.get('col.updatedAt'), (e) => maybeStamp(e.house.updatedAt)],
+    [null, s.get('col.id'), (e) => cellText(e.house.id)],
   ];
-  const rows = bundle.houses.map((entry) => {
-    const h = entry.house;
-    const c = h.cost ?? {};
-    const summary = costSummary(h);
-    return [
-      cellCount(rankOf(bundle, h.id)),
-      cellText(h.label),
-      cellText(s.status(h.status)),
-      entry.score === null ? BLANK : cellNum(entry.score, 1),
-      h.price === null || h.price === undefined ? BLANK : cellMoney(Math.round(h.price)),
-      h.price === null || h.price === undefined ? BLANK : cellText(s.priceType(h.priceType)),
-      maybeCount(h.bedrooms),
-      maybeCount(h.rating),
-      maybeText(h.address),
-      maybeText(h.street),
-      maybeText(h.locality),
-      cellNum(h.lat, 6),
-      cellNum(h.lon, 6),
-      ...(contacts ? [maybeText(h.contactName), maybeText(h.contactPhone), maybeText(brokerName(bundle, h.brokerId))] : []),
-      maybeText(h.listingUrl),
-      maybeText(h.notes),
-      maybeCount(h.areaSqft),
-      // The source is written as its enum word (GPS, MAP, APPROX), like a checklist key: a machine value.
-      maybeText(h.locationSource),
-      maybeMoney(c.deposit),
-      maybeCount(c.depositMonths),
-      maybeMoney(c.maintenance),
-      typeof c.maintenanceIncluded === 'boolean' ? cellText(s.get(c.maintenanceIncluded ? 'yes' : 'no')) : BLANK,
-      maybeMoney(c.brokerage),
-      maybeCount(c.brokerageMonths),
-      maybeCount(c.lockInMonths),
-      maybeCount(c.noticeMonths),
-      maybeText(c.availableFrom),
-      maybeMoney(c.myOffer),
-      maybeMoney(c.agreedPrice),
-      maybeMoney(summary.monthlyCost),
-      maybeMoney(summary.moveIn),
-      summary.perSqFt === null ? BLANK : cellNum(summary.perSqFt, 1),
-      // Blank for a house with no rooms, not 0 (Kotlin: `rooms?.takeIf { it.isNotEmpty() }`).
-      entry.rooms.length ? cellCount(entry.rooms.length) : BLANK,
-      maybeCount(h.floor),
-      ...extraColumns.map((c) => extraCell(entry.extras, c.key)),
-      cellCount(entry.visits.length),
-      cellCount(entry.photos.length),
-      maybeStamp(h.createdAt),
-      maybeStamp(h.updatedAt),
-      cellText(h.id),
-    ];
-  });
-  return { name: 'houses', title: s.get('table.houses'), columns, rows };
+  const shown = cols.filter(([ref]) => ref === null || !voice || voice.labels.isVisible(ref));
+  return {
+    name: 'houses',
+    title: s.get('table.houses'),
+    columns: shown.map(([, head]) => head),
+    rows: bundle.houses.map((entry) => shown.map(([, , cell]) => cell(entry))),
+  };
 }
 
 /** The cell of an extra's column (`kind-copy.ts`) in a row of the Houses table: blank where the candidate has no value. */
@@ -367,7 +345,8 @@ export function criteriaTable(bundle: ExportBundle): ExportTable {
 
 /** "Rating counts for 40%": the rating share, when the copy carries any criterion or preference record; else empty. */
 export function ratingShareLine(bundle: ExportBundle): string {
-  if (bundle.criteria.length === 0 && bundle.preferences.length === 0) return '';
+  // The share of the rating in the score: a kind with no checklist has no score (S4b-BL-266).
+  if ((bundle.criteria.length === 0 && bundle.preferences.length === 0) || (bundle.voice && !bundle.voice.labels.isVisible('section.checklist'))) return '';
   return `${stringsOf(bundle).get('col.ratingShare')} ${Math.round(bundle.scoring.ratingShare * 100)}%`;
 }
 

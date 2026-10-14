@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.133 |
+| Version | 0.134 |
 | Date | 2026-10-14 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -143,7 +143,8 @@
 | 0.130 | 2026-10-14 | Claude (Code), engineer | **§4.3 `ChunkRecovery` and `ChunkNotice`** (S4b-BL-305, `fix/web-lazy-chunk-recovery`): a lazy page whose chunk fails to load is loaded again as a new document once per session, then a message with *Try again* and *Reload*. |
 | 0.131 | 2026-10-14 | Claude (Code), engineer | **§18.14 Spaces on the phones** (S4b-BL-274 and S4b-BL-289, kinds PR C; two stacked branches, `feat/kinds-13-phones-spaces` and `feat/kinds-13b-phones-spaces-scoping`): the chooser, the header chip, Settings > What you track, a space's words, Hunt mode and the house-only Settings rows by kind, and the deep links (C1); Compare, Ask, Plan, the copies, the share target and the backup's `search` writer and hint, by the website's vectors (C2). The house-only app is byte for byte today's. §18.12 and §18.13 say where the phones' part now is. |
 | 0.132 | 2026-10-14 | Claude (Code), engineer | **§18.15 The server's list of kinds and its writer of `search`** (S4b-BL-280; `fix/kinds-server-available-flag`; [10](10-sprint-log.md) v0.307, [06](06-test-plan.md) v0.244 TC-U-222): `app.ai.dev-kinds` (`AI_DEV_KINDS`) is renamed `app.kinds.available` (`KINDS_AVAILABLE`, a list, default `house`); a request that names a kind outside it is a 400; `BackupWire.searchOf` writes the backup's `search` object as the website and the phones do (§18.12 door 10 amended, §18.11, §18.14 follow). |
-| 0.133 | 2026-10-14 | Claude (Code), engineer | **§18.11: the school set for the AI evals and `house.json`'s `ai` slots** (S4b-BL-268, S4b-BL-271; `feat/kinds-17-school-evals-and-slots`; [10](10-sprint-log.md) v0.319, [06](06-test-plan.md) v0.250 TC-AI-47 and TC-U-230, [ai-design](ai/ai-design.md) 8.7 and 16.8): `docs/ai/evals/school-set.json` and the three eval harnesses seeding a candidate's kind and extras with the kinds on; the house's slots name what its hand-written AI code reads, a house's output unchanged. The release gate of §18.12 stays until S4b-BL-269 and -270 are done as well. |
+| 0.133 | 2026-10-14 | Claude (Code), engineer | **§18.9 The house's words left on a school's pages, and a school's copies** (kinds PR 16, the website; S4b-BL-256, S4b-BL-259, S4b-BL-266 and the website leftovers of S4b-BL-277; `feat/kinds-16-school-wording-web`; [06](06-test-plan.md) TC-U-230, TC-M-75): the helper texts, tab titles, walk check, list rows, Your data cards, Areas and Places, listing fill and the readable copies read the kind; §18.10, §18.12 and §18.13 point to it. |
+| 0.134 | 2026-10-14 | Claude (Code), engineer | **§18.11: the school set for the AI evals and `house.json`'s `ai` slots** (S4b-BL-268, S4b-BL-271; `feat/kinds-17-school-evals-and-slots`; [10](10-sprint-log.md) v0.320, [06](06-test-plan.md) v0.251 TC-AI-47 and TC-U-231, [ai-design](ai/ai-design.md) 8.7 and 16.8): `docs/ai/evals/school-set.json` and the three eval harnesses seeding a candidate's kind and extras with the kinds on; the house's slots name what its hand-written AI code reads, a house's output unchanged. The release gate of §18.12 stays until S4b-BL-269 and -270 are done as well. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -2380,9 +2381,56 @@ for the budget (`HouseEditScreen.kt` 1,588 to 1,517 lines). New Roborazzi baseli
 **Left on purpose** (rows in [10](10-sprint-log.md)): the school's extras in search, filters and the readable copies
 (S4b-BL-210, whose search tests follow the owner's rule; today search reads a school's name, places, notes and contact,
 pinned in `school-kind.spec.ts`); the house's helper words still on a school's page and the list's title
-(S4b-BL-256, S4b-BL-259); a school's phone making a broker, and the backup's `search` object written as the house
+(S4b-BL-256, S4b-BL-259; done on the website in kinds PR 16, below); a school's phone making a broker, and the backup's `search` object written as the house
 (S4b-BL-260, S4b-BL-212); a cadence per fee, the range of an other extra on save, and a school's own questions and
 checklist (S4b-BL-261). A layout review of the batch precedes PR 6 (the row's condition).
+
+**The house words left on a school's pages, and a school's copies (kinds PR 16, the website; S4b-BL-256, S4b-BL-259,
+S4b-BL-266, S4b-BL-277).** With a school space on screen, nothing a school page says names a house.
+
+- *Two mechanisms, no new kind-file ref.* Where the kind has the place (a field, a section, a status, whether it is
+  shown) the screen reads it through `KindLabels`: `statusKeys(labels)` (the map's legend, filter, rows and popup, the
+  page's status buttons, Compare and Ask), `labelKey(labels, ref, house)` (Compare's row headings; the house keeps its
+  hand-written key, any other kind reads its label), `fillLabel` and the `isVisible` gate in `mergeListingDraft` (the
+  listing fill and the address fill name a field by the kind's label and write nothing into a place the kind hides),
+  and `isVisible` around the list row's price and score, the map popup's score and Your data's cards. The helper words
+  the kind file has no place for (its `labels` are `new`, `many` and `delete`) are the website's own table
+  `core/space-tool-words.ts`, as the space's words are (§18.12): 41 school keys in four languages (hi, ta and te under
+  review), read as `toolWord(kind, houseKey)`, the house's key where the kind has none. Adding refs to `school.json` and
+  its vectors would change files the phones read; S4b-BL-278 moves both tables into the kind files with the phones' half.
+- *The pages.* The name's placeholder (*e.g. St. Mary's School*), *Did I walk past this school?* with its answer
+  (*this school*, the map ring, the area-only line: `CheckAnswer.candidate`), the tab titles of `/k/school`,
+  `/k/school/new` and `/k/school/<id>` (`routesFor`), *Save the school first …*, *Please give the school a name*, the
+  location lines, *School not found* (the space's kind while no candidate is loaded), the map's zoom title, the listing
+  hint and the AI disclosure on it, Ask and Plan, the Areas and Places pages and their cards and the area-note
+  composer (`SpaceWords.areaInReach`), and the list row without its price and score. Your data has no Criteria, Questions
+  or Viewings card while a school space is the last one (`isVisible('section.checklist' | 'section.questions' |
+  'section.viewings')`); the Brokers card stays (S4b-BL-260). `house-detail-page.ts` shrank to 1,185 lines (the draft's
+  small helpers moved to `house-page-input.ts`) and its budget entry was lowered.
+- *The copies speak in a voice.* `collect` gives a bundle a `voice` (the kind) when its copy is of one space, or when every
+  candidate in it is of one kind that is not the house (`copyVoice`), and each school entry its own `kind`; a copy of
+  houses, or of houses beside a school, has no voice and is written as it always was. A copy with a voice writes the
+  cover, the options, the ranking's heading and the empty line in the school's words (`school.exp*`), reads every
+  label through `KindLabels` (`copyField`: a school's *Website* and *Fees*), writes each extra under the heading of its
+  own section (`ExportExtra.section`: the Details block, or the Cost block headed *Fees*), and leaves out what the kind
+  hides: the ranking's score and price columns, the Details rows, the sections of a house (rooms, questions, viewings,
+  area notes, distances, moving in, checklist), the Houses table's price, type, BHK, score, cost, rooms, floor and
+  broker columns (`housesTable` is now a list of columns, each with the ref it needs), and the Scores, Criteria,
+  Rooms, Answers, Viewings and Brokers tables when their section is hidden. The words inside the tables are
+  `ExportStrings.of(lang, kind)` with the overlay `export/kind-export-words.ts` (*Schools*, *School*, *School id*,
+  *Website*, the cover's scope lines), so the contract of the keys with the phone's `ExportStrings.kt` is untouched.
+  `html-export.ts` and `markdown-export.ts` share one reader of the Details and Cost blocks, `export/copy-facts.ts`
+  (`costEntries` and its neighbours moved there unchanged). The backup is not shaped by a voice: `data.json` and the
+  sync file carry every row.
+- *The safety test.* The house's golden files (`house-form.golden.json`, `house-pins.golden.ts`, the export goldens),
+  `HouseCopyPinsTest`, `kind-label-vectors.json`, `kind-vectors.json`, `kind-field-vectors.json`, `school-vectors.json`
+  and the layout gate pass unchanged. `school-form.golden.json` changed in two words only, in four languages: the name's
+  placeholder and the walk-check heading. `kind-search-vectors.json` gained a `section` on each `copies` entry
+  (`details` or `cost`) and its note changed in the placement; the phone's `KindSearchVectorsTest` reads other keys and is
+  untouched (the phones read `section` in their half).
+- *Left, with rows.* The phones and the iPhone (S4b-BL-256, S4b-BL-259, S4b-BL-266 name their call sites and
+  `:shared`'s copies); the import preview and the Full backup's words, which act on every space (S4b-BL-291); the
+  Brokers card (S4b-BL-260); a server-rendered copy.
 
 ### 18.10 Typed extras in search and the copies (kinds PR 6, S4b-BL-210)
 
@@ -2435,7 +2483,7 @@ the flag off ([06](06-test-plan.md) TC-U-212).
 *Imported*) read core fields a school hides or shares, one kind per data set (§18.1) makes a filter by kind empty, and a
 filter by a typed extra (a board, the bus) needs its own controls and words on both stacks. It is S4b-BL-265, with the
 other things left: the copies' extras in sections of their own and the copies' hand-written house labels (S4b-BL-266,
-with S4b-BL-256), and the walk-end sheet's house picker, which searches without the app's words (S4b-BL-267).
+with S4b-BL-256; done on the website in §18.9, kinds PR 16), and the walk-end sheet's house picker, which searches without the app's words (S4b-BL-267).
 
 ### 18.11 Kind-aware AI (kinds PR 7, S4b-BL-211)
 
@@ -2604,7 +2652,7 @@ list and the map hold the space's candidates only (`holds`); the heading, the ma
 and its hint, the search label, the list's name, *N shown*, the loading, empty and no-match lines, the counters'
 first word (the kind file's `kind.many`), the new candidate's save button and the area-notes line are the space's words
 (the house's keys as today; 15 school keys in four languages, hi, ta and te under review; S4b-BL-277, S4b-BL-259 and
-S4b-BL-256 for those places). The counters *Houses*, *Shortlisted* and *Rejected* count the space; *Visits* and
+S4b-BL-256 for those places: done in §18.9, kinds PR 16). The counters *Houses*, *Shortlisted* and *Rejected* count the space; *Visits* and
 *Streets* stay the store's. A kind that hides its money (a school) has no cost filter and sorts by the last change
 only. The kind file has no place for these words yet (its `labels` are `new`, `many`, `delete`), so `SPACE_WORDS` is the
 website's own table, as the renderer's element ids are (§18.8); moving it into the kind files with the phone's is
@@ -2697,7 +2745,7 @@ house's names and every backup name unchanged). **The backup stays whole** (the 
 in words: *This copy holds only Schools: 3. A full backup holds everything you saved.* (`data.spaceScope`,
 `data.spaceScopeBackup`); the card's own words (scope, *All schools*, counts, empty lines) are the space's
 (`core/space-tool-words.ts`: the house's key where the kind has none, so the house's words are today's). What is inside a
-school's copy (the house words in its cover and tables) stays S4b-BL-266.
+school's copy (the house words in its cover and tables) is S4b-BL-266, done on the website in §18.9 (kinds PR 16).
 
 **The share target.** With two or more kinds enabled the page has *Save it in* (a select of the kinds, the default chosen;
 `shareKind`); *Add a house from this* becomes *Add a school from this*, and the text goes to that space's map in add mode

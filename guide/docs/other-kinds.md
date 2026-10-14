@@ -28,7 +28,7 @@ the cards. **Back** from the list does too.
 
 While only one is shown, there is no choice to make: Doorprints opens straight into it, as it always did.
 
-On the phone the button sits at the top of the Map, the list, Compare and Settings. **Hunt mode** is for houses: the Map's Hunt card is only there while you look at houses. In **Settings**, **Brokers**, **Criteria**, **Questions** and **Viewings** are for houses too, and are not shown while you look at schools.
+On the phone the button sits at the top of the Map, the list, Compare and Settings. **Hunt mode** is for houses: the Map's Hunt card is only there while you look at houses. In **Settings**, **Brokers**, **Criteria**, **Questions** and **Viewings** are for houses too, and are not shown while you look at schools. On the website, **Your data** does the same for the **Criteria**, **Questions** and **Viewings** cards.
 
 ## What a school has
 
@@ -40,7 +40,7 @@ it has:
 - **Grades offered**, **Commute (minutes)** and **School bus**;
 - **Fees** per year and the **Admission fee**.
 
-The search finds a school by these too (the board, "school bus", the fees). The readable copies list them, and a backup
+The search finds a school by these too (the board, "school bus", the fees). The readable copies list them under the school's own headings (the fees under **Fees**), say *school* where a house copy says *house*, and in a copy of schools leave out the price, score, BHK and rooms that a school does not have; a backup
 keeps them. **Compare**, **Ask** and **Plan** work on the list you are looking at: while you look at schools they compare and ask about schools only. **Ask** and **Plan** need your own AI key for schools (the server's assistant reads houses only), and **Save a copy** holds only the schools you are looking at, with *schools* in the file name; the Full backup holds everything. A listing you share to Doorprints has **Save it in**, to choose Houses or Schools before it is read.
 
 ## Turn it off again

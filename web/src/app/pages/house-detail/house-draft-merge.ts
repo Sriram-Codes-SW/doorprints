@@ -19,6 +19,7 @@
 import type { HouseDraft } from '../../core/ai.service';
 import type { HouseDto } from '../../core/models';
 import type { TKey } from '../../i18n/en';
+import { HOUSE_LABELS, type KindLabels } from '../../core/kind-labels';
 
 /** The form fields "Fill in from listing text" and "Fill address from map" may write, with their label keys. */
 export type FillField =
@@ -47,6 +48,29 @@ export const FIELD_LABEL: Readonly<Record<FillField, TKey>> = {
   contactPhone: 'house.contactPhone',
   listingUrl: 'house.listingUrl',
 };
+
+/** The kind ref of each fill field (`field.<id>`): the price and its type are the candidate's money. */
+const FIELD_REF: Readonly<Record<FillField, string>> = {
+  label: 'field.label',
+  address: 'field.address',
+  street: 'field.street',
+  locality: 'field.locality',
+  price: 'field.money',
+  priceType: 'field.money',
+  bedrooms: 'field.bedrooms',
+  areaSqft: 'field.areaSqft',
+  contactName: 'field.contactName',
+  contactPhone: 'field.contactPhone',
+  listingUrl: 'field.listingUrl',
+};
+
+/**
+ * The label key of a fill field in a kind (S4b-BL-256): the kind's own (a school's *School name* and *Website*), else the
+ * house's {@link FIELD_LABEL}; the price type has no ref of its own, so it keeps the house's.
+ */
+export function fillLabel(field: FillField, labels: KindLabels): TKey {
+  return field === 'priceType' ? FIELD_LABEL[field] : (labels.field(FIELD_REF[field].slice('field.'.length))?.key ?? FIELD_LABEL[field]);
+}
 
 type FieldValue = string | number | null | undefined;
 
@@ -108,14 +132,16 @@ export function withListingBlock(current: string | null | undefined, block: stri
  *
  * `priceType` counts as empty while there is no price yet: a new form starts on "Rent", which is a default, not a
  * choice. The listing's description and amenities go into the notes as one marked block ({@link withListingBlock}),
- * after the person's own notes; a second fill replaces that block, so running Extract twice never duplicates text.
+ * after the person's own notes; a second fill replaces that block, so running Extract twice never duplicates text. A place
+ * the candidate's kind hides is left alone (S4b-BL-256).
  */
-export function mergeListingDraft(current: HouseDto, draft: HouseDraft): FillResult {
+export function mergeListingDraft(current: HouseDto, draft: HouseDraft, labels: KindLabels = HOUSE_LABELS): FillResult {
   const changes: Partial<HouseDto> = {};
   const filled: FillField[] = [];
   const kept: KeptValue[] = [];
   const consider = (field: FillField, incoming: FieldValue, emptyNow: boolean) => {
-    if (isEmpty(incoming)) return;
+    // A place the kind hides (a school's price, rooms, BHK) takes nothing from a listing: the person never sees it.
+    if (isEmpty(incoming) || !labels.isVisible(FIELD_REF[field])) return;
     const value = incoming as string | number;
     if (emptyNow) {
       (changes as Record<string, unknown>)[field] = value;
