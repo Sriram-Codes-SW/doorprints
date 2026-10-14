@@ -32,7 +32,8 @@ server (Java 25, PostGIS). Shared Kotlin Multiplatform logic lives in `android/s
 - **Every change goes through a pull request to `main`.** Since 2026-09-29 the owner lets a Claude session merge its
   own pull request once it is good (all checks green, no conflict, no open review thread); how a session works here,
   step by step, is `docs/14-lead-backlog-and-handoff.md` §7.
-- Work on a branch and open the pull request first (a draft is fine): CI runs on pull requests (whatever their base branch,
+- **Delivery mode (owner, 2026-10-14): batch, test locally, run CI once per stream** (`docs/14` §7 *Delivery mode*). Work on a branch
+  and open the pull request when the stream's batch is ready (an open pull request, a draft too, starts CI): CI runs on pull requests (whatever their base branch,
   since 2026-09-30) and on pushes to `main`, not on branch pushes (Web, Backend, Android, Android emulator, Shared-iOS,
   Security, CodeQL, Pages; since 2026-09-29). Deploy, signing and the dependency graph run on `main` only.
 - **Stacked pull requests** (owner, 2026-09-30): when a change needs an earlier one that is not merged yet, its branch is made
@@ -80,5 +81,7 @@ backlog item instead of expanding the change.
 - Not CI: after a merge to `main` that runs the `Web` deploy (a change under `web.yml`'s path filter: `web/**`,
   `.github/workflows/web.yml`, `.github/firebase-tools/**`), once the deploy has finished, test the live web UI with
   `tools/live-ui` (`npm ci && npx playwright install chromium && node live-ui.js`). An Android-only or docs-only merge
-  skips it (owner rule 2026-09-24, refined the same day: no web change, no run; `docs/06` TC-M-26).
+  skips it (owner rule 2026-09-24, refined the same day: no web change, no run; `docs/06` TC-M-26). **Run only the areas the
+  change can affect** (`ONLY=mobile`, `ONLY=pages,flows`, `ONLY=pages`; owner, 2026-10-14); the full run only when the owner asks or
+  before a release.
 - The workflow files in `.github/workflows` are the source of truth for exact steps and path filters.
