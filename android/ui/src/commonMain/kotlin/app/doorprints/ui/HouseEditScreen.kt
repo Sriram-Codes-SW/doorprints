@@ -355,7 +355,7 @@ fun HouseEditScreen(
     // A newer version arrived while there were unsaved changes: the user chooses (see the KDoc).
     val conflict = !isNew && !busy && dirty && saved != null && saved.updatedAt > seenUpdatedAt
     // The candidate's kind (kinds PR 5, S4b-BL-209): the house, or the school while the developer flag is on.
-    val devKinds = LocalDevKinds.current
+    val devKinds = LocalDevKinds.current; val space = LocalSpace.current // a new candidate is of the space's kind (kinds PR C)
     val kind = DevKinds.of(draft?.kind, devKinds)
     val L = kind.labels
 
@@ -380,7 +380,7 @@ fun HouseEditScreen(
                     else -> LocationSource.MAP
                 },
                 createdAt = now, updatedAt = now,
-            )
+            ).let { if (space.built.id == "house") it else it.forKind(space.built) }
             draft = fresh
             baseline = fresh
         }
@@ -736,7 +736,7 @@ fun HouseEditScreen(
                         }
                     }
                     // The developer's kind picker (S4b-BL-209): never drawn while the flag is off.
-                    if (isNew && devKinds) DevKindPicker(DevKinds.creatable(true), kind.id) { k -> update { it.forKind(k) } }
+                    if (isNew && devKinds && !space.multi) DevKindPicker(DevKinds.creatable(true), kind.id) { k -> update { it.forKind(k) } }
                     if (aiEnabled && kind.extracts) {
                         // The entry point's one name, as on the web and in docs/12 G.1: not "Paste listing".
                         OutlinedButton(

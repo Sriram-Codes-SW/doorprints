@@ -461,6 +461,7 @@ open class CommonRepository(
 
     override val aiEnabled: StateFlow<Boolean> = ai.enabled
     override val aiOff: StateFlow<AiOff?> = ai.off
+    override val aiOwnKey: StateFlow<Boolean> = ai.ownKey
 
     override suspend fun refreshAiStatus(): Boolean = ai.refreshStatus()
 
@@ -505,8 +506,8 @@ open class CommonRepository(
 
     override suspend fun extractListing(text: String): HouseDraftDto = ai.extractListing(text)
     override suspend fun extractListing(text: String, kind: String): HouseDraftDto = ai.extractListing(text, kind)
-    override suspend fun ask(question: String): AskResponseDto = ai.ask(question)
-    override suspend fun planVisits(request: PlanRequest): PlanResponseDto = ai.planVisits(request)
+    override suspend fun ask(question: String, space: app.doorprints.shared.model.SpaceView?): AskResponseDto = ai.ask(question, space)
+    override suspend fun planVisits(request: PlanRequest, space: app.doorprints.shared.model.SpaceView?): PlanResponseDto = ai.planVisits(request, space)
 
     // ---- Pairing (docs/03 §12.1): no key yet, so the client is made without one ----
 
@@ -518,7 +519,6 @@ open class CommonRepository(
 
     override suspend fun redeemInvite(link: ConnectLink, deviceName: String): String =
         withContext(Dispatchers.IO) { apiFor(link.server, "").pairRedeem(link.invite, deviceName).deviceKey }
-
 
     /**
      * Two-way sync: push local changes, then pull everything the remote has changed since last time, through the
@@ -802,7 +802,7 @@ open class CommonRepository(
         LocalRows(
             db.houses().all(), db.visits().all(), db.photos().all(),
             brokerStore.exportRows(),
-            lengthUnit = settings.lengthUnit.first(),
+            lengthUnit = settings.lengthUnit.first(), kinds = settings.kindSetting().first(),
             // At most 40 criteria (more can only come from a newer app's sync), so the copy's own check accepts it.
             criteria = db.records().listByType(CriterionType.name)
                 .mapNotNull { row -> CriterionStore.of(row)?.let { ExportCriterion.of(it, row.updatedAt) } }

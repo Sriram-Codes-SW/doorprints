@@ -228,8 +228,8 @@ fun MapScreen(
     val repo = services.repository
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
-    val addTip = stringResource(if (addTipForListing) Res.string.map_add_tip_listing else Res.string.map_add_tip)
-    val addTipA11y = stringResource(if (addTipForListing) Res.string.map_add_tip_listing_a11y else Res.string.map_add_tip_a11y)
+    val addTip = stringResource(LocalSpace.current.words.let { if (addTipForListing) it.addTipListing else it.addTip })
+    val addTipA11y = stringResource(LocalSpace.current.words.let { if (addTipForListing) it.addTipListingA11y else it.addTipA11y })
     val findingText = stringResource(Res.string.common_finding_location)
     val waitingGps = stringResource(Res.string.map_waiting_gps)
     val longPressTip = stringResource(Res.string.map_long_press_tip)
@@ -252,7 +252,7 @@ fun MapScreen(
         scope.launch { offerDeletedHouseUndo(repo, snackbar, id) }
     }
     // null until Room answers, so the first framing knows "no houses" from "not loaded yet".
-    val loadedHouses: List<HouseEntity>? by repo.houses.collectAsStateWithLifecycle(initialValue = null)
+    val loadedHouses: List<HouseEntity>? by rememberSpaceHouses(repo) // the space's candidates (kinds PR C); with one kind on, every one
     val houses = loadedHouses.orEmpty()
     // The person's walks (docs/11 5.27.4): the last 30 days and the saved walks, drawn under the houses. Built off the
     // main thread (the repeat detection) at each change of the stored walks; the look is separate, so it is live.
@@ -590,7 +590,7 @@ fun MapScreen(
             if (focusOverlay === focus.overlay) focusOverlay = null
         }
     }
-    val mapDescription = stringResource(Res.string.map_region_desc)
+    val mapDescription = stringResource(LocalSpace.current.words.regionDesc)
     val traceDescription = stringResource(Res.string.trace_a11y_map)
     // The repeated-path alert (docs/11 5.27.5): the notification is the platform's; with the app in front the Map says it too.
     val repeatAlertText = stringResource(Res.string.trace_alert_banner)
@@ -867,7 +867,7 @@ fun MapScreen(
                 afterGrant = null
                 requestLocation()
             }
-            if (platformFeatures.huntMode) {
+            if (platformFeatures.huntMode && LocalSpace.current.huntHere) { // Hunt mode is the house space's (kinds PR C)
                 HuntCard(
                     hunt = hunt,
                     onToggle = { on -> if (!on) mapServices.stopHunt() else startHunt() },
@@ -1035,7 +1035,7 @@ fun MapScreen(
             }
         }
         val saveHereButton: @Composable () -> Unit = {
-            val saveHereLabel = stringResource(Res.string.map_save_here)
+            val saveHereLabel = stringResource(LocalSpace.current.words.saveHere)
             // Only the icon changes while locating: the label stays, so the button keeps its width (round 3).
             ExtendedFloatingActionButton(
                 onClick = { saveHere() },

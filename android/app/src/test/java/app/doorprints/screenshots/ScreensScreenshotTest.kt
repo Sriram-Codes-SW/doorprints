@@ -20,6 +20,15 @@ package app.doorprints.screenshots
 
 import android.app.KeyguardManager
 import app.doorprints.SchoolSample
+import app.doorprints.TwoKinds
+import app.doorprints.shared.model.KindSetting
+import app.doorprints.ui.ChooserScreen
+import app.doorprints.ui.KindsSettingsSection
+import app.doorprints.ui.LocalSpace
+import app.doorprints.ui.SpaceUi
+import app.doorprints.ui.res.chooser_heading
+import app.doorprints.ui.res.chooser_hidden_heading
+import app.doorprints.ui.res.kinds_heading
 import android.graphics.Bitmap
 import androidx.arch.core.executor.ArchTaskExecutor
 import androidx.arch.core.executor.DefaultTaskExecutor
@@ -398,6 +407,49 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
             }
         }
     }
+    /**
+     * The chooser (kinds PR C, S4b-BL-274; docs/03 §18.12) with the school on: its heading, the one hint and two cards (the
+     * default first, *Saved: N*, *Last change*), and with the school turned off but still holding an entry, the muted card
+     * under *Turned off in Settings*. English light and Tamil dark only (the longest words, the other theme); only these new
+     * screens have baselines, no house screen's changes.
+     */
+    @Test fun chooser() {
+        assumeTrue((lang == "en" && !dark) || (lang == "ta" && dark))
+        val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
+        runBlocking { repo.saveHouse(SchoolSample.entity()) }
+        val on = KindSetting(listOf("house", "school"), experimental = "1", enabledText = "[\"house\",\"school\"]")
+        shoot("chooser", readyText = text(Res.string.chooser_heading)) {
+            CompositionLocalProvider(LocalSpace provides SpaceUi(on, "house")) { ChooserScreen(onOpen = {}, onOpenSettings = {}) }
+        }
+    }
+
+    @Test fun chooserHidden() {
+        assumeTrue((lang == "en" && !dark) || (lang == "ta" && dark))
+        val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
+        runBlocking { repo.saveHouse(SchoolSample.entity()) }
+        val off = KindSetting(listOf("house", "school"), experimental = "1", enabledText = "[\"house\"]")
+        shoot("chooser_hidden", readyText = text(Res.string.chooser_hidden_heading)) {
+            CompositionLocalProvider(LocalSpace provides SpaceUi(off, "house")) { ChooserScreen(onOpen = {}, onOpenSettings = {}) }
+        }
+    }
+
+    /** Settings > What you track (kinds PR C): the section only, cropped to its own node, in a build that ships the school with the switch on. */
+    @Test fun settingsKinds() {
+        assumeTrue((lang == "en" && !dark) || (lang == "ta" && dark))
+        RuntimeEnvironment.setQualifiers("+h1200dp")
+        val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
+        runBlocking { repo.saveHouse(SchoolSample.entity()) }
+        val kinds = TwoKinds(ApplicationProvider.getApplicationContext<DoorprintsApp>()).also { it.enableSchool() }
+        try {
+            show(readyText = text(Res.string.kinds_heading)) {
+                kinds.Provide { Column(Modifier.padding(16.dp).testTag("kinds-shot")) { KindsSettingsSection() } }
+            }
+            compose.onNodeWithTag("kinds-shot").captureRoboImage(file("settings_kinds"))
+        } finally {
+            kinds.close()
+        }
+    }
+
     @Test fun settings() = shoot("settings", STATIC) { SettingsScreen() }
 
     /**

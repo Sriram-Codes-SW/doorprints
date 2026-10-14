@@ -239,7 +239,7 @@ fun HouseListScreen(
     }
     // null until Room's first emission: until then neither the first-run hero nor the list chrome is drawn, so
     // neither flashes for a frame on launch.
-    val loadedHouses: List<HouseEntity>? by repo.houses.collectAsStateWithLifecycle(initialValue = null)
+    val loadedHouses: List<HouseEntity>? by rememberSpaceHouses(repo) // the space's candidates (kinds PR C); with one kind on, every one
     // The linked broker's name, agency and fee terms are searched too (docs/11 5.25, slice 1b).
     val brokerText: Map<String, String> by remember(repo) {
         repo.observeBrokers().map { list -> list.associate { (id, b) -> id to b.searchText } }
@@ -511,7 +511,7 @@ fun HouseListScreen(
                     HeroEmptyState(
                         icon = Icons.Default.Home,
                         title = stringResource(Res.string.app_tagline),
-                        body = stringResource(Res.string.houses_empty),
+                        body = stringResource(LocalSpace.current.words.empty),
                         horizontalPadding = 0.dp,
                         action = {
                             // IntrinsicSize.Max + fillMaxWidth: both buttons take the wider label's width (capped by the
@@ -522,7 +522,7 @@ fun HouseListScreen(
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
                                 Button(onClick = onOpenMap, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                                    ButtonLabel(stringResource(Res.string.common_add_on_map))
+                                    ButtonLabel(stringResource(LocalSpace.current.words.addOnMap))
                                 }
                                 // Only where the platform imports backups (hidden on iOS for now; PlatformFeatures).
                                 if (platformFeatures.copiesAndImports) {
@@ -566,7 +566,7 @@ fun HouseListScreen(
 /** The *Houses* heading, shared by the empty list and the full one. */
 @Composable
 private fun HousesHeading() {
-    Text(stringResource(Res.string.houses_title), style = MaterialTheme.typography.headlineSmall,
+    Text(stringResource(LocalSpace.current.words.many), style = MaterialTheme.typography.headlineSmall,
         modifier = Modifier.padding(top = 16.dp).semantics { heading() })
 }
 
@@ -617,7 +617,7 @@ private fun HouseList(
     // screen's KDoc). The line on screen follows every keystroke; what TalkBack hears waits until typing has paused
     // for COUNT_ANNOUNCE_DELAY_MS, so each letter is not read out (LaunchedEffect restarts on every change, which
     // makes the delay a debounce). Reset to empty whenever no filter is on, so the first filter always changes it.
-    val shownText = stringResource(Res.string.houses_shown, shown.size, houses.size)
+    val shownText = stringResource(LocalSpace.current.words.shown, shown.size, houses.size)
     var announcedText by remember { mutableStateOf("") }
     LaunchedEffect(shownText, filtering) {
         if (!filtering) {
@@ -640,7 +640,7 @@ private fun HouseList(
         item(key = "search") {
             OutlinedTextField(
                 value = query, onValueChange = onQuery,
-                label = { Text(stringResource(Res.string.houses_search)) },
+                label = { Text(stringResource(LocalSpace.current.words.search)) },
                 singleLine = true,
                 // The Search key closes the keyboard, so it no longer covers the results or the no-match hero.
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
@@ -720,8 +720,8 @@ private fun HouseList(
         // The sort and, beside it, the cost filters' sheet (S4b-BL-84).
         item(key = "sort") {
             FlowRow(Modifier.animateItem().fillMaxWidth(), verticalArrangement = Arrangement.Center) {
-                SortMenu(sort, onSort)
-                CostFilterButton(costFilter, onCostFilter)
+                if (LocalSpace.current.sortsByScoreAndPrice) SortMenu(sort, onSort) // a kind with no checklist or money sorts by the last change only
+                if (LocalSpace.current.sortsByScoreAndPrice) CostFilterButton(costFilter, onCostFilter)
             }
         }
         // Always composed (round 16), so the node is in place before the first filter makes it a live region.
@@ -744,7 +744,7 @@ private fun HouseList(
                 Box(Modifier.animateItem()) {
                     HeroEmptyState(
                         icon = Icons.Default.Search,
-                        title = stringResource(Res.string.houses_no_match),
+                        title = stringResource(LocalSpace.current.words.noMatch),
                         horizontalPadding = 0.dp,
                         action = {
                             OutlinedButton(
@@ -981,7 +981,7 @@ private fun HouseCard(h: HouseEntity, score: ScoreResult, visits: Int, modifier:
     ) {
         Column(Modifier.padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(h.label.ifBlank { stringResource(Res.string.house_unnamed) }, fontWeight = FontWeight.SemiBold,
+                Text(h.label.ifBlank { stringResource(LocalSpace.current.words.unnamed) }, fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f))
                 // The status glyph (UX-002: ● ★ ✕, so the status is not colour alone), hidden from TalkBack, which
                 // reads the status text in the card's merged description.
@@ -999,7 +999,7 @@ private fun HouseCard(h: HouseEntity, score: ScoreResult, visits: Int, modifier:
             FlowRow(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 priceText(h.price, h.priceType)?.let { Text(it, fontWeight = FontWeight.Medium) }
                 h.bedrooms?.let { Text(stringResource(Res.string.common_bhk, it)) }
-                Text(stringResource(Res.string.common_score_value, score.overall.scoreText()))
+                if (LocalSpace.current.shows("section.checklist")) Text(stringResource(Res.string.common_score_value, score.overall.scoreText()))
                 Text(stringResource(Res.string.common_visits_count, visits))
             }
             // A must-have scored below its minimum (slice 2): said in words, not by colour alone.

@@ -50,6 +50,8 @@ import app.doorprints.data.HouseEntity
 import app.doorprints.data.TourEnd
 import kotlinx.coroutines.launch
 import app.doorprints.shared.model.Broker
+import app.doorprints.shared.model.KindSettingRules
+import app.doorprints.shared.model.SpaceScope
 import app.doorprints.shared.model.ViewingKind
 import app.doorprints.shared.model.Scoring
 import app.doorprints.shared.model.LengthUnit
@@ -115,9 +117,10 @@ sealed interface DeepLink {
 /** One tab of the bottom bar. */
 private data class NavTab(val route: String, val label: StringResource, val icon: ImageVector)
 
-private val baseTabs = listOf(
+/** The bar's first three tabs; the list tab is named by the space's kind (*Houses*, *Schools*): the house's is `nav_houses`, as it always was. */
+private fun baseTabs(space: SpaceUi) = listOf(
     NavTab("map", Res.string.nav_map, Icons.Default.Place),
-    NavTab("houses", Res.string.nav_houses, Icons.Default.Home),
+    NavTab("houses", if (space.huntHere) Res.string.nav_houses else space.words.many, Icons.Default.Home),
     NavTab("compare", Res.string.nav_compare, Icons.AutoMirrored.Filled.List),
 )
 private val assistantTab = NavTab("assistant", Res.string.nav_assistant, Icons.Default.Search)
@@ -223,7 +226,17 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
         val repo = services.repository
         val nav = rememberNavController()
         val features = LocalPlatformFeatures.current
-        val home = homeRoute(features)
+        // What this phone tracks and the space on screen (kinds PR C, S4b-BL-274; docs/03 §18.12). A build that ships the house
+        // alone (every release) knows at once and nothing below differs from the app as it was; a build with more waits for
+        // the settings store for a moment.
+        val kindSetting by rememberKindSetting(repo)
+        var chosenKind by rememberSaveable { mutableStateOf<String?>(null) }
+        val setting = kindSetting ?: return@DoorprintsTheme
+        val space = remember(setting, chosenKind) { SpaceUi.resolve(setting, chosenKind) }
+        // The tab the app opens on, and the base of the graph: with two or more kinds on, the chooser sits under the tabs.
+        val tabHome = homeRoute(features)
+        // Saved, so a rotation keeps the back stack's base even if the person turned a second kind on in between.
+        val home = rememberSaveable { if (setting.spaces) "chooser" else tabHome }
         fun NavController.openTab(route: String) = openTab(route, home)
         val deepLink by deepLinks.collectAsStateWithLifecycle()
         // AI features appear only when the server says they are on (and it is reachable). Asked once per process, in
@@ -233,7 +246,10 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
         val current = backStack?.destination?.route
         // The Assistant tab stays while the user is on it, even if the status turns off meanwhile: otherwise the bar,
         // which is drawn only on a tab, vanished and left the screen with no navigation (whole-app audit).
-        val tabs = baseTabs + (if (aiEnabled || current == "assistant") listOf(assistantTab) else emptyList()) + settingsTab
+        // Ask and Plan read one space; a space other than the house has the assistant only on the person's own AI (S4b-BL-290).
+        val ownKey by repo.aiOwnKey.collectAsStateWithLifecycle()
+        val assistantShown = SpaceScope.aiShownIn(space.kind, setting.available, aiEnabled, ownKey)
+        val tabs = baseTabs(space) + (if (assistantShown || current == "assistant") listOf(assistantTab) else emptyList()) + settingsTab
 
         // The guided tour (S4b-FR-39): its steps, the boxes of what it points at, and whether it was offered before.
         val tourSession = remember { TourSession() }
@@ -321,6 +337,26 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
             popUpTo(home)
             launchSingleTop = true
         }
+        // A shared listing (docs/11 5.29): with two or more kinds on, *Save it in* asks first (kinds PR C); then the map.
+        var shareChoice by remember { mutableStateOf<String?>(null) }
+        fun openListing(text: String) {
+            pendingListing = text
+            if (features.map) mapAddTip = true
+            nav.openMapFresh()
+        }
+        fun startListing(text: String) {
+            if (setting.spaces) shareChoice = text else openListing(text)
+        }
+        // The chooser's card, or the header chip's way back: a fresh stack in the space chosen (a form of another space
+        // must not stay under its tabs), the saved stacks of the tabs dropped.
+        fun chooseSpace(kind: String) {
+            chosenKind = kind
+            listOf("map", "houses", "compare", "assistant").forEach { runCatching { nav.clearBackStack(it) } }
+            nav.navigate(tabHome) {
+                popUpTo(home) { inclusive = home == tabHome }
+                launchSingleTop = true
+            }
+        }
         LaunchedEffect(deepLink) {
             if (deepLink == null) return@LaunchedEffect
             // On a cold start from a notification this runs before the NavHost (inside the Scaffold's subcomposition)
@@ -336,6 +372,8 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
             }
             when (val d = deepLink) {
                 is DeepLink.OpenHouse -> {
+                    // A candidate of another kind opens its own space (kinds PR C; with one kind on there is no lookup); a missing row leaves the space as it is.
+                    if (setting.spaces) repo.getHouse(d.id)?.let { chosenKind = setting.spaceOf(it.kind) }
                     if (d.questions) questionsFor = d.id
                     openHouse(d.id)
                 }
@@ -343,6 +381,8 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                     // A "stay here?" alert whose visit was already saved as a house opens that house, not a second
                     // new-house form that would save a duplicate (whole-app audit).
                     val savedAs = d.visitId?.let { repo.getVisit(it)?.houseId }
+                    // An alert makes a candidate of the default kind (kinds PR C); an existing one opens in its own space.
+                    if (setting.spaces) chosenKind = savedAs?.let { id -> repo.getHouse(id)?.kind }?.let(setting::spaceOf) ?: setting.default
                     when {
                         savedAs != null -> openHouse(savedAs)
                         d.visitId != null && onTop(Routes.NEW_HOUSE, "visitId", d.visitId) -> Unit
@@ -366,19 +406,19 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                     if (saved != null) {
                         listingDuplicate = saved to d.text
                     } else {
-                        pendingListing = d.text
-                        if (features.map) mapAddTip = true
-                        nav.openMapFresh()
+                        startListing(d.text)
                     }
                 }
                 is DeepLink.OpenViewing -> {
                     if (!onTop(Routes.VIEWING, "id", d.id)) nav.navigate(Routes.viewing(d.id))
                 }
                 DeepLink.StartHunt -> {
+                    chosenKind = KindSettingRules.HOUSE // Hunt mode is the house space's
                     huntRequested = true
                     nav.openMapFresh()
                 }
                 DeepLink.OfferHunt -> {
+                    chosenKind = KindSettingRules.HOUSE
                     huntOffered = true
                     nav.openMapFresh()
                 }
@@ -411,9 +451,7 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                 dismissButton = {
                     TextButton(onClick = {
                         listingDuplicate = null
-                        pendingListing = text
-                        if (features.map) mapAddTip = true
-                        nav.openMapFresh()
+                        startListing(text)
                     }) { Text(stringResource(Res.string.house_dup_add)) }
                 },
             )
@@ -429,14 +467,36 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                 launchSingleTop = true
             }
         }
+        shareChoice?.let { text ->
+            ShareKindDialog(
+                setting,
+                onChoose = { kind ->
+                    shareChoice = null
+                    chosenKind = kind
+                    openListing(text)
+                },
+                onDismiss = { shareChoice = null },
+            )
+        }
         pendingConnect?.let { link ->
             val platform = LocalPlatformServices.current
             ConnectLinkDialog(link, repo, remember { platform.deviceName() }, onDone = { pendingConnect = null })
         }
-        CompositionLocalProvider(LocalTourRegistry provides tourRegistry) {
+        CompositionLocalProvider(LocalTourRegistry provides tourRegistry, LocalSpace provides space) {
             Box(Modifier.fillMaxSize()) {
                 Scaffold(
                     snackbarHost = { SnackbarHost(rootSnackbar) },
+                    // With two or more kinds on, a chip on the tabs returns to the chooser; with one there is no top bar.
+                    topBar = {
+                        if (space.multi && tabs.any { it.route == current }) {
+                            SpaceHeader(space) {
+                                nav.navigate("chooser") {
+                                    popUpTo(home)
+                                    launchSingleTop = true
+                                }
+                            }
+                        }
+                    },
                     bottomBar = {
                         if (tabs.any { it.route == current }) {
                             NavigationBar(Modifier.tourTarget(TourTargets.NAV_BAR)) {
@@ -464,52 +524,62 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                     // consumeWindowInsets: the padding already covers the system bars, so a screen's own Scaffold, TopAppBar or
                     // bottom bar (Export's action area) must not add them a second time.
                     NavHost(nav, startDestination = home, modifier = Modifier.padding(padding).consumeWindowInsets(padding)) {
+                        composable("chooser") {
+                            ChooserScreen(onOpen = ::chooseSpace, onOpenSettings = { nav.openTab("settings") })
+                        }
                         composable("map") { entry ->
                             // A shared listing waiting for its place: the tip says so, and the form takes the text.
                             val listingPending = pendingListing != null
                             val deleted by entry.savedStateHandle.getStateFlow<String?>(DELETED_HOUSE_KEY, null)
                                 .collectAsStateWithLifecycle()
-                            MapScreen(
-                                // Only from the resumed map, like every other exit (round 21): a second tap during the
-                                // transition, or a slow GPS fix landing after the user left, is dropped.
-                                onOpenHouse = { if (resumed(entry)) nav.navigate(Routes.house(it)) },
-                                onNewHouse = { lat, lon -> if (resumed(entry)) nav.navigate(Routes.newHouse(lat, lon)) },
-                                onOpenHouses = { if (resumed(entry)) nav.openTab("houses") },
-                                showAddTip = mapAddTip,
-                                onAddTipShown = { mapAddTip = false },
-                                addTipForListing = listingPending,
-                                listingPlace = remember(pendingListing) { pendingListing?.let { ListingText.parse(it).locality } },
-                                huntRequest = huntRequested,
-                                onStartHuntHandled = { huntRequested = false },
-                                huntOffer = huntOffered,
-                                onHuntOfferHandled = { huntOffered = false },
-                                deletedHouse = deleted,
-                                onDeletedShown = { entry.savedStateHandle[DELETED_HOUSE_KEY] = null },
-                            )
+                            // A space of its own: its filters, search, sort and picks are not the other space's (kinds PR C).
+                            key(space.kind) {
+                                MapScreen(
+                                    // Only from the resumed map, like every other exit (round 21): a second tap during the
+                                    // transition, or a slow GPS fix landing after the user left, is dropped.
+                                    onOpenHouse = { if (resumed(entry)) nav.navigate(Routes.house(it)) },
+                                    onNewHouse = { lat, lon -> if (resumed(entry)) nav.navigate(Routes.newHouse(lat, lon)) },
+                                    onOpenHouses = { if (resumed(entry)) nav.openTab("houses") },
+                                    showAddTip = mapAddTip,
+                                    onAddTipShown = { mapAddTip = false },
+                                    addTipForListing = listingPending,
+                                    listingPlace = remember(pendingListing) { pendingListing?.let { ListingText.parse(it).locality } },
+                                    huntRequest = huntRequested,
+                                    onStartHuntHandled = { huntRequested = false },
+                                    huntOffer = huntOffered,
+                                    onHuntOfferHandled = { huntOffered = false },
+                                    deletedHouse = deleted,
+                                    onDeletedShown = { entry.savedStateHandle[DELETED_HOUSE_KEY] = null },
+                                )
+                            }
                         }
                         composable("houses") { entry ->
                             val deleted by entry.savedStateHandle.getStateFlow<String?>(DELETED_HOUSE_KEY, null)
                                 .collectAsStateWithLifecycle()
-                            HouseListScreen(
-                                onOpenHouse = { if (resumed(entry)) nav.navigate(Routes.house(it)) },
-                                onOpenSettings = { if (resumed(entry)) nav.openTab("settings") },
-                                deletedHouse = deleted,
-                                onDeletedShown = { entry.savedStateHandle[DELETED_HOUSE_KEY] = null },
-                                onOpenImport = {
-                                    importedRun = null
-                                    nav.navigate("import")
-                                },
-                                importedRun = importedRun,
-                                importedOpen = importedOpen,
-                                // The first-run hero's "Add a house on the map": the same route as Export's empty state,
-                                // plus the one-shot flag that makes the map say how to add a house.
-                                onOpenMap = openMapWithTip,
-                            )
+                            // A space of its own: its filters, search, sort and picks are not the other space's (kinds PR C).
+                            key(space.kind) {
+                                HouseListScreen(
+                                    onOpenHouse = { if (resumed(entry)) nav.navigate(Routes.house(it)) },
+                                    onOpenSettings = { if (resumed(entry)) nav.openTab("settings") },
+                                    deletedHouse = deleted,
+                                    onDeletedShown = { entry.savedStateHandle[DELETED_HOUSE_KEY] = null },
+                                    onOpenImport = {
+                                        importedRun = null
+                                        nav.navigate("import")
+                                    },
+                                    importedRun = importedRun,
+                                    importedOpen = importedOpen,
+                                    // The first-run hero's "Add a house on the map": the same route as Export's empty state,
+                                    // plus the one-shot flag that makes the map say how to add a house.
+                                    onOpenMap = openMapWithTip,
+                                )
+                            }
                         }
                         composable("compare") { entry ->
                             // null until the database answers, so the empty state does not flash on the way in (CMP-4 P4c's
                             // CompareScreen in :app's CompareTab.kt, collected here since CMP-5).
-                            val loaded: List<HouseEntity>? by repo.houses.collectAsStateWithLifecycle(initialValue = null)
+                            val loaded: List<HouseEntity>? by rememberSpaceHouses(repo)
+                            val everyone: List<HouseEntity>? = if (space.multi) repo.houses.collectAsStateWithLifecycle(initialValue = null).value else null
                             val counts by repo.visitCounts.collectAsStateWithLifecycle(emptyList())
                             val brokers: Map<String, Broker> by remember(repo) { repo.observeBrokers().map { it.toMap() } }
                                 .collectAsStateWithLifecycle(emptyMap())
@@ -523,6 +593,8 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                                 lengthUnit = lengthUnit,
                                 scoring = scoring,
                                 places = places,
+                                // Compare keeps one pick across the spaces; a pick of another space is refused in a sentence (kinds PR C).
+                                everyone = everyone,
                                 onOpenHouse = { if (resumed(entry)) nav.navigate(Routes.house(it)) },
                                 onOpenMap = openMapWithTip,
                             )
@@ -756,7 +828,7 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                 TourOverlay(
                     session = tourSession,
                     registry = tourRegistry,
-                    offer = TourOffer.show(tourMemory, tourSession.active, current, home),
+                    offer = TourOffer.show(tourMemory, tourSession.active, current, tabHome), // on the map or the list, never the chooser
                     currentRoute = current,
                     onStart = { tourSession.start(TourSteps.forPhone(tourContext)) },
                     onDecline = { endTour(tourSession.skip()) },

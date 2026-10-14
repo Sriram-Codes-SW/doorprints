@@ -246,12 +246,15 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
     // Files shared earlier are removed after a day (docs/11 section 5.2); this is the only place they pile up.
     LaunchedEffect(Unit) { exports.cleanShareCopies() }
 
+    // With two or more kinds on, a readable copy holds the space on screen; the full backup stays whole (kinds PR C, S4b-BL-289).
+    val space = LocalSpace.current
     fun options(): ExportOptions = defaults().copy(
         scope = scope,
         includeRejected = includeRejected,
         photos = if (format.usesPhotos) photos else PhotoScope.NONE,
         includeContacts = includeContacts,
         language = language,
+        space = if (space.multi && format != ExportFormat.BACKUP) space.view else null,
     )
 
     // Every row, read again whenever the houses, visits or photos tables change (Android review, 2026-09-22):
@@ -448,7 +451,7 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
                                 onDismiss = { dismiss(run.id) },
                             )
                         }
-                        ExportStatus.COUNTS -> counts?.let { CountChips(it) }
+                        ExportStatus.COUNTS -> counts?.let { CountChips(it, if (space.multi && format != ExportFormat.BACKUP) space else null) }
                         // Houses exist, but none survives these options: say so rather than make an empty file.
                         ExportStatus.NOTHING_MATCHES -> {
                             StatusLine(stringResource(Res.string.export_nothing_matches))
@@ -577,16 +580,18 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
                 // houses are added. No options and no disabled buttons: there is nothing for them to act on.
                 HeroEmptyState(
                     icon = Icons.Default.Home,
-                    title = stringResource(Res.string.export_empty),
+                    title = stringResource(space.words.exportEmpty),
                     action = {
                         // An action, not the bare noun "Map": it says what the tap is for.
                         Button(onClick = onOpenMap, modifier = Modifier.heightIn(min = 48.dp)) {
-                            ButtonLabel(stringResource(Res.string.common_add_on_map))
+                            ButtonLabel(stringResource(space.words.addOnMap))
                         }
                     },
                 )
             } else {
                 Text(stringResource(Res.string.export_intro), style = MaterialTheme.typography.bodyMedium, modifier = inset)
+                // With two or more kinds on, the card says which list a readable copy holds and that a backup holds all (kinds PR C).
+                if (space.multi) SpaceScopeNote(space, format, counts?.houses, inset)
 
                 // The options apply to the next copy; while one is being made they are locked, so they cannot look
                 // as if they changed the running one.
@@ -636,13 +641,13 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
                 }
 
                 HorizontalDivider(divider)
-                SectionHeading(stringResource(Res.string.export_scope), heading)
+                SectionHeading(stringResource(space.words.exportScope), heading)
                 // docs/11 section 5.2 lists a third scope, "selected houses". ExportScope.SELECTED is implemented
                 // and tested in :shared, but picking individual houses needs a checkable list (the Compare screen's
                 // multi-select is the pattern) and is deferred to Sprint 4b — see android/shared/README.md section 8.
                 Column(Modifier.selectableGroup()) {
                     RadioRow(
-                        AnnotatedString(stringResource(Res.string.export_scope_all)), null, scope == ExportScope.ALL, editable,
+                        AnnotatedString(stringResource(space.words.exportScopeAll)), null, scope == ExportScope.ALL, editable,
                     ) {
                         scope = ExportScope.ALL
                         optionChanged()
@@ -658,7 +663,7 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
                 // Only where it changes something; the stored choice is kept while it is hidden.
                 AnimatedVisibility(visible = scope == ExportScope.ALL, enter = motionIn, exit = motionOut) {
                     SwitchRow(
-                        text = stringResource(Res.string.export_include_rejected),
+                        text = stringResource(space.words.exportIncludeRejected),
                         hint = null,
                         checked = includeRejected,
                         enabled = editable,
@@ -683,7 +688,7 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
                                 optionChanged()
                             }
                             RadioRow(
-                                AnnotatedString(stringResource(Res.string.export_photos_shortlisted)), null,
+                                AnnotatedString(stringResource(space.words.exportPhotosShortlisted)), null,
                                 photos == PhotoScope.SHORTLISTED, editable,
                             ) {
                                 photos = PhotoScope.SHORTLISTED
@@ -745,8 +750,8 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun CountChips(c: ExportCounts) {
-    val houses = pluralStringResource(Res.plurals.count_houses, c.houses, c.houses)
+private fun CountChips(c: ExportCounts, space: SpaceUi? = null) {
+    val houses = if (space == null) pluralStringResource(Res.plurals.count_houses, c.houses, c.houses) else stringResource(Res.string.export_count_kind, stringResource(space.words.many), c.houses)
     val visits = pluralStringResource(Res.plurals.count_visits, c.visits, c.visits)
     val photos = pluralStringResource(Res.plurals.count_photos, c.photos, c.photos)
     val sentence = stringResource(Res.string.export_counts, houses, visits, photos)

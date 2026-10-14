@@ -34,6 +34,7 @@ import app.doorprints.shared.api.AskResponseDto
 import app.doorprints.shared.api.HouseDraftDto
 import app.doorprints.shared.api.PlanRequest
 import app.doorprints.shared.api.PlanResponseDto
+import app.doorprints.shared.model.SpaceView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -64,6 +65,10 @@ internal class AiStore(
     val enabled: StateFlow<Boolean> = _enabled.asStateFlow()
     private val _off = MutableStateFlow<AiOff?>(AiOff.NO_SERVER)
     val off: StateFlow<AiOff?> = _off.asStateFlow()
+    private val _ownKey = MutableStateFlow(false)
+
+    /** Whether the person's own AI answers on this phone (kinds PR C): the only one that reads a space other than the house. */
+    val ownKey: StateFlow<Boolean> = _ownKey.asStateFlow()
 
     /** What the server said last: AI on for this device, or why not (NO_SERVER, SERVER, DEVICE). */
     private var serverAi: AiOff? = AiOff.NO_SERVER
@@ -127,6 +132,7 @@ internal class AiStore(
         // With the person's own key nothing depends on a server: only this phone's switch counts.
         val off = if (usesOwnKey(s)) (if (s.aiFeatures) null else AiOff.OPT_IN) else serverAi ?: if (s.aiFeatures) null else AiOff.OPT_IN
         _off.value = off
+        _ownKey.value = usesOwnKey(s)
         _enabled.value = off == null
         return off == null
     }
@@ -228,13 +234,19 @@ internal class AiStore(
         return ownKeyAi()?.let { withContext(Dispatchers.IO) { it.extractListing(text, kind) } } ?: withApi { it.extractListing(text, kind) }
     }
 
-    suspend fun ask(question: String): AskResponseDto {
+    /**
+     * Ask and Plan read one [space] on this device's AI (kinds PR C, S4b-BL-289); the server's two calls take no kind and read
+     * every candidate (S4b-BL-290), which is why the screens offer a space other than the house only on the person's own AI.
+     */
+    suspend fun ask(question: String, space: SpaceView? = null): AskResponseDto {
         requireOn()
-        return ownKeyAi()?.let { withContext(Dispatchers.IO) { it.ask(question) } } ?: withApi { it.ask(question) }
+        return ownKeyAi()?.let { withContext(Dispatchers.IO) { it.ask(question, holds = space.holder()) } } ?: withApi { it.ask(question) }
     }
 
-    suspend fun planVisits(request: PlanRequest): PlanResponseDto {
+    suspend fun planVisits(request: PlanRequest, space: SpaceView? = null): PlanResponseDto {
         requireOn()
-        return ownKeyAi()?.let { withContext(Dispatchers.IO) { it.planVisits(request) } } ?: withApi { it.planVisits(request) }
+        return ownKeyAi()?.let { withContext(Dispatchers.IO) { it.planVisits(request, holds = space.holder()) } } ?: withApi { it.planVisits(request) }
     }
+
+    private fun SpaceView?.holder(): (String?) -> Boolean = this?.let { v -> { kind: String? -> v.holds(kind) } } ?: { true }
 }

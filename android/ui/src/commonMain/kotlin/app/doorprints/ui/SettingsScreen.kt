@@ -725,33 +725,14 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
             onChange = { scope.launch { repo.settings.savePhotosOnWifiOnly(it) } },
         )
 
+        // What you track (kinds PR C): only in a build that ships more than houses, and then with its own divider.
+        KindsSettingsSection()
         HorizontalDivider()
         // AI features (docs/03 §12.1, §13.1): this phone's switch, and who answers: the server or the person's own key.
         AiSettingsSection(settings, aiOff)
 
-        // The brokers you have met (docs/11 5.25, slice 1b), on every platform: it opens the list and each broker's page.
-        HorizontalDivider()
-        NavRow(
-            stringResource(Res.string.settings_brokers), stringResource(Res.string.settings_brokers_hint), onOpenBrokers,
-            Modifier.tourTarget(TourTargets.SETTINGS_BROKERS),
-        )
-        // What counts in a house's score (docs/11 5.4, slice 2): weights, must-haves, your own criteria, the rating share.
-        HorizontalDivider()
-        NavRow(
-            stringResource(Res.string.settings_criteria), stringResource(Res.string.settings_criteria_hint), onOpenCriteria,
-            Modifier.tourTarget(TourTargets.SETTINGS_CRITERIA),
-        )
-        // The questions you ask at a viewing (docs/11 5.5, slice 3a): the bank the house form's *Questions to ask* draws on.
-        HorizontalDivider()
-        NavRow(stringResource(Res.string.settings_questions), stringResource(Res.string.settings_questions_hint), onOpenQuestions)
-        // The viewings planned and done (docs/11 5.8, slice 3b-1): the history, its filters and search, the form.
-        HorizontalDivider()
-        NavRow(
-            stringResource(Res.string.settings_viewings), stringResource(Res.string.settings_viewings_hint), onOpenViewings,
-            Modifier.tourTarget(TourTargets.SETTINGS_VIEWINGS),
-        )
-        // Their reminders (slice 3b-2): the switch, and the on-time alarms note and button while they are not allowed.
-        ViewingRemindersSection()
+        // The brokers, criteria, questions and viewings with their reminders: the rows a kind has (KindSettingsRows).
+        KindSettingsRows(onOpenBrokers, onOpenCriteria, onOpenQuestions, onOpenViewings)
         // Hunting areas with their notes, and the places that matter (docs/11 slice 4a).
         HorizontalDivider()
         NavRow(
@@ -881,7 +862,7 @@ private fun AutoBackupStatus(settings: AppSettings, backingUp: Boolean, features
  * One 56 dp target with a button role, so TalkBack reads title and hint together as one item.
  */
 @Composable
-private fun NavRow(title: String, hint: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+internal fun NavRow(title: String, hint: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Row(
         modifier.fillMaxWidth().heightIn(min = 56.dp)
             .clickable(role = Role.Button, onClick = onClick)

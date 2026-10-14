@@ -60,7 +60,13 @@ import app.doorprints.shared.model.HouseRooms
 import app.doorprints.shared.model.HouseStatus
 import app.doorprints.shared.model.HouseStatusRules
 import app.doorprints.shared.model.Ranking
+import app.doorprints.shared.export.ExportStrings
+import app.doorprints.shared.model.KindFields
+import app.doorprints.shared.model.KindValue
+import app.doorprints.shared.model.KindValues
 import app.doorprints.shared.model.Scoring
+import app.doorprints.shared.model.ScopedCandidate
+import app.doorprints.shared.model.SpaceScope
 import app.doorprints.shared.model.LengthUnit
 import app.doorprints.shared.model.RoomSizes
 import kotlin.math.roundToLong
@@ -137,45 +143,64 @@ fun CompareScreen(
     scoring: Scoring = Scoring.DEFAULT,
     /** My places (slice 4a): one row each, the straight-line km from each house. */
     places: List<Place> = emptyList(),
+    /**
+     * Every saved candidate, only while two or more kinds are on (kinds PR C, S4b-BL-289): a pick that names a live
+     * candidate of another space is refused (`SpaceScope.comparePick`), with one sentence; null with one kind on.
+     */
+    everyone: List<HouseEntity>? = null,
 ) {
+    val space = LocalSpace.current
     val visits = counts.associate { it.houseId to it.visits }
     var selected by rememberSaveable(stateSaver = SelectionSaver) { mutableStateOf(emptySet<String>()) }
     var defaulted by rememberSaveable { mutableStateOf(false) }
     var pickerOpen by rememberSaveable { mutableStateOf(true) }
+    var refusedOther by rememberSaveable { mutableStateOf(false) }
     val candidates = compareCandidates(loaded.orEmpty(), scoring)
     val candidateIds = candidates.map { it.id }.toSet()
-    LaunchedEffect(loaded != null, candidateIds) {
+    LaunchedEffect(loaded != null, candidateIds, everyone) {
         if (loaded == null) return@LaunchedEffect
+        // Picks that name a live candidate of another space are left out and said so (vectors `compare`); with one kind on there are none.
+        val refused = everyone?.let { all ->
+            SpaceScope.comparePick(selected.toList(), all.map { ScopedCandidate(it.id, it.kind, it.status.name) }, space.view::holds).refused
+        }.orEmpty()
+        if (refused.isNotEmpty()) refusedOther = true
         if (!defaulted) {
             // Once only: after that an empty choice is the user's own.
             if (selected.isEmpty()) selected = candidates.take(3).map { it.id }.toSet()
             defaulted = true
         } else {
             val kept = selected intersect candidateIds
-            if (kept != selected) selected = kept
+            // Nothing left of the picks but another space's: start from the best of this one, as the first visit does.
+            if (kept != selected) selected = if (kept.isEmpty() && refused.isNotEmpty()) candidates.take(3).map { it.id }.toSet() else kept
         }
     }
     // In the ranking's order (slice 2), shortlisted first: the best house leads the table.
     val chosen = candidates.filter { it.id in selected }
-    val unnamed = stringResource(Res.string.house_unnamed)
+    val unnamed = stringResource(space.words.unnamed)
     fun nameOf(h: HouseEntity) = h.label.ifBlank { unnamed }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
         Text(stringResource(Res.string.compare_title), style = MaterialTheme.typography.headlineSmall,
             modifier = Modifier.tourTarget(TourTargets.COMPARE_TITLE).semantics { heading() })
+        // Always composed, so the sentence is announced when it arrives (a pick of another space was left out).
+        if (everyone != null) {
+            LiveMessage {
+                if (refusedOther) Text(stringResource(Res.string.compare_other_list), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
+            }
+        }
         when {
             // Room has not answered yet: the heading only.
             loaded == null -> Unit
             candidates.size < 2 -> HeroEmptyState(
                 icon = Icons.AutoMirrored.Filled.List,
-                title = stringResource(Res.string.compare_empty),
-                body = stringResource(Res.string.compare_empty_body),
+                title = stringResource(space.words.compareEmpty),
+                body = stringResource(space.words.compareEmptyBody),
                 horizontalPadding = 0.dp,
                 // Houses are added on the map; without one (iOS for now; PlatformFeatures.map) there is no button.
                 action = if (LocalPlatformFeatures.current.map) {
                     {
                         Button(onClick = onOpenMap, modifier = Modifier.heightIn(min = 48.dp)) {
-                            ButtonLabel(stringResource(Res.string.common_add_on_map))
+                            ButtonLabel(stringResource(space.words.addOnMap))
                         }
                     }
                 } else {
@@ -186,7 +211,7 @@ fun CompareScreen(
                 candidates = candidates,
                 chosen = chosen,
                 selected = selected,
-                onSelected = { selected = it },
+                onSelected = { selected = it; refusedOther = false },
                 pickerOpen = pickerOpen,
                 onPickerOpen = { pickerOpen = it },
                 visits = visits,
@@ -219,19 +244,20 @@ private fun ComparePicker(
     onOpenHouse: (String) -> Unit,
 ) {
     Column {
-        Text(stringResource(Res.string.compare_hint), style = MaterialTheme.typography.bodySmall)
+        val words = LocalSpace.current.words
+        Text(stringResource(words.compareHint), style = MaterialTheme.typography.bodySmall)
         Spacer(Modifier.height(12.dp))
 
         if (chosen.size < 2) {
-            Text(stringResource(Res.string.compare_pick_more), Modifier.padding(bottom = 16.dp))
+            Text(stringResource(words.comparePickMore), Modifier.padding(bottom = 16.dp))
         } else {
             CompareTable(chosen, visits, brokers, lengthUnit, scoring, places, nameOf, onOpenHouse)
-            Text(stringResource(Res.string.compare_footnote),
+            Text(stringResource(words.compareFootnote),
                 style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp, bottom = 16.dp))
         }
 
         // The picker, below the table, collapsible.
-        val pickerTitle = stringResource(Res.string.compare_choose, chosen.size, MAX_COMPARED)
+        val pickerTitle = stringResource(words.compareChoose, chosen.size, MAX_COMPARED)
         val stateText = stringResource(if (pickerOpen) Res.string.common_expanded else Res.string.common_collapsed)
         Row(
             Modifier.fillMaxWidth().heightIn(min = 48.dp).tourTarget(TourTargets.COMPARE_PICKER)
@@ -335,33 +361,42 @@ private fun CompareTable(
             }
         }
     }
+    // A kind shows a row only for a place it has (kinds PR C, S4b-BL-289: `labels.isVisible`); the house has every one, so its
+    // rows are the ones it always had, in the same order. A kind's other extras are rows too, in its file's order, before the rating.
+    val space = LocalSpace.current
+    val extraRows = kindExtraRows(space.built.fields, chosen, notSet)
     val rows = buildList {
-        add(CompareRow(scoreRow, notScored, { h -> results[h.id]?.overall?.let { Formats.score(it) } }))
+        fun row(ref: String, r: CompareRow) {
+            if (space.shows(ref)) add(r)
+        }
+        row("section.checklist", CompareRow(scoreRow, notScored, { h -> results[h.id]?.overall?.let { Formats.score(it) } }))
         // Only when a criterion is a must-have (slice 2): the row would say nothing otherwise.
         if (scoring.criteria.any { it.mustHave && !it.archived }) {
-            add(CompareRow(stringResource(Res.string.compare_must_haves), notSet, ::mustHaves))
+            row("section.checklist", CompareRow(stringResource(Res.string.compare_must_haves), notSet, ::mustHaves))
         }
-        add(CompareRow(stringResource(Res.string.compare_price), notSet, { h -> prices[h.id] }))
-        add(CompareRow(stringResource(Res.string.compare_agreed_price), notSet, { h -> h.cost?.agreedPrice?.let { Formats.rupees(it) } }))
-        add(CompareRow(stringResource(Res.string.compare_monthly_cost), notSet, { h -> summaries[h.id]?.monthlyCost?.let { Formats.rupees(it) } }))
-        add(CompareRow(stringResource(Res.string.compare_move_in), notSet, { h -> summaries[h.id]?.moveIn?.let { Formats.rupees(it) } }))
-        add(CompareRow(stringResource(Res.string.compare_per_sqft), notSet, { h -> summaries[h.id]?.perSqFt?.let { Formats.rupees(it.roundToLong()) } }))
-        add(CompareRow(stringResource(Res.string.compare_bhk), notSet, { h -> h.bedrooms?.let { formatPositional(bhkFormat, it) } }))
-        add(CompareRow(stringResource(Res.string.compare_area), notSet, { h -> h.areaSqft?.let { formatPositional(sqftFormat, it) } }))
-        add(CompareRow(stringResource(Res.string.compare_rooms), notSet, { h -> roomTexts[h.id] }))
-        add(CompareRow(stringResource(Res.string.compare_available_from), notSet, { h -> h.cost?.availableFrom }))
-        add(CompareRow(stringResource(Res.string.compare_rating), notScored, { h -> h.rating?.let { formatPositional(starsFormat, it) } }))
-        add(CompareRow(stringResource(Res.string.compare_visits), notSet, { (visits[it.id] ?: 0).toString() }))
-        add(CompareRow(stringResource(Res.string.compare_street), notSet, { it.street?.takeIf { s -> s.isNotBlank() } }))
+        row("field.money", CompareRow(stringResource(Res.string.compare_price), notSet, { h -> prices[h.id] }))
+        row("field.agreedPrice", CompareRow(stringResource(Res.string.compare_agreed_price), notSet, { h -> h.cost?.agreedPrice?.let { Formats.rupees(it) } }))
+        row("field.money", CompareRow(stringResource(Res.string.compare_monthly_cost), notSet, { h -> summaries[h.id]?.monthlyCost?.let { Formats.rupees(it) } }))
+        row("field.money", CompareRow(stringResource(Res.string.compare_move_in), notSet, { h -> summaries[h.id]?.moveIn?.let { Formats.rupees(it) } }))
+        row("field.money", CompareRow(stringResource(Res.string.compare_per_sqft), notSet, { h -> summaries[h.id]?.perSqFt?.let { Formats.rupees(it.roundToLong()) } }))
+        row("field.bedrooms", CompareRow(stringResource(Res.string.compare_bhk), notSet, { h -> h.bedrooms?.let { formatPositional(bhkFormat, it) } }))
+        row("field.areaSqft", CompareRow(stringResource(Res.string.compare_area), notSet, { h -> h.areaSqft?.let { formatPositional(sqftFormat, it) } }))
+        row("section.rooms", CompareRow(stringResource(Res.string.compare_rooms), notSet, { h -> roomTexts[h.id] }))
+        row("field.availableFrom", CompareRow(stringResource(Res.string.compare_available_from), notSet, { h -> h.cost?.availableFrom }))
+        addAll(extraRows)
+        row("field.rating", CompareRow(stringResource(Res.string.compare_rating), notScored, { h -> h.rating?.let { formatPositional(starsFormat, it) } }))
+        row("section.visits", CompareRow(stringResource(Res.string.compare_visits), notSet, { (visits[it.id] ?: 0).toString() }))
+        row("field.street", CompareRow(stringResource(Res.string.compare_street), notSet, { it.street?.takeIf { s -> s.isNotBlank() } }))
         // One row per place (slice 4a): the straight-line km, not set for a house without a point.
         val kmFormat = stringResource(Res.string.compare_km)
         places.forEach { place ->
-            add(CompareRow(place.name, notSet, { h ->
+            row("section.distances", CompareRow(place.name, notSet, { h ->
                 Distances.toPlaces(h.point(), listOf(place)).firstOrNull()?.let { formatPositional(kmFormat, it.km) }
             }))
         }
         checklistLabels.forEach { (key, label) ->
-            add(
+            row(
+                "section.checklist",
                 CompareRow(
                     label, notScored,
                     value = { h -> h.checklist[key]?.toString() },
@@ -369,13 +404,13 @@ private fun CompareTable(
                 ),
             )
         }
-        add(CompareRow(stringResource(Res.string.compare_contact), notSet, {
+        row("field.contactName", CompareRow(stringResource(Res.string.compare_contact), notSet, {
             it.brokerId?.let(brokers::get)?.label
                 ?: it.contactName?.takeIf { n -> n.isNotBlank() } ?: it.contactPhone?.takeIf { p -> p.isNotBlank() }
         }))
     }
-    // The best by the ranking, when it has a score at all.
-    val best = Ranking.sort(chosen) { it.ranked(scoring) }.firstOrNull()?.takeIf { results[it.id]?.overall != null }
+    // The best by the ranking, when it has a score at all (a kind with no checklist has no score, so no best).
+    val best = Ranking.sort(chosen) { it.ranked(scoring) }.firstOrNull()?.takeIf { results[it.id]?.overall != null && space.shows("section.checklist") }
     val bestFormat = stringResource(Res.string.compare_best_name)
     val openLabel = stringResource(Res.string.compare_open_house)
     val headerName: (HouseEntity) -> String = { h -> if (h == best) formatPositional(bestFormat, nameOf(h)) else nameOf(h) }
@@ -444,4 +479,30 @@ private fun Cell(text: String, width: Dp, header: Boolean = false) {
             style = MaterialTheme.typography.bodySmall,
         )
     }
+}
+
+/**
+ * The rows of a kind's other typed extras (kinds PR C, S4b-BL-289; the website's `KindFields.others` rows): one per extra the
+ * kind has, in its file's order, each in its type's form (money as rupees, a switch as yes or no, an option by its label, a
+ * number's digits, a text as typed). A house has none, so its table is the table it always had.
+ */
+@Composable
+private fun kindExtraRows(fields: KindFields, chosen: List<HouseEntity>, notSet: String): List<CompareRow> {
+    val extras = fields.others()
+    if (extras.isEmpty()) return emptyList()
+    val words = ExportStrings.of(uiLanguage())
+    val texts: Map<String, Map<String, String>> = chosen.associate { h ->
+        h.id to key(h.id) {
+            KindValues.of(fields, h.extrasOther).associate { v ->
+                v.field.id to when (v) {
+                    is KindValue.Money -> Formats.rupees(v.amount)
+                    is KindValue.Count -> v.value.toString()
+                    is KindValue.Bool -> words[if (v.value) "yes" else "no"]
+                    is KindValue.Option -> stringResource(kindStringResource(v.label))
+                    is KindValue.Text -> v.value
+                }
+            }
+        }
+    }
+    return extras.map { e -> CompareRow(stringResource(kindStringResource(fields.label(e))), notSet, { h -> texts[h.id]?.get(e.id) }) }
 }

@@ -165,12 +165,13 @@ class OnDeviceAi(
     /**
       * Answers [question] from the saved houses with citations. With no house to send it answers with the refusal
       * sentence
-     * and makes no model call. The answer is checked by [AskChecks]; an unusable one becomes the refusal.
+     * and makes no model call. The answer is checked by [AskChecks]; an unusable one becomes the refusal. [holds] reads one
+     * space (kinds PR C, S4b-BL-289): only the houses whose kind it accepts are sent; the default sends every one.
      */
-    suspend fun ask(question: String, filters: AskFilters? = null): AskResponseDto {
+    suspend fun ask(question: String, filters: AskFilters? = null, holds: (String?) -> Boolean = { true }): AskResponseDto {
         require(question.isNotBlank()) { "question is empty" }
         require(question.length <= MAX_QUESTION_CHARS) { "question is longer than $MAX_QUESTION_CHARS characters" }
-        val docs = OnDeviceSelection.forAsk(houses().map { KindAi.askView(it, devKinds) }, question, filters) { KindAi.aiText(it, devKinds) }
+        val docs = OnDeviceSelection.forAsk(houses().filter { holds(it.kind) }.map { KindAi.askView(it, devKinds) }, question, filters) { KindAi.aiText(it, devKinds) }
         if (docs.isEmpty()) return AskResponseDto(AiPrompts.I_DONT_KNOW, emptyList(), false, 0)
         admit()
         val prompt = AiPrompts.ask(question, docs.map { it.id to it.text }, PromptSafety.nonce())
@@ -186,13 +187,13 @@ class OnDeviceAi(
       * back to
      * the nearest-neighbour order ([PlanChecks]); a request that fails outright is thrown, since nothing was planned.
      */
-    suspend fun planVisits(request: PlanRequest): PlanResponseDto {
+    suspend fun planVisits(request: PlanRequest, holds: (String?) -> Boolean = { true }): PlanResponseDto {
         require(request.question.isNotBlank()) { "question is empty" }
         require(request.question.length <= MAX_QUESTION_CHARS) { "question is longer than $MAX_QUESTION_CHARS characters" }
         // The server's PlanRequest bounds (docs/ai/ai-design.md 9); a NaN is outside both ranges.
         require(request.startLat in -90.0..90.0 && request.startLon in -180.0..180.0) { "the start point is not on Earth" }
         val maxStops = minOf(request.maxStops ?: MAX_STOPS, MAX_STOPS).coerceAtLeast(1)
-        val candidates = OnDeviceSelection.forPlan(houses().map { KindAi.planView(it, devKinds) }, request.startLat, request.startLon)
+        val candidates = OnDeviceSelection.forPlan(houses().filter { holds(it.kind) }.map { KindAi.planView(it, devKinds) }, request.startLat, request.startLon)
         val seen = LinkedHashMap<String, PlanCandidate>().apply { candidates.forEach { put(it.id, it) } }
         if (candidates.isEmpty()) return PlanChecks.assemble(AgentPlan(null, emptyList()), seen, emptyList(), request.startLat, request.startLon, maxStops)
         admit()

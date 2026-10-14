@@ -21,6 +21,7 @@ package app.doorprints.data
 import app.doorprints.shared.export.ExportBroker
 import app.doorprints.shared.model.Broker
 import app.doorprints.shared.model.BrokerType
+import app.doorprints.shared.model.DevKinds
 import app.doorprints.shared.model.PhoneKey
 import app.doorprints.shared.records.RecordLimitException
 import kotlinx.coroutines.flow.Flow
@@ -97,7 +98,8 @@ internal class BrokerStore(
      * uses): a house that names a live broker takes its name and phone; one that names none but has a phone gets the
      * broker with that number (`PhoneKey`) or a new one named from the contact (else the number), and is linked. A
      * blank phone never makes a broker, and a number too short to compare matches none but still makes one. A
-     * tombstone is left as it is, and a dangling id stays (it reads as no broker).
+     * tombstone is left as it is, and a dangling id stays (it reads as no broker). A candidate of a kind that shows no
+     * broker (a school's admissions office) never makes one from its phone ([hasBroker], S4b-BL-260).
      */
     suspend fun linked(house: HouseEntity): HouseEntity {
         if (house.deleted) return house
@@ -106,6 +108,7 @@ internal class BrokerStore(
             val broker = db.records().get(BrokerType.name, linked)?.takeUnless { it.deleted }?.toBroker() ?: return house
             return house.copy(contactName = broker.name, contactPhone = broker.phone)
         }
+        if (!hasBroker(house)) return house
         val phone = house.contactPhone?.trim().orEmpty()
         if (phone.isEmpty()) return house
         val key = PhoneKey.of(phone)
@@ -121,6 +124,12 @@ internal class BrokerStore(
         }
         return house.copy(brokerId = id, contactName = broker.name, contactPhone = broker.phone)
     }
+
+    /**
+     * Whether a candidate's kind shows the broker field: by the kind's visibility, not its id, so the house, which shows
+     * it, is linked as it always was and a school (whose file has no broker) never is (S4b-BL-260).
+     */
+    private fun hasBroker(house: HouseEntity): Boolean = DevKinds.of(house.kind, on = true).labels.isVisible("field.brokerId")
 
     /**
      * The once-only move of contacts into brokers (slice 1b), on the first read after the update: every live house
@@ -141,7 +150,7 @@ internal class BrokerStore(
                     val stamp = now()
                     fun keyOf(phone: String?) = phone?.trim().orEmpty().let { p -> PhoneKey.of(p) ?: "raw:$p" }
                     val groups = db.houses().all()
-                        .filter { it.brokerId == null && !it.contactPhone.isNullOrBlank() }
+                        .filter { it.brokerId == null && !it.contactPhone.isNullOrBlank() && hasBroker(it) }
                         .sortedWith(compareBy({ it.createdAt }, { it.id }))
                         .groupBy { keyOf(it.contactPhone) }
                     val known = HashMap<String, String>()

@@ -44,6 +44,8 @@ import app.doorprints.shared.export.ExportPreference
 import app.doorprints.shared.export.ImportMode
 import app.doorprints.shared.model.Broker
 import app.doorprints.shared.model.Criterion
+import app.doorprints.shared.model.KindSetting
+import app.doorprints.shared.model.SpaceView
 import app.doorprints.shared.model.HouseAnswer
 import app.doorprints.shared.model.PhotoMeta
 import app.doorprints.shared.model.Question
@@ -426,6 +428,9 @@ interface Repository {
 
     /** Why AI is not offered, or null when it is ([aiEnabled]). */
     val aiOff: StateFlow<AiOff?>
+
+    /** Whether AI answers from the person's own key on this phone (the server's Ask and Plan take no kind, so only this one reads a space other than the house). */
+    val aiOwnKey: StateFlow<Boolean>
     suspend fun refreshAiStatus(): Boolean
 
     /** Turns this phone's *AI features* switch on or off; [aiEnabled] follows at once. */
@@ -477,8 +482,13 @@ interface Repository {
 
     /** As above for a candidate of another kind the extract fills (kinds PR 7, S4b-BL-211); a house's call is the one above. */
     suspend fun extractListing(text: String, kind: String): HouseDraftDto = extractListing(text)
-    suspend fun ask(question: String): AskResponseDto
-    suspend fun planVisits(request: PlanRequest): PlanResponseDto
+
+    /**
+     * Ask and Plan read one space (kinds PR C, S4b-BL-289; docs/03 §18.13): a [space] reads that space's candidates only
+     * (on this device's AI; the server's Ask and Plan take no kind, S4b-BL-290), `null` every candidate, as before.
+     */
+    suspend fun ask(question: String, space: SpaceView? = null): AskResponseDto
+    suspend fun planVisits(request: PlanRequest, space: SpaceView? = null): PlanResponseDto
 
     /** Two-way sync; photo transfers only when [photosAllowed]. Throws on failure; see [SyncOutcome.fromError]. */
     suspend fun sync(photosAllowed: Boolean = true): SyncOutcome
@@ -550,6 +560,8 @@ interface Repository {
         val areaNotes: List<ExportAreaNote> = emptyList(),
         /** The houses deleted here, id to the `updatedAt` of the delete: an update file's deletions (S4b-BL-82). */
         val deletedHouses: Map<String, Long> = emptyMap(),
+        /** What this device tracks (kinds PR C, S4b-BL-274): a backup's `search` object names the kinds on and the default. */
+        val kinds: KindSetting = KindSetting(),
     )
 
     /** What is already on this phone, for the import preview's last-write-wins comparison (tombstones included). */

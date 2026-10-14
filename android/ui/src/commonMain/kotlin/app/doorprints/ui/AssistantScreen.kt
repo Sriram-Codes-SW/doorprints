@@ -53,6 +53,8 @@ import app.doorprints.shared.api.ApiException
 import app.doorprints.shared.api.AskResponseDto
 import app.doorprints.shared.api.PlanRequest
 import app.doorprints.shared.api.PlanResponseDto
+import app.doorprints.shared.model.SpaceScope
+import app.doorprints.shared.model.SpaceView
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -93,6 +95,8 @@ class AssistantViewModel(
     private val repo: Repository,
     private val location: LocationSource,
     private val saved: SavedStateHandle,
+    /** The space Ask and Plan read (kinds PR C, S4b-BL-289); null reads every candidate, as with one kind on. */
+    private val space: SpaceView? = null,
 ) : ViewModel() {
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -155,7 +159,7 @@ class AssistantViewModel(
         _askBusy.value = true
         askJob = viewModelScope.launch {
             try {
-                val result = repo.ask(question)
+                val result = repo.ask(question, space)
                 _answer.value = result
                 saved[KEY_ANSWER] = json.encodeToString(AskResponseDto.serializer(), result)
                 _askError.value = null
@@ -183,7 +187,7 @@ class AssistantViewModel(
             try {
                 val here = withTimeoutOrNull(LOCATION_TIMEOUT_MS) { location.current() }
                     ?: throw NoLocationException(permitted = location.hasPrecisePermission())
-                val result = repo.planVisits(PlanRequest(question, here.first, here.second))
+                val result = repo.planVisits(PlanRequest(question, here.first, here.second), space)
                 _plan.value = result
                 saved[KEY_ROUTE] = json.encodeToString(PlanResponseDto.serializer(), result)
                 _planError.value = null
@@ -273,10 +277,15 @@ fun AssistantScreen(onOpenHouse: (String) -> Unit, onOpenMap: () -> Unit = {}) {
     val services = LocalAppServices.current
     val repo = services.repository
     val scope = rememberCoroutineScope()
-    val vm: AssistantViewModel = viewModel {
-        AssistantViewModel(services.repository, services.location, createSavedStateHandle())
+    // One Ask answer and one Plan route per space (kinds PR C): the view model is keyed by the space's kind.
+    val space = LocalSpace.current
+    val vm: AssistantViewModel = viewModel(key = space.kind) {
+        AssistantViewModel(services.repository, services.location, createSavedStateHandle(), if (space.multi) space.view else null)
     }
-    val aiEnabled by repo.aiEnabled.collectAsStateWithLifecycle()
+    // Ask and Plan read a space other than the house only on the person's own AI (the server's take no kind, S4b-BL-290).
+    val ownKey by repo.aiOwnKey.collectAsStateWithLifecycle()
+    val aiOn by repo.aiEnabled.collectAsStateWithLifecycle()
+    val aiEnabled = SpaceScope.aiShownIn(space.kind, space.setting.available, aiOn, ownKey)
     val aiOff by repo.aiOff.collectAsStateWithLifecycle()
     val tab by vm.tab.collectAsStateWithLifecycle()
     var retrying by remember { mutableStateOf(false) }
@@ -326,9 +335,10 @@ fun AssistantScreen(onOpenHouse: (String) -> Unit, onOpenMap: () -> Unit = {}) {
                         // Why it is off, where the fix is known (docs/03 §12.1): the owner's switch for this device, or
                         // this phone's own switch in Settings.
                         body = stringResource(
-                            when (aiOff) {
-                                AiOff.DEVICE -> Res.string.ai_off_for_device
-                                AiOff.OPT_IN -> Res.string.ai_opt_in_needed
+                            when {
+                                aiOn -> Res.string.ai_not_here // on, but this list has only the person's own AI (a space other than the house)
+                                aiOff == AiOff.DEVICE -> Res.string.ai_off_for_device
+                                aiOff == AiOff.OPT_IN -> Res.string.ai_opt_in_needed
                                 else -> Res.string.ai_unavailable
                             },
                         ),
@@ -338,7 +348,8 @@ fun AssistantScreen(onOpenHouse: (String) -> Unit, onOpenMap: () -> Unit = {}) {
                                 Modifier.width(IntrinsicSize.Max),
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
-                                Button(
+                                // Not when the assistant is on but only for the person's own AI in this space: trying again changes nothing.
+                                if (!aiOn) Button(
                                     onClick = {
                                         if (!retrying) {
                                             retrying = true
@@ -434,8 +445,8 @@ private fun AskPane(vm: AssistantViewModel, onOpenHouse: (String) -> Unit) {
 
     OutlinedTextField(
         question, vm::editAsk,
-        label = { Text(stringResource(Res.string.ai_ask_label)) },
-        placeholder = { Text(stringResource(Res.string.ai_ask_hint)) },
+        label = { Text(stringResource(LocalSpace.current.words.askLabel)) },
+        placeholder = { Text(stringResource(LocalSpace.current.words.askHint)) },
         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Send),
         keyboardActions = KeyboardActions(onSend = { vm.ask() }),
         minLines = 2, modifier = Modifier.fillMaxWidth(),
@@ -486,16 +497,16 @@ private fun AskPane(vm: AssistantViewModel, onOpenHouse: (String) -> Unit) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(a.answer.replace(citationMarker, "").trim(), style = MaterialTheme.typography.bodyLarge)
             if (!a.grounded) {
-                Text(stringResource(Res.string.ai_not_grounded), style = MaterialTheme.typography.bodySmall,
+                Text(stringResource(LocalSpace.current.words.askNotGrounded), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         if (a.citations.isNotEmpty()) {
-            SectionHeading(stringResource(Res.string.ai_sources))
+            SectionHeading(stringResource(LocalSpace.current.words.askSources))
             a.citations.forEach { c ->
                 OutlinedCard(onClick = { onOpenHouse(c.houseId) }, modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(12.dp)) {
-                        Text(c.label ?: stringResource(Res.string.house_unnamed), fontWeight = FontWeight.SemiBold)
+                        Text(c.label ?: stringResource(LocalSpace.current.words.unnamed), fontWeight = FontWeight.SemiBold)
                         c.snippet?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
                     }
                 }
@@ -572,7 +583,7 @@ private fun PlanPane(vm: AssistantViewModel, onOpenHouse: (String) -> Unit) {
     OutlinedTextField(
         question, vm::editPlan,
         label = { Text(stringResource(Res.string.ai_plan_label)) },
-        placeholder = { Text(stringResource(Res.string.ai_plan_hint)) },
+        placeholder = { Text(stringResource(LocalSpace.current.words.planHint)) },
         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Send),
         keyboardActions = KeyboardActions(onSend = { planOrAsk() }),
         minLines = 2, modifier = Modifier.fillMaxWidth(),
@@ -649,7 +660,7 @@ private fun PlanPane(vm: AssistantViewModel, onOpenHouse: (String) -> Unit) {
         p.stops.sortedBy { it.order }.forEach { stop ->
             OutlinedCard(onClick = { onOpenHouse(stop.houseId) }, modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(12.dp)) {
-                    Text(stringResource(Res.string.ai_plan_stop, stop.order, stop.label ?: stringResource(Res.string.house_unnamed)),
+                    Text(stringResource(Res.string.ai_plan_stop, stop.order, stop.label ?: stringResource(LocalSpace.current.words.unnamed)),
                         fontWeight = FontWeight.SemiBold)
                     Text(stringResource(Res.string.ai_plan_leg, stop.legMeters.toInt(), stop.walkMinutes),
                         style = MaterialTheme.typography.bodySmall)

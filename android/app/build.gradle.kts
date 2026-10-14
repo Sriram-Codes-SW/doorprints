@@ -66,6 +66,9 @@ android {
         // The hidden schools kind (kinds PR 5, S4b-BL-209; docs/03 §18.9): off in every build; only the debug build
         // below turns it on, and only when made with -Pdoorprints.devKinds=true. A release never has it.
         buildConfigField("boolean", "DEV_KINDS", "false")
+        // The kinds the build ships (kinds PR C, S4b-BL-274; docs/03 §18.12): a comma list, the house always. Production lists the
+        // house alone, so there is no chooser and no *What you track* section; the debug build below may list more.
+        buildConfigField("String", "AVAILABLE_KINDS", "\"house\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         testInstrumentationRunnerArguments["useTestStorageService"] = "true"
     }
@@ -84,7 +87,13 @@ android {
 
     buildTypes {
         debug {
-            buildConfigField("boolean", "DEV_KINDS", (providers.gradleProperty("doorprints.devKinds").orNull == "true").toString())
+            // -Pdoorprints.devKinds=true ships the school; -Pdoorprints.kinds=house,school names the list itself. DEV_KINDS is
+            // true exactly when the list has more than the house, so the two never disagree.
+            val kinds = providers.gradleProperty("doorprints.kinds").orNull
+                ?: if (providers.gradleProperty("doorprints.devKinds").orNull == "true") "house,school" else "house"
+            val shipsMore = kinds.split(',').map { it.trim() }.any { it.isNotEmpty() && it != "house" }
+            buildConfigField("boolean", "DEV_KINDS", shipsMore.toString())
+            buildConfigField("String", "AVAILABLE_KINDS", "\"" + kinds.filter { it.isLetter() || it == ',' || it == '_' } + "\"")
         }
         release {
             // R8 stays off for now: kotlinx.serialization, Room (KSP-generated code), MapLibre (JNI) and

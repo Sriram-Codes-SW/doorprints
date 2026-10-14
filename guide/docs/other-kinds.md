@@ -7,14 +7,14 @@ it may change or go away.
 ## Turn it on
 
 - **Website:** open **Your data** and find **What you track**.
-- **Android and iPhone:** a later version (the website comes first).
+- **Android and iPhone:** for now in a preview build only (the published app offers houses alone). Open **Settings** and find **What you track**; it appears only in a build that ships more than houses.
 
 Turn on **Experimental: more than houses**. A row for **Houses** and one for **Schools** appear. Turn on **Show Schools**.
 **Default** marks the one Doorprints assumes when it cannot ask: a listing you share into Doorprints, or a link that
 adds a new entry. Houses are the default until you choose another.
 
 - One always stays on.
-- What you choose stays on this browser. It is not synced, shared or put in a copy.
+- What you choose stays on this browser or phone. It is not synced, shared or put in a copy.
 
 ## What are you looking for?
 
@@ -27,6 +27,8 @@ To switch, use the button at the top with the name of what you are looking at (*
 the cards. **Back** from the list does too.
 
 While only one is shown, there is no choice to make: Doorprints opens straight into it, as it always did.
+
+On the phone the button sits at the top of the Map, the list, Compare and Settings. **Hunt mode** is for houses: the Map's Hunt card is only there while you look at houses. In **Settings**, **Brokers**, **Criteria**, **Questions** and **Viewings** are for houses too, and are not shown while you look at schools.
 
 ## What a school has
 
@@ -50,7 +52,7 @@ deleted: the schools you saved stay, a backup keeps them, and they come back whe
 
 A backup made while more than houses are shown lists them (`"search": {"kinds": ["house", "school"], "defaultKind":
 "house"}` in its `data.json`), and each school in it says `"kind": "school"`. **Import a backup** never refuses a file
-because of it and never changes what is in it. On a browser that never chose what it tracks, the backup's list is used;
+because of it and never changes what is in it. On a browser or phone that never chose what it tracks, the backup's list is used;
 otherwise your own choice stays. Older backups import as before.
 
 ## With your own server
