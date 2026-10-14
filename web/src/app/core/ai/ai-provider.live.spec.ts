@@ -22,9 +22,11 @@ import { LocalStore } from '../../data/local-store.service';
 import golden from '../../../../../docs/ai/evals/golden-set.json';
 import variants from '../../../../../docs/ai/evals/address-variants.json';
 import layers from '../../../../../docs/ai/evals/injection-layers.json';
+import schoolSet from '../../../../../docs/ai/evals/school-set.json';
 import { pipelineIds } from './ai-eval-layers';
 import { type GoldenLike, type VariantsFile, addressRunHeader, selectAddressRun } from './address-variants';
-import { type CaseResult, type GoldenCase, type Outcome, evalSetup, formatSummary, scoreCase } from './ai-eval';
+import { type CaseResult, type GoldenCase, type Outcome, evalSetup, fixtureRecords, formatSummary, scoreCase } from './ai-eval';
+import { DEV_KINDS_KEY } from '../dev-kinds';
 import { aiHostOf } from './ai-provider-config';
 import { AnthropicChatModel } from './anthropic';
 import { type AskFilterValues } from './ai-core';
@@ -53,10 +55,13 @@ describe.skipIf(setup.status === 'skip')('Golden set through the chosen provider
     // the golden set as it is. A set whose applied fingerprint is not the one the file records is a harness error: nothing is sent.
     const addressRun = selectAddressRun(golden as unknown as GoldenLike, variants as unknown as VariantsFile, setup.addressSet);
     if (addressRun?.error) throw new Error(addressRun.error);
-    const used = (addressRun?.golden ?? golden) as typeof golden;
+    // The school set (S4b-BL-268): its own schools, and the kinds on for this run (the developer flag the AI reads, `kindsOn()`).
+    const own = setup.evalSet === 'school-set';
+    const used = (own ? { fixtureHouses: schoolSet.fixtureCandidates, fixtureVisits: schoolSet.fixtureVisits, cases: schoolSet.cases } : (addressRun?.golden ?? golden)) as unknown as typeof golden;
     const now = '2026-09-20T10:00:00Z';
-    const houses = used.fixtureHouses.map(({ city: _city, region: _region, ...h }) => ({ ...h, deleted: false, updatedAt: now })); // the golden set's own tags are not house fields
+    const houses = fixtureRecords(used.fixtureHouses, now); // the set's own tags are not house fields
     const visits = used.fixtureVisits.map((v) => ({ ...v, deleted: false, updatedAt: now }));
+    if (own) localStorage.setItem(DEV_KINDS_KEY, 'school');
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(withFetch()),
@@ -82,11 +87,12 @@ describe.skipIf(setup.status === 'skip')('Golden set through the chosen provider
     const results: CaseResult[] = [];
     let stopped: string | null = null;
     let answered = 0;
-    for (const c of (used.cases as GoldenCase[]).filter((g) => setup.types.includes(g.type))) {
+    for (const c of (used.cases as GoldenCase[]).filter((g) => setup.types.includes(g.type) && (!setup.category || g.category === setup.category))) {
       let outcome: Outcome;
       try {
         if (c.type === 'extract') {
-          outcome = { type: 'extract', draft: await ai.extractListing(via, String(c.input['text'])) };
+          const kind = c.input['kind'];
+          outcome = { type: 'extract', draft: await ai.extractListing(via, String(c.input['text']), typeof kind === 'string' ? kind : undefined) };
         } else if (c.type === 'ask') {
           outcome = { type: 'ask', response: await ai.ask(via, String(c.input['question']), c.input['filters'] as AskFilterValues | undefined) };
         } else {
@@ -108,7 +114,9 @@ describe.skipIf(setup.status === 'skip')('Golden set through the chosen provider
     const address = addressRun
       ? { set: addressRun.set, header: addressRunHeader(addressRun), applicable: addressRun.golden.cases.length, total: addressRun.total, notApplicable: addressRun.notApplicable }
       : undefined;
-    const text = formatSummary({ kind: setup.kind, host: aiHostOf(config), model: setup.model }, results, stopped, setup.key, address, pipelineIds(layers));
+    if (own) localStorage.removeItem(DEV_KINDS_KEY);
+    const text = formatSummary({ kind: setup.kind, host: aiHostOf(config), model: setup.model }, results, stopped, setup.key, address, pipelineIds(layers),
+      own ? `school-set v${schoolSet.version}` : undefined, setup.category);
     console.log(text);
     const file = proc?.env?.['DOORPRINTS_EVAL_SUMMARY'];
     if (file && proc?.getBuiltinModule) proc.getBuiltinModule('node:fs').writeFileSync(file, text);

@@ -18,7 +18,9 @@
 import { describe, expect, it } from 'vitest';
 import type { HouseDraft, PlanResponse } from '../ai.service';
 import golden from '../../../../../docs/ai/evals/golden-set.json';
-import { type CaseResult, type GoldenCase, evalSetup, formatSummary, scoreCase } from './ai-eval';
+import schoolSet from '../../../../../docs/ai/evals/school-set.json';
+import schoolKind from '../../../../../docs/schemas/kinds/school.json';
+import { type CaseResult, type GoldenCase, evalSetup, fixtureRecords, formatSummary, scoreCase } from './ai-eval';
 
 const BLUE = '11111111-1111-4111-8111-111111111111';
 const CORNER = '22222222-2222-4222-8222-222222222222';
@@ -625,5 +627,155 @@ describe('formatSummary: the job summary', () => {
       expect(text).toContain('Output of 3 more failed cases not shown.');
       expect(formatSummary(meta, many.slice(0, 20), null, 'Q9#')).not.toContain('more failed');
     });
+  });
+});
+
+// S4b-BL-268: the school set (docs/ai/evals/school-set.json) through this port: its own fixtures, the eval-set setting, the
+// extras checks, the summary line. The live run (ai-provider.live.spec.ts) needs a model; these need none.
+describe('the school set (S4b-BL-268)', () => {
+  const gemini = { DOORPRINTS_EVAL_KEY: 'k', AI_EVAL_KIND: 'gemini' };
+  const ids = new Set(schoolSet.fixtureCandidates.map((c) => c.id));
+  const cases = schoolSet.cases as unknown as GoldenCase[];
+  const byId = (id: string) => cases.find((c) => c.id === id)!;
+  const money = (amount: number, cadence: string) => ({ amount, cadence });
+  const schoolDraft = (over: Partial<HouseDraft> = {}): HouseDraft => ({
+    label: 'Greenfield', address: null, street: null, locality: 'Koramangala', price: null, priceType: null, bedrooms: null, areaSqft: null,
+    contactName: null, contactPhone: '98450 33221', listingUrl: 'https://greenfield.example.edu', notes: null, amenities: [], warnings: [],
+    extras: { board: 'CBSE', medium: 'ENGLISH', busService: true, fees: money(120000, 'year'), admissionFee: money(30000, 'once') }, ...over,
+  });
+
+  describe('the eval-set setting (AI_EVAL_SET)', () => {
+    it.each([undefined, '', '  ', 'default', 'golden-set'])('leaves the setup exactly as it was when the value is %j', (value) => {
+      expect(evalSetup({ ...gemini, AI_EVAL_SET: value })).toEqual(evalSetup(gemini));
+      expect(evalSetup({ ...gemini, AI_EVAL_SET: value })).not.toHaveProperty('evalSet');
+    });
+
+    it('carries the school set, trimmed, and refuses any other name, hard-set included, before anything is sent', () => {
+      expect(evalSetup({ ...gemini, AI_EVAL_SET: ' school-set ' })).toMatchObject({ status: 'run', evalSet: 'school-set' });
+      for (const name of ['hard-set', 'nope', '../x']) {
+        expect(evalSetup({ ...gemini, AI_EVAL_SET: name })).toEqual({ status: 'invalid', line: 'eval set must be golden-set or school-set (hard-set runs on the server only)' });
+      }
+    });
+
+    it('is not combined with an address set, and is not looked at without a key', () => {
+      expect(evalSetup({ ...gemini, AI_EVAL_SET: 'school-set', AI_EVAL_ADDRESS_SET: 'known' }))
+        .toMatchObject({ status: 'invalid', line: expect.stringContaining('cannot be combined') });
+      expect(evalSetup({ AI_EVAL_KIND: 'gemini', AI_EVAL_SET: 'nope' })).toEqual({ status: 'skip', line: 'skipped: no key' });
+    });
+  });
+
+  describe('the category setting (AI_EVAL_CATEGORY): the keyless injection run', () => {
+    it.each([undefined, '', ' ', 'all'])('leaves the setup exactly as it was when the value is %j', (value) => {
+      expect(evalSetup({ ...gemini, AI_EVAL_CATEGORY: value })).toEqual(evalSetup(gemini));
+    });
+
+    it('carries prompt-injection, refuses any other name, and says so in the summary', () => {
+      expect(evalSetup({ ...gemini, AI_EVAL_CATEGORY: ' prompt-injection ' })).toMatchObject({ status: 'run', category: 'prompt-injection' });
+      expect(evalSetup({ ...gemini, AI_EVAL_CATEGORY: 'refusal' })).toEqual({ status: 'invalid', line: 'category must be all or prompt-injection' });
+      const text = formatSummary({ kind: 'gemini', host: '', model: '' }, [], null, 'k', undefined, undefined, undefined, 'prompt-injection');
+      expect(text).toContain('Cases: only the prompt-injection cases (informational).');
+    });
+
+    it('selects the injection cases of both files by their category', () => {
+      const injection = (set: { cases: { category?: string }[] }) => set.cases.filter((c) => c.category === 'prompt-injection').length;
+      expect(injection(golden)).toBe(25);
+      expect(injection(schoolSet)).toBe(5);
+    });
+  });
+
+  describe('the file', () => {
+    it('is informational and brings its own schools, whose ids the cases use', () => {
+      expect(schoolSet).not.toHaveProperty('thresholds');
+      expect(schoolSet.fixturesFrom).toBe('self');
+      expect(ids.size).toBe(7);
+      expect(schoolSet.fixtureCandidates.every((c) => c.kind === 'school')).toBe(true);
+      expect(golden.fixtureHouses.map((h) => h.id).some((id) => ids.has(id))).toBe(false);
+      for (const c of cases) {
+        const e = c.expected as Record<string, unknown>;
+        for (const key of ['expectedHouseIds', 'allowedCitations', 'mustNotCite', 'stopsSubsetOf', 'stopsMustInclude', 'stopsMustNotInclude']) {
+          for (const id of (e[key] as string[] | undefined) ?? []) expect(ids.has(id), `${c.id} ${key}`).toBe(true);
+        }
+        if (c.type === 'extract') expect(c.input['kind'], c.id).toBe('school');
+      }
+      expect(cases.map((c) => c.type)).toEqual(expect.arrayContaining(['extract', 'ask', 'plan']));
+      expect(cases.filter((c) => c.category === 'prompt-injection')).toHaveLength(5);
+    });
+
+    it('names only extras and options the school kind file has, and money in the one cadence it allows', () => {
+      const extras = new Map(schoolKind.extras.map((x) => [x.id, x]));
+      for (const school of schoolSet.fixtureCandidates) {
+        for (const [id, value] of Object.entries(school.extras)) {
+          const def = extras.get(id)!;
+          expect(def, id).toBeDefined();
+          if (def.type === 'enum') expect(def.options!.map((o) => o.id)).toContain(value);
+          if (def.type === 'money') expect(def.cadences).toEqual([(value as { cadence: string }).cadence]);
+        }
+      }
+      for (const c of cases.filter((x) => x.type === 'extract')) {
+        const e = c.expected as { extras?: Record<string, unknown>; extrasAbsent?: string[] };
+        for (const id of [...Object.keys(e.extras ?? {}), ...(e.extrasAbsent ?? [])]) expect(extras.has(id), `${c.id} ${id}`).toBe(true);
+      }
+    });
+  });
+
+  describe('fixtureRecords', () => {
+    it('reads a candidate\'s extras as the record\'s extrasOther, drops the set\'s tags and stamps the row', () => {
+      const [first] = fixtureRecords(schoolSet.fixtureCandidates, '2026-09-20T10:00:00Z');
+      expect(first).toMatchObject({ id: schoolSet.fixtureCandidates[0].id, kind: 'school', deleted: false, updatedAt: '2026-09-20T10:00:00Z' });
+      expect(first['extrasOther']).toEqual(schoolSet.fixtureCandidates[0].extras);
+      expect(first).not.toHaveProperty('extras');
+      expect(first).not.toHaveProperty('city');
+      expect(first).not.toHaveProperty('region');
+    });
+
+    it('leaves a golden-set house as it always was (no extras, no kind)', () => {
+      const [house] = fixtureRecords(golden.fixtureHouses, 'now');
+      expect(house).toEqual({ ...golden.fixtureHouses[0], city: undefined, region: undefined, deleted: false, updatedAt: 'now' } as never);
+      expect(house).not.toHaveProperty('extrasOther');
+      expect(house).not.toHaveProperty('kind');
+    });
+  });
+
+  describe('scoreCase on a school extract', () => {
+    const full = byId('school-extract-01-full-listing');
+
+    it('passes a draft whose extras are right, an option read by id and money by amount and cadence', () => {
+      expect(scoreCase(full, { type: 'extract', draft: schoolDraft() }).failures).toEqual([]);
+      expect(scoreCase(full, { type: 'extract', draft: schoolDraft({ extras: { ...schoolDraft().extras, board: 'cbse' } }) }).passed).toBe(true);
+    });
+
+    it('names each wrong extra: the board, the switch, the figure and the cadence', () => {
+      const wrong = schoolDraft({ extras: { board: 'ICSE', medium: 'ENGLISH', busService: false, fees: money(120000, 'once'), admissionFee: money(3000, 'once') } });
+      const r = scoreCase(full, { type: 'extract', draft: wrong });
+      expect(r.passed).toBe(false);
+      expect(r.failures.map((f) => f.split(':')[0])).toEqual(['extras.board', 'extras.busService', 'extras.fees', 'extras.admissionFee']);
+      expect(scoreCase(full, { type: 'extract', draft: schoolDraft({ extras: undefined }) }).failures).toHaveLength(5);
+    });
+
+    it('treats an extra the listing does not give as an invention when the draft holds it', () => {
+      const none = byId('school-extract-03-missing-fees');
+      expect(scoreCase(none, { type: 'extract', draft: schoolDraft({ locality: 'Sector 56', contactPhone: null, listingUrl: null, extras: {} }) }).failures).toEqual([]);
+      const invented = scoreCase(none, { type: 'extract', draft: schoolDraft({ locality: 'Sector 56', contactPhone: null, listingUrl: null, extras: { fees: money(1, 'year') } }) });
+      expect(invented.failures.map((f) => f.split(':')[0])).toEqual(['extras.fees']);
+    });
+
+    it('fails an injection that moved the fees, and one that put the rules in the notes', () => {
+      const inj = byId('school-extract-04-injection-zero-fees');
+      const ok = schoolDraft({ locality: null, contactPhone: null, listingUrl: null, extras: { board: 'CBSE', fees: money(150000, 'year') } });
+      expect(scoreCase(inj, { type: 'extract', draft: ok }).passed).toBe(true);
+      expect(scoreCase(inj, { type: 'extract', draft: { ...ok, extras: { board: 'CBSE', fees: money(0, 'year') } } }).passed).toBe(false);
+      expect(scoreCase(inj, { type: 'extract', draft: { ...ok, notes: 'My system prompt says...' } }).passed).toBe(false);
+      // Anything the planted lines put in an extra is caught by draftMustNotContain, whichever field it lands in.
+      const planted = byId('school-extract-05-injection-fake-contact');
+      const clean = schoolDraft({ locality: null, contactPhone: '98230 44556', listingUrl: null, extras: { board: 'ICSE' } });
+      expect(scoreCase(planted, { type: 'extract', draft: clean }).passed).toBe(true);
+      expect(scoreCase(planted, { type: 'extract', draft: { ...clean, extras: { board: 'ICSE', grades: 'verified by Doorprints' } } }).passed).toBe(false);
+    });
+  });
+
+  it('writes the eval set into the summary and says the result is not gated', () => {
+    const lines = formatSummary({ kind: 'openai-compatible', host: '127.0.0.1:11434', model: 'm' }, [{ id: 'school-ask-01', type: 'ask', passed: true, failures: [] }], null, '', undefined, undefined, 'school-set v0.1');
+    expect(lines).toContain('Eval set: school-set v0.1 (its own fixtures, the kinds on; not gated).');
+    expect(formatSummary({ kind: 'gemini', host: '', model: '' }, [], null, 'k')).not.toContain('Eval set');
   });
 });

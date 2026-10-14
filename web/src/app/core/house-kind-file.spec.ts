@@ -167,7 +167,8 @@ describe('the kind file for houses (docs/schemas/kinds)', () => {
     expect(new Set(ids).size).toBe(ids.length);
     const sections = house.sections.map((s) => s.id);
     for (const f of [...house.core, ...house.extras]) expect(sections, f.id).toContain(f.section);
-    const known = new Set([...ids, 'rooms', 'questions', 'areaNotes', 'moveIn', 'checklist']);
+    // The slots also name the sections of an Ask document and `amenities`, the draft's hint (S4b-BL-271).
+    const known = new Set([...ids, 'rooms', 'questions', 'areaNotes', 'moveIn', 'checklist', 'viewings', 'distances', 'visits', 'amenities']);
     for (const id of [...house.search, ...Object.values(house.ai).flat()]) expect(known.has(id), id).toBe(true);
     for (const never of house.ai['never']) expect([...house.ai['ask'], ...house.ai['plan']], never).not.toContain(never);
   });

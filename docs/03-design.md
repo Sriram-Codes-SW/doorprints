@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.134 |
+| Version | 0.135 |
 | Date | 2026-10-14 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -144,7 +144,8 @@
 | 0.131 | 2026-10-14 | Claude (Code), engineer | **§18.14 Spaces on the phones** (S4b-BL-274 and S4b-BL-289, kinds PR C; two stacked branches, `feat/kinds-13-phones-spaces` and `feat/kinds-13b-phones-spaces-scoping`): the chooser, the header chip, Settings > What you track, a space's words, Hunt mode and the house-only Settings rows by kind, and the deep links (C1); Compare, Ask, Plan, the copies, the share target and the backup's `search` writer and hint, by the website's vectors (C2). The house-only app is byte for byte today's. §18.12 and §18.13 say where the phones' part now is. |
 | 0.132 | 2026-10-14 | Claude (Code), engineer | **§18.15 The server's list of kinds and its writer of `search`** (S4b-BL-280; `fix/kinds-server-available-flag`; [10](10-sprint-log.md) v0.307, [06](06-test-plan.md) v0.244 TC-U-222): `app.ai.dev-kinds` (`AI_DEV_KINDS`) is renamed `app.kinds.available` (`KINDS_AVAILABLE`, a list, default `house`); a request that names a kind outside it is a 400; `BackupWire.searchOf` writes the backup's `search` object as the website and the phones do (§18.12 door 10 amended, §18.11, §18.14 follow). |
 | 0.133 | 2026-10-14 | Claude (Code), engineer | **§18.9 The house's words left on a school's pages, and a school's copies** (kinds PR 16, the website; S4b-BL-256, S4b-BL-259, S4b-BL-266 and the website leftovers of S4b-BL-277; `feat/kinds-16-school-wording-web`; [06](06-test-plan.md) TC-U-230, TC-M-75): the helper texts, tab titles, walk check, list rows, Your data cards, Areas and Places, listing fill and the readable copies read the kind; §18.10, §18.12 and §18.13 point to it. |
-| 0.134 | 2026-10-14 | Claude (Code), engineer | LocationMap row: since maplibre-gl 6.13 the worker is self-contained, `angular.json` copies `maplibre-gl-worker.mjs` alone ([10](10-sprint-log.md) S4b-BL-310). |
+| 0.134 | 2026-10-14 | Claude (Code), engineer | **§18.11: the school set for the AI evals and `house.json`'s `ai` slots** (S4b-BL-268, S4b-BL-271; `feat/kinds-17-school-evals-and-slots`; [10](10-sprint-log.md) v0.320, [06](06-test-plan.md) v0.251 TC-AI-47 and TC-U-231, [ai-design](ai/ai-design.md) 8.7 and 16.8): `docs/ai/evals/school-set.json` and the three eval harnesses seeding a candidate's kind and extras with the kinds on; the house's slots name what its hand-written AI code reads, a house's output unchanged. The release gate of §18.12 stays until S4b-BL-269 and -270 are done as well. |
+| 0.135 | 2026-10-14 | Claude (Code), engineer | LocationMap row: since maplibre-gl 6.13 the worker is self-contained, `angular.json` copies `maplibre-gl-worker.mjs` alone ([10](10-sprint-log.md) S4b-BL-310). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -2586,6 +2587,17 @@ same reason S4b-BL-234 (no abusive words in the answers) does not ride this step
 golden set's `schools-*` section and the keyless injection run are S4b-BL-268; the prompts' house words for every kind
 are S4b-BL-269; a kind's extras in the Plan tools are S4b-BL-270; and `house.json`'s slots, which describe less than the
 house's hand-written AI code reads, are S4b-BL-271.
+
+**Update of 2026-10-14 (S4b-BL-268, S4b-BL-271; `feat/kinds-17-school-evals-and-slots`).** The two rows left above that touch only
+tests and data are done. *The school set* ([ai-design](ai/ai-design.md) 8.7): `docs/ai/evals/school-set.json` has its own
+schools in the candidate shape (kind, typed extras) and 13 informational cases, and the three eval harnesses seed a
+candidate's kind and extras with the kinds available (the server's `KINDS_AVAILABLE`, the website's developer flag, the
+phone's `devKinds`); the golden set and its thresholds are untouched. *`house.json`'s slots* ([ai-design](ai/ai-design.md)
+16.8): `ask` names the viewings, the area notes, the distances and the visits, `plan` the street, `extract` the area and the
+amenities, so the slots say what the house's hand-written code reads; the code is not read through them and a house's
+documents, prompts, Plan lines and pins are byte for byte as before. The shared `kinds/house-ai-slot-vectors.json` and a
+`HouseAiSlotsTest` on each stack hold the two together. S4b-BL-269 (the prompts' house words) and S4b-BL-270 (a kind's extras
+in the Plan tools) are still open, and so is the release gate (§18.12).
 
 ### 18.12 Spaces: the chooser and Settings > What you track (kinds PR 8, S4b-BL-212)
 
