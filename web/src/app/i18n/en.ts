@@ -563,6 +563,7 @@ export const en = {
   'nav.syncProblem': 'Sync problem',
   'title.houseNamed': '{name} · Doorprints',
   'error.offline': 'You are offline. Try again when you are connected.',
+  'error.pageLoad': 'This page could not be loaded. Check your connection.',
   'error.notFoundLocal': 'Not found in this browser.',
   'list.two': '{a} and {b}',
   'list.three': '{a}, {b} and {c}',

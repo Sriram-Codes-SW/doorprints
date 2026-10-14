@@ -544,6 +544,7 @@ export const ta: Dict = {
   'nav.syncProblem': 'ஒத்திசைவுச் சிக்கல்',
   'title.houseNamed': '{name} · Doorprints',
   'error.offline': 'நீங்கள் ஆஃப்லைனில் இருக்கிறீர்கள். இணைப்பு கிடைத்ததும் மீண்டும் முயலவும்.',
+  'error.pageLoad': 'இந்தப் பக்கத்தை ஏற்ற முடியவில்லை. உங்கள் இணைப்பைச் சரிபார்க்கவும்.',
   'error.notFoundLocal': 'இந்த உலாவியில் கிடைக்கவில்லை.',
   'list.two': '{a}, {b}',
   'list.three': '{a}, {b}, {c}',

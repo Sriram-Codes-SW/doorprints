@@ -544,6 +544,7 @@ export const hi: Dict = {
   'nav.syncProblem': 'सिंक में समस्या',
   'title.houseNamed': '{name} · Doorprints',
   'error.offline': 'आप ऑफ़लाइन हैं। कनेक्शन मिलने पर फिर कोशिश करें।',
+  'error.pageLoad': 'यह पेज लोड नहीं हो सका। अपना कनेक्शन जाँचें।',
   'error.notFoundLocal': 'इस ब्राउज़र में नहीं मिला।',
   'list.two': '{a} और {b}',
   'list.three': '{a}, {b} और {c}',
