@@ -88,7 +88,7 @@
       "expect": "a Plan candidate has only what the plan slot names"
     },
     {
-      "file": "web/src/app/core/ai/ai-core.ts",
+      "file": "web/src/app/core/ai/plan-fallback.ts",
       "find": "[I_DONT_KNOW, SCHOOL_I_DONT_KNOW].includes(",
       "replace": "[I_DONT_KNOW].includes(",
       "expect": "the prompt speaks in a kind's words only when every record"

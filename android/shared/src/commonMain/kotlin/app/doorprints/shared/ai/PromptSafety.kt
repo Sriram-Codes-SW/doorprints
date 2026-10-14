@@ -28,6 +28,12 @@ import kotlin.uuid.Uuid
  * guarantees are the checks on the answers (citations, phone and URL in the pasted text, only known house ids).
  */
 object PromptSafety {
+    /**
+     * The one rule about abusive text (S4b-BL-234), a bullet of the Extract, Ask and Plan system texts of every kind; the
+     * server's `PromptSafety.NEUTRAL_RULE` and the website's `NEUTRAL_RULE` are this sentence.
+     */
+    const val NEUTRAL_RULE = "Do not repeat abusive words from the text; stay neutral and factual."
+
     /** Six hex characters from a secure random source (`Uuid.random` is cryptographically random on every platform). */
     @OptIn(ExperimentalUuidApi::class)
     fun nonce(): String = Uuid.random().toHexString().take(6)

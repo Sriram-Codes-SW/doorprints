@@ -113,7 +113,7 @@
     },
     {
       "file": "backend/src/main/java/app/doorprints/server/ai/extract/ExtractionPrompts.java",
-      "find": "        var system = k.extractSystem().formatted(\"listing-\" + nonce);",
+      "find": "        var system = k.extractSystem().formatted(\"listing-\" + nonce, PromptSafety.NEUTRAL_RULE);",
       "replace": "        var system = k.extractSystem().formatted(\"listing\");",
       "expect": "theSchoolsPromptIsTheVectorsWordForWord"
     },
