@@ -1,0 +1,251 @@
+# Copyright 2026 Sriram (Sriram-Codes-SW)
+#
+# This file is part of Doorprints.
+#
+# Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+# Public License as published by the Free Software Foundation, version 3 of the License.
+#
+# Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+# warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+# the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+#
+# SPDX-License-Identifier: AGPL-3.0-only
+
+
+# Release (C-02, threat model F-11 / SEC-018): a pushed version tag builds the signed release APK and creates a GitHub
+# Release that is ALWAYS A DRAFT, with the APK, its `.sha256` and the signer certificate fingerprint in the notes. The
+# owner reads the notes, runs the release security gate (docs/13) and publishes by hand. Nothing here publishes.
+#
+# Triggers: a push of a tag `v*.*.*` (narrowed to vMAJOR.MINOR.PATCH by the first guard step) and a manual run
+# (`workflow_dispatch`, on main only) which is a DRY RUN: it builds, signs and checks, uploads the files as a workflow
+# artifact, and creates no release. There is no pull_request trigger, so no pull request or branch push ever runs
+# this workflow or reaches the signing key; CI on branches never runs it (docs/14 §7). It has no required-check twin
+# (`*-required.yml`) because it never runs on a pull request: a required check is only needed for a workflow that a
+# ruleset waits for on pull requests (docs/07 §3).
+#
+# Jobs and tokens: `permissions: {}` for the workflow; `check` and `build` keep that (the repository is public, so
+# the checkout needs no token); only `publish` has `contents: write`, and `publish` never sees the keystore or the
+# signing secrets. `build` holds the signing secrets and no write token. The only actions are GitHub's own (`actions/`,
+# pinned by tag like the other workflows, see .github/scripts/check-action-pins.py); the release is created with the
+# runner's `gh` and the job's GITHUB_TOKEN, so no third-party release action is trusted with a write token.
+#
+# The ref guard lives in this file, which someone with write access can edit on a branch (threat model T-E4); the
+# control that stops that is the `release` environment restricted to protected refs (docs/07 §4, S4b-BL-8, owner).
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+
+permissions: {}
+
+# One release run per ref at a time; a second run waits instead of cancelling a build that may be signing.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # `secrets` cannot be used in a job-level `if`, so this job checks them and the others key off its output. It prints
+  # only the names of the missing secrets, never a value.
+  check:
+    name: Release signing secrets present?
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    permissions: {}
+    outputs:
+      present: ${{ steps.check.outputs.present }}
+    steps:
+      - id: check
+        env:
+          HH_KEYSTORE_BASE64: ${{ secrets.HH_KEYSTORE_BASE64 }}
+          HH_KEYSTORE_PASSWORD: ${{ secrets.HH_KEYSTORE_PASSWORD }}
+          HH_KEY_ALIAS: ${{ secrets.HH_KEY_ALIAS }}
+          HH_KEY_PASSWORD: ${{ secrets.HH_KEY_PASSWORD }}
+        run: |
+          if [ -n "$HH_KEYSTORE_BASE64" ] && [ -n "$HH_KEYSTORE_PASSWORD" ] && [ -n "$HH_KEY_ALIAS" ] && [ -n "$HH_KEY_PASSWORD" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Release signing secrets not set (HH_KEYSTORE_BASE64, HH_KEYSTORE_PASSWORD, HH_KEY_ALIAS, HH_KEY_PASSWORD); signed release build skipped and no release created."
+          fi
+
+  # Guards first (no secret in the environment), then the signed build. The keystore is decoded to the runner's temp
+  # directory (never the workspace) and deleted at the end, as in android.yml.
+  build:
+    name: Signed release APK
+    needs: [check]
+    if: needs.check.outputs.present == 'true'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 40
+    permissions: {}
+    outputs:
+      name: ${{ steps.name.outputs.name }}
+      fingerprint: ${{ steps.fingerprint.outputs.sha256 }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # Event data goes in through env, never into the script text. A tag must be vMAJOR.MINOR.PATCH, equal to the
+      # app's versionName, and its commit must be on main's history; a manual run must be on main.
+      - name: Guard the ref
+        env:
+          EVENT: ${{ github.event_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -eu
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          if [ "$EVENT" = "push" ]; then
+            [ "$REF_TYPE" = "tag" ] || { echo "::error::A push must be a tag."; exit 1; }
+            printf '%s' "$REF_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+              || { echo "::error::The tag must look like v1.2.3 (digits only)."; exit 1; }
+            version="${REF_NAME#v}"
+            declared="$(sed -n 's/^[[:space:]]*versionName = "\(.*\)"$/\1/p' android/app/build.gradle.kts)"
+            [ "$version" = "$declared" ] \
+              || { echo "::error::The tag is $REF_NAME but android/app/build.gradle.kts has versionName $declared."; exit 1; }
+          else
+            [ "$REF_NAME" = "main" ] && [ "$REF_TYPE" = "branch" ] \
+              || { echo "::error::A manual (dry) run is allowed on main only."; exit 1; }
+          fi
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" refs/remotes/origin/main; then
+            echo "::error::$GITHUB_SHA is not on main's history; a release is built from main only."
+            exit 1
+          fi
+          echo "The ref is allowed."
+
+      - id: name
+        env:
+          EVENT: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [ "$EVENT" = "push" ]; then
+            echo "name=doorprints-$REF_NAME" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=doorprints-dry-run-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+        with:
+          cache-read-only: true
+
+      - name: Decode keystore
+        env:
+          HH_KEYSTORE_BASE64: ${{ secrets.HH_KEYSTORE_BASE64 }}
+        run: |
+          umask 077
+          printf '%s' "$HH_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/doorprints-release.jks"
+          test -s "$RUNNER_TEMP/doorprints-release.jks"
+
+      - name: assembleRelease (signed)
+        working-directory: android
+        env:
+          HH_KEYSTORE_FILE: ${{ runner.temp }}/doorprints-release.jks
+          HH_KEYSTORE_PASSWORD: ${{ secrets.HH_KEYSTORE_PASSWORD }}
+          HH_KEY_ALIAS: ${{ secrets.HH_KEY_ALIAS }}
+          HH_KEY_PASSWORD: ${{ secrets.HH_KEY_PASSWORD }}
+          # A public identifier, a repository variable and not a secret (as in android.yml).
+          GOOGLE_ANDROID_CLIENT_ID: ${{ vars.GOOGLE_ANDROID_CLIENT_ID }}
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon --stacktrace assembleRelease
+
+      - name: Remove keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/doorprints-release.jks"
+
+      # With a signingConfig AGP writes app-release.apk; an unsigned build would be app-release-unsigned.apk, which
+      # fails here. The fingerprint is a public value (the hash of the signing certificate), not a secret.
+      - name: Verify the signature, write the checksum and the notes
+        id: fingerprint
+        env:
+          NAME: ${{ steps.name.outputs.name }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          set -eu
+          built=android/app/build/outputs/apk/release/app-release.apk
+          test -f "$built"
+          mkdir -p dist
+          apk="dist/$NAME.apk"
+          cp "$built" "$apk"
+          apksigner="$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -n 1)apksigner"
+          "$apksigner" verify --print-certs "$apk" > "$RUNNER_TEMP/certs.txt"
+          cat "$RUNNER_TEMP/certs.txt"
+          [ "$(grep -c 'certificate SHA-256 digest:' "$RUNNER_TEMP/certs.txt")" = "1" ] \
+            || { echo "::error::Expected exactly one signer certificate."; exit 1; }
+          fingerprint="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$RUNNER_TEMP/certs.txt")"
+          printf '%s' "$fingerprint" | grep -Eq '^[0-9a-f]{64}$' \
+            || { echo "::error::Could not read the signer certificate fingerprint."; exit 1; }
+          echo "sha256=$fingerprint" >> "$GITHUB_OUTPUT"
+          (cd dist && sha256sum "$NAME.apk" > "$NAME.apk.sha256" && sha256sum -c "$NAME.apk.sha256")
+          apk_sha="$(cut -d' ' -f1 "dist/$NAME.apk.sha256")"
+          {
+            echo "**DRAFT. Not approved for release.** This build is not approved until the release security gate"
+            echo "([docs/13](https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_SHA}/docs/13-release-security-checklist.md))"
+            echo "has been run on it and the owner has recorded *ship*. Until then do not publish this release, do not"
+            echo "upload it to the Play Store and do not point anyone at it."
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| File | \`$NAME.apk\` |"
+            echo "| APK SHA-256 | \`$apk_sha\` (also in \`$NAME.apk.sha256\`) |"
+            echo "| Signer certificate SHA-256 | \`$fingerprint\` |"
+            echo "| Commit | \`${GITHUB_SHA}\` |"
+            echo "| Built by | workflow run ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID} |"
+            echo
+            echo "Check before installing: \`sha256sum -c $NAME.apk.sha256\`, and compare the signer fingerprint with the one"
+            echo "in the README. A fingerprint that differs means the APK is not signed with the Doorprints key."
+            echo "Changes: see the CHANGELOG. This release has no server image; the server is self-hosted and not part of it."
+          } > dist/release-notes.md
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-files
+          path: dist/
+          if-no-files-found: error
+          retention-days: 30
+
+  # The only job with a write token and the only one that creates a release. It never has the keystore or the signing
+  # secrets, and runs for a tag push only: a manual run stops after `build` (the dry run).
+  publish:
+    name: Create the draft release
+    needs: [build]
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-files
+          path: dist
+
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          NAME: ${{ needs.build.outputs.name }}
+        run: |
+          set -eu
+          cd dist
+          sha256sum -c "$NAME.apk.sha256"
+          # --draft is not optional and not an input: this workflow never publishes. --verify-tag refuses a tag
+          # that does not exist on the remote.
+          gh release create "$TAG" "$NAME.apk" "$NAME.apk.sha256" \
+            --repo "$GITHUB_REPOSITORY" \
+            --draft \
+            --verify-tag \
+            --title "Doorprints $TAG (draft)" \
+            --notes-file release-notes.md
+          echo "Draft release $TAG created. Run docs/13 before publishing it." >> "$GITHUB_STEP_SUMMARY"
