@@ -23,7 +23,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.regex.Pattern;
 
 /**
@@ -36,6 +39,8 @@ import java.util.regex.Pattern;
 final class EvalSets {
 
     static final String GOLDEN = "golden-set";
+    /** {@code fixturesFrom} of a set that brings its own fixtures (the school set, S4b-BL-268): {@code fixtureCandidates}. */
+    static final String SELF = "self";
     /** A set name is a file name without its extension: lower-case words joined by hyphens. */
     static final Pattern NAME = Pattern.compile("[a-z]+(-[a-z]+)*");
 
@@ -43,9 +48,14 @@ final class EvalSets {
     }
 
     /** The set chosen for a run, with the golden set it is built on and the scorecard section it adds. */
-    record Run(String name, String version, String description, GoldenSet golden) {
+    record Run(String name, String version, String description, GoldenSet golden, boolean ownFixtures, Set<String> kinds) {
         String headerValue() {
             return name + " v" + version;
+        }
+
+        /** What the header says about the fixtures: the set's own candidates, or the golden set's houses. */
+        String fixturesNote() {
+            return ownFixtures ? "own fixtures, kinds " + String.join(", ", kinds) + "; not gated" : "fixtures of the golden set; not gated";
         }
 
         EvalScorer.Informational info() {
@@ -75,7 +85,8 @@ final class EvalSets {
     static Run build(GoldenSet golden, String goldenFileName, String set, String json) {
         var file = GoldenSet.parse(json);
         var from = String.valueOf(file.root().get("fixturesFrom"));
-        if (!goldenFileName.equals(from)) {
+        boolean own = SELF.equals(from);
+        if (!own && !goldenFileName.equals(from)) {
             throw new IllegalArgumentException("Eval set '" + set + "' takes its fixtures from '" + from + "', not from " + goldenFileName);
         }
         if (file.root().containsKey("thresholds")) {
@@ -85,10 +96,20 @@ final class EvalSets {
         root.put("version", file.version());
         root.put("date", file.date());
         root.put("description", file.root().get("description"));
-        root.put("fixtureHouses", golden.root().get("fixtureHouses"));
-        root.put("fixtureVisits", golden.root().get("fixtureVisits"));
+        var kinds = new TreeSet<String>();
+        if (own) {
+            // The set's own candidates (the candidate shape: kind, money, extras), seeded as they are (FixtureSeeding).
+            var candidates = GoldenSet.maps(file.root().get("fixtureCandidates"));
+            if (candidates.isEmpty()) throw new IllegalArgumentException("Eval set '" + set + "' has fixturesFrom 'self' but no fixtureCandidates");
+            candidates.forEach(c -> kinds.add(String.valueOf(c.getOrDefault("kind", "house"))));
+            root.put("fixtureHouses", candidates);
+            root.put("fixtureVisits", file.root().getOrDefault("fixtureVisits", List.of()));
+        } else {
+            root.put("fixtureHouses", golden.root().get("fixtureHouses"));
+            root.put("fixtureVisits", golden.root().get("fixtureVisits"));
+        }
         root.put("thresholds", Map.of());
         root.put("cases", file.root().get("cases"));
-        return new Run(set, file.version(), String.valueOf(file.root().get("description")), new GoldenSet(root));
+        return new Run(set, file.version(), String.valueOf(file.root().get("description")), new GoldenSet(root), own, java.util.Collections.unmodifiableSet(kinds));
     }
 }

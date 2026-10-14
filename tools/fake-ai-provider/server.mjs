@@ -76,13 +76,24 @@ function canned(schema, hints, key) {
   return type === 'boolean' ? true : type === 'number' || type === 'integer' ? 1 : 'sample';
 }
 
+/** A kind's extras of an extract case as the school's raw listing writes them (every field a string; S4b-BL-268); absent ones are null. */
+function schoolHints(e) {
+  const x = e.extras ?? {};
+  const out = {};
+  for (const id of ['board', 'medium', 'grades']) if (x[id] !== undefined) out[id] = x[id];
+  if (x.busService !== undefined) out.busService = x.busService ? 'yes' : 'no';
+  for (const id of ['fees', 'admissionFee']) if (x[id] !== undefined) out[id] = String(x[id].amount);
+  for (const id of e.extrasAbsent ?? []) out[id] = null;
+  return out;
+}
+
 /** Hints from the golden-set case whose input text appears in the prompt (extract, ask, plan), else {}. */
 function hintsFor(golden, prompt) {
   const c = golden?.cases.find((g) => (g.input.text ?? g.input.question) && prompt.includes(g.input.text ?? g.input.question));
   const e = c?.expected;
   const str = (v) => (v == null ? null : String(v));
   if (!e) return {};
-  if (c.type === 'extract') return { price: str(e.price), priceType: e.priceType, bedrooms: str(e.bedrooms), locality: e.locality, contactName: e.contactName, contactPhone: e.contactPhone, listingUrl: e.listingUrl, amenities: e.amenitiesInclude ?? [] };
+  if (c.type === 'extract') return { price: str(e.price), priceType: e.priceType, bedrooms: str(e.bedrooms), locality: e.locality, contactName: e.contactName, contactPhone: e.contactPhone, listingUrl: e.listingUrl, amenities: e.amenitiesInclude ?? [], ...schoolHints(e) };
   if (c.type === 'ask') return { answer: `${(e.mustContain ?? ['Canned']).join(', ')}.`, citedHouseIds: e.expectedHouseIds ?? [] };
   return { stops: (e.stopsSubsetOf ?? []).slice(0, c.input.maxStops ?? 8).map((houseId) => ({ houseId, reason: 'canned' })) };
 }

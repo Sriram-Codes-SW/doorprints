@@ -43,6 +43,12 @@ final class FixtureSeeding {
         // The golden set's own tags (v0.7), not house fields.
         body.remove("city");
         body.remove("region");
+        if (body.containsKey("kind")) {
+            // A fixture already in the candidate shape (the school set, S4b-BL-268): its kind, money and extras go as they are.
+            body.put("updatedAt", now.minusSeconds(i).toString());
+            body.put("deleted", false);
+            return body;
+        }
         // The golden set keeps the house's words (price, priceType, bedrooms, as the AI contract does); the sync API
         // takes a candidate since the format reset (S4b-BL-206): its kind, its money and its extras.
         body.put("kind", "house");

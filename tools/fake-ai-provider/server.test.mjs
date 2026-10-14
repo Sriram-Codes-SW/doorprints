@@ -267,6 +267,8 @@ describe('CORS', () => {
   });
 });
 
+const schoolSet = JSON.parse(fs.readFileSync(new URL('../../docs/ai/evals/school-set.json', import.meta.url), 'utf8'));
+
 describe('control and golden answers', () => {
   it('POST /__mode sets the mode for later requests and /__requests records and clears them', async () => {
     await fetch(`${base}/__mode`, { method: 'POST', body: JSON.stringify({ mode: 'server-error' }) });
@@ -286,5 +288,28 @@ describe('control and golden answers', () => {
     assert.equal(got.price, String(c.expected.price));
     assert.equal(got.bedrooms, String(c.expected.bedrooms));
     assert.deepEqual(got.amenities, c.expected.amenitiesInclude);
+  });
+  // S4b-BL-268: a set that has its own file answers a school's raw listing from the case's extras, an absent extra as null.
+  it('answers a school extract case of the school set with its expected extras as the raw listing writes them', async () => {
+    const own = await start({ golden: schoolSet });
+    try {
+      const raw = { type: 'object', properties: Object.fromEntries(['label', 'locality', 'board', 'medium', 'busService', 'fees', 'admissionFee'].map((k) => [k, { type: ['string', 'null'] }])) };
+      const ask = async (c) => {
+        const r = await fetch(`http://127.0.0.1:${own.port}/v1/chat/completions`, {
+          method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer k' },
+          body: JSON.stringify({ model: 'm', messages: [{ role: 'system', content: 'JSON please' }, { role: 'user', content: c.input.text }], response_format: { type: 'json_schema', json_schema: { name: 'listing', strict: false, schema: raw } } }),
+        });
+        return JSON.parse((await r.json()).choices[0].message.content);
+      };
+      const full = schoolSet.cases.find((g) => g.id === 'school-extract-01-full-listing');
+      assert.deepEqual(await ask(full), { label: '2BHK near Indiranagar', locality: 'Koramangala', board: 'CBSE', medium: 'ENGLISH', busService: 'yes', fees: '120000', admissionFee: '30000' });
+      const none = schoolSet.cases.find((g) => g.id === 'school-extract-03-missing-fees');
+      const got = await ask(none);
+      assert.equal(got.fees, null);
+      assert.equal(got.admissionFee, null);
+      assert.equal(got.board, null);
+    } finally {
+      own.close();
+    }
   });
 });

@@ -115,9 +115,13 @@ class HouseKindFileTest {
 
     /**
      * The extract's outputs that fill no field of the candidate: {@code amenities} is a list on the draft only (shown as
-     * a hint, never stored as a house value), so the kind file's {@code extract} slot does not name it.
+     * a hint, never stored as a house value). Since S4b-BL-271 the kind file's {@code extract} slot names it as well
+     * (a slot says what the extract carries), and this test skips it when it maps the slot to the model's fields.
      */
     private static final Set<String> DRAFT_ONLY = Set.of("amenities");
+
+    /** Slot ids the server's model does not fill: only the no-AI parsers of the website and the phones read the area. */
+    private static final Set<String> NO_AI_ONLY = Set.of("areaSqft");
 
     /** The AI slot {@code extract} names the candidate fields the listing extract fills today, in the schema's order. */
     @Test
@@ -126,7 +130,11 @@ class HouseKindFileTest {
         var byId = new HashMap<String, JsonNode>();
         for (var f : list(k.get("core"))) byId.put(f.get("id").asText(), f);
         for (var f : list(k.get("extras"))) byId.put(f.get("id").asText(), f);
-        var extract = list(k.get("ai").get("extract")).stream().flatMap(id -> wire(byId.get(id.asText())).stream()).toList();
+        var extract = list(k.get("ai").get("extract")).stream().map(JsonNode::asText)
+                .filter(id -> !DRAFT_ONLY.contains(id) && !NO_AI_ONLY.contains(id))
+                .flatMap(id -> wire(byId.get(id)).stream()).toList();
+        assertThat(list(k.get("ai").get("extract")).stream().map(JsonNode::asText).toList())
+                .containsAll(DRAFT_ONLY).containsAll(NO_AI_ONLY);
         assertThat(names(RawListing.class)).containsAll(DRAFT_ONLY);
         assertThat(extract).containsExactlyElementsOf(
                 names(RawListing.class).stream().filter(n -> !DRAFT_ONLY.contains(n)).toList());
