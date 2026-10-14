@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | The manual part of the release security gate: the one-hour list per release, and the scope of the deep self-run pentest |
-| Version | 0.11 |
+| Version | 0.12 |
 | Date | 2026-10-10 |
 | Author | Claude (Code), lead |
 | Status | Draft. Written (story S4b-SEC-3); **not yet run on a release candidate**, which is the story's last acceptance item |
@@ -23,6 +23,7 @@
 | 0.9 | 2026-10-10 | Claude (Code), engineer | **Voice input, planned** ([03](03-design.md) ADR-37, S4b-BL-218): F11 (voice off by default, permissions asked at use, no audio at rest) and G4, the privacy note and Play data-safety answer to be done at voice pull request 5 (S4b-BL-222), a Planned note and not a claim. |
 | 0.10 | 2026-10-14 | Claude (Code), engineer | **Part J, kinds and spaces** (S4b-BL-216; [02](02-threat-model.md) v0.77 T-E13, T-T21, T-I49, T-D15): J1..J7, run on every release (web, Android, server) until the owner opens a kind's release gate, and again after it; the release record gains line J. |
 | 0.11 | 2026-10-14 | Claude (Code), engineer | **J1** notes the two unit tests that read the build config (S4b-BL-309: `release-kinds.spec.ts`, `ReleaseKindsTest`); the hand check stays for a workflow that adds a `--define` or a `-P` property. |
+| 0.12 | 2026-10-14 | Claude (Code), engineer | §2 and §6: the release APK for a Play release comes from `release.yml` (a draft GitHub Release, C-02); its notes say *not approved* and this gate is what approves it; the record gains the draft's tag. |
 
 ## 1. What this is, and when it runs
 
@@ -51,8 +52,10 @@ real landlord's name or phone, never the owner's own house list.
 - [ ] Every workflow on the release commit is green: Web, Backend, Android, Shared-iOS, Security, CodeQL.
 - [ ] The artifacts are at hand: `backend-zap-api-scan` and the Trivy image output (Backend), `android-mobsf-report`
       (Android), the Security run's licence-check log.
-- [ ] A release APK built from that commit (signed, from `android.yml`'s `release` job, for a Play release; unsigned
-      from the `mobsf` job otherwise).
+- [ ] A release APK built from that commit (signed, for a Play release: the **draft GitHub Release** that `release.yml` makes
+      from the pushed tag, [07](07-secure-build-and-deploy.md) §5, whose notes say it is not approved until this list passes; or
+      `android.yml`'s `release` job artifact; unsigned from the `mobsf` job otherwise). Check its `.sha256` and that the signer
+      fingerprint in the notes is the one in the README.
 - [ ] Tools: Docker (MobSF, and ZAP if needed), an Android emulator or a test phone with `adb`, a desktop browser with
       developer tools, `curl`, and for a public server `testssl.sh`.
 - [ ] A test house list: three houses, one with the payloads `<img src=x onerror=alert(1)>` as its label and
@@ -243,7 +246,7 @@ report, as findings in [02](02-threat-model.md) and a summary in [10](10-sprint-
 ## 6. Release record (copy for each release)
 
 ```
-Release: <version>  Commit: <sha>  Date: <yyyy-mm-dd>  Run by: <name>
+Release: <version>  Commit: <sha>  Tag / draft release: <vX.Y.Z, link>  Date: <yyyy-mm-dd>  Run by: <name>
 Kind: Play release / public server / web deploy
 A automated gate   pass / fail   notes:
 B web              pass / fail / n/a
