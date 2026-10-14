@@ -30,6 +30,8 @@ import { TraceStore } from '../../data/trace-store';
 import type { SavedWalkRow } from '../../data/trace-store';
 import { TPipe } from '../../i18n/t.pipe';
 import { HOUSE_KEYS } from '../../core/kind-labels';
+import { toolWord } from '../../core/space-tool-words';
+import type { TKey } from '../../i18n/en';
 import { TranslationService } from '../../i18n/translation.service';
 import type { MapOverlay } from '../../shared/location-map';
 import type { TraceWalk } from '../../shared/trace-geo';
@@ -72,7 +74,7 @@ export function walkBounds(walk: TraceWalk): [[number, number], [number, number]
         } @else if (failed()) {
           <p class="error" role="alert" id="walks-error">{{ 'trace.house.loadError' | t }}</p>
         } @else if (rows().length === 0) {
-          <p class="muted" id="walks-empty">{{ 'trace.house.empty' | t }}</p>
+          <p class="muted" id="walks-empty">{{ word('trace.house.empty') | t }}</p>
         } @else {
           <ul class="walks" [attr.aria-label]="L.section('walks') | t">
             @for (row of rows(); track row.id) {
@@ -129,6 +131,9 @@ export class HouseWalksCard {
 
   /** The house's id; a house not saved yet (`isNew`) has no walks and the card is not shown. */
   readonly houseId = input.required<string>();
+  /** The candidate's kind: its words for the empty line (S4b-BL-259). */
+  readonly kind = input('house');
+  protected readonly word = (key: TKey): TKey => toolWord(this.kind(), key);
   readonly isNew = input(false);
   /** What to draw on the page's own map: the walk and its halo, or null to clear. */
   readonly overlay = output<MapOverlay | null>();

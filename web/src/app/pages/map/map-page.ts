@@ -46,7 +46,6 @@ import {
   HouseDto,
   STATUSES,
   STATUS_ICON,
-  STATUS_KEY,
   StatsDto,
   houseScore,
 } from '../../core/models';
@@ -54,6 +53,7 @@ import { errorMsg } from '../../core/format';
 import { Announcer } from '../../core/announcer.service';
 import { SyncService } from '../../data/sync.service';
 import { type MapStyleWatch, createMlMap, localizeMap, watchMapStyle } from '../../shared/map-style';
+import { statusKeys } from '../../core/kind-labels';
 import { SpaceService } from '../../core/space.service';
 import { round6 } from '../../shared/location-map';
 import { type Area, type AreaNoteRow, notesReaching } from '../../shared/area';
@@ -236,7 +236,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
   protected readonly sharedText = signal<string | null>(null);
 
   protected readonly statuses = STATUSES;
-  protected readonly statusKey = STATUS_KEY;
+  protected readonly statusKey = computed(() => statusKeys(this.space.current().labels));
   protected readonly statusIcon = STATUS_ICON;
   protected readonly filterIcon: Readonly<Record<StatusFilter, string>> = { ALL: '', ...STATUS_ICON };
   protected readonly filters: readonly StatusFilter[] = ['ALL', 'NEW', 'SHORTLISTED', 'REJECTED', 'TAKEN', 'NOT_CHOSEN'];
@@ -713,7 +713,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
 
   /** The label key of a status filter chip. */
   protected filterKey(f: StatusFilter): TKey {
-    return f === 'ALL' ? 'status.ALL' : STATUS_KEY[f];
+    return f === 'ALL' ? 'status.ALL' : this.statusKey()[f];
   }
 
   /** Houses per status, tallied once when the houses change, not once per chip on every change detection. */
@@ -939,10 +939,10 @@ export class MapPage implements AfterViewInit, OnDestroy {
     title.textContent = h.label || this.i18n.t('common.untitled');
     el.appendChild(title);
     const details = [
-      `${STATUS_ICON[h.status]} ${this.i18n.t(STATUS_KEY[h.status])}`,
+      `${STATUS_ICON[h.status]} ${this.i18n.t(this.statusKey()[h.status])}`,
       h.price != null ? this.i18n.price(h.price, h.priceType) : null,
       h.bedrooms != null ? this.i18n.t('common.bhk', { n: h.bedrooms }) : null,
-      this.i18n.t('common.scoreValue', { score: this.i18n.score(houseScore(h, this.scoring())) }),
+      this.space.current().labels.isVisible('section.checklist') ? this.i18n.t('common.scoreValue', { score: this.i18n.score(houseScore(h, this.scoring())) }) : null,
     ].filter((x): x is string => !!x);
     const sub = document.createElement('div');
     sub.textContent = details.join(' · ');

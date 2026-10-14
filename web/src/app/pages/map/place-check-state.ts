@@ -28,7 +28,9 @@
 
 import { Injectable, inject, signal } from '@angular/core';
 import { Announcer } from '../../core/announcer.service';
+import { toolWord } from '../../core/space-tool-words';
 import { GEOLOCATION, TraceRecorderService } from '../../core/trace-recorder.service';
+import type { TKey } from '../../i18n/en';
 import { TraceStore } from '../../data/trace-store';
 import { TranslationService } from '../../i18n/translation.service';
 import { locateBest } from '../../shared/locate-once';
@@ -43,6 +45,8 @@ type Bounds = [[number, number], [number, number]];
 /** One answer: what was asked about, what was found, and what to draw. */
 export interface CheckAnswer {
   readonly kind: PlaceKind;
+  /** The kind of the candidate a `house` answer is about: its words say *school* for a school (S4b-BL-259); the house when absent. */
+  readonly candidate?: string;
   readonly place: { readonly lat: number; readonly lon: number };
   /** Null for a house with only an area (`APPROX`): nothing was compared. */
   readonly summary: PlaceSummary | null;
@@ -105,12 +109,12 @@ export class PlaceCheckState {
    * Compares `place` with the stored walks. For *here* the walk now recording is left out and `fixAccuracyM` is the fix's;
    * a house or a picked spot counts every walk. Called only from a button's handler.
    */
-  async compute(kind: PlaceKind, place: { lat: number; lon: number }, fixAccuracyM?: number | null): Promise<CheckAnswer> {
+  async compute(kind: PlaceKind, place: { lat: number; lon: number }, fixAccuracyM?: number | null, candidate?: string): Promise<CheckAnswer> {
     const walks = await this.store.placeWalks(Date.now(), kind === 'here' ? this.recorder.liveWalkId() : 0, place);
     const result = placeCheck(place, walks, kind === 'here' ? fixAccuracyM : undefined);
     const summary = placeCheckSummary(result, { hasSaved: walks.some((w) => w.source === 'SAVED'), fixAccuracyM: kind === 'here' ? fixAccuracyM : null });
     const stretches = result.rows.filter((r) => r.walked).map((r) => matchedStretch(walks[r.walkIndex], r));
-    return { kind, place: { lat: place.lat, lon: place.lon }, summary, stretches, bounds: boundsOf(place, stretches) };
+    return { kind, ...(candidate && candidate !== 'house' ? { candidate } : {}), place: { lat: place.lat, lon: place.lon }, summary, stretches, bounds: boundsOf(place, stretches) };
   }
 
   /** The Map's answer: compares, shows it (the panel, the halo, the ring) and says the headline once. */
@@ -130,8 +134,10 @@ export class PlaceCheckState {
 
   /** The sentences of an answer in the app language. */
   text(answer: CheckAnswer): PlaceText {
-    if (answer.summary === null) return { headline: this.i18n.t('trace.here.approxHouse'), rows: [], rowsMore: null, notes: [] };
-    return placeCheckText(answer.summary, answer.kind, placeTextHelpers(this.i18n), true);
+    if (answer.summary === null) return { headline: this.i18n.t(toolWord(answer.candidate, 'trace.here.approxHouse')), rows: [], rowsMore: null, notes: [] };
+    const helpers = placeTextHelpers(this.i18n);
+    // The place's words are the candidate's kind's (a school's *this school*); the house's are the keys as they were.
+    return placeCheckText(answer.summary, answer.kind, answer.candidate ? { ...helpers, t: (key, params) => helpers.t(toolWord(answer.candidate, key as TKey), params) } : helpers, true);
   }
 
   /** *Show on map*: frame the place and the stretches. */

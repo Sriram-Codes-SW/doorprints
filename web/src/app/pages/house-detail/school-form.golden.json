@@ -1,7 +1,7 @@
 {
  "note": "The school form of the hidden schools kind (kinds PR 5, S4b-BL-209; docs/03 §18.9), read by school-form.spec.ts with the developer flag on: every control of the Details and Fees cards in page order (element, id, attributes, place in the rows, label; the words per language), their element tree, and the page's section headings, for the saved school of docs/schemas/kinds/school-vectors.json. Written once from the page on feat/kinds-7-schools-kind and read by eye; never rewritten by a test. The house's form is house-form.golden.json, unchanged by this kind.",
  "controls": [
-  "details input#house-name type=text maxlength=200 required= autocomplete=off placeholder=e.g. 2BHK near the park @div.title-row[1]>div.field.grow[0] \"School name *\"",
+  "details input#house-name type=text maxlength=200 required= autocomplete=off placeholder=e.g. St. Mary’s School @div.title-row[1]>div.field.grow[0] \"School name *\"",
   "details input#- type=radio name=status @fieldset.[2]>div.options[1]>label.option.status-NEW[0] \"Status / ● New\"",
   "details input#- type=radio name=status @fieldset.[2]>div.options[1]>label.option.status-SHORTLISTED[1] \"Status / ★ Shortlisted\"",
   "details input#- type=radio name=status @fieldset.[2]>div.options[1]>label.option.status-REJECTED[2] \"Status / ✕ Rejected\"",
@@ -155,7 +155,7 @@
  ],
  "labels": {
   "en": [
-   "School name * placeholder=e.g. 2BHK near the park",
+   "School name * placeholder=e.g. St. Mary’s School",
    "Status / ● New",
    "Status / ★ Shortlisted",
    "Status / ✕ Rejected",
@@ -182,7 +182,7 @@
    "Admission fee (₹)"
   ],
   "hi": [
-   "स्कूल का नाम * placeholder=जैसे, पार्क के पास 2BHK",
+   "स्कूल का नाम * placeholder=जैसे, सेंट मैरी स्कूल",
    "स्थिति / ● नया",
    "स्थिति / ★ चुना गया",
    "स्थिति / ✕ अस्वीकृत",
@@ -209,7 +209,7 @@
    "दाख़िला फ़ीस (₹)"
   ],
   "ta": [
-   "பள்ளியின் பெயர் * placeholder=எ.கா. பூங்கா அருகே 2BHK",
+   "பள்ளியின் பெயர் * placeholder=எ.கா. செயின்ட் மேரி பள்ளி",
    "நிலை / ● புதியது",
    "நிலை / ★ தேர்வானது",
    "நிலை / ✕ நிராகரிக்கப்பட்டது",
@@ -236,7 +236,7 @@
    "சேர்க்கைக் கட்டணம் (₹)"
   ],
   "te": [
-   "పాఠశాల పేరు * placeholder=ఉదా. పార్క్ దగ్గర 2BHK",
+   "పాఠశాల పేరు * placeholder=ఉదా. సెయింట్ మేరీ పాఠశాల",
    "స్థితి / ● కొత్తది",
    "స్థితి / ★ ఎంపికైంది",
    "స్థితి / ✕ తిరస్కరించబడింది",
@@ -269,7 +269,7 @@
    "cost-heading \"Fees\"",
    "house-area-notes-heading \"Area notes\"",
    "location-heading \"Location\"",
-   "house-check-heading \"Did I walk past this house?\"",
+   "house-check-heading \"Did I walk past this school?\"",
    "walks-heading \"Saved walks\"",
    "visits-heading \"Visits\"",
    "photos-heading \"Photos\""
@@ -279,7 +279,7 @@
    "cost-heading \"फ़ीस\"",
    "house-area-notes-heading \"इलाके के नोट\"",
    "location-heading \"जगह\"",
-   "house-check-heading \"क्या मैं इस मकान के पास से गुज़रा था?\"",
+   "house-check-heading \"क्या मैं इस स्कूल के पास से गुज़रा था?\"",
    "walks-heading \"सहेजी हुई सैरें\"",
    "visits-heading \"दौरे\"",
    "photos-heading \"तस्वीरें\""
@@ -289,7 +289,7 @@
    "cost-heading \"கட்டணம்\"",
    "house-area-notes-heading \"பகுதிக் குறிப்புகள்\"",
    "location-heading \"இருப்பிடம்\"",
-   "house-check-heading \"நான் இந்த வீட்டைக் கடந்து நடந்திருக்கிறேனா?\"",
+   "house-check-heading \"நான் இந்தப் பள்ளியைக் கடந்து நடந்திருக்கிறேனா?\"",
    "walks-heading \"சேமித்த நடைகள்\"",
    "visits-heading \"வருகைகள்\"",
    "photos-heading \"படங்கள்\""
@@ -299,7 +299,7 @@
    "cost-heading \"ఫీజు\"",
    "house-area-notes-heading \"ప్రాంత గమనికలు\"",
    "location-heading \"స్థానం\"",
-   "house-check-heading \"నేను ఈ ఇంటి పక్కగా నడిచానా?\"",
+   "house-check-heading \"నేను ఈ పాఠశాల పక్కగా నడిచానా?\"",
    "walks-heading \"సేవ్ చేసిన నడకలు\"",
    "visits-heading \"సందర్శనలు\"",
    "photos-heading \"ఫోటోలు\""

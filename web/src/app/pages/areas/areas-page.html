@@ -20,7 +20,7 @@
   <header class="page-head">
     <p><a routerLink="/data">{{ 'areas.back' | t }}</a></p>
     <h1>{{ 'areas.title' | t }}</h1>
-    <p class="muted">{{ 'areas.intro' | t }}</p>
+    <p class="muted">{{ space.kindWord('areas.intro') | t }}</p>
   </header>
 
   @if (failure(); as f) {
@@ -116,7 +116,7 @@
     <section class="card" aria-labelledby="notes-heading">
       <h2 id="notes-heading">{{ 'areaNotes.heading' | t }}</h2>
       @if (notes().length === 0) {
-        <p id="notes-empty" class="muted">{{ 'areaNotes.empty' | t }}</p>
+        <p id="notes-empty" class="muted">{{ space.kindWord('areaNotes.empty') | t }}</p>
       } @else {
         <div class="filters">
           <div class="field">

@@ -30,7 +30,9 @@ import type { Announcer } from '../../core/announcer.service';
 import type { ConfirmService } from '../../core/confirm.service';
 import { errorMsg } from '../../core/format';
 import type { GeocodeService } from '../../core/geocode.service';
+import { drawnKind } from '../../core/kind-setting';
 import type { HouseDto, LocationSource } from '../../core/models';
+import type { TKey } from '../../i18n/en';
 import type { Msg, TranslationService } from '../../i18n/translation.service';
 import { locateOnce } from '../../shared/locate-once';
 import type { LatLon } from '../../shared/location-map';
@@ -38,7 +40,7 @@ import { round6 } from '../../shared/location-map';
 import { locationErrorKey, parseCoordinate } from '../../shared/map-center';
 import { runResult } from '../../shared/run-result';
 import type { RunResult } from '../../shared/run-result';
-import { FIELD_LABEL, addressFill } from './house-draft-merge';
+import { addressFill, fillLabel } from './house-draft-merge';
 import type { AddressLookup, FillField } from './house-draft-merge';
 
 /** What the location card of the house page needs from the page. */
@@ -55,9 +57,13 @@ export interface HouseLocationDeps {
   error: WritableSignal<RunResult<Msg> | null>;
   /** True once the page is destroyed: a late answer then fills no form and announces nothing. */
   gone: () => boolean;
+  /** A house word in the candidate's kind's (S4b-BL-259); left out, the house's key. */
+  word?: (key: TKey) => TKey;
 }
 
 export class HouseLocation {
+  private readonly w = (key: TKey): TKey => this.deps.word?.(key) ?? key;
+
   /**
    * False for a new house opened without a position (the share target, a bookmarked /houses/new) until the user
    * has put the pin: chosen a spot on the map, typed coordinates, or used their location. Saving is refused until
@@ -129,7 +135,7 @@ export class HouseLocation {
     this.placed.set(true);
     if (this.required()) {
       this.required.set(false);
-      if (this.deps.error()?.value.key === 'house.locationRequired') this.deps.error.set(null);
+      if (this.deps.error()?.value.key === this.w('house.locationRequired')) this.deps.error.set(null);
     }
     const current = this.deps.draft()?.locationSource ?? null;
     this.deps.patch({ lat, lon, locationSource: current === 'APPROX' && source === 'MAP' ? 'APPROX' : source });
@@ -209,8 +215,8 @@ export class HouseLocation {
         }
         this.message.set(null);
         this.placePin(round6(found.lat), round6(found.lon), 'APPROX');
-        this.foundMessage.set(runResult({ key: 'house.placeFound', params: { place } }));
-        this.deps.announcer.announce({ key: 'house.placeFound', params: { place } });
+        this.foundMessage.set(runResult({ key: this.w('house.placeFound'), params: { place } }));
+        this.deps.announcer.announce({ key: this.w('house.placeFound'), params: { place } });
       },
       error: (err: unknown) => {
         this.findRequest = null;
@@ -249,11 +255,12 @@ export class HouseLocation {
     const cur = this.deps.draft();
     if (!cur) return;
     const fill = addressFill(cur, found);
+    const labels = drawnKind(cur.kind).labels;
     const changes: Partial<HouseDto> = { ...fill.emptyOnly };
     const filled: FillField[] = [...fill.filled];
     if (fill.conflicts.length > 0) {
       const lines = fill.conflicts
-        .map((c) => this.deps.i18n.t('house.addressChange', { field: { key: FIELD_LABEL[c.field] }, old: c.old, new: c.incoming }))
+        .map((c) => this.deps.i18n.t('house.addressChange', { field: { key: fillLabel(c.field, labels) }, old: c.old, new: c.incoming }))
         .join('\n');
       const answer = await this.deps.confirm.choose(
         { key: 'house.addressReplaceAsk', params: { changes: lines } },
@@ -272,7 +279,7 @@ export class HouseLocation {
       return;
     }
     this.deps.patch(changes);
-    const fields = this.deps.i18n.list(filled.map((f) => this.deps.i18n.t(FIELD_LABEL[f])));
+    const fields = this.deps.i18n.list(filled.map((f) => this.deps.i18n.t(fillLabel(f, labels))));
     this.deps.announcer.announce({ key: 'house.addressFilledFields', params: { fields } });
   }
 }

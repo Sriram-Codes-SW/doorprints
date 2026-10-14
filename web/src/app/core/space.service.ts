@@ -22,6 +22,8 @@ import type { BuiltInKind } from './dev-kinds';
 import { availableKinds, defaultKind, enabledKinds, kindById, spacesOn } from './kind-setting';
 import type { HouseDto } from './models';
 import { holdsFor } from './space-scope';
+import type { TKey } from '../i18n/en';
+import { toolWord } from './space-tool-words';
 import { type SpaceWords, spaceWords } from './space-words';
 
 /** The path of a space's own pages: `/k/<kind>`, `/k/<kind>/new`, `/k/<kind>/<id>`. */
@@ -83,6 +85,11 @@ export class SpaceService {
       const k = kindOfPath(p);
       if (k) this.last.set(k);
     });
+  }
+
+  /** A house word in the space's own: the house's key in the house space, the kind's where it has one (S4b-BL-259). */
+  kindWord(key: TKey): TKey {
+    return toolWord(this.kind(), key);
   }
 
   /** The space's list and map. */

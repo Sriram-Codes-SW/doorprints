@@ -50,7 +50,7 @@ export { HouseListingFill } from './house-listing-fill';
             <span id="listing-cut-hint">{{ 'listingFill.cut' | t: { max: listing().max, n: listing().cut().leftOut } }}</span>
           }
         </div>
-        <span id="listing-fill-hint" class="field-hint">{{ 'listingFill.hint' | t }} {{ (ai.usesOwnKey() ? 'ai.disclosureOwnKeyHost' : 'ai.disclosure') | t: { host: ai.ownHost() } }}</span>
+        <span id="listing-fill-hint" class="field-hint">{{ listing().word('listingFill.hint') | t }} {{ listing().word(ai.usesOwnKey() ? 'ai.disclosureOwnKeyHost' : 'ai.disclosure') | t: { host: ai.ownHost() } }}</span>
       </div>
       <button
         type="button"

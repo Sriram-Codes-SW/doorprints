@@ -75,7 +75,7 @@ type NoteForm = 'street' | 'area' | null;
               >
                 <option value="">{{ 'areaNotes.areaPick' | t }}</option>
                 @if (inReach().length) {
-                  <optgroup [label]="'areaNotes.inReach' | t">
+                  <optgroup [label]="inReachLabel() | t">
                     @for (a of inReach(); track a.id) {
                       <option [value]="a.id">{{ a.name }}</option>
                     }
@@ -166,6 +166,8 @@ export class HouseAreaNotesCard {
   readonly house = input.required<HousePoint>();
   /** The line for no notes, in the candidate's kind's words (a school's, S4b-BL-212). */
   readonly none = input<TKey>('areaNotes.none');
+  /** The heading of the areas the candidate is in (the kind's words; S4b-BL-256). */
+  readonly inReachLabel = input<TKey>('areaNotes.inReach');
 
   protected readonly areas = signal<Area[]>([]);
   private readonly notes = signal<AreaNoteRow[]>([]);

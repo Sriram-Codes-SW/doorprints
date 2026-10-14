@@ -43,7 +43,6 @@ import {
   STATUSES,
   STATUS_COLOR,
   STATUS_ICON,
-  STATUS_KEY,
   VisitDto,
   newHouse,
   uuid,
@@ -65,11 +64,12 @@ import { HousePhotos, isStorageFull } from './house-photos';
 import { HouseRooms } from './house-rooms';
 import { HouseFloor, floorOf } from './house-floor';
 import { type KindExtras, MONEY_SECTION, extrasFor } from './kind-extras';
-import type { KindKeys } from '../../core/kind-labels';
+import { type KindKeys, statusKeys } from '../../core/kind-labels';
 import { drawnKind, ofKind } from '../../core/kind-setting';
 import { SpaceService } from '../../core/space.service';
 import { type SpaceWords, spaceWords } from '../../core/space-words';
-import { sharedFromNavigation, sortBrokers } from './house-page-input';
+import { toolWord } from '../../core/space-tool-words';
+import { blankToNull, clone, sharedFromNavigation, sortBrokers, toWholeNumber, withCost } from './house-page-input';
 import { QUESTION_CATEGORIES } from '../../shared/question';
 import type { Question, QuestionCategory } from '../../shared/question';
 import { HouseViewingsCard } from '../viewings/house-viewings-card';
@@ -186,6 +186,11 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   protected readonly space = inject(SpaceService);
   /** The kind's words for the save button and the area-notes line (a school's, S4b-BL-212). */
   protected get W(): SpaceWords { return spaceWords(this.kind().id); }
+  /**
+   * A house word of the page in the kind's own (S4b-BL-259): the house's key for a house, a school's for a school; with no
+   * candidate loaded (the *not found* card) the kind of the space on screen.
+   */
+  protected w(key: TKey): TKey { return toolWord(this.draft() ? this.kind().id : this.space.kind(), key); }
   private readonly extrasOf = extrasFor({ patch: (changes) => this.patch(changes) });
   /** The typed extras of the Details and Cost cards, drawn from the kind file (kind-extras.ts, S4b-BL-208). */
   protected get extras(): KindExtras { return this.extrasOf(this.kind().fields); }
@@ -223,6 +228,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     patch: (changes) => this.patch(changes),
     error: this.error,
     gone: () => this.destroyed,
+    word: (key) => this.w(key),
   });
   /** Unsaved edits from an earlier visit to this page (a discarded tab) were put back; offer to discard them. */
   protected readonly restored = signal(false);
@@ -291,7 +297,8 @@ export class HouseDetailPage implements OnInit, OnDestroy {
    */
   protected readonly checklist = computed<Criterion[]>(() => this.scoring().criteria.filter((c) => c.archived !== true));
   protected readonly statuses = STATUSES;
-  protected readonly statusKey = STATUS_KEY;
+  /** The status words of the candidate's kind (S4b-BL-256). */
+  protected readonly statusKey = computed(() => statusKeys(this.kind().labels));
   protected readonly statusIcon = STATUS_ICON;
   protected readonly statusColor = STATUS_COLOR;
   protected readonly checkValues: readonly number[] = [0, 1, 2, 3, 4, 5];
@@ -698,7 +705,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     this.leaveApproved = false;
     if (this.nameError() && this.draft()?.label.trim()) {
       this.nameError.set(false);
-      if (this.error()?.value.key === 'house.nameRequired') this.error.set(null);
+      if (this.error()?.value.key === this.w('house.nameRequired')) this.error.set(null);
     }
     this.scheduleDraftSave();
   }
@@ -921,14 +928,14 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     const label = d.label.trim();
     if (!label) {
       this.nameError.set(true);
-      this.error.set(runResult({ key: 'house.nameRequired' }));
+      this.error.set(runResult({ key: this.w('house.nameRequired') }));
       document.getElementById('house-name')?.focus();
       return false;
     }
     this.nameError.set(false);
     if (!this.position.placed()) {
       this.position.required.set(true);
-      this.error.set(runResult({ key: 'house.locationRequired' }));
+      this.error.set(runResult({ key: this.w('house.locationRequired') }));
       const lat = document.getElementById('house-lat');
       lat?.scrollIntoView({ block: 'center' });
       lat?.focus({ preventScroll: true });
@@ -1175,26 +1182,4 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     // Bare domain without scheme: add https://
     return `https://${u}`;
   }
-}
-
-/** A deep copy by JSON, for the saved state kept to restore on Discard. */
-function clone(h: HouseDto): HouseDto {
-  return JSON.parse(JSON.stringify(h)) as HouseDto;
-}
-
-/** The form binds the Cost fields to `cost.*`, so a draft always carries an object there (null on the wire). */
-function withCost(h: HouseDto): HouseDto {
-  return h.cost ? h : { ...h, cost: {} };
-}
-
-/** Trims the text; blank becomes null. */
-function blankToNull(s: string | null | undefined): string | null {
-  const t = (s ?? '').trim();
-  return t ? t : null;
-}
-
-/** A non-negative whole number, or null when the value is not a finite number. */
-function toWholeNumber(n: number | null | undefined): number | null {
-  if (n === null || n === undefined || typeof n !== 'number' || !Number.isFinite(n)) return null;
-  return Math.max(0, Math.round(n));
 }

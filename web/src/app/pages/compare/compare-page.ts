@@ -23,7 +23,8 @@ import type { Place } from '../../shared/area';
 import { LocalDataService } from '../../core/local-data.service';
 import { brokerLine } from '../../shared/broker';
 import { Announcer } from '../../core/announcer.service';
-import { HouseDto, STATUS_ICON, STATUS_KEY } from '../../core/models';
+import { HouseDto, STATUS_ICON } from '../../core/models';
+import { statusKeys } from '../../core/kind-labels';
 import { errorMsg, telHref } from '../../core/format';
 import { Msg, TranslationService } from '../../i18n/translation.service';
 import { TPipe } from '../../i18n/t.pipe';
@@ -115,7 +116,7 @@ export class ComparePage {
   /** The picker's search text (only offered above {@link SEARCH_ABOVE} candidates). */
   protected readonly pickerQuery = signal('');
 
-  protected readonly statusKey = STATUS_KEY;
+  protected readonly statusKey = computed(() => statusKeys(this.space.current().labels));
   protected readonly statusIcon = STATUS_ICON;
   protected readonly telHref = telHref;
   protected readonly glyphs = GLYPHS;
