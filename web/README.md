@@ -530,7 +530,7 @@ step 1.
    - **Cache storage:** exactly one cache, named `doorprints-shell-` + 16 lowercase hex characters + `/` (for example
      `doorprints-shell-3f9c0a1b2d4e5f60/`). Write the name down: it is this build's id. Every entry is a
      `https://doorprints.web.app/…` file of the build: `index.html`, `main-….js`, `polyfills-….js`,
-     `styles-….css`, `chunk-….js`, `maplibre/maplibre-gl-worker.mjs`, `maplibre/maplibre-gl-shared.mjs`,
+     `styles-….css`, `chunk-….js`, `maplibre-gl-worker.mjs`,
      `manifest.webmanifest`, `favicon.svg` and `icons/….png`, plus `media/…` if the build has any. There is no other
      host (no map tiles, fonts, Nominatim or server), no `/api/` and no `screenshots/`.
    - **IndexedDB:** one database, `doorprints`, with the stores `houses`, `visits`, `photos` and `settings`, all empty.

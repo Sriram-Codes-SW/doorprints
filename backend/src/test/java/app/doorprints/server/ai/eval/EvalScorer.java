@@ -219,6 +219,26 @@ final class EvalScorer {
                         field(r, "amenities include '" + item + "'", hit, "amenities=" + amenities);
                     }
                 }
+                case "extras" -> {
+                    // A kind's typed extras (S4b-BL-268): each expected extra is one check; a money extra by amount and cadence.
+                    var actual = GoldenSet.map(out.get("extras"));
+                    for (var x : GoldenSet.map(exp).entrySet()) {
+                        field(r, "extras." + x.getKey() + " = " + x.getValue(), extraMatches(x.getValue(), actual.get(x.getKey())),
+                                "got " + quote(actual.get(x.getKey())), targets.contains("extras." + x.getKey()));
+                    }
+                }
+                case "extrasAbsent" -> {
+                    // Extras the listing does not give: one present is an invention, counted like a null field.
+                    var actual = GoldenSet.map(out.get("extras"));
+                    for (var id : GoldenSet.strings(exp)) {
+                        boolean absent = isBlank(actual.get(id));
+                        field(r, "extras." + id + " is absent", absent, "got " + quote(actual.get(id)));
+                        if (draft != null) {
+                            r.nullFields++;
+                            if (!absent) r.hallucinated++;
+                        }
+                    }
+                }
                 case "notesMention" -> {
                     var notes = str(out.get("notes"));
                     for (var item : GoldenSet.strings(exp)) {
@@ -289,6 +309,17 @@ final class EvalScorer {
         if (passed) r.fieldHits++;
         if (target) r.guard(name + InjectionScoring.TARGET_MARK, passed, detail);
         else r.check(name, passed, detail);
+    }
+
+    /** One typed extra of a draft against its expectation: a money object by amount and cadence, else as {@link #fieldMatches}. */
+    static boolean extraMatches(Object expected, Object actual) {
+        if (actual == null) return false;
+        if (expected instanceof Map<?, ?> money) {
+            var got = GoldenSet.map(actual);
+            return fieldMatches("amount", money.get("amount"), got.get("amount"))
+                    && (money.get("cadence") == null || fieldMatches("cadence", money.get("cadence"), got.get("cadence")));
+        }
+        return fieldMatches("extra", expected, actual);
     }
 
     static boolean fieldMatches(String key, Object expected, Object actual) {
