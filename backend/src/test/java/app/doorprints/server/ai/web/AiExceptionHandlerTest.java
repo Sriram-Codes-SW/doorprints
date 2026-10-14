@@ -25,6 +25,11 @@ import app.doorprints.server.ai.config.AiProperties;
 import app.doorprints.server.ai.embedding.GeminiEmbeddingModel.GeminiEmbeddingException;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.client.HttpClientErrorException;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -122,6 +127,30 @@ class AiExceptionHandlerTest {
         assertThat(quota.getBody().getProperties()).containsEntry("code", AiExceptionHandler.QUOTA_EXHAUSTED_CODE)
                 .containsEntry(AiExceptionHandler.CAUSE_PROPERTY, "provider").containsEntry("retryable", true);
         assertThat(quota.getHeaders().getFirst("Retry-After")).isEqualTo("60");
+    }
+
+    /** S4b-BL-244: a spent quota or credit is 402 with the quota code, not retryable, no Retry-After and no provider text. */
+    @Test
+    void aSpentQuotaOrCreditIs402WithTheQuotaCodeAndNoRetryAfter() {
+        var handler = AiExceptionHandlers.of(null);
+        for (var spent : List.of(new ClientException(402, "Payment Required", "SECRET-ECHO"),
+                HttpClientErrorException.create(HttpStatus.PAYMENT_REQUIRED, "Payment Required", new HttpHeaders(),
+                        new byte[0], java.nio.charset.StandardCharsets.UTF_8))) {
+            var response = handler.aiUnavailable(failure(spent));
+            assertThat(response.getStatusCode().value()).isEqualTo(402);
+            assertThat(response.getHeaders().getFirst("Retry-After")).isNull();
+            assertThat(response.getBody().getProperties()).containsEntry("code", AiExceptionHandler.QUOTA_EXHAUSTED_CODE)
+                    .containsEntry("retryable", false);
+            assertThat(response.getBody().getDetail()).doesNotContain("SECRET-ECHO");
+        }
+    }
+
+    @Test
+    void aPerMinuteLimitStaysA503WithRetryAfter() {
+        var response = AiExceptionHandlers.of(null).aiUnavailable(failure(new ClientException(429, "Too Many Requests", "x")));
+        assertThat(response.getStatusCode().value()).isEqualTo(503);
+        assertThat(response.getHeaders().getFirst("Retry-After")).isEqualTo("60");
+        assertThat(response.getBody().getProperties()).containsEntry("retryable", true);
     }
 
     /**

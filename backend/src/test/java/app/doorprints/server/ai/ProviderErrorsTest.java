@@ -90,7 +90,23 @@ class ProviderErrorsTest {
     }
 
     @Test
+    void paymentRequiredIsQuotaAndSpentOnEveryPath() {
+        // S4b-BL-244: 402 is a spent credit, whichever client raised it; a 429 is a wait unless a named field says otherwise.
+        assertThat(ProviderErrors.isQuotaExhausted(wrapped(new ClientException(402, "Payment Required", "x")))).isTrue();
+        assertThat(ProviderErrors.isQuotaSpent(wrapped(new ClientException(402, "Payment Required", "x")))).isTrue();
+        assertThat(ProviderErrors.isQuotaSpent(wrapped(new GeminiEmbeddingException("HTTP 402", 402, "X")))).isTrue();
+        assertThat(ProviderErrors.isQuotaSpent(wrapped(HttpClientErrorException.create(HttpStatus.PAYMENT_REQUIRED, "x",
+                new HttpHeaders(), new byte[0], StandardCharsets.UTF_8)))).isTrue();
+        assertThat(ProviderErrors.isQuotaSpent(wrapped(new ClientException(429, "Too Many Requests", "PerDay")))).isFalse();
+        assertThat(ProviderErrors.isQuotaSpent(wrapped(RateLimitException.builder().headers(Headers.builder().build())
+                .build()))).isFalse();
+        assertThat(ProviderErrors.isQuotaSpent(wrapped(new ServerException(503, "Service Unavailable", "")))).isFalse();
+        assertThat(ProviderErrors.isQuotaSpent(null)).isFalse();
+    }
+
+    @Test
     void messagesAreNeverInspected() {
+        assertThat(ProviderErrors.isQuotaSpent(new RuntimeException("402 insufficient_quota PerDay"))).isFalse();
         assertThat(ProviderErrors.isQuotaExhausted(new RuntimeException("429 RESOURCE_EXHAUSTED quota"))).isFalse();
         assertThat(ProviderErrors.isQuotaExhausted(null)).isFalse();
     }

@@ -98,6 +98,14 @@ describe('AiService', () => {
     expect(aiErrorMsg(forbidden('AI_PAUSED')).key).toBe('ai.disabled');
   });
 
+  // S4b-BL-244: the server's own AI says its provider quota or credit is spent with 402; a 503 stays "try again later".
+  it('words the server\'s 402 as a spent quota and its 503 as a provider that is down', () => {
+    const spent = new HttpErrorResponse({ status: 402, error: { status: 402, code: 'AI_QUOTA_EXHAUSTED', retryable: false } });
+    expect(aiErrorMsg(spent)).toEqual({ key: 'ai.quotaExhausted' });
+    const wait = new HttpErrorResponse({ status: 503, error: { status: 503, code: 'AI_QUOTA_EXHAUSTED', retryable: true } });
+    expect(aiErrorMsg(wait)).toEqual({ key: 'ai.providerDown' });
+  });
+
   // ADR-26: the same calls, answered by the server or by Gemini from this browser with the person's own key.
   it('with no server, an own Gemini key turns AI on once the switch is on; the key is kept as asked', () => {
     const ai = create(false);

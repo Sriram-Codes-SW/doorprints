@@ -330,6 +330,41 @@ public class GeminiOpenAiChatContractTest {
         assertThat(requestBodies).hasSize(1); // maxRetries 0 here; production uses AI_MAX_RETRIES
     }
 
+    /**
+     * S4b-BL-244: the shared vectors {@code quotaResponses} through the real stack (a local server answering with each body):
+     * a spent quota or credit (402, a Gemini {@code PerDay} quota id, {@code insufficient_quota}) is told from a wait. The
+     * Anthropic bodies are skipped: the server never talks to Anthropic. Same expectations as the clients' {@code AiQuota}.
+     */
+    @Test
+    void theSharedQuotaVectorsTellASpentQuotaFromAWait() throws Exception {
+        var vectors = new tools.jackson.databind.ObjectMapper().readTree(java.nio.file.Files.readString(
+                app.doorprints.server.ai.HouseAiPins.repoFile("docs/ai/evals/parity-vectors.json"))).get("quotaResponses");
+        int checked = 0;
+        for (var v : vectors) {
+            int status = v.get("status").asInt();
+            var provider = v.get("provider").asString();
+            if ("anthropic".equals(provider) || (status != 400 && status != 402 && status != 429)) continue;
+            replies.clear();
+            replies.add(new Reply(status, v.get("body").asString()));
+            var thrown = org.assertj.core.api.Assertions.catchThrowable(() -> model().call(new Prompt("q")));
+            assertThat(thrown).as(v.get("note").asString()).isNotNull();
+            assertThat(app.doorprints.server.ai.ProviderErrors.isQuotaSpent(thrown)).as(v.get("note").asString())
+                    .isEqualTo(v.get("expected").get("quota").asBoolean());
+            checked++;
+        }
+        assertThat(checked).as("vectors read").isGreaterThanOrEqualTo(10);
+
+        // Gemini's compatible endpoint wraps its error in an array; the per-minute form waits, the per-day form is spent.
+        for (var day : new boolean[] {false, true}) {
+            replies.clear();
+            replies.add(new Reply(429, "[{\"error\":{\"code\":429,\"status\":\"RESOURCE_EXHAUSTED\",\"details\":[{\"violations\":"
+                    + "[{\"quotaId\":\"GenerateRequests" + (day ? "PerDay" : "PerMinute") + "PerProject\"}]}]}}]"));
+            var thrown = org.assertj.core.api.Assertions.catchThrowable(() -> model().call(new Prompt("q")));
+            assertThat(app.doorprints.server.ai.ProviderErrors.isQuotaSpent(thrown)).as("array form, day=" + day).isEqualTo(day);
+            assertThat(app.doorprints.server.ai.ProviderErrors.isQuotaExhausted(thrown)).isTrue();
+        }
+    }
+
     // What a provider safety block does on the server today (S4b-BL-232, docs/ai/ai-design.md 15). The server maps nothing
     // to a "declined" result yet (backlog S4b-BL-233); these tests pin the outcome so the later change starts from facts.
     // Shapes: Gemini's OpenAI-compatible endpoint reports a filtered answer as finish_reason "content_filter" with no
