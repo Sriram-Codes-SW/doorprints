@@ -1,0 +1,151 @@
+/*
+ * Copyright 2026 Sriram (Sriram-Codes-SW)
+ *
+ * This file is part of Doorprints.
+ *
+ * Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+ * Public License as published by the Free Software Foundation, version 3 of the License.
+ *
+ * Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+ * the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+import { Injectable, inject, signal } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
+import { LocalStore } from '../data/local-store.service';
+import { SyncService } from '../data/sync.service';
+import { Announcer } from './announcer.service';
+import { LocalDataService } from './local-data.service';
+import { SpaceService } from './space.service';
+import { binRows, parseNotes, withNote } from '../data/house-bin';
+import type { RestoreResult } from '../data/house-bin';
+import { SETTING_KEYS, type HouseRecord, type PhotoRecord } from '../data/records';
+
+/** How long *Undo* is offered after a delete, in milliseconds (the phones' snackbar is shown as long: DeletedHouseUndo.kt). */
+export const UNDO_MS = 10_000;
+
+/** The delete the person can still take back. */
+export interface UndoOffer {
+  readonly id: string;
+  readonly name: string;
+}
+
+/** One line of *Recently deleted*: a tombstone of this space, with what is known of its photos. */
+export interface BinEntry {
+  readonly id: string;
+  readonly name: string;
+  /** The ISO instant of the delete (the tombstone's `updatedAt`). */
+  readonly deletedAt: string;
+  /** How many photos the candidate had when it was deleted here (0 when unknown, for instance deleted on another device). */
+  readonly photos: number;
+}
+
+/** What a restore from the list did, for the words after it. */
+export interface Restored {
+  readonly name: string;
+  /** Photos that could not come back (their bytes are gone), 0 when none was lost. */
+  readonly photosGone: number;
+}
+
+/** The name a candidate goes by in the words around a delete: its label, else its address, else ''. */
+export function nameOfRow(row: Pick<HouseRecord, 'label' | 'address'>): string {
+  return row.label?.trim() || row.address?.trim() || '';
+}
+
+/**
+ * Deleting one candidate on the website, taken back (deletion safeguards PR 1, docs/11 5.27.6). The candidate is
+ * deleted at once, as before (`LocalStore.deleteHouse`: a tombstone that syncs, its photos dropped, its saved walks
+ * deleted); this service then offers *Undo* for {@link UNDO_MS} (the snackbar in the app shell reads {@link offer}).
+ * *Undo* flips the tombstone back and puts the photos back from copies held in memory for that time; the same flip is
+ * the *Restore* of *Recently deleted* ({@link bin}, {@link restore}), which has no copies and so brings back only
+ * photos whose bytes are still stored. Saved walks have no tombstone and never come back, which is why the page asks
+ * once before a delete that takes walks with it.
+ */
+@Injectable({ providedIn: 'root' })
+export class DeleteUndoService {
+  private readonly store = inject(LocalStore);
+  private readonly data = inject(LocalDataService);
+  private readonly sync = inject(SyncService);
+  private readonly announcer = inject(Announcer);
+  private readonly space = inject(SpaceService);
+
+  /** The delete that can be undone now, or null. */
+  readonly offer = signal<UndoOffer | null>(null);
+  private held: readonly PhotoRecord[] = [];
+  private timer: ReturnType<typeof setTimeout> | undefined;
+
+  /** Deletes the candidate and offers *Undo*. Throws what the delete threw; then nothing is offered. */
+  async remove(id: string, name: string): Promise<void> {
+    const photos = await this.store.photos.ofHouse(id);
+    await firstValueFrom(this.data.deleteHouse(id), { defaultValue: undefined });
+    await this.note(id, photos.length);
+    this.held = photos;
+    this.offer.set({ id, name });
+    this.arm();
+  }
+
+  /** Takes the last delete back: the candidate, and its photos from the copies. A no-op after the time is up. */
+  async undo(): Promise<void> {
+    const offer = this.offer();
+    if (!offer) return;
+    const held = this.held;
+    this.dismiss();
+    const result = await this.store.restoreHouse(offer.id, Date.now(), held);
+    if (!result) return;
+    await this.note(offer.id, 0);
+    this.sync.syncSoon();
+    this.announcer.announce({ key: 'delete.restored', params: { name: offer.name } });
+  }
+
+  /** Hides the offer and drops the copies. */
+  dismiss(): void {
+    clearTimeout(this.timer);
+    this.timer = undefined;
+    this.held = [];
+    this.offer.set(null);
+  }
+
+  /** Holds the time while the pointer or the focus is on the snackbar, and restarts it when they leave (WCAG 2.2.1). */
+  hold(on: boolean): void {
+    if (!this.offer()) return;
+    clearTimeout(this.timer);
+    this.timer = undefined;
+    if (!on) this.arm();
+  }
+
+  private arm(): void {
+    clearTimeout(this.timer);
+    this.timer = setTimeout(() => this.dismiss(), UNDO_MS);
+  }
+
+  /** This space's tombstones younger than 30 days, the newest first. */
+  async bin(now: number = Date.now()): Promise<BinEntry[]> {
+    const rows = await this.store.deletedHouses();
+    const notes = parseNotes(await this.store.setting(SETTING_KEYS.binPhotos));
+    const space = { kind: this.space.kind(), multi: this.space.multi(), dflt: this.space.dflt(), available: this.space.available };
+    return binRows(rows, space, now).map((r) => ({ id: r.id, name: nameOfRow(r), deletedAt: r.updatedAt ?? '', photos: notes[r.id] ?? 0 }));
+  }
+
+  /** Restores one entry of the list. Undefined when it is no longer a tombstone (restored on another device meanwhile). */
+  async restore(entry: BinEntry, now: number = Date.now()): Promise<Restored | undefined> {
+    const result: RestoreResult | undefined = await this.store.restoreHouse(entry.id, now);
+    if (!result) return undefined;
+    await this.note(entry.id, 0);
+    this.sync.syncSoon();
+    const had = Math.max(entry.photos, result.photosBack + result.photosGone);
+    return { name: entry.name, photosGone: had - result.photosBack };
+  }
+
+  /** Remembers how many photos a deleted candidate had (0 forgets it), dropping the notes of tombstones that are gone. */
+  private async note(id: string, count: number): Promise<void> {
+    const keep = new Set((await this.store.deletedHouses()).map((h) => h.id));
+    const notes = parseNotes(await this.store.setting(SETTING_KEYS.binPhotos));
+    await this.store.setSetting(SETTING_KEYS.binPhotos, JSON.stringify(withNote(notes, id, count, keep)));
+  }
+}

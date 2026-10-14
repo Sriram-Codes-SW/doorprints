@@ -24,6 +24,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AiService } from '../../core/ai.service';
 import { Announcer } from '../../core/announcer.service';
 import { ConfirmService } from '../../core/confirm.service';
+import { DeleteUndoService } from '../../core/delete-undo.service';
 import { GeocodeService } from '../../core/geocode.service';
 import { LocalDataService } from '../../core/local-data.service';
 import type { HouseDto } from '../../core/models';
@@ -319,15 +320,52 @@ describe('the house page and its saved walks', () => {
     expect(page.overlay()).toBeNull();
   });
 
-  it('asks the plain delete question for a house with no saved walk, and says the walks go too when it has some', async () => {
-    const plain = await open();
-    await plain.page.deleteHouse();
-    expect(plain.asked[0]).toMatchObject({ key: 'confirm.deleteHouse' });
-    const withWalks = await open();
-    for (let i = 0; i < 6; i++) await withWalks.traces.putPoint({ lat: i * 20 * DEG, lon: 0, atMs: NOW + i * 60_000, walkId: NOW }, 10);
-    await withWalks.traces.saveWalk(NOW, HOUSE, NOW);
-    await withWalks.page.deleteHouse();
-    expect(withWalks.asked[0]).toMatchObject({ key: 'trace.houseDelete.confirm' });
+  // Deletion safeguards PR 1 (docs/11 5.27.6): no dialog for a delete that Undo takes back; one question, naming the
+  // number of saved walks, when walks go with the house, because walks have no tombstone and cannot come back.
+  async function saveWalks(f: Awaited<ReturnType<typeof open>>, n: number) {
+    for (let w = 0; w < n; w++) {
+      const base = NOW + w * 3_600_000;
+      for (let i = 0; i < 6; i++) await f.traces.putPoint({ lat: i * 20 * DEG, lon: 0, atMs: base + i * 60_000, walkId: base }, 10);
+      await f.traces.saveWalk(base, HOUSE, base);
+    }
+  }
+
+  it('deletes a house with no saved walk at once, with Undo, and asks nothing', async () => {
+    const f = await open();
+    const remove = vi.spyOn(TestBed.inject(DeleteUndoService), 'remove').mockResolvedValue();
+    await f.page.deleteHouse();
+    expect(f.asked).toEqual([]);
+    expect(remove).toHaveBeenCalledWith(HOUSE, 'Blue gate');
   });
+
+  it('asks one question that names the number of saved walks when they go with the house, and deletes only on yes', async () => {
+    const f = await open();
+    const remove = vi.spyOn(TestBed.inject(DeleteUndoService), 'remove').mockResolvedValue();
+    await saveWalks(f, 2);
+    await f.page.deleteHouse();
+    expect(f.asked).toEqual([{ key: 'delete.walksQuestion', params: { name: 'Blue gate', n: '2' } }]);
+    expect(remove).not.toHaveBeenCalled();
+    vi.spyOn(TestBed.inject(ConfirmService), 'ask').mockResolvedValue(true);
+    await f.page.deleteHouse();
+    expect(remove).toHaveBeenCalledWith(HOUSE, 'Blue gate');
+  });
+
+  it('asks the question without a number when the walks cannot be counted', async () => {
+    const f = await open();
+    vi.spyOn(f.traces, 'savedCount').mockRejectedValue(new Error('locked'));
+    const remove = vi.spyOn(TestBed.inject(DeleteUndoService), 'remove').mockResolvedValue();
+    await f.page.deleteHouse();
+    expect(f.asked).toEqual([{ key: 'trace.houseDelete.confirm', params: { name: 'Blue gate' } }]);
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  it('shows the error and stays when the delete fails', async () => {
+    const f = await open();
+    vi.spyOn(TestBed.inject(DeleteUndoService), 'remove').mockRejectedValue(new Error('disk full'));
+    await f.page.deleteHouse();
+    await settle(f.fixture);
+    expect(f.host.querySelector('.danger-zone .error')?.textContent?.trim()).toBe('Delete failed: disk full');
+  });
+
 });
 

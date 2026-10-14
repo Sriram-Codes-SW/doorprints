@@ -1,0 +1,723 @@
+{
+ "format": "doorprints-delete-scope-vectors/1",
+ "status": "proposed",
+ "note": "The blast-radius invariant of deleting ONE candidate (deletion safeguards, docs/03 18.12, docs/02 T-D, S4b-BL-287): an action in one space (delete, undo, restore from Recently deleted, the list) writes only that candidate's row and never touches another row, whatever its kind. Each case seeds rows, runs steps and names the expected rows; 'unchanged' lists the rows that must be byte-identical before and after. 'at' is the injected clock (ISO); an action stamps updatedAt = max(at, previous updatedAt + 1 ms). The list ('bin') is deleted && updatedAt > now - 30 days, in the case's space (spaceOf: a row with no kind is a house, a kind with no space in 'available' is the default space's; with 'multi' false every tombstone is the one space's), newest updatedAt first, ties by id. Row fields: id, kind (absent = house), label, deleted, dirty, updatedAt. Read today by web delete-scope-vectors.spec.ts; the phones (CommonRepositoryTest) and the server (HouseServiceTest) read it in their own pull requests (S4b-BL-287).",
+ "cases": [
+  {
+   "name": "delete a school: the other school and both houses are byte-identical",
+   "space": "school",
+   "seed": [
+    {
+     "id": "h1",
+     "label": "h1",
+     "deleted": false,
+     "dirty": false,
+     "updatedAt": "2026-10-01T09:00:00.000Z"
+    },
+    {
+     "id": "h2",
+     "kind": "house",
+     "label": "h2",
+     "deleted": false,
+     "dirty": false,
+     "updatedAt": "2026-10-02T09:00:00.000Z"
+    },
+    {
+     "id": "s1",
+     "kind": "school",
+     "label": "s1",
+     "deleted": false,
+     "dirty": false,
+     "updatedAt": "2026-10-03T09:00:00.000Z"
+    },
+    {
+     "id": "s2",
+     "kind": "school",
+     "label": "s2",
+     "deleted": false,
+     "dirty": false,
+     "updatedAt": "2026-10-04T09:00:00.000Z"
+    }
+   ],
+   "steps": [
+    {
+     "op": "delete",
+     "id": "s1",
+     "at": "2026-10-14T12:00:00.000Z"
+    }
+   ],
+   "expect": {
+    "rows": [
+     {
+      "id": "h1",
+      "kind": "house",
+      "deleted": false,
+      "dirty": false,
+      "updatedAt": "2026-10-01T09:00:00.000Z"
+     },
+     {
+      "id": "h2",
+      "kind": "house",
+      "deleted": false,
+      "dirty": false,
+      "updatedAt": "2026-10-02T09:00:00.000Z"
+     },
+     {
+      "id": "s1",
+      "kind": "school",
+      "deleted": true,
+      "dirty": true,
+      "updatedAt": "2026-10-14T12:00:00.000Z"
+     },
+     {
+      "id": "s2",
+      "kind": "school",
+      "deleted": false,
+      "dirty": false,
+      "updatedAt": "2026-10-04T09:00:00.000Z"
+     }
+    ],
+    "unchanged": [
+     "h1",
+     "h2",
+     "s2"
+    ]
+   }
+  },
+  {
+   "name": "delete a house: both schools and the other house are byte-identical",
+   "space": "house",
+   "seed": [
+    {
+     "id": "h1",
+     "label": "h1",
+     "deleted": false,
+     "dirty": false,
+     "updatedAt": "2026-10-01T09:00:00.000Z"
+    },
+    {
+     "id": "h2",
+     "kind": "house",
+     "label": "h2",
+     "deleted": false,
+     "dirty": false,
+     "updatedAt": "2026-10-02T09:00:00.000Z"
+    },
+    {
+     "id": "s1",
+     "kind": "school",
+     "label": "s1",
+     "deleted": false,
+     "dirty": false,
+     "updatedAt": "2026-10-03T09:00:00.000Z"
+    },
+    {
+     "id": "s2",
+     "kind": "school",
+     "label": "s2",
+     "deleted": false,
+     "dirty": false,
+     "updatedAt": "2026-10-04T09:00:00.000Z"
+    }
+   ],
+   "steps": [
+    {
+     "op": "delete",
+     "id": "h1",
+     "at": "2026-10-14T12:00:00.000Z"
+    }
+   ],
+   "expect": {
+    "rows": [
+     {
+      "id": "h1",
+      "kind": "house",
+      "deleted": true,
+      "dirty": true,
+      "updatedAt": "2026-10-14T12:00:00.000Z"
+     },
+     {
+      "id": "h2",
+      "kind": "house",
+      "deleted": false,
+      "dirty": false,
+      "updatedAt": "2026-10-02T09:00:00.000Z"
+     },
+     {
+      "id": "s1",
+      "kind": "school",
+      "deleted": false,
+      "dirty": false,
+      "updatedAt": "2026-10-03T09:00:00.000Z"
+     },
+     {
+      "id": "s2",
+      "kind": "school",
+      "deleted": false,
+      "dirty": false,
+      "updatedAt": "2026-10-04T09:00:00.000Z"
+     }
+    ],
+    "unchanged": [
+     "h2",
+     "s1",
+     "s2"
+    ]
+   }
+  },
+  {
+   "name": "a row with no kind is a house: deleting it leaves the schools alone",
+   "space": "house",
+   "seed": [
+    {
+     "id": "h1",
+     "label": "h1",
+     "deleted": false,
+     "dirty": false,
+     "updatedAt": "2026-10-01T09:00:00.000Z"
+    },
+    {
+     "id": "s1",
+     "kind": "school",
+     "label": "s1",
+     "deleted": false,
+     "dirty": false,
+     "updatedAt": "2026-10-03T09:00:00.000Z"
+    }
+   ],
+   "steps": [
+    {
+     "op": "delete",
+     "id": "h1",
+     "at": "2026-10-14T12:00:00.000Z"
+    }
+   ],
+   "expect": {
+    "rows": [
+     {
+      "id": "h1",
+      "kind": "house",
+      "deleted": true,
+      "dirty": true,
+      "updatedAt": "2026-10-14T12:00:00.000Z"
+     },
+     {
+      "id": "s1",
+      "kind": "school",
+      "deleted": false,
+      "dirty": false,
+      "updatedAt": "2026-10-03T09:00:00.000Z"
+     }
+    ],
+    "unchanged": [
+     "s1"
+    ]
+   }
+  },
+  {
+   "name": "delete then undo: the candidate is live and dirty with a newer stamp, the rest is byte-identical",
+   "space": "school",
+   "seed": [
+    {
+     "id": "h1",
+     "label": "h1",
+     "deleted": false,
+     "dirty": false,
+     "updatedAt": "2026-10-01T09:00:00.000Z"
+    },
+    {
+     "id": "h2",
+     "kind": "house",
+     "label": "h2",
+     "deleted": false,
+     "dirty": false,
+     "updatedAt": "2026-10-02T09:00:00.000Z"
+    },
+    {
+     "id": "s1",
+     "kind": "school",
+     "label": "s1",
+     "deleted": false,
+     "dirty": false,
+     "updatedAt": "2026-10-03T09:00:00.000Z"
+    },
+    {
+     "id": "s2",
+     "kind": "school",
+     "label": "s2",
+     "deleted": false,
+     "dirty": false,
+     "updatedAt": "2026-10-04T09:00:00.000Z"
+    }
+   ],
+   "steps": [
+    {
+     "op": "delete",
+     "id": "s1",
+     "at": "2026-10-14T12:00:00.000Z"
+    },
+    {
+     "op": "undo",
+     "id": "s1",
+     "at": "2026-10-14T12:00:05.000Z"
+    }
+   ],
+   "expect": {
+    "rows": [
+     {
+      "id": "h1",
+      "kind": "house",
+      "deleted": false,
+      "dirty": false,
+      "updatedAt": "2026-10-01T09:00:00.000Z"
+     },
+     {
+      "id": "h2",
+      "kind": "house",
+      "deleted": false,
+      "dirty": false,
+      "updatedAt": "2026-10-02T09:00:00.000Z"
+     },
+     {
+      "id": "s1",
+      "kind": "school",
+      "deleted": false,
+      "dirty": true,
+      "updatedAt": "2026-10-14T12:00:05.000Z"
+     },
+     {
+      "id": "s2",
+      "kind": "school",
+      "deleted": false,
+      "dirty": false,
+      "updatedAt": "2026-10-04T09:00:00.000Z"
+     }
+    ],
+    "unchanged": [
+     "h1",
+     "h2",
+     "s2"
+    ]
+   }
+  },
+  {
+   "name": "undo on a clock that is behind: the stamp still moves past the tombstone",
+   "space": "school",
+   "seed": [
+    {
+     "id": "s1",
+     "kind": "school",
+     "label": "s1",
+     "deleted": false,
+     "dirty": false,
+     "updatedAt": "2026-10-03T09:00:00.000Z"
+    },
+    {
+     "id": "s2",
+     "kind": "school",
+     "label": "s2",
+     "deleted": false,
+     "dirty": false,
+     "updatedAt": "2026-10-04T09:00:00.000Z"
+    }
+   ],
+   "steps": [
+    {
+     "op": "delete",
+     "id": "s1",
+     "at": "2026-10-14T12:00:05.000Z"
+    },
+    {
+     "op": "undo",
+     "id": "s1",
+     "at": "2026-10-14T12:00:00.000Z"
+    }
+   ],
+   "expect": {
+    "rows": [
+     {
+      "id": "s1",
+      "kind": "school",
+      "deleted": false,
+      "dirty": true,
+      "updatedAt": "2026-10-14T12:00:05.001Z"
+     },
+     {
+      "id": "s2",
+      "kind": "school",
+      "deleted": false,
+      "dirty": false,
+      "updatedAt": "2026-10-04T09:00:00.000Z"
+     }
+    ],
+    "unchanged": [
+     "s2"
+    ]
+   }
+  },
+  {
+   "name": "restore a school from the list: the deleted house stays deleted, every other row is byte-identical",
+   "space": "school",
+   "seed": [
+    {
+     "id": "h1",
+     "label": "h1",
+     "deleted": false,
+     "dirty": false,
+     "updatedAt": "2026-10-01T09:00:00.000Z"
+    },
+    {
+     "id": "h9",
+     "kind": "house",
+     "label": "h9",
+     "deleted": true,
+     "dirty": false,
+     "updatedAt": "2026-10-11T09:00:00.000Z"
+    },
+    {
+     "id": "s1",
+     "kind": "school",
+     "label": "s1",
+     "deleted": false,
+     "dirty": false,
+     "updatedAt": "2026-10-03T09:00:00.000Z"
+    },
+    {
+     "id": "s9",
+     "kind": "school",
+     "label": "s9",
+     "deleted": true,
+     "dirty": false,
+     "updatedAt": "2026-10-12T09:00:00.000Z"
+    }
+   ],
+   "steps": [
+    {
+     "op": "restore",
+     "id": "s9",
+     "at": "2026-10-14T12:00:00.000Z"
+    }
+   ],
+   "expect": {
+    "rows": [
+     {
+      "id": "h1",
+      "kind": "house",
+      "deleted": false,
+      "dirty": false,
+      "updatedAt": "2026-10-01T09:00:00.000Z"
+     },
+     {
+      "id": "h9",
+      "kind": "house",
+      "deleted": true,
+      "dirty": false,
+      "updatedAt": "2026-10-11T09:00:00.000Z"
+     },
+     {
+      "id": "s1",
+      "kind": "school",
+      "deleted": false,
+      "dirty": false,
+      "updatedAt": "2026-10-03T09:00:00.000Z"
+     },
+     {
+      "id": "s9",
+      "kind": "school",
+      "deleted": false,
+      "dirty": true,
+      "updatedAt": "2026-10-14T12:00:00.000Z"
+     }
+    ],
+    "unchanged": [
+     "h1",
+     "h9",
+     "s1"
+    ]
+   }
+  },
+  {
+   "name": "restore of a row that is not deleted does nothing",
+   "space": "house",
+   "seed": [
+    {
+     "id": "h1",
+     "label": "h1",
+     "deleted": false,
+     "dirty": false,
+     "updatedAt": "2026-10-01T09:00:00.000Z"
+    },
+    {
+     "id": "s1",
+     "kind": "school",
+     "label": "s1",
+     "deleted": false,
+     "dirty": false,
+     "updatedAt": "2026-10-03T09:00:00.000Z"
+    }
+   ],
+   "steps": [
+    {
+     "op": "restore",
+     "id": "h1",
+     "at": "2026-10-14T12:00:00.000Z"
+    }
+   ],
+   "expect": {
+    "rows": [
+     {
+      "id": "h1",
+      "kind": "house",
+      "deleted": false,
+      "dirty": false,
+      "updatedAt": "2026-10-01T09:00:00.000Z"
+     },
+     {
+      "id": "s1",
+      "kind": "school",
+      "deleted": false,
+      "dirty": false,
+      "updatedAt": "2026-10-03T09:00:00.000Z"
+     }
+    ],
+    "unchanged": [
+     "h1",
+     "s1"
+    ]
+   }
+  },
+  {
+   "name": "the list per space: this space's tombstones under 30 days, newest first; a kind with no space is the default space's",
+   "now": "2026-10-14T12:00:00.000Z",
+   "multi": true,
+   "default": "house",
+   "available": [
+    "house",
+    "school"
+   ],
+   "seed": [
+    {
+     "id": "h-new",
+     "kind": "house",
+     "label": "h-new",
+     "deleted": true,
+     "dirty": false,
+     "updatedAt": "2026-10-13T08:00:00.000Z"
+    },
+    {
+     "id": "h-old",
+     "kind": "house",
+     "label": "h-old",
+     "deleted": true,
+     "dirty": false,
+     "updatedAt": "2026-10-01T08:00:00.000Z"
+    },
+    {
+     "id": "h-edge-out",
+     "kind": "house",
+     "label": "h-edge-out",
+     "deleted": true,
+     "dirty": false,
+     "updatedAt": "2026-09-14T12:00:00.000Z"
+    },
+    {
+     "id": "h-edge-in",
+     "kind": "house",
+     "label": "h-edge-in",
+     "deleted": true,
+     "dirty": false,
+     "updatedAt": "2026-09-14T12:00:00.001Z"
+    },
+    {
+     "id": "s-new",
+     "kind": "school",
+     "label": "s-new",
+     "deleted": true,
+     "dirty": false,
+     "updatedAt": "2026-10-14T08:00:00.000Z"
+    },
+    {
+     "id": "s-gone",
+     "kind": "school",
+     "label": "s-gone",
+     "deleted": true,
+     "dirty": false,
+     "updatedAt": "2026-08-01T08:00:00.000Z"
+    },
+    {
+     "id": "c-other",
+     "kind": "clinic",
+     "label": "c-other",
+     "deleted": true,
+     "dirty": false,
+     "updatedAt": "2026-10-12T08:00:00.000Z"
+    },
+    {
+     "id": "h-nokind",
+     "label": "h-nokind",
+     "deleted": true,
+     "dirty": false,
+     "updatedAt": "2026-10-10T08:00:00.000Z"
+    },
+    {
+     "id": "h-live",
+     "kind": "house",
+     "label": "h-live",
+     "deleted": false,
+     "dirty": false,
+     "updatedAt": "2026-10-13T09:00:00.000Z"
+    },
+    {
+     "id": "s-live",
+     "kind": "school",
+     "label": "s-live",
+     "deleted": false,
+     "dirty": false,
+     "updatedAt": "2026-10-14T09:00:00.000Z"
+    }
+   ],
+   "steps": [],
+   "expect": {
+    "bin": {
+     "house": [
+      "h-new",
+      "c-other",
+      "h-nokind",
+      "h-old",
+      "h-edge-in"
+     ],
+     "school": [
+      "s-new"
+     ]
+    },
+    "unchanged": [
+     "h-new",
+     "h-old",
+     "h-edge-out",
+     "h-edge-in",
+     "s-new",
+     "s-gone",
+     "c-other",
+     "h-nokind",
+     "h-live",
+     "s-live"
+    ]
+   }
+  },
+  {
+   "name": "with one space the list holds every tombstone under 30 days",
+   "now": "2026-10-14T12:00:00.000Z",
+   "multi": false,
+   "default": "house",
+   "available": [
+    "house"
+   ],
+   "seed": [
+    {
+     "id": "h-new",
+     "kind": "house",
+     "label": "h-new",
+     "deleted": true,
+     "dirty": false,
+     "updatedAt": "2026-10-13T08:00:00.000Z"
+    },
+    {
+     "id": "h-old",
+     "kind": "house",
+     "label": "h-old",
+     "deleted": true,
+     "dirty": false,
+     "updatedAt": "2026-10-01T08:00:00.000Z"
+    },
+    {
+     "id": "h-edge-out",
+     "kind": "house",
+     "label": "h-edge-out",
+     "deleted": true,
+     "dirty": false,
+     "updatedAt": "2026-09-14T12:00:00.000Z"
+    },
+    {
+     "id": "h-edge-in",
+     "kind": "house",
+     "label": "h-edge-in",
+     "deleted": true,
+     "dirty": false,
+     "updatedAt": "2026-09-14T12:00:00.001Z"
+    },
+    {
+     "id": "s-new",
+     "kind": "school",
+     "label": "s-new",
+     "deleted": true,
+     "dirty": false,
+     "updatedAt": "2026-10-14T08:00:00.000Z"
+    },
+    {
+     "id": "s-gone",
+     "kind": "school",
+     "label": "s-gone",
+     "deleted": true,
+     "dirty": false,
+     "updatedAt": "2026-08-01T08:00:00.000Z"
+    },
+    {
+     "id": "c-other",
+     "kind": "clinic",
+     "label": "c-other",
+     "deleted": true,
+     "dirty": false,
+     "updatedAt": "2026-10-12T08:00:00.000Z"
+    },
+    {
+     "id": "h-nokind",
+     "label": "h-nokind",
+     "deleted": true,
+     "dirty": false,
+     "updatedAt": "2026-10-10T08:00:00.000Z"
+    },
+    {
+     "id": "h-live",
+     "kind": "house",
+     "label": "h-live",
+     "deleted": false,
+     "dirty": false,
+     "updatedAt": "2026-10-13T09:00:00.000Z"
+    },
+    {
+     "id": "s-live",
+     "kind": "school",
+     "label": "s-live",
+     "deleted": false,
+     "dirty": false,
+     "updatedAt": "2026-10-14T09:00:00.000Z"
+    }
+   ],
+   "steps": [],
+   "expect": {
+    "bin": {
+     "house": [
+      "s-new",
+      "h-new",
+      "c-other",
+      "h-nokind",
+      "h-old",
+      "h-edge-in"
+     ]
+    },
+    "unchanged": [
+     "h-new",
+     "h-old",
+     "h-edge-out",
+     "h-edge-in",
+     "s-new",
+     "s-gone",
+     "c-other",
+     "h-nokind",
+     "h-live",
+     "s-live"
+    ]
+   }
+  }
+ ]
+}

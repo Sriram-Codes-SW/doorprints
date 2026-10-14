@@ -84,6 +84,7 @@ import type { Criterion, ScoreResult, Scoring } from '../../shared/scoring';
 import type { BrokerRow } from '../../shared/broker';
 import { LocalDataError } from '../../core/local-error';
 import { Announcer } from '../../core/announcer.service';
+import { DeleteUndoService, nameOfRow } from '../../core/delete-undo.service';
 import { LocationMap, round6 } from '../../shared/location-map';
 import type { MapOverlay } from '../../shared/location-map';
 import { AuthImage } from '../../shared/auth-image';
@@ -153,6 +154,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly location = inject(Location);
   private readonly announcer = inject(Announcer);
+  private readonly deleteUndo = inject(DeleteUndoService);
   private readonly confirm = inject(ConfirmService);
   private readonly traces = inject(TraceStore);
   private readonly unsaved = inject(UnsavedChanges);
@@ -1039,7 +1041,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   }
 
   /**
-   * Deletes the house after asking (the question says if saved walks go with it), or for a new house discards the form.
+   * Deletes the house at once with *Undo* (a question only when saved walks go with it), or for a new house discards the form.
    * Either way the page leaves without staying in history.
    */
   protected async deleteHouse(): Promise<void> {
@@ -1059,30 +1061,28 @@ export class HouseDetailPage implements OnInit, OnDestroy {
       this.leaveAfterRemoval();
       return;
     }
-    const name = d.label || this.i18n.t('house.thisHouse');
-    // The website has no undo: a house's saved walks are deleted with it, and the question says so when it has any.
+    const name = nameOfRow(d) || this.i18n.t('delete.unnamed');
+    // No question for a delete that Undo takes back. The one exception: saved walks go with the house and have no tombstone.
     let walks = 0;
     try {
       walks = await this.traces.savedCount(d.id);
     } catch {
-      // Unreadable: the plain question; LocalStore.deleteHouse still deletes the walks.
+      walks = -1; // Unreadable: the walks may be there, so the question is asked without their number.
     }
-    const ok = await this.confirm.ask({ key: walks > 0 ? 'trace.houseDelete.confirm' : 'confirm.deleteHouse', params: { name } }, {
-      confirmKey: 'house.delete',
-      danger: true,
-    });
-    if (!ok) return;
-    this.api.deleteHouse(d.id).subscribe({
-      next: () => {
-        this.dirty.set(false);
-        clearTimeout(this.draftTimer);
-        clearDraft(this.storeKey);
-        this.announcer.announce({ key: 'house.deleted' });
-        this.leaveAfterRemoval();
-      },
-      error: (err: unknown) =>
-        this.dangerMsg.set(runResult({ key: 'house.deleteFailed', params: { reason: errorMsg(err) } })),
-    });
+    if (walks !== 0) {
+      const msg: Msg = walks > 0 ? { key: 'delete.walksQuestion', params: { name, n: this.i18n.number(walks) } } : { key: 'trace.houseDelete.confirm', params: { name } };
+      if (!(await this.confirm.ask(msg, { confirmKey: this.L.ref('kind.delete'), danger: true }))) return;
+    }
+    try {
+      await this.deleteUndo.remove(d.id, name);
+    } catch (err: unknown) {
+      this.dangerMsg.set(runResult({ key: 'house.deleteFailed', params: { reason: errorMsg(err) } }));
+      return;
+    }
+    this.dirty.set(false);
+    clearTimeout(this.draftTimer);
+    clearDraft(this.storeKey);
+    this.leaveAfterRemoval();
   }
 
   /** Records a manual visit to this house now, at its position. */

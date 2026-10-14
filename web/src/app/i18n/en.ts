@@ -1753,6 +1753,21 @@ export const en = {
   'kinds.lastOn': 'One always stays on.',
   'chooser.hint': 'Tap a card to switch. Your houses are unchanged.',
   'chooser.hintDismiss': 'Got it',
+  'delete.unnamed': 'No name',
+  'delete.undo': 'Undo',
+  'delete.deleted': 'Deleted {name}',
+  'delete.restored': 'Restored {name}',
+  'delete.walksQuestion': 'Delete “{name}”? Its saved walks ({n}) are deleted with it and cannot be brought back. Everything else can be undone for 10 seconds.',
+  'delete.recentlyDeleted': 'Recently deleted',
+  'delete.binBody': 'What you deleted in the last 30 days stays here, and you can bring it back. Saved walks are not kept.',
+  'delete.binEmpty': 'Nothing deleted in the last 30 days.',
+  'delete.restore': 'Restore',
+  'delete.restoreAria': 'Restore {name}',
+  'delete.deletedOn': 'Deleted {when}',
+  'delete.photosGone': 'Restored {name}. Its photos could not be restored: a delete removes their files.',
+  'delete.rowPhotos': 'Photos that cannot be restored: {n}',
+  'delete.loadFailed': 'Could not read the list of recently deleted entries: {reason}',
+  'delete.restoreFailed': 'Could not restore: {reason}',
 };
 
 /** Every translation must have exactly these keys (checked by the compiler). */

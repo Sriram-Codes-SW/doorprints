@@ -1,0 +1,152 @@
+/*
+ * Copyright 2026 Sriram (Sriram-Codes-SW)
+ *
+ * This file is part of Doorprints.
+ *
+ * Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+ * Public License as published by the Free Software Foundation, version 3 of the License.
+ *
+ * Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+ * the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+import { Component, ElementRef, effect, inject, signal, untracked, viewChild } from '@angular/core';
+import { DeleteUndoService } from '../../core/delete-undo.service';
+import type { BinEntry } from '../../core/delete-undo.service';
+import { errorMsg } from '../../core/format';
+import { LocalDataService } from '../../core/local-data.service';
+import { SpaceService } from '../../core/space.service';
+import { TPipe } from '../../i18n/t.pipe';
+import { TranslationService } from '../../i18n/translation.service';
+import type { Msg } from '../../i18n/translation.service';
+
+/**
+ * *Recently deleted* on *Your data* (deletion safeguards PR 1, docs/11 5.27.6): this space's candidates deleted in the last
+ * 30 days, each with its name, when it was deleted and a *Restore* button. With spaces on, the card shows the current space
+ * only (its name is the sub-heading) and never touches another space's rows; with houses only it is just *Recently deleted*.
+ * It is a plain list: a restored entry leaves it, the words say what came back, and focus goes to the next *Restore*
+ * button, or to the heading when none is left. Saved walks are not kept (they have no tombstone), so the card says so.
+ */
+@Component({
+  selector: 'app-recently-deleted',
+  imports: [TPipe],
+  template: `
+    <section class="card" aria-labelledby="recently-deleted-heading">
+      <h2 id="recently-deleted-heading" #heading tabindex="-1">{{ 'delete.recentlyDeleted' | t }}</h2>
+      <p class="muted">{{ 'delete.binBody' | t }}</p>
+      @if (space.multi()) {
+        <h3 class="space-name">{{ space.current().keys.ref('kind.many') | t }}</h3>
+      }
+      <div role="status" aria-atomic="true">
+        @if (note(); as m) {
+          <p class="note">{{ m.key | t: m.params }}</p>
+        }
+      </div>
+      @if (error(); as e) {
+        <p class="error" role="alert">{{ e.key | t: e.params }}</p>
+      }
+      @if (entries(); as list) {
+        @if (list.length === 0) {
+          <p class="muted empty">{{ 'delete.binEmpty' | t }}</p>
+        } @else {
+          <ul class="rows" role="list">
+            @for (e of list; track e.id) {
+              <li class="row">
+                <div class="what">
+                  <p class="name"><strong>{{ e.name || ('delete.unnamed' | t) }}</strong></p>
+                  <p class="muted small">{{ 'delete.deletedOn' | t: { when: i18n.dateTime(e.deletedAt) } }}</p>
+                  @if (e.photos > 0) {
+                    <p class="muted small">{{ 'delete.rowPhotos' | t: { n: i18n.number(e.photos) } }}</p>
+                  }
+                </div>
+                <button type="button" class="btn restore" [disabled]="busy()" [attr.aria-label]="'delete.restoreAria' | t: { name: e.name || ('delete.unnamed' | t) }" (click)="restore(e)">
+                  {{ 'delete.restore' | t }}
+                </button>
+              </li>
+            }
+          </ul>
+        }
+      } @else {
+        <p class="muted">{{ 'common.loading' | t }}</p>
+      }
+    </section>
+  `,
+  styles: `
+    .space-name { margin: var(--space-3) 0 0; }
+    .rows { list-style: none; margin: var(--space-3) 0 0; padding: 0; display: grid; gap: var(--space-2); }
+    .row { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-2) var(--space-3); padding: var(--space-2) 0; border-top: 1px solid var(--border); }
+    .what p { margin: 0; overflow-wrap: anywhere; }
+    .note { margin: var(--space-2) 0 0; }
+    .empty { margin-top: var(--space-3); }
+    @media (min-width: 40rem) { .row { grid-template-columns: minmax(0, 1fr) auto; align-items: center; } }
+  `,
+})
+export class RecentlyDeleted {
+  private readonly undo = inject(DeleteUndoService);
+  private readonly data = inject(LocalDataService);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly heading = viewChild.required<ElementRef<HTMLElement>>('heading');
+  protected readonly space = inject(SpaceService);
+  protected readonly i18n = inject(TranslationService);
+  /** The list, or null while it is being read. */
+  protected readonly entries = signal<readonly BinEntry[] | null>(null);
+  protected readonly note = signal<Msg | null>(null);
+  protected readonly error = signal<Msg | null>(null);
+  protected readonly busy = signal(false);
+
+  constructor() {
+    // Read again after every write to the store (a sync pull, a delete elsewhere) and when the space changes.
+    effect(() => {
+      this.data.settled();
+      this.space.kind();
+      untracked(() => void this.load());
+    });
+  }
+
+  private async load(): Promise<void> {
+    try {
+      this.entries.set(await this.undo.bin());
+      this.error.set(null);
+    } catch (err: unknown) {
+      this.entries.set([]);
+      this.error.set({ key: 'delete.loadFailed', params: { reason: errorMsg(err) } });
+    }
+  }
+
+  /** Restores one entry, says what came back, and keeps focus in the list. */
+  protected async restore(entry: BinEntry): Promise<void> {
+    if (this.busy()) return;
+    this.busy.set(true);
+    this.note.set(null);
+    this.error.set(null);
+    const before = this.entries() ?? [];
+    const at = before.findIndex((e) => e.id === entry.id);
+    let failed: Msg | null = null;
+    try {
+      const result = await this.undo.restore(entry);
+      const name = entry.name || this.i18n.t('delete.unnamed');
+      if (result) this.note.set(result.photosGone > 0 ? { key: 'delete.photosGone', params: { name } } : { key: 'delete.restored', params: { name } });
+    } catch (err: unknown) {
+      failed = { key: 'delete.restoreFailed', params: { reason: errorMsg(err) } };
+    }
+    await this.load();
+    if (failed) this.error.set(failed);
+    this.busy.set(false);
+    this.focusAfter(at);
+  }
+
+  /** The Restore button now at `index` (the entry after the restored one), else the last one, else the heading. */
+  private focusAfter(index: number): void {
+    setTimeout(() => {
+      const buttons = this.host.nativeElement.querySelectorAll<HTMLElement>('button.restore');
+      const next = buttons.length ? buttons[Math.min(Math.max(index, 0), buttons.length - 1)] : this.heading().nativeElement;
+      next.focus();
+    });
+  }
+}
