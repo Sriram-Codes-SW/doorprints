@@ -2784,7 +2784,7 @@ checkbox and a 48 dp radio per kind, each named with the kind's noun; the muted 
 alone. Roborazzi baselines for the new screens only (`chooser`, `chooser_hidden`, `settings_kinds`; English light and Tamil dark).
 The longest words (Tamil, Telugu) wrap; none is cut.
 
-**Tests** ([06](06-test-plan.md) TC-U-217, TC-U-218, TC-M-70): `SpaceScopeVectorsTest` and `KindSettingVectorsTest` (the vectors),
+**Tests** ([06](06-test-plan.md) TC-U-220, TC-U-221, TC-M-72): `SpaceScopeVectorsTest` and `KindSettingVectorsTest` (the vectors),
 `SpaceCardsTest`, `SpaceCopiesTest`, `OnDeviceAiSpaceTest`, `SpaceUiTest`, `SpacesRootTest` (the house-only pin, the chooser, a
 space, the chip, Settings, the links, the shared listing), the three new baselines; mutation list
 `tools/mutations/kinds-13-android-spaces.json`.

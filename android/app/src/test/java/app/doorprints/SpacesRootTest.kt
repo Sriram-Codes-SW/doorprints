@@ -59,7 +59,7 @@ import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 
 /**
- * Spaces on the phones (kinds PR C, S4b-BL-274; docs/03 §18.12, TC-U-217), on the real app and Room. A build that ships the
+ * Spaces on the phones (kinds PR C, S4b-BL-274; docs/03 §18.12, TC-U-220), on the real app and Room. A build that ships the
  * house alone is the app it always was (no chooser, no chip, the same tabs and Settings rows); a build that ships the school
  * and has the switch off is that app too; with the school on, the first screen is the chooser, a card opens a space (its
  * words, its list, no Hunt mode outside the house), the chip comes back, the house-only Settings rows follow the kind, and
