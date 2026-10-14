@@ -62,7 +62,7 @@ On your server, add this line to the `.env` file (see [Set up your own server](s
 `docker compose up -d`:
 
 ```ini
-AI_DEV_KINDS=true
+KINDS_AVAILABLE=house,school
 ```
 
 Without it, the server reads every saved entry as a house, and **Fill in from listing text** on a new school shows an

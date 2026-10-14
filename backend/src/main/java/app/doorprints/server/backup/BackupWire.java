@@ -83,6 +83,15 @@ public final class BackupWire {
 
     /** A {@code data.json} of the family before as the new family writes it; anything but an object is kept as it is. */
     public static JsonNode currentOf(JsonNode legacy) {
+        return currentOf(legacy, List.of(House.HOUSE_KIND), House.HOUSE_KIND);
+    }
+
+    /**
+     * As {@link #currentOf(JsonNode)}, with the {@code search} object of the kinds a device tracks and its default
+     * ({@link #searchOf}); the server is told neither by a device (the choice is per device, never synced), so
+     * {@code GET /api/export} writes the house's (S4b-BL-280).
+     */
+    public static JsonNode currentOf(JsonNode legacy, List<String> kinds, String defaultKind) {
         if (!(legacy instanceof ObjectNode root)) return legacy;
         var out = NODES.objectNode();
         for (var e : root.properties()) {
@@ -92,13 +101,33 @@ public final class BackupWire {
                 case "format" -> out.put("format", CURRENT_FORMAT);
                 case "exportedAt" -> {
                     out.set("exportedAt", value);
-                    out.set("search", NODES.objectNode().put("kind", House.HOUSE_KIND));
+                    out.set("search", searchOf(kinds, defaultKind));
                 }
                 case "houses" -> out.set("candidates", map(value, BackupWire::candidateOf));
                 case "deleted" -> out.set(key, map(value, d -> "house".equals(text(d, "kind")) ? copy(d).put("kind", "candidate") : d));
                 default -> out.set(key, ROWS_WITH_HOUSE.contains(key) ? map(value, r -> rename(r, "houseId", "candidateId")) : value);
             }
         }
+        return out;
+    }
+
+    /**
+     * The {@code search} object for the kinds tracked and the default (docs/03 §18.12, door 10;
+     * {@code search-kind-vectors.json} {@code write}, the twin of the website's {@code searchOf} and the phone's
+     * {@code KindSettingRules.searchOf}): {@code {"kind":"house"}} for the house alone, else
+     * {@code {"kinds":[...],"defaultKind":"..."}}; a list that is empty, has an id outside door 3's pattern or a repeat,
+     * or lacks the default writes the house's. Every reader ignores it.
+     */
+    public static ObjectNode searchOf(List<String> kinds, String defaultKind) {
+        var ok = kinds != null && !kinds.isEmpty() && defaultKind != null && kinds.contains(defaultKind)
+                && kinds.stream().allMatch(k -> k != null && KIND.matcher(k).matches())
+                && new java.util.HashSet<>(kinds).size() == kinds.size();
+        if (!ok || kinds.equals(List.of(House.HOUSE_KIND))) return NODES.objectNode().put("kind", House.HOUSE_KIND);
+        var list = NODES.arrayNode();
+        kinds.forEach(list::add);
+        var out = NODES.objectNode();
+        out.set("kinds", list);
+        out.put("defaultKind", defaultKind);
         return out;
     }
 

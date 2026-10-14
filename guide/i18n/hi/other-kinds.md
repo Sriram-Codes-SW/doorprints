@@ -61,7 +61,7 @@ Doorprints मकान खोजने के लिए बना है, औ�
 `docker compose up -d` चलाएँ:
 
 ```ini
-AI_DEV_KINDS=true
+KINDS_AVAILABLE=house,school
 ```
 
 इसके बिना सर्वर हर सहेजी प्रविष्टि को मकान की तरह पढ़ता है, और नए स्कूल पर **लिस्टिंग के टेक्स्ट से भरें** एक त्रुटि
