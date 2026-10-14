@@ -17,7 +17,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { hidesBottomBar, inDataSection, inMapSection, sectionCurrent } from './nav-section';
+import { hidesBottomBar, inDataSection, inMapSection, isSpaceTool, sectionCurrent } from './nav-section';
 
 describe('the navigation item for the page on screen', () => {
   it('marks Map on the map, a house and the new-house form, and nowhere else', () => {
@@ -56,5 +56,13 @@ describe('the navigation item for the page on screen', () => {
     expect(inDataSection('/places', false)).toBe(true);
     expect(inDataSection('/connect', true)).toBe(true);
     expect(inDataSection('/connect', false)).toBe(false);
+  });
+
+  it('Compare, Ask and Plan of a space are tabs of their own: not the map section, with the bottom bar (S4b-BL-279)', () => {
+    for (const path of ['/k/school/compare', '/k/school/ask', '/k/school/plan']) {
+      expect([isSpaceTool(path), inMapSection(path), hidesBottomBar(path)], path).toEqual([true, false, false]);
+    }
+    for (const path of ['/k/school', '/k/school/new', '/k/school/abc', '/compare']) expect(isSpaceTool(path), path).toBe(false);
+    expect(inMapSection('/k/school/abc')).toBe(true);
   });
 });
