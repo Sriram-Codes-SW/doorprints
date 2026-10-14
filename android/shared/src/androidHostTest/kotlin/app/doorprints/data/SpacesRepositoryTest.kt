@@ -162,6 +162,21 @@ class SpacesRepositoryTest {
     }
 
     @Test
+    fun aFilesKindsAreKeptToTheBuiltInOnesAndAHostileListStoresNothingBig() = runBlocking {
+        // S4b-BL-307: ids nothing knows are dropped, a long list stores at most the built-in kinds, once each.
+        val hostile = (1..500).map { "kind_$it" } + listOf("school", "clinic", "house")
+        assertTrue(settings.adoptKinds(hostile, "school"))
+        assertEquals("[\"house\",\"school\"]", settings.kindSetting().first().enabledText)
+    }
+
+    @Test
+    fun aListOfUnknownKindsIsNoHintAndLeavesThePhoneUnchosen() = runBlocking {
+        assertFalse(settings.adoptKinds(listOf("clinic"), "clinic"))
+        assertEquals(null, settings.kindSetting().first().enabledText)
+        assertEquals(null, settings.kindSetting().first().defaultText)
+    }
+
+    @Test
     fun aHintIsNotTakenOnceThePersonChoseAnythingAndTheChoosersHintStaysDismissed() = runBlocking {
         settings.editKindSetting { it.withExperimental(true).withKindEnabled("school", true) }
         assertFalse(settings.adoptKinds(listOf("school"), "school"))

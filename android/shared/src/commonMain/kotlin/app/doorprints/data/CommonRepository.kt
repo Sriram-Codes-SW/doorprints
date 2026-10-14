@@ -235,7 +235,7 @@ open class CommonRepository(
     override suspend fun markOthersNotChosen(takenId: String): Int {
         val count = db.withImmediateTransaction {
             val all = db.houses().all()
-            val targets = HouseStatusRules.closeTargets(all.map { StatusHouse(it.id, it.status) }, takenId).toHashSet()
+            val targets = HouseStatusRules.closeTargets(all.map { StatusHouse(it.id, it.status, it.kind) }, takenId).toHashSet()
             val stamp = now()
             for (h in all) if (h.id in targets) db.houses().upsert(h.copy(status = HouseStatus.NOT_CHOSEN, updatedAt = stamp, dirty = true))
             targets.size
@@ -245,7 +245,7 @@ open class CommonRepository(
     }
 
     override suspend fun closeTargetCount(takenId: String): Int =
-        HouseStatusRules.closeTargets(db.houses().all().map { StatusHouse(it.id, it.status) }, takenId).size
+        HouseStatusRules.closeTargets(db.houses().all().map { StatusHouse(it.id, it.status, it.kind) }, takenId).size
 
     override suspend fun savePhotoMeta(photoId: String, meta: PhotoMeta): Boolean = photoStore.saveMeta(photoId, meta)
 

@@ -1,0 +1,309 @@
+{
+ "format": "doorprints-status-scope-vectors/1",
+ "note": "The TAKEN status and Close this hunt act within the chosen candidate's own kind (S4b-BL-306, finding F1 of S4b-BL-216, docs/02 T-D15; docs/11 5.24). A candidate's kind is its `kind`; none is the house; any other id (a kind the build does not know) is a kind of its own. `choose`: the statuses, in order, of `houses` after candidate `id` is given `status`: choosing TAKEN returns the TAKEN candidate of the SAME kind to SHORTLISTED (at most one TAKEN per kind), another kind's TAKEN candidate is left as it is; any other status changes only that candidate; an id that is not listed changes nothing. `close`: the ids Close this hunt (and Mark them Not chosen) marks NOT_CHOSEN for TAKEN candidate `takenId`, in list order: the candidates of the same kind that are not the taken one and not already REJECTED or NOT_CHOSEN; an unlisted id closes nothing. The server has no such rule (the statuses are the person's, stored as sent). Readers: the website's house-status.spec.ts, :shared's HouseStatusRulesTest.",
+ "choose": [
+ {
+  "name": "the house path is today's: no kind on any candidate",
+  "houses": [
+   {
+    "id": "a",
+    "status": "TAKEN"
+   },
+   {
+    "id": "b",
+    "status": "SHORTLISTED"
+   },
+   {
+    "id": "c",
+    "status": "NEW"
+   }
+  ],
+  "id": "b",
+  "status": "TAKEN",
+  "after": [
+   "SHORTLISTED",
+   "TAKEN",
+   "NEW"
+  ]
+ },
+ {
+  "name": "a TAKEN school does not return the TAKEN house",
+  "houses": [
+   {
+    "id": "a",
+    "status": "TAKEN"
+   },
+   {
+    "id": "s",
+    "status": "SHORTLISTED",
+    "kind": "school"
+   }
+  ],
+  "id": "s",
+  "status": "TAKEN",
+  "after": [
+   "TAKEN",
+   "TAKEN"
+  ]
+ },
+ {
+  "name": "a TAKEN house does not return the TAKEN school",
+  "houses": [
+   {
+    "id": "s",
+    "status": "TAKEN",
+    "kind": "school"
+   },
+   {
+    "id": "a",
+    "status": "NEW",
+    "kind": "house"
+   }
+  ],
+  "id": "a",
+  "status": "TAKEN",
+  "after": [
+   "TAKEN",
+   "TAKEN"
+  ]
+ },
+ {
+  "name": "a second school returns the first TAKEN school, the TAKEN house stays",
+  "houses": [
+   {
+    "id": "s1",
+    "status": "TAKEN",
+    "kind": "school"
+   },
+   {
+    "id": "s2",
+    "status": "NEW",
+    "kind": "school"
+   },
+   {
+    "id": "a",
+    "status": "TAKEN"
+   }
+  ],
+  "id": "s2",
+  "status": "TAKEN",
+  "after": [
+   "SHORTLISTED",
+   "TAKEN",
+   "TAKEN"
+  ]
+ },
+ {
+  "name": "a kind the build does not know is a kind of its own",
+  "houses": [
+   {
+    "id": "c1",
+    "status": "TAKEN",
+    "kind": "clinic"
+   },
+   {
+    "id": "a",
+    "status": "TAKEN"
+   },
+   {
+    "id": "c2",
+    "status": "NEW",
+    "kind": "clinic"
+   }
+  ],
+  "id": "c2",
+  "status": "TAKEN",
+  "after": [
+   "SHORTLISTED",
+   "TAKEN",
+   "TAKEN"
+  ]
+ },
+ {
+  "name": "another status changes only that candidate, whatever the kinds",
+  "houses": [
+   {
+    "id": "s",
+    "status": "TAKEN",
+    "kind": "school"
+   },
+   {
+    "id": "a",
+    "status": "TAKEN"
+   }
+  ],
+  "id": "a",
+  "status": "REJECTED",
+  "after": [
+   "TAKEN",
+   "REJECTED"
+  ]
+ },
+ {
+  "name": "an id that is not listed changes nothing",
+  "houses": [
+   {
+    "id": "s",
+    "status": "TAKEN",
+    "kind": "school"
+   },
+   {
+    "id": "a",
+    "status": "NEW"
+   }
+  ],
+  "id": "zz",
+  "status": "TAKEN",
+  "after": [
+   "TAKEN",
+   "NEW"
+  ]
+ }
+ ],
+ "close": [
+ {
+  "name": "the house path is today's: every open house but the taken one",
+  "houses": [
+   {
+    "id": "t",
+    "status": "TAKEN"
+   },
+   {
+    "id": "n",
+    "status": "NEW"
+   },
+   {
+    "id": "s",
+    "status": "SHORTLISTED"
+   },
+   {
+    "id": "r",
+    "status": "REJECTED"
+   },
+   {
+    "id": "x",
+    "status": "NOT_CHOSEN"
+   }
+  ],
+  "takenId": "t",
+  "targets": [
+   "n",
+   "s"
+  ]
+ },
+ {
+  "name": "a taken school closes the open schools, never the houses",
+  "houses": [
+   {
+    "id": "t",
+    "status": "TAKEN",
+    "kind": "school"
+   },
+   {
+    "id": "n",
+    "status": "NEW"
+   },
+   {
+    "id": "s2",
+    "status": "SHORTLISTED",
+    "kind": "school"
+   },
+   {
+    "id": "a",
+    "status": "SHORTLISTED",
+    "kind": "house"
+   }
+  ],
+  "takenId": "t",
+  "targets": [
+   "s2"
+  ]
+ },
+ {
+  "name": "a taken house closes the open houses, never the schools",
+  "houses": [
+   {
+    "id": "t",
+    "status": "TAKEN"
+   },
+   {
+    "id": "s1",
+    "status": "NEW",
+    "kind": "school"
+   },
+   {
+    "id": "n",
+    "status": "NEW",
+    "kind": "house"
+   },
+   {
+    "id": "s2",
+    "status": "SHORTLISTED",
+    "kind": "school"
+   }
+  ],
+  "takenId": "t",
+  "targets": [
+   "n"
+  ]
+ },
+ {
+  "name": "a taken school alone in its kind closes nothing",
+  "houses": [
+   {
+    "id": "t",
+    "status": "TAKEN",
+    "kind": "school"
+   },
+   {
+    "id": "a",
+    "status": "NEW"
+   },
+   {
+    "id": "b",
+    "status": "SHORTLISTED"
+   }
+  ],
+  "takenId": "t",
+  "targets": []
+ },
+ {
+  "name": "a kind the build does not know closes its own kind only",
+  "houses": [
+   {
+    "id": "t",
+    "status": "TAKEN",
+    "kind": "clinic"
+   },
+   {
+    "id": "c2",
+    "status": "NEW",
+    "kind": "clinic"
+   },
+   {
+    "id": "a",
+    "status": "NEW"
+   }
+  ],
+  "takenId": "t",
+  "targets": [
+   "c2"
+  ]
+ },
+ {
+  "name": "an id that is not listed closes nothing",
+  "houses": [
+   {
+    "id": "a",
+    "status": "NEW"
+   },
+   {
+    "id": "b",
+    "status": "NEW"
+   }
+  ],
+  "takenId": "zz",
+  "targets": []
+ }
+ ]
+}
