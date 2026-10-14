@@ -39,7 +39,7 @@ it has:
 - **Fees** per year and the **Admission fee**.
 
 The search finds a school by these too (the board, "school bus", the fees). The readable copies list them, and a backup
-keeps them. **Compare**, **Ask** and **Plan** are for houses for now: they are not shown while you look at schools.
+keeps them. **Compare**, **Ask** and **Plan** work on the list you are looking at: while you look at schools they compare and ask about schools only. **Ask** and **Plan** need your own AI key for schools (the server's assistant reads houses only), and **Save a copy** holds only the schools you are looking at, with *schools* in the file name; the Full backup holds everything. A listing you share to Doorprints has **Save it in**, to choose Houses or Schools before it is read.
 
 ## Turn it off again
 

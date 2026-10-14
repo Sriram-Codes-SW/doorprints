@@ -29,7 +29,8 @@ import {
   candidateLines, citations, cleanAnswer, extractionPrompt, nonce, planPrompt, sanitizeDraft, selectForAsk, selectForPlan,
 } from './ai-core';
 import { type AiQuality, geminiThinkingLevel } from './ai-quality';
-import { kindsOn } from '../kind-setting';
+import { availableKinds, defaultKind, kindsOn, spacesOn } from '../kind-setting';
+import { holdsFor } from '../space-scope';
 import { SCHOOL_LISTING_SCHEMA, aiKindOf, aiText, askView, kindExtractionPrompt, planView, sanitizeKindDraft } from './kind-ai';
 import { geminiBlocked } from './ai-blocked';
 import { isQuotaExhausted } from './ai-quota';
@@ -223,8 +224,12 @@ export class OnDeviceAiService {
     }
   }
 
-  /** The saved houses and their visits as on-device AI reads them, most recently changed first. */
-  private async houses(): Promise<AiHouse[]> {
+  /**
+   * The saved candidates and their visits as on-device AI reads them, most recently changed first. `kind` (kinds PR B,
+   * S4b-BL-279): only the candidates the space of that kind holds, so Ask and Plan read one space at a time; none reads
+   * every candidate, as it always did.
+   */
+  private async houses(kind?: string): Promise<AiHouse[]> {
     const visits = (await this.store.allVisits()).filter((v) => !v.deleted);
     const byHouse = new Map<string, { arrivedAt: number; leftAt: number | null }[]>();
     for (const v of visits) {
@@ -240,7 +245,8 @@ export class OnDeviceAiService {
     const areas = await this.store.areas.all();
     const places = await this.store.places.all();
     const noteRows = await this.store.areaNotes.rows();
-    const live = (await this.store.allHouses()).filter((h) => !h.deleted);
+    const holds = kind ? holdsFor(kind, spacesOn(), defaultKind(), availableKinds()) : () => true;
+    const live = (await this.store.allHouses()).filter((h) => !h.deleted && holds(h));
     live.sort((a, b) => Date.parse(b.updatedAt ?? '') - Date.parse(a.updatedAt ?? '') || 0);
     return live.map((h) => ({
       id: h.id, label: h.label, address: h.address, street: h.street, locality: h.locality, lat: h.lat, lon: h.lon,
@@ -275,11 +281,11 @@ export class OnDeviceAiService {
    * Answers a question from the saved houses only. With no matching house, or no usable answer, it returns the "I don't
    * know" sentence; citations are only houses that were sent to the model.
    */
-  async ask(via: ModelRef, question: string, filters?: AskFilterValues): Promise<AskResponse> {
+  async ask(via: ModelRef, question: string, filters?: AskFilterValues, kind?: string): Promise<AskResponse> {
     if (!question.trim() || question.length > MAX_QUESTION_CHARS) throw new Error('question is empty or too long');
     // A candidate of another kind is read through its kind's slots while the developer flag or the switch is on (kinds PR 7, 8).
     const dev = kindsOn();
-    const docs = selectForAsk((await this.houses()).map((h) => askView(h, dev)), question, filters, (h) => aiText(h, dev));
+    const docs = selectForAsk((await this.houses(kind)).map((h) => askView(h, dev)), question, filters, (h) => aiText(h, dev));
     if (!docs.length) return { answer: I_DONT_KNOW, citations: [], grounded: false, retrieved: 0 };
     this.admit();
     const p = askPrompt(question, docs, nonce());
@@ -294,13 +300,13 @@ export class OnDeviceAiService {
    * Plans visits: the model picks houses from the nearest candidates, and the order and walking legs are computed
    * locally by {@link assemblePlan}. At most 8 stops; an unusable model answer falls back to nearest-neighbour order.
    */
-  async planVisits(via: ModelRef, request: PlanRequest): Promise<PlanResponse> {
+  async planVisits(via: ModelRef, request: PlanRequest, kind?: string): Promise<PlanResponse> {
     if (!request.question.trim() || request.question.length > MAX_QUESTION_CHARS) throw new Error('question is empty or too long');
     // The server's PlanRequest bounds (docs/ai/ai-design.md 9): a point that is not on Earth (or NaN) is refused here too.
     if (!(Math.abs(request.startLat) <= 90) || !(Math.abs(request.startLon) <= 180)) throw new Error('the start point is not on Earth');
     const maxStops = Math.max(1, Math.min(request.maxStops ?? MAX_STOPS, MAX_STOPS));
     const dev = kindsOn();
-    const candidates = selectForPlan((await this.houses()).map((h) => planView(h, dev)), request.startLat, request.startLon);
+    const candidates = selectForPlan((await this.houses(kind)).map((h) => planView(h, dev)), request.startLat, request.startLon);
     const seen = new Map<string, PlanCandidate>(candidates.map((c) => [c.id, c]));
     if (!candidates.length) return assemblePlan({ stops: [] }, seen, request.startLat, request.startLon, maxStops);
     this.admit();

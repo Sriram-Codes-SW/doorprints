@@ -37,6 +37,8 @@ import { FormsModule } from '@angular/forms';
 import { Announcer } from '../../core/announcer.service';
 import { AiService } from '../../core/ai.service';
 import { AiSessionState } from '../../core/ai-session.state';
+import { SpaceService } from '../../core/space.service';
+import { toolWord } from '../../core/space-tool-words';
 import { ConfigService } from '../../core/config.service';
 import { ConfirmService } from '../../core/confirm.service';
 import { errorMsg } from '../../core/format';
@@ -115,6 +117,8 @@ const ICONS = {
 })
 export class DataPage implements OnInit, OnDestroy {
   private readonly exporter = inject(ExportService);
+  /** With spaces, a copy (not the backup) is of the space on screen (kinds PR B, S4b-BL-279). */
+  protected readonly space = inject(SpaceService);
   private readonly store = inject(LocalStore);
   private readonly traces = inject(TraceStore);
   /** How many saved walks this browser holds (docs/11 5.27.6): shown with *Delete all saved walks*. */
@@ -235,6 +239,26 @@ export class DataPage implements OnInit, OnDestroy {
    * `shortlisted` (houses exist, none shortlisted) or `filtered` (the options leave every house out). Null while
    * there is something to export, or before the first count.
    */
+  /** The space a copy is of: with two or more spaces, the one on screen; never for the backup (it holds everything). */
+  private readonly scopedKind = computed(() => (this.space.multi() && this.format() !== 'backup' ? this.space.kind() : null));
+  /** The options the file is made with: the chosen ones, and the space when the copy is of one. */
+  private exportOptions(): ExportOptions {
+    const space = this.scopedKind();
+    return space ? { ...this.options(), space } : this.options();
+  }
+  /** The words of the card: the space's own where it has them, the house's keys otherwise. */
+  protected w(key: TKey): TKey {
+    return toolWord(this.scopedKind(), key);
+  }
+  protected readonly many = computed(() => this.i18n.t(this.space.words().many));
+  /** Says what the copy holds when there are spaces: this space's candidates, or, for the backup, everything. */
+  protected readonly scopeNote = computed<Msg | null>(() => {
+    if (!this.space.multi()) return null;
+    if (this.format() === 'backup') return { key: 'data.spaceScopeBackup' };
+    const c = this.counts();
+    return c ? { key: 'data.spaceScope', params: { many: this.many(), n: this.i18n.number(c.houses) } } : null;
+  });
+
   protected readonly emptyReason = computed<'none' | 'shortlisted' | 'filtered' | null>(() => {
     const c = this.counts();
     const total = this.totalHouses();
@@ -261,6 +285,7 @@ export class DataPage implements OnInit, OnDestroy {
     // first-run download on this page cost the square of the number of rows.
     effect(() => {
       this.store.settled();
+      this.scopedKind();
       if (!this.started()) return;
       void this.refreshCounts();
       void this.storage.refresh();
@@ -388,8 +413,9 @@ export class DataPage implements OnInit, OnDestroy {
     try {
       do {
         this.recount = false;
-        const bundle = await this.exporter.bundle(this.options());
-        this.totalHouses.set((await this.store.liveHouses()).length);
+        const bundle = await this.exporter.bundle(this.exportOptions());
+        const scoped = this.scopedKind() !== null;
+        this.totalHouses.set((await this.store.liveHouses()).filter((h) => !scoped || this.space.holds(h)).length);
         this.counts.set(bundle.counts);
       } while (this.recount);
     } catch {
@@ -531,7 +557,7 @@ export class DataPage implements OnInit, OnDestroy {
     let lastQuarter = -1;
     let lastAnnounced = 0;
     try {
-      const result = await this.exporter.build(format, this.options(), new Date(), {
+      const result = await this.exporter.build(format, this.exportOptions(), new Date(), {
         signal: abort.signal,
         onProgress: (done, total) => {
           if (total <= 0) return;

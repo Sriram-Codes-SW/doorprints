@@ -136,19 +136,17 @@ const NAV_ICONS = {
           <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="24" height="24"><path [attr.d]="icons.map" /></svg></span>
           <span class="nav-label">{{ 'nav.map' | t }}</span>
         </a>
-        <!-- Compare, Ask and Plan read the house space only until they are scoped per space (S4b-BL-279). -->
-        @if (space.houseTools()) {
-        <a routerLink="/compare" routerLinkActive="current" ariaCurrentWhenActive="page">
+        <!-- Compare, Ask and Plan read the space on screen (S4b-BL-279): the house's are today's addresses. -->
+        <a [routerLink]="space.toolLink('compare')" routerLinkActive="current" ariaCurrentWhenActive="page">
           <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="24" height="24"><path [attr.d]="icons.compare" /></svg></span>
           <span class="nav-label">{{ 'nav.compare' | t }}</span>
         </a>
-        }
-        @if (ai.enabled() && space.houseTools()) {
-          <a routerLink="/ask" routerLinkActive="current" ariaCurrentWhenActive="page">
+        @if (ai.enabledFor(space.kind())) {
+          <a [routerLink]="space.toolLink('ask')" routerLinkActive="current" ariaCurrentWhenActive="page">
             <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="24" height="24"><path [attr.d]="icons.ask" /></svg></span>
             <span class="nav-label">{{ 'nav.ask' | t }}</span>
           </a>
-          <a routerLink="/plan" routerLinkActive="current" ariaCurrentWhenActive="page">
+          <a [routerLink]="space.toolLink('plan')" routerLinkActive="current" ariaCurrentWhenActive="page">
             <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="24" height="24"><path [attr.d]="icons.plan" /></svg></span>
             <span class="nav-label">{{ 'nav.plan' | t }}</span>
           </a>

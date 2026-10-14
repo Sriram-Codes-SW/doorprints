@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { type CanActivateFn, Router, Routes } from '@angular/router';
+import { type CanActivateFn, type Route, Router, Routes } from '@angular/router';
 import { Injector, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { availableKinds } from './core/kind-setting';
@@ -156,6 +156,9 @@ const toOwnSpace: CanActivateFn = async (route) => {
   }
 };
 
+/** The pages that read one space (docs/03 §18.13). */
+const TOOLS = ['compare', 'ask', 'plan'] as const;
+
 export function routesFor(spaces: boolean, kinds: readonly string[] = availableKinds()): Routes {
   if (!spaces) return routes;
   const detail = routes.find((r) => r.path === 'houses/:id')!;
@@ -166,6 +169,8 @@ export function routesFor(spaces: boolean, kinds: readonly string[] = availableK
     ...kinds.flatMap((k): Routes => [
       { ...map, path: `k/${k}`, data: undefined },
       { ...detail, path: `k/${k}/new`, title: 'title.newHouse' },
+      // Compare, Ask and Plan of a space other than the house (S4b-BL-279); the house keeps its own three. Before `:id`.
+      ...(k === 'house' ? [] : TOOLS.map((t): Route => ({ ...routes.find((r) => r.path === t)!, path: `k/${k}/${t}` }))),
       { ...detail, path: `k/${k}/:id` },
     ]),
     ...routes.slice(1).filter((r) => r !== map).map((r) => (r === detail ? { ...detail, canActivate: [toOwnSpace] } : r)),

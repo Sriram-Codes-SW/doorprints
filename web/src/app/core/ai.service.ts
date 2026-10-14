@@ -28,6 +28,8 @@ import { AnthropicChatModel } from './ai/anthropic';
 import { OpenAiCompatibleChatModel } from './ai/openai-compat';
 import { GeminiChatModel, type ModelRef, OnDeviceAiError, OnDeviceAiService } from './ai/on-device-ai.service';
 import { errorMsg, retryAfterSeconds } from './format';
+import { aiShownIn } from './space-scope';
+import { availableKinds } from './kind-setting';
 import type { HouseStatus, PriceType } from './models';
 
 // Types follow docs/ai/ai-design.md section 13 and the backend records in app.doorprints.server.ai.*
@@ -190,6 +192,15 @@ export class AiService {
   /** AI shows: on in this browser and nothing missing for the chosen provider (with the own key chosen, not the server). */
   readonly enabled = computed(() => this.offReason() === null);
 
+  /**
+   * Whether Ask and Plan are shown in the space of `kind` (kinds PR B, S4b-BL-279; `space-scope-vectors.json`
+   * `assistant`): the house whenever AI is on, as it was; any other kind only when this build offers it and the AI is the
+   * person's own, in this browser. The server's Ask and Plan take no kind and would read every space.
+   */
+  enabledFor(kind: string): boolean {
+    return aiShownIn(kind, availableKinds(), this.enabled(), this.usesOwnKey());
+  }
+
   constructor() {
     this.refresh();
   }
@@ -334,18 +345,28 @@ export class AiService {
     return this.http.post<HouseDraft>('/api/ai/extract-listing', kind ? { text, kind } : { text });
   }
 
-  ask(question: string, filters?: AskFilters): Observable<AskResponse> {
-    const off = this.guard();
+  /**
+   * `kind` (kinds PR B, S4b-BL-279): the space Ask reads, for a space other than the house only; the house's call is
+   * today's. The server takes no kind, so a space other than the house is answered on this device or not at all.
+   */
+  ask(question: string, filters?: AskFilters, kind?: string): Observable<AskResponse> {
+    const off = this.guard() ?? this.noServerSpace(kind);
     if (off) return off;
-    if (this.usesOwnKey()) return defer(() => this.onDevice.ask(this.ownModel(), question, filters));
+    if (this.usesOwnKey()) return defer(() => (kind ? this.onDevice.ask(this.ownModel(), question, filters, kind) : this.onDevice.ask(this.ownModel(), question, filters)));
     return this.http.post<AskResponse>('/api/ai/ask', filters ? { question, filters } : { question });
   }
 
-  planVisits(request: PlanRequest): Observable<PlanResponse> {
-    const off = this.guard();
+  /** `kind`: as {@link ask}. */
+  planVisits(request: PlanRequest, kind?: string): Observable<PlanResponse> {
+    const off = this.guard() ?? this.noServerSpace(kind);
     if (off) return off;
-    if (this.usesOwnKey()) return defer(() => this.onDevice.planVisits(this.ownModel(), request));
+    if (this.usesOwnKey()) return defer(() => (kind ? this.onDevice.planVisits(this.ownModel(), request, kind) : this.onDevice.planVisits(this.ownModel(), request)));
     return this.http.post<PlanResponse>('/api/ai/plan-visits', request);
+  }
+
+  /** A space other than the house on the server's assistant: nothing is sent (it would read every space). */
+  private noServerSpace(kind?: string): Observable<never> | null {
+    return kind && kind !== 'house' && !this.usesOwnKey() ? throwError(() => new AiOffError('noKey')) : null;
   }
 }
 

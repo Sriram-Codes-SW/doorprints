@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.128 |
+| Version | 0.129 |
 | Date | 2026-10-13 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -139,6 +139,7 @@
 | 0.126 | 2026-10-13 | Claude (Code), engineer | §18.11: **kind-aware AI on the website** (kinds PR 7, S4b-BL-211, the second stacked pull request; `feat/kinds-9b-kind-aware-ai-web`): `core/ai/kind-ai.ts`, the on-device AI and the server request read a school through its kind's slots under the developer flag; *Fill in from listing text* fills a school's empty extras; the website's house pins first and unchanged. |
 | 0.127 | 2026-10-13 | Claude (Code), engineer | §18.11: **kind-aware AI on the phones** (kinds PR 7, S4b-BL-211, the third stacked pull request; `feat/kinds-9c-kind-aware-ai-phone`): `KindAi` in `:shared`, the flag from `BuildConfig.DEV_KINDS` through the repository, *Paste listing text* for a school; the phones' house pins first and unchanged. |
 | 0.128 | 2026-10-14 | Claude (Code), engineer | New §18.12: **spaces, the chooser and Settings > What you track** (kinds PR 8, S4b-BL-212, `feat/kinds-10-settings-kind-guide`, the website; owner-approved design of 2026-10-14, superseding the first draft's "one kind per data set"): a kind is a space, a filter over the one store; `AVAILABLE_KINDS` and `RELEASED_KINDS`, *Experimental: more than houses*, enabled kinds and a default, device-local; the chooser, the chip, `/k/<kind>`, the deep-link redirect; the space's words; Compare, Ask and Plan hidden outside the house space; §18.1 and door 10 amended (`search.kinds`, `search.defaultKind`); §18.7's words rule; the guide. |
+| 0.129 | 2026-10-14 | Claude (Code), engineer | **§18.13 Compare, Ask, Plan and the copies per space** (S4b-BL-279, kinds PR B, the website; `feat/kinds-11-spaces-scoping`): Compare, Ask and Plan read the space on screen (`/k/<kind>/compare`, `/ask`, `/plan`; the house keeps its three addresses); Compare refuses a pick of another space with one sentence; the copies of a space hold that space only and carry its plural noun in the file name, the backup stays whole; the share target chooses what a listing is; `space-scope-vectors.json`. §18.12 amended: Compare, Ask and Plan are no longer hidden outside the house space. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -2590,11 +2591,10 @@ S4b-BL-256 for those places). The counters *Houses*, *Shortlisted* and *Rejected
 *Streets* stay the store's. A kind that hides its money (a school) has no cost filter and sorts by the last change
 only. The kind file has no place for these words yet (its `labels` are `new`, `many`, `delete`), so `SPACE_WORDS` is the
 website's own table, as the renderer's element ids are (§18.8); moving it into the kind files with the phone's is
-S4b-BL-278. In a space other than the house, **Compare, Ask and Plan are not shown** (the header and the bottom bar):
-they read the house space only until PR B scopes them (S4b-BL-279). Walks, brokers, Settings, backups and Drive stay
+S4b-BL-278. In a space other than the house, **Compare, Ask and Plan read that space** (§18.13; PR A hid them there). Walks, brokers, Settings, backups and Drive stay
 global; Hunt mode is the phone's and stays the house space's.
 
-**The AI reads one space at a time** once PR B scopes Ask and Plan; today the on-device AI and the listing fill read a
+**The AI reads one space at a time** (§18.13); before PR B the on-device AI and the listing fill read a
 candidate through its kind while `kindsOn()` (the developer flag, or a second kind offered). The server's switch
 stays `app.ai.dev-kinds` (`AI_DEV_KINDS`, now passed by `docker-compose.yml`); its rename to a list
 `app.kinds.available` that the AI reads too is S4b-BL-280.
@@ -2631,9 +2631,69 @@ counters, search, words, links; one kind as before), `school-form.spec.ts` (a ne
 a11y sweep; the layout gate's two-kind run; the live UI test's *flow* (no section in a houses-only build; the chooser
 and a space on a build that ships the school). Mutation list `tools/mutations/kinds-10-web-settings.json`.
 
-**Left, with rows** ([10](10-sprint-log.md)): PR B, Compare, Ask, Plan and the copies per space, the share target's
-space chip (S4b-BL-279); PR C, the phones and the iPhone (a `Space` state beside `NavTab` in `Root.kt`, Roborazzi
+**Left, with rows** ([10](10-sprint-log.md)): PR B is §18.13 (S4b-BL-279); PR C, the phones and the iPhone (a `Space` state beside `NavTab` in `Root.kt`, Roborazzi
 baselines for the chooser only) and the Kotlin writer (S4b-BL-274); the server's list and Java writer (S4b-BL-280);
 the chooser's review with a screen reader on real devices (S4b-BL-276); the space words in the kind files (S4b-BL-278);
 the AI's house words (S4b-BL-281); the product's public words (S4b-BL-282); deletion safeguards (S4b-BL-283, -284,
 -285); a `kind` index (S4b-BL-286); `delete-scope-vectors.json` (S4b-BL-287); the two-kind runs in CI (S4b-BL-288).
+
+### 18.13 Compare, Ask, Plan and the copies per space (kinds PR B, S4b-BL-279)
+
+**The rule.** A space is one kind's candidates (§18.12); every tool that reads candidates reads **one space**. The rules are
+pure functions (`core/space-scope.ts`) held to `docs/schemas/kinds/space-scope-vectors.json` (format
+`doorprints-space-scope-vectors/1`), which the phones read in PR C (S4b-BL-289). With one kind enabled every rule is
+today's, so the house-only app, its goldens and its addresses are byte for byte unchanged (pinned first:
+`compare-house-pins.spec.ts`, `copy-names-pins.spec.ts`, `app-nav-pins.spec.ts`, `ask-page-pins.spec.ts`,
+`share-page-pins.spec.ts`, and `space.spec.ts`'s router config).
+
+**What a space contains** (`holdsFor`, vectors `contains`): with one space every candidate; with two or more, a candidate
+of a kind that has a space here is in its own, any other kind's is in the default space.
+
+**Addresses.** The house keeps `/compare`, `/ask` and `/plan`; another kind has `/k/<kind>/compare`, `/ask`, `/plan`
+(registered before `/k/<kind>/:id`). `SpaceService.toolLink(tool)` gives the address; the header and bottom bar show
+Compare in every space, and Ask and Plan only where the assistant reads the space (below). `isSpaceTool` keeps these
+addresses out of the map section (the bottom bar stays).
+
+**Compare.** The picker, the table and the links hold the space's candidates in the running (`SpaceService.holds`). The
+rows come from the kind: a row of a place the kind hides is left out (`labels.isVisible`: the score, must-haves and
+checklist rows need `section.checklist`; price, cost rows `field.money`; BHK, carpet area and rooms their own), and each of
+the kind's other extras (`KindFields.others`, the values `kindValues` reads) is a row, in the kind file's order, between the
+facts and the rating. A kind with no checklist ranks by its rating: the best rating is marked, and the chip shows no score.
+The house's rows are the code it had (pinned). **A pick of another space is refused**: `?ids=` naming a live candidate of
+another space leaves it out and says, in a `role=status` line, *Compare works on the list you are looking at. Picks from
+another list were left out.* (`compare.otherList`, four languages, hi/ta/te under review); an id that is no candidate, is
+deleted or out of the running is dropped silently as before (vectors `compare`).
+
+**Ask and Plan** read one space. `AiService.ask(question, filters, kind)` and `planVisits(request, kind)` pass `kind` only
+for a space other than the house; the on-device AI then reads `holdsFor` that space's candidates (kind-aware documents,
+§18.11). **The server's Ask and Plan take no kind** and would read every space, so a space other than the house has no
+server assistant: the entry is shown only when the build offers the kind and the assistant is the person's own
+(`aiShownIn`, `AiService.enabledFor`, vectors `assistant`), and a direct address says *The assistant reads this list only
+with your own AI key* (`ai.notHere`); the house's entry is as before (whenever AI is on). The session state keeps one Ask
+answer and one Plan route per space. The price and BHK filters are the house's (a kind that hides its money has none).
+`connect.aiWorth` is kind-neutral in four languages and says Ask and Plan read one list at a time.
+
+**Copies per space.** `ExportOptions.space` (set by *Your data* when two or more kinds are enabled and the format is not the
+backup): `collect` keeps that space's candidates (`inSpace`), its viewings and brokers are those of the copy (not the whole
+store's), and the file name carries the English plural of the kind file's `kind.many` before the date
+(`spaceFileName`: `Doorprints-schools-2026-09-22-csv.zip`, `Doorprints-copy-schools-2026-09-22.html`, `.md`, `.xlsx`; the
+house's names and every backup name unchanged). **The backup stays whole** (the option is dropped for it). The card says so
+in words: *This copy holds only Schools: 3. A full backup holds everything you saved.* (`data.spaceScope`,
+`data.spaceScopeBackup`); the card's own words (scope, *All schools*, counts, empty lines) are the space's
+(`core/space-tool-words.ts`: the house's key where the kind has none, so the house's words are today's). What is inside a
+school's copy (the house words in its cover and tables) stays S4b-BL-266.
+
+**The share target.** With two or more kinds enabled the page has *Save it in* (a select of the kinds, the default chosen;
+`shareKind`); *Add a house from this* becomes *Add a school from this*, and the text goes to that space's map in add mode
+(`/k/<kind>` with the text in the navigation state, never the address), so the form that follows is the kind's and *Fill in
+from listing text* uses its kind (the request's `kind`, or the on-device kind prompt). With one kind the page and the
+navigation are as before.
+
+**Not here, with rows:** the phones (S4b-BL-289), a server Ask and Plan that take a kind (S4b-BL-290), the backup's and the
+copies' house words (S4b-BL-291), a space picker on *Your data* and a lower-is-better mark for a kind's numbers
+(S4b-BL-292).
+
+**Tests** ([06](06-test-plan.md) TC-U-216): `space-scope.spec.ts` (the vectors), `compare-space.spec.ts`, `space-tools.spec.ts`
+(navigation, on-device scoping, the Data page's words, the share choice), `space-copies.spec.ts`, `space.spec.ts`,
+`nav-section.spec.ts`, the pins above; the layout gate's two-kind run now also loads `/k/school/compare` and `/share`
+(292 of 292 beside the unchanged 253); mutation list `tools/mutations/kinds-11-web-spaces-scoping.json`.

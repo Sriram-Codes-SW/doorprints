@@ -43,6 +43,9 @@ import {
 } from 'maplibre-gl';
 import { AI_MAX_QUESTION_CHARS, AiService, PlanResponse, aiErrorMsg, aiOffMsg } from '../../core/ai.service';
 import { AiSessionState } from '../../core/ai-session.state';
+import { SpaceService } from '../../core/space.service';
+import { toolWord } from '../../core/space-tool-words';
+import type { TKey } from '../../i18n/en';
 import { Announcer } from '../../core/announcer.service';
 import { ConfigService } from '../../core/config.service';
 import { LocalDataService } from '../../core/local-data.service';
@@ -84,6 +87,13 @@ export class PlanPage implements AfterViewInit, OnDestroy {
   protected readonly i18n = inject(TranslationService);
   private readonly announcer = inject(Announcer);
   private readonly session = inject(AiSessionState);
+  /** Plan reads the space on screen only (kinds PR B, S4b-BL-279). */
+  protected readonly space = inject(SpaceService);
+  protected readonly kind = this.space.kind();
+  protected readonly on = computed(() => this.ai.enabledFor(this.kind));
+  protected w(key: TKey): TKey {
+    return toolWord(this.kind, key);
+  }
   private readonly api = inject(LocalDataService);
   private readonly injector = inject(Injector);
   private readonly mapEl = viewChild<ElementRef<HTMLDivElement>>('mapEl');
@@ -141,7 +151,7 @@ export class PlanPage implements AfterViewInit, OnDestroy {
   private destroyed = false;
 
   constructor() {
-    const saved = this.session.plan;
+    const saved = this.session.planOf(this.kind);
     if (saved) {
       this.question = saved.question;
       this.maxStops = saved.maxStops;
@@ -153,7 +163,7 @@ export class PlanPage implements AfterViewInit, OnDestroy {
     }
     // The map is only made while AI is on (the form is hidden otherwise), and once the view exists.
     effect(() => {
-      if (!this.viewReady() || !this.ai.enabled() || this.map) return;
+      if (!this.viewReady() || !this.on() || this.map) return;
       const el = this.mapEl()?.nativeElement;
       if (el) untracked(() => this.createMap(el));
     });
@@ -178,13 +188,13 @@ export class PlanPage implements AfterViewInit, OnDestroy {
     this.destroyed = true;
     this.request?.unsubscribe();
     // Kept for Back from a stop: the request, the start and the route (memory only).
-    this.session.plan = {
+    this.session.setPlan(this.kind, {
       question: this.question,
       maxStops: this.maxStops,
       start: this.start(),
       startSet: this.startSet(),
       plan: this.plan(),
-    };
+    });
     this.resizeObserver?.disconnect();
     this.stopMarkers.forEach((m) => m.remove());
     this.startMarker?.remove();
@@ -207,7 +217,7 @@ export class PlanPage implements AfterViewInit, OnDestroy {
       const houses = await firstValueFrom(this.api.houses());
       if (this.destroyed) return;
       const newest = [...houses]
-        .filter((h) => !h.deleted)
+        .filter((h) => !h.deleted && this.space.holds(h))
         .sort((a, b) => Date.parse(b.createdAt ?? '') - Date.parse(a.createdAt ?? ''))[0];
       // Not over what the user typed in the meantime (a value, a typo or a cleared field).
       if (newest && !this.startSet() && !this.startTyped) this.setStart(newest.lat, newest.lon, true);
@@ -310,7 +320,7 @@ export class PlanPage implements AfterViewInit, OnDestroy {
     // An earlier error stays in place while this run is busy (drawn as being updated); the run's end replaces it.
     this.busy.set(true);
     this.request = this.ai
-      .planVisits({ question: q, startLat: s.lat, startLon: s.lon, maxStops: clamp(Math.round(this.maxStops), 1, 8) })
+      .planVisits({ question: q, startLat: s.lat, startLon: s.lon, maxStops: clamp(Math.round(this.maxStops), 1, 8) }, ...(this.kind === 'house' ? [] : [this.kind]))
       .subscribe({
         next: (p) => {
           this.request = null;

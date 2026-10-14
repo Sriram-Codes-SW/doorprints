@@ -1,0 +1,48 @@
+{
+ "format": "doorprints-space-scope-vectors/1",
+ "note": "Compare, Ask, Plan and the copies per space (kinds PR B, S4b-BL-279; docs/03 ADR-36 §18.12 and §18.13, schemas README §8.4). A space is one kind's candidates: a filter over the one store, no table, no wire field. `contains`: whether a space holds a candidate (`multi` false: one space, it holds every candidate; two or more: a candidate of a kind that has a space here is in its own, any other kind's is in the default space; no `kind` is the house). `compare`: Compare's pick in a space, from the ids picked in order: `kept` are the live candidates in the running (status not REJECTED or NOT_CHOSEN) that the space holds, in order, without duplicates, at most four; `refused` are live candidates of another space (the page says so in one sentence, 'Compare works on the list you are looking at. Picks from another list were left out.'); an id that is no candidate, a deleted one, or one out of the running is dropped without a word, as before. `fileName`: a space's copy puts the English plural noun of the kind file's `kind.many`, lower case, letters and digits joined by hyphens, before the first date of the name; the house's names, a name without a date, a noun without letters, and every backup are unchanged byte for byte. `assistant`: whether Ask and Plan are shown in a space (`on`: the assistant is on; `ownKey`: it is the person's own, in the browser or on the phone; the server's Ask and Plan take no kind and would read every space): the house whenever the assistant is on; any other kind only when the build offers it and the assistant is the person's own. `shareKind`: the kind a shared listing lands in: the chosen one when it is enabled, else the default. Readers: the website's space-scope.spec.ts; the phones read this file in kinds PR C (S4b-BL-274).",
+ "contains": [
+  { "name": "one space holds every candidate, whatever its kind", "multi": false, "space": "house", "default": "house", "available": ["house", "school"], "candidates": [{ "id": "h1" }, { "id": "s1", "kind": "school" }, { "id": "c1", "kind": "clinic" }], "holds": ["h1", "s1", "c1"] },
+  { "name": "the school space holds the schools only", "multi": true, "space": "school", "default": "house", "available": ["house", "school"], "candidates": [{ "id": "h1" }, { "id": "s1", "kind": "school" }, { "id": "s2", "kind": "school" }, { "id": "h2", "kind": "house" }], "holds": ["s1", "s2"] },
+  { "name": "the house space holds the houses, with no kind or the house's", "multi": true, "space": "house", "default": "house", "available": ["house", "school"], "candidates": [{ "id": "h1" }, { "id": "s1", "kind": "school" }, { "id": "h2", "kind": "house" }], "holds": ["h1", "h2"] },
+  { "name": "a kind that has no space here is in the default space (the house)", "multi": true, "space": "house", "default": "house", "available": ["house", "school"], "candidates": [{ "id": "h1" }, { "id": "c1", "kind": "clinic" }, { "id": "s1", "kind": "school" }], "holds": ["h1", "c1"] },
+  { "name": "a kind that has no space here is in the default space (the school)", "multi": true, "space": "school", "default": "school", "available": ["house", "school"], "candidates": [{ "id": "h1" }, { "id": "c1", "kind": "clinic" }, { "id": "s1", "kind": "school" }], "holds": ["c1", "s1"] },
+  { "name": "a kind the build does not offer is in the default space", "multi": true, "space": "house", "default": "house", "available": ["house"], "candidates": [{ "id": "s1", "kind": "school" }, { "id": "h1" }], "holds": ["s1", "h1"] }
+ ],
+ "compare": [
+  { "name": "a space of one kind: every pick is kept", "space": "house", "multi": true, "default": "house", "available": ["house", "school"], "candidates": [{ "id": "h1", "status": "NEW" }, { "id": "h2", "status": "SHORTLISTED" }, { "id": "s1", "kind": "school", "status": "NEW" }], "picked": ["h2", "h1"], "kept": ["h2", "h1"], "refused": [] },
+  { "name": "a school picked in the house space is refused", "space": "house", "multi": true, "default": "house", "available": ["house", "school"], "candidates": [{ "id": "h1", "status": "NEW" }, { "id": "h2", "status": "NEW" }, { "id": "s1", "kind": "school", "status": "NEW" }], "picked": ["h1", "s1", "h2"], "kept": ["h1", "h2"], "refused": ["s1"] },
+  { "name": "a house picked in the school space is refused", "space": "school", "multi": true, "default": "house", "available": ["house", "school"], "candidates": [{ "id": "h1", "status": "NEW" }, { "id": "s1", "kind": "school", "status": "NEW" }, { "id": "s2", "kind": "school", "status": "SHORTLISTED" }], "picked": ["s2", "h1", "s1"], "kept": ["s2", "s1"], "refused": ["h1"] },
+  { "name": "duplicates, unknown ids and deleted ones are dropped without a word", "space": "school", "multi": true, "default": "house", "available": ["house", "school"], "candidates": [{ "id": "s1", "kind": "school", "status": "NEW" }, { "id": "s2", "kind": "school", "status": "NEW", "deleted": true }, { "id": "s3", "kind": "school", "status": "NEW" }], "picked": ["s1", "s1", "x", "s2", "s3"], "kept": ["s1", "s3"], "refused": [] },
+  { "name": "Rejected and Not chosen are out of the running, in or out of the space", "space": "school", "multi": true, "default": "house", "available": ["house", "school"], "candidates": [{ "id": "s1", "kind": "school", "status": "REJECTED" }, { "id": "s2", "kind": "school", "status": "NOT_CHOSEN" }, { "id": "s3", "kind": "school", "status": "TAKEN" }, { "id": "s4", "kind": "school", "status": "NEW" }], "picked": ["s1", "s2", "s3", "s4"], "kept": ["s3", "s4"], "refused": [] },
+  { "name": "at most four are kept", "space": "school", "multi": true, "default": "house", "available": ["house", "school"], "candidates": [{ "id": "s1", "kind": "school", "status": "NEW" }, { "id": "s2", "kind": "school", "status": "NEW" }, { "id": "s3", "kind": "school", "status": "NEW" }, { "id": "s4", "kind": "school", "status": "NEW" }, { "id": "s5", "kind": "school", "status": "NEW" }], "picked": ["s1", "s2", "s3", "s4", "s5"], "kept": ["s1", "s2", "s3", "s4"], "refused": [] },
+  { "name": "with one space nothing is refused", "space": "house", "multi": false, "default": "house", "available": ["house", "school"], "candidates": [{ "id": "h1", "status": "NEW" }, { "id": "s1", "kind": "school", "status": "NEW" }], "picked": ["h1", "s1"], "kept": ["h1", "s1"], "refused": [] }
+ ],
+ "fileName": [
+  { "name": "the house's CSV copy is unchanged", "space": "house", "many": "Houses", "in": "Doorprints-2026-09-22-csv.zip", "out": "Doorprints-2026-09-22-csv.zip" },
+  { "name": "a school space's CSV copy", "space": "school", "many": "Schools", "in": "Doorprints-2026-09-22-csv.zip", "out": "Doorprints-schools-2026-09-22-csv.zip" },
+  { "name": "a school space's Markdown copy", "space": "school", "many": "Schools", "in": "Doorprints-2026-09-22.md", "out": "Doorprints-schools-2026-09-22.md" },
+  { "name": "a school space's spreadsheet copy", "space": "school", "many": "Schools", "in": "Doorprints-2026-09-22.xlsx", "out": "Doorprints-schools-2026-09-22.xlsx" },
+  { "name": "a school space's web page copy", "space": "school", "many": "Schools", "in": "Doorprints-copy-2026-09-22.html", "out": "Doorprints-copy-schools-2026-09-22.html" },
+  { "name": "a noun of two words", "space": "clinic", "many": "Health clinics", "in": "Doorprints-2026-09-22.md", "out": "Doorprints-health-clinics-2026-09-22.md" },
+  { "name": "no space (one kind enabled, or the backup): unchanged", "space": null, "many": "Schools", "in": "Doorprints-backup-2026-09-22.zip", "out": "Doorprints-backup-2026-09-22.zip" },
+  { "name": "a noun with no letters or digits: unchanged", "space": "school", "many": "स्कूल", "in": "Doorprints-2026-09-22.md", "out": "Doorprints-2026-09-22.md" },
+  { "name": "a name with no date: unchanged", "space": "school", "many": "Schools", "in": "Doorprints-copy.html", "out": "Doorprints-copy.html" }
+ ],
+ "assistant": [
+  { "name": "the house, assistant off", "kind": "house", "available": ["house"], "on": false, "ownKey": false, "shown": false },
+  { "name": "the house on the server's assistant", "kind": "house", "available": ["house"], "on": true, "ownKey": false, "shown": true },
+  { "name": "the house on the person's own", "kind": "house", "available": ["house", "school"], "on": true, "ownKey": true, "shown": true },
+  { "name": "the school on the server's assistant: none (it takes no kind)", "kind": "school", "available": ["house", "school"], "on": true, "ownKey": false, "shown": false },
+  { "name": "the school on the person's own", "kind": "school", "available": ["house", "school"], "on": true, "ownKey": true, "shown": true },
+  { "name": "the school in a build that does not offer it", "kind": "school", "available": ["house"], "on": true, "ownKey": true, "shown": false },
+  { "name": "the school, assistant off", "kind": "school", "available": ["house", "school"], "on": false, "ownKey": true, "shown": false }
+ ],
+ "shareKind": [
+  { "name": "none chosen: the default", "chosen": null, "enabled": ["house", "school"], "default": "school", "kind": "school" },
+  { "name": "the house chosen", "chosen": "house", "enabled": ["house", "school"], "default": "school", "kind": "house" },
+  { "name": "the school chosen", "chosen": "school", "enabled": ["house", "school"], "default": "house", "kind": "school" },
+  { "name": "a kind that is not enabled: the default", "chosen": "clinic", "enabled": ["house", "school"], "default": "house", "kind": "house" },
+  { "name": "one kind enabled: the default", "chosen": "school", "enabled": ["house"], "default": "house", "kind": "house" }
+ ]
+}
