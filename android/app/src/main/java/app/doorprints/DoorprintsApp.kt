@@ -57,7 +57,8 @@ import org.maplibre.android.MapLibre
 class AppContainer(app: DoorprintsApp) {
     // One settings DataStore per process (see data/SettingsStoreFactory.kt), as the old property delegate gave.
     val settings = SettingsStore.create(app)
-    private val db = AppDatabase.create(app)
+    /** Internal so a screenshot test can pin a stored row's stamp (the repository stamps edits with the real clock). */
+    internal val db = AppDatabase.create(app)
 
     /** Carries the Drive backend into the repository's sync loop for one Drive pass (S4b-BL-70's seam, docs/15 §1.3). */
     private val driveRoute = DriveSyncRoute()
