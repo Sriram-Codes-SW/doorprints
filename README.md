@@ -145,7 +145,7 @@ Policy: [docs/11](docs/11-feature-parity-and-export-spec.md) 5.13 (D-21, D-22), 
 3. Open Doorprints. It works right away without a server; to sync, go to **Settings**: server URL `https://…`, paste
    the API key, **Save and test**, then **Sync now**.
 
-**Signer certificate fingerprint of the release APK (SHA-256):** _to be filled in from the notes of the first draft release made by `release.yml` ([docs/07](docs/07-secure-build-and-deploy.md) §5); until then the fingerprint is printed in the "Verify APK signature" step of the signed `android.yml` run._ Compare it with `apksigner verify --print-certs` before installing a release APK, and check the APK against its `.sha256`.
+**Signer certificate fingerprint of the release APK (SHA-256):** `ea23f3ca1175eaacef73f124449895537d6c16ff4f8de4da1e6d00d749be4381` (read by `release.yml` from the first draft release, v0.1.0, 2026-10-14). Compare it with `apksigner verify --print-certs` before installing a release APK, and check the APK against its `.sha256`. A different fingerprint means the APK is not signed with the Doorprints key.
 
 A signed release build cannot be installed over a debug build (different signer): sync first, uninstall, then
 install. Builds from before the rename (package `com.househunt.app`) are a separate app; sync them, install
