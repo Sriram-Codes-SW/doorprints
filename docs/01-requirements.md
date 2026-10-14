@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Software Requirements Specification |
-| Version | 0.50 |
-| Date | 2026-10-10 |
+| Version | 0.51 |
+| Date | 2026-10-14 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -62,6 +62,7 @@
 | 0.48 | 2026-10-07 | Claude (Code), lead | **AI-018: `anthropic` is built** (S4b-BL-152; [03](03-design.md) §13.2 v0.74): Anthropic's Messages API on the website and both phones, a key required, its address fixed. |
 | 0.49 | 2026-10-08 | Claude (Code) | **AI-010 and PRV-009 name email addresses** (S4b-BL-179 (email addresses) and S4b-BL-180 (name parts that are ordinary words)): the generic layer of `ContactRedactor` removes email addresses (`[email]`) from free text before it goes to a provider, in all three stacks; PRV-009 reason (1) adds handles and the ordinary-word name parts. Status unchanged (AI-010 Impl, PRV-009 Part). |
 | 0.50 | 2026-10-10 | Claude (Code), docs pass | **Section 11.3 (out of scope):** the entry *bring-your-own AI key ... (rejected 2026-09-22; ...)* is replaced by a dated note that it is no longer out of scope; AI-018 and ADR-26 / ADR-35 built it on the device (S4b-BL-214, [10](10-sprint-log.md) v0.235). No requirement changed. |
+| 0.51 | 2026-10-14 | Claude (Code), engineer | SEC-018 status: `release.yml` exists (C-02, PR #331, a draft release with the APK and its `.sha256`); first dry run pending. |
 
 Related: [README](README.md) · [Threat model](02-threat-model.md) · [Design](03-design.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Test plan](06-test-plan.md) · [AI docs](ai/)
 
@@ -336,7 +337,7 @@ AI-assisted column mapping, is a possible later feature with its own name (11.3)
 | SEC-015 | Error responses use RFC 7807 with no stack traces or SQL. The clients show translated error categories, never raw server bodies. | M | Impl | F-12 |
 | SEC-016 | Logs contain no API keys, coordinates, notes or phone numbers. Auth failures are logged with a salted client-address hash, method and path. | S | Impl | F-18 |
 | SEC-017 | The key can be rotated with a documented procedure. The server supports a current and a next key during rotation (`APP_API_KEY`, `APP_API_KEY_NEXT`). | S | Impl (Sprint 2; procedure in 08 §5.1) | F-01a |
-| SEC-018 | Release APKs are signed with a private keystore kept outside the repo, built with R8 minify/shrink, `debuggable=false`, and published with a SHA-256 checksum. | M | Part (Sprint 2: signing from `HH_*` secrets and `apksigner verify` in CI; R8 off until keep rules exist; checksum publishing with `release.yml` next) | F-11 |
+| SEC-018 | Release APKs are signed with a private keystore kept outside the repo, built with R8 minify/shrink, `debuggable=false`, and published with a SHA-256 checksum. | M | Part (Sprint 2: signing from `HH_*` secrets and `apksigner verify` in CI; R8 off until keep rules exist; checksum publishing: `release.yml` is merged (C-02), its first dry run is pending) | F-11 |
 | SEC-019 | The DB connection uses TLS (`sslmode=require`) and a non-superuser app role that owns only the app schema (`doorprints`; named `househunt` until 2026-09-24, [03](03-design.md) ADR-24). Flyway migrations run with the same role or a separate migration role. | M | Plan | T-I4 |
 | SEC-020 | The server clamps client `updatedAt` values more than 5 minutes in the future to server time and rejects dates more than 365 days ahead or before 2000, so records cannot be "frozen". | M | Impl | F-08 |
 | SEC-021 | Android components are not exported unless needed. PendingIntents are immutable, with one exception: the Sprint 4b geofencing `PendingIntent` must be `FLAG_MUTABLE` (the Geofencing API fills in the event) and is explicit to a non-exported receiver (SEC-049, [02](02-threat-model.md) T-E8). The deep-link extras from `MainActivity` are validated (UUID format, lat/lon range). | S | Impl | F-25 |
