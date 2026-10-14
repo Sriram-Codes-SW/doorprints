@@ -99,9 +99,10 @@ class SchoolWordsScreenTest {
     @Test fun theFormSaysSchoolInItsTitleAndItsWalkCheck() {
         save()
         show { HouseEditScreen(houseId = SchoolSample.ID, newLat = null, newLon = null, visitId = null, onDone = {}) }
-        compose.waitUntil(10_000) { text("School details").fetchSemanticsNodes().isNotEmpty() }
+        // The title is there before the form's body is: wait for the walk check itself.
+        compose.waitUntil(10_000) { text("Did I walk past this school?").fetchSemanticsNodes().isNotEmpty() }
+        text("School details").assertCountEquals(1)
         text("House details").assertCountEquals(0)
-        compose.onNodeWithText("Did I walk past this school?").assertExists()
         text("Did I walk past this house?").assertCountEquals(0)
     }
 
