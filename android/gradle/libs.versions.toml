@@ -66,7 +66,7 @@ androidx-exifinterface = "1.4.2"
 play-services-location = "21.4.0"
 # Google Play services Authorization API (AuthorizationClient) for the Drive token on Android (docs/15 §5.5 fallback row,
 # S4b-BL-117). Scope drive.file only; Play services keeps and refreshes the grant, the app holds the token in memory.
-play-services-auth = "21.6.0"
+play-services-auth = "22.0.0"
 # Google code scanner (QR scan of the Drive enrolment offer, owner decision 2026-10-06): Google's own screen scans, so the app
 # needs no CAMERA permission; the scanner module is fetched through Play services on first use.
 play-services-code-scanner = "16.1.0"
