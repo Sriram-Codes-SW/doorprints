@@ -276,7 +276,7 @@ output under a name that belonged to a host this app does not use.)
 
 ## Test
 
-Unit tests use Angular's built-in `@angular/build:unit-test` builder with Vitest and jsdom (no browser needed).
+Unit tests use Angular's built-in `@angular/build:unit-test` builder with Vitest and jsdom (no browser needed). `vitest.config.mjs` (named by `runnerConfig` in `angular.json`) turns Vitest 5's on-disk module cache off, because it served stale source after an edit.
 Spec files sit next to the code (`*.spec.ts`) and cover the score calculation, rupee/number formatting per
 language, completeness of the translation dictionaries (same keys and `{placeholders}` as `en.ts`), the API
 interceptor (only `/api` URLs get the base URL and key), where the API config is stored, the frame refusal

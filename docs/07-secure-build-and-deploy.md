@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Secure build, CI/CD and deployment guide |
-| Version | 0.76 |
+| Version | 0.77 |
 | Date | 2026-10-14 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -88,6 +88,7 @@
 | 0.74 | 2026-10-14 | Claude (Code), engineer | **`release.yml` fixed after its first dry run** (C-02, [10](10-sprint-log.md)): run 38552321755 passed the guards, the keystore decode and the signed `assembleRelease`, then failed on *Could not read the signer certificate fingerprint*: apksigner printed `V2 Signer: certificate SHA-256 digest: <hex>`, not the `Signer #1 ...` prefix the script matched. The script now reads the digest case-insensitively whatever the prefix, keeps hex digits only, lower-cases, de-duplicates and requires exactly one 64-hex value. GitHub also withheld the job output `name` ("Skip output 'name' since it may contain secret"): `build` no longer passes the file name to `publish`, which rebuilds it as `doorprints-<tag>` (§5 *Publish*). |
 | 0.75 | 2026-10-14 | Claude (Code), engineer | **`environment: release` added to the four jobs that read the `HH_*` signing secrets** (S4b-BL-8, workflow part; [10](10-sprint-log.md), [02](02-threat-model.md) T-E4): `release.yml` `check` and `build`, `android.yml` `release-signing-check` and `release` (`publish` has no secrets and none was added). The owner has created, or is creating, the `release` environment (deployment rules: branch `main`, tag pattern `v*.*.*`) holding the four secrets; §1 *Environments*, §4 and §5 now describe it. **Takes effect only after the owner's step** (secrets in the environment, then a green dry run of `release.yml` and a push to `main`); nothing here is verified yet, and deleting the repository secrets stays an owner step after that dry run. |
 | 0.76 | 2026-10-14 | Claude (Code), engineer | **`release.yml` verified end to end; the `release` environment is in place** (C-02, S4b-BL-8; [10](10-sprint-log.md)): the tag run of `v0.1.0` (run 38567647446) built the signed APK and created the draft release with the APK and its `.sha256`; manual dry runs pass. The owner created the `release` environment (deployment rules: branch `main`, tag pattern `v*.*.*`), put the four `HH_*` secrets in it and deleted the four repository secrets; a dry run after that (run 38574720381) passed. §1 *Environments*, §4, §5 and the variables of §7 are updated. The release stays a draft until [13](13-release-security-checklist.md) passes. |
+| 0.77 | 2026-10-14 | Claude (Code), engineer | **Dependabot group `npm-dev-major`: vitest 5 and jsdom 30 evaluated and taken** ([10](10-sprint-log.md) S4b-BL-311, v0.323): `@angular/build` 22.2.2 allows `vitest ^4.0.8 \|\| ^5.0.0`; Vitest 5 needs Node `^22.12 \|\| ^24 \|\| >=26` and jsdom 30 Node `^24.15` (CI and sessions use Node 24). `web.yml` is unchanged (`npm run test:ci`). |
 
 Related: [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Runbook](08-operations-runbook.md) · [AI docs](ai/)
 

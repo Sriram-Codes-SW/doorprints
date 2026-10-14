@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Test plan (functional, security, accessibility, i18n, AI) |
-| Version | 0.253 |
+| Version | 0.254 |
 | Date | 2026-10-14 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -261,6 +261,7 @@
 | 0.251 | 2026-10-14 | Claude (Code), engineer | **TC-AI-47, TC-U-231** (S4b-BL-268, S4b-BL-271; `feat/kinds-17-school-evals-and-slots`, [10](10-sprint-log.md) v0.320): the school set for the AI evals and the three harnesses' seeding of a candidate's kind and extras (the keyless injection run on Ollama is in [ai-design](ai/ai-design.md) 8.7), and the house's `ai` slots held to its hand-written AI code by a test per stack. |
 | 0.252 | 2026-10-14 | Claude (Code), engineer | **TC-S-42 and TC-S-43 follow maplibre-gl 6.13** ([10](10-sprint-log.md) S4b-BL-310, v0.321): the worker is self-contained and `maplibre-gl-shared.mjs` an empty stub, so both check the worker alone, still strictly (it imports no sibling file; its version is the installed package's; after the deploy its bytes equal the build's). |
 | 0.253 | 2026-10-14 | Claude (Code), engineer | **TC-U-232 and TC-M-76** (the phones' half of S4b-BL-256, S4b-BL-259, S4b-BL-266, S4b-BL-277; `feat/kinds-18-school-wording-phones`, [10](10-sprint-log.md) v0.320): a school's pages and copies on Android and the iPhone. |
+| 0.254 | 2026-10-14 | Claude (Code), engineer | **Vitest 5 module cache is off for the web unit tests** ([10](10-sprint-log.md) S4b-BL-311, v0.323): Vitest 5 caches transformed modules in `web/node_modules/.vitest-cache` by default, and under `@angular/build:unit-test` that cache served the previous run's source after an edit, so a mutated file passed its spec and `tools/mutate.mjs` reported every mutation as survived. `web/vitest.config.mjs` (`fsModuleCache: false`, named by `runnerConfig` in `angular.json`) turns it off; `tools/mutate.mjs tools/mutations/ai-answer-clean-web.json` kills 16 of 16 again. Test counts unchanged (4,826 passed, 2 skipped, as on `main`). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Design](03-design.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
