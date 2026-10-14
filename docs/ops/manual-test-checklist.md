@@ -945,3 +945,31 @@ owner's own test phones. TC-M-72 of [06](../06-test-plan.md); the website's twin
 |---|---|---|---|---|---|
 | MT-96 | What you track, the chooser and the chip on the phone | anyone | E4 | no | |
 | MT-97 | A school space's tools, a copy, a backup, a shared listing, a link | owner | E4 | no | |
+
+## 20. A school's pages and copies (S4b-BL-256, S4b-BL-259, S4b-BL-266, S4b-BL-277)
+
+Needs a build that ships the school (`ng build --define "DOORPRINTS_KINDS='house,school'"` or a development build) and
+**Experimental: more than houses** on in *Your data*, with a school or two saved. Do it in English, then in one of Hindi,
+Tamil and Telugu; light and dark; the largest text.
+
+#### MT-100 TC-M-75: a school's pages by eye
+
+1. Open a school space (**Schools** on the chooser). Read the list: each row is the name, the status and the street, with
+   no price and no score. The tab title says *Schools*.
+2. Open a school. Read the page top to bottom: the name's hint, the map's label, *Did I walk past this school?* (press it),
+   the area-note, visit and photo lines. Tab title *School details*. Add a new school: tab title *New school*; Add without a
+   name says *Please give the school a name*.
+3. Open **Your data**: no Criteria, Questions or Viewings card. Open **My areas** and **My places**: they speak of schools.
+4. **Compare** two schools and **Ask**: no price, BHK or score row or filter.
+5. **Save a copy** of the school space as a web page, Markdown, CSV and a spreadsheet: the cover says *Schools*; the ranking
+   is No., School, Status; the fees are under *Fees*; the spreadsheet has no price, score, BHK, cost, rooms, floor or broker
+   column and no Scores sheet.
+6. Switch to the house space: every page and copy is what it was (*Price*, *Score*, *Cost*).
+
+Expected: no house word anywhere in 1 to 5. Record any line that still says house, with the language and the page.
+
+### 20.1 Summary rows (add to §13 when the owner starts the run)
+
+| ID | Name | Who | Env | Pass | Notes |
+|---|---|---|---|---|---|
+| MT-100 | A school's pages and copies by eye | anyone | E4 | no | |

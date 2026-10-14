@@ -32,6 +32,7 @@ import { LocalDataService } from '../../core/local-data.service';
 import type { HouseDto } from '../../core/models';
 import { LocalStore } from '../../data/local-store.service';
 import { TranslationService } from '../../i18n/translation.service';
+import { DEFAULT_KIND_KEY, ENABLED_KINDS_KEY, EXPERIMENTAL_KINDS_KEY } from '../../core/kind-setting';
 import { DEFAULT_SCORING } from '../../shared/scoring';
 import { HouseDetailPage } from './house-detail-page';
 
@@ -370,5 +371,42 @@ describe('HouseDetailPage: a shared listing on arrival', () => {
     expect(page.draft().bedrooms).toBe(3);
     expect(page.draft().price ?? null).toBeNull();
     expect(host.querySelector('#listing-cut-hint')).not.toBeNull();
+  });
+});
+
+// Kinds PR 16 (S4b-BL-256, S4b-BL-259): the listing card of a school names fields by the school's labels and leaves a hidden place alone.
+describe('HouseDetailPage: the listing card of a school', () => {
+  const asSchool = () => {
+    localStorage.setItem(EXPERIMENTAL_KINDS_KEY, '1');
+    localStorage.setItem(ENABLED_KINDS_KEY, '["house","school"]');
+    localStorage.setItem(DEFAULT_KIND_KEY, 'school');
+  };
+
+  it('says create the school, fills the name and the website, and writes no price, type or BHK into the school', async () => {
+    asSchool();
+    const { fixture, host, page, extractListing } = await open(() =>
+      of({ ...BLANK, label: 'Pine Hill School', locality: 'Dispur', price: 96000, priceType: 'RENT', bedrooms: 2, listingUrl: 'https://pine.example' }),
+    );
+    expect(host.querySelector('#listing-fill-hint')?.textContent).toContain('then create the school.');
+    await type(fixture, '#listing-text', 'Pine Hill School, Dispur');
+    submit(host).click();
+    await settled(fixture);
+    expect(extractListing).toHaveBeenCalledWith('Pine Hill School, Dispur', 'school');
+    expect(page.draft()).toMatchObject({ kind: 'school', label: 'Pine Hill School', locality: 'Dispur', listingUrl: 'https://pine.example' });
+    expect(page.draft().price ?? null).toBeNull();
+    expect(page.draft().bedrooms ?? null).toBeNull();
+    expect(page.draft().priceType ?? null).toBeNull();
+  });
+
+  it('names a kept value by the school’s label, and the marks of the fill likewise', async () => {
+    asSchool();
+    const { fixture, host } = await open(() => of({ ...BLANK, label: 'Other School', listingUrl: 'https://other.example' }));
+    await type(fixture, '#house-name', 'My own school');
+    await type(fixture, '#listing-text', 'a listing');
+    submit(host).click();
+    await settled(fixture);
+    expect(warnings(host)).toEqual(['Kept your School name; the listing says “Other School”.']);
+    expect(host.querySelector('.listing-fill')?.textContent).toContain('Website');
+    expect(host.querySelector('.listing-fill')?.textContent).not.toContain('Listing link');
   });
 });

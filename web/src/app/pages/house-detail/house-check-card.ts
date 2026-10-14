@@ -26,6 +26,8 @@
 
 import { Component, DestroyRef, Injector, afterNextRender, effect, inject, input, output, signal, untracked } from '@angular/core';
 import { Announcer } from '../../core/announcer.service';
+import { toolWord } from '../../core/space-tool-words';
+import type { TKey } from '../../i18n/en';
 import type { HouseDto } from '../../core/models';
 import { TPipe } from '../../i18n/t.pipe';
 import { TranslationService } from '../../i18n/translation.service';
@@ -50,9 +52,9 @@ const NO_WALKS = { type: 'FeatureCollection' as const, features: [] };
         @if (answer(); as a) {
           <app-check-result [answer]="a" [showMap]="true" (show)="showOnMap()" (closed)="close()" />
         } @else {
-          <h2 id="house-check-heading">{{ 'trace.here.titleHouse' | t }}</h2>
+          <h2 id="house-check-heading">{{ word('trace.here.titleHouse') | t }}</h2>
           <button type="button" id="house-check-open" class="btn" [attr.aria-disabled]="busy() ? 'true' : null" (click)="check()">
-            {{ 'trace.here.buttonHouse' | t }}
+            {{ word('trace.here.buttonHouse') | t }}
           </button>
         }
       </section>
@@ -66,6 +68,8 @@ export class HouseCheckCard {
   private readonly injector = inject(Injector);
 
   readonly house = input.required<HouseDto>();
+  /** The candidate's kind: its words for the question and the map's label (S4b-BL-259). */
+  readonly kind = input('house');
   /** A house not saved yet (`/houses/new`) has no stored spot to check. */
   readonly isNew = input(false);
   /** False for a new house with no position yet: there is nothing to check. */
@@ -75,6 +79,7 @@ export class HouseCheckCard {
 
   protected readonly answer = signal<CheckAnswer | null>(null);
   protected readonly busy = signal(false);
+  protected readonly word = (key: TKey): TKey => toolWord(this.kind(), key);
   protected readonly shown = () => !this.isNew() && this.locationSet();
   private placeKey = '';
 
@@ -113,8 +118,8 @@ export class HouseCheckCard {
     try {
       const answer: CheckAnswer =
         h.locationSource === 'APPROX'
-          ? { kind: 'house', place: { lat: h.lat, lon: h.lon }, summary: null, stretches: [], bounds: boundsOf(h, []) }
-          : await this.state.compute('house', { lat: h.lat, lon: h.lon });
+          ? { kind: 'house', candidate: this.kind(), place: { lat: h.lat, lon: h.lon }, summary: null, stretches: [], bounds: boundsOf(h, []) }
+          : await this.state.compute('house', { lat: h.lat, lon: h.lon }, undefined, this.kind());
       this.answer.set(answer);
       this.overlay.emit(this.overlayOf(answer));
       this.announcer.announce({ key: 'trace.here.announce', params: { text: this.state.text(answer).headline } });
@@ -130,7 +135,7 @@ export class HouseCheckCard {
       walks: NO_WALKS,
       check: checkGeoJson(answer.stretches),
       fit: answer.bounds,
-      ring: { lat: answer.place.lat, lon: answer.place.lon, label: this.i18n.t('trace.here.labelHouse') },
+      ring: { lat: answer.place.lat, lon: answer.place.lon, label: this.i18n.t(this.word('trace.here.labelHouse')) },
     };
   }
 

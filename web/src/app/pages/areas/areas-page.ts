@@ -24,6 +24,7 @@ import { Announcer } from '../../core/announcer.service';
 import { ConfirmService } from '../../core/confirm.service';
 import { errorMsg } from '../../core/format';
 import { LocalDataService } from '../../core/local-data.service';
+import { SpaceService } from '../../core/space.service';
 import { TPipe } from '../../i18n/t.pipe';
 import { Msg } from '../../i18n/translation.service';
 import {
@@ -68,6 +69,8 @@ const STREETS = '!streets';
 })
 export class AreasPage {
   private readonly api = inject(LocalDataService);
+  /** The space on screen (the last one on this page): its words for the house words left on the page (S4b-BL-256). */
+  protected readonly space = inject(SpaceService);
   private readonly confirm = inject(ConfirmService);
   private readonly announcer = inject(Announcer);
 
@@ -216,7 +219,7 @@ export class AreasPage {
   protected async remove(): Promise<void> {
     const f = this.form();
     if (!f || f.id === '') return;
-    const ok = await this.confirm.ask({ key: 'areas.confirmDelete' }, { confirmKey: 'areas.delete', danger: true });
+    const ok = await this.confirm.ask({ key: this.space.kindWord('areas.confirmDelete') }, { confirmKey: 'areas.delete', danger: true });
     if (!ok) return;
     try {
       await firstValueFrom(this.api.deleteArea(f.id));

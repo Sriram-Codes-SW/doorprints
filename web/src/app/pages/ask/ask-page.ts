@@ -35,7 +35,8 @@ import { toolWord } from '../../core/space-tool-words';
 import type { TKey } from '../../i18n/en';
 import { Announcer } from '../../core/announcer.service';
 import { ConfigService } from '../../core/config.service';
-import { HouseStatus, STATUSES, STATUS_KEY } from '../../core/models';
+import { HouseStatus, STATUSES } from '../../core/models';
+import { statusKeys } from '../../core/kind-labels';
 import { Msg } from '../../i18n/translation.service';
 import { TPipe } from '../../i18n/t.pipe';
 import { RunResult, runResult } from '../../shared/run-result';
@@ -79,7 +80,7 @@ export class AskPage implements OnDestroy {
 
   protected readonly maxChars = AI_MAX_QUESTION_CHARS;
   protected readonly statuses = STATUSES;
-  protected readonly statusKey = STATUS_KEY;
+  protected readonly statusKey = statusKeys(this.space.current().labels);
 
   protected question = '';
   protected status: HouseStatus | '' = '';

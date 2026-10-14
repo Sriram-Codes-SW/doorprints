@@ -29,7 +29,8 @@ import { compareRanked, evaluateScore, scoringOf } from '../shared/scoring';
 import type { CriterionRow, PreferenceRow, ScoreResult, Scoring } from '../shared/scoring';
 import type { LengthUnit } from '../shared/room-sizes';
 import { ExportStrings } from './export-strings';
-import { extraColumnsOf, extrasOf, type CopyKinds, type ExportExtra, type ExportExtraColumn } from './kind-copy';
+import type { KindFields } from '../core/kind-fields';
+import { copyVoice, extraColumnsOf, extrasOf, type CopyKinds, type ExportExtra, type ExportExtraColumn } from './kind-copy';
 import type { SearchSpaces } from './backup-family';
 
 /** The six deterministic formats of docs/11 §5.2. */
@@ -92,6 +93,8 @@ export interface ExportHouse {
   distances: readonly PlaceDistance[];
   /** The typed extras its kind reads through the kind file (kinds PR 6, S4b-BL-210); none for a house. */
   extras?: readonly ExportExtra[];
+  /** The candidate's kind when it is not the house (S4b-BL-266): its labels and hidden places shape its own section of a copy. */
+  kind?: KindFields;
 }
 
 /** An area note that reaches a house, with where it comes from: the area's name or the street. */
@@ -160,6 +163,12 @@ export interface ExportBundle {
   lengthUnit: LengthUnit;
   /** The Houses table's columns for typed extras (kinds PR 6, S4b-BL-210): none in a copy of houses only. */
   extraColumns?: readonly ExportExtraColumn[];
+  /**
+   * The kind the copy speaks in (S4b-BL-266): that of a copy whose candidates are all of one kind other than the house (or of
+   * a space's copy). Its words, headings and hidden places shape the copy; a copy of houses, or of several kinds, has none and
+   * is written as it always was.
+   */
+  voice?: KindFields;
   /** The kinds enabled and the default (Settings > Kinds, S4b-BL-212), for the backup's `search`; none for the house alone. */
   spaces?: SearchSpaces;
 }
@@ -265,6 +274,7 @@ export function collect(input: CollectInput): ExportBundle {
       options.photos === 'all' || (options.photos === 'shortlisted' && house.status === 'SHORTLISTED');
     const result = evaluateScore(house.checklist, house.rating, scoring);
     const extras = kinds ? extrasOf(house, kinds, words) : [];
+    const own = kinds?.fieldsOf(house.kind);
     return {
       house,
       score: result.overall,
@@ -283,9 +293,11 @@ export function collect(input: CollectInput): ExportBundle {
       })),
       distances: nearestFirst(distancesToPlaces(house, places.map((r) => r.place))),
       ...(extras.length ? { extras } : {}),
+      ...(own && own.kind !== 'house' ? { kind: own } : {}),
     };
   });
   const extraColumns = kinds ? extraColumnsOf(chosen, kinds) : [];
+  const voice = kinds ? copyVoice(chosen, kinds, input.inSpace ? options.space : undefined) : undefined;
 
   return {
     exportedAt: input.exportedAt,
@@ -303,6 +315,7 @@ export function collect(input: CollectInput): ExportBundle {
     brokers: options.includeContacts ? collectBrokers(input.brokers ?? [], houses, whole) : [],
     lengthUnit: input.lengthUnit ?? 'FT',
     ...(extraColumns.length ? { extraColumns } : {}),
+    ...(voice ? { voice } : {}),
     ...(input.spaces && !(input.spaces.kinds.length === 1 && input.spaces.kinds[0] === 'house') ? { spaces: input.spaces } : {}),
     counts: {
       houses: houses.length,

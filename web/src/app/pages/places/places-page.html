@@ -20,7 +20,7 @@
   <header class="page-head">
     <p><a routerLink="/data">{{ 'areas.back' | t }}</a></p>
     <h1>{{ 'places.title' | t }}</h1>
-    <p class="muted">{{ 'places.intro' | t }}</p>
+    <p class="muted">{{ space.kindWord('places.intro') | t }}</p>
   </header>
 
   @if (failure(); as f) {
@@ -37,7 +37,7 @@
     <section class="card" aria-labelledby="places-heading">
       <h2 id="places-heading">{{ 'places.title' | t }}</h2>
       @if (places().length === 0) {
-        <p id="places-empty" class="muted">{{ 'places.empty' | t }}</p>
+        <p id="places-empty" class="muted">{{ space.kindWord('places.empty') | t }}</p>
       } @else {
         <ul class="list">
           @for (p of places(); track p.id) {

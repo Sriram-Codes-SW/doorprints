@@ -422,33 +422,40 @@
     </div>
   </section>
 
-  <section class="card" aria-labelledby="criteria-heading">
-    <h2 id="criteria-heading">{{ 'criteria.dataHeading' | t }}</h2>
-    <p class="muted">{{ 'criteria.dataBody' | t }}</p>
-    <div class="actions">
-      <a class="btn" routerLink="/criteria">{{ 'criteria.open' | t }}</a>
-    </div>
-  </section>
+  <!-- Criteria, questions and viewings belong to the kinds that have a checklist, questions and viewings (S4b-BL-277): a school space is without them. -->
+  @if (space.current().labels.isVisible('section.checklist')) {
+    <section class="card" aria-labelledby="criteria-heading">
+      <h2 id="criteria-heading">{{ 'criteria.dataHeading' | t }}</h2>
+      <p class="muted">{{ 'criteria.dataBody' | t }}</p>
+      <div class="actions">
+        <a class="btn" routerLink="/criteria">{{ 'criteria.open' | t }}</a>
+      </div>
+    </section>
+  }
 
-  <section class="card" aria-labelledby="questions-heading">
-    <h2 id="questions-heading">{{ 'questions.dataHeading' | t }}</h2>
-    <p class="muted">{{ 'questions.dataBody' | t }}</p>
-    <div class="actions">
-      <a class="btn" routerLink="/questions">{{ 'questions.open' | t }}</a>
-    </div>
-  </section>
+  @if (space.current().labels.isVisible('section.questions')) {
+    <section class="card" aria-labelledby="questions-heading">
+      <h2 id="questions-heading">{{ 'questions.dataHeading' | t }}</h2>
+      <p class="muted">{{ 'questions.dataBody' | t }}</p>
+      <div class="actions">
+        <a class="btn" routerLink="/questions">{{ 'questions.open' | t }}</a>
+      </div>
+    </section>
+  }
 
-  <section class="card" aria-labelledby="viewings-heading">
-    <h2 id="viewings-heading">{{ 'viewings.dataHeading' | t }}</h2>
-    <p class="muted">{{ 'viewings.dataBody' | t }}</p>
-    <div class="actions">
-      <a class="btn" routerLink="/viewings">{{ 'viewings.open' | t }}</a>
-    </div>
-  </section>
+  @if (space.current().labels.isVisible('section.viewings')) {
+    <section class="card" aria-labelledby="viewings-heading">
+      <h2 id="viewings-heading">{{ 'viewings.dataHeading' | t }}</h2>
+      <p class="muted">{{ 'viewings.dataBody' | t }}</p>
+      <div class="actions">
+        <a class="btn" routerLink="/viewings">{{ 'viewings.open' | t }}</a>
+      </div>
+    </section>
+  }
 
   <section class="card" aria-labelledby="areas-heading">
     <h2 id="areas-heading">{{ 'areas.dataHeading' | t }}</h2>
-    <p class="muted">{{ 'areas.dataBody' | t }}</p>
+    <p class="muted">{{ space.kindWord('areas.dataBody') | t }}</p>
     <div class="actions">
       <a class="btn" routerLink="/areas">{{ 'areas.open' | t }}</a>
     </div>
@@ -456,7 +463,7 @@
 
   <section class="card" aria-labelledby="places-heading">
     <h2 id="places-heading">{{ 'places.dataHeading' | t }}</h2>
-    <p class="muted">{{ 'places.dataBody' | t }}</p>
+    <p class="muted">{{ space.kindWord('places.dataBody') | t }}</p>
     <div class="actions">
       <a class="btn" routerLink="/places">{{ 'places.open' | t }}</a>
     </div>
