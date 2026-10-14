@@ -193,6 +193,10 @@
    "description": "How often an amount is paid. A money value on the wire is {\"amount\": whole rupees, \"cadence\": one of these}.",
    "enum": ["once", "day", "week", "month", "quarter", "year"]
   },
+  "better": {
+   "description": "Which way a number or an amount is better when candidates are compared (S4b-BL-292): the lower commute or fee, or the higher. Absent: no value is better than another, and Compare marks none. Optional and additive (a reader that does not know it ignores it).",
+   "enum": ["lower", "higher"]
+  },
   "unit": {
    "description": "The unit codes of number extras (closed list; adding one is additive, renaming one is a format change).",
    "enum": ["count", "level", "sqft", "sqm", "cm", "m", "km", "minute", "day", "month", "year", "percent"]
@@ -234,7 +238,7 @@
      "if": { "properties": { "type": { "const": "number" } } },
      "then": {
       "required": ["integer", "unit"],
-      "properties": { "integer": { "type": "boolean" }, "min": { "type": "number" }, "max": { "type": "number" }, "unit": { "$ref": "#/$defs/unit" } }
+      "properties": { "integer": { "type": "boolean" }, "min": { "type": "number" }, "max": { "type": "number" }, "unit": { "$ref": "#/$defs/unit" }, "better": { "$ref": "#/$defs/better" } }
      }
     },
     {
@@ -243,6 +247,7 @@
       "required": ["max"],
       "properties": {
        "max": { "type": "integer", "minimum": 1, "maximum": 1000000000000 },
+       "better": { "$ref": "#/$defs/better" },
        "cadences": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/cadence" } },
        "cadenceFrom": { "const": "money", "description": "The amount is paid as often as the candidate's own money (an offer on the rent is per month)." }
       },

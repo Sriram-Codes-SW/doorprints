@@ -32,6 +32,7 @@ import { MAX_SELECTED, MIN_SELECTED, idsFromQuery } from './compare-selection';
 import { SpaceService } from '../../core/space.service';
 import { comparePick } from '../../core/space-scope';
 import { toolWord } from '../../core/space-tool-words';
+import type { KindExtra } from '../../core/kind-fields';
 import { kindValues, type KindValue } from '../../shared/kind-values';
 import type { TKey } from '../../i18n/en';
 import { GLYPHS } from '../../shared/glyphs';
@@ -276,7 +277,7 @@ export class ComparePage {
         id: 'extra-' + f.id,
         label: i18n.t(kind.fields.label(f)),
         cells: houses.map((h) => extraCell(kindValues(kind.fields, h).find((v) => v.field.id === f.id), i18n, none)),
-        best: new Set<number>(),
+        best: bestExtra(f, houses.map((h) => kindValues(kind.fields, h).find((v) => v.field.id === f.id))),
       });
     }
     // Without a checklist the rating is what is scored: the best one is marked.
@@ -478,6 +479,20 @@ function bestOf(values: (number | null)[]): Set<number> {
     if (v === max) best.add(i);
   });
   return best.size === values.length && values.length > 1 ? new Set<number>() : best;
+}
+
+/**
+ * The best of a kind's number or amount where the kind file says which way is better (`better`, S4b-BL-292): the lowest or the
+ * highest. Marked only when at least two candidates have a value and they do not all tie; an extra with no hint has none.
+ */
+function bestExtra(field: KindExtra, values: (KindValue | undefined)[]): Set<number> {
+  if (!field.better) return new Set<number>();
+  const nums = values.map((v) => (v?.type === 'number' ? v.value : v?.type === 'money' ? v.amount : null));
+  const present = nums.filter((n): n is number => n !== null);
+  if (present.length < 2) return new Set<number>();
+  const target = field.better === 'lower' ? Math.min(...present) : Math.max(...present);
+  if (present.every((n) => n === target)) return new Set<number>();
+  return new Set(nums.flatMap((n, i) => (n === target ? [i] : [])));
 }
 
 /** One cell of a kind's extra: a dash, or the value in the app's words. */

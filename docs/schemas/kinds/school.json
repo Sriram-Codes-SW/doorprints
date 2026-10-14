@@ -79,10 +79,10 @@
    ]
   },
   { "id": "grades", "type": "text", "maxLength": 40, "section": "details", "order": 70, "label": { "web": "school.grades", "android": "school_grades" } },
-  { "id": "commuteMinutes", "type": "number", "integer": true, "min": 0, "max": 300, "unit": "minute", "section": "details", "order": 72, "label": { "web": "school.commuteMinutes", "android": "school_commute" } },
+  { "id": "commuteMinutes", "type": "number", "integer": true, "min": 0, "max": 300, "unit": "minute", "better": "lower", "section": "details", "order": 72, "label": { "web": "school.commuteMinutes", "android": "school_commute" } },
   { "id": "busService", "type": "bool", "section": "details", "order": 74, "label": { "web": "school.busService", "android": "school_bus" } },
-  { "id": "fees", "type": "money", "max": 1000000000000, "cadences": ["year"], "section": "cost", "order": 10, "label": { "web": "school.feesPerYear", "android": "school_fees" } },
-  { "id": "admissionFee", "type": "money", "max": 1000000000000, "cadences": ["once"], "section": "cost", "order": 20, "label": { "web": "school.admissionFee", "android": "school_admission_fee" } }
+  { "id": "fees", "type": "money", "max": 1000000000000, "cadences": ["year"], "better": "lower", "section": "cost", "order": 10, "label": { "web": "school.feesPerYear", "android": "school_fees" } },
+  { "id": "admissionFee", "type": "money", "max": 1000000000000, "cadences": ["once"], "better": "lower", "section": "cost", "order": 20, "label": { "web": "school.admissionFee", "android": "school_admission_fee" } }
  ],
  "checklist": [],
  "questions": {

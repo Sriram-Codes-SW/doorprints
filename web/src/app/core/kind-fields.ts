@@ -36,6 +36,8 @@ export interface KindExtra {
   readonly min?: number;
   readonly max?: number;
   readonly unit?: string;
+  /** Which way a number or an amount is better when candidates are compared (S4b-BL-292); absent: neither. */
+  readonly better?: 'lower' | 'higher';
   readonly cadences?: readonly Cadence[];
   readonly cadenceFrom?: 'money';
   /** Shown only while the candidate's money has one of these cadences, or none. */

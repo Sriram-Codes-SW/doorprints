@@ -26,6 +26,7 @@ import schoolJson from '../../../../docs/schemas/kinds/school.json';
 import schemaJson from '../../../../docs/schemas/kinds/kind.schema.json';
 import { DICTIONARIES } from '../i18n/all-dictionaries';
 import type { Lang } from '../i18n/languages';
+import { SCHOOL_FIELDS } from './school-kind';
 import { spaceWords } from './space-words';
 
 type Words = Record<string, { web: string; android?: string | null }>;
@@ -71,4 +72,13 @@ describe('the space words are the kind files’ (S4b-BL-278)', () => {
       }
     });
   }
+});
+
+describe('which way a number is better is the kind file’s (S4b-BL-292)', () => {
+  it('the school’s commute and both fees are better lower, nothing else says, and the website’s copy is the file', () => {
+    const file = (schoolJson as unknown as { extras: { id: string; better?: string }[] }).extras;
+    expect(file.filter((e) => e.better).map((e) => [e.id, e.better])).toEqual([['commuteMinutes', 'lower'], ['fees', 'lower'], ['admissionFee', 'lower']]);
+    expect(SCHOOL_FIELDS.others(true).map((f) => [f.id, f.better ?? null])).toEqual(file.map((e) => [e.id, e.better ?? null]));
+    expect((houseJson as unknown as { extras: { better?: string }[] }).extras.some((e) => e.better)).toBe(false);
+  });
 });
