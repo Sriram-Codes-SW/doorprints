@@ -67,6 +67,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.doorprints.data.AppSettings
 import app.doorprints.data.Repository
 import app.doorprints.data.SaveWalkResult
+import app.doorprints.shared.model.HouseStatus
+import app.doorprints.shared.model.KindLabels
 import app.doorprints.shared.trace.TraceConstants
 import app.doorprints.data.HouseEntity
 import app.doorprints.shared.trace.RepeatLook
@@ -617,7 +619,7 @@ fun MapScreen(
     // its labels): the narrowest legend that breaks no name (round 7: the widest name, its dot box, gap and padding),
     // and its width with all three on one line (round 8: one line or one item per line, never a mix).
     val legendStyle = legendTextStyle()
-    val legendLabels = LEGEND_DOTS.map { stringResource(statusLabel(it.status)) }
+    val legendLabels = LEGEND_DOTS.map { stringResource(statusLabel(it.status, LocalSpace.current.built.labels)) }
     val textMeasurer = rememberTextMeasurer()
     val legendLabelWidthsDp = remember(textMeasurer, legendLabels, legendStyle, density) {
         legendLabels.map { label ->
@@ -642,7 +644,7 @@ fun MapScreen(
     val allFullText = stringResource(Res.string.trace_save_all_full, TraceConstants.MAX_SAVED_WALKS)
     val failedWalkText = stringResource(Res.string.trace_save_failed_walk)
     val failedHouseText = stringResource(Res.string.trace_save_failed_house)
-    val unnamedHouse = stringResource(Res.string.house_unnamed)
+    val unnamedHouse = stringResource(LocalSpace.current.words.unnamed)
     askedWalk?.let { walk ->
         WalkEndSheet(
             summary = walk,
@@ -1424,7 +1426,7 @@ private fun MapLegend(oneLineWidthDp: Float, modifier: Modifier = Modifier) {
                             LegendDotMark(dot)
                         }
                         // labelMedium: 12/16 sp Latin, 12/20 sp for Indic scripts (IndicTypography), SemiBold.
-                        Text(stringResource(statusLabel(dot.status)), style = style, softWrap = false, maxLines = 1)
+                        Text(stringResource(statusLabel(dot.status, LocalSpace.current.built.labels)), style = style, softWrap = false, maxLines = 1)
                     }
                 }
             }
@@ -1446,15 +1448,9 @@ private fun MapLegend(oneLineWidthDp: Float, modifier: Modifier = Modifier) {
 @Composable
 private fun legendTextStyle(): TextStyle = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold)
 
-/** The status name for a [LegendDot.status]. */
-private fun statusLabel(status: String): StringResource = when (status) {
-    "SHORTLISTED" -> Res.string.status_SHORTLISTED
-    "REJECTED" -> Res.string.status_REJECTED
-    "TAKEN" -> Res.string.status_TAKEN
-    "NOT_CHOSEN" -> Res.string.status_NOT_CHOSEN
-    "APPROX" -> Res.string.legend_approx
-    else -> Res.string.status_NEW
-}
+/** The status name for a [LegendDot.status], in the words of the kind on screen's labels (S4b-BL-256). */
+private fun statusLabel(status: String, labels: KindLabels): StringResource =
+    if (status == "APPROX") Res.string.legend_approx else labels.statusText(HouseStatus.entries.firstOrNull { it.name == status } ?: HouseStatus.NEW)
 
 /** One legend dot: the web's `.dot` (map-page.css), a fill inside a white ring, a dark hairline outside it. */
 @Composable
@@ -1499,8 +1495,8 @@ fun PlaceLookupCard(
     note: String?,
     onFind: (foundText: String, notFoundText: String) -> Unit,
 ) {
-    val foundText = stringResource(Res.string.map_place_found, place)
-    val notFoundText = stringResource(Res.string.map_place_not_found, place)
+    val foundText = stringResource(LocalSpace.current.pages.placeFound, place)
+    val notFoundText = stringResource(LocalSpace.current.pages.placeNotFound, place)
     ElevatedCard(Modifier.padding(top = 8.dp).fillMaxWidth()) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             LiveMessage {

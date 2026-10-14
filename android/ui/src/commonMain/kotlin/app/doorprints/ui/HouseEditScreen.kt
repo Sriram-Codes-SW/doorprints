@@ -303,22 +303,10 @@ fun HouseEditScreen(
     val isNew = houseId == null
     // *Did I walk past this house?* (docs/11 5.27.13): the answer lives here, in memory, until the sheet closes.
     val placeCheck = remember(repo, scope) { PlaceCheckController(scope, repo, { null }, { 0L }) }
-    placeCheck.state?.let { st ->
-        PlaceCheckSheet(
-            state = st,
-            onShowOnMap = { overlay ->
-                placeCheck.close()
-                ShowOnMap.show(MapFocus(overlay, seconds = 10))
-                onShowOnMap()
-            },
-            onAgain = {},
-            onClose = { placeCheck.close() },
-        )
-    }
     val id = rememberSaveable { houseId ?: Uuid.random().toString() }
-    val defaultLabel = stringResource(Res.string.house_default_label)
-    val streetLabel = stringResource(Res.string.house_default_label_street)
-    val unnamed = stringResource(Res.string.house_unnamed)
+    val defaultLabel = stringResource(LocalSpace.current.pages.defaultLabel) // a new candidate is of the space's kind (kinds PR 16)
+    val streetLabel = stringResource(LocalSpace.current.pages.defaultLabelStreet)
+    val unnamed = stringResource(LocalSpace.current.words.unnamed)
     val touchExploration = { platform.isScreenReaderOn() }
 
     // What is on screen, and what it was when loaded (or the new-house default); dirty when they differ.
@@ -356,8 +344,12 @@ fun HouseEditScreen(
     val conflict = !isNew && !busy && dirty && saved != null && saved.updatedAt > seenUpdatedAt
     // The candidate's kind (kinds PR 5, S4b-BL-209): the house, or the school while the developer flag is on.
     val devKinds = LocalDevKinds.current; val space = LocalSpace.current // a new candidate is of the space's kind (kinds PR C)
-    val kind = DevKinds.of(draft?.kind, devKinds)
+    val kind = DevKinds.of(draft?.kind ?: space.built.id, devKinds) // before the row is loaded, the space's kind (a new candidate's, a missing one's)
     val L = kind.labels
+    val pages = PageWords.of(kind.id) // the house words left on this candidate's kind's page (kinds PR 16)
+    placeCheck.state?.let { st ->
+        PlaceCheckSheet(st, { overlay -> placeCheck.close(); ShowOnMap.show(MapFocus(overlay, seconds = 10)); onShowOnMap() }, {}, { placeCheck.close() }, pages)
+    }
 
     // The typed latitude / longitude while it differs from the draft's (null: show the draft's value). Cleared
     // wherever the draft is replaced from a stored row.
@@ -615,9 +607,9 @@ fun HouseEditScreen(
                     Text(
                         stringResource(
                             when {
-                                notFound -> Res.string.house_not_found_title
+                                notFound -> pages.notFoundTitle
                                 isNew -> L.refText("kind.new")
-                                else -> Res.string.house_details_title
+                                else -> pages.detailsTitle
                             },
                         ),
                         maxLines = 1,
@@ -657,7 +649,7 @@ fun HouseEditScreen(
             ) {
                 HeroEmptyState(
                     icon = Icons.Default.Search,
-                    title = stringResource(Res.string.house_not_found),
+                    title = stringResource(pages.notFound),
                     body = stringResource(Res.string.house_not_found_body),
                     horizontalPadding = 0.dp,
                     action = {
@@ -769,7 +761,7 @@ fun HouseEditScreen(
                 SectionHeading(stringResource(L.fieldText("status")))
                 Column(Modifier.selectableGroup()) {
                     HouseStatus.entries.forEach { s ->
-                        val text = stringResource(s.labelResource)
+                        val text = stringResource(L.statusText(s))
                         val color = s.color()
                         RadioRow(
                             label = buildAnnotatedString {
@@ -900,7 +892,7 @@ fun HouseEditScreen(
                         locationDenied && !locationAsk.granted -> LocationPermissionNote(
                             ask = locationAsk,
                             deniedText = stringResource(Res.string.house_location_denied),
-                            approximateText = approximateLocationText(Res.string.house_needs_precise),
+                            approximateText = approximateLocationText(pages.needsPrecise),
                             launchRequest = { askLocation() },
                         )
                         locationFailed -> Text(
@@ -974,9 +966,9 @@ fun HouseEditScreen(
                     ) {
                         Icon(FootprintsIcon, contentDescription = null, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                        ButtonLabel(stringResource(Res.string.trace_here_button_house))
+                        ButtonLabel(stringResource(pages.walkButton))
                     }
-                    if (L.isVisible("section.walks")) SavedWalksCard(id, onShowOnMap)
+                    if (L.isVisible("section.walks")) SavedWalksCard(id, pages.walksEmpty, onShowOnMap)
                 }
 
                 if (L.isVisible("section.checklist")) ChecklistSection(d.checklist, d.rating, scoring) { m -> update { it.copy(checklist = m) } }
@@ -1064,6 +1056,7 @@ fun HouseEditScreen(
                     onSave = { save() },
                     name = d.label.ifBlank { unnamed },
                     rooms = d.rooms,
+                    savePhotosFirst = pages.savePhotosFirst,
                 )
 
                 HorizontalDivider()
@@ -1137,7 +1130,7 @@ fun HouseEditScreen(
                     )
                     // The area notes that reach the house and its distances to my places (docs/11 slice 4a), from the
                     // saved point and street.
-                    if (L.isVisible("section.areaNotes")) HouseAreaNotesSection(saved)
+                    if (L.isVisible("section.areaNotes")) HouseAreaNotesSection(saved, pages.areaNotesNone)
                     if (L.isVisible("section.distances")) HouseDistancesSection(saved)
                 }
 
@@ -1172,7 +1165,7 @@ fun HouseEditScreen(
         AlertDialog(
             onDismissRequest = { confirmLeave = false },
             title = {
-                Text(stringResource(if (isNew) Res.string.house_discard_new_title else Res.string.house_leave_title))
+                Text(stringResource(if (isNew) pages.discardNew else Res.string.house_leave_title))
             },
             text = { Text(stringResource(Res.string.house_unsaved_body)) },
             confirmButton = {
@@ -1204,7 +1197,7 @@ fun HouseEditScreen(
     if (confirmDelete) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
-            title = { Text(stringResource(Res.string.house_delete_confirm_title)) },
+            title = { Text(stringResource(pages.deleteTitle)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(stringResource(Res.string.house_delete_confirm_body))
@@ -1462,8 +1455,7 @@ private fun PasteListingDialog(onDismiss: () -> Unit, onDraft: (HouseDraftDto, L
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(stringResource(Res.string.house_paste_hint), style = MaterialTheme.typography.bodySmall)
                 PasteListingText(text, { text = it })
-                AiDisclosure(style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                AiDisclosure(style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, pages = PageWords.of(kind ?: "house"))
                 LiveMessage(assertive = error != null && !busy) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         if (busy) {

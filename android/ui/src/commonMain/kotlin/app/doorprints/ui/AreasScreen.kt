@@ -62,6 +62,7 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
 
@@ -127,7 +128,7 @@ fun AreasEditor(onOpenArea: (String) -> Unit, onTurnOnWakeup: () -> Unit = {}) {
             HeroEmptyState(
                 icon = Icons.Default.Place,
                 title = stringResource(Res.string.areas_empty_title),
-                body = stringResource(Res.string.areas_empty_body),
+                body = stringResource(LocalSpace.current.pages.areasEmptyBody),
                 horizontalPadding = 0.dp,
             )
         }
@@ -207,7 +208,7 @@ private fun noteSource(note: AreaNote, areas: List<Area>): String = when {
 private fun AreaNotesList(areas: List<Area>, notes: List<AreaNote>) {
     SectionHeading(stringResource(Res.string.notes_heading))
     if (notes.isEmpty()) {
-        Text(stringResource(Res.string.notes_empty), style = MaterialTheme.typography.bodyMedium)
+        Text(stringResource(LocalSpace.current.pages.notesEmpty), style = MaterialTheme.typography.bodyMedium)
         return
     }
     var saved by rememberSaveable { mutableStateOf("") }
@@ -396,7 +397,7 @@ private fun AreaForm(areaId: String?, found: Area?, liveCount: Int, onDone: () -
     }
     if (confirmDelete && areaId != null) {
         ConfirmDelete(
-            stringResource(Res.string.area_delete_title), stringResource(Res.string.area_delete_body),
+            stringResource(Res.string.area_delete_title), stringResource(LocalSpace.current.pages.areaDeleteBody),
             onDismiss = { confirmDelete = false },
         ) {
             scope.launch {
@@ -644,7 +645,7 @@ fun PlacesList(onOpenPlace: (String) -> Unit) {
             HeroEmptyState(
                 icon = Icons.Default.Home,
                 title = stringResource(Res.string.places_empty_title),
-                body = stringResource(Res.string.places_empty_body),
+                body = stringResource(LocalSpace.current.pages.placesEmptyBody),
                 horizontalPadding = 0.dp,
             )
         }
@@ -719,7 +720,7 @@ private fun PlaceForm(placeId: String?, found: Place?, liveCount: Int, onDone: (
     }
     if (confirmDelete && placeId != null) {
         ConfirmDelete(
-            stringResource(Res.string.place_delete_title), stringResource(Res.string.place_delete_body),
+            stringResource(Res.string.place_delete_title), stringResource(LocalSpace.current.pages.placeDeleteBody),
             onDismiss = { confirmDelete = false },
         ) {
             scope.launch {
@@ -767,7 +768,7 @@ fun AreaNoteDialog(
                     else -> {
                         val here = reaching.map { it.id }.toSet()
                         val labels = ordered.map { a ->
-                            if (a.id in here) stringResource(Res.string.note_area_here, a.name) else a.name
+                            if (a.id in here) stringResource(LocalSpace.current.pages.areaHere, a.name) else a.name
                         }
                         val current = ordered.indexOfFirst { it.id == areaId }.coerceAtLeast(0)
                         ChoiceMenu(stringResource(Res.string.note_area), labels[current], labels) { areaId = ordered[it].id }
@@ -817,7 +818,7 @@ fun AreaNoteDialog(
  * for an area* (the areas the house is in first).
  */
 @Composable
-fun HouseAreaNotesSection(house: HouseEntity) {
+fun HouseAreaNotesSection(house: HouseEntity, none: StringResource = Res.string.house_area_notes_none) {
     val repo = LocalAppServices.current.repository
     val areas: List<Area> by remember(repo) { repo.observeAreas() }.collectAsStateWithLifecycle(emptyList())
     val notes: List<AreaNote> by remember(repo) { repo.observeAreaNotes() }.collectAsStateWithLifecycle(emptyList())
@@ -827,7 +828,7 @@ fun HouseAreaNotesSection(house: HouseEntity) {
     var adding by rememberSaveable { mutableStateOf<String?>(null) }
     HorizontalDivider()
     SectionHeading(stringResource(kindSection("areaNotes")))
-    if (reaching.isEmpty()) Text(stringResource(Res.string.house_area_notes_none), style = MaterialTheme.typography.bodyMedium)
+    if (reaching.isEmpty()) Text(stringResource(none), style = MaterialTheme.typography.bodyMedium)
     reaching.forEach { note ->
         Column(Modifier.fillMaxWidth()) {
             Text(note.text, style = MaterialTheme.typography.bodyMedium)

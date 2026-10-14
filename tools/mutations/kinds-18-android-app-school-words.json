@@ -1,0 +1,58 @@
+{
+  "spec": "android/app/src/test/java/app/doorprints/SchoolWordsScreenTest.kt",
+  "gradle": [
+    ":app:testDebugUnitTest",
+    "--tests",
+    "app.doorprints.SchoolWordsScreenTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/HouseEditScreen.kt",
+      "find": "                                else -> pages.detailsTitle",
+      "replace": "                                else -> Res.string.house_details_title",
+      "expect": "theFormSaysSchoolInItsTitle"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/HouseEditScreen.kt",
+      "find": "title = { Text(stringResource(pages.deleteTitle)) },",
+      "replace": "title = { Text(stringResource(Res.string.house_delete_confirm_title)) },",
+      "expect": "theDeleteQuestionAsksAboutTheSchool"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/HouseEditScreen.kt",
+      "find": "title = stringResource(pages.notFound),",
+      "replace": "title = stringResource(Res.string.house_not_found),",
+      "expect": "aSchoolThatIsNotThereIsNotFound"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/HouseEditScreen.kt",
+      "find": "    val kind = DevKinds.of(draft?.kind ?: space.built.id, devKinds)",
+      "replace": "    val kind = DevKinds.of(draft?.kind, devKinds)",
+      "expect": "aSchoolThatIsNotThereIsNotFound"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/HouseEditScreen.kt",
+      "find": "    val defaultLabel = stringResource(LocalSpace.current.pages.defaultLabel)",
+      "replace": "    val defaultLabel = stringResource(Res.string.house_default_label)",
+      "expect": "aNewSchoolStartsAsANewSchool"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/HouseListScreen.kt",
+      "find": "if (space.shows(\"field.bedrooms\")) h.bedrooms",
+      "replace": "if (true) h.bedrooms",
+      "expect": "theListRowShowsTheName"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/CompareScreen.kt",
+      "find": "CompareRow(head(\"contactName\", Res.string.compare_contact)",
+      "replace": "CompareRow(stringResource(Res.string.compare_contact)",
+      "expect": "compareNamesTheContactRow"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/HouseEditScreen.kt",
+      "find": "ButtonLabel(stringResource(pages.walkButton))",
+      "replace": "ButtonLabel(stringResource(Res.string.trace_here_button_house))",
+      "expect": "theFormSaysSchoolInItsTitle"
+    }
+  ]
+}

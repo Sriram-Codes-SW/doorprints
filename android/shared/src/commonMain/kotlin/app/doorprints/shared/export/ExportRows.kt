@@ -79,63 +79,70 @@ object ExportRows {
      * when a house of it has a room (slice 1c), `criteria` when it has a criterion record (slice 2) and `answers` when a
      * house of it has a question asked (slice 3a), then `viewings` when it has a viewing (slice 3b-1).
      */
-    fun tables(bundle: ExportBundle): List<ExportTable> =
-        listOf(houses(bundle), scores(bundle), visits(bundle), photos(bundle)) +
+    fun tables(bundle: ExportBundle): List<ExportTable> {
+        // A copy in a kind's voice (S4b-BL-266) leaves out the tables of what its kind hides: a school has no Scores table,
+        // whose rows would all be empty, and no Brokers, Rooms, Criteria, Answers or Viewings. A copy without a voice has them all.
+        fun shows(ref: String) = bundle.shows(null, ref)
+        return listOf(houses(bundle)) + listOfNotNull(if (shows("section.checklist")) scores(bundle) else null) +
+            listOf(visits(bundle), photos(bundle)) +
             listOfNotNull(
-                if (bundle.brokers.isEmpty()) null else brokers(bundle),
-                if (bundle.hasRooms) rooms(bundle) else null,
-                if (bundle.criteria.isEmpty()) null else criteria(bundle),
-                if (bundle.hasAnswers) answers(bundle) else null,
-                if (bundle.viewings.isEmpty()) null else viewings(bundle),
+                if (bundle.brokers.isEmpty() || !shows("field.brokerId")) null else brokers(bundle),
+                if (bundle.hasRooms && shows("section.rooms")) rooms(bundle) else null,
+                if (bundle.criteria.isEmpty() || !shows("section.checklist")) null else criteria(bundle),
+                if (bundle.hasAnswers && shows("section.questions")) answers(bundle) else null,
+                if (bundle.viewings.isEmpty() || !shows("section.viewings")) null else viewings(bundle),
             )
+    }
+
+    /** One column of the Houses table: the place of the kind it needs (null: always), its heading and its cell. */
+    private class Col(val ref: String?, val head: String, val cell: (ExportHouse) -> Cell)
 
     fun houses(bundle: ExportBundle): ExportTable {
         val s = bundle.strings
-        val columns = buildList {
-            add(s["col.rank"]); add(s["col.label"]); add(s["col.status"]); add(s["col.score"])
-            add(s["col.price"]); add(s["col.priceType"]); add(s["col.bedrooms"]); add(s["col.rating"])
-            add(s["col.address"]); add(s["col.street"]); add(s["col.locality"])
-            add(s["col.lat"]); add(s["col.lon"])
-            if (bundle.options.includeContacts) {
-                add(s["col.contactName"]); add(s["col.contactPhone"]); add(s["col.broker"])
+        val contacts = bundle.options.includeContacts
+        // The sixteen cost cells of a row are worked out once, for the row's first cost column.
+        var costFor: ExportHouse? = null
+        var costCache: List<Cell> = emptyList()
+        fun costOf(h: ExportHouse): List<Cell> {
+            if (costFor !== h) { costCache = costCells(h, s); costFor = h }
+            return costCache
+        }
+        val cols = buildList {
+            add(Col(null, s["col.rank"]) { Cell.Count(bundle.rankOf(it).toLong()) })
+            add(Col(null, s["col.label"]) { Cell.Text(it.label) })
+            add(Col("field.status", s["col.status"]) { Cell.Text(s.status(it.status)) })
+            add(Col("section.checklist", s["col.score"]) { h -> bundle.overallOf(h)?.let { Cell.Num(it, 1) } ?: Cell.Blank })
+            add(Col("field.money", s["col.price"]) { h -> h.price?.let { Cell.Money(it) } ?: Cell.Blank })
+            add(Col("field.money", s["col.priceType"]) { h -> if (h.price == null) Cell.Blank else Cell.Text(s.priceType(h.priceType)) })
+            add(Col("field.bedrooms", s["col.bedrooms"]) { h -> h.bedrooms?.let { Cell.Count(it.toLong()) } ?: Cell.Blank })
+            add(Col("field.rating", s["col.rating"]) { h -> h.rating?.let { Cell.Count(it.toLong()) } ?: Cell.Blank })
+            add(Col("field.address", s["col.address"]) { text(it.address) })
+            add(Col("field.street", s["col.street"]) { text(it.street) })
+            add(Col("field.locality", s["col.locality"]) { text(it.locality) })
+            add(Col("field.location", s["col.lat"]) { Cell.Num(it.lat, 6) })
+            add(Col("field.location", s["col.lon"]) { Cell.Num(it.lon, 6) })
+            if (contacts) {
+                add(Col("field.contactName", s["col.contactName"]) { text(it.contactName) })
+                add(Col("field.contactPhone", s["col.contactPhone"]) { text(it.contactPhone) })
+                add(Col("field.brokerId", s["col.broker"]) { text(bundle.brokerOf(it)?.label) })
             }
-            add(s["col.listingUrl"]); add(s["col.notes"])
-            addAll(COST_COLUMN_KEYS.map { s[it] })
+            add(Col("field.listingUrl", s["col.listingUrl"]) { text(it.listingUrl) })
+            add(Col("field.notes", s["col.notes"]) { text(it.notes) })
+            COST_COLUMN_KEYS.forEachIndexed { i, key -> add(Col(COST_COLUMN_REFS[i], s[key]) { costOf(it)[i] }) }
             // Slice 1c: the number of rooms, right after the cost per sq ft; S4b-BL-87: the floor after it.
-            add(s["col.rooms"]); add(s["col.floor"])
+            add(Col("section.rooms", s["col.rooms"]) { h -> h.rooms?.takeIf { it.isNotEmpty() }?.let { Cell.Count(it.size.toLong()) } ?: Cell.Blank })
+            add(Col("field.floor", s["col.floor"]) { h -> h.floor?.let { Cell.Count(it.toLong()) } ?: Cell.Blank })
             // Kinds PR 6 (S4b-BL-210): a kind's typed extras after the floor ([KindCopy]); none in a copy of houses only.
-            addAll(bundle.extraColumns.map { it.label })
-            add(s["col.visits"]); add(s["col.photos"])
-            add(s["col.createdAt"]); add(s["col.updatedAt"]); add(s["col.id"])
+            for (c in bundle.extraColumns) add(Col(null, c.label) { h -> bundle.extrasOf(h).firstOrNull { it.key == c.key }?.cell ?: Cell.Blank })
+            add(Col(null, s["col.visits"]) { Cell.Count(bundle.visitsOf(it).size.toLong()) })
+            add(Col(null, s["col.photos"]) { Cell.Count(bundle.photosOf(it).size.toLong()) })
+            add(Col(null, s["col.createdAt"]) { Cell.Stamp(it.createdAt) })
+            add(Col(null, s["col.updatedAt"]) { Cell.Stamp(it.updatedAt) })
+            add(Col(null, s["col.id"]) { Cell.Text(it.id) })
         }
-        val rows = bundle.houses.map { h ->
-            buildList {
-                add(Cell.Count(bundle.rankOf(h).toLong()))
-                add(Cell.Text(h.label))
-                add(Cell.Text(s.status(h.status)))
-                add(bundle.overallOf(h)?.let { Cell.Num(it, 1) } ?: Cell.Blank)
-                add(h.price?.let { Cell.Money(it) } ?: Cell.Blank)
-                add(if (h.price == null) Cell.Blank else Cell.Text(s.priceType(h.priceType)))
-                add(h.bedrooms?.let { Cell.Count(it.toLong()) } ?: Cell.Blank)
-                add(h.rating?.let { Cell.Count(it.toLong()) } ?: Cell.Blank)
-                add(text(h.address)); add(text(h.street)); add(text(h.locality))
-                add(Cell.Num(h.lat, 6)); add(Cell.Num(h.lon, 6))
-                if (bundle.options.includeContacts) {
-                    add(text(h.contactName)); add(text(h.contactPhone)); add(text(bundle.brokerOf(h)?.label))
-                }
-                add(text(h.listingUrl)); add(text(h.notes))
-                addAll(costCells(h, s))
-                add(h.rooms?.takeIf { it.isNotEmpty() }?.let { Cell.Count(it.size.toLong()) } ?: Cell.Blank)
-                add(h.floor?.let { Cell.Count(it.toLong()) } ?: Cell.Blank)
-                val extras = bundle.extrasOf(h)
-                addAll(bundle.extraColumns.map { c -> extras.firstOrNull { it.key == c.key }?.cell ?: Cell.Blank })
-                add(Cell.Count(bundle.visitsOf(h).size.toLong()))
-                add(Cell.Count(bundle.photosOf(h).size.toLong()))
-                add(Cell.Stamp(h.createdAt)); add(Cell.Stamp(h.updatedAt))
-                add(Cell.Text(h.id))
-            }
-        }
-        return ExportTable("houses", s["table.houses"], columns, rows)
+        // A copy in a kind's voice leaves a column its kind hides out entirely, not blank (S4b-BL-266).
+        val shown = cols.filter { it.ref == null || bundle.shows(null, it.ref) }
+        return ExportTable("houses", s["table.houses"], shown.map { it.head }, bundle.houses.map { h -> shown.map { it.cell(h) } })
     }
 
     /**
@@ -225,6 +232,7 @@ object ExportRows {
     fun scoringLines(h: ExportHouse, bundle: ExportBundle): List<Pair<String, String>> {
         val s = bundle.strings
         val r = bundle.scoreOf(h)
+        if (!bundle.shows(h, "section.checklist")) return emptyList()
         return buildList {
             if (r.scored > 0) add(s["col.coverage"] to coverageText(r.scored, r.active, s))
             if (r.failedMustHave.isNotEmpty()) {
@@ -251,9 +259,11 @@ object ExportRows {
      */
     fun rankingColumns(bundle: ExportBundle): List<String> {
         val s = bundle.strings
+        val score = bundle.shows(null, "section.checklist")
         return listOfNotNull(
-            s["col.rank"], s["col.label"], s["col.score"], if (bundle.anyMissedMustHave) s["col.mustHaves"] else null,
-            s["col.price"], s["col.status"],
+            s["col.rank"], s["col.label"], if (score) s["col.score"] else null,
+            if (score && bundle.anyMissedMustHave) s["col.mustHaves"] else null,
+            if (bundle.shows(null, "field.money")) s["col.price"] else null, s["col.status"],
         )
     }
 
@@ -261,23 +271,24 @@ object ExportRows {
     fun rankingRow(h: ExportHouse, bundle: ExportBundle): List<String> {
         val s = bundle.strings
         val r = bundle.scoreOf(h)
+        val score = bundle.shows(null, "section.checklist")
         return listOfNotNull(
             bundle.rankOf(h).toString(),
             h.label,
-            r.overall?.let { fixed(it, 1) } ?: s["none"],
-            if (bundle.anyMissedMustHave) {
+            if (score) r.overall?.let { fixed(it, 1) } ?: s["none"] else null,
+            if (score && bundle.anyMissedMustHave) {
                 if (r.missedMustHave) r.failedMustHave.joinToString(", ") { bundle.criterionLabel(it) } else s["none"]
             } else {
                 null
             },
-            h.price?.let { rupees(it) } ?: s["none"],
+            if (bundle.shows(null, "field.money")) h.price?.let { rupees(it) } ?: s["none"] else null,
             s.status(h.status),
         )
     }
 
     /** The cover's rating share line value, "40%", when the copy has scoring records; null otherwise. */
     fun ratingShareText(bundle: ExportBundle): String? =
-        if (bundle.hasScoringRecords) fixed(bundle.scoring.ratingShare * 100, 0) + "%" else null
+        if (bundle.hasScoringRecords && bundle.shows(null, "section.checklist")) fixed(bundle.scoring.ratingShare * 100, 0) + "%" else null
 
     /**
      * The rooms (slice 1c): one row per room, the houses in the copy's order and each house's rooms in the order shown.
@@ -331,6 +342,7 @@ object ExportRows {
      * the total of the areas as a last row when at least two rooms have both sizes; empty for a house without rooms.
      */
     fun roomRows(h: ExportHouse, bundle: ExportBundle): List<List<String>> {
+        if (!bundle.shows(h, "section.rooms")) return emptyList()
         val s = bundle.strings
         val unit = bundle.options.lengthUnit
         val none = s["none"]
@@ -380,6 +392,7 @@ object ExportRows {
      * write the same en dash). Empty for a house without answers.
      */
     fun answerRows(h: ExportHouse, bundle: ExportBundle): List<List<String>> {
+        if (!bundle.shows(h, "section.questions")) return emptyList()
         val s = bundle.strings
         return HouseAnswers.ordered(h.answers).map { a ->
             listOf(a.text, a.answer ?: NO_ANSWER, s.answerStatus(a.answerStatus.name))
@@ -428,6 +441,7 @@ object ExportRows {
      * house without viewings.
      */
     fun viewingRows(h: ExportHouse, bundle: ExportBundle): List<List<String>> {
+        if (!bundle.shows(h, "section.viewings")) return emptyList()
         val s = bundle.strings
         return bundle.viewingsOf(h).map { e ->
             val v = e.toViewing()
@@ -447,14 +461,14 @@ object ExportRows {
      * ([ExportBundle.areaNotesOf]), with its area's name or its street. Empty when none reaches it.
      */
     fun areaNoteRows(h: ExportHouse, bundle: ExportBundle): List<List<String>> =
-        bundle.areaNotesOf(h).map { listOf(it.text, bundle.sourceOf(it)) }
+        if (!bundle.shows(h, "section.areaNotes")) emptyList() else bundle.areaNotesOf(h).map { listOf(it.text, bundle.sourceOf(it)) }
 
     /** The headings of a house page's **Distances** table (slice 4a): the place and the straight-line km. */
     fun distanceColumns(bundle: ExportBundle): List<String> = listOf(bundle.strings["col.place"], bundle.strings["col.km"])
 
     /** The rows of a house page's **Distances** table, nearest first, the km with one decimal; empty without a point. */
     fun distanceRows(h: ExportHouse, bundle: ExportBundle): List<List<String>> =
-        bundle.distancesOf(h).map { listOf(it.place.name, it.km) }
+        if (!bundle.shows(h, "section.distances")) emptyList() else bundle.distancesOf(h).map { listOf(it.place.name, it.km) }
 
     /**
      * One row per photo; since slice 5 the last three columns are its room (the room's name, empty when it names none or
@@ -504,7 +518,7 @@ object ExportRows {
      * for a house without a move-in; see [moveInItems] for the list.
      */
     fun moveInLines(h: ExportHouse, bundle: ExportBundle): List<Pair<String, String>> {
-        val m = h.moveIn ?: return emptyList()
+        val m = h.moveIn?.takeIf { bundle.shows(h, "section.moveIn") } ?: return emptyList()
         val s = bundle.strings
         return listOfNotNull(
             m.date?.let { s["col.moveInDate"] to ExportTime.date(it, bundle.options.utcOffsetMinutes) },
@@ -524,6 +538,13 @@ object ExportRows {
         "col.areaSqft", "col.locationSource", "col.deposit", "col.depositMonths", "col.maintenance",
         "col.maintenanceIncluded", "col.brokerage", "col.brokerageMonths", "col.lockInMonths", "col.noticeMonths",
         "col.availableFrom", "col.myOffer", "col.agreedPrice", "col.monthlyCost", "col.moveIn", "col.perSqFt",
+    )
+
+    /** The place of the kind each of [COST_COLUMN_KEYS] needs, in the same order: a copy in a kind's voice leaves the column out where the kind hides it. */
+    private val COST_COLUMN_REFS: List<String> = listOf(
+        "field.areaSqft", "field.locationSource", "field.deposit", "field.depositMonths", "field.maintenance",
+        "field.maintenanceIncluded", "field.brokerage", "field.brokerageMonths", "field.lockInMonths", "field.noticeMonths",
+        "field.availableFrom", "field.myOffer", "field.agreedPrice", "field.money", "field.money", "field.money",
     )
 
     /** The cells of [COST_COLUMN_KEYS] for [h]: blank where unknown or not computable. */
@@ -587,6 +608,64 @@ object ExportRows {
             if (houses.isNotEmpty()) add(s["col.houses"] to houses)
         }
     }
+
+    /**
+     * The **Details** block of a house page in the readable copies (HTML, Markdown): score and its lines, price, bedrooms,
+     * area, floor, rating, the address and the point, the listing link, then the kind's typed extras of the *details* section
+     * and when it was added and last changed. A place the candidate's kind hides is not written (S4b-BL-266: a school has
+     * no score, price, bedrooms, area or floor), and its words are its kind's ([ExportBundle.stringsOf]); a house's are
+     * word for word what they were. The status is the page's own line (HTML's rank line, Markdown's first row).
+     */
+    fun detailLines(h: ExportHouse, bundle: ExportBundle): List<Pair<String, String>> {
+        val s = bundle.stringsOf(h)
+        val o = bundle.options
+        fun shows(ref: String) = bundle.shows(h, ref)
+        return buildList {
+            if (shows("section.checklist")) {
+                add(s["col.score"] to (bundle.overallOf(h)?.let { fixed(it, 1) } ?: s["none"]))
+                addAll(scoringLines(h, bundle))
+            }
+            if (shows("field.money")) {
+                add(s["col.price"] to (h.price?.let { rupees(it) } ?: s["none"]))
+                if (h.price != null) add(s["col.priceType"] to s.priceType(h.priceType))
+            }
+            if (shows("field.bedrooms")) add(s["col.bedrooms"] to (h.bedrooms?.toString() ?: s["none"]))
+            if (h.areaSqft != null && shows("field.areaSqft")) add(s["col.areaSqft"] to h.areaSqft.toString())
+            if (h.floor != null && shows("field.floor")) add(s["col.floor"] to s.floor(h.floor))
+            if (shows("field.rating")) add(s["col.rating"] to (h.rating?.toString() ?: s["none"]))
+            if (shows("field.address")) add(s["col.address"] to (h.address ?: s["none"]))
+            if (shows("field.street")) add(s["col.street"] to (h.street ?: s["none"]))
+            if (shows("field.locality")) add(s["col.locality"] to (h.locality ?: s["none"]))
+            if (shows("field.location")) {
+                add(s["col.lat"] to fixed(h.lat, 6))
+                add(s["col.lon"] to fixed(h.lon, 6))
+            }
+            // Only the approximate case says anything: a reader is warned the marker may be off (FR-068).
+            if (h.locationSource == "APPROX" && shows("field.locationSource")) add(s["house.approx"] to s["yes"])
+            // The link is text, never an href: the copy must not be a way to reach the network.
+            if (!h.listingUrl.isNullOrEmpty() && shows("field.listingUrl")) add(s["col.listingUrl"] to h.listingUrl)
+            // Kinds PR 6 and the phone half of kinds PR 16: the kind's typed extras of the Details section, labelled by the kind.
+            for (e in bundle.extrasOf(h)) if (e.section != COST_SECTION) add(e.label to e.text)
+            add(s["col.createdAt"] to ExportTime.dateTime(h.createdAt, o.utcOffsetMinutes))
+            add(s["col.updatedAt"] to ExportTime.dateTime(h.updatedAt, o.utcOffsetMinutes))
+        }
+    }
+
+    /**
+     * The **Cost** block of a house page (a school's *Fees*): the house's cost lines where its kind has money, then the kind's
+     * extras of its *cost* section, so each extra is written under the heading of its own section (S4b-BL-266). A house has
+     * no such extra, so its block is [costLines] as it was.
+     */
+    fun costBlock(h: ExportHouse, bundle: ExportBundle): List<Pair<String, String>> =
+        (if (bundle.shows(h, "field.money")) costLines(h, bundle.stringsOf(h)) else emptyList()) +
+            bundle.extrasOf(h).filter { it.section == COST_SECTION }.map { it.label to it.text }
+
+    /** The section of a kind whose typed extras a readable copy writes in its Cost block. */
+    private const val COST_SECTION = "cost"
+
+    /** The checklist keys of a house page, none for a candidate whose kind has no checklist. */
+    fun checklistKeys(h: ExportHouse, bundle: ExportBundle): List<String> =
+        if (bundle.shows(h, "section.checklist")) orderedChecklistKeys(h) else emptyList()
 
     private fun money(value: Long?): Cell = value?.let { Cell.Money(it) } ?: Cell.Blank
     private fun count(value: Int?): Cell = value?.let { Cell.Count(it.toLong()) } ?: Cell.Blank

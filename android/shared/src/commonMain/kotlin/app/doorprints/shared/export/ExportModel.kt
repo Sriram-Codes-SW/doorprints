@@ -38,6 +38,7 @@ import app.doorprints.shared.model.Area
 import app.doorprints.shared.model.AreaNote
 import app.doorprints.shared.model.AreaNotes
 import app.doorprints.shared.model.Distances
+import app.doorprints.shared.model.KindFields
 import app.doorprints.shared.model.KindSettingRules
 import app.doorprints.shared.model.SpaceView
 import kotlinx.serialization.json.JsonObject
@@ -525,7 +526,33 @@ data class ExportBundle(
      */
     val deletions: List<ExportDeletion> = emptyList(),
 ) {
-    val strings: ExportStrings = ExportStrings.of(options.language)
+    /**
+     * The kind the copy speaks in (S4b-BL-266; [KindCopy.voice]): that of a copy of one space, or of candidates that are all of
+     * one kind other than the house. Its words, labels and hidden places shape the copy; a copy of houses, or of several
+     * kinds, has none and is written as it always was.
+     */
+    val voice: KindFields? = KindCopy.voice(houses, options)
+
+    /** The copy's words: the voice's own for the keys it names ([KindExportWords]), else the house's. */
+    val strings: ExportStrings = ExportStrings.of(options.language, voice?.kind)
+
+    private val kindStrings = HashMap<String, ExportStrings>()
+
+    /** The kind a candidate is read in: its own when it is not the house, else the copy's [voice] (null: a house's copy). */
+    private fun kindOf(house: ExportHouse?): KindFields? =
+        house?.let { KindCopy.fieldsOfKind(it.kind, options) }?.takeIf { it.kind != KindSettingRules.HOUSE } ?: voice
+
+    /**
+     * Whether the copy writes the place [ref] (`field.money`, `section.checklist`, ...) of [house], or of the copy when [house]
+     * is null: every place of a house, and only the places its kind shows for another kind (S4b-BL-266).
+     */
+    fun shows(house: ExportHouse?, ref: String): Boolean = kindOf(house)?.labels?.isVisible(ref) ?: true
+
+    /** The words for [house]: the copy's, or its own kind's where it is a school beside houses (its *Website* and *Fees*). */
+    fun stringsOf(house: ExportHouse): ExportStrings {
+        val kind = kindOf(house)?.kind
+        return if (kind == null || kind == voice?.kind) strings else kindStrings.getOrPut(kind) { ExportStrings.of(options.language, kind) }
+    }
 
     private val liveAreas: List<Area> = areas.mapNotNull { it.toArea() }
     private val areaNames: Map<String, String> = liveAreas.associate { it.id to it.name }
@@ -584,7 +611,8 @@ data class ExportBundle(
         houses.filter { it.brokerId != null }.groupBy { it.brokerId!! }
 
     /** The broker a house names, if it is in this copy (a dangling id reads as none). */
-    fun brokerOf(house: ExportHouse): ExportBroker? = house.brokerId?.let { brokersById[it] }
+    fun brokerOf(house: ExportHouse): ExportBroker? =
+        if (shows(house, "field.brokerId")) house.brokerId?.let { brokersById[it] } else null
 
     /** True when a house of the copy has a room (slice 1c): the copy then has `rooms.csv`, a Rooms sheet and is `/2`. */
     val hasRooms: Boolean get() = houses.any { !it.rooms.isNullOrEmpty() }

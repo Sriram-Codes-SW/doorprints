@@ -70,6 +70,7 @@ import app.doorprints.shared.model.SpaceScope
 import app.doorprints.shared.model.LengthUnit
 import app.doorprints.shared.model.RoomSizes
 import kotlin.math.roundToLong
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -276,7 +277,7 @@ private fun ComparePicker(
         if (pickerOpen) {
             candidates.forEach { h ->
                 val checked = h.id in selected
-                val statusText = stringResource(h.status.labelResource)
+                val statusText = stringResource(LocalSpace.current.built.labels.statusText(h.status))
                 val statusColor = h.status.color()
                 Row(
                     Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(
@@ -365,6 +366,9 @@ private fun CompareTable(
     // rows are the ones it always had, in the same order. A kind's other extras are rows too, in its file's order, before the rating.
     val space = LocalSpace.current
     val extraRows = kindExtraRows(space.built.fields, chosen, notSet)
+    // A row's heading: Compare's own word for the house, the kind's label for another kind (S4b-BL-256, the website's labelKey).
+    @Composable
+    fun head(id: String, house: StringResource) = stringResource(if (space.built.id == "house") house else space.built.labels.fieldText(id))
     val rows = buildList {
         fun row(ref: String, r: CompareRow) {
             if (space.shows(ref)) add(r)
@@ -384,9 +388,9 @@ private fun CompareTable(
         row("section.rooms", CompareRow(stringResource(Res.string.compare_rooms), notSet, { h -> roomTexts[h.id] }))
         row("field.availableFrom", CompareRow(stringResource(Res.string.compare_available_from), notSet, { h -> h.cost?.availableFrom }))
         addAll(extraRows)
-        row("field.rating", CompareRow(stringResource(Res.string.compare_rating), notScored, { h -> h.rating?.let { formatPositional(starsFormat, it) } }))
+        row("field.rating", CompareRow(head("rating", Res.string.compare_rating), notScored, { h -> h.rating?.let { formatPositional(starsFormat, it) } }))
         row("section.visits", CompareRow(stringResource(Res.string.compare_visits), notSet, { (visits[it.id] ?: 0).toString() }))
-        row("field.street", CompareRow(stringResource(Res.string.compare_street), notSet, { it.street?.takeIf { s -> s.isNotBlank() } }))
+        row("field.street", CompareRow(head("street", Res.string.compare_street), notSet, { it.street?.takeIf { s -> s.isNotBlank() } }))
         // One row per place (slice 4a): the straight-line km, not set for a house without a point.
         val kmFormat = stringResource(Res.string.compare_km)
         places.forEach { place ->
@@ -404,7 +408,7 @@ private fun CompareTable(
                 ),
             )
         }
-        row("field.contactName", CompareRow(stringResource(Res.string.compare_contact), notSet, {
+        row("field.contactName", CompareRow(head("contactName", Res.string.compare_contact), notSet, {
             it.brokerId?.let(brokers::get)?.label
                 ?: it.contactName?.takeIf { n -> n.isNotBlank() } ?: it.contactPhone?.takeIf { p -> p.isNotBlank() }
         }))
@@ -412,7 +416,7 @@ private fun CompareTable(
     // The best by the ranking, when it has a score at all (a kind with no checklist has no score, so no best).
     val best = Ranking.sort(chosen) { it.ranked(scoring) }.firstOrNull()?.takeIf { results[it.id]?.overall != null && space.shows("section.checklist") }
     val bestFormat = stringResource(Res.string.compare_best_name)
-    val openLabel = stringResource(Res.string.compare_open_house)
+    val openLabel = stringResource(space.pages.openDetails)
     val headerName: (HouseEntity) -> String = { h -> if (h == best) formatPositional(bestFormat, nameOf(h)) else nameOf(h) }
     // One ScrollState for every row: the house columns scroll together, the labels stay.
     val hScroll = rememberScrollState()

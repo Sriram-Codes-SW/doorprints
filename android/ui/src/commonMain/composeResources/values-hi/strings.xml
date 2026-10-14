@@ -1768,4 +1768,31 @@
     <string name="delete_restore_aria">%1$s वापस लाएँ</string>
     <string name="delete_deleted_on">हटाया गया: %1$s</string>
     <string name="drive_delete_all_kinds">यह सभी प्रकार हटाता है: मकान, स्कूल और हर दूसरा स्थान, सिर्फ़ वह नहीं जिसमें आप हैं।</string>
+    <!-- S4b-BL-256, S4b-BL-259, S4b-BL-266, S4b-BL-277 (2026-10-14): under review (the website's school words where it has the key, else the house string with the school's noun). -->
+    <string name="school_details_title">स्कूल का विवरण</string>
+    <string name="school_not_found_title">स्कूल नहीं मिला</string>
+    <string name="school_not_found">यह स्कूल अब इस फ़ोन पर नहीं है।</string>
+    <string name="school_default_label">नया स्कूल</string>
+    <string name="school_default_label_street">%1$s पर स्कूल</string>
+    <string name="school_discard_new_title">यह नया स्कूल छोड़ दें?</string>
+    <string name="school_delete_confirm_title">यह स्कूल हटाएँ?</string>
+    <string name="school_needs_precise">इस स्कूल की जगह तय करने के लिए सटीक जगह चाहिए, या अक्षांश और देशांतर लिखें।</string>
+    <string name="school_save_first_photos">तस्वीरें जोड़ने के लिए पहले स्कूल सहेजें।</string>
+    <string name="school_walk_button">क्या मैं इस स्कूल के पास से गुज़रा था?</string>
+    <string name="school_walk_place">इस स्कूल</string>
+    <string name="school_walk_label">यह स्कूल</string>
+    <string name="school_walk_approx">इस स्कूल की अभी कोई सटीक जगह नहीं है, केवल एक इलाक़ा है। पहले इसे नक्शे पर रखें, फिर जाँचें।</string>
+    <string name="school_walks_empty">कोई सहेजी सैर नहीं। सैर पूरी करने पर आप उसे इस स्कूल से जोड़ सकते हैं।</string>
+    <string name="school_ai_disclosure">आपका सवाल और मिलते-जुलते स्कूलों के नोट आपके सर्वर पर सेट AI सेवा को भेजे जाते हैं।</string>
+    <string name="school_ai_disclosure_own_key_host">यह टेक्स्ट, मिलते-जुलते स्कूलों के नोट के साथ, आपकी अपनी कुंजी से इस फ़ोन से सीधे %1$s को भेजा जाता है।</string>
+    <string name="school_map_place_found">नक्शा “%1$s” दिखा रहा है। स्कूल वहाँ जोड़ने के लिए उसकी जगह को देर तक दबाएँ।</string>
+    <string name="school_map_place_not_found">भारत में “%1$s” नाम की कोई जगह नहीं मिली। नक्शे को ख़ुद स्कूल तक ले जाएँ।</string>
+    <string name="school_compare_open">स्कूल का विवरण खोलें</string>
+    <string name="school_areas_empty_body">जिन इलाक़ों में स्कूल ढूँढ रहे हैं, उन्हें जोड़ें। किसी इलाक़े का नोट उसके अंदर के हर स्कूल पर दिखता है।</string>
+    <string name="school_notes_empty">अभी कोई नोट नहीं। किसी स्कूल से जोड़ें।</string>
+    <string name="school_area_delete_body">इसके नोट रहेंगे, पर अब किसी स्कूल पर नहीं दिखेंगे।</string>
+    <string name="school_place_delete_body">स्कूल अब यह नहीं दिखाएँगे कि यह कितनी दूर है।</string>
+    <string name="school_places_empty_body">अपना दफ़्तर या परिवार का घर जोड़ें ताकि हर स्कूल की दूरी दिखे।</string>
+    <string name="school_area_notes_none">अभी इलाक़े का कोई नोट इस स्कूल तक नहीं पहुँचता।</string>
+    <string name="school_area_here">%1$s (यह स्कूल इसमें है)</string>
 </resources>
