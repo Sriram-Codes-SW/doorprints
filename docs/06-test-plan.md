@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Test plan (functional, security, accessibility, i18n, AI) |
-| Version | 0.255 |
+| Version | 0.256 |
 | Date | 2026-10-14 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -262,7 +262,8 @@
 | 0.252 | 2026-10-14 | Claude (Code), engineer | **TC-S-42 and TC-S-43 follow maplibre-gl 6.13** ([10](10-sprint-log.md) S4b-BL-310, v0.321): the worker is self-contained and `maplibre-gl-shared.mjs` an empty stub, so both check the worker alone, still strictly (it imports no sibling file; its version is the installed package's; after the deploy its bytes equal the build's). |
 | 0.253 | 2026-10-14 | Claude (Code), engineer | **TC-U-232 and TC-M-76** (the phones' half of S4b-BL-256, S4b-BL-259, S4b-BL-266, S4b-BL-277; `feat/kinds-18-school-wording-phones`, [10](10-sprint-log.md) v0.320): a school's pages and copies on Android and the iPhone. |
 | 0.254 | 2026-10-14 | Claude (Code), engineer | **Vitest 5 module cache is off for the web unit tests** ([10](10-sprint-log.md) S4b-BL-311, v0.323): Vitest 5 caches transformed modules in `web/node_modules/.vitest-cache` by default, and under `@angular/build:unit-test` that cache served the previous run's source after an edit, so a mutated file passed its spec and `tools/mutate.mjs` reported every mutation as survived. `web/vitest.config.mjs` (`fsModuleCache: false`, named by `runnerConfig` in `angular.json`) turns it off; `tools/mutate.mjs tools/mutations/ai-answer-clean-web.json` kills 16 of 16 again. Test counts unchanged (4,826 passed, 2 skipped, as on `main`). |
-| 0.255 | 2026-10-14 | Claude (Code), engineer | **TC-U-233, TC-U-234 and TC-AI-48** (S4b-BL-269, S4b-BL-270; `feat/kinds-19-school-prompts`, [10](10-sprint-log.md) v0.324): a school's own Ask and Plan words, its extras in the Plan tools, and the injection tests that no value of a school escapes the records' block. TC-AI-47 notes school-set v0.2. |
+| 0.255 | 2026-10-15 | Claude (Code), engineer | **Screenshot tests and the clock** (S4b-BL-312): `ScreensScreenshotTest` `chooser` and `chooserHidden` pin the saved school's stamp to 2026-10-14 12:00 IST, so the *Last change* date in the baselines is a constant; a baseline must never show a date taken from the clock. |
+| 0.256 | 2026-10-14 | Claude (Code), engineer | **TC-U-233, TC-U-234 and TC-AI-48** (S4b-BL-269, S4b-BL-270; `feat/kinds-19-school-prompts`, [10](10-sprint-log.md) v0.325): a school's own Ask and Plan words, its extras in the Plan tools, and the injection tests that no value of a school escapes the records' block. TC-AI-47 notes school-set v0.2. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Design](03-design.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
