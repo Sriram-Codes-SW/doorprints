@@ -76,11 +76,11 @@ class KindSearchVectorsTest {
     private fun copy(language: String, on: Boolean, houses: List<ExportHouse> = listOf(schoolRow())) =
         ExportBundle.build(ExportOptions(language = language, exportedAtMillis = 1_790_072_130_000, devKinds = on), houses, emptyList(), emptyList())
 
-    private data class Case(val id: String, val text: String, val cell: String, val xlsx: String)
+    private data class Case(val id: String, val text: String, val cell: String, val xlsx: String, val section: String)
 
     private fun cases(language: String) = vectors.getValue("copies").jsonObject.getValue(language).jsonArray.map {
         val o = it.jsonObject
-        Case(o.getValue("id").jsonPrimitive.content, o.getValue("text").jsonPrimitive.content, o.getValue("cell").jsonPrimitive.content, o.getValue("xlsx").jsonPrimitive.content)
+        Case(o.getValue("id").jsonPrimitive.content, o.getValue("text").jsonPrimitive.content, o.getValue("cell").jsonPrimitive.content, o.getValue("xlsx").jsonPrimitive.content, o.getValue("section").jsonPrimitive.content)
     }
 
     @Test
@@ -120,14 +120,22 @@ class KindSearchVectorsTest {
             val want = cases(language)
             val names = want.map { label(language, "field.${it.id}") }
             val h = bundle.houses.single()
-            assertEquals(language, want.map { listOf(names[want.indexOf(it)], it.text, it.cell) }, bundle.extrasOf(h).map { listOf(it.label, it.text, ExportRows.plain(it.cell, bundle.options)) })
+            assertEquals(
+                language, want.map { listOf(names[want.indexOf(it)], it.text, it.cell, it.section) },
+                bundle.extrasOf(h).map { listOf(it.label, it.text, ExportRows.plain(it.cell, bundle.options), it.section) },
+            )
 
-            // A column per extra right after the floor, then the visits; the CSV and the workbook have the same.
-            val s = ExportStrings.of(language)
+            // A school's copy speaks in the school's words and leaves out what a school hides (S4b-BL-266): its extras are the
+            // columns right before the visits, and the floor, price, score and rooms columns are not there. The CSV and the
+            // workbook have the same.
+            val s = ExportStrings.of(language, "school")
             val table = ExportRows.houses(bundle)
-            val start = table.columns.indexOf(s["col.floor"]) + 1
-            assertEquals(names + s["col.visits"], table.columns.subList(start, start + names.size + 1))
-            assertEquals(want.map { it.cell }, table.rows.single().subList(start, start + want.size).map { ExportRows.plain(it, bundle.options) })
+            val at = table.columns.indexOf(s["col.visits"])
+            assertEquals(names + s["col.visits"], table.columns.subList(at - names.size, at + 1))
+            for (hidden in listOf("col.floor", "col.price", "col.score", "col.bedrooms", "col.rooms", "col.broker")) {
+                assertTrue("$language $hidden", s[hidden] !in table.columns)
+            }
+            assertEquals(want.map { it.cell }, table.rows.single().subList(at - want.size, at).map { ExportRows.plain(it, bundle.options) })
             val csv = CsvWriter.write(table, bundle.options).removePrefix("﻿").substringBefore("\r\n")
             assertEquals(table.columns, csv.split(','))
             val sheet = XlsxWriter.parts(bundle).first { it.path == "xl/worksheets/sheet1.xml" }.xml
@@ -139,17 +147,25 @@ class KindSearchVectorsTest {
                 assertEquals("$language ${c.id}", c.xlsx, kind)
             }
 
-            // The readable copies: each in order on the Details block, before *Added*.
+            // The readable copies: each extra under the heading of its own section, the Details block's before *Added*, the
+            // fees after it, under *Fees*.
             val html = HtmlWriter.write(bundle)
             val md = MarkdownWriter.write(bundle)
+            val saved = html.indexOf("<dt>${HtmlWriter.esc(s["col.createdAt"])}</dt>")
+            val fees = html.indexOf("<h3>${HtmlWriter.esc(s["section.cost"])}</h3>")
+            assertTrue("$language the Fees heading", fees > saved && saved > 0)
             var last = -1
             for ((i, c) in want.withIndex()) {
-                val at = html.indexOf("<dt>${HtmlWriter.esc(names[i])}</dt><dd>${HtmlWriter.esc(c.text)}</dd>")
-                assertTrue("$language ${c.id} in the HTML", at > last)
-                last = at
+                val pos = html.indexOf("<dt>${HtmlWriter.esc(names[i])}</dt><dd>${HtmlWriter.esc(c.text)}</dd>")
+                if (c.section == "details") {
+                    assertTrue("$language ${c.id} in the HTML", pos in (last + 1) until saved)
+                    last = pos
+                } else {
+                    assertTrue("$language ${c.id} in the Fees block", pos > fees)
+                }
                 assertTrue("$language ${c.id} in the Markdown", md.contains("| ${MarkdownWriter.text(names[i])} | ${MarkdownWriter.text(c.text)} |"))
             }
-            assertTrue(html.indexOf("<dt>${HtmlWriter.esc(s["col.createdAt"])}</dt>") > last)
+            assertTrue(language, md.indexOf("### ${MarkdownWriter.text(s["section.cost"])}") > md.indexOf("| ${MarkdownWriter.text(s["col.createdAt"])} |"))
         }
     }
 
@@ -165,6 +181,8 @@ class KindSearchVectorsTest {
         assertEquals(wantWrong, wrong.extrasOf(wrong.houses.single()).map { it.text })
         val houseRow = ExportHouse(id = "h1", label = "Lake View", lat = 13.0, lon = 80.0, floor = 2, createdAt = 1_789_000_000_000, updatedAt = 1_789_000_000_000)
         val mixed = copy("en", on = true, houses = listOf(houseRow, schoolRow()))
+        // A copy of a house beside a school has no voice: every house column, the extras right after the floor, blank for the house.
+        assertEquals(null, mixed.voice)
         val table = ExportRows.houses(mixed)
         val start = table.columns.indexOf(ExportStrings.of("en")["col.floor"]) + 1
         val row = table.rows.first { ExportRows.plain(it.last(), mixed.options) == "h1" }

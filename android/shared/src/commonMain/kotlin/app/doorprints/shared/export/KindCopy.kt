@@ -21,6 +21,7 @@ package app.doorprints.shared.export
 import app.doorprints.shared.model.DevKinds
 import app.doorprints.shared.model.KindExtra
 import app.doorprints.shared.model.KindFields
+import app.doorprints.shared.model.KindSettingRules
 import app.doorprints.shared.model.KindValue
 import app.doorprints.shared.model.KindValues
 import app.doorprints.shared.model.KindWords
@@ -35,8 +36,12 @@ import app.doorprints.shared.model.KindWords
  * by `docs/schemas/kinds/kind-search-vectors.json` (`KindCopyVectorsTest`).
  */
 object KindCopy {
-    /** One extra of a candidate in a copy: its column (`<kind>.<extra id>`), its label, its table cell and its readable text. */
-    data class Extra(val key: String, val label: String, val cell: Cell, val text: String)
+    /**
+     * One extra of a candidate in a copy: its column (`<kind>.<extra id>`), its label, its table cell and its readable text,
+     * and the kind [section] it belongs to (`details` or `cost`), under whose heading a readable copy writes it (S4b-BL-266:
+     * a school's fees under *Fees*).
+     */
+    data class Extra(val key: String, val label: String, val cell: Cell, val text: String, val section: String = "details")
 
     /** One column of the Houses table for an extra: every extra of each kind the copy has a candidate of. */
     data class Column(val key: String, val label: String)
@@ -53,7 +58,7 @@ object KindCopy {
         return KindValues.of(fields, h.extrasOther).map { v ->
             val cell = cellOf(v, options, s)
             val text = if (cell is Cell.Money) ExportRows.rupees(cell.amount) else ExportRows.plain(cell, options)
-            Extra("${fields.kind}.${v.field.id}", labelOf(fields, v.field, options), cell, text)
+            Extra("${fields.kind}.${v.field.id}", labelOf(fields, v.field, options), cell, text, v.field.section)
         }
     }
 
@@ -68,5 +73,20 @@ object KindCopy {
         is KindValue.Bool -> Cell.Text(s[if (v.value) "yes" else "no"])
         is KindValue.Option -> Cell.Text(KindWords.of(v.label, options.language) ?: v.label)
         is KindValue.Text -> Cell.Text(v.value)
+    }
+
+    /** The kind's fields a candidate is read with (the house while the developer flag is off), also for the screens' copy words. */
+    internal fun fieldsOfKind(kind: String?, options: ExportOptions): KindFields = DevKinds.of(kind, options.devKinds).fields
+
+    /**
+     * The kind a copy speaks in (S4b-BL-266; the twin of the website's `copyVoice`): that of a copy of one space, or of
+     * candidates that are all of one kind, when that kind is not the house; null for a copy of houses or of several
+     * kinds, which is written as it always was (`HouseCopyPinsTest`). Its words, columns, rows and sections shape the copy.
+     */
+    fun voice(houses: List<ExportHouse>, options: ExportOptions): KindFields? {
+        val own = options.space?.let { fieldsOfKind(it.kind, options) }
+        val all = houses.map { fieldsOf(it, options) }.distinctBy { it.kind }
+        val voice = own ?: all.singleOrNull()
+        return voice?.takeIf { it.kind != KindSettingRules.HOUSE }
     }
 }
