@@ -53,11 +53,10 @@ import {
 import { errorMsg } from '../../core/format';
 import { Announcer } from '../../core/announcer.service';
 import { SyncService } from '../../data/sync.service';
-import { createMlMap, localizeMap, watchMapStyle } from '../../shared/map-style';
-import type { MapStyleWatch } from '../../shared/map-style';
+import { type MapStyleWatch, createMlMap, localizeMap, watchMapStyle } from '../../shared/map-style';
+import { SpaceService } from '../../core/space.service';
 import { round6 } from '../../shared/location-map';
-import { notesReaching } from '../../shared/area';
-import type { Area, AreaNoteRow } from '../../shared/area';
+import { type Area, type AreaNoteRow, notesReaching } from '../../shared/area';
 import { COUNTRY_VIEW, loadMapView, locationErrorKey, saveMapView } from '../../shared/map-center';
 import { locateOnce } from '../../shared/locate-once';
 import { GLYPHS } from '../../shared/glyphs';
@@ -153,6 +152,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
   private readonly listReturn = inject(ListReturn);
   protected readonly sync = inject(SyncService);
   protected readonly i18n = inject(TranslationService);
+  protected readonly space = inject(SpaceService); // the space on screen (kinds PR 8): its candidates, words, links
   /** The walks on the map (docs/11 5.27): the page only delegates to it and to {@link TraceLayers}. */
   protected readonly traceView = inject(TraceView);
   protected readonly trackColor = TRACK_COLOR;
@@ -472,7 +472,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
       if (this.addMode()) return;
       const id = e.features?.[0]?.properties?.['id'];
       if (typeof id === 'string') {
-        void this.router.navigate(['/houses', id]);
+        void this.router.navigate(this.space.detailLink(id));
       }
     });
 
@@ -532,7 +532,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
     if (!this.loadedOnce) this.loading.set(true);
     this.api.houses().subscribe({
       next: (list) => {
-        this.houses.set(list.filter((h) => !h.deleted));
+        this.houses.set(list.filter((h) => !h.deleted && this.space.holds(h)));
         this.error.set(null);
         this.loadedOnce = true;
         this.loading.set(false);
@@ -783,7 +783,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
     const shared = this.sharedText();
     this.sharedText.set(null);
     if (shared !== null) forgetHandover();
-    void this.router.navigate(['/houses/new'], { state: shared !== null ? { shared } : undefined });
+    void this.router.navigate([this.space.newLink()], { state: shared !== null ? { shared } : undefined });
   }
 
   /**
@@ -842,7 +842,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
     this.sharedText.set(null);
     // This history entry is still the map's: strip the handover so Back from the form shows the plain map.
     if (shared !== null) forgetHandover();
-    void this.router.navigate(['/houses/new'], {
+    void this.router.navigate([this.space.newLink()], {
       queryParams: { lat: round6(lat).toFixed(6), lon: round6(lon).toFixed(6) },
       // Same rule as the share page: the text (often with a phone number) travels in state, never in the URL.
       state: shared !== null ? { shared } : undefined,

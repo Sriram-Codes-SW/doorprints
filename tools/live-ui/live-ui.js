@@ -350,6 +350,27 @@ async function flows(browser) {
       check('flow', `${vp}: Save a copy downloads a file`, !!d && fs.statSync(file).size > 0, d && d.suggestedFilename());
     } else check('flow', `${vp}: Download button present`, false);
     await page.screenshot({ path: path.join(OUT, 'shots', `flow_${vp}_data.png`) });
+    // What you track (S4b-BL-212, docs/06 TC-M-69): a production build ships the house alone, so Your data has no such
+    // section and `/` is the map. A build that ships another kind (the --define build) shows the switch, off; turned on
+    // with the school shown, `/` is the chooser and a card opens that space; turned back, the house app is as it was.
+    const kindSwitch = page.locator('#kinds-experimental');
+    if ((await kindSwitch.count()) === 0) {
+      check('flow', `${vp}: no What you track section in a build of houses only`, (await page.locator('#kinds-heading').count()) === 0);
+    } else {
+      check('flow', `${vp}: the switch for more than houses is off`, !(await kindSwitch.isChecked()) && (await page.locator('#kind-rows').count()) === 0);
+      await kindSwitch.check().catch(() => {});
+      await page.locator('#kind-on-school').check().catch(() => {});
+      await gotoRetry(page, `${BASE}/`); await settle(page);
+      check('flow', `${vp}: with two shown, / is the chooser with two cards`, (await page.locator('#chooser-heading').count()) === 1 && (await page.locator('button.space-card').count()) === 2);
+      await page.locator('#space-school').click().catch(() => {});
+      await page.waitForURL(/\/k\/school$/, { timeout: 10000 }).catch(() => {});
+      check('flow', `${vp}: the school card opens the school space`, /\/k\/school$/.test(page.url()) && (await page.locator('.space-chip').count()) === 1, page.url());
+      await gotoRetry(page, `${BASE}/data`); await settle(page);
+      await page.locator('#kind-on-school').uncheck().catch(() => {});
+      await kindSwitch.uncheck().catch(() => {});
+      await gotoRetry(page, `${BASE}/`); await settle(page);
+      check('flow', `${vp}: turned back, / is the map again`, (await page.locator('#chooser-heading').count()) === 0 && (await page.locator('#houses-heading').count()) === 1);
+    }
     // Offline: the service worker serves the app shell
     await gotoRetry(page, `${BASE}/`); await settle(page);
     const sw = await page.evaluate(async () => !!(await navigator.serviceWorker.getRegistration()));

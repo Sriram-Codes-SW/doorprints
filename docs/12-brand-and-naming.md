@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Brand and naming: the web address, the app icon, fallbacks, brand screening, custom-domain policy, naming guidelines and the import / backup / copy vocabulary |
-| Version | 0.7 |
+| Version | 0.8 |
 | Date | 2026-10-01 |
 | Author | Claude (Cowork), Docs team, from the brand advisor's naming brief of 2026-09-23 |
 | Status | Draft. The address (section A) and the import vocabulary (section G) are **decided** by the owner; the hi/ta/te wording in section G is a **first draft pending native-speaker review** (I18N-B06) |
@@ -19,6 +19,7 @@
 | 0.5 | 2026-09-24 | Claude (Code), engineer | Legacy House Hunt names renamed (owner request of 2026-09-24; [03](03-design.md) ADR-24). **F.1 rule 7** now says internal names follow the brand too, renamed only with a carry-over for what is stored, and names the one kept on purpose (the Android Keystore alias). F.2: the longer store listing example is "Doorprints: House Visit Diary". |
 | 0.6 | 2026-09-30 | Claude (Code), lead | New N-07: the fifth user-facing name, **Share updates with…** (S4b-FR-3, [11](11-feature-parity-and-export-spec.md) 5.28). |
 | 0.7 | 2026-10-01 | Claude (Code), lead | The website reads backups (S4b-BL-75, on a branch of the finishing batch, [10](10-sprint-log.md) §13.34): G's table names the web's `imp.heading` (*Import a backup* in four languages, the same words as Android) and §D says the condition for a custom domain is met in code, once it is deployed. |
+| 0.8 | 2026-10-14 | Claude (Code), engineer | G.1: **the words for kinds** (kinds PR 8, S4b-BL-212, `feat/kinds-10-settings-kind-guide`): never "kind" or "space" on screen; the plural noun, *What are you looking for?*, *What you track*, *Experimental: more than houses*, *Saved: N*. |
 
 Related: [Design, ADR-21](03-design.md) · [Build and deploy §6.3](07-secure-build-and-deploy.md#63-web-firebase-hosting) · [UX, a11y and i18n](05-ux-accessibility-i18n.md) · [Requirements §6.9](01-requirements.md) · [Backup format](schemas/README.md) · [Sprint log §11.6](10-sprint-log.md)
 
@@ -249,6 +250,11 @@ columns are first drafts pending native-speaker review** ([05](05-ux-accessibili
 - **The AI feature is not an import.** Its visible title was "Import from listing text"; the Web team renamed it
   **"Fill in from listing text"** and moved its keys from `import.*` to `listingFill.*` in all four languages on
   2026-09-23 (`web/README.md` change log), before backup import ships on the web.
+- **Kinds are never named "kind" or "space" on screen** (kinds PR 8, S4b-BL-212, [03](03-design.md) §18.12). The person
+  reads the kind's plural noun (*Houses*, *Schools*: the kind file's `kind.many`), the chooser's **What are you looking
+  for?** (hi आप क्या ढूँढ रहे हैं?, ta நீங்கள் எதைத் தேடுகிறீர்கள்?, te మీరు ఏమి వెతుకుతున్నారు?), the Settings section **What you
+  track** (hi आप क्या ट्रैक करते हैं, ta நீங்கள் கண்காணிப்பவை, te మీరు ట్రాక్ చేసేవి) and its switch **Experimental: more
+  than houses**; counts read *Saved: N*. *Kind* and *space* stay the team's words.
 - **"Share to Doorprints"** stays the team's internal feature name ([11](11-feature-parity-and-export-spec.md)
   §5.9); users see *Add a shared listing*.
 

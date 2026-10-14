@@ -30,6 +30,7 @@ import type { CriterionRow, PreferenceRow, ScoreResult, Scoring } from '../share
 import type { LengthUnit } from '../shared/room-sizes';
 import { ExportStrings } from './export-strings';
 import { extraColumnsOf, extrasOf, type CopyKinds, type ExportExtra, type ExportExtraColumn } from './kind-copy';
+import type { SearchSpaces } from './backup-family';
 
 /** The six deterministic formats of docs/11 §5.2. */
 export type ExportFormat = 'html' | 'pdf' | 'csv' | 'xlsx' | 'markdown' | 'backup';
@@ -154,6 +155,8 @@ export interface ExportBundle {
   lengthUnit: LengthUnit;
   /** The Houses table's columns for typed extras (kinds PR 6, S4b-BL-210): none in a copy of houses only. */
   extraColumns?: readonly ExportExtraColumn[];
+  /** The kinds enabled and the default (Settings > Kinds, S4b-BL-212), for the backup's `search`; none for the house alone. */
+  spaces?: SearchSpaces;
 }
 
 /** The contact fields; they are blanked rather than removed so every export has the same shape. */
@@ -182,6 +185,8 @@ export interface CollectInput {
   lengthUnit?: LengthUnit;
   /** How the candidates' kinds are read (S4b-BL-210); left out, every candidate is copied as a house is. */
   kinds?: CopyKinds;
+  /** The kinds enabled and the default (S4b-BL-212), for the backup's `search`; left out for the house alone. */
+  spaces?: SearchSpaces;
   exportedAt: string;
   options: ExportOptions;
 }
@@ -288,6 +293,7 @@ export function collect(input: CollectInput): ExportBundle {
     brokers: options.includeContacts ? collectBrokers(input.brokers ?? [], houses, options.scope === 'all') : [],
     lengthUnit: input.lengthUnit ?? 'FT',
     ...(extraColumns.length ? { extraColumns } : {}),
+    ...(input.spaces && !(input.spaces.kinds.length === 1 && input.spaces.kinds[0] === 'house') ? { spaces: input.spaces } : {}),
     counts: {
       houses: houses.length,
       visits: houses.reduce((n, h) => n + h.visits.length, 0),

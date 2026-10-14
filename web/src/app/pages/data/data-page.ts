@@ -61,6 +61,7 @@ import type { TKey } from '../../i18n/en';
 import { RunResult, runResult } from '../../shared/run-result';
 import { LEGAL_NOTICE } from '../../shared/legal-notice';
 import { ImportBackupCard } from './import-backup';
+import { KindsSettings } from './kinds-settings';
 import { OfflineAreasCard } from './offline-areas';
 import { DriveConnectComponent } from './drive-connect';
 import { provideDriveConnect } from '../../data/drive/connect/drive-connect.providers';
@@ -107,7 +108,7 @@ const ICONS = {
  */
 @Component({
   selector: 'app-data-page',
-  imports: [FormsModule, RouterLink, TPipe, ImportBackupCard, OfflineAreasCard, DriveConnectComponent],
+  imports: [FormsModule, RouterLink, TPipe, ImportBackupCard, OfflineAreasCard, DriveConnectComponent, KindsSettings],
   templateUrl: './data-page.html',
   styleUrl: './data-page.css',
   providers: provideDriveConnect(),

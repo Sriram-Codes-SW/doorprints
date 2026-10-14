@@ -17,6 +17,7 @@
  */
 
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
+import type { TKey } from '../../i18n/en';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -48,7 +49,7 @@ type NoteForm = 'street' | 'area' | null;
         <p class="error small" role="alert">{{ f.key | t: f.params }}</p>
       }
       @if (reaching().length === 0) {
-        <p id="house-area-notes-none" class="muted">{{ 'areaNotes.none' | t }}</p>
+        <p id="house-area-notes-none" class="muted">{{ none() | t }}</p>
       } @else {
         <ul class="notes">
           @for (row of reaching(); track row.id) {
@@ -163,6 +164,8 @@ export class HouseAreaNotesCard {
 
   /** The house as it stands on the page (its point and street), so the notes follow an edit. */
   readonly house = input.required<HousePoint>();
+  /** The line for no notes, in the candidate's kind's words (a school's, S4b-BL-212). */
+  readonly none = input<TKey>('areaNotes.none');
 
   protected readonly areas = signal<Area[]>([]);
   private readonly notes = signal<AreaNoteRow[]>([]);

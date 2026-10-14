@@ -26,9 +26,10 @@ import { STORAGE_PREFIX } from './storage-keys';
  * The developer flag of the hidden schools kind (kinds PR 5, S4b-BL-209; docs/03 §18.9). Off by default and never on in
  * a production build: it needs both a development build (`ng serve`, where Angular's `isDevMode()` is true; the
  * deployed site is a production build, where it is false) and this localStorage key set to `school` by hand in the
- * browser's console. With it off nothing changes anywhere: a new candidate is a house, the kind picker is not drawn,
- * and a row of another kind (synced from a device with the flag on) is drawn as a house is today, its extras kept and
- * written back unread (`core/candidate.ts`). "Remove all data" sweeps it with the app's other keys.
+ * browser's console. Since kinds PR 8 (S4b-BL-212) it does what Settings' *Experimental: more than houses* switch does
+ * (`core/kind-setting.ts`, `kindsOn()`: the flag or the switch): Settings offers the kind of the data set and the AI reads
+ * a candidate through its kind. A stored candidate of a built-in kind is drawn as its kind either way (`drawnKind`).
+ * "Remove all data" sweeps it with the app's other keys.
  */
 export const DEV_KINDS_KEY = `${STORAGE_PREFIX}dev.kinds`;
 
@@ -56,7 +57,7 @@ export const HOUSE: BuiltInKind = { id: 'house', labels: HOUSE_LABELS, keys: HOU
 // The school's `ai.extract` is filled since kinds PR 7 (S4b-BL-211): its listing is read into its fields.
 const SCHOOL: BuiltInKind = { id: 'school', labels: SCHOOL_LABELS, keys: SCHOOL_KEYS, fields: SCHOOL_FIELDS, extracts: true };
 
-/** The kinds a new candidate may be: the house, and the school while the flag is on. */
+/** The built-in kinds: the house, and the school while `on` (the developer flag or Settings' switch). */
 export function creatableKinds(on: boolean): readonly BuiltInKind[] {
   return on ? [HOUSE, SCHOOL] : [HOUSE];
 }

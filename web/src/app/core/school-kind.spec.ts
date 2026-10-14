@@ -231,7 +231,7 @@ describe('a school candidate goes through every store, sync and backup of the we
     for (const token of ['pine hill school', 'gs road', 'dispur', 'waiting list', 'admissions office', 'cbse', 'nursery', 'english']) {
       expect(text, token).toContain(token);
     }
-    // While the developer flag is off the school is searched as a house: no extra is read.
-    for (const token of ['cbse', 'nursery']) expect(searchText(h, '', [], undefined, (key) => en[key]), token).not.toContain(token);
+    // Since S4b-BL-212 a stored school is searched through its kind with the developer flag and the switch off too.
+    for (const token of ['cbse', 'nursery']) expect(searchText(h, '', [], undefined, (key) => en[key]), token).toContain(token);
   });
 });

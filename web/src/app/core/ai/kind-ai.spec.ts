@@ -24,6 +24,7 @@ import schoolJson from '../../../../../docs/schemas/kinds/school.json';
 import { LocalStore } from '../../data/local-store.service';
 import { type CandidateDto, houseOf } from '../candidate';
 import { DEV_KINDS_KEY } from '../dev-kinds';
+import { EXPERIMENTAL_KINDS_KEY } from '../kind-setting';
 import { en } from '../../i18n/en';
 import { SCHOOL_FIELDS } from '../school-kind';
 import type { HouseDto } from '../models';
@@ -178,6 +179,25 @@ describe('kind-aware AI through OnDeviceAiService (kinds PR 7)', () => {
       expect(user).not.toContain('Ramesh');
       req.flush(reply({ answer: 'none' }));
       await answer;
+    }
+  });
+
+  it('Settings’ switch alone, with no developer flag, reads a school as a school in Ask and Extract (S4b-BL-212)', async () => {
+    localStorage.setItem(EXPERIMENTAL_KINDS_KEY, '1');
+    try {
+      houses = [houseOf(docCase(2).candidate as CandidateDto)];
+      const answer = ai.ask('AIzaTestKey1234', 'Which school runs a bus?');
+      const req = await sent();
+      expect(req.request.body.contents[0].parts[0].text).toContain(docCase(2).expected.replace(/<\/?\s*houses[^>]*>/gi, ''));
+      req.flush(reply({ answer: 'none' }));
+      await answer;
+      const draft = ai.extractListing('AIzaTestKey1234', V.extract.listing, 'school');
+      const ex = await sent();
+      expect(ex.request.body.generationConfig.responseSchema).toBe(SCHOOL_LISTING_SCHEMA);
+      ex.flush(reply(V.extract.sanitize[0].raw));
+      await draft;
+    } finally {
+      localStorage.removeItem(EXPERIMENTAL_KINDS_KEY);
     }
   });
 

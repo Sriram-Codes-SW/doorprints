@@ -1,5 +1,9 @@
 # Compare and plan
 
+!!! note "About this page: written for houses"
+    This page describes houses, what Doorprints keeps track of by default. If you also track schools (**What you
+    track**, **Experimental: more than houses**), a school has other fields: see [More than houses (experimental)](other-kinds.md).
+
 ## Compare houses
 
 1. Open **Compare**.

@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | The complete manual test list for Doorprints before real-system testing starts and before Android/iOS development continues: every check a person redoes on real devices, whether or not an automated suite or a review session already covered it |
-| Version | 0.11 |
-| Date | 2026-10-10 |
+| Version | 0.12 |
+| Date | 2026-10-14 |
 | Author | Claude, senior reviewer |
 | Status | Draft |
 
@@ -23,6 +23,7 @@
 | 0.9 | 2026-10-06 | Claude (Code), docs pass | Section 15 (MT-75..MT-81): the features are built on `feat/path-trace-v2` (PR #146, not yet merged); every row stays *not run*: nobody has run them on a device. MT-81 and MT-80 also cover TalkBack and VoiceOver for the sheets and the Tamil and Telugu weekday patterns; the TC-M-25 re-run is owed ([06](../06-test-plan.md)). |
 | 0.10 | 2026-10-10 | Claude (Code), engineer | New section 16, **voice input (Planned)**: MT-82..MT-87 for what CI cannot test (a real microphone and the permission dialogs, the speak-review-send flow, Safari mp4, auto-stop, TalkBack and VoiceOver, no audio at rest), and the note that `firebase.json` `microphone=()` changes only in the web voice pull request ([03](../03-design.md) ADR-37, S4b-BL-218). |
 | 0.11 | 2026-10-10 | Claude (Code), engineer | New section 17, **a provider safety block** (MT-88, S4b-BL-232). |
+| 0.12 | 2026-10-14 | Claude (Code), engineer | New section 18, **More than houses: What you track and the chooser** (kinds PR 8, S4b-BL-212; TC-M-69): MT-93 (no section on the published site; the switch, the rows, the chooser, the chip, Back, in four languages, both themes, with a screen reader) and MT-94 (a school space, the default kind, the deep link, the backup's `search.kinds`, turning schools off, importing into a browser that never chose). |
 
 ## 1. How to use this list
 
@@ -885,3 +886,30 @@ Added 2026-10-10 with the design ([03](../03-design.md) ADR-37, [ai/voice-input]
 | Id | Title | Who | Env | Reviewer ran it | Result |
 |---|---|---|---|---|---|
 | MT-88 | The AI service declines a text | owner | E1/E4/E5 | no | |
+
+## 18. More than houses: What you track and the chooser (S4b-BL-212)
+
+The published site offers houses alone; schools are seen only in a build that ships them (a development build, or
+`ng build --define "DOORPRINTS_KINDS='house,school'"`). The owner decides when a second kind is released, or whether
+schools ship at all; these checks are for the owner's own test devices. TC-M-69 of [06](../06-test-plan.md).
+
+#### MT-93 What you track, the chooser and the chip
+- **Area:** Website (the phones follow, S4b-BL-274). **Who:** anyone. **Env:** E1 with a fresh browser profile; the published site and a build that ships schools.
+- **Steps:** (1) On the published site open *Your data*: there is no *What you track*; `/` is the map. (2) On a build that ships schools, open *Your data*: *What you track* has *Experimental: more than houses*, off, and no rows. (3) Turn it on: rows *Houses* (shown, *Default*) and *Schools* (not shown) with *Saved: N*. (4) Turn on *Show Schools* and open the map tab: *What are you looking for?* with two cards, *Houses* first and marked *Default*, each with *Saved: N* and the last change, and a hint with *Got it*. (5) Choose *Schools*: *Your schools*, *Add school*, *Schools* in the counters, no cost filter, no Compare, Ask or Plan; the chip *Schools ▾* at the top. (6) Back: the chooser again. The chip from a space: the chooser. (7) Repeat in Hindi, Tamil and Telugu, in the dark theme, at the largest text size, and with NVDA, TalkBack or VoiceOver (each card is read with its name, *Default*, the count and the last change; the chip as "*Schools*: change what you are looking for"). (8) Turn *Show Schools* off: `/` is the map again.
+- **Expected:** a house hunter sees no change at all; the words never say "kind" or "space"; every word in the app's language (Hindi, Tamil and Telugu *under review*); no sideways scroll on a 320 px phone; the hint shows once; the last shown row cannot be turned off; the choice is this browser's alone (never synced, shared or in a copy).
+- **Automated or reviewed by:** TC-U-214, TC-U-215 (`kind-setting.spec.ts`, `space.spec.ts`, `chooser-page.spec.ts`, `data-page-kinds.spec.ts`, `map-page.spec.ts`), the layout gate's `GATE_DEV_KINDS=1` run, `tools/live-ui` (*flow*). Reviewer ran it: no.
+- Pass / Fail / Date: ____  by: ____
+
+#### MT-94 A school space, its backup, a deep link, and turning schools off
+- **Area:** Website. **Who:** owner (a test browser that may be wiped). **Env:** E1 with a build that ships schools.
+- **Steps:** (1) With houses and schools shown, choose *Schools* and add one from the map: the page says *New school*, has *Fees*, *Board* and the other school fields, no price or broker, and saves with *Add school*. (2) Make *Schools* the default; open `/houses/new`: a new school. (3) Open the school's old address `/houses/<id>`: it opens at `/k/school/<id>`. (4) *Save a copy* as a backup and open `data.json` in the ZIP: `"search":{"kinds":["house","school"],"defaultKind":"school"}`, and the school has `"kind":"school"`. (5) Turn *Show Schools* off: the map at `/` lists the school too, drawn as a school; nothing is deleted. (6) In a fresh browser profile on the same build, import the backup: it imports; that browser now shows both (it never chose); in a browser that chose houses alone, the choice stays. (7) Import an older backup (made before this change): it imports as before.
+- **Expected:** a space is a filter: no row is lost or moved; a backup names the kinds shown and a reader never refuses a file because of it; a deep link opens the candidate in its own space.
+- **Automated or reviewed by:** TC-U-214 (`kind-setting.spec.ts` against `search-kind-vectors.json`, `school-form.spec.ts`), TC-U-215. Reviewer ran it: no.
+- Pass / Fail / Date: ____  by: ____
+
+### 18.1 Summary rows (add to §13 when the owner starts the run)
+
+| Id | Title | Who | Env | Reviewer ran it | Result |
+|---|---|---|---|---|---|
+| MT-93 | What you track, the chooser and the chip | anyone | E1 | no | |
+| MT-94 | A school space, its backup, a deep link, turning schools off | owner | E1 | no | |

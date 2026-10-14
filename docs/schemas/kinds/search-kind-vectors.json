@@ -1,0 +1,40 @@
+{
+ "format": "doorprints-search-kind-vectors/2",
+ "note": "Spaces (kinds PR 8, S4b-BL-212; docs/03 ADR-36 §18.12, schemas README §8.4): a kind is a space, a filter over the one candidate store; Settings > Kinds enables kinds and chooses a default, on this device only. `setting`: what each stack's resolver answers for the build's available kinds and the stored settings (`experimental`: the switch's stored value; `enabled`: the stored list as the text the store holds, null when absent; `default`: the stored default, null when absent): `offered` (the rows of Settings > Kinds), `enabled`, `default` and `spaces` (two or more enabled: the chooser and `/k/<kind>`). Every doubt falls back to the house alone. `write`: the `search` object a backup's data.json carries for the enabled kinds and the default, written right after `exportedAt`, the rest of the file unchanged (backup-sample.json is the house's): the house alone writes `{\"kind\":\"house\"}`, byte for byte the file before; anything else writes `kinds` and `defaultKind`; a list that is not well formed writes the house's. The website writes it today; the phone and the server write the same bytes in their pull requests (S4b-BL-274, S4b-BL-280). `read`: `search` values that every reader (the website, the phone, the server) reads past without refusing the file or changing a candidate: never applied; an old backup without `search` still imports. Readers: the website's kind-setting.spec.ts.",
+ "setting": [
+  { "name": "a production build: the house alone, whatever is stored", "available": ["house"], "experimental": "1", "enabled": "[\"house\",\"school\"]", "default": "school", "offered": ["house"], "enabledKinds": ["house"], "defaultKind": "house", "spaces": false },
+  { "name": "nothing stored", "available": ["house", "school"], "experimental": null, "enabled": null, "default": null, "offered": ["house"], "enabledKinds": ["house"], "defaultKind": "house", "spaces": false },
+  { "name": "the switch off: the school stays enabled in the store but is not offered", "available": ["house", "school"], "experimental": null, "enabled": "[\"house\",\"school\"]", "default": "school", "offered": ["house"], "enabledKinds": ["house"], "defaultKind": "house", "spaces": false },
+  { "name": "the switch on, nothing enabled yet", "available": ["house", "school"], "experimental": "1", "enabled": null, "default": null, "offered": ["house", "school"], "enabledKinds": ["house"], "defaultKind": "house", "spaces": false },
+  { "name": "two kinds, the house the default", "available": ["house", "school"], "experimental": "1", "enabled": "[\"house\",\"school\"]", "default": null, "offered": ["house", "school"], "enabledKinds": ["house", "school"], "defaultKind": "house", "spaces": true },
+  { "name": "two kinds, the school the default", "available": ["house", "school"], "experimental": "1", "enabled": "[\"school\",\"house\"]", "default": "school", "offered": ["house", "school"], "enabledKinds": ["house", "school"], "defaultKind": "school", "spaces": true },
+  { "name": "the school alone", "available": ["house", "school"], "experimental": "1", "enabled": "[\"school\"]", "default": "school", "offered": ["house", "school"], "enabledKinds": ["school"], "defaultKind": "school", "spaces": false },
+  { "name": "a default that is not enabled", "available": ["house", "school"], "experimental": "1", "enabled": "[\"house\"]", "default": "school", "offered": ["house", "school"], "enabledKinds": ["house"], "defaultKind": "house", "spaces": false },
+  { "name": "a kind the build does not have", "available": ["house", "school"], "experimental": "1", "enabled": "[\"clinic\"]", "default": "clinic", "offered": ["house", "school"], "enabledKinds": ["house"], "defaultKind": "house", "spaces": false },
+  { "name": "a broken list", "available": ["house", "school"], "experimental": "1", "enabled": "[house", "default": null, "offered": ["house", "school"], "enabledKinds": ["house"], "defaultKind": "house", "spaces": false },
+  { "name": "not a list", "available": ["house", "school"], "experimental": "1", "enabled": "\"school\"", "default": null, "offered": ["house", "school"], "enabledKinds": ["house"], "defaultKind": "house", "spaces": false },
+  { "name": "an empty list", "available": ["house", "school"], "experimental": "1", "enabled": "[]", "default": null, "offered": ["house", "school"], "enabledKinds": ["house"], "defaultKind": "house", "spaces": false },
+  { "name": "a switch value that is not 1", "available": ["house", "school"], "experimental": "true", "enabled": "[\"house\",\"school\"]", "default": null, "offered": ["house"], "enabledKinds": ["house"], "defaultKind": "house", "spaces": false }
+ ],
+ "write": [
+  { "name": "the house alone", "kinds": ["house"], "defaultKind": "house", "search": "{\"kind\":\"house\"}" },
+  { "name": "two kinds", "kinds": ["house", "school"], "defaultKind": "house", "search": "{\"kinds\":[\"house\",\"school\"],\"defaultKind\":\"house\"}" },
+  { "name": "two kinds, the school the default", "kinds": ["house", "school"], "defaultKind": "school", "search": "{\"kinds\":[\"house\",\"school\"],\"defaultKind\":\"school\"}" },
+  { "name": "the school alone", "kinds": ["school"], "defaultKind": "school", "search": "{\"kinds\":[\"school\"],\"defaultKind\":\"school\"}" },
+  { "name": "a default not in the list", "kinds": ["house", "school"], "defaultKind": "clinic", "search": "{\"kind\":\"house\"}" },
+  { "name": "an id outside door 3's pattern", "kinds": ["house", "Not A Kind"], "defaultKind": "house", "search": "{\"kind\":\"house\"}" },
+  { "name": "a repeated id", "kinds": ["house", "house"], "defaultKind": "house", "search": "{\"kind\":\"house\"}" },
+  { "name": "an empty list", "kinds": [], "defaultKind": "house", "search": "{\"kind\":\"house\"}" }
+ ],
+ "read": [
+  { "name": "two kinds and a default", "search": { "kinds": ["house", "school"], "defaultKind": "school" } },
+  { "name": "the first version's school data set", "search": { "kind": "school" } },
+  { "name": "a kind this build does not have", "search": { "kinds": ["clinic"], "defaultKind": "clinic" } },
+  { "name": "kinds that are not a list", "search": { "kinds": "school", "defaultKind": 5 } },
+  { "name": "an empty object", "search": {} },
+  { "name": "null", "search": null },
+  { "name": "a string", "search": "house" },
+  { "name": "a later field beside the kinds", "search": { "kind": "house", "title": "Our flat search" } },
+  { "name": "absent (an older backup)", "absent": true }
+ ]
+}

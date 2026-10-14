@@ -16,7 +16,10 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { Routes } from '@angular/router';
+import { type CanActivateFn, Router, Routes } from '@angular/router';
+import { Injector, inject } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
+import { availableKinds } from './core/kind-setting';
 import { ConnectPage } from './pages/connect/connect-page';
 import type { HouseDetailPage } from './pages/house-detail/house-detail-page';
 import type { SharePage } from './pages/share/share-page';
@@ -128,3 +131,43 @@ export const routes: Routes = [
   },
   { path: '**', redirectTo: '' },
 ];
+
+/**
+ * The router config (kinds PR 8, S4b-BL-212; docs/03 §18.12). With one kind enabled it is {@link routes}, the very same
+ * array, so a house hunter's app has today's addresses, start URL and share target. With two or more, `/` is the
+ * chooser and each kind this build offers has `/k/<kind>` (its list and map), `/k/<kind>/new` and `/k/<kind>/<id>`, one
+ * route each, so going from one space to another builds the page again; the house keeps its own pages
+ * (`/houses/<id>`, `/houses/new` for the default kind, `/compare`, `/ask`, `/plan`).
+ */
+/**
+ * `/houses/<id>` of a candidate of another kind (a link from before the spaces, a notification) opens it in its own space,
+ * `/k/<kind>/<id>`; a house, a candidate that is not there and a read that fails open as before.
+ */
+const toOwnSpace: CanActivateFn = async (route) => {
+  const router = inject(Router);
+  const injector = inject(Injector);
+  const id = route.paramMap.get('id') ?? '';
+  try {
+    const { LocalDataService } = await import('./core/local-data.service');
+    const kind = (await firstValueFrom(injector.get(LocalDataService).house(id)))?.kind;
+    return kind && kind !== 'house' && availableKinds().includes(kind) ? router.createUrlTree(['/k', kind, id]) : true;
+  } catch {
+    return true;
+  }
+};
+
+export function routesFor(spaces: boolean, kinds: readonly string[] = availableKinds()): Routes {
+  if (!spaces) return routes;
+  const detail = routes.find((r) => r.path === 'houses/:id')!;
+  const map = routes.find((r) => r.path === '')!;
+  return [
+    routes[0],
+    { path: '', pathMatch: 'full', title: 'title.chooser', loadComponent: () => import('./pages/chooser/chooser-page').then((m) => m.ChooserPage) },
+    ...kinds.flatMap((k): Routes => [
+      { ...map, path: `k/${k}`, data: undefined },
+      { ...detail, path: `k/${k}/new`, title: 'title.newHouse' },
+      { ...detail, path: `k/${k}/:id` },
+    ]),
+    ...routes.slice(1).filter((r) => r !== map).map((r) => (r === detail ? { ...detail, canActivate: [toOwnSpace] } : r)),
+  ];
+}

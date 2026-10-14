@@ -20,10 +20,10 @@
   <section
     class="map-wrap"
     role="region"
-    [attr.aria-label]="'map.regionLabel' | t"
+    [attr.aria-label]="space.words().regionLabel | t"
     [attr.aria-describedby]="traceView.repeatCount() > 0 && traceView.look() !== 'OFF' ? 'map-hint trace-map-hint' : 'map-hint'"
   >
-    <p id="map-hint" class="sr-only">{{ 'map.regionHint' | t }}</p>
+    <p id="map-hint" class="sr-only">{{ space.words().regionHint | t }}</p>
     @if (traceView.repeatCount() > 0 && traceView.look() !== 'OFF') {
       <p id="trace-map-hint" class="sr-only">{{ 'trace.a11y.map' | t }}</p>
     }
@@ -81,8 +81,8 @@
           <span class="hint-full">{{ 'trace.here.pickHint' | t }}</span>
           <span class="hint-short">{{ 'trace.here.pickHint' | t }}</span>
         } @else {
-          <span class="hint-full">{{ (sharedText() !== null ? 'map.pickShared' : 'map.addHint') | t }}</span>
-          <span class="hint-short">{{ 'map.addHintShort' | t }}</span>
+          <span class="hint-full">{{ (sharedText() !== null ? 'map.pickShared' : space.words().addHint) | t }}</span>
+          <span class="hint-short">{{ space.words().addHintShort | t }}</span>
         }
       </p>
     }
@@ -142,7 +142,7 @@
             (click)="toggleAddMode()"
           >
             <span class="icon" aria-hidden="true">{{ addMode() ? '✕' : '＋' }}</span>
-            {{ (addMode() ? 'map.addCancel' : 'map.add') | t }}
+            {{ (addMode() ? 'map.addCancel' : space.words().add) | t }}
           </button>
           @if (addMode() && mapUsable()) {
             <button id="place-here" type="button" class="btn btn-primary" (click)="placeAtCenter()">
@@ -168,14 +168,16 @@
     <app-place-check-panel [mapUsable]="mapUsable()" />
     <app-walk-end-sheet [houses]="houses()" />
     <div class="panel-head">
-      <h1 id="houses-heading">{{ 'map.heading' | t }}</h1>
+      <h1 id="houses-heading">{{ space.words().heading | t }}</h1>
+      @if (space.hidden()) { <p class="muted small hidden-note">{{ 'space.hiddenNote' | t }}</p> }
     </div>
 
+    <!-- In a space (two or more kinds) the first three counts are the space's own; visits and streets stay the store's. -->
     @if (stats(); as s) {
       <dl class="stats" [attr.aria-label]="'map.statsLabel' | t">
-        <div><dt>{{ 'map.stats.houses' | t }}</dt><dd>{{ i18n.number(s.houses) }}</dd></div>
-        <div><dt>{{ 'map.stats.shortlisted' | t }}</dt><dd>{{ i18n.number(s.shortlisted) }}</dd></div>
-        <div><dt>{{ 'map.stats.rejected' | t }}</dt><dd>{{ i18n.number(s.rejected) }}</dd></div>
+        <div><dt>{{ space.words().many | t }}</dt><dd>{{ i18n.number(space.multi() ? houses().length : s.houses) }}</dd></div>
+        <div><dt>{{ 'map.stats.shortlisted' | t }}</dt><dd>{{ i18n.number(space.multi() ? countFor('SHORTLISTED') : s.shortlisted) }}</dd></div>
+        <div><dt>{{ 'map.stats.rejected' | t }}</dt><dd>{{ i18n.number(space.multi() ? countFor('REJECTED') : s.rejected) }}</dd></div>
         <div><dt>{{ 'map.stats.visits' | t }}</dt><dd>{{ i18n.number(s.visits) }}</dd></div>
         <div><dt>{{ 'map.stats.streets' | t }}</dt><dd>{{ i18n.number(s.streets) }}</dd></div>
       </dl>
@@ -189,7 +191,7 @@
 
     <div class="controls">
       <div class="field">
-        <label for="house-search">{{ 'map.search' | t }}</label>
+        <label for="house-search">{{ space.words().search | t }}</label>
         <input
           id="house-search"
           type="search"
@@ -218,12 +220,16 @@
         <label for="house-sort">{{ 'map.sort' | t }}</label>
         <select id="house-sort" [value]="sort()" (change)="onSort($event)">
           @for (s of sorts; track s.key) {
-            <option [value]="s.key" [selected]="sort() === s.key">{{ s.labelKey | t }}</option>
+            <!-- A kind that hides its money and checklist (a school) sorts by the last change only (S4b-BL-212). -->
+            @if (s.key === 'recent' || space.current().labels.isVisible('field.money')) {
+              <option [value]="s.key" [selected]="sort() === s.key">{{ s.labelKey | t }}</option>
+            }
           }
         </select>
       </div>
       <!-- S4b-BL-84: the filters over the cost numbers, in a disclosure (the list's filter sheet); each end applies at
            once, whole rupees. The summary says how many ranges are set. -->
+      @if (space.current().labels.isVisible('field.money')) {
       <details class="cost-filters">
         <summary>
           {{ costFiltersOn() > 0 ? ('map.costFiltersOn' | t: { n: i18n.number(costFiltersOn()) }) : ('map.costFilters' | t) }}
@@ -262,6 +268,7 @@
           {{ 'map.costClear' | t }}
         </button>
       </details>
+      }
     </div>
 
     @if (error(); as card) {
@@ -283,7 +290,7 @@
 
     @if (loading()) {
       <div class="pad" role="status">
-        <span class="sr-only">{{ 'map.loading' | t }}</span>
+        <span class="sr-only">{{ space.words().loading | t }}</span>
         @for (i of skeletonRows; track i) {
           <div class="skeleton-item" aria-hidden="true">
             <span class="skeleton wide"></span>
@@ -294,15 +301,15 @@
     } @else {
       <!-- Not a live region: it would be read on every keystroke. The count is announced once typing pauses. -->
       <p class="shown muted small">
-        {{ 'map.shown' | t: { shown: items().length, total: houses().length } }}
+        {{ space.words().shown | t: { shown: items().length, total: houses().length } }}
       </p>
       @if (items().length > 0) {
-        <ul class="list" [attr.aria-label]="'map.listLabel' | t">
+        <ul class="list" [attr.aria-label]="space.words().listLabel | t">
           @for (item of items(); track item.house.id) {
             <li>
               <a
                 class="item"
-                [routerLink]="['/houses', item.house.id]"
+                [routerLink]="space.detailLink(item.house.id)"
                 (mouseenter)="hoverHouse(item.house)"
                 (focus)="hoverHouse(item.house)"
               >
@@ -356,10 +363,10 @@
           <span class="empty-glyph" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="40" height="40"><path [attr.d]="glyphs.home" /></svg>
           </span>
-          <h2>{{ 'map.emptyTitle' | t }}</h2>
-          <p>{{ 'map.emptyBody' | t }}</p>
+          <h2>{{ space.words().emptyTitle | t }}</h2>
+          <p>{{ space.words().emptyBody | t }}</p>
           <button type="button" class="btn btn-primary" (click)="startAdd()">
-            <span class="icon" aria-hidden="true">＋</span> {{ 'map.add' | t }}
+            <span class="icon" aria-hidden="true">＋</span> {{ space.words().add | t }}
           </button>
         </div>
       } @else if (houses().length > 0) {
@@ -367,7 +374,7 @@
           <span class="empty-glyph" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="40" height="40"><path [attr.d]="glyphs.search" /></svg>
           </span>
-          <p>{{ 'map.noMatch' | t }}</p>
+          <p>{{ space.words().noMatch | t }}</p>
           <button type="button" class="btn" (click)="clearFilters()">{{ 'map.clearFilters' | t }}</button>
         </div>
       }
