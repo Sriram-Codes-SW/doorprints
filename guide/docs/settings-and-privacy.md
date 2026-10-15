@@ -186,7 +186,8 @@ when your server answers, with **Anthropic**, with a program on your computer, o
   cannot leave it out the way it leaves out a contact typed in a house. If that matters, type instead.
 - **The microphone.** Your browser asks the first time you tap the button. If you said no, allow the microphone for this site
   in the browser's site settings, or just type. **Cancel**, or the Escape key, throws a recording away; leaving the page or
-  hiding the tab stops it.
+  hiding the tab stops it. If the browser itself ends the recording (a call takes the microphone, a headset is changed), what
+  you said so far is kept and written out, and the message says that the recording ended early.
 
 ### Voice input (Android) {#voice-input-android}
 

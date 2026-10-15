@@ -50,7 +50,7 @@ class FakeMicRecorder(private val failOnStart: VoiceFailure? = null) : VoiceReco
     override fun elapsedMs() = ms
     override fun sizeBytes() = 1_000
     override fun failure(): VoiceFailure? = null
-    override fun stop(): RecordedClip {
+    override suspend fun stop(): RecordedClip {
         stopped++
         released++
         return RecordedClip(ByteArray(10) { 1 }, "audio/wav", ms)

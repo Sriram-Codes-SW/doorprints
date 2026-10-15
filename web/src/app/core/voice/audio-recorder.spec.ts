@@ -182,6 +182,87 @@ describe('AudioRecorder', () => {
     expect(r.recording).toBe(false);
   });
 
+  it('a recording the browser ends by itself (a call, a headset change) keeps what was said and reports it as ended early', async () => {
+    const mic = fakeMic();
+    const r = new AudioRecorder(mic.env);
+    const ended = vi.fn();
+    r.onEnded = ended;
+    await r.start();
+    FakeRecorder.last.emit(new Blob([FAKE_AUDIO]));
+    FakeRecorder.last.lastChunk = '';
+    FakeRecorder.last.endByItself();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(ended).toHaveBeenCalledTimes(1);
+    const how = ended.mock.calls[0][0];
+    expect(how.early).toBe(true);
+    expect(how.failure).toBeUndefined();
+    expect(new TextDecoder().decode(how.clip.bytes)).toBe(FAKE_AUDIO);
+    expect(mic.streams[0].released).toBe(true);
+    expect(r.recording).toBe(false);
+  });
+
+  it('a track that ends from outside ends the recording early with the clip so far', async () => {
+    const mic = fakeMic();
+    const r = new AudioRecorder(mic.env);
+    const ended = vi.fn();
+    r.onEnded = ended;
+    await r.start();
+    FakeRecorder.last.emit(new Blob([FAKE_AUDIO]));
+    mic.streams[0].tracks[0].endByItself();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(ended).toHaveBeenCalledTimes(1);
+    expect(ended.mock.calls[0][0]).toMatchObject({ early: true });
+    expect(mic.streams[0].released).toBe(true);
+  });
+
+  it('an early end before anything was said has no clip and says endedEarly, not failed', async () => {
+    const mic = fakeMic();
+    const r = new AudioRecorder(mic.env);
+    const ended = vi.fn();
+    r.onEnded = ended;
+    await r.start();
+    FakeRecorder.last.lastChunk = '';
+    FakeRecorder.last.endByItself();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(ended).toHaveBeenCalledWith({ failure: 'endedEarly' });
+    expect(mic.streams[0].released).toBe(true);
+  });
+
+  it('a recorder error after some audio keeps the audio; before any it is a failure', async () => {
+    const mic = fakeMic();
+    const r = new AudioRecorder(mic.env);
+    const ended = vi.fn();
+    r.onEnded = ended;
+    await r.start();
+    FakeRecorder.last.emit(new Blob([FAKE_AUDIO]));
+    FakeRecorder.last.onerror?.({});
+    await vi.advanceTimersByTimeAsync(0);
+    expect(ended).toHaveBeenCalledTimes(1);
+    expect(ended.mock.calls[0][0]).toMatchObject({ early: true });
+    expect(ended.mock.calls[0][0].clip.bytes.length).toBeGreaterThan(0);
+  });
+
+  it('a stop, a limit or a cancel the person or the app asked for is never reported as ended early', async () => {
+    const mic = fakeMic();
+    const r = new AudioRecorder(mic.env);
+    const ended = vi.fn();
+    r.onEnded = ended;
+    await r.start();
+    const clip = r.stop();
+    await vi.advanceTimersByTimeAsync(0);
+    await clip;
+    expect(ended).not.toHaveBeenCalled();
+
+    const r2 = new AudioRecorder(fakeMic().env);
+    const ended2 = vi.fn();
+    r2.onEnded = ended2;
+    await r2.start();
+    vi.advanceTimersByTime(MAX_AUDIO_MS);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(ended2.mock.calls[0][0].early).toBeUndefined();
+    expect(ended2.mock.calls[0][0].clip.limit).toBe('time');
+  });
+
   it('the page being closed (pagehide) cancels the recording and lets the microphone go', async () => {
     const mic = fakeMic();
     const r = new AudioRecorder(mic.env);

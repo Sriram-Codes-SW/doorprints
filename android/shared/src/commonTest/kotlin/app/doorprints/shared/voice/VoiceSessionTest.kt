@@ -53,6 +53,9 @@ class VoiceSessionTest {
         var stopFails = false
         var clipLimit: VoiceLimit? = null
 
+        /** When set, [stop] waits for it (the drain wait of S4b-BL-317). */
+        var stopGate: CompletableDeferred<Unit>? = null
+
         override fun start() {
             started++
             failOnStart?.let { throw VoiceRecorderException(it) }
@@ -62,8 +65,9 @@ class VoiceSessionTest {
         override fun sizeBytes() = bytes
         override fun failure() = failure
 
-        override fun stop(): RecordedClip {
+        override suspend fun stop(): RecordedClip {
             stopped++
+            stopGate?.await()
             released++
             if (stopFails) throw VoiceRecorderException(VoiceFailure.FAILED)
             return RecordedClip(ByteArray(10), "audio/wav", ms, clipLimit)
@@ -280,7 +284,7 @@ class VoiceSessionTest {
         val r = Rig(this)
         r.session.start()
         r.last.stopFails = true
-        r.session.stop()
+        r.session.stop(); runCurrent()
         assertEquals(VoiceProblem.FAILED, r.session.ui.value.problem)
         assertEquals(2, r.last.released)
     }
@@ -342,5 +346,115 @@ class VoiceSessionTest {
         // The session has no other output: one clip went to transcribe, one string to the box.
         assertEquals(1, r.clips.size)
         assertEquals(1, r.box.size)
+    }
+
+    @Test
+    fun theStopTapReturnsAtOnceAndTheRecorderIsStoppedOffTheTap() = runTest {
+        val r = Rig(this)
+        val gate = CompletableDeferred<Unit>()
+        r.session.start()
+        r.last.stopGate = gate
+        r.session.stop()
+        assertEquals(VoicePhase.TRANSCRIBING, r.session.ui.value.phase, "the screen says writing out from the tap")
+        assertEquals(0, r.last.stopped, "stop() on the recorder has not run on the tap's own call")
+        runCurrent()
+        assertEquals(1, r.last.stopped)
+        assertTrue(r.clips.isEmpty(), "still waiting for the last words")
+        gate.complete(Unit)
+        runCurrent()
+        assertEquals(listOf("two bhk near Baner"), r.box)
+        assertEquals(VoiceStatus.DONE, r.session.ui.value.status)
+    }
+
+    @Test
+    fun cancelWhileTheRecorderIsStillDrainingSendsNothing() = runTest {
+        val r = Rig(this)
+        val gate = CompletableDeferred<Unit>()
+        r.session.start()
+        r.last.stopGate = gate
+        r.session.stop(); runCurrent()
+        r.session.cancel()
+        gate.complete(Unit)
+        runCurrent()
+        assertTrue(r.clips.isEmpty())
+        assertTrue(r.box.isEmpty())
+        assertEquals(VoiceStatus.CANCELLED, r.session.ui.value.status)
+        assertTrue(r.last.released >= 1)
+    }
+
+    @Test
+    fun aSecondStopTapWhileTheRecorderDrainsDoesNothing() = runTest {
+        val r = Rig(this)
+        val gate = CompletableDeferred<Unit>()
+        r.session.start()
+        r.last.stopGate = gate
+        r.session.stop(); r.session.stop(); runCurrent()
+        assertEquals(1, r.last.stopped)
+        gate.complete(Unit)
+        runCurrent()
+        assertEquals(1, r.clips.size)
+    }
+
+    @Test
+    fun aRecordingCutShortKeepsTheClipWritesItOutAndSaysItEndedEarly() = runTest {
+        val r = Rig(this)
+        r.session.start()
+        r.last.failure = VoiceFailure.ENDED_EARLY
+        advanceTimeBy(250); runCurrent()
+        assertEquals(1, r.last.stopped, "the clip is taken, not thrown away")
+        assertEquals(1, r.clips.size, "and written out")
+        assertEquals(listOf("two bhk near Baner"), r.box)
+        assertEquals(VoiceStatus.DONE_EARLY, r.session.ui.value.status)
+        assertNull(r.session.ui.value.problem, "the untrue \"could not be made\" is not shown")
+        assertEquals(VoicePhase.IDLE, r.session.ui.value.phase)
+    }
+
+    @Test
+    fun aRecordingCutShortWithNothingSaidEndsQuietlyAndReleases() = runTest {
+        val r = Rig(this)
+        r.session.start()
+        r.last.stopFails = true // zero length: the recorder has no clip
+        r.last.failure = VoiceFailure.ENDED_EARLY
+        advanceTimeBy(250); runCurrent()
+        assertEquals(VoiceUi(), r.session.ui.value, "nothing is shown")
+        assertTrue(r.clips.isEmpty())
+        assertTrue(r.last.released >= 1)
+    }
+
+    @Test
+    fun aCutShortClipTheBoxCouldNotHoldSaysSoFirst() = runTest {
+        val r = Rig(this)
+        r.boxCuts = true
+        r.session.start()
+        r.last.failure = VoiceFailure.ENDED_EARLY
+        advanceTimeBy(250); runCurrent()
+        assertEquals(VoiceStatus.DONE_CUT, r.session.ui.value.status)
+    }
+
+    @Test
+    fun releaseWhileACutShortClipIsBeingWrittenOutDropsIt() = runTest {
+        val r = Rig(this)
+        val gate = CompletableDeferred<Transcript>()
+        r.answer = { gate.await() }
+        r.session.start()
+        r.last.failure = VoiceFailure.ENDED_EARLY
+        advanceTimeBy(250); runCurrent()
+        r.session.release()
+        gate.complete(Transcript("late", "en"))
+        runCurrent()
+        assertTrue(r.box.isEmpty())
+        assertEquals(VoiceUi(), r.session.ui.value)
+    }
+
+    @Test
+    fun everyOtherFailureStillThrowsTheAudioAway() = runTest {
+        for (failure in listOf(VoiceFailure.FAILED, VoiceFailure.NO_DEVICE, VoiceFailure.DENIED)) {
+            val r = Rig(this)
+            r.session.start()
+            r.last.failure = failure
+            advanceTimeBy(250); runCurrent()
+            assertTrue(r.clips.isEmpty(), "$failure")
+            assertEquals(0, r.last.stopped, "$failure")
+        }
     }
 }

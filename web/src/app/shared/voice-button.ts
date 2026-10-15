@@ -218,27 +218,31 @@ export class VoiceButton implements OnDestroy {
     }
   }
 
-  /** The recording ended without a tap: a limit (the words are asked for), the page hidden or an error. */
-  private endedByItself(run: number, how: { clip?: RecordedClip; failure?: string }): void {
+  /** The recording ended without a tap: a limit or a cut-short recording (the words are asked for), the page hidden or an error. */
+  private endedByItself(run: number, how: { clip?: RecordedClip; failure?: string; early?: boolean }): void {
     if (run !== this.run) return;
     clearInterval(this.ticker);
     this.recorder = null;
     if (how.clip) {
       this.phase.set('transcribing');
       this.status.set('voice.statusWorking');
-      this.words(run, how.clip).catch((err: unknown) => {
+      this.words(run, how.clip, how.early === true).catch((err: unknown) => {
         if (run === this.run) this.fail(err);
       });
     } else if (how.failure === 'cancelled') {
       this.phase.set('idle');
       this.status.set('voice.statusCancelled');
+    } else if (how.failure === 'endedEarly') {
+      // Cut short from outside before anything was said: nothing to keep and nothing untrue to show.
+      this.discard();
+      this.status.set(null);
     } else {
       this.fail(new RecorderError('failed'));
     }
   }
 
   /** Asks the provider for the words and puts them in the box; a clip heard as nothing says so. */
-  private async words(run: number, clip: RecordedClip): Promise<void> {
+  private async words(run: number, clip: RecordedClip, early = false): Promise<void> {
     this.recorder = null;
     const spoken = (await this.voice.transcribe(clip, this.kind())).text.trim();
     if (run !== this.run) return;
@@ -250,7 +254,17 @@ export class VoiceButton implements OnDestroy {
     }
     const inserted = appendTranscript(this.value(), spoken, this.max());
     this.valueChange.emit(inserted.text);
-    this.status.set(inserted.cut ? 'voice.statusDoneCut' : clip.limit ? (this.voice.shortLimit() ? 'voice.statusDoneLimitShort' : 'voice.statusDoneLimit') : 'voice.statusDone');
+    this.status.set(
+      inserted.cut
+        ? 'voice.statusDoneCut'
+        : clip.limit
+          ? this.voice.shortLimit()
+            ? 'voice.statusDoneLimitShort'
+            : 'voice.statusDoneLimit'
+          : early
+            ? 'voice.statusDoneEarly'
+            : 'voice.statusDone',
+    );
     afterNextRender(() => document.getElementById(this.fieldId())?.focus(), { injector: this.injector });
   }
 

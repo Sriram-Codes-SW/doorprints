@@ -93,8 +93,8 @@
   },
   {
    "file": "web/src/app/core/voice/audio-recorder.ts",
-   "find": "this.timer = setTimeout(() => this.stopFor('time'), MAX_AUDIO_MS);",
-   "replace": "this.timer = setTimeout(() => this.stopFor('time'), MAX_AUDIO_MS * 2);",
+   "find": "this.timer = setTimeout(() => this.stopFor('time'), this.maxMs);",
+   "replace": "this.timer = setTimeout(() => this.stopFor('time'), this.maxMs * 2);",
    "expect": "the time limit"
   },
   {
@@ -105,14 +105,14 @@
   },
   {
    "file": "web/src/app/core/voice/audio-recorder.ts",
-   "find": "rec.onerror = () => this.end('failed');",
+   "find": "rec.onerror = () => (this.size > 0 ? this.finish(true) : this.end('failed'));",
    "replace": "rec.onerror = () => undefined;",
    "expect": "error (the recorder fails)"
   },
   {
    "file": "web/src/app/core/voice/audio-recorder.ts",
-   "find": "if (this.stream !== null) for (const t of this.stream.getTracks()) t.stop();",
-   "replace": "if (this.stream !== null) for (const t of [] as MediaStreamTrack[]) t.stop();",
+   "find": "for (const t of this.stream.getTracks()) {\n        t.onended = null;",
+   "replace": "for (const t of [] as MediaStreamTrack[]) {\n        t.onended = null;",
    "expect": "T-I47: the recorder and every track are stopped and released on every exit path"
   }
  ]

@@ -45,7 +45,7 @@
     },
     {
       "file": "android/ui/src/iosMain/kotlin/app/doorprints/ui/IosPcmSource.kt",
-      "find": "add(UIApplicationWillResignActiveNotification, null) { close() }",
+      "find": "add(UIApplicationWillResignActiveNotification, null) { endEarly() }",
       "replace": "add(UIApplicationDidBecomeActiveNotification, null) { close() }",
       "expect": "recordingEndsWhenTheAppLeavesTheFrontOrTheMicrophoneIsTakenOrChanged"
     },

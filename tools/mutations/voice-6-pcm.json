@@ -123,14 +123,14 @@
     },
     {
       "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/PcmVoiceRecorder.kt",
-      "find": "if (source.end()) {",
-      "replace": "if (false) {",
+      "find": "if (source.end() && capturing != null) withTimeoutOrNull(DRAIN_WAIT) { capturing.join() }",
+      "replace": "if (false) withTimeoutOrNull(DRAIN_WAIT) { capturing?.join() }",
       "expect": "aSlowReaderStillDeliversTheTailBeforeStopReturns"
     },
     {
       "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/PcmVoiceRecorder.kt",
-      "find": "while (!loopDone && waited.elapsedNow() < DRAIN_WAIT) {",
-      "replace": "while (false) {",
+      "find": "withTimeoutOrNull(DRAIN_WAIT) { capturing.join() }",
+      "replace": "Unit",
       "expect": "aSlowReaderStillDeliversTheTailBeforeStopReturns"
     }
   ]

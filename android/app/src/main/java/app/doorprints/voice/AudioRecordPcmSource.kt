@@ -43,6 +43,9 @@ class AudioRecordPcmSource(private val context: Context) : PcmSource {
     /** Set by [end]: the capture is stopped and [read] hands out what the recorder still holds, then ends. */
     @Volatile private var draining = false
 
+    /** Set when a [read] reports the object dead (the input was taken or its route changed) while the person was still recording. */
+    @Volatile private var lost = false
+
     override fun open() {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             throw VoiceRecorderException(VoiceFailure.DENIED)
@@ -83,11 +86,15 @@ class AudioRecordPcmSource(private val context: Context) : PcmSource {
         return try {
             val n = r.read(into, offset, length)
             // After [end] the first empty or failed read means everything that was buffered has been handed out.
+            if (n == AudioRecord.ERROR_DEAD_OBJECT && !draining) lost = true
             if (draining && n <= 0) -1 else n
         } catch (_: IllegalStateException) {
             -1
         }
     }
+
+    /** A dead input mid-recording is an early end (S4b-BL-318): the samples already captured are kept, not thrown away as a fault. */
+    override fun endedEarly(): Boolean = lost
 
     /** The person's Stop: stop capturing but keep the buffered tail (the last words) for [read] to hand out; [close] releases. */
     override fun end(): Boolean {
