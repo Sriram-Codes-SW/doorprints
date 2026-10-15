@@ -1,0 +1,966 @@
+{
+ "format": "doorprints-kind-word-vectors/1",
+ "note": "The phone words of a kind file's `words` that are not the sixteen of S4b-BL-278 (S4b-BL-316): the house's keys and texts as they were before the phones' tables (SpaceWords, PageWords) were retired, so a house space is word for word what it was, and the school's keys. `web` is the website's key where it has the same word, null where only the phone has it. Readers: web kind-words.spec.ts (the keys and the website's table), android/shared HouseKindFileTest and SchoolKindVectorsTest (the keys) and KindWordVectorsTest (the texts in four languages). Change a case only with the change it pins.",
+ "words": [
+  {
+   "id": "unnamed",
+   "house": {
+    "web": null,
+    "android": "house_unnamed",
+    "text": {
+     "en": "Unnamed house",
+     "hi": "बिना नाम का मकान",
+     "ta": "பெயரில்லா வீடு",
+     "te": "పేరు లేని ఇల్లు"
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_unnamed",
+    "text": {
+     "en": "Unnamed school"
+    }
+   }
+  },
+  {
+   "id": "addHintListing",
+   "house": {
+    "web": null,
+    "android": "map_add_tip_listing",
+    "text": {
+     "en": "Where is this house? Tap ‘Save house here’ if you are there, or long-press the map on it; the listing then fills in the form.",
+     "hi": "यह मकान कहाँ है? वहाँ हों तो ‘यहाँ मकान सहेजें’ दबाएँ, या नक़्शे पर उस जगह देर तक दबाएँ; फिर लिस्टिंग फ़ॉर्म भर देगी।",
+     "ta": "இந்த வீடு எங்கே? அங்கே இருந்தால் ‘இங்கே வீட்டைச் சேமி’ என்பதைத் தட்டவும், அல்லது வரைபடத்தில் அந்த இடத்தை நீண்ட நேரம் அழுத்தவும்; பிறகு பட்டியல் படிவத்தை நிரப்பும்.",
+     "te": "ఈ ఇల్లు ఎక్కడ? అక్కడ ఉంటే ‘ఇక్కడ ఇల్లు సేవ్ చేయి’ నొక్కండి, లేదా మ్యాప్‌లో ఆ చోటును నొక్కి పట్టుకోండి; అప్పుడు లిస్టింగ్ ఫారమ్‌ను నింపుతుంది."
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_add_tip_listing",
+    "text": {
+     "en": "Where is this school? Tap ‘Save school here’ if you are there, or long-press the map on it; the listing then fills in the form."
+    }
+   }
+  },
+  {
+   "id": "addHintListingShort",
+   "house": {
+    "web": null,
+    "android": "map_add_tip_listing_a11y",
+    "text": {
+     "en": "Where is this house? Tap ‘Save house here’ while you are at it; the listing then fills in the form.",
+     "hi": "यह मकान कहाँ है? वहाँ पहुँचकर ‘यहाँ मकान सहेजें’ दबाएँ; फिर लिस्टिंग फ़ॉर्म भर देगी।",
+     "ta": "இந்த வீடு எங்கே? அங்கே இருக்கும்போது ‘இங்கே வீட்டைச் சேமி’ என்பதைத் தட்டவும்; பிறகு பட்டியல் படிவத்தை நிரப்பும்.",
+     "te": "ఈ ఇల్లు ఎక్కడ? అక్కడ ఉన్నప్పుడు ‘ఇక్కడ ఇల్లు సేవ్ చేయి’ నొక్కండి; అప్పుడు లిస్టింగ్ ఫారమ్‌ను నింపుతుంది."
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_add_tip_listing_a11y",
+    "text": {
+     "en": "Where is this school? Tap ‘Save school here’ while you are at it; the listing then fills in the form."
+    }
+   }
+  },
+  {
+   "id": "compareHint",
+   "house": {
+    "web": null,
+    "android": "compare_hint",
+    "text": {
+     "en": "Pick up to 4 houses (shortlisted ones first). Rejected and Not chosen houses are left out.",
+     "hi": "4 मकान तक चुनें (चुने गए पहले दिखते हैं)। अस्वीकृत और नहीं चुने गए मकान शामिल नहीं किए जाते।",
+     "ta": "4 வீடுகள் வரை தேர்ந்தெடுக்கவும் (தேர்வானவை முதலில்). நிராகரிக்கப்பட்ட, தேர்ந்தெடுக்கப்படாத வீடுகள் சேர்க்கப்படாது.",
+     "te": "4 ఇళ్ల వరకు ఎంచుకోండి (ఎంపికైనవి ముందు). తిరస్కరించిన, ఎంచుకోని ఇళ్లు చేర్చబడవు."
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_compare_hint",
+    "text": {
+     "en": "Pick up to 4 schools (shortlisted ones first). Rejected and Not chosen schools are left out."
+    }
+   }
+  },
+  {
+   "id": "comparePickMore",
+   "house": {
+    "web": null,
+    "android": "compare_pick_more",
+    "text": {
+     "en": "Select at least two houses to compare.",
+     "hi": "तुलना के लिए कम से कम दो मकान चुनें।",
+     "ta": "ஒப்பிட குறைந்தது இரண்டு வீடுகளைத் தேர்ந்தெடுக்கவும்.",
+     "te": "పోల్చడానికి కనీసం రెండు ఇళ్లు ఎంచుకోండి."
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_compare_pick_more",
+    "text": {
+     "en": "Select at least two schools to compare."
+    }
+   }
+  },
+  {
+   "id": "compareChoose",
+   "house": {
+    "web": null,
+    "android": "compare_choose",
+    "text": {
+     "en": "Choose houses (%1$d of %2$d)",
+     "hi": "मकान चुनें (%2$d में से %1$d)",
+     "ta": "வீடுகளைத் தேர்ந்தெடு (%2$d இல் %1$d)",
+     "te": "ఇళ్లు ఎంచుకోండి (%2$d లో %1$d)"
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_compare_choose",
+    "text": {
+     "en": "Choose schools (%1$d of %2$d)"
+    }
+   }
+  },
+  {
+   "id": "compareEmpty",
+   "house": {
+    "web": null,
+    "android": "compare_empty",
+    "text": {
+     "en": "Add at least two houses to compare.",
+     "hi": "तुलना के लिए कम से कम दो मकान जोड़ें।",
+     "ta": "ஒப்பிட குறைந்தது இரண்டு வீடுகளைச் சேர்க்கவும்.",
+     "te": "పోల్చడానికి కనీసం రెండు ఇళ్లు జోడించండి."
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_compare_empty",
+    "text": {
+     "en": "Add at least two schools to compare."
+    }
+   }
+  },
+  {
+   "id": "compareEmptyBody",
+   "house": {
+    "web": null,
+    "android": "compare_empty_body",
+    "text": {
+     "en": "Rejected and Not chosen houses are left out.",
+     "hi": "अस्वीकृत और नहीं चुने गए मकान शामिल नहीं किए जाते।",
+     "ta": "நிராகரிக்கப்பட்ட, தேர்ந்தெடுக்கப்படாத வீடுகள் சேர்க்கப்படாது.",
+     "te": "తిరస్కరించిన, ఎంచుకోని ఇళ్లు చేర్చబడవు."
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_compare_empty_body",
+    "text": {
+     "en": "Rejected and Not chosen schools are left out."
+    }
+   }
+  },
+  {
+   "id": "compareFootnote",
+   "house": {
+    "web": null,
+    "android": "compare_footnote",
+    "text": {
+     "en": "Checklist items are scored 0 to 5. Tap a house name to open it.",
+     "hi": "जाँच सूची के अंक 0 से 5 तक हैं। खोलने के लिए मकान का नाम दबाएँ।",
+     "ta": "சரிபார்ப்புப் பட்டியல் 0 முதல் 5 வரை மதிப்பிடப்படுகிறது. திறக்க வீட்டின் பெயரைத் தட்டவும்.",
+     "te": "తనిఖీ జాబితాకు 0 నుండి 5 వరకు స్కోర్. తెరవడానికి ఇంటి పేరు నొక్కండి."
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_compare_footnote",
+    "text": {
+     "en": "Tap a school name to open it."
+    }
+   }
+  },
+  {
+   "id": "askLabel",
+   "house": {
+    "web": "ask.title",
+    "android": "ai_ask_label",
+    "text": {
+     "en": "Ask about your houses",
+     "hi": "अपने मकानों के बारे में पूछें",
+     "ta": "உங்கள் வீடுகளைப் பற்றிக் கேளுங்கள்",
+     "te": "మీ ఇళ్ల గురించి అడగండి"
+    }
+   },
+   "school": {
+    "web": "school.askTitle",
+    "android": "school_ai_ask_label",
+    "text": {
+     "en": "Ask about your schools"
+    }
+   }
+  },
+  {
+   "id": "askHint",
+   "house": {
+    "web": "ask.placeholder",
+    "android": "ai_ask_hint",
+    "text": {
+     "en": "e.g. Which house had the best water supply?",
+     "hi": "जैसे किस मकान में पानी की आपूर्ति सबसे अच्छी थी?",
+     "ta": "எ.கா. எந்த வீட்டில் தண்ணீர் வசதி சிறப்பாக இருந்தது?",
+     "te": "ఉదా. ఏ ఇంట్లో నీటి సరఫరా బాగుంది?"
+    }
+   },
+   "school": {
+    "web": "school.askPlaceholder",
+    "android": "school_ai_ask_hint",
+    "text": {
+     "en": "e.g. Which school has a bus service?"
+    }
+   }
+  },
+  {
+   "id": "askNotGrounded",
+   "house": {
+    "web": "ask.notGrounded",
+    "android": "ai_not_grounded",
+    "text": {
+     "en": "This answer is not backed by your saved houses.",
+     "hi": "यह जवाब आपके सहेजे मकानों पर आधारित नहीं है।",
+     "ta": "இந்தப் பதில் நீங்கள் சேமித்த வீடுகளின் அடிப்படையில் இல்லை.",
+     "te": "ఈ సమాధానం మీరు సేవ్ చేసిన ఇళ్ల ఆధారంగా లేదు."
+    }
+   },
+   "school": {
+    "web": "school.askNotGrounded",
+    "android": "school_ai_not_grounded",
+    "text": {
+     "en": "This answer is not backed by your saved schools."
+    }
+   }
+  },
+  {
+   "id": "askSources",
+   "house": {
+    "web": "ask.sources",
+    "android": "ai_sources",
+    "text": {
+     "en": "Houses this answer uses",
+     "hi": "यह जवाब इन मकानों पर आधारित है",
+     "ta": "இந்தப் பதில் பயன்படுத்திய வீடுகள்",
+     "te": "ఈ సమాధానం ఉపయోగించిన ఇళ్లు"
+    }
+   },
+   "school": {
+    "web": "school.askSources",
+    "android": "school_ai_sources",
+    "text": {
+     "en": "Schools this answer uses"
+    }
+   }
+  },
+  {
+   "id": "planHint",
+   "house": {
+    "web": null,
+    "android": "ai_plan_hint",
+    "text": {
+     "en": "e.g. Shortlisted 2BHKs under 35k, at most 4 stops",
+     "hi": "जैसे 35 हज़ार से कम के चुने गए 2BHK, ज़्यादा से ज़्यादा 4 जगह",
+     "ta": "எ.கா. 35 ஆயிரத்துக்குள் தேர்வான 2BHK, அதிகபட்சம் 4 இடங்கள்",
+     "te": "ఉదా. 35 వేల లోపు ఎంపికైన 2BHKలు, గరిష్టంగా 4 చోట్లు"
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_ai_plan_hint",
+    "text": {
+     "en": "e.g. Shortlisted CBSE schools this afternoon"
+    }
+   }
+  },
+  {
+   "id": "exportEmpty",
+   "house": {
+    "web": "data.empty",
+    "android": "export_empty",
+    "text": {
+     "en": "There is nothing to save yet. Add a house first.",
+     "hi": "अभी सहेजने के लिए कुछ नहीं है। पहले एक मकान जोड़ें।",
+     "ta": "சேமிக்க இன்னும் எதுவும் இல்லை. முதலில் ஒரு வீட்டைச் சேர்க்கவும்.",
+     "te": "సేవ్ చేయడానికి ఇంకా ఏమీ లేదు. మొదట ఒక ఇంటిని చేర్చండి."
+    }
+   },
+   "school": {
+    "web": "school.dataEmpty",
+    "android": "school_export_empty",
+    "text": {
+     "en": "There is nothing to save yet. Add a school first."
+    }
+   }
+  },
+  {
+   "id": "exportScope",
+   "house": {
+    "web": null,
+    "android": "export_scope",
+    "text": {
+     "en": "Which houses",
+     "hi": "कौन-से मकान",
+     "ta": "எந்த வீடுகள்",
+     "te": "ఏ ఇళ్లు"
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_export_scope",
+    "text": {
+     "en": "Which schools"
+    }
+   }
+  },
+  {
+   "id": "exportScopeAll",
+   "house": {
+    "web": "data.scopeAll",
+    "android": "export_scope_all",
+    "text": {
+     "en": "All houses",
+     "hi": "सभी मकान",
+     "ta": "அனைத்து வீடுகள்",
+     "te": "అన్ని ఇళ్లు"
+    }
+   },
+   "school": {
+    "web": "school.dataScopeAll",
+    "android": "school_export_scope_all",
+    "text": {
+     "en": "All schools"
+    }
+   }
+  },
+  {
+   "id": "exportIncludeRejected",
+   "house": {
+    "web": "data.includeRejected",
+    "android": "export_include_rejected",
+    "text": {
+     "en": "Include rejected houses",
+     "hi": "अस्वीकृत मकान भी शामिल करें",
+     "ta": "நிராகரித்த வீடுகளையும் சேர்",
+     "te": "తిరస్కరించిన ఇళ్లను కూడా చేర్చండి"
+    }
+   },
+   "school": {
+    "web": "school.dataIncludeRejected",
+    "android": "school_export_include_rejected",
+    "text": {
+     "en": "Include rejected schools"
+    }
+   }
+  },
+  {
+   "id": "exportPhotosShortlisted",
+   "house": {
+    "web": null,
+    "android": "export_photos_shortlisted",
+    "text": {
+     "en": "Photos of shortlisted houses",
+     "hi": "चुने गए मकानों की तस्वीरें",
+     "ta": "தேர்வான வீடுகளின் படங்கள்",
+     "te": "ఎంపికైన ఇళ్ల ఫోటోలు"
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_export_photos_shortlisted",
+    "text": {
+     "en": "Photos of shortlisted schools"
+    }
+   }
+  },
+  {
+   "id": "locationOff",
+   "house": {
+    "web": null,
+    "android": "map_location_off",
+    "text": {
+     "en": "Location is off for Doorprints. Hunt mode and ‘Save house here’ need it.",
+     "hi": "Doorprints के लिए जगह की अनुमति बंद है। हंट मोड और ‘यहाँ मकान सहेजें’ को इसकी ज़रूरत है।",
+     "ta": "Doorprints-க்கு இருப்பிடம் அணைக்கப்பட்டுள்ளது. தேடல் பயன்முறைக்கும் ‘இங்கே வீட்டைச் சேமி’க்கும் இது தேவை.",
+     "te": "Doorprints కోసం స్థానం ఆఫ్‌లో ఉంది. హంట్ మోడ్‌కు, ‘ఇక్కడ ఇల్లు సేవ్ చేయండి’కి ఇది అవసరం."
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_map_location_off_no_hunt",
+    "text": {
+     "en": "Location is off for Doorprints. ‘Save school here’ needs it."
+    }
+   }
+  },
+  {
+   "id": "needsPrecise",
+   "house": {
+    "web": null,
+    "android": "map_needs_precise",
+    "text": {
+     "en": "Hunt mode and ‘Save house here’ need precise location.",
+     "hi": "हंट मोड और ‘यहाँ मकान सहेजें’ को सटीक जगह चाहिए।",
+     "ta": "தேடல் பயன்முறைக்கும் ‘இங்கே வீட்டைச் சேமி’க்கும் துல்லியமான இருப்பிடம் தேவை.",
+     "te": "హంట్ మోడ్‌కు, ‘ఇక్కడ ఇల్లు సేవ్ చేయండి’కి ఖచ్చితమైన స్థానం అవసరం."
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_map_needs_precise_no_hunt",
+    "text": {
+     "en": "‘Save school here’ needs precise location."
+    }
+   }
+  },
+  {
+   "id": "locationOffNoHunt",
+   "house": {
+    "web": null,
+    "android": "map_location_off_no_hunt",
+    "text": {
+     "en": "Location is off for Doorprints. ‘Save house here’ needs it.",
+     "hi": "Doorprints के लिए जगह की अनुमति बंद है। ‘यहाँ मकान सहेजें’ को इसकी ज़रूरत है।",
+     "ta": "Doorprints-க்கு இருப்பிடம் அணைக்கப்பட்டுள்ளது. ‘இங்கே வீட்டைச் சேமி’க்கு இது தேவை.",
+     "te": "Doorprints కోసం స్థానం ఆఫ్‌లో ఉంది. ‘ఇక్కడ ఇల్లు సేవ్ చేయండి’కి ఇది అవసరం."
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_map_location_off_no_hunt",
+    "text": {
+     "en": "Location is off for Doorprints. ‘Save school here’ needs it."
+    }
+   }
+  },
+  {
+   "id": "needsPreciseNoHunt",
+   "house": {
+    "web": null,
+    "android": "map_needs_precise_no_hunt",
+    "text": {
+     "en": "‘Save house here’ needs precise location.",
+     "hi": "‘यहाँ मकान सहेजें’ को सटीक जगह चाहिए।",
+     "ta": "‘இங்கே வீட்டைச் சேமி’க்குத் துல்லியமான இருப்பிடம் தேவை.",
+     "te": "‘ఇక్కడ ఇల్లు సేవ్ చేయండి’కి ఖచ్చితమైన స్థానం అవసరం."
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_map_needs_precise_no_hunt",
+    "text": {
+     "en": "‘Save school here’ needs precise location."
+    }
+   }
+  },
+  {
+   "id": "saveNeedsLocation",
+   "house": {
+    "web": null,
+    "android": "map_save_needs_location",
+    "text": {
+     "en": "‘Save house here’ needs your location. Allow location, then tap it again at the house.",
+     "hi": "‘यहाँ मकान सहेजें’ के लिए आपकी जगह चाहिए। जगह की अनुमति दें, फिर मकान पर इसे दोबारा दबाएँ।",
+     "ta": "‘இங்கே வீட்டைச் சேமி’ என்பதற்கு உங்கள் இருப்பிடம் தேவை. இருப்பிட அனுமதியை வழங்கி, வீட்டில் இருக்கும்போது மீண்டும் தட்டவும்.",
+     "te": "‘ఇక్కడ ఇల్లు సేవ్ చేయండి’కి మీ స్థానం అవసరం. స్థాన అనుమతి ఇచ్చి, ఇంటి దగ్గర మళ్లీ నొక్కండి."
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_map_save_needs_location",
+    "text": {
+     "en": "‘Save school here’ needs your location. Allow location, then tap it again at the school."
+    }
+   }
+  },
+  {
+   "id": "detailsTitle",
+   "house": {
+    "web": null,
+    "android": "house_details_title",
+    "text": {
+     "en": "House details",
+     "hi": "मकान का विवरण",
+     "ta": "வீட்டு விவரங்கள்",
+     "te": "ఇంటి వివరాలు"
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_details_title",
+    "text": {
+     "en": "School details"
+    }
+   }
+  },
+  {
+   "id": "notFoundTitle",
+   "house": {
+    "web": null,
+    "android": "house_not_found_title",
+    "text": {
+     "en": "House not found",
+     "hi": "मकान नहीं मिला",
+     "ta": "வீடு கிடைக்கவில்லை",
+     "te": "ఇల్లు కనబడలేదు"
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_not_found_title",
+    "text": {
+     "en": "School not found"
+    }
+   }
+  },
+  {
+   "id": "notFound",
+   "house": {
+    "web": null,
+    "android": "house_not_found",
+    "text": {
+     "en": "This house is no longer on this phone.",
+     "hi": "यह मकान अब इस फ़ोन पर नहीं है।",
+     "ta": "இந்த வீடு இனி இந்தத் தொலைபேசியில் இல்லை.",
+     "te": "ఈ ఇల్లు ఇకపై ఈ ఫోన్‌లో లేదు."
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_not_found",
+    "text": {
+     "en": "This school is no longer on this phone."
+    }
+   }
+  },
+  {
+   "id": "defaultLabel",
+   "house": {
+    "web": null,
+    "android": "house_default_label",
+    "text": {
+     "en": "New house",
+     "hi": "नया मकान",
+     "ta": "புதிய வீடு",
+     "te": "కొత్త ఇల్లు"
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_default_label",
+    "text": {
+     "en": "New school"
+    }
+   }
+  },
+  {
+   "id": "defaultLabelStreet",
+   "house": {
+    "web": null,
+    "android": "house_default_label_street",
+    "text": {
+     "en": "House on %1$s",
+     "hi": "%1$s पर मकान",
+     "ta": "%1$s-இல் உள்ள வீடு",
+     "te": "%1$s లోని ఇల్లు"
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_default_label_street",
+    "text": {
+     "en": "School on %1$s"
+    }
+   }
+  },
+  {
+   "id": "discardNew",
+   "house": {
+    "web": null,
+    "android": "house_discard_new_title",
+    "text": {
+     "en": "Discard this new house?",
+     "hi": "यह नया मकान छोड़ दें?",
+     "ta": "இந்தப் புதிய வீட்டைக் கைவிடவா?",
+     "te": "ఈ కొత్త ఇంటిని వదిలేయాలా?"
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_discard_new_title",
+    "text": {
+     "en": "Discard this new school?"
+    }
+   }
+  },
+  {
+   "id": "deleteTitle",
+   "house": {
+    "web": null,
+    "android": "house_delete_confirm_title",
+    "text": {
+     "en": "Delete this house?",
+     "hi": "यह मकान हटाएँ?",
+     "ta": "இந்த வீட்டை நீக்கவா?",
+     "te": "ఈ ఇల్లు తొలగించాలా?"
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_delete_confirm_title",
+    "text": {
+     "en": "Delete this school?"
+    }
+   }
+  },
+  {
+   "id": "pageNeedsPrecise",
+   "house": {
+    "web": null,
+    "android": "house_needs_precise",
+    "text": {
+     "en": "Placing this house needs precise location, or type the latitude and longitude.",
+     "hi": "इस मकान की जगह तय करने के लिए सटीक जगह चाहिए, या अक्षांश और देशांतर लिखें।",
+     "ta": "இந்த வீட்டின் இடத்தைக் குறிக்கத் துல்லியமான இருப்பிடம் தேவை, அல்லது அட்சரேகையையும் தீர்க்கரேகையையும் தட்டச்சு செய்யவும்.",
+     "te": "ఈ ఇంటి స్థానాన్ని గుర్తించడానికి ఖచ్చితమైన స్థానం అవసరం, లేదా అక్షాంశం, రేఖాంశం టైప్ చేయండి."
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_needs_precise",
+    "text": {
+     "en": "Placing this school needs precise location, or type the latitude and longitude."
+    }
+   }
+  },
+  {
+   "id": "savePhotosFirst",
+   "house": {
+    "web": null,
+    "android": "house_save_first_photos",
+    "text": {
+     "en": "Save the house to add photos.",
+     "hi": "तस्वीरें जोड़ने के लिए मकान सहेजें।",
+     "ta": "படங்களைச் சேர்க்க வீட்டைச் சேமிக்கவும்.",
+     "te": "ఫోటోలు జోడించడానికి ఇల్లు సేవ్ చేయండి."
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_save_first_photos",
+    "text": {
+     "en": "Save the school first to add photos."
+    }
+   }
+  },
+  {
+   "id": "walkButton",
+   "house": {
+    "web": "trace.here.buttonHouse",
+    "android": "trace_here_button_house",
+    "text": {
+     "en": "Did I walk past this house?",
+     "hi": "क्या मैं इस मकान के पास से गुज़रा?",
+     "ta": "இந்த வீட்டைக் கடந்து நடந்தேனா?",
+     "te": "నేను ఈ ఇంటి పక్కగా నడిచానా?"
+    }
+   },
+   "school": {
+    "web": "school.walkTitle",
+    "android": "school_walk_button",
+    "text": {
+     "en": "Did I walk past this school?"
+    }
+   }
+  },
+  {
+   "id": "walkPlace",
+   "house": {
+    "web": "trace.here.placeHouse",
+    "android": "trace_here_place_house",
+    "text": {
+     "en": "this house",
+     "hi": "इस मकान",
+     "ta": "இந்த வீடு",
+     "te": "ఈ ఇల్లు"
+    }
+   },
+   "school": {
+    "web": "school.walkPlace",
+    "android": "school_walk_place",
+    "text": {
+     "en": "this school"
+    }
+   }
+  },
+  {
+   "id": "walkLabel",
+   "house": {
+    "web": "trace.here.labelHouse",
+    "android": "trace_here_label_house",
+    "text": {
+     "en": "This house",
+     "hi": "यह मकान",
+     "ta": "இந்த வீடு",
+     "te": "ఈ ఇల్లు"
+    }
+   },
+   "school": {
+    "web": "school.walkLabel",
+    "android": "school_walk_label",
+    "text": {
+     "en": "This school"
+    }
+   }
+  },
+  {
+   "id": "walkApprox",
+   "house": {
+    "web": "trace.here.approxHouse",
+    "android": "trace_here_approx_house",
+    "text": {
+     "en": "This house has no exact spot yet, only an area. Place it on the map first, then check.",
+     "hi": "इस मकान की अभी सटीक जगह नहीं है, सिर्फ़ इलाक़ा है। पहले इसे नक़्शे पर रखें, फिर जाँचें।",
+     "ta": "இந்த வீட்டுக்கு இன்னும் துல்லியமான இடம் இல்லை, பகுதி மட்டுமே. முதலில் வரைபடத்தில் குறித்து, பிறகு சோதிக்கவும்.",
+     "te": "ఈ ఇంటికి ఇంకా కచ్చితమైన చోటు లేదు, ప్రాంతం మాత్రమే. ముందు మ్యాప్‌లో పెట్టి, తర్వాత తనిఖీ చేయండి."
+    }
+   },
+   "school": {
+    "web": "school.walkApprox",
+    "android": "school_walk_approx",
+    "text": {
+     "en": "This school has no exact spot yet, only an area. Place it on the map first, then check."
+    }
+   }
+  },
+  {
+   "id": "walksEmpty",
+   "house": {
+    "web": "trace.house.empty",
+    "android": "trace_house_empty",
+    "text": {
+     "en": "No saved walks. When you finish a walk, you can link it to this house.",
+     "hi": "कोई सहेजी गई सैर नहीं। सैर पूरी करने पर आप उसे इस मकान से जोड़ सकते हैं।",
+     "ta": "சேமித்த நடைகள் இல்லை. நடையை முடிக்கும்போது அதை இந்த வீட்டுடன் இணைக்கலாம்.",
+     "te": "సేవ్ చేసిన నడకలు లేవు. నడకను ముగించినప్పుడు దాన్ని ఈ ఇంటికి జోడించవచ్చు."
+    }
+   },
+   "school": {
+    "web": "school.walksEmpty",
+    "android": "school_walks_empty",
+    "text": {
+     "en": "No saved walks. When you finish a walk, you can link it to this school."
+    }
+   }
+  },
+  {
+   "id": "aiDisclosure",
+   "house": {
+    "web": null,
+    "android": "ai_disclosure",
+    "text": {
+     "en": "Your question and the matching house notes are sent to the AI provider set up on your server.",
+     "hi": "आपका सवाल और मिलते-जुलते मकानों के नोट आपके सर्वर पर सेट AI सेवा को भेजे जाते हैं।",
+     "ta": "உங்கள் கேள்வியும் பொருந்தும் வீட்டுக் குறிப்புகளும் உங்கள் சர்வரில் அமைத்த AI சேவைக்கு அனுப்பப்படும்.",
+     "te": "మీ ప్రశ్న, సరిపోలే ఇంటి గమనికలు మీ సర్వర్‌లో సెట్ చేసిన AI సేవకు పంపబడతాయి."
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_ai_disclosure",
+    "text": {
+     "en": "Your question and the matching school notes are sent to the AI provider set up on your server."
+    }
+   }
+  },
+  {
+   "id": "aiDisclosureOwnKey",
+   "house": {
+    "web": null,
+    "android": "ai_disclosure_own_key_host",
+    "text": {
+     "en": "The text is sent from this phone straight to %1$s with your own key, together with the matching house notes.",
+     "hi": "यह टेक्स्ट, मिलते-जुलते मकानों के नोट के साथ, आपकी अपनी कुंजी से इस फ़ोन से सीधे %1$s को भेजा जाता है।",
+     "ta": "இந்த உரை, பொருந்தும் வீட்டுக் குறிப்புகளுடன், உங்கள் சொந்த சாவியுடன் இந்தத் தொலைபேசியிலிருந்து நேரடியாக %1$s-க்கு அனுப்பப்படும்.",
+     "te": "ఈ టెక్స్ట్, సరిపోలే ఇంటి గమనికలతో కలిసి, మీ సొంత కీతో ఈ ఫోన్ నుండి నేరుగా %1$s కి పంపబడుతుంది."
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_ai_disclosure_own_key_host",
+    "text": {
+     "en": "The text is sent from this phone straight to %1$s with your own key, together with the matching school notes."
+    }
+   }
+  },
+  {
+   "id": "placeFound",
+   "house": {
+    "web": null,
+    "android": "map_place_found",
+    "text": {
+     "en": "The map shows “%1$s”. Long-press the house’s spot to add it there.",
+     "hi": "नक्शा “%1$s” दिखा रहा है। मकान वहाँ जोड़ने के लिए उसकी जगह को देर तक दबाएँ।",
+     "ta": "வரைபடம் “%1$s”-ஐக் காட்டுகிறது. வீட்டை அங்கே சேர்க்க, அதன் இடத்தை நீண்ட நேரம் அழுத்தவும்.",
+     "te": "మ్యాప్ “%1$s”ను చూపుతోంది. ఇంటిని అక్కడ చేర్చడానికి దాని స్థలాన్ని ఎక్కువసేపు నొక్కండి."
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_map_place_found",
+    "text": {
+     "en": "The map shows “%1$s”. Long-press the school’s spot to add it there."
+    }
+   }
+  },
+  {
+   "id": "placeNotFound",
+   "house": {
+    "web": null,
+    "android": "map_place_not_found",
+    "text": {
+     "en": "No place called “%1$s” was found in India. Move the map to the house yourself.",
+     "hi": "भारत में “%1$s” नाम की कोई जगह नहीं मिली। नक्शे को ख़ुद मकान तक ले जाएँ।",
+     "ta": "இந்தியாவில் “%1$s” என்ற இடம் கிடைக்கவில்லை. வரைபடத்தை நீங்களே வீட்டுக்கு நகர்த்தவும்.",
+     "te": "భారతదేశంలో “%1$s” అనే స్థలం దొరకలేదు. మ్యాప్‌ను మీరే ఇంటి వరకు జరపండి."
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_map_place_not_found",
+    "text": {
+     "en": "No place called “%1$s” was found in India. Move the map to the school yourself."
+    }
+   }
+  },
+  {
+   "id": "openDetails",
+   "house": {
+    "web": null,
+    "android": "compare_open_house",
+    "text": {
+     "en": "open house details",
+     "hi": "मकान का विवरण खोलें",
+     "ta": "வீட்டு விவரங்களைத் திற",
+     "te": "ఇంటి వివరాలు తెరవండి"
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_compare_open",
+    "text": {
+     "en": "open school details"
+    }
+   }
+  },
+  {
+   "id": "areasEmptyBody",
+   "house": {
+    "web": null,
+    "android": "areas_empty_body",
+    "text": {
+     "en": "Add the areas you are hunting in. A note on an area shows on every house inside it.",
+     "hi": "जिन इलाक़ों में घर ढूँढ रहे हैं, उन्हें जोड़ें। किसी इलाक़े का नोट उसके अंदर के हर मकान पर दिखता है।",
+     "ta": "நீங்கள் வீடு தேடும் பகுதிகளைச் சேர்க்கவும். ஒரு பகுதியின் குறிப்பு அதனுள் உள்ள ஒவ்வொரு வீட்டிலும் தெரியும்.",
+     "te": "మీరు ఇల్లు వెతుకుతున్న ప్రాంతాలను జోడించండి. ఒక ప్రాంతంపై గమనిక దానిలోని ప్రతి ఇంటిపై కనిపిస్తుంది."
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_areas_empty_body",
+    "text": {
+     "en": "Add the areas you are hunting in. A note on an area shows on every school inside it."
+    }
+   }
+  },
+  {
+   "id": "notesEmpty",
+   "house": {
+    "web": null,
+    "android": "notes_empty",
+    "text": {
+     "en": "No area notes yet. Add one from a house page.",
+     "hi": "अभी इलाक़े का कोई नोट नहीं। किसी मकान के पेज से जोड़ें।",
+     "ta": "இன்னும் பகுதிக் குறிப்புகள் இல்லை. ஒரு வீட்டின் பக்கத்திலிருந்து சேர்க்கவும்.",
+     "te": "ఇంకా ప్రాంత గమనికలు లేవు. ఒక ఇంటి పేజీ నుంచి జోడించండి."
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_notes_empty",
+    "text": {
+     "en": "No area notes yet. Add one from a school."
+    }
+   }
+  },
+  {
+   "id": "areaDeleteBody",
+   "house": {
+    "web": null,
+    "android": "area_delete_body",
+    "text": {
+     "en": "Its notes are kept, but no house shows them any more.",
+     "hi": "इसके नोट रहेंगे, पर अब किसी मकान पर नहीं दिखेंगे।",
+     "ta": "இதன் குறிப்புகள் இருக்கும், ஆனால் இனி எந்த வீட்டிலும் தெரியாது.",
+     "te": "దీని గమనికలు ఉంటాయి, కానీ ఇకపై ఏ ఇంటిపైనా కనిపించవు."
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_area_delete_body",
+    "text": {
+     "en": "Its notes are kept, but no school shows them any more."
+    }
+   }
+  },
+  {
+   "id": "placeDeleteBody",
+   "house": {
+    "web": null,
+    "android": "place_delete_body",
+    "text": {
+     "en": "Houses stop showing how far it is.",
+     "hi": "मकान अब यह नहीं दिखाएँगे कि यह कितनी दूर है।",
+     "ta": "இது எவ்வளவு தூரம் என்பதை வீடுகள் இனி காட்டாது.",
+     "te": "ఇది ఎంత దూరమో ఇళ్లు ఇకపై చూపవు."
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_place_delete_body",
+    "text": {
+     "en": "Schools stop showing how far it is."
+    }
+   }
+  },
+  {
+   "id": "placesEmptyBody",
+   "house": {
+    "web": null,
+    "android": "places_empty_body",
+    "text": {
+     "en": "Add work, school or family. Every house then shows how far it is from each.",
+     "hi": "दफ़्तर, स्कूल या परिवार जोड़ें। फिर हर मकान दिखाएगा कि वह हर एक से कितनी दूर है।",
+     "ta": "அலுவலகம், பள்ளி அல்லது குடும்பத்தைச் சேர்க்கவும். பிறகு ஒவ்வொரு வீடும் அவை ஒவ்வொன்றிலிருந்தும் எவ்வளவு தூரம் என்று காட்டும்.",
+     "te": "ఆఫీసు, బడి లేదా కుటుంబాన్ని జోడించండి. అప్పుడు ప్రతి ఇల్లు ఒక్కోదానికి ఎంత దూరమో చూపుతుంది."
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_places_empty_body",
+    "text": {
+     "en": "Add your office or family home to see how far each school is."
+    }
+   }
+  }
+ ]
+}

@@ -41,9 +41,9 @@ import org.jetbrains.compose.resources.StringResource
  * The words of a space's screens that name the kind (kinds PR C, S4b-BL-274, S4b-BL-277 on the phone; docs/03 §18.12): the
  * Houses tab, the list's search, its count, empty and no-match lines, the map's *Save here* button and tips, Compare, the
  * Assistant and the copies. The house's are today's strings, so a house space is word for word what it was; a school's are
- * its own. The website's twin is `core/space-words.ts` and `space-tool-words.ts`. The ten words the kind file's `words` has
- * (the list, the map's region and tips, *Save here*) are read from its `android` keys (S4b-BL-278, [KindWordKeys]); the rest of
- * this table (Compare, the Assistant, the copies) is still the phone's own.
+ * its own. The website's twin is `core/space-words.ts` and `space-tool-words.ts`. Every word is read from the kind file's
+ * `words` through its `android` key ([KindWordKeys]; S4b-BL-278 for the list and the map, S4b-BL-316 for the rest): the class
+ * holds no table of strings of its own.
  */
 @Immutable
 class SpaceWords(
@@ -89,52 +89,28 @@ class SpaceWords(
     val saveNeedsLocation: StringResource,
 ) {
     companion object {
-        /** The Compose string a kind file's `words` id names on the phone (the file's `android` key, [KindWordKeys]). */
-        private fun word(keys: Map<String, String?>, id: String): StringResource = kindStringResource(checkNotNull(keys[id]) { "no Android word for $id" })
+        /** The words of the kind whose file keys are [keys] (`KindWordKeys`): every word is the file's `android` key, none is this class's. */
+        private fun from(keys: Map<String, String?>): SpaceWords {
+            fun w(id: String): StringResource = kindStringResource(checkNotNull(keys[id]) { "no Android word for $id" })
+            return SpaceWords(
+                many = w("heading"), search = w("search"), shown = w("shown"), empty = w("emptyBody"), noMatch = w("noMatch"),
+                addOnMap = w("add"), saveHere = w("create"), regionDesc = w("regionLabel"), addTip = w("addHint"),
+                addTipA11y = w("addHintShort"), addTipListing = w("addHintListing"), addTipListingA11y = w("addHintListingShort"),
+                unnamed = w("unnamed"), compareHint = w("compareHint"), comparePickMore = w("comparePickMore"),
+                compareChoose = w("compareChoose"), compareEmpty = w("compareEmpty"), compareEmptyBody = w("compareEmptyBody"),
+                compareFootnote = w("compareFootnote"), askLabel = w("askLabel"), askHint = w("askHint"),
+                askNotGrounded = w("askNotGrounded"), askSources = w("askSources"), planHint = w("planHint"),
+                exportEmpty = w("exportEmpty"), exportScope = w("exportScope"), exportScopeAll = w("exportScopeAll"),
+                exportIncludeRejected = w("exportIncludeRejected"), exportPhotosShortlisted = w("exportPhotosShortlisted"),
+                locationOff = w("locationOff"), needsPrecise = w("needsPrecise"), locationOffNoHunt = w("locationOffNoHunt"),
+                needsPreciseNoHunt = w("needsPreciseNoHunt"), saveNeedsLocation = w("saveNeedsLocation"),
+            )
+        }
 
-        private val h = KindWordKeys.HOUSE
-        private val s = KindWordKeys.SCHOOL
+        val HOUSE = from(KindWordKeys.HOUSE)
+        val SCHOOL = from(KindWordKeys.SCHOOL)
 
-        val HOUSE = SpaceWords(
-            many = word(h, "heading"), search = word(h, "search"), shown = word(h, "shown"),
-            empty = word(h, "emptyBody"), noMatch = word(h, "noMatch"), addOnMap = word(h, "add"),
-            saveHere = word(h, "create"), regionDesc = word(h, "regionLabel"), addTip = word(h, "addHint"),
-            addTipA11y = word(h, "addHintShort"), addTipListing = Res.string.map_add_tip_listing,
-            addTipListingA11y = Res.string.map_add_tip_listing_a11y, unnamed = Res.string.house_unnamed,
-            compareHint = Res.string.compare_hint, comparePickMore = Res.string.compare_pick_more,
-            compareChoose = Res.string.compare_choose, compareEmpty = Res.string.compare_empty,
-            compareEmptyBody = Res.string.compare_empty_body, compareFootnote = Res.string.compare_footnote,
-            askLabel = Res.string.ai_ask_label, askHint = Res.string.ai_ask_hint, askNotGrounded = Res.string.ai_not_grounded,
-            askSources = Res.string.ai_sources, planHint = Res.string.ai_plan_hint, exportEmpty = Res.string.export_empty,
-            exportScope = Res.string.export_scope, exportScopeAll = Res.string.export_scope_all,
-            exportIncludeRejected = Res.string.export_include_rejected,
-            exportPhotosShortlisted = Res.string.export_photos_shortlisted,
-            locationOff = Res.string.map_location_off, needsPrecise = Res.string.map_needs_precise,
-            locationOffNoHunt = Res.string.map_location_off_no_hunt, needsPreciseNoHunt = Res.string.map_needs_precise_no_hunt,
-            saveNeedsLocation = Res.string.map_save_needs_location,
-        )
-
-        val SCHOOL = SpaceWords(
-            many = word(s, "heading"), search = word(s, "search"), shown = word(s, "shown"),
-            empty = word(s, "emptyBody"), noMatch = word(s, "noMatch"), addOnMap = word(s, "add"),
-            saveHere = word(s, "create"), regionDesc = word(s, "regionLabel"), addTip = word(s, "addHint"),
-            addTipA11y = word(s, "addHintShort"), addTipListing = Res.string.school_add_tip_listing,
-            addTipListingA11y = Res.string.school_add_tip_listing_a11y, unnamed = Res.string.school_unnamed,
-            compareHint = Res.string.school_compare_hint, comparePickMore = Res.string.school_compare_pick_more,
-            compareChoose = Res.string.school_compare_choose, compareEmpty = Res.string.school_compare_empty,
-            compareEmptyBody = Res.string.school_compare_empty_body, compareFootnote = Res.string.school_compare_footnote,
-            askLabel = Res.string.school_ai_ask_label, askHint = Res.string.school_ai_ask_hint,
-            askNotGrounded = Res.string.school_ai_not_grounded, askSources = Res.string.school_ai_sources,
-            planHint = Res.string.school_ai_plan_hint, exportEmpty = Res.string.school_export_empty,
-            exportScope = Res.string.school_export_scope, exportScopeAll = Res.string.school_export_scope_all,
-            exportIncludeRejected = Res.string.school_export_include_rejected,
-            exportPhotosShortlisted = Res.string.school_export_photos_shortlisted,
-            locationOff = Res.string.school_map_location_off_no_hunt, needsPrecise = Res.string.school_map_needs_precise_no_hunt,
-            locationOffNoHunt = Res.string.school_map_location_off_no_hunt, needsPreciseNoHunt = Res.string.school_map_needs_precise_no_hunt,
-            saveNeedsLocation = Res.string.school_map_save_needs_location,
-        )
-
-        /** The words of [kind]; a kind with no table of its own reads the house's. */
+        /** The words of [kind]; a kind with no entry of its own reads the house's. */
         fun of(kind: String): SpaceWords = if (kind == "school") SCHOOL else HOUSE
     }
 }

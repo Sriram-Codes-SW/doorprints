@@ -24,7 +24,10 @@ import type { TKey } from '../i18n/en';
  * words left on a school's page: tab titles, the name's placeholder, the walk check, the Areas and Places pages, the
  * readable copy's cover. A page asks for its house key and gets the kind's own where the kind has one, so the
  * house's words are exactly the keys they were: `toolWord('house', 'compare.title')` is `'compare.title'`. The space's
- * list and map words are `core/space-words.ts` (S4b-BL-277); moving both into the kind files is S4b-BL-278.
+ * list and map words are `core/space-words.ts` (S4b-BL-277), the kind files' `words` (S4b-BL-278).
+ *
+ * S4b-BL-316: the words the phone also has (`TOOL_WORD_IDS`) carry the ids the kind files' `words` give them, so the three
+ * places (the files, this table and the phone's resources) are held to one another by `kind-words.spec.ts`.
  */
 const SCHOOL: Readonly<Partial<Record<TKey, TKey>>> = {
   'compare.title': 'school.compareTitle',
@@ -135,6 +138,25 @@ const ANY: Readonly<Partial<Record<TKey, TKey>>> = {
   'imp.done': 'imp.doneAny',
   'imp.doneRemoved': 'imp.doneRemovedAny',
   'imp.seeHouses': 'imp.seeAny',
+};
+
+/**
+ * The ids the kind files' `words` give the words this table has in common with the phone (S4b-BL-316), each with the house's
+ * key; the school's is `toolWord('school', key)`. `kind-words.spec.ts` holds the files and the vectors to it.
+ */
+export const TOOL_WORD_IDS: Readonly<Record<string, TKey>> = {
+  askLabel: 'ask.title',
+  askHint: 'ask.placeholder',
+  askNotGrounded: 'ask.notGrounded',
+  askSources: 'ask.sources',
+  exportEmpty: 'data.empty',
+  exportScopeAll: 'data.scopeAll',
+  exportIncludeRejected: 'data.includeRejected',
+  walkButton: 'trace.here.buttonHouse',
+  walkPlace: 'trace.here.placeHouse',
+  walkLabel: 'trace.here.labelHouse',
+  walkApprox: 'trace.here.approxHouse',
+  walksEmpty: 'trace.house.empty',
 };
 
 const TABLES: Readonly<Record<string, Readonly<Partial<Record<TKey, TKey>>>>> = { school: SCHOOL, '*': ANY };

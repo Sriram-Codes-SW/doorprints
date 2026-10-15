@@ -36,6 +36,7 @@ import kotlinx.coroutines.runBlocking
 import org.jetbrains.compose.resources.getString
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Assert.assertNotEquals
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -74,6 +75,27 @@ class NotificationTextsTest {
             importedSentence(houses = 5, visits = 1, photos = 20, updatedHouses = 2, restoredHouses = 1),
         )
         assertEquals("Import finished. Nothing needed to be added or updated.", importedSentence(0, 0, 0))
+    }
+
+    @Test
+    fun theImportSentenceSaysEntriesWithTwoKindsOnAndHousesWithOne() = runBlocking {
+        appIn("en")
+        // S4b-BL-316: the worker passes the kind setting's two-kind state; the neutral plural is count_entries.
+        assertEquals(
+            "Brought back 1 entry. Added 2 entries, 1 visit and 20 photos. Updated 2 entries.",
+            importedSentence(houses = 5, visits = 1, photos = 20, updatedHouses = 2, restoredHouses = 1, neutral = true),
+        )
+        assertEquals(
+            "Added 3 houses.",
+            importedSentence(houses = 3, visits = 0, photos = 0, neutral = false),
+        )
+    }
+
+    @Test
+    fun theImportWorkerGivesTheSentenceTheKindSettingsTwoKindState() {
+        val source = java.io.File("src/main/java/app/doorprints/export/ImportWorker.kt").readText()
+        assertTrue(source.contains("repository.settings.kindSetting().first().spaces"))
+        assertTrue(source.contains("result.restoredHouses, neutral,"))
     }
 
     @Test
