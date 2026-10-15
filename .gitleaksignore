@@ -137,3 +137,6 @@ c6ed9c844ca35ef1d61a398ce13de4c49760635b:web/src/app/core/ai/ai-limits.spec.ts:g
 02e56b710bae0039feeef62eae42d2dc09c84647:android/app/src/androidTest/assets/crypto/hpke-vectors.json:generic-api-key:60
 02e56b710bae0039feeef62eae42d2dc09c84647:android/app/src/androidTest/assets/crypto/hpke-vectors.json:generic-api-key:69
 02e56b710bae0039feeef62eae42d2dc09c84647:android/app/src/androidTest/java/app/doorprints/KeystoreSecretStoreTest.kt:generic-api-key:65
+# Reviewed 2026-10-15 (Voice PR 5, Android): test fixtures, a made-up key string for the fake transcriber's own-key path, not a credential.
+21eaa7a30c5de596b1ea56bfd1a22dee44d00d55:android/shared/src/commonTest/kotlin/app/doorprints/shared/voice/VoiceInputTest.kt:generic-api-key:129
+21eaa7a30c5de596b1ea56bfd1a22dee44d00d55:android/app/src/test/java/app/doorprints/VoiceSafetyTest.kt:generic-api-key:117
