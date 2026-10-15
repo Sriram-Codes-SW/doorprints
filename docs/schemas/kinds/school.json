@@ -140,6 +140,13 @@
   ]
  },
  "search": ["label", "address", "street", "locality", "notes", "contactName", "areaNotes", "board", "medium", "grades", "commuteMinutes", "busService", "fees", "admissionFee"],
+ "capabilities": {
+  "map": true,
+  "rooms": false,
+  "moveIn": false,
+  "contacts": { "role": "office", "autoCreateFromPhone": false },
+  "paths": true
+ },
  "ai": {
   "extract": ["label", "address", "street", "locality", "contactName", "contactPhone", "listingUrl", "notes", "board", "medium", "grades", "busService", "fees", "admissionFee"],
   "ask": ["label", "address", "street", "locality", "board", "medium", "grades", "commuteMinutes", "busService", "fees", "admissionFee", "areaNotes", "distances", "status", "rating", "visits", "notes"],

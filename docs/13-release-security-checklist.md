@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | The manual part of the release security gate: the one-hour list per release, and the scope of the deep self-run pentest |
-| Version | 0.18 |
+| Version | 0.19 |
 | Date | 2026-10-15 |
 | Author | Claude (Code), lead |
 | Status | Draft. Written (story S4b-SEC-3); **not yet run on a release candidate**, which is the story's last acceptance item |
@@ -30,6 +30,7 @@
 | 0.16 | 2026-10-15 | Claude (Code), engineer | **Part J rewritten for "compiled in, off"** (owner, 2026-10-15; `feat/kinds-23-ship-school-web`): J1 the production build lists exactly `house,school` and offers the house alone (the switch off, no chooser); J2 a stored `kinds.experimental=1` is the feature, not a bypass; J4 wording; J3, J5-J7 unchanged. |
 | 0.17 | 2026-10-15 | Claude (Code), engineer | **F11 and Sarvam (S4b-BL-224):** F11 gains the Sarvam clause (its own key slot, the host named, the 30 s stop; MT-109, MT-110). |
 | 0.18 | 2026-10-15 | Claude (Code), engineer | **Part J, the phones: "compiled in, off"** (owner, 2026-10-15; `feat/kinds-24-ship-school-phones`): new J8 (the release APK and the iPhone list `house,school` and offer the house alone; the switch is the only way to the school; the phones' half of J1) |
+| 0.19 | 2026-10-15 | Claude (Code), engineer | **Part H: every kind** (owner constraint, `feat/kinds-25-capabilities-schema`): H2 runs on the house space and on each other released kind's space; new H3, the kind-file validator rejects map keys. |
 
 ## 1. What this is, and when it runs
 
@@ -189,7 +190,8 @@ Run **AI evals** (`ai-evals.yml`, manual) on the release commit first. The golde
 | # | Check | Pass |
 |---|---|---|
 | H1 | The geospatial self-certification, [03](03-design.md) §11.1, re-read against DST's guidelines and negative list | Still true for this release |
-| H2 | TC-M-25 on the release build (web and Android) | Passed |
+| H2 | TC-M-25 on the release build (web and Android), on the house space and on each other released kind's space | Passed |
+| H3 | The kind-file validator rejects map keys: the schema test `kind-capabilities.spec.ts` ("a kind file has no map configuration"), `KindCapabilitiesVectorsTest.aKindFileHasNoMapConfiguration` and `KindCapabilitiesFileTest.theSchemaHasNoMapConfigurationAndMapIsABooleanOnly` pass, as does the tripwire that no map-rules file names a kind | Passed |
 
 ### J. Kinds, spaces and deletion (10 minutes; every release, [02](02-threat-model.md) T-E13, T-T21, T-I49, T-D15)
 

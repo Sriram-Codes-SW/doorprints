@@ -156,6 +156,16 @@
   ]
  },
  "search": ["label", "address", "street", "locality", "notes", "contactName", "brokerId", "rooms", "questions", "areaNotes", "moveIn", "floor"],
+ "capabilities": {
+  "map": true,
+  "hunt": { "alertRadiusM": 30, "stayCreates": true },
+  "rooms": true,
+  "moveIn": true,
+  "contacts": { "role": "broker", "autoCreateFromPhone": true },
+  "viewings": { "questionsSeed": "house" },
+  "compare": { "criteria": ["water", "power", "parking", "sunlight", "ventilation", "noise", "security", "maintenance", "neighbourhood", "commute"] },
+  "paths": true
+ },
  "ai": {
   "extract": ["label", "address", "street", "locality", "money", "bedrooms", "areaSqft", "contactName", "contactPhone", "listingUrl", "notes", "amenities"],
   "ask": ["label", "address", "street", "locality", "money", "bedrooms", "areaSqft", "floor", "deposit", "depositMonths", "maintenance", "maintenanceIncluded", "brokerage", "brokerageMonths", "lockInMonths", "noticeMonths", "availableFrom", "agreedPrice", "rooms", "questions", "viewings", "areaNotes", "distances", "moveIn", "status", "rating", "checklist", "visits", "notes"],

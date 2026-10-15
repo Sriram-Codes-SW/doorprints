@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.160 |
+| Version | 0.162 |
 | Date | 2026-10-15 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -171,6 +171,8 @@
 | 0.158 | 2026-10-15 | Claude (Code), engineer | **ADR-37, §19: Stop never blocks the main thread, and an early end keeps the clip** (S4b-BL-317, S4b-BL-318; #367). `VoiceRecorder.stop()` is `suspend`: the drain wait for the last words (300 ms at most) suspends in `PcmVoiceRecorder` and `VoiceSession` runs it from the tap, so the screen stays responsive; the 2 MB cap, the memory-only audio and every release path are unchanged. A new `VoiceFailure.ENDED_EARLY` (reported through `PcmSource.endedEarly()`) is for a recording cut short from outside (a call, a changed microphone, the app leaving the front on the iPhone; a dead input on Android; the browser stopping its recorder or a track on the website): the audio so far is kept **in memory**, written out and shown in the box with the status *the recording ended early*, instead of the untrue *could not be made*; a clip of zero length ends quietly; a release (pause, leaving, the setting off, Cancel) still discards. The microphone is let go at once in every case. |
 | 0.159 | 2026-10-15 | Claude (Code), engineer | **New §18.18, the school as the default kind and the house turned off** (owner question of 2026-10-15; `fix/kinds-default-and-house-off`): the four rules and the trace of every place that uses the default or the house kind without the person choosing (new entries, shared listings, Hunt, reminders, deep links, import, copies, AI, the server's `kind`, the chooser). Fixed: *Start Hunt mode* with Houses off, a new entry in a space that is off, a Hunt alert's kind. The guide's *More than houses* page (four languages) and [06](06-test-plan.md) TC-U-268, TC-M-83 follow. |
 | 0.160 | 2026-10-15 | Claude (Code), docs | **Stale "developer flag" wording** (owner, 2026-10-15; `docs/school-compiled-in-wording`): §18.9's developer-flag paragraph says that since §18.14 the school is compiled in and shown by Settings' switch, and the flag only shows more than the shipped list in tests. |
+| 0.161 | 2026-10-15 | Claude (Code), engineer | **§18.19 Capabilities** (kinds PR 25; `feat/kinds-25-capabilities-schema`): the kind file's optional `capabilities` block (map, Hunt, rooms, moving in, contacts, viewings, Compare, paths, identity), `house.json` and `school.json` declare what they do today, a resolver on the website and in `:shared`, shared vectors; schema and resolver only, nothing reads them yet. |
+| 0.162 | 2026-10-15 | Claude (Code), engineer | **§11.1 and §18.19: no map configuration in a kind file** (owner constraint, `feat/kinds-25-capabilities-schema`): the certification covers every space and every kind; `capabilities.map` is a boolean only; map keys are refused by the schema and tested on three stacks. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -1364,6 +1366,8 @@ records the owner's and the team's reading of the guidelines, not legal advice.
 
 Section 2(2) of the Criminal Law (Amendment) Act, 1961 (a map of India not in conformity with the Survey of India's
 maps; ADR-22's reason) still applies alongside these guidelines.
+
+**The certification covers every space and every kind, built-in or user-authored, because all of them render the one map component with the one style and boundary data; a kind file has no map configuration by schema** (`kind.schema.json`: `additionalProperties: false` at the root, in a section, in `capabilities` and in `identity`; `capabilities.map` is a boolean; a tile URL, style, sprite, glyphs, boundary, GeoJSON, attribution, zoom, bounds, centre or `geo` key is refused; `capabilities-vectors.json` `forbiddenMapKeys`, [06](06-test-plan.md) TC-U-269). The map-rules files (`map-style-url.ts`, `india-boundaries.ts`, `IndiaViewRules.kt`, `MapStyleJson.kt`, `IndiaViewOps.kt`) name no kind symbol, and a test fails if one appears.
 
 **The Survey of India's reply (2026-10-01).** The Online Maps Portal team (NGDR & UGI Directorate) answered the letter of
 2026-09-28: no prior permission is required for its Administrative Boundary Database (that database only); no alteration
@@ -3153,6 +3157,49 @@ the default kind*), `kind-setting.spec.ts` (the sequence school default, house o
 `SpacesRootTest` (the school alone lists the kept house and *What you track* counts it; a Hunt alert and *Start Hunt mode* with Houses off;
 a walk running when Houses is turned off stops). The house-only path is unchanged byte for byte (the existing pins: `routesFor(false)`,
 `SpacesRootTest.aBuildThatShipsTheHouseAloneIsTheAppItAlwaysWas`, the house golden files).
+### 18.19 Capabilities: what a kind can do beyond its fields (kinds PR 25, schema and resolver only)
+
+A kind file could only *hide* the house's features (the closed `sectionId` list) while Hunt, Compare, the broker and the rest were
+hard-coded to the house (`huntHere = built.id == HOUSE`, `Space.kt`). The owner's direction is that a kind acts like a product of
+its own under Doorprints, so the kind file gains one optional block, `capabilities`, that says what the kind can do. **This step
+is the schema and the resolver only; nothing reads the resolver yet, so no screen, wire, backup, pin or baseline changes.** The
+screens move onto it one feature at a time in later changes, each with the house's behaviour proved equal first.
+
+| Key | Meaning | Limits |
+|---|---|---|
+| `map` | the kind's candidates are drawn on the map | boolean |
+| `hunt` | Hunt mode: `alertRadiusM`, `stayCreates` (a stay at an unsaved place offers to save it) | radius an integer 20..500; both keys required; absent = no Hunt |
+| `rooms`, `moveIn` | the rooms list; the moving-in checklist | boolean |
+| `contacts` | `role` (`broker`, `office`, `agent`) and `autoCreateFromPhone` (a saved phone makes or links a broker entry) | both keys required; absent = no contact capability |
+| `viewings` | `questionsSeed`: the built-in bank that seeds a viewing's questions | only `house` |
+| `compare` | `criteria`: the checklist keys or extra ids Compare scores, in order | 1 to 10, unique, `^[a-z][A-Za-z0-9_]{0,39}$` |
+| `paths` | walks and paths | boolean |
+| `identity` | `icon` (one of 24 bundled ids) and `colour` (one of 8 palette ids) | both required; not drawn yet |
+
+The block holds booleans, small numbers and ids from fixed lists, never text, a link or markup, so a kind file cannot carry a prompt or a
+URL, and every object in it refuses an unknown key (`additionalProperties: false`, so `__proto__` and `constructor` are refused as
+keys). It is optional: a kind file without it, and a kind the build does not know, has the defaults, **the map and the paths on and
+everything else off** (`DEFAULT_CAPABILITIES`, `KindCapabilities.DEFAULT`). An unknown stored kind is still *drawn* as a house (§18.9);
+that rule is the caller's and is unchanged: it resolves the drawn kind, then asks for its capabilities.
+
+`house.json` declares today's behaviour, no more: the map, Hunt at 30 m (the settings default of `AppSettings.alertRadiusM`; the
+person's own radius, 15 to 100 m, stays a setting) with `stayCreates`, the rooms, moving in, `contacts` broker with `autoCreateFromPhone`,
+`viewings` seeded by the house bank, `compare` over the ten checklist keys and the paths. `school.json` declares what the school has: the
+map, the paths, and an admissions-office contact that never makes a broker (S4b-BL-260); no Hunt, rooms, moving in, viewings or Compare.
+
+**The resolver** is `capabilitiesOf(kindId)` (website `core/kind-capabilities.ts`) and `KindCapabilities.of(kindId)` (`:shared`
+commonMain): the built-in sets are copies of the two files, in the way of `HOUSE_LABELS` and `SchoolKind`, and the tests read the files so
+a copy cannot drift. `parseCapabilities` / `KindCapabilities.parse` are the schema's twin in code, strict and never throwing, for the day a
+kind file is read at run time. **The vectors** (`docs/schemas/kinds/capabilities-vectors.json`, [schemas README](schemas/README.md) §8.4) pin
+the defaults, each built-in kind's resolved set, the code constants the house's set must equal (so a later change must update the vector
+knowingly), the switches that must follow the sections each file shows (rooms, moving in, viewings, walks) and the broker field,
+valid objects, and 60 invalid ones (radius out of range, an unknown key, eleven criteria, markup and links, prototype keys). The server
+keeps no copy and reads nothing new: its tests ignore the added keys (the AI files' `ai` block is read as before).
+
+**No map configuration.** `capabilities.map` is a boolean only and the schema refuses any map key (list in [§11.1](#111-the-government-of-indias-geospatial-guidelines-self-certification)) at the root, in a section, in `capabilities` and in `identity`; the three stacks test it (the website against the schema, `:shared` and the server against the schema's shape and the vectors' `invalid` cases), and a tripwire test fails when a map-rules file names a kind symbol.
+
+**Tests** ([06](06-test-plan.md) TC-U-269): the website's `kind-capabilities.spec.ts` (with Ajv against `kind.schema.json`) and the phones'
+`KindCapabilitiesVectorsTest` and the server's `KindCapabilitiesFileTest`; `house-kind-file.spec.ts` and the pins of the house are untouched and green.
 
 ## 19. Voice input (ADR-37)
 

@@ -128,6 +128,71 @@
     "plan": { "$ref": "#/$defs/ids" },
     "never": { "$ref": "#/$defs/ids" }
    }
+  },
+  "capabilities": {
+   "description": "What the kind can do beyond its fields, one switch or small setting per feature (docs/03 §18.19). Optional: a kind file without it, and a kind the app does not know, has the defaults (the map and the paths on, everything else off). A feature a kind leaves out is absent or false. Nothing here is text or a link: only booleans, small numbers and ids from the fixed lists below, so a kind file can never carry a prompt, a URL or markup. Read by `capabilitiesOf` (web `core/kind-capabilities.ts`, :shared `KindCapabilities`); no screen reads it yet.",
+   "type": "object",
+   "additionalProperties": false,
+   "properties": {
+    "map": { "description": "The kind's candidates are drawn on the map.", "type": "boolean" },
+    "hunt": {
+     "description": "Hunt mode (alerts near a saved place, stays that make a visit): `alertRadiusM` is how near, in metres; `stayCreates` whether a stay at an unsaved place offers to save it.",
+     "type": "object",
+     "additionalProperties": false,
+     "required": ["alertRadiusM", "stayCreates"],
+     "properties": {
+      "alertRadiusM": { "type": "integer", "minimum": 20, "maximum": 500 },
+      "stayCreates": { "type": "boolean" }
+     }
+    },
+    "rooms": { "description": "The rooms list (names, sizes, photos per room).", "type": "boolean" },
+    "moveIn": { "description": "The moving-in checklist.", "type": "boolean" },
+    "contacts": {
+     "description": "The candidate's contact: `role` is whose contact it is (a broker, an office, an agent); `autoCreateFromPhone` whether saving a phone number makes or links the address-book entry for it (the brokers list).",
+     "type": "object",
+     "additionalProperties": false,
+     "required": ["role", "autoCreateFromPhone"],
+     "properties": {
+      "role": { "enum": ["broker", "office", "agent"] },
+      "autoCreateFromPhone": { "type": "boolean" }
+     }
+    },
+    "viewings": {
+     "description": "Viewings with their questions; `questionsSeed` names the built-in question bank that seeds them (only the house's, `house`).",
+     "type": "object",
+     "additionalProperties": false,
+     "required": ["questionsSeed"],
+     "properties": {
+      "questionsSeed": { "enum": ["house"] }
+     }
+    },
+    "compare": {
+     "description": "Compare: the criteria it scores, in order, as checklist keys or extra ids of this kind (at most ten).",
+     "type": "object",
+     "additionalProperties": false,
+     "required": ["criteria"],
+     "properties": {
+      "criteria": {
+       "type": "array",
+       "minItems": 1,
+       "maxItems": 10,
+       "uniqueItems": true,
+       "items": { "type": "string", "pattern": "^[a-z][A-Za-z0-9_]{0,39}$" }
+      }
+     }
+    },
+    "paths": { "description": "Walks and paths (the walks section, path tracing, place checks).", "type": "boolean" },
+    "identity": {
+     "description": "How the kind looks in the chooser: an icon and a colour from the bundled lists. Not drawn yet.",
+     "type": "object",
+     "additionalProperties": false,
+     "required": ["icon", "colour"],
+     "properties": {
+      "icon": { "enum": ["home", "school", "building", "apartment", "shop", "hospital", "office", "park", "car", "bike", "bus", "train", "cart", "hotel", "restaurant", "gym", "book", "heart", "star", "flag", "key", "pin", "briefcase", "paw"] },
+      "colour": { "enum": ["terracotta", "indigo", "teal", "forest", "amber", "rose", "slate", "plum"] }
+     }
+    }
+   }
   }
  },
  "$defs": {

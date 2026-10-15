@@ -1,0 +1,551 @@
+{
+ "format": "doorprints-capabilities-vectors/1",
+ "note": "What a kind file's `capabilities` block resolves to (docs/03 ADR-36 §18.19; the kinds-25 capabilities layer, schema and resolver only: no screen reads it yet). `kinds` pins the resolved set of each built-in kind, and `today` names the hard-coded behaviour that the house's set equals, so a later change that moves one must change this file knowingly: the web `kind-capabilities.spec.ts` and the phones' `KindCapabilitiesVectorsTest` read both and assert them against house.json, school.json, the code's constants (Hunt's 30 m default, Compare's ten checklist keys, the sections each kind shows, the broker rule) and the resolver. `defaults` is what a kind with no `capabilities`, and a kind the build does not know (`unknown`), resolves to. `valid` cases give a `capabilities` object and what it resolves to (a feature left out is null, a missing switch takes its default); `invalid` cases give the object as JSON text (so a `__proto__` key stays an own key) and must be refused by the schema and by both stacks' strict readers. `icons` and `colours` are the schema's lists. `forbiddenMapKeys` (owner constraint, India's boundaries apply to every kind: ADR-22, docs/03 §11.1): a kind file has no map configuration, so `capabilities.map` is a boolean only and none of these keys is accepted at the root, in a section, in `capabilities` or in `identity`; the schema and the readers refuse them (the invalid cases cover `capabilities` and `identity`; the website's spec also tries the root and a section against the schema; the phones' and the server's tests check that the schema keeps `additionalProperties: false` there and names none of them).",
+ "defaults": {
+  "map": true,
+  "hunt": null,
+  "rooms": false,
+  "moveIn": false,
+  "contacts": null,
+  "viewings": null,
+  "compare": null,
+  "paths": true,
+  "identity": null
+ },
+ "today": {
+  "huntAlertRadiusM": 30,
+  "huntAlertRadiusMSource": "AppSettings.alertRadiusM default (android/shared Settings.kt); Hunt's radius setting is 15..100 m",
+  "compareCriteriaAre": "the checklist keys (web CHECKLIST, android Checklist.keys), in order",
+  "contactsFollow": "the broker field: the house shows `brokerId` and makes a broker from a phone (BrokerStore.linked), the school shows no broker and makes none",
+  "sectionsFollow": {
+   "rooms": "rooms",
+   "moveIn": "moveIn",
+   "viewings": "viewings",
+   "paths": "walks"
+  }
+ },
+ "kinds": {
+  "house": {
+   "map": true,
+   "hunt": {
+    "alertRadiusM": 30,
+    "stayCreates": true
+   },
+   "rooms": true,
+   "moveIn": true,
+   "contacts": {
+    "role": "broker",
+    "autoCreateFromPhone": true
+   },
+   "viewings": {
+    "questionsSeed": "house"
+   },
+   "compare": {
+    "criteria": [
+     "water",
+     "power",
+     "parking",
+     "sunlight",
+     "ventilation",
+     "noise",
+     "security",
+     "maintenance",
+     "neighbourhood",
+     "commute"
+    ]
+   },
+   "paths": true,
+   "identity": null
+  },
+  "school": {
+   "map": true,
+   "hunt": null,
+   "rooms": false,
+   "moveIn": false,
+   "contacts": {
+    "role": "office",
+    "autoCreateFromPhone": false
+   },
+   "viewings": null,
+   "compare": null,
+   "paths": true,
+   "identity": null
+  }
+ },
+ "unknown": [
+  "",
+  "unknown",
+  "House",
+  "SCHOOL",
+  "__proto__",
+  "constructor",
+  "toString",
+  "hasOwnProperty"
+ ],
+ "valid": [
+  {
+   "name": "empty object is the defaults",
+   "capabilities": {},
+   "resolved": {
+    "map": true,
+    "hunt": null,
+    "rooms": false,
+    "moveIn": false,
+    "contacts": null,
+    "viewings": null,
+    "compare": null,
+    "paths": true,
+    "identity": null
+   }
+  },
+  {
+   "name": "the smallest hunt",
+   "capabilities": {
+    "hunt": {
+     "alertRadiusM": 20,
+     "stayCreates": false
+    }
+   },
+   "resolved": {
+    "map": true,
+    "hunt": {
+     "alertRadiusM": 20,
+     "stayCreates": false
+    },
+    "rooms": false,
+    "moveIn": false,
+    "contacts": null,
+    "viewings": null,
+    "compare": null,
+    "paths": true,
+    "identity": null
+   }
+  },
+  {
+   "name": "the widest hunt",
+   "capabilities": {
+    "hunt": {
+     "alertRadiusM": 500,
+     "stayCreates": true
+    }
+   },
+   "resolved": {
+    "map": true,
+    "hunt": {
+     "alertRadiusM": 500,
+     "stayCreates": true
+    },
+    "rooms": false,
+    "moveIn": false,
+    "contacts": null,
+    "viewings": null,
+    "compare": null,
+    "paths": true,
+    "identity": null
+   }
+  },
+  {
+   "name": "everything off",
+   "capabilities": {
+    "map": false,
+    "rooms": false,
+    "moveIn": false,
+    "paths": false
+   },
+   "resolved": {
+    "map": false,
+    "hunt": null,
+    "rooms": false,
+    "moveIn": false,
+    "contacts": null,
+    "viewings": null,
+    "compare": null,
+    "paths": false,
+    "identity": null
+   }
+  },
+  {
+   "name": "an agent whose phone makes no entry",
+   "capabilities": {
+    "contacts": {
+     "role": "agent",
+     "autoCreateFromPhone": false
+    }
+   },
+   "resolved": {
+    "map": true,
+    "hunt": null,
+    "rooms": false,
+    "moveIn": false,
+    "contacts": {
+     "role": "agent",
+     "autoCreateFromPhone": false
+    },
+    "viewings": null,
+    "compare": null,
+    "paths": true,
+    "identity": null
+   }
+  },
+  {
+   "name": "ten criteria, checklist keys and extra ids",
+   "capabilities": {
+    "compare": {
+     "criteria": [
+      "a1",
+      "b_2",
+      "fees",
+      "commuteMinutes",
+      "c",
+      "d",
+      "e",
+      "f",
+      "g",
+      "h"
+     ]
+    }
+   },
+   "resolved": {
+    "map": true,
+    "hunt": null,
+    "rooms": false,
+    "moveIn": false,
+    "contacts": null,
+    "viewings": null,
+    "compare": {
+     "criteria": [
+      "a1",
+      "b_2",
+      "fees",
+      "commuteMinutes",
+      "c",
+      "d",
+      "e",
+      "f",
+      "g",
+      "h"
+     ]
+    },
+    "paths": true,
+    "identity": null
+   }
+  },
+  {
+   "name": "an identity from the lists",
+   "capabilities": {
+    "identity": {
+     "icon": "paw",
+     "colour": "plum"
+    }
+   },
+   "resolved": {
+    "map": true,
+    "hunt": null,
+    "rooms": false,
+    "moveIn": false,
+    "contacts": null,
+    "viewings": null,
+    "compare": null,
+    "paths": true,
+    "identity": {
+     "icon": "paw",
+     "colour": "plum"
+    }
+   }
+  }
+ ],
+ "invalid": [
+  {
+   "name": "radius below 20",
+   "json": "{\"hunt\":{\"alertRadiusM\":19,\"stayCreates\":true}}"
+  },
+  {
+   "name": "radius above 500",
+   "json": "{\"hunt\":{\"alertRadiusM\":501,\"stayCreates\":true}}"
+  },
+  {
+   "name": "radius not an integer",
+   "json": "{\"hunt\":{\"alertRadiusM\":30.5,\"stayCreates\":true}}"
+  },
+  {
+   "name": "radius as text",
+   "json": "{\"hunt\":{\"alertRadiusM\":\"30\",\"stayCreates\":true}}"
+  },
+  {
+   "name": "hunt without stayCreates",
+   "json": "{\"hunt\":{\"alertRadiusM\":30}}"
+  },
+  {
+   "name": "hunt with an unknown key",
+   "json": "{\"hunt\":{\"alertRadiusM\":30,\"stayCreates\":true,\"sound\":true}}"
+  },
+  {
+   "name": "an unknown capability key",
+   "json": "{\"teleport\":true}"
+  },
+  {
+   "name": "a switch that is not a boolean",
+   "json": "{\"rooms\":\"yes\"}"
+  },
+  {
+   "name": "a switch as a number",
+   "json": "{\"paths\":1}"
+  },
+  {
+   "name": "null for a switch",
+   "json": "{\"map\":null}"
+  },
+  {
+   "name": "null for a block",
+   "json": "{\"hunt\":null}"
+  },
+  {
+   "name": "an array for capabilities' block",
+   "json": "{\"contacts\":[]}"
+  },
+  {
+   "name": "an unknown contact role",
+   "json": "{\"contacts\":{\"role\":\"landlord\",\"autoCreateFromPhone\":true}}"
+  },
+  {
+   "name": "contacts without autoCreateFromPhone",
+   "json": "{\"contacts\":{\"role\":\"broker\"}}"
+  },
+  {
+   "name": "a viewings seed that is not the house's",
+   "json": "{\"viewings\":{\"questionsSeed\":\"school\"}}"
+  },
+  {
+   "name": "a viewings seed that is a path",
+   "json": "{\"viewings\":{\"questionsSeed\":\"docs/schemas/default-questions.json\"}}"
+  },
+  {
+   "name": "eleven criteria",
+   "json": "{\"compare\":{\"criteria\":[\"a\",\"b\",\"c\",\"d\",\"e\",\"f\",\"g\",\"h\",\"i\",\"j\",\"k\"]}}"
+  },
+  {
+   "name": "no criteria",
+   "json": "{\"compare\":{\"criteria\":[]}}"
+  },
+  {
+   "name": "a repeated criterion",
+   "json": "{\"compare\":{\"criteria\":[\"water\",\"water\"]}}"
+  },
+  {
+   "name": "a criterion that is markup",
+   "json": "{\"compare\":{\"criteria\":[\"<b>water</b>\"]}}"
+  },
+  {
+   "name": "a criterion that is a link",
+   "json": "{\"compare\":{\"criteria\":[\"https://example.com\"]}}"
+  },
+  {
+   "name": "a criterion that is a number",
+   "json": "{\"compare\":{\"criteria\":[1]}}"
+  },
+  {
+   "name": "an icon that is not bundled",
+   "json": "{\"identity\":{\"icon\":\"rocket\",\"colour\":\"plum\"}}"
+  },
+  {
+   "name": "an icon that is a link",
+   "json": "{\"identity\":{\"icon\":\"https://example.com/i.svg\",\"colour\":\"plum\"}}"
+  },
+  {
+   "name": "a colour that is not in the palette",
+   "json": "{\"identity\":{\"icon\":\"home\",\"colour\":\"#ff0000\"}}"
+  },
+  {
+   "name": "identity without a colour",
+   "json": "{\"identity\":{\"icon\":\"home\"}}"
+  },
+  {
+   "name": "a __proto__ key at the top",
+   "json": "{\"__proto__\":{\"map\":false}}"
+  },
+  {
+   "name": "a constructor key at the top",
+   "json": "{\"constructor\":{\"prototype\":{\"rooms\":true}}}"
+  },
+  {
+   "name": "a prototype key at the top",
+   "json": "{\"prototype\":{}}"
+  },
+  {
+   "name": "a __proto__ key inside hunt",
+   "json": "{\"hunt\":{\"alertRadiusM\":30,\"stayCreates\":true,\"__proto__\":{\"alertRadiusM\":500}}}"
+  },
+  {
+   "name": "a constructor key inside identity",
+   "json": "{\"identity\":{\"icon\":\"home\",\"colour\":\"plum\",\"constructor\":\"x\"}}"
+  },
+  {
+   "name": "map key style inside capabilities",
+   "json": "{\"style\":\"x\"}"
+  },
+  {
+   "name": "map key style inside identity",
+   "json": "{\"identity\":{\"icon\":\"home\",\"colour\":\"plum\",\"style\":\"x\"}}"
+  },
+  {
+   "name": "map key tileUrl inside capabilities",
+   "json": "{\"tileUrl\":\"x\"}"
+  },
+  {
+   "name": "map key tileUrl inside identity",
+   "json": "{\"identity\":{\"icon\":\"home\",\"colour\":\"plum\",\"tileUrl\":\"x\"}}"
+  },
+  {
+   "name": "map key tiles inside capabilities",
+   "json": "{\"tiles\":\"x\"}"
+  },
+  {
+   "name": "map key tiles inside identity",
+   "json": "{\"identity\":{\"icon\":\"home\",\"colour\":\"plum\",\"tiles\":\"x\"}}"
+  },
+  {
+   "name": "map key sprite inside capabilities",
+   "json": "{\"sprite\":\"x\"}"
+  },
+  {
+   "name": "map key sprite inside identity",
+   "json": "{\"identity\":{\"icon\":\"home\",\"colour\":\"plum\",\"sprite\":\"x\"}}"
+  },
+  {
+   "name": "map key glyphs inside capabilities",
+   "json": "{\"glyphs\":\"x\"}"
+  },
+  {
+   "name": "map key glyphs inside identity",
+   "json": "{\"identity\":{\"icon\":\"home\",\"colour\":\"plum\",\"glyphs\":\"x\"}}"
+  },
+  {
+   "name": "map key boundary inside capabilities",
+   "json": "{\"boundary\":\"x\"}"
+  },
+  {
+   "name": "map key boundary inside identity",
+   "json": "{\"identity\":{\"icon\":\"home\",\"colour\":\"plum\",\"boundary\":\"x\"}}"
+  },
+  {
+   "name": "map key boundaries inside capabilities",
+   "json": "{\"boundaries\":\"x\"}"
+  },
+  {
+   "name": "map key boundaries inside identity",
+   "json": "{\"identity\":{\"icon\":\"home\",\"colour\":\"plum\",\"boundaries\":\"x\"}}"
+  },
+  {
+   "name": "map key geojson inside capabilities",
+   "json": "{\"geojson\":\"x\"}"
+  },
+  {
+   "name": "map key geojson inside identity",
+   "json": "{\"identity\":{\"icon\":\"home\",\"colour\":\"plum\",\"geojson\":\"x\"}}"
+  },
+  {
+   "name": "map key attribution inside capabilities",
+   "json": "{\"attribution\":\"x\"}"
+  },
+  {
+   "name": "map key attribution inside identity",
+   "json": "{\"identity\":{\"icon\":\"home\",\"colour\":\"plum\",\"attribution\":\"x\"}}"
+  },
+  {
+   "name": "map key maxzoom inside capabilities",
+   "json": "{\"maxzoom\":\"x\"}"
+  },
+  {
+   "name": "map key maxzoom inside identity",
+   "json": "{\"identity\":{\"icon\":\"home\",\"colour\":\"plum\",\"maxzoom\":\"x\"}}"
+  },
+  {
+   "name": "map key bounds inside capabilities",
+   "json": "{\"bounds\":\"x\"}"
+  },
+  {
+   "name": "map key bounds inside identity",
+   "json": "{\"identity\":{\"icon\":\"home\",\"colour\":\"plum\",\"bounds\":\"x\"}}"
+  },
+  {
+   "name": "map key center inside capabilities",
+   "json": "{\"center\":\"x\"}"
+  },
+  {
+   "name": "map key center inside identity",
+   "json": "{\"identity\":{\"icon\":\"home\",\"colour\":\"plum\",\"center\":\"x\"}}"
+  },
+  {
+   "name": "map key mapStyleUrl inside capabilities",
+   "json": "{\"mapStyleUrl\":\"x\"}"
+  },
+  {
+   "name": "map key mapStyleUrl inside identity",
+   "json": "{\"identity\":{\"icon\":\"home\",\"colour\":\"plum\",\"mapStyleUrl\":\"x\"}}"
+  },
+  {
+   "name": "map key geo inside capabilities",
+   "json": "{\"geo\":\"x\"}"
+  },
+  {
+   "name": "map key geo inside identity",
+   "json": "{\"identity\":{\"icon\":\"home\",\"colour\":\"plum\",\"geo\":\"x\"}}"
+  },
+  {
+   "name": "map as an object (boolean only)",
+   "json": "{\"map\":{\"style\":\"x\"}}"
+  }
+ ],
+ "icons": [
+  "home",
+  "school",
+  "building",
+  "apartment",
+  "shop",
+  "hospital",
+  "office",
+  "park",
+  "car",
+  "bike",
+  "bus",
+  "train",
+  "cart",
+  "hotel",
+  "restaurant",
+  "gym",
+  "book",
+  "heart",
+  "star",
+  "flag",
+  "key",
+  "pin",
+  "briefcase",
+  "paw"
+ ],
+ "colours": [
+  "terracotta",
+  "indigo",
+  "teal",
+  "forest",
+  "amber",
+  "rose",
+  "slate",
+  "plum"
+ ],
+ "forbiddenMapKeys": [
+  "style",
+  "tileUrl",
+  "tiles",
+  "sprite",
+  "glyphs",
+  "boundary",
+  "boundaries",
+  "geojson",
+  "attribution",
+  "maxzoom",
+  "bounds",
+  "center",
+  "mapStyleUrl",
+  "geo"
+ ]
+}
