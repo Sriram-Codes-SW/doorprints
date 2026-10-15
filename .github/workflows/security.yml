@@ -146,6 +146,9 @@ jobs:
         run: |
           node --test tools/check-docs-versions.test.mjs
           node tools/check-docs-versions.mjs
+          # docs/14 §7 *Status words*: no docs/10 row says In review without a pull request number (offline)
+          node --test tools/check-sprint-status.test.mjs
+          node tools/check-sprint-status.mjs
       # S4b-BL-175: the fake AI provider server's own tests (Node built-ins only, no network, no key). The adapters are run
       # against it by the Web (fake-provider.wire.spec.ts) and Android (FakeProviderWireTest) workflows.
       - name: Fake AI provider server tests
