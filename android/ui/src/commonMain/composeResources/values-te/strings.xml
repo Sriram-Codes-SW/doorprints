@@ -1827,4 +1827,36 @@
     <string name="school_map_location_off_no_hunt">Doorprints కోసం స్థానం ఆఫ్‌లో ఉంది. ‘ఇక్కడ పాఠశాల సేవ్ చేయండి’కి ఇది అవసరం.</string>
     <string name="school_map_needs_precise_no_hunt">‘ఇక్కడ పాఠశాల సేవ్ చేయండి’కి ఖచ్చితమైన స్థానం అవసరం.</string>
     <string name="school_map_save_needs_location">‘ఇక్కడ పాఠశాల సేవ్ చేయండి’కి మీ స్థానం అవసరం. స్థాన అనుమతి ఇచ్చి, పాఠశాల దగ్గర మళ్లీ నొక్కండి.</string>
+
+    <!-- S4b-BL-222 (2026-10-15): under review: voice input. -->
+    <string name="voice_switch">వాయిస్ ఇన్‌పుట్ (AI బాక్సుల కోసం మైక్రోఫోన్ బటన్)</string>
+    <string name="voice_switch_hint">మీరు ఆన్ చేసే వరకు ఆఫ్‌లో ఉంటుంది. మైక్రోఫోన్ నొక్కి, మాట్లాడండి; మాటలు బాక్స్‌లో రాయబడతాయి, మీరు చూసి మార్చవచ్చు. బాక్స్ సొంత బటన్ నొక్కే వరకు ఏదీ పంపబడదు. మీ సొంత AI కీతో మాత్రమే పనిచేస్తుంది.</string>
+    <string name="voice_disclosure">ఆడియో ఈ ఫోన్ నుండి నేరుగా %1$s కి వెళ్తుంది, వారి జాబితా ధరతో నిమిషానికి సుమారు ₹%2$s. మీరు చెప్పేదంతా, సంఖ్యలు, పేర్లతో సహా, ఆడియోగా పంపబడుతుంది; చెప్పిన ఫోన్ నంబర్‌ను టైప్ చేసిన నంబర్ లాగా తొలగించలేరు. రికార్డింగ్ ఈ ఫోన్‌లో సేవ్ చేయబడదు.</string>
+    <string name="voice_needs_own_key">వాయిస్ ఇన్‌పుట్‌కు ఆడియో తీసుకునే సేవ కోసం మీ సొంత AI కీ కావాలి: Gemini, OpenAI, Groq లేదా OpenRouter. మీ సర్వర్ AI, Anthropic లేదా లోకల్ సర్వర్‌తో ఇది అందుబాటులో లేదు.</string>
+    <string name="voice_no_recorder">ఈ ఫోన్ ఆడియో రికార్డ్ చేయలేదు, కాబట్టి మైక్రోఫోన్ బటన్ కనిపించదు.</string>
+    <string name="voice_mic">మాట్లాడండి</string>
+    <string name="voice_mic_desc">టైప్ చేసే బదులు మాట్లాడండి</string>
+    <string name="voice_stop">ఆపండి</string>
+    <string name="voice_stop_desc">ఆపండి: రికార్డింగ్ పూర్తి చేసి మాటలను రాయండి</string>
+    <string name="voice_working">రాస్తోంది…</string>
+    <string name="voice_cancel">రద్దు చేయండి</string>
+    <string name="voice_cancel_desc">రద్దు చేయండి: రికార్డింగ్‌ను పారేయండి</string>
+    <string name="voice_hint">ఒక నిమిషం వరకు చిన్న రికార్డింగ్ ఈ ఫోన్ నుండి మాటలుగా మార్చడానికి %1$s కి వెళ్తుంది. అది సేవ్ చేయబడదు. మీరు చెప్పే సంఖ్యలు, పేర్లు కూడా ఆడియోగానే వెళ్తాయి. మొదటిసారి మైక్రోఫోన్ వాడటానికి Android అనుమతి అడుగుతుంది. ఏదైనా పంపే ముందు మాటలను సరిచూడండి.</string>
+    <string name="voice_status_starting">మైక్రోఫోన్ కోసం వేచి ఉంది…</string>
+    <string name="voice_status_recording">రికార్డ్ అవుతోంది. ఇప్పుడు మాట్లాడి, తర్వాత “ఆపండి” నొక్కండి.</string>
+    <string name="voice_status_working">మాటలు రాస్తోంది…</string>
+    <string name="voice_status_done">పూర్తయింది. మాటలు బాక్స్‌లో ఉన్నాయి. పంపే ముందు సరిచూడండి.</string>
+    <string name="voice_status_done_limit">పూర్తయింది. రికార్డింగ్ ఒక నిమిషం పరిమితి వద్ద ఆగింది. మాటలు బాక్స్‌లో ఉన్నాయి. పంపే ముందు సరిచూడండి.</string>
+    <string name="voice_status_done_cut">పూర్తయింది. చివరి మాటలు బాక్స్‌లో పట్టకపోవడంతో వదిలేశాం. పంపే ముందు అక్కడ ఉన్నదాన్ని సరిచూడండి.</string>
+    <string name="voice_status_cancelled">రద్దు చేయబడింది. ఏదీ ఉంచబడలేదు.</string>
+    <string name="voice_nothing_heard">ఏదీ వినిపించలేదు. మైక్రోఫోన్‌కు దగ్గరగా మళ్లీ ప్రయత్నించండి, లేదా టైప్ చేయండి.</string>
+    <string name="voice_denied">Doorprints మైక్రోఫోన్‌ను వాడలేదు. ఫోన్ సెట్టింగ్‌లలో Doorprints కు అనుమతించి మళ్లీ ప్రయత్నించండి, లేదా టైప్ చేయండి.</string>
+    <string name="voice_open_settings">సెట్టింగ్‌లు తెరవండి</string>
+    <string name="voice_no_device">మైక్రోఫోన్ కనబడలేదు. టైప్ చేయండి.</string>
+    <string name="voice_failed">రికార్డింగ్ చేయలేకపోయాం. మళ్లీ ప్రయత్నించండి, లేదా టైప్ చేయండి.</string>
+    <string name="voice_too_long">రికార్డింగ్ పంపడానికి చాలా పొడవుగా ఉంది. చిన్నదాన్ని ప్రయత్నించండి.</string>
+    <string name="voice_rationale_title">మైక్రోఫోన్ వాడాలా?</string>
+    <string name="voice_rationale_body">మీరు “మాట్లాడండి” నొక్కిన తర్వాత మాత్రమే, గరిష్ఠంగా ఒక నిమిషం, మీరు చెప్పేది రాయడానికి Doorprints రికార్డ్ చేస్తుంది. రికార్డింగ్ మీ సొంత కీతో %1$s కి వెళ్తుంది, మెమరీలోనే ఉంటుంది, ఎప్పుడూ సేవ్ చేయబడదు. తర్వాత Android మీ అనుమతి అడుగుతుంది.</string>
+    <string name="voice_rationale_go">కొనసాగించండి</string>
+    <string name="voice_rationale_no">ఇప్పుడు కాదు</string>
 </resources>

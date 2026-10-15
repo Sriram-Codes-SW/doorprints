@@ -21,6 +21,7 @@ package app.doorprints.data
 import app.doorprints.shared.ai.AiKind
 import app.doorprints.shared.ai.AiProviderConfig
 import app.doorprints.shared.ai.AiQuality
+import app.doorprints.shared.voice.VoiceChoice
 import app.doorprints.shared.trace.RepeatLook
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
@@ -308,6 +309,8 @@ class SettingsStore(
         val kindsDefault = stringPreferencesKey("kinds.default")
         /** The chooser's one hint has been dismissed (`done`): the website's `doorprints.chooser.hint`. */
         val chooserHint = stringPreferencesKey("chooser.hint")
+        /** *Voice input* (S4b-BL-222, the website's `doorprints.voice`): this phone's own switch, off by default, never exported, synced or backed up. */
+        val voiceInput = booleanPreferencesKey("voice.input")
     }
 
     /** When area [id] last notified (or was dismissed), a key per area (slice 4b): `areas.lastNotified.<id>`. */
@@ -350,6 +353,20 @@ class SettingsStore(
             lengthUnit = LengthUnit.fromWire(p[Keys.lengthUnit]),
         )
     }
+
+    /**
+     * The *Voice input* switch and the provider choice it works with, for the microphone button and the setting: it reads no
+     * secret (the key stays in its slot), so it never fails while a key cannot be read; a file that cannot be read gives off.
+     */
+    val voiceChoice: Flow<VoiceChoice> = dataStore.data
+        .map { p ->
+            VoiceChoice(
+                enabled = p[Keys.voiceInput] ?: false,
+                config = AiProviderConfig(AiKind.fromWire(p[Keys.aiKind]), p[Keys.aiBaseUrl] ?: "", p[Keys.aiModel] ?: ""),
+            )
+        }
+        .distinctUntilChanged()
+        .catch { emit(VoiceChoice()) }
 
     /**
      * The length setting alone (slice 1c), for an export and a screen that needs nothing else: it reads no secret, so
@@ -603,6 +620,9 @@ class SettingsStore(
     suspend fun savePhotosOnWifiOnly(value: Boolean) = dataStore.edit { it[Keys.photosOnWifiOnly] = value }
 
     suspend fun saveAiFeatures(on: Boolean) = dataStore.edit { it[Keys.aiFeatures] = on }
+
+    /** Turns *Voice input* on or off (the setting turns the microphone button on; nothing is recorded or kept by this). */
+    suspend fun saveVoiceInput(on: Boolean) = dataStore.edit { if (on) it[Keys.voiceInput] = true else it.remove(Keys.voiceInput) }
 
     /** Turns the app lock on or off; the caller has checked the phone's credential first (AppLockGate). */
     suspend fun saveAppLock(on: Boolean) = dataStore.edit { it[Keys.appLock] = on }

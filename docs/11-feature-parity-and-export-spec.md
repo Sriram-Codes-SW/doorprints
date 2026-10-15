@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Feature parity and offline-copy export specification |
-| Version | 0.67 |
-| Date | 2026-10-14 |
+| Version | 0.68 |
+| Date | 2026-10-15 |
 | Author | Claude (Cowork) – Product/Architecture |
 | Status | Draft: product-owner decisions D-01, D-02, D-03, D-08, D-21 (AI access) and D-23..D-25 (Sprint 4b reminders, hunting areas, location permissions) and D-26 (India's boundaries on the map, 2026-09-24) applied; ready for Sprint 4 planning |
 
@@ -79,6 +79,7 @@
 | 0.65 | 2026-10-14 | Claude (Code), engineer | **5.27.6: Delete all in this space** (deletion safeguards PR 2, S4b-BL-284): the saved walks of every house of the space go with them, with no way back, and the question says so; *Remove all data* lists every kind's count and the saved walks. |
 | 0.66 | 2026-10-14 | Claude (Code), engineer | **5.27.6: the phones** (deletion safeguards PR 3, S4b-BL-285): *Delete all in this space* (Settings > What you track) and *Recently deleted* (Settings) on Android and iPhone; the phones' saved walks go at the end of the 10 s as for one house. |
 | 0.67 | 2026-10-15 | Claude (Code), engineer | **5.29 item 4: the place lookup keeps a result only inside India's outline** (S4b-BL-174c; `fix/place-lookup-and-native-digits`, PR #356; [03](03-design.md) ADR-22, [10](10-sprint-log.md) v0.337): a neighbour's town inside India's bounding box is refused on the website and the phones alike. |
+| 0.68 | 2026-10-15 | Claude (Code), engineer | **5.18a Microphone permission** (voice input, [03](03-design.md) ADR-37, S4b-BL-222): `RECORD_AUDIO` is asked only after a tap on the microphone and a rationale, never at install or start-up; foreground only; nothing is stored. |
 
 Related: [01 Requirements](01-requirements.md) · [02 Threat model](02-threat-model.md) · [03 Design](03-design.md) · [04 DFDs](04-data-flow-diagrams.md) · [05 UX/a11y/i18n](05-ux-accessibility-i18n.md) · [06 Test plan](06-test-plan.md) · [10 Sprint log](10-sprint-log.md) · [AI design](ai/ai-design.md)
 
@@ -631,6 +632,19 @@ moment.
 | Every app resume | Re-check fine/coarse/background state (and notification permission on Android 13+) and update the switches; no prompt without a user action. |
 | Play policy (if ever published) | Google Play requires a background-location declaration in the Play Console with a video, an in-app prominent disclosure before the request, and a core-feature justification. The rationale screen is written to serve as that disclosure; the declaration is a pre-publication task (CON-02: sideloaded today). |
 | Design review | Rationale screen and permission copy go through the Design Director review in [05](05-ux-accessibility-i18n.md) (4 languages, non-manipulative wording, equal Allow/Not now buttons). |
+
+### 5.18a Microphone permission model (voice input, ADR-37, S4b-BL-222)
+
+| Situation | Behaviour |
+|---|---|
+| Install, first launch, normal use | `RECORD_AUDIO` is **not** requested. *Voice input* is off by default; with it off there is no microphone button and no `AudioRecord`. The manifest declares the permission (and the microphone feature as not required, so a phone without one still installs). |
+| The first tap on the microphone (the setting on, the own AI key on Gemini, OpenAI, Groq or OpenRouter) | An in-app **rationale** first (why: to write out what you say; what: at most a minute, sent to the host named, kept in memory, never saved; *Continue* / *Not now* equal buttons), then Android's prompt. *Not now* asks nothing and opens nothing. |
+| Allowed ("While using the app" or "Only this time") | Recording starts at once. *Only this time* ends with the app's foreground; the next tap asks again. |
+| Refused, or "Don't ask again" | The field keeps working; a note says the microphone is off for Doorprints and *Open settings* opens the app's page. Nothing is recorded. |
+| Revoked in system settings while recording | The system ends the process; if it does not, each tick re-reads the grant and the recording ends as *refused*, with the microphone released. |
+| The screen pauses (home, another app, the lock screen, a call, a rotation) or is left | The recording is thrown away and the microphone released; nothing is kept and nothing is sent. |
+| Every app resume | No prompt without a tap; the grant is read when the person taps. |
+| Play policy (if ever published) | The data-safety form answers audio as collected, sent to the AI service the person configured, optional, not stored or shared by Doorprints ([13](13-release-security-checklist.md) G4); a microphone declaration needs the rationale above as the in-app disclosure. |
 
 ### 5.19 App lock (D-30)
 

@@ -40,6 +40,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.FileProvider
 import androidx.work.WorkInfo
 import app.doorprints.data.AndroidRepository
+import app.doorprints.data.Api
 import app.doorprints.data.Repository
 import app.doorprints.drive.wiring.DriveSettingsSection
 import app.doorprints.export.AndroidExportServices
@@ -70,6 +71,8 @@ import app.doorprints.ui.OfflineMapsServices
 import app.doorprints.ui.PhotoSources
 import app.doorprints.ui.PickedPhoto
 import app.doorprints.ui.SettingsServices
+import app.doorprints.ui.VoiceServices
+import app.doorprints.voice.AndroidVoiceServices
 import app.doorprints.ui.PlaceFix
 import app.doorprints.ui.bestLocation
 import app.doorprints.ui.currentLocation
@@ -93,6 +96,9 @@ import java.io.File
  */
 class AndroidAppServices(private val app: DoorprintsApp, override val repository: AndroidRepository) : AppServices {
     override val appScope: CoroutineScope get() = app.appScope
+
+    /** *Voice input* (S4b-BL-222): the microphone, its permission and the own-key transcription, on the app-wide HTTP client. */
+    override val voice: VoiceServices = AndroidVoiceServices(app, repository.settings, Api::httpClient)
 
     override val location: LocationSource = object : LocationSource {
         override suspend fun current(): Pair<Double, Double>? = currentLocation(app)
