@@ -45,6 +45,7 @@ import {
 } from '../../core/pairing.service';
 import { AiSessionState } from '../../core/ai-session.state';
 import { TPipe } from '../../i18n/t.pipe';
+import { VoiceSetting } from './voice-setting';
 import { RunResult, runResult } from '../../shared/run-result';
 import { focusIfLost } from '../../shared/focus';
 import { aiWorthItUrl } from '../../shared/help-link';
@@ -60,7 +61,7 @@ import { aiWorthItUrl } from '../../shared/help-link';
  */
 @Component({
   selector: 'app-connect-page',
-  imports: [FormsModule, TPipe],
+  imports: [FormsModule, TPipe, VoiceSetting],
   templateUrl: './connect-page.html',
   styleUrl: './connect-page.css',
 })

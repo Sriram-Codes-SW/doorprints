@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | The manual part of the release security gate: the one-hour list per release, and the scope of the deep self-run pentest |
-| Version | 0.12 |
-| Date | 2026-10-10 |
+| Version | 0.13 |
+| Date | 2026-10-15 |
 | Author | Claude (Code), lead |
 | Status | Draft. Written (story S4b-SEC-3); **not yet run on a release candidate**, which is the story's last acceptance item |
 
@@ -24,6 +24,7 @@
 | 0.10 | 2026-10-14 | Claude (Code), engineer | **Part J, kinds and spaces** (S4b-BL-216; [02](02-threat-model.md) v0.77 T-E13, T-T21, T-I49, T-D15): J1..J7, run on every release (web, Android, server) until the owner opens a kind's release gate, and again after it; the release record gains line J. |
 | 0.11 | 2026-10-14 | Claude (Code), engineer | **J1** notes the two unit tests that read the build config (S4b-BL-309: `release-kinds.spec.ts`, `ReleaseKindsTest`); the hand check stays for a workflow that adds a `--define` or a `-P` property. |
 | 0.12 | 2026-10-14 | Claude (Code), engineer | §2 and §6: the release APK for a Play release comes from `release.yml` (a draft GitHub Release, C-02); its notes say *not approved* and this gate is what approves it; the record gains the draft's tag. |
+| 0.13 | 2026-10-15 | Claude (Code), engineer | **B1 and F11:** the header row names `microphone=(self)` (voice input on the website, S4b-BL-221, TC-S-23, TC-S-51); F11's website clause is now a fact, the phones' clauses stay planned. |
 
 ## 1. What this is, and when it runs
 
@@ -83,7 +84,7 @@ On the release build: the live site for a deploy that already happened, or `npx 
 
 | # | Check (OWASP WSTG) | How | Pass |
 |---|---|---|---|
-| B1 | Headers (WSTG-CONF-07, -12, -14) | `curl -sI https://doorprints.web.app/` | CSP, HSTS, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy` and frame refusal as in `web/firebase.json` (TC-S-23) |
+| B1 | Headers (WSTG-CONF-07, -12, -14) | `curl -sI https://doorprints.web.app/` | CSP, HSTS, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy` and frame refusal as in `web/firebase.json` (TC-S-23); the `Permissions-Policy` reads `geolocation=(self), camera=(self), microphone=(self), payment=(), usb=()` with no `*` (the microphone since S4b-BL-221, voice input) |
 | B2 | Stored XSS (WSTG-INPV-02) | Add the test house with the payload label; open the map, the list, the house page, *Save a copy* as HTML and the print view | The payload shows as text everywhere; nothing runs (TC-S-16) |
 | B3 | Dangerous links (WSTG-CLNT-04) | Open the house with `javascript:alert(1)` as its listing URL | The link is not clickable or does nothing |
 | B4 | Malicious backup (WSTG-BUSL-09) | *Import a backup* with the TC-S-17 files (zip slip, bomb, hash mismatch) | Each one is refused with a message; no house changed |
@@ -145,7 +146,7 @@ Run **AI evals** (`ai-evals.yml`, manual) on the release commit first. The golde
 | F8 | LLM08 Vector and embedding weaknesses | One store per deployment; deletion (TC-AI-08) | Passed |
 | F9 | LLM09 Misinformation | Citations and refusal (TC-AI-02, TC-AI-03) | Thresholds met |
 | F10 | LLM10 Unbounded consumption | Quota and limits (TC-AI-07); the provider's spend cap (AI-015) | Cap set; 429 seen at the quota |
-| F11 | Voice input (planned, [03](03-design.md) ADR-37; only when voice is in this release) | *Voice input* is **off by default** on a fresh install (Settings > AI features) and on the website; the microphone permission is **asked at first use**, with a rationale, never at install or start-up (Android `RECORD_AUDIO` is not requested before a tap); the microphone button is hidden for a provider that cannot transcribe; the audio is in no backup, copy or sync file (T-I48 tests); the disclosure names the host; the website's `Permissions-Policy` has `microphone=(self)` only if the web voice pull request has shipped | Still true, or voice is not in this release |
+| F11 | Voice input (planned, [03](03-design.md) ADR-37; only when voice is in this release) | *Voice input* is **off by default** on a fresh install (Settings > AI features) and on the website; the microphone permission is **asked at first use**, with a rationale, never at install or start-up (Android `RECORD_AUDIO` is not requested before a tap); the microphone button is hidden for a provider that cannot transcribe; the audio is in no backup, copy or sync file (T-I48 tests); the disclosure names the host; the website's `Permissions-Policy` has `microphone=(self)` (shipped with the web voice pull request, S4b-BL-221: TC-S-23, TC-S-51, B1) | Still true, or voice is not in this release |
 
 ### G. Privacy: the DPDP Act and Play's data safety (5 minutes)
 

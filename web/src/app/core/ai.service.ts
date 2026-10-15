@@ -287,6 +287,14 @@ export class AiService {
     return this.geminiKeyState();
   }
 
+  /**
+   * The saved own-AI key, read at the moment of a voice call and passed straight to the transcriber (ADR-37: the same slot
+   * and the same rules, no new secret handling); never stored by the caller.
+   */
+  ownKey(): string {
+    return this.geminiKeyState();
+  }
+
   /** Whether Google accepts [key]: one tiny request, nothing saved. Rejects with an [OnDeviceAiError]. */
   testGeminiKey(key: string): Promise<void> {
     return this.onDevice.test(this.geminiRef(key.trim()));

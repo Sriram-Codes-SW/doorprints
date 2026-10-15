@@ -27,6 +27,8 @@ import type { PlanResponse } from '../../core/ai.service';
 import { LocalDataService } from '../../core/local-data.service';
 import { TranslationService } from '../../i18n/translation.service';
 import { PlanPage } from './plan-page';
+import { RECORDER_ENV, VoiceInputService } from '../../core/voice/voice-input.service';
+import { fakeMic } from '../../core/voice/testing/voice-fakes';
 
 /**
  * jsdom has no WebGL 2, so the real maplibre-gl map is never made (createMlMap shows "map unavailable" instead).
@@ -286,5 +288,68 @@ describe('PlanPage', () => {
     expect(host.querySelector('#start-msg')).toBeNull();
     expect(state('lat')).toEqual({ invalid: null, describedBy: 'start-hint' });
     expect(state('lon')).toEqual({ invalid: null, describedBy: 'start-hint' });
+  });
+});
+
+/**
+ * Voice input in *Plan notes* (S4b-BL-221, ADR-37): the microphone sits under the request box, the words land in the box
+ * for the person to edit, and planning starts only from the page's own button, with the edited words.
+ */
+describe('PlanPage: voice input', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    localStorage.clear();
+  });
+
+  async function open(on: boolean) {
+    localStorage.clear();
+    if (typeof ResizeObserver === 'undefined') vi.stubGlobal('ResizeObserver', class { observe(): void { /* jsdom */ } disconnect(): void { /* nothing */ } });
+    const planVisits = vi.fn(() => new Subject<PlanResponse>());
+    const mic = fakeMic();
+    vi.stubGlobal('fetch', async () =>
+      new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify({ text: 'two quiet flats near the metro', language: 'en-IN' }) }] } }] }) ));
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      imports: [PlanPage],
+      providers: [
+        provideRouter([]),
+        {
+          provide: AiService,
+          useValue: {
+            enabled: signal(true), enabledFor: () => true, offReason: () => null, usesOwnKey: signal(true), ownHost: signal('generativelanguage.googleapis.com'),
+            aiConfig: signal({ kind: 'gemini', baseUrl: '', model: '' }), ownKey: () => 'k-not-real', planVisits,
+          },
+        },
+        { provide: RECORDER_ENV, useValue: mic.env },
+        { provide: LocalDataService, useValue: { houses: () => of([]) } },
+      ],
+    });
+    TestBed.inject(VoiceInputService).setEnabled(on);
+    await TestBed.inject(TranslationService).setLang('en');
+    const fixture = TestBed.createComponent(PlanPage);
+    await fixture.whenStable();
+    return { fixture, planVisits, mic, host: fixture.nativeElement as HTMLElement };
+  }
+
+  it('has no microphone while the setting is off', async () => {
+    const { host, mic } = await open(false);
+    expect(host.querySelector('#plan-question-mic')).toBeNull();
+    expect(mic.asked()).toBe(0);
+  });
+
+  it('puts the spoken words in the request box and plans nothing until Plan is pressed', async () => {
+    const { fixture, host, planVisits } = await open(true);
+    const box = host.querySelector<HTMLTextAreaElement>('#plan-question')!;
+    box.value = 'Visit';
+    box.dispatchEvent(new Event('input'));
+    host.querySelector<HTMLButtonElement>('#plan-question-mic')!.click();
+    await vi.waitFor(() => expect(host.querySelector('#plan-question-mic')?.textContent).toContain('Stop'));
+    host.querySelector<HTMLButtonElement>('#plan-question-mic')!.click();
+    await vi.waitFor(async () => {
+      await fixture.whenStable();
+      expect(box.value).toBe('Visit two quiet flats near the metro');
+    });
+    expect(planVisits).not.toHaveBeenCalled();
   });
 });

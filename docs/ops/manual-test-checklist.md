@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | The complete manual test list for Doorprints before real-system testing starts and before Android/iOS development continues: every check a person redoes on real devices, whether or not an automated suite or a review session already covered it |
-| Version | 0.15 |
+| Version | 0.16 |
 | Date | 2026-10-15 |
 | Author | Claude, senior reviewer |
 | Status | Draft |
@@ -27,6 +27,7 @@
 | 0.13 | 2026-10-14 | Claude (Code), engineer | New section 19, **More than houses on the phone** (kinds PR C, S4b-BL-274; TC-M-72): MT-96 (a release shows nothing; the switch, the chooser, the chip, Back, a school space's words, in four languages, both themes, with TalkBack) and MT-97 (the school space's tools, a copy, the backup's `search`, a shared listing, a link). |
 | 0.14 | 2026-10-15 | Claude (Code), engineer | **MT-102** (TC-M-77, §20): the website's leftovers of the kinds by eye: the space picker on Your data, the filter chips of a school list, Compare's lower-is-better marks, the backup's and the import preview's words with two kinds on. |
 | 0.15 | 2026-10-15 | Claude (Code), engineer | **MT-103** (TC-M-78, §20): the phones' leftovers of the kinds by eye: the filter chips of a school list, *Save a copy of* on the Export screen, Compare's best marks, the neutral backup and import words, the map's notes in a school space. |
+| 0.16 | 2026-10-15 | Claude (Code), engineer | **§16 voice input:** the website's side is built (S4b-BL-221); the header paragraph says `microphone=(self)` and the MT-32 header text reads it; MT-82..MT-87 stay to be run (the website's part: a real microphone, the permission dialog, Safari mp4, Chrome and Firefox webm, TalkBack and VoiceOver on the button). |
 
 ## 1. How to use this list
 
@@ -323,7 +324,7 @@ All with a **test Google account**. Record the Google Cloud project's consent-sc
 #### MT-36 Headers and CSP on the live site (TC-M-19, TC-S-23)
 - **Area:** Security headers. **Who:** anyone. **Env:** a terminal.
 - **Steps:** `curl -sI https://doorprints.web.app/` and `/compare` and `/config.js`.
-- **Expected:** HTTP 200; `Content-Security-Policy` with `default-src 'self'`, `script-src 'self' https://accounts.google.com/gsi/client`, `frame-src 'self' blob: https://accounts.google.com/gsi/`, `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`, `frame-ancestors 'none'`; `Strict-Transport-Security`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: geolocation=(self), camera=(self), microphone=()…`, `Cross-Origin-Opener-Policy: same-origin-allow-popups`, `Cache-Control: no-cache`. The in-page `<meta>` CSP equals the header minus `frame-ancestors`. Known accepted: `connect-src https:` wildcard (Z1/RR-30). Note: the camera is allowed for this origin (`camera=(self)`, fixed after the review) so the QR camera scan works; MT-32 step 5 proves it on a real camera.
+- **Expected:** HTTP 200; `Content-Security-Policy` with `default-src 'self'`, `script-src 'self' https://accounts.google.com/gsi/client`, `frame-src 'self' blob: https://accounts.google.com/gsi/`, `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`, `frame-ancestors 'none'`; `Strict-Transport-Security`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: geolocation=(self), camera=(self), microphone=(self)…`, `Cross-Origin-Opener-Policy: same-origin-allow-popups`, `Cache-Control: no-cache`. The in-page `<meta>` CSP equals the header minus `frame-ancestors`. Known accepted: `connect-src https:` wildcard (Z1/RR-30). Note: the camera is allowed for this origin (`camera=(self)`, fixed after the review) so the QR camera scan works; MT-32 step 5 proves it on a real camera.
 - **Automated or reviewed by:** `web.yml` `deploy-firebase` header check (TC-S-23), `firebase.json` read by the reviewer: yes. `curl` by the reviewer: no (no live access from the session).
 - Pass / Fail / Date: ____  by: ____
 
@@ -873,7 +874,7 @@ Added 2026-10-10 with the design ([03](../03-design.md) ADR-37, [ai/voice-input]
 | MT-86 | The button with TalkBack and VoiceOver (Planned) | owner, natives | E1/E4/E5 | no (planned, not built) | |
 | MT-87 | No audio at rest; the recogniser is on-device (Planned) | owner | E1/E4/E5 | no (planned, not built) | |
 
-**The website's `Permissions-Policy`.** `web/firebase.json` keeps `microphone=()` today (also named in [07](../07-secure-build-and-deploy.md) and checklist section 9). It changes to `microphone=(self)` **only in the web voice pull request (S4b-BL-221)**, together with TC-S-23 and the row that reads the header; until then the header test must still see `microphone=()`.
+**The website's `Permissions-Policy`.** `web/firebase.json` has `microphone=(self)` since the web voice pull request (S4b-BL-221), with TC-S-23 reading it from the live site and checklist row B1; MT-82..MT-87 are still to be run on real devices and browsers (the automated tests use a fake microphone and recorder: [06](../06-test-plan.md) TC-U-242..248, TC-S-51). Also named in [07](../07-secure-build-and-deploy.md) and checklist section 9.
 
 ## 17. A provider safety block (S4b-BL-232)
 

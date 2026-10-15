@@ -38,6 +38,13 @@ export const API_CONFIG_KEY = `${STORAGE_PREFIX}api-config`;
 /** This browser's *AI features* switch (localStorage, '1' when on; off until the person turns it on). See AiService. */
 export const AI_OPT_IN_KEY = `${STORAGE_PREFIX}ai-features`;
 
+/**
+ * This browser's *Voice input* switch (localStorage, '1' when on; off until the person turns it on; ADR-37). A preference,
+ * not a secret: no audio and no transcript is ever kept under it or anywhere else, and it is never in a backup, copy, sync
+ * or share file. "Remove all data" sweeps it with the other `doorprints.` keys. See core/voice/voice-input.service.ts.
+ */
+export const VOICE_INPUT_KEY = `${STORAGE_PREFIX}voice-input`;
+
 /** Who answers AI requests, 'server' or 'device' (localStorage; docs/03 §13.1). See AiService. */
 export const AI_PROVIDER_KEY = `${STORAGE_PREFIX}ai-provider`;
 

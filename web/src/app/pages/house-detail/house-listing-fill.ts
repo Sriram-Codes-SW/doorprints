@@ -238,6 +238,11 @@ export class HouseListingFill {
     return toolWord(drawnKind(this.deps.draft()?.kind).id, key);
   }
 
+  /** The space the card is for (voice input names it to the model for key terms; ADR-37). */
+  kindId(): string {
+    return drawnKind(this.deps.draft()?.kind).id;
+  }
+
   /** Ends the read in flight (the page is going away). */
   stop(): void {
     this.request?.unsubscribe();

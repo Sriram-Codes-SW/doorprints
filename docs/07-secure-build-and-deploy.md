@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Secure build, CI/CD and deployment guide |
-| Version | 0.77 |
-| Date | 2026-10-14 |
+| Version | 0.78 |
+| Date | 2026-10-15 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -89,6 +89,7 @@
 | 0.75 | 2026-10-14 | Claude (Code), engineer | **`environment: release` added to the four jobs that read the `HH_*` signing secrets** (S4b-BL-8, workflow part; [10](10-sprint-log.md), [02](02-threat-model.md) T-E4): `release.yml` `check` and `build`, `android.yml` `release-signing-check` and `release` (`publish` has no secrets and none was added). The owner has created, or is creating, the `release` environment (deployment rules: branch `main`, tag pattern `v*.*.*`) holding the four secrets; §1 *Environments*, §4 and §5 now describe it. **Takes effect only after the owner's step** (secrets in the environment, then a green dry run of `release.yml` and a push to `main`); nothing here is verified yet, and deleting the repository secrets stays an owner step after that dry run. |
 | 0.76 | 2026-10-14 | Claude (Code), engineer | **`release.yml` verified end to end; the `release` environment is in place** (C-02, S4b-BL-8; [10](10-sprint-log.md)): the tag run of `v0.1.0` (run 38567647446) built the signed APK and created the draft release with the APK and its `.sha256`; manual dry runs pass. The owner created the `release` environment (deployment rules: branch `main`, tag pattern `v*.*.*`), put the four `HH_*` secrets in it and deleted the four repository secrets; a dry run after that (run 38574720381) passed. §1 *Environments*, §4, §5 and the variables of §7 are updated. The release stays a draft until [13](13-release-security-checklist.md) passes. |
 | 0.77 | 2026-10-14 | Claude (Code), engineer | **Dependabot group `npm-dev-major`: vitest 5 and jsdom 30 evaluated and taken** ([10](10-sprint-log.md) S4b-BL-311, v0.323): `@angular/build` 22.2.2 allows `vitest ^4.0.8 \|\| ^5.0.0`; Vitest 5 needs Node `^22.12 \|\| ^24 \|\| >=26` and jsdom 30 Node `^24.15` (CI and sessions use Node 24). `web.yml` is unchanged (`npm run test:ci`). |
+| 0.78 | 2026-10-15 | Claude (Code), engineer | **Headers:** the website's `Permissions-Policy` is `microphone=(self)` (voice input, S4b-BL-221, [03](03-design.md) ADR-37); `check-firebase-json.sh` refuses a `*` or a value other than `()` or `(self)` for the microphone, camera and location, and `check-live-headers.sh` requires `microphone=(self)` live (TC-S-23). |
 
 Related: [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Runbook](08-operations-runbook.md) · [AI docs](ai/)
 
@@ -741,7 +742,7 @@ rules in CI before any credential exists):
 2. **Headers** (F-10 fixed): one rule for `**` — it matches the **request path**, so it covers every file and every
    deep link — sends the CSP (with `frame-ancestors 'none'`), HSTS, `X-Content-Type-Options: nosniff`,
    `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin` (Nominatim needs a referrer),
-   `Permissions-Policy` (`geolocation=(self), camera=(self), microphone=(), payment=(), usb=()`; the camera is allowed for this origin only, because the *Use the camera* QR scan on the Drive enrolment card needs it), `Cross-Origin-Opener-Policy: same-origin-allow-popups` (for Google sign-in) and `Cache-Control: no-cache`; a second rule gives
+   `Permissions-Policy` (`geolocation=(self), camera=(self), microphone=(self), payment=(), usb=()`; the microphone is allowed for this origin only, for voice input (S4b-BL-221), and `check-firebase-json.sh` refuses a `*`; the camera is allowed for this origin only, because the *Use the camera* QR scan on the Drive enrolment card needs it), `Cross-Origin-Opener-Policy: same-origin-allow-popups` (for Google sign-in) and `Cache-Control: no-cache`; a second rule gives
    `/manifest.webmanifest` its `Content-Type`. **No two rules set the same header**, because Firebase does not
    document which value wins when rules overlap. The CSP has one source, this rule: the build copies it into
    `index.html` as a `<meta>` (minus `frame-ancestors`) and fails if it is missing, set twice or set by another rule

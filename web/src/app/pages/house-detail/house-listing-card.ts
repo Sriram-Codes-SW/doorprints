@@ -19,6 +19,7 @@ import { Component, inject, input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AiService } from '../../core/ai.service';
 import { TPipe } from '../../i18n/t.pipe';
+import { VoiceButton } from '../../shared/voice-button';
 import { HouseListingFill } from './house-listing-fill';
 
 export { HouseListingFill } from './house-listing-fill';
@@ -31,7 +32,7 @@ export { HouseListingFill } from './house-listing-fill';
  */
 @Component({
   selector: 'app-house-listing-card',
-  imports: [FormsModule, TPipe],
+  imports: [FormsModule, TPipe, VoiceButton],
   template: `
     <details class="card listing-fill" [open]="listing().open">
       <summary>{{ 'listingFill.title' | t }}</summary>
@@ -44,6 +45,7 @@ export { HouseListingFill } from './house-listing-fill';
           [placeholder]="'listingFill.placeholder' | t"
           aria-describedby="listing-fill-hint listing-cut-slot"
         ></textarea>
+        <app-voice-button fieldId="listing-text" [value]="listing().text" [kind]="listing().kindId()" (valueChange)="listing().text = $event" />
         <!-- The slot is there before the hint, so a screen reader announces it when a long paste fills it (S4b-BL-182). -->
         <div id="listing-cut-slot" class="field-hint" aria-live="polite">
           @if (listing().cut().leftOut > 0) {

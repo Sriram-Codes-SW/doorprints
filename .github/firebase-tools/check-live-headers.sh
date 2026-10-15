@@ -24,7 +24,8 @@
 # What is checked (every problem is reported before the script fails):
 #   /  and the deep link /compare (answered by the "**" -> /index.html rewrite): HTTP 200, HTML, the app shell, a
 #     Content-Security-Policy with frame-ancestors 'none', X-Frame-Options DENY, X-Content-Type-Options nosniff,
-#     Referrer-Policy, Permissions-Policy, Cross-Origin-Opener-Policy, and a Cache-Control with no-cache (Firebase's
+#     Referrer-Policy, Permissions-Policy (with microphone=(self) for voice input, S4b-BL-221, and no "*"),
+#     Cross-Origin-Opener-Policy, and a Cache-Control with no-cache (Firebase's
 #     own default would be max-age=3600, which would keep an old app shell in browsers for an hour).
 #   /sw.js and /manifest.webmanifest: HTTP 200, Cache-Control with no-cache and without immutable, and the right
 #     Content-Type (JavaScript; application/manifest+json). The Content-Type also proves that the file itself was
@@ -157,6 +158,11 @@ for path in / /compare; do
   for hname in referrer-policy permissions-policy cross-origin-opener-policy; do
     [ -n "$(header "$h" "$hname")" ] || fail "${path}: no ${hname} header (web/firebase.json sets it)"
   done
+  # Voice input (S4b-BL-221, ADR-37): the microphone is allowed for this origin only, the camera and location likewise;
+  # a "*" for any feature would hand it to every frame.
+  pp=$(header "$h" permissions-policy)
+  printf '%s' "$pp" | grep -q 'microphone=(self)' || fail "${path}: Permissions-Policy is '${pp:-missing}', expected microphone=(self) (voice input)"
+  ! printf '%s' "$pp" | grep -qF '*' || fail "${path}: Permissions-Policy '${pp}' contains '*'; features are allowed for this origin only"
   expect_no_cache "$name" "$path"
   hsts=$(header "$h" strict-transport-security)
   if ! printf '%s' "$hsts" | grep -qi 'max-age=[1-9]'; then
