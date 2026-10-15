@@ -22,6 +22,7 @@ import app.doorprints.shared.ai.AiKind
 import app.doorprints.shared.ai.AiProviderConfig
 import app.doorprints.shared.ai.AiQuality
 import app.doorprints.shared.voice.VoiceChoice
+import app.doorprints.shared.voice.VoiceProvider
 import app.doorprints.shared.trace.RepeatLook
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
@@ -224,6 +225,12 @@ class SettingsStore(
     private val geminiSecrets: SecretStore? = null,
     /** The kinds this build ships (kinds PR C, S4b-BL-274): a production build lists the house alone ([KindSettingRules.availableOf]). */
     val availableKinds: List<String> = listOf(KindSettingRules.HOUSE),
+    /**
+     * Where the person's own Sarvam key for speech to text is kept (ADR-37, voice PR 7): a slot of its own beside [geminiSecrets]
+     * (`sarvamKeyEnc` on Android, the Keychain item `sarvam_key` on the iPhone), never in [AppSettings] and so in no backup,
+     * copy, sync or share file (TC-U-170 pattern); null where a platform has none (tests).
+     */
+    private val sarvamSecrets: SecretStore? = null,
     private val now: () -> Long = { IsoTime.nowMillis() },
 ) {
     companion object {
@@ -311,6 +318,8 @@ class SettingsStore(
         val chooserHint = stringPreferencesKey("chooser.hint")
         /** *Voice input* (S4b-BL-222, the website's `doorprints.voice`): this phone's own switch, off by default, never exported, synced or backed up. */
         val voiceInput = booleanPreferencesKey("voice.input")
+        /** Which service writes out the words, `sarvam` or absent for the person's AI provider (voice PR 7): the website's `doorprints.voice-provider`. */
+        val voiceProvider = stringPreferencesKey("voice.provider")
     }
 
     /** When area [id] last notified (or was dismissed), a key per area (slice 4b): `areas.lastNotified.<id>`. */
@@ -363,6 +372,8 @@ class SettingsStore(
             VoiceChoice(
                 enabled = p[Keys.voiceInput] ?: false,
                 config = AiProviderConfig(AiKind.fromWire(p[Keys.aiKind]), p[Keys.aiBaseUrl] ?: "", p[Keys.aiModel] ?: ""),
+                provider = VoiceProvider.fromWire(p[Keys.voiceProvider]),
+                sarvamKeySaved = sarvamKeyOf(p).isNotBlank(),
             )
         }
         .distinctUntilChanged()
@@ -628,6 +639,45 @@ class SettingsStore(
     suspend fun savePhotosOnWifiOnly(value: Boolean) = dataStore.edit { it[Keys.photosOnWifiOnly] = value }
 
     suspend fun saveAiFeatures(on: Boolean) = dataStore.edit { it[Keys.aiFeatures] = on }
+
+    /** The saved Sarvam key, or "" when there is none or it cannot be read now (a locked iPhone). Never printed. */
+    private fun sarvamKeyOf(p: Preferences): String = try {
+        sarvamSecrets?.get(p) ?: ""
+    } catch (e: SecretUnavailableException) {
+        ""
+    }
+
+    /** The person's own Sarvam key, read at the moment of a voice call and passed straight to the transcriber; "" when none. */
+    suspend fun sarvamKey(): String = sarvamKeyOf(dataStore.data.first())
+
+    /** The last four characters of the Sarvam key (a key of 8 or more), for "saved (ends …)"; empty otherwise. */
+    val sarvamKeyHint: Flow<String> = dataStore.data
+        .map { p -> sarvamKeyOf(p).let { if (it.length >= 8) it.takeLast(4) else "" } }
+        .distinctUntilChanged()
+        .catch { emit("") }
+
+    /** Saves the Sarvam key ([key] trimmed; blank removes it). Only ever sent to api.sarvam.ai. */
+    suspend fun saveSarvamKey(key: String) {
+        val store = checkNotNull(sarvamSecrets) { "No place for a Sarvam key on this platform" }
+        store.editing({ dataStore.data.first() }) {
+            dataStore.edit { if (key.isBlank()) store.clear(it) else store.put(it, key.trim()) }
+        }
+    }
+
+    /** Forgets the Sarvam key and goes back to the person's AI provider for speech. */
+    suspend fun removeSarvamKey() {
+        val store = sarvamSecrets ?: return
+        store.editing({ dataStore.data.first() }) {
+            dataStore.edit {
+                store.clear(it)
+                it.remove(Keys.voiceProvider)
+            }
+        }
+    }
+
+    /** Chooses which service writes out the words. */
+    suspend fun saveVoiceProvider(provider: VoiceProvider) =
+        dataStore.edit { if (provider == VoiceProvider.SARVAM) it[Keys.voiceProvider] = provider.wire else it.remove(Keys.voiceProvider) }
 
     /** Turns *Voice input* on or off (the setting turns the microphone button on; nothing is recorded or kept by this). */
     suspend fun saveVoiceInput(on: Boolean) = dataStore.edit { if (on) it[Keys.voiceInput] = true else it.remove(Keys.voiceInput) }

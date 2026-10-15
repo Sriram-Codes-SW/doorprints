@@ -21,7 +21,8 @@
  * has no `@types/node` and adds no dependency. Only `tsconfig.spec.json` compiles this folder, never the app.
  */
 declare module 'node:fs' {
-  export function readFileSync(path: string, encoding: 'utf8'): string;
+  export function readFileSync(path: string, encoding: 'utf8' | 'latin1'): string;
+  export function readFileSync(path: string): Uint8Array;
   export function readdirSync(path: string): string[];
-  export function statSync(path: string): { isDirectory(): boolean };
+  export function statSync(path: string): { isDirectory(): boolean; size: number };
 }

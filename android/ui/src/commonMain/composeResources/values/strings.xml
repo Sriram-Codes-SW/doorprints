@@ -1861,4 +1861,21 @@
     <string name="voice_rationale_body_ios">Doorprints records only after you tap Speak, for at most a minute, to write out what you say. The recording goes to %1$s with your own key, stays in memory and is never saved. iOS asks for your permission next.</string>
     <string name="voice_rationale_go">Continue</string>
     <string name="voice_rationale_no">Not now</string>
+    <string name="voice_hint_short">A short recording, up to 30 seconds, goes from this phone to %1$s to be written out. It is not saved. Numbers and names you say are sent as audio too. Android asks to use the microphone the first time. Check the words before you send anything.</string>
+    <string name="voice_hint_ios_short">A short recording, up to 30 seconds, goes from this phone to %1$s to be written out. It is not saved. Numbers and names you say are sent as audio too. iOS asks to use the microphone the first time. Check the words before you send anything.</string>
+    <string name="voice_rationale_body_short">Doorprints records only after you tap Speak, for at most 30 seconds, to write out what you say. The recording goes to %1$s with your own key, stays in memory and is never saved. Android asks for your permission next.</string>
+    <string name="voice_rationale_body_ios_short">Doorprints records only after you tap Speak, for at most 30 seconds, to write out what you say. The recording goes to %1$s with your own key, stays in memory and is never saved. iOS asks for your permission next.</string>
+    <string name="voice_status_done_limit_short">Done. The recording stopped at its 30-second limit. The words are in the box. Check them before you send.</string>
+    <string name="settings_ai_service_sarvam">Sarvam (India)</string>
+    <string name="voice_provider">Write out the words with</string>
+    <string name="voice_provider_own">My AI provider (Gemini, OpenAI, Groq or OpenRouter)</string>
+    <string name="voice_provider_sarvam">Sarvam (speech to text, India), with its own key</string>
+    <string name="voice_sarvam_key">Sarvam key</string>
+    <string name="voice_sarvam_key_hint">Paste your own Sarvam key (from dashboard.sarvam.ai). It is kept on this phone only, apart from your AI key, and is sent only to api.sarvam.ai. It is never in a backup or a copy.</string>
+    <string name="voice_sarvam_key_saved">A Sarvam key is saved (ends …%1$s). It is kept on this phone only and is never in a backup or a copy.</string>
+    <string name="voice_sarvam_save">Save Sarvam key</string>
+    <string name="voice_sarvam_remove">Remove Sarvam key</string>
+    <string name="voice_switch_hint_sarvam">Off until you turn it on. Tap the microphone, speak for up to 30 seconds, and the words are written into the box for you to check and change. Nothing is sent until you press the box’s own button.</string>
+    <string name="voice_disclosure_sarvam">Audio goes from this phone straight to %1$s (Sarvam AI, India) with your own Sarvam key, about INR %2$s a minute at their list price, up to 30 seconds at a time. Anything you say, including numbers and names, is sent as audio, and a phone number said aloud cannot be left out the way a typed one is. The recording is not saved on this phone.</string>
+    <string name="voice_needs_sarvam_key">Save your own Sarvam key above to use Sarvam for voice input.</string>
 </resources>

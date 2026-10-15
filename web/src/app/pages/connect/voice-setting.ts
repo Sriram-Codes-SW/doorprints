@@ -36,7 +36,35 @@ import { TPipe } from '../../i18n/t.pipe';
   template: `
     @if (ai.optedIn()) {
       <div id="voice" class="voice-setting">
-        @if (voice.providerOk()) {
+        <fieldset class="field">
+          <legend>{{ 'voice.provider' | t }}</legend>
+          <div class="field checkbox">
+            <input id="voice-provider-own" type="radio" name="voiceProvider" [checked]="voice.provider() === 'own'" (change)="choose('own')" />
+            <label for="voice-provider-own">{{ 'voice.providerOwn' | t }}</label>
+          </div>
+          <div class="field checkbox">
+            <input id="voice-provider-sarvam" type="radio" name="voiceProvider" [checked]="voice.provider() === 'sarvam'" (change)="choose('sarvam')" />
+            <label for="voice-provider-sarvam">{{ 'voice.providerSarvam' | t }}</label>
+          </div>
+        </fieldset>
+        @if (voice.provider() === 'sarvam') {
+          <div class="field">
+            <label for="voice-sarvam-key">{{ 'voice.sarvamKey' | t }}</label>
+            <input id="voice-sarvam-key" type="password" autocomplete="off" spellcheck="false" [value]="sarvamKey" (input)="sarvamKey = $any($event.target).value" aria-describedby="voice-sarvam-hint" />
+            <p id="voice-sarvam-hint" class="muted small">
+              {{ voice.hasSarvamKey() ? ('voice.sarvamKeySaved' | t: { hint: voice.sarvamKeyHint() }) : ('voice.sarvamKeyHint' | t) }}
+            </p>
+            <div class="field checkbox">
+              <input id="voice-sarvam-remember" type="checkbox" [checked]="remember" (change)="remember = $any($event.target).checked" />
+              <label for="voice-sarvam-remember">{{ 'voice.sarvamRemember' | t }}</label>
+            </div>
+            <button type="button" id="voice-sarvam-save" class="btn btn-sm" (click)="saveKey()">{{ 'voice.sarvamSave' | t }}</button>
+            @if (voice.hasSarvamKey()) {
+              <button type="button" id="voice-sarvam-remove" class="btn btn-sm" (click)="removeKey()">{{ 'voice.sarvamRemove' | t }}</button>
+            }
+          </div>
+        }
+        @if (voice.usable()) {
           <div class="field checkbox">
             <input
               id="voice-input"
@@ -46,14 +74,18 @@ import { TPipe } from '../../i18n/t.pipe';
               aria-describedby="voice-hint voice-disclosure"
             />
             <label for="voice-input">{{ 'voice.switch' | t }}</label>
-            <p id="voice-hint" class="muted small">{{ 'voice.switchHint' | t }}</p>
+            <p id="voice-hint" class="muted small">{{ (voice.provider() === 'sarvam' ? 'voice.switchHintSarvam' : 'voice.switchHint') | t }}</p>
           </div>
-          <p id="voice-disclosure" class="muted small">{{ 'voice.disclosure' | t: { host: voice.host(), price: voice.price() ?? '' } }}</p>
+          <p id="voice-disclosure" class="muted small">
+            {{ (voice.provider() === 'sarvam' ? 'voice.disclosureSarvam' : 'voice.disclosure') | t: { host: voice.host(), price: voice.price() ?? '' } }}
+          </p>
           @if (voice.enabled() && !recordable) {
             <p id="voice-no-recorder" class="muted small">{{ 'voice.noRecorder' | t }}</p>
           }
-        } @else {
+        } @else if (voice.provider() === 'own') {
           <p id="voice-needs-key" class="muted small">{{ 'voice.needsOwnKey' | t }}</p>
+        } @else {
+          <p id="voice-needs-sarvam" class="muted small">{{ 'voice.needsSarvamKey' | t }}</p>
         }
       </div>
     }
@@ -63,6 +95,25 @@ export class VoiceSetting {
   protected readonly ai = inject(AiService);
   protected readonly voice = inject(VoiceInputService);
   protected readonly recordable = canRecord(inject(RECORDER_ENV));
+
+  /** The Sarvam key being typed; saved only by the button, never kept in the page after. */
+  protected sarvamKey = '';
+  protected remember = false;
+
+  protected choose(p: 'own' | 'sarvam'): void {
+    this.voice.setProvider(p);
+  }
+
+  protected saveKey(): void {
+    if (this.sarvamKey.trim() === '') return;
+    this.voice.saveSarvamKey(this.sarvamKey, this.remember);
+    this.sarvamKey = '';
+  }
+
+  protected removeKey(): void {
+    this.voice.removeSarvamKey();
+    this.sarvamKey = '';
+  }
 
   protected toggle(event: Event): void {
     this.voice.setEnabled((event.target as HTMLInputElement).checked);

@@ -19,11 +19,14 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { backupJson, buildBackupData, buildBackupZip } from '../../export/backup-export';
+import { fixtureBundle } from '../../export/golden/fixture';
+import { clearLocalLeftovers, clearSessionLeftovers } from '../../pages/data/session-leftovers';
 import { TranslationService } from '../../i18n/translation.service';
 import { AiService } from '../ai.service';
 import type { AiProviderConfig } from '../ai/ai-provider-config';
 import { GeminiTranscriber, OpenAiAudioTranscriber } from '../ai/transcriber';
-import { VOICE_INPUT_KEY } from '../storage-keys';
+import { SARVAM_KEY_KEY, VOICE_INPUT_KEY, VOICE_PROVIDER_KEY } from '../storage-keys';
 import { FAKE_AUDIO, FAKE_AUDIO_B64, FakeRecorder, fakeMic } from './testing/voice-fakes';
 import { RECORDER_ENV, VoiceInputService, keyTermsFor, transcriberFor } from './voice-input.service';
 
@@ -33,6 +36,8 @@ import { RECORDER_ENV, VoiceInputService, keyTermsFor, transcriberFor } from './
  * own-key slot; the call is the existing `Transcriber`, here through a stubbed `fetch` with canned answers (no provider is
  * called, no paid call).
  */
+/** A made-up key built at run time: no key-shaped literal is committed. */
+const fakeKey = (n: string) => ['sarvam', 'fake', 'key', n].join('-');
 const GEMINI: AiProviderConfig = { kind: 'gemini', baseUrl: '', model: '' };
 const compat = (baseUrl: string): AiProviderConfig => ({ kind: 'openai-compatible', baseUrl, model: 'chat-model' });
 const OPENAI = compat('https://api.openai.com/v1');
@@ -231,5 +236,119 @@ describe('VoiceInputService', () => {
     await i18n.setLang('te');
     expect(service.langHint()).toBe('te-IN');
     await i18n.setLang('en');
+  });
+});
+
+describe('VoiceInputService with Sarvam (voice PR 7, S4b-BL-224, TC-U-265)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+    FakeRecorder.reset();
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+
+  it('is the person\'s AI provider by default; Sarvam needs its own key before the microphone is offered', () => {
+    const { service } = setup();
+    service.setEnabled(true);
+    expect(service.provider()).toBe('own');
+    service.setProvider('sarvam');
+    expect(localStorage.getItem(VOICE_PROVIDER_KEY)).toBe('sarvam');
+    expect(service.usable()).toBe(false);
+    expect(service.available()).toBe(false);
+    service.saveSarvamKey(`  ${fakeKey('1234')}  `, false);
+    expect(service.available()).toBe(true);
+    expect(sessionStorage.getItem(SARVAM_KEY_KEY)).toBe(fakeKey('1234'));
+    expect(localStorage.getItem(SARVAM_KEY_KEY)).toBeNull();
+    expect(service.sarvamKeyHint()).toBe('1234');
+  });
+
+  it('works with the server answering or an AI that takes no audio, because the key is Sarvam\'s own', () => {
+    const { service } = setup({ own: false, config: { kind: 'anthropic', baseUrl: '', model: 'm' } });
+    service.setEnabled(true);
+    service.setProvider('sarvam');
+    service.saveSarvamKey(fakeKey('9999'), true);
+    expect(service.available()).toBe(true);
+    expect(localStorage.getItem(SARVAM_KEY_KEY)).toBe(fakeKey('9999'));
+    expect(sessionStorage.getItem(SARVAM_KEY_KEY)).toBeNull();
+  });
+
+  it('names Sarvam as the host, the list price of INR 0.50 and the 30 second limit', () => {
+    const { service } = setup();
+    service.setProvider('sarvam');
+    expect(service.host()).toBe('api.sarvam.ai');
+    expect(service.price()).toBe('0.50');
+    expect(service.maxMs()).toBe(30_000);
+    service.setProvider('own');
+    expect(service.maxMs()).toBe(60_000);
+    expect(service.host()).toBe('generativelanguage.googleapis.com');
+  });
+
+  it('removing the key forgets it in both stores and goes back to the AI provider', () => {
+    const { service } = setup();
+    service.setProvider('sarvam');
+    service.saveSarvamKey(fakeKey('9999'), true);
+    service.removeSarvamKey();
+    expect(service.hasSarvamKey()).toBe(false);
+    expect(localStorage.getItem(SARVAM_KEY_KEY)).toBeNull();
+    expect(sessionStorage.getItem(SARVAM_KEY_KEY)).toBeNull();
+    expect(service.provider()).toBe('own');
+    expect(localStorage.getItem(VOICE_PROVIDER_KEY)).toBeNull();
+  });
+
+  it('a recording is stopped at 30 seconds with Sarvam, and the call goes to api.sarvam.ai with the Sarvam key, not the AI key', async () => {
+    const calls: { url: string; init: RequestInit }[] = [];
+    vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
+      calls.push({ url, init });
+      return new Response(JSON.stringify({ transcript: 'two bhk in Beltola', language_code: 'en-IN' }));
+    });
+    const { service } = setup();
+    service.setEnabled(true);
+    service.setProvider('sarvam');
+    service.saveSarvamKey(fakeKey('0001'), false);
+    expect((service.newRecorder() as unknown as { maxMs: number }).maxMs).toBe(30_000);
+    const heard = await service.transcribe(clip(), 'house');
+    expect(heard.text).toBe('two bhk in Beltola');
+    expect(calls).toHaveLength(1);
+    expect(calls[0].url).toBe('https://api.sarvam.ai/speech-to-text');
+    const headers = new Headers(calls[0].init.headers);
+    expect(headers.get('api-subscription-key')).toBe(fakeKey('0001'));
+    expect(JSON.stringify([...headers.entries()])).not.toContain('own-key-not-real');
+  });
+
+  it('a Sarvam clip longer than 30 seconds is refused before the call', async () => {
+    const f = vi.fn();
+    vi.stubGlobal('fetch', f);
+    const { service } = setup();
+    service.setEnabled(true);
+    service.setProvider('sarvam');
+    service.saveSarvamKey(fakeKey('0001'), false);
+    await expect(service.transcribe({ ...clip(), durationMs: 31_000 }, 'house')).rejects.toMatchObject({ reason: 'tooLong' });
+    expect(f).not.toHaveBeenCalled();
+  });
+
+  it('TC-U-170 pattern: the Sarvam key and the choice are in no backup JSON or file, and "Remove all data" sweeps both stores', () => {
+    const { service } = setup();
+    service.setProvider('sarvam');
+    service.saveSarvamKey(fakeKey('424242'), true);
+    const json = backupJson(buildBackupData(fixtureBundle()));
+    const zip = new TextDecoder().decode(buildBackupZip(fixtureBundle(), new Map(), 'x', new Date('2026-10-07T00:00:00Z')));
+    for (const text of [json, zip]) {
+      for (const leak of ['sarvam', 'api-subscription-key', fakeKey('424242'), 'voice-provider']) {
+        expect(text.toLowerCase().includes(leak), leak).toBe(false);
+      }
+    }
+    service.saveSarvamKey(fakeKey('424242'), false);
+    expect(sessionStorage.getItem(SARVAM_KEY_KEY)).not.toBeNull();
+    clearLocalLeftovers(localStorage);
+    clearSessionLeftovers(sessionStorage);
+    for (const key of [SARVAM_KEY_KEY, VOICE_PROVIDER_KEY]) {
+      expect(localStorage.getItem(key), key).toBeNull();
+      expect(sessionStorage.getItem(key), key).toBeNull();
+    }
   });
 });

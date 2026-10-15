@@ -1,0 +1,46 @@
+{
+ "spec": "android/app/src/test (VoiceSafetyTest)",
+ "gradle": [
+  ":app:testDebugUnitTest",
+  "--tests",
+  "app.doorprints.VoiceSafetyTest"
+ ],
+ "mutations": [
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/OwnKeyTranscription.kt",
+   "find": "if (!choice.enabled || key.isBlank() || !settings.current().aiFeatures) throw",
+   "replace": "if (key.isBlank() || !settings.current().aiFeatures) throw",
+   "expect": "sarvamIsRefusedWithoutTheSwitchTheAiFeaturesOrItsKey"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/OwnKeyTranscription.kt",
+   "find": "if (!choice.enabled || key.isBlank() || !settings.current().aiFeatures) throw",
+   "replace": "if (!choice.enabled || key.isBlank()) throw",
+   "expect": "sarvamIsRefusedWithoutTheSwitchTheAiFeaturesOrItsKey"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/OwnKeyTranscription.kt",
+   "find": "if (!choice.enabled || key.isBlank() || !settings.current().aiFeatures) throw",
+   "replace": "if (!choice.enabled || !settings.current().aiFeatures) throw",
+   "expect": "sarvamIsRefusedWithoutTheSwitchTheAiFeaturesOrItsKey"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/OwnKeyTranscription.kt",
+   "find": "val key = settings.sarvamKey()",
+   "replace": "val key = settings.current().geminiKey",
+   "expect": "sarvamIsCalledAtItsOwnHost"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/SarvamTranscriber.kt",
+   "find": "mapOf(\"api-subscription-key\" to apiKey.trim())",
+   "replace": "mapOf(\"api-subscription-key\" to apiKey.trim(), \"Authorization\" to \"Bearer ${apiKey.trim()}\")",
+   "expect": "theRequestMatchesTheVectors"
+  },
+  {
+   "file": "android/app/src/main/java/app/doorprints/data/KeystoreSecretStore.kt",
+   "find": "const val SARVAM_ENTRY = \"sarvamKeyEnc\"",
+   "replace": "const val SARVAM_ENTRY = \"geminiKeyEnc\"",
+   "expect": "sarvamIsCalledAtItsOwnHost"
+  }
+ ]
+}

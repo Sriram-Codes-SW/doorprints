@@ -1,0 +1,110 @@
+{
+ "spec": "android/shared/src/commonTest (SarvamTranscriberTest, AiProviderSettingsTest, VoiceInputTest, VoiceSessionTest)",
+ "gradle": [
+  ":shared:testAndroidHostTest",
+  "--tests",
+  "app.doorprints.shared.ai.SarvamTranscriberTest",
+  "--tests",
+  "app.doorprints.data.AiProviderSettingsTest",
+  "--tests",
+  "app.doorprints.shared.voice.*"
+ ],
+ "mutations": [
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/SarvamTranscriber.kt",
+   "find": "mapOf(\"api-subscription-key\" to apiKey.trim())",
+   "replace": "mapOf(\"Authorization\" to apiKey.trim())",
+   "expect": "theRequestMatchesTheVectors"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/SarvamTranscriber.kt",
+   "find": "const val URL = \"https://api.sarvam.ai/speech-to-text\"",
+   "replace": "const val URL = \"https://api.sarvam.ai/speech-to-text/\"",
+   "expect": "theRequestMatchesTheVectors"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/SarvamTranscriber.kt",
+   "find": "\"hi\", \"ta\", \"te\" -> \"$language-IN\"",
+   "replace": "\"hi\", \"ta\" -> \"$language-IN\"",
+   "expect": "theLanguageCodesAreHiTaTeOrUnknown"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/SarvamTranscriber.kt",
+   "find": "AudioClip.check(bytes.size, mime, durationMs, AudioClip.SARVAM_MAX_DURATION_MS)",
+   "replace": "AudioClip.check(bytes.size, mime, durationMs)",
+   "expect": "aClipOverThirtySecondsIsRefused"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/SarvamTranscriber.kt",
+   "find": "if (status !in 200..299) throw failure(status, retryAfter, body)",
+   "replace": "if (status !in 200..299) throw noTranscript()",
+   "expect": "theAnswersMatchTheVectors"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/Transcriber.kt",
+   "find": "const val SARVAM_MAX_DURATION_MS: Long = 30_000",
+   "replace": "const val SARVAM_MAX_DURATION_MS: Long = 60_000",
+   "expect": "theThirtySecondCapAndTheOtherClipChecksMatchTheVectors"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/Transcriber.kt",
+   "find": "AiPreset.LM_STUDIO.id, AiPreset.SARVAM.id)",
+   "replace": "AiPreset.LM_STUDIO.id)",
+   "expect": "theSarvamChatPresetTakesNoOpenAiStyleAudio"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/Settings.kt",
+   "find": "                store.clear(it)\n                it.remove(Keys.voiceProvider)",
+   "replace": "                store.clear(it)",
+   "expect": "theChoiceOfSarvamIsAPlainSettingAndRemovingTheKeyGoesBackToTheAiProvider"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/Settings.kt",
+   "find": "sarvamKeySaved = sarvamKeyOf(p).isNotBlank(),",
+   "replace": "sarvamKeySaved = false,",
+   "expect": "theSarvamKeyHasASlotOfItsOwnAndTheAiKeyIsUntouched"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/Settings.kt",
+   "find": "if (key.isBlank()) store.clear(it) else store.put(it, key.trim()) }\n        }\n    }\n\n    /** Forgets the Sarvam key",
+   "replace": "store.put(it, key) }\n        }\n    }\n\n    /** Forgets the Sarvam key",
+   "expect": "aBlankKeyRemovesTheSarvamKey"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/VoiceInput.kt",
+   "find": "if (choice.provider == VoiceProvider.SARVAM) choice.sarvamKeySaved else providerOk(ownKey, choice.config)",
+   "replace": "providerOk(ownKey, choice.config)",
+   "expect": "sarvamNeedsItsOwnKey"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/VoiceInput.kt",
+   "find": "if (choice.provider == VoiceProvider.SARVAM) SarvamTranscriber.HOST else aiHost",
+   "replace": "aiHost",
+   "expect": "theDisclosureNamesSarvam"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/VoiceInput.kt",
+   "find": "if (choice.provider == VoiceProvider.SARVAM) SarvamTranscriber.PRICE_INR_PER_MINUTE else priceInr(choice.config)",
+   "replace": "priceInr(choice.config)",
+   "expect": "theDisclosureNamesSarvam"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/VoiceInput.kt",
+   "find": "if (choice.provider == VoiceProvider.SARVAM) AudioLimits.SARVAM_MAX_DURATION_MS else AudioLimits.MAX_DURATION_MS",
+   "replace": "AudioLimits.MAX_DURATION_MS",
+   "expect": "theDisclosureNamesSarvam"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/VoiceSession.kt",
+   "find": "r.elapsedMs() >= maxDurationMs() ->",
+   "replace": "r.elapsedMs() >= AudioLimits.MAX_DURATION_MS ->",
+   "expect": "sarvamsThirtySecondLimit"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/VoiceInput.kt",
+   "find": "fun fromWire(wire: String?): VoiceProvider = entries.firstOrNull { it.wire == wire } ?: OWN_AI",
+   "replace": "fun fromWire(wire: String?): VoiceProvider = entries.firstOrNull { it.wire.equals(wire, ignoreCase = true) } ?: OWN_AI",
+   "expect": "theChoiceIsReadFromTheWire"
+  }
+ ]
+}

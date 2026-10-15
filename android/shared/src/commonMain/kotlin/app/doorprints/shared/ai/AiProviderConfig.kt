@@ -56,6 +56,8 @@ data class AiPreset(val id: String, val baseUrl: String, val keyOptional: Boolea
         val OPENAI = AiPreset("openai", "https://api.openai.com/v1", keyOptional = false)
         val OPENROUTER = AiPreset("openrouter", "https://openrouter.ai/api/v1", keyOptional = false)
         val GROQ = AiPreset("groq", "https://api.groq.com/openai/v1", keyOptional = false)
+        /** Sarvam AI's chat API (India; OpenAI-compatible, Bearer). Its speech API is a different adapter with its own key ([app.doorprints.shared.ai.SarvamTranscriber]). */
+        val SARVAM = AiPreset("sarvam", "https://api.sarvam.ai/v1", keyOptional = false)
         val OLLAMA = AiPreset("ollama", "http://localhost:11434/v1", keyOptional = true)
         val LM_STUDIO = AiPreset("lmstudio", "http://localhost:1234/v1", keyOptional = true)
         val CUSTOM = AiPreset("custom", "", keyOptional = false)
@@ -63,6 +65,6 @@ data class AiPreset(val id: String, val baseUrl: String, val keyOptional: Boolea
         /** Anthropic's address, the one its kind uses (its own preset: the person picks it from the list, never types it). */
         val ANTHROPIC = AiPreset("anthropic", "https://api.anthropic.com", keyOptional = false)
 
-        val ALL: List<AiPreset> = listOf(OPENAI, OPENROUTER, GROQ, OLLAMA, LM_STUDIO, CUSTOM)
+        val ALL: List<AiPreset> = listOf(OPENAI, OPENROUTER, GROQ, SARVAM, OLLAMA, LM_STUDIO, CUSTOM)
     }
 }

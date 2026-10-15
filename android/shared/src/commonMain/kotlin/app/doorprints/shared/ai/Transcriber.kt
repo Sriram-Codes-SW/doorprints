@@ -60,8 +60,11 @@ object AudioClip {
     /** 2 MB (2 MiB): far above a minute of speech at a recorder's usual 32 to 64 kbit/s, far below any provider's own cap. */
     const val MAX_BYTES: Int = 2 * 1024 * 1024
 
-    /** The hard stop of a recording for the providers of this pull request (Sarvam's 30 s comes with voice PR 7). */
+    /** The hard stop of a recording for Gemini and the OpenAI-compatible providers. */
     const val MAX_DURATION_MS: Long = 60_000
+
+    /** Sarvam's REST call takes up to 30 s of audio (docs/ai/voice-input.md §2); the cap doubles as a cost cap. */
+    const val SARVAM_MAX_DURATION_MS: Long = 30_000
 
     /**
      * The audio types a recorder of ours makes or a provider names (the browser's webm and Safari's mp4, the phones'
@@ -102,17 +105,17 @@ object AudioClip {
      * The first rule a clip of [size] bytes breaks, in this order: empty, over [MAX_BYTES], longer than
      * [MAX_DURATION_MS] (when the recorder gave a length), not an accepted type; null when it may be sent.
      */
-    fun problemOf(size: Int, mime: String, durationMs: Long?): AudioClipRejected.Reason? = when {
+    fun problemOf(size: Int, mime: String, durationMs: Long?, maxMs: Long = MAX_DURATION_MS): AudioClipRejected.Reason? = when {
         size <= 0 -> AudioClipRejected.Reason.EMPTY
         size > MAX_BYTES -> AudioClipRejected.Reason.TOO_LARGE
-        durationMs != null && durationMs > MAX_DURATION_MS -> AudioClipRejected.Reason.TOO_LONG
+        durationMs != null && durationMs > maxMs -> AudioClipRejected.Reason.TOO_LONG
         mimeOf(mime) == null -> AudioClipRejected.Reason.UNSUPPORTED_TYPE
         else -> null
     }
 
     /** The normalised type of a clip that may be sent; throws [AudioClipRejected] before anything leaves the device. */
-    fun check(size: Int, mime: String, durationMs: Long?): String {
-        problemOf(size, mime, durationMs)?.let { throw AudioClipRejected(it) }
+    fun check(size: Int, mime: String, durationMs: Long?, maxMs: Long = MAX_DURATION_MS): String {
+        problemOf(size, mime, durationMs, maxMs)?.let { throw AudioClipRejected(it) }
         return mimeOf(mime)!!
     }
 }
@@ -123,12 +126,12 @@ enum class TranscribeSupport(val wire: String) { YES("yes"), NO("no"), OPT_IN("o
 /**
  * Which of the person's providers can take audio, as pure functions for the later setting (voice PR 4 and 5): Gemini
  * and the OpenAI, Groq and OpenRouter presets can; Anthropic (no audio input), Ollama and LM Studio (no transcription
- * endpoint) cannot; any other OpenAI-compatible address only when the person opts in, after a Test call. The
+ * endpoint) and the Sarvam chat preset (its speech API is not OpenAI-style: it has its own adapter and key, [SarvamTranscriber]) cannot; any other OpenAI-compatible address only when the person opts in, after a Test call. The
  * `transcribeRequest` vectors (provider `capability`) hold the table.
  */
 object TranscribeCapability {
     private val YES_PRESETS = setOf(AiPreset.OPENAI.id, AiPreset.GROQ.id, AiPreset.OPENROUTER.id)
-    private val NO_PRESETS = setOf(AiPreset.OLLAMA.id, AiPreset.LM_STUDIO.id)
+    private val NO_PRESETS = setOf(AiPreset.OLLAMA.id, AiPreset.LM_STUDIO.id, AiPreset.SARVAM.id)
 
     /** `gemini`, `anthropic`, the id of the preset whose address [config] has, or `custom` for any other address. */
     fun presetOf(config: AiProviderConfig): String = when (config.kind) {

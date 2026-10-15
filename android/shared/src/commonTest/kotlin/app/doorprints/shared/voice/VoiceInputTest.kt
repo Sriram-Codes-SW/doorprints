@@ -152,4 +152,38 @@ class VoiceInputTest {
             assertTrue(bodies.single().contains("2 BHK"), "key terms go as the prompt")
         }
     }
+
+    // --- Sarvam (voice PR 7, S4b-BL-224, TC-U-265) ------------------------------------------------------------------
+
+    private fun sarvam(keySaved: Boolean, enabled: Boolean = true) =
+        VoiceChoice(enabled, AiProviderConfig.GEMINI, VoiceProvider.SARVAM, sarvamKeySaved = keySaved)
+
+    @Test
+    fun sarvamNeedsItsOwnKeyAndThenWorksWithoutTheOwnAiKey() {
+        assertFalse(VoiceInput.available(sarvam(keySaved = false), aiEnabled = true, ownKey = true, recordable = true), "no key, no microphone")
+        // The key is Sarvam's own: the server's AI or an AI that takes no audio does not matter.
+        assertTrue(VoiceInput.available(sarvam(keySaved = true), aiEnabled = true, ownKey = false, recordable = true))
+        assertTrue(VoiceInput.available(VoiceChoice(true, anthropic, VoiceProvider.SARVAM, true), aiEnabled = true, ownKey = true, recordable = true))
+        assertFalse(VoiceInput.available(sarvam(keySaved = true, enabled = false), aiEnabled = true, ownKey = true, recordable = true), "off by default")
+        assertFalse(VoiceInput.available(sarvam(keySaved = true), aiEnabled = false, ownKey = true, recordable = true))
+        assertFalse(VoiceInput.available(sarvam(keySaved = true), aiEnabled = true, ownKey = true, recordable = false))
+    }
+
+    @Test
+    fun theDisclosureNamesSarvamItsPriceAndTheShortLimit() {
+        val choice = sarvam(keySaved = true)
+        assertEquals("api.sarvam.ai", VoiceInput.host(choice, "ignored.example"))
+        assertEquals("0.50", VoiceInput.price(choice))
+        assertEquals(30_000L, VoiceInput.maxDurationMs(choice))
+        val own = on(AiProviderConfig.GEMINI)
+        assertEquals("generativelanguage.googleapis.com", VoiceInput.host(own, "generativelanguage.googleapis.com"))
+        assertEquals("0.17", VoiceInput.price(own))
+        assertEquals(60_000L, VoiceInput.maxDurationMs(own))
+    }
+
+    @Test
+    fun theChoiceIsReadFromTheWireAndAnythingElseIsTheOwnAi() {
+        assertEquals(VoiceProvider.SARVAM, VoiceProvider.fromWire("sarvam"))
+        for (wire in listOf(null, "", "own", "Sarvam", "other")) assertEquals(VoiceProvider.OWN_AI, VoiceProvider.fromWire(wire), "$wire")
+    }
 }

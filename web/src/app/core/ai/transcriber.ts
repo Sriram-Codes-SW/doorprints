@@ -58,6 +58,8 @@ export class AudioClipRejectedError extends Error {
 export const MAX_AUDIO_BYTES = 2 * 1024 * 1024;
 /** The hard stop of a recording for the providers of this pull request (Sarvam's 30 s comes with voice PR 7). */
 export const MAX_AUDIO_MS = 60_000;
+/** Sarvam's REST call takes up to 30 s of audio (docs/ai/voice-input.md §2); the cap doubles as a cost cap. */
+export const SARVAM_MAX_AUDIO_MS = 30_000;
 
 /**
  * The audio types a recorder of ours makes or a provider names, with the extension OpenAI's endpoint reads the format
@@ -90,17 +92,19 @@ export function languageOf(hint: string | null | undefined): string | null {
 }
 
 /** The first rule a clip breaks, in this order: empty, too large, too long (when a length is known), not an accepted type. */
-export function clipProblem(size: number, mime: string, durationMs: number | null | undefined): AudioRejectReason | null {
+export function clipProblem(
+  size: number, mime: string, durationMs: number | null | undefined, maxMs: number = MAX_AUDIO_MS,
+): AudioRejectReason | null {
   if (size <= 0) return 'empty';
   if (size > MAX_AUDIO_BYTES) return 'tooLarge';
-  if (durationMs != null && durationMs > MAX_AUDIO_MS) return 'tooLong';
+  if (durationMs != null && durationMs > maxMs) return 'tooLong';
   if (audioMimeOf(mime) === null) return 'unsupportedType';
   return null;
 }
 
 /** The normalised type of a clip that may be sent; throws {@link AudioClipRejectedError} before anything leaves the browser. */
-export function checkClip(size: number, mime: string, durationMs: number | null | undefined): string {
-  const problem = clipProblem(size, mime, durationMs);
+export function checkClip(size: number, mime: string, durationMs: number | null | undefined, maxMs: number = MAX_AUDIO_MS): string {
+  const problem = clipProblem(size, mime, durationMs, maxMs);
   if (problem !== null) throw new AudioClipRejectedError(problem);
   return audioMimeOf(mime) as string;
 }
@@ -109,7 +113,8 @@ export function checkClip(size: number, mime: string, durationMs: number | null 
 export type TranscribeSupport = 'yes' | 'no' | 'optIn';
 
 const YES_PRESETS: readonly string[] = ['openai', 'groq', 'openrouter'];
-const NO_PRESETS: readonly string[] = ['ollama', 'lmstudio'];
+/** No OpenAI-style transcription endpoint: the Sarvam chat preset's speech API has its own adapter and key ({@link SarvamTranscriber}). */
+const NO_PRESETS: readonly string[] = ['ollama', 'lmstudio', 'sarvam'];
 
 /** `gemini`, `anthropic`, the id of the preset whose address `config` has, or `custom` for any other address. */
 export function transcribePresetOf(config: Pick<AiProviderConfig, 'kind' | 'baseUrl'>): string {
@@ -313,5 +318,62 @@ export class OpenAiAudioTranscriber implements Transcriber {
       this.fetchImpl, `${check.normalised}/audio/transcriptions`, openAiTranscribeHeaders(this.apiKey), form, this.timeoutMs,
     );
     return openAiTranscript(res.status, res.body, res.retryAfter, langHint);
+  }
+}
+
+/** Sarvam's speech-to-text address (the host the audio goes to; `docs/ai/voice-input.md` §2). */
+export const SARVAM_STT_URL = 'https://api.sarvam.ai/speech-to-text';
+/** The host named in the disclosure. */
+export const SARVAM_HOST = 'api.sarvam.ai';
+
+/** `hi-IN`, `ta-IN` or `te-IN` for those languages, else `unknown` (Sarvam then detects the language). */
+export function sarvamLanguageCode(langHint: string | null | undefined): string {
+  const language = languageOf(langHint);
+  return language === 'hi' || language === 'ta' || language === 'te' ? `${language}-IN` : 'unknown';
+}
+
+/** The form's fields in order (the `sarvamRequest` vectors); `mime` is already {@link audioMimeOf}'s. Never holds the audio. */
+export function sarvamTranscribeFields(mime: string, langHint: string | null | undefined): FormField[] {
+  return [
+    { name: 'file', fileName: `audio.${AUDIO_TYPES[mime] ?? 'bin'}`, contentType: mime },
+    { name: 'language_code', value: sarvamLanguageCode(langHint) },
+  ];
+}
+
+/** The key in Sarvam's own header (not a Bearer token). */
+export function sarvamTranscribeHeaders(apiKey: string): Record<string, string> {
+  return { 'api-subscription-key': apiKey.trim() };
+}
+
+/** What a Sarvam answer means (the `sarvamContent` vectors): a 2xx JSON object with a string `transcript`. */
+export function sarvamTranscript(status: number, body: string, retryAfter: string | null, langHint: string | null | undefined): Transcript {
+  if (status < 200 || status >= 300) throw failure(classifyStatus(status, retryAfter, body));
+  const answer = parseJson(body);
+  if (!isObject(answer) || typeof answer['transcript'] !== 'string') throw new OnDeviceAiError('unavailable');
+  return { text: answer['transcript'].trim(), language: transcriptLanguage(answer['language_code'], langHint) };
+}
+
+/**
+ * Sarvam AI's speech to text (ADR-37, voice PR 7): `POST api.sarvam.ai/speech-to-text` as `multipart/form-data` with `file`
+ * and `language_code`, the person's own Sarvam key in `api-subscription-key`, through `postAiMultipart` (time limit, no
+ * redirect). A clip over 30 s is refused before anything is sent ({@link SARVAM_MAX_AUDIO_MS}). Neither the audio nor the
+ * words are stored, logged or put in an error (T-I48).
+ */
+export class SarvamTranscriber implements Transcriber {
+  constructor(
+    private readonly apiKey: string,
+    private readonly fetchImpl: FetchLike = (input, init) => fetch(input, init),
+    private readonly timeoutMs: number = REQUEST_TIMEOUT_MS,
+  ) {}
+
+  async transcribe(bytes: Uint8Array, mime: string, langHint?: string | null, durationMs?: number | null): Promise<Transcript> {
+    const type = checkClip(bytes.byteLength, mime, durationMs, SARVAM_MAX_AUDIO_MS);
+    const form = new FormData();
+    for (const f of sarvamTranscribeFields(type, langHint)) {
+      if (f.fileName !== undefined) form.append(f.name, new Blob([bytes as BlobPart], { type: f.contentType }), f.fileName);
+      else form.append(f.name, f.value ?? '');
+    }
+    const res = await postAiMultipart(this.fetchImpl, SARVAM_STT_URL, sarvamTranscribeHeaders(this.apiKey), form, this.timeoutMs);
+    return sarvamTranscript(res.status, res.body, res.retryAfter, langHint);
   }
 }

@@ -20,6 +20,7 @@ package app.doorprints.shared.voice
 
 import app.doorprints.data.AiProviderChoice
 import app.doorprints.data.SettingsStore
+import app.doorprints.shared.ai.SarvamTranscriber
 import app.doorprints.shared.ai.Transcript
 import app.doorprints.shared.api.ApiException
 import io.ktor.client.HttpClient
@@ -36,6 +37,12 @@ class OwnKeyTranscription(private val settings: SettingsStore, private val http:
     /** The words in [clip]; [kind] is the space on screen (key terms for the model), [appLanguage] the app's language. */
     suspend fun transcribe(clip: RecordedClip, kind: String, appLanguage: String?): Transcript {
         val choice = settings.voiceChoice.first()
+        if (choice.provider == VoiceProvider.SARVAM) {
+            // The person's own Sarvam key, in its own slot, straight to api.sarvam.ai: no AI key, no server, no proxy (ADR-37).
+            val key = settings.sarvamKey()
+            if (!choice.enabled || key.isBlank() || !settings.current().aiFeatures) throw ApiException(ApiException.Kind.AI_OFF)
+            return SarvamTranscriber(http, key).transcribe(clip.bytes, clip.mime, VoiceInput.langHint(appLanguage), clip.durationMs)
+        }
         val s = settings.current()
         val ownKey = s.aiProvider == AiProviderChoice.DEVICE && s.geminiKey.isNotBlank()
         val transcriber = if (choice.enabled && s.aiFeatures && VoiceInput.providerOk(ownKey, s.aiProviderConfig)) {

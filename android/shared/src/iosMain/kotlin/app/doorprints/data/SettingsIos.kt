@@ -81,6 +81,7 @@ fun iosSettingsStore(): SettingsStore =
     iosSettingsStore(
         iosDataDirectory() + "/" + SettingsStore.FILE_NAME + ".preferences_pb", KeychainSecretStore(),
         KeychainSecretStore(account = "gemini_key", markerName = "geminiKeyKeychain"),
+        KeychainSecretStore(account = "sarvam_key", markerName = "sarvamKeyKeychain"),
         availableKinds = KindSettingRules.availableOf(IOS_AVAILABLE_KINDS),
     )
 
@@ -97,9 +98,13 @@ internal const val IOS_AVAILABLE_KINDS = "house,school"
  * end in `.preferences_pb` and have no other DataStore open on it in the process.
  */
 internal fun iosSettingsStore(
-    path: String, secrets: SecretStore, geminiSecrets: SecretStore? = null, availableKinds: List<String> = listOf(KindSettingRules.HOUSE),
+    path: String, secrets: SecretStore, geminiSecrets: SecretStore? = null, sarvamSecrets: SecretStore? = null,
+    availableKinds: List<String> = listOf(KindSettingRules.HOUSE),
 ): SettingsStore =
-    SettingsStore(PreferenceDataStoreFactory.createWithPath(produceFile = { path.toPath() }), secrets, geminiSecrets = geminiSecrets, availableKinds = availableKinds)
+    SettingsStore(
+        PreferenceDataStoreFactory.createWithPath(produceFile = { path.toPath() }), secrets, geminiSecrets = geminiSecrets,
+        sarvamSecrets = sarvamSecrets, availableKinds = availableKinds,
+    )
 
 /**
  * The iOS [SecretStore]: the API key as a generic-password Keychain item (service `app.doorprints`, account

@@ -38,6 +38,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -67,9 +68,12 @@ class AiProviderSettingsTest {
         }
     }
 
+    /** Built at run time: no key-looking literal is committed. */
+    private val fakeSarvam = listOf("sarvam", "fake", "key", "5678").joinToString("-")
     private val dataStore = MemoryDataStore()
     private val gemini = FakeSecrets("gemini")
-    private val store = SettingsStore(dataStore, FakeSecrets("sealed"), gemini) { 1_000_000L }
+    private val sarvam = FakeSecrets("sarvam")
+    private val store = SettingsStore(dataStore, FakeSecrets("sealed"), gemini, sarvamSecrets = sarvam) { 1_000_000L }
     private val local = AiProviderConfig(AiKind.OPENAI_COMPATIBLE, "http://localhost:11434/v1", "llama3.2")
 
     private suspend fun raw(): Map<String, Any> = dataStore.data.first().asMap().mapKeys { it.key.name }
@@ -201,5 +205,64 @@ class AiProviderSettingsTest {
             assertFalse(word in lower, "the backup JSON mentions '$word'")
         }
         assertTrue(text.length > 100)
+    }
+
+    // --- the Sarvam key (voice PR 7, S4b-BL-224, TC-U-265; the TC-U-170 pattern) -----------------------------------------
+
+    @Test
+    fun theSarvamKeyHasASlotOfItsOwnAndTheAiKeyIsUntouched() = runTest {
+        store.saveGeminiKey("AIzaOwnKeyForTests1234")
+        store.saveSarvamKey("  $fakeSarvam  ")
+        assertEquals(fakeSarvam, store.sarvamKey())
+        assertEquals("AIzaOwnKeyForTests1234", store.current().geminiKey)
+        assertEquals("5678", store.sarvamKeyHint.first())
+        assertTrue(store.voiceChoice.first().sarvamKeySaved)
+        // Saving the AI choice again or removing the AI key does not touch the Sarvam key.
+        store.removeGeminiKey()
+        assertEquals(fakeSarvam, store.sarvamKey())
+    }
+
+    @Test
+    fun theChoiceOfSarvamIsAPlainSettingAndRemovingTheKeyGoesBackToTheAiProvider() = runTest {
+        assertEquals(app.doorprints.shared.voice.VoiceProvider.OWN_AI, store.voiceChoice.first().provider)
+        store.saveVoiceProvider(app.doorprints.shared.voice.VoiceProvider.SARVAM)
+        store.saveSarvamKey(fakeSarvam)
+        assertEquals(app.doorprints.shared.voice.VoiceProvider.SARVAM, store.voiceChoice.first().provider)
+        assertEquals("sarvam", raw()["voice.provider"])
+        store.removeSarvamKey()
+        assertEquals("", store.sarvamKey())
+        assertFalse(store.voiceChoice.first().sarvamKeySaved)
+        assertEquals(app.doorprints.shared.voice.VoiceProvider.OWN_AI, store.voiceChoice.first().provider)
+        assertTrue("voice.provider" !in raw().keys, "the stored choice is deleted: ${raw().keys}")
+        assertTrue("sarvam" !in raw().keys, "the sealed key is deleted: ${raw().keys}")
+    }
+
+    @Test
+    fun aBlankKeyRemovesTheSarvamKey() = runTest {
+        store.saveSarvamKey(fakeSarvam)
+        store.saveSarvamKey("   ")
+        assertEquals("", store.sarvamKey())
+    }
+
+    @Test
+    fun theSarvamKeyIsInNoPrintedSettingAndInNoBackupFile() = runTest {
+        // TC-U-170 pattern, the Android and iPhone code (common): no backup JSON, and not the settings printed in a log.
+        store.saveSarvamKey(fakeSarvam)
+        store.saveVoiceProvider(app.doorprints.shared.voice.VoiceProvider.SARVAM)
+        val printed = store.current().toString() + store.voiceChoice.first().toString()
+        assertFalse(fakeSarvam.dropLast(5) in printed.lowercase() || "5678" in printed, printed)
+        val text = BackupFormat.json.encodeToString(BackupData.serializer(), BackupData.of(ExportFixture.bundle()))
+        val lower = text.lowercase()
+        for (word in listOf("sarvam", "api-subscription-key", fakeSarvam.dropLast(5), "voice.provider", "voiceprovider")) {
+            assertFalse(word in lower, "the backup JSON mentions '$word'")
+        }
+        assertTrue(text.length > 100)
+    }
+
+    @Test
+    fun aPlatformWithoutASarvamSlotKeepsNoKey() = runTest {
+        val bare = SettingsStore(MemoryDataStore(), FakeSecrets("sealed"))
+        assertEquals("", bare.sarvamKey())
+        assertFailsWith<IllegalStateException> { bare.saveSarvamKey(fakeSarvam) }
     }
 }

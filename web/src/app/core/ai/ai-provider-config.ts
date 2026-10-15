@@ -39,7 +39,7 @@ export interface AiProviderConfig {
 
 /** A starting point for the base URL (the model is always typed by the person, never guessed). */
 export interface AiPreset {
-  id: 'openai' | 'openrouter' | 'groq' | 'ollama' | 'lmstudio' | 'custom';
+  id: 'openai' | 'openrouter' | 'groq' | 'sarvam' | 'ollama' | 'lmstudio' | 'custom';
   baseUrl: string;
   /** A local server that usually needs no key. */
   keyOptional: boolean;
@@ -50,6 +50,7 @@ export const AI_PRESETS: readonly AiPreset[] = [
   { id: 'openai', baseUrl: 'https://api.openai.com/v1', keyOptional: false },
   { id: 'openrouter', baseUrl: 'https://openrouter.ai/api/v1', keyOptional: false },
   { id: 'groq', baseUrl: 'https://api.groq.com/openai/v1', keyOptional: false },
+  { id: 'sarvam', baseUrl: 'https://api.sarvam.ai/v1', keyOptional: false },
   { id: 'ollama', baseUrl: 'http://localhost:11434/v1', keyOptional: true },
   { id: 'lmstudio', baseUrl: 'http://localhost:1234/v1', keyOptional: true },
   { id: 'custom', baseUrl: '', keyOptional: false },

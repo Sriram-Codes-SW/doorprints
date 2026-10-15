@@ -153,7 +153,8 @@ class AiSettingsSectionTest {
 
     private fun choose(service: String) {
         compose.onNodeWithContentDescription("AI service").performScrollTo().performClick()
-        compose.onNodeWithText(service).performClick()
+        // Nine services since Sarvam joined: the list scrolls, so the last ones are scrolled to first.
+        compose.onNodeWithText(service).performScrollTo().performClick()
         compose.waitForIdle()
     }
 

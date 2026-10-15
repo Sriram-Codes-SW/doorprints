@@ -680,6 +680,7 @@ const SERVICE_LABEL: Readonly<Record<ServiceId, TKey>> = {
   openai: 'connect.aiService.openai',
   openrouter: 'connect.aiService.openrouter',
   groq: 'connect.aiService.groq',
+  sarvam: 'connect.aiService.sarvam',
   ollama: 'connect.aiService.ollama',
   lmstudio: 'connect.aiService.lmstudio',
   anthropic: 'connect.aiService.anthropic',
@@ -702,6 +703,7 @@ const MODEL_EXAMPLE: Partial<Record<ServiceId, string>> = {
   openai: 'gpt-4o-mini',
   openrouter: 'openai/gpt-4o-mini',
   groq: 'llama-3.3-70b-versatile',
+  sarvam: 'sarvam-105b',
   ollama: 'llama3.1',
   lmstudio: 'qwen2.5-7b-instruct',
 };
@@ -711,6 +713,7 @@ const KEY_PAGE: Partial<Record<ServiceId, string>> = {
   openai: 'https://platform.openai.com/api-keys',
   openrouter: 'https://openrouter.ai/keys',
   groq: 'https://console.groq.com/keys',
+  sarvam: 'https://dashboard.sarvam.ai',
   anthropic: 'https://console.anthropic.com/settings/keys',
 };
 
