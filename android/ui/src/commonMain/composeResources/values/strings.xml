@@ -1880,4 +1880,23 @@
     <string name="voice_switch_hint_sarvam">Off until you turn it on. Tap the microphone, speak for up to 30 seconds, and the words are written into the box for you to check and change. Nothing is sent until you press the box’s own button.</string>
     <string name="voice_disclosure_sarvam">Audio goes from this phone straight to %1$s (Sarvam AI, India) with your own Sarvam key, about INR %2$s a minute at their list price, up to 30 seconds at a time. Anything you say, including numbers and names, is sent as audio, and a phone number said aloud cannot be left out the way a typed one is. The recording is not saved on this phone.</string>
     <string name="voice_needs_sarvam_key">Save your own Sarvam key above to use Sarvam for voice input.</string>
+    <!-- Kinds PR 26, Hunt as a capability (docs/03 §18.20, 2026-10-15): the Hunt words of the kind files. The house's three are the :app
+         notification strings (same text, kept equal by KindWordVectorsTest); the school's are under review. -->
+    <string name="notif_hunt_text">Watching for houses and streets you have visited</string>
+    <string name="notif_channel_alerts">House and street alerts</string>
+    <string name="notif_channel_alerts_desc">When you pass a house or street you have visited before</string>
+    <string name="school_notif_seen">You have seen this school: %1$s</string>
+    <string name="school_notif_street_text">Saved schools: %1$d, visits: %2$d</string>
+    <string name="school_notif_street_text_since">Saved schools: %1$d, visits: %2$d, first on %3$s</string>
+    <string name="school_map_street_seen">%1$s · Been here: schools %2$d, visits %3$d</string>
+    <string name="school_notif_stay_title">Are you at a school?</string>
+    <string name="school_map_hunt_notify_rationale">Hunt mode tells you with a notification when you pass a school you have seen.</string>
+    <string name="school_hunt_stopped_left_space">Hunt mode stopped. It runs in the Schools space only.</string>
+    <string name="school_hunt_needs_kind">Hunt mode runs in the Schools space only, and Schools is turned off in What you track.</string>
+    <string name="school_notif_hunt_text">Watching for schools and streets you have visited</string>
+    <string name="school_notif_channel_alerts">School and street alerts</string>
+    <string name="school_notif_channel_alerts_desc">When you pass a school or street you have visited before</string>
+    <string name="school_map_notifications_off">Notifications are off, so Hunt mode cannot tell you when you pass a school.</string>
+    <string name="school_map_location_off">Location is off for Doorprints. Hunt mode and ‘Save school here’ need it.</string>
+    <string name="school_map_needs_precise">Hunt mode and ‘Save school here’ need precise location.</string>
 </resources>

@@ -18,8 +18,9 @@
 
 /**
  * What a kind can do beyond its fields (docs/03 ADR-36 §18.19): the `capabilities` block of a kind file
- * (`docs/schemas/kinds/kind.schema.json`), resolved. Schema and resolver only: no screen reads {@link capabilitiesOf}
- * yet, so nothing in the app changes. `docs/schemas/kinds/capabilities-vectors.json` holds the resolved sets, the
+ * (`docs/schemas/kinds/kind.schema.json`), resolved. The website has no screen that reads {@link capabilitiesOf} yet: Hunt mode
+ * (the one capability the phones read, docs/03 §18.20) is the phones' only, so the website shows no Hunt UI for any kind and
+ * nothing here changes it; this module is the resolver the website's own capability screens will read, held to the shared vectors. `docs/schemas/kinds/capabilities-vectors.json` holds the resolved sets, the
  * defaults and the files that must be refused, and the phones' `KindCapabilities` answers the same.
  *
  * A feature a kind leaves out is `null` (or `false` for a plain switch). A kind the build does not know has
@@ -31,8 +32,17 @@ export type ContactRole = 'broker' | 'office' | 'agent';
 
 export interface KindCapabilities {
   readonly map: boolean;
-  /** Hunt mode: the alert radius in metres, and whether a stay at an unsaved place offers to save it. */
-  readonly hunt: { readonly alertRadiusM: number; readonly stayCreates: boolean } | null;
+  /**
+   * Hunt mode (docs/03 §18.20): the alert radius in metres (30 to 300), whether a stay at an unsaved place offers to save it as
+   * an entry of this kind, whether the walk tells about streets this kind has places or visits on, and whether an area
+   * wake-up may start a walk of this kind.
+   */
+  readonly hunt: {
+    readonly alertRadiusM: number;
+    readonly stayCreates: boolean;
+    readonly streetMemory: boolean;
+    readonly areas: boolean;
+  } | null;
   readonly rooms: boolean;
   readonly moveIn: boolean;
   readonly contacts: { readonly role: ContactRole; readonly autoCreateFromPhone: boolean } | null;
@@ -51,8 +61,8 @@ export const CAPABILITY_ICONS: readonly string[] = [
 /** The palette ids a kind may name (`capabilities.identity.colour`). */
 export const CAPABILITY_COLOURS: readonly string[] = ['terracotta', 'indigo', 'teal', 'forest', 'amber', 'rose', 'slate', 'plum'];
 
-export const MIN_HUNT_RADIUS_M = 20;
-export const MAX_HUNT_RADIUS_M = 500;
+export const MIN_HUNT_RADIUS_M = 30;
+export const MAX_HUNT_RADIUS_M = 300;
 export const MAX_COMPARE_CRITERIA = 10;
 
 /** Everything off except the map and the paths: what a kind with no `capabilities`, or no kind file, has. */
@@ -76,7 +86,7 @@ function keysOk(v: unknown, allowed: readonly string[], required: readonly strin
 
 /**
  * The strict reader of a `capabilities` object, the schema's twin in code: the resolved set, or `null` when anything is
- * outside the schema (an unknown key at any level, a wrong type, a radius outside 20..500, an integer that is not one,
+ * outside the schema (an unknown key at any level, a wrong type, a radius outside 30..300, an integer that is not one,
  * more than ten or a repeated or malformed criterion, an icon or colour not on the lists). A missing key takes the default
  * (off; the map and the paths on). Never throws, never reads a prototype.
  */
@@ -93,11 +103,12 @@ export function parseCapabilities(raw: unknown): KindCapabilities | null {
   let hunt: KindCapabilities['hunt'] = null;
   if (has('hunt')) {
     const h = raw['hunt'];
-    if (!keysOk(h, ['alertRadiusM', 'stayCreates'], ['alertRadiusM', 'stayCreates'])) return null;
+    const huntKeys = ['alertRadiusM', 'stayCreates', 'streetMemory', 'areas'];
+    if (!keysOk(h, huntKeys, huntKeys)) return null;
     const r = h['alertRadiusM'];
     if (typeof r !== 'number' || !Number.isInteger(r) || r < MIN_HUNT_RADIUS_M || r > MAX_HUNT_RADIUS_M) return null;
-    if (typeof h['stayCreates'] !== 'boolean') return null;
-    hunt = Object.freeze({ alertRadiusM: r, stayCreates: h['stayCreates'] });
+    if (typeof h['stayCreates'] !== 'boolean' || typeof h['streetMemory'] !== 'boolean' || typeof h['areas'] !== 'boolean') return null;
+    hunt = Object.freeze({ alertRadiusM: r, stayCreates: h['stayCreates'], streetMemory: h['streetMemory'], areas: h['areas'] });
   }
   let contacts: KindCapabilities['contacts'] = null;
   if (has('contacts')) {
@@ -144,7 +155,7 @@ export function parseCapabilities(raw: unknown): KindCapabilities | null {
 const BUILT_IN: Readonly<Record<string, KindCapabilities>> = Object.freeze({
   house: Object.freeze({
     map: true,
-    hunt: Object.freeze({ alertRadiusM: 30, stayCreates: true }),
+    hunt: Object.freeze({ alertRadiusM: 30, stayCreates: true, streetMemory: true, areas: true }),
     rooms: true,
     moveIn: true,
     contacts: Object.freeze({ role: 'broker' as const, autoCreateFromPhone: true }),
@@ -155,10 +166,10 @@ const BUILT_IN: Readonly<Record<string, KindCapabilities>> = Object.freeze({
     paths: true,
     identity: null,
   }),
-  // The school has a contact (the admissions office) that never makes a broker, no Hunt, rooms, moving in, viewings or
-  // Compare; its walks stay.
+  // The school has a contact (the admissions office) that never makes a broker, Hunt at 100 m (a school is passed on foot or
+  // by car, not walked up to), no rooms, moving in, viewings or Compare; its walks stay.
   school: Object.freeze({
-    map: true, hunt: null, rooms: false, moveIn: false,
+    map: true, hunt: Object.freeze({ alertRadiusM: 100, stayCreates: true, streetMemory: true, areas: true }), rooms: false, moveIn: false,
     contacts: Object.freeze({ role: 'office' as const, autoCreateFromPhone: false }),
     viewings: null, compare: null, paths: true, identity: null,
   }),

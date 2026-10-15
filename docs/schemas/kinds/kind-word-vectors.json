@@ -396,9 +396,9 @@
    },
    "school": {
     "web": null,
-    "android": "school_map_location_off_no_hunt",
+    "android": "school_map_location_off",
     "text": {
-     "en": "Location is off for Doorprints. ‘Save school here’ needs it."
+     "en": "Location is off for Doorprints. Hunt mode and ‘Save school here’ need it."
     }
    }
   },
@@ -416,9 +416,9 @@
    },
    "school": {
     "web": null,
-    "android": "school_map_needs_precise_no_hunt",
+    "android": "school_map_needs_precise",
     "text": {
-     "en": "‘Save school here’ needs precise location."
+     "en": "Hunt mode and ‘Save school here’ need precise location."
     }
    }
   },
@@ -959,6 +959,246 @@
     "android": "school_places_empty_body",
     "text": {
      "en": "Add your office or family home to see how far each school is."
+    }
+   }
+  },
+  {
+   "id": "huntSeen",
+   "house": {
+    "web": null,
+    "android": "notif_seen_house",
+    "text": {
+     "en": "You have seen this one: %1$s",
+     "hi": "यह मकान आप देख चुके हैं: %1$s",
+     "ta": "இதை ஏற்கெனவே பார்த்துள்ளீர்கள்: %1$s",
+     "te": "దీన్ని మీరు ఇప్పటికే చూశారు: %1$s"
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_notif_seen",
+    "text": {
+     "en": "You have seen this school: %1$s"
+    }
+   }
+  },
+  {
+   "id": "huntStreetText",
+   "house": {
+    "web": null,
+    "android": "notif_street_text",
+    "text": {
+     "en": "Saved houses: %1$d, visits: %2$d",
+     "hi": "सहेजे मकान: %1$d, दौरे: %2$d",
+     "ta": "சேமித்த வீடுகள்: %1$d, வருகைகள்: %2$d",
+     "te": "సేవ్ చేసిన ఇళ్లు: %1$d, సందర్శనలు: %2$d"
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_notif_street_text",
+    "text": {
+     "en": "Saved schools: %1$d, visits: %2$d"
+    }
+   }
+  },
+  {
+   "id": "huntStreetTextSince",
+   "house": {
+    "web": null,
+    "android": "notif_street_text_since",
+    "text": {
+     "en": "Saved houses: %1$d, visits: %2$d, first on %3$s",
+     "hi": "सहेजे मकान: %1$d, दौरे: %2$d, पहली बार %3$s",
+     "ta": "சேமித்த வீடுகள்: %1$d, வருகைகள்: %2$d, முதல் முறை %3$s",
+     "te": "సేవ్ చేసిన ఇళ్లు: %1$d, సందర్శనలు: %2$d, మొదటిసారి %3$s"
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_notif_street_text_since",
+    "text": {
+     "en": "Saved schools: %1$d, visits: %2$d, first on %3$s"
+    }
+   }
+  },
+  {
+   "id": "huntStreetSeen",
+   "house": {
+    "web": null,
+    "android": "map_street_seen",
+    "text": {
+     "en": "%1$s · Been here: houses %2$d, visits %3$d",
+     "hi": "%1$s · यहाँ आ चुके हैं: मकान %2$d, दौरे %3$d",
+     "ta": "%1$s · முன்பு வந்துள்ளீர்கள்: வீடுகள் %2$d, வருகைகள் %3$d",
+     "te": "%1$s · ఇక్కడికి వచ్చారు: ఇళ్లు %2$d, సందర్శనలు %3$d"
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_map_street_seen",
+    "text": {
+     "en": "%1$s · Been here: schools %2$d, visits %3$d"
+    }
+   }
+  },
+  {
+   "id": "huntStayTitle",
+   "house": {
+    "web": null,
+    "android": "notif_stay_title",
+    "text": {
+     "en": "Are you at a house?",
+     "hi": "क्या आप किसी मकान पर हैं?",
+     "ta": "நீங்கள் ஒரு வீட்டில் இருக்கிறீர்களா?",
+     "te": "మీరు ఏదైనా ఇంటి దగ్గర ఉన్నారా?"
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_notif_stay_title",
+    "text": {
+     "en": "Are you at a school?"
+    }
+   }
+  },
+  {
+   "id": "huntNotifyRationale",
+   "house": {
+    "web": null,
+    "android": "map_hunt_notify_rationale",
+    "text": {
+     "en": "Hunt mode tells you with a notification when you pass a house you have seen.",
+     "hi": "जब आप किसी देखे हुए मकान के पास से गुज़रते हैं, तो हंट मोड सूचना देकर बताता है।",
+     "ta": "நீங்கள் பார்த்த வீட்டைக் கடக்கும்போது தேடல் பயன்முறை அறிவிப்பு மூலம் தெரிவிக்கும்.",
+     "te": "మీరు చూసిన ఇంటి దగ్గర నుండి వెళ్లినప్పుడు హంట్ మోడ్ నోటిఫికేషన్‌తో చెబుతుంది."
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_map_hunt_notify_rationale",
+    "text": {
+     "en": "Hunt mode tells you with a notification when you pass a school you have seen."
+    }
+   }
+  },
+  {
+   "id": "huntLeftSpace",
+   "house": {
+    "web": null,
+    "android": "hunt_stopped_left_space",
+    "text": {
+     "en": "Hunt mode stopped. It runs in the Houses space only.",
+     "hi": "हंट मोड रुक गया। यह केवल मकान वाले स्थान में चलता है।",
+     "ta": "தேடல் பயன்முறை நின்றது. இது வீடுகள் பகுதியில் மட்டுமே இயங்கும்.",
+     "te": "హంట్ మోడ్ ఆగిపోయింది. ఇది ఇళ్ల విభాగంలో మాత్రమే నడుస్తుంది."
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_hunt_stopped_left_space",
+    "text": {
+     "en": "Hunt mode stopped. It runs in the Schools space only."
+    }
+   }
+  },
+  {
+   "id": "huntNeedsKind",
+   "house": {
+    "web": null,
+    "android": "hunt_needs_houses",
+    "text": {
+     "en": "Hunt mode runs in the Houses space only, and Houses is turned off in What you track.",
+     "hi": "हंट मोड केवल मकान वाले स्थान में चलता है, और आप क्या ट्रैक करते हैं में मकान बंद हैं।",
+     "ta": "தேடல் பயன்முறை வீடுகள் பகுதியில் மட்டுமே இயங்கும்; நீங்கள் கண்காணிப்பவை என்பதில் வீடுகள் அணைக்கப்பட்டுள்ளன.",
+     "te": "హంట్ మోడ్ ఇళ్ల విభాగంలో మాత్రమే నడుస్తుంది; మీరు ట్రాక్ చేసేవిలో ఇళ్లు ఆఫ్‌లో ఉన్నాయి."
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_hunt_needs_kind",
+    "text": {
+     "en": "Hunt mode runs in the Schools space only, and Schools is turned off in What you track."
+    }
+   }
+  },
+  {
+   "id": "huntOngoingText",
+   "house": {
+    "web": null,
+    "android": "notif_hunt_text",
+    "text": {
+     "en": "Watching for houses and streets you have visited",
+     "hi": "आपके देखे मकानों और सड़कों पर नज़र रखी जा रही है",
+     "ta": "நீங்கள் பார்த்த வீடுகளையும் தெருக்களையும் கவனிக்கிறது",
+     "te": "మీరు చూసిన ఇళ్లు, వీధుల కోసం గమనిస్తోంది"
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_notif_hunt_text",
+    "text": {
+     "en": "Watching for schools and streets you have visited"
+    }
+   }
+  },
+  {
+   "id": "huntChannelAlerts",
+   "house": {
+    "web": null,
+    "android": "notif_channel_alerts",
+    "text": {
+     "en": "House and street alerts",
+     "hi": "मकान और सड़क की सूचनाएँ",
+     "ta": "வீடு, தெரு அறிவிப்புகள்",
+     "te": "ఇల్లు, వీధి హెచ్చరికలు"
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_notif_channel_alerts",
+    "text": {
+     "en": "School and street alerts"
+    }
+   }
+  },
+  {
+   "id": "huntChannelAlertsDesc",
+   "house": {
+    "web": null,
+    "android": "notif_channel_alerts_desc",
+    "text": {
+     "en": "When you pass a house or street you have visited before",
+     "hi": "जब आप पहले देखे मकान या सड़क से गुज़रें",
+     "ta": "முன்பு பார்த்த வீடு அல்லது தெருவைக் கடக்கும்போது",
+     "te": "మీరు ఇంతకు ముందు చూసిన ఇల్లు లేదా వీధిని దాటినప్పుడు"
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_notif_channel_alerts_desc",
+    "text": {
+     "en": "When you pass a school or street you have visited before"
+    }
+   }
+  },
+  {
+   "id": "huntNotificationsOff",
+   "house": {
+    "web": null,
+    "android": "map_notifications_off",
+    "text": {
+     "en": "Notifications are off, so Hunt mode cannot tell you when you pass a house.",
+     "hi": "सूचनाएँ बंद हैं, इसलिए हंट मोड आपको नहीं बता सकता कि आप किसी मकान के पास से गुज़रे।",
+     "ta": "அறிவிப்புகள் அணைக்கப்பட்டுள்ளன, அதனால் நீங்கள் ஒரு வீட்டைக் கடக்கும்போது தேடல் பயன்முறை தெரிவிக்க முடியாது.",
+     "te": "నోటిఫికేషన్‌లు ఆఫ్‌లో ఉన్నాయి, కాబట్టి మీరు ఇంటి దగ్గర నుండి వెళ్లినప్పుడు హంట్ మోడ్ మీకు తెలియజేయదు."
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_map_notifications_off",
+    "text": {
+     "en": "Notifications are off, so Hunt mode cannot tell you when you pass a school."
     }
    }
   }

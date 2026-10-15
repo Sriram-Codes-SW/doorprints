@@ -84,6 +84,36 @@ class KindCapabilitiesFileTest {
         assertThat(house.get("compare").get("criteria").size()).isEqualTo(10);
     }
 
+    /**
+     * Hunt as a capability (docs/03 section 18.20, kinds PR 26): the schema's radius is 30 to 300 m and all four members are
+     * required, each kind file's block is the vectors' (the house keeps today's 30 m with everything on, the school has Hunt at
+     * 100 m), and the words the Hunt mode alerts use are in the schema's list and in both files.
+     */
+    @Test
+    void huntIsACapabilityWithABoundedRadiusAndTheKindsOwnWords() throws IOException {
+        var schema = read("kind.schema.json");
+        var vectors = read("capabilities-vectors.json");
+        var hunt = schema.get("properties").get("capabilities").get("properties").get("hunt");
+        var radius = hunt.get("properties").get("alertRadiusM");
+        assertThat(radius.get("minimum").asInt()).isEqualTo(30);
+        assertThat(radius.get("maximum").asInt()).isEqualTo(300);
+        assertThat(strings(hunt.get("required"))).containsExactly("alertRadiusM", "stayCreates", "streetMemory", "areas");
+        for (var kind : List.of("house", "school")) {
+            var file = read(kind + ".json").get("capabilities").get("hunt");
+            assertThat(file).as(kind).isEqualTo(vectors.get("kinds").get(kind).get("hunt"));
+            assertThat(file.get("alertRadiusM").asInt()).as(kind).isBetween(30, 300);
+        }
+        assertThat(read("house.json").get("capabilities").get("hunt").get("alertRadiusM").asInt()).isEqualTo(30);
+        assertThat(read("school.json").get("capabilities").get("hunt").get("alertRadiusM").asInt()).isEqualTo(100);
+        var allowed = strings(schema.get("properties").get("words").get("propertyNames").get("enum"));
+        var huntWords = allowed.stream().filter(w -> w.startsWith("hunt")).toList();
+        assertThat(huntWords).hasSize(12);
+        for (var kind : List.of("house", "school")) {
+            var words = read(kind + ".json").get("words");
+            for (var w : huntWords) assertThat(words.has(w)).as(kind + " " + w).isTrue();
+        }
+    }
+
     /** Every invalid case in the vectors is parseable JSON whose capabilities the strict readers of the other stacks refuse. */
     @Test
     void theInvalidCasesAreWellFormedJson() throws IOException {

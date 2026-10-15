@@ -1883,4 +1883,23 @@
     <string name="voice_switch_hint_sarvam">మీరు ఆన్ చేసే వరకు ఆఫ్‌లో ఉంటుంది. మైక్రోఫోన్ నొక్కి, 30 సెకన్ల వరకు మాట్లాడండి; మాటలు బాక్స్‌లో రాయబడతాయి, మీరు చూసి మార్చవచ్చు. బాక్స్ సొంత బటన్ నొక్కే వరకు ఏదీ పంపబడదు.</string>
     <string name="voice_disclosure_sarvam">ఆడియో ఈ ఫోన్ నుండి నేరుగా %1$s కి (Sarvam AI, భారత్) మీ సొంత Sarvam కీతో వెళ్తుంది, వారి జాబితా ధరతో నిమిషానికి సుమారు ₹%2$s, ఒకసారికి 30 సెకన్ల వరకు. మీరు చెప్పేదంతా, సంఖ్యలు, పేర్లతో సహా, ఆడియోగా పంపబడుతుంది; చెప్పిన ఫోన్ నంబర్‌ను టైప్ చేసిన నంబర్ లాగా తొలగించలేరు. రికార్డింగ్ ఈ ఫోన్‌లో సేవ్ చేయబడదు.</string>
     <string name="voice_needs_sarvam_key">వాయిస్ ఇన్‌పుట్‌కు Sarvam వాడాలంటే పైన మీ సొంత Sarvam కీని సేవ్ చేయండి.</string>
+    <!-- Kinds PR 26, Hunt as a capability (docs/03 §18.20, 2026-10-15): the Hunt words of the kind files. The house's three are the :app
+         notification strings (same text, kept equal by KindWordVectorsTest); the school's are under review. -->
+    <string name="notif_hunt_text">మీరు చూసిన ఇళ్లు, వీధుల కోసం గమనిస్తోంది</string>
+    <string name="notif_channel_alerts">ఇల్లు, వీధి హెచ్చరికలు</string>
+    <string name="notif_channel_alerts_desc">మీరు ఇంతకు ముందు చూసిన ఇల్లు లేదా వీధిని దాటినప్పుడు</string>
+    <string name="school_notif_seen">ఈ పాఠశాలను మీరు ఇప్పటికే చూశారు: %1$s</string>
+    <string name="school_notif_street_text">సేవ్ చేసిన పాఠశాలలు: %1$d, సందర్శనలు: %2$d</string>
+    <string name="school_notif_street_text_since">సేవ్ చేసిన పాఠశాలలు: %1$d, సందర్శనలు: %2$d, మొదటిసారి %3$s</string>
+    <string name="school_map_street_seen">%1$s · ఇక్కడికి వచ్చారు: పాఠశాలలు %2$d, సందర్శనలు %3$d</string>
+    <string name="school_notif_stay_title">మీరు ఏదైనా పాఠశాల దగ్గర ఉన్నారా?</string>
+    <string name="school_map_hunt_notify_rationale">మీరు చూసిన పాఠశాల దగ్గర నుండి వెళ్లినప్పుడు హంట్ మోడ్ నోటిఫికేషన్‌తో చెబుతుంది.</string>
+    <string name="school_hunt_stopped_left_space">హంట్ మోడ్ ఆగిపోయింది. ఇది పాఠశాలల విభాగంలో మాత్రమే నడుస్తుంది.</string>
+    <string name="school_hunt_needs_kind">హంట్ మోడ్ పాఠశాలల విభాగంలో మాత్రమే నడుస్తుంది; మీరు ట్రాక్ చేసేవిలో పాఠశాలలు ఆఫ్‌లో ఉన్నాయి.</string>
+    <string name="school_notif_hunt_text">మీరు చూసిన పాఠశాలలు, వీధుల కోసం గమనిస్తోంది</string>
+    <string name="school_notif_channel_alerts">పాఠశాల, వీధి హెచ్చరికలు</string>
+    <string name="school_notif_channel_alerts_desc">మీరు ఇంతకు ముందు చూసిన పాఠశాల లేదా వీధిని దాటినప్పుడు</string>
+    <string name="school_map_notifications_off">నోటిఫికేషన్‌లు ఆఫ్‌లో ఉన్నాయి, కాబట్టి మీరు పాఠశాల దగ్గర నుండి వెళ్లినప్పుడు హంట్ మోడ్ మీకు తెలియజేయదు.</string>
+    <string name="school_map_location_off">Doorprints కోసం స్థానం ఆఫ్‌లో ఉంది. హంట్ మోడ్‌కు, ‘ఇక్కడ పాఠశాల సేవ్ చేయండి’కి ఇది అవసరం.</string>
+    <string name="school_map_needs_precise">హంట్ మోడ్‌కు, ‘ఇక్కడ పాఠశాల సేవ్ చేయండి’కి ఖచ్చితమైన స్థానం అవసరం.</string>
 </resources>

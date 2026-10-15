@@ -65,7 +65,7 @@ class KindCapabilitiesVectorsTest {
     private fun KindCapabilities.toJson(): JsonObject = JsonObject(
         mapOf(
             "map" to JsonPrimitive(map),
-            "hunt" to (hunt?.let { JsonObject(mapOf("alertRadiusM" to JsonPrimitive(it.alertRadiusM), "stayCreates" to JsonPrimitive(it.stayCreates))) } ?: JsonNull),
+            "hunt" to (hunt?.let { JsonObject(mapOf("alertRadiusM" to JsonPrimitive(it.alertRadiusM), "stayCreates" to JsonPrimitive(it.stayCreates), "streetMemory" to JsonPrimitive(it.streetMemory), "areas" to JsonPrimitive(it.areas))) } ?: JsonNull),
             "rooms" to JsonPrimitive(rooms),
             "moveIn" to JsonPrimitive(moveIn),
             "contacts" to (contacts?.let { JsonObject(mapOf("role" to JsonPrimitive(it.role), "autoCreateFromPhone" to JsonPrimitive(it.autoCreateFromPhone))) } ?: JsonNull),
@@ -95,7 +95,7 @@ class KindCapabilitiesVectorsTest {
         val house = KindCapabilities.of("house")
         val today = vectors.getValue("today").jsonObject
         assertEquals(today.getValue("huntAlertRadiusM").jsonPrimitive.int, AppSettings().alertRadiusM)
-        assertEquals(KindCapabilities.Hunt(AppSettings().alertRadiusM, stayCreates = true), house.hunt)
+        assertEquals(KindCapabilities.Hunt(AppSettings().alertRadiusM, stayCreates = true, streetMemory = true, areas = true), house.hunt)
         assertEquals(Checklist.keys, house.compare?.criteria)
         assertEquals(Checklist.keys, files.getValue("house").getValue("checklist").jsonArray.map { it.jsonObject.getValue("key").jsonPrimitive.content })
         assertEquals(KindCapabilities.Contacts("broker", KindLabels.HOUSE.isVisible("field.brokerId")), house.contacts)
@@ -150,6 +150,16 @@ class KindCapabilitiesVectorsTest {
             val name = case.getValue("name").jsonPrimitive.content
             assertNull(name, KindCapabilities.parse(Json.parseToJsonElement(case.getValue("json").jsonPrimitive.content)))
         }
+    }
+
+    @Test
+    fun theSchoolHuntsAtOneHundredMetresAndAHuntBlockNeedsAllFourMembers() {
+        assertEquals(KindCapabilities.Hunt(100, stayCreates = true, streetMemory = true, areas = true), KindCapabilities.of("school").hunt)
+        val hunt = schema.getValue("properties").jsonObject.getValue("capabilities").jsonObject.getValue("properties").jsonObject.getValue("hunt").jsonObject
+        assertEquals(listOf("alertRadiusM", "stayCreates", "streetMemory", "areas"), hunt.getValue("required").strings())
+        assertNull(KindCapabilities.parse(Json.parseToJsonElement("""{"hunt":{"alertRadiusM":29,"stayCreates":true,"streetMemory":true,"areas":true}}""")))
+        assertNull(KindCapabilities.parse(Json.parseToJsonElement("""{"hunt":{"alertRadiusM":301,"stayCreates":true,"streetMemory":true,"areas":true}}""")))
+        assertNotNull(KindCapabilities.parse(Json.parseToJsonElement("""{"hunt":{"alertRadiusM":300,"stayCreates":false,"streetMemory":false,"areas":false}}""")))
     }
 
     @Test

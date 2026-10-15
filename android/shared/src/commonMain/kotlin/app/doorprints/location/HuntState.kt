@@ -33,6 +33,8 @@ object HuntState {
 
     data class State(
         val active: Boolean = false,
+        /** The kind the walk belongs to (the space it was started in, docs/03 section 18.20); null while Hunt mode is off. */
+        val kind: String? = null,
         val lat: Double? = null,
         val lon: Double? = null,
         val accuracyM: Float? = null,

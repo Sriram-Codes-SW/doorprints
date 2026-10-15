@@ -22,7 +22,7 @@ package app.doorprints.shared.model
  * Compose string a space's first screen, its candidate page and its tools read for each id, `null` where the phone shows no
  * text (the website's region hint, list label, loading and empty title). The sixteen ids of S4b-BL-278 come first, then the
  * phone's other words that name the kind (Compare, the Assistant, the copies' scope, the map's location notes, the form's
- * titles and questions, the walk check, the Areas and Places lines), which `SpaceWords` and `PageWords` kept as tables of their
+ * titles and questions, the walk check, the Areas and Places lines), and since kinds PR 26 the Hunt mode words (docs/03 section 18.20: the alerts, the street line, the walk's notification and channel), which `SpaceWords` and `PageWords` kept as tables of their
  * own until S4b-BL-316. A copy of the files' `android` keys, as [KindLabels.HOUSE] is of the labels (`HouseKindFileTest`,
  * `SchoolKindVectorsTest` and `KindWordVectorsTest` read the files and the vectors, so it cannot drift); `SpaceWords` and
  * `PageWords` in `:ui` turn the keys into strings. A kind with no entry reads the house's.
@@ -41,6 +41,8 @@ object KindWordKeys {
         "savePhotosFirst", "walkButton", "walkPlace", "walkLabel", "walkApprox", "walksEmpty",
         "aiDisclosure", "aiDisclosureOwnKey", "placeFound", "placeNotFound", "openDetails", "areasEmptyBody",
         "notesEmpty", "areaDeleteBody", "placeDeleteBody", "placesEmptyBody",
+        "huntSeen", "huntStreetText", "huntStreetTextSince", "huntStreetSeen", "huntStayTitle", "huntNotifyRationale",
+        "huntLeftSpace", "huntNeedsKind", "huntOngoingText", "huntChannelAlerts", "huntChannelAlertsDesc", "huntNotificationsOff",
     )
 
     private fun table(vararg keys: Pair<String, String?>): Map<String, String?> {
@@ -71,6 +73,11 @@ object KindWordKeys {
         "placeNotFound" to "map_place_not_found", "openDetails" to "compare_open_house", "areasEmptyBody" to "areas_empty_body",
         "notesEmpty" to "notes_empty", "areaDeleteBody" to "area_delete_body", "placeDeleteBody" to "place_delete_body",
         "placesEmptyBody" to "places_empty_body",
+        "huntSeen" to "notif_seen_house", "huntStreetText" to "notif_street_text", "huntStreetTextSince" to "notif_street_text_since",
+        "huntStreetSeen" to "map_street_seen", "huntStayTitle" to "notif_stay_title", "huntNotifyRationale" to "map_hunt_notify_rationale",
+        "huntLeftSpace" to "hunt_stopped_left_space", "huntNeedsKind" to "hunt_needs_houses", "huntOngoingText" to "notif_hunt_text",
+        "huntChannelAlerts" to "notif_channel_alerts", "huntChannelAlertsDesc" to "notif_channel_alerts_desc",
+        "huntNotificationsOff" to "map_notifications_off",
     )
 
     val SCHOOL: Map<String, String?> = table(
@@ -85,8 +92,8 @@ object KindWordKeys {
         "compareFootnote" to "school_compare_footnote", "askLabel" to "school_ai_ask_label", "askHint" to "school_ai_ask_hint",
         "askNotGrounded" to "school_ai_not_grounded", "askSources" to "school_ai_sources", "planHint" to "school_ai_plan_hint",
         "exportEmpty" to "school_export_empty", "exportScope" to "school_export_scope", "exportScopeAll" to "school_export_scope_all",
-        "exportIncludeRejected" to "school_export_include_rejected", "exportPhotosShortlisted" to "school_export_photos_shortlisted", "locationOff" to "school_map_location_off_no_hunt",
-        "needsPrecise" to "school_map_needs_precise_no_hunt", "locationOffNoHunt" to "school_map_location_off_no_hunt", "needsPreciseNoHunt" to "school_map_needs_precise_no_hunt",
+        "exportIncludeRejected" to "school_export_include_rejected", "exportPhotosShortlisted" to "school_export_photos_shortlisted", "locationOff" to "school_map_location_off",
+        "needsPrecise" to "school_map_needs_precise", "locationOffNoHunt" to "school_map_location_off_no_hunt", "needsPreciseNoHunt" to "school_map_needs_precise_no_hunt",
         "saveNeedsLocation" to "school_map_save_needs_location", "detailsTitle" to "school_details_title", "notFoundTitle" to "school_not_found_title",
         "notFound" to "school_not_found", "defaultLabel" to "school_default_label", "defaultLabelStreet" to "school_default_label_street",
         "discardNew" to "school_discard_new_title", "deleteTitle" to "school_delete_confirm_title", "pageNeedsPrecise" to "school_needs_precise",
@@ -96,6 +103,11 @@ object KindWordKeys {
         "placeNotFound" to "school_map_place_not_found", "openDetails" to "school_compare_open", "areasEmptyBody" to "school_areas_empty_body",
         "notesEmpty" to "school_notes_empty", "areaDeleteBody" to "school_area_delete_body", "placeDeleteBody" to "school_place_delete_body",
         "placesEmptyBody" to "school_places_empty_body",
+        "huntSeen" to "school_notif_seen", "huntStreetText" to "school_notif_street_text", "huntStreetTextSince" to "school_notif_street_text_since",
+        "huntStreetSeen" to "school_map_street_seen", "huntStayTitle" to "school_notif_stay_title", "huntNotifyRationale" to "school_map_hunt_notify_rationale",
+        "huntLeftSpace" to "school_hunt_stopped_left_space", "huntNeedsKind" to "school_hunt_needs_kind", "huntOngoingText" to "school_notif_hunt_text",
+        "huntChannelAlerts" to "school_notif_channel_alerts", "huntChannelAlertsDesc" to "school_notif_channel_alerts_desc",
+        "huntNotificationsOff" to "school_map_notifications_off",
     )
 
     /** The keys of [kind]; a kind with no table of its own reads the house's. */

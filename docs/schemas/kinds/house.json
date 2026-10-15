@@ -72,7 +72,19 @@
   "notesEmpty": { "web": null, "android": "notes_empty" },
   "areaDeleteBody": { "web": null, "android": "area_delete_body" },
   "placeDeleteBody": { "web": null, "android": "place_delete_body" },
-  "placesEmptyBody": { "web": null, "android": "places_empty_body" }
+  "placesEmptyBody": { "web": null, "android": "places_empty_body" },
+  "huntSeen": { "web": null, "android": "notif_seen_house" },
+  "huntStreetText": { "web": null, "android": "notif_street_text" },
+  "huntStreetTextSince": { "web": null, "android": "notif_street_text_since" },
+  "huntStreetSeen": { "web": null, "android": "map_street_seen" },
+  "huntStayTitle": { "web": null, "android": "notif_stay_title" },
+  "huntNotifyRationale": { "web": null, "android": "map_hunt_notify_rationale" },
+  "huntLeftSpace": { "web": null, "android": "hunt_stopped_left_space" },
+  "huntNeedsKind": { "web": null, "android": "hunt_needs_houses" },
+  "huntOngoingText": { "web": null, "android": "notif_hunt_text" },
+  "huntChannelAlerts": { "web": null, "android": "notif_channel_alerts" },
+  "huntChannelAlertsDesc": { "web": null, "android": "notif_channel_alerts_desc" },
+  "huntNotificationsOff": { "web": null, "android": "map_notifications_off" }
  },
  "statuses": [
   { "id": "NEW", "label": { "web": "status.NEW", "android": "status_NEW" } },
@@ -158,7 +170,7 @@
  "search": ["label", "address", "street", "locality", "notes", "contactName", "brokerId", "rooms", "questions", "areaNotes", "moveIn", "floor"],
  "capabilities": {
   "map": true,
-  "hunt": { "alertRadiusM": 30, "stayCreates": true },
+  "hunt": { "alertRadiusM": 30, "stayCreates": true, "streetMemory": true, "areas": true },
   "rooms": true,
   "moveIn": true,
   "contacts": { "role": "broker", "autoCreateFromPhone": true },

@@ -1883,4 +1883,23 @@
     <string name="voice_switch_hint_sarvam">जब तक आप चालू न करें, यह बंद रहता है। माइक्रोफ़ोन दबाएँ, 30 सेकंड तक बोलें, और शब्द बॉक्स में लिख दिए जाते हैं ताकि आप जाँचें और बदलें। बॉक्स का अपना बटन दबाने तक कुछ नहीं भेजा जाता।</string>
     <string name="voice_disclosure_sarvam">ऑडियो इस फ़ोन से सीधे %1$s (Sarvam AI, भारत) को आपकी अपनी Sarvam कुंजी से जाता है, उनकी सूची-कीमत पर लगभग ₹%2$s प्रति मिनट, एक बार में 30 सेकंड तक। आप जो भी बोलते हैं, नंबर और नाम समेत, ऑडियो के रूप में भेजा जाता है, और बोला गया फ़ोन नंबर टाइप किए गए नंबर की तरह हटाया नहीं जा सकता। रिकॉर्डिंग इस फ़ोन पर सहेजी नहीं जाती।</string>
     <string name="voice_needs_sarvam_key">आवाज़ से लिखने के लिए Sarvam इस्तेमाल करने हेतु ऊपर अपनी Sarvam कुंजी सहेजें।</string>
+    <!-- Kinds PR 26, Hunt as a capability (docs/03 §18.20, 2026-10-15): the Hunt words of the kind files. The house's three are the :app
+         notification strings (same text, kept equal by KindWordVectorsTest); the school's are under review. -->
+    <string name="notif_hunt_text">आपके देखे मकानों और सड़कों पर नज़र रखी जा रही है</string>
+    <string name="notif_channel_alerts">मकान और सड़क की सूचनाएँ</string>
+    <string name="notif_channel_alerts_desc">जब आप पहले देखे मकान या सड़क से गुज़रें</string>
+    <string name="school_notif_seen">यह स्कूल आप देख चुके हैं: %1$s</string>
+    <string name="school_notif_street_text">सहेजे स्कूल: %1$d, दौरे: %2$d</string>
+    <string name="school_notif_street_text_since">सहेजे स्कूल: %1$d, दौरे: %2$d, पहली बार %3$s</string>
+    <string name="school_map_street_seen">%1$s · यहाँ आ चुके हैं: स्कूल %2$d, दौरे %3$d</string>
+    <string name="school_notif_stay_title">क्या आप किसी स्कूल पर हैं?</string>
+    <string name="school_map_hunt_notify_rationale">जब आप किसी देखे हुए स्कूल के पास से गुज़रते हैं, तो हंट मोड सूचना देकर बताता है।</string>
+    <string name="school_hunt_stopped_left_space">हंट मोड रुक गया। यह केवल स्कूल वाले स्थान में चलता है।</string>
+    <string name="school_hunt_needs_kind">हंट मोड केवल स्कूल वाले स्थान में चलता है, और आप क्या ट्रैक करते हैं में स्कूल बंद हैं।</string>
+    <string name="school_notif_hunt_text">आपके देखे स्कूलों और सड़कों पर नज़र रखी जा रही है</string>
+    <string name="school_notif_channel_alerts">स्कूल और सड़क की सूचनाएँ</string>
+    <string name="school_notif_channel_alerts_desc">जब आप पहले देखे स्कूल या सड़क से गुज़रें</string>
+    <string name="school_map_notifications_off">सूचनाएँ बंद हैं, इसलिए हंट मोड आपको नहीं बता सकता कि आप किसी स्कूल के पास से गुज़रे।</string>
+    <string name="school_map_location_off">Doorprints के लिए जगह की अनुमति बंद है। हंट मोड और ‘यहाँ स्कूल सहेजें’ को इसकी ज़रूरत है।</string>
+    <string name="school_map_needs_precise">हंट मोड और ‘यहाँ स्कूल सहेजें’ को सटीक जगह चाहिए।</string>
 </resources>

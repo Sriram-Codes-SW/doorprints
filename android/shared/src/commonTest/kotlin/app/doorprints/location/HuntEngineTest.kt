@@ -23,6 +23,7 @@ import app.doorprints.data.Repository
 import app.doorprints.data.TrackPointEntity
 import app.doorprints.data.VisitEntity
 import app.doorprints.shared.model.HouseStatus
+import app.doorprints.shared.model.KindCapabilities
 import app.doorprints.shared.model.LocationSource
 import app.doorprints.shared.model.VisitSource
 import kotlinx.coroutines.flow.Flow
@@ -88,8 +89,9 @@ class HuntEngineTest {
 
     // Every test ends with stopped(): the engine's collectors never complete on their own, as in the app, where the
     // adapter's scope ends with Hunt mode.
-    private fun TestScope.engine() = HuntEngine(
-        data, { _, _ -> street }, { battery }, effects, this, now = { clock }, newId = { "visit-${++ids}" },
+    private fun TestScope.engine(kind: String = "house", hunt: KindCapabilities.Hunt? = null) = HuntEngine(
+        data, { _, _ -> street }, { battery }, effects, this, kind,
+        hunt = hunt ?: checkNotNull(KindCapabilities.of(kind).hunt), now = { clock }, newId = { "visit-${++ids}" },
     )
 
     @BeforeTest fun reset() = HuntState.update { HuntState.State() }
@@ -300,5 +302,63 @@ class HuntEngineTest {
         e.onFix(12.97, 77.59, 10f, clock)
         e.stopped(HuntState.StopReason.NO_PERMISSION)
         assertEquals(HuntState.State(stopReason = HuntState.StopReason.NO_PERMISSION), HuntState.state.value)
+    }
+
+    // Hunt as a capability (docs/03 section 18.20, kinds PR 26, TC-U-270): the walk belongs to a kind and nothing here names one.
+
+    @Test
+    fun aSchoolWalkAlertsWithinTheKindsRadiusAndTheSettingsRadiusIsTheHouses() = runTest(StandardTestDispatcher()) {
+        // About 56 m north of the fix; the setting says 30 m.
+        data.houses.value = listOf(house("s", 12.9721, 77.5946))
+        val school = engine("school"); school.start(); advanceUntilIdle()
+        school.onFix(12.9716, 77.5946, 10f, clock)
+        assertEquals(listOf("s"), effects.houseAlerts.map { it.first }, "100 m from the file, whatever the house's setting says")
+        assertEquals("school", HuntState.state.value.kind)
+        school.stopped(null)
+        assertNull(HuntState.state.value.kind)
+        effects.houseAlerts.clear()
+        val house = engine("house"); house.start(); advanceUntilIdle()
+        house.onFix(12.9716, 77.5946, 10f, clock)
+        assertTrue(effects.houseAlerts.isEmpty(), "the house's radius is the person's 30 m")
+        assertEquals("house", HuntState.state.value.kind)
+        house.stopped(null)
+    }
+
+    @Test
+    fun theRadiusRuleIsTheSettingForTheHouseAndTheFileForEveryOtherKind() {
+        val hunt = KindCapabilities.Hunt(alertRadiusM = 80, stayCreates = true, streetMemory = true, areas = true)
+        assertEquals(45, HuntEngine.radiusFor("house", hunt, 45))
+        assertEquals(80, HuntEngine.radiusFor("school", hunt, 45))
+        assertEquals(80, HuntEngine.radiusFor("anything", hunt, 15))
+    }
+
+    @Test
+    fun aKindWithNoStreetMemoryNeverTellsAStreet() = runTest(StandardTestDispatcher()) {
+        street = "MG Road"
+        data.streets["MG Road"] = Repository.StreetInfo("MG Road", houses = 2, visits = 3, firstVisit = 5L)
+        val e = engine("school", KindCapabilities.Hunt(100, stayCreates = true, streetMemory = false, areas = true))
+        e.start(); advanceUntilIdle()
+        e.onFix(12.97, 77.59, 10f, clock); advanceUntilIdle()
+        assertTrue(effects.streetAlerts.isEmpty())
+        assertNull(HuntState.state.value.street)
+        e.stopped(null)
+        // With it on, the school's walk tells the street as the house's does.
+        val on = engine("school"); on.start(); advanceUntilIdle()
+        on.onFix(12.97, 77.59, 10f, clock); advanceUntilIdle()
+        assertEquals(listOf("MG Road"), effects.streetAlerts)
+        on.stopped(null)
+    }
+
+    @Test
+    fun aKindWhoseStayDoesNotCreateSavesTheVisitAndOffersNothing() = runTest(StandardTestDispatcher()) {
+        street = "Lake Road"
+        val e = engine("school", KindCapabilities.Hunt(100, stayCreates = false, streetMemory = true, areas = true))
+        e.start(); advanceUntilIdle()
+        var t = clock
+        repeat(6) { e.onFix(12.97, 77.59, 10f, t); t += 60_000; clock = t }
+        advanceUntilIdle()
+        assertTrue(effects.stayAlerts.isEmpty(), "no 'save this place' offer")
+        assertEquals(VisitSource.AUTO, data.visits.getValue("visit-1").source, "the visit is still kept")
+        e.stopped(null)
     }
 }

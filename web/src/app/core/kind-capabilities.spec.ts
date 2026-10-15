@@ -22,7 +22,7 @@ import { CHECKLIST } from './models';
 import { HOUSE_LABELS } from './kind-labels';
 import { SCHOOL_LABELS } from './school-kind';
 import {
-  CAPABILITY_COLOURS, CAPABILITY_ICONS, CAPABILITY_KINDS, DEFAULT_CAPABILITIES, capabilitiesOf, parseCapabilities,
+  CAPABILITY_COLOURS, CAPABILITY_ICONS, CAPABILITY_KINDS, DEFAULT_CAPABILITIES, MAX_HUNT_RADIUS_M, MIN_HUNT_RADIUS_M, capabilitiesOf, parseCapabilities,
 } from './kind-capabilities';
 // The kind schema, the two kind files and the capabilities vectors (docs/03 ADR-36 §18.19); resolveJsonModule is on
 // for the specs. The phones' KindCapabilitiesVectorsTest reads the same files.
@@ -77,7 +77,7 @@ describe('kind capabilities (docs/schemas/kinds, ADR-36 §18.19)', () => {
   it('the house\'s set is today\'s hard-coded behaviour: Hunt\'s radius, the checklist keys, the sections it shows, the broker rule', () => {
     const house = capabilitiesOf('house');
     const file = FILES['house'];
-    expect(house.hunt).toEqual({ alertRadiusM: vectors.today.huntAlertRadiusM, stayCreates: true });
+    expect(house.hunt).toEqual({ alertRadiusM: vectors.today.huntAlertRadiusM, stayCreates: true, streetMemory: true, areas: true });
     expect(house.compare?.criteria).toEqual(CHECKLIST.map((c) => c.key));
     expect(house.compare?.criteria).toEqual(file.checklist.map((c) => c.key));
     expect(house.contacts).toEqual({ role: 'broker', autoCreateFromPhone: HOUSE_LABELS.isVisible('field.brokerId') });
@@ -97,6 +97,14 @@ describe('kind capabilities (docs/schemas/kinds, ADR-36 §18.19)', () => {
       expect(caps.contacts?.autoCreateFromPhone ?? false, `${id} broker`).toBe(labels[id as keyof typeof labels].isVisible('field.brokerId'));
       const known = [...file.checklist.map((c) => c.key), ...file.extras.map((e) => e.id)];
       for (const c of caps.compare?.criteria ?? []) expect(known, `${id} criterion ${c}`).toContain(c);
+    }
+  });
+
+  it('the school has Hunt at 100 m with a stay that makes a school, the street memory and the areas (kinds PR 26); every kind\'s radius is inside 30 to 300', () => {
+    expect(capabilitiesOf('school').hunt).toEqual({ alertRadiusM: 100, stayCreates: true, streetMemory: true, areas: true });
+    for (const id of CAPABILITY_KINDS) {
+      const r = capabilitiesOf(id).hunt?.alertRadiusM;
+      if (r !== undefined) expect(r >= MIN_HUNT_RADIUS_M && r <= MAX_HUNT_RADIUS_M, id).toBe(true);
     }
   });
 
@@ -147,9 +155,10 @@ describe('kind capabilities (docs/schemas/kinds, ADR-36 §18.19)', () => {
     expect(CAPABILITY_ICONS.length).toBe(24);
   });
 
-  it('the limits are the schema\'s: the radius 20 to 500 and ten criteria', () => {
+  it('the limits are the schema\'s: the radius 30 to 300 and ten criteria', () => {
     const p = (schemaJson as any).properties.capabilities.properties;
-    expect([p.hunt.properties.alertRadiusM.minimum, p.hunt.properties.alertRadiusM.maximum]).toEqual([20, 500]);
+    expect([p.hunt.properties.alertRadiusM.minimum, p.hunt.properties.alertRadiusM.maximum]).toEqual([30, 300]);
+    expect(p.hunt.required).toEqual(['alertRadiusM', 'stayCreates', 'streetMemory', 'areas']);
     expect(p.compare.properties.criteria.maxItems).toBe(10);
     expect(p.viewings.properties.questionsSeed.enum).toEqual(['house']);
   });

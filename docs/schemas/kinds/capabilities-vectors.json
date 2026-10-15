@@ -14,7 +14,7 @@
  },
  "today": {
   "huntAlertRadiusM": 30,
-  "huntAlertRadiusMSource": "AppSettings.alertRadiusM default (android/shared Settings.kt); Hunt's radius setting is 15..100 m",
+  "huntAlertRadiusMSource": "AppSettings.alertRadiusM default (android/shared Settings.kt); Hunt's radius setting is 15..100 m and stays the house's own override; a kind's file value is the default for every other kind (kinds PR 26)",
   "compareCriteriaAre": "the checklist keys (web CHECKLIST, android Checklist.keys), in order",
   "contactsFollow": "the broker field: the house shows `brokerId` and makes a broker from a phone (BrokerStore.linked), the school shows no broker and makes none",
   "sectionsFollow": {
@@ -29,7 +29,9 @@
    "map": true,
    "hunt": {
     "alertRadiusM": 30,
-    "stayCreates": true
+    "stayCreates": true,
+    "streetMemory": true,
+    "areas": true
    },
    "rooms": true,
    "moveIn": true,
@@ -59,7 +61,12 @@
   },
   "school": {
    "map": true,
-   "hunt": null,
+   "hunt": {
+    "alertRadiusM": 100,
+    "stayCreates": true,
+    "streetMemory": true,
+    "areas": true
+   },
    "rooms": false,
    "moveIn": false,
    "contacts": {
@@ -99,18 +106,22 @@
    }
   },
   {
-   "name": "the smallest hunt",
+   "name": "the smallest hunt, everything else off",
    "capabilities": {
     "hunt": {
-     "alertRadiusM": 20,
-     "stayCreates": false
+     "alertRadiusM": 30,
+     "stayCreates": false,
+     "streetMemory": false,
+     "areas": false
     }
    },
    "resolved": {
     "map": true,
     "hunt": {
-     "alertRadiusM": 20,
-     "stayCreates": false
+     "alertRadiusM": 30,
+     "stayCreates": false,
+     "streetMemory": false,
+     "areas": false
     },
     "rooms": false,
     "moveIn": false,
@@ -125,15 +136,46 @@
    "name": "the widest hunt",
    "capabilities": {
     "hunt": {
-     "alertRadiusM": 500,
-     "stayCreates": true
+     "alertRadiusM": 300,
+     "stayCreates": true,
+     "streetMemory": true,
+     "areas": true
     }
    },
    "resolved": {
     "map": true,
     "hunt": {
-     "alertRadiusM": 500,
-     "stayCreates": true
+     "alertRadiusM": 300,
+     "stayCreates": true,
+     "streetMemory": true,
+     "areas": true
+    },
+    "rooms": false,
+    "moveIn": false,
+    "contacts": null,
+    "viewings": null,
+    "compare": null,
+    "paths": true,
+    "identity": null
+   }
+  },
+  {
+   "name": "a hunt with a street memory off and areas on",
+   "capabilities": {
+    "hunt": {
+     "alertRadiusM": 100,
+     "stayCreates": true,
+     "streetMemory": false,
+     "areas": true
+    }
+   },
+   "resolved": {
+    "map": true,
+    "hunt": {
+     "alertRadiusM": 100,
+     "stayCreates": true,
+     "streetMemory": false,
+     "areas": true
     },
     "rooms": false,
     "moveIn": false,
@@ -256,28 +298,44 @@
  ],
  "invalid": [
   {
-   "name": "radius below 20",
-   "json": "{\"hunt\":{\"alertRadiusM\":19,\"stayCreates\":true}}"
+   "name": "radius below 30",
+   "json": "{\"hunt\":{\"alertRadiusM\":29,\"stayCreates\":true,\"streetMemory\":true,\"areas\":true}}"
   },
   {
-   "name": "radius above 500",
-   "json": "{\"hunt\":{\"alertRadiusM\":501,\"stayCreates\":true}}"
+   "name": "radius above 300",
+   "json": "{\"hunt\":{\"alertRadiusM\":301,\"stayCreates\":true,\"streetMemory\":true,\"areas\":true}}"
   },
   {
    "name": "radius not an integer",
-   "json": "{\"hunt\":{\"alertRadiusM\":30.5,\"stayCreates\":true}}"
+   "json": "{\"hunt\":{\"alertRadiusM\":30.5,\"stayCreates\":true,\"streetMemory\":true,\"areas\":true}}"
   },
   {
    "name": "radius as text",
-   "json": "{\"hunt\":{\"alertRadiusM\":\"30\",\"stayCreates\":true}}"
+   "json": "{\"hunt\":{\"alertRadiusM\":\"30\",\"stayCreates\":true,\"streetMemory\":true,\"areas\":true}}"
   },
   {
    "name": "hunt without stayCreates",
-   "json": "{\"hunt\":{\"alertRadiusM\":30}}"
+   "json": "{\"hunt\":{\"alertRadiusM\":30,\"streetMemory\":true,\"areas\":true}}"
+  },
+  {
+   "name": "hunt without streetMemory",
+   "json": "{\"hunt\":{\"alertRadiusM\":30,\"stayCreates\":true,\"areas\":true}}"
+  },
+  {
+   "name": "hunt without areas",
+   "json": "{\"hunt\":{\"alertRadiusM\":30,\"stayCreates\":true,\"streetMemory\":true}}"
+  },
+  {
+   "name": "streetMemory as text",
+   "json": "{\"hunt\":{\"alertRadiusM\":30,\"stayCreates\":true,\"streetMemory\":\"yes\",\"areas\":true}}"
+  },
+  {
+   "name": "areas as a number",
+   "json": "{\"hunt\":{\"alertRadiusM\":30,\"stayCreates\":true,\"streetMemory\":true,\"areas\":1}}"
   },
   {
    "name": "hunt with an unknown key",
-   "json": "{\"hunt\":{\"alertRadiusM\":30,\"stayCreates\":true,\"sound\":true}}"
+   "json": "{\"hunt\":{\"alertRadiusM\":30,\"stayCreates\":true,\"streetMemory\":true,\"areas\":true,\"sound\":true}}"
   },
   {
    "name": "an unknown capability key",
@@ -373,7 +431,7 @@
   },
   {
    "name": "a __proto__ key inside hunt",
-   "json": "{\"hunt\":{\"alertRadiusM\":30,\"stayCreates\":true,\"__proto__\":{\"alertRadiusM\":500}}}"
+   "json": "{\"hunt\":{\"alertRadiusM\":30,\"stayCreates\":true,\"streetMemory\":true,\"areas\":true,\"__proto__\":{\"alertRadiusM\":300}}}"
   },
   {
    "name": "a constructor key inside identity",

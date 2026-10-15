@@ -1883,4 +1883,23 @@
     <string name="voice_switch_hint_sarvam">நீங்கள் இயக்கும் வரை அணைந்திருக்கும். மைக்ரோஃபோனை அழுத்தி, 30 வினாடி வரை பேசுங்கள்; சொற்கள் பெட்டியில் எழுதப்படும், நீங்கள் சரிபார்த்து மாற்றலாம். பெட்டியின் சொந்த பொத்தானை அழுத்தும் வரை எதுவும் அனுப்பப்படாது.</string>
     <string name="voice_disclosure_sarvam">ஆடியோ இந்த ஃபோனிலிருந்து நேரடியாக %1$s க்கு (Sarvam AI, இந்தியா) உங்கள் சொந்த Sarvam சாவியுடன் செல்கிறது, அவர்களின் பட்டியல் விலையில் நிமிடத்திற்கு சுமார் ₹%2$s, ஒரு முறைக்கு 30 வினாடி வரை. நீங்கள் சொல்லும் அனைத்தும், எண்கள் மற்றும் பெயர்கள் உட்பட, ஆடியோவாக அனுப்பப்படும்; சொன்ன தொலைபேசி எண்ணை தட்டச்சு செய்த எண்ணைப் போல நீக்க முடியாது. பதிவு இந்த ஃபோனில் சேமிக்கப்படாது.</string>
     <string name="voice_needs_sarvam_key">குரல் உள்ளீட்டுக்கு Sarvam ஐப் பயன்படுத்த, மேலே உங்கள் சொந்த Sarvam சாவியைச் சேமிக்கவும்.</string>
+    <!-- Kinds PR 26, Hunt as a capability (docs/03 §18.20, 2026-10-15): the Hunt words of the kind files. The house's three are the :app
+         notification strings (same text, kept equal by KindWordVectorsTest); the school's are under review. -->
+    <string name="notif_hunt_text">நீங்கள் பார்த்த வீடுகளையும் தெருக்களையும் கவனிக்கிறது</string>
+    <string name="notif_channel_alerts">வீடு, தெரு அறிவிப்புகள்</string>
+    <string name="notif_channel_alerts_desc">முன்பு பார்த்த வீடு அல்லது தெருவைக் கடக்கும்போது</string>
+    <string name="school_notif_seen">இந்தப் பள்ளியை ஏற்கெனவே பார்த்துள்ளீர்கள்: %1$s</string>
+    <string name="school_notif_street_text">சேமித்த பள்ளிகள்: %1$d, வருகைகள்: %2$d</string>
+    <string name="school_notif_street_text_since">சேமித்த பள்ளிகள்: %1$d, வருகைகள்: %2$d, முதல் முறை %3$s</string>
+    <string name="school_map_street_seen">%1$s · முன்பு வந்துள்ளீர்கள்: பள்ளிகள் %2$d, வருகைகள் %3$d</string>
+    <string name="school_notif_stay_title">நீங்கள் ஒரு பள்ளியில் இருக்கிறீர்களா?</string>
+    <string name="school_map_hunt_notify_rationale">நீங்கள் பார்த்த பள்ளியைக் கடக்கும்போது தேடல் பயன்முறை அறிவிப்பு மூலம் தெரிவிக்கும்.</string>
+    <string name="school_hunt_stopped_left_space">தேடல் பயன்முறை நின்றது. இது பள்ளிகள் பகுதியில் மட்டுமே இயங்கும்.</string>
+    <string name="school_hunt_needs_kind">தேடல் பயன்முறை பள்ளிகள் பகுதியில் மட்டுமே இயங்கும்; நீங்கள் கண்காணிப்பவை என்பதில் பள்ளிகள் அணைக்கப்பட்டுள்ளன.</string>
+    <string name="school_notif_hunt_text">நீங்கள் பார்த்த பள்ளிகளையும் தெருக்களையும் கவனிக்கிறது</string>
+    <string name="school_notif_channel_alerts">பள்ளி, தெரு அறிவிப்புகள்</string>
+    <string name="school_notif_channel_alerts_desc">முன்பு பார்த்த பள்ளி அல்லது தெருவைக் கடக்கும்போது</string>
+    <string name="school_map_notifications_off">அறிவிப்புகள் அணைக்கப்பட்டுள்ளன, அதனால் நீங்கள் ஒரு பள்ளியைக் கடக்கும்போது தேடல் பயன்முறை தெரிவிக்க முடியாது.</string>
+    <string name="school_map_location_off">Doorprints-க்கு இருப்பிடம் அணைக்கப்பட்டுள்ளது. தேடல் பயன்முறைக்கும் ‘இங்கே பள்ளியைச் சேமி’க்கும் இது தேவை.</string>
+    <string name="school_map_needs_precise">தேடல் பயன்முறைக்கும் ‘இங்கே பள்ளியைச் சேமி’க்கும் துல்லியமான இருப்பிடம் தேவை.</string>
 </resources>

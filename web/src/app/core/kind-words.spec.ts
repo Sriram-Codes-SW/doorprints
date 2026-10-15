@@ -53,7 +53,7 @@ describe('the space words are the kind files’ (S4b-BL-278)', () => {
   it('the schema names the sixteen words and then the phone’s other words (S4b-BL-316)', () => {
     const names = (schemaJson as unknown as { properties: { words: { propertyNames: { enum: string[] } } } }).properties.words.propertyNames.enum;
     expect(names).toEqual([...IDS, ...PHONE_IDS]);
-    expect(PHONE_IDS).toHaveLength(48);
+    expect(PHONE_IDS).toHaveLength(60);
   });
 
   it('house.json holds the house’s keys as they were, and the website reads them', () => {

@@ -28,8 +28,8 @@ import kotlinx.serialization.json.intOrNull
 /**
  * What a kind can do beyond its fields (docs/03 ADR-36 section 18.19): the `capabilities` block of a kind file
  * (`docs/schemas/kinds/kind.schema.json`), resolved; the twin of the website's `core/kind-capabilities.ts`, held to
- * `docs/schemas/kinds/capabilities-vectors.json`. Schema and resolver only: no screen reads [KindCapabilities.of] yet, so
- * nothing in the app changes. A feature a kind leaves out is null (false for a plain switch). A kind this build does not
+ * `docs/schemas/kinds/capabilities-vectors.json`. The phones read the Hunt block (kinds PR 26,
+ * section 18.20: `HuntSpace`, the Hunt card, the engine and the alerts); no other capability is read by a screen yet. A feature a kind leaves out is null (false for a plain switch). A kind this build does not
  * know has [DEFAULT]: the map and the paths, nothing else. (Where an unknown stored kind is drawn as a house, section 18.9,
  * the caller resolves the drawn kind first; this class does not guess.)
  */
@@ -44,8 +44,12 @@ data class KindCapabilities(
     val paths: Boolean = true,
     val identity: Identity? = null,
 ) {
-    /** Hunt mode: the alert radius in metres, and whether a stay at an unsaved place offers to save it. */
-    data class Hunt(val alertRadiusM: Int, val stayCreates: Boolean)
+    /**
+     * Hunt mode (docs/03 section 18.20): the alert radius in metres (30 to 300; the default of the kind's radius), whether a stay
+     * at an unsaved place offers to save it as an entry of this kind, whether the walk tells about streets this kind has
+     * saved places or visits on, and whether an area wake-up may start a walk of this kind.
+     */
+    data class Hunt(val alertRadiusM: Int, val stayCreates: Boolean, val streetMemory: Boolean, val areas: Boolean)
 
     /** The candidate's contact: whose it is, and whether saving a phone number makes or links a broker entry. */
     data class Contacts(val role: String, val autoCreateFromPhone: Boolean)
@@ -63,8 +67,8 @@ data class KindCapabilities(
         /** Everything off except the map and the paths: a kind with no `capabilities`, or a kind this build does not know. */
         val DEFAULT = KindCapabilities()
 
-        const val MIN_HUNT_RADIUS_M = 20
-        const val MAX_HUNT_RADIUS_M = 500
+        const val MIN_HUNT_RADIUS_M = 30
+        const val MAX_HUNT_RADIUS_M = 300
         const val MAX_COMPARE_CRITERIA = 10
         val ROLES = listOf("broker", "office", "agent")
         val ICONS = listOf(
@@ -79,7 +83,7 @@ data class KindCapabilities(
             // The house's set is today's hard-coded behaviour: Hunt at 30 m, the rooms, moving in, the broker made from a
             // phone, the house questions, Compare's ten checklist keys, the paths.
             "house" to KindCapabilities(
-                hunt = Hunt(alertRadiusM = 30, stayCreates = true),
+                hunt = Hunt(alertRadiusM = 30, stayCreates = true, streetMemory = true, areas = true),
                 rooms = true,
                 moveIn = true,
                 contacts = Contacts("broker", autoCreateFromPhone = true),
@@ -88,9 +92,12 @@ data class KindCapabilities(
                     listOf("water", "power", "parking", "sunlight", "ventilation", "noise", "security", "maintenance", "neighbourhood", "commute"),
                 ),
             ),
-            // The school has a contact (the admissions office) that never makes a broker; no Hunt, rooms, moving in,
+            // The school has a contact (the admissions office) that never makes a broker, and Hunt at 100 m; no rooms, moving in,
             // viewings or Compare. Its walks stay.
-            "school" to KindCapabilities(contacts = Contacts("office", autoCreateFromPhone = false)),
+            "school" to KindCapabilities(
+                hunt = Hunt(alertRadiusM = 100, stayCreates = true, streetMemory = true, areas = true),
+                contacts = Contacts("office", autoCreateFromPhone = false),
+            ),
         )
 
         /** The kinds that have capabilities, for the tests. */
@@ -101,7 +108,7 @@ data class KindCapabilities(
 
         /**
          * The strict reader of a `capabilities` object, the schema's twin in code: the resolved set, or null when anything is
-         * outside the schema (an unknown key at any level, a wrong type, a radius outside 20..500, more than ten or a repeated or
+         * outside the schema (an unknown key at any level, a wrong type, a radius outside 30..300, more than ten or a repeated or
          * malformed criterion, an icon or colour not on the lists). A missing key takes the default. Never throws.
          */
         fun parse(raw: JsonElement?): KindCapabilities? {
@@ -111,10 +118,13 @@ data class KindCapabilities(
             val rooms = obj.flag("rooms", false) ?: return null
             val moveIn = obj.flag("moveIn", false) ?: return null
             val paths = obj.flag("paths", true) ?: return null
-            val hunt = obj.block("hunt", listOf("alertRadiusM", "stayCreates")) { h ->
+            val hunt = obj.block("hunt", listOf("alertRadiusM", "stayCreates", "streetMemory", "areas")) { h ->
                 val radius = (h["alertRadiusM"] as? JsonPrimitive)?.takeIf { !it.isString }?.intOrNull
                 val stay = h.flag("stayCreates", null)
-                if (radius == null || radius !in MIN_HUNT_RADIUS_M..MAX_HUNT_RADIUS_M || stay == null) null else Hunt(radius, stay)
+                val street = h.flag("streetMemory", null)
+                val areas = h.flag("areas", null)
+                if (radius == null || radius !in MIN_HUNT_RADIUS_M..MAX_HUNT_RADIUS_M || stay == null || street == null || areas == null) null
+                else Hunt(radius, stay, street, areas)
             }
             val contacts = obj.block("contacts", listOf("role", "autoCreateFromPhone")) { c ->
                 val role = c.text("role")
