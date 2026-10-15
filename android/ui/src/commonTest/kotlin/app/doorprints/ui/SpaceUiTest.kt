@@ -110,4 +110,27 @@ class SpaceUiTest {
         assertFalse(SpaceUi(both, "school").hidden)
         assertFalse(SpaceUi(houseOnly, "school").hidden) // one kind on: no spaces, so nothing is hidden
     }
+
+    @Test
+    fun theSchoolTheDefaultWithTheHouseOffIsOneSpaceAndEveryEntryOfIsHeldAndANewEntryIsASchool() {
+        // docs/03 §18.18: the house turned off keeps its entries, listed in the one space; the default is always a kind that is on.
+        val schoolOnly = both.withDefault("school").withKindEnabled("house", false)
+        assertEquals(listOf("school"), schoolOnly.enabled)
+        assertEquals("school", schoolOnly.default)
+        val space = SpaceUi.resolve(schoolOnly, "house")
+        assertEquals("school", space.kind) // a restored choice of the house is ignored
+        assertFalse(space.multi)
+        assertTrue(space.view.holds(null) && space.view.holds("school"))
+        assertEquals("school", space.creating.id)
+        assertFalse(space.huntHere)
+    }
+
+    @Test
+    fun withTwoKindsOnANewEntryIsOfTheSpaceItIsMadeIn() {
+        // A space that is off takes no new entry (`SpaceScope.createKind`, the vectors); with two built-in kinds none can be off while two are on.
+        assertEquals("school", SpaceUi.resolve(both, "school").creating.id)
+        assertEquals("house", SpaceUi.resolve(both, "house").creating.id)
+        assertEquals("school", SpaceUi.resolve(both.withDefault("school"), null).creating.id)
+        assertEquals("house", SpaceUi.HOUSE.creating.id)
+    }
 }

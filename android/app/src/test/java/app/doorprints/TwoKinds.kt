@@ -80,6 +80,11 @@ class TwoKinds(app: DoorprintsApp, available: List<String> = listOf("house", "sc
         store.editKindSetting { s -> s.withExperimental(true).withKindEnabled("school", true).let { if (schoolDefault) it.withDefault("school") else it } }
     }
 
+    /** The school alone and the default, the house turned off in *What you track* (docs/03 §18.18): the house's entries are kept. */
+    fun schoolOnly() = runBlocking {
+        store.editKindSetting { s -> s.withExperimental(true).withKindEnabled("school", true).withDefault("school").withKindEnabled("house", false) }
+    }
+
     /** The content with this store's services (and the developer flag, as a build that ships the school has it). */
     @Composable
     fun Provide(content: @Composable () -> Unit) {

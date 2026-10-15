@@ -54,6 +54,13 @@ On the website, the list of schools has a row of buttons for each of **Board**, 
 Turn off **Show Schools**, or **Experimental: more than houses**. Doorprints opens on your houses again. Nothing is
 deleted: the schools you saved stay, a backup keeps them, and they come back when you show them again.
 
+You can turn off **Show Houses** instead and keep only Schools. Your houses are not hidden or deleted: with one list shown
+Doorprints opens straight into it, and it still holds your houses, their **Recently deleted** and any backup, and **What you
+track** still lists **Houses** with how many are saved. A new entry is a school. **Hunt mode** is for houses, so while **Houses**
+is off, *Start Hunt mode* from a reminder opens the Map and says *Hunt mode runs in the Houses space only, and Houses is turned
+off in What you track.* instead of starting. Viewing reminders you already set still come. Turn **Show Houses** on again and
+everything is as it was.
+
 ## Backups
 
 A backup made while more than houses are shown lists them (`"search": {"kinds": ["house", "school"], "defaultKind":

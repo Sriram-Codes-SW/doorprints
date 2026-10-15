@@ -22,7 +22,7 @@ import { describe, expect, it } from 'vitest';
 import vectorsJson from '../../../../docs/schemas/kinds/space-scope-vectors.json';
 import { inTheRunning } from '../shared/house-status';
 import type { HouseStatus } from './models';
-import { COMPARE_MAX, aiShownIn, comparePick, fileSlug, holdsFor, shareKind, spaceFileName } from './space-scope';
+import { COMPARE_MAX, aiShownIn, comparePick, createKind, fileSlug, holdsFor, shareKind, spaceFileName } from './space-scope';
 
 type Cand = { id: string; kind?: string; status?: HouseStatus; deleted?: boolean };
 interface Vectors {
@@ -32,6 +32,7 @@ interface Vectors {
   fileName: { name: string; space: string | null; many: string; in: string; out: string }[];
   assistant: { name: string; kind: string; available: string[]; on: boolean; ownKey: boolean; shown: boolean }[];
   shareKind: { name: string; chosen: string | null; enabled: string[]; default: string; kind: string }[];
+  createKind: { name: string; space: string; enabled: string[]; default: string; kind: string }[];
 }
 const V = vectorsJson as unknown as Vectors;
 
@@ -67,5 +68,7 @@ describe('the space-scope vectors (S4b-BL-279)', () => {
   it('the kind a shared listing lands in', () => {
     for (const v of V.shareKind) expect(shareKind(v.chosen, v.enabled, v.default), v.name).toBe(v.kind);
     expect(shareKind(undefined, ['house'], 'house')).toBe('house');
+    // A new entry is never made in a kind that is off (docs/03 §18.18).
+    for (const v of V.createKind) expect(createKind(v.space, v.enabled, v.default), v.name).toBe(v.kind);
   });
 });

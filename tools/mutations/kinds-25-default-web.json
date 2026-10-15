@@ -1,0 +1,26 @@
+{
+  "spec": [
+    "web/src/app/core/space-scope.spec.ts",
+    "web/src/app/core/space.spec.ts"
+  ],
+  "mutations": [
+    {
+      "file": "web/src/app/core/space-scope.ts",
+      "find": "return enabled.includes(space) ? space : dflt;",
+      "replace": "return space;",
+      "expect": "a shared listing lands in"
+    },
+    {
+      "file": "web/src/app/core/space.service.ts",
+      "find": "return m ? this.createIn(m[1]) : this.dflt();",
+      "replace": "return m ? m[1] : this.dflt();",
+      "expect": "a space that is turned off takes no new entry"
+    },
+    {
+      "file": "web/src/app/core/space.service.ts",
+      "find": "return this.multi() ? `/k/${this.createIn(kind)}/new` : '/houses/new';",
+      "replace": "return this.multi() ? `/k/${kind}/new` : '/houses/new';",
+      "expect": "a space that is turned off takes no new entry"
+    }
+  ]
+}

@@ -334,6 +334,19 @@ describe('MapPage: a space shows its own candidates in its own words (S4b-BL-212
     expect(host.textContent).toContain('Choose “Add school”, then pick the spot on the map to add your first school.');
   });
 
+  it('the school alone (the house turned off): the kept houses are still listed and counted, in the school’s words; Add makes a school (docs/03 §18.18)', async () => {
+    localStorage.setItem('doorprints.kinds.experimental', '1');
+    localStorage.setItem('doorprints.kinds.enabled', '["school"]');
+    localStorage.setItem('doorprints.kinds.default', 'school');
+    const host = await render({}, stub);
+    expect(rows(host)).toHaveLength(3);
+    expect(text(host.querySelector('#houses-heading'))).toBe('Your schools');
+    expect([...host.querySelectorAll('dl.stats div')].map((d) => text(d))[0]).toBe('Schools3');
+    expect(host.textContent).toContain('Add school');
+    expect(host.textContent).not.toContain('Add house');
+    expect([...host.querySelectorAll('ul.list a')].every((a) => /^\/houses\//.test(a.getAttribute('href') ?? ''))).toBe(true);
+  });
+
   it('with one kind enabled every candidate is listed, as before, in the house’s words', async () => {
     const host = await render({}, stub);
     expect(rows(host)).toHaveLength(3);
