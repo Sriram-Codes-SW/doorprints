@@ -1274,6 +1274,9 @@ export const ta: Dict = {
   'tour.done.title': 'நீங்கள் தயார்',
   'tour.done.body': 'இவை Doorprints-இன் முக்கியப் பகுதிகள். வீட்டைச் சேர் என்பதில் தொடங்கி, செயலியைத் திறந்து வைத்துக்கொண்டு வீட்டைப் பார்க்கச் செல்லுங்கள்.',
   'tour.done.action': 'முடி என்பதைத் தொட்டு, உங்கள் முதல் வீட்டைச் சேர்க்கவும்.',
+  'tour.kind.welcome': 'நீங்கள் சேமிக்கும் {many} ஐ Doorprints நினைவில் வைத்திருக்கும். நீங்கள் காப்புப்பிரதி எடுக்கவோ பகிரவோ தேர்வு செய்யாத வரை எல்லாம் இந்தச் சாதனத்திலேயே இருக்கும்.',
+  'tour.kind.body': 'Doorprints இன் இந்தப் பகுதி {many} க்கும் செயல்படும். பார்த்துவிட்டு அடுத்து என்பதை அழுத்தவும்.',
+  'tour.kind.action': 'உங்கள் {many} இல் ஒன்றுடன் முயற்சிக்கவும், அல்லது பார்த்துவிட்டு அடுத்து என்பதை அழுத்தவும்.',
   // S4b-BL-104 (c, d) (2026-10-01): the Basement switch under Floor, and the import's note on a floor out of range. Under review (owner rule: hi/ta/te ship marked under review).
   'house.floorBasementToggle': 'அடித்தளம்',
   'house.floorBasementHint': 'தரைக்குக் கீழே உள்ள நிலை, 1 முதல் 5 வரை',
@@ -1884,6 +1887,7 @@ export const ta: Dict = {
   'school.questions.noneToPick': 'உங்கள் பட்டியலில் உள்ள ஒவ்வொரு கேள்வியும் ஏற்கனவே இந்தப் பள்ளியில் உள்ளது.',
   'school.questions.remove': 'இந்தப் பள்ளியிலிருந்து நீக்கு: {q}',
   'school.viewings.saveFirst': 'வருகையைத் திட்டமிட முதலில் பள்ளியைச் சேமியுங்கள்.',
+  'school.viewings.remindText': '{time} மணிக்கு வருகை. இடத்திற்கு Doorprints ஐத் திறக்கவும்.',
   'school.walkPlace': 'இந்தப் பள்ளி',
   'school.walkLabel': 'இந்தப் பள்ளி',
   'school.walkApprox': 'இந்தப் பள்ளிக்கு இன்னும் துல்லியமான இடம் இல்லை, ஒரு பகுதி மட்டுமே உள்ளது. முதலில் வரைபடத்தில் வைக்கவும், பிறகு சரிபார்க்கவும்.',

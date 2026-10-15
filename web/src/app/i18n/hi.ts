@@ -1274,6 +1274,9 @@ export const hi: Dict = {
   'tour.done.title': 'आप तैयार हैं',
   'tour.done.body': 'ये Doorprints के मुख्य हिस्से थे। मकान जोड़ें से शुरू करें और ऐप खुला रखकर मकान देखने जाएँ।',
   'tour.done.action': 'समाप्त करें दबाएँ, फिर अपना पहला मकान जोड़ें।',
+  'tour.kind.welcome': 'Doorprints आपके सहेजे हुए {many} को याद रखता है। जब तक आप बैकअप या साझा न करें, सब कुछ इसी डिवाइस पर रहता है।',
+  'tour.kind.body': 'Doorprints का यह हिस्सा {many} के लिए भी काम करता है। इसे देखें, फिर आगे दबाएँ।',
+  'tour.kind.action': 'अपने {many} में से किसी के साथ आज़माएँ, या बस देखें और आगे दबाएँ।',
   // S4b-BL-104 (c, d) (2026-10-01): the Basement switch under Floor, and the import's note on a floor out of range. Under review (owner rule: hi/ta/te ship marked under review).
   'house.floorBasementToggle': 'बेसमेंट',
   'house.floorBasementHint': 'ज़मीन के नीचे का स्तर, 1 से 5',
@@ -1884,6 +1887,7 @@ export const hi: Dict = {
   'school.questions.noneToPick': 'आपकी सूची का हर सवाल इस स्कूल पर पहले से है।',
   'school.questions.remove': 'इस स्कूल से हटाएँ: {q}',
   'school.viewings.saveFirst': 'दौरा तय करने के लिए पहले स्कूल सहेजें।',
+  'school.viewings.remindText': '{time} पर दौरा है। जगह के लिए Doorprints खोलें।',
   'school.walkPlace': 'इस स्कूल',
   'school.walkLabel': 'यह स्कूल',
   'school.walkApprox': 'इस स्कूल की अभी कोई सटीक जगह नहीं है, केवल एक इलाक़ा है। पहले इसे नक्शे पर रखें, फिर जाँचें।',

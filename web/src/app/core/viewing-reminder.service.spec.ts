@@ -34,6 +34,7 @@ const FIRE = START - 60 * MIN;
 
 let viewings: Viewing[];
 let remind: boolean;
+let houses: { id: string; kind?: string }[];
 let showNotification: ReturnType<typeof vi.fn>;
 let registration: { showNotification: typeof showNotification } | undefined;
 
@@ -44,7 +45,7 @@ function stubNotification(permission: string): void {
 function make(): ViewingReminderService {
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({
-    providers: [{ provide: LocalDataService, useValue: { viewings: () => of(viewings), viewingsRemind: () => of(remind) } }],
+    providers: [{ provide: LocalDataService, useValue: { viewings: () => of(viewings), viewingsRemind: () => of(remind), houses: () => of(houses) } }],
   });
   return TestBed.inject(ViewingReminderService);
 }
@@ -52,6 +53,7 @@ function make(): ViewingReminderService {
 beforeEach(() => {
   viewings = [v('v_00000001', { withWhom: 'Meena Iyer', notes: 'Flat 4B, 12 MG Road' })];
   remind = true;
+  houses = [{ id: 'h-secret' }];
   showNotification = vi.fn(async () => undefined);
   registration = { showNotification };
   vi.stubGlobal('navigator', { serviceWorker: { getRegistration: async () => registration } });
@@ -80,6 +82,24 @@ describe('ViewingReminderService', () => {
     (s as unknown as { lastTick: number }).lastTick = FIRE - MIN;
     await s.tick(FIRE + 3);
     expect(showNotification).toHaveBeenCalledTimes(1);
+  });
+
+  it('words the line by the kind of the candidate: a school’s viewing is a visit (kinds PR 31)', async () => {
+    stubNotification('granted');
+    houses = [{ id: 'h-secret', kind: 'school' }];
+    const s = make();
+    s.start(FIRE - MIN);
+    await s.tick(FIRE + 1);
+    const time = new Intl.DateTimeFormat(TestBed.inject(TranslationService).locale(), { timeStyle: 'short' }).format(new Date(START));
+    expect(showNotification.mock.calls[0][1].body).toBe('A visit at ' + time + '. Open Doorprints for the place.');
+    // The house's line is untouched, and a candidate that is gone reads as the house's.
+    showNotification.mockClear();
+    houses = [];
+    viewings = [v('v_00000002')];
+    const t = make();
+    t.start(FIRE - MIN);
+    await t.tick(FIRE + 1);
+    expect(showNotification.mock.calls[0][1].body).toBe('A viewing at ' + time + '. Open Doorprints for the place.');
   });
 
   it('shows an in-page banner when permission is not granted', async () => {

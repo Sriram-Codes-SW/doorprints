@@ -85,7 +85,7 @@
   {
    "id": "comparePickMore",
    "house": {
-    "web": null,
+    "web": "compare.pickMore",
     "android": "compare_pick_more",
     "text": {
      "en": "Select at least two houses to compare.",
@@ -95,7 +95,7 @@
     }
    },
    "school": {
-    "web": null,
+    "web": "school.comparePickMore",
     "android": "school_compare_pick_more",
     "text": {
      "en": "Select at least two schools to compare."
@@ -105,7 +105,7 @@
   {
    "id": "compareChoose",
    "house": {
-    "web": null,
+    "web": "compare.choose",
     "android": "compare_choose",
     "text": {
      "en": "Choose houses (%1$d of %2$d)",
@@ -115,7 +115,7 @@
     }
    },
    "school": {
-    "web": null,
+    "web": "school.compareChoose",
     "android": "school_compare_choose",
     "text": {
      "en": "Choose schools (%1$d of %2$d)"
@@ -165,7 +165,7 @@
   {
    "id": "compareFootnote",
    "house": {
-    "web": null,
+    "web": "compare.footnote",
     "android": "compare_footnote",
     "text": {
      "en": "Checklist items are scored 0 to 5. Tap a house name to open it.",
@@ -175,7 +175,7 @@
     }
    },
    "school": {
-    "web": null,
+    "web": "school.compareFootnote",
     "android": "school_compare_footnote",
     "text": {
      "en": "Tap a school name to open it."
@@ -265,7 +265,7 @@
   {
    "id": "planHint",
    "house": {
-    "web": null,
+    "web": "plan.placeholder",
     "android": "ai_plan_hint",
     "text": {
      "en": "e.g. Shortlisted 2BHKs under 35k, at most 4 stops",
@@ -275,7 +275,7 @@
     }
    },
    "school": {
-    "web": null,
+    "web": "school.planPlaceholder",
     "android": "school_ai_plan_hint",
     "text": {
      "en": "e.g. Shortlisted CBSE schools this afternoon"
@@ -305,7 +305,7 @@
   {
    "id": "exportScope",
    "house": {
-    "web": null,
+    "web": "data.scope",
     "android": "export_scope",
     "text": {
      "en": "Which houses",
@@ -315,7 +315,7 @@
     }
    },
    "school": {
-    "web": null,
+    "web": "school.dataScope",
     "android": "school_export_scope",
     "text": {
      "en": "Which schools"
@@ -365,7 +365,7 @@
   {
    "id": "exportPhotosShortlisted",
    "house": {
-    "web": null,
+    "web": "data.photosShortlisted",
     "android": "export_photos_shortlisted",
     "text": {
      "en": "Photos of shortlisted houses",
@@ -375,7 +375,7 @@
     }
    },
    "school": {
-    "web": null,
+    "web": "school.dataPhotosShortlisted",
     "android": "school_export_photos_shortlisted",
     "text": {
      "en": "Photos of shortlisted schools"
@@ -525,7 +525,7 @@
   {
    "id": "notFound",
    "house": {
-    "web": null,
+    "web": "house.notFound",
     "android": "house_not_found",
     "text": {
      "en": "This house is no longer on this phone.",
@@ -535,7 +535,7 @@
     }
    },
    "school": {
-    "web": null,
+    "web": "school.notFound",
     "android": "school_not_found",
     "text": {
      "en": "This school is no longer on this phone."
@@ -645,7 +645,7 @@
   {
    "id": "savePhotosFirst",
    "house": {
-    "web": null,
+    "web": "house.saveFirstPhotos",
     "android": "house_save_first_photos",
     "text": {
      "en": "Save the house to add photos.",
@@ -655,7 +655,7 @@
     }
    },
    "school": {
-    "web": null,
+    "web": "school.saveFirstPhotos",
     "android": "school_save_first_photos",
     "text": {
      "en": "Save the school first to add photos."
@@ -765,7 +765,7 @@
   {
    "id": "aiDisclosure",
    "house": {
-    "web": null,
+    "web": "ai.disclosure",
     "android": "ai_disclosure",
     "text": {
      "en": "Your question and the matching house notes are sent to the AI provider set up on your server.",
@@ -775,7 +775,7 @@
     }
    },
    "school": {
-    "web": null,
+    "web": "school.aiDisclosure",
     "android": "school_ai_disclosure",
     "text": {
      "en": "Your question and the matching school notes are sent to the AI provider set up on your server."
@@ -785,7 +785,7 @@
   {
    "id": "aiDisclosureOwnKey",
    "house": {
-    "web": null,
+    "web": "ai.disclosureOwnKeyHost",
     "android": "ai_disclosure_own_key_host",
     "text": {
      "en": "The text is sent from this phone straight to %1$s with your own key, together with the matching house notes.",
@@ -795,7 +795,7 @@
     }
    },
    "school": {
-    "web": null,
+    "web": "school.aiDisclosureOwnKeyHost",
     "android": "school_ai_disclosure_own_key_host",
     "text": {
      "en": "The text is sent from this phone straight to %1$s with your own key, together with the matching school notes."
@@ -805,7 +805,7 @@
   {
    "id": "placeFound",
    "house": {
-    "web": null,
+    "web": "house.placeFound",
     "android": "map_place_found",
     "text": {
      "en": "The map shows “%1$s”. Long-press the house’s spot to add it there.",
@@ -815,7 +815,7 @@
     }
    },
    "school": {
-    "web": null,
+    "web": "school.placeFound",
     "android": "school_map_place_found",
     "text": {
      "en": "The map shows “%1$s”. Long-press the school’s spot to add it there."
@@ -885,7 +885,7 @@
   {
    "id": "notesEmpty",
    "house": {
-    "web": null,
+    "web": "areaNotes.empty",
     "android": "notes_empty",
     "text": {
      "en": "No area notes yet. Add one from a house page.",
@@ -895,7 +895,7 @@
     }
    },
    "school": {
-    "web": null,
+    "web": "school.areaNotesEmpty",
     "android": "school_notes_empty",
     "text": {
      "en": "No area notes yet. Add one from a school."
@@ -1559,6 +1559,890 @@
     "android": "school_viewing_reminder_body",
     "text": {
      "en": "Visit to %1$s at %2$s"
+    }
+   }
+  },
+  {
+   "id": "viewingsHeading",
+   "house": {
+    "web": "viewings.title",
+    "android": null,
+    "text": {
+     "en": "Viewings"
+    }
+   },
+   "school": {
+    "web": "school.viewings.heading",
+    "android": null,
+    "text": {
+     "en": "School visits"
+    }
+   }
+  },
+  {
+   "id": "questionsRemove",
+   "house": {
+    "web": "questions.removeAria",
+    "android": null,
+    "text": {
+     "en": "Remove from this house: {q}"
+    }
+   },
+   "school": {
+    "web": "school.questions.remove",
+    "android": null,
+    "text": {
+     "en": "Remove from this school: {q}"
+    }
+   }
+  },
+  {
+   "id": "viewingsSaveFirst",
+   "house": {
+    "web": "viewings.saveFirst",
+    "android": null,
+    "text": {
+     "en": "Save the house first to plan a viewing."
+    }
+   },
+   "school": {
+    "web": "school.viewings.saveFirst",
+    "android": null,
+    "text": {
+     "en": "Save the school first to plan a visit."
+    }
+   }
+  },
+  {
+   "id": "compareTitle",
+   "house": {
+    "web": "compare.title",
+    "android": null,
+    "text": {
+     "en": "Compare houses"
+    }
+   },
+   "school": {
+    "web": "school.compareTitle",
+    "android": null,
+    "text": {
+     "en": "Compare schools"
+    }
+   }
+  },
+  {
+   "id": "compareNone",
+   "house": {
+    "web": "compare.empty",
+    "android": null,
+    "text": {
+     "en": "No houses to compare yet. Rejected and Not chosen houses are left out."
+    }
+   },
+   "school": {
+    "web": "school.compareEmpty",
+    "android": null,
+    "text": {
+     "en": "No schools to compare yet. Rejected and Not chosen schools are left out."
+    }
+   }
+  },
+  {
+   "id": "compareAdd",
+   "house": {
+    "web": "compare.addSome",
+    "android": null,
+    "text": {
+     "en": "Add houses on the map"
+    }
+   },
+   "school": {
+    "web": "school.compareAdd",
+    "android": null,
+    "text": {
+     "en": "Add schools on the map"
+    }
+   }
+  },
+  {
+   "id": "comparePicker",
+   "house": {
+    "web": "compare.pickerLabel",
+    "android": null,
+    "text": {
+     "en": "Houses to compare"
+    }
+   },
+   "school": {
+    "web": "school.comparePicker",
+    "android": null,
+    "text": {
+     "en": "Schools to compare"
+    }
+   }
+  },
+  {
+   "id": "compareCaption",
+   "house": {
+    "web": "compare.caption",
+    "android": null,
+    "text": {
+     "en": "Side-by-side comparison of the selected houses"
+    }
+   },
+   "school": {
+    "web": "school.compareCaption",
+    "android": null,
+    "text": {
+     "en": "Side-by-side comparison of the selected schools"
+    }
+   }
+  },
+  {
+   "id": "compareSearch",
+   "house": {
+    "web": "compare.search",
+    "android": null,
+    "text": {
+     "en": "Find a house"
+    }
+   },
+   "school": {
+    "web": "school.compareSearch",
+    "android": null,
+    "text": {
+     "en": "Find a school"
+    }
+   }
+  },
+  {
+   "id": "compareOnlyOne",
+   "house": {
+    "web": "compare.onlyOne",
+    "android": null,
+    "text": {
+     "en": "Only one house can be compared so far. Add at least one more. Rejected and Not chosen houses are left out."
+    }
+   },
+   "school": {
+    "web": "school.compareOnlyOne",
+    "android": null,
+    "text": {
+     "en": "Only one school can be compared so far. Add at least one more. Rejected and Not chosen schools are left out."
+    }
+   }
+  },
+  {
+   "id": "askIntro",
+   "house": {
+    "web": "ask.intro",
+    "android": null,
+    "text": {
+     "en": "Answers use only the houses, notes and visits you saved, and link to the houses they come from."
+    }
+   },
+   "school": {
+    "web": "school.askIntro",
+    "android": null,
+    "text": {
+     "en": "Answers use only the schools, notes and visits you saved, and link to the schools they come from."
+    }
+   }
+  },
+  {
+   "id": "planTitle",
+   "house": {
+    "web": "plan.title",
+    "android": null,
+    "text": {
+     "en": "Plan my visits"
+    }
+   },
+   "school": {
+    "web": "school.planTitle",
+    "android": null,
+    "text": {
+     "en": "Plan my school visits"
+    }
+   }
+  },
+  {
+   "id": "planIntro",
+   "house": {
+    "web": "plan.intro",
+    "android": null,
+    "text": {
+     "en": "Describe what you want to see. The assistant picks matching houses and orders them into a walking route from your start point."
+    }
+   },
+   "school": {
+    "web": "school.planIntro",
+    "android": null,
+    "text": {
+     "en": "Describe what you want to see. The assistant picks matching schools and orders them into a walking route from your start point."
+    }
+   }
+  },
+  {
+   "id": "planNoStops",
+   "house": {
+    "web": "plan.noStops",
+    "android": null,
+    "text": {
+     "en": "No saved house matched. Try a broader request."
+    }
+   },
+   "school": {
+    "web": "school.planNoStops",
+    "android": null,
+    "text": {
+     "en": "No saved school matched. Try a broader request."
+    }
+   }
+  },
+  {
+   "id": "dataEmptyAction",
+   "house": {
+    "web": "data.emptyAction",
+    "android": null,
+    "text": {
+     "en": "Add a house on the map"
+    }
+   },
+   "school": {
+    "web": "school.dataEmptyAction",
+    "android": null,
+    "text": {
+     "en": "Add a school on the map"
+    }
+   }
+  },
+  {
+   "id": "dataNoShortlisted",
+   "house": {
+    "web": "data.noShortlisted",
+    "android": null,
+    "text": {
+     "en": "No shortlisted houses yet. Choose “All houses” to include every house."
+    }
+   },
+   "school": {
+    "web": "school.dataNoShortlisted",
+    "android": null,
+    "text": {
+     "en": "No shortlisted schools yet. Choose “All schools” to include every school."
+    }
+   }
+  },
+  {
+   "id": "dataNoneMatch",
+   "house": {
+    "web": "data.noneMatch",
+    "android": null,
+    "text": {
+     "en": "No houses match these options. Turn on “Include rejected houses” to include them."
+    }
+   },
+   "school": {
+    "web": "school.dataNoneMatch",
+    "android": null,
+    "text": {
+     "en": "No schools match these options. Turn on “Include rejected schools” to include them."
+    }
+   }
+  },
+  {
+   "id": "dataCount",
+   "house": {
+    "web": "data.countHouses",
+    "android": null,
+    "text": {
+     "en": "Houses: {n}"
+    }
+   },
+   "school": {
+    "web": "data.countKind",
+    "android": null,
+    "text": {
+     "en": "{many}: {n}"
+    }
+   }
+  },
+  {
+   "id": "dataPreview",
+   "house": {
+    "web": "data.preview",
+    "android": null,
+    "text": {
+     "en": "Houses: {houses} · Visits: {visits} · Photos: {photos}"
+    }
+   },
+   "school": {
+    "web": "data.previewKind",
+    "android": null,
+    "text": {
+     "en": "{many}: {houses} · Visits: {visits} · Photos: {photos}"
+    }
+   }
+  },
+  {
+   "id": "shareCreate",
+   "house": {
+    "web": "share.create",
+    "android": null,
+    "text": {
+     "en": "Add a house from this"
+    }
+   },
+   "school": {
+    "web": "school.shareCreate",
+    "android": null,
+    "text": {
+     "en": "Add a school from this"
+    }
+   }
+  },
+  {
+   "id": "shareHint",
+   "house": {
+    "web": "share.hint",
+    "android": null,
+    "text": {
+     "en": "Next, choose where the house is on the map. The text goes into the new house’s notes, where you can copy the details into the form."
+    }
+   },
+   "school": {
+    "web": "school.shareHint",
+    "android": null,
+    "text": {
+     "en": "Next, choose where the school is on the map. The text goes into the new school’s notes, where you can copy the details into the form."
+    }
+   }
+  },
+  {
+   "id": "titleNew",
+   "house": {
+    "web": "title.newHouse",
+    "android": null,
+    "text": {
+     "en": "New house · Doorprints"
+    }
+   },
+   "school": {
+    "web": "school.titleNew",
+    "android": null,
+    "text": {
+     "en": "New school · Doorprints"
+    }
+   }
+  },
+  {
+   "id": "titleDetails",
+   "house": {
+    "web": "title.house",
+    "android": null,
+    "text": {
+     "en": "House details · Doorprints"
+    }
+   },
+   "school": {
+    "web": "school.titleDetails",
+    "android": null,
+    "text": {
+     "en": "School details · Doorprints"
+    }
+   }
+  },
+  {
+   "id": "titleMap",
+   "house": {
+    "web": "title.map",
+    "android": null,
+    "text": {
+     "en": "Doorprints: remember every house you've seen"
+    }
+   },
+   "school": {
+    "web": "school.titleMap",
+    "android": null,
+    "text": {
+     "en": "Schools · Doorprints"
+    }
+   }
+  },
+  {
+   "id": "namePlaceholder",
+   "house": {
+    "web": "house.namePlaceholder",
+    "android": null,
+    "text": {
+     "en": "e.g. 2BHK near the park"
+    }
+   },
+   "school": {
+    "web": "school.namePlaceholder",
+    "android": null,
+    "text": {
+     "en": "e.g. St. Mary’s School"
+    }
+   }
+  },
+  {
+   "id": "nameRequired",
+   "house": {
+    "web": "house.nameRequired",
+    "android": null,
+    "text": {
+     "en": "Please give the house a name."
+    }
+   },
+   "school": {
+    "web": "school.nameRequired",
+    "android": null,
+    "text": {
+     "en": "Please give the school a name."
+    }
+   }
+  },
+  {
+   "id": "locationRequired",
+   "house": {
+    "web": "house.locationRequired",
+    "android": null,
+    "text": {
+     "en": "Set where the house is before saving: choose the spot on the map, type the coordinates or use your location."
+    }
+   },
+   "school": {
+    "web": "school.locationRequired",
+    "android": null,
+    "text": {
+     "en": "Set where the school is before saving: choose the spot on the map, type the coordinates or use your location."
+    }
+   }
+  },
+  {
+   "id": "locationUnset",
+   "house": {
+    "web": "house.locationUnset",
+    "android": null,
+    "text": {
+     "en": "Location not set yet. Choose the spot on the map where the house is, type the latitude and longitude, or use your location."
+    }
+   },
+   "school": {
+    "web": "school.locationUnset",
+    "android": null,
+    "text": {
+     "en": "Location not set yet. Choose the spot on the map where the school is, type the latitude and longitude, or use your location."
+    }
+   }
+  },
+  {
+   "id": "mapLabel",
+   "house": {
+    "web": "house.mapLabel",
+    "android": null,
+    "text": {
+     "en": "Map of the house location"
+    }
+   },
+   "school": {
+    "web": "school.mapLabel",
+    "android": null,
+    "text": {
+     "en": "Map of the school location"
+    }
+   }
+  },
+  {
+   "id": "saveFirstVisits",
+   "house": {
+    "web": "house.saveFirstVisits",
+    "android": null,
+    "text": {
+     "en": "Save the house first to record visits."
+    }
+   },
+   "school": {
+    "web": "school.saveFirstVisits",
+    "android": null,
+    "text": {
+     "en": "Save the school first to record visits."
+    }
+   }
+  },
+  {
+   "id": "listingHint",
+   "house": {
+    "web": "listingFill.hint",
+    "android": null,
+    "text": {
+     "en": "The details are suggested by AI; check them, set the location on the map, then create the house."
+    }
+   },
+   "school": {
+    "web": "school.listingHint",
+    "android": null,
+    "text": {
+     "en": "Preview: the details are suggested by AI; check them, set the location on the map, then create the school."
+    }
+   }
+  },
+  {
+   "id": "fitTitle",
+   "house": {
+    "web": "map.fitTitle",
+    "android": null,
+    "text": {
+     "en": "Zoom the map to show every house in the list"
+    }
+   },
+   "school": {
+    "web": "school.fitTitle",
+    "android": null,
+    "text": {
+     "en": "Zoom the map to show every school in the list"
+    }
+   }
+  },
+  {
+   "id": "walkTitle",
+   "house": {
+    "web": "trace.here.titleHouse",
+    "android": null,
+    "text": {
+     "en": "Did I walk past this house?"
+    }
+   },
+   "school": {
+    "web": "school.walkTitle",
+    "android": null,
+    "text": {
+     "en": "Did I walk past this school?"
+    }
+   }
+  },
+  {
+   "id": "areasIntro",
+   "house": {
+    "web": "areas.intro",
+    "android": null,
+    "text": {
+     "en": "The neighbourhoods you are hunting in. A note on an area shows on every house inside its circle."
+    }
+   },
+   "school": {
+    "web": "school.areasIntro",
+    "android": null,
+    "text": {
+     "en": "The neighbourhoods you are hunting in. A note on an area shows on every school inside its circle."
+    }
+   }
+  },
+  {
+   "id": "areasDataBody",
+   "house": {
+    "web": "areas.dataBody",
+    "android": null,
+    "text": {
+     "en": "The neighbourhoods you are hunting in, with notes that show on the houses inside them."
+    }
+   },
+   "school": {
+    "web": "school.areasDataBody",
+    "android": null,
+    "text": {
+     "en": "The neighbourhoods you are hunting in, with notes that show on the schools inside them."
+    }
+   }
+  },
+  {
+   "id": "areasConfirmDelete",
+   "house": {
+    "web": "areas.confirmDelete",
+    "android": null,
+    "text": {
+     "en": "Delete this area? Its notes stay but show on no house."
+    }
+   },
+   "school": {
+    "web": "school.areasConfirmDelete",
+    "android": null,
+    "text": {
+     "en": "Delete this area? Its notes stay but show on no school."
+    }
+   }
+  },
+  {
+   "id": "placesDataBody",
+   "house": {
+    "web": "places.dataBody",
+    "android": null,
+    "text": {
+     "en": "Work, family and other places you go to. Houses show their distance from them."
+    }
+   },
+   "school": {
+    "web": "school.placesDataBody",
+    "android": null,
+    "text": {
+     "en": "Work, family and other places you go to. Schools show their distance from them."
+    }
+   }
+  },
+  {
+   "id": "placesIntro",
+   "house": {
+    "web": "places.intro",
+    "android": null,
+    "text": {
+     "en": "Places you go to often, such as work or family. Each house shows how far it is from them."
+    }
+   },
+   "school": {
+    "web": "school.placesIntro",
+    "android": null,
+    "text": {
+     "en": "Places you go to often, such as work or family. Each school shows how far it is from them."
+    }
+   }
+  },
+  {
+   "id": "placesEmpty",
+   "house": {
+    "web": "places.empty",
+    "android": null,
+    "text": {
+     "en": "No places yet. Add your office or family home to see how far each house is."
+    }
+   },
+   "school": {
+    "web": "school.placesEmpty",
+    "android": null,
+    "text": {
+     "en": "No places yet. Add your office or family home to see how far each school is."
+    }
+   }
+  },
+  {
+   "id": "placesConfirmDelete",
+   "house": {
+    "web": "places.confirmDelete",
+    "android": null,
+    "text": {
+     "en": "Delete this place? Houses stop showing the distance to it."
+    }
+   },
+   "school": {
+    "web": "school.placesConfirmDelete",
+    "android": null,
+    "text": {
+     "en": "Delete this place? Schools stop showing the distance to it."
+    }
+   }
+  },
+  {
+   "id": "expTitle",
+   "house": {
+    "web": "exp.title",
+    "android": null,
+    "text": {
+     "en": "Doorprints — your houses"
+    }
+   },
+   "school": {
+    "web": "school.expTitle",
+    "android": null,
+    "text": {
+     "en": "Doorprints — your schools"
+    }
+   }
+  },
+  {
+   "id": "expCounts",
+   "house": {
+    "web": "exp.counts",
+    "android": null,
+    "text": {
+     "en": "Houses: {houses} · Visits: {visits} · Photos: {photos}"
+    }
+   },
+   "school": {
+    "web": "school.expCounts",
+    "android": null,
+    "text": {
+     "en": "Schools: {houses} · Visits: {visits} · Photos: {photos}"
+    }
+   }
+  },
+  {
+   "id": "expScopeAll",
+   "house": {
+    "web": "exp.scopeAll",
+    "android": null,
+    "text": {
+     "en": "All houses"
+    }
+   },
+   "school": {
+    "web": "school.expScopeAll",
+    "android": null,
+    "text": {
+     "en": "All schools"
+    }
+   }
+  },
+  {
+   "id": "expScopeShortlisted",
+   "house": {
+    "web": "exp.scopeShortlisted",
+    "android": null,
+    "text": {
+     "en": "Shortlisted houses only"
+    }
+   },
+   "school": {
+    "web": "school.expScopeShortlisted",
+    "android": null,
+    "text": {
+     "en": "Shortlisted schools only"
+    }
+   }
+  },
+  {
+   "id": "expScopeSelected",
+   "house": {
+    "web": "exp.scopeSelected",
+    "android": null,
+    "text": {
+     "en": "Selected houses only"
+    }
+   },
+   "school": {
+    "web": "school.expScopeSelected",
+    "android": null,
+    "text": {
+     "en": "Selected schools only"
+    }
+   }
+  },
+  {
+   "id": "expRejectedIncluded",
+   "house": {
+    "web": "exp.rejectedIncluded",
+    "android": null,
+    "text": {
+     "en": "Rejected houses included"
+    }
+   },
+   "school": {
+    "web": "school.expRejectedIncluded",
+    "android": null,
+    "text": {
+     "en": "Rejected schools included"
+    }
+   }
+  },
+  {
+   "id": "expRejectedLeftOut",
+   "house": {
+    "web": "exp.rejectedLeftOut",
+    "android": null,
+    "text": {
+     "en": "Rejected houses left out"
+    }
+   },
+   "school": {
+    "web": "school.expRejectedLeftOut",
+    "android": null,
+    "text": {
+     "en": "Rejected schools left out"
+    }
+   }
+  },
+  {
+   "id": "expPhotosAll",
+   "house": {
+    "web": "exp.photosAll",
+    "android": null,
+    "text": {
+     "en": "Photos of every house"
+    }
+   },
+   "school": {
+    "web": "school.expPhotosAll",
+    "android": null,
+    "text": {
+     "en": "Photos of every school"
+    }
+   }
+  },
+  {
+   "id": "expPhotosShortlisted",
+   "house": {
+    "web": "exp.photosShortlisted",
+    "android": null,
+    "text": {
+     "en": "Photos of shortlisted houses only"
+    }
+   },
+   "school": {
+    "web": "school.expPhotosShortlisted",
+    "android": null,
+    "text": {
+     "en": "Photos of shortlisted schools only"
+    }
+   }
+  },
+  {
+   "id": "expColName",
+   "house": {
+    "web": "exp.colHouse",
+    "android": null,
+    "text": {
+     "en": "House"
+    }
+   },
+   "school": {
+    "web": "school.expColSchool",
+    "android": null,
+    "text": {
+     "en": "School"
+    }
+   }
+  },
+  {
+   "id": "expNone",
+   "house": {
+    "web": "exp.noHouses",
+    "android": null,
+    "text": {
+     "en": "No house matched the options you chose."
+    }
+   },
+   "school": {
+    "web": "school.expNone",
+    "android": null,
+    "text": {
+     "en": "No school matched the options you chose."
+    }
+   }
+  },
+  {
+   "id": "viewingRemindText",
+   "house": {
+    "web": "viewings.remind.text",
+    "android": null,
+    "text": {
+     "en": "A viewing at {time}. Open Doorprints for the place."
+    }
+   },
+   "school": {
+    "web": "school.viewings.remindText",
+    "android": null,
+    "text": {
+     "en": "A visit at {time}. Open Doorprints for the place."
     }
    }
   }

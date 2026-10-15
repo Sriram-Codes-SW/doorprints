@@ -20,114 +20,28 @@ package app.doorprints.shared.model
 /**
  * The Android keys of a kind file's top-level `words` (S4b-BL-278, S4b-BL-316; `docs/schemas/kinds/house.json`, `school.json`): the
  * Compose string a space's first screen, its candidate page and its tools read for each id, `null` where the phone shows no
- * text (the website's region hint, list label, loading and empty title). The sixteen ids of S4b-BL-278 come first, then the
- * phone's other words that name the kind (Compare, the Assistant, the copies' scope, the map's location notes, the form's
- * titles and questions, the walk check, the Areas and Places lines), and since kinds PR 26 the Hunt mode words (docs/03 section 18.20: the alerts, the street line, the walk's notification and channel) and since kinds PR 29 the viewing words (docs/03 section 18.23: the plan button, the card's lines, the lists' intro and empty line, the reminder's channel and text), which `SpaceWords` and `PageWords` kept as tables of their
- * own until S4b-BL-316. A copy of the files' `android` keys, as [KindLabels.HOUSE] is of the labels (`HouseKindFileTest`,
- * `SchoolKindVectorsTest` and `KindWordVectorsTest` read the files and the vectors, so it cannot drift); `SpaceWords` and
+ * text (the website's region hint, list label, loading and empty title, and the words only the website has). The sixteen ids of
+ * S4b-BL-278 come first, then the phone's other words that name the kind, the Hunt mode words (docs/03 section 18.20), the viewing
+ * words (section 18.23) and, since kinds PR 31 (section 18.25), the website's other words. The maps are generated from the files by
+ * `tools/gen-kind-words.mjs` ([KindWordData]; `--check` fails a stale one), so no table of words is written by hand;
+ * `HouseKindFileTest`, `SchoolKindVectorsTest` and `KindWordVectorsTest` read the files and the vectors as well. `SpaceWords` and
  * `PageWords` in `:ui` turn the keys into strings. A kind with no entry reads the house's.
  */
 object KindWordKeys {
     /** The ids of `words` in the schema, in its order. */
-    val IDS = listOf(
-        "heading", "regionLabel", "regionHint", "add", "addHint", "addHintShort",
-        "search", "listLabel", "shown", "loading", "emptyTitle", "emptyBody",
-        "noMatch", "create", "areaNotesNone", "areaInReach", "unnamed", "addHintListing",
-        "addHintListingShort", "compareHint", "comparePickMore", "compareChoose", "compareEmpty", "compareEmptyBody",
-        "compareFootnote", "askLabel", "askHint", "askNotGrounded", "askSources", "planHint",
-        "exportEmpty", "exportScope", "exportScopeAll", "exportIncludeRejected", "exportPhotosShortlisted", "locationOff",
-        "needsPrecise", "locationOffNoHunt", "needsPreciseNoHunt", "saveNeedsLocation", "detailsTitle", "notFoundTitle",
-        "notFound", "defaultLabel", "defaultLabelStreet", "discardNew", "deleteTitle", "pageNeedsPrecise",
-        "savePhotosFirst", "walkButton", "walkPlace", "walkLabel", "walkApprox", "walksEmpty",
-        "aiDisclosure", "aiDisclosureOwnKey", "placeFound", "placeNotFound", "openDetails", "areasEmptyBody",
-        "notesEmpty", "areaDeleteBody", "placeDeleteBody", "placesEmptyBody",
-        "huntSeen", "huntStreetText", "huntStreetTextSince", "huntStreetSeen", "huntStayTitle", "huntNotifyRationale",
-        "huntLeftSpace", "huntNeedsKind", "huntOngoingText", "huntChannelAlerts", "huntChannelAlertsDesc", "huntNotificationsOff",
-        "viewingPlan", "viewingNone", "viewingAll", "viewingsIntro", "viewingsEmpty", "viewingsDataBody", "questionsDataBody",
-        "viewingChannel", "viewingChannelDesc", "viewingSoon", "viewingTitle", "viewingOpen", "viewingGone", "viewingDirections",
-        "questionsIntro", "questionsEmpty", "questionsNoneToPick", "viewingBody",
-    )
+    val IDS: List<String> get() = KindWordData.IDS
 
-    private fun table(vararg keys: Pair<String, String?>): Map<String, String?> {
-        check(keys.map { it.first } == IDS) { "the words are not the schema's ids, in order" }
-        return keys.toMap()
-    }
+    /** The kinds that have their own words (their kind files), the house first. */
+    val KINDS: List<String> get() = KindWordData.BY_KIND.keys.toList()
 
-    val HOUSE: Map<String, String?> = table(
-        "heading" to "houses_title", "regionLabel" to "map_region_desc", "regionHint" to null,
-        "add" to "common_add_on_map", "addHint" to "map_add_tip", "addHintShort" to "map_add_tip_a11y",
-        "search" to "houses_search", "listLabel" to null, "shown" to "houses_shown",
-        "loading" to null, "emptyTitle" to null, "emptyBody" to "houses_empty",
-        "noMatch" to "houses_no_match", "create" to "map_save_here", "areaNotesNone" to "house_area_notes_none",
-        "areaInReach" to "note_area_here", "unnamed" to "house_unnamed", "addHintListing" to "map_add_tip_listing",
-        "addHintListingShort" to "map_add_tip_listing_a11y", "compareHint" to "compare_hint", "comparePickMore" to "compare_pick_more",
-        "compareChoose" to "compare_choose", "compareEmpty" to "compare_empty", "compareEmptyBody" to "compare_empty_body",
-        "compareFootnote" to "compare_footnote", "askLabel" to "ai_ask_label", "askHint" to "ai_ask_hint",
-        "askNotGrounded" to "ai_not_grounded", "askSources" to "ai_sources", "planHint" to "ai_plan_hint",
-        "exportEmpty" to "export_empty", "exportScope" to "export_scope", "exportScopeAll" to "export_scope_all",
-        "exportIncludeRejected" to "export_include_rejected", "exportPhotosShortlisted" to "export_photos_shortlisted", "locationOff" to "map_location_off",
-        "needsPrecise" to "map_needs_precise", "locationOffNoHunt" to "map_location_off_no_hunt", "needsPreciseNoHunt" to "map_needs_precise_no_hunt",
-        "saveNeedsLocation" to "map_save_needs_location", "detailsTitle" to "house_details_title", "notFoundTitle" to "house_not_found_title",
-        "notFound" to "house_not_found", "defaultLabel" to "house_default_label", "defaultLabelStreet" to "house_default_label_street",
-        "discardNew" to "house_discard_new_title", "deleteTitle" to "house_delete_confirm_title", "pageNeedsPrecise" to "house_needs_precise",
-        "savePhotosFirst" to "house_save_first_photos", "walkButton" to "trace_here_button_house", "walkPlace" to "trace_here_place_house",
-        "walkLabel" to "trace_here_label_house", "walkApprox" to "trace_here_approx_house", "walksEmpty" to "trace_house_empty",
-        "aiDisclosure" to "ai_disclosure", "aiDisclosureOwnKey" to "ai_disclosure_own_key_host", "placeFound" to "map_place_found",
-        "placeNotFound" to "map_place_not_found", "openDetails" to "compare_open_house", "areasEmptyBody" to "areas_empty_body",
-        "notesEmpty" to "notes_empty", "areaDeleteBody" to "area_delete_body", "placeDeleteBody" to "place_delete_body",
-        "placesEmptyBody" to "places_empty_body",
-        "huntSeen" to "notif_seen_house", "huntStreetText" to "notif_street_text", "huntStreetTextSince" to "notif_street_text_since",
-        "huntStreetSeen" to "map_street_seen", "huntStayTitle" to "notif_stay_title", "huntNotifyRationale" to "map_hunt_notify_rationale",
-        "huntLeftSpace" to "hunt_stopped_left_space", "huntNeedsKind" to "hunt_needs_houses", "huntOngoingText" to "notif_hunt_text",
-        "huntChannelAlerts" to "notif_channel_alerts", "huntChannelAlertsDesc" to "notif_channel_alerts_desc",
-        "huntNotificationsOff" to "map_notifications_off",
-        "viewingPlan" to "viewings_plan", "viewingNone" to "viewings_none", "viewingAll" to "viewings_allOfHouse",
-        "viewingsIntro" to "viewings_intro", "viewingsEmpty" to "viewings_empty", "viewingsDataBody" to "settings_viewings_hint",
-        "questionsDataBody" to "settings_questions_hint", "viewingChannel" to "notif_channel_viewings", "viewingChannelDesc" to "notif_channel_viewings_desc",
-        "viewingSoon" to "notif_viewing_soon", "viewingTitle" to "notif_viewing_title", "viewingOpen" to "notif_viewing_open",
-        "viewingGone" to "notif_viewing_house_gone", "viewingDirections" to "notif_viewing_directions",
-        "questionsIntro" to "questions_intro", "questionsEmpty" to "house_questions_empty", "questionsNoneToPick" to "house_questions_pick_none", "viewingBody" to "viewing_reminder_body",
-    )
+    /** The baseline kind's keys (the first kind file). */
+    val HOUSE: Map<String, String?> = KindWordData.BY_KIND.values.first()
 
-    val SCHOOL: Map<String, String?> = table(
-        "heading" to "schools_title", "regionLabel" to "school_region_desc", "regionHint" to null,
-        "add" to "school_add_on_map", "addHint" to "school_add_tip", "addHintShort" to "school_add_tip_a11y",
-        "search" to "school_search", "listLabel" to null, "shown" to "school_shown",
-        "loading" to null, "emptyTitle" to null, "emptyBody" to "school_empty",
-        "noMatch" to "school_no_match", "create" to "school_save_here", "areaNotesNone" to "school_area_notes_none",
-        "areaInReach" to "school_area_here", "unnamed" to "school_unnamed", "addHintListing" to "school_add_tip_listing",
-        "addHintListingShort" to "school_add_tip_listing_a11y", "compareHint" to "school_compare_hint", "comparePickMore" to "school_compare_pick_more",
-        "compareChoose" to "school_compare_choose", "compareEmpty" to "school_compare_empty", "compareEmptyBody" to "school_compare_empty_body",
-        "compareFootnote" to "school_compare_footnote", "askLabel" to "school_ai_ask_label", "askHint" to "school_ai_ask_hint",
-        "askNotGrounded" to "school_ai_not_grounded", "askSources" to "school_ai_sources", "planHint" to "school_ai_plan_hint",
-        "exportEmpty" to "school_export_empty", "exportScope" to "school_export_scope", "exportScopeAll" to "school_export_scope_all",
-        "exportIncludeRejected" to "school_export_include_rejected", "exportPhotosShortlisted" to "school_export_photos_shortlisted", "locationOff" to "school_map_location_off",
-        "needsPrecise" to "school_map_needs_precise", "locationOffNoHunt" to "school_map_location_off_no_hunt", "needsPreciseNoHunt" to "school_map_needs_precise_no_hunt",
-        "saveNeedsLocation" to "school_map_save_needs_location", "detailsTitle" to "school_details_title", "notFoundTitle" to "school_not_found_title",
-        "notFound" to "school_not_found", "defaultLabel" to "school_default_label", "defaultLabelStreet" to "school_default_label_street",
-        "discardNew" to "school_discard_new_title", "deleteTitle" to "school_delete_confirm_title", "pageNeedsPrecise" to "school_needs_precise",
-        "savePhotosFirst" to "school_save_first_photos", "walkButton" to "school_walk_button", "walkPlace" to "school_walk_place",
-        "walkLabel" to "school_walk_label", "walkApprox" to "school_walk_approx", "walksEmpty" to "school_walks_empty",
-        "aiDisclosure" to "school_ai_disclosure", "aiDisclosureOwnKey" to "school_ai_disclosure_own_key_host", "placeFound" to "school_map_place_found",
-        "placeNotFound" to "school_map_place_not_found", "openDetails" to "school_compare_open", "areasEmptyBody" to "school_areas_empty_body",
-        "notesEmpty" to "school_notes_empty", "areaDeleteBody" to "school_area_delete_body", "placeDeleteBody" to "school_place_delete_body",
-        "placesEmptyBody" to "school_places_empty_body",
-        "huntSeen" to "school_notif_seen", "huntStreetText" to "school_notif_street_text", "huntStreetTextSince" to "school_notif_street_text_since",
-        "huntStreetSeen" to "school_map_street_seen", "huntStayTitle" to "school_notif_stay_title", "huntNotifyRationale" to "school_map_hunt_notify_rationale",
-        "huntLeftSpace" to "school_hunt_stopped_left_space", "huntNeedsKind" to "school_hunt_needs_kind", "huntOngoingText" to "school_notif_hunt_text",
-        "huntChannelAlerts" to "school_notif_channel_alerts", "huntChannelAlertsDesc" to "school_notif_channel_alerts_desc",
-        "huntNotificationsOff" to "school_map_notifications_off",
-        "viewingPlan" to "school_viewings_plan", "viewingNone" to "school_viewings_none", "viewingAll" to "school_viewings_all",
-        "viewingsIntro" to "school_viewings_intro", "viewingsEmpty" to "school_viewings_empty", "viewingsDataBody" to "school_settings_viewings_hint",
-        "questionsDataBody" to "school_settings_questions_hint", "viewingChannel" to "school_notif_channel_viewings", "viewingChannelDesc" to "school_notif_channel_viewings_desc",
-        "viewingSoon" to "school_notif_viewing_soon", "viewingTitle" to "school_notif_viewing_title", "viewingOpen" to "school_notif_viewing_open",
-        "viewingGone" to "school_notif_viewing_gone", "viewingDirections" to "school_notif_viewing_directions",
-        "questionsIntro" to "school_questions_intro", "questionsEmpty" to "school_questions_empty", "questionsNoneToPick" to "school_questions_pick_none", "viewingBody" to "school_viewing_reminder_body",
-    )
+    val SCHOOL: Map<String, String?> = KindWordData.BY_KIND.getValue("school")
 
     /** The keys of [kind]; a kind with no table of its own reads the house's. */
-    fun of(kind: String): Map<String, String?> = if (kind == "school") SCHOOL else HOUSE
+    fun of(kind: String): Map<String, String?> = KindWordData.BY_KIND[kind] ?: HOUSE
 
     /** The Android key of word [id] in the kind of a stored candidate ([kind] null or one this build does not have: the house's). */
-    fun key(kind: String?, id: String): String = checkNotNull(of(kind ?: "house")[id]) { "no Android word for $id" }
+    fun key(kind: String?, id: String): String = checkNotNull(of(kind ?: KindWordData.BY_KIND.keys.first())[id]) { "no Android word for $id" }
 }

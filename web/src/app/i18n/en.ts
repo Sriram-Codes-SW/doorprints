@@ -1290,6 +1290,9 @@ export const en = {
   'tour.done.title': 'You are ready',
   'tour.done.body': 'These are the main parts of Doorprints. Start with Add house, and visit it with the app open.',
   'tour.done.action': 'Tap Finish, then add your first house.',
+  'tour.kind.welcome': 'Doorprints remembers the {many} you keep. Everything stays on this device unless you choose to back it up or share it.',
+  'tour.kind.body': 'This part of Doorprints works for {many} too. Look at it, then press Next.',
+  'tour.kind.action': 'Try it with one of your {many}, or just look around and press Next.',
   // S4b-BL-104 (c, d) (2026-10-01): the Basement switch under Floor, and the import's note on a floor out of range.
   'house.floorBasementToggle': 'Basement',
   'house.floorBasementHint': 'The level below the ground, 1 to 5',
@@ -1885,6 +1888,7 @@ export const en = {
   'school.questions.noneToPick': 'Every question in your list is already on this school.',
   'school.questions.remove': 'Remove from this school: {q}',
   'school.viewings.saveFirst': 'Save the school first to plan a visit.',
+  'school.viewings.remindText': 'A visit at {time}. Open Doorprints for the place.',
   'school.walkPlace': 'this school',
   'school.walkLabel': 'This school',
   'school.walkApprox': 'This school has no exact spot yet, only an area. Place it on the map first, then check.',

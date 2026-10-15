@@ -1274,6 +1274,9 @@ export const te: Dict = {
   'tour.done.title': 'మీరు సిద్ధం',
   'tour.done.body': 'ఇవి Doorprints లోని ముఖ్య భాగాలు. ఇల్లు చేర్చండి తో మొదలుపెట్టి, యాప్ తెరిచి ఉంచుకుని ఇంటిని చూడటానికి వెళ్ళండి.',
   'tour.done.action': 'ముగించు నొక్కి, మీ మొదటి ఇంటిని చేర్చండి.',
+  'tour.kind.welcome': 'మీరు ఉంచుకునే {many}ను Doorprints గుర్తుంచుకుంటుంది. మీరు బ్యాకప్ చేయాలని లేదా పంచుకోవాలని ఎంచుకోకపోతే అంతా ఈ పరికరంలోనే ఉంటుంది.',
+  'tour.kind.body': 'Doorprints లోని ఈ భాగం {many}కి కూడా పనిచేస్తుంది. చూసి, తదుపరి నొక్కండి.',
+  'tour.kind.action': 'మీ {many}లో ఒకదానితో ప్రయత్నించండి, లేదా చూసి తదుపరి నొక్కండి.',
   // S4b-BL-104 (c, d) (2026-10-01): the Basement switch under Floor, and the import's note on a floor out of range. Under review (owner rule: hi/ta/te ship marked under review).
   'house.floorBasementToggle': 'బేస్‌మెంట్',
   'house.floorBasementHint': 'నేల కింద ఉన్న స్థాయి, 1 నుండి 5 వరకు',
@@ -1884,6 +1887,7 @@ export const te: Dict = {
   'school.questions.noneToPick': 'మీ జాబితాలోని ప్రతి ప్రశ్న ఇప్పటికే ఈ పాఠశాలలో ఉంది.',
   'school.questions.remove': 'ఈ పాఠశాల నుండి తొలగించు: {q}',
   'school.viewings.saveFirst': 'సందర్శనను ప్లాన్ చేయడానికి ముందు పాఠశాలను సేవ్ చేయండి.',
+  'school.viewings.remindText': '{time}కి సందర్శన. స్థలం కోసం Doorprints తెరవండి.',
   'school.walkPlace': 'ఈ పాఠశాల',
   'school.walkLabel': 'ఈ పాఠశాల',
   'school.walkApprox': 'ఈ పాఠశాలకు ఇంకా కచ్చితమైన చోటు లేదు, ఒక ప్రాంతం మాత్రమే ఉంది. ముందుగా మ్యాప్‌లో ఉంచండి, తర్వాత తనిఖీ చేయండి.',

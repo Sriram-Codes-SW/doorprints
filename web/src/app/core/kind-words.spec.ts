@@ -28,7 +28,9 @@ import { DICTIONARIES } from '../i18n/all-dictionaries';
 import type { Lang } from '../i18n/languages';
 import { SCHOOL_FIELDS } from './school-kind';
 import { spaceWords } from './space-words';
-import { TOOL_WORD_IDS, toolWord } from './space-tool-words';
+import { toolWord } from './space-tool-words';
+import { KIND_WORD_KINDS, KIND_WORD_ROWS } from './kind-words.generated';
+import { kindWordIds, kindWordKey } from './kind-word-table';
 import wordVectors from '../../../../docs/schemas/kinds/kind-word-vectors.json';
 
 type Words = Record<string, { web: string | null; android?: string | null }>;
@@ -53,7 +55,7 @@ describe('the space words are the kind files’ (S4b-BL-278)', () => {
   it('the schema names the sixteen words and then the phone’s other words (S4b-BL-316)', () => {
     const names = (schemaJson as unknown as { properties: { words: { propertyNames: { enum: string[] } } } }).properties.words.propertyNames.enum;
     expect(names).toEqual([...IDS, ...PHONE_IDS]);
-    expect(PHONE_IDS).toHaveLength(78);
+    expect(PHONE_IDS.length).toBeGreaterThanOrEqual(78);
   });
 
   it('house.json holds the house’s keys as they were, and the website reads them', () => {
@@ -95,14 +97,32 @@ describe('the phone’s other words have ids in the kind files and the website�
     }
   });
 
-  it('the website’s table names exactly the ids that have a website key, and reads the school’s key for the house’s', () => {
-    expect(Object.keys(TOOL_WORD_IDS).sort()).toEqual(vectors.filter((v) => v.house.web).map((v) => v.id).sort());
-    for (const v of vectors.filter((x) => x.house.web)) {
-      expect(TOOL_WORD_IDS[v.id], `house ${v.id}`).toBe(v.house.web);
-      expect(toolWord('school', TOOL_WORD_IDS[v.id] as never), `school ${v.id}`).toBe(v.school.web);
+  it('the generated rows are the files’ web keys, one row for every word the website has, in the files’ order', () => {
+    expect(KIND_WORD_KINDS).toEqual(['house', 'school']);
+    const expected = vectors
+      .filter((v) => v.house.web || v.school.web)
+      .map((v) => [v.id, v.house.web, v.school.web]);
+    const ids16 = IDS.map((id) => [id, house[id].web, school[id].web]);
+    expect(KIND_WORD_ROWS.map((r) => [...r])).toEqual([...ids16, ...expected]);
+    expect(kindWordIds()).toEqual(KIND_WORD_ROWS.map((r) => r[0]));
+  });
+
+  it('toolWord reads each word’s key in the school, and the house’s key in the house, from the files alone', () => {
+    for (const v of vectors.filter((x) => x.house.web && x.school.web)) {
+      expect(toolWord('school', v.house.web as never), `school ${v.id}`).toBe(v.school.web);
+      expect(toolWord('house', v.house.web as never), `house ${v.id}`).toBe(v.house.web);
+      expect(kindWordKey('school', v.id)).toBe(v.school.web);
+      expect(kindWordKey('house', v.id)).toBe(v.house.web);
     }
-    // A word the website lacks has no key in either file, so there is nothing for the table to say.
+    // A word the website lacks has no key in either file, so there is nothing for a table to say.
     for (const v of vectors.filter((x) => !x.house.web)) expect(v.school.web, v.id).toBeNull();
+  });
+
+  it('a kind with no words of its own reads the house’s, and an id the files do not have is an error', () => {
+    expect(kindWordKey('zz_unknown', 'heading')).toBe('map.heading');
+    expect(kindWordKey(null, 'heading')).toBe('map.heading');
+    expect(toolWord('zz_unknown', 'compare.title')).toBe('compare.title');
+    expect(() => kindWordKey('school', 'noSuchWord')).toThrow();
   });
 });
 

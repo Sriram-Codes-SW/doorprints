@@ -101,11 +101,13 @@ class PageWords(
             )
         }
 
-        val HOUSE = from(KindWordKeys.HOUSE)
-        val SCHOOL = from(KindWordKeys.SCHOOL)
+        private val BY_KIND: Map<String, PageWords> = KindWordKeys.KINDS.associateWith { from(KindWordKeys.of(it)) }
+
+        val HOUSE = BY_KIND.getValue(KindWordKeys.KINDS.first())
+        val SCHOOL = BY_KIND.getValue("school")
 
         /** The words of [kind]; a kind with no entry of its own reads the house's. */
-        fun of(kind: String): PageWords = if (kind == "school") SCHOOL else HOUSE
+        fun of(kind: String): PageWords = BY_KIND[kind] ?: HOUSE
     }
 }
 

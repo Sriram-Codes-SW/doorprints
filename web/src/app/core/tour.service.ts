@@ -18,8 +18,9 @@
 
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { TOUR_STEPS } from '../shared/tour-steps';
-import type { TourStep } from '../shared/tour-steps';
+import { TOUR_STEPS, tourText } from '../shared/tour-steps';
+import type { TourStep, TourText } from '../shared/tour-steps';
+import { SpaceService } from './space.service';
 import { TOUR_KEY } from './storage-keys';
 
 /** How the tour ended: finished to the last step, or left early. Either way it is not offered again by itself. */
@@ -53,6 +54,7 @@ function write(value: TourEnd): void {
 @Injectable({ providedIn: 'root' })
 export class TourService {
   private readonly router = inject(Router);
+  private readonly space = inject(SpaceService);
   private readonly index = signal<number | null>(null);
   private readonly ended = signal(read() !== null);
 
@@ -62,6 +64,11 @@ export class TourService {
   readonly step = computed<TourStep | null>(() => {
     const i = this.index();
     return i === null ? null : this.steps[i];
+  });
+  /** The words of the step on screen in the space on screen (the house's own for the house; kinds PR 31). */
+  readonly text = computed<TourText | null>(() => {
+    const s = this.step();
+    return s ? tourText(s, this.space.kind()) : null;
   });
   readonly isFirst = computed(() => this.position() === 0);
   readonly isLast = computed(() => this.position() === this.steps.length - 1);
@@ -92,9 +99,14 @@ export class TourService {
     this.finish('skipped');
   }
 
+  /** The address a step is on: its own, or its tool's in the space on screen (Compare is `/compare` in the house, `/k/<kind>/compare` in another). */
+  routeOf(step: TourStep): string {
+    return step.tool ? this.space.toolLink(step.tool) : step.route;
+  }
+
   private go(i: number): void {
     this.index.set(i);
-    const route = this.steps[i].route;
+    const route = this.routeOf(this.steps[i]);
     if (this.router.url.split(/[?#]/)[0] !== route) void this.router.navigateByUrl(route);
   }
 
