@@ -65,4 +65,28 @@ class KindListingMergeTest {
         val m = mergeListing(house, HouseDraftDto(label = "2BHK", price = 25000), labelIsPlaceholder = true)
         assertSame(m, mergeListingExtras(m, HouseDraftDto(label = "2BHK", price = 25000), BuiltInKind.HOUSE.fields))
     }
+
+    /** S4b-BL-272: the extras a fill wrote carry the "from the listing" mark until their value changes; a kept one has none. */
+    @Test
+    fun anExtraTheFillWroteKeepsItsMarkUntilItIsEditedAndAKeptOneHasNone() {
+        val form = candidate(buildJsonObject { put("board", "STATE") })
+        val merged = mergeListingExtras(mergeListing(form, draft, labelIsPlaceholder = true), draft, school)
+        assertEquals(listOf("medium", "busService", "fees"), remainingExtraMarks(merged, merged.house), "board was kept: no mark")
+        val edited = merged.house.extrasOther!!.toMutableMap()
+        edited["medium"] = JsonPrimitive("HINDI")
+        edited["fees"] = buildJsonObject { put("amount", 90000); put("cadence", "year") }
+        assertEquals(listOf("busService"), remainingExtraMarks(merged, merged.house.copy(extrasOther = JsonObject(edited))), "a changed value, a money object too, loses it")
+        edited.remove("busService")
+        assertEquals(emptyList(), remainingExtraMarks(merged, merged.house.copy(extrasOther = JsonObject(edited))), "a cleared value has none")
+        val house = HouseEntity(id = "h1", label = "New house", lat = 12.97, lon = 77.64, createdAt = 1L, updatedAt = 1L)
+        val plain = mergeListing(house, HouseDraftDto(label = "2BHK"), labelIsPlaceholder = true)
+        assertEquals(emptyList(), remainingExtraMarks(plain, plain.house), "a house has no extras to mark")
+    }
+
+    /** S4b-BL-273: the paste dialog asks the extract for the school's kind, and a house's call stays the house's own. */
+    @Test
+    fun theDialogAsksForTheSchoolsKindAndAHouseKeepsItsOwnCall() {
+        assertEquals("school", pasteKind(DevKinds.of("school", on = true)))
+        assertEquals(null, pasteKind(BuiltInKind.HOUSE))
+    }
 }

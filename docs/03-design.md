@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.140 |
-| Date | 2026-10-14 |
+| Version | 0.141 |
+| Date | 2026-10-15 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -151,6 +151,7 @@
 | 0.138 | 2026-10-14 | Claude (Code), engineer | **§18.11: the abusive-words rule in the prompts** (S4b-BL-234; `feat/ai-abusive-words-rule`; [ai/ai-design](ai/ai-design.md) v0.76 16.11, [06](06-test-plan.md) TC-U-235, [10](10-sprint-log.md) v0.327): one rule in the Extract, Ask and Plan system texts of the house and of the school; the house pins and the parity vectors re-pinned once. |
 | 0.139 | 2026-10-15 | Claude (Code), engineer | **§18.16 The website's leftovers of the kinds** (kinds PR 20; S4b-BL-261 item 2, -265, -267, -272, -278, -282, -288, -291, -292; `feat/kinds-20-web-leftovers`; [06](06-test-plan.md) TC-U-236, TC-M-77; [10](10-sprint-log.md) v0.328): the walk-end sheet's search, the marks of a kind's extras, the space words in the kind files, a filter by a typed extra, a space picker on Your data, `better`, the kind-neutral backup and import words, a number extra's range, and the phones' twin list. |
 | 0.140 | 2026-10-15 | Claude (Code), engineer | **The AI endpoints' error statuses** (S4b-BL-244, S4b-BL-233; `fix/post-release-small-fixes`; [ai-design](ai/ai-design.md) v0.77): a spent quota or credit is `402` `AI_QUOTA_EXHAUSTED` (not retryable, no `Retry-After`) and a provider safety block is `422` `AI_DECLINED` (not retryable); a per-minute limit stays `503` with `Retry-After: 60`. The clients read the status; the website and the phones use their existing "used up" and "declined" words. |
+| 0.141 | 2026-10-15 | Claude (Code), engineer | **§18.16 The phones' part** (kinds PR 21; S4b-BL-261 item 2, -265, -267, -272, -273, -278, -291, -292, -300, -301; `feat/kinds-21-phone-leftovers`; [06](06-test-plan.md) TC-U-239, TC-M-78; [10](10-sprint-log.md) v0.331): the eight items of the twin list on Android and the iPhone, and the phone-only rows; S4b-BL-302 and S4b-BL-304 left to the owner, S4b-BL-303 to its own pull request. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -2968,9 +2969,17 @@ list search values (`house-pins.golden.ts`), the list's address keys (`listQuery
 - **Not added (S4b-BL-288).** The two-kind CI job: see the row. Run locally: `ng build --define "DOORPRINTS_KINDS='house,school'"`,
   then `GATE_DEV_KINDS=1 node tools/live-ui/layout-gate.js web/dist/web/browser`.
 
-**The phones' twin list** (for the follow-up builder; each row of [10](10-sprint-log.md) names its part): (1) `WalkEndLogic.search`
-passes a kind's extras words; (2) `remainingMarks` and `ListingFillUndo.kt` mark filled extras; (3) the `android` keys of `words`
-in `house.json` and `school.json`, `SpaceWords`/`PageWords` reading them, and the two kind-file tests extended; (4) `better` in
-`SchoolKind.FIELDS` and Compare's marks; (5) a space select on the Export screen; (6) `KindFilter` and the chip rows of
-`HouseListScreen.kt` with `kind-filter-vectors.json`; (7) neutral strings for `ImportScreen.kt` and the Export screen's backup
-options and gaps with two or more kinds; (8) the range of a number extra in `HouseEditScreen.kt`.
+**The phones' part (kinds PR 21, `feat/kinds-21-phone-leftovers`; [06](06-test-plan.md) TC-U-239, TC-M-78).** The twin list, built in `:shared` and `:ui`, so on Android and the iPhone alike (the klib compile is the iPhone's check on Linux). A house is unchanged on every path: the label vectors, the house goldens and every house Roborazzi baseline.
+
+- **The walk-end sheet's search (S4b-BL-267).** `WalkPicker.search` (`WalkEndLogic.kt`) adds `KindValues.searchWords` of the candidate's kind while the developer flag allows it, as the list does.
+- **Marks and the paste summary (S4b-BL-272, S4b-BL-273).** `remainingExtraMarks` (`HouseFormRules.kt`) is the rule of `remainingMarks` for `ListingMerge.extrasFilled`; the *From the listing* line (`PasteResult`) and the result sentence (`pasteResultText`, now in `PasteListing.kt` with the dialog, which gave `HouseEditScreen.kt` room) name the extras by the kind's labels, after the fields; `pasteKind` is the kind the dialog asks the extract for.
+- **The space words in the kind files (S4b-BL-278).** `house.json` and `school.json` give each of the sixteen `words` its `android` key (`null`: no phone text); `KindWordKeys` (`:shared`) is the copy the tests hold to the files; `SpaceWords` reads ten and `PageWords` two through `kindStringResource`. The other words of the two tables are not among the sixteen ids and stay the phone's (S4b-BL-316).
+- **`better` and Compare (S4b-BL-292).** `KindExtra.better`, `SchoolKind.FIELDS`, `KindValues.best` (the website's rule: the lowest or the highest of a number or an amount; nothing for one value or a tie). `CompareScreen` has a per-cell mark for it: a check, bold, and "(best)" in the spoken row, from the existing `compare_best_name`.
+- **Save a copy of (S4b-BL-292).** `SpacePick.kt`, a menu of the enabled kinds on the Export screen's card, drawn with two or more kinds; it sets the space the screens read (`Root.kt`), the screen stays.
+- **The filter by an extra (S4b-BL-265).** `KindFilter` (`:shared`, the twin of `extra-filter.ts`) held to `kind-filter-vectors.json` by `KindFilterVectorsTest`; `ExtraFilterRows` under the status chips of `HouseListScreen.kt`, saved over a rotation, part of *Clear filters*; `list_filter_any`; one baseline (`school_list_en_light.png`). The address rule of the vectors is the website's: the phone has none.
+- **Neutral backup words (S4b-BL-291).** With two or more kinds on, the Full backup's options, counts, gaps and empty-match line (`ExportScreen.kt`) and the import's introduction, five preview labels and result sentence (`ImportPreviewCard.kt`, `BackupTexts.kt`) say *entries*. The import notification's sentence (the worker has no space) still says houses (S4b-BL-316).
+- **A number extra's range (S4b-BL-261 item 2).** `HouseEntity.withInRangeExtras` (`KindExtrasFields.kt`) on save.
+- **The map's location notes (S4b-BL-301).** Five `SpaceWords` entries; three school strings; the place-check's *Save here* reads `saveHere`.
+- **The iPhone (S4b-BL-300).** No build passes the iPhone a second kind; `ReleaseKindsTest` is the tripwire.
+- **Not built.** S4b-BL-302 (one string for the AI card changes the house app's words and baselines: the owner decides), S4b-BL-304 (a Hunt walk after leaving the house space: the owner decides), S4b-BL-303 (a `kind` index and a query per space: a Room migration, its own pull request).
+- **Budget.** Three files over their budget got room by moving code out, not by growing: `HouseEditScreen.kt` 1,509 to 1,422 (`PasteListing.kt`), `HouseListScreen.kt` 1,018 to 919 (`HouseListUndo.kt`), `ImportScreen.kt` 1,014 to 923 (`ImportPreviewCard.kt`); `MapScreen.kt` is unchanged at 1,515.

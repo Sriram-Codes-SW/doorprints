@@ -235,7 +235,7 @@ fun MapScreen(
     val findingText = stringResource(Res.string.common_finding_location)
     val waitingGps = stringResource(Res.string.map_waiting_gps)
     val longPressTip = stringResource(Res.string.map_long_press_tip)
-    val needsLocation = stringResource(Res.string.map_save_needs_location)
+    val needsLocation = stringResource(LocalSpace.current.words.saveNeedsLocation)
     val locationNeeded = stringResource(Res.string.map_location_needed)
     val myLocationLabel = stringResource(Res.string.map_my_location)
     LaunchedEffect(showAddTip) {
@@ -895,8 +895,8 @@ fun MapScreen(
                         ElevatedCard(Modifier.fillMaxWidth()) {
                             LocationPermissionNote(
                                 ask = locationAsk,
-                                deniedText = stringResource(Res.string.map_location_off_no_hunt),
-                                approximateText = approximateLocationText(Res.string.map_needs_precise_no_hunt),
+                                deniedText = stringResource(LocalSpace.current.words.locationOffNoHunt),
+                                approximateText = approximateLocationText(LocalSpace.current.words.needsPreciseNoHunt),
                                 launchRequest = onRequestLocation,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp).then(noteModifier),
                             )
@@ -1354,8 +1354,8 @@ private fun HuntCard(
                     if (showLocationNote) {
                         LocationPermissionNote(
                             ask = locationAsk,
-                            deniedText = stringResource(Res.string.map_location_off),
-                            approximateText = approximateLocationText(Res.string.map_needs_precise),
+                            deniedText = stringResource(LocalSpace.current.words.locationOff),
+                            approximateText = approximateLocationText(LocalSpace.current.words.needsPrecise),
                             launchRequest = onRequestLocation,
                             modifier = Modifier.padding(top = 8.dp).then(noteModifier),
                         )

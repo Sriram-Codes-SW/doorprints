@@ -1795,4 +1795,36 @@
     <string name="school_places_empty_body">ஒவ்வொரு பள்ளியும் எவ்வளவு தூரம் என்று காண உங்கள் அலுவலகம் அல்லது குடும்ப வீட்டைச் சேர்க்கவும்.</string>
     <string name="school_area_notes_none">இன்னும் எந்தப் பகுதிக் குறிப்பும் இந்தப் பள்ளிக்குப் பொருந்தவில்லை.</string>
     <string name="school_area_here">%1$s (இந்தப் பள்ளி இதில் உள்ளது)</string>
+
+    <!-- kinds PR 21 (S4b-BL-265, -291, -292, 2026-10-15): under review. -->
+    <string name="list_filter_any">ஏதேனும்</string>
+    <string name="export_copy_of">இதன் நகலைச் சேமிக்கவும்</string>
+    <string name="export_scope_any">எந்தப் பதிவுகள்</string>
+    <string name="export_scope_all_any">அனைத்துப் பதிவுகளும்</string>
+    <string name="export_include_rejected_any">நிராகரித்த பதிவுகளையும் சேர்</string>
+    <string name="export_photos_shortlisted_any">தேர்வான பதிவுகளின் படங்கள்</string>
+    <string name="export_gap_not_shortlisted_any">தேர்வாகாத பதிவுகள்</string>
+    <string name="export_gap_not_selected_any">நீங்கள் தேர்ந்தெடுக்காத பதிவுகள்</string>
+    <string name="export_gap_rejected_any">நிராகரித்த பதிவுகள்</string>
+    <string name="export_gap_photos_not_shortlisted_any">தேர்வாகாத பதிவுகளின் படங்கள்</string>
+    <string name="export_nothing_matches_any">இந்தத் தேர்வுகளுக்குப் பொருந்தும் பதிவு எதுவும் இல்லை.</string>
+    <string name="import_lead_any">Doorprints காப்புப்பிரதியிலிருந்து பதிவுகள், வருகைகள், படங்களை மீட்டெடுங்கள்.</string>
+    <string name="import_new_any">புதிய பதிவுகள்</string>
+    <string name="import_updated_any">காப்புப்பிரதியில் புதிய பதிப்பு உள்ள பதிவுகள்</string>
+    <string name="import_checklists_cleared_any">சரிபார்ப்புப் பட்டியல் மதிப்பெண்கள் அழிக்கப்படும் பதிவுகள், கோப்பிலுள்ள புதிய பதிப்பில் மதிப்பெண்கள் இல்லாததால்</string>
+    <string name="import_floors_left_blank_any">கோப்பில் தளம் -5 முதல் 200 வரம்பிற்கு வெளியே உள்ள பதிவுகள்; அவற்றின் தளம் காலியாக விடப்படும்</string>
+    <string name="import_removed_any">அனுப்பியவர் நீக்கிய பதிவுகள்</string>
+    <plurals name="count_entries">
+        <item quantity="one">%1$d பதிவு</item>
+        <item quantity="other">%1$d பதிவுகள்</item>
+    </plurals>
+    <plurals name="import_restored_result_any">
+        <item quantity="one">%1$d பதிவு திரும்பக் கொண்டுவரப்பட்டது.</item>
+        <item quantity="other">%1$d பதிவுகள் திரும்பக் கொண்டுவரப்பட்டன.</item>
+    </plurals>
+
+    <!-- S4b-BL-301 (2026-10-15): under review: the map's location notes in a school space. -->
+    <string name="school_map_location_off_no_hunt">Doorprints-க்கு இருப்பிடம் அணைக்கப்பட்டுள்ளது. ‘இங்கே பள்ளியைச் சேமி’க்கு இது தேவை.</string>
+    <string name="school_map_needs_precise_no_hunt">‘இங்கே பள்ளியைச் சேமி’க்குத் துல்லியமான இருப்பிடம் தேவை.</string>
+    <string name="school_map_save_needs_location">‘இங்கே பள்ளியைச் சேமி’ என்பதற்கு உங்கள் இருப்பிடம் தேவை. இருப்பிட அனுமதியை வழங்கி, பள்ளியில் இருக்கும்போது மீண்டும் தட்டவும்.</string>
 </resources>

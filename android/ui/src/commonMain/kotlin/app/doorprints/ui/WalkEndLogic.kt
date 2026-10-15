@@ -24,7 +24,9 @@ import app.doorprints.data.SaveWalkResult
 import app.doorprints.data.TrackPointEntity
 import app.doorprints.location.HuntEngine
 import app.doorprints.shared.location.Geo
+import app.doorprints.shared.model.DevKinds
 import app.doorprints.shared.model.HouseSearch
+import app.doorprints.shared.model.KindValues
 import app.doorprints.shared.model.LocationSource
 import app.doorprints.shared.trace.TraceConstants
 import app.doorprints.shared.trace.TracePoint
@@ -90,8 +92,11 @@ class WalkPicker(val nearest: PickerRow?, val near: List<PickerRow>) {
             return WalkPicker(nearest, near)
         }
 
-        /** The houses the picker's search box finds among [houses] (the list's `HouseSearch.matches`); none for a blank query. */
-        fun search(query: String, houses: List<HouseEntity>, language: String): List<HouseEntity> {
+        /**
+         * The houses the picker's search box finds among [houses] (the list's `HouseSearch.matches`); none for a blank query. A kind's
+         * extras are found by the app language's words while [devKinds] allows its kind, as in the list (S4b-BL-267).
+         */
+        fun search(query: String, houses: List<HouseEntity>, language: String, devKinds: Boolean = false): List<HouseEntity> {
             if (query.isBlank()) return emptyList()
             return houses.filter {
                 HouseSearch.matches(
@@ -99,7 +104,7 @@ class WalkPicker(val nearest: PickerRow?, val near: List<PickerRow>) {
                     HouseSearch.fields(
                         it.label, it.address, it.street, it.locality, it.notes, it.contactName,
                         rooms = it.rooms, answers = it.answers, moveIn = it.moveIn, floor = it.floor, language = language,
-                    ),
+                    ) + KindValues.searchWords(DevKinds.of(it.kind, devKinds).fields, it.extrasOther, language), // a kind's extras, as the list (S4b-BL-267)
                 )
             }
         }

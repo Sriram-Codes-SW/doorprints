@@ -722,6 +722,8 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                                 onBack = dropUnlessResumed { nav.popBackStack() },
                                 // The same "Add a house on the map" button, so the same tip on arrival.
                                 onOpenMap = openMapWithTip,
+                                // *Save a copy of* chooses the list a copy holds; the screen stays (S4b-BL-292).
+                                onPickSpace = { chosenKind = it },
                             )
                         }
                         composable("import") {

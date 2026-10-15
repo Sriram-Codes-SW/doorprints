@@ -115,6 +115,7 @@ private fun exportSentence(target: String?, name: String?, location: String?, pa
  */
 private class ImportParts(
     val restored: Int,
+    val restoredPlural: PluralStringResource,
     val added: List<Pair<PluralStringResource, Int>>,
     val updated: List<Pair<PluralStringResource, Int>>,
 )
@@ -126,27 +127,31 @@ private fun importParts(
     updatedHouses: Int,
     updatedVisits: Int,
     restoredHouses: Int,
+    neutral: Boolean = false,
 ): ImportParts {
     fun nonZero(vararg counts: Pair<PluralStringResource, Int>) = counts.filter { it.second > 0 }
+    // With two or more kinds on a backup's counts name entries, not houses (S4b-BL-291).
+    val entries = if (neutral) Res.plurals.count_entries else Res.plurals.count_houses
     return ImportParts(
         restored = restoredHouses,
+        restoredPlural = if (neutral) Res.plurals.import_restored_result_any else Res.plurals.import_restored_result,
         added = nonZero(
-            Res.plurals.count_houses to (houses - updatedHouses - restoredHouses).coerceAtLeast(0),
+            entries to (houses - updatedHouses - restoredHouses).coerceAtLeast(0),
             Res.plurals.count_visits to (visits - updatedVisits).coerceAtLeast(0),
             Res.plurals.count_photos to photos,
         ),
-        updated = nonZero(Res.plurals.count_houses to updatedHouses, Res.plurals.count_visits to updatedVisits),
+        updated = nonZero(entries to updatedHouses, Res.plurals.count_visits to updatedVisits),
     )
 }
 
 /**
  * "Added 2 houses and 20 photos. Updated 3 houses." for a finished import (UX review, 2026-09-22): the non-zero parts
  * only, in the preview's own words, and "Brought back 3 houses." first (round 11). [importedSentence] is the same
- * sentence outside composition.
+ * sentence outside composition. With [neutral] (two or more kinds on, S4b-BL-291) the counts say *entries*, not houses.
  */
 @Composable
-fun importedText(run: ImportRun): String {
-    val parts = importParts(run.houses, run.visits, run.photos, run.updatedHouses, run.updatedVisits, run.restoredHouses)
+fun importedText(run: ImportRun, neutral: Boolean = false): String {
+    val parts = importParts(run.houses, run.visits, run.photos, run.updatedHouses, run.updatedVisits, run.restoredHouses, neutral)
     @Composable
     fun words(counts: List<Pair<PluralStringResource, Int>>): List<String> =
         counts.map { (plural, n) -> pluralStringResource(plural, n, n) }
@@ -154,7 +159,7 @@ fun importedText(run: ImportRun): String {
     val updated = words(parts.updated)
     val sentences = buildList {
         if (parts.restored > 0) {
-            add(pluralStringResource(Res.plurals.import_restored_result, parts.restored, parts.restored))
+            add(pluralStringResource(parts.restoredPlural, parts.restored, parts.restored))
         }
         if (added.isNotEmpty()) add(stringResource(Res.string.import_added, joinedList(added)))
         if (updated.isNotEmpty()) add(stringResource(Res.string.import_updated, joinedList(updated)))
@@ -190,7 +195,7 @@ suspend fun importedSentence(
     val added = words(parts.added)
     val updated = words(parts.updated)
     val sentences = buildList {
-        if (parts.restored > 0) add(getPluralString(Res.plurals.import_restored_result, parts.restored, parts.restored))
+        if (parts.restored > 0) add(getPluralString(parts.restoredPlural, parts.restored, parts.restored))
         if (added.isNotEmpty()) add(getString(Res.string.import_added, joinedListText(added)))
         if (updated.isNotEmpty()) add(getString(Res.string.import_updated, joinedListText(updated)))
     }

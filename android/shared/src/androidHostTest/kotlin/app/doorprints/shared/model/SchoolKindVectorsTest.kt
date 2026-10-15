@@ -107,11 +107,28 @@ class SchoolKindVectorsTest {
             assertEquals(e.id, f.str("max")?.toLong(), e.max)
             assertEquals(e.id, f.str("unit"), e.unit)
             assertEquals(e.id, f.str("maxLength")?.toInt(), e.maxLength)
+            assertEquals(e.id, f.str("better"), e.better) // which way Compare marks the best (S4b-BL-292)
             assertEquals(e.id, f.list("cadences"), e.cadences)
             assertNull(e.id, e.was)
             assertEquals(e.id, f["options"]?.jsonArray?.map { it.jsonObject.str("id") to it.jsonObject.getValue("label").android() } ?: emptyList<Pair<String?, String?>>(),
                 e.options.map { it.id to it.label })
         }
+    }
+
+    /** S4b-BL-278: the `words` object holds each id's Android key, and [KindWordKeys] is a copy of it. */
+    @Test
+    fun theSpaceWordsAreTheKindFilesAndroidKeysAndAllExist() {
+        val words = school.getValue("words").jsonObject
+        assertEquals(KindWordKeys.IDS, words.keys.toList())
+        assertEquals(KindWordKeys.SCHOOL, words.mapValues { it.value.android() })
+        val en = composeStrings("en")
+        for ((id, key) in KindWordKeys.SCHOOL) if (key != null) assertNotNull("$id ($key) is not a Compose string", en[key])
+        assertEquals(KindWordKeys.SCHOOL, KindWordKeys.of("school"))
+        assertEquals("a kind with no table reads the house's", KindWordKeys.HOUSE, KindWordKeys.of("anything else"))
+        // The file says the same of the lists' title as its label does (`labels.many`).
+        assertEquals(school.getValue("labels").jsonObject.getValue("many").android(), KindWordKeys.SCHOOL.getValue("heading"))
+        // None of the school's words is the house's (the website's `school.*` ids are all its own).
+        for ((id, key) in KindWordKeys.SCHOOL) if (key != null) assertTrue("$id reads a house string: $key", KindWordKeys.HOUSE[id] != key)
     }
 
     @Test

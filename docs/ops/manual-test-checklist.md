@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | The complete manual test list for Doorprints before real-system testing starts and before Android/iOS development continues: every check a person redoes on real devices, whether or not an automated suite or a review session already covered it |
-| Version | 0.14 |
+| Version | 0.15 |
 | Date | 2026-10-15 |
 | Author | Claude, senior reviewer |
 | Status | Draft |
@@ -26,6 +26,7 @@
 | 0.12 | 2026-10-14 | Claude (Code), engineer | New section 18, **More than houses: What you track and the chooser** (kinds PR 8, S4b-BL-212; TC-M-69): MT-93 (no section on the published site; the switch, the rows, the chooser, the chip, Back, in four languages, both themes, with a screen reader) and MT-94 (a school space, the default kind, the deep link, the backup's `search.kinds`, turning schools off, importing into a browser that never chose). |
 | 0.13 | 2026-10-14 | Claude (Code), engineer | New section 19, **More than houses on the phone** (kinds PR C, S4b-BL-274; TC-M-72): MT-96 (a release shows nothing; the switch, the chooser, the chip, Back, a school space's words, in four languages, both themes, with TalkBack) and MT-97 (the school space's tools, a copy, the backup's `search`, a shared listing, a link). |
 | 0.14 | 2026-10-15 | Claude (Code), engineer | **MT-102** (TC-M-77, §20): the website's leftovers of the kinds by eye: the space picker on Your data, the filter chips of a school list, Compare's lower-is-better marks, the backup's and the import preview's words with two kinds on. |
+| 0.15 | 2026-10-15 | Claude (Code), engineer | **MT-103** (TC-M-78, §20): the phones' leftovers of the kinds by eye: the filter chips of a school list, *Save a copy of* on the Export screen, Compare's best marks, the neutral backup and import words, the map's notes in a school space. |
 
 ## 1. How to use this list
 
@@ -1009,6 +1010,19 @@ and fees on two of them). English, then one of Hindi, Tamil and Telugu; light an
 
 Expected: no house word in 2 to 4 with two kinds on. Record any line that does not follow, with the language and the page.
 
+#### MT-103 TC-M-78: the phones' leftovers of the kinds by eye
+
+Needs the same build as MT-101 (a debug build made with `-Pdoorprints.devKinds=true`, *Experimental: more than houses* on, the school enabled) and two or three schools saved (different boards, one with a school bus, one without, a commute and fees on two of them). English, then one of Hindi, Tamil and Telugu; light and dark; the largest text; TalkBack once.
+
+1. Open the **Schools** list. Under the status chips there are three rows: **Board**, **Medium of instruction**, **School bus**, each on *Any*. Choose *CBSE*: only those stay, and **Schools shown** says so; choose *Yes* under **School bus**: fewer stay; *Any* in both brings them back; with nothing left *Clear filters* resets the rows. Rotate the phone: the choices stay. Open the **Houses** list: no extra rows.
+2. Open the Export screen (**Save a copy**) with two lists on: the scope card says **Save a copy of** with the space on screen. Choose *Houses*: the note and the counts become the house's without leaving the screen. Choose *Schools* again.
+3. **Compare** two schools that both have a commute and fees: the lower commute and the lower fee carry a check and are bold, and TalkBack says *(best)* after the value; a row with one value or a tie has none.
+4. On the Export screen choose **Full backup**: the options read *Which entries*, *All entries*, *Photos of shortlisted entries*, and with *Shortlisted only* the note says *This backup leaves out entries that are not shortlisted*. Choose a readable copy: the words are the space's. On **Import a backup** choose a backup: the introduction, the preview lines and the result sentence say *entries*.
+5. On the **Map** in the Schools space, refuse location and press *Save school here*: the notes say *school*, not *house* and not *Hunt mode*; the long press on the map offers *Save school here*.
+6. Turn the school off, so only the house is on: the same screens say *Houses*, *All houses*, *Save house here* and *New houses* as before, and there is no **Save a copy of**.
+
+Expected: no house word in 2 to 5 with two kinds on. Record any line that does not follow, with the language and the screen.
+
 ### 20.1 Summary rows (add to §13 when the owner starts the run)
 
 | ID | Name | Who | Env | Pass | Notes |
@@ -1016,3 +1030,4 @@ Expected: no house word in 2 to 4 with two kinds on. Record any line that does n
 | MT-100 | A school's pages and copies by eye | anyone | E4 | no | |
 | MT-101 | A school's pages on the phone by eye | owner | E4 | no | |
 | MT-102 | The website's leftovers of the kinds by eye | anyone | E4 | no | |
+| MT-103 | The phones' leftovers of the kinds by eye | anyone | E4 | no | |

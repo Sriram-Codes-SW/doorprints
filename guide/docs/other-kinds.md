@@ -45,7 +45,7 @@ keeps them. **Compare**, **Ask** and **Plan** work on the list you are looking a
 
 ## Filter, compare and copy {#filter-compare-copy}
 
-On the website, the list of schools has a row of buttons for each of **Board**, **Medium of instruction** and **School bus**, under the status buttons. Press **CBSE** to see only those schools; **Any** puts the row back. The choices stay in the page address, so a bookmark or **Back** brings them back. The list of houses has no such rows. (The phone follows.)
+On the website, the list of schools has a row of buttons for each of **Board**, **Medium of instruction** and **School bus**, under the status buttons. Press **CBSE** to see only those schools; **Any** puts the row back. The choices stay in the page address, so a bookmark or **Back** brings them back. The list of houses has no such rows. The phone has the same rows under its status chips; it has no page address, so they start on **Any** again when you open the app.
 
 **Compare** marks the best value in a row; for schools, the lower commute and the lower fees are the best. **Your data** has **Save a copy of**, with the lists you show, so you can save a copy of the other list without going back to the cards. While more than houses are shown, the **Full backup** and **Import a backup** say *entries* instead of *houses*, because they hold every list.
 

@@ -440,6 +440,23 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
         }
     }
 
+    /**
+     * A school's list (kinds PR 21, S4b-BL-265; docs/03 §18.16): under the status chips, one chip row for the school's board,
+     * its medium and its bus, each with *Any* chosen. The one baseline of the filter: English light only, and no house list's
+     * changes (a house has no such row).
+     */
+    @Test fun schoolList() {
+        englishLightOnly()
+        val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
+        runBlocking { saveAtFixedTime(repo, SchoolSample.entity()) }
+        val on = KindSetting(listOf("house", "school"), experimental = "1", enabledText = "[\"house\",\"school\"]")
+        shoot("school_list", readyText = "Pine Hill School") {
+            CompositionLocalProvider(LocalSpace provides SpaceUi(on, "school"), app.doorprints.ui.LocalDevKinds provides true) {
+                HouseListScreen(onOpenHouse = {})
+            }
+        }
+    }
+
     @Test fun chooserHidden() {
         assumeTrue((lang == "en" && !dark) || (lang == "ta" && dark))
         val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository

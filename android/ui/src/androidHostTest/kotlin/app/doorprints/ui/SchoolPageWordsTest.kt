@@ -180,4 +180,25 @@ class SchoolPageWordsTest {
         }
         assertFalse(school.kind == KindLabels.HOUSE.kind)
     }
+
+    /** S4b-BL-301: the map's location notes, *Save here* and the long press's row say school and no house in a school space, in four languages. */
+    @Test
+    fun theSchoolsMapLocationNotesSayNoHouse() {
+        val words = with(SpaceWords.SCHOOL) { listOf(locationOff, needsPrecise, locationOffNoHunt, needsPreciseNoHunt, saveNeedsLocation, saveHere) }
+        for (language in languages) {
+            val strings = phone(language)
+            for (word in words) {
+                val name = nameOf(word)
+                val text = assertNotNull(strings[name], "$language $name")
+                assertTrue(text.isNotBlank(), "$language $name")
+                assertEquals(null, houseWord.getValue(language).find(text), "$language $name: $text")
+            }
+        }
+        assertFalse(phone("en").getValue(nameOf(SpaceWords.SCHOOL.locationOff)).contains("Hunt"), "a school space has no Hunt mode")
+        // The house's four are the strings the map always read.
+        assertEquals(
+            listOf("map_location_off", "map_needs_precise", "map_location_off_no_hunt", "map_needs_precise_no_hunt", "map_save_needs_location"),
+            with(SpaceWords.HOUSE) { listOf(locationOff, needsPrecise, locationOffNoHunt, needsPreciseNoHunt, saveNeedsLocation) }.map(::nameOf),
+        )
+    }
 }

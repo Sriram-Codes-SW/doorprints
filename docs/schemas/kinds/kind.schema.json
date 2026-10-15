@@ -23,7 +23,7 @@
    }
   },
   "words": {
-   "description": "The words of a space's first screen and of its candidate page that name the kind (S4b-BL-278): the list heading, the map's region and its hint, the Add button and its hints, the search, the list's label and counts, the loading, empty and no-match lines, the create button and the area-notes lines. Optional and additive (a reader that does not know it ignores it, so `format` stays `doorprints-kind/1`). Keys per stack as in `labels`; `android` is absent until the phones move their own table (`SpaceWords`, `PageWords`) into the file. A kind with no `words` reads the house's.",
+   "description": "The words of a space's first screen and of its candidate page that name the kind (S4b-BL-278): the list heading, the map's region and its hint, the Add button and its hints, the search, the list's label and counts, the loading, empty and no-match lines, the create button and the area-notes lines. Optional and additive (a reader that does not know it ignores it, so `format` stays `doorprints-kind/1`). Keys per stack as in `labels`; `android` is the Compose string (`null`: the phone shows no text there; both built-in files give it since S4b-BL-278, and `SpaceWords` and `PageWords` read it). A kind with no `words` reads the house's.",
    "type": "object",
    "additionalProperties": false,
    "propertyNames": { "enum": ["heading", "regionLabel", "regionHint", "add", "addHint", "addHintShort", "search", "listLabel", "shown", "loading", "emptyTitle", "emptyBody", "noMatch", "create", "areaNotesNone", "areaInReach"] },

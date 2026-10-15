@@ -21,7 +21,13 @@ package app.doorprints.ui
 import app.doorprints.shared.export.ImportMode
 import app.doorprints.shared.export.ImportPreview
 import app.doorprints.ui.res.Res
+import app.doorprints.ui.res.import_checklists_cleared_any
 import app.doorprints.ui.res.import_floors_left_blank
+import app.doorprints.ui.res.import_floors_left_blank_any
+import app.doorprints.ui.res.import_new_any
+import app.doorprints.ui.res.import_new_visits
+import app.doorprints.ui.res.import_removed_any
+import app.doorprints.ui.res.import_updated_any
 import app.doorprints.ui.res.import_new_brokers
 import app.doorprints.ui.res.import_new_houses
 import app.doorprints.ui.res.import_updated_brokers
@@ -48,5 +54,24 @@ class ImportPreviewGroupsTest {
         val line = previewGroups(preview(newHouses = 2).copy(floorsLeftBlank = 1), 0).single().last()
         assertEquals(Res.string.import_floors_left_blank to 1, line.label to line.count)
         assertEquals(true, line.loss)
+    }
+
+    /** S4b-BL-291: with two or more kinds on, the five labels that name houses say entries; the others and the counts are as they were. */
+    @Test fun withTwoKindsOnTheFiveHouseLabelsSayEntries() {
+        val all = preview(newHouses = 1).copy(updatedHouses = 2, checklistsCleared = 3, floorsLeftBlank = 4, removedHouses = 5, newVisits = 6)
+        val house = previewGroups(all, 0).map { g -> g.map { it.label to it.count } }
+        assertEquals(previewGroups(all, 0, neutral = false).map { g -> g.map { it.label to it.count } }, house, "the default is the house's")
+        val neutral = previewGroups(all, 0, neutral = true).map { g -> g.map { it.label to it.count } }
+        assertEquals(
+            listOf(
+                listOf(
+                    Res.string.import_new_any to 1, Res.string.import_updated_any to 2, Res.string.import_checklists_cleared_any to 3,
+                    Res.string.import_floors_left_blank_any to 4, Res.string.import_removed_any to 5,
+                ),
+                listOf(Res.string.import_new_visits to 6),
+            ),
+            neutral,
+        )
+        assertEquals(house.map { g -> g.map { it.second } }, neutral.map { g -> g.map { it.second } }, "the same lines with the same counts")
     }
 }
