@@ -2,8 +2,8 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.195 |
-| Date | 2026-10-14 |
+| Version | 0.196 |
+| Date | 2026-10-15 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..183); this file lists the lead-level items and points to the rest. |
 
@@ -203,6 +203,7 @@
 | 0.193 | 2026-10-14 | Claude (Code), engineer | §11.2: **S4b-BL-310 In review** (`chore/deps-angular-maplibre`): Angular 22.2.2 and maplibre-gl 6.13.0; the MapLibre worker is self-contained from 6.13, so the build, the PWA check and the live check follow the new layout ([10](10-sprint-log.md) v0.321). |
 | 0.194 | 2026-10-14 | Claude (Code), engineer | §11.2: **S4b-BL-311 In review** (`chore/deps-vitest5-jsdom30`): vitest 5.0.4 and jsdom 30.1.2; Vitest 5's on-disk module cache is turned off for the web tests ([10](10-sprint-log.md) v0.323). |
 | 0.195 | 2026-10-15 | Claude (Code), engineer | §7 **Status words** (owner request): Planned, In progress, In review (a PR number in the row), Done (PR number and short commit id); the merging session flips the row in the same pull request; a row never says In review without an open PR. Enforced offline by `tools/check-sprint-status.mjs` (docs/10 rows led by a ticket id; in `tools/check.sh` and the `security.yml` *Commit author emails* job). Evidence recipe: `git log origin/main --grep=<BL id>`. |
+| 0.196 | 2026-10-15 | Claude (Code), docs | §7 *Per change* item 2 gains the rule that a new store version, module, workflow, ADR or stack entry point updates the new [16 Architecture overview](16-architecture-overview.md) in the same pull request (the one entry page for the HLD and LLD; 03 v0.146, docs/README v0.125). |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 
@@ -556,6 +557,8 @@ suite runs in a cloud session; CI is the second check, never the first:
 2. Code, tests, and the docs in the same change: the SSDLC doc sections touched, their version and change-log rows
    (01-14, `docs/ai/ai-design.md`), the CHANGELOG *Unreleased* entry, and the user guide (`guide/docs`) when a label,
    screen or feature it names changes. UI text in en, hi, ta and te (hi/ta/te marked *under review*).
+   **A new store version (a Room or IndexedDB bump, a new Flyway file), module, workflow, ADR or stack entry point updates
+   [docs/16](16-architecture-overview.md) in the same PR** (its §3 table, §6 table or §2 diagram; §7 of that page says which).
 3. Self-check (CLAUDE.md "How changes are reviewed"): accessibility, four languages, both themes, loading/empty/error.
    For UI: screenshots checked by eye (Android `recordRoborazziDebug`; web: Playwright against the built site, in all
    four languages and both themes).
