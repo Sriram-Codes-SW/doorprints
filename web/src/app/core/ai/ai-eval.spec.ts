@@ -19,6 +19,7 @@ import { describe, expect, it } from 'vitest';
 import type { HouseDraft, PlanResponse } from '../ai.service';
 import golden from '../../../../../docs/ai/evals/golden-set.json';
 import schoolSet from '../../../../../docs/ai/evals/school-set.json';
+import spokenSet from '../../../../../docs/ai/evals/spoken-set.json';
 import schoolKind from '../../../../../docs/schemas/kinds/school.json';
 import { type CaseResult, type GoldenCase, evalSetup, fixtureRecords, formatSummary, scoreCase } from './ai-eval';
 
@@ -653,7 +654,7 @@ describe('the school set (S4b-BL-268)', () => {
     it('carries the school set, trimmed, and refuses any other name, hard-set included, before anything is sent', () => {
       expect(evalSetup({ ...gemini, AI_EVAL_SET: ' school-set ' })).toMatchObject({ status: 'run', evalSet: 'school-set' });
       for (const name of ['hard-set', 'nope', '../x']) {
-        expect(evalSetup({ ...gemini, AI_EVAL_SET: name })).toEqual({ status: 'invalid', line: 'eval set must be golden-set or school-set (hard-set runs on the server only)' });
+        expect(evalSetup({ ...gemini, AI_EVAL_SET: name })).toEqual({ status: 'invalid', line: 'eval set must be golden-set, school-set or spoken-set (hard-set runs on the server only)' });
       }
     });
 
@@ -777,5 +778,51 @@ describe('the school set (S4b-BL-268)', () => {
     const lines = formatSummary({ kind: 'openai-compatible', host: '127.0.0.1:11434', model: 'm' }, [{ id: 'school-ask-01', type: 'ask', passed: true, failures: [] }], null, '', undefined, undefined, 'school-set v0.1');
     expect(lines).toContain('Eval set: school-set v0.1 (its own fixtures, the kinds on; not gated).');
     expect(formatSummary({ kind: 'gemini', host: '', model: '' }, [], null, 'k')).not.toContain('Eval set');
+  });
+});
+
+// S4b-BL-220: the spoken set (docs/ai/evals/spoken-set.json) through this port: the eval-set setting, the summary line and the file's
+// shape. Text only, no thresholds, the golden set's fixtures; the live run (ai-provider.live.spec.ts) needs a model, these need none.
+describe('the spoken set (S4b-BL-220)', () => {
+  const gemini = { DOORPRINTS_EVAL_KEY: 'k', AI_EVAL_KIND: 'gemini' };
+  const cases = spokenSet.cases as unknown as GoldenCase[];
+  const goldenIds = new Set((golden.cases as unknown as GoldenCase[]).map((c) => c.id));
+
+  it('is a chosen set like the school set, and the default setup is untouched', () => {
+    expect(evalSetup({ ...gemini, AI_EVAL_SET: ' spoken-set ' })).toMatchObject({ status: 'run', evalSet: 'spoken-set' });
+    expect(evalSetup({ ...gemini, AI_EVAL_SET: 'golden-set' })).toEqual(evalSetup(gemini));
+    expect(evalSetup({ ...gemini, AI_EVAL_SET: 'spoken-set', AI_EVAL_ADDRESS_SET: 'known' }))
+      .toMatchObject({ status: 'invalid', line: expect.stringContaining('cannot be combined') });
+  });
+
+  it('writes the set into the summary with the golden set\'s fixtures, not gated', () => {
+    const lines = formatSummary({ kind: 'gemini', host: '', model: '' }, [], null, 'k', undefined, undefined, 'spoken-set v0.1');
+    expect(lines).toContain('Eval set: spoken-set v0.1 (the golden set\'s fixtures; not gated).');
+  });
+
+  it('has no thresholds, takes the golden set\'s fixtures and holds spoken-style cases with unique ids', () => {
+    expect(spokenSet).not.toHaveProperty('thresholds');
+    expect(spokenSet.fixturesFrom).toBe('golden-set.json');
+    expect(cases).toHaveLength(28);
+    const ids = new Set<string>();
+    for (const c of cases) {
+      expect(c.id).toMatch(/^spoken-(extract|ask|plan)-\d{2}-[a-z0-9-]+$/);
+      expect(ids.has(c.id)).toBe(false);
+      ids.add(c.id);
+      expect(goldenIds.has(c.id)).toBe(false);
+      const text = String(c.input['text'] ?? c.input['question']);
+      expect(text, c.id).not.toMatch(/[.,;:?!()\n]/); // spoken: no punctuation
+      expect(text, c.id).not.toMatch(/\d/); // numbers are words (the answer is checked, not the wording)
+    }
+  });
+
+  it('scores a perfect answer to a spoken case as a pass and a wrong one as a fail', () => {
+    const c = cases.find((x) => x.id === 'spoken-extract-01-fillers-number-words')!;
+    const draft = {
+      label: 'Flat', address: null, street: null, locality: 'Indiranagar', price: 28000, priceType: 'RENT', bedrooms: 2, areaSqft: null,
+      contactName: 'Ramesh', contactPhone: '98450 12345', listingUrl: null, notes: 'deposit 1.5 lakh', amenities: ['parking', 'lift', 'power backup'], warnings: [],
+    } as unknown as HouseDraft;
+    expect(scoreCase(c, { type: 'extract', draft }).passed).toBe(true);
+    expect(scoreCase(c, { type: 'extract', draft: { ...draft, price: 28 } }).passed).toBe(false);
   });
 });
