@@ -70,7 +70,7 @@ class ParityVectorsTest {
             }
             assertEquals(str(o["expected"]), actual, "${o["method"]} $name / $phone: $input")
         }
-        assertEquals(137, cases.size)
+        assertEquals(143, cases.size)
     }
 
     /**
@@ -98,7 +98,8 @@ class ParityVectorsTest {
     @Test
     fun listingChecksMatchTheServer() {
         assertEquals(31, root.getValue("sanitize").jsonArray.size)
-        for (c in root.getValue("sanitize").jsonArray) {
+        assertEquals(3, root.getValue("sanitizeNative").jsonArray.size) // S4b-BL-174b: numbers in the digits of Indian scripts
+        for (c in root.getValue("sanitize").jsonArray + root.getValue("sanitizeNative").jsonArray) {
             val o = c.jsonObject
             val raw = o["raw"].takeUnless { it is JsonNull }?.let { json.decodeFromJsonElement<RawListing>(it) }
             val actual = json.encodeToJsonElement(DraftSanitizer.sanitize(raw, str(o["source"])))

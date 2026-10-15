@@ -62,7 +62,7 @@
   },
   {
    "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/PcmVoiceRecorder.kt",
-   "find": "                failed = VoiceFailure.FAILED\n",
+   "find": "                    if (state == RUNNING) failed = VoiceFailure.FAILED\n",
    "replace": "",
    "expect": "aDeadMicrophone"
   },
@@ -191,6 +191,12 @@
    "find": "\"ta\" -> \"ta-IN\"",
    "replace": "\"ta\" -> \"hi-IN\"",
    "expect": "theLanguageHint"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/PcmVoiceRecorder.kt",
+   "find": "        if (source.end()) {",
+   "replace": "        if (false) {",
+   "expect": "theBufferedTailHandedOutAfterStopIsInTheClip"
   }
  ]
 }

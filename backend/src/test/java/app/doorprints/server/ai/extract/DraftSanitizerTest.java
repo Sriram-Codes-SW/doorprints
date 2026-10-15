@@ -92,18 +92,31 @@ class DraftSanitizerTest {
     }
 
     /**
-     * KNOWN GAP S4b-BL-174b (docs/10 S4b-BL-174): a price or a bedroom count the model copies in the digits of an Indian
-     * script ("২৫,০০০" is 25,000 in Bengali) is dropped with a warning, because the regular expressions read 0-9 only.
-     * The user loses a field to retype; nothing wrong is saved. The wanted answers are 25000 and 2; when the gap is
-     * closed (in the three sanitisers together, with a shared vector) this test turns into the assertion of those.
+     * S4b-BL-174b: a price, a bedroom count or a phone number the model copies in the digits of an Indian script is read
+     * as 0-9 (Bengali "\u09E8\u09EB,\u09E6\u09E6\u09E6" is 25,000), as in Kotlin and TypeScript; the shared vectors pin the same.
      */
     @Test
-    void aPriceOrBedroomCountInNativeDigitsIsDroppedWithAWarningUntilTheGapIsClosed() {
+    void aPriceOrBedroomCountInNativeDigitsIsRead() {
         var w = new ArrayList<String>();
-        assertThat(DraftSanitizer.price("\u09E8\u09EB,\u09E6\u09E6\u09E6", w)).isNull();
-        assertThat(DraftSanitizer.bedrooms("\u09E8 BHK", w)).isNull();
-        assertThat(w).containsExactly("price: could not read '\u09E8\u09EB,\u09E6\u09E6\u09E6', dropped",
-                "bedrooms: could not read '\u09E8 BHK', dropped");
+        assertThat(DraftSanitizer.price("\u09E8\u09EB,\u09E6\u09E6\u09E6", w)).isEqualTo(25_000L);
+        assertThat(DraftSanitizer.price("\u096A\u096B\u096A\u096A\u096A", w)).isEqualTo(45_444L); // Devanagari
+        assertThat(DraftSanitizer.price("\u0BEA\u0BEB,\u0BE6\u0BE6\u0BE6", w)).isEqualTo(45_000L); // Tamil
+        assertThat(DraftSanitizer.price("\u0C68.\u0C6B Cr", w)).isEqualTo(25_000_000L); // Telugu 2.5 Cr
+        assertThat(DraftSanitizer.bedrooms("\u09E8 BHK", w)).isEqualTo(2);
+        assertThat(DraftSanitizer.bedrooms("\u0BE9 BHK", w)).isEqualTo(3);
+        assertThat(DraftSanitizer.bedrooms("\u0968\u0966", w)).isEqualTo(20);
+        assertThat(DraftSanitizer.bedrooms("\u096A\u0966\u0966", w)).isNull(); // 400 is out of range
+        assertThat(w).hasSize(1); // the 400
+    }
+
+    @Test
+    void aPhoneInNativeDigitsIsKeptAsAsciiWhenTheTextHasIt() {
+        var w = new ArrayList<String>();
+        var source = "\u0938\u0902\u092A\u0930\u094D\u0915 \u096F\u096E\u096A\u096B\u0966 \u0967\u0968\u0969\u096A\u096B"; // 98450 12345
+        assertThat(DraftSanitizer.phone("\u096F\u096E\u096A\u096B\u0966 \u0967\u0968\u0969\u096A\u096B", source, w)).isEqualTo("98450 12345");
+        assertThat(DraftSanitizer.phone("98450 12345", source, w)).isEqualTo("98450 12345");
+        assertThat(DraftSanitizer.phone("98450 99999", source, w)).isNull();
+        assertThat(w).containsExactly("contactPhone: not found in the listing text, dropped");
     }
 
     @Test

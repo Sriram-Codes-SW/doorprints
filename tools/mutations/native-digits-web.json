@@ -1,0 +1,14 @@
+{
+  "spec": ["web/src/app/core/ai/ai-core.spec.ts", "web/src/app/shared/listing-text.spec.ts"],
+  "mutations": [
+    {"file": "web/src/app/core/ai/ai-core.ts", "find": "PRICE.exec(asciiDigits(value).replace", "replace": "PRICE.exec(value.replace", "expect": "checks listings as the server does"},
+    {"file": "web/src/app/core/ai/ai-core.ts", "find": "/\\d+/.exec(asciiDigits(value))", "replace": "/\\d+/.exec(value)", "expect": "checks listings as the server does"},
+    {"file": "web/src/app/core/ai/ai-core.ts", "find": "const kept = asciiDigits(value).replace", "replace": "const kept = value.replace", "expect": "checks listings as the server does"},
+    {"file": "web/src/app/core/ai/ai-core.ts", "find": "if (!asciiDigits(source).replace(/\\D/g, '')", "replace": "if (!source.replace(/\\D/g, '')", "expect": "checks listings as the server does"},
+    {"file": "web/src/app/shared/listing-text.ts", "find": "PRICE.exec(digits)", "replace": "PRICE.exec(words)", "expect": "reads numbers written in the digits of an Indian script"},
+    {"file": "web/src/app/shared/listing-text.ts", "find": "BHK.exec(digits)", "replace": "BHK.exec(words)", "expect": "reads numbers written in the digits of an Indian script"},
+    {"file": "web/src/app/shared/listing-text.ts", "find": "AREA.exec(digits)", "replace": "AREA.exec(words)", "expect": "reads numbers written in the digits of an Indian script"},
+    {"file": "web/src/app/shared/listing-text.ts", "find": "PHONE.exec(digits)", "replace": "PHONE.exec(words)", "expect": "reads numbers written in the digits of an Indian script"},
+    {"file": "web/src/app/shared/listing-text.ts", "find": "PHONE.exec(digits)", "replace": "PHONE.exec(words)", "expect": "Devanagari digits, Bengaluru"}
+  ]
+}

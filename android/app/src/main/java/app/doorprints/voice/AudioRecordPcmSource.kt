@@ -40,6 +40,9 @@ import app.doorprints.shared.voice.VoiceRecorderException
 class AudioRecordPcmSource(private val context: Context) : PcmSource {
     @Volatile private var record: AudioRecord? = null
 
+    /** Set by [end]: the capture is stopped and [read] hands out what the recorder still holds, then ends. */
+    @Volatile private var draining = false
+
     override fun open() {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             throw VoiceRecorderException(VoiceFailure.DENIED)
@@ -78,9 +81,23 @@ class AudioRecordPcmSource(private val context: Context) : PcmSource {
     override fun read(into: ByteArray, offset: Int, length: Int): Int {
         val r = record ?: return -1
         return try {
-            r.read(into, offset, length)
+            val n = r.read(into, offset, length)
+            // After [end] the first empty or failed read means everything that was buffered has been handed out.
+            if (draining && n <= 0) -1 else n
         } catch (_: IllegalStateException) {
             -1
+        }
+    }
+
+    /** The person's Stop: stop capturing but keep the buffered tail (the last words) for [read] to hand out; [close] releases. */
+    override fun end(): Boolean {
+        val r = record ?: return false
+        return try {
+            r.stop()
+            draining = true
+            true
+        } catch (_: IllegalStateException) {
+            false
         }
     }
 

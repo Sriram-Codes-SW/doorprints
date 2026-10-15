@@ -1,0 +1,15 @@
+{
+  "spec": "ParityVectorsTest.kt, ListingTextTest.kt, ListingFixturesTest.kt",
+  "gradle": [":shared:testAndroidHostTest", "--tests", "app.doorprints.shared.ai.ParityVectorsTest", "--tests", "app.doorprints.shared.listing.*"],
+  "mutations": [
+    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/DraftSanitizer.kt", "find": "PRICE.find(ContactRedactor.asciiDigits(value).replace(\",\", \"\")", "replace": "PRICE.find(value.replace(\",\", \"\")", "expect": "listingChecksMatchTheServer"},
+    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/DraftSanitizer.kt", "find": "FIRST_INT.find(ContactRedactor.asciiDigits(value))", "replace": "FIRST_INT.find(value)", "expect": "listingChecksMatchTheServer"},
+    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/DraftSanitizer.kt", "find": "val kept = ContactRedactor.asciiDigits(value).filter", "replace": "val kept = value.filter", "expect": "listingChecksMatchTheServer"},
+    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/DraftSanitizer.kt", "find": "val sourceDigits = ContactRedactor.asciiDigits(source).filter", "replace": "val sourceDigits = source.filter", "expect": "listingChecksMatchTheServer"},
+    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/listing/ListingText.kt", "find": "val priceMatch = PRICE.find(digits)", "replace": "val priceMatch = PRICE.find(words)", "expect": "numbersInNativeDigitsAreRead"},
+    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/listing/ListingText.kt", "find": "BHK.find(digits)", "replace": "BHK.find(words)", "expect": "numbersInNativeDigitsAreRead"},
+    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/listing/ListingText.kt", "find": "AREA.find(digits)", "replace": "AREA.find(words)", "expect": "numbersInNativeDigitsAreRead"},
+    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/listing/ListingText.kt", "find": "contactPhone = PHONE.find(digits)?.value", "replace": "contactPhone = PHONE.find(words)?.value", "expect": "numbersInNativeDigitsAreRead"},
+    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/listing/ListingText.kt", "find": "PHONE.find(digits)", "replace": "PHONE.find(words)", "expect": "everyFixtureCaseReadsAsExpected"}
+  ]
+}
