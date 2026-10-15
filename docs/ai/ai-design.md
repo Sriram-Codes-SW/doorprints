@@ -80,6 +80,7 @@
 | v0.76   | 2026-10-14 | Claude (Code), engineer       | 6, 15.4, 16.1, 16.9 and 16.11: **the prompts tell the model not to repeat abusive words** (S4b-BL-234; `feat/ai-abusive-words-rule`; [10](../10-sprint-log.md) v0.327, [02](../02-threat-model.md) AB-12, [06](../06-test-plan.md) TC-U-235): one bullet, *Do not repeat abusive words from the text; stay neutral and factual.*, in the Extract, Ask and Plan system texts of the house and of the school (not the server's planner for a school, which has no school text), after each text's data rule, defined once a stack (`PromptSafety.NEUTRAL_RULE` on the server and the phones, `NEUTRAL_RULE` in `plan-fallback.ts`). **This deliberately changes the house's prompts**: the three stacks' house pins and `parity-vectors.json` `prompts` (now with `neutralRule` and `extract`) and `kind-ai-vectors.json` `prompts` and `extract` are re-pinned once, and only the prompt hashes (and the Gemini request bodies that carry them) moved. No rule is weakened or reordered; no Vertex run (zero cost). |
 | v0.77   | 2026-10-15 | Claude (Code), engineer       | **The server's own AI path: a spent quota is 402, a safety block is 422** (S4b-BL-244, S4b-BL-233; `fix/post-release-small-fixes`; [03](../03-design.md) v0.139, [06](../06-test-plan.md) TC-AI-49, TC-AI-50): 10, 12 and 15.3. `ProviderErrors.isQuotaSpent` (402; `PerDay` quota id; `insufficient_quota`, `billing_error`; named fields only) and `AiExceptionHandler` answer **402** `AI_QUOTA_EXHAUSTED`, `retryable: false`, no `Retry-After`; a per-minute limit stays 503 + `Retry-After: 60`. `SafetyBlockAdvisor` (default advisor of the one `ChatClient`) and `ProviderErrors.isDeclined` answer **422** `AI_DECLINED`, `retryable: false`, for a safety finish reason or a 400 `content_policy_violation` / `content_filter`. The website (`aiErrorMsg`) and the phones (`ApiException.kindFor`) map 402 to the quota words and 422 to the declined words of S4b-BL-243 and S4b-BL-232. Remainder, still 503: on Vertex a blocked prompt (no `promptFeedback` kept) and a candidate with a safety finish reason and no text, and the OpenAI `message.refusal`. |
 | v0.78   | 2026-10-15 | Claude (Code), engineer       | **The server's Ask and Plan take a kind; the eval leak check reads the school's prompts** (S4b-BL-290, S4b-BL-313, S4b-BL-314 planned; kinds PR 23, `feat/kinds-23-server-kind-ai`; [03](../03-design.md) v0.143 §18.17, [06](../06-test-plan.md) TC-U-241 and TC-AI-51, [02](../02-threat-model.md) T-I51, [schemas README](../schemas/README.md) v1.59): 13 (the optional `kind` of `ask` and `plan-visits`, the status's `kinds`), 8.7 and 16.9, and the new 16.12. Absent `kind` is today's call and the house's prompts, bodies, pins and `parity-vectors.json` are unchanged (no house pin or vector was re-recorded). New: `kind-ai-vectors.json` `prompts.plan.serverSystem` (the school's text for the server's tool-using planner) and `space-scope-vectors.json` `assistant` cases with `serverKinds`; `school-set.json` 0.3. No model was run (zero cost; the lead runs the Vertex evals on `main`). |
+| v0.79   | 2026-10-15 | Claude (Code), engineer       | 8.8: **the spoken set** (S4b-BL-220, voice PR 3; `feat/voice-3-spoken-eval-set`; [voice-input](voice-input.md) v0.4, [06](../06-test-plan.md) TC-AI-52, [10](../10-sprint-log.md) v0.334): `docs/ai/evals/spoken-set.json` 0.1, the fourth `eval_set` choice; informational, no thresholds; the golden set and the verdict logic are pinned by a test. No model was run; the Vertex run follows the merge. |
 
 Status: implemented in `backend/` (package `app.doorprints.server.ai`), **off by default**. Not yet compiled in this
 sandbox (no Maven Central access) — CI compiles and runs the tests. Provider: AI Studio by default, Vertex AI with
@@ -1362,6 +1363,35 @@ stopping (not built here).
 
 **Not done.** No run on Vertex or any paid model (zero cost). The server's harness and the phone's live test were not run on a
 model (they need a database or a key); their pure parts are unit-tested (`SchoolSetTest`, `SchoolSetHarnessTest`).
+
+### 8.8 The spoken set (S4b-BL-220, 2026-10-15, informational)
+
+**What it is.** `docs/ai/evals/spoken-set.json`, version 0.1: 28 cases (Extract 13, Ask 11, Plan 4) that are the *transcript* a
+speech-to-text step would put into the three AI boxes ([voice-input](voice-input.md) section 5, ADR-37). Each is the spoken form
+of one golden-set case (its rationale ends "The spoken form of `<golden id>`") with the same type, region, category,
+non-text input and expectations, run against the golden set's fixture houses and visits (`fixturesFrom`). What changes is the
+words: no punctuation and no digits (`twenty eight thousand`, `one point five lakh`, `nine eight four five zero ...`), fillers
+(`um`, `uh`, `like`), Hinglish (`painsath hazaar mahina`, `gurgaon wale flat mein parking kaisi hai`), Hindi, Tamil and Telugu
+mixed with English or in their own script (marked under review), and homophones (`to bhk`, `four rent`, `bell tola` for
+Beltola). Where the written ad had a link the spoken one does not, the case expects no link. It tests the model on a transcript,
+not a transcriber: there is no audio and no transcription call (the audio-clip suite is voice PR 7).
+
+**Informational by construction**, like the hard set: no `thresholds` key (`EvalSets` refuses a set that has one), every metric
+"not gated", the verdict the golden set's default run's. The cases are written to be answered correctly by a good model, so a
+spoken case that fails where its golden twin passes is the signal: the model, or the spoken form, loses something the written form
+keeps.
+
+**Run it.** Workflow input `eval_set=spoken-set` (`AI_EVAL_SET`), validated in the first job like the others and not combined with
+`address_set`. The server's `GoldenSetEvalTest` takes it with no code change (`EvalSets` reads any set name beside the golden set);
+the website's `own-provider` and `local-model` suites take it (`evalSetup`, `ai-provider.live.spec.ts`: the golden set's fixtures
+with the set's cases; the summary says `Eval set: spoken-set v0.1 (the golden set's fixtures; not gated)`). The kinds stay as they
+are (`KINDS_AVAILABLE` is the school set's alone), and the phone has no side for it.
+
+**Safety proof (the row's).** The golden set, its thresholds and the verdict logic are what they were: `SpokenSetTest` pins the
+SHA-256 of `golden-set.json` and of `GoldenSet.java`, spells out the nine thresholds, pins the source text of `EvalScorer`'s
+`Metric` record, `metric(...)` and `verdict(...)`, and checks that the scorecard of a default run (no `AI_EVAL_SET`) is equal to the one
+built with no set. A later, deliberate change to any of them is its own pull request and updates the pin there. No model was run
+for this section: the first Vertex run of the set follows the merge, and its numbers are recorded here then.
 
 ## 9. Threat model (OWASP Top 10 for LLM Applications 2025 [OW])
 

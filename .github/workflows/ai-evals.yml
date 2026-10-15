@@ -76,6 +76,10 @@
 # 2026-10-10 (S4b-BL-226): the input `address_set` (default `default`) picks a set of docs/ai/evals/address-variants.json for the
 # 2026-10-10 (S4b-BL-239): the `canary` input has a fourth live choice, `no-wrapping` (the nonce tag and the neutraliser off, one
 #   Ask rule removed, scored on six delimiter cases); its value is in the Validate-inputs regex below like the other three.
+# 2026-10-15 (S4b-BL-220): `eval_set` has a fourth choice, `spoken-set` (docs/ai/evals/spoken-set.json: spoken-style text cases, no punctuation,
+#   number words, fillers, Hinglish and Hindi/Tamil/Telugu code-switching, homophones; the golden set's fixtures; informational, no
+#   thresholds). The server and the website (own-provider and local-model) read it; there is no phone side and the kinds stay as they are
+#   (KINDS_AVAILABLE is school-set's alone). golden-set, hard-set and school-set runs are unchanged.
 # 2026-10-14 (S4b-BL-268): `eval_set` has a third choice, `school-set` (docs/ai/evals/school-set.json: its own schools in the candidate
 #   shape, informational). The golden-set job gives the server KINDS_AVAILABLE=house,school for it only; the own-provider and
 #   local-model jobs (the website) pass AI_EVAL_SET too and read it (golden-set or school-set; hard-set is the server's alone).
@@ -156,13 +160,14 @@ on:
           - messy
           - hostile
       eval_set:
-        description: "golden-set, own-provider and local-model suites (S4b-BL-236, S4b-BL-268, docs/ai/ai-design.md 8.6 and 8.7): which case file runs. golden-set = the golden set, the only run with a verdict. hard-set (golden-set suite only) = docs/ai/evals/hard-set.json, additive cases against the golden set's fixtures, informational (no thresholds, every metric 'not gated'). school-set = docs/ai/evals/school-set.json, its own schools in the candidate shape with the kinds available on (the server: KINDS_AVAILABLE=house,school; the website: the developer flag), informational. Not combined with address_set"
+        description: "golden-set, own-provider and local-model suites (S4b-BL-236, S4b-BL-268, docs/ai/ai-design.md 8.6 and 8.7): which case file runs. golden-set = the golden set, the only run with a verdict. hard-set (golden-set suite only) = docs/ai/evals/hard-set.json, additive cases against the golden set's fixtures, informational (no thresholds, every metric 'not gated'). school-set = docs/ai/evals/school-set.json, its own schools in the candidate shape with the kinds available on (the server: KINDS_AVAILABLE=house,school; the website: the developer flag), informational. spoken-set (S4b-BL-220) = docs/ai/evals/spoken-set.json, the spoken form of golden-set cases (text a transcriber would produce) against the golden set's fixtures, informational, server and website. Not combined with address_set"
         type: choice
         default: golden-set
         options:
           - golden-set
           - hard-set
           - school-set
+          - spoken-set
       category:
         description: "own-provider and local-model suites (S4b-BL-268): all = every case of the set; prompt-injection = only the prompt-injection cases (the keyless injection run on a local model; informational). The golden-set suite runs every case"
         type: choice
@@ -259,8 +264,8 @@ jobs:
           CHAT_MODEL_INPUT: ${{ inputs.chat_model }}
           EMBEDDING_MODEL_INPUT: ${{ inputs.embedding_model }}
         run: |
-          if ! [[ "$EVAL_SET" =~ ^(golden-set|hard-set|school-set)$ ]]; then
-            echo "::error::eval_set must be golden-set, hard-set or school-set (a file in docs/ai/evals)"
+          if ! [[ "$EVAL_SET" =~ ^(golden-set|hard-set|school-set|spoken-set)$ ]]; then
+            echo "::error::eval_set must be golden-set, hard-set, school-set or spoken-set (a file in docs/ai/evals)"
             exit 1
           fi
           if ! [[ "$CANARY" =~ ^(none|no-sanitizer|no-citation-filter|prompt-without-rules|no-wrapping)$ ]]; then

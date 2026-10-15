@@ -5,8 +5,9 @@
 | v0.1    | 2026-10-10 | Claude (Code), engineer   | First version (docs only, no code): the consult of 2026-10-10 (options with dated prices, recommendation, the minimum additive design, evals, a seven-pull-request plan with stop criteria, and what was not verified). The owner (2026-10-10) chose to start toward the kinds refactor ([14](../14-lead-backlog-and-handoff.md) N21) **while including voice input**. Backlog rows S4b-BL-218..S4b-BL-224 in [10](../10-sprint-log.md); the decision record is ADR-37 in [03](../03-design.md) (written by voice pull request 1, the number is reserved here). |
 | v0.2    | 2026-10-10 | Claude (Code), engineer   | Voice pull request 1 (S4b-BL-218): ADR-37 is written in [03](../03-design.md); the threat-model rows, DF-49, gate rows F11 and G4 and the manual rows MT-82..MT-87 are in [02](../02-threat-model.md) §11, [04](../04-data-flow-diagrams.md), [13](../13-release-security-checklist.md) and the [manual checklist](../ops/manual-test-checklist.md). The options table of section 2 is dated the same day as this change and was not re-fetched from the vendors here; section 7 (not verified) still stands, and the prices are re-read before voice pull request 4. |
 | v0.3    | 2026-10-10 | Claude (Code), engineer   | Voice pull request 2 (S4b-BL-219): the `Transcriber` core is built with no caller (Gemini and OpenAI-compatible adapters; Sarvam stays for voice pull request 7). OpenRouter's speech-to-text page was read on 2026-10-10: it takes JSON with base64 `input_audio` and also OpenAI-style `multipart/form-data` (section 2). |
+| v0.4    | 2026-10-15 | Claude (Code), engineer   | Voice pull request 3 (S4b-BL-220): the spoken-style eval cases, `docs/ai/evals/spoken-set.json` 0.1 and the `eval_set=spoken-set` choice, are built and described in [ai-design](ai-design.md) 8.8. Voice pull request 2 (#265) is merged. The golden set and the verdict logic are pinned by `SpokenSetTest`; no model was run here. |
 
-Status: **Voice pull request 2 is in review (S4b-BL-219, PR #265): the `Transcriber` core is built on the phones and the website with no caller; no setting, no microphone yet.** Written for the owner, the AI team and the reviewers of voice pull request 1.
+Status: **Voice pull request 3 is in review (S4b-BL-220): the spoken-style eval set. Voice pull request 2 (S4b-BL-219, #265) is merged: the `Transcriber` core is on the phones and the website with no caller; no setting, no microphone yet.** Written for the owner, the AI team and the reviewers of voice pull request 1.
 
 ## 1. What this is, and the honest value
 
@@ -93,7 +94,8 @@ aloud reaches the transcription host before it can be redacted.
 1. **Spoken-style text cases** in a new file `docs/ai/evals/spoken-set.json` (`fixturesFrom` the golden set): no
    punctuation, number words ("two bhk twenty eight thousand rent deposit one point five lakh"), fillers, Hinglish,
    homophones ("to bhk"). Informational metrics only, **no `thresholds` key**. `golden-set.json`, its thresholds,
-   `GoldenSet.java` and the `EvalScorer` verdict logic stay byte-identical.
+   `GoldenSet.java` and the `EvalScorer` verdict logic stay byte-identical. Built in voice pull request 3: 28 cases,
+   `eval_set=spoken-set`, described in [ai-design](ai-design.md) 8.8; `SpokenSetTest` pins the golden set and the verdict logic.
 2. **Audio clips:** at most 8 clips of up to 20 s, ogg/opus of about 40 KB each (about 300 KB in all), synthetic content
    with fake phone numbers, recorded by contributors under CC0. A new manual suite `voice` in `ai-evals.yml` (skipped
    without a key). Metrics: entity word error rate on price, BHK and locality; phone digits present, then redacted after
@@ -111,7 +113,7 @@ Seven pull requests, S4b-BL-218..S4b-BL-224 in [10](../10-sprint-log.md) §12.7.
 |---|---|---|---|
 | 1 | S4b-BL-218 | docs: ADR-37, threat-model rows, the data-flow row, this comparison re-read | nothing; may run in parallel with kinds PR 1 |
 | 2 | S4b-BL-219 | `Transcriber` core and three adapters in `:shared` and TypeScript, fake-response tests, additive parity sections, mutation lists; no caller | voice PR 1 |
-| 3 | S4b-BL-220 | `spoken-set.json` and an `AI_EVAL_SET` path input; golden set unchanged | voice PR 2 |
+| 3 | S4b-BL-220 | `spoken-set.json` and an `AI_EVAL_SET` path input; golden set unchanged (in review) | voice PR 2 |
 | 4 | S4b-BL-221 | web: setting, mic button, `MediaRecorder`, Permissions-Policy, specs, mutations | voice PR 2 and **kinds PR 5** |
 | 5 | S4b-BL-222 | Android: permission, recorder, button, Roborazzi, emulator denial test | voice PR 4 and kinds PR 5 |
 | 6 | S4b-BL-223 | iOS: plist key, `AVAudioRecorder`, compile-only plus manual rows | voice PR 5 |
