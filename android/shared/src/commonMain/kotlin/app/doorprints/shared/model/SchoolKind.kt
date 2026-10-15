@@ -88,10 +88,10 @@ internal object SchoolKind {
             KindExtra("board", "enum", "details", 50, options = options("school_board", "CBSE", "ICSE", "STATE", "IB", "IGCSE")),
             KindExtra("medium", "enum", "details", 60, options = options("school_medium", "ENGLISH", "HINDI", "REGIONAL")),
             KindExtra("grades", "text", "details", 70, maxLength = 40),
-            KindExtra("commuteMinutes", "number", "details", 72, integer = true, min = 0, max = 300, unit = "minute"),
+            KindExtra("commuteMinutes", "number", "details", 72, integer = true, min = 0, max = 300, unit = "minute", better = "lower"),
             KindExtra("busService", "bool", "details", 74),
-            KindExtra("fees", "money", "cost", 10, max = HouseCost.MAX_RUPEES, cadences = listOf("year")),
-            KindExtra("admissionFee", "money", "cost", 20, max = HouseCost.MAX_RUPEES, cadences = listOf("once")),
+            KindExtra("fees", "money", "cost", 10, max = HouseCost.MAX_RUPEES, cadences = listOf("year"), better = "lower"),
+            KindExtra("admissionFee", "money", "cost", 20, max = HouseCost.MAX_RUPEES, cadences = listOf("once"), better = "lower"),
         ),
         // Every extra is searched (kinds PR 6, S4b-BL-210).
         listOf("label", "address", "street", "locality", "notes", "contactName", "areaNotes") +

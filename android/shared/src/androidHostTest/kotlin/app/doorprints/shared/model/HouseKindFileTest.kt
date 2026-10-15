@@ -111,6 +111,30 @@ class HouseKindFileTest {
         }
     }
 
+    /** S4b-BL-278: the `words` object holds the house's Android keys, in the four languages, and [KindWordKeys.HOUSE] is a copy. */
+    @Test
+    fun theSpaceWordsAreTheFilesAndroidKeysAndTheHousesStringsAsTheyWere() {
+        val words = kind.getValue("words").jsonObject
+        assertEquals(KindWordKeys.IDS, words.keys.toList())
+        assertEquals(
+            KindWordKeys.HOUSE,
+            words.mapValues { (_, w) -> w.jsonObject.getValue("android").let { if (it is JsonNull) null else it.jsonPrimitive.content } },
+        )
+        for (lang in listOf("en", "hi", "ta", "te")) {
+            val dict = composeStrings(lang)
+            for ((id, key) in KindWordKeys.HOUSE) if (key != null) assertNotNull("$lang $id ($key) is not a Compose string", dict[key])
+        }
+        // The key a word had before the move (SpaceWords.HOUSE and PageWords.HOUSE in :ui), pinned by hand.
+        assertEquals(
+            listOf(
+                "houses_title", "map_region_desc", "common_add_on_map", "map_add_tip", "map_add_tip_a11y", "houses_search", "houses_shown",
+                "houses_empty", "houses_no_match", "map_save_here", "house_area_notes_none", "note_area_here",
+            ),
+            KindWordKeys.HOUSE.values.filterNotNull(),
+        )
+        assertEquals(kind.getValue("labels").jsonObject.getValue("many").jsonObject.getValue("android").jsonPrimitive.content, KindWordKeys.HOUSE.getValue("heading"))
+    }
+
     @Test
     fun theStatusesChecklistAndRangesAreTheCodes() {
         assertEquals("doorprints-kind/1", kind.str("format"))

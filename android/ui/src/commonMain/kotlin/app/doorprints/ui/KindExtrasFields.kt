@@ -85,6 +85,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.longOrNull
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
@@ -149,6 +150,21 @@ private fun HouseEntity.withNumber(f: KindExtra, typed: String): HouseEntity {
         else -> JsonPrimitive(n)
     }
     return withExtra(f, value)
+}
+
+/**
+ * The house without a number extra the kind file gives a range and whose stored value is outside it (S4b-BL-261 item 2, the twin of
+ * the website's `storedValue`): the form never types one ([withNumber] keeps a value only within `min` and `max`), but a value
+ * that came in another way (a listing fill, a synced candidate edited on another device) must not be written back as the
+ * person's own. Only a number extra is checked; every other extra, and one with no range, stays as it is. A house is unchanged.
+ */
+internal fun HouseEntity.withInRangeExtras(fields: KindFields): HouseEntity {
+    val other = extrasOther ?: return this
+    val outside = fields.others().filter { f ->
+        val n = (other[f.id] as? JsonPrimitive)?.takeUnless { it.isString }?.doubleOrNull
+        f.type == "number" && n != null && ((f.min != null && n < f.min!!) || (f.max != null && n > f.max!!))
+    }.map { it.id }.toSet()
+    return if (outside.isEmpty()) this else copy(extrasOther = JsonObject(other - outside).takeIf { it.isNotEmpty() })
 }
 
 private fun JsonElement?.number(): Long? = when (this) {

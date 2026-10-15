@@ -31,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import app.doorprints.data.HouseEntity
 import app.doorprints.shared.api.HouseDraftDto
+import app.doorprints.shared.model.KindFields
 import app.doorprints.ui.res.*
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
@@ -57,7 +58,7 @@ class ListingFillState {
 
 /**
  * The result line of a listing fill with *Undo fill* (puts the form back as it was before the fill; nothing is saved by
- * either) and, under it, the fields the fill wrote that the person has not edited since ([remainingMarks]). Everything is
+ * either) and, under it, the fields and the [fields]' extras the fill wrote that the person has not edited since ([remainingMarks]). Everything is
  * in the live region that was already there for the result line, so TalkBack reads the undo's confirmation too.
  */
 @Composable
@@ -65,6 +66,7 @@ fun PasteResult(
     message: String?,
     fill: ListingFillState,
     current: HouseEntity?,
+    fields: KindFields,
     onDismiss: () -> Unit,
     onUndo: (HouseEntity) -> Unit,
     modifier: Modifier = Modifier,
@@ -86,8 +88,11 @@ fun PasteResult(
             }
             val merge = fill.merge
             val marks = if (merge != null && current != null) remainingMarks(merge, current) else emptyList()
-            if (marks.isNotEmpty()) {
-                val names = marks.map { stringResource(it.nameRes) }
+            // A kind's extras the fill wrote carry the mark too, named by the kind's labels (S4b-BL-272).
+            val extraMarks = if (merge != null && current != null) remainingExtraMarks(merge, current) else emptyList()
+            if (marks.isNotEmpty() || extraMarks.isNotEmpty()) {
+                val names = marks.map { stringResource(it.nameRes) } +
+                    fields.others().filter { it.id in extraMarks }.map { stringResource(kindStringResource(fields.label(it))) }
                 Text(
                     stringResource(Res.string.house_paste_from_listing, names.joinToString(", ")),
                     style = MaterialTheme.typography.bodySmall,

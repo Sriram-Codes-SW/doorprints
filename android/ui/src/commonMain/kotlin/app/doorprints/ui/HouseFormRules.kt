@@ -122,6 +122,13 @@ fun remainingMarks(merge: ListingMerge, current: HouseEntity): List<ListingField
     merge.filled.filter { it != ListingField.NOTES && fieldValue(merge.house, it) == fieldValue(current, it) }
 
 /**
+ * The ids of a kind's extras a fill wrote ([ListingMerge.extrasFilled]) that [current] still holds unchanged (S4b-BL-272):
+ * the same rule as [remainingMarks] (a changed value, a money object too, loses its mark), in the order the fill wrote them.
+ */
+fun remainingExtraMarks(merge: ListingMerge, current: HouseEntity): List<String> =
+    merge.extrasFilled.filter { id -> merge.house.extrasOther?.get(id) == current.extrasOther?.get(id) }
+
+/**
  * The zero-cost check on the one high-stakes field (S4b-BL-238): the no-AI parser's price ([ListingText.parse], the same
  * regex the share sheet uses) against the model's. Both figures when they disagree, null when either has no price or
  * both agree. A warning for the person to read, never a correction. The website's `priceDisagreement` says the same.

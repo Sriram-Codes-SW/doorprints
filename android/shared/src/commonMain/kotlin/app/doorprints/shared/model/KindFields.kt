@@ -52,6 +52,11 @@ data class KindExtra(
     val maxLength: Int? = null,
     /** An enum's options, in the kind file's order. */
     val options: List<KindOption> = emptyList(),
+    /**
+     * Which way a number or an amount is better when candidates are compared: `lower` or `higher` (`better` of the kind file,
+     * S4b-BL-292); `null`: no value is better than another and Compare marks none.
+     */
+    val better: String? = null,
 ) {
     val control: ExtraControl
         get() = when (type) {

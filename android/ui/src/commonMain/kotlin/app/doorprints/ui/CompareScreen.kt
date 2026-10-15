@@ -91,6 +91,8 @@ private class CompareRow(
     val missing: String,
     val value: (HouseEntity) -> String?,
     val spoken: (HouseEntity) -> String? = value,
+    /** The candidates whose value is the best of the row (a kind's number or amount with a `better` hint, S4b-BL-292): marked, and said as best. */
+    val best: Set<String> = emptySet(),
 )
 
 /** Saves the chosen house ids as a list (a Set is not Bundle-safe by itself). */
@@ -452,7 +454,8 @@ private fun CompareTable(
         rows.forEach { row ->
             // One TalkBack item per row: "Parking: Green Villa, 3 out of 5; Blue Gate, not scored".
             val spokenRow = row.label + ": " + chosen.map { h ->
-                "${nameOf(h)}, ${row.spoken(h) ?: row.missing}"
+                val said = row.spoken(h) ?: row.missing
+                "${nameOf(h)}, ${if (h.id in row.best) formatPositional(bestFormat, said) else said}"
             }.joinToString("; ")
             Row(
                 Modifier.fillMaxWidth().height(IntrinsicSize.Min)
@@ -461,7 +464,7 @@ private fun CompareTable(
             ) {
                 Cell(row.label, header = true, width = LABEL_WIDTH)
                 Row(Modifier.weight(1f).horizontalScroll(hScroll)) {
-                    chosen.forEach { h -> Cell(row.value(h) ?: "–", width = CELL_WIDTH) }
+                    chosen.forEach { h -> Cell(row.value(h)?.let { if (h.id in row.best) "✓ $it" else it } ?: "–", width = CELL_WIDTH, best = h.id in row.best) }
                 }
             }
             HorizontalDivider()
@@ -469,9 +472,9 @@ private fun CompareTable(
     }
 }
 
-/** One cell of the comparison table: [width] wide, bold when it is a [header]. */
+/** One cell of the comparison table: [width] wide, bold when it is a [header] or the [best] of its row. */
 @Composable
-private fun Cell(text: String, width: Dp, header: Boolean = false) {
+private fun Cell(text: String, width: Dp, header: Boolean = false, best: Boolean = false) {
     // Min height instead of a fixed one, so text can grow with the font scale (A11Y-A03).
     Box(
         Modifier.width(width).fillMaxHeight().heightIn(min = 48.dp).padding(horizontal = 6.dp, vertical = 4.dp),
@@ -479,7 +482,7 @@ private fun Cell(text: String, width: Dp, header: Boolean = false) {
     ) {
         Text(
             text, maxLines = 4, overflow = TextOverflow.Ellipsis,
-            fontWeight = if (header) FontWeight.SemiBold else FontWeight.Normal,
+            fontWeight = if (header || best) FontWeight.SemiBold else FontWeight.Normal,
             style = MaterialTheme.typography.bodySmall,
         )
     }
@@ -508,5 +511,10 @@ private fun kindExtraRows(fields: KindFields, chosen: List<HouseEntity>, notSet:
             }
         }
     }
-    return extras.map { e -> CompareRow(stringResource(kindStringResource(fields.label(e))), notSet, { h -> texts[h.id]?.get(e.id) }) }
+    // The best of a number or an amount where the kind file says which way is better (S4b-BL-292): the school's lower commute and fees.
+    val values = chosen.associate { h -> h.id to KindValues.of(fields, h.extrasOther).associateBy { it.field.id } }
+    return extras.map { e ->
+        val best = KindValues.best(e, chosen.map { values.getValue(it.id)[e.id] }).map { chosen[it].id }.toSet()
+        CompareRow(stringResource(kindStringResource(fields.label(e))), notSet, { h -> texts[h.id]?.get(e.id) }, best = best)
+    }
 }

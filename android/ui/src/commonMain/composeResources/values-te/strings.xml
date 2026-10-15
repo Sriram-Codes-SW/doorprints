@@ -1795,4 +1795,36 @@
     <string name="school_places_empty_body">ప్రతి పాఠశాల ఎంత దూరమో చూడటానికి మీ కార్యాలయం లేదా కుటుంబ ఇంటిని జోడించండి.</string>
     <string name="school_area_notes_none">ఇంకా ఏ ప్రాంత గమనికా ఈ పాఠశాలకు వర్తించదు.</string>
     <string name="school_area_here">%1$s (ఈ పాఠశాల ఇందులో ఉంది)</string>
+
+    <!-- kinds PR 21 (S4b-BL-265, -291, -292, 2026-10-15): under review. -->
+    <string name="list_filter_any">ఏదైనా</string>
+    <string name="export_copy_of">దీని కాపీని సేవ్ చేయండి</string>
+    <string name="export_scope_any">ఏ నమోదులు</string>
+    <string name="export_scope_all_any">అన్ని నమోదులు</string>
+    <string name="export_include_rejected_any">తిరస్కరించిన నమోదులను కూడా చేర్చండి</string>
+    <string name="export_photos_shortlisted_any">ఎంపికైన నమోదుల ఫోటోలు</string>
+    <string name="export_gap_not_shortlisted_any">ఎంపిక కాని నమోదులు</string>
+    <string name="export_gap_not_selected_any">మీరు ఎంచుకోని నమోదులు</string>
+    <string name="export_gap_rejected_any">తిరస్కరించిన నమోదులు</string>
+    <string name="export_gap_photos_not_shortlisted_any">ఎంపిక కాని నమోదుల ఫోటోలు</string>
+    <string name="export_nothing_matches_any">ఈ ఎంపికలకు సరిపోయే నమోదు ఏదీ లేదు.</string>
+    <string name="import_lead_any">Doorprints బ్యాకప్ నుండి నమోదులు, సందర్శనలు, ఫోటోలను తిరిగి తెచ్చుకోండి.</string>
+    <string name="import_new_any">కొత్త నమోదులు</string>
+    <string name="import_updated_any">బ్యాకప్‌లో కొత్త వెర్షన్ ఉన్న నమోదులు</string>
+    <string name="import_checklists_cleared_any">తనిఖీ జాబితా స్కోర్లు తొలగిపోయే నమోదులు, ఫైల్‌లోని కొత్త వెర్షన్‌లో స్కోర్లు లేనందున</string>
+    <string name="import_floors_left_blank_any">ఫైల్‌లో అంతస్తు -5 నుండి 200 పరిధి బయట ఉన్న నమోదులు; వాటి అంతస్తు ఖాళీగా వదిలివేయబడుతుంది</string>
+    <string name="import_removed_any">పంపినవారు తొలగించిన నమోదులు</string>
+    <plurals name="count_entries">
+        <item quantity="one">%1$d నమోదు</item>
+        <item quantity="other">%1$d నమోదులు</item>
+    </plurals>
+    <plurals name="import_restored_result_any">
+        <item quantity="one">%1$d నమోదు తిరిగి తీసుకురాబడింది.</item>
+        <item quantity="other">%1$d నమోదులు తిరిగి తీసుకురాబడ్డాయి.</item>
+    </plurals>
+
+    <!-- S4b-BL-301 (2026-10-15): under review: the map's location notes in a school space. -->
+    <string name="school_map_location_off_no_hunt">Doorprints కోసం స్థానం ఆఫ్‌లో ఉంది. ‘ఇక్కడ పాఠశాల సేవ్ చేయండి’కి ఇది అవసరం.</string>
+    <string name="school_map_needs_precise_no_hunt">‘ఇక్కడ పాఠశాల సేవ్ చేయండి’కి ఖచ్చితమైన స్థానం అవసరం.</string>
+    <string name="school_map_save_needs_location">‘ఇక్కడ పాఠశాల సేవ్ చేయండి’కి మీ స్థానం అవసరం. స్థాన అనుమతి ఇచ్చి, పాఠశాల దగ్గర మళ్లీ నొక్కండి.</string>
 </resources>

@@ -21,6 +21,8 @@ package app.doorprints.ui
 import app.doorprints.data.HouseEntity
 import app.doorprints.shared.model.LocationSource
 import app.doorprints.shared.trace.TracePoint
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -97,6 +99,18 @@ class WalkEndLogicTest {
         assertEquals(listOf("a", "b"), WalkPicker.search("green", houses, "en").map { it.id })
         assertEquals(emptyList(), WalkPicker.search("  ", houses, "en"), "a blank query lists nothing")
         assertNotNull(WalkPicker.search("lake", houses, "en").singleOrNull())
+    }
+
+    /** S4b-BL-267: the sheet finds a school by its extras, in the app's words, only while the flag allows the kind (as the list). */
+    @Test fun theSearchBoxFindsASchoolByItsExtrasInTheAppsWordsOnlyWhileTheFlagAllowsTheKind() {
+        val school = house("s", 0.0, label = "Oak").copy(kind = "school", extrasOther = buildJsonObject { put("board", "CBSE"); put("busService", true) })
+        val plain = house("h", 5.0, label = "Birch")
+        val houses = listOf(school, plain)
+        assertEquals(listOf("s"), WalkPicker.search("school bus", houses, "en", devKinds = true).map { it.id })
+        assertEquals(listOf("s"), WalkPicker.search("स्कूल बस", houses, "hi", devKinds = true).map { it.id }, "in the app's language")
+        assertEquals(listOf("s"), WalkPicker.search("cbse", houses, "en", devKinds = true).map { it.id })
+        assertEquals(emptyList(), WalkPicker.search("cbse", houses, "en", devKinds = false).map { it.id }, "flag off: drawn as a house")
+        assertEquals(emptyList(), WalkPicker.search("cbse", houses, "en").map { it.id }, "the default is the house's")
     }
 
     @Test fun distancesReadInMetresBelowAKilometreAndKilometresAbove() {

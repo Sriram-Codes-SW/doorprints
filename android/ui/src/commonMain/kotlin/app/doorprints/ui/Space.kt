@@ -31,6 +31,7 @@ import app.doorprints.data.Repository
 import app.doorprints.shared.model.BuiltInKind
 import app.doorprints.shared.model.DevKinds
 import app.doorprints.shared.model.KindSetting
+import app.doorprints.shared.model.KindWordKeys
 import app.doorprints.shared.model.KindSettingRules
 import app.doorprints.shared.model.SpaceView
 import app.doorprints.ui.res.*
@@ -41,8 +42,9 @@ import org.jetbrains.compose.resources.StringResource
  * The words of a space's screens that name the kind (kinds PR C, S4b-BL-274, S4b-BL-277 on the phone; docs/03 §18.12): the
  * Houses tab, the list's search, its count, empty and no-match lines, the map's *Save here* button and tips, Compare, the
  * Assistant and the copies. The house's are today's strings, so a house space is word for word what it was; a school's are
- * its own. The website's twin is `core/space-words.ts` and `space-tool-words.ts`; moving both into the kind files is
- * S4b-BL-278.
+ * its own. The website's twin is `core/space-words.ts` and `space-tool-words.ts`. The ten words the kind file's `words` has
+ * (the list, the map's region and tips, *Save here*) are read from its `android` keys (S4b-BL-278, [KindWordKeys]); the rest of
+ * this table (Compare, the Assistant, the copies) is still the phone's own.
  */
 @Immutable
 class SpaceWords(
@@ -76,13 +78,29 @@ class SpaceWords(
     val exportScopeAll: StringResource,
     val exportIncludeRejected: StringResource,
     val exportPhotosShortlisted: StringResource,
+    /**
+     * The map's location notes (S4b-BL-301): *Save here* needs location (`saveNeedsLocation`), and the note under the Hunt card
+     * (`locationOff`, `needsPrecise`) or, where there is none, over the map (`locationOffNoHunt`, `needsPreciseNoHunt`). Hunt mode
+     * is the house space's, so a school space draws the no-Hunt pair; its Hunt pair is that pair, so no path of it can say Hunt mode.
+     */
+    val locationOff: StringResource,
+    val needsPrecise: StringResource,
+    val locationOffNoHunt: StringResource,
+    val needsPreciseNoHunt: StringResource,
+    val saveNeedsLocation: StringResource,
 ) {
     companion object {
+        /** The Compose string a kind file's `words` id names on the phone (the file's `android` key, [KindWordKeys]). */
+        private fun word(keys: Map<String, String?>, id: String): StringResource = kindStringResource(checkNotNull(keys[id]) { "no Android word for $id" })
+
+        private val h = KindWordKeys.HOUSE
+        private val s = KindWordKeys.SCHOOL
+
         val HOUSE = SpaceWords(
-            many = Res.string.houses_title, search = Res.string.houses_search, shown = Res.string.houses_shown,
-            empty = Res.string.houses_empty, noMatch = Res.string.houses_no_match, addOnMap = Res.string.common_add_on_map,
-            saveHere = Res.string.map_save_here, regionDesc = Res.string.map_region_desc, addTip = Res.string.map_add_tip,
-            addTipA11y = Res.string.map_add_tip_a11y, addTipListing = Res.string.map_add_tip_listing,
+            many = word(h, "heading"), search = word(h, "search"), shown = word(h, "shown"),
+            empty = word(h, "emptyBody"), noMatch = word(h, "noMatch"), addOnMap = word(h, "add"),
+            saveHere = word(h, "create"), regionDesc = word(h, "regionLabel"), addTip = word(h, "addHint"),
+            addTipA11y = word(h, "addHintShort"), addTipListing = Res.string.map_add_tip_listing,
             addTipListingA11y = Res.string.map_add_tip_listing_a11y, unnamed = Res.string.house_unnamed,
             compareHint = Res.string.compare_hint, comparePickMore = Res.string.compare_pick_more,
             compareChoose = Res.string.compare_choose, compareEmpty = Res.string.compare_empty,
@@ -92,13 +110,16 @@ class SpaceWords(
             exportScope = Res.string.export_scope, exportScopeAll = Res.string.export_scope_all,
             exportIncludeRejected = Res.string.export_include_rejected,
             exportPhotosShortlisted = Res.string.export_photos_shortlisted,
+            locationOff = Res.string.map_location_off, needsPrecise = Res.string.map_needs_precise,
+            locationOffNoHunt = Res.string.map_location_off_no_hunt, needsPreciseNoHunt = Res.string.map_needs_precise_no_hunt,
+            saveNeedsLocation = Res.string.map_save_needs_location,
         )
 
         val SCHOOL = SpaceWords(
-            many = Res.string.schools_title, search = Res.string.school_search, shown = Res.string.school_shown,
-            empty = Res.string.school_empty, noMatch = Res.string.school_no_match, addOnMap = Res.string.school_add_on_map,
-            saveHere = Res.string.school_save_here, regionDesc = Res.string.school_region_desc, addTip = Res.string.school_add_tip,
-            addTipA11y = Res.string.school_add_tip_a11y, addTipListing = Res.string.school_add_tip_listing,
+            many = word(s, "heading"), search = word(s, "search"), shown = word(s, "shown"),
+            empty = word(s, "emptyBody"), noMatch = word(s, "noMatch"), addOnMap = word(s, "add"),
+            saveHere = word(s, "create"), regionDesc = word(s, "regionLabel"), addTip = word(s, "addHint"),
+            addTipA11y = word(s, "addHintShort"), addTipListing = Res.string.school_add_tip_listing,
             addTipListingA11y = Res.string.school_add_tip_listing_a11y, unnamed = Res.string.school_unnamed,
             compareHint = Res.string.school_compare_hint, comparePickMore = Res.string.school_compare_pick_more,
             compareChoose = Res.string.school_compare_choose, compareEmpty = Res.string.school_compare_empty,
@@ -109,6 +130,9 @@ class SpaceWords(
             exportScope = Res.string.school_export_scope, exportScopeAll = Res.string.school_export_scope_all,
             exportIncludeRejected = Res.string.school_export_include_rejected,
             exportPhotosShortlisted = Res.string.school_export_photos_shortlisted,
+            locationOff = Res.string.school_map_location_off_no_hunt, needsPrecise = Res.string.school_map_needs_precise_no_hunt,
+            locationOffNoHunt = Res.string.school_map_location_off_no_hunt, needsPreciseNoHunt = Res.string.school_map_needs_precise_no_hunt,
+            saveNeedsLocation = Res.string.school_map_save_needs_location,
         )
 
         /** The words of [kind]; a kind with no table of its own reads the house's. */

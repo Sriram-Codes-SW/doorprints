@@ -481,7 +481,7 @@ fun HouseEditScreen(
             return
         }
         busy = true
-        val toSave = d.copy(label = d.label.ifBlank { unnamed })
+        val toSave = d.copy(label = d.label.ifBlank { unnamed }).withInRangeExtras(kind.fields) // a number outside the kind file's range is not saved (S4b-BL-261)
         scope.launch {
             withContext(NonCancellable) {
                 repo.saveHouse(toSave)
@@ -509,7 +509,7 @@ fun HouseEditScreen(
         val copy = d.copy(
             id = Uuid.random().toString(), label = d.label.ifBlank { unnamed }, deleted = false,
             createdAt = now, updatedAt = now,
-        )
+        ).withInRangeExtras(kind.fields)
         scope.launch {
             withContext(NonCancellable) { repo.saveHouse(copy) }
             exit = FormExit.Created(copy.id)
@@ -736,7 +736,7 @@ fun HouseEditScreen(
                             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                         ) { ButtonLabel(stringResource(Res.string.house_paste_title)) }
                         // The result line, Undo fill and the "from the listing" marks (ListingFillUndo.kt, S4b-BL-238).
-                        PasteResult(pasteMessage, fill, draft, onDismiss = { pasteMessage = null },
+                        PasteResult(pasteMessage, fill, draft, kind.fields, onDismiss = { pasteMessage = null },
                             onUndo = { draft = it; fill.clear(); scope.launch { pasteMessage = getString(Res.string.house_paste_undone) } })
                         Spacer(Modifier.height(12.dp))
                     }
@@ -1326,7 +1326,7 @@ fun HouseEditScreen(
 
     if (showPaste) {
         PasteListingDialog(
-            onDismiss = { showPaste = false }, kind = kind.id.takeIf { it != "house" && kind.extracts },
+            onDismiss = { showPaste = false }, kind = pasteKind(kind),
             onDraft = { draftFromAi, warnings ->
                 draft?.let { current ->
                     // The name is still the form's own (the default, or the geocoder's "House on …") on a new house.
@@ -1337,7 +1337,7 @@ fun HouseEditScreen(
                     // Compose resources are read with a suspend call outside composition (cached after the first read),
                     // so the summary lands one dispatch after the fields; if the screen is recreated in between, the
                     // fields are kept and only the summary is lost (CMP-3 review: accepted).
-                    scope.launch { pasteMessage = pasteResultText(merged, warnings) }
+                    scope.launch { pasteMessage = pasteResultText(merged, warnings, kind.fields) }
                 }
                 showPaste = false
             },
@@ -1396,93 +1396,6 @@ private fun CostSection(d: HouseEntity, update: ((HouseEntity) -> HouseEntity) -
             Text(parts.joinToString(" · "), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
         }
     }
-}
-
-/** The field names a listing fill reports ("Filled in: price and contact name."). */
-internal val ListingField.nameRes: StringResource
-    get() = when (this) {
-        ListingField.NAME -> Res.string.paste_field_name
-        ListingField.ADDRESS -> Res.string.paste_field_address
-        ListingField.STREET -> Res.string.paste_field_street
-        ListingField.LOCALITY -> Res.string.paste_field_locality
-        ListingField.PRICE -> Res.string.paste_field_price
-        ListingField.BHK -> Res.string.paste_field_bhk
-        ListingField.CONTACT -> Res.string.paste_field_contact
-        ListingField.PHONE -> Res.string.paste_field_phone
-        ListingField.LISTING -> Res.string.paste_field_listing
-        ListingField.NOTES -> Res.string.paste_field_notes
-        ListingField.AREA -> Res.string.paste_field_area
-    }
-
-/** "Filled in: price and contact name. Check them, then save." plus what was kept and what the AI flagged. */
-private suspend fun pasteResultText(merge: ListingMerge, warnings: List<String>): String {
-    suspend fun names(fields: List<ListingField>) = joinedListText(fields.map { getString(it.nameRes) })
-    val parts = mutableListOf<String>()
-    parts += if (merge.filled.isEmpty()) {
-        getString(Res.string.house_paste_nothing)
-    } else {
-        getString(Res.string.house_paste_filled, names(merge.filled))
-    }
-    if (merge.kept.isNotEmpty()) parts += getString(Res.string.house_paste_kept, names(merge.kept))
-    if (warnings.isNotEmpty()) parts += getString(Res.string.house_paste_check, warnings.joinToString("; "))
-    return parts.joinToString(" ")
-}
-
-/**
- * "Fill in from listing text". While the AI call runs, *Cancel* (and Back) stay available and cancel it (round 21).
- * A tap outside closes it only while nothing has been pasted, so a stray touch never throws a long ad away, and the
- * text area scrolls, so *Fill in* stays reachable with the keyboard up at 200 % (whole-app audit). The busy line and
- * the error are in a live region that is there before either appears.
- */
-@Composable
-private fun PasteListingDialog(onDismiss: () -> Unit, onDraft: (HouseDraftDto, List<String>) -> Unit, kind: String? = null) {
-    val repo = LocalAppServices.current.repository
-    val scope = rememberCoroutineScope()
-    var text by rememberSaveable { mutableStateOf("") }
-    var busy by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
-    var job by remember { mutableStateOf<Job?>(null) }
-    val errorText = aiErrorText()
-    val cancel = {
-        job?.cancel()
-        onDismiss()
-    }
-    AlertDialog(
-        onDismissRequest = cancel,
-        properties = DialogProperties(dismissOnClickOutside = text.isBlank() && !busy),
-        title = { Text(stringResource(Res.string.house_paste_title)) },
-        text = {
-            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(stringResource(Res.string.house_paste_hint), style = MaterialTheme.typography.bodySmall)
-                PasteListingText(text, { text = it })
-                AiDisclosure(style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, pages = PageWords.of(kind ?: "house"))
-                LiveMessage(assertive = error != null && !busy) {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        if (busy) {
-                            ProgressBar()
-                            Text(stringResource(Res.string.house_paste_busy))
-                        }
-                        error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(enabled = !busy && text.isNotBlank(), onClick = {
-                job = scope.launch {
-                    busy = true
-                    error = null
-                    // Extract reads the first MAX_INPUT_CHARS characters; PasteListingText says how many are left out (S4b-BL-182).
-                    val result = runCatching { ListingCut.of(text).text.let { if (kind != null) repo.extractListing(it, kind) else repo.extractListing(it) } }
-                    // Cancelled: the dialog is closing, so neither a draft nor an error.
-                    ensureActive()
-                    result.onSuccess { onDraft(it, it.warnings + priceWarning(text, it)) }.onFailure { error = errorText(it) }
-                    busy = false
-                }
-            }) { Text(stringResource(Res.string.house_paste_go)) }
-        },
-        dismissButton = { TextButton(onClick = cancel) { Text(stringResource(Res.string.common_cancel)) } },
-    )
 }
 
 /** 1-5 stars as a radio group: TalkBack says "3 out of 5, selected, radio button, 3 of 5". Tap again to clear. */

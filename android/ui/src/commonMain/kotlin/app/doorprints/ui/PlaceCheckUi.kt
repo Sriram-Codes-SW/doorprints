@@ -50,7 +50,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import app.doorprints.ui.res.Res
 import app.doorprints.ui.res.common_cancel
-import app.doorprints.ui.res.map_save_here
 import app.doorprints.ui.res.trace_here_button
 import app.doorprints.ui.res.trace_here_menu_here
 import app.doorprints.ui.res.trace_here_menu_spot
@@ -102,7 +101,7 @@ fun LongPressMenu(onSave: () -> Unit, onCheck: () -> Unit, onDismiss: () -> Unit
         Surface(shape = MaterialTheme.shapes.medium, tonalElevation = 6.dp) {
             Column(Modifier.padding(vertical = 8.dp)) {
                 TextButton(onClick = onSave, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                    ButtonLabel(stringResource(Res.string.map_save_here))
+                    ButtonLabel(stringResource(LocalSpace.current.words.saveHere))
                 }
                 TextButton(onClick = onCheck, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                     ButtonLabel(stringResource(Res.string.trace_here_press_menu))

@@ -75,4 +75,31 @@ class ReleaseKindsTest {
         // Outside the debug block no property names the kinds.
         assertFalse(script.replace(debug, "").contains("gradleProperty(\"doorprints."))
     }
+
+    /**
+     * S4b-BL-300: the iPhone shows no second kind until a build ships one. The chooser, the chip and the scoping are common code,
+     * but nothing passes the iOS store another kind (`SettingsStore.availableKinds` defaults to the house), so none can be seen
+     * there and only the Linux klib compile checks them. This fails the day the iOS store or the Swift shell names a kind, so that
+     * change brings the macOS-runner screenshots and the VoiceOver review (S4b-BL-276) with it, as the row says.
+     */
+    @Test
+    fun theIphoneStoreAndShellPassNoKindSoTheIphoneShipsTheHouseAlone() {
+        fun fileUp(relative: String): File {
+            var dir: File? = File("").absoluteFile
+            while (dir != null) {
+                File(dir, relative).takeIf { it.isFile }?.let { return it }
+                dir = dir.parentFile
+            }
+            error("$relative not found")
+        }
+        val ios = fileUp("shared/src/iosMain/kotlin/app/doorprints/data/SettingsIos.kt").readText()
+        assertFalse("S4b-BL-300: the iOS settings store names the kinds it ships: add the macOS screenshots and the VoiceOver review", ios.contains("availableKinds"))
+        assertTrue("the store's default must stay the house alone", fileUp("shared/src/commonMain/kotlin/app/doorprints/data/Settings.kt").readText()
+            .contains("val availableKinds: List<String> = listOf(KindSettingRules.HOUSE)"))
+        val shell = File(fileUp("shared/build.gradle.kts").parentFile.parentFile.parentFile, "ios/Doorprints")
+        if (shell.isDirectory) {
+            val swift = shell.walkTopDown().filter { it.isFile && it.extension == "swift" }.map { it.readText() }.joinToString("\n")
+            assertFalse("S4b-BL-300: the Swift shell names a kind", Regex("availableKinds|devKinds", RegexOption.IGNORE_CASE).containsMatchIn(swift))
+        }
+    }
 }

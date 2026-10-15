@@ -1794,4 +1794,36 @@
     <string name="school_places_empty_body">Add your office or family home to see how far each school is.</string>
     <string name="school_area_notes_none">No area notes reach this school yet.</string>
     <string name="school_area_here">%1$s (this school is in it)</string>
+
+    <!-- kinds PR 21 (S4b-BL-265, -291, -292, 2026-10-15). -->
+    <string name="list_filter_any">Any</string>
+    <string name="export_copy_of">Save a copy of</string>
+    <string name="export_scope_any">Which entries</string>
+    <string name="export_scope_all_any">All entries</string>
+    <string name="export_include_rejected_any">Include rejected entries</string>
+    <string name="export_photos_shortlisted_any">Photos of shortlisted entries</string>
+    <string name="export_gap_not_shortlisted_any">entries that are not shortlisted</string>
+    <string name="export_gap_not_selected_any">entries you did not pick</string>
+    <string name="export_gap_rejected_any">rejected entries</string>
+    <string name="export_gap_photos_not_shortlisted_any">photos of entries that are not shortlisted</string>
+    <string name="export_nothing_matches_any">No entries match these options.</string>
+    <string name="import_lead_any">Bring back entries, visits and photos from a Doorprints backup.</string>
+    <string name="import_new_any">New entries</string>
+    <string name="import_updated_any">Entries the backup has a newer version of</string>
+    <string name="import_checklists_cleared_any">Entries whose checklist scores will be cleared, because the newer version in the file has none</string>
+    <string name="import_floors_left_blank_any">Entries whose floor in the file is outside -5 to 200; their floor is left blank</string>
+    <string name="import_removed_any">Entries deleted by the sender</string>
+    <plurals name="count_entries">
+        <item quantity="one">%1$d entry</item>
+        <item quantity="other">%1$d entries</item>
+    </plurals>
+    <plurals name="import_restored_result_any">
+        <item quantity="one">Brought back %1$d entry.</item>
+        <item quantity="other">Brought back %1$d entries.</item>
+    </plurals>
+
+    <!-- S4b-BL-301 (2026-10-15): the map's location notes in a school space. -->
+    <string name="school_map_location_off_no_hunt">Location is off for Doorprints. ‘Save school here’ needs it.</string>
+    <string name="school_map_needs_precise_no_hunt">‘Save school here’ needs precise location.</string>
+    <string name="school_map_save_needs_location">‘Save school here’ needs your location. Allow location, then tap it again at the school.</string>
 </resources>

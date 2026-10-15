@@ -21,6 +21,7 @@ package app.doorprints.ui
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
+import app.doorprints.shared.model.KindWordKeys
 import app.doorprints.ui.res.*
 import org.jetbrains.compose.resources.StringResource
 
@@ -30,7 +31,7 @@ import org.jetbrains.compose.resources.StringResource
  * the walk check, the saved-walks and photos lines, the AI disclosure, the map's find-a-place lines, Compare's open button and
  * the Areas and Places lines. The house's are today's strings, so a house page is word for word what it was; a school's are
  * its own (the website's words where it has the key: `core/space-tool-words.ts`; hi, ta and te are under review). The
- * [SpaceWords] of a kind hold one; moving both tables into the kind files is S4b-BL-278.
+ * words the kind file has (`areaNotesNone`, `areaInReach`) are read from it (S4b-BL-278, [KindWordKeys]); the rest are this table's.
  */
 @Immutable
 class PageWords(
@@ -65,6 +66,9 @@ class PageWords(
     val areaHere: StringResource,
 ) {
     companion object {
+        /** The Compose string a kind file's `words` id names on the phone (the file's `android` key, S4b-BL-278). */
+        private fun word(keys: Map<String, String?>, id: String): StringResource = kindStringResource(checkNotNull(keys[id]) { "no Android word for $id" })
+
         val HOUSE = PageWords(
             detailsTitle = Res.string.house_details_title, notFoundTitle = Res.string.house_not_found_title,
             notFound = Res.string.house_not_found, defaultLabel = Res.string.house_default_label,
@@ -78,7 +82,7 @@ class PageWords(
             openDetails = Res.string.compare_open_house, areasEmptyBody = Res.string.areas_empty_body,
             notesEmpty = Res.string.notes_empty, areaDeleteBody = Res.string.area_delete_body,
             placeDeleteBody = Res.string.place_delete_body, placesEmptyBody = Res.string.places_empty_body,
-            areaNotesNone = Res.string.house_area_notes_none, areaHere = Res.string.note_area_here,
+            areaNotesNone = word(KindWordKeys.HOUSE, "areaNotesNone"), areaHere = word(KindWordKeys.HOUSE, "areaInReach"),
         )
 
         val SCHOOL = PageWords(
@@ -94,7 +98,7 @@ class PageWords(
             openDetails = Res.string.school_compare_open, areasEmptyBody = Res.string.school_areas_empty_body,
             notesEmpty = Res.string.school_notes_empty, areaDeleteBody = Res.string.school_area_delete_body,
             placeDeleteBody = Res.string.school_place_delete_body, placesEmptyBody = Res.string.school_places_empty_body,
-            areaNotesNone = Res.string.school_area_notes_none, areaHere = Res.string.school_area_here,
+            areaNotesNone = word(KindWordKeys.SCHOOL, "areaNotesNone"), areaHere = word(KindWordKeys.SCHOOL, "areaInReach"),
         )
 
         /** The words of [kind]; a kind with no table of its own reads the house's. */

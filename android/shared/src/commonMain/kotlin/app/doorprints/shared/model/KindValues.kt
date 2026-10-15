@@ -67,6 +67,21 @@ object KindValues {
     }
 
     /**
+     * The best of a kind's number or amount where the kind file says which way is better ([KindExtra.better], S4b-BL-292; the
+     * twin of the website's `bestExtra`): the positions of the lowest or the highest of [values] (one per compared candidate, null
+     * where it has none). Marked only when at least two candidates have a value and they do not all tie (one value, or none, is a
+     * tie with itself); an extra with no hint, or one that is not a number or an amount, has none.
+     */
+    fun best(extra: KindExtra, values: List<KindValue?>): Set<Int> {
+        val lower = when (extra.better) { "lower" -> true; "higher" -> false; else -> return emptySet() }
+        val nums = values.map { v -> (v as? KindValue.Count)?.value ?: (v as? KindValue.Money)?.amount }
+        val present = nums.filterNotNull()
+        val target = (if (lower) present.minOrNull() else present.maxOrNull()) ?: return emptySet()
+        if (present.all { it == target }) return emptySet()
+        return nums.indices.filter { nums[it] == target }.toSet()
+    }
+
+    /**
      * The words a candidate's extras add to the list search, after every other: an option's label and a switch's label
      * (only when it is on) in English and, when [language] is another and its words differ, in it too (as the floor is
      * found, S4b-BL-104 b); a number's digits; a text as typed; money as its digits and as rupees (`₹96,000`).

@@ -1795,4 +1795,36 @@
     <string name="school_places_empty_body">अपना दफ़्तर या परिवार का घर जोड़ें ताकि हर स्कूल की दूरी दिखे।</string>
     <string name="school_area_notes_none">अभी इलाक़े का कोई नोट इस स्कूल तक नहीं पहुँचता।</string>
     <string name="school_area_here">%1$s (यह स्कूल इसमें है)</string>
+
+    <!-- kinds PR 21 (S4b-BL-265, -291, -292, 2026-10-15): under review. -->
+    <string name="list_filter_any">कोई भी</string>
+    <string name="export_copy_of">इसकी कॉपी सहेजें</string>
+    <string name="export_scope_any">कौन-सी प्रविष्टियाँ</string>
+    <string name="export_scope_all_any">सभी प्रविष्टियाँ</string>
+    <string name="export_include_rejected_any">अस्वीकृत प्रविष्टियाँ भी शामिल करें</string>
+    <string name="export_photos_shortlisted_any">चुनी गई प्रविष्टियों की तस्वीरें</string>
+    <string name="export_gap_not_shortlisted_any">जो प्रविष्टियाँ चुनी नहीं गईं</string>
+    <string name="export_gap_not_selected_any">जो प्रविष्टियाँ आपने नहीं चुनीं</string>
+    <string name="export_gap_rejected_any">अस्वीकृत प्रविष्टियाँ</string>
+    <string name="export_gap_photos_not_shortlisted_any">न चुनी गई प्रविष्टियों की तस्वीरें</string>
+    <string name="export_nothing_matches_any">इन विकल्पों से कोई प्रविष्टि मेल नहीं खाती।</string>
+    <string name="import_lead_any">Doorprints बैकअप से प्रविष्टियाँ, दौरे और तस्वीरें वापस लाएँ।</string>
+    <string name="import_new_any">नई प्रविष्टियाँ</string>
+    <string name="import_updated_any">जिन प्रविष्टियों का बैकअप में नया रूप है</string>
+    <string name="import_checklists_cleared_any">जिन प्रविष्टियों के जाँच सूची अंक मिट जाएँगे, क्योंकि फ़ाइल के नए रूप में कोई अंक नहीं है</string>
+    <string name="import_floors_left_blank_any">जिन प्रविष्टियों की मंज़िल फ़ाइल में -5 से 200 के बाहर है; उनकी मंज़िल खाली छोड़ी जाएगी</string>
+    <string name="import_removed_any">भेजने वाले की हटाई प्रविष्टियाँ</string>
+    <plurals name="count_entries">
+        <item quantity="one">%1$d प्रविष्टि</item>
+        <item quantity="other">%1$d प्रविष्टियाँ</item>
+    </plurals>
+    <plurals name="import_restored_result_any">
+        <item quantity="one">%1$d प्रविष्टि वापस लाई गई।</item>
+        <item quantity="other">%1$d प्रविष्टियाँ वापस लाई गईं।</item>
+    </plurals>
+
+    <!-- S4b-BL-301 (2026-10-15): under review: the map's location notes in a school space. -->
+    <string name="school_map_location_off_no_hunt">Doorprints के लिए जगह की अनुमति बंद है। ‘यहाँ स्कूल सहेजें’ को इसकी ज़रूरत है।</string>
+    <string name="school_map_needs_precise_no_hunt">‘यहाँ स्कूल सहेजें’ को सटीक जगह चाहिए।</string>
+    <string name="school_map_save_needs_location">‘यहाँ स्कूल सहेजें’ के लिए आपकी जगह चाहिए। जगह की अनुमति दें, फिर स्कूल पर इसे दोबारा दबाएँ।</string>
 </resources>

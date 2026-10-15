@@ -74,6 +74,7 @@ import app.doorprints.shared.model.Ranking
 import app.doorprints.shared.model.ScoreResult
 import app.doorprints.shared.model.Scoring
 import app.doorprints.shared.model.HouseStatus
+import app.doorprints.shared.model.KindFilter
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -258,6 +259,8 @@ fun HouseListScreen(
     var query by rememberSaveable { mutableStateOf("") }
     // The ranges over the cost numbers (docs/11 5.21, S4b-BL-84), on top of the status and the search.
     var costFilter by rememberSaveable(stateSaver = CostFilterSaver) { mutableStateOf(CostFilter()) }
+    // The filter by a kind's typed extras (S4b-BL-265): the chip rows under the status chips, none for a house.
+    var extraFilter by rememberSaveable(stateSaver = ExtraFilterSaver) { mutableStateOf<Map<String, String?>>(emptyMap()) }
     val firstRun = loaded && houses.isEmpty()
     // The copy import the list shows (see the KDoc): the one it was opened for, unless a newer one can still be
     // undone, else the newest that can. Read again whenever an undo ends, because the undo deletes or reduces the
@@ -454,16 +457,19 @@ fun HouseListScreen(
             filter = null
             query = ""
             costFilter = CostFilter()
+            extraFilter = emptyMap()
             importedOnly = false
         }
     }
 
+    val kindFields = LocalSpace.current.built.fields // the extras the list can filter by (S4b-BL-265)
     val devKinds = LocalDevKinds.current // a kind's extras are searched while the flag allows its kind (S4b-BL-210)
     val language = uiLanguage() // the floor and those extras are found by the app language's words too (S4b-BL-104 b)
     val shown = houses
         .filter { !onlyImported || importedIds?.contains(it.id) == true }
         .filter { filter == null || it.status == filter }
         .filter { costFilter.matches(it.price, it.priceType, it.areaSqft, it.cost) }
+        .filter { KindFilter.matches(extraFilter, kindFields, it.extrasOther) }
         // The same rule as the website's searchText (HouseSearch; the contact's name since the readiness review, the
         // linked broker since slice 1b, the rooms' names and notes since slice 1c, the questions asked and their answers
         // since slice 3a, the floor in the app's language too since S4b-BL-104).
@@ -547,6 +553,7 @@ fun HouseListScreen(
             }
             else -> HouseList(
                 houses, shown, visitsByHouse, filter, sort, query, scoring = scoring, costFilter = costFilter,
+                extraFilter = extraFilter, onExtraFilter = { extraFilter = it },
                 importedCount = importedCount, importedOnly = onlyImported, undoRow = undoRow,
                 importedChipFocus = importedChipFocus, allChipFocus = allChipFocus, chipFocusable = focusChips,
                 onFilter = { filter = it }, onSort = { sort = it }, onQuery = { query = it }, onCostFilter = { costFilter = it },
@@ -592,6 +599,8 @@ private fun HouseList(
     query: String,
     scoring: Scoring,
     costFilter: CostFilter,
+    extraFilter: Map<String, String?>,
+    onExtraFilter: (Map<String, String?>) -> Unit,
     importedCount: Int?,
     importedOnly: Boolean,
     undoRow: (@Composable (Modifier) -> Unit)?,
@@ -611,7 +620,8 @@ private fun HouseList(
     val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
     val searchFocus = remember { FocusRequester() }
-    val filtering = query.isNotBlank() || filter != null || importedOnly || costFilter.active > 0
+    val kindFields = LocalSpace.current.built.fields
+    val filtering = query.isNotBlank() || filter != null || importedOnly || costFilter.active > 0 || KindFilter.active(extraFilter, kindFields) > 0
 
     // The results count (docs/05 4.1.3, the web's role="status" "Houses shown: x of y"), always drawn (see the
     // screen's KDoc). The line on screen follows every keystroke; what TalkBack hears waits until typing has paused
@@ -717,6 +727,10 @@ private fun HouseList(
                 }
             }
         }
+        // A kind's typed extras (S4b-BL-265): one chip row each; none for a house.
+        if (KindFilter.rows(kindFields).isNotEmpty()) {
+            item(key = "extras") { ExtraFilterRows(kindFields, extraFilter, onExtraFilter, Modifier.animateItem()) }
+        }
         // The sort and, beside it, the cost filters' sheet (S4b-BL-84).
         item(key = "sort") {
             FlowRow(Modifier.animateItem().fillMaxWidth(), verticalArrangement = Arrangement.Center) {
@@ -752,6 +766,7 @@ private fun HouseList(
                                     onFilter(null)
                                     onQuery("")
                                     onCostFilter(CostFilter())
+                                    onExtraFilter(emptyMap())
                                     onImportedOnly(false)
                                     // The button vanishes with the no-match state; put focus (and TalkBack) back in the
                                     // search field rather than letting it drop to the top of the screen.
@@ -788,7 +803,7 @@ private fun HouseList(
  * [SortMenu]. TalkBack reads "Shortlisted (3), selected, radio button, 3 of 5".
  */
 @Composable
-private fun StatusChip(selected: Boolean, onClick: () -> Unit, label: String, modifier: Modifier = Modifier) {
+internal fun StatusChip(selected: Boolean, onClick: () -> Unit, label: String, modifier: Modifier = Modifier) {
     FilterChip(
         selected = selected,
         onClick = onClick,
@@ -796,120 +811,6 @@ private fun StatusChip(selected: Boolean, onClick: () -> Unit, label: String, mo
         leadingIcon = if (selected) ChipCheck else null,
         border = brandFilterChipBorder(selected),
         modifier = modifier.semantics { role = Role.RadioButton },
-    )
-}
-
-/**
- * The copy import the list shows (round 19): [record] for [runId], read from disk for [requested] (the list's
- * `importedRun` at the time). [runId] stays set after an undo deleted the record, so the row can still say what the
- * undo did.
- */
-private class ShownImport(val requested: String?, val runId: String?, val record: CopyRecord?)
-
-/**
- * The house list's undo, in the same [ResultCard] as the Export and Import results (UX review, rounds 18 and 19; see
- * [HouseListScreen]). NEUTRAL "Imported from your backup at <time>: 40 copies." with "You can undo this until …" while
- * the undo is on offer and while it runs ("Removing the copies…"), SUCCESS with what the undo did, ERROR (warning sign,
- * error colours) when it failed. The card sits in a live region on a [Box] that is there before anything changes
- * (polite; assertive for a failure), so each change is announced. The button is one call site in the card's actions:
- * *Undo this import* ([onUndo], which asks first; disabled while [undoing] or when [canUndo] is false) and, once the
- * copies are gone, *Close* ([onHide]) in the same place, so TalkBack's focus stays in the row. Before an undo the card
- * also has its 48 dp close button ([onHide]), for a user who wants to keep the copies, and so does a failed undo's card
- * (round 20), for a user who does not want to retry. While [takeFocus] is set the button can take focus in touch mode
- * (`canFocus = true`), so the list can put TalkBack back on it after the confirm dialog ([focusRequester]).
- */
-@Composable
-private fun ImportUndoRow(
-    count: Int,
-    importedAt: Long?,
-    until: Long?,
-    undoing: Boolean,
-    outcome: CopyUndoOutcome?,
-    canUndo: Boolean,
-    onUndo: () -> Unit,
-    onHide: () -> Unit,
-    focusRequester: FocusRequester,
-    takeFocus: Boolean,
-    modifier: Modifier = Modifier,
-) {
-    // Not while a retry runs: the last outcome is still the failure until the new one arrives, and the card then shows
-    // "Removing the copies…" as NEUTRAL, with no close button.
-    val failed = outcome?.failed == true && !undoing
-    val done = outcome != null && !failed && !undoing
-    val offered = outcome == null && !undoing
-    val text = when {
-        undoing -> stringResource(Res.string.import_undoing)
-        failed -> stringResource(Res.string.import_undo_failed)
-        outcome != null -> undoneSentence(outcome).orEmpty()
-        else -> pluralStringResource(Res.plurals.houses_imported_row, count, count, importedAt?.dateText().orEmpty())
-    }
-    val tone = when {
-        failed -> ResultTone.ERROR
-        done -> ResultTone.SUCCESS
-        else -> ResultTone.NEUTRAL
-    }
-    Box(
-        modifier.fillMaxWidth().semantics {
-            liveRegion = if (failed) LiveRegionMode.Assertive else LiveRegionMode.Polite
-        },
-    ) {
-        ResultCard(
-            tone = tone,
-            text = text,
-            // Closable before an undo (to keep the copies) and after a failed one (round 20: a user who does not want
-            // to retry can clear the red card); after a successful one the button itself is Close.
-            onDismiss = if (offered || failed) onHide else null,
-            actions = {
-                if (until != null && offered) {
-                    // Under the card's text: the 24 dp icon and its 12 dp gap.
-                    Text(
-                        stringResource(Res.string.import_undo_until, until.dateText()),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 36.dp),
-                    )
-                }
-                ResultActionsRow {
-                    TextButton(
-                        onClick = { if (done) onHide() else onUndo() },
-                        enabled = done || (canUndo && !undoing),
-                        // The target of the list's focusUndoButton (round 20). A button only takes focus in touch
-                        // mode (which TalkBack is) while that is set: canFocus is otherwise left to the system, as for
-                        // every other button, so keyboard and D-pad focus is unchanged.
-                        modifier = Modifier.heightIn(min = 48.dp).focusRequester(focusRequester).then(
-                            if (takeFocus) Modifier.focusProperties { canFocus = true } else Modifier,
-                        ),
-                    ) { ButtonLabel(stringResource(if (done) Res.string.common_close else Res.string.import_undo_copy)) }
-                }
-            },
-        )
-    }
-}
-
-/**
- * "Remove the 40 copies imported at <time>?" (UX review, round 19; UX-005). The undo writes synced tombstones and
- * deletes photo files, so the copies go from this phone, the server and every other device, and nothing brings them
- * back: from the lasting house-list row it is confirmed, like every other bulk or house delete in the app. *Remove
- * copies* is a [DangerButton] (error outline, round 21: the same look as Import's *Replace* and the house form's
- * *Delete*); *Keep them* is the dismiss action, and so are Back and a tap outside.
- */
-@Composable
-private fun ConfirmUndoDialog(count: Int, importedAt: Long, onRemove: () -> Unit, onKeep: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onKeep,
-        title = {
-            Text(pluralStringResource(Res.plurals.houses_undo_confirm_title, count, count, importedAt.dateText()))
-        },
-        text = { Text(stringResource(Res.string.houses_undo_confirm_body)) },
-        confirmButton = {
-            // The app's one look for an irreversible choice (Design review, round 21): as Import's *Replace*.
-            DangerButton(text = stringResource(Res.string.houses_undo_confirm_remove), onClick = onRemove)
-        },
-        dismissButton = {
-            TextButton(onClick = onKeep, modifier = Modifier.heightIn(min = 48.dp)) {
-                ButtonLabel(stringResource(Res.string.houses_undo_confirm_keep))
-            }
-        },
     )
 }
 
