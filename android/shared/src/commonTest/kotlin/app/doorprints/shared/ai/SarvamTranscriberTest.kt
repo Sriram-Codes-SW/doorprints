@@ -47,7 +47,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * Sarvam speech to text (voice PR 7, S4b-BL-224, ADR-37, TC-U-264): the `sarvamRequest` and `sarvamContent` vectors the
+ * Sarvam speech to text (voice PR 7, S4b-BL-224, ADR-37, TC-U-265): the `sarvamRequest` and `sarvamContent` vectors the
  * website runs too, then the adapter through a fake engine: one multipart call to api.sarvam.ai with the key in
  * `api-subscription-key` only, the 30 second cap, and that neither the audio, the words nor the key reach an error.
  * Common code, so the iPhone's simulator runs it as well.

@@ -239,7 +239,7 @@ describe('VoiceInputService', () => {
   });
 });
 
-describe('VoiceInputService with Sarvam (voice PR 7, S4b-BL-224, TC-U-264)', () => {
+describe('VoiceInputService with Sarvam (voice PR 7, S4b-BL-224, TC-U-265)', () => {
   beforeEach(() => {
     localStorage.clear();
     sessionStorage.clear();
