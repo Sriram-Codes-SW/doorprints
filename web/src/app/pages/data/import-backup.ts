@@ -36,6 +36,7 @@ import { TPipe } from '../../i18n/t.pipe';
 import { routesFor } from '../../app.routes';
 import { adoptSpaces } from '../../core/kind-setting';
 import { SpaceService } from '../../core/space.service';
+import { toolWord } from '../../core/space-tool-words';
 
 /** One line of the preview: its label, its number, and whether the person loses something by it. */
 export interface PreviewLine {
@@ -89,6 +90,10 @@ type Phase = 'idle' | 'checking' | 'refused' | 'ready' | 'importing' | 'done';
 export class ImportBackupCard {
   private readonly space = inject(SpaceService);
   private readonly importer = inject(ImportService);
+  /** A backup holds every space: with two or more kinds on, its words name no kind (S4b-BL-291). */
+  protected w(key: TKey): TKey {
+    return this.space.multi() ? toolWord('*', key) : key;
+  }
   private readonly announcer = inject(Announcer);
   protected readonly i18n = inject(TranslationService);
   private readonly launch = inject(LaunchFilesService);
@@ -220,7 +225,7 @@ export class ImportBackupCard {
       if (adoptSpaces(archive.spaces)) this.space.refresh(routesFor);
       this.outcome.set(done);
       this.undo = done.undo && done.undo.houses.size + done.undo.visits.size + done.undo.records.size > 0 ? done.undo : null;
-      this.announcer.announce({ key: 'imp.done', params: { houses: done.houses, visits: done.visits, photos: done.photos } });
+      this.announcer.announce({ key: this.w('imp.done'), params: { houses: done.houses, visits: done.visits, photos: done.photos } });
     } catch (err) {
       this.failure.set({ key: 'imp.writeFailed', params: { reason: this.i18n.msg(errorMsg(err)) } });
     }

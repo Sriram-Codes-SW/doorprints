@@ -104,7 +104,40 @@ const SCHOOL: Readonly<Partial<Record<TKey, TKey>>> = {
   'exp.noHouses': 'school.expNone',
 };
 
-const TABLES: Readonly<Record<string, Readonly<Partial<Record<TKey, TKey>>>>> = { school: SCHOOL };
+/**
+ * The words of a thing that acts on every space (S4b-BL-291): the Full backup's options and gaps and the import preview, read
+ * while two or more kinds are on, under the kind id `*`. With one kind they stay the house's.
+ */
+const ANY: Readonly<Partial<Record<TKey, TKey>>> = {
+  'data.scope': 'data.scopeAny',
+  'data.scopeAll': 'data.scopeAllAny',
+  'data.includeRejected': 'data.includeRejectedAny',
+  'data.photosShortlisted': 'data.photosShortlistedAny',
+  'data.noShortlisted': 'data.noShortlistedAny',
+  'data.noneMatch': 'data.noneMatchAny',
+  'data.empty': 'data.emptyAny',
+  'data.emptyAction': 'data.emptyActionAny',
+  'data.countHouses': 'data.countAny',
+  'data.preview': 'data.previewAny',
+  'data.gapNotShortlisted': 'data.gapNotShortlistedAny',
+  'data.gapNotSelected': 'data.gapNotSelectedAny',
+  'data.gapRejected': 'data.gapRejectedAny',
+  'data.gapPhotosNotShortlisted': 'data.gapPhotosNotShortlistedAny',
+  'imp.intro': 'imp.introAny',
+  'imp.modeMergeHint': 'imp.modeMergeHintAny',
+  'imp.modeCopyHint': 'imp.modeCopyHintAny',
+  'imp.restore': 'imp.restoreAny',
+  'imp.newHouses': 'imp.newAny',
+  'imp.updatedHouses': 'imp.updatedAny',
+  'imp.checklistsCleared': 'imp.checklistsClearedAny',
+  'imp.removedHouses': 'imp.removedAny',
+  'imp.floorsLeftBlank': 'imp.floorsLeftBlankAny',
+  'imp.done': 'imp.doneAny',
+  'imp.doneRemoved': 'imp.doneRemovedAny',
+  'imp.seeHouses': 'imp.seeAny',
+};
+
+const TABLES: Readonly<Record<string, Readonly<Partial<Record<TKey, TKey>>>>> = { school: SCHOOL, '*': ANY };
 
 /** The key to show for `key` in the space of `kind`: the kind's own where it has one, else `key` (the house's). */
 export function toolWord(kind: string | null | undefined, key: TKey): TKey {
