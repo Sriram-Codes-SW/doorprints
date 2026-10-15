@@ -158,7 +158,7 @@ object Notifications {
     const val EXTRA_NEW_LON = "newLon"
     const val EXTRA_VISIT_ID = "visitId"
 
-    /** The kind of the walk that raised a "stay here?" alert (docs/03 section 18.19); MainActivity accepts only a built-in kind id. */
+    /** The kind of the walk that raised a "stay here?" alert (docs/03 section 18.20); MainActivity accepts only a built-in kind id. */
     const val EXTRA_NEW_KIND = "newKind"
 
     /** A viewing to open (a Hunt mode reminder's body, slice 3c); MainActivity accepts only a valid record id. */
@@ -237,7 +237,7 @@ object Notifications {
     }
 
     /**
-     * The alerts channel of a walk of [kind] (docs/03 section 18.19): the house's is [CHANNEL_ALERTS], created at start; any other
+     * The alerts channel of a walk of [kind] (docs/03 section 18.20): the house's is [CHANNEL_ALERTS], created at start; any other
      * kind's is `alerts_<kind>`, created here the first time its walk alerts, named and described in the kind's own words
      * ([name], [description]: `huntChannelAlerts`, `huntChannelAlertsDesc`) and as private on a locked screen as the house's.
      * Returns the channel id to post on.

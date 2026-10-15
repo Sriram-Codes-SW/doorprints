@@ -82,7 +82,7 @@ class SpaceWords(
     /**
      * The map's location notes (S4b-BL-301): *Save here* needs location (`saveNeedsLocation`), and the note under the Hunt card
      * (`locationOff`, `needsPrecise`) or, where there is none (the iPhone), over the map (`locationOffNoHunt`, `needsPreciseNoHunt`). Hunt mode
-     * is a capability of the kind (docs/03 section 18.19), so every space whose kind has it, the school's too, says *Hunt mode* in its Hunt pair.
+     * is a capability of the kind (docs/03 section 18.20), so every space whose kind has it, the school's too, says *Hunt mode* in its Hunt pair.
      */
     val locationOff: StringResource,
     val needsPrecise: StringResource,
@@ -118,7 +118,7 @@ class SpaceWords(
 }
 
 /**
- * The words of Hunt mode that name the kind (docs/03 section 18.19, kinds PR 26): the alerts, the street line, the walk's
+ * The words of Hunt mode that name the kind (docs/03 section 18.20, kinds PR 26): the alerts, the street line, the walk's
  * notification and its channel, the rationale, and the two lines that say why a walk ended or could not start. Every word is
  * the kind file's `android` key ([KindWordKeys]); the house's are the strings Hunt mode always had, so a house walk is word for
  * word what it was. The lock-screen public text ("Doorprints alert") is not a kind's and stays the app's.
@@ -189,10 +189,10 @@ class SpaceUi(val setting: KindSetting, val kind: String) {
     /** The house words left on this kind's pages (kinds PR 16, phone half): titles, questions, the walk check, Areas and Places. */
     val pages: PageWords = PageWords.of(built.id)
 
-    /** The Hunt mode words of this space's kind (docs/03 section 18.19). */
+    /** The Hunt mode words of this space's kind (docs/03 section 18.20). */
     val hunt: HuntWords = HuntWords.of(built.id)
 
-    /** This space's kind has Hunt mode (its `capabilities.hunt`, docs/03 section 18.19): its card and its switch are offered here and in no space without it. */
+    /** This space's kind has Hunt mode (its `capabilities.hunt`, docs/03 section 18.20): its card and its switch are offered here and in no space without it. */
     val huntHere: Boolean get() = HuntSpace.has(built.id)
 
     /** The space is one the person turned off: it still opens, with a note, and nothing in it is hidden or deleted. */

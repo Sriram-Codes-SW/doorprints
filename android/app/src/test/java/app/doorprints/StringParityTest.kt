@@ -170,7 +170,7 @@ class StringParityTest {
             "notif_seen_house", "notif_distance", "notif_visited_before", "notif_street_title", "notif_street_text",
             "notif_street_text_since", "notif_stay_title", "notif_stay_text", "notif_battery_title",
             "notif_area_wakeup", "export_share", "export_open",
-            // Kinds PR 26 (docs/03 section 18.19): the house's Hunt words are the kind file's `android` keys, so the walk's ongoing text and
+            // Kinds PR 26 (docs/03 section 18.20): the house's Hunt words are the kind file's `android` keys, so the walk's ongoing text and
             // its alerts channel's name and description exist in the Compose resources too, equal to the Context ones (keysInBothPlacesReadTheSame).
             "notif_hunt_text", "notif_channel_alerts", "notif_channel_alerts_desc",
         )

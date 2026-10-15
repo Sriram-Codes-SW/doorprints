@@ -64,7 +64,7 @@ class IosHuntTest {
             DeepLink.NewHouse(12.97, 77.64, null),
             notificationDeepLink(mapOf(IosHunt.KEY_NEW_LAT to "12.97", IosHunt.KEY_NEW_LON to "77.64", IosHunt.KEY_VISIT_ID to "x")),
         )
-        // The kind of the walk rides along (docs/03 section 18.19), and only one of the app's own kinds is believed.
+        // The kind of the walk rides along (docs/03 section 18.20), and only one of the app's own kinds is believed.
         assertEquals(
             DeepLink.NewHouse(12.97, 77.64, id, "school"),
             notificationDeepLink(mapOf(IosHunt.KEY_NEW_LAT to "12.97", IosHunt.KEY_NEW_LON to "77.64", IosHunt.KEY_VISIT_ID to id, IosHunt.KEY_NEW_KIND to "school")),

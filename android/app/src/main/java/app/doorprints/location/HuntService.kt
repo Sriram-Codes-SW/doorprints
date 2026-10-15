@@ -60,7 +60,7 @@ import org.jetbrains.compose.resources.getString as composeString
  * reading, the reverse geocoder, and the wording and posting of the alerts the engine asks for ([HuntEffects]).
  * Everything else, what a fix means, is the engine's, and the same on iPhone.
  *
- * The walk belongs to the space it was started in (docs/03 section 18.19, kinds PR 26): the start carries the kind
+ * The walk belongs to the space it was started in (docs/03 section 18.20, kinds PR 26): the start carries the kind
  * ([EXTRA_HUNT_KIND]), the engine reads that kind's `capabilities.hunt`, and every alert's words, channel and "stay here?" entry
  * are the kind's. Nothing here names a kind.
  */
@@ -309,7 +309,7 @@ class HuntService : LifecycleService(), HuntEffects {
     companion object {
         private const val ACTION_STOP = "stop"
 
-        /** The kind of the walk to start (a built-in kind id, docs/03 section 18.19). */
+        /** The kind of the walk to start (a built-in kind id, docs/03 section 18.20). */
         internal const val EXTRA_HUNT_KIND = "huntKind"
         internal const val ACTION_FINISH_WALK = "finish-walk"
 

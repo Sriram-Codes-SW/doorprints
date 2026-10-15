@@ -74,7 +74,7 @@ sealed interface DeepLink {
     data class OpenHouse(val id: String, val questions: Boolean = false) : DeepLink
     /**
      * A new entry at [lat], [lon], from a Hunt mode arrival alert: [visitId] is the visit, which the first save links
-     * to the entry and whose alert it removes. [kind] is the kind of the walk that raised the alert (docs/03 section 18.19): the
+     * to the entry and whose alert it removes. [kind] is the kind of the walk that raised the alert (docs/03 section 18.20): the
      * entry is made in that space while it is on; null (an alert of an older build) is the default kind's.
      */
     data class NewHouse(val lat: Double, val lon: Double, val visitId: String?, val kind: String? = null) : DeepLink
@@ -297,7 +297,7 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
             }
         }
 
-        // The walk belongs to the space it was started in (docs/03 section 18.19): leaving that space ends it, with one line on why
+        // The walk belongs to the space it was started in (docs/03 section 18.20): leaving that space ends it, with one line on why
         // (S4b-BL-304, owner 2026-10-15), in the words of the walk's kind. The walk of a Start Hunt mode tap made while another space is
         // on screen is left alone: only the move out of the walk's own space stops one.
         val huntLive by services.mapScreen.hunt.collectAsStateWithLifecycle()
@@ -311,7 +311,7 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
         }
 
         // *Start Hunt mode* from a reminder or an area wake-up while no kind that could run it is on: not started, one line says why
-        // (docs/03 sections 18.18 and 18.19), in the words of the kind that would have.
+        // (docs/03 sections 18.18 and 18.20), in the words of the kind that would have.
         var huntNeeds by remember { mutableStateOf<String?>(null) }
         LaunchedEffect(huntNeeds) {
             val kind = huntNeeds ?: return@LaunchedEffect
@@ -406,7 +406,7 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                     // A "stay here?" alert whose visit was already saved as a house opens that house, not a second
                     // new-house form that would save a duplicate (whole-app audit).
                     val savedAs = d.visitId?.let { repo.getVisit(it)?.houseId }
-                    // A Hunt alert is its walk's space's (S4b-BL-304, docs/03 section 18.19): it makes an entry of the kind the walk was started
+                    // A Hunt alert is its walk's space's (S4b-BL-304, docs/03 section 18.20): it makes an entry of the kind the walk was started
                     // in, not of the default kind (kinds PR C); an existing one opens in its own space. With that kind off it makes the
                     // default kind's entry (never one in a space that is off, docs/03 section 18.18).
                     if (setting.spaces) {
@@ -443,7 +443,7 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                     if (!onTop(Routes.VIEWING, "id", d.id)) nav.navigate(Routes.viewing(d.id))
                 }
                 is DeepLink.StartHunt -> {
-                    // The walk of the kind that the reminder or the area belongs to (docs/03 section 18.19); with none on, it is not
+                    // The walk of the kind that the reminder or the area belongs to (docs/03 section 18.20); with none on, it is not
                     // started, and the Map says why.
                     val kind = HuntSpace.startKind(setting, d.by)
                     if (kind != null) {

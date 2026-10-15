@@ -76,7 +76,7 @@ class SpaceUiTest {
         }
         // What a school does have: the places the kind file lists.
         for (ref in listOf("field.contactName", "field.street", "field.rating", "section.visits", "section.distances")) assertTrue(school.shows(ref), ref)
-        assertTrue(school.huntHere, "Hunt mode is the school's capability (docs/03 section 18.19)")
+        assertTrue(school.huntHere, "Hunt mode is the school's capability (docs/03 section 18.20)")
         assertFalse(school.sortsByScoreAndPrice)
     }
 

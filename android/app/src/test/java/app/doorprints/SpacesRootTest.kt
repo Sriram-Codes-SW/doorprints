@@ -67,7 +67,7 @@ import org.robolectric.annotation.Config
  * Spaces on the phones (kinds PR C, S4b-BL-274; docs/03 §18.12, TC-U-220), on the real app and Room. A build that ships the
  * house alone is the app it always was (no chooser, no chip, the same tabs and Settings rows); a build that ships the school
  * and has the switch off is that app too; with the school on, the first screen is the chooser, a card opens a space (its
- * words, its list, its Hunt mode: the kind file's capability, docs/03 section 18.19), the chip comes back, the house-only Settings rows follow the kind, and
+ * words, its list, its Hunt mode: the kind file's capability, docs/03 section 18.20), the chip comes back, the house-only Settings rows follow the kind, and
  * a link, an alert or a shared listing resolves its space. English; the other languages are in `StringParityTest`.
  */
 @RunWith(AndroidJUnit4::class)
@@ -366,7 +366,7 @@ class SpacesRootTest {
 
     @Test
     fun aHuntAlertMakesAHouseEvenWhenTheSchoolIsTheDefault() {
-        // S4b-BL-304: a house walk's "stay here?" alert makes a house, never a candidate of the default kind; the alert carries the walk's kind (docs/03 section 18.19).
+        // S4b-BL-304: a house walk's "stay here?" alert makes a house, never a candidate of the default kind; the alert carries the walk's kind (docs/03 section 18.20).
         kinds.enableSchool(schoolDefault = true)
         startTwoKinds()
         waitFor("What are you looking for?")
@@ -556,7 +556,7 @@ class SpacesRootTest {
         hasNo("Assistant")
     }
 
-    // Hunt as a capability (docs/03 section 18.19, kinds PR 26; TC-U-269): the school has the card and the switch, the walk is the space's.
+    // Hunt as a capability (docs/03 section 18.20, kinds PR 26; TC-U-270): the school has the card and the switch, the walk is the space's.
 
     private fun allowLocationAndNotifications() =
         shadowOf(app).grantPermissions(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.POST_NOTIFICATIONS)

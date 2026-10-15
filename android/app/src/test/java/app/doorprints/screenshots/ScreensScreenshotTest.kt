@@ -468,7 +468,7 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
     }
 
     /**
-     * The school space's Hunt card with a walk running (kinds PR 26, S4b-BL-304; docs/03 section 18.19): the switch on, the street
+     * The school space's Hunt card with a walk running (kinds PR 26, S4b-BL-304; docs/03 section 18.20): the switch on, the street
      * line in the school's words (*Been here: schools 2, visits 3*), the nearest saved school and *Finish walk*. The map view is an
      * empty box here, as in every Map shot (MapLibre cannot run under Robolectric). English and Hindi, light only; the house's Hunt card
      * has no shot of its own and is unchanged.

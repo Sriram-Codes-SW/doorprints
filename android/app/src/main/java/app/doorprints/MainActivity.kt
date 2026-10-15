@@ -201,7 +201,7 @@ class MainActivity : ComponentActivity() {
             val lon = intent.getDoubleExtra(Notifications.EXTRA_NEW_LON, Double.NaN)
             if (lat !in -90.0..90.0 || lon !in -180.0..180.0) return null
             val visitId = intent.getStringExtra(Notifications.EXTRA_VISIT_ID)?.takeIf(::isUuid)
-            // The kind of the walk that raised the alert: only one of the app's own kinds is accepted (docs/03 section 18.19).
+            // The kind of the walk that raised the alert: only one of the app's own kinds is accepted (docs/03 section 18.20).
             return DeepLink.NewHouse(lat, lon, visitId, HuntSpace.knownKind(intent.getStringExtra(Notifications.EXTRA_NEW_KIND)))
         }
         return null

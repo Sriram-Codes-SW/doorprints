@@ -89,7 +89,7 @@ internal object IosHunt : HuntEffects {
     const val KEY_NEW_LAT = "newLat"
     const val KEY_NEW_LON = "newLon"
     const val KEY_VISIT_ID = "visitId"
-    /** The kind of the walk that raised a "stay here?" alert (docs/03 section 18.19); read back only when it is one of the app's own kinds. */
+    /** The kind of the walk that raised a "stay here?" alert (docs/03 section 18.20); read back only when it is one of the app's own kinds. */
     const val KEY_NEW_KIND = "newKind"
     /** A viewing to open (slice 3c); a reminder queued before S4b-BL-94c still carries it. */
     const val KEY_OPEN_VIEWING = "openViewing"
@@ -103,7 +103,7 @@ internal object IosHunt : HuntEffects {
     private var engine: HuntEngine? = null
     private var scope: CoroutineScope? = null
 
-    /** The kind of the walk running (the space it was started in, docs/03 section 18.19); the alerts are worded in its words. */
+    /** The kind of the walk running (the space it was started in, docs/03 section 18.20); the alerts are worded in its words. */
     private var kind: String = ""
     private val words: HuntWords get() = HuntWords.of(kind)
 

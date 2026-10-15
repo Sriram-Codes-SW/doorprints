@@ -118,7 +118,7 @@ internal fun notificationDeepLink(userInfo: Map<Any?, *>): DeepLink? {
     val lon = (userInfo[IosHunt.KEY_NEW_LON] as? String)?.toDoubleOrNull() ?: return null
     if (lat !in -90.0..90.0 || lon !in -180.0..180.0) return null
     val visitId = (userInfo[IosHunt.KEY_VISIT_ID] as? String)?.takeIf(::isUuid)
-    // The kind of the walk that raised the alert; only one of the app's own kinds is accepted (docs/03 section 18.19).
+    // The kind of the walk that raised the alert; only one of the app's own kinds is accepted (docs/03 section 18.20).
     return DeepLink.NewHouse(lat, lon, visitId, HuntSpace.knownKind(userInfo[IosHunt.KEY_NEW_KIND] as? String))
 }
 

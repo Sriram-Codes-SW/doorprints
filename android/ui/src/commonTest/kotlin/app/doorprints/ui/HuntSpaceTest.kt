@@ -35,7 +35,7 @@ import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 /**
- * Hunt mode is a capability of a kind (docs/03 section 18.19, kinds PR 26, TC-U-269; S4b-BL-304 generalised): the walk belongs to
+ * Hunt mode is a capability of a kind (docs/03 section 18.20, kinds PR 26, TC-U-270; S4b-BL-304 generalised): the walk belongs to
  * the space it was started in, so only the move out of that space, with the walk running, stops it. Nothing here names a kind: the
  * cases run on the house and the school, which both have Hunt, and on a kind that has none.
  */
@@ -74,7 +74,7 @@ class HuntSpaceTest {
         assertNull(HuntSpace.of("clinic"))
     }
 
-    // docs/03 sections 18.18 and 18.19: a walk starts only in a kind that is on; an alert's new entry is never made in a space that is off.
+    // docs/03 sections 18.18 and 18.20: a walk starts only in a kind that is on; an alert's new entry is never made in a space that is off.
     private val both = KindSetting(listOf("house", "school"), experimental = "1", enabledText = "[\"house\",\"school\"]")
 
     @Test

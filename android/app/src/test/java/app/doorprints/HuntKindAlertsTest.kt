@@ -39,7 +39,7 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 
 /**
- * Hunt mode's alerts take the words and the channel of the kind of the walk (docs/03 section 18.19, kinds PR 26, TC-U-269): a
+ * Hunt mode's alerts take the words and the channel of the kind of the walk (docs/03 section 18.20, kinds PR 26, TC-U-270): a
  * house walk is word for word what it was, on the channel it always used; a school walk says *school* and *schools*, on a channel of
  * its own named in the school's words; the "stay here?" alert carries the walk's kind; the lock-screen public text is
  * "Doorprints alert" for both and names no kind. The service is built without starting a walk (a JVM test has no foreground

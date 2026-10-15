@@ -24,7 +24,7 @@ import app.doorprints.shared.model.KindSettingRules
 import app.doorprints.shared.model.SpaceScope
 
 /**
- * Hunt mode is a capability of a kind (docs/03 section 18.19, kinds PR 26): the kind file's `capabilities.hunt` says whether a
+ * Hunt mode is a capability of a kind (docs/03 section 18.20, kinds PR 26): the kind file's `capabilities.hunt` says whether a
  * space has the Hunt card and switch, how near the alerts are, whether a stay offers to save the place, whether the street is
  * told and whether an area wake-up may start a walk of that kind. The walk belongs to the space it was started in, so it ends
  * when the person leaves that space (S4b-BL-304, generalised from the house space). One rule for Android and the iPhone (the
@@ -58,7 +58,7 @@ object HuntSpace {
     }
 
     /**
-     * The kind whose walk a reminder's or an area wake-up's *Start Hunt mode* starts (docs/03 section 18.19), or null when
+     * The kind whose walk a reminder's or an area wake-up's *Start Hunt mode* starts (docs/03 section 18.20), or null when
      * none is on: an enabled kind with Hunt that fits the [by] (a reminder: one with viewings; an area: one with `areas`),
      * the default kind first, then the others in the order they are enabled. A kind that is off is never chosen, so a walk
      * and its *stay here?* alert never make an entry in a space that is off (docs/03 section 18.18).
