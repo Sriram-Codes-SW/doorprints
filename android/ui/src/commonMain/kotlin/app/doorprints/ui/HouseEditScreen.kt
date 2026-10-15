@@ -426,10 +426,7 @@ fun HouseEditScreen(
     val brokers: List<Pair<String, Broker>> by remember(repo) { repo.observeBrokers() }.collectAsStateWithLifecycle(emptyList())
     // Every live house, for the duplicate-flat warning (S4b-BL-85) under the floor.
     val allHouses: List<HouseEntity> by remember(repo) { repo.houses }.collectAsStateWithLifecycle(emptyList())
-    // The effective scoring (docs/11 5.4, slice 2): which criteria the checklist shows, the score and its coverage line.
-    val personScoring: Scoring by remember(repo) { repo.observeScoring() }.collectAsStateWithLifecycle(Scoring.DEFAULT)
-    // The house is scored under the person's own; another kind under its own checklist (kinds PR 27, docs/03 §18.21).
-    val scoring = remember(kind.id, personScoring) { CompareCriteria.scoringFor(kind, personScoring) }
+    val scoring = remember(kind.id, repo) { repo.observeScoring().map { CompareCriteria.scoringFor(kind, it) } }.collectAsStateWithLifecycle(Scoring.DEFAULT).value
     // How the rooms' sizes are shown and typed (slice 1c, this phone's setting).
     val lengthUnit by remember(repo) { repo.settings.lengthUnit }.collectAsStateWithLifecycle(LengthUnit.FT)
     // The question bank (slice 3a), for *Add the usual questions* and *Add a question*.

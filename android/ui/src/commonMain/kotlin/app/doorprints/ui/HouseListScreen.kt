@@ -249,11 +249,7 @@ fun HouseListScreen(
     // The area notes that reach each house are searched too (docs/11 slice 4a).
     val areas: List<Area> by remember(repo) { repo.observeAreas() }.collectAsStateWithLifecycle(emptyList())
     val areaNotes: List<AreaNote> by remember(repo) { repo.observeAreaNotes() }.collectAsStateWithLifecycle(emptyList())
-    // The effective scoring (docs/11 5.4, slice 2): the card's score, the "Must-have missed" chip and "best first".
-    val personScoring: Scoring by remember(repo) { repo.observeScoring() }.collectAsStateWithLifecycle(Scoring.DEFAULT)
-    // The house under the person's own scoring, another kind under its own checklist (kinds PR 27, docs/03 §18.21).
-    val listKind = LocalSpace.current.built
-    val scoring = remember(listKind.id, personScoring) { CompareCriteria.scoringFor(listKind, personScoring) }
+    val scoring = LocalSpace.current.built.let { k -> remember(k.id, repo) { repo.observeScoring().map { CompareCriteria.scoringFor(k, it) } }.collectAsStateWithLifecycle(Scoring.DEFAULT).value }
     val loaded = loadedHouses != null
     val houses = loadedHouses.orEmpty()
     val counts by repo.visitCounts.collectAsStateWithLifecycle(emptyList())
