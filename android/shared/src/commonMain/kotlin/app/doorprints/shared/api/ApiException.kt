@@ -39,9 +39,9 @@ class ApiException(
         AI_KEY_REJECTED,
         /** An OpenAI-compatible provider does not know the model the person typed (HTTP 404; docs/03 §13.2). */
         AI_MODEL_NOT_FOUND,
-        /** The AI provider's own safety system declined the text; never retried, its words never shown (S4b-BL-232). */
+        /** The AI provider's own safety system declined the text; never retried, its words never shown (S4b-BL-232; the server's own AI answers 422, S4b-BL-233). */
         AI_BLOCKED,
-        /** The person's own key has no free quota or credit left: HTTP 402, a daily Gemini quota, `insufficient_quota`, a billing error (S4b-BL-243). */
+        /** The AI's free quota or credit is used up (the person's own key, or the server's: its 402, S4b-BL-244): HTTP 402, a daily Gemini quota, `insufficient_quota`, a billing error (S4b-BL-243). */
         AI_QUOTA_EXHAUSTED,
         /** AI is off here (the phone's switch, no server or key, the server or the owner's switch); the call was refused and nothing was sent (S4b-BL-251). */
         AI_OFF,
@@ -51,6 +51,10 @@ class ApiException(
         /** Maps a non-2xx status to a [Kind]. [encodedPath] is the request's URL path (without the query). */
         fun kindFor(status: Int, encodedPath: String): Kind = when (status) {
             401, 403 -> Kind.AUTH
+            // The server's own AI says its provider quota or credit is spent with 402 (S4b-BL-244), not a wait like 503.
+            402 -> if (encodedPath.startsWith("/api/ai/")) Kind.AI_QUOTA_EXHAUSTED else Kind.CLIENT
+            // The server's own AI says its provider's safety system declined the text with 422 (S4b-BL-233); it is never retried.
+            422 -> if (encodedPath.startsWith("/api/ai/")) Kind.AI_BLOCKED else Kind.CLIENT
             404 -> Kind.NOT_FOUND
             409 -> Kind.CONFLICT
             429 -> Kind.RATE_LIMITED

@@ -298,12 +298,11 @@ describe('AiService against the server', () => {
       expect(aiErrorMsg(new HttpErrorResponse({ status: 403, error: null }))).toEqual({ key: 'error.auth' });
     });
 
-    it('402 has no AI words of its own: it reads as an HTTP refusal with its status, or the problem detail', async () => {
+    it('402 is a spent quota or credit on the server (S4b-BL-244), whatever its body, in the words of the own key\'s', async () => {
       const ai = ready();
-      expect(aiErrorMsg(await failure(ai, 402, 'Payment Required'))).toEqual({ key: 'error.httpStatus', params: { status: '402' } });
-      expect(aiErrorMsg(await failure(ai, 402, { status: 402, detail: 'Quota used up' }))).toEqual({
-        key: 'error.detail',
-        params: { detail: 'Quota used up' },
+      expect(aiErrorMsg(await failure(ai, 402, 'Payment Required'))).toEqual({ key: 'ai.quotaExhausted' });
+      expect(aiErrorMsg(await failure(ai, 402, { status: 402, detail: 'Quota used up', code: 'AI_QUOTA_EXHAUSTED' }))).toEqual({
+        key: 'ai.quotaExhausted',
       });
     });
 

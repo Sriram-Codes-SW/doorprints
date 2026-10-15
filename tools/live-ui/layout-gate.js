@@ -25,7 +25,7 @@
 // and again at 130% text (and the owner's 384x615 phone at 130%, an iPhone SE in landscape at 568x320, and a 360x740 phone
 // in Tamil at 200% text): the shared layoutAudit (live-ui.js's mobile pass): the map no taller than the screen, its canvas
 // under 4,096px, the app no taller than the screen, nothing left under the bottom bar at the end of a page, no sideways scroll, no map control over the page's own controls; plus
-// that the Map page has a map and a canvas at all (so the checks cannot pass for want of a map), that it loads
+// that the Map page has a map and a canvas at all (so the checks cannot pass for want of a map), that every page loads
 // with a layout shift of at most 0.05 (S4b-BL-49: the map jumped by 0.15-0.24 on short phones when a script wrote its
 // height after the first paint), and, at normal text and on the owner's phone, that the Map page shows the list's
 // heading and every counter above the bottom bar before any scrolling (S4b-BL-49, owner report 2026-09-24), unless the map
@@ -200,7 +200,7 @@ async function run() {
   const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined, args: ['--enable-unsafe-swiftshader', '--use-angle=swiftshader', '--ignore-gpu-blocklist'] });
   const t0 = Date.now();
   // One pass: a phone, a text size and a language over its routes. Returns its checks, its failures (a layout shift
-  // marked as such) and its largest Map page shift; it prints nothing, the caller decides whether a failure is final.
+  // marked as such) and its largest shift; it prints nothing, the caller decides whether a failure is final.
   const pass = async (viewport, text, lang = 'en', { counters = false, routes = ROUTES, kinds = false } = {}) => {
     const out = { checks: 0, failures: [], worstShift: 0 };
     const check = (tag, ok, detail, shift = false) => { out.checks++; if (!ok) out.failures.push({ line: `${tag}: ${detail}`, shift }); };
@@ -227,14 +227,12 @@ async function run() {
           check(`${tag}: the map shows the style's credits`, credits, 'no OpenMapTiles credit in the attribution control (the style or its TileJSON did not load)');
           await page.waitForTimeout(2000); // the map's resize observers and the layout settle
         } else await page.waitForTimeout(400);
-        // The Map page only: /data and /connect still shift on load (S4b-BL-249), which the gate does not hold yet.
-        if (route === '/') {
-          const cls = await page.evaluate(() => window.__cls());
-          out.worstShift = Math.max(out.worstShift, cls);
-          const shifted = cls > MAX_CLS || process.env.GATE_VERBOSE ? await page.evaluate(() => window.__shifted()) : '';
-          if (process.env.GATE_VERBOSE) console.log(`${tag}: shift ${cls.toFixed(3)}; moved: ${shifted || 'nothing'}`);
-          check(`${tag}: layout shift on load`, cls <= MAX_CLS, `${cls.toFixed(3)} (at most ${MAX_CLS}); moved: ${shifted || 'unknown'}`, true);
-        }
+        // Every route (S4b-BL-249: /data shifted by 0.09-0.10 when the export card became its form; fixed, so now held).
+        const cls = await page.evaluate(() => window.__cls());
+        out.worstShift = Math.max(out.worstShift, cls);
+        const shifted = cls > MAX_CLS || process.env.GATE_VERBOSE ? await page.evaluate(() => window.__shifted()) : '';
+        if (process.env.GATE_VERBOSE) console.log(`${tag}: shift ${cls.toFixed(3)}; moved: ${shifted || 'nothing'}`);
+        check(`${tag}: layout shift on load`, cls <= MAX_CLS, `${cls.toFixed(3)} (at most ${MAX_CLS}); moved: ${shifted || 'unknown'}`, true);
         if (route === '/' && counters) {
           const under = await page.evaluate(countersUnderBar);
           check(`${tag}: counters above the bottom bar`, under === null, under);
@@ -280,7 +278,7 @@ async function run() {
   const checks = results.reduce((n, r) => n + r.checks, 0);
   const worstShift = Math.max(...results.map((r) => r.worstShift));
   const retry = retried.length ? `; ${retried.length} pass(es) failed only on a layout shift and ran again: ${retried.filter((i) => results[i].failures.length).length} failed again` : '';
-  console.log(`layout gate: ${checks - failures.length}/${checks} checks passed (largest Map page layout shift ${worstShift.toFixed(3)}${retry}) on ${base} in ${Math.round((Date.now() - t0) / 1000)} s`);
+  console.log(`layout gate: ${checks - failures.length}/${checks} checks passed (largest layout shift ${worstShift.toFixed(3)}${retry}) on ${base} in ${Math.round((Date.now() - t0) / 1000)} s`);
   process.exitCode = failures.length ? 1 : 0;
 }
 run().catch((e) => { console.error(e); process.exit(1); });

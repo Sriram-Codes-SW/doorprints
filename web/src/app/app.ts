@@ -17,6 +17,7 @@
  */
 
 import {
+  ApplicationRef,
   Component,
   DestroyRef,
   ElementRef,
@@ -183,7 +184,7 @@ const NAV_ICONS = {
     <app-reminder-banners />
     <app-undo-snackbar />
     <main id="main" #main class="content" tabindex="-1">
-      <router-outlet />
+      <router-outlet (activate)="paintPageOnce()" />
     </main>
     <app-confirm-dialog />
     <app-tour />
@@ -625,6 +626,7 @@ export class App {
   private readonly main = viewChild.required<ElementRef<HTMLElement>>('main');
   private readonly nav = viewChild.required<ElementRef<HTMLElement>>('nav');
   private readonly injector = inject(Injector);
+  private readonly appRef = inject(ApplicationRef);
 
   /** The current path, without query or fragment. */
   private readonly path = signal('/');
@@ -652,6 +654,22 @@ export class App {
 
   /** Scroll positions of #main by the id of the navigation that showed the page, for Back and Forward. */
   private readonly scrollPositions = new Map<number, number>();
+
+  /**
+   * A page the router has just created has its elements but not yet its text: the zoneless scheduler runs the first update
+   * on a timer raced with the next frame, and a frame painted in between showed *Connect*, *Share* and *Your data* with empty
+   * headings and then moved everything down when the text arrived (a layout shift of 0.3-0.8 on a slow runner, S4b-BL-249).
+   * A microtask runs before any paint, so the first update is made there.
+   */
+  protected paintPageOnce(): void {
+    queueMicrotask(() => {
+      try {
+        this.appRef.tick();
+      } catch {
+        /* a tick is already running: it paints the page */
+      }
+    });
+  }
 
   constructor() {
     // Looks once a minute for a viewing reminder while the app is open (slice 3b-2); cleared when the app is destroyed.

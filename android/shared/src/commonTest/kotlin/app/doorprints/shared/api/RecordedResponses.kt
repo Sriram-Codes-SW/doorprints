@@ -70,6 +70,12 @@ object RecordedResponses {
     /** AiExceptionHandler: provider down / quota exhausted (ProblemDetail, sent with Retry-After: 60 for quota). */
     const val AI_UNAVAILABLE = """{"type":"about:blank","title":"Service Unavailable","status":503,"detail":"AI provider error. The AI provider's quota or rate limit is exhausted; try again later.","instance":"/api/ai/ask","retryable":true,"code":"AI_QUOTA_EXHAUSTED"}"""
 
+    /** AiExceptionHandler, a spent quota or credit (S4b-BL-244): 402, not retryable, no Retry-After. */
+    const val AI_QUOTA_SPENT = """{"type":"about:blank","title":"Payment Required","status":402,"detail":"Answering failed. The AI provider's free quota or credit is used up; it will not recover by waiting a minute.","instance":"/api/ai/ask","retryable":false,"code":"AI_QUOTA_EXHAUSTED"}"""
+
+    /** AiExceptionHandler, a provider safety block (S4b-BL-233): 422, not retryable. */
+    const val AI_DECLINED = """{"type":"about:blank","title":"Unprocessable Content","status":422,"detail":"Answering failed. The AI provider declined this text; nothing was changed. Edit the wording and try again.","instance":"/api/ai/ask","retryable":false,"code":"AI_DECLINED"}"""
+
     /** ApiExceptionHandler.notFound. */
     const val NOT_FOUND = """{"type":"about:blank","title":"Not Found","status":404,"detail":"Photo not found","instance":"/api/photos/p-9"}"""
 

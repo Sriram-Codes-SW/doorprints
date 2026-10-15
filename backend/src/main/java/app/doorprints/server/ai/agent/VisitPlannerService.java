@@ -164,6 +164,8 @@ public class VisitPlannerService {
             plan = result.entity();
             if (plan == null) noPlan = PlanModels.FALLBACK_PARSE;
         } catch (RuntimeException e) {
+            // A safety block is the person's text, not a failed run: declined, not a plan made from what was found so far.
+            if (ProviderErrors.isDeclined(e)) throw new AiUnavailableException("Visit planning failed", e);
             if (limitWatch.hit && !tools.calls().isEmpty()) {
                 // The model used its allowance (often a fifth searchHouses): let it finish with what it found.
                 log.info("plan-visits: tool limit reached after {}, making one wrap-up call", tools.calls());

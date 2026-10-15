@@ -16,7 +16,7 @@
    SPDX-License-Identifier: AGPL-3.0-only
 -->
 
-<div class="page">
+<div class="page" [class.loading]="!started()">
   <header class="page-head">
     <h1>{{ 'data.title' | t }}</h1>
     <!-- With a server connected, what is saved does not only stay in this browser. -->

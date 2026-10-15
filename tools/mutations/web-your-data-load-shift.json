@@ -1,0 +1,19 @@
+{
+  "spec": [
+    "web/src/app/pages/data/data-page-loading.spec.ts"
+  ],
+  "mutations": [
+    {
+      "file": "web/src/app/pages/data/data-page.css",
+      "find": ".page.loading > section:first-of-type ~ * {\n  display: none;",
+      "replace": ".page.loading > section:first-of-type ~ * {\n  display: block;",
+      "expect": "shows only the heading and the export placeholder"
+    },
+    {
+      "file": "web/src/app/pages/data/data-page.html",
+      "find": "<div class=\"page\" [class.loading]=\"!started()\">",
+      "replace": "<div class=\"page\">",
+      "expect": "shows only the heading and the export placeholder"
+    }
+  ]
+}
