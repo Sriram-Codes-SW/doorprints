@@ -48,7 +48,7 @@ object DevKinds {
 }
 
 /**
- * Schools, the second built-in kind (`docs/schemas/kinds/school.json`, Android keys), hidden behind [DevKinds]: a copy of
+ * Schools, the second built-in kind (`docs/schemas/kinds/school.json`, Android keys), compiled in and off in the release builds; [DevKinds] is the developer flag that shows it beyond the shipped list: a copy of
  * the file's labels and extras, as [KindLabels.HOUSE] and [KindFields.HOUSE] are of `house.json` (`SchoolKindVectorsTest`
  * reads the file, so it cannot drift). A place the school leaves out (its money, the broker, the rooms, questions,
  * viewings, moving in and the checklist) has no key, so the resolver says it is not shown.

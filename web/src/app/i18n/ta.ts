@@ -1690,7 +1690,7 @@ export const ta: Dict = {
   'connect.aiSends': 'உங்கள் கேள்வியும் பொருந்தும் வீட்டுக் குறிப்புகளும் நீங்கள் தேர்ந்தெடுத்த சேவைக்குச் செல்லும்; சேமித்த தொடர்புப் பெயர்கள், தொலைபேசி எண்கள், மின்னஞ்சல்கள் முதலில், எங்களால் முடிந்தவரை, மாற்றப்படும். ஒட்டிய விளம்பரம் ஒட்டியபடியே அனுப்பப்படும்.',
   'connect.aiGuide': 'AI எனக்குப் பயனளிக்குமா? வழிகாட்டியைப் படிக்கவும்',
   'connect.aiGuideAria': 'AI எனக்குப் பயனளிக்குமா? வழிகாட்டியைப் படிக்கவும் (புதிய தாவலில் திறக்கும்)',
-  // S4b-BL-209 (2026-10-13): the hidden schools kind, developer flag only. Under review (owner rule: hi/ta/te ship marked under review).
+  // S4b-BL-209 (2026-10-13): the schools kind, compiled in and shown only after Settings' switch. Under review (owner rule: hi/ta/te ship marked under review).
   'school.newTitle': 'புதிய பள்ளி',
   'school.many': 'பள்ளிகள்',
   'school.delete': 'பள்ளியை நீக்கு',

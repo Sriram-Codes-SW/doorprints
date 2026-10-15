@@ -1694,7 +1694,7 @@ export const en = {
   'connect.aiSends': 'Your question and the matching house notes go to the service you chose, with saved contact names, phones and emails replaced first as far as we can. A pasted ad is sent as pasted.',
   'connect.aiGuide': 'Is AI worth it for me? Read the guide',
   'connect.aiGuideAria': 'Is AI worth it for me? Read the guide (opens in a new tab)',
-  // S4b-BL-209 (2026-10-13): the hidden schools kind (kinds PR 5), shown only with the developer flag.
+  // S4b-BL-209 (2026-10-13): the schools kind (kinds PR 5), compiled in and shown only after Settings' switch *Experimental: more than houses*.
   'school.newTitle': 'New school',
   'school.many': 'Schools',
   'school.delete': 'Delete school',

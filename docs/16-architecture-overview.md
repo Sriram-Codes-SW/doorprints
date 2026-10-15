@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Architecture overview: the one entry page for the high-level and low-level design |
-| Version | 0.3 |
+| Version | 0.4 |
 | Date | 2026-10-15 |
 | Owner | Lead (Claude, Code); product owner: Sriram |
 | Status | Draft |
@@ -20,6 +20,7 @@ stays in [03](03-design.md) and the satellites named below.
 | 0.1 | 2026-10-15 | Claude (Code), engineer | First version: the ten-minute summary, the one component diagram, the per-stack table with each store's current version, the data contracts, the reading path, where the recent designs live and the rule that keeps this page current. Written from the code on `main` at `c2a36b84`. |
 | 0.2 | 2026-10-15 | Claude (Code), docs | Voice stated as built on the web (merged), Android (#355) and iPhone (#354); the PR numbers are to be dropped once both are on `main`. |
 | 0.3 | 2026-10-15 | Claude (Code), docs | Voice stated as built on the web, Android and the iPhone; the PR numbers dropped. |
+| 0.4 | 2026-10-15 | Claude (Code), docs | The `school` kind is described as compiled in but off, offered after the switch (`docs/school-compiled-in-wording`). |
 
 ## 1. Ten minutes
 
@@ -42,7 +43,7 @@ encrypted on the device (`dpx/1`, one snapshot file per device; [15](15-google-d
 
 **Kinds are spaces.** A *kind* describes one sort of candidate in a data file (`docs/schemas/kinds/<kind>.json`); a house
 is the first kind. A *space* is a filter over the one candidate store, chosen in the chooser and in Settings > What you
-track. The production build offers the house alone; the `school` kind is hidden behind *Experimental: more than houses*
+track. The production build offers the house alone; the `school` kind is compiled in but off, offered only after *Experimental: more than houses* is turned on
 (`RELEASED_KINDS` in `web/src/app/core/kind-setting.ts`; `android/ui/.../Space.kt`; [03](03-design.md) ADR-36, §18).
 
 **AI is opt-in.** Nothing needs it. A person can use their own provider key on the device (Gemini, an OpenAI-compatible

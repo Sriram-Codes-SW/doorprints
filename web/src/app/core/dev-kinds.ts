@@ -23,7 +23,9 @@ import { SCHOOL_FIELDS, SCHOOL_KEYS, SCHOOL_LABELS } from './school-kind';
 import { STORAGE_PREFIX } from './storage-keys';
 
 /**
- * The developer flag of the hidden schools kind (kinds PR 5, S4b-BL-209; docs/03 §18.9). Off by default and never on in
+ * The developer flag of the schools kind (kinds PR 5, S4b-BL-209; docs/03 §18.9). Since 2026-10-15 the release build lists
+ * the school too (compiled in, off until Settings' switch); this flag only shows more than the shipped list, in tests.
+ * Off by default and never on in
  * a production build: it needs both a development build (`ng serve`, where Angular's `isDevMode()` is true; the
  * deployed site is a production build, where it is false) and this localStorage key set to `school` by hand in the
  * browser's console. Since kinds PR 8 (S4b-BL-212) it does what Settings' *Experimental: more than houses* switch does
