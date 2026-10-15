@@ -24,7 +24,9 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import app.doorprints.data.KeystoreSecretStore
 import app.doorprints.data.Repository
 import app.doorprints.data.SettingsStore
+import app.doorprints.location.HuntState
 import app.doorprints.ui.AppServices
+import app.doorprints.ui.MapServices
 import app.doorprints.ui.LocalAppServices
 import app.doorprints.ui.LocalDevKinds
 import app.doorprints.ui.ProvidePlatformServices
@@ -57,8 +59,20 @@ class TwoKinds(app: DoorprintsApp, available: List<String> = listOf("house", "sc
     val repository: Repository = object : Repository by real {
         override val settings: SettingsStore get() = store
     }
+    /** How many times the Map's services were asked to stop Hunt mode (S4b-BL-304); the real service is asked too, which a JVM test does not run. */
+    var huntStops = 0
+        private set
+    private val realMap = app.container.services.mapScreen
+    private val map: MapServices = object : MapServices by realMap {
+        override fun stopHunt() {
+            huntStops++
+            realMap.stopHunt()
+            HuntState.update { HuntState.State() } // the service's onDestroy does this in the app
+        }
+    }
     val services: AppServices = object : AppServices by app.container.services {
         override val repository: Repository get() = this@TwoKinds.repository
+        override val mapScreen: MapServices get() = map
     }
 
     /** Turns *Experimental: more than houses* on and the school on, optionally with the school the default. */
