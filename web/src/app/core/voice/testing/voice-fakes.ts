@@ -29,8 +29,14 @@ export const FAKE_AUDIO_B64 = btoa(FAKE_AUDIO);
 
 export class FakeTrack {
   stopped = false;
+  onended: (() => void) | null = null;
   stop(): void {
     this.stopped = true;
+  }
+  /** The browser ends the track from outside (a call took the microphone, a headset was unplugged). */
+  endByItself(): void {
+    this.stopped = true;
+    this.onended?.();
   }
 }
 
@@ -79,6 +85,14 @@ export class FakeRecorder {
       if (this.lastChunk !== '') this.ondataavailable?.({ data: new Blob([this.lastChunk], { type: this.mimeType }) });
       this.onstop?.({});
     });
+  }
+
+  /** The browser stops the recorder by itself (the microphone was taken): a last chunk, then `stop`, nobody having asked. */
+  endByItself(): void {
+    if (this.state === 'inactive') return;
+    this.state = 'inactive';
+    if (this.lastChunk !== '') this.ondataavailable?.({ data: new Blob([this.lastChunk], { type: this.mimeType }) });
+    this.onstop?.({});
   }
 
   /** A chunk arrives while recording (a `timeslice` tick). */

@@ -1849,6 +1849,7 @@
     <string name="voice_status_done">Done. The words are in the box. Check them before you send.</string>
     <string name="voice_status_done_limit">Done. The recording stopped at its one-minute limit. The words are in the box. Check them before you send.</string>
     <string name="voice_status_done_cut">Done. The last words did not fit in the box and were left out. Check what is there before you send.</string>
+    <string name="voice_status_done_early">Done. The recording ended early, and what was said so far is in the box. Check it before you send.</string>
     <string name="voice_status_cancelled">Cancelled. Nothing was kept.</string>
     <string name="voice_nothing_heard">Nothing was heard. Try again closer to the microphone, or type.</string>
     <string name="voice_denied">Doorprints cannot use the microphone. Allow it in the phone’s settings for Doorprints, then try again, or type instead.</string>

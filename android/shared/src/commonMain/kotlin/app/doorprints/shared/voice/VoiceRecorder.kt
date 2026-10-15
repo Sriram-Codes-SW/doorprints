@@ -28,8 +28,11 @@ package app.doorprints.shared.voice
 /** Why a recording ended by itself: the time limit ([AudioLimits.MAX_DURATION_MS]) or the size cap. */
 enum class VoiceLimit { TIME, SIZE }
 
-/** Why a recorder could not start or kept going no longer. */
-enum class VoiceFailure { DENIED, NO_DEVICE, FAILED }
+/**
+ * Why a recorder could not start or kept going no longer. [ENDED_EARLY] is not a fault: the recording was cut short from
+ * outside (an interruption, a changed microphone, the app leaving the front) and what was captured so far is kept.
+ */
+enum class VoiceFailure { DENIED, NO_DEVICE, FAILED, ENDED_EARLY }
 
 /** A recorder that could not start or stopped working; [reason] only, never a sample of the audio. */
 class VoiceRecorderException(val reason: VoiceFailure) : RuntimeException("voice recorder: ${reason.name.lowercase()}")
@@ -73,11 +76,18 @@ interface VoiceRecorder {
     /** The audio kept so far, in bytes. */
     fun sizeBytes(): Int
 
-    /** Non-null once the recorder can no longer record (the microphone was taken, the device went away): the session ends the recording. */
+    /**
+     * Non-null once the recorder can no longer record (the microphone was taken, the device went away): the session ends the
+     * recording. [VoiceFailure.ENDED_EARLY] means the clip so far is still there for [stop]; any other value means discard.
+     */
     fun failure(): VoiceFailure?
 
-    /** Stops, lets the microphone go and returns the clip; throws [VoiceRecorderException] when there is none. */
-    fun stop(): RecordedClip
+    /**
+     * Stops, lets the microphone go and returns the clip; throws [VoiceRecorderException] when there is none. It may wait for
+     * the last buffered words (300 ms at most) but it **suspends** to do so and never blocks the calling thread, which is the
+     * screen's main thread (S4b-BL-317).
+     */
+    suspend fun stop(): RecordedClip
 
     /** Stops, lets the microphone go and drops the audio. Idempotent. */
     fun release()

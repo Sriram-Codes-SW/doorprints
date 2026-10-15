@@ -33,7 +33,7 @@ import kotlinx.coroutines.launch
 enum class VoicePhase { IDLE, STARTING, RECORDING, TRANSCRIBING }
 
 /** The polite status line (announced by TalkBack, not repeated each second); null when there is none. */
-enum class VoiceStatus { STARTING, RECORDING, WORKING, DONE, DONE_LIMIT, DONE_CUT, CANCELLED }
+enum class VoiceStatus { STARTING, RECORDING, WORKING, DONE, DONE_LIMIT, DONE_CUT, DONE_EARLY, CANCELLED }
 
 /** Why the last try did not give words; [PROVIDER] carries the service's own failure in [VoiceUi.error]. */
 enum class VoiceProblem { DENIED, NO_DEVICE, FAILED, NOTHING_HEARD, TOO_LONG, PROVIDER }
@@ -132,6 +132,8 @@ class VoiceSession(
         val r = recorder ?: return
         val failure = r.failure()
         when {
+            // Cut short from outside (a call, a changed microphone, the app leaving the front): what was said so far is kept.
+            failure == VoiceFailure.ENDED_EARLY -> finishRecording(mine, null, early = true)
             failure != null -> fail(mine, failure.problem())
             !permitted() -> fail(mine, VoiceProblem.DENIED)
             r.elapsedMs() >= maxDurationMs() -> finishRecording(mine, VoiceLimit.TIME)
@@ -140,21 +142,36 @@ class VoiceSession(
         }
     }
 
-    private fun finishRecording(mine: Int, limit: VoiceLimit?) {
+    /**
+     * Ends the recording and asks for its words. The recorder's [VoiceRecorder.stop] suspends for the last buffered words
+     * (S4b-BL-317), so it runs in [work] and the screen shows *writing out* from the tap; a cancel or a release meanwhile
+     * ends the run and the recorder lets everything go. [early]: the recorder was cut short from outside; its clip is kept and
+     * transcribed, and a clip of zero length ends quietly (nothing is shown).
+     */
+    private fun finishRecording(mine: Int, limit: VoiceLimit?, early: Boolean = false) {
         val r = recorder ?: return
         ticker?.cancel()
         ticker = null
-        val clip = try {
-            r.stop()
-        } catch (e: Exception) {
-            fail(mine, VoiceProblem.FAILED)
-            return
-        }
-        recorder = null
         state.value = VoiceUi(VoicePhase.TRANSCRIBING, status = VoiceStatus.WORKING)
-        val heard = if (limit == null || clip.limit != null) clip else RecordedClip(clip.bytes, clip.mime, clip.durationMs, limit)
         work = scope.launch {
             try {
+                val clip = try {
+                    r.stop()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    if (mine != run) return@launch
+                    if (early) {
+                        discard()
+                        state.value = VoiceUi()
+                    } else {
+                        fail(mine, VoiceProblem.FAILED)
+                    }
+                    return@launch
+                }
+                if (mine != run) return@launch
+                recorder = null
+                val heard = if (limit == null || clip.limit != null) clip else RecordedClip(clip.bytes, clip.mime, clip.durationMs, limit)
                 val words = transcribe(heard).text.trim()
                 if (mine != run) return@launch
                 if (words.isEmpty()) {
@@ -165,6 +182,7 @@ class VoiceSession(
                 state.value = VoiceUi(status = when {
                     cut -> VoiceStatus.DONE_CUT
                     heard.limit != null -> VoiceStatus.DONE_LIMIT
+                    early -> VoiceStatus.DONE_EARLY
                     else -> VoiceStatus.DONE
                 })
             } catch (e: CancellationException) {
@@ -205,6 +223,6 @@ class VoiceSession(
     private fun VoiceFailure.problem(): VoiceProblem = when (this) {
         VoiceFailure.DENIED -> VoiceProblem.DENIED
         VoiceFailure.NO_DEVICE -> VoiceProblem.NO_DEVICE
-        VoiceFailure.FAILED -> VoiceProblem.FAILED
+        VoiceFailure.FAILED, VoiceFailure.ENDED_EARLY -> VoiceProblem.FAILED
     }
 }

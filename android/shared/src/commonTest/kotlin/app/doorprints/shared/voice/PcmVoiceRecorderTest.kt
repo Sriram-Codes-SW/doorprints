@@ -20,6 +20,7 @@ package app.doorprints.shared.voice
 
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -44,6 +45,7 @@ class PcmVoiceRecorderTest {
         private val fill: Byte = 7,
         private val after: Int = -1,
         private val openFails: VoiceFailure? = null,
+        private val cutShort: Boolean = false,
     ) : PcmSource {
         var opened = 0
         var closed = 0
@@ -62,6 +64,8 @@ class PcmVoiceRecorderTest {
             return n
         }
 
+        override fun endedEarly() = cutShort
+
         override fun close() {
             closed++
         }
@@ -77,7 +81,7 @@ class PcmVoiceRecorderTest {
     }
 
     @Test
-    fun aClipIsAWavInMemoryWithTheLengthOfTheSamples() {
+    fun aClipIsAWavInMemoryWithTheLengthOfTheSamples() = runTest {
         val mic = FakeMic(chunks = 10)
         val r = recorder(mic)
         r.start()
@@ -100,7 +104,7 @@ class PcmVoiceRecorderTest {
     private fun le(b: ByteArray, at: Int) = (0..3).sumOf { (b[at + it].toInt() and 0xff) shl (8 * it) }
 
     @Test
-    fun theCapEndsTheCaptureAndTheClipSaysItWasTheSize() {
+    fun theCapEndsTheCaptureAndTheClipSaysItWasTheSize() = runTest {
         val mic = FakeMic(chunks = 10_000, size = 3_200)
         val r = recorder(mic)
         r.start()
@@ -148,7 +152,7 @@ class PcmVoiceRecorderTest {
     }
 
     @Test
-    fun releaseClosesTheMicrophoneDropsTheAudioAndIsSafeToRepeat() {
+    fun releaseClosesTheMicrophoneDropsTheAudioAndIsSafeToRepeat() = runTest {
         val mic = FakeMic(chunks = 5)
         val r = recorder(mic)
         r.start()
@@ -159,7 +163,7 @@ class PcmVoiceRecorderTest {
     }
 
     @Test
-    fun stopLetsTheMicrophoneGoAndASecondStopHasNothing() {
+    fun stopLetsTheMicrophoneGoAndASecondStopHasNothing() = runTest {
         val mic = FakeMic(chunks = 3)
         val r = recorder(mic)
         r.start()
@@ -169,7 +173,7 @@ class PcmVoiceRecorderTest {
     }
 
     @Test
-    fun nothingHeardIsAFailureToStopNotAnEmptyClip() {
+    fun nothingHeardIsAFailureToStopNotAnEmptyClip() = runTest {
         val r = recorder(FakeMic(chunks = 0))
         r.start()
         assertFailsWith<VoiceRecorderException> { r.stop() }
@@ -184,11 +188,36 @@ class PcmVoiceRecorderTest {
     }
 
     @Test
-    fun aClipNeverPrintsItsBytes() {
+    fun aClipNeverPrintsItsBytes() = runTest {
         val r = recorder(FakeMic(chunks = 2, fill = 90))
         r.start()
         val text = r.stop().toString()
         assertFalse(text.contains("ZZZZ"))
         assertNotNull(Regex("RecordedClip\\(\\d+ bytes, audio/wav, \\d+ ms\\)").matchEntire(text))
+    }
+
+    @Test
+    fun aSourceCutShortFromOutsideIsEndedEarlyNotAFaultAndTheClipSoFarIsKept() = runTest {
+        val r = recorder(FakeMic(chunks = 5, after = -1, cutShort = true))
+        r.start()
+        assertEquals(VoiceFailure.ENDED_EARLY, r.failure())
+        val clip = r.stop()
+        assertEquals(44 + 5 * 3_200, clip.bytes.size)
+    }
+
+    @Test
+    fun aSourceCutShortBeforeAnyAudioIsEndedEarlyAndHasNoClip() = runTest {
+        val r = recorder(FakeMic(chunks = 0, cutShort = true))
+        r.start()
+        assertEquals(VoiceFailure.ENDED_EARLY, r.failure())
+        assertFailsWith<VoiceRecorderException> { r.stop() }
+    }
+
+    @Test
+    fun aSourceThatDoesNotSayItWasCutShortStaysAFault() = runTest {
+        val r = recorder(FakeMic(chunks = 2, after = -1, cutShort = false))
+        r.start()
+        assertEquals(VoiceFailure.FAILED, r.failure())
+        r.release()
     }
 }

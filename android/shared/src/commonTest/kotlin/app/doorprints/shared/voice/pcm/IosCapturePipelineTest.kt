@@ -29,6 +29,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.sin
+import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -87,7 +88,7 @@ class IosCapturePipelineTest {
     private fun le16(b: ByteArray, at: Int): Int = (b[at].toInt() and 0xff) or (b[at + 1].toInt() shl 8)
 
     @Test
-    fun aToneAt48kHzComesOutAs16kHzMonoWavWithTheToneInIt() {
+    fun aToneAt48kHzComesOutAs16kHzMonoWavWithTheToneInIt() = runTest {
         val source = TapSource(rate = 48_000.0, buffers = 47) // 47 * 1024 frames = 1.0027 s
         val r = recorder(source)
         r.start()
@@ -104,7 +105,7 @@ class IosCapturePipelineTest {
     }
 
     @Test
-    fun theMicrophoneIsNotOpenedByBuildingARecorderAndIsLetGoByEveryExit() {
+    fun theMicrophoneIsNotOpenedByBuildingARecorderAndIsLetGoByEveryExit() = runTest {
         val idle = TapSource(48_000.0, 5)
         recorder(idle)
         assertEquals(0, idle.opened)
@@ -131,7 +132,7 @@ class IosCapturePipelineTest {
     }
 
     @Test
-    fun aSourceThatDiesBeforeAnyAudioGivesNoClip() {
+    fun aSourceThatDiesBeforeAnyAudioGivesNoClip() = runTest {
         val source = TapSource(48_000.0, 0)
         val r = recorder(source)
         r.start()
@@ -141,7 +142,7 @@ class IosCapturePipelineTest {
     }
 
     @Test
-    fun aLongRecordingStopsAtTheCapNotLater() {
+    fun aLongRecordingStopsAtTheCapNotLater() = runTest {
         val source = TapSource(48_000.0, 100_000)
         val r = recorder(source)
         r.start()

@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.157 |
+| Version | 0.158 |
 | Date | 2026-10-15 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -168,6 +168,7 @@
 | 0.155 | 2026-10-15 | Claude (Code), engineer | **§18.15 the server stays house-only by default** under "compiled in, off" (owner, 2026-10-15; `test/kinds-23-ship-school-server`): `KINDS_AVAILABLE=house,school` is the operator's choice; a school sent to a house-only server is kept and read as a house. |
 | 0.156 | 2026-10-15 | Claude (Code), engineer | **ADR-37, Sarvam and the clip suite (S4b-BL-224, voice PR 7):** Sarvam as an optional speech service with its own key slot (never in a backup, copy, sync or Drive file), the Sarvam chat preset, the 30 s cap, the eight-clip `voice` suite; the decision itself (opt-in, own key, memory only, no proxy) is unchanged. |
 | 0.157 | 2026-10-15 | Claude (Code), engineer | **§18.14 "compiled in, off" on the phones** (owner, 2026-10-15; `feat/kinds-24-ship-school-phones`, the phones' half of the website's change): the Android release and the iPhone list `house,school` (`AVAILABLE_KINDS`, `IOS_AVAILABLE_KINDS`), `RELEASED` stays the house, so the school is available and not offered until *Experimental: more than houses* is on; kinds other than the house are read by the AI, the forms, the search and the copies only while the developer flag or the switch allows (`LocalKindsOn`, `SettingsStore.kindsOn`); the switch hint and the school listing tips carry a *preview* mark (hi, ta, te under review); accessibility pass of the chooser and What you track (headings, a disabled box says why). |
+| 0.158 | 2026-10-15 | Claude (Code), engineer | **ADR-37, §19: Stop never blocks the main thread, and an early end keeps the clip** (S4b-BL-317, S4b-BL-318; #367). `VoiceRecorder.stop()` is `suspend`: the drain wait for the last words (300 ms at most) suspends in `PcmVoiceRecorder` and `VoiceSession` runs it from the tap, so the screen stays responsive; the 2 MB cap, the memory-only audio and every release path are unchanged. A new `VoiceFailure.ENDED_EARLY` (reported through `PcmSource.endedEarly()`) is for a recording cut short from outside (a call, a changed microphone, the app leaving the front on the iPhone; a dead input on Android; the browser stopping its recorder or a track on the website): the audio so far is kept **in memory**, written out and shown in the box with the status *the recording ended early*, instead of the untrue *could not be made*; a clip of zero length ends quietly; a release (pause, leaving, the setting off, Cancel) still discards. The microphone is let go at once in every case. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -3111,6 +3112,9 @@ A short summary; the decision is ADR-37 (§14) and the consult, options and plan
   `docs/ai/evals/spoken-set.json` (S4b-BL-220, [ai/ai-design.md](ai/ai-design.md) §8.8). The switch is off by default, the
   person's own key is the only path, and audio is memory-only on all three. The iPhone's is early and **untested on a device**
   (the owner's rows are MT-104 to MT-108 in `docs/ops/manual-test-checklist.md`). Sarvam is planned (S4b-BL-224).
+- **Stop and early ends (S4b-BL-317, S4b-BL-318).** Stop waits for the last buffered words by suspending, never by blocking the main thread. A recording
+  cut short from outside keeps the words said so far (memory only, same transcription path as a normal Stop, same provider the person chose) and says so;
+  leaving the screen or turning the setting off still throws the recording away (foreground only).
 - **Tests and gates.** Fake-audio unit tests per adapter on both stacks, additive sections `transcribeRequest` and
   `transcribeContent` in the parity vectors, mutation lists `tools/mutations/voice-*.json`, TC-S-23 and the checklist row B1 for the
   Permissions-Policy ([13](13-release-security-checklist.md)).
