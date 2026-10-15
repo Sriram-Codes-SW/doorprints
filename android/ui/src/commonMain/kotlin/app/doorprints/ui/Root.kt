@@ -308,6 +308,15 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
             wasHuntHere = space.huntHere
         }
 
+        // *Start Hunt mode* from a reminder or an area wake-up while the house is off: not started, one line says why (docs/03 §18.18).
+        var huntNeedsHouses by remember { mutableStateOf(false) }
+        LaunchedEffect(huntNeedsHouses) {
+            if (!huntNeedsHouses) return@LaunchedEffect
+            // Cleared after the line has been shown: clearing it first would restart this effect and cancel the line.
+            rootSnackbar.showSnackbar(getString(Res.string.hunt_needs_houses))
+            huntNeedsHouses = false
+        }
+
         // The question bank is seeded once per install, in the app's language (docs/11 5.5, slice 3a); the screens that
         // read it follow the records as they arrive. A failure leaves it for the next start.
         LaunchedEffect(repo) {
@@ -395,8 +404,12 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                     // new-house form that would save a duplicate (whole-app audit).
                     val savedAs = d.visitId?.let { repo.getVisit(it)?.houseId }
                     // A Hunt alert is the house space's walk (S4b-BL-304): it makes a house, not a candidate of the default kind
-                    // (kinds PR C); an existing one opens in its own space.
-                    if (setting.spaces) chosenKind = setting.spaceOf(savedAs?.let { id -> repo.getHouse(id)?.kind })
+                    // (kinds PR C); an existing one opens in its own space. With the house off it makes the default kind's entry
+                    // (never one in a space that is off, docs/03 §18.18).
+                    if (setting.spaces) {
+                        val savedKind = savedAs?.let { id -> repo.getHouse(id)?.kind }
+                        chosenKind = if (savedKind != null) setting.spaceOf(savedKind) else HuntSpace.alertKind(setting)
+                    }
                     when {
                         savedAs != null -> openHouse(savedAs)
                         d.visitId != null && onTop(Routes.NEW_HOUSE, "visitId", d.visitId) -> Unit
@@ -427,13 +440,22 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                     if (!onTop(Routes.VIEWING, "id", d.id)) nav.navigate(Routes.viewing(d.id))
                 }
                 DeepLink.StartHunt -> {
-                    chosenKind = KindSettingRules.HOUSE // Hunt mode is the house space's
-                    huntRequested = true
+                    // Hunt mode is the house space's; with the house off it is not started, and the Map says why (docs/03 §18.18).
+                    if (HuntSpace.mayStart(setting)) {
+                        chosenKind = KindSettingRules.HOUSE
+                        huntRequested = true
+                    } else {
+                        huntNeedsHouses = true
+                    }
                     nav.openMapFresh()
                 }
                 DeepLink.OfferHunt -> {
-                    chosenKind = KindSettingRules.HOUSE
-                    huntOffered = true
+                    if (HuntSpace.mayStart(setting)) {
+                        chosenKind = KindSettingRules.HOUSE
+                        huntOffered = true
+                    } else {
+                        huntNeedsHouses = true
+                    }
                     nav.openMapFresh()
                 }
                 is DeepLink.OpenScreen -> when (d.route) {

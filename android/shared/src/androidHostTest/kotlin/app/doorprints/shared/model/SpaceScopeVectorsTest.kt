@@ -33,7 +33,7 @@ import java.io.File
 
 /**
  * The scoping rules of a space on the phones (kinds PR C, S4b-BL-289), against `docs/schemas/kinds/space-scope-vectors.json`,
- * the file the website's `space-scope.spec.ts` reads: `contains`, `compare`, `fileName`, `assistant` and `shareKind`.
+ * the file the website's `space-scope.spec.ts` reads: `contains`, `compare`, `fileName`, `assistant`, `shareKind` and `createKind`.
  * Not in commonTest: it reads repository files.
  */
 class SpaceScopeVectorsTest {
@@ -115,6 +115,15 @@ class SpaceScopeVectorsTest {
     fun aSharedListingLandsInTheChosenKindWhenItIsEnabledElseTheDefault() {
         for (c in cases("shareKind")) {
             assertEquals(c.text("name"), c.text("kind"), SpaceScope.shareKind(c.text("chosen"), c.strings("enabled"), c.text("default")!!))
+        }
+    }
+
+    @Test
+    fun aNewEntryIsOfTheSpacesKindWhileItIsEnabledElseTheDefault() {
+        val cases = cases("createKind")
+        assertEquals(5, cases.size)
+        for (c in cases) {
+            assertEquals(c.text("name"), c.text("kind"), SpaceScope.createKind(c.text("space")!!, c.strings("enabled"), c.text("default")!!))
         }
     }
 }

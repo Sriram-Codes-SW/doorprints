@@ -492,6 +492,7 @@
     <string name="map_hunt_stopped_battery">Hunt mode stopped because the battery is low.</string>
     <string name="map_hunt_stopped_not_allowed">Hunt mode stopped because Android did not let it run in the background. Turn it on again here.</string>
     <string name="hunt_stopped_left_space">Hunt mode stopped. It runs in the Houses space only.</string>
+    <string name="hunt_needs_houses">Hunt mode runs in the Houses space only, and Houses is turned off in What you track.</string>
     <string name="map_hunt_stopped_permission">Hunt mode stopped because location permission was turned off.</string>
     <string name="map_loading">Loading the map…</string>
     <string name="map_location_off">Location is off for Doorprints. Hunt mode and ‘Save house here’ need it.</string>

@@ -18,7 +18,9 @@
 
 package app.doorprints.ui
 
+import app.doorprints.shared.model.KindSetting
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -40,4 +42,23 @@ class HuntSpaceTest {
 
     @Test
     fun comingBackToTheHouseSpaceStopsNothing() = assertFalse(HuntSpace.stopsOnLeaving(wasHere = false, isHere = true, active = true))
+
+    // docs/03 §18.18: Hunt mode needs the house on; a Hunt alert's new entry is never made in a space that is off.
+    private val both = KindSetting(listOf("house", "school"), experimental = "1", enabledText = "[\"house\",\"school\"]")
+
+    @Test
+    fun huntModeStartsOnlyWhileTheHouseIsOn() {
+        assertTrue(HuntSpace.mayStart(KindSetting())) // the shipped app: the house alone
+        assertTrue(HuntSpace.mayStart(both))
+        assertTrue(HuntSpace.mayStart(both.withDefault("school"))) // the school the default, the house on
+        assertFalse(HuntSpace.mayStart(both.withDefault("school").withKindEnabled("house", false)))
+    }
+
+    @Test
+    fun aHuntAlertMakesAHouseWhileTheHouseIsOnAndTheDefaultKindsEntryWhenItIsOff() {
+        assertEquals("house", HuntSpace.alertKind(KindSetting()))
+        assertEquals("house", HuntSpace.alertKind(both))
+        assertEquals("house", HuntSpace.alertKind(both.withDefault("school")))
+        assertEquals("school", HuntSpace.alertKind(both.withDefault("school").withKindEnabled("house", false)))
+    }
 }

@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | The complete manual test list for Doorprints before real-system testing starts and before Android/iOS development continues: every check a person redoes on real devices, whether or not an automated suite or a review session already covered it |
-| Version | 0.22 |
+| Version | 0.23 |
 | Date | 2026-10-15 |
 | Author | Claude, senior reviewer |
 | Status | Draft |
@@ -33,7 +33,8 @@
 | 0.19 | 2026-10-15 | Claude (Code), engineer | **Voice with Sarvam and the clip suite (S4b-BL-224):** MT-109 (a live Sarvam key, the 30 s stop), MT-110 (the key in no copy, backup, sync or Drive file; removal), MT-111 (running the `voice` suite). |
 | 0.20 | 2026-10-15 | Claude (Code), engineer | **§19, the phones with the school compiled in, off** (owner, 2026-10-15; `feat/kinds-24-ship-school-phones`, TC-M-81): the intro and MT-96 step 1 amended (a release has *What you track*, with the switch off); MT-112 (a fresh Android install is the house app, the switch, TalkBack, 200 % text) and MT-113 (the iPhone: the same, VoiceOver, no chooser until the switch is on). |
 | 0.21 | 2026-10-15 | Claude (Code), engineer | **A recording cut short** (S4b-BL-317, S4b-BL-318, TC-M-82; #367): MT-105's expected result amended (the words so far are kept and written out with *The recording ended early*, nothing shown when nothing was said) and MT-114 (the iPhone, Android and the website; Cancel and leaving the screen still keep nothing; Stop answers at once). |
-| 0.22 | 2026-10-15 | Claude (Code), docs | **Stale wording after "compiled in, off"** (`docs/school-compiled-in-wording`): §19 MT-96 says the iPhone lists the school too and the test phones are a release build and a debug build. |
+| 0.22 | 2026-10-15 | Claude (Code), engineer | **MT-115** (TC-M-83; `fix/kinds-default-and-house-off`): the school as the default, and the house turned off, on the website and a phone, including *Start Hunt mode* refused with Houses off. |
+| 0.23 | 2026-10-15 | Claude (Code), docs | **Stale wording after "compiled in, off"** (`docs/school-compiled-in-wording`): §19 MT-96 says the iPhone lists the school too and the test phones are a release build and a debug build. |
 
 ## 1. How to use this list
 
@@ -1105,6 +1106,17 @@ Needs the same build as MT-101 (a debug build made with `-Pdoorprints.devKinds=t
 
 Expected: no house word in 2 to 5 with two kinds on. Record any line that does not follow, with the language and the screen.
 
+#### MT-115 TC-M-83: the school as the default, and the house turned off
+
+Needs a build that ships the school (the website, or the Android or iPhone app), *Experimental: more than houses* on, and at least one house and one school saved. Do it on the website and on a phone.
+
+1. Show **Schools**, make **Schools** the **Default** and keep **Houses** shown: the first screen is the cards with Schools first and marked *Default*; open **Houses**: it holds the houses only, and on the phone **Hunt mode** is on its Map. Share a listing into Doorprints: it asks **Save it in** with Schools first.
+2. Turn **Show Houses** off (Schools stays the only one shown): there are no cards and no button at the top; Doorprints opens on the school list. Your house is still in the list (a house card among the schools), the numbers above the list count it, search finds it, and **What you track** shows **Houses** with *Saved: 1* and the box not ticked. **Add school** makes a school; there is no way to add a house. Delete the house and open **Recently deleted**: it is there, and **Restore** brings it back.
+3. Phone only: with a viewing reminder or an area wake-up set, tap its **Start Hunt mode**: the Map opens and says *Hunt mode runs in the Houses space only, and Houses is turned off in What you track.*; no Hunt notification appears. Turn **Show Houses** on: the same tap starts Hunt mode in the Houses space. With Hunt mode running, turn **Show Houses** off in Settings: it stops, with *Hunt mode stopped. It runs in the Houses space only.*
+4. Turn **Experimental: more than houses** off: the house app comes back with your house, as it was. Turn it on: the school alone is back, as you left it.
+
+Expected: nothing is lost or hidden in 2 and 4; no entry is made as a house while Houses is off; step 3 starts no walk. Record any line that does not follow, with the platform, the language and the screen.
+
 ### 20.1 Summary rows (add to §13 when the owner starts the run)
 
 | ID | Name | Who | Env | Pass | Notes |
@@ -1113,3 +1125,4 @@ Expected: no house word in 2 to 5 with two kinds on. Record any line that does n
 | MT-101 | A school's pages on the phone by eye | owner | E4 | no | |
 | MT-102 | The website's leftovers of the kinds by eye | anyone | E4 | no | |
 | MT-103 | The phones' leftovers of the kinds by eye | anyone | E4 | no | |
+| MT-115 | The school as the default, and the house turned off | anyone | E4 | no | |

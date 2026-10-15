@@ -494,6 +494,8 @@
     <string name="map_hunt_stopped_not_allowed">Android దీన్ని బ్యాక్‌గ్రౌండ్‌లో నడవనివ్వనందున హంట్ మోడ్ ఆగిపోయింది. ఇక్కడ మళ్లీ ఆన్ చేయండి.</string>
     <!-- S4b-BL-304, Hunt mode ends on leaving the house space (2026-10-15): under review. -->
     <string name="hunt_stopped_left_space">హంట్ మోడ్ ఆగిపోయింది. ఇది ఇళ్ల విభాగంలో మాత్రమే నడుస్తుంది.</string>
+    <!-- Start Hunt mode refused with the house off (docs/03 §18.18, 2026-10-15): under review. -->
+    <string name="hunt_needs_houses">హంట్ మోడ్ ఇళ్ల విభాగంలో మాత్రమే నడుస్తుంది; మీరు ట్రాక్ చేసేవిలో ఇళ్లు ఆఫ్‌లో ఉన్నాయి.</string>
     <string name="map_hunt_stopped_permission">స్థాన అనుమతి ఆపివేయబడినందున హంట్ మోడ్ ఆగిపోయింది.</string>
     <string name="map_loading">మ్యాప్ లోడ్ అవుతోంది…</string>
     <string name="map_location_off">Doorprints కోసం స్థానం ఆఫ్‌లో ఉంది. హంట్ మోడ్‌కు, ‘ఇక్కడ ఇల్లు సేవ్ చేయండి’కి ఇది అవసరం.</string>

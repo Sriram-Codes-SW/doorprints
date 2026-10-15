@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.159 |
+| Version | 0.160 |
 | Date | 2026-10-15 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -169,7 +169,8 @@
 | 0.156 | 2026-10-15 | Claude (Code), engineer | **ADR-37, Sarvam and the clip suite (S4b-BL-224, voice PR 7):** Sarvam as an optional speech service with its own key slot (never in a backup, copy, sync or Drive file), the Sarvam chat preset, the 30 s cap, the eight-clip `voice` suite; the decision itself (opt-in, own key, memory only, no proxy) is unchanged. |
 | 0.157 | 2026-10-15 | Claude (Code), engineer | **§18.14 "compiled in, off" on the phones** (owner, 2026-10-15; `feat/kinds-24-ship-school-phones`, the phones' half of the website's change): the Android release and the iPhone list `house,school` (`AVAILABLE_KINDS`, `IOS_AVAILABLE_KINDS`), `RELEASED` stays the house, so the school is available and not offered until *Experimental: more than houses* is on; kinds other than the house are read by the AI, the forms, the search and the copies only while the developer flag or the switch allows (`LocalKindsOn`, `SettingsStore.kindsOn`); the switch hint and the school listing tips carry a *preview* mark (hi, ta, te under review); accessibility pass of the chooser and What you track (headings, a disabled box says why). |
 | 0.158 | 2026-10-15 | Claude (Code), engineer | **ADR-37, §19: Stop never blocks the main thread, and an early end keeps the clip** (S4b-BL-317, S4b-BL-318; #367). `VoiceRecorder.stop()` is `suspend`: the drain wait for the last words (300 ms at most) suspends in `PcmVoiceRecorder` and `VoiceSession` runs it from the tap, so the screen stays responsive; the 2 MB cap, the memory-only audio and every release path are unchanged. A new `VoiceFailure.ENDED_EARLY` (reported through `PcmSource.endedEarly()`) is for a recording cut short from outside (a call, a changed microphone, the app leaving the front on the iPhone; a dead input on Android; the browser stopping its recorder or a track on the website): the audio so far is kept **in memory**, written out and shown in the box with the status *the recording ended early*, instead of the untrue *could not be made*; a clip of zero length ends quietly; a release (pause, leaving, the setting off, Cancel) still discards. The microphone is let go at once in every case. |
-| 0.159 | 2026-10-15 | Claude (Code), docs | **Stale "developer flag" wording** (owner, 2026-10-15; `docs/school-compiled-in-wording`): §18.9's developer-flag paragraph says that since §18.14 the school is compiled in and shown by Settings' switch, and the flag only shows more than the shipped list in tests. |
+| 0.159 | 2026-10-15 | Claude (Code), engineer | **New §18.18, the school as the default kind and the house turned off** (owner question of 2026-10-15; `fix/kinds-default-and-house-off`): the four rules and the trace of every place that uses the default or the house kind without the person choosing (new entries, shared listings, Hunt, reminders, deep links, import, copies, AI, the server's `kind`, the chooser). Fixed: *Start Hunt mode* with Houses off, a new entry in a space that is off, a Hunt alert's kind. The guide's *More than houses* page (four languages) and [06](06-test-plan.md) TC-U-268, TC-M-83 follow. |
+| 0.160 | 2026-10-15 | Claude (Code), docs | **Stale "developer flag" wording** (owner, 2026-10-15; `docs/school-compiled-in-wording`): §18.9's developer-flag paragraph says that since §18.14 the school is compiled in and shown by Settings' switch, and the flag only shows more than the shipped list in tests. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -3091,6 +3092,67 @@ owner asks) is in [ai-design](ai/ai-design.md) 16.12 and in the row. Nothing of 
 `AskPlanKindRequestTest`, `AiControllerKindTest`, `AiStatusControllerTest` and `SchoolSetTest` (server, no database); the website's
 `ai.service.requests.spec.ts` and `space-scope.spec.ts`; the phones' `ApiClientContractTest`, `AiStatusRepositoryTest` and
 `SpaceScopeVectorsTest`; mutation lists `tools/mutations/kinds-23-{backend,web,android}-kind-ai.json`, all killed.
+
+### 18.18 The school as the default kind, and the house turned off (owner question of 2026-10-15; `fix/kinds-default-and-house-off`)
+
+**The question.** With **Experimental: more than houses** on, what does the person get when they make the school the default kind and turn
+Houses off (the school is the only kind on), and when the school is the default with both on? Every place that picks the default kind
+or the house kind without the person choosing was traced on the website, Android and the iPhone (one `:ui`). Rules, then the trace.
+
+**The rules (all four hold on the three stacks).**
+
+1. **The default is always a kind that is on.** `KindSetting.default` / `defaultKind()` answer the stored default only while it is
+   enabled, else the first enabled kind; turning the default off makes the next enabled kind the default (§18.12). So a new entry,
+   a shared listing and a deep link never name a kind that is off.
+2. **One kind on is one space that holds every entry.** With the school alone on, the kept house entries are not hidden: they are
+   listed, searched, counted, copied, in *Recently deleted* and read by the on-device AI as before (drawn as houses, in the school
+   space's words: the heading and the first counter say *Schools* over the whole list). *What you track* lists the off Houses
+   row with *Saved: N*. Nothing is deleted, merged or re-kinded by turning a kind off or on. Turning the switch off shows the house
+   app as it was (a stored default or list is kept but not offered, `KindSettingOffTest`); turning it on again brings the
+   earlier choice back.
+3. **A kind that is off takes no new entry** (`createKind` in `space-scope-vectors.json`; the website's `SpaceService.createIn`, the
+   phones' `SpaceScope.createKind` and `SpaceUi.creating`): a new entry is of the space it is made in while that kind is enabled, else
+   the default kind. With two built-in kinds a space cannot be off while two are on, so today this is the guard for a third kind and
+   for a restored choice; the vectors pin it.
+4. **Hunt mode is the Houses space's and needs Houses on** (`HuntSpace.mayStart`, `HuntSpace.alertKind`). With Houses off, a
+   reminder's or an area wake-up's *Start Hunt mode* opens the Map and says *Hunt mode runs in the Houses space only, and Houses is
+   turned off in What you track.* (`hunt_needs_houses`, four languages, hi, ta and te under review): no walk is started that has no
+   card to stop it. A walk that is running when Houses is turned off in Settings is stopped by the existing leave-the-space rule
+   (S4b-BL-304, now pinned for this case). A *stay here?* alert posted earlier and tapped later makes a house while Houses is on and,
+   with Houses off, an entry of the default kind (the form opens; nothing is saved silently). Viewing reminders (and their
+   notifications) of kept houses keep firing, because a viewing is an appointment the person made; they open the viewing.
+
+**The trace** (the same table is in the pull request). *OK* means the behaviour is right as it is and a test now pins it.
+
+| Place | Behaviour | Verdict |
+|---|---|---|
+| Add from the map (long press / Add) | web `HouseDetailPage` `ofKind(newHouse, space.newKind())` (`house-detail-page.ts:534`); phones `HouseEditScreen` new entry of `space.creating`. The space's kind while it is on, else the default; with one kind on, the default | **Fixed** for a space that is off (rule 3); otherwise OK |
+| *Add a shared listing*, share intent, paste | web `share-page.ts:147,151` and phones `ShareKindDialog` / `Root.startListing`: two or more kinds on asks *Save it in* (the default first); one kind on goes straight in as the default | OK (`shareKind` vectors: a kind that is off is never chosen) |
+| `/houses/new`, the PWA share target, notifications (web) | the default kind (`SpaceService.newKind`) | OK; a space that is off now goes to the default (**fixed**) |
+| Hunt: *Start Hunt mode* from a viewing reminder or an area wake-up | `DeepLink.StartHunt` / `OfferHunt` forced the House space and requested a walk even with Houses off (`Root.kt`, then `MapScreen` started it, with no Hunt card to stop it) | **Fixed**: refused with one line (rule 4); with Houses on it opens the House space as before |
+| Hunt: *stay here?* alert | `DeepLink.NewHouse` opens the new-entry form (nothing is saved on its own). Two or more on: the House space (S4b-BL-304); the old code named the house even if it were off | **Fixed**: `HuntSpace.alertKind`; one kind on: the form of that kind |
+| A walk running when Houses is turned off | stopped by `HuntSpace.stopsOnLeaving` with one line | OK, test added |
+| A walk started while a school space is shown | the school space has no Hunt card; only a reminder can start one, and it moves to the House space first | OK |
+| Viewing reminders / notifications opening a house | `OpenHouse` / `OpenViewing` open the entry; with two or more on its own space (`toOwnSpace` on the web, `setting.spaceOf` on the phones); with one on the entry opens as it is | OK |
+| Deep links and the new-house link at cold start | resolved after the settings store answers (`rememberKindSetting`), so the kind rules above apply | OK |
+| *Import a backup* / merge, Drive restore | rows are stored with their own kind; `search.kinds` is a hint only when this device never chose; sync is kind-blind (§18.12). Houses imported while Houses is off are listed, counted, in *Recently deleted* and found by search (rule 2; the list, counters and *What you track* are pinned by the tests below) | OK |
+| *Save a copy* scope | with one kind on there is no scope picker and the copy holds every entry (`export.service.ts:111`, `ExportOptions.space` only with two or more on); the backup is always whole | OK |
+| AI Ask / Plan words | the kind's words when every record sent is of one built-in kind, the house's for a house, a mix or none (§18.11). With the school alone: school words when the records are schools, house words if only kept houses are read, the space's refusal when nothing is found | OK |
+| The server's `kind` parameter | sent for the space's kind when the server names it (§18.17); the school alone asks about schools only (less than the device reads, never more) | OK, documented |
+| Empty state, tour, first-run copy | the space's words (*No schools yet*); the tour runs in the house words and is offered once, before the switch can be on | OK |
+| Settings texts that say *houses* | the house-space rows (Brokers, Criteria, Questions, Viewings) follow the kind; with Houses off they are not in Settings, the kept data is | OK |
+| Widgets | none | n/a |
+| *Remove all data* counts | every kind's count (§20) | OK |
+| The chooser with one kind on | not shown (one space); a kind that is off is a row in *What you track* with its count | OK |
+| An entry created in a kind that is off | none of the paths above can (rule 3, rule 4) | OK |
+
+**Tests** ([06](06-test-plan.md) TC-U-268, TC-M-83). Shared: `space-scope-vectors.json` `createKind` (5 cases) and two `contains` cases (the
+school alone holds the kept house; two kinds with the school the default). Website: `space-scope.spec.ts`, `space.spec.ts` (*the school as
+the default kind*), `kind-setting.spec.ts` (the sequence school default, house off, switch off, switch on), `data-page-kinds.spec.ts`,
+`map-page.spec.ts` (the school alone lists the kept houses). Phones: `SpaceScopeVectorsTest`, `HuntSpaceTest`, `SpaceUiTest`,
+`SpacesRootTest` (the school alone lists the kept house and *What you track* counts it; a Hunt alert and *Start Hunt mode* with Houses off;
+a walk running when Houses is turned off stops). The house-only path is unchanged byte for byte (the existing pins: `routesFor(false)`,
+`SpacesRootTest.aBuildThatShipsTheHouseAloneIsTheAppItAlwaysWas`, the house golden files).
 
 ## 19. Voice input (ADR-37)
 

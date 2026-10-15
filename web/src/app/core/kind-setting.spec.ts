@@ -143,6 +143,23 @@ describe('Settings > Kinds’ rules', () => {
     expect(s.m.get(DEFAULT_KIND_KEY)).toBe('school');
   });
 
+  it('the school the default, then the house off, then the switch off: nothing stored is lost, the house app comes back as it was (docs/03 §18.18)', () => {
+    const s = store({ [EXPERIMENTAL_KINDS_KEY]: '1' });
+    setKindEnabled('school', true, BOTH, s);
+    setDefaultKind('school', BOTH, s);
+    expect([enabledKinds(BOTH, s), defaultKind(BOTH, s), spacesOn(BOTH, s)]).toEqual([BOTH, 'school', true]);
+    setKindEnabled('house', false, BOTH, s);
+    expect([enabledKinds(BOTH, s), defaultKind(BOTH, s), spacesOn(BOTH, s), s.m.get(DEFAULT_KIND_KEY)]).toEqual([['school'], 'school', false, 'school']);
+    // The default is an enabled kind whatever is stored: the house, off, is never the kind of a new entry.
+    s.m.set(DEFAULT_KIND_KEY, 'house');
+    expect(defaultKind(BOTH, s)).toBe('school');
+    s.m.set(DEFAULT_KIND_KEY, 'school');
+    setExperimentalKinds(false, s);
+    expect([enabledKinds(BOTH, s), defaultKind(BOTH, s), spacesOn(BOTH, s), offeredKinds(BOTH, s)]).toEqual([['house'], 'house', false, ['house']]);
+    setExperimentalKinds(true, s);
+    expect([enabledKinds(BOTH, s), defaultKind(BOTH, s)]).toEqual([['school'], 'school']);
+  });
+
   it('a new candidate takes its kind: a school with no price type, a house unchanged; a stored one is drawn as its kind', () => {
     const h = newHouse(26.1, 91.7);
     expect(ofKind(h, 'house')).toBe(h);

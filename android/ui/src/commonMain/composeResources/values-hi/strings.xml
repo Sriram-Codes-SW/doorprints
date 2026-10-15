@@ -494,6 +494,8 @@
     <string name="map_hunt_stopped_not_allowed">Android ने इसे बैकग्राउंड में चलने नहीं दिया, इसलिए हंट मोड रुक गया। इसे यहाँ फिर से चालू करें।</string>
     <!-- S4b-BL-304, Hunt mode ends on leaving the house space (2026-10-15): under review. -->
     <string name="hunt_stopped_left_space">हंट मोड रुक गया। यह केवल मकान वाले स्थान में चलता है।</string>
+    <!-- Start Hunt mode refused with the house off (docs/03 §18.18, 2026-10-15): under review. -->
+    <string name="hunt_needs_houses">हंट मोड केवल मकान वाले स्थान में चलता है, और आप क्या ट्रैक करते हैं में मकान बंद हैं।</string>
     <string name="map_hunt_stopped_permission">जगह की अनुमति बंद होने से हंट मोड रुक गया।</string>
     <string name="map_loading">नक्शा लोड हो रहा है…</string>
     <string name="map_location_off">Doorprints के लिए जगह की अनुमति बंद है। हंट मोड और ‘यहाँ मकान सहेजें’ को इसकी ज़रूरत है।</string>
