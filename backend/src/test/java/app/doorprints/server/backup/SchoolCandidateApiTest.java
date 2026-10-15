@@ -20,7 +20,9 @@ package app.doorprints.server.backup;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.ResourceLock;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import app.doorprints.server.ai.kind.AiKinds;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
@@ -63,6 +65,10 @@ class SchoolCandidateApiTest {
 
     @Value("${local.server.port}")
     int port;
+
+    /** The server as configured here: no {@code KINDS_AVAILABLE}, so the house alone (the release default). */
+    @Autowired
+    AiKinds kinds;
 
     RestClient api;
 
@@ -115,5 +121,36 @@ class SchoolCandidateApiTest {
         assertThat(stored.get("extras")).isEqualTo(backup.get("candidates").get(0).get("extras"));
         var exported = JSON.readTree(api.get().uri("/api/export").retrieve().body(String.class));
         assertThat(JSON.writeValueAsString(exported.get("candidates"))).isEqualTo(JSON.writeValueAsString(backup.get("candidates")));
+    }
+
+    /**
+     * Owner decision 2026-10-15 (the school is compiled into the releases, off; docs/13 J1): a server with the house alone
+     * (the default; {@code KINDS_AVAILABLE=house,school} is the operator's own choice) must not lose a school that arrives in
+     * a backup or from a device that has the switch on. The candidate is kept and exported unchanged, and the AI reads it as
+     * a house does (no kind: {@code AiKinds.of} is null), so its extras are unread.
+     */
+    @Test
+    void aSchoolImportedIntoAHouseOnlyServerIsKeptAndReadAsAHouseWithItsExtrasUnreadNeverDropped() throws Exception {
+        assertThat(kinds.available()).containsExactly("house");
+        assertThat(kinds.isAvailable("school")).isFalse();
+        var backup = vectors().get("backup");
+        var candidate = backup.get("candidates").get(0);
+        var report = api.post().uri("/api/import?dryRun=false").contentType(MediaType.APPLICATION_JSON)
+                .body(JSON.writeValueAsString(backup)).retrieve().body(MAP);
+        @SuppressWarnings("unchecked")
+        var houses = (Map<String, Object>) report.get("houses");
+        assertThat(((Number) houses.get("created")).intValue()).isEqualTo(1);
+        assertThat(((Number) houses.getOrDefault("skipped", 0)).intValue()).isZero();
+        var id = candidate.get("id").asString();
+        // Kept: the row is there with its kind and its extras.
+        var stored = JSON.readTree(api.get().uri("/api/candidates/{id}", id).retrieve().body(String.class));
+        assertThat(stored.get("kind").asString()).isEqualTo("school");
+        assertThat(stored.get("extras")).isEqualTo(candidate.get("extras"));
+        // Never dropped: the export holds it, equal to what came in.
+        var exported = JSON.readTree(api.get().uri("/api/export").retrieve().body(String.class));
+        assertThat(exported.get("candidates")).hasSize(1);
+        assertThat(JSON.writeValueAsString(exported.get("candidates"))).isEqualTo(JSON.writeValueAsString(backup.get("candidates")));
+        // Read as a house by the AI: no kind file applies, so no extra is read (the document is the house's).
+        assertThat(kinds.of(stored.get("kind").asString())).isNull();
     }
 }

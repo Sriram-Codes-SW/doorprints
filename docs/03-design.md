@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.150 |
+| Version | 0.151 |
 | Date | 2026-10-15 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -161,6 +161,7 @@
 | 0.148 | 2026-10-15 | Claude (Code), engineer | **ADR-37, status:** Android's side is built (S4b-BL-222, voice PR 5; `feat/voice-5-android`; [02](02-threat-model.md) v0.87 §11, [06](06-test-plan.md) TC-U-249..253 and TC-S-52, [ai/voice-input](ai/voice-input.md) v0.6): `shared/voice/` (the recorder interface, `PcmVoiceRecorder`, `VoiceSession`, `VoiceInput`, `OwnKeyTranscription`), the *Voice input* setting under *AI features*, the microphone in Ask, Plan visits and Fill in from listing text, `AudioRecord` in `:app`, `RECORD_AUDIO` as a runtime permission. One choice differs from the plan: 16 kHz mono PCM kept in one array and sent as `audio/wav`, not `MediaRecorder` AAC/m4a (an MP4 muxer needs a seekable file, and "never a file" is the rule); a minute is 1.92 MB, under the 2 MB cap. *This device* (the platform recogniser) is not offered. The iPhone is voice PR 6. |
 | 0.149 | 2026-10-15 | Claude (Code), engineer | **ADR-37, status:** the iPhone's side is built in code without Xcode or a phone (S4b-BL-223, voice PR 6; `feat/voice-6-iphone`; [02](02-threat-model.md) v0.88 §11, [06](06-test-plan.md) TC-U-254..256 and TC-S-53, [ai/voice-input](ai/voice-input.md) v0.7): `IosPcmSource` (an `AVAudioEngine` input tap into memory, resampled in common code to 16 kHz mono 16-bit and handed to the shared `PcmVoiceRecorder` as a WAV clip, the same clip Android sends), `IosMicrophone` (the `AVAudioApplication` permission), `IosVoiceServices` (the shared `VoiceServices`), `NSMicrophoneUsageDescription` and no `audio` background mode. **One change from the plan:** [ai/voice-input](ai/voice-input.md) section 4 said `AVAudioRecorder` with m4a; `AVAudioRecorder` can only write to a file URL, which would put audio on disk (T-I48), so the iPhone uses the engine tap. The setting, the button, the strings, the limits and the provider rules are Android's shared screens and code (`:ui` and `shared/voice/`). |
 | 0.150 | 2026-10-15 | Claude (Code), docs | §19 states voice input as built on the web, Android and the iPhone (the iPhone untested on a device), PR numbers dropped. |
+| 0.151 | 2026-10-15 | Claude (Code), engineer | **§18.15 the server stays house-only by default** under "compiled in, off" (owner, 2026-10-15; `test/kinds-23-ship-school-server`): `KINDS_AVAILABLE=house,school` is the operator's choice; a school sent to a house-only server is kept and read as a house. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -2963,7 +2964,7 @@ baselines (S4b-BL-302); the list reads the space from Room (S4b-BL-303); a Hunt 
 comma-separated list of kind ids, default `house`, the house always in it (an id outside door 3's pattern, a blank and a
 repeat are dropped). It replaces `app.ai.dev-kinds` (`AI_DEV_KINDS`, a boolean) and is the server's twin of the apps'
 `AVAILABLE_KINDS`. `AiKinds` holds it: the AI reads a candidate of a built-in kind other than the house (the schools kind)
-through its kind file's `ai` slots only when the kind is in the list (§18.11); a kind that is listed but has no built-in
+through its kind file's `ai` slots only when the kind is in the list (§18.11). **Compiled in, off (owner, 2026-10-15):** the releases list the school on the website and the phones, but the server's default stays the house alone; `KINDS_AVAILABLE=house,school` is the operator's choice, never part of a release, and a school that reaches a house-only server (a backup, a device with the switch on) is stored and exported unchanged and read by the AI as a house, its extras unread, never dropped (`SchoolCandidateApiTest`, TC-U-263); a kind that is listed but has no built-in
 file is read as a house. **A request that names a kind outside the list is a 400** (`kind <id> is not available`): today
 that is `POST /api/ai/extract-listing`'s optional `kind` (the house is always available; a listed kind with no extract is
 still a 400, `kind <id> has no listing extract`). The candidate calls keep accepting any kind of door 3's pattern, so a
