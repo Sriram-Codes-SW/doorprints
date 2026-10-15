@@ -20,7 +20,9 @@ import { describe, expect, it } from 'vitest';
 import Ajv2020 from 'ajv/dist/2020';
 import { CHECKLIST } from './models';
 import { HOUSE_LABELS } from './kind-labels';
-import { SCHOOL_LABELS } from './school-kind';
+import { SCHOOL_FIELDS, SCHOOL_LABELS } from './school-kind';
+import { filterableExtras } from '../shared/extra-filter';
+import { HOUSE_FIELDS } from './kind-fields';
 import {
   CAPABILITY_COLOURS, CAPABILITY_ICONS, CAPABILITY_KINDS, DEFAULT_CAPABILITIES, MAX_HUNT_RADIUS_M, MIN_HUNT_RADIUS_M, capabilitiesOf, parseCapabilities,
 } from './kind-capabilities';
@@ -116,6 +118,18 @@ describe('kind capabilities (docs/schemas/kinds, ADR-36 §18.19)', () => {
       const r = capabilitiesOf(id).hunt?.alertRadiusM;
       if (r !== undefined) expect(r >= MIN_HUNT_RADIUS_M && r <= MAX_HUNT_RADIUS_M, id).toBe(true);
     }
+  });
+
+  // Kinds PR 30 (docs/03 §18.24): the list's filter rows are the kind file's `capabilities.filters`.
+  it('every filter of a kind is an enum or switch extra of its file, in the order the file gives, and the house has none', () => {
+    for (const [id, file] of Object.entries(FILES)) {
+      const extras = (file as unknown as { extras: { id: string; type: string }[] }).extras;
+      for (const f of capabilitiesOf(id).filters) expect(['enum', 'bool'], `${id} ${f}`).toContain(extras.find((e) => e.id === f)?.type);
+    }
+    expect(capabilitiesOf('house').filters).toEqual([]);
+    expect(capabilitiesOf('school').filters).toEqual(['board', 'medium', 'busService']);
+    expect(filterableExtras(SCHOOL_FIELDS).map((f) => f.id)).toEqual(capabilitiesOf('school').filters);
+    expect(filterableExtras(HOUSE_FIELDS)).toEqual([]);
   });
 
   it('a kind this build does not know has the defaults: the map and the paths, nothing else', () => {

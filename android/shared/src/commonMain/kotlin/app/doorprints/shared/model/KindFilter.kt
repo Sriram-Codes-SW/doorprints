@@ -34,8 +34,14 @@ object KindFilter {
     const val YES = "yes"
     const val NO = "no"
 
-    /** The extras of [fields] the list can be filtered by, in the kind file's order: enums and switches. */
-    fun rows(fields: KindFields): List<KindExtra> = fields.others().filter { it.type == "enum" || it.type == "bool" }
+    /**
+     * The extras of [fields] the list can be filtered by: the ones the kind file names in `capabilities.filters` (kinds PR 30, docs/03
+     * section 18.24), in that order, that are enums or switches of the kind. A kind that names none, the house, has no rows.
+     */
+    fun rows(fields: KindFields): List<KindExtra> {
+        val own = fields.others().associateBy { it.id }
+        return KindCapabilities.of(fields.kind).filters.mapNotNull { id -> own[id]?.takeIf { it.type == "enum" || it.type == "bool" } }
+    }
 
     /** The choices of a filterable [extra]: an enum's option ids, or `yes` and `no` for a switch. */
     fun choices(extra: KindExtra): List<String> = if (extra.type == "bool") listOf(YES, NO) else extra.options.map { it.id }

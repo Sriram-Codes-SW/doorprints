@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | The complete manual test list for Doorprints before real-system testing starts and before Android/iOS development continues: every check a person redoes on real devices, whether or not an automated suite or a review session already covered it |
-| Version | 0.26 |
+| Version | 0.27 |
 | Date | 2026-10-15 |
 | Author | Claude, senior reviewer |
 | Status | Draft |
@@ -38,6 +38,7 @@
 | 0.24 | 2026-10-15 | Claude (Code), engineer | **MT-116** (TC-M-84; kinds PR 26, [03](../03-design.md) §18.20): the school's Hunt mode on a real walk, the alert's words and channel, the lock screen, TalkBack; not run. |
 | 0.25 | 2026-10-15 | Claude (Code), engineer | MT-117: a school's Compare and checklist (kinds PR 27, [06](../06-test-plan.md) TC-M-85). |
 | 0.26 | 2026-10-15 | Claude (Code), engineer | **MT-118** (TC-M-86; kinds PR 29, [03](../03-design.md) §18.23): a school's visits and questions, a visit reminder on its own channel, the iPhone body, no broker from a school's phone. Not run. |
+| 0.27 | 2026-10-15 | Claude (Code), engineer | **MT-119** (TC-M-87; kinds PR 30, [03](../03-design.md) §18.24): a school's filters and copy. Not run. |
 
 ## 1. How to use this list
 
@@ -1038,6 +1039,13 @@ TC-M-72 and TC-M-81 of [06](../06-test-plan.md); the website's twin is §18.
 - **Automated or reviewed by:** TC-U-278 (the specs and baselines of [03](../03-design.md) §18.23). Reviewer ran it: no.
 - Pass / Fail / Date: ____  by: ____
 
+#### MT-119 A school's filters and copy
+- **Area:** website and Android. **Who:** anyone. **Env:** E3 and E4; School shown; two schools saved with different boards and one with the bus.
+- **Steps:** (1) In the Schools space press **CBSE** in *Board*, then *Yes* in *School bus*: the list narrows as before; **Any** clears. (2) The Houses list has no such rows. (3) **Your data > Save a copy** in the Schools space: the file is named *Doorprints-schools-<date>...* and a school with a visit and an answer has the headings *School visits* and *Questions for a visit*. (4) The same in the Houses space: *Doorprints-<date>...*, headed *Viewings* and *Questions*.
+- **Expected:** the rows and names are the kind's; the house's are as before.
+- **Automated or reviewed by:** TC-U-279. Reviewer ran it: no.
+- Pass / Fail / Date: ____  by: ____
+
 ### 19.1 Summary rows (add to §13 when the owner starts the run)
 
 | Id | Title | Who | Env | Reviewer ran it | Result |
@@ -1049,6 +1057,7 @@ TC-M-72 and TC-M-81 of [06](../06-test-plan.md); the website's twin is §18.
 | MT-114 | A recording cut short keeps what was said: iPhone, Android, website | owner | E4, E5 | no | |
 | MT-117 | A school's Compare and checklist: website and Android | anyone, natives | E3, E4 | no | |
 | MT-118 | A school's visits and questions, and a visit reminder: Android, iPhone, website | owner, natives | E3, E4, E5 | no | |
+| MT-119 | A school's filters and copy: website and Android | anyone | E3, E4 | no | |
 
 ## 20. A school's pages and copies (S4b-BL-256, S4b-BL-259, S4b-BL-266, S4b-BL-277)
 

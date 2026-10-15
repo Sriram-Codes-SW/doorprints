@@ -16,6 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { isBaselineKind } from './kind-capabilities';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Observable, defer, throwError } from 'rxjs';
@@ -371,7 +372,7 @@ export class AiService {
     if (off) return off;
     if (this.usesOwnKey()) return defer(() => (kind ? this.onDevice.ask(this.ownModel(), question, filters, kind) : this.onDevice.ask(this.ownModel(), question, filters)));
     const body = filters ? { question, filters } : { question };
-    return this.http.post<AskResponse>('/api/ai/ask', kind && kind !== 'house' ? { ...body, kind } : body);
+    return this.http.post<AskResponse>('/api/ai/ask', kind && !isBaselineKind(kind) ? { ...body, kind } : body);
   }
 
   /** `kind`: as {@link ask}. */
@@ -379,12 +380,12 @@ export class AiService {
     const off = this.guard() ?? this.noServerSpace(kind);
     if (off) return off;
     if (this.usesOwnKey()) return defer(() => (kind ? this.onDevice.planVisits(this.ownModel(), request, kind) : this.onDevice.planVisits(this.ownModel(), request)));
-    return this.http.post<PlanResponse>('/api/ai/plan-visits', kind && kind !== 'house' ? { ...request, kind } : request);
+    return this.http.post<PlanResponse>('/api/ai/plan-visits', kind && !isBaselineKind(kind) ? { ...request, kind } : request);
   }
 
   /** A space other than the house on a server that does not name the kind: nothing is sent (an older server would read every space). */
   private noServerSpace(kind?: string): Observable<never> | null {
-    return kind && kind !== 'house' && !this.usesOwnKey() && !this.serverKinds().includes(kind) ? throwError(() => new AiOffError('noKey')) : null;
+    return kind && !isBaselineKind(kind) && !this.usesOwnKey() && !this.serverKinds().includes(kind) ? throwError(() => new AiOffError('noKey')) : null;
   }
 }
 

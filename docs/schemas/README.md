@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | `doorprints-backup/1` — the one backup format for server, Android and web |
-| Version | 1.68 |
+| Version | 1.69 |
 | Date | 2026-10-14 |
 | Date | 2026-10-06 |
 | Author | Claude (Cowork) – Backend team |
@@ -82,6 +82,7 @@
 | 1.66 | 2026-10-15 | Claude (Code), engineer | §8.4: **Compare per kind** (kinds PR 27; `feat/kinds-27-compare-capability`; [03](../03-design.md) §18.21): `school.json` gains a `checklist` of eight items, the `checklist` section and `capabilities.compare` (the eight items, `fees`, `commuteMinutes`), `capabilities-vectors.json` and `school-vectors.json` follow, and new [`kinds/compare-vectors.json`](kinds/compare-vectors.json) (format `doorprints-compare-vectors/1`) pins each kind's resolved criteria with direction, the scoring and sample outcomes, read by the website and the phones. No wire, backup or sync format changes: a school's scores travel in the candidate's existing `checklist` map. |
 | 1.67 | 2026-10-15 | Claude (Code), engineer | §8.4: **the server reads the kind files** (kinds PR 28; `feat/kinds-28-server-kind-reader`; [03](../03-design.md) §18.22): `kind.schema.json` gains the optional `ai.words` (`noun`, `records`, and `words` with `options` for each typed extra an `ai` slot names; short English words only, no markup, colon or line break), `house.json` gains `{noun: House, records: houses}` and `school.json` the words of its seven extras (the values of `kinds/kind-ai-vectors.json` `kinds[]`); the server packages a byte-identical copy of the two files (`backend/src/main/resources/kinds/`, held by `KindFileResourcesTest`) and reads `capabilities-vectors.json` (all `valid` and `invalid` cases) and `space-scope-vectors.json` (`serverKinds`). Additive: a reader that does not know `ai.words` ignores it. No wire, backup or vector file changed. |
 | 1.68 | 2026-10-15 | Claude (Code), engineer | §8.4: **viewings, questions and contacts per kind** (kinds PR 29; `feat/kinds-29-contacts-rooms-viewings`; [03](../03-design.md) §18.23): new [`kinds/school-questions.json`](kinds/school-questions.json) (`doorprints-kind-questions/1`); `kind.schema.json`'s `viewings.questionsSeed` is `house` or `school` and `words` gains eighteen ids; `school.json` lists the `questions` and `viewings` sections and names the new seed; `capabilities-vectors.json` (the school's `viewings`, a valid case, `sectionsFollow.questions`), `kind-word-vectors.json` and `school-vectors.json` follow. The kind's `version` stays 1; not a backup or sync change. |
+| 1.69 | 2026-10-15 | Claude (Code), engineer | §8.4: **filters and the baseline kind** (kinds PR 30; `feat/kinds-30-copies-filters`; [03](../03-design.md) §18.24): `kind.schema.json`'s `capabilities` gains `baseline` (a boolean, the house's) and `filters` (at most six extra ids); `house.json` and `school.json` declare them (the school's `board`, `medium`, `busService`); `capabilities-vectors.json` carries both members in every resolved set, two valid and six invalid cases. The kind's `version` stays 1; not a backup or sync change. |
 
 Related: [11 Feature parity and export spec](../11-feature-parity-and-export-spec.md) section 5.2 ·
 [03 Design](../03-design.md) ADR-20 and the API table (`GET /api/export`, `POST /api/import`) ·

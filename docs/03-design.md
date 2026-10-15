@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.166 |
+| Version | 0.167 |
 | Date | 2026-10-15 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -177,6 +177,7 @@
 | 0.164 | 2026-10-15 | Claude (Code), engineer | **§18.21 Compare for any kind, and the school's checklist** (kinds PR 27; `feat/kinds-27-compare-capability`): Compare reads `capabilities.compare` of the kind (`compareCriteria`, `scoringForKind`): checklist items (higher is better) and typed extras (the extra's own `better`), the house's ten keys exactly as before; the school gains a draft checklist of eight items and `compare` over them, the fees and the commute. §18.19 and §18.9 corrected where they said nothing reads the resolver or the school hides the checklist. |
 | 0.165 | 2026-10-15 | Claude (Code), engineer | **§18.22 The server reads every kind from its kind file** (kinds PR 28; `feat/kinds-28-server-kind-reader`; [06](06-test-plan.md) TC-U-272..277, [ai-design](ai/ai-design.md) 16.13, [schemas README](schemas/README.md) 1.63): one loader and validator in Java (`KindFiles`), the kind files packaged with the server, `ai.words` in the kind file, and the house, the school and any further kind served by the same document, prompt, extract and planner code; the house's AI output byte for byte as before (the house pins). §18.15 and §18.19 say where the server now stands. |
 | 0.166 | 2026-10-15 | Claude (Code), engineer | **New §18.23, contacts, rooms, moving in, viewings and questions as capabilities** (kinds PR 29; `feat/kinds-29-contacts-rooms-viewings`): `KindLabels.isVisible` follows `contacts`, `rooms`, `moveIn` and `viewings`; the school has viewings (visits and open days, a DRAFT) with its own question bank (`school-questions.json`, ids `qd_school_...`, seeded when first opened, no format change), its words (eighteen more `words` ids) and its own reminder channel; the website no longer makes a broker from a school's phone (S4b-BL-260's website half); house literals closed on these paths; §18.18, §18.19 and §18.9's statements that a school has no questions or viewings corrected. |
+| 0.167 | 2026-10-15 | Claude (Code), engineer | **New §18.24, filters, the baseline kind and a school's copy words as capabilities** (kinds PR 30; `feat/kinds-30-copies-filters`): `capabilities.filters` names the extras the list and the map filter by; `capabilities.baseline` (the house) replaces the comparisons with the id `house` in the paths, the AI calls, the copies' file names and the copy voice; a school's copy names its visits and questions in the school's words. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -3444,6 +3445,42 @@ reminder starts the default kind's walk (both kinds have viewings now: §18.20);
 `HuntSpaceTest`; mutation list `tools/mutations/kinds-29-web.json`; the baselines `school_viewings_{en,hi}_light.png` and
 `school_questions_{en,hi}_light.png` (new) and `school_edit_{en_light,ta_dark}.png` (they gain the questions and visits cards); **zero
 diff in every house baseline**.
+
+### 18.24 Filters, the baseline kind and a school's copy words as capabilities (kinds PR 30)
+
+**Two more members of `capabilities`** (additive; the kind's `version` stays 1; the schema, the website's `parseCapabilities`, `:shared`'s
+`KindCapabilities.parse` and the server's `KindFiles.capabilities` refuse the same malformed values, held to `capabilities-vectors.json`):
+
+| Key | Meaning | The house | The school |
+|---|---|---|---|
+| `filters` | the extras the list and the map can be filtered by: ids of enum or switch extras of the kind, at most six, no repeats, in the order the rows are shown | none | `board`, `medium`, `busService` |
+| `baseline` | the kind whose paths, wire shape, copy file names and words are the app's original, from before there were kinds; only the house | true | false |
+
+**Filters.** The rows of the list's filter were *every* enum and switch of a kind that is not a house field (S4b-BL-265, §18.10); they are
+now the kind file's `filters`, in its order (`filterableExtras` on the website, `KindFilter.rows` in `:shared`). For the two built-in kinds
+the rows are the same as before (the school's board, medium and bus), so `kind-filter-vectors.json` and the baselines are unchanged; a new
+kind chooses its rows in its file. A filter on a number or an amount is not built (the rows are choices).
+
+**The baseline kind.** The house's addresses (`/houses/:id`, `/compare`, `/ask`, `/plan`), the AI calls that name no kind, the copies'
+file names that are not renamed by the kind's plural word (`Doorprints-schools-2026-09-22-...` is a school's, §18.13) and the house's
+own words were compared with the id `house`. They ask `isBaselineKind` (`capabilities.baseline`) now: `spaceFileName`, `aiShownIn`,
+`SpaceService.detailLink` and `toolLink`, `copyVoice`, the routes' tool pages and the three AI calls of `AiService`. A kind this build does
+not know is not the baseline. `baseline-literals.spec.ts` scans those five files and fails on a comparison with the literal. The stored
+default of a candidate's kind (`kind ?? 'house'`, door 3), the wire's `kind` default and the phones' `KindSettingRules.HOUSE` are the
+record format's, not a capability, and stay; the house's pins (the AI request bodies, the routes, every copy name) are byte for byte
+what they were.
+
+**A school's copy.** The copy's file name is the kind's plural word (already so: `many`); its sections are placed where the kind file lists
+them (the cost block headed *Fees*, §18.10) and, since §18.23, its visits and questions are named in the school's words in every writer:
+`kind-export-words.ts` and `KindExportWords` gain `section.viewings`, `table.viewings` and `section.questions` (*School visits*,
+*Questions for a visit*, in four languages, hi, ta and te under review), held to each other by `SchoolCopyVoiceTest`. The order of a
+copy's blocks stays the house's fixed order for every kind (reordering every writer by the kind file is not built); the house's
+headings are untouched.
+
+**Tests** ([06](06-test-plan.md) TC-U-279): `kind-capabilities.spec.ts`, `baseline-literals.spec.ts`, `extra-filter.spec.ts`,
+`kind-copy-voice.spec.ts`; `KindCapabilitiesVectorsTest`, `SchoolCopyVoiceTest`, `KindFilterVectorsTest`; the server's
+`KindCapabilitiesFileTest`; mutation lists `tools/mutations/kinds-30-web.json` and `kinds-30-android.json`; no new screen, so no new baseline
+(the school's list with its filter rows, `school_list_en_light.png`, is unchanged), and zero diff in every house baseline.
 
 ## 19. Voice input (ADR-37)
 

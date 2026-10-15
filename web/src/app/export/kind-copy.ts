@@ -16,6 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { isBaselineKind } from '../core/kind-capabilities';
 import type { Dict, TKey } from '../i18n/en';
 import type { HouseDto } from '../core/models';
 import type { KindFields } from '../core/kind-fields';
@@ -90,7 +91,7 @@ export function copyVoice(chosen: readonly Pick<HouseDto, 'kind'>[], kinds: Copy
   const own = space ? kinds.fieldsOf(space) : undefined;
   const all = new Set(chosen.map((h) => kinds.fieldsOf(h.kind)));
   const voice = own ?? (all.size === 1 ? [...all][0] : undefined);
-  return voice && voice.kind !== 'house' ? voice : undefined;
+  return voice && !isBaselineKind(voice.kind) ? voice : undefined;
 }
 
 /** A word of the app's dictionary in the copy's voice: the kind's own where it has one, else the house's key. */

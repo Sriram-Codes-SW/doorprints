@@ -16,6 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { isBaselineKind } from './kind-capabilities';
 import type { HouseDto } from './models';
 
 /**
@@ -88,7 +89,7 @@ export function fileSlug(many: string): string {
  */
 export function spaceFileName(name: string, space: string | undefined, many: string): string {
   const slug = fileSlug(many);
-  if (!space || space === 'house' || !slug) return name;
+  if (!space || isBaselineKind(space) || !slug) return name;
   return name.replace(/\d{4}-\d{2}-\d{2}/, (date) => `${slug}-${date}`);
 }
 
@@ -101,7 +102,7 @@ export function spaceFileName(name: string, space: string | undefined, many: str
  */
 export function aiShownIn(kind: string, available: readonly string[], on: boolean, ownKey: boolean, serverKinds: readonly string[] = []): boolean {
   if (!on) return false;
-  return kind === 'house' || (available.includes(kind) && (ownKey || serverKinds.includes(kind)));
+  return isBaselineKind(kind) || (available.includes(kind) && (ownKey || serverKinds.includes(kind)));
 }
 
 /** The kind a shared listing lands in: the one chosen when it is enabled, else the default kind. */

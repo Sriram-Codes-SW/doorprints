@@ -73,6 +73,8 @@ class KindCapabilitiesVectorsTest {
             "compare" to (compare?.let { JsonObject(mapOf("criteria" to JsonArray(it.criteria.map(::JsonPrimitive)))) } ?: JsonNull),
             "paths" to JsonPrimitive(paths),
             "identity" to (identity?.let { JsonObject(mapOf("icon" to JsonPrimitive(it.icon), "colour" to JsonPrimitive(it.colour))) } ?: JsonNull),
+            "baseline" to JsonPrimitive(baseline),
+            "filters" to JsonArray(filters.map(::JsonPrimitive)),
         ),
     )
 
@@ -144,6 +146,24 @@ class KindCapabilitiesVectorsTest {
         assertEquals("visits and their questions on; no rooms, moving in or broker", listOf(false, false, true, true, false), gated.map { KindCapabilities.of("school").allows(it) })
         for (ref in listOf("section.checklist", "field.label", "section.photos")) assertTrue(ref, KindCapabilities.DEFAULT.allows(ref))
         assertEquals(KindCapabilities.Contacts("office", false), KindCapabilities.of("school").contacts)
+    }
+
+    // Kinds PR 30 (docs/03 section 18.24): the baseline kind and the list's filter rows are the kind file's.
+    @Test
+    fun onlyTheHouseIsTheBaselineKindAndTheFilterRowsAreTheFilesFilters() {
+        assertEquals(listOf("house"), KindCapabilities.KINDS.filter { KindCapabilities.of(it).baseline })
+        assertEquals(false, KindCapabilities.of("villa").baseline)
+        assertEquals(false, KindCapabilities.of(null).baseline)
+        assertEquals(emptyList<String>(), KindCapabilities.of("house").filters)
+        assertEquals(listOf("board", "medium", "busService"), KindCapabilities.of("school").filters)
+        assertEquals(KindCapabilities.of("school").filters, KindFilter.rows(SchoolKind.FIELDS).map { it.id })
+        assertEquals(emptyList<KindExtra>(), KindFilter.rows(KindFields.HOUSE))
+        for ((id, file) in files) {
+            val extras = file.getValue("extras").jsonArray.map { it.jsonObject }
+            for (f in KindCapabilities.of(id).filters) {
+                assertTrue("$id $f", extras.first { it.getValue("id").jsonPrimitive.content == f }.getValue("type").jsonPrimitive.content in listOf("enum", "bool"))
+            }
+        }
     }
 
     @Test

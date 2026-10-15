@@ -1,0 +1,56 @@
+{
+  "spec": [
+    "web/src/app/core/kind-capabilities.spec.ts",
+    "web/src/app/core/baseline-literals.spec.ts",
+    "web/src/app/core/space-scope.spec.ts",
+    "web/src/app/core/space.spec.ts",
+    "web/src/app/core/ai.service.spec.ts",
+    "web/src/app/export/kind-copy-voice.spec.ts",
+    "web/src/app/shared/extra-filter.spec.ts",
+    "web/src/app/core/ai.service.requests.spec.ts"
+  ],
+  "mutations": [
+    {
+      "file": "web/src/app/shared/extra-filter.ts",
+      "find": "return capabilitiesOf(fields.kind).filters.flatMap(",
+      "replace": "return capabilitiesOf(fields.kind).filters.slice(1).flatMap(",
+      "expect": "every filter of a kind"
+    },
+    {
+      "file": "web/src/app/core/kind-capabilities.ts",
+      "find": "return capabilitiesOf(kindId).baseline;",
+      "replace": "return true;",
+      "expect": "is only the house"
+    },
+    {
+      "file": "web/src/app/core/kind-capabilities.ts",
+      "find": "new Set(list).size !== list.length) return null;\n    filters",
+      "replace": "false) return null;\n    filters",
+      "expect": "invalid"
+    },
+    {
+      "file": "web/src/app/core/space-scope.ts",
+      "find": "isBaselineKind(space) || !slug",
+      "replace": "!slug",
+      "expect": "the file name of a space’s copy"
+    },
+    {
+      "file": "web/src/app/core/space.service.ts",
+      "find": "this.multi() && !isBaselineKind(kind) ? ['/k', kind, id]",
+      "replace": "this.multi() ? ['/k', kind, id]",
+      "expect": "with two kinds: the space from the address"
+    },
+    {
+      "file": "web/src/app/core/ai.service.ts",
+      "find": "kind && !isBaselineKind(kind) ? { ...request, kind } : request",
+      "replace": "kind ? { ...request, kind } : request",
+      "expect": "the house’s request is unchanged"
+    },
+    {
+      "file": "web/src/app/export/kind-copy.ts",
+      "find": "voice && !isBaselineKind(voice.kind) ? voice : undefined",
+      "replace": "voice",
+      "expect": "house"
+    }
+  ]
+}

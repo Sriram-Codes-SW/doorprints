@@ -10,7 +10,9 @@
   "viewings": null,
   "compare": null,
   "paths": true,
-  "identity": null
+  "identity": null,
+  "baseline": false,
+  "filters": []
  },
  "today": {
   "huntAlertRadiusM": 30,
@@ -58,7 +60,9 @@
     ]
    },
    "paths": true,
-   "identity": null
+   "identity": null,
+   "baseline": true,
+   "filters": []
   },
   "school": {
    "map": true,
@@ -92,7 +96,13 @@
     ]
    },
    "paths": true,
-   "identity": null
+   "identity": null,
+   "baseline": false,
+   "filters": [
+    "board",
+    "medium",
+    "busService"
+   ]
   }
  },
  "unknown": [
@@ -118,7 +128,9 @@
     "viewings": null,
     "compare": null,
     "paths": true,
-    "identity": null
+    "identity": null,
+    "baseline": false,
+    "filters": []
    }
   },
   {
@@ -139,7 +151,9 @@
     },
     "compare": null,
     "paths": true,
-    "identity": null
+    "identity": null,
+    "baseline": false,
+    "filters": []
    }
   },
   {
@@ -166,7 +180,9 @@
     "viewings": null,
     "compare": null,
     "paths": true,
-    "identity": null
+    "identity": null,
+    "baseline": false,
+    "filters": []
    }
   },
   {
@@ -193,7 +209,9 @@
     "viewings": null,
     "compare": null,
     "paths": true,
-    "identity": null
+    "identity": null,
+    "baseline": false,
+    "filters": []
    }
   },
   {
@@ -220,7 +238,9 @@
     "viewings": null,
     "compare": null,
     "paths": true,
-    "identity": null
+    "identity": null,
+    "baseline": false,
+    "filters": []
    }
   },
   {
@@ -240,7 +260,9 @@
     "viewings": null,
     "compare": null,
     "paths": false,
-    "identity": null
+    "identity": null,
+    "baseline": false,
+    "filters": []
    }
   },
   {
@@ -263,7 +285,9 @@
     "viewings": null,
     "compare": null,
     "paths": true,
-    "identity": null
+    "identity": null,
+    "baseline": false,
+    "filters": []
    }
   },
   {
@@ -306,7 +330,9 @@
      ]
     },
     "paths": true,
-    "identity": null
+    "identity": null,
+    "baseline": false,
+    "filters": []
    }
   },
   {
@@ -329,7 +355,53 @@
     "identity": {
      "icon": "paw",
      "colour": "plum"
-    }
+    },
+    "baseline": false,
+    "filters": []
+   }
+  },
+  {
+   "name": "the baseline kind",
+   "capabilities": {
+    "baseline": true
+   },
+   "resolved": {
+    "map": true,
+    "hunt": null,
+    "rooms": false,
+    "moveIn": false,
+    "contacts": null,
+    "viewings": null,
+    "compare": null,
+    "paths": true,
+    "identity": null,
+    "baseline": true,
+    "filters": []
+   }
+  },
+  {
+   "name": "filters by two extras, in the order given",
+   "capabilities": {
+    "filters": [
+     "board",
+     "busService"
+    ]
+   },
+   "resolved": {
+    "map": true,
+    "hunt": null,
+    "rooms": false,
+    "moveIn": false,
+    "contacts": null,
+    "viewings": null,
+    "compare": null,
+    "paths": true,
+    "identity": null,
+    "baseline": false,
+    "filters": [
+     "board",
+     "busService"
+    ]
    }
   }
  ],
@@ -589,6 +661,30 @@
   {
    "name": "map as an object (boolean only)",
    "json": "{\"map\":{\"style\":\"x\"}}"
+  },
+  {
+   "name": "baseline that is not a boolean",
+   "json": "{\"baseline\":\"yes\"}"
+  },
+  {
+   "name": "a filter that is not an id",
+   "json": "{\"filters\":[\"Board it\"]}"
+  },
+  {
+   "name": "a filter that is markup",
+   "json": "{\"filters\":[\"<b>\"]}"
+  },
+  {
+   "name": "a repeated filter",
+   "json": "{\"filters\":[\"board\",\"board\"]}"
+  },
+  {
+   "name": "seven filters",
+   "json": "{\"filters\":[\"a\",\"b\",\"c\",\"d\",\"e\",\"f\",\"g\"]}"
+  },
+  {
+   "name": "filters that are not a list",
+   "json": "{\"filters\":\"board\"}"
   }
  ],
  "icons": [

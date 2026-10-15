@@ -194,7 +194,8 @@
   "contacts": { "role": "broker", "autoCreateFromPhone": true },
   "viewings": { "questionsSeed": "house" },
   "compare": { "criteria": ["water", "power", "parking", "sunlight", "ventilation", "noise", "security", "maintenance", "neighbourhood", "commute"] },
-  "paths": true
+  "paths": true,
+  "baseline": true
  },
  "ai": {
   "extract": ["label", "address", "street", "locality", "money", "bedrooms", "areaSqft", "contactName", "contactPhone", "listingUrl", "notes", "amenities"],

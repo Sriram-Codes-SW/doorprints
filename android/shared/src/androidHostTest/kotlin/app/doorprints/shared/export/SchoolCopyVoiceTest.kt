@@ -204,5 +204,10 @@ class SchoolCopyVoiceTest {
         }
         assertNull(KindExportWords.of("house", "en"))
         assertNull(KindExportWords.of(null, "ta"))
+        // Kinds PR 30 (docs/03 section 18.24): the school's visits and questions are named in the school's words.
+        val en = KindExportWords.of("school", "en")!!
+        assertEquals("School visits", en.getValue("section.viewings"))
+        assertEquals("School visits", en.getValue("table.viewings"))
+        assertEquals("Questions for a visit", en.getValue("section.questions"))
     }
 }

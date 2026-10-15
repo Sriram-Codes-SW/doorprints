@@ -165,3 +165,43 @@ describe('a school’s tables (CSV and workbook) leave out what a school hides',
     });
   }
 });
+
+// Kinds PR 30 (docs/03 §18.24): the school has visits and questions, and its copy names them in the school's words.
+describe('a school’s copy names its visits and its questions in the school’s words', () => {
+  const withBoth = (): HouseRecord => ({ ...school(), answers: [{ id: 'a1', questionId: 'qd_school_fees', text: 'What are the fees?', answer: 'Ninety-six thousand', status: 'ANSWERED', sort: 0 }] });
+  const visit = { id: 'v_00000001', houseId: '', startsAt: 1790501400000, durationMin: 30, kind: 'FIRST' as const, status: 'PLANNED' as const, remindMin: 60 };
+  const bundle = (lang: Lang) => {
+    const h = withBoth();
+    return collect({
+      houses: [h], visits: [], photos: [], exportedAt: '2026-10-14T10:00:00.000Z', kinds: kindsFor(lang),
+      viewings: [{ id: visit.id, updatedAt: '2026-10-14T09:00:00.000Z', viewing: { ...visit, houseId: h.id } }],
+      options: { ...DEFAULT_EXPORT_OPTIONS, lang, space: 'school' }, inSpace: (x: HouseRecord) => (x.kind ?? 'house') === 'school',
+    });
+  };
+
+  it('headed Questions for a visit and School visits in the Markdown and the HTML, and the house’s headings are not used', () => {
+    const md = buildMarkdown(bundle('en'), DICTIONARIES.en);
+    expect(md).toContain('### Questions for a visit');
+    expect(md).toContain('### School visits');
+    expect(md).not.toContain('### Viewings');
+    expect(md).not.toContain('### Questions\n');
+    const html = buildHtml(bundle('en'), DICTIONARIES.en, FIXTURE_PHOTO_DATA_URIS);
+    expect(html).toContain('<h3>School visits</h3>');
+    expect(html).toContain('<h3>Questions for a visit</h3>');
+  });
+
+  it('has the same headings in hi, ta and te, and no house word in them', () => {
+    for (const lang of LANGS.slice(1)) {
+      const md = buildMarkdown(bundle(lang), DICTIONARIES[lang]);
+      const heads = md.split('\n').filter((l) => l.startsWith('### '));
+      expect(heads.join(' | '), lang).toContain(ExportStrings.of(lang, 'school').get('section.viewings'));
+      expect(heads.filter((l) => HOUSE_WORD[lang].test(l)), lang).toEqual([]);
+    }
+  });
+
+  it('keeps the house’s headings for a house', () => {
+    const house = { ...FIXTURE_HOUSES[0] };
+    const md = buildMarkdown(collect({ houses: [house], visits: [], photos: [], exportedAt: '2026-10-14T10:00:00.000Z', viewings: [{ id: visit.id, updatedAt: '2026-10-14T09:00:00.000Z', viewing: { ...visit, houseId: house.id } }], options: { ...DEFAULT_EXPORT_OPTIONS, lang: 'en' } }), DICTIONARIES.en);
+    expect(md).toContain('### Viewings');
+  });
+});

@@ -190,7 +190,8 @@
   "contacts": { "role": "office", "autoCreateFromPhone": false },
   "viewings": { "questionsSeed": "school" },
   "compare": { "criteria": ["dropoff", "grounds", "sanitation", "teachers", "classsize", "homework", "activities", "safety", "fees", "commuteMinutes"] },
-  "paths": true
+  "paths": true,
+  "filters": ["board", "medium", "busService"]
  },
  "ai": {
   "extract": ["label", "address", "street", "locality", "contactName", "contactPhone", "listingUrl", "notes", "board", "medium", "grades", "busService", "fees", "admissionFee"],

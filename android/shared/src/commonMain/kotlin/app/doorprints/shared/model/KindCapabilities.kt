@@ -44,6 +44,13 @@ data class KindCapabilities(
     val compare: Compare? = null,
     val paths: Boolean = true,
     val identity: Identity? = null,
+    /**
+     * The kind whose paths, wire shape, copy file names and words are the app's original, from before there were kinds (the house;
+     * kinds PR 30, docs/03 section 18.24). Only the house has it; a kind this build does not know does not.
+     */
+    val baseline: Boolean = false,
+    /** The extras the list and the map can be filtered by, in the order the rows are shown (ids of enum or switch extras of the kind). */
+    val filters: List<String> = emptyList(),
 ) {
     /**
      * Hunt mode (docs/03 section 18.20): the alert radius in metres (30 to 300; the default of the kind's radius), whether a stay
@@ -85,6 +92,7 @@ data class KindCapabilities(
         const val MIN_HUNT_RADIUS_M = 30
         const val MAX_HUNT_RADIUS_M = 300
         const val MAX_COMPARE_CRITERIA = 10
+        const val MAX_FILTERS = 6
         val ROLES = listOf("broker", "office", "agent")
 
         /** The built-in question banks that seed a kind's viewings (the `<kind>-questions.json` files in `docs/schemas/kinds` and, for the house, `docs/schemas/default-questions.json`). */
@@ -101,6 +109,7 @@ data class KindCapabilities(
             // The house's set is today's hard-coded behaviour: Hunt at 30 m, the rooms, moving in, the broker made from a
             // phone, the house questions, Compare's ten checklist keys, the paths.
             "house" to KindCapabilities(
+                baseline = true,
                 hunt = Hunt(alertRadiusM = 30, stayCreates = true, streetMemory = true, areas = true),
                 rooms = true,
                 moveIn = true,
@@ -117,6 +126,7 @@ data class KindCapabilities(
                 hunt = Hunt(alertRadiusM = 100, stayCreates = true, streetMemory = true, areas = true),
                 contacts = Contacts("office", autoCreateFromPhone = false),
                 viewings = Viewings("school"),
+                filters = listOf("board", "medium", "busService"),
                 compare = Compare(listOf("dropoff", "grounds", "sanitation", "teachers", "classsize", "homework", "activities", "safety", "fees", "commuteMinutes")),
             ),
         )
@@ -139,6 +149,12 @@ data class KindCapabilities(
             val rooms = obj.flag("rooms", false) ?: return null
             val moveIn = obj.flag("moveIn", false) ?: return null
             val paths = obj.flag("paths", true) ?: return null
+            val baseline = obj.flag("baseline", false) ?: return null
+            val filters = if ("filters" in obj) {
+                val list = (obj["filters"] as? JsonArray)?.map { (it as? JsonPrimitive)?.takeIf { p -> p.isString }?.content } ?: return null
+                if (list.size > MAX_FILTERS || list.any { it == null || !CRITERION.matches(it) } || list.toSet().size != list.size) return null
+                list.filterNotNull()
+            } else emptyList()
             val hunt = obj.block("hunt", listOf("alertRadiusM", "stayCreates", "streetMemory", "areas")) { h ->
                 val radius = (h["alertRadiusM"] as? JsonPrimitive)?.takeIf { !it.isString }?.intOrNull
                 val stay = h.flag("stayCreates", null)
@@ -170,10 +186,10 @@ data class KindCapabilities(
             if (listOf("hunt" to hunt, "contacts" to contacts, "viewings" to viewings, "compare" to compare, "identity" to identity)
                     .any { (key, value) -> key in obj && value == null }
             ) return null
-            return KindCapabilities(map, hunt, rooms, moveIn, contacts, viewings, compare, paths, identity)
+            return KindCapabilities(map, hunt, rooms, moveIn, contacts, viewings, compare, paths, identity, baseline, filters)
         }
 
-        private val KEYS = setOf("map", "hunt", "rooms", "moveIn", "contacts", "viewings", "compare", "paths", "identity")
+        private val KEYS = setOf("map", "hunt", "rooms", "moveIn", "contacts", "viewings", "compare", "paths", "identity", "baseline", "filters")
 
         /** A boolean member: its value, [absent] when missing, null when present and not a boolean. */
         private fun JsonObject.flag(key: String, absent: Boolean?): Boolean? {

@@ -22,7 +22,7 @@ import type { ExportStringKey } from './export-strings';
 /**
  * The words inside a table that name the candidate, in a copy that speaks in another kind (kinds PR 16, S4b-BL-266; docs/03
  * §18.9): the headings of the Schools table, the Visits and Photos tables' *School* and *School id* columns, the cover's
- * scope lines and the *Website* of a school's own link. They replace the house's words of `export-strings.ts` key for key, so a copy of houses is untouched
+ * scope lines, the *Website* of a school's own link and, since kinds PR 30 (§18.24), the headings of its visits and questions. They replace the house's words of `export-strings.ts` key for key, so a copy of houses is untouched
  * (`house-pins.spec.ts`) and the phone's `ExportStrings.kt` stays the contract of the keys. hi, ta and te are under review
  * (owner rule); the nouns are those of the kind's own labels (`school.many` in the app's dictionaries).
  */
@@ -41,6 +41,9 @@ const SCHOOL: KindExportWords = {
     'col.label': 'School',
     'col.listingUrl': 'Website',
     'col.houses': 'Schools',
+    'section.questions': 'Questions for a visit',
+    'section.viewings': 'School visits',
+    'table.viewings': 'School visits',
   },
   hi: {
     'doc.title': 'Doorprints — मेरे स्कूल',
@@ -54,6 +57,9 @@ const SCHOOL: KindExportWords = {
     'col.label': 'स्कूल',
     'col.listingUrl': 'वेबसाइट',
     'col.houses': 'स्कूल',
+    'section.questions': 'दौरे के लिए सवाल',
+    'section.viewings': 'स्कूल का दौरा',
+    'table.viewings': 'स्कूल का दौरा',
   },
   ta: {
     'doc.title': 'Doorprints — என் பள்ளிகள்',
@@ -67,6 +73,9 @@ const SCHOOL: KindExportWords = {
     'col.label': 'பள்ளி',
     'col.listingUrl': 'இணையதளம்',
     'col.houses': 'பள்ளிகள்',
+    'section.questions': 'வருகைக்கான கேள்விகள்',
+    'section.viewings': 'பள்ளி வருகைகள்',
+    'table.viewings': 'பள்ளி வருகைகள்',
   },
   te: {
     'doc.title': 'Doorprints — నా పాఠశాలలు',
@@ -80,6 +89,9 @@ const SCHOOL: KindExportWords = {
     'col.label': 'పాఠశాల',
     'col.listingUrl': 'వెబ్‌సైట్',
     'col.houses': 'పాఠశాలలు',
+    'section.questions': 'సందర్శన కోసం ప్రశ్నలు',
+    'section.viewings': 'పాఠశాల సందర్శనలు',
+    'table.viewings': 'పాఠశాల సందర్శనలు',
   },
 };
 

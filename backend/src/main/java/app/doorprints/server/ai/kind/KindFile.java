@@ -84,10 +84,11 @@ public record KindFile(String id, int version, List<String> core, List<String> m
 
     /** The kind's capabilities (docs/03 §18.19); a feature the file leaves out is null or false as {@link #DEFAULTS}. */
     public record Capabilities(boolean map, Hunt hunt, boolean rooms, boolean moveIn, Contacts contacts,
-                               Viewings viewings, Compare compare, boolean paths, Identity identity) {
+                               Viewings viewings, Compare compare, boolean paths, Identity identity, boolean baseline,
+                               List<String> filters) {
         /** What a kind with no {@code capabilities} has: the map and the paths on, everything else off. */
         public static final Capabilities DEFAULTS = new Capabilities(true, null, false, false, null, null, null, true,
-                null);
+                null, false, List.of());
     }
 
     /**

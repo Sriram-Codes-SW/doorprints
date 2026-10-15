@@ -16,6 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { isBaselineKind } from './kind-capabilities';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { GuardsCheckEnd, Router, type Routes } from '@angular/router';
 import type { BuiltInKind } from './dev-kinds';
@@ -105,7 +106,7 @@ export class SpaceService {
 
   /** A candidate's page in its space (a house keeps `/houses/<id>`). */
   detailLink(id: string, kind: string = this.kind()): string[] {
-    return this.multi() && kind !== 'house' ? ['/k', kind, id] : ['/houses', id];
+    return this.multi() && !isBaselineKind(kind) ? ['/k', kind, id] : ['/houses', id];
   }
 
   /**
@@ -118,7 +119,7 @@ export class SpaceService {
 
   /** A tool's page in a space: the house keeps `/compare`, `/ask` and `/plan`, any other kind has `/k/<kind>/<tool>`. */
   toolLink(tool: SpaceTool, kind: string = this.kind()): string {
-    return this.multi() && kind !== 'house' ? `/k/${kind}/${tool}` : `/${tool}`;
+    return this.multi() && !isBaselineKind(kind) ? `/k/${kind}/${tool}` : `/${tool}`;
   }
 
   /** The kind a new candidate is: the space's on `/k/<kind>/new` when that kind is enabled, else the default kind. */

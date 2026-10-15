@@ -55,6 +55,13 @@ export interface KindCapabilities {
   readonly compare: { readonly criteria: readonly string[] } | null;
   readonly paths: boolean;
   readonly identity: { readonly icon: string; readonly colour: string } | null;
+  /**
+   * The kind whose paths, wire shape, copy file names and words are the app's original, from before there were kinds (the house;
+   * kinds PR 30, docs/03 §18.24): its pages keep their own addresses, its AI calls name no kind, its copies are not renamed.
+   */
+  readonly baseline: boolean;
+  /** The extras the list and the map can be filtered by, in the order the rows are shown (ids of enum or switch extras of the kind). */
+  readonly filters: readonly string[];
 }
 
 /** The bundled icons a kind may name (`kind.schema.json`, `capabilities.identity.icon`). */
@@ -71,10 +78,12 @@ export const MAX_COMPARE_CRITERIA = 10;
 
 /** Everything off except the map and the paths: what a kind with no `capabilities`, or no kind file, has. */
 export const DEFAULT_CAPABILITIES: KindCapabilities = Object.freeze({
-  map: true, hunt: null, rooms: false, moveIn: false, contacts: null, viewings: null, compare: null, paths: true, identity: null,
+  map: true, hunt: null, rooms: false, moveIn: false, contacts: null, viewings: null, compare: null, paths: true, identity: null, baseline: false, filters: [],
 });
 
-const KEYS = ['map', 'hunt', 'rooms', 'moveIn', 'contacts', 'viewings', 'compare', 'paths', 'identity'];
+const KEYS = ['map', 'hunt', 'rooms', 'moveIn', 'contacts', 'viewings', 'compare', 'paths', 'identity', 'baseline', 'filters'];
+const MAX_FILTERS = 6;
+const FILTER_ID = /^[a-z][A-Za-z0-9_]{0,39}$/;
 const CRITERION = /^[a-z][A-Za-z0-9_]{0,39}$/;
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -102,7 +111,14 @@ export function parseCapabilities(raw: unknown): KindCapabilities | null {
   const rooms = bool('rooms', false);
   const moveIn = bool('moveIn', false);
   const paths = bool('paths', true);
-  if (map === null || rooms === null || moveIn === null || paths === null) return null;
+  const baseline = bool('baseline', false);
+  if (map === null || rooms === null || moveIn === null || paths === null || baseline === null) return null;
+  let filters: readonly string[] = [];
+  if (has('filters')) {
+    const list = raw['filters'];
+    if (!Array.isArray(list) || list.length > MAX_FILTERS || list.some((x) => typeof x !== 'string' || !FILTER_ID.test(x)) || new Set(list).size !== list.length) return null;
+    filters = Object.freeze([...list] as string[]);
+  }
 
   let hunt: KindCapabilities['hunt'] = null;
   if (has('hunt')) {
@@ -150,7 +166,7 @@ export function parseCapabilities(raw: unknown): KindCapabilities | null {
     if (typeof colour !== 'string' || !CAPABILITY_COLOURS.includes(colour)) return null;
     identity = Object.freeze({ icon, colour });
   }
-  return Object.freeze({ map, hunt, rooms, moveIn, contacts, viewings, compare, paths, identity });
+  return Object.freeze({ map, hunt, rooms, moveIn, contacts, viewings, compare, paths, identity, baseline, filters });
 }
 
 /**
@@ -171,6 +187,8 @@ const BUILT_IN: Readonly<Record<string, KindCapabilities>> = Object.freeze({
     }),
     paths: true,
     identity: null,
+    baseline: true,
+    filters: [],
   }),
   // The school has a contact (the admissions office) that never makes a broker, Hunt at 100 m (a school is passed on foot or
   // by car, not walked up to), no rooms or moving in, and viewings (visits, open days) seeded by the school's own questions (kinds PR 29, §18.23); its walks stay. Compare scores its eight checklist items and
@@ -182,9 +200,14 @@ const BUILT_IN: Readonly<Record<string, KindCapabilities>> = Object.freeze({
     compare: Object.freeze({
       criteria: Object.freeze(['dropoff', 'grounds', 'sanitation', 'teachers', 'classsize', 'homework', 'activities', 'safety', 'fees', 'commuteMinutes']),
     }),
-    paths: true, identity: null,
+    paths: true, identity: null, baseline: false, filters: Object.freeze(['board', 'medium', 'busService']),
   }),
 });
+
+/** Whether `kindId` is the baseline kind (the house): the one whose paths, wire and copy names are the app's original. A kind the build does not know is not. */
+export function isBaselineKind(kindId: string | null | undefined): boolean {
+  return capabilitiesOf(kindId).baseline;
+}
 
 /** The capabilities of a kind by its id: the built-in set, or {@link DEFAULT_CAPABILITIES} for a kind this build does not know. */
 export function capabilitiesOf(kindId: string | null | undefined): KindCapabilities {

@@ -504,11 +504,25 @@ public final class KindFiles {
         scanKeys(n, "$.capabilities", 0);
         var p = "$.capabilities";
         object(n, p);
-        only(n, p, Set.of("map", "hunt", "rooms", "moveIn", "contacts", "viewings", "compare", "paths", "identity"));
+        only(n, p, Set.of("map", "hunt", "rooms", "moveIn", "contacts", "viewings", "compare", "paths", "identity", "baseline",
+                "filters"));
         var map = n.has("map") ? bool(n, "map", p + ".map") : true;
         var rooms = n.has("rooms") && bool(n, "rooms", p + ".rooms");
         var moveIn = n.has("moveIn") && bool(n, "moveIn", p + ".moveIn");
         var paths = n.has("paths") ? bool(n, "paths", p + ".paths") : true;
+        var baseline = n.has("baseline") && bool(n, "baseline", p + ".baseline");
+        var filters = new ArrayList<String>();
+        if (n.has("filters")) {
+            var list = n.get("filters");
+            array(list, p + ".filters", 6);
+            int fi = 0;
+            for (var item : list) {
+                var ip = p + ".filters[" + fi++ + "]";
+                if (!item.isString() || !CRITERION.matcher(item.asString()).matches()) throw fault(ip, "not an extra id");
+                if (filters.contains(item.asString())) throw fault(ip, "repeated");
+                filters.add(item.asString());
+            }
+        }
         KindFile.Hunt hunt = null;
         if (n.has("hunt")) {
             var h = n.get("hunt");
@@ -564,7 +578,8 @@ public final class KindFiles {
             identity = new KindFile.Identity(oneOf(d, "icon", p + ".identity.icon", ICONS),
                     oneOf(d, "colour", p + ".identity.colour", COLOURS));
         }
-        return new KindFile.Capabilities(map, hunt, rooms, moveIn, contacts, viewings, compare, paths, identity);
+        return new KindFile.Capabilities(map, hunt, rooms, moveIn, contacts, viewings, compare, paths, identity, baseline,
+                List.copyOf(filters));
     }
 
     // ---- Small strict readers -----------------------------------------------------------------------------------
