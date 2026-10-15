@@ -2,6 +2,7 @@
   "spec": "android/shared/src/commonTest/kotlin/app/doorprints/shared/voice/pcm/ (Pcm16ResamplerTest, ByteQueueTest, CaptureEndRulesTest)",
   "gradle": [
     ":shared:testAndroidHostTest",
+    "--rerun",
     "--tests",
     "app.doorprints.shared.voice.pcm.*"
   ],
@@ -119,6 +120,18 @@
       "find": "if (inputNow == null || inputNow != inputAtStart) return true",
       "replace": "if (inputNow != inputAtStart) return true",
       "expect": "noMicrophoneLeftEndsItWhateverTheReason"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/PcmVoiceRecorder.kt",
+      "find": "if (source.end()) {",
+      "replace": "if (false) {",
+      "expect": "aSlowReaderStillDeliversTheTailBeforeStopReturns"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/PcmVoiceRecorder.kt",
+      "find": "while (!loopDone && waited.elapsedNow() < DRAIN_WAIT) {",
+      "replace": "while (false) {",
+      "expect": "aSlowReaderStillDeliversTheTailBeforeStopReturns"
     }
   ]
 }
