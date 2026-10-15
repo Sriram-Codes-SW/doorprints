@@ -38,7 +38,7 @@
     "web": null,
     "android": "school_add_tip_listing",
     "text": {
-     "en": "Where is this school? Tap ‘Save school here’ if you are there, or long-press the map on it; the listing then fills in the form."
+     "en": "Preview: Where is this school? Tap ‘Save school here’ if you are there, or long-press the map on it; the listing then fills in the form."
     }
    }
   },
@@ -58,7 +58,7 @@
     "web": null,
     "android": "school_add_tip_listing_a11y",
     "text": {
-     "en": "Where is this school? Tap ‘Save school here’ while you are at it; the listing then fills in the form."
+     "en": "Preview: Where is this school? Tap ‘Save school here’ while you are at it; the listing then fills in the form."
     }
    }
   },

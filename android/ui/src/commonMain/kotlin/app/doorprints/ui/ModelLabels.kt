@@ -80,6 +80,18 @@ fun KindLabels.statusText(status: HouseStatus): StringResource = kindStringResou
  */
 val LocalDevKinds = staticCompositionLocalOf { false }
 
+/**
+ * Whether a candidate of a kind other than the house is read as that kind (its fields, its search words, its copy): the developer
+ * flag, or a second kind offered by the person's *Experimental: more than houses* switch (S4b-BL-212). [DoorprintsRoot] provides
+ * it from the settings; with the switch off a build that lists the school reads every candidate as a house, as the house build does.
+ * The developer's kind picker stays on [LocalDevKinds] alone. Read it with [kindsOn].
+ */
+val LocalKindsOn = staticCompositionLocalOf { false }
+
+/** The flag the screens read kinds by: [LocalKindsOn] or [LocalDevKinds]. */
+@Composable
+fun kindsOn(): Boolean = LocalKindsOn.current || LocalDevKinds.current
+
 private val STATUS_RESOURCES: Map<HouseStatus, StringResource> by lazy {
     HouseStatus.entries.associateWith { kindStringResource(KindLabels.HOUSE.status(it)) }
 }

@@ -39,12 +39,15 @@ object ExportBuilder {
      * Reads the local rows once and returns the [ExportBundle] that [options] select, ready for [Exporters.write].
      */
     suspend fun bundle(repository: Repository, options: ExportOptions): ExportBundle =
-        build(repository.localRows(), options)
+        build(repository.localRows(), options, repository.settings.kindsOn(BuildConfig.DEV_KINDS))
 
-    /** The bundle from rows already read ([toBundle], common since CMP-6 P6b; the Export screen's count uses it too). */
-    fun build(rows: Repository.LocalRows, options: ExportOptions): ExportBundle =
-        // A candidate of a hidden kind is copied with its typed extras only in a debug build with the flag (S4b-BL-210).
-        rows.toBundle(options.copy(devKinds = BuildConfig.DEV_KINDS))
+    /**
+     * The bundle from rows already read ([toBundle], common since CMP-6 P6b; the Export screen's count uses it too). A candidate
+     * of a hidden kind is copied with its typed extras only while [kindsOn] (the developer flag, or the person's *Experimental:
+     * more than houses* switch on, S4b-BL-210); with it off a school is copied as a house, as in a house-only build.
+     */
+    fun build(rows: Repository.LocalRows, options: ExportOptions, kindsOn: Boolean = BuildConfig.DEV_KINDS): ExportBundle =
+        rows.toBundle(options.copy(devKinds = kindsOn))
 
     /**
      * The app's own version, for the backup manifest. Read from the package manager rather than `BuildConfig`,

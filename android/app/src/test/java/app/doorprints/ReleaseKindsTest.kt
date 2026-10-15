@@ -18,16 +18,21 @@
 
 package app.doorprints
 
+import app.doorprints.shared.model.KindSetting
+import app.doorprints.shared.model.KindSettingRules
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 
 /**
- * A release build ships the house alone (S4b-BL-309; docs/02 T-E13, docs/13 part J1). The gate is the build, so this reads
- * `android/app/build.gradle.kts`, which the release variant is made from: `defaultConfig` fixes `AVAILABLE_KINDS` to
- * `"house"` and `DEV_KINDS` to `false`, and the `release` build type does not change either. Only the debug build type
- * reads `-Pdoorprints.kinds` or `-Pdoorprints.devKinds`. No new tool and no release compile: a text check on the config.
+ * A release build lists the school, compiled in but off, and releases the house alone (S4b-BL-309; owner, 2026-10-15; docs/02
+ * T-E13, docs/13 part J1). The gate is the build and the person's switch, so this reads `android/app/build.gradle.kts`, which the
+ * release variant is made from: `defaultConfig` fixes `AVAILABLE_KINDS` to `"house,school"` and `DEV_KINDS` to `false`, and the
+ * `release` build type does not change either; the released list ([KindSettingRules.RELEASED]) is the house alone. Only the
+ * debug build type reads `-Pdoorprints.kinds` or `-Pdoorprints.devKinds`. The iPhone lists the same (`IOS_AVAILABLE_KINDS`). No
+ * new tool and no release compile: a text check on the config.
  */
 class ReleaseKindsTest {
     private val script: String = run {
@@ -53,9 +58,9 @@ class ReleaseKindsTest {
     }
 
     @Test
-    fun theDefaultConfigShipsTheHouseAloneWithTheDeveloperFlagOff() {
+    fun theDefaultConfigListsTheSchoolCompiledInWithTheDeveloperFlagOff() {
         val config = block("defaultConfig")
-        assertTrue(config.contains("buildConfigField(\"String\", \"AVAILABLE_KINDS\", \"\\\"house\\\"\")"))
+        assertTrue(config.contains("buildConfigField(\"String\", \"AVAILABLE_KINDS\", \"\\\"house,school\\\"\")"))
         assertTrue(config.contains("buildConfigField(\"boolean\", \"DEV_KINDS\", \"false\")"))
     }
 
@@ -76,14 +81,34 @@ class ReleaseKindsTest {
         assertFalse(script.replace(debug, "").contains("gradleProperty(\"doorprints."))
     }
 
+    /** The kinds a build's `AVAILABLE_KINDS` lists, from the config text. */
+    private fun releaseKinds(): String =
+        Regex("buildConfigField\\(\"String\", \"AVAILABLE_KINDS\", \"\\\\\"([a-z,]+)\\\\\"\"\\)").find(block("defaultConfig"))!!.groupValues[1]
+
+    @Test
+    fun theReleaseReleasesTheHouseAloneAndListsTheSchoolBehindTheSwitch() {
+        assertEquals(listOf("house", "school"), KindSettingRules.availableOf(releaseKinds()))
+        assertEquals(listOf("house"), KindSettingRules.RELEASED)
+        // Off by default: with nothing stored, the release's setting is the house app.
+        val s = KindSetting(KindSettingRules.availableOf(releaseKinds()))
+        assertEquals(listOf("house"), s.offered)
+        assertFalse(s.spaces)
+    }
+
+    @Test
+    fun theDebugBuildListsWhatTheReleaseListsAndOnlyAnExplicitPropertyTurnsTheDeveloperFlagOn() {
+        val debug = block("        debug {")
+        assertTrue(debug.contains("val kinds = named ?: \"${releaseKinds()}\""))
+        assertTrue("DEV_KINDS follows the properties, never the shipped list", debug.contains("val devKinds = shipsMore || providers.gradleProperty(\"doorprints.devKinds\").orNull == \"true\""))
+    }
+
     /**
-     * S4b-BL-300: the iPhone shows no second kind until a build ships one. The chooser, the chip and the scoping are common code,
-     * but nothing passes the iOS store another kind (`SettingsStore.availableKinds` defaults to the house), so none can be seen
-     * there and only the Linux klib compile checks them. This fails the day the iOS store or the Swift shell names a kind, so that
-     * change brings the macOS-runner screenshots and the VoiceOver review (S4b-BL-276) with it, as the row says.
+     * S4b-BL-300, rewritten for "compiled in, off" (owner, 2026-10-15): the iPhone lists the same kinds as the Android release,
+     * from one constant, `IOS_AVAILABLE_KINDS`, which only `iosSettingsStore()` (the app's store) passes on; the simulator tests'
+     * store and the Swift shell name no kind, and Info.plist is untouched by the list. `IosKindsGateTest` (`:ui`) holds the rest.
      */
     @Test
-    fun theIphoneStoreAndShellPassNoKindSoTheIphoneShipsTheHouseAlone() {
+    fun theIphoneListsTheSameKindsAsTheReleaseFromOneConstant() {
         fun fileUp(relative: String): File {
             var dir: File? = File("").absoluteFile
             while (dir != null) {
@@ -93,13 +118,14 @@ class ReleaseKindsTest {
             error("$relative not found")
         }
         val ios = fileUp("shared/src/iosMain/kotlin/app/doorprints/data/SettingsIos.kt").readText()
-        assertFalse("S4b-BL-300: the iOS settings store names the kinds it ships: add the macOS screenshots and the VoiceOver review", ios.contains("availableKinds"))
+        assertTrue("the iPhone's list is the release's", ios.contains("internal const val IOS_AVAILABLE_KINDS = \"${releaseKinds()}\""))
+        assertTrue("the app's store passes the list", ios.contains("availableKinds = KindSettingRules.availableOf(IOS_AVAILABLE_KINDS)"))
         assertTrue("the store's default must stay the house alone", fileUp("shared/src/commonMain/kotlin/app/doorprints/data/Settings.kt").readText()
             .contains("val availableKinds: List<String> = listOf(KindSettingRules.HOUSE)"))
         val shell = File(fileUp("shared/build.gradle.kts").parentFile.parentFile.parentFile, "ios/Doorprints")
         if (shell.isDirectory) {
             val swift = shell.walkTopDown().filter { it.isFile && it.extension == "swift" }.map { it.readText() }.joinToString("\n")
-            assertFalse("S4b-BL-300: the Swift shell names a kind", Regex("availableKinds|devKinds", RegexOption.IGNORE_CASE).containsMatchIn(swift))
+            assertFalse("the Swift shell names a kind: the list is Kotlin's", Regex("availableKinds|devKinds", RegexOption.IGNORE_CASE).containsMatchIn(swift))
         }
     }
 }

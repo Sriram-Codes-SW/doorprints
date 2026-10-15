@@ -29,6 +29,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.core.content.FileProvider
@@ -97,6 +98,9 @@ class RootNavigationTest {
                 }
             }
         }
+        // The shipped lists (house, school) make the root wait one read of the settings store before it draws anything (the switch
+        // decides the start destination); a link is handled by the first screen, so wait for it, as the user's first frame does.
+        compose.waitUntil(10_000) { compose.onRoot().fetchSemanticsNode().children.isNotEmpty() }
         compose.waitForIdle()
     }
 

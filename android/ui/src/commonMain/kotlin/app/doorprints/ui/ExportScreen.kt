@@ -184,7 +184,7 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack, onPickSpace
     val platform = LocalPlatformServices.current
     val repo = services.repository
     val exports = services.exportScreen
-    val defaults = exports.rememberDefaultOptions()
+    val defaults = rememberKindsCopyOptions(exports)
     val fileActions = exports.rememberFileActions()
 
     var format by rememberSaveable { mutableStateOf(ExportFormat.HTML) }

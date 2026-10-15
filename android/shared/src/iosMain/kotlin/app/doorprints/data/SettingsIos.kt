@@ -22,6 +22,7 @@ import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.longPreferencesKey
+import app.doorprints.shared.model.KindSettingRules
 import kotlinx.cinterop.ByteVar
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf
@@ -81,7 +82,16 @@ fun iosSettingsStore(): SettingsStore =
         iosDataDirectory() + "/" + SettingsStore.FILE_NAME + ".preferences_pb", KeychainSecretStore(),
         KeychainSecretStore(account = "gemini_key", markerName = "geminiKeyKeychain"),
         KeychainSecretStore(account = "sarvam_key", markerName = "sarvamKeyKeychain"),
+        availableKinds = KindSettingRules.availableOf(IOS_AVAILABLE_KINDS),
     )
+
+/**
+ * The kinds the iPhone build lists (owner, 2026-10-15): the same list as the Android release's `BuildConfig.AVAILABLE_KINDS`
+ * (`ReleaseKindsTest` holds the two equal). The school is compiled in but off: available, not released
+ * ([KindSettingRules.RELEASED] stays the house), so the iPhone is the house app, with no chooser, until the person turns on
+ * *Experimental: more than houses* in Settings. Only [iosSettingsStore] with no path reads it; the simulator tests' store lists the house.
+ */
+internal const val IOS_AVAILABLE_KINDS = "house,school"
 
 /**
  * The iOS settings on the file at [path] with the key in [secrets] (for the simulator tests, S4b-BL-26). [path] must
@@ -89,10 +99,11 @@ fun iosSettingsStore(): SettingsStore =
  */
 internal fun iosSettingsStore(
     path: String, secrets: SecretStore, geminiSecrets: SecretStore? = null, sarvamSecrets: SecretStore? = null,
+    availableKinds: List<String> = listOf(KindSettingRules.HOUSE),
 ): SettingsStore =
     SettingsStore(
         PreferenceDataStoreFactory.createWithPath(produceFile = { path.toPath() }), secrets, geminiSecrets = geminiSecrets,
-        sarvamSecrets = sarvamSecrets,
+        sarvamSecrets = sarvamSecrets, availableKinds = availableKinds,
     )
 
 /**

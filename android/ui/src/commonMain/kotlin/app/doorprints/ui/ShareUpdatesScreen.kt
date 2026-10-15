@@ -118,7 +118,7 @@ fun ShareUpdatesScreen(onBack: () -> Unit) {
 
     // What the share would carry, counted from the rows as the Export screen counts its copy.
     val rows by remember(repo) { repo.localRowsFlow() }.collectAsStateWithLifecycle(initialValue = null)
-    val defaults = exports.rememberDefaultOptions()
+    val defaults = rememberKindsCopyOptions(exports)
     fun optionsFor(contact: ShareContact): ExportOptions = defaults().copy(
         since = contact.lastSharedAt.takeIf { it > 0 },
         sharedTo = contact.name,

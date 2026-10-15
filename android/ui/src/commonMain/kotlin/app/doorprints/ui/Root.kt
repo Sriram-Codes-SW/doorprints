@@ -496,7 +496,10 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
             val platform = LocalPlatformServices.current
             ConnectLinkDialog(link, repo, remember { platform.deviceName() }, onDone = { pendingConnect = null })
         }
-        CompositionLocalProvider(LocalTourRegistry provides tourRegistry, LocalSpace provides space, LocalRootSnackbar provides rootSnackbar) {
+        // Kinds other than the house are read as themselves (search, forms, copies) only while the developer flag or a second kind
+        // offered by the person's switch allows; with the switch off a build that lists the school is the house build (docs/03 §18.12).
+        val kindsOn = LocalDevKinds.current || setting.offered.size > 1
+        CompositionLocalProvider(LocalTourRegistry provides tourRegistry, LocalSpace provides space, LocalRootSnackbar provides rootSnackbar, LocalKindsOn provides kindsOn) {
             Box(Modifier.fillMaxSize()) {
                 Scaffold(
                     snackbarHost = { SnackbarHost(rootSnackbar) },

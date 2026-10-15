@@ -59,7 +59,7 @@ internal class AiStore(
     private val anthropicFor: ((baseUrl: String, model: String, apiKey: String) -> JsonChatModel)?,
     private val emulatorHostAllowed: Boolean,
     private val houses: suspend () -> List<AiHouse>,
-    /** The developer flag of the hidden kinds (kinds PR 7): handed to [OnDeviceAi]; false on the iPhone and in a release. */
+    /** The developer flag of the hidden kinds (kinds PR 7): false on the iPhone and in a release. [OnDeviceAi] reads a kind other than the house while it or the person's switch ([SettingsStore.kindsOn]) is on. */
     private val devKinds: Boolean = false,
 ) {
     private val _enabled = MutableStateFlow(false)
@@ -195,7 +195,7 @@ internal class AiStore(
     }
 
     /** On-device AI for the saved key, or null when AI goes through the server. One per key, so its rate limit holds. */
-    private var onDevice: Pair<Triple<AiProviderConfig, String, AiQuality>, OnDeviceAi>? = null
+    private var onDevice: Pair<Pair<Triple<AiProviderConfig, String, AiQuality>, Boolean>, OnDeviceAi>? = null
 
     /**
      * The on-device AI for the saved key, or null when AI goes through the server; the instance is reused while
@@ -206,9 +206,10 @@ internal class AiStore(
         if (!usesOwnKey(s)) return null
         // Only the Gemini client reads the choice, so for another service it is left out of the key and a change rebuilds nothing.
         val quality = if (s.aiProviderConfig.kind == AiKind.GEMINI) s.aiQuality else AiQuality.DEFAULT
-        val key = Triple(s.aiProviderConfig, s.geminiKey, quality)
+        // Kinds other than the house are read only while the developer flag or the person's switch allows (a build that lists the school is the house build with the switch off); a change of it rebuilds.
+        val key = Triple(s.aiProviderConfig, s.geminiKey, quality) to settings.kindsOn(devKinds)
         onDevice?.let { (saved, ai) -> if (saved == key) return ai }
-        return OnDeviceAi(chatModel(s.aiProviderConfig, s.geminiKey, quality)!!, houses, devKinds = devKinds).also { onDevice = key to it }
+        return OnDeviceAi(chatModel(s.aiProviderConfig, s.geminiKey, quality)!!, houses, devKinds = key.second).also { onDevice = key to it }
     }
 
     /**

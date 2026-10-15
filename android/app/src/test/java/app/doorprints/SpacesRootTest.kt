@@ -31,6 +31,7 @@ import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.printToString
@@ -154,17 +155,87 @@ class SpacesRootTest {
 
     @Test
     fun aBuildThatShipsTheHouseAloneIsTheAppItAlwaysWas() {
-        startHouseOnly()
+        val houseOnly = TwoKinds(app, listOf("house"))
+        try {
+            compose.setContent {
+                CompositionLocalProvider(LocalInspectionMode provides true) { houseOnly.Provide { DoorprintsRoot(links, onDeepLinkHandled = { links.value = null }) } }
+            }
+            settle()
+            waitFor("Hunt mode")
+            for (label in listOf("Map", "Houses", "Compare", "Settings")) tab(label).assertExists()
+            hasNo("What are you looking for?")
+            hasNo("change what you are looking for")
+            tab("Settings").performClick()
+            settle()
+            for (row in listOf("Brokers", "Criteria", "Questions", "Viewings")) shows(row)
+            hasNo("What you track")
+            hasNo("Experimental: more than houses")
+        } finally {
+            houseOnly.close()
+        }
+    }
+
+    /**
+     * What a person reaches in the shipped app's first minute, as a comparable record: the chooser, the chip, the tabs, the house list
+     * (the store holds a house and a school, so the school's entry is there to leak) and the Settings rows. Taken once on a build
+     * that lists the house alone and once on the build that lists the school with the switch off: equal but for the switch's own section.
+     */
+    private fun look(): Map<String, Any> {
         waitFor("Hunt mode")
-        for (label in listOf("Map", "Houses", "Compare", "Settings")) tab(label).assertExists()
-        hasNo("What are you looking for?")
-        hasNo("change what you are looking for")
+        val seen = linkedMapOf<String, Any>()
+        seen["chooser"] = compose.onAllNodesWithText("What are you looking for?", substring = true).fetchSemanticsNodes().size
+        seen["chip"] = compose.onAllNodesWithContentDescription("change what you are looking for", substring = true).fetchSemanticsNodes().size
+        seen["tabs"] = listOf("Map", "Houses", "Compare", "Assistant", "Settings", "Schools").filter {
+            compose.onAllNodes(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Tab) and hasText(it)).fetchSemanticsNodes().isNotEmpty()
+        }
+        tab("Houses").performClick()
+        waitFor("Green View")
+        seen["houses"] = listOf("Green View", "Pine Hill School").filter { compose.onAllNodesWithText(it, substring = true).fetchSemanticsNodes().isNotEmpty() }
         tab("Settings").performClick()
         settle()
-        for (row in listOf("Brokers", "Criteria", "Questions", "Viewings")) shows(row)
-        hasNo("What you track")
-        hasNo("Experimental: more than houses")
+        seen["rows"] = listOf("Brokers", "Criteria", "Questions", "Viewings", "Make Houses the default", "Show Houses", "Show Schools", "Saved: ").filter {
+            compose.onAllNodesWithText(it, substring = true).fetchSemanticsNodes().isNotEmpty() ||
+                compose.onAllNodesWithContentDescription(it, substring = true).fetchSemanticsNodes().isNotEmpty()
+        }
+        return seen
     }
+
+    private fun startWith(store: TwoKinds) {
+        compose.setContent {
+            CompositionLocalProvider(LocalInspectionMode provides true) { store.Provide { DoorprintsRoot(links, onDeepLinkHandled = { links.value = null }) } }
+        }
+        settle()
+    }
+
+    /**
+     * The school compiled in and off (owner, 2026-10-15; TC-U-264): with the switch off the shipped app shows what a build that lists
+     * the house alone shows, and Settings adds the one section that holds the switch. The house build's record is the expected one.
+     */
+    @Test
+    fun withTheSwitchOffTheShippedAppShowsWhatAHouseOnlyBuildShowsAndTheSwitch() {
+        startWith(kinds)
+        assertEquals(houseOnlyLook, look())
+        compose.onAllNodesWithText("Experimental: more than houses").assertCountEquals(1)
+        hasNo("Show Schools")
+    }
+
+    @Test
+    fun aHouseOnlyBuildShowsTheRecordTheShippedAppIsHeldTo() {
+        val houseOnly = TwoKinds(app, listOf("house"))
+        try {
+            startWith(houseOnly)
+            assertEquals(houseOnlyLook, look())
+            compose.onAllNodesWithText("Experimental: more than houses").assertCountEquals(0)
+        } finally {
+            houseOnly.close()
+        }
+    }
+
+    /** The house build: no chooser, no chip, the four tabs, both rows listed as houses, the house-only Settings rows and no kind rows. */
+    private val houseOnlyLook: Map<String, Any> = mapOf(
+        "chooser" to 0, "chip" to 0, "tabs" to listOf("Map", "Houses", "Compare", "Settings"),
+        "houses" to listOf("Green View", "Pine Hill School"), "rows" to listOf("Brokers", "Criteria", "Questions", "Viewings"),
+    )
 
     @Test
     fun aBuildThatShipsTheSchoolWithTheSwitchOffOpensOnTheMapAndOffersTheSwitch() {

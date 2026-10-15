@@ -463,7 +463,7 @@ fun HouseListScreen(
     }
 
     val kindFields = LocalSpace.current.built.fields // the extras the list can filter by (S4b-BL-265)
-    val devKinds = LocalDevKinds.current // a kind's extras are searched while the flag allows its kind (S4b-BL-210)
+    val devKinds = kindsOn() // a kind's extras are searched while the flag allows its kind (S4b-BL-210)
     val language = uiLanguage() // the floor and those extras are found by the app language's words too (S4b-BL-104 b)
     val shown = houses
         .filter { !onlyImported || importedIds?.contains(it.id) == true }

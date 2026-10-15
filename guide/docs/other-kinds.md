@@ -1,13 +1,13 @@
 # More than houses (experimental)
 
 Doorprints is made for house hunting, and that is all most people need. This page is about an early preview that lets
-the same app keep track of **schools** too. It is **off** unless you turn it on, on the website it is a preview you find in Settings, and
+the same app keep track of **schools** too. It is **off** unless you turn it on, on the website and the phones it is a preview you find in Settings, and
 it may change or go away.
 
 ## Turn it on
 
 - **Website:** in Settings, off by default. Open **Your data** and find **What you track**.
-- **Android and iPhone:** for now in a preview build only (the published app offers houses alone). Open **Settings** and find **What you track**; it appears only in a build that ships more than houses.
+- **Android and iPhone:** in Settings, off by default. Open **Settings** and find **What you track**; **Experimental: more than houses** is there, off, and the app is the house app until you turn it on.
 
 Turn on **Experimental: more than houses**. A row for **Houses** and one for **Schools** appear. Turn on **Show Schools**.
 **Default** marks the one Doorprints assumes when it cannot ask: a listing you share into Doorprints, or a link that

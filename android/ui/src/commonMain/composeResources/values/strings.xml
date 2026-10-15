@@ -1704,7 +1704,8 @@
     <string name="kinds_heading">What you track</string>
     <string name="kinds_body">Choose what Doorprints keeps track of. With more than one on, Doorprints first asks what you are looking for.</string>
     <string name="kinds_switch">Experimental: more than houses</string>
-    <string name="kinds_switch_hint">Off by default. Shows what is still being tried out, such as schools. It may change.</string>
+    <!-- 2026-10-15 (the school compiled in, off): the switch hint and the school listing tips say it is a preview; hi, ta, te under review (the website's words). -->
+    <string name="kinds_switch_hint">Off by default. Shows what is still being tried out, such as schools. It may change. This is a preview.</string>
     <string name="kinds_show">Show %1$s</string>
     <string name="kinds_default">Default</string>
     <string name="kinds_default_aria">Make %1$s the default</string>
@@ -1720,8 +1721,8 @@
     <string name="school_region_desc">Map of your schools. Every school is also in the Schools tab.</string>
     <string name="school_add_tip">Tip: tap ‘Save school here’ when you are at the school, or long-press the map to place one anywhere.</string>
     <string name="school_add_tip_a11y">Tip: tap ‘Save school here’ while you are at the school.</string>
-    <string name="school_add_tip_listing">Where is this school? Tap ‘Save school here’ if you are there, or long-press the map on it; the listing then fills in the form.</string>
-    <string name="school_add_tip_listing_a11y">Where is this school? Tap ‘Save school here’ while you are at it; the listing then fills in the form.</string>
+    <string name="school_add_tip_listing">Preview: Where is this school? Tap ‘Save school here’ if you are there, or long-press the map on it; the listing then fills in the form.</string>
+    <string name="school_add_tip_listing_a11y">Preview: Where is this school? Tap ‘Save school here’ while you are at it; the listing then fills in the form.</string>
     <string name="school_unnamed">Unnamed school</string>
     <string name="school_compare_hint">Pick up to 4 schools (shortlisted ones first). Rejected and Not chosen schools are left out.</string>
     <string name="school_compare_pick_more">Select at least two schools to compare.</string>

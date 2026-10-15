@@ -473,6 +473,14 @@ class SettingsStore(
         .catch { emit(KindSetting(availableKinds)) }
         .distinctUntilChanged()
 
+    /**
+     * Whether a candidate of a kind other than the house is read as that kind (its typed extras in the AI and in a readable
+     * copy): the developer flag [devKinds], or a second kind *offered* now, which is the person's *Experimental: more than
+     * houses* switch on in a build that lists one. With the switch off and no flag this is false, so a build that lists the
+     * school is the house build in everything the AI and the copies read (docs/03 §18.12, the twin of the website's `kindsOn`).
+     */
+    suspend fun kindsOn(devKinds: Boolean = false): Boolean = devKinds || kindSetting().first().offered.size > 1
+
     /** Applies [change] to what is stored and stores the result (a null value removing its key): one atomic edit, so two taps never undo each other. */
     suspend fun editKindSetting(change: (KindSetting) -> KindSetting) = dataStore.edit {
         val next = change(KindSetting(availableKinds, it[Keys.kindsExperimental], it[Keys.kindsEnabled], it[Keys.kindsDefault]))
