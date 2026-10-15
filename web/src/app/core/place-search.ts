@@ -16,6 +16,10 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+// India's outline as the Government of India depicts it (S4b-BL-174c), bundled as text like the held areas' polygon; the
+// same rings as the apps' IndiaOutlineData.kt (built together by web/scripts/geo/build_in_outline.py).
+import outlineText from '../shared/india-outline.geojson' with { loader: 'text' };
+
 /**
  * Looking up a locality by name for a shared listing's "Where is it?" (S4b-BL-83, docs/11 5.29 item 4), the parts that
  * need no network: the Nominatim `/search` request, the one-request-a-second rule of its usage policy, and reading the
@@ -47,7 +51,37 @@ export function searchParams(place: string, language: string): Record<string, st
   return { q, format: 'jsonv2', limit: '1', countrycodes: 'in', 'accept-language': language };
 }
 
-/** The first usable answer of a `/search` response (an array of `{lat, lon, display_name}` as strings), or `null`. */
+type Ring = [number, number][];
+let rings: Ring[] | null = null;
+
+/** The rings of India's outline (longitude, latitude), read from the bundled file on first use. */
+function outline(): Ring[] {
+  rings ??= (JSON.parse(outlineText) as { features: { geometry: { coordinates: Ring[][] } }[] }).features[0].geometry.coordinates.map((p) => p[0]);
+  return rings;
+}
+
+/**
+ * Whether a point is in India as the Government of India depicts it (S4b-BL-174c, ADR-22): inside the outline built from the
+ * repository's own boundary data, the test of the apps' `IndiaOutline`. India's bounding box is not it: Dhaka, Kathmandu and
+ * Colombo are inside the box. A point within a few hundred metres of the line may fall on either side.
+ */
+export function inIndia(lat: number, lon: number): boolean {
+  return outline().some((ring) => {
+    let hit = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const [xi, yi] = ring[i];
+      const [xj, yj] = ring[j];
+      if (yi > lat !== yj > lat && lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) hit = !hit;
+    }
+    return hit;
+  });
+}
+
+/**
+ * The first usable answer of a `/search` response (an array of `{lat, lon, display_name}` as strings), or `null`. An answer
+ * outside India's outline is not usable (`countrycodes=in` asks for India only, but a result in a neighbour's town beside
+ * the border would drop the pin abroad), as the apps' `PlaceLookup.pick` refuses it.
+ */
 export function placeOf(response: unknown): FoundPlace | null {
   if (!Array.isArray(response)) return null;
   for (const item of response as Record<string, unknown>[]) {
@@ -56,6 +90,7 @@ export function placeOf(response: unknown): FoundPlace | null {
     const lon = Number(item['lon']);
     if (!Number.isFinite(lat) || !Number.isFinite(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) continue;
     if (lat === 0 && lon === 0) continue;
+    if (!inIndia(lat, lon)) continue;
     const label = typeof item['display_name'] === 'string' && item['display_name'] ? item['display_name'] : null;
     return { lat, lon, label };
   }

@@ -406,6 +406,51 @@
         "portal": null,
         "notesStart": "2100 sq ft"
       }
+    },
+    {
+      "name": "Devanagari digits, Bengaluru",
+      "text": "२ BHK Flat for Rent in Indiranagar, Bengaluru\n₹ ४५,००० per month · १२०० sq ft\nContact: Ravi ९८४५० १२३४५",
+      "expect": {
+        "label": "२ BHK Flat for Rent in Indiranagar, Bengaluru",
+        "price": 45000,
+        "priceType": "RENT",
+        "bedrooms": 2,
+        "locality": "Indiranagar",
+        "contactPhone": "98450 12345",
+        "listingUrl": null,
+        "portal": null,
+        "notesStart": "1200 sq ft"
+      }
+    },
+    {
+      "name": "Tamil digits, Chennai",
+      "text": "௩ BHK Flat for Rent in Adyar, Chennai\nRs. ௪௫,௦௦௦ monthly · ௧௧௫௦ sq ft\nCall ௯௮௮௦௦ ௧௨௩௪௫",
+      "expect": {
+        "label": "௩ BHK Flat for Rent in Adyar, Chennai",
+        "price": 45000,
+        "priceType": "RENT",
+        "bedrooms": 3,
+        "locality": "Adyar",
+        "contactPhone": "98800 12345",
+        "listingUrl": null,
+        "portal": null,
+        "notesStart": "1150 sq ft"
+      }
+    },
+    {
+      "name": "Telugu digits, Hyderabad",
+      "text": "Flat for Sale in Madhapur, Hyderabad\n₹ ౨.౫ Cr · ౨౧౦౦ sq ft\n౩ BHK",
+      "expect": {
+        "label": "Flat for Sale in Madhapur, Hyderabad",
+        "price": 25000000,
+        "priceType": "SALE",
+        "bedrooms": 3,
+        "locality": "Madhapur",
+        "contactPhone": null,
+        "listingUrl": null,
+        "portal": null,
+        "notesStart": "2100 sq ft"
+      }
     }
   ]
 }

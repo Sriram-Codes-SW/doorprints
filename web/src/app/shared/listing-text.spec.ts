@@ -64,6 +64,21 @@ describe('parseListingText', () => {
     expect(d.notes?.includes(c.text.trim().slice(0, 40))).toBe(true);
   });
 
+  // S4b-BL-174b: a price, a bedroom count, an area and a phone in the digits of an Indian script are read as 0-9.
+  it('reads numbers written in the digits of an Indian script', () => {
+    const d = parseListingText('\u0968.\u096B BHK flat for rent in Indiranagar, Bengaluru\nRs. \u096A\u096B,\u0966\u0966\u0966 monthly \u00b7 \u0967\u0968\u0966\u0966 sq ft\n\u0968\u0969\u096A\u096B\u0966 \u0967\u0968\u0969\u096A\u096B');
+    expect(d.price).toBe(45_000);
+    expect(d.bedrooms).toBe(2);
+    expect(d.areaSqft).toBe(1200);
+    expect(d.priceType).toBe('RENT');
+    expect(d.locality).toBe('Indiranagar');
+    expect(d.label).toBe('\u0968.\u096B BHK flat for rent in Indiranagar, Bengaluru');
+    const tamil = parseListingText('Flat in Adyar, Chennai\n\u20b9 \u0BE8.\u0BEB Cr\n+\u0BEF\u0BE7 \u0BEF\u0BEE\u0BEE\u0BE6\u0BE6 \u0BE7\u0BE8\u0BE9\u0BEA\u0BEB');
+    expect(tamil.price).toBe(25_000_000);
+    expect(tamil.priceType).toBe('SALE');
+    expect(tamil.contactPhone).toBe('+91 98800 12345');
+  });
+
   it('cleans tracking parameters only and matches portal hosts by suffix', () => {
     expect(cleanListingUrl('https://a.in/p?utm_source=x&id=7&fbclid=9#photos')).toBe('https://a.in/p?id=7#photos');
     expect(cleanListingUrl('https://a.in/p?gclid=1')).toBe('https://a.in/p');

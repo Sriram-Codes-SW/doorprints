@@ -48,7 +48,7 @@ const PHONE_LIKE = new RegExp(
 const DIGIT_ZEROS = [0x0660, 0x06f0, 0x0966, 0x09e6, 0x0a66, 0x0ae6, 0x0b66, 0x0be6, 0x0c66, 0x0ce6, 0x0d66];
 const NATIVE_DIGIT = /[\u0660-\u0669\u06f0-\u06f9\u0966-\u096f\u09e6-\u09ef\u0a66-\u0a6f\u0ae6-\u0aef\u0b66-\u0b6f\u0be6-\u0bef\u0c66-\u0c6f\u0ce6-\u0cef\u0d66-\u0d6f]/g;
 
-/** `s` with those scripts' digits written as 0-9, one character for one character (every digit is in the BMP). */
+/** `s` with those scripts' digits written as 0-9, one character for one character (every digit is in the BMP); the redactor, the price, bedroom and phone checks and the listing parser read through it (S4b-BL-174b). */
 export function asciiDigits(s: string): string {
   return s.replace(NATIVE_DIGIT, (c) => {
     const code = c.charCodeAt(0);
@@ -583,7 +583,7 @@ function priceType(value: string | null | undefined, warnings: string[]): 'RENT'
  */
 export function price(value: string | null | undefined, warnings: string[], field = 'price'): number | null {
   if (!value || !value.trim()) return null;
-  const m = PRICE.exec(value.replace(/,/g, '').replace(/_/g, ''));
+  const m = PRICE.exec(asciiDigits(value).replace(/,/g, '').replace(/_/g, ''));
   if (!m) {
     warnings.push(`${field}: could not read '${abbreviate(value)}', dropped`);
     return null;
@@ -616,7 +616,7 @@ function bedrooms(value: string | null | undefined, warnings: string[]): number 
   if (!value || !value.trim()) return null;
   const lower = value.toLowerCase();
   if (lower.includes('studio') || lower.includes('1rk')) return 0;
-  const m = /\d+/.exec(value);
+  const m = /\d+/.exec(asciiDigits(value));
   const n = m ? Number.parseInt(m[0], 10) : NaN;
   if (!Number.isFinite(n) || m![0].length > 9) {
     warnings.push(`bedrooms: could not read '${abbreviate(value)}', dropped`);
@@ -635,13 +635,13 @@ function bedrooms(value: string | null | undefined, warnings: string[]): number 
  */
 export function phone(value: string | null | undefined, source: string, warnings: string[]): string | null {
   if (!value || !value.trim()) return null;
-  const kept = value.replace(/[^0-9+()\- ]/g, '').trim();
+  const kept = asciiDigits(value).replace(/[^0-9+()\- ]/g, '').trim();
   const digits = kept.replace(/\D/g, '');
   if (digits.length < 7 || digits.length > 15) {
     warnings.push('contactPhone: not a valid phone number, dropped');
     return null;
   }
-  if (!source.replace(/\D/g, '').includes(digits.slice(-10))) {
+  if (!asciiDigits(source).replace(/\D/g, '').includes(digits.slice(-10))) {
     warnings.push('contactPhone: not found in the listing text, dropped');
     return null;
   }

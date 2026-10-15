@@ -107,7 +107,7 @@ public final class ContactRedactor {
     }
 
     /** {@code s} with those scripts' digits written as 0-9, one character for one character (every digit is in the BMP). */
-    static String asciiDigits(String s) {
+    public static String asciiDigits(String s) {
         var out = new StringBuilder(s.length());
         for (int i = 0; i < s.length(); i++) {
             char c = s.charAt(i);

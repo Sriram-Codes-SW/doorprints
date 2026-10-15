@@ -1,0 +1,11 @@
+{
+  "spec": "web/src/app/core/place-search.spec.ts",
+  "mutations": [
+    {"file": "web/src/app/core/place-search.ts", "find": "if (!inIndia(lat, lon)) continue;", "replace": "if (!inIndia(lat, lon) && lat > 90) continue;", "expect": "refuses Dhaka"},
+    {"file": "web/src/app/core/place-search.ts", "find": "return outline().some(", "replace": "return outline().every(", "expect": "keeps Port Blair"},
+    {"file": "web/src/app/core/place-search.ts", "find": "lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi", "replace": "lon < ((xj - xi) * (lat + yi)) / (yj - yi) + xi", "expect": "refuses Dhaka"},
+    {"file": "web/src/app/core/place-search.ts", "find": "hit = !hit;", "replace": "hit = true;", "expect": "refuses Dhaka"},
+    {"file": "web/src/app/core/place-search.ts", "find": "for (let i = 0, j = ring.length - 1; i < ring.length; j = i++)", "replace": "for (let i = 0, j = ring.length - 2; i < ring.length; j = i++)", "expect": "refuses Colombo"},
+    {"file": "web/src/app/core/place-search.ts", "find": "geometry.coordinates.map((p) => p[0])", "replace": "geometry.coordinates.slice(0, 1).map((p) => p[0])", "expect": "keeps the islands"}
+  ]
+}
