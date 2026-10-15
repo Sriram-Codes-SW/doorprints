@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | The manual part of the release security gate: the one-hour list per release, and the scope of the deep self-run pentest |
-| Version | 0.13 |
+| Version | 0.14 |
 | Date | 2026-10-15 |
 | Author | Claude (Code), lead |
 | Status | Draft. Written (story S4b-SEC-3); **not yet run on a release candidate**, which is the story's last acceptance item |
@@ -25,6 +25,7 @@
 | 0.11 | 2026-10-14 | Claude (Code), engineer | **J1** notes the two unit tests that read the build config (S4b-BL-309: `release-kinds.spec.ts`, `ReleaseKindsTest`); the hand check stays for a workflow that adds a `--define` or a `-P` property. |
 | 0.12 | 2026-10-14 | Claude (Code), engineer | §2 and §6: the release APK for a Play release comes from `release.yml` (a draft GitHub Release, C-02); its notes say *not approved* and this gate is what approves it; the record gains the draft's tag. |
 | 0.13 | 2026-10-15 | Claude (Code), engineer | **B1 and F11:** the header row names `microphone=(self)` (voice input on the website, S4b-BL-221, TC-S-23, TC-S-51); F11's website clause is now a fact, the phones' clauses stay planned. |
+| 0.14 | 2026-10-15 | Claude (Code), engineer | **F11 on the iPhone** (S4b-BL-223): the iPhone clauses are now facts to check on a build: `NSMicrophoneUsageDescription` is in `Info.plist` and its four `InfoPlist.strings`, the built `Info.plist` has no `audio` background mode, the prompt appears only after a tap on *Speak* and the rationale (MT-104), and no audio file is in the app's container (MT-107). G4 stays Planned for the privacy note (the phones' answer is written once, with Android's, S4b-BL-222). B1 is the website's header and is unchanged. |
 
 ## 1. What this is, and when it runs
 
@@ -146,7 +147,7 @@ Run **AI evals** (`ai-evals.yml`, manual) on the release commit first. The golde
 | F8 | LLM08 Vector and embedding weaknesses | One store per deployment; deletion (TC-AI-08) | Passed |
 | F9 | LLM09 Misinformation | Citations and refusal (TC-AI-02, TC-AI-03) | Thresholds met |
 | F10 | LLM10 Unbounded consumption | Quota and limits (TC-AI-07); the provider's spend cap (AI-015) | Cap set; 429 seen at the quota |
-| F11 | Voice input (planned, [03](03-design.md) ADR-37; only when voice is in this release) | *Voice input* is **off by default** on a fresh install (Settings > AI features) and on the website; the microphone permission is **asked at first use**, with a rationale, never at install or start-up (Android `RECORD_AUDIO` is not requested before a tap); the microphone button is hidden for a provider that cannot transcribe; the audio is in no backup, copy or sync file (T-I48 tests); the disclosure names the host; the website's `Permissions-Policy` has `microphone=(self)` (shipped with the web voice pull request, S4b-BL-221: TC-S-23, TC-S-51, B1) | Still true, or voice is not in this release |
+| F11 | Voice input (planned, [03](03-design.md) ADR-37; only when voice is in this release) | *Voice input* is **off by default** on a fresh install (Settings > AI features) and on the website; the microphone permission is **asked at first use**, with a rationale, never at install or start-up (Android `RECORD_AUDIO` is not requested before a tap); the microphone button is hidden for a provider that cannot transcribe; the audio is in no backup, copy or sync file (T-I48 tests); the disclosure names the host; the website's `Permissions-Policy` has `microphone=(self)` (shipped with the web voice pull request, S4b-BL-221: TC-S-23, TC-S-51, B1); **on the iPhone** `Info.plist` has `NSMicrophoneUsageDescription` (and each `InfoPlist.strings`) and declares no `audio` background mode (`shared-ios.yml` checks the built plist; TC-S-53), the system prompt appears only after a tap on *Speak* and the rationale, and the app's container holds no audio file afterwards (MT-104, MT-105, MT-107) | Still true, or voice is not in this release |
 
 ### G. Privacy: the DPDP Act and Play's data safety (5 minutes)
 

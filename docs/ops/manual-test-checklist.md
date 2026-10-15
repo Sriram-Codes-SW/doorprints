@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | The complete manual test list for Doorprints before real-system testing starts and before Android/iOS development continues: every check a person redoes on real devices, whether or not an automated suite or a review session already covered it |
-| Version | 0.16 |
+| Version | 0.17 |
 | Date | 2026-10-15 |
 | Author | Claude, senior reviewer |
 | Status | Draft |
@@ -28,6 +28,7 @@
 | 0.14 | 2026-10-15 | Claude (Code), engineer | **MT-102** (TC-M-77, §20): the website's leftovers of the kinds by eye: the space picker on Your data, the filter chips of a school list, Compare's lower-is-better marks, the backup's and the import preview's words with two kinds on. |
 | 0.15 | 2026-10-15 | Claude (Code), engineer | **MT-103** (TC-M-78, §20): the phones' leftovers of the kinds by eye: the filter chips of a school list, *Save a copy of* on the Export screen, Compare's best marks, the neutral backup and import words, the map's notes in a school space. |
 | 0.16 | 2026-10-15 | Claude (Code), engineer | **§16 voice input:** the website's side is built (S4b-BL-221); the header paragraph says `microphone=(self)` and the MT-32 header text reads it; MT-82..MT-87 stay to be run (the website's part: a real microphone, the permission dialog, Safari mp4, Chrome and Firefox webm, TalkBack and VoiceOver on the button). |
+| 0.17 | 2026-10-15 | Claude (Code), engineer | **§16.2, voice input on the iPhone** (S4b-BL-223, TC-M-79): MT-104 (the rationale, the system prompt on the first tap only, a refusal and *Open settings*), MT-105 (foreground only: home, lock, a call, Siri, headphones, Bluetooth; the music comes back), MT-106 (a real recording: the words, the 60 s stop, nothing heard, the permission lost mid-way), MT-107 (no audio at rest in the app's container, the console or a copy), MT-108 (VoiceOver, the largest text, four languages, both themes). Needs a Mac with Xcode and an iPhone (a simulator uses the Mac's microphone and cannot show a call or Bluetooth). Not run. |
 
 ## 1. How to use this list
 
@@ -875,6 +876,53 @@ Added 2026-10-10 with the design ([03](../03-design.md) ADR-37, [ai/voice-input]
 | MT-87 | No audio at rest; the recogniser is on-device (Planned) | owner | E1/E4/E5 | no (planned, not built) | |
 
 **The website's `Permissions-Policy`.** `web/firebase.json` has `microphone=(self)` since the web voice pull request (S4b-BL-221), with TC-S-23 reading it from the live site and checklist row B1; MT-82..MT-87 are still to be run on real devices and browsers (the automated tests use a fake microphone and recorder: [06](../06-test-plan.md) TC-U-242..248, TC-S-51). Also named in [07](../07-secure-build-and-deploy.md) and checklist section 9.
+
+### 16.2 Voice input on the iPhone (S4b-BL-223, TC-M-79)
+
+Added 2026-10-15 with the iPhone's side of voice input ([03](../03-design.md) ADR-37, [ai/voice-input](../ai/voice-input.md)). **Built without Xcode or a phone: nothing below has been run.** Needs a Mac with Xcode (`cd ios && xcodegen generate`), your own team for a build on an iPhone with a free Apple ID (`ios/README.md`, *Signing*), an iPhone on iOS 17 or later, and a test AI key for Gemini, OpenAI, Groq or OpenRouter (Settings > *AI features*, your own key). Use fake numbers only. The guide calls the iPhone app *early*. MT-82..MT-87 above name the iPhone too: run them there as well.
+
+#### MT-104 The rationale, the system prompt on the first tap only, a refusal
+- **Area:** iPhone app. **Who:** owner. **Env:** E5 (an iPhone; a simulator for steps 1 and 2 only).
+- **Steps:** (1) A fresh install: Settings > *AI features*, own key, *Voice input* is **off**; Ask has no microphone button and iOS showed no microphone question at launch. Turn *Voice input* on: the disclosure names the host and the price. (2) Open Ask: the **Speak** button appears. Tap it: Doorprints' own *Use the microphone?* sheet comes **first**; *Not now* leaves everything as it was and iOS asks nothing. (3) Tap *Speak* again, then *Continue*: iOS shows its question with Doorprints' reason (the text of `NSMicrophoneUsageDescription`, in the app's language). Choose *Don't Allow*: the message says the microphone cannot be used and **Open settings** takes you to Settings > Doorprints; the keyboard still works. (4) In Settings > Doorprints turn **Microphone** on, come back, tap *Speak*: it records with no further question. (5) Settings > Doorprints > Microphone off again and tap *Speak* with the app still open: it says so, records nothing.
+- **Expected:** The question appears once, only after a tap and the rationale; a refusal leaves a working screen and a way to the settings; the orange microphone dot appears only while recording.
+- **Automated or reviewed by:** TC-S-53 (the callers of the permission, the plist strings); TC-U-255 (the status mapping, macOS CI job). Reviewer ran it: no.
+- Pass / Fail / Date: ____  by: ____
+
+#### MT-105 Foreground only: leaving the app, a call, Siri, headphones, Bluetooth
+- **Area:** iPhone app. **Who:** owner. **Env:** E5 (a real iPhone; a simulator cannot show a call or a headset).
+- **Steps:** Start a recording (Speak) and, one at a time: (1) swipe up to the Home screen; (2) press the side button to lock; (3) pull down Control Center or the notification centre; (4) call the phone from another phone; (5) say "Hey Siri" or hold the side button; (6) with wired or Bluetooth headphones: plug them in, then take them out (and connect AirPods); (7) play music in another app first, record, then stop. After each of 1 to 6 come back to Doorprints.
+- **Expected:** Each of 1 to 6 ends the recording: the orange dot goes away, nothing is written into the box, no words arrive later, and the button is *Speak* again (a message that the recording could not be made is acceptable after 6); no sound-recording is left running (check Control Center's mic indicator). In 7 the music resumes after the recording ends. A recording never continues in the background (the app declares no audio background mode).
+- **Automated or reviewed by:** `CaptureEndRules` (TC-U-254) for the decisions; the observers and `AVAudioSession` handling are only run here. Reviewer ran it: no.
+- Pass / Fail / Date: ____  by: ____
+
+#### MT-106 A real recording: the words, the limits, nothing heard, the permission lost
+- **Area:** iPhone app. **Who:** owner. **Env:** E5, with a test AI key.
+- **Steps:** (1) Say, in English: "two bhk twenty eight thousand rent deposit one point five lakh"; tap *Stop*: the words appear in the box, **nothing was sent**; edit one word and press **Ask**. Repeat in Hindi, Tamil and Telugu. (2) Tap *Speak* and stay silent for 5 s, then *Stop*: *Nothing was heard*, nothing sent. (3) Tap *Speak* and keep talking past one minute: it stops by itself at 1:00, writes out what it has and says so. (4) Tap *Speak*, then in Settings turn Microphone off (the app leaves the front): the recording ends. (5) With *Voice input* on and AI set to *Use my server* (or to Anthropic): no button, and the setting says why. (6) Airplane mode: *Speak* then *Stop* shows an error and the words are not lost from the box that were already there.
+- **Expected:** The recording is bounded in time; the transcript is always shown and editable first; a refusal or a network error leaves the box as it was; the clip type sent is `audio/wav` (the provider accepts it).
+- **Automated or reviewed by:** `VoiceSessionTest`, `PcmVoiceRecorderTest` (the limits with a fake source); `Pcm16ResamplerTest` (TC-U-253) for the samples. A real provider call and the sound of the clip: reviewer ran it: no.
+- Pass / Fail / Date: ____  by: ____
+
+#### MT-107 No audio at rest on the iPhone
+- **Area:** iPhone app. **Who:** owner. **Env:** E5 and Xcode (Window > Devices and Simulators).
+- **Steps:** (1) After several recordings, download the app's container (Devices and Simulators > Doorprints > the gear > Download Container) and look in `AppData` (Documents, Library, tmp) for `.wav`, `.m4a`, `.caf`, `.aac` files or a file of any kind that grew by a clip's size. (2) With the iPhone connected, open Console (or `log stream --predicate 'process == "Doorprints"'`), record, and read the lines: no audio, no base64, no words. (3) Make a *Save a copy* backup and a readable copy: no audio file or entry in either. (4) Xcode > Debug > Memory (optional): the memory returns to its level after *Stop*.
+- **Expected:** Nothing of the recording is on the iPhone after it ends, in a log, a copy or a backup.
+- **Automated or reviewed by:** TC-S-53 (the source uses no file, URL, log or store API). Reviewer ran it: no.
+- Pass / Fail / Date: ____  by: ____
+
+#### MT-108 VoiceOver, the largest text, four languages, both themes
+- **Area:** iPhone app. **Who:** owner, natives for hi, ta, te. **Env:** E5.
+- **Steps:** (1) VoiceOver on: swipe to the button under Ask: it is read as a button named in the app's language (*Speak instead of typing*); during a recording it reads *Stop*; the status (*Recording*, *Writing out the words*, *Done*) is announced once, not every second. (2) Settings > Accessibility > Display & Text Size > Larger Text at the largest: the button, *Cancel* and the clock wrap and do not overlap the text. (3) Repeat in English, Hindi, Tamil and Telugu (the Hindi, Tamil and Telugu strings are *under review*), light and dark. (4) The microphone question's text appears in the same four languages.
+- **Expected:** The button, its states and the result are reachable and announced without sight; targets hold at large text.
+- **Automated or reviewed by:** Roborazzi screenshots of the shared button (S4b-BL-222). VoiceOver: reviewer ran it: no.
+- Pass / Fail / Date: ____  by: ____
+
+| Id | Title | Who | Env | Reviewer ran it | Result |
+|---|---|---|---|---|---|
+| MT-104 | The rationale, the prompt on the first tap only, a refusal (iPhone) | owner | E5 | no (built; not run on an iPhone) | |
+| MT-105 | Foreground only: leaving the app, a call, Siri, headphones (iPhone) | owner | E5 | no (built; not run on an iPhone) | |
+| MT-106 | A real recording: the words, the limits, nothing heard (iPhone) | owner | E5 | no (built; not run on an iPhone) | |
+| MT-107 | No audio at rest in the app's container (iPhone) | owner | E5 | no (built; not run on an iPhone) | |
+| MT-108 | VoiceOver, the largest text, four languages (iPhone) | owner, natives | E5 | no (built; not run on an iPhone) | |
 
 ## 17. A provider safety block (S4b-BL-232)
 

@@ -7,8 +7,9 @@
 | v0.3    | 2026-10-10 | Claude (Code), engineer   | Voice pull request 2 (S4b-BL-219): the `Transcriber` core is built with no caller (Gemini and OpenAI-compatible adapters; Sarvam stays for voice pull request 7). OpenRouter's speech-to-text page was read on 2026-10-10: it takes JSON with base64 `input_audio` and also OpenAI-style `multipart/form-data` (section 2). |
 | v0.4    | 2026-10-15 | Claude (Code), engineer   | Voice pull request 3 (S4b-BL-220): the spoken-style eval cases, `docs/ai/evals/spoken-set.json` 0.1 and the `eval_set=spoken-set` choice, are built and described in [ai-design](ai-design.md) 8.8. Voice pull request 2 (#265) is merged. The golden set and the verdict logic are pinned by `SpokenSetTest`; no model was run here. |
 | v0.5    | 2026-10-15 | Claude (Code), engineer   | Voice pull request 4 (S4b-BL-221): the website's side is built (the *Voice input* switch, the microphone in the three boxes, `AudioRecorder`, `microphone=(self)`). Choices made: only the own-key path with Gemini and the OpenAI, Groq and OpenRouter presets (models `gpt-4o-mini-transcribe`, `openai/gpt-4o-mini-transcribe`, `whisper-large-v3-turbo`; a custom endpoint's opt-in with a Test call is left for later); the limit is 60 s and 2 MB (the 30 s is Sarvam's, voice PR 7); a person whose AI is the connected server gets no microphone. Re-read on 2026-10-15: CORS preflights from `https://doorprints.web.app` for the four providers' endpoints were answered (OpenAI echoes the origin, Groq and OpenRouter allow `*`, Gemini echoes the origin), so no provider refuses browser calls; OpenRouter's transcription catalogue lists `openai/gpt-4o-mini-transcribe`. The vendors' prices of section 2 were **not** re-fetched. |
+| v0.6    | 2026-10-15 | Claude (Code), engineer   | Voice pull request 6 (S4b-BL-223): the iPhone's side is built in code, without Xcode or a phone. Choices made: the capture is an `AVAudioEngine` input tap into memory, resampled in common Kotlin to 16 kHz mono 16-bit and sent as `audio/wav` through the shared `PcmVoiceRecorder` (section 4 said `AVAudioRecorder` with m4a; `AVAudioRecorder` writes to a file URL, which would put audio on disk, T-I48, and a minute of 16 kHz speech is 1.92 MB, inside the 2 MB cap); recording is foreground only (no `audio` background mode; the app resigning active, an interruption, a change of microphone, the engine's configuration change and a reset of the media services end it); the permission is `AVAudioApplication` (iOS 17), asked only from the button after its rationale; `NSMicrophoneUsageDescription` in four languages. *This device* (`SFSpeechRecognizer` forced on-device) is not offered; the section 7 item on the packs for Hindi, Tamil and Telugu stands. Nothing was run on a Mac or an iPhone: MT-104..MT-108. |
 
-Status: **Voice pull request 4 is in review (S4b-BL-221): the website has the *Voice input* setting and the microphone in Ask, Fill in from listing text and Plan notes. The phones' side (PR 5 and 6), Sarvam and the clip suite (PR 7) are still to do.** Written for the owner, the AI team and the reviewers of voice pull request 1.
+Status: **Voice pull request 4 is in review (S4b-BL-221): the website has the *Voice input* setting and the microphone in Ask, Fill in from listing text and Plan notes. Voice pull request 6 is in review (S4b-BL-223): the iPhone has the same setting and button through the shared screens, with its own microphone code; built and tested as far as Linux allows, not run on a Mac or an iPhone. Android (PR 5), Sarvam and the clip suite (PR 7) are still to do.** Written for the owner, the AI team and the reviewers of voice pull request 1.
 
 ## 1. What this is, and the honest value
 
@@ -75,7 +76,7 @@ aloud reaches the transcription host before it can be redacted.
   with key terms), `SarvamTranscriber`. A `postAiMultipart` helper beside `postAiJson` with the same timeout, redirect and
   error mapping.
 - **Capture:** the web uses `MediaRecorder` (webm/opus; Safari mp4) through `getUserMedia`, only on a tap. Android uses
-  `MediaRecorder` AAC/m4a with the `RECORD_AUDIO` runtime permission and a rationale. iOS uses `AVAudioRecorder` m4a with
+  `MediaRecorder` AAC/m4a with the `RECORD_AUDIO` runtime permission and a rationale. iOS uses an `AVAudioEngine` input tap into memory (as built in voice PR 6; `AVAudioRecorder` needs a file, so it is not used) with
   `NSMicrophoneUsageDescription`. Tap to talk, a hard stop at 30 s (60 s for providers other than Sarvam), a 2 MB cap;
   the bytes stay in memory only and are never stored, logged, synced or backed up. `firebase.json` Permissions-Policy
   `microphone=()` becomes `microphone=(self)`; TC-S-23 and checklist row B1 are updated with it.
@@ -117,7 +118,7 @@ Seven pull requests, S4b-BL-218..S4b-BL-224 in [10](../10-sprint-log.md) §12.7.
 | 3 | S4b-BL-220 | `spoken-set.json` and an `AI_EVAL_SET` path input; golden set unchanged (in review) | voice PR 2 |
 | 4 | S4b-BL-221 | web: setting, mic button, `MediaRecorder`, Permissions-Policy, specs, mutations | voice PR 2 and **kinds PR 5** |
 | 5 | S4b-BL-222 | Android: permission, recorder, button, Roborazzi, emulator denial test | voice PR 4 and kinds PR 5 |
-| 6 | S4b-BL-223 | iOS: plist key, `AVAudioRecorder`, compile-only plus manual rows | voice PR 5 |
+| 6 | S4b-BL-223 | iOS: plist key, an `AVAudioEngine` tap into memory (not `AVAudioRecorder`), compile-only plus manual rows (in review) | voice PR 5 |
 | 7 | S4b-BL-224 | Sarvam chat preset and speech provider, and the audio clip suite | voice PRs 4 and 5 |
 
 **Why the UI pull requests come after kinds PR 5:** the mic button sits inside text boxes that the kinds plan rebuilds on

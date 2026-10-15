@@ -27,5 +27,8 @@
 /* S4b-BL-136, Telugu, under review. */
 "NSCameraUsageDescription" = "మీ ఇతర పరికరంలోని Doorprints నమోదు కోడ్‌ను స్కాన్ చేయడానికి Doorprints కెమెరాను ఉపయోగిస్తుంది. ఏదీ నిల్వ చేయబడదు, పంపబడదు.";
 
+/* S4b-BL-223, Telugu, under review. */
+"NSMicrophoneUsageDescription" = "మీరు “మాట్లాడండి” నొక్కినప్పుడు మాత్రమే, AI పెట్టెల కోసం మీరు చెప్పేదాన్ని అక్షరాల్లోకి మార్చడానికి Doorprints మైక్రోఫోన్‌ను ఉపయోగిస్తుంది. రికార్డింగ్ మీరు ఎంచుకున్న AI సేవకు మీ స్వంత కీతో పంపబడుతుంది; ఈ iPhoneలో సేవ్ చేయబడదు.";
+
 /* S4b-BL-81: the name of the backup document type (Info.plist CFBundleDocumentTypes), under review. */
 "Doorprints backup" = "Doorprints బ్యాకప్";

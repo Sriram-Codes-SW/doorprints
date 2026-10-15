@@ -188,6 +188,21 @@ when your server answers, with **Anthropic**, with a program on your computer, o
   in the browser's site settings, or just type. **Cancel**, or the Escape key, throws a recording away; leaving the page or
   hiding the tab stops it.
 
+### Voice input (iPhone, early) {#voice-input-iphone}
+
+The iPhone app has the same microphone button under **Ask**, **Plan** and **Fill in from listing text**, and the same
+switch: in **Settings**, under **AI features**, turn on **Voice input**. It is off until you do, and it works only with your
+own AI key for **Gemini**, **OpenAI**, **Groq** or **OpenRouter**. What [Voice input (website)](#voice-input) says about where
+the audio goes, and about numbers and names being sent as audio, applies here too. The recording is held in memory on your
+iPhone and is not saved: not in a backup, not in a copy, not in iCloud.
+
+- **The microphone.** Doorprints explains first; the iPhone's own question comes after you tap **Continue**, and only the
+  first time. If you said no, open the iPhone's **Settings**, then **Doorprints**, and allow **Microphone**, or just type.
+- **Only while you are in the app.** A recording stops, and nothing is kept, if you leave the app, lock the phone, a call or
+  Siri comes in, or you plug in or take out headphones or a Bluetooth headset. **Cancel** throws a recording away.
+- **Early.** The iPhone app is an early version, and this button has not yet been tried on a real iPhone. If it does not
+  work for you, type instead.
+
 ## More than houses (experimental) {#other-kinds}
 
 **Your data** on the website has one more section in a build that ships schools, **What you track**, with the switch
