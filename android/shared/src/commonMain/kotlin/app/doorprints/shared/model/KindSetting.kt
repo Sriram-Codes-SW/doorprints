@@ -29,7 +29,7 @@ import kotlinx.serialization.json.JsonPrimitive
  * shared or put in a copy, and every doubt (a missing or broken value, a kind the build does not offer) falls back to
  * the house alone, which is the app a house hunter has always had.
  *
- * - **Available** kinds are what the build ships ([available]): a production build lists the house alone.
+ * - **Available** kinds are what the build ships ([available]): a build made with no list lists the house alone; the release build lists the school too (compiled in, off).
  * - **Released** kinds ([RELEASED]) need no switch; every other available kind is offered only while the person turns on
  *   *Experimental: more than houses*, which is shown only in a build that ships such a kind.
  * - **Enabled** kinds are the offered ones the person turned on (the house alone by default), and the **default** kind

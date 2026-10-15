@@ -33,7 +33,7 @@ import app.doorprints.DoorprintsApp
 fun ProvideAppServices(content: @Composable () -> Unit) {
     val services = (LocalContext.current.applicationContext as DoorprintsApp).container.services
     ProvidePlatformServices {
-        // The hidden schools kind's developer flag (S4b-BL-209): false unless a debug build was made with -Pdoorprints.devKinds=true.
+        // The schools kind's developer flag (S4b-BL-209; the release builds list the school without it, off until Settings' switch): false unless a debug build was made with -Pdoorprints.devKinds=true.
         CompositionLocalProvider(LocalAppServices provides services, LocalDevKinds provides BuildConfig.DEV_KINDS, content = content)
     }
 }

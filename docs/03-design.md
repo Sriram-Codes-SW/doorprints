@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.159 |
+| Version | 0.160 |
 | Date | 2026-10-15 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -170,6 +170,7 @@
 | 0.157 | 2026-10-15 | Claude (Code), engineer | **§18.14 "compiled in, off" on the phones** (owner, 2026-10-15; `feat/kinds-24-ship-school-phones`, the phones' half of the website's change): the Android release and the iPhone list `house,school` (`AVAILABLE_KINDS`, `IOS_AVAILABLE_KINDS`), `RELEASED` stays the house, so the school is available and not offered until *Experimental: more than houses* is on; kinds other than the house are read by the AI, the forms, the search and the copies only while the developer flag or the switch allows (`LocalKindsOn`, `SettingsStore.kindsOn`); the switch hint and the school listing tips carry a *preview* mark (hi, ta, te under review); accessibility pass of the chooser and What you track (headings, a disabled box says why). |
 | 0.158 | 2026-10-15 | Claude (Code), engineer | **ADR-37, §19: Stop never blocks the main thread, and an early end keeps the clip** (S4b-BL-317, S4b-BL-318; #367). `VoiceRecorder.stop()` is `suspend`: the drain wait for the last words (300 ms at most) suspends in `PcmVoiceRecorder` and `VoiceSession` runs it from the tap, so the screen stays responsive; the 2 MB cap, the memory-only audio and every release path are unchanged. A new `VoiceFailure.ENDED_EARLY` (reported through `PcmSource.endedEarly()`) is for a recording cut short from outside (a call, a changed microphone, the app leaving the front on the iPhone; a dead input on Android; the browser stopping its recorder or a track on the website): the audio so far is kept **in memory**, written out and shown in the box with the status *the recording ended early*, instead of the untrue *could not be made*; a clip of zero length ends quietly; a release (pause, leaving, the setting off, Cancel) still discards. The microphone is let go at once in every case. |
 | 0.159 | 2026-10-15 | Claude (Code), engineer | **New §18.18, the school as the default kind and the house turned off** (owner question of 2026-10-15; `fix/kinds-default-and-house-off`): the four rules and the trace of every place that uses the default or the house kind without the person choosing (new entries, shared listings, Hunt, reminders, deep links, import, copies, AI, the server's `kind`, the chooser). Fixed: *Start Hunt mode* with Houses off, a new entry in a space that is off, a Hunt alert's kind. The guide's *More than houses* page (four languages) and [06](06-test-plan.md) TC-U-268, TC-M-83 follow. |
+| 0.160 | 2026-10-15 | Claude (Code), docs | **Stale "developer flag" wording** (owner, 2026-10-15; `docs/school-compiled-in-wording`): §18.9's developer-flag paragraph says that since §18.14 the school is compiled in and shown by Settings' switch, and the flag only shows more than the shipped list in tests. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -2398,7 +2399,7 @@ code, and the core `money` is hidden. `term` is not in the cadence vocabulary (d
 `quarter`, `year`); adding one is a one-way door, so the school quotes the yearly fee and a choice of cadence per fee
 waits for a kind that needs it (S4b-BL-261).
 
-**The developer flag.** Off by default and not reachable in a release by accident. The website: `core/dev-kinds.ts`,
+**The developer flag.** *Since 2026-10-15 (§18.14) the school is compiled into the release builds and shown only by Settings' switch; the flag now only shows more than the shipped list, in tests. What follows is how it was built.* Off by default and not reachable in a release by accident. The website: `core/dev-kinds.ts`,
 `devKindsOn()` is true only in a development build (`ng serve`; Angular's `isDevMode()`, false in the deployed
 production build) **and** with localStorage `doorprints.dev.kinds` set to `school` by hand; any doubt (no storage, a
 throwing one, another value) is off. The phone: a `BuildConfig` field that only a debug build made with

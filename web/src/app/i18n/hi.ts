@@ -1690,7 +1690,7 @@ export const hi: Dict = {
   'connect.aiSends': 'आपका सवाल और मिलते-जुलते मकानों के नोट्स आपकी चुनी सेवा को जाते हैं; सहेजे गए संपर्क के नाम, फ़ोन और ईमेल पहले, जहाँ तक हम कर सकते हैं, बदल दिए जाते हैं। चिपकाया हुआ विज्ञापन जैसा है वैसा ही भेजा जाता है।',
   'connect.aiGuide': 'क्या AI मेरे लिए ठीक है? गाइड पढ़ें',
   'connect.aiGuideAria': 'क्या AI मेरे लिए ठीक है? गाइड पढ़ें (नए टैब में खुलता है)',
-  // S4b-BL-209 (2026-10-13): the hidden schools kind, developer flag only. Under review (owner rule: hi/ta/te ship marked under review).
+  // S4b-BL-209 (2026-10-13): the schools kind, compiled in and shown only after Settings' switch. Under review (owner rule: hi/ta/te ship marked under review).
   'school.newTitle': 'नया स्कूल',
   'school.many': 'स्कूल',
   'school.delete': 'स्कूल हटाएँ',

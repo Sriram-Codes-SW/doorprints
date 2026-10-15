@@ -222,6 +222,6 @@ Instead of your AI service, **Sarvam** (an Indian speech-to-text service, Sarvam
 
 ## More than houses (experimental) {#other-kinds}
 
-**Your data** on the website has one more section in a build that ships schools, **What you track**, with the switch
-**Experimental: more than houses**. It is off by default, the published site does not have it, and while it is off
+**Your data** on the website has one more section, **What you track**, with the switch
+**Experimental: more than houses**. It is off by default, and while it is off
 nothing in this guide changes. On, Doorprints can keep track of schools too: see [More than houses (experimental)](other-kinds.md).

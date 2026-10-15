@@ -37,13 +37,13 @@ optional server, with the contracts pinned by shared vector files ([docs/schemas
 
 ## What it does
 
-*Shipped* means in the app as built for release (the default build). *No* means a development build only.
+*Shipped* means in the app as built for release (the default build). *No* means not released: for the school, compiled into the build but off until the person turns on *Experimental: more than houses*.
 
 | Feature | Web ([doorprints.web.app](https://doorprints.web.app)) | Android | iPhone | Shipped |
 |---|---|---|---|---|
 | **Any kind** | | | | |
 | One candidate model: kind file, typed extras, money with cadence; search, copies and AI prompts follow it | Yes | Yes | Yes | Yes (houses) |
-| Spaces: a chooser and *What you track*, one space per kind, Delete all in this space | Dev build | Dev build | Dev build | No |
+| Spaces: a chooser and *What you track*, one space per kind, Delete all in this space | Compiled in, off | Compiled in, off | Compiled in, off | No |
 | Optional AI with your own key (Gemini, an OpenAI-compatible endpoint or Anthropic): Ask, fill from listing text, plan visits | Yes | Yes | Yes | Yes |
 | Voice input into the AI boxes (off by default, audio kept in memory only) | Yes | Yes | Yes (early, untested on a device) | Yes |
 | Google Drive: encrypted backups and sync between your devices | Yes | Yes | Yes (build with your own Google client id) | Yes |

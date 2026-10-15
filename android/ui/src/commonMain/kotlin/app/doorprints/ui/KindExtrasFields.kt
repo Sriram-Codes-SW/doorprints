@@ -294,7 +294,7 @@ internal fun HouseEntity.forKind(kind: BuiltInKind): HouseEntity =
 
 /**
  * The developer's kind picker on a new candidate's form (kinds PR 5, S4b-BL-209): *Save a house* or *Save a school*,
- * each the kind's own `kind.new` label, as radio rows. Drawn only while [LocalDevKinds] is true, so no release shows it;
+ * each the kind's own `kind.new` label, as radio rows. Drawn only while [LocalDevKinds] is true, so a build without the developer flag never shows it;
  * one kind per data set, chosen in Settings, is S4b-BL-212's.
  */
 @Composable
