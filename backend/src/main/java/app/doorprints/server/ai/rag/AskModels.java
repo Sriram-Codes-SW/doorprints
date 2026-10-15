@@ -19,6 +19,7 @@
 package app.doorprints.server.ai.rag;
 
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import app.doorprints.server.house.House;
 import app.doorprints.server.house.HouseStatus;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -47,9 +48,16 @@ public final class AskModels {
     }
 
     /**
-     * Body of the ask call: the question and optional filters.
+     * Body of the ask call: the question, optional filters and, since S4b-BL-290, the optional {@code kind} of the space asked
+     * about. Absent is today's call (every candidate, as before); a kind must be well formed here and in
+     * {@code app.kinds.available} ({@code AiKinds.require}, a 400 otherwise) before any search runs.
      */
-    public record AskRequest(@NotBlank @Size(max = 4000) String question, @Valid AskFilters filters) {
+    public record AskRequest(@NotBlank @Size(max = 4000) String question, @Valid AskFilters filters,
+                             @Pattern(regexp = House.KIND_PATTERN) String kind) {
+        /** A call that names no kind. */
+        public AskRequest(String question, AskFilters filters) {
+            this(question, filters, null);
+        }
     }
 
     /**

@@ -464,8 +464,11 @@ interface Repository {
     /** Why AI is not offered, or null when it is ([aiEnabled]). */
     val aiOff: StateFlow<AiOff?>
 
-    /** Whether AI answers from the person's own key on this phone (the server's Ask and Plan take no kind, so only this one reads a space other than the house). */
+    /** Whether AI answers from the person's own key on this phone (which reads any space; the server's reads only the kinds [aiServerKinds] names). */
     val aiOwnKey: StateFlow<Boolean>
+
+    /** The kinds the server's Ask and Plan accept, from its status (S4b-BL-290); none for an older server or while the house is the only kind. */
+    val aiServerKinds: StateFlow<List<String>> get() = NoServerKinds
     suspend fun refreshAiStatus(): Boolean
 
     /** Turns this phone's *AI features* switch on or off; [aiEnabled] follows at once. */
@@ -705,3 +708,5 @@ interface Repository {
      */
     data class UndoResult(val removed: Int, val kept: Int, val keptHouses: Set<String> = emptySet())
 }
+
+private val NoServerKinds: StateFlow<List<String>> = kotlinx.coroutines.flow.MutableStateFlow<List<String>>(emptyList())

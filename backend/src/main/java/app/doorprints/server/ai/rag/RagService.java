@@ -126,29 +126,57 @@ public class RagService {
      * @throws AiUnavailableException if retrieval or the model call fails
      */
     public AskResponse ask(String question, AskFilters filters) {
+        return ask(question, filters, null);
+    }
+
+    /**
+     * As {@link #ask(String, AskFilters)}, for one kind's candidates (S4b-BL-290, the AI scoping rule of docs/03 §12 and
+     * §18.12). {@code kind} null is the call above, byte for byte (every document the store holds and the server's kinds
+     * allow). A kind must be one of {@code app.kinds.available} (else a 400, as Extract answers) and then only that kind's
+     * candidates are read: a built-in kind other than the house is also searched by the metadata {@code kind} its documents
+     * carry, and every kind (the house and a kind with no stamp included) is checked against the stored row's own kind, so
+     * the answer, its citations and the prompt hold that kind's records and no other. The refusal for nothing found is the
+     * kind's own sentence.
+     * @throws BadRequestException if the question is blank or too long, or the kind is not available here
+     */
+    public AskResponse ask(String question, AskFilters filters, String kind) {
         if (question == null || question.isBlank()) throw new BadRequestException("question must not be blank");
         if (question.length() > props.maxQuestionChars()) {
             throw new BadRequestException("question is longer than " + props.maxQuestionChars() + " characters");
         }
+        if (kind != null) kinds.require(kind);
+        // Stamped documents (a built-in kind other than the house) are narrowed in the store; the rest in memory.
+        String stamp = kind == null || kinds.of(kind) == null ? null : kind;
+        int topK = props.rag().topK();
+        // topK is at most 20 (AiProperties.Rag), so the fetch is at most 80.
+        int fetch = kind == null || stamp != null ? topK : topK * SCOPE_OVERFETCH;
         List<Document> docs;
         long started = System.nanoTime();
         try {
             var search = SearchRequest.builder()
                     .query(question)
-                    .topK(props.rag().topK())
+                    .topK(fetch)
                     .similarityThreshold(props.rag().similarityThreshold())
-                    .filterExpression(AskPrompts.filter(filters))
+                    .filterExpression(AskPrompts.filter(filters, null, stamp))
                     .build();
             docs = vectorStore.similaritySearch(search);
-            if (VisitQuestions.isAbout(question)) docs = withVisited(docs, visitedDocs(question, filters));
+            List<Document> visited = VisitQuestions.isAbout(question) ? visitedDocs(question, filters, stamp) : null;
+            Map<String, House> rows = null;
+            if (kind != null) {
+                rows = rowsOf(docs, visited);
+                docs = inKind(docs, kind, rows);
+                if (docs != null && docs.size() > topK) docs = docs.subList(0, topK);
+                visited = inKind(visited, kind, rows);
+            }
+            if (visited != null) docs = withVisited(docs, visited);
             docs = availableOnly(docs, kinds);
-            if (docs != null && !docs.isEmpty()) docs = redacted(docs, contactsOf(docs));
+            if (docs != null && !docs.isEmpty()) docs = redacted(docs, rows != null ? rows : contactsOf(docs));
         } catch (RuntimeException e) {
             throw new AiUnavailableException("Search over your houses failed", e);
         }
         if (docs == null || docs.isEmpty()) {
             // Nothing relevant: answer without spending an LLM call.
-            return new AskResponse(AskPrompts.I_DONT_KNOW, List.of(), false, 0);
+            return new AskResponse(refusalFor(kind), List.of(), false, 0);
         }
 
         // Ids only (never the question, the text, notes, names or phones): which houses reach the model, in order.
@@ -170,7 +198,7 @@ public class RagService {
             throw new AiUnavailableException("Answering failed", e);
         }
         if (answer == null || answer.answer() == null || answer.answer().isBlank()) {
-            return new AskResponse(AskPrompts.I_DONT_KNOW, List.of(), false, docs.size());
+            return new AskResponse(refusalFor(kind), List.of(), false, docs.size());
         }
         return answered(answer, docs, question);
     }
@@ -186,13 +214,13 @@ public class RagService {
      * {@code lastVisit}, newest first; the unvisited ones stay in the store's order (most similar first). A store
      * indexed before this metadata existed has no such documents, so the ordinary result stands (re-index once).
      */
-    private List<Document> visitedDocs(String question, AskFilters filters) {
+    private List<Document> visitedDocs(String question, AskFilters filters, String stamp) {
         boolean negated = VisitQuestions.isNegated(question);
         var found = vectorStore.similaritySearch(SearchRequest.builder()
                 .query(question)
                 .topK(VISITED_FETCH_MAX)
                 .similarityThreshold(0.0)
-                .filterExpression(AskPrompts.filter(filters, !negated))
+                .filterExpression(AskPrompts.filter(filters, !negated, stamp))
                 .build());
         if (found == null) return List.of();
         return negated ? found : byLastVisit(found);
@@ -245,6 +273,35 @@ public class RagService {
         var out = new HashMap<String, House>();
         if (!ids.isEmpty()) houses.findAllById(ids).forEach(h -> out.put(h.getId().toString(), h));
         return out;
+    }
+
+    /** How many times the top-K a search fetches when the kind cannot be narrowed in the store (the house, a kind with no stamp). */
+    static final int SCOPE_OVERFETCH = 4;
+
+    /** The stored rows of the documents of both lists (either may be null), by id: the authority on which kind a document is of. */
+    private Map<String, House> rowsOf(List<Document> docs, List<Document> visited) {
+        var all = new ArrayList<Document>();
+        if (docs != null) all.addAll(docs);
+        if (visited != null) all.addAll(visited);
+        return contactsOf(all);
+    }
+
+    /**
+     * The documents whose stored row is of {@code kind}, in order. A document with no row (its id is not a candidate's, or the
+     * row is gone) cannot be shown to be of the kind and is dropped. Null stays null. Pure given the rows.
+     */
+    static List<Document> inKind(List<Document> docs, String kind, Map<String, House> rows) {
+        if (docs == null) return null;
+        return docs.stream().filter(d -> {
+            var row = rows.get(d.getId());
+            return row != null && kind.equals(row.getKind());
+        }).toList();
+    }
+
+    /** The sentence for an answer with nothing to go on: the kind's own when it is a built-in kind, else the house's. */
+    private String refusalFor(String kind) {
+        var k = kind == null ? null : kinds.of(kind);
+        return k == null ? AskPrompts.I_DONT_KNOW : k.refusal();
     }
 
     /**

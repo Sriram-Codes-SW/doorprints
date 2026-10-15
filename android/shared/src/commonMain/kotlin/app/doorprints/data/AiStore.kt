@@ -34,6 +34,7 @@ import app.doorprints.shared.api.AskResponseDto
 import app.doorprints.shared.api.HouseDraftDto
 import app.doorprints.shared.api.PlanRequest
 import app.doorprints.shared.api.PlanResponseDto
+import app.doorprints.shared.model.KindSettingRules
 import app.doorprints.shared.model.SpaceView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -70,6 +71,11 @@ internal class AiStore(
     /** Whether the person's own AI answers on this phone (kinds PR C): the only one that reads a space other than the house. */
     val ownKey: StateFlow<Boolean> = _ownKey.asStateFlow()
 
+    private val _serverKinds = MutableStateFlow<List<String>>(emptyList())
+
+    /** The kinds the server's status said its Ask and Plan accept (S4b-BL-290); none for an older server, a failed status or no server. */
+    val serverKinds: StateFlow<List<String>> = _serverKinds.asStateFlow()
+
     /** What the server said last: AI on for this device, or why not (NO_SERVER, SERVER, DEVICE). */
     private var serverAi: AiOff? = AiOff.NO_SERVER
 
@@ -82,10 +88,12 @@ internal class AiStore(
     suspend fun refreshStatus(): Boolean = withContext(Dispatchers.IO) {
         val s = settings.current()
         serverAi = if (!s.serverConfigured) {
+            _serverKinds.value = emptyList()
             AiOff.NO_SERVER
         } else {
             runCatching { apiFor(s.serverUrl, s.apiKey).aiStatus() }.fold(
                 { status ->
+                    _serverKinds.value = status.kinds
                     when {
                         status.offForDevice -> AiOff.DEVICE
                         !status.enabled -> AiOff.SERVER
@@ -235,17 +243,29 @@ internal class AiStore(
     }
 
     /**
-     * Ask and Plan read one [space] on this device's AI (kinds PR C, S4b-BL-289); the server's two calls take no kind and read
-     * every candidate (S4b-BL-290), which is why the screens offer a space other than the house only on the person's own AI.
+     * Ask and Plan read one [space] (kinds PR C, S4b-BL-289): on this device's AI the candidates it holds; on the server, since
+     * S4b-BL-290, the space's kind is sent when the server's status named it, and the house's call is today's, with no kind. A
+     * space the server did not name is refused ([ApiException.Kind.AI_OFF]) and nothing is sent: an older server would read
+     * every candidate.
      */
     suspend fun ask(question: String, space: SpaceView? = null): AskResponseDto {
         requireOn()
-        return ownKeyAi()?.let { withContext(Dispatchers.IO) { it.ask(question, holds = space.holder(), kind = space?.kind) } } ?: withApi { it.ask(question) }
+        return ownKeyAi()?.let { withContext(Dispatchers.IO) { it.ask(question, holds = space.holder(), kind = space?.kind) } }
+            ?: serverKind(space).let { kind -> withApi { if (kind == null) it.ask(question) else it.ask(question, kind) } }
     }
 
     suspend fun planVisits(request: PlanRequest, space: SpaceView? = null): PlanResponseDto {
         requireOn()
-        return ownKeyAi()?.let { withContext(Dispatchers.IO) { it.planVisits(request, holds = space.holder()) } } ?: withApi { it.planVisits(request) }
+        return ownKeyAi()?.let { withContext(Dispatchers.IO) { it.planVisits(request, holds = space.holder()) } }
+            ?: serverKind(space).let { kind -> withApi { it.planVisits(if (kind == null) request else request.copy(kind = kind)) } }
+    }
+
+    /** The kind to send the server for [space]: none for the house (today's call), the space's when the server named it, else a refusal. */
+    private fun serverKind(space: SpaceView?): String? {
+        val kind = space?.kind
+        if (kind == null || kind == KindSettingRules.HOUSE) return null
+        if (kind !in _serverKinds.value) throw ApiException(ApiException.Kind.AI_OFF)
+        return kind
     }
 
     private fun SpaceView?.holder(): (String?) -> Boolean = this?.let { v -> { kind: String? -> v.holds(kind) } } ?: { true }

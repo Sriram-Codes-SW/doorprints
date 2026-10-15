@@ -201,6 +201,11 @@ data class AiStatusDto(
     val embeddingModel: String? = null,
     /** AI is on, but the server's owner turned it off for this device (docs/03 §12.1). Older servers omit it. */
     val offForDevice: Boolean = false,
+    /**
+     * The kinds the server's Ask and Plan accept (`kind` in their requests, S4b-BL-290; its `app.kinds.available`). Left out while the
+     * house is the only one and by an older server, whose Ask and Plan would read every space.
+     */
+    val kinds: List<String> = emptyList(),
 )
 
 // ---- Pairing (docs/03 §12.1, ADR-25; backend app.doorprints.server.device.PairingController) ----
@@ -259,9 +264,12 @@ data class HouseDraftDto(
     val extras: JsonObject? = null,
 )
 
-/** A question about the saved houses. */
+/**
+ * A question about the saved houses. [kind] (S4b-BL-290) is the space asked about, for a space other than the house only; left out
+ * (null) it is today's body, and the server reads every candidate.
+ */
 @Serializable
-data class AskRequest(val question: String)
+data class AskRequest(val question: String, val kind: String? = null)
 
 /** A house the answer relied on, with a label and the line of its record that supports it. */
 @Serializable
@@ -280,9 +288,12 @@ data class AskResponseDto(
     val retrieved: Int = 0,
 )
 
-/** A visit-plan request: the wish in words, the start point, and an optional cap on stops. */
+/**
+ * A visit-plan request: the wish in words, the start point, an optional cap on stops and, for a space other than the house, its
+ * [kind] (S4b-BL-290; left out it is today's body).
+ */
 @Serializable
-data class PlanRequest(val question: String, val startLat: Double, val startLon: Double, val maxStops: Int? = null)
+data class PlanRequest(val question: String, val startLat: Double, val startLon: Double, val maxStops: Int? = null, val kind: String? = null)
 
 /** One stop of a plan, in visiting order, with the walk from the previous point. */
 @Serializable

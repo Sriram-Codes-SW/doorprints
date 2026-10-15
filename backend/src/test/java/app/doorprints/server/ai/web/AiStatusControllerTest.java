@@ -105,4 +105,25 @@ class AiStatusControllerTest {
                 .status(mock(HttpServletRequest.class));
         assertThat(s.toString()).doesNotContain("localhost").doesNotContain("secret-key-1");
     }
+
+    /** S4b-BL-290: the kinds Ask and Plan accept are named only when there is more than the house, and only while AI is on. */
+    @Test
+    void theStatusNamesTheKindsAskAndPlanAcceptOnlyBeyondTheHouse() {
+        var geminiKey = mock(GeminiKey.class);
+        when(geminiKey.current()).thenReturn(Optional.of("k"));
+        var settings = mock(ServerSettings.class);
+        var request = mock(HttpServletRequest.class);
+        java.util.function.BiFunction<Boolean, app.doorprints.server.ai.kind.AiKinds, AiStatusController.AiStatus> status =
+                (enabled, kinds) -> new AiStatusController(enabled, false, "aistudio", GEMINI, "chat-model", "vertex-model",
+                        "embed-model", "", geminiKey, settings, kinds).status(request);
+        assertThat(status.apply(true, app.doorprints.server.ai.kind.AiKinds.OFF).kinds()).isNull();
+        assertThat(status.apply(true, app.doorprints.server.ai.kind.AiKinds.schools(true)).kinds())
+                .containsExactly("house", "school");
+        assertThat(status.apply(true, new app.doorprints.server.ai.kind.AiKinds(java.util.List.of("clinic", "school"))).kinds())
+                .containsExactly("house", "clinic", "school");
+        assertThat(status.apply(false, app.doorprints.server.ai.kind.AiKinds.schools(true)).kinds()).isNull();
+        // Paused for the whole server: off, and nothing about kinds.
+        when(settings.aiPaused()).thenReturn(true);
+        assertThat(status.apply(true, app.doorprints.server.ai.kind.AiKinds.schools(true)).kinds()).isNull();
+    }
 }

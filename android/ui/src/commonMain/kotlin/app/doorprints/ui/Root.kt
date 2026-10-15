@@ -246,9 +246,10 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
         val current = backStack?.destination?.route
         // The Assistant tab stays while the user is on it, even if the status turns off meanwhile: otherwise the bar,
         // which is drawn only on a tab, vanished and left the screen with no navigation (whole-app audit).
-        // Ask and Plan read one space; a space other than the house has the assistant only on the person's own AI (S4b-BL-290).
+        // Ask and Plan read one space; a space other than the house has the assistant on the person's own AI, or on a server that names the kind (S4b-BL-290).
         val ownKey by repo.aiOwnKey.collectAsStateWithLifecycle()
-        val assistantShown = SpaceScope.aiShownIn(space.kind, setting.available, aiEnabled, ownKey)
+        val serverKinds by repo.aiServerKinds.collectAsStateWithLifecycle()
+        val assistantShown = SpaceScope.aiShownIn(space.kind, setting.available, aiEnabled, ownKey, serverKinds)
         val tabs = baseTabs(space) + (if (assistantShown || current == "assistant") listOf(assistantTab) else emptyList()) + settingsTab
 
         // The guided tour (S4b-FR-39): its steps, the boxes of what it points at, and whether it was offered before.

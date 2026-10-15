@@ -85,7 +85,7 @@ public class AiController {
      */
     @PostMapping("/ask")
     public AskResponse ask(@Valid @RequestBody AskRequest body) {
-        return rag.ask(body.question(), body.filters());
+        return rag.ask(body.question(), body.filters(), body.kind());
     }
 
     /**

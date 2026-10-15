@@ -23,6 +23,7 @@ import app.doorprints.server.ai.kind.AiKind;
 import app.doorprints.server.ai.kind.AiKinds;
 import app.doorprints.server.ai.rag.KindDocuments;
 import app.doorprints.server.common.BadRequestException;
+import app.doorprints.server.house.House;
 import app.doorprints.server.house.HouseDto;
 import app.doorprints.server.house.HouseService;
 import app.doorprints.server.house.HouseStatus;
@@ -167,8 +168,18 @@ public class HouseSearchService {
      * redacted, see {@link HouseSummary#of}.
      */
     public List<HouseSummary> search(Criteria c) {
+        return search(c, null);
+    }
+
+    /**
+     * As {@link #search(Criteria)}, over the candidates of one kind only (S4b-BL-290; {@code kind} null is every candidate,
+     * as before). The kind is compared with the stored row's own kind and was checked against {@code app.kinds.available}
+     * by the caller; it is never part of a query.
+     */
+    public List<HouseSummary> search(Criteria c, String kind) {
         int limit = c == null || c.limit() == null ? DEFAULT_RESULTS : Math.clamp(c.limit(), 1, MAX_RESULTS);
         return houses.list(null).stream()
+                .filter(h -> inKind(h, kind))
                 .map(this::forPlan)
                 .filter(h -> matches(h, c))
                 .sorted(NEWEST_FIRST)
@@ -182,9 +193,19 @@ public class HouseSearchService {
      * @throws IllegalArgumentException if the latitude or longitude is out of range
      */
     public List<HouseSummary> nearby(double lat, double lon, double radiusMeters) {
+        return nearby(lat, lon, radiusMeters, null);
+    }
+
+    /** As {@link #nearby(double, double, double)}, over the candidates of one kind only (S4b-BL-290; null is every candidate). */
+    public List<HouseSummary> nearby(double lat, double lon, double radiusMeters, String kind) {
         if (!(lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180)) throw new BadRequestException("invalid coordinates");
-        return houses.nearby(lat, lon, Math.clamp(radiusMeters, 1, 5000)).stream().sorted(NEAREST_FIRST).map(this::forPlan)
-                .map(this::summary).toList();
+        return houses.nearby(lat, lon, Math.clamp(radiusMeters, 1, 5000)).stream().filter(h -> inKind(h, kind))
+                .sorted(NEAREST_FIRST).map(this::forPlan).map(this::summary).toList();
+    }
+
+    /** Whether {@code h} is of {@code kind}: every candidate when {@code kind} is null. */
+    public static boolean inKind(HouseDto h, String kind) {
+        return kind == null || kind.equals(h.kind() == null ? House.HOUSE_KIND : h.kind());
     }
 
     public HouseDto details(UUID id) {

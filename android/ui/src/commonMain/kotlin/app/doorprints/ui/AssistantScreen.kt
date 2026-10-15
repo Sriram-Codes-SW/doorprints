@@ -282,10 +282,11 @@ fun AssistantScreen(onOpenHouse: (String) -> Unit, onOpenMap: () -> Unit = {}) {
     val vm: AssistantViewModel = viewModel(key = space.kind) {
         AssistantViewModel(services.repository, services.location, createSavedStateHandle(), if (space.multi) space.view else null)
     }
-    // Ask and Plan read a space other than the house only on the person's own AI (the server's take no kind, S4b-BL-290).
+    // Ask and Plan read a space other than the house on the person's own AI, or on a server that names the kind (S4b-BL-290).
     val ownKey by repo.aiOwnKey.collectAsStateWithLifecycle()
+    val serverKinds by repo.aiServerKinds.collectAsStateWithLifecycle()
     val aiOn by repo.aiEnabled.collectAsStateWithLifecycle()
-    val aiEnabled = SpaceScope.aiShownIn(space.kind, space.setting.available, aiOn, ownKey)
+    val aiEnabled = SpaceScope.aiShownIn(space.kind, space.setting.available, aiOn, ownKey, serverKinds)
     val aiOff by repo.aiOff.collectAsStateWithLifecycle()
     val tab by vm.tab.collectAsStateWithLifecycle()
     var retrying by remember { mutableStateOf(false) }

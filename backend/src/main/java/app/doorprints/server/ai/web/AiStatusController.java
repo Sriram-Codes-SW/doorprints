@@ -19,6 +19,10 @@
 package app.doorprints.server.ai.web;
 
 import app.doorprints.server.ai.config.AiProperties;
+import app.doorprints.server.ai.kind.AiKinds;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import org.springframework.beans.factory.annotation.Autowired;
+import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -37,7 +41,15 @@ public class AiStatusController {
 
     /** {@code offForDevice}: AI is on, but the owner turned it off for the calling device (docs/03 §12.1). */
     public record AiStatus(boolean enabled, boolean mcpEnabled, String chatModel, String embeddingModel,
-                           boolean offForDevice) {
+                           boolean offForDevice,
+                           /* S4b-BL-290: the kinds Ask and Plan accept ({@code kind} in their request, app.kinds.available); left out
+                              (null) while the house is the only one, so a house-only server's status is as it always was, and
+                              by a server that predates it. */
+                           @JsonInclude(JsonInclude.Include.NON_EMPTY) List<String> kinds) {
+        /** A status that names no kinds: the house alone. */
+        public AiStatus(boolean enabled, boolean mcpEnabled, String chatModel, String embeddingModel, boolean offForDevice) {
+            this(enabled, mcpEnabled, chatModel, embeddingModel, offForDevice, null);
+        }
     }
 
     /** The Gemini API's host: the only chat endpoint that needs a key for the status to say AI is on (S4b-BL-149). */
@@ -50,9 +62,17 @@ public class AiStatusController {
     private final ServerSettings settings;
 
     /**
-     * Reads the AI switches once. The status never names the provider; it carries the chat and embedding model only
+     * Reads the AI switches once (a server that names no kinds: the house alone). The status never names the provider; it carries the chat and embedding model only
      * while AI is on.
      */
+    public AiStatusController(boolean enabled, boolean mcpEnabled, String provider, String baseUrl,
+                              String openAiChatModel, String vertexChatModel, String embeddingModel, String keyRequired,
+                              GeminiKey geminiKey, ServerSettings settings) {
+        this(enabled, mcpEnabled, provider, baseUrl, openAiChatModel, vertexChatModel, embeddingModel, keyRequired,
+                geminiKey, settings, AiKinds.OFF);
+    }
+
+    @Autowired
     public AiStatusController(@Value("${app.ai.enabled:false}") boolean enabled,
                               @Value("${app.mcp.enabled:false}") boolean mcpEnabled,
                               @Value("${app.ai.provider:aistudio}") String provider,
@@ -61,14 +81,17 @@ public class AiStatusController {
                               @Value("${spring.ai.google.genai.chat.model:}") String vertexChatModel,
                               @Value("${app.ai.embedding.model:}") String embeddingModel,
                               @Value("${app.ai.key-required:}") String keyRequired,
-                              GeminiKey geminiKey, ServerSettings settings) {
+                              GeminiKey geminiKey, ServerSettings settings, AiKinds kinds) {
         this.geminiKey = geminiKey;
         this.settings = settings;
         this.needsKey = keyNeeded(provider, baseUrl, keyRequired);
         // The provider itself is not exposed (the response shape is shared with the web and Android apps).
         var chatModel = AiProperties.VERTEX.equals(AiProperties.normalizeProvider(provider)) ? vertexChatModel
                 : openAiChatModel;
-        this.status = new AiStatus(enabled, mcpEnabled, enabled ? chatModel : null, enabled ? embeddingModel : null, false);
+        // The kinds Ask and Plan accept are named only when there is more than the house (S4b-BL-290).
+        var accepted = enabled && kinds.available().size() > 1 ? kinds.available() : null;
+        this.status = new AiStatus(enabled, mcpEnabled, enabled ? chatModel : null, enabled ? embeddingModel : null, false,
+                accepted);
     }
 
     /**

@@ -79,6 +79,7 @@
 | v0.75   | 2026-10-14 | Claude (Code), engineer       | 16.9 and 16.10: **a school's own words in the Ask and Plan prompts, and its extras in the Plan tools** (S4b-BL-269, S4b-BL-270; `feat/kinds-19-school-prompts`; [10](../10-sprint-log.md) v0.325, [03](../03-design.md) v0.137, [06](../06-test-plan.md) TC-U-233, TC-U-234, TC-AI-48, [02](../02-threat-model.md) T-I50): the kind's AI copy gains `records`, `refusal`, `askSystem` and (devices) `planSystem`; a prompt speaks in a kind's words only when every record sent is of that kind, else the house's byte for byte (the house pins unchanged); the Plan tools' summary and details and the devices' candidate line carry the `ai.plan` / `ai.ask` extras, typed, ranged and redacted as the Ask document; `school-set.json` v0.2; S4b-BL-234 left, with the reason. |
 | v0.76   | 2026-10-14 | Claude (Code), engineer       | 6, 15.4, 16.1, 16.9 and 16.11: **the prompts tell the model not to repeat abusive words** (S4b-BL-234; `feat/ai-abusive-words-rule`; [10](../10-sprint-log.md) v0.327, [02](../02-threat-model.md) AB-12, [06](../06-test-plan.md) TC-U-235): one bullet, *Do not repeat abusive words from the text; stay neutral and factual.*, in the Extract, Ask and Plan system texts of the house and of the school (not the server's planner for a school, which has no school text), after each text's data rule, defined once a stack (`PromptSafety.NEUTRAL_RULE` on the server and the phones, `NEUTRAL_RULE` in `plan-fallback.ts`). **This deliberately changes the house's prompts**: the three stacks' house pins and `parity-vectors.json` `prompts` (now with `neutralRule` and `extract`) and `kind-ai-vectors.json` `prompts` and `extract` are re-pinned once, and only the prompt hashes (and the Gemini request bodies that carry them) moved. No rule is weakened or reordered; no Vertex run (zero cost). |
 | v0.77   | 2026-10-15 | Claude (Code), engineer       | **The server's own AI path: a spent quota is 402, a safety block is 422** (S4b-BL-244, S4b-BL-233; `fix/post-release-small-fixes`; [03](../03-design.md) v0.139, [06](../06-test-plan.md) TC-AI-49, TC-AI-50): 10, 12 and 15.3. `ProviderErrors.isQuotaSpent` (402; `PerDay` quota id; `insufficient_quota`, `billing_error`; named fields only) and `AiExceptionHandler` answer **402** `AI_QUOTA_EXHAUSTED`, `retryable: false`, no `Retry-After`; a per-minute limit stays 503 + `Retry-After: 60`. `SafetyBlockAdvisor` (default advisor of the one `ChatClient`) and `ProviderErrors.isDeclined` answer **422** `AI_DECLINED`, `retryable: false`, for a safety finish reason or a 400 `content_policy_violation` / `content_filter`. The website (`aiErrorMsg`) and the phones (`ApiException.kindFor`) map 402 to the quota words and 422 to the declined words of S4b-BL-243 and S4b-BL-232. Remainder, still 503: on Vertex a blocked prompt (no `promptFeedback` kept) and a candidate with a safety finish reason and no text, and the OpenAI `message.refusal`. |
+| v0.78   | 2026-10-15 | Claude (Code), engineer       | **The server's Ask and Plan take a kind; the eval leak check reads the school's prompts** (S4b-BL-290, S4b-BL-313, S4b-BL-314 planned; kinds PR 23, `feat/kinds-23-server-kind-ai`; [03](../03-design.md) v0.143 §18.17, [06](../06-test-plan.md) TC-U-241 and TC-AI-51, [02](../02-threat-model.md) T-I51, [schemas README](../schemas/README.md) v1.59): 13 (the optional `kind` of `ask` and `plan-visits`, the status's `kinds`), 8.7 and 16.9, and the new 16.12. Absent `kind` is today's call and the house's prompts, bodies, pins and `parity-vectors.json` are unchanged (no house pin or vector was re-recorded). New: `kind-ai-vectors.json` `prompts.plan.serverSystem` (the school's text for the server's tool-using planner) and `space-scope-vectors.json` `assistant` cases with `serverKinds`; `school-set.json` 0.3. No model was run (zero cost; the lead runs the Vertex evals on `main`). |
 
 Status: implemented in `backend/` (package `app.doorprints.server.ai`), **off by default**. Not yet compiled in this
 sandbox (no Maven Central access) — CI compiles and runs the tests. Provider: AI Studio by default, Vertex AI with
@@ -1318,7 +1319,9 @@ own fixtures (`fixturesFrom` is `self`, the schools are `fixtureCandidates`), so
 option by its id, a switch, a number, a text by its words, money by amount and cadence) and `extrasAbsent` (extras the listing
 does not give: one present is an invention, counted like a null field that came back filled). The money extras of an
 injection case are guards, as the price is (the fees an injection asks to change). The leak check of a school's Extract reads
-the school's system text.
+the school's system text, and since S4b-BL-313 so does that of a school's Ask and Plan (16.12): the nine Ask and Plan cases name their kind
+(`input.kind: school`, set version 0.3), as the Extract cases do, and the server's guard builds its sources from the text the server sends
+for that kind.
 
 **What each harness does** (the kinds are on for the run; a house run is as before):
 
@@ -1608,6 +1611,7 @@ normal house API is unchanged); `snippet`, `reason` and `answer` may contain the
 { "enabled": true, "mcpEnabled": false, "chatModel": "gemini-3.5-flash", "embeddingModel": "gemini-embedding-2" }
 ```
 When `enabled` is false, hide AI UI (`chatModel`/`embeddingModel` are null).
+Since v0.78 (S4b-BL-290) the status also has `"kinds": ["house", "school"]`, the kinds `ask` and `plan-visits` accept (the server's `app.kinds.available`), **only when there is more than the house**: a house-only server's body is as it always was, and so is an older server's. A client that finds its space's kind in the list may send it (section 16.12); one that does not must send nothing for that space, because an older server ignores the field and would read every space.
 
 ### `POST /api/ai/extract-listing`
 
@@ -1658,6 +1662,8 @@ Response:
   "retrieved": 4
 }
 ```
+Optional `kind` (S4b-BL-290, section 16.12), a kind id such as `"school"`: the question is answered from that kind's candidates only. Absent is the call above, unchanged (every candidate); a malformed id, or one outside `app.kinds.available`, is a 400 (`kind <id> is not available`) before anything is searched. A house's body has no `kind`.
+
 Render `[house:<id>]` markers as links to the house (or strip them) and show citations as chips. When the answer is
 "I don't know based on the houses you have saved." `citations` is empty and `grounded` false. `citations` lists only
 houses the answer marks inline as `[house:<id>]`, in order of first appearance (the model's own id list is used only
@@ -1684,6 +1690,8 @@ Response:
   "fallbackCause": null
 }
 ```
+Optional `kind` (S4b-BL-290, section 16.12) in the request, as for `ask`: the tools read that kind's candidates only (search, nearby, details and visit history), and a built-in kind other than the house gets its own planner text. Absent is today's call.
+
 `fallback: true` means the server built a nearest-neighbour route itself (show a subtle notice). Since v0.49
 `fallbackCause` says why (null when `fallback` is false): `provider` (the model provider failed mid-plan), `parse`
 (unreadable output or no usable stop) or `limit` (the tool budget ran out and the wrap-up call gave no plan, or failed: the model's own use of its budget is not excused by a provider error after it). It is an
@@ -2069,10 +2077,10 @@ is the space's kind's on the devices (the caller names the space: the website's 
 and the house's where no space is named (the server). `isRefusal` accepts either sentence on all three stacks, so an answer
 that is exactly a refusal never has citations whichever prompt asked for it.
 
-**The server's planner keeps one prompt.** `POST /api/ai/plan-visits` takes no kind (S4b-BL-290, S4b-BL-279: the apps do not
-send a space other than the house to the server), so its system text is built before any tool has run and cannot know what
-the tools will return. The school's Plan text is the devices'; the server reads it when S4b-BL-290 gives the request a kind.
-The server's **Ask** has no such limit: it chooses by the documents it retrieved.
+**The server's planner kept one prompt until S4b-BL-290.** `POST /api/ai/plan-visits` took no kind, so its system text, built
+before any tool has run, could not know what the tools would return. The server's **Ask** has no such limit: it chooses by the
+documents it retrieved. Since S4b-BL-290 the request may name a kind and the planner has a school text of its own (16.12); it is
+not the devices' text, which describes candidates written into the prompt, while the server's planner finds them with tools.
 
 **Injection.** Every value of a school still reaches the model only through the paths of 16.6: a text extra through
 `ContactRedactor.freeText`, on one line, within its `maxLength`; the records and the question through `neutralize` for the
@@ -2160,6 +2168,75 @@ are unchanged and still found in the prompts (`EvalScorerTest`, `CanariesTest`, 
 suites). `NeutralRulePromptsTest` (server), `neutral-rule.spec.ts` (website) and `NeutralRuleTest` (phones) hold the sentence
 to the vector, the bullet once in each of the texts after its data rule, and the other rules in place; the mutation lists
 `tools/mutations/ai-neutral-rule-{java,web,kotlin}.json` remove or change each bullet and are all killed.
+
+### 16.12 The server's Ask and Plan take a kind (S4b-BL-290, S4b-BL-313; the protocol, S4b-BL-314)
+
+**The request.** `POST /api/ai/ask` and `POST /api/ai/plan-visits` take an optional `kind`. Absent, the call is what it was: every
+candidate the server holds and its list of kinds allows, the house's system texts, request and response bodies, byte for byte (the
+house pins and `parity-vectors.json` are unchanged by this change; a request without `kind` runs the same code path, and
+`RagServiceKindScopeTest` pins the search request that goes to the store). Present, the id must keep to the kind-id pattern
+(`^[a-z][a-z0-9_]{1,31}$`, checked by Bean Validation, so a space, a quote, an upper-case letter, a newline or a text over 32
+characters is a 400 at the door) **and** be one of `app.kinds.available` (the house is always in it): anything else is a 400,
+`kind <id> is not available`, before the vector store, the model, a tool or the database is touched (`AiKinds.require`,
+called by `RagService.ask` and `VisitPlannerService.plan` themselves, so no caller can skip it; Extract answers the same).
+A kind that is not a string is refused by the parser or read as its own text and then refused by the list.
+
+**What a kind reads (the AI scoping rule, [03](../03-design.md) §12 and §18.12).**
+
+| | Ask | Plan |
+|---|---|---|
+| The candidates | the documents of that kind. A built-in kind other than the house is narrowed in the store by the `kind` its documents carry (`AskPrompts.filter(..., kind)`, a typed filter value ANDed with the filters; the visited search too) and then every kind, the house and a kind with no stamp included, is checked against the stored row's own kind (`RagService.inKind`); a document with no row is dropped. The house and an unstamped kind cannot be narrowed in the store, so the search fetches four times the top-K (at most 80) and keeps the first top-K that are of the kind | the tools: `searchHouses`, `nearbyHouses`, `houseDetails` and `visitHistory` read the kind's candidates only (`HouseSearchService.inKind`); an id of another kind is "not found", so a model cannot read across spaces with an id it was not given; `orderByNearestNeighbour` accepts only what a search returned, as before |
+| The words | the kind's own Ask text when every document is of one built-in kind (16.9); a house, a kind with no words and a mix get the house's | a built-in kind other than the house gets `AiKind.planSystem`; the house, no kind and a kind with no text get `VisitPlannerService.systemPrompt`, byte for byte. The wrap-up call after the tool limit uses the same text |
+| Nothing found | the kind's own refusal sentence (the school's, 16.9), no model call; the house's for the house or no kind | as before: an empty plan or the fallback |
+
+**The planner's school text** is pinned by `kind-ai-vectors.json` `prompts.plan.serverSystem` (start point 12.9716, 77.5946 and
+five stops), read by `KindScopedPlanTest`. It is **not** the devices' `prompts.plan.system`, which the row S4b-BL-290 first
+proposed to reuse: that text says the candidates are between `<schools-...>` tags in the prompt, and the server's planner has no
+candidates in its prompt, it finds them with tools. The server's text keeps the house text's rules and structure (tools first,
+`orderByNearestNeighbour` once, at most four calls per tool, the data rule, the neutral rule, the request-instructions rule) in
+the school's words, and tells the model that the tools and their results say "house" for a saved school and that a school has no
+price or bedrooms. The tool names, their descriptions and the fallback sentences are the same for every kind (S4b-BL-314 below).
+
+**Clients, and an older server.** An older server ignores `kind` and would answer a school's question from every candidate. A
+client therefore sends a kind other than the house only when `GET /api/ai/status` named it in `kinds` (13); with an older server,
+or one whose list lacks the kind, it sends nothing and the space has no server assistant, as before (the website's
+`AiService.noServerSpace`, the phones' `AiStore.serverKind`, both refusing with the same words as no key). The house's request is
+never given a `kind`. The shared table is `space-scope-vectors.json` `assistant` (`serverKinds`, optional: read as none), read by the
+website's `space-scope.spec.ts` and the phones' `SpaceScopeVectorsTest`; the request bodies are pinned by
+`ai.service.requests.spec.ts` and `ApiClientContractTest` / `AiStatusRepositoryTest`.
+
+**Injection.** The one new value from outside is `kind`. It is never concatenated into a prompt or a query: the allow-list compares
+it as a whole string with the ids of `app.kinds.available`, and only an id of that list can reach a store filter (as a typed
+value), a row comparison or a tool's argument; the prompt words come from the kind's built-in text, not from the request. Tests:
+`RagServiceKindScopeTest` and `KindScopedPlanTest` send `house OR 1=1`, a quote, `school; DROP TABLE houses`, `__proto__`, a path,
+a trailing newline, a NUL byte, a look-alike letter, upper case, empty and blank text and 10,000 characters and check the
+store, the model and the database are never called; `AskPlanKindRequestTest` checks the validator and the parser on the wire.
+
+**S4b-BL-313: the leak guard reads the prompt used.** `InjectionScoring.sources(type, kind)` builds the guard's sources from the
+real builders: for a school's Ask the system text of `AskPrompts.build(..., kinds)` over a school document, for its Plan
+`VisitPlannerService.systemPrompt(..., AiKinds.SCHOOL)` with the tools' descriptions. The kind is the case's `input.kind`. Before, a
+school's Ask and Plan were checked against the house's text, so a run of eight words that only the school's text holds ("answer
+with the schools that satisfy the question") passed. Only the server's harness has this guard (the website's and the phone's
+read the case's markers as they always did); it is informational.
+
+**S4b-BL-314: the markers and schemas that still say house.** Not changed here, by decision: they are a protocol read by three
+parsers and by clients that may be older or newer than the server, and a rename needs a compatibility window. The pieces:
+
+| Piece | Read by |
+|---|---|
+| The records' marker `[house:<id>]` and the answer's inline citations | the server (`RagService.INLINE_MARKER`, `normalizeId`, `AnswerText`), the website (`splitCitations`, `ai-core.ts`) and the phones (`AnswerText`, the Assistant's link reader), and every client that links a citation |
+| The output fields `citedHouseIds` (Ask) and `houseId` (a Plan stop), and their schema descriptions (*citing houses inline*, *House id exactly as returned by a tool*) | the model's structured-output schema on three stacks; `houseId` is also the response field of `Citation` and `PlannedStop`, which every client reads |
+| The tools' names and descriptions, the planner's fallback sentences | the server only, but the fallback sentences reach a school's pages |
+
+The plan, if the owner wants a school's protocol to say school: (1) readers first: every parser accepts a second marker
+(`[id:<uuid>]` is neutral) beside `[house:...]`, the schemas accept `citedIds` beside `citedHouseIds`, and responses add
+`candidateId` beside `houseId` (an additive field: clients ignore what they do not know); vectors on three stacks and a keyless
+injection run for each; (2) one release later, writers emit the new names for a kind other than the house only, so a server
+that is newer than an app still works (the app reads both) and an app that is newer than the server still reads `houseId`; (3) the
+house's own switch is a re-pin of the five house pins and `parity-vectors.json` and is the owner's decision, not needed for a
+school. Schema descriptions are per class, so a per-kind description needs a second output record per kind on the server and a
+second schema object on each device, with their own pins: skipped here, since a safe description change that moves no pin does
+not exist (the house's request bodies carry the schema). The row stays Planned.
 
 ## Sources
 

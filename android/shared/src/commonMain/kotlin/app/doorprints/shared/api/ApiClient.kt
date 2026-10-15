@@ -297,7 +297,9 @@ class ApiClient(
         send(HttpMethod.Post, "/api/ai/extract-listing", KindExtractListingRequest(text, kind))
     /** The server's AI answers [question] from the saved houses, with citations. */
     suspend fun ask(question: String): AskResponseDto = send(HttpMethod.Post, "/api/ai/ask", AskRequest(question))
-    /** The server's AI plans a walking route over the saved houses. */
+    /** As above for the candidates of one [kind] only (S4b-BL-290): the body names the kind, which the server's status listed. */
+    suspend fun ask(question: String, kind: String): AskResponseDto = send(HttpMethod.Post, "/api/ai/ask", AskRequest(question, kind))
+    /** The server's AI plans a walking route over the saved houses (those of `request.kind` only, when it names one). */
     suspend fun planVisits(request: PlanRequest): PlanResponseDto =
         send(HttpMethod.Post, "/api/ai/plan-visits", request)
 

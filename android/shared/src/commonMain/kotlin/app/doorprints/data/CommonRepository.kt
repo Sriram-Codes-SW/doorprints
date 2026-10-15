@@ -449,12 +449,12 @@ open class CommonRepository(
     }
 
     // ---- AI features (optional; hidden unless the server reports enabled = true): AiStore (S4b-BL-168) ----
-
     private val ai = AiStore(settings, apiFor, geminiFor, openAiFor, anthropicFor, emulatorHostAllowed, ::aiHouses, devKinds)
 
     override val aiEnabled: StateFlow<Boolean> = ai.enabled
     override val aiOff: StateFlow<AiOff?> = ai.off
     override val aiOwnKey: StateFlow<Boolean> = ai.ownKey
+    override val aiServerKinds: StateFlow<List<String>> = ai.serverKinds
 
     override suspend fun refreshAiStatus(): Boolean = ai.refreshStatus()
 

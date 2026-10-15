@@ -272,6 +272,84 @@ describe('AiService against the server', () => {
       expect(await result).toEqual(PLAN);
     });
 
+    describe('a space other than the house on the server (S4b-BL-290)', () => {
+      /** A server whose status names the kinds its Ask and Plan accept. */
+      function named(kinds?: string[]): AiService {
+        const ai = create(true);
+        http.expectOne('/api/ai/status').flush(kinds ? { ...ON, kinds } : ON);
+        return ai;
+      }
+
+      it('ask posts the space’s kind when the status names it; the house and a call with no kind send none', () => {
+        const ai = named(['house', 'school']);
+        expect(ai.serverKinds()).toEqual(['house', 'school']);
+        ai.ask('Which has a bus?', undefined, 'school').subscribe();
+        const school = http.expectOne('/api/ai/ask');
+        expect(school.request.body).toEqual({ question: 'Which has a bus?', kind: 'school' });
+        school.flush(ASK);
+        const filters = { minRating: 3 } as const;
+        ai.ask('Which has a bus?', filters, 'school').subscribe();
+        const withFilters = http.expectOne('/api/ai/ask');
+        expect(withFilters.request.body).toEqual({ question: 'Which has a bus?', filters, kind: 'school' });
+        withFilters.flush(ASK);
+        // The house's body is today's, byte for byte: no kind key, whether the page names the house or nothing.
+        for (const kind of [undefined, 'house']) {
+          ai.ask('Quiet?', undefined, kind).subscribe();
+          const house = http.expectOne('/api/ai/ask');
+          expect(Object.keys(house.request.body)).toEqual(['question']);
+          house.flush(ASK);
+        }
+        ai.ask('Quiet?', filters, 'house').subscribe();
+        const houseFilters = http.expectOne('/api/ai/ask');
+        expect(Object.keys(houseFilters.request.body)).toEqual(['question', 'filters']);
+        houseFilters.flush(ASK);
+      });
+
+      it('planVisits posts the space’s kind with the request; the house’s request is unchanged', () => {
+        const ai = named(['house', 'school']);
+        ai.planVisits(PLAN_REQUEST, 'school').subscribe();
+        const school = http.expectOne('/api/ai/plan-visits');
+        expect(school.request.body).toEqual({ ...PLAN_REQUEST, kind: 'school' });
+        school.flush(PLAN);
+        for (const kind of [undefined, 'house']) {
+          ai.planVisits(PLAN_REQUEST, kind).subscribe();
+          const house = http.expectOne('/api/ai/plan-visits');
+          expect(house.request.body).toEqual(PLAN_REQUEST);
+          expect('kind' in house.request.body).toBe(false);
+          house.flush(PLAN);
+        }
+      });
+
+      it('an older server names no kinds: nothing is sent for a space other than the house, as before', async () => {
+        for (const kinds of [undefined, ['house'], ['house', 'clinic']]) {
+          TestBed.resetTestingModule();
+          TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+          localStorage.clear();
+          const ai = named(kinds);
+          for (const refused of [firstValueFrom(ai.ask('Quiet?', undefined, 'school')), firstValueFrom(ai.planVisits(PLAN_REQUEST, 'school'))]) {
+            await expect(refused).rejects.toEqual(expect.objectContaining({ reason: 'noKey' }));
+          }
+          http.expectNone(() => true);
+          // The house is answered as it always was.
+          ai.ask('Quiet?').subscribe();
+          http.expectOne('/api/ai/ask').flush(ASK);
+        }
+      });
+
+      it('the assistant is shown in a space the server names, and only there', () => {
+        const school = named(['house', 'school']);
+        expect(school.enabledFor('school')).toBe(true);
+        expect(school.enabledFor('house')).toBe(true);
+        TestBed.resetTestingModule();
+        TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+        localStorage.clear();
+        const older = named();
+        expect(older.serverKinds()).toEqual([]);
+        expect(older.enabledFor('school')).toBe(false);
+        expect(older.enabledFor('house')).toBe(true);
+      });
+    });
+
     it('the limits the pages count against are the server defaults', () => {
       expect(AI_MAX_LISTING_CHARS).toBe(8000);
       expect(AI_MAX_QUESTION_CHARS).toBe(1000);

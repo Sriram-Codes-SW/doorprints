@@ -119,15 +119,26 @@ public class HouseQueries {
      */
     public List<HouseSummary> searchHouses(String text, String status, String priceType, Long maxPrice,
                                            Integer minBedrooms, Integer minRating, Integer limit) {
+        return searchHouses(text, status, priceType, maxPrice, minBedrooms, minRating, limit, null);
+    }
+
+    /** As above, over the candidates of {@code kind} only (S4b-BL-290; null is every candidate). */
+    public List<HouseSummary> searchHouses(String text, String status, String priceType, Long maxPrice,
+                                           Integer minBedrooms, Integer minRating, Integer limit, String kind) {
         return search.search(new Criteria(text, parseStatus(status), parsePriceType(priceType), null, maxPrice,
-                minBedrooms, null, minRating, limit));
+                minBedrooms, null, minRating, limit), kind);
     }
 
     /**
      * Saved houses around a point; the radius defaults to 1000 m when the model leaves it out.
      */
     public List<HouseSummary> nearbyHouses(double lat, double lon, Double radiusMeters) {
-        return search.nearby(lat, lon, radiusMeters == null ? 1000 : radiusMeters);
+        return nearbyHouses(lat, lon, radiusMeters, null);
+    }
+
+    /** As above, over the candidates of {@code kind} only (S4b-BL-290; null is every candidate). */
+    public List<HouseSummary> nearbyHouses(double lat, double lon, Double radiusMeters, String kind) {
+        return search.nearby(lat, lon, radiusMeters == null ? 1000 : radiusMeters, kind);
     }
 
     /**
@@ -136,8 +147,16 @@ public class HouseQueries {
      * @throws NotFoundException if the house has been deleted
      */
     public HouseDetails houseDetails(String houseId) {
+        return houseDetails(houseId, null);
+    }
+
+    /**
+     * As above, for a plan over one kind (S4b-BL-290): a candidate of another kind is answered as a missing one, so a model
+     * cannot read across spaces with an id it was not given (null is every candidate).
+     */
+    public HouseDetails houseDetails(String houseId, String kind) {
         var h = search.details(parseId(houseId));
-        if (h.deleted()) throw new NotFoundException("House " + houseId + " not found");
+        if (h.deleted() || !HouseSearchService.inKind(h, kind)) throw new NotFoundException("House " + houseId + " not found");
         var viewed = search.forDetails(h);
         return HouseDetails.of(viewed, search.detailsExtras(viewed));
     }
@@ -147,6 +166,14 @@ public class HouseQueries {
      * left out.
      */
     public List<VisitInfo> visitHistory(String houseId) {
+        return visitHistory(houseId, null);
+    }
+
+    /** As above, for a plan over one kind (S4b-BL-290): the visits of a candidate of another kind are not given (null is every candidate). */
+    public List<VisitInfo> visitHistory(String houseId, String kind) {
+        if (kind != null && !HouseSearchService.inKind(search.details(parseId(houseId)), kind)) {
+            throw new NotFoundException("House " + houseId + " not found");
+        }
         return visits.findByDeletedFalseAndHouseIdOrderByArrivedAtDesc(parseId(houseId)).stream()
                 .limit(20)
                 .map(v -> new VisitInfo(v.getArrivedAt(), v.getLeftAt(),

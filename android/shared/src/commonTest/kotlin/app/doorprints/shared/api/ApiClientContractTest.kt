@@ -270,6 +270,28 @@ class ApiClientContractTest {
         assertEquals("""{"question":"Which house has 24x7 water?"}""", server.seen[1].text)
     }
 
+    /** S4b-BL-290: the kind goes in the body for a space other than the house, and the house's bodies are as they were. */
+    @Test
+    fun askAndPlanNameTheKindOnlyWhenTheCallerDoesAndTheStatusListsTheKindsTheServerAccepts() = runTest {
+        val server = FakeServer(json(200, R.ASK_RESPONSE))
+        val api = server.api()
+        api.ask("Which has a bus?", "school")
+        assertEquals("""{"question":"Which has a bus?","kind":"school"}""", server.seen[0].text)
+        api.ask("Which has a bus?")
+        assertEquals("""{"question":"Which has a bus?"}""", server.seen[1].text)
+
+        val plans = FakeServer(json(200, """{"summary":"s","stops":[]}"""))
+        plans.api().planVisits(PlanRequest("route", 12.9, 77.6, 3, "school"))
+        assertEquals("""{"question":"route","startLat":12.9,"startLon":77.6,"maxStops":3,"kind":"school"}""", plans.seen[0].text)
+        plans.api().planVisits(PlanRequest("route", 12.9, 77.6, 3))
+        assertEquals("""{"question":"route","startLat":12.9,"startLon":77.6,"maxStops":3}""", plans.seen[1].text)
+
+        // The status names the kinds a server accepts; an older server names none, and a newer field is ignored.
+        assertEquals(listOf("house", "school"), FakeServer(json(200, """{"enabled":true,"kinds":["house","school"],"later":1}""")).api().aiStatus().kinds)
+        assertEquals(emptyList(), FakeServer(json(200, R.AI_STATUS_OFF)).api().aiStatus().kinds)
+        assertEquals(emptyList(), FakeServer(json(200, """{"enabled":true}""")).api().aiStatus().kinds)
+    }
+
     @Test
     fun uploadPhotoSendsMultipartWithIdAndJpegPart() = runTest {
         val jpeg = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0xE0.toByte(), 0x00)

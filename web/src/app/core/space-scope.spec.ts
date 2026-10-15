@@ -61,7 +61,7 @@ describe('the space-scope vectors (S4b-BL-279)', () => {
   });
 
   it('when a space shows the assistant', () => {
-    for (const v of V.assistant) expect(aiShownIn(v.kind, v.available, v.on, v.ownKey), v.name).toBe(v.shown);
+    for (const v of V.assistant) expect(aiShownIn(v.kind, v.available, v.on, v.ownKey, "serverKinds" in v ? (v.serverKinds as string[]) : undefined), v.name).toBe(v.shown);
   });
 
   it('the kind a shared listing lands in', () => {
