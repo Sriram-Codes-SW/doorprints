@@ -49,8 +49,9 @@ log (`NSLog`).
 
 ## What iOS does not have yet
 
-Hidden on iOS, not shown disabled (owner decision of 2026-09-29, `docs/10` §13.12): the camera and gallery, *Save a
-copy*, *Import a backup* and the weekly backup. Hindi, Tamil and Telugu strings, the purpose strings included
+Hidden on iOS, not shown disabled (owner decision of 2026-09-29, `docs/10` §13.12): the camera and gallery and the weekly
+backup. *Save a copy* and *Import a backup* were hidden too until S4b-BL-81; they are built now (`IosCopies.kt`,
+`IosExportServices` and `IosImportServices` in `IosAppServices.kt`). Hindi, Tamil and Telugu strings, the purpose strings included
 (`<lang>.lproj/InfoPlist.strings`), ship marked *under review*.
 
 ## Google Drive (S4b-BL-117; docs/15 §9.11)

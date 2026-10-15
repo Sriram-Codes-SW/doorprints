@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.149 |
+| Version | 0.150 |
 | Date | 2026-10-15 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -160,6 +160,7 @@
 | 0.147 | 2026-10-15 | Claude (Code), docs | §19 states voice input as built on the web (merged), Android (#355) and iPhone (#354); the README's AI access policy was corrected to ADR-26/35 in the same pull request. |
 | 0.148 | 2026-10-15 | Claude (Code), engineer | **ADR-37, status:** Android's side is built (S4b-BL-222, voice PR 5; `feat/voice-5-android`; [02](02-threat-model.md) v0.87 §11, [06](06-test-plan.md) TC-U-249..253 and TC-S-52, [ai/voice-input](ai/voice-input.md) v0.6): `shared/voice/` (the recorder interface, `PcmVoiceRecorder`, `VoiceSession`, `VoiceInput`, `OwnKeyTranscription`), the *Voice input* setting under *AI features*, the microphone in Ask, Plan visits and Fill in from listing text, `AudioRecord` in `:app`, `RECORD_AUDIO` as a runtime permission. One choice differs from the plan: 16 kHz mono PCM kept in one array and sent as `audio/wav`, not `MediaRecorder` AAC/m4a (an MP4 muxer needs a seekable file, and "never a file" is the rule); a minute is 1.92 MB, under the 2 MB cap. *This device* (the platform recogniser) is not offered. The iPhone is voice PR 6. |
 | 0.149 | 2026-10-15 | Claude (Code), engineer | **ADR-37, status:** the iPhone's side is built in code without Xcode or a phone (S4b-BL-223, voice PR 6; `feat/voice-6-iphone`; [02](02-threat-model.md) v0.88 §11, [06](06-test-plan.md) TC-U-254..256 and TC-S-53, [ai/voice-input](ai/voice-input.md) v0.7): `IosPcmSource` (an `AVAudioEngine` input tap into memory, resampled in common code to 16 kHz mono 16-bit and handed to the shared `PcmVoiceRecorder` as a WAV clip, the same clip Android sends), `IosMicrophone` (the `AVAudioApplication` permission), `IosVoiceServices` (the shared `VoiceServices`), `NSMicrophoneUsageDescription` and no `audio` background mode. **One change from the plan:** [ai/voice-input](ai/voice-input.md) section 4 said `AVAudioRecorder` with m4a; `AVAudioRecorder` can only write to a file URL, which would put audio on disk (T-I48), so the iPhone uses the engine tap. The setting, the button, the strings, the limits and the provider rules are Android's shared screens and code (`:ui` and `shared/voice/`). |
+| 0.150 | 2026-10-15 | Claude (Code), docs | §19 states voice input as built on the web, Android and the iPhone (the iPhone untested on a device), PR numbers dropped. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -3083,11 +3084,11 @@ A short summary; the decision is ADR-37 (§14) and the consult, options and plan
   `ContactRedactor` can see the transcript, which the screen says plainly ([02](02-threat-model.md) §11, T-I45 to T-I48;
   [04](04-data-flow-diagrams.md) DF-49).
 - **Where it is built.** The website (merged): `web/src/app/core/voice/` (recorder, service, transcript insert),
-  `shared/voice-button.ts`, the switch on the Connect page, `microphone=(self)` in `web/firebase.json` (S4b-BL-221). Android (#355,
-  `feat/voice-5-android`, S4b-BL-222) and the iPhone (#354, `feat/voice-6-iphone`, S4b-BL-223) use the `Transcriber` core of
-  `:shared` (S4b-BL-219); the spoken eval set is `docs/ai/evals/spoken-set.json` (S4b-BL-220, [ai/ai-design.md](ai/ai-design.md)
-  §8.8). The switch is off by default, the person's own key is the only path, and audio is memory-only on all three. Sarvam is
-  planned (S4b-BL-224). *The PR numbers are dropped once both phone PRs are on `main`.*
+  `shared/voice-button.ts`, the switch on the Connect page, `microphone=(self)` in `web/firebase.json` (S4b-BL-221). Android (S4b-BL-222) and the iPhone (S4b-BL-223) use the `Transcriber` core of
+  `:shared` (S4b-BL-219) with the same switch, microphone button and disclosure in `:ui`; the spoken eval set is
+  `docs/ai/evals/spoken-set.json` (S4b-BL-220, [ai/ai-design.md](ai/ai-design.md) §8.8). The switch is off by default, the
+  person's own key is the only path, and audio is memory-only on all three. The iPhone's is early and **untested on a device**
+  (the owner's rows are MT-104 to MT-108 in `docs/ops/manual-test-checklist.md`). Sarvam is planned (S4b-BL-224).
 - **Tests and gates.** Fake-audio unit tests per adapter on both stacks, additive sections `transcribeRequest` and
   `transcribeContent` in the parity vectors, mutation lists `tools/mutations/voice-*.json`, TC-S-23 and the checklist row B1 for the
   Permissions-Policy ([13](13-release-security-checklist.md)).

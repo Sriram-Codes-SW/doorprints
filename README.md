@@ -45,7 +45,7 @@ optional server, with the contracts pinned by shared vector files ([docs/schemas
 | One candidate model: kind file, typed extras, money with cadence; search, copies and AI prompts follow it | Yes | Yes | Yes | Yes (houses) |
 | Spaces: a chooser and *What you track*, one space per kind, Delete all in this space | Dev build | Dev build | Dev build | No |
 | Optional AI with your own key (Gemini, an OpenAI-compatible endpoint or Anthropic): Ask, fill from listing text, plan visits | Yes | Yes | Yes | Yes |
-| Voice input into the AI boxes (off by default, audio kept in memory only) | Yes | Yes | In review (#354) | Web and Android |
+| Voice input into the AI boxes (off by default, audio kept in memory only) | Yes | Yes | Yes (early, untested on a device) | Yes |
 | Google Drive: encrypted backups and sync between your devices | Yes | Yes | Yes (build with your own Google client id) | Yes |
 | Optional self-hosted server as a sync hub | Yes | Yes | Yes | Yes |
 | Share updates with someone you hunt with (a file in the backup format) | Yes | Yes | Yes | Yes |

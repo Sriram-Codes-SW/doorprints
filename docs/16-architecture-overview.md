@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Architecture overview: the one entry page for the high-level and low-level design |
-| Version | 0.2 |
+| Version | 0.3 |
 | Date | 2026-10-15 |
 | Owner | Lead (Claude, Code); product owner: Sriram |
 | Status | Draft |
@@ -19,6 +19,7 @@ stays in [03](03-design.md) and the satellites named below.
 |---|---|---|---|
 | 0.1 | 2026-10-15 | Claude (Code), engineer | First version: the ten-minute summary, the one component diagram, the per-stack table with each store's current version, the data contracts, the reading path, where the recent designs live and the rule that keeps this page current. Written from the code on `main` at `c2a36b84`. |
 | 0.2 | 2026-10-15 | Claude (Code), docs | Voice stated as built on the web (merged), Android (#355) and iPhone (#354); the PR numbers are to be dropped once both are on `main`. |
+| 0.3 | 2026-10-15 | Claude (Code), docs | Voice stated as built on the web, Android and the iPhone; the PR numbers dropped. |
 
 ## 1. Ten minutes
 
@@ -51,7 +52,7 @@ before text reaches a model.
 
 **Voice input is opt-in**: a switch under *AI features*, off by default, and a microphone in the three AI text boxes. It uses
 the person's own provider and key only; audio is held in memory, never stored, and the transcript is editable before anything
-is sent ([03](03-design.md) ADR-37, §19). Built on the web (merged), Android (#355) and iPhone (#354).
+is sent ([03](03-design.md) ADR-37, §19). Built on the web, Android and the iPhone (the iPhone's is early and untested on a device; the owner's rows are MT-104 to MT-108 in `docs/ops/manual-test-checklist.md`).
 
 **Release.** No Play Store and no public server until the release security gate passes ([14](14-lead-backlog-and-handoff.md),
 [10](10-sprint-log.md) §12.5). A pushed tag `v*.*.*` runs `.github/workflows/release.yml`: it builds and signs the APK and
