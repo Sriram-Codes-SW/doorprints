@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Operations runbook |
-| Version | 0.33 |
+| Version | 0.34 |
 | Date | 2026-10-14 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -45,6 +45,7 @@
 | 0.31 | 2026-10-10 | Claude (Code), engineer | New §1.3: the iPhone app and a self-hosted server on plain `http://` (App Transport Security; S4b-BL-59). |
 | 0.32 | 2026-10-12 | Claude (Code), engineer | New §1.4: the one-time format reset (S4b-BL-206): an old database is dropped and created again, `/api/candidates`; §6.2 names the new path. |
 | 0.33 | 2026-10-14 | Claude (Code), engineer | §3 release checklist: the APK line names `release.yml` (merged, C-02), no longer "later". |
+| 0.34 | 2026-10-15 | Claude (Code), engineer | §10.3 signals: a spent quota or credit answers `402` (WARN `[provider quota or credit spent]`) and a provider safety block `422` `AI_DECLINED` (WARN `[provider declined the text]`) (S4b-BL-244, S4b-BL-233; [03](03-design.md) v0.139). |
 
 Related: [Build and deploy](07-secure-build-and-deploy.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Google Drive design](15-google-drive-backup-and-sharing.md)
 
@@ -359,7 +360,7 @@ after the bounded retries) is logged as a WARN containing `[provider quota exhau
 problem body with `"code": "AI_QUOTA_EXHAUSTED"`, `"retryable": true` and a `Retry-After: 60` header. A re-index
 stops at the first such error (the remaining batches count as failed; `POST /api/ai/reindex` returns 503), and an
 eval run ends with **STOPPED: provider quota exhausted** instead of PASS/FAIL. A per-minute quota clears by itself;
-a quota error that keeps coming back for hours points to a daily quota, shared-capacity limits or a loop. Check the per-user counters for
+a quota error that keeps coming back for hours points to a daily quota, shared-capacity limits or a loop. Since S4b-BL-244 a Gemini daily quota (a `PerDay` quota id), a spent credit (HTTP 402, `insufficient_quota`, `billing_error`) is not a wait: the app answers `402` with the same `code`, `"retryable": false` and no `Retry-After`, and the apps say the quota or credit is used up; WARN lines contain `[provider quota or credit spent]`. A provider's safety block (S4b-BL-233) is `422` with `"code": "AI_DECLINED"` and the WARN line `[provider declined the text]`; it is the person's text, not an outage. Check the per-user counters for
 one account using most of the requests; remove that invitation or lower its quota. If the pattern looks like a stolen
 session, revoke it (IR-1 / IR-2 as applicable) and rotate the AI key or Vertex credentials. If the spend comes from a
 bug (a retry loop), set the AI flag to off (AI-001) and redeploy. Budget alerts only notify; the spend cap budget
