@@ -1,0 +1,41 @@
+{
+ "spec": "web/src/app/core/voice/transcript-insert.spec.ts",
+ "mutations": [
+  {
+   "file": "web/src/app/core/voice/transcript-insert.ts",
+   "find": "const joined = current === '' || /\\s$/.test(current) ? current + words : `${current} ${words}`;",
+   "replace": "const joined = `${current} ${words}`;",
+   "expect": "puts the words in an empty box as they are"
+  },
+  {
+   "file": "web/src/app/core/voice/transcript-insert.ts",
+   "find": "const joined = current === '' || /\\s$/.test(current) ? current + words : `${current} ${words}`;",
+   "replace": "const joined = current + words;",
+   "expect": "adds one space after text"
+  },
+  {
+   "file": "web/src/app/core/voice/transcript-insert.ts",
+   "find": "if (words === '') return { text: current, cut: false };",
+   "replace": "if (words === '' && false) return { text: current, cut: false };",
+   "expect": "adds nothing for empty or blank speech"
+  },
+  {
+   "file": "web/src/app/core/voice/transcript-insert.ts",
+   "find": "Math.max(max, current.length)",
+   "replace": "max",
+   "expect": "cuts at the box limit"
+  },
+  {
+   "file": "web/src/app/core/voice/transcript-insert.ts",
+   "find": "joined.length <= max",
+   "replace": "joined.length < max",
+   "expect": "cuts at the box limit"
+  },
+  {
+   "file": "web/src/app/core/voice/transcript-insert.ts",
+   "find": ".trimEnd(), cut: true",
+   "replace": "/* kept */, cut: true",
+   "expect": "cuts at the box limit"
+  }
+ ]
+}

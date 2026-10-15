@@ -54,6 +54,7 @@ import { TPipe } from '../../i18n/t.pipe';
 import { createMlMap, localizeMap, relabelUnavailable } from '../../shared/map-style';
 import { RunResult, runResult } from '../../shared/run-result';
 import { focusIfLost } from '../../shared/focus';
+import { VoiceButton } from '../../shared/voice-button';
 import { round6 } from '../../shared/location-map';
 import { COUNTRY_VIEW, loadStartPoint, locationErrorKey, parseCoordinate } from '../../shared/map-center';
 import { locateOnce } from '../../shared/locate-once';
@@ -76,7 +77,7 @@ const ROUTE_SOURCE = 'plan-route';
  */
 @Component({
   selector: 'app-plan-page',
-  imports: [FormsModule, RouterLink, TPipe],
+  imports: [FormsModule, RouterLink, TPipe, VoiceButton],
   templateUrl: './plan-page.html',
   styleUrl: './plan-page.css',
 })
@@ -282,6 +283,12 @@ export class PlanPage implements AfterViewInit, OnDestroy {
     // an alert that the focus announcement can cut off (NVDA, TalkBack).
     if (this.startMsg()) ids.push('start-msg');
     return ids.join(' ');
+  }
+
+  /** The words spoken into the request (voice input, ADR-37): they join the box for the person to read and edit; nothing is sent. */
+  protected onVoice(text: string): void {
+    this.question = text;
+    this.onQuestion(text);
   }
 
   /** Typing a request clears "Type what you want to see first". */

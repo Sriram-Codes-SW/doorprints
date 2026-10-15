@@ -41,6 +41,7 @@ import { Msg } from '../../i18n/translation.service';
 import { TPipe } from '../../i18n/t.pipe';
 import { RunResult, runResult } from '../../shared/run-result';
 import { focusIfLost } from '../../shared/focus';
+import { VoiceButton } from '../../shared/voice-button';
 
 /**
  * "Ask about my houses": RAG answers over the user's own houses, with every cited house linked (docs/ai 5.2).
@@ -56,7 +57,7 @@ import { focusIfLost } from '../../shared/focus';
  */
 @Component({
   selector: 'app-ask-page',
-  imports: [FormsModule, RouterLink, TPipe],
+  imports: [FormsModule, RouterLink, TPipe, VoiceButton],
   templateUrl: './ask-page.html',
   styleUrl: './ask-page.css',
 })
@@ -68,7 +69,7 @@ export class AskPage implements OnDestroy {
   private readonly session = inject(AiSessionState);
   /** Ask reads the space on screen only (kinds PR B, S4b-BL-279). */
   protected readonly space = inject(SpaceService);
-  private readonly kind = this.space.kind();
+  protected readonly kind = this.space.kind();
   /** The assistant is on and reads this space (the house whenever AI is on; another space on the person's own AI). */
   protected readonly on = computed(() => this.ai.enabledFor(this.kind));
   /** The price and BHK filters are the house's: a kind that hides its money has none. */
@@ -137,6 +138,12 @@ export class AskPage implements OnDestroy {
 
   protected numberOf(houseId: string): number {
     return this.citeNumbers().get(houseId) ?? 0;
+  }
+
+  /** The words spoken into the question (voice input, ADR-37): they join the box for the person to read and edit; nothing is sent. */
+  protected onVoice(text: string): void {
+    this.question = text;
+    this.onQuestion(text);
   }
 
   /** Typing a question clears "Type your question first". */

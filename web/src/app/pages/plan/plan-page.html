@@ -54,6 +54,7 @@
             [attr.aria-describedby]="questionMissing() ? 'plan-question-error plan-disclosure' : 'plan-disclosure'"
             required
           ></textarea>
+          <app-voice-button fieldId="plan-question" [value]="question" [max]="maxChars" [kind]="kind" (valueChange)="onVoice($event)" />
           @if (questionMissing()) {
             <span id="plan-question-error" class="field-error">{{ 'plan.questionRequired' | t }}</span>
           }

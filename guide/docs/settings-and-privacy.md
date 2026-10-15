@@ -169,6 +169,25 @@ See [Back up to Google Drive](google-drive.md).
     details out of your notes, or turn on billing for the key in Google AI Studio (see
     [the paid tier](set-up-a-server.md#the-paid-tier-a-small-cost-more-privacy)).
 
+### Voice input (website) {#voice-input}
+
+On the website, a microphone button can sit under the boxes of **Ask**, **Plan** and **Fill in from listing text**. You tap
+it, speak, tap **Stop**, and the words are written into the box. You read and change them; nothing is sent to the AI until
+you press the box's own button (**Ask**, **Plan route** or **Fill in the form**).
+
+It is **off until you turn it on**: on the Connect page, under **AI features**, tick **Voice input**. It works only with your
+own AI key, and only with a service that takes audio: **Gemini**, **OpenAI**, **Groq** or **OpenRouter**. It is not available
+when your server answers, with **Anthropic**, with a program on your computer, or with a custom address.
+
+- **Where the audio goes.** A recording of up to a minute goes from this browser straight to the service you chose, which
+  writes out the words. The page says the host and the price of a minute at the service's list price before you turn it on.
+  The recording is not saved on your device, not in a backup, not in a copy, and not shared.
+- **Numbers and names are heard too.** Anything you say, including a phone number or a name, is sent as audio, and Doorprints
+  cannot leave it out the way it leaves out a contact typed in a house. If that matters, type instead.
+- **The microphone.** Your browser asks the first time you tap the button. If you said no, allow the microphone for this site
+  in the browser's site settings, or just type. **Cancel**, or the Escape key, throws a recording away; leaving the page or
+  hiding the tab stops it.
+
 ## More than houses (experimental) {#other-kinds}
 
 **Your data** on the website has one more section in a build that ships schools, **What you track**, with the switch

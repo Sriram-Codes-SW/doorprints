@@ -51,6 +51,7 @@
           [attr.aria-describedby]="questionMissing() ? 'question-error ask-disclosure' : 'ask-disclosure'"
           required
         ></textarea>
+        <app-voice-button fieldId="question" [value]="question" [max]="maxChars" [kind]="kind" (valueChange)="onVoice($event)" />
         @if (questionMissing()) {
           <span id="question-error" class="field-error">{{ 'ask.questionRequired' | t }}</span>
         }

@@ -1,0 +1,71 @@
+{
+ "spec": "web/src/app/core/voice/voice-input.service.spec.ts",
+ "mutations": [
+  {
+   "file": "web/src/app/core/voice/voice-input.service.ts",
+   "find": "computed(() => this.enabledState() && this.ai.enabled() && this.providerOk() && canRecord(this.env));",
+   "replace": "computed(() => this.ai.enabled() && this.providerOk() && canRecord(this.env));",
+   "expect": "is off by default"
+  },
+  {
+   "file": "web/src/app/core/voice/voice-input.service.ts",
+   "find": "computed(() => this.ai.usesOwnKey() && canTranscribe(this.ai.aiConfig()));",
+   "replace": "computed(() => canTranscribe(this.ai.aiConfig()));",
+   "expect": "is never offered with the connected server answering"
+  },
+  {
+   "file": "web/src/app/core/voice/voice-input.service.ts",
+   "find": "if (on) localStorage.setItem(VOICE_INPUT_KEY, '1');",
+   "replace": "if (on) localStorage.setItem(VOICE_INPUT_KEY, '0');",
+   "expect": "the switch is kept in this browser"
+  },
+  {
+   "file": "web/src/app/core/voice/voice-input.service.ts",
+   "find": "groq: 'whisper-large-v3-turbo',",
+   "replace": "groq: 'whisper-1',",
+   "expect": "builds the Gemini transcriber for Gemini and a model-named OpenAI one"
+  },
+  {
+   "file": "web/src/app/core/voice/voice-input.service.ts",
+   "find": "const t = this.available() ? transcriberFor(this.ai.aiConfig(), this.ai.ownKey(), kind) : null;",
+   "replace": "const t = transcriberFor(this.ai.aiConfig(), this.ai.ownKey(), kind);",
+   "expect": "refuses without a call when the microphone is not offered"
+  },
+  {
+   "file": "web/src/app/core/voice/voice-input.service.ts",
+   "find": "transcriberFor(this.ai.aiConfig(), this.ai.ownKey(), kind) : null;",
+   "replace": "transcriberFor(this.ai.aiConfig(), '', kind) : null;",
+   "expect": "transcribes through Gemini with the person's own key"
+  },
+  {
+   "file": "web/src/app/core/voice/voice-input.service.ts",
+   "find": "{ gemini: '0.17', openai: '0.26', openrouter: '0.26', groq: '0.06' }",
+   "replace": "{ gemini: '0.01', openai: '0.26', openrouter: '0.26', groq: '0.06' }",
+   "expect": "names the host and the list price"
+  },
+  {
+   "file": "web/src/app/core/voice/voice-input.service.ts",
+   "find": "LANGUAGES.find((l) => l.code === this.i18n.lang())?.locale",
+   "replace": "LANGUAGES.find((l) => l.code === 'en')?.locale",
+   "expect": "language hint follows the app language"
+  },
+  {
+   "file": "web/src/app/core/voice/voice-input.service.ts",
+   "find": "'CBSE, ICSE, fees, classes, admission, school bus'",
+   "replace": "'BHK, CBSE, fees'",
+   "expect": "key terms: a house hunt gets BHK and lakh, a school its own"
+  },
+  {
+   "file": "web/src/app/core/voice/voice-input.service.ts",
+   "find": "const model = TRANSCRIBE_MODELS[transcribePresetOf(config)];",
+   "replace": "const model = TRANSCRIBE_MODELS['openai'];",
+   "expect": "builds the Gemini transcriber for Gemini and a model-named OpenAI one"
+  },
+  {
+   "file": "web/src/app/core/voice/voice-input.service.ts",
+   "find": "return t.transcribe(clip.bytes, clip.mime, this.langHint(), clip.durationMs);",
+   "replace": "return t.transcribe(clip.bytes, clip.mime, null, clip.durationMs);",
+   "expect": "transcribes through Gemini with the person's own key"
+  }
+ ]
+}

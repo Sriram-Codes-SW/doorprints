@@ -1,0 +1,39 @@
+{
+ "spec": [
+  "web/src/app/pages/ask/ask-page-voice.spec.ts",
+  "web/src/app/pages/house-detail/house-listing-voice.spec.ts",
+  "web/src/app/pages/plan/plan-page.spec.ts"
+ ],
+ "mutations": [
+  {
+   "file": "web/src/app/pages/ask/ask-page.ts",
+   "find": "this.question = text;\n    this.onQuestion(text);",
+   "replace": "this.onQuestion(text);",
+   "expect": "the spoken words join the question box"
+  },
+  {
+   "file": "web/src/app/pages/ask/ask-page.html",
+   "find": "(valueChange)=\"onVoice($event)\"",
+   "replace": "",
+   "expect": "the spoken words join the question box"
+  },
+  {
+   "file": "web/src/app/pages/plan/plan-page.ts",
+   "find": "this.question = text;\n    this.onQuestion(text);",
+   "replace": "this.onQuestion(text);",
+   "expect": "puts the spoken words in the request box"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-listing-card.ts",
+   "find": "(valueChange)=\"listing().text = $event\"",
+   "replace": "",
+   "expect": "adds the spoken words after the pasted text"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-listing-card.ts",
+   "find": "<app-voice-button fieldId=\"listing-text\"",
+   "replace": "<app-voice-button fieldId=\"listing-other\"",
+   "expect": "adds the spoken words after the pasted text"
+  }
+ ]
+}

@@ -521,6 +521,7 @@
           <p id="ai-disclosure" class="muted small">{{ 'ai.disclosureOwnKeyHost' | t: { host: host } }}</p>
         }
       }
+      <app-voice-setting />
       @if (ai.offReason(); as reason) {
         <p class="muted small">{{ aiOffMsg(reason).key | t: aiOffMsg(reason).params }}</p>
       } @else {
