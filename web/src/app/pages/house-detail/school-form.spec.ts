@@ -195,6 +195,22 @@ describe('a school on the candidate page, with the developer flag on (school-for
     expect(saved.extrasOther).toEqual({ board: 'STATE', fees: { amount: 72000, cadence: 'year' }, grades: 'Class 1 to 8' });
   });
 
+  // S4b-BL-261 (2): the kind file's range of an extra the house model does not know is enforced when the website saves it.
+  it('keeps a commute only within the kind file’s 0 to 300 minutes: 300 and 0 are kept, 301 and -1 are not stored (S4b-BL-261)', async () => {
+    schoolDefault();
+    const { fixture, host } = await open(null, 'en', true);
+    const type = async (v: string) => {
+      const el = host.querySelector<HTMLInputElement>('#extra-commuteMinutes')!;
+      el.value = v;
+      el.dispatchEvent(new Event('input'));
+      await settle(fixture);
+      return draft(fixture).extrasOther?.['commuteMinutes'] ?? null;
+    };
+    expect([await type('300'), await type('0'), await type('25')]).toEqual([300, 0, 25]);
+    expect([await type('301'), await type('-1'), await type('1e9')]).toEqual([null, null, null]);
+    expect(await type('45')).toBe(45);
+  });
+
   it('with two kinds shown and House the default, a new candidate is a house with a price type', async () => {
     localStorage.setItem(EXPERIMENTAL_KINDS_KEY, '1');
     localStorage.setItem(ENABLED_KINDS_KEY, '["house","school"]');
@@ -233,6 +249,31 @@ describe('Fill in from listing text for a school (kinds PR 7, S4b-BL-211)', () =
     host.querySelector<HTMLButtonElement>('.listing-undo')!.click();
     await settle(fixture);
     expect(draft(fixture).extrasOther).toEqual({ board: 'STATE' });
+  });
+
+  it('marks the extras the fill wrote as from the listing, not a kept one, and a mark goes when that extra is edited (S4b-BL-272)', async () => {
+    schoolDefault();
+    const { fixture, host } = await open(null, 'en', true);
+    const board = host.querySelector<HTMLSelectElement>('#extra-board')!;
+    board.selectedIndex = [...board.options].findIndex((o) => o.textContent?.trim() === 'State board');
+    board.dispatchEvent(new Event('change'));
+    await settle(fixture);
+    const box = host.querySelector<HTMLTextAreaElement>('#listing-text')!;
+    box.value = 'Pine Hill School, GS Road, Dispur. CBSE. Bus. Fees 96,000 a year.';
+    box.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    host.querySelector<HTMLButtonElement>('#listing-fill-submit')!.click();
+    await settle(fixture);
+    const chips = () => [...host.querySelectorAll('.listing-marks .chip')].map((c) => c.textContent?.trim());
+    expect(chips()).toEqual(['School name', 'Address', 'Street', 'Locality', 'Contact name', 'Contact phone', 'Medium of instruction', 'School bus', 'Fees per year']);
+    const medium = host.querySelector<HTMLSelectElement>('#extra-medium')!;
+    medium.selectedIndex = [...medium.options].findIndex((o) => o.textContent?.trim() === 'English');
+    medium.dispatchEvent(new Event('change', { bubbles: true }));
+    await settle(fixture);
+    expect(chips()).toEqual(['School name', 'Address', 'Street', 'Locality', 'Contact name', 'Contact phone', 'School bus', 'Fees per year']);
+    host.querySelector<HTMLButtonElement>('.listing-undo')!.click();
+    await settle(fixture);
+    expect(host.querySelector('.listing-marks')).toBeNull();
   });
 
   it('a house\'s fill sends the text alone, as before', async () => {

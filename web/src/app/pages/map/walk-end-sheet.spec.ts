@@ -19,10 +19,15 @@
 import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ConfirmService } from '../../core/confirm.service';
+import { houseOf } from '../../core/candidate';
+import type { CandidateDto } from '../../core/candidate';
 import { newHouse } from '../../core/models';
 import type { HouseDto } from '../../core/models';
 import { TraceRecorderService } from '../../core/trace-recorder.service';
 import { TraceStore } from '../../data/trace-store';
+import { tryHouseFromDto } from '../../data/records';
+import schoolVectors from '../../../../../docs/schemas/kinds/school-vectors.json';
+import searchVectors from '../../../../../docs/schemas/kinds/kind-search-vectors.json';
 import type { Lang } from '../../i18n/languages';
 import { TranslationService } from '../../i18n/translation.service';
 import { audit } from '../../shared/testing/a11y';
@@ -230,6 +235,38 @@ describe('WalkEndSheet', () => {
       input.dispatchEvent(new Event('input'));
       await settle(r.fixture);
       expect(r.$('fieldset')!.textContent).toContain('No house matches.');
+    });
+
+    it('finds a house by its floor in the app’s language, as the list does (S4b-BL-267)', async () => {
+      const ground = house('g', 'Ground flat', 1000, 0, { floor: 0 });
+      const r = await render({ houses: [ground, house('up', 'Upper flat', 1000, 0, { floor: 3 })], lang: 'hi' });
+      await r.click('#walk-end-save');
+      const input = r.$<HTMLInputElement>('#walk-end-search')!;
+      input.value = 'भूतल';
+      input.dispatchEvent(new Event('input'));
+      await settle(r.fixture);
+      expect([...r.host.querySelectorAll('label.row')].map((x) => x.textContent!.replace(/\s+/g, ' ').trim())).toEqual(['Ground flat']);
+      input.value = 'ground floor';
+      input.dispatchEvent(new Event('input'));
+      await settle(r.fixture);
+      expect(r.host.querySelectorAll('label.row').length).toBe(1);
+    });
+
+    it('finds a school by its typed extras in the app’s words, as the list does (S4b-BL-267)', async () => {
+      const school = tryHouseFromDto(houseOf((schoolVectors as unknown as { candidate: CandidateDto }).candidate))!;
+      const words = (searchVectors as unknown as { search: Record<string, string[]> }).search['hi'];
+      const rowsFor = async (q: string) => {
+        const r = await render({ houses: [school, ...houses], lang: 'hi' });
+        await r.click('#walk-end-save');
+        const input = r.$<HTMLInputElement>('#walk-end-search')!;
+        input.value = q;
+        input.dispatchEvent(new Event('input'));
+        await settle(r.fixture);
+        return [...r.host.querySelectorAll('label.row')].map((x) => x.querySelector('strong')!.textContent);
+      };
+      expect(words).toContain('स्कूल बस');
+      expect(await rowsFor('स्कूल बस')).toEqual([school.label]);
+      expect(await rowsFor('cbse')).toEqual([school.label]);
     });
 
     it('saves the walk with the chosen house: a saved walk, out of the trace, the sheet closed', async () => {

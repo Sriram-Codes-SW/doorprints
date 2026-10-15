@@ -64,6 +64,7 @@ import { RunResult, runResult } from '../../shared/run-result';
 import { LEGAL_NOTICE } from '../../shared/legal-notice';
 import { ImportBackupCard } from './import-backup';
 import { KindsSettings } from './kinds-settings';
+import { SpacePick } from './space-pick';
 import { BulkGuard } from '../../core/bulk-guard.service';
 import { availableKinds, kindById } from '../../core/kind-setting';
 import { OfflineAreasCard } from './offline-areas';
@@ -113,7 +114,7 @@ const ICONS = {
  */
 @Component({
   selector: 'app-data-page',
-  imports: [FormsModule, RouterLink, TPipe, ImportBackupCard, OfflineAreasCard, DriveConnectComponent, KindsSettings, RecentlyDeleted],
+  imports: [FormsModule, RouterLink, TPipe, ImportBackupCard, OfflineAreasCard, DriveConnectComponent, KindsSettings, RecentlyDeleted, SpacePick],
   templateUrl: './data-page.html',
   styleUrl: './data-page.css',
   providers: provideDriveConnect(),
@@ -254,7 +255,8 @@ export class DataPage implements OnInit, OnDestroy {
   }
   /** The words of the card: the space's own where it has them, the house's keys otherwise. */
   protected w(key: TKey): TKey {
-    return toolWord(this.scopedKind(), key);
+    // The Full backup holds every space: with spaces its words are the kind-neutral ones (S4b-BL-291).
+    return toolWord(this.scopedKind() ?? (this.space.multi() ? '*' : null), key);
   }
   protected readonly many = computed(() => this.i18n.t(this.space.words().many));
   /** Says what the copy holds when there are spaces: this space's candidates, or, for the backup, everything. */
@@ -281,7 +283,7 @@ export class DataPage implements OnInit, OnDestroy {
     if (this.format() !== 'backup') return null;
     const gaps = backupGaps(this.options());
     if (gaps.length === 0) return null;
-    return this.i18n.t('data.partialNote', { gaps: this.i18n.list(gaps.map((g) => this.i18n.t(BACKUP_GAP_KEY[g]))) });
+    return this.i18n.t('data.partialNote', { gaps: this.i18n.list(gaps.map((g) => this.i18n.t(this.w(BACKUP_GAP_KEY[g])))) });
   });
 
   constructor() {

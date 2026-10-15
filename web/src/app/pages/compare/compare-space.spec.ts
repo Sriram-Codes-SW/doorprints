@@ -42,7 +42,7 @@ const S1 = school('s1', { rating: 5, status: 'SHORTLISTED', extrasOther: { board
 const S2 = school('s2', { rating: 3, extrasOther: { board: 'ICSE', busService: false } });
 const H1: HouseDto = { ...newHouse(13.1, 80.1), id: 'h1', label: 'A house', price: 20000, priceType: 'RENT' };
 
-async function open(lang: Lang = 'en', ids = 's1,s2,h1') {
+async function open(lang: Lang = 'en', ids = 's1,s2,h1', all: HouseDto[] = [S1, S2, H1]) {
   TestBed.resetTestingModule();
   localStorage.setItem(EXPERIMENTAL_KINDS_KEY, '1');
   localStorage.setItem(ENABLED_KINDS_KEY, '["house","school"]');
@@ -51,7 +51,7 @@ async function open(lang: Lang = 'en', ids = 's1,s2,h1') {
     imports: [ComparePage],
     providers: [
       provideRouter(routesFor(true, ['house', 'school'])),
-      { provide: LocalDataService, useValue: { settled: signal(0), scoring: () => of(DEFAULT_SCORING), houses: () => of([S1, S2, H1]), visitCounts: () => of(new Map()), places: () => of([]), brokers: () => of([]) } },
+      { provide: LocalDataService, useValue: { settled: signal(0), scoring: () => of(DEFAULT_SCORING), houses: () => of(all), visitCounts: () => of(new Map()), places: () => of([]), brokers: () => of([]) } },
       { provide: LocalStore, useValue: { lengthUnit: () => Promise.resolve('FT') } },
       { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap({ ids }) } } },
     ],
@@ -90,6 +90,25 @@ describe('Compare in a school space (S4b-BL-279)', () => {
     expect(rows.get('School bus')).toEqual(['Yes', 'No']);
     expect(rows.get('Fees per year')).toEqual(['₹96,000', '–No value']);
     expect(rows.get('Your rating')![0]).toContain('✓(best)');
+  });
+
+  // S4b-BL-292: the kind file says which way a number is better (`better`), so a school's lower commute and lower fees are marked.
+  it('marks the lower commute and the lower fees as the best, and nothing where there is one value, a tie, or no hint', async () => {
+    const s3 = school('s3', { rating: 4, extrasOther: { board: 'CBSE', commuteMinutes: 35, busService: true, fees: { amount: 72000, cadence: 'year' }, admissionFee: { amount: 5000, cadence: 'once' } } });
+    const s4 = school('s4', { rating: 4, extrasOther: { board: 'CBSE', commuteMinutes: 20, fees: { amount: 72000, cadence: 'year' }, admissionFee: { amount: 5000, cadence: 'once' } } });
+    const host = await open('en', 's1,s3,s4', [S1, s3, s4]);
+    const best = (label: string) => {
+      const tr = [...host.querySelectorAll('tbody tr')].find((r) => t(r.children[0]) === label)!;
+      return [...tr.children].slice(1).map((td) => td.classList.contains('best'));
+    };
+    expect(best('Commute (minutes)')).toEqual([true, false, true]);
+    expect(best('Fees per year')).toEqual([false, true, true]);
+    expect(best('Admission fee')).toEqual([false, false, false]); // one value is not a comparison; two equal ones are a tie
+    expect(best('Board')).toEqual([false, false, false]); // no hint: an enum has no better
+    expect(best('School bus')).toEqual([false, false, false]);
+    const one = await open('en', 's1,s2');
+    const tr = [...one.querySelectorAll('tbody tr')].find((r) => t(r.children[0]) === 'Commute (minutes)')!;
+    expect([...tr.children].slice(1).map((td) => td.classList.contains('best'))).toEqual([false, false]);
   });
 
   it('refuses a pick of a house with one sentence, in each language, and keeps the schools', async () => {

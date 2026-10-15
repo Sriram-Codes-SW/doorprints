@@ -33,6 +33,7 @@ import { MAX_SAVED_WALKS_PER_DEVICE, MAX_SAVED_WALKS_PER_HOUSE } from '../../dat
 import { TPipe } from '../../i18n/t.pipe';
 import { TranslationService } from '../../i18n/translation.service';
 import type { Msg } from '../../i18n/translation.service';
+import { floorLocalSearchText } from '../../shared/house-floor';
 import { TRACE } from '../../shared/trace-geo';
 import { searchText } from './map-list';
 import { TraceView } from './trace-view';
@@ -225,7 +226,10 @@ export class WalkEndSheet {
     for (const n of near) hints.set(n.house.id, { key: 'trace.pick.near', params: { distance: metres(n.distanceM) } });
     const q = this.query().trim().toLowerCase();
     const base = [...(nearest ? [nearest.house] : []), ...near.map((n) => n.house)];
-    const list = q === '' ? base : this.houses().filter((h) => searchText(h).includes(q));
+    // The list's words (S4b-BL-267): the floor and a kind's extras in the app's language, reading `t` tracks it.
+    const t = this.i18n.t.bind(this.i18n);
+    const localFloor = this.i18n.lang() === 'en' ? undefined : (floor: number) => floorLocalSearchText(t, floor);
+    const list = q === '' ? base : this.houses().filter((h) => searchText(h, '', [], localFloor, t).includes(q));
     return list.map((house) => ({ house, hint: hints.get(house.id) ?? null }));
   });
 

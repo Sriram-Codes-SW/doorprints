@@ -16,6 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import type { TKey } from '../i18n/en';
 import { costSummary, type CostInput } from './house-cost';
 
 /**
@@ -33,6 +34,13 @@ export interface CostFilter {
   moveIn: CostRange;
   perSqFt: CostRange;
 }
+
+/** The three ranges in the order the list draws them, each with its heading. */
+export const COST_RANGES: readonly { key: keyof CostFilter; labelKey: TKey }[] = [
+  { key: 'monthly', labelKey: 'cost.monthlyCost' },
+  { key: 'moveIn', labelKey: 'cost.moveIn' },
+  { key: 'perSqFt', labelKey: 'cost.perSqFt' },
+];
 
 /** The filter that accepts every house. */
 export const NO_COST_FILTER: Readonly<CostFilter> = { monthly: {}, moveIn: {}, perSqFt: {} };

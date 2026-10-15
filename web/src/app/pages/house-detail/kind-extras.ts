@@ -203,7 +203,8 @@ function storedValue(f: WebExtra, value: unknown): OtherExtras[string] | null {
     case 'money':
       return finite && value >= 0 && f.cadence ? { amount: Math.round(value), cadence: f.cadence } : null;
     case 'number':
-      return finite ? value : null;
+      // The kind file's range (S4b-BL-261): a number outside it is no value, as the floor's is.
+      return finite && (f.min === null || value >= Number(f.min)) && (f.max === null || value <= Number(f.max)) ? value : null;
     case 'bool':
       return typeof value === 'boolean' ? value : null;
     case 'enum':

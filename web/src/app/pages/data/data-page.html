@@ -25,6 +25,7 @@
 
   <section class="card" aria-labelledby="export-heading">
     <h2 id="export-heading" tabindex="-1">{{ 'data.exportHeading' | t }}</h2>
+    <app-space-pick [disabled]="busy()" />
 
     @if (!started()) {
       <!-- Until the saved options are read and counted: a placeholder, not a form that flips to an empty state. -->

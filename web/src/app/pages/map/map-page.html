@@ -223,6 +223,7 @@
           </button>
         }
       </div>
+      <app-extra-filters [fields]="space.current().fields" [value]="extras.value()" (changed)="extras.set($event)" />
       <div class="field sort">
         <label for="house-sort">{{ 'map.sort' | t }}</label>
         <select id="house-sort" [value]="sort()" (change)="onSort($event)">

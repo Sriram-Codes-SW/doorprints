@@ -18,10 +18,12 @@
 
 import { signal } from '@angular/core';
 import { Component } from '@angular/core';
-import { TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../app';
+import { audit } from '../shared/testing/a11y';
+import { SpaceService } from './space.service';
 import { DataPage } from '../pages/data/data-page';
 import { SharePage } from '../pages/share/share-page';
 import { TranslationService } from '../i18n/translation.service';
@@ -129,12 +131,16 @@ describe('the assistant reads one space (on this device)', () => {
 });
 
 describe('the Data page in a school space', () => {
-  async function open(url: string): Promise<HTMLElement> {
+  let dataFixture: ComponentFixture<DataPage>;
+  async function open(url: string, then?: string): Promise<HTMLElement> {
     twoKinds();
     TestBed.configureTestingModule({ imports: [DataPage], providers: [provideRouter([{ path: '**', component: Blank }])] });
     await TestBed.inject(TranslationService).setLang('en');
+    TestBed.inject(SpaceService); // the app's shell creates it first, so it sees the first address
     await TestBed.inject(Router).navigateByUrl(url);
+    if (then) await TestBed.inject(Router).navigateByUrl(then); // Your data itself is no space's page: it keeps the last
     const fixture = TestBed.createComponent(DataPage);
+    dataFixture = fixture;
     for (let i = 0; i < 6; i++) {
       fixture.detectChanges();
       await fixture.whenStable();
@@ -148,6 +154,47 @@ describe('the Data page in a school space', () => {
     const empty = host.querySelector('.empty-state')!;
     expect(text(empty.querySelector('p'))).toBe('There is nothing to save yet. Add a school first.');
     expect(empty.querySelector('a')!.getAttribute('href')).toBe('/k/school?add=1');
+  });
+
+  // S4b-BL-292: a space picker on Your data, so the other list is a choice there, not a trip back to the chooser.
+  it('offers a select of the enabled kinds, the space on screen chosen, and choosing the other makes the card its own', async () => {
+    const host = await open('/k/school', '/data');
+    const pick = host.querySelector<HTMLSelectElement>('#copy-space')!;
+    expect(host.querySelector('label[for="copy-space"]')!.textContent).toBe('Save a copy of');
+    expect([...pick.options].map((o) => [o.value, text(o), o.selected])).toEqual([['house', 'Houses', false], ['school', 'Schools', true]]);
+    expect(text(host.querySelector('.empty-state p'))).toBe('There is nothing to save yet. Add a school first.');
+    pick.value = 'house';
+    pick.dispatchEvent(new Event('change'));
+    for (let i = 0; i < 4; i++) {
+      dataFixture.detectChanges();
+      await new Promise((r) => setTimeout(r, 0));
+    }
+    expect(text(host.querySelector('.empty-state p'))).toBe('There is nothing to save yet. Add a house first.');
+    expect(host.querySelector<HTMLSelectElement>('#copy-space')!.value).toBe('house');
+    // and back again; a kind that is not enabled changes nothing
+    pick.value = 'school';
+    pick.dispatchEvent(new Event('change'));
+    TestBed.inject(SpaceService).pick('clinic');
+    for (let i = 0; i < 4; i++) {
+      dataFixture.detectChanges();
+      await new Promise((r) => setTimeout(r, 0));
+    }
+    expect(text(host.querySelector('.empty-state p'))).toBe('There is nothing to save yet. Add a school first.');
+    expect(TestBed.inject(SpaceService).kind()).toBe('school');
+    expect(audit(host)).toEqual([]);
+  });
+
+  it('is not drawn with one kind (the page is as it was)', async () => {
+    localStorage.clear();
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ imports: [DataPage], providers: [provideRouter([{ path: '**', component: Blank }])] });
+    await TestBed.inject(TranslationService).setLang('en');
+    const fixture = TestBed.createComponent(DataPage);
+    for (let i = 0; i < 4; i++) {
+      fixture.detectChanges();
+      await fixture.whenStable();
+    }
+    expect(fixture.nativeElement.querySelector('#copy-space')).toBeNull();
   });
 
   it('keeps the house’s words in the house space', async () => {
