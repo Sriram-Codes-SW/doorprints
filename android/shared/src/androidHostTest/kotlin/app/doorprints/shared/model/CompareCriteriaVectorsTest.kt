@@ -172,7 +172,7 @@ class CompareCriteriaVectorsTest {
     private val madeUpLabels = KindLabels(
         kind = "school",
         keys = mapOf(
-            "check.safety" to "k_safety", "check.extraitem" to "k_extra", "field.rank" to "k_rank", "field.plain" to "k_plain",
+            "section.details" to null, "check.safety" to "k_safety", "check.extraitem" to "k_extra", "field.rank" to "k_rank", "field.plain" to "k_plain",
             "field.hiddenx" to "k_hidden",
         ),
         byCadence = emptyMap(),
