@@ -130,7 +130,7 @@ class IosVoiceSafetyTest {
             assertFalse(text.contains(other), "only the record category: $other")
         assertTrue(text.contains("setActive(true"), "the session is made active in open")
         assertTrue(text.contains("setActive(false, AVAudioSessionSetActiveOptionNotifyOthersOnDeactivation"), "and inactive in close, so other audio resumes")
-        assertTrue(text.contains("installTapOnBus") && text.contains("removeTapOnBus") && text.contains("audio.stop()"), "the tap is installed and removed, the engine stopped")
+        assertTrue(text.contains("installTapOnBus") && text.contains("removeTapOnBus") && text.contains("it.stop()"), "the tap is installed and removed, the engine stopped")
         // The permission is checked before the session is touched, and the microphone only starts after it.
         assertTrue(text.indexOf("microphonePermission()") in 0 until text.indexOf("setCategory"), "the permission is read first")
         assertTrue(text.indexOf("setActive(true") < text.indexOf("startAndReturnError"), "the engine starts last")

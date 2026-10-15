@@ -78,7 +78,7 @@ internal class IosPcmSource : PcmSource {
     private var tornDown = false // guarded by lock: close() has run its clean-up
     private var started = false // guarded by lock: open() got far enough that close() has something to undo
 
-    @Volatile private var engine: AVAudioEngine? = null
+    private var engine: AVAudioEngine? = null // guarded by lock (set in open before the tap starts)
     private var resampler: Pcm16Resampler? = null
     private var mono = FloatArray(0)
     private var inputAtStart: String? = null
@@ -108,7 +108,9 @@ internal class IosPcmSource : PcmSource {
             if (format.sampleRate <= 0.0 || format.channelCount == 0u) throw VoiceRecorderException(VoiceFailure.NO_DEVICE)
             val channels = format.channelCount.toInt()
             resampler = Pcm16Resampler(format.sampleRate)
+            lock.lock()
             engine = audio
+            lock.unlock()
             watch(session, audio)
             input.installTapOnBus(0u, TAP_FRAMES, format) { buffer, _ -> if (buffer != null) take(buffer, channels) }
             audio.prepare()
@@ -155,11 +157,37 @@ internal class IosPcmSource : PcmSource {
         lock.lock()
         try {
             while (queue.available == 0 && !ended) lock.wait()
-            // Ended, even with a few bytes left: the recording is over and its tail is not wanted.
-            if (ended) return -1
+            // After [end] the bytes already queued are still handed out (the tail of the last words); [close] discards them.
+            if (queue.available == 0) return -1
             return queue.read(into, offset, length)
         } finally {
             lock.unlock()
+        }
+    }
+
+    /**
+     * The person's Stop: the tap is removed and the engine stopped first (so the buffer in flight still lands), then the
+     * source is marked ended **with the queue kept**: [read] hands out what is left and then returns a negative number. The
+     * recorder calls [close] after that. The audio session stays active until [close].
+     */
+    override fun end(): Boolean {
+        stopCapture()
+        lock.lock()
+        ended = true
+        lock.broadcast()
+        lock.unlock()
+        return true
+    }
+
+    /** Removes the tap and stops the engine, once; any thread. */
+    private fun stopCapture() {
+        lock.lock()
+        val audio = engine
+        engine = null
+        lock.unlock()
+        audio?.let {
+            it.inputNode.removeTapOnBus(0u)
+            it.stop()
         }
     }
 
@@ -170,17 +198,14 @@ internal class IosPcmSource : PcmSource {
         ended = true
         queue.clear()
         val undo = started
+        val watching = observers.toList()
+        observers.clear()
         lock.broadcast()
         lock.unlock()
         if (!first) return
         val center = NSNotificationCenter.defaultCenter
-        observers.toList().forEach { center.removeObserver(it) }
-        observers.clear()
-        engine?.let { audio ->
-            audio.inputNode.removeTapOnBus(0u)
-            audio.stop()
-        }
-        engine = null
+        watching.forEach { center.removeObserver(it) }
+        stopCapture()
         resampler = null
         if (undo) {
             // Let other apps' audio come back. A failure here has nothing to be done about it.
@@ -196,7 +221,10 @@ internal class IosPcmSource : PcmSource {
         val center = NSNotificationCenter.defaultCenter
         val main = NSOperationQueue.mainQueue
         fun add(name: String?, from: Any?, handle: (NSNotification) -> Unit) {
-            observers += center.addObserverForName(name, from, main) { n -> if (n != null) handle(n) }
+            val token = center.addObserverForName(name, from, main) { n -> if (n != null) handle(n) }
+            lock.lock()
+            observers += token
+            lock.unlock()
         }
         add(UIApplicationWillResignActiveNotification, null) { close() }
         add(AVAudioSessionMediaServicesWereResetNotification, null) { close() }

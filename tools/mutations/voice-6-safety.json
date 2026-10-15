@@ -57,8 +57,8 @@
     },
     {
       "file": "android/ui/src/iosMain/kotlin/app/doorprints/ui/IosPcmSource.kt",
-      "find": "audio.stop()\n        }",
-      "replace": "audio.stop()\n            NSURL.fileURLWithPath(\"/tmp/clip.caf\")\n        }",
+      "find": "it.stop()\n        }",
+      "replace": "it.stop()\n            NSURL.fileURLWithPath(\"/tmp/clip.caf\")\n        }",
       "expect": "theIphoneVoiceCodeWritesNoAudioToDiskOrAnyStore"
     },
     {
