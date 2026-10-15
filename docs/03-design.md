@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.149 |
+| Version | 0.151 |
 | Date | 2026-10-15 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -160,6 +160,7 @@
 | 0.147 | 2026-10-15 | Claude (Code), docs | §19 states voice input as built on the web (merged), Android (#355) and iPhone (#354); the README's AI access policy was corrected to ADR-26/35 in the same pull request. |
 | 0.148 | 2026-10-15 | Claude (Code), engineer | **ADR-37, status:** Android's side is built (S4b-BL-222, voice PR 5; `feat/voice-5-android`; [02](02-threat-model.md) v0.87 §11, [06](06-test-plan.md) TC-U-249..253 and TC-S-52, [ai/voice-input](ai/voice-input.md) v0.6): `shared/voice/` (the recorder interface, `PcmVoiceRecorder`, `VoiceSession`, `VoiceInput`, `OwnKeyTranscription`), the *Voice input* setting under *AI features*, the microphone in Ask, Plan visits and Fill in from listing text, `AudioRecord` in `:app`, `RECORD_AUDIO` as a runtime permission. One choice differs from the plan: 16 kHz mono PCM kept in one array and sent as `audio/wav`, not `MediaRecorder` AAC/m4a (an MP4 muxer needs a seekable file, and "never a file" is the rule); a minute is 1.92 MB, under the 2 MB cap. *This device* (the platform recogniser) is not offered. The iPhone is voice PR 6. |
 | 0.149 | 2026-10-15 | Claude (Code), engineer | **ADR-37, status:** the iPhone's side is built in code without Xcode or a phone (S4b-BL-223, voice PR 6; `feat/voice-6-iphone`; [02](02-threat-model.md) v0.88 §11, [06](06-test-plan.md) TC-U-254..256 and TC-S-53, [ai/voice-input](ai/voice-input.md) v0.7): `IosPcmSource` (an `AVAudioEngine` input tap into memory, resampled in common code to 16 kHz mono 16-bit and handed to the shared `PcmVoiceRecorder` as a WAV clip, the same clip Android sends), `IosMicrophone` (the `AVAudioApplication` permission), `IosVoiceServices` (the shared `VoiceServices`), `NSMicrophoneUsageDescription` and no `audio` background mode. **One change from the plan:** [ai/voice-input](ai/voice-input.md) section 4 said `AVAudioRecorder` with m4a; `AVAudioRecorder` can only write to a file URL, which would put audio on disk (T-I48), so the iPhone uses the engine tap. The setting, the button, the strings, the limits and the provider rules are Android's shared screens and code (`:ui` and `shared/voice/`). |
+| 0.151 | 2026-10-15 | Claude (Code), engineer | **§18.14: the AI card's first sentence is one string for everyone** (S4b-BL-302; `feat/kinds-22-ai-card-one-list`; [06](06-test-plan.md) TC-U-260; [10](10-sprint-log.md) v0.341): the phones' `settings_ai_worth` is the website's `connect.aiWorth` in four languages, `settings_ai_worth_spaces` is retired, four Roborazzi baselines re-recorded. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -2924,8 +2925,8 @@ its candidates, their visits and photos, the brokers of those candidates, no unl
 file name before the date (`Doorprints-schools-2026-09-22-csv.zip`; the house's names unchanged); the Export screen says so in
 words, and **the full backup stays whole** (its options carry no space, so it is named and filled as before). A shared listing,
 with two or more kinds on, asks **Save it in** before the map asks where it is (`ShareKindDialog`, `SpaceScope.shareKind`).
-The AI card's first sentence is kind-neutral (*one list at a time*) while two or more kinds are on; with one kind on it is
-today's words, so the house screens' baselines stay byte for byte (the website changed it for everyone, S4b-BL-281).
+The AI card's first sentence is the kind-neutral *one list at a time* for everyone, on the website and the phones, with one kind on too
+(owner, 2026-10-15; S4b-BL-302 replaced the second phone string `settings_ai_worth_spaces` and re-recorded the settings baselines, §18.16).
 
 **Links and alerts** resolve the space from the candidate's kind: a link to a candidate of another kind opens its space; a
 Hunt alert makes a candidate of the **default** kind; *Start Hunt mode* from a reminder opens the house space; a new entry is of
