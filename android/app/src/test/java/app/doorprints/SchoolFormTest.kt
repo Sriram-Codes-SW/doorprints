@@ -41,6 +41,7 @@ import app.doorprints.ui.HouseListScreen
 import app.doorprints.ui.LocalDevKinds
 import app.doorprints.ui.ProvideAppServices
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -119,6 +120,21 @@ class SchoolFormTest {
         assertEquals(JsonPrimitive("Class 1 to 12"), saved.extrasOther!!["grades"])
         assertEquals(SchoolSample.entity().extrasOther!!["fees"], saved.extrasOther!!["fees"])
         assertNull(saved.price)
+    }
+
+    /** S4b-BL-261 item 2: a number outside the kind file's range (a school's commute is 0 to 300 minutes) is not written back by the form. */
+    @Test
+    fun aNumberOutsideTheKindFilesRangeIsNotSavedByTheForm() {
+        val outside = SchoolSample.entity().let { it.copy(extrasOther = JsonObject(it.extrasOther!! + ("commuteMinutes" to JsonPrimitive(500)))) }
+        runBlocking { repo.saveHouse(outside) }
+        open(SchoolSample.ID, flag = true, ready = "Pine Hill School")
+        compose.onNodeWithText("Grades offered").performScrollTo().performTextReplacement("Class 1 to 8")
+        compose.waitForIdle()
+        compose.onAllNodesWithText("Save")[0].performScrollTo().performClick()
+        compose.waitUntil(5_000) { runBlocking { repo.getHouse(SchoolSample.ID) }?.extrasOther?.get("grades") == JsonPrimitive("Class 1 to 8") }
+        val saved = runBlocking { repo.getHouse(SchoolSample.ID) }!!
+        assertNull("the 500 is not the person's value", saved.extrasOther!!["commuteMinutes"])
+        assertEquals(SchoolSample.entity().extrasOther!!["board"], saved.extrasOther!!["board"])
     }
 
     @Test

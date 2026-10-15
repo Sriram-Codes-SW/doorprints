@@ -42,7 +42,7 @@ import org.jetbrains.compose.resources.stringResource
 /** The saved form of the list's filter by a kind's extras: the set rows as `id`, `choice` pairs (a row left on *Any* is not kept). */
 internal val ExtraFilterSaver: Saver<Map<String, String?>, Any> = listSaver(
     save = { m -> m.entries.filter { it.value != null }.flatMap { listOf(it.key, it.value!!) } },
-    restore = { l -> l.chunked(2).associate { it[0] as String to it[1] as String } },
+    restore = { l -> l.chunked(2).associate { it[0] to it[1] } },
 )
 
 /**

@@ -1,0 +1,75 @@
+{
+  "spec": [
+    "android/shared/src/androidHostTest/kotlin/app/doorprints/shared/model/KindFilterVectorsTest.kt",
+    "android/shared/src/androidHostTest/kotlin/app/doorprints/shared/model/KindBestTest.kt",
+    "android/shared/src/androidHostTest/kotlin/app/doorprints/shared/model/HouseKindFileTest.kt",
+    "android/shared/src/androidHostTest/kotlin/app/doorprints/shared/model/SchoolKindVectorsTest.kt"
+  ],
+  "gradle": [
+    ":shared:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.shared.model.KindFilterVectorsTest",
+    "--tests",
+    "app.doorprints.shared.model.KindBestTest",
+    "--tests",
+    "app.doorprints.shared.model.HouseKindFileTest",
+    "--tests",
+    "app.doorprints.shared.model.SchoolKindVectorsTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindFilter.kt",
+      "find": "val want = filter[f.id]?.takeIf { it in choices(f) } ?: continue",
+      "replace": "val want = filter[f.id] ?: continue",
+      "expect": "everyFilterKeepsExactlyTheCandidatesTheVectorsSay"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindFilter.kt",
+      "find": "if (want == YES) on == true else on == false",
+      "replace": "if (want == YES) on == true else on != true",
+      "expect": "everyFilterKeepsExactlyTheCandidatesTheVectorsSay"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindFilter.kt",
+      "find": "fields.others().filter { it.type == \"enum\" || it.type == \"bool\" }",
+      "replace": "fields.others().filter { it.type == \"enum\" }",
+      "expect": "theRowsAKindOffersAreItsEnumsAndSwitchesAndAHouseHasNone"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindFilter.kt",
+      "find": "filter[it.id]?.let { c -> c in choices(it) } == true",
+      "replace": "filter[it.id] != null",
+      "expect": "onlyASetRowTheKindOffersCountsAsActive"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindValues.kt",
+      "find": "if (present.all { it == target }) return emptySet()",
+      "replace": "if (false) return emptySet()",
+      "expect": "aTieOneValueOrNoneMarksNothing"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindValues.kt",
+      "find": "\"lower\" -> true; \"higher\" -> false",
+      "replace": "\"lower\" -> false; \"higher\" -> true",
+      "expect": "theLowestIsMarkedAndAllOfAnEqualLowest"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/SchoolKind.kt",
+      "find": "cadences = listOf(\"year\"), better = \"lower\"),",
+      "replace": "cadences = listOf(\"year\")),",
+      "expect": "theCopyIsTheKindFilesAndroidKeysAndExtras"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindWordKeys.kt",
+      "find": "\"houses_title\", \"map_region_desc\", null, \"common_add_on_map\"",
+      "replace": "\"houses_title\", \"map_region_desc\", \"houses_title\", \"common_add_on_map\"",
+      "expect": "theSpaceWordsAreTheFilesAndroidKeysAndTheHousesStringsAsTheyWere"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindWordKeys.kt",
+      "find": "\"school_shown\", null, null, \"school_empty\"",
+      "replace": "\"school_shown\", null, null, \"school_no_match\"",
+      "expect": "theSpaceWordsAreTheKindFilesAndroidKeysAndAllExist"
+    }
+  ]
+}

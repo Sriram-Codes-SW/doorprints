@@ -19,6 +19,7 @@
 package app.doorprints.ui
 
 import app.doorprints.shared.model.KindSetting
+import app.doorprints.shared.model.KindWordKeys
 import app.doorprints.ui.res.Res
 import app.doorprints.ui.res.houses_title
 import app.doorprints.ui.res.nav_houses
@@ -77,6 +78,21 @@ class SpaceUiTest {
         for (ref in listOf("field.contactName", "field.street", "field.rating", "section.visits", "section.distances")) assertTrue(school.shows(ref), ref)
         assertFalse(school.huntHere)
         assertFalse(school.sortsByScoreAndPrice)
+    }
+
+    /** S4b-BL-278: ten of the space words and two page words are the ones the kind files' `android` keys name. */
+    @Test
+    fun theWordsTheKindFileHasAreReadFromItsAndroidKeys() {
+        for ((kind, keys) in listOf("house" to KindWordKeys.HOUSE, "school" to KindWordKeys.SCHOOL)) {
+            fun key(id: String) = kindStringResource(checkNotNull(keys[id])).key
+            val w = SpaceWords.of(kind)
+            assertEquals(
+                listOf("heading", "search", "shown", "emptyBody", "noMatch", "add", "create", "regionLabel", "addHint", "addHintShort").map(::key),
+                listOf(w.many, w.search, w.shown, w.empty, w.noMatch, w.addOnMap, w.saveHere, w.regionDesc, w.addTip, w.addTipA11y).map { it.key },
+                kind,
+            )
+            assertEquals(listOf(key("areaNotesNone"), key("areaInReach")), listOf(PageWords.of(kind).areaNotesNone.key, PageWords.of(kind).areaHere.key), kind)
+        }
     }
 
     @Test
