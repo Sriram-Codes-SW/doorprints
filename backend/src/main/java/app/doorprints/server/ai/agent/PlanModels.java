@@ -18,6 +18,7 @@
 
 package app.doorprints.server.ai.agent;
 
+import app.doorprints.server.house.House;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
@@ -25,6 +26,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import java.util.List;
@@ -44,7 +46,14 @@ public final class PlanModels {
             @NotBlank @Size(max = 4000) String question,
             @NotNull @DecimalMin("-90") @DecimalMax("90") Double startLat,
             @NotNull @DecimalMin("-180") @DecimalMax("180") Double startLon,
-            @Min(1) @Max(25) Integer maxStops) {
+            @Min(1) @Max(25) Integer maxStops,
+            /* S4b-BL-290: the kind of the space planned over; absent is today's call (every candidate). Checked against
+               app.kinds.available (a 400) before any tool runs. */
+            @Pattern(regexp = House.KIND_PATTERN) String kind) {
+        /** A request that names no kind. */
+        public PlanRequest(String question, Double startLat, Double startLon, Integer maxStops) {
+            this(question, startLat, startLon, maxStops, null);
+        }
     }
 
     /**

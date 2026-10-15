@@ -41,10 +41,21 @@ import java.util.Map;
  *                      {@code PromptSafety.neutralize} removes from a value (S4b-BL-269)
  * @param refusal       the Ask refusal sentence of this kind (S4b-BL-269), exact: the answer that cites nothing
  * @param askSystem     the Ask system text, {@code %1$s} the block's tag; it holds {@link #refusal} word for word
+ * @param planSystem    the server planner's system text (S4b-BL-290), a format with the start latitude {@code %1$.6f}, the
+ *                      start longitude {@code %2$.6f}, the stop cap {@code %3$d} and the neutral rule {@code %4$s}; the
+ *                      planner uses tools, so it is not the devices' text (whose candidates are in the prompt); null for
+ *                      a kind with none (the house's text is read instead)
  */
 public record AiKind(String id, String noun, List<String> extract, List<String> ask, List<String> plan,
                      List<String> never, List<Extra> extras, String extractSystem, String records, String refusal,
-                     String askSystem) {
+                     String askSystem, String planSystem) {
+
+    /** A kind with no server planner text of its own (the house's is read for it). */
+    public AiKind(String id, String noun, List<String> extract, List<String> ask, List<String> plan,
+                  List<String> never, List<Extra> extras, String extractSystem, String records, String refusal,
+                  String askSystem) {
+        this(id, noun, extract, ask, plan, never, extras, extractSystem, records, refusal, askSystem, null);
+    }
 
     /**
      * One typed extra (door 5): its type, the range a value must keep to be read at all, and its English words.

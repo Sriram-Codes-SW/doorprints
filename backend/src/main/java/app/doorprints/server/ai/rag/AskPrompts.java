@@ -129,9 +129,20 @@ public final class AskPrompts {
      * {@code visited} equals it (a question about visits).
      */
     public static Filter.Expression filter(AskFilters f, Boolean visited) {
-        if (f == null && visited == null) return null;
+        return filter(f, visited, null);
+    }
+
+    /**
+     * As {@link #filter(AskFilters, Boolean)}, and when {@code kind} is given also only the documents stamped with that
+     * kind (S4b-BL-290; a document of a built-in kind other than the house carries it, {@code KindDocuments.metadata}). The
+     * value is bound as a typed filter value, never part of a query text, and the caller has already checked it against
+     * {@code app.kinds.available}.
+     */
+    public static Filter.Expression filter(AskFilters f, Boolean visited, String kind) {
+        if (f == null && visited == null && kind == null) return null;
         var b = new FilterExpressionBuilder();
-        FilterExpressionBuilder.Op op = visited == null ? null : b.eq("visited", visited);
+        FilterExpressionBuilder.Op op = kind == null ? null : b.eq("kind", kind);
+        if (visited != null) op = and(b, op, b.eq("visited", visited));
         if (f == null) return op.build();
         if (f.status() != null) op = and(b, op, b.eq("status", f.status().name()));
         if (f.priceType() != null) op = and(b, op, b.eq("priceType", f.priceType()));

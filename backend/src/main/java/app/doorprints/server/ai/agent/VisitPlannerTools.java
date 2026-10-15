@@ -53,6 +53,8 @@ public class VisitPlannerTools {
     private final HouseQueries queries;
     private final double startLat;
     private final double startLon;
+    /** The kind this plan is over (S4b-BL-290), already checked against the server's list; null reads every candidate. */
+    private final String kind;
     private final List<String> calls = Collections.synchronizedList(new ArrayList<>());
     private final Map<UUID, HouseSummary> seen = Collections.synchronizedMap(new LinkedHashMap<>());
 
@@ -61,9 +63,15 @@ public class VisitPlannerTools {
      * the plan can be checked afterwards.
      */
     public VisitPlannerTools(HouseQueries queries, double startLat, double startLon) {
+        this(queries, startLat, startLon, null);
+    }
+
+    /** As above for a plan over the candidates of {@code kind} only: every tool reads that kind's and no other (S4b-BL-290). */
+    public VisitPlannerTools(HouseQueries queries, double startLat, double startLon, String kind) {
         this.queries = queries;
         this.startLat = startLat;
         this.startLon = startLon;
+        this.kind = kind;
     }
 
     public List<String> calls() {
@@ -100,7 +108,7 @@ public class VisitPlannerTools {
             @ToolParam(required = false, description = "Minimum personal rating 1-5") Integer minRating,
             @ToolParam(required = false, description = "Maximum results, 1-50 (default 50)") Integer limit) {
         calls.add("searchHouses");
-        return remember(queries.searchHouses(text, status, priceType, maxPrice, minBedrooms, minRating, limit));
+        return remember(queries.searchHouses(text, status, priceType, maxPrice, minBedrooms, minRating, limit, kind));
     }
 
     /**
@@ -112,7 +120,7 @@ public class VisitPlannerTools {
             @ToolParam(description = "Longitude, WGS84") double lon,
             @ToolParam(required = false, description = "Radius in metres, default 1000, max 5000") Double radiusMeters) {
         calls.add("nearbyHouses");
-        return remember(queries.nearbyHouses(lat, lon, radiusMeters));
+        return remember(queries.nearbyHouses(lat, lon, radiusMeters, kind));
     }
 
     @Tool(name = "houseDetails", description = """
@@ -123,7 +131,7 @@ public class VisitPlannerTools {
      */
     public HouseDetails houseDetails(@ToolParam(description = "House id (UUID)") String houseId) {
         calls.add("houseDetails");
-        return queries.houseDetails(houseId);
+        return queries.houseDetails(houseId, kind);
     }
 
     /**
@@ -132,7 +140,7 @@ public class VisitPlannerTools {
     @Tool(name = "visitHistory", description = "Past visits to a house (newest first): arrival, departure, minutes spent.")
     public List<VisitInfo> visitHistory(@ToolParam(description = "House id (UUID)") String houseId) {
         calls.add("visitHistory");
-        return queries.visitHistory(houseId);
+        return queries.visitHistory(houseId, kind);
     }
 
     @Tool(name = "orderByNearestNeighbour", description = """

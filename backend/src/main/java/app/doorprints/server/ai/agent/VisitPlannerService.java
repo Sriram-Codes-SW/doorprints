@@ -27,6 +27,8 @@ import app.doorprints.server.ai.agent.PlanModels.PlanRequest;
 import app.doorprints.server.ai.agent.PlanModels.PlanResponse;
 import app.doorprints.server.ai.agent.PlanModels.PlannedStop;
 import app.doorprints.server.ai.config.AiProperties;
+import app.doorprints.server.ai.kind.AiKind;
+import app.doorprints.server.ai.kind.AiKinds;
 import app.doorprints.server.ai.web.AiUnavailableException;
 import app.doorprints.server.ai.web.AiUsageLogger;
 import app.doorprints.server.common.BadRequestException;
@@ -46,6 +48,7 @@ import org.springframework.ai.model.tool.ToolCallingManager;
 import org.springframework.ai.model.tool.ToolExecutionResult;
 import org.springframework.ai.tool.definition.ToolDefinition;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBooleanProperty;
 import org.springframework.stereotype.Service;
 
@@ -84,6 +87,8 @@ public class VisitPlannerService {
     private final HouseQueries queries;
     private final AiProperties props;
     private final ToolCallingManager boundedToolManager;
+    /** The kinds this server has available: a request may name only one of them (S4b-BL-290). */
+    private final AiKinds kinds;
 
     /**
      * Builds the tool-calling manager once. It throws ({@link ToolCallLimitExceededException}) when a run exceeds the
@@ -92,6 +97,14 @@ public class VisitPlannerService {
      */
     public VisitPlannerService(ChatClient chat, HouseQueries queries, AiProperties props,
                                ObjectProvider<ObservationRegistry> observations) {
+        this(chat, queries, props, observations, AiKinds.OFF);
+    }
+
+    /** As above, for a server whose request may name one of {@code kinds} (S4b-BL-290). */
+    @Autowired
+    public VisitPlannerService(ChatClient chat, HouseQueries queries, AiProperties props,
+                               ObjectProvider<ObservationRegistry> observations, AiKinds kinds) {
+        this.kinds = kinds;
         this.chat = chat;
         this.queries = queries;
         this.props = props;
@@ -101,6 +114,16 @@ public class VisitPlannerService {
                 .maxCallsPerTool(props.agent().maxCallsPerTool())
                 .onLimitExceeded(ToolCallLimitBehavior.THROW)
                 .build();
+    }
+
+    /**
+     * As {@link #systemPrompt(double, double, int)}, in the words of the request's kind (S4b-BL-290): a built-in kind other
+     * than the house that this server has available reads its own planner text ({@link AiKind#planSystem}); the house, no
+     * kind, and a kind with no text of its own get the house's, byte for byte.
+     */
+    static String systemPrompt(double lat, double lon, int maxStops, AiKind kind) {
+        if (kind == null || kind.planSystem() == null) return systemPrompt(lat, lon, maxStops);
+        return String.format(java.util.Locale.ROOT, kind.planSystem(), lat, lon, maxStops, PromptSafety.NEUTRAL_RULE);
     }
 
     /**
@@ -141,8 +164,11 @@ public class VisitPlannerService {
         if (request.question().length() > props.maxQuestionChars()) {
             throw new BadRequestException("question is longer than " + props.maxQuestionChars() + " characters");
         }
+        // S4b-BL-290: a kind outside app.kinds.available is a 400 before any tool or model call; absent reads every candidate.
+        if (request.kind() != null) kinds.require(request.kind());
+        var kindWords = kinds.of(request.kind());
         int maxStops = maxStops(request.maxStops(), props.agent().maxStops());
-        var tools = new VisitPlannerTools(queries, request.startLat(), request.startLon());
+        var tools = new VisitPlannerTools(queries, request.startLat(), request.startLon(), request.kind());
         var limitWatch = new LimitWatch(boundedToolManager);
         var advisor = ToolCallingAdvisor.builder().toolCallingManager(limitWatch).build();
         var nonce = PromptSafety.nonce();
@@ -153,7 +179,7 @@ public class VisitPlannerService {
         String noPlan = null;
         try {
             var result = chat.prompt()
-                    .system(systemPrompt(request.startLat(), request.startLon(), maxStops))
+                    .system(systemPrompt(request.startLat(), request.startLon(), maxStops, kindWords))
                     .user(userText(request, nonce))
                     .tools(tools)
                     .advisors(advisor)
@@ -169,7 +195,7 @@ public class VisitPlannerService {
             if (limitWatch.hit && !tools.calls().isEmpty()) {
                 // The model used its allowance (often a fifth searchHouses): let it finish with what it found.
                 log.info("plan-visits: tool limit reached after {}, making one wrap-up call", tools.calls());
-                var wrap = wrapUp(request, maxStops, nonce, tools);
+                var wrap = wrapUp(request, maxStops, nonce, tools, kindWords);
                 plan = wrap.plan();
                 noPlan = wrap.failure();
                 if (plan == null && tools.seen().isEmpty()) throw new AiUnavailableException("Visit planning failed", e);
@@ -235,11 +261,11 @@ public class VisitPlannerService {
      * followed by {@link #limitNotice}. Returns the model's plan (checked later by {@link #assemble}) or null when this
      * call fails or answers with something that is not a plan; there is no second attempt.
      */
-    private WrapUp wrapUp(PlanRequest request, int maxStops, String nonce, VisitPlannerTools tools) {
+    private WrapUp wrapUp(PlanRequest request, int maxStops, String nonce, VisitPlannerTools tools, AiKind kindWords) {
         long started = System.nanoTime();
         try {
             var result = chat.prompt()
-                    .system(systemPrompt(request.startLat(), request.startLon(), maxStops))
+                    .system(systemPrompt(request.startLat(), request.startLon(), maxStops, kindWords))
                     .user(userText(request, nonce) + "\n\n" + limitNotice(tools.calls(), tools.seen()))
                     .options(ChatOptions.builder().temperature(0.2).maxTokens(props.maxOutputTokens()))
                     .call()
