@@ -1,12 +1,12 @@
 # More than houses (experimental)
 
 Doorprints is made for house hunting, and that is all most people need. This page is about an early preview that lets
-the same app keep track of **schools** too. It is **off** unless you turn it on, it is not in the published app yet, and
+the same app keep track of **schools** too. It is **off** unless you turn it on, on the website it is a preview you find in Settings, and
 it may change or go away.
 
 ## Turn it on
 
-- **Website:** for now in a development build only (the published website offers houses alone). In such a build, open **Your data** and find **What you track**.
+- **Website:** in Settings, off by default. Open **Your data** and find **What you track**.
 - **Android and iPhone:** for now in a preview build only (the published app offers houses alone). Open **Settings** and find **What you track**; it appears only in a build that ships more than houses.
 
 Turn on **Experimental: more than houses**. A row for **Houses** and one for **Schools** appear. Turn on **Show Schools**.
@@ -28,7 +28,7 @@ the cards. **Back** from the list does too.
 
 While only one is shown, there is no choice to make: Doorprints opens straight into it, as it always did.
 
-On the phone the button sits at the top of the Map, the list, Compare and Settings. **Hunt mode** is for houses: the Map's Hunt card is only there while you look at houses. In **Settings**, **Brokers**, **Criteria**, **Questions** and **Viewings** are for houses too, and are not shown while you look at schools. On the website, **Your data** does the same for the **Criteria**, **Questions** and **Viewings** cards.
+On the phone the button sits at the top of the Map, the list, Compare and Settings. **Hunt mode** is for houses: the Map's Hunt card is only there while you look at houses. In **Settings**, **Brokers**, **Criteria**, **Questions** and **Viewings** are for houses too, and are not shown while you look at schools. If **Hunt mode** is running when you switch from Houses to Schools, it stops, and Doorprints says so in one line (*Hunt mode stopped. It runs in the Houses space only.*); turn it on again from the Map when you are back in Houses. On the website, **Your data** does the same for the **Criteria**, **Questions** and **Viewings** cards.
 
 ## What a school has
 

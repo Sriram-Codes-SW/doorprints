@@ -207,7 +207,7 @@ class AiProviderSettingsTest {
         assertTrue(text.length > 100)
     }
 
-    // --- the Sarvam key (voice PR 7, S4b-BL-224, TC-U-259; the TC-U-170 pattern) -----------------------------------------
+    // --- the Sarvam key (voice PR 7, S4b-BL-224, TC-U-264; the TC-U-170 pattern) -----------------------------------------
 
     @Test
     fun theSarvamKeyHasASlotOfItsOwnAndTheAiKeyIsUntouched() = runTest {

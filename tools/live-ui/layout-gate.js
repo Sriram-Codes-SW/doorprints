@@ -40,8 +40,10 @@
 // So a pass whose only failures are layout shifts runs once more, and the output says so; a second failure fails the gate.
 // GATE_FONT_DELAY_MS=<ms> makes the local server send the web fonts (the Indic Noto Sans) that late, as a slow network
 // does, to see what a late font moves (not set in CI; the Indic fonts are font-display: optional since S4b-BL-263, so a late font is not swapped in; the shift-only rerun may go one release after that).
-// GATE_DEV_KINDS=1 adds the two-kind run (S4b-BL-212): the chooser, the chip and a school space at 320x568 (en, ta 130%) and
-// on the owner's phone (ta 130%), on a build made with --define DOORPRINTS_KINDS="'house,school'" (not set in CI).
+// GATE_DEV_KINDS=1 adds the kinds runs (S4b-BL-212, 2026-10-15): on a build that lists the school (the production build does,
+// DOORPRINTS_KINDS="'house,school'" in angular.json), at 320x568 (en, ta 130%) and on the owner's phone (ta 130%), twice:
+// with Experimental: more than houses OFF (the default: no chooser, the switch off, no kind rows on Your data) and ON (the
+// chooser, the chip and a school space). CI sets it in the layout-gate job (web.yml).
 const { chromium, devices } = require('playwright');
 const { ROUTES, phoneContext, layoutAudit } = require('./layout-audit');
 const http = require('node:http');
@@ -171,6 +173,28 @@ function twoKinds() {
   localStorage.setItem('doorprints.tour', 'skipped');
 }
 
+/** The switch left off, as a person who has not touched it: only the tour is done. */
+function switchOff() {
+  localStorage.setItem('doorprints.tour', 'skipped');
+}
+
+/** One route of the switch-off run: the map with no chooser, and Your data with the switch off and no kind rows. */
+async function offRoute(page, route, tag, check) {
+  try {
+    const resp = await page.goto(`${BASE_FOR_KINDS}${route}`, { waitUntil: 'load', timeout: 30000 });
+    check(`${tag}: loads`, !!resp && resp.status() < 400, resp && resp.status());
+    if (route === '/data') await page.waitForSelector('#kinds-experimental', { timeout: 15000 }).catch(() => null);
+    await page.waitForTimeout(route === '/' ? 1500 : 400);
+    check(`${tag}: no chooser, no space chip`, (await page.locator('#chooser-heading, .space-chip').count()) === 0, 'a chooser or a chip with the switch off');
+    if (route === '/data') {
+      check(`${tag}: the switch is off`, (await page.locator('#kinds-experimental:not(:checked)').count()) === 1, 'no unchecked Experimental switch');
+      check(`${tag}: no kind rows`, (await page.locator('#kind-rows').count()) === 0, 'kind rows with the switch off');
+    }
+    const found = await page.evaluate(layoutAudit);
+    check(`${tag}: layout`, found.length === 0, found.join(' ; '));
+  } catch (e) { check(`${tag}: ran`, false, e.message.split('\n')[0]); }
+}
+
 /** One route of the two-kind run: the chooser at `/`, a school space with its chip, What you track on Your data. */
 async function kindsRoute(page, route, tag, check) {
   try {
@@ -207,11 +231,13 @@ async function run() {
     const { ctx } = await phoneContext(browser, devices, { device: 'Pixel 7', viewport, text, lang });
     await offline(ctx, base);
     await ctx.addInitScript(watchShifts);
-    if (kinds) await ctx.addInitScript(twoKinds);
+    if (kinds) await ctx.addInitScript(kinds === 'off' ? switchOff : twoKinds);
     const page = await ctx.newPage();
     for (const route of routes) {
       if (kinds) {
-        await kindsRoute(page, route, `${viewport.width}x${viewport.height}${text ? ` text ${text}%` : ''} ${lang} two kinds ${route}`, check);
+        const at = `${viewport.width}x${viewport.height}${text ? ` text ${text}%` : ''} ${lang}`;
+        if (kinds === 'off') await offRoute(page, route, `${at} switch off ${route}`, check);
+        else await kindsRoute(page, route, `${at} two kinds ${route}`, check);
         continue;
       }
       const tag = `${viewport.width}x${viewport.height}${text ? ` text ${text}%` : ''}${lang === 'en' ? '' : ` ${lang}`} ${route}`;
@@ -254,10 +280,11 @@ async function run() {
     ...['ta', 'te'].flatMap((lang) => [...VIEWPORTS, TALL_TAMIL].map((v) => [v, undefined, lang, { counters: true, routes: ['/'] }])),
     ...['ta', 'te'].map((lang) => [OWNER_PHONE, LARGE_TEXT, lang, { counters: true, routes: ['/'] }]),
   ];
-  // GATE_DEV_KINDS=1 (S4b-BL-212): the chooser, the space chip and a school space, on a build that ships the school
-  // (`ng build --define DOORPRINTS_KINDS="'house,school'"`). The checks above are unchanged and run first.
+  // GATE_DEV_KINDS=1 (S4b-BL-212): on a build that lists the school (the production build), the switch-off run, then the
+  // chooser, the space chip and a school space with the switch on. The checks above are unchanged and run first.
   if (process.env.GATE_DEV_KINDS === '1') {
     for (const [v, t, lang] of [[VIEWPORTS[0], undefined, 'en'], [VIEWPORTS[0], LARGE_TEXT, 'ta'], [OWNER_PHONE, LARGE_TEXT, 'ta']]) {
+      passes.push([v, t, lang, { kinds: 'off', routes: ['/', '/data'] }]);
       passes.push([v, t, lang, { kinds: true, routes: ['/', '/k/school', '/k/school/compare', '/share', '/data'] }]);
     }
   }

@@ -42,6 +42,7 @@ import androidx.core.content.FileProvider
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import app.doorprints.data.HouseEntity
+import app.doorprints.location.HuntState
 import app.doorprints.screenshots.ScreenshotTestApp
 import app.doorprints.ui.DeepLink
 import app.doorprints.ui.DoorprintsRoot
@@ -98,7 +99,10 @@ class SpacesRootTest {
         }
     }
 
-    @After fun close() = kinds.close()
+    @After fun close() {
+        kinds.close()
+        HuntState.update { HuntState.State() }
+    }
 
     private fun startHouseOnly() {
         compose.setContent {
@@ -287,13 +291,61 @@ class SpacesRootTest {
     }
 
     @Test
-    fun anAlertMakesACandidateOfTheDefaultKind() {
+    fun aHuntAlertMakesAHouseEvenWhenTheSchoolIsTheDefault() {
+        // S4b-BL-304: Hunt mode is the house space's walk, so its "stay here?" alert makes a house, never a candidate of the default kind.
         kinds.enableSchool(schoolDefault = true)
         startTwoKinds()
         waitFor("What are you looking for?")
         links.value = DeepLink.NewHouse(26.1433, 91.7898, null)
-        waitFor("Save a school")
+        waitFor("Save a house")
         shows("26.143300")
+        hasNo("Save a school")
+    }
+
+    @Test
+    fun aWalkStartedInTheHouseSpaceStopsWhenThePersonSwitchesToASchoolSpaceAndSaysWhy() {
+        kinds.enableSchool()
+        startTwoKinds()
+        waitFor("What are you looking for?")
+        card("Houses").performClick()
+        waitFor("Hunt mode")
+        HuntState.update { it.copy(active = true, startedAt = 1L) }
+        settle()
+        assertEquals(0, kinds.huntStops) // in the house space the walk goes on
+        compose.onNodeWithContentDescription("Houses: change what you are looking for").performClick()
+        waitFor("What are you looking for?")
+        assertEquals(0, kinds.huntStops) // the chooser is not a space: nothing has changed yet
+        card("Schools").performClick()
+        waitFor("Hunt mode stopped. It runs in the Houses space only.")
+        assertEquals(1, kinds.huntStops)
+        assertEquals(false, HuntState.state.value.active)
+        waitForMap("schools")
+    }
+
+    @Test
+    fun aWalkStartedWhileASchoolSpaceIsOnScreenIsLeftAlone() {
+        // A reminder's Start Hunt mode (or the notification's action) starts the walk with another space open: only the move out of the house space stops one.
+        kinds.enableSchool()
+        startTwoKinds()
+        waitFor("What are you looking for?")
+        card("Schools").performClick()
+        waitForMap("schools")
+        HuntState.update { it.copy(active = true, startedAt = 1L) }
+        settle()
+        assertEquals(0, kinds.huntStops)
+    }
+
+    @Test
+    fun withOneKindOnNoWalkIsEverStoppedByASpaceChange() {
+        startHouseOnly()
+        waitFor("Hunt mode")
+        HuntState.update { it.copy(active = true, startedAt = 1L) }
+        tab("Settings").performClick()
+        settle()
+        tab("Map").performClick()
+        settle()
+        assertEquals(true, HuntState.state.value.active)
+        hasNo("Hunt mode stopped. It runs")
     }
 
     @Test

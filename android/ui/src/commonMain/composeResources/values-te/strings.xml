@@ -492,6 +492,8 @@
     <string name="map_hunt_notify_rationale">మీరు చూసిన ఇంటి దగ్గర నుండి వెళ్లినప్పుడు హంట్ మోడ్ నోటిఫికేషన్‌తో చెబుతుంది.</string>
     <string name="map_hunt_stopped_battery">బ్యాటరీ తక్కువగా ఉండటంతో హంట్ మోడ్ ఆగిపోయింది.</string>
     <string name="map_hunt_stopped_not_allowed">Android దీన్ని బ్యాక్‌గ్రౌండ్‌లో నడవనివ్వనందున హంట్ మోడ్ ఆగిపోయింది. ఇక్కడ మళ్లీ ఆన్ చేయండి.</string>
+    <!-- S4b-BL-304, Hunt mode ends on leaving the house space (2026-10-15): under review. -->
+    <string name="hunt_stopped_left_space">హంట్ మోడ్ ఆగిపోయింది. ఇది ఇళ్ల విభాగంలో మాత్రమే నడుస్తుంది.</string>
     <string name="map_hunt_stopped_permission">స్థాన అనుమతి ఆపివేయబడినందున హంట్ మోడ్ ఆగిపోయింది.</string>
     <string name="map_loading">మ్యాప్ లోడ్ అవుతోంది…</string>
     <string name="map_location_off">Doorprints కోసం స్థానం ఆఫ్‌లో ఉంది. హంట్ మోడ్‌కు, ‘ఇక్కడ ఇల్లు సేవ్ చేయండి’కి ఇది అవసరం.</string>
@@ -1658,7 +1660,7 @@
     <string name="settings_ai_quality_economy">Economy (పొదుపు)</string>
     <string name="settings_ai_quality_economy_hint">మా పరీక్షల్లో సుమారు 40 శాతం చౌక, సుమారు రెట్టింపు వేగం; జవాబులు అంతే బాగున్నాయి.</string>
     <!-- S4b-BL-215 (2026-10-10): three honest sentences on the AI card, the same words as the website and the guide's "Is AI worth it for me?". Under review. -->
-    <string name="settings_ai_worth">AI మీరు సేవ్ చేసిన మీ సొంత ఇళ్లు, నోట్స్‌ను చదువుతుంది. మార్కెట్, చట్టం లేదా ఒక ప్రాంతం గురించి దానికి ఏమీ తెలియదు; Doorprints లోని మిగతా భాగం అది లేకుండా కూడా పనిచేస్తుంది.</string>
+    <string name="settings_ai_worth">AI మీరు సేవ్ చేసినవాటిని, మీ నోట్స్‌ను ఒక్కో జాబితాగా చదువుతుంది: అడగండి, ప్రణాళిక మీరు ఉన్న జాబితాను మాత్రమే చదువుతాయి. మార్కెట్, చట్టం లేదా ఒక ప్రాంతం గురించి దానికి ఏమీ తెలియదు; Doorprints లోని మిగతా భాగం అది లేకుండా కూడా పనిచేస్తుంది.</string>
     <string name="settings_ai_cost">చెల్లింపు కీతో ప్రతి వినియోగానికి సుమారు ఒక రూపాయి లేదా కొన్ని రూపాయలు అవుతుంది. Google ఉచిత స్థాయి ఉచితమే, కానీ రోజువారీ పరిమితి ఉంది; మీరు పంపేదాన్ని Google చదవవచ్చు.</string>
     <string name="settings_ai_sends">మీ ప్రశ్న, సరిపోయే ఇంటి నోట్స్ మీరు ఎంచుకున్న సేవకు వెళ్తాయి; సేవ్ చేసిన కాంటాక్ట్ పేర్లు, ఫోన్ నంబర్లు, ఈమెయిళ్లను ముందుగా, మా వల్ల అయినంత వరకు, మారుస్తాము. పేస్ట్ చేసిన ప్రకటన పేస్ట్ చేసినట్లే పంపబడుతుంది.</string>
     <string name="settings_ai_guide">AI నాకు ఉపయోగమా? గైడ్ చదవండి</string>
@@ -1744,7 +1746,6 @@
     <string name="export_count_kind">%1$s: %2$d</string>
     <string name="export_space_scope">ఈ కాపీలో %1$s: %2$d మాత్రమే ఉంటాయి. పూర్తి బ్యాకప్‌లో మీరు సేవ్ చేసినవన్నీ ఉంటాయి.</string>
     <string name="export_space_scope_backup">పూర్తి బ్యాకప్‌లో మీరు సేవ్ చేసినవన్నీ ఉంటాయి, ప్రతి జాబితాలోనివీ.</string>
-    <string name="settings_ai_worth_spaces">AI మీరు సేవ్ చేసినవాటిని, మీ నోట్స్‌ను ఒక్కో జాబితాగా చదువుతుంది: అడగండి, ప్రణాళిక మీరు ఉన్న జాబితాను మాత్రమే చదువుతాయి. మార్కెట్, చట్టం లేదా ఒక ప్రాంతం గురించి దానికి ఏమీ తెలియదు; Doorprints లోని మిగతా భాగం అది లేకుండా కూడా పనిచేస్తుంది.</string>
     <string name="share_listing_title">షేర్ చేసిన లిస్టింగ్‌ను చేర్చండి</string>
     <string name="share_kind">దీన్ని ఇక్కడ సేవ్ చేయండి</string>
     <plurals name="chooser_hidden">

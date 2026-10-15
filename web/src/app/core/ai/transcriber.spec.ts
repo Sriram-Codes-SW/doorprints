@@ -331,7 +331,7 @@ describe('the transcribers through a fake fetch', () => {
 const SARVAM_FAKE = ['sarvam', 'fake', 'key', '0001'].join('-');
 const SARVAM_FAKE2 = ['sarvam', 'fake', 'key', '9999'].join('-');
 
-describe('TC-U-259 Sarvam speech to text (voice PR 7, S4b-BL-224)', () => {
+describe('TC-U-264 Sarvam speech to text (voice PR 7, S4b-BL-224)', () => {
   const sarvamRows = (section: 'sarvamRequest' | 'sarvamContent', provider: string): Row[] =>
     ((vectors as Record<string, unknown>)[section] as Row[]).filter((r) => r['provider'] === provider);
   const sarvam = (f: ReturnType<typeof fakeFetch>, key = SARVAM_FAKE) => new SarvamTranscriber(key, f.fetchImpl);

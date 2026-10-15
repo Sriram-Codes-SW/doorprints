@@ -491,6 +491,7 @@
     <string name="map_hunt_notify_rationale">Hunt mode tells you with a notification when you pass a house you have seen.</string>
     <string name="map_hunt_stopped_battery">Hunt mode stopped because the battery is low.</string>
     <string name="map_hunt_stopped_not_allowed">Hunt mode stopped because Android did not let it run in the background. Turn it on again here.</string>
+    <string name="hunt_stopped_left_space">Hunt mode stopped. It runs in the Houses space only.</string>
     <string name="map_hunt_stopped_permission">Hunt mode stopped because location permission was turned off.</string>
     <string name="map_loading">Loading the map…</string>
     <string name="map_location_off">Location is off for Doorprints. Hunt mode and ‘Save house here’ need it.</string>
@@ -1657,7 +1658,7 @@
     <string name="settings_ai_quality_economy">Economy</string>
     <string name="settings_ai_quality_economy_hint">About 40 percent cheaper and about twice as fast in our tests, with answers as good.</string>
     <!-- S4b-BL-215 (2026-10-10): three honest sentences on the AI card, the same words as the website and the guide's "Is AI worth it for me?". -->
-    <string name="settings_ai_worth">AI reads your own saved houses and notes. It knows nothing about the market, the law or a locality, and the rest of Doorprints works without it.</string>
+    <string name="settings_ai_worth">AI reads what you have saved and your notes, one list at a time: Ask and Plan read only the list you are in. It knows nothing about the market, the law or a locality, and the rest of Doorprints works without it.</string>
     <string name="settings_ai_cost">It costs about a rupee or a few per use on a paid key. Google's free tier is free with a daily limit, and Google may read what you send.</string>
     <string name="settings_ai_sends">Your question and the matching house notes go to the service you chose, with saved contact names, phones and emails replaced first as far as we can. A pasted ad is sent as pasted.</string>
     <string name="settings_ai_guide">Is AI worth it for me? Read the guide</string>
@@ -1743,7 +1744,6 @@
     <string name="export_count_kind">%1$s: %2$d</string>
     <string name="export_space_scope">This copy holds only %1$s: %2$d. A full backup holds everything you saved.</string>
     <string name="export_space_scope_backup">A full backup holds everything you saved, in every list.</string>
-    <string name="settings_ai_worth_spaces">AI reads what you have saved and your notes, one list at a time: Ask and Plan read only the list you are in. It knows nothing about the market, the law or a locality, and the rest of Doorprints works without it.</string>
     <string name="share_listing_title">Add a shared listing</string>
     <string name="share_kind">Save it in</string>
     <plurals name="chooser_hidden">

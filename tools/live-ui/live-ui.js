@@ -312,6 +312,47 @@ async function pageMatrix(browser) {
     }
     await ctx.close();
   }
+  await chooserPass(browser);
+}
+
+// The production build lists the school, compiled in and off (2026-10-15): with Experimental: more than houses turned on
+// (the stored switch, as the person's own tap sets it) `/` is the chooser with two cards. One pass per language on the
+// phone, light theme, beside the matrix above, where `/` with the switch off is the map. docs/06 TC-M-26.
+async function chooserPass(browser) {
+  for (const lang of LANGS) {
+    const ctx = await newCtx(browser, { lang, vp: 'phone', bypassCSP: true });
+    await ctx.addInitScript(() => {
+      localStorage.setItem('doorprints.kinds.experimental', '1');
+      localStorage.setItem('doorprints.kinds.enabled', '["house","school"]');
+      localStorage.setItem('doorprints.tour', 'skipped');
+    });
+    const page = await ctx.newPage();
+    const errors = watch(page);
+    const tag = `/ chooser (experimental on) ${lang} light phone`;
+    const resp = await gotoRetry(page, BASE + '/');
+    await settle(page);
+    await page.waitForSelector('#chooser-heading', { timeout: 10000 }).catch(() => {});
+    check('pages', `${tag}: loads`, !!resp && resp.status() < 400, resp && resp.status());
+    check('flow', `${tag}: the chooser with two cards`, (await page.locator('#chooser-heading').count()) === 1 && (await page.locator('button.space-card').count()) === 2);
+    const info = await page.evaluate(() => ({
+      lang: document.documentElement.lang, h1: [...document.querySelectorAll('h1')].map((h) => h.textContent.trim()).filter(Boolean),
+      overflow: document.scrollingElement.scrollWidth - window.innerWidth, text: document.body.innerText,
+    }));
+    check('pages', `${tag}: <html lang>`, info.lang.startsWith(lang), info.lang);
+    check('pages', `${tag}: one h1`, info.h1.length >= 1, JSON.stringify(info.h1));
+    check('pages', `${tag}: no horizontal scroll`, info.overflow <= 1, `${info.overflow}px`);
+    const raw = KEYS.filter((k) => new RegExp(`(^|[^\\w.])${escapeRegExp(k)}($|[^\\w.])`).test(info.text));
+    check('i18n', `${tag}: no untranslated keys`, raw.length === 0, raw.slice(0, 5).join(', '));
+    await page.addScriptTag({ content: AXE });
+    const axe = await page.evaluate(async () => {
+      const r = await window.axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'] }, resultTypes: ['violations'] });
+      return r.violations.filter((v) => ['serious', 'critical'].includes(v.impact)).map((v) => `${v.id} (${v.nodes.length})`);
+    });
+    check('a11y', `${tag}: axe serious/critical`, axe.length === 0, axe.join(' ; '));
+    await errors.settle();
+    check('console', `${tag}: no errors`, errors.length === 0, errors.slice(0, 3).join(' ; '));
+    await ctx.close();
+  }
 }
 
 async function flows(browser) {
@@ -366,8 +407,8 @@ async function flows(browser) {
       check('flow', `${vp}: Save a copy downloads a file`, !!d && fs.statSync(file).size > 0, d && d.suggestedFilename());
     } else check('flow', `${vp}: Download button present`, false);
     await page.screenshot({ path: path.join(OUT, 'shots', `flow_${vp}_data.png`) });
-    // What you track (S4b-BL-212, docs/06 TC-M-69): a production build ships the house alone, so Your data has no such
-    // section and `/` is the map. A build that ships another kind (the --define build) shows the switch, off; turned on
+    // What you track (S4b-BL-212, docs/06 TC-M-69): the production build lists the school, compiled in and off (2026-10-15),
+    // so Your data shows the switch, off, and `/` is the map. A build of the house alone has no such section. Turned on
     // with the school shown, `/` is the chooser and a card opens that space; turned back, the house app is as it was.
     const kindSwitch = page.locator('#kinds-experimental');
     if ((await kindSwitch.count()) === 0) {

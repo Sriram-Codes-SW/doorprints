@@ -1,0 +1,23 @@
+{
+  "spec": "web/src/app/core/kind-words.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/core/space-tool-words.ts",
+      "find": "askLabel: 'ask.title',",
+      "replace": "askLabel: 'ask.intro',",
+      "expect": "the website’s table names exactly the ids that have a website key"
+    },
+    {
+      "file": "docs/schemas/kinds/house.json",
+      "find": "\"exportEmpty\": { \"web\": \"data.empty\"",
+      "replace": "\"exportEmpty\": { \"web\": \"data.noneMatch\"",
+      "expect": "the files hold the vectors’ keys"
+    },
+    {
+      "file": "docs/schemas/kinds/kind.schema.json",
+      "find": "\"areaInReach\", \"unnamed\",",
+      "replace": "\"areaInReach\", \"unnamed\", \"extra\",",
+      "expect": "the schema names the sixteen words and then the phone’s other words"
+    }
+  ]
+}

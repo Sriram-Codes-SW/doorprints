@@ -159,8 +159,8 @@ private fun AiWorthIt() {
     val language = uiLanguage()
     val desc = stringResource(Res.string.settings_ai_guide_desc)
     Column(Modifier.fillMaxWidth().testTag(AI_WORTH_TAG), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        // With two or more kinds on the first sentence says Ask and Plan read one list at a time (kinds PR C); with one it is today's.
-        for (sentence in listOf(if (LocalSpace.current.multi) Res.string.settings_ai_worth_spaces else Res.string.settings_ai_worth, Res.string.settings_ai_cost, Res.string.settings_ai_sends)) {
+        // One first sentence for everyone, the website's (Ask and Plan read one list at a time; S4b-BL-302).
+        for (sentence in listOf(Res.string.settings_ai_worth, Res.string.settings_ai_cost, Res.string.settings_ai_sends)) {
             Text(stringResource(sentence), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         TextButton(

@@ -179,7 +179,9 @@ suspend fun exportResultSentence(target: String?, name: String?, location: Strin
 /**
  * [importedText] outside composition, for the import notification (S4b-BL-106: was `ImportWorker.importedText` with
  * its own Android resources). [houses] and [visits] are everything written; [updatedHouses] and [updatedVisits] the
- * part of them that were updates; [restoredHouses] the part of [houses] that were deleted on this phone and are back.
+ * part of them that were updates; [restoredHouses] the part of [houses] that were deleted on this phone and are back. With
+ * [neutral] (two or more kinds on, the worker reads the kind setting; S4b-BL-316) the counts say *entries*, not houses, as the
+ * Import screen does (S4b-BL-291).
  */
 suspend fun importedSentence(
     houses: Int,
@@ -188,8 +190,9 @@ suspend fun importedSentence(
     updatedHouses: Int = 0,
     updatedVisits: Int = 0,
     restoredHouses: Int = 0,
+    neutral: Boolean = false,
 ): String {
-    val parts = importParts(houses, visits, photos, updatedHouses, updatedVisits, restoredHouses)
+    val parts = importParts(houses, visits, photos, updatedHouses, updatedVisits, restoredHouses, neutral)
     suspend fun words(counts: List<Pair<PluralStringResource, Int>>): List<String> =
         counts.map { (plural, n) -> getPluralString(plural, n, n) }
     val added = words(parts.added)
