@@ -43,7 +43,7 @@
     },
     {
       "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/PasteListing.kt",
-      "find": "internal fun pasteKind(kind: BuiltInKind): String? = kind.id.takeIf { it != \"house\" && kind.extracts }",
+      "find": "internal fun pasteKind(kind: BuiltInKind): String? = kind.id.takeIf { it != KindSettingRules.HOUSE && kind.extracts }",
       "replace": "internal fun pasteKind(kind: BuiltInKind): String? = null",
       "expect": "theDialogAsksForTheSchoolsKindAndAHouseKeepsItsOwnCall"
     },

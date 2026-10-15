@@ -41,7 +41,12 @@ data class CompareCandidate(val id: String, val rating: Int?, val checklist: Map
  * Compare scored before.
  */
 object CompareCriteria {
-    private const val HOUSE = "house"
+    /**
+     * Whether the kind is ranked under the person's own scoring (their weights, must-haves and criteria): a kind whose Compare
+     * scores the person's ten checklist keys, which is the house's (`capabilities.compare`, docs/03 section 18.21). The other
+     * kinds' checklists are their files' and have fixed weights. Kinds PR 29: this replaces the comparisons with the house's id.
+     */
+    fun usesPersonScoring(kind: BuiltInKind): Boolean = KindCapabilities.of(kind.id).compare?.criteria == Checklist.keys
 
     /** The kind's criteria in the kind file's order. */
     fun of(kind: BuiltInKind): List<CompareCriterion> = resolve(KindCapabilities.of(kind.id).compare?.criteria.orEmpty(), kind)
@@ -65,7 +70,7 @@ object CompareCriteria {
      * person's rating share.
      */
     fun scoringFor(kind: BuiltInKind, base: Scoring): Scoring {
-        if (kind.id == HOUSE) return base
+        if (usesPersonScoring(kind)) return base
         val counted = of(kind).filter { it.source == CompareCriterion.Source.CHECK }.map { it.id }.toSet()
         val criteria = kind.labels.checklistKeys().mapIndexed { index, key ->
             Criterion(key = key, weight = if (key in counted) Criterion.DEFAULT_WEIGHT else 0, sort = index)
@@ -75,7 +80,7 @@ object CompareCriteria {
 
     /** The checklist rows Compare shows: the house's every criterion not archived; another kind's the items Compare names. */
     fun comparedRows(kind: BuiltInKind, scoring: Scoring): List<Criterion> =
-        scoring.criteria.filter { !it.archived && (kind.id == HOUSE || it.weight > 0) }
+        scoring.criteria.filter { !it.archived && (usesPersonScoring(kind) || it.weight > 0) }
 
     /** The positions of the highest score, when one exists and not every value ties (a checklist row). */
     fun bestOf(values: List<Int?>): Set<Int> {

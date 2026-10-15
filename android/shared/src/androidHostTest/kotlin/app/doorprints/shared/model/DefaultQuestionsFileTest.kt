@@ -66,4 +66,57 @@ class DefaultQuestionsFileTest {
             for (lang in DefaultQuestions.LANGUAGES) assertEquals("${d.id} $lang", texts.getValue(lang).jsonPrimitive.content, d.text[lang])
         }
     }
+
+    // The school's seed (kinds PR 29, docs/03 section 18.23): docs/schemas/kinds/school-questions.json, a DRAFT for the owner.
+    private val schoolFile = Json.parseToJsonElement(repoFile("docs/schemas/kinds/school-questions.json").readText()).jsonObject
+    private val schoolSeed: List<JsonObject> = schoolFile.getValue("questions").jsonArray.map { it.jsonObject }
+
+    @Test
+    fun theSchoolsEmbeddedSeedIsItsFileIdForIdAndTextForText() {
+        assertEquals("doorprints-kind-questions/1", schoolFile.getValue("format").jsonPrimitive.content)
+        assertEquals(6, schoolSeed.size)
+        assertEquals(schoolSeed.map { it.getValue("id").jsonPrimitive.content }, DefaultQuestions.SCHOOL.map { it.id })
+        for ((json, d) in schoolSeed.zip(DefaultQuestions.SCHOOL)) {
+            assertEquals(d.id, json.getValue("category").jsonPrimitive.content, d.category.name)
+            assertEquals(d.id, json.getValue("appliesTo").jsonPrimitive.content, d.appliesTo.name)
+            assertEquals(d.id, json.getValue("defaultOn").jsonPrimitive.boolean, d.defaultOn)
+            assertEquals(d.id, json.getValue("sort").jsonPrimitive.int, d.sort)
+            val texts = json.getValue("text").jsonObject
+            assertEquals(d.id, DefaultQuestions.LANGUAGES, texts.keys.toList())
+            for (lang in DefaultQuestions.LANGUAGES) assertEquals("${d.id} $lang", texts.getValue(lang).jsonPrimitive.content, d.text[lang])
+        }
+    }
+
+    @Test
+    fun theTwoBanksNeverMeetAndTheKindOfAQuestionIsReadFromItsId() {
+        val house = DefaultQuestions.ALL.map { it.id }.toSet()
+        for (d in DefaultQuestions.SCHOOL) {
+            assertEquals(d.id, false, d.id in house)
+            assertEquals(d.id, "school", Question.kindOf(d.id))
+            assertEquals(d.id, QuestionScope.BOTH, d.appliesTo)
+            assertEquals(d.id, true, DefaultQuestions.byId(d.id) != null)
+        }
+        assertEquals(true, DefaultQuestions.ALL.all { Question.kindOf(it.id) == "house" })
+        assertEquals("house", Question.kindOf("q_0123abcd"))
+        assertEquals("school", Question.kindOf("q_school_0123abcd"))
+        assertEquals(true, Question.isCustomId("q_school_0123abcd"))
+        assertEquals(false, Question.isCustomId("q_school_0123abc"))
+        assertEquals(false, Question.isCustomId("qd_school_fees"))
+        assertEquals(DefaultQuestions.ALL, DefaultQuestions.of("house"))
+        assertEquals(DefaultQuestions.SCHOOL, DefaultQuestions.of("school"))
+        assertEquals(emptyList<DefaultQuestions.Default>(), DefaultQuestions.of("villa"))
+        assertEquals(true, Regex("q_school_[0-9a-f]{8}").matches(Question.newCustomId({ false }, kind = "school")))
+        assertEquals(true, Regex("q_[0-9a-f]{8}").matches(Question.newCustomId({ false })))
+    }
+
+    @Test
+    fun theScopesOfAKindsQuestionsAreItsFilesAndASchoolHasNeitherRentNorSale() {
+        for (kind in listOf("house", "school")) {
+            val file = Json.parseToJsonElement(repoFile("docs/schemas/kinds/$kind.json").readText()).jsonObject
+            val scopes = file.getValue("questions").jsonObject.getValue("scopes").jsonArray.map { it.jsonObject.getValue("id").jsonPrimitive.content }
+            assertEquals(kind, scopes.sorted(), QuestionScope.of(kind).map { it.name }.sorted())
+        }
+        assertEquals(listOf(QuestionScope.BOTH), QuestionScope.of("school"))
+        assertEquals("a kind with no entry has them all", QuestionScope.entries.toList(), QuestionScope.of("villa"))
+    }
 }

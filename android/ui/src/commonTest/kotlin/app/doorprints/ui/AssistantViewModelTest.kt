@@ -232,7 +232,8 @@ private class FakeRepository(private val hold: Boolean = false) : Repository {
     override suspend fun questions(): List<app.doorprints.shared.model.Question> = TODO()
     override suspend fun seedQuestions(language: String): Int = TODO()
     override suspend fun seedQuestionsOnce(language: String) = TODO()
-    override suspend fun resetQuestions(language: String) = TODO()
+    override suspend fun resetQuestions(language: String, kind: String) = TODO()
+    override suspend fun seedKindQuestionsOnce(kind: String, language: String) = TODO()
     override suspend fun saveQuestion(question: app.doorprints.shared.model.Question) = TODO()
     override suspend fun saveQuestions(questions: List<app.doorprints.shared.model.Question>) = TODO()
     override suspend fun addQuestion(
@@ -240,6 +241,7 @@ private class FakeRepository(private val hold: Boolean = false) : Repository {
         category: app.doorprints.shared.model.QuestionCategory,
         appliesTo: app.doorprints.shared.model.QuestionScope,
         defaultOn: Boolean,
+        kind: String,
     ): String = TODO()
     override suspend fun deleteQuestion(id: String) = TODO()
     override suspend fun saveAnswers(houseId: String, answers: List<app.doorprints.shared.model.HouseAnswer>?) = TODO()

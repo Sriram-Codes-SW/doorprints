@@ -373,7 +373,8 @@ fun HouseEditScreen(
                     else -> LocationSource.MAP
                 },
                 createdAt = now, updatedAt = now,
-            ).let { if (space.creating.id == "house") it else it.forKind(space.creating) }
+            // A draft that already is of the space's kind is kept as it is (the house's, byte for byte); another kind's money and price type are its own.
+            ).let { if (it.kind == space.creating.id) it else it.forKind(space.creating) }
             draft = fresh
             baseline = fresh
         }
@@ -430,7 +431,11 @@ fun HouseEditScreen(
     // How the rooms' sizes are shown and typed (slice 1c, this phone's setting).
     val lengthUnit by remember(repo) { repo.settings.lengthUnit }.collectAsStateWithLifecycle(LengthUnit.FT)
     // The question bank (slice 3a), for *Add the usual questions* and *Add a question*.
-    val questionBank: List<Question> by remember(repo) { repo.observeQuestions() }.collectAsStateWithLifecycle(emptyList())
+    // The candidate's kind's own bank only (kinds PR 29, docs/03 §18.23): the house's questions never reach a school, nor the school's a house.
+    val wholeBank: List<Question> by remember(repo) { repo.observeQuestions() }.collectAsStateWithLifecycle(emptyList())
+    val questionBank = remember(wholeBank, kind.id) { wholeBank.filter { it.kind == kind.id } }
+    val bankLanguage = uiLanguage()
+    LaunchedEffect(kind.id) { repo.seedKindQuestionsOnce(kind.id, bankLanguage) }
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
     var confirmLeave by rememberSaveable { mutableStateOf(false) }
     var confirmVisitDelete by rememberSaveable { mutableStateOf<String?>(null) }
@@ -843,7 +848,7 @@ fun HouseEditScreen(
                 if (L.isVisible("section.rooms")) RoomsSection(d.rooms, lengthUnit) { rooms -> update { it.copy(rooms = rooms) } }
 
                 // The questions to ask at the viewing (docs/11 5.5, slice 3a), after the rooms.
-                if (L.isVisible("section.questions")) QuestionsSection(d.answers, questionBank, d.priceType, d.cost, Modifier.bringIntoViewRequester(questionsView)) { answers ->
+                if (L.isVisible("section.questions")) QuestionsSection(d.answers, questionBank, d.priceType, d.cost, Modifier.bringIntoViewRequester(questionsView), L, pages) { answers ->
                     update { it.copy(answers = answers) }
                 }
 
@@ -1127,6 +1132,7 @@ fun HouseEditScreen(
                         houseId = id, visits = visits,
                         onPlan = { kind -> onPlanViewing(id, kind) },
                         onOpenAll = { onOpenViewings(id) },
+                        labels = L, words = pages,
                     )
                     // The area notes that reach the house and its distances to my places (docs/11 slice 4a), from the
                     // saved point and street.

@@ -22,7 +22,7 @@ package app.doorprints.shared.model
  * Compose string a space's first screen, its candidate page and its tools read for each id, `null` where the phone shows no
  * text (the website's region hint, list label, loading and empty title). The sixteen ids of S4b-BL-278 come first, then the
  * phone's other words that name the kind (Compare, the Assistant, the copies' scope, the map's location notes, the form's
- * titles and questions, the walk check, the Areas and Places lines), and since kinds PR 26 the Hunt mode words (docs/03 section 18.20: the alerts, the street line, the walk's notification and channel), which `SpaceWords` and `PageWords` kept as tables of their
+ * titles and questions, the walk check, the Areas and Places lines), and since kinds PR 26 the Hunt mode words (docs/03 section 18.20: the alerts, the street line, the walk's notification and channel) and since kinds PR 29 the viewing words (docs/03 section 18.23: the plan button, the card's lines, the lists' intro and empty line, the reminder's channel and text), which `SpaceWords` and `PageWords` kept as tables of their
  * own until S4b-BL-316. A copy of the files' `android` keys, as [KindLabels.HOUSE] is of the labels (`HouseKindFileTest`,
  * `SchoolKindVectorsTest` and `KindWordVectorsTest` read the files and the vectors, so it cannot drift); `SpaceWords` and
  * `PageWords` in `:ui` turn the keys into strings. A kind with no entry reads the house's.
@@ -43,6 +43,9 @@ object KindWordKeys {
         "notesEmpty", "areaDeleteBody", "placeDeleteBody", "placesEmptyBody",
         "huntSeen", "huntStreetText", "huntStreetTextSince", "huntStreetSeen", "huntStayTitle", "huntNotifyRationale",
         "huntLeftSpace", "huntNeedsKind", "huntOngoingText", "huntChannelAlerts", "huntChannelAlertsDesc", "huntNotificationsOff",
+        "viewingPlan", "viewingNone", "viewingAll", "viewingsIntro", "viewingsEmpty", "viewingsDataBody", "questionsDataBody",
+        "viewingChannel", "viewingChannelDesc", "viewingSoon", "viewingTitle", "viewingOpen", "viewingGone", "viewingDirections",
+        "questionsIntro", "questionsEmpty", "questionsNoneToPick", "viewingBody",
     )
 
     private fun table(vararg keys: Pair<String, String?>): Map<String, String?> {
@@ -78,6 +81,12 @@ object KindWordKeys {
         "huntLeftSpace" to "hunt_stopped_left_space", "huntNeedsKind" to "hunt_needs_houses", "huntOngoingText" to "notif_hunt_text",
         "huntChannelAlerts" to "notif_channel_alerts", "huntChannelAlertsDesc" to "notif_channel_alerts_desc",
         "huntNotificationsOff" to "map_notifications_off",
+        "viewingPlan" to "viewings_plan", "viewingNone" to "viewings_none", "viewingAll" to "viewings_allOfHouse",
+        "viewingsIntro" to "viewings_intro", "viewingsEmpty" to "viewings_empty", "viewingsDataBody" to "settings_viewings_hint",
+        "questionsDataBody" to "settings_questions_hint", "viewingChannel" to "notif_channel_viewings", "viewingChannelDesc" to "notif_channel_viewings_desc",
+        "viewingSoon" to "notif_viewing_soon", "viewingTitle" to "notif_viewing_title", "viewingOpen" to "notif_viewing_open",
+        "viewingGone" to "notif_viewing_house_gone", "viewingDirections" to "notif_viewing_directions",
+        "questionsIntro" to "questions_intro", "questionsEmpty" to "house_questions_empty", "questionsNoneToPick" to "house_questions_pick_none", "viewingBody" to "viewing_reminder_body",
     )
 
     val SCHOOL: Map<String, String?> = table(
@@ -108,8 +117,17 @@ object KindWordKeys {
         "huntLeftSpace" to "school_hunt_stopped_left_space", "huntNeedsKind" to "school_hunt_needs_kind", "huntOngoingText" to "school_notif_hunt_text",
         "huntChannelAlerts" to "school_notif_channel_alerts", "huntChannelAlertsDesc" to "school_notif_channel_alerts_desc",
         "huntNotificationsOff" to "school_map_notifications_off",
+        "viewingPlan" to "school_viewings_plan", "viewingNone" to "school_viewings_none", "viewingAll" to "school_viewings_all",
+        "viewingsIntro" to "school_viewings_intro", "viewingsEmpty" to "school_viewings_empty", "viewingsDataBody" to "school_settings_viewings_hint",
+        "questionsDataBody" to "school_settings_questions_hint", "viewingChannel" to "school_notif_channel_viewings", "viewingChannelDesc" to "school_notif_channel_viewings_desc",
+        "viewingSoon" to "school_notif_viewing_soon", "viewingTitle" to "school_notif_viewing_title", "viewingOpen" to "school_notif_viewing_open",
+        "viewingGone" to "school_notif_viewing_gone", "viewingDirections" to "school_notif_viewing_directions",
+        "questionsIntro" to "school_questions_intro", "questionsEmpty" to "school_questions_empty", "questionsNoneToPick" to "school_questions_pick_none", "viewingBody" to "school_viewing_reminder_body",
     )
 
     /** The keys of [kind]; a kind with no table of its own reads the house's. */
     fun of(kind: String): Map<String, String?> = if (kind == "school") SCHOOL else HOUSE
+
+    /** The Android key of word [id] in the kind of a stored candidate ([kind] null or one this build does not have: the house's). */
+    fun key(kind: String?, id: String): String = checkNotNull(of(kind ?: "house")[id]) { "no Android word for $id" }
 }

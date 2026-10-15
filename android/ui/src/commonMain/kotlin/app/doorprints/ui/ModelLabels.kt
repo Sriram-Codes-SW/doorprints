@@ -33,6 +33,7 @@ import app.doorprints.shared.model.ViewingGroup
 import app.doorprints.shared.model.PhotoTags
 import app.doorprints.shared.model.ViewingKind
 import app.doorprints.shared.model.ViewingStatus
+import app.doorprints.shared.model.CompareCriteria
 import app.doorprints.ui.res.*
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
@@ -58,6 +59,9 @@ fun kindStringResource(key: String): StringResource =
 fun kindField(id: String, cadence: String? = null): StringResource = KindLabels.HOUSE.fieldText(id, cadence)
 
 fun kindSection(id: String): StringResource = KindLabels.HOUSE.sectionText(id)
+
+/** A section's heading in the given kind's labels (the viewings card and list are headed by the kind's own, kinds PR 29). */
+fun kindSection(labels: KindLabels, id: String): StringResource = labels.sectionText(id)
 
 fun kindRef(ref: String): StringResource = KindLabels.HOUSE.refText(ref)
 
@@ -210,7 +214,7 @@ fun Criterion.displayName(): String = ChecklistResources.items[key]?.let { strin
  */
 @Composable
 fun Criterion.displayName(kind: BuiltInKind): String =
-    if (kind.id == "house") displayName() else kind.labels.check(key)?.let { stringResource(kindStringResource(it)) } ?: displayName()
+    if (CompareCriteria.usesPersonScoring(kind)) displayName() else kind.labels.check(key)?.let { stringResource(kindStringResource(it)) } ?: displayName()
 
 /** First viewing, Second viewing, Follow-up (`viewings_kind_*`, slice 3b-1). */
 val ViewingKind.labelResource: StringResource

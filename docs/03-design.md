@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.165 |
+| Version | 0.166 |
 | Date | 2026-10-15 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -176,6 +176,7 @@
 | 0.163 | 2026-10-15 | Claude (Code), engineer | **New §18.20, Hunt as a capability** (kinds PR 26; `feat/kinds-26-hunt-capability`; TC-U-269, TC-M-84): `capabilities.hunt {alertRadiusM 30..300, stayCreates, streetMemory, areas}`; the school has Hunt (100 m, all on), the house keeps today's (30 m, all on); the Hunt card and switch, the walk, the alerts, the notification, the channel and the deep links read the kind, not the house; the walk belongs to the space it was started in; twelve Hunt words in the kind files; the website has no Hunt UI and reads nothing; §18.19's table row and the S4b-BL-304 lines point here. |
 | 0.164 | 2026-10-15 | Claude (Code), engineer | **§18.21 Compare for any kind, and the school's checklist** (kinds PR 27; `feat/kinds-27-compare-capability`): Compare reads `capabilities.compare` of the kind (`compareCriteria`, `scoringForKind`): checklist items (higher is better) and typed extras (the extra's own `better`), the house's ten keys exactly as before; the school gains a draft checklist of eight items and `compare` over them, the fees and the commute. §18.19 and §18.9 corrected where they said nothing reads the resolver or the school hides the checklist. |
 | 0.165 | 2026-10-15 | Claude (Code), engineer | **§18.22 The server reads every kind from its kind file** (kinds PR 28; `feat/kinds-28-server-kind-reader`; [06](06-test-plan.md) TC-U-272..277, [ai-design](ai/ai-design.md) 16.13, [schemas README](schemas/README.md) 1.63): one loader and validator in Java (`KindFiles`), the kind files packaged with the server, `ai.words` in the kind file, and the house, the school and any further kind served by the same document, prompt, extract and planner code; the house's AI output byte for byte as before (the house pins). §18.15 and §18.19 say where the server now stands. |
+| 0.166 | 2026-10-15 | Claude (Code), engineer | **New §18.23, contacts, rooms, moving in, viewings and questions as capabilities** (kinds PR 29; `feat/kinds-29-contacts-rooms-viewings`): `KindLabels.isVisible` follows `contacts`, `rooms`, `moveIn` and `viewings`; the school has viewings (visits and open days, a DRAFT) with its own question bank (`school-questions.json`, ids `qd_school_...`, seeded when first opened, no format change), its words (eighteen more `words` ids) and its own reminder channel; the website no longer makes a broker from a school's phone (S4b-BL-260's website half); house literals closed on these paths; §18.18, §18.19 and §18.9's statements that a school has no questions or viewings corrected. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -2446,7 +2447,7 @@ school's copy (`SchoolKind`, Android keys) and `DevKinds` (the kinds the flag al
 true only in a debug build made with `-Pdoorprints.devKinds=true`, handed to the screens as `LocalDevKinds` (`:ui`,
 default false, so the iPhone app never has it). The form (`HouseEditScreen`) reads the candidate's kind: its labels
 (`KindLabels.fieldText`, `sectionText`, `refText`), its extras, the title and delete label, and it leaves out what the
-kind hides (the price and its type, the broker, the rooms, questions, viewings, moving in, checklist, the area notes,
+kind hides (the price and its type, the broker, the rooms, moving in, checklist and, until kinds PR 29 (§18.23), the questions and viewings; the area notes,
 distances and walks cards when a kind hides them); `KindExtrasFields` gained a text field and an option menu (*Not set*
 first, as the broker menu), and pairs them two per row like numbers. A new candidate's form offers a kind picker
 (`DevKindPicker`) while the flag is on. The form's rotation saver now keeps the kind and the extras the house model does
@@ -2480,9 +2481,8 @@ S4b-BL-266, S4b-BL-277).** With a school space on screen, nothing a school page 
   `/k/school/new` and `/k/school/<id>` (`routesFor`), *Save the school first …*, *Please give the school a name*, the
   location lines, *School not found* (the space's kind while no candidate is loaded), the map's zoom title, the listing
   hint and the AI disclosure on it, Ask and Plan, the Areas and Places pages and their cards and the area-note
-  composer (`SpaceWords.areaInReach`), and the list row without its price and score. Your data has no Criteria, Questions
-  or Viewings card while a school space is the last one (`isVisible('section.questions' | 'section.viewings')`, and the
-  Criteria card is the house's, §18.21); the Brokers card stays (S4b-BL-260). `house-detail-page.ts` shrank to 1,185 lines (the draft's
+  composer (`SpaceWords.areaInReach`), and the list row without its price and score. Your data has no Criteria card while a school space is the last one (the Criteria card is the house's, §18.21; its Questions
+  and Viewings cards follow the kind, and the school has them since kinds PR 29, §18.23); the Brokers card stays (S4b-BL-260). `house-detail-page.ts` shrank to 1,185 lines (the draft's
   small helpers moved to `house-page-input.ts`) and its budget entry was lowered.
 - *The copies speak in a voice.* `collect` gives a bundle a `voice` (the kind) when its copy is of one space, or when every
   candidate in it is of one kind that is not the house (`copyVoice`), and each school entry its own `kind`; a copy of
@@ -2937,7 +2937,7 @@ saved stacks and opens the space's Map (a form of another space must not stay un
 row per kind the switch offers with *Show* (a checkbox, disabled for the last one on), *Default* (a radio, enabled for a kind
 that is shown) and *Saved: N*. Choices are one atomic edit (`SettingsStore.editKindSetting`). The rows that belong to what a
 kind has (`KindSettingRows`: Brokers, Criteria, Questions, Viewings with their reminders) follow the kind's file: a school has
-none of those places, so its Settings has none of those rows. Hunt mode (the Map's card and its switch) is a capability of the kind (§18.20): the house's and, since kinds PR 26, the school's.
+so a school's Settings has the Questions and Viewings rows since kinds PR 29 (§18.23) and no Brokers or Criteria rows. Hunt mode (the Map's card and its switch) is a capability of the kind (§18.20): the house's and, since kinds PR 26, the school's.
 
 **A space's words** (`SpaceWords`): the list's tab and heading, search, count, empty and no-match lines, the Map's *Save here*
 button and tips, the new entry's save button (the kind's `kind.new`), Compare, the Assistant and the copies' scope words. The
@@ -3135,7 +3135,7 @@ or the house kind without the person choosing was traced on the website, Android
 | Add from the map (long press / Add) | web `HouseDetailPage` `ofKind(newHouse, space.newKind())` (`house-detail-page.ts:534`); phones `HouseEditScreen` new entry of `space.creating`. The space's kind while it is on, else the default; with one kind on, the default | **Fixed** for a space that is off (rule 3); otherwise OK |
 | *Add a shared listing*, share intent, paste | web `share-page.ts:147,151` and phones `ShareKindDialog` / `Root.startListing`: two or more kinds on asks *Save it in* (the default first); one kind on goes straight in as the default | OK (`shareKind` vectors: a kind that is off is never chosen) |
 | `/houses/new`, the PWA share target, notifications (web) | the default kind (`SpaceService.newKind`) | OK; a space that is off now goes to the default (**fixed**) |
-| Hunt: *Start Hunt mode* from a viewing reminder or an area wake-up | `DeepLink.StartHunt` / `OfferHunt` forced the House space and requested a walk even with Houses off (`Root.kt`, then `MapScreen` started it, with no Hunt card to stop it) | **Fixed**: refused with one line (rule 4); with Houses on it opens the House space as before |
+| Hunt: *Start Hunt mode* from a viewing reminder or an area wake-up | `DeepLink.StartHunt` / `OfferHunt` forced the House space and requested a walk even with Houses off (`Root.kt`, then `MapScreen` started it, with no Hunt card to stop it) | **Fixed**: refused with one line (rule 4); with Houses on it opens the House space as before. Since kinds PR 29 (§18.23) the school has viewings too, so a reminder starts the default kind's walk and is refused only when no kind that is on has viewings |
 | Hunt: *stay here?* alert | `DeepLink.NewHouse` opens the new-entry form (nothing is saved on its own). Two or more on: the House space (S4b-BL-304); the old code named the house even if it were off | **Fixed**: `HuntSpace.alertKind`; one kind on: the form of that kind |
 | A walk running when Houses is turned off | stopped by `HuntSpace.stopsOnLeaving` with one line | OK, test added |
 | A walk started while a school space is shown | the school space has no Hunt card; only a reminder can start one, and it moves to the House space first | OK |
@@ -3146,7 +3146,7 @@ or the house kind without the person choosing was traced on the website, Android
 | AI Ask / Plan words | the kind's words when every record sent is of one built-in kind, the house's for a house, a mix or none (§18.11). With the school alone: school words when the records are schools, house words if only kept houses are read, the space's refusal when nothing is found | OK |
 | The server's `kind` parameter | sent for the space's kind when the server names it (§18.17); the school alone asks about schools only (less than the device reads, never more) | OK, documented |
 | Empty state, tour, first-run copy | the space's words (*No schools yet*); the tour runs in the house words and is offered once, before the switch can be on | OK |
-| Settings texts that say *houses* | the house-space rows (Brokers, Criteria, Questions, Viewings) follow the kind; with Houses off they are not in Settings, the kept data is | OK |
+| Settings texts that say *houses* | the rows Brokers and Criteria follow the kind (Questions and Viewings follow its `viewings` capability since kinds PR 29); with Houses off the house's are not in Settings, the kept data is | OK |
 | Widgets | none | n/a |
 | *Remove all data* counts | every kind's count (§20) | OK |
 | The chooser with one kind on | not shown (one space); a kind that is off is a row in *What you track* with its count | OK |
@@ -3187,7 +3187,7 @@ that rule is the caller's and is unchanged: it resolves the drawn kind, then ask
 `house.json` declares today's behaviour, no more: the map, Hunt at 30 m (the settings default of `AppSettings.alertRadiusM`; the
 person's own radius, 15 to 100 m, stays a setting) with `stayCreates`, the rooms, moving in, `contacts` broker with `autoCreateFromPhone`,
 `viewings` seeded by the house bank, `compare` over the ten checklist keys and the paths. `school.json` declares what the school has: the
-map, the paths, an admissions-office contact that never makes a broker (S4b-BL-260), since kinds PR 26 (§18.20) Hunt at 100 m and since kinds PR 27 (§18.21) Compare over its checklist, fees and commute; no rooms, moving in or viewings.
+map, the paths, an admissions-office contact that never makes a broker (S4b-BL-260), since kinds PR 26 (§18.20) Hunt at 100 m and since kinds PR 27 (§18.21) Compare over its checklist, fees and commute, and since kinds PR 29 (§18.23) viewings with its own questions; no rooms or moving in.
 
 **The resolver** is `capabilitiesOf(kindId)` (website `core/kind-capabilities.ts`) and `KindCapabilities.of(kindId)` (`:shared`
 commonMain): the built-in sets are copies of the two files, in the way of `HOUSE_LABELS` and `SchoolKind`, and the tests read the files so
@@ -3232,7 +3232,7 @@ the alert radius is **the kind's file value, except that the existing Settings r
 per-kind override is not offered); the street line only when `streetMemory`; the "stay here?" alert only when `stayCreates`.
 
 **Starting from outside the card.** A reminder's *Start Hunt mode* starts the walk of the kind that has **viewings** (`HuntSpace.startKind(setting, REMINDER)`:
-enabled kinds only, the default kind first, then the others: the house); an area wake-up starts the walk of the first enabled kind whose Hunt has **`areas`**, the
+enabled kinds only, the default kind first, then the others; both kinds have viewings since kinds PR 29, §18.23, so with the school the default and on, a reminder's walk is the school's); an area wake-up starts the walk of the first enabled kind whose Hunt has **`areas`**, the
 default kind first (so with the school the default and on, an area wake-up opens the Schools space; with the house the default, as before). With none on, nothing
 starts and the Map says why, in the words of the kind that would have (`huntNeedsKind`; the rule of §18.18). `DeepLink.StartHunt` and `OfferHunt` carry which of
 the two started it; the Android intent and the iPhone `userInfo` say it by the key they already had (`EXTRA_START_HUNT` is a reminder's, `EXTRA_START_HUNT_AREA` an area's).
@@ -3377,6 +3377,73 @@ vectors, hostile files), `KindFileResourcesTest` (the copies, the packs, hostile
 (a synthetic kind, `backend/src/test/resources/kinds/dojo.json`, served with no Java and no pack), `ServerKindsVectorsTest` (`space-scope-vectors.json`'s server kinds);
 the house pins (`HouseAskPinsTest`, `HouseExtractPinsTest`, the plan pins), `HouseAiSlotsTest`, `AiKindFileTest` and the school's vector tests pass unchanged;
 mutation list `tools/mutations/kinds-28-server.json`. `mvn verify` runs on the pull request.
+
+### 18.23 Contacts, rooms, moving in, viewings and questions as capabilities (kinds PR 29)
+
+**Decision (owner direction, 2026-10-15).** The places a kind shows for its contact, its rooms, its moving in, its viewings and
+its questions are switched by `capabilities`, not by a kind id: a place is shown only while the kind's file lists it **and** the
+capability is on (`capabilityAllows` on the website, `KindCapabilities.allows` in `:shared`; both are read by the kind's labels,
+`KindLabels.isVisible`, so every screen that asked `isVisible` already follows them). The rules, held to one another by
+`kind-capabilities.spec.ts`, `KindCapabilitiesVectorsTest` and the vectors' `sectionsFollow`:
+
+| Place | Shown while | The house | The school |
+|---|---|---|---|
+| `section.rooms` | `rooms` is on | on | off |
+| `section.moveIn` | `moveIn` is on (it stays a boolean: there is one built-in list, `default-movein.json`; a seed name is added the day a second list exists) | on | off |
+| `section.viewings` and `section.questions` | `viewings` is present | `{questionsSeed: house}` | `{questionsSeed: school}` (new) |
+| `field.brokerId` | `contacts.role` is `broker` | broker | office |
+
+**Contacts.** A saved phone makes or links a broker only where the file says `contacts.autoCreateFromPhone`. The phones did this
+since S4b-BL-260 (`BrokerStore.linked`); the website did not: `BrokerStore.link` and the one-off migration made a broker from a
+school's phone (found building this change, fixed with a test). They now read the capability on both stacks; the `broker` record
+type stays internal (no kind file names it), and a kind with another role has a name and a phone on the candidate and nothing more.
+
+**Viewings and questions for the school (a DRAFT for the owner's review; hi, ta and te under review).** `school.json` lists the
+`questions` and `viewings` sections (*Questions for a visit*, *School visits*) and `capabilities.viewings.questionsSeed` is `school`
+(the schema's enum is `house`, `school`). A school visit or open day is a viewing of the school: the same record, the same form,
+the same reminders, the same calendar file; the words are the kind's: eighteen more ids of the kind file's `words` (`viewingPlan`,
+`viewingNone`, `viewingAll`, `viewingsIntro`, `viewingsEmpty`, `viewingsDataBody`, `questionsDataBody`, `questionsIntro`,
+`questionsEmpty`, `questionsNoneToPick` and, phone only, `viewingChannel`, `viewingChannelDesc`, `viewingSoon`, `viewingTitle`,
+`viewingOpen`, `viewingGone`, `viewingDirections`, `viewingBody`), the house's equal to today's strings in four languages, the
+school's new. The Android reminder is worded by them and posts on its own channel, `viewings_school`, private on a lock screen like
+the house's (the lock-screen public text stays *Doorprints reminder* for every kind); the iPhone's body is the kind's `viewingBody`
+(it has no channels). The list of viewings (*Your data > Viewings*, *Settings > Viewings*) is the space's: a school's visits in the
+school space, the house's viewings in the house space, one whose candidate is gone in the default space; with one space it lists
+all, as it always did.
+
+**One bank per kind, in the one set of records.** The school's seed is `docs/schemas/kinds/school-questions.json` (format
+`doorprints-kind-questions/1`, six questions: fees, admission, class size, safety, water and toilets, hours and holidays), embedded as
+`SCHOOL_QUESTIONS` and `DefaultQuestions.SCHOOL` and read by `question.spec.ts` and `DefaultQuestionsFileTest`. Its ids carry the
+kind (`qd_school_<name>`; a question the person adds in a school space is `q_school_` and 8 hex), so **a question's kind is read from
+its id alone**: no record, backup or sync format changes (door 9; the server stores a question as any record). The school's bank is
+seeded **the first time its questions are opened** (the Questions page of the school space, a school's page), once, by the local mark
+`questions.seeded.school` (not synced); a person who only keeps houses never gets a school question, so a house-only bank, its backup
+and its sync are exactly what they were. *Reset to defaults* resets the bank of the space on screen and leaves the other kind's
+edits; a question's *applies to* control (rent, buy, both) is not offered for a school, whose scope is `BOTH` (`questionScopesOf`,
+`QuestionScope.of`, held to each kind file's `questions.scopes`). The 100-question cap counts every kind's.
+
+**Search and the AI.** Answers were already searched for every kind (`searchText`, `HouseSearch`); the school's `search` list now names
+`questions` as the house's does. The school's `ai` slots are unchanged: a provider still sees none of the school's questions or
+viewings (what the AI sees is its own change; the server's `Ask` lines for a school do not name them).
+
+**House literals closed on these paths.** `HouseEditScreen` (`it.forKind(...)` when the draft is not already of the space's kind),
+`PasteListing` (`KindSettingRules.HOUSE`, the wire's default kind), `CompareScreen`, `ModelLabels.displayName` and `KindSettingsRows`
+(`CompareCriteria.usesPersonScoring`: a kind whose Compare scores the person's ten checklist keys), `BrokerStore` (the capability),
+`HouseStatusRules`; `QuestionsSection`, `ViewingsCard`, `ViewingsHistory`, the Settings rows' hints and the Questions screen read the
+kind's labels and words instead of the house's. The iPhone's reminder names no kind (`KindWordKeys.key`).
+
+**Not here (stated, not hidden).** The viewing form, its calendar file and the second-viewing prompt keep their generic words (*House*
+in the picker, *First viewing*); the merged Hunt reminder (*Viewing at ... Start Hunt mode?*) keeps the house's words; a school's
+readable copy lists its questions and viewings under the generic headings (copies are WP8's, §18.24); *Start Hunt mode* from a
+reminder starts the default kind's walk (both kinds have viewings now: §18.20); the AI does not read school questions.
+
+**Tests** ([06](06-test-plan.md) TC-U-278, TC-M-86): the website's `kind-capabilities.spec.ts`, `kind-labels.spec.ts`, `question.spec.ts`,
+`question-store.spec.ts`, `broker-store.spec.ts`, `questions-page.spec.ts`, `viewings-page-spaces.spec.ts`,
+`house-viewings-card.spec.ts`, `school-words.spec.ts`, `school-form.spec.ts` (and its golden), `kind-words.spec.ts`; the phones'
+`KindCapabilitiesVectorsTest`, `KindWordVectorsTest`, `DefaultQuestionsFileTest`, `QuestionsRepositoryTest`, `SpaceUiTest`,
+`HuntSpaceTest`; mutation list `tools/mutations/kinds-29-web.json`; the baselines `school_viewings_{en,hi}_light.png` and
+`school_questions_{en,hi}_light.png` (new) and `school_edit_{en_light,ta_dark}.png` (they gain the questions and visits cards); **zero
+diff in every house baseline**.
 
 ## 19. Voice input (ADR-37)
 

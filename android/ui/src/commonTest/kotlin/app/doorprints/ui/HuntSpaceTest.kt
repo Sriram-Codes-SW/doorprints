@@ -90,10 +90,11 @@ class HuntSpaceTest {
 
     @Test
     fun aRemindersWalkIsTheKindWithViewingsAndAnAreasWalkIsTheDefaultKindFirst() {
-        // A viewing is the house's (viewings are a capability only it has), whatever the default.
+        // Both kinds have viewings since kinds PR 29 (the school's are its visits and open days): the default kind's walk starts first.
         assertEquals("house", HuntSpace.startKind(KindSetting(), HuntSpace.Starter.REMINDER))
-        assertEquals("house", HuntSpace.startKind(both.withDefault("school"), HuntSpace.Starter.REMINDER))
-        assertNull(HuntSpace.startKind(both.withDefault("school").withKindEnabled("house", false), HuntSpace.Starter.REMINDER), "no kind on has viewings")
+        assertEquals("house", HuntSpace.startKind(both, HuntSpace.Starter.REMINDER))
+        assertEquals("school", HuntSpace.startKind(both.withDefault("school"), HuntSpace.Starter.REMINDER))
+        assertEquals("school", HuntSpace.startKind(both.withDefault("school").withKindEnabled("house", false), HuntSpace.Starter.REMINDER))
         // An area wake-up starts the default kind's walk when that kind takes areas, else the next enabled one.
         assertEquals("house", HuntSpace.startKind(KindSetting(), HuntSpace.Starter.AREA))
         assertEquals("house", HuntSpace.startKind(both, HuntSpace.Starter.AREA))

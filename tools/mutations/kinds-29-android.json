@@ -1,0 +1,64 @@
+{
+  "spec": "android/shared/src/androidHostTest/kotlin/app/doorprints/shared/model/KindCapabilitiesVectorsTest.kt (with DefaultQuestionsFileTest, ViewingSpaceTest and SpacesRepositoryTest)",
+  "gradle": [
+    ":shared:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.shared.model.KindCapabilitiesVectorsTest",
+    "--tests",
+    "app.doorprints.shared.model.DefaultQuestionsFileTest",
+    "--tests",
+    "app.doorprints.shared.model.ViewingSpaceTest",
+    "--tests",
+    "app.doorprints.data.SpacesRepositoryTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+      "find": "KindCapabilities.of(DevKinds.of(house.kind, on = true).id).contacts?.autoCreateFromPhone == true",
+      "replace": "true",
+      "expect": "aSchoolsPhoneMakesNoBrokerAndAHousesDoes"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindCapabilities.kt",
+      "find": "\"field.brokerId\" -> contacts?.role == \"broker\"",
+      "replace": "\"field.brokerId\" -> true",
+      "expect": "aPlaceACapabilitySwitchesIsAllowedOnlyWhileItIsOn"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindCapabilities.kt",
+      "find": "\"section.viewings\", \"section.questions\" -> viewings != null",
+      "replace": "\"section.viewings\" -> viewings != null",
+      "expect": "aPlaceACapabilitySwitchesIsAllowedOnlyWhileItIsOn"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindCapabilities.kt",
+      "find": "\"section.moveIn\" -> moveIn",
+      "replace": "\"section.moveIn\" -> true",
+      "expect": "aPlaceACapabilitySwitchesIsAllowedOnlyWhileItIsOn"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindCapabilities.kt",
+      "find": "viewings = Viewings(\"school\"),",
+      "replace": "",
+      "expect": "everyKindsSwitchesFollowItsSections"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/Questions.kt",
+      "find": "id.startsWith(\"qd_${it}_\") || id.startsWith(\"q_${it}_\")",
+      "replace": "id.startsWith(\"qd_${it}_\")",
+      "expect": "theTwoBanksNeverMeetAndTheKindOfAQuestionIsReadFromItsId"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/Questions.kt",
+      "find": "mapOf(\"school\" to listOf(BOTH))",
+      "replace": "mapOf(\"school\" to listOf(RENT, SALE, BOTH))",
+      "expect": "theScopesOfAKindsQuestionsAreItsFiles"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/Viewings.kt",
+      "find": "val kind = kindOf(viewing.houseId) ?: return view.kind == view.default",
+      "replace": "val kind = kindOf(viewing.houseId) ?: return true",
+      "expect": "aSchoolsVisitsAreListedInTheSchoolSpace"
+    }
+  ]
+}

@@ -18,6 +18,7 @@
 
 package app.doorprints.ui
 
+import app.doorprints.shared.model.CompareCriteria
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -49,7 +50,7 @@ internal fun KindSettingsRows(
     }
     // What counts in a house's score (docs/11 5.4, slice 2): weights, must-haves, your own criteria, the rating share. The house's:
     // a school's checklist (kinds PR 27, docs/03 §18.21) has fixed weights.
-    if (space.shows("section.checklist") && space.built.id == "house") {
+    if (space.shows("section.checklist") && CompareCriteria.usesPersonScoring(space.built)) {
         HorizontalDivider()
         NavRow(
             stringResource(Res.string.settings_criteria), stringResource(Res.string.settings_criteria_hint), onOpenCriteria,
@@ -59,13 +60,13 @@ internal fun KindSettingsRows(
     // The questions you ask at a viewing (docs/11 5.5, slice 3a): the bank the house form's *Questions to ask* draws on.
     if (space.shows("section.questions")) {
         HorizontalDivider()
-        NavRow(stringResource(Res.string.settings_questions), stringResource(Res.string.settings_questions_hint), onOpenQuestions)
+        NavRow(stringResource(Res.string.settings_questions), stringResource(space.pages.questionsDataBody), onOpenQuestions)
     }
     // The viewings planned and done (docs/11 5.8, slice 3b-1): the history, its filters and search, the form.
     if (space.shows("section.viewings")) {
         HorizontalDivider()
         NavRow(
-            stringResource(Res.string.settings_viewings), stringResource(Res.string.settings_viewings_hint), onOpenViewings,
+            stringResource(kindSection(space.built.labels, "viewings")), stringResource(space.pages.viewingsDataBody), onOpenViewings,
             Modifier.tourTarget(TourTargets.SETTINGS_VIEWINGS),
         )
         // Their reminders (slice 3b-2): the switch, and the on-time alarms note and button while they are not allowed.

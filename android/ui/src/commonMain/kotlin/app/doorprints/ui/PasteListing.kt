@@ -31,6 +31,7 @@ import app.doorprints.ui.res.*
 import app.doorprints.shared.api.HouseDraftDto
 import app.doorprints.shared.model.BuiltInKind
 import app.doorprints.shared.model.KindFields
+import app.doorprints.shared.model.KindSettingRules
 import app.doorprints.shared.ai.ListingCut
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.ensureActive
@@ -57,7 +58,7 @@ internal val ListingField.nameRes: StringResource
     }
 
 /** The kind the paste dialog asks the extract for: a kind that fills (a school), not the house, whose call is the house's own. */
-internal fun pasteKind(kind: BuiltInKind): String? = kind.id.takeIf { it != "house" && kind.extracts }
+internal fun pasteKind(kind: BuiltInKind): String? = kind.id.takeIf { it != KindSettingRules.HOUSE && kind.extracts }
 
 /**
  * "Filled in: price and contact name. Check them, then save." plus what was kept and what the AI flagged. A kind's typed
@@ -105,7 +106,7 @@ fun PasteListingDialog(onDismiss: () -> Unit, onDraft: (HouseDraftDto, List<Stri
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(stringResource(Res.string.house_paste_hint), style = MaterialTheme.typography.bodySmall)
                 PasteListingText(text, { text = it })
-                VoiceMicButton(text, { text = it }, kind ?: "house")
+                VoiceMicButton(text, { text = it }, kind ?: KindSettingRules.HOUSE)
                 AiDisclosure(style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, pages = PageWords.of(kind ?: "house"))
                 LiveMessage(assertive = error != null && !busy) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

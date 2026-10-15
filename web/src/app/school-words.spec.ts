@@ -337,15 +337,18 @@ describe('a school space’s list and Your data (S4b-BL-277)', () => {
     expect(words(h.host)).toContain('Zoom the map to show every house in the list');
   });
 
-  it('Your data without criteria, questions and viewings while a school space is the last one; with them in the house space', async () => {
+  it('Your data without criteria while a school space is the last one, with the questions and viewings cards in the school’s words (kinds PR 29); all three in the house space', async () => {
     for (const lang of LANGS) {
       const m = await mount(DataPage, lang, { real: true });
       expect(m.host.querySelector('#criteria-heading'), lang).toBeNull();
-      expect(m.host.querySelector('#questions-heading'), lang).toBeNull();
-      expect(m.host.querySelector('#viewings-heading'), lang).toBeNull();
+      expect(m.host.querySelector('#questions-heading'), lang).not.toBeNull();
+      expect(m.host.querySelector('#viewings-heading'), lang).not.toBeNull();
       expect(m.host.querySelector('#areas-heading'), lang).not.toBeNull();
       expect(m.host.querySelector('#brokers-heading'), lang).not.toBeNull();
     }
+    const sc = await mount(DataPage, 'en', { real: true });
+    expect(words(sc.host)).toContain('Plan a school visit or open day, and see the ones coming up and the ones you have done.');
+    expect(words(sc.host)).toContain('The questions you like to ask on a school visit.');
     const h = await mount(DataPage, 'en', { real: true, dflt: 'house' });
     for (const id of ['criteria', 'questions', 'viewings']) expect(h.host.querySelector(`#${id}-heading`), id).not.toBeNull();
     // One kind enabled (the default, and every production build): the house, with the cards it always had.

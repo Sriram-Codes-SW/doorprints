@@ -524,6 +524,40 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
         }
     }
 
+    /**
+     * A school's visits (kinds PR 29, docs/03 §18.23): the viewings screen in the school space, headed and worded by the school's
+     * file (*School visits*, *Plan a visit*), one planned visit of the sample school. A DRAFT for the owner's review. English and
+     * Hindi light only, to keep the image set small; no house baseline changes.
+     */
+    @Test fun schoolViewings() {
+        assumeTrue(!dark && (lang == "en" || lang == "hi"))
+        val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
+        val now = 1_760_100_000_000
+        runBlocking {
+            saveAtFixedTime(repo, SchoolSample.entity())
+            repo.saveViewing(Viewing("v_00000011", SchoolSample.ID, now + 26 * 3_600_000L, kind = "FIRST", withWhom = "Principal", notes = "Ask about the bus route."))
+        }
+        val on = KindSetting(listOf("house", "school"), experimental = "1", enabledText = "[\"house\",\"school\"]")
+        shoot("school_viewings", readyText = "Ask about the bus route.") {
+            CompositionLocalProvider(LocalSpace provides SpaceUi(on, "school"), app.doorprints.ui.LocalDevKinds provides true) {
+                Column(Modifier.verticalScroll(rememberScrollState())) { ViewingsHistory(null, onOpenViewing = {}, onPlan = { _, _ -> }, nowMs = now) }
+            }
+        }
+    }
+    /**
+     * The school's questions (kinds PR 29): Settings > Questions in the school space, its six seeded questions and its own
+     * intro. A DRAFT for the owner's review; English and Hindi light only.
+     */
+    @Test fun schoolQuestions() {
+        assumeTrue(!dark && (lang == "en" || lang == "hi"))
+        val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
+        runBlocking { repo.seedKindQuestionsOnce("school", lang) }
+        val on = KindSetting(listOf("house", "school"), experimental = "1", enabledText = "[\"house\",\"school\"]")
+        shoot("school_questions", readyText = DefaultQuestions.SCHOOL.first().question(lang).text) {
+            CompositionLocalProvider(LocalSpace provides SpaceUi(on, "school"), app.doorprints.ui.LocalDevKinds provides true) { QuestionsEditor() }
+        }
+    }
+
     @Test fun chooserHidden() {
         assumeTrue((lang == "en" && !dark) || (lang == "ta" && dark))
         val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository

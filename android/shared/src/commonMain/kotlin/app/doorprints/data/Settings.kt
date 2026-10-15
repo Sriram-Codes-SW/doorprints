@@ -738,6 +738,11 @@ class SettingsStore(
 
     suspend fun markQuestionsSeeded() = dataStore.edit { it[Keys.questionsSeeded] = true }
 
+    /** A kind's own question bank was seeded on this install (kinds PR 29, docs/03 section 18.23): `questions.seeded.<kind>`, not synced. */
+    suspend fun questionsSeededFor(kind: String): Boolean = dataStore.data.first()[booleanPreferencesKey("questions.seeded.$kind")] ?: false
+
+    suspend fun markQuestionsSeededFor(kind: String) = dataStore.edit { it[booleanPreferencesKey("questions.seeded.$kind")] = true }
+
     suspend fun saveAiProvider(choice: AiProviderChoice) = dataStore.edit { it[Keys.aiProvider] = choice.name }
 
     /** Saves the person's own Gemini key ([key] trimmed, not blank) and chooses on-device AI with Gemini. */

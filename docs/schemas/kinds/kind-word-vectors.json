@@ -1201,6 +1201,366 @@
      "en": "Notifications are off, so Hunt mode cannot tell you when you pass a school."
     }
    }
+  },
+  {
+   "id": "viewingPlan",
+   "house": {
+    "web": "viewings.plan",
+    "android": "viewings_plan",
+    "text": {
+     "en": "Plan a viewing",
+     "hi": "देखने का समय तय करें",
+     "ta": "பார்வையிடலைத் திட்டமிடு",
+     "te": "పరిశీలనను ప్లాన్ చేయండి"
+    }
+   },
+   "school": {
+    "web": "school.viewings.plan",
+    "android": "school_viewings_plan",
+    "text": {
+     "en": "Plan a visit"
+    }
+   }
+  },
+  {
+   "id": "viewingNone",
+   "house": {
+    "web": "viewings.none",
+    "android": "viewings_none",
+    "text": {
+     "en": "No viewing planned",
+     "hi": "कोई देखना तय नहीं",
+     "ta": "பார்வையிடல் திட்டமிடப்படவில்லை",
+     "te": "పరిశీలన ప్లాన్ చేయలేదు"
+    }
+   },
+   "school": {
+    "web": "school.viewings.none",
+    "android": "school_viewings_none",
+    "text": {
+     "en": "No visit planned"
+    }
+   }
+  },
+  {
+   "id": "viewingAll",
+   "house": {
+    "web": "viewings.allOfHouse",
+    "android": "viewings_allOfHouse",
+    "text": {
+     "en": "All viewings of this house",
+     "hi": "इस मकान के सभी देखना",
+     "ta": "இந்த வீட்டின் அனைத்துப் பார்வையிடல்கள்",
+     "te": "ఈ ఇంటి అన్ని పరిశీలనలు"
+    }
+   },
+   "school": {
+    "web": "school.viewings.all",
+    "android": "school_viewings_all",
+    "text": {
+     "en": "All visits to this school"
+    }
+   }
+  },
+  {
+   "id": "viewingsIntro",
+   "house": {
+    "web": "viewings.intro",
+    "android": "viewings_intro",
+    "text": {
+     "en": "When you plan to see a house, and how it went.",
+     "hi": "मकान कब देखना है और कैसा रहा, यहाँ रखें।",
+     "ta": "வீட்டை எப்போது பார்க்கப் போகிறீர்கள், எப்படி இருந்தது என்பதை இங்கே வைக்கலாம்.",
+     "te": "ఇంటిని ఎప్పుడు చూడాలి, ఎలా జరిగింది అనేది ఇక్కడ ఉంచండి."
+    }
+   },
+   "school": {
+    "web": "school.viewings.intro",
+    "android": "school_viewings_intro",
+    "text": {
+     "en": "When you plan to visit a school or go to an open day, and how it went."
+    }
+   }
+  },
+  {
+   "id": "viewingsEmpty",
+   "house": {
+    "web": "viewings.empty",
+    "android": "viewings_empty",
+    "text": {
+     "en": "No viewings yet. Plan one from a house.",
+     "hi": "अभी कोई देखना नहीं। किसी मकान से तय करें।",
+     "ta": "இன்னும் பார்வையிடல் இல்லை. ஒரு வீட்டிலிருந்து திட்டமிடுங்கள்.",
+     "te": "ఇంకా పరిశీలనలు లేవు. ఒక ఇంటి నుండి ప్లాన్ చేయండి."
+    }
+   },
+   "school": {
+    "web": "school.viewings.empty",
+    "android": "school_viewings_empty",
+    "text": {
+     "en": "No visits yet. Plan one from a school."
+    }
+   }
+  },
+  {
+   "id": "viewingsDataBody",
+   "house": {
+    "web": "viewings.dataBody",
+    "android": "settings_viewings_hint",
+    "text": {
+     "en": "Plan a viewing, and see the ones coming up and the ones you have done.",
+     "hi": "देखने का समय तय करें, और आने वाले और हो चुके देखना देखें।",
+     "ta": "பார்வையிடலைத் திட்டமிடுங்கள்; வரவிருப்பவை, முடிந்தவற்றைப் பாருங்கள்.",
+     "te": "పరిశీలనను ప్లాన్ చేయండి; రాబోయేవి, పూర్తయినవి చూడండి."
+    }
+   },
+   "school": {
+    "web": "school.viewings.dataBody",
+    "android": "school_settings_viewings_hint",
+    "text": {
+     "en": "Plan a school visit or open day, and see the ones coming up and the ones you have done."
+    }
+   }
+  },
+  {
+   "id": "questionsDataBody",
+   "house": {
+    "web": "questions.dataBody",
+    "android": "settings_questions_hint",
+    "text": {
+     "en": "The questions you ask at a viewing",
+     "hi": "घर देखते समय पूछे जाने वाले सवाल",
+     "ta": "வீட்டைப் பார்க்கும்போது நீங்கள் கேட்கும் கேள்விகள்",
+     "te": "ఇల్లు చూసేటప్పుడు మీరు అడిగే ప్రశ్నలు"
+    }
+   },
+   "school": {
+    "web": "school.questions.dataBody",
+    "android": "school_settings_questions_hint",
+    "text": {
+     "en": "The questions you like to ask on a school visit."
+    }
+   }
+  },
+  {
+   "id": "viewingChannel",
+   "house": {
+    "web": null,
+    "android": "notif_channel_viewings",
+    "text": {
+     "en": "Viewing reminders",
+     "hi": "मकान देखने के रिमाइंडर",
+     "ta": "பார்வையிடல் நினைவூட்டல்கள்",
+     "te": "పరిశీలన రిమైండర్‌లు"
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_notif_channel_viewings",
+    "text": {
+     "en": "School visit reminders"
+    }
+   }
+  },
+  {
+   "id": "viewingChannelDesc",
+   "house": {
+    "web": null,
+    "android": "notif_channel_viewings_desc",
+    "text": {
+     "en": "Before a viewing you have planned",
+     "hi": "आपके तय मकान देखने से पहले",
+     "ta": "நீங்கள் திட்டமிட்ட பார்வையிடலுக்கு முன்",
+     "te": "మీరు ప్లాన్ చేసిన పరిశీలనకు ముందు"
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_notif_channel_viewings_desc",
+    "text": {
+     "en": "Before a school visit you have planned"
+    }
+   }
+  },
+  {
+   "id": "viewingSoon",
+   "house": {
+    "web": null,
+    "android": "notif_viewing_soon",
+    "text": {
+     "en": "Viewing at %1$s in %2$d min",
+     "hi": "%1$s में मकान देखना %2$d मिनट में",
+     "ta": "%1$s இல் பார்வையிடல் %2$d நிமிடத்தில்",
+     "te": "%1$s వద్ద పరిశీలన %2$d నిమిషాల్లో"
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_notif_viewing_soon",
+    "text": {
+     "en": "Visit to %1$s in %2$d min"
+    }
+   }
+  },
+  {
+   "id": "viewingTitle",
+   "house": {
+    "web": null,
+    "android": "notif_viewing_title",
+    "text": {
+     "en": "Viewing at %1$s",
+     "hi": "%1$s में मकान देखना",
+     "ta": "%1$s இல் பார்வையிடல்",
+     "te": "%1$s వద్ద పరిశీలన"
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_notif_viewing_title",
+    "text": {
+     "en": "Visit to %1$s"
+    }
+   }
+  },
+  {
+   "id": "viewingOpen",
+   "house": {
+    "web": null,
+    "android": "notif_viewing_open",
+    "text": {
+     "en": "Open house",
+     "hi": "मकान खोलें",
+     "ta": "வீட்டைத் திற",
+     "te": "ఇంటిని తెరవండి"
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_notif_viewing_open",
+    "text": {
+     "en": "Open school"
+    }
+   }
+  },
+  {
+   "id": "viewingGone",
+   "house": {
+    "web": null,
+    "android": "notif_viewing_house_gone",
+    "text": {
+     "en": "a house that is gone",
+     "hi": "हटाया गया मकान",
+     "ta": "நீக்கப்பட்ட வீடு",
+     "te": "తొలగించిన ఇల్లు"
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_notif_viewing_gone",
+    "text": {
+     "en": "a school that is gone"
+    }
+   }
+  },
+  {
+   "id": "viewingDirections",
+   "house": {
+    "web": null,
+    "android": "notif_viewing_directions",
+    "text": {
+     "en": "Directions to the house",
+     "hi": "मकान तक रास्ता",
+     "ta": "வீட்டுக்கு வழி",
+     "te": "ఇంటికి దారి"
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_notif_viewing_directions",
+    "text": {
+     "en": "Directions to the school"
+    }
+   }
+  },
+  {
+   "id": "questionsIntro",
+   "house": {
+    "web": "questions.intro",
+    "android": "questions_intro",
+    "text": {
+     "en": "The questions you like to ask at a viewing. On a house, Add the usual questions asks the ones set to Ask by default that fit it.",
+     "hi": "घर देखते समय आप जो सवाल पूछना चाहते हैं। किसी मकान पर “आम सवाल जोड़ें” वे सवाल जोड़ता है जो “हमेशा पूछें” पर हैं और उस मकान पर लागू होते हैं।",
+     "ta": "வீட்டைப் பார்க்கும்போது நீங்கள் கேட்க விரும்பும் கேள்விகள். ஒரு வீட்டில் “வழக்கமான கேள்விகளைச் சேர்” என்பது “இயல்பாகக் கேள்” என அமைத்த, அந்த வீட்டுக்குப் பொருந்தும் கேள்விகளைச் சேர்க்கும்.",
+     "te": "ఇల్లు చూసేటప్పుడు మీరు అడగాలనుకునే ప్రశ్నలు. ఒక ఇంటిపై “సాధారణ ప్రశ్నలు జోడించండి” అంటే “ఎప్పుడూ అడగండి” అని పెట్టిన, ఆ ఇంటికి సరిపడే ప్రశ్నలను జోడిస్తుంది."
+    }
+   },
+   "school": {
+    "web": "school.questions.intro",
+    "android": "school_questions_intro",
+    "text": {
+     "en": "The questions you like to ask on a school visit. On a school, Add the usual questions asks the ones set to Ask by default."
+    }
+   }
+  },
+  {
+   "id": "questionsEmpty",
+   "house": {
+    "web": "questions.emptyHouse",
+    "android": "house_questions_empty",
+    "text": {
+     "en": "No questions yet. Add the usual questions to bring them to the viewing.",
+     "hi": "अभी कोई सवाल नहीं। घर देखने जाते समय साथ ले जाने के लिए आम सवाल जोड़ें।",
+     "ta": "இன்னும் கேள்விகள் இல்லை. வீட்டைப் பார்க்கச் செல்லும்போது கேட்க வழக்கமான கேள்விகளைச் சேர்க்கவும்.",
+     "te": "ఇంకా ప్రశ్నలు లేవు. ఇల్లు చూడటానికి వెళ్లేటప్పుడు అడగడానికి సాధారణ ప్రశ్నలు జోడించండి."
+    }
+   },
+   "school": {
+    "web": "school.questions.empty",
+    "android": "school_questions_empty",
+    "text": {
+     "en": "No questions yet. Add the usual questions to bring them to the visit."
+    }
+   }
+  },
+  {
+   "id": "questionsNoneToPick",
+   "house": {
+    "web": "questions.noneToPick",
+    "android": "house_questions_pick_none",
+    "text": {
+     "en": "Every question on your list is already on this house.",
+     "hi": "आपकी सूची का हर सवाल इस मकान पर पहले से है।",
+     "ta": "உங்கள் பட்டியலில் உள்ள ஒவ்வொரு கேள்வியும் ஏற்கெனவே இந்த வீட்டில் உள்ளது.",
+     "te": "మీ జాబితాలోని ప్రతి ప్రశ్న ఇప్పటికే ఈ ఇంటిపై ఉంది."
+    }
+   },
+   "school": {
+    "web": "school.questions.noneToPick",
+    "android": "school_questions_pick_none",
+    "text": {
+     "en": "Every question on your list is already on this school."
+    }
+   }
+  },
+  {
+   "id": "viewingBody",
+   "house": {
+    "web": null,
+    "android": "viewing_reminder_body",
+    "text": {
+     "en": "Viewing at %1$s at %2$s",
+     "hi": "%1$s में मकान देखना, %2$s बजे",
+     "ta": "%1$s இல் பார்வையிடல், %2$s மணிக்கு",
+     "te": "%1$s వద్ద పరిశీలన, %2$s కి"
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_viewing_reminder_body",
+    "text": {
+     "en": "Visit to %1$s at %2$s"
+    }
+   }
   }
  ]
 }

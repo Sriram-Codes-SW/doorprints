@@ -360,23 +360,26 @@ object Notifications {
      * house, scrolled to its questions; [EXTRA_OPEN_QUESTIONS]). Private on a locked screen. Every
      * PendingIntent is immutable (T-E8); the request codes come from the viewing id, one per action.
      */
-    fun viewingReminder(context: Context, viewing: Viewing, house: HouseEntity?, nowMs: Long): Notification {
-        val name = house?.label?.ifBlank { null } ?: context.getString(R.string.notif_viewing_house_gone)
+    fun viewingReminder(context: Context, viewing: Viewing, house: HouseEntity?, nowMs: Long, texts: ViewingTexts? = null): Notification {
+        // A kind other than the house words the reminder with its own texts and its own channel (kinds PR 29, docs/03 §18.23); the house's
+        // are the app's strings and the `viewings` channel, so a house reminder is what it always was.
+        val channel = texts?.let { viewingsChannel(context, it) } ?: CHANNEL_VIEWINGS
+        val name = house?.label?.ifBlank { null } ?: (texts?.gone ?: context.getString(R.string.notif_viewing_house_gone))
         val minutes = ViewingReminders.minutesUntil(viewing.startsAt, nowMs)
         val title = if (minutes <= SOON_MINUTES) {
-            context.getString(R.string.notif_viewing_soon, name, minutes)
+            texts?.soon?.invoke(name, minutes) ?: context.getString(R.string.notif_viewing_soon, name, minutes)
         } else {
-            context.getString(R.string.notif_viewing_title, name)
+            texts?.title?.invoke(name) ?: context.getString(R.string.notif_viewing_title, name)
         }
         val text = context.getString(R.string.notif_viewing_text, Formats.dateTime(viewing.startsAt))
-        val publicVersion = NotificationCompat.Builder(context, CHANNEL_VIEWINGS)
+        val publicVersion = NotificationCompat.Builder(context, channel)
             .setSmallIcon(SMALL_ICON)
             .setContentTitle(context.getString(R.string.notif_viewing_public))
             .build()
         val openHouse = house?.let { h ->
             openAppIntent(context, ("open:" + viewing.id).hashCode()) { putExtra(EXTRA_OPEN_HOUSE, h.id) }
         }
-        return NotificationCompat.Builder(context, CHANNEL_VIEWINGS)
+        return NotificationCompat.Builder(context, channel)
             .setSmallIcon(SMALL_ICON)
             .setContentTitle(title)
             .setContentText(text)
@@ -388,9 +391,9 @@ object Notifications {
             .setContentIntent(openHouse ?: openAppIntent(context, ("open:" + viewing.id).hashCode()))
             .apply {
                 if (house != null && openHouse != null) {
-                    addAction(0, context.getString(R.string.notif_viewing_open), openHouse)
+                    addAction(0, texts?.open ?: context.getString(R.string.notif_viewing_open), openHouse)
                     if (house.locationSource != LocationSource.APPROX) {
-                        addAction(0, context.getString(R.string.notif_viewing_directions), directionsIntent(context, viewing.id, house))
+                        addAction(0, texts?.directions ?: context.getString(R.string.notif_viewing_directions), directionsIntent(context, viewing.id, house))
                     }
                     addAction(
                         0, context.getString(R.string.notif_viewing_questions),
@@ -402,6 +405,33 @@ object Notifications {
                 }
             }
             .build()
+    }
+
+    /**
+     * The texts of a viewing reminder of a kind other than the house (kinds PR 29, docs/03 §18.23), read from the kind file's
+     * `viewingChannel`, `viewingChannelDesc`, `viewingSoon`, `viewingTitle`, `viewingOpen`, `viewingGone` and `viewingDirections`
+     * words by the scheduler. [channelId] is `viewings_<kind>`; the lock-screen public text stays "Doorprints reminder" for every kind.
+     */
+    class ViewingTexts(
+        val channelId: String,
+        val channelName: String,
+        val channelDescription: String,
+        val soon: (name: String, minutes: Int) -> String,
+        val title: (name: String) -> String,
+        val open: String,
+        val gone: String,
+        val directions: String,
+    )
+
+    /** Creates (idempotently) the viewings channel of a kind other than the house, private on a locked screen like the house's, and returns its id. */
+    fun viewingsChannel(context: Context, texts: ViewingTexts): String {
+        context.getSystemService(NotificationManager::class.java)?.createNotificationChannel(
+            NotificationChannel(texts.channelId, texts.channelName, NotificationManager.IMPORTANCE_DEFAULT).apply {
+                description = texts.channelDescription
+                lockscreenVisibility = Notification.VISIBILITY_PRIVATE
+            }
+        )
+        return texts.channelId
     }
 
     /**

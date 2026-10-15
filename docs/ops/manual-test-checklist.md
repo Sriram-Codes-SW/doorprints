@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | The complete manual test list for Doorprints before real-system testing starts and before Android/iOS development continues: every check a person redoes on real devices, whether or not an automated suite or a review session already covered it |
-| Version | 0.25 |
+| Version | 0.26 |
 | Date | 2026-10-15 |
 | Author | Claude, senior reviewer |
 | Status | Draft |
@@ -37,6 +37,7 @@
 | 0.23 | 2026-10-15 | Claude (Code), docs | **Stale wording after "compiled in, off"** (`docs/school-compiled-in-wording`): §19 MT-96 says the iPhone lists the school too and the test phones are a release build and a debug build. |
 | 0.24 | 2026-10-15 | Claude (Code), engineer | **MT-116** (TC-M-84; kinds PR 26, [03](../03-design.md) §18.20): the school's Hunt mode on a real walk, the alert's words and channel, the lock screen, TalkBack; not run. |
 | 0.25 | 2026-10-15 | Claude (Code), engineer | MT-117: a school's Compare and checklist (kinds PR 27, [06](../06-test-plan.md) TC-M-85). |
+| 0.26 | 2026-10-15 | Claude (Code), engineer | **MT-118** (TC-M-86; kinds PR 29, [03](../03-design.md) §18.23): a school's visits and questions, a visit reminder on its own channel, the iPhone body, no broker from a school's phone. Not run. |
 
 ## 1. How to use this list
 
@@ -1030,6 +1031,13 @@ TC-M-72 and TC-M-81 of [06](../06-test-plan.md); the website's twin is §18.
 - **Automated or reviewed by:** TC-U-271 (`compare-vectors.json`, `compare-space.spec.ts`, `school-form.spec.ts`). Reviewer ran it: no.
 - Pass / Fail / Date: ____  by: ____
 
+#### MT-118 A school's visits and questions, and a visit reminder
+- **Area:** Android, iPhone and website. **Who:** the owner, with natives for Hindi, Tamil and Telugu for the last step. **Env:** E3, E4 and E5; School shown (Settings > What you track); a school saved, notifications allowed.
+- **Steps:** (1) In the **Schools** space open **Settings > Questions**: six questions (fees, admission, class size, safety, water and toilets, hours and holidays), no *Applies to* rent or buy control, the school's intro; edit one, add one, **Reset to defaults** and see the house's questions untouched in the **Houses** space. (2) Open a school: **Questions for a visit** with *Add the usual questions*; **School visits** with *Plan a visit*; plan one 2 minutes ahead with a reminder. (3) The reminder (Android): *Visit to <school> in 2 min* on the channel *School visit reminders* (**Settings > Notifications**), the lock screen says *Doorprints reminder* and no name; the actions say *Open school* and *Directions to the school*. (4) The iPhone: the reminder says *Visit to <school> at <time>*. (5) **Settings > Viewings** in the Schools space lists the visit and not a house's viewing; in the Houses space the reverse. (6) Save a school with a contact phone: **Settings > Brokers** (Houses space) has no new broker. (7) The same in hi, ta and te (*under review*).
+- **Expected:** the school has visits and questions in its own words; the house's viewings, questions and reminder are exactly as before; no broker is made from a school's phone.
+- **Automated or reviewed by:** TC-U-278 (the specs and baselines of [03](../03-design.md) §18.23). Reviewer ran it: no.
+- Pass / Fail / Date: ____  by: ____
+
 ### 19.1 Summary rows (add to §13 when the owner starts the run)
 
 | Id | Title | Who | Env | Reviewer ran it | Result |
@@ -1040,6 +1048,7 @@ TC-M-72 and TC-M-81 of [06](../06-test-plan.md); the website's twin is §18.
 | MT-113 | The iPhone, school compiled in and off: the switch, VoiceOver, 200 % text | owner, natives | E5 | no (built; not run on an iPhone) | |
 | MT-114 | A recording cut short keeps what was said: iPhone, Android, website | owner | E4, E5 | no | |
 | MT-117 | A school's Compare and checklist: website and Android | anyone, natives | E3, E4 | no | |
+| MT-118 | A school's visits and questions, and a visit reminder: Android, iPhone, website | owner, natives | E3, E4, E5 | no | |
 
 ## 20. A school's pages and copies (S4b-BL-256, S4b-BL-259, S4b-BL-266, S4b-BL-277)
 

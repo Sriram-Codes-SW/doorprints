@@ -92,7 +92,7 @@ async function open(house: HouseDto | null, lang: Lang, flag: boolean): Promise<
       {
         provide: LocalDataService,
         useValue: {
-          houses: () => of([]), brokers: () => of([]), scoring: () => of(DEFAULT_SCORING), questions: () => of([]),
+          houses: () => of([]), brokers: () => of([]), scoring: () => of(DEFAULT_SCORING), questions: () => of([]), seedKindQuestions: () => of(undefined),
           house: () => of(house), visits: () => of([]), viewingsOf: () => of([]), areas: () => of([]),
           areaNotes: () => of([]), places: () => of([]), settled: signal(0), photos: () => of([]), conditionPhotos: () => of([]), saveHouse,
         },
@@ -201,10 +201,12 @@ describe('a school on the candidate page, with the developer flag on (school-for
     expect([chosen('extra-board'), chosen('extra-medium')]).toEqual(['CBSE', 'English']);
     expect([value('extra-grades').value, value('extra-commuteMinutes').value, value('extra-fees').value]).toEqual(['Nursery to 12', '25', '96000']);
     expect((value('extra-busService') as HTMLInputElement).checked).toBe(true);
-    for (const gone of ['#house-price', '#house-price-type', '#house-broker', '#rooms-heading', '#questions-heading']) {
+    for (const gone of ['#house-price', '#house-price-type', '#house-broker', '#rooms-heading']) {
       expect(host.querySelector(gone), gone).toBeNull();
     }
-    expect(host.querySelector('app-house-viewings-card')).toBeNull();
+    // Kinds PR 29 (docs/03 §18.23): the school has viewings (its visits) and, with them, its questions.
+    expect(host.querySelector('#questions-heading')).not.toBeNull();
+    expect(host.querySelector('app-house-viewings-card')).not.toBeNull();
     expect(host.querySelector('[name="dev-kind"]')).toBeNull();
     expect(text(host.querySelector('.danger-zone .btn-danger'))).toBe('Delete school');
   });

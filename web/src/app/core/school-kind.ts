@@ -19,6 +19,7 @@
 import type { TKey } from '../i18n/en';
 import { KindFields } from './kind-fields';
 import { KindKeys, KindLabels } from './kind-labels';
+import { capabilitiesOf } from './kind-capabilities';
 
 /**
  * Schools, the second built-in kind (kinds PR 5, S4b-BL-209; docs/03 ADR-36 §18.9): a copy of
@@ -43,10 +44,12 @@ const CHECKS = ['dropoff', 'grounds', 'sanitation', 'teachers', 'classsize', 'ho
 
 export const SCHOOL_LABELS = new KindLabels({
   kind: 'school',
+  capabilities: capabilitiesOf('school'),
   keys: {
     'kind.new': 'school.newTitle', 'kind.many': 'school.many', 'kind.delete': 'school.delete',
     ...Object.fromEntries(STATUSES.map((s) => [`status.${s}`, `status.${s}` as const])),
-    'section.details': 'house.details', 'section.cost': 'school.fees', 'section.areaNotes': 'areaNotes.heading',
+    'section.details': 'house.details', 'section.cost': 'school.fees', 'section.questions': 'school.questions.heading',
+    'section.viewings': 'school.viewings.heading', 'section.areaNotes': 'areaNotes.heading',
     'section.distances': 'distances.heading', 'section.location': 'house.location', 'section.walks': 'trace.house.title',
     'section.checklist': 'house.checklist', 'section.visits': 'house.visits', 'section.photos': 'house.photos',
     ...Object.fromEntries(CHECKS.map((c) => [`check.${c}`, `school.check.${c}` as const])),
@@ -79,4 +82,4 @@ export const SCHOOL_FIELDS = new KindFields(SCHOOL_LABELS, [
   { id: 'busService', type: 'bool', section: 'details', order: 74 },
   { id: 'fees', type: 'money', max: MONEY_MAX, cadences: ['year'], better: 'lower', section: 'cost', order: 10 },
   { id: 'admissionFee', type: 'money', max: MONEY_MAX, cadences: ['once'], better: 'lower', section: 'cost', order: 20 },
-], ['label', 'address', 'street', 'locality', 'notes', 'contactName', 'areaNotes', ...EXTRA_IDS]);
+], ['label', 'address', 'street', 'locality', 'notes', 'contactName', 'questions', 'areaNotes', ...EXTRA_IDS]);

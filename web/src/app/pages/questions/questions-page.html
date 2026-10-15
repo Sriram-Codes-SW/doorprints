@@ -20,7 +20,7 @@
   <header class="page-head">
     <p><a routerLink="/data">{{ 'questions.back' | t }}</a></p>
     <h1>{{ 'questions.title' | t }}</h1>
-    <p class="muted">{{ 'questions.intro' | t }}</p>
+    <p class="muted">{{ space.kindWord('questions.intro') | t }}</p>
   </header>
 
   @if (error(); as card) {
@@ -80,6 +80,7 @@
                     }
                   </select>
                 </div>
+                @if (scopes().length > 1) {
                 <div class="field">
                   <label [for]="'question-scope-' + q.id">{{ 'questions.appliesTo' | t }}</label>
                   <select
@@ -88,11 +89,12 @@
                     [value]="q.appliesTo"
                     (change)="setScope(q, $event)"
                   >
-                    @for (s of scopes; track s) {
+                    @for (s of scopes(); track s) {
                       <option [value]="s" [selected]="q.appliesTo === s">{{ scopeKey(s) | t }}</option>
                     }
                   </select>
                 </div>
+                }
                 <label class="check">
                   <input
                     type="checkbox"

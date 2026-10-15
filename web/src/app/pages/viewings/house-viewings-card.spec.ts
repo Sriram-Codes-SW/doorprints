@@ -48,7 +48,7 @@ afterEach(() => {
   localStorage.clear();
 });
 
-async function renderCard(viewings: Viewing[], visits: VisitDto[] = [], isNew = false, lang: 'en' | 'ta' = 'en') {
+async function renderCard(viewings: Viewing[], visits: VisitDto[] = [], isNew = false, lang: 'en' | 'ta' | 'hi' | 'te' = 'en', kind = 'house') {
   const markViewingDone = vi.fn((id: string) => of({ ...viewings.find((x) => x.id === id)!, status: 'DONE' as const }));
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({
@@ -71,6 +71,7 @@ async function renderCard(viewings: Viewing[], visits: VisitDto[] = [], isNew = 
   await TestBed.inject(TranslationService).setLang(lang);
   const fixture = TestBed.createComponent(HouseViewingsCard);
   fixture.componentRef.setInput('houseId', 'h1');
+  fixture.componentRef.setInput('kindId', kind);
   fixture.componentRef.setInput('houseName', 'Green View 2BHK');
   fixture.componentRef.setInput('isNew', isNew);
   fixture.detectChanges();
@@ -232,5 +233,33 @@ describe('SecondViewingPrompt', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('#second-viewing-recheck')?.textContent).toContain('Nothing open.');
     expect(fixture.nativeElement.querySelectorAll('button')).toHaveLength(2);
+  });
+});
+
+// Kinds PR 29 (docs/03 §18.23): a school's visits are viewings of the school, in its own words.
+describe('HouseViewingsCard for a school', () => {
+  it('is headed by the school’s section, and says visit where the house says viewing', async () => {
+    const { host } = await renderCard([], [], false, 'en', 'school');
+    expect(host.querySelector('#house-viewings-heading')?.textContent).toBe('School visits');
+    expect(host.querySelector('#house-viewings-next')?.textContent).toContain('No visit planned');
+    const links = [...host.querySelectorAll('a')].map((a) => [a.textContent?.trim(), a.getAttribute('href')]);
+    expect(links).toEqual([['Plan a visit', '/viewings/new?houseId=h1'], ['All visits to this school', '/viewings?houseId=h1']]);
+  });
+
+  it('asks to save the school first, in all four languages, with no house word', async () => {
+    for (const lang of ['en', 'hi', 'ta', 'te'] as const) {
+      const { host } = await renderCard([], [], true, lang, 'school');
+      const text = host.querySelector('p.muted')?.textContent ?? '';
+      expect(text, lang).not.toBe('');
+      expect(text, lang).not.toMatch(/house|मकान|வீடு|ఇల్లు/i);
+    }
+  });
+
+  it('keeps the house’s words for a house, and for a kind it does not know', async () => {
+    for (const kind of ['house', 'villa']) {
+      const { host } = await renderCard([], [], false, 'en', kind);
+      expect(host.querySelector('#house-viewings-heading')?.textContent, kind).toBe('Viewings');
+      expect(host.querySelector('#house-viewings-next')?.textContent, kind).toContain('No viewing planned');
+    }
   });
 });

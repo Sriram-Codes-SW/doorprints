@@ -17,6 +17,7 @@
  */
 
 import type { Lang } from '../i18n/languages';
+import { SCHOOL_QUESTIONS } from './school-questions';
 
 /**
  * The question bank (docs/11 5.5, slice 3a of the Sprint 4b data model): the questions a person likes to ask at a
@@ -38,8 +39,8 @@ export type QuestionScope = 'RENT' | 'SALE' | 'BOTH';
 export const QUESTION_CATEGORIES: readonly QuestionCategory[] = ['MONEY', 'WATER_POWER', 'RULES', 'BUILDING', 'LEGAL', 'OTHER'];
 export const QUESTION_SCOPES: readonly QuestionScope[] = ['RENT', 'SALE', 'BOTH'];
 
-/** A custom question's id: `q_` and 8 lowercase hex characters. */
-const CUSTOM_ID_PATTERN = /^q_[0-9a-f]{8}$/;
+/** A custom question's id: `q_` and 8 lowercase hex characters; a kind's own adds its id first (`q_school_`, kinds PR 29). */
+const CUSTOM_ID_PATTERN = /^q_(?:[a-z]{2,12}_)?[0-9a-f]{8}$/;
 /** A record id: the pattern the records store accepts. */
 const ID_PATTERN = /^[A-Za-z0-9._-]{1,64}$/;
 
@@ -272,9 +273,41 @@ export const DEFAULT_QUESTIONS: readonly DefaultQuestion[] = [
   },
 ];
 
-/** Whether the id is one of the seeded questions. */
+/** The kinds besides the house that have a question bank of their own (kinds PR 29, docs/03 §18.23); their ids carry the kind. */
+export const QUESTION_KINDS: readonly string[] = ['school'];
+
+/**
+ * The scopes a kind's questions can have (its kind file's `questions.scopes`, docs/03 §18.23): the house asks for a rent, a sale or
+ * both; a school has neither, so its questions are all `BOTH` and the scope control is not offered. A kind with no entry has them all.
+ */
+const KIND_SCOPES: Readonly<Record<string, readonly QuestionScope[]>> = { school: ['BOTH'] };
+
+export function questionScopesOf(kind: string): readonly QuestionScope[] {
+  return Object.hasOwn(KIND_SCOPES, kind) ? KIND_SCOPES[kind] : QUESTION_SCOPES;
+}
+
+/** The seed of a kind's bank: the house's `default-questions.json`, the school's `school-questions.json`; none for another kind. */
+export function defaultQuestionsOf(kind: string): readonly DefaultQuestion[] {
+  return kind === 'house' ? DEFAULT_QUESTIONS : kind === 'school' ? SCHOOL_QUESTIONS : [];
+}
+
+/** Whether the id is one of the seeded questions (of any kind). */
 export function isDefaultQuestionId(id: string): boolean {
-  return DEFAULT_QUESTIONS.some((d) => d.id === id);
+  return DEFAULT_QUESTIONS.some((d) => d.id === id) || SCHOOL_QUESTIONS.some((d) => d.id === id);
+}
+
+/**
+ * The kind a question belongs to, from its id alone (so no record format changes): `qd_school_...` and `q_school_...` are the
+ * school's, every other id is the house's, as every question was before kinds PR 29.
+ */
+export function questionKindOf(id: string): string {
+  for (const kind of QUESTION_KINDS) if (id.startsWith(`qd_${kind}_`) || id.startsWith(`q_${kind}_`)) return kind;
+  return 'house';
+}
+
+/** The questions of one kind's bank, in the order given. */
+export function questionsOfKind<T extends { id: string }>(list: readonly T[], kind: string): T[] {
+  return list.filter((q) => questionKindOf(q.id) === kind);
 }
 
 /** Whether the id has the shape of a question the person added (`q_` and 8 hex characters). */
@@ -346,9 +379,9 @@ export function sortQuestions<T extends { sort: number; id: string }>(list: read
   return [...list].sort((a, b) => a.sort - b.sort || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 }
 
-/** `q_` and 8 random lowercase hex characters: a custom question's id. */
-export function newQuestionId(): string {
+/** `q_` and 8 random lowercase hex characters: a custom question's id; a kind's own is `q_<kind>_` and the 8 characters. */
+export function newQuestionId(kind = 'house'): string {
   const bytes = new Uint8Array(4);
   crypto.getRandomValues(bytes);
-  return 'q_' + Array.from(bytes, (x) => x.toString(16).padStart(2, '0')).join('');
+  return (kind === 'house' ? 'q_' : `q_${kind}_`) + Array.from(bytes, (x) => x.toString(16).padStart(2, '0')).join('');
 }

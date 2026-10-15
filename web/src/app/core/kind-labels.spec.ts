@@ -27,7 +27,9 @@ import { te } from '../i18n/te';
 import labelVectorsJson from '../../../../docs/schemas/kinds/kind-label-vectors.json';
 import kindVectorsJson from '../../../../docs/schemas/kinds/kind-vectors.json';
 import houseJson from '../../../../docs/schemas/kinds/house.json';
-import { HOUSE_LABELS, KindLabels, kindLabels, labelKey, statusKeys } from './kind-labels';
+import { HOUSE_LABELS, KindLabels, capabilityAllows, kindLabels, labelKey, statusKeys } from './kind-labels';
+import { capabilitiesOf } from './kind-capabilities';
+import type { KindCapabilities } from './kind-capabilities';
 import { SCHOOL_LABELS } from './school-kind';
 
 interface Label { web: string | null; byCadence?: Record<string, { web?: string }> }
@@ -163,6 +165,24 @@ describe('KindLabels, the label and visibility resolver', () => {
     expect(kind.field('toString')).toBeUndefined();
     expect(kind.isVisible('field.areaSqft')).toBe(false);
     expect(kind.isVisible('section.photos')).toBe(false);
+  });
+  // Kinds PR 29 (docs/03 §18.23): a capability switches the places it owns, whatever the sections list.
+  it('shows a place a capability switches only while the capability is on, and every other place as the file says', () => {
+    const keys = { 'section.rooms': 'rooms.heading', 'section.moveIn': 'movein.heading', 'section.viewings': 'viewings.cardHeading',
+      'section.questions': 'questions.title', 'field.brokerId': 'house.broker', 'section.photos': 'house.photos', 'field.label': 'house.name' } as const;
+    const of = (capabilities?: KindCapabilities) => new KindLabels({ kind: 'test', keys, byCadence: {}, sections: {}, capabilities });
+    const everything = of(capabilitiesOf('house'));
+    const gated = ['section.rooms', 'section.moveIn', 'section.viewings', 'section.questions', 'field.brokerId'];
+    for (const ref of gated) expect(everything.isVisible(ref), `house ${ref}`).toBe(true);
+    const nothing = of(capabilitiesOf('nobody'));
+    for (const ref of gated) expect(nothing.isVisible(ref), `none ${ref}`).toBe(false);
+    for (const ref of ['section.photos', 'field.label']) expect([everything, nothing, of()].map((l) => l.isVisible(ref)), ref).toEqual([true, true, true]);
+    // The school's set: visits and their questions on, no rooms or moving in, an office and not a broker.
+    const school = of(capabilitiesOf('school'));
+    expect(gated.map((ref) => school.isVisible(ref))).toEqual([false, false, true, true, false]);
+    // A kind written by hand with no capabilities gates nothing.
+    for (const ref of gated) expect(of().isVisible(ref), `unset ${ref}`).toBe(true);
+    expect(capabilityAllows('section.checklist', capabilitiesOf('nobody'))).toBe(true);
   });
 });
 

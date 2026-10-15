@@ -331,4 +331,32 @@ describe('brokers (LocalStore.brokers)', () => {
       expect(brokers).toContainEqual({ name: 'N'.repeat(200), phone: `1${'9'.repeat(49)}` });
     });
   });
+
+  // Kinds PR 29 (docs/03 §18.23): a saved phone makes or links a broker only for a kind whose file says so.
+  describe('the contacts capability of the kind', () => {
+    it('makes no broker from a school’s phone, and keeps the contact on the school', async () => {
+      const saved = await store.saveHouse(house('s1', { kind: 'school', ...RAVI }), T1);
+      expect(await store.brokers.rows()).toEqual([]);
+      expect([saved.brokerId ?? null, saved.contactName, saved.contactPhone]).toEqual([null, 'Ravi Kumar', '+91 98400 11111']);
+    });
+
+    it('still makes the house’s broker, and does not link a school to the broker of the same number', async () => {
+      await store.saveHouse(house('h1', RAVI), T1);
+      const school = await store.saveHouse(house('s1', { kind: 'school', ...RAVI }), T2);
+      expect(await store.brokers.rows()).toHaveLength(1);
+      expect(school.brokerId ?? null).toBeNull();
+    });
+
+    it('draws a kind the build does not know as a house, so its phone still makes a broker', async () => {
+      await store.saveHouse(house('x1', { kind: 'villa', ...RAVI }), T1);
+      expect(await store.brokers.rows()).toHaveLength(1);
+    });
+
+    it('leaves a school out of the one-off migration', async () => {
+      await store.putHouseFromServer({ updatedAt: '2026-09-01T00:00:00.000Z', ...house('s1', { kind: 'school', ...RAVI }) });
+      await store.removeSetting(SETTING_KEYS.brokersMigrated);
+      expect(await store.brokers.migrate()).toBe(0);
+      expect(await store.brokers.rows()).toEqual([]);
+    });
+  });
 });

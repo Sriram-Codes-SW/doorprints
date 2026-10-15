@@ -1911,4 +1911,32 @@
     <string name="school_map_notifications_off">सूचनाएँ बंद हैं, इसलिए हंट मोड आपको नहीं बता सकता कि आप किसी स्कूल के पास से गुज़रे।</string>
     <string name="school_map_location_off">Doorprints के लिए जगह की अनुमति बंद है। हंट मोड और ‘यहाँ स्कूल सहेजें’ को इसकी ज़रूरत है।</string>
     <string name="school_map_needs_precise">हंट मोड और ‘यहाँ स्कूल सहेजें’ को सटीक जगह चाहिए।</string>
+    <!-- Kinds PR 29, viewings as a capability (docs/03 §18.23, 2026-10-15): the viewing words of the kind files. The house's seven reminder strings are the :app strings (same text, kept equal by StringParityTest); the school's are a DRAFT for the owner's review, hi, ta and te under review. -->
+    <string name="notif_channel_viewings">मकान देखने के रिमाइंडर</string>
+    <string name="notif_channel_viewings_desc">आपके तय मकान देखने से पहले</string>
+    <string name="notif_viewing_soon">%1$s में मकान देखना %2$d मिनट में</string>
+    <string name="notif_viewing_title">%1$s में मकान देखना</string>
+    <string name="notif_viewing_open">मकान खोलें</string>
+    <string name="notif_viewing_house_gone">हटाया गया मकान</string>
+    <string name="notif_viewing_directions">मकान तक रास्ता</string>
+    <string name="school_viewings_heading">स्कूल का दौरा</string>
+    <string name="school_questions_heading">दौरे के लिए सवाल</string>
+    <string name="school_viewings_plan">दौरा तय करें</string>
+    <string name="school_viewings_none">कोई दौरा तय नहीं</string>
+    <string name="school_viewings_all">इस स्कूल के सभी दौरे</string>
+    <string name="school_viewings_intro">जब आप किसी स्कूल को देखने या ओपन डे पर जाने की योजना बनाते हैं, और वह कैसा रहा।</string>
+    <string name="school_viewings_empty">अभी कोई दौरा नहीं। किसी स्कूल से एक तय करें।</string>
+    <string name="school_settings_viewings_hint">स्कूल का दौरा या ओपन डे तय करें, और आने वाले तथा हो चुके दौरे देखें।</string>
+    <string name="school_settings_questions_hint">स्कूल के दौरे पर आप जो सवाल पूछना चाहते हैं।</string>
+    <string name="school_notif_channel_viewings">स्कूल दौरे की याद दिलाने वाली सूचनाएँ</string>
+    <string name="school_notif_channel_viewings_desc">आपके तय किए स्कूल दौरे से पहले</string>
+    <string name="school_notif_viewing_soon">%1$s का दौरा %2$d मिनट में</string>
+    <string name="school_notif_viewing_title">%1$s का दौरा</string>
+    <string name="school_notif_viewing_open">स्कूल खोलें</string>
+    <string name="school_notif_viewing_gone">हटाया जा चुका स्कूल</string>
+    <string name="school_notif_viewing_directions">स्कूल का रास्ता</string>
+    <string name="school_questions_intro">स्कूल के दौरे पर आप जो सवाल पूछना चाहते हैं। किसी स्कूल पर “आम सवाल जोड़ें” वे सवाल जोड़ता है जो “हमेशा पूछें” पर हैं।</string>
+    <string name="school_questions_empty">अभी कोई सवाल नहीं। दौरे पर ले जाने के लिए आम सवाल जोड़ें।</string>
+    <string name="school_questions_pick_none">आपकी सूची का हर सवाल इस स्कूल पर पहले से है।</string>
+    <string name="school_viewing_reminder_body">%1$s का दौरा, %2$s बजे</string>
 </resources>

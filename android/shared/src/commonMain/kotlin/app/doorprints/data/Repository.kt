@@ -47,6 +47,7 @@ import app.doorprints.shared.export.ImportMode
 import app.doorprints.shared.model.Broker
 import app.doorprints.shared.model.Criterion
 import app.doorprints.shared.model.KindSetting
+import app.doorprints.shared.model.KindSettingRules
 import app.doorprints.shared.model.SpaceView
 import app.doorprints.shared.model.HouseAnswer
 import app.doorprints.shared.model.PhotoMeta
@@ -327,7 +328,13 @@ interface Repository {
      * *Reset to defaults*: every default is written again in [language] whatever its record says (a deleted or edited
      * default comes back); the person's own questions stay.
      */
-    suspend fun resetQuestions(language: String)
+    suspend fun resetQuestions(language: String, kind: String = KindSettingRules.HOUSE)
+
+    /**
+     * Seeds [kind]'s own bank once, in [language] (`questions.seeded.<kind>`; kinds PR 29, docs/03 section 18.23): the school's six
+     * questions the first time its questions are opened. Nothing for the house, whose seed is [seedQuestionsOnce]'s.
+     */
+    suspend fun seedKindQuestionsOnce(kind: String, language: String)
 
     /**
      * Saves one question (coerced; `IllegalArgumentException` for a bad id or a text outside 1..300). Nothing is written
@@ -347,6 +354,7 @@ interface Repository {
         category: QuestionCategory = QuestionCategory.OTHER,
         appliesTo: QuestionScope = QuestionScope.BOTH,
         defaultOn: Boolean = false,
+        kind: String = KindSettingRules.HOUSE,
     ): String
 
     /** Deletes a question, seeded or custom (a tombstone; a deleted default stays deleted until Reset). */

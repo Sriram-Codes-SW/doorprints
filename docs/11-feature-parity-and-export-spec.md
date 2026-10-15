@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Feature parity and offline-copy export specification |
-| Version | 0.71 |
+| Version | 0.72 |
 | Date | 2026-10-15 |
 | Author | Claude (Cowork) – Product/Architecture |
 | Status | Draft: product-owner decisions D-01, D-02, D-03, D-08, D-21 (AI access) and D-23..D-25 (Sprint 4b reminders, hunting areas, location permissions) and D-26 (India's boundaries on the map, 2026-09-24) applied; ready for Sprint 4 planning |
@@ -83,6 +83,7 @@
 | 0.69 | 2026-10-15 | Claude (Code), engineer | **5.18b Microphone permission on the iPhone** (voice input, [03](03-design.md) ADR-37, S4b-BL-223): `NSMicrophoneUsageDescription` and iOS's own question, asked once and only after a tap on *Speak* and the in-app rationale; no `audio` background mode, so recording is foreground only; nothing is stored. |
 | 0.70 | 2026-10-15 | Claude (Code), engineer | **Hunt mode per kind** (kinds PR 26, [03](03-design.md) §18.20): section 10 gains the row *Hunt mode in a space*; the card, the walk, the alerts and the notification belong to the kind of the space (the house's and the school's); the website has no Hunt mode. |
 | 0.71 | 2026-10-15 | Claude (Code), engineer | **5.4 Another kind's criteria** (kinds PR 27, [03](03-design.md) §18.21): Compare and the checklist for any kind from its kind file; the school's draft checklist and Compare criteria; the house's criteria unchanged. |
+| 0.72 | 2026-10-15 | Claude (Code), engineer | **Viewings, questions and contacts per kind** (kinds PR 29, [03](03-design.md) §18.23): section 10 gains the row *Viewings, questions and contacts in a space*. |
 
 Related: [01 Requirements](01-requirements.md) · [02 Threat model](02-threat-model.md) · [03 Design](03-design.md) · [04 DFDs](04-data-flow-diagrams.md) · [05 UX/a11y/i18n](05-ux-accessibility-i18n.md) · [06 Test plan](06-test-plan.md) · [10 Sprint log](10-sprint-log.md) · [AI design](ai/ai-design.md)
 
@@ -2323,6 +2324,7 @@ Dropped from v0.1: `/api/backup/data`, `/api/import/batch` (devices export and i
 | Parity screens | Criteria, ranking, compare additions, questions, rooms, photo tags, viewings timeline, reminders, second viewing, share draft (as v0.1) | Same (with `.ics`) | 4b |
 | Hunt mode reminders, hunting areas | Settings → Hunt mode: reminder switch and lead time, "Wake me in my hunting areas"; per-viewing reminder switch; map layer and editor for areas (circle, radius, name, list); background-location rationale screen and settings hand-off; one-time notice when area wake-up switched itself off (5.16..5.18) | Areas listed read-only after sync (Sprint 5); no geofencing in the PWA | 4b |
 | Hunt mode in a space (kinds PR 26) | The Map's Hunt card and switch are in a space whose kind has Hunt (`capabilities.hunt` in the kind file: the house's and the school's); starting asks for a walk of that kind, which alerts within the kind's radius (the house: the Settings value, default 30 m; the school: 100 m), words its alerts, notification and channel in the kind's words, tells streets only when the kind's `streetMemory` is on, offers *Are you at a …?* only when its `stayCreates` is on (the entry made is of the kind), and ends when the person leaves the space; a reminder starts the walk of the kind that has viewings, an area wake-up that of the default kind when its `areas` is on (iPhone: the same, through the Map's offer) | None: the website has no Hunt mode (5.14 is a design only), so it reads the capability nowhere | 4b, kinds 26 |
+| Viewings, questions and contacts in a space (kinds PR 29) | A kind shows its viewings and their questions when its file lists them and `capabilities.viewings` is on (the house's and, a DRAFT, the school's: visits and open days), its rooms and moving in when `rooms` and `moveIn` are on (the house's), and the broker field when `contacts.role` is `broker`; a saved phone makes a broker only where `contacts.autoCreateFromPhone` says so (both stacks). A kind's questions are its own bank (`qd_<kind>_` ids, seeded when first opened, no format change); the viewings list and the Settings and Your data cards are the space's; the Android reminder says the kind's words on the kind's own channel and the iPhone's body is the kind's. | Website and Android (iPhone for the reminder body) | [03](03-design.md) §18.23; TC-U-278; TC-M-86 |
 | PWA | – | Install item, iOS help, update snackbar, storage used, iOS eviction warning | 4a |
 | Account | Settings → "Sync and account": Sign in with Google (explains what it unlocks), signed-in devices, activity, photo storage (device / Drive), Drive status and Reconnect, delete account; "Use my own server" (advanced) | Same page `/account` | 5 |
 | AI access | On-device badge "Runs on this phone"; model download on Wi-Fi; AI hidden when unsupported; invited users see the remaining cloud count; owner's "Invite to cloud AI" screen (5.13) | No on-device AI; cloud AI only for invited users | 5 |

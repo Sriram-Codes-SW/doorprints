@@ -534,7 +534,7 @@ public final class KindFiles {
             object(v, p + ".viewings");
             only(v, p + ".viewings", Set.of("questionsSeed"));
             require(v, p + ".viewings", "questionsSeed");
-            viewings = new KindFile.Viewings(oneOf(v, "questionsSeed", p + ".viewings.questionsSeed", Set.of("house")));
+            viewings = new KindFile.Viewings(oneOf(v, "questionsSeed", p + ".viewings.questionsSeed", Set.of("house", "school")));
         }
         KindFile.Compare compare = null;
         if (n.has("compare")) {

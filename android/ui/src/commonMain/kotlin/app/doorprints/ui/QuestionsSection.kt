@@ -63,11 +63,13 @@ import androidx.compose.ui.unit.dp
 import app.doorprints.shared.model.AnswerStatus
 import app.doorprints.shared.model.AnswerWords
 import app.doorprints.shared.model.HouseAnswer
+import app.doorprints.shared.model.KindLabels
 import app.doorprints.shared.model.HouseAnswers
 import app.doorprints.shared.model.HouseCost
 import app.doorprints.shared.model.Question
 import app.doorprints.shared.model.QuestionCategory
 import app.doorprints.ui.res.*
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -87,14 +89,17 @@ fun QuestionsSection(
     cost: HouseCost?,
     /** On the heading: the house form scrolls it into view for a reminder's *Questions* (S4b-BL-93b). */
     headingModifier: Modifier = Modifier,
+    /** The candidate's kind: its heading and its words (kinds PR 29, docs/03 §18.23); the house's unless the form says otherwise. */
+    labels: KindLabels = KindLabels.HOUSE,
+    pageWords: PageWords = PageWords.HOUSE,
     onChange: (List<HouseAnswer>?) -> Unit,
 ) {
     val list = answers.orEmpty()
     val words = answerWords()
     var picking by rememberSaveable { mutableStateOf(false) }
-    SectionHeading(stringResource(kindSection("questions")), headingModifier)
+    SectionHeading(stringResource(kindSection(labels, "questions")), headingModifier)
     if (list.isEmpty()) {
-        Text(stringResource(Res.string.house_questions_empty), style = MaterialTheme.typography.bodySmall)
+        Text(stringResource(pageWords.questionsEmpty), style = MaterialTheme.typography.bodySmall)
     } else {
         val answered = list.count { it.answerStatus == AnswerStatus.ANSWERED }
         LiveMessage {
@@ -148,7 +153,7 @@ fun QuestionsSection(
     }
     if (picking && !full) {
         QuestionPicker(
-            bank = bank, existing = list,
+            bank = bank, existing = list, noneToPick = pageWords.questionsNoneToPick,
             onPick = { q ->
                 picking = false
                 onChange(list + HouseAnswers.ask(q.text, q.id, list))
@@ -246,6 +251,7 @@ private fun AnswerCard(answer: HouseAnswer, onChange: (HouseAnswer) -> Unit, onR
 private fun QuestionPicker(
     bank: List<Question>,
     existing: List<HouseAnswer>,
+    noneToPick: StringResource,
     onPick: (Question) -> Unit,
     onAsk: (String) -> Unit,
     onDismiss: () -> Unit,
@@ -261,7 +267,7 @@ private fun QuestionPicker(
         title = { Text(stringResource(Res.string.house_questions_add)) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                if (left.isEmpty()) Text(stringResource(Res.string.house_questions_pick_none), style = MaterialTheme.typography.bodySmall)
+                if (left.isEmpty()) Text(stringResource(noneToPick), style = MaterialTheme.typography.bodySmall)
                 for (category in QuestionCategory.entries) {
                     val group = left.filter { it.questionCategory == category }
                     if (group.isEmpty()) continue

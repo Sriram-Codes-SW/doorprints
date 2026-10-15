@@ -22,6 +22,7 @@ import app.doorprints.shared.export.ExportBroker
 import app.doorprints.shared.model.Broker
 import app.doorprints.shared.model.BrokerType
 import app.doorprints.shared.model.DevKinds
+import app.doorprints.shared.model.KindCapabilities
 import app.doorprints.shared.model.PhoneKey
 import app.doorprints.shared.records.RecordLimitException
 import kotlinx.coroutines.flow.Flow
@@ -126,10 +127,12 @@ internal class BrokerStore(
     }
 
     /**
-     * Whether a candidate's kind shows the broker field: by the kind's visibility, not its id, so the house, which shows
-     * it, is linked as it always was and a school (whose file has no broker) never is (S4b-BL-260).
+     * Whether a saved phone makes or links a broker for a candidate of this kind: the kind's `contacts.autoCreateFromPhone`
+     * (kinds PR 29, docs/03 section 18.23), not its id, so the house is linked as it always was and a school, whose contact is
+     * the admissions office, never is (S4b-BL-260). A kind this build does not know is drawn as a house.
      */
-    private fun hasBroker(house: HouseEntity): Boolean = DevKinds.of(house.kind, on = true).labels.isVisible("field.brokerId")
+    private fun hasBroker(house: HouseEntity): Boolean =
+        KindCapabilities.of(DevKinds.of(house.kind, on = true).id).contacts?.autoCreateFromPhone == true
 
     /**
      * The once-only move of contacts into brokers (slice 1b), on the first read after the update: every live house

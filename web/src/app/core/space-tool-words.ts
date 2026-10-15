@@ -30,6 +30,19 @@ import type { TKey } from '../i18n/en';
  * places (the files, this table and the phone's resources) are held to one another by `kind-words.spec.ts`.
  */
 const SCHOOL: Readonly<Partial<Record<TKey, TKey>>> = {
+  'viewings.title': 'school.viewings.heading',
+  'viewings.plan': 'school.viewings.plan',
+  'viewings.none': 'school.viewings.none',
+  'viewings.allOfHouse': 'school.viewings.all',
+  'viewings.intro': 'school.viewings.intro',
+  'viewings.empty': 'school.viewings.empty',
+  'viewings.dataBody': 'school.viewings.dataBody',
+  'questions.dataBody': 'school.questions.dataBody',
+  'questions.intro': 'school.questions.intro',
+  'questions.emptyHouse': 'school.questions.empty',
+  'questions.noneToPick': 'school.questions.noneToPick',
+  'questions.removeAria': 'school.questions.remove',
+  'viewings.saveFirst': 'school.viewings.saveFirst',
   'compare.title': 'school.compareTitle',
   'compare.empty': 'school.compareEmpty',
   'compare.addSome': 'school.compareAdd',
@@ -157,6 +170,16 @@ export const TOOL_WORD_IDS: Readonly<Record<string, TKey>> = {
   walkLabel: 'trace.here.labelHouse',
   walkApprox: 'trace.here.approxHouse',
   walksEmpty: 'trace.house.empty',
+  viewingPlan: 'viewings.plan',
+  viewingNone: 'viewings.none',
+  viewingAll: 'viewings.allOfHouse',
+  viewingsIntro: 'viewings.intro',
+  viewingsEmpty: 'viewings.empty',
+  viewingsDataBody: 'viewings.dataBody',
+  questionsDataBody: 'questions.dataBody',
+  questionsIntro: 'questions.intro',
+  questionsEmpty: 'questions.emptyHouse',
+  questionsNoneToPick: 'questions.noneToPick',
 };
 
 const TABLES: Readonly<Record<string, Readonly<Partial<Record<TKey, TKey>>>>> = { school: SCHOOL, '*': ANY };

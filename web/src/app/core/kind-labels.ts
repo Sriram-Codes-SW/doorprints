@@ -17,6 +17,8 @@
  */
 
 import type { TKey } from '../i18n/en';
+import { capabilitiesOf } from './kind-capabilities';
+import type { KindCapabilities } from './kind-capabilities';
 
 /** One place a kind labels: the translation key (`null`: the website shows no text there) and whether the kind shows it. */
 export interface KindLabel {
@@ -36,6 +38,27 @@ export interface KindLabelTable {
   readonly sections: Readonly<Record<string, string>>;
   /** The refs the kind keeps but hides (`visible: false` in the kind file). */
   readonly hidden?: readonly string[];
+  /**
+   * What the kind can do (its `capabilities`, docs/03 §18.23): a place a capability switches is shown only while the capability
+   * is on, whatever the sections say. Absent: no place is gated (a kind written by hand in a test).
+   */
+  readonly capabilities?: KindCapabilities;
+}
+
+/**
+ * Whether the capabilities of a kind allow the place `ref` (kinds PR 29, docs/03 §18.23): the rooms and moving in follow
+ * `rooms` and `moveIn`, the viewings and their questions follow `viewings`, and the broker field is the `contacts` of a
+ * `broker` role (an office or an agent has a name and a phone and no broker record). Every other place is allowed.
+ */
+export function capabilityAllows(ref: string, caps: KindCapabilities): boolean {
+  switch (ref) {
+    case 'section.rooms': return caps.rooms;
+    case 'section.moveIn': return caps.moveIn;
+    case 'section.viewings':
+    case 'section.questions': return caps.viewings !== null;
+    case 'field.brokerId': return caps.contacts?.role === 'broker';
+    default: return true;
+  }
 }
 
 const FIELD = 'field.';
@@ -76,6 +99,7 @@ export class KindLabels {
   /** Whether the kind shows `ref`: a place it has and does not hide, and for a field, in a section it shows. */
   isVisible(ref: string): boolean {
     if (!has(this.table.keys, ref) || this.hidden.has(ref)) return false;
+    if (this.table.capabilities && !capabilityAllows(ref, this.table.capabilities)) return false;
     const id = ref.startsWith(FIELD) ? ref.slice(FIELD.length) : '';
     return !id || !has(this.table.sections, id) || this.isVisible(`section.${this.table.sections[id]}`);
   }
@@ -118,6 +142,7 @@ const CHECKS = ['water', 'power', 'parking', 'sunlight', 'ventilation', 'noise',
 /** Houses, the first and so far only kind (`docs/schemas/kinds/house.json`, web keys). */
 export const HOUSE_LABELS = new KindLabels({
   kind: 'house',
+  capabilities: capabilitiesOf('house'),
   keys: {
     'kind.new': 'house.newTitle', 'kind.many': 'map.stats.houses', 'kind.delete': 'house.delete',
     'status.NEW': 'status.NEW', 'status.SHORTLISTED': 'status.SHORTLISTED', 'status.REJECTED': 'status.REJECTED',

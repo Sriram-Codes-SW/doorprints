@@ -160,7 +160,7 @@
   },
   {
    "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/PasteListing.kt",
-   "find": "                VoiceMicButton(text, { text = it }, kind ?: \"house\")\n",
+   "find": "                VoiceMicButton(text, { text = it }, kind ?: KindSettingRules.HOUSE)\n",
    "replace": "",
    "expect": "fillInFromListingText"
   }

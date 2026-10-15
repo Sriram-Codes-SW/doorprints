@@ -201,10 +201,11 @@ export class LocalDataService {
     return this.writing(() => this.store.questions.saveMany(list));
   }
 
-  addQuestion(text: string, category: QuestionCategory = 'OTHER', appliesTo: QuestionScope = 'BOTH'): Observable<Question> {
+  /** Adds a question to a kind's bank (the house's unless a space says otherwise, kinds PR 29). */
+  addQuestion(text: string, category: QuestionCategory = 'OTHER', appliesTo: QuestionScope = 'BOTH', kind = 'house'): Observable<Question> {
     return defer(() =>
       from(
-        this.store.questions.add(text, category, appliesTo).then((saved) => {
+        this.store.questions.add(text, category, appliesTo, Date.now(), undefined, kind).then((saved) => {
           this.sync.syncSoon();
           return saved;
         }),
@@ -218,8 +219,13 @@ export class LocalDataService {
   }
 
   /** *Reset to defaults*: the standard questions come back in [language]; the person's own stay. */
-  resetQuestions(language: string): Observable<void> {
-    return this.writing(() => this.store.questions.reset(language).then(() => undefined));
+  resetQuestions(language: string, kind = 'house'): Observable<void> {
+    return this.writing(() => this.store.questions.reset(language, Date.now(), kind).then(() => undefined));
+  }
+
+  /** Seeds a kind's own question bank the first time it is opened (kinds PR 29); nothing for the house. */
+  seedKindQuestions(kind: string, language: string): Observable<void> {
+    return this.writing(() => this.store.questions.seedKindOnce(kind, language).then(() => undefined));
   }
 
   /** Every live viewing, by start then id (slice 3b-1). */

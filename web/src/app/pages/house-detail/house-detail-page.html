@@ -505,7 +505,7 @@
               <button
                 type="button"
                 class="btn btn-danger"
-                [attr.aria-label]="'questions.removeAria' | t: { q: a.text }"
+                [attr.aria-label]="w('questions.removeAria') | t: { q: a.text }"
                 (click)="removeAnswer(a.id)"
               >
                 {{ 'questions.remove' | t }}
@@ -513,7 +513,7 @@
             </div>
           </div>
         } @empty {
-          <p id="questions-empty" class="muted">{{ 'questions.emptyHouse' | t }}</p>
+          <p id="questions-empty" class="muted">{{ w('questions.emptyHouse') | t }}</p>
         }
         <div class="actions">
           <button
@@ -557,7 +557,7 @@
                 }
               </ul>
             } @empty {
-              <p id="questions-none" class="muted">{{ 'questions.noneToPick' | t }}</p>
+              <p id="questions-none" class="muted">{{ w('questions.noneToPick') | t }}</p>
             }
             <div class="field">
               <label for="questions-adhoc">{{ 'questions.adhoc' | t }}</label>
@@ -579,7 +579,7 @@
       </section> }
 
       <!-- Viewings (slice 3b-1, docs/11 5.8): the next planned viewing, Plan a viewing, Mark viewing done. -->
-      @if (shows('section.viewings')) { <app-house-viewings-card [houseId]="draft()?.id ?? ''" [houseName]="draft()?.label ?? ''" [isNew]="isNew()" /> }
+      @if (shows('section.viewings')) { <app-house-viewings-card [kindId]="kind().id" [houseId]="draft()?.id ?? ''" [houseName]="draft()?.label ?? ''" [isNew]="isNew()" /> }
 
       <!-- Moving in (slice 5, docs/11 5.24): only for the house that is Taken. -->
       @if (d.status === 'TAKEN' && shows('section.moveIn')) {

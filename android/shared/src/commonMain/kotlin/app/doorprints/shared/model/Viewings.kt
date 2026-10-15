@@ -187,6 +187,17 @@ enum class ViewingGroup { UPCOMING, MISSED, DONE, CANCELLED }
  * `suggestedVisitFor` and friends in `viewing.ts` say the same.
  */
 object Viewings {
+    /**
+     * Whether [view]'s space lists [viewing] (kinds PR 29, docs/03 section 18.23): a viewing belongs to the space of its candidate's
+     * kind ([kindOf] answers the kind of a candidate id, null for one that is gone); a viewing whose candidate is gone stays in
+     * the default space. With one space every viewing is listed, as it always was ([SpaceView.holds] holds everything then). The website's twin is the `inSpace` of
+     * `viewings-page.ts`.
+     */
+    fun inSpace(view: SpaceView, viewing: Viewing, kindOf: (String) -> String?): Boolean {
+        val kind = kindOf(viewing.houseId) ?: return view.kind == view.default
+        return view.holds(kind)
+    }
+
     /** A PLANNED viewing that ended more than this long ago shows as *Missed?*. */
     const val MISSED_AFTER_MS = 2 * 60 * 60_000L
 

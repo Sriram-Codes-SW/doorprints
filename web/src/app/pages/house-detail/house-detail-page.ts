@@ -70,7 +70,7 @@ import { SpaceService } from '../../core/space.service';
 import { type SpaceWords, spaceWords } from '../../core/space-words';
 import { toolWord } from '../../core/space-tool-words';
 import { blankToNull, clone, sharedFromNavigation, sortBrokers, toWholeNumber, withCost } from './house-page-input';
-import { QUESTION_CATEGORIES } from '../../shared/question';
+import { QUESTION_CATEGORIES, questionsOfKind } from '../../shared/question';
 import type { Question, QuestionCategory } from '../../shared/question';
 import { HouseViewingsCard } from '../viewings/house-viewings-card';
 import { HouseAreaNotesCard, HouseDistancesCard } from '../areas/house-area-cards';
@@ -266,8 +266,10 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   private shortQuery: MediaQueryList | null = null;
   private onShortChange: (() => void) | null = null;
 
-  /** The question bank (slice 3a), archived questions included; empty until it is read. */
-  private readonly bank = signal<Question[]>([]);
+  /** The question bank (slice 3a), archived questions included, of every kind; empty until it is read. */
+  private readonly allQuestions = signal<Question[]>([]);
+  /** The candidate's kind's own bank (kinds PR 29, §18.23): the house's questions never reach a school, nor the school's a house. */
+  private readonly bank = computed(() => questionsOfKind(this.allQuestions(), this.kind().id));
   protected readonly maxAnswers = MAX_ANSWERS;
   protected readonly maxAnswerText = MAX_ANSWER_TEXT;
   protected readonly maxAnswer = MAX_ANSWER;
@@ -399,10 +401,13 @@ export class HouseDetailPage implements OnInit, OnDestroy {
    * text arrives in navigation state, never in the URL, because it often holds a phone number.
    */
   ngOnInit(): void {
-    this.api.questions().subscribe({
-      next: (list) => this.bank.set(list),
-      error: () => this.bank.set([]),
+    const readQuestions = () => this.api.questions().subscribe({
+      next: (list) => this.allQuestions.set(list),
+      error: () => this.allQuestions.set([]),
     });
+    readQuestions();
+    // A kind's own bank is seeded the first time its page opens (never for a house-only person); read again once it is.
+    if (this.space.kind() !== 'house') this.api.seedKindQuestions(this.space.kind(), this.i18n.lang()).subscribe({ next: readQuestions, error: () => undefined });
     this.api.scoring().subscribe({
       next: (scoring) => this.personScoring.set(scoring),
       error: () => this.personScoring.set(DEFAULT_SCORING),

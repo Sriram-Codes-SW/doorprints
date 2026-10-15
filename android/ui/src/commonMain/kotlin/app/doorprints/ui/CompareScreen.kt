@@ -374,7 +374,7 @@ private fun CompareTable(
     val extraRows = kindExtraRows(space.built, chosen, notSet)
     // A row's heading: Compare's own word for the house, the kind's label for another kind (S4b-BL-256, the website's labelKey).
     @Composable
-    fun head(id: String, house: StringResource) = stringResource(if (space.built.id == "house") house else space.built.labels.fieldText(id))
+    fun head(id: String, house: StringResource) = stringResource(if (CompareCriteria.usesPersonScoring(space.built)) house else space.built.labels.fieldText(id))
     val rows = buildList {
         fun row(ref: String, r: CompareRow) {
             if (space.shows(ref)) add(r)

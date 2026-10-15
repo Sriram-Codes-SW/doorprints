@@ -12,7 +12,7 @@
   "mutations": [
     {
       "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/CompareCriteria.kt",
-      "find": "if (kind.id == HOUSE) return base",
+      "find": "if (usesPersonScoring(kind)) return base",
       "replace": "if (kind.id == \"xhouse\") return base",
       "expect": "theHousesScoringIsThePersonsOwnObject"
     },
@@ -30,7 +30,7 @@
     },
     {
       "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/CompareCriteria.kt",
-      "find": "scoring.criteria.filter { !it.archived && (kind.id == HOUSE || it.weight > 0) }",
+      "find": "scoring.criteria.filter { !it.archived && (usesPersonScoring(kind) || it.weight > 0) }",
       "replace": "scoring.criteria.filter { !it.archived }",
       "expect": "anItemIsCountedOnlyWhenTheKindsCompareNamesIt"
     },

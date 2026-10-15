@@ -31,6 +31,9 @@
 
 export type ContactRole = 'broker' | 'office' | 'agent';
 
+/** The built-in question banks that seed a kind's viewings (`docs/schemas/kinds/*-questions.json`; the house's is `default-questions.json`). */
+export type QuestionsSeed = 'house' | 'school';
+
 export interface KindCapabilities {
   readonly map: boolean;
   /**
@@ -47,7 +50,7 @@ export interface KindCapabilities {
   readonly rooms: boolean;
   readonly moveIn: boolean;
   readonly contacts: { readonly role: ContactRole; readonly autoCreateFromPhone: boolean } | null;
-  readonly viewings: { readonly questionsSeed: 'house' } | null;
+  readonly viewings: { readonly questionsSeed: QuestionsSeed } | null;
   /** Compare's criteria in order: checklist keys or extra ids of the kind. */
   readonly compare: { readonly criteria: readonly string[] } | null;
   readonly paths: boolean;
@@ -123,8 +126,10 @@ export function parseCapabilities(raw: unknown): KindCapabilities | null {
   let viewings: KindCapabilities['viewings'] = null;
   if (has('viewings')) {
     const v = raw['viewings'];
-    if (!keysOk(v, ['questionsSeed'], ['questionsSeed']) || v['questionsSeed'] !== 'house') return null;
-    viewings = Object.freeze({ questionsSeed: 'house' as const });
+    if (!keysOk(v, ['questionsSeed'], ['questionsSeed'])) return null;
+    const seed = v['questionsSeed'];
+    if (seed !== 'house' && seed !== 'school') return null;
+    viewings = Object.freeze({ questionsSeed: seed });
   }
   let compare: KindCapabilities['compare'] = null;
   if (has('compare')) {
@@ -168,12 +173,12 @@ const BUILT_IN: Readonly<Record<string, KindCapabilities>> = Object.freeze({
     identity: null,
   }),
   // The school has a contact (the admissions office) that never makes a broker, Hunt at 100 m (a school is passed on foot or
-  // by car, not walked up to), no rooms, moving in or viewings; its walks stay. Compare scores its eight checklist items and
+  // by car, not walked up to), no rooms or moving in, and viewings (visits, open days) seeded by the school's own questions (kinds PR 29, §18.23); its walks stay. Compare scores its eight checklist items and
   // two extras, the fees and the commute (kinds PR 27, §18.21).
   school: Object.freeze({
     map: true, hunt: Object.freeze({ alertRadiusM: 100, stayCreates: true, streetMemory: true, areas: true }), rooms: false, moveIn: false,
     contacts: Object.freeze({ role: 'office' as const, autoCreateFromPhone: false }),
-    viewings: null,
+    viewings: Object.freeze({ questionsSeed: 'school' as const }),
     compare: Object.freeze({
       criteria: Object.freeze(['dropoff', 'grounds', 'sanitation', 'teachers', 'classsize', 'homework', 'activities', 'safety', 'fees', 'commuteMinutes']),
     }),

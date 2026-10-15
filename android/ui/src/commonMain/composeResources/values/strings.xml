@@ -1908,4 +1908,32 @@
     <string name="school_map_notifications_off">Notifications are off, so Hunt mode cannot tell you when you pass a school.</string>
     <string name="school_map_location_off">Location is off for Doorprints. Hunt mode and ‘Save school here’ need it.</string>
     <string name="school_map_needs_precise">Hunt mode and ‘Save school here’ need precise location.</string>
+    <!-- Kinds PR 29, viewings as a capability (docs/03 §18.23, 2026-10-15): the viewing words of the kind files. The house's seven reminder strings are the :app strings (same text, kept equal by StringParityTest); the school's are a DRAFT for the owner's review, hi, ta and te under review. -->
+    <string name="notif_channel_viewings">Viewing reminders</string>
+    <string name="notif_channel_viewings_desc">Before a viewing you have planned</string>
+    <string name="notif_viewing_soon">Viewing at %1$s in %2$d min</string>
+    <string name="notif_viewing_title">Viewing at %1$s</string>
+    <string name="notif_viewing_open">Open house</string>
+    <string name="notif_viewing_house_gone">a house that is gone</string>
+    <string name="notif_viewing_directions">Directions to the house</string>
+    <string name="school_viewings_heading">School visits</string>
+    <string name="school_questions_heading">Questions for a visit</string>
+    <string name="school_viewings_plan">Plan a visit</string>
+    <string name="school_viewings_none">No visit planned</string>
+    <string name="school_viewings_all">All visits to this school</string>
+    <string name="school_viewings_intro">When you plan to visit a school or go to an open day, and how it went.</string>
+    <string name="school_viewings_empty">No visits yet. Plan one from a school.</string>
+    <string name="school_settings_viewings_hint">Plan a school visit or open day, and see the ones coming up and the ones you have done.</string>
+    <string name="school_settings_questions_hint">The questions you like to ask on a school visit.</string>
+    <string name="school_notif_channel_viewings">School visit reminders</string>
+    <string name="school_notif_channel_viewings_desc">Before a school visit you have planned</string>
+    <string name="school_notif_viewing_soon">Visit to %1$s in %2$d min</string>
+    <string name="school_notif_viewing_title">Visit to %1$s</string>
+    <string name="school_notif_viewing_open">Open school</string>
+    <string name="school_notif_viewing_gone">a school that is gone</string>
+    <string name="school_notif_viewing_directions">Directions to the school</string>
+    <string name="school_questions_intro">The questions you like to ask on a school visit. On a school, Add the usual questions asks the ones set to Ask by default.</string>
+    <string name="school_questions_empty">No questions yet. Add the usual questions to bring them to the visit.</string>
+    <string name="school_questions_pick_none">Every question on your list is already on this school.</string>
+    <string name="school_viewing_reminder_body">Visit to %1$s at %2$s</string>
 </resources>

@@ -24,10 +24,11 @@ import { Announcer } from '../../core/announcer.service';
 import { ConfirmService } from '../../core/confirm.service';
 import { errorMsg } from '../../core/format';
 import { LocalDataService } from '../../core/local-data.service';
+import { SpaceService } from '../../core/space.service';
 import type { TKey } from '../../i18n/en';
 import { TPipe } from '../../i18n/t.pipe';
 import { Msg, TranslationService } from '../../i18n/translation.service';
-import { MAX_QUESTIONS, MAX_QUESTION_TEXT, QUESTION_CATEGORIES, QUESTION_SCOPES, sortQuestions } from '../../shared/question';
+import { MAX_QUESTIONS, MAX_QUESTION_TEXT, QUESTION_CATEGORIES, questionScopesOf, questionsOfKind, sortQuestions } from '../../shared/question';
 import type { Question, QuestionCategory, QuestionScope } from '../../shared/question';
 import { RunResult, nextRunResult } from '../../shared/run-result';
 
@@ -54,10 +55,14 @@ export class QuestionsPage {
   private readonly confirm = inject(ConfirmService);
   private readonly announcer = inject(Announcer);
   private readonly i18n = inject(TranslationService);
+  /** The space the page is opened in: its kind's own bank is shown (kinds PR 29, docs/03 §18.23). */
+  protected readonly space = inject(SpaceService);
 
   protected readonly loading = signal(true);
   protected readonly error = signal<RunResult<Msg> | null>(null);
-  protected readonly bank = signal<Question[]>([]);
+  /** The bank of every kind, and the one of the space on screen. */
+  private readonly allQuestions = signal<Question[]>([]);
+  protected readonly bank = computed(() => questionsOfKind(this.allQuestions(), this.space.kind()));
   protected newText = '';
   protected newCategory: QuestionCategory = 'OTHER';
   protected readonly textError = signal(false);
@@ -65,7 +70,8 @@ export class QuestionsPage {
   protected readonly actionError = signal<Msg | null>(null);
 
   protected readonly categories = QUESTION_CATEGORIES;
-  protected readonly scopes = QUESTION_SCOPES;
+  /** The scopes this space's questions can have: a school's are all for both, so no scope control (kinds PR 29). */
+  protected readonly scopes = computed(() => questionScopesOf(this.space.kind()));
   protected readonly maxText = MAX_QUESTION_TEXT;
   protected readonly maxQuestions = MAX_QUESTIONS;
 
@@ -78,7 +84,7 @@ export class QuestionsPage {
   );
   protected readonly archived = computed(() => this.bank().filter((q) => q.archived === true));
   /** At the cap of 100, archived questions included. */
-  protected readonly atCap = computed(() => this.bank().length >= MAX_QUESTIONS);
+  protected readonly atCap = computed(() => this.allQuestions().length >= MAX_QUESTIONS);
 
   constructor() {
     // Again after writes to this browser's store (a sync pull, an edit in another tab).
@@ -86,13 +92,15 @@ export class QuestionsPage {
       this.api.settled();
       this.reload();
     });
+    // A kind's own bank is seeded the first time its Questions page opens (never for a house-only person).
+    if (this.space.kind() !== 'house') this.api.seedKindQuestions(this.space.kind(), this.i18n.lang()).subscribe({ next: () => this.reload(), error: () => undefined });
   }
 
   /** Reads the question bank. `userAsked` marks a Retry, so a repeated failure is announced again. */
   protected reload(userAsked = false): void {
     this.api.questions().subscribe({
       next: (list) => {
-        this.bank.set(list);
+        this.allQuestions.set(list);
         this.error.set(null);
         this.loading.set(false);
       },
@@ -209,7 +217,7 @@ export class QuestionsPage {
     if (this.atCap()) return;
     this.textError.set(false);
     try {
-      await firstValueFrom(this.api.addQuestion(text, this.newCategory));
+      await firstValueFrom(this.api.addQuestion(text, this.newCategory, 'BOTH', this.space.kind()));
       this.newText = '';
       this.actionError.set(null);
       this.announcer.announce({ key: 'questions.updated' });
@@ -224,7 +232,7 @@ export class QuestionsPage {
     const ok = await this.confirm.ask({ key: 'questions.confirmReset' }, { confirmKey: 'questions.reset', danger: true });
     if (!ok) return;
     try {
-      await firstValueFrom(this.api.resetQuestions(this.i18n.lang()));
+      await firstValueFrom(this.api.resetQuestions(this.i18n.lang(), this.space.kind()));
       this.actionError.set(null);
       this.announcer.announce({ key: 'questions.resetDone' });
       this.reload();

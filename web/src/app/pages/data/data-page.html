@@ -438,7 +438,7 @@
   @if (space.current().labels.isVisible('section.questions')) {
     <section class="card" aria-labelledby="questions-heading">
       <h2 id="questions-heading">{{ 'questions.dataHeading' | t }}</h2>
-      <p class="muted">{{ 'questions.dataBody' | t }}</p>
+      <p class="muted">{{ space.kindWord('questions.dataBody') | t }}</p>
       <div class="actions">
         <a class="btn" routerLink="/questions">{{ 'questions.open' | t }}</a>
       </div>
@@ -448,7 +448,7 @@
   @if (space.current().labels.isVisible('section.viewings')) {
     <section class="card" aria-labelledby="viewings-heading">
       <h2 id="viewings-heading">{{ 'viewings.dataHeading' | t }}</h2>
-      <p class="muted">{{ 'viewings.dataBody' | t }}</p>
+      <p class="muted">{{ space.kindWord('viewings.dataBody') | t }}</p>
       <div class="actions">
         <a class="btn" routerLink="/viewings">{{ 'viewings.open' | t }}</a>
       </div>

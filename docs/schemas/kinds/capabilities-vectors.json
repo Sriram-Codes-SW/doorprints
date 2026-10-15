@@ -16,11 +16,12 @@
   "huntAlertRadiusM": 30,
   "huntAlertRadiusMSource": "AppSettings.alertRadiusM default (android/shared Settings.kt); Hunt's radius setting is 15..100 m and stays the house's own override; a kind's file value is the default for every other kind (kinds PR 26)",
   "compareCriteriaAre": "the checklist keys (web CHECKLIST, android Checklist.keys), in order",
-  "contactsFollow": "the broker field: the house shows `brokerId` and makes a broker from a phone (BrokerStore.linked), the school shows no broker and makes none",
+  "contactsFollow": "the broker field: the house shows `brokerId` and makes a broker from a phone (BrokerStore.linked), the school shows no broker and makes none; since kinds PR 29 the rule is `contacts.autoCreateFromPhone` and the broker field is shown only where `contacts.role` is `broker`",
   "sectionsFollow": {
    "rooms": "rooms",
    "moveIn": "moveIn",
    "viewings": "viewings",
+   "questions": "viewings",
    "paths": "walks"
   }
  },
@@ -73,7 +74,9 @@
     "role": "office",
     "autoCreateFromPhone": false
    },
-   "viewings": null,
+   "viewings": {
+    "questionsSeed": "school"
+   },
    "compare": {
     "criteria": [
      "dropoff",
@@ -113,6 +116,27 @@
     "moveIn": false,
     "contacts": null,
     "viewings": null,
+    "compare": null,
+    "paths": true,
+    "identity": null
+   }
+  },
+  {
+   "name": "viewings seeded by the school's questions",
+   "capabilities": {
+    "viewings": {
+     "questionsSeed": "school"
+    }
+   },
+   "resolved": {
+    "map": true,
+    "hunt": null,
+    "rooms": false,
+    "moveIn": false,
+    "contacts": null,
+    "viewings": {
+     "questionsSeed": "school"
+    },
     "compare": null,
     "paths": true,
     "identity": null
@@ -383,8 +407,8 @@
    "json": "{\"contacts\":{\"role\":\"broker\"}}"
   },
   {
-   "name": "a viewings seed that is not the house's",
-   "json": "{\"viewings\":{\"questionsSeed\":\"school\"}}"
+   "name": "a viewings seed that is not a built-in bank",
+   "json": "{\"viewings\":{\"questionsSeed\":\"college\"}}"
   },
   {
    "name": "a viewings seed that is a path",

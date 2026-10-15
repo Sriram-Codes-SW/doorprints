@@ -270,6 +270,8 @@
   "en": [
    "details-heading \"Details\"",
    "cost-heading \"Fees\"",
+   "questions-heading \"Questions for a visit\"",
+   "house-viewings-heading \"School visits\"",
    "house-area-notes-heading \"Area notes\"",
    "location-heading \"Location\"",
    "house-check-heading \"Did I walk past this school?\"",
@@ -281,6 +283,8 @@
   "hi": [
    "details-heading \"विवरण\"",
    "cost-heading \"फ़ीस\"",
+   "questions-heading \"दौरे के लिए सवाल\"",
+   "house-viewings-heading \"स्कूल का दौरा\"",
    "house-area-notes-heading \"इलाके के नोट\"",
    "location-heading \"जगह\"",
    "house-check-heading \"क्या मैं इस स्कूल के पास से गुज़रा था?\"",
@@ -292,6 +296,8 @@
   "ta": [
    "details-heading \"விவரங்கள்\"",
    "cost-heading \"கட்டணம்\"",
+   "questions-heading \"வருகைக்கான கேள்விகள்\"",
+   "house-viewings-heading \"பள்ளி வருகைகள்\"",
    "house-area-notes-heading \"பகுதிக் குறிப்புகள்\"",
    "location-heading \"இருப்பிடம்\"",
    "house-check-heading \"நான் இந்தப் பள்ளியைக் கடந்து நடந்திருக்கிறேனா?\"",
@@ -303,6 +309,8 @@
   "te": [
    "details-heading \"వివరాలు\"",
    "cost-heading \"ఫీజు\"",
+   "questions-heading \"సందర్శన కోసం ప్రశ్నలు\"",
+   "house-viewings-heading \"పాఠశాల సందర్శనలు\"",
    "house-area-notes-heading \"ప్రాంత గమనికలు\"",
    "location-heading \"స్థానం\"",
    "house-check-heading \"నేను ఈ పాఠశాల పక్కగా నడిచానా?\"",

@@ -1,0 +1,40 @@
+{
+  "spec": "android/app/src/test/java/app/doorprints/ViewingKindRemindersTest.kt",
+  "gradle": [
+    ":app:testDebugUnitTest",
+    "--tests",
+    "app.doorprints.ViewingKindRemindersTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/app/src/main/java/app/doorprints/Notifications.kt",
+      "find": "val channel = texts?.let { viewingsChannel(context, it) } ?: CHANNEL_VIEWINGS",
+      "replace": "val channel = CHANNEL_VIEWINGS",
+      "expect": "aSchoolsReminderSaysVisitOnAChannelOfItsOwn"
+    },
+    {
+      "file": "android/app/src/main/java/app/doorprints/ViewingReminderScheduler.kt",
+      "find": "channelId = \"viewings_$id\"",
+      "replace": "channelId = \"viewings\"",
+      "expect": "aSchoolsReminderSaysVisitOnAChannelOfItsOwn"
+    },
+    {
+      "file": "android/app/src/main/java/app/doorprints/Notifications.kt",
+      "find": "texts?.soon?.invoke(name, minutes) ?: context.getString(R.string.notif_viewing_soon, name, minutes)",
+      "replace": "context.getString(R.string.notif_viewing_soon, name, minutes)",
+      "expect": "aSchoolsReminderSaysVisitOnAChannelOfItsOwn"
+    },
+    {
+      "file": "android/app/src/main/java/app/doorprints/Notifications.kt",
+      "find": "val name = house?.label?.ifBlank { null } ?: (texts?.gone ?: context.getString(R.string.notif_viewing_house_gone))",
+      "replace": "val name = house?.label?.ifBlank { null } ?: context.getString(R.string.notif_viewing_house_gone)",
+      "expect": "aSchoolThatIsGoneIsNamedInTheSchoolsWords"
+    },
+    {
+      "file": "android/app/src/main/java/app/doorprints/ViewingReminderScheduler.kt",
+      "find": ".takeIf { it != KindSettingRules.HOUSE && it in KindCapabilities.KINDS } ?: return null",
+      "replace": ".takeIf { it in KindCapabilities.KINDS } ?: return null",
+      "expect": "aHousesReminderIsTheWordsAndTheChannelItAlwaysHad"
+    }
+  ]
+}

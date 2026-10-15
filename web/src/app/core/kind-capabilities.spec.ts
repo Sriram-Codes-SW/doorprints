@@ -31,7 +31,7 @@ import houseJson from '../../../../docs/schemas/kinds/house.json';
 import schoolJson from '../../../../docs/schemas/kinds/school.json';
 import vectorsJson from '../../../../docs/schemas/kinds/capabilities-vectors.json';
 
-interface KindFile { id: string; sections: { id: string; visible?: boolean }[]; extras: { id: string }[]; checklist: { key: string }[]; capabilities?: unknown }
+interface KindFile { id: string; sections: { id: string; visible?: boolean }[]; core: { id: string; visible?: boolean }[]; extras: { id: string }[]; checklist: { key: string }[]; capabilities?: unknown }
 interface Vectors {
   defaults: unknown;
   today: { huntAlertRadiusM: number; sectionsFollow: Record<string, string> };
@@ -94,7 +94,17 @@ describe('kind capabilities (docs/schemas/kinds, ADR-36 §18.19)', () => {
       expect(caps.moveIn, `${id} moveIn`).toBe(shown(vectors.today.sectionsFollow['moveIn']));
       expect(caps.viewings !== null, `${id} viewings`).toBe(shown(vectors.today.sectionsFollow['viewings']));
       expect(caps.paths, `${id} paths`).toBe(shown(vectors.today.sectionsFollow['paths']));
-      expect(caps.contacts?.autoCreateFromPhone ?? false, `${id} broker`).toBe(labels[id as keyof typeof labels].isVisible('field.brokerId'));
+      expect(caps.viewings !== null, `${id} questions`).toBe(shown(vectors.today.sectionsFollow['questions']));
+      // The broker field is the file's own, and the broker is made from a phone only where the file's contact says so (kinds PR 29).
+      expect(caps.contacts?.role === 'broker', `${id} broker field`).toBe(file.core.some((c) => c.id === 'brokerId' && c.visible !== false));
+      expect(caps.contacts?.autoCreateFromPhone ?? false, `${id} broker`).toBe(caps.contacts?.role === 'broker');
+      // The labels show a place a capability switches only while the capability is on, and only where the file lists it.
+      const L = labels[id as keyof typeof labels];
+      expect(L.isVisible('section.rooms'), `${id} rooms shown`).toBe(caps.rooms && shown('rooms'));
+      expect(L.isVisible('section.moveIn'), `${id} moveIn shown`).toBe(caps.moveIn && shown('moveIn'));
+      expect(L.isVisible('section.viewings'), `${id} viewings shown`).toBe(caps.viewings !== null && shown('viewings'));
+      expect(L.isVisible('section.questions'), `${id} questions shown`).toBe(caps.viewings !== null && shown('questions'));
+      expect(L.isVisible('field.brokerId'), `${id} broker shown`).toBe(caps.contacts?.role === 'broker');
       const known = [...file.checklist.map((c) => c.key), ...file.extras.map((e) => e.id)];
       for (const c of caps.compare?.criteria ?? []) expect(known, `${id} criterion ${c}`).toContain(c);
     }
@@ -160,7 +170,7 @@ describe('kind capabilities (docs/schemas/kinds, ADR-36 §18.19)', () => {
     expect([p.hunt.properties.alertRadiusM.minimum, p.hunt.properties.alertRadiusM.maximum]).toEqual([30, 300]);
     expect(p.hunt.required).toEqual(['alertRadiusM', 'stayCreates', 'streetMemory', 'areas']);
     expect(p.compare.properties.criteria.maxItems).toBe(10);
-    expect(p.viewings.properties.questionsSeed.enum).toEqual(['house']);
+    expect(p.viewings.properties.questionsSeed.enum).toEqual(['house', 'school']);
   });
   it('a kind file has no map configuration: map keys are refused at the root, in a section, in capabilities and in identity, and map is a boolean only', () => {
     expect(vectors.forbiddenMapKeys.length).toBe(14);

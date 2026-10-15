@@ -64,6 +64,21 @@ class PageWords(
     val placesEmptyBody: StringResource,
     val areaNotesNone: StringResource,
     val areaHere: StringResource,
+    /**
+     * The viewing words (kinds PR 29, docs/03 §18.23): the card's *Plan a viewing*, its "No viewing planned" and "All viewings of this
+     * house" lines, the list's intro and empty line, and the Settings rows' hints for the viewings and for the questions.
+     */
+    val viewingPlan: StringResource,
+    val viewingNone: StringResource,
+    val viewingAll: StringResource,
+    val viewingsIntro: StringResource,
+    val viewingsEmpty: StringResource,
+    val viewingsDataBody: StringResource,
+    val questionsDataBody: StringResource,
+    /** The Questions screen's intro, and the candidate's Questions card's empty line and its picker's "all added" line. */
+    val questionsIntro: StringResource,
+    val questionsEmpty: StringResource,
+    val questionsNoneToPick: StringResource,
 ) {
     companion object {
         /** The page words of the kind whose file keys are [keys] (`KindWordKeys`): every word is the file's `android` key. */
@@ -79,6 +94,10 @@ class PageWords(
                 areasEmptyBody = w("areasEmptyBody"), notesEmpty = w("notesEmpty"), areaDeleteBody = w("areaDeleteBody"),
                 placeDeleteBody = w("placeDeleteBody"), placesEmptyBody = w("placesEmptyBody"),
                 areaNotesNone = w("areaNotesNone"), areaHere = w("areaInReach"),
+                viewingPlan = w("viewingPlan"), viewingNone = w("viewingNone"), viewingAll = w("viewingAll"),
+                viewingsIntro = w("viewingsIntro"), viewingsEmpty = w("viewingsEmpty"), viewingsDataBody = w("viewingsDataBody"),
+                questionsDataBody = w("questionsDataBody"), questionsIntro = w("questionsIntro"), questionsEmpty = w("questionsEmpty"),
+                questionsNoneToPick = w("questionsNoneToPick"),
             )
         }
 

@@ -73,7 +73,7 @@ async function open(
           houses: () => of([]),
           brokers: () => of([]),
           scoring: () => of(DEFAULT_SCORING),
-          questions: () => of([]),
+          questions: () => of([]), seedKindQuestions: () => of(undefined),
           house: () => of(),
           visits: () => of([]),
           viewingsOf: () => of([]),

@@ -55,7 +55,7 @@ data class KindCapabilities(
     /** The candidate's contact: whose it is, and whether saving a phone number makes or links a broker entry. */
     data class Contacts(val role: String, val autoCreateFromPhone: Boolean)
 
-    /** Viewings with their questions, seeded from the named built-in bank (only `house`). */
+    /** Viewings with their questions, seeded from the named built-in bank (`house` or, since kinds PR 29, `school`). */
     data class Viewings(val questionsSeed: String)
 
     /** Compare's criteria in order: checklist keys or extra ids of the kind. */
@@ -63,6 +63,20 @@ data class KindCapabilities(
 
     /** An icon and a colour from the bundled lists. */
     data class Identity(val icon: String, val colour: String)
+
+    /**
+     * Whether the capabilities allow the place [ref] (kinds PR 29, docs/03 section 18.23): the rooms and moving in follow
+     * [rooms] and [moveIn], the viewings and their questions follow [viewings], and the broker field is the [contacts] of a
+     * `broker` role (an office or an agent has a name and a phone and no broker record). Every other place is allowed. The
+     * website's twin is `capabilityAllows` in `kind-labels.ts`.
+     */
+    fun allows(ref: String): Boolean = when (ref) {
+        "section.rooms" -> rooms
+        "section.moveIn" -> moveIn
+        "section.viewings", "section.questions" -> viewings != null
+        "field.brokerId" -> contacts?.role == "broker"
+        else -> true
+    }
 
     companion object {
         /** Everything off except the map and the paths: a kind with no `capabilities`, or a kind this build does not know. */
@@ -72,6 +86,9 @@ data class KindCapabilities(
         const val MAX_HUNT_RADIUS_M = 300
         const val MAX_COMPARE_CRITERIA = 10
         val ROLES = listOf("broker", "office", "agent")
+
+        /** The built-in question banks that seed a kind's viewings (the `<kind>-questions.json` files in `docs/schemas/kinds` and, for the house, `docs/schemas/default-questions.json`). */
+        val QUESTION_SEEDS = listOf("house", "school")
         val ICONS = listOf(
             "home", "school", "building", "apartment", "shop", "hospital", "office", "park", "car", "bike", "bus", "train",
             "cart", "hotel", "restaurant", "gym", "book", "heart", "star", "flag", "key", "pin", "briefcase", "paw",
@@ -93,12 +110,13 @@ data class KindCapabilities(
                     listOf("water", "power", "parking", "sunlight", "ventilation", "noise", "security", "maintenance", "neighbourhood", "commute"),
                 ),
             ),
-            // The school has a contact (the admissions office) that never makes a broker, and Hunt at 100 m; no rooms, moving in
-            // or viewings. Its walks stay. Compare scores its eight checklist items and two extras, the fees and the commute
+            // The school has a contact (the admissions office) that never makes a broker, Hunt at 100 m, and viewings (visits,
+            // open days) seeded by the school's own questions (kinds PR 29, section 18.23); no rooms or moving in. Its walks stay. Compare scores its eight checklist items and two extras, the fees and the commute
             // (kinds PR 27, section 18.21).
             "school" to KindCapabilities(
                 hunt = Hunt(alertRadiusM = 100, stayCreates = true, streetMemory = true, areas = true),
                 contacts = Contacts("office", autoCreateFromPhone = false),
+                viewings = Viewings("school"),
                 compare = Compare(listOf("dropoff", "grounds", "sanitation", "teachers", "classsize", "homework", "activities", "safety", "fees", "commuteMinutes")),
             ),
         )
@@ -135,7 +153,7 @@ data class KindCapabilities(
                 if (role == null || role !in ROLES || auto == null) null else Contacts(role, auto)
             }
             val viewings = obj.block("viewings", listOf("questionsSeed")) { v ->
-                if (v.text("questionsSeed") == "house") Viewings("house") else null
+                v.text("questionsSeed")?.takeIf { it in QUESTION_SEEDS }?.let { Viewings(it) }
             }
             val compare = obj.block("compare", listOf("criteria")) { c ->
                 val list = (c["criteria"] as? JsonArray)?.map { (it as? JsonPrimitive)?.takeIf { p -> p.isString }?.content }

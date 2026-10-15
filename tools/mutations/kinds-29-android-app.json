@@ -1,0 +1,28 @@
+{
+  "spec": "android/app/src/test/java/app/doorprints/QuestionsRepositoryTest.kt",
+  "gradle": [
+    ":app:testDebugUnitTest",
+    "--tests",
+    "app.doorprints.QuestionsRepositoryTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/QuestionStore.kt",
+      "find": "if (settings.questionsSeededFor(kind)) return",
+      "replace": "if (false) return",
+      "expect": "aKindWhoseSeedingIsMarkedDoneOnThisPhoneSeedsNothing"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/QuestionStore.kt",
+      "find": "if (kind == KindSettingRules.HOUSE || DefaultQuestions.of(kind).isEmpty()) return",
+      "replace": "if (DefaultQuestions.of(kind).isEmpty()) return",
+      "expect": "aKindWhoseSeedingIsMarkedDoneOnThisPhoneSeedsNothing"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/QuestionStore.kt",
+      "find": ".filter { it.kind == kind }.maxOfOrNull",
+      "replace": ".maxOfOrNull",
+      "expect": "resetOfOneKindLeavesTheOtherKindsEdits"
+    }
+  ]
+}

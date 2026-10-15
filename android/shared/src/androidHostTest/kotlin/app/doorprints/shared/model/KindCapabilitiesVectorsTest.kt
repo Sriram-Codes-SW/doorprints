@@ -98,7 +98,7 @@ class KindCapabilitiesVectorsTest {
         assertEquals(KindCapabilities.Hunt(AppSettings().alertRadiusM, stayCreates = true, streetMemory = true, areas = true), house.hunt)
         assertEquals(Checklist.keys, house.compare?.criteria)
         assertEquals(Checklist.keys, files.getValue("house").getValue("checklist").jsonArray.map { it.jsonObject.getValue("key").jsonPrimitive.content })
-        assertEquals(KindCapabilities.Contacts("broker", KindLabels.HOUSE.isVisible("field.brokerId")), house.contacts)
+        assertEquals(KindCapabilities.Contacts("broker", autoCreateFromPhone = true), house.contacts)
         assertEquals(KindCapabilities.Viewings("house"), house.viewings)
         assertTrue(house.map)
     }
@@ -116,11 +116,34 @@ class KindCapabilitiesVectorsTest {
             assertEquals("$id moveIn", has("moveIn"), caps.moveIn)
             assertEquals("$id viewings", has("viewings"), caps.viewings != null)
             assertEquals("$id paths", has("paths"), caps.paths)
-            assertEquals("$id broker", labels.getValue(id).isVisible("field.brokerId"), caps.contacts?.autoCreateFromPhone ?: false)
+            assertEquals("$id questions", has("questions"), caps.viewings != null)
+            // The broker field is the file's own, and a broker is made from a phone only where the file's contact says so (kinds PR 29).
+            val brokerField = file.getValue("core").jsonArray.map { it.jsonObject }
+                .any { it.getValue("id").jsonPrimitive.content == "brokerId" && it["visible"]?.jsonPrimitive?.boolean != false }
+            assertEquals("$id broker field", brokerField, caps.contacts?.role == "broker")
+            assertEquals("$id broker", caps.contacts?.role == "broker", caps.contacts?.autoCreateFromPhone ?: false)
+            // The labels show a place a capability switches only while the capability is on and the file lists it.
+            val l = labels.getValue(id)
+            assertEquals("$id rooms shown", caps.rooms && has("rooms"), l.isVisible("section.rooms"))
+            assertEquals("$id moveIn shown", caps.moveIn && has("moveIn"), l.isVisible("section.moveIn"))
+            assertEquals("$id viewings shown", caps.viewings != null && has("viewings"), l.isVisible("section.viewings"))
+            assertEquals("$id questions shown", caps.viewings != null && has("questions"), l.isVisible("section.questions"))
+            assertEquals("$id broker shown", caps.contacts?.role == "broker", l.isVisible("field.brokerId"))
             val known = file.getValue("checklist").jsonArray.map { it.jsonObject.getValue("key").jsonPrimitive.content } +
                 file.getValue("extras").jsonArray.map { it.jsonObject.getValue("id").jsonPrimitive.content }
             for (c in caps.compare?.criteria.orEmpty()) assertTrue("$id criterion $c", c in known)
         }
+    }
+
+    // Kinds PR 29 (docs/03 section 18.23): a capability switches the places it owns, whatever the sections list.
+    @Test
+    fun aPlaceACapabilitySwitchesIsAllowedOnlyWhileItIsOnAndEveryOtherPlaceAlways() {
+        val gated = listOf("section.rooms", "section.moveIn", "section.viewings", "section.questions", "field.brokerId")
+        assertEquals(listOf(true, true, true, true, true), gated.map { KindCapabilities.of("house").allows(it) })
+        assertEquals(listOf(false, false, false, false, false), gated.map { KindCapabilities.DEFAULT.allows(it) })
+        assertEquals("visits and their questions on; no rooms, moving in or broker", listOf(false, false, true, true, false), gated.map { KindCapabilities.of("school").allows(it) })
+        for (ref in listOf("section.checklist", "field.label", "section.photos")) assertTrue(ref, KindCapabilities.DEFAULT.allows(ref))
+        assertEquals(KindCapabilities.Contacts("office", false), KindCapabilities.of("school").contacts)
     }
 
     @Test
@@ -177,7 +200,7 @@ class KindCapabilitiesVectorsTest {
         val criteria = props.getValue("compare").jsonObject.getValue("properties").jsonObject.getValue("criteria").jsonObject
         assertEquals(KindCapabilities.MAX_COMPARE_CRITERIA, criteria.getValue("maxItems").jsonPrimitive.int)
         assertEquals(KindCapabilities.ROLES, props.getValue("contacts").jsonObject.getValue("properties").jsonObject.getValue("role").jsonObject.getValue("enum").strings())
-        assertEquals(listOf("house"), props.getValue("viewings").jsonObject.getValue("properties").jsonObject.getValue("questionsSeed").jsonObject.getValue("enum").strings())
+        assertEquals(KindCapabilities.QUESTION_SEEDS, props.getValue("viewings").jsonObject.getValue("properties").jsonObject.getValue("questionsSeed").jsonObject.getValue("enum").strings())
     }
 
     /** Owner constraint: India's boundaries apply to every kind (ADR-22), so a kind file carries no map configuration. */

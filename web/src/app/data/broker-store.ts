@@ -22,6 +22,8 @@
 // pages, the compare and map pages, the house page, the export and the store's own house save each reach the brokers;
 // it keeps no rows of its own and goes through RecordStore. The only other kind it writes is the houses (the contact
 // copies and the link).
+import { capabilitiesOf } from '../core/kind-capabilities';
+import { drawnKind } from '../core/kind-setting';
 import { LocalDataError } from '../core/local-error';
 import { uuid } from '../core/models';
 import type { HouseDto } from '../core/models';
@@ -98,6 +100,9 @@ export class BrokerStore {
       const known = (await this.rows()).find((row) => row.id === house.brokerId);
       return known ? linked(house, known) : house;
     }
+    // A saved phone makes or links a broker only for a kind whose file says so (`contacts.autoCreateFromPhone`, docs/03 §18.23):
+    // the house; a school's phone is its admissions office and stays on the school.
+    if (!makesBrokers(house.kind)) return house;
     const phone = (house.contactPhone ?? '').trim();
     if (phone === '') return house;
     const found = (await this.rows()).find((row) => samePhone(row.broker.phone, phone));
@@ -119,7 +124,7 @@ export class BrokerStore {
     const db = await this.rawDatabase();
     if (await db.get<SettingRecord>('settings', SETTING_KEYS.brokersMigrated)) return 0;
     const houses = sortByCreated(
-      (await db.getAll<HouseRecord>('houses')).filter((h) => !h.deleted && !h.brokerId && (h.contactPhone ?? '').trim() !== ''),
+      (await db.getAll<HouseRecord>('houses')).filter((h) => !h.deleted && !h.brokerId && makesBrokers(h.kind) && (h.contactPhone ?? '').trim() !== ''),
     );
     const groups = new Map<string, HouseRecord[]>();
     for (const house of houses) {
@@ -156,6 +161,11 @@ export class BrokerStore {
     if (linkedHouses > 0) this.changed();
     return linkedHouses;
   }
+}
+
+/** Whether a saved phone makes or links a broker for a candidate of this kind: the kind's `contacts.autoCreateFromPhone` (an unknown kind is drawn as a house). */
+function makesBrokers(kind: string | null | undefined): boolean {
+  return capabilitiesOf(drawnKind(kind).id).contacts?.autoCreateFromPhone === true;
 }
 
 /** The brokers among some `broker` records, as rows; a payload that is not a broker is skipped as untrusted. */
