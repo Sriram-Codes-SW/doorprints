@@ -1,0 +1,33 @@
+{
+  "spec": [
+    "android/ui/src/commonTest/kotlin/app/doorprints/ui/HuntSpaceTest.kt",
+    "android/ui/src/commonTest/kotlin/app/doorprints/ui/SpaceUiTest.kt"
+  ],
+  "gradle": [
+    ":ui:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.ui.HuntSpaceTest",
+    "--tests",
+    "app.doorprints.ui.SpaceUiTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/HuntSpace.kt",
+      "find": "fun mayStart(setting: KindSetting): Boolean = KindSettingRules.HOUSE in setting.enabled",
+      "replace": "fun mayStart(setting: KindSetting): Boolean = true",
+      "expect": "huntModeStartsOnlyWhileTheHouseIsOn"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/HuntSpace.kt",
+      "find": "if (mayStart(setting)) KindSettingRules.HOUSE else setting.default",
+      "replace": "KindSettingRules.HOUSE",
+      "expect": "aHuntAlertMakesAHouseWhileTheHouseIsOn"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/Space.kt",
+      "find": "val creating: BuiltInKind get() = if (hidden) DevKinds.of(SpaceScope.createKind(kind, setting.enabled, setting.default), on = true) else built",
+      "replace": "val creating: BuiltInKind get() = DevKinds.of(setting.default, on = true)",
+      "expect": "withTwoKindsOnANewEntryIsOfTheSpaceItIsMadeIn"
+    }
+  ]
+}

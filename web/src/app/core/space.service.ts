@@ -21,7 +21,7 @@ import { GuardsCheckEnd, Router, type Routes } from '@angular/router';
 import type { BuiltInKind } from './dev-kinds';
 import { availableKinds, defaultKind, enabledKinds, kindById, spacesOn } from './kind-setting';
 import type { HouseDto } from './models';
-import { holdsFor } from './space-scope';
+import { createKind, holdsFor } from './space-scope';
 import type { TKey } from '../i18n/en';
 import { toolWord } from './space-tool-words';
 import { type SpaceWords, spaceWords } from './space-words';
@@ -108,9 +108,12 @@ export class SpaceService {
     return this.multi() && kind !== 'house' ? ['/k', kind, id] : ['/houses', id];
   }
 
-  /** The new-candidate form of the current space; `/houses/new` is the default kind's (deep links, the share target). */
+  /**
+   * The new-candidate form of the current space; `/houses/new` is the default kind's (deep links, the share target). A space
+   * that is turned off still opens, but nothing new is made in it: the form is the default kind's ({@link createIn}).
+   */
   newLink(kind: string = this.kind()): string {
-    return this.multi() ? `/k/${kind}/new` : '/houses/new';
+    return this.multi() ? `/k/${this.createIn(kind)}/new` : '/houses/new';
   }
 
   /** A tool's page in a space: the house keeps `/compare`, `/ask` and `/plan`, any other kind has `/k/<kind>/<tool>`. */
@@ -118,10 +121,18 @@ export class SpaceService {
     return this.multi() && kind !== 'house' ? `/k/${kind}/${tool}` : `/${tool}`;
   }
 
-  /** The kind a new candidate is: the space's on `/k/<kind>/new`, else the default kind. */
+  /** The kind a new candidate is: the space's on `/k/<kind>/new` when that kind is enabled, else the default kind. */
   newKind(): string {
     const m = this.multi() ? SPACE_PATH.exec(this.path()) : null;
-    return m ? m[1] : this.dflt();
+    return m ? this.createIn(m[1]) : this.dflt();
+  }
+
+  /**
+   * Where a new candidate may be made (docs/03 §18.18): the space's own kind while it is enabled, else the default kind, which
+   * is always enabled. An entry made in a kind that is off would be one the person cannot see in the list they chose.
+   */
+  createIn(kind: string): string {
+    return createKind(kind, this.enabled(), this.dflt());
   }
 
   /** Whether the current space shows candidate `h`. With one space it shows every candidate, as it always did. */

@@ -1,0 +1,18 @@
+{
+  "spec": [
+    "android/shared/src/androidHostTest/kotlin/app/doorprints/shared/model/SpaceScopeVectorsTest.kt"
+  ],
+  "gradle": [
+    ":shared:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.shared.model.SpaceScopeVectorsTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/SpaceScope.kt",
+      "find": "if (space in enabled) space else default",
+      "replace": "space",
+      "expect": "aNewEntryIsOfTheSpacesKindWhileItIsEnabledElseTheDefault"
+    }
+  ]
+}

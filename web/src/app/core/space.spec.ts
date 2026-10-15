@@ -142,6 +142,49 @@ describe('SpaceService', () => {
   });
 });
 
+describe('the school as the default kind (docs/03 §18.18)', () => {
+  function service(spaces: boolean) {
+    TestBed.configureTestingModule({ providers: [provideRouter(routesFor(spaces, ['house', 'school']))] });
+    return { space: TestBed.inject(SpaceService), router: TestBed.inject(Router) };
+  }
+
+  it('the school the default with both on: the house keeps its space; /houses/new and a page of no space make a school', async () => {
+    twoKinds('school');
+    const { space, router } = service(true);
+    expect([space.inChooser(), space.kind()]).toEqual([true, 'school']);
+    await router.navigateByUrl('/k/house');
+    expect([space.kind(), space.newKind(), space.newLink()]).toEqual(['house', 'house', '/k/house/new']);
+    await router.navigateByUrl('/data');
+    await router.navigateByUrl('/houses/new');
+    expect([space.kind(), space.newKind()]).toEqual(['house', 'school']);
+    expect([space.dflt(), space.holds({}), space.holds({ kind: 'school' })]).toEqual(['school', true, false]);
+  });
+
+  it('the school the default and the house off: one space, every kept house is listed and held, a new entry is a school', async () => {
+    localStorage.setItem(EXPERIMENTAL_KINDS_KEY, '1');
+    localStorage.setItem(ENABLED_KINDS_KEY, '["school"]');
+    localStorage.setItem(DEFAULT_KIND_KEY, 'school');
+    const { space, router } = service(false);
+    await router.navigateByUrl('/');
+    expect([space.multi(), space.enabled(), space.kind(), space.inChooser(), space.hidden()]).toEqual([false, ['school'], 'school', false, false]);
+    expect([space.holds({}), space.holds({ kind: 'school' }), space.holds({ kind: 'clinic' })]).toEqual([true, true, true]);
+    expect([space.home(), space.newLink(), space.newKind(), space.detailLink('a'), space.toolLink('ask')]).toEqual(['/', '/houses/new', 'school', ['/houses', 'a'], '/ask']);
+  });
+
+  it('a space that is turned off takes no new entry: its form and its Add go to the default kind', async () => {
+    twoKinds();
+    const { space, router } = service(true);
+    await router.navigateByUrl('/k/school');
+    expect(space.newKind()).toBe('school');
+    space.enabled.set(['house']);
+    expect([space.hidden(), space.newKind(), space.newLink(), space.createIn('school'), space.createIn('house')]).toEqual([true, 'house', '/k/house/new', 'house', 'house']);
+    space.dflt.set('school');
+    space.enabled.set(['school']);
+    await router.navigateByUrl('/k/house');
+    expect([space.newKind(), space.newLink('house')]).toEqual(['school', '/k/school/new']);
+  });
+});
+
 describe('a deep link to a candidate of another kind (S4b-BL-212)', () => {
   async function go(url: string, house: () => unknown) {
     twoKinds();

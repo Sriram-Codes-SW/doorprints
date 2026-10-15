@@ -373,6 +373,84 @@ class SpacesRootTest {
         hasNo("Save a school")
     }
 
+    // The school as the default kind, and the house turned off (docs/03 §18.18; TC-U-268).
+
+    @Test
+    fun withTheSchoolTheDefaultAndTheHouseOffTheKeptHouseIsStillListedAndWhatYouTrackCountsIt() {
+        kinds.schoolOnly()
+        startTwoKinds()
+        waitForMap("schools")
+        hasNo("What are you looking for?") // one kind on: no chooser, no chip
+        hasNo("change what you are looking for")
+        hasNo("Hunt mode") // the Hunt card is the house space's
+        tab("Schools").performClick()
+        waitFor("Search schools")
+        shows("Pine Hill School")
+        shows("Green View") // the house is kept and listed, never hidden
+        tab("Settings").performClick()
+        settle()
+        compose.onNodeWithText("Show Houses").assertExists()
+        compose.onAllNodesWithText("Saved: 1").assertCountEquals(2)
+        compose.onNodeWithText("Show Schools").assertIsNotEnabled() // the last one on stays
+        assertEquals(2, runBlocking { app.container.repository.houseSnapshot().size })
+    }
+
+    @Test
+    fun withTheHouseOffAHuntAlertMakesAnEntryOfTheDefaultKindNotOfTheKindThatIsOff() {
+        kinds.schoolOnly()
+        startTwoKinds()
+        waitForMap("schools")
+        links.value = DeepLink.NewHouse(26.1433, 91.7898, null)
+        waitFor("Save a school")
+        hasNo("Save a house")
+    }
+
+    @Test
+    fun withTheHouseOffAReminderStartHuntModeStartsNoWalkAndSaysWhy() {
+        kinds.schoolOnly()
+        startTwoKinds()
+        waitForMap("schools")
+        links.value = DeepLink.StartHunt
+        waitFor("Hunt mode runs in the Houses space only, and Houses is turned off in What you track.")
+        hasNo("Hunt mode stopped")
+        assertEquals(false, HuntState.state.value.active)
+        links.value = DeepLink.OfferHunt
+        settle()
+        hasNo("Start Hunt mode?")
+    }
+
+    @Test
+    fun withTheHouseOnAReminderStartHuntModeOpensTheHouseSpaceAndSaysNothing() {
+        kinds.enableSchool(schoolDefault = true)
+        startTwoKinds()
+        waitFor("What are you looking for?")
+        card("Schools").performClick()
+        waitForMap("schools")
+        links.value = DeepLink.StartHunt
+        waitFor("Hunt mode")
+        hasNo("turned off in What you track")
+        waitForMap("houses")
+    }
+
+    @Test
+    fun aWalkRunningWhenThePersonTurnsTheHouseOffStopsAndSaysWhy() {
+        kinds.enableSchool(schoolDefault = true)
+        startTwoKinds()
+        waitFor("What are you looking for?")
+        card("Houses").performClick()
+        waitFor("Hunt mode")
+        HuntState.update { it.copy(active = true, startedAt = 1L) }
+        settle()
+        assertEquals(0, kinds.huntStops)
+        tab("Settings").performClick()
+        settle()
+        compose.onNodeWithText("Show Houses").performSemanticsAction(SemanticsActions.OnClick)
+        waitFor("Hunt mode stopped. It runs in the Houses space only.")
+        assertEquals(1, kinds.huntStops)
+        assertEquals(false, HuntState.state.value.active)
+        assertEquals(2, runBlocking { app.container.repository.houseSnapshot().size })
+    }
+
     @Test
     fun aWalkStartedInTheHouseSpaceStopsWhenThePersonSwitchesToASchoolSpaceAndSaysWhy() {
         kinds.enableSchool()

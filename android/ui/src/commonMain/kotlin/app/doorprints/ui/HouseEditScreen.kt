@@ -344,7 +344,7 @@ fun HouseEditScreen(
     val conflict = !isNew && !busy && dirty && saved != null && saved.updatedAt > seenUpdatedAt
     // The candidate's kind (kinds PR 5, S4b-BL-209): the house, or the school while the developer flag is on.
     val devKinds = LocalDevKinds.current; val kindsOn = kindsOn(); val space = LocalSpace.current // a new candidate is of the space's kind (kinds PR C)
-    val kind = DevKinds.of(draft?.kind ?: space.built.id, kindsOn) // before the row is loaded, the space's kind (a new candidate's, a missing one's)
+    val kind = DevKinds.of(draft?.kind ?: space.creating.id, kindsOn) // before the row is loaded, the space's kind (a new candidate's, a missing one's)
     val L = kind.labels
     val pages = PageWords.of(kind.id) // the house words left on this candidate's kind's page (kinds PR 16)
     placeCheck.state?.let { st ->
@@ -372,7 +372,7 @@ fun HouseEditScreen(
                     else -> LocationSource.MAP
                 },
                 createdAt = now, updatedAt = now,
-            ).let { if (space.built.id == "house") it else it.forKind(space.built) }
+            ).let { if (space.creating.id == "house") it else it.forKind(space.creating) }
             draft = fresh
             baseline = fresh
         }

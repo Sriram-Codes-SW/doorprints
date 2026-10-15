@@ -108,3 +108,11 @@ export function aiShownIn(kind: string, available: readonly string[], on: boolea
 export function shareKind(chosen: string | null | undefined, enabled: readonly string[], dflt: string): string {
   return chosen && enabled.includes(chosen) ? chosen : dflt;
 }
+
+/**
+ * The kind a new entry is made as: the space's own while that kind is enabled, else the default kind (always enabled). A kind
+ * that is off keeps its entries but takes no new one, so nothing is made that the person's chosen lists would not show.
+ */
+export function createKind(space: string, enabled: readonly string[], dflt: string): string {
+  return enabled.includes(space) ? space : dflt;
+}
