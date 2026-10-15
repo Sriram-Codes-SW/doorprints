@@ -3,11 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Test plan (functional, security, accessibility, i18n, AI) |
-<<<<<<< HEAD
-| Version | 0.270 |
-=======
-| Version | 0.272 |
->>>>>>> origin/main
+| Version | 0.273 |
 | Date | 2026-10-15 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -281,13 +277,10 @@
 | 0.267 | 2026-10-15 | Claude (Code), engineer | **TC-U-257 and TC-U-258** (S4b-BL-174b, S4b-BL-174c; `fix/place-lookup-and-native-digits`, PR #356; [10](10-sprint-log.md) v0.337): numbers in native digits and the outline of India for a place lookup. The ids follow the voice builders' ranges (TC-U-249..256). |
 | 0.268 | 2026-10-15 | Claude (Code), engineer | **TC-U-249..TC-U-253, TC-S-52, TC-I-52 and TC-M-79** (S4b-BL-222, voice PR 5, `feat/voice-5-android`; [03](03-design.md) ADR-37, [02](02-threat-model.md) §11): Android's transcript insert, in-memory recorder, `VoiceSession`, `VoiceInput` rules, the screens (setting, microphone, the three places, 130 % and 200 % text) and the safety proof TC-S-52 (no audio at rest, the manifest and backup rules, every exit releases the recorder). **TC-S-23** names its Android counterpart (the manifest's `RECORD_AUDIO`, read by TC-S-52). Mutation lists `tools/mutations/voice-5-*.json`. |
 | 0.269 | 2026-10-15 | Claude (Code), engineer | **TC-U-254..TC-U-256, TC-S-53 and TC-M-80** (S4b-BL-223, voice PR 6, `feat/voice-6-iphone`; [03](03-design.md) ADR-37, [02](02-threat-model.md) §11): the iPhone's side of voice input. The arithmetic between the microphone and the shared recorder (`Pcm16Resampler`, `ByteQueue`, a whole capture path with a fake tap) and the rules that end a recording when an interruption or a change of microphone comes (`CaptureEndRules`) are common code with common tests (TC-U-254, TC-U-255); the permission mapping, Apple's constants and the source's behaviour before it opens are an `iosTest` that runs only in the macOS job (TC-U-256); TC-S-53 is the safety proof as far as a Linux machine can read it (the source scan, `Info.plist`, the four purpose strings). TC-M-80 is the owner's run on an iPhone (MT-104..MT-108). Mutation lists `tools/mutations/voice-6-pcm.json` and `voice-6-safety.json`. No Xcode, simulator or phone was available. |
-<<<<<<< HEAD
-| 0.270 | 2026-10-15 | Claude (Code), engineer | **TC-U-263** (owner, 2026-10-15; `test/kinds-23-ship-school-server`): a school imported into a house-only server is kept, exported unchanged and read as a house. |
-=======
 | 0.270 | 2026-10-15 | Claude (Code), engineer | **TC-U-259** (S4b-BL-304; `feat/kinds-22-hunt-walk-leaves-space`, [03](03-design.md) §18.16, [10](10-sprint-log.md) v0.340; mutation list `tools/mutations/kinds-22-hunt-walk.json`). |
 | 0.271 | 2026-10-15 | Claude (Code), engineer | **TC-U-261** (S4b-BL-316; `feat/kinds-22-phone-words-in-kind-files`, [03](03-design.md) §18.16, [10](10-sprint-log.md) v0.341; mutation lists `tools/mutations/kinds-22-words-android.json`, `-words-web.json`, `-import-sentence.json`). |
 | 0.272 | 2026-10-15 | Claude (Code), engineer | **TC-U-260** (S4b-BL-302; `feat/kinds-22-ai-card-one-list`, [03](03-design.md) §18.14, [10](10-sprint-log.md) v0.342; mutation list `tools/mutations/kinds-22-ai-card-one-list.json`). |
->>>>>>> origin/main
+| 0.273 | 2026-10-15 | Claude (Code), engineer | **TC-U-263** (owner, 2026-10-15; `test/kinds-23-ship-school-server`): a school imported into a house-only server is kept, exported unchanged and read as a house. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Design](03-design.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 

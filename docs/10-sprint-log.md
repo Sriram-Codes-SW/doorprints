@@ -3,11 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Agile sprint log (goals, stories, sign-offs, CI results, retrospectives) |
-<<<<<<< HEAD
-| Version | 0.340 |
-=======
-| Version | 0.342 |
->>>>>>> origin/main
+| Version | 0.343 |
 | Date | 2026-10-15 |
 | Author | Claude (Cowork), Docs team |
 | Status | Draft (Sprint 3.5 KMP foundation delivered and green on `19006bc`; Sprint 4a in progress, section 11; web host **Firebase Hosting at `https://doorprints.web.app`** since 2026-09-23, owner setup done, first deploy pending, §11.6; Sprint 4b scope set by the product owner with the 2026-09-22 additions and the 2026-09-23 import definition, section 12; **whole-app UX audit approved on both clients**, the go-ahead for the first deploy, §11.7; owner's security guard rule, release security gate, process improvements and **first-release Definition of Done** (hi/ta/te ship *under review*) §12.5; licence change to AGPL-3.0-only approved, done 2026-09-29, §12.6; pre-deploy close-out, what is left, backlog tickets and rule candidates, §12.7; **owner issue P0 of 2026-09-24, India's boundaries on the map, merged (PRs #13 and #14) and live**, §12.8; **story S4b-BR-1, the app icon's footprints (option C), PR #15, merged (`76449fb`)**, §12.9; **owner request of 2026-09-24, the doubled lines and the Assam-Arunachal Pradesh state line, fixed on branch `fix/india-boundary-lines`, PR #16, merged (`4100f7a`)**, §12.10; **owner request of 2026-09-24, the Compose Multiplatform track (ADR-23), CMP-1 done in `be86f50`**, §13; **owner request of 2026-09-24, testing the APK and the live web UI, CMP-0 in `afe4064`**, §13.3; **the Sprint 4b/4c finishing batch (slice 5 to Wave E) built on stacked branches, not merged, 2026-10-01**, §13.29..§13.40) |
@@ -348,13 +344,10 @@
 | 0.337 | 2026-10-15 | Claude (Code), engineer | **S4b-BL-174b and S4b-BL-174c In review** (`fix/place-lookup-and-native-digits`, PR #356): a price, a bedroom count, an area and a phone written in the digits of an Indian script are read on the server, the phones and the website (and a native-digit phone was already redacted: checked, 6 vectors added); a place lookup no longer picks a result in a neighbour's town inside India's bounding box, because it tests the point against an outline of India built from the ADR-22 boundary data (the same ring on the website and the apps). See the two rows in §12.7. Not a base-map change. |
 | 0.338 | 2026-10-15 | Claude (Code), engineer | **S4b-BL-222 In review** (voice PR 5, Android; `feat/voice-5-android`, #355): see the row in §12.7. |
 | 0.339 | 2026-10-15 | Claude (Code), engineer | **S4b-BL-223 In review (#354)** (voice PR 6, the iPhone; `feat/voice-6-iphone`, built on voice PR 5): see the row in §12.7. Built without Xcode or a phone: the Linux klib compile and the common tests ran; the owner's rows are MT-104..MT-108 (TC-M-80). |
-<<<<<<< HEAD
-| 0.340 | 2026-10-15 | Claude (Code), engineer | **The server stays house-only under "compiled in, off"** (owner, 2026-10-15; `test/kinds-23-ship-school-server`, [03](03-design.md) §18.15): `SchoolCandidateApiTest` gains the case of a school imported into a house-only server; no code change. Tests: [06](06-test-plan.md) TC-U-263. |
-=======
 | 0.340 | 2026-10-15 | Claude (Code), engineer | **S4b-BL-304 In review (#359)** (`feat/kinds-22-hunt-walk-leaves-space`; [03](03-design.md) §18.16, [06](06-test-plan.md) TC-U-259): owner decision (2026-10-15) to stop the walk on leaving the house space, built in the common root for Android and the iPhone. |
 | 0.341 | 2026-10-15 | Claude (Code), engineer | **S4b-BL-316 In review (#361)** (`feat/kinds-22-phone-words-in-kind-files`; [03](03-design.md) §18.16, [06](06-test-plan.md) TC-U-261): the phone words have ids in the kind files, the phone tables are retired, the import notification is neutral with two kinds. |
 | 0.342 | 2026-10-15 | Claude (Code), engineer | **S4b-BL-302 In review (#360)** (`feat/kinds-22-ai-card-one-list`; [03](03-design.md) §18.14, [06](06-test-plan.md) TC-U-260): one AI card sentence everywhere. |
->>>>>>> origin/main
+| 0.343 | 2026-10-15 | Claude (Code), engineer | **The server stays house-only under "compiled in, off"** (owner, 2026-10-15; `test/kinds-23-ship-school-server`, [03](03-design.md) §18.15): `SchoolCandidateApiTest` gains the case of a school imported into a house-only server; no code change. Tests: [06](06-test-plan.md) TC-U-263. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Build and deploy](07-secure-build-and-deploy.md) · [Runbook](08-operations-runbook.md) · [CHANGELOG](../CHANGELOG.md)
 
