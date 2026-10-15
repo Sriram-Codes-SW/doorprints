@@ -195,6 +195,22 @@ describe('a school on the candidate page, with the developer flag on (school-for
     expect(saved.extrasOther).toEqual({ board: 'STATE', fees: { amount: 72000, cadence: 'year' }, grades: 'Class 1 to 8' });
   });
 
+  // S4b-BL-261 (2): the kind file's range of an extra the house model does not know is enforced when the website saves it.
+  it('keeps a commute only within the kind file’s 0 to 300 minutes: 300 and 0 are kept, 301 and -1 are not stored (S4b-BL-261)', async () => {
+    schoolDefault();
+    const { fixture, host } = await open(null, 'en', true);
+    const type = async (v: string) => {
+      const el = host.querySelector<HTMLInputElement>('#extra-commuteMinutes')!;
+      el.value = v;
+      el.dispatchEvent(new Event('input'));
+      await settle(fixture);
+      return draft(fixture).extrasOther?.['commuteMinutes'] ?? null;
+    };
+    expect([await type('300'), await type('0'), await type('25')]).toEqual([300, 0, 25]);
+    expect([await type('301'), await type('-1'), await type('1e9')]).toEqual([null, null, null]);
+    expect(await type('45')).toBe(45);
+  });
+
   it('with two kinds shown and House the default, a new candidate is a house with a price type', async () => {
     localStorage.setItem(EXPERIMENTAL_KINDS_KEY, '1');
     localStorage.setItem(ENABLED_KINDS_KEY, '["house","school"]');
