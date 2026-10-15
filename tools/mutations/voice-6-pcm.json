@@ -1,0 +1,124 @@
+{
+  "spec": "android/shared/src/commonTest/kotlin/app/doorprints/shared/voice/pcm/ (Pcm16ResamplerTest, ByteQueueTest, CaptureEndRulesTest)",
+  "gradle": [
+    ":shared:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.shared.voice.pcm.*"
+  ],
+  "mutations": [
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/pcm/Pcm16Resampler.kt",
+      "find": "sink(toShort(sum / step))",
+      "replace": "sink(toShort(sum / (step + 1.0)))",
+      "expect": "aSourceAt16kHzPassesThroughUnchanged"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/pcm/Pcm16Resampler.kt",
+      "find": "sum += x * take",
+      "replace": "sum += x",
+      "expect": "eachOutputSampleIsTheMeanOfTheInputSamplesInItsSlot"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/pcm/Pcm16Resampler.kt",
+      "find": "if (it.isNaN()) 0.0 else it.coerceIn(-1.0, 1.0)",
+      "replace": "if (it.isNaN()) 1.0 else it.coerceIn(-1.0, 1.0)",
+      "expect": "loudNoiseIsClippedAndANotANumberIsSilence"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/pcm/Pcm16Resampler.kt",
+      "find": "if (it.isNaN()) 0.0 else it.coerceIn(-1.0, 1.0)",
+      "replace": "if (it.isNaN()) 0.0 else it.coerceIn(-1.0, 4.0)",
+      "expect": "loudNoiseIsClippedBeforeItIsAveragedWithItsNeighbours"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/pcm/Pcm16Resampler.kt",
+      "find": "private val step = inputRate / outputRate",
+      "replace": "private val step = inputRate / outputRate / 2",
+      "expect": "aConstantStaysConstantWhenDownsampledFrom48kHz"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/pcm/Pcm16Resampler.kt",
+      "find": "require(inputRate >= MIN_RATE && inputRate <= MAX_RATE)",
+      "replace": "require(inputRate >= 0.0 && inputRate <= MAX_RATE)",
+      "expect": "aRateOutOfRangeIsRefusedAtOnce"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/pcm/Pcm16Resampler.kt",
+      "find": "require(count in 0..samples.size)",
+      "replace": "require(count >= 0)",
+      "expect": "onlyCountSamplesAreRead"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/pcm/Pcm16Resampler.kt",
+      "find": "into[i] = total / channels",
+      "replace": "into[i] = total",
+      "expect": "channelsAreAveragedIntoMono"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/pcm/Pcm16Resampler.kt",
+      "find": ".roundToInt().toShort()",
+      "replace": ".toInt().toShort()",
+      "expect": "aConstantStaysConstantWhenDownsampledFrom48kHz"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/pcm/ByteQueue.kt",
+      "find": "if (capacity - size < 2) {",
+      "replace": "if (capacity - size < 1) {",
+      "expect": "aFullQueueDropsWholeSamplesAndCountsThem"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/pcm/ByteQueue.kt",
+      "find": "head = (head + 1) % capacity",
+      "replace": "head = head + 1",
+      "expect": "theQueueWrapsAroundItsArray"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/pcm/ByteQueue.kt",
+      "find": "put((sample.toInt() shr 8).toByte())",
+      "replace": "put((sample.toInt() shr 7).toByte())",
+      "expect": "bytesComeOutInTheOrderTheyWentIn"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/pcm/ByteQueue.kt",
+      "find": "dropped += 2",
+      "replace": "dropped += 1",
+      "expect": "aFullQueueDropsWholeSamplesAndCountsThem"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/pcm/ByteQueue.kt",
+      "find": "        size = 0\n    }\n\n    private fun put",
+      "replace": "        size = size\n    }\n\n    private fun put",
+      "expect": "clearForgetsEverything"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/pcm/CaptureEndRules.kt",
+      "find": "fun endsOnInterruption(type: Long): Boolean = type == INTERRUPTION_BEGAN",
+      "replace": "fun endsOnInterruption(type: Long): Boolean = type == INTERRUPTION_ENDED",
+      "expect": "anInterruptionThatBeginsEndsTheRecording"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/pcm/CaptureEndRules.kt",
+      "find": "if (inputNow == null || inputNow != inputAtStart) return true",
+      "replace": "if (inputNow == null) return true",
+      "expect": "aChangeOfMicrophoneEndsItWhateverTheReason"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/pcm/CaptureEndRules.kt",
+      "find": "ROUTE_CATEGORY_CHANGE, ROUTE_OVERRIDE, ROUTE_WAKE_FROM_SLEEP -> false",
+      "replace": "ROUTE_CATEGORY_CHANGE, ROUTE_OVERRIDE -> false",
+      "expect": "theNoticesOurOwnSetUpCausesDoNotEndIt"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/pcm/CaptureEndRules.kt",
+      "find": "else -> true",
+      "replace": "else -> false",
+      "expect": "everyOtherReasonEndsItEvenWithTheSameMicrophone"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/pcm/CaptureEndRules.kt",
+      "find": "if (inputNow == null || inputNow != inputAtStart) return true",
+      "replace": "if (inputNow != inputAtStart) return true",
+      "expect": "noMicrophoneLeftEndsItWhateverTheReason"
+    }
+  ]
+}
