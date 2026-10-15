@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Feature parity and offline-copy export specification |
-| Version | 0.66 |
+| Version | 0.67 |
 | Date | 2026-10-14 |
 | Author | Claude (Cowork) – Product/Architecture |
 | Status | Draft: product-owner decisions D-01, D-02, D-03, D-08, D-21 (AI access) and D-23..D-25 (Sprint 4b reminders, hunting areas, location permissions) and D-26 (India's boundaries on the map, 2026-09-24) applied; ready for Sprint 4 planning |
@@ -78,6 +78,7 @@
 | 0.64 | 2026-10-14 | Claude (Code), engineer | **5.27.6 amended** (deletion safeguards PR 1, S4b-BL-283): "the website has no undo" is no longer true for the house; saved walks still have none, and the one remaining question says how many go. |
 | 0.65 | 2026-10-14 | Claude (Code), engineer | **5.27.6: Delete all in this space** (deletion safeguards PR 2, S4b-BL-284): the saved walks of every house of the space go with them, with no way back, and the question says so; *Remove all data* lists every kind's count and the saved walks. |
 | 0.66 | 2026-10-14 | Claude (Code), engineer | **5.27.6: the phones** (deletion safeguards PR 3, S4b-BL-285): *Delete all in this space* (Settings > What you track) and *Recently deleted* (Settings) on Android and iPhone; the phones' saved walks go at the end of the 10 s as for one house. |
+| 0.67 | 2026-10-15 | Claude (Code), engineer | **5.29 item 4: the place lookup keeps a result only inside India's outline** (S4b-BL-174c; `fix/place-lookup-and-native-digits`, PR #PRN; [03](03-design.md) ADR-22, [10](10-sprint-log.md) v0.336): a neighbour's town inside India's bounding box is refused on the website and the phones alike. |
 
 Related: [01 Requirements](01-requirements.md) · [02 Threat model](02-threat-model.md) · [03 Design](03-design.md) · [04 DFDs](04-data-flow-diagrams.md) · [05 UX/a11y/i18n](05-ux-accessibility-i18n.md) · [06 Test plan](06-test-plan.md) · [10 Sprint log](10-sprint-log.md) · [AI design](ai/ai-design.md)
 
@@ -1885,7 +1886,7 @@ page as before and the parser fills the fields on arrival, the AI fill staying t
 (S4b-BL-83) are not built. **Locality lookup built** (2026-10-01, S4b-BL-83, [10](10-sprint-log.md) §13.34): *Find
 "<place>" on the map* offers the parser's locality, looked up only on the person's tap (`PlaceLookup` in common code;
 Android `Geocoder.getFromLocationName`, iPhone `CLGeocoder` compiled only, the website Nominatim `/search` at most once a
-second, restricted to India, with the reverse lookup under the same throttle); the pin lands roughly there for the
+second, restricted to India, with the reverse lookup under the same throttle; a result is kept only inside India's outline, `IndiaOutline` and the website's `inIndia`, so a neighbour's town beside the border is not, S4b-BL-174c); the pin lands roughly there for the
 person to move, and the privacy note on the website names both lookups (`house.lookupNote`). Android fills the form but
 moves no pin on the map yet (S4b-BL-107).
 
