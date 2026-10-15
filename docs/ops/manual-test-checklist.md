@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | The complete manual test list for Doorprints before real-system testing starts and before Android/iOS development continues: every check a person redoes on real devices, whether or not an automated suite or a review session already covered it |
-| Version | 0.21 |
+| Version | 0.22 |
 | Date | 2026-10-15 |
 | Author | Claude, senior reviewer |
 | Status | Draft |
@@ -33,6 +33,7 @@
 | 0.19 | 2026-10-15 | Claude (Code), engineer | **Voice with Sarvam and the clip suite (S4b-BL-224):** MT-109 (a live Sarvam key, the 30 s stop), MT-110 (the key in no copy, backup, sync or Drive file; removal), MT-111 (running the `voice` suite). |
 | 0.20 | 2026-10-15 | Claude (Code), engineer | **§19, the phones with the school compiled in, off** (owner, 2026-10-15; `feat/kinds-24-ship-school-phones`, TC-M-81): the intro and MT-96 step 1 amended (a release has *What you track*, with the switch off); MT-112 (a fresh Android install is the house app, the switch, TalkBack, 200 % text) and MT-113 (the iPhone: the same, VoiceOver, no chooser until the switch is on). |
 | 0.21 | 2026-10-15 | Claude (Code), engineer | **A recording cut short** (S4b-BL-317, S4b-BL-318, TC-M-82; #367): MT-105's expected result amended (the words so far are kept and written out with *The recording ended early*, nothing shown when nothing was said) and MT-114 (the iPhone, Android and the website; Cancel and leaving the screen still keep nothing; Stop answers at once). |
+| 0.22 | 2026-10-15 | Claude (Code), docs | **Stale wording after "compiled in, off"** (`docs/school-compiled-in-wording`): §19 MT-96 says the iPhone lists the school too and the test phones are a release build and a debug build. |
 
 ## 1. How to use this list
 
@@ -985,7 +986,7 @@ is the developer's flag on top). The owner decides when a second kind is release
 TC-M-72 and TC-M-81 of [06](../06-test-plan.md); the website's twin is §18.
 
 #### MT-96 What you track, the chooser and the chip on the phone
-- **Area:** Android (the iPhone has the same code, but no build of it ships a second kind: S4b-BL-300). **Who:** anyone. **Env:** E4 (the Android app): a phone with TalkBack, and a debug build that ships schools beside a release build.
+- **Area:** Android (the iPhone lists the school too, compiled in and off, since 2026-10-15). **Who:** anyone. **Env:** E4 (the Android app): a phone with TalkBack, and a release build and a debug build.
 - **Steps:** (1) On the release build open *Settings*: *What you track* has *Experimental: more than houses*, off, and no rows; the Map is the first screen, the bar is Map, Houses, Compare, Settings. (2) On the debug build open *Settings*: the same. (3) Turn it on: rows *Houses* (shown, *Default*) and *Schools* (not shown), each with *Saved: N*. (4) Turn on *Show Schools*, close the app and open it: *What are you looking for?* with two cards, *Houses* first and marked *Default*, each with *Saved: N* and *Last change*, and a hint with *Got it*. (5) Choose *Schools*: the bar says *Schools*, the Map has *Save school here* and no Hunt mode, the list says *Search schools* and has no sort or cost filter; the chip *Schools* is at the top. (6) Tap the chip: the chooser again; Back from a tab does the same. (7) In *Settings*: no *Brokers*, *Criteria*, *Questions* or *Viewings*. (8) Turn *Show Schools* off: the app opens on the Map; the schools are still there (turn it on again to see them). (9) Repeat 4 to 7 in Hindi, Tamil and Telugu, in both themes, at the largest text size and with TalkBack on: the heading is read first, each card as one item with its count, the chip as *Schools: change what you are looking for*.
 - **Expected:** a house hunter on the release build sees no change at all, but the one Settings section that holds the switch; the words never say "kind" or "space"; every word in the app's language (Hindi, Tamil and Telugu *under review*); nothing is cut at 200 % text; the hint shows once; the last shown row cannot be turned off; the choice is this phone's alone (never synced, shared or in a copy).
 - **Automated or reviewed by:** TC-U-220, TC-U-221 (`SpacesRootTest`, the three new baselines). Reviewer ran it: no.

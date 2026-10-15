@@ -1690,7 +1690,7 @@ export const te: Dict = {
   'connect.aiSends': 'మీ ప్రశ్న, సరిపోయే ఇంటి నోట్స్ మీరు ఎంచుకున్న సేవకు వెళ్తాయి; సేవ్ చేసిన కాంటాక్ట్ పేర్లు, ఫోన్ నంబర్లు, ఈమెయిళ్లను ముందుగా, మా వల్ల అయినంత వరకు, మారుస్తాము. పేస్ట్ చేసిన ప్రకటన పేస్ట్ చేసినట్లే పంపబడుతుంది.',
   'connect.aiGuide': 'AI నాకు ఉపయోగమా? గైడ్ చదవండి',
   'connect.aiGuideAria': 'AI నాకు ఉపయోగమా? గైడ్ చదవండి (కొత్త ట్యాబ్‌లో తెరుచుకుంటుంది)',
-  // S4b-BL-209 (2026-10-13): the hidden schools kind, developer flag only. Under review (owner rule: hi/ta/te ship marked under review).
+  // S4b-BL-209 (2026-10-13): the schools kind, compiled in and shown only after Settings' switch. Under review (owner rule: hi/ta/te ship marked under review).
   'school.newTitle': 'కొత్త పాఠశాల',
   'school.many': 'పాఠశాలలు',
   'school.delete': 'పాఠశాలను తొలగించు',

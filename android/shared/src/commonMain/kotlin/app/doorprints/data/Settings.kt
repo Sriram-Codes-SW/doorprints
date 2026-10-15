@@ -223,7 +223,7 @@ class SettingsStore(
     private val secrets: SecretStore,
     /** Where the person's own Gemini key is kept (docs/03 §13.1); null where a platform has none (tests). */
     private val geminiSecrets: SecretStore? = null,
-    /** The kinds this build ships (kinds PR C, S4b-BL-274): a production build lists the house alone ([KindSettingRules.availableOf]). */
+    /** The kinds this build ships (kinds PR C, S4b-BL-274): the default is the house alone; the release build passes the house and the school, compiled in and off ([KindSettingRules.availableOf]). */
     val availableKinds: List<String> = listOf(KindSettingRules.HOUSE),
     /**
      * Where the person's own Sarvam key for speech to text is kept (ADR-37, voice PR 7): a slot of its own beside [geminiSecrets]

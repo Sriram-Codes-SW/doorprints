@@ -1663,7 +1663,7 @@
     <string name="settings_ai_sends">Your question and the matching house notes go to the service you chose, with saved contact names, phones and emails replaced first as far as we can. A pasted ad is sent as pasted.</string>
     <string name="settings_ai_guide">Is AI worth it for me? Read the guide</string>
     <string name="settings_ai_guide_desc">Is AI worth it for me? Opens the user guide in the browser</string>
-    <!-- S4b-BL-209 (2026-10-13): the hidden schools kind (kinds PR 5), shown only with the developer flag. -->
+    <!-- S4b-BL-209 (2026-10-13): the schools kind (kinds PR 5), compiled in and shown only after Settings' switch *Experimental: more than houses*. -->
     <string name="kind_picker">What are you saving? (developer preview)</string>
     <string name="school_new_title">Save a school</string>
     <string name="schools_title">Schools</string>

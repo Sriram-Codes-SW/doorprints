@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.127 |
+| Version | 0.128 |
 | Date | 2026-10-15 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -27,6 +27,7 @@
 | 0.125 | 2026-10-15 | Claude (Code), docs | New [16 Architecture overview](16-architecture-overview.md) (the one entry page for the high-level and low-level design: the component diagram, each store's current version, the data contracts, the reading path and where the recent designs live), listed in the index below with its owner; 03 v0.146 (stale parts fixed, §6.4, §19, §20), 14 v0.196, new [backend/README.md](../backend/README.md), root README Architecture section shortened. |
 | 0.126 | 2026-10-15 | Claude (Code), docs | Root README rewritten around the kinds model; 12 v0.9 (section H: where the kinds model may be named), 14 v0.197. |
 | 0.127 | 2026-10-15 | Claude (Code), docs | Voice stated as built on all three platforms: 16 v0.3, 03 v0.150, 14 v0.198. |
+| 0.128 | 2026-10-15 | Claude (Code), docs | Docs 03 v0.159, 06 v0.279, 16 v0.4, ops checklist v0.22 and schemas v1.62: the school's "compiled in, off" wording (`docs/school-compiled-in-wording`). |
 | 0.112 | 2026-10-06 | Claude | The review backlog: docs/01 v0.41, 06 v0.131 (section 10.1), 07 v0.60, 14 v0.89. |
 | 0.111 | 2026-10-06 | Claude | Full-system review fixes and the manual test checklist (`docs/ops/manual-test-checklist.md`): docs/07 v0.59, docs/14 v0.88. |
 | 0.110 | 2026-10-06 | Claude | Review fixes on PR #139: docs/10 v0.149, 06 v0.130, 15 v0.27. |

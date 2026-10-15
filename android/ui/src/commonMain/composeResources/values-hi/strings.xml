@@ -1665,7 +1665,7 @@
     <string name="settings_ai_sends">आपका सवाल और मिलते-जुलते मकानों के नोट्स आपकी चुनी सेवा को जाते हैं; सहेजे गए संपर्क के नाम, फ़ोन और ईमेल पहले, जहाँ तक हम कर सकते हैं, बदल दिए जाते हैं। चिपकाया हुआ विज्ञापन जैसा है वैसा ही भेजा जाता है।</string>
     <string name="settings_ai_guide">क्या AI मेरे लिए ठीक है? गाइड पढ़ें</string>
     <string name="settings_ai_guide_desc">क्या AI मेरे लिए ठीक है? उपयोगकर्ता गाइड ब्राउज़र में खुलती है</string>
-    <!-- S4b-BL-209 (2026-10-13): the hidden schools kind, developer flag only. Under review (owner rule: hi/ta/te ship marked under review). -->
+    <!-- S4b-BL-209 (2026-10-13): the schools kind, compiled in and shown only after Settings' switch. Under review (owner rule: hi/ta/te ship marked under review). -->
     <string name="kind_picker">आप क्या सहेज रहे हैं? (डेवलपर पूर्वावलोकन)</string>
     <string name="school_new_title">स्कूल सहेजें</string>
     <string name="schools_title">स्कूल</string>
