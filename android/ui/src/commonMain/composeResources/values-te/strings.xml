@@ -492,6 +492,8 @@
     <string name="map_hunt_notify_rationale">మీరు చూసిన ఇంటి దగ్గర నుండి వెళ్లినప్పుడు హంట్ మోడ్ నోటిఫికేషన్‌తో చెబుతుంది.</string>
     <string name="map_hunt_stopped_battery">బ్యాటరీ తక్కువగా ఉండటంతో హంట్ మోడ్ ఆగిపోయింది.</string>
     <string name="map_hunt_stopped_not_allowed">Android దీన్ని బ్యాక్‌గ్రౌండ్‌లో నడవనివ్వనందున హంట్ మోడ్ ఆగిపోయింది. ఇక్కడ మళ్లీ ఆన్ చేయండి.</string>
+    <!-- S4b-BL-304, Hunt mode ends on leaving the house space (2026-10-15): under review. -->
+    <string name="hunt_stopped_left_space">హంట్ మోడ్ ఆగిపోయింది. ఇది ఇళ్ల విభాగంలో మాత్రమే నడుస్తుంది.</string>
     <string name="map_hunt_stopped_permission">స్థాన అనుమతి ఆపివేయబడినందున హంట్ మోడ్ ఆగిపోయింది.</string>
     <string name="map_loading">మ్యాప్ లోడ్ అవుతోంది…</string>
     <string name="map_location_off">Doorprints కోసం స్థానం ఆఫ్‌లో ఉంది. హంట్ మోడ్‌కు, ‘ఇక్కడ ఇల్లు సేవ్ చేయండి’కి ఇది అవసరం.</string>

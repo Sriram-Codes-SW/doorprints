@@ -1,0 +1,22 @@
+{
+  "spec": "android/app/src/test/java/app/doorprints/NotificationTextsTest.kt",
+  "gradle": [
+    ":app:testDebugUnitTest",
+    "--tests",
+    "app.doorprints.NotificationTextsTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/app/src/main/java/app/doorprints/export/ImportWorker.kt",
+      "find": "result.restoredHouses, neutral,",
+      "replace": "result.restoredHouses, false,",
+      "expect": "theImportWorkerGivesTheSentenceTheKindSettingsTwoKindState"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/BackupTexts.kt",
+      "find": "importParts(houses, visits, photos, updatedHouses, updatedVisits, restoredHouses, neutral)",
+      "replace": "importParts(houses, visits, photos, updatedHouses, updatedVisits, restoredHouses)",
+      "expect": "theImportSentenceSaysEntriesWithTwoKindsOnAndHousesWithOne"
+    }
+  ]
+}

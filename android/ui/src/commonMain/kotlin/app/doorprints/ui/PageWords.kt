@@ -30,8 +30,8 @@ import org.jetbrains.compose.resources.StringResource
  * docs/03 §18.9): the form's title and the new candidate's default name, the delete and discard questions, the not-found card,
  * the walk check, the saved-walks and photos lines, the AI disclosure, the map's find-a-place lines, Compare's open button and
  * the Areas and Places lines. The house's are today's strings, so a house page is word for word what it was; a school's are
- * its own (the website's words where it has the key: `core/space-tool-words.ts`; hi, ta and te are under review). The
- * words the kind file has (`areaNotesNone`, `areaInReach`) are read from it (S4b-BL-278, [KindWordKeys]); the rest are this table's.
+ * its own (hi, ta and te are under review). Every word is read from the kind file's `words` through its `android` key
+ * ([KindWordKeys]; S4b-BL-278, S4b-BL-316): the class holds no table of strings of its own.
  */
 @Immutable
 class PageWords(
@@ -66,42 +66,26 @@ class PageWords(
     val areaHere: StringResource,
 ) {
     companion object {
-        /** The Compose string a kind file's `words` id names on the phone (the file's `android` key, S4b-BL-278). */
-        private fun word(keys: Map<String, String?>, id: String): StringResource = kindStringResource(checkNotNull(keys[id]) { "no Android word for $id" })
+        /** The page words of the kind whose file keys are [keys] (`KindWordKeys`): every word is the file's `android` key. */
+        private fun from(keys: Map<String, String?>): PageWords {
+            fun w(id: String): StringResource = kindStringResource(checkNotNull(keys[id]) { "no Android word for $id" })
+            return PageWords(
+                detailsTitle = w("detailsTitle"), notFoundTitle = w("notFoundTitle"), notFound = w("notFound"),
+                defaultLabel = w("defaultLabel"), defaultLabelStreet = w("defaultLabelStreet"), discardNew = w("discardNew"),
+                deleteTitle = w("deleteTitle"), needsPrecise = w("pageNeedsPrecise"), savePhotosFirst = w("savePhotosFirst"),
+                walkButton = w("walkButton"), walkPlace = w("walkPlace"), walkLabel = w("walkLabel"), walkApprox = w("walkApprox"),
+                walksEmpty = w("walksEmpty"), aiDisclosure = w("aiDisclosure"), aiDisclosureOwnKey = w("aiDisclosureOwnKey"),
+                placeFound = w("placeFound"), placeNotFound = w("placeNotFound"), openDetails = w("openDetails"),
+                areasEmptyBody = w("areasEmptyBody"), notesEmpty = w("notesEmpty"), areaDeleteBody = w("areaDeleteBody"),
+                placeDeleteBody = w("placeDeleteBody"), placesEmptyBody = w("placesEmptyBody"),
+                areaNotesNone = w("areaNotesNone"), areaHere = w("areaInReach"),
+            )
+        }
 
-        val HOUSE = PageWords(
-            detailsTitle = Res.string.house_details_title, notFoundTitle = Res.string.house_not_found_title,
-            notFound = Res.string.house_not_found, defaultLabel = Res.string.house_default_label,
-            defaultLabelStreet = Res.string.house_default_label_street, discardNew = Res.string.house_discard_new_title,
-            deleteTitle = Res.string.house_delete_confirm_title, needsPrecise = Res.string.house_needs_precise,
-            savePhotosFirst = Res.string.house_save_first_photos, walkButton = Res.string.trace_here_button_house,
-            walkPlace = Res.string.trace_here_place_house, walkLabel = Res.string.trace_here_label_house,
-            walkApprox = Res.string.trace_here_approx_house, walksEmpty = Res.string.trace_house_empty,
-            aiDisclosure = Res.string.ai_disclosure, aiDisclosureOwnKey = Res.string.ai_disclosure_own_key_host,
-            placeFound = Res.string.map_place_found, placeNotFound = Res.string.map_place_not_found,
-            openDetails = Res.string.compare_open_house, areasEmptyBody = Res.string.areas_empty_body,
-            notesEmpty = Res.string.notes_empty, areaDeleteBody = Res.string.area_delete_body,
-            placeDeleteBody = Res.string.place_delete_body, placesEmptyBody = Res.string.places_empty_body,
-            areaNotesNone = word(KindWordKeys.HOUSE, "areaNotesNone"), areaHere = word(KindWordKeys.HOUSE, "areaInReach"),
-        )
+        val HOUSE = from(KindWordKeys.HOUSE)
+        val SCHOOL = from(KindWordKeys.SCHOOL)
 
-        val SCHOOL = PageWords(
-            detailsTitle = Res.string.school_details_title, notFoundTitle = Res.string.school_not_found_title,
-            notFound = Res.string.school_not_found, defaultLabel = Res.string.school_default_label,
-            defaultLabelStreet = Res.string.school_default_label_street, discardNew = Res.string.school_discard_new_title,
-            deleteTitle = Res.string.school_delete_confirm_title, needsPrecise = Res.string.school_needs_precise,
-            savePhotosFirst = Res.string.school_save_first_photos, walkButton = Res.string.school_walk_button,
-            walkPlace = Res.string.school_walk_place, walkLabel = Res.string.school_walk_label,
-            walkApprox = Res.string.school_walk_approx, walksEmpty = Res.string.school_walks_empty,
-            aiDisclosure = Res.string.school_ai_disclosure, aiDisclosureOwnKey = Res.string.school_ai_disclosure_own_key_host,
-            placeFound = Res.string.school_map_place_found, placeNotFound = Res.string.school_map_place_not_found,
-            openDetails = Res.string.school_compare_open, areasEmptyBody = Res.string.school_areas_empty_body,
-            notesEmpty = Res.string.school_notes_empty, areaDeleteBody = Res.string.school_area_delete_body,
-            placeDeleteBody = Res.string.school_place_delete_body, placesEmptyBody = Res.string.school_places_empty_body,
-            areaNotesNone = word(KindWordKeys.SCHOOL, "areaNotesNone"), areaHere = word(KindWordKeys.SCHOOL, "areaInReach"),
-        )
-
-        /** The words of [kind]; a kind with no table of its own reads the house's. */
+        /** The words of [kind]; a kind with no entry of its own reads the house's. */
         fun of(kind: String): PageWords = if (kind == "school") SCHOOL else HOUSE
     }
 }

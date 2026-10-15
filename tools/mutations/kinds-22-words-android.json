@@ -1,0 +1,30 @@
+{
+  "spec": "android/shared/src/androidHostTest/kotlin/app/doorprints/shared/model/KindWordVectorsTest.kt",
+  "gradle": [
+    "--no-build-cache",
+    ":shared:cleanTestAndroidHostTest",
+    ":shared:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.shared.model.KindWordVectorsTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindWordKeys.kt",
+      "find": "\"notFound\" to \"house_not_found\",",
+      "replace": "\"notFound\" to \"house_not_found_title\",",
+      "expect": "theHousesKeysAndTextsAreAsTheyWereInFourLanguages"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindWordKeys.kt",
+      "find": "\"walkLabel\" to \"school_walk_label\"",
+      "replace": "\"walkLabel\" to \"school_walk_place\"",
+      "expect": "theSchoolsKeysAndEnglishTextsArePinnedAndEveryKeyExists"
+    },
+    {
+      "file": "docs/schemas/kinds/school.json",
+      "find": "\"saveNeedsLocation\": { \"web\": null, \"android\": \"school_map_save_needs_location\" }",
+      "replace": "\"saveNeedsLocation\": { \"web\": null, \"android\": \"map_save_needs_location\" }",
+      "expect": "theKindFilesHoldTheVectorsKeys"
+    }
+  ]
+}

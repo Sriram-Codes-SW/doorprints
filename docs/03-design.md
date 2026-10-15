@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.151 |
+| Version | 0.153 |
 | Date | 2026-10-15 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -160,7 +160,10 @@
 | 0.147 | 2026-10-15 | Claude (Code), docs | §19 states voice input as built on the web (merged), Android (#355) and iPhone (#354); the README's AI access policy was corrected to ADR-26/35 in the same pull request. |
 | 0.148 | 2026-10-15 | Claude (Code), engineer | **ADR-37, status:** Android's side is built (S4b-BL-222, voice PR 5; `feat/voice-5-android`; [02](02-threat-model.md) v0.87 §11, [06](06-test-plan.md) TC-U-249..253 and TC-S-52, [ai/voice-input](ai/voice-input.md) v0.6): `shared/voice/` (the recorder interface, `PcmVoiceRecorder`, `VoiceSession`, `VoiceInput`, `OwnKeyTranscription`), the *Voice input* setting under *AI features*, the microphone in Ask, Plan visits and Fill in from listing text, `AudioRecord` in `:app`, `RECORD_AUDIO` as a runtime permission. One choice differs from the plan: 16 kHz mono PCM kept in one array and sent as `audio/wav`, not `MediaRecorder` AAC/m4a (an MP4 muxer needs a seekable file, and "never a file" is the rule); a minute is 1.92 MB, under the 2 MB cap. *This device* (the platform recogniser) is not offered. The iPhone is voice PR 6. |
 | 0.149 | 2026-10-15 | Claude (Code), engineer | **ADR-37, status:** the iPhone's side is built in code without Xcode or a phone (S4b-BL-223, voice PR 6; `feat/voice-6-iphone`; [02](02-threat-model.md) v0.88 §11, [06](06-test-plan.md) TC-U-254..256 and TC-S-53, [ai/voice-input](ai/voice-input.md) v0.7): `IosPcmSource` (an `AVAudioEngine` input tap into memory, resampled in common code to 16 kHz mono 16-bit and handed to the shared `PcmVoiceRecorder` as a WAV clip, the same clip Android sends), `IosMicrophone` (the `AVAudioApplication` permission), `IosVoiceServices` (the shared `VoiceServices`), `NSMicrophoneUsageDescription` and no `audio` background mode. **One change from the plan:** [ai/voice-input](ai/voice-input.md) section 4 said `AVAudioRecorder` with m4a; `AVAudioRecorder` can only write to a file URL, which would put audio on disk (T-I48), so the iPhone uses the engine tap. The setting, the button, the strings, the limits and the provider rules are Android's shared screens and code (`:ui` and `shared/voice/`). |
-| 0.151 | 2026-10-15 | Claude (Code), engineer | **§18.14: the AI card's first sentence is one string for everyone** (S4b-BL-302; `feat/kinds-22-ai-card-one-list`; [06](06-test-plan.md) TC-U-260; [10](10-sprint-log.md) v0.341): the phones' `settings_ai_worth` is the website's `connect.aiWorth` in four languages, `settings_ai_worth_spaces` is retired, four Roborazzi baselines re-recorded. |
+| 0.150 | 2026-10-15 | Claude (Code), docs | §19 states voice input as built on the web, Android and the iPhone (the iPhone untested on a device), PR numbers dropped. |
+| 0.151 | 2026-10-15 | Claude (Code), engineer | **§18.16: a Hunt walk ends when the person leaves the house space** (S4b-BL-304; `feat/kinds-22-hunt-walk-leaves-space`; [06](06-test-plan.md) TC-U-259; [10](10-sprint-log.md) v0.340): `HuntSpace.stopsOnLeaving` in the common root, one line on why, and a Hunt alert makes a house; the line of §18.14 about the default kind follows. |
+| 0.152 | 2026-10-15 | Claude (Code), engineer | **§18.16: the phones' words come from the kind files, and the import notification says entries** (S4b-BL-316; `feat/kinds-22-phone-words-in-kind-files`; [06](06-test-plan.md) TC-U-261; [10](10-sprint-log.md) v0.341; [schemas](schemas/README.md) v1.61): `words` has 48 more ids, `SpaceWords` and `PageWords` hold no table, the import worker passes the kind setting's two-kind state. |
+| 0.153 | 2026-10-15 | Claude (Code), engineer | **§18.14: the AI card's first sentence is one string for everyone** (S4b-BL-302; `feat/kinds-22-ai-card-one-list`; [06](06-test-plan.md) TC-U-260; [10](10-sprint-log.md) v0.342): the phones' `settings_ai_worth` is the website's `connect.aiWorth` in four languages, `settings_ai_worth_spaces` is retired, four Roborazzi baselines re-recorded. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -2929,7 +2932,7 @@ The AI card's first sentence is the kind-neutral *one list at a time* for everyo
 (owner, 2026-10-15; S4b-BL-302 replaced the second phone string `settings_ai_worth_spaces` and re-recorded the settings baselines, §18.16).
 
 **Links and alerts** resolve the space from the candidate's kind: a link to a candidate of another kind opens its space; a
-Hunt alert makes a candidate of the **default** kind; *Start Hunt mode* from a reminder opens the house space; a new entry is of
+Hunt alert makes a **house** (a walk is the house space's, S4b-BL-304; it was the default kind before); *Start Hunt mode* from a reminder opens the house space; a new entry is of
 the space's kind (the developer's kind picker is only shown with one kind on).
 
 **The backup's `search` object** (door 10, §18.12). The Kotlin writer writes `{"kind":"house"}` for a house alone and
@@ -2953,8 +2956,8 @@ space, the chip, Settings, the links, the shared listing), the three new baselin
 **Left, with rows** ([10](10-sprint-log.md)): the iPhone has all of it through `:ui` and `:shared`, but no build of the iPhone ships a second
 kind, so nothing of it can be seen there until the owner opens a kind's release gate (S4b-BL-300); the map's location notes still
 say *house* in a school space (S4b-BL-301); the AI card's first sentence is kind-neutral for everyone, which re-records the settings
-baselines (S4b-BL-302); the list reads the space from Room (S4b-BL-303); a Hunt walk goes on after the person leaves the house space
-(S4b-BL-304); the share of updates and Drive keep the house's words (S4b-BL-291); the phone's copies' inner words for a school
+baselines (S4b-BL-302); the list reads the space from Room (S4b-BL-303); a Hunt walk ends when the person leaves the house space
+(S4b-BL-304, built: see below); the share of updates and Drive keep the house's words (S4b-BL-291); the phone's copies' inner words for a school
 (S4b-BL-266); a server Ask and Plan that take a kind (S4b-BL-290, done: §18.17); the chooser's review with TalkBack (S4b-BL-276).
 
 ### 18.15 The server's list of kinds and its writer of `search` (S4b-BL-280)
@@ -3031,11 +3034,13 @@ list search values (`house-pins.golden.ts`), the list's address keys (`listQuery
 - **`better` and Compare (S4b-BL-292).** `KindExtra.better`, `SchoolKind.FIELDS`, `KindValues.best` (the website's rule: the lowest or the highest of a number or an amount; nothing for one value or a tie). `CompareScreen` has a per-cell mark for it: a check, bold, and "(best)" in the spoken row, from the existing `compare_best_name`.
 - **Save a copy of (S4b-BL-292).** `SpacePick.kt`, a menu of the enabled kinds on the Export screen's card, drawn with two or more kinds; it sets the space the screens read (`Root.kt`), the screen stays.
 - **The filter by an extra (S4b-BL-265).** `KindFilter` (`:shared`, the twin of `extra-filter.ts`) held to `kind-filter-vectors.json` by `KindFilterVectorsTest`; `ExtraFilterRows` under the status chips of `HouseListScreen.kt`, saved over a rotation, part of *Clear filters*; `list_filter_any`; one baseline (`school_list_en_light.png`). The address rule of the vectors is the website's: the phone has none.
-- **Neutral backup words (S4b-BL-291).** With two or more kinds on, the Full backup's options, counts, gaps and empty-match line (`ExportScreen.kt`) and the import's introduction, five preview labels and result sentence (`ImportPreviewCard.kt`, `BackupTexts.kt`) say *entries*. The import notification's sentence (the worker has no space) still says houses (S4b-BL-316).
+- **Neutral backup words (S4b-BL-291).** With two or more kinds on, the Full backup's options, counts, gaps and empty-match line (`ExportScreen.kt`) and the import's introduction, five preview labels and result sentence (`ImportPreviewCard.kt`, `BackupTexts.kt`) say *entries*. The import notification's sentence follows the kind setting too (S4b-BL-316, below).
+- **The phone words in the kind files (S4b-BL-316).** `kind.schema.json` `words` names 48 ids after the sixteen (`unnamed`, `addHintListing`, `compare*`, `ask*`, `planHint`, `export*`, `locationOff` and its three twins, `saveNeedsLocation`, then the page's `detailsTitle`, `notFound*`, `defaultLabel*`, `discardNew`, `deleteTitle`, `pageNeedsPrecise`, `savePhotosFirst`, the five `walk*` words, `aiDisclosure*`, `placeFound`, `placeNotFound`, `openDetails` and the Areas and Places lines); `web` may be null where only the phone has the word (additive, `format` stays `doorprints-kind/1`). `house.json` and `school.json` give them; `SpaceWords` and `PageWords` (`:ui`) now hold no table of strings, they read every word through `KindWordKeys.of(kind)` and `kindStringResource`; `KindWordKeys` stays the copy the tests hold to the files. The house's words are the keys and texts they were, pinned in four languages by `kind-word-vectors.json` (`KindWordVectorsTest`, web `kind-words.spec.ts`) and, in pixels, by the house baselines (no change). The website's `space-tool-words.ts` gives the 12 words both stacks have their ids (`TOOL_WORD_IDS`), held to the files and the vectors. **The import notification (item 2).** `ImportWorker` reads `KindSetting.spaces` and passes it to `importedSentence(neutral)`, so with two kinds on the notification says *entries* (`count_entries`, `import_restored_result_any`) as the Import screen does; one kind, or a store that cannot be read, says houses.
 - **A number extra's range (S4b-BL-261 item 2).** `HouseEntity.withInRangeExtras` (`KindExtrasFields.kt`) on save.
 - **The map's location notes (S4b-BL-301).** Five `SpaceWords` entries; three school strings; the place-check's *Save here* reads `saveHere`.
 - **The iPhone (S4b-BL-300).** No build passes the iPhone a second kind; `ReleaseKindsTest` is the tripwire.
-- **Not built.** S4b-BL-302 (one string for the AI card changes the house app's words and baselines: the owner decides), S4b-BL-304 (a Hunt walk after leaving the house space: the owner decides), S4b-BL-303 (a `kind` index and a query per space: a Room migration, its own pull request).
+- **A Hunt walk ends when the person leaves the house space (S4b-BL-304; owner, 2026-10-15).** Hunt mode is the house space's card and switch, so `DoorprintsRoot` (common, Android and the iPhone) stops the walk through `MapServices.stopHunt` when the space on screen changes from the house's to another (`HuntSpace.stopsOnLeaving`: was in the house space, is not, Hunt mode running) and says *Hunt mode stopped. It runs in the Houses space only.* (`hunt_stopped_left_space`, hi/ta/te under review) in the root snackbar. The service and its notification end as with the person's own stop; the walk is then asked about as any ended walk. A walk that starts while another space is on screen (a reminder's *Start Hunt mode*) is left alone; the chooser is not a space. A Hunt alert (*stay here?*) is the house space's, so tapping one makes a **house**, not a candidate of the default kind (this replaces the line of §18.14 that said the default kind). With one kind on the house is the only space and nothing changes (`withOneKindOnNoWalkIsEverStoppedByASpaceChange`; no baseline changes). Tests: TC-U-259, `tools/mutations/kinds-22-hunt-walk.json`.
+- **Not built.** S4b-BL-302 (one string for the AI card changes the house app's words and baselines: the owner decides), S4b-BL-303 (a `kind` index and a query per space: a Room migration, its own pull request).
 - **Budget.** Three files over their budget got room by moving code out, not by growing: `HouseEditScreen.kt` 1,509 to 1,422 (`PasteListing.kt`), `HouseListScreen.kt` 1,018 to 919 (`HouseListUndo.kt`), `ImportScreen.kt` 1,014 to 923 (`ImportPreviewCard.kt`); `MapScreen.kt` is unchanged at 1,515.
 
 ### 18.17 The server's Ask and Plan take a kind (kinds PR 23; S4b-BL-290, S4b-BL-313, S4b-BL-314)
@@ -3084,11 +3089,11 @@ A short summary; the decision is ADR-37 (§14) and the consult, options and plan
   `ContactRedactor` can see the transcript, which the screen says plainly ([02](02-threat-model.md) §11, T-I45 to T-I48;
   [04](04-data-flow-diagrams.md) DF-49).
 - **Where it is built.** The website (merged): `web/src/app/core/voice/` (recorder, service, transcript insert),
-  `shared/voice-button.ts`, the switch on the Connect page, `microphone=(self)` in `web/firebase.json` (S4b-BL-221). Android (#355,
-  `feat/voice-5-android`, S4b-BL-222) and the iPhone (#354, `feat/voice-6-iphone`, S4b-BL-223) use the `Transcriber` core of
-  `:shared` (S4b-BL-219); the spoken eval set is `docs/ai/evals/spoken-set.json` (S4b-BL-220, [ai/ai-design.md](ai/ai-design.md)
-  §8.8). The switch is off by default, the person's own key is the only path, and audio is memory-only on all three. Sarvam is
-  planned (S4b-BL-224). *The PR numbers are dropped once both phone PRs are on `main`.*
+  `shared/voice-button.ts`, the switch on the Connect page, `microphone=(self)` in `web/firebase.json` (S4b-BL-221). Android (S4b-BL-222) and the iPhone (S4b-BL-223) use the `Transcriber` core of
+  `:shared` (S4b-BL-219) with the same switch, microphone button and disclosure in `:ui`; the spoken eval set is
+  `docs/ai/evals/spoken-set.json` (S4b-BL-220, [ai/ai-design.md](ai/ai-design.md) §8.8). The switch is off by default, the
+  person's own key is the only path, and audio is memory-only on all three. The iPhone's is early and **untested on a device**
+  (the owner's rows are MT-104 to MT-108 in `docs/ops/manual-test-checklist.md`). Sarvam is planned (S4b-BL-224).
 - **Tests and gates.** Fake-audio unit tests per adapter on both stacks, additive sections `transcribeRequest` and
   `transcribeContent` in the parity vectors, mutation lists `tools/mutations/voice-*.json`, TC-S-23 and the checklist row B1 for the
   Permissions-Policy ([13](13-release-security-checklist.md)).
