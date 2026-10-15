@@ -51,9 +51,7 @@ import app.doorprints.shared.export.ExportPlace
 import app.doorprints.shared.export.ImportActions
 import app.doorprints.shared.export.ImportMode
 import app.doorprints.shared.model.Broker
-import app.doorprints.shared.model.KindTally
 import app.doorprints.shared.model.SpaceView
-import app.doorprints.shared.model.query
 import app.doorprints.shared.model.BrokerType
 import app.doorprints.shared.model.Checklist
 import app.doorprints.shared.model.Criterion
@@ -162,25 +160,9 @@ open class CommonRepository(
 
     // Every read of the houses and the records waits for the once-only move of contacts into brokers (slice 1b), so
     // no screen ever sees the houses before it: the flag makes every later call a plain read.
-    override val houses: Flow<List<HouseEntity>> = flow {
-        brokerStore.migrate()
-        emitAll(db.houses().observeAll())
-    }
-    // One space's rows through the `kind` index (S4b-BL-303), after the same once-only move as every read of the houses.
-    override fun housesOf(space: SpaceView): Flow<List<HouseEntity>> = flow {
-        brokerStore.migrate()
-        val q = space.query()
-        when {
-            q.none -> emit(emptyList())
-            !q.except -> emitAll(db.houses().observeKinds(q.kinds))
-            q.kinds.isEmpty() -> emitAll(db.houses().observeAll())
-            else -> emitAll(db.houses().observeKindsExcept(q.kinds))
-        }
-    }
-    override val kindTallies: Flow<List<KindTally>> = flow {
-        brokerStore.migrate()
-        emitAll(db.houses().observeKindTallies())
-    }
+    override val houses: Flow<List<HouseEntity>> = db.houses().spaceRows(SpaceView.ONE) { brokerStore.migrate() }
+    override fun housesOf(space: SpaceView) = db.houses().spaceRows(space) { brokerStore.migrate() } // S4b-BL-303
+    override val kindTallies = db.houses().tallies { brokerStore.migrate() }
     override val visitCounts = db.visits().observeCounts()
 
     // The trace's window moves with the clock, so the flow is rebuilt each time it is collected (a screen's lifetime).
