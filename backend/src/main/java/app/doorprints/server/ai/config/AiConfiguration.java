@@ -18,6 +18,7 @@
 
 package app.doorprints.server.ai.config;
 
+import app.doorprints.server.ai.SafetyBlockAdvisor;
 import app.doorprints.server.secrets.GeminiKey;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.openai.http.okhttp.OpenAiHttpClientBuilderCustomizer;
@@ -93,12 +94,13 @@ public class AiConfiguration {
     }
 
     /**
-     * One ChatClient for all features; each call sets its own system prompt and options. No default advisors:
-     * nothing is logged, and the agent adds its own bounded tool-calling advisor per request.
+     * One ChatClient for all features; each call sets its own system prompt and options. The one default advisor turns a
+     * provider's safety block into a clean "declined" answer (S4b-BL-233); nothing is logged, and the agent adds its own
+     * bounded tool-calling advisor per request.
      */
     @Bean
     public ChatClient chatClient(ChatClient.Builder builder) {
-        return builder.build();
+        return builder.defaultAdvisors(new SafetyBlockAdvisor()).build();
     }
 
     /**

@@ -43,6 +43,8 @@ public class AiExceptionHandler {
      * used up", not "try again later". A per-minute limit stays 503 with {@code Retry-After}.
      */
     public static final HttpStatus QUOTA_SPENT_STATUS = HttpStatus.PAYMENT_REQUIRED;
+    /** Problem-detail {@code code} when the provider's own safety system declined the text (S4b-BL-233); HTTP 422. */
+    public static final String DECLINED_CODE = "AI_DECLINED";
     /** Suggested wait for clients after a provider quota error (per-minute quotas reset within a minute). */
     static final String QUOTA_RETRY_AFTER_SECONDS = "60";
     /** Problem-detail property with an owner setup hint (Vertex AI 401/403/404: auth, IAM, model not in location). */
@@ -69,7 +71,8 @@ public class AiExceptionHandler {
      * 503 (the apps show "AI provider unavailable" for it); a per-minute quota error additionally carries
      * {@code code: AI_QUOTA_EXHAUSTED} and {@code Retry-After: 60} so callers (the eval harness, future UI) can tell it
      * apart from an outage without parsing text. A quota or credit that is spent (402, a daily quota, S4b-BL-244) is
-     * HTTP 402 with the same code, {@code retryable: false} and no {@code Retry-After}.
+     * HTTP 402 with the same code, {@code retryable: false} and no {@code Retry-After}. A provider's safety block
+     * (S4b-BL-233) is HTTP 422 {@code AI_DECLINED}, {@code retryable: false}.
      */
     @ExceptionHandler(AiUnavailableException.class)
     public ResponseEntity<ProblemDetail> aiUnavailable(AiUnavailableException e) {
@@ -77,6 +80,15 @@ public class AiExceptionHandler {
         // (nor a stack trace, which carries it): provider errors can echo parts of the prompt, which holds the
         // person's notes (SEC-016, PRV-011).
         var cause = e.getCause();
+        if (ProviderErrors.isDeclined(e)) {
+            // The kind only, as below: no provider text and no stack trace (it carries the provider's words).
+            log.warn("{} [provider declined the text] ({})", e.getMessage(), cause == null ? "-" : cause.getClass().getSimpleName());
+            var declined = ProblemDetail.forStatusAndDetail(HttpStatus.UNPROCESSABLE_ENTITY,
+                    e.getMessage() + ". The AI provider declined this text; nothing was changed. Edit the wording and try again.");
+            declined.setProperty("retryable", false);
+            declined.setProperty("code", DECLINED_CODE);
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(declined);
+        }
         boolean quota = ProviderErrors.isQuotaExhausted(e);
         boolean spent = quota && ProviderErrors.isQuotaSpent(e);
         String hint = quota ? null : vertexSetupHint(e);

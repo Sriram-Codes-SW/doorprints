@@ -374,6 +374,18 @@ class ApiClientContractTest {
     }
 
     @Test
+    fun aSafetyBlockOnTheServerIsAiBlockedAndIsNotRetried() = runTest {
+        // S4b-BL-233: the server answers 422 AI_DECLINED when its provider's safety system declined the text; the same words as
+        // on the phone's own key. Only the AI endpoints read a 422 so.
+        val server = FakeServer(problem(422, R.AI_DECLINED))
+        val e = assertFailsWith<ApiException> { server.api().ask("anything?") }
+        assertEquals(ApiException.Kind.AI_BLOCKED, e.kind)
+        assertEquals(422, e.code)
+        assertEquals(1, server.seen.size)
+        assertEquals(ApiException.Kind.CLIENT, ApiException.kindFor(422, "/api/houses"))
+    }
+
+    @Test
     fun aiStatus503WithLongRetryAfterIsReturnedNotWaitedFor() = runTest {
         val server = FakeServer(problem(503, R.AI_UNAVAILABLE, "Retry-After" to "60"))
         val e = assertFailsWith<ApiException> { server.api().aiStatus() }

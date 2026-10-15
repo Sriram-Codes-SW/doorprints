@@ -76,6 +76,31 @@ public final class ProviderErrors {
         return anyInChain(error, ProviderErrors::spent);
     }
 
+    /**
+     * True when the provider's own safety system declined the text (S4b-BL-233; the clients' {@code AiBlocked}, shared vectors
+     * {@code blockedResponses}): a {@link ProviderBlockedException} from {@link SafetyBlockAdvisor}, or an HTTP 400 whose
+     * {@code error.code} is {@code content_policy_violation} or {@code content_filter} (the OpenAI-compatible endpoints). The
+     * code is read as a named field of the JSON body, never from free text; a 400 that is anything else is ours.
+     */
+    public static boolean isDeclined(Throwable error) {
+        return anyInChain(error, t -> t instanceof ProviderBlockedException
+                || (t instanceof OpenAIServiceException o && o.statusCode() == 400 && declinedCode(o)));
+    }
+
+    private static boolean declinedCode(OpenAIServiceException o) {
+        JsonNode body;
+        try {
+            body = o.body().convert(JsonNode.class);
+        } catch (RuntimeException e) {
+            return false;
+        }
+        if (body == null) return false;
+        JsonNode node = body.isArray() ? body.path(0) : body;
+        JsonNode error = node.has("error") ? node.path("error") : node;
+        var code = text(error.path("code"));
+        return "content_policy_violation".equals(code) || "content_filter".equals(code);
+    }
+
     /** Walks the cause chain (and suppressed exceptions) to a bounded depth; true when {@code test} holds for a node. */
     private static boolean anyInChain(Throwable error, java.util.function.Predicate<Throwable> test) {
         Set<Throwable> seen = Collections.newSetFromMap(new IdentityHashMap<>());

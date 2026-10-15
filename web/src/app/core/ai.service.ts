@@ -394,6 +394,8 @@ export function aiErrorMsg(err: unknown, host?: string): Msg {
     }
     // The server's own AI says its provider quota or credit is spent with 402 (S4b-BL-244): not a wait, so not "try again".
     if (err.status === 402) return { key: 'ai.quotaExhausted' };
+    // The server's own AI says its provider's safety system declined the text with 422 (S4b-BL-233): the same words as the own key's.
+    if (err.status === 422) return { key: 'ai.blocked' };
     if (err.status === 503) return { key: 'ai.providerDown' };
     if (err.status === 403) {
       const code = (err.error as { code?: unknown } | null)?.code;

@@ -145,6 +145,19 @@ class AiExceptionHandlerTest {
         }
     }
 
+    /** S4b-BL-233: a provider's safety block is 422 AI_DECLINED, not retryable, with none of the provider's words. */
+    @Test
+    void aSafetyBlockIs422DeclinedAndNotRetryableAndCarriesNoProviderText() {
+        var handler = AiExceptionHandlers.of(null);
+        var response = handler.aiUnavailable(failure(new app.doorprints.server.ai.ProviderBlockedException()));
+        assertThat(response.getStatusCode().value()).isEqualTo(422);
+        assertThat(response.getHeaders().getFirst("Retry-After")).isNull();
+        assertThat(response.getBody().getProperties()).containsEntry("code", AiExceptionHandler.DECLINED_CODE)
+                .containsEntry("retryable", false).doesNotContainKey(AiExceptionHandler.CAUSE_PROPERTY);
+        assertThat(response.getBody().getDetail()).contains("declined").doesNotContain("SAFETY", "content_filter");
+        assertThat(AiExceptionHandler.DECLINED_CODE).isEqualTo("AI_DECLINED");
+    }
+
     @Test
     void aPerMinuteLimitStaysA503WithRetryAfter() {
         var response = AiExceptionHandlers.of(null).aiUnavailable(failure(new ClientException(429, "Too Many Requests", "x")));

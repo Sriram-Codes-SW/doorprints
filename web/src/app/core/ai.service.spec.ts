@@ -106,6 +106,12 @@ describe('AiService', () => {
     expect(aiErrorMsg(wait)).toEqual({ key: 'ai.providerDown' });
   });
 
+  // S4b-BL-233: the server's own AI says its provider declined the text with 422, in the words of the own key's decline.
+  it('words the server\'s 422 AI_DECLINED as a declined text, without any word of the provider\'s', () => {
+    const declined = new HttpErrorResponse({ status: 422, error: { status: 422, code: 'AI_DECLINED', retryable: false, detail: 'SENTINEL-PROVIDER-WORDS' } });
+    expect(aiErrorMsg(declined)).toEqual({ key: 'ai.blocked' });
+  });
+
   // ADR-26: the same calls, answered by the server or by Gemini from this browser with the person's own key.
   it('with no server, an own Gemini key turns AI on once the switch is on; the key is kept as asked', () => {
     const ai = create(false);
