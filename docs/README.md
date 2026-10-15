@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.125 |
+| Version | 0.126 |
 | Date | 2026-10-15 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -25,6 +25,7 @@
 | 0.123 | 2026-10-10 | Claude (Code), engineer | Voice PR 1 (S4b-BL-218): ADR-37 in 03 v0.106, threat-model section 11 in 02 v0.69, DF-49 in 04 v0.18, F11 and G4 in 13 v0.9, manual checklist section 16 (v0.10), docs/10 v0.239, docs/14 v0.156. |
 | 0.124 | 2026-10-10 | Claude (Code), engineer | Kinds PR 1 (S4b-BL-205): 03 v0.108 (ADR-36, §18), 06 v0.203 (TC-U-198, TC-U-199), 10 v0.254, 14 v0.162, `schemas/README.md` v1.31 and the new `schemas/kinds/` (the schemas folder stays one index row, now naming the kind files). |
 | 0.125 | 2026-10-15 | Claude (Code), docs | New [16 Architecture overview](16-architecture-overview.md) (the one entry page for the high-level and low-level design: the component diagram, each store's current version, the data contracts, the reading path and where the recent designs live), listed in the index below with its owner; 03 v0.146 (stale parts fixed, §6.4, §19, §20), 14 v0.196, new [backend/README.md](../backend/README.md), root README Architecture section shortened. |
+| 0.126 | 2026-10-15 | Claude (Code), docs | Root README rewritten around the kinds model; 12 v0.9 (section H: where the kinds model may be named), 14 v0.197. |
 | 0.112 | 2026-10-06 | Claude | The review backlog: docs/01 v0.41, 06 v0.131 (section 10.1), 07 v0.60, 14 v0.89. |
 | 0.111 | 2026-10-06 | Claude | Full-system review fixes and the manual test checklist (`docs/ops/manual-test-checklist.md`): docs/07 v0.59, docs/14 v0.88. |
 | 0.110 | 2026-10-06 | Claude | Review fixes on PR #139: docs/10 v0.149, 06 v0.130, 15 v0.27. |
