@@ -23,6 +23,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.yield
 import kotlin.concurrent.Volatile
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.TimeSource
 import kotlinx.coroutines.launch
 
 /**
@@ -38,6 +40,13 @@ interface PcmSource {
 
     /** Stops and releases the microphone; a [read] waiting on another thread returns. Safe to call again. */
     fun close()
+
+    /**
+     * The person's Stop: stops capturing but keeps what is already buffered, so that [read] hands it out and then returns a
+     * negative number, and returns true; the recorder then calls [close]. The default returns false and does nothing: the source
+     * has no buffer to drain, and the recorder just calls [close] as before.
+     */
+    fun end(): Boolean = false
 }
 
 /**
@@ -59,6 +68,7 @@ class PcmVoiceRecorder(
     @Volatile private var length = 0
     @Volatile private var state = NEW
     @Volatile private var failed: VoiceFailure? = null
+    @Volatile private var loopDone = false
     private var scope: CoroutineScope? = null
 
     override fun start() {
@@ -79,22 +89,27 @@ class PcmVoiceRecorder(
     }
 
     private suspend fun loop() {
-        val buffer = pcm ?: return
-        val chunk = ByteArray(CHUNK)
-        while (state == RUNNING) {
-            val n = source.read(chunk, 0, CHUNK)
-            if (state != RUNNING) return
-            if (n < 0) {
-                failed = VoiceFailure.FAILED
-                return
+        try {
+            val buffer = pcm ?: return
+            val chunk = ByteArray(CHUNK)
+            // ENDING: the person pressed Stop and the source is handing out what it had buffered; keep reading until it says no more.
+            while (state == RUNNING || state == ENDING) {
+                val n = source.read(chunk, 0, CHUNK)
+                if (state == DONE) return
+                if (n < 0) {
+                    if (state == RUNNING) failed = VoiceFailure.FAILED
+                    return
+                }
+                val take = minOf(n, PCM_CAP - length)
+                if (take > 0) {
+                    chunk.copyInto(buffer, length, 0, take)
+                    length += take
+                }
+                if (take < n || length >= PCM_CAP) return
+                if (n == 0) yield()
             }
-            val take = minOf(n, PCM_CAP - length)
-            if (take > 0) {
-                chunk.copyInto(buffer, length, 0, take)
-                length += take
-            }
-            if (take < n || length >= PCM_CAP) return
-            if (n == 0) yield()
+        } finally {
+            loopDone = true
         }
     }
 
@@ -108,6 +123,13 @@ class PcmVoiceRecorder(
         check(state != NEW) { "not started" }
         val buffer = pcm
         if (state != RUNNING || buffer == null) throw VoiceRecorderException(VoiceFailure.FAILED)
+        // Let the source hand out what it already holds, and wait (a few milliseconds, 300 at most) for the capture loop to
+        // have written it: the tail of the last words is in that buffer, and [length] is only read once the writer is done.
+        state = ENDING
+        if (source.end()) {
+            val waited = TimeSource.Monotonic.markNow()
+            while (!loopDone && waited.elapsedNow() < DRAIN_WAIT) { /* the loop ends on the source's negative read */ }
+        }
         finish()
         val took = length
         if (took == 0) throw VoiceRecorderException(VoiceFailure.FAILED)
@@ -133,6 +155,8 @@ class PcmVoiceRecorder(
         private const val NEW = 0
         private const val RUNNING = 1
         private const val DONE = 2
+        private const val ENDING = 3
+        private val DRAIN_WAIT = 300.milliseconds
         private const val BYTES_PER_SECOND = SAMPLE_RATE * 2
         private const val WAV_HEADER = 44
         private const val CHUNK = 3_200 // 100 ms
