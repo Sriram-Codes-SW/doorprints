@@ -81,4 +81,20 @@ class ListingTextTest {
         assertNull(ListingText.portal("https://nobroker.in.evil.example/x"))
         assertNull(ListingText.portal(null))
     }
+
+    /** S4b-BL-174b: a price, a bedroom count, an area and a phone in the digits of an Indian script are read as 0-9; the text kept is as written. */
+    @Test
+    fun numbersInNativeDigitsAreRead() {
+        val devanagari = ListingText.parse("\u0968.\u096B BHK flat for rent in Indiranagar, Bengaluru\nRs. \u096A\u096B,\u0966\u0966\u0966 monthly \u00b7 \u0967\u0968\u0966\u0966 sq ft\n\u0968\u0969\u096A\u096B\u0966 \u0967\u0968\u0969\u096A\u096B")
+        assertEquals(45_000L, devanagari.price)
+        assertEquals(2, devanagari.bedrooms, "2.5 BHK is 2, in any digits")
+        assertEquals(1200, devanagari.areaSqft)
+        assertEquals("RENT", devanagari.priceType)
+        assertEquals("Indiranagar", devanagari.locality)
+        assertEquals("\u0968.\u096B BHK flat for rent in Indiranagar, Bengaluru", devanagari.label, "the label is as written")
+        val tamil = ListingText.parse("Flat in Adyar, Chennai\n\u20b9 \u0BE8.\u0BEB Cr\n+\u0BEF\u0BE7 \u0BEF\u0BEE\u0BEE\u0BE6\u0BE6 \u0BE7\u0BE8\u0BE9\u0BEA\u0BEB")
+        assertEquals(25_000_000L, tamil.price)
+        assertEquals("SALE", tamil.priceType)
+        assertEquals("+91 98800 12345", tamil.contactPhone)
+    }
 }

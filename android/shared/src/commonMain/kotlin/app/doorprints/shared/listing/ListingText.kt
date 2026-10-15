@@ -18,6 +18,7 @@
 
 package app.doorprints.shared.listing
 
+import app.doorprints.shared.ai.ContactRedactor
 import app.doorprints.shared.ai.DraftSanitizer
 import app.doorprints.shared.ai.RawListing
 import app.doorprints.shared.api.HouseDraftDto
@@ -92,7 +93,10 @@ object ListingText {
         val url = urlIn(t)
         // The words are read with the links taken out: a portal's address says "rent" or "buy" for its own reasons.
         val words = t.replace(URL, " ")
-        val priceMatch = PRICE.find(words)
+        // The numbers are read in 0-9 whatever script they are written in (S4b-BL-174b; one character for one character, so
+        // the text and its reading line up); the words, the locality and the notes keep what was written.
+        val digits = ContactRedactor.asciiDigits(words)
+        val priceMatch = PRICE.find(digits)
         val priceText = priceMatch?.let { m ->
             if (m.groupValues[1].isNotEmpty()) m.groupValues[1] + " " + m.groupValues[2] else m.groupValues[3] + " " + m.groupValues[4]
         }?.trim()
@@ -103,8 +107,8 @@ object ListingText {
             rupees != null && rupees >= SALE_FROM_RUPEES -> "SALE"
             else -> null
         }
-        val bedrooms = BHK.find(words)?.groupValues?.get(1) ?: STUDIO.find(words)?.let { "studio" }
-        val area = AREA.find(words)?.groupValues?.get(1)
+        val bedrooms = BHK.find(digits)?.groupValues?.get(1) ?: STUDIO.find(words)?.let { "studio" }
+        val area = AREA.find(digits)?.groupValues?.get(1)
         val details = listOfNotNull(
             area?.let { "$it sq ft" },
             FURNISHING.find(words)?.value?.lowercase()?.replaceFirstChar { it.uppercase() },
@@ -117,7 +121,7 @@ object ListingText {
             priceType = priceType,
             bedrooms = bedrooms,
             areaSqft = area,
-            contactPhone = PHONE.find(words)?.value,
+            contactPhone = PHONE.find(digits)?.value,
             listingUrl = url,
             notes = notes,
         )

@@ -16,6 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { asciiDigits } from '../core/ai/ai-core';
 import type { HouseDraft } from '../core/ai.service';
 
 /**
@@ -136,14 +137,17 @@ export function parseListingText(text: string): HouseDraft {
   const url = listingUrlIn(t);
   // The words are read with the links taken out: a portal's address says "rent" or "buy" for its own reasons.
   const words = t.replace(new RegExp(URL_RE.source, 'g'), ' ');
-  const priceMatch = PRICE.exec(words);
+  // The numbers are read in 0-9 whatever script they are written in (S4b-BL-174b; one character for one character, so the
+  // text and its reading line up); the words, the locality and the notes keep what was written.
+  const digits = asciiDigits(words);
+  const priceMatch = PRICE.exec(digits);
   const priceText = priceMatch ? (priceMatch[1] ? `${priceMatch[1]} ${priceMatch[2] ?? ''}` : `${priceMatch[3]} ${priceMatch[4]}`).trim() : null;
   const price = priceText ? rupees(priceText) : null;
   const priceType = RENT.test(words) ? 'RENT' : SALE.test(words) ? 'SALE' : price !== null && price >= SALE_FROM_RUPEES ? 'SALE' : null;
-  const bhk = BHK.exec(words);
+  const bhk = BHK.exec(digits);
   const bedroomsRaw = bhk ? Number(bhk[1]) : STUDIO.test(words) ? 0 : null;
   const bedrooms = bedroomsRaw !== null && bedroomsRaw <= BEDROOMS_MAX ? bedroomsRaw : null;
-  const area = AREA.exec(words);
+  const area = AREA.exec(digits);
   // The same match feeds the notes' first line ("1150 sq ft, …") and the carpet area field (slice 1a).
   const areaSqft = area && Number(area[1]) >= 1 && Number(area[1]) <= AREA_MAX ? Number(area[1]) : null;
   const furnishing = FURNISHING.exec(words);
@@ -152,7 +156,7 @@ export function parseListingText(text: string): HouseDraft {
     furnishing ? furnishing[1].toLowerCase().replace(/^./, (c) => c.toUpperCase()) : null,
   ].filter((d): d is string => d !== null);
   const notes = (details.length ? details.join(', ') + '\n\n' + t : t).trim().slice(0, NOTES_MAX);
-  const phone = PHONE.exec(words)?.[0].trim().slice(0, PHONE_MAX) ?? null;
+  const phone = PHONE.exec(digits)?.[0].trim().slice(0, PHONE_MAX) ?? null;
   const locality = LOCALITY.exec(words)?.[1] ?? null;
   const label = firstLabel(t, url) ?? defaultLabel(bedrooms, locality);
   return {

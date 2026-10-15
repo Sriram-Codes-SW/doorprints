@@ -83,10 +83,14 @@ class ParityVectorsTest {
             var o = (ObjectNode) c;
             o.put("expected", AnswerText.clean(o.get("input").asText(), o.get("context").asText()));
         }
-        for (var c : (ArrayNode) out.get("sanitize")) {
-            var o = (ObjectNode) c;
-            var raw = o.get("raw").isNull() ? null : JSON.treeToValue(o.get("raw"), RawListing.class);
-            o.set("expected", JSON.valueToTree(DraftSanitizer.sanitize(raw, o.get("source").asText())));
+        // sanitizeNative (S4b-BL-174b): the numbers copied in the digits of Indian scripts, apart from `sanitize` so the house
+        // pins (HouseAiPinsTest, house-ai-pins.spec.ts), which hash every `sanitize` draft by position, stay as they were.
+        for (var key : new String[] {"sanitize", "sanitizeNative"}) {
+            for (var c : (ArrayNode) out.get(key)) {
+                var o = (ObjectNode) c;
+                var raw = o.get("raw").isNull() ? null : JSON.treeToValue(o.get("raw"), RawListing.class);
+                o.set("expected", JSON.valueToTree(DraftSanitizer.sanitize(raw, o.get("source").asText())));
+            }
         }
         for (var c : (ArrayNode) out.get("listingLinks")) {
             var o = (ObjectNode) c;

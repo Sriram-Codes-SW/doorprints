@@ -876,6 +876,48 @@ internal val PARITY_VECTORS_JSON: String = listOf(
     "input" : "ऑफिस २३४५ ६७८९",
     "expected" : "ऑफिस [phone]",
     "note" : "S4b-BL-174a: the same landline without its STD code, in Devanagari digits"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "தொடர்பு +௯௧ ௯௮௨௦௦-௧௨௩௪௫ இல்",
+    "expected" : "தொடர்பு [phone] இல்",
+    "note" : "S4b-BL-174b: a +91 mobile in Tamil digits with a hyphen is a phone"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "ఫోన్ ౯౮౨౦౦౧౨౩౪౫",
+    "expected" : "ఫోన్ [phone]",
+    "note" : "S4b-BL-174b: ten Telugu digits with no space are a phone"
+  }, {
+    "method" : "freeText",
+    "name" : null,
+    "phone" : "98450 12345",
+    "input" : "मुझे ९८४५०-१२३४५ पर बुलाओ",
+    "expected" : "मुझे [phone] पर बुलाओ",
+    "note" : "S4b-BL-174b: the saved phone written in Devanagari digits with a hyphen"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "दफ्तर (०२२) २६५५ ०१०१",
+    "expected" : "दफ्तर [phone]",
+    "note" : "S4b-BL-174b: a metro landline with its STD code in brackets, Devanagari digits"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "అద్దె ౪౫,౦౦౦ రూపాయలు, ఫ్లాట్ ౧౨౦౩",
+    "expected" : "అద్దె ౪౫,౦౦౦ రూపాయలు, ఫ్లాట్ ౧౨౦౩",
+    "note" : "S4b-BL-174b: a rent and a flat number in Telugu digits are not phones"
+  }, {
+    "method" : "generic",
+    "name" : null,
+    "phone" : null,
+    "input" : "வாடகை ௪௫௦௦௦, அறைகள் ௨",
+    "expected" : "வாடகை ௪௫௦௦௦, அறைகள் ௨",
+    "note" : "S4b-BL-174b: a rent and a room count in Tamil digits are not phones"
   } ],
   "sanitize" : [ {
     "raw" : {
@@ -990,7 +1032,8 @@ internal val PARITY_VECTORS_JSON: String = listOf(
       "label" : "3BHK in MG Road",
       "address" : null,
       "street" : "MG Road",
-      "locality" : null,
+""",
+    """      "locality" : null,
       "price" : 25000,
       "priceType" : null,
       "bedrooms" : 3,
@@ -1025,8 +1068,7 @@ internal val PARITY_VECTORS_JSON: String = listOf(
     }
   }, {
     "raw" : {
-""",
-    """      "amenities" : [ "A0", "A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "A10", "A11", "A12", "A13", "A14", "A15", "A16", "A17", "A18", "A19", "A20", "A21", "A22", "A23", "A24" ]
+      "amenities" : [ "A0", "A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "A10", "A11", "A12", "A13", "A14", "A15", "A16", "A17", "A18", "A19", "A20", "A21", "A22", "A23", "A24" ]
     },
     "source" : "",
     "expected" : {
@@ -1494,7 +1536,8 @@ internal val PARITY_VECTORS_JSON: String = listOf(
       "contactPhone" : null,
       "listingUrl" : null,
       "notes" : null,
-      "amenities" : [ ],
+""",
+    """      "amenities" : [ ],
       "warnings" : [ "listingUrl: not found in the listing text, dropped" ]
     }
   }, {
@@ -1537,8 +1580,7 @@ internal val PARITY_VECTORS_JSON: String = listOf(
       "listingUrl" : "https://b.example/j/2",
       "notes" : null,
       "amenities" : [ ],
-""",
-    """      "warnings" : [ "listingUrl: the text has 3 links, check this is the right one" ]
+      "warnings" : [ "listingUrl: the text has 3 links, check this is the right one" ]
     }
   }, {
     "raw" : {
@@ -1583,6 +1625,81 @@ internal val PARITY_VECTORS_JSON: String = listOf(
       "amenities" : [ ],
       "warnings" : [ "listingUrl: the text has 2 links, check this is the right one" ]
     }
+  } ],
+  "sanitizeNative" : [ {
+    "raw" : {
+      "label" : "२ BHK किराये पर",
+      "price" : "४५,०००",
+      "priceType" : "rent",
+      "bedrooms" : "२ BHK",
+      "contactPhone" : "९८४५० १२३४५"
+    },
+    "source" : "२ BHK किराये पर, ४५,००० रुपये, ९८४५० १२३४५",
+    "expected" : {
+      "label" : "२ BHK किराये पर",
+      "address" : null,
+      "street" : null,
+      "locality" : null,
+      "price" : 45000,
+      "priceType" : "RENT",
+      "bedrooms" : 2,
+      "contactName" : null,
+      "contactPhone" : "98450 12345",
+      "listingUrl" : null,
+      "notes" : null,
+      "amenities" : [ ],
+      "warnings" : [ ]
+    },
+    "note" : "S4b-BL-174b: price, bedrooms and phone copied in Devanagari digits are read as 0-9"
+  }, {
+    "raw" : {
+      "label" : "3 BHK in Adyar",
+      "price" : "௪௫௦௦௦",
+      "priceType" : "rent",
+      "bedrooms" : "௩",
+      "contactPhone" : "+௯௧ ௯௮௪௫௦ ௧௨௩௪௫"
+    },
+    "source" : "3 BHK in Adyar, rent 45000. Call 98450 12345",
+    "expected" : {
+      "label" : "3 BHK in Adyar",
+      "address" : null,
+      "street" : null,
+      "locality" : null,
+      "price" : 45000,
+      "priceType" : "RENT",
+      "bedrooms" : 3,
+      "contactName" : null,
+      "contactPhone" : "+91 98450 12345",
+      "listingUrl" : null,
+      "notes" : null,
+      "amenities" : [ ],
+      "warnings" : [ ]
+    },
+    "note" : "S4b-BL-174b: Tamil digits in the model's fields; the text has the phone in 0-9"
+  }, {
+    "raw" : {
+      "label" : "Flat in Madhapur",
+      "price" : "౨.౫ Cr",
+      "priceType" : "sale",
+      "bedrooms" : "౪౦౦"
+    },
+    "source" : "Flat for sale in Madhapur",
+    "expected" : {
+      "label" : "Flat in Madhapur",
+      "address" : null,
+      "street" : null,
+      "locality" : null,
+      "price" : 25000000,
+      "priceType" : "SALE",
+      "bedrooms" : null,
+      "contactName" : null,
+      "contactPhone" : null,
+      "listingUrl" : null,
+      "notes" : null,
+      "amenities" : [ ],
+      "warnings" : [ "bedrooms: 400 is out of range, dropped" ]
+    },
+    "note" : "S4b-BL-174b: a Telugu 2.5 Cr is 25,000,000; 400 bedrooms in Telugu digits is out of range and the warning names the text as written"
   } ],
   "snippet" : [ {
     "doc" : "House: Blue gate\nLocality: Indiranagar\nPrice: Rs 25000 per month (rent)\nNotes: close to the metro, good water",
@@ -1820,7 +1937,8 @@ internal val PARITY_VECTORS_JSON: String = listOf(
         },
         "citedHouseIds" : {
           "type" : "array",
-          "description" : "Ids of the houses cited inline as [house:<id>] in the answer, copied exactly from the context",
+""",
+    """          "description" : "Ids of the houses cited inline as [house:<id>] in the answer, copied exactly from the context",
           "items" : {
             "type" : "string"
           }
@@ -1902,8 +2020,7 @@ internal val PARITY_VECTORS_JSON: String = listOf(
       "temperature" : 0,
       "max_tokens" : 2048,
       "messages" : [ {
-""",
-    """        "role" : "system",
+        "role" : "system",
         "content" : "You extract house listings."
       }, {
         "role" : "user",
@@ -2122,7 +2239,8 @@ internal val PARITY_VECTORS_JSON: String = listOf(
                     "reason" : {
                       "type" : "string",
                       "description" : "Why this house is in the plan, one sentence"
-                    }
+""",
+    """                    }
                   },
                   "required" : [ "houseId", "reason" ],
                   "additionalProperties" : false
@@ -2218,8 +2336,7 @@ internal val PARITY_VECTORS_JSON: String = listOf(
       "error" : "unavailable"
     }
   }, {
-""",
-    """    "response" : "not json at all",
+    "response" : "not json at all",
     "expected" : {
       "error" : "unavailable"
     }
@@ -2685,7 +2802,8 @@ internal val PARITY_VECTORS_JSON: String = listOf(
     }
   }, {
     "input" : "https://example.com/v1?key=abc",
-    "expected" : {
+""",
+    """    "expected" : {
       "valid" : false,
       "reason" : "query"
     }
@@ -2804,8 +2922,7 @@ internal val PARITY_VECTORS_JSON: String = listOf(
               "description" : "Contact person name"
             },
             "contactPhone" : {
-""",
-    """              "type" : [ "string", "null" ],
+              "type" : [ "string", "null" ],
               "description" : "Contact phone number exactly as written"
             },
             "listingUrl" : {
@@ -3127,7 +3244,8 @@ internal val PARITY_VECTORS_JSON: String = listOf(
     }
   }, {
     "call" : "generate",
-    "response" : "{\"id\":\"msg_test\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"test-model\",\"content\":[{\"type\":\"text\",\"text\":\"Checking the notes.\"},{\"type\":\"tool_use\",\"id\":\"toolu_test\",\"name\":\"answer\",\"input\":{\"answer\":\"Yes\",\"citedHouseIds\":[]}}],\"stop_reason\":\"tool_use\"}",
+""",
+    """    "response" : "{\"id\":\"msg_test\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"test-model\",\"content\":[{\"type\":\"text\",\"text\":\"Checking the notes.\"},{\"type\":\"tool_use\",\"id\":\"toolu_test\",\"name\":\"answer\",\"input\":{\"answer\":\"Yes\",\"citedHouseIds\":[]}}],\"stop_reason\":\"tool_use\"}",
     "expected" : {
       "text" : "{\"answer\":\"Yes\",\"citedHouseIds\":[]}"
     }
@@ -3189,8 +3307,7 @@ internal val PARITY_VECTORS_JSON: String = listOf(
     "call" : "generate",
     "response" : "not json",
     "expected" : {
-""",
-    """      "error" : "unavailable"
+      "error" : "unavailable"
     }
   }, {
     "call" : "ping",

@@ -32,7 +32,7 @@ import { inTheRunning } from '../../shared/house-status';
  */
 describe('AI core parity with the server', () => {
   it('removes contacts as the server does', () => {
-    expect(vectors.redact).toHaveLength(137);
+    expect(vectors.redact).toHaveLength(143);
     for (const c of vectors.redact) {
       const r = new Redactor(c.name, c.phone);
       const actual = c.method === 'place' ? r.place(c.input)
@@ -98,7 +98,8 @@ describe('AI core parity with the server', () => {
 
   it('checks listings as the server does', () => {
     expect(vectors.sanitize).toHaveLength(31);
-    for (const c of vectors.sanitize) {
+    expect(vectors.sanitizeNative).toHaveLength(3); // S4b-BL-174b: numbers in the digits of Indian scripts
+    for (const c of [...vectors.sanitize, ...vectors.sanitizeNative]) {
       // Slice 1a: the draft carries `areaSqft` (the no-AI parser fills it); the sanitiser leaves it null, and the
       // vectors predate the field, so it is compared only once a vector says what the server writes there.
       const { areaSqft, ...draft } = sanitizeDraft(c.raw as RawListing | null, c.source);
