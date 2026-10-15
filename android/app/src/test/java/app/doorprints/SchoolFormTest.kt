@@ -104,9 +104,12 @@ class SchoolFormTest {
         open(SchoolSample.ID, flag = true, ready = "Pine Hill School")
         for (t in listOf("School name", "Board", "Medium of instruction", "Grades offered", "Commute (minutes)", "School bus",
             "Fees", "Fees per year (₹)", "Admission fee (₹)", "Website",
-            // The school's own checklist, from kinds PR 27 (docs/03 §18.21): the eight items, by the school's words.
-            "Checklist (0 = bad, 5 = great)", "Safe drop-off and pick-up", "Classrooms and playground", "Drinking water and toilets",
-            "Teachers are approachable", "Class size", "Homework and daily schedule", "Sports and activities", "Safety and CCTV")) assertTrue(t, shows(t))
+            "Checklist (0 = bad, 5 = great)")) assertTrue(t, shows(t))
+        // The school's own checklist, from kinds PR 27 (docs/03 §18.21): the eight items, by the school's words (each row reads "name · state").
+        for (t in listOf("Safe drop-off and pick-up", "Classrooms and playground", "Drinking water and toilets", "Teachers are approachable",
+            "Class size", "Homework and daily schedule", "Sports and activities", "Safety and CCTV")) {
+            assertTrue(t, compose.onAllNodesWithText("$t · ", substring = true).fetchSemanticsNodes().isNotEmpty())
+        }
         for (t in listOf("Price ₹", "Rent ₹/month", "Broker", "Rooms", "Questions to ask", "Water supply", "Power backup", "BHK")) {
             assertFalse(t, shows(t))
         }
