@@ -296,6 +296,18 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
             }
         }
 
+        // Hunt mode is the house space's: leaving that space ends the walk, with one line on why (S4b-BL-304, owner 2026-10-15).
+        // The walk of a Start Hunt mode tap made while another space is on screen is left alone: only the move out stops one.
+        val huntLive by services.mapScreen.hunt.collectAsStateWithLifecycle()
+        var wasHuntHere by remember { mutableStateOf(space.huntHere) }
+        LaunchedEffect(space.huntHere) {
+            if (HuntSpace.stopsOnLeaving(wasHuntHere, space.huntHere, huntLive.active)) {
+                services.mapScreen.stopHunt()
+                rootSnackbar.showSnackbar(getString(Res.string.hunt_stopped_left_space))
+            }
+            wasHuntHere = space.huntHere
+        }
+
         // The question bank is seeded once per install, in the app's language (docs/11 5.5, slice 3a); the screens that
         // read it follow the records as they arrive. A failure leaves it for the next start.
         LaunchedEffect(repo) {
@@ -382,8 +394,9 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                     // A "stay here?" alert whose visit was already saved as a house opens that house, not a second
                     // new-house form that would save a duplicate (whole-app audit).
                     val savedAs = d.visitId?.let { repo.getVisit(it)?.houseId }
-                    // An alert makes a candidate of the default kind (kinds PR C); an existing one opens in its own space.
-                    if (setting.spaces) chosenKind = savedAs?.let { id -> repo.getHouse(id)?.kind }?.let(setting::spaceOf) ?: setting.default
+                    // A Hunt alert is the house space's walk (S4b-BL-304): it makes a house, not a candidate of the default kind
+                    // (kinds PR C); an existing one opens in its own space.
+                    if (setting.spaces) chosenKind = setting.spaceOf(savedAs?.let { id -> repo.getHouse(id)?.kind })
                     when {
                         savedAs != null -> openHouse(savedAs)
                         d.visitId != null && onTop(Routes.NEW_HOUSE, "visitId", d.visitId) -> Unit

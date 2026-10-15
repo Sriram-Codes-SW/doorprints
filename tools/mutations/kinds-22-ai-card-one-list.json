@@ -1,0 +1,22 @@
+{
+  "spec": "android/app/src/test/java/app/doorprints/StringParityTest.kt",
+  "gradle": [
+    ":app:testDebugUnitTest",
+    "--tests",
+    "app.doorprints.StringParityTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/ui/src/commonMain/composeResources/values/strings.xml",
+      "find": "AI reads what you have saved and your notes, one list at a time: Ask and Plan read only the list you are in.",
+      "replace": "AI reads your own saved houses and notes.",
+      "expect": "theAiCardFirstSentenceIsTheWebsitesInEveryLanguage"
+    },
+    {
+      "file": "android/ui/src/commonMain/composeResources/values-hi/strings.xml",
+      "find": "एक बार में एक सूची के रूप में",
+      "replace": "एक साथ",
+      "expect": "theAiCardFirstSentenceIsTheWebsitesInEveryLanguage"
+    }
+  ]
+}

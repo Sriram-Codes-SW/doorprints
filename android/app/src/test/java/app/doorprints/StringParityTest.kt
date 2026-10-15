@@ -201,4 +201,18 @@ class StringParityTest {
             }
         }
     }
+
+    /**
+     * S4b-BL-302: the AI card's first sentence is one string on the website and the phones, in all four languages, for a build
+     * with one kind too (there is no second phone string any more).
+     */
+    @Test fun theAiCardFirstSentenceIsTheWebsitesInEveryLanguage() {
+        for ((suffix, web) in listOf("" to "en", "-hi" to "hi", "-ta" to "ta", "-te" to "te")) {
+            val phones = read(compose.resolve("values$suffix/strings.xml"))
+            assertTrue("settings_ai_worth_spaces is retired ($suffix)", "settings_ai_worth_spaces" !in phones)
+            val site = Regex("""'connect\.aiWorth': '(.*?)',\n""")
+                .find(root().parentFile!!.resolve("web/src/app/i18n/$web.ts").readText())!!.groupValues[1]
+            assertEquals("language '$web'", site, phones.getValue("settings_ai_worth").single().trim())
+        }
+    }
 }
