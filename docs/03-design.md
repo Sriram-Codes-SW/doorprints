@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.150 |
+| Version | 0.151 |
 | Date | 2026-10-15 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -161,6 +161,7 @@
 | 0.148 | 2026-10-15 | Claude (Code), engineer | **ADR-37, status:** Android's side is built (S4b-BL-222, voice PR 5; `feat/voice-5-android`; [02](02-threat-model.md) v0.87 §11, [06](06-test-plan.md) TC-U-249..253 and TC-S-52, [ai/voice-input](ai/voice-input.md) v0.6): `shared/voice/` (the recorder interface, `PcmVoiceRecorder`, `VoiceSession`, `VoiceInput`, `OwnKeyTranscription`), the *Voice input* setting under *AI features*, the microphone in Ask, Plan visits and Fill in from listing text, `AudioRecord` in `:app`, `RECORD_AUDIO` as a runtime permission. One choice differs from the plan: 16 kHz mono PCM kept in one array and sent as `audio/wav`, not `MediaRecorder` AAC/m4a (an MP4 muxer needs a seekable file, and "never a file" is the rule); a minute is 1.92 MB, under the 2 MB cap. *This device* (the platform recogniser) is not offered. The iPhone is voice PR 6. |
 | 0.149 | 2026-10-15 | Claude (Code), engineer | **ADR-37, status:** the iPhone's side is built in code without Xcode or a phone (S4b-BL-223, voice PR 6; `feat/voice-6-iphone`; [02](02-threat-model.md) v0.88 §11, [06](06-test-plan.md) TC-U-254..256 and TC-S-53, [ai/voice-input](ai/voice-input.md) v0.7): `IosPcmSource` (an `AVAudioEngine` input tap into memory, resampled in common code to 16 kHz mono 16-bit and handed to the shared `PcmVoiceRecorder` as a WAV clip, the same clip Android sends), `IosMicrophone` (the `AVAudioApplication` permission), `IosVoiceServices` (the shared `VoiceServices`), `NSMicrophoneUsageDescription` and no `audio` background mode. **One change from the plan:** [ai/voice-input](ai/voice-input.md) section 4 said `AVAudioRecorder` with m4a; `AVAudioRecorder` can only write to a file URL, which would put audio on disk (T-I48), so the iPhone uses the engine tap. The setting, the button, the strings, the limits and the provider rules are Android's shared screens and code (`:ui` and `shared/voice/`). |
 | 0.150 | 2026-10-15 | Claude (Code), docs | §19 states voice input as built on the web, Android and the iPhone (the iPhone untested on a device), PR numbers dropped. |
+| 0.151 | 2026-10-15 | Claude (Code), engineer | **§18.12 "compiled in, off" vs "released"** (owner, 2026-10-15; `feat/kinds-23-ship-school-web`): the production configuration carries `DOORPRINTS_KINDS='house,school'`; `RELEASED_KINDS` stays the house, so the switch *Experimental: more than houses* (off by default, device-local) is the only way to the school; the §18.16 note on S4b-BL-288 amended (the kinds layout passes run in `web.yml`). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -2711,9 +2712,9 @@ which offers only the house) there is no chooser, no chip and no Settings sectio
 `routes` array (`space.spec.ts` pins its paths), `start_url './'`, the share target, every golden file, the layout gate
 (253 of 253) and the live UI test are unchanged, and the empty `<app-kinds-settings>` has no box (`display: contents`).
 
-**Which kinds a build offers** (`core/kind-setting.ts`). `availableKinds()`: a production build lists the house alone;
-a development build every built-in kind; a build made with `ng build --define "DOORPRINTS_KINDS='house,school'"` the
-kinds it names (the house always). `RELEASED_KINDS` is `['house']`: the owner opens a kind's release gate by adding it
+**Which kinds a build offers** (`core/kind-setting.ts`). `availableKinds()`: a build made with no list lists the house alone;
+a development build every built-in kind; a build made with a `DOORPRINTS_KINDS` define (`--define "DOORPRINTS_KINDS='house,school'"`) the
+kinds it names (the house always). **Since 2026-10-15 the production configuration in `angular.json` carries that define, so the release build lists the school: compiled in, off** (three layers: *available*, the build lists the kind; *offered*, available and released, or the person turned on the switch; *enabled*, shown in What you track). It is not released: with the switch off the person sees the house app (no chooser, no spaces routes, no kind rows; search and the AI card as the house build, `experimental-off.spec.ts`), and the public words stay the house's (`seo.spec.ts`). `RELEASED_KINDS` is `['house']`: the owner opens a kind's release gate by adding it
 there, and must not before S4b-BL-268, -269, -270 and -271 are done. Any other available kind is offered only while the
 person turns on **Experimental: more than houses**, which is shown only in a build that ships such a kind. Enabled kinds
 (`doorprints.kinds.enabled`, a JSON list; absent is the house alone) and the default (`doorprints.kinds.default`;
@@ -3020,8 +3021,7 @@ list search values (`house-pins.golden.ts`), the list's address keys (`listQuery
   (26 keys in four languages: *entries*; hi, ta, te under review). With one kind they are the house's keys.
 - **A number extra's range (S4b-BL-261 item 2).** `kind-extras.ts` keeps a number extra the house model does not know only within
   the kind file's `min` and `max`.
-- **Not added (S4b-BL-288).** The two-kind CI job: see the row. Run locally: `ng build --define "DOORPRINTS_KINDS='house,school'"`,
-  then `GATE_DEV_KINDS=1 node tools/live-ui/layout-gate.js web/dist/web/browser`.
+- **Added (S4b-BL-288, 2026-10-15).** The release build lists the school, so no second build is needed: the layout gate's job in `web.yml` sets `GATE_DEV_KINDS=1` and runs the kinds passes twice, with the switch off and on (about 4 s more). Locally: `GATE_DEV_KINDS=1 node tools/live-ui/layout-gate.js web/dist/web/browser`.
 
 **The phones' part (kinds PR 21, `feat/kinds-21-phone-leftovers`; [06](06-test-plan.md) TC-U-239, TC-M-78).** The twin list, built in `:shared` and `:ui`, so on Android and the iPhone alike (the klib compile is the iPhone's check on Linux). A house is unchanged on every path: the label vectors, the house goldens and every house Roborazzi baseline.
 

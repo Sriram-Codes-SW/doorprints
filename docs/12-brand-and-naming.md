@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Brand and naming: the web address, the app icon, fallbacks, brand screening, custom-domain policy, naming guidelines and the import / backup / copy vocabulary |
-| Version | 0.9 |
+| Version | 0.10 |
 | Date | 2026-10-15 |
 | Author | Claude (Cowork), Docs team, from the brand advisor's naming brief of 2026-09-23 |
 | Status | Draft. The address (section A) and the import vocabulary (section G) are **decided** by the owner; the hi/ta/te wording in section G is a **first draft pending native-speaker review** (I18N-B06) |
@@ -21,6 +21,7 @@
 | 0.7 | 2026-10-01 | Claude (Code), lead | The website reads backups (S4b-BL-75, on a branch of the finishing batch, [10](10-sprint-log.md) §13.34): G's table names the web's `imp.heading` (*Import a backup* in four languages, the same words as Android) and §D says the condition for a custom domain is met in code, once it is deployed. |
 | 0.8 | 2026-10-14 | Claude (Code), engineer | G.1: **the words for kinds** (kinds PR 8, S4b-BL-212, `feat/kinds-10-settings-kind-guide`): never "kind" or "space" on screen; the plural noun, *What are you looking for?*, *What you track*, *Experimental: more than houses*, *Saved: N*. |
 | 0.9 | 2026-10-15 | Claude (Code), docs | New section H: the root README may describe the kinds model; the tagline, the store listing and the meta description stay house-only until a second kind is in `AVAILABLE_KINDS` of a release. |
+| 0.10 | 2026-10-15 | Claude (Code), engineer | H: **"compiled in, off" is not "released"** (owner, 2026-10-15): the website's build lists the school behind *Experimental: more than houses* (off by default); the tagline, store listing and meta description stay house-only until `RELEASED_KINDS` gains a kind. |
 
 Related: [Design, ADR-21](03-design.md) · [Build and deploy §6.3](07-secure-build-and-deploy.md#63-web-firebase-hosting) · [UX, a11y and i18n](05-ux-accessibility-i18n.md) · [Requirements §6.9](01-requirements.md) · [Backup format](schemas/README.md) · [Sprint log §11.6](10-sprint-log.md)
 
@@ -307,9 +308,11 @@ the file holds. Neither sentence ships yet; they are for the Sprint 4b import sc
 ## H. Where the kinds model may be named (2026-10-15)
 
 - The **root README** may describe the kinds model and what exists beyond houses (one `candidate` with a `kind` from a kind
-  file; schools as a developer preview, in no release), so a developer or an owner sees what the code can do.
+  file; schools as a preview: compiled into the website, off by default, not released), so a developer or an owner sees what the code can do.
 - The **tagline** ("Remember every house you've seen."), the **store listing** and the **meta description** of the website
-  stay **house-only** until a second kind is in `AVAILABLE_KINDS` of a release (`RELEASED_KINDS` on the website). Until then
+  stay **house-only** until a second kind is *released* (`RELEASED_KINDS` on the website; the phones' released list). Since
+  2026-10-15 the website's build has the school **compiled in but off** (listed in `AVAILABLE_KINDS`, behind the switch
+  *Experimental: more than houses*, off by default): that is not a release, and the words do not change (`seo.spec.ts`). Until then
   nothing a person installs or finds in a search says "more than houses". The wording for the day it changes is a follow-up to
   ADR-13 (the rename, [03](03-design.md) §14) and needs the owner's decision.
 - The apps' strings keep the rule of G.1: never "kind" or "space" in front of a person.
