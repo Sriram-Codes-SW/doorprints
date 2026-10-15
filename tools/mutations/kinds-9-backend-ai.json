@@ -11,14 +11,14 @@
   "mutations": [
     {
       "file": "backend/src/main/java/app/doorprints/server/ai/kind/AiKinds.java",
-      "find": "        return kind != null && available.contains(kind) ? BUILT_IN.get(kind) : null;",
-      "replace": "        return kind != null ? BUILT_IN.get(kind) : null;",
+      "find": "kind != null && !House.HOUSE_KIND.equals(kind) && available.contains(kind) ? LOADED.get(kind) : null;",
+      "replace": "kind != null ? LOADED.get(kind) : null;",
       "expect": "withTheFlagOffOrAnUnknownKindEveryCandidateIsAHouse"
     },
     {
       "file": "backend/src/main/java/app/doorprints/server/ai/rag/KindDocuments.java",
-      "find": "            if (k.never().contains(id)) continue;",
-      "replace": "",
+      "find": "if (k.never().contains(id) || written.contains(id)) continue;",
+      "replace": "if (written.contains(id)) continue;",
       "expect": "anIdThatNeverNamesIsNeverWrittenWhateverAskSays"
     },
     {
@@ -41,8 +41,8 @@
     },
     {
       "file": "backend/src/main/java/app/doorprints/server/ai/rag/KindDocuments.java",
-      "find": "                if (!v.isObject() || !v.path(\"cadence\").isString() || !e.cadence().equals(v.path(\"cadence\").asString())) {",
-      "replace": "                if (!v.isObject()) {",
+      "find": "if (e.cadence() == null || !v.isObject() || !v.path(\"cadence\").isString()\n                        || !e.cadence().equals(v.path(\"cadence\").asString())) {",
+      "replace": "if (!v.isObject()) {",
       "expect": "everyDocumentHasTheLinesOfTheVectors"
     },
     {
@@ -107,8 +107,8 @@
     },
     {
       "file": "backend/src/main/java/app/doorprints/server/ai/extract/KindDraftSanitizer.java",
-      "find": "        return new HouseDraft(label, address, street, locality, null, null, null, contactName, phone, url, notes,",
-      "replace": "        return new HouseDraft(label, address, street, locality, 1L, \"RENT\", 3, contactName, phone, url, notes,",
+      "find": "return new HouseDraft(label, address, street, locality, price, priceType, bedrooms, contactName, phone, url,",
+      "replace": "return new HouseDraft(label, address, street, locality, 1L, \"RENT\", 3, contactName, phone, url,",
       "expect": "everyRawAnswerGivesTheVectorsDraft"
     },
     {
@@ -119,8 +119,8 @@
     },
     {
       "file": "backend/src/main/java/app/doorprints/server/ai/extract/ListingExtractionService.java",
-      "find": "        if (k == null || k.extract().isEmpty() || k != AiKinds.SCHOOL) {",
-      "replace": "        if (k != null && k != AiKinds.SCHOOL) {",
+      "find": "if (k == null || k.extract().isEmpty() || k.extractFields().isEmpty()) {",
+      "replace": "if (false) {",
       "expect": "aSchoolNeedsTheFlagAndAnyOtherKindIsRefused"
     },
     {

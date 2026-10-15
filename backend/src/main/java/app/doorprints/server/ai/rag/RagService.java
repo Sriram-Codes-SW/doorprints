@@ -298,10 +298,9 @@ public class RagService {
         }).toList();
     }
 
-    /** The sentence for an answer with nothing to go on: the kind's own when it is a built-in kind, else the house's. */
+    /** The sentence for an answer with nothing to go on: the kind file's own ({@link AiKinds#readAs}: the house's for no kind). */
     private String refusalFor(String kind) {
-        var k = kind == null ? null : kinds.of(kind);
-        return k == null ? AskPrompts.I_DONT_KNOW : k.refusal();
+        return kinds.readAs(kind).refusal();
     }
 
     /**

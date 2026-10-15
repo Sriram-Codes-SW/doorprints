@@ -13,6 +13,9 @@ whole system: [docs/16](../docs/16-architecture-overview.md).
   (API key, rate limit, size limit and security-header filters).
 - `src/main/resources/db/migration/V1__init.sql`: the schema, **one migration** (the earlier V1..V14 were squashed on
   2026-10-12; a change from now on is a new `V2__...sql`). `application.yml` lists every setting and its environment variable.
+- `src/main/resources/kinds/`: the kind files the server reads (`house.json`, `school.json`: byte-identical copies of
+  `docs/schemas/kinds/`, copy after an edit there) and the prompt packs of those two (`<id>.prompts.json`). A kind needs its
+  file and nothing in Java ([docs/03](../docs/03-design.md) §18.22); `src/test/resources/kinds/dojo.json` is the test kind.
 - `db/Dockerfile`: the PostGIS image with pgvector that CI and the compose file use. `Dockerfile`: the API image.
 
 ## Run it
@@ -42,7 +45,7 @@ deploy values are in [docs/07](../docs/07-secure-build-and-deploy.md) §7.
 |---|---|
 | `APP_API_KEY` (`app.api-key`) | The shared key clients send as `X-API-Key`; `APP_API_KEY_NEXT` is used to rotate it |
 | `APP_CORS_ORIGINS` | Origins allowed to call the API from a browser (default `http://localhost:4200`) |
-| `KINDS_AVAILABLE` (`app.kinds.available`) | Comma-separated kind ids this server reads in the AI; default `house` (the house is always in); a request for another kind is a 400 ([docs/03](../docs/03-design.md) §18.15) |
+| `KINDS_AVAILABLE` (`app.kinds.available`) | Comma-separated kind ids this server reads in the AI; default `house` (the house is always in); a request for another kind is a 400 ([docs/03](../docs/03-design.md) §18.15). A listed kind is read from its kind file: `src/main/resources/kinds/<id>.json`, a byte-identical copy of `docs/schemas/kinds/<id>.json` (`KindFileResourcesTest`), validated at start by `KindFiles` (§18.22); a kind with no file there is read as a house |
 | `APP_AI_ENABLED`, `AI_PROVIDER`, `AI_API_KEY` | AI is off unless `APP_AI_ENABLED=true`; `AI_PROVIDER` is `aistudio` (default) or `vertex` ([docs/ai/ai-design.md](../docs/ai/ai-design.md)) |
 | `APP_MCP_ENABLED` | The MCP endpoint `/mcp`, off by default |
 | `DB_URL`, `DB_USER`, `DB_PASSWORD` | The PostgreSQL connection |

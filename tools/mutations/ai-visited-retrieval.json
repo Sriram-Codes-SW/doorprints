@@ -89,13 +89,13 @@
       "expect": "theRulesOnATableOfQuestions"
     },
     {
-      "file": "backend/src/main/java/app/doorprints/server/ai/rag/HouseDocuments.java",
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/KindDocuments.java",
       "find": "m.put(\"visited\", visited);",
       "replace": "m.put(\"visited\", !visited);",
       "expect": "metadataSaysWhetherAHouseWasVisitedAndWhenLast"
     },
     {
-      "file": "backend/src/main/java/app/doorprints/server/ai/rag/HouseDocuments.java",
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/KindDocuments.java",
       "find": ".max(Comparator.naturalOrder())\n                    .orElseThrow().getEpochSecond()",
       "replace": ".min(Comparator.naturalOrder())\n                    .orElseThrow().getEpochSecond()",
       "expect": "metadataSaysWhetherAHouseWasVisitedAndWhenLast"

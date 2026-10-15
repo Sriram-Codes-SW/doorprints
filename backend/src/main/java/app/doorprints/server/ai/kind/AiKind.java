@@ -24,15 +24,16 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * A built-in kind other than the house as the AI reads it (kinds PR 7, S4b-BL-211; docs/03 ADR-36 §18.11): a copy of
- * its kind file's {@code ai} slots (§18.4 door 10) and of the typed extras those slots name, with the English words a
- * document line gives each (the website's English labels, {@code docs/schemas/kinds/kind-ai-vectors.json}). A house is
- * never one of these: its AI code is today's, unchanged. {@code AiKindFileTest} holds the copy to the kind file.
+ * A kind as the server's AI reads it (kinds PR 7, S4b-BL-211; docs/03 ADR-36 §18.11; kinds PR 28, §18.22): a copy of its kind
+ * file's {@code ai} slots (§18.4 door 10), of the typed extras those slots name, and of the English words of the file's
+ * {@code ai.words}, with the texts of its prompts ({@link KindPrompts}). Every kind is one of these, the house too: built by
+ * {@link #from} from {@link KindFile} and its prompt texts, never typed in code. {@code AiKindFileTest} and
+ * {@code KindFileResourcesTest} hold the copy to the files in {@code docs/schemas/kinds}.
  *
  * @param noun          the first line's key of a document ({@code School: <name>})
  * @param extract       what the listing extract fills (core field ids and extra ids)
  * @param ask           what an Ask document line carries, in line order: core field ids, extra ids, and the sections
- *                      {@code areaNotes}, {@code distances} and {@code visits}
+ *                      {@code areaNotes}, {@code distances} and {@code visits}, and the house's own lines
  * @param plan          what the Plan tools show and filter on
  * @param never         what a saved candidate never sends to a provider, whatever the other slots say
  * @param extras        the kind's typed extras that a slot names, in the kind file's order
@@ -43,14 +44,26 @@ import java.util.Map;
  * @param askSystem     the Ask system text, {@code %1$s} the block's tag; it holds {@link #refusal} word for word
  * @param planSystem    the server planner's system text (S4b-BL-290), a format with the start latitude {@code %1$.6f}, the
  *                      start longitude {@code %2$.6f}, the stop cap {@code %3$d} and the neutral rule {@code %4$s}; the
- *                      planner uses tools, so it is not the devices' text (whose candidates are in the prompt); null for
- *                      a kind with none (the house's text is read instead)
+ *                      planner uses tools, so it is not the devices' text (whose candidates are in the prompt)
+ * @param extractFields the fields of the Extract answer, in the answer's order
+ * @param capabilities  what the kind can do beyond its fields (§18.19)
  */
 public record AiKind(String id, String noun, List<String> extract, List<String> ask, List<String> plan,
                      List<String> never, List<Extra> extras, String extractSystem, String records, String refusal,
-                     String askSystem, String planSystem) {
+                     String askSystem, String planSystem, List<KindPrompts.ExtractField> extractFields,
+                     KindFile.Capabilities capabilities) {
 
-    /** A kind with no server planner text of its own (the house's is read for it). */
+    private static final long BOUND = 1_000_000_000_000_000L;
+
+    /** A kind built by hand, with the planner text and no Extract fields (a test of a prompt or a document). */
+    public AiKind(String id, String noun, List<String> extract, List<String> ask, List<String> plan,
+                  List<String> never, List<Extra> extras, String extractSystem, String records, String refusal,
+                  String askSystem, String planSystem) {
+        this(id, noun, extract, ask, plan, never, extras, extractSystem, records, refusal, askSystem, planSystem,
+                List.of(), KindFile.Capabilities.DEFAULTS);
+    }
+
+    /** As above, with no planner text of its own. */
     public AiKind(String id, String noun, List<String> extract, List<String> ask, List<String> plan,
                   List<String> never, List<Extra> extras, String extractSystem, String records, String refusal,
                   String askSystem) {
@@ -58,10 +71,38 @@ public record AiKind(String id, String noun, List<String> extract, List<String> 
     }
 
     /**
+     * The AI kind of a kind file, or null when the file has no {@code ai.words} (a kind the AI is not told the words of is
+     * read as a house). {@code prompts} null: the kind has no pack of its own and its texts are written from its words.
+     */
+    public static AiKind from(KindFile file, KindPrompts prompts) {
+        var words = file.ai().words();
+        if (words == null) return null;
+        var named = new java.util.LinkedHashSet<String>();
+        named.addAll(file.ai().extract());
+        named.addAll(file.ai().ask());
+        named.addAll(file.ai().plan());
+        var extras = new java.util.ArrayList<Extra>();
+        for (var e : file.extras()) {
+            if (!named.contains(e.id())) continue;
+            var w = words.extras().get(e.id());
+            var options = w == null ? Map.<String, String>of() : w.options();
+            extras.add(new Extra(e.id(), e.type(), w == null ? null : w.words(), options,
+                    e.min() != null ? e.min() : e.type().equals("money") ? Long.valueOf(0) : Long.valueOf(-BOUND),
+                    e.max() != null ? e.max() : Long.valueOf(BOUND), e.maxLength(),
+                    e.cadences().size() == 1 ? e.cadences().get(0) : null));
+        }
+        var p = prompts == null ? KindPrompts.generic(file) : prompts;
+        return new AiKind(file.id(), words.noun(), file.ai().extract(), file.ai().ask(), file.ai().plan(),
+                file.ai().never(), List.copyOf(extras), p.extractSystem(), words.records(), words.refusal(),
+                p.askSystem(), p.planSystem(), p.extractFields(), file.capabilities());
+    }
+
+    /**
      * One typed extra (door 5): its type, the range a value must keep to be read at all, and its English words.
      *
+     * @param words   the key of its document line; null for an extra the server's AI knows by id (the house's)
      * @param options the option ids and their words, in the kind file's order (an {@code enum})
-     * @param cadence the one cadence a {@code money} extra has
+     * @param cadence the one cadence a {@code money} extra has, or null
      */
     public record Extra(String id, String type, String words, Map<String, String> options, Long min, Long max,
                         Integer maxLength, String cadence) {

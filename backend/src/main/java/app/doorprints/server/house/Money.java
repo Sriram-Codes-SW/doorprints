@@ -51,8 +51,6 @@ public record Money(
     /** The cadence vocabulary of the kind schema ({@code docs/schemas/kinds/kind.schema.json}, {@code $defs.cadence}). */
     public static final List<String> CADENCES = List.of("once", "day", "week", "month", "quarter", "year");
     public static final String CADENCE_PATTERN = "once|day|week|month|quarter|year";
-    /** The cadences of a house's own money ({@code docs/schemas/kinds/house.json}): a rent or a sale. */
-    public static final Set<String> HOUSE_CADENCES = Set.of("month", "once");
 
     /**
      * The house's money from today's two values: {@code null} when neither is known; a price without a type keeps no

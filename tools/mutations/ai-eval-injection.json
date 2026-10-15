@@ -8,7 +8,9 @@
     "backend/src/test/java/app/doorprints/server/ai/extract/ExtractCanarySeamsTest.java",
     "backend/src/test/java/app/doorprints/server/ai/rag/AskCanarySeamsTest.java"
   ],
-  "maven": ["-Dtest=EvalScorerTest,InjectionScoringTest,InjectionLayersTest,CanariesTest,CanaryPortsParityTest,ExtractCanarySeamsTest,AskCanarySeamsTest"],
+  "maven": [
+    "-Dtest=EvalScorerTest,InjectionScoringTest,InjectionLayersTest,CanariesTest,CanaryPortsParityTest,ExtractCanarySeamsTest,AskCanarySeamsTest"
+  ],
   "mutations": [
     {
       "file": "backend/src/test/java/app/doorprints/server/ai/eval/EvalScorer.java",
@@ -96,8 +98,8 @@
     },
     {
       "file": "backend/src/main/java/app/doorprints/server/ai/extract/ListingExtractionService.java",
-      "find": "return canary == null ? ExtractionPrompts.build(text, nonce) : canary.apply(text);",
-      "replace": "return canary == null ? ExtractionPrompts.build(text, \"fixed\") : canary.apply(text);",
+      "find": "return canary == null ? ExtractionPrompts.build(k, text, nonce) : canary.apply(text);",
+      "replace": "return canary == null ? ExtractionPrompts.build(k, text, \"fixed\") : canary.apply(text);",
       "expect": "withoutTheNoWrappingCanaryThePromptIsByteIdenticalToTheProductionOne"
     },
     {

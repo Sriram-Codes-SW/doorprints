@@ -79,15 +79,15 @@ public final class HouseDocuments {
     }
 
     /**
-     * As above, read as {@code kinds} says (kinds PR 7, S4b-BL-211): a candidate of a built-in kind other than the house,
-     * while the flag allows it, through its kind's {@code ai.ask} slot ({@link KindDocuments}); anything else exactly as
-     * a house is today.
+     * As above, read as {@code kinds} says (kinds PR 7, S4b-BL-211; kinds PR 28): the candidate's kind's {@code ai.ask} slot
+     * ({@link AiKinds#readAs}: the kind file of a kind this server has available, else the house's), one reader for all
+     * ({@link KindDocuments}).
      */
     static Document toDocument(HouseDto h, List<VisitDto> visits, List<ViewingLine> viewings, AreaLines.All areas,
                                AiKinds kinds) {
-        var k = kinds.of(h.kind());
-        if (k == null) return toDocument(h, visits, viewings, areas);
-        return new Document(h.id().toString(), KindDocuments.text(h, visits, areas, k), KindDocuments.metadata(h, visits, k));
+        var k = kinds.readAs(h.kind());
+        return new Document(h.id().toString(), KindDocuments.text(h, visits, viewings, areas, k),
+                KindDocuments.metadata(h, visits, k));
     }
 
     /** Stable, labelled plain text; the labels double as grounding cues for the model. No contact name or phone. */
@@ -100,47 +100,13 @@ public final class HouseDocuments {
         return text(h, visits, viewings, AreaLines.All.NONE);
     }
 
-    /** As above, with the area notes that reach this house and its distances to the person's places (slice 4a). */
+    /**
+     * As above, with the area notes that reach this house and its distances to the person's places (slice 4a). The lines
+     * are the house kind file's {@code ai.ask} slot in its order, written by {@link KindDocuments} (kinds PR 28); the
+     * contact name and phone are never one of them (F-30).
+     */
     static String text(HouseDto h, List<VisitDto> visits, List<ViewingLine> viewings, AreaLines.All areas) {
-        var r = ContactRedactor.forHouse(h);
-        var sb = new StringBuilder();
-        line(sb, "House", r.freeText(h.label()));
-        line(sb, "Address", r.place(h.address()));
-        line(sb, "Street", r.place(h.street()));
-        line(sb, "Locality", r.place(h.locality()));
-        if (h.price() != null) {
-            line(sb, "Price", "Rs " + h.price() + (h.priceType() == null ? "" : "RENT".equals(h.priceType())
-                    ? " per month (rent)" : " (sale)"));
-        }
-        if (h.bedrooms() != null) line(sb, "Size", h.bedrooms() == 0 ? "studio / 1RK" : h.bedrooms() + " BHK");
-        if (h.areaSqft() != null) line(sb, "Carpet area", h.areaSqft() + " sq ft");
-        // S4b-BL-87: the floor in words, the same as the apps': 0 the ground floor, a negative one a basement level.
-        if (h.floor() != null) {
-            line(sb, "Floor", h.floor() == 0 ? "ground floor" : h.floor() < 0 ? "basement " + -h.floor() : h.floor().toString());
-        }
-        costLines(sb, h.cost());
-        line(sb, "Rooms", rooms(h.rooms(), r));
-        answerLines(sb, h.answers(), r);
-        viewingLines(sb, viewings, r);
-        areaNoteLines(sb, h, areas, r);
-        distanceLines(sb, h, areas, r);
-        movingInLines(sb, h.moveIn(), r);
-        line(sb, "Status", h.status() == null ? null : h.status().name());
-        if (h.rating() != null) line(sb, "My rating", h.rating() + "/5");
-        if (h.checklist() != null && !h.checklist().isEmpty()) {
-            var items = new StringBuilder();
-            new TreeMap<>(h.checklist()).forEach((k, v) -> items.append(items.isEmpty() ? "" : ", ")
-                    .append(r.freeText(k)).append(' ').append(v).append("/5"));
-            line(sb, "Checklist", items.toString());
-        }
-        // Deliberately no "Contact" line: the contact name and phone never go to the provider (F-30).
-        line(sb, "Visits", visitSummary(visits));
-        if (h.notes() != null && !h.notes().isBlank()) {
-            var notes = h.notes().strip();
-            notes = notes.length() > NOTES_MAX ? PromptSafety.clipUnits(notes, NOTES_MAX) + " …" : notes;
-            line(sb, "Notes", r.freeText(notes));
-        }
-        return sb.toString().strip();
+        return KindDocuments.text(h, visits, viewings, areas, AiKinds.HOUSE);
     }
 
     /**
@@ -157,42 +123,7 @@ public final class HouseDocuments {
      * epoch seconds): the filter and sort keys for a question about visits (S4b-BL-194). Dates and a flag only.
      */
     public static Map<String, Object> metadata(HouseDto h, List<VisitDto> visits) {
-        var r = ContactRedactor.forHouse(h);
-        var m = new HashMap<String, Object>();
-        m.put("houseId", h.id().toString());
-        m.put("label", h.label() == null ? "" : r.freeText(h.label()));
-        if (h.status() != null) m.put("status", h.status().name());
-        if (h.priceType() != null) m.put("priceType", h.priceType());
-        if (h.price() != null) m.put("price", h.price());
-        if (h.bedrooms() != null) m.put("bedrooms", h.bedrooms());
-        if (h.rating() != null) m.put("rating", h.rating());
-        if (h.locality() != null) m.put("locality", r.place(h.locality()));
-        boolean visited = visits != null && !visits.isEmpty();
-        m.put("visited", visited);
-        if (visited) {
-            m.put("lastVisit", visits.stream().map(VisitDto::arrivedAt).max(Comparator.naturalOrder())
-                    .orElseThrow().getEpochSecond());
-        }
-        return m;
-    }
-
-    /**
-     * The cost fields of slice 1a, the same words as the on-device {@code AiHouse}: rupees win over months when both
-     * are set (as in the clients' arithmetic). Never {@code myOffer}: a negotiation is the person's own and does not
-     * go to the provider (docs/11 section 5.30 item 5).
-     */
-    static void costLines(StringBuilder sb, HouseCost c) {
-        if (c == null) return;
-        line(sb, "Deposit", rupeesOrMonths(c.deposit(), c.depositMonths()));
-        if (c.maintenance() != null) {
-            line(sb, "Maintenance", "Rs " + c.maintenance() + " per month"
-                    + (Boolean.TRUE.equals(c.maintenanceIncluded()) ? " (included)" : " (not included)"));
-        }
-        line(sb, "Brokerage", rupeesOrMonths(c.brokerage(), c.brokerageMonths()));
-        if (c.lockInMonths() != null) line(sb, "Lock-in", months(c.lockInMonths()));
-        if (c.noticeMonths() != null) line(sb, "Notice", months(c.noticeMonths()));
-        line(sb, "Available from", c.availableFrom());
-        if (c.agreedPrice() != null) line(sb, "Agreed price", "Rs " + c.agreedPrice());
+        return KindDocuments.metadata(h, visits, AiKinds.HOUSE);
     }
 
     /**
@@ -342,11 +273,11 @@ public final class HouseDocuments {
         return inches / 12 + " ft " + inches % 12 + " in";
     }
 
-    private static String rupeesOrMonths(Long rupees, Integer months) {
+    static String rupeesOrMonths(Long rupees, Integer months) {
         return rupees != null ? "Rs " + rupees : months != null ? months(months) : null;
     }
 
-    private static String months(int n) {
+    static String months(int n) {
         return n + (n == 1 ? " month" : " months");
     }
 

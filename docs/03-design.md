@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.164 |
+| Version | 0.165 |
 | Date | 2026-10-15 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -175,6 +175,7 @@
 | 0.162 | 2026-10-15 | Claude (Code), engineer | **§11.1 and §18.19: no map configuration in a kind file** (owner constraint, `feat/kinds-25-capabilities-schema`): the certification covers every space and every kind; `capabilities.map` is a boolean only; map keys are refused by the schema and tested on three stacks. |
 | 0.163 | 2026-10-15 | Claude (Code), engineer | **New §18.20, Hunt as a capability** (kinds PR 26; `feat/kinds-26-hunt-capability`; TC-U-269, TC-M-84): `capabilities.hunt {alertRadiusM 30..300, stayCreates, streetMemory, areas}`; the school has Hunt (100 m, all on), the house keeps today's (30 m, all on); the Hunt card and switch, the walk, the alerts, the notification, the channel and the deep links read the kind, not the house; the walk belongs to the space it was started in; twelve Hunt words in the kind files; the website has no Hunt UI and reads nothing; §18.19's table row and the S4b-BL-304 lines point here. |
 | 0.164 | 2026-10-15 | Claude (Code), engineer | **§18.21 Compare for any kind, and the school's checklist** (kinds PR 27; `feat/kinds-27-compare-capability`): Compare reads `capabilities.compare` of the kind (`compareCriteria`, `scoringForKind`): checklist items (higher is better) and typed extras (the extra's own `better`), the house's ten keys exactly as before; the school gains a draft checklist of eight items and `compare` over them, the fees and the commute. §18.19 and §18.9 corrected where they said nothing reads the resolver or the school hides the checklist. |
+| 0.165 | 2026-10-15 | Claude (Code), engineer | **§18.22 The server reads every kind from its kind file** (kinds PR 28; `feat/kinds-28-server-kind-reader`; [06](06-test-plan.md) TC-U-272..277, [ai-design](ai/ai-design.md) 16.13, [schemas README](schemas/README.md) 1.63): one loader and validator in Java (`KindFiles`), the kind files packaged with the server, `ai.words` in the kind file, and the house, the school and any further kind served by the same document, prompt, extract and planner code; the house's AI output byte for byte as before (the house pins). §18.15 and §18.19 say where the server now stands. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -2702,7 +2703,7 @@ candidate's kind and extras with the kinds available (the server's `KINDS_AVAILA
 phone's `devKinds`); the golden set and its thresholds are untouched. *`house.json`'s slots* ([ai-design](ai/ai-design.md)
 16.8): `ask` names the viewings, the area notes, the distances and the visits, `plan` the street, `extract` the area and the
 amenities, so the slots say what the house's hand-written code reads; the code is not read through them and a house's
-documents, prompts, Plan lines and pins are byte for byte as before. The shared `kinds/house-ai-slot-vectors.json` and a
+documents, prompts, Plan lines and pins are byte for byte as before (since kinds PR 28, §18.22, the server's house is read through them, and the pins prove it). The shared `kinds/house-ai-slot-vectors.json` and a
 `HouseAiSlotsTest` on each stack hold the two together. S4b-BL-269 (the prompts' house words) and S4b-BL-270 (a kind's extras
 in the Plan tools) are still open, and so is the release gate (§18.12).
 
@@ -2993,8 +2994,7 @@ baselines (S4b-BL-302); the list reads the space from Room (S4b-BL-303); a Hunt 
 comma-separated list of kind ids, default `house`, the house always in it (an id outside door 3's pattern, a blank and a
 repeat are dropped). It replaces `app.ai.dev-kinds` (`AI_DEV_KINDS`, a boolean) and is the server's twin of the apps'
 `AVAILABLE_KINDS`. `AiKinds` holds it: the AI reads a candidate of a built-in kind other than the house (the schools kind)
-through its kind file's `ai` slots only when the kind is in the list (§18.11). **Compiled in, off (owner, 2026-10-15):** the releases list the school on the website and the phones, but the server's default stays the house alone; `KINDS_AVAILABLE=house,school` is the operator's choice, never part of a release, and a school that reaches a house-only server (a backup, a device with the switch on) is stored and exported unchanged and read by the AI as a house, its extras unread, never dropped (`SchoolCandidateApiTest`, TC-U-263); a kind that is listed but has no built-in
-file is read as a house. **A request that names a kind outside the list is a 400** (`kind <id> is not available`): today
+through its kind file's `ai` slots only when the kind is in the list (§18.11); since kinds PR 28 every kind file in the build is read by one loader (§18.22), the house's too. **Compiled in, off (owner, 2026-10-15):** the releases list the school on the website and the phones, but the server's default stays the house alone; `KINDS_AVAILABLE=house,school` is the operator's choice, never part of a release, and a school that reaches a house-only server (a backup, a device with the switch on) is stored and exported unchanged and read by the AI as a house, its extras unread, never dropped (`SchoolCandidateApiTest`, TC-U-263); a kind that is listed but has no kind file in the build (`kinds/<id>.json` on the class path, §18.22) is read as a house. **A request that names a kind outside the list is a 400** (`kind <id> is not available`): today
 that is `POST /api/ai/extract-listing`'s optional `kind` (the house is always available; a listed kind with no extract is
 still a 400, `kind <id> has no listing extract`). The candidate calls keep accepting any kind of door 3's pattern, so a
 sync from a device that tracks more kinds than this server lists never fails and a backup keeps every row's kind. Ask and
@@ -3196,7 +3196,7 @@ kind file is read at run time. **The vectors** (`docs/schemas/kinds/capabilities
 the defaults, each built-in kind's resolved set, the code constants the house's set must equal (so a later change must update the vector
 knowingly), the switches that must follow the sections each file shows (rooms, moving in, viewings, walks) and the broker field,
 valid objects, and 60 invalid ones (radius out of range, an unknown key, eleven criteria, markup and links, prototype keys). The server
-keeps no copy and reads nothing new: its tests ignore the added keys (the AI files' `ai` block is read as before).
+reads the file itself since kinds PR 28 (§18.22): `KindFiles.capabilities` is its strict reader, tested against the same vectors; nothing on the server acts on a capability yet.
 
 **No map configuration.** `capabilities.map` is a boolean only and the schema refuses any map key (list in [§11.1](#111-the-government-of-indias-geospatial-guidelines-self-certification)) at the root, in a section, in `capabilities` and in `identity`; the three stacks test it (the website against the schema, `:shared` and the server against the schema's shape and the vectors' `invalid` cases), and a tripwire test fails when a map-rules file names a kind symbol.
 
@@ -3323,6 +3323,60 @@ school's table, checklist rows, best marks, four languages), `school-form.spec.t
 `school-kind.spec.ts`, the layout gate with `GATE_DEV_KINDS=1` (384 of 388 here, the same four map-page layout shifts as the base),
 the accessibility sweep, and the mutation lists `tools/mutations/kinds-27-compare.json` (website) and `kinds-27-compare-android.json` (`:shared`).
 After a merge of the website's part, the live UI check is `ONLY=pages,flows` (strings and Compare), not the full run.
+
+### 18.22 The server reads every kind from its kind file (kinds PR 28)
+
+**Why.** The server knew the school as a Java constant (`AiKinds.SCHOOL`, pinned to the JSON by `AiKindFileTest`), and the house as hand-written
+prompts and documents (`HouseDocuments`, `ListingExtractionService`, the Ask and Plan texts), so a new kind meant new Java. Now a kind file in
+`docs/schemas/kinds` is the one thing a kind needs on the server, and the house is read like any other. Nothing on the wire, in the backup or in
+Flyway changes (JSON field names and V1 are as they were; there is no migration).
+
+**The files in the build.** The Docker build sees only `backend/`, so the server carries a copy of each file: `backend/src/main/resources/kinds/<id>.json`,
+byte for byte the file in `docs/schemas/kinds` (`KindFileResourcesTest` fails until the copy is made, the way the India boundary data's copy is held).
+`KindFiles.builtIn()` reads every `kinds/<id>.json` on the class path once. The server never reads a kind file from a person's data.
+
+**The reader.** `KindFiles.parse` checks the limits of `kind.schema.json` for everything the server acts on (id, version, core ids, typed extras with
+their per-type keys and ranges, the search ids, the `ai` slots and words, the `capabilities`) and the shape of what the apps own (labels, sections,
+statuses, checklist, questions), and refuses the first fault with its path (`KindFileException`). It is strict: an unknown key at any level, a
+prototype key (`__proto__`, `constructor`, `prototype`), a duplicate key, a wrong type, a number out of range, a nesting over 16, a string over 20,000
+characters or a file over 256 KiB is refused. **A kind file carries no map configuration** (owner constraint, §11.1 and §18.19): the 14 keys of
+`forbiddenMapKeys` in `capabilities-vectors.json` are refused anywhere in the file, not only where the schema has no property. Rules the schema cannot
+say: a slot names only a core id, an extra of the file or a line the server writes (`areaNotes`, `distances`, `visits`, `rooms`, `questions`, `viewings`,
+`moveIn`, `checklist`, `amenities`); what `never` names is in neither `ask` nor `plan`; an extra an `ai` slot names is readable (enum, text, bool, money
+with one cadence, a whole number or a date in `ask` and `plan`; no number or date in `extract`) and has its words.
+
+**Words, not prompts.** The kind file gains an optional `ai.words` (`noun`, `records`, and for each typed extra a slot names its `words` and the
+words of each option). They are short English words (`^[A-Za-z][A-Za-z0-9 .,'()/-]{0,59}$`): no markup, no colon (a document line's key ends at the first
+colon), no line break, so a kind file still cannot carry a prompt. The Ask refusal is derived (`I don't know based on the <records> you have saved.`;
+the house's and the school's are exactly their old sentences). A kind file without `ai.words` is not readable by the server's AI and is read as a house.
+
+**The texts.** A kind with no prompt pack gets Extract, Ask and planner texts written from its words (`KindPrompts.generic`), with the rules of every
+kind (data not instructions, nothing guessed, a fixed refusal, the neutral rule). The house and the school keep the hand-tuned texts the house pins and the
+shared vectors hold byte for byte, now as data: `backend/src/main/resources/kinds/<id>.prompts.json` (the Extract system text and the fields of its
+structured answer, the Ask system text, the planner's system text; the only `%` in them are the fixed directives, checked on load). A pack is the
+server's own resource, read only from the class path; a kind file cannot name one.
+
+**One code path.** `AiKind.from(KindFile, KindPrompts)` builds the AI kind of every file, the house's too (`AiKinds.HOUSE`, `AiKinds.SCHOOL`). `AiKinds.of`
+and `require` keep their contract (null for the house and for a kind that is not available or has no file: read as a house; a 400 for a kind outside
+`app.kinds.available`); the new `readAs` names what a candidate is read as, never null. The Ask document is written by `KindDocuments.text` for every kind,
+line by line in the `ask` slot's order: the lines the server writes by id (the house's price, size, area, floor, cost, rooms, questions, viewings, moving in
+and checklist keep their words and rules, each in the order the house file's slot gives) and any other extra by its type and its words. The Ask prompt, the
+Extract prompt, the planner text and the refusal read the kind's texts. The listing extract's answer is built from the kind's fields (`KindOutputConverter`:
+its JSON schema and format text are byte for byte what Spring AI wrote for the two records it replaces), read field by field, and sanitised by
+`KindDraftSanitizer` in the house's fixed order. A house's money cadences are read from the file's core `money` (`KindFiles.moneyCadences`, used by the
+candidate validation and the legacy backup reader) instead of a Java set. The metadata of a document carries its `kind` unless the kind is always available
+(the house).
+
+**What stays in Java, on purpose.** The closed list of ids the server writes by name (the house's lines above, with the type each must have in a file that
+defines it); the two hand-tuned prompt packs; the Plan tools' view of a house (`HouseSearchService`: its text filter reads the address and notes, so the house
+is not cut to the `plan` slot there, §18.11); and the store filter by the metadata `kind` in `RagService`. A kind file written by a person, a place to keep
+one and a review of free words before they reach a prompt are future work; the loader already refuses what such a file must not carry.
+
+**Tests** ([06](06-test-plan.md) TC-U-272..277): `KindFilesTest` (the built-in files, the 60 invalid `capabilities` cases and the valid ones of the shared
+vectors, hostile files), `KindFileResourcesTest` (the copies, the packs, hostile packs), `ServerKindDocumentsTest`, `ServerKindExtractTest` and `ServerKindPlanTest`
+(a synthetic kind, `backend/src/test/resources/kinds/dojo.json`, served with no Java and no pack), `ServerKindsVectorsTest` (`space-scope-vectors.json`'s server kinds);
+the house pins (`HouseAskPinsTest`, `HouseExtractPinsTest`, the plan pins), `HouseAiSlotsTest`, `AiKindFileTest` and the school's vector tests pass unchanged;
+mutation list `tools/mutations/kinds-28-server.json`. `mvn verify` runs on the pull request.
 
 ## 19. Voice input (ADR-37)
 

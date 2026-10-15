@@ -19,7 +19,7 @@ package app.doorprints.server.ai.extract;
 
 import app.doorprints.server.ai.HouseAiPins;
 import org.junit.jupiter.api.Test;
-import org.springframework.ai.converter.BeanOutputConverter;
+import app.doorprints.server.ai.kind.AiKinds;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.nio.file.Files;
@@ -29,7 +29,7 @@ import java.util.LinkedHashMap;
  * The Extract half of the house pins of kinds PR 7 (S4b-BL-211; {@link HouseAiPins}): the prompt for a listing (system
  * and user text), the structured-output schema the request carries, and the response body (the draft as JSON) for each
  * listing of the parity vectors' {@code sanitize} cases. Pinned on main before the kind-aware code; a house's output
- * never changes.
+ * never changes. Since kinds PR 28 the prompt, the schema and the drafts come from the house kind file through the code that serves every kind; the pins are the proof.
  */
 class HouseExtractPinsTest {
 
@@ -43,12 +43,12 @@ class HouseExtractPinsTest {
         var prompt = ExtractionPrompts.build(listing, "abc123");
         out.put("prompt.system", prompt.system());
         out.put("prompt.user", prompt.user());
-        out.put("schema", new BeanOutputConverter<>(RawListing.class).getJsonSchema());
+        out.put("schema", new KindOutputConverter(AiKinds.HOUSE).getJsonSchema());
         var vectors = JSON.readTree(Files.readString(HouseAiPins.repoFile("docs/ai/evals/parity-vectors.json")));
         int i = 0;
         for (var c : vectors.get("sanitize")) {
             var raw = c.get("raw").isNull() ? null : JSON.treeToValue(c.get("raw"), RawListing.class);
-            out.put("draft." + i++, JSON.writeValueAsString(DraftSanitizer.sanitize(raw, c.get("source").asString())));
+            out.put("draft." + i++, JSON.writeValueAsString(HouseRaw.sanitize(raw, c.get("source").asString())));
         }
         HouseAiPins.check("extract", out);
     }

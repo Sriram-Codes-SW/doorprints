@@ -182,6 +182,7 @@
   "extract": ["label", "address", "street", "locality", "money", "bedrooms", "areaSqft", "contactName", "contactPhone", "listingUrl", "notes", "amenities"],
   "ask": ["label", "address", "street", "locality", "money", "bedrooms", "areaSqft", "floor", "deposit", "depositMonths", "maintenance", "maintenanceIncluded", "brokerage", "brokerageMonths", "lockInMonths", "noticeMonths", "availableFrom", "agreedPrice", "rooms", "questions", "viewings", "areaNotes", "distances", "moveIn", "status", "rating", "checklist", "visits", "notes"],
   "plan": ["label", "status", "money", "bedrooms", "rating", "locality", "street"],
-  "never": ["contactName", "contactPhone", "myOffer"]
+  "never": ["contactName", "contactPhone", "myOffer"],
+  "words": { "noun": "House", "records": "houses" }
  }
 }

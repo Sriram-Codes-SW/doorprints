@@ -1,0 +1,169 @@
+{
+ "format": "doorprints-kind/1",
+ "id": "school",
+ "version": 1,
+ "note": "The kind file for schools (docs/03 ADR-36 and §18.9; kinds PR 5, S4b-BL-209): the second built-in kind, hidden behind a developer flag (web: a development build with localStorage `doorprints.dev.kinds` = `school`; the phone: a debug build made with `-Pdoorprints.devKinds=true`), so no release shows it. It proves the model with labels, hidden sections and core fields, and typed extras only: no screen of its own. The school's own money is hidden (the fees are extras with fixed cadences: `year`, the figure schools quote, and `once` for the admission fee), and so are the broker, the rooms, the questions, the viewings, moving in and the checklist. Its question seed is the shared bank, unused while `questions` is hidden. Labels are keys (web: web/src/app/i18n, Android: android/ui/src/commonMain/composeResources); school-vectors.json pins what they resolve to in en, hi, ta and te. No `was`: no school was ever stored in the backup family before the reset. The `ai` slots are read since kinds PR 7 (S4b-BL-211, docs/03 §18.11), while the developer flag is on: `extract` is what *Fill in from listing text* fills (not `commuteMinutes`, the person's own measure, which no listing states), `ask` is every line of an Ask document in its order (core fields, the extras by their English words, and the sections `areaNotes`, `distances` and `visits`), `plan` is what the Plan tools show and filter on (S4b-BL-270: the core fields it names and the extras it names, so a planner can pick schools with a bus; the admission fee only in `houseDetails`, which reads `ask`), and `never` wins over every other slot. An extra no slot names, and an extra the kind does not know, never reaches a provider; kind-ai-vectors.json pins the lines.",
+ "labels": {
+  "new": { "web": "school.newTitle", "android": "school_new_title" },
+  "many": { "web": "school.many", "android": "schools_title" },
+  "delete": { "web": "school.delete", "android": "school_delete" }
+ },
+ "words": {
+  "heading": { "web": "school.heading", "android": "schools_title" },
+  "regionLabel": { "web": "school.regionLabel", "android": "school_region_desc" },
+  "regionHint": { "web": "school.regionHint", "android": null },
+  "add": { "web": "school.add", "android": "school_add_on_map" },
+  "addHint": { "web": "school.addHint", "android": "school_add_tip" },
+  "addHintShort": { "web": "school.addHintShort", "android": "school_add_tip_a11y" },
+  "search": { "web": "school.search", "android": "school_search" },
+  "listLabel": { "web": "school.listLabel", "android": null },
+  "shown": { "web": "school.shown", "android": "school_shown" },
+  "loading": { "web": "school.loading", "android": null },
+  "emptyTitle": { "web": "school.emptyTitle", "android": null },
+  "emptyBody": { "web": "school.emptyBody", "android": "school_empty" },
+  "noMatch": { "web": "school.noMatch", "android": "school_no_match" },
+  "create": { "web": "school.create", "android": "school_save_here" },
+  "areaNotesNone": { "web": "school.areaNotesNone", "android": "school_area_notes_none" },
+  "areaInReach": { "web": "school.areaNotesInReach", "android": "school_area_here" },
+  "unnamed": { "web": null, "android": "school_unnamed" },
+  "addHintListing": { "web": null, "android": "school_add_tip_listing" },
+  "addHintListingShort": { "web": null, "android": "school_add_tip_listing_a11y" },
+  "compareHint": { "web": null, "android": "school_compare_hint" },
+  "comparePickMore": { "web": null, "android": "school_compare_pick_more" },
+  "compareChoose": { "web": null, "android": "school_compare_choose" },
+  "compareEmpty": { "web": null, "android": "school_compare_empty" },
+  "compareEmptyBody": { "web": null, "android": "school_compare_empty_body" },
+  "compareFootnote": { "web": null, "android": "school_compare_footnote" },
+  "askLabel": { "web": "school.askTitle", "android": "school_ai_ask_label" },
+  "askHint": { "web": "school.askPlaceholder", "android": "school_ai_ask_hint" },
+  "askNotGrounded": { "web": "school.askNotGrounded", "android": "school_ai_not_grounded" },
+  "askSources": { "web": "school.askSources", "android": "school_ai_sources" },
+  "planHint": { "web": null, "android": "school_ai_plan_hint" },
+  "exportEmpty": { "web": "school.dataEmpty", "android": "school_export_empty" },
+  "exportScope": { "web": null, "android": "school_export_scope" },
+  "exportScopeAll": { "web": "school.dataScopeAll", "android": "school_export_scope_all" },
+  "exportIncludeRejected": { "web": "school.dataIncludeRejected", "android": "school_export_include_rejected" },
+  "exportPhotosShortlisted": { "web": null, "android": "school_export_photos_shortlisted" },
+  "locationOff": { "web": null, "android": "school_map_location_off_no_hunt" },
+  "needsPrecise": { "web": null, "android": "school_map_needs_precise_no_hunt" },
+  "locationOffNoHunt": { "web": null, "android": "school_map_location_off_no_hunt" },
+  "needsPreciseNoHunt": { "web": null, "android": "school_map_needs_precise_no_hunt" },
+  "saveNeedsLocation": { "web": null, "android": "school_map_save_needs_location" },
+  "detailsTitle": { "web": null, "android": "school_details_title" },
+  "notFoundTitle": { "web": null, "android": "school_not_found_title" },
+  "notFound": { "web": null, "android": "school_not_found" },
+  "defaultLabel": { "web": null, "android": "school_default_label" },
+  "defaultLabelStreet": { "web": null, "android": "school_default_label_street" },
+  "discardNew": { "web": null, "android": "school_discard_new_title" },
+  "deleteTitle": { "web": null, "android": "school_delete_confirm_title" },
+  "pageNeedsPrecise": { "web": null, "android": "school_needs_precise" },
+  "savePhotosFirst": { "web": null, "android": "school_save_first_photos" },
+  "walkButton": { "web": "school.walkTitle", "android": "school_walk_button" },
+  "walkPlace": { "web": "school.walkPlace", "android": "school_walk_place" },
+  "walkLabel": { "web": "school.walkLabel", "android": "school_walk_label" },
+  "walkApprox": { "web": "school.walkApprox", "android": "school_walk_approx" },
+  "walksEmpty": { "web": "school.walksEmpty", "android": "school_walks_empty" },
+  "aiDisclosure": { "web": null, "android": "school_ai_disclosure" },
+  "aiDisclosureOwnKey": { "web": null, "android": "school_ai_disclosure_own_key_host" },
+  "placeFound": { "web": null, "android": "school_map_place_found" },
+  "placeNotFound": { "web": null, "android": "school_map_place_not_found" },
+  "openDetails": { "web": null, "android": "school_compare_open" },
+  "areasEmptyBody": { "web": null, "android": "school_areas_empty_body" },
+  "notesEmpty": { "web": null, "android": "school_notes_empty" },
+  "areaDeleteBody": { "web": null, "android": "school_area_delete_body" },
+  "placeDeleteBody": { "web": null, "android": "school_place_delete_body" },
+  "placesEmptyBody": { "web": null, "android": "school_places_empty_body" }
+ },
+ "statuses": [
+  { "id": "NEW", "label": { "web": "status.NEW", "android": "status_NEW" } },
+  { "id": "SHORTLISTED", "label": { "web": "status.SHORTLISTED", "android": "status_SHORTLISTED" } },
+  { "id": "REJECTED", "label": { "web": "status.REJECTED", "android": "status_REJECTED" } },
+  { "id": "TAKEN", "label": { "web": "status.TAKEN", "android": "status_TAKEN" } },
+  { "id": "NOT_CHOSEN", "label": { "web": "status.NOT_CHOSEN", "android": "status_NOT_CHOSEN" } }
+ ],
+ "sections": [
+  { "id": "details", "label": { "web": "house.details", "android": null } },
+  { "id": "cost", "label": { "web": "school.fees", "android": "school_fees_heading" } },
+  { "id": "areaNotes", "label": { "web": "areaNotes.heading", "android": "notes_heading" } },
+  { "id": "distances", "label": { "web": "distances.heading", "android": "house_distances" } },
+  { "id": "location", "label": { "web": "house.location", "android": "house_location_heading" } },
+  { "id": "walks", "label": { "web": "trace.house.title", "android": "trace_house_title" } },
+  { "id": "visits", "label": { "web": "house.visits", "android": "house_visits" } },
+  { "id": "photos", "label": { "web": "house.photos", "android": "house_photos" } }
+ ],
+ "core": [
+  { "id": "label", "section": "details", "order": 10, "label": { "web": "school.name", "android": "school_name" } },
+  { "id": "status", "section": "details", "order": 20, "label": { "web": "house.status", "android": "house_status" } },
+  { "id": "rating", "section": "details", "order": 30, "label": { "web": "house.rating", "android": "house_rating" } },
+  { "id": "address", "section": "details", "order": 80, "label": { "web": "house.address", "android": "house_address" } },
+  { "id": "street", "section": "details", "order": 90, "label": { "web": "house.street", "android": "house_street" } },
+  { "id": "locality", "section": "details", "order": 100, "label": { "web": "house.locality", "android": "house_locality" } },
+  { "id": "contactName", "section": "details", "order": 110, "label": { "web": "house.contactName", "android": "school_contact_name" } },
+  { "id": "contactPhone", "section": "details", "order": 120, "label": { "web": "house.contactPhone", "android": "house_phone" } },
+  { "id": "listingUrl", "section": "details", "order": 140, "label": { "web": "school.website", "android": "school_website" } },
+  { "id": "notes", "section": "details", "order": 150, "label": { "web": "house.notes", "android": "house_notes" } },
+  { "id": "location", "section": "location", "order": 10, "label": { "web": "house.location", "android": "house_location_heading" } },
+  { "id": "locationSource", "section": "location", "order": 20, "label": { "web": "house.approx", "android": "house_approx" } }
+ ],
+ "extras": [
+  {
+   "id": "board", "type": "enum", "section": "details", "order": 50, "label": { "web": "school.board", "android": "school_board" },
+   "options": [
+    { "id": "CBSE", "label": { "web": "school.board.CBSE", "android": "school_board_CBSE" } },
+    { "id": "ICSE", "label": { "web": "school.board.ICSE", "android": "school_board_ICSE" } },
+    { "id": "STATE", "label": { "web": "school.board.STATE", "android": "school_board_STATE" } },
+    { "id": "IB", "label": { "web": "school.board.IB", "android": "school_board_IB" } },
+    { "id": "IGCSE", "label": { "web": "school.board.IGCSE", "android": "school_board_IGCSE" } },
+    { "id": "OTHER", "label": { "web": "school.option.OTHER", "android": "school_option_OTHER" } }
+   ]
+  },
+  {
+   "id": "medium", "type": "enum", "section": "details", "order": 60, "label": { "web": "school.medium", "android": "school_medium" },
+   "options": [
+    { "id": "ENGLISH", "label": { "web": "school.medium.ENGLISH", "android": "school_medium_ENGLISH" } },
+    { "id": "HINDI", "label": { "web": "school.medium.HINDI", "android": "school_medium_HINDI" } },
+    { "id": "REGIONAL", "label": { "web": "school.medium.REGIONAL", "android": "school_medium_REGIONAL" } },
+    { "id": "OTHER", "label": { "web": "school.option.OTHER", "android": "school_option_OTHER" } }
+   ]
+  },
+  { "id": "grades", "type": "text", "maxLength": 40, "section": "details", "order": 70, "label": { "web": "school.grades", "android": "school_grades" } },
+  { "id": "commuteMinutes", "type": "number", "integer": true, "min": 0, "max": 300, "unit": "minute", "better": "lower", "section": "details", "order": 72, "label": { "web": "school.commuteMinutes", "android": "school_commute" } },
+  { "id": "busService", "type": "bool", "section": "details", "order": 74, "label": { "web": "school.busService", "android": "school_bus" } },
+  { "id": "fees", "type": "money", "max": 1000000000000, "cadences": ["year"], "better": "lower", "section": "cost", "order": 10, "label": { "web": "school.feesPerYear", "android": "school_fees" } },
+  { "id": "admissionFee", "type": "money", "max": 1000000000000, "cadences": ["once"], "better": "lower", "section": "cost", "order": 20, "label": { "web": "school.admissionFee", "android": "school_admission_fee" } }
+ ],
+ "checklist": [],
+ "questions": {
+  "seed": "docs/schemas/default-questions.json",
+  "scopes": [
+   { "id": "BOTH", "cadences": ["year", "once"] }
+  ]
+ },
+ "search": ["label", "address", "street", "locality", "notes", "contactName", "areaNotes", "board", "medium", "grades", "commuteMinutes", "busService", "fees", "admissionFee"],
+ "capabilities": {
+  "map": true,
+  "rooms": false,
+  "moveIn": false,
+  "contacts": { "role": "office", "autoCreateFromPhone": false },
+  "paths": true
+ },
+ "ai": {
+  "extract": ["label", "address", "street", "locality", "contactName", "contactPhone", "listingUrl", "notes", "board", "medium", "grades", "busService", "fees", "admissionFee"],
+  "ask": ["label", "address", "street", "locality", "board", "medium", "grades", "commuteMinutes", "busService", "fees", "admissionFee", "areaNotes", "distances", "status", "rating", "visits", "notes"],
+  "plan": ["label", "status", "rating", "locality", "street", "board", "medium", "grades", "commuteMinutes", "busService", "fees"],
+  "never": ["contactName", "contactPhone"],
+  "words": {
+   "noun": "School",
+   "records": "schools",
+   "extras": {
+    "board": { "words": "Board", "options": { "CBSE": "CBSE", "ICSE": "ICSE", "STATE": "State board", "IB": "IB", "IGCSE": "Cambridge (IGCSE)", "OTHER": "Other" } },
+    "medium": { "words": "Medium of instruction", "options": { "ENGLISH": "English", "HINDI": "Hindi", "REGIONAL": "State language", "OTHER": "Other" } },
+    "grades": { "words": "Grades offered" },
+    "commuteMinutes": { "words": "Commute (minutes)" },
+    "busService": { "words": "School bus" },
+    "fees": { "words": "Fees per year" },
+    "admissionFee": { "words": "Admission fee" }
+   }
+  }
+ }
+}

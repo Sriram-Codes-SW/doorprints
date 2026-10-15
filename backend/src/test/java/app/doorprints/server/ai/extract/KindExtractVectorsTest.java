@@ -73,14 +73,14 @@ class KindExtractVectorsTest {
     void everyRawAnswerGivesTheVectorsDraft() {
         for (var c : V.get("sanitize")) {
             var raw = c.get("raw").isNull() ? null : JSON.treeToValue(c.get("raw"), RawSchoolListing.class);
-            var draft = KindDraftSanitizer.sanitize(AiKinds.SCHOOL, KindDraftSanitizer.fields(raw), c.get("source").asString());
+            var draft = KindDraftSanitizer.sanitize(AiKinds.SCHOOL, HouseRaw.fields(raw), c.get("source").asString());
             assertThat(JSON.readTree(JSON.writeValueAsString(draft))).as(c.get("name").asString()).isEqualTo(c.get("expected"));
         }
     }
 
     @Test
     void aHouseDraftHasNoExtrasKeyAndAHousesRequestIsTheTextAlone() throws Exception {
-        var house = DraftSanitizer.sanitize(null, "");
+        var house = HouseRaw.sanitize(null, "");
         assertThat(JSON.valueToTree(house).has("extras")).isFalse();
         var request = JSON.readValue("{\"text\":\"2BHK\"}", AiController.ExtractRequest.class);
         assertThat(request.kind()).isNull();

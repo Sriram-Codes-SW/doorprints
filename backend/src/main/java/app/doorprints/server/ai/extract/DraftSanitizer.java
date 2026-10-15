@@ -73,48 +73,6 @@ public final class DraftSanitizer {
         return seen.size();
     }
 
-    /**
-     * Turns the model's raw listing into a safe {@link HouseDraft} the user can review before saving. Each field is
-     * cleaned on its own; anything unreadable or unverifiable is dropped and a warning is added instead of failing
-     * the whole draft. A missing label is generated from bedrooms and place. A null result yields an "Untitled
-     * listing" draft with a warning.
-     * @param sourceText the listing the model read, used to confirm phone numbers and URLs
-     */
-    public static HouseDraft sanitize(RawListing raw, String sourceText) {
-        var warnings = new ArrayList<String>();
-        if (raw == null) {
-            warnings.add("Model returned nothing usable");
-            return new HouseDraft("Untitled listing", null, null, null, null, null, null, null, null, null, null,
-                    List.of(), warnings);
-        }
-        var source = sourceText == null ? "" : sourceText;
-
-        var address = clean(raw.address(), ADDRESS_MAX, "address", warnings);
-        var street = clean(raw.street(), STREET_MAX, "street", warnings);
-        var locality = clean(raw.locality(), LOCALITY_MAX, "locality", warnings);
-        var priceType = priceType(raw.priceType(), warnings);
-        var price = price(raw.price(), warnings);
-        var bedrooms = bedrooms(raw.bedrooms(), warnings);
-        var contactName = clean(raw.contactName(), CONTACT_NAME_MAX, "contactName", warnings);
-        var phone = phone(raw.contactPhone(), source, warnings);
-        var url = url(raw.listingUrl(), source, warnings);
-        if (url != null) {
-            // The model picked one link; if the pasted text holds several, the person is told, whatever the model thinks.
-            var links = linkCount(source);
-            if (links >= 2) warnings.add("listingUrl: the text has " + links + " links, check this is the right one");
-        }
-        var notes = clean(raw.notes(), NOTES_MAX, "notes", warnings);
-        var amenities = amenities(raw.amenities(), warnings);
-
-        var label = clean(raw.label(), LABEL_MAX, "label", warnings);
-        if (label == null) {
-            label = defaultLabel(bedrooms, locality, street);
-            warnings.add("label: generated because the model returned none");
-        }
-        return new HouseDraft(label, address, street, locality, price, priceType, bedrooms, contactName, phone, url,
-                notes, amenities, List.copyOf(warnings));
-    }
-
     /** Trim, drop control chars, collapse whitespace (except in notes' newlines), clamp length; blank -> null. */
     static String clean(String value, int max, String field, List<String> warnings) {
         if (value == null) return null;
@@ -268,12 +226,12 @@ public final class DraftSanitizer {
     }
 
     /**
-     * Fallback label such as "2BHK in Indiranagar", "Studio" or "House", from the bedrooms and the locality (or else
-     * street).
+     * Fallback label such as "2BHK in Indiranagar", "Studio" or "House" ({@code noun}), from the bedrooms and the locality (or
+     * else street), cut to {@link #LABEL_MAX} characters.
      */
-    static String defaultLabel(Integer bedrooms, String locality, String street) {
+    static String defaultLabel(String noun, Integer bedrooms, String locality, String street) {
         var where = locality != null ? locality : street;
-        var what = bedrooms == null ? "House" : bedrooms == 0 ? "Studio" : bedrooms + "BHK";
+        var what = bedrooms == null ? noun : bedrooms == 0 ? "Studio" : bedrooms + "BHK";
         var label = where == null ? what : what + " in " + where;
         return label.length() > LABEL_MAX ? label.substring(0, LABEL_MAX) : label;
     }

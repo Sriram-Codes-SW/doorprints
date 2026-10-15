@@ -118,7 +118,7 @@
    "items": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]{0,39}$" }
   },
   "ai": {
-   "description": "The AI contract slots (reserved; read by the server and both cores from kinds PR 7, S4b-BL-211). `extract`: what the listing extract fills; `ask`: what an Ask document line carries; `plan`: what Plan filters on; `never`: what a saved candidate never sends to a provider.",
+   "description": "The AI contract slots (reserved; read by the server and both cores from kinds PR 7, S4b-BL-211). `extract`: what the listing extract fills; `ask`: what an Ask document line carries; `plan`: what Plan filters on; `never`: what a saved candidate never sends to a provider. `words` (optional, kinds PR 28): the English words the server's prompts and documents use for the kind.",
    "type": "object",
    "additionalProperties": false,
    "required": ["extract", "ask", "plan", "never"],
@@ -126,7 +126,8 @@
     "extract": { "$ref": "#/$defs/ids" },
     "ask": { "$ref": "#/$defs/ids" },
     "plan": { "$ref": "#/$defs/ids" },
-    "never": { "$ref": "#/$defs/ids" }
+    "never": { "$ref": "#/$defs/ids" },
+    "words": { "$ref": "#/$defs/aiWords" }
    }
   },
   "capabilities": {
@@ -200,6 +201,40 @@
  "$defs": {
   "kindId": { "type": "string", "pattern": "^[a-z][a-z0-9_]{1,31}$" },
   "fieldId": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]{0,39}$" },
+  "aiWord": {
+   "description": "One English word or short phrase the server's prompts and Ask documents speak in (kinds PR 28, docs/03 §18.22). Letters, digits, spaces and . , ' ( ) / - only, so a word can carry no markup, no line break, no colon (a document line's key ends at the first colon) and no instruction of any length.",
+   "type": "string",
+   "pattern": "^[A-Za-z][A-Za-z0-9 .,'()/-]{0,59}$"
+  },
+  "aiWords": {
+   "description": "The English words of the kind's AI text, optional (kinds PR 28): the server reads a kind through its file alone. `noun`: the first line's key of an Ask document (`School: <name>`) and the word of a generated label; `records`: the plural, the name of the Ask records' block (`schools-<nonce>`) and the word in the Ask refusal (`I don't know based on the schools you have saved.`); `extras`: for each typed extra an `ai` slot names, its `words` (the key of its document line) and, for an `enum`, the words of each option id. An extra the server's AI already knows by id (the house's bedrooms, area, floor and cost fields, `docs/03` §18.22) needs none. Nothing here is a prompt: the prompts are the server's, from these words.",
+   "type": "object",
+   "additionalProperties": false,
+   "required": ["noun", "records"],
+   "properties": {
+    "noun": { "$ref": "#/$defs/aiWord" },
+    "records": { "type": "string", "pattern": "^[a-z]{2,24}$" },
+    "extras": {
+     "type": "object",
+     "maxProperties": 60,
+     "propertyNames": { "$ref": "#/$defs/fieldId" },
+     "additionalProperties": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["words"],
+      "properties": {
+       "words": { "$ref": "#/$defs/aiWord" },
+       "options": {
+        "type": "object",
+        "maxProperties": 30,
+        "propertyNames": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,31}$" },
+        "additionalProperties": { "$ref": "#/$defs/aiWord" }
+       }
+      }
+     }
+    }
+   }
+  },
   "ids": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]{0,39}$" } },
   "webKey": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*(\\.[A-Za-z0-9_]+)+$" },
   "androidKey": { "type": "string", "pattern": "^[a-z][A-Za-z0-9_]*$" },

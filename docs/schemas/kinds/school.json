@@ -175,6 +175,19 @@
   "extract": ["label", "address", "street", "locality", "contactName", "contactPhone", "listingUrl", "notes", "board", "medium", "grades", "busService", "fees", "admissionFee"],
   "ask": ["label", "address", "street", "locality", "board", "medium", "grades", "commuteMinutes", "busService", "fees", "admissionFee", "areaNotes", "distances", "status", "rating", "visits", "notes"],
   "plan": ["label", "status", "rating", "locality", "street", "board", "medium", "grades", "commuteMinutes", "busService", "fees"],
-  "never": ["contactName", "contactPhone"]
+  "never": ["contactName", "contactPhone"],
+  "words": {
+   "noun": "School",
+   "records": "schools",
+   "extras": {
+    "board": { "words": "Board", "options": { "CBSE": "CBSE", "ICSE": "ICSE", "STATE": "State board", "IB": "IB", "IGCSE": "Cambridge (IGCSE)", "OTHER": "Other" } },
+    "medium": { "words": "Medium of instruction", "options": { "ENGLISH": "English", "HINDI": "Hindi", "REGIONAL": "State language", "OTHER": "Other" } },
+    "grades": { "words": "Grades offered" },
+    "commuteMinutes": { "words": "Commute (minutes)" },
+    "busService": { "words": "School bus" },
+    "fees": { "words": "Fees per year" },
+    "admissionFee": { "words": "Admission fee" }
+   }
+  }
  }
 }

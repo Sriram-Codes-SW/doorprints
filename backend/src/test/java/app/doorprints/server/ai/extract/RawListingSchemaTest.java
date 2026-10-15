@@ -46,9 +46,13 @@ class RawListingSchemaTest {
             }
         }
         assertThat(listing).isNotNull();
-        var components = RawListing.class.getRecordComponents();
-        assertThat(components).hasSize(listing.size());
-        for (var component : components) {
+        // The house's fields as the server tells the model: its prompt pack (kinds PR 28), and the record it replaced.
+        var fields = app.doorprints.server.ai.kind.AiKinds.HOUSE.extractFields();
+        assertThat(fields).hasSize(listing.size());
+        for (var field : fields) {
+            assertThat(listing.get(field.name()).get("description").asText()).as(field.name()).isEqualTo(field.description());
+        }
+        for (var component : RawListing.class.getRecordComponents()) {
             var described = described(component.getName());
             assertThat(described).as(component.getName()).isNotNull();
             assertThat(listing.get(component.getName()).get("description").asText())
@@ -60,6 +64,9 @@ class RawListingSchemaTest {
     void theLocalityIsTheAreaAndNotTheCity() {
         assertThat(described("locality").value())
                 .contains("never the city or district alone").contains("repeat the road here");
+        var locality = app.doorprints.server.ai.kind.AiKinds.HOUSE.extractFields().stream()
+                .filter(f -> f.name().equals("locality")).findFirst().orElseThrow();
+        assertThat(locality.description()).isEqualTo(described("locality").value());
     }
 
     /** Where the compiler puts the annotation of a record component depends on its targets: look at the field. */
