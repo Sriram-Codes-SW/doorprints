@@ -1,0 +1,18 @@
+{
+  "spec": [
+    "android/app/src/test/java/app/doorprints/SpacesRootTest.kt"
+  ],
+  "gradle": [
+    ":app:testDebugUnitTest",
+    "--tests",
+    "app.doorprints.SpacesRootTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/Root.kt",
+      "find": "                    if (HuntSpace.mayStart(setting)) {\n                        chosenKind = KindSettingRules.HOUSE\n                        huntRequested = true",
+      "replace": "                    if (true) {\n                        chosenKind = KindSettingRules.HOUSE\n                        huntRequested = true",
+      "expect": "withTheHouseOffAReminderStartHuntModeStartsNoWalkAndSaysWhy"
+    }
+  ]
+}

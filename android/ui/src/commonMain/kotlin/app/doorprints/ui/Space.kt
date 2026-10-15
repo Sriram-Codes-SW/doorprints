@@ -34,6 +34,7 @@ import app.doorprints.shared.model.DevKinds
 import app.doorprints.shared.model.KindSetting
 import app.doorprints.shared.model.KindWordKeys
 import app.doorprints.shared.model.KindSettingRules
+import app.doorprints.shared.model.SpaceScope
 import app.doorprints.shared.model.SpaceView
 import app.doorprints.ui.res.*
 import org.jetbrains.compose.resources.StringResource
@@ -143,6 +144,13 @@ class SpaceUi(val setting: KindSetting, val kind: String) {
 
     /** The space is one the person turned off: it still opens, with a note, and nothing in it is hidden or deleted. */
     val hidden: Boolean get() = multi && kind !in setting.enabled
+
+    /**
+     * The kind a new entry made on this space's screens is (docs/03 §18.18): this space's own, except in a space that is turned
+     * off, which keeps its entries and takes no new one: that is the default kind's (`SpaceScope.createKind`), so nothing is
+     * made that the lists the person chose would not show.
+     */
+    val creating: BuiltInKind get() = if (hidden) DevKinds.of(SpaceScope.createKind(kind, setting.enabled, setting.default), on = true) else built
 
     /** Whether the kind shows the place [ref] of a candidate (`section.checklist`, `field.money`, ...): the house-only tabs and rows read this. */
     fun shows(ref: String): Boolean = built.labels.isVisible(ref)

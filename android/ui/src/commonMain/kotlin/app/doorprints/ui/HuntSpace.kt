@@ -18,6 +18,9 @@
 
 package app.doorprints.ui
 
+import app.doorprints.shared.model.KindSetting
+import app.doorprints.shared.model.KindSettingRules
+
 /**
  * Hunt mode is the house space's (kinds PR C, S4b-BL-274), so its walk ends when the person leaves that space (S4b-BL-304,
  * owner, 2026-10-15): there is no card in another space to stop it, and its *stay here?* alert would make a candidate the
@@ -30,4 +33,20 @@ object HuntSpace {
      * start from the notification) is left alone: only the move out of the house space stops one.
      */
     fun stopsOnLeaving(wasHere: Boolean, isHere: Boolean, active: Boolean): Boolean = wasHere && !isHere && active
+
+    /**
+     * Whether Hunt mode may start at all (docs/03 §18.18): only while the house is on in *What you track*. With the house off
+     * (the school alone, say) there is no Hunt card, so a reminder's or an area wake-up's *Start Hunt mode* opens the Map and
+     * says so in one line instead of starting a walk nobody could stop or see, whose *stay here?* alert would otherwise make an
+     * entry in a space that is off.
+     */
+    fun mayStart(setting: KindSetting): Boolean = KindSettingRules.HOUSE in setting.enabled
+
+    /**
+     * The space a Hunt alert's new entry is made in when the visit is not yet a saved entry (docs/03 §18.18): the house while it
+     * is on (S4b-BL-304), else the default kind, which is always on. The walk that raised the alert may have outlived the setting
+     * (the alert was posted before the house was turned off); the entry is then made in a space the person sees, never in one
+     * that is off.
+     */
+    fun alertKind(setting: KindSetting): String = if (mayStart(setting)) KindSettingRules.HOUSE else setting.default
 }

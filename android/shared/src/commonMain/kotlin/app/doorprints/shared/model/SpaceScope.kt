@@ -134,4 +134,11 @@ object SpaceScope {
     /** The kind a shared listing lands in: the [chosen] one when it is [enabled], else the [default] kind. */
     fun shareKind(chosen: String?, enabled: List<String>, default: String): String =
         if (chosen != null && chosen in enabled) chosen else default
+
+    /**
+     * The kind a new entry is made as, from the [space] it is made in (docs/03 §18.18): the space's own while that kind is
+     * [enabled], else the [default] kind, which is always enabled. A kind that is off keeps its entries and takes no new one.
+     */
+    fun createKind(space: String, enabled: List<String>, default: String): String =
+        if (space in enabled) space else default
 }

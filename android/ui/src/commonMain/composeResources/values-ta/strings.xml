@@ -494,6 +494,8 @@
     <string name="map_hunt_stopped_not_allowed">Android இதைப் பின்னணியில் இயங்க விடாததால் தேடல் பயன்முறை நின்றது. இங்கே மீண்டும் இயக்கவும்.</string>
     <!-- S4b-BL-304, Hunt mode ends on leaving the house space (2026-10-15): under review. -->
     <string name="hunt_stopped_left_space">தேடல் பயன்முறை நின்றது. இது வீடுகள் பகுதியில் மட்டுமே இயங்கும்.</string>
+    <!-- Start Hunt mode refused with the house off (docs/03 §18.18, 2026-10-15): under review. -->
+    <string name="hunt_needs_houses">தேடல் பயன்முறை வீடுகள் பகுதியில் மட்டுமே இயங்கும்; நீங்கள் கண்காணிப்பவை என்பதில் வீடுகள் அணைக்கப்பட்டுள்ளன.</string>
     <string name="map_hunt_stopped_permission">இருப்பிட அனுமதி அணைக்கப்பட்டதால் தேடல் பயன்முறை நின்றது.</string>
     <string name="map_loading">வரைபடம் ஏற்றப்படுகிறது…</string>
     <string name="map_location_off">Doorprints-க்கு இருப்பிடம் அணைக்கப்பட்டுள்ளது. தேடல் பயன்முறைக்கும் ‘இங்கே வீட்டைச் சேமி’க்கும் இது தேவை.</string>

@@ -102,6 +102,19 @@ describe('Your data: What you track (Settings > Kinds)', () => {
     expect([host.querySelector('#kind-rows'), enabledKinds(), localStorage.getItem(ENABLED_KINDS_KEY)]).toEqual([null, ['house'], '["house","school"]']);
   });
 
+  it('the school the default and the house off: the house row stays, off, with its kept entries counted; turning it on again keeps the school the default (docs/03 §18.18)', async () => {
+    localStorage.setItem(EXPERIMENTAL_KINDS_KEY, '1');
+    localStorage.setItem(ENABLED_KINDS_KEY, '["school"]');
+    localStorage.setItem(DEFAULT_KIND_KEY, 'school');
+    const { fixture, host } = await open();
+    expect([...host.querySelectorAll('#kind-rows .name')].map((n) => text(n))).toEqual(['Houses Saved: 1', 'Schools Saved: 1']);
+    expect([show(host, 'house')!.checked, show(host, 'school')!.checked, show(host, 'school')!.disabled]).toEqual([false, true, true]);
+    expect([dflt(host, 'school')!.checked, dflt(host, 'house')!.disabled]).toEqual([true, true]);
+    await click(fixture, show(host, 'house'));
+    expect([enabledKinds(), defaultKind()]).toEqual([['house', 'school'], 'school']);
+    expect(TestBed.inject(Router).config.some((r) => r.path === 'k/house')).toBe(true);
+  });
+
   it('sits on Your data before Remove all data', async () => {
     TestBed.configureTestingModule({ imports: [DataPage], providers: [provideRouter([])] });
     await TestBed.inject(TranslationService).setLang('en');
