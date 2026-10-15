@@ -264,7 +264,7 @@ private suspend fun huntCheck(): Result {
     )
     repo.saveHouse(house)
     try {
-        val started = withContext(Dispatchers.Main) { IosHunt.start() }
+        val started = withContext(Dispatchers.Main) { IosHunt.start(house.kind) }
         if (!started) return Result.Fail("Hunt mode did not start")
         try {
             HuntState.state.first { it.nearestHouse?.id == house.id }

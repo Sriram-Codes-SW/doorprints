@@ -73,10 +73,11 @@ sealed interface DeepLink {
     /** A house's form; [questions]: scrolled to its questions (a viewing reminder's *Questions*, S4b-BL-93b). */
     data class OpenHouse(val id: String, val questions: Boolean = false) : DeepLink
     /**
-     * A new house at [lat], [lon], from a Hunt mode arrival alert: [visitId] is the visit, which the first save links
-     * to the house and whose alert it removes.
+     * A new entry at [lat], [lon], from a Hunt mode arrival alert: [visitId] is the visit, which the first save links
+     * to the entry and whose alert it removes. [kind] is the kind of the walk that raised the alert (docs/03 section 18.19): the
+     * entry is made in that space while it is on; null (an alert of an older build) is the default kind's.
      */
-    data class NewHouse(val lat: Double, val lon: Double, val visitId: String?) : DeepLink
+    data class NewHouse(val lat: Double, val lon: Double, val visitId: String?, val kind: String? = null) : DeepLink
 
     /** Export, Import or Settings, from an export/import/backup notification. Always one of the notification screens. */
     data class OpenScreen(val route: String) : DeepLink
@@ -104,23 +105,23 @@ sealed interface DeepLink {
      * *Start Hunt mode* from a reminder while location is not granted (5.16, 5.18): the Map, which asks for location
      * as its own Hunt switch does (the person tapped to start it) and then starts Hunt mode.
      */
-    data object StartHunt : DeepLink
+    data class StartHunt(val by: HuntSpace.Starter = HuntSpace.Starter.REMINDER) : DeepLink
 
     /**
      * A tapped Hunt mode reminder or area wake-up on iPhone (S4b-BL-94c), where a notification has no *Start Hunt mode*
      * action (an iPhone app cannot start location tracking from one): the Map, which offers Hunt mode in a snackbar
      * with *Start Hunt mode*; the action takes the Hunt switch's path, as [StartHunt] does.
      */
-    data object OfferHunt : DeepLink
+    data class OfferHunt(val by: HuntSpace.Starter = HuntSpace.Starter.REMINDER) : DeepLink
 }
 
 /** One tab of the bottom bar. */
 private data class NavTab(val route: String, val label: StringResource, val icon: ImageVector)
 
-/** The bar's first three tabs; the list tab is named by the space's kind (*Houses*, *Schools*): the house's is `nav_houses`, as it always was. */
+/** The bar's first three tabs; the list tab is named by the space's kind (*Houses*, *Schools*): the house's is the same word as `nav_houses`, as it always was. */
 private fun baseTabs(space: SpaceUi) = listOf(
     NavTab("map", Res.string.nav_map, Icons.Default.Place),
-    NavTab("houses", if (space.huntHere) Res.string.nav_houses else space.words.many, Icons.Default.Home),
+    NavTab("houses", space.words.many, Icons.Default.Home),
     NavTab("compare", Res.string.nav_compare, Icons.AutoMirrored.Filled.List),
 )
 private val assistantTab = NavTab("assistant", Res.string.nav_assistant, Icons.Default.Search)
@@ -296,25 +297,27 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
             }
         }
 
-        // Hunt mode is the house space's: leaving that space ends the walk, with one line on why (S4b-BL-304, owner 2026-10-15).
-        // The walk of a Start Hunt mode tap made while another space is on screen is left alone: only the move out stops one.
+        // The walk belongs to the space it was started in (docs/03 section 18.19): leaving that space ends it, with one line on why
+        // (S4b-BL-304, owner 2026-10-15), in the words of the walk's kind. The walk of a Start Hunt mode tap made while another space is
+        // on screen is left alone: only the move out of the walk's own space stops one.
         val huntLive by services.mapScreen.hunt.collectAsStateWithLifecycle()
-        var wasHuntHere by remember { mutableStateOf(space.huntHere) }
-        LaunchedEffect(space.huntHere) {
-            if (HuntSpace.stopsOnLeaving(wasHuntHere, space.huntHere, huntLive.active)) {
+        var wasKind by remember { mutableStateOf(space.kind) }
+        LaunchedEffect(space.kind) {
+            if (HuntSpace.stopsOnLeaving(huntLive.kind, wasKind, space.kind, huntLive.active)) {
                 services.mapScreen.stopHunt()
-                rootSnackbar.showSnackbar(getString(Res.string.hunt_stopped_left_space))
+                rootSnackbar.showSnackbar(getString(HuntWords.of(wasKind).leftSpace))
             }
-            wasHuntHere = space.huntHere
+            wasKind = space.kind
         }
 
-        // *Start Hunt mode* from a reminder or an area wake-up while the house is off: not started, one line says why (docs/03 §18.18).
-        var huntNeedsHouses by remember { mutableStateOf(false) }
-        LaunchedEffect(huntNeedsHouses) {
-            if (!huntNeedsHouses) return@LaunchedEffect
+        // *Start Hunt mode* from a reminder or an area wake-up while no kind that could run it is on: not started, one line says why
+        // (docs/03 sections 18.18 and 18.19), in the words of the kind that would have.
+        var huntNeeds by remember { mutableStateOf<String?>(null) }
+        LaunchedEffect(huntNeeds) {
+            val kind = huntNeeds ?: return@LaunchedEffect
             // Cleared after the line has been shown: clearing it first would restart this effect and cancel the line.
-            rootSnackbar.showSnackbar(getString(Res.string.hunt_needs_houses))
-            huntNeedsHouses = false
+            rootSnackbar.showSnackbar(getString(HuntWords.of(kind).needsKind))
+            huntNeeds = null
         }
 
         // The question bank is seeded once per install, in the app's language (docs/11 5.5, slice 3a); the screens that
@@ -403,12 +406,12 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                     // A "stay here?" alert whose visit was already saved as a house opens that house, not a second
                     // new-house form that would save a duplicate (whole-app audit).
                     val savedAs = d.visitId?.let { repo.getVisit(it)?.houseId }
-                    // A Hunt alert is the house space's walk (S4b-BL-304): it makes a house, not a candidate of the default kind
-                    // (kinds PR C); an existing one opens in its own space. With the house off it makes the default kind's entry
-                    // (never one in a space that is off, docs/03 §18.18).
+                    // A Hunt alert is its walk's space's (S4b-BL-304, docs/03 section 18.19): it makes an entry of the kind the walk was started
+                    // in, not of the default kind (kinds PR C); an existing one opens in its own space. With that kind off it makes the
+                    // default kind's entry (never one in a space that is off, docs/03 section 18.18).
                     if (setting.spaces) {
                         val savedKind = savedAs?.let { id -> repo.getHouse(id)?.kind }
-                        chosenKind = if (savedKind != null) setting.spaceOf(savedKind) else HuntSpace.alertKind(setting)
+                        chosenKind = if (savedKind != null) setting.spaceOf(savedKind) else HuntSpace.alertKind(setting, d.kind)
                     }
                     when {
                         savedAs != null -> openHouse(savedAs)
@@ -439,22 +442,25 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                 is DeepLink.OpenViewing -> {
                     if (!onTop(Routes.VIEWING, "id", d.id)) nav.navigate(Routes.viewing(d.id))
                 }
-                DeepLink.StartHunt -> {
-                    // Hunt mode is the house space's; with the house off it is not started, and the Map says why (docs/03 §18.18).
-                    if (HuntSpace.mayStart(setting)) {
-                        chosenKind = KindSettingRules.HOUSE
+                is DeepLink.StartHunt -> {
+                    // The walk of the kind that the reminder or the area belongs to (docs/03 section 18.19); with none on, it is not
+                    // started, and the Map says why.
+                    val kind = HuntSpace.startKind(setting, d.by)
+                    if (kind != null) {
+                        chosenKind = kind
                         huntRequested = true
                     } else {
-                        huntNeedsHouses = true
+                        huntNeeds = HuntSpace.wanted(d.by)
                     }
                     nav.openMapFresh()
                 }
-                DeepLink.OfferHunt -> {
-                    if (HuntSpace.mayStart(setting)) {
-                        chosenKind = KindSettingRules.HOUSE
+                is DeepLink.OfferHunt -> {
+                    val kind = HuntSpace.startKind(setting, d.by)
+                    if (kind != null) {
+                        chosenKind = kind
                         huntOffered = true
                     } else {
-                        huntNeedsHouses = true
+                        huntNeeds = HuntSpace.wanted(d.by)
                     }
                     nav.openMapFresh()
                 }

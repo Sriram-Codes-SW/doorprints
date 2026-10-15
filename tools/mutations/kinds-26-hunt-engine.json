@@ -1,0 +1,48 @@
+{
+  "spec": [
+    "android/shared/src/commonTest/kotlin/app/doorprints/location/HuntEngineTest.kt"
+  ],
+  "gradle": [
+    ":shared:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.location.HuntEngineTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/location/HuntEngine.kt",
+      "find": "if (hunt.streetMemory) checkStreet(lat, lon)",
+      "replace": "checkStreet(lat, lon)",
+      "expect": "aKindWithNoStreetMemoryNeverTellsAStreet"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/location/HuntEngine.kt",
+      "find": "if (house == null && hunt.stayCreates) effects.alertStay",
+      "replace": "if (house == null) effects.alertStay",
+      "expect": "aKindWhoseStayDoesNotCreateSavesTheVisitAndOffersNothing"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/location/HuntEngine.kt",
+      "find": "if (kind == KindSettingRules.HOUSE) settingsM else hunt.alertRadiusM",
+      "replace": "settingsM",
+      "expect": "aSchoolWalkAlertsWithinTheKindsRadiusAndTheSettingsRadiusIsTheHouses"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/location/HuntEngine.kt",
+      "find": "if (kind == KindSettingRules.HOUSE) settingsM else hunt.alertRadiusM",
+      "replace": "hunt.alertRadiusM",
+      "expect": "theRadiusRuleIsTheSettingForTheHouseAndTheFileForEveryOtherKind"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/location/HuntEngine.kt",
+      "find": "HuntState.update { it.copy(active = true, kind = kind, startedAt = now(), stopReason = null, walkId = 0) }",
+      "replace": "HuntState.update { it.copy(active = true, startedAt = now(), stopReason = null, walkId = 0) }",
+      "expect": "aSchoolWalkAlertsWithinTheKindsRadiusAndTheSettingsRadiusIsTheHouses"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/location/HuntEngine.kt",
+      "find": "alertRadiusM = radiusFor(kind, hunt, it.alertRadiusM)",
+      "replace": "alertRadiusM = it.alertRadiusM",
+      "expect": "aSchoolWalkAlertsWithinTheKindsRadiusAndTheSettingsRadiusIsTheHouses"
+    }
+  ]
+}

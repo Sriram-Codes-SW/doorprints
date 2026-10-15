@@ -30,6 +30,7 @@ import androidx.core.net.toUri
 import app.doorprints.data.HouseEntity
 import app.doorprints.location.HuntService
 import app.doorprints.shared.model.Area
+import app.doorprints.shared.model.KindSettingRules
 import app.doorprints.shared.model.LocationSource
 import app.doorprints.shared.model.Viewing
 import app.doorprints.shared.model.ViewingReminders
@@ -157,6 +158,9 @@ object Notifications {
     const val EXTRA_NEW_LON = "newLon"
     const val EXTRA_VISIT_ID = "visitId"
 
+    /** The kind of the walk that raised a "stay here?" alert (docs/03 section 18.19); MainActivity accepts only a built-in kind id. */
+    const val EXTRA_NEW_KIND = "newKind"
+
     /** A viewing to open (a Hunt mode reminder's body, slice 3c); MainActivity accepts only a valid record id. */
     const val EXTRA_OPEN_VIEWING = "openViewing"
 
@@ -230,6 +234,24 @@ object Notifications {
                 lockscreenVisibility = android.app.Notification.VISIBILITY_PRIVATE
             }
         )
+    }
+
+    /**
+     * The alerts channel of a walk of [kind] (docs/03 section 18.19): the house's is [CHANNEL_ALERTS], created at start; any other
+     * kind's is `alerts_<kind>`, created here the first time its walk alerts, named and described in the kind's own words
+     * ([name], [description]: `huntChannelAlerts`, `huntChannelAlertsDesc`) and as private on a locked screen as the house's.
+     * Returns the channel id to post on.
+     */
+    fun alertsChannel(context: Context, kind: String, name: String, description: String): String {
+        if (kind == KindSettingRules.HOUSE) return CHANNEL_ALERTS
+        val id = "alerts_$kind"
+        context.getSystemService(NotificationManager::class.java)?.createNotificationChannel(
+            NotificationChannel(id, name, NotificationManager.IMPORTANCE_HIGH).apply {
+                this.description = description
+                lockscreenVisibility = android.app.Notification.VISIBILITY_PRIVATE
+            }
+        )
+        return id
     }
 
     /**
@@ -513,14 +535,17 @@ object Notifications {
      * even where the phone is set to show all notification content, which would show a private one whole and name the
      * house; it still sounds and shows once the phone is unlocked.
      */
-    fun alert(context: Context, id: Int, title: String, text: String, tap: PendingIntent?, hideOnLockScreen: Boolean = false) {
+    fun alert(
+        context: Context, id: Int, title: String, text: String, tap: PendingIntent?, hideOnLockScreen: Boolean = false,
+        channel: String = CHANNEL_ALERTS,
+    ) {
         if (!canPost(context)) return
         // What a locked screen shows instead of the house details (threat model F-14, SEC-022).
         val publicVersion = NotificationCompat.Builder(context, CHANNEL_ALERTS)
             .setSmallIcon(SMALL_ICON)
             .setContentTitle(context.getString(R.string.notif_public))
             .build()
-        val n = NotificationCompat.Builder(context, CHANNEL_ALERTS)
+        val n = NotificationCompat.Builder(context, channel)
             .setSmallIcon(SMALL_ICON)
             .setContentTitle(title)
             .setContentText(text)

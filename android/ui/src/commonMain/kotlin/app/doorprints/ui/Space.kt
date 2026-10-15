@@ -81,8 +81,8 @@ class SpaceWords(
     val exportPhotosShortlisted: StringResource,
     /**
      * The map's location notes (S4b-BL-301): *Save here* needs location (`saveNeedsLocation`), and the note under the Hunt card
-     * (`locationOff`, `needsPrecise`) or, where there is none, over the map (`locationOffNoHunt`, `needsPreciseNoHunt`). Hunt mode
-     * is the house space's, so a school space draws the no-Hunt pair; its Hunt pair is that pair, so no path of it can say Hunt mode.
+     * (`locationOff`, `needsPrecise`) or, where there is none (the iPhone), over the map (`locationOffNoHunt`, `needsPreciseNoHunt`). Hunt mode
+     * is a capability of the kind (docs/03 section 18.19), so every space whose kind has it, the school's too, says *Hunt mode* in its Hunt pair.
      */
     val locationOff: StringResource,
     val needsPrecise: StringResource,
@@ -118,6 +118,56 @@ class SpaceWords(
 }
 
 /**
+ * The words of Hunt mode that name the kind (docs/03 section 18.19, kinds PR 26): the alerts, the street line, the walk's
+ * notification and its channel, the rationale, and the two lines that say why a walk ended or could not start. Every word is
+ * the kind file's `android` key ([KindWordKeys]); the house's are the strings Hunt mode always had, so a house walk is word for
+ * word what it was. The lock-screen public text ("Doorprints alert") is not a kind's and stays the app's.
+ */
+@Immutable
+class HuntWords(
+    /** A saved place passed: "You have seen this one: %1$s". */
+    val seen: StringResource,
+    /** The street's counts: "Saved houses: %1$d, visits: %2$d", and with the first visit's date. */
+    val streetText: StringResource,
+    val streetTextSince: StringResource,
+    /** The Hunt card's street line: "%1$s · Been here: houses %2$d, visits %3$d". */
+    val streetSeen: StringResource,
+    /** A stay at an unsaved place: "Are you at a house?". */
+    val stayTitle: StringResource,
+    /** Why notifications are asked for when Hunt mode is turned on. */
+    val notifyRationale: StringResource,
+    /** One line when the walk ended because the person left its space. */
+    val leftSpace: StringResource,
+    /** One line when a reminder's or an area's *Start Hunt mode* cannot start because the kind is off. */
+    val needsKind: StringResource,
+    /** The ongoing notification's text while the walk runs. */
+    val ongoingText: StringResource,
+    /** The name and description of the kind's alerts channel. */
+    val channelAlerts: StringResource,
+    val channelAlertsDesc: StringResource,
+    /** The Hunt card's note when notifications are off: Hunt mode cannot tell you when you pass a saved place. */
+    val notificationsOff: StringResource,
+) {
+    companion object {
+        private fun from(keys: Map<String, String?>): HuntWords {
+            fun w(id: String): StringResource = kindStringResource(checkNotNull(keys[id]) { "no Android word for $id" })
+            return HuntWords(
+                seen = w("huntSeen"), streetText = w("huntStreetText"), streetTextSince = w("huntStreetTextSince"),
+                streetSeen = w("huntStreetSeen"), stayTitle = w("huntStayTitle"), notifyRationale = w("huntNotifyRationale"),
+                leftSpace = w("huntLeftSpace"), needsKind = w("huntNeedsKind"), ongoingText = w("huntOngoingText"),
+                channelAlerts = w("huntChannelAlerts"), channelAlertsDesc = w("huntChannelAlertsDesc"), notificationsOff = w("huntNotificationsOff"),
+            )
+        }
+
+        val HOUSE = from(KindWordKeys.HOUSE)
+        val SCHOOL = from(KindWordKeys.SCHOOL)
+
+        /** The Hunt words of [kind]; a kind with no entry of its own reads the house's. */
+        fun of(kind: String): HuntWords = if (kind == "school") SCHOOL else HOUSE
+    }
+}
+
+/**
  * The space on screen (kinds PR C, S4b-BL-274; docs/03 §18.12): which kind's candidates the list, the map, Compare, the
  * Assistant and the copies show, and what that kind has. A space is a filter over the one candidate store, never a table.
  * With one kind on ([multi] false) there is one space, the default's, which holds every candidate and is the app as it
@@ -139,8 +189,11 @@ class SpaceUi(val setting: KindSetting, val kind: String) {
     /** The house words left on this kind's pages (kinds PR 16, phone half): titles, questions, the walk check, Areas and Places. */
     val pages: PageWords = PageWords.of(built.id)
 
-    /** Hunt mode is the house space's (docs/03 §18.12): its card and its switch are not offered elsewhere. */
-    val huntHere: Boolean get() = built.id == KindSettingRules.HOUSE
+    /** The Hunt mode words of this space's kind (docs/03 section 18.19). */
+    val hunt: HuntWords = HuntWords.of(built.id)
+
+    /** This space's kind has Hunt mode (its `capabilities.hunt`, docs/03 section 18.19): its card and its switch are offered here and in no space without it. */
+    val huntHere: Boolean get() = HuntSpace.has(built.id)
 
     /** The space is one the person turned off: it still opens, with a note, and nothing in it is hidden or deleted. */
     val hidden: Boolean get() = multi && kind !in setting.enabled

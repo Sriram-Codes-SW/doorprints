@@ -18,6 +18,7 @@
 
 package app.doorprints
 
+import android.Manifest
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalInspectionMode
@@ -47,6 +48,7 @@ import app.doorprints.location.HuntState
 import app.doorprints.screenshots.ScreenshotTestApp
 import app.doorprints.ui.DeepLink
 import app.doorprints.ui.DoorprintsRoot
+import app.doorprints.ui.HuntSpace
 import app.doorprints.ui.ProvideAppServices
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
@@ -58,13 +60,14 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 
 /**
  * Spaces on the phones (kinds PR C, S4b-BL-274; docs/03 §18.12, TC-U-220), on the real app and Room. A build that ships the
  * house alone is the app it always was (no chooser, no chip, the same tabs and Settings rows); a build that ships the school
  * and has the switch off is that app too; with the school on, the first screen is the chooser, a card opens a space (its
- * words, its list, no Hunt mode outside the house), the chip comes back, the house-only Settings rows follow the kind, and
+ * words, its list, its Hunt mode: the kind file's capability, docs/03 section 18.19), the chip comes back, the house-only Settings rows follow the kind, and
  * a link, an alert or a shared listing resolves its space. English; the other languages are in `StringParityTest`.
  */
 @RunWith(AndroidJUnit4::class)
@@ -274,13 +277,13 @@ class SpacesRootTest {
     }
 
     @Test
-    fun aCardOpensItsSpaceWithItsWordsItsListAndNoHuntMode() {
+    fun aCardOpensItsSpaceWithItsWordsItsListAndItsHuntMode() {
         kinds.enableSchool()
         startTwoKinds()
         waitFor("What are you looking for?")
         card("Schools").performClick()
         waitForMap("schools")
-        hasNo("Hunt mode")
+        waitFor("Hunt mode") // the school has Hunt mode of its own (capabilities.hunt)
         compose.onNodeWithContentDescription("Schools: change what you are looking for").assertExists()
         tab("Schools").performClick()
         waitFor("Search schools")
@@ -363,13 +366,34 @@ class SpacesRootTest {
 
     @Test
     fun aHuntAlertMakesAHouseEvenWhenTheSchoolIsTheDefault() {
-        // S4b-BL-304: Hunt mode is the house space's walk, so its "stay here?" alert makes a house, never a candidate of the default kind.
+        // S4b-BL-304: a house walk's "stay here?" alert makes a house, never a candidate of the default kind; the alert carries the walk's kind (docs/03 section 18.19).
         kinds.enableSchool(schoolDefault = true)
         startTwoKinds()
         waitFor("What are you looking for?")
-        links.value = DeepLink.NewHouse(26.1433, 91.7898, null)
+        links.value = DeepLink.NewHouse(26.1433, 91.7898, null, "house")
         waitFor("Save a house")
         shows("26.143300")
+        hasNo("Save a school")
+    }
+
+    @Test
+    fun aSchoolWalksStayAlertMakesASchoolEvenWhenTheHouseIsTheDefault() {
+        kinds.enableSchool()
+        startTwoKinds()
+        waitFor("What are you looking for?")
+        links.value = DeepLink.NewHouse(26.1433, 91.7898, null, "school")
+        waitFor("Save a school")
+        shows("26.143300")
+        hasNo("Save a house")
+    }
+
+    @Test
+    fun aSchoolWalksStayAlertWithTheSchoolOffMakesTheDefaultKindsEntry() {
+        // The walk's kind was turned off after the alert was posted (the switch is off here): the entry is the default kind's, never one in a space that is off.
+        startTwoKinds()
+        waitFor("Hunt mode")
+        links.value = DeepLink.NewHouse(26.1433, 91.7898, null, "school")
+        waitFor("Save a house")
         hasNo("Save a school")
     }
 
@@ -382,7 +406,7 @@ class SpacesRootTest {
         waitForMap("schools")
         hasNo("What are you looking for?") // one kind on: no chooser, no chip
         hasNo("change what you are looking for")
-        hasNo("Hunt mode") // the Hunt card is the house space's
+        waitFor("Hunt mode") // the school alone has its own Hunt card
         tab("Schools").performClick()
         waitFor("Search schools")
         shows("Pine Hill School")
@@ -410,11 +434,11 @@ class SpacesRootTest {
         kinds.schoolOnly()
         startTwoKinds()
         waitForMap("schools")
-        links.value = DeepLink.StartHunt
+        links.value = DeepLink.StartHunt()
         waitFor("Hunt mode runs in the Houses space only, and Houses is turned off in What you track.")
         hasNo("Hunt mode stopped")
         assertEquals(false, HuntState.state.value.active)
-        links.value = DeepLink.OfferHunt
+        links.value = DeepLink.OfferHunt()
         settle()
         hasNo("Start Hunt mode?")
     }
@@ -426,7 +450,7 @@ class SpacesRootTest {
         waitFor("What are you looking for?")
         card("Schools").performClick()
         waitForMap("schools")
-        links.value = DeepLink.StartHunt
+        links.value = DeepLink.StartHunt()
         waitFor("Hunt mode")
         hasNo("turned off in What you track")
         waitForMap("houses")
@@ -439,7 +463,7 @@ class SpacesRootTest {
         waitFor("What are you looking for?")
         card("Houses").performClick()
         waitFor("Hunt mode")
-        HuntState.update { it.copy(active = true, startedAt = 1L) }
+        HuntState.update { it.copy(active = true, kind = "house", startedAt = 1L) }
         settle()
         assertEquals(0, kinds.huntStops)
         tab("Settings").performClick()
@@ -458,7 +482,7 @@ class SpacesRootTest {
         waitFor("What are you looking for?")
         card("Houses").performClick()
         waitFor("Hunt mode")
-        HuntState.update { it.copy(active = true, startedAt = 1L) }
+        HuntState.update { it.copy(active = true, kind = "house", startedAt = 1L) }
         settle()
         assertEquals(0, kinds.huntStops) // in the house space the walk goes on
         compose.onNodeWithContentDescription("Houses: change what you are looking for").performClick()
@@ -479,7 +503,7 @@ class SpacesRootTest {
         waitFor("What are you looking for?")
         card("Schools").performClick()
         waitForMap("schools")
-        HuntState.update { it.copy(active = true, startedAt = 1L) }
+        HuntState.update { it.copy(active = true, kind = "house", startedAt = 1L) }
         settle()
         assertEquals(0, kinds.huntStops)
     }
@@ -488,7 +512,7 @@ class SpacesRootTest {
     fun withOneKindOnNoWalkIsEverStoppedByASpaceChange() {
         startHouseOnly()
         waitFor("Hunt mode")
-        HuntState.update { it.copy(active = true, startedAt = 1L) }
+        HuntState.update { it.copy(active = true, kind = "house", startedAt = 1L) }
         tab("Settings").performClick()
         settle()
         tab("Map").performClick()
@@ -530,5 +554,94 @@ class SpacesRootTest {
         waitForMap("schools")
         // The server's Ask and Plan take no kind (S4b-BL-290): in the school space there is no Assistant tab without the person's own AI.
         hasNo("Assistant")
+    }
+
+    // Hunt as a capability (docs/03 section 18.19, kinds PR 26; TC-U-269): the school has the card and the switch, the walk is the space's.
+
+    private fun allowLocationAndNotifications() =
+        shadowOf(app).grantPermissions(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.POST_NOTIFICATIONS)
+
+    private fun huntSwitch() = compose.onNode(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Switch))
+
+    @Test
+    fun aSchoolSpaceHasTheHuntCardAndItsSwitchStartsAWalkOfTheSchool() {
+        allowLocationAndNotifications()
+        kinds.enableSchool()
+        startTwoKinds()
+        waitFor("What are you looking for?")
+        card("Schools").performClick()
+        waitForMap("schools")
+        waitFor("Hunt mode")
+        shows("Turn on while you are out looking")
+        huntSwitch().performClick()
+        waitUntil("the school's walk starts") { kinds.huntStarts.isNotEmpty() }
+        assertEquals(listOf("school"), kinds.huntStarts)
+        assertEquals("school", HuntState.state.value.kind)
+    }
+
+    @Test
+    fun theHouseSpaceStillStartsAWalkOfTheHouse() {
+        allowLocationAndNotifications()
+        kinds.enableSchool()
+        startTwoKinds()
+        waitFor("What are you looking for?")
+        card("Houses").performClick()
+        waitFor("Hunt mode")
+        huntSwitch().performClick()
+        waitUntil("the house's walk starts") { kinds.huntStarts.isNotEmpty() }
+        assertEquals(listOf("house"), kinds.huntStarts)
+    }
+
+    @Test
+    fun aSchoolWalkStopsWhenThePersonSwitchesToAnotherSpaceAndSaysWhyInTheSchoolsWords() {
+        kinds.enableSchool()
+        startTwoKinds()
+        waitFor("What are you looking for?")
+        card("Schools").performClick()
+        waitForMap("schools")
+        waitFor("Hunt mode")
+        HuntState.update { it.copy(active = true, kind = "school", startedAt = 1L) }
+        settle()
+        assertEquals(0, kinds.huntStops) // in the school space the walk goes on
+        compose.onNodeWithContentDescription("Schools: change what you are looking for").performClick()
+        waitFor("What are you looking for?")
+        card("Houses").performClick()
+        waitFor("Hunt mode stopped. It runs in the Schools space only.")
+        assertEquals(1, kinds.huntStops)
+        assertEquals(false, HuntState.state.value.active)
+        waitForMap("houses")
+    }
+
+    @Test
+    fun anAreaWakeUpStartsTheDefaultKindsWalkAndAReminderStartsTheHousesWithTheSchoolTheDefault() {
+        allowLocationAndNotifications()
+        kinds.enableSchool(schoolDefault = true)
+        startTwoKinds()
+        waitFor("What are you looking for?")
+        links.value = DeepLink.StartHunt(HuntSpace.Starter.AREA)
+        waitForMap("schools")
+        waitUntil("the school's walk starts") { kinds.huntStarts.isNotEmpty() }
+        assertEquals(listOf("school"), kinds.huntStarts)
+        // The walk of the school is left alone by the move to the house for a reminder (the reminder's walk is a new one: the house's).
+        HuntState.update { HuntState.State() }
+        links.value = DeepLink.StartHunt(HuntSpace.Starter.REMINDER)
+        waitForMap("houses")
+        waitUntil("the house's walk starts") { kinds.huntStarts.size == 2 }
+        assertEquals(listOf("school", "house"), kinds.huntStarts)
+    }
+
+    @Test
+    fun withOnlyTheSchoolOnAnAreaWakeUpStartsTheSchoolsWalkAndAReminderSaysWhyItCannot() {
+        allowLocationAndNotifications()
+        kinds.schoolOnly()
+        startTwoKinds()
+        waitForMap("schools")
+        links.value = DeepLink.StartHunt(HuntSpace.Starter.AREA)
+        waitUntil("the school's walk starts") { kinds.huntStarts.isNotEmpty() }
+        assertEquals(listOf("school"), kinds.huntStarts)
+        HuntState.update { HuntState.State() }
+        links.value = DeepLink.StartHunt(HuntSpace.Starter.REMINDER)
+        waitFor("Hunt mode runs in the Houses space only, and Houses is turned off in What you track.")
+        assertEquals(listOf("school"), kinds.huntStarts) // no second walk: no kind that is on has viewings
     }
 }

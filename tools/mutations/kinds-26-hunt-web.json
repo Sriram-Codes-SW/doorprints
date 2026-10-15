@@ -1,0 +1,23 @@
+{
+  "spec": "web/src/app/core/kind-capabilities.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/core/kind-capabilities.ts",
+      "find": "export const MIN_HUNT_RADIUS_M = 30;",
+      "replace": "export const MIN_HUNT_RADIUS_M = 20;",
+      "expect": "invalid objects are refused"
+    },
+    {
+      "file": "web/src/app/core/kind-capabilities.ts",
+      "find": "school: Object.freeze({\n    map: true, hunt: Object.freeze({ alertRadiusM: 100,",
+      "replace": "school: Object.freeze({\n    map: true, hunt: Object.freeze({ alertRadiusM: 30,",
+      "expect": "the school has Hunt at 100 m"
+    },
+    {
+      "file": "web/src/app/core/kind-capabilities.ts",
+      "find": "streetMemory: h['streetMemory'], areas: h['areas'] });",
+      "replace": "streetMemory: h['areas'], areas: h['streetMemory'] });",
+      "expect": "valid objects resolve"
+    }
+  ]
+}

@@ -62,8 +62,16 @@ class TwoKinds(app: DoorprintsApp, available: List<String> = listOf("house", "sc
     /** How many times the Map's services were asked to stop Hunt mode (S4b-BL-304); the real service is asked too, which a JVM test does not run. */
     var huntStops = 0
         private set
+    /** The kinds the Map's services were asked to start Hunt mode for (docs/03 section 18.19); nothing is started, as a JVM test has no foreground service. */
+    val huntStarts = mutableListOf<String>()
     private val realMap = app.container.services.mapScreen
     private val map: MapServices = object : MapServices by realMap {
+        override fun startHunt(kind: String): Boolean {
+            huntStarts += kind
+            HuntState.update { it.copy(active = true, kind = kind, startedAt = 1L) } // what the engine's start() does in the app
+            return true
+        }
+
         override fun stopHunt() {
             huntStops++
             realMap.stopHunt()

@@ -64,13 +64,22 @@ class IosHuntTest {
             DeepLink.NewHouse(12.97, 77.64, null),
             notificationDeepLink(mapOf(IosHunt.KEY_NEW_LAT to "12.97", IosHunt.KEY_NEW_LON to "77.64", IosHunt.KEY_VISIT_ID to "x")),
         )
+        // The kind of the walk rides along (docs/03 section 18.19), and only one of the app's own kinds is believed.
+        assertEquals(
+            DeepLink.NewHouse(12.97, 77.64, id, "school"),
+            notificationDeepLink(mapOf(IosHunt.KEY_NEW_LAT to "12.97", IosHunt.KEY_NEW_LON to "77.64", IosHunt.KEY_VISIT_ID to id, IosHunt.KEY_NEW_KIND to "school")),
+        )
+        assertEquals(
+            DeepLink.NewHouse(12.97, 77.64, id, null),
+            notificationDeepLink(mapOf(IosHunt.KEY_NEW_LAT to "12.97", IosHunt.KEY_NEW_LON to "77.64", IosHunt.KEY_VISIT_ID to id, IosHunt.KEY_NEW_KIND to "../x")),
+        )
         assertNull(notificationDeepLink(mapOf(IosHunt.KEY_NEW_LAT to "91", IosHunt.KEY_NEW_LON to "77.64")), "out of range")
         assertNull(notificationDeepLink(emptyMap<Any?, Any?>()))
         // A Hunt mode reminder (slice 3c) opens its viewing; only a valid record id.
         assertEquals(DeepLink.OpenViewing("v_00000001"), notificationDeepLink(mapOf(IosHunt.KEY_OPEN_VIEWING to "v_00000001")))
         assertNull(notificationDeepLink(mapOf(IosHunt.KEY_OPEN_VIEWING to "..")), "not a record id")
         // A Hunt mode reminder (S4b-BL-94c): the Map's offer, for a valid record id only.
-        assertEquals(DeepLink.OfferHunt, notificationDeepLink(mapOf(IosHunt.KEY_OFFER_HUNT_VIEWING to "v_00000001")))
+        assertEquals(DeepLink.OfferHunt(HuntSpace.Starter.REMINDER), notificationDeepLink(mapOf(IosHunt.KEY_OFFER_HUNT_VIEWING to "v_00000001")))
         assertNull(notificationDeepLink(mapOf(IosHunt.KEY_OFFER_HUNT_VIEWING to "..")), "not a record id")
     }
 }

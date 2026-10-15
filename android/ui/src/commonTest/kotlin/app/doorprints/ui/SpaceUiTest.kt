@@ -69,14 +69,14 @@ class SpaceUiTest {
     }
 
     @Test
-    fun aSchoolHasNoBrokerChecklistQuestionsViewingsRoomsOrMoneyAndNoHuntMode() {
+    fun aSchoolHasNoBrokerChecklistQuestionsViewingsRoomsOrMoneyButHasHuntMode() {
         val school = SpaceUi.resolve(both, "school")
         for (ref in listOf("field.brokerId", "section.checklist", "section.questions", "section.viewings", "section.rooms", "field.money", "field.bedrooms", "field.agreedPrice")) {
             assertFalse(school.shows(ref), ref)
         }
         // What a school does have: the places the kind file lists.
         for (ref in listOf("field.contactName", "field.street", "field.rating", "section.visits", "section.distances")) assertTrue(school.shows(ref), ref)
-        assertFalse(school.huntHere)
+        assertTrue(school.huntHere, "Hunt mode is the school's capability (docs/03 section 18.19)")
         assertFalse(school.sortsByScoreAndPrice)
     }
 
@@ -122,7 +122,7 @@ class SpaceUiTest {
         assertFalse(space.multi)
         assertTrue(space.view.holds(null) && space.view.holds("school"))
         assertEquals("school", space.creating.id)
-        assertFalse(space.huntHere)
+        assertTrue(space.huntHere, "the school alone has Hunt mode of its own")
     }
 
     @Test

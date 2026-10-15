@@ -205,7 +205,7 @@ class RootNavigationTest {
         // asked (5.18), as the shared-listing link opens it.
         start(DeepLink.OpenScreen(Routes.SETTINGS))
         compose.onNodeWithText("Server (optional)").assertExists()
-        links.value = DeepLink.StartHunt
+        links.value = DeepLink.StartHunt()
         compose.waitForIdle()
         assertEquals(2, handled)
         shows(MAP)
@@ -216,7 +216,7 @@ class RootNavigationTest {
         // S4b-BL-94a: a form open over the Map is closed, not brought back by the tab's restored stack.
         start(DeepLink.NewHouse(12.9716, 77.5946, null))
         shows("Save a house")
-        links.value = DeepLink.StartHunt
+        links.value = DeepLink.StartHunt()
         compose.waitForIdle()
         assertEquals(2, handled)
         shows(MAP)
@@ -229,7 +229,7 @@ class RootNavigationTest {
     fun anIphoneReminderTapOffersHuntModeOnTheMap() {
         // S4b-BL-94c: the tap opened only the app, so the Map asks with *Start Hunt mode*; nothing is started yet.
         start(DeepLink.OpenScreen(Routes.SETTINGS))
-        links.value = DeepLink.OfferHunt
+        links.value = DeepLink.OfferHunt()
         compose.waitForIdle()
         assertEquals(2, handled)
         shows(MAP)

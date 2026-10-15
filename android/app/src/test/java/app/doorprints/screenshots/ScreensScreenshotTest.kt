@@ -140,6 +140,7 @@ import app.doorprints.ui.ImportScreen
 import app.doorprints.ui.LocalAppServices
 import app.doorprints.ui.LocalPlatformFeatures
 import app.doorprints.ui.MapScreen
+import app.doorprints.location.HuntState
 import app.doorprints.ui.PlatformFeatures
 import app.doorprints.ui.ProvideAppServices
 import app.doorprints.ui.SettingsScreen
@@ -463,6 +464,33 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
             CompositionLocalProvider(LocalSpace provides SpaceUi(on, "school"), app.doorprints.ui.LocalDevKinds provides true) {
                 HouseListScreen(onOpenHouse = {})
             }
+        }
+    }
+
+    /**
+     * The school space's Hunt card with a walk running (kinds PR 26, S4b-BL-304; docs/03 section 18.19): the switch on, the street
+     * line in the school's words (*Been here: schools 2, visits 3*), the nearest saved school and *Finish walk*. The map view is an
+     * empty box here, as in every Map shot (MapLibre cannot run under Robolectric). English and Hindi, light only; the house's Hunt card
+     * has no shot of its own and is unchanged.
+     */
+    @Test fun schoolMapHunt() {
+        assumeTrue(!dark && (lang == "en" || lang == "hi"))
+        val on = KindSetting(listOf("house", "school"), experimental = "1", enabledText = "[\"house\",\"school\"]")
+        HuntState.update {
+            it.copy(
+                active = true, kind = "school", lat = 26.1433, lon = 91.7898, accuracyM = 8f, lastFixAt = System.currentTimeMillis() + 3_600_000L,
+                street = "GS Road", streetHouses = 2, streetVisits = 3, nearestHouse = SchoolSample.entity(), nearestDistanceM = 80.0,
+                startedAt = 1L,
+            )
+        }
+        try {
+            shoot("school_map_hunt", STATIC) {
+                CompositionLocalProvider(
+                    LocalInspectionMode provides true, LocalSpace provides SpaceUi(on, "school"), app.doorprints.ui.LocalDevKinds provides true,
+                ) { MapScreen(onOpenHouse = {}, onNewHouse = { _, _ -> }) }
+            }
+        } finally {
+            HuntState.update { HuntState.State() }
         }
     }
 

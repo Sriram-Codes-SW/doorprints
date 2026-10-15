@@ -455,13 +455,13 @@ fun MapScreen(
         notificationsReach = mapServices.notificationsReachUser()
     }
     // Notifications are asked for in context, when Hunt mode is turned on; Hunt mode starts whatever the answer.
-    val notifyAsk = rememberNotificationAsk(rationale = Res.string.map_hunt_notify_rationale)
-
+    val notifyAsk = rememberNotificationAsk(rationale = LocalSpace.current.hunt.notifyRationale)
+    val huntKind = LocalSpace.current.kind // the walk belongs to the space it is started in (docs/03 section 18.19)
     fun startHunt() {
         if (needsLocation(AfterGrant.HUNT)) return
         notifyAsk {
             // start() returns false when the permission was revoked since this screen last checked.
-            if (!mapServices.startHunt()) {
+            if (!mapServices.startHunt(huntKind)) {
                 permissionGranted = hasPreciseLocation(platform)
                 scope.launch { snackbar.showSnackbar(locationNeeded, withDismissAction = true) }
             }
@@ -869,7 +869,7 @@ fun MapScreen(
                 afterGrant = null
                 requestLocation()
             }
-            if (platformFeatures.huntMode && LocalSpace.current.huntHere) { // Hunt mode is the house space's (kinds PR C)
+            if (platformFeatures.huntMode && LocalSpace.current.huntHere) { // a space whose kind has Hunt (docs/03 section 18.19)
                 HuntCard(
                     hunt = hunt,
                     onToggle = { on -> if (!on) mapServices.stopHunt() else startHunt() },
@@ -1266,7 +1266,7 @@ private fun HuntCard(
     val weak = !stale && accuracyM != null && accuracyM > HuntState.MAX_ACCURACY_M
     val streetText = hunt.street?.let { street ->
         if (hunt.streetHouses + hunt.streetVisits > 0) {
-            stringResource(Res.string.map_street_seen, street, hunt.streetHouses, hunt.streetVisits)
+            stringResource(LocalSpace.current.hunt.streetSeen, street, hunt.streetHouses, hunt.streetVisits)
         } else {
             stringResource(Res.string.map_street_new, street)
         }
@@ -1365,7 +1365,7 @@ private fun HuntCard(
                     if (notificationsOff) {
                         // bodyMedium, as the location note above it (round 7): both are blocking messages.
                         WarnNote(
-                            stringResource(Res.string.map_notifications_off),
+                            stringResource(LocalSpace.current.hunt.notificationsOff),
                             Modifier.padding(top = 8.dp),
                             action = stringResource(Res.string.notify_allow),
                             onAction = onAllowNotifications,

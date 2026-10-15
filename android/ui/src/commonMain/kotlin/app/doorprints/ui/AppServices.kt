@@ -268,10 +268,11 @@ interface MapServices {
     val hunt: StateFlow<HuntState.State>
 
     /**
-     * Starts Hunt mode; false without starting when the location permission is missing (revoked since the Map last
-     * checked) or the system refuses the start.
+     * Starts Hunt mode for the space of [kind] (docs/03 section 18.19: the walk belongs to the space it was started in);
+     * false without starting when the location permission is missing (revoked since the Map last checked), the system
+     * refuses the start, or the kind has no Hunt mode.
      */
-    fun startHunt(): Boolean
+    fun startHunt(kind: String): Boolean
 
     /** The user turned Hunt mode off. */
     fun stopHunt()
