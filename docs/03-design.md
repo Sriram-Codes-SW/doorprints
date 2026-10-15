@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.154 |
+| Version | 0.155 |
 | Date | 2026-10-15 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -164,7 +164,8 @@
 | 0.151 | 2026-10-15 | Claude (Code), engineer | **§18.16: a Hunt walk ends when the person leaves the house space** (S4b-BL-304; `feat/kinds-22-hunt-walk-leaves-space`; [06](06-test-plan.md) TC-U-259; [10](10-sprint-log.md) v0.340): `HuntSpace.stopsOnLeaving` in the common root, one line on why, and a Hunt alert makes a house; the line of §18.14 about the default kind follows. |
 | 0.152 | 2026-10-15 | Claude (Code), engineer | **§18.16: the phones' words come from the kind files, and the import notification says entries** (S4b-BL-316; `feat/kinds-22-phone-words-in-kind-files`; [06](06-test-plan.md) TC-U-261; [10](10-sprint-log.md) v0.341; [schemas](schemas/README.md) v1.61): `words` has 48 more ids, `SpaceWords` and `PageWords` hold no table, the import worker passes the kind setting's two-kind state. |
 | 0.153 | 2026-10-15 | Claude (Code), engineer | **§18.14: the AI card's first sentence is one string for everyone** (S4b-BL-302; `feat/kinds-22-ai-card-one-list`; [06](06-test-plan.md) TC-U-260; [10](10-sprint-log.md) v0.342): the phones' `settings_ai_worth` is the website's `connect.aiWorth` in four languages, `settings_ai_worth_spaces` is retired, four Roborazzi baselines re-recorded. |
-| 0.154 | 2026-10-15 | Claude (Code), engineer | **§18.15 the server stays house-only by default** under "compiled in, off" (owner, 2026-10-15; `test/kinds-23-ship-school-server`): `KINDS_AVAILABLE=house,school` is the operator's choice; a school sent to a house-only server is kept and read as a house. |
+| 0.154 | 2026-10-15 | Claude (Code), engineer | **§18.12 "compiled in, off" vs "released"** (owner, 2026-10-15; `feat/kinds-23-ship-school-web`): the production configuration carries `DOORPRINTS_KINDS='house,school'`; `RELEASED_KINDS` stays the house, so the switch *Experimental: more than houses* (off by default, device-local) is the only way to the school; the §18.16 note on S4b-BL-288 amended (the kinds layout passes run in `web.yml`). |
+| 0.155 | 2026-10-15 | Claude (Code), engineer | **§18.15 the server stays house-only by default** under "compiled in, off" (owner, 2026-10-15; `test/kinds-23-ship-school-server`): `KINDS_AVAILABLE=house,school` is the operator's choice; a school sent to a house-only server is kept and read as a house. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -2715,9 +2716,9 @@ which offers only the house) there is no chooser, no chip and no Settings sectio
 `routes` array (`space.spec.ts` pins its paths), `start_url './'`, the share target, every golden file, the layout gate
 (253 of 253) and the live UI test are unchanged, and the empty `<app-kinds-settings>` has no box (`display: contents`).
 
-**Which kinds a build offers** (`core/kind-setting.ts`). `availableKinds()`: a production build lists the house alone;
-a development build every built-in kind; a build made with `ng build --define "DOORPRINTS_KINDS='house,school'"` the
-kinds it names (the house always). `RELEASED_KINDS` is `['house']`: the owner opens a kind's release gate by adding it
+**Which kinds a build offers** (`core/kind-setting.ts`). `availableKinds()`: a build made with no list lists the house alone;
+a development build every built-in kind; a build made with a `DOORPRINTS_KINDS` define (`--define "DOORPRINTS_KINDS='house,school'"`) the
+kinds it names (the house always). **Since 2026-10-15 the production configuration in `angular.json` carries that define, so the release build lists the school: compiled in, off** (three layers: *available*, the build lists the kind; *offered*, available and released, or the person turned on the switch; *enabled*, shown in What you track). It is not released: with the switch off the person sees the house app (no chooser, no spaces routes, no kind rows; search and the AI card as the house build, `experimental-off.spec.ts`), and the public words stay the house's (`seo.spec.ts`). `RELEASED_KINDS` is `['house']`: the owner opens a kind's release gate by adding it
 there, and must not before S4b-BL-268, -269, -270 and -271 are done. Any other available kind is offered only while the
 person turns on **Experimental: more than houses**, which is shown only in a build that ships such a kind. Enabled kinds
 (`doorprints.kinds.enabled`, a JSON list; absent is the house alone) and the default (`doorprints.kinds.default`;
@@ -3024,8 +3025,7 @@ list search values (`house-pins.golden.ts`), the list's address keys (`listQuery
   (26 keys in four languages: *entries*; hi, ta, te under review). With one kind they are the house's keys.
 - **A number extra's range (S4b-BL-261 item 2).** `kind-extras.ts` keeps a number extra the house model does not know only within
   the kind file's `min` and `max`.
-- **Not added (S4b-BL-288).** The two-kind CI job: see the row. Run locally: `ng build --define "DOORPRINTS_KINDS='house,school'"`,
-  then `GATE_DEV_KINDS=1 node tools/live-ui/layout-gate.js web/dist/web/browser`.
+- **Added (S4b-BL-288, 2026-10-15).** The release build lists the school, so no second build is needed: the layout gate's job in `web.yml` sets `GATE_DEV_KINDS=1` and runs the kinds passes twice, with the switch off and on (about 4 s more). Locally: `GATE_DEV_KINDS=1 node tools/live-ui/layout-gate.js web/dist/web/browser`.
 
 **The phones' part (kinds PR 21, `feat/kinds-21-phone-leftovers`; [06](06-test-plan.md) TC-U-239, TC-M-78).** The twin list, built in `:shared` and `:ui`, so on Android and the iPhone alike (the klib compile is the iPhone's check on Linux). A house is unchanged on every path: the label vectors, the house goldens and every house Roborazzi baseline.
 

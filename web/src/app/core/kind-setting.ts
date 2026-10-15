@@ -27,9 +27,10 @@ import { STORAGE_PREFIX } from './storage-keys';
  * its own. Everything here is this browser's own preference (localStorage), never synced, shared or put in a copy, and
  * every doubt falls back to the house alone, which is the app a house hunter has always had.
  *
- * - **Available** kinds are the kinds this build ships with their release gate open ({@link availableKinds}): a production
- *   build lists only the house; a development build lists every built-in kind; a build made with
- *   `--define DOORPRINTS_KINDS="'house,school'"` lists those. The owner decides the release gate.
+ * - **Available** kinds are the kinds this build lists ({@link availableKinds}): a development build lists every built-in
+ *   kind; a build made with a `DOORPRINTS_KINDS` define lists those, and since 2026-10-15 the production configuration in
+ *   `angular.json` defines `'house,school'` (the school compiled in, off); a build with no define lists the house alone.
+ *   Listing a kind does not release it: the owner decides the release gate ({@link RELEASED_KINDS}).
  * - **Released** kinds ({@link RELEASED_KINDS}) need no switch. Every other available kind is offered only while the
  *   person turns on *Experimental: more than houses*, which is shown only in a build that ships such a kind.
  * - **Enabled** kinds are the offered ones the person turned on in Settings > Kinds (the house alone by default), and
