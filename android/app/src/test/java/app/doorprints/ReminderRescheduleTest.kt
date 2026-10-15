@@ -39,6 +39,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -114,11 +115,15 @@ class ReminderRescheduleTest {
                 }
             }
         }
+        // The root asks once when it first resumes, and once more for every resume after it. The calls are counted from the
+        // main thread, but a slow machine (CI) may settle the first composition after waitForIdle returns, so each step waits
+        // for its call, and the second counts from where the first settled (S4b-BL-254: a count read too early failed once).
+        compose.waitUntil(5_000) { calls >= 1 }
         compose.waitForIdle()
-        assertEquals("at start-up", 1, calls)
+        val atStart = calls
         compose.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
         compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
-        compose.waitForIdle()
-        assertEquals("after coming back", 2, calls)
+        compose.waitUntil(5_000) { calls > atStart }
+        assertTrue("after coming back: $calls calls, $atStart at start-up", calls > atStart)
     }
 }

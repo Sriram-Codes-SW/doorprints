@@ -58,7 +58,7 @@ class AppContainer(app: DoorprintsApp) {
     // One settings DataStore per process (see data/SettingsStoreFactory.kt), as the old property delegate gave.
     val settings = SettingsStore.create(app)
     /** Internal so a screenshot test can pin a stored row's stamp (the repository stamps edits with the real clock). */
-    internal val db = AppDatabase.create(app)
+    internal val db = AppDatabase.create(app, app.databaseExecutor)
 
     /** Carries the Drive backend into the repository's sync loop for one Drive pass (S4b-BL-70's seam, docs/15 §1.3). */
     private val driveRoute = DriveSyncRoute()
@@ -106,6 +106,13 @@ open class DoorprintsApp : Application(), WorkConfiguration.Provider {
     // jobs queued under the pre-rename class names still find their worker (LegacyWorkerFactory).
     override val workManagerConfiguration: WorkConfiguration
         get() = WorkConfiguration.Builder().setWorkerFactory(LegacyWorkerFactory).build()
+
+    /**
+     * Where Room runs its queries: null (Room's own threads) in the app. The Compose tests' application runs them on the calling
+     * thread, so that a screen's effect, which the test rule runs unconfined, resumes on the main thread after the database
+     * answers, as it does in the app, and not on a Room thread (S4b-BL-254).
+     */
+    internal open val databaseExecutor: java.util.concurrent.Executor? = null
 
     /** Application-lifetime scope for one-off start-up work. */
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)

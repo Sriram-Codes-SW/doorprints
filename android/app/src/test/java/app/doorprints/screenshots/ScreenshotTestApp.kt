@@ -29,6 +29,9 @@ import app.doorprints.DoorprintsApp
  * is installed instead.
  */
 class ScreenshotTestApp : DoorprintsApp() {
+    /** Room on the calling thread: effects resume on the main thread, as in the app (S4b-BL-254). */
+    override val databaseExecutor = java.util.concurrent.Executor { it.run() }
+
     override fun startServices() {
         WorkManagerTestInitHelper.initializeTestWorkManager(
             this,

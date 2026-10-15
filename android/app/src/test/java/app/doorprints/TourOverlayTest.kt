@@ -154,6 +154,7 @@ class TourOverlayTest {
     @Test
     fun theOfferIsOnTheHomeTabOnly() {
         start(DeepLink.OpenScreen(Routes.SETTINGS))
+        waitFor("Server (optional)") // the screen has to be there before "no offer" means anything
         compose.onNodeWithText("Server (optional)").assertExists()
         assertFalse(has("New here? Take a quick tour"))
     }

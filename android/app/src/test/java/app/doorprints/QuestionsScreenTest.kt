@@ -109,6 +109,25 @@ class QuestionsScreenTest {
 
     // ---- Settings > Questions ----
 
+    /**
+     * S4b-BL-254: a screen's effect that waits for Room must continue on the main thread, as in the app. When Room ran on
+     * its own threads under the rule's unconfined effect dispatcher, the continuation stayed on Room's thread, wrote its state
+     * and applied the snapshot there, and Compose invalidated its views from that thread (`CalledFromWrongThreadException`,
+     * now and then). The test application now runs Room on the calling thread (`ScreenshotTestApp.databaseExecutor`).
+     */
+    @Test
+    fun aScreensEffectContinuesOnTheMainThreadAfterRoomAnswers() {
+        var thread: Thread? = null
+        compose.setContent {
+            androidx.compose.runtime.LaunchedEffect(Unit) {
+                repo.addQuestion("Is there a lift?")
+                thread = Thread.currentThread()
+            }
+        }
+        compose.waitUntil(5_000) { thread != null }
+        assertEquals(android.os.Looper.getMainLooper().thread, thread)
+    }
+
     @Test
     fun editingTheTextCategoryScopeAndDefaultSavesTheOneRecord() {
         val (lift, _) = addTwo()
