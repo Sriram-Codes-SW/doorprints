@@ -74,7 +74,7 @@ class VoicePermissionEmulatorTest {
         try {
             recorder.start()
             Thread.sleep(600)
-            val clip = runCatching { recorder.stop() }.getOrNull()
+            val clip = runCatching { kotlinx.coroutines.runBlocking { recorder.stop() } }.getOrNull()
             if (clip != null) {
                 assertEquals("audio/wav", clip.mime)
                 assertEquals("RIFF", clip.bytes.decodeToString(0, 4))
