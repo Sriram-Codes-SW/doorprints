@@ -28,7 +28,7 @@ the cards. **Back** from the list does too.
 
 While only one is shown, there is no choice to make: Doorprints opens straight into it, as it always did.
 
-On the phone the button sits at the top of the Map, the list, Compare and Settings. **Hunt mode** is for houses: the Map's Hunt card is only there while you look at houses. In **Settings**, **Brokers**, **Criteria**, **Questions** and **Viewings** are for houses too, and are not shown while you look at schools. On the website, **Your data** does the same for the **Criteria**, **Questions** and **Viewings** cards.
+On the phone the button sits at the top of the Map, the list, Compare and Settings. **Hunt mode** is for houses: the Map's Hunt card is only there while you look at houses. In **Settings**, **Brokers**, **Criteria**, **Questions** and **Viewings** are for houses too, and are not shown while you look at schools. If **Hunt mode** is running when you switch from Houses to Schools, it stops, and Doorprints says so in one line (*Hunt mode stopped. It runs in the Houses space only.*); turn it on again from the Map when you are back in Houses. On the website, **Your data** does the same for the **Criteria**, **Questions** and **Viewings** cards.
 
 ## What a school has
 

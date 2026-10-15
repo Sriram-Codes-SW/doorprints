@@ -492,6 +492,8 @@
     <string name="map_hunt_notify_rationale">जब आप किसी देखे हुए मकान के पास से गुज़रते हैं, तो हंट मोड सूचना देकर बताता है।</string>
     <string name="map_hunt_stopped_battery">बैटरी कम होने से हंट मोड रुक गया।</string>
     <string name="map_hunt_stopped_not_allowed">Android ने इसे बैकग्राउंड में चलने नहीं दिया, इसलिए हंट मोड रुक गया। इसे यहाँ फिर से चालू करें।</string>
+    <!-- S4b-BL-304, Hunt mode ends on leaving the house space (2026-10-15): under review. -->
+    <string name="hunt_stopped_left_space">हंट मोड रुक गया। यह केवल मकान वाले स्थान में चलता है।</string>
     <string name="map_hunt_stopped_permission">जगह की अनुमति बंद होने से हंट मोड रुक गया।</string>
     <string name="map_loading">नक्शा लोड हो रहा है…</string>
     <string name="map_location_off">Doorprints के लिए जगह की अनुमति बंद है। हंट मोड और ‘यहाँ मकान सहेजें’ को इसकी ज़रूरत है।</string>
