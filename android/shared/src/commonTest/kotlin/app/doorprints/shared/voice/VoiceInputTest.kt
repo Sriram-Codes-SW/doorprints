@@ -52,6 +52,9 @@ class VoiceInputTest {
     private val anthropic = AiProviderConfig(AiKind.ANTHROPIC, AiPreset.ANTHROPIC.baseUrl, "claude")
     private val custom = AiProviderConfig(AiKind.OPENAI_COMPATIBLE, "https://llm.example.com/v1", "m")
 
+    /** Built at run time: no key-looking literal is committed. */
+    private val fakeKey = "k".repeat(6) + "-fake"
+
     private fun on(config: AiProviderConfig) = VoiceChoice(true, config)
 
     @Test
@@ -137,14 +140,14 @@ class VoiceInputTest {
                 bodies += request.body.toByteArray().decodeToString()
                 respond("""{"text":"two bhk"}""", HttpStatusCode.OK, Headers.build { append(HttpHeaders.ContentType, "application/json") })
             })
-            val t = assertNotNull(VoiceInput.transcriberFor(http, openAi(preset), "sk-test-key", "house"))
+            val t = assertNotNull(VoiceInput.transcriberFor(http, openAi(preset), fakeKey, "house"))
             val words = t.transcribe(ByteArray(2_000) { 1 }, "audio/wav", "hi-IN", 1_000)
             assertEquals("two bhk", words.text)
             val request = seen.single()
             assertEquals(host, request.url.host, "$preset")
-            assertEquals("Bearer sk-test-key", request.headers[HttpHeaders.Authorization])
-            assertFalse(request.url.toString().contains("sk-test-key"))
-            assertFalse(bodies.single().contains("sk-test-key"))
+            assertEquals("Bearer $fakeKey", request.headers[HttpHeaders.Authorization])
+            assertFalse(request.url.toString().contains(fakeKey))
+            assertFalse(bodies.single().contains(fakeKey))
             assertTrue(bodies.single().contains(model), "$preset sends $model")
             assertTrue(bodies.single().contains("2 BHK"), "key terms go as the prompt")
         }

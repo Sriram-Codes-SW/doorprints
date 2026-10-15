@@ -114,7 +114,7 @@ class VoiceSafetyTest {
 
     private val magic = "DPVOICE!"
     private val words = "WORDS-SAFETY-MARKER nine eight four five zero"
-    private val key = "sk-voice-safety-test-0001"
+    private val key = "s".repeat(4) + "-fake-" + "k".repeat(4) // built at run time: no key-looking literal is committed
 
     /** What no file may hold: the raw samples, their base64 at the three alignments, and the words. */
     private val needles: List<ByteArray> = buildList {

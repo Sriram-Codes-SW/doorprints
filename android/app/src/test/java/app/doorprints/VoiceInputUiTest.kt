@@ -120,6 +120,7 @@ class VoiceInputUiTest {
     )
     private val repo = FakeVoiceRepository(real, store)
     private val voice = FakeVoiceServices()
+    private val fakeKey = "k".repeat(6) + "-fake" // built at run time: no key-looking literal is committed
 
     @After fun tearDown() {
         runBlocking { job.cancelAndJoin() }
@@ -146,7 +147,7 @@ class VoiceInputUiTest {
 
     private fun setUp(config: AiProviderConfig = AiProviderConfig.GEMINI, on: Boolean = true) = runBlocking {
         store.saveAiFeatures(true)
-        store.saveAiProviderConfig(config, "test-key-1234567")
+        store.saveAiProviderConfig(config, fakeKey)
         store.saveAiProvider(AiProviderChoice.DEVICE)
         store.saveVoiceInput(on)
     }
@@ -229,7 +230,7 @@ class VoiceInputUiTest {
             AiProviderConfig(AiKind.OPENAI_COMPATIBLE, AiPreset.GROQ.baseUrl, "m"),
             AiProviderConfig(AiKind.OPENAI_COMPATIBLE, AiPreset.OPENROUTER.baseUrl, "m"),
         )) {
-            runBlocking { store.saveAiProviderConfig(config, "test-key-1234567") }
+            runBlocking { store.saveAiProviderConfig(config, fakeKey) }
             waitFor("Speak")
             waitFor(config.baseUrl.substringAfter("://").substringBefore('/'))
         }
@@ -238,9 +239,9 @@ class VoiceInputUiTest {
             AiProviderConfig(AiKind.OPENAI_COMPATIBLE, AiPreset.OLLAMA.baseUrl, "m"),
             AiProviderConfig(AiKind.OPENAI_COMPATIBLE, "https://llm.example.com/v1", "m"),
         )) {
-            runBlocking { store.saveAiProviderConfig(config, "test-key-1234567") }
+            runBlocking { store.saveAiProviderConfig(config, fakeKey) }
             compose.waitUntil(5_000) { !present("Speak") }
-            runBlocking { store.saveAiProviderConfig(AiProviderConfig.GEMINI, "test-key-1234567") }
+            runBlocking { store.saveAiProviderConfig(AiProviderConfig.GEMINI, fakeKey) }
             waitFor("Speak")
         }
     }
@@ -489,10 +490,10 @@ class VoiceInputUiTest {
             AiProviderConfig(AiKind.OPENAI_COMPATIBLE, AiPreset.OLLAMA.baseUrl, "m"),
             AiProviderConfig(AiKind.OPENAI_COMPATIBLE, "https://llm.example.com/v1", "m"),
         )) {
-            runBlocking { store.saveAiProviderConfig(config, "test-key-1234567") }
+            runBlocking { store.saveAiProviderConfig(config, fakeKey) }
             waitFor("Voice input needs your own AI key for a service that takes audio")
             assertFalse(present("Voice input (a microphone button"))
-            runBlocking { store.saveAiProviderConfig(AiProviderConfig.GEMINI, "test-key-1234567") }
+            runBlocking { store.saveAiProviderConfig(AiProviderConfig.GEMINI, fakeKey) }
             waitFor("Voice input (a microphone button")
         }
     }
@@ -501,7 +502,7 @@ class VoiceInputUiTest {
         runBlocking {
             store.saveAiFeatures(true)
             store.saveAiProvider(AiProviderChoice.SERVER)
-            store.saveServer("https://example.org", "server-key-123456")
+            store.saveServer("https://example.org", fakeKey)
         }
         repo.own.value = false
         settingsSection()
