@@ -27,5 +27,8 @@
 /* S4b-BL-136, Tamil, under review. */
 "NSCameraUsageDescription" = "உங்கள் மற்ற சாதனத்தில் உள்ள Doorprints பதிவுக் குறியீட்டை ஸ்கேன் செய்ய Doorprints கேமராவைப் பயன்படுத்துகிறது. எதுவும் சேமிக்கப்படுவதில்லை, அனுப்பப்படுவதுமில்லை.";
 
+/* S4b-BL-223, Tamil, under review. */
+"NSMicrophoneUsageDescription" = "நீங்கள் “பேசவும்” என்பதைத் தட்டும்போது மட்டுமே, AI பெட்டிகளுக்காக நீங்கள் சொல்வதை எழுத்தாக மாற்ற Doorprints மைக்ரோஃபோனைப் பயன்படுத்துகிறது. பதிவு நீங்கள் தேர்ந்தெடுத்த AI சேவைக்கு உங்கள் சொந்த விசையுடன் அனுப்பப்படும்; இந்த iPhone-இல் சேமிக்கப்படாது.";
+
 /* S4b-BL-81: the name of the backup document type (Info.plist CFBundleDocumentTypes), under review. */
 "Doorprints backup" = "Doorprints காப்புப்பிரதி";

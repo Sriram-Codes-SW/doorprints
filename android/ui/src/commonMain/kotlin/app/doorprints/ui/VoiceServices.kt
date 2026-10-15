@@ -37,6 +37,9 @@ interface VoiceServices {
     /** True where this platform has voice input at all (Android); false draws not even the setting. */
     val supported: Boolean get() = false
 
+    /** True on the iPhone, whose hint and rationale name iOS's own question instead of Android's (the `_ios` strings, as the area wake-up's). */
+    val iphoneWording: Boolean get() = false
+
     /** True where this phone can record: a microphone and a recorder. False draws no microphone button and asks for nothing. */
     val recordable: Boolean get() = false
 

@@ -235,6 +235,9 @@ internal class IosAppServices(
     /** Region monitoring and the "Always" permission (S4b-BL-96). */
     override val areaWakeup: AreaWakeupServices = IosAreaWakeupServices
 
+    /** *Voice input* (S4b-BL-223): the microphone, its permission and the call to the person's own AI; asks for nothing until a tap. */
+    override val voice: VoiceServices = IosVoiceServices(repository.settings) { IosAppContainer.http }
+
     /** On every resume (the common root): a clock change or an authorization granted in the Settings app. */
     override fun rescheduleReminders() {
         appScope.launch { IosAppContainer.rescheduleReminders() }
