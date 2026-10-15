@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.139 |
+| Version | 0.140 |
 | Date | 2026-10-14 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -149,7 +149,8 @@
 | 0.136 | 2026-10-14 | Claude (Code), engineer | **§18.9 The phones' half** (kinds PR 18; S4b-BL-256, S4b-BL-259, S4b-BL-266 and the phones' leftovers of S4b-BL-277; `feat/kinds-18-school-wording-phones`; [06](06-test-plan.md) TC-U-232, TC-M-76; [10](10-sprint-log.md) v0.320): the phone's form, list row, status names, Compare, Areas and Places, walk check and copies read the kind; a school's copies speak in the school's words and write each extra under its section (the fees under *Fees*); the iPhone has the same code. |
 | 0.137 | 2026-10-14 | Claude (Code), engineer | **§18.11: a school's own Ask and Plan words, and its extras in the Plan tools** (kinds PR 19; S4b-BL-269, S4b-BL-270; `feat/kinds-19-school-prompts`; [10](10-sprint-log.md) v0.325, [06](06-test-plan.md) v0.256 TC-U-233, TC-U-234, TC-AI-48, [ai-design](ai/ai-design.md) v0.75 16.9 and 16.10, [02](02-threat-model.md) v0.83 T-I50): the kind's AI copy holds its Ask and Plan system texts, block name and refusal (not kind-file keys); a prompt speaks in them only when every record sent is of the kind; `school.json`'s `ai.plan` names six extras, which the Plan summary, `houseDetails`, the wrap-up notice and the devices' candidate line carry; the house's prompts and records are byte for byte as before; S4b-BL-234 left. |
 | 0.138 | 2026-10-14 | Claude (Code), engineer | **§18.11: the abusive-words rule in the prompts** (S4b-BL-234; `feat/ai-abusive-words-rule`; [ai/ai-design](ai/ai-design.md) v0.76 16.11, [06](06-test-plan.md) TC-U-235, [10](10-sprint-log.md) v0.327): one rule in the Extract, Ask and Plan system texts of the house and of the school; the house pins and the parity vectors re-pinned once. |
-| 0.139 | 2026-10-15 | Claude (Code), engineer | **The AI endpoints' error statuses** (S4b-BL-244, S4b-BL-233; `fix/post-release-small-fixes`; [ai-design](ai/ai-design.md) v0.77): a spent quota or credit is `402` `AI_QUOTA_EXHAUSTED` (not retryable, no `Retry-After`) and a provider safety block is `422` `AI_DECLINED` (not retryable); a per-minute limit stays `503` with `Retry-After: 60`. The clients read the status; the website and the phones use their existing "used up" and "declined" words. |
+| 0.139 | 2026-10-15 | Claude (Code), engineer | **§18.16 The website's leftovers of the kinds** (kinds PR 20; S4b-BL-261 item 2, -265, -267, -272, -278, -282, -288, -291, -292; `feat/kinds-20-web-leftovers`; [06](06-test-plan.md) TC-U-236, TC-M-77; [10](10-sprint-log.md) v0.328): the walk-end sheet's search, the marks of a kind's extras, the space words in the kind files, a filter by a typed extra, a space picker on Your data, `better`, the kind-neutral backup and import words, a number extra's range, and the phones' twin list. |
+| 0.140 | 2026-10-15 | Claude (Code), engineer | **The AI endpoints' error statuses** (S4b-BL-244, S4b-BL-233; `fix/post-release-small-fixes`; [ai-design](ai/ai-design.md) v0.77): a spent quota or credit is `402` `AI_QUOTA_EXHAUSTED` (not retryable, no `Retry-After`) and a provider safety block is `422` `AI_DECLINED` (not retryable); a per-minute limit stays `503` with `Retry-After: 60`. The clients read the status; the website and the phones use their existing "used up" and "declined" words. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -2927,3 +2928,49 @@ for the day a request tells it. Vectors: `docs/schemas/kinds/search-kind-vectors
 (a kind outside the list is a 400 with the house-only list and with the school listed), `BackupWireTest` (the vectors,
 in a file after `exportedAt`, the export unchanged); the AI vector tests and the house pins pass unchanged with
 `AiKinds.schools(on)`. `mvn verify` (JDK 25, PostGIS) runs on the pull request.
+
+### 18.16 The website's leftovers of the kinds (kinds PR 20; S4b-BL-261 item 2, -265, -267, -272, -278, -282, -288, -291, -292)
+
+The website's part of the rows that were Planned after PR 8 and PR B. Each house path is pinned first and unchanged: the house's
+list search values (`house-pins.golden.ts`), the list's address keys (`listQueryParams`), the copies' goldens, the label vectors
+(`kind-label-vectors.json`), `house-listing-fill.spec.ts`, the layout gate (253 of 253, and 292 of 292 with `GATE_DEV_KINDS=1`).
+
+- **The walk-end sheet's search (S4b-BL-267).** `walk-end-sheet.ts` passes the app's words to `searchText` as the Map page does
+  (the floor in the app's language, a kind's extras), so a house or a school is found in the sheet as in the list.
+- **"From the listing" marks for a kind's extras (S4b-BL-272).** `FillMark` is a house field or a kind's extra
+  (`house-listing-fill.ts`); the extras the fill wrote carry the mark until their value changes, named by the kind's label; a kept
+  extra has none.
+- **The space words in the kind files (S4b-BL-278).** `kind.schema.json` has an optional top-level `words` (16 ids: `heading`,
+  `regionLabel`, `regionHint`, `add`, `addHint`, `addHintShort`, `search`, `listLabel`, `shown`, `loading`, `emptyTitle`,
+  `emptyBody`, `noMatch`, `create`, `areaNotesNone`, `areaInReach`), each `{ web, android? }`; `house.json` and `school.json` hold
+  the website's keys. It sits beside `labels`, not in it: the phones' tests walk `labels` by ref and compare them with
+  `kind-label-vectors.json`, so a new ref would break them and the vectors; an unknown property is ignored by every reader, so
+  `format` stays `doorprints-kind/1` and `version` is not raised (door 4). `space-words.ts` stays the website's copy and
+  `kind-words.spec.ts` holds it to the files. `space-tool-words.ts` (the tool and page words) is still a table.
+- **The public words (S4b-BL-282).** A decision for the owner, so only a tripwire is code: `seo.spec.ts` fails when
+  `RELEASED_KINDS` is no longer the house alone, naming the row, and checks that the descriptions, cards, JSON-LD and manifest say
+  houses until then.
+- **A filter by a typed extra (S4b-BL-265).** `shared/extra-filter.ts`: the rows of a kind are its enum and switch extras
+  (`filterableExtras`), a row's choice is an option id or `yes`/`no`, `null` is *Any*; a candidate passes a set row when it holds
+  that value (a candidate with no value, or one the kind does not offer, passes no set row; a choice the kind does not offer is no
+  row). `pages/map/extra-filters.ts` draws one chip row per extra under the status chips (a house's list draws none), the address
+  has `x.<id>=<option>` only while set, and `docs/schemas/kinds/kind-filter-vectors.json` (`doorprints-kind-filter-vectors/1`)
+  is the shared table. Search is not touched: the filter adds no field and the extras were searched since PR 6.
+- **A space picker on Your data and `better` (S4b-BL-292).** `pages/data/space-pick.ts` (*Save a copy of*; `SpaceService.pick`
+  sets the space Your data keeps), drawn with two or more kinds. The extras of the kind file take an optional `better`
+  (`lower`/`higher`, number and money); `school.json` says `lower` for the commute and both fees. Compare marks the best of such
+  a row only when at least two candidates have a value and they do not tie.
+- **The backup's and the import preview's words (S4b-BL-291).** The Full backup acts on every space, so with two or more kinds on
+  its options, counts and gaps (`data.*`) and *Import a backup* (`imp.*`) are read under the kind id `*` of `space-tool-words.ts`
+  (26 keys in four languages: *entries*; hi, ta, te under review). With one kind they are the house's keys.
+- **A number extra's range (S4b-BL-261 item 2).** `kind-extras.ts` keeps a number extra the house model does not know only within
+  the kind file's `min` and `max`.
+- **Not added (S4b-BL-288).** The two-kind CI job: see the row. Run locally: `ng build --define "DOORPRINTS_KINDS='house,school'"`,
+  then `GATE_DEV_KINDS=1 node tools/live-ui/layout-gate.js web/dist/web/browser`.
+
+**The phones' twin list** (for the follow-up builder; each row of [10](10-sprint-log.md) names its part): (1) `WalkEndLogic.search`
+passes a kind's extras words; (2) `remainingMarks` and `ListingFillUndo.kt` mark filled extras; (3) the `android` keys of `words`
+in `house.json` and `school.json`, `SpaceWords`/`PageWords` reading them, and the two kind-file tests extended; (4) `better` in
+`SchoolKind.FIELDS` and Compare's marks; (5) a space select on the Export screen; (6) `KindFilter` and the chip rows of
+`HouseListScreen.kt` with `kind-filter-vectors.json`; (7) neutral strings for `ImportScreen.kt` and the Export screen's backup
+options and gaps with two or more kinds; (8) the range of a number extra in `HouseEditScreen.kt`.

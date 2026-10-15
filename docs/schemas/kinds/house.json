@@ -8,6 +8,24 @@
   "many": { "web": "map.stats.houses", "android": "houses_title" },
   "delete": { "web": "house.delete", "android": "house_delete" }
  },
+ "words": {
+  "heading": { "web": "map.heading" },
+  "regionLabel": { "web": "map.regionLabel" },
+  "regionHint": { "web": "map.regionHint" },
+  "add": { "web": "map.add" },
+  "addHint": { "web": "map.addHint" },
+  "addHintShort": { "web": "map.addHintShort" },
+  "search": { "web": "map.search" },
+  "listLabel": { "web": "map.listLabel" },
+  "shown": { "web": "map.shown" },
+  "loading": { "web": "map.loading" },
+  "emptyTitle": { "web": "map.emptyTitle" },
+  "emptyBody": { "web": "map.emptyBody" },
+  "noMatch": { "web": "map.noMatch" },
+  "create": { "web": "house.create" },
+  "areaNotesNone": { "web": "areaNotes.none" },
+  "areaInReach": { "web": "areaNotes.inReach" }
+ },
  "statuses": [
   { "id": "NEW", "label": { "web": "status.NEW", "android": "status_NEW" } },
   { "id": "SHORTLISTED", "label": { "web": "status.SHORTLISTED", "android": "status_SHORTLISTED" } },

@@ -293,6 +293,33 @@ describe('a school space’s list and Your data (S4b-BL-277)', () => {
     expect(en).toEqual(['Pine Hill School★ Shortlisted GS Road, Dispur', 'Oak Valley★ Shortlisted GS Road, Dispur']);
   });
 
+  // S4b-BL-265: the chip rows over a kind's typed extras. The rules are kind-filter-vectors.json's (shared/extra-filter.spec.ts).
+  it('the extras chips narrow the school list, read the address, and a house list has none', async () => {
+    stubMap();
+    const three: HouseDto[] = [
+      { ...SCHOOL, extrasOther: { board: 'CBSE', busService: true } },
+      { ...SCHOOL2, extrasOther: { board: 'ICSE' } },
+      { ...SCHOOL, id: 's3', label: 'Birch Lane', extrasOther: { board: 'CBSE', busService: false } },
+    ];
+    const names = (host: HTMLElement) => rowsOf(host).map((r) => r.split('★')[0].trim());
+    const chip = (host: HTMLElement, group: string, label: string) =>
+      [...host.querySelectorAll(`[role="group"][aria-label="${group}"] button`)].find((b) => b.textContent!.trim() === label) as HTMLButtonElement;
+    const m = await mount(MapPage, 'en', { houses: three, query: { 'x.board': 'CBSE' } });
+    expect(names(m.host)).toEqual(['Pine Hill School', 'Birch Lane']);
+    expect(chip(m.host, 'Board', 'CBSE').getAttribute('aria-pressed')).toBe('true');
+    chip(m.host, 'School bus', 'Yes').click();
+    m.fixture.detectChanges();
+    expect(names(m.host)).toEqual(['Pine Hill School']);
+    chip(m.host, 'School bus', 'No').click();
+    m.fixture.detectChanges();
+    chip(m.host, 'Board', 'Any').click();
+    m.fixture.detectChanges();
+    expect(names(m.host)).toEqual(['Birch Lane']);
+    const h = await mount(MapPage, 'en', { houses: [HOUSE], dflt: 'house', query: { 'x.board': 'CBSE' } });
+    expect(h.host.querySelectorAll('[role="group"][aria-label="Board"]').length).toBe(0);
+    expect(names(h.host)).toEqual(['Green View']);
+  });
+
   it('a house row keeps its price and score', async () => {
     stubMap();
     const m = await mount(MapPage, 'en', { houses: [HOUSE], dflt: 'house' });

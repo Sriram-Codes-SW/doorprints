@@ -22,6 +22,23 @@
     "delete": { "$ref": "#/$defs/label" }
    }
   },
+  "words": {
+   "description": "The words of a space's first screen and of its candidate page that name the kind (S4b-BL-278): the list heading, the map's region and its hint, the Add button and its hints, the search, the list's label and counts, the loading, empty and no-match lines, the create button and the area-notes lines. Optional and additive (a reader that does not know it ignores it, so `format` stays `doorprints-kind/1`). Keys per stack as in `labels`; `android` is absent until the phones move their own table (`SpaceWords`, `PageWords`) into the file. A kind with no `words` reads the house's.",
+   "type": "object",
+   "additionalProperties": false,
+   "propertyNames": { "enum": ["heading", "regionLabel", "regionHint", "add", "addHint", "addHintShort", "search", "listLabel", "shown", "loading", "emptyTitle", "emptyBody", "noMatch", "create", "areaNotesNone", "areaInReach"] },
+   "patternProperties": {
+    "^[a-zA-Z]+$": {
+     "type": "object",
+     "additionalProperties": false,
+     "required": ["web"],
+     "properties": {
+      "web": { "$ref": "#/$defs/webKey" },
+      "android": { "oneOf": [{ "$ref": "#/$defs/androidKey" }, { "type": "null" }] }
+     }
+    }
+   }
+  },
   "statuses": {
    "description": "The five status names are fixed for every kind (HouseStatus.fromWire never changes); a kind gives each its label, in this order.",
    "type": "array",
@@ -176,6 +193,10 @@
    "description": "How often an amount is paid. A money value on the wire is {\"amount\": whole rupees, \"cadence\": one of these}.",
    "enum": ["once", "day", "week", "month", "quarter", "year"]
   },
+  "better": {
+   "description": "Which way a number or an amount is better when candidates are compared (S4b-BL-292): the lower commute or fee, or the higher. Absent: no value is better than another, and Compare marks none. Optional and additive (a reader that does not know it ignores it).",
+   "enum": ["lower", "higher"]
+  },
   "unit": {
    "description": "The unit codes of number extras (closed list; adding one is additive, renaming one is a format change).",
    "enum": ["count", "level", "sqft", "sqm", "cm", "m", "km", "minute", "day", "month", "year", "percent"]
@@ -217,7 +238,7 @@
      "if": { "properties": { "type": { "const": "number" } } },
      "then": {
       "required": ["integer", "unit"],
-      "properties": { "integer": { "type": "boolean" }, "min": { "type": "number" }, "max": { "type": "number" }, "unit": { "$ref": "#/$defs/unit" } }
+      "properties": { "integer": { "type": "boolean" }, "min": { "type": "number" }, "max": { "type": "number" }, "unit": { "$ref": "#/$defs/unit" }, "better": { "$ref": "#/$defs/better" } }
      }
     },
     {
@@ -226,6 +247,7 @@
       "required": ["max"],
       "properties": {
        "max": { "type": "integer", "minimum": 1, "maximum": 1000000000000 },
+       "better": { "$ref": "#/$defs/better" },
        "cadences": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/cadence" } },
        "cadenceFrom": { "const": "money", "description": "The amount is paid as often as the candidate's own money (an offer on the rent is per month)." }
       },

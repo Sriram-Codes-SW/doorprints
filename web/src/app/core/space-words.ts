@@ -24,9 +24,8 @@ import { kindById } from './kind-setting';
  * S4b-BL-259, S4b-BL-256): the list heading, the map's region, the Add button and its hint, the search, the list's
  * counts, the loading, empty and no-match lines, the new candidate's save button and its area-notes line. The house's
  * are today's keys, so a house space is word for word what it was; the counter is the kind file's `kind.many` (the
- * resolver). The kind file has no place for the rest yet (its `labels` are `new`, `many` and `delete`), so this table is
- * the website's own, as the renderer's element ids are (§18.8); moving them into the kind files with the phone's is
- * S4b-BL-278.
+ * resolver). The words are the `words` of the kind files (`house.json`, `school.json`; S4b-BL-278), of which these two
+ * tables are the website's copy, as `HOUSE_LABELS` is of `labels`; `kind-words.spec.ts` holds them to the files.
  */
 export interface SpaceWords {
   heading: TKey;

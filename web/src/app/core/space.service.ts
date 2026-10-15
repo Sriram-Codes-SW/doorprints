@@ -92,6 +92,11 @@ export class SpaceService {
     return toolWord(this.kind(), key);
   }
 
+  /** Chooses the space of the pages that belong to none (Your data's copies; S4b-BL-292): an enabled kind, else nothing changes. */
+  pick(kind: string): void {
+    if (this.multi() && this.enabled().includes(kind)) this.last.set(kind);
+  }
+
   /** The space's list and map. */
   home(kind: string = this.kind()): string {
     if (!this.multi()) return '/';

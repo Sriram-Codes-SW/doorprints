@@ -31,6 +31,7 @@ import { hi } from './i18n/hi';
 import { ta } from './i18n/ta';
 import { te } from './i18n/te';
 import { SITE_URL } from './i18n/i18n-title.strategy';
+import { RELEASED_KINDS } from './core/kind-setting';
 
 /**
  * The search-engine invariants of the public pages (Wave E): what a crawler that does not run scripts reads in
@@ -138,6 +139,27 @@ describe('index.html', () => {
     expect(hrefs).toContain('https://sriram-codes-sw.github.io/doorprints/');
     for (const lang of ['hi', 'ta', 'te']) expect(hrefs).toContain(`https://sriram-codes-sw.github.io/doorprints/${lang}/`);
     expect(text).not.toMatch(/play store/i);
+  });
+});
+
+// S4b-BL-282: the product's public words say houses until the owner opens a second kind's release gate. This fails the day
+// a second kind is released, so the page descriptions, the cards, the JSON-LD, the manifest and the guide's home page are
+// decided then (the owner's decision), not left behind.
+describe('the public words stay the house’s until a second kind ships (S4b-BL-282)', () => {
+  const doc = pages['index.html'];
+  const manifest = JSON.parse(manifestText);
+
+  it('only the house is released, so the descriptions, cards, JSON-LD and manifest are about houses', () => {
+    expect(RELEASED_KINDS, 'a second kind is released: the owner decides the public words (docs/10 S4b-BL-282)').toEqual(['house']);
+    const ld = JSON.parse(doc.querySelector('script[type="application/ld+json"]')!.textContent!);
+    const words = [
+      meta(doc, 'name="description"'), meta(doc, 'property="og:description"'), meta(doc, 'name="twitter:description"'),
+      ld.description, manifest.description, doc.querySelector('h1')!.textContent!, en['app.description'],
+    ];
+    for (const w of words) {
+      expect(w).toMatch(/house/i);
+      expect(w).not.toMatch(/school/i);
+    }
   });
 });
 

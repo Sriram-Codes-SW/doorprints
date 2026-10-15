@@ -65,6 +65,7 @@ import { TKey } from '../../i18n/en';
 import { Msg, TranslationService } from '../../i18n/translation.service';
 import { TPipe } from '../../i18n/t.pipe';
 import {
+  SORT_OPTIONS,
   SortKey,
   StatusFilter,
   comparePrice,
@@ -87,7 +88,8 @@ import { PlaceCheckState } from './place-check-state';
 import type { PlaceKind } from '../../shared/trace-place-text';
 import { TRACK_COLOR, TRACK_REPEAT_COLOR, legendDashArray } from '../../shared/trace-style';
 import type { GeoBounds } from '../../offline/offline-tiles';
-import { NO_COST_FILTER, activeCostFilters, costFilterMatches, type CostFilter } from '../../shared/cost-filter';
+import { COST_RANGES, NO_COST_FILTER, activeCostFilters, costFilterMatches, type CostFilter } from '../../shared/cost-filter';
+import { ExtraFilterState, ExtraFilters } from './extra-filters';
 import { fitPadding } from './fit-padding';
 import { HOUSE_PAINT, houseFeatures } from './house-markers';
 import { RunResult, nextRunResult, runResult } from '../../shared/run-result';
@@ -136,7 +138,7 @@ let fittedThisSession = false;
  */
 @Component({
   selector: 'app-map-page',
-  imports: [RouterLink, TPipe, OfflineSave, TraceCard, WalkEndSheet, PlaceCheck, PlaceCheckPanel],
+  imports: [RouterLink, TPipe, OfflineSave, TraceCard, WalkEndSheet, PlaceCheck, PlaceCheckPanel, ExtraFilters],
   templateUrl: './map-page.html',
   styleUrl: './map-page.css',
   // `drawn` comes with the first update pass: until then the page is the template's bare elements (no text, no @if
@@ -194,11 +196,9 @@ export class MapPage implements AfterViewInit, OnDestroy {
   /** The ranges over the cost numbers (docs/11 5.21, S4b-BL-84), on top of the status and the search; in the URL too. */
   protected readonly costFilter = signal<CostFilter>(NO_COST_FILTER);
   protected readonly costFiltersOn = computed(() => activeCostFilters(this.costFilter()));
-  protected readonly costRanges: readonly { key: keyof CostFilter; labelKey: TKey }[] = [
-    { key: 'monthly', labelKey: 'cost.monthlyCost' },
-    { key: 'moveIn', labelKey: 'cost.moveIn' },
-    { key: 'perSqFt', labelKey: 'cost.perSqFt' },
-  ];
+  protected readonly costRanges = COST_RANGES;
+  /** The rows over the kind's typed extras (S4b-BL-265), in the URL too; none for a house. */
+  protected readonly extras = new ExtraFilterState(() => { this.writeQuery(); this.announceCount(); });
   protected readonly addMode = signal(false);
   /** Either crosshair mode is on: add a house, or check a spot. */
   protected readonly picking = computed(() => this.addMode() || this.checkMode());
@@ -240,11 +240,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
   protected readonly statusIcon = STATUS_ICON;
   protected readonly filterIcon: Readonly<Record<StatusFilter, string>> = { ALL: '', ...STATUS_ICON };
   protected readonly filters: readonly StatusFilter[] = ['ALL', 'NEW', 'SHORTLISTED', 'REJECTED', 'TAKEN', 'NOT_CHOSEN'];
-  protected readonly sorts: readonly { key: SortKey; labelKey: TKey }[] = [
-    { key: 'recent', labelKey: 'map.sort.recent' },
-    { key: 'score', labelKey: 'map.sort.score' },
-    { key: 'price', labelKey: 'map.sort.price' },
-  ];
+  protected readonly sorts = SORT_OPTIONS;
   protected readonly skeletonRows: readonly number[] = [1, 2, 3, 4];
   /** Empty-state glyphs (Material, as in the navigation bar). */
   protected readonly glyphs = GLYPHS;
@@ -261,6 +257,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
     const list = this.houses()
       .filter((h) => status === 'ALL' || h.status === status)
       .filter((h) => costFilterMatches(this.costFilter(), h))
+      .filter((h) => this.extras.matches(this.space.current().fields, h))
       .filter((h) => !q || searchText(h, this.brokerWords().get(h.brokerId ?? ''), this.noteWords().get(h.id), localFloor, t).includes(q))
       .map((house) => {
         const result = evaluateScore(house.checklist, house.rating, this.scoring());
@@ -306,11 +303,12 @@ export class MapPage implements AfterViewInit, OnDestroy {
   constructor() {
     // The list as the user left it: search, filter and sort live in the URL (Back from a house, a bookmark).
     const params = this.route.snapshot.queryParamMap;
-    const query = parseListQuery((name) => params.get(name));
+    const query = parseListQuery((name) => params.get(name), this.space.current().fields);
     this.search.set(query.q);
     this.statusFilter.set(query.status);
     this.sort.set(query.sort);
     this.costFilter.set(query.cost ?? NO_COST_FILTER);
+    this.extras.value.set(query.extras ?? {});
     // Also for the ways back that are not the browser's Back (a house opened from a bookmark, Delete, Discard).
     this.listReturn.remember(query);
     const handover = sharedHandover(this.router);
@@ -707,6 +705,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
     this.search.set('');
     this.statusFilter.set('ALL');
     this.costFilter.set(NO_COST_FILTER);
+    this.extras.value.set({});
     this.writeQuery();
     this.announceCount();
   }
@@ -814,7 +813,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
 
   /** Search, filter and sort into the URL, replacing the entry: Back goes to the previous page, not the last filter. */
   private writeQuery(): void {
-    const query = { q: this.search(), status: this.statusFilter(), sort: this.sort(), cost: this.costFilter() };
+    const query = { q: this.search(), status: this.statusFilter(), sort: this.sort(), cost: this.costFilter(), extras: this.extras.value() };
     this.listReturn.remember(query);
     void this.router.navigate([], {
       relativeTo: this.route,

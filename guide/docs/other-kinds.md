@@ -43,6 +43,12 @@ it has:
 The search finds a school by these too (the board, "school bus", the fees). The readable copies list them under the school's own headings (the fees under **Fees**), say *school* where a house copy says *house*, and in a copy of schools leave out the price, score, BHK and rooms that a school does not have; a backup
 keeps them. **Compare**, **Ask** and **Plan** work on the list you are looking at: while you look at schools they compare and ask about schools only. **Ask** and **Plan** need your own AI key for schools (the server's assistant reads houses only), and **Save a copy** holds only the schools you are looking at, with *schools* in the file name; the Full backup holds everything. A listing you share to Doorprints has **Save it in**, to choose Houses or Schools before it is read.
 
+## Filter, compare and copy {#filter-compare-copy}
+
+On the website, the list of schools has a row of buttons for each of **Board**, **Medium of instruction** and **School bus**, under the status buttons. Press **CBSE** to see only those schools; **Any** puts the row back. The choices stay in the page address, so a bookmark or **Back** brings them back. The list of houses has no such rows. (The phone follows.)
+
+**Compare** marks the best value in a row; for schools, the lower commute and the lower fees are the best. **Your data** has **Save a copy of**, with the lists you show, so you can save a copy of the other list without going back to the cards. While more than houses are shown, the **Full backup** and **Import a backup** say *entries* instead of *houses*, because they hold every list.
+
 ## Turn it off again
 
 Turn off **Show Schools**, or **Experimental: more than houses**. Doorprints opens on your houses again. Nothing is

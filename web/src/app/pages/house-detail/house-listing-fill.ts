@@ -28,6 +28,7 @@ import { AI_MAX_LISTING_CHARS, aiErrorMsg } from '../../core/ai.service';
 import type { AiService, HouseDraft } from '../../core/ai.service';
 import type { Announcer } from '../../core/announcer.service';
 import { cutListing } from '../../core/ai/ai-core';
+import type { KindExtra } from '../../core/kind-fields';
 import type { HouseDto } from '../../core/models';
 import type { Msg, TranslationService } from '../../i18n/translation.service';
 import { runResult } from '../../shared/run-result';
@@ -41,11 +42,11 @@ import { drawnKind, kindsOn } from '../../core/kind-setting';
 import { mergeKindExtras, shownExtra } from './kind-draft-merge';
 import type { FillField } from './house-draft-merge';
 
-/** A field the last fill wrote, with the value it wrote: the "from the listing" mark stays while the field still holds it. */
-export interface FillMark {
-  field: FillField;
-  value: string | number;
-}
+/**
+ * A field the last fill wrote, with the value it wrote: the "from the listing" mark stays while the field still holds it.
+ * A house field is keyed by its `FillField`; a kind's typed extra (S4b-BL-272) by the extra itself.
+ */
+export type FillMark = { field: FillField; value: string | number } | { extra: KindExtra; value: unknown };
 
 /** The fields a fill may change, for the snapshot *Undo fill* restores. */
 const SNAPSHOT_FIELDS: ReadonlyArray<FillField | 'notes'> = [...(Object.keys(FIELD_LABEL) as FillField[]), 'notes'];
@@ -91,7 +92,12 @@ export class HouseListingFill {
   marks(): FillMark[] {
     this.edits(); // read so the card re-renders on every edit the page reports through touched()
     const d = this.deps.draft();
-    return d ? this.written().filter((m) => same(d[m.field] as string | number | null | undefined, m.value)) : [];
+    return d
+      ? this.written().filter((m) =>
+          'extra' in m
+            ? JSON.stringify(d.extrasOther?.[m.extra.id] ?? null) === JSON.stringify(m.value)
+            : same(d[m.field] as string | number | null | undefined, m.value))
+      : [];
   }
 
   /** The number of edits the page has reported ({@link touched}); the marks are re-read when it changes. */
@@ -186,7 +192,11 @@ export class HouseListingFill {
     for (const f of SNAPSHOT_FIELDS) (before as Record<string, unknown>)[f] = d[f] ?? null;
     if (extras.extrasOther) before.extrasOther = d.extrasOther ?? null;
     this.before.set(before);
-    this.written.set(result.filled.map((field) => ({ field, value: result.changes[field] as string | number })));
+    const filledExtras = fields.others().filter((f) => extras.filled.includes(f.id));
+    this.written.set([
+      ...result.filled.map((field): FillMark => ({ field, value: result.changes[field] as string | number })),
+      ...filledExtras.map((extra): FillMark => ({ extra, value: extras.extrasOther?.[extra.id] ?? null })),
+    ]);
     this.deps.patch(extras.extrasOther ? { ...result.changes, extrasOther: extras.extrasOther } : result.changes);
     this.kept.set(
       result.kept.map((k): Msg => ({
@@ -219,8 +229,8 @@ export class HouseListingFill {
 
   /** The names of the fields still carrying a "from the listing" mark, as one translated list. */
   markNames(): Msg[] {
-    const labels = builtInKind(this.deps.draft()?.kind, kindsOn()).labels;
-    return this.marks().map((m) => ({ key: fillLabel(m.field, labels) }));
+    const kind = builtInKind(this.deps.draft()?.kind, kindsOn());
+    return this.marks().map((m): Msg => ({ key: 'extra' in m ? kind.fields.label(m.extra) : fillLabel(m.field, kind.labels) }));
   }
 
   /** A word of the card in the candidate's kind (S4b-BL-259): the house's key for a house, a school's for a school. */

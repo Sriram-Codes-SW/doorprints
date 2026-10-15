@@ -72,8 +72,8 @@ export const SCHOOL_FIELDS = new KindFields(SCHOOL_LABELS, [
   { id: 'medium', type: 'enum', section: 'details', order: 60,
     options: [...(['ENGLISH', 'HINDI', 'REGIONAL'] as const).map((id) => option('school.medium', id)), OTHER] },
   { id: 'grades', type: 'text', maxLength: 40, section: 'details', order: 70 },
-  { id: 'commuteMinutes', type: 'number', integer: true, min: 0, max: 300, unit: 'minute', section: 'details', order: 72 },
+  { id: 'commuteMinutes', type: 'number', integer: true, min: 0, max: 300, unit: 'minute', better: 'lower', section: 'details', order: 72 },
   { id: 'busService', type: 'bool', section: 'details', order: 74 },
-  { id: 'fees', type: 'money', max: MONEY_MAX, cadences: ['year'], section: 'cost', order: 10 },
-  { id: 'admissionFee', type: 'money', max: MONEY_MAX, cadences: ['once'], section: 'cost', order: 20 },
+  { id: 'fees', type: 'money', max: MONEY_MAX, cadences: ['year'], better: 'lower', section: 'cost', order: 10 },
+  { id: 'admissionFee', type: 'money', max: MONEY_MAX, cadences: ['once'], better: 'lower', section: 'cost', order: 20 },
 ], ['label', 'address', 'street', 'locality', 'notes', 'contactName', 'areaNotes', ...EXTRA_IDS]);
