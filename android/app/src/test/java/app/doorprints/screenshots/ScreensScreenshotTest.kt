@@ -247,7 +247,7 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
      * when the answer was late (reproduced under load: `houses[ta-dark=true]`, `iosCompareEmpty[ta-dark=*]`). [STATIC]
      * is the explicit "this screen shows no stored data, or its defaults are what the shot shows".
      */
-    private fun show(readyText: String?, content: @Composable () -> Unit) {
+    private fun show(readyText: String?, alsoReady: String? = null, content: @Composable () -> Unit) {
         // Surface in the theme's background, as Root's Scaffold draws it around every screen.
         compose.setContent {
             // As MainActivity does: the screens read the platform's and the app's seams (ADR-23 CMP-3, CMP-5).
@@ -259,18 +259,21 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
         // never captures the table before its rows (S4b-BL-100, S4b-BL-138). The wait pumps the effects dispatcher too:
         // the screens' coroutines run on [effects], which only [settle] advances.
         if (readyText != null) {
-            val ready = hasText(readyText, substring = true) or hasContentDescription(readyText, substring = true)
-            val deadline = System.nanoTime() + 20_000_000_000L
-            while (compose.onAllNodes(ready).fetchSemanticsNodes().isEmpty()) {
-                check(System.nanoTime() < deadline) { "'$readyText' did not show in 20 s" }
-                settle()
+            // [alsoReady]: a screen fed by two flows (My areas: the areas and the notes) is ready when the last of them has answered.
+            for (text in listOfNotNull(readyText, alsoReady)) {
+                val ready = hasText(text, substring = true) or hasContentDescription(text, substring = true)
+                val deadline = System.nanoTime() + 20_000_000_000L
+                while (compose.onAllNodes(ready).fetchSemanticsNodes().isEmpty()) {
+                    check(System.nanoTime() < deadline) { "'$text' did not show in 20 s" }
+                    settle()
+                }
             }
         }
         awaitStableFrame()
     }
 
-    private fun shoot(screen: String, readyText: String?, content: @Composable () -> Unit) {
-        show(readyText, content)
+    private fun shoot(screen: String, readyText: String?, alsoReady: String? = null, content: @Composable () -> Unit) {
+        show(readyText, alsoReady, content)
         compose.onRoot().captureRoboImage(file(screen))
     }
 
@@ -810,7 +813,7 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
             repo.saveAreaNote(AreaNote("n_11223344", areaId = "a_1f2e3d4c", text = "Water tanker every morning; the low streets flood in the monsoon."))
             repo.saveAreaNote(AreaNote("n_55667788", street = "MG Road", text = "Noisy after 9 pm: the bus depot is on the corner."))
         }
-        shoot("areas", readyText = "Noisy after 9 pm") { Column(Modifier.verticalScroll(rememberScrollState())) { AreasEditor(onOpenArea = {}) } }
+        shoot("areas", readyText = "Noisy after 9 pm", alsoReady = "Indiranagar 2nd stage") { Column(Modifier.verticalScroll(rememberScrollState())) { AreasEditor(onOpenArea = {}) } }
     }
     @Test fun assistant() = shoot("assistant", readyText = text(Res.string.common_try_again)) { AssistantScreen(onOpenHouse = {}) }
 

@@ -81,6 +81,11 @@ describe('ConnectPage: is AI worth it for me', () => {
     expect(hint.compareDocumentPosition(block()!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
+  it('has a first sentence that names no kind: one list at a time, the phones\' string too (S4b-BL-302)', () => {
+    expect(en['connect.aiWorth']).toContain('one list at a time: Ask and Plan read only the list you are in');
+    expect(en['connect.aiWorth']).not.toMatch(/house/i);
+  });
+
   it('keeps the same sentences with AI on, beside the service form', async () => {
     await open(true);
     expect(block()?.textContent).toContain('knows nothing about the market, the law or a locality');

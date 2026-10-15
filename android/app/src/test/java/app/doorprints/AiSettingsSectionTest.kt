@@ -555,6 +555,8 @@ class AiSettingsSectionTest {
         waitFor("AI features")
         val worth = "knows nothing about the market, the law or a locality"
         waitFor(worth)
+        // S4b-BL-302: the first sentence is the kind-neutral one for everyone, house-only build included.
+        waitFor("one list at a time: Ask and Plan read only the list you are in")
         waitFor("about a rupee or a few per use")
         waitFor("Google may read what you send")
         waitFor("A pasted ad is sent as pasted")

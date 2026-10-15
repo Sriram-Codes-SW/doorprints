@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.152 |
+| Version | 0.153 |
 | Date | 2026-10-15 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -163,6 +163,7 @@
 | 0.150 | 2026-10-15 | Claude (Code), docs | §19 states voice input as built on the web, Android and the iPhone (the iPhone untested on a device), PR numbers dropped. |
 | 0.151 | 2026-10-15 | Claude (Code), engineer | **§18.16: a Hunt walk ends when the person leaves the house space** (S4b-BL-304; `feat/kinds-22-hunt-walk-leaves-space`; [06](06-test-plan.md) TC-U-259; [10](10-sprint-log.md) v0.340): `HuntSpace.stopsOnLeaving` in the common root, one line on why, and a Hunt alert makes a house; the line of §18.14 about the default kind follows. |
 | 0.152 | 2026-10-15 | Claude (Code), engineer | **§18.16: the phones' words come from the kind files, and the import notification says entries** (S4b-BL-316; `feat/kinds-22-phone-words-in-kind-files`; [06](06-test-plan.md) TC-U-261; [10](10-sprint-log.md) v0.341; [schemas](schemas/README.md) v1.61): `words` has 48 more ids, `SpaceWords` and `PageWords` hold no table, the import worker passes the kind setting's two-kind state. |
+| 0.153 | 2026-10-15 | Claude (Code), engineer | **§18.14: the AI card's first sentence is one string for everyone** (S4b-BL-302; `feat/kinds-22-ai-card-one-list`; [06](06-test-plan.md) TC-U-260; [10](10-sprint-log.md) v0.342): the phones' `settings_ai_worth` is the website's `connect.aiWorth` in four languages, `settings_ai_worth_spaces` is retired, four Roborazzi baselines re-recorded. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -2927,8 +2928,8 @@ its candidates, their visits and photos, the brokers of those candidates, no unl
 file name before the date (`Doorprints-schools-2026-09-22-csv.zip`; the house's names unchanged); the Export screen says so in
 words, and **the full backup stays whole** (its options carry no space, so it is named and filled as before). A shared listing,
 with two or more kinds on, asks **Save it in** before the map asks where it is (`ShareKindDialog`, `SpaceScope.shareKind`).
-The AI card's first sentence is kind-neutral (*one list at a time*) while two or more kinds are on; with one kind on it is
-today's words, so the house screens' baselines stay byte for byte (the website changed it for everyone, S4b-BL-281).
+The AI card's first sentence is the kind-neutral *one list at a time* for everyone, on the website and the phones, with one kind on too
+(owner, 2026-10-15; S4b-BL-302 replaced the second phone string `settings_ai_worth_spaces` and re-recorded the settings baselines, §18.16).
 
 **Links and alerts** resolve the space from the candidate's kind: a link to a candidate of another kind opens its space; a
 Hunt alert makes a **house** (a walk is the house space's, S4b-BL-304; it was the default kind before); *Start Hunt mode* from a reminder opens the house space; a new entry is of
