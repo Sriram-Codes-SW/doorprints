@@ -142,3 +142,5 @@ c6ed9c844ca35ef1d61a398ce13de4c49760635b:web/src/app/core/ai/ai-limits.spec.ts:g
 21eaa7a30c5de596b1ea56bfd1a22dee44d00d55:android/app/src/test/java/app/doorprints/VoiceSafetyTest.kt:generic-api-key:117
 # Reviewed 2026-10-15: the squash commit of #355 re-reports the same test line (a model name, "whisper-large-v3-turbo", not a credential).
 6154aef9225fec5c584c1c52b18a83f21acf02c7:android/shared/src/commonTest/kotlin/app/doorprints/shared/voice/VoiceInputTest.kt:generic-api-key:132
+# Reviewed 2026-10-15: a made-up key string in the Voice PR 7 test that proves the Sarvam key is absent from backups (not a credential); the branch commit is pinned.
+c4c40f9ddd142c0e19e85a8dd0f6625135083a50:web/src/app/core/voice/voice-input.service.spec.ts:generic-api-key:339

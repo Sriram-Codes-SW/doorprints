@@ -1,0 +1,31 @@
+{
+  "spec": [
+    "android/ui/src/commonTest/kotlin/app/doorprints/ui/HuntSpaceTest.kt",
+    "android/app/src/test/java/app/doorprints/SpacesRootTest.kt"
+  ],
+  "gradle": [
+    ":ui:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.ui.HuntSpaceTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/HuntSpace.kt",
+      "find": "wasHere && !isHere && active",
+      "replace": "!isHere && active",
+      "expect": "aWalkStartedWhileAnotherSpaceIsOnScreenIsNotStoppedByBeingThere"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/HuntSpace.kt",
+      "find": "wasHere && !isHere && active",
+      "replace": "wasHere && !isHere",
+      "expect": "noWalkNothingToStop"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/HuntSpace.kt",
+      "find": "wasHere && !isHere && active",
+      "replace": "wasHere && active",
+      "expect": "staysInTheHouseSpaceTheWalkGoesOn"
+    }
+  ]
+}
