@@ -27,8 +27,6 @@ English · हिन्दी · தமிழ் · తెలుగు (Hindi, T
 
 > Doorprints was called *House Hunt* until 2026-09-22 ([ADR-24](docs/03-design.md#14-architecture-decision-records)).
 
-> Doorprints was called *House Hunt* until 2026-09-22 ([ADR-24](docs/03-design.md#14-architecture-decision-records)).
-
 ## Who it is for
 
 **People:** one person, or a household, choosing a home to rent or buy in India, who wants their own record of what they
