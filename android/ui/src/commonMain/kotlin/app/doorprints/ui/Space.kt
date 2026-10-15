@@ -35,7 +35,6 @@ import app.doorprints.shared.model.KindWordKeys
 import app.doorprints.shared.model.KindSettingRules
 import app.doorprints.shared.model.SpaceView
 import app.doorprints.ui.res.*
-import kotlinx.coroutines.flow.map
 import org.jetbrains.compose.resources.StringResource
 
 /**
@@ -194,7 +193,8 @@ val LocalSpace = staticCompositionLocalOf { SpaceUi.HOUSE }
 @Composable
 fun rememberSpaceHouses(repo: Repository): State<List<HouseEntity>?> {
     val view = LocalSpace.current.let { if (it.multi) it.view else null }
-    val flow = remember(repo, view) { if (view == null) repo.houses else repo.houses.map { list -> list.filter { view.holds(it.kind) } } }
+    // With two or more kinds the store reads the space's rows through the `kind` index (S4b-BL-303), not every row.
+    val flow = remember(repo, view) { if (view == null) repo.houses else repo.housesOf(view) }
     return flow.collectAsStateWithLifecycle(initialValue = null)
 }
 

@@ -29,7 +29,11 @@ import app.doorprints.shared.ai.AiProviderConfig
 import app.doorprints.shared.ai.GeminiClient
 import app.doorprints.shared.api.ApiHttp
 import app.doorprints.shared.model.KindSetting
+import app.doorprints.shared.model.KindTally
+import app.doorprints.shared.model.SpaceRow
 import app.doorprints.shared.model.SpaceView
+import app.doorprints.shared.model.spaceCards
+import app.doorprints.shared.model.spaceCardsOf
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.engine.mock.toByteArray
@@ -183,6 +187,44 @@ class SpacesRepositoryTest {
         assertTrue(settings.chooserHintShown().first())
         settings.dismissChooserHint()
         assertFalse(settings.chooserHintShown().first())
+    }
+
+    /**
+     * S4b-BL-303: a space's list and the chooser's tally are read from Room through the `kind` index, and are the same set the
+     * in-memory rule ([SpaceView.holds]) chooses: every kind in its own space, the kind this build does not have in the default
+     * one, a tombstone in none, newest edit first.
+     */
+    @Test
+    fun aSpacesRowsAndTheChoosersTalliesComeFromRoomAsTheInMemoryRuleChoosesThem() = runBlocking {
+        val repo = repository()
+        fun at(id: String, kind: String, updated: Long, deleted: Boolean = false) = house(id, kind).copy(updatedAt = updated, deleted = deleted)
+        listOf(
+            at("h1", "house", 100), at("h2", "house", 300), at("s1", "school", 200), at("s2", "school", 250, deleted = true),
+            at("c1", "clinic", 400), // a kind this build does not have (a newer app's): the default space's
+        ).forEach { db.houses().upsert(it) } // straight into Room: the test sets the times and the tombstone itself
+        val all = repo.houses.first()
+        for (default in both) {
+            for (space in both + "clinic") {
+                val view = SpaceView(space, multi = true, default = default, available = both)
+                assertEquals("$space with $default as the default", all.filter { view.holds(it.kind) }.map { it.id }, repo.housesOf(view).first().map { it.id })
+            }
+        }
+        // One kind on: the one space holds every row, through the plain list.
+        assertEquals(all.map { it.id }, repo.housesOf(SpaceView.ONE).first().map { it.id })
+        assertEquals(listOf("c1", "h2", "h1"), repo.housesOf(SpaceView("house", true, "house", both)).first().map { it.id })
+        assertEquals(listOf("s1"), repo.housesOf(SpaceView("school", true, "house", both)).first().map { it.id })
+        // The tallies: one row per kind with a live candidate, the tombstone not counted, the newest change of each.
+        assertEquals(
+            setOf(KindTally("house", 2, 300), KindTally("school", 1, 200), KindTally("clinic", 1, 400)),
+            repo.kindTallies.first().toSet(),
+        )
+        assertEquals(
+            spaceCards(all.map { SpaceRow(it.kind, it.updatedAt) }, both, "house", both),
+            spaceCardsOf(repo.kindTallies.first(), both, "house", both),
+        )
+        // The list follows a write while it is open.
+        db.houses().upsert(at("s3", "school", 500))
+        assertEquals(listOf("s3", "s1"), repo.housesOf(SpaceView("school", true, "house", both)).first().map { it.id })
     }
 
     @Test

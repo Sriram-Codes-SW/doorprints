@@ -51,8 +51,8 @@ import app.doorprints.shared.model.DeleteScope
 import app.doorprints.shared.model.KindSetting
 import app.doorprints.shared.model.ScopedCandidate
 import app.doorprints.shared.model.SpaceScope
-import app.doorprints.shared.model.SpaceRow
-import app.doorprints.shared.model.spaceCounts
+import app.doorprints.shared.model.KindTally
+import app.doorprints.shared.model.spaceCountsOf
 import app.doorprints.ui.res.*
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -84,9 +84,9 @@ fun KindsSettingsSection(
     val current = setting ?: return
     if (!current.hasUnreleased) return
     val scope = rememberCoroutineScope()
-    val rows: List<SpaceRow> by remember(repo) { repo.houses.map { list -> list.map { SpaceRow(it.kind, it.updatedAt) } } }
+    val rows: List<KindTally> by remember(repo) { repo.kindTallies }
         .collectAsStateWithLifecycle(emptyList())
-    val saved = spaceCounts(rows, current.default, current.available)
+    val saved = spaceCountsOf(rows, current.default, current.available)
     // The live candidates by id: the ids a card's *Delete all in this space* takes are this space's and no other's.
     val live: List<ScopedCandidate> by remember(repo) { repo.houses.map { list -> list.map { ScopedCandidate(it.id, it.kind) } } }
         .collectAsStateWithLifecycle(emptyList())

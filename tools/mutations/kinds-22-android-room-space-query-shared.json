@@ -1,0 +1,63 @@
+{
+  "spec": [
+    "android/shared/src/commonTest/kotlin/app/doorprints/shared/model/SpaceQueryTest.kt",
+    "android/shared/src/androidHostTest/kotlin/app/doorprints/data/SpacesRepositoryTest.kt"
+  ],
+  "gradle": [
+    ":shared:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.shared.model.SpaceQueryTest",
+    "--tests",
+    "app.doorprints.data.SpacesRepositoryTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/SpaceScope.kt",
+      "find": "kind == default -> SpaceQuery(available.filter { it != kind }, except = true)",
+      "replace": "kind == default -> SpaceQuery(available.filter { it != kind }, except = false)",
+      "expect": "theQuerySelectsWhatTheRuleHolds"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/SpaceScope.kt",
+      "find": "!multi -> SpaceQuery(emptyList(), except = true)",
+      "replace": "!multi -> SpaceQuery(emptyList(), except = false)",
+      "expect": "theQuerySelectsWhatTheRuleHolds"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/SpaceCards.kt",
+      "find": "count[space] = (count[space] ?: 0) + t.count\n        if (t.updated",
+      "replace": "count[space] = t.count\n        if (t.updated",
+      "expect": "theTalliesMakeTheCardsTheRowsMake"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/SpaceCards.kt",
+      "find": "if (t.updated > (updated[space] ?: Long.MIN_VALUE)) updated[space] = t.updated",
+      "replace": "updated[space] = t.updated",
+      "expect": "theTalliesMakeTheCardsTheRowsMake"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AppDatabase.kt",
+      "find": "FROM houses WHERE deleted = 0 GROUP BY kind",
+      "replace": "FROM houses GROUP BY kind",
+      "expect": "aSpacesRowsAndTheChoosersTalliesComeFromRoomAsTheInMemoryRuleChoosesThem"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AppDatabase.kt",
+      "find": "AND kind IN (:kinds) ORDER BY updatedAt DESC",
+      "replace": "AND kind IN (:kinds) ORDER BY updatedAt ASC",
+      "expect": "aSpacesRowsAndTheChoosersTalliesComeFromRoomAsTheInMemoryRuleChoosesThem"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt",
+      "find": "!q.except -> emitAll(db.houses().observeKinds(q.kinds))",
+      "replace": "!q.except -> emitAll(db.houses().observeKindsExcept(q.kinds))",
+      "expect": "aSpacesRowsAndTheChoosersTalliesComeFromRoomAsTheInMemoryRuleChoosesThem"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt",
+      "find": "q.none -> emit(emptyList())",
+      "replace": "q.none -> emitAll(db.houses().observeAll())",
+      "expect": "aSpacesRowsAndTheChoosersTalliesComeFromRoomAsTheInMemoryRuleChoosesThem"
+    }
+  ]
+}

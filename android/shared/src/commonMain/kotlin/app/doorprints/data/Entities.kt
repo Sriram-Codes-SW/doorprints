@@ -54,7 +54,7 @@ import kotlinx.serialization.json.JsonObject
  * ignores it) and derives [money] and [extras] from them ([Candidates]); Room reads a row through the secondary
  * constructor, which reads them back out. Internal names (`houses`, `houseId`) stay, as on the website.
  */
-@Entity(tableName = "houses", indices = [Index("street")])
+@Entity(tableName = "houses", indices = [Index("street"), Index("kind")])
 data class HouseEntity @Ignore constructor(
     @PrimaryKey val id: String,
     val label: String,

@@ -18,6 +18,7 @@
 
 package app.doorprints.data
 
+import app.doorprints.shared.model.KindTally
 import app.doorprints.shared.ai.AiProviderConfig
 import app.doorprints.shared.ai.AiQuality
 import app.doorprints.shared.api.AskResponseDto
@@ -26,6 +27,7 @@ import app.doorprints.shared.trace.TraceWalk
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import app.doorprints.shared.api.HouseDraftDto
 import app.doorprints.shared.api.PairPolledDto
 import app.doorprints.shared.api.PairStartedDto
@@ -88,6 +90,18 @@ interface Repository {
 
     /** Live houses, newest edit first. */
     val houses: Flow<List<HouseEntity>>
+
+    /**
+     * The live candidates [space] holds, newest edit first (S4b-BL-303). The store reads one space's rows through the `kind` index;
+     * this default filters [houses] in memory by the same rule ([SpaceView.holds]), for a store that has no index of its own.
+     */
+    fun housesOf(space: SpaceView): Flow<List<HouseEntity>> = houses.map { list -> list.filter { space.holds(it.kind) } }
+
+    /** How many live candidates each kind holds and when the newest changed, for the chooser's cards (S4b-BL-303); a kind with none is absent. */
+    val kindTallies: Flow<List<KindTally>>
+        get() = houses.map { list ->
+            list.groupBy { it.kind }.map { (kind, rows) -> KindTally(kind, rows.size, rows.maxOf { it.updatedAt }) }
+        }
 
     /** Live visits per live house. */
     val visitCounts: Flow<List<HouseVisitCount>>

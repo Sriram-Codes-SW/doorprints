@@ -72,6 +72,8 @@ class RoomSchemaTest {
             // v12 (kinds step 4, S4b-BL-206): every house a candidate, houses.kind, money_amount, money_cadence and
             // extras in place of price, priceType, bedrooms, areaSqft, floor and the cost_* columns.
             12 to "a3a45fa452d35b5397c9255e96f24816",
+            // v13 (S4b-BL-303, 2026-10-15): index_houses_kind on houses.kind, no column changes.
+            13 to "71cf6f1d4190491691b73989cab3e4f9",
         )
         const val SCHEMA_DIR = "schemas/app.doorprints.data.AppDatabase"
     }
