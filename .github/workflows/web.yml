@@ -67,6 +67,9 @@
 #
 # 2026-10-12 (Web), branch ci/web-mobile-layout-gate (S4b-BL-245): new job layout-gate, the phone layout gate
 #   (tools/live-ui/layout-gate.js, docs/06 TC-S-46), after the build, on pull requests and pushes to main.
+#
+# 2026-10-15 (Web), branch feat/kinds-23-ship-school-web (S4b-BL-288): layout-gate sets GATE_DEV_KINDS=1 (the school is
+#   compiled into the production build, switch off and on); no new job, no new check name.
 name: Web
 
 # Triggers: a push to main touching the paths below (tag pushes do not trigger), a pull request to main (tests the
@@ -420,7 +423,11 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
+      # GATE_DEV_KINDS=1 (2026-10-15, S4b-BL-288): the production build lists the school, so the gate also runs the kinds
+      # passes twice, with Experimental: more than houses off and on (about 4 s more). Same job, same required check name.
       - name: Run the layout gate on the built site
+        env:
+          GATE_DEV_KINDS: "1"
         run: node layout-gate.js "$GITHUB_WORKSPACE/site"
 
   # Checks, on every run (pull requests included) and with no credentials at all, what the deploy job relies on:

@@ -41,6 +41,9 @@
           },
           "configurations": {
             "production": {
+              "define": {
+                "DOORPRINTS_KINDS": "'house,school'"
+              },
               "budgets": [
                 {
                   "type": "initial",
