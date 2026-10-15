@@ -1,0 +1,23 @@
+{
+  "spec": "android/app/src/test/java/app/doorprints/QuestionsScreenTest.kt (S4b-BL-254)",
+  "gradle": [
+    ":app:testDebugUnitTest",
+    "--rerun",
+    "--tests",
+    "app.doorprints.QuestionsScreenTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/app/src/test/java/app/doorprints/screenshots/ScreenshotTestApp.kt",
+      "find": "override val databaseExecutor = java.util.concurrent.Executor { it.run() }",
+      "replace": "override val databaseExecutor: java.util.concurrent.Executor? = null",
+      "expect": "aScreensEffectContinuesOnTheMainThreadAfterRoomAnswers"
+    },
+    {
+      "file": "android/app/src/main/java/app/doorprints/data/AppDatabaseFactory.kt",
+      "find": "if (executor != null) setQueryExecutor",
+      "replace": "if (executor != null && false) setQueryExecutor",
+      "expect": "aScreensEffectContinuesOnTheMainThreadAfterRoomAnswers"
+    }
+  ]
+}
