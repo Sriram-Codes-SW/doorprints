@@ -1,0 +1,90 @@
+{
+  "spec": [
+    "web/src/app/pages/map/walk-end-sheet.spec.ts",
+    "web/src/app/pages/house-detail/school-form.spec.ts",
+    "web/src/app/core/space-tools.spec.ts",
+    "web/src/app/pages/compare/compare-space.spec.ts",
+    "web/src/app/shared/extra-filter.spec.ts",
+    "web/src/app/pages/data/backup-words.spec.ts"
+  ],
+  "mutations": [
+    {
+      "file": "web/src/app/pages/map/walk-end-sheet.ts",
+      "find": "searchText(h, '', [], localFloor, t).includes(q)",
+      "replace": "searchText(h).includes(q)",
+      "expect": "finds a house by its floor in the app"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/house-listing-fill.ts",
+      "find": "...filledExtras.map((extra): FillMark => ({ extra, value: extras.extrasOther?.[extra.id] ?? null })),",
+      "replace": "",
+      "expect": "marks the extras the fill wrote"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/house-listing-fill.ts",
+      "find": "JSON.stringify(d.extrasOther?.[m.extra.id] ?? null) === JSON.stringify(m.value)",
+      "replace": "true",
+      "expect": "a mark goes when that extra is edited"
+    },
+    {
+      "file": "web/src/app/core/space.service.ts",
+      "find": "if (this.multi() && this.enabled().includes(kind)) this.last.set(kind);",
+      "replace": "if (this.multi()) this.last.set('house');",
+      "expect": "choosing the other makes the card its own"
+    },
+    {
+      "file": "web/src/app/pages/compare/compare-page.ts",
+      "find": "const target = field.better === 'lower' ? Math.min(...present) : Math.max(...present);",
+      "replace": "const target = Math.max(...present);",
+      "expect": "marks the lower commute and the lower fees"
+    },
+    {
+      "file": "web/src/app/shared/extra-filter.ts",
+      "find": "const ok = f.type === 'bool' ? (want === 'yes' ? raw === true : raw === false) : raw === want;",
+      "replace": "const ok = f.type === 'bool' ? (want === 'yes' ? raw === true : raw !== true) : raw === want;",
+      "expect": "keeps what the vectors keep"
+    },
+    {
+      "file": "web/src/app/shared/extra-filter.ts",
+      "find": "if (!want || !filterChoices(f).includes(want)) continue;",
+      "replace": "if (!want) continue;",
+      "expect": "keeps what the vectors keep"
+    },
+    {
+      "file": "web/src/app/shared/extra-filter.ts",
+      "find": "if (v !== null && filterChoices(f).includes(v)) out[f.id] = v;",
+      "replace": "if (v !== null) out[f.id] = v;",
+      "expect": "reads the address"
+    },
+    {
+      "file": "web/src/app/core/space-tool-words.ts",
+      "find": "const TABLES: Readonly<Record<string, Readonly<Partial<Record<TKey, TKey>>>>> = { school: SCHOOL, '*': ANY };",
+      "replace": "const TABLES: Readonly<Record<string, Readonly<Partial<Record<TKey, TKey>>>>> = { school: SCHOOL };",
+      "expect": "cover the Full backup"
+    },
+    {
+      "file": "web/src/app/pages/data/data-page.ts",
+      "find": "return toolWord(this.scopedKind() ?? (this.space.multi() ? '*' : null), key);",
+      "replace": "return toolWord(this.scopedKind(), key);",
+      "expect": "names no kind: the options"
+    },
+    {
+      "file": "web/src/app/pages/data/import-backup.ts",
+      "find": "return this.space.multi() ? toolWord('*', key) : key;",
+      "replace": "return key;",
+      "expect": "the introduction names no house"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/kind-extras.ts",
+      "find": "return finite && (f.min === null || value >= Number(f.min)) && (f.max === null || value <= Number(f.max)) ? value : null;",
+      "replace": "return finite ? value : null;",
+      "expect": "keeps a commute only within"
+    },
+    {
+      "file": "web/src/app/pages/compare/compare-page.ts",
+      "find": "if (present.every((n) => n === target)) return new Set<number>();",
+      "replace": "if (present.length === 0) return new Set<number>();",
+      "expect": "one value, a tie"
+    }
+  ]
+}

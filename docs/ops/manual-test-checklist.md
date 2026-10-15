@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | The complete manual test list for Doorprints before real-system testing starts and before Android/iOS development continues: every check a person redoes on real devices, whether or not an automated suite or a review session already covered it |
-| Version | 0.13 |
-| Date | 2026-10-14 |
+| Version | 0.14 |
+| Date | 2026-10-15 |
 | Author | Claude, senior reviewer |
 | Status | Draft |
 
@@ -25,6 +25,7 @@
 | 0.11 | 2026-10-10 | Claude (Code), engineer | New section 17, **a provider safety block** (MT-88, S4b-BL-232). |
 | 0.12 | 2026-10-14 | Claude (Code), engineer | New section 18, **More than houses: What you track and the chooser** (kinds PR 8, S4b-BL-212; TC-M-69): MT-93 (no section on the published site; the switch, the rows, the chooser, the chip, Back, in four languages, both themes, with a screen reader) and MT-94 (a school space, the default kind, the deep link, the backup's `search.kinds`, turning schools off, importing into a browser that never chose). |
 | 0.13 | 2026-10-14 | Claude (Code), engineer | New section 19, **More than houses on the phone** (kinds PR C, S4b-BL-274; TC-M-72): MT-96 (a release shows nothing; the switch, the chooser, the chip, Back, a school space's words, in four languages, both themes, with TalkBack) and MT-97 (the school space's tools, a copy, the backup's `search`, a shared listing, a link). |
+| 0.14 | 2026-10-15 | Claude (Code), engineer | **MT-102** (TC-M-77, §20): the website's leftovers of the kinds by eye: the space picker on Your data, the filter chips of a school list, Compare's lower-is-better marks, the backup's and the import preview's words with two kinds on. |
 
 ## 1. How to use this list
 
@@ -985,9 +986,33 @@ a school or two saved. English, then one of Hindi, Tamil and Telugu; light and d
 
 Expected: no house word anywhere in 1 to 4. Record any line that still says house, with the language and the page.
 
+#### MT-102 TC-M-77: the website's leftovers of the kinds by eye
+
+Needs the same build as MT-100 and two or three schools saved (different boards, one with a school bus, one without, a commute
+and fees on two of them). English, then one of Hindi, Tamil and Telugu; light and dark; the largest text.
+
+1. Open the **Schools** list. Under the status chips there are three rows of chips: **Board**, **Medium of instruction** and
+   **School bus**, each starting on *Any*. Press *CBSE*: only the CBSE schools stay and the address ends `x.board=CBSE`; press
+   *Yes* under **School bus**: fewer stay; press *Any* in both: all are back. Reload the page with the address: the same chips
+   are pressed. Open the **Houses** list: no extra chip row.
+2. Open **Your data** from the Schools list: **Save a copy of** says *Schools*. Choose *Houses*: the card's words, counts and
+   empty line become the house's, without leaving the page. Choose *Schools* again.
+3. **Compare** two schools that both have a commute and fees: the lower commute and the lower fee are highlighted and marked
+   with the check; a row with one value or a tie is not.
+4. On **Your data** choose **Full backup**: the options read *Entries*, *All entries*, *Shortlisted only*, and with
+   *Shortlisted only* the note says *This backup leaves out entries that are not shortlisted*. Under **Import a backup**
+   choose a backup: the introduction, the two modes and the preview lines say *entries*, not *houses*.
+5. Turn *Experimental: more than houses* off, so only the house is enabled: the same pages say *Houses*, *All houses* and *New
+   houses* as before, and there is no **Save a copy of** select.
+6. Press **Search** in the walk's *Which house was this walk to?* sheet (after a walk) and type a school's board: the school
+   is found.
+
+Expected: no house word in 2 to 4 with two kinds on. Record any line that does not follow, with the language and the page.
+
 ### 20.1 Summary rows (add to §13 when the owner starts the run)
 
 | ID | Name | Who | Env | Pass | Notes |
 |---|---|---|---|---|---|
 | MT-100 | A school's pages and copies by eye | anyone | E4 | no | |
 | MT-101 | A school's pages on the phone by eye | owner | E4 | no | |
+| MT-102 | The website's leftovers of the kinds by eye | anyone | E4 | no | |

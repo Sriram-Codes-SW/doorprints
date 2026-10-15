@@ -483,13 +483,13 @@ function bestOf(values: (number | null)[]): Set<number> {
 
 /**
  * The best of a kind's number or amount where the kind file says which way is better (`better`, S4b-BL-292): the lowest or the
- * highest. Marked only when at least two candidates have a value and they do not all tie; an extra with no hint has none.
+ * highest. Marked only when at least two candidates have a value and they do not all tie (one value, or none, is a tie with
+ * itself); an extra with no hint has none.
  */
 function bestExtra(field: KindExtra, values: (KindValue | undefined)[]): Set<number> {
   if (!field.better) return new Set<number>();
   const nums = values.map((v) => (v?.type === 'number' ? v.value : v?.type === 'money' ? v.amount : null));
   const present = nums.filter((n): n is number => n !== null);
-  if (present.length < 2) return new Set<number>();
   const target = field.better === 'lower' ? Math.min(...present) : Math.max(...present);
   if (present.every((n) => n === target)) return new Set<number>();
   return new Set(nums.flatMap((n, i) => (n === target ? [i] : [])));

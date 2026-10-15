@@ -171,6 +171,16 @@ describe('the Data page in a school space', () => {
     }
     expect(text(host.querySelector('.empty-state p'))).toBe('There is nothing to save yet. Add a house first.');
     expect(host.querySelector<HTMLSelectElement>('#copy-space')!.value).toBe('house');
+    // and back again; a kind that is not enabled changes nothing
+    pick.value = 'school';
+    pick.dispatchEvent(new Event('change'));
+    TestBed.inject(SpaceService).pick('clinic');
+    for (let i = 0; i < 4; i++) {
+      dataFixture.detectChanges();
+      await new Promise((r) => setTimeout(r, 0));
+    }
+    expect(text(host.querySelector('.empty-state p'))).toBe('There is nothing to save yet. Add a school first.');
+    expect(TestBed.inject(SpaceService).kind()).toBe('school');
     expect(audit(host)).toEqual([]);
   });
 
