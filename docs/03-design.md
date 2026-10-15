@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.162 |
+| Version | 0.163 |
 | Date | 2026-10-15 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -173,6 +173,7 @@
 | 0.160 | 2026-10-15 | Claude (Code), docs | **Stale "developer flag" wording** (owner, 2026-10-15; `docs/school-compiled-in-wording`): §18.9's developer-flag paragraph says that since §18.14 the school is compiled in and shown by Settings' switch, and the flag only shows more than the shipped list in tests. |
 | 0.161 | 2026-10-15 | Claude (Code), engineer | **§18.19 Capabilities** (kinds PR 25; `feat/kinds-25-capabilities-schema`): the kind file's optional `capabilities` block (map, Hunt, rooms, moving in, contacts, viewings, Compare, paths, identity), `house.json` and `school.json` declare what they do today, a resolver on the website and in `:shared`, shared vectors; schema and resolver only, nothing reads them yet. |
 | 0.162 | 2026-10-15 | Claude (Code), engineer | **§11.1 and §18.19: no map configuration in a kind file** (owner constraint, `feat/kinds-25-capabilities-schema`): the certification covers every space and every kind; `capabilities.map` is a boolean only; map keys are refused by the schema and tested on three stacks. |
+| 0.163 | 2026-10-15 | Claude (Code), engineer | **New §18.20, Hunt as a capability** (kinds PR 26; `feat/kinds-26-hunt-capability`; TC-U-269, TC-M-84): `capabilities.hunt {alertRadiusM 30..300, stayCreates, streetMemory, areas}`; the school has Hunt (100 m, all on), the house keeps today's (30 m, all on); the Hunt card and switch, the walk, the alerts, the notification, the channel and the deep links read the kind, not the house; the walk belongs to the space it was started in; twelve Hunt words in the kind files; the website has no Hunt UI and reads nothing; §18.19's table row and the S4b-BL-304 lines point here. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -2767,7 +2768,7 @@ S4b-BL-256 for those places: done in §18.9, kinds PR 16). The counters *Houses*
 only. The kind file has no place for these words yet (its `labels` are `new`, `many`, `delete`), so `SPACE_WORDS` is the
 website's own table, as the renderer's element ids are (§18.8); moving it into the kind files with the phone's is
 S4b-BL-278. In a space other than the house, **Compare, Ask and Plan read that space** (§18.13; PR A hid them there). Walks, brokers, Settings, backups and Drive stay
-global; Hunt mode is the phone's and stays the house space's.
+global; Hunt mode is the phone's and is the capability of a kind (the house's and the school's, §18.20).
 
 **The AI reads one space at a time** (§18.13); before PR B the on-device AI and the listing fill read a
 candidate through its kind while `kindsOn()` (the developer flag, or a second kind offered). The server's switch
@@ -2934,7 +2935,7 @@ saved stacks and opens the space's Map (a form of another space must not stay un
 row per kind the switch offers with *Show* (a checkbox, disabled for the last one on), *Default* (a radio, enabled for a kind
 that is shown) and *Saved: N*. Choices are one atomic edit (`SettingsStore.editKindSetting`). The rows that belong to what a
 kind has (`KindSettingRows`: Brokers, Criteria, Questions, Viewings with their reminders) follow the kind's file: a school has
-none of those places, so its Settings has none of those rows. Hunt mode (the Map's card and its switch) is the house space's.
+none of those places, so its Settings has none of those rows. Hunt mode (the Map's card and its switch) is a capability of the kind (§18.20): the house's and, since kinds PR 26, the school's.
 
 **A space's words** (`SpaceWords`): the list's tab and heading, search, count, empty and no-match lines, the Map's *Save here*
 button and tips, the new entry's save button (the kind's `kind.new`), Compare, the Assistant and the copies' scope words. The
@@ -2958,7 +2959,7 @@ The AI card's first sentence is the kind-neutral *one list at a time* for everyo
 (owner, 2026-10-15; S4b-BL-302 replaced the second phone string `settings_ai_worth_spaces` and re-recorded the settings baselines, §18.16).
 
 **Links and alerts** resolve the space from the candidate's kind: a link to a candidate of another kind opens its space; a
-Hunt alert makes a **house** (a walk is the house space's, S4b-BL-304; it was the default kind before); *Start Hunt mode* from a reminder opens the house space; a new entry is of
+Hunt alert makes a **house** (a walk is its space's, S4b-BL-304; since kinds PR 26 the alert makes an entry of the kind the walk was started in, §18.20); *Start Hunt mode* from a reminder opens the house space; a new entry is of
 the space's kind (the developer's kind picker is only shown with one kind on).
 
 **The backup's `search` object** (door 10, §18.12). The Kotlin writer writes `{"kind":"house"}` for a house alone and
@@ -3063,7 +3064,7 @@ list search values (`house-pins.golden.ts`), the list's address keys (`listQuery
 - **A number extra's range (S4b-BL-261 item 2).** `HouseEntity.withInRangeExtras` (`KindExtrasFields.kt`) on save.
 - **The map's location notes (S4b-BL-301).** Five `SpaceWords` entries; three school strings; the place-check's *Save here* reads `saveHere`.
 - **The iPhone (S4b-BL-300; changed 2026-10-15).** The iPhone lists `house,school` like the Android release (`IOS_AVAILABLE_KINDS`, one constant, passed only by `iosSettingsStore()`; the simulator tests' store lists the house), compiled in and off, so nothing of a second kind is seen until the person turns the switch on; `ReleaseKindsTest` holds the list equal to the release's and `IosKindsGateTest` (source-reading, as `IosVoiceSafetyTest`) holds that nothing else on the iPhone names a kind or the chooser, that the chooser route is reached only through `setting.spaces`, and that Info.plist and the Swift shell do not mention the list. The macOS-runner screenshots and VoiceOver of the chooser with the switch on stay S4b-BL-276 (manual MT-113). Info.plist is unchanged; the simulator launch job is unchanged.
-- **A Hunt walk ends when the person leaves the house space (S4b-BL-304; owner, 2026-10-15).** Hunt mode is the house space's card and switch, so `DoorprintsRoot` (common, Android and the iPhone) stops the walk through `MapServices.stopHunt` when the space on screen changes from the house's to another (`HuntSpace.stopsOnLeaving`: was in the house space, is not, Hunt mode running) and says *Hunt mode stopped. It runs in the Houses space only.* (`hunt_stopped_left_space`, hi/ta/te under review) in the root snackbar. The service and its notification end as with the person's own stop; the walk is then asked about as any ended walk. A walk that starts while another space is on screen (a reminder's *Start Hunt mode*) is left alone; the chooser is not a space. A Hunt alert (*stay here?*) is the house space's, so tapping one makes a **house**, not a candidate of the default kind (this replaces the line of §18.14 that said the default kind). With one kind on the house is the only space and nothing changes (`withOneKindOnNoWalkIsEverStoppedByASpaceChange`; no baseline changes). Tests: TC-U-259, `tools/mutations/kinds-22-hunt-walk.json`.
+- **A Hunt walk ends when the person leaves the space it was started in (S4b-BL-304; owner, 2026-10-15; generalised from the house space by §18.20).** Hunt mode is the house space's card and switch, so `DoorprintsRoot` (common, Android and the iPhone) stops the walk through `MapServices.stopHunt` when the space on screen changes from the house's to another (`HuntSpace.stopsOnLeaving`: was in the house space, is not, Hunt mode running) and says *Hunt mode stopped. It runs in the Houses space only.* (`hunt_stopped_left_space`, hi/ta/te under review) in the root snackbar. The service and its notification end as with the person's own stop; the walk is then asked about as any ended walk. A walk that starts while another space is on screen (a reminder's *Start Hunt mode*) is left alone; the chooser is not a space. A Hunt alert (*stay here?*) is the house space's, so tapping one makes a **house**, not a candidate of the default kind (this replaces the line of §18.14 that said the default kind). With one kind on the house is the only space and nothing changes (`withOneKindOnNoWalkIsEverStoppedByASpaceChange`; no baseline changes). Tests: TC-U-259, `tools/mutations/kinds-22-hunt-walk.json`.
 - **Not built.** S4b-BL-302 (one string for the AI card changes the house app's words and baselines: the owner decides), S4b-BL-303 (a `kind` index and a query per space: a Room migration, its own pull request).
 - **Budget.** Three files over their budget got room by moving code out, not by growing: `HouseEditScreen.kt` 1,509 to 1,422 (`PasteListing.kt`), `HouseListScreen.kt` 1,018 to 919 (`HouseListUndo.kt`), `ImportScreen.kt` 1,014 to 923 (`ImportPreviewCard.kt`); `MapScreen.kt` is unchanged at 1,515.
 
@@ -3161,14 +3162,14 @@ a walk running when Houses is turned off stops). The house-only path is unchange
 
 A kind file could only *hide* the house's features (the closed `sectionId` list) while Hunt, Compare, the broker and the rest were
 hard-coded to the house (`huntHere = built.id == HOUSE`, `Space.kt`). The owner's direction is that a kind acts like a product of
-its own under Doorprints, so the kind file gains one optional block, `capabilities`, that says what the kind can do. **This step
-is the schema and the resolver only; nothing reads the resolver yet, so no screen, wire, backup, pin or baseline changes.** The
+its own under Doorprints, so the kind file gains one optional block, `capabilities`, that says what the kind can do. **PR 25 was the schema and the resolver only; PR 26 (§18.20) is the first
+feature that reads it, Hunt mode.** The
 screens move onto it one feature at a time in later changes, each with the house's behaviour proved equal first.
 
 | Key | Meaning | Limits |
 |---|---|---|
 | `map` | the kind's candidates are drawn on the map | boolean |
-| `hunt` | Hunt mode: `alertRadiusM`, `stayCreates` (a stay at an unsaved place offers to save it) | radius an integer 20..500; both keys required; absent = no Hunt |
+| `hunt` | Hunt mode: `alertRadiusM`, `stayCreates` (a stay at an unsaved place offers to save it), `streetMemory`, `areas` (kinds PR 26, [§18.20](#1820-hunt-as-a-capability-kinds-pr-26)) | radius an integer 30..300 (20..500 in PR 25); all four keys required; absent = no Hunt |
 | `rooms`, `moveIn` | the rooms list; the moving-in checklist | boolean |
 | `contacts` | `role` (`broker`, `office`, `agent`) and `autoCreateFromPhone` (a saved phone makes or links a broker entry) | both keys required; absent = no contact capability |
 | `viewings` | `questionsSeed`: the built-in bank that seeds a viewing's questions | only `house` |
@@ -3185,7 +3186,7 @@ that rule is the caller's and is unchanged: it resolves the drawn kind, then ask
 `house.json` declares today's behaviour, no more: the map, Hunt at 30 m (the settings default of `AppSettings.alertRadiusM`; the
 person's own radius, 15 to 100 m, stays a setting) with `stayCreates`, the rooms, moving in, `contacts` broker with `autoCreateFromPhone`,
 `viewings` seeded by the house bank, `compare` over the ten checklist keys and the paths. `school.json` declares what the school has: the
-map, the paths, and an admissions-office contact that never makes a broker (S4b-BL-260); no Hunt, rooms, moving in, viewings or Compare.
+map, the paths, an admissions-office contact that never makes a broker (S4b-BL-260) and, since kinds PR 26 (§18.20), Hunt at 100 m; no rooms, moving in, viewings or Compare.
 
 **The resolver** is `capabilitiesOf(kindId)` (website `core/kind-capabilities.ts`) and `KindCapabilities.of(kindId)` (`:shared`
 commonMain): the built-in sets are copies of the two files, in the way of `HOUSE_LABELS` and `SchoolKind`, and the tests read the files so
@@ -3200,6 +3201,72 @@ keeps no copy and reads nothing new: its tests ignore the added keys (the AI fil
 
 **Tests** ([06](06-test-plan.md) TC-U-269): the website's `kind-capabilities.spec.ts` (with Ajv against `kind.schema.json`) and the phones'
 `KindCapabilitiesVectorsTest` and the server's `KindCapabilitiesFileTest`; `house-kind-file.spec.ts` and the pins of the house are untouched and green.
+
+### 18.20 Hunt as a capability (kinds PR 26)
+
+**Decision (owner, 2026-10-15).** Nothing about Hunt mode is hard-coded to the house: the Hunt card and switch, the walk, the alerts, the
+notification and its channel, the deep links and the walk's rules read `capabilities.hunt` of the kind ([§18.19](#1819-capabilities-what-a-kind-can-do-beyond-its-fields-kinds-pr-25-schema-and-resolver-only)).
+The school gets Hunt, at 100 m. The house keeps today's behaviour byte for byte (30 m, every switch on; the house baselines are unchanged).
+
+**The block.** `hunt` is `{alertRadiusM, stayCreates, streetMemory, areas}`, all four required:
+
+| Key | Meaning | house | school |
+|---|---|---|---|
+| `alertRadiusM` | how near, in metres, a saved place of the kind raises an alert; an integer 30 to 300 (PR 25 allowed 20 to 500; tightened here, vectors updated) | 30 | 100 |
+| `stayCreates` | a stay at an unsaved place offers to save it, **as an entry of the kind the walk was started in**; false: the visit is kept and nothing is offered | true | true |
+| `streetMemory` | the walk tells the person about streets the kind has saved places or visits on (the notification and the card's street line, with counts) | true | true |
+| `areas` | an area wake-up may start a walk of this kind | true | true |
+
+**One walk, one space.** The walk belongs to the space it was started in ([S4b-BL-304](10-sprint-log.md), generalised): `HuntState.State.kind` is
+that kind, and `HuntSpace.stopsOnLeaving(walkKind, was, now, active)` stops the walk when the space on screen leaves it, to any other space (both built-in
+kinds have Hunt, so the school-to-house move stops a school walk as the house-to-school move stops a house walk; a space whose kind has none stops it too), with
+the line in the walk's kind's words (*Hunt mode stopped. It runs in the Houses space only.*, or *…Schools space only.*). A walk that is started while another
+space is on screen (a reminder's or an area's *Start Hunt mode*) is left alone, as before. The Hunt card and switch appear in a space whose kind has Hunt
+(`SpaceUi.huntHere` is `HuntSpace.has(kind)`), and starting asks the platform for a walk **of that kind** (`MapServices.startHunt(kind)`; the service and the
+iPhone's `IosHunt` refuse a kind without Hunt).
+
+**What the walk reads.** `HuntEngine(kind, hunt)`: the saved places are the kind's space's own (`HuntData.of(repo, kind)` over `housesOf(SpaceView)`; with one kind
+on it is every candidate, as it always was, and a street's saved-place count is the space's too; the *visits* are the person's own, whatever kind they were to);
+the alert radius is **the kind's file value, except that the existing Settings radius (15 to 100 m) is the house's own override** (`HuntEngine.radiusFor`; a
+per-kind override is not offered); the street line only when `streetMemory`; the "stay here?" alert only when `stayCreates`.
+
+**Starting from outside the card.** A reminder's *Start Hunt mode* starts the walk of the kind that has **viewings** (`HuntSpace.startKind(setting, REMINDER)`:
+enabled kinds only, the default kind first, then the others: the house); an area wake-up starts the walk of the first enabled kind whose Hunt has **`areas`**, the
+default kind first (so with the school the default and on, an area wake-up opens the Schools space; with the house the default, as before). With none on, nothing
+starts and the Map says why, in the words of the kind that would have (`huntNeedsKind`; the rule of §18.18). `DeepLink.StartHunt` and `OfferHunt` carry which of
+the two started it; the Android intent and the iPhone `userInfo` say it by the key they already had (`EXTRA_START_HUNT` is a reminder's, `EXTRA_START_HUNT_AREA` an area's).
+
+**The "stay here?" alert** carries the walk's kind (`EXTRA_NEW_KIND`, `KEY_NEW_KIND`, accepted only when it is one of the app's own kinds, as the other extras are
+checked, threat model F-25): the new entry is of that kind while it is on (`HuntSpace.alertKind`, `SpaceScope.createKind`: never in a space that is off, §18.18), and
+the default kind's for an alert of an older build. After the system restarts the Android service the walk's kind is the default kind's (when it has Hunt), the walk's own kind being a value of the process that died.
+
+**Words.** The Hunt words that name the kind are twelve more ids of the kind file's `words` (additive, `format` stays `doorprints-kind/1`; phone keys only,
+`web` null: the website has no Hunt): `huntSeen`, `huntStreetText`, `huntStreetTextSince`, `huntStreetSeen`, `huntStayTitle`, `huntNotifyRationale`,
+`huntLeftSpace`, `huntNeedsKind`, `huntOngoingText`, `huntChannelAlerts`, `huntChannelAlertsDesc`, `huntNotificationsOff`. The house's keys are today's
+strings (three of them, the ongoing text and the alerts channel's name and description, existed only in the Android resources and now also in the Compose
+resources, kept equal by `StringParityTest`), the school's are new (hi, ta, te *under review*). The school's two location notes under the Hunt card (`locationOff`, `needsPrecise`, existing ids) now say *Hunt mode* as the house's do (`school_map_location_off`, `school_map_needs_precise`; they were the no-Hunt pair); the iPhone's `…NoHunt` pair is unchanged. `HuntWords` (`:ui`) reads them as `SpaceWords` does; Android's
+notifications and the iPhone's alerts word themselves with it. A kind other than the house gets its own alerts channel, `alerts_<kind>`, created the first time its
+walk alerts, named and described in the kind's words and as private on a lock screen as the house's `alerts`; **the lock-screen public text stays "Doorprints
+alert" for every kind** and names none. The permissions and the foreground service type are unchanged ([13](13-android-release.md) needs no change).
+
+**The website** has no Hunt mode (the house tool is phone-only, README): nothing there decides to show Hunt UI, so the website reads the capability nowhere; its
+resolver (`capabilitiesOf`) and the shared vectors carry the new block, and `kind-capabilities.spec.ts` holds the school's and the limits.
+
+**Files cleared of house literals** (kinds PR 26; the list the later kind-literals check starts from): `HuntSpace.kt`, `Space.kt` (`huntHere`, `HuntWords`), the Hunt
+part of `MapScreen.kt` (the card, the switch, the street line, the notifications note, the rationale), the Hunt part of `Root.kt` (the walk's end, the deep links,
+the alert's kind, the list tab's label), `HuntService.kt`, `HuntEngine.kt`, `IosHunt.kt`, the alert path of `Notifications.kt`, the Hunt intents of `MainActivity.kt`,
+the alert links of `MainViewController.kt`. **What still names the house, on purpose**: `HuntEngine.radiusFor` (the Settings radius is the house's override),
+`Notifications.alertsChannel` (the house's `alerts` channel is the one that existed), and the place check's `PlaceKind.HOUSE` and `*_house` words, which are the
+walk-to-a-candidate words read through `PageWords` already (not Hunt mode). The map-rules files do not read a kind: the tripwire of §18.19 still passes and no map
+file was touched (ADR-22).
+
+**Out of scope:** a per-kind radius setting, a stay length per kind, and the Hunt reminders before viewings (a viewing is the house's).
+
+**Tests** ([06](06-test-plan.md) TC-U-270, TC-M-84): `KindCapabilitiesVectorsTest`, `kind-capabilities.spec.ts` and `KindCapabilitiesFileTest` (the block, the 30 to
+300 limit, the school's 100 m), `KindWordVectorsTest` and `kind-words.spec.ts` (the words), `HuntSpaceTest`, `HuntEngineTest` (the school's radius, no street memory,
+no stay offer), `SpacesRootTest` (the school space has the card, its switch starts a school walk, a school walk stops on leaving, an area wake-up starts the default
+kind's walk, the stay alert makes a school), `HuntKindAlertsTest` (the notification wording and channel), `IosHuntTest`; mutation list
+`tools/mutations/kinds-26-hunt.json`, all killed; the baseline `school_map_hunt_{en,hi}_light.png` and **zero diff** in every house baseline.
 
 ## 19. Voice input (ADR-37)
 

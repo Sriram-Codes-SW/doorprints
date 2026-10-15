@@ -28,7 +28,7 @@ the cards. **Back** from the list does too.
 
 While only one is shown, there is no choice to make: Doorprints opens straight into it, as it always did.
 
-On the phone the button sits at the top of the Map, the list, Compare and Settings. **Hunt mode** is for houses: the Map's Hunt card is only there while you look at houses. In **Settings**, **Brokers**, **Criteria**, **Questions** and **Viewings** are for houses too, and are not shown while you look at schools. If **Hunt mode** is running when you switch from Houses to Schools, it stops, and Doorprints says so in one line (*Hunt mode stopped. It runs in the Houses space only.*); turn it on again from the Map when you are back in Houses. On the website, **Your data** does the same for the **Criteria**, **Questions** and **Viewings** cards.
+On the phone the button sits at the top of the Map, the list, Compare and Settings. **Hunt mode** works in each space: the Map's Hunt card is there while you look at houses and while you look at schools, and its alerts, the notification that shows while it runs and its lines say *house* or *school* as the space you started it in does (a house alerts you from 30 m, or the distance you set in Settings; a school from 100 m). Tapping an *Are you at a school?* alert makes a school. In **Settings**, **Brokers**, **Criteria**, **Questions** and **Viewings** are for houses too, and are not shown while you look at schools. A walk belongs to the space you started it in: if **Hunt mode** is running when you switch to another space, it stops, and Doorprints says so in one line (*Hunt mode stopped. It runs in the Houses space only.*, or *…Schools space only.*); turn it on again from the Map in the space you want. On the website, **Your data** does the same for the **Criteria**, **Questions** and **Viewings** cards.
 
 ## What a school has
 
@@ -56,9 +56,9 @@ deleted: the schools you saved stay, a backup keeps them, and they come back whe
 
 You can turn off **Show Houses** instead and keep only Schools. Your houses are not hidden or deleted: with one list shown
 Doorprints opens straight into it, and it still holds your houses, their **Recently deleted** and any backup, and **What you
-track** still lists **Houses** with how many are saved. A new entry is a school. **Hunt mode** is for houses, so while **Houses**
+track** still lists **Houses** with how many are saved. A new entry is a school. A viewing reminder is for houses, so while **Houses**
 is off, *Start Hunt mode* from a reminder opens the Map and says *Hunt mode runs in the Houses space only, and Houses is turned
-off in What you track.* instead of starting. Viewing reminders you already set still come. Turn **Show Houses** on again and
+off in What you track.* instead of starting; an area wake-up starts Hunt mode in Schools. Viewing reminders you already set still come. Turn **Show Houses** on again and
 everything is as it was.
 
 ## Backups

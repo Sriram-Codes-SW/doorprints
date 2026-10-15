@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | The complete manual test list for Doorprints before real-system testing starts and before Android/iOS development continues: every check a person redoes on real devices, whether or not an automated suite or a review session already covered it |
-| Version | 0.23 |
+| Version | 0.24 |
 | Date | 2026-10-15 |
 | Author | Claude, senior reviewer |
 | Status | Draft |
@@ -35,6 +35,7 @@
 | 0.21 | 2026-10-15 | Claude (Code), engineer | **A recording cut short** (S4b-BL-317, S4b-BL-318, TC-M-82; #367): MT-105's expected result amended (the words so far are kept and written out with *The recording ended early*, nothing shown when nothing was said) and MT-114 (the iPhone, Android and the website; Cancel and leaving the screen still keep nothing; Stop answers at once). |
 | 0.22 | 2026-10-15 | Claude (Code), engineer | **MT-115** (TC-M-83; `fix/kinds-default-and-house-off`): the school as the default, and the house turned off, on the website and a phone, including *Start Hunt mode* refused with Houses off. |
 | 0.23 | 2026-10-15 | Claude (Code), docs | **Stale wording after "compiled in, off"** (`docs/school-compiled-in-wording`): §19 MT-96 says the iPhone lists the school too and the test phones are a release build and a debug build. |
+| 0.24 | 2026-10-15 | Claude (Code), engineer | **MT-116** (TC-M-84; kinds PR 26, [03](../03-design.md) §18.20): the school's Hunt mode on a real walk, the alert's words and channel, the lock screen, TalkBack; not run. |
 
 ## 1. How to use this list
 
@@ -1117,6 +1118,19 @@ Needs a build that ships the school (the website, or the Android or iPhone app),
 
 Expected: nothing is lost or hidden in 2 and 4; no entry is made as a house while Houses is off; step 3 starts no walk. Record any line that does not follow, with the platform, the language and the screen.
 
+#### MT-116 TC-M-84: the school's Hunt mode on a real walk
+
+Needs an Android phone (and, for step 5, an iPhone) with the school compiled in, *Experimental: more than houses* on, a school saved at a place you can walk to, location allowed and notifications allowed. Do it outside, with the phone in a pocket for part of the walk.
+
+1. Open **Schools**: the Map has the **Hunt mode** card. Turn it on: the card says it is on, and the notification that shows while it runs says *Watching for schools and streets you have visited*.
+2. Walk towards the saved school. About 100 m away an alert arrives, *You have seen this school: <name>*, with the distance, on its own channel (Android's notification settings list **School and street alerts** next to **House and street alerts**). Tap it: the school opens.
+3. Lock the phone and walk past another saved school: the lock screen shows *Doorprints alert* and no name. With the app lock on, it shows nothing.
+4. Stand still for the minimum stay at a place with nothing saved: *Are you at a school?* arrives; tap it: **Save school** opens at that spot and saving makes a school. Do the same in **Houses**: *Are you at a house?*, and a house is made.
+5. Switch from **Schools** to **Houses** with the walk running: it stops with *Hunt mode stopped. It runs in the Schools space only.* Start it in **Houses** and walk past a saved house: the alert is as before (*You have seen this one*), from the distance set in Settings.
+6. With TalkBack (VoiceOver on the iPhone) on, the Hunt card reads as one switch in both spaces, and the alerts read their title and text.
+
+Expected: every alert and the notification speak the language of the space the walk was started in; the house's words and channel are unchanged; no place is named on a lock screen. Record any line that does not follow, with the platform, the language and the screen.
+
 ### 20.1 Summary rows (add to §13 when the owner starts the run)
 
 | ID | Name | Who | Env | Pass | Notes |
@@ -1126,3 +1140,4 @@ Expected: nothing is lost or hidden in 2 and 4; no entry is made as a house whil
 | MT-102 | The website's leftovers of the kinds by eye | anyone | E4 | no | |
 | MT-103 | The phones' leftovers of the kinds by eye | anyone | E4 | no | |
 | MT-115 | The school as the default, and the house turned off | anyone | E4 | no | |
+| MT-116 | The school's Hunt mode on a real walk: the alert, its channel, the lock screen, TalkBack | owner | E4, E5 | no | |

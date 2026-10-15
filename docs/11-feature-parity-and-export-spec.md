@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Feature parity and offline-copy export specification |
-| Version | 0.69 |
+| Version | 0.70 |
 | Date | 2026-10-15 |
 | Author | Claude (Cowork) – Product/Architecture |
 | Status | Draft: product-owner decisions D-01, D-02, D-03, D-08, D-21 (AI access) and D-23..D-25 (Sprint 4b reminders, hunting areas, location permissions) and D-26 (India's boundaries on the map, 2026-09-24) applied; ready for Sprint 4 planning |
@@ -81,6 +81,7 @@
 | 0.67 | 2026-10-15 | Claude (Code), engineer | **5.29 item 4: the place lookup keeps a result only inside India's outline** (S4b-BL-174c; `fix/place-lookup-and-native-digits`, PR #356; [03](03-design.md) ADR-22, [10](10-sprint-log.md) v0.337): a neighbour's town inside India's bounding box is refused on the website and the phones alike. |
 | 0.68 | 2026-10-15 | Claude (Code), engineer | **5.18a Microphone permission** (voice input, [03](03-design.md) ADR-37, S4b-BL-222): `RECORD_AUDIO` is asked only after a tap on the microphone and a rationale, never at install or start-up; foreground only; nothing is stored. |
 | 0.69 | 2026-10-15 | Claude (Code), engineer | **5.18b Microphone permission on the iPhone** (voice input, [03](03-design.md) ADR-37, S4b-BL-223): `NSMicrophoneUsageDescription` and iOS's own question, asked once and only after a tap on *Speak* and the in-app rationale; no `audio` background mode, so recording is foreground only; nothing is stored. |
+| 0.70 | 2026-10-15 | Claude (Code), engineer | **Hunt mode per kind** (kinds PR 26, [03](03-design.md) §18.20): section 10 gains the row *Hunt mode in a space*; the card, the walk, the alerts and the notification belong to the kind of the space (the house's and the school's); the website has no Hunt mode. |
 
 Related: [01 Requirements](01-requirements.md) · [02 Threat model](02-threat-model.md) · [03 Design](03-design.md) · [04 DFDs](04-data-flow-diagrams.md) · [05 UX/a11y/i18n](05-ux-accessibility-i18n.md) · [06 Test plan](06-test-plan.md) · [10 Sprint log](10-sprint-log.md) · [AI design](ai/ai-design.md)
 
@@ -2312,6 +2313,7 @@ Dropped from v0.1: `/api/backup/data`, `/api/import/batch` (devices export and i
 | AI custom export | "Your data" → "Custom (AI)": house picker, text box with examples, language, style, contact tick, result with AI label, number warnings, Copy/Share/Save | Same | 5 |
 | Parity screens | Criteria, ranking, compare additions, questions, rooms, photo tags, viewings timeline, reminders, second viewing, share draft (as v0.1) | Same (with `.ics`) | 4b |
 | Hunt mode reminders, hunting areas | Settings → Hunt mode: reminder switch and lead time, "Wake me in my hunting areas"; per-viewing reminder switch; map layer and editor for areas (circle, radius, name, list); background-location rationale screen and settings hand-off; one-time notice when area wake-up switched itself off (5.16..5.18) | Areas listed read-only after sync (Sprint 5); no geofencing in the PWA | 4b |
+| Hunt mode in a space (kinds PR 26) | The Map's Hunt card and switch are in a space whose kind has Hunt (`capabilities.hunt` in the kind file: the house's and the school's); starting asks for a walk of that kind, which alerts within the kind's radius (the house: the Settings value, default 30 m; the school: 100 m), words its alerts, notification and channel in the kind's words, tells streets only when the kind's `streetMemory` is on, offers *Are you at a …?* only when its `stayCreates` is on (the entry made is of the kind), and ends when the person leaves the space; a reminder starts the walk of the kind that has viewings, an area wake-up that of the default kind when its `areas` is on (iPhone: the same, through the Map's offer) | None: the website has no Hunt mode (5.14 is a design only), so it reads the capability nowhere | 4b, kinds 26 |
 | PWA | – | Install item, iOS help, update snackbar, storage used, iOS eviction warning | 4a |
 | Account | Settings → "Sync and account": Sign in with Google (explains what it unlocks), signed-in devices, activity, photo storage (device / Drive), Drive status and Reconnect, delete account; "Use my own server" (advanced) | Same page `/account` | 5 |
 | AI access | On-device badge "Runs on this phone"; model download on Wi-Fi; AI hidden when unsupported; invited users see the remaining cloud count; owner's "Invite to cloud AI" screen (5.13) | No on-device AI; cloud AI only for invited users | 5 |
