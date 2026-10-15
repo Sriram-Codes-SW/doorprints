@@ -73,6 +73,9 @@ interface AppServices {
     /** The phone's offline map store (docs/11 5.20): the Map's *Save this area for offline* and Settings' list. */
     val offlineMaps: OfflineMapsServices get() = NoOfflineMaps
 
+    /** *Voice input* (S4b-BL-222): the microphone, its permission and the transcription; none (no microphone drawn) by default. */
+    val voice: VoiceServices get() = NoVoice
+
     /**
      * Sets every viewing reminder again from the stored viewings (docs/11 5.8, slice 3b-2): called on every resume, so
      * a permission granted in the system settings or a clock change is picked up. Android: the alarm scheduler; iOS:

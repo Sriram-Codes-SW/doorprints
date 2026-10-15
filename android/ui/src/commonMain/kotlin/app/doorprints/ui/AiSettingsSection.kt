@@ -131,6 +131,7 @@ fun AiSettingsSection(settings: AppSettings, aiOff: AiOff?) {
     }
 
     if (ownKey) OwnAiForm(settings)
+    VoiceInputSetting(serverChosen = !ownKey)
 
     val emulatorHost = LocalPlatformFeatures.current.emulatorHost
     val status = when {

@@ -188,6 +188,29 @@ when your server answers, with **Anthropic**, with a program on your computer, o
   in the browser's site settings, or just type. **Cancel**, or the Escape key, throws a recording away; leaving the page or
   hiding the tab stops it.
 
+### Voice input (Android) {#voice-input-android}
+
+On Android, a microphone button can sit under the boxes of **Ask**, **Plan visits** and **Fill in from listing text**. You tap
+it, speak, tap **Stop**, and the words are written into the box. You read and change them; nothing is sent to the AI until
+you press the box's own button (**Ask**, **Plan from my location** or **Fill in**).
+
+It is **off until you turn it on**: in **Settings**, under **AI features**, turn on **Voice input** (it shows once your own
+AI key is saved). It works only with your own AI key, and only with a service that takes audio: **Gemini**, **OpenAI**,
+**Groq** or **OpenRouter**. It is not available when your server answers, with **Anthropic**, with a program on your
+computer, or with a custom address; Settings then says why.
+
+- **Where the audio goes.** A recording of up to a minute goes from the phone straight to the service you chose, which writes
+  out the words. Settings says the host and the price of a minute at the service's list price before you turn it on. The
+  recording is kept in the phone's memory only for that moment; it is not saved on the phone, not in a backup, not in a
+  copy, and not shared.
+- **Numbers and names are heard too.** Anything you say, including a phone number or a name, is sent as audio, and Doorprints
+  cannot leave it out the way it leaves out a contact typed in a house. If that matters, type instead.
+- **The microphone.** Doorprints does not ask for the microphone when you install it or open it. The first time you tap
+  **Speak**, it says why, and then Android asks. If you said no, the box still works: type, or allow the microphone for
+  Doorprints in the phone's settings (the button on the message opens them). Recording only runs while Doorprints is on the
+  screen: switching to another app, locking the phone, a call, turning the phone round or pressing **Cancel** throws the
+  recording away.
+
 ## More than houses (experimental) {#other-kinds}
 
 **Your data** on the website has one more section in a build that ships schools, **What you track**, with the switch
