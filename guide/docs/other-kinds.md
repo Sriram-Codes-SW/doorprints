@@ -6,7 +6,7 @@ it may change or go away.
 
 ## Turn it on
 
-- **Website:** open **Your data** and find **What you track**.
+- **Website:** for now in a development build only (the published website offers houses alone). In such a build, open **Your data** and find **What you track**.
 - **Android and iPhone:** for now in a preview build only (the published app offers houses alone). Open **Settings** and find **What you track**; it appears only in a build that ships more than houses.
 
 Turn on **Experimental: more than houses**. A row for **Houses** and one for **Schools** appear. Turn on **Show Schools**.

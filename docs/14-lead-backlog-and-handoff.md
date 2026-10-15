@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.196 |
+| Version | 0.198 |
 | Date | 2026-10-15 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..183); this file lists the lead-level items and points to the rest. |
@@ -204,6 +204,8 @@
 | 0.194 | 2026-10-14 | Claude (Code), engineer | §11.2: **S4b-BL-311 In review** (`chore/deps-vitest5-jsdom30`): vitest 5.0.4 and jsdom 30.1.2; Vitest 5's on-disk module cache is turned off for the web tests ([10](10-sprint-log.md) v0.323). |
 | 0.195 | 2026-10-15 | Claude (Code), engineer | §7 **Status words** (owner request): Planned, In progress, In review (a PR number in the row), Done (PR number and short commit id); the merging session flips the row in the same pull request; a row never says In review without an open PR. Enforced offline by `tools/check-sprint-status.mjs` (docs/10 rows led by a ticket id; in `tools/check.sh` and the `security.yml` *Commit author emails* job). Evidence recipe: `git log origin/main --grep=<BL id>`. |
 | 0.196 | 2026-10-15 | Claude (Code), docs | §7 *Per change* item 2 gains the rule that a new store version, module, workflow, ADR or stack entry point updates the new [16 Architecture overview](16-architecture-overview.md) in the same pull request (the one entry page for the HLD and LLD; 03 v0.146, docs/README v0.125). |
+| 0.197 | 2026-10-15 | Claude (Code), docs | The root README rewritten around the kinds model (a features table by web, Android and iPhone, with what ships; the 25-row README change log dropped; the India-boundaries paragraph points to ADR-22); docs/12 v0.9 section H; the guide's *More than houses* page says the website shows *What you track* in a development build only. |
+| 0.198 | 2026-10-15 | Claude (Code), docs | README voice row and docs/16, docs/03 §19 updated after the iPhone voice PR merged; `ios/README.md` no longer says *Save a copy* and *Import a backup* are hidden. |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 
