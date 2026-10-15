@@ -513,10 +513,11 @@ public final class KindFiles {
         if (n.has("hunt")) {
             var h = n.get("hunt");
             object(h, p + ".hunt");
-            only(h, p + ".hunt", Set.of("alertRadiusM", "stayCreates"));
-            require(h, p + ".hunt", "alertRadiusM", "stayCreates");
-            hunt = new KindFile.Hunt((int) integer(h, "alertRadiusM", p + ".hunt.alertRadiusM", 20, 500),
-                    bool(h, "stayCreates", p + ".hunt.stayCreates"));
+            only(h, p + ".hunt", Set.of("alertRadiusM", "stayCreates", "streetMemory", "areas"));
+            require(h, p + ".hunt", "alertRadiusM", "stayCreates", "streetMemory", "areas");
+            hunt = new KindFile.Hunt((int) integer(h, "alertRadiusM", p + ".hunt.alertRadiusM", 30, 300),
+                    bool(h, "stayCreates", p + ".hunt.stayCreates"), bool(h, "streetMemory", p + ".hunt.streetMemory"),
+                    bool(h, "areas", p + ".hunt.areas"));
         }
         KindFile.Contacts contacts = null;
         if (n.has("contacts")) {

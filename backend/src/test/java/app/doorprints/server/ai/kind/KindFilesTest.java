@@ -351,8 +351,8 @@ class KindFilesTest {
         assertThat(defs.get("aiWords").get("properties").get("records").get("pattern").asString()).isEqualTo("^[a-z]{2,24}$");
         assertThat(schema.get("properties").get("ai").get("properties").has("words")).isTrue();
         var hunt = schema.get("properties").get("capabilities").get("properties").get("hunt").get("properties").get("alertRadiusM");
-        assertThat(hunt.get("minimum").asInt()).isEqualTo(20);
-        assertThat(hunt.get("maximum").asInt()).isEqualTo(500);
+        assertThat(hunt.get("minimum").asInt()).isEqualTo(30);
+        assertThat(hunt.get("maximum").asInt()).isEqualTo(300);
         assertThat(defs.get("extra").toString()).contains("1000000000000");
     }
 }

@@ -90,8 +90,11 @@ public record KindFile(String id, int version, List<String> core, List<String> m
                 null);
     }
 
-    /** Hunt mode: how near an alert is, in metres, and whether a stay at an unsaved place offers to save it. */
-    public record Hunt(int alertRadiusM, boolean stayCreates) {
+    /**
+     * Hunt mode (docs/03 section 18.20): how near an alert is, in metres (30 to 300), whether a stay at an unsaved place offers to
+     * save it, whether the walk tells the person about streets it has saved places on, and whether an area wake-up may start a walk.
+     */
+    public record Hunt(int alertRadiusM, boolean stayCreates, boolean streetMemory, boolean areas) {
     }
 
     /** The candidate's contact: whose it is and whether a saved phone makes or links the address-book entry. */
