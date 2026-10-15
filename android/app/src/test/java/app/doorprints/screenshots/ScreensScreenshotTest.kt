@@ -147,6 +147,12 @@ import app.doorprints.shared.model.Criterion
 import app.doorprints.shared.model.HouseStatus
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.cancelAndJoin
+import app.doorprints.FakeVoiceRepository
+import app.doorprints.FakeVoiceServices
+import app.doorprints.ui.res.voice_mic
+import app.doorprints.ui.res.voice_mic_desc
+import app.doorprints.ui.res.voice_status_recording
 import kotlinx.coroutines.test.StandardTestDispatcher
 import org.junit.After
 import org.junit.Before
@@ -807,6 +813,47 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
         shoot("areas", readyText = "Noisy after 9 pm") { Column(Modifier.verticalScroll(rememberScrollState())) { AreasEditor(onOpenArea = {}) } }
     }
     @Test fun assistant() = shoot("assistant", readyText = text(Res.string.common_try_again)) { AssistantScreen(onOpenHouse = {}) }
+
+    /**
+     * Voice input (S4b-BL-222): Ask with the microphone while it records, at 130 % text, English light: the Stop button, Cancel,
+     * the clock, the host line and the polite status. A fake microphone and a fake permission; the repository says the person's
+     * own AI answers and the *Voice input* switch is on. The existing Assistant shot (AI off) is untouched.
+     */
+    @Test fun assistantVoice() {
+        englishLightOnly()
+        RuntimeEnvironment.setFontScale(1.3f)
+        val job = kotlinx.coroutines.SupervisorJob()
+        val file = java.io.File.createTempFile("voice-shot", ".preferences_pb").also { it.delete() }
+        val seal: (String) -> String = { "v1:" + it.reversed() }
+        val open: (String?) -> String? = { v -> v?.takeIf { it.startsWith("v1:") }?.removePrefix("v1:")?.reversed() }
+        val store = app.doorprints.data.SettingsStore(
+            androidx.datastore.preferences.core.PreferenceDataStoreFactory.create(scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO + job)) { file },
+            app.doorprints.data.KeystoreSecretStore(seal, open = open),
+            geminiSecrets = app.doorprints.data.KeystoreSecretStore(seal, app.doorprints.data.KeystoreSecretStore.GEMINI_ENTRY, open),
+        )
+        runBlocking { store.saveVoiceInput(true) }
+        val real = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
+        val fake = FakeVoiceRepository(real, store)
+        val voice = FakeVoiceServices(granted = true)
+        try {
+            show(readyText = text(Res.string.voice_mic)) {
+                val services = LocalAppServices.current
+                val wrapped = object : app.doorprints.ui.AppServices by services {
+                    override val repository: app.doorprints.data.Repository = fake
+                    override val voice = voice
+                }
+                CompositionLocalProvider(LocalAppServices provides wrapped) { AssistantScreen(onOpenHouse = {}) }
+            }
+            compose.onNodeWithContentDescription(text(Res.string.voice_mic_desc)).performClick()
+            settle()
+            awaitStableFrame()
+            compose.onNodeWithText(text(Res.string.voice_status_recording), substring = true).assertExists()
+            compose.onRoot().captureRoboImage(file("assistant_voice"))
+        } finally {
+            runBlocking { job.cancelAndJoin() }
+            file.delete()
+        }
+    }
     @Test fun export() = shoot("export", readyText = countHouses(2)) { ExportScreen(onBack = {}) }
     @Test fun import() = shoot("import", STATIC) { ImportScreen(onBack = {}) }
 

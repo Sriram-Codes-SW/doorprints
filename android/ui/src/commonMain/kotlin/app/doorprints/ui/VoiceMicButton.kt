@@ -34,6 +34,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -162,7 +163,11 @@ private fun VoiceMic(offer: VoiceOffer, value: String, onValue: (String) -> Unit
     val errorText = aiErrorText(if (offer.host == AiProviderForm.GEMINI_HOST) "" else offer.host)
 
     Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            itemVerticalAlignment = Alignment.CenterVertically,
+        ) {
             // One call site for Speak, Stop and Writing out, so TalkBack's focus stays on it through the states.
             StateButton(
                 text = word,
@@ -189,7 +194,7 @@ private fun VoiceMic(offer: VoiceOffer, value: String, onValue: (String) -> Unit
                 Text(
                     "${ui.seconds / 60}:${(ui.seconds % 60).toString().padStart(2, '0')}",
                     style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.heightIn(min = 48.dp).clearAndSetSemantics {},
+                    modifier = Modifier.clearAndSetSemantics {},
                 )
             }
         }

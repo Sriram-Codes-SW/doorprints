@@ -426,8 +426,10 @@ class VoiceSafetyTest {
         val services = AndroidVoiceServices(app, store) { Provider().client }
         shadowOf(app).grantPermissions(Manifest.permission.RECORD_AUDIO)
         assertTrue(services.microphoneGranted())
-        shadowOf(app.packageManager).setSystemFeature(android.content.pm.PackageManager.FEATURE_MICROPHONE, true)
         assertTrue(services.supported)
+        shadowOf(app.packageManager).setSystemFeature(android.content.pm.PackageManager.FEATURE_MICROPHONE, false)
+        assertFalse("a phone without a microphone cannot record", AndroidVoiceServices(app, store) { Provider().client }.recordable)
+        shadowOf(app.packageManager).setSystemFeature(android.content.pm.PackageManager.FEATURE_MICROPHONE, true)
         assertTrue(AndroidVoiceServices(app, store) { Provider().client }.recordable)
     }
 
