@@ -1108,6 +1108,8 @@ export const hi: Dict = {
   'map.costMin': '{what}, कम से कम (₹)',
   'map.costMax': '{what}, अधिक से अधिक (₹)',
   'map.costClear': 'लागत के फ़िल्टर हटाएँ',
+  // S4b-BL-265 (2026-10-15): the filter chips of a kind's extras. Under review (owner rule: hi/ta/te ship marked under review).
+  'map.extraAny': 'कोई भी',
   // S4b-BL-75, S4b-BL-83 (2026-10-01): Import a backup on the website, and the locality lookup. Under review (owner rule: hi/ta/te ship marked under review).
   'imp.heading': 'बैकअप आयात करें',
   'imp.intro': 'Doorprints के पूरे बैकअप से, या किसी के भेजे अपडेट से, मकान, दौरे और तस्वीरें इस ब्राउज़र में लाएँ। सिर्फ़ Doorprints बैकअप ही वापस पढ़ा जा सकता है: Doorprints की बनाई ZIP, या Doorprints सर्वर की .json बैकअप फ़ाइल (उसमें तस्वीरें नहीं होतीं)। जब तक आप आयात नहीं चुनते, कुछ नहीं लिखा जाता।',

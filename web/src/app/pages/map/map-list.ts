@@ -20,9 +20,11 @@ import { HouseDto, HouseStatus, STATUSES } from '../../core/models';
 import type { Broker } from '../../shared/broker';
 import { floorSearchText } from '../../shared/house-floor';
 import type { KindFields } from '../../core/kind-fields';
+import type { TKey } from '../../i18n/en';
 import { drawnKind } from '../../core/kind-setting';
 import { kindSearchWords, type Words } from '../../shared/kind-values';
 import { NO_COST_FILTER, type CostFilter, type CostRange } from '../../shared/cost-filter';
+import { readExtraFilter, type ExtraFilter } from '../../shared/extra-filter';
 
 /**
  * The house list's search, status filter and sort, kept apart from the map page so they can be unit tested without
@@ -34,6 +36,12 @@ export type SortKey = 'recent' | 'score' | 'price';
 export type StatusFilter = HouseStatus | 'ALL';
 
 export const SORT_KEYS: readonly SortKey[] = ['recent', 'score', 'price'];
+/** The sort choices with their label keys, in the order the list offers them. */
+export const SORT_OPTIONS: readonly { key: SortKey; labelKey: TKey }[] = [
+  { key: 'recent', labelKey: 'map.sort.recent' },
+  { key: 'score', labelKey: 'map.sort.score' },
+  { key: 'price', labelKey: 'map.sort.price' },
+];
 
 /** The list's state as it goes into the URL: search text, status, sort and cost ranges. */
 export interface ListQuery {
@@ -42,6 +50,8 @@ export interface ListQuery {
   sort: SortKey;
   /** The ranges over the cost numbers (S4b-BL-84); absent is none. */
   cost?: CostFilter;
+  /** The rows over a kind's typed extras (S4b-BL-265), as `x.<id>` in the address; absent for a house, which has none. */
+  extras?: ExtraFilter;
 }
 
 /** The defaults, which are left out of the URL. */
@@ -64,8 +74,8 @@ function rupeesParam(value: string | null): number | null {
   return n <= 1_000_000_000_000 ? n : null;
 }
 
-/** Reads the list state from query parameters; anything unknown falls back to the default. */
-export function parseListQuery(get: (name: string) => string | null): ListQuery {
+/** Reads the list state from query parameters; anything unknown falls back to the default. `fields`: the space's kind, for its extras' rows. */
+export function parseListQuery(get: (name: string) => string | null, fields?: KindFields): ListQuery {
   const status = get('status');
   const sort = get('sort');
   return {
@@ -73,6 +83,7 @@ export function parseListQuery(get: (name: string) => string | null): ListQuery 
     status: STATUSES.includes(status as HouseStatus) ? (status as HouseStatus) : 'ALL',
     sort: SORT_KEYS.includes(sort as SortKey) ? (sort as SortKey) : 'recent',
     cost: parseCostFilter(get),
+    ...(fields ? { extras: readExtraFilter(get, fields) } : {}),
   };
 }
 
@@ -98,6 +109,7 @@ export function listQueryParams(query: ListQuery): Record<string, string | null>
     const v = query.cost?.[range][end];
     params[name] = v == null ? null : String(v);
   }
+  for (const [id, v] of Object.entries(query.extras ?? {})) params[`x.${id}`] = v || null;
   return params;
 }
 
