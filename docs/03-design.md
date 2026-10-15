@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.145 |
+| Version | 0.146 |
 | Date | 2026-10-15 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -156,6 +156,7 @@
 | 0.143 | 2026-10-15 | Claude (Code), engineer | **§18.17 The server's Ask and Plan take a kind** (S4b-BL-290, S4b-BL-313; S4b-BL-314 documented and left; kinds PR 23, `feat/kinds-23-server-kind-ai`; [ai-design](ai/ai-design.md) v0.78 16.12, [06](06-test-plan.md) TC-U-241 and TC-AI-51, [02](02-threat-model.md) v0.85 T-I51, [10](10-sprint-log.md) v0.333): `POST /api/ai/ask` and `/plan-visits` take an optional `kind` (absent is today's call, byte for byte; a kind outside `app.kinds.available` is a 400 before anything is read), read only that kind's candidates, and the status names the kinds so a client never sends one to an older server. §18.13, §18.14 and §18.15 say where the server's part now is. |
 | 0.144 | 2026-10-15 | Claude (Code), engineer | **ADR-37, status:** the website's side is built (S4b-BL-221): `core/voice/` (recorder, service, transcript insert), `shared/voice-button.ts`, `pages/connect/voice-setting.ts`, `firebase.json` `Permissions-Policy` `microphone=(self)`. Custom endpoints (the opt-in with a Test call) are not offered yet: only Gemini and the OpenAI, Groq and OpenRouter presets, with the models `gpt-4o-mini-transcribe`, `openai/gpt-4o-mini-transcribe` and `whisper-large-v3-turbo`; the limit is 60 s and 2 MB. |
 | 0.145 | 2026-10-15 | Claude (Code), engineer | **ADR-22: a place lookup is limited to India's outline** (S4b-BL-174c; `fix/place-lookup-and-native-digits`, PR #356; [10](10-sprint-log.md) v0.337, [06](06-test-plan.md) TC-U-258): the ring built from the ADR's own boundary data and used only to filter a search result; not a base-map change. |
+| 0.146 | 2026-10-15 | Claude (Code), docs | **The architecture overview and the stale parts fixed** ([16](16-architecture-overview.md) v0.1, the new entry page for the HLD and LLD): §1 table (the Android row is Compose Multiplatform with the iOS app, the database is PostGIS with pgvector, the AI module is built and optional, the web app is local-first), §6.1 (the server has the single migration `V1__init.sql`; the ERD's house columns are `kind`, `money_*` and `extras`), §6.2 (Room **13**, the columns of the kind reset, the migration list), the new §6.4 (IndexedDB `doorprints` version 4), the new §19 *Voice input* and §20 *Deletion safeguards and Recently deleted*, each a short summary with links. No behaviour change. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -165,15 +166,15 @@ Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md
 
 | Part | Tech | Responsibility | Source |
 |---|---|---|---|
-| Android app | Kotlin 2.4.20, Jetpack Compose (Material 3), moving to JetBrains Compose Multiplatform 1.12.1 (ADR-23), Navigation, Room 2.8, WorkManager 2.10, DataStore, Play services location, MapLibre Android 13.6, Ktor client 3.6 (OkHttp 5.5 engine), kotlinx.serialization, Coil 3. minSdk 26, targetSdk 36, compileSdk 37 (AGP 9.4, built-in Kotlin). Two Gradle modules since Sprint 3.5: `:app` and the Kotlin Multiplatform module `:shared` (platform-neutral rules, DTOs and the API client; ADR-14); a third since 2026-09-24, the Compose Multiplatform module `:ui` (the UI an iOS app would reuse; ADR-23). Versions in one catalog, `android/gradle/libs.versions.toml`. | Offline-first capture, Hunt mode, map/list/compare, background sync | `android/` |
+| Android app | Kotlin 2.4.20, JetBrains Compose Multiplatform (the screens live in `:ui` and are shared with the iOS app; ADR-23), Navigation, Room 2.8, WorkManager 2.10, DataStore, Play services location, MapLibre Android 13.6, Ktor client 3.6 (OkHttp 5.5 engine), kotlinx.serialization, Coil 3. minSdk 26, targetSdk 36, compileSdk 37 (AGP 9.4, built-in Kotlin). Two Gradle modules since Sprint 3.5: `:app` and the Kotlin Multiplatform module `:shared` (platform-neutral rules, DTOs and the API client; ADR-14); a third since 2026-09-24, the Compose Multiplatform module `:ui` (the screens of both phones; ADR-23). The iPhone app is a small SwiftUI shell in `ios/` around `:ui`; it builds and runs on the simulator in CI, with no App Store release (ADR-23, [ios/README.md](../ios/README.md)). Versions in one catalog, `android/gradle/libs.versions.toml`. | Offline-first capture, Hunt mode, map/list/compare, background sync; the Room database and the sync loop sit in `:shared` | `android/`, `ios/` |
 | API | Java 25, Spring Boot 4.1.1 (Web MVC, Data JPA, Validation, Actuator, Flyway; embedded Tomcat pinned to 11.0.25 by `tomcat.version`, F-28), PostgreSQL JDBC | REST API, LWW upserts, change feed, geospatial queries, photo storage | `backend/` |
-| Database | PostgreSQL 15+ with PostGIS 3 (pgvector planned) | System of record, spatial indexes, `sync_seq` | `backend/src/main/resources/db/migration/V1__init.sql` |
-| Web app | Angular 22 (22.2 since 2026-09-28; standalone, zoneless, signals), MapLibre GL 6.11 (ESM, module worker from `/maplibre/`), static build | Desktop review/edit/compare | `web/` |
-| AI (planned) | Spring AI 2.0.1, pgvector, Gemini free tier or Ollama, MCP server | RAG Q&A, listing extraction, route planner, MCP tools | [ai/](ai/) |
+| Database | PostgreSQL with PostGIS 3 and, when the extension exists, pgvector for the AI index (the `backend/db` image has both) | System of record, spatial indexes, `sync_seq` | `backend/src/main/resources/db/migration/V1__init.sql` |
+| Web app | Angular 22 (22.2 since 2026-09-28; standalone, zoneless, signals), MapLibre GL 6.11 (ESM, module worker from `/maplibre/`), static build | A local-first, installable app (IndexedDB, no account needed): review, edit, compare, copies, optional sync | `web/` |
+| AI (optional, off unless enabled; built) | Spring AI 2.0.1, pgvector, Gemini (AI Studio or Vertex AI) or Ollama, MCP server; on the devices, the person's own provider key (§13.1, §13.2) | RAG Q&A, listing extraction, route planner, MCP tools | [ai/](ai/) |
 
 Main ideas:
 
-- **Offline-first on Android.** Room is the phone's source of truth. The server is a sync hub plus the web app's backend.
+- **Offline-first on every client.** Room (phones) and IndexedDB (browser) are each device's source of truth. The server and Google Drive ([15](15-google-drive-backup-and-sharing.md)) are optional sync hubs. The one-page map of all of this is [16](16-architecture-overview.md).
 - **Client-generated UUIDs** for houses, visits and photos. Creates are idempotent (`PUT /api/candidates/{id}`, photo `id` form field).
 - **Change feed by sequence.** Every write takes `nextval('sync_seq')`. Clients pull `since=<cursor>`.
 - **Simple single-user security.** One API key in the `X-API-Key` header, CORS allowlist, TLS at the host edge.
@@ -540,7 +541,7 @@ flowchart LR
 
 ## 6. Data model
 
-### 6.1 Server ERD (matches `V1__init.sql` + `V3__photo_tombstones_and_privacy.sql`)
+### 6.1 Server ERD (matches `V1__init.sql`, the only Flyway migration)
 
 ```mermaid
 erDiagram
@@ -548,7 +549,7 @@ erDiagram
     HOUSE ||--o{ PHOTO : "has"
     HOUSE |o--o{ VISIT : "visited in"
     RECORD {
-        varchar type PK "40; criteria, viewings, brokers, ... (V6, ADR-28)"
+        varchar type PK "40; criteria, viewings, brokers, ... (ADR-28)"
         varchar id PK "64"
         jsonb payload "opaque, at most 64 KiB, {} when deleted"
         timestamptz updated_at
@@ -564,23 +565,21 @@ erDiagram
         double_precision lat "NOT NULL"
         double_precision lon "NOT NULL"
         geography geog "GENERATED Point 4326, GIST index"
+        varchar kind "32, the kind id, default house (ADR-36)"
         varchar status "NEW SHORTLISTED REJECTED TAKEN NOT_CHOSEN, default NEW"
-        bigint price "INR"
-        varchar price_type "RENT or SALE"
-        integer bedrooms "BHK"
+        bigint money_amount "whole rupees, null when unknown"
+        varchar money_cadence "10: once, day, week, month, quarter, year"
         integer rating "1 to 5"
         varchar contact_name "200, third-party PII"
         varchar contact_phone "50, third-party PII"
         varchar listing_url "1000"
         text notes "max 20000 via API"
-        integer area_sqft "carpet area (V7, slice 1a)"
-        varchar location_source "GPS MAP APPROX (V7)"
-        jsonb cost "deposit, maintenance, brokerage, lock-in, notice, availableFrom, myOffer, agreedPrice (V7)"
-        varchar broker_id "64, a record id of type broker, no FK (V8)"
-        jsonb rooms "at most 30: id, type, name, lengthCm, widthCm, condition, notes, sort (V9)"
-        jsonb answers "at most 60: id, questionId, text, answer, status, sort (V10)"
-        jsonb move_in "date, notes, at most 30 items: id, text, done, sort (V11, slice 5)"
-        integer floor "-5..200, 0 ground (V13, S4b-BL-87)"
+        varchar location_source "GPS MAP APPROX"
+        jsonb extras "typed extras of the kind: bedrooms, areaSqft, floor, costs ... (null when empty)"
+        varchar broker_id "64, a record id of type broker, no FK"
+        jsonb rooms "at most 30: id, type, name, lengthCm, widthCm, condition, notes, sort"
+        jsonb answers "at most 60: id, questionId, text, answer, status, sort"
+        jsonb move_in "date, notes, at most 30 items: id, text, done, sort"
         timestamptz created_at "NOT NULL"
         timestamptz updated_at "NOT NULL, LWW clock"
         boolean deleted "tombstone"
@@ -610,42 +609,54 @@ erDiagram
         uuid house_id FK "NOT NULL, ON DELETE CASCADE"
         varchar content_type "detected from bytes"
         bytea data "NULL for tombstones, see ADR-08"
-        integer size_bytes "V3"
+        integer size_bytes
         timestamptz created_at "NOT NULL"
-        timestamptz updated_at "NOT NULL, V3"
-        boolean deleted "tombstone, V3"
-        bigint sync_version "NOT NULL, indexed, V3"
-        varchar room_id "64, a room of its house, may dangle (V12, slice 5)"
-        jsonb tags "at most 10: fixed keys or own text (V12)"
-        varchar caption "200 (V12)"
-        bigint meta_updated_at "NOT NULL default 0, LWW of the meta (V12)"
+        timestamptz updated_at "NOT NULL"
+        boolean deleted "tombstone"
+        bigint sync_version "NOT NULL, indexed"
+        varchar room_id "64, a room of its house, may dangle"
+        jsonb tags "at most 10: fixed keys or own text"
+        varchar caption "200"
+        bigint meta_updated_at "NOT NULL default 0, LWW of the meta"
     }
 ```
 
-Sequence `sync_seq` is shared by `house`, `visit` and (since V3) `photo`. V2 (optional pgvector `vector_store`) belongs to the AI module. A deleted house keeps only `id`, `deleted`, timestamps and `sync_version` (content blanked, location 0,0); a deleted visit keeps no place.
+The schema is the one migration `backend/src/main/resources/db/migration/V1__init.sql`: on 2026-10-12 the format reset (S4b-BL-206, ADR-36) squashed the earlier V1..V14 into it, and a database made by those is dropped and created again (no server had data worth migrating); a change from now on is a new `V2__...sql`. Sequence `sync_seq` is shared by `house`, `visit` and `photo`. The optional pgvector `vector_store` (created only when the extension is available) belongs to the AI module, and the device-key and owner-page tables (`device_key`, `pairing_request`, `pairing_invite`, `owner_token`, `server_secret`, `server_setting`, §12.1) sit in the same file. A deleted house keeps only `id`, `deleted`, timestamps and `sync_version` (content blanked, location 0,0); a deleted visit keeps no place.
 
-### 6.2 Android Room schema (`doorprints.db`, version 2)
+### 6.2 Room schema on the phones (`doorprints.db`, version 13)
 
-The file was `househunt.db` until 2026-09-24 (ADR-24); `DatabaseFile.resolve` renames an existing one, with its
-`-wal`, `-shm` and `-journal` files, before Room opens it.
+The same Room database serves Android and iOS (`@Database(version = 13)` in
+`android/shared/src/commonMain/kotlin/app/doorprints/data/AppDatabase.kt`). The file was `househunt.db` until 2026-09-24
+(ADR-24); `DatabaseFile.resolve` renames an existing one, with its `-wal`, `-shm` and `-journal` files, before Room opens it.
+The phones' tables (`Entities.kt` in the same folder):
 
-| Table | Columns beyond the server model | Indexes |
+| Table | What it holds | Indexes |
 |---|---|---|
-| `houses` | `checklist` as a JSON string (TypeConverter). Epoch-ms timestamps. `dirty` flag. No `syncVersion`. | `street` |
-| `visits` | epoch-ms timestamps, `dirty` | `houseId`, `street` |
-| `photos` | `path` (file in `filesDir/photos`), `uploaded` flag, `deleted` flag (v2: delete queued for the server) | `houseId` |
+| `houses` | One row per candidate (the name stayed): the core columns, `kind`, `money_amount` and `money_cadence` (the price), `extras` (the kind's typed extras as one JSON text: bedrooms, area, floor and the cost fields for a house), `rooms`, `answers`, `moveIn`, `brokerId`, `checklist` as JSON text (TypeConverter). Epoch-ms timestamps, `deleted` tombstone, `dirty` flag; no `syncVersion` | `street`, `kind` |
+| `visits` | A visit; epoch-ms timestamps, `dirty` | `houseId`, `street` |
+| `photos` | `path` (a file in the photos folder), `uploaded`, `deleted` (a delete queued for the server), and the photo's meta (`roomId`, `tags`, `caption`) | `houseId` |
+| `track_points` | The path trace's points; local only, never synced | `at`, `walkId` |
+| `saved_walks` | The walks the person saved to a house; local only | `houseId`, `startedAt` |
+| `records` | The record envelope of ADR-28 (criteria, questions, viewings, brokers, areas, places, notes ...), key `[type, id]` | `type` |
 
-Migration 1→2 (`AppDatabase.MIGRATION_1_2`) adds `photos.deleted INTEGER NOT NULL DEFAULT 0`. Since Sprint 3.5
-`exportSchema = true`; since CMP-4 P4a (Room KMP in `:shared`, ADR-23) the Room Gradle plugin's `room { schemaDirectory
-}` writes it: `android/shared/schemas/app.doorprints.data.AppDatabase/2.json` (moved unchanged from
-`android/app/schemas/`) is committed and `RoomSchemaTest` checks that both it and the generated `AppDatabase_Impl` carry
-the identity hash of the shipped version-2 layout (`539964c2013f14439605fab0d18a142a`), so a table change through the
-shared enums fails the unit tests instead of crashing upgraded installs. A real schema change needs a version bump, a
-migration and a new `<version>.json`, never an edit to `2.json`. Since CMP-4 P4a `AppDatabaseMigrationTest`
-([06](06-test-plan.md) TC-U-63) writes a version-1 file and migrates it, with Room's `MigrationTestHelper` (validated
-against `2.json`) and through the app's own builder from a `househunt.db` (R-06 closed).
+**The migrations** (`AppDatabase.MIGRATIONS`, one list for the three builders: Android's `AppDatabaseFactory`, iOS's
+`AppDatabaseIos` and the tests): 1 to 2 `photos.deleted`; 2 to 3 `track_points`; 3 to 4 `records`; 4 to 5 the house's own
+values and the cost; 5 to 6 `brokerId`; 6 to 7 `rooms`; 7 to 8 `answers`; 8 to 9 the photo's meta; 9 to 10 `floor`; 10 to 11
+`walkId` and `saved_walks` (below); **11 to 12 the kind reset** (every house rewritten in place as a candidate: `kind`,
+`money_amount`, `money_cadence`, `extras`; ADR-36 §18.4; nothing is sent again and nothing is lost); **12 to 13**
+`index_houses_kind` (S4b-BL-303, so a space's list and the chooser's tally use an index).
 
-#### Room 11 (built on `feat/path-trace-v2`, PR #146, not yet merged; S4b-FR-14): saved walks
+Since Sprint 3.5 `exportSchema = true`; since CMP-4 P4a (Room KMP in `:shared`, ADR-23) the Room Gradle plugin's `room {
+schemaDirectory }` writes `android/shared/schemas/app.doorprints.data.AppDatabase/<version>.json` (committed: `2.json` to
+`13.json`) and `RoomSchemaTest` pins an identity hash per version, so a table change through the shared enums fails the unit
+tests instead of crashing upgraded installs. A real schema change needs a version bump, a migration added to `MIGRATIONS`
+and a new `<version>.json`, never an edit to an old one. `AppDatabaseMigrationTest` ([06](06-test-plan.md) TC-U-63)
+migrates from version 1 with Room's `MigrationTestHelper` and through the app's own builder from a `househunt.db` (R-06
+closed).
+
+#### Room 11 (S4b-FR-14, built): saved walks
+
+*Historical design text, kept as the record: on `main` Room is now **13** and IndexedDB **4** (above and §6.4); the version numbers inside this subsection were those of the time.*
 
 `MIGRATION_10_11` (built: Room was **10** on `main`) and `11.json`, written with Room's own generator, never by hand and validated by `AppDatabaseMigrationTest` and `RoomSchemaTest`:
 
@@ -835,6 +846,36 @@ the website's `data/candidate-rows.ts`. `CommonRepository` and the DAOs are unch
 |---|---|---|
 | Overall score | `mean(checklist)` blended 50/50 with `rating` when both exist, else whichever exists, else null | `HouseScore.of` in `:shared` (used by `HouseEntity.score`), web `houseScore()` |
 | Distinct streets | `count(distinct lower(street))` over live houses | `HouseRepository.countDistinctStreets` |
+
+### 6.4 The website's IndexedDB (`doorprints`, version 4)
+
+The browser database that holds a browser's whole data set, opened by `openLocalDb` in `web/src/app/data/local-db.ts` (a ~120-line
+wrapper, ADR-19; an in-memory stand-in when IndexedDB is unusable). `DB_VERSION` is **4**; `upgradeLocalDb` runs one step per
+version by `oldVersion`, so a browser that skipped releases still gets every step, each pinned in `local-db.spec.ts`. A tab holding
+an older version open is told through `versionchange`, closes its database and shows the update banner.
+
+| Store | Key | Indexes | Holds |
+|---|---|---|---|
+| `houses` | `id` | none | Candidates (kind, money, extras) |
+| `visits` | `id` | `houseId` | Visits |
+| `photos` | `id` | `houseId` | Photo bytes and meta |
+| `settings` | `key` | none | This browser's settings, cursors, the enabled kinds and the default (device-local, never synced) |
+| `records` | `[type, id]` | `type` | The record envelope (ADR-28): criteria, questions, viewings, brokers, areas, places, notes |
+| `trace_points` | `id` | `walk` | The path trace's points; never synced |
+| `saved_walks` | `id` | `houseId` | Saved walks; never synced |
+
+| IndexedDB version | What it added |
+|---|---|
+| 1 | Sprint 4a: `houses`, `visits`, `photos`, `settings` |
+| 2 | `records` and the `houseId` indexes (S4b-BL-66, ADR-28) |
+| 3 | `trace_points` and `saved_walks` (S4b-FR-17) |
+| 4 | Kinds step 3 (S4b-BL-206, ADR-36): every row of `houses` rewritten as a candidate by `upgradeHouseRow` in `candidate-rows.ts`, in the same transaction, so a failure leaves the database at version 3 with its rows as they were |
+
+Adding a field to a row needs no version; a new store, index or in-place rewrite does, with a step in `upgradeLocalDb` and a
+case in `local-db.spec.ts`. IndexedDB cannot open a database at a lower version, which is why the format reset's "version 1"
+is version 4 here. The Drive connection keeps its own small database, `doorprints-drive` version 1
+(`data/drive/connect/stores/drive-db.ts`: Drive state, keys watermark, pending deletions, photo state, device key). Durability:
+§16.4. The one-page view of every store is [16](16-architecture-overview.md) §3.
 
 ## 7. Sequence diagrams
 
@@ -3022,4 +3063,53 @@ owner asks) is in [ai-design](ai/ai-design.md) 16.12 and in the row. Nothing of 
 `AskPlanKindRequestTest`, `AiControllerKindTest`, `AiStatusControllerTest` and `SchoolSetTest` (server, no database); the website's
 `ai.service.requests.spec.ts` and `space-scope.spec.ts`; the phones' `ApiClientContractTest`, `AiStatusRepositoryTest` and
 `SpaceScopeVectorsTest`; mutation lists `tools/mutations/kinds-23-{backend,web,android}-kind-ai.json`, all killed.
+
+## 19. Voice input (ADR-37)
+
+A short summary; the decision is ADR-37 (§14) and the consult, options and plan are [ai/voice-input.md](ai/voice-input.md).
+
+- **What it is.** An opt-in *Voice input* switch (off by default) under *AI features*, and a microphone button inside the three
+  existing AI text boxes (*Ask a question*, *Fill in from listing text*, *Plan notes*). Tap, speak, the transcript lands in the box as
+  editable text; **it is never sent on its own** and the existing Ask, extract and plan paths then run unchanged.
+- **Who transcribes.** The person's own configured AI provider where it accepts audio (Gemini and the OpenAI, Groq and OpenRouter
+  presets today), behind one `Transcriber` interface (`android/shared/.../shared/ai/Transcriber.kt` with `GeminiTranscriber` and
+  `OpenAiAudioTranscriber`; the TypeScript twin under `web/src/app/core/ai/`). The platform recogniser is offered only when forced
+  on-device. There is **never a key-holding proxy** and no server route.
+- **Audio is never stored, logged, synced, backed up or copied**: the bytes stay in memory, a hard stop and a size cap end a
+  recording, the permission is asked at first use. A phone number spoken aloud reaches the transcription host before
+  `ContactRedactor` can see the transcript, which the screen says plainly ([02](02-threat-model.md) §11, T-I45 to T-I48;
+  [04](04-data-flow-diagrams.md) DF-49).
+- **Where it is built.** The website: `web/src/app/core/voice/` (recorder, service, transcript insert), `shared/voice-button.ts`,
+  the switch on the Connect page, `microphone=(self)` in `web/firebase.json` (S4b-BL-221). In `:shared` the `Transcriber` core exists
+  (S4b-BL-219) and the spoken eval set `docs/ai/evals/spoken-set.json` (S4b-BL-220, [ai/ai-design.md](ai/ai-design.md) §8.8). The
+  Android and iPhone screens and Sarvam are planned (S4b-BL-222 to -224), not on `main`.
+- **Tests and gates.** Fake-audio unit tests per adapter on both stacks, additive sections `transcribeRequest` and
+  `transcribeContent` in the parity vectors, mutation lists `tools/mutations/voice-*.json`, TC-S-23 and the checklist row B1 for the
+  Permissions-Policy ([13](13-release-security-checklist.md)).
+
+## 20. Deletion safeguards and Recently deleted
+
+A short summary of a design that is already written in several places; the tickets are S4b-BL-283 to -285 and -287 in
+[10](10-sprint-log.md), built in three pull requests (the website, then the website's bulk delete, then the phones). With spaces
+(§18.12) one delete could reach another kind; the safeguards make every delete name its scope and make it undoable.
+
+- **Deleting one candidate** has no confirm dialog but an *Undo* snackbar for 10 seconds. The row becomes a tombstone (`deleted`,
+  `dirty`, `updatedAt` now); photo bytes are dropped with a copy held for the Undo. The one question that stays is asked when
+  saved walks go with the house, because a walk has no tombstone and never comes back ([04](04-data-flow-diagrams.md) §5.2 items 1
+  and 2; [11](11-feature-parity-and-export-spec.md) 5.27.6).
+- **Recently deleted** (the website: *Your data*; the phones: Settings) lists this space's tombstones from the last 30 days, and
+  *Restore* flips `deleted`, bumps `updatedAt` past the tombstone's and marks the row dirty, so the next sync carries it to every
+  device and last-write-wins does the rest. Photos come back only while their bytes exist (a Drive restore is S4b-BL-293)
+  ([04](04-data-flow-diagrams.md) §5.2 item 3).
+- **Delete all in this space** (Settings > What you track, one card per space) tombstones that space's live candidates only, in
+  one transaction (`deleteHouses` on the website's `LocalStore` and on the phones' `Repository`; the vectors' `deleteSpace` step), after a dialog with the count and the kind, a tick
+  box over 10 rows, *Save a copy first*, first focus on Cancel; *Undo* for 10 s (`restoreHouses`); at most one bulk action per 10
+  s per device. *Remove all data* (website only) lists every kind's count, and Google Drive level 3 says *all kinds*
+  ([15](15-google-drive-backup-and-sharing.md) §3.2).
+- **The blast-radius invariant.** An action in space A leaves space B byte for byte the same. It is pinned by one shared vector file,
+  [`docs/schemas/delete-scope-vectors.json`](schemas/delete-scope-vectors.json) (format `doorprints-delete-scope-vectors/1`),
+  read by the website's `data/delete-scope-vectors.spec.ts`, the phones' `DeleteScopeVectorsTest` (on real Room) and the
+  server's `HouseServiceTest`.
+- **Threat model.** T-D15 *accidental cross-kind deletion* and the note on RR-06 in [02](02-threat-model.md); the manual rows
+  TC-M-70, TC-M-73 and TC-M-74 in [06](06-test-plan.md).
 

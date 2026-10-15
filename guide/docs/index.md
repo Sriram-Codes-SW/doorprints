@@ -60,3 +60,5 @@ What each one can do ("offline" means without internet; "AI" means the computer 
 On the phones, **Help** in **Settings**, under **About**, opens this guide in the app's language. The website has a
 **Help** link too, at the top and on **Your data**, and a short **About** page in all four languages at
 **https://doorprints.web.app/about.html**.
+
+**For developers:** how Doorprints is built is on one page, the [architecture overview](https://github.com/Sriram-Codes-SW/doorprints/blob/main/docs/16-architecture-overview.md) (in English, on GitHub).

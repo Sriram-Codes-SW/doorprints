@@ -72,54 +72,11 @@ the permission back ([docs/11](docs/11-feature-parity-and-export-spec.md) 5.18).
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    subgraph Phone["Android app"]
-        UI["Compose screens,<br/>MapLibre"] --> Repo["Repository"]
-        Hunt["Hunt mode<br/>foreground location service"] --> Repo
-        Repo --> Room[("Room DB + photo files")]
-        Repo --> Sync["SyncWorker<br/>WorkManager"]
-        subgraph Shared[":shared (Kotlin Multiplatform)"]
-            Rules["Score, sync rules,<br/>stay and street logic"]
-            Client["Ktor ApiClient<br/>retries, no redirects"]
-        end
-        Hunt --> Rules
-        Sync --> Client
-    end
-    iOS["iOS targets<br/>compile-only in CI"] -.-> Shared
-    subgraph Browser["Web app (Angular, static)"]
-        SPA["Map, house, compare,<br/>ask, plan"]
-    end
-    subgraph Host["API host (free tier)"]
-        API["Spring Boot 4.1 / Java 25<br/>API key, rate limits, validation"]
-        AI["Optional AI module<br/>Spring AI: RAG, extractor,<br/>planner, MCP"]
-    end
-    DB[("PostgreSQL + PostGIS<br/>+ pgvector")]
-    Tiles["OpenFreeMap tiles"]
-    Vertex["Vertex AI (Gemini)<br/>AI_PROVIDER=vertex"]
-    Studio["Gemini API / AI Studio<br/>AI_PROVIDER=aistudio"]
-    Client -->|"HTTPS + X-API-Key"| API
-    SPA -->|"HTTPS + X-API-Key"| API
-    API --> DB
-    API -.-> AI
-    AI -.->|"one of"| Vertex
-    AI -.->|"one of"| Studio
-    UI --> Tiles
-    SPA --> Tiles
-```
-
-- **Android** (Kotlin 2.4, Compose, Room, WorkManager, MapLibre 13.6; minSdk 26, targetSdk 36, compileSdk 37,
-  AGP 9.4): offline-first; the platform-neutral rules and the Ktor HTTP client are in `android/shared`
-  ([module README](android/shared/README.md), [03 §4.2.1](docs/03-design.md)). The UI is moving, phase by phase, to
-  Compose Multiplatform in `android/ui` so an iOS app can reuse it ([module README](android/ui/README.md), ADR-23 in
-  [03](docs/03-design.md)).
-- **API** (Spring Boot 4.1.1, Java 25, Flyway): last-write-wins sync with a change feed, geospatial queries in PostGIS,
-  photos, export and delete-all.
-- **Web** (Angular 22, zoneless, MapLibre GL 6.11): review, edit and compare on a large screen.
-- **AI** (Spring AI 2.0.1, off unless `APP_AI_ENABLED=true`): **Vertex AI** is the provider this project is set up
-  for (project `doorprints-ai`: chat in Mumbai, `asia-south1`; embeddings on Google's `global` endpoint), and
-  **AI Studio** stays one setting away (`AI_PROVIDER=aistudio`, also the code default until the first Vertex eval
-  run is green). Details: [docs/ai/ai-design.md](docs/ai/ai-design.md), [docs/ai/vertex-setup.md](docs/ai/vertex-setup.md).
+Three stacks around one local-first data model: a web app (Angular, MapLibre GL, IndexedDB), the Android and iPhone apps
+(Kotlin Multiplatform and Compose Multiplatform: `android/shared`, `android/ui`, `android/app`, `ios/`) and an optional
+self-hosted server (Spring Boot, PostGIS). Every client works alone; the server and Google Drive are optional sync hubs.
+The diagram, each store's current version, the data contracts and a reading path are on one page:
+**[docs/16 Architecture overview](docs/16-architecture-overview.md)**.
 
 ### AI access policy
 
@@ -238,9 +195,9 @@ Full steps and the environment variable reference: [docs/07](docs/07-secure-buil
 | [`android/app/`](android/app/) | Android app: Compose UI, Room, WorkManager sync, Hunt mode service, MapLibre, translations |
 | [`android/shared/`](android/shared/) | Kotlin Multiplatform module `:shared`: models, score, sync rules, stay and street logic, DTOs, Ktor API client (Android + compile-only iOS) |
 | [`android/ui/`](android/ui/) | Compose Multiplatform module `:ui`: theme, list rows and UI rules so far; the screens move here phase by phase (Android + compile-only iOS; ADR-23) |
-| [`backend/`](backend/) | Spring Boot API, Flyway migrations (V1 schema, V2 optional pgvector, V3 photo tombstones), optional AI module, tests; `backend/db` is the PostGIS + pgvector image |
+| [`backend/`](backend/) | Spring Boot API, the Flyway schema (`V1__init.sql`), optional AI module, tests ([backend/README.md](backend/README.md)); `backend/db` is the PostGIS + pgvector image |
 | [`web/`](web/) | Angular 22 single-page app ([web/README.md](web/README.md)) |
-| [`docs/`](docs/) | Secure-SDLC documents 01–11 and the AI docs |
+| [`docs/`](docs/) | Secure-SDLC documents 01–16 and the AI docs; start at [16](docs/16-architecture-overview.md) |
 | [`.github/`](.github/) | CI workflows and Dependabot |
 | [`docker-compose.yml`](docker-compose.yml) | Local API + database |
 | [`CHANGELOG.md`](CHANGELOG.md) | Release notes (Keep a Changelog) |
@@ -261,6 +218,7 @@ Details: [docs/07 §1](docs/07-secure-build-and-deploy.md#1-pipeline-overview).
 | [Docs index](docs/README.md) | How the documents fit together and how to update them |
 | [01 Requirements](docs/01-requirements.md) | FR/NFR/SEC/PRV/AI requirements and the traceability matrix |
 | [02 Threat model](docs/02-threat-model.md) | STRIDE, abuse cases, findings F-01a/F-01b..F-30 and their status |
+| [16 Architecture overview](docs/16-architecture-overview.md) | The map: components, stores and their versions, data contracts, reading path |
 | [03 Design](docs/03-design.md) | Architecture, KMP module boundaries, data model, API reference, sync algorithm, ADRs |
 | [04 Data flows](docs/04-data-flow-diagrams.md) | DFDs, data classification, data residency |
 | [05 UX, accessibility, i18n](docs/05-ux-accessibility-i18n.md) | Design tokens, WCAG 2.2 AA, TalkBack, translations and glossary |
@@ -340,3 +298,4 @@ House rules for the maintainers (full list in [docs/README.md](docs/README.md#ho
 | 2026-09-24 | Legacy House Hunt names renamed to Doorprints (owner request; [ADR-24](docs/03-design.md#14-architecture-decision-records)): the note under the title says code, storage keys and database names use the new name since 2026-09-24, and what was saved under the old names moves over by itself. |
 | 2026-09-29 | **User guide**: a line under the tagline and a row in *Documentation* link the new illustrated [user guide](https://sriram-codes-sw.github.io/doorprints/) (owner request of 2026-09-29). |
 | 2026-09-29 | **Licence**: the line under the title, the documents table and *Contributing* say `AGPL-3.0-only` with [NOTICE](NOTICE) (owner decision of 2026-09-23, carried out on 2026-09-29) instead of MIT. |
+| 2026-10-15 | **Architecture** section shortened to a pointer to the new [docs/16](docs/16-architecture-overview.md) (the diagram it held was stale); *Repository structure* and *Documentation* corrected; new [backend/README.md](backend/README.md). |
