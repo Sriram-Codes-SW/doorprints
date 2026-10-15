@@ -77,6 +77,9 @@ class KindLabels internal constructor(
     /** A built-in checklist criterion's label, `null` for a key the kind does not have. */
     fun check(key: String): String? = keys["check.$key"]
 
+    /** The kind's checklist keys, in the kind file's order (the house's ten; a kind with none has none). */
+    fun checklistKeys(): List<String> = keys.keys.filter { it.startsWith("check.") }.map { it.removePrefix("check.") }
+
     companion object {
         private const val FIELD = "field."
 

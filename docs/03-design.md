@@ -3300,6 +3300,15 @@ and `safety` (Safety and CCTV); their labels are web keys `school.check.<key>` a
 Its `compare.criteria` are the eight items, then `fees` (per year, lower is better) and `commuteMinutes` (lower is better); the
 admission fee is shown and not marked, because it is paid once and rarely decides between schools. Ten is the schema's limit.
 
+**The phones.** `:shared` `CompareCriteria` is the twin of `compare-criteria.ts` (`CompareCriteriaVectorsTest` reads the same
+`compare-vectors.json`); `SchoolKind` and `KindCapabilities` carry the school's checklist labels (`school_check_<key>`, four languages in the
+Compose resources) and its `compare`; `CompareScreen` ranks and lays out the table under `CompareCriteria.scoringFor` and marks the best of an
+extra only for the extras `compare` names; `HouseEditScreen`'s checklist asks the school's eight items by the school's words; `HouseListScreen`
+scores a school; Settings keeps *Criteria* the house's; `ExportModel.shows` keeps a school's copy as it was. The phone marks the best cell of an
+extra and, as for a house, the best candidate by its header (no per-item mark on the checklist rows). The Roborazzi baselines
+`school_edit_en_light`, `school_edit_ta_dark` and `school_list_en_light` change (the checklist and the score) and `school_compare_en_light` is
+new; every house baseline is unchanged. *Verification state of the phone half is in [06](06-test-plan.md) TC-U-271.*
+
 **Not here (stated, not hidden).** The readable copies and the backup's tables write a school's score and checklist as they did (a
 school's copy has no score or checklist section: `copyShows` keeps `section.checklist` the house's) and the AI's school slots do not
 name the checklist, so what a provider sees is unchanged; per-kind weights and a Criteria page for another kind are not built; a
@@ -3308,11 +3317,12 @@ map (any key, 0 to 5), so the backup, sync and the server need no change. The ma
 (no map-rules file takes a kind).
 
 **Tests** ([06](06-test-plan.md) TC-U-271): `docs/schemas/kinds/compare-vectors.json` (format `doorprints-compare-vectors/1`: each kind's
-resolved criteria with direction, label keys and words, lists of ids the resolver must read alike, the scoring, and four entries to
-sorted, scored and marked outcomes worked by hand), read by the website's `compare-criteria.spec.ts`; `compare-space.spec.ts` (the
+resolved criteria with direction, label keys and words, lists of ids the resolver must read alike, the scoring, and three sample
+entries to sorted, scored and marked outcomes worked by hand), read by the website's `compare-criteria.spec.ts` and the phones' `CompareCriteriaVectorsTest`; `compare-space.spec.ts` (the
 school's table, checklist rows, best marks, four languages), `school-form.spec.ts` (the checklist card), `school-words.spec.ts`,
 `school-kind.spec.ts`, the layout gate with `GATE_DEV_KINDS=1` (384 of 388 here, the same four map-page layout shifts as the base),
-the accessibility sweep, and the mutation list `tools/mutations/kinds-27-compare.json`.
+the accessibility sweep, and the mutation lists `tools/mutations/kinds-27-compare.json` (website) and `kinds-27-compare-android.json` (`:shared`).
+After a merge of the website's part, the live UI check is `ONLY=pages,flows` (strings and Compare), not the full run.
 
 ## 19. Voice input (ADR-37)
 

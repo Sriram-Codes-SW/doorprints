@@ -47,8 +47,9 @@ internal fun KindSettingsRows(
             Modifier.tourTarget(TourTargets.SETTINGS_BROKERS),
         )
     }
-    // What counts in a house's score (docs/11 5.4, slice 2): weights, must-haves, your own criteria, the rating share.
-    if (space.shows("section.checklist")) {
+    // What counts in a house's score (docs/11 5.4, slice 2): weights, must-haves, your own criteria, the rating share. The house's:
+    // a school's checklist (kinds PR 27, docs/03 §18.21) has fixed weights.
+    if (space.shows("section.checklist") && space.built.id == "house") {
         HorizontalDivider()
         NavRow(
             stringResource(Res.string.settings_criteria), stringResource(Res.string.settings_criteria_hint), onOpenCriteria,

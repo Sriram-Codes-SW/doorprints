@@ -1,0 +1,110 @@
+{
+  "spec": "android/shared/src/androidHostTest/kotlin/app/doorprints/shared/model/CompareCriteriaVectorsTest.kt (with KindCapabilitiesVectorsTest and SchoolKindVectorsTest)",
+  "gradle": [
+    ":shared:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.shared.model.CompareCriteriaVectorsTest",
+    "--tests",
+    "app.doorprints.shared.model.KindCapabilitiesVectorsTest",
+    "--tests",
+    "app.doorprints.shared.model.SchoolKindVectorsTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/CompareCriteria.kt",
+      "find": "if (kind.id == HOUSE) return base",
+      "replace": "if (kind.id == \"xhouse\") return base",
+      "expect": "theHousesScoringIsThePersonsOwnObject"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/CompareCriteria.kt",
+      "find": "weight = if (key in counted) Criterion.DEFAULT_WEIGHT else 0",
+      "replace": "weight = Criterion.DEFAULT_WEIGHT",
+      "expect": "anItemIsCountedOnlyWhenTheKindsCompareNamesIt"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/CompareCriteria.kt",
+      "find": "return Scoring(criteria, base.ratingShare)",
+      "replace": "return Scoring(criteria, 0.5)",
+      "expect": "theHousesScoringIsThePersonsOwnObject"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/CompareCriteria.kt",
+      "find": "scoring.criteria.filter { !it.archived && (kind.id == HOUSE || it.weight > 0) }",
+      "replace": "scoring.criteria.filter { !it.archived }",
+      "expect": "anItemIsCountedOnlyWhenTheKindsCompareNamesIt"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/CompareCriteria.kt",
+      "find": "CompareCriterion(id, CompareCriterion.Source.CHECK, check, \"higher\")",
+      "replace": "CompareCriterion(id, CompareCriterion.Source.CHECK, check, \"lower\")",
+      "expect": "eachKindsCriteriaAreTheVectors"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/CompareCriteria.kt",
+      "find": "if (!kind.labels.isVisible(\"field.$id\")) return@mapNotNull null",
+      "replace": "",
+      "expect": "theDirectionIsTheExtrasOwn"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/CompareCriteria.kt",
+      "find": "extra.better.takeIf { numeric && (it == \"lower\" || it == \"higher\") }",
+      "replace": "extra.better.takeIf { numeric }.let { \"lower\" }",
+      "expect": "theDirectionIsTheExtrasOwn"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/CompareCriteria.kt",
+      "find": "val extra = kind.fields.extras.firstOrNull { it.id == id && it.was == null }",
+      "replace": "val extra = kind.fields.extras.firstOrNull { it.id == id }",
+      "expect": "listsOfIdsResolveAsTheVectorsSay"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/CompareCriteria.kt",
+      "find": "val target = (if (better == \"lower\") present.minOrNull() else present.maxOrNull()) ?: return emptySet()",
+      "replace": "val target = (if (better == \"lower\") present.maxOrNull() else present.minOrNull()) ?: return emptySet()",
+      "expect": "theBestIsMarkedByTheDirection"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/CompareCriteria.kt",
+      "find": "if (present.all { it == target }) return emptySet()",
+      "replace": "",
+      "expect": "theBestIsMarkedByTheDirection"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/CompareCriteria.kt",
+      "find": "if (better != \"lower\" && better != \"higher\") return emptySet()",
+      "replace": "",
+      "expect": "theBestIsMarkedByTheDirection"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/CompareCriteria.kt",
+      "find": "return if (best.size == values.size && values.size > 1) emptySet() else best",
+      "replace": "return best",
+      "expect": "theBestIsMarkedByTheDirection"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/CompareCriteria.kt",
+      "find": "val ranking = Ranking.sort(candidates) { RankedHouse(it.id, results.getValue(it.id), null, 0L) }.map { it.id }",
+      "replace": "val ranking = candidates.map { it.id }",
+      "expect": "theSampleOutcomesAreTheVectors"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindCapabilities.kt",
+      "find": "\"activities\", \"safety\", \"fees\", \"commuteMinutes\"))",
+      "replace": "\"activities\", \"safety\", \"fees\"))",
+      "expect": "theResolverAnswersWhatEachKindFileDeclares"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/SchoolKind.kt",
+      "find": "CHECKS.associate { \"check.$it\" to \"school_check_$it\" } +",
+      "replace": "",
+      "expect": "theCopyIsTheKindFilesAndroidKeysAndExtras"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindLabels.kt",
+      "find": "fun checklistKeys(): List<String> = keys.keys.filter { it.startsWith(\"check.\") }.map { it.removePrefix(\"check.\") }",
+      "replace": "fun checklistKeys(): List<String> = emptyList()",
+      "expect": "theChecklistIsTheVectorsEightItems"
+    }
+  ]
+}

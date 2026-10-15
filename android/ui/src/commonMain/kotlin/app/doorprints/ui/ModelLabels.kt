@@ -20,6 +20,7 @@ package app.doorprints.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.staticCompositionLocalOf
+import app.doorprints.shared.model.BuiltInKind
 import app.doorprints.shared.model.Checklist
 import app.doorprints.shared.model.Criterion
 import app.doorprints.shared.model.HouseStatus
@@ -202,6 +203,14 @@ val CriterionWeights: List<StringResource> = listOf(
 /** A criterion's name on screen: a built-in's translated name, a custom one's own label (else its key). */
 @Composable
 fun Criterion.displayName(): String = ChecklistResources.items[key]?.let { stringResource(it) } ?: label ?: key
+
+/**
+ * A criterion's name in a kind's words (kinds PR 27, docs/03 §18.21): the house's as [displayName] (its strings are not
+ * touched); another kind's through its own labels, the key when it has none.
+ */
+@Composable
+fun Criterion.displayName(kind: BuiltInKind): String =
+    if (kind.id == "house") displayName() else kind.labels.check(key)?.let { stringResource(kindStringResource(it)) } ?: displayName()
 
 /** First viewing, Second viewing, Follow-up (`viewings_kind_*`, slice 3b-1). */
 val ViewingKind.labelResource: StringResource

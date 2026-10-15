@@ -29,7 +29,8 @@ import kotlinx.serialization.json.intOrNull
  * What a kind can do beyond its fields (docs/03 ADR-36 section 18.19): the `capabilities` block of a kind file
  * (`docs/schemas/kinds/kind.schema.json`), resolved; the twin of the website's `core/kind-capabilities.ts`, held to
  * `docs/schemas/kinds/capabilities-vectors.json`. The phones read the Hunt block (kinds PR 26,
- * section 18.20: `HuntSpace`, the Hunt card, the engine and the alerts); no other capability is read by a screen yet. A feature a kind leaves out is null (false for a plain switch). A kind this build does not
+ * section 18.20: `HuntSpace`, the Hunt card, the engine and the alerts) and Compare reads `compare` through [CompareCriteria]
+ * (kinds PR 27, section 18.21); no other capability is read by a screen yet. A feature a kind leaves out is null (false for a plain switch). A kind this build does not
  * know has [DEFAULT]: the map and the paths, nothing else. (Where an unknown stored kind is drawn as a house, section 18.9,
  * the caller resolves the drawn kind first; this class does not guess.)
  */
@@ -92,11 +93,13 @@ data class KindCapabilities(
                     listOf("water", "power", "parking", "sunlight", "ventilation", "noise", "security", "maintenance", "neighbourhood", "commute"),
                 ),
             ),
-            // The school has a contact (the admissions office) that never makes a broker, and Hunt at 100 m; no rooms, moving in,
-            // viewings or Compare. Its walks stay.
+            // The school has a contact (the admissions office) that never makes a broker, and Hunt at 100 m; no rooms, moving in
+            // or viewings. Its walks stay. Compare scores its eight checklist items and two extras, the fees and the commute
+            // (kinds PR 27, section 18.21).
             "school" to KindCapabilities(
                 hunt = Hunt(alertRadiusM = 100, stayCreates = true, streetMemory = true, areas = true),
                 contacts = Contacts("office", autoCreateFromPhone = false),
+                compare = Compare(listOf("dropoff", "grounds", "sanitation", "teachers", "classsize", "homework", "activities", "safety", "fees", "commuteMinutes")),
             ),
         )
 

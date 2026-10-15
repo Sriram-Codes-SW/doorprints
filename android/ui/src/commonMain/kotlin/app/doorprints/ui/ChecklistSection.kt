@@ -40,6 +40,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import app.doorprints.shared.model.BuiltInKind
 import app.doorprints.shared.model.HouseScore
 import app.doorprints.shared.model.ScoreResult
 import app.doorprints.shared.model.Scoring
@@ -61,18 +62,18 @@ import org.jetbrains.compose.resources.stringResource
  * summary needs it beside the [checklist] (the same `HouseScore.evaluate` that `HouseEntity.scoreResult` calls).
  */
 @Composable
-internal fun ChecklistSection(checklist: Map<String, Int>, rating: Int?, scoring: Scoring, onChange: (Map<String, Int>) -> Unit) {
+internal fun ChecklistSection(checklist: Map<String, Int>, rating: Int?, scoring: Scoring, kind: BuiltInKind, onChange: (Map<String, Int>) -> Unit) {
     SectionHeading(stringResource(kindSection("checklist")))
     // The criteria that are not archived, in their order (slice 2); one set to Ignore says it is not counted.
     // An archived criterion is hidden, and its score on the house stays as it is.
     scoring.criteria.filter { !it.archived }.forEach { c ->
         val key = c.key
-        val name = c.displayName()
+        val name = c.displayName(kind)
         val label = if (c.weight == 0) stringResource(Res.string.house_check_ignored, name) else name
         // "–" clears; tapping the chosen score again is kept as a shortcut for the same.
         ChecklistRow(label, checklist[key]) { n -> onChange(checklist.withScore(key, n)) }
     }
-    ScoreSummary(HouseScore.evaluate(checklist, rating, scoring), scoring)
+    ScoreSummary(HouseScore.evaluate(checklist, rating, scoring), scoring, kind)
 }
 
 /**
@@ -80,8 +81,8 @@ internal fun ChecklistSection(checklist: Map<String, Int>, rating: Int?, scoring
  * counted is scored, and the must-haves missed or not checked yet by name. Polite live region, so a new score is heard.
  */
 @Composable
-private fun ScoreSummary(result: ScoreResult, scoring: Scoring) {
-    val names = scoring.criteria.associate { it.key to it.displayName() }
+private fun ScoreSummary(result: ScoreResult, scoring: Scoring, kind: BuiltInKind) {
+    val names = scoring.criteria.associate { it.key to it.displayName(kind) }
     fun list(keys: List<String>) = keys.joinToString(", ") { names[it] ?: it }
     LiveMessage {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {

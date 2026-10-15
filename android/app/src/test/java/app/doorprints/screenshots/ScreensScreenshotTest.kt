@@ -147,6 +147,8 @@ import app.doorprints.ui.SettingsScreen
 import app.doorprints.shared.model.Criterion
 import app.doorprints.shared.model.HouseStatus
 import kotlinx.coroutines.flow.first
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.cancelAndJoin
 import app.doorprints.FakeVoiceRepository
@@ -491,6 +493,34 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
             }
         } finally {
             HuntState.update { HuntState.State() }
+        }
+    }
+
+    /**
+     * A school's Compare (kinds PR 27, docs/03 §18.21; DRAFT for the owner's review): two schools side by side with the Checklist
+     * score, the school's own rows (the lower fees and commute are marked, the admission fee is not) and the eight checklist
+     * items. English light only; no house baseline changes (the house's Compare is `compare`).
+     */
+    @Test fun schoolCompare() {
+        englishLightOnly()
+        val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
+        val pine = SchoolSample.entity().copy(checklist = mapOf("safety" to 5, "teachers" to 4, "classsize" to 3))
+        val oak = pine.copy(
+            id = "55555555-5555-4555-8555-000000000210", label = "Oak Valley", checklist = mapOf("safety" to 3, "teachers" to 4),
+            extrasOther = buildJsonObject {
+                put("board", "ICSE")
+                put("commuteMinutes", 35)
+                put("fees", buildJsonObject { put("amount", 72000); put("cadence", "year") })
+            },
+        )
+        runBlocking { saveAtFixedTime(repo, pine); saveAtFixedTime(repo, oak) }
+        val on = KindSetting(listOf("house", "school"), experimental = "1", enabledText = "[\"house\",\"school\"]")
+        shoot("school_compare", readyText = "Pine Hill School") {
+            CompositionLocalProvider(LocalSpace provides SpaceUi(on, "school"), app.doorprints.ui.LocalDevKinds provides true) {
+                val houses by LocalAppServices.current.repository.houses.collectAsState(initial = null)
+                val counts by LocalAppServices.current.repository.visitCounts.collectAsState(initial = emptyList())
+                CompareScreen(houses?.filter { it.kind == "school" }, counts, onOpenHouse = {})
+            }
         }
     }
 

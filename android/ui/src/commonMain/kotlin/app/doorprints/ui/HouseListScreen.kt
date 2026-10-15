@@ -65,6 +65,7 @@ import app.doorprints.export.CopyRecord
 import app.doorprints.export.CopyUndoOutcome
 import app.doorprints.ui.res.*
 import app.doorprints.shared.api.IsoTime
+import app.doorprints.shared.model.CompareCriteria
 import app.doorprints.shared.model.CostFilter
 import app.doorprints.shared.model.HouseSearch
 import app.doorprints.shared.model.Area
@@ -249,7 +250,10 @@ fun HouseListScreen(
     val areas: List<Area> by remember(repo) { repo.observeAreas() }.collectAsStateWithLifecycle(emptyList())
     val areaNotes: List<AreaNote> by remember(repo) { repo.observeAreaNotes() }.collectAsStateWithLifecycle(emptyList())
     // The effective scoring (docs/11 5.4, slice 2): the card's score, the "Must-have missed" chip and "best first".
-    val scoring: Scoring by remember(repo) { repo.observeScoring() }.collectAsStateWithLifecycle(Scoring.DEFAULT)
+    val personScoring: Scoring by remember(repo) { repo.observeScoring() }.collectAsStateWithLifecycle(Scoring.DEFAULT)
+    // The house under the person's own scoring, another kind under its own checklist (kinds PR 27, docs/03 §18.21).
+    val listKind = LocalSpace.current.built
+    val scoring = remember(listKind.id, personScoring) { CompareCriteria.scoringFor(listKind, personScoring) }
     val loaded = loadedHouses != null
     val houses = loadedHouses.orEmpty()
     val counts by repo.visitCounts.collectAsStateWithLifecycle(emptyList())

@@ -544,9 +544,12 @@ data class ExportBundle(
 
     /**
      * Whether the copy writes the place [ref] (`field.money`, `section.checklist`, ...) of [house], or of the copy when [house]
-     * is null: every place of a house, and only the places its kind shows for another kind (S4b-BL-266).
+     * is null: every place of a house, and only the places its kind shows for another kind (S4b-BL-266). A copy writes the checklist,
+     * its scores and its Scores table of the house only: the school's own checklist (kinds PR 27, docs/03 §18.21) is on the pages
+     * and in Compare, and a copy of it is a later change, so a school's copy is as it was.
      */
-    fun shows(house: ExportHouse?, ref: String): Boolean = kindOf(house)?.labels?.isVisible(ref) ?: true
+    fun shows(house: ExportHouse?, ref: String): Boolean =
+        kindOf(house)?.let { ref != "section.checklist" && it.labels.isVisible(ref) } ?: true
 
     /** The words for [house]: the copy's, or its own kind's where it is a school beside houses (its *Website* and *Fees*). */
     fun stringsOf(house: ExportHouse): ExportStrings {

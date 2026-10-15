@@ -84,6 +84,7 @@ import app.doorprints.shared.model.HouseStatus
 import app.doorprints.shared.model.DuplicateFlat
 import app.doorprints.shared.model.KindFields
 import app.doorprints.shared.model.Candidates
+import app.doorprints.shared.model.CompareCriteria
 import app.doorprints.shared.model.DevKinds
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -426,7 +427,9 @@ fun HouseEditScreen(
     // Every live house, for the duplicate-flat warning (S4b-BL-85) under the floor.
     val allHouses: List<HouseEntity> by remember(repo) { repo.houses }.collectAsStateWithLifecycle(emptyList())
     // The effective scoring (docs/11 5.4, slice 2): which criteria the checklist shows, the score and its coverage line.
-    val scoring: Scoring by remember(repo) { repo.observeScoring() }.collectAsStateWithLifecycle(Scoring.DEFAULT)
+    val personScoring: Scoring by remember(repo) { repo.observeScoring() }.collectAsStateWithLifecycle(Scoring.DEFAULT)
+    // The house is scored under the person's own; another kind under its own checklist (kinds PR 27, docs/03 §18.21).
+    val scoring = remember(kind.id, personScoring) { CompareCriteria.scoringFor(kind, personScoring) }
     // How the rooms' sizes are shown and typed (slice 1c, this phone's setting).
     val lengthUnit by remember(repo) { repo.settings.lengthUnit }.collectAsStateWithLifecycle(LengthUnit.FT)
     // The question bank (slice 3a), for *Add the usual questions* and *Add a question*.
@@ -971,7 +974,7 @@ fun HouseEditScreen(
                     if (L.isVisible("section.walks")) SavedWalksCard(id, pages.walksEmpty, onShowOnMap)
                 }
 
-                if (L.isVisible("section.checklist")) ChecklistSection(d.checklist, d.rating, scoring) { m -> update { it.copy(checklist = m) } }
+                if (L.isVisible("section.checklist")) ChecklistSection(d.checklist, d.rating, scoring, kind) { m -> update { it.copy(checklist = m) } }
 
                 // Multi-line: the Enter key starts a new line here, so no Next action; sentences start with a capital.
                 OutlinedTextField(d.notes ?: "", { v -> update { it.copy(notes = v) } },

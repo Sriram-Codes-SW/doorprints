@@ -55,7 +55,7 @@ import org.robolectric.annotation.Config
  * A school's pages on the phones say nothing of a house (kinds PR 16, phone half; S4b-BL-256, S4b-BL-259, S4b-BL-266,
  * S4b-BL-277; docs/03 §18.9; docs/06 TC-U-230), on the real app and Room, in English (the other languages' words are
  * `SchoolPageWordsTest`'s, against the website's): the form's title, the walk check, the delete question, the not-found card
- * and a new candidate's name; the list row without a price, bedrooms or score; Compare's *Contact name*. A house's pages
+ * and a new candidate's name; the list row without a price or bedrooms; Compare's *Contact name*. A house's pages
  * are the screenshots' (`ScreensScreenshotTest`), which this change does not move.
  */
 @RunWith(AndroidJUnit4::class)
@@ -128,13 +128,15 @@ class SchoolWordsScreenTest {
         text("New house").assertCountEquals(0)
     }
 
-    @Test fun theListRowShowsTheNameTheStatusAndTheStreetButNoPriceBedroomsOrScore() {
+    // The school has a checklist of its own since kinds PR 27 (docs/03 §18.21), so its row shows a score as a house's does (here
+    // the rating, as nothing is checked yet): "Score 4.0".
+    @Test fun theListRowShowsTheNameTheStatusTheScoreAndTheStreetButNoPriceOrBedrooms() {
         save()
         show { HouseListScreen(onOpenHouse = {}) }
         compose.waitUntil(10_000) { text("Pine Hill School").fetchSemanticsNodes().isNotEmpty() }
         text("BHK").assertCountEquals(0)
         text("48,000").assertCountEquals(0)
-        text("Score").assertCountEquals(0)
+        text("Score 4.0").assertCountEquals(1)
     }
 
     @Test fun compareNamesTheContactRowByTheSchoolsLabel() {

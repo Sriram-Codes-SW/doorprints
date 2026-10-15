@@ -52,6 +52,9 @@ import androidx.compose.ui.unit.dp
 import app.doorprints.data.HouseEntity
 import app.doorprints.data.HouseVisitCount
 import app.doorprints.shared.model.Broker
+import app.doorprints.shared.model.BuiltInKind
+import app.doorprints.shared.model.CompareCriteria
+import app.doorprints.shared.model.CompareCriterion
 import app.doorprints.shared.model.Distances
 import app.doorprints.shared.model.Place
 import app.doorprints.ui.res.*
@@ -61,7 +64,6 @@ import app.doorprints.shared.model.HouseStatus
 import app.doorprints.shared.model.HouseStatusRules
 import app.doorprints.shared.model.Ranking
 import app.doorprints.shared.export.ExportStrings
-import app.doorprints.shared.model.KindFields
 import app.doorprints.shared.model.KindValue
 import app.doorprints.shared.model.KindValues
 import app.doorprints.shared.model.Scoring
@@ -153,12 +155,14 @@ fun CompareScreen(
     everyone: List<HouseEntity>? = null,
 ) {
     val space = LocalSpace.current
+    // The house under the person's own scoring, another kind under its own checklist (kinds PR 27, docs/03 §18.21).
+    val kindScoring = remember(space.built.id, scoring) { CompareCriteria.scoringFor(space.built, scoring) }
     val visits = counts.associate { it.houseId to it.visits }
     var selected by rememberSaveable(stateSaver = SelectionSaver) { mutableStateOf(emptySet<String>()) }
     var defaulted by rememberSaveable { mutableStateOf(false) }
     var pickerOpen by rememberSaveable { mutableStateOf(true) }
     var refusedOther by rememberSaveable { mutableStateOf(false) }
-    val candidates = compareCandidates(loaded.orEmpty(), scoring)
+    val candidates = compareCandidates(loaded.orEmpty(), kindScoring)
     val candidateIds = candidates.map { it.id }.toSet()
     LaunchedEffect(loaded != null, candidateIds, everyone) {
         if (loaded == null) return@LaunchedEffect
@@ -220,7 +224,7 @@ fun CompareScreen(
                 visits = visits,
                 brokers = brokers,
                 lengthUnit = lengthUnit,
-                scoring = scoring,
+                scoring = kindScoring,
                 places = places,
                 nameOf = ::nameOf,
                 onOpenHouse = onOpenHouse,
@@ -334,10 +338,11 @@ private fun CompareTable(
     val bhkFormat = stringResource(Res.string.common_bhk)
     val starsFormat = stringResource(Res.string.common_stars)
     val checkFormat = stringResource(Res.string.house_check_value)
-    // The criteria that are not archived, in their order, under their names (slice 2): custom ones too.
-    val checklistLabels = scoring.criteria.filter { !it.archived }.map { it.key to it.displayName() }
+    val space = LocalSpace.current
+    // The criteria that are not archived, in their order, under their names (slice 2): custom ones too; another kind's, the ones its Compare names.
+    val checklistLabels = CompareCriteria.comparedRows(space.built, scoring).map { it.key to it.displayName(space.built) }
     val results = chosen.associate { it.id to it.scoreResult(scoring) }
-    val nameOfKey = scoring.criteria.associate { it.key to it.displayName() }
+    val nameOfKey = scoring.criteria.associate { it.key to it.displayName(space.built) }
     val metText = stringResource(Res.string.compare_must_have_met)
     val missedFormat = stringResource(Res.string.compare_must_have_missed)
     val uncheckedFormat = stringResource(Res.string.compare_must_have_unchecked)
@@ -366,8 +371,7 @@ private fun CompareTable(
     }
     // A kind shows a row only for a place it has (kinds PR C, S4b-BL-289: `labels.isVisible`); the house has every one, so its
     // rows are the ones it always had, in the same order. A kind's other extras are rows too, in its file's order, before the rating.
-    val space = LocalSpace.current
-    val extraRows = kindExtraRows(space.built.fields, chosen, notSet)
+    val extraRows = kindExtraRows(space.built, chosen, notSet)
     // A row's heading: Compare's own word for the house, the kind's label for another kind (S4b-BL-256, the website's labelKey).
     @Composable
     fun head(id: String, house: StringResource) = stringResource(if (space.built.id == "house") house else space.built.labels.fieldText(id))
@@ -494,7 +498,8 @@ private fun Cell(text: String, width: Dp, header: Boolean = false, best: Boolean
  * number's digits, a text as typed). A house has none, so its table is the table it always had.
  */
 @Composable
-private fun kindExtraRows(fields: KindFields, chosen: List<HouseEntity>, notSet: String): List<CompareRow> {
+private fun kindExtraRows(kind: BuiltInKind, chosen: List<HouseEntity>, notSet: String): List<CompareRow> {
+    val fields = kind.fields
     val extras = fields.others()
     if (extras.isEmpty()) return emptyList()
     val words = ExportStrings.of(uiLanguage())
@@ -511,10 +516,12 @@ private fun kindExtraRows(fields: KindFields, chosen: List<HouseEntity>, notSet:
             }
         }
     }
-    // The best of a number or an amount where the kind file says which way is better (S4b-BL-292): the school's lower commute and fees.
-    val values = chosen.associate { h -> h.id to KindValues.of(fields, h.extrasOther).associateBy { it.field.id } }
+    // The best of a number or an amount, marked only for the extras the kind's Compare names (`capabilities.compare`, kinds PR 27) and
+    // in the direction the kind file gives (S4b-BL-292): the school's lower commute and fees, not its admission fee.
+    val criteria: List<CompareCriterion> = CompareCriteria.of(kind)
     return extras.map { e ->
-        val best = KindValues.best(e, chosen.map { values.getValue(it.id)[e.id] }).map { chosen[it].id }.toSet()
+        val better = criteria.firstOrNull { it.id == e.id && it.source == CompareCriterion.Source.EXTRA }?.better
+        val best = CompareCriteria.bestOfExtra(chosen.map { CompareCriteria.extraFigure(fields, it.extrasOther, e.id) }, better).map { chosen[it].id }.toSet()
         CompareRow(stringResource(kindStringResource(fields.label(e))), notSet, { h -> texts[h.id]?.get(e.id) }, best = best)
     }
 }
