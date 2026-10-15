@@ -1,0 +1,13 @@
+{
+  "spec": "PlaceLookupTest.kt, IndiaOutlineTest.kt",
+  "gradle": [":shared:testAndroidHostTest", "--tests", "app.doorprints.shared.location.*"],
+  "mutations": [
+    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/location/PlaceLookup.kt", "find": "INDIA.contains(lat, lon) && IndiaOutline.contains(lat, lon)", "replace": "INDIA.contains(lat, lon)", "expect": "aNeighboursTownInsideTheBoxIsRefusedAndABorderTownOfIndiaIsKept"},
+    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/location/PlaceLookup.kt", "find": "candidates.firstOrNull", "replace": "candidates.lastOrNull", "expect": "theFirstCandidateInsideTheOutlineIsKept"},
+    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/location/IndiaOutline.kt", "find": "fun contains(lat: Double, lon: Double): Boolean = rings.any", "replace": "fun contains(lat: Double, lon: Double): Boolean = rings.all", "expect": "theSharedPlaceVectorsAreReadAsTheWebsiteReadsThem"},
+    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/location/IndiaOutline.kt", "find": "if ((yi > lat) != (yj > lat) && lon < (xj - xi)", "replace": "if ((yi > lat) != (yj > lat) && lon < (xj + xi)", "expect": "aNeighboursTownInsideTheBoxIsRefusedAndABorderTownOfIndiaIsKept"},
+    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/location/IndiaOutline.kt", "find": "hit = !hit", "replace": "hit = true", "expect": "aNeighboursTownInsideTheBoxIsRefusedAndABorderTownOfIndiaIsKept"},
+    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/location/IndiaOutline.kt", "find": "points[2 * i + 1] = pair.substring(comma + 1).toDouble()", "replace": "points[2 * i + 1] = pair.substring(comma + 1).toDouble() + 0.0001", "expect": "theRingsAreTheWebsitesPointForPoint"},
+    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/location/IndiaOutline.kt", "find": "var j = p.size / 2 - 1", "replace": "var j = p.size / 2 - 2", "expect": "theSharedPlaceVectorsAreReadAsTheWebsiteReadsThem"}
+  ]
+}

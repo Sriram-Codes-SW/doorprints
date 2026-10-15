@@ -1,0 +1,11 @@
+{
+  "spec": "backend/src/test/java/app/doorprints/server/ai/extract/DraftSanitizerTest.java",
+  "maven": ["-Dtest=DraftSanitizerTest,ParityVectorsTest"],
+  "mutations": [
+    {"file": "backend/src/main/java/app/doorprints/server/ai/extract/DraftSanitizer.java", "find": "PRICE.matcher(ContactRedactor.asciiDigits(value).replace(\",\", \"\")", "replace": "PRICE.matcher(value.replace(\",\", \"\")", "expect": "aPriceOrBedroomCountInNativeDigitsIsRead"},
+    {"file": "backend/src/main/java/app/doorprints/server/ai/extract/DraftSanitizer.java", "find": "FIRST_INT.matcher(ContactRedactor.asciiDigits(value))", "replace": "FIRST_INT.matcher(value)", "expect": "aPriceOrBedroomCountInNativeDigitsIsRead"},
+    {"file": "backend/src/main/java/app/doorprints/server/ai/extract/DraftSanitizer.java", "find": "var kept = ContactRedactor.asciiDigits(value).replaceAll", "replace": "var kept = value.replaceAll", "expect": "aPhoneInNativeDigitsIsKeptAsAsciiWhenTheTextHasIt"},
+    {"file": "backend/src/main/java/app/doorprints/server/ai/extract/DraftSanitizer.java", "find": "var sourceDigits = ContactRedactor.asciiDigits(source).replaceAll", "replace": "var sourceDigits = source.replaceAll", "expect": "aPhoneInNativeDigitsIsKeptAsAsciiWhenTheTextHasIt"},
+    {"file": "backend/src/main/java/app/doorprints/server/ai/extract/DraftSanitizer.java", "find": "PRICE.matcher(ContactRedactor.asciiDigits(value).replace(\",\", \"\")", "replace": "PRICE.matcher(value.replace(\",\", \"\")", "expect": "theServerGivesTheRecordedAnswers"}
+  ]
+}

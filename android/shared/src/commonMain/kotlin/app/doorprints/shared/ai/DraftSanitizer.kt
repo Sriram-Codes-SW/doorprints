@@ -161,7 +161,8 @@ object DraftSanitizer {
     /** "25,000", "₹ 25000/month", "25k", "1.2 Cr", "85 lakh" -> whole rupees (the fraction truncated, as `BigDecimal`). */
     fun price(value: String?, warnings: MutableList<String>, field: String = "price"): Long? {
         if (value.isNullOrBlank()) return null
-        val m = PRICE.find(value.replace(",", "").replace("_", ""))
+        // A price in the digits of an Indian script (S4b-BL-174b) is read as 0-9, character for character.
+        val m = PRICE.find(ContactRedactor.asciiDigits(value).replace(",", "").replace("_", ""))
         if (m == null) {
             warnings += "$field: could not read '${abbreviate(value)}', dropped"
             return null
@@ -207,7 +208,7 @@ object DraftSanitizer {
         if (value.isNullOrBlank()) return null
         val lower = value.lowercase()
         if ("studio" in lower || "1rk" in lower) return 0
-        val m = FIRST_INT.find(value)
+        val m = FIRST_INT.find(ContactRedactor.asciiDigits(value))
         val n = m?.value?.toIntOrNull()
         if (n == null) {
             warnings += "bedrooms: could not read '${abbreviate(value)}', dropped"
@@ -223,7 +224,7 @@ object DraftSanitizer {
     /** The first whole number, 1..[AREA_MAX] sq ft ("1,150 sq ft" -> 1150); anything else is dropped with a warning. */
     fun areaSqft(value: String?, warnings: MutableList<String>): Int? {
         if (value.isNullOrBlank()) return null
-        val n = FIRST_INT.find(value.replace(",", ""))?.value?.toIntOrNull()
+        val n = FIRST_INT.find(ContactRedactor.asciiDigits(value).replace(",", ""))?.value?.toIntOrNull()
         if (n == null || n !in 1..AREA_MAX) {
             warnings += "areaSqft: could not read '${abbreviate(value)}', dropped"
             return null
@@ -234,13 +235,14 @@ object DraftSanitizer {
     /** Only phone characters; 7-15 digits; the last 10 digits must appear in the pasted text. */
     fun phone(value: String?, source: String, warnings: MutableList<String>): String? {
         if (value.isNullOrBlank()) return null
-        val kept = value.filter { it in '0'..'9' || it in "+()- " }.trim()
+        // Native digits are read as 0-9 in the number and in the text (S4b-BL-174b), so a number copied in them is kept as 0-9.
+        val kept = ContactRedactor.asciiDigits(value).filter { it in '0'..'9' || it in "+()- " }.trim()
         val digits = kept.filter { it in '0'..'9' }
         if (digits.length !in 7..15) {
             warnings += "contactPhone: not a valid phone number, dropped"
             return null
         }
-        val sourceDigits = source.filter { it in '0'..'9' }
+        val sourceDigits = ContactRedactor.asciiDigits(source).filter { it in '0'..'9' }
         if (digits.takeLast(10) !in sourceDigits) {
             warnings += "contactPhone: not found in the listing text, dropped"
             return null

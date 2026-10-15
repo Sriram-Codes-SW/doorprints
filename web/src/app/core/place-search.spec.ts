@@ -21,7 +21,8 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GeocodeService } from './geocode.service';
-import { NOMINATIM_SEARCH, RequestThrottle, placeOf, searchParams } from './place-search';
+import { NOMINATIM_SEARCH, RequestThrottle, inIndia, placeOf, searchParams } from './place-search';
+import placeVectors from '../../../../docs/schemas/india-place-vectors.json';
 
 /**
  * The locality lookup of a shared listing (S4b-BL-83): the request, the one-a-second throttle and the answer, without
@@ -56,6 +57,34 @@ describe('place search', () => {
     ['সল্টলেক সেক্টর ৩, কলকাতা', 'en', 'সল্টলেক সেক্টর ৩, কলকাতা'],
   ])('searches for %j as %j in %s', (typed, language, q) => {
     expect(searchParams(typed, language)).toEqual({ q, format: 'jsonv2', limit: '1', countrycodes: 'in', 'accept-language': language });
+  });
+
+  // S4b-BL-174c: a result in a neighbour's town is not usable even though it is inside India's bounding box, a town of India
+  // beside the same border is, and the places the Government of India depicts as India are India: the vectors the apps read.
+  describe('the outline of India (S4b-BL-174c)', () => {
+    type Point = { name: string; lat: number; lon: number };
+    const vectors = placeVectors as unknown as { places: Point[]; borderTowns: Point[]; abroad: Point[] };
+
+    it.each([...vectors.places, ...vectors.borderTowns].map((p) => [p.name, p] as const))('keeps %s', (_name, p) => {
+      expect(inIndia(p.lat, p.lon)).toBe(true);
+      expect(placeOf([{ lat: String(p.lat), lon: String(p.lon) }])).toEqual({ lat: p.lat, lon: p.lon, label: null });
+    });
+
+    it.each(vectors.abroad.map((p) => [p.name, p] as const))('refuses %s', (_name, p) => {
+      expect(inIndia(p.lat, p.lon)).toBe(false);
+      expect(placeOf([{ lat: String(p.lat), lon: String(p.lon) }])).toBeNull();
+    });
+
+    it('skips a neighbour that comes first and takes the next result in India', () => {
+      expect(placeOf([{ lat: '23.8103', lon: '90.4125' }, { lat: '23.8315', lon: '91.2868', display_name: 'Agartala' }]))
+        .toEqual({ lat: 23.8315, lon: 91.2868, label: 'Agartala' });
+      expect(placeOf([{ lat: '23.8103', lon: '90.4125' }, { lat: '6.9271', lon: '79.8612' }])).toBeNull();
+    });
+
+    it('keeps the islands and refuses the sea and the world', () => {
+      for (const [lat, lon] of [[11.6234, 92.7265], [6.7456, 93.8403], [10.5626, 72.6369], [8.2845, 73.0498]]) expect(inIndia(lat, lon)).toBe(true);
+      for (const [lat, lon] of [[4.1755, 73.5093], [51.5, -0.12], [1.3521, 103.8198], [15.0, 88.0], [0, 0]]) expect(inIndia(lat, lon)).toBe(false);
+    });
   });
 
   it('cuts a very long address on a whole character, never inside an emoji of a forwarded message (a lone half would make the request fail)', () => {

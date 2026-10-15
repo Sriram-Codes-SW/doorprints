@@ -18,6 +18,8 @@
 
 package app.doorprints.server.ai.extract;
 
+import app.doorprints.server.ai.ContactRedactor;
+
 import java.math.BigDecimal;
 import java.net.URI;
 import java.util.ArrayList;
@@ -149,7 +151,8 @@ public final class DraftSanitizer {
     /** As {@link #price(String, List)}, the warnings naming {@code field} (a kind's money extra, S4b-BL-211). */
     static Long price(String value, List<String> warnings, String field) {
         if (value == null || value.isBlank()) return null;
-        var m = PRICE.matcher(value.replace(",", "").replace("_", ""));
+        // A price in the digits of an Indian script (S4b-BL-174b) is read as 0-9, character for character.
+        var m = PRICE.matcher(ContactRedactor.asciiDigits(value).replace(",", "").replace("_", ""));
         if (!m.find()) {
             warnings.add(field + ": could not read '" + abbreviate(value) + "', dropped");
             return null;
@@ -183,7 +186,7 @@ public final class DraftSanitizer {
         if (value == null || value.isBlank()) return null;
         var lower = value.toLowerCase(Locale.ROOT);
         if (lower.contains("studio") || lower.contains("1rk")) return 0;
-        var m = FIRST_INT.matcher(value);
+        var m = FIRST_INT.matcher(ContactRedactor.asciiDigits(value));
         if (!m.find()) {
             warnings.add("bedrooms: could not read '" + abbreviate(value) + "', dropped");
             return null;
@@ -204,13 +207,14 @@ public final class DraftSanitizer {
     /** Keeps only phone characters, requires 7-15 digits, and requires the digits to appear in the source text. */
     static String phone(String value, String source, List<String> warnings) {
         if (value == null || value.isBlank()) return null;
-        var kept = value.replaceAll("[^0-9+()\\- ]", "").strip();
+        // Native digits are read as 0-9 in the number and in the text (S4b-BL-174b), so a number copied in them is kept as 0-9.
+        var kept = ContactRedactor.asciiDigits(value).replaceAll("[^0-9+()\\- ]", "").strip();
         var digits = kept.replaceAll("\\D", "");
         if (digits.length() < 7 || digits.length() > 15) {
             warnings.add("contactPhone: not a valid phone number, dropped");
             return null;
         }
-        var sourceDigits = source.replaceAll("\\D", "");
+        var sourceDigits = ContactRedactor.asciiDigits(source).replaceAll("\\D", "");
         // Compare the last 10 digits so "+91 98450 12345" matches "9845012345" in the text.
         var tail = digits.length() > 10 ? digits.substring(digits.length() - 10) : digits;
         if (!sourceDigits.contains(tail)) {
