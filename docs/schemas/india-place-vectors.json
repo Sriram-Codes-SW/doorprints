@@ -1,6 +1,6 @@
 {
   "format": "doorprints-india-place-vectors/1",
-  "note": "Towns and places across India with whether they lie inside the held areas, the polygon of web/public/geo/in-held-areas.geojson (and its byte-identical Android copy) inside which the app leaves the Pakistani and Chinese admin lines out of the map (docs/03 ADR-22, S4b-BL-12). heldBy names the administration whose lines are left out; a place without it is in India as the Government of India depicts it, and its admin lines are drawn. Coordinates are the public locations of the towns; Uri, Poonch, Kargil, Dras and Turtuk lie 4 to 9 km from the polygon of the held areas. Read by web india-boundaries.spec.ts (the style filter, with MapLibre's own evaluator) and Android IndiaBoundaryDataTest (the polygon), so both apps decide every place alike. The boundary data itself is not changed by this file.",
+  "note": "Towns and places across India with whether they lie inside the held areas, the polygon of web/public/geo/in-held-areas.geojson (and its byte-identical Android copy) inside which the app leaves the Pakistani and Chinese admin lines out of the map (docs/03 ADR-22, S4b-BL-12). heldBy names the administration whose lines are left out; a place without it is in India as the Government of India depicts it, and its admin lines are drawn. Coordinates are the public locations of the towns; Uri, Poonch, Kargil, Dras and Turtuk lie 4 to 9 km from the polygon of the held areas. Read by web india-boundaries.spec.ts (the style filter, with MapLibre's own evaluator) and Android IndiaBoundaryDataTest (the polygon), so both apps decide every place alike. The boundary data itself is not changed by this file. S4b-BL-174c adds two lists read by the place lookup of both apps (web place-search.spec.ts, Android PlaceLookupTest): borderTowns are places of India close to a border that a lookup must keep, and abroad are towns of the neighbours, most of them inside India's bounding box, that a lookup must refuse. Every entry of places and of borderTowns is inside the outline of India as the Government of India depicts it (web/src/app/shared/india-outline.geojson, built by web/scripts/geo/build_in_outline.py from the same boundary data) and every entry of abroad is outside it.",
   "places": [
     {
       "name": "Gilgit",
@@ -398,6 +398,238 @@
       "zone": "east",
       "lat": 22.57,
       "lon": 88.36
+    }
+  ],
+  "borderTowns": [
+    {
+      "name": "Siliguri",
+      "area": "West Bengal",
+      "lat": 26.7271,
+      "lon": 88.3953
+    },
+    {
+      "name": "Alipurduar",
+      "area": "West Bengal",
+      "lat": 26.4912,
+      "lon": 89.5271
+    },
+    {
+      "name": "Imphal",
+      "area": "Manipur",
+      "lat": 24.817,
+      "lon": 93.9368
+    },
+    {
+      "name": "Churachandpur",
+      "area": "Manipur",
+      "lat": 24.3333,
+      "lon": 93.6833
+    },
+    {
+      "name": "Amritsar",
+      "area": "Punjab",
+      "lat": 31.634,
+      "lon": 74.8723
+    },
+    {
+      "name": "Jammu",
+      "area": "Jammu and Kashmir",
+      "lat": 32.7266,
+      "lon": 74.857
+    },
+    {
+      "name": "Motihari",
+      "area": "Bihar",
+      "lat": 26.6493,
+      "lon": 84.9167
+    },
+    {
+      "name": "Bhuj",
+      "area": "Gujarat",
+      "lat": 23.242,
+      "lon": 69.6669
+    },
+    {
+      "name": "Agartala",
+      "area": "Tripura",
+      "lat": 23.8315,
+      "lon": 91.2868
+    },
+    {
+      "name": "Tawang",
+      "area": "Arunachal Pradesh",
+      "lat": 27.5859,
+      "lon": 91.8594
+    },
+    {
+      "name": "Kibithu",
+      "area": "Arunachal Pradesh",
+      "lat": 28.2,
+      "lon": 97.0
+    },
+    {
+      "name": "Aizawl",
+      "area": "Mizoram",
+      "lat": 23.7271,
+      "lon": 92.7176
+    },
+    {
+      "name": "Kolkata",
+      "area": "West Bengal",
+      "lat": 22.5726,
+      "lon": 88.3639
+    },
+    {
+      "name": "Dibrugarh",
+      "area": "Assam",
+      "lat": 27.4728,
+      "lon": 94.912
+    },
+    {
+      "name": "Kanyakumari",
+      "area": "Tamil Nadu",
+      "lat": 8.0883,
+      "lon": 77.5385
+    },
+    {
+      "name": "Rameswaram",
+      "area": "Tamil Nadu",
+      "lat": 9.2876,
+      "lon": 79.3129
+    }
+  ],
+  "abroad": [
+    {
+      "name": "Dhaka",
+      "country": "Bangladesh",
+      "lat": 23.8103,
+      "lon": 90.4125
+    },
+    {
+      "name": "Chittagong",
+      "country": "Bangladesh",
+      "lat": 22.3569,
+      "lon": 91.7832
+    },
+    {
+      "name": "Khulna",
+      "country": "Bangladesh",
+      "lat": 22.8456,
+      "lon": 89.5403
+    },
+    {
+      "name": "Kathmandu",
+      "country": "Nepal",
+      "lat": 27.7172,
+      "lon": 85.324
+    },
+    {
+      "name": "Pokhara",
+      "country": "Nepal",
+      "lat": 28.2096,
+      "lon": 83.9856
+    },
+    {
+      "name": "Birgunj",
+      "country": "Nepal",
+      "lat": 27.0104,
+      "lon": 84.8779
+    },
+    {
+      "name": "Thimphu",
+      "country": "Bhutan",
+      "lat": 27.4728,
+      "lon": 89.639
+    },
+    {
+      "name": "Paro",
+      "country": "Bhutan",
+      "lat": 27.4305,
+      "lon": 89.4134
+    },
+    {
+      "name": "Phuentsholing",
+      "country": "Bhutan",
+      "lat": 26.8517,
+      "lon": 89.3894
+    },
+    {
+      "name": "Colombo",
+      "country": "Sri Lanka",
+      "lat": 6.9271,
+      "lon": 79.8612
+    },
+    {
+      "name": "Jaffna",
+      "country": "Sri Lanka",
+      "lat": 9.6615,
+      "lon": 80.0255
+    },
+    {
+      "name": "Mannar",
+      "country": "Sri Lanka",
+      "lat": 8.9763,
+      "lon": 79.9042
+    },
+    {
+      "name": "Lahore",
+      "country": "Pakistan",
+      "lat": 31.5497,
+      "lon": 74.3436
+    },
+    {
+      "name": "Sialkot",
+      "country": "Pakistan",
+      "lat": 32.4945,
+      "lon": 74.5229
+    },
+    {
+      "name": "Islamabad",
+      "country": "Pakistan",
+      "lat": 33.6844,
+      "lon": 73.0479
+    },
+    {
+      "name": "Karachi",
+      "country": "Pakistan",
+      "lat": 24.8607,
+      "lon": 67.0011
+    },
+    {
+      "name": "Lhasa",
+      "country": "China",
+      "lat": 29.65,
+      "lon": 91.1
+    },
+    {
+      "name": "Tamu",
+      "country": "Myanmar",
+      "lat": 24.2167,
+      "lon": 94.3
+    },
+    {
+      "name": "Sittwe",
+      "country": "Myanmar",
+      "lat": 20.1462,
+      "lon": 92.8985
+    },
+    {
+      "name": "Yangon",
+      "country": "Myanmar",
+      "lat": 16.8409,
+      "lon": 96.1735
+    },
+    {
+      "name": "Kabul",
+      "country": "Afghanistan",
+      "lat": 34.5553,
+      "lon": 69.2075
+    },
+    {
+      "name": "Male",
+      "country": "Maldives",
+      "lat": 4.1755,
+      "lon": 73.5093
     }
   ]
 }
