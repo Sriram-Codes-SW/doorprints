@@ -63,9 +63,13 @@ import kotlin.concurrent.Volatile
  *
  * `AVAudioSession` is set to the *record* category and made active in [open] (after the permission is known to be given),
  * and made inactive again in [close], so other apps' audio resumes. Recording is **foreground only** and ends, with
- * nothing kept, when the app resigns active (home, the app switcher, Control Center, a call, Siri, the lock button), an
+ * the capture stops when the app resigns active (home, the app switcher, Control Center, a call, Siri, the lock button), an
  * interruption begins, the microphone in use changes (the route), the engine's configuration changes or the media
- * services are reset ([CaptureEndRules]); [read] then returns a negative number and the recorder reports it.
+ * services are reset ([CaptureEndRules]). That is an *early end* (S4b-BL-318): the tap is removed and the engine stopped at
+ * once (the microphone is let go), the queue is **kept** and handed out by [read], then [read] returns a negative number and
+ * [endedEarly] is true, so the recorder reports `VoiceFailure.ENDED_EARLY` and the session keeps and writes out what was said
+ * so far. The audio stays in memory; the session soon calls [close], which discards the rest and makes the audio session
+ * inactive. A release (the screen paused or left) still discards everything.
  *
  * Threads: [open] and [close] may be called from any thread; the tap runs on an audio thread and [read] on the
  * recorder's capture thread; a lock (an `NSCondition`) guards the queue and the end flags.
@@ -77,6 +81,7 @@ internal class IosPcmSource : PcmSource {
     private var ended = false // guarded by lock: read() reports the end and the tap drops what comes
     private var tornDown = false // guarded by lock: close() has run its clean-up
     private var started = false // guarded by lock: open() got far enough that close() has something to undo
+    private var early = false // guarded by lock: something other than the person ended the capture; the queue is kept
 
     private var engine: AVAudioEngine? = null // guarded by lock (set in open before the tap starts)
     private var resampler: Pcm16Resampler? = null
@@ -153,6 +158,29 @@ internal class IosPcmSource : PcmSource {
         }
     }
 
+    override fun endedEarly(): Boolean {
+        lock.lock()
+        try {
+            return early
+        } finally {
+            lock.unlock()
+        }
+    }
+
+    /** Something other than the person ended the recording (main thread): capture stops now, the queue is kept for [read]. */
+    private fun endEarly() {
+        lock.lock()
+        val live = !tornDown && !ended
+        if (live) early = true
+        lock.unlock()
+        if (!live) return
+        stopCapture()
+        lock.lock()
+        ended = true
+        lock.broadcast()
+        lock.unlock()
+    }
+
     override fun read(into: ByteArray, offset: Int, length: Int): Int {
         lock.lock()
         try {
@@ -216,7 +244,7 @@ internal class IosPcmSource : PcmSource {
         }
     }
 
-    /** Ends the recording from the main thread when something other than the person changes under it (see the class comment). */
+    /** Ends the capture early, from the main thread, when something other than the person changes under it (see the class comment). */
     private fun watch(session: AVAudioSession, audio: AVAudioEngine) {
         val center = NSNotificationCenter.defaultCenter
         val main = NSOperationQueue.mainQueue
@@ -226,14 +254,14 @@ internal class IosPcmSource : PcmSource {
             observers += token
             lock.unlock()
         }
-        add(UIApplicationWillResignActiveNotification, null) { close() }
-        add(AVAudioSessionMediaServicesWereResetNotification, null) { close() }
-        add(AVAudioEngineConfigurationChangeNotification, audio) { close() }
+        add(UIApplicationWillResignActiveNotification, null) { endEarly() }
+        add(AVAudioSessionMediaServicesWereResetNotification, null) { endEarly() }
+        add(AVAudioEngineConfigurationChangeNotification, audio) { endEarly() }
         add(AVAudioSessionInterruptionNotification, null) { n ->
-            if (CaptureEndRules.endsOnInterruption(numberIn(n, AVAudioSessionInterruptionTypeKey))) close()
+            if (CaptureEndRules.endsOnInterruption(numberIn(n, AVAudioSessionInterruptionTypeKey))) endEarly()
         }
         add(AVAudioSessionRouteChangeNotification, null) { n ->
-            if (CaptureEndRules.endsOnRouteChange(numberIn(n, AVAudioSessionRouteChangeReasonKey), inputAtStart, currentInputUid(session))) close()
+            if (CaptureEndRules.endsOnRouteChange(numberIn(n, AVAudioSessionRouteChangeReasonKey), inputAtStart, currentInputUid(session))) endEarly()
         }
     }
 

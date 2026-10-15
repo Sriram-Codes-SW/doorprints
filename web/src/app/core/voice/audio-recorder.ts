@@ -30,8 +30,11 @@ import { MAX_AUDIO_BYTES, MAX_AUDIO_MS } from '../ai/transcriber';
  * harmless.
  */
 
-/** Why no clip came: the microphone was refused, there is none or none can record here, it could not start, or it was cancelled. */
-export type RecorderFailure = 'denied' | 'unsupported' | 'noDevice' | 'failed' | 'cancelled';
+/**
+ * Why no clip came: the microphone was refused, there is none or none can record here, it could not start, it was cancelled, or
+ * it ended early (a call or a headset change took the microphone) before anything was said, so there is nothing to keep.
+ */
+export type RecorderFailure = 'denied' | 'unsupported' | 'noDevice' | 'failed' | 'cancelled' | 'endedEarly';
 
 /** A recording that did not produce a clip; the message names the reason only. */
 export class RecorderError extends Error {
@@ -107,8 +110,13 @@ export class AudioRecorder {
   private generation = 0;
   private done: { resolve: (clip: RecordedClip) => void; reject: (e: RecorderError) => void } | null = null;
   private active = false;
-  /** Fired once when the recording ends by itself (a limit, the page hidden, an error), so the screen can follow. */
-  onEnded: ((how: { clip?: RecordedClip; failure?: RecorderFailure }) => void) | null = null;
+  /** True once Stop, a limit or a cancel has asked the recorder to end: an end after that was asked for, not early. */
+  private halting = false;
+  /**
+   * Fired once when the recording ends by itself (a limit, the page hidden, an error, the microphone taken), so the screen can
+   * follow. `early` is set with a `clip` that was cut short from outside (S4b-BL-318): the clip so far is kept, not thrown away.
+   */
+  onEnded: ((how: { clip?: RecordedClip; failure?: RecorderFailure; early?: boolean }) => void) | null = null;
 
   private readonly hide = (): void => this.cancel();
   private readonly visibility = (): void => {
@@ -154,11 +162,14 @@ export class AudioRecorder {
       const rec = new Ctor(stream, type ? { mimeType: type, audioBitsPerSecond: BITS_PER_SECOND } : { audioBitsPerSecond: BITS_PER_SECOND });
       this.recorder = rec;
       rec.ondataavailable = (e: BlobEvent) => this.take(e.data);
-      rec.onerror = () => this.end('failed');
-      rec.onstop = () => this.finish();
+      // An error or a stop nobody asked for (the microphone was taken by a call, a headset changed) keeps what was said so far.
+      rec.onerror = () => (this.size > 0 ? this.finish(true) : this.end('failed'));
+      rec.onstop = () => this.finish(!this.halting);
+      for (const t of stream.getTracks()) t.onended = () => this.finish(true);
       this.chunks = [];
       this.size = 0;
       this.limit = null;
+      this.halting = false;
       this.startedAt = this.env.now();
       rec.start(SLICE_MS);
       this.active = true;
@@ -206,7 +217,12 @@ export class AudioRecorder {
         // Already stopped.
       }
     }
-    if (this.stream !== null) for (const t of this.stream.getTracks()) t.stop();
+    if (this.stream !== null) {
+      for (const t of this.stream.getTracks()) {
+        t.onended = null;
+        t.stop();
+      }
+    }
     this.recorder = null;
     this.stream = null;
     this.chunks = [];
@@ -235,6 +251,7 @@ export class AudioRecorder {
   }
 
   private halt(): void {
+    this.halting = true;
     clearTimeout(this.timer);
     this.timer = undefined;
     const rec = this.recorder;
@@ -247,8 +264,12 @@ export class AudioRecorder {
     }
   }
 
-  /** The recorder's `stop` event: the clip is made from the chunks, then everything is let go. */
-  private finish(): void {
+  /**
+   * The recorder's `stop` event: the clip is made from the chunks, then everything is let go. `unprompted`: the end was not
+   * asked for by Stop, a limit or a cancel; with nobody waiting for the clip it is reported as *ended early*, and with no
+   * audio in it there is nothing to keep (`endedEarly`).
+   */
+  private finish(unprompted = false): void {
     const rec = this.recorder;
     if (rec === null) return;
     const durationMs = Math.max(0, this.env.now() - this.startedAt);
@@ -257,13 +278,18 @@ export class AudioRecorder {
     const limit = this.limit;
     const waiting = this.done;
     const ended = this.onEnded;
+    const early = unprompted && waiting === null && limit === null && !this.halting;
     this.release();
+    if (early && parts.length === 0) {
+      ended?.({ failure: 'endedEarly' });
+      return;
+    }
     new Blob(parts, { type: mime })
       .arrayBuffer()
       .then((buf) => {
         const clip: RecordedClip = { bytes: new Uint8Array(buf), mime, durationMs, limit };
         if (waiting) waiting.resolve(clip);
-        else ended?.({ clip });
+        else ended?.(early ? { clip, early } : { clip });
       })
       .catch(() => {
         if (waiting) waiting.reject(new RecorderError('failed'));

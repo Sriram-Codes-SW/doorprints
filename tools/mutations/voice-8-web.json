@@ -1,0 +1,56 @@
+{
+  "spec": [
+    "web/src/app/core/voice/audio-recorder.spec.ts",
+    "web/src/app/shared/voice-button.spec.ts"
+  ],
+  "mutations": [
+    {
+      "file": "web/src/app/core/voice/audio-recorder.ts",
+      "find": "rec.onstop = () => this.finish(!this.halting);",
+      "replace": "rec.onstop = () => this.finish(false);",
+      "expect": "a recording the browser ends by itself"
+    },
+    {
+      "file": "web/src/app/core/voice/audio-recorder.ts",
+      "find": "const early = unprompted && waiting === null && limit === null && !this.halting;",
+      "replace": "const early = false;",
+      "expect": "a recording the browser ends by itself"
+    },
+    {
+      "file": "web/src/app/core/voice/audio-recorder.ts",
+      "find": "ended?.({ failure: 'endedEarly' });",
+      "replace": "ended?.({ failure: 'failed' });",
+      "expect": "an early end before anything was said"
+    },
+    {
+      "file": "web/src/app/core/voice/audio-recorder.ts",
+      "find": "rec.onerror = () => (this.size > 0 ? this.finish(true) : this.end('failed'));",
+      "replace": "rec.onerror = () => this.end('failed');",
+      "expect": "a recorder error after some audio keeps"
+    },
+    {
+      "file": "web/src/app/core/voice/audio-recorder.ts",
+      "find": "for (const t of stream.getTracks()) t.onended = () => this.finish(true);",
+      "replace": "",
+      "expect": "a track that ends from outside"
+    },
+    {
+      "file": "web/src/app/shared/voice-button.ts",
+      "find": "? 'voice.statusDoneEarly'",
+      "replace": "? 'voice.statusDone'",
+      "expect": "a recording the browser ends early (a call"
+    },
+    {
+      "file": "web/src/app/shared/voice-button.ts",
+      "find": "this.words(run, how.clip, how.early === true)",
+      "replace": "this.words(run, how.clip, false)",
+      "expect": "a recording the browser ends early (a call"
+    },
+    {
+      "file": "web/src/app/shared/voice-button.ts",
+      "find": "} else if (how.failure === 'endedEarly') {",
+      "replace": "} else if (false) {",
+      "expect": "ends early before anything was said"
+    }
+  ]
+}

@@ -1850,6 +1850,7 @@
     <string name="voice_status_done">हो गया। शब्द बॉक्स में हैं। भेजने से पहले जाँच लें।</string>
     <string name="voice_status_done_limit">हो गया। रिकॉर्डिंग एक मिनट की सीमा पर रुक गई। शब्द बॉक्स में हैं। भेजने से पहले जाँच लें।</string>
     <string name="voice_status_done_cut">हो गया। आख़िरी शब्द बॉक्स में नहीं समाए और छोड़ दिए गए। भेजने से पहले जो वहाँ है उसे जाँच लें।</string>
+    <string name="voice_status_done_early">हो गया। रिकॉर्डिंग बीच में ही रुक गई। अब तक जो कहा गया, वह बॉक्स में है। भेजने से पहले जाँच लें।</string>
     <string name="voice_status_cancelled">रद्द किया गया। कुछ भी नहीं रखा गया।</string>
     <string name="voice_nothing_heard">कुछ सुनाई नहीं दिया। माइक्रोफ़ोन के पास आकर फिर कोशिश करें, या टाइप करें।</string>
     <string name="voice_denied">Doorprints माइक्रोफ़ोन इस्तेमाल नहीं कर सकता। फ़ोन की सेटिंग में Doorprints को इसकी अनुमति दें और फिर कोशिश करें, या टाइप करें।</string>

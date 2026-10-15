@@ -263,6 +263,7 @@ private fun VoiceStatus.res(short: Boolean) = when (this) {
     VoiceStatus.DONE -> Res.string.voice_status_done
     VoiceStatus.DONE_LIMIT -> if (short) Res.string.voice_status_done_limit_short else Res.string.voice_status_done_limit
     VoiceStatus.DONE_CUT -> Res.string.voice_status_done_cut
+    VoiceStatus.DONE_EARLY -> Res.string.voice_status_done_early
     VoiceStatus.CANCELLED -> Res.string.voice_status_cancelled
 }
 

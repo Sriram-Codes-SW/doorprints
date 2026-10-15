@@ -150,6 +150,30 @@ class IosVoiceSafetyTest {
         assertEquals(listOf("location"), Regex("<string>(.*?)</string>").findAll(modes).map { it.groupValues[1] }.toList(), "no audio background mode")
     }
 
+    /** S4b-BL-318: an outside end stops the microphone at once and keeps the audio in memory only; a release still discards. */
+    @Test
+    fun anEarlyEndLetsTheMicrophoneGoAtOnceKeepsTheWordsInMemoryAndAReleaseStillDiscards() {
+        val text = code(file("$ios/IosPcmSource.kt"))
+        for (name in listOf(
+            "UIApplicationWillResignActiveNotification", "AVAudioSessionInterruptionNotification", "AVAudioSessionRouteChangeNotification",
+            "AVAudioSessionMediaServicesWereResetNotification", "AVAudioEngineConfigurationChangeNotification",
+        )) {
+            val rest = text.substring(text.indexOf("add($name,") + 1)
+            val handler = rest.substringBefore("add(", rest)
+            assertTrue(handler.contains("endEarly()") && !handler.contains("close()"), "$name ends the capture early, not by dropping the audio")
+        }
+        val early = text.substringAfter("private fun endEarly()").substringBefore("override fun read(")
+        assertTrue(early.contains("stopCapture()"), "the tap is removed and the engine stopped at once")
+        assertTrue(early.contains("ended = true"), "the reader is told")
+        assertFalse(early.contains("queue.clear()") || early.contains("close()"), "the words so far are kept for the reader")
+        val closeBody = text.substringAfter("override fun close()").substringBefore("private fun watch(")
+        assertTrue(closeBody.contains("queue.clear()"), "a release still discards the audio")
+        // Stop never waits on the calling thread (S4b-BL-317): no busy loop, no sleep, no clock in the recorder.
+        val recorder = code(file("android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/PcmVoiceRecorder.kt"))
+        for (blocking in listOf("elapsedNow", "TimeSource", "Thread.sleep", "runBlocking", "while (!loop")) assertFalse(recorder.contains(blocking), "the recorder must not block a thread: $blocking")
+        assertTrue(recorder.contains("override suspend fun stop()") && recorder.contains("withTimeoutOrNull(DRAIN_WAIT)"), "the bounded wait suspends")
+    }
+
     @Test
     fun infoPlistExplainsTheMicrophoneInAllFourLanguagesAndNothingElseIsAdded() {
         val plist = file("ios/Doorprints/Info.plist").readText()

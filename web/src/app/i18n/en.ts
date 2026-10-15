@@ -1909,6 +1909,7 @@ export const en = {
   'voice.statusDone': 'Done. The words are in the box. Check them before you send.',
   'voice.statusDoneLimit': 'Done. The recording stopped at its one-minute limit. The words are in the box. Check them before you send.',
   'voice.statusDoneCut': 'Done. The last words did not fit in the box and were left out. Check what is there before you send.',
+  'voice.statusDoneEarly': 'Done. The recording ended early, and what was said so far is in the box. Check it before you send.',
   'voice.statusCancelled': 'Cancelled. Nothing was kept.',
   'voice.nothingHeard': 'Nothing was heard. Try again closer to the microphone, or type.',
   'voice.denied': 'This site cannot use the microphone. Allow it in your browser\'s site settings, then try again, or type instead.',

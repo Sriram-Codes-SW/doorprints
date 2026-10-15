@@ -264,6 +264,32 @@ describe('VoiceButton', () => {
     expect(status(el)).toContain('stopped at its one-minute limit');
   });
 
+  it('a recording the browser ends early (a call, a headset change) keeps the words so far, writes them out and says so truthfully', async () => {
+    const { fixture, el, host, fetchSpy } = setup();
+    mic(el)!.click();
+    await settle(fixture);
+    FakeRecorder.last.endByItself();
+    await settle(fixture);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(host.changes).toHaveLength(1);
+    expect(status(el)).toBe('Done. The recording ended early, and what was said so far is in the box. Check it before you send.');
+    expect(alertText(el)).toBe('');
+    expect(el.textContent).not.toContain('could not be made');
+  });
+
+  it('a recording the browser ends early before anything was said shows nothing untrue and sends nothing', async () => {
+    const { fixture, el, host, fetchSpy } = setup();
+    mic(el)!.click();
+    await settle(fixture);
+    FakeRecorder.last.lastChunk = '';
+    FakeRecorder.last.endByItself();
+    await settle(fixture);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(host.changes).toHaveLength(0);
+    expect(alertText(el)).toBe('');
+    expect(mic(el)!.textContent).toContain('Speak');
+  });
+
   it('words that do not fit the box are cut and the status says so', async () => {
     const { fixture, el, host } = setup();
     host.max = 20;

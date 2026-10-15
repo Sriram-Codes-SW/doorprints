@@ -45,14 +45,14 @@
   },
   {
    "file": "web/src/app/shared/voice-button.ts",
-   "find": "this.status.set(inserted.cut ? 'voice.statusDoneCut' : clip.limit ? 'voice.statusDoneLimit' : 'voice.statusDone');",
-   "replace": "this.status.set(clip.limit ? 'voice.statusDoneLimit' : 'voice.statusDone');",
+   "find": "      inserted.cut\n        ? 'voice.statusDoneCut'",
+   "replace": "      false\n        ? 'voice.statusDoneCut'",
    "expect": "words that do not fit the box are cut"
   },
   {
    "file": "web/src/app/shared/voice-button.ts",
-   "find": "this.status.set(inserted.cut ? 'voice.statusDoneCut' : clip.limit ? 'voice.statusDoneLimit' : 'voice.statusDone');",
-   "replace": "this.status.set(inserted.cut ? 'voice.statusDoneCut' : 'voice.statusDone');",
+   "find": "        : clip.limit\n",
+   "replace": "        : false\n",
    "expect": "the one-minute limit ends the recording by itself"
   },
   {

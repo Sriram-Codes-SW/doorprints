@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | The complete manual test list for Doorprints before real-system testing starts and before Android/iOS development continues: every check a person redoes on real devices, whether or not an automated suite or a review session already covered it |
-| Version | 0.20 |
+| Version | 0.21 |
 | Date | 2026-10-15 |
 | Author | Claude, senior reviewer |
 | Status | Draft |
@@ -32,6 +32,7 @@
 | 0.18 | 2026-10-15 | Claude (Code), engineer | **§16.2, voice input on the iPhone** (S4b-BL-223, TC-M-80): MT-104 (the rationale, the system prompt on the first tap only, a refusal and *Open settings*), MT-105 (foreground only: home, lock, a call, Siri, headphones, Bluetooth; the music comes back), MT-106 (a real recording: the words, the 60 s stop, nothing heard, the permission lost mid-way), MT-107 (no audio at rest in the app's container, the console or a copy), MT-108 (VoiceOver, the largest text, four languages, both themes). Needs a Mac with Xcode and an iPhone (a simulator uses the Mac's microphone and cannot show a call or Bluetooth). Not run. |
 | 0.19 | 2026-10-15 | Claude (Code), engineer | **Voice with Sarvam and the clip suite (S4b-BL-224):** MT-109 (a live Sarvam key, the 30 s stop), MT-110 (the key in no copy, backup, sync or Drive file; removal), MT-111 (running the `voice` suite). |
 | 0.20 | 2026-10-15 | Claude (Code), engineer | **§19, the phones with the school compiled in, off** (owner, 2026-10-15; `feat/kinds-24-ship-school-phones`, TC-M-81): the intro and MT-96 step 1 amended (a release has *What you track*, with the switch off); MT-112 (a fresh Android install is the house app, the switch, TalkBack, 200 % text) and MT-113 (the iPhone: the same, VoiceOver, no chooser until the switch is on). |
+| 0.21 | 2026-10-15 | Claude (Code), engineer | **A recording cut short** (S4b-BL-317, S4b-BL-318, TC-M-82; #367): MT-105's expected result amended (the words so far are kept and written out with *The recording ended early*, nothing shown when nothing was said) and MT-114 (the iPhone, Android and the website; Cancel and leaving the screen still keep nothing; Stop answers at once). |
 
 ## 1. How to use this list
 
@@ -894,7 +895,7 @@ Added 2026-10-15 with the iPhone's side of voice input ([03](../03-design.md) AD
 #### MT-105 Foreground only: leaving the app, a call, Siri, headphones, Bluetooth
 - **Area:** iPhone app. **Who:** owner. **Env:** E5 (a real iPhone; a simulator cannot show a call or a headset).
 - **Steps:** Start a recording (Speak) and, one at a time: (1) swipe up to the Home screen; (2) press the side button to lock; (3) pull down Control Center or the notification centre; (4) call the phone from another phone; (5) say "Hey Siri" or hold the side button; (6) with wired or Bluetooth headphones: plug them in, then take them out (and connect AirPods); (7) play music in another app first, record, then stop. After each of 1 to 6 come back to Doorprints.
-- **Expected:** Each of 1 to 6 ends the recording: the orange dot goes away, nothing is written into the box, no words arrive later, and the button is *Speak* again (a message that the recording could not be made is acceptable after 6); no sound-recording is left running (check Control Center's mic indicator). In 7 the music resumes after the recording ends. A recording never continues in the background (the app declares no audio background mode).
+- **Expected:** Each of 1 to 6 ends the recording at once: the orange dot goes away and the button is *Speak* again; no sound-recording is left running (check Control Center's mic indicator). If you had said something first, the words so far are written out into the box after a moment with the message *The recording ended early* (S4b-BL-318; never *could not be made*); if you had said nothing, nothing is shown. Going to the Home screen (1) may need a second before the words arrive. In 7 the music resumes after the recording ends. A recording never continues in the background (the app declares no audio background mode).
 - **Automated or reviewed by:** `CaptureEndRules` (TC-U-254) for the decisions; the observers and `AVAudioSession` handling are only run here. Reviewer ran it: no.
 - Pass / Fail / Date: ____  by: ____
 
@@ -1011,6 +1012,13 @@ TC-M-72 and TC-M-81 of [06](../06-test-plan.md); the website's twin is §18.
 - **Automated or reviewed by:** TC-U-264 (`IosKindsGateTest` reads the source; the klib compile). Reviewer ran it: no.
 - Pass / Fail / Date: ____  by: ____
 
+#### MT-114 A recording cut short keeps what was said (iPhone, Android, website)
+- **Area:** iPhone app, Android app, website. **Who:** owner. **Env:** E4 and E5, a test AI key, fake words only.
+- **Steps:** (1) iPhone: tap *Speak*, say a sentence, then call the phone from another phone, or connect or unplug headphones. (2) Android: tap *Speak*, say a sentence, then connect or unplug a headset. (3) Website: tap *Speak*, say a sentence, then start a call that takes the microphone, or unplug the headset. (4) Each again, but end the recording before saying anything. (5) Each again, but press *Cancel*, or leave the screen, after the sentence. (6) Tap *Speak*, say a sentence and tap *Stop* quickly several times and while the screen scrolls: the button answers at once.
+- **Expected:** (1) to (3): the recording ends, the sentence is written out into the box, and the message says the recording ended early and to check it; nothing was sent on. (4): nothing is shown and the button is *Speak* again. (5): nothing is kept and nothing is written. (6): *Stop* never freezes the screen; the words arrive a moment later.
+- **Automated or reviewed by:** TC-U-266 (fake sources and recorders, the website's specs, the source scan). The real call, headset and phone: reviewer ran it: no.
+- Pass / Fail / Date: ____  by: ____
+
 ### 19.1 Summary rows (add to §13 when the owner starts the run)
 
 | Id | Title | Who | Env | Reviewer ran it | Result |
@@ -1019,6 +1027,7 @@ TC-M-72 and TC-M-81 of [06](../06-test-plan.md); the website's twin is §18.
 | MT-97 | A school space's tools, a copy, a backup, a shared listing, a link | owner | E4 | no | |
 | MT-112 | The Android app, school compiled in and off: a fresh install, the switch, TalkBack, 200 % text | anyone | E4 | no | |
 | MT-113 | The iPhone, school compiled in and off: the switch, VoiceOver, 200 % text | owner, natives | E5 | no (built; not run on an iPhone) | |
+| MT-114 | A recording cut short keeps what was said: iPhone, Android, website | owner | E4, E5 | no | |
 
 ## 20. A school's pages and copies (S4b-BL-256, S4b-BL-259, S4b-BL-266, S4b-BL-277)
 

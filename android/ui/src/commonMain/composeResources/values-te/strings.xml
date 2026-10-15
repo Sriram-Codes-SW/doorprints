@@ -1850,6 +1850,7 @@
     <string name="voice_status_done">పూర్తయింది. మాటలు బాక్స్‌లో ఉన్నాయి. పంపే ముందు సరిచూడండి.</string>
     <string name="voice_status_done_limit">పూర్తయింది. రికార్డింగ్ ఒక నిమిషం పరిమితి వద్ద ఆగింది. మాటలు బాక్స్‌లో ఉన్నాయి. పంపే ముందు సరిచూడండి.</string>
     <string name="voice_status_done_cut">పూర్తయింది. చివరి మాటలు బాక్స్‌లో పట్టకపోవడంతో వదిలేశాం. పంపే ముందు అక్కడ ఉన్నదాన్ని సరిచూడండి.</string>
+    <string name="voice_status_done_early">పూర్తయింది. రికార్డింగ్ మధ్యలోనే ఆగింది. ఇప్పటివరకు చెప్పినది బాక్స్‌లో ఉంది. పంపే ముందు సరిచూడండి.</string>
     <string name="voice_status_cancelled">రద్దు చేయబడింది. ఏదీ ఉంచబడలేదు.</string>
     <string name="voice_nothing_heard">ఏదీ వినిపించలేదు. మైక్రోఫోన్‌కు దగ్గరగా మళ్లీ ప్రయత్నించండి, లేదా టైప్ చేయండి.</string>
     <string name="voice_denied">Doorprints మైక్రోఫోన్‌ను వాడలేదు. ఫోన్ సెట్టింగ్‌లలో Doorprints కు అనుమతించి మళ్లీ ప్రయత్నించండి, లేదా టైప్ చేయండి.</string>
