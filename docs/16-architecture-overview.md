@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Architecture overview: the one entry page for the high-level and low-level design |
-| Version | 0.1 |
+| Version | 0.2 |
 | Date | 2026-10-15 |
 | Owner | Lead (Claude, Code); product owner: Sriram |
 | Status | Draft |
@@ -18,6 +18,7 @@ stays in [03](03-design.md) and the satellites named below.
 | Version | Date | Author | Change |
 |---|---|---|---|
 | 0.1 | 2026-10-15 | Claude (Code), engineer | First version: the ten-minute summary, the one component diagram, the per-stack table with each store's current version, the data contracts, the reading path, where the recent designs live and the rule that keeps this page current. Written from the code on `main` at `c2a36b84`. |
+| 0.2 | 2026-10-15 | Claude (Code), docs | Voice stated as built on the web (merged), Android (#355) and iPhone (#354); the PR numbers are to be dropped once both are on `main`. |
 
 ## 1. Ten minutes
 
@@ -48,9 +49,9 @@ endpoint or Anthropic; [03](03-design.md) ADR-26, ADR-35) or, with a server whos
 (`APP_AI_ENABLED`), the server's own key ([ai/ai-design.md](ai/ai-design.md)). Contact names and phones are redacted
 before text reaches a model.
 
-**Voice input is opt-in** and off by default: a microphone in the three AI text boxes, transcribed by the person's own
-provider; audio is never stored ([03](03-design.md) ADR-37, §19). Built on the website; the phones' screens are not on
-`main` yet.
+**Voice input is opt-in**: a switch under *AI features*, off by default, and a microphone in the three AI text boxes. It uses
+the person's own provider and key only; audio is held in memory, never stored, and the transcript is editable before anything
+is sent ([03](03-design.md) ADR-37, §19). Built on the web (merged), Android (#355) and iPhone (#354).
 
 **Release.** No Play Store and no public server until the release security gate passes ([14](14-lead-backlog-and-handoff.md),
 [10](10-sprint-log.md) §12.5). A pushed tag `v*.*.*` runs `.github/workflows/release.yml`: it builds and signs the APK and

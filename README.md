@@ -80,15 +80,19 @@ The diagram, each store's current version, the data contracts and a reading path
 
 ### AI access policy
 
-- **Guests get no cloud AI.** On supported Android phones they will get on-device AI (Gemini Nano through ML Kit,
-  Sprint 5); elsewhere AI entry points are hidden. Nothing in the app needs AI.
-- **Cloud AI** is for the owner and people the owner invites, on the owner's **paid key with a hard cap** (in-app
-  daily caps, a Google Cloud spend cap budget, budget alerts). Today only the owner's own install uses it.
-- **No bring-your-own-key**: users never paste their own Gemini or Vertex key.
-- Real user data goes only to Vertex AI or a paid Gemini tier; the free AI Studio tier is for synthetic eval data only.
-  Contact names and phone numbers are redacted before anything reaches the model.
+- **Nothing needs AI.** It is opt-in on every platform.
+- **Your own key, on your device** (website, Android, iPhone): you choose a provider (Gemini, an OpenAI-compatible endpoint
+  or Anthropic) and paste your own key. It is stored on that device only (Android Keystore, iOS Keychain, the browser's
+  storage), is never synced and never goes into a copy or backup, and is sent only to the provider you chose
+  ([ADR-26 and ADR-35](docs/03-design.md#14-architecture-decision-records), §13.1, §13.2).
+- **The server's own AI is optional**: a server whose owner turns it on (`APP_AI_ENABLED=true`) answers with its owner's key
+  (Vertex AI or a paid Gemini tier, hard-capped); [docs/ai/ai-design.md](docs/ai/ai-design.md).
+- **Voice input is opt-in** (off by default) and uses the same provider and key; audio is kept in memory only and never
+  stored ([ADR-37](docs/03-design.md#14-architecture-decision-records), [docs/ai/voice-input.md](docs/ai/voice-input.md)).
+- Contact names and phone numbers are redacted before text reaches a model. The free AI Studio tier is for synthetic eval
+  data only.
 
-Policy: [docs/11](docs/11-feature-parity-and-export-spec.md) 5.13 (D-21, D-22), requirements AI-013..AI-017 in
+Policy: [docs/11](docs/11-feature-parity-and-export-spec.md) 5.13 (D-21; D-22 is superseded), requirements AI-013..AI-017 in
 [docs/01](docs/01-requirements.md).
 
 ## Quick start
@@ -299,3 +303,4 @@ House rules for the maintainers (full list in [docs/README.md](docs/README.md#ho
 | 2026-09-29 | **User guide**: a line under the tagline and a row in *Documentation* link the new illustrated [user guide](https://sriram-codes-sw.github.io/doorprints/) (owner request of 2026-09-29). |
 | 2026-09-29 | **Licence**: the line under the title, the documents table and *Contributing* say `AGPL-3.0-only` with [NOTICE](NOTICE) (owner decision of 2026-09-23, carried out on 2026-09-29) instead of MIT. |
 | 2026-10-15 | **Architecture** section shortened to a pointer to the new [docs/16](docs/16-architecture-overview.md) (the diagram it held was stale); *Repository structure* and *Documentation* corrected; new [backend/README.md](backend/README.md). |
+| 2026-10-15 | *AI access policy* corrected: your own key on the device (ADR-26, ADR-35), the optional server AI and opt-in voice input replace "no bring-your-own-key". |

@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.146 |
+| Version | 0.147 |
 | Date | 2026-10-15 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -157,6 +157,7 @@
 | 0.144 | 2026-10-15 | Claude (Code), engineer | **ADR-37, status:** the website's side is built (S4b-BL-221): `core/voice/` (recorder, service, transcript insert), `shared/voice-button.ts`, `pages/connect/voice-setting.ts`, `firebase.json` `Permissions-Policy` `microphone=(self)`. Custom endpoints (the opt-in with a Test call) are not offered yet: only Gemini and the OpenAI, Groq and OpenRouter presets, with the models `gpt-4o-mini-transcribe`, `openai/gpt-4o-mini-transcribe` and `whisper-large-v3-turbo`; the limit is 60 s and 2 MB. |
 | 0.145 | 2026-10-15 | Claude (Code), engineer | **ADR-22: a place lookup is limited to India's outline** (S4b-BL-174c; `fix/place-lookup-and-native-digits`, PR #356; [10](10-sprint-log.md) v0.337, [06](06-test-plan.md) TC-U-258): the ring built from the ADR's own boundary data and used only to filter a search result; not a base-map change. |
 | 0.146 | 2026-10-15 | Claude (Code), docs | **The architecture overview and the stale parts fixed** ([16](16-architecture-overview.md) v0.1, the new entry page for the HLD and LLD): §1 table (the Android row is Compose Multiplatform with the iOS app, the database is PostGIS with pgvector, the AI module is built and optional, the web app is local-first), §6.1 (the server has the single migration `V1__init.sql`; the ERD's house columns are `kind`, `money_*` and `extras`), §6.2 (Room **13**, the columns of the kind reset, the migration list), the new §6.4 (IndexedDB `doorprints` version 4), the new §19 *Voice input* and §20 *Deletion safeguards and Recently deleted*, each a short summary with links. No behaviour change. |
+| 0.147 | 2026-10-15 | Claude (Code), docs | §19 states voice input as built on the web (merged), Android (#355) and iPhone (#354); the README's AI access policy was corrected to ADR-26/35 in the same pull request. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -3079,10 +3080,12 @@ A short summary; the decision is ADR-37 (§14) and the consult, options and plan
   recording, the permission is asked at first use. A phone number spoken aloud reaches the transcription host before
   `ContactRedactor` can see the transcript, which the screen says plainly ([02](02-threat-model.md) §11, T-I45 to T-I48;
   [04](04-data-flow-diagrams.md) DF-49).
-- **Where it is built.** The website: `web/src/app/core/voice/` (recorder, service, transcript insert), `shared/voice-button.ts`,
-  the switch on the Connect page, `microphone=(self)` in `web/firebase.json` (S4b-BL-221). In `:shared` the `Transcriber` core exists
-  (S4b-BL-219) and the spoken eval set `docs/ai/evals/spoken-set.json` (S4b-BL-220, [ai/ai-design.md](ai/ai-design.md) §8.8). The
-  Android and iPhone screens and Sarvam are planned (S4b-BL-222 to -224), not on `main`.
+- **Where it is built.** The website (merged): `web/src/app/core/voice/` (recorder, service, transcript insert),
+  `shared/voice-button.ts`, the switch on the Connect page, `microphone=(self)` in `web/firebase.json` (S4b-BL-221). Android (#355,
+  `feat/voice-5-android`, S4b-BL-222) and the iPhone (#354, `feat/voice-6-iphone`, S4b-BL-223) use the `Transcriber` core of
+  `:shared` (S4b-BL-219); the spoken eval set is `docs/ai/evals/spoken-set.json` (S4b-BL-220, [ai/ai-design.md](ai/ai-design.md)
+  §8.8). The switch is off by default, the person's own key is the only path, and audio is memory-only on all three. Sarvam is
+  planned (S4b-BL-224). *The PR numbers are dropped once both phone PRs are on `main`.*
 - **Tests and gates.** Fake-audio unit tests per adapter on both stacks, additive sections `transcribeRequest` and
   `transcribeContent` in the parity vectors, mutation lists `tools/mutations/voice-*.json`, TC-S-23 and the checklist row B1 for the
   Permissions-Policy ([13](13-release-security-checklist.md)).
