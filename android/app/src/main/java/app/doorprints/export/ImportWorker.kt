@@ -130,13 +130,16 @@ class ImportWorker(context: Context, params: WorkerParameters) : CoroutineWorker
                                 records = result.copiedRecords,
                             ),
                         )
+                    // With two or more kinds on the sentence says entries, as the Import screen does (S4b-BL-316); a store that
+                    // cannot be read counts as the house alone, as every doubt does.
+                    val neutral = runCatching { repository.settings.kindSetting().first().spaces }.getOrDefault(false)
                     // Told = seen on the Import screen, or a notification that was really posted.
                     val notified = ScreenWatch.importScreen || Notifications.result(
                         localised, Notifications.IMPORT_DONE_ID,
                         localised.getString(R.string.import_notif_done),
                         importedSentence(
                             result.houses, result.visits, result.photos,
-                            result.updatedHouses, result.updatedVisits, result.restoredHouses,
+                            result.updatedHouses, result.updatedVisits, result.restoredHouses, neutral,
                         ),
                         Notifications.openScreenIntent(localised, Notifications.SCREEN_IMPORT),
                     )
