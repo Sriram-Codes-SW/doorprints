@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.142 |
+| Version | 0.143 |
 | Date | 2026-10-15 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -153,6 +153,7 @@
 | 0.140 | 2026-10-15 | Claude (Code), engineer | **The AI endpoints' error statuses** (S4b-BL-244, S4b-BL-233; `fix/post-release-small-fixes`; [ai-design](ai/ai-design.md) v0.77): a spent quota or credit is `402` `AI_QUOTA_EXHAUSTED` (not retryable, no `Retry-After`) and a provider safety block is `422` `AI_DECLINED` (not retryable); a per-minute limit stays `503` with `Retry-After: 60`. The clients read the status; the website and the phones use their existing "used up" and "declined" words. |
 | 0.141 | 2026-10-15 | Claude (Code), engineer | **§18.16 The phones' part** (kinds PR 21; S4b-BL-261 item 2, -265, -267, -272, -273, -278, -291, -292, -300, -301; `feat/kinds-21-phone-leftovers`; [06](06-test-plan.md) TC-U-239, TC-M-78; [10](10-sprint-log.md) v0.331): the eight items of the twin list on Android and the iPhone, and the phone-only rows; S4b-BL-302 and S4b-BL-304 left to the owner, S4b-BL-303 to its own pull request. |
 | 0.142 | 2026-10-15 | Claude (Code), engineer | **Room 13: an index on the kind** (S4b-BL-303; `feat/kinds-22-room-space-query`, stacked on `feat/kinds-21-phone-leftovers`; [06](06-test-plan.md) TC-U-240; [10](10-sprint-log.md) v0.332): a space's list and the chooser's tally read through `index_houses_kind`. |
+| 0.143 | 2026-10-15 | Claude (Code), engineer | **§18.17 The server's Ask and Plan take a kind** (S4b-BL-290, S4b-BL-313; S4b-BL-314 documented and left; kinds PR 23, `feat/kinds-23-server-kind-ai`; [ai-design](ai/ai-design.md) v0.78 16.12, [06](06-test-plan.md) TC-U-241 and TC-AI-51, [02](02-threat-model.md) v0.85 T-I51, [10](10-sprint-log.md) v0.333): `POST /api/ai/ask` and `/plan-visits` take an optional `kind` (absent is today's call, byte for byte; a kind outside `app.kinds.available` is a 400 before anything is read), read only that kind's candidates, and the status names the kinds so a client never sends one to an older server. §18.13, §18.14 and §18.15 say where the server's part now is. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -2778,10 +2779,11 @@ deleted or out of the running is dropped silently as before (vectors `compare`).
 
 **Ask and Plan** read one space. `AiService.ask(question, filters, kind)` and `planVisits(request, kind)` pass `kind` only
 for a space other than the house; the on-device AI then reads `holdsFor` that space's candidates (kind-aware documents,
-§18.11). **The server's Ask and Plan take no kind** and would read every space, so a space other than the house has no
-server assistant: the entry is shown only when the build offers the kind and the assistant is the person's own
+§18.11). **Until S4b-BL-290 the server's Ask and Plan took no kind** and would read every space, so a space other than the house
+had no server assistant: the entry was shown only when the build offers the kind and the assistant is the person's own
 (`aiShownIn`, `AiService.enabledFor`, vectors `assistant`), and a direct address says *The assistant reads this list only
-with your own AI key* (`ai.notHere`); the house's entry is as before (whenever AI is on). The session state keeps one Ask
+with your own AI key* (`ai.notHere`); the house's entry is as before (whenever AI is on). Since S4b-BL-290 (§18.17) a server that
+names the kind in its status is a second way to show it. The session state keeps one Ask
 answer and one Plan route per space. The price and BHK filters are the house's (a kind that hides its money has none).
 `connect.aiWorth` is kind-neutral in four languages and says Ask and Plan read one list at a time.
 
@@ -2869,9 +2871,9 @@ score. A school's contact phone makes **no broker** (S4b-BL-260): `BrokerStore.l
 with the rows of the places the kind has and the kind's other extras in its file's order (a house's table is unchanged); a pick
 that names a live candidate of another space is left out with one sentence (*Compare works on the list you are looking at. Picks
 from another list were left out.*) and, when nothing of it remains, the best of this space is picked as on a first visit. Ask and
-Plan read one space on this phone's AI (`OnDeviceAi`'s `holds`); the server's Ask and Plan take no kind (S4b-BL-290), so a space
-other than the house has the Assistant tab only on the person's own AI (`SpaceScope.aiShownIn`, `Repository.aiOwnKey`) and says
-so; one Ask answer and one Plan route are kept per space. A readable copy holds the space on screen only (`ExportOptions.space`:
+Plan read one space on this phone's AI (`OnDeviceAi`'s `holds`); the server's Ask and Plan took no kind (S4b-BL-290 gives them one,
+§18.17), so a space other than the house has the Assistant tab on the person's own AI or on a server that names the kind
+(`SpaceScope.aiShownIn`, `Repository.aiOwnKey`, `Repository.aiServerKinds`) and says so; one Ask answer and one Plan route are kept per space. A readable copy holds the space on screen only (`ExportOptions.space`:
 its candidates, their visits and photos, the brokers of those candidates, no unlinked visits) with the kind's English plural in the
 file name before the date (`Doorprints-schools-2026-09-22-csv.zip`; the house's names unchanged); the Export screen says so in
 words, and **the full backup stays whole** (its options carry no space, so it is named and filled as before). A shared listing,
@@ -2906,7 +2908,7 @@ kind, so nothing of it can be seen there until the owner opens a kind's release 
 say *house* in a school space (S4b-BL-301); the AI card's first sentence is kind-neutral for everyone, which re-records the settings
 baselines (S4b-BL-302); the list reads the space from Room (S4b-BL-303); a Hunt walk goes on after the person leaves the house space
 (S4b-BL-304); the share of updates and Drive keep the house's words (S4b-BL-291); the phone's copies' inner words for a school
-(S4b-BL-266); a server Ask and Plan that take a kind (S4b-BL-290); the chooser's review with TalkBack (S4b-BL-276).
+(S4b-BL-266); a server Ask and Plan that take a kind (S4b-BL-290, done: §18.17); the chooser's review with TalkBack (S4b-BL-276).
 
 ### 18.15 The server's list of kinds and its writer of `search` (S4b-BL-280)
 
@@ -2919,7 +2921,7 @@ file is read as a house. **A request that names a kind outside the list is a 400
 that is `POST /api/ai/extract-listing`'s optional `kind` (the house is always available; a listed kind with no extract is
 still a 400, `kind <id> has no listing extract`). The candidate calls keep accepting any kind of door 3's pattern, so a
 sync from a device that tracks more kinds than this server lists never fails and a backup keeps every row's kind. Ask and
-Plan take no `kind` yet (S4b-BL-290, which will use the same check).
+Plan take a `kind` since S4b-BL-290 and use the same check (§18.17).
 
 **The writer.** `BackupWire.searchOf(kinds, defaultKind)` writes the backup's `search` object as the website's
 `searchOf` and the phones' `KindSettingRules.searchOf` do: `{"kind":"house"}` for the house alone, else
@@ -2988,3 +2990,34 @@ list search values (`house-pins.golden.ts`), the list's address keys (`listQuery
 - **The iPhone (S4b-BL-300).** No build passes the iPhone a second kind; `ReleaseKindsTest` is the tripwire.
 - **Not built.** S4b-BL-302 (one string for the AI card changes the house app's words and baselines: the owner decides), S4b-BL-304 (a Hunt walk after leaving the house space: the owner decides), S4b-BL-303 (a `kind` index and a query per space: a Room migration, its own pull request).
 - **Budget.** Three files over their budget got room by moving code out, not by growing: `HouseEditScreen.kt` 1,509 to 1,422 (`PasteListing.kt`), `HouseListScreen.kt` 1,018 to 919 (`HouseListUndo.kt`), `ImportScreen.kt` 1,014 to 923 (`ImportPreviewCard.kt`); `MapScreen.kt` is unchanged at 1,515.
+
+### 18.17 The server's Ask and Plan take a kind (kinds PR 23; S4b-BL-290, S4b-BL-313, S4b-BL-314)
+
+**The decision.** The AI scoping rule (§12, §18.12: Ask and Plan read one space) now holds on the server too. `POST /api/ai/ask` and
+`POST /api/ai/plan-visits` take an optional `kind`, the door-3 pattern of Extract's. **Absent is today's call, byte for byte**: every
+candidate the server holds and its list allows, the house's texts and bodies, the five house pins and `parity-vectors.json`
+unchanged (this change re-records neither). **Present**, it must be a kind of `app.kinds.available` (§18.15) or the answer is a 400
+before the store, the model, a tool or the database is touched; then only that kind's candidates are read. Details, tables and the
+injection tests are [ai-design](ai/ai-design.md) 16.12.
+
+**Why the status names the kinds.** An older server ignores the field and would answer a school's question from every candidate,
+which would mix a house hunter's houses into a school space. `GET /api/ai/status` therefore has `kinds` (the server's list, left out
+while the house is the only kind, so a house-only server's body is unchanged), and a client sends a kind other than the house only
+when it is in that list (`AiService.serverKinds`, `AiStore.serverKinds`; `aiShownIn` takes `serverKinds`, vectors `assistant`). With
+an older server the space has no server assistant, as it had before. The house's request never carries a `kind`.
+
+**The planner's text.** A built-in kind other than the house has a planner text of its own for the server (`AiKind.planSystem`, the
+vectors' `prompts.plan.serverSystem`). It is not the devices' `planSystem` (§18.11 and ai-design 16.9): that text describes candidates
+written into the prompt, and the server's planner uses tools. The row proposed reusing the devices' text; reading it showed it cannot be used.
+
+**The eval leak check (S4b-BL-313)** reads the text the server sends for the case's kind (`input.kind`, `school-set.json` 0.3).
+
+**S4b-BL-314 stays Planned.** `[house:<id>]`, `citedHouseIds`, `houseId`, the output schemas and the tools' names are a protocol read
+by three parsers and by clients of any age; the plan (readers first, then writers for a non-house kind, the house's re-pin only if the
+owner asks) is in [ai-design](ai/ai-design.md) 16.12 and in the row. Nothing of it was changed.
+
+**Tests** ([06](06-test-plan.md) TC-U-241, TC-AI-51; [02](02-threat-model.md) T-I51): `RagServiceKindScopeTest`, `KindScopedPlanTest`,
+`AskPlanKindRequestTest`, `AiControllerKindTest`, `AiStatusControllerTest` and `SchoolSetTest` (server, no database); the website's
+`ai.service.requests.spec.ts` and `space-scope.spec.ts`; the phones' `ApiClientContractTest`, `AiStatusRepositoryTest` and
+`SpaceScopeVectorsTest`; mutation lists `tools/mutations/kinds-23-{backend,web,android}-kind-ai.json`, all killed.
+

@@ -94,12 +94,14 @@ export function spaceFileName(name: string, space: string | undefined, many: str
 
 /**
  * Whether the assistant (Ask and Plan) is shown in a space: the house as today (whenever the assistant is on); any other
- * kind only when this build offers it and the person's own assistant, in this browser, reads it. The server's Ask and Plan
- * take no kind and would read every space, so a space other than the house has no server assistant.
+ * kind only when this build offers it and the assistant reads it: the person's own, in this browser (`ownKey`), or the
+ * server's when its status names the kind (`serverKinds`, `GET /api/ai/status` `kinds`, S4b-BL-290). An older server names
+ * none, and its Ask and Plan take no kind and would read every space, so a space other than the house has no assistant of
+ * its.
  */
-export function aiShownIn(kind: string, available: readonly string[], on: boolean, ownKey: boolean): boolean {
+export function aiShownIn(kind: string, available: readonly string[], on: boolean, ownKey: boolean, serverKinds: readonly string[] = []): boolean {
   if (!on) return false;
-  return kind === 'house' || (available.includes(kind) && ownKey);
+  return kind === 'house' || (available.includes(kind) && (ownKey || serverKinds.includes(kind)));
 }
 
 /** The kind a shared listing lands in: the one chosen when it is enabled, else the default kind. */

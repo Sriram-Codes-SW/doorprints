@@ -42,6 +42,11 @@ export interface AiStatus {
   embeddingModel: string | null;
   /** AI is on, but the server's owner turned it off for this device (docs/03 §12.1). Older servers omit it. */
   offForDevice?: boolean;
+  /**
+   * The kinds the server's Ask and Plan accept (`kind` in their requests, S4b-BL-290; the server's `app.kinds.available`). Left out
+   * while the house is the only one and by an older server, whose Ask and Plan would read every space.
+   */
+  kinds?: string[];
 }
 
 /**
@@ -192,13 +197,16 @@ export class AiService {
   /** AI shows: on in this browser and nothing missing for the chosen provider (with the own key chosen, not the server). */
   readonly enabled = computed(() => this.offReason() === null);
 
+  /** The kinds the connected server's Ask and Plan accept, from its status; none for an older server or while the house is the only kind. */
+  readonly serverKinds = computed<readonly string[]>(() => this.status()?.kinds ?? []);
+
   /**
    * Whether Ask and Plan are shown in the space of `kind` (kinds PR B, S4b-BL-279; `space-scope-vectors.json`
    * `assistant`): the house whenever AI is on, as it was; any other kind only when this build offers it and the AI is the
-   * person's own, in this browser. The server's Ask and Plan take no kind and would read every space.
+   * person's own, in this browser, or the server's with the kind named in its status (S4b-BL-290).
    */
   enabledFor(kind: string): boolean {
-    return aiShownIn(kind, availableKinds(), this.enabled(), this.usesOwnKey());
+    return aiShownIn(kind, availableKinds(), this.enabled(), this.usesOwnKey(), this.serverKinds());
   }
 
   constructor() {
@@ -346,14 +354,16 @@ export class AiService {
   }
 
   /**
-   * `kind` (kinds PR B, S4b-BL-279): the space Ask reads, for a space other than the house only; the house's call is
-   * today's. The server takes no kind, so a space other than the house is answered on this device or not at all.
+   * `kind` (kinds PR B, S4b-BL-279, S4b-BL-290): the space Ask reads, for a space other than the house only; the house's call is
+   * today's, with no `kind` in the body. On this device it reads that space; on the server it is sent as the request's `kind`
+   * when the server's status names it, and otherwise nothing is sent (an older server would read every space).
    */
   ask(question: string, filters?: AskFilters, kind?: string): Observable<AskResponse> {
     const off = this.guard() ?? this.noServerSpace(kind);
     if (off) return off;
     if (this.usesOwnKey()) return defer(() => (kind ? this.onDevice.ask(this.ownModel(), question, filters, kind) : this.onDevice.ask(this.ownModel(), question, filters)));
-    return this.http.post<AskResponse>('/api/ai/ask', filters ? { question, filters } : { question });
+    const body = filters ? { question, filters } : { question };
+    return this.http.post<AskResponse>('/api/ai/ask', kind && kind !== 'house' ? { ...body, kind } : body);
   }
 
   /** `kind`: as {@link ask}. */
@@ -361,12 +371,12 @@ export class AiService {
     const off = this.guard() ?? this.noServerSpace(kind);
     if (off) return off;
     if (this.usesOwnKey()) return defer(() => (kind ? this.onDevice.planVisits(this.ownModel(), request, kind) : this.onDevice.planVisits(this.ownModel(), request)));
-    return this.http.post<PlanResponse>('/api/ai/plan-visits', request);
+    return this.http.post<PlanResponse>('/api/ai/plan-visits', kind && kind !== 'house' ? { ...request, kind } : request);
   }
 
-  /** A space other than the house on the server's assistant: nothing is sent (it would read every space). */
+  /** A space other than the house on a server that does not name the kind: nothing is sent (an older server would read every space). */
   private noServerSpace(kind?: string): Observable<never> | null {
-    return kind && kind !== 'house' && !this.usesOwnKey() ? throwError(() => new AiOffError('noKey')) : null;
+    return kind && kind !== 'house' && !this.usesOwnKey() && !this.serverKinds().includes(kind) ? throwError(() => new AiOffError('noKey')) : null;
   }
 }
 

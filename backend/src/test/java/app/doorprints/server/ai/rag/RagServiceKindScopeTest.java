@@ -227,6 +227,34 @@ class RagServiceKindScopeTest {
     }
 
     @Test
+    void aDocumentWithNoStoredRowCannotBeShownToBeOfTheKindAndIsDropped() {
+        var kept = stored("school", "school", "School: Pine Hill");
+        var gone = stored("school", "school", "School: Deleted Row");
+        var store = mock(VectorStore.class);
+        when(store.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(kept.doc(), gone.doc()));
+        var houses = mock(HouseRepository.class);
+        when(houses.findAllById(any())).thenReturn(List.of(kept.row()));
+        var spec = mock(ChatClient.ChatClientRequestSpec.class, org.mockito.Mockito.RETURNS_SELF);
+        when(spec.call()).thenThrow(new IllegalStateException("model down"));
+        var chat = mock(ChatClient.class);
+        when(chat.prompt()).thenReturn(spec);
+        assertThatThrownBy(() -> new RagService(chat, store, PROPS, houses, AiKinds.schools(true)).ask(QUESTION, NONE, "school"))
+                .isInstanceOf(AiUnavailableException.class);
+        var user = ArgumentCaptor.forClass(String.class);
+        verify(spec).user(user.capture());
+        assertThat(user.getValue()).contains("Pine Hill").doesNotContain("Deleted Row");
+    }
+
+    @Test
+    void whatIsKeptOfAKindIsCappedAtTheTopKAfterTheNarrowing() {
+        var found = new java.util.ArrayList<Stored>();
+        for (int i = 0; i < 30; i++) found.add(stored("house", null, "House: number " + String.format("%02d", i)));
+        var run = new Run(AiKinds.schools(true), QUESTION, NONE, "house", found);
+        var user = run.sentUser();
+        assertThat(user).contains("House: number 00").contains("House: number 19").doesNotContain("House: number 20");
+    }
+
+    @Test
     void aKindOutsideTheListIsA400BeforeAnythingIsTouched() {
         for (var kinds : List.of(AiKinds.OFF, new AiKinds(List.of("house")))) {
             var store = mock(VectorStore.class);

@@ -124,11 +124,12 @@ object SpaceScope {
 
     /**
      * Whether Ask and Plan are shown in a space: the house whenever the assistant is [on]; any other kind only when the
-     * build offers it ([available]) and the assistant is the person's own ([ownKey]: the server's Ask and Plan take no
-     * kind and would read every space).
+     * build offers it ([available]) and the assistant reads it: the person's own ([ownKey]) or the server's, whose status named
+     * the kind ([serverKinds], S4b-BL-290; an older server names none, and its Ask and Plan take no kind and would read every
+     * space).
      */
-    fun aiShownIn(kind: String, available: List<String>, on: Boolean, ownKey: Boolean): Boolean =
-        on && (kind == KindSettingRules.HOUSE || (kind in available && ownKey))
+    fun aiShownIn(kind: String, available: List<String>, on: Boolean, ownKey: Boolean, serverKinds: List<String> = emptyList()): Boolean =
+        on && (kind == KindSettingRules.HOUSE || (kind in available && (ownKey || kind in serverKinds)))
 
     /** The kind a shared listing lands in: the [chosen] one when it is [enabled], else the [default] kind. */
     fun shareKind(chosen: String?, enabled: List<String>, default: String): String =

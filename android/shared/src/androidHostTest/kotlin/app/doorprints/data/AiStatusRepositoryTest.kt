@@ -33,6 +33,7 @@ import app.doorprints.shared.api.ApiClient
 import app.doorprints.shared.api.ApiException
 import app.doorprints.shared.api.ApiHttp
 import app.doorprints.shared.api.PlanRequest
+import app.doorprints.shared.model.SpaceView
 import app.doorprints.shared.model.Viewing
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -94,8 +95,10 @@ class AiStatusRepositoryTest {
     /** What the server's `/api/ai/status` answers (null = a server error) and the paths the server saw. */
     private var statusBody: String? = """{"enabled":true}"""
     private val serverCalls = mutableListOf<String>()
+    private val serverBodies = mutableListOf<String>()
     private val serverEngine = MockEngine { request ->
         serverCalls += request.url.encodedPath
+        serverBodies += request.body.toByteArray().decodeToString()
         when (request.url.encodedPath) {
             "/api/ai/status" -> if (statusBody == "cancel") throw CancellationException("stopped") else statusBody?.let { respond(it, HttpStatusCode.OK, json) }
                 ?: respond("{}", HttpStatusCode.InternalServerError, json)
@@ -377,5 +380,65 @@ class AiStatusRepositoryTest {
         assertFalse(body, "Charlie deleted flat" in body)
         assertTrue("newest first", body.indexOf("Bravo newest flat") < body.indexOf("Alpha oldest flat"))
         assertTrue(body, "Notes: Ask about the generator" in body)
+    }
+
+    /**
+     * S4b-BL-290: Ask and Plan on the server read one space. The house's call is today's (no kind in the body); another kind is
+     * sent as the request's `kind` only when the server's status named it, and is refused, with nothing sent, by an older
+     * server (which would read every candidate); the kinds the status named are forgotten with the server.
+     */
+    @Test
+    fun aSpaceOtherThanTheHouseGoesToTheServerOnlyWhenItsStatusNamesTheKind() = runBlocking {
+        settings.saveServer("https://sync.example", "test-key")
+        val repo = repository()
+        repo.setAiFeatures(true)
+        val school = SpaceView("school", multi = true, default = "house", available = listOf("house", "school"))
+        val house = SpaceView("house", multi = true, default = "house", available = listOf("house", "school"))
+        val plan = PlanRequest("Visit the ones with a bus", 12.9, 77.6, maxStops = 3)
+
+        // An older server's status names no kinds: a school space is refused before anything is sent.
+        statusBody = """{"enabled":true}"""
+        assertTrue(repo.refreshAiStatus())
+        assertEquals(emptyList<String>(), repo.aiServerKinds.value)
+        serverBodies.clear()
+        assertEquals(ApiException.Kind.AI_OFF, assertThrows(ApiException::class.java) { runBlocking { repo.ask("Which has a bus?", school) } }.kind)
+        assertEquals(ApiException.Kind.AI_OFF, assertThrows(ApiException::class.java) { runBlocking { repo.planVisits(plan, school) } }.kind)
+        assertTrue(serverCalls.none { it == "/api/ai/ask" || it == "/api/ai/plan-visits" })
+        // The house is answered as it always was, with the same bodies.
+        repo.ask("Which has a bus?", house)
+        repo.ask("Which has a bus?")
+        repo.planVisits(plan)
+        assertEquals(
+            listOf("""{"question":"Which has a bus?"}""", """{"question":"Which has a bus?"}""",
+                """{"question":"Visit the ones with a bus","startLat":12.9,"startLon":77.6,"maxStops":3}"""),
+            serverBodies.filter { it.isNotEmpty() },
+        )
+
+        // A server that names the kind gets it in the body, for Ask and for Plan.
+        statusBody = """{"enabled":true,"kinds":["house","school"]}"""
+        assertTrue(repo.refreshAiStatus())
+        assertEquals(listOf("house", "school"), repo.aiServerKinds.value)
+        serverBodies.clear()
+        assertEquals("from the server", repo.ask("Which has a bus?", school).answer)
+        assertEquals("server plan", repo.planVisits(plan, school).summary)
+        assertEquals(
+            listOf("""{"question":"Which has a bus?","kind":"school"}""",
+                """{"question":"Visit the ones with a bus","startLat":12.9,"startLon":77.6,"maxStops":3,"kind":"school"}"""),
+            serverBodies.filter { it.isNotEmpty() },
+        )
+        // The house is still sent with no kind, and a kind the server did not name is still refused.
+        serverBodies.clear()
+        repo.ask("Which has a bus?", house)
+        assertEquals(listOf("""{"question":"Which has a bus?"}"""), serverBodies.filter { it.isNotEmpty() })
+        val clinic = SpaceView("clinic", multi = true, default = "house", available = listOf("house", "school", "clinic"))
+        assertEquals(ApiException.Kind.AI_OFF, assertThrows(ApiException::class.java) { runBlocking { repo.ask("Which?", clinic) } }.kind)
+
+        // A failed status keeps what was known; no server forgets it.
+        statusBody = null
+        repo.refreshAiStatus()
+        assertEquals(listOf("house", "school"), repo.aiServerKinds.value)
+        settings.saveServer("", "")
+        repo.refreshAiStatus()
+        assertEquals(emptyList<String>(), repo.aiServerKinds.value)
     }
 }

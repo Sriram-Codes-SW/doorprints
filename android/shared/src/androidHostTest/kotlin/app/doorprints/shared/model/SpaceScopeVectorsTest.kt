@@ -105,9 +105,9 @@ class SpaceScopeVectorsTest {
     }
 
     @Test
-    fun theAssistantIsShownInTheHouseWhenOnAndInAnotherKindOnlyOnThePersonsOwn() {
+    fun theAssistantIsShownInTheHouseWhenOnAndInAnotherKindOnlyOnThePersonsOwnOrWhereTheServerNamesTheKind() {
         for (c in cases("assistant")) {
-            assertEquals(c.text("name"), c.flag("shown"), SpaceScope.aiShownIn(c.text("kind")!!, c.strings("available"), c.flag("on"), c.flag("ownKey")))
+            assertEquals(c.text("name"), c.flag("shown"), SpaceScope.aiShownIn(c.text("kind")!!, c.strings("available"), c.flag("on"), c.flag("ownKey"), if ("serverKinds" in c) c.strings("serverKinds") else emptyList()))
         }
     }
 
