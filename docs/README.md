@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.124 |
-| Date | 2026-10-10 |
+| Version | 0.125 |
+| Date | 2026-10-15 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -24,6 +24,7 @@
 | 0.122 | 2026-10-10 | Claude (Code), engineer | New [ai/voice-input.md](ai/voice-input.md) (voice input: consult, design and plan; S4b-BL-218..S4b-BL-224): docs/10 v0.237, docs/14 v0.155. |
 | 0.123 | 2026-10-10 | Claude (Code), engineer | Voice PR 1 (S4b-BL-218): ADR-37 in 03 v0.106, threat-model section 11 in 02 v0.69, DF-49 in 04 v0.18, F11 and G4 in 13 v0.9, manual checklist section 16 (v0.10), docs/10 v0.239, docs/14 v0.156. |
 | 0.124 | 2026-10-10 | Claude (Code), engineer | Kinds PR 1 (S4b-BL-205): 03 v0.108 (ADR-36, §18), 06 v0.203 (TC-U-198, TC-U-199), 10 v0.254, 14 v0.162, `schemas/README.md` v1.31 and the new `schemas/kinds/` (the schemas folder stays one index row, now naming the kind files). |
+| 0.125 | 2026-10-15 | Claude (Code), docs | New [16 Architecture overview](16-architecture-overview.md) (the one entry page for the high-level and low-level design: the component diagram, each store's current version, the data contracts, the reading path and where the recent designs live), listed in the index below with its owner; 03 v0.146 (stale parts fixed, §6.4, §19, §20), 14 v0.196, new [backend/README.md](../backend/README.md), root README Architecture section shortened. |
 | 0.112 | 2026-10-06 | Claude | The review backlog: docs/01 v0.41, 06 v0.131 (section 10.1), 07 v0.60, 14 v0.89. |
 | 0.111 | 2026-10-06 | Claude | Full-system review fixes and the manual test checklist (`docs/ops/manual-test-checklist.md`): docs/07 v0.59, docs/14 v0.88. |
 | 0.110 | 2026-10-06 | Claude | Review fixes on PR #139: docs/10 v0.149, 06 v0.130, 15 v0.27. |
@@ -165,6 +166,7 @@ Everything must run on free tiers. These documents follow a Secure Software Deve
 | 13 | [Release security checklist](13-release-security-checklist.md) | The manual part of the release security gate: the one-hour list per release (web WSTG-lite, Android MASTG-lite, MobSF dynamic, the server, the OWASP Top 10 for LLM applications, the DPDP Act and Play data safety, India's boundaries), the deep self-run pentest's scope, and a release record to copy; the automated checks are in [06](06-test-plan.md) §11.1 | Lead, with DevSecOps |
 | 14 | [Lead backlog and handoff](14-lead-backlog-and-handoff.md) | Where things stand, open pull requests, the ordered next steps, parked items and owner rules still in force, for a new session to continue from | Lead |
 | 15 | [Google Drive backup and sharing](15-google-drive-backup-and-sharing.md) | Design, **decided by the owner on 2026-10-02** ([03](03-design.md) ADR-33; version 1 in §1.6): backup and *Import a backup* through the person's own Google Drive, automatic sync and what "no data loss" can honestly mean, deleting the data in Drive, encryption with device keys and a recovery key, device authentication, an authenticator app and the screen lock, photos on Wi-Fi or mobile data, sharing with someone who uses Doorprints, the `drive.file` scope and the owner's Google Cloud setup checklist, the phased plan (S4b-BL-115..130) | Lead |
+| 16 | [Architecture overview](16-architecture-overview.md) | The map: what Doorprints is in ten minutes, one component diagram, every store with its current version (Room, IndexedDB, Flyway), entry files per stack, the data contracts, a reading path and where the recent designs live; the rule that keeps it current | Lead |
 | – | [ops/firebase-hosting-setup.md](ops/firebase-hosting-setup.md) | Pointer named by `web.yml`'s skip notice: the Firebase Hosting owner guide and its status live in [07 §6.3](07-secure-build-and-deploy.md#63-web-firebase-hosting) | Docs team |
 | – | [ops/firebase-test-lab-setup.md](ops/firebase-test-lab-setup.md) | Pointer to the Firebase Test Lab owner guide and its status (the `android-emulator.yml` Test Lab job is skipped until it is done); the guide lives in [07 §7.2](07-secure-build-and-deploy.md#72-firebase-test-lab-owner-setup-keyless) | Docs team |
 | – | [ops/manual-test-checklist.md](ops/manual-test-checklist.md) | The manual test checklist (MT-01..MT-85): every test, standalone, for real devices and accounts, with what was automated or reviewed and a Pass / Fail / Date line |
@@ -228,7 +230,7 @@ flowchart LR
 5. **Re-run the threat model** (02) when you add a data flow, an external service, a trust boundary or an endpoint. The AI features and any new auth method need this too. Update the findings table when a finding is fixed. Keep the row and set its status to *Fixed in <commit/PR>*.
 6. **Diagrams** are Mermaid and render on GitHub. Put labels in quotes (`A["Label (with parens)"]`). In sequence diagrams, avoid `;` and `#` in message text. Preview on GitHub or in the Mermaid live editor before merging.
 7. **Cross-team documents**: only `ai/` belongs to another team (the AI team). Link to it and don't copy its content here. `05-ux-accessibility-i18n.md` is maintained by the Docs team from the Design and UX handovers (the team READMEs' *For Docs* notes and the design and UX reviews): Docs edits it, and the design and UX decisions in it stay the Design team's.
-8. Review the docs in the same pull request as the code change they describe.
+8. Review the docs in the same pull request as the code change they describe. A new store version, module, workflow, ADR or stack entry point also updates [16](16-architecture-overview.md) in that pull request.
 9. **Changelog and sprint log.** Every user-visible or security change adds a line under *Unreleased* in the root [CHANGELOG](../CHANGELOG.md) (Added / Changed / Fixed / Security, with F-xx ids). At the end of each sprint, record the stories, the manager sign-offs, the CI results and the retrospective in [10](10-sprint-log.md).
 10. **CI is the check.** The workflows in `.github/workflows/` (07 §1) run the tests named in 06, on a push to any branch (since 2026-09-23) and on pull requests to `main`: push the change to a branch and merge it when the latest run of each workflow it triggered is green (the Actions tab filtered by the branch, not only the head commit's checks, because path filters work per push) and the branch is up to date with `main` (a branch run tests the branch head, not the merge; 07 §3.1). When you add a test, add its TC id to 06 and to the RTM in 01; when you add an endpoint, update 03 §9, the DFD (04) and re-check 02 and 09. The root [README](../README.md) links here and must stay in sync with 07 (deploy steps) and 03 (architecture).
 11. **Hand-offs when teams edit at the same time.** A Docs hand-off names the last handover row it applied from each team README (`web/README.md`, `android/shared/README.md`), with its date and title. A reviewer checks those READMEs for rows added after it. Such a handover landed after the Docs read and is not yet applied, so it goes to the next Docs round and is not a new finding against the Docs engineer ([10](10-sprint-log.md) §12.7 candidate (h)).
