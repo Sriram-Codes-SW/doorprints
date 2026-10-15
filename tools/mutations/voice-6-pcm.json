@@ -16,7 +16,7 @@
       "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/pcm/Pcm16Resampler.kt",
       "find": "sum += x * take",
       "replace": "sum += x",
-      "expect": "eachOutputSampleIsTheMeanOfTheInputSamplesInItsSlot"
+      "expect": "aSlowerSourceHoldsEachSample"
     },
     {
       "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/pcm/Pcm16Resampler.kt",

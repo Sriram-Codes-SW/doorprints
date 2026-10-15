@@ -142,7 +142,7 @@ class IosVoiceSafetyTest {
         for (name in listOf(
             "UIApplicationWillResignActiveNotification", "AVAudioSessionInterruptionNotification", "AVAudioSessionRouteChangeNotification",
             "AVAudioSessionMediaServicesWereResetNotification", "AVAudioEngineConfigurationChangeNotification",
-        )) assertTrue(text.contains(name), "$name must end a recording")
+        )) assertTrue(Regex("""\badd\($name,""").containsMatchIn(text), "$name must be observed and end a recording")
         assertTrue(text.contains("CaptureEndRules.endsOnInterruption") && text.contains("CaptureEndRules.endsOnRouteChange"))
         // Background audio is not declared, so iOS itself suspends the microphone in the background too.
         val plist = file("ios/Doorprints/Info.plist").readText()

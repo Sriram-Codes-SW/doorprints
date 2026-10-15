@@ -2,6 +2,7 @@
   "spec": "android/ui/src/androidHostTest/kotlin/app/doorprints/ui/IosVoiceSafetyTest.kt",
   "gradle": [
     ":ui:testAndroidHostTest",
+    "--rerun",
     "--tests",
     "app.doorprints.ui.IosVoiceSafetyTest"
   ],
