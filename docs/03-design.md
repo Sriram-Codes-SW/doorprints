@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.154 |
+| Version | 0.155 |
 | Date | 2026-10-15 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -165,6 +165,7 @@
 | 0.152 | 2026-10-15 | Claude (Code), engineer | **§18.16: the phones' words come from the kind files, and the import notification says entries** (S4b-BL-316; `feat/kinds-22-phone-words-in-kind-files`; [06](06-test-plan.md) TC-U-261; [10](10-sprint-log.md) v0.341; [schemas](schemas/README.md) v1.61): `words` has 48 more ids, `SpaceWords` and `PageWords` hold no table, the import worker passes the kind setting's two-kind state. |
 | 0.153 | 2026-10-15 | Claude (Code), engineer | **§18.14: the AI card's first sentence is one string for everyone** (S4b-BL-302; `feat/kinds-22-ai-card-one-list`; [06](06-test-plan.md) TC-U-260; [10](10-sprint-log.md) v0.342): the phones' `settings_ai_worth` is the website's `connect.aiWorth` in four languages, `settings_ai_worth_spaces` is retired, four Roborazzi baselines re-recorded. |
 | 0.154 | 2026-10-15 | Claude (Code), engineer | **§18.12 "compiled in, off" vs "released"** (owner, 2026-10-15; `feat/kinds-23-ship-school-web`): the production configuration carries `DOORPRINTS_KINDS='house,school'`; `RELEASED_KINDS` stays the house, so the switch *Experimental: more than houses* (off by default, device-local) is the only way to the school; the §18.16 note on S4b-BL-288 amended (the kinds layout passes run in `web.yml`). |
+| 0.155 | 2026-10-15 | Claude (Code), engineer | **§18.15 the server stays house-only by default** under "compiled in, off" (owner, 2026-10-15; `test/kinds-23-ship-school-server`): `KINDS_AVAILABLE=house,school` is the operator's choice; a school sent to a house-only server is kept and read as a house. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -2967,7 +2968,7 @@ baselines (S4b-BL-302); the list reads the space from Room (S4b-BL-303); a Hunt 
 comma-separated list of kind ids, default `house`, the house always in it (an id outside door 3's pattern, a blank and a
 repeat are dropped). It replaces `app.ai.dev-kinds` (`AI_DEV_KINDS`, a boolean) and is the server's twin of the apps'
 `AVAILABLE_KINDS`. `AiKinds` holds it: the AI reads a candidate of a built-in kind other than the house (the schools kind)
-through its kind file's `ai` slots only when the kind is in the list (§18.11); a kind that is listed but has no built-in
+through its kind file's `ai` slots only when the kind is in the list (§18.11). **Compiled in, off (owner, 2026-10-15):** the releases list the school on the website and the phones, but the server's default stays the house alone; `KINDS_AVAILABLE=house,school` is the operator's choice, never part of a release, and a school that reaches a house-only server (a backup, a device with the switch on) is stored and exported unchanged and read by the AI as a house, its extras unread, never dropped (`SchoolCandidateApiTest`, TC-U-263); a kind that is listed but has no built-in
 file is read as a house. **A request that names a kind outside the list is a 400** (`kind <id> is not available`): today
 that is `POST /api/ai/extract-listing`'s optional `kind` (the house is always available; a listed kind with no extract is
 still a 400, `kind <id> has no listing extract`). The candidate calls keep accepting any kind of door 3's pattern, so a

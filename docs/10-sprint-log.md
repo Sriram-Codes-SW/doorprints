@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Agile sprint log (goals, stories, sign-offs, CI results, retrospectives) |
-| Version | 0.343 |
+| Version | 0.344 |
 | Date | 2026-10-15 |
 | Author | Claude (Cowork), Docs team |
 | Status | Draft (Sprint 3.5 KMP foundation delivered and green on `19006bc`; Sprint 4a in progress, section 11; web host **Firebase Hosting at `https://doorprints.web.app`** since 2026-09-23, owner setup done, first deploy pending, §11.6; Sprint 4b scope set by the product owner with the 2026-09-22 additions and the 2026-09-23 import definition, section 12; **whole-app UX audit approved on both clients**, the go-ahead for the first deploy, §11.7; owner's security guard rule, release security gate, process improvements and **first-release Definition of Done** (hi/ta/te ship *under review*) §12.5; licence change to AGPL-3.0-only approved, done 2026-09-29, §12.6; pre-deploy close-out, what is left, backlog tickets and rule candidates, §12.7; **owner issue P0 of 2026-09-24, India's boundaries on the map, merged (PRs #13 and #14) and live**, §12.8; **story S4b-BR-1, the app icon's footprints (option C), PR #15, merged (`76449fb`)**, §12.9; **owner request of 2026-09-24, the doubled lines and the Assam-Arunachal Pradesh state line, fixed on branch `fix/india-boundary-lines`, PR #16, merged (`4100f7a`)**, §12.10; **owner request of 2026-09-24, the Compose Multiplatform track (ADR-23), CMP-1 done in `be86f50`**, §13; **owner request of 2026-09-24, testing the APK and the live web UI, CMP-0 in `afe4064`**, §13.3; **the Sprint 4b/4c finishing batch (slice 5 to Wave E) built on stacked branches, not merged, 2026-10-01**, §13.29..§13.40) |
@@ -348,6 +348,7 @@
 | 0.341 | 2026-10-15 | Claude (Code), engineer | **S4b-BL-316 In review (#361)** (`feat/kinds-22-phone-words-in-kind-files`; [03](03-design.md) §18.16, [06](06-test-plan.md) TC-U-261): the phone words have ids in the kind files, the phone tables are retired, the import notification is neutral with two kinds. |
 | 0.342 | 2026-10-15 | Claude (Code), engineer | **S4b-BL-302 In review (#360)** (`feat/kinds-22-ai-card-one-list`; [03](03-design.md) §18.14, [06](06-test-plan.md) TC-U-260): one AI card sentence everywhere. |
 | 0.343 | 2026-10-15 | Claude (Code), engineer | **The website ships the school compiled in, off** (owner, 2026-10-15; `feat/kinds-23-ship-school-web`, [03](03-design.md) §18.12, [13](13-release-security-checklist.md) J1): S4b-BL-282 reworded (compiled in is not released; the tripwire stays); S4b-BL-288 done by setting `GATE_DEV_KINDS=1` in the existing layout-gate job and adding a chooser pass to the live UI `pages` area. Tests: [06](06-test-plan.md) TC-U-226, TC-U-262. |
+| 0.344 | 2026-10-15 | Claude (Code), engineer | **The server stays house-only under "compiled in, off"** (owner, 2026-10-15; `test/kinds-23-ship-school-server`, [03](03-design.md) §18.15): `SchoolCandidateApiTest` gains the case of a school imported into a house-only server; no code change. Tests: [06](06-test-plan.md) TC-U-263. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Build and deploy](07-secure-build-and-deploy.md) · [Runbook](08-operations-runbook.md) · [CHANGELOG](../CHANGELOG.md)
 

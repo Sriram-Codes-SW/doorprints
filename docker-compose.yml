@@ -123,6 +123,8 @@ services:
       # The kinds this server has available (S4b-BL-280, replacing AI_DEV_KINDS): a comma-separated list, the house
       # always in it. Add school to read a school through its kind file's AI slots and to let a request name it, as the
       # apps do while Settings' Experimental: more than houses is on. A request for a kind outside the list is a 400.
+      # The releases list the school (compiled in, off) but this default stays the house: house,school is the operator's
+      # own choice, and a school that arrives (a backup, a device with the switch on) is kept either way, read as a house.
       KINDS_AVAILABLE: ${KINDS_AVAILABLE:-house}
       # Chat: any OpenAI-compatible endpoint (Gemini's by default, or Ollama's /v1).
       AI_BASE_URL: ${AI_BASE_URL:-https://generativelanguage.googleapis.com/v1beta/openai/}
