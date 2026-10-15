@@ -39,10 +39,11 @@ export type EvalSetup =
 
 /**
  * The additive case file this run takes (S4b-BL-268): `school-set` is docs/ai/evals/school-set.json, with its own schools and the
- * kinds on. The golden set is the default and has no name here; the server's `hard-set` is the server's alone.
+ * kinds on. `spoken-set` (S4b-BL-220) is docs/ai/evals/spoken-set.json: the golden set's fixtures with spoken-style cases (text a
+ * transcriber would produce). The golden set is the default and has no name here; the server's `hard-set` is the server's alone.
  */
-export type EvalSetName = 'school-set';
-const EVAL_SETS: readonly EvalSetName[] = ['school-set'];
+export type EvalSetName = 'school-set' | 'spoken-set';
+const EVAL_SETS: readonly EvalSetName[] = ['school-set', 'spoken-set'];
 
 /**
  * Only the cases of one category (S4b-BL-268): `prompt-injection` runs the injection cases of the chosen set alone, the keyless
@@ -113,10 +114,10 @@ export function evalSetup(env: Record<string, string | undefined>): EvalSetup {
   if (named && (addressSet.length > MAX_ADDRESS_SET_NAME || !ADDRESS_SET_NAME.test(addressSet))) {
     return invalid('address set must be a name from address-variants.json (lower-case letters and hyphens)');
   }
-  // The eval set (S4b-BL-268): unset, blank, `default` or `golden-set` is the golden set as ever; `school-set` is the schools' file.
+  // The eval set (S4b-BL-268): unset, blank, `default` or `golden-set` is the golden set as ever; `school-set` is the schools' file, `spoken-set` the spoken-style cases.
   const evalSet = (env['AI_EVAL_SET'] ?? '').trim();
   const additive = evalSet !== '' && evalSet !== 'default' && evalSet !== 'golden-set';
-  if (additive && !EVAL_SETS.includes(evalSet as EvalSetName)) return invalid('eval set must be golden-set or school-set (hard-set runs on the server only)');
+  if (additive && !EVAL_SETS.includes(evalSet as EvalSetName)) return invalid('eval set must be golden-set, school-set or spoken-set (hard-set runs on the server only)');
   if (additive && named) return invalid('eval set and address set cannot be combined (the address fingerprints are the golden set\'s)');
   const category = (env['AI_EVAL_CATEGORY'] ?? '').trim();
   const only = category !== '' && category !== 'all';
@@ -387,7 +388,7 @@ export function formatSummary(
     `Provider: ${meta.kind}${meta.host ? ` at ${meta.host}` : ''}${meta.model ? `, model \`${meta.model}\`` : ''}. The key is not shown.`,
   ];
   if (address) lines.push(`Address set: ${address.header}.`);
-  if (evalSet) lines.push(`Eval set: ${evalSet} (its own fixtures, the kinds on; not gated).`);
+  if (evalSet) lines.push(`Eval set: ${evalSet} (${evalSet.startsWith('school-set') ? 'its own fixtures, the kinds on' : "the golden set's fixtures"}; not gated).`);
   if (category) lines.push(`Cases: only the ${category} cases (informational).`);
   lines.push(
     address

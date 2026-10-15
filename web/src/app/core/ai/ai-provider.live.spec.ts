@@ -23,6 +23,7 @@ import golden from '../../../../../docs/ai/evals/golden-set.json';
 import variants from '../../../../../docs/ai/evals/address-variants.json';
 import layers from '../../../../../docs/ai/evals/injection-layers.json';
 import schoolSet from '../../../../../docs/ai/evals/school-set.json';
+import spokenSet from '../../../../../docs/ai/evals/spoken-set.json';
 import { pipelineIds } from './ai-eval-layers';
 import { type GoldenLike, type VariantsFile, addressRunHeader, selectAddressRun } from './address-variants';
 import { type CaseResult, type GoldenCase, type Outcome, evalSetup, fixtureRecords, formatSummary, scoreCase } from './ai-eval';
@@ -57,7 +58,10 @@ describe.skipIf(setup.status === 'skip')('Golden set through the chosen provider
     if (addressRun?.error) throw new Error(addressRun.error);
     // The school set (S4b-BL-268): its own schools, and the kinds on for this run (the developer flag the AI reads, `kindsOn()`).
     const own = setup.evalSet === 'school-set';
-    const used = (own ? { fixtureHouses: schoolSet.fixtureCandidates, fixtureVisits: schoolSet.fixtureVisits, cases: schoolSet.cases } : (addressRun?.golden ?? golden)) as unknown as typeof golden;
+    // The spoken set (S4b-BL-220): the golden set's fixtures with the spoken-style cases (text a transcriber would produce).
+    const spoken = setup.evalSet === 'spoken-set';
+    const used = (own ? { fixtureHouses: schoolSet.fixtureCandidates, fixtureVisits: schoolSet.fixtureVisits, cases: schoolSet.cases }
+      : spoken ? { ...golden, cases: spokenSet.cases } : (addressRun?.golden ?? golden)) as unknown as typeof golden;
     const now = '2026-09-20T10:00:00Z';
     const houses = fixtureRecords(used.fixtureHouses, now); // the set's own tags are not house fields
     const visits = used.fixtureVisits.map((v) => ({ ...v, deleted: false, updatedAt: now }));
@@ -116,7 +120,7 @@ describe.skipIf(setup.status === 'skip')('Golden set through the chosen provider
       : undefined;
     if (own) localStorage.removeItem(DEV_KINDS_KEY);
     const text = formatSummary({ kind: setup.kind, host: aiHostOf(config), model: setup.model }, results, stopped, setup.key, address, pipelineIds(layers),
-      own ? `school-set v${schoolSet.version}` : undefined, setup.category);
+      own ? `school-set v${schoolSet.version}` : spoken ? `spoken-set v${spokenSet.version}` : undefined, setup.category);
     console.log(text);
     const file = proc?.env?.['DOORPRINTS_EVAL_SUMMARY'];
     if (file && proc?.getBuiltinModule) proc.getBuiltinModule('node:fs').writeFileSync(file, text);
