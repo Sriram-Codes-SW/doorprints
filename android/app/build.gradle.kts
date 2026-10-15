@@ -66,9 +66,11 @@ android {
         // The hidden schools kind (kinds PR 5, S4b-BL-209; docs/03 §18.9): off in every build; only the debug build
         // below turns it on, and only when made with -Pdoorprints.devKinds=true. A release never has it.
         buildConfigField("boolean", "DEV_KINDS", "false")
-        // The kinds the build ships (kinds PR C, S4b-BL-274; docs/03 §18.12): a comma list, the house always. Production lists the
-        // house alone, so there is no chooser and no *What you track* section; the debug build below may list more.
-        buildConfigField("String", "AVAILABLE_KINDS", "\"house\"")
+        // The kinds the build lists (kinds PR C, S4b-BL-274; docs/03 §18.12): a comma list, the house always. Since 2026-10-15
+        // (owner) the release lists the school too, compiled in but off: it is available, not released (KindSettingRules.RELEASED
+        // stays the house), so the person sees the house app, with no chooser, until Settings > What you track turns on
+        // *Experimental: more than houses*. The iPhone lists the same (IOS_AVAILABLE_KINDS; ReleaseKindsTest holds them equal).
+        buildConfigField("String", "AVAILABLE_KINDS", "\"house,school\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         testInstrumentationRunnerArguments["useTestStorageService"] = "true"
     }
@@ -87,12 +89,15 @@ android {
 
     buildTypes {
         debug {
-            // -Pdoorprints.devKinds=true ships the school; -Pdoorprints.kinds=house,school names the list itself. DEV_KINDS is
-            // true exactly when the list has more than the house, so the two never disagree.
-            val kinds = providers.gradleProperty("doorprints.kinds").orNull
-                ?: if (providers.gradleProperty("doorprints.devKinds").orNull == "true") "house,school" else "house"
-            val shipsMore = kinds.split(',').map { it.trim() }.any { it.isNotEmpty() && it != "house" }
-            buildConfigField("boolean", "DEV_KINDS", shipsMore.toString())
+            // The debug build lists what the release lists (house, school: compiled in, off), so the tests and the screenshots run the
+            // list that ships. -Pdoorprints.devKinds=true is the developer flag (the school is drawn as a school whatever the switch
+            // says) and -Pdoorprints.kinds=house names the list itself. DEV_KINDS is true exactly when one of those two asks for it,
+            // never for the shipped list alone, so the debug build is the release plus the developer's own choice.
+            val named = providers.gradleProperty("doorprints.kinds").orNull
+            val kinds = named ?: "house,school"
+            val shipsMore = named != null && named.split(',').map { it.trim() }.any { it.isNotEmpty() && it != "house" }
+            val devKinds = shipsMore || providers.gradleProperty("doorprints.devKinds").orNull == "true"
+            buildConfigField("boolean", "DEV_KINDS", devKinds.toString())
             buildConfigField("String", "AVAILABLE_KINDS", "\"" + kinds.filter { it.isLetter() || it == ',' || it == '_' } + "\"")
         }
         release {

@@ -493,6 +493,25 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
         }
     }
 
+    /**
+     * Settings > What you track as the shipped app has it, the school compiled in and off (owner, 2026-10-15): the heading, the line
+     * under it and the switch, off, with its preview hint and no kind rows. English light only; the section drawn with the switch on is
+     * `settings_kinds`. This is the one new section of the Settings screen in a release.
+     */
+    @Test fun settingsKindsOff() {
+        englishLightOnly()
+        RuntimeEnvironment.setQualifiers("+h600dp")
+        val kinds = TwoKinds(ApplicationProvider.getApplicationContext<DoorprintsApp>())
+        try {
+            show(readyText = text(Res.string.kinds_heading)) {
+                kinds.Provide { Column(Modifier.padding(16.dp).testTag("kinds-off-shot")) { KindsSettingsSection() } }
+            }
+            compose.onNodeWithTag("kinds-off-shot").captureRoboImage(file("settings_kinds_off"))
+        } finally {
+            kinds.close()
+        }
+    }
+
     /** *Delete all in this space* (deletion safeguards PR 3): the question for 12 schools, with the tick box and the three buttons. */
     @Test fun deleteSpaceDialog() {
         assumeTrue((lang == "en" && !dark) || (lang == "ta" && dark))

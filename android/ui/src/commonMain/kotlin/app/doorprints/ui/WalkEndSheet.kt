@@ -196,7 +196,7 @@ private fun HousePicker(
     var chosen by rememberSaveable(picker.nearest?.house?.id) { mutableStateOf(picker.nearest?.house?.id) }
     var query by rememberSaveable { mutableStateOf("") }
     val language = uiLanguage()
-    val devKinds = LocalDevKinds.current
+    val devKinds = kindsOn()
     val found = remember(query, houses, language, devKinds) { WalkPicker.search(query, houses, language, devKinds) }
     Text(
         stringResource(Res.string.trace_pick_title),

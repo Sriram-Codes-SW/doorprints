@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | The complete manual test list for Doorprints before real-system testing starts and before Android/iOS development continues: every check a person redoes on real devices, whether or not an automated suite or a review session already covered it |
-| Version | 0.18 |
+| Version | 0.19 |
 | Date | 2026-10-15 |
 | Author | Claude, senior reviewer |
 | Status | Draft |
@@ -30,6 +30,7 @@
 | 0.16 | 2026-10-15 | Claude (Code), engineer | **§16 voice input:** the website's side is built (S4b-BL-221); the header paragraph says `microphone=(self)` and the MT-32 header text reads it; MT-82..MT-87 stay to be run (the website's part: a real microphone, the permission dialog, Safari mp4, Chrome and Firefox webm, TalkBack and VoiceOver on the button). |
 | 0.17 | 2026-10-15 | Claude (Code), engineer | **§16 voice input: Android's side is built (S4b-BL-222):** MT-82..MT-87 name the Android steps (the rationale, *Not now*, a refusal and *Open settings*, a revoke, a pause by home, the lock screen, a call or a rotation, TalkBack on the button, `adb shell ls` of the app's folders); TC-M-79 ([06](../06-test-plan.md)) is the run; the rows stay to be run on a real phone (the tests use a fake microphone, a fake permission and a canned provider: TC-U-249..253, TC-S-52, TC-I-52). |
 | 0.18 | 2026-10-15 | Claude (Code), engineer | **§16.2, voice input on the iPhone** (S4b-BL-223, TC-M-80): MT-104 (the rationale, the system prompt on the first tap only, a refusal and *Open settings*), MT-105 (foreground only: home, lock, a call, Siri, headphones, Bluetooth; the music comes back), MT-106 (a real recording: the words, the 60 s stop, nothing heard, the permission lost mid-way), MT-107 (no audio at rest in the app's container, the console or a copy), MT-108 (VoiceOver, the largest text, four languages, both themes). Needs a Mac with Xcode and an iPhone (a simulator uses the Mac's microphone and cannot show a call or Bluetooth). Not run. |
+| 0.19 | 2026-10-15 | Claude (Code), engineer | **§19, the phones with the school compiled in, off** (owner, 2026-10-15; `feat/kinds-24-ship-school-phones`, TC-M-81): the intro and MT-96 step 1 amended (a release has *What you track*, with the switch off); MT-109 (a fresh Android install is the house app, the switch, TalkBack, 200 % text) and MT-110 (the iPhone: the same, VoiceOver, no chooser until the switch is on). |
 
 ## 1. How to use this list
 
@@ -973,14 +974,15 @@ schools ship at all; these checks are for the owner's own test devices. TC-M-69 
 
 ## 19. More than houses on the phone (S4b-BL-274, S4b-BL-289)
 
-A release build offers houses alone; a second kind is seen only in a debug build made with `-Pdoorprints.devKinds=true`
-(`./gradlew :app:installDebug -Pdoorprints.devKinds=true`). The owner decides when a second kind is released; these checks are for the
-owner's own test phones. TC-M-72 of [06](../06-test-plan.md); the website's twin is §18.
+A release build lists the school but offers houses alone: it is compiled in and off (owner, 2026-10-15). It is seen only after
+**Experimental: more than houses** is turned on in Settings > *What you track* (a debug build lists the same; `-Pdoorprints.devKinds=true`
+is the developer's flag on top). The owner decides when a second kind is released; these checks are for the owner's own test phones.
+TC-M-72 and TC-M-81 of [06](../06-test-plan.md); the website's twin is §18.
 
 #### MT-96 What you track, the chooser and the chip on the phone
 - **Area:** Android (the iPhone has the same code, but no build of it ships a second kind: S4b-BL-300). **Who:** anyone. **Env:** E4 (the Android app): a phone with TalkBack, and a debug build that ships schools beside a release build.
-- **Steps:** (1) On the release build open *Settings*: there is no *What you track*, the Map is the first screen, the bar is Map, Houses, Compare, Settings. (2) On the debug build open *Settings*: *Experimental: more than houses*, off, no rows. (3) Turn it on: rows *Houses* (shown, *Default*) and *Schools* (not shown), each with *Saved: N*. (4) Turn on *Show Schools*, close the app and open it: *What are you looking for?* with two cards, *Houses* first and marked *Default*, each with *Saved: N* and *Last change*, and a hint with *Got it*. (5) Choose *Schools*: the bar says *Schools*, the Map has *Save school here* and no Hunt mode, the list says *Search schools* and has no sort or cost filter; the chip *Schools* is at the top. (6) Tap the chip: the chooser again; Back from a tab does the same. (7) In *Settings*: no *Brokers*, *Criteria*, *Questions* or *Viewings*. (8) Turn *Show Schools* off: the app opens on the Map; the schools are still there (turn it on again to see them). (9) Repeat 4 to 7 in Hindi, Tamil and Telugu, in both themes, at the largest text size and with TalkBack on: the heading is read first, each card as one item with its count, the chip as *Schools: change what you are looking for*.
-- **Expected:** a house hunter on the release build sees no change at all; the words never say "kind" or "space"; every word in the app's language (Hindi, Tamil and Telugu *under review*); nothing is cut at 200 % text; the hint shows once; the last shown row cannot be turned off; the choice is this phone's alone (never synced, shared or in a copy).
+- **Steps:** (1) On the release build open *Settings*: *What you track* has *Experimental: more than houses*, off, and no rows; the Map is the first screen, the bar is Map, Houses, Compare, Settings. (2) On the debug build open *Settings*: the same. (3) Turn it on: rows *Houses* (shown, *Default*) and *Schools* (not shown), each with *Saved: N*. (4) Turn on *Show Schools*, close the app and open it: *What are you looking for?* with two cards, *Houses* first and marked *Default*, each with *Saved: N* and *Last change*, and a hint with *Got it*. (5) Choose *Schools*: the bar says *Schools*, the Map has *Save school here* and no Hunt mode, the list says *Search schools* and has no sort or cost filter; the chip *Schools* is at the top. (6) Tap the chip: the chooser again; Back from a tab does the same. (7) In *Settings*: no *Brokers*, *Criteria*, *Questions* or *Viewings*. (8) Turn *Show Schools* off: the app opens on the Map; the schools are still there (turn it on again to see them). (9) Repeat 4 to 7 in Hindi, Tamil and Telugu, in both themes, at the largest text size and with TalkBack on: the heading is read first, each card as one item with its count, the chip as *Schools: change what you are looking for*.
+- **Expected:** a house hunter on the release build sees no change at all, but the one Settings section that holds the switch; the words never say "kind" or "space"; every word in the app's language (Hindi, Tamil and Telugu *under review*); nothing is cut at 200 % text; the hint shows once; the last shown row cannot be turned off; the choice is this phone's alone (never synced, shared or in a copy).
 - **Automated or reviewed by:** TC-U-220, TC-U-221 (`SpacesRootTest`, the three new baselines). Reviewer ran it: no.
 - Pass / Fail / Date: ____  by: ____
 
@@ -991,12 +993,28 @@ owner's own test phones. TC-M-72 of [06](../06-test-plan.md); the website's twin
 - **Automated or reviewed by:** TC-U-220, TC-U-221. Reviewer ran it: no.
 - Pass / Fail / Date: ____  by: ____
 
+#### MT-109 The Android app with the school compiled in and off
+- **Area:** Android. **Who:** anyone. **Env:** E4 (the Android app): a phone with TalkBack, a fresh install of the release build, and Hindi, Tamil and Telugu for the last step.
+- **Steps:** (1) Open the app: the Map, no chooser, no chip; the bar is Map, Houses, Compare, Settings. (2) *Settings*: a section *What you track* with a line about it and *Experimental: more than houses*, **off**, its hint ending *This is a preview.*; no *Houses* or *Schools* rows. (3) Import a backup that holds a school: it is listed in *Houses* as a house, the search "bus" finds nothing from its extras, and *Save a copy* writes it as a house. (4) Turn the switch on: the rows appear (*Houses* shown and *Default*, *Schools* not shown). Turn on *Show Schools*: the chooser opens (*What are you looking for?*). Turn the switch off again: the app opens on the Map, the schools are kept. (5) With TalkBack: the section's heading is announced as a heading, the switch as a switch with its state, each kind's name as a heading, and the box of the only kind that is on says *One always stays on.* (6) At the largest text size nothing is cut off or off screen. (7) In Hindi, Tamil and Telugu the hint and the school listing tip (*Add a shared listing* on a school) say they are a preview.
+- **Expected:** with the switch off the app is the house app in every screen and file; the switch is the only way to the school; every word in the app's language (Hindi, Tamil and Telugu *under review*).
+- **Automated or reviewed by:** TC-U-226, TC-U-264 (`ReleaseKindsTest`, `KindSettingOffTest`, `SpacesRootTest`, `KindsA11yTest`, the `settings_kinds_off` baseline). Reviewer ran it: no.
+- Pass / Fail / Date: ____  by: ____
+
+#### MT-110 The iPhone with the school compiled in and off
+- **Area:** iPhone (needs a Mac and a phone or the simulator; S4b-BL-276 for the screenshots). **Who:** owner and native speakers. **Env:** E5.
+- **Steps:** (1) Install: the Map, no chooser, no chip. (2) *Settings*: *What you track* with the switch, off, and the same hint. (3) With VoiceOver: the heading, the switch and its state, the kind names as headings, the disabled box and why. (4) Turn the switch on and *Show Schools*: the chooser, with each card read as its name and count. (5) At the largest text size and in the three languages under review: nothing cut off. (6) Info.plist and the launch job are as before.
+- **Expected:** as MT-109 on the iPhone; nothing of the school until the switch is on.
+- **Automated or reviewed by:** TC-U-264 (`IosKindsGateTest` reads the source; the klib compile). Reviewer ran it: no.
+- Pass / Fail / Date: ____  by: ____
+
 ### 19.1 Summary rows (add to §13 when the owner starts the run)
 
 | Id | Title | Who | Env | Reviewer ran it | Result |
 |---|---|---|---|---|---|
 | MT-96 | What you track, the chooser and the chip on the phone | anyone | E4 | no | |
 | MT-97 | A school space's tools, a copy, a backup, a shared listing, a link | owner | E4 | no | |
+| MT-109 | The Android app, school compiled in and off: a fresh install, the switch, TalkBack, 200 % text | anyone | E4 | no | |
+| MT-110 | The iPhone, school compiled in and off: the switch, VoiceOver, 200 % text | owner, natives | E5 | no (built; not run on an iPhone) | |
 
 ## 20. A school's pages and copies (S4b-BL-256, S4b-BL-259, S4b-BL-266, S4b-BL-277)
 

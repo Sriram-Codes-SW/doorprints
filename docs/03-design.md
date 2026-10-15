@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.153 |
+| Version | 0.154 |
 | Date | 2026-10-15 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -164,6 +164,7 @@
 | 0.151 | 2026-10-15 | Claude (Code), engineer | **§18.16: a Hunt walk ends when the person leaves the house space** (S4b-BL-304; `feat/kinds-22-hunt-walk-leaves-space`; [06](06-test-plan.md) TC-U-259; [10](10-sprint-log.md) v0.340): `HuntSpace.stopsOnLeaving` in the common root, one line on why, and a Hunt alert makes a house; the line of §18.14 about the default kind follows. |
 | 0.152 | 2026-10-15 | Claude (Code), engineer | **§18.16: the phones' words come from the kind files, and the import notification says entries** (S4b-BL-316; `feat/kinds-22-phone-words-in-kind-files`; [06](06-test-plan.md) TC-U-261; [10](10-sprint-log.md) v0.341; [schemas](schemas/README.md) v1.61): `words` has 48 more ids, `SpaceWords` and `PageWords` hold no table, the import worker passes the kind setting's two-kind state. |
 | 0.153 | 2026-10-15 | Claude (Code), engineer | **§18.14: the AI card's first sentence is one string for everyone** (S4b-BL-302; `feat/kinds-22-ai-card-one-list`; [06](06-test-plan.md) TC-U-260; [10](10-sprint-log.md) v0.342): the phones' `settings_ai_worth` is the website's `connect.aiWorth` in four languages, `settings_ai_worth_spaces` is retired, four Roborazzi baselines re-recorded. |
+| 0.154 | 2026-10-15 | Claude (Code), engineer | **§18.14 "compiled in, off" on the phones** (owner, 2026-10-15; `feat/kinds-24-ship-school-phones`, the phones' half of the website's change): the Android release and the iPhone list `house,school` (`AVAILABLE_KINDS`, `IOS_AVAILABLE_KINDS`), `RELEASED` stays the house, so the school is available and not offered until *Experimental: more than houses* is on; kinds other than the house are read by the AI, the forms, the search and the copies only while the developer flag or the switch allows (`LocalKindsOn`, `SettingsStore.kindsOn`); the switch hint and the school listing tips carry a *preview* mark (hi, ta, te under review); accessibility pass of the chooser and What you track (headings, a disabled box says why). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -2866,25 +2867,40 @@ copies' house words (S4b-BL-291), a space picker on *Your data* and a lower-is-b
 
 **The rule.** The design of §18.12 and §18.13 is the phones' too: a kind is a **space**, a filter over the one candidate store;
 nothing is added to Room, the sync file or the backup's rows. The Android app and the iPhone share it through `:shared` and
-`:ui` (the iPhone follows with no code of its own: a build that ships the house alone, which the iPhone always is, has no
+`:ui` (the iPhone has no code of its own beyond its list of available kinds, `IOS_AVAILABLE_KINDS`, the same as the Android release's: with the switch off it has no
 chooser). The pure rules are in `:shared` and held to the **same vector files the website reads**:
 `KindSetting` and `KindSettingRules` (`search-kind-vectors.json` `setting`, `write` and `read`), `SpaceScope`
 (`space-scope-vectors.json`: `contains`, `compare`, `fileName`, `assistant`, `shareKind`) and `spaceCards` (the chooser's
 tally, a port of the website's `spaceCards`, with its own test). Where a rule had no vector the web differs from the phone
 nowhere: no vector case was added.
 
-**The house-only app is byte for byte today's.** With one kind on, which is every release (`BuildConfig.AVAILABLE_KINDS` is
-`house`), nothing is added to a screen: no chooser, no chip, no top bar, the start destination is the Map as before, the
-Settings rows are the same four with the same dividers, the list's tab is `nav_houses`, `repo.houses` is the very flow the
-screens read, and every export, name and backup byte is what it was (`SpacesRootTest.aBuildThatShipsTheHouseAloneIsTheAppItAlwaysWas`,
-`ExportFormatTest`, `HouseCopyPinsTest`, `BackupFieldsTest`, and every Roborazzi baseline of a house screen unchanged).
+**The house-only app is byte for byte today's.** With one kind on, which is a build that lists the house alone and, since 2026-10-15,
+every release with the switch off (the school is *compiled in, off*, below), nothing is added to a screen: no chooser, no chip, no
+top bar, the start destination is the Map as before, the Settings rows are the same four with the same dividers (plus, in a build
+that lists the school, the one section *What you track* that holds the switch), the list's tab is `nav_houses`, `repo.houses` is the
+very flow the screens read, and every export, name and backup byte is what it was (`SpacesRootTest.aBuildThatShipsTheHouseAloneIsTheAppItAlwaysWas`
+and `withTheSwitchOffTheShippedAppShowsWhatAHouseOnlyBuildShowsAndTheSwitch`, `ExportFormatTest`, `HouseCopyPinsTest`, `BackupFieldsTest`, and
+every Roborazzi baseline of a house screen unchanged).
 
-**Which kinds a build offers.** `BuildConfig.AVAILABLE_KINDS` (a comma list, the house always): a release lists `house`; a debug
-build lists `house` unless made with `-Pdoorprints.devKinds=true` (then `house,school`) or `-Pdoorprints.kinds=house,school`;
-`DEV_KINDS` is true exactly when the list has more than the house, so the two never disagree. The list is handed to the
-settings store (`SettingsStore.availableKinds`, `SettingsStoreFactory`); the iPhone's store lists the house alone. Every
-other available kind is offered only while **Experimental: more than houses** is on, shown only in a build that ships such a
-kind. The three stored values are the device's own, in the settings store (`kinds.experimental`, `kinds.enabled`,
+**Which kinds a build offers, and "compiled in, off" (owner, 2026-10-15).** Three layers, as on the website (§18.12): *available* (the build lists
+the kind: `BuildConfig.AVAILABLE_KINDS`, a comma list, the house always), *offered* (available and released, or the person turned on the
+switch) and *enabled* (shown in What you track). A release lists `house,school` and the iPhone the same (`IOS_AVAILABLE_KINDS` in `SettingsIos.kt`,
+the app's store only; `ReleaseKindsTest` holds the two equal), but `KindSettingRules.RELEASED` stays the house: the school is compiled in and off,
+not released. A debug build lists the same unless made with `-Pdoorprints.kinds=house` (or another list); `DEV_KINDS` stays false in a release and in
+the debug build's shipped list, and is true only for `-Pdoorprints.devKinds=true` or a `-Pdoorprints.kinds` list that names more than the house
+(the developer's kind picker and "read every row as its kind whatever the switch says"). The list is handed to the settings store
+(`SettingsStore.availableKinds`, `SettingsStoreFactory`, `iosSettingsStore()`). Every other available kind is offered only while **Experimental: more
+than houses** is on; it is shown in every build that lists such a kind, so Settings now has the section *What you track* in a release, with the switch
+off and no kind rows. **With the switch off the phone is the house phone:** no chooser or chip (the start is the Map, `Root.kt`'s `home` only
+with `setting.spaces`), `SpaceUi.resolve` is the house whatever a restored `chosenKind` says, a stored list or default is ignored (`KindSettingOffTest`),
+and the kinds are read as themselves only while `kindsOn()` (`LocalKindsOn`, provided by `DoorprintsRoot` as the developer flag or a second kind
+*offered*): the list's search words (`HouseListSearch`), the forms, a readable copy (`rememberKindsCopyOptions`, `ExportBuilder.bundle`) and the on-device
+AI (`SettingsStore.kindsOn` in `AiStore.ownKeyAi`) read a school row as a house until the switch is on, the twin of the website's `kindsOn()`. The first
+frame waits one read of the settings store (a store that lists the house alone answers at once). The strings that name the school's AI help carry
+a *preview* mark with the switch hint (*This is a preview.*, *Preview: Where is this school?*; hi, ta, te under review). The tagline, the store listing
+and the public words stay the house's (docs/12 H).
+
+The three stored values are the device's own, in the settings store (`kinds.experimental`, `kinds.enabled`,
 `kinds.default`, the website's `doorprints.kinds.*` values), never synced, shared or put in a copy; every doubt falls back to
 the house alone (`KindSetting`, held to the vectors' `setting` cases). One kind always stays on; turning off the default makes
 the next enabled kind the default; a kind that is off keeps every entry.
@@ -2953,8 +2969,7 @@ The longest words (Tamil, Telugu) wrap; none is cut.
 space, the chip, Settings, the links, the shared listing), the three new baselines; mutation list
 `tools/mutations/kinds-13-android-spaces.json`.
 
-**Left, with rows** ([10](10-sprint-log.md)): the iPhone has all of it through `:ui` and `:shared`, but no build of the iPhone ships a second
-kind, so nothing of it can be seen there until the owner opens a kind's release gate (S4b-BL-300); the map's location notes still
+**Left, with rows** ([10](10-sprint-log.md)): the iPhone has all of it through `:ui` and `:shared`, but the iPhone lists the school compiled in and off, so nothing of it is seen there until the person turns the switch on (2026-10-15; S4b-BL-300); the map's location notes still
 say *house* in a school space (S4b-BL-301); the AI card's first sentence is kind-neutral for everyone, which re-records the settings
 baselines (S4b-BL-302); the list reads the space from Room (S4b-BL-303); a Hunt walk ends when the person leaves the house space
 (S4b-BL-304, built: see below); the share of updates and Drive keep the house's words (S4b-BL-291); the phone's copies' inner words for a school
@@ -3038,7 +3053,7 @@ list search values (`house-pins.golden.ts`), the list's address keys (`listQuery
 - **The phone words in the kind files (S4b-BL-316).** `kind.schema.json` `words` names 48 ids after the sixteen (`unnamed`, `addHintListing`, `compare*`, `ask*`, `planHint`, `export*`, `locationOff` and its three twins, `saveNeedsLocation`, then the page's `detailsTitle`, `notFound*`, `defaultLabel*`, `discardNew`, `deleteTitle`, `pageNeedsPrecise`, `savePhotosFirst`, the five `walk*` words, `aiDisclosure*`, `placeFound`, `placeNotFound`, `openDetails` and the Areas and Places lines); `web` may be null where only the phone has the word (additive, `format` stays `doorprints-kind/1`). `house.json` and `school.json` give them; `SpaceWords` and `PageWords` (`:ui`) now hold no table of strings, they read every word through `KindWordKeys.of(kind)` and `kindStringResource`; `KindWordKeys` stays the copy the tests hold to the files. The house's words are the keys and texts they were, pinned in four languages by `kind-word-vectors.json` (`KindWordVectorsTest`, web `kind-words.spec.ts`) and, in pixels, by the house baselines (no change). The website's `space-tool-words.ts` gives the 12 words both stacks have their ids (`TOOL_WORD_IDS`), held to the files and the vectors. **The import notification (item 2).** `ImportWorker` reads `KindSetting.spaces` and passes it to `importedSentence(neutral)`, so with two kinds on the notification says *entries* (`count_entries`, `import_restored_result_any`) as the Import screen does; one kind, or a store that cannot be read, says houses.
 - **A number extra's range (S4b-BL-261 item 2).** `HouseEntity.withInRangeExtras` (`KindExtrasFields.kt`) on save.
 - **The map's location notes (S4b-BL-301).** Five `SpaceWords` entries; three school strings; the place-check's *Save here* reads `saveHere`.
-- **The iPhone (S4b-BL-300).** No build passes the iPhone a second kind; `ReleaseKindsTest` is the tripwire.
+- **The iPhone (S4b-BL-300; changed 2026-10-15).** The iPhone lists `house,school` like the Android release (`IOS_AVAILABLE_KINDS`, one constant, passed only by `iosSettingsStore()`; the simulator tests' store lists the house), compiled in and off, so nothing of a second kind is seen until the person turns the switch on; `ReleaseKindsTest` holds the list equal to the release's and `IosKindsGateTest` (source-reading, as `IosVoiceSafetyTest`) holds that nothing else on the iPhone names a kind or the chooser, that the chooser route is reached only through `setting.spaces`, and that Info.plist and the Swift shell do not mention the list. The macOS-runner screenshots and VoiceOver of the chooser with the switch on stay S4b-BL-276 (manual MT-110). Info.plist is unchanged; the simulator launch job is unchanged.
 - **A Hunt walk ends when the person leaves the house space (S4b-BL-304; owner, 2026-10-15).** Hunt mode is the house space's card and switch, so `DoorprintsRoot` (common, Android and the iPhone) stops the walk through `MapServices.stopHunt` when the space on screen changes from the house's to another (`HuntSpace.stopsOnLeaving`: was in the house space, is not, Hunt mode running) and says *Hunt mode stopped. It runs in the Houses space only.* (`hunt_stopped_left_space`, hi/ta/te under review) in the root snackbar. The service and its notification end as with the person's own stop; the walk is then asked about as any ended walk. A walk that starts while another space is on screen (a reminder's *Start Hunt mode*) is left alone; the chooser is not a space. A Hunt alert (*stay here?*) is the house space's, so tapping one makes a **house**, not a candidate of the default kind (this replaces the line of §18.14 that said the default kind). With one kind on the house is the only space and nothing changes (`withOneKindOnNoWalkIsEverStoppedByASpaceChange`; no baseline changes). Tests: TC-U-259, `tools/mutations/kinds-22-hunt-walk.json`.
 - **Not built.** S4b-BL-302 (one string for the AI card changes the house app's words and baselines: the owner decides), S4b-BL-303 (a `kind` index and a query per space: a Room migration, its own pull request).
 - **Budget.** Three files over their budget got room by moving code out, not by growing: `HouseEditScreen.kt` 1,509 to 1,422 (`PasteListing.kt`), `HouseListScreen.kt` 1,018 to 919 (`HouseListUndo.kt`), `ImportScreen.kt` 1,014 to 923 (`ImportPreviewCard.kt`); `MapScreen.kt` is unchanged at 1,515.

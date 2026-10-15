@@ -28,6 +28,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.doorprints.data.HouseEntity
 import app.doorprints.data.Repository
+import app.doorprints.shared.export.ExportOptions
 import app.doorprints.shared.model.BuiltInKind
 import app.doorprints.shared.model.DevKinds
 import app.doorprints.shared.model.KindSetting
@@ -175,8 +176,9 @@ fun rememberSpaceHouses(repo: Repository): State<List<HouseEntity>?> {
 }
 
 /**
- * What this device tracks, null until the settings store answers. A build that ships the house alone (every release)
- * answers at once with no read, so the first frame is today's. The twin of the website's `kind-setting.ts`.
+ * What this device tracks, null until the settings store answers. A store that lists the house alone (a test's, an old build)
+ * answers at once with no read; the shipped builds list the school too (compiled in, off), so they wait for the settings store
+ * for a moment, one frame behind the splash. The twin of the website's `kind-setting.ts`.
  */
 @Composable
 fun rememberKindSetting(repo: Repository): State<KindSetting?> {
@@ -186,4 +188,16 @@ fun rememberKindSetting(repo: Repository): State<KindSetting?> {
     } else {
         produceState<KindSetting?>(initialValue = null, store) { store.kindSetting().collect { value = it } }
     }
+}
+
+/**
+ * The default copy options with the kinds flag ([kindsOn], which [DoorprintsRoot] sets while the developer flag or the
+ * person's *Experimental: more than houses* switch is on): a school is copied with its own fields only then, and as a house
+ * otherwise, as in a build that lists the house alone. Android and the iPhone alike.
+ */
+@Composable
+fun rememberKindsCopyOptions(exports: ExportServices): () -> ExportOptions {
+    val defaults = exports.rememberDefaultOptions()
+    val kindsOn = kindsOn()
+    return remember(defaults, kindsOn) { { defaults().copy(devKinds = kindsOn) } }
 }

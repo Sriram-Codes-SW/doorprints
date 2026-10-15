@@ -43,6 +43,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -64,8 +66,9 @@ private class DeleteAsk(val name: String, val ids: List<String>)
 /**
  * Settings > *What you track* (kinds PR C, S4b-BL-274; docs/03 §18.12), the twin of the website's *Your data* section:
  * *Experimental: more than houses* (off by default), then one row per kind the switch offers with *Show*, *Default* and
- * what is saved. Drawn only in a build that ships more than houses (`SettingsStore.availableKinds`), so a release shows
- * nothing and the Settings screen is byte for byte what it was. One kind always stays on (its *Show* is disabled), the
+ * what is saved. Drawn only in a build that lists more than houses (`SettingsStore.availableKinds`); since 2026-10-15 every
+ * build lists the school (compiled in, off), so the section is always there, with the switch off and no kind rows until the
+ * person turns it on. One kind always stays on (its *Show* is disabled), the
  * default is one of the kinds that are shown, and turning a kind off hides nothing and deletes nothing: the chooser keeps
  * it as a muted card. The choice is this phone's own (the settings store), never synced, shared or put in a copy.
  *
@@ -140,14 +143,17 @@ fun KindsSettingsSection(
                 val on = kind in enabled
                 Column(Modifier.fillMaxWidth().padding(top = 4.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text(name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f, fill = false))
+                        Text(name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f, fill = false).semantics { heading() })
                         Text(stringResource(Res.string.kinds_count, saved[kind] ?: 0), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     // The last kind that is on cannot be turned off: its box is disabled and the section says so.
                     val last = on && enabled.size == 1
                     val show = stringResource(Res.string.kinds_show, name)
+                    val lastOn = stringResource(Res.string.kinds_last_on)
                     Row(
                         Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                            // A disabled box says why (TalkBack reads the state), not only the line under the list.
+                            .semantics { if (last) stateDescription = lastOn }
                             .toggleable(value = on, enabled = !last, role = Role.Checkbox) { change { s -> s.withKindEnabled(kind, it) } },
                         verticalAlignment = Alignment.CenterVertically,
                     ) {

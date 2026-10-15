@@ -7,7 +7,7 @@ it may change or go away.
 ## Turn it on
 
 - **Website:** for now in a development build only (the published website offers houses alone). In such a build, open **Your data** and find **What you track**.
-- **Android and iPhone:** for now in a preview build only (the published app offers houses alone). Open **Settings** and find **What you track**; it appears only in a build that ships more than houses.
+- **Android and iPhone:** in Settings, off by default. Open **Settings** and find **What you track**; **Experimental: more than houses** is there, off, and the app is the house app until you turn it on.
 
 Turn on **Experimental: more than houses**. A row for **Houses** and one for **Schools** appear. Turn on **Show Schools**.
 **Default** marks the one Doorprints assumes when it cannot ask: a listing you share into Doorprints, or a link that

@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | The manual part of the release security gate: the one-hour list per release, and the scope of the deep self-run pentest |
-| Version | 0.15 |
+| Version | 0.16 |
 | Date | 2026-10-15 |
 | Author | Claude (Code), lead |
 | Status | Draft. Written (story S4b-SEC-3); **not yet run on a release candidate**, which is the story's last acceptance item |
@@ -27,6 +27,7 @@
 | 0.13 | 2026-10-15 | Claude (Code), engineer | **B1 and F11:** the header row names `microphone=(self)` (voice input on the website, S4b-BL-221, TC-S-23, TC-S-51); F11's website clause is now a fact, the phones' clauses stay planned. |
 | 0.14 | 2026-10-15 | Claude (Code), engineer | **Voice input on Android (S4b-BL-222):** F11's Android clause is now a fact (TC-S-52, TC-I-52; the manifest, the permission at the tap, no audio at rest); **C1** and **C5** name `RECORD_AUDIO` (the permission list); **G4** is written (the in-app disclosure, the rationale and the data-safety answer), still a note until a Play release. |
 | 0.15 | 2026-10-15 | Claude (Code), engineer | **F11 on the iPhone** (S4b-BL-223): the iPhone clause is a fact to check on a build: `NSMicrophoneUsageDescription` is in `Info.plist` and its four `InfoPlist.strings`, the built `Info.plist` has no `audio` background mode (`shared-ios.yml`), the prompt appears only after a tap on *Speak* and the rationale (MT-104), recording ends when the app leaves the front (MT-105) and no audio file is in the app's container (MT-107). C5 names the iPhone's prompt. G4's note covers both phones; no form is submitted. |
+| 0.16 | 2026-10-15 | Claude (Code), engineer | **Part J, the phones: "compiled in, off"** (owner, 2026-10-15; `feat/kinds-24-ship-school-phones`): new J8 (the release APK and the iPhone list `house,school` and offer the house alone; the switch is the only way to the school; replaces the phone sentence of J1) |
 
 ## 1. What this is, and when it runs
 
@@ -199,6 +200,7 @@ Run **AI evals** (`ai-evals.yml`, manual) on the release commit first. The golde
 | J5 | **The global deletions say so.** *Remove all data* lists every kind's count; Drive deletion level 3 says *all kinds*; `DELETE /api/data` answers 428 without its `X-Confirm-Delete` header (E) | Said in words before the action |
 | J6 | **AI input of a kind.** With a kind available: the evals' kind cases (TC-AI-04, `kind-ai-vectors.json`) pass; an extra with an instruction as its text, a number out of range or a money value with a foreign cadence is left out of the document; the contact's name and phone do not appear | Passed |
 | J7 | **The index follows the list.** After `KINDS_AVAILABLE` changes, `POST /api/ai/reindex` has been run (T-I49) | Done, or the list did not change |
+| J8 | **The phones: compiled in, off** (owner, 2026-10-15; replaces the phone sentence of J1). The release APK's `AVAILABLE_KINDS` is `"house,school"` and `DEV_KINDS` is `false` (`BuildConfig`, or `aapt`/`jadx` of the signed APK); the iPhone's `IOS_AVAILABLE_KINDS` is the same (`ReleaseKindsTest`, `IosKindsGateTest`), `KindSettingRules.RELEASED` is the house alone, and the iPhone's Info.plist names no kind. On a fresh install of each: the Map is the first screen, no chooser, no chip, Settings has *What you track* with *Experimental: more than houses* **off** and no kind rows; a school entry that arrives by import or sync is listed as a house and is not searched, read by the AI or copied as a school, and a stored `kinds.enabled` or `kinds.default` naming the school changes nothing while the switch is off. Turn the switch on and *Show Schools*: the chooser appears. The switch hint and the school listing tips say *preview* (hi, ta, te under review). The tagline and the store listing still say houses | All true. Releasing a second kind (adding it to `RELEASED`) is a deliberate decision of the owner, recorded in [10](10-sprint-log.md) |
 
 ## 4. Judging and recording
 
