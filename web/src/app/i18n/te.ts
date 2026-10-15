@@ -1742,7 +1742,8 @@ export const te: Dict = {
   'kinds.heading': 'మీరు ట్రాక్ చేసేవి',
   'kinds.body': 'Doorprints దేనిని ట్రాక్ చేయాలో ఎంచుకోండి. ఒకటి కంటే ఎక్కువ ఆన్‌లో ఉంటే, మీరు ఏమి వెతుకుతున్నారో Doorprints మొదట అడుగుతుంది.',
   'kinds.switch': 'ప్రయోగాత్మకం: ఇళ్లు కాకుండా ఇంకా',
-  'kinds.switchHint': 'మొదట ఆఫ్‌లో ఉంటుంది. పాఠశాలల వంటి, ఇంకా పరీక్షిస్తున్నవాటిని చూపిస్తుంది. ఇది మారవచ్చు.',
+  // 2026-10-15 (ship school, compiled in and off): the preview marks on the switch hint and the school listing hint. Under review (owner rule: hi/ta/te ship marked under review).
+  'kinds.switchHint': 'మొదట ఆఫ్‌లో ఉంటుంది. పాఠశాలల వంటి, ఇంకా పరీక్షిస్తున్నవాటిని చూపిస్తుంది. ఇది మారవచ్చు. ఇది ఒక ప్రివ్యూ.',
   'kinds.show': '{kind} చూపించు',
   'kinds.default': 'డిఫాల్ట్',
   'kinds.defaultAria': '{kind}‌ను డిఫాల్ట్ చేయండి',
@@ -1853,7 +1854,7 @@ export const te: Dict = {
   'school.mapLabel': 'పాఠశాల స్థానం మ్యాప్',
   'school.saveFirstVisits': 'సందర్శనలు నమోదు చేయడానికి ముందుగా పాఠశాలను సేవ్ చేయండి.',
   'school.saveFirstPhotos': 'ఫోటోలు చేర్చడానికి ముందుగా పాఠశాలను సేవ్ చేయండి.',
-  'school.listingHint': 'వివరాలను AI సూచిస్తుంది; వాటిని తనిఖీ చేసి, మ్యాప్‌లో స్థానం సెట్ చేసి, ఆ తర్వాత పాఠశాలను సృష్టించండి.',
+  'school.listingHint': 'ప్రివ్యూ: వివరాలను AI సూచిస్తుంది; వాటిని తనిఖీ చేసి, మ్యాప్‌లో స్థానం సెట్ చేసి, ఆ తర్వాత పాఠశాలను సృష్టించండి.',
   'school.aiDisclosure': 'ఈ టెక్స్ట్, సరిపోలే పాఠశాల గమనికలతో కలిసి, మీ సర్వర్‌లో సెట్ చేసిన AI సేవకు పంపబడుతుంది.',
   'school.aiDisclosureOwnKeyHost': 'ఈ టెక్స్ట్, సరిపోలే పాఠశాల గమనికలతో కలిసి, మీ సొంత కీతో ఈ బ్రౌజర్ నుండి నేరుగా {host} కి పంపబడుతుంది.',
   'school.fitTitle': 'జాబితాలోని అన్ని పాఠశాలలు కనిపించేలా మ్యాప్‌ను జూమ్ చేయండి',

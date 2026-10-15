@@ -942,9 +942,9 @@ Added 2026-10-15 with the iPhone's side of voice input ([03](../03-design.md) AD
 
 ## 18. More than houses: What you track and the chooser (S4b-BL-212)
 
-The published site offers houses alone; schools are seen only in a build that ships them (a development build, or
-`ng build --define "DOORPRINTS_KINDS='house,school'"`). The owner decides when a second kind is released, or whether
-schools ship at all; these checks are for the owner's own test devices. TC-M-69 of [06](../06-test-plan.md).
+The published site lists the school but offers houses alone: it is compiled in and off (owner, 2026-10-15). It is seen only
+after **Experimental: more than houses** is turned on in *Your data* (a development build shows the same). The owner decides
+when a second kind is released, or whether schools ship at all; these checks are for the owner's own test devices. TC-M-69 of [06](../06-test-plan.md).
 
 #### MT-93 What you track, the chooser and the chip
 - **Area:** Website (the phones follow, S4b-BL-274). **Who:** anyone. **Env:** E1 with a fresh browser profile; the published site and a build that ships schools.
@@ -1000,7 +1000,7 @@ owner's own test phones. TC-M-72 of [06](../06-test-plan.md); the website's twin
 
 ## 20. A school's pages and copies (S4b-BL-256, S4b-BL-259, S4b-BL-266, S4b-BL-277)
 
-Needs a build that ships the school (`ng build --define "DOORPRINTS_KINDS='house,school'"` or a development build) and
+Needs a build that lists the school (the website's release build does; so does a development build) and
 **Experimental: more than houses** on in *Your data*, with a school or two saved. Do it in English, then in one of Hindi,
 Tamil and Telugu; light and dark; the largest text.
 

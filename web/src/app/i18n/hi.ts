@@ -1742,7 +1742,8 @@ export const hi: Dict = {
   'kinds.heading': 'आप क्या ट्रैक करते हैं',
   'kinds.body': 'चुनें कि Doorprints किसका हिसाब रखे। एक से ज़्यादा चालू होने पर Doorprints पहले पूछता है कि आप क्या ढूँढ रहे हैं।',
   'kinds.switch': 'प्रायोगिक: मकानों के अलावा भी',
-  'kinds.switchHint': 'शुरू में बंद। वह दिखाता है जिसे अभी आज़माया जा रहा है, जैसे स्कूल। यह बदल सकता है।',
+  // 2026-10-15 (ship school, compiled in and off): the preview marks on the switch hint and the school listing hint. Under review (owner rule: hi/ta/te ship marked under review).
+  'kinds.switchHint': 'शुरू में बंद। वह दिखाता है जिसे अभी आज़माया जा रहा है, जैसे स्कूल। यह बदल सकता है। यह एक पूर्वावलोकन है।',
   'kinds.show': '{kind} दिखाएँ',
   'kinds.default': 'डिफ़ॉल्ट',
   'kinds.defaultAria': '{kind} को डिफ़ॉल्ट बनाएँ',
@@ -1853,7 +1854,7 @@ export const hi: Dict = {
   'school.mapLabel': 'स्कूल की जगह का नक्शा',
   'school.saveFirstVisits': 'दौरे दर्ज करने के लिए पहले स्कूल सहेजें।',
   'school.saveFirstPhotos': 'तस्वीरें जोड़ने के लिए पहले स्कूल सहेजें।',
-  'school.listingHint': 'विवरण AI सुझाता है; उन्हें जाँचें, नक्शे पर जगह चुनें, फिर स्कूल बनाएँ।',
+  'school.listingHint': 'पूर्वावलोकन: विवरण AI सुझाता है; उन्हें जाँचें, नक्शे पर जगह चुनें, फिर स्कूल बनाएँ।',
   'school.aiDisclosure': 'यह टेक्स्ट, मिलते-जुलते स्कूलों के नोट के साथ, आपके सर्वर पर सेट AI सेवा को भेजा जाता है।',
   'school.aiDisclosureOwnKeyHost': 'यह टेक्स्ट, मिलते-जुलते स्कूलों के नोट के साथ, आपकी अपनी कुंजी से इस ब्राउज़र से सीधे {host} को भेजा जाता है।',
   'school.fitTitle': 'सूची के सभी स्कूल दिखाने के लिए नक्शे को ज़ूम करें',
