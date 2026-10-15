@@ -1826,4 +1826,38 @@
     <string name="school_map_location_off_no_hunt">Location is off for Doorprints. ‘Save school here’ needs it.</string>
     <string name="school_map_needs_precise_no_hunt">‘Save school here’ needs precise location.</string>
     <string name="school_map_save_needs_location">‘Save school here’ needs your location. Allow location, then tap it again at the school.</string>
+
+    <!-- S4b-BL-222 (2026-10-15): voice input, the microphone in Ask, Plan and Fill in from listing text. -->
+    <string name="voice_switch">Voice input (a microphone button for the AI boxes)</string>
+    <string name="voice_switch_hint">Off until you turn it on. Tap the microphone, speak, and the words are written into the box for you to check and change. Nothing is sent until you press the box’s own button. Works with your own AI key only.</string>
+    <string name="voice_disclosure">Audio goes from this phone straight to %1$s, about INR %2$s a minute at their list price. Anything you say, including numbers and names, is sent as audio, and a phone number said aloud cannot be left out the way a typed one is. The recording is not saved on this phone.</string>
+    <string name="voice_needs_own_key">Voice input needs your own AI key for a service that takes audio: Gemini, OpenAI, Groq or OpenRouter. It is not available with your server’s AI, Anthropic or a local server.</string>
+    <string name="voice_no_recorder">This phone cannot record audio, so the microphone button is not shown.</string>
+    <string name="voice_mic">Speak</string>
+    <string name="voice_mic_desc">Speak instead of typing</string>
+    <string name="voice_stop">Stop</string>
+    <string name="voice_stop_desc">Stop recording and write out the words</string>
+    <string name="voice_working">Writing out…</string>
+    <string name="voice_cancel">Cancel</string>
+    <string name="voice_cancel_desc">Cancel and throw the recording away</string>
+    <string name="voice_hint">A short recording, up to a minute, goes from this phone to %1$s to be written out. It is not saved. Numbers and names you say are sent as audio too. Android asks to use the microphone the first time. Check the words before you send anything.</string>
+    <string name="voice_hint_ios">A short recording, up to a minute, goes from this phone to %1$s to be written out. It is not saved. Numbers and names you say are sent as audio too. iOS asks to use the microphone the first time. Check the words before you send anything.</string>
+    <string name="voice_status_starting">Waiting for the microphone…</string>
+    <string name="voice_status_recording">Recording. Speak now, then press Stop.</string>
+    <string name="voice_status_working">Writing out the words…</string>
+    <string name="voice_status_done">Done. The words are in the box. Check them before you send.</string>
+    <string name="voice_status_done_limit">Done. The recording stopped at its one-minute limit. The words are in the box. Check them before you send.</string>
+    <string name="voice_status_done_cut">Done. The last words did not fit in the box and were left out. Check what is there before you send.</string>
+    <string name="voice_status_cancelled">Cancelled. Nothing was kept.</string>
+    <string name="voice_nothing_heard">Nothing was heard. Try again closer to the microphone, or type.</string>
+    <string name="voice_denied">Doorprints cannot use the microphone. Allow it in the phone’s settings for Doorprints, then try again, or type instead.</string>
+    <string name="voice_open_settings">Open settings</string>
+    <string name="voice_no_device">No microphone was found. Type instead.</string>
+    <string name="voice_failed">The recording could not be made. Try again, or type instead.</string>
+    <string name="voice_too_long">The recording was too long to send. Try a shorter one.</string>
+    <string name="voice_rationale_title">Use the microphone?</string>
+    <string name="voice_rationale_body">Doorprints records only after you tap Speak, for at most a minute, to write out what you say. The recording goes to %1$s with your own key, stays in memory and is never saved. Android asks for your permission next.</string>
+    <string name="voice_rationale_body_ios">Doorprints records only after you tap Speak, for at most a minute, to write out what you say. The recording goes to %1$s with your own key, stays in memory and is never saved. iOS asks for your permission next.</string>
+    <string name="voice_rationale_go">Continue</string>
+    <string name="voice_rationale_no">Not now</string>
 </resources>

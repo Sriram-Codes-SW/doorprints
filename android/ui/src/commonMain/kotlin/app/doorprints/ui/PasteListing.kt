@@ -85,7 +85,7 @@ suspend fun pasteResultText(merge: ListingMerge, warnings: List<String>, fields:
  * the error are in a live region that is there before either appears.
  */
 @Composable
-internal fun PasteListingDialog(onDismiss: () -> Unit, onDraft: (HouseDraftDto, List<String>) -> Unit, kind: String? = null) {
+fun PasteListingDialog(onDismiss: () -> Unit, onDraft: (HouseDraftDto, List<String>) -> Unit, kind: String? = null) {
     val repo = LocalAppServices.current.repository
     val scope = rememberCoroutineScope()
     var text by rememberSaveable { mutableStateOf("") }
@@ -105,6 +105,7 @@ internal fun PasteListingDialog(onDismiss: () -> Unit, onDraft: (HouseDraftDto, 
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(stringResource(Res.string.house_paste_hint), style = MaterialTheme.typography.bodySmall)
                 PasteListingText(text, { text = it })
+                VoiceMicButton(text, { text = it }, kind ?: "house")
                 AiDisclosure(style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, pages = PageWords.of(kind ?: "house"))
                 LiveMessage(assertive = error != null && !busy) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

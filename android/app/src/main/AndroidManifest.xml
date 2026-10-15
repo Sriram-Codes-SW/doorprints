@@ -46,7 +46,14 @@
          cannot open its prompt (found by AppLockEmulatorTest on the API 34 and 36 emulators, S4b-BL-67). -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
 
+    <!-- Voice input (docs/03 ADR-37, S4b-BL-222): the microphone button in Ask, Plan and Fill in from listing text, off by
+         default. RECORD_AUDIO is a runtime permission, asked only when the person taps the microphone and has read why
+         (never at install or start-up); nothing is recorded in the background, and nothing is stored (T-I47, T-I48). -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
     <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <!-- RECORD_AUDIO would otherwise make the microphone a required feature: a phone without one still runs the app. -->
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
 
     <application
         android:name=".DoorprintsApp"

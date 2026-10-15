@@ -22,7 +22,7 @@ import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/** When an interruption or a changed microphone ends an iPhone recording (S4b-BL-223, TC-U-254; T-I47). */
+/** When an interruption or a changed microphone ends an iPhone recording (S4b-BL-223, TC-U-255; T-I47). */
 class CaptureEndRulesTest {
     private val mic = "BuiltInMicrophoneInput"
 

@@ -24,7 +24,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
-/** The arithmetic between the iPhone's microphone and the 16 kHz clip the transcribers take (S4b-BL-223, TC-U-253). */
+/** The arithmetic between the iPhone's microphone and the 16 kHz clip the transcribers take (S4b-BL-223, TC-U-254). */
 class Pcm16ResamplerTest {
     private fun run(rate: Double, input: FloatArray, chunk: Int = input.size.coerceAtLeast(1)): List<Short> {
         val r = Pcm16Resampler(rate)

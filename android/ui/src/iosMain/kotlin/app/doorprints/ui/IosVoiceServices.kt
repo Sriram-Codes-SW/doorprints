@@ -29,7 +29,9 @@ import app.doorprints.shared.voice.PcmVoiceRecorder
 import app.doorprints.shared.voice.RecordedClip
 import app.doorprints.shared.voice.VoiceRecorder
 import io.ktor.client.HttpClient
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.newSingleThreadContext
 
 /**
  * *Voice input* on the iPhone (S4b-BL-223, docs/03 ADR-37): the microphone ([IosPcmSource] inside the shared
@@ -44,11 +46,21 @@ internal class IosVoiceServices(
 ) : VoiceServices {
     private val transcription by lazy { OwnKeyTranscription(settings, http()) }
 
+    /**
+     * The one thread the capture loop blocks on (`read` waits for the next buffer): kotlinx.coroutines has no public IO
+     * dispatcher on Kotlin/Native, and a blocked `Dispatchers.Default` thread would be one of few. One recording runs at a
+     * time, and [IosPcmSource.close] wakes the read, so the thread is free again at once. Created on the first recording.
+     */
+    @OptIn(DelicateCoroutinesApi::class)
+    private val captureThread: CoroutineDispatcher by lazy { newSingleThreadContext("doorprints-voice") }
+
     override val supported: Boolean get() = true
+
+    override val iphoneWording: Boolean get() = true
 
     override val recordable: Boolean get() = microphoneInputAvailable()
 
-    override fun newRecorder(): VoiceRecorder = PcmVoiceRecorder(IosPcmSource(), Dispatchers.IO)
+    override fun newRecorder(): VoiceRecorder = PcmVoiceRecorder(IosPcmSource(), captureThread)
 
     override fun microphoneGranted(): Boolean = microphonePermission() == MicrophonePermission.Granted
 

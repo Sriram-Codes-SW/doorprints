@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | The complete manual test list for Doorprints before real-system testing starts and before Android/iOS development continues: every check a person redoes on real devices, whether or not an automated suite or a review session already covered it |
-| Version | 0.17 |
+| Version | 0.18 |
 | Date | 2026-10-15 |
 | Author | Claude, senior reviewer |
 | Status | Draft |
@@ -28,7 +28,8 @@
 | 0.14 | 2026-10-15 | Claude (Code), engineer | **MT-102** (TC-M-77, §20): the website's leftovers of the kinds by eye: the space picker on Your data, the filter chips of a school list, Compare's lower-is-better marks, the backup's and the import preview's words with two kinds on. |
 | 0.15 | 2026-10-15 | Claude (Code), engineer | **MT-103** (TC-M-78, §20): the phones' leftovers of the kinds by eye: the filter chips of a school list, *Save a copy of* on the Export screen, Compare's best marks, the neutral backup and import words, the map's notes in a school space. |
 | 0.16 | 2026-10-15 | Claude (Code), engineer | **§16 voice input:** the website's side is built (S4b-BL-221); the header paragraph says `microphone=(self)` and the MT-32 header text reads it; MT-82..MT-87 stay to be run (the website's part: a real microphone, the permission dialog, Safari mp4, Chrome and Firefox webm, TalkBack and VoiceOver on the button). |
-| 0.17 | 2026-10-15 | Claude (Code), engineer | **§16.2, voice input on the iPhone** (S4b-BL-223, TC-M-79): MT-104 (the rationale, the system prompt on the first tap only, a refusal and *Open settings*), MT-105 (foreground only: home, lock, a call, Siri, headphones, Bluetooth; the music comes back), MT-106 (a real recording: the words, the 60 s stop, nothing heard, the permission lost mid-way), MT-107 (no audio at rest in the app's container, the console or a copy), MT-108 (VoiceOver, the largest text, four languages, both themes). Needs a Mac with Xcode and an iPhone (a simulator uses the Mac's microphone and cannot show a call or Bluetooth). Not run. |
+| 0.17 | 2026-10-15 | Claude (Code), engineer | **§16 voice input: Android's side is built (S4b-BL-222):** MT-82..MT-87 name the Android steps (the rationale, *Not now*, a refusal and *Open settings*, a revoke, a pause by home, the lock screen, a call or a rotation, TalkBack on the button, `adb shell ls` of the app's folders); TC-M-79 ([06](../06-test-plan.md)) is the run; the rows stay to be run on a real phone (the tests use a fake microphone, a fake permission and a canned provider: TC-U-249..253, TC-S-52, TC-I-52). |
+| 0.18 | 2026-10-15 | Claude (Code), engineer | **§16.2, voice input on the iPhone** (S4b-BL-223, TC-M-80): MT-104 (the rationale, the system prompt on the first tap only, a refusal and *Open settings*), MT-105 (foreground only: home, lock, a call, Siri, headphones, Bluetooth; the music comes back), MT-106 (a real recording: the words, the 60 s stop, nothing heard, the permission lost mid-way), MT-107 (no audio at rest in the app's container, the console or a copy), MT-108 (VoiceOver, the largest text, four languages, both themes). Needs a Mac with Xcode and an iPhone (a simulator uses the Mac's microphone and cannot show a call or Bluetooth). Not run. |
 
 ## 1. How to use this list
 
@@ -818,15 +819,15 @@ Added 2026-10-06 with the design ([11](../11-feature-parity-and-export-spec.md) 
 | MT-80 | hi, ta, te, large text, screen readers | owner, natives | E4/E5/E1 | no (built; not run on a device) | |
 | MT-81 | Have I been here? (on-demand place check) | owner | E4/E5/E1 | no (built; not run on a device) | |
 
-## 16. Voice input (planned)
+## 16. Voice input (website and Android built; iPhone planned)
 
-Added 2026-10-10 with the design ([03](../03-design.md) ADR-37, [ai/voice-input](../ai/voice-input.md) §5, S4b-BL-218). **Planned: nothing is built.** Run these when the voice pull requests (S4b-BL-221..S4b-BL-223) are merged. CI cannot test a real microphone, a permission dialog, a platform recogniser, Safari's recording format, the auto-stop or a screen reader on the button. Use a test provider key and the fake-number clips, never a real phone number.
+Added 2026-10-10 with the design ([03](../03-design.md) ADR-37, [ai/voice-input](../ai/voice-input.md) §5, S4b-BL-218). **The website (S4b-BL-221) and Android (S4b-BL-222) are built; the iPhone (S4b-BL-223) is planned.** Run these on real devices; the automated tests use fakes. On Android (TC-M-79) use a release-like debug build, a test provider key and a real microphone. CI cannot test a real microphone, a permission dialog, a platform recogniser, Safari's recording format, the auto-stop or a screen reader on the button. Use a test provider key and the fake-number clips, never a real phone number.
 
 #### MT-82 Microphone and the permission dialog (voice is off until switched on)
 - **Area:** Website, Android app, iPhone app. **Who:** owner. **Env:** E1, E4, E5 as named.
-- **Steps:** (1) Fresh install or cleared site data: *Voice input* is off, no microphone button in *Ask a question*, *Fill in from listing text* or *Plan notes*, and no permission was asked at start-up. (2) Switch *Voice input* on: the disclosure names the provider host and the price per minute. (3) Tap the button: the system dialog (browser, Android `RECORD_AUDIO`, iOS microphone) appears now, with the app's own reason first. (4) Deny: inline help, the keyboard still works. (5) Allow in system settings and tap again: it records.
+- **Steps:** (1) Fresh install or cleared site data: *Voice input* is off, no microphone button in *Ask a question*, *Fill in from listing text* or *Plan notes*, and no permission was asked at start-up. (2) Switch *Voice input* on: the disclosure names the provider host and the price per minute. (3) Tap the button: the system dialog (browser, Android `RECORD_AUDIO`, iOS microphone) appears now, with the app's own reason first (on Android, the *Use the microphone?* rationale: *Not now* asks nothing, *Continue* shows Android's prompt). (4) Deny: inline help (on Android *Open settings* opens the app's page), the keyboard still works. (5) Allow in system settings and tap again: it records. (6) On Android, allow *Only this time*, leave and return: the next tap asks again; revoke the permission in Settings while recording: it ends and the microphone is released.
 - **Expected:** The permission is asked at first use only; denial leaves a working screen; the button is hidden for a provider that cannot transcribe (Anthropic, Ollama, LM Studio).
-- **Automated or reviewed by:** Gate F11 ([13](../13-release-security-checklist.md)); emulator denial test (S4b-BL-222) when built. Reviewer ran it: no (planned).
+- **Automated or reviewed by:** Gate F11 ([13](../13-release-security-checklist.md)); TC-U-253 (the rationale and a refusal with a fake permission), TC-S-52 (the manifest, one request place) and TC-I-52 (an emulator test: not asked at start-up, `DENIED` without the grant; written, not run). Reviewer ran it: no (not run on a device).
 - Pass / Fail / Date: ____  by: ____
 
 #### MT-83 Speak, review, then send (the transcript is never sent on its own)
@@ -845,39 +846,39 @@ Added 2026-10-10 with the design ([03](../03-design.md) ADR-37, [ai/voice-input]
 
 #### MT-85 Auto-stop, the size cap and nothing heard
 - **Area:** Website, Android app, iPhone app. **Who:** owner. **Env:** E1, E4, E5 as named.
-- **Steps:** (1) Tap and stay silent for 10 s: the recording indicator shows elapsed seconds; stop: "Nothing was heard", nothing sent. (2) Tap and keep talking: it stops by itself at 30 s (60 s for providers other than Sarvam) and transcribes what it has. (3) Start a recording and switch to another app or lock the phone: it stops. (4) A long recording is refused above 2 MB.
+- **Steps:** (1) Tap and stay silent for 10 s: the recording indicator shows elapsed seconds; stop: "Nothing was heard", nothing sent. (2) Tap and keep talking: it stops by itself at 30 s (60 s for providers other than Sarvam) and transcribes what it has. (3) Start a recording and switch to another app, press home, lock the phone, take a call or turn the phone round: it stops and nothing is kept (on Android the microphone indicator of the status bar goes out). (4) A long recording is refused above 2 MB.
 - **Expected:** One recording is bounded in time and size; leaving the app ends it; a silent recording sends nothing.
-- **Automated or reviewed by:** Timer and cap unit tests with a fake clock (S4b-BL-221, S4b-BL-222). Reviewer ran it: no (planned).
+- **Automated or reviewed by:** Timer and cap unit tests with a fake clock and a fake recorder (S4b-BL-221, TC-U-250, TC-U-251, TC-U-253). Reviewer ran it: no (not run on a device).
 - Pass / Fail / Date: ____  by: ____
 
 #### MT-86 The button with TalkBack and VoiceOver, large text, four languages
 - **Area:** Website (with a screen reader), Android app, iPhone app. **Who:** owner. **Env:** E1, E4, E5 as named.
 - **Steps:** (1) Turn on TalkBack (and VoiceOver on the iPhone), focus the button: it is announced as a button with a name in the app's language ("Speak" / the Hindi, Tamil and Telugu strings, *under review*); the target is at least 48 dp or 44 px. (2) Start, stop and the result are announced (recording, nothing heard, the text inserted). (3) Font size at the largest and both themes: the button does not overlap the text.
 - **Expected:** The button, its states and the result are reachable and announced without sight; the touch target holds at large text.
-- **Automated or reviewed by:** `aria-label` and size specs, Roborazzi screenshots (S4b-BL-221, S4b-BL-222). Screen readers: reviewer ran it: no (planned).
+- **Automated or reviewed by:** `aria-label` and size specs, the 200 % sweep in English and Tamil, one Roborazzi baseline `assistant_voice_en_light.png` (S4b-BL-221, S4b-BL-222: TC-U-253). Screen readers: reviewer ran it: no (not run on a device).
 - Pass / Fail / Date: ____  by: ____
 
 #### MT-87 The audio is nowhere afterwards, and the on-device recogniser is really on-device
 - **Area:** Android app, iPhone app, website. **Who:** owner. **Env:** E1, E4, E5 as named.
-- **Steps:** (1) After several recordings make a *Save a copy* Full backup, a readable copy and (if connected) a Drive backup: no audio file and no audio entry in any of them. (2) Phone storage (Android *Files*, the app's cache folder via `adb`; the iPhone app's container in Xcode): no `.m4a`, `.webm` or `.ogg` left. (3) In airplane mode, *Transcribe with: this device* works, or the option is not offered. (4) With *my AI provider*, the network inspector shows one request to the provider's host only.
+- **Steps:** (1) After several recordings make a *Save a copy* Full backup, a readable copy and (if connected) a Drive backup: no audio file and no audio entry in any of them. (2) Phone storage (Android *Files*, the app's cache folder via `adb`; the iPhone app's container in Xcode): no `.m4a`, `.webm`, `.ogg` or `.wav` left (on Android a debug build: `adb shell run-as app.doorprints ls -R files cache no_backup`). (3) In airplane mode, *Transcribe with: this device* works, or the option is not offered. (4) With *my AI provider*, the network inspector shows one request to the provider's host only.
 - **Expected:** No audio at rest anywhere; *this device* never falls back to a cloud recogniser; one host only.
-- **Automated or reviewed by:** T-I48 unit tests with fake bytes and `tools/mutations/voice-*.json` (S4b-BL-219). Real device: reviewer ran it: no (planned).
+- **Automated or reviewed by:** T-I48 unit tests with fake bytes and `tools/mutations/voice-*.json` (S4b-BL-219); TC-S-52 on Android (a whole turn adds no file, no row, no preference, no log line; the manifest and the backup rules). Real device: reviewer ran it: no (not run on a device).
 - Pass / Fail / Date: ____  by: ____
 
 ### 16.1 Summary rows (add to §13 when the owner starts the run)
 
 | Id | Title | Who | Env | Reviewer ran it | Result |
 |---|---|---|---|---|---|
-| MT-82 | Microphone and the permission dialog (Planned) | owner | E1/E4/E5 | no (planned, not built) | |
-| MT-83 | Speak, review, then send (Planned) | owner | E1/E4/E5 | no (planned, not built) | |
-| MT-84 | Safari mp4, Chrome and Firefox webm (Planned) | owner | E1 | no (planned, not built) | |
-| MT-85 | Auto-stop, size cap, nothing heard (Planned) | owner | E1/E4/E5 | no (planned, not built) | |
-| MT-86 | The button with TalkBack and VoiceOver (Planned) | owner, natives | E1/E4/E5 | no (planned, not built) | |
-| MT-87 | No audio at rest; the recogniser is on-device (Planned) | owner | E1/E4/E5 | no (planned, not built) | |
+| MT-82 | Microphone and the permission dialog | owner | E1/E4/E5 | no (website and Android built; not run on a device) | |
+| MT-83 | Speak, review, then send | owner | E1/E4/E5 | no (website and Android built; not run on a device) | |
+| MT-84 | Safari mp4, Chrome and Firefox webm | owner | E1 | no (website built; not run on a device) | |
+| MT-85 | Auto-stop, size cap, nothing heard | owner | E1/E4/E5 | no (website and Android built; not run on a device) | |
+| MT-86 | The button with TalkBack and VoiceOver | owner, natives | E1/E4/E5 | no (website and Android built; not run on a device) | |
+| MT-87 | No audio at rest | owner | E1/E4/E5 | no (website and Android built; not run on a device; *this device* is not offered) | |
 
 **The website's `Permissions-Policy`.** `web/firebase.json` has `microphone=(self)` since the web voice pull request (S4b-BL-221), with TC-S-23 reading it from the live site and checklist row B1; MT-82..MT-87 are still to be run on real devices and browsers (the automated tests use a fake microphone and recorder: [06](../06-test-plan.md) TC-U-242..248, TC-S-51). Also named in [07](../07-secure-build-and-deploy.md) and checklist section 9.
 
-### 16.2 Voice input on the iPhone (S4b-BL-223, TC-M-79)
+### 16.2 Voice input on the iPhone (S4b-BL-223, TC-M-80)
 
 Added 2026-10-15 with the iPhone's side of voice input ([03](../03-design.md) ADR-37, [ai/voice-input](../ai/voice-input.md)). **Built without Xcode or a phone: nothing below has been run.** Needs a Mac with Xcode (`cd ios && xcodegen generate`), your own team for a build on an iPhone with a free Apple ID (`ios/README.md`, *Signing*), an iPhone on iOS 17 or later, and a test AI key for Gemini, OpenAI, Groq or OpenRouter (Settings > *AI features*, your own key). Use fake numbers only. The guide calls the iPhone app *early*. MT-82..MT-87 above name the iPhone too: run them there as well.
 

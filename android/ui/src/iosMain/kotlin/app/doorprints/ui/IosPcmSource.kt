@@ -42,6 +42,8 @@ import platform.AVFAudio.AVAudioSessionMediaServicesWereResetNotification
 import platform.AVFAudio.AVAudioSessionRouteChangeNotification
 import platform.AVFAudio.AVAudioSessionRouteChangeReasonKey
 import platform.AVFAudio.AVAudioSessionSetActiveOptionNotifyOthersOnDeactivation
+import platform.AVFAudio.currentRoute
+import platform.AVFAudio.inputAvailable
 import platform.AVFAudio.setActive
 import platform.Foundation.NSCondition
 import platform.Foundation.NSError

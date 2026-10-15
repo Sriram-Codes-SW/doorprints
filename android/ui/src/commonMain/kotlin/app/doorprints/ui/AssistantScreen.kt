@@ -224,12 +224,14 @@ class AssistantViewModel(
     private fun <T> decode(serializer: kotlinx.serialization.KSerializer<T>, text: String): T? =
         runCatching { json.decodeFromString(serializer, text) }.getOrNull()
 
-    private companion object {
-        const val KEY_TAB = "tab"
+    companion object {
+        private const val KEY_TAB = "tab"
+
+        /** The longest Ask or Plan question; what a spoken one may add is cut here too. */
         const val MAX_QUESTION = 1000
-        const val KEY_ANSWER = "answer"
-        const val KEY_ROUTE = "plan"
-        const val LOCATION_TIMEOUT_MS = 15_000L
+        private const val KEY_ANSWER = "answer"
+        private const val KEY_ROUTE = "plan"
+        private const val LOCATION_TIMEOUT_MS = 15_000L
     }
 }
 
@@ -452,6 +454,7 @@ private fun AskPane(vm: AssistantViewModel, onOpenHouse: (String) -> Unit) {
         keyboardActions = KeyboardActions(onSend = { vm.ask() }),
         minLines = 2, modifier = Modifier.fillMaxWidth(),
     )
+    VoiceMicButton(question, vm::editAsk, LocalSpace.current.kind, max = AssistantViewModel.MAX_QUESTION)
     // One button position and one call site: Ask, or Cancel while the request runs (round 6), so TalkBack keeps focus
     // on it and the next double-tap cancels.
     StateButton(
@@ -589,6 +592,7 @@ private fun PlanPane(vm: AssistantViewModel, onOpenHouse: (String) -> Unit) {
         keyboardActions = KeyboardActions(onSend = { planOrAsk() }),
         minLines = 2, modifier = Modifier.fillMaxWidth(),
     )
+    VoiceMicButton(question, vm::editPlan, LocalSpace.current.kind, max = AssistantViewModel.MAX_QUESTION)
     // One call site, as on the Ask tab: Plan visits, or Cancel while planning runs.
     StateButton(
         text = stringResource(if (busy) Res.string.common_cancel else Res.string.ai_plan_go),

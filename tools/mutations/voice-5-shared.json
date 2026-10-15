@@ -1,0 +1,196 @@
+{
+ "spec": "android/shared/src/commonTest/kotlin/app/doorprints/shared/voice/ (TranscriptInsertTest, PcmVoiceRecorderTest, VoiceSessionTest, VoiceInputTest)",
+ "gradle": [
+  ":shared:testAndroidHostTest",
+  "--tests",
+  "app.doorprints.shared.voice.*"
+ ],
+ "mutations": [
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/TranscriptInsert.kt",
+   "find": "val joined = if (current.isEmpty() || current.last().isWhitespace()) current + words else \"$current $words\"",
+   "replace": "val joined = current + words",
+   "expect": "addsOneSpaceAfterText"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/TranscriptInsert.kt",
+   "find": "joined.take(maxOf(max, current.length)).trimEnd()",
+   "replace": "joined.take(max).trimEnd()",
+   "expect": "cutsAtTheBoxLimitNeverTouching"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/TranscriptInsert.kt",
+   "find": ".trimEnd(), true)",
+   "replace": ".trimEnd(), false)",
+   "expect": "cutsAtTheBoxLimitNeverTouching"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/PcmVoiceRecorder.kt",
+   "find": "internal const val PCM_CAP = AudioLimits.MAX_BYTES - WAV_HEADER",
+   "replace": "internal const val PCM_CAP = AudioLimits.MAX_BYTES",
+   "expect": "theCapEndsTheCapture"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/PcmVoiceRecorder.kt",
+   "find": "int(24, SAMPLE_RATE)",
+   "replace": "int(24, 8_000)",
+   "expect": "aClipIsAWavInMemory"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/PcmVoiceRecorder.kt",
+   "find": "override fun elapsedMs(): Long = length.toLong() * 1000 / BYTES_PER_SECOND",
+   "replace": "override fun elapsedMs(): Long = length.toLong() * 100 / BYTES_PER_SECOND",
+   "expect": "aClipIsAWavInMemory"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/PcmVoiceRecorder.kt",
+   "find": "        source.close()\n        scope?.cancel()",
+   "replace": "        scope?.cancel()",
+   "expect": "stopLetsTheMicrophoneGo"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/PcmVoiceRecorder.kt",
+   "find": "            finish()\n            throw e",
+   "replace": "            throw e",
+   "expect": "aRefusedPermissionAndNoDevice"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/PcmVoiceRecorder.kt",
+   "find": "if (took == 0) throw VoiceRecorderException(VoiceFailure.FAILED)",
+   "replace": "if (false) throw VoiceRecorderException(VoiceFailure.FAILED)",
+   "expect": "nothingHeardIsAFailureToStop"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/PcmVoiceRecorder.kt",
+   "find": "                failed = VoiceFailure.FAILED\n",
+   "replace": "",
+   "expect": "aDeadMicrophone"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/PcmVoiceRecorder.kt",
+   "find": "        check(state == NEW) { \"a recorder is used once\" }\n",
+   "replace": "",
+   "expect": "aRecorderIsUsedOnce"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/VoiceRecorder.kt",
+   "find": "\"RecordedClip(${bytes.size} bytes, $mime, $durationMs ms)\"",
+   "replace": "\"RecordedClip(${bytes.decodeToString()} bytes, $mime, $durationMs ms)\"",
+   "expect": "aClipNeverPrintsItsBytes"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/VoiceSession.kt",
+   "find": "        if (!permitted()) {\n            state.value = VoiceUi(problem = VoiceProblem.DENIED)\n            return\n        }\n",
+   "replace": "",
+   "expect": "withoutThePermissionNothingIsOpened"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/VoiceSession.kt",
+   "find": "            !permitted() -> fail(mine, VoiceProblem.DENIED)",
+   "replace": "            false -> fail(mine, VoiceProblem.DENIED)",
+   "expect": "thePermissionTakenAwayMidRecording"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/VoiceSession.kt",
+   "find": "r.elapsedMs() >= AudioLimits.MAX_DURATION_MS ->",
+   "replace": "r.elapsedMs() > 10 * AudioLimits.MAX_DURATION_MS ->",
+   "expect": "theSixtySecondLimit"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/VoiceSession.kt",
+   "find": "r.sizeBytes() >= AudioLimits.MAX_BYTES ->",
+   "replace": "r.sizeBytes() > 10 * AudioLimits.MAX_BYTES ->",
+   "expect": "theSizeCapStops"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/VoiceSession.kt",
+   "find": "            failure != null -> fail(mine, failure.problem())",
+   "replace": "            false -> fail(mine, VoiceProblem.FAILED)",
+   "expect": "aRecorderThatDiesMidRecording"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/VoiceSession.kt",
+   "find": "        recorder?.release()\n",
+   "replace": "",
+   "expect": "cancelWhileRecordingThrowsTheAudioAway"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/VoiceSession.kt",
+   "find": "        run++\n        ticker?.cancel()\n        ticker = null\n        work?.cancel()\n        work = null\n",
+   "replace": "        ticker?.cancel()\n        ticker = null\n",
+   "expect": "cancelWhileTheWordsAreBeingWrittenDropsTheLateAnswer"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/VoiceSession.kt",
+   "find": "                if (words.isEmpty()) {",
+   "replace": "                if (false) {",
+   "expect": "theWordsAreTrimmedAndEmptySpeech"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/VoiceSession.kt",
+   "find": "                    cut -> VoiceStatus.DONE_CUT",
+   "replace": "                    cut -> VoiceStatus.DONE",
+   "expect": "aBoxThatCouldNotHold"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/VoiceSession.kt",
+   "find": "                    heard.limit != null -> VoiceStatus.DONE_LIMIT",
+   "replace": "                    heard.limit != null -> VoiceStatus.DONE",
+   "expect": "theSixtySecondLimit"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/VoiceSession.kt",
+   "find": "        if (state.value.phase != VoicePhase.IDLE) return\n        val mine",
+   "replace": "        val mine",
+   "expect": "aSecondTapWhileBusy"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/VoiceSession.kt",
+   "find": "AudioClipRejected.Reason.EMPTY -> VoiceProblem.NOTHING_HEARD",
+   "replace": "AudioClipRejected.Reason.EMPTY -> VoiceProblem.FAILED",
+   "expect": "aClipTheCoreRefusesIsToldApart"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/VoiceSession.kt",
+   "find": "        discard()\n        state.value = VoiceUi()\n",
+   "replace": "        discard()\n        state.value = VoiceUi(status = VoiceStatus.CANCELLED)\n",
+   "expect": "releaseOnPauseOrLeaving"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/VoiceInput.kt",
+   "find": "choice.enabled && aiEnabled && providerOk(ownKey, choice.config) && recordable",
+   "replace": "aiEnabled && providerOk(ownKey, choice.config) && recordable",
+   "expect": "offByDefault"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/VoiceInput.kt",
+   "find": "ownKey && TranscribeCapability.canTranscribe(config)",
+   "replace": "TranscribeCapability.canTranscribe(config)",
+   "expect": "anthropicOllamaLmStudioACustomAddressAndTheServersAi"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/VoiceInput.kt",
+   "find": "\"groq\" to \"0.06\"",
+   "replace": "\"groq\" to \"0.6\"",
+   "expect": "theListPricePerMinute"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/VoiceInput.kt",
+   "find": "\"groq\" to \"whisper-large-v3-turbo\"",
+   "replace": "\"groq\" to \"whisper-1\"",
+   "expect": "eachPresetIsCalledWithItsModel"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/VoiceInput.kt",
+   "find": "kind == \"school\"",
+   "replace": "kind == \"scool\"",
+   "expect": "keyTermsFollowTheSpace"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/VoiceInput.kt",
+   "find": "\"ta\" -> \"ta-IN\"",
+   "replace": "\"ta\" -> \"hi-IN\"",
+   "expect": "theLanguageHint"
+  }
+ ]
+}

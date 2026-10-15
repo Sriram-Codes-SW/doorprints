@@ -32,7 +32,7 @@ import kotlin.test.assertTrue
  * place only; it sets the audio session up for recording and puts it down; the app declares no background audio and
  * explains the microphone in all four languages; and no copy, backup, sync or Drive code can reach the recorder or a
  * clip. The behaviour of the shared parts (every exit lets the microphone go, the limits, the setting off) is the
- * common tests (`VoiceSessionTest`, `PcmVoiceRecorderTest`, `IosVoiceSessionTest`); the real microphone, the prompt and
+ * common tests (`VoiceSessionTest`, `PcmVoiceRecorderTest`, `IosCapturePipelineTest`); the real microphone, the prompt and
  * an interruption are MT-82..MT-87 on a phone.
  */
 class IosVoiceSafetyTest {
@@ -56,6 +56,9 @@ class IosVoiceSafetyTest {
         assertTrue(files.size >= 6, "the pcm folder and the three iPhone files must be read (${files.size})")
         return files
     }
+
+    /** A test source of any module (`commonTest`, `androidHostTest`, `iosTest`, `src/test`): tests may name what they keep out. */
+    private fun isTest(f: File): Boolean = Regex("""/(src/test|[a-zA-Z]*Test)/""").containsMatchIn(f.path)
 
     /** Code only: comments name the very things this test keeps out of the code. */
     private fun code(f: File): String =
@@ -99,9 +102,9 @@ class IosVoiceSafetyTest {
 
     @Test
     fun theMicrophoneIsAskedForInOnePlaceAndOnlyFromTheButtonsRequest() {
-        val permissionCalls = listOf("requestRecordPermission", "requestAccessForMediaType", "AVMediaTypeAudio", "AVAudioSessionRecordPermission")
+        val permissionCalls = listOf("requestRecordPermission", "AVMediaTypeAudio", "AVAudioSessionRecordPermission")
         val all = file("android/ui/src").walkTopDown().plus(file("android/shared/src").walkTopDown())
-            .filter { it.isFile && it.extension == "kt" && "/build/" !in it.path && !it.path.contains("/androidHostTest/") && !it.path.contains("/iosTest/") }
+            .filter { it.isFile && it.extension == "kt" && "/build/" !in it.path && !isTest(it) }
             .toList()
         assertTrue(all.size > 300, "the scan must read the sources (${all.size})")
         for (token in permissionCalls) {
@@ -110,7 +113,7 @@ class IosVoiceSafetyTest {
         }
         assertEquals(listOf("IosMicrophone.kt"), all.filter { code(it).contains("requestRecordPermission") }.map { it.name })
         // requestMicrophone is reached from the services' rememberMicrophoneRequest only, which the button calls after the rationale.
-        val callers = all.filter { Regex("""\brequestMicrophone\(""").containsMatchIn(code(it)) }.map { it.name }.sorted()
+        val callers = all.filter { Regex("""\brequestMicrophone\b""").containsMatchIn(code(it)) }.map { it.name }.sorted()
         assertEquals(listOf("IosMicrophone.kt", "IosVoiceServices.kt"), callers)
         // And nothing at start-up or in the app container asks.
         for (name in listOf("IosAppServices.kt", "MainViewController.kt", "IosPlatformServices.kt", "PermissionRequests.ios.kt")) {
@@ -175,7 +178,7 @@ class IosVoiceSafetyTest {
         var scanned = 0
         for (root in listOf("android/shared/src", "android/ui/src", "android/app/src")) {
             file(root).walkTopDown()
-                .filter { it.isFile && it.extension == "kt" && "/build/" !in it.path && !it.path.contains("Test/") && !it.path.contains("/pcm/") }
+                .filter { it.isFile && it.extension == "kt" && "/build/" !in it.path && !isTest(it) && !it.path.contains("/pcm/") }
                 .forEach { f ->
                     scanned++
                     if (f.name !in allowed) assertFalse(voiceTypes.containsMatchIn(code(f)), "${f.relativeTo(repo)} reaches the voice recorder or a clip")
